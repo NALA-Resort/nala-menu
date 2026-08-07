@@ -1,22 +1,22 @@
 {
   "bread": {
-    "name": "Housemade focaccia",
-    "desc": "olive oil, pepperberry salt",
+    "name": "",
+    "desc": "",
     "aus": false
   },
   "entree": {
-    "name": "Char-grilled cabbage",
-    "desc": "macadamia cream, dukkah, chives",
+    "name": "",
+    "desc": "",
     "aus": false
   },
   "main": {
-    "name": "Pearl perch",
-    "desc": "confit tomato, zucchini flower, olive, lemon myrtle",
-    "aus": true
+    "name": "",
+    "desc": "",
+    "aus": false
   },
   "dessert": {
-    "name": "Chocolate mousse",
-    "desc": "wattleseed, rosella",
+    "name": "",
+    "desc": "",
     "aus": false
   }
 }
