@@ -10,6 +10,7 @@
 
   html, body {
     width: 100%;
+    height: 100%;
     overflow: hidden;
     background: var(--cream);
     font-family: Georgia, serif;
@@ -23,14 +24,16 @@
   .page {
     width: 100%;
     max-width: 440px;
+    height: 100%;
     padding: 0 32px;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
   }
 
+  /* HEADER */
   header {
     text-align: center;
-    padding: 4vh 0 2vh;
+    padding: 5vh 0 2.5vh;
     border-bottom: 1px solid var(--rule);
   }
 
@@ -44,46 +47,37 @@
 
   /* DEFAULT STATE */
   #stateDefault {
-    text-align: center;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    text-align: center;
+    gap: 12px;
   }
 
-  .soon {
-    font-size: 18px;
-    color: var(--ink);
-    margin-bottom: 12px;
-    line-height: 1.5;
-  }
-
-  .note {
-    font-style: italic;
-    font-size: 12px;
-    color: var(--mid);
-    line-height: 1.6;
-  }
+  .soon { font-size: 18px; color: var(--ink); line-height: 1.5; }
+  .note { font-style: italic; font-size: 12px; color: var(--mid); line-height: 1.6; }
 
   /* MENU STATE */
-  #stateMenu { display: none; flex-direction: column; }
+  #stateMenu {
+    display: none;
+    flex-direction: column;
+    /* top and bottom space are equal; courses cluster in the middle */
+  }
 
   .menu-date {
     font-family: Helvetica, Arial, sans-serif;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: bold;
     letter-spacing: 0.1em;
     color: var(--ink);
     text-align: center;
     text-transform: uppercase;
-    padding: 1.5vh 0 0.3vh;
   }
 
-  .courses {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-evenly;
-  }
+  .spacer-top { flex: 2; }   /* above courses */
+  .spacer-mid { flex: 1; }   /* between courses */
+  .spacer-bot { flex: 2; }   /* below courses */
 
   .course { text-align: center; }
 
@@ -126,10 +120,11 @@
     line-height: 1.4;
   }
 
-  .menu-footer {
+  /* FOOTER */
+  footer {
     border-top: 1px solid var(--rule);
     text-align: center;
-    padding: 1.5vh 0 1.5vh;
+    padding: 2vh 0 4vh;
   }
 
   .pricing {
@@ -148,50 +143,65 @@
 </style>
 </head>
 <body>
-<div class="page" id="page">
+<div class="page">
 
-  <header id="header">
+  <header>
     <div class="wordmark">Nala</div>
   </header>
 
+  <!-- DEFAULT: coming soon -->
   <div id="stateDefault">
     <div class="soon">Tonight's menu<br>coming soon</div>
     <div class="note">Our menu is updated daily. Please check back later.</div>
   </div>
 
+  <!-- MENU: live menu -->
   <div id="stateMenu">
     <div class="menu-date" id="menuDate"></div>
-    <div class="courses" id="courses">
-      <div class="course">
-        <div class="course-label">Bread</div>
-        <div class="course-rule"></div>
-        <div class="dish-name" id="breadName"></div>
-        <div class="dish-desc" id="breadDesc"></div>
-      </div>
-      <div class="course">
-        <div class="course-label">Entrée</div>
-        <div class="course-rule"></div>
-        <div class="dish-name" id="entreeName"></div>
-        <div class="dish-desc" id="entreeDesc"></div>
-      </div>
-      <div class="course">
-        <div class="course-label">Main</div>
-        <div class="course-rule"></div>
-        <div class="dish-name" id="mainName"></div>
-        <div class="dish-desc" id="mainDesc"></div>
-      </div>
-      <div class="course">
-        <div class="course-label">Dessert</div>
-        <div class="course-rule"></div>
-        <div class="dish-name" id="dessertName"></div>
-        <div class="dish-desc" id="dessertDesc"></div>
-      </div>
+
+    <div class="spacer-top"></div>
+
+    <div class="course">
+      <div class="course-label">Bread</div>
+      <div class="course-rule"></div>
+      <div class="dish-name" id="breadName"></div>
+      <div class="dish-desc" id="breadDesc"></div>
     </div>
-    <div class="menu-footer" id="menuFooter">
-      <div class="pricing">2 courses $105 &nbsp;&nbsp; 3 courses $125</div>
-      <div class="pricing-note">Both menus include bread</div>
+
+    <div class="spacer-mid"></div>
+
+    <div class="course">
+      <div class="course-label">Entrée</div>
+      <div class="course-rule"></div>
+      <div class="dish-name" id="entreeName"></div>
+      <div class="dish-desc" id="entreeDesc"></div>
     </div>
+
+    <div class="spacer-mid"></div>
+
+    <div class="course">
+      <div class="course-label">Main</div>
+      <div class="course-rule"></div>
+      <div class="dish-name" id="mainName"></div>
+      <div class="dish-desc" id="mainDesc"></div>
+    </div>
+
+    <div class="spacer-mid"></div>
+
+    <div class="course">
+      <div class="course-label">Dessert</div>
+      <div class="course-rule"></div>
+      <div class="dish-name" id="dessertName"></div>
+      <div class="dish-desc" id="dessertDesc"></div>
+    </div>
+
+    <div class="spacer-bot"></div>
   </div>
+
+  <footer>
+    <div class="pricing">2 courses $105 &nbsp;&nbsp; 3 courses $125</div>
+    <div class="pricing-note">Both menus include bread</div>
+  </footer>
 
 </div>
 
@@ -200,35 +210,24 @@
   var MENU_EXPIRES = "2026-08-07T19:00:00+10:00";
   var MENU_DATE_LABEL = "Friday 7 August 2026";
   var MENU = {
-    bread:   { name: "House Focaccia",        desc: "aged balsamic · extra virgin olive oil",               aus: false },
-    entree:  { name: "Yellowfin Tuna Crudo", desc: "ajo blanco \u00b7 pickled grapes \u00b7 karkalla \u00b7 toasted almond", aus: true  },
-    main:    { name: "Confit Duck",           desc: "sweet potato pur\u00e9e \u00b7 burnt shallot \u00b7 cavolo nero \u00b7 quince jus", aus: false },
-    dessert: { name: "Smoked Cheddar",        desc: "fennel jam \u00b7 lavosh",                                  aus: false }
+    bread:   { name: "House Focaccia",           desc: "aged balsamic \u00b7 extra virgin olive oil",                              aus: false },
+    entree:  { name: "Duck Liver P\u00e2t\u00e9", desc: "fennel jam \u00b7 toasted brioche",                                       aus: false },
+    main:    { name: "Char-grilled King Prawns",  desc: "saffron risotto \u00b7 preserved lemon \u00b7 chilli",                    aus: true  },
+    dessert: { name: "Ladyfinger",                desc: "Amarena cherry \u00b7 white chocolate",                                   aus: false }
   };
 
-  function resize() {
-    var h = window.innerHeight;
-    document.getElementById('page').style.height = h + 'px';
-
-    var headerH = document.getElementById('header').offsetHeight;
-    var remaining = h - headerH;
-
-    if (MENU_ACTIVE && new Date() < new Date(MENU_EXPIRES)) {
-      // Let courses be natural height, centre the stateMenu block vertically
-      var menuEl = document.getElementById('stateMenu');
-      var menuH = menuEl.offsetHeight;
-      var topPad = Math.max(0, (remaining - menuH) / 2);
-      menuEl.style.paddingTop = topPad + 'px';
-      menuEl.style.paddingBottom = topPad + 'px';
-    } else {
-      document.getElementById('stateDefault').style.height = remaining + 'px';
-    }
+  function setHeight() {
+    document.querySelector('.page').style.height = window.innerHeight + 'px';
   }
+  setHeight();
+  window.addEventListener('resize', setHeight);
+  window.addEventListener('orientationchange', function(){ setTimeout(setHeight, 150); });
 
   function showMenu() {
     document.getElementById('stateDefault').style.display = 'none';
     var sm = document.getElementById('stateMenu');
     sm.style.display = 'flex';
+    sm.style.flexDirection = 'column';
 
     document.getElementById('menuDate').textContent = MENU_DATE_LABEL;
 
@@ -243,21 +242,11 @@
       }
       document.getElementById(c + 'Desc').textContent = MENU[c].desc;
     });
-
-    // wait for DOM to paint then measure
-    requestAnimationFrame(function() {
-      requestAnimationFrame(resize);
-    });
   }
 
   if (MENU_ACTIVE && new Date() < new Date(MENU_EXPIRES)) {
     showMenu();
-  } else {
-    resize();
   }
-
-  window.addEventListener('resize', resize);
-  window.addEventListener('orientationchange', function(){ setTimeout(resize, 150); });
 </script>
 </body>
 </html>
