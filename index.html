@@ -6,65 +6,171 @@
 <title>Nala — Friday 7 August 2026</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  :root { --cream: #F9F7F4; --ink: #1C1C1A; --mid: #999990; --rule: #E0E0DA; }
-  html, body { height: 100%; background: var(--cream); }
-  body {
-    font-family: Georgia, serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 16px 28px;
+
+  :root {
+    --cream: #F9F7F4;
+    --ink: #1C1C1A;
+    --mid: #999990;
+    --rule: #E0E0DA;
   }
-  .wrap { width: 100%; max-width: 380px; }
-  header { text-align: center; padding-bottom: 14px; border-bottom: 1px solid var(--rule); margin-bottom: 2px; }
-  .wordmark { font-family: Helvetica, Arial, sans-serif; font-size: 8px; letter-spacing: 0.45em; text-transform: uppercase; color: var(--mid); }
-  .date-line { font-style: italic; font-size: 11px; color: var(--mid); margin-top: 5px; }
-  .course { padding-top: 14px; text-align: center; }
-  .course-label { font-family: Helvetica, Arial, sans-serif; font-size: 6.5px; letter-spacing: 0.35em; text-transform: uppercase; color: var(--mid); margin-bottom: 5px; text-align: center; }
-  .course-rule { width: 24px; height: 1px; background: var(--rule); margin: 4px auto 8px; }
-  .dish-name { font-size: 16px; font-weight: normal; color: var(--ink); margin-bottom: 4px; line-height: 1.2; text-align: center; }
-  .aus-tag { font-family: Helvetica, Arial, sans-serif; font-size: 7px; color: var(--mid); vertical-align: super; margin-left: 3px; }
-  .dish-desc { font-style: italic; font-size: 11px; color: var(--mid); line-height: 1.5; text-align: center; }
-  footer { border-top: 1px solid var(--rule); margin-top: 14px; padding-top: 12px; text-align: center; }
-  .pricing { font-family: Helvetica, Arial, sans-serif; font-size: 10px; letter-spacing: 0.06em; color: var(--ink); margin-bottom: 5px; }
-  .pricing-note { font-style: italic; font-size: 10px; color: var(--mid); }
+
+  html, body {
+    height: 100%;
+    background: var(--cream);
+  }
+
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .page {
+    width: 100%;
+    max-width: 420px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0 32px;
+  }
+
+  header {
+    flex: 0 0 auto;
+    text-align: center;
+    padding: 5vh 0 3vh;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .wordmark {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 8px;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--mid);
+  }
+
+  .date-line {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 12px;
+    color: var(--mid);
+    margin-top: 5px;
+  }
+
+  .courses {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    padding: 2vh 0;
+  }
+
+  .course {
+    text-align: center;
+  }
+
+  .course-label {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 7px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin-bottom: 4px;
+  }
+
+  .course-rule {
+    width: 24px;
+    height: 1px;
+    background: var(--rule);
+    margin: 4px auto 8px;
+  }
+
+  .dish-name {
+    font-family: Georgia, serif;
+    font-size: 18px;
+    font-weight: normal;
+    color: var(--ink);
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  .aus-tag {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 7px;
+    color: var(--mid);
+    vertical-align: super;
+    margin-left: 3px;
+  }
+
+  .dish-desc {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 11px;
+    color: var(--mid);
+    line-height: 1.4;
+  }
+
+  footer {
+    flex: 0 0 auto;
+    border-top: 1px solid var(--rule);
+    text-align: center;
+    padding: 3vh 0 5vh;
+  }
+
+  .pricing {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--ink);
+    margin-bottom: 5px;
+  }
+
+  .pricing-note {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 10px;
+    color: var(--mid);
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="page">
 
   <header>
     <div class="wordmark">Nala</div>
     <div class="date-line">Friday 7 August 2026</div>
   </header>
 
-  <div class="course">
-    <div class="course-label">Bread</div>
-    <div class="course-rule"></div>
-    <div class="dish-name">Housemade Focaccia</div>
-    <div class="dish-desc">aged balsamic · extra virgin olive oil</div>
-  </div>
+  <div class="courses">
 
-  <div class="course">
-    <div class="course-label">Entrée</div>
-    <div class="course-rule"></div>
-    <div class="dish-name">Shark Bay Scallops</div>
-    <div class="dish-desc">cauliflower · morcilla · chives</div>
-  </div>
+    <div class="course">
+      <div class="course-label">Bread</div>
+      <div class="course-rule"></div>
+      <div class="dish-name">Housemade Focaccia</div>
+      <div class="dish-desc">aged balsamic · extra virgin olive oil</div>
+    </div>
 
-  <div class="course">
-    <div class="course-label">Main</div>
-    <div class="course-rule"></div>
-    <div class="dish-name">Pork Belly</div>
-    <div class="dish-desc">burnt onion · pickled pear · green beans · PX jus</div>
-  </div>
+    <div class="course">
+      <div class="course-label">Entrée</div>
+      <div class="course-rule"></div>
+      <div class="dish-name">Shark Bay Scallops</div>
+      <div class="dish-desc">cauliflower · morcilla · chives</div>
+    </div>
 
-  <div class="course">
-    <div class="course-label">Dessert</div>
-    <div class="course-rule"></div>
-    <div class="dish-name">Catalan Cream</div>
-    <div class="dish-desc">vanilla · baby fig</div>
+    <div class="course">
+      <div class="course-label">Main</div>
+      <div class="course-rule"></div>
+      <div class="dish-name">Pork Belly</div>
+      <div class="dish-desc">burnt onion · pickled pear · green beans · PX jus</div>
+    </div>
+
+    <div class="course">
+      <div class="course-label">Dessert</div>
+      <div class="course-rule"></div>
+      <div class="dish-name">Catalan Cream</div>
+      <div class="dish-desc">vanilla · baby fig</div>
+    </div>
+
   </div>
 
   <footer>
