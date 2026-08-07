@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Nala — Friday 7 August 2026</title>
+<title>Nala — Tonight's Menu</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -12,12 +12,10 @@
     --ink: #1C1C1A;
     --mid: #999990;
     --rule: #E0E0DA;
-    --vh: 1vh; /* overridden by JS */
   }
 
   html, body {
     width: 100%;
-    height: calc(var(--vh) * 100);
     overflow: hidden;
     background: var(--cream);
   }
@@ -26,12 +24,12 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    font-family: Georgia, serif;
   }
 
   .page {
     width: 100%;
     max-width: 440px;
-    height: calc(var(--vh) * 100);
     display: flex;
     flex-direction: column;
     padding: 0 32px;
@@ -40,41 +38,54 @@
   header {
     flex: 0 0 auto;
     text-align: center;
-    padding: calc(var(--vh) * 4) 0 calc(var(--vh) * 2.5);
+    padding-bottom: 3vh;
     border-bottom: 1px solid var(--rule);
   }
 
   .wordmark {
     font-family: Helvetica, Arial, sans-serif;
-    font-size: clamp(7px, 1.5vw, 10px);
+    font-size: 9px;
     letter-spacing: 0.45em;
     text-transform: uppercase;
     color: var(--mid);
   }
 
-  .date-line {
-    font-family: Georgia, serif;
-    font-style: italic;
-    font-size: clamp(11px, 2vw, 14px);
-    color: var(--mid);
-    margin-top: 4px;
+  /* --- DEFAULT STATE --- */
+  .state-default {
+    text-align: center;
+    padding: 6vh 0;
   }
+
+  .state-default .soon {
+    font-size: 18px;
+    color: var(--ink);
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+
+  .state-default .note {
+    font-style: italic;
+    font-size: 12px;
+    color: var(--mid);
+    line-height: 1.6;
+  }
+
+  /* --- MENU STATE --- */
+  .state-menu { display: none; }
 
   .courses {
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
     justify-content: space-evenly;
-    padding: calc(var(--vh) * 1) 0;
+    padding: 1vh 0;
   }
 
-  .course {
-    text-align: center;
-  }
+  .course { text-align: center; }
 
   .course-label {
     font-family: Helvetica, Arial, sans-serif;
-    font-size: clamp(6px, 1.2vw, 8px);
+    font-size: 7px;
     letter-spacing: 0.35em;
     text-transform: uppercase;
     color: var(--mid);
@@ -89,7 +100,6 @@
   }
 
   .dish-name {
-    font-family: Georgia, serif;
     font-size: clamp(15px, 3.5vw, 20px);
     font-weight: normal;
     color: var(--ink);
@@ -106,18 +116,27 @@
   }
 
   .dish-desc {
-    font-family: Georgia, serif;
     font-style: italic;
     font-size: clamp(10px, 2vw, 13px);
     color: var(--mid);
     line-height: 1.4;
   }
 
+  .menu-date {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--mid);
+    text-align: center;
+    padding: 2vh 0 1vh;
+    text-transform: uppercase;
+  }
+
   footer {
     flex: 0 0 auto;
     border-top: 1px solid var(--rule);
     text-align: center;
-    padding: calc(var(--vh) * 2) 0 calc(var(--vh) * 4);
+    padding: 2vh 0 4vh;
   }
 
   .pricing {
@@ -129,7 +148,6 @@
   }
 
   .pricing-note {
-    font-family: Georgia, serif;
     font-style: italic;
     font-size: clamp(9px, 1.8vw, 11px);
     color: var(--mid);
@@ -137,62 +155,108 @@
 </style>
 </head>
 <body>
-<div class="page">
+<div class="page" id="page">
 
   <header>
     <div class="wordmark">Nala</div>
-    <div class="date-line">Friday 7 August 2026</div>
   </header>
 
-  <div class="courses">
-
-    <div class="course">
-      <div class="course-label">Bread</div>
-      <div class="course-rule"></div>
-      <div class="dish-name">Housemade Focaccia</div>
-      <div class="dish-desc">aged balsamic · extra virgin olive oil</div>
-    </div>
-
-    <div class="course">
-      <div class="course-label">Entrée</div>
-      <div class="course-rule"></div>
-      <div class="dish-name">Shark Bay Scallops</div>
-      <div class="dish-desc">cauliflower · morcilla · chives</div>
-    </div>
-
-    <div class="course">
-      <div class="course-label">Main</div>
-      <div class="course-rule"></div>
-      <div class="dish-name">Pork Belly</div>
-      <div class="dish-desc">burnt onion · pickled pear · green beans · PX jus</div>
-    </div>
-
-    <div class="course">
-      <div class="course-label">Dessert</div>
-      <div class="course-rule"></div>
-      <div class="dish-name">Catalan Cream</div>
-      <div class="dish-desc">vanilla · baby fig</div>
-    </div>
-
+  <!-- DEFAULT STATE: shown until menu is pushed, and after 7pm -->
+  <div class="state-default" id="stateDefault">
+    <div class="soon">Tonight's menu<br>coming soon</div>
+    <div class="note">Our menu is updated each evening.<br>Please check back closer to dinner.</div>
   </div>
 
-  <footer>
-    <div class="pricing">2 courses $105 &nbsp;&nbsp; 3 courses $125</div>
-    <div class="pricing-note">Both menus include bread</div>
-  </footer>
+  <!-- MENU STATE: shown once menu is live, until 7pm -->
+  <div class="state-menu" id="stateMenu">
+    <div class="menu-date" id="menuDate"></div>
+    <div class="courses">
+
+      <div class="course">
+        <div class="course-label">Bread</div>
+        <div class="course-rule"></div>
+        <div class="dish-name" id="breadName"></div>
+        <div class="dish-desc" id="breadDesc"></div>
+      </div>
+
+      <div class="course">
+        <div class="course-label">Entrée</div>
+        <div class="course-rule"></div>
+        <div class="dish-name" id="entreeName"></div>
+        <div class="dish-desc" id="entreeDesc"></div>
+      </div>
+
+      <div class="course">
+        <div class="course-label">Main</div>
+        <div class="course-rule"></div>
+        <div class="dish-name" id="mainName"></div>
+        <div class="dish-desc" id="mainDesc"></div>
+      </div>
+
+      <div class="course">
+        <div class="course-label">Dessert</div>
+        <div class="course-rule"></div>
+        <div class="dish-name" id="dessertName"></div>
+        <div class="dish-desc" id="dessertDesc"></div>
+      </div>
+
+    </div>
+    <footer>
+      <div class="pricing">2 courses $105 &nbsp;&nbsp; 3 courses $125</div>
+      <div class="pricing-note">Both menus include bread</div>
+    </footer>
+  </div>
 
 </div>
 
 <script>
+  // ── MENU DATA ──────────────────────────────────────────────
+  // MENU_ACTIVE = false means default "coming soon" state
+  // Set to true and fill in details when pushing a live menu
+  var MENU_ACTIVE = false;
+  var MENU_EXPIRES = null; // e.g. "2026-08-07T19:00:00+10:00"
+  var MENU_DATE_LABEL = "";
+  var MENU = {
+    bread:   { name: "", desc: "" },
+    entree:  { name: "", desc: "" },
+    main:    { name: "", desc: "" },
+    dessert: { name: "", desc: "" }
+  };
+  // ────────────────────────────────────────────────────────────
+
   function setVH() {
-    const vh = window.innerHeight * 0.01;
-    document.documentElement.style.setProperty('--vh', vh + 'px');
+    document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
+    document.getElementById('page').style.height = window.innerHeight + 'px';
   }
   setVH();
   window.addEventListener('resize', setVH);
-  window.addEventListener('orientationchange', function() {
-    setTimeout(setVH, 100);
-  });
+  window.addEventListener('orientationchange', function(){ setTimeout(setVH, 150); });
+
+  function showMenu() {
+    document.getElementById('stateDefault').style.display = 'none';
+    document.getElementById('stateMenu').style.display = 'block';
+    document.getElementById('menuDate').textContent = MENU_DATE_LABEL;
+    document.getElementById('breadName').textContent = MENU.bread.name;
+    document.getElementById('breadDesc').textContent = MENU.bread.desc;
+    document.getElementById('entreeName').textContent = MENU.entree.name;
+    document.getElementById('entreeDesc').textContent = MENU.entree.desc;
+    document.getElementById('mainName').textContent = MENU.main.name;
+    document.getElementById('mainDesc').textContent = MENU.main.desc;
+    document.getElementById('dessertName').textContent = MENU.dessert.name;
+    document.getElementById('dessertDesc').textContent = MENU.dessert.desc;
+  }
+
+  function check() {
+    if (!MENU_ACTIVE) return; // default state
+    var now = new Date();
+    var expires = new Date(MENU_EXPIRES);
+    if (now < expires) {
+      showMenu();
+    }
+    // past expiry: default state stays showing
+  }
+
+  check();
 </script>
 </body>
 </html>
