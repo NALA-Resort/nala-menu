@@ -1,0 +1,9 @@
+{
+  "active": false,
+  "expires": "",
+  "date": "",
+  "bread":   { "name": "", "desc": "", "aus": false },
+  "entree":  { "name": "", "desc": "", "aus": false },
+  "main":    { "name": "", "desc": "", "aus": false },
+  "dessert": { "name": "", "desc": "", "aus": false }
+}
