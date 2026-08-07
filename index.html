@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Nala — Friday 7 August 2026</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -12,10 +12,13 @@
     --ink: #1C1C1A;
     --mid: #999990;
     --rule: #E0E0DA;
+    --vh: 1vh; /* overridden by JS */
   }
 
   html, body {
-    height: 100%;
+    width: 100%;
+    height: calc(var(--vh) * 100);
+    overflow: hidden;
     background: var(--cream);
   }
 
@@ -27,8 +30,8 @@
 
   .page {
     width: 100%;
-    max-width: 420px;
-    height: 100vh;
+    max-width: 440px;
+    height: calc(var(--vh) * 100);
     display: flex;
     flex-direction: column;
     padding: 0 32px;
@@ -37,14 +40,14 @@
   header {
     flex: 0 0 auto;
     text-align: center;
-    padding: 5vh 0 3vh;
+    padding: calc(var(--vh) * 4) 0 calc(var(--vh) * 2.5);
     border-bottom: 1px solid var(--rule);
   }
 
   .wordmark {
     font-family: Helvetica, Arial, sans-serif;
-    font-size: 8px;
-    letter-spacing: 0.4em;
+    font-size: clamp(7px, 1.5vw, 10px);
+    letter-spacing: 0.45em;
     text-transform: uppercase;
     color: var(--mid);
   }
@@ -52,9 +55,9 @@
   .date-line {
     font-family: Georgia, serif;
     font-style: italic;
-    font-size: 12px;
+    font-size: clamp(11px, 2vw, 14px);
     color: var(--mid);
-    margin-top: 5px;
+    margin-top: 4px;
   }
 
   .courses {
@@ -62,7 +65,7 @@
     display: flex;
     flex-direction: column;
     justify-content: space-evenly;
-    padding: 2vh 0;
+    padding: calc(var(--vh) * 1) 0;
   }
 
   .course {
@@ -71,27 +74,27 @@
 
   .course-label {
     font-family: Helvetica, Arial, sans-serif;
-    font-size: 7px;
+    font-size: clamp(6px, 1.2vw, 8px);
     letter-spacing: 0.35em;
     text-transform: uppercase;
     color: var(--mid);
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
 
   .course-rule {
-    width: 24px;
+    width: 22px;
     height: 1px;
     background: var(--rule);
-    margin: 4px auto 8px;
+    margin: 3px auto 7px;
   }
 
   .dish-name {
     font-family: Georgia, serif;
-    font-size: 18px;
+    font-size: clamp(15px, 3.5vw, 20px);
     font-weight: normal;
     color: var(--ink);
     line-height: 1.2;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
 
   .aus-tag {
@@ -105,7 +108,7 @@
   .dish-desc {
     font-family: Georgia, serif;
     font-style: italic;
-    font-size: 11px;
+    font-size: clamp(10px, 2vw, 13px);
     color: var(--mid);
     line-height: 1.4;
   }
@@ -114,21 +117,21 @@
     flex: 0 0 auto;
     border-top: 1px solid var(--rule);
     text-align: center;
-    padding: 3vh 0 5vh;
+    padding: calc(var(--vh) * 2) 0 calc(var(--vh) * 4);
   }
 
   .pricing {
     font-family: Helvetica, Arial, sans-serif;
-    font-size: 10px;
+    font-size: clamp(9px, 1.8vw, 11px);
     letter-spacing: 0.06em;
     color: var(--ink);
-    margin-bottom: 5px;
+    margin-bottom: 4px;
   }
 
   .pricing-note {
     font-family: Georgia, serif;
     font-style: italic;
-    font-size: 10px;
+    font-size: clamp(9px, 1.8vw, 11px);
     color: var(--mid);
   }
 </style>
@@ -179,5 +182,17 @@
   </footer>
 
 </div>
+
+<script>
+  function setVH() {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', vh + 'px');
+  }
+  setVH();
+  window.addEventListener('resize', setVH);
+  window.addEventListener('orientationchange', function() {
+    setTimeout(setVH, 100);
+  });
+</script>
 </body>
 </html>
