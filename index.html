@@ -215,16 +215,38 @@
     });
   }
 
-  // Three states:
-  //  1. active + not past expiry  -> show menu
-  //  2. active false ("remove menu") -> placeholder
-  //  3. past expiry (midnight)    -> placeholder
+  // ── ALL DISPLAY LOGIC LIVES HERE ──────────────────────────
+  // menu.json only carries data + a publish timestamp.
+  // This file decides whether to show the menu or the placeholder.
+  //
+  // States:
+  //   1. active === true  and now < midnight after publish  -> show menu
+  //   2. active === false ("remove menu")                   -> placeholder
+  //   3. now >= midnight after publish                      -> placeholder
+
+  function expiryFrom(publishedISO) {
+    // Midnight at the end of the day the menu was published
+    var p = new Date(publishedISO);
+    var e = new Date(p);
+    e.setHours(24, 0, 0, 0);   // rolls to 00:00 next day
+    return e;
+  }
+
+  function dateLabel(publishedISO) {
+    var d = new Date(publishedISO);
+    var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    var months = ['January','February','March','April','May','June','July',
+                  'August','September','October','November','December'];
+    return days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+  }
+
   fetch('menu.json?v=' + Date.now())
     .then(function(r){ return r.json(); })
     .then(function(data) {
-      if (!data.active) return;                       // removed
-      if (!data.expires) return;                      // no expiry set
-      if (new Date() >= new Date(data.expires)) return; // past midnight
+      if (!data.active) return;              // removed -> placeholder
+      if (!data.published) return;           // no timestamp -> placeholder
+      if (new Date() >= expiryFrom(data.published)) return;  // past midnight
+      data.date = dateLabel(data.published); // label derived here, not sent
       showMenu(data);
     })
     .catch(function(e){ console.log('Menu load error:', e); });
