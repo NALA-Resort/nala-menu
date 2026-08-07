@@ -216,24 +216,30 @@
   }
 
   // ── ALL DISPLAY LOGIC LIVES HERE ──────────────────────────
-  // menu.json only carries data + a publish timestamp.
-  // This file decides whether to show the menu or the placeholder.
+  // menu.json contains ONLY the four courses.
+  // Publish time comes from the file's Last-Modified header.
   //
   // States:
-  //   1. active === true  and now < midnight after publish  -> show menu
-  //   2. active === false ("remove menu")                   -> placeholder
-  //   3. now >= midnight after publish                      -> placeholder
+  //   1. Menu has content, written today   -> show menu
+  //   2. Menu is empty ("remove menu")     -> placeholder
+  //   3. Menu written before today         -> placeholder
 
-  function expiryFrom(publishedISO) {
-    // Midnight at the end of the day the menu was published
-    var p = new Date(publishedISO);
-    var e = new Date(p);
-    e.setHours(24, 0, 0, 0);   // rolls to 00:00 next day
-    return e;
+  function hasContent(d) {
+    return ['bread','entree','main','dessert'].every(function(k){
+      return d[k] && d[k].name && d[k].name.trim() !== '';
+    });
   }
 
-  function dateLabel(publishedISO) {
-    var d = new Date(publishedISO);
+  function stillValid(lastModified) {
+    if (!lastModified) return false;
+    var published = new Date(lastModified);
+    var expiry = new Date(published);
+    expiry.setHours(24, 0, 0, 0);        // midnight ending the publish day
+    return new Date() < expiry;
+  }
+
+  function dateLabel(lastModified) {
+    var d = new Date(lastModified);
     var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     var months = ['January','February','March','April','May','June','July',
                   'August','September','October','November','December'];
@@ -241,13 +247,15 @@
   }
 
   fetch('menu.json?v=' + Date.now())
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      if (!data.active) return;              // removed -> placeholder
-      if (!data.published) return;           // no timestamp -> placeholder
-      if (new Date() >= expiryFrom(data.published)) return;  // past midnight
-      data.date = dateLabel(data.published); // label derived here, not sent
-      showMenu(data);
+    .then(function(r){
+      var lm = r.headers.get('Last-Modified');
+      return r.json().then(function(data){ return { data: data, lastModified: lm }; });
+    })
+    .then(function(res) {
+      if (!hasContent(res.data)) return;          // empty -> placeholder
+      if (!stillValid(res.lastModified)) return;  // stale -> placeholder
+      res.data.date = dateLabel(res.lastModified);
+      showMenu(res.data);
     })
     .catch(function(e){ console.log('Menu load error:', e); });
 </script>
