@@ -16,10 +16,7 @@
     font-family: Georgia, serif;
   }
 
-  body {
-    display: flex;
-    justify-content: center;
-  }
+  body { display: flex; justify-content: center; }
 
   .page {
     width: 100%;
@@ -30,7 +27,6 @@
     grid-template-rows: auto 1fr auto;
   }
 
-  /* HEADER */
   header {
     text-align: center;
     padding: 5vh 0 2.5vh;
@@ -45,7 +41,6 @@
     color: var(--mid);
   }
 
-  /* DEFAULT STATE */
   #stateDefault {
     display: flex;
     flex-direction: column;
@@ -58,11 +53,9 @@
   .soon { font-size: 18px; color: var(--ink); line-height: 1.5; }
   .note { font-style: italic; font-size: 12px; color: var(--mid); line-height: 1.6; }
 
-  /* MENU STATE */
   #stateMenu {
     display: none;
     flex-direction: column;
-    /* top and bottom space are equal; courses cluster in the middle */
   }
 
   .menu-date {
@@ -73,11 +66,12 @@
     color: var(--ink);
     text-align: center;
     text-transform: uppercase;
+    padding: 1.5vh 0 0;
   }
 
-  .spacer-top { flex: 2; }   /* above courses */
-  .spacer-mid { flex: 1; }   /* between courses */
-  .spacer-bot { flex: 2; }   /* below courses */
+  .spacer-top { flex: 2; }
+  .spacer-mid { flex: 1; }
+  .spacer-bot { flex: 2; }
 
   .course { text-align: center; }
 
@@ -120,7 +114,6 @@
     line-height: 1.4;
   }
 
-  /* FOOTER */
   footer {
     border-top: 1px solid var(--rule);
     text-align: center;
@@ -149,52 +142,41 @@
     <div class="wordmark">Nala</div>
   </header>
 
-  <!-- DEFAULT: coming soon -->
   <div id="stateDefault">
     <div class="soon">Tonight's menu<br>coming soon</div>
     <div class="note">Our menu is updated daily. Please check back later.</div>
   </div>
 
-  <!-- MENU: live menu -->
   <div id="stateMenu">
     <div class="menu-date" id="menuDate"></div>
-
     <div class="spacer-top"></div>
-
     <div class="course">
       <div class="course-label">Bread</div>
       <div class="course-rule"></div>
       <div class="dish-name" id="breadName"></div>
       <div class="dish-desc" id="breadDesc"></div>
     </div>
-
     <div class="spacer-mid"></div>
-
     <div class="course">
       <div class="course-label">Entrée</div>
       <div class="course-rule"></div>
       <div class="dish-name" id="entreeName"></div>
       <div class="dish-desc" id="entreeDesc"></div>
     </div>
-
     <div class="spacer-mid"></div>
-
     <div class="course">
       <div class="course-label">Main</div>
       <div class="course-rule"></div>
       <div class="dish-name" id="mainName"></div>
       <div class="dish-desc" id="mainDesc"></div>
     </div>
-
     <div class="spacer-mid"></div>
-
     <div class="course">
       <div class="course-label">Dessert</div>
       <div class="course-rule"></div>
       <div class="dish-name" id="dessertName"></div>
       <div class="dish-desc" id="dessertDesc"></div>
     </div>
-
     <div class="spacer-bot"></div>
   </div>
 
@@ -206,16 +188,6 @@
 </div>
 
 <script>
-  var MENU_ACTIVE = true;
-  var MENU_EXPIRES = "2026-08-07T19:00:00+10:00";
-  var MENU_DATE_LABEL = "Friday 7 August 2026";
-  var MENU = {
-    bread:   { name: "House Focaccia",           desc: "aged balsamic \u00b7 extra virgin olive oil",                              aus: false },
-    entree:  { name: "Duck Liver P\u00e2t\u00e9", desc: "fennel jam \u00b7 toasted brioche",                                       aus: false },
-    main:    { name: "Char-grilled King Prawns",  desc: "saffron risotto \u00b7 preserved lemon \u00b7 chilli",                    aus: true  },
-    dessert: { name: "Ladyfinger",                desc: "Amarena cherry \u00b7 white chocolate",                                   aus: false }
-  };
-
   function setHeight() {
     document.querySelector('.page').style.height = window.innerHeight + 'px';
   }
@@ -223,30 +195,35 @@
   window.addEventListener('resize', setHeight);
   window.addEventListener('orientationchange', function(){ setTimeout(setHeight, 150); });
 
-  function showMenu() {
+  function showMenu(data) {
     document.getElementById('stateDefault').style.display = 'none';
     var sm = document.getElementById('stateMenu');
     sm.style.display = 'flex';
-    sm.style.flexDirection = 'column';
 
-    document.getElementById('menuDate').textContent = MENU_DATE_LABEL;
+    document.getElementById('menuDate').textContent = data.date;
 
     ['bread','entree','main','dessert'].forEach(function(c) {
       var nameEl = document.getElementById(c + 'Name');
-      nameEl.textContent = MENU[c].name;
-      if (MENU[c].aus) {
+      nameEl.textContent = data[c].name;
+      if (data[c].aus) {
         var tag = document.createElement('span');
         tag.className = 'aus-tag';
         tag.textContent = '(AUS)';
         nameEl.appendChild(tag);
       }
-      document.getElementById(c + 'Desc').textContent = MENU[c].desc;
+      document.getElementById(c + 'Desc').textContent = data[c].desc;
     });
   }
 
-  if (MENU_ACTIVE && new Date() < new Date(MENU_EXPIRES)) {
-    showMenu();
-  }
+  // Fetch menu data from menu.json with cache busting
+  fetch('menu.json?v=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (data.active && new Date() < new Date(data.expires)) {
+        showMenu(data);
+      }
+    })
+    .catch(function(e){ console.log('Menu load error:', e); });
 </script>
 </body>
 </html>
