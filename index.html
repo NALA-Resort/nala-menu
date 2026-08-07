@@ -6,153 +6,27 @@
 <title>Nala — Tonight's Menu</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  :root {
-    --cream: #F9F7F4;
-    --ink: #1C1C1A;
-    --mid: #999990;
-    --rule: #E0E0DA;
-  }
-
-  html, body {
-    width: 100%;
-    overflow: hidden;
-    background: var(--cream);
-  }
-
-  body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-family: Georgia, serif;
-  }
-
-  .page {
-    width: 100%;
-    max-width: 440px;
-    display: flex;
-    flex-direction: column;
-    padding: 0 32px;
-  }
-
-  header {
-    flex: 0 0 auto;
-    text-align: center;
-    padding-top: 8vh;
-    padding-bottom: 3vh;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  .wordmark {
-    font-family: Helvetica, Arial, sans-serif;
-    font-size: 9px;
-    letter-spacing: 0.45em;
-    text-transform: uppercase;
-    color: var(--mid);
-  }
-
-  /* --- DEFAULT STATE --- */
-  .state-default {
-    text-align: center;
-    padding: 6vh 0;
-  }
-
-  .state-default .soon {
-    font-size: 18px;
-    color: var(--ink);
-    margin-bottom: 12px;
-    line-height: 1.4;
-  }
-
-  .state-default .note {
-    font-style: italic;
-    font-size: 12px;
-    color: var(--mid);
-    line-height: 1.6;
-  }
-
-  /* --- MENU STATE --- */
+  :root { --cream: #F9F7F4; --ink: #1C1C1A; --mid: #999990; --rule: #E0E0DA; }
+  html, body { width: 100%; overflow: hidden; background: var(--cream); }
+  body { display: flex; justify-content: center; align-items: center; font-family: Georgia, serif; }
+  .page { width: 100%; max-width: 440px; display: flex; flex-direction: column; padding: 0 32px; }
+  header { flex: 0 0 auto; text-align: center; padding-top: 8vh; padding-bottom: 3vh; border-bottom: 1px solid var(--rule); }
+  .wordmark { font-family: Helvetica, Arial, sans-serif; font-size: 9px; letter-spacing: 0.45em; text-transform: uppercase; color: var(--mid); }
+  .state-default { text-align: center; padding: 6vh 0; }
+  .state-default .soon { font-size: 18px; color: var(--ink); margin-bottom: 12px; line-height: 1.4; }
+  .state-default .note { font-style: italic; font-size: 12px; color: var(--mid); line-height: 1.6; }
   .state-menu { display: none; }
-
-  .courses {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-evenly;
-    padding: 1vh 0;
-  }
-
+  .menu-date { font-family: Helvetica, Arial, sans-serif; font-size: 10px; letter-spacing: 0.1em; color: var(--mid); text-align: center; padding: 2vh 0 1vh; text-transform: uppercase; }
+  .courses { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-evenly; padding: 1vh 0; }
   .course { text-align: center; }
-
-  .course-label {
-    font-family: Helvetica, Arial, sans-serif;
-    font-size: 7px;
-    letter-spacing: 0.35em;
-    text-transform: uppercase;
-    color: var(--mid);
-    margin-bottom: 3px;
-  }
-
-  .course-rule {
-    width: 22px;
-    height: 1px;
-    background: var(--rule);
-    margin: 3px auto 7px;
-  }
-
-  .dish-name {
-    font-size: clamp(15px, 3.5vw, 20px);
-    font-weight: normal;
-    color: var(--ink);
-    line-height: 1.2;
-    margin-bottom: 3px;
-  }
-
-  .aus-tag {
-    font-family: Helvetica, Arial, sans-serif;
-    font-size: 7px;
-    color: var(--mid);
-    vertical-align: super;
-    margin-left: 3px;
-  }
-
-  .dish-desc {
-    font-style: italic;
-    font-size: clamp(10px, 2vw, 13px);
-    color: var(--mid);
-    line-height: 1.4;
-  }
-
-  .menu-date {
-    font-family: Helvetica, Arial, sans-serif;
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    color: var(--mid);
-    text-align: center;
-    padding: 2vh 0 1vh;
-    text-transform: uppercase;
-  }
-
-  footer {
-    flex: 0 0 auto;
-    border-top: 1px solid var(--rule);
-    text-align: center;
-    padding: 2vh 0 4vh;
-  }
-
-  .pricing {
-    font-family: Helvetica, Arial, sans-serif;
-    font-size: clamp(9px, 1.8vw, 11px);
-    letter-spacing: 0.06em;
-    color: var(--ink);
-    margin-bottom: 4px;
-  }
-
-  .pricing-note {
-    font-style: italic;
-    font-size: clamp(9px, 1.8vw, 11px);
-    color: var(--mid);
-  }
+  .course-label { font-family: Helvetica, Arial, sans-serif; font-size: 7px; letter-spacing: 0.35em; text-transform: uppercase; color: var(--mid); margin-bottom: 3px; }
+  .course-rule { width: 22px; height: 1px; background: var(--rule); margin: 3px auto 7px; }
+  .dish-name { font-size: clamp(15px, 3.5vw, 20px); font-weight: normal; color: var(--ink); line-height: 1.2; margin-bottom: 3px; }
+  .aus-tag { font-family: Helvetica, Arial, sans-serif; font-size: 7px; color: var(--mid); vertical-align: super; margin-left: 3px; }
+  .dish-desc { font-style: italic; font-size: clamp(10px, 2vw, 13px); color: var(--mid); line-height: 1.4; }
+  footer { flex: 0 0 auto; border-top: 1px solid var(--rule); text-align: center; padding: 2vh 0 4vh; }
+  .pricing { font-family: Helvetica, Arial, sans-serif; font-size: clamp(9px, 1.8vw, 11px); letter-spacing: 0.06em; color: var(--ink); margin-bottom: 4px; }
+  .pricing-note { font-style: italic; font-size: clamp(9px, 1.8vw, 11px); color: var(--mid); }
 </style>
 </head>
 <body>
@@ -162,45 +36,38 @@
     <div class="wordmark">Nala</div>
   </header>
 
-  <!-- DEFAULT STATE: shown until menu is pushed, and after 7pm -->
   <div class="state-default" id="stateDefault">
     <div class="soon">Tonight's menu<br>coming soon</div>
     <div class="note">Our menu is updated daily. Please check back later.</div>
   </div>
 
-  <!-- MENU STATE: shown once menu is live, until 7pm -->
   <div class="state-menu" id="stateMenu">
     <div class="menu-date" id="menuDate"></div>
     <div class="courses">
-
       <div class="course">
         <div class="course-label">Bread</div>
         <div class="course-rule"></div>
         <div class="dish-name" id="breadName"></div>
         <div class="dish-desc" id="breadDesc"></div>
       </div>
-
       <div class="course">
         <div class="course-label">Entrée</div>
         <div class="course-rule"></div>
         <div class="dish-name" id="entreeName"></div>
         <div class="dish-desc" id="entreeDesc"></div>
       </div>
-
       <div class="course">
         <div class="course-label">Main</div>
         <div class="course-rule"></div>
         <div class="dish-name" id="mainName"></div>
         <div class="dish-desc" id="mainDesc"></div>
       </div>
-
       <div class="course">
         <div class="course-label">Dessert</div>
         <div class="course-rule"></div>
         <div class="dish-name" id="dessertName"></div>
         <div class="dish-desc" id="dessertDesc"></div>
       </div>
-
     </div>
     <footer>
       <div class="pricing">2 courses $105 &nbsp;&nbsp; 3 courses $125</div>
@@ -211,19 +78,15 @@
 </div>
 
 <script>
-  // ── MENU DATA ──────────────────────────────────────────────
-  // MENU_ACTIVE = false means default "coming soon" state
-  // Set to true and fill in details when pushing a live menu
-  var MENU_ACTIVE = false;
-  var MENU_EXPIRES = null; // e.g. "2026-08-07T19:00:00+10:00"
-  var MENU_DATE_LABEL = "";
+  var MENU_ACTIVE = true;
+  var MENU_EXPIRES = "2026-08-07T19:00:00+10:00";
+  var MENU_DATE_LABEL = "Friday 7 August 2026";
   var MENU = {
-    bread:   { name: "", desc: "" },
-    entree:  { name: "", desc: "" },
-    main:    { name: "", desc: "" },
-    dessert: { name: "", desc: "" }
+    bread:   { name: "Brioche", desc: "smoked butter", aus: false },
+    entree:  { name: "Yellowfin Tuna Crudo", desc: "ajo blanco · pickled grapes · karkalla · toasted almond", aus: true },
+    main:    { name: "Confit Duck", desc: "sweet potato purée · burnt shallot · cavolo nero · quince jus", aus: false },
+    dessert: { name: "Smoked Cheddar", desc: "fennel jam · lavosh", aus: false }
   };
-  // ────────────────────────────────────────────────────────────
 
   function setVH() {
     document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
@@ -237,27 +100,22 @@
     document.getElementById('stateDefault').style.display = 'none';
     document.getElementById('stateMenu').style.display = 'block';
     document.getElementById('menuDate').textContent = MENU_DATE_LABEL;
-    document.getElementById('breadName').textContent = MENU.bread.name;
-    document.getElementById('breadDesc').textContent = MENU.bread.desc;
-    document.getElementById('entreeName').textContent = MENU.entree.name;
-    document.getElementById('entreeDesc').textContent = MENU.entree.desc;
-    document.getElementById('mainName').textContent = MENU.main.name;
-    document.getElementById('mainDesc').textContent = MENU.main.desc;
-    document.getElementById('dessertName').textContent = MENU.dessert.name;
-    document.getElementById('dessertDesc').textContent = MENU.dessert.desc;
+    ['bread','entree','main','dessert'].forEach(function(c) {
+      var nameEl = document.getElementById(c + 'Name');
+      nameEl.textContent = MENU[c].name;
+      if (MENU[c].aus) {
+        var tag = document.createElement('span');
+        tag.className = 'aus-tag';
+        tag.textContent = '(AUS)';
+        nameEl.appendChild(tag);
+      }
+      document.getElementById(c + 'Desc').textContent = MENU[c].desc;
+    });
   }
 
-  function check() {
-    if (!MENU_ACTIVE) return; // default state
-    var now = new Date();
-    var expires = new Date(MENU_EXPIRES);
-    if (now < expires) {
-      showMenu();
-    }
-    // past expiry: default state stays showing
+  if (MENU_ACTIVE && new Date() < new Date(MENU_EXPIRES)) {
+    showMenu();
   }
-
-  check();
 </script>
 </body>
 </html>
