@@ -1,22 +1,22 @@
 {
   "bread": {
-    "name": "Housemade focaccia",
-    "desc": "aged balsamic, extra virgin olive oil",
+    "name": "",
+    "desc": "",
     "aus": false
   },
   "entree": {
-    "name": "Shark Bay scallops",
-    "desc": "cauliflower, morcilla, chives",
-    "aus": true
+    "name": "",
+    "desc": "",
+    "aus": false
   },
   "main": {
-    "name": "Pork belly",
-    "desc": "burnt onion, pickled pear, green beans, PX jus",
+    "name": "",
+    "desc": "",
     "aus": false
   },
   "dessert": {
-    "name": "Catalan cream",
-    "desc": "vanilla, baby fig",
+    "name": "",
+    "desc": "",
     "aus": false
   }
 }
