@@ -215,13 +215,17 @@
     });
   }
 
-  // Fetch menu data from menu.json with cache busting
+  // Three states:
+  //  1. active + not past expiry  -> show menu
+  //  2. active false ("remove menu") -> placeholder
+  //  3. past expiry (midnight)    -> placeholder
   fetch('menu.json?v=' + Date.now())
     .then(function(r){ return r.json(); })
     .then(function(data) {
-      if (data.active && new Date() < new Date(data.expires)) {
-        showMenu(data);
-      }
+      if (!data.active) return;                       // removed
+      if (!data.expires) return;                      // no expiry set
+      if (new Date() >= new Date(data.expires)) return; // past midnight
+      showMenu(data);
     })
     .catch(function(e){ console.log('Menu load error:', e); });
 </script>
