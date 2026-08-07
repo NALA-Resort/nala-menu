@@ -7,43 +7,160 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root { --cream: #F9F7F4; --ink: #1C1C1A; --mid: #999990; --rule: #E0E0DA; }
-  html, body { width: 100%; overflow: hidden; background: var(--cream); }
-  body { display: flex; justify-content: center; align-items: center; font-family: Georgia, serif; }
-  .page { width: 100%; max-width: 440px; display: flex; flex-direction: column; padding: 0 32px; }
-  header { flex: 0 0 auto; text-align: center; padding-top: 8vh; padding-bottom: 3vh; border-bottom: 1px solid var(--rule); }
-  .wordmark { font-family: Helvetica, Arial, sans-serif; font-size: 9px; letter-spacing: 0.45em; text-transform: uppercase; color: var(--mid); }
-  .state-default { text-align: center; padding: 6vh 0; }
-  .state-default .soon { font-size: 18px; color: var(--ink); margin-bottom: 12px; line-height: 1.4; }
-  .state-default .note { font-style: italic; font-size: 12px; color: var(--mid); line-height: 1.6; }
-  .state-menu { display: none; }
-  .menu-date { font-family: Helvetica, Arial, sans-serif; font-size: 10px; letter-spacing: 0.1em; color: var(--mid); text-align: center; padding: 2vh 0 1vh; text-transform: uppercase; }
-  .courses { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-evenly; padding: 1vh 0; }
+
+  html, body {
+    width: 100%;
+    overflow: hidden;
+    background: var(--cream);
+    font-family: Georgia, serif;
+  }
+
+  body {
+    display: flex;
+    justify-content: center;
+  }
+
+  .page {
+    width: 100%;
+    max-width: 440px;
+    padding: 0 32px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    text-align: center;
+    padding: 8vh 0 3vh;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .wordmark {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.45em;
+    text-transform: uppercase;
+    color: var(--mid);
+  }
+
+  /* DEFAULT STATE */
+  #stateDefault {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .soon {
+    font-size: 18px;
+    color: var(--ink);
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  .note {
+    font-style: italic;
+    font-size: 12px;
+    color: var(--mid);
+    line-height: 1.6;
+  }
+
+  /* MENU STATE */
+  #stateMenu { display: none; flex-direction: column; }
+
+  .menu-date {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--mid);
+    text-align: center;
+    text-transform: uppercase;
+    padding: 2.5vh 0 1.5vh;
+  }
+
+  .courses {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+  }
+
   .course { text-align: center; }
-  .course-label { font-family: Helvetica, Arial, sans-serif; font-size: 7px; letter-spacing: 0.35em; text-transform: uppercase; color: var(--mid); margin-bottom: 3px; }
-  .course-rule { width: 22px; height: 1px; background: var(--rule); margin: 3px auto 7px; }
-  .dish-name { font-size: clamp(15px, 3.5vw, 20px); font-weight: normal; color: var(--ink); line-height: 1.2; margin-bottom: 3px; }
-  .aus-tag { font-family: Helvetica, Arial, sans-serif; font-size: 7px; color: var(--mid); vertical-align: super; margin-left: 3px; }
-  .dish-desc { font-style: italic; font-size: clamp(10px, 2vw, 13px); color: var(--mid); line-height: 1.4; }
-  footer { flex: 0 0 auto; border-top: 1px solid var(--rule); text-align: center; padding: 2vh 0 4vh; }
-  .pricing { font-family: Helvetica, Arial, sans-serif; font-size: clamp(9px, 1.8vw, 11px); letter-spacing: 0.06em; color: var(--ink); margin-bottom: 4px; }
-  .pricing-note { font-style: italic; font-size: clamp(9px, 1.8vw, 11px); color: var(--mid); }
+
+  .course-label {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 7px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin-bottom: 3px;
+  }
+
+  .course-rule {
+    width: 22px;
+    height: 1px;
+    background: var(--rule);
+    margin: 3px auto 7px;
+  }
+
+  .dish-name {
+    font-size: 18px;
+    font-weight: normal;
+    color: var(--ink);
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  .aus-tag {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 7px;
+    color: var(--mid);
+    vertical-align: super;
+    margin-left: 3px;
+  }
+
+  .dish-desc {
+    font-style: italic;
+    font-size: 11px;
+    color: var(--mid);
+    line-height: 1.4;
+  }
+
+  .menu-footer {
+    border-top: 1px solid var(--rule);
+    text-align: center;
+    padding: 2vh 0 3vh;
+  }
+
+  .pricing {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+
+  .pricing-note {
+    font-style: italic;
+    font-size: 10px;
+    color: var(--mid);
+  }
 </style>
 </head>
 <body>
 <div class="page" id="page">
 
-  <header>
+  <header id="header">
     <div class="wordmark">Nala</div>
   </header>
 
-  <div class="state-default" id="stateDefault">
+  <div id="stateDefault">
     <div class="soon">Tonight's menu<br>coming soon</div>
     <div class="note">Our menu is updated daily. Please check back later.</div>
   </div>
 
-  <div class="state-menu" id="stateMenu">
+  <div id="stateMenu">
     <div class="menu-date" id="menuDate"></div>
-    <div class="courses">
+    <div class="courses" id="courses">
       <div class="course">
         <div class="course-label">Bread</div>
         <div class="course-rule"></div>
@@ -69,10 +186,10 @@
         <div class="dish-desc" id="dessertDesc"></div>
       </div>
     </div>
-    <footer>
+    <div class="menu-footer" id="menuFooter">
       <div class="pricing">2 courses $105 &nbsp;&nbsp; 3 courses $125</div>
       <div class="pricing-note">Both menus include bread</div>
-    </footer>
+    </div>
   </div>
 
 </div>
@@ -82,24 +199,37 @@
   var MENU_EXPIRES = "2026-08-07T19:00:00+10:00";
   var MENU_DATE_LABEL = "Friday 7 August 2026";
   var MENU = {
-    bread:   { name: "Brioche", desc: "smoked butter", aus: false },
-    entree:  { name: "Yellowfin Tuna Crudo", desc: "ajo blanco · pickled grapes · karkalla · toasted almond", aus: true },
-    main:    { name: "Confit Duck", desc: "sweet potato purée · burnt shallot · cavolo nero · quince jus", aus: false },
-    dessert: { name: "Smoked Cheddar", desc: "fennel jam · lavosh", aus: false }
+    bread:   { name: "Brioche",              desc: "smoked butter",                                              aus: false },
+    entree:  { name: "Yellowfin Tuna Crudo", desc: "ajo blanco \u00b7 pickled grapes \u00b7 karkalla \u00b7 toasted almond", aus: true  },
+    main:    { name: "Confit Duck",           desc: "sweet potato pur\u00e9e \u00b7 burnt shallot \u00b7 cavolo nero \u00b7 quince jus", aus: false },
+    dessert: { name: "Smoked Cheddar",        desc: "fennel jam \u00b7 lavosh",                                  aus: false }
   };
 
-  function setVH() {
-    document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
-    document.getElementById('page').style.height = window.innerHeight + 'px';
+  function resize() {
+    var h = window.innerHeight;
+    document.getElementById('page').style.height = h + 'px';
+
+    var headerH = document.getElementById('header').offsetHeight;
+    var remaining = h - headerH;
+
+    if (MENU_ACTIVE && new Date() < new Date(MENU_EXPIRES)) {
+      // measure date label and footer to size courses correctly
+      var dateH  = document.getElementById('menuDate').offsetHeight || 0;
+      var footerH = document.getElementById('menuFooter').offsetHeight || 0;
+      var coursesH = remaining - dateH - footerH;
+      document.getElementById('courses').style.height = coursesH + 'px';
+    } else {
+      document.getElementById('stateDefault').style.height = remaining + 'px';
+    }
   }
-  setVH();
-  window.addEventListener('resize', setVH);
-  window.addEventListener('orientationchange', function(){ setTimeout(setVH, 150); });
 
   function showMenu() {
     document.getElementById('stateDefault').style.display = 'none';
-    document.getElementById('stateMenu').style.display = 'block';
+    var sm = document.getElementById('stateMenu');
+    sm.style.display = 'flex';
+
     document.getElementById('menuDate').textContent = MENU_DATE_LABEL;
+
     ['bread','entree','main','dessert'].forEach(function(c) {
       var nameEl = document.getElementById(c + 'Name');
       nameEl.textContent = MENU[c].name;
@@ -111,11 +241,21 @@
       }
       document.getElementById(c + 'Desc').textContent = MENU[c].desc;
     });
+
+    // wait for DOM to paint then measure
+    requestAnimationFrame(function() {
+      requestAnimationFrame(resize);
+    });
   }
 
   if (MENU_ACTIVE && new Date() < new Date(MENU_EXPIRES)) {
     showMenu();
+  } else {
+    resize();
   }
+
+  window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', function(){ setTimeout(resize, 150); });
 </script>
 </body>
 </html>
