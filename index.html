@@ -214,11 +214,12 @@
     var remaining = h - headerH;
 
     if (MENU_ACTIVE && new Date() < new Date(MENU_EXPIRES)) {
-      // measure date label and footer to size courses correctly
-      var dateH  = document.getElementById('menuDate').offsetHeight || 0;
-      var footerH = document.getElementById('menuFooter').offsetHeight || 0;
-      var coursesH = remaining - dateH - footerH;
-      document.getElementById('courses').style.height = coursesH + 'px';
+      // Let courses be natural height, centre the stateMenu block vertically
+      var menuEl = document.getElementById('stateMenu');
+      var menuH = menuEl.offsetHeight;
+      var topPad = Math.max(0, (remaining - menuH) / 2);
+      menuEl.style.paddingTop = topPad + 'px';
+      menuEl.style.paddingBottom = topPad + 'px';
     } else {
       document.getElementById('stateDefault').style.height = remaining + 'px';
     }
