@@ -81,6 +81,10 @@
                    border-radius:10px; vertical-align:middle; }
   .row-sub { font-style:italic; font-size:11px; color:var(--mid); }
   .row-pax { font-family:Helvetica,Arial,sans-serif; font-size:12px; white-space:nowrap; }
+  .row.tappable { cursor:pointer; }
+  .row-right { display:flex; align-items:center; gap:10px; white-space:nowrap; }
+  .edit { width:13px; height:13px; opacity:.4; display:block; }
+  .edit svg { width:100%; height:100%; display:block; fill:var(--mid); }
   .alrg { color:var(--red); font-style:normal; }
   .empty { font-style:italic; color:var(--mid); font-size:12px; padding:8px 0; }
 
@@ -120,6 +124,8 @@
           color:var(--mid); cursor:pointer; }
   .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
 
+  .note-box { font-style:italic; font-size:13px; color:var(--mid); text-align:center;
+              line-height:1.6; padding:0 4px 16px; }
   .sheet-label { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.25em;
                  text-transform:uppercase; color:var(--mid); text-align:center; margin-bottom:8px; }
   .txt { width:100%; padding:12px; margin-bottom:8px; border:1px solid var(--rule);
@@ -185,6 +191,11 @@ document.getElementById('date').textContent = label();
 
 var ICON_GUEST = '<svg viewBox="0 0 24 24" stroke-width="0"><circle cx="12" cy="7.5" r="4"/>'+
                  '<path d="M12 13.5c-4.2 0-7.5 2.9-7.5 6.5h15c0-3.6-3.3-6.5-7.5-6.5z"/></svg>';
+var ICON_EDIT = '<svg viewBox="0 0 24 24"><path d="M3 17.2V21h3.8L17.9 9.9l-3.8-3.8L3 17.2z"/>'+
+                '<path d="M20.7 7.1c.4-.4.4-1 0-1.4l-2.4-2.4c-.4-.4-1-.4-1.4 0l-1.8 1.8 3.8 3.8 1.8-1.8z"/></svg>';
+var ICON_GUEST_X = '<svg viewBox="0 0 24 24" stroke-width="0"><circle cx="12" cy="7.5" r="4"/>'+
+                   '<path d="M12 13.5c-4.2 0-7.5 2.9-7.5 6.5h15c0-3.6-3.3-6.5-7.5-6.5z"/>'+
+                   '<line x1="2" y1="22" x2="22" y2="2" stroke-width="2.6" stroke-linecap="round"/></svg>';
 var ICON_STAFF = '<svg viewBox="0 0 24 24" stroke-width="0"><path d="M4 21V4.5C4 3.7 4.7 3 5.5 3h9c.8 0 1.5.7 1.5 1.5V21H4z"/>'+
                  '<path d="M17.5 21V9h2C20.3 9 21 9.7 21 10.5V21h-3.5z"/>'+
                  '<rect x="6.5" y="6" width="2.6" height="2.6" fill="#F9F7F4"/>'+
@@ -194,6 +205,7 @@ var ICON_STAFF = '<svg viewBox="0 0 24 24" stroke-width="0"><path d="M4 21V4.5C4
                  '<rect x="8.7" y="15.6" width="2.6" height="5.4" fill="#F9F7F4"/></svg>';
 
 var responses = {};   // keyed by phone (digital) or manual key
+var cancelledExt = {};
 var manual = {};      // keyed by 'room-N' or 'ext-<id>'
 
 function api(path, method, body){
@@ -204,16 +216,23 @@ function api(path, method, body){
 
 // ── build a unified view keyed by room ─────────────────────
 function roomState(n){
-  // digital response wins; if several claim the room, the latest one counts
+  var mk = 'room-'+n;
+  var m  = manual[mk];
+
+  // latest digital response for this room
   var best = null;
   for (var k in responses){
     var g = responses[k];
     if (String(g.room) !== String(n)) continue;
     if (!best || (g.at || '') > (best.g.at || '')) best = { src:'digital', key:k, g:g };
   }
+
+  // a staff override always wins over the guest's own answer
+  if (m && m.override) {
+    return { src:'manual', key:mk, g:m, override:true, guest: best ? best.g : null };
+  }
   if (best) return best;
-  var mk = 'room-'+n;
-  if (manual[mk]) return { src:'manual', key:mk, g:manual[mk] };
+  if (m) return { src:'manual', key:mk, g:m };
   return null;
 }
 
@@ -242,7 +261,11 @@ function render(){
 
       var mark = '';
       if (st && (st.g.status==='in' || st.g.status==='out')) {
-        mark = '<span class="mark">'+(st.src==='digital' ? ICON_GUEST : ICON_STAFF)+'</span>';
+        var ic;
+        if (st.override && st.guest) ic = ICON_GUEST_X;      // guest replied, staff cancelled
+        else if (st.src === 'digital') ic = ICON_GUEST;
+        else ic = ICON_STAFF;
+        mark = '<span class="mark">'+ic+'</span>';
       }
       var b=document.createElement('button');
       b.className=cls;
@@ -262,7 +285,8 @@ function render(){
 
   for (var k in responses){
     var g = responses[k];
-    if (!g.room && g.status==='in') rows.push({ g:g, room:null, src:'digital', key:k });
+    if (!g.room && g.status==='in' && !cancelledExt[k] && !manual['extcancel-'+k])
+      rows.push({ g:g, room:null, src:'digital', key:k });
   }
   for (var k in manual){
     if (k.indexOf('ext-')!==0) continue;
@@ -297,15 +321,19 @@ function render(){
     if (g.phone) sub.push(g.phone);
 
     var row = document.createElement('div');
-    row.className = 'row';
+    row.className = 'row tappable';
     row.innerHTML =
       '<div><div class="row-name">'+title+'</div>'+
       (sub.length ? '<div class="row-sub">'+sub.join(' · ')+'</div>' : '')+
-      '</div><div class="row-pax">'+(g.pax||1)+' pax</div>';
-    if (r.src === 'manual' && r.key.indexOf('ext-')===0){
-      row.style.cursor='pointer';
-      row.onclick = (function(key, rec){ return function(){ editExt(key, rec); }; })(r.key, g);
-    }
+      '</div>'+
+      '<div class="row-right"><span class="row-pax">'+(g.pax||1)+' pax</span>'+
+      '<span class="edit">'+ICON_EDIT+'</span></div>';
+    row.onclick = (function(rr){
+      return function(){
+        if (rr.room) openRoom(rr.room, roomState(rr.room));
+        else editExt(rr.key, rr.g);
+      };
+    })(r);
     el.appendChild(row);
   });
 
@@ -332,27 +360,21 @@ function revealAction(){
 
 function openRoom(n, st){
   var pax = (st && st.g.pax) || 2;
-  var locked = st && st.src==='digital';
+  var guestAnswer = st && (st.src==='digital' ? st.g : st.guest);
+  var isOverride  = st && st.override;
 
-  sheet.innerHTML =
-    '<h3>Room '+n+'</h3>' +
-    (locked
-      ? '<div class="empty" style="text-align:center">Answered by the guest via the link.<br>'+
-        (st.g.status==='in' ? 'Dining — '+(st.g.pax||1)+' pax' : 'Not dining')+'</div>'+
-        '<button class="opt quiet" id="oClose">Close</button>'
-      : '<div class="sheet-label">Guests</div><div class="pax-row" id="paxRow"></div>'+
-        '<button class="opt solid" id="oIn">Dining</button>'+
-        '<button class="opt out" id="oOut">Not dining</button>'+
-        '<button class="opt vac" id="oVac">Vacant tonight</button>'+
-        (st ? '<button class="opt quiet" id="oClear">Clear</button>' : '')
-    );
+  function shell(inner){
+    sheet.innerHTML = '<h3>Room '+n+'</h3>' + inner;
+    bd.className='backdrop show';
+    revealAction();
+  }
 
-  bd.className='backdrop show';
-  revealAction();
-  if (locked){ document.getElementById('oClose').onclick=close; return; }
-
+  function paxBlock(){
+    return '<div class="sheet-label">Guests</div><div class="pax-row" id="paxRow"></div>';
+  }
   function paintPax(){
-    var r=document.getElementById('paxRow'); r.innerHTML='';
+    var r=document.getElementById('paxRow'); if(!r) return;
+    r.innerHTML='';
     for(var i=1;i<=6;i++)(function(v){
       var b=document.createElement('button');
       b.className='pax'+(pax===v?' on':''); b.textContent=v;
@@ -360,23 +382,84 @@ function openRoom(n, st){
       r.appendChild(b);
     })(i);
   }
-  paintPax();
 
-  function save(status){
-    var rec = { status:status, pax:(status==='in'?pax:0), room:String(n), source:'manual' };
+  function writeManual(rec){
     manual['room-'+n] = rec;
     api('/manual/'+todayKey()+'/room-'+n, 'PUT', rec);
     close(); render();
   }
-  document.getElementById('oIn').onclick  = function(){ save('in'); };
-  document.getElementById('oOut').onclick = function(){ save('out'); };
-  document.getElementById('oVac').onclick = function(){ save('vacant'); };
-  var c=document.getElementById('oClear');
-  if(c) c.onclick=function(){
+  function clearManual(){
     delete manual['room-'+n];
     api('/manual/'+todayKey()+'/room-'+n, 'DELETE');
     close(); render();
-  };
+  }
+
+  // ── staff has cancelled a guest's booking ───────────────
+  if (isOverride && guestAnswer) {
+    shell(
+      '<div class="note-box">Cancelled by staff.<br>'+
+      'The guest had confirmed '+(guestAnswer.pax||1)+
+      (guestAnswer.pax===1?' guest':' guests')+
+      (guestAnswer.name ? ' \u2014 '+guestAnswer.name : '')+'.</div>'+
+      '<button class="opt solid" id="oRestore">Restore booking</button>'+
+      '<button class="opt quiet" id="oClose">Close</button>'
+    );
+    document.getElementById('oRestore').onclick = clearManual;
+    document.getElementById('oClose').onclick = close;
+    return;
+  }
+
+  // ── guest answered themselves ───────────────────────────
+  if (st && st.src==='digital') {
+    if (st.g.status==='in') {
+      pax = st.g.pax || 2;
+      shell(
+        '<div class="note-box">Confirmed by the guest'+
+        (st.g.name ? ' \u2014 '+st.g.name : '')+'.</div>'+
+        paxBlock()+
+        '<button class="opt solid" id="oSave">Update guests</button>'+
+        '<button class="opt out" id="oCancel">Cancel booking</button>'+
+        '<button class="opt quiet" id="oClose">Close</button>'
+      );
+      paintPax();
+      document.getElementById('oSave').onclick = function(){
+        writeManual({ status:'in', pax:pax, room:String(n), override:true, source:'manual' });
+      };
+      document.getElementById('oCancel').onclick = function(){
+        writeManual({ status:'out', pax:0, room:String(n), override:true, source:'manual' });
+      };
+      document.getElementById('oClose').onclick = close;
+    } else {
+      shell(
+        '<div class="note-box">The guest declined.</div>'+
+        paxBlock()+
+        '<button class="opt solid" id="oIn">Dining after all</button>'+
+        '<button class="opt quiet" id="oClose">Close</button>'
+      );
+      paintPax();
+      document.getElementById('oIn').onclick = function(){
+        writeManual({ status:'in', pax:pax, room:String(n), override:true, source:'manual' });
+      };
+      document.getElementById('oClose').onclick = close;
+    }
+    return;
+  }
+
+  // ── no guest answer: plain staff entry ──────────────────
+  shell(
+    paxBlock()+
+    '<button class="opt solid" id="oIn">Dining</button>'+
+    '<button class="opt out" id="oOut">Not dining</button>'+
+    '<button class="opt vac" id="oVac">Vacant tonight</button>'+
+    (st ? '<button class="opt quiet" id="oClear">Clear</button>' : '')+
+    '<button class="opt quiet" id="oClose">Close</button>'
+  );
+  paintPax();
+  document.getElementById('oIn').onclick  = function(){ writeManual({ status:'in',  pax:pax, room:String(n), source:'manual' }); };
+  document.getElementById('oOut').onclick = function(){ writeManual({ status:'out', pax:0,  room:String(n), source:'manual' }); };
+  document.getElementById('oVac').onclick = function(){ writeManual({ status:'vacant', pax:0, room:String(n), source:'manual' }); };
+  var cl=document.getElementById('oClear'); if(cl) cl.onclick = clearManual;
+  document.getElementById('oClose').onclick = close;
 }
 
 document.getElementById('addExt').onclick = function(e){
@@ -435,21 +518,52 @@ document.getElementById('addExt').onclick = function(e){
 };
 
 function editExt(key, g){
+  var pax = g.pax || 2;
+  var isManual = key.indexOf('ext-') === 0;
+
   sheet.innerHTML =
-    '<h3>'+(g.name||'External guest')+'</h3>'+
-    '<div class="empty" style="text-align:center">'+
-      (g.status==='in' ? 'Dining — '+(g.pax||1)+' pax' : 'Not dining')+
-      (g.phone ? '<br>'+g.phone : '')+'</div>'+
-    '<button class="opt quiet" id="oDel">Remove</button>'+
+    '<h3>'+(g.name || 'External guest')+'</h3>'+
+    (g.phone ? '<div class="note-box">'+g.phone+'</div>' : '')+
+    (isManual ? '<div class="sheet-label">Guests</div><div class="pax-row" id="paxRow"></div>' : '')+
+    (isManual ? '<button class="opt solid" id="oSave">Update guests</button>' : '')+
+    '<button class="opt out" id="oDel">Cancel booking</button>'+
     '<button class="opt quiet" id="oClose">Close</button>';
   bd.className='backdrop show';
   revealAction();
-  document.getElementById('oClose').onclick=close;
-  document.getElementById('oDel').onclick=function(){
-    delete manual[key];
-    api('/manual/'+todayKey()+'/'+key, 'DELETE');
+
+  if (isManual){
+    (function paintPax(){
+      var r=document.getElementById('paxRow'); r.innerHTML='';
+      for(var i=1;i<=8;i++)(function(v){
+        var b=document.createElement('button');
+        b.className='pax'+(pax===v?' on':''); b.textContent=v;
+        b.onclick=function(){ pax=v; paintPax(); };
+        r.appendChild(b);
+      })(i);
+    })();
+    document.getElementById('oSave').onclick = function(){
+      g.pax = pax;
+      manual[key] = g;
+      api('/manual/'+todayKey()+'/'+key, 'PUT', g);
+      close(); render();
+    };
+  }
+
+  document.getElementById('oDel').onclick = function(){
+    if (isManual){
+      delete manual[key];
+      api('/manual/'+todayKey()+'/'+key, 'DELETE');
+    } else {
+      // guest booked via the link — record a staff cancellation
+      var rec = { status:'out', pax:0, override:true, source:'manual',
+                  name:g.name||'', phone:g.phone||'' };
+      manual['extcancel-'+key] = rec;
+      api('/manual/'+todayKey()+'/extcancel-'+key, 'PUT', rec);
+      cancelledExt[key] = true;
+    }
     close(); render();
   };
+  document.getElementById('oClose').onclick = close;
 }
 
 // ── load ───────────────────────────────────────────────────
