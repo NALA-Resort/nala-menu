@@ -40,33 +40,32 @@
   .room-n { font-size:13px; color:var(--ink); }
   .room-p { font-size:8px; color:var(--mid); margin-top:2px; min-height:10px; }
   .room { position:relative; }
-  .room.in     { background:var(--ink); border-color:var(--ink); }
-  .room.in .room-n, .room.in .room-p { color:var(--cream); }
-  .room.out    { background:transparent; border-color:var(--rule); opacity:.5; }
-  .room.out .room-n { text-decoration:line-through; }
+  .room.in     { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
+  .room.in .room-n { color:var(--ink); }
+  .room.in .room-p { color:#5E7D67; }
+  .room.out    { background:rgba(184,106,90,.16); border-color:rgba(184,106,90,.45); }
+  .room.out .room-n { color:var(--ink); opacity:.6; text-decoration:line-through; }
   .room.vacant { border-style:dotted; opacity:.3; }
   .room.await  { border-style:dashed; border-color:var(--mid); }
 
-  /* source marker: filled = guest replied, ring = added by staff */
-  .mark { position:absolute; top:5px; right:5px; width:6px; height:6px; border-radius:50%; }
-  .room.in  .mark.guest { background:var(--cream); }
-  .room.in  .mark.staff { border:1px solid var(--cream); }
-  .room.out .mark.guest { background:var(--mid); }
-  .room.out .mark.staff { border:1px solid var(--mid); }
+  /* source icon */
+  .mark { position:absolute; top:4px; right:4px; width:10px; height:10px; opacity:.75; }
+  .mark svg { width:100%; height:100%; display:block; }
+  .room.in  .mark svg { fill:#5E7D67; stroke:#5E7D67; }
+  .room.out .mark svg { fill:#9E6455; stroke:#9E6455; }
 
   .legend { display:flex; gap:14px; justify-content:center; margin-top:12px;
             font-family:Helvetica,Arial,sans-serif; font-size:8px;
             letter-spacing:.12em; text-transform:uppercase; color:var(--mid); }
   .legend span { display:flex; align-items:center; gap:5px; }
   .sw { width:9px; height:9px; border:1px solid var(--rule); display:inline-block; }
-  .sw.in { background:var(--ink); border-color:var(--ink); }
-  .sw.out { opacity:.45; }
+  .sw.in { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
+  .sw.out { background:rgba(184,106,90,.16); border-color:rgba(184,106,90,.45); }
   .sw.await { border-style:dashed; border-color:var(--mid); }
   .sw.vacant { border-style:dotted; opacity:.4; }
   .legend2 { margin-top:7px; }
-  .dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
-  .dot.filled { background:var(--mid); }
-  .dot.ring { border:1px solid var(--mid); }
+  .ico { width:11px; height:11px; display:inline-block; }
+  .ico svg { width:100%; height:100%; display:block; fill:var(--mid); stroke:var(--mid); }
 
   /* rows */
   .row { display:flex; justify-content:space-between; align-items:baseline; gap:10px;
@@ -131,8 +130,8 @@
     <span><i class="sw vacant"></i>Vacant</span>
   </div>
   <div class="legend legend2">
-    <span><i class="dot filled"></i>Guest replied</span>
-    <span><i class="dot ring"></i>Added by staff</span>
+    <span><i class="ico" id="legGuest"></i>Guest replied</span>
+    <span><i class="ico" id="legStaff"></i>Added by staff</span>
   </div>
 
   <div class="sec">
@@ -165,6 +164,17 @@ function label(){var d=new Date();
   var m=['January','February','March','April','May','June','July','August','September','October','November','December'];
   return days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();}
 document.getElementById('date').textContent = label();
+
+
+var ICON_GUEST = '<svg viewBox="0 0 24 24" stroke-width="0"><circle cx="12" cy="7.5" r="4"/>'+
+                 '<path d="M12 13.5c-4.2 0-7.5 2.9-7.5 6.5h15c0-3.6-3.3-6.5-7.5-6.5z"/></svg>';
+var ICON_STAFF = '<svg viewBox="0 0 24 24" stroke-width="0"><path d="M4 21V4.5C4 3.7 4.7 3 5.5 3h9c.8 0 1.5.7 1.5 1.5V21H4z"/>'+
+                 '<path d="M17.5 21V9h2C20.3 9 21 9.7 21 10.5V21h-3.5z"/>'+
+                 '<rect x="6.5" y="6" width="2.6" height="2.6" fill="#F9F7F4"/>'+
+                 '<rect x="10.9" y="6" width="2.6" height="2.6" fill="#F9F7F4"/>'+
+                 '<rect x="6.5" y="10.6" width="2.6" height="2.6" fill="#F9F7F4"/>'+
+                 '<rect x="10.9" y="10.6" width="2.6" height="2.6" fill="#F9F7F4"/>'+
+                 '<rect x="8.7" y="15.6" width="2.6" height="5.4" fill="#F9F7F4"/></svg>';
 
 var responses = {};   // keyed by phone (digital) or manual key
 var manual = {};      // keyed by 'room-N' or 'ext-<id>'
@@ -215,7 +225,7 @@ function render(){
 
       var mark = '';
       if (st && (st.g.status==='in' || st.g.status==='out')) {
-        mark = '<span class="mark '+(st.src==='digital'?'guest':'staff')+'"></span>';
+        mark = '<span class="mark">'+(st.src==='digital' ? ICON_GUEST : ICON_STAFF)+'</span>';
       }
       var b=document.createElement('button');
       b.className=cls;
@@ -390,6 +400,9 @@ function editExt(key, g){
 }
 
 // ── load ───────────────────────────────────────────────────
+document.getElementById('legGuest').innerHTML = ICON_GUEST;
+document.getElementById('legStaff').innerHTML = ICON_STAFF;
+
 Promise.all([
   api('/responses/'+todayKey()),
   api('/manual/'+todayKey())
