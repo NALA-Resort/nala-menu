@@ -73,6 +73,12 @@
   .row { display:flex; justify-content:space-between; align-items:baseline; gap:10px;
          padding:9px 0; border-bottom:1px solid var(--rule); }
   .row-name { font-size:14px; }
+  .row-name .rm { font-family:Helvetica,Arial,sans-serif; font-size:11px;
+                  letter-spacing:.08em; color:var(--mid); margin-right:2px; }
+  .row-name .tag { font-family:Helvetica,Arial,sans-serif; font-size:8px;
+                   letter-spacing:.18em; text-transform:uppercase; color:var(--mid);
+                   border:1px solid var(--rule); padding:2px 6px; margin-left:8px;
+                   border-radius:10px; vertical-align:middle; }
   .row-sub { font-style:italic; font-size:11px; color:var(--mid); }
   .row-pax { font-family:Helvetica,Arial,sans-serif; font-size:12px; white-space:nowrap; }
   .alrg { color:var(--red); font-style:normal; }
@@ -278,13 +284,17 @@ function render(){
 
   rows.forEach(function(r){
     var g = r.g;
-    var title = g.name || (r.room ? 'Room '+r.room : g.phone || 'Guest');
+    var title;
+    if (r.room) {
+      title = '<span class="rm">Room '+r.room+'</span>' + (g.name ? '  '+g.name : '');
+    } else {
+      title = (g.name || g.phone || 'Guest') + '<span class="tag">External</span>';
+    }
+
     var sub = [];
-    if (r.room && g.name) sub.push('Room '+r.room);
-    if (!r.room) sub.push('External');
     var d = dietHTML(g.diets); if(d) sub.push(d);
     if (g.note) sub.push('“'+g.note+'”');
-    if (g.phone && !g.name) {} else if (g.phone) sub.push(g.phone);
+    if (g.phone) sub.push(g.phone);
 
     var row = document.createElement('div');
     row.className = 'row';
