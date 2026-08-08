@@ -226,8 +226,8 @@ function render(){
       var st = roomState(n);
       var cls = 'room await', pax='';
       if (st){
-        if (st.g.status==='in'){ cls='room in'; pax=(st.g.pax||1)+'p'; covers += (st.g.pax||1); }
-        else if (st.g.status==='out'){ cls='room out'; notDining += (st.g.pax||1); }
+        if (st.g.status==='in'){ cls='room in'; pax=(st.g.pax||1)+'p'; }
+        else if (st.g.status==='out'){ cls='room out'; }
         else if (st.g.status==='vacant'){ cls='room vacant'; }
       } else awaiting++;
 
