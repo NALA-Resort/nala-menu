@@ -93,6 +93,10 @@
   .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   .sheet-label { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.25em;
                  text-transform:uppercase; color:var(--mid); text-align:center; margin-bottom:8px; }
+  .txt { width:100%; padding:11px 12px; margin-bottom:8px; border:1px solid var(--rule);
+         background:transparent; font-family:Georgia,serif; font-size:14px; color:var(--ink); }
+  .txt::placeholder { color:var(--mid); font-style:italic; }
+  .txt:focus { outline:none; border-color:var(--ink); }
 </style>
 </head>
 <body>
@@ -211,10 +215,18 @@ function render(){
     if (g.status==='in') covers += (g.pax||1); else notDining += (g.pax||1);
     var sub = g.status==='in' ? 'Dining' : 'Not dining';
     var d=dietHTML(g.diets); if(d) sub += ' · '+d;
-    elExt.insertAdjacentHTML('beforeend',
-      '<div class="row"><div><div class="row-name">'+(g.name||g.phone||'Guest')+'</div>'+
+    if (g.phone) sub += ' · ' + g.phone;
+    var rowEl = document.createElement('div');
+    rowEl.className = 'row';
+    rowEl.innerHTML =
+      '<div><div class="row-name">'+(g.name||g.phone||'Guest')+'</div>'+
       '<div class="row-sub">'+sub+'</div></div>'+
-      '<div class="row-pax">'+(g.status==='in' ? (g.pax||1)+' pax' : '')+'</div></div>');
+      '<div class="row-pax">'+(g.status==='in' ? (g.pax||1)+' pax' : '')+'</div>';
+    if (e.src === 'manual') {
+      rowEl.style.cursor = 'pointer';
+      rowEl.onclick = (function(key, rec){ return function(){ editExt(key, rec); }; })(e.key, g);
+    }
+    elExt.appendChild(rowEl);
   });
 
   // detail list (dining only, with notes/diets)
@@ -302,7 +314,10 @@ document.getElementById('addExt').onclick = function(e){
   var pax=2;
   sheet.innerHTML =
     '<h3>External guest</h3>'+
-    '<div class="sheet-label">Guests</div><div class="pax-row" id="paxRow"></div>'+
+    '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
+    '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
+    '<div class="sheet-label" style="margin-top:14px">Guests</div>'+
+    '<div class="pax-row" id="paxRow"></div>'+
     '<button class="opt solid" id="oIn">Dining</button>'+
     '<button class="opt" id="oOut">Not dining</button>'+
     '<button class="opt quiet" id="oCancel">Cancel</button>';
@@ -320,8 +335,11 @@ document.getElementById('addExt').onclick = function(e){
   paintPax();
 
   function save(status){
+    var nm = document.getElementById('xName').value.trim();
+    var ph = document.getElementById('xPhone').value.trim();
+    if(!nm){ document.getElementById('xName').focus(); return; }
     var id='ext-'+Date.now();
-    var rec={ status:status, pax:(status==='in'?pax:1), name:'Walk-in', source:'manual' };
+    var rec={ status:status, pax:(status==='in'?pax:1), name:nm, phone:ph, source:'manual' };
     manual[id]=rec;
     api('/manual/'+todayKey()+'/'+id, 'PUT', rec);
     close(); render();
@@ -330,6 +348,23 @@ document.getElementById('addExt').onclick = function(e){
   document.getElementById('oOut').onclick=function(){ save('out'); };
   document.getElementById('oCancel').onclick=close;
 };
+
+function editExt(key, g){
+  sheet.innerHTML =
+    '<h3>'+(g.name||'External guest')+'</h3>'+
+    '<div class="empty" style="text-align:center">'+
+      (g.status==='in' ? 'Dining — '+(g.pax||1)+' pax' : 'Not dining')+
+      (g.phone ? '<br>'+g.phone : '')+'</div>'+
+    '<button class="opt quiet" id="oDel">Remove</button>'+
+    '<button class="opt quiet" id="oClose">Close</button>';
+  bd.className='backdrop show';
+  document.getElementById('oClose').onclick=close;
+  document.getElementById('oDel').onclick=function(){
+    delete manual[key];
+    api('/manual/'+todayKey()+'/'+key, 'DELETE');
+    close(); render();
+  };
+}
 
 // ── load ───────────────────────────────────────────────────
 Promise.all([
