@@ -18,7 +18,7 @@
   .key { font-size:8.5px; color:#777; margin-top:10px; }
 
   .head { display:flex; justify-content:space-between; align-items:flex-end;
-          border-bottom:2px solid #111; padding-bottom:8px; margin-bottom:12px; }
+          border-bottom:2px solid #111; padding-bottom:6px; margin-bottom:9px; }
   .brand { font-size:9px; letter-spacing:.4em; text-transform:uppercase; color:#777; }
   .title { font-size:16px; font-weight:bold; margin-top:3px; }
   .counts { text-align:right; font-size:10px; line-height:1.5; white-space:nowrap; }
@@ -28,7 +28,7 @@
   table { width:100%; min-width:900px; border-collapse:collapse; }
   th { font-size:7.5px; letter-spacing:.16em; text-transform:uppercase; color:#666;
        text-align:left; padding:0 6px 6px; border-bottom:1px solid #111; white-space:nowrap; }
-  td { font-size:10.5px; padding:7px 6px; border-bottom:1px solid #ddd; vertical-align:top; }
+  td { font-size:9.5px; padding:4.5px 6px; border-bottom:1px solid #ddd; vertical-align:top; }
   tr { page-break-inside:avoid; }
 
   .c-name { width:14%; font-weight:bold; }
@@ -54,15 +54,21 @@
   .muted { color:#aaa; font-weight:normal; font-style:italic; }
 
   /* empty write-in rows: one rule only, from the cell border */
-  tr.blank td { height:26px; }
+  tr.blank td { height:20px; }
 
-  .foot { margin-top:14px; font-size:9px; color:#555; line-height:1.7;
-          border-top:1px solid #ddd; padding-top:8px; }
+  .foot { margin-top:10px; font-size:8.5px; color:#555; line-height:1.6;
+          border-top:1px solid #ddd; padding-top:6px; }
   .foot b { text-transform:uppercase; letter-spacing:.16em; font-size:8px; color:#111; }
   .foot .co b { color:#A8321E; }
 
-  @media print { .bar, .hint { display:none; } body { padding:0; }
-                 .scroller { overflow:visible; } table { min-width:0; } }
+  @media print {
+    .bar, .hint, .key { display:none; }
+    body { padding:0; }
+    .scroller { overflow:visible; }
+    table { min-width:0; }
+    tr { page-break-inside:avoid; }
+    .foot { page-break-inside:avoid; }
+  }
 </style>
 </head>
 <body>
@@ -101,9 +107,6 @@
     <tbody id="rows"></tbody>
   </table>
 </div>
-
-<div class="key">All occupied rooms are listed for breakfast. Dinner column: <b>Yes</b> dining · <b>No</b> declined · <b>—</b> no reply.</div>
-<div class="hint">Scroll sideways to see all columns. Printing uses full A4 landscape.</div>
 
 <div class="foot" id="foot"></div>
 
@@ -253,7 +256,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), api('/r
         '</tr>');
     });
 
-    for (var i=rows.length; i<16; i++){
+    for (var i=rows.length; i<8; i++){
       tb.insertAdjacentHTML('beforeend',
         '<tr class="blank">'+Array(10).join('<td></td>')+'</tr>');
     }
