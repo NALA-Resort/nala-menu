@@ -102,7 +102,7 @@
   #legSeen svg { fill:none; stroke-width:2.4; }
 
   /* rows */
-  .row { display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  .row { display:flex; justify-content:space-between; align-items:center; gap:10px;
          padding:9px 0; border-bottom:1px solid var(--rule); }
   .row-name { font-size:14px; }
   .row-name .rm { font-family:Helvetica,Arial,sans-serif; font-size:11px;
@@ -113,14 +113,16 @@
                    border-radius:10px; vertical-align:middle; }
   .row-sub { font-style:italic; font-size:11px; color:var(--mid); }
   .row-pax { font-family:Helvetica,Arial,sans-serif; font-size:12px; white-space:nowrap; }
-  .row-right { display:flex; align-items:center; gap:6px; white-space:nowrap; }
-  .edit { width:38px; height:38px; margin:-12px -8px -12px 0; padding:12px 8px;
-          opacity:.45; cursor:pointer; box-sizing:content-box; }
+  .row-right { display:flex; align-items:center; gap:4px; white-space:nowrap; }
+  .edit { display:flex; align-items:center; justify-content:center;
+          width:40px; height:40px; margin:-10px -10px -10px 0;
+          opacity:.45; cursor:pointer; }
   .edit svg { width:14px; height:14px; display:block; fill:var(--mid); }
   .edit:active { opacity:.9; }
   .alrg { color:var(--red); font-style:normal; }
   .empty { font-style:italic; color:var(--mid); font-size:12px; padding:8px 0; }
 
+  .actions.hidden { visibility:hidden; }
   .actions { position:sticky; bottom:0; z-index:20;
              margin-top:34px; display:flex; gap:10px;
              background:var(--cream); border-top:1px solid var(--rule);
@@ -504,7 +506,9 @@ document.getElementById('sbDone').onclick  = exitSelect;
 var bd = document.getElementById('backdrop');
 var sheet = document.getElementById('sheet');
 bd.onclick = function(e){ if(e.target===bd) close(); };
-function close(){ bd.className='backdrop'; }
+var actionsEl = document.querySelector('.actions');
+function showSheet(){ bd.className='backdrop show'; if(actionsEl) actionsEl.classList.add('hidden'); }
+function close(){ bd.className='backdrop'; if(actionsEl) actionsEl.classList.remove('hidden'); }
 
 // replaces the whole sheet with a single question, so nothing else is on screen
 function confirmSheet(title, question, confirmLabel, onConfirm, onBack){
@@ -513,7 +517,7 @@ function confirmSheet(title, question, confirmLabel, onConfirm, onBack){
     '<div class="note-box">'+question+'</div>'+
     '<button class="opt out" id="cYes">'+confirmLabel+'</button>'+
     '<button class="opt quiet" id="cNo">Back</button>';
-  bd.className='backdrop show';
+  showSheet();
   revealAction();
   document.getElementById('cYes').onclick = onConfirm;
   document.getElementById('cNo').onclick  = onBack;
@@ -535,7 +539,7 @@ function openRoom(n, st){
 
   function shell(inner){
     sheet.innerHTML = '<h3>Room '+n+'</h3>' + inner;
-    bd.className='backdrop show';
+    showSheet();
     revealAction();
   }
 
@@ -695,7 +699,7 @@ document.getElementById('addExt').onclick = function(e){
     '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
     '<button class="opt solid" id="oIn" style="margin-top:8px">Add</button>'+
     '<button class="opt quiet" id="oCancel">Cancel</button>';
-  bd.className='backdrop show';
+  showSheet();
   revealAction();
 
   function paintPax(){
@@ -747,7 +751,7 @@ function editExt(key, g){
     (isManual ? '<button class="opt solid" id="oSave">Update guests</button>' : '')+
     '<button class="opt out" id="oDel">Cancel booking</button>'+
     '<button class="opt quiet" id="oClose">Close</button>';
-  bd.className='backdrop show';
+  showSheet();
   revealAction();
 
   if (isManual){
