@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nala — Tonight's Numbers</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E; }
+  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif; padding:28px 24px 60px; }
+  .wrap { max-width:520px; margin:0 auto; }
+
+  .wordmark { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.45em;
+              text-transform:uppercase; color:var(--mid); text-align:center; }
+  .date { text-align:center; font-family:Helvetica,Arial,sans-serif; font-size:13px; font-weight:bold;
+          letter-spacing:.1em; text-transform:uppercase; margin-top:6px; }
+
+  .totals { display:flex; gap:10px; margin:24px 0; }
+  .tot { flex:1; text-align:center; padding:16px 6px; border:1px solid var(--rule); }
+  .tot-n { font-size:30px; line-height:1; }
+  .tot-l { font-family:Helvetica,Arial,sans-serif; font-size:7px; letter-spacing:.25em;
+           text-transform:uppercase; color:var(--mid); margin-top:8px; }
+
+  .sec { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
+         text-transform:uppercase; color:var(--mid); margin:26px 0 10px; }
+
+  .row { display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+         padding:9px 0; border-bottom:1px solid var(--rule); }
+  .row-name { font-size:14px; }
+  .row-sub { font-style:italic; font-size:11px; color:var(--mid); }
+  .row-pax { font-family:Helvetica,Arial,sans-serif; font-size:12px; white-space:nowrap; }
+  .alrg { color:var(--red); font-style:normal; }
+
+  .actions { margin-top:34px; display:flex; gap:10px; }
+  .btn { flex:1; text-align:center; padding:13px; border:1px solid var(--ink);
+         font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
+         text-transform:uppercase; color:var(--ink); text-decoration:none; }
+  .btn.solid { background:var(--ink); color:var(--cream); }
+
+  .empty { font-style:italic; color:var(--mid); font-size:12px; padding:8px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="wordmark">Nala</div>
+  <div class="date" id="date"></div>
+
+  <div class="totals">
+    <div class="tot"><div class="tot-n" id="nCovers">–</div><div class="tot-l">Covers</div></div>
+    <div class="tot"><div class="tot-n" id="nIn">–</div><div class="tot-l">Dining</div></div>
+    <div class="tot"><div class="tot-n" id="nOut">–</div><div class="tot-l">Not dining</div></div>
+  </div>
+
+  <div class="sec">Dining</div>
+  <div id="listIn"></div>
+
+  <div class="sec">Not dining</div>
+  <div id="listOut"></div>
+
+  <div class="actions">
+    <a class="btn solid" href="list.html">Print list</a>
+    <a class="btn" href="#" onclick="location.reload();return false">Refresh</a>
+  </div>
+</div>
+
+<script>
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+var ALLERGENS = ['Nut allergy','Shellfish allergy','Egg allergy'];
+
+function todayKey(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function label(){var d=new Date();
+  var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var m=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();}
+
+document.getElementById('date').textContent = label();
+
+function dietHTML(diets){
+  if(!diets||!diets.length) return '';
+  return diets.map(function(d){
+    return ALLERGENS.indexOf(d)>-1 ? '<span class="alrg">'+d+'</span>' : d;
+  }).join(' · ');
+}
+
+fetch(DB+'/responses/'+todayKey()+'.json?v='+Date.now())
+  .then(function(r){return r.json();})
+  .then(function(data){
+    var ins=[], outs=[], covers=0;
+    for (var k in data){
+      var g=data[k];
+      if(g.status==='in'){ ins.push(g); covers += (g.pax||1); }
+      else outs.push(g);
+    }
+    ins.sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+    outs.sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+
+    document.getElementById('nCovers').textContent = covers;
+    document.getElementById('nIn').textContent = ins.length;
+    document.getElementById('nOut').textContent = outs.length;
+
+    var elIn=document.getElementById('listIn');
+    if(!ins.length) elIn.innerHTML='<div class="empty">No confirmations yet</div>';
+    ins.forEach(function(g){
+      var sub=[];
+      if(g.room) sub.push('Room '+g.room);
+      var d=dietHTML(g.diets); if(d) sub.push(d);
+      if(g.note) sub.push('“'+g.note+'”');
+      elIn.insertAdjacentHTML('beforeend',
+        '<div class="row"><div><div class="row-name">'+(g.name||g.phone)+'</div>'+
+        (sub.length?'<div class="row-sub">'+sub.join(' · ')+'</div>':'')+
+        '</div><div class="row-pax">'+(g.pax||1)+' pax</div></div>');
+    });
+
+    var elOut=document.getElementById('listOut');
+    if(!outs.length) elOut.innerHTML='<div class="empty">None</div>';
+    outs.forEach(function(g){
+      elOut.insertAdjacentHTML('beforeend',
+        '<div class="row"><div><div class="row-name">'+(g.name||g.phone)+'</div>'+
+        (g.room?'<div class="row-sub">Room '+g.room+'</div>':'')+'</div></div>');
+    });
+  });
+</script>
+</body>
+</html>
