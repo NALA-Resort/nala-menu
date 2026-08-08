@@ -226,7 +226,7 @@
   <div id="listBookings"></div>
 
   <div class="actions">
-    <a class="btn solid" href="list.html">Print list</a>
+    <a class="btn solid" id="printLink" href="list.html">Print list</a>
     <button class="btn" onclick="location.reload()">Refresh</button>
   </div>
 </div>
@@ -324,6 +324,10 @@ document.getElementById('dNext').onclick  = function(){ shiftDate(1); };
 var todayLink = document.getElementById('dToday');
 todayLink.onclick = function(e){ e.preventDefault(); goToday(); };
 if (!isToday()) todayLink.className = 'show';
+
+// print sheet opens on whatever date the tally is showing
+document.getElementById('printLink').href =
+  isToday() ? 'list.html' : 'list.html?date=' + dkey(VIEW);
 
 
 var ICON_GUEST = '<svg viewBox="0 0 24 24" stroke-width="0"><circle cx="12" cy="7.5" r="4"/>'+
