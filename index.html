@@ -461,7 +461,16 @@
     document.getElementById('btnIn').className  = 'rsvp-btn' + (s==='in' ? ' on':'');
     document.getElementById('btnOut').className = 'rsvp-btn' + (s==='out'? ' on':'');
     document.getElementById('rsvpDetail').className = 'rsvp-detail' + (s==='in' ? ' show':'');
-    if (s==='out') save();
+    if (s==='out') { save(); return; }
+    // bring the Confirm button into view so it isn't hidden below the fold
+    requestAnimationFrame(function(){
+      setTimeout(function(){
+        var btn = document.getElementById('saveBtn');
+        if (btn && btn.scrollIntoView) {
+          btn.scrollIntoView({ block:'end', behavior:'smooth' });
+        }
+      }, 120);
+    });
   }
 
   function save() {
