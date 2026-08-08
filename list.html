@@ -159,10 +159,11 @@ function dietHTML(diets){
 
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
-Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()) ])
+Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), api('/roomguests') ])
   .then(function(res){
-    var responses = res[0] || {};
-    var manual    = res[1] || {};
+    var responses  = res[0] || {};
+    var manual     = res[1] || {};
+    var roomguests = res[2] || {};
 
     // ── resolve each room to a single record ──────────────
     function roomRecord(n){
@@ -173,12 +174,15 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()) ])
         if (String(g.room) !== String(n)) continue;
         if (!best || (g.at||'') > (best.at||'')) best = g;
       }
+      var known = roomguests[String(n)] || {};   // whoever opened the link from this room
+
       if (m && m.override) {
-        // staff overrode the guest — carry the guest's details across
-        return Object.assign({}, best || {}, m, { room:String(n) });
+        // staff overrode the guest — keep the guest's own details underneath
+        return Object.assign({}, known, best || {}, m, { room:String(n) });
       }
-      if (best) return best;
-      if (m) return Object.assign({}, m, { room:String(n) });
+      if (best) return Object.assign({}, known, best);
+      if (m)    return Object.assign({}, known, m, { room:String(n) });
+      if (known.name) return Object.assign({}, known, { room:String(n), status:null });
       return null;
     }
 
@@ -192,7 +196,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()) ])
       rows.push({
         rec: r || { room:String(n) },
         room: n,
-        status: r ? r.status : null               // null = no reply yet
+        status: (r && r.status) ? r.status : null  // null = no reply yet
       });
       if (r && r.status === 'in') covers += (r.pax || 1);
     }
