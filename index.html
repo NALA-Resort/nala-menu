@@ -236,6 +236,19 @@
   }
   .save-btn:disabled { opacity: 0.4; }
 
+  .confirm-out { display:none; margin-top:14px; text-align:center; }
+  .confirm-out.show { display:block; }
+  .confirm-out p { font-style:italic; font-size:13px; color:var(--ink); margin-bottom:12px; }
+  .confirm-row { display:flex; gap:10px; }
+  .confirm-row button {
+    flex:1; padding:13px 8px; border-radius:2px;
+    font-family:Helvetica,Arial,sans-serif; font-size:11px;
+    letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .c-yes { border:none; background:#9E6455; color:#fff; }
+  .c-no  { border:1px solid var(--rule); background:transparent; color:var(--mid); }
+
   .rsvp-status {
     text-align: center;
     font-style: italic;
@@ -297,6 +310,13 @@
       <div class="rsvp-btns">
         <button class="rsvp-btn" id="btnIn">Dining tonight</button>
         <button class="rsvp-btn" id="btnOut">Not tonight</button>
+      </div>
+      <div class="confirm-out" id="confirmOut">
+        <p>Confirm you won't be dining tonight?</p>
+        <div class="confirm-row">
+          <button class="c-yes" id="outYes">Yes, not tonight</button>
+          <button class="c-no"  id="outNo">Cancel</button>
+        </div>
       </div>
       <div class="rsvp-detail" id="rsvpDetail">
         <div class="field">
@@ -461,7 +481,18 @@
     document.getElementById('btnIn').className  = 'rsvp-btn' + (s==='in' ? ' on':'');
     document.getElementById('btnOut').className = 'rsvp-btn' + (s==='out'? ' on':'');
     document.getElementById('rsvpDetail').className = 'rsvp-detail' + (s==='in' ? ' show':'');
-    if (s==='out') { save(); return; }
+    if (s==='out') {
+      // ask before recording a decline
+      document.getElementById('confirmOut').className = 'confirm-out show';
+      document.getElementById('rsvpDetail').className = 'rsvp-detail';
+      requestAnimationFrame(function(){
+        setTimeout(function(){
+          window.scrollTo({ top: document.body.scrollHeight, behavior:'smooth' });
+        }, 140);
+      });
+      return;
+    }
+    document.getElementById('confirmOut').className = 'confirm-out';
     // scroll right to the bottom so Confirm and everything above it is visible
     requestAnimationFrame(function(){
       setTimeout(function(){
@@ -514,6 +545,17 @@
     document.getElementById('btnIn').onclick  = function(){ setChoice('in'); };
     document.getElementById('btnOut').onclick = function(){ setChoice('out'); };
     document.getElementById('saveBtn').onclick = save;
+
+    document.getElementById('outYes').onclick = function(){
+      document.getElementById('confirmOut').className = 'confirm-out';
+      save();
+    };
+    document.getElementById('outNo').onclick = function(){
+      state.status = null;
+      document.getElementById('confirmOut').className = 'confirm-out';
+      document.getElementById('btnIn').className  = 'rsvp-btn';
+      document.getElementById('btnOut').className = 'rsvp-btn';
+    };
 
     // load profile + tonight's response
     Promise.all([ db('/guests/'+G.phone), db('/responses/'+todayKey()+'/'+G.phone) ])
