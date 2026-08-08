@@ -104,8 +104,8 @@
         <th class="c-bt wrap">B'fast<br>table</th>
         <th class="c-din">Dinner</th>
         <th class="c-pax">Pax</th>
-        <th class="c-diet">Dietaries</th>
         <th class="c-dep">Departs</th>
+        <th class="c-diet">Dietaries</th>
         <th class="c-com">Comments</th>
       </tr>
     </thead>
@@ -266,8 +266,8 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), api('/r
           '<td class="c-bt"></td>'+
           '<td class="c-din">'+dinner+'</td>'+
           '<td class="c-pax">'+(row.status==='in' ? (g.pax||1) : '')+'</td>'+
-          '<td>'+dietHTML(g.diets)+'</td>'+
           '<td>'+depHTML(g.departs)+'</td>'+
+          '<td>'+dietHTML(g.diets)+'</td>'+
           '<td>'+(g.note||'')+'</td>'+
         '</tr>');
     });
