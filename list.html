@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Nala — Service Sheet</title>
+<style>
+  @page { size: A4 landscape; margin: 12mm; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Helvetica, Arial, sans-serif; color:#111; background:#fff; padding:16px; }
+
+  .head { display:flex; justify-content:space-between; align-items:flex-end;
+          border-bottom:2px solid #111; padding-bottom:8px; margin-bottom:14px; }
+  .brand { font-size:10px; letter-spacing:.4em; text-transform:uppercase; color:#777; }
+  .title { font-size:17px; font-weight:bold; margin-top:3px; }
+  .counts { text-align:right; font-size:11px; line-height:1.6; }
+  .counts b { font-size:20px; }
+
+  table { width:100%; border-collapse:collapse; }
+  th { font-size:8px; letter-spacing:.18em; text-transform:uppercase; color:#666;
+       text-align:left; padding:0 6px 6px; border-bottom:1px solid #111; }
+  td { font-size:11px; padding:8px 6px; border-bottom:1px solid #ddd; vertical-align:top; }
+  tr { page-break-inside:avoid; }
+
+  .c-name  { width:17%; font-weight:bold; }
+  .c-room  { width:6%; }
+  .c-phone { width:11%; }
+  .c-pax   { width:5%; text-align:center; }
+  .c-diet  { width:20%; }
+  .c-table { width:7%; }
+  .c-comm  { width:34%; }
+
+  .allergen { color:#A8321E; font-weight:bold; }
+  .blank { border-bottom:1px solid #bbb; display:block; height:13px; }
+
+  .absent { margin-top:16px; font-size:9px; color:#666; line-height:1.7;
+            border-top:1px solid #ddd; padding-top:8px; }
+  .absent b { text-transform:uppercase; letter-spacing:.18em; font-size:8px; }
+
+  .noprint { margin-bottom:14px; }
+  .btn { display:inline-block; padding:9px 18px; background:#111; color:#fff;
+         font-size:10px; letter-spacing:.15em; text-transform:uppercase;
+         text-decoration:none; border:none; cursor:pointer; }
+  @media print { .noprint { display:none; } body { padding:0; } }
+</style>
+</head>
+<body>
+
+<div class="noprint">
+  <button class="btn" onclick="window.print()">Print</button>
+</div>
+
+<div class="head">
+  <div>
+    <div class="brand">Nala</div>
+    <div class="title" id="title">Dinner Service</div>
+  </div>
+  <div class="counts">
+    <div><b id="nCovers">–</b> covers</div>
+    <div><span id="nParties">–</span> parties</div>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th class="c-name">Name</th>
+      <th class="c-room">Room</th>
+      <th class="c-phone">Phone</th>
+      <th class="c-pax">Pax</th>
+      <th class="c-diet">Dietaries</th>
+      <th class="c-table">Table</th>
+      <th class="c-comm">Comments</th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
+
+<div class="absent" id="absent"></div>
+
+<script>
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+var ALLERGENS = ['Nut allergy','Shellfish allergy','Egg allergy'];
+
+function todayKey(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function label(){var d=new Date();
+  var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var m=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();}
+
+document.getElementById('title').textContent = 'Dinner Service — ' + label();
+
+function dietHTML(diets){
+  if(!diets||!diets.length) return '';
+  return diets.map(function(d){
+    return ALLERGENS.indexOf(d)>-1 ? '<span class="allergen">'+d+'</span>' : d;
+  }).join(', ');
+}
+
+fetch(DB+'/responses/'+todayKey()+'.json?v='+Date.now())
+  .then(function(r){return r.json();})
+  .then(function(data){
+    var ins=[], outs=[], covers=0;
+    for(var k in data){
+      var g=data[k];
+      if(g.status==='in'){ ins.push(g); covers+=(g.pax||1); } else outs.push(g);
+    }
+    ins.sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+
+    document.getElementById('nCovers').textContent = covers;
+    document.getElementById('nParties').textContent = ins.length;
+
+    var tb=document.getElementById('rows');
+    ins.forEach(function(g){
+      tb.insertAdjacentHTML('beforeend',
+        '<tr>'+
+        '<td class="c-name">'+(g.name||'')+'</td>'+
+        '<td>'+(g.room||'')+'</td>'+
+        '<td>'+(g.phone||'')+'</td>'+
+        '<td class="c-pax">'+(g.pax||1)+'</td>'+
+        '<td>'+dietHTML(g.diets)+'</td>'+
+        '<td><span class="blank"></span></td>'+
+        '<td>'+(g.note||'')+'</td>'+
+        '</tr>');
+    });
+
+    // pad to 12 rows for walk-ins
+    for(var i=ins.length;i<12;i++){
+      tb.insertAdjacentHTML('beforeend',
+        '<tr><td><span class="blank"></span></td><td><span class="blank"></span></td>'+
+        '<td><span class="blank"></span></td><td><span class="blank"></span></td>'+
+        '<td><span class="blank"></span></td><td><span class="blank"></span></td>'+
+        '<td><span class="blank"></span></td></tr>');
+    }
+
+    if(outs.length){
+      document.getElementById('absent').innerHTML =
+        '<b>Not dining</b><br>' +
+        outs.map(function(g){ return (g.name||g.phone) + (g.room?' (Rm '+g.room+')':''); }).join(' · ');
+    }
+  });
+</script>
+</body>
+</html>
