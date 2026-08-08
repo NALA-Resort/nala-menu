@@ -64,6 +64,27 @@
   .room.in  .mark svg { fill:#5E7D67; stroke:#5E7D67; }
   .room.out .mark svg { fill:#9E6455; stroke:#9E6455; }
 
+  .room.sel { outline:2px solid var(--ink); outline-offset:-2px; }
+  .room.sel .room-n { font-weight:bold; }
+
+  .selbar { position:fixed; left:0; right:0; bottom:0; z-index:40;
+            background:var(--cream); border-top:1px solid var(--rule);
+            padding:14px 20px calc(14px + env(safe-area-inset-bottom));
+            transform:translateY(110%); transition:transform .22s; }
+  .selbar.show { transform:translateY(0); }
+  .selbar-inner { max-width:520px; margin:0 auto; }
+  .selcount { font-family:Helvetica,Arial,sans-serif; font-size:10px;
+              letter-spacing:.16em; text-transform:uppercase; color:var(--mid);
+              text-align:center; margin-bottom:10px; }
+  .selactions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .selbtn { padding:13px 6px; border:1px solid transparent; color:#fff;
+            font-family:Helvetica,Arial,sans-serif; font-size:11px;
+            letter-spacing:.1em; text-transform:uppercase; cursor:pointer; }
+  .selbtn.vac  { background:#57575E; }
+  .selbtn.din  { background:#5E7D67; }
+  .selbtn.out  { background:#9E6455; }
+  .selbtn.quiet{ background:transparent; border-color:var(--rule); color:var(--mid); }
+
   .legend { display:flex; gap:14px; justify-content:center; margin-top:12px;
             font-family:Helvetica,Arial,sans-serif; font-size:8px;
             letter-spacing:.12em; text-transform:uppercase; color:var(--mid); }
@@ -155,7 +176,10 @@
     <div class="tot" id="tileAwait"><div class="tot-n" id="nAwait">–</div><div class="tot-l">Rooms awaiting</div></div>
   </div>
 
-  <div class="sec">Rooms</div>
+  <div class="sec">
+    <span>Rooms</span>
+    <a href="#" id="selToggle">Select multiple</a>
+  </div>
   <div class="rooms" id="rooms"></div>
   <div class="legend">
     <span><i class="sw in"></i>Dining</span>
@@ -178,6 +202,19 @@
   <div class="actions">
     <a class="btn solid" href="list.html">Print list</a>
     <button class="btn" onclick="location.reload()">Refresh</button>
+  </div>
+</div>
+
+<div class="selbar" id="selBar">
+  <div class="selbar-inner">
+    <div class="selcount" id="selCount"></div>
+    <div class="selactions">
+      <button class="selbtn vac"   id="sbVac">Vacant</button>
+      <button class="selbtn din"   id="sbDin">Dining</button>
+      <button class="selbtn out"   id="sbOut">Not dining</button>
+      <button class="selbtn quiet" id="sbClear">Clear rooms</button>
+    </div>
+    <button class="selbtn quiet" id="sbDone" style="width:100%;margin-top:8px">Done</button>
   </div>
 </div>
 
@@ -310,9 +347,17 @@ function render(){
         mark = '<span class="mark">'+ic+'</span>';
       }
       var b=document.createElement('button');
-      b.className=cls;
+      b.className=cls + (selected[n] ? ' sel' : '');
       b.innerHTML=mark+'<span class="room-n">'+n+'</span><span class="room-p">'+pax+'</span>';
-      b.onclick=function(){ openRoom(n, st); };
+      b.onclick=function(){
+        if (selectMode){
+          if (selected[n]) delete selected[n]; else selected[n]=true;
+          render();
+          selCountUpdate();
+        } else {
+          openRoom(n, st);
+        }
+      };
       grid.appendChild(b);
     })(n);
   }
@@ -386,6 +431,64 @@ function render(){
   document.getElementById('nAwait').textContent  = awaiting;
   document.getElementById('tileAwait').className = 'tot' + (awaiting>0 ? ' warn':'');
 }
+
+// ── multi-select ───────────────────────────────────────────
+var selectMode = false;
+var selected = {};
+
+var selBar = document.getElementById('selBar');
+
+function selCountUpdate(){
+  var n = Object.keys(selected).length;
+  document.getElementById('selCount').textContent =
+    n ? n + (n===1 ? ' room selected' : ' rooms selected') : 'Tap rooms to select';
+  selBar.className = 'selbar' + (selectMode ? ' show' : '');
+}
+
+function exitSelect(){
+  selectMode = false;
+  selected = {};
+  document.getElementById('selToggle').textContent = 'Select multiple';
+  selBar.className = 'selbar';
+  render();
+}
+
+document.getElementById('selToggle').onclick = function(e){
+  e.preventDefault();
+  selectMode = !selectMode;
+  selected = {};
+  this.textContent = selectMode ? 'Cancel' : 'Select multiple';
+  selCountUpdate();
+  render();
+};
+
+function applyToSelected(status){
+  var keys = Object.keys(selected);
+  if (!keys.length) return;
+
+  keys.forEach(function(n){
+    if (status === null){
+      delete manual['room-'+n];
+      api('/manual/'+todayKey()+'/room-'+n, 'DELETE');
+      return;
+    }
+    // if the guest replied for this room, mark it as an override
+    var hasGuest = false;
+    for (var k in responses){ if (String(responses[k].room) === String(n)) hasGuest = true; }
+    var rec = { status:status, pax:(status==='in'?2:0), room:String(n), source:'manual' };
+    if (hasGuest) rec.override = true;
+    manual['room-'+n] = rec;
+    api('/manual/'+todayKey()+'/room-'+n, 'PUT', rec);
+  });
+
+  exitSelect();
+}
+
+document.getElementById('sbVac').onclick   = function(){ applyToSelected('vacant'); };
+document.getElementById('sbDin').onclick   = function(){ applyToSelected('in'); };
+document.getElementById('sbOut').onclick   = function(){ applyToSelected('out'); };
+document.getElementById('sbClear').onclick = function(){ applyToSelected(null); };
+document.getElementById('sbDone').onclick  = exitSelect;
 
 // ── sheet ──────────────────────────────────────────────────
 var bd = document.getElementById('backdrop');
