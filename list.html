@@ -15,6 +15,7 @@
          text-transform:uppercase; cursor:pointer; }
   .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
   .hint { font-size:10px; color:#888; margin-top:8px; font-style:italic; }
+  .key { font-size:8.5px; color:#777; margin-top:10px; }
 
   .head { display:flex; justify-content:space-between; align-items:flex-end;
           border-bottom:2px solid #111; padding-bottom:8px; margin-bottom:12px; }
@@ -30,14 +31,21 @@
   td { font-size:10.5px; padding:7px 6px; border-bottom:1px solid #ddd; vertical-align:top; }
   tr { page-break-inside:avoid; }
 
-  .c-name { width:15%; font-weight:bold; }
+  .c-name { width:14%; font-weight:bold; }
   .c-room { width:5%;  text-align:center; }
+  .c-din  { width:6%;  text-align:center; }
   .c-pax  { width:4%;  text-align:center; }
-  .c-diet { width:19%; }
+  .c-diet { width:17%; }
   .c-dep  { width:10%; }
-  .c-dt   { width:8%; }
-  .c-bt   { width:8%; }
-  .c-com  { width:31%; }
+  .c-dt   { width:7%; }
+  .c-bt   { width:7%; }
+  .c-com  { width:30%; }
+
+  .yes { color:#3F7A52; font-weight:bold; }
+  .no  { color:#A8321E; }
+  .unk { color:#bbb; }
+  .row-out td { background:#FAF6F5; }
+  .row-unk td { background:#FCFCFB; }
 
   .sub { display:block; font-size:8.5px; color:#777; font-weight:normal; margin-top:2px; }
   .allergen { color:#A8321E; font-weight:bold; }
@@ -70,8 +78,8 @@
     <div class="title" id="title">Dinner Service</div>
   </div>
   <div class="counts">
-    <div><b id="nCovers">–</b> covers</div>
-    <div><span id="nParties">–</span> bookings</div>
+    <div><b id="nCovers">–</b> dinner covers</div>
+    <div><span id="nRooms">–</span> rooms in house</div>
   </div>
 </div>
 
@@ -81,6 +89,7 @@
       <tr>
         <th class="c-name">Name</th>
         <th class="c-room">Room</th>
+        <th class="c-din">Dinner</th>
         <th class="c-pax">Pax</th>
         <th class="c-diet">Dietaries</th>
         <th class="c-dep">Departs</th>
@@ -93,6 +102,7 @@
   </table>
 </div>
 
+<div class="key">All occupied rooms are listed for breakfast. Dinner column: <b>Yes</b> dining · <b>No</b> declined · <b>—</b> no reply.</div>
 <div class="hint">Scroll sideways to see all columns. Printing uses full A4 landscape.</div>
 
 <div class="foot" id="foot"></div>
@@ -112,7 +122,7 @@ function label(){
   var m=['January','February','March','April','May','June','July','August','September','October','November','December'];
   return days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();
 }
-document.getElementById('title').textContent = 'Dinner Service — ' + label();
+document.getElementById('title').textContent = 'Service Sheet — ' + label();
 
 function tidyPhone(p){
   if (!p) return '';
@@ -172,53 +182,65 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()) ])
       return null;
     }
 
-    var dining = [], notDining = [];
+    // ── everyone in house, plus externals dining ──────────
+    var rows = [], covers = 0, roomsInHouse = 0;
 
     for (var n=1; n<=ROOMS; n++){
       var r = roomRecord(n);
-      if (!r || r.status === 'vacant') continue;
-      (r.status === 'in' ? dining : notDining).push(r);
+      if (r && r.status === 'vacant') continue;   // room empty tonight
+      roomsInHouse++;
+      rows.push({
+        rec: r || { room:String(n) },
+        room: n,
+        status: r ? r.status : null               // null = no reply yet
+      });
+      if (r && r.status === 'in') covers += (r.pax || 1);
     }
 
-    // ── externals ─────────────────────────────────────────
+    var externals = [];
     for (var k in responses){
       var g = responses[k];
       if (g.room) continue;
       if (manual['extcancel-'+k]) continue;
+      if (g.status !== 'in') continue;
       g.phone = g.phone || k;
-      (g.status === 'in' ? dining : notDining).push(g);
+      externals.push({ rec:g, room:null, status:'in' });
+      covers += (g.pax || 1);
     }
     for (var k in manual){
       if (k.indexOf('ext-') !== 0) continue;
-      var m = manual[k];
-      if (m.status === 'in') dining.push(m);
+      if (manual[k].status !== 'in') continue;
+      externals.push({ rec:manual[k], room:null, status:'in' });
+      covers += (manual[k].pax || 1);
     }
+    externals.sort(function(a,b){ return (a.rec.name||'').localeCompare(b.rec.name||''); });
+    rows = rows.concat(externals);
 
-    dining.sort(function(a,b){
-      var ar = a.room ? parseInt(a.room,10) : 999;
-      var br = b.room ? parseInt(b.room,10) : 999;
-      if (ar !== br) return ar - br;
-      return (a.name||'').localeCompare(b.name||'');
-    });
-
-    var covers = dining.reduce(function(t,g){ return t + (g.pax||1); }, 0);
-    document.getElementById('nCovers').textContent  = covers;
-    document.getElementById('nParties').textContent = dining.length;
+    document.getElementById('nCovers').textContent = covers;
+    document.getElementById('nRooms').textContent  = roomsInHouse;
 
     var tb = document.getElementById('rows');
 
-    dining.forEach(function(g){
+    rows.forEach(function(row){
+      var g = row.rec;
       var phone = tidyPhone(g.phone);
-      var name  = g.name
+
+      var name = g.name
         ? g.name
-        : (g.room ? '<span class="muted">Room guest</span>' : (phone || '<span class="muted">Guest</span>'));
-      var nameCell = name + (phone && !g.room ? '<span class="sub">'+phone+'</span>' : '');
+        : (row.room ? '<span class="muted">Room guest</span>' : (phone || '<span class="muted">Guest</span>'));
+      var nameCell = name + (phone && !row.room ? '<span class="sub">'+phone+'</span>' : '');
+
+      var dinner, cls = '';
+      if (row.status === 'in')       dinner = '<span class="yes">Yes</span>';
+      else if (row.status === 'out') { dinner = '<span class="no">No</span>'; cls = ' class="row-out"'; }
+      else                           { dinner = '<span class="unk">—</span>';  cls = ' class="row-unk"'; }
 
       tb.insertAdjacentHTML('beforeend',
-        '<tr>'+
+        '<tr'+cls+'>'+
           '<td class="c-name">'+nameCell+'</td>'+
-          '<td class="c-room">'+(g.room||'<span class="muted">ext</span>')+'</td>'+
-          '<td class="c-pax">'+(g.pax||1)+'</td>'+
+          '<td class="c-room">'+(row.room || '<span class="muted">ext</span>')+'</td>'+
+          '<td class="c-din">'+dinner+'</td>'+
+          '<td class="c-pax">'+(row.status==='in' ? (g.pax||1) : '')+'</td>'+
           '<td>'+dietHTML(g.diets)+'</td>'+
           '<td>'+depHTML(g.departs)+'</td>'+
           '<td></td>'+
@@ -227,11 +249,13 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()) ])
         '</tr>');
     });
 
-    // write-in rows
-    for (var i=dining.length; i<14; i++){
+    for (var i=rows.length; i<16; i++){
       tb.insertAdjacentHTML('beforeend',
-        '<tr class="blank"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>');
+        '<tr class="blank">'+Array(10).join('<td></td>')+'</tr>');
     }
+
+    var dining = rows.filter(function(r){ return r.status==='in'; }).map(function(r){ return r.rec; });
+    var notDining = rows.filter(function(r){ return r.status==='out'; }).map(function(r){ return r.rec; });
 
     // ── footer notes ──────────────────────────────────────
     var foot = [];
@@ -245,13 +269,10 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()) ])
         outs.map(function(g){ return (g.room ? 'Room '+g.room : (g.name||'Guest')); }).join(' · ') + '</div>');
     }
 
-    var named = notDining.filter(function(g){ return g.room || g.name; });
-    if (named.length){
-      foot.push('<div><b>Not dining</b><br>' +
-        named.map(function(g){
-          return g.room ? ('Room '+g.room + (g.name ? ' — '+g.name : ''))
-                        : (g.name || tidyPhone(g.phone) || 'Guest');
-        }).join(' · ') + '</div>');
+    var awaiting = rows.filter(function(r){ return r.room && r.status === null; });
+    if (awaiting.length){
+      foot.push('<div><b>No dinner reply</b><br>' +
+        awaiting.map(function(r){ return 'Room '+r.room; }).join(' · ') + '</div>');
     }
 
     document.getElementById('foot').innerHTML = foot.join('<br>');
