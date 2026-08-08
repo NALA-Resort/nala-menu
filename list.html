@@ -14,21 +14,22 @@
          font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
          text-transform:uppercase; cursor:pointer; }
   .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
-  .hint { font-size:10px; color:#888; margin-top:8px; font-style:italic; }
-  .key { font-size:8.5px; color:#777; margin-top:10px; }
+  .stamp { margin-top:8px; font-size:7.5px; letter-spacing:.1em;
+           text-transform:uppercase; color:#999; }
 
   .head { display:flex; justify-content:space-between; align-items:flex-end;
           border-bottom:2px solid #111; padding-bottom:6px; margin-bottom:9px; }
   .brand { font-size:9px; letter-spacing:.4em; text-transform:uppercase; color:#777; }
   .title { font-size:16px; font-weight:bold; margin-top:3px; }
-  .counts { text-align:right; font-size:10px; line-height:1.5; white-space:nowrap; }
-  .counts b { font-size:19px; }
+  .counts { display:flex; gap:20px; align-items:baseline; white-space:nowrap; }
+  .counts span { font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:#666; }
+  .counts b { font-size:17px; color:#111; margin-right:5px; letter-spacing:0; }
 
   .scroller { overflow-x:auto; -webkit-overflow-scrolling:touch; }
   table { width:100%; min-width:760px; border-collapse:collapse; }
   th { font-size:7px; letter-spacing:.16em; text-transform:uppercase; color:#666;
        text-align:left; padding:0 6px 6px; border-bottom:1px solid #111; white-space:nowrap; }
-  td { font-size:9px; padding:5px 5px; border-bottom:1px solid #ddd; vertical-align:top; }
+  td { font-size:9.5px; padding:7.5px 5px; border-bottom:1px solid #ddd; vertical-align:top; }
   tr { page-break-inside:avoid; }
 
   .c-name { width:16%; font-weight:bold; }
@@ -54,7 +55,7 @@
   .muted { color:#aaa; font-weight:normal; font-style:italic; }
 
   /* empty write-in rows: one rule only, from the cell border */
-  tr.blank td { height:19px; }
+  tr.blank td { height:26px; }
 
   tr.totalrow td { border-top:2px solid #111; border-bottom:none; padding-top:7px; }
   .tot-val { font-size:14px; font-weight:bold; text-align:center; }
@@ -81,11 +82,12 @@
 <div class="head">
   <div>
     <div class="brand">Nala</div>
-    <div class="title" id="title">Dinner Service</div>
+    <div class="title" id="title"></div>
   </div>
   <div class="counts">
-    <div><b id="nCovers">–</b> dinner covers</div>
-    <div><span id="nRooms">–</span> rooms in house</div>
+    <span><b id="nRooms">–</b> in house</span>
+    <span><b id="nTables">–</b> tables</span>
+    <span><b id="nCovers">–</b> covers</span>
   </div>
 </div>
 
@@ -118,13 +120,25 @@ function key(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0
 function todayKey(){ return key(new Date()); }
 function tomorrowKey(){ var d=new Date(); d.setDate(d.getDate()+1); return key(d); }
 
+function ord(n){
+  if (n>3 && n<21) return 'th';
+  return ['th','st','nd','rd'][n%10] || 'th';
+}
 function label(){
   var d=new Date();
   var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  var m=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  return days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();
+  var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return days[d.getDay()]+' '+d.getDate()+ord(d.getDate())+' '+m[d.getMonth()];
 }
-document.getElementById('title').textContent = 'Service Sheet — ' + label();
+document.getElementById('title').textContent = label();
+
+(function stamp(){
+  var n=new Date();
+  var hh=n.getHours(), mm=String(n.getMinutes()).padStart(2,'0');
+  var ap=hh>=12?'pm':'am'; hh=hh%12||12;
+  document.getElementById('stamp').textContent =
+    'Printed '+n.getDate()+'/'+(n.getMonth()+1)+'/'+n.getFullYear()+' '+hh+':'+mm+ap;
+})();
 
 function tidyPhone(p){
   if (!p) return '';
@@ -255,7 +269,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), api('/r
         '</tr>');
     });
 
-    for (var i=rows.length; i<26; i++){
+    for (var i=rows.length; i<21; i++){
       tb.insertAdjacentHTML('beforeend',
         '<tr class="blank">'+Array(10).join('<td></td>')+'</tr>');
     }
@@ -265,6 +279,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), api('/r
 
     // ── total row, aligned under the Pax column ───────────
     var tables = rows.filter(function(r){ return r.status === 'in'; }).length;
+    document.getElementById('nTables').textContent = tables;
 
     tb.insertAdjacentHTML('beforeend',
       '<tr class="totalrow">'+
