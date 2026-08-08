@@ -213,6 +213,7 @@ var ICON_STAFF = '<svg viewBox="0 0 24 24" stroke-width="0"><path d="M4 21V4.5C4
 
 var responses = {};   // keyed by phone (digital) or manual key
 var cancelledExt = {};
+var roomguests = {};
 var manual = {};      // keyed by 'room-N' or 'ext-<id>'
 
 function api(path, method, body){
@@ -338,9 +339,11 @@ function render(){
 
   rows.forEach(function(r){
     var g = r.g;
+    var known = (r.room && roomguests[String(r.room)]) || {};
+    var shownName = g.name || known.name || '';
     var title;
     if (r.room) {
-      title = '<span class="rm">Room '+r.room+'</span>' + (g.name ? '  '+g.name : '');
+      title = '<span class="rm">Room '+r.room+'</span>' + (shownName ? '  '+shownName : '');
     } else {
       title = (g.name || g.phone || 'Guest') + '<span class="tag">External</span>';
     }
@@ -666,10 +669,12 @@ document.getElementById('legStaff').innerHTML = ICON_STAFF;
 
 Promise.all([
   api('/responses/'+todayKey()),
-  api('/manual/'+todayKey())
+  api('/manual/'+todayKey()),
+  api('/roomguests')
 ]).then(function(r){
-  responses = r[0] || {};
-  manual    = r[1] || {};
+  responses  = r[0] || {};
+  manual     = r[1] || {};
+  roomguests = r[2] || {};
   render();
 });
 </script>
