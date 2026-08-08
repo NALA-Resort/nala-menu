@@ -34,6 +34,10 @@
        text-align:left; padding:0 5px 6px; border-bottom:1px solid #111;
        white-space:nowrap; vertical-align:bottom; }
   th.wrap { white-space:normal; line-height:1.25; text-align:center; }
+
+  /* box the hand-written table columns */
+  th.c-dt, td.c-dt { border-left:1px solid #999; }
+  th.c-bt, td.c-bt { border-left:1px solid #bbb; border-right:1px solid #999; }
   td { font-size:9.5px; padding:7.5px 5px; border-bottom:1px solid #ddd; vertical-align:top; }
   tr { page-break-inside:avoid; }
 
@@ -96,12 +100,12 @@
       <tr>
         <th class="c-name">Name</th>
         <th class="c-room">Room</th>
+        <th class="c-dt wrap">Dinner<br>table</th>
+        <th class="c-bt wrap">B'fast<br>table</th>
         <th class="c-din">Dinner</th>
         <th class="c-pax">Pax</th>
         <th class="c-diet">Dietaries</th>
         <th class="c-dep">Departs</th>
-        <th class="c-dt wrap">Dinner<br>table</th>
-        <th class="c-bt wrap">B'fast<br>table</th>
         <th class="c-com">Comments</th>
       </tr>
     </thead>
@@ -258,19 +262,20 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), api('/r
         '<tr'+cls+'>'+
           '<td class="c-name">'+nameCell+'</td>'+
           '<td class="c-room">'+(row.room || '<span class="muted">ext</span>')+'</td>'+
+          '<td class="c-dt"></td>'+
+          '<td class="c-bt"></td>'+
           '<td class="c-din">'+dinner+'</td>'+
           '<td class="c-pax">'+(row.status==='in' ? (g.pax||1) : '')+'</td>'+
           '<td>'+dietHTML(g.diets)+'</td>'+
           '<td>'+depHTML(g.departs)+'</td>'+
-          '<td></td>'+
-          '<td></td>'+
           '<td>'+(g.note||'')+'</td>'+
         '</tr>');
     });
 
     for (var i=rows.length; i<21; i++){
       tb.insertAdjacentHTML('beforeend',
-        '<tr class="blank">'+Array(10).join('<td></td>')+'</tr>');
+        '<tr class="blank"><td></td><td></td><td class="c-dt"></td><td class="c-bt"></td>'+
+        '<td></td><td></td><td></td><td></td><td></td></tr>');
     }
 
     var dining = rows.filter(function(r){ return r.status==='in'; }).map(function(r){ return r.rec; });
