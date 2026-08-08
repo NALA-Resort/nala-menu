@@ -57,9 +57,9 @@
   tr.blank td { height:20px; }
 
   tr.totalrow td { border-top:2px solid #111; border-bottom:none; padding-top:7px; }
-  .tot-lbl { font-size:8px; letter-spacing:.16em; text-transform:uppercase; color:#666;
-             text-align:right; padding-right:8px; }
-  .tot-val { font-size:14px; font-weight:bold; }
+  .tot-val { font-size:14px; font-weight:bold; text-align:center; }
+  .tot-cap { display:block; font-size:7px; font-weight:normal; letter-spacing:.16em;
+             text-transform:uppercase; color:#666; margin-top:2px; }
 
   @media print {
     .bar, .hint, .key { display:none; }
@@ -264,12 +264,14 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), api('/r
     var notDining = rows.filter(function(r){ return r.status==='out'; }).map(function(r){ return r.rec; });
 
     // ── total row, aligned under the Pax column ───────────
+    var tables = rows.filter(function(r){ return r.status === 'in'; }).length;
+
     tb.insertAdjacentHTML('beforeend',
       '<tr class="totalrow">'+
         '<td></td>'+
         '<td></td>'+
-        '<td class="c-din tot-lbl">Total</td>'+
-        '<td class="c-pax tot-val">'+covers+'</td>'+
+        '<td class="c-din tot-val">'+tables+'<span class="tot-cap">tables</span></td>'+
+        '<td class="c-pax tot-val">'+covers+'<span class="tot-cap">covers</span></td>'+
         '<td></td><td></td><td></td><td></td><td></td>'+
       '</tr>');
 
