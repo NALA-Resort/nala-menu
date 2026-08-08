@@ -110,8 +110,8 @@
 
   .sheet-label { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.25em;
                  text-transform:uppercase; color:var(--mid); text-align:center; margin-bottom:8px; }
-  .txt { width:100%; padding:11px 12px; margin-bottom:8px; border:1px solid var(--rule);
-         background:transparent; font-family:Georgia,serif; font-size:14px; color:var(--ink); }
+  .txt { width:100%; padding:12px; margin-bottom:8px; border:1px solid var(--rule);
+         background:transparent; font-family:Georgia,serif; font-size:16px; color:var(--ink); }
   .txt::placeholder { color:var(--mid); font-style:italic; }
   .txt:focus { outline:none; border-color:var(--ink); }
 </style>
@@ -141,13 +141,10 @@
   </div>
 
   <div class="sec">
-    <span>External guests</span>
-    <a href="#" id="addExt">+ Add</a>
+    <span>Bookings</span>
+    <a href="#" id="addExt">+ Add external</a>
   </div>
-  <div id="listExt"></div>
-
-  <div class="sec">Detail</div>
-  <div id="listDetail"></div>
+  <div id="listBookings"></div>
 
   <div class="actions">
     <a class="btn solid" href="list.html">Print list</a>
@@ -243,52 +240,61 @@ function render(){
     })(n);
   }
 
-  // externals
-  var exts=[];
-  for (var k in responses){ if(!responses[k].room) exts.push({key:k,g:responses[k],src:'digital'}); }
-  for (var k in manual){ if(k.indexOf('ext-')===0) exts.push({key:k,g:manual[k],src:'manual'}); }
+  // one combined bookings list
+  var rows = [];
 
-  var elExt=document.getElementById('listExt');
-  elExt.innerHTML='';
-  if(!exts.length) elExt.innerHTML='<div class="empty">None</div>';
-  exts.forEach(function(e){
-    var g=e.g;
-    if (g.status==='in') covers += (g.pax||1); else notDining += (g.pax||1);
-    var sub = g.status==='in' ? 'Dining' : 'Not dining';
-    var d=dietHTML(g.diets); if(d) sub += ' · '+d;
-    if (g.note) sub += ' · “'+g.note+'”';
-    if (g.phone) sub += ' · ' + g.phone;
-    var rowEl = document.createElement('div');
-    rowEl.className = 'row';
-    rowEl.innerHTML =
-      '<div><div class="row-name">'+(g.name||g.phone||'Guest')+'</div>'+
-      '<div class="row-sub">'+sub+'</div></div>'+
-      '<div class="row-pax">'+(g.status==='in' ? (g.pax||1)+' pax' : '')+'</div>';
-    if (e.src === 'manual') {
-      rowEl.style.cursor = 'pointer';
-      rowEl.onclick = (function(key, rec){ return function(){ editExt(key, rec); }; })(e.key, g);
+  for (var n2=1; n2<=ROOMS; n2++){
+    var s = roomState(n2);
+    if (s && s.g.status==='in') rows.push({ g:s.g, room:n2, src:s.src, key:s.key });
+  }
+
+  for (var k in responses){
+    var g = responses[k];
+    if (!g.room && g.status==='in') rows.push({ g:g, room:null, src:'digital', key:k });
+  }
+  for (var k in manual){
+    if (k.indexOf('ext-')!==0) continue;
+    if (manual[k].status!=='in') continue;
+    rows.push({ g:manual[k], room:null, src:'manual', key:k });
+  }
+
+  rows.forEach(function(r){ covers += (r.g.pax||1); });
+
+  // declines
+  for (var n2=1; n2<=ROOMS; n2++){
+    var s = roomState(n2);
+    if (s && s.g.status==='out') notDining += (s.g.pax||1);
+  }
+  for (var k in responses){
+    var g = responses[k];
+    if (!g.room && g.status==='out') notDining += (g.pax||1);
+  }
+
+  var el = document.getElementById('listBookings');
+  el.innerHTML='';
+  if(!rows.length) el.innerHTML='<div class="empty">No bookings yet</div>';
+
+  rows.forEach(function(r){
+    var g = r.g;
+    var title = g.name || (r.room ? 'Room '+r.room : g.phone || 'Guest');
+    var sub = [];
+    if (r.room && g.name) sub.push('Room '+r.room);
+    if (!r.room) sub.push('External');
+    var d = dietHTML(g.diets); if(d) sub.push(d);
+    if (g.note) sub.push('“'+g.note+'”');
+    if (g.phone && !g.name) {} else if (g.phone) sub.push(g.phone);
+
+    var row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML =
+      '<div><div class="row-name">'+title+'</div>'+
+      (sub.length ? '<div class="row-sub">'+sub.join(' · ')+'</div>' : '')+
+      '</div><div class="row-pax">'+(g.pax||1)+' pax</div>';
+    if (r.src === 'manual' && r.key.indexOf('ext-')===0){
+      row.style.cursor='pointer';
+      row.onclick = (function(key, rec){ return function(){ editExt(key, rec); }; })(r.key, g);
     }
-    elExt.appendChild(rowEl);
-  });
-
-  // detail list (dining only, with notes/diets)
-  var det=[];
-  for (var k in responses){ if(responses[k].status==='in') det.push(responses[k]); }
-  for (var k in manual){ if(manual[k].status==='in') det.push(manual[k]); }
-  det.sort(function(a,b){ return (a.room||99)-(b.room||99); });
-
-  var elDet=document.getElementById('listDetail');
-  elDet.innerHTML='';
-  if(!det.length) elDet.innerHTML='<div class="empty">No confirmations yet</div>';
-  det.forEach(function(g){
-    var sub=[];
-    if(g.room) sub.push('Room '+g.room);
-    var d=dietHTML(g.diets); if(d) sub.push(d);
-    if(g.note) sub.push('“'+g.note+'”');
-    elDet.insertAdjacentHTML('beforeend',
-      '<div class="row"><div><div class="row-name">'+(g.name||g.phone||('Room '+g.room))+'</div>'+
-      (sub.length?'<div class="row-sub">'+sub.join(' · ')+'</div>':'')+
-      '</div><div class="row-pax">'+(g.pax||1)+' pax</div></div>');
+    el.appendChild(row);
   });
 
   document.getElementById('nCovers').textContent = covers;
