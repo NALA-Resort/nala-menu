@@ -33,8 +33,10 @@
   .sec { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
          text-transform:uppercase; color:var(--mid); margin:26px 0 12px;
          display:flex; justify-content:space-between; align-items:baseline; }
-  .sec a { color:var(--mid); text-decoration:none; border-bottom:1px solid var(--rule);
-           font-size:8px; letter-spacing:.15em; }
+  .sec a { color:var(--ink); text-decoration:none; border:1px solid var(--rule);
+           font-size:9px; letter-spacing:.14em; padding:6px 12px; border-radius:2px;
+           background:transparent; }
+  .sec a.active { background:var(--ink); color:var(--cream); border-color:var(--ink); }
 
   /* room grid */
   .rooms { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; }
@@ -448,7 +450,9 @@ function selCountUpdate(){
 function exitSelect(){
   selectMode = false;
   selected = {};
-  document.getElementById('selToggle').textContent = 'Select multiple';
+  var tgl = document.getElementById('selToggle');
+  tgl.textContent = 'Select multiple';
+  tgl.className = '';
   selBar.className = 'selbar';
   render();
 }
@@ -458,6 +462,7 @@ document.getElementById('selToggle').onclick = function(e){
   selectMode = !selectMode;
   selected = {};
   this.textContent = selectMode ? 'Cancel' : 'Select multiple';
+  this.className = selectMode ? 'active' : '';
   selCountUpdate();
   render();
 };
