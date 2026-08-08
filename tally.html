@@ -11,6 +11,12 @@
          padding:28px 24px 80px; -webkit-tap-highlight-color:transparent; }
   .wrap { max-width:520px; margin:0 auto; }
 
+  .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
+            background:#A8321E; color:#fff; padding:12px 18px;
+            font-family:Helvetica,Arial,sans-serif; font-size:11px; line-height:1.5;
+            transform:translateY(-100%); transition:transform .25s; }
+  .errbar.show { transform:translateY(0); }
+
   .wordmark { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.45em;
               text-transform:uppercase; color:var(--mid); text-align:center; }
   .date { text-align:center; font-family:Helvetica,Arial,sans-serif; font-size:13px; font-weight:bold;
@@ -135,6 +141,7 @@
 </style>
 </head>
 <body>
+<div class="errbar" id="errBar"></div>
 <div class="wrap">
   <div class="wordmark">Nala</div>
   <div class="date" id="date"></div>
@@ -211,7 +218,30 @@ var manual = {};      // keyed by 'room-N' or 'ext-<id>'
 function api(path, method, body){
   var o = { method: method||'GET' };
   if (body !== undefined) { o.headers={'Content-Type':'application/json'}; o.body=JSON.stringify(body); }
-  return fetch(DB+path+'.json'+(method?'':'?v='+Date.now()), o).then(function(r){return r.json();});
+  return fetch(DB+path+'.json'+(method?'':'?v='+Date.now()), o)
+    .then(function(r){
+      if (!r.ok && method) {
+        return r.text().then(function(t){
+          showError('Not saved \u2014 the database rejected the change. ' +
+                    'Check the Realtime Database rules allow writes to /manual.');
+          throw new Error(t);
+        });
+      }
+      return r.json();
+    })
+    .catch(function(e){
+      if (method) showError('Not saved \u2014 no connection to the database.');
+      throw e;
+    });
+}
+
+var errTimer;
+function showError(msg){
+  var el = document.getElementById('errBar');
+  el.textContent = msg;
+  el.className = 'errbar show';
+  clearTimeout(errTimer);
+  errTimer = setTimeout(function(){ el.className='errbar'; }, 6000);
 }
 
 // ── build a unified view keyed by room ─────────────────────
