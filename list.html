@@ -12,11 +12,13 @@
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: Helvetica, Arial, sans-serif; color:#111; background:#fff; padding:16px; }
 
-  .bar { margin-bottom:14px; display:flex; gap:8px; }
+  .bar { margin-bottom:14px; display:flex; gap:8px; align-items:center; }
   .btn { padding:10px 20px; background:#111; color:#fff; border:none;
          font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
          text-transform:uppercase; cursor:pointer; }
   .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+  .dnavwrap { display:inline-flex; gap:6px; margin-left:auto; }
+  .dnavwrap .btn { padding:10px 14px; }
   .stamp { margin-top:8px; font-size:7.5px; letter-spacing:.1em;
            text-transform:uppercase; color:#999; }
 
@@ -81,6 +83,11 @@
 <div class="bar">
   <button class="btn" onclick="window.print()">Print</button>
   <button class="btn ghost" onclick="location.reload()">Refresh</button>
+  <span class="dnavwrap">
+    <button class="btn ghost" id="dPrev">&#8249;</button>
+    <button class="btn ghost" id="dNext">&#8250;</button>
+    <button class="btn ghost" id="dToday">Today</button>
+  </span>
 </div>
 
 <div class="head">
@@ -119,21 +126,50 @@ var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var ALLERGENS = ['Nut allergy','Shellfish allergy','Egg allergy'];
 var ROOMS = 17;
 
+
+// ── viewed date ────────────────────────────────────────────
+function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+var VIEW = (function(){
+  var q = new URLSearchParams(location.search).get('date');
+  if (q && /^\d{4}-\d{2}-\d{2}$/.test(q)) {
+    var p = q.split('-');
+    return new Date(+p[0], +p[1]-1, +p[2]);
+  }
+  return new Date();
+})();
+
+function isToday(){ return dkey(VIEW) === dkey(new Date()); }
+function shiftDate(n){
+  var d = new Date(VIEW); d.setDate(d.getDate()+n);
+  var q = new URLSearchParams(location.search);
+  q.set('date', dkey(d));
+  location.search = q.toString();
+}
+function goToday(){
+  var q = new URLSearchParams(location.search);
+  q.delete('date');
+  location.search = q.toString();
+}
+
 function key(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-function todayKey(){ return key(new Date()); }
-function tomorrowKey(){ var d=new Date(); d.setDate(d.getDate()+1); return key(d); }
+function todayKey(){ return dkey(VIEW); }
+function tomorrowKey(){ var d=new Date(VIEW); d.setDate(d.getDate()+1); return key(d); }
 
 function ord(n){
   if (n>3 && n<21) return 'th';
   return ['th','st','nd','rd'][n%10] || 'th';
 }
 function label(){
-  var d=new Date();
+  var d=VIEW;
   var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return days[d.getDay()]+' '+d.getDate()+ord(d.getDate())+' '+m[d.getMonth()];
 }
 document.getElementById('title').textContent = label();
+document.getElementById('dPrev').onclick  = function(){ shiftDate(-1); };
+document.getElementById('dNext').onclick  = function(){ shiftDate(1); };
+document.getElementById('dToday').onclick = function(){ goToday(); };
 
 (function stamp(){
   var el = document.getElementById('stamp');
