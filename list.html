@@ -27,20 +27,22 @@
 
   .scroller { overflow-x:auto; -webkit-overflow-scrolling:touch; }
   table { width:100%; min-width:760px; border-collapse:collapse; }
-  th { font-size:7px; letter-spacing:.16em; text-transform:uppercase; color:#666;
-       text-align:left; padding:0 6px 6px; border-bottom:1px solid #111; white-space:nowrap; }
+  th { font-size:7px; letter-spacing:.12em; text-transform:uppercase; color:#666;
+       text-align:left; padding:0 5px 6px; border-bottom:1px solid #111;
+       white-space:nowrap; vertical-align:bottom; }
+  th.wrap { white-space:normal; line-height:1.25; text-align:center; }
   td { font-size:9.5px; padding:7.5px 5px; border-bottom:1px solid #ddd; vertical-align:top; }
   tr { page-break-inside:avoid; }
 
-  .c-name { width:16%; font-weight:bold; }
+  .c-name { width:17%; font-weight:bold; }
   .c-room { width:5%;  text-align:center; }
   .c-din  { width:6%;  text-align:center; }
   .c-pax  { width:4%;  text-align:center; }
-  .c-diet { width:18%; }
-  .c-dep  { width:11%; }
-  .c-dt   { width:8%;  text-align:center; }
-  .c-bt   { width:8%;  text-align:center; }
-  .c-com  { width:24%; }
+  .c-diet { width:19%; }
+  .c-dep  { width:10%; }
+  .c-dt   { width:5%;  text-align:center; }
+  .c-bt   { width:5%;  text-align:center; }
+  .c-com  { width:29%; }
 
   .yes { color:#3F7A52; font-weight:bold; }
   .no  { color:#A8321E; }
@@ -50,8 +52,7 @@
 
   .sub { display:block; font-size:8px; color:#777; font-weight:normal; margin-top:2px; }
   .allergen { color:#A8321E; font-weight:bold; }
-  .checkout { color:#A8321E; font-weight:bold; font-size:8px; letter-spacing:.08em;
-              text-transform:uppercase; display:block; margin-top:2px; }
+  .checkout { color:#A8321E; font-weight:bold; }
   .muted { color:#aaa; font-weight:normal; font-style:italic; }
 
   /* empty write-in rows: one rule only, from the cell border */
@@ -81,7 +82,6 @@
     <div class="title" id="title"></div>
   </div>
   <div class="counts">
-    <span><b id="nRooms">–</b> in house</span>
     <span><b id="nTables">–</b> tables</span>
     <span><b id="nCovers">–</b> covers</span>
   </div>
@@ -97,8 +97,8 @@
         <th class="c-pax">Pax</th>
         <th class="c-diet">Dietaries</th>
         <th class="c-dep">Departs</th>
-        <th class="c-dt">Dinner table</th>
-        <th class="c-bt">Breakfast table</th>
+        <th class="c-dt wrap">Dinner<br>table</th>
+        <th class="c-bt wrap">B'fast<br>table</th>
         <th class="c-com">Comments</th>
       </tr>
     </thead>
@@ -159,7 +159,7 @@ function depHTML(raw){
   var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var txt = days[d.getDay()]+' '+d.getDate()+' '+mo[d.getMonth()];
-  if (key(d) === tomorrowKey()) txt += '<span class="checkout">Check-out</span>';
+  if (key(d) === tomorrowKey()) return '<span class="checkout">'+txt+'</span>';
   return txt;
 }
 
@@ -234,7 +234,6 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), api('/r
     rows = rows.concat(externals);
 
     document.getElementById('nCovers').textContent = covers;
-    document.getElementById('nRooms').textContent  = roomsInHouse;
 
     var tb = document.getElementById('rows');
 
