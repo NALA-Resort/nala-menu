@@ -458,7 +458,7 @@
     // record who is in this room as soon as the link is opened,
     // so staff-entered bookings still carry the guest's details
     if (G.room) {
-      db('/roomguests/'+G.room, 'PUT', {
+      db('/roomguests/'+todayKey()+'/'+G.room, 'PUT', {
         name: G.name, phone: G.phone, departs: G.departs,
         at: new Date().toISOString()
       });
