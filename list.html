@@ -57,10 +57,6 @@
   /* empty write-in rows: one rule only, from the cell border */
   tr.blank td { height:26px; }
 
-  tr.totalrow td { border-top:2px solid #111; border-bottom:none; padding-top:7px; }
-  .tot-val { font-size:14px; font-weight:bold; text-align:center; }
-  .tot-cap { display:block; font-size:7px; font-weight:normal; letter-spacing:.16em;
-             text-transform:uppercase; color:#666; margin-top:2px; }
 
   @media print {
     .bar, .hint, .key { display:none; }
@@ -133,11 +129,12 @@ function label(){
 document.getElementById('title').textContent = label();
 
 (function stamp(){
+  var el = document.getElementById('stamp');
+  if (!el) return;
   var n=new Date();
   var hh=n.getHours(), mm=String(n.getMinutes()).padStart(2,'0');
   var ap=hh>=12?'pm':'am'; hh=hh%12||12;
-  document.getElementById('stamp').textContent =
-    'Printed '+n.getDate()+'/'+(n.getMonth()+1)+'/'+n.getFullYear()+' '+hh+':'+mm+ap;
+  el.textContent = 'Printed '+n.getDate()+'/'+(n.getMonth()+1)+'/'+n.getFullYear()+' '+hh+':'+mm+ap;
 })();
 
 function tidyPhone(p){
@@ -281,14 +278,6 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), api('/r
     var tables = rows.filter(function(r){ return r.status === 'in'; }).length;
     document.getElementById('nTables').textContent = tables;
 
-    tb.insertAdjacentHTML('beforeend',
-      '<tr class="totalrow">'+
-        '<td></td>'+
-        '<td></td>'+
-        '<td class="c-din tot-val">'+tables+'<span class="tot-cap">tables</span></td>'+
-        '<td class="c-pax tot-val">'+covers+'<span class="tot-cap">covers</span></td>'+
-        '<td></td><td></td><td></td><td></td><td></td>'+
-      '</tr>');
 
   });
 </script>
