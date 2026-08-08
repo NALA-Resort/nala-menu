@@ -102,6 +102,12 @@
          border-radius:50%; font-family:Helvetica,Arial,sans-serif; font-size:13px;
          color:var(--ink); cursor:pointer; }
   .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
+  .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
+          border-radius:20px; font-family:Helvetica,Arial,sans-serif; font-size:10px;
+          color:var(--mid); cursor:pointer; }
+  .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+
   .sheet-label { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.25em;
                  text-transform:uppercase; color:var(--mid); text-align:center; margin-bottom:8px; }
   .txt { width:100%; padding:11px 12px; margin-bottom:8px; border:1px solid var(--rule);
@@ -157,6 +163,8 @@
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var ROOMS = 17;
 var ALLERGENS = ['Nut allergy','Shellfish allergy','Egg allergy'];
+var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+                 'Nut allergy','Shellfish allergy','Egg allergy'];
 
 function todayKey(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function label(){var d=new Date();
@@ -248,6 +256,7 @@ function render(){
     if (g.status==='in') covers += (g.pax||1); else notDining += (g.pax||1);
     var sub = g.status==='in' ? 'Dining' : 'Not dining';
     var d=dietHTML(g.diets); if(d) sub += ' · '+d;
+    if (g.note) sub += ' · “'+g.note+'”';
     if (g.phone) sub += ' · ' + g.phone;
     var rowEl = document.createElement('div');
     rowEl.className = 'row';
@@ -265,7 +274,7 @@ function render(){
   // detail list (dining only, with notes/diets)
   var det=[];
   for (var k in responses){ if(responses[k].status==='in') det.push(responses[k]); }
-  for (var k in manual){ if(manual[k].status==='in' && manual[k].name) det.push(manual[k]); }
+  for (var k in manual){ if(manual[k].status==='in') det.push(manual[k]); }
   det.sort(function(a,b){ return (a.room||99)-(b.room||99); });
 
   var elDet=document.getElementById('listDetail');
@@ -344,15 +353,17 @@ function openRoom(n, st){
 
 document.getElementById('addExt').onclick = function(e){
   e.preventDefault();
-  var pax=2;
+  var pax=2, diets=[];
   sheet.innerHTML =
     '<h3>External guest</h3>'+
     '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
     '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
     '<div class="sheet-label" style="margin-top:14px">Guests</div>'+
     '<div class="pax-row" id="paxRow"></div>'+
-    '<button class="opt solid" id="oIn">Dining</button>'+
-    '<button class="opt" id="oOut">Not dining</button>'+
+    '<div class="sheet-label">Dietary requirements</div>'+
+    '<div class="chips" id="dietChips"></div>'+
+    '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
+    '<button class="opt solid" id="oIn" style="margin-top:8px">Add</button>'+
     '<button class="opt quiet" id="oCancel">Cancel</button>';
   bd.className='backdrop show';
 
@@ -365,20 +376,32 @@ document.getElementById('addExt').onclick = function(e){
       r.appendChild(b);
     })(i);
   }
-  paintPax();
+  function paintChips(){
+    var box=document.getElementById('dietChips'); box.innerHTML='';
+    DIETARIES.forEach(function(d){
+      var b=document.createElement('button');
+      b.className='chip'+(diets.indexOf(d)>-1?' on':''); b.textContent=d;
+      b.onclick=function(){
+        var i=diets.indexOf(d);
+        if(i>-1) diets.splice(i,1); else diets.push(d);
+        paintChips();
+      };
+      box.appendChild(b);
+    });
+  }
+  paintPax(); paintChips();
 
-  function save(status){
-    var nm = document.getElementById('xName').value.trim();
-    var ph = document.getElementById('xPhone').value.trim();
+  document.getElementById('oIn').onclick=function(){
+    var nm=document.getElementById('xName').value.trim();
+    var ph=document.getElementById('xPhone').value.trim();
+    var nt=document.getElementById('xNote').value.trim();
     if(!nm){ document.getElementById('xName').focus(); return; }
     var id='ext-'+Date.now();
-    var rec={ status:status, pax:(status==='in'?pax:1), name:nm, phone:ph, source:'manual' };
+    var rec={ status:'in', pax:pax, name:nm, phone:ph, note:nt, diets:diets, source:'manual' };
     manual[id]=rec;
     api('/manual/'+todayKey()+'/'+id, 'PUT', rec);
     close(); render();
-  }
-  document.getElementById('oIn').onclick=function(){ save('in'); };
-  document.getElementById('oOut').onclick=function(){ save('out'); };
+  };
   document.getElementById('oCancel').onclick=close;
 };
 
