@@ -38,6 +38,29 @@
   .sentline input:focus { outline:none; border-bottom-color:var(--ink); }
   #savedTick { color:var(--mid); font-size:11px; }
 
+  .tot.pending { border-style:dashed; }
+  .tot.pending.warn { border-color:var(--red); border-style:solid; }
+  .tot.pending.warn .tot-n { color:var(--red); }
+
+  .panel { border:1px solid var(--rule); padding:4px 14px 12px; margin-top:-8px; }
+  .panel-row { display:flex; justify-content:space-between; align-items:center;
+               padding:10px 0; border-bottom:1px solid var(--rule); }
+  .panel-row:last-of-type { border-bottom:none; }
+  .panel-row label { font-family:Helvetica,Arial,sans-serif; font-size:10px;
+                     letter-spacing:.12em; text-transform:uppercase; color:var(--mid); }
+  .panel-row input {
+    width:58px; padding:4px 2px;
+    border:none; border-bottom:1px solid var(--rule); background:transparent;
+    font-family:Helvetica,Arial,sans-serif; font-size:15px; text-align:center;
+    color:var(--ink); -moz-appearance:textfield;
+  }
+  .panel-row input::-webkit-outer-spin-button,
+  .panel-row input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+  .panel-row input:focus { outline:none; border-bottom-color:var(--ink); }
+  .panel-note { font-style:italic; font-size:10px; color:var(--mid); line-height:1.5;
+                padding-top:10px; border-top:1px solid var(--rule); margin-top:2px; }
+  .panel-note.warn { color:var(--red); }
+
   .sec { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
          text-transform:uppercase; color:var(--mid); margin:26px 0 10px; }
 
@@ -64,7 +87,6 @@
 
   <div class="totals">
     <div class="tot"><div class="tot-n" id="nCovers">–</div><div class="tot-l">Covers</div></div>
-    <div class="tot"><div class="tot-n" id="nIn">–</div><div class="tot-l">Dining</div></div>
     <div class="tot"><div class="tot-n" id="nOut">–</div><div class="tot-l">Not dining</div></div>
     <div class="tot pending" id="pendingTile">
       <div class="tot-n" id="nPending">–</div>
@@ -72,10 +94,20 @@
     </div>
   </div>
 
-  <div class="sentline">
-    Link sent to
-    <input id="sentInput" type="number" min="0" inputmode="numeric" placeholder="–">
-    guests <span id="savedTick"></span>
+  <div class="panel">
+    <div class="panel-row">
+      <label for="inHouse">Guests in house</label>
+      <input id="inHouse" type="number" min="0" inputmode="numeric" placeholder="–">
+    </div>
+    <div class="panel-row">
+      <label for="vIn">Verbal — dining</label>
+      <input id="vIn" type="number" min="0" inputmode="numeric" placeholder="0">
+    </div>
+    <div class="panel-row">
+      <label for="vOut">Verbal — not dining</label>
+      <input id="vOut" type="number" min="0" inputmode="numeric" placeholder="0">
+    </div>
+    <div class="panel-note" id="panelNote">Counted in people, not parties. Only add verbal answers from guests who did <i>not</i> use the link.</div>
   </div>
 
   <div class="sec">Dining</div>
@@ -109,42 +141,83 @@ function dietHTML(diets){
   }).join(' · ');
 }
 
-var responded = 0;
+var digital = { covers:0, declines:0 };
 
-function paintPending(){
-  var sent = parseInt(document.getElementById('sentInput').value, 10);
+var F = {
+  inHouse: document.getElementById('inHouse'),
+  vIn:     document.getElementById('vIn'),
+  vOut:    document.getElementById('vOut')
+};
+var note = document.getElementById('panelNote');
+var NOTE_DEFAULT = note.innerHTML;
+
+function num(el){ var v = parseInt(el.value,10); return isNaN(v) ? 0 : v; }
+
+function paint(){
+  var covers   = digital.covers   + num(F.vIn);
+  var notDining= digital.declines + num(F.vOut);
+  var inHouse  = num(F.inHouse);
+
+  document.getElementById('nCovers').textContent = covers;
+  document.getElementById('nOut').textContent    = notDining;
+
   var tile = document.getElementById('pendingTile');
-  var el = document.getElementById('nPending');
-  if (isNaN(sent) || sent <= 0) {
+  var el   = document.getElementById('nPending');
+
+  if (!inHouse) {
     el.textContent = '–';
     tile.className = 'tot pending';
+    note.className = 'panel-note';
+    note.innerHTML = NOTE_DEFAULT;
     return;
   }
-  var pending = Math.max(0, sent - responded);
-  el.textContent = pending;
-  tile.className = 'tot pending' + (pending > 0 ? ' warn' : '');
+
+  var accounted = covers + notDining;
+  var pending   = inHouse - accounted;
+
+  if (pending < 0) {
+    el.textContent = '!';
+    tile.className = 'tot pending warn';
+    note.className = 'panel-note warn';
+    note.innerHTML = 'Responses exceed guests in house by ' + Math.abs(pending) +
+                     '. A verbal answer may have been counted twice.';
+  } else {
+    el.textContent = pending;
+    tile.className = 'tot pending' + (pending > 0 ? ' warn' : '');
+    note.className = 'panel-note';
+    note.innerHTML = NOTE_DEFAULT;
+  }
 }
 
-var sentInput = document.getElementById('sentInput');
-var tick = document.getElementById('savedTick');
-
-fetch(DB+'/settings/'+todayKey()+'/sent.json?v='+Date.now())
+// load saved settings for today
+fetch(DB+'/settings/'+todayKey()+'.json?v='+Date.now())
   .then(function(r){return r.json();})
-  .then(function(v){ if(v!==null && v!==undefined) sentInput.value = v; paintPending(); });
+  .then(function(s){
+    s = s || {};
+    if (s.inHouse != null) F.inHouse.value = s.inHouse;
+    if (s.vIn     != null) F.vIn.value     = s.vIn;
+    if (s.vOut    != null) F.vOut.value    = s.vOut;
+    paint();
+  });
 
 var saveTimer;
-sentInput.addEventListener('input', function(){
-  paintPending();
-  tick.textContent = '';
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(function(){
-    var v = parseInt(sentInput.value,10);
-    fetch(DB+'/settings/'+todayKey()+'/sent.json', {
-      method:'PUT', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(isNaN(v) ? null : v)
-    }).then(function(){ tick.textContent = 'saved'; setTimeout(function(){tick.textContent='';}, 1600); });
-  }, 600);
-});
+function wire(el, key){
+  el.addEventListener('input', function(){
+    paint();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){
+      var body = {};
+      body[key] = el.value === '' ? null : num(el);
+      fetch(DB+'/settings/'+todayKey()+'.json', {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+    }, 600);
+  });
+}
+wire(F.inHouse,'inHouse');
+wire(F.vIn,'vIn');
+wire(F.vOut,'vOut');
 
 fetch(DB+'/responses/'+todayKey()+'.json?v='+Date.now())
   .then(function(r){return r.json();})
@@ -158,11 +231,9 @@ fetch(DB+'/responses/'+todayKey()+'.json?v='+Date.now())
     ins.sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
     outs.sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
 
-    document.getElementById('nCovers').textContent = covers;
-    document.getElementById('nIn').textContent = ins.length;
-    document.getElementById('nOut').textContent = outs.length;
-    responded = ins.length + outs.length;
-    paintPending();
+    digital.covers = covers;
+    digital.declines = outs.reduce(function(t,g){ return t + (g.pax || 1); }, 0);
+    paint();
 
     var elIn=document.getElementById('listIn');
     if(!ins.length) elIn.innerHTML='<div class="empty">No confirmations yet</div>';
