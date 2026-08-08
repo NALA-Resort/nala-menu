@@ -134,127 +134,64 @@
   }
 
   /* ── RSVP ─────────────────────────────────────── */
-  #rsvp { display: none; border-top: 1px solid var(--rule); padding: 3vh 0 4vh; }
-  #rsvp.show { display: block; }
+  #rsvp { display:none; border-top:1px solid var(--rule); padding:3vh 0 4vh; }
+  #rsvp.show { display:block; }
 
-  .rsvp-greet {
-    text-align: center;
-    font-size: 15px;
-    color: var(--ink);
-    margin-bottom: 14px;
+  .r-q {
+    text-align:center; font-size:16px; color:var(--ink);
+    margin-bottom:16px; line-height:1.4;
   }
 
-  .rsvp-btns { display: flex; gap: 10px; }
+  .r-btns { display:flex; gap:10px; }
 
-  .rsvp-btn {
-    flex: 1;
-    padding: 13px 8px;
-    border: 1px solid var(--rule);
-    background: transparent;
-    border-radius: 2px;
-    font-family: Helvetica, Arial, sans-serif;
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--ink);
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .rsvp-btn.on { background: var(--ink); color: var(--cream); border-color: var(--ink); }
-
-  .rsvp-detail { display: none; margin-top: 18px; }
-  .rsvp-detail.show { display: block; }
-
-  .field { margin-bottom: 16px; }
-
-  .field-label {
-    font-family: Helvetica, Arial, sans-serif;
-    font-size: 8px;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    color: var(--mid);
-    margin-bottom: 8px;
-    text-align: center;
-  }
-
-  .pax-row { display: flex; gap: 6px; justify-content: center; }
-  .pax {
-    width: 38px; height: 38px;
-    border: 1px solid var(--rule);
-    background: transparent;
-    border-radius: 50%;
-    font-family: Helvetica, Arial, sans-serif;
-    font-size: 13px;
-    color: var(--ink);
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .pax.on { background: var(--ink); color: var(--cream); border-color: var(--ink); }
-
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
-  .chip {
-    padding: 7px 12px;
-    border: 1px solid var(--rule);
-    background: transparent;
-    border-radius: 20px;
-    font-family: Helvetica, Arial, sans-serif;
-    font-size: 10px;
-    color: var(--mid);
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .chip.on { background: var(--ink); color: var(--cream); border-color: var(--ink); }
-
-  .note-input {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid var(--rule);
-    background: transparent;
-    border-radius: 2px;
-    font-family: Georgia, serif;
-    font-style: italic;
-    font-size: 12px;
-    color: var(--ink);
-    resize: none;
-  }
-  .note-input::placeholder { color: var(--mid); }
-
-  .save-btn {
-    width: 100%;
-    padding: 14px;
-    margin-top: 6px;
-    border: none;
-    background: var(--ink);
-    color: var(--cream);
-    border-radius: 2px;
-    font-family: Helvetica, Arial, sans-serif;
-    font-size: 11px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .save-btn:disabled { opacity: 0.4; }
-
-  .confirm-out { display:none; margin-top:14px; text-align:center; }
-  .confirm-out.show { display:block; }
-  .confirm-out p { font-style:italic; font-size:13px; color:var(--ink); margin-bottom:12px; }
-  .confirm-row { display:flex; gap:10px; }
-  .confirm-row button {
-    flex:1; padding:13px 8px; border-radius:2px;
+  .r-btn {
+    flex:1; padding:14px 8px; border-radius:2px;
     font-family:Helvetica,Arial,sans-serif; font-size:11px;
     letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
     -webkit-tap-highlight-color:transparent;
+    border:1px solid var(--rule); background:transparent; color:var(--ink);
   }
-  .c-yes { border:none; background:#9E6455; color:#fff; }
-  .c-no  { border:1px solid var(--rule); background:transparent; color:var(--mid); }
+  .r-btn.primary { background:var(--ink); border-color:var(--ink); color:var(--cream); }
+  .r-btn.danger  { background:#9E6455; border-color:#9E6455; color:#fff; }
+  .r-btn.quiet   { color:var(--mid); }
 
-  .rsvp-status {
-    text-align: center;
-    font-style: italic;
-    font-size: 12px;
-    color: var(--mid);
-    line-height: 1.6;
+  .field { margin-bottom:18px; }
+  .field-label {
+    font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.25em;
+    text-transform:uppercase; color:var(--mid); margin-bottom:9px; text-align:center;
+  }
+
+  .pax-row { display:flex; gap:6px; justify-content:center; }
+  .pax {
+    width:40px; height:40px; border:1px solid var(--rule); background:transparent;
+    border-radius:50%; font-family:Helvetica,Arial,sans-serif; font-size:13px;
+    color:var(--ink); cursor:pointer; -webkit-tap-highlight-color:transparent;
+  }
+  .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+
+  .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; }
+  .chip {
+    padding:8px 13px; border:1px solid var(--rule); background:transparent;
+    border-radius:20px; font-family:Helvetica,Arial,sans-serif; font-size:10px;
+    color:var(--mid); cursor:pointer; -webkit-tap-highlight-color:transparent;
+  }
+  .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+
+  .note-input {
+    width:100%; padding:11px; border:1px solid var(--rule); background:transparent;
+    border-radius:2px; font-family:Georgia,serif; font-style:italic;
+    font-size:16px; color:var(--ink); resize:none;
+  }
+  .note-input::placeholder { color:var(--mid); }
+
+  .r-done { text-align:center; }
+  .r-done-t { font-size:16px; color:var(--ink); margin-bottom:8px; }
+  .r-done-s { font-style:italic; font-size:12px; color:var(--mid); }
+  .r-link {
+    display:inline-block; margin-top:12px; font-family:Helvetica,Arial,sans-serif;
+    font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--mid); border-bottom:1px solid var(--rule);
+    text-decoration:none; padding-bottom:2px; cursor:pointer;
   }
 </style>
 </head>
@@ -304,38 +241,7 @@
   </div>
 
 
-  <div id="rsvp">
-    <div class="rsvp-greet" id="rsvpGreet"></div>
-    <div id="rsvpChoice">
-      <div class="rsvp-btns">
-        <button class="rsvp-btn" id="btnIn">Dining tonight</button>
-        <button class="rsvp-btn" id="btnOut">Not tonight</button>
-      </div>
-      <div class="confirm-out" id="confirmOut">
-        <p>Confirm you won't be dining tonight?</p>
-        <div class="confirm-row">
-          <button class="c-yes" id="outYes">Yes, not tonight</button>
-          <button class="c-no"  id="outNo">Cancel</button>
-        </div>
-      </div>
-      <div class="rsvp-detail" id="rsvpDetail">
-        <div class="field">
-          <div class="field-label">Guests</div>
-          <div class="pax-row" id="paxRow"></div>
-        </div>
-        <div class="field">
-          <div class="field-label">Dietary requirements</div>
-          <div class="chips" id="dietChips"></div>
-        </div>
-        <div class="field">
-          <div class="field-label">Anything else</div>
-          <textarea class="note-input" id="noteInput" rows="2" placeholder="Celebrating something, arriving late…"></textarea>
-        </div>
-        <button class="save-btn" id="saveBtn">Confirm</button>
-      </div>
-    </div>
-    <div class="rsvp-status" id="rsvpStatus" style="display:none"></div>
-  </div>
+  <div id="rsvp"></div>
 
   <footer>
     <div class="pricing">2 courses $105 &nbsp;&nbsp; 3 courses $125</div>
@@ -422,169 +328,147 @@
   var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                    'Nut allergy','Shellfish allergy','Egg allergy'];
 
-  function todayKey() {
-    var d = new Date();
-    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  function todayKey(){
+    var d=new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   }
-  function pastCutoff() { return new Date().getHours() >= CUTOFF_HOUR; }
+  function pastCutoff(){ return new Date().getHours() >= CUTOFF_HOUR; }
 
   var qs = new URLSearchParams(location.search);
-  var G = {
-    phone: (qs.get('p')||'').replace(/\D/g,''),
-    room:  qs.get('r')||'',
-    name:  qs.get('n')||''
-  };
+  var G = { phone:(qs.get('p')||'').replace(/\D/g,''), room:qs.get('r')||'', name:qs.get('n')||'' };
 
-  var state = { status:null, pax:2, diets:[], note:'' };
+  var state = { pax:2, diets:[], note:'' };
+  var panel = document.getElementById('rsvp');
 
-  function db(path, method, body) {
-    var opts = { method: method || 'GET' };
-    if (body) { opts.headers = {'Content-Type':'application/json'}; opts.body = JSON.stringify(body); }
-    return fetch(DB + path + '.json' + (method ? '' : '?v='+Date.now()), opts)
-      .then(function(r){ return r.json(); });
+  function db(path, method, body){
+    var o = { method: method||'GET' };
+    if (body) { o.headers={'Content-Type':'application/json'}; o.body=JSON.stringify(body); }
+    return fetch(DB+path+'.json'+(method?'':'?v='+Date.now()), o).then(function(r){ return r.json(); });
   }
 
-  function firstName(n) { return (n||'').trim().split(' ')[0]; }
-
-  function buildPax() {
-    var row = document.getElementById('paxRow');
-    row.innerHTML = '';
-    for (var i=1;i<=6;i++) {
-      (function(n){
-        var b = document.createElement('button');
-        b.className = 'pax' + (state.pax===n ? ' on':'');
-        b.textContent = n;
-        b.onclick = function(){ state.pax=n; buildPax(); };
-        row.appendChild(b);
-      })(i);
-    }
+  function firstName(n){ return (n||'').trim().split(' ')[0]; }
+  function toBottom(){
+    requestAnimationFrame(function(){
+      setTimeout(function(){ window.scrollTo({ top: document.body.scrollHeight, behavior:'smooth' }); }, 140);
+    });
   }
 
-  function buildChips() {
-    var box = document.getElementById('dietChips');
-    box.innerHTML = '';
+  // ── steps ────────────────────────────────────────────────
+  function stepChoose(){
+    var fn = firstName(G.name);
+    panel.innerHTML =
+      '<div class="r-q">'+(fn ? fn+', dining with us tonight?' : 'Dining tonight?')+'</div>'+
+      '<div class="r-btns">'+
+        '<button class="r-btn primary" id="bIn">Dining tonight</button>'+
+        '<button class="r-btn" id="bOut">Not tonight</button>'+
+      '</div>';
+    document.getElementById('bIn').onclick  = stepDetails;
+    document.getElementById('bOut').onclick = stepConfirmOut;
+  }
+
+  function stepConfirmOut(){
+    panel.innerHTML =
+      '<div class="r-q">Confirm you won\u2019t be dining tonight?</div>'+
+      '<div class="r-btns">'+
+        '<button class="r-btn danger" id="bYes">Yes, not tonight</button>'+
+        '<button class="r-btn quiet" id="bBack">Back</button>'+
+      '</div>';
+    document.getElementById('bYes').onclick  = function(){ save('out'); };
+    document.getElementById('bBack').onclick = stepChoose;
+    toBottom();
+  }
+
+  function stepDetails(){
+    panel.innerHTML =
+      '<div class="field"><div class="field-label">Guests</div><div class="pax-row" id="paxRow"></div></div>'+
+      '<div class="field"><div class="field-label">Dietary requirements</div><div class="chips" id="chips"></div></div>'+
+      '<div class="field"><div class="field-label">Anything else</div>'+
+        '<textarea class="note-input" id="note" rows="2" placeholder="Celebrating something, arriving late\u2026"></textarea></div>'+
+      '<div class="r-btns">'+
+        '<button class="r-btn primary" id="bSave">Confirm</button>'+
+        '<button class="r-btn quiet" id="bBack">Back</button>'+
+      '</div>';
+    if (state.note) document.getElementById('note').value = state.note;
+    paintPax(); paintChips();
+    document.getElementById('bSave').onclick = function(){ save('in'); };
+    document.getElementById('bBack').onclick = stepChoose;
+    toBottom();
+  }
+
+  function stepDone(r){
+    var body = r.status==='in'
+      ? '<div class="r-done-t">Confirmed for '+r.pax+(r.pax===1?' guest':' guests')+'</div>'+
+        '<div class="r-done-s">We look forward to seeing you.</div>'
+      : '<div class="r-done-t">Noted \u2014 not dining tonight</div>'+
+        '<div class="r-done-s">We hope to see you another evening.</div>';
+    panel.innerHTML = '<div class="r-done">'+body+
+      (pastCutoff() ? '' : '<a class="r-link" id="bEdit">Change</a>')+'</div>';
+    var e = document.getElementById('bEdit');
+    if (e) e.onclick = stepChoose;
+  }
+
+  function paintPax(){
+    var row = document.getElementById('paxRow'); row.innerHTML='';
+    for (var i=1;i<=6;i++)(function(n){
+      var b=document.createElement('button');
+      b.className='pax'+(state.pax===n?' on':''); b.textContent=n;
+      b.onclick=function(){ state.pax=n; paintPax(); };
+      row.appendChild(b);
+    })(i);
+  }
+
+  function paintChips(){
+    var box = document.getElementById('chips'); box.innerHTML='';
     DIETARIES.forEach(function(d){
-      var b = document.createElement('button');
-      b.className = 'chip' + (state.diets.indexOf(d)>-1 ? ' on':'');
-      b.textContent = d;
-      b.onclick = function(){
-        var i = state.diets.indexOf(d);
-        if (i>-1) state.diets.splice(i,1); else state.diets.push(d);
-        buildChips();
+      var b=document.createElement('button');
+      b.className='chip'+(state.diets.indexOf(d)>-1?' on':''); b.textContent=d;
+      b.onclick=function(){
+        var i=state.diets.indexOf(d);
+        if(i>-1) state.diets.splice(i,1); else state.diets.push(d);
+        paintChips();
       };
       box.appendChild(b);
     });
   }
 
-  function setChoice(s) {
-    state.status = s;
-    document.getElementById('btnIn').className  = 'rsvp-btn' + (s==='in' ? ' on':'');
-    document.getElementById('btnOut').className = 'rsvp-btn' + (s==='out'? ' on':'');
-    document.getElementById('rsvpDetail').className = 'rsvp-detail' + (s==='in' ? ' show':'');
-    if (s==='out') {
-      // ask before recording a decline
-      document.getElementById('confirmOut').className = 'confirm-out show';
-      document.getElementById('rsvpDetail').className = 'rsvp-detail';
-      requestAnimationFrame(function(){
-        setTimeout(function(){
-          window.scrollTo({ top: document.body.scrollHeight, behavior:'smooth' });
-        }, 140);
-      });
-      return;
-    }
-    document.getElementById('confirmOut').className = 'confirm-out';
-    // scroll right to the bottom so Confirm and everything above it is visible
-    requestAnimationFrame(function(){
-      setTimeout(function(){
-        window.scrollTo({ top: document.body.scrollHeight, behavior:'smooth' });
-      }, 140);
-    });
-  }
-
-  function save() {
+  function save(status){
+    var noteEl = document.getElementById('note');
+    if (noteEl) state.note = noteEl.value.trim();
     var payload = {
-      status: state.status,
-      pax: state.status==='in' ? state.pax : 0,
-      note: state.status==='in' ? document.getElementById('noteInput').value.trim() : '',
+      status: status,
+      pax: status==='in' ? state.pax : 0,
+      note: status==='in' ? state.note : '',
       diets: state.diets,
-      name: G.name,
-      room: G.room,
-      phone: G.phone,
+      name: G.name, room: G.room, phone: G.phone,
       at: new Date().toISOString()
     };
     db('/responses/'+todayKey()+'/'+G.phone, 'PUT', payload);
-    db('/guests/'+G.phone, 'PATCH', {
-      name: G.name, room: G.room, diets: state.diets
-    });
-    showStatus(payload);
+    db('/guests/'+G.phone, 'PATCH', { name:G.name, room:G.room, diets:state.diets });
+    stepDone(payload);
   }
 
-  function showStatus(r) {
-    document.getElementById('rsvpChoice').style.display = 'none';
-    var el = document.getElementById('rsvpStatus');
-    el.style.display = 'block';
-    if (r.status === 'in') {
-      el.innerHTML = 'Confirmed for ' + r.pax + (r.pax===1?' guest':' guests') + '.' +
-        (pastCutoff() ? '' : '<br><a href="#" id="editLink" style="color:var(--mid)">Change</a>');
-    } else {
-      el.innerHTML = 'Noted — not dining tonight.' +
-        (pastCutoff() ? '' : '<br><a href="#" id="editLink" style="color:var(--mid)">Change</a>');
-    }
-    var link = document.getElementById('editLink');
-    if (link) link.onclick = function(e){
-      e.preventDefault();
-      el.style.display='none';
-      document.getElementById('rsvpChoice').style.display='block';
-    };
-  }
-
-  function initRSVP() {
+  function initRSVP(){
     if (!G.phone) return;
-    document.getElementById('rsvp').className = 'show';
+    panel.className = 'show';
 
-    document.getElementById('btnIn').onclick  = function(){ setChoice('in'); };
-    document.getElementById('btnOut').onclick = function(){ setChoice('out'); };
-    document.getElementById('saveBtn').onclick = save;
-
-    document.getElementById('outYes').onclick = function(){
-      document.getElementById('confirmOut').className = 'confirm-out';
-      save();
-    };
-    document.getElementById('outNo').onclick = function(){
-      state.status = null;
-      document.getElementById('confirmOut').className = 'confirm-out';
-      document.getElementById('btnIn').className  = 'rsvp-btn';
-      document.getElementById('btnOut').className = 'rsvp-btn';
-    };
-
-    // load profile + tonight's response
     Promise.all([ db('/guests/'+G.phone), db('/responses/'+todayKey()+'/'+G.phone) ])
       .then(function(res){
         var profile = res[0] || {};
         var tonight = res[1];
-
         if (profile.diets) state.diets = profile.diets;
         if (!G.name && profile.name) G.name = profile.name;
         if (!G.room && profile.room) G.room = profile.room;
 
-        var fn = firstName(G.name);
-        document.getElementById('rsvpGreet').textContent =
-          profile.name ? (fn ? 'Welcome back, ' + fn + ' — dining tonight?' : 'Dining tonight?')
-                       : (fn ? fn + ', dining with us tonight?' : 'Dining tonight?');
-
-        if (tonight) {
-          state.status = tonight.status;
-          state.pax = tonight.pax || 2;
+        if (tonight){
+          state.pax   = tonight.pax || 2;
           state.diets = tonight.diets || state.diets;
-          buildPax(); buildChips();
-          if (tonight.note) document.getElementById('noteInput').value = tonight.note;
-          showStatus(tonight);
-          if (pastCutoff()) return;
+          state.note  = tonight.note || '';
+          stepDone(tonight);
         } else {
-          buildPax(); buildChips();
+          stepChoose();
         }
       })
-      .catch(function(){ buildPax(); buildChips(); });
+      .catch(stepChoose);
   }
 
   initRSVP();   // independent of menu state
