@@ -39,12 +39,20 @@
   }
   .room-n { font-size:13px; color:var(--ink); }
   .room-p { font-size:8px; color:var(--mid); margin-top:2px; min-height:10px; }
+  .room { position:relative; }
   .room.in     { background:var(--ink); border-color:var(--ink); }
   .room.in .room-n, .room.in .room-p { color:var(--cream); }
-  .room.out    { background:transparent; border-color:var(--rule); opacity:.45; }
+  .room.out    { background:transparent; border-color:var(--rule); opacity:.5; }
   .room.out .room-n { text-decoration:line-through; }
   .room.vacant { border-style:dotted; opacity:.3; }
   .room.await  { border-style:dashed; border-color:var(--mid); }
+
+  /* source marker: filled = guest replied, ring = added by staff */
+  .mark { position:absolute; top:5px; right:5px; width:6px; height:6px; border-radius:50%; }
+  .room.in  .mark.guest { background:var(--cream); }
+  .room.in  .mark.staff { border:1px solid var(--cream); }
+  .room.out .mark.guest { background:var(--mid); }
+  .room.out .mark.staff { border:1px solid var(--mid); }
 
   .legend { display:flex; gap:14px; justify-content:center; margin-top:12px;
             font-family:Helvetica,Arial,sans-serif; font-size:8px;
@@ -55,6 +63,10 @@
   .sw.out { opacity:.45; }
   .sw.await { border-style:dashed; border-color:var(--mid); }
   .sw.vacant { border-style:dotted; opacity:.4; }
+  .legend2 { margin-top:7px; }
+  .dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
+  .dot.filled { background:var(--mid); }
+  .dot.ring { border:1px solid var(--mid); }
 
   /* rows */
   .row { display:flex; justify-content:space-between; align-items:baseline; gap:10px;
@@ -118,6 +130,10 @@
     <span><i class="sw await"></i>Awaiting</span>
     <span><i class="sw vacant"></i>Vacant</span>
   </div>
+  <div class="legend legend2">
+    <span><i class="dot filled"></i>Guest replied</span>
+    <span><i class="dot ring"></i>Added by staff</span>
+  </div>
 
   <div class="sec">
     <span>External guests</span>
@@ -161,11 +177,14 @@ function api(path, method, body){
 
 // ── build a unified view keyed by room ─────────────────────
 function roomState(n){
-  // digital response wins over manual
+  // digital response wins; if several claim the room, the latest one counts
+  var best = null;
   for (var k in responses){
     var g = responses[k];
-    if (String(g.room) === String(n)) return { src:'digital', key:k, g:g };
+    if (String(g.room) !== String(n)) continue;
+    if (!best || (g.at || '') > (best.g.at || '')) best = { src:'digital', key:k, g:g };
   }
+  if (best) return best;
   var mk = 'room-'+n;
   if (manual[mk]) return { src:'manual', key:mk, g:manual[mk] };
   return null;
@@ -194,9 +213,13 @@ function render(){
         else if (st.g.status==='vacant'){ cls='room vacant'; }
       } else awaiting++;
 
+      var mark = '';
+      if (st && (st.g.status==='in' || st.g.status==='out')) {
+        mark = '<span class="mark '+(st.src==='digital'?'guest':'staff')+'"></span>';
+      }
       var b=document.createElement('button');
       b.className=cls;
-      b.innerHTML='<span class="room-n">'+n+'</span><span class="room-p">'+pax+'</span>';
+      b.innerHTML=mark+'<span class="room-n">'+n+'</span><span class="room-p">'+pax+'</span>';
       b.onclick=function(){ openRoom(n, st); };
       grid.appendChild(b);
     })(n);
