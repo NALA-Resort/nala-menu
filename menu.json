@@ -1,22 +1,22 @@
 {
   "bread": {
-    "name": "",
-    "desc": "",
+    "name": "Baguette",
+    "desc": "paprika butter",
     "aus": false
   },
   "entree": {
-    "name": "",
-    "desc": "",
-    "aus": false
+    "name": "King Prawn",
+    "desc": "red pepper, saffron, lemon",
+    "aus": true
   },
   "main": {
-    "name": "",
-    "desc": "",
+    "name": "Sovereign Lamb",
+    "desc": "cauliflower, vadouvan, yoghurt, curry leaf",
     "aus": false
   },
   "dessert": {
-    "name": "",
-    "desc": "",
+    "name": "Vanilla Br\u00fbl\u00e9e",
+    "desc": "pistachio, strawberry",
     "aus": false
   }
 }
