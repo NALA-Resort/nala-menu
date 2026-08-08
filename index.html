@@ -335,7 +335,8 @@
   function pastCutoff(){ return new Date().getHours() >= CUTOFF_HOUR; }
 
   var qs = new URLSearchParams(location.search);
-  var G = { phone:(qs.get('p')||'').replace(/\D/g,''), room:qs.get('r')||'', name:qs.get('n')||'' };
+  var G = { phone:(qs.get('p')||'').replace(/\D/g,''), room:qs.get('r')||'',
+            name:qs.get('n')||'', departs:qs.get('d')||'' };
 
   var state = { pax:2, diets:[], note:'' };
   var panel = document.getElementById('rsvp');
@@ -439,11 +440,11 @@
       pax: status==='in' ? state.pax : 0,
       note: status==='in' ? state.note : '',
       diets: state.diets,
-      name: G.name, room: G.room, phone: G.phone,
+      name: G.name, room: G.room, phone: G.phone, departs: G.departs,
       at: new Date().toISOString()
     };
     db('/responses/'+todayKey()+'/'+G.phone, 'PUT', payload);
-    db('/guests/'+G.phone, 'PATCH', { name:G.name, room:G.room, diets:state.diets });
+    db('/guests/'+G.phone, 'PATCH', { name:G.name, room:G.room, diets:state.diets, departs:G.departs });
     stepDone(payload);
   }
 
@@ -458,6 +459,7 @@
         if (profile.diets) state.diets = profile.diets;
         if (!G.name && profile.name) G.name = profile.name;
         if (!G.room && profile.room) G.room = profile.room;
+        if (!G.departs && profile.departs) G.departs = profile.departs;
 
         if (tonight){
           state.pax   = tonight.pax || 2;
