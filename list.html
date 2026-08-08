@@ -21,13 +21,18 @@
   td { font-size:11px; padding:8px 6px; border-bottom:1px solid #ddd; vertical-align:top; }
   tr { page-break-inside:avoid; }
 
-  .c-name  { width:17%; font-weight:bold; }
-  .c-room  { width:6%; }
-  .c-phone { width:11%; }
-  .c-pax   { width:5%; text-align:center; }
-  .c-diet  { width:20%; }
-  .c-table { width:7%; }
-  .c-comm  { width:34%; }
+  .c-name  { width:16%; font-weight:bold; }
+  .c-room  { width:5%; }
+  .c-pax   { width:4%; text-align:center; }
+  .c-diet  { width:18%; }
+  .c-dep   { width:11%; }
+  .c-dt    { width:7%; }
+  .c-bt    { width:7%; }
+  .c-comm  { width:32%; }
+
+  .sub { display:block; font-size:9px; color:#777; font-weight:normal; margin-top:2px; }
+  .checkout { color:#A8321E; font-weight:bold; font-size:9px; letter-spacing:.08em;
+              text-transform:uppercase; display:block; margin-top:2px; }
 
   .allergen { color:#A8321E; font-weight:bold; }
   .blank { border-bottom:1px solid #bbb; display:block; height:13px; }
@@ -65,16 +70,18 @@
     <tr>
       <th class="c-name">Name</th>
       <th class="c-room">Room</th>
-      <th class="c-phone">Phone</th>
       <th class="c-pax">Pax</th>
       <th class="c-diet">Dietaries</th>
-      <th class="c-table">Table</th>
+      <th class="c-dep">Departs</th>
+      <th class="c-dt">Dinner table</th>
+      <th class="c-bt">B'fast table</th>
       <th class="c-comm">Comments</th>
     </tr>
   </thead>
   <tbody id="rows"></tbody>
 </table>
 
+<div class="absent" id="checkouts"></div>
 <div class="absent" id="absent"></div>
 
 <script>
@@ -88,6 +95,35 @@ function label(){var d=new Date();
   return days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();}
 
 document.getElementById('title').textContent = 'Dinner Service — ' + label();
+
+function tomorrowKey(){
+  var d=new Date(); d.setDate(d.getDate()+1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+// accepts YYYY-MM-DD, DD/MM/YYYY or anything Date can parse
+function parseDep(s){
+  if(!s) return null;
+  s = String(s).trim();
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
+  var d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+function depKey(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function depHTML(raw){
+  var d = parseDep(raw);
+  if (!d) return '';
+  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var txt = days[d.getDay()]+' '+d.getDate()+' '+mo[d.getMonth()];
+  if (depKey(d) === tomorrowKey()) txt += '<span class="checkout">Check-out</span>';
+  return txt;
+}
 
 function dietHTML(diets){
   if(!diets||!diets.length) return '';
@@ -145,15 +181,27 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()) ])
     document.getElementById('nCovers').textContent = covers;
     document.getElementById('nParties').textContent = dining.length;
 
+    var outs = dining.filter(function(g){
+      var d = parseDep(g.departs);
+      return d && depKey(d) === tomorrowKey();
+    });
+    if (outs.length){
+      document.getElementById('checkouts').innerHTML =
+        '<b>Checking out tomorrow</b> ' +
+        outs.map(function(g){ return (g.room ? 'Rm '+g.room : (g.name||'')); }).join(' · ');
+    }
+
     var tb = document.getElementById('rows');
     dining.forEach(function(g){
       tb.insertAdjacentHTML('beforeend',
         '<tr>'+
-        '<td class="c-name">'+(g.name || (g.room ? 'Room '+g.room : '') || g.phone || '')+'</td>'+
+        '<td class="c-name">'+(g.name || (g.room ? 'Room '+g.room : '') || g.phone || '')+
+          (g.phone && !g.room ? '<span class="sub">'+g.phone+'</span>' : '')+'</td>'+
         '<td>'+(g.room||'')+'</td>'+
-        '<td>'+(g.phone||'')+'</td>'+
         '<td class="c-pax">'+(g.pax||1)+'</td>'+
         '<td>'+dietHTML(g.diets)+'</td>'+
+        '<td>'+depHTML(g.departs)+'</td>'+
+        '<td><span class="blank"></span></td>'+
         '<td><span class="blank"></span></td>'+
         '<td>'+(g.note||'')+'</td>'+
         '</tr>');
@@ -161,10 +209,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()) ])
 
     for (var i=dining.length; i<12; i++){
       tb.insertAdjacentHTML('beforeend',
-        '<tr><td><span class="blank"></span></td><td><span class="blank"></span></td>'+
-        '<td><span class="blank"></span></td><td><span class="blank"></span></td>'+
-        '<td><span class="blank"></span></td><td><span class="blank"></span></td>'+
-        '<td><span class="blank"></span></td></tr>');
+        '<tr>'+Array(9).join('<td><span class="blank"></span></td>')+'</tr>');
     }
 
     if (notDining.length){
