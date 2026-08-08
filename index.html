@@ -389,11 +389,10 @@
       return r.json().then(function(data){ return { data: data, lastModified: lm }; });
     })
     .then(function(res) {
-      if (!hasContent(res.data)) return;          // empty -> placeholder, no RSVP
-      if (!stillValid(res.lastModified)) return;  // stale -> placeholder, no RSVP
+      if (!hasContent(res.data)) return;          // empty -> placeholder
+      if (!stillValid(res.lastModified)) return;  // stale -> placeholder
       res.data.date = dateLabel(res.lastModified);
       showMenu(res.data);
-      initRSVP();   // RSVP only exists when there is a menu to dine from
     })
     .catch(function(e){ console.log('Menu load error:', e); });
 
@@ -539,6 +538,8 @@
       })
       .catch(function(){ buildPax(); buildChips(); });
   }
+
+  initRSVP();   // independent of menu state
 
 
 </script>
