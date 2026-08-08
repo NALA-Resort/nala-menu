@@ -240,6 +240,38 @@ var ALLERGENS = ['Nut allergy','Shellfish allergy','Egg allergy'];
 var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
 
+
+function parseDepDate(s){
+  if(!s) return null;
+  s = String(s).trim();
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
+  var d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+function depDateKey(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+// Most recent record for a room, looking back through previous days.
+// A guest who opened the link days ago still appears, unless they have departed.
+function resolveRoomGuests(all, todayK){
+  var out = {};
+  var dates = Object.keys(all || {}).filter(function(d){ return d <= todayK; }).sort();
+  dates.forEach(function(d){
+    var day = all[d] || {};
+    for (var room in day){ out[room] = day[room]; }   // later dates overwrite earlier
+  });
+  // drop anyone whose departure has already passed
+  for (var room in out){
+    var dep = out[room] && out[room].departs;
+    if (!dep) continue;
+    var p = parseDepDate(dep);
+    if (p && depDateKey(p) < todayK) delete out[room];
+  }
+  return out;
+}
+
 function todayKey(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function label(){var d=new Date();
   var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -812,7 +844,7 @@ Promise.all([
 ]).then(function(r){
   responses  = r[0] || {};
   manual     = r[1] || {};
-  roomguests = r[2] || {};
+  roomguests = resolveRoomGuests(r[2], todayKey());
   render();
 });
 </script>
