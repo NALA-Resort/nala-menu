@@ -262,7 +262,7 @@ function render(){
       var mark = '';
       if (st && (st.g.status==='in' || st.g.status==='out')) {
         var ic;
-        if (st.override && st.guest) ic = ICON_GUEST_X;      // guest replied, staff cancelled
+        if (st.override && st.guest && st.g.status === 'out') ic = ICON_GUEST_X;  // guest replied, staff cancelled
         else if (st.src === 'digital') ic = ICON_GUEST;
         else ic = ICON_STAFF;
         mark = '<span class="mark">'+ic+'</span>';
@@ -407,8 +407,8 @@ function openRoom(n, st){
     close(); render();
   }
 
-  // ── staff has cancelled a guest's booking ───────────────
-  if (isOverride && guestAnswer) {
+  // ── staff cancelled a booking the guest had made ────────
+  if (isOverride && guestAnswer && st.g.status === 'out') {
     shell(
       '<div class="note-box">Cancelled by staff.<br>'+
       'The guest had confirmed '+(guestAnswer.pax||1)+
@@ -418,6 +418,38 @@ function openRoom(n, st){
       '<button class="opt quiet" id="oClose">Close</button>'
     );
     document.getElementById('oRestore').onclick = clearManual;
+    document.getElementById('oClose').onclick = close;
+    return;
+  }
+
+  // ── staff amended a booking the guest had made ──────────
+  if (isOverride && st.g.status === 'in') {
+    pax = st.g.pax || 2;
+    shell(
+      '<div class="note-box">'+
+        (guestAnswer
+          ? 'Amended by staff.<br>The guest originally confirmed '+(guestAnswer.pax||1)+
+            (guestAnswer.pax===1?' guest':' guests')+
+            (guestAnswer.name ? ' \u2014 '+guestAnswer.name : '')+'.'
+          : 'Added by staff.')+
+      '</div>'+
+      paxBlock()+
+      '<button class="opt solid" id="oSave">Update guests</button>'+
+      '<button class="opt out" id="oCancel">Cancel booking</button>'+
+      (guestAnswer ? '<button class="opt quiet" id="oRevert">Revert to guest\u2019s answer</button>' : '')+
+      '<button class="opt quiet" id="oClose">Close</button>'
+    );
+    paintPax();
+    document.getElementById('oSave').onclick = function(){
+      writeManual({ status:'in', pax:pax, room:String(n), override:true, source:'manual' });
+    };
+    document.getElementById('oCancel').onclick = function(){
+      confirmSheet('Room '+n, 'Cancel this booking?', 'Yes, cancel booking',
+        function(){ writeManual({ status:'out', pax:0, room:String(n), override:true, source:'manual' }); },
+        function(){ openRoom(n, st); });
+    };
+    var rv = document.getElementById('oRevert');
+    if (rv) rv.onclick = clearManual;
     document.getElementById('oClose').onclick = close;
     return;
   }
