@@ -2,56 +2,66 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nala — Service Sheet</title>
 <style>
-  @page { size: A4 landscape; margin: 12mm; }
+  @page { size: A4 landscape; margin: 10mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: Helvetica, Arial, sans-serif; color:#111; background:#fff; padding:16px; }
 
-  .head { display:flex; justify-content:space-between; align-items:flex-end;
-          border-bottom:2px solid #111; padding-bottom:8px; margin-bottom:14px; }
-  .brand { font-size:10px; letter-spacing:.4em; text-transform:uppercase; color:#777; }
-  .title { font-size:17px; font-weight:bold; margin-top:3px; }
-  .counts { text-align:right; font-size:11px; line-height:1.6; }
-  .counts b { font-size:20px; }
+  .bar { margin-bottom:14px; display:flex; gap:8px; }
+  .btn { padding:10px 20px; background:#111; color:#fff; border:none;
+         font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
+         text-transform:uppercase; cursor:pointer; }
+  .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+  .hint { font-size:10px; color:#888; margin-top:8px; font-style:italic; }
 
-  table { width:100%; border-collapse:collapse; }
-  th { font-size:8px; letter-spacing:.18em; text-transform:uppercase; color:#666;
-       text-align:left; padding:0 6px 6px; border-bottom:1px solid #111; }
-  td { font-size:11px; padding:8px 6px; border-bottom:1px solid #ddd; vertical-align:top; }
+  .head { display:flex; justify-content:space-between; align-items:flex-end;
+          border-bottom:2px solid #111; padding-bottom:8px; margin-bottom:12px; }
+  .brand { font-size:9px; letter-spacing:.4em; text-transform:uppercase; color:#777; }
+  .title { font-size:16px; font-weight:bold; margin-top:3px; }
+  .counts { text-align:right; font-size:10px; line-height:1.5; white-space:nowrap; }
+  .counts b { font-size:19px; }
+
+  .scroller { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  table { width:100%; min-width:900px; border-collapse:collapse; }
+  th { font-size:7.5px; letter-spacing:.16em; text-transform:uppercase; color:#666;
+       text-align:left; padding:0 6px 6px; border-bottom:1px solid #111; white-space:nowrap; }
+  td { font-size:10.5px; padding:7px 6px; border-bottom:1px solid #ddd; vertical-align:top; }
   tr { page-break-inside:avoid; }
 
-  .c-name  { width:16%; font-weight:bold; }
-  .c-room  { width:5%; }
-  .c-pax   { width:4%; text-align:center; }
-  .c-diet  { width:18%; }
-  .c-dep   { width:11%; }
-  .c-dt    { width:7%; }
-  .c-bt    { width:7%; }
-  .c-comm  { width:32%; }
+  .c-name { width:15%; font-weight:bold; }
+  .c-room { width:5%;  text-align:center; }
+  .c-pax  { width:4%;  text-align:center; }
+  .c-diet { width:19%; }
+  .c-dep  { width:10%; }
+  .c-dt   { width:8%; }
+  .c-bt   { width:8%; }
+  .c-com  { width:31%; }
 
-  .sub { display:block; font-size:9px; color:#777; font-weight:normal; margin-top:2px; }
-  .checkout { color:#A8321E; font-weight:bold; font-size:9px; letter-spacing:.08em;
-              text-transform:uppercase; display:block; margin-top:2px; }
-
+  .sub { display:block; font-size:8.5px; color:#777; font-weight:normal; margin-top:2px; }
   .allergen { color:#A8321E; font-weight:bold; }
-  .blank { border-bottom:1px solid #bbb; display:block; height:13px; }
+  .checkout { color:#A8321E; font-weight:bold; font-size:8px; letter-spacing:.08em;
+              text-transform:uppercase; display:block; margin-top:2px; }
+  .muted { color:#aaa; font-weight:normal; font-style:italic; }
 
-  .absent { margin-top:16px; font-size:9px; color:#666; line-height:1.7;
-            border-top:1px solid #ddd; padding-top:8px; }
-  .absent b { text-transform:uppercase; letter-spacing:.18em; font-size:8px; }
+  /* empty write-in rows: one rule only, from the cell border */
+  tr.blank td { height:26px; }
 
-  .noprint { margin-bottom:14px; }
-  .btn { display:inline-block; padding:9px 18px; background:#111; color:#fff;
-         font-size:10px; letter-spacing:.15em; text-transform:uppercase;
-         text-decoration:none; border:none; cursor:pointer; }
-  @media print { .noprint { display:none; } body { padding:0; } }
+  .foot { margin-top:14px; font-size:9px; color:#555; line-height:1.7;
+          border-top:1px solid #ddd; padding-top:8px; }
+  .foot b { text-transform:uppercase; letter-spacing:.16em; font-size:8px; color:#111; }
+  .foot .co b { color:#A8321E; }
+
+  @media print { .bar, .hint { display:none; } body { padding:0; }
+                 .scroller { overflow:visible; } table { min-width:0; } }
 </style>
 </head>
 <body>
 
-<div class="noprint">
+<div class="bar">
   <button class="btn" onclick="window.print()">Print</button>
+  <button class="btn ghost" onclick="location.reload()">Refresh</button>
 </div>
 
 <div class="head">
@@ -61,47 +71,56 @@
   </div>
   <div class="counts">
     <div><b id="nCovers">–</b> covers</div>
-    <div><span id="nParties">–</span> parties</div>
+    <div><span id="nParties">–</span> bookings</div>
   </div>
 </div>
 
-<table>
-  <thead>
-    <tr>
-      <th class="c-name">Name</th>
-      <th class="c-room">Room</th>
-      <th class="c-pax">Pax</th>
-      <th class="c-diet">Dietaries</th>
-      <th class="c-dep">Departs</th>
-      <th class="c-dt">Dinner table</th>
-      <th class="c-bt">B'fast table</th>
-      <th class="c-comm">Comments</th>
-    </tr>
-  </thead>
-  <tbody id="rows"></tbody>
-</table>
+<div class="scroller">
+  <table>
+    <thead>
+      <tr>
+        <th class="c-name">Name</th>
+        <th class="c-room">Room</th>
+        <th class="c-pax">Pax</th>
+        <th class="c-diet">Dietaries</th>
+        <th class="c-dep">Departs</th>
+        <th class="c-dt">Dinner table</th>
+        <th class="c-bt">Breakfast table</th>
+        <th class="c-com">Comments</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
 
-<div class="absent" id="checkouts"></div>
-<div class="absent" id="absent"></div>
+<div class="hint">Scroll sideways to see all columns. Printing uses full A4 landscape.</div>
+
+<div class="foot" id="foot"></div>
 
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var ALLERGENS = ['Nut allergy','Shellfish allergy','Egg allergy'];
+var ROOMS = 17;
 
-function todayKey(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function label(){var d=new Date();
+function key(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function todayKey(){ return key(new Date()); }
+function tomorrowKey(){ var d=new Date(); d.setDate(d.getDate()+1); return key(d); }
+
+function label(){
+  var d=new Date();
   var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var m=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  return days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();}
-
+  return days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();
+}
 document.getElementById('title').textContent = 'Dinner Service — ' + label();
 
-function tomorrowKey(){
-  var d=new Date(); d.setDate(d.getDate()+1);
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function tidyPhone(p){
+  if (!p) return '';
+  p = String(p).replace(/[^\d]/g,'');
+  if (p.length === 9 && p[0] === '4') p = '0' + p;   // restore a lost leading zero
+  return p;
 }
 
-// accepts YYYY-MM-DD, DD/MM/YYYY or anything Date can parse
 function parseDep(s){
   if(!s) return null;
   s = String(s).trim();
@@ -111,17 +130,13 @@ function parseDep(s){
   return isNaN(d) ? null : d;
 }
 
-function depKey(d){
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
-
 function depHTML(raw){
   var d = parseDep(raw);
   if (!d) return '';
   var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var txt = days[d.getDay()]+' '+d.getDate()+' '+mo[d.getMonth()];
-  if (depKey(d) === tomorrowKey()) txt += '<span class="checkout">Check-out</span>';
+  if (key(d) === tomorrowKey()) txt += '<span class="checkout">Check-out</span>';
   return txt;
 }
 
@@ -139,37 +154,46 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()) ])
     var responses = res[0] || {};
     var manual    = res[1] || {};
 
-    var dining = [], notDining = [];
-    var claimedRooms = {};
+    // ── resolve each room to a single record ──────────────
+    function roomRecord(n){
+      var mk = 'room-'+n, m = manual[mk];
+      var best = null;
+      for (var k in responses){
+        var g = responses[k];
+        if (String(g.room) !== String(n)) continue;
+        if (!best || (g.at||'') > (best.at||'')) best = g;
+      }
+      if (m && m.override) {
+        // staff overrode the guest — carry the guest's details across
+        return Object.assign({}, best || {}, m, { room:String(n) });
+      }
+      if (best) return best;
+      if (m) return Object.assign({}, m, { room:String(n) });
+      return null;
+    }
 
-    // digital responses — latest wins per room
-    var byRoom = {}, noRoom = [];
+    var dining = [], notDining = [];
+
+    for (var n=1; n<=ROOMS; n++){
+      var r = roomRecord(n);
+      if (!r || r.status === 'vacant') continue;
+      (r.status === 'in' ? dining : notDining).push(r);
+    }
+
+    // ── externals ─────────────────────────────────────────
     for (var k in responses){
       var g = responses[k];
-      if (g.room){
-        var r = String(g.room);
-        if (!byRoom[r] || (g.at||'') > (byRoom[r].at||'')) byRoom[r] = g;
-      } else noRoom.push(g);
+      if (g.room) continue;
+      if (manual['extcancel-'+k]) continue;
+      g.phone = g.phone || k;
+      (g.status === 'in' ? dining : notDining).push(g);
     }
-    for (var r in byRoom){
-      claimedRooms[r] = true;
-      (byRoom[r].status==='in' ? dining : notDining).push(byRoom[r]);
-    }
-    noRoom.forEach(function(g){ (g.status==='in' ? dining : notDining).push(g); });
-
-    // manual entries — rooms only if not already answered digitally
     for (var k in manual){
+      if (k.indexOf('ext-') !== 0) continue;
       var m = manual[k];
-      if (m.status === 'vacant') continue;
-      if (k.indexOf('room-') === 0){
-        var rn = k.slice(5);
-        if (claimedRooms[rn]) continue;
-        m.room = m.room || rn;
-      }
-      (m.status==='in' ? dining : notDining).push(m);
+      if (m.status === 'in') dining.push(m);
     }
 
-    // sort: rooms first by number, then externals by name
     dining.sort(function(a,b){
       var ar = a.room ? parseInt(a.room,10) : 999;
       var br = b.room ? parseInt(b.room,10) : 999;
@@ -178,47 +202,59 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()) ])
     });
 
     var covers = dining.reduce(function(t,g){ return t + (g.pax||1); }, 0);
-    document.getElementById('nCovers').textContent = covers;
+    document.getElementById('nCovers').textContent  = covers;
     document.getElementById('nParties').textContent = dining.length;
 
-    var outs = dining.filter(function(g){
-      var d = parseDep(g.departs);
-      return d && depKey(d) === tomorrowKey();
-    });
-    if (outs.length){
-      document.getElementById('checkouts').innerHTML =
-        '<b>Checking out tomorrow</b> ' +
-        outs.map(function(g){ return (g.room ? 'Rm '+g.room : (g.name||'')); }).join(' · ');
-    }
-
     var tb = document.getElementById('rows');
+
     dining.forEach(function(g){
+      var phone = tidyPhone(g.phone);
+      var name  = g.name
+        ? g.name
+        : (g.room ? '<span class="muted">Room guest</span>' : (phone || '<span class="muted">Guest</span>'));
+      var nameCell = name + (phone && !g.room ? '<span class="sub">'+phone+'</span>' : '');
+
       tb.insertAdjacentHTML('beforeend',
         '<tr>'+
-        '<td class="c-name">'+(g.name || (g.room ? 'Room '+g.room : '') || g.phone || '')+
-          (g.phone && !g.room ? '<span class="sub">'+g.phone+'</span>' : '')+'</td>'+
-        '<td>'+(g.room||'')+'</td>'+
-        '<td class="c-pax">'+(g.pax||1)+'</td>'+
-        '<td>'+dietHTML(g.diets)+'</td>'+
-        '<td>'+depHTML(g.departs)+'</td>'+
-        '<td><span class="blank"></span></td>'+
-        '<td><span class="blank"></span></td>'+
-        '<td>'+(g.note||'')+'</td>'+
+          '<td class="c-name">'+nameCell+'</td>'+
+          '<td class="c-room">'+(g.room||'<span class="muted">ext</span>')+'</td>'+
+          '<td class="c-pax">'+(g.pax||1)+'</td>'+
+          '<td>'+dietHTML(g.diets)+'</td>'+
+          '<td>'+depHTML(g.departs)+'</td>'+
+          '<td></td>'+
+          '<td></td>'+
+          '<td>'+(g.note||'')+'</td>'+
         '</tr>');
     });
 
-    for (var i=dining.length; i<12; i++){
+    // write-in rows
+    for (var i=dining.length; i<14; i++){
       tb.insertAdjacentHTML('beforeend',
-        '<tr>'+Array(9).join('<td><span class="blank"></span></td>')+'</tr>');
+        '<tr class="blank"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>');
     }
 
-    if (notDining.length){
-      document.getElementById('absent').innerHTML =
-        '<b>Not dining</b><br>' +
-        notDining.map(function(g){
-          return (g.name || g.phone || 'Guest') + (g.room ? ' (Rm '+g.room+')' : '');
-        }).join(' · ');
+    // ── footer notes ──────────────────────────────────────
+    var foot = [];
+
+    var outs = dining.filter(function(g){
+      var d = parseDep(g.departs);
+      return d && key(d) === tomorrowKey();
+    });
+    if (outs.length){
+      foot.push('<div class="co"><b>Checking out tomorrow</b><br>' +
+        outs.map(function(g){ return (g.room ? 'Room '+g.room : (g.name||'Guest')); }).join(' · ') + '</div>');
     }
+
+    var named = notDining.filter(function(g){ return g.room || g.name; });
+    if (named.length){
+      foot.push('<div><b>Not dining</b><br>' +
+        named.map(function(g){
+          return g.room ? ('Room '+g.room + (g.name ? ' — '+g.name : ''))
+                        : (g.name || tidyPhone(g.phone) || 'Guest');
+        }).join(' · ') + '</div>');
+    }
+
+    document.getElementById('foot').innerHTML = foot.join('<br>');
   });
 </script>
 </body>
