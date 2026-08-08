@@ -462,14 +462,11 @@
     document.getElementById('btnOut').className = 'rsvp-btn' + (s==='out'? ' on':'');
     document.getElementById('rsvpDetail').className = 'rsvp-detail' + (s==='in' ? ' show':'');
     if (s==='out') { save(); return; }
-    // bring the Confirm button into view so it isn't hidden below the fold
+    // scroll right to the bottom so Confirm and everything above it is visible
     requestAnimationFrame(function(){
       setTimeout(function(){
-        var btn = document.getElementById('saveBtn');
-        if (btn && btn.scrollIntoView) {
-          btn.scrollIntoView({ block:'end', behavior:'smooth' });
-        }
-      }, 120);
+        window.scrollTo({ top: document.body.scrollHeight, behavior:'smooth' });
+      }, 140);
     });
   }
 
