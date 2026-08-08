@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nala — Service Sheet</title>
 <style>
-  @page { size: A4 landscape; margin: 10mm; }
+  @page { size: A4 portrait; margin: 10mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: Helvetica, Arial, sans-serif; color:#111; background:#fff; padding:16px; }
 
@@ -25,21 +25,21 @@
   .counts b { font-size:19px; }
 
   .scroller { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  table { width:100%; min-width:900px; border-collapse:collapse; }
-  th { font-size:7.5px; letter-spacing:.16em; text-transform:uppercase; color:#666;
+  table { width:100%; min-width:760px; border-collapse:collapse; }
+  th { font-size:7px; letter-spacing:.16em; text-transform:uppercase; color:#666;
        text-align:left; padding:0 6px 6px; border-bottom:1px solid #111; white-space:nowrap; }
-  td { font-size:9.5px; padding:4.5px 6px; border-bottom:1px solid #ddd; vertical-align:top; }
+  td { font-size:9px; padding:5px 5px; border-bottom:1px solid #ddd; vertical-align:top; }
   tr { page-break-inside:avoid; }
 
-  .c-name { width:14%; font-weight:bold; }
+  .c-name { width:16%; font-weight:bold; }
   .c-room { width:5%;  text-align:center; }
   .c-din  { width:6%;  text-align:center; }
   .c-pax  { width:4%;  text-align:center; }
-  .c-diet { width:17%; }
-  .c-dep  { width:10%; }
-  .c-dt   { width:7%; }
-  .c-bt   { width:7%; }
-  .c-com  { width:30%; }
+  .c-diet { width:18%; }
+  .c-dep  { width:11%; }
+  .c-dt   { width:8%;  text-align:center; }
+  .c-bt   { width:8%;  text-align:center; }
+  .c-com  { width:24%; }
 
   .yes { color:#3F7A52; font-weight:bold; }
   .no  { color:#A8321E; }
@@ -47,14 +47,14 @@
   .row-out td { background:#FAF6F5; }
   .row-unk td { background:#FCFCFB; }
 
-  .sub { display:block; font-size:8.5px; color:#777; font-weight:normal; margin-top:2px; }
+  .sub { display:block; font-size:8px; color:#777; font-weight:normal; margin-top:2px; }
   .allergen { color:#A8321E; font-weight:bold; }
   .checkout { color:#A8321E; font-weight:bold; font-size:8px; letter-spacing:.08em;
               text-transform:uppercase; display:block; margin-top:2px; }
   .muted { color:#aaa; font-weight:normal; font-style:italic; }
 
   /* empty write-in rows: one rule only, from the cell border */
-  tr.blank td { height:20px; }
+  tr.blank td { height:19px; }
 
   tr.totalrow td { border-top:2px solid #111; border-bottom:none; padding-top:7px; }
   .tot-val { font-size:14px; font-weight:bold; text-align:center; }
@@ -65,9 +65,9 @@
     .bar, .hint, .key { display:none; }
     body { padding:0; }
     .scroller { overflow:visible; }
-    table { min-width:0; }
+    table { min-width:0; width:100%; }
     tr { page-break-inside:avoid; }
-    .foot { page-break-inside:avoid; }
+    thead { display:table-header-group; }
   }
 </style>
 </head>
@@ -255,7 +255,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), api('/r
         '</tr>');
     });
 
-    for (var i=rows.length; i<8; i++){
+    for (var i=rows.length; i<26; i++){
       tb.insertAdjacentHTML('beforeend',
         '<tr class="blank">'+Array(10).join('<td></td>')+'</tr>');
     }
