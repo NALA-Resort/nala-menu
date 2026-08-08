@@ -7,7 +7,8 @@
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E; }
-  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif; padding:28px 24px 60px; }
+  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
+         padding:28px 24px 80px; -webkit-tap-highlight-color:transparent; }
   .wrap { max-width:520px; margin:0 auto; }
 
   .wordmark { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.45em;
@@ -15,69 +16,83 @@
   .date { text-align:center; font-family:Helvetica,Arial,sans-serif; font-size:13px; font-weight:bold;
           letter-spacing:.1em; text-transform:uppercase; margin-top:6px; }
 
-  .totals { display:flex; gap:10px; margin:24px 0; }
-  .tot { flex:1; text-align:center; padding:16px 6px; border:1px solid var(--rule); }
-  .tot-n { font-size:30px; line-height:1; }
-  .tot-l { font-family:Helvetica,Arial,sans-serif; font-size:7px; letter-spacing:.25em;
-           text-transform:uppercase; color:var(--mid); margin-top:8px; }
-
-  .tot.pending { border-style:dashed; }
-  .tot.pending.warn { border-color:var(--red); border-style:solid; }
-  .tot.pending.warn .tot-n { color:var(--red); }
-
-  .sentline { text-align:center; font-style:italic; font-size:12px; color:var(--mid);
-              margin:-10px 0 4px; }
-  .sentline input {
-    width:52px; padding:4px 2px; margin:0 4px;
-    border:none; border-bottom:1px solid var(--rule); background:transparent;
-    font-family:Helvetica,Arial,sans-serif; font-size:13px; text-align:center;
-    color:var(--ink); -moz-appearance:textfield;
-  }
-  .sentline input::-webkit-outer-spin-button,
-  .sentline input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
-  .sentline input:focus { outline:none; border-bottom-color:var(--ink); }
-  #savedTick { color:var(--mid); font-size:11px; }
-
-  .tot.pending { border-style:dashed; }
-  .tot.pending.warn { border-color:var(--red); border-style:solid; }
-  .tot.pending.warn .tot-n { color:var(--red); }
-
-  .panel { border:1px solid var(--rule); padding:4px 14px 12px; margin-top:-8px; }
-  .panel-row { display:flex; justify-content:space-between; align-items:center;
-               padding:10px 0; border-bottom:1px solid var(--rule); }
-  .panel-row:last-of-type { border-bottom:none; }
-  .panel-row label { font-family:Helvetica,Arial,sans-serif; font-size:10px;
-                     letter-spacing:.12em; text-transform:uppercase; color:var(--mid); }
-  .panel-row input {
-    width:58px; padding:4px 2px;
-    border:none; border-bottom:1px solid var(--rule); background:transparent;
-    font-family:Helvetica,Arial,sans-serif; font-size:15px; text-align:center;
-    color:var(--ink); -moz-appearance:textfield;
-  }
-  .panel-row input::-webkit-outer-spin-button,
-  .panel-row input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
-  .panel-row input:focus { outline:none; border-bottom-color:var(--ink); }
-  .panel-note { font-style:italic; font-size:10px; color:var(--mid); line-height:1.5;
-                padding-top:10px; border-top:1px solid var(--rule); margin-top:2px; }
-  .panel-note.warn { color:var(--red); }
+  .totals { display:flex; gap:8px; margin:22px 0 26px; }
+  .tot { flex:1; text-align:center; padding:14px 4px; border:1px solid var(--rule); }
+  .tot-n { font-size:28px; line-height:1; }
+  .tot-l { font-family:Helvetica,Arial,sans-serif; font-size:7px; letter-spacing:.2em;
+           text-transform:uppercase; color:var(--mid); margin-top:7px; }
+  .tot.warn { border-color:var(--red); }
+  .tot.warn .tot-n { color:var(--red); }
 
   .sec { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
-         text-transform:uppercase; color:var(--mid); margin:26px 0 10px; }
+         text-transform:uppercase; color:var(--mid); margin:26px 0 12px;
+         display:flex; justify-content:space-between; align-items:baseline; }
+  .sec a { color:var(--mid); text-decoration:none; border-bottom:1px solid var(--rule);
+           font-size:8px; letter-spacing:.15em; }
 
+  /* room grid */
+  .rooms { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; }
+  .room {
+    aspect-ratio:1; border:1px solid var(--rule); background:transparent;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-family:Helvetica,Arial,sans-serif; cursor:pointer; padding:0;
+  }
+  .room-n { font-size:13px; color:var(--ink); }
+  .room-p { font-size:8px; color:var(--mid); margin-top:2px; min-height:10px; }
+  .room.in     { background:var(--ink); border-color:var(--ink); }
+  .room.in .room-n, .room.in .room-p { color:var(--cream); }
+  .room.out    { background:transparent; border-color:var(--rule); opacity:.45; }
+  .room.out .room-n { text-decoration:line-through; }
+  .room.vacant { border-style:dotted; opacity:.3; }
+  .room.await  { border-style:dashed; border-color:var(--mid); }
+
+  .legend { display:flex; gap:14px; justify-content:center; margin-top:12px;
+            font-family:Helvetica,Arial,sans-serif; font-size:8px;
+            letter-spacing:.12em; text-transform:uppercase; color:var(--mid); }
+  .legend span { display:flex; align-items:center; gap:5px; }
+  .sw { width:9px; height:9px; border:1px solid var(--rule); display:inline-block; }
+  .sw.in { background:var(--ink); border-color:var(--ink); }
+  .sw.out { opacity:.45; }
+  .sw.await { border-style:dashed; border-color:var(--mid); }
+  .sw.vacant { border-style:dotted; opacity:.4; }
+
+  /* rows */
   .row { display:flex; justify-content:space-between; align-items:baseline; gap:10px;
          padding:9px 0; border-bottom:1px solid var(--rule); }
   .row-name { font-size:14px; }
   .row-sub { font-style:italic; font-size:11px; color:var(--mid); }
   .row-pax { font-family:Helvetica,Arial,sans-serif; font-size:12px; white-space:nowrap; }
   .alrg { color:var(--red); font-style:normal; }
+  .empty { font-style:italic; color:var(--mid); font-size:12px; padding:8px 0; }
 
   .actions { margin-top:34px; display:flex; gap:10px; }
   .btn { flex:1; text-align:center; padding:13px; border:1px solid var(--ink);
          font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
-         text-transform:uppercase; color:var(--ink); text-decoration:none; }
+         text-transform:uppercase; color:var(--ink); text-decoration:none;
+         background:transparent; cursor:pointer; }
   .btn.solid { background:var(--ink); color:var(--cream); }
 
-  .empty { font-style:italic; color:var(--mid); font-size:12px; padding:8px 0; }
+  /* sheet */
+  .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35);
+              display:none; align-items:flex-end; justify-content:center; z-index:10; }
+  .backdrop.show { display:flex; }
+  .sheet { width:100%; max-width:520px; background:var(--cream);
+           padding:26px 24px 34px; border-top:1px solid var(--rule); }
+  .sheet h3 { font-family:Helvetica,Arial,sans-serif; font-size:11px; letter-spacing:.2em;
+              text-transform:uppercase; color:var(--mid); font-weight:normal;
+              text-align:center; margin-bottom:18px; }
+  .opt { width:100%; padding:14px; margin-bottom:8px; border:1px solid var(--rule);
+         background:transparent; font-family:Helvetica,Arial,sans-serif; font-size:11px;
+         letter-spacing:.12em; text-transform:uppercase; color:var(--ink); cursor:pointer; }
+  .opt.solid { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .opt.quiet { color:var(--mid); }
+  .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 16px; }
+  .pax { width:38px; height:38px; border:1px solid var(--rule); background:transparent;
+         border-radius:50%; font-family:Helvetica,Arial,sans-serif; font-size:13px;
+         color:var(--ink); cursor:pointer; }
+  .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .sheet-label { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.25em;
+                 text-transform:uppercase; color:var(--mid); text-align:center; margin-bottom:8px; }
 </style>
 </head>
 <body>
@@ -88,42 +103,40 @@
   <div class="totals">
     <div class="tot"><div class="tot-n" id="nCovers">–</div><div class="tot-l">Covers</div></div>
     <div class="tot"><div class="tot-n" id="nOut">–</div><div class="tot-l">Not dining</div></div>
-    <div class="tot pending" id="pendingTile">
-      <div class="tot-n" id="nPending">–</div>
-      <div class="tot-l">Awaiting</div>
-    </div>
+    <div class="tot" id="tileAwait"><div class="tot-n" id="nAwait">–</div><div class="tot-l">Awaiting</div></div>
   </div>
 
-  <div class="panel">
-    <div class="panel-row">
-      <label for="inHouse">Guests in house</label>
-      <input id="inHouse" type="number" min="0" inputmode="numeric" placeholder="–">
-    </div>
-    <div class="panel-row">
-      <label for="vIn">Verbal — dining</label>
-      <input id="vIn" type="number" min="0" inputmode="numeric" placeholder="0">
-    </div>
-    <div class="panel-row">
-      <label for="vOut">Verbal — not dining</label>
-      <input id="vOut" type="number" min="0" inputmode="numeric" placeholder="0">
-    </div>
-    <div class="panel-note" id="panelNote">Counted in people, not parties. Only add verbal answers from guests who did <i>not</i> use the link.</div>
+  <div class="sec">Rooms</div>
+  <div class="rooms" id="rooms"></div>
+  <div class="legend">
+    <span><i class="sw in"></i>Dining</span>
+    <span><i class="sw out"></i>Not dining</span>
+    <span><i class="sw await"></i>Awaiting</span>
+    <span><i class="sw vacant"></i>Vacant</span>
   </div>
 
-  <div class="sec">Dining</div>
-  <div id="listIn"></div>
+  <div class="sec">
+    <span>External guests</span>
+    <a href="#" id="addExt">+ Add</a>
+  </div>
+  <div id="listExt"></div>
 
-  <div class="sec">Not dining</div>
-  <div id="listOut"></div>
+  <div class="sec">Detail</div>
+  <div id="listDetail"></div>
 
   <div class="actions">
     <a class="btn solid" href="list.html">Print list</a>
-    <a class="btn" href="#" onclick="location.reload();return false">Refresh</a>
+    <button class="btn" onclick="location.reload()">Refresh</button>
   </div>
+</div>
+
+<div class="backdrop" id="backdrop">
+  <div class="sheet" id="sheet"></div>
 </div>
 
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+var ROOMS = 17;
 var ALLERGENS = ['Nut allergy','Shellfish allergy','Egg allergy'];
 
 function todayKey(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -131,8 +144,28 @@ function label(){var d=new Date();
   var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var m=['January','February','March','April','May','June','July','August','September','October','November','December'];
   return days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();}
-
 document.getElementById('date').textContent = label();
+
+var responses = {};   // keyed by phone (digital) or manual key
+var manual = {};      // keyed by 'room-N' or 'ext-<id>'
+
+function api(path, method, body){
+  var o = { method: method||'GET' };
+  if (body !== undefined) { o.headers={'Content-Type':'application/json'}; o.body=JSON.stringify(body); }
+  return fetch(DB+path+'.json'+(method?'':'?v='+Date.now()), o).then(function(r){return r.json();});
+}
+
+// ── build a unified view keyed by room ─────────────────────
+function roomState(n){
+  // digital response wins over manual
+  for (var k in responses){
+    var g = responses[k];
+    if (String(g.room) === String(n)) return { src:'digital', key:k, g:g };
+  }
+  var mk = 'room-'+n;
+  if (manual[mk]) return { src:'manual', key:mk, g:manual[mk] };
+  return null;
+}
 
 function dietHTML(diets){
   if(!diets||!diets.length) return '';
@@ -141,121 +174,172 @@ function dietHTML(diets){
   }).join(' · ');
 }
 
-var digital = { covers:0, declines:0 };
+function render(){
+  var covers=0, notDining=0, awaiting=0;
 
-var F = {
-  inHouse: document.getElementById('inHouse'),
-  vIn:     document.getElementById('vIn'),
-  vOut:    document.getElementById('vOut')
-};
-var note = document.getElementById('panelNote');
-var NOTE_DEFAULT = note.innerHTML;
+  // rooms
+  var grid = document.getElementById('rooms');
+  grid.innerHTML='';
+  for (var n=1; n<=ROOMS; n++){
+    (function(n){
+      var st = roomState(n);
+      var cls = 'room await', pax='';
+      if (st){
+        if (st.g.status==='in'){ cls='room in'; pax=(st.g.pax||1)+'p'; covers += (st.g.pax||1); }
+        else if (st.g.status==='out'){ cls='room out'; notDining += (st.g.pax||1); }
+        else if (st.g.status==='vacant'){ cls='room vacant'; }
+      } else awaiting++;
 
-function num(el){ var v = parseInt(el.value,10); return isNaN(v) ? 0 : v; }
+      var b=document.createElement('button');
+      b.className=cls;
+      b.innerHTML='<span class="room-n">'+n+'</span><span class="room-p">'+pax+'</span>';
+      b.onclick=function(){ openRoom(n, st); };
+      grid.appendChild(b);
+    })(n);
+  }
 
-function paint(){
-  var covers   = digital.covers   + num(F.vIn);
-  var notDining= digital.declines + num(F.vOut);
-  var inHouse  = num(F.inHouse);
+  // externals
+  var exts=[];
+  for (var k in responses){ if(!responses[k].room) exts.push({key:k,g:responses[k],src:'digital'}); }
+  for (var k in manual){ if(k.indexOf('ext-')===0) exts.push({key:k,g:manual[k],src:'manual'}); }
+
+  var elExt=document.getElementById('listExt');
+  elExt.innerHTML='';
+  if(!exts.length) elExt.innerHTML='<div class="empty">None</div>';
+  exts.forEach(function(e){
+    var g=e.g;
+    if (g.status==='in') covers += (g.pax||1); else notDining += (g.pax||1);
+    var sub = g.status==='in' ? 'Dining' : 'Not dining';
+    var d=dietHTML(g.diets); if(d) sub += ' · '+d;
+    elExt.insertAdjacentHTML('beforeend',
+      '<div class="row"><div><div class="row-name">'+(g.name||g.phone||'Guest')+'</div>'+
+      '<div class="row-sub">'+sub+'</div></div>'+
+      '<div class="row-pax">'+(g.status==='in' ? (g.pax||1)+' pax' : '')+'</div></div>');
+  });
+
+  // detail list (dining only, with notes/diets)
+  var det=[];
+  for (var k in responses){ if(responses[k].status==='in') det.push(responses[k]); }
+  for (var k in manual){ if(manual[k].status==='in' && manual[k].name) det.push(manual[k]); }
+  det.sort(function(a,b){ return (a.room||99)-(b.room||99); });
+
+  var elDet=document.getElementById('listDetail');
+  elDet.innerHTML='';
+  if(!det.length) elDet.innerHTML='<div class="empty">No confirmations yet</div>';
+  det.forEach(function(g){
+    var sub=[];
+    if(g.room) sub.push('Room '+g.room);
+    var d=dietHTML(g.diets); if(d) sub.push(d);
+    if(g.note) sub.push('“'+g.note+'”');
+    elDet.insertAdjacentHTML('beforeend',
+      '<div class="row"><div><div class="row-name">'+(g.name||g.phone||('Room '+g.room))+'</div>'+
+      (sub.length?'<div class="row-sub">'+sub.join(' · ')+'</div>':'')+
+      '</div><div class="row-pax">'+(g.pax||1)+' pax</div></div>');
+  });
 
   document.getElementById('nCovers').textContent = covers;
   document.getElementById('nOut').textContent    = notDining;
-
-  var tile = document.getElementById('pendingTile');
-  var el   = document.getElementById('nPending');
-
-  if (!inHouse) {
-    el.textContent = '–';
-    tile.className = 'tot pending';
-    note.className = 'panel-note';
-    note.innerHTML = NOTE_DEFAULT;
-    return;
-  }
-
-  var accounted = covers + notDining;
-  var pending   = inHouse - accounted;
-
-  if (pending < 0) {
-    el.textContent = '!';
-    tile.className = 'tot pending warn';
-    note.className = 'panel-note warn';
-    note.innerHTML = 'Responses exceed guests in house by ' + Math.abs(pending) +
-                     '. A verbal answer may have been counted twice.';
-  } else {
-    el.textContent = pending;
-    tile.className = 'tot pending' + (pending > 0 ? ' warn' : '');
-    note.className = 'panel-note';
-    note.innerHTML = NOTE_DEFAULT;
-  }
+  document.getElementById('nAwait').textContent  = awaiting;
+  document.getElementById('tileAwait').className = 'tot' + (awaiting>0 ? ' warn':'');
 }
 
-// load saved settings for today
-fetch(DB+'/settings/'+todayKey()+'.json?v='+Date.now())
-  .then(function(r){return r.json();})
-  .then(function(s){
-    s = s || {};
-    if (s.inHouse != null) F.inHouse.value = s.inHouse;
-    if (s.vIn     != null) F.vIn.value     = s.vIn;
-    if (s.vOut    != null) F.vOut.value    = s.vOut;
-    paint();
-  });
+// ── sheet ──────────────────────────────────────────────────
+var bd = document.getElementById('backdrop');
+var sheet = document.getElementById('sheet');
+bd.onclick = function(e){ if(e.target===bd) close(); };
+function close(){ bd.className='backdrop'; }
 
-var saveTimer;
-function wire(el, key){
-  el.addEventListener('input', function(){
-    paint();
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(function(){
-      var body = {};
-      body[key] = el.value === '' ? null : num(el);
-      fetch(DB+'/settings/'+todayKey()+'.json', {
-        method:'PATCH', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(body)
-      });
-    }, 600);
-  });
+function openRoom(n, st){
+  var pax = (st && st.g.pax) || 2;
+  var locked = st && st.src==='digital';
+
+  sheet.innerHTML =
+    '<h3>Room '+n+'</h3>' +
+    (locked
+      ? '<div class="empty" style="text-align:center">Answered by the guest via the link.<br>'+
+        (st.g.status==='in' ? 'Dining — '+(st.g.pax||1)+' pax' : 'Not dining')+'</div>'+
+        '<button class="opt quiet" id="oClose">Close</button>'
+      : '<div class="sheet-label">Guests</div><div class="pax-row" id="paxRow"></div>'+
+        '<button class="opt solid" id="oIn">Dining</button>'+
+        '<button class="opt" id="oOut">Not dining</button>'+
+        '<button class="opt" id="oVac">Vacant tonight</button>'+
+        (st ? '<button class="opt quiet" id="oClear">Clear</button>' : '')
+    );
+
+  bd.className='backdrop show';
+  if (locked){ document.getElementById('oClose').onclick=close; return; }
+
+  function paintPax(){
+    var r=document.getElementById('paxRow'); r.innerHTML='';
+    for(var i=1;i<=6;i++)(function(v){
+      var b=document.createElement('button');
+      b.className='pax'+(pax===v?' on':''); b.textContent=v;
+      b.onclick=function(){ pax=v; paintPax(); };
+      r.appendChild(b);
+    })(i);
+  }
+  paintPax();
+
+  function save(status){
+    var rec = { status:status, pax:(status==='in'?pax:0), room:String(n), source:'manual' };
+    manual['room-'+n] = rec;
+    api('/manual/'+todayKey()+'/room-'+n, 'PUT', rec);
+    close(); render();
+  }
+  document.getElementById('oIn').onclick  = function(){ save('in'); };
+  document.getElementById('oOut').onclick = function(){ save('out'); };
+  document.getElementById('oVac').onclick = function(){ save('vacant'); };
+  var c=document.getElementById('oClear');
+  if(c) c.onclick=function(){
+    delete manual['room-'+n];
+    api('/manual/'+todayKey()+'/room-'+n, 'DELETE');
+    close(); render();
+  };
 }
-wire(F.inHouse,'inHouse');
-wire(F.vIn,'vIn');
-wire(F.vOut,'vOut');
 
-fetch(DB+'/responses/'+todayKey()+'.json?v='+Date.now())
-  .then(function(r){return r.json();})
-  .then(function(data){
-    var ins=[], outs=[], covers=0;
-    for (var k in data){
-      var g=data[k];
-      if(g.status==='in'){ ins.push(g); covers += (g.pax||1); }
-      else outs.push(g);
-    }
-    ins.sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
-    outs.sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+document.getElementById('addExt').onclick = function(e){
+  e.preventDefault();
+  var pax=2;
+  sheet.innerHTML =
+    '<h3>External guest</h3>'+
+    '<div class="sheet-label">Guests</div><div class="pax-row" id="paxRow"></div>'+
+    '<button class="opt solid" id="oIn">Dining</button>'+
+    '<button class="opt" id="oOut">Not dining</button>'+
+    '<button class="opt quiet" id="oCancel">Cancel</button>';
+  bd.className='backdrop show';
 
-    digital.covers = covers;
-    digital.declines = outs.reduce(function(t,g){ return t + (g.pax || 1); }, 0);
-    paint();
+  function paintPax(){
+    var r=document.getElementById('paxRow'); r.innerHTML='';
+    for(var i=1;i<=8;i++)(function(v){
+      var b=document.createElement('button');
+      b.className='pax'+(pax===v?' on':''); b.textContent=v;
+      b.onclick=function(){ pax=v; paintPax(); };
+      r.appendChild(b);
+    })(i);
+  }
+  paintPax();
 
-    var elIn=document.getElementById('listIn');
-    if(!ins.length) elIn.innerHTML='<div class="empty">No confirmations yet</div>';
-    ins.forEach(function(g){
-      var sub=[];
-      if(g.room) sub.push('Room '+g.room);
-      var d=dietHTML(g.diets); if(d) sub.push(d);
-      if(g.note) sub.push('“'+g.note+'”');
-      elIn.insertAdjacentHTML('beforeend',
-        '<div class="row"><div><div class="row-name">'+(g.name||g.phone)+'</div>'+
-        (sub.length?'<div class="row-sub">'+sub.join(' · ')+'</div>':'')+
-        '</div><div class="row-pax">'+(g.pax||1)+' pax</div></div>');
-    });
+  function save(status){
+    var id='ext-'+Date.now();
+    var rec={ status:status, pax:(status==='in'?pax:1), name:'Walk-in', source:'manual' };
+    manual[id]=rec;
+    api('/manual/'+todayKey()+'/'+id, 'PUT', rec);
+    close(); render();
+  }
+  document.getElementById('oIn').onclick=function(){ save('in'); };
+  document.getElementById('oOut').onclick=function(){ save('out'); };
+  document.getElementById('oCancel').onclick=close;
+};
 
-    var elOut=document.getElementById('listOut');
-    if(!outs.length) elOut.innerHTML='<div class="empty">None</div>';
-    outs.forEach(function(g){
-      elOut.insertAdjacentHTML('beforeend',
-        '<div class="row"><div><div class="row-name">'+(g.name||g.phone)+'</div>'+
-        (g.room?'<div class="row-sub">Room '+g.room+'</div>':'')+'</div></div>');
-    });
-  });
+// ── load ───────────────────────────────────────────────────
+Promise.all([
+  api('/responses/'+todayKey()),
+  api('/manual/'+todayKey())
+]).then(function(r){
+  responses = r[0] || {};
+  manual    = r[1] || {};
+  render();
+});
 </script>
 </body>
 </html>
