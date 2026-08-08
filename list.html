@@ -96,24 +96,60 @@ function dietHTML(diets){
   }).join(', ');
 }
 
-fetch(DB+'/responses/'+todayKey()+'.json?v='+Date.now())
-  .then(function(r){return r.json();})
-  .then(function(data){
-    var ins=[], outs=[], covers=0;
-    for(var k in data){
-      var g=data[k];
-      if(g.status==='in'){ ins.push(g); covers+=(g.pax||1); } else outs.push(g);
+function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
+
+Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()) ])
+  .then(function(res){
+    var responses = res[0] || {};
+    var manual    = res[1] || {};
+
+    var dining = [], notDining = [];
+    var claimedRooms = {};
+
+    // digital responses — latest wins per room
+    var byRoom = {}, noRoom = [];
+    for (var k in responses){
+      var g = responses[k];
+      if (g.room){
+        var r = String(g.room);
+        if (!byRoom[r] || (g.at||'') > (byRoom[r].at||'')) byRoom[r] = g;
+      } else noRoom.push(g);
     }
-    ins.sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+    for (var r in byRoom){
+      claimedRooms[r] = true;
+      (byRoom[r].status==='in' ? dining : notDining).push(byRoom[r]);
+    }
+    noRoom.forEach(function(g){ (g.status==='in' ? dining : notDining).push(g); });
 
+    // manual entries — rooms only if not already answered digitally
+    for (var k in manual){
+      var m = manual[k];
+      if (m.status === 'vacant') continue;
+      if (k.indexOf('room-') === 0){
+        var rn = k.slice(5);
+        if (claimedRooms[rn]) continue;
+        m.room = m.room || rn;
+      }
+      (m.status==='in' ? dining : notDining).push(m);
+    }
+
+    // sort: rooms first by number, then externals by name
+    dining.sort(function(a,b){
+      var ar = a.room ? parseInt(a.room,10) : 999;
+      var br = b.room ? parseInt(b.room,10) : 999;
+      if (ar !== br) return ar - br;
+      return (a.name||'').localeCompare(b.name||'');
+    });
+
+    var covers = dining.reduce(function(t,g){ return t + (g.pax||1); }, 0);
     document.getElementById('nCovers').textContent = covers;
-    document.getElementById('nParties').textContent = ins.length;
+    document.getElementById('nParties').textContent = dining.length;
 
-    var tb=document.getElementById('rows');
-    ins.forEach(function(g){
+    var tb = document.getElementById('rows');
+    dining.forEach(function(g){
       tb.insertAdjacentHTML('beforeend',
         '<tr>'+
-        '<td class="c-name">'+(g.name||'')+'</td>'+
+        '<td class="c-name">'+(g.name || (g.room ? 'Room '+g.room : '') || g.phone || '')+'</td>'+
         '<td>'+(g.room||'')+'</td>'+
         '<td>'+(g.phone||'')+'</td>'+
         '<td class="c-pax">'+(g.pax||1)+'</td>'+
@@ -123,8 +159,7 @@ fetch(DB+'/responses/'+todayKey()+'.json?v='+Date.now())
         '</tr>');
     });
 
-    // pad to 12 rows for walk-ins
-    for(var i=ins.length;i<12;i++){
+    for (var i=dining.length; i<12; i++){
       tb.insertAdjacentHTML('beforeend',
         '<tr><td><span class="blank"></span></td><td><span class="blank"></span></td>'+
         '<td><span class="blank"></span></td><td><span class="blank"></span></td>'+
@@ -132,10 +167,12 @@ fetch(DB+'/responses/'+todayKey()+'.json?v='+Date.now())
         '<td><span class="blank"></span></td></tr>');
     }
 
-    if(outs.length){
+    if (notDining.length){
       document.getElementById('absent').innerHTML =
         '<b>Not dining</b><br>' +
-        outs.map(function(g){ return (g.name||g.phone) + (g.room?' (Rm '+g.room+')':''); }).join(' · ');
+        notDining.map(function(g){
+          return (g.name || g.phone || 'Guest') + (g.room ? ' (Rm '+g.room+')' : '');
+        }).join(' · ');
     }
   });
 </script>
