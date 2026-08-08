@@ -88,15 +88,18 @@
               display:none; align-items:flex-end; justify-content:center; z-index:10; }
   .backdrop.show { display:flex; }
   .sheet { width:100%; max-width:520px; background:var(--cream);
-           padding:26px 24px 34px; border-top:1px solid var(--rule); }
+           padding:26px 24px 34px; border-top:1px solid var(--rule);
+           max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .sheet h3 { font-family:Helvetica,Arial,sans-serif; font-size:11px; letter-spacing:.2em;
               text-transform:uppercase; color:var(--mid); font-weight:normal;
               text-align:center; margin-bottom:18px; }
-  .opt { width:100%; padding:14px; margin-bottom:8px; border:1px solid var(--rule);
-         background:transparent; font-family:Helvetica,Arial,sans-serif; font-size:11px;
-         letter-spacing:.12em; text-transform:uppercase; color:var(--ink); cursor:pointer; }
-  .opt.solid { background:var(--ink); color:var(--cream); border-color:var(--ink); }
-  .opt.quiet { color:var(--mid); }
+  .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid var(--ink);
+         background:var(--ink); font-family:Helvetica,Arial,sans-serif; font-size:12px;
+         letter-spacing:.12em; text-transform:uppercase; color:#fff; cursor:pointer; }
+  .opt.solid { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .opt.out   { background:#9E6455; border-color:#9E6455; color:#fff; }
+  .opt.vac   { background:var(--mid); border-color:var(--mid); color:#fff; }
+  .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
   .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 16px; }
   .pax { width:38px; height:38px; border:1px solid var(--rule); background:transparent;
          border-radius:50%; font-family:Helvetica,Arial,sans-serif; font-size:13px;
@@ -123,8 +126,8 @@
 
   <div class="totals">
     <div class="tot"><div class="tot-n" id="nCovers">–</div><div class="tot-l">Covers</div></div>
-    <div class="tot"><div class="tot-n" id="nOut">–</div><div class="tot-l">Not dining</div></div>
-    <div class="tot" id="tileAwait"><div class="tot-n" id="nAwait">–</div><div class="tot-l">Awaiting</div></div>
+    <div class="tot"><div class="tot-n" id="nOut">–</div><div class="tot-l">Rooms out</div></div>
+    <div class="tot" id="tileAwait"><div class="tot-n" id="nAwait">–</div><div class="tot-l">Rooms awaiting</div></div>
   </div>
 
   <div class="sec">Rooms</div>
@@ -260,14 +263,10 @@ function render(){
 
   rows.forEach(function(r){ covers += (r.g.pax||1); });
 
-  // declines
+  // declines — counted as rooms, matching the Awaiting tile
   for (var n2=1; n2<=ROOMS; n2++){
     var s = roomState(n2);
-    if (s && s.g.status==='out') notDining += (s.g.pax||1);
-  }
-  for (var k in responses){
-    var g = responses[k];
-    if (!g.room && g.status==='out') notDining += (g.pax||1);
+    if (s && s.g.status==='out') notDining++;
   }
 
   var el = document.getElementById('listBookings');
@@ -309,6 +308,15 @@ var sheet = document.getElementById('sheet');
 bd.onclick = function(e){ if(e.target===bd) close(); };
 function close(){ bd.className='backdrop'; }
 
+function revealAction(){
+  requestAnimationFrame(function(){
+    var target = sheet.querySelector('.opt.solid') || sheet.querySelector('.opt');
+    if (target && target.scrollIntoView) {
+      target.scrollIntoView({ block:'nearest', behavior:'smooth' });
+    }
+  });
+}
+
 function openRoom(n, st){
   var pax = (st && st.g.pax) || 2;
   var locked = st && st.src==='digital';
@@ -321,12 +329,13 @@ function openRoom(n, st){
         '<button class="opt quiet" id="oClose">Close</button>'
       : '<div class="sheet-label">Guests</div><div class="pax-row" id="paxRow"></div>'+
         '<button class="opt solid" id="oIn">Dining</button>'+
-        '<button class="opt" id="oOut">Not dining</button>'+
-        '<button class="opt" id="oVac">Vacant tonight</button>'+
+        '<button class="opt out" id="oOut">Not dining</button>'+
+        '<button class="opt vac" id="oVac">Vacant tonight</button>'+
         (st ? '<button class="opt quiet" id="oClear">Clear</button>' : '')
     );
 
   bd.className='backdrop show';
+  revealAction();
   if (locked){ document.getElementById('oClose').onclick=close; return; }
 
   function paintPax(){
@@ -372,6 +381,7 @@ document.getElementById('addExt').onclick = function(e){
     '<button class="opt solid" id="oIn" style="margin-top:8px">Add</button>'+
     '<button class="opt quiet" id="oCancel">Cancel</button>';
   bd.className='backdrop show';
+  revealAction();
 
   function paintPax(){
     var r=document.getElementById('paxRow'); r.innerHTML='';
@@ -420,6 +430,7 @@ function editExt(key, g){
     '<button class="opt quiet" id="oDel">Remove</button>'+
     '<button class="opt quiet" id="oClose">Close</button>';
   bd.className='backdrop show';
+  revealAction();
   document.getElementById('oClose').onclick=close;
   document.getElementById('oDel').onclick=function(){
     delete manual[key];
