@@ -1,22 +1,22 @@
 {
   "bread": {
-    "name": "Baguette",
-    "desc": "paprika butter",
+    "name": "Potato & rosemary focaccia",
+    "desc": "aged balsamic, olive oil",
     "aus": false
   },
   "entree": {
-    "name": "King Prawn",
-    "desc": "red pepper, saffron, lemon",
-    "aus": true
-  },
-  "main": {
-    "name": "Sovereign Lamb",
-    "desc": "cauliflower, vadouvan, yoghurt, curry leaf",
+    "name": "Cow's milk burrata",
+    "desc": "pumpkin mostarda, hazelnut, sage",
     "aus": false
   },
+  "main": {
+    "name": "Coral trout",
+    "desc": "broccolini, sauce vierge, whey",
+    "aus": true
+  },
   "dessert": {
-    "name": "Vanilla Br\u00fbl\u00e9e",
-    "desc": "pistachio, strawberry",
+    "name": "Banana",
+    "desc": "caramel, chocolate, macadamia",
     "aus": false
   }
 }
