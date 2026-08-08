@@ -59,6 +59,8 @@
   /* source icon */
   .mark { position:absolute; top:4px; right:4px; width:10px; height:10px; opacity:.75; }
   .mark svg { width:100%; height:100%; display:block; }
+  .mark.seen { opacity:.55; }
+  .mark.seen svg { fill:none; stroke:var(--mid); }
   .room.in  .mark svg { fill:#5E7D67; stroke:#5E7D67; }
   .room.out .mark svg { fill:#9E6455; stroke:#9E6455; }
 
@@ -74,6 +76,7 @@
   .legend2 { margin-top:7px; }
   .ico { width:11px; height:11px; display:inline-block; }
   .ico svg { width:100%; height:100%; display:block; fill:var(--mid); stroke:var(--mid); }
+  #legSeen svg { fill:none; stroke-width:2.4; }
 
   /* rows */
   .row { display:flex; justify-content:space-between; align-items:baseline; gap:10px;
@@ -163,6 +166,7 @@
   <div class="legend legend2">
     <span><i class="ico" id="legGuest"></i>Guest replied</span>
     <span><i class="ico" id="legStaff"></i>Added by staff</span>
+    <span><i class="ico" id="legSeen"></i>Link opened</span>
   </div>
 
   <div class="sec">
@@ -198,6 +202,10 @@ document.getElementById('date').textContent = label();
 
 var ICON_GUEST = '<svg viewBox="0 0 24 24" stroke-width="0"><circle cx="12" cy="7.5" r="4"/>'+
                  '<path d="M12 13.5c-4.2 0-7.5 2.9-7.5 6.5h15c0-3.6-3.3-6.5-7.5-6.5z"/></svg>';
+var ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round">'+
+                '<path d="M9.5 14.5l5-5"/>'+
+                '<path d="M12.8 7.2l1.6-1.6a3.6 3.6 0 015.1 5.1l-1.6 1.6"/>'+
+                '<path d="M11.2 16.8l-1.6 1.6a3.6 3.6 0 01-5.1-5.1l1.6-1.6"/></svg>';
 var ICON_EDIT = '<svg viewBox="0 0 24 24"><path d="M3 17.2V21h3.8L17.9 9.9l-3.8-3.8L3 17.2z"/>'+
                 '<path d="M20.7 7.1c.4-.4.4-1 0-1.4l-2.4-2.4c-.4-.4-1-.4-1.4 0l-1.8 1.8 3.8 3.8 1.8-1.8z"/></svg>';
 var ICON_GUEST_X = '<svg viewBox="0 0 24 24" stroke-width="0"><circle cx="12" cy="7.5" r="4"/>'+
@@ -291,6 +299,9 @@ function render(){
       } else awaiting++;
 
       var mark = '';
+      if (!st && roomguests[String(n)]) {
+        mark = '<span class="mark seen">'+ICON_LINK+'</span>';   // opened, no answer yet
+      }
       if (st && (st.g.status==='in' || st.g.status==='out')) {
         var ic;
         if (st.override && st.guest && st.g.status === 'out') ic = ICON_GUEST_X;  // guest replied, staff cancelled
@@ -528,7 +539,13 @@ function openRoom(n, st){
   }
 
   // ── no guest answer: plain staff entry ──────────────────
+  var seen = roomguests[String(n)];
   shell(
+    (!st && seen
+      ? '<div class="note-box">'+
+        (seen.name ? seen.name+' has' : 'The guest has')+
+        ' opened the link but not replied.</div>'
+      : '')+
     paxBlock()+
     '<button class="opt solid" id="oIn">Dining</button>'+
     '<button class="opt out" id="oOut">Not dining</button>'+
@@ -666,6 +683,7 @@ function editExt(key, g){
 // ── load ───────────────────────────────────────────────────
 document.getElementById('legGuest').innerHTML = ICON_GUEST;
 document.getElementById('legStaff').innerHTML = ICON_STAFF;
+document.getElementById('legSeen').innerHTML  = ICON_LINK;
 
 Promise.all([
   api('/responses/'+todayKey()),
