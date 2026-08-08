@@ -22,8 +22,18 @@
 
   .wordmark { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.45em;
               text-transform:uppercase; color:var(--mid); text-align:center; }
-  .date { text-align:center; font-family:Helvetica,Arial,sans-serif; font-size:13px; font-weight:bold;
-          letter-spacing:.1em; text-transform:uppercase; margin-top:6px; }
+  .daterow { display:flex; align-items:center; justify-content:center; gap:14px; margin-top:6px; }
+  .date { font-family:Helvetica,Arial,sans-serif; font-size:13px; font-weight:bold;
+          letter-spacing:.1em; text-transform:uppercase; }
+  .dnav { border:1px solid var(--rule); background:transparent; color:var(--ink);
+          width:30px; height:30px; font-size:17px; line-height:1; cursor:pointer;
+          border-radius:2px; -webkit-tap-highlight-color:transparent; }
+  .dnav:active { background:var(--rule); }
+  .dtoday { text-align:center; height:14px; margin-top:5px; }
+  .dtoday a { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.2em;
+              text-transform:uppercase; color:var(--mid); text-decoration:none;
+              border-bottom:1px solid var(--rule); display:none; }
+  .dtoday a.show { display:inline; }
 
   .totals { display:flex; gap:8px; margin:22px 0 26px; }
   .tot { flex:1; text-align:center; padding:14px 4px; border:1px solid var(--rule); }
@@ -179,7 +189,12 @@
 <div class="errbar" id="errBar"></div>
 <div class="wrap">
   <div class="wordmark">Nala</div>
-  <div class="date" id="date"></div>
+  <div class="daterow">
+    <button class="dnav" id="dPrev">&#8249;</button>
+    <div class="date" id="date"></div>
+    <button class="dnav" id="dNext">&#8250;</button>
+  </div>
+  <div class="dtoday"><a href="#" id="dToday">Back to today</a></div>
 
   <div class="totals">
     <div class="tot"><div class="tot-n" id="nCovers">–</div><div class="tot-l">Covers</div></div>
@@ -241,6 +256,32 @@ var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
 
 
+
+// ── viewed date ────────────────────────────────────────────
+function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+var VIEW = (function(){
+  var q = new URLSearchParams(location.search).get('date');
+  if (q && /^\d{4}-\d{2}-\d{2}$/.test(q)) {
+    var p = q.split('-');
+    return new Date(+p[0], +p[1]-1, +p[2]);
+  }
+  return new Date();
+})();
+
+function isToday(){ return dkey(VIEW) === dkey(new Date()); }
+function shiftDate(n){
+  var d = new Date(VIEW); d.setDate(d.getDate()+n);
+  var q = new URLSearchParams(location.search);
+  q.set('date', dkey(d));
+  location.search = q.toString();
+}
+function goToday(){
+  var q = new URLSearchParams(location.search);
+  q.delete('date');
+  location.search = q.toString();
+}
+
 function parseDepDate(s){
   if(!s) return null;
   s = String(s).trim();
@@ -272,12 +313,17 @@ function resolveRoomGuests(all, todayK){
   return out;
 }
 
-function todayKey(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function label(){var d=new Date();
+function todayKey(){ return dkey(VIEW); }
+function label(){var d=VIEW;
   var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var m=['January','February','March','April','May','June','July','August','September','October','November','December'];
   return days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();}
 document.getElementById('date').textContent = label();
+document.getElementById('dPrev').onclick  = function(){ shiftDate(-1); };
+document.getElementById('dNext').onclick  = function(){ shiftDate(1); };
+var todayLink = document.getElementById('dToday');
+todayLink.onclick = function(e){ e.preventDefault(); goToday(); };
+if (!isToday()) todayLink.className = 'show';
 
 
 var ICON_GUEST = '<svg viewBox="0 0 24 24" stroke-width="0"><circle cx="12" cy="7.5" r="4"/>'+
