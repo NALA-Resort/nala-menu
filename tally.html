@@ -349,6 +349,23 @@ var sheet = document.getElementById('sheet');
 bd.onclick = function(e){ if(e.target===bd) close(); };
 function close(){ bd.className='backdrop'; }
 
+// swaps a button for a confirm / back pair, in place
+function confirmAction(btnId, question, confirmLabel, onConfirm){
+  var btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.onclick = function(){
+    var holder = document.createElement('div');
+    holder.innerHTML =
+      '<div class="note-box" style="padding-top:6px">'+question+'</div>'+
+      '<button class="opt out" id="'+btnId+'Yes">'+confirmLabel+'</button>'+
+      '<button class="opt quiet" id="'+btnId+'No">Back</button>';
+    btn.replaceWith(holder);
+    revealAction();
+    document.getElementById(btnId+'Yes').onclick = onConfirm;
+    document.getElementById(btnId+'No').onclick  = function(){ holder.replaceWith(btn); revealAction(); };
+  };
+}
+
 function revealAction(){
   requestAnimationFrame(function(){
     var target = sheet.querySelector('.opt.solid') || sheet.querySelector('.opt');
@@ -425,9 +442,10 @@ function openRoom(n, st){
       document.getElementById('oSave').onclick = function(){
         writeManual({ status:'in', pax:pax, room:String(n), override:true, source:'manual' });
       };
-      document.getElementById('oCancel').onclick = function(){
-        writeManual({ status:'out', pax:0, room:String(n), override:true, source:'manual' });
-      };
+      confirmAction('oCancel',
+        'Cancel this booking?<br>The guest confirmed it themselves.',
+        'Yes, cancel booking',
+        function(){ writeManual({ status:'out', pax:0, room:String(n), override:true, source:'manual' }); });
       document.getElementById('oClose').onclick = close;
     } else {
       shell(
@@ -458,7 +476,9 @@ function openRoom(n, st){
   document.getElementById('oIn').onclick  = function(){ writeManual({ status:'in',  pax:pax, room:String(n), source:'manual' }); };
   document.getElementById('oOut').onclick = function(){ writeManual({ status:'out', pax:0,  room:String(n), source:'manual' }); };
   document.getElementById('oVac').onclick = function(){ writeManual({ status:'vacant', pax:0, room:String(n), source:'manual' }); };
-  var cl=document.getElementById('oClear'); if(cl) cl.onclick = clearManual;
+  if (document.getElementById('oClear')) {
+    confirmAction('oClear', 'Clear this room back to awaiting?', 'Yes, clear', clearManual);
+  }
   document.getElementById('oClose').onclick = close;
 }
 
@@ -549,7 +569,7 @@ function editExt(key, g){
     };
   }
 
-  document.getElementById('oDel').onclick = function(){
+  confirmAction('oDel', 'Cancel this booking?', 'Yes, cancel booking', function(){
     if (isManual){
       delete manual[key];
       api('/manual/'+todayKey()+'/'+key, 'DELETE');
@@ -562,7 +582,7 @@ function editExt(key, g){
       cancelledExt[key] = true;
     }
     close(); render();
-  };
+  });
   document.getElementById('oClose').onclick = close;
 }
 
