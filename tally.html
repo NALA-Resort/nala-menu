@@ -45,7 +45,9 @@
   .room.in .room-p { color:#5E7D67; }
   .room.out    { background:rgba(184,106,90,.16); border-color:rgba(184,106,90,.45); }
   .room.out .room-n { color:var(--ink); opacity:.6; text-decoration:line-through; }
-  .room.vacant { border-style:dotted; opacity:.3; }
+  .room.vacant { border-style:solid; border-color:rgba(87,87,94,.28);
+                 background:rgba(87,87,94,.10); }
+  .room.vacant .room-n { color:var(--mid); }
   .room.await  { border-style:dashed; border-color:var(--mid); }
 
   /* source icon */
@@ -62,7 +64,7 @@
   .sw.in { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
   .sw.out { background:rgba(184,106,90,.16); border-color:rgba(184,106,90,.45); }
   .sw.await { border-style:dashed; border-color:var(--mid); }
-  .sw.vacant { border-style:dotted; opacity:.4; }
+  .sw.vacant { border-color:rgba(87,87,94,.28); background:rgba(87,87,94,.10); }
   .legend2 { margin-top:7px; }
   .ico { width:11px; height:11px; display:inline-block; }
   .ico svg { width:100%; height:100%; display:block; fill:var(--mid); stroke:var(--mid); }
@@ -93,12 +95,13 @@
   .sheet h3 { font-family:Helvetica,Arial,sans-serif; font-size:11px; letter-spacing:.2em;
               text-transform:uppercase; color:var(--mid); font-weight:normal;
               text-align:center; margin-bottom:18px; }
-  .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid var(--ink);
-         background:var(--ink); font-family:Helvetica,Arial,sans-serif; font-size:12px;
+  .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid transparent;
+         font-family:Helvetica,Arial,sans-serif; font-size:12px;
          letter-spacing:.12em; text-transform:uppercase; color:#fff; cursor:pointer; }
-  .opt.solid { background:var(--ink); color:#fff; border-color:var(--ink); }
-  .opt.out   { background:#9E6455; border-color:#9E6455; color:#fff; }
-  .opt.vac   { background:var(--mid); border-color:var(--mid); color:#fff; }
+  /* matches the room tile palette */
+  .opt.solid { background:#5E7D67; border-color:#5E7D67; }   /* dining  — green */
+  .opt.out   { background:#9E6455; border-color:#9E6455; }   /* not dining — red */
+  .opt.vac   { background:#57575E; border-color:#57575E; }   /* vacant — slate */
   .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
   .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 16px; }
   .pax { width:38px; height:38px; border:1px solid var(--rule); background:transparent;
