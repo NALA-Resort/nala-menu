@@ -151,7 +151,7 @@ function tidyPhone(p){
   return p;
 }
 
-function parseDep(s){
+function parseDepDate(s){
   if(!s) return null;
   s = String(s).trim();
   var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -161,7 +161,7 @@ function parseDep(s){
 }
 
 function depHTML(raw){
-  var d = parseDep(raw);
+  var d = parseDepDate(raw);
   if (!d) return '';
   var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -177,13 +177,33 @@ function dietHTML(diets){
   }).join(', ');
 }
 
+
+// Most recent record for a room, looking back through previous days.
+// A guest who opened the link days ago still appears, unless they have departed.
+function resolveRoomGuests(all, todayK){
+  var out = {};
+  var dates = Object.keys(all || {}).filter(function(d){ return d <= todayK; }).sort();
+  dates.forEach(function(d){
+    var day = all[d] || {};
+    for (var room in day){ out[room] = day[room]; }   // later dates overwrite earlier
+  });
+  // drop anyone whose departure has already passed
+  for (var room in out){
+    var dep = out[room] && out[room].departs;
+    if (!dep) continue;
+    var p = parseDepDate(dep);
+    if (p && depDateKey(p) < todayK) delete out[room];
+  }
+  return out;
+}
+
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
 Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), api('/roomguests') ])
   .then(function(res){
     var responses  = res[0] || {};
     var manual     = res[1] || {};
-    var roomguests = res[2] || {};
+    var roomguests = resolveRoomGuests(res[2], todayKey());
 
     // ── resolve each room to a single record ──────────────
     function roomRecord(n){
