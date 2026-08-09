@@ -6,9 +6,9 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Nala — Printable Menu</title>
 <style>
-  @page { size: A4 landscape; margin: 0; }
+  @page { size: 297mm 210mm landscape; margin: 0; }
   * { margin:0; padding:0; box-sizing:border-box; }
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#DDDDD8; }
+  :root { --paper:#FFFFFF; --ink:#1C1C1A; --mid:#8E8E86; --rule:#DDDDD8; }
 
   body { background:#E9E7E3; font-family:Helvetica, Arial, sans-serif; padding:18px; }
 
@@ -19,10 +19,12 @@
   .btn.ghost { background:#fff; color:var(--ink); border:1px solid var(--ink); }
   .state { margin-left:auto; font-size:10px; letter-spacing:.12em;
            text-transform:uppercase; color:#777; }
+  .hint { max-width:1050px; margin:0 auto 14px; font-size:11px; color:#7A7A72;
+          font-style:italic; }
 
   /* A4 landscape sheet */
   .sheet {
-    width:297mm; height:210mm; background:var(--cream);
+    width:297mm; height:210mm; background:var(--paper);
     margin:0 auto; display:flex; position:relative;
     box-shadow:0 2px 14px rgba(0,0,0,.14);
   }
@@ -52,9 +54,12 @@
   .empty { font-family:Georgia, serif; font-style:italic; font-size:15px; color:var(--mid); }
 
   @media print {
-    body { background:#fff; padding:0; }
-    .bar { display:none; }
-    .sheet { box-shadow:none; margin:0; }
+    html, body { background:#fff; padding:0; margin:0;
+                 width:297mm; height:210mm; }
+    .bar, .hint { display:none; }
+    .sheet { box-shadow:none; margin:0; width:297mm; height:210mm;
+             page-break-after:avoid; }
+    .cut { border-left:1px dashed #C9C7C2; }
   }
 </style>
 </head>
@@ -65,6 +70,8 @@
   <a class="btn ghost" href="tally.html">Back</a>
   <span class="state" id="state"></span>
 </div>
+
+<div class="hint">If your print dialog shows a portrait page, set orientation to <b>Landscape</b> and scale to 100%.</div>
 
 <div class="sheet">
   <div class="half"><div class="menu" id="menuA"></div></div>
