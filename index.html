@@ -64,15 +64,15 @@
 
   header {
     text-align: center;
-    padding: 6vh 0 1.8vh;
+    padding: 4.6vh 0 1.6vh;
   }
 
-  .wordmark {
-    font-family: 'Raleway', Helvetica, Arial, sans-serif;
-    font-size: 0.656rem;
-    letter-spacing: 0.45em;
-    text-transform: uppercase;
-    color: var(--mid);
+  /* Sized in rem so the shrink-to-fit loop scales it with everything else. */
+  .logo {
+    width: 6.2rem;
+    height: auto;
+    display: block;
+    margin: 0 auto;
   }
 
   #stateDefault {
@@ -275,7 +275,8 @@
   @media (max-height: 700px) {
     .courses      { padding: 0.5rem 0; }
     .spacer-mid   { min-height: 0.5rem; max-height: 1.4rem; }
-    header        { padding: 2.6vh 0 1vh; }
+    header        { padding: 2vh 0 0.9vh; }
+    .logo         { width: 5.4rem; }
     .menu-date    { padding-bottom: 1.2vh; }
     .course-label { margin-bottom: 3px; }
     .course-rule  { margin: 3px auto 7px; }
@@ -310,7 +311,7 @@
 <div class="page">
 
   <header>
-    <div class="wordmark">Nala</div>
+    <img class="logo" src="nala-logo.png" alt="Nala Resort">
   </header>
 
   <div id="stateDefault">
