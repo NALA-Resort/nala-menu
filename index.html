@@ -258,6 +258,15 @@
     color:var(--ink); cursor:pointer; -webkit-tap-highlight-color:transparent;
   }
   .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .chip-div {
+    flex-basis:100%; display:flex; align-items:center; gap:10px;
+    margin:4px 0 2px; color:var(--mid);
+  }
+  .chip-div::before, .chip-div::after { content:''; flex:1; border-top:1px solid var(--rule); }
+  .chip-div span {
+    font-family:'Raleway',Helvetica,Arial,sans-serif; font-size:0.62rem;
+    letter-spacing:0.14em; text-transform:uppercase; white-space:nowrap;
+  }
 
   .note-input {
     width:100%; padding:11px; border:1px solid var(--rule); background:transparent;
@@ -464,8 +473,42 @@
       if (MENU.dietaries && MENU.dietaries.length) DIETARIES = MENU.dietaries.slice();
       if (document.getElementById('chips')) paintChips();
       showMenu(res.data);
+      loadTags();
     })
     .catch(function(e){ console.log('Menu load error:', e); });
+
+  // Dietary master list + tonight's dish tags live in Firebase,
+  // written by the chef's tag page (tag.html).
+  function loadTags(){
+    Promise.all([
+      fetch(DB + '/dietaries.json').then(function(r){ return r.json(); }),
+      fetch(DB + '/menutags/' + todayKey() + '.json').then(function(r){ return r.json(); })
+    ]).then(function(res){
+      var master = res[0], tags = res[1];
+      if (master){
+        var names = [], groups = {};
+        Object.keys(master).forEach(function(k){
+          var d = master[k];
+          if (d && d.active){ names.push(d.name || k); groups[d.name || k] = d.group || 'common'; }
+        });
+        if (names.length){
+          names.sort(function(a,b){
+            var ga = groups[a]==='menu'?1:0, gb = groups[b]==='menu'?1:0;
+            return ga - gb || a.localeCompare(b);
+          });
+          DIETARIES = names;
+          if (MENU) MENU.dietGroups = groups;
+        }
+      }
+      if (tags && MENU){
+        ['bread','entree','main','dessert'].forEach(function(c){
+          if (MENU[c] && tags[c]) MENU[c].conflicts = tags[c];
+        });
+      }
+      if (document.getElementById('chips')) paintChips();
+      if (document.getElementById('cf')) updateConflict();
+    }).catch(function(e){ console.log('Tag load error:', e); });
+  }
 
   // ══ RSVP ═══════════════════════════════════════════════════
   var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -672,18 +715,30 @@
     })(i);
   }
 
+  function chipEl(d){
+    var b=document.createElement('button');
+    b.className='chip'+(state.diets.indexOf(d)>-1?' on':''); b.textContent=d;
+    b.onclick=function(){
+      var i=state.diets.indexOf(d);
+      if(i>-1) state.diets.splice(i,1); else state.diets.push(d);
+      paintChips(); updateConflict();
+    };
+    return b;
+  }
   function paintChips(){
     var box = document.getElementById('chips'); box.innerHTML='';
+    var groups = (MENU && MENU.dietGroups) ? MENU.dietGroups : {};
+    var common = [], menu = [];
     DIETARIES.forEach(function(d){
-      var b=document.createElement('button');
-      b.className='chip'+(state.diets.indexOf(d)>-1?' on':''); b.textContent=d;
-      b.onclick=function(){
-        var i=state.diets.indexOf(d);
-        if(i>-1) state.diets.splice(i,1); else state.diets.push(d);
-        paintChips(); updateConflict();
-      };
-      box.appendChild(b);
+      if (groups[d]==='menu') menu.push(d); else common.push(d);
     });
+    common.forEach(function(d){ box.appendChild(chipEl(d)); });
+    if (menu.length){
+      var div=document.createElement('div'); div.className='chip-div';
+      div.innerHTML='<span>Tonight\u2019s menu</span>';
+      box.appendChild(div);
+      menu.forEach(function(d){ box.appendChild(chipEl(d)); });
+    }
   }
 
   function save(status){
@@ -691,13 +746,16 @@
     if (noteEl) state.note = noteEl.value.trim();
     var dEl = document.getElementById('dnote');
     if (dEl) state.dnote = dEl.value.trim();
-    if (status==='in' && menuConflicts(state.diets).length && !state.dnote){
+    var clash = menuConflicts(state.diets).length > 0;
+    if (status==='in' && clash && !state.dnote){
       if (dEl){ dEl.classList.add('miss'); dEl.focus(); }
       return;   // a conflicting dietary needs a note before confirming
     }
+    if (!clash) state.dnote = '';   // diet was untoggled after typing
     var payload = {
       status: status,
       pax: status==='in' ? state.pax : 0,
+      flag: status==='in' && clash,
       note: status==='in' ? state.note : '',
       dnote: status==='in' ? state.dnote : '',
       diets: state.diets,
