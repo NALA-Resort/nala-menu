@@ -310,10 +310,22 @@
 
   // menu.json carries its own publish time; Last-Modified is unreliable
   // because GitHub Pages rewrites it on every deploy of any file.
+
+  // Safari only accepts 3 fractional digits in an ISO date; Python writes 6.
+  // Trim them so any timestamp parses on every browser.
+  function parseISO(s){
+    if (!s) return null;
+    var t = String(s).trim().replace(/(\.\d{3})\d+/, '$1');
+    var d = new Date(t);
+    if (!isNaN(d)) return d;
+    d = new Date(t.replace(/\.\d+/, ''));      // drop fractions entirely
+    return isNaN(d) ? null : d;
+  }
+  
   function publishTime(data, lastModified) {
     if (data && data.published) {
-      var p = new Date(data.published);
-      if (!isNaN(p)) return p;
+      var p = parseISO(data.published);
+      if (p) return p;
     }
     return lastModified ? new Date(lastModified) : null;
   }
