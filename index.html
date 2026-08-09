@@ -125,8 +125,7 @@
     color: var(--mid);
     text-align: center;
     text-transform: uppercase;
-    padding: 1.4vh 0 2.2vh;
-    border-bottom: 1px solid var(--rule);
+    padding: 1.4vh 0 2vh;
   }
 
   /* The four courses sit in their own block, centred in whatever height
@@ -134,16 +133,17 @@
      capped, so surplus height becomes even margin around the group
      instead of inflating the gaps. That is the difference between a
      composed menu and a stretched one. */
-  /* The courses sit on paper, a shade lighter than the page cream.
-     Full-bleed so the panel's edges ARE the dividers. */
+  /* The courses are a page of paper laid on the cream: bordered all
+     round, square corners, inset from the screen edges. */
   .courses {
     flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 0.9rem clamp(20px, 7vw, 32px);
-    margin: 0 calc(clamp(20px, 7vw, 32px) * -1);
+    padding: 1.4rem 1rem;
+    margin: 0;
     background: var(--paper);
+    border: 1px solid var(--rule);
   }
   .spacer-mid { flex: 1; min-height: 1.5rem; max-height: 2.5rem; }
 
@@ -192,9 +192,8 @@
   }
 
   footer {
-    border-top: 1px solid var(--rule);
     text-align: center;
-    padding: 2.6vh 0 0;
+    padding: 2.4vh 0 0;
   }
 
   .pricing {
