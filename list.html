@@ -63,6 +63,11 @@
   .sub { display:block; font-size:8px; color:#777; font-weight:normal; margin-top:2px; }
   .allergen { color:#A8321E; font-weight:bold; }
   .checkout { color:#A8321E; font-weight:bold; }
+  .row-conflict td { background:#F7E4DF; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .flag { display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:7px; font-weight:bold;
+          letter-spacing:.12em; border:1.2px solid #A8321E; color:#A8321E; padding:1px 4px;
+          margin-right:5px; vertical-align:1px; }
+  .dnote { display:block; font-size:8px; color:#333; font-style:italic; margin-top:2px; }
   .muted { color:#aaa; font-weight:normal; font-style:italic; }
 
   /* empty write-in rows: one rule only, from the cell border */
@@ -231,6 +236,43 @@ function depHTML(raw){
   return txt;
 }
 
+// tonight's tagged menu, for dietary conflict flags
+var MENU = null;
+function fetchMenu(){
+  return fetch('menu.json?v=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(m){
+      m = m || {};
+      var filled = ['bread','entree','main','dessert'].every(function(k){
+        return m[k] && m[k].name && m[k].name.trim() !== '';
+      });
+      var fresh = false;
+      if (m.published) {
+        var pub = new Date(m.published);
+        var dk = pub.getFullYear()+'-'+String(pub.getMonth()+1).padStart(2,'0')+'-'+String(pub.getDate()).padStart(2,'0');
+        fresh = (dk === todayKey());
+      }
+      if (filled && fresh) MENU = m;
+    })
+    .catch(function(){});
+}
+
+function menuConflicts(diets){
+  if (!diets || !diets.length || !MENU) return [];
+  var hits = [];
+  ['bread','entree','main','dessert'].forEach(function(k){
+    var dish = MENU[k];
+    if (!dish || !dish.conflicts) return;
+    dish.conflicts.forEach(function(tag){
+      diets.forEach(function(d){
+        if (String(d).toLowerCase() === String(tag).toLowerCase())
+          hits.push({ dish: dish.name || k, diet: d });
+      });
+    });
+  });
+  return hits;
+}
+
 function dietHTML(diets){
   if(!diets||!diets.length) return '';
   return diets.map(function(d){
@@ -285,7 +327,7 @@ function resolveRoomGuests(all, todayK){
 
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
-Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRoomGuests(todayKey()) ])
+Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRoomGuests(todayKey()), fetchMenu() ])
   .then(function(res){
     var responses  = res[0] || {};
     var manual     = res[1] || {};
@@ -362,9 +404,15 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
       var nameCell = name + (phone && !row.room ? '<span class="sub">'+phone+'</span>' : '');
 
       var dinner, cls = '';
+      var hits = (row.status === 'in') ? menuConflicts(g.diets) : [];
       if (row.status === 'in')       dinner = '<span class="yes">Yes</span>';
       else if (row.status === 'out') { dinner = '<span class="no">No</span>'; cls = ' class="row-out"'; }
       else                           { dinner = '<span class="unk">—</span>';  cls = ' class="row-unk"'; }
+
+      if (hits.length) {
+        cls = ' class="row-conflict"';
+        nameCell = '<span class="flag">FLAG</span>' + nameCell;
+      }
 
       // Vacant rooms stay on the sheet, labelled and otherwise empty.
       if (row.status === 'vacant') {
@@ -383,7 +431,8 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
           '<td class="c-pax">'+(row.status==='in' ? (g.pax||1) : '')+'</td>'+
           '<td>'+stayHTML(g.arrives, g.departs)+'</td>'+
           '<td>'+dietHTML(g.diets)+'</td>'+
-          '<td>'+(g.note||'')+'</td>'+
+          '<td>'+(g.note||'')+
+            (g.dnote ? '<span class="dnote">Dietary: '+g.dnote+'</span>' : '')+'</td>'+
         '</tr>');
     });
 
