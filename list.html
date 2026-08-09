@@ -58,6 +58,7 @@
   .unk { color:#bbb; }
   .row-out td { background:#FAF6F5; }
   .row-unk td { background:#FCFCFB; }
+  .row-vacant td { background:#F4F4F2; color:#B0B0AA; }
 
   .sub { display:block; font-size:8px; color:#777; font-weight:normal; margin-top:2px; }
   .allergen { color:#A8321E; font-weight:bold; }
@@ -296,14 +297,14 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
 
     for (var n=1; n<=ROOMS; n++){
       var r = roomRecord(n);
-      if (r && r.status === 'vacant') continue;   // room empty tonight
-      roomsInHouse++;
+      var vacant = !!(r && r.status === 'vacant');
+      if (!vacant) roomsInHouse++;
       rows.push({
-        rec: r || { room:String(n) },
+        rec: vacant ? { room:String(n) } : (r || { room:String(n) }),
         room: n,
-        status: (r && r.status) ? r.status : null  // null = no reply yet
+        status: vacant ? 'vacant' : ((r && r.status) ? r.status : null)  // null = no reply yet
       });
-      if (r && r.status === 'in') covers += (r.pax || 1);
+      if (!vacant && r && r.status === 'in') covers += (r.pax || 1);
     }
 
     var externals = [];
@@ -333,15 +334,24 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
       var g = row.rec;
       var phone = tidyPhone(g.phone);
 
+      // Room rows with no real name are left blank so staff can write on
+      // them by hand. Externals still show their phone as a fallback.
       var name = g.name
         ? g.name
-        : (row.room ? '<span class="muted">Room guest</span>' : (phone || '<span class="muted">Guest</span>'));
+        : (row.room ? '' : (phone || ''));
       var nameCell = name + (phone && !row.room ? '<span class="sub">'+phone+'</span>' : '');
 
       var dinner, cls = '';
       if (row.status === 'in')       dinner = '<span class="yes">Yes</span>';
       else if (row.status === 'out') { dinner = '<span class="no">No</span>'; cls = ' class="row-out"'; }
       else                           { dinner = '<span class="unk">—</span>';  cls = ' class="row-unk"'; }
+
+      // Vacant rooms stay on the sheet, labelled and otherwise empty.
+      if (row.status === 'vacant') {
+        dinner = '';
+        cls = ' class="row-vacant"';
+        nameCell = '<span class="muted">Vacant</span>';
+      }
 
       tb.insertAdjacentHTML('beforeend',
         '<tr'+cls+'>'+
