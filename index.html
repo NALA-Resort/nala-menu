@@ -393,22 +393,6 @@
   //   2. Menu is empty ("remove menu")     -> placeholder
   //   3. Menu written before today         -> placeholder
 
-  // The check-in link doubles as the nightly menu link. Before the menu
-  // is published, a guest arriving from their welcome message should be
-  // greeted, not told to come back later. Same URL, warmer landing.
-  function showWelcome() {
-    var qsW  = new URLSearchParams(location.search);
-    var nm   = (qsW.get('n') || '').trim().split(' ')[0];
-    var sd   = document.getElementById('stateDefault');
-    sd.innerHTML =
-      '<div class="w-greet">Welcome to Nala' + (nm ? ',<br>' + nm : '') + '</div>' +
-      '<div class="w-rule"></div>' +
-      '<div class="w-body">This evening\u2019s menu will appear right here this afternoon, ' +
-        'and each afternoon of your stay \u2014 so keep this link handy. ' +
-        'If you already know you\u2019ll be joining us tonight, tell us below.</div>' +
-      '<div class="w-hours">Dinner 6\u20137 pm &nbsp;\u00b7&nbsp; Breakfast 8\u20139 am</div>';
-  }
-
   function hasContent(d) {
     return ['bread','entree','main','dessert'].every(function(k){
       return d[k] && d[k].name && d[k].name.trim() !== '';
@@ -458,18 +442,13 @@
       return r.json().then(function(data){ return { data: data, lastModified: lm }; });
     })
     .then(function(res) {
-      if (!hasContent(res.data)) return maybeWelcome();   // empty -> placeholder / welcome
+      if (!hasContent(res.data)) return;           // empty -> placeholder
       var pub = publishTime(res.data, res.lastModified);
-      if (!stillValid(pub)) return maybeWelcome();        // stale -> placeholder / welcome
+      if (!stillValid(pub)) return;                // stale -> placeholder
       res.data.date = dateLabel(pub);
       showMenu(res.data);
     })
-    .catch(function(e){ console.log('Menu load error:', e); maybeWelcome(); });
-
-  function maybeWelcome(){
-    var q = new URLSearchParams(location.search);
-    if ((q.get('n')||'').trim() || (q.get('p')||'').trim()) showWelcome();
-  }
+    .catch(function(e){ console.log('Menu load error:', e); });
 
   // ══ RSVP ═══════════════════════════════════════════════════
   var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
