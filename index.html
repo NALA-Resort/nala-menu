@@ -45,26 +45,21 @@
 
   body { display: flex; justify-content: center; }
 
+  /* Everything the guest sees lives in ONE container that is at least
+     one screen tall: header, menu, pricing, RSVP. The menu row is the
+     only flexible one, so it absorbs whatever slack is left over.
+
+     min-height, not height: if the content genuinely needs more room
+     (the details form, a short phone) the container grows and the page
+     scrolls. It can never clip, and it can never leave dead space. */
   .page {
     width: 100%;
     max-width: 440px;
     padding: 0 clamp(20px, 7vw, 32px);
-  }
-
-  /* The menu occupies exactly one screen. dvh tracks the real visible
-     area as Safari's address bar collapses, so no JS height lock. */
-  .card {
     min-height: 100vh;
     min-height: 100dvh;
     display: grid;
-    grid-template-rows: auto 1fr auto;
-  }
-
-  /* With the RSVP present, hold back a little so its top edge peeks
-     above the fold - that is what tells the guest to scroll. */
-  .page.has-rsvp .card {
-    min-height: calc(100vh - 4.75rem);
-    min-height: calc(100dvh - 4.75rem);
+    grid-template-rows: auto 1fr auto auto;   /* header | menu | pricing | rsvp */
   }
 
   header {
@@ -235,18 +230,29 @@
   .r-done-s { font-style:italic; font-weight:400; font-size:0.875rem; color:var(--mid); }
   /* Short screens: two-line dish descriptions were pushing past the fold
      on an SE. Tighten the spacer floors rather than the type. */
+  /* Short screens (SE and similar): the same content has to fit a much
+     smaller box, so the vertical budget is tightened. Type is untouched -
+     only spacing gives way. */
   @media (max-height: 700px) {
-    .spacer-top { min-height: 0.7rem; }
-    .spacer-mid { min-height: 1.15rem; }
-    .spacer-bot { min-height: 0.7rem; }
-    header { padding: 4.2vh 0 1.5vh; }
+    .spacer-top   { min-height: 0.4rem; }
+    .spacer-mid   { min-height: 0.5rem; }
+    .spacer-bot   { min-height: 0.4rem; }
+    header        { padding: 2.6vh 0 1vh; }
+    .menu-date    { padding-bottom: 1.2vh; }
+    .course-label { margin-bottom: 3px; }
+    .course-rule  { margin: 3px auto 7px; }
+    .dish-name    { margin-bottom: 3px; }
+    footer        { padding-top: 1.6vh; }
+    #rsvp         { margin-top: 1.8vh; padding: 1.8vh 0 2vh; }
+    .r-q          { margin-bottom: 8px; }
+    .r-btn        { padding: 11px 8px; }
   }
 
   /* Landscape phone: one screen is not achievable or desirable, so stop
      stretching to it and use settled spacing instead. */
   @media (orientation: landscape) and (max-height: 560px) {
     html { font-size: 15px; }
-    .card, .page.has-rsvp .card { min-height: 0; display: block; }
+    .page { min-height: 0; display: block; }
     header { padding: 26px 0 14px; }
     .menu-date { padding-bottom: 14px; }
     .spacer-top, .spacer-bot { flex: none; min-height: 20px; }
@@ -264,8 +270,6 @@
 </head>
 <body>
 <div class="page">
-
- <div class="card">
 
   <header>
     <div class="wordmark">Nala</div>
@@ -314,8 +318,6 @@
     <div class="pricing">2 courses $105 &nbsp;&nbsp; 3 courses $125</div>
     <div class="pricing-note">Bread course included with both options</div>
   </footer>
-
- </div><!-- /.card -->
 
   <div id="rsvp"></div>
 
