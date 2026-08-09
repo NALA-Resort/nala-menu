@@ -27,7 +27,7 @@
 <title>Nala — Tonight's Menu</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  :root { --cream: #FBFAF8; --ink: #14140F; --mid: #47473F; --rule: #CFCFC8; }
+  :root { --cream: #F7F5F1; --paper: #FEFEFC; --ink: #14140F; --mid: #47473F; --rule: #CFCFC8; }
 
   /* One fluid step drives every size on the page.
      Keyed to viewport HEIGHT, because vertical fit is the constraint.
@@ -134,12 +134,16 @@
      capped, so surplus height becomes even margin around the group
      instead of inflating the gaps. That is the difference between a
      composed menu and a stretched one. */
+  /* The courses sit on paper, a shade lighter than the page cream.
+     Full-bleed so the panel's edges ARE the dividers. */
   .courses {
     flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 0.9rem 0;
+    padding: 0.9rem clamp(20px, 7vw, 32px);
+    margin: 0 calc(clamp(20px, 7vw, 32px) * -1);
+    background: var(--paper);
   }
   .spacer-mid { flex: 1; min-height: 1.5rem; max-height: 2.5rem; }
 
