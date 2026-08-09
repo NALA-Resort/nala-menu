@@ -1,5 +1,5 @@
 {
-  "published": "2026-08-09T20:22:06.780128+10:00",
+  "published": "2026-08-09T20:23:57.005833+10:00",
   "bread": {
     "name": "Pain de campagne",
     "desc": "brown butter, smoked salt",
@@ -7,7 +7,7 @@
   },
   "entree": {
     "name": "Burrata",
-    "desc": "salumi XO, fried basil\nThis dish contains ingredients that can make you sick",
+    "desc": "salumi XO, fried basil",
     "aus": false
   },
   "main": {
