@@ -64,15 +64,15 @@
 
   header {
     text-align: center;
-    padding: 4.6vh 0 1.6vh;
+    padding: 4.4vh 0 2vh;
   }
 
   /* Sized in rem so the shrink-to-fit loop scales it with everything else. */
   .logo {
-    width: 6.2rem;
+    width: 5.6rem;
     height: auto;
     display: block;
-    margin: 0 auto;
+    margin: 0.3rem auto 1.7rem;
   }
 
   #stateDefault {
@@ -125,7 +125,6 @@
     color: var(--mid);
     text-align: center;
     text-transform: uppercase;
-    padding: 1.4vh 0 2vh;
   }
 
   /* The four courses sit in their own block, centred in whatever height
@@ -314,7 +313,7 @@
 <div class="page">
 
   <header>
-    <img class="logo" src="nala-logo.png" alt="Nala Resort">
+    <div class="menu-date" id="menuDate">Nala</div>
   </header>
 
   <div id="stateDefault">
@@ -323,8 +322,8 @@
   </div>
 
   <div id="stateMenu">
-    <div class="menu-date" id="menuDate"></div>
     <div class="courses">
+    <img class="logo" src="nala-logo.png" alt="Nala Resort">
     <div class="course">
       <div class="course-label">Bread</div>
       <div class="course-rule"></div>
