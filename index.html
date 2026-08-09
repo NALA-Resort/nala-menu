@@ -262,7 +262,26 @@
     flex-basis:100%; text-align:center; font-style:italic; color:var(--mid);
     font-size:0.8rem; line-height:1.5; margin-bottom:6px;
   }
-  .chip-wide { flex-basis:100%; margin-top:6px; padding:11px 13px; }
+  .ack {
+    flex-basis:100%; display:flex; align-items:flex-start; gap:11px; text-align:left;
+    border:1px solid var(--rule); border-radius:10px; padding:13px 14px; margin-top:6px;
+    cursor:pointer; -webkit-tap-highlight-color:transparent;
+  }
+  .ack-box {
+    flex:0 0 auto; width:19px; height:19px; border:1.5px solid var(--mid);
+    border-radius:4px; margin-top:1px; position:relative;
+  }
+  .ack.on .ack-box { background:var(--ink); border-color:var(--ink); }
+  .ack.on .ack-box::after {
+    content:''; position:absolute; left:5px; top:1px; width:5px; height:10px;
+    border:solid var(--cream); border-width:0 2px 2px 0; transform:rotate(42deg);
+  }
+  .ack-t {
+    font-family:'Raleway',Helvetica,Arial,sans-serif; font-size:0.8rem;
+    color:var(--ink); line-height:1.45;
+  }
+  .ack.miss { border-color:#9E6455; }
+  .ack.miss .ack-box { border-color:#9E6455; }
   .chip-div {
     flex-basis:100%; display:flex; align-items:center; gap:10px;
     margin:4px 0 2px; color:var(--mid);
@@ -376,7 +395,7 @@
   </div>
 
 
-  <footer>
+  <footer id="pricingFoot" style="display:none">
     <div class="pricing">2 courses $105 &nbsp;&nbsp; 3 courses $125</div>
     <div class="pricing-note">Bread course included with both options</div>
   </footer>
@@ -397,6 +416,7 @@
     document.getElementById('stateDefault').style.display = 'none';
     var sm = document.getElementById('stateMenu');
     sm.style.display = 'flex';
+    document.getElementById('pricingFoot').style.display = '';
 
     document.getElementById('menuDate').textContent = data.date;
 
@@ -741,19 +761,20 @@
       if (groups[d]==='menu') menu.push(d); else common.push(d);
     });
     if (!MENU){
-      // menu not out yet: no dietary picking, just a positive opt-out
+      // menu not out yet: confirming requires an explicit acknowledgment
       var pn=document.createElement('div'); pn.className='premenu-note';
-      pn.textContent='Tonight\u2019s menu isn\u2019t out yet \u2014 check back later to see it and add any dietaries.';
+      pn.textContent='Tonight\u2019s menu isn\u2019t published yet. If you\u2019d like to confirm now, please acknowledge below \u2014 or check back once the menu is out to add any dietaries.';
       box.appendChild(pn);
-      var nd=document.createElement('button');
-      nd.className='chip chip-wide'+(state.nodiet?' on':'');
-      nd.textContent='No allergies or dietaries \u2014 I\u2019m in regardless';
-      nd.onclick=function(){
+      var ack=document.createElement('div');
+      ack.className='ack'+(state.nodiet?' on':''); ack.id='ack';
+      ack.innerHTML='<span class="ack-box"></span>'+
+        '<span class="ack-t">I have no allergies or dietary requirements to declare</span>';
+      ack.onclick=function(){
         state.nodiet=!state.nodiet;
         if (state.nodiet) state.diets=[];
         paintChips(); updateConflict();
       };
-      box.appendChild(nd);
+      box.appendChild(ack);
       return;
     }
     common.forEach(function(d){ box.appendChild(chipEl(d)); });
@@ -775,6 +796,12 @@
       if (dEl){ dEl.classList.add('miss'); dEl.focus(); }
       return;   // a conflicting dietary needs a note before confirming
     }
+    if (status==='in' && !MENU && !state.nodiet){
+      var ackEl = document.getElementById('ack');
+      if (ackEl){ ackEl.classList.add('miss'); ackEl.scrollIntoView({block:'center',behavior:'smooth'}); }
+      return;   // pre-menu confirming requires the acknowledgment
+    }
+    if (status==='in' && !MENU) state.diets = [];   // acknowledged: none to declare
     if (!clash) state.dnote = '';   // diet was untoggled after typing
     var payload = {
       status: status,
@@ -789,12 +816,16 @@
       at: new Date().toISOString()
     };
     db('/responses/'+todayKey()+'/'+G.phone, 'PUT', payload);
-    db('/guests/'+G.phone, 'PATCH', { name:G.name, room:G.room, diets:state.diets, arrives:G.arrives, departs:G.departs });
+    // pre-menu, the acknowledgment covers tonight only - keep the guest's
+    // standing dietaries on their profile for future nights
+    var prof = { name:G.name, room:G.room, arrives:G.arrives, departs:G.departs };
+    if (MENU) prof.diets = state.diets;
+    db('/guests/'+G.phone, 'PATCH', prof);
     stepDone(payload);
   }
 
   function initRSVP(){
-    if (!G.phone) return;
+    if (!G.phone || !G.name) return;   // opt-in needs an identified guest
     panel.className = 'show';
     document.querySelector('.page').classList.add('has-rsvp');
 
