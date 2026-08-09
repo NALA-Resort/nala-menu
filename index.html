@@ -27,7 +27,7 @@
 <title>Nala — Tonight's Menu</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  :root { --cream: #FBFAF8; --ink: #000000; --mid: #3D3D37; --rule: #C9C9C2; }
+  :root { --cream: #FBFAF8; --ink: #14140F; --mid: #47473F; --rule: #CFCFC8; }
 
   html, body {
     width: 100%;
@@ -86,34 +86,36 @@
     color: var(--ink);
     text-align: center;
     text-transform: uppercase;
-    padding: 0 0 2.2vh;
+    padding: 0 0 2.6vh;
     border-bottom: 1px solid var(--rule);
   }
 
-  .spacer-top { flex: 2; }
-  .spacer-mid { flex: 1; }
-  .spacer-bot { flex: 2; }
+  .spacer-top { flex: 2; min-height: 18px; }
+  .spacer-mid { flex: 1; min-height: 26px; }
+  .spacer-bot { flex: 2; min-height: 18px; }
 
   .course { text-align: center; }
 
   .course-label {
     font-family: 'Raleway', Helvetica, Arial, sans-serif;
-    font-size: 9px;
-    letter-spacing: 0.35em;
+    font-size: 8.5px;
+    font-weight: 500;
+    letter-spacing: 0.38em;
     text-transform: uppercase;
     color: var(--mid);
-    margin-bottom: 3px;
+    margin-bottom: 5px;
+    opacity: .85;
   }
 
   .course-rule {
-    width: 22px;
+    width: 26px;
     height: 1px;
     background: var(--rule);
-    margin: 3px auto 7px;
+    margin: 4px auto 12px;
   }
 
   .dish-name {
-    font-size: 19px;
+    font-size: 18px;
     font-weight: 400;
     color: var(--ink);
     line-height: 1.25;
@@ -131,15 +133,15 @@
   .dish-desc {
     font-style: italic;
     font-weight: 400;
-    font-size: 13.5px;
+    font-size: 12.5px;
     color: var(--mid);
-    line-height: 1.5;
+    line-height: 1.55;
   }
 
   footer {
     border-top: 1px solid var(--rule);
     text-align: center;
-    padding: 2.4vh 0 0;
+    padding: 3vh 0 0;
   }
 
   .pricing {
