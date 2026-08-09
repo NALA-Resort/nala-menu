@@ -513,7 +513,7 @@ function openNotes(title, g, hits){
 function dietHTML(diets){
   if(!diets||!diets.length) return '';
   return diets.map(function(d){
-    return ALLERGENS.indexOf(d)>-1 ? '<span class="alrg">'+d+'</span>' : d;
+    return (ALLERGENS.indexOf(d)>-1 || /allerg/i.test(d)) ? '<span class="alrg">'+d+'</span>' : d;
   }).join(' · ');
 }
 
@@ -1020,7 +1020,19 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
       // compare against the date being viewed, not always today
       var fresh = pub ? (dkey(pub) === todayKey()) : false;
       var live = filled && fresh;
-      if (live) { MENU = m; render(); }
+      if (live) {
+        MENU = m;
+        // dish tags are written by tag.html into Firebase
+        fetch(DB + '/menutags/' + todayKey() + '.json')
+          .then(function(r){ return r.json(); })
+          .then(function(tags){
+            if (tags && MENU) ['bread','entree','main','dessert'].forEach(function(k){
+              if (MENU[k] && tags[k]) MENU[k].conflicts = tags[k];
+            });
+            render();
+          })
+          .catch(function(){ render(); });
+      }
 
       var when = isToday() ? '' : ' for this date';
       if (live) {
