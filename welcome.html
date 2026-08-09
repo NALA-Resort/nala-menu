@@ -206,7 +206,7 @@
 
   var qs = new URLSearchParams(location.search);
   var G = { phone:(qs.get('p')||'').replace(/\D/g,''), room:qs.get('r')||'',
-            name:(qs.get('n')||'').trim(), departs:qs.get('d')||'' };
+            name:(qs.get('n')||'').trim(), arrives:qs.get('a')||'', departs:qs.get('d')||'' };
 
   // Personalised greeting
   var first = G.name.split(' ')[0];
@@ -231,10 +231,10 @@
   }
 
   if (G.phone) {
-    patch('/guests/' + G.phone, { name:G.name, room:G.room, departs:G.departs });
+    patch('/guests/' + G.phone, { name:G.name, room:G.room, arrives:G.arrives, departs:G.departs });
     if (G.room) {
       put('/roomguests/' + todayKey() + '/' + G.room, {
-        name: G.name, phone: G.phone, departs: G.departs,
+        name: G.name, phone: G.phone, arrives: G.arrives, departs: G.departs,
         at: new Date().toISOString()
       });
     }
