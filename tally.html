@@ -101,6 +101,10 @@
               letter-spacing:.16em; text-transform:uppercase; color:var(--mid);
               text-align:center; margin-bottom:10px; }
   .selactions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .selbtn.comb { border:1px solid var(--ink); }
+  .tablesline { text-align:center; margin-top:8px; font-family:Helvetica,Arial,sans-serif;
+                font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--mid); }
+  .tag.comb { border-color:var(--ink); color:var(--ink); }
   .selbtn { padding:13px 6px; border:1px solid transparent; color:#fff;
             font-family:Helvetica,Arial,sans-serif; font-size:11px;
             letter-spacing:.1em; text-transform:uppercase; cursor:pointer; }
@@ -224,6 +228,7 @@
     <div class="tot"><div class="tot-n" id="nOut">–</div><div class="tot-l">Rooms out</div></div>
     <div class="tot" id="tileAwait"><div class="tot-n" id="nAwait">–</div><div class="tot-l">Rooms awaiting</div></div>
   </div>
+  <div class="tablesline" id="tablesLine"></div>
 
   <div class="sec">
     <span>Rooms</span>
@@ -263,6 +268,7 @@
       <button class="selbtn din"   id="sbDin">Dining</button>
       <button class="selbtn out"   id="sbOut">Not dining</button>
       <button class="selbtn quiet" id="sbClear">Clear rooms</button>
+      <button class="selbtn comb" id="sbComb" style="grid-column:1/-1;display:none">Combine tables</button>
     </div>
     <button class="selbtn quiet" id="sbDone" style="width:100%;margin-top:8px">Close</button>
   </div>
@@ -603,6 +609,10 @@ function render(){
     }
 
     if (g.premenu) title += '<span class="tag">Pre-menu</span>';
+    if (r.room){
+      var mates = groupMates(r.room);
+      if (mates.length) title += '<span class="tag comb">Table with '+mates.join(' & ')+'</span>';
+    }
 
     var sub = [];
     var d = dietHTML(g.diets); if(d) sub.push(d);
@@ -636,10 +646,43 @@ function render(){
     el.appendChild(row);
   });
 
+  // tables: each combined group is one table; everyone else is their own
+  var tblPax = {};   // unit key -> summed pax
+  rows.forEach(function(r){
+    var unit = r.room ? (groupOf(r.room) || 'room-'+r.room) : 'ext-'+r.key;
+    tblPax[unit] = (tblPax[unit]||0) + (r.g.pax||1);
+  });
+  var sizes = {};
+  for (var u in tblPax) sizes[tblPax[u]] = (sizes[tblPax[u]]||0) + 1;
+  var parts = Object.keys(sizes).map(Number).sort(function(a,b){return a-b;})
+    .map(function(sz){ return sizes[sz]+'\u00d7'+sz; });
+  var tl = document.getElementById('tablesLine');
+  tl.textContent = parts.length ? 'Tables \u00b7 '+parts.join(' \u00b7 ') : '';
+
   document.getElementById('nCovers').textContent = covers;
   document.getElementById('nOut').textContent    = notDining;
   document.getElementById('nAwait').textContent  = awaiting;
   document.getElementById('tileAwait').className = 'tot' + (awaiting>0 ? ' warn':'');
+}
+
+// ── combined tables ────────────────────────────────────────
+// /combined/<date> = { <gid>: { rooms:["10","11"] } } — rooms dining as one table
+var combined = {};
+
+function groupOf(room){
+  for (var gid in combined){
+    var rs = (combined[gid] && combined[gid].rooms) || [];
+    if (rs.indexOf(String(room)) > -1) return gid;
+  }
+  return null;
+}
+function groupMates(room){
+  var gid = groupOf(room);
+  if (!gid) return [];
+  return combined[gid].rooms.filter(function(r){ return String(r)!==String(room); });
+}
+function saveCombined(){
+  api('/combined/'+todayKey(), 'PUT', combined);
 }
 
 // ── multi-select ───────────────────────────────────────────
@@ -648,10 +691,23 @@ var selected = {};
 
 var selBar = document.getElementById('selBar');
 
+function selEqualsGroup(){
+  // the current selection exactly matches one existing group -> offer uncombine
+  var sel = Object.keys(selected).map(String).sort();
+  if (sel.length < 2) return null;
+  for (var gid in combined){
+    var rs = ((combined[gid] && combined[gid].rooms) || []).map(String).sort();
+    if (rs.length === sel.length && rs.join(',') === sel.join(',')) return gid;
+  }
+  return null;
+}
 function selCountUpdate(){
   var n = Object.keys(selected).length;
   document.getElementById('selCount').textContent =
     n ? n + (n===1 ? ' room selected' : ' rooms selected') : 'Tap rooms to select';
+  var cb = document.getElementById('sbComb');
+  cb.style.display = n >= 2 ? '' : 'none';
+  cb.textContent = selEqualsGroup() ? 'Uncombine tables' : 'Combine tables';
   selBar.className = 'selbar' + (selectMode ? ' show' : '');
 }
 
@@ -696,6 +752,27 @@ function applyToSelected(status){
 
   exitSelect();
 }
+
+document.getElementById('sbComb').onclick = function(){
+  var keys = Object.keys(selected).map(String);
+  if (keys.length < 2) return;
+  var gid = selEqualsGroup();
+  if (gid){
+    delete combined[gid];               // uncombine
+  } else {
+    // pull the rooms out of any existing groups first
+    keys.forEach(function(r){
+      var g = groupOf(r);
+      if (g){
+        combined[g].rooms = combined[g].rooms.filter(function(x){ return String(x)!==r; });
+        if (combined[g].rooms.length < 2) delete combined[g];
+      }
+    });
+    combined['g'+Date.now()] = { rooms: keys };
+  }
+  saveCombined();
+  exitSelect();
+};
 
 document.getElementById('sbVac').onclick   = function(){ applyToSelected('vacant'); };
 document.getElementById('sbDin').onclick   = function(){ applyToSelected('in'); };
@@ -1077,11 +1154,13 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
 Promise.all([
   api('/responses/'+todayKey()),
   api('/manual/'+todayKey()),
-  fetchRoomGuests(todayKey())
+  fetchRoomGuests(todayKey()),
+  api('/combined/'+todayKey())
 ]).then(function(r){
   responses  = r[0] || {};
   manual     = r[1] || {};
   roomguests = resolveRoomGuests(r[2], todayKey());
+  combined   = r[3] || {};
   render();
 });
 </script>
