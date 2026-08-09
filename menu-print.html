@@ -40,17 +40,17 @@
          border-left:1px dashed #CFCFC9; }
 
   .menu { width:100%; text-align:center; }
-  .course { margin-bottom:11mm; }
-  .label { font-size:10px; font-weight:400; letter-spacing:.34em;
+  .course { margin-bottom:9mm; }
+  .label { font-size:9px; font-weight:400; letter-spacing:.34em;
            text-transform:uppercase; color:var(--mid); margin-bottom:6px; }
   .rule { width:26%; height:1px; background:var(--rule); margin:6px auto 11px; }
-  .dish { font-size:26px; font-weight:400; color:var(--ink); line-height:1.22;
-          margin-bottom:7px; }
+  .dish { font-size:22px; font-weight:400; color:var(--ink); line-height:1.22;
+          margin-bottom:6px; }
   .aus  { font-size:11px; color:var(--mid); vertical-align:super; margin-left:4px; }
-  .desc { font-style:italic; font-weight:300; font-size:16px;
-          color:var(--mid); line-height:1.4; }
+  .desc { font-style:italic; font-weight:300; font-size:14px;
+          color:var(--ink); line-height:1.4; }
   .foot { margin-top:6mm; }
-  .price { font-size:15px; font-weight:400; letter-spacing:.02em;
+  .price { font-size:13px; font-weight:400; letter-spacing:.02em;
            color:var(--ink); margin-bottom:6px; }
   .note  { font-style:italic; font-weight:300; font-size:12.5px; color:var(--mid); }
   .empty { font-style:italic; font-size:16px; color:var(--mid); }
@@ -174,14 +174,14 @@ function makePDF(open){
   // measure to centre vertically
   function heightOf(k){
     var c = MENU[k], h = 0;
-    h += 3.6 + 4.6;                                   // label + rule
-    doc.setFont('Raleway','normal').setFontSize(19);
-    h += doc.splitTextToSize(titled(c.name), COL).length * 8.4;
+    h += 3.3 + 4.4;                                   // label + rule
+    doc.setFont('Raleway','normal').setFontSize(16);
+    h += doc.splitTextToSize(titled(c.name), COL).length * 7.2;
     if (c.desc){
-      doc.setFont('Raleway','italic').setFontSize(12);
-      h += doc.splitTextToSize(dots(c.desc), COL).length * 5.6;
+      doc.setFont('Raleway','italic').setFontSize(10.5);
+      h += doc.splitTextToSize(dots(c.desc), COL).length * 4.9;
     }
-    return h + 11;
+    return h + 9.5;
   }
 
   var total = courses.reduce(function(t,k){ return t + heightOf(k); }, 0) + 20;
@@ -193,43 +193,43 @@ function makePDF(open){
     courses.forEach(function(k){
       var c = MENU[k];
 
-      doc.setFont('Raleway','normal').setFontSize(7.6).setTextColor(138,138,130);
+      doc.setFont('Raleway','normal').setFontSize(6.8).setTextColor(138,138,130);
       doc.text(spaced(LABELS[k]), cx, y, { align:'center', charSpace:0 });
-      y += 3.6;
+      y += 3.3;
 
       doc.setDrawColor(216).setLineWidth(0.22);
       doc.line(cx - 13, y, cx + 13, y);
-      y += 7.4;
+      y += 6.9;
 
-      doc.setFont('Raleway','normal').setFontSize(19).setTextColor(28,28,26);
+      doc.setFont('Raleway','normal').setFontSize(16).setTextColor(28,28,26);
       var lines = doc.splitTextToSize(titled(c.name), COL);
       lines.forEach(function(ln, idx){
         doc.text(ln, cx, y, { align:'center' });
         if (idx === lines.length - 1 && c.aus){
           var w = doc.getTextWidth(ln);
-          doc.setFont('Raleway','normal').setFontSize(8).setTextColor(138,138,130);
-          doc.text('(AUS)', cx + w/2 + 1.8, y - 3.4);
-          doc.setFont('Raleway','normal').setFontSize(19).setTextColor(28,28,26);
+          doc.setFont('Raleway','normal').setFontSize(7).setTextColor(138,138,130);
+          doc.text('(AUS)', cx + w/2 + 1.6, y - 2.9);
+          doc.setFont('Raleway','normal').setFontSize(16).setTextColor(28,28,26);
         }
-        y += 8.4;
+        y += 7.2;
       });
 
       if (c.desc){
-        doc.setFont('Raleway','italic').setFontSize(12).setTextColor(138,138,130);
+        doc.setFont('Raleway','italic').setFontSize(10.5).setTextColor(28,28,26);
         doc.splitTextToSize(dots(c.desc), COL).forEach(function(ln){
           doc.text(ln, cx, y, { align:'center' });
-          y += 5.6;
+          y += 4.9;
         });
       }
 
-      y += 11;
+      y += 9.5;
     });
 
     y += 1;
-    doc.setFont('Raleway','normal').setFontSize(12).setTextColor(28,28,26);
+    doc.setFont('Raleway','normal').setFontSize(10.5).setTextColor(28,28,26);
     doc.text('2 courses 105     3 courses 125', cx, y, { align:'center' });
-    y += 6;
-    doc.setFont('Raleway','italic').setFontSize(9.6).setTextColor(138,138,130);
+    y += 5.4;
+    doc.setFont('Raleway','italic').setFontSize(8.6).setTextColor(138,138,130);
     doc.text('Both 2 and 3 course menus include bread', cx, y, { align:'center' });
   });
 
