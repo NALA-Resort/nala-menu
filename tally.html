@@ -142,6 +142,19 @@
   .edit svg { width:14px; height:14px; display:block; fill:var(--mid); }
   .edit:active { opacity:.9; }
   .alrg { color:var(--red); font-style:normal; }
+  .row.conflict { border-left:3px solid var(--red); padding-left:10px;
+                  background:rgba(168,50,30,.05); }
+  .bub { width:26px; height:26px; border:1px solid var(--rule); background:transparent;
+         cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
+  .bub svg { width:14px; height:14px; display:block; fill:var(--mid); }
+  .bub.flag { border-color:var(--red); }
+  .bub.flag svg { fill:var(--red); }
+  .pop-who { font-size:15px; margin-bottom:14px; padding-bottom:12px;
+             border-bottom:1px solid var(--rule); }
+  .pop-h { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.18em;
+           text-transform:uppercase; color:var(--mid); margin-bottom:6px; }
+  .pop-h.dh { color:var(--red); }
+  .pop-t { font-size:14px; line-height:1.45; margin-bottom:16px; }
   .empty { font-style:italic; color:var(--mid); font-size:12px; padding:8px 0; }
 
   .actions.hidden { visibility:hidden; }
@@ -453,6 +466,50 @@ function roomState(n){
   return null;
 }
 
+var MENU = null;   // tonight's tagged menu, for dietary conflict flags
+var ICON_BUBBLE = '<svg viewBox="0 0 24 24"><path d="M4 3h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H9l-5 4V5a2 2 0 0 1 2-2z"/></svg>';
+
+function menuConflicts(diets){
+  if (!diets || !diets.length || !MENU) return [];
+  var hits = [];
+  ['bread','entree','main','dessert'].forEach(function(k){
+    var dish = MENU[k];
+    if (!dish || !dish.conflicts) return;
+    dish.conflicts.forEach(function(tag){
+      diets.forEach(function(d){
+        if (String(d).toLowerCase() === String(tag).toLowerCase())
+          hits.push({ dish: dish.name || k, diet: d });
+      });
+    });
+  });
+  return hits;
+}
+
+function openNotes(title, g, hits){
+  var h = '<div class="pop-who">' + title + '</div>';
+  if (hits.length || g.dnote) {
+    h += '<div class="pop-h dh">Dietary comments</div>';
+    if (hits.length) {
+      var byDish = {};
+      hits.forEach(function(x){ (byDish[x.dish] = byDish[x.dish] || []).push(x.diet); });
+      h += '<div class="pop-t">' + Object.keys(byDish).map(function(dk){
+        return dk + ' \u2014 ' + byDish[dk].join(', ');
+      }).join('<br>') + '</div>';
+    }
+    h += '<div class="pop-t">' + (g.dnote
+      ? '\u201C' + g.dnote + '\u201D'
+      : '<i>No note from the guest yet.</i>') + '</div>';
+  }
+  if (g.note) {
+    h += '<div class="pop-h">General comments</div>' +
+         '<div class="pop-t">\u201C' + g.note + '\u201D</div>';
+  }
+  h += '<button class="btn solid" style="width:100%" id="npClose">Close</button>';
+  sheet.innerHTML = h;
+  document.getElementById('npClose').onclick = close;
+  showSheet();
+}
+
 function dietHTML(diets){
   if(!diets||!diets.length) return '';
   return diets.map(function(d){
@@ -547,17 +604,25 @@ function render(){
 
     var sub = [];
     var d = dietHTML(g.diets); if(d) sub.push(d);
-    if (g.note) sub.push('“'+g.note+'”');
     if (g.phone) sub.push(g.phone);
 
+    var hits = menuConflicts(g.diets);
+    var hasNotes = !!(g.note || g.dnote);
+
     var row = document.createElement('div');
-    row.className = 'row';
+    row.className = 'row' + (hits.length ? ' conflict' : '');
     row.innerHTML =
       '<div><div class="row-name">'+title+'</div>'+
       (sub.length ? '<div class="row-sub">'+sub.join(' · ')+'</div>' : '')+
       '</div>'+
       '<div class="row-right"><span class="row-pax">'+(g.pax||1)+' pax</span>'+
+      ((hasNotes || hits.length)
+        ? '<button class="bub'+(hits.length ? ' flag' : '')+'">'+ICON_BUBBLE+'</button>' : '')+
       '<span class="edit">'+ICON_EDIT+'</span></div>';
+    var bub = row.querySelector('.bub');
+    if (bub) bub.onclick = (function(tt, gg, hh){
+      return function(ev){ ev.stopPropagation(); openNotes(tt, gg, hh); };
+    })(title, g, hits);
     row.querySelector('.edit').onclick = (function(rr){
       return function(ev){
         ev.stopPropagation();
@@ -955,6 +1020,7 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
       // compare against the date being viewed, not always today
       var fresh = pub ? (dkey(pub) === todayKey()) : false;
       var live = filled && fresh;
+      if (live) { MENU = m; render(); }
 
       var when = isToday() ? '' : ' for this date';
       if (live) {
