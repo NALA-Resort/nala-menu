@@ -532,8 +532,8 @@
     panel.innerHTML =
       '<div class="r-q">'+(fn ? fn+', dining with us tonight?' : 'Dining tonight?')+'</div>'+
       '<div class="r-btns">'+
-        '<button class="r-btn primary" id="bIn">Dining tonight</button>'+
-        '<button class="r-btn" id="bOut">Not tonight</button>'+
+        '<button class="r-btn" id="bIn">Dining tonight</button>'+
+        '<button class="r-btn primary" id="bOut">Not tonight</button>'+
       '</div>';
     document.getElementById('bIn').onclick  = stepDetails;
     document.getElementById('bOut').onclick = stepConfirmOut;
@@ -560,7 +560,7 @@
       '<div class="field"><div class="field-label">Anything else</div>'+
         '<textarea class="note-input" id="note" rows="2" placeholder="Celebrating something, arriving late\u2026"></textarea></div>'+
       '<div class="r-btns">'+
-        '<button class="r-btn primary" id="bSave">Confirm</button>'+
+        '<button class="r-btn" id="bSave">Confirm</button>'+
         '<button class="r-btn quiet" id="bBack">Back</button>'+
       '</div>';
     if (state.note) document.getElementById('note').value = state.note;
