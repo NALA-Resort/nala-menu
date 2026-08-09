@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Nala — Printable Menu</title>
 <style>
-  @page { size: 297mm 210mm landscape; margin: 0; }
+  @page { size: A4 portrait; margin: 0; }
   * { margin:0; padding:0; box-sizing:border-box; }
   :root { --paper:#FFFFFF; --ink:#1C1C1A; --mid:#8E8E86; --rule:#DDDDD8; }
 
@@ -57,11 +57,21 @@
 
   @media print {
     html, body { background:#fff; padding:0; margin:0;
-                 width:297mm; height:210mm; }
+                 width:210mm; height:297mm; overflow:hidden; }
     .bar, .hint { display:none; }
-    .stage { max-width:none; margin:0; overflow:visible; height:auto !important; }
-    .sheet { box-shadow:none; margin:0; width:297mm; height:210mm;
-             transform:none !important; page-break-after:avoid; }
+
+    /* iOS ignores landscape page setup, so print onto portrait paper
+       and rotate the sheet a quarter turn to fill it. */
+    .stage { max-width:none; margin:0; padding:0; overflow:visible;
+             width:210mm; height:297mm; position:relative; }
+    .sheet {
+      box-shadow:none; margin:0;
+      width:297mm; height:210mm;
+      position:absolute; top:0; left:0;
+      transform-origin:top left;
+      transform:translateX(210mm) rotate(90deg) !important;
+      page-break-after:avoid;
+    }
     .cut { border-left:1px dashed #C9C7C2; }
   }
 </style>
@@ -74,7 +84,7 @@
   <span class="state" id="state"></span>
 </div>
 
-<div class="hint">If your print dialog shows a portrait page, set orientation to <b>Landscape</b> and scale to 100%.</div>
+<div class="hint">Prints onto a portrait A4 sheet with the menu turned sideways — turn the paper a quarter turn and cut down the dashed line. Leave orientation on <b>Portrait</b> and scale at 100%.</div>
 
 <div class="stage" id="stage">
   <div class="sheet" id="sheet">
