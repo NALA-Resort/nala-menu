@@ -61,11 +61,12 @@
     padding-top: env(safe-area-inset-top, 0px);
   }
 
-  /* With the RSVP present, hold back a little so its top edge peeks
-     above the fold - that is what tells the guest to scroll. */
+  /* With the RSVP present the card is sized by JS (fitLayout) so the
+     menu plus the buttons land inside the usable area. This is the
+     no-JS fallback only. */
   .page.has-rsvp .card {
-    min-height: calc(100vh - 5.5rem);
-    min-height: calc(100svh - 5.5rem);
+    min-height: calc(100vh - 12rem);
+    min-height: calc(100svh - 12rem);
   }
 
   header {
@@ -182,8 +183,8 @@
 
   /* ── RSVP ─────────────────────────────────────── */
   #rsvp {
-    display:none; border-top:1px solid var(--rule); margin-top:3vh;
-    padding:3vh 0 calc(5vh + 56px + env(safe-area-inset-bottom, 0px));
+    display:none; border-top:1px solid var(--rule); margin-top:2.2vh;
+    padding:2.2vh 0 calc(2vh + var(--chrome, 92px));
   }
   #rsvp.show { display:block; }
 
@@ -241,9 +242,16 @@
      on an SE. Tighten the spacer floors rather than the type. */
   @media (max-height: 700px) {
     .spacer-top { min-height: 0.7rem; }
-    .spacer-mid { min-height: 1.15rem; }
+    .spacer-mid { min-height: 0.9rem; }
     .spacer-bot { min-height: 0.7rem; }
-    header { padding: 4.2vh 0 1.5vh; }
+    header      { padding: 3.4vh 0 1.2vh; }
+    .menu-date  { padding-bottom: 1.8vh; }
+    .course-label { margin-bottom: 3px; }
+    .course-rule  { margin: 3px auto 7px; }
+    .dish-name    { margin-bottom: 3px; }
+    footer        { padding-top: 2.2vh; }
+    .r-q          { margin-bottom: 12px; }
+    .r-btn        { padding: 13px 8px; }
   }
 
   /* Landscape phone: one screen is not achievable or desirable, so stop
@@ -450,6 +458,34 @@
       });
   }
 
+  // ── viewport fit ───────────────────────────────────────────
+  // In-app browsers (Messages, WhatsApp, Instagram) draw a toolbar OVER
+  // the page. It does not shrink window.innerHeight and no web API
+  // reports it, so it has to be reserved by hand.
+  var CHROME = 92;
+  var cardEl = document.querySelector('.card');
+
+  function fitLayout(){
+    if (!cardEl) return;
+    // never refit while typing - the keyboard changes innerHeight
+    var a = document.activeElement;
+    if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'INPUT')) return;
+
+    if (!panel.classList.contains('show')) { cardEl.style.minHeight = ''; return; }
+
+    cardEl.style.minHeight = '0px';               // release before measuring
+    var rsvpH  = panel.getBoundingClientRect().height;
+    var target = window.innerHeight - CHROME - rsvpH;
+    // If the menu cannot compress that far the card keeps its natural
+    // height and the page simply scrolls - no clipping either way.
+    cardEl.style.minHeight = Math.max(target, 0) + 'px';
+  }
+
+  window.addEventListener('orientationchange', function(){ setTimeout(fitLayout, 200); });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', function(){ setTimeout(fitLayout, 60); });
+  }
+
   function firstName(n){ return (n||'').trim().split(' ')[0]; }
   function toBottom(){
     requestAnimationFrame(function(){
@@ -468,6 +504,7 @@
       '</div>';
     document.getElementById('bIn').onclick  = stepDetails;
     document.getElementById('bOut').onclick = stepConfirmOut;
+    fitLayout();
   }
 
   function stepConfirmOut(){
@@ -509,6 +546,7 @@
       (pastCutoff() ? '' : '<a class="r-link" id="bEdit">Change</a>')+'</div>';
     var e = document.getElementById('bEdit');
     if (e) e.onclick = stepChoose;
+    fitLayout();
   }
 
   function paintPax(){
@@ -555,6 +593,7 @@
     if (!G.phone) return;
     panel.className = 'show';
     document.querySelector('.page').classList.add('has-rsvp');
+    document.documentElement.style.setProperty('--chrome', CHROME + 'px');
 
     // record who is in this room as soon as the link is opened,
     // so staff-entered bookings still carry the guest's details
