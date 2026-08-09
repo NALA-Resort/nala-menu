@@ -174,18 +174,19 @@ function makePDF(open){
   // measure to centre vertically
   function heightOf(k){
     var c = MENU[k], h = 0;
-    h += 3.3 + 4.4;                                   // label + rule
+    h += 3.3 + 6.9;                                   // label step + rule step
     doc.setFont('Raleway','normal').setFontSize(16);
     h += doc.splitTextToSize(titled(c.name), COL).length * 7.2;
     if (c.desc){
       doc.setFont('Raleway','italic').setFontSize(10.5);
       h += doc.splitTextToSize(dots(c.desc), COL).length * 4.9;
     }
-    return h + 9.5;
+    return h + 9.5;                                   // gap after the course
   }
 
-  var total = courses.reduce(function(t,k){ return t + heightOf(k); }, 0) + 20;
-  var startY = (H - total) / 2 + 7;
+  // distance from the first label baseline to the last footer baseline
+  var total = courses.reduce(function(t,k){ return t + heightOf(k); }, 0) + 1 + 5.4;
+  var startY = (H - total) / 2 + 2;   // +2 lifts baselines to optical centre
 
   centres.forEach(function(cx){
     var y = startY;
