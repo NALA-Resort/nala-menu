@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Nala — Diagnostics</title>
+<style>
+  body { font-family:-apple-system,Helvetica,Arial,sans-serif; background:#F9F7F4; color:#1C1C1A;
+         padding:20px; font-size:13px; line-height:1.5; }
+  h2 { font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:#999;
+       margin:22px 0 8px; font-weight:normal; }
+  pre { background:#fff; border:1px solid #E0E0DA; padding:12px; border-radius:3px;
+        overflow-x:auto; font-size:11px; white-space:pre-wrap; word-break:break-all; }
+  .ok   { color:#3F7A52; font-weight:bold; }
+  .bad  { color:#A8321E; font-weight:bold; }
+  button { padding:12px 18px; background:#1C1C1A; color:#fff; border:none;
+           font-size:11px; letter-spacing:.12em; text-transform:uppercase; margin-right:8px; }
+</style>
+</head>
+<body>
+<h2>Today</h2>
+<pre id="today"></pre>
+
+<h2>Write test → /roomguests/&lt;today&gt;/99</h2>
+<button onclick="writeTest()">Run write test</button>
+<pre id="write">not run</pre>
+
+<h2>Read /roomguests (whole node)</h2>
+<pre id="rg">loading…</pre>
+
+<h2>Read /responses/&lt;today&gt;</h2>
+<pre id="resp">loading…</pre>
+
+<h2>Read /manual/&lt;today&gt;</h2>
+<pre id="man">loading…</pre>
+
+<script>
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+var T = dkey(new Date());
+document.getElementById('today').textContent = T + '   (device time: ' + new Date().toString() + ')';
+
+function show(id, status, body){
+  var el = document.getElementById(id);
+  var cls = (status >= 200 && status < 300) ? 'ok' : 'bad';
+  el.innerHTML = '<span class="'+cls+'">HTTP '+status+'</span>\n' + body;
+}
+
+function read(path, id){
+  fetch(DB+path+'.json?v='+Date.now())
+    .then(function(r){ return r.text().then(function(t){ show(id, r.status, t); }); })
+    .catch(function(e){ show(id, 0, String(e)); });
+}
+
+read('/roomguests', 'rg');
+read('/responses/'+T, 'resp');
+read('/manual/'+T, 'man');
+
+function writeTest(){
+  fetch(DB+'/roomguests/'+T+'/99.json', {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name:'Write Test', phone:'0400000000', departs:'2026-12-31', at:new Date().toISOString() })
+  })
+  .then(function(r){ return r.text().then(function(t){
+      show('write', r.status, t);
+      read('/roomguests', 'rg');
+  }); })
+  .catch(function(e){ show('write', 0, String(e)); });
+}
+</script>
+</body>
+</html>
