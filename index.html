@@ -105,9 +105,19 @@
     border-bottom: 1px solid var(--rule);
   }
 
-  .spacer-top { flex: 2; min-height: 1.1rem; }
-  .spacer-mid { flex: 1; min-height: 1.6rem; }
-  .spacer-bot { flex: 2; min-height: 1.1rem; }
+  /* The four courses sit in their own block, centred in whatever height
+     is left after the date and the pricing. Gaps between courses are
+     capped, so surplus height becomes even margin around the group
+     instead of inflating the gaps. That is the difference between a
+     composed menu and a stretched one. */
+  .courses {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1.5rem 0;
+  }
+  .spacer-mid { flex: 1; min-height: 1.5rem; max-height: 2.5rem; }
 
   .course { text-align: center; }
 
@@ -234,9 +244,8 @@
      smaller box, so the vertical budget is tightened. Type is untouched -
      only spacing gives way. */
   @media (max-height: 700px) {
-    .spacer-top   { min-height: 0.4rem; }
-    .spacer-mid   { min-height: 0.5rem; }
-    .spacer-bot   { min-height: 0.4rem; }
+    .courses      { padding: 0.5rem 0; }
+    .spacer-mid   { min-height: 0.5rem; max-height: 1.4rem; }
     header        { padding: 2.6vh 0 1vh; }
     .menu-date    { padding-bottom: 1.2vh; }
     .course-label { margin-bottom: 3px; }
@@ -255,8 +264,8 @@
     .page { min-height: 0; display: block; }
     header { padding: 26px 0 14px; }
     .menu-date { padding-bottom: 14px; }
-    .spacer-top, .spacer-bot { flex: none; min-height: 20px; }
-    .spacer-mid { flex: none; min-height: 22px; }
+    .courses { padding: 18px 0; }
+    .spacer-mid { flex: none; min-height: 22px; max-height: none; }
     footer { padding-top: 18px; }
   }
 
@@ -282,7 +291,7 @@
 
   <div id="stateMenu">
     <div class="menu-date" id="menuDate"></div>
-    <div class="spacer-top"></div>
+    <div class="courses">
     <div class="course">
       <div class="course-label">Bread</div>
       <div class="course-rule"></div>
@@ -310,7 +319,7 @@
       <div class="dish-name" id="dessertName"></div>
       <div class="dish-desc" id="dessertDesc"></div>
     </div>
-    <div class="spacer-bot"></div>
+    </div><!-- /.courses -->
   </div>
 
 
@@ -326,6 +335,7 @@
 
 <script>
   function showMenu(data) {
+    setTimeout(function(){ if (window.scheduleFit) window.scheduleFit(); }, 0);
     document.getElementById('stateDefault').style.display = 'none';
     var sm = document.getElementById('stateMenu');
     sm.style.display = 'flex';
@@ -448,6 +458,37 @@
       });
   }
 
+  // ── fit to screen ──────────────────────────────────────────
+  // The CSS scale assumes a normal four-course menu. A chef can publish
+  // anything, so if the content still will not fit, step the root size
+  // down until it does. Everything is sized in rem, so one property
+  // shrinks type and spacing together and the proportions hold.
+  // Floor is 76% - below that it stops shrinking and the page scrolls,
+  // which is the right trade rather than making it unreadable.
+  var fitPending = false;
+  function fitToScreen(){
+    var el = document.documentElement;
+    var a  = document.activeElement;
+    if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'INPUT')) return;
+
+    el.style.fontSize = '';                       // release to the CSS clamp
+    if (panel.getAttribute('data-step') === 'details') return;   // a form may scroll
+
+    var base = parseFloat(getComputedStyle(el).fontSize);
+    var size = base, floor = base * 0.76, guard = 0;
+    while (el.scrollHeight > window.innerHeight + 1 && size > floor && guard++ < 40) {
+      size -= base * 0.02;
+      el.style.fontSize = size + 'px';
+    }
+  }
+  window.scheduleFit = scheduleFit;
+  function scheduleFit(){
+    if (fitPending) return;
+    fitPending = true;
+    requestAnimationFrame(function(){ fitPending = false; fitToScreen(); });
+  }
+  window.addEventListener('orientationchange', function(){ setTimeout(fitToScreen, 220); });
+
   function firstName(n){ return (n||'').trim().split(' ')[0]; }
   function toBottom(){
     requestAnimationFrame(function(){
@@ -466,6 +507,7 @@
       '</div>';
     document.getElementById('bIn').onclick  = stepDetails;
     document.getElementById('bOut').onclick = stepConfirmOut;
+    panel.setAttribute('data-step','choose'); scheduleFit();
   }
 
   function stepConfirmOut(){
@@ -477,6 +519,7 @@
       '</div>';
     document.getElementById('bYes').onclick  = function(){ save('out'); };
     document.getElementById('bBack').onclick = stepChoose;
+    panel.setAttribute('data-step','confirm'); scheduleFit();
     toBottom();
   }
 
@@ -494,6 +537,7 @@
     paintPax(); paintChips();
     document.getElementById('bSave').onclick = function(){ save('in'); };
     document.getElementById('bBack').onclick = stepChoose;
+    panel.setAttribute('data-step','details'); scheduleFit();
     toBottom();
   }
 
@@ -507,6 +551,7 @@
       (pastCutoff() ? '' : '<a class="r-link" id="bEdit">Change</a>')+'</div>';
     var e = document.getElementById('bEdit');
     if (e) e.onclick = stepChoose;
+    panel.setAttribute('data-step','done'); scheduleFit();
   }
 
   function paintPax(){
