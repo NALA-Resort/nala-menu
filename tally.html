@@ -35,6 +35,13 @@
               border-bottom:1px solid var(--rule); display:none; }
   .dtoday a.show { display:inline; }
 
+  .menustate { text-align:center; margin-top:12px; }
+  .menustate span { display:inline-block; padding:6px 14px; border-radius:20px;
+                    font-family:Helvetica,Arial,sans-serif; font-size:9px;
+                    letter-spacing:.16em; text-transform:uppercase; }
+  .menustate .yes { background:rgba(122,160,130,.22); color:#3F6B4C; }
+  .menustate .no  { background:rgba(184,106,90,.18);  color:#8E4433; }
+
   .totals { display:flex; gap:8px; margin:22px 0 26px; }
   .tot { flex:1; text-align:center; padding:14px 4px; border:1px solid var(--rule); }
   .tot-n { font-size:28px; line-height:1; }
@@ -195,6 +202,7 @@
     <button class="dnav" id="dNext">&#8250;</button>
   </div>
   <div class="dtoday"><a href="#" id="dToday">Back to today</a></div>
+  <div class="menustate" id="menuState"></div>
 
   <div class="totals">
     <div class="tot"><div class="tot-n" id="nCovers">–</div><div class="tot-l">Covers</div></div>
@@ -228,6 +236,7 @@
   <div class="actions">
     <a class="btn solid" id="printLink" href="list.html">Print list</a>
     <button class="btn" onclick="location.reload()">Refresh</button>
+    <a class="btn" href="stats.html">Stats</a>
   </div>
 </div>
 
@@ -911,6 +920,55 @@ function editExt(key, g){
 document.getElementById('legGuest').innerHTML = ICON_GUEST;
 document.getElementById('legStaff').innerHTML = ICON_STAFF;
 document.getElementById('legSeen').innerHTML  = ICON_LINK;
+
+// ── menu published? and archive it for statistics ──────────
+(function menuCheck(){
+  var el = document.getElementById('menuState');
+  fetch('menu.json?v=' + Date.now())
+    .then(function(r){
+      var lm = r.headers.get('Last-Modified');
+      return r.json().then(function(m){ return { m:m, lm:lm }; });
+    })
+    .then(function(res){
+      var m = res.m || {};
+      var filled = ['bread','entree','main','dessert'].every(function(k){
+        return m[k] && m[k].name && m[k].name.trim() !== '';
+      });
+      var fresh = false;
+      if (res.lm) {
+        var d = new Date(res.lm);
+        fresh = dkey(d) === dkey(new Date());
+      }
+      var live = filled && fresh;
+      el.innerHTML = live
+        ? '<span class="yes">Menu published</span>'
+        : '<span class="no">Menu not published</span>';
+
+      // archive today's menu once, for the statistics page
+      if (live && isToday()) {
+        var k = todayKey();
+        fetch(DB + '/menuhistory/' + k + '.json?v=' + Date.now())
+          .then(function(r){ return r.ok ? r.json() : null; })
+          .then(function(existing){
+            if (existing) return;
+            fetch(DB + '/menuhistory/' + k + '.json', {
+              method:'PUT', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({
+                bread:   m.bread   && m.bread.name   || '',
+                entree:  m.entree  && m.entree.name  || '',
+                main:    m.main    && m.main.name    || '',
+                dessert: m.dessert && m.dessert.name || '',
+                mainDesc: m.main   && m.main.desc    || '',
+                at: new Date().toISOString()
+              })
+            });
+          });
+      }
+    })
+    .catch(function(){
+      el.innerHTML = '<span class="no">Menu not published</span>';
+    });
+})();
 
 Promise.all([
   api('/responses/'+todayKey()),
