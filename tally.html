@@ -934,11 +934,11 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
       var filled = ['bread','entree','main','dessert'].every(function(k){
         return m[k] && m[k].name && m[k].name.trim() !== '';
       });
-      var fresh = false;
-      if (res.lm) {
-        var d = new Date(res.lm);
-        fresh = dkey(d) === dkey(new Date());
-      }
+      // use the menu's own publish timestamp — GitHub rewrites Last-Modified
+      // on every deploy, so it can't tell us when the chef published.
+      var pub = null;
+      if (m.published) { var p = new Date(m.published); if (!isNaN(p)) pub = p; }
+      var fresh = pub ? (dkey(pub) === dkey(new Date())) : false;
       var live = filled && fresh;
       el.innerHTML = live
         ? '<span class="yes">Menu published</span>'
