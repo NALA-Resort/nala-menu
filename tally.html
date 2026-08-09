@@ -602,8 +602,11 @@ function render(){
       title = (g.name || g.phone || 'Guest') + '<span class="tag">External</span>';
     }
 
+    if (g.premenu) title += '<span class="tag">Pre-menu</span>';
+
     var sub = [];
     var d = dietHTML(g.diets); if(d) sub.push(d);
+    else if (g.nodiet) sub.push('No dietaries confirmed');
     if (g.phone) sub.push(g.phone);
 
     var hits = menuConflicts(g.diets);
