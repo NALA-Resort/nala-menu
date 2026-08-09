@@ -71,6 +71,8 @@
   .pre { display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:7px; font-weight:bold;
          letter-spacing:.12em; border:1px solid #888; color:#555; padding:1px 4px;
          margin-right:5px; vertical-align:1px; }
+  .comb { display:block; font-family:Helvetica,Arial,sans-serif; font-size:7.5px; font-weight:bold;
+          letter-spacing:.08em; color:#111; margin-top:2px; text-transform:uppercase; }
   .muted { color:#aaa; font-weight:normal; font-style:italic; }
 
   /* empty write-in rows: one rule only, from the cell border */
@@ -105,7 +107,7 @@
     <div class="title" id="title"></div>
   </div>
   <div class="counts">
-    <span><b id="nTables">–</b> tables</span>
+    <span><b id="nTables">–</b> tables <span id="tblBreak" style="font-weight:normal;color:#777"></span></span>
     <span><b id="nCovers">–</b> covers</span>
   </div>
 </div>
@@ -340,11 +342,24 @@ function resolveRoomGuests(all, todayK){
 
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
-Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRoomGuests(todayKey()), fetchMenu() ])
+Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRoomGuests(todayKey()), fetchMenu(), api('/combined/'+todayKey()) ])
   .then(function(res){
     var responses  = res[0] || {};
     var manual     = res[1] || {};
     var roomguests = resolveRoomGuests(res[2], todayKey());
+    var combined   = res[4] || {};
+    function groupOf(room){
+      for (var gid in combined){
+        var rs = (combined[gid] && combined[gid].rooms) || [];
+        if (rs.indexOf(String(room)) > -1) return gid;
+      }
+      return null;
+    }
+    function groupMates(room){
+      var gid = groupOf(room);
+      if (!gid) return [];
+      return combined[gid].rooms.filter(function(r){ return String(r)!==String(room); });
+    }
 
     // ── resolve each room to a single record ──────────────
     function roomRecord(n){
@@ -429,6 +444,10 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
       if (row.status === 'in' && g.premenu) {
         nameCell = '<span class="pre">PRE-MENU</span>' + nameCell;
       }
+      if (row.status === 'in' && row.room) {
+        var mates = groupMates(row.room);
+        if (mates.length) nameCell += '<span class="comb">Table with Rm '+mates.join(' & ')+'</span>';
+      }
 
       // Vacant rooms stay on the sheet, labelled and otherwise empty.
       if (row.status === 'vacant') {
@@ -462,8 +481,19 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     var notDining = rows.filter(function(r){ return r.status==='out'; }).map(function(r){ return r.rec; });
 
     // ── total row, aligned under the Pax column ───────────
-    var tables = rows.filter(function(r){ return r.status === 'in'; }).length;
+    // combined rooms share one table; sizes give the set-up breakdown
+    var tblPax = {};
+    rows.filter(function(r){ return r.status === 'in'; }).forEach(function(r){
+      var unit = r.room ? (groupOf(r.room) || 'room-'+r.room) : 'ext-'+(r.key || Math.random());
+      tblPax[unit] = (tblPax[unit]||0) + (r.rec.pax||1);
+    });
+    var tables = Object.keys(tblPax).length;
+    var sizes = {};
+    for (var u in tblPax) sizes[tblPax[u]] = (sizes[tblPax[u]]||0) + 1;
+    var parts = Object.keys(sizes).map(Number).sort(function(a,b){return a-b;})
+      .map(function(sz){ return sizes[sz]+'\u00d7'+sz; });
     document.getElementById('nTables').textContent = tables;
+    document.getElementById('tblBreak').textContent = parts.length ? '('+parts.join(' \u00b7 ')+')' : '';
 
 
   });
