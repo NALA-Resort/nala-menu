@@ -741,11 +741,10 @@
       if (groups[d]==='menu') menu.push(d); else common.push(d);
     });
     if (!MENU){
-      // menu not out yet: no menu-specific dietaries, and offer a positive opt-out
+      // menu not out yet: no dietary picking, just a positive opt-out
       var pn=document.createElement('div'); pn.className='premenu-note';
-      pn.textContent='Tonight\u2019s menu isn\u2019t out yet \u2014 tell us any dietaries and the kitchen will check them against it.';
+      pn.textContent='Tonight\u2019s menu isn\u2019t out yet \u2014 check back later to see it and add any dietaries.';
       box.appendChild(pn);
-      common.forEach(function(d){ box.appendChild(chipEl(d)); });
       var nd=document.createElement('button');
       nd.className='chip chip-wide'+(state.nodiet?' on':'');
       nd.textContent='No allergies or dietaries \u2014 I\u2019m in regardless';
