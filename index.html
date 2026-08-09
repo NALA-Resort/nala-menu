@@ -265,6 +265,13 @@
     font-size:16px; color:var(--ink); resize:none; /* keep 16px literal: iOS zooms the page on focus below this */
   }
   .note-input::placeholder { color:var(--mid); }
+  .cf { display:none; }
+  .cf.show { display:block; }
+  .cf-msg { font-family:'Raleway',Helvetica,Arial,sans-serif; font-size:0.8rem; line-height:1.55;
+    color:#9E6455; border:1px solid #D8C0B8; border-radius:10px; padding:10px 12px;
+    margin-bottom:8px; text-align:left; }
+  .cf-msg b { font-weight:600; }
+  .cf-input.miss { border-color:#9E6455; }
 
   .r-done { text-align:center; }
   .r-done-t { font-size:1.125rem; color:var(--ink); margin-bottom:8px; }
@@ -442,6 +449,7 @@
     return days[d.getDay()] + ' evening';
   }
 
+  var MENU = null;   // tonight's menu, kept for dietary conflict checks
   fetch('menu.json?v=' + Date.now())
     .then(function(r){
       var lm = r.headers.get('Last-Modified');
@@ -452,6 +460,9 @@
       var pub = publishTime(res.data, res.lastModified);
       if (!stillValid(pub)) return;                // stale -> placeholder
       res.data.date = dateLabel(pub);
+      MENU = res.data;
+      if (MENU.dietaries && MENU.dietaries.length) DIETARIES = MENU.dietaries.slice();
+      if (document.getElementById('chips')) paintChips();
       showMenu(res.data);
     })
     .catch(function(e){ console.log('Menu load error:', e); });
@@ -472,7 +483,40 @@
   var G = { phone:(qs.get('p')||'').replace(/\D/g,''), room:qs.get('r')||'',
             name:qs.get('n')||'', arrives:qs.get('a')||'', departs:qs.get('d')||'' };
 
-  var state = { pax:2, diets:[], note:'' };
+  var state = { pax:2, diets:[], note:'', dnote:'' };
+
+  // A dish lists the dietaries it conflicts with (tagged by the chef at publish).
+  // Only explicit tags flag to the guest - no keyword guessing.
+  function menuConflicts(diets){
+    if (!diets || !diets.length || !MENU) return [];
+    var hits = [];
+    ['bread','entree','main','dessert'].forEach(function(k){
+      var dish = MENU[k];
+      if (!dish || !dish.conflicts) return;
+      dish.conflicts.forEach(function(tag){
+        diets.forEach(function(d){
+          if (String(d).toLowerCase() === String(tag).toLowerCase())
+            hits.push({ dish: dish.name || k, diet: d });
+        });
+      });
+    });
+    return hits;
+  }
+
+  function updateConflict(){
+    var box = document.getElementById('cf'); if (!box) return;
+    var hits = menuConflicts(state.diets);
+    if (!hits.length){ box.className = 'field cf'; return; }
+    var byDish = {};
+    hits.forEach(function(h){ (byDish[h.dish] = byDish[h.dish] || []).push(h.diet); });
+    var parts = Object.keys(byDish).map(function(dish){
+      return '<b>' + dish + '</b> may not suit: ' + byDish[dish].join(', ');
+    });
+    document.getElementById('cfMsg').innerHTML =
+      'A note on tonight\u2019s menu \u2014 ' + parts.join('. ') + '. ' +
+      'Please tell us how you\u2019d like this handled and we\u2019ll look after you.';
+    box.className = 'field cf show';
+  }
   var panel = document.getElementById('rsvp');
 
   function db(path, method, body){
@@ -588,6 +632,8 @@
     panel.innerHTML =
       '<div class="field"><div class="field-label">Guests</div><div class="pax-row" id="paxRow"></div></div>'+
       '<div class="field"><div class="field-label">Dietary requirements</div><div class="chips" id="chips"></div></div>'+
+      '<div class="field cf" id="cf"><div class="cf-msg" id="cfMsg"></div>'+
+        '<textarea class="note-input cf-input" id="dnote" rows="2" placeholder="Required \u2014 e.g. happy with an alternative dish"></textarea></div>'+
       '<div class="field"><div class="field-label">Anything else</div>'+
         '<textarea class="note-input" id="note" rows="2" placeholder="Celebrating something, arriving late\u2026"></textarea></div>'+
       '<div class="r-btns">'+
@@ -595,7 +641,8 @@
         '<button class="r-btn primary" id="bSave">Confirm</button>'+
       '</div>';
     if (state.note) document.getElementById('note').value = state.note;
-    paintPax(); paintChips();
+    if (state.dnote) document.getElementById('dnote').value = state.dnote;
+    paintPax(); paintChips(); updateConflict();
     document.getElementById('bSave').onclick = function(){ save('in'); };
     document.getElementById('bBack').onclick = stepChoose;
     panel.setAttribute('data-step','details'); scheduleFit();
@@ -633,7 +680,7 @@
       b.onclick=function(){
         var i=state.diets.indexOf(d);
         if(i>-1) state.diets.splice(i,1); else state.diets.push(d);
-        paintChips();
+        paintChips(); updateConflict();
       };
       box.appendChild(b);
     });
@@ -642,10 +689,17 @@
   function save(status){
     var noteEl = document.getElementById('note');
     if (noteEl) state.note = noteEl.value.trim();
+    var dEl = document.getElementById('dnote');
+    if (dEl) state.dnote = dEl.value.trim();
+    if (status==='in' && menuConflicts(state.diets).length && !state.dnote){
+      if (dEl){ dEl.classList.add('miss'); dEl.focus(); }
+      return;   // a conflicting dietary needs a note before confirming
+    }
     var payload = {
       status: status,
       pax: status==='in' ? state.pax : 0,
       note: status==='in' ? state.note : '',
+      dnote: status==='in' ? state.dnote : '',
       diets: state.diets,
       name: G.name, room: G.room, phone: G.phone, arrives: G.arrives, departs: G.departs,
       at: new Date().toISOString()
@@ -683,6 +737,7 @@
           state.pax   = tonight.pax || 2;
           state.diets = tonight.diets || state.diets;
           state.note  = tonight.note || '';
+          state.dnote = tonight.dnote || '';
           stepDone(tonight);
         } else {
           stepChoose();
