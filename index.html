@@ -166,7 +166,7 @@
   footer {
     border-top: 1px solid var(--rule);
     text-align: center;
-    padding: 3vh 0 0;
+    padding: 2.6vh 0 0;
   }
 
   .pricing {
@@ -174,7 +174,7 @@
     font-size: 0.781rem;
     letter-spacing: 0.06em;
     color: var(--ink);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }
 
   .pricing-note {
@@ -185,12 +185,17 @@
   }
 
   /* ── RSVP ─────────────────────────────────────── */
-  #rsvp { display:none; border-top:1px solid var(--rule); margin-top:3vh; padding:3vh 0 5vh; }
+  #rsvp {
+    display:none;
+    border-top:1px solid var(--rule);
+    margin-top:5vh;
+    padding:4.5vh 0 7vh;
+  }
   #rsvp.show { display:block; }
 
   .r-q {
     text-align:center; font-size:1.125rem; color:var(--ink);
-    margin-bottom:16px; line-height:1.4;
+    margin-bottom:22px; line-height:1.4;
   }
 
   .r-btns { display:flex; gap:10px; }
@@ -251,9 +256,9 @@
     .course-label { margin-bottom: 3px; }
     .course-rule  { margin: 3px auto 7px; }
     .dish-name    { margin-bottom: 3px; }
-    footer        { padding-top: 1.6vh; }
-    #rsvp         { margin-top: 1.8vh; padding: 1.8vh 0 2vh; }
-    .r-q          { margin-bottom: 8px; }
+    footer        { padding-top: 1.8vh; }
+    #rsvp         { margin-top: 3vh; padding: 2.8vh 0 4vh; }
+    .r-q          { margin-bottom: 14px; }
     .r-btn        { padding: 11px 8px; }
   }
 
@@ -475,7 +480,7 @@
     if (panel.getAttribute('data-step') === 'details') return;   // a form may scroll
 
     var base = parseFloat(getComputedStyle(el).fontSize);
-    var size = base, floor = base * 0.76, guard = 0;
+    var size = base, floor = base * 0.70, guard = 0;
     while (el.scrollHeight > window.innerHeight + 1 && size > floor && guard++ < 40) {
       size -= base * 0.02;
       el.style.fontSize = size + 'px';
