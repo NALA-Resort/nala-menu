@@ -506,7 +506,7 @@
     if (panel.getAttribute('data-step') === 'details') return;   // a form may scroll
 
     var base = parseFloat(getComputedStyle(el).fontSize);
-    var size = base, floor = base * 0.70, guard = 0;
+    var size = base, floor = base * 0.66, guard = 0;
     while (el.scrollHeight > window.innerHeight + 1 && size > floor && guard++ < 40) {
       size -= base * 0.02;
       el.style.fontSize = size + 'px';
