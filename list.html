@@ -112,7 +112,7 @@
         <th class="c-bt wrap">B'fast<br>table</th>
         <th class="c-din">Dinner</th>
         <th class="c-pax">Pax</th>
-        <th class="c-dep">Departs</th>
+        <th class="c-dep">Stay</th>
         <th class="c-diet">Dietaries</th>
         <th class="c-com">Comments</th>
       </tr>
@@ -199,6 +199,26 @@ function parseDepDate(s){
   if (m) return new Date(+m[3], +m[2]-1, +m[1]);
   var d = new Date(s);
   return isNaN(d) ? null : d;
+}
+
+function ord(n){
+  var s=['th','st','nd','rd'], v=n%100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+
+// A stay range like "Tue 3rd to Thu 5th". Month is omitted - we know it.
+// Falls back to just the checkout if no arrival date was captured.
+function stayHTML(arrRaw, depRaw){
+  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var a = parseDepDate(arrRaw), d = parseDepDate(depRaw);
+  function one(x){ return days[x.getDay()]+' '+ord(x.getDate()); }
+  var out;
+  if (a && d)      out = one(a)+' to '+one(d);
+  else if (d)      out = 'to '+one(d);
+  else if (a)      out = one(a)+' to';
+  else             return '';
+  if (d && key(d) === tomorrowKey()) return '<span class="checkout">'+out+'</span>';
+  return out;
 }
 
 function depHTML(raw){
@@ -361,7 +381,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
           '<td class="c-bt"></td>'+
           '<td class="c-din">'+dinner+'</td>'+
           '<td class="c-pax">'+(row.status==='in' ? (g.pax||1) : '')+'</td>'+
-          '<td>'+depHTML(g.departs)+'</td>'+
+          '<td>'+stayHTML(g.arrives, g.departs)+'</td>'+
           '<td>'+dietHTML(g.diets)+'</td>'+
           '<td>'+(g.note||'')+'</td>'+
         '</tr>');
