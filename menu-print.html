@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Nala — Printable Menu</title>
+<style>
+  @page { size: A4 landscape; margin: 0; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#DDDDD8; }
+
+  body { background:#E9E7E3; font-family:Helvetica, Arial, sans-serif; padding:18px; }
+
+  .bar { max-width:1050px; margin:0 auto 16px; display:flex; gap:8px; align-items:center; }
+  .btn { padding:11px 20px; background:var(--ink); color:#fff; border:none;
+         font-size:10px; letter-spacing:.15em; text-transform:uppercase;
+         cursor:pointer; text-decoration:none; display:inline-block; }
+  .btn.ghost { background:#fff; color:var(--ink); border:1px solid var(--ink); }
+  .state { margin-left:auto; font-size:10px; letter-spacing:.12em;
+           text-transform:uppercase; color:#777; }
+
+  /* A4 landscape sheet */
+  .sheet {
+    width:297mm; height:210mm; background:var(--cream);
+    margin:0 auto; display:flex; position:relative;
+    box-shadow:0 2px 14px rgba(0,0,0,.14);
+  }
+  .half { width:50%; height:100%; padding:0 22mm; display:flex; flex-direction:column;
+          align-items:center; justify-content:center; }
+  .cut { position:absolute; top:0; bottom:0; left:50%; width:0;
+         border-left:1px dashed #C9C7C2; }
+
+  .menu { width:100%; text-align:center; }
+
+  .course { margin-bottom:9mm; }
+  .course:last-of-type { margin-bottom:0; }
+
+  .label { font-size:8.5px; letter-spacing:.32em; text-transform:uppercase;
+           color:var(--mid); margin-bottom:4px; }
+  .rule { width:18%; height:1px; background:var(--rule); margin:4px auto 8px; }
+  .dish { font-size:20px; color:var(--ink); line-height:1.25; margin-bottom:5px; }
+  .aus  { font-size:9px; color:var(--mid); vertical-align:super; margin-left:3px;
+          letter-spacing:.04em; }
+  .desc { font-family:Georgia, serif; font-style:italic; font-size:13px;
+          color:var(--mid); line-height:1.45; }
+
+  .foot { margin-top:11mm; }
+  .price { font-size:12px; letter-spacing:.06em; color:var(--ink); margin-bottom:5px; }
+  .note  { font-family:Georgia, serif; font-style:italic; font-size:11px; color:var(--mid); }
+
+  .empty { font-family:Georgia, serif; font-style:italic; font-size:15px; color:var(--mid); }
+
+  @media print {
+    body { background:#fff; padding:0; }
+    .bar { display:none; }
+    .sheet { box-shadow:none; margin:0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <button class="btn" onclick="window.print()">Print</button>
+  <a class="btn ghost" href="tally.html">Back</a>
+  <span class="state" id="state"></span>
+</div>
+
+<div class="sheet">
+  <div class="half"><div class="menu" id="menuA"></div></div>
+  <div class="cut"></div>
+  <div class="half"><div class="menu" id="menuB"></div></div>
+</div>
+
+<script>
+function parseISO(s){
+  if (!s) return null;
+  var t = String(s).trim().replace(/(\.\d{3})\d+/, '$1');
+  var d = new Date(t);
+  if (!isNaN(d)) return d;
+  d = new Date(t.replace(/\.\d+/, ''));
+  return isNaN(d) ? null : d;
+}
+
+var LABELS = { bread:'B R E A D', entree:'E N T R É E', main:'M A I N', dessert:'D E S S E R T' };
+
+function esc(s){
+  return String(s||'').replace(/[&<>]/g, function(c){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c];
+  });
+}
+
+function build(m){
+  var html = '';
+  ['bread','entree','main','dessert'].forEach(function(k){
+    var c = m[k] || {};
+    if (!c.name) return;
+    html +=
+      '<div class="course">' +
+        '<div class="label">' + LABELS[k] + '</div>' +
+        '<div class="rule"></div>' +
+        '<div class="dish">' + esc(c.name) +
+          (c.aus ? '<span class="aus">(AUS)</span>' : '') +
+        '</div>' +
+        (c.desc ? '<div class="desc">' + esc(c.desc) + '</div>' : '') +
+      '</div>';
+  });
+  html +=
+    '<div class="foot">' +
+      '<div class="price">2 courses $105 &nbsp;&nbsp; 3 courses $125</div>' +
+      '<div class="note">Bread course included with both options</div>' +
+    '</div>';
+  return html;
+}
+
+fetch('menu.json?v=' + Date.now())
+  .then(function(r){ return r.json(); })
+  .then(function(m){
+    m = m || {};
+    var filled = ['bread','entree','main','dessert'].some(function(k){
+      return m[k] && m[k].name && m[k].name.trim() !== '';
+    });
+
+    if (!filled){
+      var msg = '<div class="empty">No menu published</div>';
+      document.getElementById('menuA').innerHTML = msg;
+      document.getElementById('menuB').innerHTML = msg;
+      document.getElementById('state').textContent = 'Nothing to print';
+      return;
+    }
+
+    var html = build(m);
+    document.getElementById('menuA').innerHTML = html;
+    document.getElementById('menuB').innerHTML = html;
+
+    var pub = parseISO(m.published);
+    document.getElementById('state').textContent = pub
+      ? 'Published ' + pub.toLocaleDateString([], {weekday:'long', day:'numeric', month:'short'}) +
+        ' ' + pub.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})
+      : '';
+  })
+  .catch(function(){
+    document.getElementById('state').textContent = 'Could not load the menu';
+  });
+</script>
+</body>
+</html>
