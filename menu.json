@@ -3,21 +3,52 @@
   "bread": {
     "name": "Pain de campagne",
     "desc": "brown butter, smoked salt",
-    "aus": false
+    "aus": false,
+    "conflicts": [
+      "Gluten free",
+      "Dairy free",
+      "Vegan"
+    ]
   },
   "entree": {
     "name": "Burrata",
     "desc": "salumi XO, fried basil",
-    "aus": false
+    "aus": false,
+    "conflicts": [
+      "Dairy free",
+      "Vegetarian",
+      "Vegan",
+      "Pescatarian"
+    ]
   },
   "main": {
     "name": "Grain-fed striploin",
-    "desc": "potato pur\u00e9e, broccolini, pink peppercorn sauce",
-    "aus": false
+    "desc": "potato purée, broccolini, pink peppercorn sauce",
+    "aus": false,
+    "conflicts": [
+      "Vegetarian",
+      "Vegan",
+      "Pescatarian"
+    ]
   },
   "dessert": {
     "name": "Yoghurt panna cotta",
     "desc": "passionfruit, candied almond",
-    "aus": false
-  }
+    "aus": false,
+    "conflicts": [
+      "Dairy free",
+      "Vegan",
+      "Nut allergy"
+    ]
+  },
+  "dietaries": [
+    "Gluten free",
+    "Dairy free",
+    "Vegetarian",
+    "Vegan",
+    "Pescatarian",
+    "Nut allergy",
+    "Shellfish allergy",
+    "Egg allergy"
+  ]
 }
