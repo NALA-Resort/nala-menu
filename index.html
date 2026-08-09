@@ -470,7 +470,7 @@
 
   var qs = new URLSearchParams(location.search);
   var G = { phone:(qs.get('p')||'').replace(/\D/g,''), room:qs.get('r')||'',
-            name:qs.get('n')||'', departs:qs.get('d')||'' };
+            name:qs.get('n')||'', arrives:qs.get('a')||'', departs:qs.get('d')||'' };
 
   var state = { pax:2, diets:[], note:'' };
   var panel = document.getElementById('rsvp');
@@ -647,11 +647,11 @@
       pax: status==='in' ? state.pax : 0,
       note: status==='in' ? state.note : '',
       diets: state.diets,
-      name: G.name, room: G.room, phone: G.phone, departs: G.departs,
+      name: G.name, room: G.room, phone: G.phone, arrives: G.arrives, departs: G.departs,
       at: new Date().toISOString()
     };
     db('/responses/'+todayKey()+'/'+G.phone, 'PUT', payload);
-    db('/guests/'+G.phone, 'PATCH', { name:G.name, room:G.room, diets:state.diets, departs:G.departs });
+    db('/guests/'+G.phone, 'PATCH', { name:G.name, room:G.room, diets:state.diets, arrives:G.arrives, departs:G.departs });
     stepDone(payload);
   }
 
@@ -664,7 +664,7 @@
     // so staff-entered bookings still carry the guest's details
     if (G.room) {
       db('/roomguests/'+todayKey()+'/'+G.room, 'PUT', {
-        name: G.name, phone: G.phone, departs: G.departs,
+        name: G.name, phone: G.phone, arrives: G.arrives, departs: G.departs,
         at: new Date().toISOString()
       });
     }
@@ -676,6 +676,7 @@
         if (profile.diets) state.diets = profile.diets;
         if (!G.name && profile.name) G.name = profile.name;
         if (!G.room && profile.room) G.room = profile.room;
+        if (!G.arrives && profile.arrives) G.arrives = profile.arrives;
         if (!G.departs && profile.departs) G.departs = profile.departs;
 
         if (tonight){
