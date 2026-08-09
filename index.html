@@ -734,7 +734,7 @@
 
   function paintPax(){
     var row = document.getElementById('paxRow'); row.innerHTML='';
-    for (var i=1;i<=6;i++)(function(n){
+    for (var i=1;i<=4;i++)(function(n){
       var b=document.createElement('button');
       b.className='pax'+(state.pax===n?' on':''); b.textContent=n;
       b.onclick=function(){ state.pax=n; paintPax(); };
@@ -849,7 +849,7 @@
         if (!G.departs && profile.departs) G.departs = profile.departs;
 
         if (tonight){
-          state.pax   = tonight.pax || 2;
+          state.pax   = Math.min(tonight.pax || 2, 4);
           state.diets = tonight.diets || state.diets;
           state.note  = tonight.note || '';
           state.dnote = tonight.dnote || '';
