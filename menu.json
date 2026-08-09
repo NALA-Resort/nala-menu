@@ -1,23 +1,23 @@
 {
-  "published": "2026-08-09T14:05:24.099552+10:00",
+  "published": "2026-08-09T16:00:17.740674+10:00",
   "bread": {
-    "name": "Potato & rosemary focaccia",
-    "desc": "aged balsamic, olive oil",
+    "name": "Housemade focaccia",
+    "desc": "aged balsamic, extra virgin olive oil",
     "aus": false
   },
   "entree": {
-    "name": "Cow's milk burrata",
-    "desc": "pumpkin mostarda, hazelnut, sage",
-    "aus": false
-  },
-  "main": {
-    "name": "Coral trout",
-    "desc": "broccolini, sauce vierge, whey",
+    "name": "Shark Bay scallops",
+    "desc": "cauliflower, morcilla, chives",
     "aus": true
   },
+  "main": {
+    "name": "Pork belly",
+    "desc": "burnt onion, pickled pear, green beans, PX jus",
+    "aus": false
+  },
   "dessert": {
-    "name": "Banana",
-    "desc": "caramel, chocolate, macadamia",
+    "name": "Catalan cream",
+    "desc": "vanilla, baby fig",
     "aus": false
   }
 }
