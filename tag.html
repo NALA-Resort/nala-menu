@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nala — Menu Dietaries</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E; }
+  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
+         padding:28px 24px 60px; -webkit-tap-highlight-color:transparent; }
+  .wrap { max-width:520px; margin:0 auto; }
+
+  .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
+            background:#A8321E; color:#fff; padding:12px 18px;
+            font-family:Helvetica,Arial,sans-serif; font-size:11px; line-height:1.5;
+            transform:translateY(-100%); transition:transform .25s; }
+  .errbar.show { transform:translateY(0); }
+
+  .wordmark { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.45em;
+              text-transform:uppercase; color:var(--mid); text-align:center; }
+  .pagename { font-family:Helvetica,Arial,sans-serif; font-size:13px; font-weight:bold;
+              letter-spacing:.1em; text-transform:uppercase; text-align:center; margin-top:6px; }
+  .lede { text-align:center; font-style:italic; color:var(--mid); font-size:12px;
+          margin-top:8px; line-height:1.5; }
+
+  .nomenu { display:none; text-align:center; font-style:italic; color:var(--mid);
+            margin-top:40px; line-height:1.7; }
+  .nomenu.show { display:block; }
+
+  .course { margin-top:26px; display:none; }
+  .course.show { display:block; }
+  .c-label { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
+             text-transform:uppercase; color:var(--mid); }
+  .c-dish { font-size:17px; margin-top:3px; }
+  .c-hint { font-family:Helvetica,Arial,sans-serif; font-size:9px; color:var(--mid);
+            margin-top:2px; letter-spacing:.05em; }
+  .ticks { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .tick { padding:8px 13px; border:1px solid #C9C9C2; background:transparent;
+          border-radius:20px; font-family:Helvetica,Arial,sans-serif; font-size:11px;
+          color:var(--ink); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .tick.on { background:var(--red); color:#fff; border-color:var(--red); }
+  .rule { border:none; border-top:1px solid var(--rule); margin-top:26px; }
+
+  .secthead { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
+              text-transform:uppercase; color:var(--mid); margin-top:26px; }
+  .addrow { display:flex; gap:8px; margin-top:10px; }
+  .addrow input { flex:1; padding:11px; border:1px solid var(--rule); background:#fff;
+                  border-radius:8px; font-family:Georgia,serif; font-size:16px; color:var(--ink); }
+  .grp { display:flex; gap:6px; margin-top:8px; }
+  .grp button { flex:1; padding:9px; border:1px solid #C9C9C2; background:transparent;
+                border-radius:8px; font-family:Helvetica,Arial,sans-serif; font-size:10px;
+                letter-spacing:.05em; color:var(--ink); cursor:pointer;
+                -webkit-tap-highlight-color:transparent; }
+  .grp button.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .addbtn { margin-top:8px; width:100%; padding:11px; border:1px solid var(--ink);
+            background:transparent; border-radius:8px; font-family:Helvetica,Arial,sans-serif;
+            font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink);
+            cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .addbtn:active { background:var(--rule); }
+
+  .mng { margin-top:12px; }
+  .mrow { display:flex; align-items:center; justify-content:space-between;
+          padding:9px 0; border-bottom:1px solid var(--rule); }
+  .mname { font-size:14px; }
+  .mname .g { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.15em;
+              text-transform:uppercase; color:var(--mid); margin-left:8px; }
+  .mrow.off .mname { color:var(--mid); font-style:italic; }
+  .mtog { border:1px solid var(--rule); background:transparent; color:var(--mid);
+          padding:6px 12px; border-radius:16px; font-family:Helvetica,Arial,sans-serif;
+          font-size:9px; letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
+          -webkit-tap-highlight-color:transparent; }
+  .mrow.off .mtog { border-color:var(--ink); color:var(--ink); }
+
+  .savebar { position:fixed; bottom:0; left:0; right:0; background:var(--cream);
+             border-top:1px solid var(--rule); padding:12px 24px;
+             transform:translateY(110%); transition:transform .25s; }
+  .savebar.show { transform:translateY(0); }
+  .savebar .in { max-width:520px; margin:0 auto; display:flex; gap:10px; align-items:center; }
+  .savebtn { flex:1; padding:13px; border:none; background:var(--ink); color:var(--cream);
+             border-radius:8px; font-family:Helvetica,Arial,sans-serif; font-size:11px;
+             letter-spacing:.15em; text-transform:uppercase; cursor:pointer;
+             -webkit-tap-highlight-color:transparent; }
+  .saved { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.1em;
+           text-transform:uppercase; color:var(--mid); }
+</style>
+</head>
+<body>
+<div class="errbar" id="err"></div>
+<div class="wrap">
+  <div class="wordmark">Nala Resort</div>
+  <div class="pagename">Menu Dietaries</div>
+  <div class="lede">Tick what each dish does <b>not</b> suit.<br>Guests who pick a ticked dietary are asked for a note.</div>
+
+  <div class="nomenu" id="nomenu">No menu is published for tonight yet.<br>Publish the menu first, then tag it here.</div>
+
+  <div id="courses"></div>
+
+  <hr class="rule">
+  <div class="secthead">Add a dietary</div>
+  <div class="addrow"><input id="newName" placeholder="e.g. Red pepper spice" autocomplete="off"></div>
+  <div class="grp">
+    <button id="gCommon" class="on">Common &mdash; always listed</button>
+    <button id="gMenu">This menu only</button>
+  </div>
+  <button class="addbtn" id="addBtn">Add dietary</button>
+
+  <div class="secthead">All dietaries</div>
+  <div class="mng" id="mng"></div>
+</div>
+
+<div class="savebar" id="savebar"><div class="in">
+  <button class="savebtn" id="saveBtn">Save</button>
+  <span class="saved" id="savedMsg"></span>
+</div></div>
+
+<script>
+  var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+  var COURSES = [['bread','Bread'],['entree','Entr\u00e9e'],['main','Main'],['dessert','Dessert']];
+  var DEFAULTS = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+                  'Nut allergy','Shellfish allergy','Egg allergy'];
+
+  function err(m){ var e=document.getElementById('err');
+    e.textContent=m; e.classList.add('show');
+    setTimeout(function(){ e.classList.remove('show'); }, 5000); }
+
+  function todayKey(){ var d=new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function keyOf(name){ return name.trim().replace(/[.#$\/\[\]]/g,'').replace(/\s+/g,' '); }
+
+  var MENU=null, MASTER={}, TAGS={}, newGroup='common', dirty=false;
+
+  function markDirty(){ dirty=true;
+    document.getElementById('savebar').classList.add('show');
+    document.getElementById('savedMsg').textContent=''; }
+
+  function activeNames(){
+    return Object.keys(MASTER).filter(function(k){ return MASTER[k].active; })
+      .map(function(k){ return MASTER[k].name; })
+      .sort(function(a,b){
+        var ga=MASTER[keyOf(a)].group==='menu'?1:0, gb=MASTER[keyOf(b)].group==='menu'?1:0;
+        return ga-gb || a.localeCompare(b); });
+  }
+
+  function paintCourses(){
+    var box=document.getElementById('courses'); box.innerHTML='';
+    if (!MENU){ document.getElementById('nomenu').classList.add('show'); return; }
+    document.getElementById('nomenu').classList.remove('show');
+    COURSES.forEach(function(c){
+      var id=c[0], dish=MENU[id];
+      if (!dish || !dish.name) return;
+      var d=document.createElement('div'); d.className='course show';
+      d.innerHTML='<div class="c-label">'+c[1]+'</div>'+
+        '<div class="c-dish">'+dish.name+'</div>'+
+        '<div class="c-hint">Does not suit:</div>';
+      var t=document.createElement('div'); t.className='ticks';
+      activeNames().forEach(function(n){
+        var on=(TAGS[id]||[]).indexOf(n)>-1;
+        var b=document.createElement('button');
+        b.className='tick'+(on?' on':''); b.textContent=n;
+        b.onclick=function(){
+          TAGS[id]=TAGS[id]||[];
+          var i=TAGS[id].indexOf(n);
+          if(i>-1) TAGS[id].splice(i,1); else TAGS[id].push(n);
+          markDirty(); paintCourses();
+        };
+        t.appendChild(b);
+      });
+      d.appendChild(t); box.appendChild(d);
+    });
+  }
+
+  function paintMng(){
+    var box=document.getElementById('mng'); box.innerHTML='';
+    Object.keys(MASTER).sort(function(a,b){
+      var da=MASTER[a], db_=MASTER[b];
+      return (db_.active?1:0)-(da.active?1:0) ||
+             (da.group==='menu'?1:0)-(db_.group==='menu'?1:0) ||
+             da.name.localeCompare(db_.name);
+    }).forEach(function(k){
+      var d=MASTER[k];
+      var r=document.createElement('div'); r.className='mrow'+(d.active?'':' off');
+      var nm=document.createElement('div'); nm.className='mname';
+      nm.innerHTML=d.name+'<span class="g">'+(d.group==='menu'?'this menu':'common')+'</span>';
+      var b=document.createElement('button'); b.className='mtog';
+      b.textContent=d.active?'Archive':'Restore';
+      b.onclick=function(){
+        d.active=!d.active;
+        if (!d.active) Object.keys(TAGS).forEach(function(c){
+          var i=(TAGS[c]||[]).indexOf(d.name); if(i>-1) TAGS[c].splice(i,1);
+        });
+        markDirty(); paintMng(); paintCourses();
+      };
+      r.appendChild(nm); r.appendChild(b); box.appendChild(r);
+    });
+  }
+
+  document.getElementById('gCommon').onclick=function(){ newGroup='common';
+    this.classList.add('on'); document.getElementById('gMenu').classList.remove('on'); };
+  document.getElementById('gMenu').onclick=function(){ newGroup='menu';
+    this.classList.add('on'); document.getElementById('gCommon').classList.remove('on'); };
+
+  document.getElementById('addBtn').onclick=function(){
+    var inp=document.getElementById('newName'), name=inp.value.trim();
+    if (!name) return;
+    var k=keyOf(name);
+    if (MASTER[k]){ MASTER[k].active=true; MASTER[k].group=newGroup; }
+    else MASTER[k]={ name:name, active:true, group:newGroup };
+    inp.value='';
+    markDirty(); paintMng(); paintCourses();
+  };
+
+  document.getElementById('saveBtn').onclick=function(){
+    var btn=this; btn.disabled=true;
+    Promise.all([
+      fetch(DB+'/dietaries.json',{method:'PUT',body:JSON.stringify(MASTER)}),
+      fetch(DB+'/menutags/'+todayKey()+'.json',{method:'PUT',body:JSON.stringify(TAGS)})
+    ]).then(function(rs){
+      if (rs.some(function(r){ return !r.ok; })) throw new Error('save failed');
+      dirty=false; btn.disabled=false;
+      document.getElementById('savedMsg').textContent='Saved';
+      setTimeout(function(){ if(!dirty) document.getElementById('savebar').classList.remove('show'); },1200);
+    }).catch(function(e){ btn.disabled=false; err('Could not save \u2014 check the connection and try again.'); });
+  };
+
+  window.addEventListener('beforeunload', function(e){
+    if (dirty){ e.preventDefault(); e.returnValue=''; } });
+
+  // ── load ──
+  Promise.all([
+    fetch('menu.json?v='+Date.now()).then(function(r){ return r.json(); }).catch(function(){ return null; }),
+    fetch(DB+'/dietaries.json').then(function(r){ return r.json(); }).catch(function(){ return null; }),
+    fetch(DB+'/menutags/'+todayKey()+'.json').then(function(r){ return r.json(); }).catch(function(){ return null; })
+  ]).then(function(res){
+    var menu=res[0], master=res[1], tags=res[2];
+    var freshToday = menu && menu.published &&
+      new Date(menu.published).toDateString() === new Date().toDateString();
+    if (freshToday && menu.bread && menu.bread.name) MENU=menu;
+    if (master) MASTER=master;
+    else DEFAULTS.forEach(function(n){ MASTER[keyOf(n)]={name:n,active:true,group:'common'}; });
+    if (tags) TAGS=tags;
+    paintCourses(); paintMng();
+  }).catch(function(e){ err('Could not load \u2014 refresh to try again.'); });
+</script>
+</body>
+</html>
