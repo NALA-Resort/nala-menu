@@ -167,15 +167,11 @@ function key(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0
 function todayKey(){ return dkey(VIEW); }
 function tomorrowKey(){ var d=new Date(VIEW); d.setDate(d.getDate()+1); return key(d); }
 
-function ord(n){
-  if (n>3 && n<21) return 'th';
-  return ['th','st','nd','rd'][n%10] || 'th';
-}
 function label(){
   var d=VIEW;
   var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return days[d.getDay()]+' '+d.getDate()+ord(d.getDate())+' '+m[d.getMonth()];
+  return days[d.getDay()]+' '+ord(d.getDate())+' '+m[d.getMonth()];
 }
 document.getElementById('title').textContent = label();
 document.getElementById('dPrev').onclick  = function(){ shiftDate(-1); };
