@@ -65,8 +65,8 @@
     justify-content: center;
     align-items: center;
     text-align: center;
-    gap: 1.4rem;
-    padding: 2rem 0;
+    gap: 1.3rem;
+    padding: 1.6rem 0;
   }
 
   .greet {
@@ -94,19 +94,36 @@
     line-height: 2.1;
   }
 
-  .menu-btn {
-    display: inline-block;
+  .btns {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     margin-top: 0.4rem;
-    padding: 15px 30px;
+    width: 100%;
+    max-width: 300px;
+  }
+  .btn {
+    display: block;
+    padding: 15px 20px;
     border-radius: 10px;
-    background: var(--ink);
-    color: var(--cream);
     font-size: 0.781rem;
     font-weight: 500;
     letter-spacing: .1em;
     text-transform: uppercase;
     text-decoration: none;
+    text-align: center;
     -webkit-tap-highlight-color: transparent;
+  }
+  .btn.primary { background: var(--ink); color: var(--cream); }
+  .btn.outline { border: 1px solid #B8B8B0; color: var(--ink); }
+  .btn .sub {
+    display: block;
+    margin-top: 3px;
+    font-size: 0.72rem;
+    font-weight: 400;
+    letter-spacing: .12em;
+    color: inherit;
+    opacity: .75;
   }
 
   footer {
@@ -129,6 +146,15 @@
     color: var(--mid);
   }
 
+  /* Short screens: tighten the rhythm so the SE fits one screen too. */
+  @media (max-height: 700px) {
+    header { padding: 3.4vh 0 1.4vh; }
+    main   { gap: 1rem; padding: 1rem 0; }
+    .body  { font-size: 0.86rem; line-height: 1.65; }
+    .btn   { padding: 13px 18px; }
+    footer { padding: 1.8vh 0 2.6vh; }
+  }
+
   @media (orientation: landscape) and (max-height: 560px) {
     html { font-size: 15px; }
     .page { min-height: 0; display: block; }
@@ -149,17 +175,23 @@
     <div class="greet" id="greet">Welcome to Nala</div>
     <div class="g-rule"></div>
     <div class="body">
-      Each afternoon we publish that evening&rsquo;s menu &mdash; a set dinner
-      from our kitchen, changing daily. Tap below to see what&rsquo;s cooking
-      tonight and let us know if you&rsquo;ll be joining us.
+      Thank you for choosing to stay with us. Our team is here to make your
+      visit as comfortable and enjoyable as possible.
     </div>
-    <div class="hours">Dinner 6&ndash;7 pm &nbsp;&middot;&nbsp; Breakfast 8&ndash;9 am</div>
-    <a class="menu-btn" id="menuBtn" href="/">This Evening&rsquo;s Menu</a>
+    <div class="body">
+      Whether it&rsquo;s confirming your dinner or breakfast reservations,
+      minibar supplies for your room, or a cocktail by the pool &mdash;
+      we&rsquo;re only a message away.
+    </div>
+    <div class="btns">
+      <a class="btn outline" href="sms:0468067233">Text Us
+        <span class="sub">0468 067 233</span></a>
+      <a class="btn primary" id="menuBtn" href="/">This Evening&rsquo;s Menu</a>
+    </div>
   </main>
 
   <footer>
-    <div class="pricing">2 courses $105 &nbsp;&nbsp; 3 courses $125</div>
-    <div class="pricing-note">Bread course included with both options</div>
+    <div class="pricing-note">We hope you enjoy your time at Nala.</div>
   </footer>
 
 </div>
