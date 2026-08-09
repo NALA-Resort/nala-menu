@@ -291,6 +291,18 @@ function goToday(){
   location.search = q.toString();
 }
 
+
+// Safari only accepts 3 fractional digits in an ISO date; Python writes 6.
+// Trim them so any timestamp parses on every browser.
+function parseISO(s){
+  if (!s) return null;
+  var t = String(s).trim().replace(/(\.\d{3})\d+/, '$1');
+  var d = new Date(t);
+  if (!isNaN(d)) return d;
+  d = new Date(t.replace(/\.\d+/, ''));      // drop fractions entirely
+  return isNaN(d) ? null : d;
+}
+
 function parseDepDate(s){
   if(!s) return null;
   s = String(s).trim();
@@ -937,7 +949,7 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
       // use the menu's own publish timestamp — GitHub rewrites Last-Modified
       // on every deploy, so it can't tell us when the chef published.
       var pub = null;
-      if (m.published) { var p = new Date(m.published); if (!isNaN(p)) pub = p; }
+      if (m.published) pub = parseISO(m.published);
       var fresh = pub ? (dkey(pub) === dkey(new Date())) : false;
       var live = filled && fresh;
       el.innerHTML = live
