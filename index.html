@@ -359,7 +359,19 @@
   function db(path, method, body){
     var o = { method: method||'GET' };
     if (body) { o.headers={'Content-Type':'application/json'}; o.body=JSON.stringify(body); }
-    return fetch(DB+path+'.json'+(method?'':'?v='+Date.now()), o).then(function(r){ return r.json(); });
+    return fetch(DB+path+'.json'+(method?'':'?v='+Date.now()), o)
+      .then(function(r){
+        if (!r.ok) {
+          console.error('Nala DB ' + (method||'GET') + ' ' + path + ' failed: ' + r.status);
+          if (method) window.__nalaWriteFailed = true;
+        }
+        return r.json();
+      })
+      .catch(function(e){
+        console.error('Nala DB error', path, e);
+        if (method) window.__nalaWriteFailed = true;
+        throw e;
+      });
   }
 
   function firstName(n){ return (n||'').trim().split(' ')[0]; }
