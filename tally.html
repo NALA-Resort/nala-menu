@@ -950,19 +950,26 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
       // on every deploy, so it can't tell us when the chef published.
       var pub = null;
       if (m.published) pub = parseISO(m.published);
-      var fresh = pub ? (dkey(pub) === dkey(new Date())) : false;
+      // compare against the date being viewed, not always today
+      var fresh = pub ? (dkey(pub) === todayKey()) : false;
       var live = filled && fresh;
-      el.innerHTML = live
-        ? '<span class="yes">Menu published</span>'
-        : '<span class="no">Menu not published</span>';
 
-      // archive today's menu once, for the statistics page
+      var when = isToday() ? '' : ' for this date';
+      if (live) {
+        var t = pub.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+        el.innerHTML = '<span class="yes">Menu published ' + t + '</span>';
+      } else {
+        el.innerHTML = '<span class="no">Menu not published' + when + '</span>';
+      }
+
+      // archive for statistics; rewrite if the menu was revised
       if (live && isToday()) {
         var k = todayKey();
         fetch(DB + '/menuhistory/' + k + '.json?v=' + Date.now())
           .then(function(r){ return r.ok ? r.json() : null; })
           .then(function(existing){
-            if (existing) return;
+            var mainName = (m.main && m.main.name) || '';
+            if (existing && existing.main === mainName && existing.published === m.published) return;
             fetch(DB + '/menuhistory/' + k + '.json', {
               method:'PUT', headers:{'Content-Type':'application/json'},
               body: JSON.stringify({
@@ -971,6 +978,7 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
                 main:    m.main    && m.main.name    || '',
                 dessert: m.dessert && m.dessert.name || '',
                 mainDesc: m.main   && m.main.desc    || '',
+                published: m.published || '',
                 at: new Date().toISOString()
               })
             });
