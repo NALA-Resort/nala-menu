@@ -532,8 +532,8 @@
     panel.innerHTML =
       '<div class="r-q">'+(fn ? fn+', dining with us tonight?' : 'Dining tonight?')+'</div>'+
       '<div class="r-btns">'+
-        '<button class="r-btn primary" id="bIn">Dining tonight</button>'+
         '<button class="r-btn" id="bOut">Not tonight</button>'+
+        '<button class="r-btn primary" id="bIn">Dining tonight</button>'+
       '</div>';
     document.getElementById('bIn').onclick  = stepDetails;
     document.getElementById('bOut').onclick = stepConfirmOut;
@@ -544,8 +544,8 @@
     panel.innerHTML =
       '<div class="r-q">Confirm you won\u2019t be dining tonight?</div>'+
       '<div class="r-btns">'+
-        '<button class="r-btn danger" id="bYes">Yes, not tonight</button>'+
         '<button class="r-btn quiet" id="bBack">Back</button>'+
+        '<button class="r-btn danger" id="bYes">Yes, not tonight</button>'+
       '</div>';
     document.getElementById('bYes').onclick  = function(){ save('out'); };
     document.getElementById('bBack').onclick = stepChoose;
@@ -560,8 +560,8 @@
       '<div class="field"><div class="field-label">Anything else</div>'+
         '<textarea class="note-input" id="note" rows="2" placeholder="Celebrating something, arriving late\u2026"></textarea></div>'+
       '<div class="r-btns">'+
-        '<button class="r-btn primary" id="bSave">Confirm</button>'+
         '<button class="r-btn quiet" id="bBack">Back</button>'+
+        '<button class="r-btn primary" id="bSave">Confirm</button>'+
       '</div>';
     if (state.note) document.getElementById('note').value = state.note;
     paintPax(); paintChips();
