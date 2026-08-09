@@ -26,6 +26,10 @@
   .hint { max-width:1050px; margin:0 auto 14px; font-size:11px; color:#7A7A72;
           font-style:italic; }
 
+  #viewer { display:block; width:100%; max-width:1050px; height:78vh;
+            margin:0 auto; border:none; background:#fff;
+            box-shadow:0 2px 14px rgba(0,0,0,.14); }
+
   .stage { max-width:1050px; margin:0 auto; overflow:hidden; }
   .sheet { width:297mm; height:210mm; background:var(--paper);
            display:flex; position:relative;
@@ -55,14 +59,15 @@
 <body>
 
 <div class="bar">
-  <button class="btn" id="pdfBtn">Open PDF to print</button>
   <a class="btn ghost" href="tally.html">Back</a>
-  <span class="state" id="state"></span>
+  <button class="btn" id="pdfBtn" style="display:none">Open PDF</button>
+  <span class="state" id="state">Preparing menu…</span>
 </div>
 
-<div class="hint">Opens a true A4 landscape PDF — no web address, date or page number. Print at 100% and cut down the centre line.</div>
+<iframe id="viewer" title="Menu PDF"></iframe>
 
-<div class="stage" id="stage">
+<!-- hidden layout used only to build the PDF -->
+<div class="stage" id="stage" style="display:none">
   <div class="sheet" id="sheet">
     <div class="half"><div class="menu" id="menuA"></div></div>
     <div class="cut"></div>
@@ -149,7 +154,12 @@ function registerFonts(doc){
   doc.addFont('Raleway-Light.ttf', 'RalewayLight', 'normal');
 }
 
-function makePDF(){
+function isIOS(){
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function makePDF(open){
   if (!MENU) return;
   var doc = new jspdf.jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
   registerFonts(doc);
@@ -232,14 +242,22 @@ function makePDF(){
 
   var blob = doc.output('blob');
   var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url; a.target = '_blank'; a.rel = 'noopener';
-  a.download = 'Nala menu ' + stamp + '.pdf';
-  document.body.appendChild(a); a.click();
-  setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 5000);
+
+  if (open){
+    var a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener';
+    a.download = 'Nala menu ' + stamp + '.pdf';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ a.remove(); }, 5000);
+    return;
+  }
+
+  // show it in place
+  document.getElementById('viewer').src = url;
+  window.__pdfURL = url;
 }
 
-document.getElementById('pdfBtn').onclick = makePDF;
+document.getElementById('pdfBtn').onclick = function(){ makePDF(true); };
 
 // ── load ──────────────────────────────────────────────────
 fetch('menu.json?v=' + Date.now())
@@ -256,7 +274,8 @@ fetch('menu.json?v=' + Date.now())
       document.getElementById('menuA').innerHTML = msg;
       document.getElementById('menuB').innerHTML = msg;
       document.getElementById('state').textContent = 'Nothing to print';
-      document.getElementById('pdfBtn').disabled = true;
+      document.getElementById('viewer').style.display = 'none';
+      document.getElementById('stage').style.display = 'block';
       fitSheet();
       return;
     }
@@ -270,7 +289,13 @@ fetch('menu.json?v=' + Date.now())
       ? 'Published ' + pub.toLocaleDateString([], {weekday:'long', day:'numeric', month:'short'}) +
         ' ' + pub.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})
       : '';
-    fitSheet();
+
+    // build and display the PDF
+    setTimeout(function(){
+      makePDF(false);
+      // iOS can't reliably render a PDF inside a frame — offer the button as well
+      if (isIOS()) document.getElementById('pdfBtn').style.display = 'inline-block';
+    }, 60);
   })
   .catch(function(){
     document.getElementById('state').textContent = 'Could not load the menu';
