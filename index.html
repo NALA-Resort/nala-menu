@@ -64,7 +64,7 @@
 
   header {
     text-align: center;
-    padding: 4.4vh 0 2vh;
+    padding: 3.7vh 0 1.6vh;
   }
 
   /* Sized in rem so the shrink-to-fit loop scales it with everything else. */
@@ -72,7 +72,7 @@
     width: 5rem;
     height: auto;
     display: block;
-    margin: 0 auto 1.35rem;
+    margin: 0 auto 1.15rem;
   }
 
   #stateDefault {
@@ -139,7 +139,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 1.4rem 1rem;
+    padding: 1.05rem 1rem;
     margin: 0;
     background: var(--paper);
     border: 1px solid var(--rule);
@@ -368,6 +368,11 @@
 <script>
   function showMenu(data) {
     setTimeout(function(){ if (window.scheduleFit) window.scheduleFit(); }, 0);
+    // the logo participates in the height, so refit once it has loaded
+    var lg = document.querySelector('.logo');
+    if (lg && !lg.complete) lg.addEventListener('load', function(){
+      if (window.scheduleFit) window.scheduleFit();
+    });
     document.getElementById('stateDefault').style.display = 'none';
     var sm = document.getElementById('stateMenu');
     sm.style.display = 'flex';
@@ -501,14 +506,40 @@
     var a  = document.activeElement;
     if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'INPUT')) return;
 
-    el.style.fontSize = '';                       // release to the CSS clamp
-    if (panel.getAttribute('data-step') === 'details') return;   // a form may scroll
+    // While the form is open the menu must not move at all: keep any
+    // active type shrink, keep the locked height, just let the page grow.
+    if (panel.getAttribute('data-step') === 'details') return;
 
+    unlockMenu();                                 // fresh fit, fresh geometry
+    el.style.fontSize = '';                       // release to the CSS clamp
     var base = parseFloat(getComputedStyle(el).fontSize);
     var size = base, floor = base * 0.66, guard = 0;
     while (el.scrollHeight > window.innerHeight + 1 && size > floor && guard++ < 40) {
       size -= base * 0.02;
       el.style.fontSize = size + 'px';
+    }
+    lockMenu();
+  }
+
+  // Freeze the menu paper at its settled height so a growing RSVP panel
+  // can never re-divide the screen and squash it - the page simply gets
+  // taller and scrolls instead.
+  function unlockMenu(){
+    var c = document.querySelector('.courses');
+    if (c) c.style.minHeight = '';
+    var sp = document.querySelectorAll('.spacer-mid');
+    for (var i = 0; i < sp.length; i++) { sp[i].style.minHeight = ''; sp[i].style.maxHeight = ''; }
+  }
+
+  function lockMenu(){
+    var c = document.querySelector('.courses');
+    var sm = document.getElementById('stateMenu');
+    if (!c || !sm || sm.style.display === 'none' || !c.offsetHeight) return;
+    c.style.minHeight = c.offsetHeight + 'px';
+    var sp = document.querySelectorAll('.spacer-mid');
+    for (var i = 0; i < sp.length; i++) {
+      sp[i].style.minHeight = sp[i].offsetHeight + 'px';
+      sp[i].style.maxHeight = sp[i].offsetHeight + 'px';
     }
   }
   window.scheduleFit = scheduleFit;
