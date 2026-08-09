@@ -233,6 +233,27 @@
   .r-done { text-align:center; }
   .r-done-t { font-size:1.125rem; color:var(--ink); margin-bottom:8px; }
   .r-done-s { font-style:italic; font-weight:400; font-size:0.875rem; color:var(--mid); }
+  /* Short screens: two-line dish descriptions were pushing past the fold
+     on an SE. Tighten the spacer floors rather than the type. */
+  @media (max-height: 700px) {
+    .spacer-top { min-height: 0.7rem; }
+    .spacer-mid { min-height: 1.15rem; }
+    .spacer-bot { min-height: 0.7rem; }
+    header { padding: 4.2vh 0 1.5vh; }
+  }
+
+  /* Landscape phone: one screen is not achievable or desirable, so stop
+     stretching to it and use settled spacing instead. */
+  @media (orientation: landscape) and (max-height: 560px) {
+    html { font-size: 15px; }
+    .card, .page.has-rsvp .card { min-height: 0; display: block; }
+    header { padding: 26px 0 14px; }
+    .menu-date { padding-bottom: 14px; }
+    .spacer-top, .spacer-bot { flex: none; min-height: 20px; }
+    .spacer-mid { flex: none; min-height: 22px; }
+    footer { padding-top: 18px; }
+  }
+
   .r-link {
     display:inline-block; margin-top:12px; font-family:'Raleway',Helvetica,Arial,sans-serif;
     font-size:0.625rem; letter-spacing:.12em; text-transform:uppercase;
