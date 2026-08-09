@@ -6,13 +6,13 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Nala — Printable Menu</title>
 <style>
-  @page { size: A4 portrait; margin: 0; }
   * { margin:0; padding:0; box-sizing:border-box; }
-  :root { --paper:#FFFFFF; --ink:#1C1C1A; --mid:#8E8E86; --rule:#DDDDD8; }
+  :root { --paper:#FFFFFF; --ink:#1C1C1A; --mid:#8E8E86; --rule:#DDDDD8; --bg:#E9E7E3; }
 
-  body { background:#E9E7E3; font-family:Helvetica, Arial, sans-serif; padding:18px; }
+  body { background:var(--bg); font-family:Helvetica, Arial, sans-serif; padding:18px; }
 
-  .bar { max-width:1050px; margin:0 auto 16px; display:flex; gap:8px; align-items:center; }
+  .bar { max-width:1050px; margin:0 auto 12px; display:flex; gap:8px; align-items:center;
+         flex-wrap:wrap; }
   .btn { padding:11px 20px; background:var(--ink); color:#fff; border:none;
          font-size:10px; letter-spacing:.15em; text-transform:uppercase;
          cursor:pointer; text-decoration:none; display:inline-block; }
@@ -22,69 +22,40 @@
   .hint { max-width:1050px; margin:0 auto 14px; font-size:11px; color:#7A7A72;
           font-style:italic; }
 
-  /* the sheet is always true A4 landscape; the stage scales it to fit the screen */
   .stage { max-width:1050px; margin:0 auto; overflow:hidden; }
-  .sheet {
-    width:297mm; height:210mm; background:var(--paper);
-    display:flex; position:relative;
-    box-shadow:0 2px 14px rgba(0,0,0,.14);
-    transform-origin:top left;
-  }
+  .sheet { width:297mm; height:210mm; background:var(--paper);
+           display:flex; position:relative;
+           box-shadow:0 2px 14px rgba(0,0,0,.14); transform-origin:top left; }
   .half { width:50%; height:100%; padding:0 22mm; display:flex; flex-direction:column;
           align-items:center; justify-content:center; }
   .cut { position:absolute; top:0; bottom:0; left:50%; width:0;
          border-left:1px dashed #C9C7C2; }
 
   .menu { width:100%; text-align:center; }
-
   .course { margin-bottom:9mm; }
   .course:last-of-type { margin-bottom:0; }
-
   .label { font-size:8.5px; letter-spacing:.32em; text-transform:uppercase;
            color:var(--mid); margin-bottom:4px; }
   .rule { width:18%; height:1px; background:var(--rule); margin:4px auto 8px; }
   .dish { font-size:20px; color:var(--ink); line-height:1.25; margin-bottom:5px; }
-  .aus  { font-size:9px; color:var(--mid); vertical-align:super; margin-left:3px;
-          letter-spacing:.04em; }
+  .aus  { font-size:9px; color:var(--mid); vertical-align:super; margin-left:3px; }
   .desc { font-family:Georgia, serif; font-style:italic; font-size:13px;
           color:var(--mid); line-height:1.45; }
-
   .foot { margin-top:11mm; }
   .price { font-size:12px; letter-spacing:.06em; color:var(--ink); margin-bottom:5px; }
   .note  { font-family:Georgia, serif; font-style:italic; font-size:11px; color:var(--mid); }
-
   .empty { font-family:Georgia, serif; font-style:italic; font-size:15px; color:var(--mid); }
-
-  @media print {
-    html, body { background:#fff; padding:0; margin:0;
-                 width:210mm; height:297mm; overflow:hidden; }
-    .bar, .hint { display:none; }
-
-    /* iOS ignores landscape page setup, so print onto portrait paper
-       and rotate the sheet a quarter turn to fill it. */
-    .stage { max-width:none; margin:0; padding:0; overflow:visible;
-             width:210mm; height:297mm; position:relative; }
-    .sheet {
-      box-shadow:none; margin:0;
-      width:297mm; height:210mm;
-      position:absolute; top:0; left:0;
-      transform-origin:top left;
-      transform:translateX(210mm) rotate(90deg) !important;
-      page-break-after:avoid;
-    }
-    .cut { border-left:1px dashed #C9C7C2; }
-  }
 </style>
 </head>
 <body>
 
 <div class="bar">
-  <button class="btn" onclick="window.print()">Print</button>
+  <button class="btn" id="pdfBtn">Open PDF to print</button>
   <a class="btn ghost" href="tally.html">Back</a>
   <span class="state" id="state"></span>
 </div>
 
-<div class="hint">Prints onto a portrait A4 sheet with the menu turned sideways — turn the paper a quarter turn and cut down the dashed line. Leave orientation on <b>Portrait</b> and scale at 100%.</div>
+<div class="hint">Opens a true A4 landscape PDF — no web address, date or page number, and crisp black text. Print it at 100% and cut down the centre line.</div>
 
 <div class="stage" id="stage">
   <div class="sheet" id="sheet">
@@ -94,7 +65,10 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
+var MENU = null;
+
 function parseISO(s){
   if (!s) return null;
   var t = String(s).trim().replace(/(\.\d{3})\d+/, '$1');
@@ -104,7 +78,8 @@ function parseISO(s){
   return isNaN(d) ? null : d;
 }
 
-var LABELS = { bread:'B R E A D', entree:'E N T R É E', main:'M A I N', dessert:'D E S S E R T' };
+var LABELS = { bread:'BREAD', entree:'ENTRÉE', main:'MAIN', dessert:'DESSERT' };
+var ORDER  = ['bread','entree','main','dessert'];
 
 function esc(s){
   return String(s||'').replace(/[&<>]/g, function(c){
@@ -112,18 +87,20 @@ function esc(s){
   });
 }
 
-function build(m){
+function spaced(s){ return s.split('').join(' '); }
+
+// ── on-screen preview ─────────────────────────────────────
+function buildHTML(m){
   var html = '';
-  ['bread','entree','main','dessert'].forEach(function(k){
+  ORDER.forEach(function(k){
     var c = m[k] || {};
     if (!c.name) return;
     html +=
       '<div class="course">' +
-        '<div class="label">' + LABELS[k] + '</div>' +
+        '<div class="label">' + spaced(LABELS[k]) + '</div>' +
         '<div class="rule"></div>' +
         '<div class="dish">' + esc(c.name) +
-          (c.aus ? '<span class="aus">(AUS)</span>' : '') +
-        '</div>' +
+          (c.aus ? '<span class="aus">(AUS)</span>' : '') + '</div>' +
         (c.desc ? '<div class="desc">' + esc(c.desc) + '</div>' : '') +
       '</div>';
   });
@@ -135,24 +112,124 @@ function build(m){
   return html;
 }
 
-// scale the A4 sheet down so it fits the screen, full size when printing
 function fitSheet(){
   var stage = document.getElementById('stage');
   var sheet = document.getElementById('sheet');
-  var sheetW = sheet.offsetWidth || 1;
-  var sheetH = sheet.offsetHeight || 1;
-  var scale = Math.min(1, stage.clientWidth / sheetW);
+  var scale = Math.min(1, stage.clientWidth / (sheet.offsetWidth || 1));
   sheet.style.transform = 'scale(' + scale + ')';
-  stage.style.height = (sheetH * scale) + 'px';
+  stage.style.height = ((sheet.offsetHeight || 1) * scale) + 'px';
 }
 window.addEventListener('resize', fitSheet);
 window.addEventListener('orientationchange', function(){ setTimeout(fitSheet, 150); });
 
+// ── PDF ───────────────────────────────────────────────────
+function makePDF(){
+  if (!MENU) return;
+  var doc = new jspdf.jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+
+  var W = 297, H = 210;
+  var centres = [W * 0.25, W * 0.75];
+  var COL = 105;                       // usable width of each half
+
+  // measure so the block can be centred vertically
+  function courseHeight(c){
+    var h = 0;
+    h += 4;                            // label
+    h += 4;                            // rule + gap
+    doc.setFont('helvetica','normal').setFontSize(17);
+    h += doc.splitTextToSize(c.name, COL).length * 7.2;
+    if (c.desc){
+      doc.setFont('times','italic').setFontSize(11);
+      h += doc.splitTextToSize(c.desc, COL).length * 5;
+    }
+    return h + 9;                      // gap after the course
+  }
+
+  var courses = ORDER.map(function(k){ return MENU[k]; })
+                     .filter(function(c){ return c && c.name; });
+
+  var total = courses.reduce(function(t,c){ return t + courseHeight(c); }, 0);
+  total += 20;                         // footer block
+  var startY = (H - total) / 2 + 6;
+
+  centres.forEach(function(cx){
+    var y = startY;
+
+    courses.forEach(function(c, i){
+      var k = ORDER.filter(function(kk){ return MENU[kk] === c; })[0];
+
+      // section label
+      doc.setFont('helvetica','normal').setFontSize(7).setTextColor(120);
+      doc.text(spaced(LABELS[k]), cx, y, { align:'center' });
+      y += 3.4;
+
+      // rule
+      doc.setDrawColor(190).setLineWidth(0.25);
+      doc.line(cx - 9, y, cx + 9, y);
+      y += 6.4;
+
+      // dish
+      doc.setFont('helvetica','normal').setFontSize(17).setTextColor(20);
+      var nameLines = doc.splitTextToSize(c.name, COL);
+      nameLines.forEach(function(ln, idx){
+        doc.text(ln, cx, y, { align:'center' });
+        if (idx === nameLines.length - 1 && c.aus){
+          var w = doc.getTextWidth(ln);
+          doc.setFont('helvetica','normal').setFontSize(7).setTextColor(120);
+          doc.text('(AUS)', cx + w/2 + 1.6, y - 3);
+          doc.setFont('helvetica','normal').setFontSize(17).setTextColor(20);
+        }
+        y += 7.2;
+      });
+
+      // description
+      if (c.desc){
+        doc.setFont('times','italic').setFontSize(11).setTextColor(120);
+        doc.splitTextToSize(c.desc, COL).forEach(function(ln){
+          doc.text(ln, cx, y, { align:'center' });
+          y += 5;
+        });
+      }
+
+      y += 9;
+    });
+
+    // footer
+    y += 2;
+    doc.setFont('helvetica','normal').setFontSize(10.5).setTextColor(20);
+    doc.text('2 courses $105     3 courses $125', cx, y, { align:'center' });
+    y += 5.4;
+    doc.setFont('times','italic').setFontSize(9.5).setTextColor(120);
+    doc.text('Bread course included with both options', cx, y, { align:'center' });
+  });
+
+  // centre cut line
+  doc.setDrawColor(200).setLineWidth(0.2).setLineDashPattern([1.6, 1.6], 0);
+  doc.line(W/2, 0, W/2, H);
+
+  var d = parseISO(MENU.published) || new Date();
+  var name = 'Nala menu ' +
+    d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0') + '.pdf';
+
+  var blob = doc.output('blob');
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 4000);
+}
+
+document.getElementById('pdfBtn').onclick = makePDF;
+
+// ── load ──────────────────────────────────────────────────
 fetch('menu.json?v=' + Date.now())
   .then(function(r){ return r.json(); })
   .then(function(m){
     m = m || {};
-    var filled = ['bread','entree','main','dessert'].some(function(k){
+    MENU = m;
+    var filled = ORDER.some(function(k){
       return m[k] && m[k].name && m[k].name.trim() !== '';
     });
 
@@ -161,11 +238,12 @@ fetch('menu.json?v=' + Date.now())
       document.getElementById('menuA').innerHTML = msg;
       document.getElementById('menuB').innerHTML = msg;
       document.getElementById('state').textContent = 'Nothing to print';
+      document.getElementById('pdfBtn').disabled = true;
       fitSheet();
       return;
     }
 
-    var html = build(m);
+    var html = buildHTML(m);
     document.getElementById('menuA').innerHTML = html;
     document.getElementById('menuB').innerHTML = html;
 
