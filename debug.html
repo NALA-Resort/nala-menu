@@ -7,15 +7,16 @@
 <title>Nala — Diagnostics</title>
 <style>
   body { font-family:-apple-system,Helvetica,Arial,sans-serif; background:#F9F7F4; color:#1C1C1A;
-         padding:20px; font-size:13px; line-height:1.5; }
-  h2 { font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:#999;
-       margin:22px 0 8px; font-weight:normal; }
-  pre { background:#fff; border:1px solid #E0E0DA; padding:12px; border-radius:3px;
-        overflow-x:auto; font-size:11px; white-space:pre-wrap; word-break:break-all; }
+         padding:10px 12px; font-size:11px; line-height:1.35; }
+  h2 { font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:#999;
+       margin:9px 0 3px; font-weight:normal; }
+  pre { background:#fff; border:1px solid #E0E0DA; padding:6px 7px; border-radius:2px;
+        font-size:9.5px; line-height:1.35; white-space:pre-wrap; word-break:break-all;
+        max-height:150px; overflow:auto; margin:0; }
   .ok   { color:#3F7A52; font-weight:bold; }
   .bad  { color:#A8321E; font-weight:bold; }
-  button { padding:12px 18px; background:#1C1C1A; color:#fff; border:none;
-           font-size:11px; letter-spacing:.12em; text-transform:uppercase; margin-right:8px; }
+  button { padding:7px 12px; background:#1C1C1A; color:#fff; border:none;
+           font-size:9px; letter-spacing:.1em; text-transform:uppercase; margin:0 0 4px; }
 </style>
 </head>
 <body>
@@ -39,7 +40,7 @@
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 var T = dkey(new Date());
-document.getElementById('today').textContent = T + '   (device time: ' + new Date().toString() + ')';
+document.getElementById('today').textContent = T;
 
 function show(id, status, body){
   var el = document.getElementById(id);
