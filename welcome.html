@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Nala">
+<meta property="og:title" content="Welcome to NALA">
+<meta property="og:description" content="Your guide to dining during your stay.">
+<meta property="og:url" content="https://menu.nalaresort.com/welcome.html">
+<meta property="og:image" content="https://menu.nalaresort.com/preview.png?v=4">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Welcome to NALA">
+<meta name="twitter:description" content="Your guide to dining during your stay.">
+<meta name="twitter:image" content="https://menu.nalaresort.com/preview.png?v=4">
+<title>Nala — Welcome</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root { --cream: #FBFAF8; --ink: #14140F; --mid: #47473F; --rule: #CFCFC8; }
+
+  /* Same fluid step as the menu page, so the two feel like one place. */
+  html { font-size: clamp(14.5px, 1.89vh, 17.5px); }
+
+  html, body {
+    width: 100%;
+    min-height: 100dvh;
+    background: var(--cream);
+    font-family: 'Raleway', Helvetica, Arial, sans-serif;
+  }
+
+  body { display: flex; justify-content: center; }
+
+  .page {
+    width: 100%;
+    max-width: 440px;
+    padding: 0 clamp(20px, 7vw, 32px);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  header {
+    text-align: center;
+    padding: 6vh 0 1.8vh;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .wordmark {
+    font-size: 0.656rem;
+    letter-spacing: 0.45em;
+    text-transform: uppercase;
+    color: var(--mid);
+  }
+
+  main {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 1.4rem;
+    padding: 2rem 0;
+  }
+
+  .greet {
+    font-size: 1.375rem;
+    color: var(--ink);
+    line-height: 1.45;
+  }
+
+  .g-rule { width: 1.625rem; height: 1px; background: var(--rule); }
+
+  .body {
+    font-style: italic;
+    font-weight: 400;
+    font-size: 0.9rem;
+    color: var(--mid);
+    line-height: 1.75;
+    max-width: 30ch;
+  }
+
+  .hours {
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--mid);
+    line-height: 2.1;
+  }
+
+  .menu-btn {
+    display: inline-block;
+    margin-top: 0.4rem;
+    padding: 15px 30px;
+    border-radius: 10px;
+    background: var(--ink);
+    color: var(--cream);
+    font-size: 0.781rem;
+    font-weight: 500;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    text-align: center;
+    padding: 2.6vh 0 4vh;
+  }
+
+  .pricing {
+    font-size: 0.781rem;
+    letter-spacing: 0.06em;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+
+  .pricing-note {
+    font-style: italic;
+    font-weight: 400;
+    font-size: 0.75rem;
+    color: var(--mid);
+  }
+
+  @media (orientation: landscape) and (max-height: 560px) {
+    html { font-size: 15px; }
+    .page { min-height: 0; display: block; }
+    header { padding: 26px 0 14px; }
+    main { padding: 26px 0; }
+    footer { padding: 18px 0 26px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="wordmark">Nala</div>
+  </header>
+
+  <main>
+    <div class="greet" id="greet">Welcome to Nala</div>
+    <div class="g-rule"></div>
+    <div class="body">
+      Each afternoon we publish that evening&rsquo;s menu &mdash; a set dinner
+      from our kitchen, changing daily. Tap below to see what&rsquo;s cooking
+      tonight and let us know if you&rsquo;ll be joining us.
+    </div>
+    <div class="hours">Dinner 6&ndash;7 pm &nbsp;&middot;&nbsp; Breakfast 8&ndash;9 am</div>
+    <a class="menu-btn" id="menuBtn" href="/">This Evening&rsquo;s Menu</a>
+  </main>
+
+  <footer>
+    <div class="pricing">2 courses $105 &nbsp;&nbsp; 3 courses $125</div>
+    <div class="pricing-note">Bread course included with both options</div>
+  </footer>
+
+</div>
+
+<script>
+  var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+  function todayKey(){
+    var d = new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+
+  var qs = new URLSearchParams(location.search);
+  var G = { phone:(qs.get('p')||'').replace(/\D/g,''), room:qs.get('r')||'',
+            name:(qs.get('n')||'').trim(), departs:qs.get('d')||'' };
+
+  // Personalised greeting
+  var first = G.name.split(' ')[0];
+  if (first) document.getElementById('greet').innerHTML = 'Welcome to Nala,<br>' + first;
+
+  // The menu button carries the guest through, so the RSVP knows them.
+  document.getElementById('menuBtn').href = '/' + location.search;
+
+  // Register the guest against their room the moment the page opens.
+  // Identical writes to the menu page, so staff pages need no changes.
+  function put(path, body){
+    return fetch(DB + path + '.json', {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    }).catch(function(){});
+  }
+  function patch(path, body){
+    return fetch(DB + path + '.json', {
+      method: 'PATCH', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    }).catch(function(){});
+  }
+
+  if (G.phone) {
+    patch('/guests/' + G.phone, { name:G.name, room:G.room, departs:G.departs });
+    if (G.room) {
+      put('/roomguests/' + todayKey() + '/' + G.room, {
+        name: G.name, phone: G.phone, departs: G.departs,
+        at: new Date().toISOString()
+      });
+    }
+  }
+</script>
+</body>
+</html>
