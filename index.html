@@ -459,11 +459,19 @@
   }
 
   // ── viewport fit ───────────────────────────────────────────
-  // In-app browsers (Messages, WhatsApp, Instagram) draw a toolbar OVER
-  // the page. It does not shrink window.innerHeight and no web API
-  // reports it, so it has to be reserved by hand.
-  var CHROME = 92;
+  // Guests arrive from an SMS link, which opens full Safari - there the
+  // bottom bar already shrinks innerHeight, so the only reserve needed is
+  // the home-indicator inset plus a little breathing room. Measured at
+  // runtime rather than assumed, so notchless phones get nothing wasted.
   var cardEl = document.querySelector('.card');
+  var CHROME = (function(){
+    var probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;bottom:0;height:env(safe-area-inset-bottom,0px);';
+    document.body.appendChild(probe);
+    var inset = probe.offsetHeight;
+    probe.remove();
+    return inset + 16;
+  })();
 
   function fitLayout(){
     if (!cardEl) return;
