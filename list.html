@@ -254,6 +254,16 @@ function fetchMenu(){
       }
       if (filled && fresh) MENU = m;
     })
+    .then(function(){
+      // dish tags are written by tag.html into Firebase
+      return fetch(DB + '/menutags/' + todayKey() + '.json')
+        .then(function(r){ return r.json(); })
+        .then(function(tags){
+          if (tags && MENU) ['bread','entree','main','dessert'].forEach(function(k){
+            if (MENU[k] && tags[k]) MENU[k].conflicts = tags[k];
+          });
+        });
+    })
     .catch(function(){});
 }
 
@@ -276,7 +286,7 @@ function menuConflicts(diets){
 function dietHTML(diets){
   if(!diets||!diets.length) return '';
   return diets.map(function(d){
-    return ALLERGENS.indexOf(d)>-1 ? '<span class="allergen">'+d+'</span>' : d;
+    return (ALLERGENS.indexOf(d)>-1 || /allerg/i.test(d)) ? '<span class="allergen">'+d+'</span>' : d;
   }).join(', ');
 }
 
