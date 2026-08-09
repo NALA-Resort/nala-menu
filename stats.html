@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Nala — Statistics</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA;
+          --green:#5E7D67; --red:#9E6455; }
+  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
+         padding:28px 24px 60px; }
+  .wrap { max-width:520px; margin:0 auto; }
+
+  .wordmark { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.45em;
+              text-transform:uppercase; color:var(--mid); text-align:center; }
+  .title { text-align:center; font-family:Helvetica,Arial,sans-serif; font-size:13px;
+           font-weight:bold; letter-spacing:.1em; text-transform:uppercase; margin-top:6px; }
+  .range { text-align:center; font-style:italic; font-size:12px; color:var(--mid); margin-top:6px; }
+
+  .sec { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
+         text-transform:uppercase; color:var(--mid); margin:28px 0 12px; }
+
+  .stat { display:flex; align-items:baseline; gap:10px; padding:11px 0;
+          border-bottom:1px solid var(--rule); }
+  .stat-name { flex:1; font-size:14px; }
+  .stat-sub { font-style:italic; font-size:11px; color:var(--mid); }
+  .stat-val { font-family:Helvetica,Arial,sans-serif; font-size:15px; white-space:nowrap; }
+
+  .bar { height:5px; background:var(--rule); border-radius:3px; margin-top:6px; overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--green); }
+
+  .headline { text-align:center; padding:22px 0 6px; }
+  .headline .big { font-size:44px; line-height:1; }
+  .headline .cap { font-family:Helvetica,Arial,sans-serif; font-size:8px;
+                   letter-spacing:.25em; text-transform:uppercase; color:var(--mid); margin-top:8px; }
+
+  .note { font-style:italic; font-size:12px; color:var(--mid); line-height:1.6;
+          padding:10px 0; }
+
+  .actions { margin-top:34px; display:flex; gap:10px; }
+  .btn { flex:1; text-align:center; padding:13px; border:1px solid var(--ink);
+         font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
+         text-transform:uppercase; color:var(--ink); text-decoration:none;
+         background:transparent; cursor:pointer; }
+  .empty { font-style:italic; color:var(--mid); font-size:12px; padding:8px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="wordmark">Nala</div>
+  <div class="title">Statistics</div>
+  <div class="range" id="range">Loading…</div>
+
+  <div class="headline">
+    <div class="big" id="hCovers">–</div>
+    <div class="cap">Average covers a night</div>
+  </div>
+
+  <div class="sec">Take-up by main course</div>
+  <div id="byProtein"></div>
+
+  <div class="sec">Busiest nights</div>
+  <div id="byDay"></div>
+
+  <div class="sec">Dietary requirements</div>
+  <div id="byDiet"></div>
+
+  <div class="actions">
+    <a class="btn" href="tally.html">Back</a>
+  </div>
+</div>
+
+<script>
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+var ROOMS = 17;
+var LOOKBACK = 120;   // days
+
+function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+// ── categorise a main course into a protein group ─────────
+var GROUPS = [
+  ['Beef',        ['beef','steak','sirloin','striploin','eye fillet','rump','wagyu','onyx','rib fillet','tartare','brisket','cheek']],
+  ['Lamb',        ['lamb']],
+  ['Pork',        ['pork','belly','porchetta']],
+  ['Chicken',     ['chicken','poussin','quail']],
+  ['Duck',        ['duck']],
+  ['Fish',        ['barramundi','kingfish','snapper','cobia','perch','tuna','salmon','mahi','fish','trout','crudo']],
+  ['Shellfish',   ['prawn','scallop','crab','oyster','lobster','squid','octopus','mussel']],
+  ['Vegetarian',  ['mushroom','cabbage','eggplant','risotto','gnocchi','cauliflower','zucchini','panisse','chawanmushi','leek']]
+];
+
+function groupOf(name){
+  var n = (name||'').toLowerCase();
+  for (var i=0;i<GROUPS.length;i++){
+    var g = GROUPS[i];
+    for (var j=0;j<g[1].length;j++){ if (n.indexOf(g[1][j]) > -1) return g[0]; }
+  }
+  return 'Other';
+}
+
+function get(path){
+  return fetch(DB+path+'.json?v='+Date.now())
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .catch(function(){ return null; });
+}
+
+// build the list of dates to examine
+var dates = [];
+var today = new Date();
+for (var i=LOOKBACK-1; i>=0; i--){
+  var d = new Date(today); d.setDate(d.getDate()-i);
+  dates.push(dkey(d));
+}
+
+Promise.all([
+  Promise.all(dates.map(function(k){ return get('/menuhistory/'+k); })),
+  Promise.all(dates.map(function(k){ return get('/responses/'+k); }))
+]).then(function(res){
+  var menus = res[0], resps = res[1];
+
+  var nights = [];        // { date, group, covers, dining, replied, diets[] }
+  for (var i=0;i<dates.length;i++){
+    var r = resps[i];
+    if (!r) continue;
+    var covers=0, dining=0, replied=0, diets=[];
+    for (var k in r){
+      var g = r[k];
+      replied++;
+      if (g.status === 'in'){ dining++; covers += (g.pax||1); }
+      if (g.diets) diets = diets.concat(g.diets);
+    }
+    if (!replied) continue;
+    nights.push({
+      date: dates[i],
+      group: menus[i] ? groupOf(menus[i].main) : null,
+      covers: covers, dining: dining, replied: replied, diets: diets
+    });
+  }
+
+  if (!nights.length){
+    document.getElementById('range').textContent = 'No data recorded yet';
+    document.getElementById('byProtein').innerHTML =
+      '<div class="note">Statistics build up as menus are published and guests reply. ' +
+      'Come back after a few weeks of service.</div>';
+    return;
+  }
+
+  var first = nights[0].date, last = nights[nights.length-1].date;
+  document.getElementById('range').textContent =
+    nights.length + (nights.length===1?' night':' nights') + ' recorded';
+
+  // headline
+  var totalCovers = nights.reduce(function(t,n){ return t+n.covers; }, 0);
+  document.getElementById('hCovers').textContent = Math.round(totalCovers / nights.length);
+
+  // ── by protein ──
+  var byG = {};
+  nights.forEach(function(n){
+    if (!n.group) return;
+    if (!byG[n.group]) byG[n.group] = { nights:0, dining:0, replied:0, covers:0 };
+    var g = byG[n.group];
+    g.nights++; g.dining += n.dining; g.replied += n.replied; g.covers += n.covers;
+  });
+
+  var rowsG = Object.keys(byG).map(function(k){
+    var g = byG[k];
+    return { name:k, rate: g.replied ? g.dining/g.replied : 0,
+             avg: g.covers/g.nights, nights:g.nights };
+  }).sort(function(a,b){ return b.rate - a.rate; });
+
+  var elG = document.getElementById('byProtein');
+  if (!rowsG.length){
+    elG.innerHTML = '<div class="note">No menus recorded yet. This fills in from the next published menu onwards.</div>';
+  } else {
+    rowsG.forEach(function(r){
+      var pct = Math.round(r.rate*100);
+      elG.insertAdjacentHTML('beforeend',
+        '<div class="stat"><div style="flex:1">'+
+          '<div class="stat-name">'+r.name+'</div>'+
+          '<div class="stat-sub">'+r.nights+(r.nights===1?' night':' nights')+
+            ' · '+r.avg.toFixed(1)+' covers avg</div>'+
+          '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
+        '</div><div class="stat-val">'+pct+'%</div></div>');
+    });
+  }
+
+  // ── by weekday ──
+  var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var byD = {};
+  nights.forEach(function(n){
+    var p = n.date.split('-');
+    var wd = days[new Date(+p[0], +p[1]-1, +p[2]).getDay()];
+    if (!byD[wd]) byD[wd] = { nights:0, covers:0 };
+    byD[wd].nights++; byD[wd].covers += n.covers;
+  });
+  var rowsD = Object.keys(byD).map(function(k){
+    return { name:k, avg: byD[k].covers/byD[k].nights, nights:byD[k].nights };
+  }).sort(function(a,b){ return b.avg - a.avg; });
+
+  var maxD = rowsD.length ? rowsD[0].avg : 1;
+  var elD = document.getElementById('byDay');
+  rowsD.forEach(function(r){
+    elD.insertAdjacentHTML('beforeend',
+      '<div class="stat"><div style="flex:1">'+
+        '<div class="stat-name">'+r.name+'</div>'+
+        '<div class="stat-sub">'+r.nights+(r.nights===1?' night':' nights')+'</div>'+
+        '<div class="bar"><i style="width:'+Math.round(r.avg/maxD*100)+'%"></i></div>'+
+      '</div><div class="stat-val">'+r.avg.toFixed(1)+'</div></div>');
+  });
+
+  // ── dietaries ──
+  var byDiet = {}, totalDiet = 0;
+  nights.forEach(function(n){
+    n.diets.forEach(function(d){ byDiet[d] = (byDiet[d]||0)+1; totalDiet++; });
+  });
+  var rowsDiet = Object.keys(byDiet).map(function(k){
+    return { name:k, n:byDiet[k] };
+  }).sort(function(a,b){ return b.n - a.n; }).slice(0,8);
+
+  var elDiet = document.getElementById('byDiet');
+  if (!rowsDiet.length){
+    elDiet.innerHTML = '<div class="empty">None recorded</div>';
+  } else {
+    var maxDiet = rowsDiet[0].n;
+    rowsDiet.forEach(function(r){
+      elDiet.insertAdjacentHTML('beforeend',
+        '<div class="stat"><div style="flex:1">'+
+          '<div class="stat-name">'+r.name+'</div>'+
+          '<div class="bar"><i style="width:'+Math.round(r.n/maxDiet*100)+'%"></i></div>'+
+        '</div><div class="stat-val">'+r.n+'</div></div>');
+    });
+  }
+});
+</script>
+</body>
+</html>
