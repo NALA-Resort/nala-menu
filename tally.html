@@ -39,7 +39,9 @@
   .menustate span { display:inline-block; padding:6px 14px; border-radius:20px;
                     font-family:Helvetica,Arial,sans-serif; font-size:9px;
                     letter-spacing:.16em; text-transform:uppercase; }
-  .menustate .yes { background:rgba(122,160,130,.22); color:#3F6B4C; }
+  .menustate .yes { background:rgba(122,160,130,.22); color:#3F6B4C;
+                    text-decoration:none; }
+  .menustate .yes b { font-weight:normal; opacity:.75; }
   .menustate .no  { background:rgba(184,106,90,.18);  color:#8E4433; }
 
   .totals { display:flex; gap:8px; margin:22px 0 26px; }
@@ -957,7 +959,8 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
       var when = isToday() ? '' : ' for this date';
       if (live) {
         var t = pub.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
-        el.innerHTML = '<span class="yes">Menu published ' + t + '</span>';
+        el.innerHTML = '<a href="menu-print.html" class="yes">Menu published ' + t +
+                       ' <b>· View</b></a>';
       } else {
         el.innerHTML = '<span class="no">Menu not published' + when + '</span>';
       }
