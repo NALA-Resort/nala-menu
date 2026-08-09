@@ -119,13 +119,13 @@
 
   .menu-date {
     font-family: 'Raleway', Helvetica, Arial, sans-serif;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    color: var(--ink);
+    font-size: 0.84rem;
+    font-weight: 400;
+    letter-spacing: 0.22em;
+    color: var(--mid);
     text-align: center;
     text-transform: uppercase;
-    padding: 0 0 2.6vh;
+    padding: 1.4vh 0 2.2vh;
     border-bottom: 1px solid var(--rule);
   }
 
@@ -139,7 +139,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 1.5rem 0;
+    padding: 0.9rem 0;
   }
   .spacer-mid { flex: 1; min-height: 1.5rem; max-height: 2.5rem; }
 
@@ -432,9 +432,7 @@
   function dateLabel(when) {
     var d = new Date(when);
     var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    var months = ['January','February','March','April','May','June','July',
-                  'August','September','October','November','December'];
-    return days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+    return days[d.getDay()] + ' evening';
   }
 
   fetch('menu.json?v=' + Date.now())
