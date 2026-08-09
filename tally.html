@@ -370,12 +370,13 @@ function resolveRoomGuests(all, todayK){
     var day = all[d] || {};
     for (var room in day){ out[room] = day[room]; }   // later dates overwrite earlier
   });
-  // drop anyone whose departure has already passed
+  // drop anyone checked out by this sheet's dinner: a guest departing on
+  // the sheet date leaves that morning, so their last sheet is the night before
   for (var room in out){
     var dep = out[room] && out[room].departs;
     if (!dep) continue;
     var p = parseDepDate(dep);
-    if (p && depDateKey(p) < todayK) delete out[room];
+    if (p && depDateKey(p) <= todayK) delete out[room];
   }
   return out;
 }
