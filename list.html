@@ -68,6 +68,9 @@
           letter-spacing:.12em; border:1.2px solid #A8321E; color:#A8321E; padding:1px 4px;
           margin-right:5px; vertical-align:1px; }
   .dnote { display:block; font-size:8px; color:#333; font-style:italic; margin-top:2px; }
+  .pre { display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:7px; font-weight:bold;
+         letter-spacing:.12em; border:1px solid #888; color:#555; padding:1px 4px;
+         margin-right:5px; vertical-align:1px; }
   .muted { color:#aaa; font-weight:normal; font-style:italic; }
 
   /* empty write-in rows: one rule only, from the cell border */
@@ -423,6 +426,9 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
         cls = ' class="row-conflict"';
         nameCell = '<span class="flag">FLAG</span>' + nameCell;
       }
+      if (row.status === 'in' && g.premenu) {
+        nameCell = '<span class="pre">PRE-MENU</span>' + nameCell;
+      }
 
       // Vacant rooms stay on the sheet, labelled and otherwise empty.
       if (row.status === 'vacant') {
@@ -440,7 +446,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
           '<td class="c-din">'+dinner+'</td>'+
           '<td class="c-pax">'+(row.status==='in' ? (g.pax||1) : '')+'</td>'+
           '<td>'+stayHTML(g.arrives, g.departs)+'</td>'+
-          '<td>'+dietHTML(g.diets)+'</td>'+
+          '<td>'+(dietHTML(g.diets) || (g.nodiet ? '<span class="muted">No dietaries</span>' : ''))+'</td>'+
           '<td>'+(g.note||'')+
             (g.dnote ? '<span class="dnote">Dietary: '+g.dnote+'</span>' : '')+'</td>'+
         '</tr>');
