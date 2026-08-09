@@ -296,6 +296,31 @@ function depDateKey(d){
 
 // Most recent record for a room, looking back through previous days.
 // A guest who opened the link days ago still appears, unless they have departed.
+
+// Fetch room-guest records for a window of dates ending at the viewed day.
+// Reads each date individually so no permission is needed on the parent node.
+function fetchRoomGuests(endKey, days){
+  days = days || 14;
+  var parts = endKey.split('-');
+  var end = new Date(+parts[0], +parts[1]-1, +parts[2]);
+  var jobs = [], keys = [];
+  for (var i = days - 1; i >= 0; i--) {
+    var d = new Date(end); d.setDate(d.getDate() - i);
+    var k = dkey(d);
+    keys.push(k);
+    jobs.push(
+      fetch(DB + '/roomguests/' + k + '.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .catch(function(){ return null; })
+    );
+  }
+  return Promise.all(jobs).then(function(res){
+    var all = {};
+    res.forEach(function(day, i){ if (day) all[keys[i]] = day; });
+    return all;
+  });
+}
+
 function resolveRoomGuests(all, todayK){
   var out = {};
   var dates = Object.keys(all || {}).filter(function(d){ return d <= todayK; }).sort();
@@ -890,7 +915,7 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
 Promise.all([
   api('/responses/'+todayKey()),
   api('/manual/'+todayKey()),
-  api('/roomguests')
+  fetchRoomGuests(todayKey())
 ]).then(function(r){
   responses  = r[0] || {};
   manual     = r[1] || {};
