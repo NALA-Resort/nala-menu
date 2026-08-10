@@ -734,7 +734,11 @@
 
   function paintPax(){
     var row = document.getElementById('paxRow'); row.innerHTML='';
-    for (var i=1;i<=4;i++)(function(n){
+    // a room answers for its own occupants only (larger parties are handled
+    // by staff on the tally), so combined-room totals can't double-count
+    var maxPax = G.room ? 2 : 4;
+    if (state.pax > maxPax) state.pax = maxPax;
+    for (var i=1;i<=maxPax;i++)(function(n){
       var b=document.createElement('button');
       b.className='pax'+(state.pax===n?' on':''); b.textContent=n;
       b.onclick=function(){ state.pax=n; paintPax(); };
@@ -849,7 +853,7 @@
         if (!G.departs && profile.departs) G.departs = profile.departs;
 
         if (tonight){
-          state.pax   = Math.min(tonight.pax || 2, 4);
+          state.pax   = Math.min(tonight.pax || 2, G.room ? 2 : 4);
           state.diets = tonight.diets || state.diets;
           state.note  = tonight.note || '';
           state.dnote = tonight.dnote || '';
