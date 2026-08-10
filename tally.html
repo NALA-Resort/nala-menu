@@ -70,6 +70,17 @@
   .room-n { font-size:13px; color:var(--ink); }
   .room-p { font-size:8px; color:var(--mid); margin-top:2px; min-height:10px; }
   .room { position:relative; }
+  .room-c { position:absolute; bottom:4px; left:0; right:0; text-align:center;
+            font-family:Helvetica,Arial,sans-serif; font-size:9px; font-weight:bold;
+            letter-spacing:.05em; color:var(--ink); }
+  .room.comb { border-style:solid; border-color:var(--ink); }
+  .comb-note { display:flex; align-items:center; justify-content:space-between; gap:10px;
+               border:1px solid var(--ink); border-radius:8px; padding:9px 12px; margin-bottom:12px;
+               font-family:Helvetica,Arial,sans-serif; font-size:11px; letter-spacing:.04em; }
+  .comb-undo { border:none; background:transparent; color:var(--red); cursor:pointer;
+               font-family:Helvetica,Arial,sans-serif; font-size:10px; font-weight:bold;
+               letter-spacing:.1em; text-transform:uppercase; padding:4px 0;
+               -webkit-tap-highlight-color:transparent; }
   .room.in     { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
   .room.in .room-n { color:var(--ink); }
   .room.in .room-p { color:#5E7D67; }
@@ -101,7 +112,8 @@
               letter-spacing:.16em; text-transform:uppercase; color:var(--mid);
               text-align:center; margin-bottom:10px; }
   .selactions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .selbtn.comb { border:1px solid var(--ink); }
+  .selbtn.comb { border:1px solid var(--ink); color:var(--ink); background:transparent; }
+  .selbtn.comb:disabled { opacity:.35; }
   .tablesline { text-align:center; margin-top:8px; font-family:Helvetica,Arial,sans-serif;
                 font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--mid); }
   .tag.comb { border-color:var(--ink); color:var(--ink); }
@@ -268,9 +280,9 @@
       <button class="selbtn din"   id="sbDin">Dining</button>
       <button class="selbtn out"   id="sbOut">Not dining</button>
       <button class="selbtn quiet" id="sbClear">Clear rooms</button>
-      <button class="selbtn comb" id="sbComb" style="grid-column:1/-1;display:none">Combine tables</button>
+      <button class="selbtn comb"  id="sbComb">Combine tables</button>
+      <button class="selbtn quiet" id="sbDone">Close</button>
     </div>
-    <button class="selbtn quiet" id="sbDone" style="width:100%;margin-top:8px">Close</button>
   </div>
 </div>
 
@@ -430,14 +442,14 @@ function api(path, method, body){
       if (!r.ok && method) {
         return r.text().then(function(t){
           showError('Not saved \u2014 the database rejected the change. ' +
-                    'Check the Realtime Database rules allow writes to /manual.');
-          throw new Error(t);
+                    'Check the Realtime Database rules allow writes.');
+          var err = new Error(t); err.shown = true; throw err;
         });
       }
       return r.json();
     })
     .catch(function(e){
-      if (method) showError('Not saved \u2014 no connection to the database.');
+      if (method && !e.shown) showError('Not saved \u2014 no connection to the database.');
       throw e;
     });
 }
@@ -551,9 +563,11 @@ function render(){
         else ic = ICON_STAFF;
         mark = '<span class="mark">'+ic+'</span>';
       }
+      var mates = groupMates(n);
+      var combBadge = mates.length ? '<span class="room-c">+'+mates.join('+')+'</span>' : '';
       var b=document.createElement('button');
-      b.className=cls + (selected[n] ? ' sel' : '');
-      b.innerHTML=mark+'<span class="room-n">'+n+'</span><span class="room-p">'+pax+'</span>';
+      b.className=cls + (selected[n] ? ' sel' : '') + (mates.length ? ' comb' : '');
+      b.innerHTML=mark+'<span class="room-n">'+n+'</span><span class="room-p">'+pax+'</span>'+combBadge;
       b.onclick=function(){
         if (selectMode){
           if (selected[n]) delete selected[n]; else selected[n]=true;
@@ -682,8 +696,12 @@ function groupMates(room){
   if (!gid) return [];
   return combined[gid].rooms.filter(function(r){ return String(r)!==String(room); });
 }
-function saveCombined(){
-  api('/combined/'+todayKey(), 'PUT', combined);
+function saveCombined(prev){
+  api('/combined/'+todayKey(), 'PUT', combined)
+    .catch(function(){
+      combined = prev || {};   // failed write: roll back so the screen matches the database
+      render();
+    });
 }
 
 // ── multi-select ───────────────────────────────────────────
@@ -707,7 +725,7 @@ function selCountUpdate(){
   document.getElementById('selCount').textContent =
     n ? n + (n===1 ? ' room selected' : ' rooms selected') : 'Tap rooms to select';
   var cb = document.getElementById('sbComb');
-  cb.style.display = n >= 2 ? '' : 'none';
+  cb.disabled = n < 2;
   cb.textContent = selEqualsGroup() ? 'Uncombine tables' : 'Combine tables';
   selBar.className = 'selbar' + (selectMode ? ' show' : '');
 }
@@ -757,6 +775,7 @@ function applyToSelected(status){
 document.getElementById('sbComb').onclick = function(){
   var keys = Object.keys(selected).map(String);
   if (keys.length < 2) return;
+  var prev = JSON.parse(JSON.stringify(combined));
   var gid = selEqualsGroup();
   if (gid){
     delete combined[gid];               // uncombine
@@ -771,7 +790,7 @@ document.getElementById('sbComb').onclick = function(){
     });
     combined['g'+Date.now()] = { rooms: keys };
   }
-  saveCombined();
+  saveCombined(prev);
   exitSelect();
 };
 
@@ -817,9 +836,22 @@ function openRoom(n, st){
   var isOverride  = st && st.override;
 
   function shell(inner){
-    sheet.innerHTML = '<h3>Room '+n+'</h3>' + inner;
+    var mates = groupMates(n);
+    var combHtml = mates.length
+      ? '<div class="comb-note">Table with Room '+mates.join(' & ')+
+        '<button class="comb-undo" id="oUncomb">Uncombine</button></div>'
+      : '';
+    sheet.innerHTML = '<h3>Room '+n+'</h3>' + combHtml + inner;
     showSheet();
     revealAction();
+    var u = document.getElementById('oUncomb');
+    if (u) u.onclick = function(){
+      var prev = JSON.parse(JSON.stringify(combined));
+      var gid = groupOf(n);
+      if (gid) delete combined[gid];
+      saveCombined(prev);
+      close(); render();
+    };
   }
 
   function paxBlock(){
