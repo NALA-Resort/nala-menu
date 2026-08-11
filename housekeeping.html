@@ -7,7 +7,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nala — Housekeeping Sheet</title>
-<link rel="stylesheet" href="nala-ui.css?v=2">
+<link rel="stylesheet" href="nala-ui.css?v=3">
 <style>
   @page { size: A4 portrait; margin: 10mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -66,9 +66,12 @@
 </style>
 </head>
 <body class="tier-print">
-<div class="navwrap">
-  <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-  <div class="navdrop" id="navDrop"><a href="tally.html">Res tally</a><a href="list.html">Res print</a><a href="cleaners.html">HC tally</a></div>
+<div class="topbar">
+  <div class="navwrap">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"><a href="tally.html">Res tally</a><a href="list.html">Res print</a><a href="cleaners.html">HC tally</a></div>
+  </div>
+  <div class="kicker">Nala &middot; HC print</div>
 </div>
 <script>
 (function(){
@@ -80,7 +83,6 @@
 
 
 
-<div class="kicker">Nala &middot; HC print</div>
 <div class="daterow">
   <button class="dnav" id="dPrev">&#8249;</button>
   <div class="date" id="title"></div>
