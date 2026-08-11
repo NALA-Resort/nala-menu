@@ -290,120 +290,16 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=1"></script>
+<script src="nala-shared.js?v=2"></script>
 <script>
-var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
-var ROOMS = 17;
-var ALLERGENS = ['Nut allergy','Shellfish allergy','Egg allergy'];
 var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
 
 
 
-// ── viewed date ────────────────────────────────────────────
-function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-
-var VIEW = (function(){
-  var q = new URLSearchParams(location.search).get('date');
-  if (q && /^\d{4}-\d{2}-\d{2}$/.test(q)) {
-    var p = q.split('-');
-    return new Date(+p[0], +p[1]-1, +p[2]);
-  }
-  return new Date();
-})();
-
-function isToday(){ return dkey(VIEW) === dkey(new Date()); }
-function shiftDate(n){
-  var d = new Date(VIEW); d.setDate(d.getDate()+n);
-  var q = new URLSearchParams(location.search);
-  q.set('date', dkey(d));
-  location.search = q.toString();
-}
-function goToday(){
-  var q = new URLSearchParams(location.search);
-  q.delete('date');
-  location.search = q.toString();
-}
-
-
-// Safari only accepts 3 fractional digits in an ISO date; Python writes 6.
-// Trim them so any timestamp parses on every browser.
-function parseISO(s){
-  if (!s) return null;
-  var t = String(s).trim().replace(/(\.\d{3})\d+/, '$1');
-  var d = new Date(t);
-  if (!isNaN(d)) return d;
-  d = new Date(t.replace(/\.\d+/, ''));      // drop fractions entirely
-  return isNaN(d) ? null : d;
-}
-
-function parseDepDate(s){
-  if(!s) return null;
-  s = String(s).trim();
-  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
-  var d = new Date(s);
-  return isNaN(d) ? null : d;
-}
-function depDateKey(d){
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
-
-// Most recent record for a room, looking back through previous days.
-// A guest who opened the link days ago still appears, unless they have departed.
-
-// Fetch room-guest records for a window of dates ending at the viewed day.
-// Reads each date individually so no permission is needed on the parent node.
-function fetchRoomGuests(endKey, days){
-  days = days || 14;
-  var parts = endKey.split('-');
-  var end = new Date(+parts[0], +parts[1]-1, +parts[2]);
-  var jobs = [], keys = [];
-  for (var i = days - 1; i >= 0; i--) {
-    var d = new Date(end); d.setDate(d.getDate() - i);
-    var k = dkey(d);
-    keys.push(k);
-    jobs.push(
-      fetch(DB + '/roomguests/' + k + '.json?v=' + Date.now())
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .catch(function(){ return null; })
-    );
-  }
-  return Promise.all(jobs).then(function(res){
-    var all = {};
-    res.forEach(function(day, i){ if (day) all[keys[i]] = day; });
-    return all;
-  });
-}
-
-function resolveRoomGuests(all, todayK){
-  var out = {};
-  var dates = Object.keys(all || {}).filter(function(d){ return d <= todayK; }).sort();
-  dates.forEach(function(d){
-    var day = all[d] || {};
-    for (var room in day){ out[room] = day[room]; }   // later dates overwrite earlier
-  });
-  // drop anyone checked out by this sheet's dinner: a guest departing on
-  // the sheet date leaves that morning, so their last sheet is the night before
-  for (var room in out){
-    var dep = out[room] && out[room].departs;
-    if (!dep) continue;
-    var p = parseDepDate(dep);
-    if (p && depDateKey(p) <= todayK) delete out[room];
-  }
-  return out;
-}
-
-function todayKey(){ return dkey(VIEW); }
-function label(){var d=VIEW;
-  var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();}
-document.getElementById('date').textContent = label();
-document.getElementById('dPrev').onclick  = function(){ shiftDate(-1); };
-document.getElementById('dNext').onclick  = function(){ shiftDate(1); };
-var todayLink = document.getElementById('dToday');
-todayLink.onclick = function(e){ e.preventDefault(); goToday(); };
-if (!isToday()) todayLink.classList.add('show');
+// date state + header wiring from nala-shared.js
+var nav = initDateNav();
+var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
 
 // print sheets open on whatever date the tally is showing
 if (!isToday()){
@@ -510,22 +406,6 @@ function roomState(n){
 }
 
 
-function menuConflicts(diets){
-  if (!diets || !diets.length || !MENU) return [];
-  var hits = [];
-  ['bread','entree','main','dessert'].forEach(function(k){
-    var dish = MENU[k];
-    if (!dish || !dish.conflicts) return;
-    dish.conflicts.forEach(function(tag){
-      diets.forEach(function(d){
-        if (String(d).toLowerCase() === String(tag).toLowerCase())
-          hits.push({ dish: dish.name || k, diet: d });
-      });
-    });
-  });
-  return hits;
-}
-
 function openNotes(title, g, hits){
   var h = '<div class="pop-who">' + title + '</div>';
   if (hits.length || g.dnote) {
@@ -549,13 +429,6 @@ function openNotes(title, g, hits){
   sheet.innerHTML = h;
   document.getElementById('npClose').onclick = close;
   showSheet();
-}
-
-function dietHTML(diets){
-  if(!diets||!diets.length) return '';
-  return diets.map(function(d){
-    return (ALLERGENS.indexOf(d)>-1 || /allerg/i.test(d)) ? '<span class="alrg">'+d+'</span>' : d;
-  }).join(' · ');
 }
 
 // tiles follow the same order as the bookings list: combined rooms
@@ -724,11 +597,11 @@ function render(){
     if (g.premenu) title += '<span class="tag">Pre-menu</span>';
 
     var sub = [];
-    var d = dietHTML(g.diets); if(d) sub.push(d);
+    var d = dietHTML(g.diets, ' \u00b7 ', 'alrg'); if(d) sub.push(d);
     else if (g.nodiet) sub.push('No dietaries confirmed');
     if (g.phone) sub.push(g.phone);
 
-    var hits = menuConflicts(g.diets);
+    var hits = menuConflicts(MENU, g.diets);
     var hasNotes = !!(g.note || g.dnote);
 
     var row = document.createElement('div');
