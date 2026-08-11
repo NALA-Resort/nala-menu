@@ -7,6 +7,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nala — Tonight's Numbers</title>
+<link rel="stylesheet" href="nala-ui.css?v=1">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E; }
@@ -176,9 +177,7 @@
   .empty { font-style:italic; color:var(--mid); font-size:12px; padding:8px 0; }
 
   .actions.hidden { visibility:hidden; }
-  .actions { position:sticky; bottom:0; z-index:20;
-             margin-top:34px; display:flex; gap:10px; flex-wrap:wrap;
-             background:var(--cream); border-top:1px solid var(--rule);
+  .actions { margin-top:34px; gap:10px;
              padding:12px 0 calc(12px + env(safe-area-inset-bottom)); }
   .actions .btn { flex:1 1 40%; text-align:center; white-space:nowrap; }
   .btn { flex:1; text-align:center; padding:13px; border:1px solid var(--ink);
@@ -226,23 +225,7 @@
   .txt:focus { outline:none; border-color:var(--ink); }
 </style>
 </head>
-<body>
-<style>
-  .navwrap { position:fixed; top:14px; right:14px; z-index:500;
-             font-family:Helvetica,Arial,sans-serif; }
-  .navbtn { width:40px; height:36px; border:1px solid var(--rule); background:var(--cream);
-            border-radius:8px; cursor:pointer; display:flex; flex-direction:column;
-            align-items:center; justify-content:center; gap:4px; padding:0;
-            -webkit-tap-highlight-color:transparent; }
-  .navbtn span { display:block; width:16px; height:1.6px; background:var(--ink); }
-  .navdrop { display:none; position:absolute; right:0; top:42px; background:var(--cream);
-             border:1px solid var(--rule); border-radius:9px; min-width:132px;
-             box-shadow:0 4px 14px rgba(0,0,0,.09); padding:5px 0; }
-  .navdrop.open { display:block; }
-  .navdrop a { display:block; padding:11px 18px; font-size:10px; letter-spacing:.14em;
-               text-transform:uppercase; color:var(--ink); text-decoration:none; }
-  @media print { .navwrap { display:none; } }
-</style>
+<body class="tier-app">
 <div class="navwrap">
   <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
   <div class="navdrop" id="navDrop"><a href="list.html">Res print</a><a href="housekeeping.html">HC print</a><a href="cleaners.html">HC tally</a></div>
@@ -296,7 +279,7 @@
   </div>
   <div id="listBookings"></div>
 
-  <div class="actions">
+  <div class="foot actions">
     <button class="btn" onclick="location.reload()">Refresh</button>
     <a class="btn" href="stats.html">Stats</a>
   </div>
