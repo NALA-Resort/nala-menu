@@ -22,9 +22,6 @@
            color:var(--mid); text-transform:uppercase; text-align:center; }
   h1 { font-size:19px; font-weight:bold; text-align:center; margin:8px 0 4px;
        font-family:Helvetica,Arial,sans-serif; letter-spacing:.02em; }
-  .counts { text-align:center; font-family:Helvetica,Arial,sans-serif; font-size:10px;
-            letter-spacing:.12em; text-transform:uppercase; color:var(--mid); margin-bottom:20px; }
-  .counts b { color:var(--ink); font-size:13px; }
 
   .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:10px; }
   .tile { border:1.2px solid var(--rule); border-radius:10px; background:#fff;
@@ -102,12 +99,12 @@
 </script>
 
 <div class="wrap">
-  <div class="brand">Nala · Cleaners</div>
-  <h1 id="title"></h1>
-  <div class="counts">
-    <span><b id="nClean">–</b> cleans</span> &nbsp;·&nbsp;
-    <span><b id="nSvc">–</b> services</span> &nbsp;·&nbsp;
-    <span><b id="nDone">–</b> done</span>
+  <div class="kicker">Nala &middot; HC tally</div>
+  <div class="daterow"><div class="date" id="title"></div></div>
+  <div class="stats">
+    <div class="stat"><span class="stat-n" id="nClean">&ndash;</span><span class="stat-l">Cleans</span></div>
+    <div class="stat"><span class="stat-n" id="nSvc">&ndash;</span><span class="stat-l">Services</span></div>
+    <div class="stat"><span class="stat-n" id="nDone">&ndash;</span><span class="stat-l">Done</span></div>
   </div>
 
   <div class="grid" id="grid"></div>
@@ -271,7 +268,7 @@ function render(){
   var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var d=new Date();
-  document.getElementById('title').textContent=days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()];
+  document.getElementById('title').textContent=days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();
 }
 
 // ── writes ─────────────────────────────────────────────────
