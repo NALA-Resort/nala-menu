@@ -112,7 +112,8 @@
   .selbtn.comb:disabled { opacity:.35; }
   .tablesline { text-align:center; margin-top:8px; font-family:Helvetica,Arial,sans-serif;
                 font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--mid); }
-  .grpbox { border:1.5px solid var(--ink); border-radius:10px; padding:0 12px; margin:10px 0; }
+  .grpbox { border:1.2px solid var(--ink); border-radius:10px; padding:0 12px; margin:10px 0; }
+  .tilegrp { display:grid; gap:6px; border:1.2px solid var(--ink); border-radius:9px; padding:3px; }
   .grpbox .row:last-child { border-bottom:none; }
   .row.stubrow .row-name, .row.stubrow .row-sub { color:var(--mid); }
   .row.stubrow .row-sub { font-style:italic; }
@@ -541,7 +542,36 @@ function render(){
   // rooms
   var grid = document.getElementById('rooms');
   grid.innerHTML='';
-  for (var n=1; n<=ROOMS; n++){
+  // tiles follow the same order as the bookings list: combined rooms
+  // adjacent under the lowest number, wrapped in one box
+  var tileOrder = [];
+  (function(){
+    var placed = {};
+    for (var n=1; n<=ROOMS; n++){
+      var rm = String(n);
+      if (placed[rm]) continue;
+      var gid = groupOf(rm);
+      var members = gid ? combined[gid].rooms.map(String).filter(function(m){
+        return Number(m)>=1 && Number(m)<=ROOMS; }) : [rm];
+      members.sort(function(a,b){ return Number(a)-Number(b); });
+      members.forEach(function(m){ placed[m]=true; });
+      tileOrder.push({ grouped: !!gid && members.length>1, members: members });
+    }
+  })();
+
+  tileOrder.forEach(function(unit){
+    var host = grid;
+    if (unit.grouped){
+      host = document.createElement('div');
+      host.className = 'tilegrp';
+      host.style.gridColumn = 'span ' + Math.min(unit.members.length, 6);
+      host.style.gridTemplateColumns = 'repeat(' + Math.min(unit.members.length, 6) + ',1fr)';
+      grid.appendChild(host);
+    }
+    unit.members.forEach(function(m){ addTile(Number(m), host); });
+  });
+
+  function addTile(n, host){
     (function(n){
       var st = roomState(n);
       var cls = 'room await', pax='';
@@ -574,7 +604,7 @@ function render(){
           openRoom(n, st);
         }
       };
-      grid.appendChild(b);
+      host.appendChild(b);
     })(n);
   }
 
