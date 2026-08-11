@@ -175,9 +175,10 @@
 
   .actions.hidden { visibility:hidden; }
   .actions { position:sticky; bottom:0; z-index:20;
-             margin-top:34px; display:flex; gap:10px;
+             margin-top:34px; display:flex; gap:10px; flex-wrap:wrap;
              background:var(--cream); border-top:1px solid var(--rule);
              padding:12px 0 calc(12px + env(safe-area-inset-bottom)); }
+  .actions .btn { flex:1 1 40%; text-align:center; white-space:nowrap; }
   .btn { flex:1; text-align:center; padding:13px; border:1px solid var(--ink);
          font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
          text-transform:uppercase; color:var(--ink); text-decoration:none;
@@ -266,7 +267,8 @@
   <div id="listBookings"></div>
 
   <div class="actions">
-    <a class="btn solid" id="printLink" href="list.html">Print list</a>
+    <a class="btn solid" id="printLink" href="list.html">Front of house</a>
+    <a class="btn solid" id="hkLink" href="housekeeping.html">Housekeeping</a>
     <button class="btn" onclick="location.reload()">Refresh</button>
     <a class="btn" href="stats.html">Stats</a>
   </div>
@@ -408,6 +410,8 @@ if (!isToday()) todayLink.className = 'show';
 // print sheet opens on whatever date the tally is showing
 document.getElementById('printLink').href =
   isToday() ? 'list.html' : 'list.html?date=' + dkey(VIEW);
+document.getElementById('hkLink').href =
+  isToday() ? 'housekeeping.html' : 'housekeeping.html?date=' + dkey(VIEW);
 
 
 var ICON_GUEST = '<svg viewBox="0 0 24 24" stroke-width="0"><circle cx="12" cy="7.5" r="4"/>'+
