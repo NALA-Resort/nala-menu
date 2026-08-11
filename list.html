@@ -31,7 +31,7 @@
   .counts b { font-size:17px; color:#111; margin-right:5px; letter-spacing:0; }
 
   .scroller { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  table { width:100%; min-width:760px; border-collapse:collapse; }
+  table { width:100%; min-width:760px; border-collapse:separate; border-spacing:0; }
   th { font-size:7px; letter-spacing:.12em; text-transform:uppercase; color:#666;
        text-align:left; padding:0 5px 6px; border-bottom:1px solid #111;
        white-space:nowrap; vertical-align:bottom; }
@@ -71,10 +71,14 @@
   .pre { display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:7px; font-weight:bold;
          letter-spacing:.12em; border:1px solid #888; color:#555; padding:1px 4px;
          margin-right:5px; vertical-align:1px; }
-  tr.g-in td:first-child { border-left:1px solid #444; }
-  tr.g-in td:last-child  { border-right:1px solid #444; }
-  tr.g-first td { border-top:1px solid #444; }
-  tr.g-last td  { border-bottom:1px solid #444; }
+  tr.g-in td:first-child { border-left:1px solid #555; }
+  tr.g-in td.c-room      { border-right:1px solid #555; }
+  tr.g-first td:first-child, tr.g-first td.c-room { border-top:1px solid #555; }
+  tr.g-last td:first-child,  tr.g-last td.c-room  { border-bottom:1px solid #555; }
+  tr.g-first td:first-child { border-top-left-radius:9px; }
+  tr.g-first td.c-room      { border-top-right-radius:9px; }
+  tr.g-last td:first-child  { border-bottom-left-radius:9px; }
+  tr.g-last td.c-room       { border-bottom-right-radius:9px; }
   .muted { color:#aaa; font-weight:normal; font-style:italic; }
 
   /* empty write-in rows: one rule only, from the cell border */
