@@ -33,12 +33,15 @@ the real site — pending screenshots). Staff controls never appear here.
 
 ## Header — identical anatomy on every staff page
 
-1. `.kicker` — NALA · working page name (Res tally / Res print / HC print /
-   HC tally), centred small caps.
+1. `.topbar` — an in-flow header bar: menu button on the LEFT, `.kicker`
+   (NALA · working page name) centred. Nothing on the right, nothing floats,
+   nothing may overlap the rows beneath. The menu is gated on hc tally.
 2. `.daterow` — ‹ date › plus a Today button that only appears when browsing
    another day. hc tally shows the date alone (locked to today).
 3. `.stats` — the page's headline numbers, unboxed.
-4. Menu fixed top right on all pages (gated on hc tally).
+
+The old floating corner menu is banned: a fixed element pinned over in-flow
+content is guaranteed to collide with something at some width.
 
 **One date format everywhere: Weekday D Mon YYYY** (e.g. Wednesday 12 Aug
 2026), uppercased by CSS. No ordinals, no long months, no year-less dates.
