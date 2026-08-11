@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nala Rooms">
+<link rel="apple-touch-icon" href="nala-logo.png">
+<title>Nala — Cleaners</title>
+<style>
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+          --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
+          --blue:#E7E9EF; --blueb:#8A90A8; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
+         padding:24px 18px 40px; -webkit-tap-highlight-color:transparent; }
+  .wrap { max-width:520px; margin:0 auto; }
+
+  .brand { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.35em;
+           color:var(--mid); text-transform:uppercase; text-align:center; }
+  h1 { font-size:19px; font-weight:bold; text-align:center; margin:8px 0 4px;
+       font-family:Helvetica,Arial,sans-serif; letter-spacing:.02em; }
+  .counts { text-align:center; font-family:Helvetica,Arial,sans-serif; font-size:10px;
+            letter-spacing:.12em; text-transform:uppercase; color:var(--mid); margin-bottom:20px; }
+  .counts b { color:var(--ink); font-size:13px; }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:10px; }
+  .tile { border:1.2px solid var(--rule); border-radius:10px; background:#fff;
+          padding:12px 8px 10px; text-align:center; cursor:pointer;
+          font-family:Helvetica,Arial,sans-serif; position:relative; min-height:96px;
+          display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; }
+  .tile .rn { font-size:20px; font-weight:bold; }
+  .tile .chip { display:inline-block; border:1.2px solid var(--ink); border-radius:5px;
+                padding:1px 8px; font-weight:bold; font-size:9px; letter-spacing:.08em; }
+  .tile .chip.svc { border-color:#B5B5AD; color:#6A6A63; font-weight:normal; }
+  .tile .chip.ver { border-style:dashed; border-color:var(--red); color:var(--red); }
+  .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
+  .tile .sub b { color:var(--ink); }
+
+  .tile.done   { background:var(--green); border-color:var(--greenb); }
+  .tile.bfast  { background:var(--amber); border-color:var(--amberb); }
+  .tile.dep    { background:var(--blue);  border-color:var(--blueb); }
+  .tile.vac    { opacity:.38; }
+
+  .legend { margin-top:20px; display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
+            font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.1em;
+            text-transform:uppercase; color:var(--mid); }
+  .legend i { display:inline-block; width:11px; height:11px; border-radius:3px;
+              border:1.2px solid var(--rule); vertical-align:-1px; margin-right:5px; }
+  .legend .lg { background:var(--green); border-color:var(--greenb); }
+  .legend .lb { background:var(--amber); border-color:var(--amberb); }
+  .legend .ld { background:var(--blue);  border-color:var(--blueb); }
+
+  .bar { margin-top:22px; display:flex; gap:10px; }
+  .btn { flex:1; padding:13px 0; text-align:center; font-family:Helvetica,Arial,sans-serif;
+         font-size:11px; letter-spacing:.14em; text-transform:uppercase; cursor:pointer;
+         border:1px solid var(--ink); background:transparent; color:var(--ink);
+         border-radius:2px; text-decoration:none; }
+
+  /* popup */
+  .ov { position:fixed; inset:0; background:rgba(28,28,26,.45); display:none;
+        align-items:flex-end; justify-content:center; z-index:40; }
+  .ov.show { display:flex; }
+  .sheet { background:var(--cream); width:100%; max-width:520px; border-radius:14px 14px 0 0;
+           padding:22px 20px 30px; font-family:Helvetica,Arial,sans-serif; }
+  .sheet h2 { font-size:15px; letter-spacing:.04em; margin-bottom:2px; }
+  .sheet .st { font-size:10.5px; color:var(--mid); letter-spacing:.08em; text-transform:uppercase;
+               margin-bottom:16px; }
+  .pbtn { display:block; width:100%; padding:14px; margin-top:9px; font-size:12px;
+          letter-spacing:.1em; text-transform:uppercase; background:#fff; color:var(--ink);
+          border:1px solid var(--ink); border-radius:6px; cursor:pointer; font-family:inherit; }
+  .pbtn.solid { background:var(--ink); color:#fff; }
+  .pbtn.ghost { border-color:var(--rule); color:var(--mid); }
+  .pbtn.warn  { border-color:var(--red); color:var(--red); }
+  .timerow { display:flex; gap:8px; margin-top:9px; }
+  .timerow .pbtn { margin-top:0; padding:13px 0; }
+  .perr { color:var(--red); font-size:11px; margin-top:12px; min-height:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">Nala · Cleaners</div>
+  <h1 id="title"></h1>
+  <div class="counts">
+    <span><b id="nClean">–</b> cleans</span> &nbsp;·&nbsp;
+    <span><b id="nSvc">–</b> services</span> &nbsp;·&nbsp;
+    <span><b id="nDone">–</b> done</span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="legend">
+    <span><i class="lb"></i>At breakfast</span>
+    <span><i class="ld"></i>Departed</span>
+    <span><i class="lg"></i>Done</span>
+  </div>
+
+  <div class="bar">
+    <button class="btn" onclick="location.reload()">Refresh</button>
+  </div>
+</div>
+
+<div class="ov" id="ov"><div class="sheet" id="sheetBox"></div></div>
+
+<script>
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+var ROOMS = 17;
+
+function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function todayKey(){ return dkey(new Date()); }
+
+function parseDepDate(s){
+  if(!s) return null;
+  s = String(s).trim();
+  var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(+m[1], +m[2]-1, +m[3]);
+  var d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+function depDateKey(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
+
+function fetchRoomGuests(todayK){
+  var base = new Date(); var jobs=[];
+  for (var i=0;i<14;i++){
+    var d=new Date(base); d.setDate(d.getDate()-i); var k=dkey(d);
+    jobs.push(fetch(DB+'/roomguests/'+k+'.json?v='+Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }));
+  }
+  var keys=[];
+  for (var i2=0;i2<14;i2++){ var d2=new Date(base); d2.setDate(d2.getDate()-i2); keys.push(dkey(d2)); }
+  return Promise.all(jobs).then(function(res){
+    var all={};
+    for (var j=0;j<res.length;j++){ if(res[j]) all[keys[j]]=res[j]; }
+    return all;
+  });
+}
+function resolveRoomGuestsHK(all, todayK){
+  var out={};
+  var dates=Object.keys(all||{}).filter(function(d){return d<=todayK;}).sort();
+  dates.forEach(function(d){ var day=all[d]||{}; for (var room in day){ out[room]=day[room]; } });
+  for (var room in out){
+    var dep=out[room]&&out[room].departs;
+    if(!dep) continue;
+    var p=parseDepDate(dep);
+    if(p && depDateKey(p)<todayK) delete out[room];
+  }
+  return out;
+}
+
+var STATE = { rows:[], hk:{} };
+
+function load(){
+  return Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
+                fetchRoomGuests(todayKey()), api('/hk/'+todayKey()) ])
+  .then(function(res){
+    var responses=res[0]||{}, manual=res[1]||{}, hk=res[3]||{};
+    var roomguests=resolveRoomGuestsHK(res[2]||{}, todayKey());
+
+    function roomRecord(n){
+      var mk='room-'+n, m=manual[mk], best=null;
+      for (var k in responses){
+        var g=responses[k];
+        if (String(g.room)!==String(n)) continue;
+        if (!best || (g.at||'')>(best.at||'')) best=g;
+      }
+      var known=roomguests[String(n)]||{};
+      if (m && m.override) return Object.assign({},known,best||{},m,{room:String(n)});
+      if (best) return Object.assign({},known,best);
+      if (m) return Object.assign({},known,m,{room:String(n)});
+      if (known.name) return Object.assign({},known,{room:String(n),status:null});
+      return null;
+    }
+
+    var rows=[];
+    for (var n=1;n<=ROOMS;n++){
+      var r=roomRecord(n), kind;
+      if (r && r.status==='vacant') kind='vac';
+      else if (r){
+        var d=parseDepDate(r.departs);
+        var dk2=d?depDateKey(d):null;
+        if (dk2===todayKey()) kind='clean';
+        else if (dk2 && dk2>todayKey()) kind='svc';
+        else kind='ver';
+      } else kind='ver';
+      rows.push({ n:n, kind:kind });
+    }
+    STATE.rows=rows; STATE.hk=hk;
+    render();
+  });
+}
+
+function mins(iso){
+  var t=new Date(iso); if (isNaN(t)) return null;
+  return Math.max(0, Math.round((Date.now()-t.getTime())/60000));
+}
+function hhmm(iso){
+  var t=new Date(iso); if (isNaN(t)) return '';
+  return String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
+}
+
+function render(){
+  var g=document.getElementById('grid'); g.innerHTML='';
+  var nClean=0,nSvc=0,nDone=0;
+  STATE.rows.forEach(function(row){
+    var h=STATE.hk[row.n]||{};
+    if (row.kind==='clean') nClean++;
+    if (row.kind==='svc') nSvc++;
+    if (h.done) nDone++;
+
+    var cls='tile';
+    if (row.kind==='vac') cls+=' vac';
+    else if (h.done) cls+=' done';
+    else if (h.departed) cls+=' dep';
+    else if (h.bfast) cls+=' bfast';
+
+    var chip='';
+    if (row.kind==='clean') chip='<span class="chip">Clean</span>';
+    else if (row.kind==='svc') chip='<span class="chip svc">Service</span>';
+    else if (row.kind==='ver') chip='<span class="chip ver">Verify</span>';
+    else chip='<span class="sub">Vacant</span>';
+
+    var sub='';
+    if (row.kind!=='vac'){
+      if (h.done) sub='Done '+hhmm(h.done);
+      else if (h.departed) sub='Departed';
+      else if (h.bfast) sub='B\u2019fast <b>'+mins(h.bfast)+'m</b>';
+      else if (row.kind==='ver') sub='Occupancy unknown';
+      else sub='Occupied';
+    }
+
+    var el=document.createElement('button');
+    el.className=cls;
+    el.innerHTML='<span class="rn">'+row.n+'</span>'+chip+'<span class="sub">'+sub+'</span>';
+    if (row.kind!=='vac') el.onclick=function(){ openSheet(row); };
+    g.appendChild(el);
+  });
+  document.getElementById('nClean').textContent=nClean;
+  document.getElementById('nSvc').textContent=nSvc;
+  document.getElementById('nDone').textContent=nDone;
+  var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var d=new Date();
+  document.getElementById('title').textContent=days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()];
+}
+
+// ── writes ─────────────────────────────────────────────────
+function patchRoom(n, obj){
+  return fetch(DB+'/hk/'+todayKey()+'/'+n+'.json', {
+    method:'PATCH', body:JSON.stringify(obj)
+  }).then(function(r){
+    if (!r.ok) throw new Error('rejected');
+    return r.json();
+  });
+}
+function setField(n, obj, errEl){
+  var prev=JSON.parse(JSON.stringify(STATE.hk[n]||{}));
+  STATE.hk[n]=Object.assign({},prev,obj);
+  for (var k in obj){ if (obj[k]===null) delete STATE.hk[n][k]; }
+  render();
+  return patchRoom(n,obj).then(function(){ closeSheet(); })
+  .catch(function(e){
+    STATE.hk[n]=prev; render();
+    errEl.textContent = (e && e.message==='rejected')
+      ? 'The database rejected the change - the security rules need the hk path added.'
+      : 'No connection - try again.';
+  });
+}
+
+// ── popup ──────────────────────────────────────────────────
+var CUR=null;
+function openSheet(row){ CUR=row; drawSheet('menu'); document.getElementById('ov').className='ov show'; }
+function closeSheet(){ document.getElementById('ov').className='ov'; CUR=null; }
+document.getElementById('ov').onclick=function(e){ if (e.target===this) closeSheet(); };
+
+function drawSheet(mode){
+  var b=document.getElementById('sheetBox');
+  var n=CUR.n, h=STATE.hk[n]||{};
+  var kindName = CUR.kind==='clean' ? 'Clean - departing today'
+               : CUR.kind==='svc'   ? 'Service - staying on'
+               : 'Occupancy not confirmed';
+  var head='<h2>Room '+n+'</h2><div class="st">'+kindName+'</div>';
+  var err='<div class="perr" id="perr"></div>';
+
+  if (mode==='menu'){
+    var rows='';
+    if (h.done){
+      rows+='<button class="pbtn warn" onclick="drawSheet(\'undone\')">Undo done</button>';
+    } else {
+      rows+='<button class="pbtn solid" onclick="drawSheet(\'done\')">Room done</button>';
+      if (h.bfast){
+        rows+='<button class="pbtn" disabled style="opacity:.6">Seated at breakfast '+hhmm(h.bfast)+' ('+mins(h.bfast)+'m ago)</button>';
+        rows+='<button class="pbtn warn" onclick="drawSheet(\'clearbf\')">Clear breakfast</button>';
+      } else {
+        rows+='<button class="pbtn" onclick="drawSheet(\'bfast\')">Guest at breakfast</button>';
+      }
+      if (CUR.kind==='clean'){
+        rows += h.departed
+          ? '<button class="pbtn warn" onclick="drawSheet(\'undep\')">Undo departed</button>'
+          : '<button class="pbtn" onclick="drawSheet(\'dep\')">Guest departed</button>';
+      }
+    }
+    rows+='<button class="pbtn ghost" onclick="closeSheet()">Close</button>';
+    b.innerHTML=head+rows+err;
+  }
+
+  if (mode==='bfast'){
+    b.innerHTML=head+
+      '<div class="st" style="margin-bottom:6px">Seated when?</div>'+
+      '<button class="pbtn solid" onclick="stampBf(0)">Just now</button>'+
+      '<div class="timerow">'+
+        '<button class="pbtn" onclick="stampBf(5)">5 min ago</button>'+
+        '<button class="pbtn" onclick="stampBf(10)">10 min ago</button>'+
+        '<button class="pbtn" onclick="stampBf(15)">15 min ago</button>'+
+      '</div>'+
+      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+  }
+
+  if (mode==='done'){
+    b.innerHTML=head+
+      '<div class="st" style="margin-bottom:6px">Mark room '+n+' as done?</div>'+
+      '<button class="pbtn solid" onclick="setField('+n+',{done:new Date().toISOString()},document.getElementById(\'perr\'))">Yes - done</button>'+
+      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+  }
+  if (mode==='undone'){
+    b.innerHTML=head+
+      '<div class="st" style="margin-bottom:6px">Remove the done mark from room '+n+'?</div>'+
+      '<button class="pbtn warn" onclick="setField('+n+',{done:null},document.getElementById(\'perr\'))">Yes - not done</button>'+
+      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+  }
+  if (mode==='dep'){
+    b.innerHTML=head+
+      '<div class="st" style="margin-bottom:6px">Has the guest checked out of room '+n+'?</div>'+
+      '<button class="pbtn solid" onclick="setField('+n+',{departed:true},document.getElementById(\'perr\'))">Yes - departed</button>'+
+      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+  }
+  if (mode==='undep'){
+    b.innerHTML=head+
+      '<div class="st" style="margin-bottom:6px">Undo departed for room '+n+'?</div>'+
+      '<button class="pbtn warn" onclick="setField('+n+',{departed:null},document.getElementById(\'perr\'))">Yes - undo</button>'+
+      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+  }
+  if (mode==='clearbf'){
+    b.innerHTML=head+
+      '<div class="st" style="margin-bottom:6px">Clear the breakfast mark for room '+n+'?</div>'+
+      '<button class="pbtn warn" onclick="setField('+n+',{bfast:null},document.getElementById(\'perr\'))">Yes - clear</button>'+
+      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+  }
+}
+function stampBf(minsAgo){
+  var t=new Date(Date.now()-minsAgo*60000).toISOString();
+  setField(CUR.n, {bfast:t}, document.getElementById('perr'));
+}
+
+load();
+setInterval(function(){ if(!CUR) render(); }, 30000);          // tick elapsed times
+setInterval(function(){ if(!CUR) load().catch(function(){}); }, 90000);  // background re-fetch
+</script>
+</body>
+</html>
