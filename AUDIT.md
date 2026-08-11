@@ -105,3 +105,53 @@ At-breakfast subtag and its clearing, Departed), stale-departure handling,
 vacant rows, the 6-digit-fraction timestamp regression, screen vs print
 visibility including the manager strips, tomorrow's sheet classifying a
 tomorrow-departure as Clean, and the failure message. 372 lines became 262.
+
+---
+
+## Part 4 · HC tally (cleaners.html) + res tally retrofit
+
+**Job:** the cleaners' live board. Least technical users in the building,
+working with gloves on. Big tiles, three actions, confirmation on every
+write, self-refreshing.
+
+### Code health findings
+
+| # | Finding | Action |
+|---|---------|--------|
+| K1 | The housekeeping resolver was duplicated a **second** time here — the deliberate variant now had two drifting copies of its own | `resolveRoomGuestsHK` moved into nala-shared.js with its do-not-merge warning; both HC pages use the one copy |
+| K2 | `roomRecord` (staff-override-beats-guest merge) copy-pasted identically across res print, HC print and HC tally | One shared `roomRecord`; all three converted |
+| K3 | The clean/service/verify classification — the housekeeping business rule — written out twice | One shared `hkClassify`; a rule change now lands on the screen and the paper simultaneously |
+| K4 | This page's `parseDepDate` had an ISO branch the others lacked; the others parsed ISO departure dates through the UTC parser and were correct **only because Queensland sits east of Greenwich** | Shared `parseDepDate` gained the explicit local-date ISO branch — every page now timezone-proof |
+| K5 | Its `fetchRoomGuests` was a clumsier double-loop rewrite of the same fortnight look-back | Shared version |
+| K6 | Cleaner timestamps through raw `new Date()` | `parseISO`, as elsewhere |
+| K7 | Rejection message told cleaners "the security rules need the hk path added" — stale advice from before the rules catch-all, and useless to a cleaner | Now: "The change was not allowed - tell the manager." |
+| K8 | Date re-rendered inside every render tick despite never changing | Set once at startup |
+
+### Usability
+Already the best-designed page for its audience: whole-tile tap targets,
+full-width buttons, confirm steps on every write, elapsed breakfast
+minutes, optimistic updates with rollback. No changes needed.
+
+### Res tally retrofit (closing the loop)
+Res tally's private copies of the date block, look-back, conflict and
+dietary helpers replaced with nala-shared.js; its 34-check suite re-run
+in full. `roomState` stays local — it returns source/override detail the
+sheet UI needs, a different job from the shared `roomRecord`.
+
+### Verified
+21-check cleaners suite (tiles, counts, sheet flows per room kind, done /
+breakfast / departed writes with PATCH bodies, rejection rollback and
+message, undo, the menu gate for management vs housekeeping logins) — then
+**all four suites re-run against shared v2: 94 checks, zero failures.**
+
+---
+
+## Close-out
+
+Four pages, one shared stylesheet, one shared logic file, one styleguide,
+this audit. Every helper that existed in multiple drifting copies now has
+exactly one home; the two deliberate variants are documented at that home.
+Line counts: tally 1274→1145, res print 533→367, HC print 372→220,
+HC tally 387→320 — about 500 lines gone with zero behaviour lost, one
+Safari bug fixed, rollbacks made universal, and every claim above backed
+by a passing check.
