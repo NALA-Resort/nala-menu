@@ -20,6 +20,29 @@ chips (prints grey, still legible).
 Job: brand. Styling matches nalaresort.com.au (palette/type to be lifted from
 the real site — pending screenshots). Staff controls never appear here.
 
+## Affordance — how you know what's tappable
+
+- **Rectangle with border or solid fill = a button.** Nothing else may use
+  that dress. Primary solid ink, secondary outlined.
+- **Tinted rounded pill = status** (e.g. MENU NOT PUBLISHED). Never tappable.
+- **Plain typography = information.** Stats are a bare number over a small
+  label (`.stats`/`.stat`), never boxed. Attention turns the number red,
+  not the frame.
+- Room tiles are the one exception: a bordered grid that is tappable on the
+  app tier — the grid itself is the control surface.
+
+## Header — identical anatomy on every staff page
+
+1. `.kicker` — NALA · working page name (Res tally / Res print / HC print /
+   HC tally), centred small caps.
+2. `.daterow` — ‹ date › plus a Today button that only appears when browsing
+   another day. hc tally shows the date alone (locked to today).
+3. `.stats` — the page's headline numbers, unboxed.
+4. Menu fixed top right on all pages (gated on hc tally).
+
+**One date format everywhere: Weekday D Mon YYYY** (e.g. Wednesday 12 Aug
+2026), uppercased by CSS. No ordinals, no long months, no year-less dates.
+
 ## Controls — identical on every staff page
 
 - **Nav menu**: three-bar button, fixed top right. Dropdown lists the other
@@ -29,7 +52,6 @@ the real site — pending screenshots). Staff controls never appear here.
 - **Floating footer** (`.foot`): sticky at the bottom, holds the page's
   actions. Primary action solid, secondary outlined. App tier: cream with
   rule border. Print tier: white. Hidden when printing.
-- **Date navigation**: ‹ › + Today/date, top of page, never inside the footer.
 - **Sign-in**: owned by auth.js on every staff page; guest pages never see it.
 
 ## Tokens (defined once in nala-ui.css)
