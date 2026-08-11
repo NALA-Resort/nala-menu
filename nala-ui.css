@@ -30,5 +30,31 @@
         padding:10px 0 calc(10px + env(safe-area-inset-bottom)); }
 .foot .btn { flex:1; text-align:center; white-space:nowrap; }
 
+/* ── standard header: kicker, then one date row ─────── */
+.kicker { text-align:center; font-family:var(--ui-font); font-size:10px; letter-spacing:.34em;
+          text-transform:uppercase; color:var(--mid); margin:6px 0 12px; }
+.daterow { display:flex; align-items:center; justify-content:center; gap:10px;
+           margin-bottom:8px; font-family:var(--ui-font); }
+.daterow .date { font-size:13px; font-weight:bold; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--ctl-ink); text-align:center; }
+.dnav { width:34px; height:32px; display:inline-flex; align-items:center; justify-content:center;
+        background:var(--ctl-bg); border:1px solid var(--ctl-bdr); border-radius:7px;
+        font-size:16px; line-height:1; color:var(--ctl-ink); cursor:pointer; padding:0;
+        -webkit-tap-highlight-color:transparent; }
+.dnav:active { background:var(--ctl-bdr); }
+.dnav.today { width:auto; padding:0 12px; font-size:9.5px; letter-spacing:.13em;
+              text-transform:uppercase; display:none; }
+.dnav.today.show { display:inline-flex; }
+
+/* ── information is plain typography, never boxed ───── */
+.stats { display:flex; justify-content:center; gap:36px; margin:16px 0 6px;
+         font-family:var(--ui-font); }
+.stat { text-align:center; }
+.stat-n { display:block; font-size:27px; line-height:1; color:var(--ctl-ink);
+          font-family:Georgia,serif; }
+.stat-l { display:block; font-size:8px; letter-spacing:.2em; text-transform:uppercase;
+          color:var(--mid); margin-top:6px; }
+.stat.warn .stat-n { color:var(--red); }
+
 /* keep controls off paper */
-@media print { .navwrap, .foot { display:none !important; } }
+@media print { .navwrap, .foot, .dnav { display:none !important; } }
