@@ -70,10 +70,6 @@
   .room-n { font-size:13px; color:var(--ink); }
   .room-p { font-size:8px; color:var(--mid); margin-top:2px; min-height:10px; }
   .room { position:relative; }
-  .room-c { position:absolute; bottom:4px; left:0; right:0; text-align:center;
-            font-family:Helvetica,Arial,sans-serif; font-size:9px; font-weight:bold;
-            letter-spacing:.05em; color:var(--ink); }
-  .room.comb { border-style:solid; border-color:var(--ink); }
   .comb-note { display:flex; align-items:center; justify-content:space-between; gap:10px;
                border:1px solid var(--ink); border-radius:8px; padding:9px 12px; margin-bottom:12px;
                font-family:Helvetica,Arial,sans-serif; font-size:11px; letter-spacing:.04em; }
@@ -116,7 +112,10 @@
   .selbtn.comb:disabled { opacity:.35; }
   .tablesline { text-align:center; margin-top:8px; font-family:Helvetica,Arial,sans-serif;
                 font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--mid); }
-  .tag.comb { border-color:var(--ink); color:var(--ink); }
+  .grpbox { border:1.5px solid var(--ink); border-radius:10px; padding:0 12px; margin:10px 0; }
+  .grpbox .row:last-child { border-bottom:none; }
+  .row.stubrow .row-name, .row.stubrow .row-sub { color:var(--mid); }
+  .row.stubrow .row-sub { font-style:italic; }
   .selbtn { padding:13px 6px; border:1px solid transparent; color:#fff;
             font-family:Helvetica,Arial,sans-serif; font-size:11px;
             letter-spacing:.1em; text-transform:uppercase; cursor:pointer; }
@@ -563,11 +562,9 @@ function render(){
         else ic = ICON_STAFF;
         mark = '<span class="mark">'+ic+'</span>';
       }
-      var mates = groupMates(n);
-      var combBadge = mates.length ? '<span class="room-c">+'+mates.join('+')+'</span>' : '';
       var b=document.createElement('button');
-      b.className=cls + (selected[n] ? ' sel' : '') + (mates.length ? ' comb' : '');
-      b.innerHTML=mark+'<span class="room-n">'+n+'</span><span class="room-p">'+pax+'</span>'+combBadge;
+      b.className=cls + (selected[n] ? ' sel' : '');
+      b.innerHTML=mark+'<span class="room-n">'+n+'</span><span class="room-p">'+pax+'</span>';
       b.onclick=function(){
         if (selectMode){
           if (selected[n]) delete selected[n]; else selected[n]=true;
@@ -612,7 +609,57 @@ function render(){
   el.innerHTML='';
   if(!rows.length) el.innerHTML='<div class="empty">No bookings yet</div>';
 
-  rows.forEach(function(r){
+  // combined rooms sit together, boxed, under the lowest room number;
+  // members without an answer yet show as quiet stubs so the pairing reads
+  function unitKeyOf(r){ return r.room ? (groupOf(r.room) || 'room-'+r.room) : 'ext-'+r.key; }
+  function unitSort(rowlist){
+    var units = {};
+    rowlist.forEach(function(r){
+      var k = unitKeyOf(r);
+      (units[k] = units[k] || []).push(r);
+    });
+    // stubs for grouped rooms that haven't answered
+    for (var gid in combined){
+      if (!units[gid]) continue;
+      var have = units[gid].map(function(r){ return String(r.room); });
+      (combined[gid].rooms||[]).forEach(function(rm){
+        if (have.indexOf(String(rm)) < 0) units[gid].push({ room:String(rm), stub:true, g:{} });
+      });
+      units[gid].sort(function(a,b){ return Number(a.room)-Number(b.room); });
+    }
+    var keys = Object.keys(units);
+    function low(k){
+      var rs = units[k];
+      var roomNums = rs.filter(function(r){ return r.room; }).map(function(r){ return Number(r.room); });
+      return roomNums.length ? Math.min.apply(null, roomNums) : 1000;   // externals last
+    }
+    keys.sort(function(a,b){ return low(a)-low(b); });
+    return keys.map(function(k){ return { gid:(combined[k]?k:null), members:units[k] }; });
+  }
+
+  unitSort(rows).forEach(function(unit){
+    var host = el;
+    if (unit.gid && unit.members.length > 1){
+      host = document.createElement('div');
+      host.className = 'grpbox';
+      el.appendChild(host);
+    }
+    unit.members.forEach(function(r){
+      if (r.stub){
+        var st = document.createElement('div');
+        st.className = 'row stubrow';
+        var kn = roomguests[String(r.room)] || {};
+        st.innerHTML = '<div><div class="row-name"><span class="rm">Room '+r.room+'</span>'+
+          (kn.name ? '  '+kn.name : '')+'</div>'+
+          '<div class="row-sub">Awaiting reply</div></div>';
+        host.appendChild(st);
+        return;
+      }
+      host.appendChild(buildRow(r));
+    });
+  });
+
+  function buildRow(r){
     var g = r.g;
     var known = (r.room && roomguests[String(r.room)]) || {};
     var shownName = g.name || known.name || '';
@@ -624,10 +671,6 @@ function render(){
     }
 
     if (g.premenu) title += '<span class="tag">Pre-menu</span>';
-    if (r.room){
-      var mates = groupMates(r.room);
-      if (mates.length) title += '<span class="tag comb">Table with '+mates.join(' & ')+'</span>';
-    }
 
     var sub = [];
     var d = dietHTML(g.diets); if(d) sub.push(d);
@@ -658,8 +701,8 @@ function render(){
         else editExt(rr.key, rr.g);
       };
     })(r);
-    el.appendChild(row);
-  });
+    return row;
+  }
 
   // tables: each combined group is one table; everyone else is their own
   var tblPax = {};   // unit key -> summed pax
