@@ -62,6 +62,13 @@ Labels: 10-11px, uppercase, letterspaced .12-.15em.
 
 ## Rules of change
 
+- **Shared files are versioned at their references.** Any edit to nala-ui.css
+  or nala-shared.js bumps the `?v=` on every page that links it, in the same
+  commit. The HTML no-cache metas do not protect shared assets — GitHub Pages
+  caches them for 10 minutes and in-app browsers hold them longer. Mutating a
+  shared file under a frozen version is how a phone ends up rendering one
+  generation's HTML with another generation's stylesheet.
+
 1. Control styling changes happen in nala-ui.css only, one commit, all pages.
 2. New staff pages start by linking nala-ui.css and declaring a tier.
 3. Anything guest-visible waits for the brand pass before restyling.
