@@ -37,7 +37,7 @@
            margin-bottom:8px; font-family:var(--ui-font); }
 .daterow .date { font-size:13px; font-weight:bold; letter-spacing:.12em;
                  text-transform:uppercase; color:var(--ctl-ink); text-align:center; }
-.dnav { width:34px; height:32px; display:inline-flex; align-items:center; justify-content:center;
+.dnav { width:38px; height:34px; display:inline-flex; align-items:center; justify-content:center;
         background:var(--ctl-bg); border:1px solid var(--ctl-bdr); border-radius:7px;
         font-size:16px; line-height:1; color:var(--ctl-ink); cursor:pointer; padding:0;
         -webkit-tap-highlight-color:transparent; }
