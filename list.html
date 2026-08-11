@@ -71,8 +71,10 @@
   .pre { display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:7px; font-weight:bold;
          letter-spacing:.12em; border:1px solid #888; color:#555; padding:1px 4px;
          margin-right:5px; vertical-align:1px; }
-  .comb { display:block; font-family:Helvetica,Arial,sans-serif; font-size:7.5px; font-weight:bold;
-          letter-spacing:.08em; color:#111; margin-top:2px; text-transform:uppercase; }
+  tr.g-in td:first-child { border-left:2px solid #111; }
+  tr.g-in td:last-child  { border-right:2px solid #111; }
+  tr.g-first td { border-top:2px solid #111; }
+  tr.g-last td  { border-bottom:2px solid #111; }
   .muted { color:#aaa; font-weight:normal; font-style:italic; }
 
   /* empty write-in rows: one rule only, from the cell border */
@@ -417,6 +419,31 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
 
     var tb = document.getElementById('rows');
 
+    // combined rooms sit consecutively under their lowest room number,
+    // so one boxed block on the sheet = one table
+    (function(){
+      var roomRows = rows.filter(function(r){ return r.room; });
+      var extRows  = rows.filter(function(r){ return !r.room; });
+      var placed = {}, ordered = [];
+      roomRows.forEach(function(r){
+        var rm = String(r.room);
+        if (placed[rm]) return;
+        var gid = groupOf(rm);
+        var members = gid ? combined[gid].rooms.map(String) : [rm];
+        members.sort(function(a,b){ return Number(a)-Number(b); });
+        members.forEach(function(m){
+          var rr = roomRows.filter(function(x){ return String(x.room)===m; })[0];
+          if (rr && !placed[m]){
+            rr.grp = (gid && members.length>1)
+              ? (m===members[0] ? 'first' : (m===members[members.length-1] ? 'last' : 'mid'))
+              : null;
+            ordered.push(rr); placed[m]=true;
+          }
+        });
+      });
+      rows = ordered.concat(extRows);
+    })();
+
     rows.forEach(function(row){
       var g = row.rec;
       var phone = tidyPhone(g.phone);
@@ -441,10 +468,6 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
       if (row.status === 'in' && g.premenu) {
         nameCell = '<span class="pre">PRE-MENU</span>' + nameCell;
       }
-      if (row.status === 'in' && row.room) {
-        var mates = groupMates(row.room);
-        if (mates.length) nameCell += '<span class="comb">Table with Rm '+mates.join(' & ')+'</span>';
-      }
 
       // Vacant rooms stay on the sheet, labelled and otherwise empty.
       if (row.status === 'vacant') {
@@ -453,6 +476,8 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
         nameCell = '<span class="muted">Vacant</span>';
       }
 
+      var gcls = row.grp ? ' g-in g-'+row.grp : '';
+      cls = cls ? cls.replace('class="','class="'+gcls.trim()+' ') : (gcls ? ' class="'+gcls.trim()+'"' : '');
       tb.insertAdjacentHTML('beforeend',
         '<tr'+cls+'>'+
           '<td class="c-name">'+nameCell+'</td>'+
