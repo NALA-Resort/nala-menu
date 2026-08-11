@@ -125,7 +125,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=1"></script>
-<script src="nala-shared.js?v=1"></script>
+<script src="nala-shared.js?v=2"></script>
 <script>
 // date state + header wiring, dates, look-back: nala-shared.js
 var nav = initDateNav();
@@ -142,24 +142,6 @@ var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
 
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
-// Housekeeping keeps guests departing TODAY - they are the cleans.
-// (The dinner sheet's resolver drops them, so this one is its own.)
-function resolveRoomGuestsHK(all, todayK){
-  var out = {};
-  var dates = Object.keys(all || {}).filter(function(d){ return d <= todayK; }).sort();
-  dates.forEach(function(d){
-    var day = all[d] || {};
-    for (var room in day){ out[room] = day[room]; }
-  });
-  for (var room in out){
-    var dep = out[room] && out[room].departs;
-    if (!dep) continue;
-    var p = parseDepDate(dep);
-    if (p && dkey(p) < todayK) delete out[room];   // gone before today
-  }
-  return out;
-}
-
 Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
               fetchRoomGuests(todayKey()), api('/hk/'+todayKey()) ])
   .then(function(res){
@@ -175,35 +157,11 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
       return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
     }
 
-    function roomRecord(n){
-      var mk = 'room-'+n, m = manual[mk];
-      var best = null;
-      for (var k in responses){
-        var g = responses[k];
-        if (String(g.room) !== String(n)) continue;
-        if (!best || (g.at||'') > (best.at||'')) best = g;
-      }
-      var known = roomguests[String(n)] || {};
-      if (m && m.override) return Object.assign({}, known, best || {}, m, { room:String(n) });
-      if (best) return Object.assign({}, known, best);
-      if (m)    return Object.assign({}, known, m, { room:String(n) });
-      if (known.name) return Object.assign({}, known, { room:String(n), status:null });
-      return null;
-    }
-
     // clean = departing today; service = staying on; verify = no usable data
     var rows=[], nClean=0, nSvc=0, nVer=0;
     for (var n=1; n<=ROOMS; n++){
-      var r = roomRecord(n);
-      var kind;
-      if (r && r.status === 'vacant'){ kind='vac'; }
-      else if (r){
-        var d = parseDepDate(r.departs);
-        var dk = d ? dkey(d) : null;
-        if (dk === todayKey())     kind='clean';
-        else if (dk && dk > todayKey()) kind='svc';
-        else                        kind='ver';   // stale or missing departure
-      } else kind='ver';                          // no data at all
+      var r = roomRecord(n, responses, manual, roomguests);
+      var kind = hkClassify(r, todayKey());
       if (kind==='clean') nClean++;
       else if (kind==='svc') nSvc++;
       else if (kind==='ver') nVer++;
