@@ -125,6 +125,11 @@
   .navdrop a { display:block; padding:11px 18px; font-size:10px; letter-spacing:.14em;
                text-transform:uppercase; color:#111; text-decoration:none; }
   .bar { padding-right:52px; }
+  .foot { position:sticky; bottom:0; z-index:40; display:flex; gap:8px;
+          background:#fff; border-top:1px solid #ddd; margin-top:18px;
+          padding:10px 0 calc(10px + env(safe-area-inset-bottom)); }
+  .foot .btn { flex:1; text-align:center; }
+  @media print { .foot { display:none; } }
   @media print { .navwrap { display:none; } }
 </style>
 <div class="navwrap">
@@ -141,8 +146,6 @@
 
 
 <div class="bar">
-  <button class="btn" onclick="window.print()">Print</button>
-  <button class="btn ghost" onclick="location.reload()">Refresh</button>
   <span class="dnavwrap">
     <button class="btn ghost" id="dPrev">&#8249;</button>
     <button class="btn ghost" id="dNext">&#8250;</button>
@@ -182,6 +185,11 @@
     </thead>
     <tbody id="rows"></tbody>
   </table>
+</div>
+
+<div class="foot">
+  <button class="btn" onclick="window.print()">Print</button>
+  <button class="btn ghost" onclick="location.reload()">Refresh</button>
 </div>
 
 
