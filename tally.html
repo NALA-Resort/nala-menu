@@ -10,7 +10,11 @@
 <link rel="stylesheet" href="nala-ui.css?v=1">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E; }
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+          /* state palette: dining green, declined terracotta, vacant slate */
+          --green:var(--green);  --green-t:var(--green-t);  --green-b:var(--green-b);
+          --terra:var(--terra);  --terra-t:var(--terra-t);   --terra-b:var(--terra-b);
+          --slate:var(--slate);  --slate-t:var(--slate-t);     --slate-b:var(--slate-b); }
   body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
          padding:28px 24px 24px; -webkit-tap-highlight-color:transparent; }
   .wrap { max-width:520px; margin:0 auto; }
@@ -21,8 +25,8 @@
             transform:translateY(-100%); transition:transform .25s; }
   .errbar.show { transform:translateY(0); }
 
-  
-  .menustate { text-align:center; margin-top:12px; }
+
+.menustate { text-align:center; margin-top:12px; }
   .menustate span { display:inline-block; padding:6px 14px; border-radius:20px;
                     font-family:Helvetica,Arial,sans-serif; font-size:9px;
                     letter-spacing:.16em; text-transform:uppercase; }
@@ -31,8 +35,8 @@
   .menustate .yes b { font-weight:normal; opacity:.75; }
   .menustate .no  { background:rgba(184,106,90,.18);  color:#8E4433; }
 
-  
-  .sec { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
+
+.sec { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
          text-transform:uppercase; color:var(--mid); margin:26px 0 12px;
          display:flex; justify-content:space-between; align-items:baseline; }
   .sec a { color:var(--ink); text-decoration:none; border:1px solid var(--rule);
@@ -45,11 +49,10 @@
   .room {
     aspect-ratio:1; border:1px solid var(--rule); background:transparent;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    font-family:Helvetica,Arial,sans-serif; cursor:pointer; padding:0;
+    font-family:Helvetica,Arial,sans-serif; cursor:pointer; padding:0; position:relative;
   }
   .room-n { font-size:13px; color:var(--ink); }
   .room-p { font-size:8px; color:var(--mid); margin-top:2px; min-height:10px; }
-  .room { position:relative; }
   .comb-note { display:flex; align-items:center; justify-content:space-between; gap:10px;
                border:1px solid var(--ink); border-radius:8px; padding:9px 12px; margin-bottom:12px;
                font-family:Helvetica,Arial,sans-serif; font-size:11px; letter-spacing:.04em; }
@@ -57,13 +60,13 @@
                font-family:Helvetica,Arial,sans-serif; font-size:10px; font-weight:bold;
                letter-spacing:.1em; text-transform:uppercase; padding:4px 0;
                -webkit-tap-highlight-color:transparent; }
-  .room.in     { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
+  .room.in     { background:var(--green-t); border-color:var(--green-b); }
   .room.in .room-n { color:var(--ink); }
-  .room.in .room-p { color:#5E7D67; }
-  .room.out    { background:rgba(184,106,90,.16); border-color:rgba(184,106,90,.45); }
+  .room.in .room-p { color:var(--green); }
+  .room.out    { background:var(--terra-t); border-color:var(--terra-b); }
   .room.out .room-n { color:var(--ink); opacity:.6; text-decoration:line-through; }
-  .room.vacant { border-style:solid; border-color:rgba(87,87,94,.28);
-                 background:rgba(87,87,94,.10); }
+  .room.vacant { border-style:solid; border-color:var(--slate-b);
+                 background:var(--slate-t); }
   .room.vacant .room-n { color:var(--mid); }
   .room.await  { border-style:dashed; border-color:var(--mid); }
 
@@ -72,8 +75,8 @@
   .mark svg { width:100%; height:100%; display:block; }
   .mark.seen { opacity:.55; }
   .mark.seen svg { fill:none; stroke:var(--mid); }
-  .room.in  .mark svg { fill:#5E7D67; stroke:#5E7D67; }
-  .room.out .mark svg { fill:#9E6455; stroke:#9E6455; }
+  .room.in  .mark svg { fill:var(--green); stroke:var(--green); }
+  .room.out .mark svg { fill:var(--terra); stroke:var(--terra); }
 
   .room.sel { outline:2px solid var(--ink); outline-offset:-2px; }
   .room.sel .room-n { font-weight:bold; }
@@ -102,9 +105,9 @@
   .selbtn { padding:13px 6px; border:1px solid transparent; color:#fff;
             font-family:Helvetica,Arial,sans-serif; font-size:11px;
             letter-spacing:.1em; text-transform:uppercase; cursor:pointer; }
-  .selbtn.vac  { background:#57575E; }
-  .selbtn.din  { background:#5E7D67; }
-  .selbtn.out  { background:#9E6455; }
+  .selbtn.vac  { background:var(--slate); }
+  .selbtn.din  { background:var(--green); }
+  .selbtn.out  { background:var(--terra); }
   .selbtn.quiet{ background:transparent; border-color:var(--rule); color:var(--mid); }
 
   .legend { display:flex; gap:14px; justify-content:center; margin-top:12px;
@@ -112,10 +115,10 @@
             letter-spacing:.12em; text-transform:uppercase; color:var(--mid); }
   .legend span { display:flex; align-items:center; gap:5px; }
   .sw { width:9px; height:9px; border:1px solid var(--rule); display:inline-block; }
-  .sw.in { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
-  .sw.out { background:rgba(184,106,90,.16); border-color:rgba(184,106,90,.45); }
+  .sw.in { background:var(--green-t); border-color:var(--green-b); }
+  .sw.out { background:var(--terra-t); border-color:var(--terra-b); }
   .sw.await { border-style:dashed; border-color:var(--mid); }
-  .sw.vacant { border-color:rgba(87,87,94,.28); background:rgba(87,87,94,.10); }
+  .sw.vacant { border-color:var(--slate-b); background:var(--slate-t); }
   .legend2 { margin-top:7px; }
   .ico { width:11px; height:11px; display:inline-block; }
   .ico svg { width:100%; height:100%; display:block; fill:var(--mid); stroke:var(--mid); }
@@ -143,7 +146,9 @@
   .row.conflict { border-left:3px solid var(--red); padding-left:10px;
                   background:rgba(168,50,30,.05); }
   .bub { width:26px; height:26px; border:1px solid var(--rule); background:transparent;
-         cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
+         cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;
+         position:relative; }
+  .bub::after { content:''; position:absolute; inset:-8px; }  /* 42px tap target */
   .bub svg { width:14px; height:14px; display:block; fill:var(--mid); }
   .bub.flag { border-color:var(--red); }
   .bub.flag svg { fill:var(--red); }
@@ -179,12 +184,12 @@
          font-family:Helvetica,Arial,sans-serif; font-size:12px;
          letter-spacing:.12em; text-transform:uppercase; color:#fff; cursor:pointer; }
   /* matches the room tile palette */
-  .opt.solid { background:#5E7D67; border-color:#5E7D67; }   /* dining  — green */
-  .opt.out   { background:#9E6455; border-color:#9E6455; }   /* not dining — red */
-  .opt.vac   { background:#57575E; border-color:#57575E; }   /* vacant — slate */
+  .opt.solid { background:var(--green); border-color:var(--green); }   /* dining  — green */
+  .opt.out   { background:var(--terra); border-color:var(--terra); }   /* not dining — red */
+  .opt.vac   { background:var(--slate); border-color:var(--slate); }   /* vacant — slate */
   .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
   .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 16px; }
-  .pax { width:38px; height:38px; border:1px solid var(--rule); background:transparent;
+  .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
          border-radius:50%; font-family:Helvetica,Arial,sans-serif; font-size:13px;
          color:var(--ink); cursor:pointer; }
   .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
@@ -429,6 +434,9 @@ var ICON_STAFF = '<svg viewBox="0 0 24 24" stroke-width="0"><path d="M4 21V4.5C4
                  '<rect x="10.9" y="10.6" width="2.6" height="2.6" fill="#F9F7F4"/>'+
                  '<rect x="8.7" y="15.6" width="2.6" height="5.4" fill="#F9F7F4"/></svg>';
 
+var ICON_BUBBLE = '<svg viewBox="0 0 24 24"><path d="M4 3h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H9l-5 4V5a2 2 0 0 1 2-2z"/></svg>';
+
+var MENU = null;      // tonight's tagged menu, for dietary conflict flags
 var responses = {};   // keyed by phone (digital) or manual key
 var cancelledExt = {};
 var roomguests = {};
@@ -463,6 +471,22 @@ function showError(msg){
   errTimer = setTimeout(function(){ el.className='errbar'; }, 6000);
 }
 
+// ── every /manual write goes through here: optimistic update,
+//    rolled back if the database rejects it (same pattern as saveCombined)
+function saveManual(key, rec){
+  var had  = Object.prototype.hasOwnProperty.call(manual, key);
+  var prev = manual[key];
+  if (rec === undefined) delete manual[key]; else manual[key] = rec;
+  var req = (rec === undefined)
+    ? api('/manual/'+todayKey()+'/'+key, 'DELETE')
+    : api('/manual/'+todayKey()+'/'+key, 'PUT', rec);
+  req.catch(function(){
+    if (had) manual[key] = prev; else delete manual[key];
+    render();
+  });
+  return req;
+}
+
 // ── build a unified view keyed by room ─────────────────────
 function roomState(n){
   var mk = 'room-'+n;
@@ -485,8 +509,6 @@ function roomState(n){
   return null;
 }
 
-var MENU = null;   // tonight's tagged menu, for dietary conflict flags
-var ICON_BUBBLE = '<svg viewBox="0 0 24 24"><path d="M4 3h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H9l-5 4V5a2 2 0 0 1 2-2z"/></svg>';
 
 function menuConflicts(diets){
   if (!diets || !diets.length || !MENU) return [];
@@ -536,30 +558,62 @@ function dietHTML(diets){
   }).join(' · ');
 }
 
-function render(){
-  var covers=0, notDining=0, awaiting=0;
+// tiles follow the same order as the bookings list: combined rooms
+// adjacent under the lowest number, ringed as one group
+function computeTileOrder(){
+  var order = [], placed = {};
+  for (var n=1; n<=ROOMS; n++){
+    var rm = String(n);
+    if (placed[rm]) continue;
+    var gid = groupOf(rm);
+    var members = gid ? combined[gid].rooms.map(String).filter(function(m){
+      return Number(m)>=1 && Number(m)<=ROOMS; }) : [rm];
+    members.sort(function(a,b){ return Number(a)-Number(b); });
+    members.forEach(function(m){ placed[m]=true; });
+    order.push({ grouped: !!gid && members.length>1, members: members });
+  }
+  return order;
+}
 
-  // rooms
+function roomTile(n){
+  var st = roomState(n);
+  var cls = 'room await', pax='';
+  if (st){
+    if (st.g.status==='in'){ cls='room in'; pax=(st.g.pax||1)+'p'; }
+    else if (st.g.status==='out'){ cls='room out'; }
+    else if (st.g.status==='vacant'){ cls='room vacant'; }
+  }
+
+  var mark = '';
+  if (!st && roomguests[String(n)]) {
+    mark = '<span class="mark seen">'+ICON_LINK+'</span>';   // opened, no answer yet
+  }
+  if (st && (st.g.status==='in' || st.g.status==='out')) {
+    var ic;
+    if (st.override && st.guest && st.g.status === 'out') ic = ICON_GUEST_X;  // guest replied, staff cancelled
+    else if (st.src === 'digital') ic = ICON_GUEST;
+    else ic = ICON_STAFF;
+    mark = '<span class="mark">'+ic+'</span>';
+  }
+  var b=document.createElement('button');
+  b.className=cls + (selected[n] ? ' sel' : '');
+  b.innerHTML=mark+'<span class="room-n">'+n+'</span><span class="room-p">'+pax+'</span>';
+  b.onclick=function(){
+    if (selectMode){
+      if (selected[n]) delete selected[n]; else selected[n]=true;
+      render();
+      selCountUpdate();
+    } else {
+      openRoom(n, st);
+    }
+  };
+  return b;
+}
+
+function paintTiles(){
   var grid = document.getElementById('rooms');
   grid.innerHTML='';
-  // tiles follow the same order as the bookings list: combined rooms
-  // adjacent under the lowest number, wrapped in one box
-  var tileOrder = [];
-  (function(){
-    var placed = {};
-    for (var n=1; n<=ROOMS; n++){
-      var rm = String(n);
-      if (placed[rm]) continue;
-      var gid = groupOf(rm);
-      var members = gid ? combined[gid].rooms.map(String).filter(function(m){
-        return Number(m)>=1 && Number(m)<=ROOMS; }) : [rm];
-      members.sort(function(a,b){ return Number(a)-Number(b); });
-      members.forEach(function(m){ placed[m]=true; });
-      tileOrder.push({ grouped: !!gid && members.length>1, members: members });
-    }
-  })();
-
-  tileOrder.forEach(function(unit){
+  computeTileOrder().forEach(function(unit){
     var host = grid;
     if (unit.grouped){
       host = document.createElement('div');
@@ -568,45 +622,12 @@ function render(){
       host.style.gridTemplateColumns = 'repeat(' + Math.min(unit.members.length, 6) + ',1fr)';
       grid.appendChild(host);
     }
-    unit.members.forEach(function(m){ addTile(Number(m), host); });
+    unit.members.forEach(function(m){ host.appendChild(roomTile(Number(m))); });
   });
+}
 
-  function addTile(n, host){
-    (function(n){
-      var st = roomState(n);
-      var cls = 'room await', pax='';
-      if (st){
-        if (st.g.status==='in'){ cls='room in'; pax=(st.g.pax||1)+'p'; }
-        else if (st.g.status==='out'){ cls='room out'; }
-        else if (st.g.status==='vacant'){ cls='room vacant'; }
-      } else awaiting++;
-
-      var mark = '';
-      if (!st && roomguests[String(n)]) {
-        mark = '<span class="mark seen">'+ICON_LINK+'</span>';   // opened, no answer yet
-      }
-      if (st && (st.g.status==='in' || st.g.status==='out')) {
-        var ic;
-        if (st.override && st.guest && st.g.status === 'out') ic = ICON_GUEST_X;  // guest replied, staff cancelled
-        else if (st.src === 'digital') ic = ICON_GUEST;
-        else ic = ICON_STAFF;
-        mark = '<span class="mark">'+ic+'</span>';
-      }
-      var b=document.createElement('button');
-      b.className=cls + (selected[n] ? ' sel' : '');
-      b.innerHTML=mark+'<span class="room-n">'+n+'</span><span class="room-p">'+pax+'</span>';
-      b.onclick=function(){
-        if (selectMode){
-          if (selected[n]) delete selected[n]; else selected[n]=true;
-          render();
-          selCountUpdate();
-        } else {
-          openRoom(n, st);
-        }
-      };
-      host.appendChild(b);
-    })(n);
-  }
+function render(){
+  paintTiles();
 
   // one combined bookings list
   var rows = [];
@@ -627,12 +648,12 @@ function render(){
     rows.push({ g:manual[k], room:null, src:'manual', key:k });
   }
 
+  var covers=0, notDining=0, awaiting=0;
   rows.forEach(function(r){ covers += (r.g.pax||1); });
-
-  // declines — counted as rooms, matching the Awaiting tile
   for (var n2=1; n2<=ROOMS; n2++){
     var s = roomState(n2);
-    if (s && s.g.status==='out') notDining++;
+    if (!s) awaiting++;                          // no answer yet
+    else if (s.g.status==='out') notDining++;    // declined rooms
   }
 
   var el = document.getElementById('listBookings');
@@ -828,18 +849,13 @@ function applyToSelected(status){
   if (!keys.length) return;
 
   keys.forEach(function(n){
-    if (status === null){
-      delete manual['room-'+n];
-      api('/manual/'+todayKey()+'/room-'+n, 'DELETE');
-      return;
-    }
+    if (status === null){ saveManual('room-'+n); return; }
     // if the guest replied for this room, mark it as an override
     var hasGuest = false;
     for (var k in responses){ if (String(responses[k].room) === String(n)) hasGuest = true; }
     var rec = { status:status, pax:(status==='in'?2:0), room:String(n), source:'manual' };
     if (hasGuest) rec.override = true;
-    manual['room-'+n] = rec;
-    api('/manual/'+todayKey()+'/room-'+n, 'PUT', rec);
+    saveManual('room-'+n, rec);
   });
 
   exitSelect();
@@ -903,6 +919,21 @@ function revealAction(){
   });
 }
 
+// one pax picker for every sheet that needs it
+function paxPicker(max, get, set){
+  function paint(){
+    var r=document.getElementById('paxRow'); if(!r) return;
+    r.innerHTML='';
+    for(var i=1;i<=max;i++)(function(v){
+      var b=document.createElement('button');
+      b.className='pax'+(get()===v?' on':''); b.textContent=v;
+      b.onclick=function(){ set(v); paint(); };
+      r.appendChild(b);
+    })(i);
+  }
+  paint();
+}
+
 function openRoom(n, st){
   var pax = (st && st.g.pax) || 2;
   var guestAnswer = st && (st.src==='digital' ? st.g : st.guest);
@@ -930,27 +961,10 @@ function openRoom(n, st){
   function paxBlock(){
     return '<div class="sheet-label">Guests</div><div class="pax-row" id="paxRow"></div>';
   }
-  function paintPax(){
-    var r=document.getElementById('paxRow'); if(!r) return;
-    r.innerHTML='';
-    for(var i=1;i<=6;i++)(function(v){
-      var b=document.createElement('button');
-      b.className='pax'+(pax===v?' on':''); b.textContent=v;
-      b.onclick=function(){ pax=v; paintPax(); };
-      r.appendChild(b);
-    })(i);
-  }
+  function paintPax(){ paxPicker(6, function(){return pax;}, function(v){pax=v;}); }
 
-  function writeManual(rec){
-    manual['room-'+n] = rec;
-    api('/manual/'+todayKey()+'/room-'+n, 'PUT', rec);
-    close(); render();
-  }
-  function clearManual(){
-    delete manual['room-'+n];
-    api('/manual/'+todayKey()+'/room-'+n, 'DELETE');
-    close(); render();
-  }
+  function writeManual(rec){ saveManual('room-'+n, rec); close(); render(); }
+  function clearManual(){ saveManual('room-'+n); close(); render(); }
 
   // ── staff cancelled a booking the guest had made ────────
   if (isOverride && guestAnswer && st.g.status === 'out') {
@@ -1086,15 +1100,7 @@ document.getElementById('addExt').onclick = function(e){
   showSheet();
   revealAction();
 
-  function paintPax(){
-    var r=document.getElementById('paxRow'); r.innerHTML='';
-    for(var i=1;i<=8;i++)(function(v){
-      var b=document.createElement('button');
-      b.className='pax'+(pax===v?' on':''); b.textContent=v;
-      b.onclick=function(){ pax=v; paintPax(); };
-      r.appendChild(b);
-    })(i);
-  }
+  function paintPax(){ paxPicker(8, function(){return pax;}, function(v){pax=v;}); }
   function paintChips(){
     var box=document.getElementById('dietChips'); box.innerHTML='';
     DIETARIES.forEach(function(d){
@@ -1117,8 +1123,7 @@ document.getElementById('addExt').onclick = function(e){
     if(!nm){ document.getElementById('xName').focus(); return; }
     var id='ext-'+Date.now();
     var rec={ status:'in', pax:pax, name:nm, phone:ph, note:nt, diets:diets, source:'manual' };
-    manual[id]=rec;
-    api('/manual/'+todayKey()+'/'+id, 'PUT', rec);
+    saveManual(id, rec);
     close(); render();
   };
   document.getElementById('oCancel').onclick=close;
@@ -1139,19 +1144,10 @@ function editExt(key, g){
   revealAction();
 
   if (isManual){
-    (function paintPax(){
-      var r=document.getElementById('paxRow'); r.innerHTML='';
-      for(var i=1;i<=8;i++)(function(v){
-        var b=document.createElement('button');
-        b.className='pax'+(pax===v?' on':''); b.textContent=v;
-        b.onclick=function(){ pax=v; paintPax(); };
-        r.appendChild(b);
-      })(i);
-    })();
+    paxPicker(8, function(){return pax;}, function(v){pax=v;});
     document.getElementById('oSave').onclick = function(){
-      g.pax = pax;
-      manual[key] = g;
-      api('/manual/'+todayKey()+'/'+key, 'PUT', g);
+      var rec = JSON.parse(JSON.stringify(g)); rec.pax = pax;
+      saveManual(key, rec);
       close(); render();
     };
   }
@@ -1166,15 +1162,16 @@ function editExt(key, g){
 
   function doCancel(){
     if (isManual){
-      delete manual[key];
-      api('/manual/'+todayKey()+'/'+key, 'DELETE');
+      saveManual(key);
     } else {
       // guest booked via the link — record a staff cancellation
       var rec = { status:'out', pax:0, override:true, source:'manual',
                   name:g.name||'', phone:g.phone||'' };
-      manual['extcancel-'+key] = rec;
-      api('/manual/'+todayKey()+'/extcancel-'+key, 'PUT', rec);
       cancelledExt[key] = true;
+      saveManual('extcancel-'+key, rec).catch(function(){
+        delete cancelledExt[key];   // failed: let the row come back
+        render();
+      });
     }
     close(); render();
   }
