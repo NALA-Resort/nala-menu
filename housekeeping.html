@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nala — Housekeeping Sheet</title>
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Helvetica, Arial, sans-serif; color:#111; background:#fff; padding:16px; }
+
+  .bar { margin-bottom:14px; display:flex; gap:8px; align-items:center; }
+  .btn { padding:10px 20px; background:#111; color:#fff; border:none;
+         font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
+         text-transform:uppercase; cursor:pointer; }
+  .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+  .dnavwrap { display:inline-flex; gap:6px; margin-left:auto; }
+  .dnavwrap .btn { padding:10px 14px; }
+  .stamp { margin-top:8px; font-size:7.5px; letter-spacing:.1em;
+           text-transform:uppercase; color:#999; }
+
+  .head { display:flex; justify-content:space-between; align-items:flex-end;
+          border-bottom:2px solid #111; padding-bottom:6px; margin-bottom:9px; }
+  .brand { font-size:9px; letter-spacing:.4em; text-transform:uppercase; color:#777; }
+  .title { font-size:16px; font-weight:bold; margin-top:3px; }
+  .counts { display:flex; gap:20px; align-items:baseline; white-space:nowrap; }
+  .counts span { font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:#666; }
+  .counts b { font-size:17px; color:#111; margin-right:5px; letter-spacing:0; }
+
+  .scroller { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  table { width:100%; min-width:760px; border-collapse:separate; border-spacing:0; }
+  th { font-size:7px; letter-spacing:.12em; text-transform:uppercase; color:#666;
+       text-align:left; padding:0 5px 6px; border-bottom:1px solid #111;
+       white-space:nowrap; vertical-align:bottom; }
+  th.wrap { white-space:normal; line-height:1.25; text-align:center; }
+
+  /* box the hand-written table columns */
+  th.c-dt, td.c-dt { border-left:1px solid #999; }
+  th.c-bt, td.c-bt { border-left:1px solid #bbb; border-right:1px solid #999; }
+  td { font-size:9.5px; padding:7.5px 5px; border-bottom:1px solid #ddd; vertical-align:top; }
+  tr { page-break-inside:avoid; }
+
+  .c-room  { width:7%;  text-align:center; font-weight:bold; }
+  .c-name  { width:16%; font-weight:bold; }
+  .c-svc   { width:11%; text-align:center; }
+  .c-pax   { width:5%;  text-align:center; }
+  .c-dep   { width:12%; }
+  .c-done  { width:6%;  text-align:center; }
+  .c-notes { width:35%; }
+  .c-insp  { width:8%;  text-align:center; }
+  tbody td { padding-top:12px; padding-bottom:12px; }
+
+  .chip { display:inline-block; border:1.2px solid #111; border-radius:5px;
+          padding:2px 9px; font-weight:bold; font-size:9px; letter-spacing:.08em; }
+  .chip.svc { border-color:#aaa; color:#555; font-weight:normal; }
+  .chip.ver { border-style:dashed; border-color:#8a1f1f; color:#8a1f1f; }
+  .box  { width:14px; height:14px; border:1.2px solid #333; border-radius:3px;
+          display:inline-block; vertical-align:middle; }
+  tr.vac td { color:#c2c2c2; }
+  .mgrstrip { margin:10px 0 18px; }
+  .mgrline { display:flex; gap:10px; align-items:flex-end; margin:8px 0 0; }
+  .mgrline span { font-size:8px; letter-spacing:.14em; text-transform:uppercase;
+                  color:#666; white-space:nowrap; padding-bottom:2px; }
+  .mgrline i { flex:1; border-bottom:1px solid #999; height:15px; }
+
+  .yes { color:#3F7A52; font-weight:bold; }
+  .no  { color:#A8321E; }
+  .unk { color:#bbb; }
+  .row-out td { background:#FAF6F5; }
+  .row-unk td { background:#FCFCFB; }
+  .row-vacant td { background:#F4F4F2; color:#B0B0AA; }
+
+  .sub { display:block; font-size:8px; color:#777; font-weight:normal; margin-top:2px; }
+  .allergen { color:#A8321E; font-weight:bold; }
+  .checkout { color:#A8321E; font-weight:bold; }
+  .row-conflict td { background:#F7E4DF; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .flag { display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:7px; font-weight:bold;
+          letter-spacing:.12em; border:1.2px solid #A8321E; color:#A8321E; padding:1px 4px;
+          margin-right:5px; vertical-align:1px; }
+  .dnote { display:block; font-size:8px; color:#333; font-style:italic; margin-top:2px; }
+  .pre { display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:7px; font-weight:bold;
+         letter-spacing:.12em; border:1px solid #888; color:#555; padding:1px 4px;
+         margin-right:5px; vertical-align:1px; }
+  tr.g-in td:first-child { border-left:1px solid #555; }
+  tr.g-in td.c-room      { border-right:1px solid #555; }
+  tr.g-first td:first-child, tr.g-first td.c-room { border-top:1px solid #555; }
+  tr.g-last td:first-child,  tr.g-last td.c-room  { border-bottom:1px solid #555; }
+  tr.g-first td:first-child { border-top-left-radius:9px; }
+  tr.g-first td.c-room      { border-top-right-radius:9px; }
+  tr.g-last td:first-child  { border-bottom-left-radius:9px; }
+  tr.g-last td.c-room       { border-bottom-right-radius:9px; }
+  .muted { color:#aaa; font-weight:normal; font-style:italic; }
+
+  /* empty write-in rows: one rule only, from the cell border */
+  tr.blank td { height:26px; }
+
+
+  @media print {
+    .bar, .hint, .key { display:none; }
+    body { padding:0; }
+    .scroller { overflow:visible; }
+    table { min-width:0; width:100%; }
+    tr { page-break-inside:avoid; }
+    thead { display:table-header-group; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <button class="btn" onclick="window.print()">Print</button>
+  <button class="btn ghost" onclick="location.reload()">Refresh</button>
+  <a class="btn ghost" href="list.html">Front of house</a>
+  <span class="dnavwrap">
+    <button class="btn ghost" id="dPrev">&#8249;</button>
+    <button class="btn ghost" id="dNext">&#8250;</button>
+    <button class="btn ghost" id="dToday">Today</button>
+  </span>
+</div>
+
+<div class="head">
+  <div>
+    <div class="brand">Nala · Housekeeping</div>
+    <div class="title" id="title"></div>
+  </div>
+  <div class="counts">
+    <span><b id="nClean">–</b> cleans</span>
+    <span><b id="nSvc">–</b> services</span>
+    <span id="verWrap" style="display:none"><b id="nVer">–</b> to verify</span>
+  </div>
+</div>
+
+<div class="mgrstrip">
+  <div class="mgrline"><span>Assigned to</span><i></i></div>
+  <div class="mgrline"><span>Manager notes</span><i></i></div>
+</div>
+
+<div class="scroller">
+  <table>
+    <thead>
+      <tr>
+        <th class="c-room">Room</th>
+        <th class="c-name">Guest</th>
+        <th class="c-svc">Service</th>
+        <th class="c-pax">Pax</th>
+        <th class="c-dep">Stay</th>
+        <th class="c-done">Done</th>
+        <th class="c-notes">Housekeeper notes</th>
+        <th class="c-insp">Insp.</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+
+
+<script>
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+var ROOMS = 17;
+
+var VIEW = (function(){
+  var m = location.search.match(/[?&]date=(\d{4}-\d{2}-\d{2})/);
+  if (m){ var p=m[1].split('-'); return new Date(+p[0], +p[1]-1, +p[2]); }
+  return new Date();
+})();
+
+function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+function label(){
+  var d=VIEW;
+  var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return days[d.getDay()]+' '+ord(d.getDate())+' '+m[d.getMonth()];
+}
+
+function todayKey(){ return dkey(VIEW); }
+
+function tomorrowKey(){ var d=new Date(VIEW); d.setDate(d.getDate()+1); return key(d); }
+
+function key(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+function ord(n){
+  var s=['th','st','nd','rd'], v=n%100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+
+function parseDepDate(s){
+  if(!s) return null;
+  s = String(s).trim();
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
+  var d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+function depDateKey(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function stayHTML(arrRaw, depRaw){
+  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var a = parseDepDate(arrRaw), d = parseDepDate(depRaw);
+  function one(x){ return days[x.getDay()]+' '+ord(x.getDate()); }
+  var out;
+  if (a && d)      out = one(a)+' to '+one(d);
+  else if (d)      out = 'to '+one(d);
+  else if (a)      out = one(a)+' to';
+  else             return '';
+  if (d && key(d) === tomorrowKey()) return '<span class="checkout">'+out+'</span>';
+  return out;
+}
+
+function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
+
+function fetchRoomGuests(endKey, days){
+  days = days || 14;
+  var parts = endKey.split('-');
+  var end = new Date(+parts[0], +parts[1]-1, +parts[2]);
+  var jobs = [], keys = [];
+  for (var i = days - 1; i >= 0; i--) {
+    var d = new Date(end); d.setDate(d.getDate() - i);
+    var k = dkey(d);
+    keys.push(k);
+    jobs.push(
+      fetch(DB + '/roomguests/' + k + '.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .catch(function(){ return null; })
+    );
+  }
+  return Promise.all(jobs).then(function(res){
+    var all = {};
+    res.forEach(function(day, i){ if (day) all[keys[i]] = day; });
+    return all;
+  });
+}
+
+function isToday(){ var n=new Date(); return dkey(VIEW)===dkey(n); }
+function shiftDate(d){ var v=new Date(VIEW); v.setDate(v.getDate()+d);
+  location.href='housekeeping.html?date='+dkey(v); }
+function goToday(){ location.href='housekeeping.html'; }
+
+document.getElementById('title').textContent = label();
+document.getElementById('dPrev').onclick = function(){ shiftDate(-1); };
+document.getElementById('dNext').onclick = function(){ shiftDate(1); };
+var todayLink = document.getElementById('dToday');
+todayLink.onclick = function(e){ e.preventDefault(); goToday(); };
+if (!isToday()) todayLink.className = 'show';
+
+// Housekeeping keeps guests departing TODAY - they are the cleans.
+// (The dinner sheet's resolver drops them, so this one is its own.)
+function resolveRoomGuestsHK(all, todayK){
+  var out = {};
+  var dates = Object.keys(all || {}).filter(function(d){ return d <= todayK; }).sort();
+  dates.forEach(function(d){
+    var day = all[d] || {};
+    for (var room in day){ out[room] = day[room]; }
+  });
+  for (var room in out){
+    var dep = out[room] && out[room].departs;
+    if (!dep) continue;
+    var p = parseDepDate(dep);
+    if (p && depDateKey(p) < todayK) delete out[room];   // gone before today
+  }
+  return out;
+}
+
+Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
+              fetchRoomGuests(todayKey()) ])
+  .then(function(res){
+    var responses  = res[0] || {};
+    var manual     = res[1] || {};
+    var roomguests = resolveRoomGuestsHK(res[2] || {}, todayKey());
+
+    function roomRecord(n){
+      var mk = 'room-'+n, m = manual[mk];
+      var best = null;
+      for (var k in responses){
+        var g = responses[k];
+        if (String(g.room) !== String(n)) continue;
+        if (!best || (g.at||'') > (best.at||'')) best = g;
+      }
+      var known = roomguests[String(n)] || {};
+      if (m && m.override) return Object.assign({}, known, best || {}, m, { room:String(n) });
+      if (best) return Object.assign({}, known, best);
+      if (m)    return Object.assign({}, known, m, { room:String(n) });
+      if (known.name) return Object.assign({}, known, { room:String(n), status:null });
+      return null;
+    }
+
+    // clean = departing today; service = staying on; verify = no usable data
+    var rows=[], nClean=0, nSvc=0, nVer=0;
+    for (var n=1; n<=ROOMS; n++){
+      var r = roomRecord(n);
+      var kind;
+      if (r && r.status === 'vacant'){ kind='vac'; }
+      else if (r){
+        var d = parseDepDate(r.departs);
+        var dk = d ? depDateKey(d) : null;
+        if (dk === todayKey())     kind='clean';
+        else if (dk && dk > todayKey()) kind='svc';
+        else                        kind='ver';   // stale or missing departure
+      } else kind='ver';                          // no data at all
+      if (kind==='clean') nClean++;
+      else if (kind==='svc') nSvc++;
+      else if (kind==='ver') nVer++;
+      rows.push({ n:n, rec:r||{}, kind:kind });
+    }
+
+    var order={clean:0, svc:1, ver:2, vac:3};
+    rows.sort(function(a,b){ return (order[a.kind]-order[b.kind]) || (a.n-b.n); });
+
+    document.getElementById('nClean').textContent = nClean;
+    document.getElementById('nSvc').textContent   = nSvc;
+    if (nVer){ document.getElementById('nVer').textContent = nVer;
+               document.getElementById('verWrap').style.display=''; }
+
+    var tb = document.getElementById('rows');
+    rows.forEach(function(row){
+      var g = row.rec;
+      var chip='', name=g.name||'', extras='', cls='';
+      if (row.kind==='clean') chip='<span class="chip">Clean</span>';
+      else if (row.kind==='svc') chip='<span class="chip svc">Service</span>';
+      else if (row.kind==='ver'){ chip='<span class="chip ver">Verify</span>';
+        if(!name) name='<span class="muted">Confirm occupancy</span>'; }
+      else { cls=' class="vac"'; name='<span class="muted">Vacant</span>'; }
+      var boxes = (row.kind==='vac') ? ['',''] : ['<span class="box"></span>','<span class="box"></span>'];
+      tb.insertAdjacentHTML('beforeend',
+        '<tr'+cls+'>'+
+          '<td class="c-room">'+row.n+'</td>'+
+          '<td class="c-name">'+name+'</td>'+
+          '<td class="c-svc">'+chip+'</td>'+
+          '<td class="c-pax">'+(g.pax||'')+'</td>'+
+          '<td class="c-dep">'+stayHTML(g.arrives, g.departs)+'</td>'+
+          '<td class="c-done">'+boxes[0]+'</td>'+
+          '<td class="c-notes"></td>'+
+          '<td class="c-insp">'+boxes[1]+'</td>'+
+        '</tr>');
+    });
+  })
+  .catch(function(e){
+    document.getElementById('rows').innerHTML =
+      '<tr><td colspan="8" style="padding:20px;color:#8a1f1f">Could not load - check connection and refresh.</td></tr>';
+  });
+</script>
+</body>
+</html>
