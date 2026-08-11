@@ -125,55 +125,14 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=1"></script>
+<script src="nala-shared.js?v=2"></script>
 <script>
-var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
-var ROOMS = 17;
-
-function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// dates, look-back, room records, clean/service rules: nala-shared.js
+// this board is locked to today by design — no browsed dates
 function todayKey(){ return dkey(new Date()); }
-
-function parseDepDate(s){
-  if(!s) return null;
-  s = String(s).trim();
-  var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return new Date(+m[1], +m[2]-1, +m[3]);
-  var d = new Date(s);
-  return isNaN(d) ? null : d;
-}
-function depDateKey(d){
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
+document.getElementById('title').textContent = dateLabel(new Date());
 
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
-
-function fetchRoomGuests(todayK){
-  var base = new Date(); var jobs=[];
-  for (var i=0;i<14;i++){
-    var d=new Date(base); d.setDate(d.getDate()-i); var k=dkey(d);
-    jobs.push(fetch(DB+'/roomguests/'+k+'.json?v='+Date.now())
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .catch(function(){ return null; }));
-  }
-  var keys=[];
-  for (var i2=0;i2<14;i2++){ var d2=new Date(base); d2.setDate(d2.getDate()-i2); keys.push(dkey(d2)); }
-  return Promise.all(jobs).then(function(res){
-    var all={};
-    for (var j=0;j<res.length;j++){ if(res[j]) all[keys[j]]=res[j]; }
-    return all;
-  });
-}
-function resolveRoomGuestsHK(all, todayK){
-  var out={};
-  var dates=Object.keys(all||{}).filter(function(d){return d<=todayK;}).sort();
-  dates.forEach(function(d){ var day=all[d]||{}; for (var room in day){ out[room]=day[room]; } });
-  for (var room in out){
-    var dep=out[room]&&out[room].departs;
-    if(!dep) continue;
-    var p=parseDepDate(dep);
-    if(p && depDateKey(p)<todayK) delete out[room];
-  }
-  return out;
-}
 
 var STATE = { rows:[], hk:{} };
 
@@ -184,33 +143,10 @@ function load(){
     var responses=res[0]||{}, manual=res[1]||{}, hk=res[3]||{};
     var roomguests=resolveRoomGuestsHK(res[2]||{}, todayKey());
 
-    function roomRecord(n){
-      var mk='room-'+n, m=manual[mk], best=null;
-      for (var k in responses){
-        var g=responses[k];
-        if (String(g.room)!==String(n)) continue;
-        if (!best || (g.at||'')>(best.at||'')) best=g;
-      }
-      var known=roomguests[String(n)]||{};
-      if (m && m.override) return Object.assign({},known,best||{},m,{room:String(n)});
-      if (best) return Object.assign({},known,best);
-      if (m) return Object.assign({},known,m,{room:String(n)});
-      if (known.name) return Object.assign({},known,{room:String(n),status:null});
-      return null;
-    }
-
     var rows=[];
     for (var n=1;n<=ROOMS;n++){
-      var r=roomRecord(n), kind;
-      if (r && r.status==='vacant') kind='vac';
-      else if (r){
-        var d=parseDepDate(r.departs);
-        var dk2=d?depDateKey(d):null;
-        if (dk2===todayKey()) kind='clean';
-        else if (dk2 && dk2>todayKey()) kind='svc';
-        else kind='ver';
-      } else kind='ver';
-      rows.push({ n:n, kind:kind });
+      var r=roomRecord(n, responses, manual, roomguests);
+      rows.push({ n:n, kind:hkClassify(r, todayKey()) });
     }
     STATE.rows=rows; STATE.hk=hk;
     render();
@@ -218,11 +154,11 @@ function load(){
 }
 
 function mins(iso){
-  var t=new Date(iso); if (isNaN(t)) return null;
+  var t=parseISO(iso); if (!t) return null;
   return Math.max(0, Math.round((Date.now()-t.getTime())/60000));
 }
 function hhmm(iso){
-  var t=new Date(iso); if (isNaN(t)) return '';
+  var t=parseISO(iso); if (!t) return '';
   return String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
 }
 
@@ -265,10 +201,6 @@ function render(){
   document.getElementById('nClean').textContent=nClean;
   document.getElementById('nSvc').textContent=nSvc;
   document.getElementById('nDone').textContent=nDone;
-  var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var d=new Date();
-  document.getElementById('title').textContent=days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();
 }
 
 // ── writes ─────────────────────────────────────────────────
@@ -289,7 +221,7 @@ function setField(n, obj, errEl){
   .catch(function(e){
     STATE.hk[n]=prev; render();
     errEl.textContent = (e && e.message==='rejected')
-      ? 'The database rejected the change - the security rules need the hk path added.'
+      ? 'The change was not allowed - tell the manager.'
       : 'No connection - try again.';
   });
 }
