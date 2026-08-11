@@ -18,17 +18,9 @@
          font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
          text-transform:uppercase; cursor:pointer; }
   .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
-  .dnavwrap { display:inline-flex; gap:6px; margin-left:auto; }
-  .dnavwrap .btn { padding:10px 14px; }
   .stamp { margin-top:8px; font-size:7.5px; letter-spacing:.1em;
            text-transform:uppercase; color:#999; }
 
-  .head { display:flex; justify-content:space-between; align-items:flex-end;
-          border-bottom:2px solid #111; padding-bottom:6px; margin-bottom:9px; }
-  .brand { font-size:9px; letter-spacing:.4em; text-transform:uppercase; color:#777; }
-  .title { font-size:16px; font-weight:bold; margin-top:3px; }
-  .counts { display:flex; gap:20px; align-items:baseline; white-space:nowrap; }
-  .counts span { font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:#666; }
   .counts b { font-size:17px; color:#111; margin-right:5px; letter-spacing:0; }
 
   .scroller { overflow-x:auto; -webkit-overflow-scrolling:touch; }
@@ -110,24 +102,18 @@
 </script>
 
 
-<div class="bar">
-  <span class="dnavwrap">
-    <button class="btn ghost" id="dPrev">&#8249;</button>
-    <button class="btn ghost" id="dNext">&#8250;</button>
-    <button class="btn ghost" id="dToday">Today</button>
-  </span>
-</div>
 
-<div class="head">
-  <div>
-    <div class="brand">Nala</div>
-    <div class="title" id="title"></div>
-  </div>
-  <div class="counts">
-    <span><b id="nTables">–</b> tables <span id="tblBreak" style="font-weight:normal;color:#777"></span></span>
-    <span><b id="nCovers">–</b> covers</span>
-  </div>
+<div class="kicker">Nala &middot; Res print</div>
+<div class="daterow">
+  <button class="dnav" id="dPrev">&#8249;</button>
+  <div class="date" id="title"></div>
+  <button class="dnav" id="dNext">&#8250;</button>
+  <button class="dnav today" id="dToday">Today</button>
 </div>
+<div class="stats">
+    <div class="stat"><span class="stat-n" id="nTables">&ndash;</span><span class="stat-l">Tables <span id="tblBreak"></span></span></div>
+    <div class="stat"><span class="stat-n" id="nCovers">&ndash;</span><span class="stat-l">Covers</span></div>
+  </div>
 
 <div class="scroller">
   <table>
@@ -196,7 +182,7 @@ function label(){
   var d=VIEW;
   var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return days[d.getDay()]+' '+ord(d.getDate())+' '+m[d.getMonth()];
+  return days[d.getDay()]+' '+d.getDate()+' '+m[d.getMonth()]+' '+d.getFullYear();
 }
 document.getElementById('title').textContent = label();
 document.getElementById('dPrev').onclick  = function(){ shiftDate(-1); };
