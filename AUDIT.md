@@ -71,3 +71,37 @@ tint, silent-guest dash, vacant, group pair, external sort and cancellation,
 phone tidy-up, checkout red), stats maths, blank-row padding, stamp, screen
 vs print visibility, off-today date handling — plus the Safari-fraction
 regression test. All passing; A4 PDF generated for visual check.
+
+---
+
+## Part 3 · HC print (housekeeping.html)
+
+**Job:** the printed A4 morning housekeeping run sheet — who cleans, who
+services, tick boxes for done and inspection, manager write-in strips —
+plus on-screen it mirrors the cleaners' live progress marks.
+
+### Code health findings
+
+| # | Finding | Action |
+|---|---------|--------|
+| H1 | Cloned wholesale from the dinner sheet and never pruned: ~45 lines of CSS with no matching markup here (dinner/breakfast write-in columns, Yes/No colours, conflict flags, checkout reds, pre-menu tags, group boxing, blank-row padding) | All removed |
+| H2 | Same triple-copied helper layer as the other pages (three date formatters again, `ord`, `parseDepDate`, `fetchRoomGuests`, date-nav block) | Now from nala-shared.js |
+| H3 | `stayHTML` — 14 lines never called on this page (the sheet shows Arrival and Departs as separate columns) | Removed with its orphaned `.checkout` style |
+| H4 | `resolveRoomGuestsHK` looks like a duplicate of the shared resolver but is **deliberately different**: it keeps guests departing today, because they are the cleans | **Kept local**, comment retained — the audit records it so nobody "deduplicates" it later |
+| H5 | Cleaner timestamps parsed with raw `new Date()` — currently safe (the cleaners app writes clean ISO) but the same Safari trap as Part 3's flag bug | Defensive `parseISO` |
+| H6 | Error message spanned 8 columns of a 7-column table | colspan fixed |
+| H7 | Two different reds on paper (#8a1f1f vs #A8321E) | One red |
+
+### Usability
+The sheet's design was already right for its job. One addition, mirroring
+res print: the **Printed date-time stamp**, because this sheet gets
+reprinted mid-morning once cleaner marks start landing, and paper copies
+need to say which is current.
+
+### Verified
+17-check suite, all passing: stats and the verify counter, row ordering
+(cleans → services → verify → vacant), cleaner marks (done tick with time,
+At-breakfast subtag and its clearing, Departed), stale-departure handling,
+vacant rows, the 6-digit-fraction timestamp regression, screen vs print
+visibility including the manager strips, tomorrow's sheet classifying a
+tomorrow-departure as Clean, and the failure message. 372 lines became 262.
