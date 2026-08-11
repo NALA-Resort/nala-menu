@@ -43,13 +43,12 @@
   td { font-size:9.5px; padding:7.5px 5px; border-bottom:1px solid #ddd; vertical-align:top; }
   tr { page-break-inside:avoid; }
 
-  .c-room  { width:7%;  text-align:center; font-weight:bold; }
-  .c-name  { width:16%; font-weight:bold; }
-  .c-svc   { width:11%; text-align:center; }
-  .c-pax   { width:5%;  text-align:center; }
+  .c-room  { width:8%;  text-align:center; font-weight:bold; }
+  .c-svc   { width:12%; text-align:center; }
+  .c-arr   { width:12%; }
   .c-dep   { width:12%; }
   .c-done  { width:6%;  text-align:center; }
-  .c-notes { width:35%; }
+  .c-notes { width:42%; }
   .c-insp  { width:8%;  text-align:center; }
   tbody td { padding-top:12px; padding-bottom:12px; }
 
@@ -113,7 +112,6 @@
 <div class="bar">
   <button class="btn" onclick="window.print()">Print</button>
   <button class="btn ghost" onclick="location.reload()">Refresh</button>
-  <a class="btn ghost" href="list.html">Front of house</a>
   <span class="dnavwrap">
     <button class="btn ghost" id="dPrev">&#8249;</button>
     <button class="btn ghost" id="dNext">&#8250;</button>
@@ -143,10 +141,9 @@
     <thead>
       <tr>
         <th class="c-room">Room</th>
-        <th class="c-name">Guest</th>
         <th class="c-svc">Service</th>
-        <th class="c-pax">Pax</th>
-        <th class="c-dep">Stay</th>
+        <th class="c-arr">Arrival</th>
+        <th class="c-dep">Departs</th>
         <th class="c-done">Done</th>
         <th class="c-notes">Housekeeper notes</th>
         <th class="c-insp">Insp.</th>
@@ -317,23 +314,28 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
     if (nVer){ document.getElementById('nVer').textContent = nVer;
                document.getElementById('verWrap').style.display=''; }
 
+    function fmtD(raw){
+      var d = parseDepDate(raw);
+      if (!d) return '';
+      var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      return days[d.getDay()]+' '+ord(d.getDate());
+    }
+
     var tb = document.getElementById('rows');
     rows.forEach(function(row){
       var g = row.rec;
-      var chip='', name=g.name||'', extras='', cls='';
+      var chip='', cls='';
       if (row.kind==='clean') chip='<span class="chip">Clean</span>';
       else if (row.kind==='svc') chip='<span class="chip svc">Service</span>';
-      else if (row.kind==='ver'){ chip='<span class="chip ver">Verify</span>';
-        if(!name) name='<span class="muted">Confirm occupancy</span>'; }
-      else { cls=' class="vac"'; name='<span class="muted">Vacant</span>'; }
+      else if (row.kind==='ver') chip='<span class="chip ver">Verify</span>';
+      else { cls=' class="vac"'; chip='<span class="muted">Vacant</span>'; }
       var boxes = (row.kind==='vac') ? ['',''] : ['<span class="box"></span>','<span class="box"></span>'];
       tb.insertAdjacentHTML('beforeend',
         '<tr'+cls+'>'+
           '<td class="c-room">'+row.n+'</td>'+
-          '<td class="c-name">'+name+'</td>'+
           '<td class="c-svc">'+chip+'</td>'+
-          '<td class="c-pax">'+(g.pax||'')+'</td>'+
-          '<td class="c-dep">'+stayHTML(g.arrives, g.departs)+'</td>'+
+          '<td class="c-arr">'+fmtD(g.arrives)+'</td>'+
+          '<td class="c-dep">'+fmtD(g.departs)+'</td>'+
           '<td class="c-done">'+boxes[0]+'</td>'+
           '<td class="c-notes"></td>'+
           '<td class="c-insp">'+boxes[1]+'</td>'+
