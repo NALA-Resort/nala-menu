@@ -140,7 +140,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=1"></script>
-<script src="nala-shared.js?v=1"></script>
+<script src="nala-shared.js?v=2"></script>
 <script>
 // date state + header wiring from nala-shared.js
 var nav = initDateNav();
@@ -226,32 +226,11 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
       }
       return null;
     }
-    // ── resolve each room to a single record ──────────────
-    function roomRecord(n){
-      var mk = 'room-'+n, m = manual[mk];
-      var best = null;
-      for (var k in responses){
-        var g = responses[k];
-        if (String(g.room) !== String(n)) continue;
-        if (!best || (g.at||'') > (best.at||'')) best = g;
-      }
-      var known = roomguests[String(n)] || {};   // whoever opened the link from this room
-
-      if (m && m.override) {
-        // staff overrode the guest — keep the guest's own details underneath
-        return Object.assign({}, known, best || {}, m, { room:String(n) });
-      }
-      if (best) return Object.assign({}, known, best);
-      if (m)    return Object.assign({}, known, m, { room:String(n) });
-      if (known.name) return Object.assign({}, known, { room:String(n), status:null });
-      return null;
-    }
-
     // ── everyone in house, plus externals dining ──────────
     var rows = [], covers = 0, roomsInHouse = 0;
 
     for (var n=1; n<=ROOMS; n++){
-      var r = roomRecord(n);
+      var r = roomRecord(n, responses, manual, roomguests);
       var vacant = !!(r && r.status === 'vacant');
       if (!vacant) roomsInHouse++;
       rows.push({
