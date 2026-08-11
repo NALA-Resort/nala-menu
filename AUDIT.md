@@ -40,3 +40,34 @@ tappable with a thumb.
 ### Explicitly protected
 Guest page, Firebase paths, identity model, noon cutoff, all write shapes
 (`/manual`, `/combined` records unchanged byte-for-byte).
+
+---
+
+## Part 2 · Res print (list.html)
+
+**Job:** the printed A4 dinner service sheet. Paper first: write-in table
+columns, checkout warnings, dietary flags a chef can trust at a glance.
+
+### Code health findings
+
+| # | Finding | Action |
+|---|---------|--------|
+| L1 | Three identical yyyy-mm-dd formatters in one file (`dkey`, `key`, `depDateKey`) | One `dkey`, in the new shared file |
+| L2 | Whole helper layer (`dkey`, `parseDepDate`, `tidyPhone`, `ord`, `fetchRoomGuests`, `resolveRoomGuests`, `menuConflicts`, `dietHTML`, the entire date-nav block) copy-pasted across tally / res print / hc print, each copy drifting | **New `nala-shared.js`** now owns one canonical copy; res print converted, hc print in Part 3, res tally retrofitted in Part 4 |
+| L3 | **Latent Safari bug:** publish timestamp parsed with raw `new Date()`. The chef's Python push writes 6-digit fractional seconds, which Safari rejects — so on iPhones the menu could read as unpublished and **dietary conflict flags silently never fired on this sheet**. Tally had the `parseISO` fix; the prints never got it | Shared `parseISO` used everywhere; regression test feeds a 6-digit timestamp and asserts the flag still raises |
+| L4 | Dead code: `stamp()` targeting a `#stamp` element that didn't exist, orphaned `.bar`/`.stamp`/`.counts b`/`.hint`/`.key` CSS, unused `dining`/`notDining` arrays, unused `groupMates` | Removed — except the stamp, which was a good idea half-finished (see L6) |
+| L5 | External table-count keyed on `r.key` which was never set, silently falling back to `Math.random()` | Externals now carry their real keys |
+| L6 | The print stamp: a paper sheet that gets reprinted through the evening needs to say which copy is current | Completed: quiet "Printed 11/8/2026 7:07pm" line above the footer, on screen and on paper |
+
+### Usability findings
+Already sound: write-in columns ruled for pen, blank rows padded to 21,
+checkout-tomorrow in red, conflict rows tinted with print-color-adjust,
+group boxing matching the tally's rings, vacant rooms kept as labelled
+write-in space. No layout changes made; 533 lines became 388.
+
+### Verified
+22-check suite: full row semantics (conflict + flag + pre-menu, declined
+tint, silent-guest dash, vacant, group pair, external sort and cancellation,
+phone tidy-up, checkout red), stats maths, blank-row padding, stamp, screen
+vs print visibility, off-today date handling — plus the Safari-fraction
+regression test. All passing; A4 PDF generated for visual check.
