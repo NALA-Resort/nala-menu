@@ -233,3 +233,23 @@ Three attempts, three breaks, each one shipped on green tests. The tests were
 green because the mock could not fail the way Firebase fails. Nothing should
 be changed in auth.js again until there is a way to exercise it against real
 Firebase, or at minimum a mock built from the SDK's actual error paths.
+
+### The dead button, actually fixed (auth v6)
+
+Root cause, confirmed by reproduction: when auth-compat does not arrive,
+`firebase` still exists but `firebase.auth` does not. The wiring line threw,
+which killed the rest of auth.js — but the 500ms timer had already been set,
+so the sign-in form appeared anyway. Tapping Sign in then called the same
+missing method and threw again, leaving the button disabled and silent.
+This has been the behaviour since v1; nothing today caused it.
+
+v6 changes two things and touches nothing else on the load path:
+the wiring is wrapped so a throw cannot kill the file and can be re-run, and
+the tap handler, if the sign-in method is missing, fetches the SDK scripts
+and retries once — then either signs in or re-enables the button with a
+message. Diffed against the live file to confirm initializeApp, the overlay
+and the 500ms timer are byte-identical.
+
+tests/auth_suite.py covers three worlds: SDK recovers on tap, SDK never
+recovers, SDK healthy. Run against the previous file it fails 5 of 6, which
+is the check the earlier attempts never had.

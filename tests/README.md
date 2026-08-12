@@ -8,6 +8,7 @@ repo root with a local copy of the site:
     python3 tests/list_suite.py      # 24 — res print (incl. Safari-fraction regression)
     python3 tests/hk_suite.py        # 20 — HC print
     python3 tests/cl_suite.py        # 24 — HC tally (incl. management menu gate)
+    python3 tests/auth_suite.py      # 6  — sign-in when the Firebase SDK does not load
 
 They assert rendered outcomes, not markup: computed colours, fixed-footer
 geometry, tap-target sizes, menu interaction, write bodies, and
