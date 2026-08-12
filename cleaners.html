@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Rooms">
 <link rel="apple-touch-icon" href="nala-logo.png">
 <title>Nala — Cleaners</title>
-<link rel="stylesheet" href="nala-ui.css?v=3">
+<link rel="stylesheet" href="nala-ui.css?v=4">
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
           --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
@@ -79,12 +79,12 @@
 <body class="tier-app">
 
 <div class="wrap">
-<div class="topbar">
+    <div class="daterow">
+  <div class="date" id="title"></div>
   <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
     <div class="navdrop" id="navDrop"><a href="tally.html">Res tally</a><a href="list.html">Res print</a><a href="housekeeping.html">HC print</a></div>
   </div>
-  <div class="kicker">Nala &middot; HC tally</div>
 </div>
 <script>
 (function(){
@@ -102,7 +102,6 @@
   })();
 })();
 </script>
-    <div class="daterow"><div class="date" id="title"></div></div>
   <div class="stats">
     <div class="stat"><span class="stat-n" id="nClean">&ndash;</span><span class="stat-l">Cleans</span></div>
     <div class="stat"><span class="stat-n" id="nSvc">&ndash;</span><span class="stat-l">Services</span></div>
@@ -127,7 +126,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=1"></script>
-<script src="nala-shared.js?v=2"></script>
+<script src="nala-shared.js?v=3"></script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
 // this board is locked to today by design — no browsed dates
