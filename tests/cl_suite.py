@@ -1,0 +1,130 @@
+import threading,http.server,socketserver,json,time,datetime,os,re
+os.chdir('/home/claude/nala')
+class Q(http.server.SimpleHTTPRequestHandler):
+    def log_message(self,*a): pass
+socketserver.TCPServer.allow_reuse_address=True
+httpd=socketserver.TCPServer(("",8957),Q)
+threading.Thread(target=httpd.serve_forever,daemon=True).start(); time.sleep(0.3)
+def sdk(email):
+    return """window.firebase={initializeApp:function(){},auth:function(){return window.__A;}};
+window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:'%s',getIdToken:function(){return Promise.resolve('T');}});},20);},
+onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'%s'});},25);},signOut:function(){}};"""%(email,email)
+now=datetime.datetime.now().astimezone(); today=now.strftime("%Y-%m-%d")
+def plus(d): return (now+datetime.timedelta(days=d)).strftime("%Y-%m-%d")
+STATE={"fail":False}; WRITES=[]
+responses={}
+manual={"room-5":{"status":"vacant","pax":0,"room":"5","source":"manual"}}
+roomguests={
+ "1":{"name":"James","departs":today},
+ "2":{"name":"Elena","departs":plus(2)},
+ "7":{"name":"Priya","departs":today},
+}
+bf=(now-datetime.timedelta(minutes=12)).isoformat()
+hk={"7":{"done":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"},"2":{"bfast":bf}}
+def fb(route,request):
+    u=request.url; m=request.method
+    if m=="PATCH":
+        WRITES.append({"u":u,"b":request.post_data})
+        if STATE["fail"]: route.fulfill(status=401,body="no"); return
+        route.fulfill(status=200,content_type="application/json",body=request.post_data); return
+    body="null"
+    if "/responses/" in u: body=json.dumps(responses)
+    elif "/manual/" in u: body=json.dumps(manual)
+    elif "/roomguests/"+today in u: body=json.dumps(roomguests)
+    elif "/roomguests/" in u: body="null"
+    elif "/hk/" in u: body=json.dumps(hk)
+    route.fulfill(status=200,content_type="application/json",body=body)
+from playwright.sync_api import sync_playwright
+P=F=0
+def ck(n,c):
+    global P,F
+    print(("PASS " if c else "FAIL ")+n); P,F=(P+1,F) if c else (P,F+1)
+def tile(pg,n):
+    return pg.locator("#grid .tile").filter(has=pg.locator(".rn",has_text=re.compile(r"^%d$"%n)))
+with sync_playwright() as p:
+    b=p.chromium.launch()
+    def page(email):
+        pg=b.new_page(viewport={"width":820,"height":1100},device_scale_factor=2)
+        pg.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body=sdk(email)))
+        pg.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body="/*n*/"))
+        pg.route("**firebasedatabase.app/**",fb)
+        return pg
+    pg=page("ben@nalaresort.com.au")
+    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1500)
+    hd=pg.evaluate("()=>({k:'n/a',d:title.textContent,c:nClean.textContent,s:nSvc.textContent,dn:nDone.textContent,nav:getComputedStyle(navWrap).display})")
+    ck("header row present", pg.evaluate("()=>!!document.querySelector('.daterow .navwrap')"))
+    ck("date format with year", bool(re.match(r'^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{1,2}(st|nd|rd|th) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$',hd["d"])))
+    ck("cleans 2 services 1 done 1", hd["c"]=="2" and hd["s"]=="1" and hd["dn"]=="1")
+    ck("management login sees menu", hd["nav"]=="block")
+    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    ck("menu opens on tap", pg.evaluate("()=>navDrop.classList.contains('open')"))
+    pg.locator(".stats").click(); pg.wait_for_timeout(150)
+    t=pg.evaluate("""()=>{const o={};document.querySelectorAll('#grid .tile').forEach(b=>{
+      o[b.querySelector('.rn').textContent]={cls:b.className,txt:b.textContent};});return o;}""")
+    ck("room1 Clean occupied", "Clean" in t["1"]["txt"] and "Occupied" in t["1"]["txt"])
+    ck("room7 done green with time (6-digit ISO)", "done" in t["7"]["cls"] and re.search(r'Done \d{2}:\d{2}',t["7"]["txt"]))
+    ck("room2 breakfast amber with elapsed", "bfast" in t["2"]["cls"] and re.search(r'B.fast 1[12]m',t["2"]["txt"]))
+    ck("room5 vacant faded", "vac" in t["5"]["cls"])
+    ck("room3 verify, occupancy unknown", "Verify" in t["3"]["txt"] and "Occupancy unknown" in t["3"]["txt"])
+    # vacant untappable
+    pg.evaluate("()=>document.querySelectorAll('#grid .tile')[4].click()")
+    ck("vacant tile opens nothing", pg.evaluate("()=>ov.className")=="ov")
+    # clean room sheet has departed option; svc doesn't
+    tile(pg,1).click(); pg.wait_for_timeout(200)
+    sh=pg.locator("#sheetBox").inner_text()
+    print("   room1 sheet:", repr(sh)[:220])
+    sh=sh.lower()
+    ck("clean sheet: done + breakfast + departed", "room done" in sh and "guest at breakfast" in sh and "guest departed" in sh)
+    pg.locator(".pbtn.ghost",has_text="Close").click()
+    tile(pg,2).click(); pg.wait_for_timeout(200)
+    sh=pg.locator("#sheetBox").inner_text()
+    print("   room2 sheet:", repr(sh)[:220])
+    sh=sh.lower()
+    ck("service sheet: no departed option, shows seated info + clear", "guest departed" not in sh and "seated at breakfast" in sh and "clear breakfast" in sh)
+    pg.locator(".pbtn.ghost",has_text="Close").click()
+    # mark room1 done
+    tile(pg,1).click(); pg.wait_for_timeout(150)
+    pg.locator(".pbtn.solid",has_text="Room done").click(); pg.wait_for_timeout(150)
+    pg.locator(".pbtn.solid",has_text="Yes - done").click(); pg.wait_for_timeout(300)
+    w=[x for x in WRITES if re.search(r"/hk/"+today+r"/1\.json",x["u"])]
+    ck("PATCH done for room1", len(w)==1 and "done" in json.loads(w[0]["b"]))
+    ck("room1 tile green, done count 2, sheet closed",
+       pg.evaluate("()=>({c:nDone.textContent,cls:[...document.querySelectorAll('#grid .tile')][0].className,ov:ov.className})")=={"c":"2","cls":"tile done","ov":"ov"})
+    # breakfast stamp 10 min ago on room 3
+    tile(pg,3).click(); pg.wait_for_timeout(150)
+    pg.locator(".pbtn",has_text="Guest at breakfast").click(); pg.wait_for_timeout(150)
+    pg.locator(".pbtn",has_text="10 min ago").click(); pg.wait_for_timeout(300)
+    w=[x for x in WRITES if re.search(r"/hk/"+today+r"/3\.json",x["u"])]
+    okb=False
+    if w:
+        ts=json.loads(w[0]["b"]).get("bfast",""); t3=datetime.datetime.fromisoformat(ts.replace("Z","+00:00"))
+        okb=8<= (now.astimezone(datetime.timezone.utc)-t3.astimezone(datetime.timezone.utc)).total_seconds()/60 <=12
+    ck("PATCH bfast ~10m ago", okb)
+    ck("room3 amber ~10m", "bfast" in pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')][2].className"))
+    # rollback on rejection
+    STATE["fail"]=True
+    tile(pg,4).click(); pg.wait_for_timeout(150)
+    pg.locator(".pbtn.solid",has_text="Room done").click(); pg.wait_for_timeout(150)
+    pg.locator(".pbtn.solid",has_text="Yes - done").click(); pg.wait_for_timeout(400)
+    ck("rejected write: error shown, sheet stays", "tell the manager" in pg.locator("#perr").inner_text())
+    ck("rejected write rolled back", "done" not in pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')][3].className"))
+    STATE["fail"]=False
+    pg.locator(".pbtn.ghost",has_text="Back").click(); pg.wait_for_timeout(100)
+    pg.locator(".pbtn.ghost",has_text="Close").click()
+    # undo done on room7
+    tile(pg,7).click(); pg.wait_for_timeout(150)
+    pg.locator(".pbtn.warn",has_text="Undo done").click(); pg.wait_for_timeout(150)
+    pg.locator(".pbtn.warn",has_text="Yes - not done").click(); pg.wait_for_timeout(300)
+    w=[x for x in WRITES if re.search(r"/hk/"+today+r"/7\.json",x["u"])]
+    ck("PATCH done:null for room7", len(w)==1 and json.loads(w[0]["b"])["done"] is None)
+    ck("done count back to 1", pg.evaluate("()=>nDone.textContent")=="1")
+    shot=pg.screenshot(full_page=True)
+    open("/home/claude/nala/_p4_cleaners.png","wb").write(shot)
+    pg.close()
+    # gate: housekeeping login sees no menu
+    pg=page("housekeeping@nalaresort.com.au")
+    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1200)
+    ck("housekeeping login: menu hidden", pg.evaluate("()=>getComputedStyle(navWrap).display")=="none")
+    pg.close(); b.close()
+print("RESULT: %d passed, %d failed" % (P,F))
+httpd.shutdown()
