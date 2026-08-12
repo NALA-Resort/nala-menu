@@ -90,7 +90,13 @@ shout. 27 is reserved for a single headline number.
 **Name what a number counts.** "2×3" and "3×2" look like the same sum and
 the reader has to already know which side is which. Write the make-up as
 "3 twos · 1 three" — a wording that can be said out loud and cannot be
-read backwards. Both dining pages state the make-up the same way.
+read backwards. Both dining pages state the make-up the same way, on one
+line — sentence case, normal letter-spacing, `nowrap` — because a wrapped
+statistic reads as two facts.
+
+**Stay dates are one line: `Tue 11-Fri 14`.** Weekday and bare day number,
+no ordinal, no "to", month omitted because we know it. A range that wraps
+doubles the height of the row it sits in.
 
 ## Printed sheets — repeating header
 

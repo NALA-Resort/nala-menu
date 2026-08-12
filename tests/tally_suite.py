@@ -86,6 +86,17 @@ with sync_playwright() as p:
        "3 twos" in s2["tl"] and "1 three" in s2["tl"] and "×" not in s2["tl"]
        and "4 tables" in s2["tl"])
 
+    wrap=pg.evaluate("""()=>{const t=document.getElementById('tablesLine');
+      const prev=t.textContent;
+      t.textContent='11 twos \u00b7 2 threes \u00b7 1 four \u00b7 1 five \u00b7 15 tables';
+      const r=document.createRange(); r.selectNodeContents(t);
+      const lines=new Set([...r.getClientRects()].map(b=>Math.round(b.top))).size;
+      const over=t.scrollWidth>t.clientWidth;
+      t.textContent=prev;
+      return {lines:lines, over:over};}""")
+    print("   busiest make-up:", wrap)
+    ck("make-up line stays on one line at 390pt, even a full house",
+       wrap["lines"]==1 and not wrap["over"])
     # 3 bookings list
     bl=pg.evaluate("""()=>{
       const rows=[...document.querySelectorAll('#listBookings .row')];

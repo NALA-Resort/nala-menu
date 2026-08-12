@@ -89,6 +89,25 @@ with sync_playwright() as p:
     ck("r1 conflict row + FLAG + PRE-MENU", "row-conflict" in r1["cls"] and "FLAG" in r1["name"] and "PRE-MENU" in r1["name"])
     ck("r1 dietaries comma-joined, allergen marked", "Nut allergy, Vegetarian" in r1["diet"] and 'class="allergen"' in pg.evaluate("()=>document.querySelectorAll('#rows tr')[0].cells[7].innerHTML"))
     ck("r1 checkout tomorrow red", "checkout" in pg.evaluate("()=>document.querySelectorAll('#rows tr')[0].cells[6].innerHTML"))
+
+    rowsz=pg.evaluate("""()=>[...document.querySelectorAll('#rows tr')].map(r=>{
+      const c=r.querySelector('td.c-dep')||r.cells[6];
+      if(!c) return null;
+      return {t:c.textContent.trim(), h:Math.round(c.getBoundingClientRect().height),
+              ws:getComputedStyle(c).whiteSpace};}).filter(Boolean)""")
+    stays=[r for r in rowsz if r["t"]]
+    print("   stay cells:", [r["t"] for r in stays][:5])
+    ck("stay reads Wd D-Wd D, no ordinals, no 'to'",
+       all(("to" not in r["t"]) and ("th" not in r["t"]) and ("rd" not in r["t"]) for r in stays))
+    ck("stay column never wraps", all(r["ws"]=="nowrap" for r in stays))
+    tall=pg.evaluate("""()=>[...document.querySelectorAll('#rows tr td.c-dep')]
+      .filter(c=>c.textContent.trim()).map(c=>{
+        const r=document.createRange(); r.selectNodeContents(c);
+        const boxes=r.getClientRects();
+        const tops=new Set([...boxes].map(b=>Math.round(b.top)));
+        return {t:c.textContent.trim(), lines:tops.size};})""")
+    print("   stay text lines:", tall)
+    ck("every stay cell renders on one line", all(t["lines"]==1 for t in tall))
     ck("r1 comment + dietary note", "Window seat" in r1["com"] and "Dietary: Very allergic" in r1["com"])
     ck("r2 declined tinted", "row-out" in d[1]["cls"] and d[1]["din"]=="No")
     ck("rooms 3+4 boxed pair", "g-in g-first" in d[2]["cls"] and "g-in g-last" in d[3]["cls"] and d[3]["name"]=="Lucy")

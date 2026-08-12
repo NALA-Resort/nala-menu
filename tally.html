@@ -93,8 +93,11 @@
   .selactions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .selbtn.comb { border:1px solid var(--ink); color:var(--ink); background:transparent; }
   .selbtn.comb:disabled { opacity:.35; }
+  /* the make-up is a statement, not a label: sentence case and normal spacing
+     so a full house still fits one line at 390pt (see STYLEGUIDE type scale) */
   .tablesline { text-align:center; margin-top:8px; font-family:Helvetica,Arial,sans-serif;
-                font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink); }
+                font-size:11.5px; letter-spacing:.02em; color:var(--ink);
+                white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .grpbox { border:1.2px solid var(--ink); border-radius:10px; padding:0 12px; margin:10px 0; }
   .tilegrp { display:grid; gap:6px; position:relative; }
   .tilegrp::after { content:''; position:absolute; inset:-3.5px;
