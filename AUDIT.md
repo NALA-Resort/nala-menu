@@ -198,3 +198,23 @@ rather than presenting a form that cannot work.
 Lesson: any control that disables itself pending an async call must
 re-enable on every path out, including the throw. Two suite checks now
 cover both failure shapes.
+
+### Follow-on break, same afternoon (v3 → v4)
+
+The v3 guard called `firebase.auth()` to test whether the SDK was usable —
+before `initializeApp`. The real compat SDK throws "No Firebase App
+'[DEFAULT]' has been created" when you do that, so the guard caught its own
+exception, concluded the SDK was missing, and locked every staff page behind
+a Reload panel that could never succeed. Shipped to Ben's phone.
+
+It passed every test because the mocked SDK returned an auth object whether
+or not initializeApp had run. The mock was more forgiving than the thing it
+mocked, so the suites were confirming a fiction.
+
+v4: check the SDK is PRESENT without calling it, initialise, then check it
+WORKS. All four suite mocks now throw before initializeApp exactly as the
+real SDK does; the v3 file fails those suites outright.
+
+Lesson: a mock that cannot fail the way the real dependency fails is not a
+test, it is a rehearsal. Every guard added to auth.js must be exercised
+against a mock that reproduces the real error, not a friendlier one.

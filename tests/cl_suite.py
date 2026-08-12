@@ -6,7 +6,8 @@ socketserver.TCPServer.allow_reuse_address=True
 httpd=socketserver.TCPServer(("",8957),Q)
 threading.Thread(target=httpd.serve_forever,daemon=True).start(); time.sleep(0.3)
 def sdk(email):
-    return """window.firebase={initializeApp:function(){},auth:function(){return window.__A;}};
+    return """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
+auth:function(){ if(!window.firebase.__i) throw new Error("No Firebase App '[DEFAULT]' has been created"); return window.__A;}};
 window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:'%s',getIdToken:function(){return Promise.resolve('T');}});},20);},
 onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'%s'});},25);},signOut:function(){}};"""%(email,email)
 now=datetime.datetime.now().astimezone(); today=now.strftime("%Y-%m-%d")

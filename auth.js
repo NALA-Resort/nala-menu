@@ -94,15 +94,15 @@
 
   /* ── auth wiring ─────────────────────────────────────── */
   /* app-compat gives us `firebase`, auth-compat gives us `firebase.auth`.
-     Either can fail to arrive on a flaky connection; check for both. */
-  function authObj(){
-    try { return (typeof firebase !== 'undefined' && typeof firebase.auth === 'function')
-                 ? firebase.auth() : null; }
-    catch (e){ return null; }
+     Either can fail to arrive on a flaky connection, so check both are
+     PRESENT — but never CALL firebase.auth() before initializeApp, because
+     the real SDK throws "No Firebase App has been created" if you do.     */
+  function sdkPresent(){
+    return typeof firebase !== 'undefined' && typeof firebase.auth === 'function';
   }
-  function authReady(){ var a = authObj(); return !!(a && typeof a.onIdTokenChanged === 'function'); }
+  function authObj(){ try { return sdkPresent() ? firebase.auth() : null; } catch (e){ return null; } }
   function canSignIn(){ var a = authObj(); return !!(a && typeof a.signInWithEmailAndPassword === 'function'); }
-  if (!authReady()){
+  if (!sdkPresent()){
     makeOverlay();
     OV.querySelector('#nalaAuthBox').innerHTML =
       '<div style="color:#A8321E;font-size:13px;line-height:1.5;">Could not load the sign-in service.<br>Check the connection, then reload.</div>'+
@@ -110,7 +110,17 @@
     document.getElementById('naReload').onclick = function(){ location.reload(); };
     return;
   }
-  firebase.initializeApp(CFG);
+  try { firebase.initializeApp(CFG); }
+  catch (e){ /* already initialised by another script — fine */ }
+
+  if (!authObj() || typeof authObj().onIdTokenChanged !== 'function'){
+    makeOverlay();
+    OV.querySelector('#nalaAuthBox').innerHTML =
+      '<div style="color:#A8321E;font-size:13px;line-height:1.5;">Could not start the sign-in service.<br>Check the connection, then reload.</div>'+
+      '<button id="naReload2" style="margin-top:18px;padding:14px 26px;background:#1C1C1A;color:#fff;border:0;border-radius:6px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;">Reload</button>';
+    document.getElementById('naReload2').onclick = function(){ location.reload(); };
+    return;
+  }
 
   makeOverlay();                 // instant cream cover, no content flash
 

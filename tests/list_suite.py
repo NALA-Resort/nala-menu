@@ -5,7 +5,8 @@ class Q(http.server.SimpleHTTPRequestHandler):
 socketserver.TCPServer.allow_reuse_address=True
 httpd=socketserver.TCPServer(("",8955),Q)
 threading.Thread(target=httpd.serve_forever,daemon=True).start(); time.sleep(0.3)
-SDK="""window.firebase={initializeApp:function(){},auth:function(){return window.__A;}};
+SDK="""window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
+auth:function(){ if(!window.firebase.__i) throw new Error("No Firebase App '[DEFAULT]' has been created"); return window.__A;}};
 window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:'staff@x',getIdToken:function(){return Promise.resolve('T');}});},20);},
 onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'staff@x'});},25);},signOut:function(){}};"""
 now=datetime.datetime.now().astimezone(); today=now.strftime("%Y-%m-%d")
@@ -129,7 +130,8 @@ with sync_playwright() as p:
     pb.route("**firebasedatabase.app/**",fb)
     pb.goto("http://localhost:8955/list.html"); pb.wait_for_timeout(1200)
     st=pb.evaluate("""()=>({box:(document.getElementById('nalaAuthBox')||{}).innerText||'',
-      form:!!document.getElementById('naGo'), reload:!!document.getElementById('naReload')})""")
+      form:!!document.getElementById('naGo'),
+      reload:!!(document.getElementById('naReload')||document.getElementById('naReload2'))})""")
     print("   broken-SDK panel:", repr(st["box"])[:90])
     ck("auth SDK missing: says so and offers reload, no dead form",
        st["reload"] and not st["form"] and "sign-in service" in st["box"].lower())
