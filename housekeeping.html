@@ -61,6 +61,15 @@
 
   .muted { color:#aaa; font-weight:normal; font-style:italic; }
 
+  /* Printed sheets repeat everything above the table on every page. A table
+     header group is the only thing browsers reliably repeat, so the block is
+     cloned into a thead row for paper and the on-screen original is hidden. */
+  .printhead { display:none; }
+  .printhead > td { border:0; padding:0 0 6px; }
+  @media print {
+    .printhead { display:table-row; }
+    .noprintblock { display:none !important; }
+  }
   @media print {
     body { padding:0; }
     .scroller { overflow:visible; }
@@ -106,6 +115,7 @@
 <div class="scroller">
   <table>
     <thead>
+      <tr class="printhead"><td colspan="7"><div id="printHead"></div></td></tr>
       <tr>
         <th class="c-room">Room</th>
         <th class="c-svc">Service</th>
@@ -235,6 +245,32 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
     document.getElementById('rows').innerHTML =
       '<tr><td colspan="7" style="padding:20px;color:#A8321E">Could not load - check connection and refresh.</td></tr>';
   });
+</script>
+
+<script>
+/* clone the above-table block into the printed header so every page carries it */
+(function(){
+  function fill(){
+    var slot = document.getElementById('printHead');
+    if (!slot) return;
+    slot.innerHTML = '';
+    ['.printkick','.daterow','.stats','.mgrstrip'].join(',').split(',').forEach(function(sel){
+      var el = document.querySelector(sel);
+      if (!el) return;
+      el.classList.add('noprintblock');
+      var c = el.cloneNode(true);
+      c.classList.remove('noprintblock');
+      c.querySelectorAll('[id]').forEach(function(n){ n.removeAttribute('id'); });
+      var nav = c.querySelector('.navwrap'); if (nav) nav.parentNode.removeChild(nav);
+      slot.appendChild(c);
+    });
+  }
+  window.addEventListener('beforeprint', fill);
+  if (window.matchMedia) {
+    var mq = window.matchMedia('print');
+    if (mq.addListener) mq.addListener(function(m){ if (m.matches) fill(); });
+  }
+})();
 </script>
 </body>
 </html>

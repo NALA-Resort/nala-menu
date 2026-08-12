@@ -92,6 +92,14 @@ the reader has to already know which side is which. Write the make-up as
 "3 twos · 1 three" — a wording that can be said out loud and cannot be
 read backwards.
 
+## Printed sheets — repeating header
+
+Everything above the table repeats on every printed page: page name, date,
+stats, and the manager strip where there is one. Browsers only reliably
+repeat a table header group, so the block is cloned into a `.printhead` row
+inside `<thead>` on `beforeprint`, and the on-screen original is hidden on
+paper. The clone drops the nav menu and strips ids so nothing is duplicated.
+
 ## Housekeeping badges and order
 
 - **Service** is a faint outline pill, **Clean** a solid ink pill, **Verify** a

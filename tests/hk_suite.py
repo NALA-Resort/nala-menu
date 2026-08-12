@@ -83,6 +83,19 @@ with sync_playwright() as p:
     fits=pa.evaluate("()=>Math.round(document.scrollingElement.scrollHeight)")
     print("   sheet height at A5 width:", fits, "of 718")
     ck("whole sheet fits one A5 page", fits<=718)
+    pa.evaluate("()=>window.dispatchEvent(new Event('beforeprint'))"); pa.wait_for_timeout(150)
+    ph=pa.evaluate("""()=>{const h=document.querySelector('.printhead');
+      if(!h) return null;
+      const td=h.querySelector('td');
+      return {cols:+td.getAttribute('colspan'), w:Math.round(td.getBoundingClientRect().width),
+              kick:!!h.querySelector('.printkick'), date:!!h.querySelector('.daterow'),
+              stats:!!h.querySelector('.stats'), mgr:!!h.querySelector('.mgrstrip'),
+              nav:!!h.querySelector('.navwrap'),
+              dupIds:document.querySelectorAll('#title').length};}""")
+    print("   repeated print header:", ph)
+    ck("print header repeats the whole above-table block, full width, no nav, no duplicate ids",
+       ph and ph["kick"] and ph["date"] and ph["stats"] and ph["mgr"]
+       and not ph["nav"] and ph["dupIds"]==1 and ph["w"]>400)
     # worst case: every room a job, plus the three write-ins, still one page
     pa.evaluate("""()=>{const tb=document.getElementById('rows');
       const t=[...tb.querySelectorAll('tr')].find(r=>!r.querySelector('.subtag') && r.className!=='writein');
