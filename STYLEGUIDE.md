@@ -71,6 +71,15 @@ Cream #F9F7F4 · Ink #1C1C1A · Mid #999990 · Rule #E0E0DA · Red #A8321E
 UI font: Helvetica/Arial. Content serif (app tier only): Georgia.
 Labels: 10-11px, uppercase, letterspaced .12-.15em.
 
+## Seating (combined tables)
+
+- The controls say **Seat together** and **Seat separately** — grouping rooms
+  onto one table. It never merges bookings.
+- Grouping affects table counts and adjacency display only. Per-room
+  reservations are independent of it and must survive any order of
+  operations; every `/manual` write preserves a room's reservation details
+  (name, phone, diets, notes, and a dining pax) via `withExtras`.
+
 ## Rules of change
 
 - **Shared files are versioned at their references.** Any edit to nala-ui.css
