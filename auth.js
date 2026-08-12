@@ -93,18 +93,30 @@
   firebase.initializeApp(CFG);
 
   makeOverlay();                 // instant cream cover, no content flash
-  setTimeout(function(){         // if no cached login materialises, show the form
+
+  /* A device that has signed in before gets its session back from Firebase in
+     under a second. Showing the form on a timer made it flash on every page
+     change. So: if this device is known to have a login, wait for the token
+     and never show the form on a timer; only a device with no remembered
+     login gets the form, and a long safety net covers a stalled restore.   */
+  var SEEN = 'nala_signed_in';
+  function remember(v){ try{ v ? localStorage.setItem(SEEN,'1') : localStorage.removeItem(SEEN); }catch(e){} }
+  var known = false; try{ known = localStorage.getItem(SEEN) === '1'; }catch(e){}
+
+  setTimeout(function(){
     if (!settled && !formShown) showForm();
-  }, 500);
+  }, known ? 8000 : 700);
 
   firebase.auth().onIdTokenChanged(function(user){
     if (user){
       user.getIdToken().then(function(t){
         window.__idToken = t;
+        remember(true);
         if (!settled){ settled = true; removeOverlay(); flush(); }
       });
     } else {
       window.__idToken = null;
+      remember(false);
       if (settled){            // signed out mid-session
         settled = false;
         showForm('Signed out - sign in to continue.');
