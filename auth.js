@@ -62,17 +62,26 @@
       var e = document.getElementById('naEmail').value.trim();
       var p = document.getElementById('naPass').value;
       var err = document.getElementById('naErr');
+      var btn = document.getElementById('naGo');
+      function fail(msg){ btn.disabled = false; err.textContent = msg; }
       if (!e || !p){ err.textContent = 'Enter the email and password.'; return; }
       err.textContent = '';
-      document.getElementById('naGo').disabled = true;
-      firebase.auth().signInWithEmailAndPassword(e, p)
+      btn.disabled = true;
+      /* The button must never be able to die silently: if the sign-in service
+         did not load, or the call throws for any reason, re-enable it and say
+         what happened rather than leaving a dead grey button. */
+      if (!canSignIn()){ fail('Sign-in service did not load - reload the page.'); return; }
+      var pr;
+      try { pr = firebase.auth().signInWithEmailAndPassword(e, p); }
+      catch (ex){ fail('Sign-in service did not load - reload the page.'); return; }
+      if (!pr || !pr.catch){ fail('Sign-in service did not load - reload the page.'); return; }
+      pr.then(function(){ btn.disabled = false; })
         .catch(function(ex){
-          document.getElementById('naGo').disabled = false;
           var c = (ex && ex.code) || '';
-          err.textContent =
+          fail(
             c.indexOf('network') > -1 ? 'No connection - try again.' :
             c.indexOf('too-many') > -1 ? 'Too many attempts - wait a minute.' :
-            'Wrong email or password.';
+            'Wrong email or password.');
         });
     };
     document.getElementById('naGo').onclick = go;
@@ -84,10 +93,21 @@
   }
 
   /* ── auth wiring ─────────────────────────────────────── */
-  if (typeof firebase === 'undefined'){
+  /* app-compat gives us `firebase`, auth-compat gives us `firebase.auth`.
+     Either can fail to arrive on a flaky connection; check for both. */
+  function authObj(){
+    try { return (typeof firebase !== 'undefined' && typeof firebase.auth === 'function')
+                 ? firebase.auth() : null; }
+    catch (e){ return null; }
+  }
+  function authReady(){ var a = authObj(); return !!(a && typeof a.onIdTokenChanged === 'function'); }
+  function canSignIn(){ var a = authObj(); return !!(a && typeof a.signInWithEmailAndPassword === 'function'); }
+  if (!authReady()){
     makeOverlay();
     OV.querySelector('#nalaAuthBox').innerHTML =
-      '<div style="color:#A8321E;font-size:13px;">Could not load the sign-in service.<br>Check the connection and refresh.</div>';
+      '<div style="color:#A8321E;font-size:13px;line-height:1.5;">Could not load the sign-in service.<br>Check the connection, then reload.</div>'+
+      '<button id="naReload" style="margin-top:18px;padding:14px 26px;background:#1C1C1A;color:#fff;border:0;border-radius:6px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;">Reload</button>';
+    document.getElementById('naReload').onclick = function(){ location.reload(); };
     return;
   }
   firebase.initializeApp(CFG);

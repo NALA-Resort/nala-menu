@@ -177,3 +177,24 @@ by a passing check.
 
 Lesson applied everywhere: verification must assert rendered outcomes
 (pixels, geometry, interaction), not markup shape.
+
+## Dead sign-in button (12 Aug, found by Ben on his phone)
+
+Symptom: sign-in form appears, Sign in does nothing.
+
+Cause: `go()` disabled the button and then called
+`firebase.auth().signInWithEmailAndPassword(...)`. If auth-compat had not
+arrived — a flaky connection is enough — that call threw before the promise
+existed, so nothing re-enabled the button and no message was written. A
+silent grey button, indistinguishable from a hung app. The same shape had
+been there since auth.js v1; the v2 work did not introduce it and did not
+catch it either, because every test stubbed a working SDK.
+
+Fix (v3): check what each moment actually needs — a usable session layer at
+load, a usable sign-in method at the tap — and never let the button end a
+tap disabled. If the service is missing at load, say so and offer Reload
+rather than presenting a form that cannot work.
+
+Lesson: any control that disables itself pending an async call must
+re-enable on every path out, including the throw. Two suite checks now
+cover both failure shapes.
