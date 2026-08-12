@@ -58,15 +58,15 @@ with sync_playwright() as p:
       arr:t.cells[2].textContent.trim(),dep:t.cells[3].textContent.trim(),
       done:t.cells[4].innerHTML,insp:t.cells[6].innerHTML}))""")
     order=[r["room"] for r in rw]
-    ck("17 rows, cleans first then svc then verify then vacant",
-       len(rw)==17 and order[:2]==["1","7"] and order[2:5]==["2","4","8"] and order[-1]=="5")
-    r1=rw[0]
+    ck("17 rows, services first then cleans then verify then vacant",
+       len(rw)==17 and order[:3]==["2","4","8"] and order[3:5]==["1","7"] and order[-1]=="5")
+    r1=[r for r in rw if r["room"]=="1"][0]
     ck("room1 Clean chip + done tick with time (6-digit ISO parsed)", "Clean" in r1["svc"] and "✓" in r1["done"] and re.search(r'\d{2}:\d{2}',r1["done"]))
     r2=[r for r in rw if r["room"]=="2"][0]
     ck("room2 Service + At breakfast", "Service" in r2["svc"] and "At breakfast" in r2["svc"])
     r4=[r for r in rw if r["room"]=="4"][0]
     ck("room4 Departed subtag", "Departed" in r4["svc"])
-    r7=rw[1]
+    r7=[r for r in rw if r["room"]=="7"][0]
     ck("room7 done clears breakfast subtag", "At breakfast" not in r7["svc"] and "✓" in r7["done"])
     r3=[r for r in rw if r["room"]=="3"][0]
     ck("room3 stale departure -> Verify", "Verify" in r3["svc"])

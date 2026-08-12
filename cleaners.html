@@ -25,14 +25,19 @@
 
   .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:10px; }
   .tile { border:1.2px solid var(--rule); border-radius:10px; background:#fff;
-          padding:12px 8px 10px; text-align:center; cursor:pointer;
+          padding:12px 8px 10px; text-align:center; cursor:pointer; color:var(--ink);
           font-family:Helvetica,Arial,sans-serif; position:relative; min-height:96px;
           display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; }
   .tile .rn { font-size:20px; font-weight:bold; }
+  /* Clean is a solid ink pill, Service a faint outline: the two jobs must be
+     tellable apart at arm's length, not by reading the word.               */
   .tile .chip { display:inline-block; border:1.2px solid var(--ink); border-radius:5px;
-                padding:1px 8px; font-weight:bold; font-size:9px; letter-spacing:.08em; }
-  .tile .chip.svc { border-color:#B5B5AD; color:#6A6A63; font-weight:normal; }
-  .tile .chip.ver { border-style:dashed; border-color:var(--red); color:var(--red); }
+                padding:1px 8px; font-weight:bold; font-size:9px; letter-spacing:.08em;
+                background:var(--ink); color:var(--cream); text-transform:uppercase; }
+  .tile .chip.svc { background:transparent; border-color:#B5B5AD; color:#6A6A63;
+                    font-weight:normal; letter-spacing:.12em; }
+  .tile .chip.ver { background:transparent; border-style:dashed; border-color:var(--red);
+                    color:var(--red); }
   .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
   .tile .sub b { color:var(--ink); }
 
@@ -149,6 +154,11 @@ function load(){
       var r=roomRecord(n, responses, manual, roomguests);
       rows.push({ n:n, kind:hkClassify(r, todayKey()) });
     }
+    // services first: they are attempted during breakfast, before the
+    // departure cleans open up. Then cleans, verify, vacant, room order
+    // within each block.
+    var korder={svc:0, clean:1, ver:2, vac:3};
+    rows.sort(function(a,b){ return (korder[a.kind]-korder[b.kind]) || (a.n-b.n); });
     STATE.rows=rows; STATE.hk=hk;
     render();
   });

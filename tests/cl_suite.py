@@ -62,12 +62,24 @@ with sync_playwright() as p:
     t=pg.evaluate("""()=>{const o={};document.querySelectorAll('#grid .tile').forEach(b=>{
       o[b.querySelector('.rn').textContent]={cls:b.className,txt:b.textContent};});return o;}""")
     ck("room1 Clean occupied", "Clean" in t["1"]["txt"] and "Occupied" in t["1"]["txt"])
+    ordr=pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].map(b=>b.querySelector('.rn').textContent)")
+    print("   tile order:", ordr)
+    ck("services first, then cleans, vacant last",
+       ordr[0]=="2" and ordr[1:3]==["1","7"] and ordr[-1]=="5")
+    chips=pg.evaluate("""()=>{const g=n=>[...document.querySelectorAll('#grid .tile')]
+      .find(b=>b.querySelector('.rn').textContent===n).querySelector('.chip');
+      const c=n=>{const e=g(n),s=getComputedStyle(e);return {bg:s.backgroundColor,fg:s.color,t:e.textContent};};
+      return {clean:c('1'),svc:c('2')};}""")
+    print("   chips:", chips)
+    ck("Clean badge solid ink, Service badge unfilled",
+       chips["clean"]["bg"]=="rgb(28, 28, 26)" and chips["svc"]["bg"]=="rgba(0, 0, 0, 0)"
+       and chips["clean"]["fg"]!=chips["svc"]["fg"])
     ck("room7 done green with time (6-digit ISO)", "done" in t["7"]["cls"] and re.search(r'Done \d{2}:\d{2}',t["7"]["txt"]))
     ck("room2 breakfast amber with elapsed", "bfast" in t["2"]["cls"] and re.search(r'B.fast 1[12]m',t["2"]["txt"]))
     ck("room5 vacant faded", "vac" in t["5"]["cls"])
     ck("room3 verify, occupancy unknown", "Verify" in t["3"]["txt"] and "Occupancy unknown" in t["3"]["txt"])
     # vacant untappable
-    pg.evaluate("()=>document.querySelectorAll('#grid .tile')[4].click()")
+    pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.className.includes('vac')).click()")
     ck("vacant tile opens nothing", pg.evaluate("()=>ov.className")=="ov")
     # clean room sheet has departed option; svc doesn't
     tile(pg,1).click(); pg.wait_for_timeout(200)
@@ -89,7 +101,7 @@ with sync_playwright() as p:
     w=[x for x in WRITES if re.search(r"/hk/"+today+r"/1\.json",x["u"])]
     ck("PATCH done for room1", len(w)==1 and "done" in json.loads(w[0]["b"]))
     ck("room1 tile green, done count 2, sheet closed",
-       pg.evaluate("()=>({c:nDone.textContent,cls:[...document.querySelectorAll('#grid .tile')][0].className,ov:ov.className})")=={"c":"2","cls":"tile done","ov":"ov"})
+       pg.evaluate("()=>({c:nDone.textContent,cls:[...document.querySelectorAll('#grid .tile')].find(b=>b.querySelector('.rn').textContent==='1').className,ov:ov.className})")=={"c":"2","cls":"tile done","ov":"ov"})
     # breakfast stamp 10 min ago on room 3
     tile(pg,3).click(); pg.wait_for_timeout(150)
     pg.locator(".pbtn",has_text="Guest at breakfast").click(); pg.wait_for_timeout(150)
@@ -100,14 +112,14 @@ with sync_playwright() as p:
         ts=json.loads(w[0]["b"]).get("bfast",""); t3=datetime.datetime.fromisoformat(ts.replace("Z","+00:00"))
         okb=8<= (now.astimezone(datetime.timezone.utc)-t3.astimezone(datetime.timezone.utc)).total_seconds()/60 <=12
     ck("PATCH bfast ~10m ago", okb)
-    ck("room3 amber ~10m", "bfast" in pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')][2].className"))
+    ck("room3 amber ~10m", "bfast" in pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.querySelector('.rn').textContent==='3').className"))
     # rollback on rejection
     STATE["fail"]=True
     tile(pg,4).click(); pg.wait_for_timeout(150)
     pg.locator(".pbtn.solid",has_text="Room done").click(); pg.wait_for_timeout(150)
     pg.locator(".pbtn.solid",has_text="Yes - done").click(); pg.wait_for_timeout(400)
     ck("rejected write: error shown, sheet stays", "tell the manager" in pg.locator("#perr").inner_text())
-    ck("rejected write rolled back", "done" not in pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')][3].className"))
+    ck("rejected write rolled back", "done" not in pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.querySelector('.rn').textContent==='4').className"))
     STATE["fail"]=False
     pg.locator(".pbtn.ghost",has_text="Back").click(); pg.wait_for_timeout(100)
     pg.locator(".pbtn.ghost",has_text="Close").click()

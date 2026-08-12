@@ -77,6 +77,15 @@ Cream #F9F7F4 · Ink #1C1C1A · Mid #999990 · Rule #E0E0DA · Red #A8321E
 UI font: Helvetica/Arial. Content serif (app tier only): Georgia.
 Labels: 10-11px, uppercase, letterspaced .12-.15em.
 
+## Housekeeping badges and order
+
+- **Service** is a faint outline pill, **Clean** a solid ink pill, **Verify** a
+  dashed red pill. The three must separate at arm's length without reading
+  the word, on the board and on paper.
+- **Order on both housekeeping pages: services, then cleans, then verify,
+  then vacant**, room order within each block. Services are attempted during
+  breakfast, before the departure cleans open up.
+
 ## Seating (combined tables)
 
 - The controls say **Seat together** and **Seat separately** — grouping rooms
