@@ -291,7 +291,7 @@
       <button class="selbtn din"   id="sbDin">Dining</button>
       <button class="selbtn out"   id="sbOut">Not dining</button>
       <button class="selbtn quiet" id="sbClear">Clear rooms</button>
-      <button class="selbtn comb"  id="sbComb">Combine tables</button>
+      <button class="selbtn comb"  id="sbComb">Seat together</button>
       <button class="selbtn quiet" id="sbDone">Close</button>
     </div>
   </div>
@@ -379,6 +379,17 @@ function showError(msg){
   el.className = 'errbar show';
   clearTimeout(errTimer);
   errTimer = setTimeout(function(){ el.className='errbar'; }, 6000);
+}
+
+// a room's reservation details survive any status write, in any order
+function withExtras(key, rec){
+  var prev = manual[key];
+  if (prev){
+    ['name','phone','diets','note','dnote'].forEach(function(k){
+      if (rec[k] === undefined && prev[k] !== undefined) rec[k] = prev[k];
+    });
+  }
+  return rec;
 }
 
 // ── every /manual write goes through here: optimistic update,
@@ -707,7 +718,7 @@ function selCountUpdate(){
     n ? n + (n===1 ? ' room selected' : ' rooms selected') : 'Tap rooms to select';
   var cb = document.getElementById('sbComb');
   cb.disabled = n < 2;
-  cb.textContent = selEqualsGroup() ? 'Uncombine tables' : 'Combine tables';
+  cb.textContent = selEqualsGroup() ? 'Seat separately' : 'Seat together';
   selBar.className = 'selbar' + (selectMode ? ' show' : '');
 }
 
@@ -740,9 +751,11 @@ function applyToSelected(status){
     // if the guest replied for this room, mark it as an override
     var hasGuest = false;
     for (var k in responses){ if (String(responses[k].room) === String(n)) hasGuest = true; }
-    var rec = { status:status, pax:(status==='in'?2:0), room:String(n), source:'manual' };
+    var prev = manual['room-'+n];
+    var keepPax = (status==='in' && prev && prev.status==='in' && prev.pax) ? prev.pax : null;
+    var rec = { status:status, pax:(status==='in' ? (keepPax||2) : 0), room:String(n), source:'manual' };
     if (hasGuest) rec.override = true;
-    saveManual('room-'+n, rec);
+    saveManual('room-'+n, withExtras('room-'+n, rec));
   });
 
   exitSelect();
@@ -836,6 +849,51 @@ function guestDataHTML(g, knownName){
   return h ? '<div class="gd">'+h+'</div>' : '';
 }
 
+function editRoomDetails(n, st){
+  var g = st.g || {};
+  var known = (roomguests[String(n)]||{});
+  var diets = (g.diets || []).slice();
+  sheet.innerHTML =
+    '<h3>Room '+n+' \u00b7 details</h3>'+
+    '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
+    '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
+    '<div class="sheet-label">Dietary requirements</div>'+
+    '<div class="chips" id="dietChips"></div>'+
+    '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
+    '<button class="opt solid" id="oSave" style="margin-top:8px">Save details</button>'+
+    '<button class="opt quiet" id="oBack">Back</button>';
+  showSheet();
+  revealAction();
+  document.getElementById('xName').value  = g.name  || known.name || '';
+  document.getElementById('xPhone').value = g.phone || '';
+  document.getElementById('xNote').value  = g.note  || '';
+  (function paintChips(){
+    var box=document.getElementById('dietChips'); box.innerHTML='';
+    DIETARIES.forEach(function(d){
+      var b=document.createElement('button');
+      b.className='chip'+(diets.indexOf(d)>-1?' on':''); b.textContent=d;
+      b.onclick=function(){
+        var i=diets.indexOf(d);
+        if(i>-1) diets.splice(i,1); else diets.push(d);
+        paintChips();
+      };
+      box.appendChild(b);
+    });
+  })();
+  document.getElementById('oSave').onclick = function(){
+    var rec = { status:'in', pax:(g.pax||2), room:String(n), source:'manual' };
+    if (st.src==='digital' || st.override) rec.override = true;
+    rec.name  = document.getElementById('xName').value.trim();
+    rec.phone = document.getElementById('xPhone').value.trim();
+    rec.note  = document.getElementById('xNote').value.trim();
+    rec.diets = diets.slice();
+    if (g.dnote) rec.dnote = g.dnote;   // the guest's own dietary note stays theirs
+    saveManual('room-'+n, rec);
+    close(); render();
+  };
+  document.getElementById('oBack').onclick = function(){ openRoom(n, st); };
+}
+
 function openRoom(n, st){
   var pax = (st && st.g.pax) || 2;
   var guestAnswer = st && (st.src==='digital' ? st.g : st.guest);
@@ -845,8 +903,8 @@ function openRoom(n, st){
   function shell(inner){
     var mates = groupMates(n);
     var combHtml = mates.length
-      ? '<div class="comb-note">Table with Room '+mates.join(' & ')+
-        '<button class="comb-undo" id="oUncomb">Uncombine</button></div>'
+      ? '<div class="comb-note">Seated with Room '+mates.join(' & ')+
+        '<button class="comb-undo" id="oUncomb">Seat separately</button></div>'
       : '';
     sheet.innerHTML = '<h3>Room '+n+'</h3>' + combHtml +
       guestDataHTML(st && st.g, knownName) + inner;
@@ -868,14 +926,7 @@ function openRoom(n, st){
   function paintPax(){ paxPicker(6, function(){return pax;}, function(v){pax=v;}); }
 
   function writeManual(rec){
-    // a room reservation may carry guest details — keep them across edits
-    var prev = manual['room-'+n];
-    if (prev && rec.status === 'in'){
-      ['name','phone','diets','note'].forEach(function(k){
-        if (rec[k] === undefined && prev[k] !== undefined) rec[k] = prev[k];
-      });
-    }
-    saveManual('room-'+n, rec); close(); render();
+    saveManual('room-'+n, withExtras('room-'+n, rec)); close(); render();
   }
   function clearManual(){ saveManual('room-'+n); close(); render(); }
 
@@ -907,6 +958,7 @@ function openRoom(n, st){
       '</div>'+
       paxBlock()+
       '<button class="opt solid" id="oSave">Update guests</button>'+
+      '<button class="opt quiet" id="oDetails">Edit details</button>'+
       '<button class="opt out" id="oCancel">Cancel booking</button>'+
       (guestAnswer ? '<button class="opt quiet" id="oRevert">Revert to guest\u2019s answer</button>' : '')+
       '<button class="opt quiet" id="oClose">Close</button>'
@@ -922,6 +974,7 @@ function openRoom(n, st){
     };
     var rv = document.getElementById('oRevert');
     if (rv) rv.onclick = clearManual;
+    document.getElementById('oDetails').onclick = function(){ editRoomDetails(n, st); };
     document.getElementById('oClose').onclick = close;
     return;
   }
@@ -935,6 +988,7 @@ function openRoom(n, st){
         (st.g.name ? ' \u2014 '+st.g.name : '')+'.</div>'+
         paxBlock()+
         '<button class="opt solid" id="oSave">Update guests</button>'+
+        '<button class="opt quiet" id="oDetails">Edit details</button>'+
         '<button class="opt out" id="oCancel">Cancel booking</button>'+
         '<button class="opt quiet" id="oClose">Close</button>'
       );
@@ -942,6 +996,7 @@ function openRoom(n, st){
       document.getElementById('oSave').onclick = function(){
         writeManual({ status:'in', pax:pax, room:String(n), override:true, source:'manual' });
       };
+      document.getElementById('oDetails').onclick = function(){ editRoomDetails(n, st); };
       document.getElementById('oCancel').onclick = function(){
         confirmSheet('Room '+n,
           'Cancel this booking?<br>The guest confirmed it themselves.',
@@ -976,6 +1031,7 @@ function openRoom(n, st){
       : '')+
     paxBlock()+
     '<button class="opt solid" id="oIn">Dining</button>'+
+    (st && st.g.status==='in' ? '<button class="opt quiet" id="oDetails">Edit details</button>' : '')+
     '<button class="opt out" id="oOut">Not dining</button>'+
     '<button class="opt vac" id="oVac">Vacant tonight</button>'+
     (st ? '<button class="opt quiet" id="oClear">Clear</button>' : '')+
@@ -985,6 +1041,8 @@ function openRoom(n, st){
   document.getElementById('oIn').onclick  = function(){ writeManual({ status:'in',  pax:pax, room:String(n), source:'manual' }); };
   document.getElementById('oOut').onclick = function(){ writeManual({ status:'out', pax:0,  room:String(n), source:'manual' }); };
   document.getElementById('oVac').onclick = function(){ writeManual({ status:'vacant', pax:0, room:String(n), source:'manual' }); };
+  var dt = document.getElementById('oDetails');
+  if (dt) dt.onclick = function(){ editRoomDetails(n, st); };
   var cl = document.getElementById('oClear');
   if (cl) cl.onclick = function(){
     confirmSheet('Room '+n,
