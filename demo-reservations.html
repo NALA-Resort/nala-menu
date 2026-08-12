@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEMO · Nala — Service Sheet</title>
+<style>
+/* NALA staff UI — shared controls. See STYLEGUIDE.md.
+   Pages declare <body class="tier-app"> or <body class="tier-print">.  */
+
+:root {
+  --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+  --ui-font:Helvetica,Arial,sans-serif;
+}
+
+/* tier surfaces used by controls */
+.tier-app   { --ctl-bg:var(--cream); --ctl-bdr:var(--rule); --ctl-ink:var(--ink); }
+.tier-print { --ctl-bg:#fff;         --ctl-bdr:#ddd;        --ctl-ink:#111;      }
+
+/* ── one header row: [Today] [<] date [>] ....... [menu] ── */
+.navwrap { position:relative; margin-left:auto; z-index:500; font-family:var(--ui-font); }
+.navbtn  { border:1px solid var(--ctl-bdr); background:var(--ctl-bg);
+           border-radius:8px; cursor:pointer; display:flex; flex-direction:column;
+           align-items:center; justify-content:center; gap:4px; padding:0;
+           -webkit-tap-highlight-color:transparent; }
+.navbtn span { display:block; width:16px; height:1.6px; background:var(--ctl-ink); }
+.navdrop { display:none; position:absolute; right:0; top:42px; background:var(--ctl-bg);
+           border:1px solid var(--ctl-bdr); border-radius:9px; min-width:132px;
+           box-shadow:0 4px 14px rgba(0,0,0,.09); padding:5px 0; }
+.navdrop.open { display:block; }
+.navdrop a { display:block; padding:12px 18px; font-size:10px; letter-spacing:.14em;
+             text-transform:uppercase; color:var(--ctl-ink); text-decoration:none;
+             white-space:nowrap; }
+
+/* ── floating footer ──────────────────────────────────────
+   sticky pins it while scrolling long pages; the flex column
+   below pins it to the screen bottom on short pages too      */
+body { min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
+body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
+.wrap > .foot, body > .foot { margin-top:auto; }
+.foot { position:sticky; bottom:0; z-index:40; display:flex; gap:8px; flex-wrap:wrap;
+        background:var(--ctl-bg); border-top:1px solid var(--ctl-bdr); margin-top:18px;
+        padding:10px 0 calc(10px + env(safe-area-inset-bottom)); }
+.foot .btn { flex:1; text-align:center; white-space:nowrap; }
+/* the row sits hard against the bottom of the screen: soften only the two
+   corners that land in the phone's own rounded corners                     */
+.foot .btn:first-child { border-bottom-left-radius:8px; }
+.foot .btn:last-child  { border-bottom-right-radius:8px; }
+
+/* ── standard header: kicker, then one date row ─────── */
+.daterow { display:flex; align-items:center; gap:8px;
+           margin-bottom:12px; font-family:var(--ui-font); }
+.daterow .date { font-size:13px; font-weight:bold; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--ctl-ink); white-space:nowrap;
+                 padding:0 2px; }
+.dnav { width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center;
+        background:var(--ctl-bg); border:1px solid var(--ctl-bdr); border-radius:7px;
+        font-size:16px; line-height:1; color:var(--ctl-ink); cursor:pointer; padding:0;
+        -webkit-tap-highlight-color:transparent; }
+.dnav:active { background:var(--ctl-bdr); }
+.dnav.today { width:auto; padding:0 12px; font-size:9.5px; letter-spacing:.13em;
+              text-transform:uppercase; }
+.dnav.today:disabled { opacity:.35; cursor:default; }
+.navbtn { width:42px; height:36px; }
+/* page name on paper only — the screen row replaces it */
+.printkick { display:none; }
+@media print { .printkick { display:block; text-align:center; font-family:var(--ui-font);
+  font-size:10px; letter-spacing:.34em; text-transform:uppercase; color:#666;
+  margin-bottom:8px; } }
+
+/* ── information is plain typography, never boxed ───── */
+.stats { display:flex; justify-content:center; gap:36px; margin:16px 0 6px;
+         font-family:var(--ui-font); }
+.stat { text-align:center; }
+.stat-n { display:block; font-size:27px; line-height:1; color:var(--ctl-ink);
+          font-family:Georgia,serif; }
+.stat-l { display:block; font-size:8px; letter-spacing:.2em; text-transform:uppercase;
+          color:var(--mid); margin-top:6px; }
+.stat.warn .stat-n { color:var(--red); }
+
+/* keep controls off paper */
+@media print {
+  .navwrap, .foot, .dnav { display:none !important; }
+  body { display:block; min-height:0; }   /* flex column off paper */
+}
+
+</style>
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Helvetica, Arial, sans-serif; color:#111; background:#fff; padding:16px 16px 0; }
+
+  .btn { padding:10px 20px; background:#111; color:#fff; border:none;
+         font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
+         text-transform:uppercase; cursor:pointer; }
+  .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+  .stamp { margin-top:10px; font-size:7.5px; letter-spacing:.1em;
+           text-transform:uppercase; color:#999; text-align:right; }
+
+  .scroller { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  table { width:100%; min-width:760px; border-collapse:separate; border-spacing:0; }
+  th { font-size:7px; letter-spacing:.12em; text-transform:uppercase; color:#666;
+       text-align:left; padding:0 5px 6px; border-bottom:1px solid #111;
+       white-space:nowrap; vertical-align:bottom; }
+  th.wrap { white-space:normal; line-height:1.25; text-align:center; }
+
+  /* box the hand-written table columns */
+  th.c-dt, td.c-dt { border-left:1px solid #999; }
+  th.c-bt, td.c-bt { border-left:1px solid #bbb; border-right:1px solid #999; }
+  td { font-size:9.5px; padding:7.5px 5px; border-bottom:1px solid #ddd; vertical-align:top; }
+  tr { page-break-inside:avoid; }
+
+  .c-name { width:17%; font-weight:bold; }
+  .c-room { width:5%;  text-align:center; }
+  .c-din  { width:6%;  text-align:center; }
+  .c-pax  { width:4%;  text-align:center; }
+  .c-diet { width:19%; }
+  .c-dep  { width:10%; }
+  .c-dt   { width:5%;  text-align:center; }
+  .c-bt   { width:5%;  text-align:center; }
+  .c-com  { width:29%; }
+
+  .yes { color:#3F7A52; font-weight:bold; }
+  .no  { color:#A8321E; }
+  .unk { color:#bbb; }
+  /* The make-up IS the instruction for whoever sets the room, so it is the
+     stat; the count is its checksum and lives in the label. Anchored left and
+     right so the row does not slide as the make-up changes length.          */
+  .stats { justify-content:space-between; gap:18px; align-items:baseline; }
+  .stat.statmix { text-align:left; }
+  .stat.statmix .stat-n { font-size:15px; letter-spacing:.01em; white-space:nowrap; }
+  .stats .stat:last-child { text-align:right; }
+  .stats .stat:last-child .stat-n { font-size:20px; }
+  .row-out td { background:#FAF6F5; }
+  .row-unk td { background:#FCFCFB; }
+  .row-vacant td { background:#F4F4F2; color:#B0B0AA; }
+
+  .sub { display:block; font-size:8px; color:#777; font-weight:normal; margin-top:2px; }
+  .allergen { color:#A8321E; font-weight:bold; }
+  .checkout { color:#A8321E; font-weight:bold; }
+  .row-conflict td { background:#F7E4DF; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .flag { display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:7px; font-weight:bold;
+          letter-spacing:.12em; border:1.2px solid #A8321E; color:#A8321E; padding:1px 4px;
+          margin-right:5px; vertical-align:1px; }
+  .dnote { display:block; font-size:8px; color:#333; font-style:italic; margin-top:2px; }
+  .pre { display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:7px; font-weight:bold;
+         letter-spacing:.12em; border:1px solid #888; color:#555; padding:1px 4px;
+         margin-right:5px; vertical-align:1px; }
+  tr.g-in td:first-child { border-left:1px solid #8C8C86; }
+  tr.g-in td.c-room      { border-right:1px solid #8C8C86; }
+  tr.g-first td:first-child, tr.g-first td.c-room { border-top:1px solid #8C8C86; }
+  tr.g-last td:first-child,  tr.g-last td.c-room  { border-bottom:1px solid #8C8C86; }
+  tr.g-first td:first-child { border-top-left-radius:9px; }
+  tr.g-first td.c-room      { border-top-right-radius:9px; }
+  tr.g-last td:first-child  { border-bottom-left-radius:9px; }
+  tr.g-last td.c-room       { border-bottom-right-radius:9px; }
+  .muted { color:#aaa; font-weight:normal; font-style:italic; }
+
+  /* empty write-in rows: one rule only, from the cell border */
+  tr.blank td { height:26px; }
+
+
+  /* Printed sheets repeat everything above the table on every page. A table
+     header group is the only thing browsers reliably repeat, so the block is
+     cloned into a thead row for paper and the on-screen original is hidden. */
+  .printhead { display:none; }
+  .printhead > td { border:0; padding:0 0 6px; }
+  @media print {
+    .printhead { display:table-row; }
+    .noprintblock { display:none !important; }
+  }
+  @media print {
+    body { padding:0; }
+    .scroller { overflow:visible; }
+    table { min-width:0; width:100%; }
+    tr { page-break-inside:avoid; }
+    thead { display:table-header-group; }
+    table { border-collapse:collapse; }   /* Safari repeats headers only when collapsed */
+  }
+</style>
+</head>
+<body class="tier-print">
+
+
+
+<div class="printkick">Nala &middot; Res print</div>
+<div class="daterow">
+  <button class="dnav today" id="dToday">Today</button>
+  <button class="dnav" id="dPrev">&#8249;</button>
+  <div class="date" id="title"></div>
+  <button class="dnav" id="dNext">&#8250;</button>
+  <div class="navwrap">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"><a href="demo-reservations.html">Reservations</a><a href="demo-clean.html">Cleans</a><a href="demo-clean.html">Clean sheet</a></div>
+  </div>
+</div>
+
+<script>
+/* ── OFFLINE DEMO ─────────────────────────────────────────────────────
+   No Firebase, no auth, no network. Fixed data below. Writes do nothing. */
+(function(){
+  var DATA = {"responses": {"0400000001": {"status": "in", "pax": 2, "room": "1", "name": "James Harrington", "phone": "0400 000 001", "at": "~D0~T09:01:00", "note": "Window seat please"}, "0400000002": {"status": "in", "pax": 2, "room": "2", "name": "Elena Petrova", "phone": "0400 000 002", "at": "~D0~T09:02:00"}, "0400000003": {"status": "in", "pax": 3, "room": "3", "name": "Mark Whitfield", "phone": "0400 000 003", "at": "~D0~T09:03:00", "diets": ["Nut allergy"]}, "0400000004": {"status": "in", "pax": 2, "room": "4", "name": "Lucy Whitfield", "phone": "0400 000 004", "at": "~D0~T09:04:00"}, "0400000005": {"status": "in", "pax": 2, "room": "5", "name": "David Chen", "phone": "0400 000 005", "at": "~D0~T09:05:00"}, "0400000006": {"status": "out", "room": "6", "name": "Priya Sharma", "at": "~D0~T09:00:00"}, "0400000007": {"status": "in", "pax": 2, "room": "7", "name": "Tom Ashby", "phone": "0400 000 007", "at": "~D0~T09:07:00", "diets": ["Dairy free"]}, "0400000008": {"status": "in", "pax": 2, "room": "8", "name": "Ruby Vance", "phone": "0400 000 008", "at": "~D0~T09:08:00", "note": "Birthday"}, "0400000010": {"status": "in", "pax": 2, "room": "10", "name": "Sam Okafor", "phone": "0400 000 010", "at": "~D0~T09:10:00"}, "0400000011": {"status": "in", "pax": 2, "room": "11", "name": "Nina Brandt", "phone": "0400 000 011", "at": "~D0~T09:11:00", "diets": ["Coeliac"]}, "0400000012": {"status": "in", "pax": 3, "room": "12", "name": "Owen Reilly", "phone": "0400 000 012", "at": "~D0~T09:12:00", "note": "Quiet corner"}, "0400000013": {"status": "out", "room": "13", "name": "Hana Sato", "at": "~D0~T09:00:00"}, "0400000014": {"status": "in", "pax": 2, "room": "14", "name": "Marco Bianchi", "phone": "0400 000 014", "at": "~D0~T09:14:00"}, "0400000015": {"status": "in", "pax": 3, "room": "15", "name": "Freya Lindqvist", "phone": "0400 000 015", "at": "~D0~T09:15:00", "diets": ["Vegetarian"]}, "0400000017": {"status": "in", "pax": 2, "room": "17", "name": "Iris Kovac", "phone": "0400 000 017", "at": "~D0~T09:17:00"}}, "roomguests": {"1": {"name": "James Harrington", "arrives": "~D-2~", "departs": "~D+2~"}, "2": {"name": "Elena Petrova", "arrives": "~D-2~", "departs": "~D+2~"}, "3": {"name": "Mark Whitfield", "arrives": "~D-2~", "departs": "~D+2~"}, "4": {"name": "Lucy Whitfield", "arrives": "~D-2~", "departs": "~D+2~"}, "5": {"name": "David Chen", "arrives": "~D-2~", "departs": "~D0~"}, "6": {"name": "Priya Sharma", "arrives": "~D-2~", "departs": "~D+2~"}, "7": {"name": "Tom Ashby", "arrives": "~D-2~", "departs": "~D+2~"}, "8": {"name": "Ruby Vance", "arrives": "~D-2~", "departs": "~D+2~"}, "9": {"name": "Claire Donnelly", "arrives": "~D-2~", "departs": "~D+2~"}, "10": {"name": "Sam Okafor", "arrives": "~D-2~", "departs": "~D0~"}, "11": {"name": "Nina Brandt", "arrives": "~D-2~", "departs": "~D+2~"}, "12": {"name": "Owen Reilly", "arrives": "~D-2~", "departs": "~D+2~"}, "13": {"name": "Hana Sato", "arrives": "~D-2~", "departs": "~D+2~"}, "14": {"name": "Marco Bianchi", "arrives": "~D-2~", "departs": "~D+2~"}, "15": {"name": "Freya Lindqvist", "arrives": "~D-2~", "departs": "~D0~"}, "16": {"name": "Jonah Adeyemi", "arrives": "~D-2~", "departs": "~D+2~"}, "17": {"name": "Iris Kovac", "arrives": "~D-2~", "departs": "~D+2~"}}, "hk": {"1": {"bfast": "~D0~T07:51:00"}, "2": {"bfast": "~D0~T07:52:00"}, "5": {"done": "~D0~T10:05:00"}, "10": {"done": "~D0~T10:010:00"}, "15": {"departed": true}}, "manual": {"ext-1": {"status": "in", "pax": 2, "name": "Cane", "source": "manual", "diets": ["Dairy free"], "external": true}, "ext-2": {"status": "in", "pax": 2, "name": "Jill", "source": "manual", "external": true}, "ext-3": {"status": "in", "pax": 2, "name": "Larry", "source": "manual", "note": "Birthday", "external": true}}, "combined": {"g1": {"rooms": ["3", "4"]}, "g2": {"rooms": ["7", "8", "9"]}}};
+  function todayISO(){ var d=new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function shift(n){ var d=new Date(); d.setDate(d.getDate()+n);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function dates(o){                 /* ~D0~ / ~D+2~ / ~D-2~ -> real dates */
+    return JSON.parse(JSON.stringify(o), function(k,v){
+      if (typeof v !== 'string') return v;
+      return v.replace(/~D([+-]?\d*)~/g, function(m,n){ return shift(n===''?0:parseInt(n,10)); });
+    });
+  }
+  var D = dates(DATA), TODAY = todayISO();
+
+  window.firebase = { initializeApp:function(){},
+    auth:function(){ return { onIdTokenChanged:function(cb){ cb({email:'demo@nala',
+      getIdToken:function(){ return Promise.resolve('demo'); }}); },
+      onAuthStateChanged:function(cb){ cb({email:'demo@nala'}); }, signOut:function(){} }; } };
+  window.__idToken = 'demo';
+
+  function reply(body){
+    return Promise.resolve({ ok:true, status:200,
+      json:function(){ return Promise.resolve(body); },
+      text:function(){ return Promise.resolve(JSON.stringify(body)); } });
+  }
+  window.fetch = function(url, opts){
+    url = String(url);
+    if (opts && opts.method && opts.method !== 'GET') return reply(null);   /* writes go nowhere */
+    if (url.indexOf('menu.json') > -1)
+      return reply({published:new Date().toISOString(), bread:{name:'Sourdough'},
+                    entree:{name:'Prawn cocktail'}, main:{name:'Satay chicken'},
+                    dessert:{name:'Pavlova'}});
+    function on(p){ return url.indexOf(p) > -1; }
+    if (on('/responses/'))  return reply(on(TODAY) ? D.responses : {});
+    if (on('/manual/'))     return reply(on(TODAY) ? D.manual    : {});
+    if (on('/roomguests/')) return reply(on(TODAY) ? D.roomguests: null);
+    if (on('/hk/'))         return reply(on(TODAY) ? D.hk        : {});
+    if (on('/combined/'))   return reply(on(TODAY) ? D.combined  : {});
+    return reply(null);
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    var b = document.createElement('div');
+    b.textContent = 'OFFLINE DEMO — fixed data, nothing saves';
+    b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99;background:#A8321E;'
+      + 'color:#fff;font:10px/1.9 Helvetica,Arial,sans-serif;letter-spacing:.14em;'
+      + 'text-align:center;text-transform:uppercase;';
+    var s = document.createElement('style');
+    s.textContent = '@media print { .demoband { display:none !important; } }';
+    b.className = 'demoband';
+    document.head.appendChild(s); document.body.appendChild(b);
+  });
+})();
+</script>
+<script>
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+})();
+</script>
+<div class="stats">
+    <div class="stat statmix"><span class="stat-n" id="tblBreak">&ndash;</span><span class="stat-l"><span id="nTables">&ndash;</span> <span id="nTablesWord">tables</span></span></div>
+    <div class="stat"><span class="stat-n" id="nCovers">&ndash;</span><span class="stat-l">Covers</span></div>
+  </div>
+
+<div class="scroller">
+  <table>
+    <thead>
+      <tr class="printhead"><td colspan="7"><div id="printHead"></div></td></tr>
+      <tr>
+        <th class="c-name">Name</th>
+        <th class="c-room">Room</th>
+        <th class="c-dt wrap">Dinner<br>table</th>
+        <th class="c-bt wrap">B'fast<br>table</th>
+        <th class="c-din">Dinner</th>
+        <th class="c-pax">Pax</th>
+        <th class="c-dep">Stay</th>
+        <th class="c-diet">Dietaries</th>
+        <th class="c-com">Comments</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+<div class="stamp" id="stamp"></div>
+
+<div class="foot">
+  <button class="btn" onclick="window.print()">Print</button>
+  <button class="btn ghost" onclick="location.reload()">Refresh</button>
+</div>
+
+
+<script>
+/* NALA shared helpers — one copy of the logic every staff page repeats.
+   Plain globals, same names the pages already use, so page code reads
+   unchanged. See STYLEGUIDE.md and AUDIT.md.                      v2 */
+
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+var ROOMS = 17;
+var ALLERGENS = ['Nut allergy','Shellfish allergy','Egg allergy'];
+
+/* ── dates ─────────────────────────────────────────────────── */
+function dkey(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+// Safari only accepts 3 fractional digits in an ISO date; Python writes 6.
+// Trim them so any timestamp parses on every browser.
+function parseISO(s){
+  if (!s) return null;
+  var t = String(s).trim().replace(/(\.\d{3})\d+/, '$1');
+  var d = new Date(t);
+  if (!isNaN(d)) return d;
+  d = new Date(t.replace(/\.\d+/, ''));      // drop fractions entirely
+  return isNaN(d) ? null : d;
+}
+
+function parseDepDate(s){
+  if(!s) return null;
+  s = String(s).trim();
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
+  var i = s.match(/^(\d{4})-(\d{2})-(\d{2})/);       // ISO — build a LOCAL date,
+  if (i) return new Date(+i[1], +i[2]-1, +i[3]);     // never via the UTC parser
+  var d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+function ord(n){
+  var s=['th','st','nd','rd'], v=n%100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+
+/* the one date format: Wd Dth Mon (see STYLEGUIDE.md) */
+function dateLabel(d){
+  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return days[d.getDay()]+' '+ord(d.getDate())+' '+mo[d.getMonth()];
+}
+
+/* ── the standard header's date row ────────────────────────────
+   Wires ‹ › Today and writes the one date format into #date/#title.
+   Tolerates missing arrows (hc tally shows the date alone).
+   Returns { VIEW, todayKey, isToday } for the page to use.        */
+function initDateNav(){
+  var VIEW = (function(){
+    var q = new URLSearchParams(location.search).get('date');
+    if (q && /^\d{4}-\d{2}-\d{2}$/.test(q)) {
+      var p = q.split('-');
+      return new Date(+p[0], +p[1]-1, +p[2]);
+    }
+    return new Date();
+  })();
+  function todayKey(){ return dkey(VIEW); }
+  function isToday(){ return dkey(VIEW) === dkey(new Date()); }
+  function shiftDate(n){
+    var d = new Date(VIEW); d.setDate(d.getDate()+n);
+    var q = new URLSearchParams(location.search);
+    q.set('date', dkey(d));
+    location.search = q.toString();
+  }
+  function goToday(){
+    var q = new URLSearchParams(location.search);
+    q.delete('date');
+    location.search = q.toString();
+  }
+  var el = document.getElementById('date') || document.getElementById('title');
+  if (el) el.textContent = dateLabel(VIEW);
+  var pv = document.getElementById('dPrev'), nx = document.getElementById('dNext'),
+      td = document.getElementById('dToday');
+  if (pv) pv.onclick = function(){ shiftDate(-1); };
+  if (nx) nx.onclick = function(){ shiftDate(1); };
+  if (td){
+    td.onclick = function(e){ if (e) e.preventDefault(); goToday(); };
+    td.disabled = isToday();     // always visible; dimmed when already on today
+  }
+  return { VIEW:VIEW, todayKey:todayKey, isToday:isToday };
+}
+
+/* ── room-guest look-back ──────────────────────────────────────
+   Most recent record for a room across the previous fortnight.
+   A guest who opened the link days ago still appears, unless
+   they have departed. Reads each date individually so no
+   permission is needed on the parent node.                       */
+function fetchRoomGuests(endKey, days){
+  days = days || 14;
+  var parts = endKey.split('-');
+  var end = new Date(+parts[0], +parts[1]-1, +parts[2]);
+  var jobs = [], keys = [];
+  for (var i = days - 1; i >= 0; i--) {
+    var d = new Date(end); d.setDate(d.getDate() - i);
+    var k = dkey(d);
+    keys.push(k);
+    jobs.push(
+      fetch(DB + '/roomguests/' + k + '.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .catch(function(){ return null; })
+    );
+  }
+  return Promise.all(jobs).then(function(res){
+    var all = {};
+    res.forEach(function(day, i){ if (day) all[keys[i]] = day; });
+    return all;
+  });
+}
+
+function resolveRoomGuests(all, todayK){
+  var out = {};
+  var dates = Object.keys(all || {}).filter(function(d){ return d <= todayK; }).sort();
+  dates.forEach(function(d){
+    var day = all[d] || {};
+    for (var room in day){ out[room] = day[room]; }   // later dates overwrite earlier
+  });
+  // drop anyone checked out by this sheet's dinner: a guest departing on
+  // the sheet date leaves that morning, so their last sheet is the night before
+  for (var room in out){
+    var dep = out[room] && out[room].departs;
+    if (!dep) continue;
+    var p = parseDepDate(dep);
+    if (p && dkey(p) <= todayK) delete out[room];
+  }
+  return out;
+}
+
+/* ── guest misc ────────────────────────────────────────────── */
+function tidyPhone(p){
+  if (!p) return '';
+  p = String(p).replace(/[^\d]/g,'');
+  if (p.length === 9 && p[0] === '4') p = '0' + p;   // restore a lost leading zero
+  return p;
+}
+
+/* ── dietary conflicts against the tagged menu ─────────────── */
+function menuConflicts(menu, diets){
+  if (!diets || !diets.length || !menu) return [];
+  var hits = [];
+  ['bread','entree','main','dessert'].forEach(function(k){
+    var dish = menu[k];
+    if (!dish || !dish.conflicts) return;
+    dish.conflicts.forEach(function(tag){
+      diets.forEach(function(d){
+        if (String(d).toLowerCase() === String(tag).toLowerCase())
+          hits.push({ dish: dish.name || k, diet: d });
+      });
+    });
+  });
+  return hits;
+}
+
+function dietHTML(diets, sep, cls){
+  if(!diets||!diets.length) return '';
+  cls = cls || 'allergen';
+  return diets.map(function(d){
+    return (ALLERGENS.indexOf(d)>-1 || /allerg/i.test(d)) ? '<span class="'+cls+'">'+d+'</span>' : d;
+  }).join(sep || ' \u00b7 ');
+}
+
+/* ── housekeeping variants — deliberately different from above ──
+   resolveRoomGuestsHK KEEPS guests departing today: they are the
+   cleans. The dinner resolver drops them. Do not merge the two.   */
+function resolveRoomGuestsHK(all, todayK){
+  var out = {};
+  var dates = Object.keys(all || {}).filter(function(d){ return d <= todayK; }).sort();
+  dates.forEach(function(d){
+    var day = all[d] || {};
+    for (var room in day){ out[room] = day[room]; }
+  });
+  for (var room in out){
+    var dep = out[room] && out[room].departs;
+    if (!dep) continue;
+    var p = parseDepDate(dep);
+    if (p && dkey(p) < todayK) delete out[room];   // gone before today
+  }
+  return out;
+}
+
+/* one room, one record: staff override beats the guest's own answer,
+   whoever opened the link fills the gaps                            */
+function roomRecord(n, responses, manual, roomguests){
+  var mk = 'room-'+n, m = manual[mk];
+  var best = null;
+  for (var k in responses){
+    var g = responses[k];
+    if (String(g.room) !== String(n)) continue;
+    if (!best || (g.at||'') > (best.at||'')) best = g;
+  }
+  var known = roomguests[String(n)] || {};
+  if (m && m.override) return Object.assign({}, known, best || {}, m, { room:String(n) });
+  if (best) return Object.assign({}, known, best);
+  if (m)    return Object.assign({}, known, m, { room:String(n) });
+  if (known.name) return Object.assign({}, known, { room:String(n), status:null });
+  return null;
+}
+
+/* clean = departing on the sheet date; service = staying on;
+   verify = no usable data. The housekeeping rule, in one place.  */
+function hkClassify(rec, todayK){
+  if (rec && rec.status === 'vacant') return 'vac';
+  if (rec){
+    var d = parseDepDate(rec.departs);
+    var dk = d ? dkey(d) : null;
+    if (dk === todayK) return 'clean';
+    if (dk && dk > todayK) return 'svc';
+    return 'ver';       // stale or missing departure
+  }
+  return 'ver';         // no data at all
+}
+
+</script>
+<script>
+// date state + header wiring from nala-shared.js
+var nav = initDateNav();
+var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
+function tomorrowKey(){ var d=new Date(VIEW); d.setDate(d.getDate()+1); return dkey(d); }
+
+// paper needs to say which print is current
+(function stamp(){
+  var n=new Date();
+  var hh=n.getHours(), mm=String(n.getMinutes()).padStart(2,'0');
+  var ap=hh>=12?'pm':'am'; hh=hh%12||12;
+  document.getElementById('stamp').textContent =
+    'Printed '+n.getDate()+'/'+(n.getMonth()+1)+'/'+n.getFullYear()+' '+hh+':'+mm+ap;
+})();
+
+// A stay range like "Tue 3rd to Thu 5th". Month is omitted - we know it.
+// Falls back to just the checkout if no arrival date was captured.
+function stayHTML(arrRaw, depRaw){
+  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var a = parseDepDate(arrRaw), d = parseDepDate(depRaw);
+  function one(x){ return days[x.getDay()]+' '+ord(x.getDate()); }
+  var out;
+  if (a && d)      out = one(a)+' to '+one(d);
+  else if (d)      out = 'to '+one(d);
+  else if (a)      out = one(a)+' to';
+  else             return '';
+  if (d && dkey(d) === tomorrowKey()) return '<span class="checkout">'+out+'</span>';
+  return out;
+}
+
+function depHTML(raw){
+  var d = parseDepDate(raw);
+  if (!d) return '';
+  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var txt = days[d.getDay()]+' '+d.getDate()+' '+mo[d.getMonth()];
+  if (dkey(d) === tomorrowKey()) return '<span class="checkout">'+txt+'</span>';
+  return txt;
+}
+
+// tonight's tagged menu, for dietary conflict flags
+var MENU = null;
+function fetchMenu(){
+  return fetch('menu.json?v=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(m){
+      m = m || {};
+      var filled = ['bread','entree','main','dessert'].every(function(k){
+        return m[k] && m[k].name && m[k].name.trim() !== '';
+      });
+      var fresh = false;
+      if (m.published) {
+        var pub = parseISO(m.published);   // Safari chokes on Python's 6-digit fractions
+        fresh = pub ? (dkey(pub) === todayKey()) : false;
+      }
+      if (filled && fresh) MENU = m;
+    })
+    .then(function(){
+      // dish tags are written by tag.html into Firebase
+      return fetch(DB + '/menutags/' + todayKey() + '.json')
+        .then(function(r){ return r.json(); })
+        .then(function(tags){
+          if (tags && MENU) ['bread','entree','main','dessert'].forEach(function(k){
+            if (MENU[k] && tags[k]) MENU[k].conflicts = tags[k];
+          });
+        });
+    })
+    .catch(function(){});
+}
+
+function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
+
+Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRoomGuests(todayKey()), fetchMenu(), api('/combined/'+todayKey()) ])
+  .then(function(res){
+    var responses  = res[0] || {};
+    var manual     = res[1] || {};
+    var roomguests = resolveRoomGuests(res[2], todayKey());
+    var combined   = res[4] || {};
+    function groupOf(room){
+      for (var gid in combined){
+        var rs = (combined[gid] && combined[gid].rooms) || [];
+        if (rs.indexOf(String(room)) > -1) return gid;
+      }
+      return null;
+    }
+    // ── everyone in house, plus externals dining ──────────
+    var rows = [], covers = 0, roomsInHouse = 0;
+
+    for (var n=1; n<=ROOMS; n++){
+      var r = roomRecord(n, responses, manual, roomguests);
+      var vacant = !!(r && r.status === 'vacant');
+      if (!vacant) roomsInHouse++;
+      rows.push({
+        rec: vacant ? { room:String(n) } : (r || { room:String(n) }),
+        room: n,
+        status: vacant ? 'vacant' : ((r && r.status) ? r.status : null)  // null = no reply yet
+      });
+      if (!vacant && r && r.status === 'in') covers += (r.pax || 1);
+    }
+
+    var externals = [];
+    for (var k in responses){
+      var g = responses[k];
+      if (g.room) continue;
+      if (manual['extcancel-'+k]) continue;
+      if (g.status !== 'in') continue;
+      g.phone = g.phone || k;
+      externals.push({ rec:g, room:null, status:'in', key:k });
+      covers += (g.pax || 1);
+    }
+    for (var k in manual){
+      if (k.indexOf('ext-') !== 0) continue;
+      if (manual[k].status !== 'in') continue;
+      externals.push({ rec:manual[k], room:null, status:'in', key:k });
+      covers += (manual[k].pax || 1);
+    }
+    externals.sort(function(a,b){ return (a.rec.name||'').localeCompare(b.rec.name||''); });
+    rows = rows.concat(externals);
+
+    document.getElementById('nCovers').textContent = covers;
+
+    var tb = document.getElementById('rows');
+
+    // combined rooms sit consecutively under their lowest room number,
+    // so one boxed block on the sheet = one table
+    (function(){
+      var roomRows = rows.filter(function(r){ return r.room; });
+      var extRows  = rows.filter(function(r){ return !r.room; });
+      var placed = {}, ordered = [];
+      roomRows.forEach(function(r){
+        var rm = String(r.room);
+        if (placed[rm]) return;
+        var gid = groupOf(rm);
+        var members = gid ? combined[gid].rooms.map(String) : [rm];
+        members.sort(function(a,b){ return Number(a)-Number(b); });
+        members.forEach(function(m){
+          var rr = roomRows.filter(function(x){ return String(x.room)===m; })[0];
+          if (rr && !placed[m]){
+            rr.grp = (gid && members.length>1)
+              ? (m===members[0] ? 'first' : (m===members[members.length-1] ? 'last' : 'mid'))
+              : null;
+            ordered.push(rr); placed[m]=true;
+          }
+        });
+      });
+      rows = ordered.concat(extRows);
+    })();
+
+    rows.forEach(function(row){
+      var g = row.rec;
+      var phone = tidyPhone(g.phone);
+
+      // Room rows with no real name are left blank so staff can write on
+      // them by hand. Externals still show their phone as a fallback.
+      var name = g.name
+        ? g.name
+        : (row.room ? '' : (phone || ''));
+      var nameCell = name + (phone && !row.room ? '<span class="sub">'+phone+'</span>' : '');
+
+      var dinner, cls = '';
+      var hits = (row.status === 'in') ? menuConflicts(MENU, g.diets) : [];
+      if (row.status === 'in')       dinner = '<span class="yes">Yes</span>';
+      else if (row.status === 'out') { dinner = '<span class="no">No</span>'; cls = ' class="row-out"'; }
+      else                           { dinner = '<span class="unk">—</span>';  cls = ' class="row-unk"'; }
+
+      if (hits.length) {
+        cls = ' class="row-conflict"';
+        nameCell = '<span class="flag">FLAG</span>' + nameCell;
+      }
+      if (row.status === 'in' && g.premenu) {
+        nameCell = '<span class="pre">PRE-MENU</span>' + nameCell;
+      }
+
+      // Vacant rooms stay on the sheet, labelled and otherwise empty.
+      if (row.status === 'vacant') {
+        dinner = '';
+        cls = ' class="row-vacant"';
+        nameCell = '<span class="muted">Vacant</span>';
+      }
+
+      var gcls = row.grp ? ' g-in g-'+row.grp : '';
+      cls = cls ? cls.replace('class="','class="'+gcls.trim()+' ') : (gcls ? ' class="'+gcls.trim()+'"' : '');
+      tb.insertAdjacentHTML('beforeend',
+        '<tr'+cls+'>'+
+          '<td class="c-name">'+nameCell+'</td>'+
+          '<td class="c-room">'+(row.room || '<span class="muted">ext</span>')+'</td>'+
+          '<td class="c-dt"></td>'+
+          '<td class="c-bt"></td>'+
+          '<td class="c-din">'+dinner+'</td>'+
+          '<td class="c-pax">'+(row.status==='in' ? (g.pax||1) : '')+'</td>'+
+          '<td>'+stayHTML(g.arrives, g.departs)+'</td>'+
+          '<td>'+(dietHTML(g.diets, ', ', 'allergen') || (g.nodiet ? '<span class="muted">No dietaries</span>' : ''))+'</td>'+
+          '<td>'+(g.note||'')+
+            (g.dnote ? '<span class="dnote">Dietary: '+g.dnote+'</span>' : '')+'</td>'+
+        '</tr>');
+    });
+
+    for (var i=rows.length; i<21; i++){
+      tb.insertAdjacentHTML('beforeend',
+        '<tr class="blank"><td></td><td></td><td class="c-dt"></td><td class="c-bt"></td>'+
+        '<td></td><td></td><td></td><td></td><td></td></tr>');
+    }
+
+    // ── total row, aligned under the Pax column ───────────
+    // combined rooms share one table; sizes give the set-up breakdown
+    var tblPax = {};
+    rows.filter(function(r){ return r.status === 'in'; }).forEach(function(r){
+      var unit = r.room ? (groupOf(r.room) || 'room-'+r.room) : 'ext-'+r.key;
+      tblPax[unit] = (tblPax[unit]||0) + (r.rec.pax||1);
+    });
+    var tables = Object.keys(tblPax).length;
+    var sizes = {};
+    for (var u in tblPax) sizes[tblPax[u]] = (sizes[tblPax[u]]||0) + 1;
+    var parts = Object.keys(sizes).map(Number).sort(function(a,b){return a-b;})
+      .map(function(sz){ var n=sizes[sz];
+        var W=['','one','two','three','four','five','six','seven','eight','nine','ten'];
+        var w=W[sz]||sz; return n+' '+w+(n>1?'s':''); });
+    document.getElementById('nTables').textContent = tables;
+    document.getElementById('tblBreak').textContent = parts.length ? parts.join(' \u00b7 ') : '\u2014';
+    document.getElementById('nTablesWord').textContent = (tables === 1) ? 'table' : 'tables';
+
+
+  });
+</script>
+
+<script>
+/* clone the above-table block into the printed header so every page carries it */
+(function(){
+  function fill(){
+    var slot = document.getElementById('printHead');
+    if (!slot) return;
+    slot.innerHTML = '';
+    ['.printkick','.daterow','.stats'].join(',').split(',').forEach(function(sel){
+      var el = document.querySelector(sel);
+      if (!el) return;
+      el.classList.add('noprintblock');
+      var c = el.cloneNode(true);
+      c.classList.remove('noprintblock');
+      c.classList.add('printclone');
+      c.querySelectorAll('[id]').forEach(function(n){ n.removeAttribute('id'); });
+      var nav = c.querySelector('.navwrap'); if (nav) nav.parentNode.removeChild(nav);
+      slot.appendChild(c);
+    });
+  }
+  /* iOS Safari does not reliably fire beforeprint, so the clone is built as
+     soon as the sheet has data rather than waiting for a print event. It is
+     hidden on screen either way. Refilled on beforeprint where supported, in
+     case the sheet changed after load.                                     */
+  function fillWhenReady(n){
+    var rows = document.getElementById('rows');
+    if (rows && rows.children.length){ fill(); return; }
+    if (n > 0) setTimeout(function(){ fillWhenReady(n-1); }, 400);
+  }
+  fillWhenReady(15);
+  window.addEventListener('beforeprint', fill);
+})();
+</script>
+</body>
+</html>

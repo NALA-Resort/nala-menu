@@ -14,3 +14,15 @@ They assert rendered outcomes, not markup: computed colours, fixed-footer
 geometry, tap-target sizes, menu interaction, write bodies, and
 order-independence of seating vs reservations. wk_harness.py loads res
 tally in WebKitGTK (Safari's engine) at 390pt and prints layout geometry.
+
+## Offline demo sheets
+
+    python3 tools/make-demo.py
+
+Rebuilds demo-reservations.html and demo-clean.html: standalone copies of the
+two printed sheets with the CSS and shared JS inlined, Firebase and auth
+removed, and fetch() replaced by a fixed busy-night dataset. No network at
+all, so they open on a phone with no signal, and no tap can write anything.
+A red band marks them on screen; it is hidden when printing.
+
+Re-run after changing either sheet — the demos do not track changes.

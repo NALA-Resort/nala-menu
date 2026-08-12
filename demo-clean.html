@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEMO · Nala — Housekeeping Sheet</title>
+<style>
+/* NALA staff UI — shared controls. See STYLEGUIDE.md.
+   Pages declare <body class="tier-app"> or <body class="tier-print">.  */
+
+:root {
+  --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+  --ui-font:Helvetica,Arial,sans-serif;
+}
+
+/* tier surfaces used by controls */
+.tier-app   { --ctl-bg:var(--cream); --ctl-bdr:var(--rule); --ctl-ink:var(--ink); }
+.tier-print { --ctl-bg:#fff;         --ctl-bdr:#ddd;        --ctl-ink:#111;      }
+
+/* ── one header row: [Today] [<] date [>] ....... [menu] ── */
+.navwrap { position:relative; margin-left:auto; z-index:500; font-family:var(--ui-font); }
+.navbtn  { border:1px solid var(--ctl-bdr); background:var(--ctl-bg);
+           border-radius:8px; cursor:pointer; display:flex; flex-direction:column;
+           align-items:center; justify-content:center; gap:4px; padding:0;
+           -webkit-tap-highlight-color:transparent; }
+.navbtn span { display:block; width:16px; height:1.6px; background:var(--ctl-ink); }
+.navdrop { display:none; position:absolute; right:0; top:42px; background:var(--ctl-bg);
+           border:1px solid var(--ctl-bdr); border-radius:9px; min-width:132px;
+           box-shadow:0 4px 14px rgba(0,0,0,.09); padding:5px 0; }
+.navdrop.open { display:block; }
+.navdrop a { display:block; padding:12px 18px; font-size:10px; letter-spacing:.14em;
+             text-transform:uppercase; color:var(--ctl-ink); text-decoration:none;
+             white-space:nowrap; }
+
+/* ── floating footer ──────────────────────────────────────
+   sticky pins it while scrolling long pages; the flex column
+   below pins it to the screen bottom on short pages too      */
+body { min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
+body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
+.wrap > .foot, body > .foot { margin-top:auto; }
+.foot { position:sticky; bottom:0; z-index:40; display:flex; gap:8px; flex-wrap:wrap;
+        background:var(--ctl-bg); border-top:1px solid var(--ctl-bdr); margin-top:18px;
+        padding:10px 0 calc(10px + env(safe-area-inset-bottom)); }
+.foot .btn { flex:1; text-align:center; white-space:nowrap; }
+/* the row sits hard against the bottom of the screen: soften only the two
+   corners that land in the phone's own rounded corners                     */
+.foot .btn:first-child { border-bottom-left-radius:8px; }
+.foot .btn:last-child  { border-bottom-right-radius:8px; }
+
+/* ── standard header: kicker, then one date row ─────── */
+.daterow { display:flex; align-items:center; gap:8px;
+           margin-bottom:12px; font-family:var(--ui-font); }
+.daterow .date { font-size:13px; font-weight:bold; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--ctl-ink); white-space:nowrap;
+                 padding:0 2px; }
+.dnav { width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center;
+        background:var(--ctl-bg); border:1px solid var(--ctl-bdr); border-radius:7px;
+        font-size:16px; line-height:1; color:var(--ctl-ink); cursor:pointer; padding:0;
+        -webkit-tap-highlight-color:transparent; }
+.dnav:active { background:var(--ctl-bdr); }
+.dnav.today { width:auto; padding:0 12px; font-size:9.5px; letter-spacing:.13em;
+              text-transform:uppercase; }
+.dnav.today:disabled { opacity:.35; cursor:default; }
+.navbtn { width:42px; height:36px; }
+/* page name on paper only — the screen row replaces it */
+.printkick { display:none; }
+@media print { .printkick { display:block; text-align:center; font-family:var(--ui-font);
+  font-size:10px; letter-spacing:.34em; text-transform:uppercase; color:#666;
+  margin-bottom:8px; } }
+
+/* ── information is plain typography, never boxed ───── */
+.stats { display:flex; justify-content:center; gap:36px; margin:16px 0 6px;
+         font-family:var(--ui-font); }
+.stat { text-align:center; }
+.stat-n { display:block; font-size:27px; line-height:1; color:var(--ctl-ink);
+          font-family:Georgia,serif; }
+.stat-l { display:block; font-size:8px; letter-spacing:.2em; text-transform:uppercase;
+          color:var(--mid); margin-top:6px; }
+.stat.warn .stat-n { color:var(--red); }
+
+/* keep controls off paper */
+@media print {
+  .navwrap, .foot, .dnav { display:none !important; }
+  body { display:block; min-height:0; }   /* flex column off paper */
+}
+
+</style>
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Helvetica, Arial, sans-serif; color:#111; background:#fff; padding:16px 16px 0; }
+
+  .btn { padding:10px 20px; background:#111; color:#fff; border:none;
+         font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
+         text-transform:uppercase; cursor:pointer; }
+  .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+  .stamp { margin-top:10px; font-size:7.5px; letter-spacing:.1em;
+           text-transform:uppercase; color:#999; text-align:right; }
+
+  .scroller { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  table { width:100%; min-width:760px; border-collapse:separate; border-spacing:0; }
+  th { font-size:7px; letter-spacing:.12em; text-transform:uppercase; color:#666;
+       text-align:left; padding:0 5px 6px; border-bottom:1px solid #111;
+       white-space:nowrap; vertical-align:bottom; }
+  th.wrap { white-space:normal; line-height:1.25; text-align:center; }
+
+  td { font-size:9px; padding:5px; border-bottom:1px solid #ddd; vertical-align:middle; }
+  tr { page-break-inside:avoid; }
+
+  .c-room  { width:8%;  text-align:center; font-weight:bold; }
+  .c-svc   { width:12%; text-align:center; }
+  .c-arr   { width:12%; }
+  .c-dep   { width:12%; }
+  .c-done  { width:6%;  text-align:center; }
+  .c-notes { width:42%; }
+  .c-insp  { width:8%;  text-align:center; }
+  /* rows are sized so a full house — every room a job, plus the write-ins —
+     still lands on one A5 page. Do not loosen without re-checking the fit. */
+  tbody td { padding-top:4px; padding-bottom:4px; height:22px; }
+
+  .chip { display:inline-block; border:1.2px solid #111; border-radius:5px;
+          padding:1px 7px; font-weight:bold; font-size:8px; letter-spacing:.08em;
+          background:#111; color:#fff; text-transform:uppercase;
+          -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .chip.svc { background:transparent; border-color:#aaa; color:#555;
+              font-weight:normal; letter-spacing:.12em; }
+  .donemark { font-weight:bold; font-size:9px; white-space:nowrap; }
+  .subtag { font-size:7.5px; color:#555; margin-top:1px; letter-spacing:.04em; }
+  .chip.ver { background:transparent; border-style:dashed; border-color:#A8321E; color:#A8321E; }
+  .box  { width:15px; height:15px; border:1.2px solid #333; border-radius:3px;
+          display:inline-block; vertical-align:middle; }
+  tr.vac td { color:#c2c2c2; }
+  .mgrstrip { margin:8px 0 12px; }
+  .mgrline { display:flex; gap:10px; align-items:flex-end; margin:6px 0 0; }
+  .mgrline span { font-size:8px; letter-spacing:.14em; text-transform:uppercase;
+                  color:#666; white-space:nowrap; padding-bottom:2px; }
+  .mgrline i { flex:1; border-bottom:1px solid #999; height:13px; }
+
+  .muted { color:#aaa; font-weight:normal; font-style:italic; }
+
+  /* Printed sheets repeat everything above the table on every page. A table
+     header group is the only thing browsers reliably repeat, so the block is
+     cloned into a thead row for paper and the on-screen original is hidden. */
+  .printhead { display:none; }
+  .printhead > td { border:0; padding:0 0 6px; }
+  @media print {
+    .printhead { display:table-row; }
+    .noprintblock { display:none !important; }
+  }
+  @media print {
+    body { padding:0; }
+    .scroller { overflow:visible; }
+    table { min-width:0; width:100%; }
+    tr { page-break-inside:avoid; }
+    thead { display:table-header-group; }
+    table { border-collapse:collapse; }   /* Safari repeats headers only when collapsed */
+  }
+</style>
+</head>
+<body class="tier-print">
+
+
+
+<div class="printkick">Nala &middot; HC print</div>
+<div class="daterow">
+  <button class="dnav today" id="dToday">Today</button>
+  <button class="dnav" id="dPrev">&#8249;</button>
+  <div class="date" id="title"></div>
+  <button class="dnav" id="dNext">&#8250;</button>
+  <div class="navwrap">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"><a href="demo-reservations.html">Reservations</a><a href="demo-reservations.html">Reservations Sheet</a><a href="demo-clean.html">Cleans</a></div>
+  </div>
+</div>
+
+<script>
+/* ── OFFLINE DEMO ─────────────────────────────────────────────────────
+   No Firebase, no auth, no network. Fixed data below. Writes do nothing. */
+(function(){
+  var DATA = {"responses": {"0400000001": {"status": "in", "pax": 2, "room": "1", "name": "James Harrington", "phone": "0400 000 001", "at": "~D0~T09:01:00", "note": "Window seat please"}, "0400000002": {"status": "in", "pax": 2, "room": "2", "name": "Elena Petrova", "phone": "0400 000 002", "at": "~D0~T09:02:00"}, "0400000003": {"status": "in", "pax": 3, "room": "3", "name": "Mark Whitfield", "phone": "0400 000 003", "at": "~D0~T09:03:00", "diets": ["Nut allergy"]}, "0400000004": {"status": "in", "pax": 2, "room": "4", "name": "Lucy Whitfield", "phone": "0400 000 004", "at": "~D0~T09:04:00"}, "0400000005": {"status": "in", "pax": 2, "room": "5", "name": "David Chen", "phone": "0400 000 005", "at": "~D0~T09:05:00"}, "0400000006": {"status": "out", "room": "6", "name": "Priya Sharma", "at": "~D0~T09:00:00"}, "0400000007": {"status": "in", "pax": 2, "room": "7", "name": "Tom Ashby", "phone": "0400 000 007", "at": "~D0~T09:07:00", "diets": ["Dairy free"]}, "0400000008": {"status": "in", "pax": 2, "room": "8", "name": "Ruby Vance", "phone": "0400 000 008", "at": "~D0~T09:08:00", "note": "Birthday"}, "0400000010": {"status": "in", "pax": 2, "room": "10", "name": "Sam Okafor", "phone": "0400 000 010", "at": "~D0~T09:10:00"}, "0400000011": {"status": "in", "pax": 2, "room": "11", "name": "Nina Brandt", "phone": "0400 000 011", "at": "~D0~T09:11:00", "diets": ["Coeliac"]}, "0400000012": {"status": "in", "pax": 3, "room": "12", "name": "Owen Reilly", "phone": "0400 000 012", "at": "~D0~T09:12:00", "note": "Quiet corner"}, "0400000013": {"status": "out", "room": "13", "name": "Hana Sato", "at": "~D0~T09:00:00"}, "0400000014": {"status": "in", "pax": 2, "room": "14", "name": "Marco Bianchi", "phone": "0400 000 014", "at": "~D0~T09:14:00"}, "0400000015": {"status": "in", "pax": 3, "room": "15", "name": "Freya Lindqvist", "phone": "0400 000 015", "at": "~D0~T09:15:00", "diets": ["Vegetarian"]}, "0400000017": {"status": "in", "pax": 2, "room": "17", "name": "Iris Kovac", "phone": "0400 000 017", "at": "~D0~T09:17:00"}}, "roomguests": {"1": {"name": "James Harrington", "arrives": "~D-2~", "departs": "~D+2~"}, "2": {"name": "Elena Petrova", "arrives": "~D-2~", "departs": "~D+2~"}, "3": {"name": "Mark Whitfield", "arrives": "~D-2~", "departs": "~D+2~"}, "4": {"name": "Lucy Whitfield", "arrives": "~D-2~", "departs": "~D+2~"}, "5": {"name": "David Chen", "arrives": "~D-2~", "departs": "~D0~"}, "6": {"name": "Priya Sharma", "arrives": "~D-2~", "departs": "~D+2~"}, "7": {"name": "Tom Ashby", "arrives": "~D-2~", "departs": "~D+2~"}, "8": {"name": "Ruby Vance", "arrives": "~D-2~", "departs": "~D+2~"}, "9": {"name": "Claire Donnelly", "arrives": "~D-2~", "departs": "~D+2~"}, "10": {"name": "Sam Okafor", "arrives": "~D-2~", "departs": "~D0~"}, "11": {"name": "Nina Brandt", "arrives": "~D-2~", "departs": "~D+2~"}, "12": {"name": "Owen Reilly", "arrives": "~D-2~", "departs": "~D+2~"}, "13": {"name": "Hana Sato", "arrives": "~D-2~", "departs": "~D+2~"}, "14": {"name": "Marco Bianchi", "arrives": "~D-2~", "departs": "~D+2~"}, "15": {"name": "Freya Lindqvist", "arrives": "~D-2~", "departs": "~D0~"}, "16": {"name": "Jonah Adeyemi", "arrives": "~D-2~", "departs": "~D+2~"}, "17": {"name": "Iris Kovac", "arrives": "~D-2~", "departs": "~D+2~"}}, "hk": {"1": {"bfast": "~D0~T07:51:00"}, "2": {"bfast": "~D0~T07:52:00"}, "5": {"done": "~D0~T10:05:00"}, "10": {"done": "~D0~T10:010:00"}, "15": {"departed": true}}, "manual": {"ext-1": {"status": "in", "pax": 2, "name": "Cane", "source": "manual", "diets": ["Dairy free"], "external": true}, "ext-2": {"status": "in", "pax": 2, "name": "Jill", "source": "manual", "external": true}, "ext-3": {"status": "in", "pax": 2, "name": "Larry", "source": "manual", "note": "Birthday", "external": true}}, "combined": {"g1": {"rooms": ["3", "4"]}, "g2": {"rooms": ["7", "8", "9"]}}};
+  function todayISO(){ var d=new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function shift(n){ var d=new Date(); d.setDate(d.getDate()+n);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function dates(o){                 /* ~D0~ / ~D+2~ / ~D-2~ -> real dates */
+    return JSON.parse(JSON.stringify(o), function(k,v){
+      if (typeof v !== 'string') return v;
+      return v.replace(/~D([+-]?\d*)~/g, function(m,n){ return shift(n===''?0:parseInt(n,10)); });
+    });
+  }
+  var D = dates(DATA), TODAY = todayISO();
+
+  window.firebase = { initializeApp:function(){},
+    auth:function(){ return { onIdTokenChanged:function(cb){ cb({email:'demo@nala',
+      getIdToken:function(){ return Promise.resolve('demo'); }}); },
+      onAuthStateChanged:function(cb){ cb({email:'demo@nala'}); }, signOut:function(){} }; } };
+  window.__idToken = 'demo';
+
+  function reply(body){
+    return Promise.resolve({ ok:true, status:200,
+      json:function(){ return Promise.resolve(body); },
+      text:function(){ return Promise.resolve(JSON.stringify(body)); } });
+  }
+  window.fetch = function(url, opts){
+    url = String(url);
+    if (opts && opts.method && opts.method !== 'GET') return reply(null);   /* writes go nowhere */
+    if (url.indexOf('menu.json') > -1)
+      return reply({published:new Date().toISOString(), bread:{name:'Sourdough'},
+                    entree:{name:'Prawn cocktail'}, main:{name:'Satay chicken'},
+                    dessert:{name:'Pavlova'}});
+    function on(p){ return url.indexOf(p) > -1; }
+    if (on('/responses/'))  return reply(on(TODAY) ? D.responses : {});
+    if (on('/manual/'))     return reply(on(TODAY) ? D.manual    : {});
+    if (on('/roomguests/')) return reply(on(TODAY) ? D.roomguests: null);
+    if (on('/hk/'))         return reply(on(TODAY) ? D.hk        : {});
+    if (on('/combined/'))   return reply(on(TODAY) ? D.combined  : {});
+    return reply(null);
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    var b = document.createElement('div');
+    b.textContent = 'OFFLINE DEMO — fixed data, nothing saves';
+    b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99;background:#A8321E;'
+      + 'color:#fff;font:10px/1.9 Helvetica,Arial,sans-serif;letter-spacing:.14em;'
+      + 'text-align:center;text-transform:uppercase;';
+    var s = document.createElement('style');
+    s.textContent = '@media print { .demoband { display:none !important; } }';
+    b.className = 'demoband';
+    document.head.appendChild(s); document.body.appendChild(b);
+  });
+})();
+</script>
+<script>
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+})();
+</script>
+<div class="stats">
+    <div class="stat"><span class="stat-n" id="nClean">&ndash;</span><span class="stat-l">Cleans</span></div>
+    <div class="stat"><span class="stat-n" id="nSvc">&ndash;</span><span class="stat-l">Services</span></div>
+    <div class="stat" id="verWrap" style="display:none"><span class="stat-n" id="nVer">&ndash;</span><span class="stat-l">To verify</span></div>
+  </div>
+
+<div class="mgrstrip">
+  <div class="mgrline"><span>Assigned to</span><i></i></div>
+  <div class="mgrline"><span>Manager notes</span><i></i></div>
+</div>
+
+<div class="scroller">
+  <table>
+    <thead>
+      <tr class="printhead"><td colspan="7"><div id="printHead"></div></td></tr>
+      <tr>
+        <th class="c-room">Room</th>
+        <th class="c-svc">Service</th>
+        <th class="c-arr">Arrival</th>
+        <th class="c-dep">Departs</th>
+        <th class="c-done">Done</th>
+        <th class="c-notes">Housekeeper notes</th>
+        <th class="c-insp">Insp.</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+<div class="stamp" id="stamp"></div>
+
+<div class="foot">
+  <button class="btn" onclick="window.print()">Print</button>
+  <button class="btn ghost" onclick="location.reload()">Refresh</button>
+</div>
+
+
+<script>
+/* NALA shared helpers — one copy of the logic every staff page repeats.
+   Plain globals, same names the pages already use, so page code reads
+   unchanged. See STYLEGUIDE.md and AUDIT.md.                      v2 */
+
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+var ROOMS = 17;
+var ALLERGENS = ['Nut allergy','Shellfish allergy','Egg allergy'];
+
+/* ── dates ─────────────────────────────────────────────────── */
+function dkey(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+// Safari only accepts 3 fractional digits in an ISO date; Python writes 6.
+// Trim them so any timestamp parses on every browser.
+function parseISO(s){
+  if (!s) return null;
+  var t = String(s).trim().replace(/(\.\d{3})\d+/, '$1');
+  var d = new Date(t);
+  if (!isNaN(d)) return d;
+  d = new Date(t.replace(/\.\d+/, ''));      // drop fractions entirely
+  return isNaN(d) ? null : d;
+}
+
+function parseDepDate(s){
+  if(!s) return null;
+  s = String(s).trim();
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
+  var i = s.match(/^(\d{4})-(\d{2})-(\d{2})/);       // ISO — build a LOCAL date,
+  if (i) return new Date(+i[1], +i[2]-1, +i[3]);     // never via the UTC parser
+  var d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+function ord(n){
+  var s=['th','st','nd','rd'], v=n%100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+
+/* the one date format: Wd Dth Mon (see STYLEGUIDE.md) */
+function dateLabel(d){
+  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return days[d.getDay()]+' '+ord(d.getDate())+' '+mo[d.getMonth()];
+}
+
+/* ── the standard header's date row ────────────────────────────
+   Wires ‹ › Today and writes the one date format into #date/#title.
+   Tolerates missing arrows (hc tally shows the date alone).
+   Returns { VIEW, todayKey, isToday } for the page to use.        */
+function initDateNav(){
+  var VIEW = (function(){
+    var q = new URLSearchParams(location.search).get('date');
+    if (q && /^\d{4}-\d{2}-\d{2}$/.test(q)) {
+      var p = q.split('-');
+      return new Date(+p[0], +p[1]-1, +p[2]);
+    }
+    return new Date();
+  })();
+  function todayKey(){ return dkey(VIEW); }
+  function isToday(){ return dkey(VIEW) === dkey(new Date()); }
+  function shiftDate(n){
+    var d = new Date(VIEW); d.setDate(d.getDate()+n);
+    var q = new URLSearchParams(location.search);
+    q.set('date', dkey(d));
+    location.search = q.toString();
+  }
+  function goToday(){
+    var q = new URLSearchParams(location.search);
+    q.delete('date');
+    location.search = q.toString();
+  }
+  var el = document.getElementById('date') || document.getElementById('title');
+  if (el) el.textContent = dateLabel(VIEW);
+  var pv = document.getElementById('dPrev'), nx = document.getElementById('dNext'),
+      td = document.getElementById('dToday');
+  if (pv) pv.onclick = function(){ shiftDate(-1); };
+  if (nx) nx.onclick = function(){ shiftDate(1); };
+  if (td){
+    td.onclick = function(e){ if (e) e.preventDefault(); goToday(); };
+    td.disabled = isToday();     // always visible; dimmed when already on today
+  }
+  return { VIEW:VIEW, todayKey:todayKey, isToday:isToday };
+}
+
+/* ── room-guest look-back ──────────────────────────────────────
+   Most recent record for a room across the previous fortnight.
+   A guest who opened the link days ago still appears, unless
+   they have departed. Reads each date individually so no
+   permission is needed on the parent node.                       */
+function fetchRoomGuests(endKey, days){
+  days = days || 14;
+  var parts = endKey.split('-');
+  var end = new Date(+parts[0], +parts[1]-1, +parts[2]);
+  var jobs = [], keys = [];
+  for (var i = days - 1; i >= 0; i--) {
+    var d = new Date(end); d.setDate(d.getDate() - i);
+    var k = dkey(d);
+    keys.push(k);
+    jobs.push(
+      fetch(DB + '/roomguests/' + k + '.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .catch(function(){ return null; })
+    );
+  }
+  return Promise.all(jobs).then(function(res){
+    var all = {};
+    res.forEach(function(day, i){ if (day) all[keys[i]] = day; });
+    return all;
+  });
+}
+
+function resolveRoomGuests(all, todayK){
+  var out = {};
+  var dates = Object.keys(all || {}).filter(function(d){ return d <= todayK; }).sort();
+  dates.forEach(function(d){
+    var day = all[d] || {};
+    for (var room in day){ out[room] = day[room]; }   // later dates overwrite earlier
+  });
+  // drop anyone checked out by this sheet's dinner: a guest departing on
+  // the sheet date leaves that morning, so their last sheet is the night before
+  for (var room in out){
+    var dep = out[room] && out[room].departs;
+    if (!dep) continue;
+    var p = parseDepDate(dep);
+    if (p && dkey(p) <= todayK) delete out[room];
+  }
+  return out;
+}
+
+/* ── guest misc ────────────────────────────────────────────── */
+function tidyPhone(p){
+  if (!p) return '';
+  p = String(p).replace(/[^\d]/g,'');
+  if (p.length === 9 && p[0] === '4') p = '0' + p;   // restore a lost leading zero
+  return p;
+}
+
+/* ── dietary conflicts against the tagged menu ─────────────── */
+function menuConflicts(menu, diets){
+  if (!diets || !diets.length || !menu) return [];
+  var hits = [];
+  ['bread','entree','main','dessert'].forEach(function(k){
+    var dish = menu[k];
+    if (!dish || !dish.conflicts) return;
+    dish.conflicts.forEach(function(tag){
+      diets.forEach(function(d){
+        if (String(d).toLowerCase() === String(tag).toLowerCase())
+          hits.push({ dish: dish.name || k, diet: d });
+      });
+    });
+  });
+  return hits;
+}
+
+function dietHTML(diets, sep, cls){
+  if(!diets||!diets.length) return '';
+  cls = cls || 'allergen';
+  return diets.map(function(d){
+    return (ALLERGENS.indexOf(d)>-1 || /allerg/i.test(d)) ? '<span class="'+cls+'">'+d+'</span>' : d;
+  }).join(sep || ' \u00b7 ');
+}
+
+/* ── housekeeping variants — deliberately different from above ──
+   resolveRoomGuestsHK KEEPS guests departing today: they are the
+   cleans. The dinner resolver drops them. Do not merge the two.   */
+function resolveRoomGuestsHK(all, todayK){
+  var out = {};
+  var dates = Object.keys(all || {}).filter(function(d){ return d <= todayK; }).sort();
+  dates.forEach(function(d){
+    var day = all[d] || {};
+    for (var room in day){ out[room] = day[room]; }
+  });
+  for (var room in out){
+    var dep = out[room] && out[room].departs;
+    if (!dep) continue;
+    var p = parseDepDate(dep);
+    if (p && dkey(p) < todayK) delete out[room];   // gone before today
+  }
+  return out;
+}
+
+/* one room, one record: staff override beats the guest's own answer,
+   whoever opened the link fills the gaps                            */
+function roomRecord(n, responses, manual, roomguests){
+  var mk = 'room-'+n, m = manual[mk];
+  var best = null;
+  for (var k in responses){
+    var g = responses[k];
+    if (String(g.room) !== String(n)) continue;
+    if (!best || (g.at||'') > (best.at||'')) best = g;
+  }
+  var known = roomguests[String(n)] || {};
+  if (m && m.override) return Object.assign({}, known, best || {}, m, { room:String(n) });
+  if (best) return Object.assign({}, known, best);
+  if (m)    return Object.assign({}, known, m, { room:String(n) });
+  if (known.name) return Object.assign({}, known, { room:String(n), status:null });
+  return null;
+}
+
+/* clean = departing on the sheet date; service = staying on;
+   verify = no usable data. The housekeeping rule, in one place.  */
+function hkClassify(rec, todayK){
+  if (rec && rec.status === 'vacant') return 'vac';
+  if (rec){
+    var d = parseDepDate(rec.departs);
+    var dk = d ? dkey(d) : null;
+    if (dk === todayK) return 'clean';
+    if (dk && dk > todayK) return 'svc';
+    return 'ver';       // stale or missing departure
+  }
+  return 'ver';         // no data at all
+}
+
+</script>
+<script>
+// date state + header wiring, dates, look-back: nala-shared.js
+var nav = initDateNav();
+var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
+
+// paper needs to say which print is current
+(function stamp(){
+  var n=new Date();
+  var hh=n.getHours(), mm=String(n.getMinutes()).padStart(2,'0');
+  var ap=hh>=12?'pm':'am'; hh=hh%12||12;
+  document.getElementById('stamp').textContent =
+    'Printed '+n.getDate()+'/'+(n.getMonth()+1)+'/'+n.getFullYear()+' '+hh+':'+mm+ap;
+})();
+
+function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
+
+Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
+              fetchRoomGuests(todayKey()), api('/hk/'+todayKey()) ])
+  .then(function(res){
+    var responses  = res[0] || {};
+    var manual     = res[1] || {};
+    var roomguests = resolveRoomGuestsHK(res[2] || {}, todayKey());
+    var hk         = res[3] || {};
+
+    function fmtT(iso){
+      var d = parseISO(iso);
+      if (!d) return '';
+      var h=d.getHours(), m=d.getMinutes();
+      return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+    }
+
+    // clean = departing today; service = staying on; verify = no usable data
+    var rows=[], nClean=0, nSvc=0, nVer=0;
+    for (var n=1; n<=ROOMS; n++){
+      var r = roomRecord(n, responses, manual, roomguests);
+      var kind = hkClassify(r, todayKey());
+      if (kind==='clean') nClean++;
+      else if (kind==='svc') nSvc++;
+      else if (kind==='ver') nVer++;
+      rows.push({ n:n, rec:r||{}, kind:kind });
+    }
+
+    var order={svc:0, clean:1, ver:2, vac:3};   // services first: done at breakfast
+    rows.sort(function(a,b){ return (order[a.kind]-order[b.kind]) || (a.n-b.n); });
+
+    document.getElementById('nClean').textContent = nClean;
+    document.getElementById('nSvc').textContent   = nSvc;
+    if (nVer){ document.getElementById('nVer').textContent = nVer;
+               document.getElementById('verWrap').style.display=''; }
+
+    function fmtD(raw){
+      var d = parseDepDate(raw);
+      if (!d) return '';
+      var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      return days[d.getDay()]+' '+ord(d.getDate());
+    }
+
+    var tb = document.getElementById('rows');
+    // Only real jobs go on paper. Verify and vacant rooms are not jobs, and
+    // printing all 17 pushed the sheet off A4. The three blank rows below are
+    // for the manager to pen in anything the board could not confirm; the
+    // 'To verify' count above says how many that might be.
+    rows = rows.filter(function(r){ return r.kind==='svc' || r.kind==='clean'; });
+    rows.forEach(function(row){
+      var g = row.rec;
+      var chip='', cls='';
+      if (row.kind==='clean') chip='<span class="chip">Clean</span>';
+      else if (row.kind==='svc') chip='<span class="chip svc">Service</span>';
+      else if (row.kind==='ver') chip='<span class="chip ver">Verify</span>';
+      else { cls=' class="vac"'; chip='<span class="muted">Vacant</span>'; }
+      var boxes = (row.kind==='vac') ? ['',''] : ['<span class="box"></span>','<span class="box"></span>'];
+      var mk = hk[String(row.n)] || {};
+      if (mk.done) boxes[0] = '<span class="donemark">&#10003; '+fmtT(mk.done)+'</span>';
+      if (row.kind!=='vac'){
+        if (mk.departed)      chip += '<div class="subtag">Departed</div>';
+        else if (mk.bfast && !mk.done) chip += '<div class="subtag">At breakfast '+fmtT(mk.bfast)+'</div>';
+      }
+      tb.insertAdjacentHTML('beforeend',
+        '<tr'+cls+'>'+
+          '<td class="c-room">'+row.n+'</td>'+
+          '<td class="c-svc">'+chip+'</td>'+
+          '<td class="c-arr">'+fmtD(g.arrives)+'</td>'+
+          '<td class="c-dep">'+fmtD(g.departs)+'</td>'+
+          '<td class="c-done">'+boxes[0]+'</td>'+
+          '<td class="c-notes"></td>'+
+          '<td class="c-insp">'+boxes[1]+'</td>'+
+        '</tr>');
+    });
+
+    for (var w=0; w<3; w++){
+      tb.insertAdjacentHTML('beforeend',
+        '<tr class="writein">'+
+          '<td class="c-room"></td><td class="c-svc"></td>'+
+          '<td class="c-arr"></td><td class="c-dep"></td>'+
+          '<td class="c-done"><span class="box"></span></td>'+
+          '<td class="c-notes"></td>'+
+          '<td class="c-insp"><span class="box"></span></td>'+
+        '</tr>');
+    }
+  })
+  .catch(function(e){
+    document.getElementById('rows').innerHTML =
+      '<tr><td colspan="7" style="padding:20px;color:#A8321E">Could not load - check connection and refresh.</td></tr>';
+  });
+</script>
+
+<script>
+/* clone the above-table block into the printed header so every page carries it */
+(function(){
+  function fill(){
+    var slot = document.getElementById('printHead');
+    if (!slot) return;
+    slot.innerHTML = '';
+    ['.printkick','.daterow','.stats','.mgrstrip'].join(',').split(',').forEach(function(sel){
+      var el = document.querySelector(sel);
+      if (!el) return;
+      el.classList.add('noprintblock');
+      var c = el.cloneNode(true);
+      c.classList.remove('noprintblock');
+      c.classList.add('printclone');
+      c.querySelectorAll('[id]').forEach(function(n){ n.removeAttribute('id'); });
+      var nav = c.querySelector('.navwrap'); if (nav) nav.parentNode.removeChild(nav);
+      slot.appendChild(c);
+    });
+  }
+  /* iOS Safari does not reliably fire beforeprint, so the clone is built as
+     soon as the sheet has data rather than waiting for a print event. It is
+     hidden on screen either way. Refilled on beforeprint where supported, in
+     case the sheet changed after load.                                     */
+  function fillWhenReady(n){
+    var rows = document.getElementById('rows');
+    if (rows && rows.children.length){ fill(); return; }
+    if (n > 0) setTimeout(function(){ fillWhenReady(n-1); }, 400);
+  }
+  fillWhenReady(15);
+  window.addEventListener('beforeprint', fill);
+})();
+</script>
+</body>
+</html>
