@@ -46,6 +46,8 @@
   .yes { color:#3F7A52; font-weight:bold; }
   .no  { color:#A8321E; }
   .unk { color:#bbb; }
+  .tablesline { text-align:center; margin:6px 0 2px; font-family:Helvetica,Arial,sans-serif;
+                font-size:11.5px; letter-spacing:.14em; color:#333; }
   .row-out td { background:#FAF6F5; }
   .row-unk td { background:#FCFCFB; }
   .row-vacant td { background:#F4F4F2; color:#B0B0AA; }
@@ -107,9 +109,10 @@
 })();
 </script>
 <div class="stats">
-    <div class="stat"><span class="stat-n" id="nTables">&ndash;</span><span class="stat-l">Tables <span id="tblBreak"></span></span></div>
+    <div class="stat"><span class="stat-n" id="nTables">&ndash;</span><span class="stat-l">Tables</span></div>
     <div class="stat"><span class="stat-n" id="nCovers">&ndash;</span><span class="stat-l">Covers</span></div>
   </div>
+<div class="tablesline" id="tblBreak"></div>
 
 <div class="scroller">
   <table>
@@ -357,7 +360,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     var parts = Object.keys(sizes).map(Number).sort(function(a,b){return a-b;})
       .map(function(sz){ return sizes[sz]+'\u00d7'+sz; });
     document.getElementById('nTables').textContent = tables;
-    document.getElementById('tblBreak').textContent = parts.length ? '('+parts.join(' \u00b7 ')+')' : '';
+    document.getElementById('tblBreak').textContent = parts.length ? parts.join(' \u00b7 ') : '';
 
 
   });
