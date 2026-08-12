@@ -62,7 +62,10 @@ content is guaranteed to collide with something at some width.
   email does not start with "housekeeping".
 - **Floating footer** (`.foot`): sticky at the bottom, holds the page's
   actions. Primary action solid, secondary outlined. App tier: cream with
-  rule border. Print tier: white. Hidden when printing.
+  rule border. Print tier: white. Hidden when printing. The row sits hard
+  against the bottom of the screen, so the first button's bottom-left and
+  the last button's bottom-right carry an 8px radius (matching the nav
+  button); every other corner in the row stays square.
 - **Sign-in**: owned by auth.js on every staff page; guest pages never see it.
 
 ## Tokens (defined once in nala-ui.css)

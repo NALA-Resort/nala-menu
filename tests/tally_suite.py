@@ -288,6 +288,13 @@ with sync_playwright() as p:
       return {b:Math.round(r.bottom),vh:window.innerHeight,doc:document.scrollingElement.scrollHeight};}""")
     print("   short page:", ft)
     ck("footer pinned to screen bottom on short page", abs(ft["b"]-ft["vh"])<=1)
+    rad=pg.evaluate("""()=>[...document.querySelectorAll('.foot .btn')].map(b=>{
+      const c=getComputedStyle(b);
+      return [c.borderTopLeftRadius,c.borderTopRightRadius,
+              c.borderBottomRightRadius,c.borderBottomLeftRadius].join('|');})""")
+    print("   foot radii:", rad)
+    ck("footer outer lower corners rounded, inner corners square",
+       len(rad)==2 and rad[0]=="0px|0px|0px|8px" and rad[1]=="0px|0px|8px|0px")
     pg.close(); b.close()
     open("/home/claude/nala/_p1_tally.png","wb").write(shot1)
 print("RESULT: %d passed, %d failed" % (P,F))

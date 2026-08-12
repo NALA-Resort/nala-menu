@@ -34,6 +34,10 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
         background:var(--ctl-bg); border-top:1px solid var(--ctl-bdr); margin-top:18px;
         padding:10px 0 calc(10px + env(safe-area-inset-bottom)); }
 .foot .btn { flex:1; text-align:center; white-space:nowrap; }
+/* the row sits hard against the bottom of the screen: soften only the two
+   corners that land in the phone's own rounded corners                     */
+.foot .btn:first-child { border-bottom-left-radius:8px; }
+.foot .btn:last-child  { border-bottom-right-radius:8px; }
 
 /* ── standard header: kicker, then one date row ─────── */
 .daterow { display:flex; align-items:center; gap:8px;
