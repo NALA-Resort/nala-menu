@@ -82,6 +82,16 @@ Cream #F9F7F4 · Ink #1C1C1A · Mid #999990 · Rule #E0E0DA · Red #A8321E
 UI font: Helvetica/Arial. Content serif (app tier only): Georgia.
 Labels: 10-11px, uppercase, letterspaced .12-.15em.
 
+**Type scale — pick from this list, never by eye: 8 · 11 · 15 · 20 · 27.**
+Each step is about a third up from the last. Two things that form one
+statement sit on adjacent steps; skipping steps is what makes one of them
+shout. 27 is reserved for a single headline number.
+
+**Name what a number counts.** "2×3" and "3×2" look like the same sum and
+the reader has to already know which side is which. Write the make-up as
+"3 twos · 1 three" — a wording that can be said out loud and cannot be
+read backwards.
+
 ## Housekeeping badges and order
 
 - **Service** is a faint outline pill, **Clean** a solid ink pill, **Verify** a

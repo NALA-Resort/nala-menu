@@ -54,11 +54,26 @@ with sync_playwright() as p:
     pg.route("**/menu.json*",lambda r,_:r.fulfill(status=200,content_type="application/json",body=json.dumps(menu)))
     pg.goto("http://localhost:8955/list.html"); pg.wait_for_timeout(1500)
 
-    hd=pg.evaluate("()=>({k:'n/a',d:title.textContent,t:nTables.textContent,tb:tblBreak.textContent,c:nCovers.textContent})")
+    hd=pg.evaluate("()=>({k:'n/a',d:title.textContent,t:nTables.textContent,tb:tblBreak.textContent,tw:nTablesWord.textContent,c:nCovers.textContent})")
     ck("printkick present for paper", pg.evaluate("()=>document.querySelector('.printkick').textContent.includes('Res print')"))
     ck("date format", bool(re.match(r'^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{1,2}(st|nd|rd|th) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$',hd["d"])))
     ck("covers 9", hd["c"]=="9")
-    ck("tables 4 (3x2 1x3)", hd["t"]=="4" and "3×2" in hd["tb"] and "1×3" in hd["tb"])
+    ck("tables 4, make-up named not multiplied",
+       hd["t"]=="4" and "3 twos" in hd["tb"] and "1 three" in hd["tb"]
+       and "×" not in hd["tb"] and hd["tw"]=="tables")
+    hg=pg.evaluate("""()=>{const m=document.querySelector('.stat.statmix');
+      const c=[...document.querySelectorAll('.stat')].pop();
+      const mn=m.querySelector('.stat-n').getBoundingClientRect();
+      const cn=c.querySelector('.stat-n').getBoundingClientRect();
+      return {mixLeft:Math.round(mn.left), covRight:Math.round(cn.right),
+              wrapLeft:Math.round(document.body.getBoundingClientRect().left),
+              vw:innerWidth, mixSize:getComputedStyle(m.querySelector('.stat-n')).fontSize,
+              covSize:getComputedStyle(c.querySelector('.stat-n')).fontSize,
+              rows:Math.round(document.querySelector('.stats').getBoundingClientRect().height)};}""")
+    print("   header geom:", hg)
+    ck("make-up left-anchored, covers right-anchored, one row",
+       hg["mixLeft"]<=20 and hg["covRight"]>=hg["vw"]-20 and hg["rows"]<=46)
+    ck("make-up one step below covers", hg["mixSize"]=="15px" and hg["covSize"]=="20px")
 
     rw=pg.evaluate("""()=>{
       const trs=[...document.querySelectorAll('#rows tr')];

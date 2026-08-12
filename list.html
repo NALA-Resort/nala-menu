@@ -46,14 +46,14 @@
   .yes { color:#3F7A52; font-weight:bold; }
   .no  { color:#A8321E; }
   .unk { color:#bbb; }
-  /* the make-up IS the instruction for whoever sets the room; it sits on the
-     number's own line, not stacked under it as a footnote                  */
-  .stats .stat:first-child { display:flex; flex-wrap:wrap; align-items:baseline;
-                             justify-content:center; column-gap:9px; }
-  .stats .stat:first-child .stat-n { display:inline-block; }
-  .stats .stat:first-child .stat-l { flex-basis:100%; }
-  .tablemix { font-family:Helvetica,Arial,sans-serif; font-size:15px; letter-spacing:.06em;
-              color:#111; white-space:nowrap; }
+  /* The make-up IS the instruction for whoever sets the room, so it is the
+     stat; the count is its checksum and lives in the label. Anchored left and
+     right so the row does not slide as the make-up changes length.          */
+  .stats { justify-content:space-between; gap:18px; align-items:baseline; }
+  .stat.statmix { text-align:left; }
+  .stat.statmix .stat-n { font-size:15px; letter-spacing:.01em; white-space:nowrap; }
+  .stats .stat:last-child { text-align:right; }
+  .stats .stat:last-child .stat-n { font-size:20px; }
   .row-out td { background:#FAF6F5; }
   .row-unk td { background:#FCFCFB; }
   .row-vacant td { background:#F4F4F2; color:#B0B0AA; }
@@ -115,7 +115,7 @@
 })();
 </script>
 <div class="stats">
-    <div class="stat"><span class="stat-n" id="nTables">&ndash;</span><span class="tablemix" id="tblBreak"></span><span class="stat-l">Tables</span></div>
+    <div class="stat statmix"><span class="stat-n" id="tblBreak">&ndash;</span><span class="stat-l"><span id="nTables">&ndash;</span> <span id="nTablesWord">tables</span></span></div>
     <div class="stat"><span class="stat-n" id="nCovers">&ndash;</span><span class="stat-l">Covers</span></div>
   </div>
 
@@ -363,9 +363,12 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     var sizes = {};
     for (var u in tblPax) sizes[tblPax[u]] = (sizes[tblPax[u]]||0) + 1;
     var parts = Object.keys(sizes).map(Number).sort(function(a,b){return a-b;})
-      .map(function(sz){ return sizes[sz]+'\u00d7'+sz; });
+      .map(function(sz){ var n=sizes[sz];
+        var W=['','one','two','three','four','five','six','seven','eight','nine','ten'];
+        var w=W[sz]||sz; return n+' '+w+(n>1?'s':''); });
     document.getElementById('nTables').textContent = tables;
-    document.getElementById('tblBreak').textContent = parts.length ? parts.join(' \u00b7 ') : '';
+    document.getElementById('tblBreak').textContent = parts.length ? parts.join(' \u00b7 ') : '\u2014';
+    document.getElementById('nTablesWord').textContent = (tables === 1) ? 'table' : 'tables';
 
 
   });
