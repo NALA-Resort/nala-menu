@@ -199,6 +199,21 @@
           color:var(--mid); cursor:pointer; }
   .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
 
+  .seg { display:flex; gap:6px; margin:2px 0 12px; }
+  .seg button { flex:1; padding:11px 0; border:1px solid var(--rule); background:transparent;
+                font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--mid); cursor:pointer; border-radius:6px; }
+  .seg button.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .rm-row { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:2px 0 14px; }
+  .rmp { height:40px; border:1px solid var(--rule); background:transparent;
+         font-family:Helvetica,Arial,sans-serif; font-size:12px; color:var(--ink);
+         cursor:pointer; border-radius:6px; }
+  .rmp.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .gd { text-align:center; margin:-4px 0 14px; font-size:13px; line-height:1.55; }
+  .gd .gd-sub { display:block; font-family:Helvetica,Arial,sans-serif; font-size:10.5px;
+                color:var(--mid); letter-spacing:.03em; }
+  .gd .gd-note { display:block; font-style:italic; font-size:12px; color:var(--mid); }
+
   .note-box { font-style:italic; font-size:13px; color:var(--mid); text-align:center;
               line-height:1.6; padding:0 4px 16px; }
   .sheet-label { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.25em;
@@ -258,7 +273,7 @@
 
   <div class="sec">
     <span>Bookings</span>
-    <a href="#" id="addExt">+ Add external</a>
+    <a href="#" id="addExt">+ Add reservation</a>
   </div>
   <div id="listBookings"></div>
 
@@ -806,10 +821,26 @@ function paxPicker(max, get, set){
   paint();
 }
 
+function guestDataHTML(g, knownName){
+  g = g || {};
+  var name = g.name || knownName || '';
+  var top = [];
+  if (name) top.push(name);
+  if (g.phone) top.push(g.phone);
+  var d = dietHTML(g.diets, ' \u00b7 ', 'alrg');
+  var h = '';
+  if (top.length) h += top.join(' \u00b7 ');
+  if (d) h += '<span class="gd-sub">'+d+'</span>';
+  if (g.note)  h += '<span class="gd-note">\u201C'+g.note+'\u201D</span>';
+  if (g.dnote) h += '<span class="gd-note">Dietary: \u201C'+g.dnote+'\u201D</span>';
+  return h ? '<div class="gd">'+h+'</div>' : '';
+}
+
 function openRoom(n, st){
   var pax = (st && st.g.pax) || 2;
   var guestAnswer = st && (st.src==='digital' ? st.g : st.guest);
   var isOverride  = st && st.override;
+  var knownName   = (roomguests[String(n)]||{}).name;
 
   function shell(inner){
     var mates = groupMates(n);
@@ -817,7 +848,8 @@ function openRoom(n, st){
       ? '<div class="comb-note">Table with Room '+mates.join(' & ')+
         '<button class="comb-undo" id="oUncomb">Uncombine</button></div>'
       : '';
-    sheet.innerHTML = '<h3>Room '+n+'</h3>' + combHtml + inner;
+    sheet.innerHTML = '<h3>Room '+n+'</h3>' + combHtml +
+      guestDataHTML(st && st.g, knownName) + inner;
     showSheet();
     revealAction();
     var u = document.getElementById('oUncomb');
@@ -835,7 +867,16 @@ function openRoom(n, st){
   }
   function paintPax(){ paxPicker(6, function(){return pax;}, function(v){pax=v;}); }
 
-  function writeManual(rec){ saveManual('room-'+n, rec); close(); render(); }
+  function writeManual(rec){
+    // a room reservation may carry guest details — keep them across edits
+    var prev = manual['room-'+n];
+    if (prev && rec.status === 'in'){
+      ['name','phone','diets','note'].forEach(function(k){
+        if (rec[k] === undefined && prev[k] !== undefined) rec[k] = prev[k];
+      });
+    }
+    saveManual('room-'+n, rec); close(); render();
+  }
   function clearManual(){ saveManual('room-'+n); close(); render(); }
 
   // ── staff cancelled a booking the guest had made ────────
@@ -957,9 +998,14 @@ function openRoom(n, st){
 
 document.getElementById('addExt').onclick = function(e){
   e.preventDefault();
-  var pax=2, diets=[];
+  var pax=2, diets=[], dest=null;   // dest null = external, otherwise room number
   sheet.innerHTML =
-    '<h3>External guest</h3>'+
+    '<h3>Add reservation</h3>'+
+    '<div class="seg">'+
+      '<button id="segExt" class="on">External</button>'+
+      '<button id="segRoom">In-house room</button>'+
+    '</div>'+
+    '<div class="rm-row" id="rmRow" style="display:none"></div>'+
     '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
     '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
     '<div class="sheet-label" style="margin-top:14px">Guests</div>'+
@@ -971,6 +1017,25 @@ document.getElementById('addExt').onclick = function(e){
     '<button class="opt quiet" id="oCancel">Cancel</button>';
   showSheet();
   revealAction();
+
+  var segE=document.getElementById('segExt'), segR=document.getElementById('segRoom');
+  var rmRow=document.getElementById('rmRow');
+  function paintSeg(){
+    segE.className = dest===null ? 'on' : '';
+    segR.className = dest===null ? '' : 'on';
+    rmRow.style.display = dest===null ? 'none' : 'grid';
+  }
+  function paintRooms(){
+    rmRow.innerHTML='';
+    for (var i=1;i<=ROOMS;i++)(function(v){
+      var b=document.createElement('button');
+      b.className='rmp'+(dest===v?' on':''); b.textContent=v;
+      b.onclick=function(){ dest=v; paintRooms(); };
+      rmRow.appendChild(b);
+    })(i);
+  }
+  segE.onclick=function(){ dest=null; paintSeg(); };
+  segR.onclick=function(){ if(dest===null) dest=1; paintRooms(); paintSeg(); };
 
   function paintPax(){ paxPicker(8, function(){return pax;}, function(v){pax=v;}); }
   function paintChips(){
@@ -986,16 +1051,27 @@ document.getElementById('addExt').onclick = function(e){
       box.appendChild(b);
     });
   }
-  paintPax(); paintChips();
+  paintPax(); paintChips(); paintSeg();
 
   document.getElementById('oIn').onclick=function(){
     var nm=document.getElementById('xName').value.trim();
     var ph=document.getElementById('xPhone').value.trim();
     var nt=document.getElementById('xNote').value.trim();
-    if(!nm){ document.getElementById('xName').focus(); return; }
-    var id='ext-'+Date.now();
-    var rec={ status:'in', pax:pax, name:nm, phone:ph, note:nt, diets:diets, source:'manual' };
-    saveManual(id, rec);
+    if (dest===null){
+      if(!nm){ document.getElementById('xName').focus(); return; }
+      var id='ext-'+Date.now();
+      var rec={ status:'in', pax:pax, name:nm, phone:ph, note:nt, diets:diets, source:'manual' };
+      saveManual(id, rec);
+    } else {
+      var rec2={ status:'in', pax:pax, room:String(dest), source:'manual' };
+      // staff booking over a guest's own answer counts as an override
+      for (var k in responses){ if (String(responses[k].room)===String(dest)) rec2.override=true; }
+      if (nm) rec2.name=nm;
+      if (ph) rec2.phone=ph;
+      if (nt) rec2.note=nt;
+      if (diets.length) rec2.diets=diets.slice();
+      saveManual('room-'+dest, rec2);
+    }
     close(); render();
   };
   document.getElementById('oCancel').onclick=close;
@@ -1004,24 +1080,59 @@ document.getElementById('addExt').onclick = function(e){
 function editExt(key, g){
   var pax = g.pax || 2;
   var isManual = key.indexOf('ext-') === 0;
-
-  sheet.innerHTML =
-    '<h3>'+(g.name || 'External guest')+'</h3>'+
-    (g.phone ? '<div class="note-box">'+g.phone+'</div>' : '')+
-    (isManual ? '<div class="sheet-label">Guests</div><div class="pax-row" id="paxRow"></div>' : '')+
-    (isManual ? '<button class="opt solid" id="oSave">Update guests</button>' : '')+
-    '<button class="opt out" id="oDel">Cancel booking</button>'+
-    '<button class="opt quiet" id="oClose">Close</button>';
-  showSheet();
-  revealAction();
+  var diets = (g.diets || []).slice();
 
   if (isManual){
+    sheet.innerHTML =
+      '<h3>'+(g.name || 'Reservation')+'</h3>'+
+      '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
+      '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
+      '<div class="sheet-label" style="margin-top:14px">Guests</div>'+
+      '<div class="pax-row" id="paxRow"></div>'+
+      '<div class="sheet-label">Dietary requirements</div>'+
+      '<div class="chips" id="dietChips"></div>'+
+      '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
+      '<button class="opt solid" id="oSave" style="margin-top:8px">Save changes</button>'+
+      '<button class="opt out" id="oDel">Cancel booking</button>'+
+      '<button class="opt quiet" id="oClose">Close</button>';
+    showSheet();
+    revealAction();
+    document.getElementById('xName').value  = g.name  || '';
+    document.getElementById('xPhone').value = g.phone || '';
+    document.getElementById('xNote').value  = g.note  || '';
     paxPicker(8, function(){return pax;}, function(v){pax=v;});
+    (function paintChips(){
+      var box=document.getElementById('dietChips'); box.innerHTML='';
+      DIETARIES.forEach(function(d){
+        var b=document.createElement('button');
+        b.className='chip'+(diets.indexOf(d)>-1?' on':''); b.textContent=d;
+        b.onclick=function(){
+          var i=diets.indexOf(d);
+          if(i>-1) diets.splice(i,1); else diets.push(d);
+          paintChips();
+        };
+        box.appendChild(b);
+      });
+    })();
     document.getElementById('oSave').onclick = function(){
-      var rec = JSON.parse(JSON.stringify(g)); rec.pax = pax;
+      var rec = JSON.parse(JSON.stringify(g));
+      rec.name  = document.getElementById('xName').value.trim() || rec.name;
+      rec.phone = document.getElementById('xPhone').value.trim();
+      rec.note  = document.getElementById('xNote').value.trim();
+      rec.diets = diets.slice();
+      rec.pax   = pax;
       saveManual(key, rec);
       close(); render();
     };
+  } else {
+    sheet.innerHTML =
+      '<h3>'+(g.name || 'External guest')+'</h3>'+
+      guestDataHTML(g, null) +
+      '<div class="note-box">Booked by the guest \u2014 details are theirs to change.</div>'+
+      '<button class="opt out" id="oDel">Cancel booking</button>'+
+      '<button class="opt quiet" id="oClose">Close</button>';
+    showSheet();
+    revealAction();
   }
 
   document.getElementById('oDel').onclick = function(){
@@ -1036,7 +1147,7 @@ function editExt(key, g){
     if (isManual){
       saveManual(key);
     } else {
-      // guest booked via the link — record a staff cancellation
+      // guest booked via the link \u2014 record a staff cancellation
       var rec = { status:'out', pax:0, override:true, source:'manual',
                   name:g.name||'', phone:g.phone||'' };
       cancelledExt[key] = true;
