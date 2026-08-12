@@ -31,16 +31,24 @@ the real site — pending screenshots). Staff controls never appear here.
 - Room tiles are the one exception: a bordered grid that is tappable on the
   app tier — the grid itself is the control surface.
 
-## Header — identical anatomy on every staff page
+## Header — one row on every staff page
 
-1. `.topbar` — an in-flow header bar: menu button on the LEFT, `.kicker`
-   (NALA · working page name) centred. Nothing on the right, nothing floats,
-   nothing may overlap the rows beneath. The menu is gated on hc tally.
-2. `.daterow` — ‹ date › plus a Today button that only appears when browsing
-   another day. hc tally shows the date alone (locked to today).
-3. `.stats` — the page's headline numbers, unboxed.
+`[Today] [‹] Wed 12th Aug [›] ............ [☰]`
 
-The old floating corner menu is banned: a fixed element pinned over in-flow
+- One `.daterow`, in flow, nothing floating or sticky. All controls the
+  same 36px height.
+- **Today is always present**, disabled (dimmed) when already viewing today.
+- **Date format: Wd Dth Mon** (e.g. Wed 12th Aug). Short weekday, ordinal
+  day, short month, no year on screen. Paper carries the full date in the
+  printed stamp.
+- The menu sits at the row's right end (`margin-left:auto`); dropdown opens
+  beneath it. Gated on hc tally. hc tally shows date + menu only (locked
+  to today).
+- Page identity is not shown on screen; print sheets carry `.printkick`
+  (NALA · page name) on paper only.
+- `.stats` follows the row, unboxed as before.
+
+Floating corner menus remain banned: a fixed element pinned over in-flow
 content is guaranteed to collide with something at some width.
 
 **One date format everywhere: Weekday D Mon YYYY** (e.g. Wednesday 12 Aug
