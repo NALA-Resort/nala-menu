@@ -38,11 +38,11 @@ function ord(n){
   return n + (s[(v-20)%10] || s[v] || s[0]);
 }
 
-/* the one date format: Weekday D Mon YYYY (see STYLEGUIDE.md) */
+/* the one date format: Wd Dth Mon (see STYLEGUIDE.md) */
 function dateLabel(d){
-  var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return days[d.getDay()]+' '+d.getDate()+' '+mo[d.getMonth()]+' '+d.getFullYear();
+  return days[d.getDay()]+' '+ord(d.getDate())+' '+mo[d.getMonth()];
 }
 
 /* ── the standard header's date row ────────────────────────────
@@ -79,7 +79,7 @@ function initDateNav(){
   if (nx) nx.onclick = function(){ shiftDate(1); };
   if (td){
     td.onclick = function(e){ if (e) e.preventDefault(); goToday(); };
-    if (!isToday()) td.classList.add('show');
+    td.disabled = isToday();     // always visible; dimmed when already on today
   }
   return { VIEW:VIEW, todayKey:todayKey, isToday:isToday };
 }
