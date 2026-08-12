@@ -90,15 +90,19 @@ shout. 27 is reserved for a single headline number.
 **Name what a number counts.** "2×3" and "3×2" look like the same sum and
 the reader has to already know which side is which. Write the make-up as
 "3 twos · 1 three" — a wording that can be said out loud and cannot be
-read backwards.
+read backwards. Both dining pages state the make-up the same way.
 
 ## Printed sheets — repeating header
 
 Everything above the table repeats on every printed page: page name, date,
 stats, and the manager strip where there is one. Browsers only reliably
 repeat a table header group, so the block is cloned into a `.printhead` row
-inside `<thead>` on `beforeprint`, and the on-screen original is hidden on
-paper. The clone drops the nav menu and strips ids so nothing is duplicated.
+inside `<thead>` as soon as the sheet has data — NOT on `beforeprint`, which
+iOS Safari does not reliably fire — and the on-screen original is hidden on
+paper. The clone drops the nav menu, strips ids, and is marked `.printclone`
+so tests and scripts can tell it from the original. Tables print with
+`border-collapse:collapse`, which Safari requires before it will repeat a
+header group at all.
 
 ## Housekeeping badges and order
 

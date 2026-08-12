@@ -82,7 +82,9 @@ with sync_playwright() as p:
     ck("covers 9", s2["c"]==9)
     ck("rooms out 1", s2["o"]==1)
     ck("awaiting 12 + red number", s2["a"]==12 and "warn" in s2["warn"])
-    ck("tables line 3x2 1x3", "3×2" in s2["tl"] and "1×3" in s2["tl"])
+    ck("tables line named not multiplied",
+       "3 twos" in s2["tl"] and "1 three" in s2["tl"] and "×" not in s2["tl"]
+       and "4 tables" in s2["tl"])
 
     # 3 bookings list
     bl=pg.evaluate("""()=>{

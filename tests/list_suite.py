@@ -63,7 +63,7 @@ with sync_playwright() as p:
        hd["t"]=="4" and "3 twos" in hd["tb"] and "1 three" in hd["tb"]
        and "×" not in hd["tb"] and hd["tw"]=="tables")
     hg=pg.evaluate("""()=>{const m=document.querySelector('.stat.statmix');
-      const c=[...document.querySelectorAll('.stat')].pop();
+      const c=[...document.querySelectorAll('.stat')].filter(e=>!e.closest('#printHead')).pop();
       const mn=m.querySelector('.stat-n').getBoundingClientRect();
       const cn=c.querySelector('.stat-n').getBoundingClientRect();
       return {mixLeft:Math.round(mn.left), covRight:Math.round(cn.right),

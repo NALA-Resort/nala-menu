@@ -661,10 +661,15 @@ function render(){
   });
   var sizes = {};
   for (var u in tblPax) sizes[tblPax[u]] = (sizes[tblPax[u]]||0) + 1;
+  var tblCount = Object.keys(tblPax).length;
   var parts = Object.keys(sizes).map(Number).sort(function(a,b){return a-b;})
-    .map(function(sz){ return sizes[sz]+'\u00d7'+sz; });
+    .map(function(sz){ var n=sizes[sz];
+      var W=['','one','two','three','four','five','six','seven','eight','nine','ten'];
+      var w=W[sz]||sz; return n+' '+w+(n>1?'s':''); });
   var tl = document.getElementById('tablesLine');
-  tl.textContent = parts.length ? 'Tables \u00b7 '+parts.join(' \u00b7 ') : '';
+  tl.textContent = parts.length
+    ? parts.join(' \u00b7 ') + ' \u00b7 ' + tblCount + (tblCount === 1 ? ' table' : ' tables')
+    : '';
 
   document.getElementById('nCovers').textContent = covers;
   document.getElementById('nOut').textContent    = notDining;

@@ -98,6 +98,7 @@
     table { min-width:0; width:100%; }
     tr { page-break-inside:avoid; }
     thead { display:table-header-group; }
+    table { border-collapse:collapse; }   /* Safari repeats headers only when collapsed */
   }
 </style>
 </head>
@@ -397,16 +398,23 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
       el.classList.add('noprintblock');
       var c = el.cloneNode(true);
       c.classList.remove('noprintblock');
+      c.classList.add('printclone');
       c.querySelectorAll('[id]').forEach(function(n){ n.removeAttribute('id'); });
       var nav = c.querySelector('.navwrap'); if (nav) nav.parentNode.removeChild(nav);
       slot.appendChild(c);
     });
   }
-  window.addEventListener('beforeprint', fill);
-  if (window.matchMedia) {
-    var mq = window.matchMedia('print');
-    if (mq.addListener) mq.addListener(function(m){ if (m.matches) fill(); });
+  /* iOS Safari does not reliably fire beforeprint, so the clone is built as
+     soon as the sheet has data rather than waiting for a print event. It is
+     hidden on screen either way. Refilled on beforeprint where supported, in
+     case the sheet changed after load.                                     */
+  function fillWhenReady(n){
+    var rows = document.getElementById('rows');
+    if (rows && rows.children.length){ fill(); return; }
+    if (n > 0) setTimeout(function(){ fillWhenReady(n-1); }, 400);
   }
+  fillWhenReady(15);
+  window.addEventListener('beforeprint', fill);
 })();
 </script>
 </body>

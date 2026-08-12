@@ -112,7 +112,7 @@ with sync_playwright() as p:
       nav:getComputedStyle(document.querySelector('.navwrap')).display,
       dnav:getComputedStyle(document.querySelector('.dnav')).display,
       stamp:getComputedStyle(document.querySelector('.stamp')).display,
-      mgr:getComputedStyle(document.querySelector('.mgrstrip')).display})""")
+      mgr:getComputedStyle(document.querySelector('#printHead .mgrstrip')).display})""")
     ck("print hides controls, keeps stamp+manager strip", pr["foot"]=="none" and pr["nav"]=="none" and pr["dnav"]=="none" and pr["stamp"]!="none" and pr["mgr"]!="none")
     pg.emulate_media(media="screen")
     pg.close()
