@@ -155,3 +155,25 @@ Line counts: tally 1274→1145, res print 533→367, HC print 372→220,
 HC tally 387→320 — about 500 lines gone with zero behaviour lost, one
 Safari bug fixed, rollbacks made universal, and every claim above backed
 by a passing check.
+
+---
+
+## Post-audit regressions (12 Aug, recorded for honesty)
+
+1. **Self-referential palette tokens.** Part 1's cleanup script inserted the
+   `:root` colour definitions and then ran its hex→var replacement over the
+   whole file, rewriting the definitions it had just written into
+   `--green:var(--green)`. Every state colour on res tally was invalid from
+   Part 1 until today: tile tints, sheet buttons, multi-select buttons
+   (whose white labels on cream read as a blank, broken bar). The suites
+   validated class names, never computed colours, so 35 checks stayed green
+   around a colourless page. Fixed; the tally suite now asserts computed
+   background colours for tiles, sheet buttons and the select bar, plus the
+   bar's fixed-bottom geometry.
+2. **Nav script ordered before its markup.** Two header restructures moved
+   the menu button below the script that wires it, silently killing the
+   menu (and on hc tally, the management gate). Fixed — scripts now sit
+   after the markup on all four pages, and suites tap the menu open.
+
+Lesson applied everywhere: verification must assert rendered outcomes
+(pixels, geometry, interaction), not markup shape.
