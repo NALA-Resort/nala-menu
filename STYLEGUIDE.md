@@ -85,6 +85,10 @@ Labels: 10-11px, uppercase, letterspaced .12-.15em.
 - **Order on both housekeeping pages: services, then cleans, then verify,
   then vacant**, room order within each block. Services are attempted during
   breakfast, before the departure cleans open up.
+- **The printed clean sheet carries jobs only** — services and cleans — then
+  three blank write-in rows for anything penned on. Verify and vacant rooms
+  are not printed; the "To verify" count says how many to check. The sheet
+  must stay within one A5 page.
 
 ## Seating (combined tables)
 

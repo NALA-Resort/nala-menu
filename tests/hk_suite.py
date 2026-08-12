@@ -58,8 +58,14 @@ with sync_playwright() as p:
       arr:t.cells[2].textContent.trim(),dep:t.cells[3].textContent.trim(),
       done:t.cells[4].innerHTML,insp:t.cells[6].innerHTML}))""")
     order=[r["room"] for r in rw]
-    ck("17 rows, services first then cleans then verify then vacant",
-       len(rw)==17 and order[:3]==["2","4","8"] and order[3:5]==["1","7"] and order[-1]=="5")
+    ck("jobs only: 3 services, 2 cleans, then 3 blank write-in rows",
+       len(rw)==8 and order[:3]==["2","4","8"] and order[3:5]==["1","7"] and order[5:]==["","",""])
+    ck("verify and vacant rooms are off the sheet",
+       not any("Verify" in r["svc"] or "Vacant" in r["svc"] for r in rw))
+    wi=[r for r in rw if r["cls"]=="writein"]
+    ck("write-in rows blank but carry both tick boxes",
+       len(wi)==3 and all(r["room"]=="" and r["svc"]=="" and r["arr"]=="" and r["dep"]==""
+                          and "box" in r["done"] and "box" in r["insp"] for r in wi))
     r1=[r for r in rw if r["room"]=="1"][0]
     ck("room1 Clean chip + done tick with time (6-digit ISO parsed)", "Clean" in r1["svc"] and "✓" in r1["done"] and re.search(r'\d{2}:\d{2}',r1["done"]))
     r2=[r for r in rw if r["room"]=="2"][0]
@@ -68,11 +74,15 @@ with sync_playwright() as p:
     ck("room4 Departed subtag", "Departed" in r4["svc"])
     r7=[r for r in rw if r["room"]=="7"][0]
     ck("room7 done clears breakfast subtag", "At breakfast" not in r7["svc"] and "✓" in r7["done"])
-    r3=[r for r in rw if r["room"]=="3"][0]
-    ck("room3 stale departure -> Verify", "Verify" in r3["svc"])
-    r5=[r for r in rw if r["room"]=="5"][0]
-    ck("room5 vacant muted, no tick boxes", "Vacant" in r5["svc"] and "box" not in r5["done"] and "box" not in r5["insp"])
     ck("room2 arrival+departs columns", r2["arr"]!="" and r2["dep"]!="")
+    # A5 portrait at 96dpi with the 10mm @page margin: 484 x 718 printable px
+    pa=page(); pa.emulate_media(media="print")
+    pa.set_viewport_size({"width":484,"height":718})
+    pa.goto("http://localhost:8956/housekeeping.html"); pa.wait_for_timeout(1400)
+    fits=pa.evaluate("()=>Math.round(document.scrollingElement.scrollHeight)")
+    print("   sheet height at A5 width:", fits, "of 718")
+    ck("whole sheet fits one A5 page", fits<=718)
+    pa.close()
     ck("stamp present", bool(re.match(r'^Printed \d{1,2}/\d{1,2}/\d{4} \d{1,2}:\d{2}[ap]m$', pg.locator("#stamp").inner_text(), re.I)))
     shot=pg.screenshot(full_page=True)
     pg.emulate_media(media="print")

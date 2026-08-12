@@ -187,6 +187,11 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
     }
 
     var tb = document.getElementById('rows');
+    // Only real jobs go on paper. Verify and vacant rooms are not jobs, and
+    // printing all 17 pushed the sheet off A4. The three blank rows below are
+    // for the manager to pen in anything the board could not confirm; the
+    // 'To verify' count above says how many that might be.
+    rows = rows.filter(function(r){ return r.kind==='svc' || r.kind==='clean'; });
     rows.forEach(function(row){
       var g = row.rec;
       var chip='', cls='';
@@ -212,6 +217,17 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
           '<td class="c-insp">'+boxes[1]+'</td>'+
         '</tr>');
     });
+
+    for (var w=0; w<3; w++){
+      tb.insertAdjacentHTML('beforeend',
+        '<tr class="writein">'+
+          '<td class="c-room"></td><td class="c-svc"></td>'+
+          '<td class="c-arr"></td><td class="c-dep"></td>'+
+          '<td class="c-done"><span class="box"></span></td>'+
+          '<td class="c-notes"></td>'+
+          '<td class="c-insp"><span class="box"></span></td>'+
+        '</tr>');
+    }
   })
   .catch(function(e){
     document.getElementById('rows').innerHTML =
