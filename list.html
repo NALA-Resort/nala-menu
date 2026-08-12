@@ -46,8 +46,14 @@
   .yes { color:#3F7A52; font-weight:bold; }
   .no  { color:#A8321E; }
   .unk { color:#bbb; }
-  .tablesline { text-align:center; margin:6px 0 2px; font-family:Helvetica,Arial,sans-serif;
-                font-size:11.5px; letter-spacing:.14em; color:#333; }
+  /* the make-up IS the instruction for whoever sets the room; it sits on the
+     number's own line, not stacked under it as a footnote                  */
+  .stats .stat:first-child { display:flex; flex-wrap:wrap; align-items:baseline;
+                             justify-content:center; column-gap:9px; }
+  .stats .stat:first-child .stat-n { display:inline-block; }
+  .stats .stat:first-child .stat-l { flex-basis:100%; }
+  .tablemix { font-family:Helvetica,Arial,sans-serif; font-size:15px; letter-spacing:.06em;
+              color:#111; white-space:nowrap; }
   .row-out td { background:#FAF6F5; }
   .row-unk td { background:#FCFCFB; }
   .row-vacant td { background:#F4F4F2; color:#B0B0AA; }
@@ -109,10 +115,9 @@
 })();
 </script>
 <div class="stats">
-    <div class="stat"><span class="stat-n" id="nTables">&ndash;</span><span class="stat-l">Tables</span></div>
+    <div class="stat"><span class="stat-n" id="nTables">&ndash;</span><span class="tablemix" id="tblBreak"></span><span class="stat-l">Tables</span></div>
     <div class="stat"><span class="stat-n" id="nCovers">&ndash;</span><span class="stat-l">Covers</span></div>
   </div>
-<div class="tablesline" id="tblBreak"></div>
 
 <div class="scroller">
   <table>

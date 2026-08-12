@@ -28,6 +28,11 @@ the real site — pending screenshots). Staff controls never appear here.
 - **Plain typography = information.** Stats are a bare number over a small
   label (`.stats`/`.stat`), never boxed. Attention turns the number red,
   not the frame.
+- **Do not stack a fact under another fact.** Putting B on its own line
+  beneath A says B is subordinate to A, which is usually a claim nobody
+  checked, and it costs a row of white space. The table make-up sits on the
+  same line as the table count because the make-up is the actual instruction
+  to whoever sets the room; the count is only its checksum.
 - Room tiles are the one exception: a bordered grid that is tappable on the
   app tier — the grid itself is the control surface.
 
