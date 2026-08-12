@@ -288,6 +288,14 @@ with sync_playwright() as p:
       return {b:Math.round(r.bottom),vh:window.innerHeight,doc:document.scrollingElement.scrollHeight};}""")
     print("   short page:", ft)
     ck("footer pinned to screen bottom on short page", abs(ft["b"]-ft["vh"])<=1)
+    nav=pg.evaluate("""()=>[...document.querySelectorAll('.navdrop a')].map(a=>({
+      t:a.textContent,h:Math.round(a.getBoundingClientRect().height),
+      href:a.getAttribute('href').split('?')[0]}))""")
+    print("   nav items:", nav)
+    ck("menu labels and order",
+       [i["t"] for i in nav]==["Reservations Sheet","Cleans","Clean sheet"] and
+       [i["href"] for i in nav]==["list.html","cleaners.html","housekeeping.html"])
+    ck("no menu label wraps to a second line", all(i["h"]<=38 for i in nav))
     rad=pg.evaluate("""()=>[...document.querySelectorAll('.foot .btn')].map(b=>{
       const c=getComputedStyle(b);
       return [c.borderTopLeftRadius,c.borderTopRightRadius,

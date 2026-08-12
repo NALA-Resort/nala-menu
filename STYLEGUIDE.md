@@ -57,8 +57,11 @@ content is guaranteed to collide with something at some width.
 ## Controls — identical on every staff page
 
 - **Nav menu**: three-bar button, fixed top right. Dropdown lists the other
-  staff screens by their working names: Res tally, Res print, HC print,
-  HC tally. On hc tally the menu exists but only renders for logins whose
+  staff screens by their working names: Reservations (tally.html),
+  Reservations Sheet (list.html), Cleans (cleaners.html), Clean sheet
+  (housekeeping.html), always in that order — live board then its sheet,
+  reservations before cleans. Labels never wrap; the dropdown widens to
+  its longest label. On hc tally the menu exists but only renders for logins whose
   email does not start with "housekeeping".
 - **Floating footer** (`.foot`): sticky at the bottom, holds the page's
   actions. Primary action solid, secondary outlined. App tier: cream with
