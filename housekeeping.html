@@ -27,7 +27,7 @@
        white-space:nowrap; vertical-align:bottom; }
   th.wrap { white-space:normal; line-height:1.25; text-align:center; }
 
-  td { font-size:9.5px; padding:7.5px 5px; border-bottom:1px solid #ddd; vertical-align:top; }
+  td { font-size:9px; padding:5px; border-bottom:1px solid #ddd; vertical-align:middle; }
   tr { page-break-inside:avoid; }
 
   .c-room  { width:8%;  text-align:center; font-weight:bold; }
@@ -37,25 +37,27 @@
   .c-done  { width:6%;  text-align:center; }
   .c-notes { width:42%; }
   .c-insp  { width:8%;  text-align:center; }
-  tbody td { padding-top:12px; padding-bottom:12px; }
+  /* rows are sized so a full house — every room a job, plus the write-ins —
+     still lands on one A5 page. Do not loosen without re-checking the fit. */
+  tbody td { padding-top:4px; padding-bottom:4px; height:22px; }
 
   .chip { display:inline-block; border:1.2px solid #111; border-radius:5px;
-          padding:2px 9px; font-weight:bold; font-size:9px; letter-spacing:.08em;
+          padding:1px 7px; font-weight:bold; font-size:8px; letter-spacing:.08em;
           background:#111; color:#fff; text-transform:uppercase;
           -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .chip.svc { background:transparent; border-color:#aaa; color:#555;
               font-weight:normal; letter-spacing:.12em; }
-  .donemark { font-weight:bold; font-size:10px; white-space:nowrap; }
-  .subtag { font-size:8.5px; color:#555; margin-top:3px; letter-spacing:.04em; }
+  .donemark { font-weight:bold; font-size:9px; white-space:nowrap; }
+  .subtag { font-size:7.5px; color:#555; margin-top:1px; letter-spacing:.04em; }
   .chip.ver { background:transparent; border-style:dashed; border-color:#A8321E; color:#A8321E; }
-  .box  { width:22px; height:22px; border:1.5px solid #333; border-radius:4px;
+  .box  { width:15px; height:15px; border:1.2px solid #333; border-radius:3px;
           display:inline-block; vertical-align:middle; }
   tr.vac td { color:#c2c2c2; }
-  .mgrstrip { margin:10px 0 18px; }
-  .mgrline { display:flex; gap:10px; align-items:flex-end; margin:8px 0 0; }
+  .mgrstrip { margin:8px 0 12px; }
+  .mgrline { display:flex; gap:10px; align-items:flex-end; margin:6px 0 0; }
   .mgrline span { font-size:8px; letter-spacing:.14em; text-transform:uppercase;
                   color:#666; white-space:nowrap; padding-bottom:2px; }
-  .mgrline i { flex:1; border-bottom:1px solid #999; height:15px; }
+  .mgrline i { flex:1; border-bottom:1px solid #999; height:13px; }
 
   .muted { color:#aaa; font-weight:normal; font-style:italic; }
 

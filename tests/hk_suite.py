@@ -82,6 +82,14 @@ with sync_playwright() as p:
     fits=pa.evaluate("()=>Math.round(document.scrollingElement.scrollHeight)")
     print("   sheet height at A5 width:", fits, "of 718")
     ck("whole sheet fits one A5 page", fits<=718)
+    # worst case: every room a job, plus the three write-ins, still one page
+    pa.evaluate("""()=>{const tb=document.getElementById('rows');
+      const t=[...tb.querySelectorAll('tr')].find(r=>!r.querySelector('.subtag') && r.className!=='writein');
+      while (tb.querySelectorAll('tr').length < 20) tb.appendChild(t.cloneNode(true));}""")
+    pa.wait_for_timeout(150)
+    full=pa.evaluate("()=>Math.round(document.querySelector('.stamp').getBoundingClientRect().bottom)")
+    print("   20-row sheet bottom:", full, "of 718")
+    ck("full house of 17 jobs plus write-ins still fits A5", full<=718)
     pa.close()
     ck("stamp present", bool(re.match(r'^Printed \d{1,2}/\d{1,2}/\d{4} \d{1,2}:\d{2}[ap]m$', pg.locator("#stamp").inner_text(), re.I)))
     shot=pg.screenshot(full_page=True)

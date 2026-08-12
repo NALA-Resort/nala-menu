@@ -87,8 +87,10 @@ Labels: 10-11px, uppercase, letterspaced .12-.15em.
   breakfast, before the departure cleans open up.
 - **The printed clean sheet carries jobs only** — services and cleans — then
   three blank write-in rows for anything penned on. Verify and vacant rooms
-  are not printed; the "To verify" count says how many to check. The sheet
-  must stay within one A5 page.
+  are not printed; the "To verify" count says how many to check. Rows are
+  sized so that even a full house — all 17 rooms a job, plus the write-ins —
+  stays within one A5 page. Do not loosen row padding without re-running the
+  fit checks in tests/hk_suite.py.
 
 ## Seating (combined tables)
 
