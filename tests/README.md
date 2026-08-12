@@ -5,7 +5,7 @@ database route intercepted, writes captured and inspected). Run from the
 repo root with a local copy of the site:
 
     python3 tests/tally_suite.py     # 60 checks — res tally
-    python3 tests/list_suite.py      # 26 — res print (incl. Safari-fraction regression)
+    python3 tests/list_suite.py      # 24 — res print (incl. Safari-fraction regression)
     python3 tests/hk_suite.py        # 19 — HC print
     python3 tests/cl_suite.py        # 24 — HC tally (incl. management menu gate)
 

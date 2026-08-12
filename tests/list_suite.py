@@ -122,38 +122,7 @@ with sync_playwright() as p:
     ck("off-today date matches param", str((now+datetime.timedelta(days=1)).day) in pg.locator("#title").inner_text())
 
 
-    # the sign-in button must never die silently (see AUDIT.md)
-    BROKEN = SDK.replace("onIdTokenChanged", "xIdTokenChanged")
-    pb = b.new_page(viewport={"width":390,"height":844})
-    pb.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body=BROKEN))
-    pb.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body="/*n*/"))
-    pb.route("**firebasedatabase.app/**",fb)
-    pb.goto("http://localhost:8955/list.html"); pb.wait_for_timeout(1200)
-    st=pb.evaluate("""()=>({box:(document.getElementById('nalaAuthBox')||{}).innerText||'',
-      form:!!document.getElementById('naGo'),
-      reload:!!(document.getElementById('naReload')||document.getElementById('naReload2'))})""")
-    print("   broken-SDK panel:", repr(st["box"])[:90])
-    ck("auth SDK missing: says so and offers reload, no dead form",
-       st["reload"] and not st["form"] and "sign-in service" in st["box"].lower())
-    pb.close()
-
-    NOSIGN = SDK.replace("onIdTokenChanged:function(cb){setTimeout(function(){cb({email:'staff@x',getIdToken:function(){return Promise.resolve('T');}});},20);}",
-                         "onIdTokenChanged:function(cb){setTimeout(function(){cb(null);},20);}")
-    pc = b.new_page(viewport={"width":390,"height":844})
-    pc.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body=NOSIGN))
-    pc.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body="/*n*/"))
-    pc.route("**firebasedatabase.app/**",fb)
-    pc.goto("http://localhost:8955/list.html"); pc.wait_for_timeout(1200)
-    if pc.evaluate("()=>!!document.getElementById('naGo')"):
-        pc.fill("#naEmail","a@b.c"); pc.fill("#naPass","x")
-        pc.click("#naGo"); pc.wait_for_timeout(300)
-        st2=pc.evaluate("()=>({dis:naGo.disabled, err:naErr.textContent})")
-        print("   dead-button check:", st2)
-        ck("sign-in call impossible: button re-enabled with a message",
-           st2["dis"] is False and len(st2["err"])>0)
-    else:
-        ck("sign-in call impossible: button re-enabled with a message", False)
-    pc.close()
+    # (auth-failure checks parked with the auth.js rollback — see AUDIT.md)
     open("/home/claude/nala/_p2_list.png","wb").write(shot)
     pg.close(); b.close()
 print("RESULT: %d passed, %d failed" % (P,F))

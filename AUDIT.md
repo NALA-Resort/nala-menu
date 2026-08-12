@@ -218,3 +218,18 @@ real SDK does; the v3 file fails those suites outright.
 Lesson: a mock that cannot fail the way the real dependency fails is not a
 test, it is a rehearsal. Every guard added to auth.js must be exercised
 against a mock that reproduces the real error, not a friendlier one.
+
+### Rolled back (v5 = the original file)
+
+v4 left Ben on a blank screen. Rather than attempt a third forward fix on a
+live system, auth.js was restored byte-for-byte to the version from before
+any of today's auth work and republished as ?v=5 on all seven pages.
+
+Everything the auth work was trying to solve — the sign-in form flashing on
+page changes, the silently dead Sign in button — is UNFIXED and back in the
+backlog. The two suite checks written for it are parked with it.
+
+Three attempts, three breaks, each one shipped on green tests. The tests were
+green because the mock could not fail the way Firebase fails. Nothing should
+be changed in auth.js again until there is a way to exercise it against real
+Firebase, or at minimum a mock built from the SDK's actual error paths.
