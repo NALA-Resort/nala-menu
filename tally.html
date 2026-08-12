@@ -7,14 +7,14 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nala — Tonight's Numbers</title>
-<link rel="stylesheet" href="nala-ui.css?v=3">
+<link rel="stylesheet" href="nala-ui.css?v=4">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
           /* state palette: dining green, declined terracotta, vacant slate */
-          --green:var(--green);  --green-t:var(--green-t);  --green-b:var(--green-b);
-          --terra:var(--terra);  --terra-t:var(--terra-t);   --terra-b:var(--terra-b);
-          --slate:var(--slate);  --slate-t:var(--slate-t);     --slate-b:var(--slate-b); }
+          --green:#5E7D67;  --green-t:rgba(122,160,130,.26);  --green-b:rgba(122,160,130,.65);
+          --terra:#9E6455;  --terra-t:rgba(184,106,90,.16);   --terra-b:rgba(184,106,90,.45);
+          --slate:#57575E;  --slate-t:rgba(87,87,94,.10);     --slate-b:rgba(87,87,94,.28); }
   body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
          padding:28px 24px 24px; -webkit-tap-highlight-color:transparent; }
   .wrap { max-width:520px; margin:0 auto; }
@@ -213,12 +213,15 @@
 
 <div class="errbar" id="errBar"></div>
 <div class="wrap">
-<div class="topbar">
+    <div class="daterow">
+  <button class="dnav today" id="dToday">Today</button>
+  <button class="dnav" id="dPrev">&#8249;</button>
+  <div class="date" id="date"></div>
+  <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
     <div class="navdrop" id="navDrop"><a href="list.html">Res print</a><a href="housekeeping.html">HC print</a><a href="cleaners.html">HC tally</a></div>
   </div>
-  <div class="kicker">Nala &middot; Res tally</div>
 </div>
 <script>
 (function(){
@@ -227,12 +230,6 @@
   document.addEventListener('click',function(){ d.classList.remove('open'); });
 })();
 </script>
-    <div class="daterow">
-    <button class="dnav" id="dPrev">&#8249;</button>
-    <div class="date" id="date"></div>
-    <button class="dnav" id="dNext">&#8250;</button>
-    <button class="dnav today" id="dToday">Today</button>
-  </div>
   <div class="menustate" id="menuState"></div>
 
   <div class="stats">
@@ -292,7 +289,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=1"></script>
-<script src="nala-shared.js?v=2"></script>
+<script src="nala-shared.js?v=3"></script>
 <script>
 var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
