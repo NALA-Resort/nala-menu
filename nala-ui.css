@@ -10,18 +10,14 @@
 .tier-app   { --ctl-bg:var(--cream); --ctl-bdr:var(--rule); --ctl-ink:var(--ink); }
 .tier-print { --ctl-bg:#fff;         --ctl-bdr:#ddd;        --ctl-ink:#111;      }
 
-/* ── header bar: menu left, page name centred, nothing floats ── */
-.topbar { position:relative; display:flex; align-items:center; justify-content:center;
-          min-height:40px; margin-bottom:10px; }
-.topbar .kicker { margin:0; }
-.navwrap { position:absolute; left:0; top:50%; transform:translateY(-50%);
-           z-index:500; font-family:var(--ui-font); }
-.navbtn  { width:42px; height:38px; border:1px solid var(--ctl-bdr); background:var(--ctl-bg);
+/* ── one header row: [Today] [<] date [>] ....... [menu] ── */
+.navwrap { position:relative; margin-left:auto; z-index:500; font-family:var(--ui-font); }
+.navbtn  { border:1px solid var(--ctl-bdr); background:var(--ctl-bg);
            border-radius:8px; cursor:pointer; display:flex; flex-direction:column;
            align-items:center; justify-content:center; gap:4px; padding:0;
            -webkit-tap-highlight-color:transparent; }
 .navbtn span { display:block; width:16px; height:1.6px; background:var(--ctl-ink); }
-.navdrop { display:none; position:absolute; left:0; top:44px; background:var(--ctl-bg);
+.navdrop { display:none; position:absolute; right:0; top:42px; background:var(--ctl-bg);
            border:1px solid var(--ctl-bdr); border-radius:9px; min-width:132px;
            box-shadow:0 4px 14px rgba(0,0,0,.09); padding:5px 0; }
 .navdrop.open { display:block; }
@@ -35,20 +31,25 @@
 .foot .btn { flex:1; text-align:center; white-space:nowrap; }
 
 /* ── standard header: kicker, then one date row ─────── */
-.kicker { text-align:center; font-family:var(--ui-font); font-size:10px; letter-spacing:.34em;
-          text-transform:uppercase; color:var(--mid); margin:6px 0 12px; }
-.daterow { display:flex; align-items:center; justify-content:center; gap:10px;
-           margin-bottom:8px; font-family:var(--ui-font); }
-.daterow .date { font-size:13px; font-weight:bold; letter-spacing:.12em;
-                 text-transform:uppercase; color:var(--ctl-ink); text-align:center; }
-.dnav { width:38px; height:34px; display:inline-flex; align-items:center; justify-content:center;
+.daterow { display:flex; align-items:center; gap:8px;
+           margin-bottom:12px; font-family:var(--ui-font); }
+.daterow .date { font-size:13px; font-weight:bold; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--ctl-ink); white-space:nowrap;
+                 padding:0 2px; }
+.dnav { width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center;
         background:var(--ctl-bg); border:1px solid var(--ctl-bdr); border-radius:7px;
         font-size:16px; line-height:1; color:var(--ctl-ink); cursor:pointer; padding:0;
         -webkit-tap-highlight-color:transparent; }
 .dnav:active { background:var(--ctl-bdr); }
 .dnav.today { width:auto; padding:0 12px; font-size:9.5px; letter-spacing:.13em;
-              text-transform:uppercase; display:none; }
-.dnav.today.show { display:inline-flex; }
+              text-transform:uppercase; }
+.dnav.today:disabled { opacity:.35; cursor:default; }
+.navbtn { width:42px; height:36px; }
+/* page name on paper only — the screen row replaces it */
+.printkick { display:none; }
+@media print { .printkick { display:block; text-align:center; font-family:var(--ui-font);
+  font-size:10px; letter-spacing:.34em; text-transform:uppercase; color:#666;
+  margin-bottom:8px; } }
 
 /* ── information is plain typography, never boxed ───── */
 .stats { display:flex; justify-content:center; gap:36px; margin:16px 0 6px;
