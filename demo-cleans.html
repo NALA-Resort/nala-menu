@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DEMO · Nala — Housekeeping Sheet</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nala Rooms">
+<link rel="apple-touch-icon" href="nala-logo.png">
+<title>DEMO · Nala — Cleaners</title>
 <style>
 /* NALA staff UI — shared controls. See STYLEGUIDE.md.
    Pages declare <body class="tier-app"> or <body class="tier-print">.  */
@@ -89,90 +90,85 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 
 </style>
 <style>
-  @page { size: A4 portrait; margin: 10mm; }
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+          --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
+          --blue:#E7E9EF; --blueb:#8A90A8; }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: Helvetica, Arial, sans-serif; color:#111; background:#fff; padding:16px 16px 0; }
+  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
+         padding:24px 18px 0; -webkit-tap-highlight-color:transparent; }
+  .wrap { max-width:520px; margin:0 auto; }
 
-  .btn { padding:10px 20px; background:#111; color:#fff; border:none;
-         font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
-         text-transform:uppercase; cursor:pointer; }
-  .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
-  .stamp { margin-top:10px; font-size:7.5px; letter-spacing:.1em;
-           text-transform:uppercase; color:#999; text-align:right; }
+  .brand { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.35em;
+           color:var(--mid); text-transform:uppercase; text-align:center; }
+  h1 { font-size:19px; font-weight:bold; text-align:center; margin:8px 0 4px;
+       font-family:Helvetica,Arial,sans-serif; letter-spacing:.02em; }
 
-  .scroller { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  table { width:100%; min-width:760px; border-collapse:separate; border-spacing:0; }
-  th { font-size:7px; letter-spacing:.12em; text-transform:uppercase; color:#666;
-       text-align:left; padding:0 5px 6px; border-bottom:1px solid #111;
-       white-space:nowrap; vertical-align:bottom; }
-  th.wrap { white-space:normal; line-height:1.25; text-align:center; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:10px; }
+  .tile { border:1.2px solid var(--rule); border-radius:10px; background:#fff;
+          padding:12px 8px 10px; text-align:center; cursor:pointer; color:var(--ink);
+          font-family:Helvetica,Arial,sans-serif; position:relative; min-height:96px;
+          display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; }
+  .tile .rn { font-size:20px; font-weight:bold; }
+  /* Clean is a solid ink pill, Service a faint outline: the two jobs must be
+     tellable apart at arm's length, not by reading the word.               */
+  .tile .chip { display:inline-block; border:1.2px solid var(--ink); border-radius:5px;
+                padding:1px 8px; font-weight:bold; font-size:9px; letter-spacing:.08em;
+                background:var(--ink); color:var(--cream); text-transform:uppercase; }
+  .tile .chip.svc { background:transparent; border-color:#B5B5AD; color:#6A6A63;
+                    font-weight:normal; letter-spacing:.12em; }
+  .tile .chip.ver { background:transparent; border-style:dashed; border-color:var(--red);
+                    color:var(--red); }
+  .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
+  .tile .sub b { color:var(--ink); }
 
-  td { font-size:9px; padding:5px; border-bottom:1px solid #ddd; vertical-align:middle; }
-  tr { page-break-inside:avoid; }
+  .tile.done   { background:var(--green); border-color:var(--greenb); }
+  .tile.bfast  { background:var(--amber); border-color:var(--amberb); }
+  .tile.dep    { background:var(--blue);  border-color:var(--blueb); }
+  .tile.vac    { opacity:.38; }
 
-  .c-room  { width:8%;  text-align:center; font-weight:bold; }
-  .c-svc   { width:12%; text-align:center; }
-  .c-arr   { width:12%; }
-  .c-dep   { width:12%; }
-  .c-done  { width:6%;  text-align:center; }
-  .c-notes { width:42%; }
-  .c-insp  { width:8%;  text-align:center; }
-  /* rows are sized so a full house — every room a job, plus the write-ins —
-     still lands on one A5 page. Do not loosen without re-checking the fit. */
-  tbody td { padding-top:4px; padding-bottom:4px; height:22px; }
+  .legend { margin-top:20px; display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
+            font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.1em;
+            text-transform:uppercase; color:var(--mid); }
+  .legend i { display:inline-block; width:11px; height:11px; border-radius:3px;
+              border:1.2px solid var(--rule); vertical-align:-1px; margin-right:5px; }
+  .legend .lg { background:var(--green); border-color:var(--greenb); }
+  .legend .lb { background:var(--amber); border-color:var(--amberb); }
+  .legend .ld { background:var(--blue);  border-color:var(--blueb); }
 
-  .chip { display:inline-block; border:1.2px solid #111; border-radius:5px;
-          padding:1px 7px; font-weight:bold; font-size:8px; letter-spacing:.08em;
-          background:#111; color:#fff; text-transform:uppercase;
-          -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  .chip.svc { background:transparent; border-color:#aaa; color:#555;
-              font-weight:normal; letter-spacing:.12em; }
-  .donemark { font-weight:bold; font-size:9px; white-space:nowrap; }
-  .subtag { font-size:7.5px; color:#555; margin-top:1px; letter-spacing:.04em; }
-  .chip.ver { background:transparent; border-style:dashed; border-color:#A8321E; color:#A8321E; }
-  .box  { width:15px; height:15px; border:1.2px solid #333; border-radius:3px;
-          display:inline-block; vertical-align:middle; }
-  tr.vac td { color:#c2c2c2; }
-  .mgrstrip { margin:8px 0 12px; }
-  .mgrline { display:flex; gap:10px; align-items:flex-end; margin:6px 0 0; }
-  .mgrline span { font-size:8px; letter-spacing:.14em; text-transform:uppercase;
-                  color:#666; white-space:nowrap; padding-bottom:2px; }
-  .mgrline i { flex:1; border-bottom:1px solid #999; height:13px; }
+  .bar { margin-top:22px; gap:10px; }
+  .btn { flex:1; padding:13px 0; text-align:center; font-family:Helvetica,Arial,sans-serif;
+         font-size:11px; letter-spacing:.14em; text-transform:uppercase; cursor:pointer;
+         border:1px solid var(--ink); background:transparent; color:var(--ink);
+         border-radius:2px; text-decoration:none; }
 
-  .muted { color:#aaa; font-weight:normal; font-style:italic; }
-
-  /* Printed sheets repeat everything above the table on every page. A table
-     header group is the only thing browsers reliably repeat, so the block is
-     cloned into a thead row for paper and the on-screen original is hidden. */
-  .printhead { display:none; }
-  .printhead > td { border:0; padding:0 0 6px; }
-  @media print {
-    .printhead { display:table-row; }
-    .noprintblock { display:none !important; }
-  }
-  @media print {
-    body { padding:0; }
-    .scroller { overflow:visible; }
-    table { min-width:0; width:100%; }
-    tr { page-break-inside:avoid; }
-    thead { display:table-header-group; }
-    table { border-collapse:collapse; }   /* Safari repeats headers only when collapsed */
-  }
+  /* popup */
+  .ov { position:fixed; inset:0; background:rgba(28,28,26,.45); display:none;
+        align-items:flex-end; justify-content:center; z-index:40; }
+  .ov.show { display:flex; }
+  .sheet { background:var(--cream); width:100%; max-width:520px; border-radius:14px 14px 0 0;
+           padding:22px 20px 30px; font-family:Helvetica,Arial,sans-serif; }
+  .sheet h2 { font-size:15px; letter-spacing:.04em; margin-bottom:2px; }
+  .sheet .st { font-size:10.5px; color:var(--mid); letter-spacing:.08em; text-transform:uppercase;
+               margin-bottom:16px; }
+  .pbtn { display:block; width:100%; padding:14px; margin-top:9px; font-size:12px;
+          letter-spacing:.1em; text-transform:uppercase; background:#fff; color:var(--ink);
+          border:1px solid var(--ink); border-radius:6px; cursor:pointer; font-family:inherit; }
+  .pbtn.solid { background:var(--ink); color:#fff; }
+  .pbtn.ghost { border-color:var(--rule); color:var(--mid); }
+  .pbtn.warn  { border-color:var(--red); color:var(--red); }
+  .timerow { display:flex; gap:8px; margin-top:9px; }
+  .timerow .pbtn { margin-top:0; padding:13px 0; }
+  .perr { color:var(--red); font-size:11px; margin-top:12px; min-height:14px; }
 </style>
 </head>
-<body class="tier-print">
+<body class="tier-app">
 
-
-
-<div class="printkick">Nala &middot; HC print</div>
-<div class="daterow">
-  <button class="dnav today" id="dToday">Today</button>
-  <button class="dnav" id="dPrev">&#8249;</button>
+<div class="wrap">
+    <div class="daterow">
   <div class="date" id="title"></div>
-  <button class="dnav" id="dNext">&#8250;</button>
-  <div class="navwrap">
+  <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="demo-tally.html">Reservations</a><a href="demo-reservations.html">Reservations Sheet</a><a href="demo-cleans.html">Cleans</a></div>
+    <div class="navdrop" id="navDrop"><a href="demo-tally.html">Reservations</a><a href="demo-reservations.html">Reservations Sheet</a><a href="demo-clean.html">Clean sheet</a></div>
   </div>
 </div>
 
@@ -238,43 +234,37 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
+  /* menu is management-only: stays hidden for the housekeeping login */
+  (function gate(){
+    if (!window.firebase || !firebase.auth){ setTimeout(gate,300); return; }
+    firebase.auth().onAuthStateChanged(function(u){
+      var e=((u&&u.email)||'').toLowerCase();
+      document.getElementById('navWrap').style.display =
+        (u && e.indexOf('housekeeping')!==0) ? 'block' : 'none';
+    });
+  })();
 })();
 </script>
-<div class="stats">
+  <div class="stats">
     <div class="stat"><span class="stat-n" id="nClean">&ndash;</span><span class="stat-l">Cleans</span></div>
     <div class="stat"><span class="stat-n" id="nSvc">&ndash;</span><span class="stat-l">Services</span></div>
-    <div class="stat" id="verWrap" style="display:none"><span class="stat-n" id="nVer">&ndash;</span><span class="stat-l">To verify</span></div>
+    <div class="stat"><span class="stat-n" id="nDone">&ndash;</span><span class="stat-l">Done</span></div>
   </div>
 
-<div class="mgrstrip">
-  <div class="mgrline"><span>Assigned to</span><i></i></div>
-  <div class="mgrline"><span>Manager notes</span><i></i></div>
+  <div class="grid" id="grid"></div>
+
+  <div class="legend">
+    <span><i class="lb"></i>At breakfast</span>
+    <span><i class="ld"></i>Departed</span>
+    <span><i class="lg"></i>Done</span>
+  </div>
+
+  <div class="foot bar">
+    <button class="btn" onclick="location.reload()">Refresh</button>
+  </div>
 </div>
 
-<div class="scroller">
-  <table>
-    <thead>
-      <tr class="printhead"><td colspan="7"><div id="printHead"></div></td></tr>
-      <tr>
-        <th class="c-room">Room</th>
-        <th class="c-svc">Service</th>
-        <th class="c-arr">Arrival</th>
-        <th class="c-dep">Departs</th>
-        <th class="c-done">Done</th>
-        <th class="c-notes">Housekeeper notes</th>
-        <th class="c-insp">Insp.</th>
-      </tr>
-    </thead>
-    <tbody id="rows"></tbody>
-  </table>
-</div>
-<div class="stamp" id="stamp"></div>
-
-<div class="foot">
-  <button class="btn" onclick="window.print()">Print</button>
-  <button class="btn ghost" onclick="location.reload()">Refresh</button>
-</div>
-
+<div class="ov" id="ov"><div class="sheet" id="sheetBox"></div></div>
 
 <script>
 /* NALA shared helpers — one copy of the logic every staff page repeats.
@@ -494,142 +484,198 @@ function hkClassify(rec, todayK){
 
 </script>
 <script>
-// date state + header wiring, dates, look-back: nala-shared.js
-var nav = initDateNav();
-var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
-
-// paper needs to say which print is current
-(function stamp(){
-  var n=new Date();
-  var hh=n.getHours(), mm=String(n.getMinutes()).padStart(2,'0');
-  var ap=hh>=12?'pm':'am'; hh=hh%12||12;
-  document.getElementById('stamp').textContent =
-    'Printed '+n.getDate()+'/'+(n.getMonth()+1)+'/'+n.getFullYear()+' '+hh+':'+mm+ap;
-})();
+// dates, look-back, room records, clean/service rules: nala-shared.js
+// this board is locked to today by design — no browsed dates
+function todayKey(){ return dkey(new Date()); }
+document.getElementById('title').textContent = dateLabel(new Date());
 
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
-Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
-              fetchRoomGuests(todayKey()), api('/hk/'+todayKey()) ])
+var STATE = { rows:[], hk:{} };
+
+function load(){
+  return Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
+                fetchRoomGuests(todayKey()), api('/hk/'+todayKey()) ])
   .then(function(res){
-    var responses  = res[0] || {};
-    var manual     = res[1] || {};
-    var roomguests = resolveRoomGuestsHK(res[2] || {}, todayKey());
-    var hk         = res[3] || {};
+    var responses=res[0]||{}, manual=res[1]||{}, hk=res[3]||{};
+    var roomguests=resolveRoomGuestsHK(res[2]||{}, todayKey());
 
-    function fmtT(iso){
-      var d = parseISO(iso);
-      if (!d) return '';
-      var h=d.getHours(), m=d.getMinutes();
-      return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+    var rows=[];
+    for (var n=1;n<=ROOMS;n++){
+      var r=roomRecord(n, responses, manual, roomguests);
+      rows.push({ n:n, kind:hkClassify(r, todayKey()) });
     }
-
-    // clean = departing today; service = staying on; verify = no usable data
-    var rows=[], nClean=0, nSvc=0, nVer=0;
-    for (var n=1; n<=ROOMS; n++){
-      var r = roomRecord(n, responses, manual, roomguests);
-      var kind = hkClassify(r, todayKey());
-      if (kind==='clean') nClean++;
-      else if (kind==='svc') nSvc++;
-      else if (kind==='ver') nVer++;
-      rows.push({ n:n, rec:r||{}, kind:kind });
-    }
-
-    var order={svc:0, clean:1, ver:2, vac:3};   // services first: done at breakfast
-    rows.sort(function(a,b){ return (order[a.kind]-order[b.kind]) || (a.n-b.n); });
-
-    document.getElementById('nClean').textContent = nClean;
-    document.getElementById('nSvc').textContent   = nSvc;
-    if (nVer){ document.getElementById('nVer').textContent = nVer;
-               document.getElementById('verWrap').style.display=''; }
-
-    function fmtD(raw){
-      var d = parseDepDate(raw);
-      if (!d) return '';
-      var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-      return days[d.getDay()]+' '+ord(d.getDate());
-    }
-
-    var tb = document.getElementById('rows');
-    // Only real jobs go on paper. Verify and vacant rooms are not jobs, and
-    // printing all 17 pushed the sheet off A4. The three blank rows below are
-    // for the manager to pen in anything the board could not confirm; the
-    // 'To verify' count above says how many that might be.
-    rows = rows.filter(function(r){ return r.kind==='svc' || r.kind==='clean'; });
-    rows.forEach(function(row){
-      var g = row.rec;
-      var chip='', cls='';
-      if (row.kind==='clean') chip='<span class="chip">Clean</span>';
-      else if (row.kind==='svc') chip='<span class="chip svc">Service</span>';
-      else if (row.kind==='ver') chip='<span class="chip ver">Verify</span>';
-      else { cls=' class="vac"'; chip='<span class="muted">Vacant</span>'; }
-      var boxes = (row.kind==='vac') ? ['',''] : ['<span class="box"></span>','<span class="box"></span>'];
-      var mk = hk[String(row.n)] || {};
-      if (mk.done) boxes[0] = '<span class="donemark">&#10003; '+fmtT(mk.done)+'</span>';
-      if (row.kind!=='vac'){
-        if (mk.departed)      chip += '<div class="subtag">Departed</div>';
-        else if (mk.bfast && !mk.done) chip += '<div class="subtag">At breakfast '+fmtT(mk.bfast)+'</div>';
-      }
-      tb.insertAdjacentHTML('beforeend',
-        '<tr'+cls+'>'+
-          '<td class="c-room">'+row.n+'</td>'+
-          '<td class="c-svc">'+chip+'</td>'+
-          '<td class="c-arr">'+fmtD(g.arrives)+'</td>'+
-          '<td class="c-dep">'+fmtD(g.departs)+'</td>'+
-          '<td class="c-done">'+boxes[0]+'</td>'+
-          '<td class="c-notes"></td>'+
-          '<td class="c-insp">'+boxes[1]+'</td>'+
-        '</tr>');
-    });
-
-    for (var w=0; w<3; w++){
-      tb.insertAdjacentHTML('beforeend',
-        '<tr class="writein">'+
-          '<td class="c-room"></td><td class="c-svc"></td>'+
-          '<td class="c-arr"></td><td class="c-dep"></td>'+
-          '<td class="c-done"><span class="box"></span></td>'+
-          '<td class="c-notes"></td>'+
-          '<td class="c-insp"><span class="box"></span></td>'+
-        '</tr>');
-    }
-  })
-  .catch(function(e){
-    document.getElementById('rows').innerHTML =
-      '<tr><td colspan="7" style="padding:20px;color:#A8321E">Could not load - check connection and refresh.</td></tr>';
+    // services first: they are attempted during breakfast, before the
+    // departure cleans open up. Then cleans, verify, vacant, room order
+    // within each block.
+    var korder={svc:0, clean:1, ver:2, vac:3};
+    rows.sort(function(a,b){ return (korder[a.kind]-korder[b.kind]) || (a.n-b.n); });
+    STATE.rows=rows; STATE.hk=hk;
+    render();
   });
-</script>
+}
 
-<script>
-/* clone the above-table block into the printed header so every page carries it */
-(function(){
-  function fill(){
-    var slot = document.getElementById('printHead');
-    if (!slot) return;
-    slot.innerHTML = '';
-    ['.printkick','.daterow','.stats','.mgrstrip'].join(',').split(',').forEach(function(sel){
-      var el = document.querySelector(sel);
-      if (!el) return;
-      el.classList.add('noprintblock');
-      var c = el.cloneNode(true);
-      c.classList.remove('noprintblock');
-      c.classList.add('printclone');
-      c.querySelectorAll('[id]').forEach(function(n){ n.removeAttribute('id'); });
-      var nav = c.querySelector('.navwrap'); if (nav) nav.parentNode.removeChild(nav);
-      slot.appendChild(c);
-    });
+function mins(iso){
+  var t=parseISO(iso); if (!t) return null;
+  return Math.max(0, Math.round((Date.now()-t.getTime())/60000));
+}
+function hhmm(iso){
+  var t=parseISO(iso); if (!t) return '';
+  return String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
+}
+
+function render(){
+  var g=document.getElementById('grid'); g.innerHTML='';
+  var nClean=0,nSvc=0,nDone=0;
+  STATE.rows.forEach(function(row){
+    var h=STATE.hk[row.n]||{};
+    if (row.kind==='clean') nClean++;
+    if (row.kind==='svc') nSvc++;
+    if (h.done) nDone++;
+
+    var cls='tile';
+    if (row.kind==='vac') cls+=' vac';
+    else if (h.done) cls+=' done';
+    else if (h.departed) cls+=' dep';
+    else if (h.bfast) cls+=' bfast';
+
+    var chip='';
+    if (row.kind==='clean') chip='<span class="chip">Clean</span>';
+    else if (row.kind==='svc') chip='<span class="chip svc">Service</span>';
+    else if (row.kind==='ver') chip='<span class="chip ver">Verify</span>';
+    else chip='<span class="sub">Vacant</span>';
+
+    var sub='';
+    if (row.kind!=='vac'){
+      if (h.done) sub='Done '+hhmm(h.done);
+      else if (h.departed) sub='Departed';
+      else if (h.bfast) sub='B\u2019fast <b>'+mins(h.bfast)+'m</b>';
+      else if (row.kind==='ver') sub='Occupancy unknown';
+      else sub='Occupied';
+    }
+
+    var el=document.createElement('button');
+    el.className=cls;
+    el.innerHTML='<span class="rn">'+row.n+'</span>'+chip+'<span class="sub">'+sub+'</span>';
+    if (row.kind!=='vac') el.onclick=function(){ openSheet(row); };
+    g.appendChild(el);
+  });
+  document.getElementById('nClean').textContent=nClean;
+  document.getElementById('nSvc').textContent=nSvc;
+  document.getElementById('nDone').textContent=nDone;
+}
+
+// ── writes ─────────────────────────────────────────────────
+function patchRoom(n, obj){
+  return fetch(DB+'/hk/'+todayKey()+'/'+n+'.json', {
+    method:'PATCH', body:JSON.stringify(obj)
+  }).then(function(r){
+    if (!r.ok) throw new Error('rejected');
+    return r.json();
+  });
+}
+function setField(n, obj, errEl){
+  var prev=JSON.parse(JSON.stringify(STATE.hk[n]||{}));
+  STATE.hk[n]=Object.assign({},prev,obj);
+  for (var k in obj){ if (obj[k]===null) delete STATE.hk[n][k]; }
+  render();
+  return patchRoom(n,obj).then(function(){ closeSheet(); })
+  .catch(function(e){
+    STATE.hk[n]=prev; render();
+    errEl.textContent = (e && e.message==='rejected')
+      ? 'The change was not allowed - tell the manager.'
+      : 'No connection - try again.';
+  });
+}
+
+// ── popup ──────────────────────────────────────────────────
+var CUR=null;
+function openSheet(row){ CUR=row; drawSheet('menu'); document.getElementById('ov').className='ov show'; }
+function closeSheet(){ document.getElementById('ov').className='ov'; CUR=null; }
+document.getElementById('ov').onclick=function(e){ if (e.target===this) closeSheet(); };
+
+function drawSheet(mode){
+  var b=document.getElementById('sheetBox');
+  var n=CUR.n, h=STATE.hk[n]||{};
+  var kindName = CUR.kind==='clean' ? 'Clean - departing today'
+               : CUR.kind==='svc'   ? 'Service - staying on'
+               : 'Occupancy not confirmed';
+  var head='<h2>Room '+n+'</h2><div class="st">'+kindName+'</div>';
+  var err='<div class="perr" id="perr"></div>';
+
+  if (mode==='menu'){
+    var rows='';
+    if (h.done){
+      rows+='<button class="pbtn warn" onclick="drawSheet(\'undone\')">Undo done</button>';
+    } else {
+      rows+='<button class="pbtn solid" onclick="drawSheet(\'done\')">Room done</button>';
+      if (h.bfast){
+        rows+='<button class="pbtn" disabled style="opacity:.6">Seated at breakfast '+hhmm(h.bfast)+' ('+mins(h.bfast)+'m ago)</button>';
+        rows+='<button class="pbtn warn" onclick="drawSheet(\'clearbf\')">Clear breakfast</button>';
+      } else {
+        rows+='<button class="pbtn" onclick="drawSheet(\'bfast\')">Guest at breakfast</button>';
+      }
+      if (CUR.kind==='clean'){
+        rows += h.departed
+          ? '<button class="pbtn warn" onclick="drawSheet(\'undep\')">Undo departed</button>'
+          : '<button class="pbtn" onclick="drawSheet(\'dep\')">Guest departed</button>';
+      }
+    }
+    rows+='<button class="pbtn ghost" onclick="closeSheet()">Close</button>';
+    b.innerHTML=head+rows+err;
   }
-  /* iOS Safari does not reliably fire beforeprint, so the clone is built as
-     soon as the sheet has data rather than waiting for a print event. It is
-     hidden on screen either way. Refilled on beforeprint where supported, in
-     case the sheet changed after load.                                     */
-  function fillWhenReady(n){
-    var rows = document.getElementById('rows');
-    if (rows && rows.children.length){ fill(); return; }
-    if (n > 0) setTimeout(function(){ fillWhenReady(n-1); }, 400);
+
+  if (mode==='bfast'){
+    b.innerHTML=head+
+      '<div class="st" style="margin-bottom:6px">Seated when?</div>'+
+      '<button class="pbtn solid" onclick="stampBf(0)">Just now</button>'+
+      '<div class="timerow">'+
+        '<button class="pbtn" onclick="stampBf(5)">5 min ago</button>'+
+        '<button class="pbtn" onclick="stampBf(10)">10 min ago</button>'+
+        '<button class="pbtn" onclick="stampBf(15)">15 min ago</button>'+
+      '</div>'+
+      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
   }
-  fillWhenReady(15);
-  window.addEventListener('beforeprint', fill);
-})();
+
+  if (mode==='done'){
+    b.innerHTML=head+
+      '<div class="st" style="margin-bottom:6px">Mark room '+n+' as done?</div>'+
+      '<button class="pbtn solid" onclick="setField('+n+',{done:new Date().toISOString()},document.getElementById(\'perr\'))">Yes - done</button>'+
+      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+  }
+  if (mode==='undone'){
+    b.innerHTML=head+
+      '<div class="st" style="margin-bottom:6px">Remove the done mark from room '+n+'?</div>'+
+      '<button class="pbtn warn" onclick="setField('+n+',{done:null},document.getElementById(\'perr\'))">Yes - not done</button>'+
+      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+  }
+  if (mode==='dep'){
+    b.innerHTML=head+
+      '<div class="st" style="margin-bottom:6px">Has the guest checked out of room '+n+'?</div>'+
+      '<button class="pbtn solid" onclick="setField('+n+',{departed:true},document.getElementById(\'perr\'))">Yes - departed</button>'+
+      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+  }
+  if (mode==='undep'){
+    b.innerHTML=head+
+      '<div class="st" style="margin-bottom:6px">Undo departed for room '+n+'?</div>'+
+      '<button class="pbtn warn" onclick="setField('+n+',{departed:null},document.getElementById(\'perr\'))">Yes - undo</button>'+
+      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+  }
+  if (mode==='clearbf'){
+    b.innerHTML=head+
+      '<div class="st" style="margin-bottom:6px">Clear the breakfast mark for room '+n+'?</div>'+
+      '<button class="pbtn warn" onclick="setField('+n+',{bfast:null},document.getElementById(\'perr\'))">Yes - clear</button>'+
+      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+  }
+}
+function stampBf(minsAgo){
+  var t=new Date(Date.now()-minsAgo*60000).toISOString();
+  setField(CUR.n, {bfast:t}, document.getElementById('perr'));
+}
+
+load();
+setInterval(function(){ if(!CUR) render(); }, 30000);          // tick elapsed times
+setInterval(function(){ if(!CUR) load().catch(function(){}); }, 90000);  // background re-fetch
 </script>
 </body>
 </html>

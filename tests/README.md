@@ -19,8 +19,8 @@ tally in WebKitGTK (Safari's engine) at 390pt and prints layout geometry.
 
     python3 tools/make-demo.py
 
-Rebuilds demo-reservations.html and demo-clean.html: standalone copies of the
-two printed sheets with the CSS and shared JS inlined, Firebase and auth
+Rebuilds demo-tally.html, demo-reservations.html, demo-cleans.html and
+demo-clean.html: standalone copies of all four staff pages with the CSS and shared JS inlined, Firebase and auth
 removed, and fetch() replaced by a fixed busy-night dataset. No network at
 all, so they open on a phone with no signal, and no tap can write anything.
 A red band marks them on screen; it is hidden when printing.

@@ -8,7 +8,8 @@ from Files — it works with no signal and cannot write to the database.
 
     python3 tools/make-demo.py
 
-Writes demo-reservations.html and demo-clean.html at the repo root.
+Writes demo-tally.html, demo-reservations.html, demo-cleans.html and
+demo-clean.html at the repo root.
 Re-run it after changing a sheet; the demo does not track changes by itself.
 """
 import re, os, datetime, json
@@ -77,6 +78,7 @@ STUB = """
 
   function reply(body){
     return Promise.resolve({ ok:true, status:200,
+      headers:{ get:function(){ return null; } },
       json:function(){ return Promise.resolve(body); },
       text:function(){ return Promise.resolve(JSON.stringify(body)); } });
   }
@@ -131,7 +133,9 @@ def build(src, out, links):
     open(out, 'w').write(html)
     print('wrote %s  (%d KB)' % (out, len(html)//1024))
 
-LINKS = {'list.html':'demo-reservations.html', 'housekeeping.html':'demo-clean.html',
-         'tally.html':'demo-reservations.html', 'cleaners.html':'demo-clean.html'}
-build('list.html',         'demo-reservations.html', LINKS)
-build('housekeeping.html', 'demo-clean.html',        LINKS)
+LINKS = {'tally.html':'demo-tally.html',       'list.html':'demo-reservations.html',
+         'cleaners.html':'demo-cleans.html',   'housekeeping.html':'demo-clean.html'}
+build('tally.html',        'demo-tally.html',        LINKS)   # Reservations (live board)
+build('list.html',         'demo-reservations.html', LINKS)   # Reservations Sheet
+build('cleaners.html',     'demo-cleans.html',       LINKS)   # Cleans (live board)
+build('housekeeping.html', 'demo-clean.html',        LINKS)   # Clean sheet

@@ -118,7 +118,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .c-din  { width:6%;  text-align:center; }
   .c-pax  { width:4%;  text-align:center; }
   .c-diet { width:19%; }
-  .c-dep  { width:10%; }
+  .c-dep  { width:11%; white-space:nowrap; }
   .c-dt   { width:5%;  text-align:center; }
   .c-bt   { width:5%;  text-align:center; }
   .c-com  { width:29%; }
@@ -194,7 +194,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="demo-reservations.html">Reservations</a><a href="demo-clean.html">Cleans</a><a href="demo-clean.html">Clean sheet</a></div>
+    <div class="navdrop" id="navDrop"><a href="demo-tally.html">Reservations</a><a href="demo-cleans.html">Cleans</a><a href="demo-clean.html">Clean sheet</a></div>
   </div>
 </div>
 
@@ -223,6 +223,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 
   function reply(body){
     return Promise.resolve({ ok:true, status:200,
+      headers:{ get:function(){ return null; } },
       json:function(){ return Promise.resolve(body); },
       text:function(){ return Promise.resolve(JSON.stringify(body)); } });
   }
@@ -525,16 +526,17 @@ function tomorrowKey(){ var d=new Date(VIEW); d.setDate(d.getDate()+1); return d
     'Printed '+n.getDate()+'/'+(n.getMonth()+1)+'/'+n.getFullYear()+' '+hh+':'+mm+ap;
 })();
 
-// A stay range like "Tue 3rd to Thu 5th". Month is omitted - we know it.
+// A stay range on ONE line: "Tue 11-Fri 14". Month is omitted - we know it,
+// and the ordinal is dropped so the range never wraps to a second row.
 // Falls back to just the checkout if no arrival date was captured.
 function stayHTML(arrRaw, depRaw){
   var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var a = parseDepDate(arrRaw), d = parseDepDate(depRaw);
-  function one(x){ return days[x.getDay()]+' '+ord(x.getDate()); }
+  function one(x){ return days[x.getDay()]+' '+x.getDate(); }
   var out;
-  if (a && d)      out = one(a)+' to '+one(d);
-  else if (d)      out = 'to '+one(d);
-  else if (a)      out = one(a)+' to';
+  if (a && d)      out = one(a)+'-'+one(d);
+  else if (d)      out = '-'+one(d);
+  else if (a)      out = one(a)+'-';
   else             return '';
   if (d && dkey(d) === tomorrowKey()) return '<span class="checkout">'+out+'</span>';
   return out;
@@ -700,7 +702,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
           '<td class="c-bt"></td>'+
           '<td class="c-din">'+dinner+'</td>'+
           '<td class="c-pax">'+(row.status==='in' ? (g.pax||1) : '')+'</td>'+
-          '<td>'+stayHTML(g.arrives, g.departs)+'</td>'+
+          '<td class="c-dep">'+stayHTML(g.arrives, g.departs)+'</td>'+
           '<td>'+(dietHTML(g.diets, ', ', 'allergen') || (g.nodiet ? '<span class="muted">No dietaries</span>' : ''))+'</td>'+
           '<td>'+(g.note||'')+
             (g.dnote ? '<span class="dnote">Dietary: '+g.dnote+'</span>' : '')+'</td>'+

@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEMO · Nala — Tonight's Numbers</title>
+<style>
+/* NALA staff UI — shared controls. See STYLEGUIDE.md.
+   Pages declare <body class="tier-app"> or <body class="tier-print">.  */
+
+:root {
+  --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+  --ui-font:Helvetica,Arial,sans-serif;
+}
+
+/* tier surfaces used by controls */
+.tier-app   { --ctl-bg:var(--cream); --ctl-bdr:var(--rule); --ctl-ink:var(--ink); }
+.tier-print { --ctl-bg:#fff;         --ctl-bdr:#ddd;        --ctl-ink:#111;      }
+
+/* ── one header row: [Today] [<] date [>] ....... [menu] ── */
+.navwrap { position:relative; margin-left:auto; z-index:500; font-family:var(--ui-font); }
+.navbtn  { border:1px solid var(--ctl-bdr); background:var(--ctl-bg);
+           border-radius:8px; cursor:pointer; display:flex; flex-direction:column;
+           align-items:center; justify-content:center; gap:4px; padding:0;
+           -webkit-tap-highlight-color:transparent; }
+.navbtn span { display:block; width:16px; height:1.6px; background:var(--ctl-ink); }
+.navdrop { display:none; position:absolute; right:0; top:42px; background:var(--ctl-bg);
+           border:1px solid var(--ctl-bdr); border-radius:9px; min-width:132px;
+           box-shadow:0 4px 14px rgba(0,0,0,.09); padding:5px 0; }
+.navdrop.open { display:block; }
+.navdrop a { display:block; padding:12px 18px; font-size:10px; letter-spacing:.14em;
+             text-transform:uppercase; color:var(--ctl-ink); text-decoration:none;
+             white-space:nowrap; }
+
+/* ── floating footer ──────────────────────────────────────
+   sticky pins it while scrolling long pages; the flex column
+   below pins it to the screen bottom on short pages too      */
+body { min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
+body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
+.wrap > .foot, body > .foot { margin-top:auto; }
+.foot { position:sticky; bottom:0; z-index:40; display:flex; gap:8px; flex-wrap:wrap;
+        background:var(--ctl-bg); border-top:1px solid var(--ctl-bdr); margin-top:18px;
+        padding:10px 0 calc(10px + env(safe-area-inset-bottom)); }
+.foot .btn { flex:1; text-align:center; white-space:nowrap; }
+/* the row sits hard against the bottom of the screen: soften only the two
+   corners that land in the phone's own rounded corners                     */
+.foot .btn:first-child { border-bottom-left-radius:8px; }
+.foot .btn:last-child  { border-bottom-right-radius:8px; }
+
+/* ── standard header: kicker, then one date row ─────── */
+.daterow { display:flex; align-items:center; gap:8px;
+           margin-bottom:12px; font-family:var(--ui-font); }
+.daterow .date { font-size:13px; font-weight:bold; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--ctl-ink); white-space:nowrap;
+                 padding:0 2px; }
+.dnav { width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center;
+        background:var(--ctl-bg); border:1px solid var(--ctl-bdr); border-radius:7px;
+        font-size:16px; line-height:1; color:var(--ctl-ink); cursor:pointer; padding:0;
+        -webkit-tap-highlight-color:transparent; }
+.dnav:active { background:var(--ctl-bdr); }
+.dnav.today { width:auto; padding:0 12px; font-size:9.5px; letter-spacing:.13em;
+              text-transform:uppercase; }
+.dnav.today:disabled { opacity:.35; cursor:default; }
+.navbtn { width:42px; height:36px; }
+/* page name on paper only — the screen row replaces it */
+.printkick { display:none; }
+@media print { .printkick { display:block; text-align:center; font-family:var(--ui-font);
+  font-size:10px; letter-spacing:.34em; text-transform:uppercase; color:#666;
+  margin-bottom:8px; } }
+
+/* ── information is plain typography, never boxed ───── */
+.stats { display:flex; justify-content:center; gap:36px; margin:16px 0 6px;
+         font-family:var(--ui-font); }
+.stat { text-align:center; }
+.stat-n { display:block; font-size:27px; line-height:1; color:var(--ctl-ink);
+          font-family:Georgia,serif; }
+.stat-l { display:block; font-size:8px; letter-spacing:.2em; text-transform:uppercase;
+          color:var(--mid); margin-top:6px; }
+.stat.warn .stat-n { color:var(--red); }
+
+/* keep controls off paper */
+@media print {
+  .navwrap, .foot, .dnav { display:none !important; }
+  body { display:block; min-height:0; }   /* flex column off paper */
+}
+
+</style>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+          /* state palette: dining green, declined terracotta, vacant slate */
+          --green:#5E7D67;  --green-t:rgba(122,160,130,.26);  --green-b:rgba(122,160,130,.65);
+          --terra:#9E6455;  --terra-t:rgba(184,106,90,.16);   --terra-b:rgba(184,106,90,.45);
+          --slate:#57575E;  --slate-t:rgba(87,87,94,.10);     --slate-b:rgba(87,87,94,.28); }
+  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
+         padding:28px 24px 0; -webkit-tap-highlight-color:transparent; }
+  .wrap { max-width:520px; margin:0 auto; }
+
+  .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
+            background:#A8321E; color:#fff; padding:12px 18px;
+            font-family:Helvetica,Arial,sans-serif; font-size:11px; line-height:1.5;
+            transform:translateY(-100%); transition:transform .25s; }
+  .errbar.show { transform:translateY(0); }
+
+
+.menustate { text-align:center; margin-top:12px; }
+  .menustate span { display:inline-block; padding:6px 14px; border-radius:20px;
+                    font-family:Helvetica,Arial,sans-serif; font-size:9px;
+                    letter-spacing:.16em; text-transform:uppercase; }
+  .menustate .yes { background:rgba(122,160,130,.22); color:#3F6B4C;
+                    text-decoration:none; }
+  .menustate .yes b { font-weight:normal; opacity:.75; }
+  .menustate .no  { background:rgba(184,106,90,.18);  color:#8E4433; }
+
+
+.sec { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
+         text-transform:uppercase; color:var(--mid); margin:26px 0 12px;
+         display:flex; justify-content:space-between; align-items:baseline; }
+  .sec a { color:var(--ink); text-decoration:none; border:1px solid var(--rule);
+           font-size:9px; letter-spacing:.14em; padding:6px 12px; border-radius:2px;
+           background:transparent; }
+  .sec a.active { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+
+  /* room grid */
+  .rooms { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; }
+  .room {
+    aspect-ratio:1; border:1px solid var(--rule); background:transparent;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-family:Helvetica,Arial,sans-serif; cursor:pointer; padding:0; position:relative;
+  }
+  .room-n { font-size:13px; color:var(--ink); }
+  .room-p { font-size:8px; color:var(--mid); margin-top:2px; min-height:10px; }
+  .comb-note { display:flex; align-items:center; justify-content:space-between; gap:10px;
+               border:1px solid var(--ink); border-radius:8px; padding:9px 12px; margin-bottom:12px;
+               font-family:Helvetica,Arial,sans-serif; font-size:11px; letter-spacing:.04em; }
+  .comb-undo { border:none; background:transparent; color:var(--red); cursor:pointer;
+               font-family:Helvetica,Arial,sans-serif; font-size:10px; font-weight:bold;
+               letter-spacing:.1em; text-transform:uppercase; padding:4px 0;
+               -webkit-tap-highlight-color:transparent; }
+  .room.in     { background:var(--green-t); border-color:var(--green-b); }
+  .room.in .room-n { color:var(--ink); }
+  .room.in .room-p { color:var(--green); }
+  .room.out    { background:var(--terra-t); border-color:var(--terra-b); }
+  .room.out .room-n { color:var(--ink); opacity:.6; text-decoration:line-through; }
+  .room.vacant { border-style:solid; border-color:var(--slate-b);
+                 background:var(--slate-t); }
+  .room.vacant .room-n { color:var(--mid); }
+  .room.await  { border-style:dashed; border-color:var(--mid); }
+
+  /* source icon */
+  .mark { position:absolute; top:4px; right:4px; width:10px; height:10px; opacity:.75; }
+  .mark svg { width:100%; height:100%; display:block; }
+  .mark.seen { opacity:.55; }
+  .mark.seen svg { fill:none; stroke:var(--mid); }
+  .room.in  .mark svg { fill:var(--green); stroke:var(--green); }
+  .room.out .mark svg { fill:var(--terra); stroke:var(--terra); }
+
+  .room.sel { outline:2px solid var(--ink); outline-offset:-2px; }
+  .room.sel .room-n { font-weight:bold; }
+
+  .selbar { position:fixed; left:0; right:0; bottom:0; z-index:40;
+            background:var(--cream); border-top:1px solid var(--rule);
+            padding:14px 20px calc(14px + env(safe-area-inset-bottom));
+            transform:translateY(110%); transition:transform .22s; }
+  .selbar.show { transform:translateY(0); }
+  .selbar-inner { max-width:520px; margin:0 auto; }
+  .selcount { font-family:Helvetica,Arial,sans-serif; font-size:10px;
+              letter-spacing:.16em; text-transform:uppercase; color:var(--mid);
+              text-align:center; margin-bottom:10px; }
+  .selactions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .selbtn.comb { border:1px solid var(--ink); color:var(--ink); background:transparent; }
+  .selbtn.comb:disabled { opacity:.35; }
+  .tablesline { text-align:center; margin-top:8px; font-family:Helvetica,Arial,sans-serif;
+                font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink); }
+  .grpbox { border:1.2px solid var(--ink); border-radius:10px; padding:0 12px; margin:10px 0; }
+  .tilegrp { display:grid; gap:6px; position:relative; }
+  .tilegrp::after { content:''; position:absolute; inset:-3.5px;
+                    border:1.2px solid var(--ink); border-radius:9px; pointer-events:none; }
+  .grpbox .row:last-child { border-bottom:none; }
+  .row.stubrow .row-name, .row.stubrow .row-sub { color:var(--mid); }
+  .row.stubrow .row-sub { font-style:italic; }
+  .selbtn { padding:13px 6px; border:1px solid transparent; color:#fff;
+            font-family:Helvetica,Arial,sans-serif; font-size:11px;
+            letter-spacing:.1em; text-transform:uppercase; cursor:pointer; }
+  .selbtn.vac  { background:var(--slate); }
+  .selbtn.din  { background:var(--green); }
+  .selbtn.out  { background:var(--terra); }
+  .selbtn.quiet{ background:transparent; border-color:var(--rule); color:var(--mid); }
+
+  .legend { display:flex; gap:14px; justify-content:center; margin-top:12px;
+            font-family:Helvetica,Arial,sans-serif; font-size:8px;
+            letter-spacing:.12em; text-transform:uppercase; color:var(--mid); }
+  .legend span { display:flex; align-items:center; gap:5px; }
+  .sw { width:9px; height:9px; border:1px solid var(--rule); display:inline-block; }
+  .sw.in { background:var(--green-t); border-color:var(--green-b); }
+  .sw.out { background:var(--terra-t); border-color:var(--terra-b); }
+  .sw.await { border-style:dashed; border-color:var(--mid); }
+  .sw.vacant { border-color:var(--slate-b); background:var(--slate-t); }
+  .legend2 { margin-top:7px; }
+  .ico { width:11px; height:11px; display:inline-block; }
+  .ico svg { width:100%; height:100%; display:block; fill:var(--mid); stroke:var(--mid); }
+  #legSeen svg { fill:none; stroke-width:2.4; }
+
+  /* rows */
+  .row { display:flex; justify-content:space-between; align-items:center; gap:10px;
+         padding:9px 0; border-bottom:1px solid var(--rule); }
+  .row-name { font-size:14px; }
+  .row-name .rm { font-family:Helvetica,Arial,sans-serif; font-size:11px;
+                  letter-spacing:.08em; color:var(--mid); margin-right:2px; }
+  .row-name .tag { font-family:Helvetica,Arial,sans-serif; font-size:8px;
+                   letter-spacing:.18em; text-transform:uppercase; color:var(--mid);
+                   border:1px solid var(--rule); padding:2px 6px; margin-left:8px;
+                   border-radius:10px; vertical-align:middle; }
+  .row-sub { font-style:italic; font-size:11px; color:var(--mid); }
+  .row-pax { font-family:Helvetica,Arial,sans-serif; font-size:12px; white-space:nowrap; }
+  .row-right { display:flex; align-items:center; gap:4px; white-space:nowrap; }
+  .edit { display:flex; align-items:center; justify-content:center;
+          width:40px; height:40px; margin:-10px -10px -10px 0;
+          opacity:.45; cursor:pointer; }
+  .edit svg { width:14px; height:14px; display:block; fill:var(--mid); }
+  .edit:active { opacity:.9; }
+  .alrg { color:var(--red); font-style:normal; }
+  .row.conflict { border-left:3px solid var(--red); padding-left:10px;
+                  background:rgba(168,50,30,.05); }
+  .bub { width:26px; height:26px; border:1px solid var(--rule); background:transparent;
+         cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;
+         position:relative; }
+  .bub::after { content:''; position:absolute; inset:-8px; }  /* 42px tap target */
+  .bub svg { width:14px; height:14px; display:block; fill:var(--mid); }
+  .bub.flag { border-color:var(--red); }
+  .bub.flag svg { fill:var(--red); }
+  .pop-who { font-size:15px; margin-bottom:14px; padding-bottom:12px;
+             border-bottom:1px solid var(--rule); }
+  .pop-h { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.18em;
+           text-transform:uppercase; color:var(--mid); margin-bottom:6px; }
+  .pop-h.dh { color:var(--red); }
+  .pop-t { font-size:14px; line-height:1.45; margin-bottom:16px; }
+  .empty { font-style:italic; color:var(--mid); font-size:12px; padding:8px 0; }
+
+  .actions.hidden { visibility:hidden; }
+  .actions { margin-top:34px; gap:10px;
+             padding:12px 0 calc(12px + env(safe-area-inset-bottom)); }
+  .actions .btn { flex:1 1 40%; text-align:center; white-space:nowrap; }
+  .btn { flex:1; text-align:center; padding:13px; border:1px solid var(--ink);
+         font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
+         text-transform:uppercase; color:var(--ink); text-decoration:none;
+         background:transparent; cursor:pointer; }
+  .btn.solid { background:var(--ink); color:var(--cream); }
+
+  /* sheet */
+  .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35);
+              display:none; align-items:flex-end; justify-content:center; z-index:10; }
+  .backdrop.show { display:flex; }
+  .sheet { width:100%; max-width:520px; background:var(--cream);
+           padding:26px 24px 34px; border-top:1px solid var(--rule);
+           max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .sheet h3 { font-family:Helvetica,Arial,sans-serif; font-size:11px; letter-spacing:.2em;
+              text-transform:uppercase; color:var(--mid); font-weight:normal;
+              text-align:center; margin-bottom:18px; }
+  .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid transparent;
+         font-family:Helvetica,Arial,sans-serif; font-size:12px;
+         letter-spacing:.12em; text-transform:uppercase; color:#fff; cursor:pointer; }
+  /* matches the room tile palette */
+  .opt.solid { background:var(--green); border-color:var(--green); }   /* dining  — green */
+  .opt.out   { background:var(--terra); border-color:var(--terra); }   /* not dining — red */
+  .opt.vac   { background:var(--slate); border-color:var(--slate); }   /* vacant — slate */
+  .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
+  .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 16px; }
+  .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
+         border-radius:50%; font-family:Helvetica,Arial,sans-serif; font-size:13px;
+         color:var(--ink); cursor:pointer; }
+  .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
+  .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
+          border-radius:20px; font-family:Helvetica,Arial,sans-serif; font-size:10px;
+          color:var(--mid); cursor:pointer; }
+  .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+
+  .seg { display:flex; gap:6px; margin:2px 0 12px; }
+  .seg button { flex:1; padding:11px 0; border:1px solid var(--rule); background:transparent;
+                font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--mid); cursor:pointer; border-radius:6px; }
+  .seg button.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .rm-row { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:2px 0 14px; }
+  .rmp { height:40px; border:1px solid var(--rule); background:transparent;
+         font-family:Helvetica,Arial,sans-serif; font-size:12px; color:var(--ink);
+         cursor:pointer; border-radius:6px; }
+  .rmp.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .gd { text-align:center; margin:-4px 0 14px; font-size:13px; line-height:1.55; }
+  .gd .gd-sub { display:block; font-family:Helvetica,Arial,sans-serif; font-size:10.5px;
+                color:var(--mid); letter-spacing:.03em; }
+  .gd .gd-note { display:block; font-style:italic; font-size:12px; color:var(--mid); }
+
+  .note-box { font-style:italic; font-size:13px; color:var(--mid); text-align:center;
+              line-height:1.6; padding:0 4px 16px; }
+  .sheet-label { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.25em;
+                 text-transform:uppercase; color:var(--mid); text-align:center; margin-bottom:8px; }
+  .txt { width:100%; padding:12px; margin-bottom:8px; border:1px solid var(--rule);
+         background:transparent; font-family:Georgia,serif; font-size:16px; color:var(--ink); }
+  .txt::placeholder { color:var(--mid); font-style:italic; }
+  .txt:focus { outline:none; border-color:var(--ink); }
+</style>
+</head>
+<body class="tier-app">
+
+<div class="errbar" id="errBar"></div>
+<div class="wrap">
+    <div class="daterow">
+  <button class="dnav today" id="dToday">Today</button>
+  <button class="dnav" id="dPrev">&#8249;</button>
+  <div class="date" id="date"></div>
+  <button class="dnav" id="dNext">&#8250;</button>
+  <div class="navwrap">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"><a href="demo-reservations.html">Reservations Sheet</a><a href="demo-cleans.html">Cleans</a><a href="demo-clean.html">Clean sheet</a></div>
+  </div>
+</div>
+
+<script>
+/* ── OFFLINE DEMO ─────────────────────────────────────────────────────
+   No Firebase, no auth, no network. Fixed data below. Writes do nothing. */
+(function(){
+  var DATA = {"responses": {"0400000001": {"status": "in", "pax": 2, "room": "1", "name": "James Harrington", "phone": "0400 000 001", "at": "~D0~T09:01:00", "note": "Window seat please"}, "0400000002": {"status": "in", "pax": 2, "room": "2", "name": "Elena Petrova", "phone": "0400 000 002", "at": "~D0~T09:02:00"}, "0400000003": {"status": "in", "pax": 3, "room": "3", "name": "Mark Whitfield", "phone": "0400 000 003", "at": "~D0~T09:03:00", "diets": ["Nut allergy"]}, "0400000004": {"status": "in", "pax": 2, "room": "4", "name": "Lucy Whitfield", "phone": "0400 000 004", "at": "~D0~T09:04:00"}, "0400000005": {"status": "in", "pax": 2, "room": "5", "name": "David Chen", "phone": "0400 000 005", "at": "~D0~T09:05:00"}, "0400000006": {"status": "out", "room": "6", "name": "Priya Sharma", "at": "~D0~T09:00:00"}, "0400000007": {"status": "in", "pax": 2, "room": "7", "name": "Tom Ashby", "phone": "0400 000 007", "at": "~D0~T09:07:00", "diets": ["Dairy free"]}, "0400000008": {"status": "in", "pax": 2, "room": "8", "name": "Ruby Vance", "phone": "0400 000 008", "at": "~D0~T09:08:00", "note": "Birthday"}, "0400000010": {"status": "in", "pax": 2, "room": "10", "name": "Sam Okafor", "phone": "0400 000 010", "at": "~D0~T09:10:00"}, "0400000011": {"status": "in", "pax": 2, "room": "11", "name": "Nina Brandt", "phone": "0400 000 011", "at": "~D0~T09:11:00", "diets": ["Coeliac"]}, "0400000012": {"status": "in", "pax": 3, "room": "12", "name": "Owen Reilly", "phone": "0400 000 012", "at": "~D0~T09:12:00", "note": "Quiet corner"}, "0400000013": {"status": "out", "room": "13", "name": "Hana Sato", "at": "~D0~T09:00:00"}, "0400000014": {"status": "in", "pax": 2, "room": "14", "name": "Marco Bianchi", "phone": "0400 000 014", "at": "~D0~T09:14:00"}, "0400000015": {"status": "in", "pax": 3, "room": "15", "name": "Freya Lindqvist", "phone": "0400 000 015", "at": "~D0~T09:15:00", "diets": ["Vegetarian"]}, "0400000017": {"status": "in", "pax": 2, "room": "17", "name": "Iris Kovac", "phone": "0400 000 017", "at": "~D0~T09:17:00"}}, "roomguests": {"1": {"name": "James Harrington", "arrives": "~D-2~", "departs": "~D+2~"}, "2": {"name": "Elena Petrova", "arrives": "~D-2~", "departs": "~D+2~"}, "3": {"name": "Mark Whitfield", "arrives": "~D-2~", "departs": "~D+2~"}, "4": {"name": "Lucy Whitfield", "arrives": "~D-2~", "departs": "~D+2~"}, "5": {"name": "David Chen", "arrives": "~D-2~", "departs": "~D0~"}, "6": {"name": "Priya Sharma", "arrives": "~D-2~", "departs": "~D+2~"}, "7": {"name": "Tom Ashby", "arrives": "~D-2~", "departs": "~D+2~"}, "8": {"name": "Ruby Vance", "arrives": "~D-2~", "departs": "~D+2~"}, "9": {"name": "Claire Donnelly", "arrives": "~D-2~", "departs": "~D+2~"}, "10": {"name": "Sam Okafor", "arrives": "~D-2~", "departs": "~D0~"}, "11": {"name": "Nina Brandt", "arrives": "~D-2~", "departs": "~D+2~"}, "12": {"name": "Owen Reilly", "arrives": "~D-2~", "departs": "~D+2~"}, "13": {"name": "Hana Sato", "arrives": "~D-2~", "departs": "~D+2~"}, "14": {"name": "Marco Bianchi", "arrives": "~D-2~", "departs": "~D+2~"}, "15": {"name": "Freya Lindqvist", "arrives": "~D-2~", "departs": "~D0~"}, "16": {"name": "Jonah Adeyemi", "arrives": "~D-2~", "departs": "~D+2~"}, "17": {"name": "Iris Kovac", "arrives": "~D-2~", "departs": "~D+2~"}}, "hk": {"1": {"bfast": "~D0~T07:51:00"}, "2": {"bfast": "~D0~T07:52:00"}, "5": {"done": "~D0~T10:05:00"}, "10": {"done": "~D0~T10:010:00"}, "15": {"departed": true}}, "manual": {"ext-1": {"status": "in", "pax": 2, "name": "Cane", "source": "manual", "diets": ["Dairy free"], "external": true}, "ext-2": {"status": "in", "pax": 2, "name": "Jill", "source": "manual", "external": true}, "ext-3": {"status": "in", "pax": 2, "name": "Larry", "source": "manual", "note": "Birthday", "external": true}}, "combined": {"g1": {"rooms": ["3", "4"]}, "g2": {"rooms": ["7", "8", "9"]}}};
+  function todayISO(){ var d=new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function shift(n){ var d=new Date(); d.setDate(d.getDate()+n);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function dates(o){                 /* ~D0~ / ~D+2~ / ~D-2~ -> real dates */
+    return JSON.parse(JSON.stringify(o), function(k,v){
+      if (typeof v !== 'string') return v;
+      return v.replace(/~D([+-]?\d*)~/g, function(m,n){ return shift(n===''?0:parseInt(n,10)); });
+    });
+  }
+  var D = dates(DATA), TODAY = todayISO();
+
+  window.firebase = { initializeApp:function(){},
+    auth:function(){ return { onIdTokenChanged:function(cb){ cb({email:'demo@nala',
+      getIdToken:function(){ return Promise.resolve('demo'); }}); },
+      onAuthStateChanged:function(cb){ cb({email:'demo@nala'}); }, signOut:function(){} }; } };
+  window.__idToken = 'demo';
+
+  function reply(body){
+    return Promise.resolve({ ok:true, status:200,
+      headers:{ get:function(){ return null; } },
+      json:function(){ return Promise.resolve(body); },
+      text:function(){ return Promise.resolve(JSON.stringify(body)); } });
+  }
+  window.fetch = function(url, opts){
+    url = String(url);
+    if (opts && opts.method && opts.method !== 'GET') return reply(null);   /* writes go nowhere */
+    if (url.indexOf('menu.json') > -1)
+      return reply({published:new Date().toISOString(), bread:{name:'Sourdough'},
+                    entree:{name:'Prawn cocktail'}, main:{name:'Satay chicken'},
+                    dessert:{name:'Pavlova'}});
+    function on(p){ return url.indexOf(p) > -1; }
+    if (on('/responses/'))  return reply(on(TODAY) ? D.responses : {});
+    if (on('/manual/'))     return reply(on(TODAY) ? D.manual    : {});
+    if (on('/roomguests/')) return reply(on(TODAY) ? D.roomguests: null);
+    if (on('/hk/'))         return reply(on(TODAY) ? D.hk        : {});
+    if (on('/combined/'))   return reply(on(TODAY) ? D.combined  : {});
+    return reply(null);
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    var b = document.createElement('div');
+    b.textContent = 'OFFLINE DEMO — fixed data, nothing saves';
+    b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99;background:#A8321E;'
+      + 'color:#fff;font:10px/1.9 Helvetica,Arial,sans-serif;letter-spacing:.14em;'
+      + 'text-align:center;text-transform:uppercase;';
+    var s = document.createElement('style');
+    s.textContent = '@media print { .demoband { display:none !important; } }';
+    b.className = 'demoband';
+    document.head.appendChild(s); document.body.appendChild(b);
+  });
+})();
+</script>
+<script>
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+})();
+</script>
+  <div class="menustate" id="menuState"></div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-n" id="nCovers">–</div><div class="stat-l">Covers</div></div>
+    <div class="stat"><div class="stat-n" id="nOut">–</div><div class="stat-l">Rooms out</div></div>
+    <div class="stat" id="tileAwait"><div class="stat-n" id="nAwait">–</div><div class="stat-l">Rooms awaiting</div></div>
+  </div>
+  <div class="tablesline" id="tablesLine"></div>
+
+  <div class="sec">
+    <span>Rooms</span>
+    <a href="#" id="selToggle">Select multiple</a>
+  </div>
+  <div class="rooms" id="rooms"></div>
+  <div class="legend">
+    <span><i class="sw in"></i>Dining</span>
+    <span><i class="sw out"></i>Not dining</span>
+    <span><i class="sw await"></i>Awaiting</span>
+    <span><i class="sw vacant"></i>Vacant</span>
+  </div>
+  <div class="legend legend2">
+    <span><i class="ico" id="legGuest"></i>Guest replied</span>
+    <span><i class="ico" id="legStaff"></i>Added by staff</span>
+    <span><i class="ico" id="legSeen"></i>Link opened</span>
+  </div>
+
+  <div class="sec">
+    <span>Bookings</span>
+    <a href="#" id="addExt">+ Add reservation</a>
+  </div>
+  <div id="listBookings"></div>
+
+  <div class="foot actions">
+    <button class="btn" onclick="location.reload()">Refresh</button>
+    <a class="btn" href="stats.html">Stats</a>
+  </div>
+</div>
+
+<div class="selbar" id="selBar">
+  <div class="selbar-inner">
+    <div class="selcount" id="selCount"></div>
+    <div class="selactions">
+      <button class="selbtn vac"   id="sbVac">Vacant</button>
+      <button class="selbtn din"   id="sbDin">Dining</button>
+      <button class="selbtn out"   id="sbOut">Not dining</button>
+      <button class="selbtn quiet" id="sbClear">Clear rooms</button>
+      <button class="selbtn comb"  id="sbComb">Seat together</button>
+      <button class="selbtn quiet" id="sbDone">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="backdrop" id="backdrop">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<script>
+/* NALA shared helpers — one copy of the logic every staff page repeats.
+   Plain globals, same names the pages already use, so page code reads
+   unchanged. See STYLEGUIDE.md and AUDIT.md.                      v2 */
+
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+var ROOMS = 17;
+var ALLERGENS = ['Nut allergy','Shellfish allergy','Egg allergy'];
+
+/* ── dates ─────────────────────────────────────────────────── */
+function dkey(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+// Safari only accepts 3 fractional digits in an ISO date; Python writes 6.
+// Trim them so any timestamp parses on every browser.
+function parseISO(s){
+  if (!s) return null;
+  var t = String(s).trim().replace(/(\.\d{3})\d+/, '$1');
+  var d = new Date(t);
+  if (!isNaN(d)) return d;
+  d = new Date(t.replace(/\.\d+/, ''));      // drop fractions entirely
+  return isNaN(d) ? null : d;
+}
+
+function parseDepDate(s){
+  if(!s) return null;
+  s = String(s).trim();
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
+  var i = s.match(/^(\d{4})-(\d{2})-(\d{2})/);       // ISO — build a LOCAL date,
+  if (i) return new Date(+i[1], +i[2]-1, +i[3]);     // never via the UTC parser
+  var d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+function ord(n){
+  var s=['th','st','nd','rd'], v=n%100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+
+/* the one date format: Wd Dth Mon (see STYLEGUIDE.md) */
+function dateLabel(d){
+  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return days[d.getDay()]+' '+ord(d.getDate())+' '+mo[d.getMonth()];
+}
+
+/* ── the standard header's date row ────────────────────────────
+   Wires ‹ › Today and writes the one date format into #date/#title.
+   Tolerates missing arrows (hc tally shows the date alone).
+   Returns { VIEW, todayKey, isToday } for the page to use.        */
+function initDateNav(){
+  var VIEW = (function(){
+    var q = new URLSearchParams(location.search).get('date');
+    if (q && /^\d{4}-\d{2}-\d{2}$/.test(q)) {
+      var p = q.split('-');
+      return new Date(+p[0], +p[1]-1, +p[2]);
+    }
+    return new Date();
+  })();
+  function todayKey(){ return dkey(VIEW); }
+  function isToday(){ return dkey(VIEW) === dkey(new Date()); }
+  function shiftDate(n){
+    var d = new Date(VIEW); d.setDate(d.getDate()+n);
+    var q = new URLSearchParams(location.search);
+    q.set('date', dkey(d));
+    location.search = q.toString();
+  }
+  function goToday(){
+    var q = new URLSearchParams(location.search);
+    q.delete('date');
+    location.search = q.toString();
+  }
+  var el = document.getElementById('date') || document.getElementById('title');
+  if (el) el.textContent = dateLabel(VIEW);
+  var pv = document.getElementById('dPrev'), nx = document.getElementById('dNext'),
+      td = document.getElementById('dToday');
+  if (pv) pv.onclick = function(){ shiftDate(-1); };
+  if (nx) nx.onclick = function(){ shiftDate(1); };
+  if (td){
+    td.onclick = function(e){ if (e) e.preventDefault(); goToday(); };
+    td.disabled = isToday();     // always visible; dimmed when already on today
+  }
+  return { VIEW:VIEW, todayKey:todayKey, isToday:isToday };
+}
+
+/* ── room-guest look-back ──────────────────────────────────────
+   Most recent record for a room across the previous fortnight.
+   A guest who opened the link days ago still appears, unless
+   they have departed. Reads each date individually so no
+   permission is needed on the parent node.                       */
+function fetchRoomGuests(endKey, days){
+  days = days || 14;
+  var parts = endKey.split('-');
+  var end = new Date(+parts[0], +parts[1]-1, +parts[2]);
+  var jobs = [], keys = [];
+  for (var i = days - 1; i >= 0; i--) {
+    var d = new Date(end); d.setDate(d.getDate() - i);
+    var k = dkey(d);
+    keys.push(k);
+    jobs.push(
+      fetch(DB + '/roomguests/' + k + '.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .catch(function(){ return null; })
+    );
+  }
+  return Promise.all(jobs).then(function(res){
+    var all = {};
+    res.forEach(function(day, i){ if (day) all[keys[i]] = day; });
+    return all;
+  });
+}
+
+function resolveRoomGuests(all, todayK){
+  var out = {};
+  var dates = Object.keys(all || {}).filter(function(d){ return d <= todayK; }).sort();
+  dates.forEach(function(d){
+    var day = all[d] || {};
+    for (var room in day){ out[room] = day[room]; }   // later dates overwrite earlier
+  });
+  // drop anyone checked out by this sheet's dinner: a guest departing on
+  // the sheet date leaves that morning, so their last sheet is the night before
+  for (var room in out){
+    var dep = out[room] && out[room].departs;
+    if (!dep) continue;
+    var p = parseDepDate(dep);
+    if (p && dkey(p) <= todayK) delete out[room];
+  }
+  return out;
+}
+
+/* ── guest misc ────────────────────────────────────────────── */
+function tidyPhone(p){
+  if (!p) return '';
+  p = String(p).replace(/[^\d]/g,'');
+  if (p.length === 9 && p[0] === '4') p = '0' + p;   // restore a lost leading zero
+  return p;
+}
+
+/* ── dietary conflicts against the tagged menu ─────────────── */
+function menuConflicts(menu, diets){
+  if (!diets || !diets.length || !menu) return [];
+  var hits = [];
+  ['bread','entree','main','dessert'].forEach(function(k){
+    var dish = menu[k];
+    if (!dish || !dish.conflicts) return;
+    dish.conflicts.forEach(function(tag){
+      diets.forEach(function(d){
+        if (String(d).toLowerCase() === String(tag).toLowerCase())
+          hits.push({ dish: dish.name || k, diet: d });
+      });
+    });
+  });
+  return hits;
+}
+
+function dietHTML(diets, sep, cls){
+  if(!diets||!diets.length) return '';
+  cls = cls || 'allergen';
+  return diets.map(function(d){
+    return (ALLERGENS.indexOf(d)>-1 || /allerg/i.test(d)) ? '<span class="'+cls+'">'+d+'</span>' : d;
+  }).join(sep || ' \u00b7 ');
+}
+
+/* ── housekeeping variants — deliberately different from above ──
+   resolveRoomGuestsHK KEEPS guests departing today: they are the
+   cleans. The dinner resolver drops them. Do not merge the two.   */
+function resolveRoomGuestsHK(all, todayK){
+  var out = {};
+  var dates = Object.keys(all || {}).filter(function(d){ return d <= todayK; }).sort();
+  dates.forEach(function(d){
+    var day = all[d] || {};
+    for (var room in day){ out[room] = day[room]; }
+  });
+  for (var room in out){
+    var dep = out[room] && out[room].departs;
+    if (!dep) continue;
+    var p = parseDepDate(dep);
+    if (p && dkey(p) < todayK) delete out[room];   // gone before today
+  }
+  return out;
+}
+
+/* one room, one record: staff override beats the guest's own answer,
+   whoever opened the link fills the gaps                            */
+function roomRecord(n, responses, manual, roomguests){
+  var mk = 'room-'+n, m = manual[mk];
+  var best = null;
+  for (var k in responses){
+    var g = responses[k];
+    if (String(g.room) !== String(n)) continue;
+    if (!best || (g.at||'') > (best.at||'')) best = g;
+  }
+  var known = roomguests[String(n)] || {};
+  if (m && m.override) return Object.assign({}, known, best || {}, m, { room:String(n) });
+  if (best) return Object.assign({}, known, best);
+  if (m)    return Object.assign({}, known, m, { room:String(n) });
+  if (known.name) return Object.assign({}, known, { room:String(n), status:null });
+  return null;
+}
+
+/* clean = departing on the sheet date; service = staying on;
+   verify = no usable data. The housekeeping rule, in one place.  */
+function hkClassify(rec, todayK){
+  if (rec && rec.status === 'vacant') return 'vac';
+  if (rec){
+    var d = parseDepDate(rec.departs);
+    var dk = d ? dkey(d) : null;
+    if (dk === todayK) return 'clean';
+    if (dk && dk > todayK) return 'svc';
+    return 'ver';       // stale or missing departure
+  }
+  return 'ver';         // no data at all
+}
+
+</script>
+<script>
+var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+                 'Nut allergy','Shellfish allergy','Egg allergy'];
+
+
+
+// date state + header wiring from nala-shared.js
+var nav = initDateNav();
+var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
+
+// print sheets open on whatever date the tally is showing
+if (!isToday()){
+  document.querySelectorAll('.navdrop a').forEach(function(a2){
+    var base = a2.getAttribute('href').split('?')[0];
+    if (base === 'list.html' || base === 'housekeeping.html')
+      a2.href = base + '?date=' + dkey(VIEW);
+  });
+}
+
+
+var ICON_GUEST = '<svg viewBox="0 0 24 24" stroke-width="0"><circle cx="12" cy="7.5" r="4"/>'+
+                 '<path d="M12 13.5c-4.2 0-7.5 2.9-7.5 6.5h15c0-3.6-3.3-6.5-7.5-6.5z"/></svg>';
+var ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round">'+
+                '<path d="M9.5 14.5l5-5"/>'+
+                '<path d="M12.8 7.2l1.6-1.6a3.6 3.6 0 015.1 5.1l-1.6 1.6"/>'+
+                '<path d="M11.2 16.8l-1.6 1.6a3.6 3.6 0 01-5.1-5.1l1.6-1.6"/></svg>';
+var ICON_EDIT = '<svg viewBox="0 0 24 24"><path d="M3 17.2V21h3.8L17.9 9.9l-3.8-3.8L3 17.2z"/>'+
+                '<path d="M20.7 7.1c.4-.4.4-1 0-1.4l-2.4-2.4c-.4-.4-1-.4-1.4 0l-1.8 1.8 3.8 3.8 1.8-1.8z"/></svg>';
+var ICON_GUEST_X = '<svg viewBox="0 0 24 24" stroke-width="0"><circle cx="12" cy="7.5" r="4"/>'+
+                   '<path d="M12 13.5c-4.2 0-7.5 2.9-7.5 6.5h15c0-3.6-3.3-6.5-7.5-6.5z"/>'+
+                   '<line x1="2" y1="22" x2="22" y2="2" stroke-width="2.6" stroke-linecap="round"/></svg>';
+var ICON_STAFF = '<svg viewBox="0 0 24 24" stroke-width="0"><path d="M4 21V4.5C4 3.7 4.7 3 5.5 3h9c.8 0 1.5.7 1.5 1.5V21H4z"/>'+
+                 '<path d="M17.5 21V9h2C20.3 9 21 9.7 21 10.5V21h-3.5z"/>'+
+                 '<rect x="6.5" y="6" width="2.6" height="2.6" fill="#F9F7F4"/>'+
+                 '<rect x="10.9" y="6" width="2.6" height="2.6" fill="#F9F7F4"/>'+
+                 '<rect x="6.5" y="10.6" width="2.6" height="2.6" fill="#F9F7F4"/>'+
+                 '<rect x="10.9" y="10.6" width="2.6" height="2.6" fill="#F9F7F4"/>'+
+                 '<rect x="8.7" y="15.6" width="2.6" height="5.4" fill="#F9F7F4"/></svg>';
+
+var ICON_BUBBLE = '<svg viewBox="0 0 24 24"><path d="M4 3h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H9l-5 4V5a2 2 0 0 1 2-2z"/></svg>';
+
+var MENU = null;      // tonight's tagged menu, for dietary conflict flags
+var responses = {};   // keyed by phone (digital) or manual key
+var cancelledExt = {};
+var roomguests = {};
+var manual = {};      // keyed by 'room-N' or 'ext-<id>'
+
+function api(path, method, body){
+  var o = { method: method||'GET' };
+  if (body !== undefined) { o.headers={'Content-Type':'application/json'}; o.body=JSON.stringify(body); }
+  return fetch(DB+path+'.json'+(method?'':'?v='+Date.now()), o)
+    .then(function(r){
+      if (!r.ok && method) {
+        return r.text().then(function(t){
+          showError('Not saved \u2014 the database rejected the change. ' +
+                    'Check the Realtime Database rules allow writes.');
+          var err = new Error(t); err.shown = true; throw err;
+        });
+      }
+      return r.json();
+    })
+    .catch(function(e){
+      if (method && !e.shown) showError('Not saved \u2014 no connection to the database.');
+      throw e;
+    });
+}
+
+var errTimer;
+function showError(msg){
+  var el = document.getElementById('errBar');
+  el.textContent = msg;
+  el.className = 'errbar show';
+  clearTimeout(errTimer);
+  errTimer = setTimeout(function(){ el.className='errbar'; }, 6000);
+}
+
+// a room's reservation details survive any status write, in any order
+function withExtras(key, rec){
+  var prev = manual[key];
+  if (prev){
+    ['name','phone','diets','note','dnote'].forEach(function(k){
+      if (rec[k] === undefined && prev[k] !== undefined) rec[k] = prev[k];
+    });
+  }
+  return rec;
+}
+
+// ── every /manual write goes through here: optimistic update,
+//    rolled back if the database rejects it (same pattern as saveCombined)
+function saveManual(key, rec){
+  var had  = Object.prototype.hasOwnProperty.call(manual, key);
+  var prev = manual[key];
+  if (rec === undefined) delete manual[key]; else manual[key] = rec;
+  var req = (rec === undefined)
+    ? api('/manual/'+todayKey()+'/'+key, 'DELETE')
+    : api('/manual/'+todayKey()+'/'+key, 'PUT', rec);
+  req.catch(function(){
+    if (had) manual[key] = prev; else delete manual[key];
+    render();
+  });
+  return req;
+}
+
+// ── build a unified view keyed by room ─────────────────────
+function roomState(n){
+  var mk = 'room-'+n;
+  var m  = manual[mk];
+
+  // latest digital response for this room
+  var best = null;
+  for (var k in responses){
+    var g = responses[k];
+    if (String(g.room) !== String(n)) continue;
+    if (!best || (g.at || '') > (best.g.at || '')) best = { src:'digital', key:k, g:g };
+  }
+
+  // a staff override always wins over the guest's own answer
+  if (m && m.override) {
+    return { src:'manual', key:mk, g:m, override:true, guest: best ? best.g : null };
+  }
+  if (best) return best;
+  if (m) return { src:'manual', key:mk, g:m };
+  return null;
+}
+
+
+function openNotes(title, g, hits){
+  var h = '<div class="pop-who">' + title + '</div>';
+  if (hits.length || g.dnote) {
+    h += '<div class="pop-h dh">Dietary comments</div>';
+    if (hits.length) {
+      var byDish = {};
+      hits.forEach(function(x){ (byDish[x.dish] = byDish[x.dish] || []).push(x.diet); });
+      h += '<div class="pop-t">' + Object.keys(byDish).map(function(dk){
+        return dk + ' \u2014 ' + byDish[dk].join(', ');
+      }).join('<br>') + '</div>';
+    }
+    h += '<div class="pop-t">' + (g.dnote
+      ? '\u201C' + g.dnote + '\u201D'
+      : '<i>No note from the guest yet.</i>') + '</div>';
+  }
+  if (g.note) {
+    h += '<div class="pop-h">General comments</div>' +
+         '<div class="pop-t">\u201C' + g.note + '\u201D</div>';
+  }
+  h += '<button class="btn solid" style="width:100%" id="npClose">Close</button>';
+  sheet.innerHTML = h;
+  document.getElementById('npClose').onclick = close;
+  showSheet();
+}
+
+// tiles follow the same order as the bookings list: combined rooms
+// adjacent under the lowest number, ringed as one group
+function computeTileOrder(){
+  var order = [], placed = {};
+  for (var n=1; n<=ROOMS; n++){
+    var rm = String(n);
+    if (placed[rm]) continue;
+    var gid = groupOf(rm);
+    var members = gid ? combined[gid].rooms.map(String).filter(function(m){
+      return Number(m)>=1 && Number(m)<=ROOMS; }) : [rm];
+    members.sort(function(a,b){ return Number(a)-Number(b); });
+    members.forEach(function(m){ placed[m]=true; });
+    order.push({ grouped: !!gid && members.length>1, members: members });
+  }
+  return order;
+}
+
+function roomTile(n){
+  var st = roomState(n);
+  var cls = 'room await', pax='';
+  if (st){
+    if (st.g.status==='in'){ cls='room in'; pax=(st.g.pax||1)+'p'; }
+    else if (st.g.status==='out'){ cls='room out'; }
+    else if (st.g.status==='vacant'){ cls='room vacant'; }
+  }
+
+  var mark = '';
+  if (!st && roomguests[String(n)]) {
+    mark = '<span class="mark seen">'+ICON_LINK+'</span>';   // opened, no answer yet
+  }
+  if (st && (st.g.status==='in' || st.g.status==='out')) {
+    var ic;
+    if (st.override && st.guest && st.g.status === 'out') ic = ICON_GUEST_X;  // guest replied, staff cancelled
+    else if (st.src === 'digital') ic = ICON_GUEST;
+    else ic = ICON_STAFF;
+    mark = '<span class="mark">'+ic+'</span>';
+  }
+  var b=document.createElement('button');
+  b.className=cls + (selected[n] ? ' sel' : '');
+  b.innerHTML=mark+'<span class="room-n">'+n+'</span><span class="room-p">'+pax+'</span>';
+  b.onclick=function(){
+    if (selectMode){
+      if (selected[n]) delete selected[n]; else selected[n]=true;
+      render();
+      selCountUpdate();
+    } else {
+      openRoom(n, st);
+    }
+  };
+  return b;
+}
+
+function paintTiles(){
+  var grid = document.getElementById('rooms');
+  grid.innerHTML='';
+  computeTileOrder().forEach(function(unit){
+    var host = grid;
+    if (unit.grouped){
+      host = document.createElement('div');
+      host.className = 'tilegrp';
+      host.style.gridColumn = 'span ' + Math.min(unit.members.length, 6);
+      host.style.gridTemplateColumns = 'repeat(' + Math.min(unit.members.length, 6) + ',1fr)';
+      grid.appendChild(host);
+    }
+    unit.members.forEach(function(m){ host.appendChild(roomTile(Number(m))); });
+  });
+}
+
+function render(){
+  paintTiles();
+
+  // one combined bookings list
+  var rows = [];
+
+  for (var n2=1; n2<=ROOMS; n2++){
+    var s = roomState(n2);
+    if (s && s.g.status==='in') rows.push({ g:s.g, room:n2, src:s.src, key:s.key });
+  }
+
+  for (var k in responses){
+    var g = responses[k];
+    if (!g.room && g.status==='in' && !cancelledExt[k] && !manual['extcancel-'+k])
+      rows.push({ g:g, room:null, src:'digital', key:k });
+  }
+  for (var k in manual){
+    if (k.indexOf('ext-')!==0) continue;
+    if (manual[k].status!=='in') continue;
+    rows.push({ g:manual[k], room:null, src:'manual', key:k });
+  }
+
+  var covers=0, notDining=0, awaiting=0;
+  rows.forEach(function(r){ covers += (r.g.pax||1); });
+  for (var n2=1; n2<=ROOMS; n2++){
+    var s = roomState(n2);
+    if (!s) awaiting++;                          // no answer yet
+    else if (s.g.status==='out') notDining++;    // declined rooms
+  }
+
+  var el = document.getElementById('listBookings');
+  el.innerHTML='';
+  if(!rows.length) el.innerHTML='<div class="empty">No bookings yet</div>';
+
+  // combined rooms sit together, boxed, under the lowest room number;
+  // members without an answer yet show as quiet stubs so the pairing reads
+  function unitKeyOf(r){ return r.room ? (groupOf(r.room) || 'room-'+r.room) : 'ext-'+r.key; }
+  function unitSort(rowlist){
+    var units = {};
+    rowlist.forEach(function(r){
+      var k = unitKeyOf(r);
+      (units[k] = units[k] || []).push(r);
+    });
+    // stubs for grouped rooms that haven't answered
+    for (var gid in combined){
+      if (!units[gid]) continue;
+      var have = units[gid].map(function(r){ return String(r.room); });
+      (combined[gid].rooms||[]).forEach(function(rm){
+        if (have.indexOf(String(rm)) < 0) units[gid].push({ room:String(rm), stub:true, g:{} });
+      });
+      units[gid].sort(function(a,b){ return Number(a.room)-Number(b.room); });
+    }
+    var keys = Object.keys(units);
+    function low(k){
+      var rs = units[k];
+      var roomNums = rs.filter(function(r){ return r.room; }).map(function(r){ return Number(r.room); });
+      return roomNums.length ? Math.min.apply(null, roomNums) : 1000;   // externals last
+    }
+    keys.sort(function(a,b){ return low(a)-low(b); });
+    return keys.map(function(k){ return { gid:(combined[k]?k:null), members:units[k] }; });
+  }
+
+  unitSort(rows).forEach(function(unit){
+    var host = el;
+    if (unit.gid && unit.members.length > 1){
+      host = document.createElement('div');
+      host.className = 'grpbox';
+      el.appendChild(host);
+    }
+    unit.members.forEach(function(r){
+      if (r.stub){
+        var st = document.createElement('div');
+        st.className = 'row stubrow';
+        var kn = roomguests[String(r.room)] || {};
+        st.innerHTML = '<div><div class="row-name"><span class="rm">Room '+r.room+'</span>'+
+          (kn.name ? '  '+kn.name : '')+'</div>'+
+          '<div class="row-sub">Awaiting reply</div></div>';
+        host.appendChild(st);
+        return;
+      }
+      host.appendChild(buildRow(r));
+    });
+  });
+
+  function buildRow(r){
+    var g = r.g;
+    var known = (r.room && roomguests[String(r.room)]) || {};
+    var shownName = g.name || known.name || '';
+    var title;
+    if (r.room) {
+      title = '<span class="rm">Room '+r.room+'</span>' + (shownName ? '  '+shownName : '');
+    } else {
+      title = (g.name || g.phone || 'Guest') + '<span class="tag">External</span>';
+    }
+
+    if (g.premenu) title += '<span class="tag">Pre-menu</span>';
+
+    var sub = [];
+    var d = dietHTML(g.diets, ' \u00b7 ', 'alrg'); if(d) sub.push(d);
+    else if (g.nodiet) sub.push('No dietaries confirmed');
+    if (g.phone) sub.push(g.phone);
+
+    var hits = menuConflicts(MENU, g.diets);
+    var hasNotes = !!(g.note || g.dnote);
+
+    var row = document.createElement('div');
+    row.className = 'row' + (hits.length ? ' conflict' : '');
+    row.innerHTML =
+      '<div><div class="row-name">'+title+'</div>'+
+      (sub.length ? '<div class="row-sub">'+sub.join(' · ')+'</div>' : '')+
+      '</div>'+
+      '<div class="row-right"><span class="row-pax">'+(g.pax||1)+' pax</span>'+
+      ((hasNotes || hits.length)
+        ? '<button class="bub'+(hits.length ? ' flag' : '')+'">'+ICON_BUBBLE+'</button>' : '')+
+      '<span class="edit">'+ICON_EDIT+'</span></div>';
+    var bub = row.querySelector('.bub');
+    if (bub) bub.onclick = (function(tt, gg, hh){
+      return function(ev){ ev.stopPropagation(); openNotes(tt, gg, hh); };
+    })(title, g, hits);
+    row.querySelector('.edit').onclick = (function(rr){
+      return function(ev){
+        ev.stopPropagation();
+        if (rr.room) openRoom(rr.room, roomState(rr.room));
+        else editExt(rr.key, rr.g);
+      };
+    })(r);
+    return row;
+  }
+
+  // tables: each combined group is one table; everyone else is their own
+  var tblPax = {};   // unit key -> summed pax
+  rows.forEach(function(r){
+    var unit = r.room ? (groupOf(r.room) || 'room-'+r.room) : 'ext-'+r.key;
+    tblPax[unit] = (tblPax[unit]||0) + (r.g.pax||1);
+  });
+  var sizes = {};
+  for (var u in tblPax) sizes[tblPax[u]] = (sizes[tblPax[u]]||0) + 1;
+  var tblCount = Object.keys(tblPax).length;
+  var parts = Object.keys(sizes).map(Number).sort(function(a,b){return a-b;})
+    .map(function(sz){ var n=sizes[sz];
+      var W=['','one','two','three','four','five','six','seven','eight','nine','ten'];
+      var w=W[sz]||sz; return n+' '+w+(n>1?'s':''); });
+  var tl = document.getElementById('tablesLine');
+  tl.textContent = parts.length
+    ? parts.join(' \u00b7 ') + ' \u00b7 ' + tblCount + (tblCount === 1 ? ' table' : ' tables')
+    : '';
+
+  document.getElementById('nCovers').textContent = covers;
+  document.getElementById('nOut').textContent    = notDining;
+  document.getElementById('nAwait').textContent  = awaiting;
+  document.getElementById('tileAwait').className = 'stat' + (awaiting>0 ? ' warn':'');
+}
+
+// ── combined tables ────────────────────────────────────────
+// /combined/<date> = { <gid>: { rooms:["10","11"] } } — rooms dining as one table
+var combined = {};
+
+function groupOf(room){
+  for (var gid in combined){
+    var rs = (combined[gid] && combined[gid].rooms) || [];
+    if (rs.indexOf(String(room)) > -1) return gid;
+  }
+  return null;
+}
+function groupMates(room){
+  var gid = groupOf(room);
+  if (!gid) return [];
+  return combined[gid].rooms.filter(function(r){ return String(r)!==String(room); });
+}
+function saveCombined(prev){
+  api('/combined/'+todayKey(), 'PUT', combined)
+    .catch(function(){
+      combined = prev || {};   // failed write: roll back so the screen matches the database
+      render();
+    });
+}
+
+// ── multi-select ───────────────────────────────────────────
+var selectMode = false;
+var selected = {};
+
+var selBar = document.getElementById('selBar');
+
+function selEqualsGroup(){
+  // the current selection exactly matches one existing group -> offer uncombine
+  var sel = Object.keys(selected).map(String).sort();
+  if (sel.length < 2) return null;
+  for (var gid in combined){
+    var rs = ((combined[gid] && combined[gid].rooms) || []).map(String).sort();
+    if (rs.length === sel.length && rs.join(',') === sel.join(',')) return gid;
+  }
+  return null;
+}
+function selCountUpdate(){
+  var n = Object.keys(selected).length;
+  document.getElementById('selCount').textContent =
+    n ? n + (n===1 ? ' room selected' : ' rooms selected') : 'Tap rooms to select';
+  var cb = document.getElementById('sbComb');
+  cb.disabled = n < 2;
+  cb.textContent = selEqualsGroup() ? 'Seat separately' : 'Seat together';
+  selBar.className = 'selbar' + (selectMode ? ' show' : '');
+}
+
+function exitSelect(){
+  selectMode = false;
+  selected = {};
+  var tgl = document.getElementById('selToggle');
+  tgl.textContent = 'Select multiple';
+  tgl.className = '';
+  selBar.className = 'selbar';
+  render();
+}
+
+document.getElementById('selToggle').onclick = function(e){
+  e.preventDefault();
+  selectMode = !selectMode;
+  selected = {};
+  this.textContent = selectMode ? 'Cancel' : 'Select multiple';
+  this.className = selectMode ? 'active' : '';
+  selCountUpdate();
+  render();
+};
+
+function applyToSelected(status){
+  var keys = Object.keys(selected);
+  if (!keys.length) return;
+
+  keys.forEach(function(n){
+    if (status === null){ saveManual('room-'+n); return; }
+    // if the guest replied for this room, mark it as an override
+    var hasGuest = false;
+    for (var k in responses){ if (String(responses[k].room) === String(n)) hasGuest = true; }
+    var prev = manual['room-'+n];
+    var keepPax = (status==='in' && prev && prev.status==='in' && prev.pax) ? prev.pax : null;
+    var rec = { status:status, pax:(status==='in' ? (keepPax||2) : 0), room:String(n), source:'manual' };
+    if (hasGuest) rec.override = true;
+    saveManual('room-'+n, withExtras('room-'+n, rec));
+  });
+
+  exitSelect();
+}
+
+document.getElementById('sbComb').onclick = function(){
+  var keys = Object.keys(selected).map(String);
+  if (keys.length < 2) return;
+  var prev = JSON.parse(JSON.stringify(combined));
+  var gid = selEqualsGroup();
+  if (gid){
+    delete combined[gid];               // uncombine
+  } else {
+    // pull the rooms out of any existing groups first
+    keys.forEach(function(r){
+      var g = groupOf(r);
+      if (g){
+        combined[g].rooms = combined[g].rooms.filter(function(x){ return String(x)!==r; });
+        if (combined[g].rooms.length < 2) delete combined[g];
+      }
+    });
+    combined['g'+Date.now()] = { rooms: keys };
+  }
+  saveCombined(prev);
+  exitSelect();
+};
+
+document.getElementById('sbVac').onclick   = function(){ applyToSelected('vacant'); };
+document.getElementById('sbDin').onclick   = function(){ applyToSelected('in'); };
+document.getElementById('sbOut').onclick   = function(){ applyToSelected('out'); };
+document.getElementById('sbClear').onclick = function(){ applyToSelected(null); };
+document.getElementById('sbDone').onclick  = exitSelect;
+
+// ── sheet ──────────────────────────────────────────────────
+var bd = document.getElementById('backdrop');
+var sheet = document.getElementById('sheet');
+bd.onclick = function(e){ if(e.target===bd) close(); };
+var actionsEl = document.querySelector('.actions');
+function showSheet(){ bd.className='backdrop show'; if(actionsEl) actionsEl.classList.add('hidden'); }
+function close(){ bd.className='backdrop'; if(actionsEl) actionsEl.classList.remove('hidden'); }
+
+// replaces the whole sheet with a single question, so nothing else is on screen
+function confirmSheet(title, question, confirmLabel, onConfirm, onBack){
+  sheet.innerHTML =
+    '<h3>'+title+'</h3>'+
+    '<div class="note-box">'+question+'</div>'+
+    '<button class="opt out" id="cYes">'+confirmLabel+'</button>'+
+    '<button class="opt quiet" id="cNo">Back</button>';
+  showSheet();
+  revealAction();
+  document.getElementById('cYes').onclick = onConfirm;
+  document.getElementById('cNo').onclick  = onBack;
+}
+
+function revealAction(){
+  requestAnimationFrame(function(){
+    var target = sheet.querySelector('.opt.solid') || sheet.querySelector('.opt');
+    if (target && target.scrollIntoView) {
+      target.scrollIntoView({ block:'nearest', behavior:'smooth' });
+    }
+  });
+}
+
+// one pax picker for every sheet that needs it
+function paxPicker(max, get, set){
+  function paint(){
+    var r=document.getElementById('paxRow'); if(!r) return;
+    r.innerHTML='';
+    for(var i=1;i<=max;i++)(function(v){
+      var b=document.createElement('button');
+      b.className='pax'+(get()===v?' on':''); b.textContent=v;
+      b.onclick=function(){ set(v); paint(); };
+      r.appendChild(b);
+    })(i);
+  }
+  paint();
+}
+
+function guestDataHTML(g, knownName){
+  g = g || {};
+  var name = g.name || knownName || '';
+  var top = [];
+  if (name) top.push(name);
+  if (g.phone) top.push(g.phone);
+  var d = dietHTML(g.diets, ' \u00b7 ', 'alrg');
+  var h = '';
+  if (top.length) h += top.join(' \u00b7 ');
+  if (d) h += '<span class="gd-sub">'+d+'</span>';
+  if (g.note)  h += '<span class="gd-note">\u201C'+g.note+'\u201D</span>';
+  if (g.dnote) h += '<span class="gd-note">Dietary: \u201C'+g.dnote+'\u201D</span>';
+  return h ? '<div class="gd">'+h+'</div>' : '';
+}
+
+function editRoomDetails(n, st){
+  var g = st.g || {};
+  var known = (roomguests[String(n)]||{});
+  var diets = (g.diets || []).slice();
+  sheet.innerHTML =
+    '<h3>Room '+n+' \u00b7 details</h3>'+
+    '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
+    '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
+    '<div class="sheet-label">Dietary requirements</div>'+
+    '<div class="chips" id="dietChips"></div>'+
+    '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
+    '<button class="opt solid" id="oSave" style="margin-top:8px">Save details</button>'+
+    '<button class="opt quiet" id="oBack">Back</button>';
+  showSheet();
+  revealAction();
+  document.getElementById('xName').value  = g.name  || known.name || '';
+  document.getElementById('xPhone').value = g.phone || '';
+  document.getElementById('xNote').value  = g.note  || '';
+  (function paintChips(){
+    var box=document.getElementById('dietChips'); box.innerHTML='';
+    DIETARIES.forEach(function(d){
+      var b=document.createElement('button');
+      b.className='chip'+(diets.indexOf(d)>-1?' on':''); b.textContent=d;
+      b.onclick=function(){
+        var i=diets.indexOf(d);
+        if(i>-1) diets.splice(i,1); else diets.push(d);
+        paintChips();
+      };
+      box.appendChild(b);
+    });
+  })();
+  document.getElementById('oSave').onclick = function(){
+    var rec = { status:'in', pax:(g.pax||2), room:String(n), source:'manual' };
+    if (st.src==='digital' || st.override) rec.override = true;
+    rec.name  = document.getElementById('xName').value.trim();
+    rec.phone = document.getElementById('xPhone').value.trim();
+    rec.note  = document.getElementById('xNote').value.trim();
+    rec.diets = diets.slice();
+    if (g.dnote) rec.dnote = g.dnote;   // the guest's own dietary note stays theirs
+    saveManual('room-'+n, rec);
+    close(); render();
+  };
+  document.getElementById('oBack').onclick = function(){ openRoom(n, st); };
+}
+
+function openRoom(n, st){
+  var pax = (st && st.g.pax) || 2;
+  var guestAnswer = st && (st.src==='digital' ? st.g : st.guest);
+  var isOverride  = st && st.override;
+  var knownName   = (roomguests[String(n)]||{}).name;
+
+  function shell(inner){
+    var mates = groupMates(n);
+    var combHtml = mates.length
+      ? '<div class="comb-note">Seated with Room '+mates.join(' & ')+
+        '<button class="comb-undo" id="oUncomb">Seat separately</button></div>'
+      : '';
+    sheet.innerHTML = '<h3>Room '+n+'</h3>' + combHtml +
+      guestDataHTML(st && st.g, knownName) + inner;
+    showSheet();
+    revealAction();
+    var u = document.getElementById('oUncomb');
+    if (u) u.onclick = function(){
+      var prev = JSON.parse(JSON.stringify(combined));
+      var gid = groupOf(n);
+      if (gid) delete combined[gid];
+      saveCombined(prev);
+      close(); render();
+    };
+  }
+
+  function paxBlock(){
+    return '<div class="sheet-label">Guests</div><div class="pax-row" id="paxRow"></div>';
+  }
+  function paintPax(){ paxPicker(6, function(){return pax;}, function(v){pax=v;}); }
+
+  function writeManual(rec){
+    saveManual('room-'+n, withExtras('room-'+n, rec)); close(); render();
+  }
+  function clearManual(){ saveManual('room-'+n); close(); render(); }
+
+  // ── staff cancelled a booking the guest had made ────────
+  if (isOverride && guestAnswer && st.g.status === 'out') {
+    shell(
+      '<div class="note-box">Cancelled by staff.<br>'+
+      'The guest had confirmed '+(guestAnswer.pax||1)+
+      (guestAnswer.pax===1?' guest':' guests')+
+      (guestAnswer.name ? ' \u2014 '+guestAnswer.name : '')+'.</div>'+
+      '<button class="opt solid" id="oRestore">Restore booking</button>'+
+      '<button class="opt quiet" id="oClose">Close</button>'
+    );
+    document.getElementById('oRestore').onclick = clearManual;
+    document.getElementById('oClose').onclick = close;
+    return;
+  }
+
+  // ── staff amended a booking the guest had made ──────────
+  if (isOverride && st.g.status === 'in') {
+    pax = st.g.pax || 2;
+    shell(
+      '<div class="note-box">'+
+        (guestAnswer
+          ? 'Amended by staff.<br>The guest originally confirmed '+(guestAnswer.pax||1)+
+            (guestAnswer.pax===1?' guest':' guests')+
+            (guestAnswer.name ? ' \u2014 '+guestAnswer.name : '')+'.'
+          : 'Added by staff.')+
+      '</div>'+
+      paxBlock()+
+      '<button class="opt solid" id="oSave">Update guests</button>'+
+      '<button class="opt quiet" id="oDetails">Edit details</button>'+
+      '<button class="opt out" id="oCancel">Cancel booking</button>'+
+      (guestAnswer ? '<button class="opt quiet" id="oRevert">Revert to guest\u2019s answer</button>' : '')+
+      '<button class="opt quiet" id="oClose">Close</button>'
+    );
+    paintPax();
+    document.getElementById('oSave').onclick = function(){
+      writeManual({ status:'in', pax:pax, room:String(n), override:true, source:'manual' });
+    };
+    document.getElementById('oCancel').onclick = function(){
+      confirmSheet('Room '+n, 'Cancel this booking?', 'Yes, cancel booking',
+        function(){ writeManual({ status:'out', pax:0, room:String(n), override:true, source:'manual' }); },
+        function(){ openRoom(n, st); });
+    };
+    var rv = document.getElementById('oRevert');
+    if (rv) rv.onclick = clearManual;
+    document.getElementById('oDetails').onclick = function(){ editRoomDetails(n, st); };
+    document.getElementById('oClose').onclick = close;
+    return;
+  }
+
+  // ── guest answered themselves ───────────────────────────
+  if (st && st.src==='digital') {
+    if (st.g.status==='in') {
+      pax = st.g.pax || 2;
+      shell(
+        '<div class="note-box">Confirmed by the guest'+
+        (st.g.name ? ' \u2014 '+st.g.name : '')+'.</div>'+
+        paxBlock()+
+        '<button class="opt solid" id="oSave">Update guests</button>'+
+        '<button class="opt quiet" id="oDetails">Edit details</button>'+
+        '<button class="opt out" id="oCancel">Cancel booking</button>'+
+        '<button class="opt quiet" id="oClose">Close</button>'
+      );
+      paintPax();
+      document.getElementById('oSave').onclick = function(){
+        writeManual({ status:'in', pax:pax, room:String(n), override:true, source:'manual' });
+      };
+      document.getElementById('oDetails').onclick = function(){ editRoomDetails(n, st); };
+      document.getElementById('oCancel').onclick = function(){
+        confirmSheet('Room '+n,
+          'Cancel this booking?<br>The guest confirmed it themselves.',
+          'Yes, cancel booking',
+          function(){ writeManual({ status:'out', pax:0, room:String(n), override:true, source:'manual' }); },
+          function(){ openRoom(n, st); });
+      };
+      document.getElementById('oClose').onclick = close;
+    } else {
+      shell(
+        '<div class="note-box">The guest declined.</div>'+
+        paxBlock()+
+        '<button class="opt solid" id="oIn">Dining after all</button>'+
+        '<button class="opt quiet" id="oClose">Close</button>'
+      );
+      paintPax();
+      document.getElementById('oIn').onclick = function(){
+        writeManual({ status:'in', pax:pax, room:String(n), override:true, source:'manual' });
+      };
+      document.getElementById('oClose').onclick = close;
+    }
+    return;
+  }
+
+  // ── no guest answer: plain staff entry ──────────────────
+  var seen = roomguests[String(n)];
+  shell(
+    (!st && seen
+      ? '<div class="note-box">'+
+        (seen.name ? seen.name+' has' : 'The guest has')+
+        ' opened the link but not replied.</div>'
+      : '')+
+    paxBlock()+
+    '<button class="opt solid" id="oIn">Dining</button>'+
+    (st && st.g.status==='in' ? '<button class="opt quiet" id="oDetails">Edit details</button>' : '')+
+    '<button class="opt out" id="oOut">Not dining</button>'+
+    '<button class="opt vac" id="oVac">Vacant tonight</button>'+
+    (st ? '<button class="opt quiet" id="oClear">Clear</button>' : '')+
+    '<button class="opt quiet" id="oClose">Close</button>'
+  );
+  paintPax();
+  document.getElementById('oIn').onclick  = function(){ writeManual({ status:'in',  pax:pax, room:String(n), source:'manual' }); };
+  document.getElementById('oOut').onclick = function(){ writeManual({ status:'out', pax:0,  room:String(n), source:'manual' }); };
+  document.getElementById('oVac').onclick = function(){ writeManual({ status:'vacant', pax:0, room:String(n), source:'manual' }); };
+  var dt = document.getElementById('oDetails');
+  if (dt) dt.onclick = function(){ editRoomDetails(n, st); };
+  var cl = document.getElementById('oClear');
+  if (cl) cl.onclick = function(){
+    confirmSheet('Room '+n,
+      'Clear this room back to awaiting?',
+      'Yes, clear',
+      clearManual,
+      function(){ openRoom(n, st); });
+  };
+  document.getElementById('oClose').onclick = close;
+}
+
+document.getElementById('addExt').onclick = function(e){
+  e.preventDefault();
+  var pax=2, diets=[], dest=null;   // dest null = external, otherwise room number
+  sheet.innerHTML =
+    '<h3>Add reservation</h3>'+
+    '<div class="seg">'+
+      '<button id="segExt" class="on">External</button>'+
+      '<button id="segRoom">In-house room</button>'+
+    '</div>'+
+    '<div class="rm-row" id="rmRow" style="display:none"></div>'+
+    '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
+    '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
+    '<div class="sheet-label" style="margin-top:14px">Guests</div>'+
+    '<div class="pax-row" id="paxRow"></div>'+
+    '<div class="sheet-label">Dietary requirements</div>'+
+    '<div class="chips" id="dietChips"></div>'+
+    '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
+    '<button class="opt solid" id="oIn" style="margin-top:8px">Add</button>'+
+    '<button class="opt quiet" id="oCancel">Cancel</button>';
+  showSheet();
+  revealAction();
+
+  var segE=document.getElementById('segExt'), segR=document.getElementById('segRoom');
+  var rmRow=document.getElementById('rmRow');
+  function paintSeg(){
+    segE.className = dest===null ? 'on' : '';
+    segR.className = dest===null ? '' : 'on';
+    rmRow.style.display = dest===null ? 'none' : 'grid';
+  }
+  function paintRooms(){
+    rmRow.innerHTML='';
+    for (var i=1;i<=ROOMS;i++)(function(v){
+      var b=document.createElement('button');
+      b.className='rmp'+(dest===v?' on':''); b.textContent=v;
+      b.onclick=function(){ dest=v; paintRooms(); };
+      rmRow.appendChild(b);
+    })(i);
+  }
+  segE.onclick=function(){ dest=null; paintSeg(); };
+  segR.onclick=function(){ if(dest===null) dest=1; paintRooms(); paintSeg(); };
+
+  function paintPax(){ paxPicker(8, function(){return pax;}, function(v){pax=v;}); }
+  function paintChips(){
+    var box=document.getElementById('dietChips'); box.innerHTML='';
+    DIETARIES.forEach(function(d){
+      var b=document.createElement('button');
+      b.className='chip'+(diets.indexOf(d)>-1?' on':''); b.textContent=d;
+      b.onclick=function(){
+        var i=diets.indexOf(d);
+        if(i>-1) diets.splice(i,1); else diets.push(d);
+        paintChips();
+      };
+      box.appendChild(b);
+    });
+  }
+  paintPax(); paintChips(); paintSeg();
+
+  document.getElementById('oIn').onclick=function(){
+    var nm=document.getElementById('xName').value.trim();
+    var ph=document.getElementById('xPhone').value.trim();
+    var nt=document.getElementById('xNote').value.trim();
+    if (dest===null){
+      if(!nm){ document.getElementById('xName').focus(); return; }
+      var id='ext-'+Date.now();
+      var rec={ status:'in', pax:pax, name:nm, phone:ph, note:nt, diets:diets, source:'manual' };
+      saveManual(id, rec);
+    } else {
+      var rec2={ status:'in', pax:pax, room:String(dest), source:'manual' };
+      // staff booking over a guest's own answer counts as an override
+      for (var k in responses){ if (String(responses[k].room)===String(dest)) rec2.override=true; }
+      if (nm) rec2.name=nm;
+      if (ph) rec2.phone=ph;
+      if (nt) rec2.note=nt;
+      if (diets.length) rec2.diets=diets.slice();
+      saveManual('room-'+dest, rec2);
+    }
+    close(); render();
+  };
+  document.getElementById('oCancel').onclick=close;
+};
+
+function editExt(key, g){
+  var pax = g.pax || 2;
+  var isManual = key.indexOf('ext-') === 0;
+  var diets = (g.diets || []).slice();
+
+  if (isManual){
+    sheet.innerHTML =
+      '<h3>'+(g.name || 'Reservation')+'</h3>'+
+      '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
+      '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
+      '<div class="sheet-label" style="margin-top:14px">Guests</div>'+
+      '<div class="pax-row" id="paxRow"></div>'+
+      '<div class="sheet-label">Dietary requirements</div>'+
+      '<div class="chips" id="dietChips"></div>'+
+      '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
+      '<button class="opt solid" id="oSave" style="margin-top:8px">Save changes</button>'+
+      '<button class="opt out" id="oDel">Cancel booking</button>'+
+      '<button class="opt quiet" id="oClose">Close</button>';
+    showSheet();
+    revealAction();
+    document.getElementById('xName').value  = g.name  || '';
+    document.getElementById('xPhone').value = g.phone || '';
+    document.getElementById('xNote').value  = g.note  || '';
+    paxPicker(8, function(){return pax;}, function(v){pax=v;});
+    (function paintChips(){
+      var box=document.getElementById('dietChips'); box.innerHTML='';
+      DIETARIES.forEach(function(d){
+        var b=document.createElement('button');
+        b.className='chip'+(diets.indexOf(d)>-1?' on':''); b.textContent=d;
+        b.onclick=function(){
+          var i=diets.indexOf(d);
+          if(i>-1) diets.splice(i,1); else diets.push(d);
+          paintChips();
+        };
+        box.appendChild(b);
+      });
+    })();
+    document.getElementById('oSave').onclick = function(){
+      var rec = JSON.parse(JSON.stringify(g));
+      rec.name  = document.getElementById('xName').value.trim() || rec.name;
+      rec.phone = document.getElementById('xPhone').value.trim();
+      rec.note  = document.getElementById('xNote').value.trim();
+      rec.diets = diets.slice();
+      rec.pax   = pax;
+      saveManual(key, rec);
+      close(); render();
+    };
+  } else {
+    sheet.innerHTML =
+      '<h3>'+(g.name || 'External guest')+'</h3>'+
+      guestDataHTML(g, null) +
+      '<div class="note-box">Booked by the guest \u2014 details are theirs to change.</div>'+
+      '<button class="opt out" id="oDel">Cancel booking</button>'+
+      '<button class="opt quiet" id="oClose">Close</button>';
+    showSheet();
+    revealAction();
+  }
+
+  document.getElementById('oDel').onclick = function(){
+    confirmSheet(g.name || 'External guest',
+      'Cancel this booking?',
+      'Yes, cancel booking',
+      doCancel,
+      function(){ editExt(key, g); });
+  };
+
+  function doCancel(){
+    if (isManual){
+      saveManual(key);
+    } else {
+      // guest booked via the link \u2014 record a staff cancellation
+      var rec = { status:'out', pax:0, override:true, source:'manual',
+                  name:g.name||'', phone:g.phone||'' };
+      cancelledExt[key] = true;
+      saveManual('extcancel-'+key, rec).catch(function(){
+        delete cancelledExt[key];   // failed: let the row come back
+        render();
+      });
+    }
+    close(); render();
+  }
+  document.getElementById('oClose').onclick = close;
+}
+
+// ── load ───────────────────────────────────────────────────
+document.getElementById('legGuest').innerHTML = ICON_GUEST;
+document.getElementById('legStaff').innerHTML = ICON_STAFF;
+document.getElementById('legSeen').innerHTML  = ICON_LINK;
+
+// ── menu published? and archive it for statistics ──────────
+(function menuCheck(){
+  var el = document.getElementById('menuState');
+  fetch('menu.json?v=' + Date.now())
+    .then(function(r){
+      var lm = r.headers.get('Last-Modified');
+      return r.json().then(function(m){ return { m:m, lm:lm }; });
+    })
+    .then(function(res){
+      var m = res.m || {};
+      var filled = ['bread','entree','main','dessert'].every(function(k){
+        return m[k] && m[k].name && m[k].name.trim() !== '';
+      });
+      // use the menu's own publish timestamp — GitHub rewrites Last-Modified
+      // on every deploy, so it can't tell us when the chef published.
+      var pub = null;
+      if (m.published) pub = parseISO(m.published);
+      // compare against the date being viewed, not always today
+      var fresh = pub ? (dkey(pub) === todayKey()) : false;
+      var live = filled && fresh;
+      if (live) {
+        MENU = m;
+        // dish tags are written by tag.html into Firebase
+        fetch(DB + '/menutags/' + todayKey() + '.json')
+          .then(function(r){ return r.json(); })
+          .then(function(tags){
+            if (tags && MENU) ['bread','entree','main','dessert'].forEach(function(k){
+              if (MENU[k] && tags[k]) MENU[k].conflicts = tags[k];
+            });
+            render();
+          })
+          .catch(function(){ render(); });
+      }
+
+      var when = isToday() ? '' : ' for this date';
+      if (live) {
+        var t = pub.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+        el.innerHTML = '<a href="menu-print.html" class="yes">Menu published ' + t +
+                       ' <b>· View</b></a>';
+      } else {
+        el.innerHTML = '<span class="no">Menu not published' + when + '</span>';
+      }
+
+      // archive for statistics; rewrite if the menu was revised
+      if (live && isToday()) {
+        var k = todayKey();
+        fetch(DB + '/menuhistory/' + k + '.json?v=' + Date.now())
+          .then(function(r){ return r.ok ? r.json() : null; })
+          .then(function(existing){
+            var mainName = (m.main && m.main.name) || '';
+            if (existing && existing.main === mainName && existing.published === m.published) return;
+            fetch(DB + '/menuhistory/' + k + '.json', {
+              method:'PUT', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({
+                bread:   m.bread   && m.bread.name   || '',
+                entree:  m.entree  && m.entree.name  || '',
+                main:    m.main    && m.main.name    || '',
+                dessert: m.dessert && m.dessert.name || '',
+                mainDesc: m.main   && m.main.desc    || '',
+                published: m.published || '',
+                at: new Date().toISOString()
+              })
+            });
+          });
+      }
+    })
+    .catch(function(){
+      el.innerHTML = '<span class="no">Menu not published</span>';
+    });
+})();
+
+Promise.all([
+  api('/responses/'+todayKey()),
+  api('/manual/'+todayKey()),
+  fetchRoomGuests(todayKey()),
+  api('/combined/'+todayKey())
+]).then(function(r){
+  responses  = r[0] || {};
+  manual     = r[1] || {};
+  roomguests = resolveRoomGuests(r[2], todayKey());
+  combined   = r[3] || {};
+  render();
+});
+</script>
+</body>
+</html>
