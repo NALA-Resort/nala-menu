@@ -307,9 +307,23 @@
   .cf-msg b { font-weight:600; }
   .cf-input.miss { border-color:#9E6455; }
 
-  .r-done { text-align:center; }
+  /* Once answered, the panel has to look visibly different from the form it
+     replaced, or the guest cannot tell the tap registered. It borrows the
+     menu card's paper and rule so it reads as part of the same object. */
+  .r-done {
+    text-align:center;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 1.15rem 1rem 1.25rem;
+  }
   .r-done-t { font-size:1.125rem; color:var(--ink); margin-bottom:8px; }
   .r-done-s { font-style:italic; font-weight:400; font-size:0.875rem; color:var(--mid); }
+  .r-tick {
+    width:1.75rem; height:1.75rem; margin:0 auto 0.7rem;
+    border:1px solid var(--rule); border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:0.8rem; color:var(--ink); line-height:1;
+  }
   /* Short screens: two-line dish descriptions were pushing past the fold
      on an SE. Tighten the spacer floors rather than the type. */
   /* Short screens (SE and similar): the same content has to fit a much
@@ -721,11 +735,11 @@
   }
 
   function stepDone(r){
-    var body = r.status==='in'
+    var body = '<div class="r-tick">\u2713</div>' + (r.status==='in'
       ? '<div class="r-done-t">Confirmed for '+r.pax+(r.pax===1?' guest':' guests')+'</div>'+
         '<div class="r-done-s">We look forward to seeing you.</div>'
       : '<div class="r-done-t">Noted \u2014 not dining tonight</div>'+
-        '<div class="r-done-s">We hope to see you another evening.</div>';
+        '<div class="r-done-s">We hope to see you another evening.</div>');
     panel.innerHTML = '<div class="r-done">'+body+
       (pastCutoff() ? '' : '<a class="r-link" id="bEdit">Change</a>')+'</div>';
     var e = document.getElementById('bEdit');
