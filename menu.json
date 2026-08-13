@@ -1,54 +1,23 @@
 {
-  "published": "2026-08-09T20:23:57.005833+10:00",
+  "published": "2026-08-13T13:10:39.579809+10:00",
   "bread": {
-    "name": "Pain de campagne",
-    "desc": "brown butter, smoked salt",
-    "aus": false,
-    "conflicts": [
-      "Gluten free",
-      "Dairy free",
-      "Vegan"
-    ]
+    "name": "Light sourdough",
+    "desc": "aged balsamic, olive oil",
+    "aus": false
   },
   "entree": {
-    "name": "Burrata",
-    "desc": "salumi XO, fried basil",
-    "aus": false,
-    "conflicts": [
-      "Dairy free",
-      "Vegetarian",
-      "Vegan",
-      "Pescatarian"
-    ]
+    "name": "Chargrilled king prawn",
+    "desc": "red pepper, olive, smoked paprika",
+    "aus": true
   },
   "main": {
-    "name": "Grain-fed striploin",
-    "desc": "potato purée, broccolini, pink peppercorn sauce",
-    "aus": false,
-    "conflicts": [
-      "Vegetarian",
-      "Vegan",
-      "Pescatarian"
-    ]
+    "name": "King George whiting",
+    "desc": "cauliflower, sugar snap, white grapes & verjus salsa",
+    "aus": true
   },
   "dessert": {
-    "name": "Yoghurt panna cotta",
-    "desc": "passionfruit, candied almond",
-    "aus": false,
-    "conflicts": [
-      "Dairy free",
-      "Vegan",
-      "Nut allergy"
-    ]
-  },
-  "dietaries": [
-    "Gluten free",
-    "Dairy free",
-    "Vegetarian",
-    "Vegan",
-    "Pescatarian",
-    "Nut allergy",
-    "Shellfish allergy",
-    "Egg allergy"
-  ]
+    "name": "Raspberry",
+    "desc": "blood orange, pistachio, meringue",
+    "aus": false
+  }
 }
