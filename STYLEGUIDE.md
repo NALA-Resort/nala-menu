@@ -87,6 +87,10 @@ Each step is about a third up from the last. Two things that form one
 statement sit on adjacent steps; skipping steps is what makes one of them
 shout. 27 is reserved for a single headline number.
 
+**Never use em dashes.** Not in copy, not in titles, not in comments. A
+hyphen in a sentence, a middot for a separator. This is a standing rule, not
+a preference to be re-litigated.
+
 **Name what a number counts.** "2×3" and "3×2" look like the same sum and
 the reader has to already know which side is which. Write the make-up as
 "3 twos · 1 three" — a wording that can be said out loud and cannot be
