@@ -208,9 +208,9 @@
   var G = { phone:(qs.get('p')||'').replace(/\D/g,''), room:qs.get('r')||'',
             name:(qs.get('n')||'').trim(), arrives:qs.get('a')||'', departs:qs.get('d')||'' };
 
-  // Personalised greeting
-  var first = G.name.split(' ')[0];
-  if (first) document.getElementById('greet').innerHTML = 'Welcome to Nala,<br>' + first;
+  // No guest-specific information is shown on this page. The greeting stays
+  // generic even when a name is present in the link, so the page is safe to
+  // read over a shoulder, screenshot, or leave open on a shared device.
 
   // The menu button carries the guest through, so the RSVP knows them.
   document.getElementById('menuBtn').href = '/' + location.search;
