@@ -216,7 +216,10 @@
     display:none;
     border-top:1px solid var(--rule);
     margin-top:5vh;
-    padding:4.5vh 0 7vh;
+    /* the page now carries its own bottom padding, so this panel only needs
+       enough to balance its top gap - any more and the two stack up into a
+       pool of dead cream under the answer */
+    padding:4.5vh 0 1.5vh;
   }
   #rsvp.show { display:block; }
 
@@ -339,7 +342,7 @@
     .course-rule  { margin: 3px auto 7px; }
     .dish-name    { margin-bottom: 3px; }
     footer        { padding-top: 1.8vh; }
-    #rsvp         { margin-top: 3vh; padding: 2.8vh 0 4vh; }
+    #rsvp         { margin-top: 3vh; padding: 2.8vh 0 1vh; }
     .r-q          { margin-bottom: 14px; }
     .r-btn        { padding: 11px 8px; }
   }
