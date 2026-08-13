@@ -128,8 +128,20 @@ with sync_playwright() as p:
       const bub=document.querySelector('.bub'); const ps=bub?getComputedStyle(bub,'::after'):null; const br=ps?(ps.top+'|'+ps.content):'';
       return {w:r.width,h:r.height,bub:br};}""")
     ck("dnav 36x36", abs(tt["w"]-36)<1 and abs(tt["h"]-36)<1)
-    ck("bubble hit area extended", tt["bub"].startswith("-8px"))
+    # the bubble is a 20px icon with an 11px pad each side: a 42px tap target
+    ck("bubble hit area extended", tt["bub"].startswith("-11px"))
 
+    sp=pg.evaluate("""()=>{const rows=[...document.querySelectorAll('#listBookings .row')];
+      const pax=[...new Set(rows.filter(r=>r.querySelector('.row-right'))
+        .map(r=>Math.round(r.querySelector('.row-right').getBoundingClientRect().right)))];
+      const gaps=[...new Set(rows.filter(r=>r.querySelector('.row-name')).map(r=>{const n=r.querySelector('.row-name');
+        const nx=r.querySelector('.dietline')||r.querySelector('.row-sub');
+        return nx? Math.round(nx.getBoundingClientRect().top-n.getBoundingClientRect().bottom):null;})
+        .filter(x=>x!==null))];
+      return {paxEdges:pax, gaps:gaps};}""")
+    print("   spacing:", sp)
+    ck("a note never shifts the pax column", len(sp["paxEdges"])==1)
+    ck("one gap under the name whatever follows it", max(sp["gaps"])-min(sp["gaps"])<=1)
     # 5 staff sets room 9 dining pax4
     tile(pg,9).click(); pg.wait_for_timeout(200)
     ck("open-room sheet shows seen note", "opened the link" in pg.locator("#sheet").inner_text())

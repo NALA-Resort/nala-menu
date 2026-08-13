@@ -4,7 +4,7 @@ Playwright suites with a fully mocked Firebase (auth SDK stubbed, every
 database route intercepted, writes captured and inspected). Run from the
 repo root with a local copy of the site:
 
-    python3 tests/tally_suite.py     # 66 - res tally
+    python3 tests/tally_suite.py     # 69 - res tally
     python3 tests/list_suite.py      # 29 — res print (incl. Safari-fraction regression)
     python3 tests/hk_suite.py        # 20 — HC print
     python3 tests/cl_suite.py        # 24 — HC tally (incl. management menu gate)

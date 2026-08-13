@@ -151,12 +151,13 @@
                    letter-spacing:.18em; text-transform:uppercase; color:var(--mid);
                    border:1px solid var(--rule); padding:2px 6px; margin-left:8px;
                    border-radius:10px; vertical-align:middle; }
-  .row-sub { font-style:italic; font-size:11px; color:var(--mid); }
+  .row-sub { font-style:italic; font-size:11px; color:var(--mid); margin-top:8px; }
   .row-pax { font-family:Helvetica,Arial,sans-serif; font-size:12px; white-space:nowrap; }
   /* The bubble sits BEFORE the pax count so the pax figures line up down the
      list whether or not a booking carries a note.                         */
-  .row-right { display:flex; align-items:center; gap:4px; white-space:nowrap;
+  .row-right { display:flex; align-items:center; gap:6px; white-space:nowrap;
                margin-left:auto; justify-content:flex-end; }
+  .bub-slot { width:20px; flex:0 0 20px; }
   .edit { display:flex; align-items:center; justify-content:center;
           width:40px; height:40px; margin:-10px -10px -10px 0;
           opacity:.45; cursor:pointer; }
@@ -167,19 +168,21 @@
      fill already says it. A preference is a tinted pill at full label. The
      pills take the whole row width, not just the half beside the pax count. */
   .nm { white-space:nowrap; }
-  .dietline { flex:0 0 100%; margin:0 0 1px; display:flex; flex-wrap:wrap; gap:5px; }
+  .dietline { flex:0 0 100%; margin:8px 0 0; display:flex; flex-wrap:wrap; gap:5px; }
   .dpill { font-family:Helvetica,Arial,sans-serif; font-size:11px; font-weight:bold;
            letter-spacing:.06em; text-transform:uppercase; padding:3px 8px;
            border-radius:11px; background:rgba(168,50,30,.12); color:var(--red); }
   .dpill-al { background:var(--red); color:#fff; }
   .row.conflict { border-left:3px solid var(--red); padding-left:10px;
                   background:rgba(168,50,30,.05); }
-  .bub { width:26px; height:26px; border:1px solid var(--rule); background:transparent;
-         cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;
+  /* Icon only, no box, in a fixed 20px slot that exists whether or not this
+     booking has a note - otherwise the bubble's width shifts the pax count
+     and the line height of every row that happens to carry a comment.    */
+  .bub { width:20px; height:20px; border:0; background:transparent; padding:0;
+         cursor:pointer; display:flex; align-items:center; justify-content:center;
          position:relative; }
-  .bub::after { content:''; position:absolute; inset:-8px; }  /* 42px tap target */
-  .bub svg { width:14px; height:14px; display:block; fill:var(--mid); }
-  .bub.flag { border-color:var(--red); }
+  .bub::after { content:''; position:absolute; inset:-11px; }  /* 42px tap target */
+  .bub svg { width:15px; height:15px; display:block; fill:var(--mid); }
   .bub.flag svg { fill:var(--red); }
   .pop-who { font-size:15px; margin-bottom:14px; padding-bottom:12px;
              border-bottom:1px solid var(--rule); }
@@ -676,7 +679,8 @@ function render(){
       '</div>'+
       '<div class="row-right">'+
       ((hasNotes || hits.length)
-        ? '<button class="bub'+(hits.length ? ' flag' : '')+'">'+ICON_BUBBLE+'</button>' : '')+
+        ? '<button class="bub'+(hits.length ? ' flag' : '')+'">'+ICON_BUBBLE+'</button>'
+        : '<span class="bub-slot"></span>')+
       '<span class="row-pax">'+(g.pax||1)+' pax</span>'+
       '<span class="edit">'+ICON_EDIT+'</span></div>'+ dietLine;
     var bub = row.querySelector('.bub');
