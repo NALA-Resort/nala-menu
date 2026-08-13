@@ -216,19 +216,9 @@
     display:none;
     border-top:1px solid var(--rule);
     margin-top:5vh;
-    /* the page now carries its own bottom padding, so this panel only needs
-       enough to balance its top gap - any more and the two stack up into a
-       pool of dead cream under the answer */
-    padding:4.5vh 0 1.5vh;
+    padding:4.5vh 0 7vh;
   }
   #rsvp.show { display:block; }
-  /* The answer row is reserved at the height of its tallest resting state, so
-     answering does not resize the menu card above it. Choose and done then
-     occupy exactly the same space and only their contents change. The taller
-     mid-flow steps (pax, dietaries) are allowed to exceed it and scroll. */
-  #rsvp[data-step="choose"], #rsvp[data-step="done"] {
-    min-height: 12.07rem; display:flex; flex-direction:column; justify-content:center;
-  }
 
   .r-q {
     text-align:center; font-size:1.125rem; color:var(--ink);
@@ -317,23 +307,9 @@
   .cf-msg b { font-weight:600; }
   .cf-input.miss { border-color:#9E6455; }
 
-  /* Once answered, the panel has to look visibly different from the form it
-     replaced, or the guest cannot tell the tap registered. It borrows the
-     menu card's paper and rule so it reads as part of the same object. */
-  .r-done {
-    text-align:center;
-    background: var(--paper);
-    border: 1px solid var(--rule);
-    padding: 0.85rem 1rem 0.95rem;
-  }
-  .r-done-t { font-size:1.125rem; color:var(--ink); margin-bottom:5px; }
+  .r-done { text-align:center; }
+  .r-done-t { font-size:1.125rem; color:var(--ink); margin-bottom:8px; }
   .r-done-s { font-style:italic; font-weight:400; font-size:0.875rem; color:var(--mid); }
-  .r-tick {
-    width:1.45rem; height:1.45rem; margin:0 auto 0.5rem;
-    border:1px solid var(--rule); border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    font-size:0.8rem; color:var(--ink); line-height:1;
-  }
   /* Short screens: two-line dish descriptions were pushing past the fold
      on an SE. Tighten the spacer floors rather than the type. */
   /* Short screens (SE and similar): the same content has to fit a much
@@ -349,7 +325,7 @@
     .course-rule  { margin: 3px auto 7px; }
     .dish-name    { margin-bottom: 3px; }
     footer        { padding-top: 1.8vh; }
-    #rsvp         { margin-top: 3vh; padding: 2.8vh 0 1vh; }
+    #rsvp         { margin-top: 3vh; padding: 2.8vh 0 4vh; }
     .r-q          { margin-bottom: 14px; }
     .r-btn        { padding: 11px 8px; }
   }
@@ -367,7 +343,7 @@
   }
 
   .r-link {
-    display:inline-block; margin-top:9px; font-family:'Raleway',Helvetica,Arial,sans-serif;
+    display:inline-block; margin-top:12px; font-family:'Raleway',Helvetica,Arial,sans-serif;
     font-size:0.625rem; letter-spacing:.12em; text-transform:uppercase;
     color:var(--mid); border-bottom:1px solid var(--rule);
     text-decoration:none; padding-bottom:2px; cursor:pointer;
@@ -745,11 +721,11 @@
   }
 
   function stepDone(r){
-    var body = '<div class="r-tick">\u2713</div>' + (r.status==='in'
+    var body = r.status==='in'
       ? '<div class="r-done-t">Confirmed for '+r.pax+(r.pax===1?' guest':' guests')+'</div>'+
         '<div class="r-done-s">We look forward to seeing you.</div>'
       : '<div class="r-done-t">Noted \u2014 not dining tonight</div>'+
-        '<div class="r-done-s">We hope to see you another evening.</div>');
+        '<div class="r-done-s">We hope to see you another evening.</div>';
     panel.innerHTML = '<div class="r-done">'+body+
       (pastCutoff() ? '' : '<a class="r-link" id="bEdit">Change</a>')+'</div>';
     var e = document.getElementById('bEdit');
