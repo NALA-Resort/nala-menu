@@ -16,7 +16,7 @@ WRITES=[]
 responses={
  "0400000001":{"status":"in","pax":2,"name":"James","room":"1","phone":"0400 000 001","diets":["Nut allergy"],"note":"Window seat please","at":"2026-08-12T09:00:00"},
  "0400000002":{"status":"out","room":"2","at":"2026-08-12T09:05:00"},
- "0400000003":{"status":"in","pax":2,"name":"Mark","room":"3","at":"2026-08-12T09:10:00"},
+ "0400000003":{"status":"in","pax":2,"name":"Mark","room":"3","premenu":True,"nodiet":True,"at":"2026-08-12T09:10:00"},
  "0400000099":{"status":"in","pax":2,"name":"Outside Guest","phone":"0400 000 099","at":"2026-08-12T10:00:00"},
 }
 manual={
@@ -262,6 +262,12 @@ with sync_playwright() as p:
     ck("details save: override with phone+diets, pax kept", b3.get("override")==True and b3["phone"]=="0400 333 333" and "Vegan" in b3["diets"] and b3["pax"]==2 and b3["name"]=="Mark")
     ck("row shows new dietary", "VEGAN" in pg.locator("#listBookings").inner_text().upper())
 
+    pm=pg.evaluate("""()=>{const r=[...document.querySelectorAll('#listBookings .row')]
+        .find(x=>/Mark/.test(x.textContent));
+      return r ? {txt:r.innerText.replace(/\\n/g,' | ')} : null;}""")
+    print("   villa 3 after staff override:", pm)
+    ck("staff override keeps the guest's pre-menu tag",
+       pm and "PRE-MENU" in pm["txt"].upper())
     dp=pg.evaluate("""()=>{const r=[...document.querySelectorAll('#listBookings .row')]
         .find(x=>x.querySelector('.dpill'));
       if(!r) return null;

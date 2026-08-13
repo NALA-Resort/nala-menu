@@ -450,9 +450,13 @@ function roomState(n){
     if (!best || (g.at || '') > (best.g.at || '')) best = { src:'digital', key:k, g:g };
   }
 
-  // a staff override always wins over the guest's own answer
+  // A staff override wins on the fields it sets, but the guest's own answer is
+  // merged underneath so nothing they told us is lost - their pre-menu
+  // acknowledgement and their "no dietaries" confirmation both live there and
+  // are never re-entered by staff. Same merge rule as roomRecord().
   if (m && m.override) {
-    return { src:'manual', key:mk, g:m, override:true, guest: best ? best.g : null };
+    var g = best ? Object.assign({}, best.g, m) : m;
+    return { src:'manual', key:mk, g:g, override:true, guest: best ? best.g : null };
   }
   if (best) return best;
   if (m) return { src:'manual', key:mk, g:m };
