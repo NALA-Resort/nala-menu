@@ -140,6 +140,18 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 
   .sub { display:block; font-size:8px; color:#777; font-weight:normal; margin-top:2px; }
   .allergen { color:#A8321E; font-weight:bold; }
+  /* Dietaries and comments share one column at their combined width, so a long
+     dietary list lays out horizontally instead of stacking three deep in a
+     narrow column. The comment sits on a second line beneath the pills.     */
+  .c-dc { width:48%; }
+  .dwrap { display:flex; flex-wrap:wrap; gap:5px; align-items:baseline; }
+  .dcom { font-size:9px; color:#333; margin-top:3px; }
+  .dpill { display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:8.5px;
+           font-weight:bold; letter-spacing:.06em; text-transform:uppercase;
+           padding:2px 7px; border-radius:9px;
+           background:rgba(168,50,30,.12); color:#A8321E;
+           -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .dpill-al { background:#A8321E; color:#fff; }
   .checkout { color:#A8321E; font-weight:bold; }
   .row-conflict td { background:#F7E4DF; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .flag { display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:7px; font-weight:bold;
@@ -279,8 +291,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
         <th class="c-din">Dinner</th>
         <th class="c-pax">Pax</th>
         <th class="c-dep">Stay</th>
-        <th class="c-diet">Dietaries</th>
-        <th class="c-com">Comments</th>
+        <th class="c-dc" colspan="2">Dietaries &amp; comments</th>
       </tr>
     </thead>
     <tbody id="rows"></tbody>
@@ -529,6 +540,17 @@ function tomorrowKey(){ var d=new Date(VIEW); d.setDate(d.getDate()+1); return d
 // A stay range on ONE line: "Tue 11-Fri 14". Month is omitted - we know it,
 // and the ordinal is dropped so the range never wraps to a second row.
 // Falls back to just the checkout if no arrival date was captured.
+/* An allergy is a solid red pill, a preference a tinted one. The word
+   "allergy" is dropped from the label because the fill already says it. */
+function dietPills(diets){
+  if (!diets || !diets.length) return '';
+  return '<div class="dwrap">' + diets.map(function(x){
+    var al = (typeof ALLERGENS!=='undefined' && ALLERGENS.indexOf(x)>-1) || /allerg/i.test(x);
+    var label = al ? x.replace(/\s*allergy\s*/i,'') : x;
+    return '<span class="dpill'+(al?' dpill-al':'')+'">'+label+'</span>';
+  }).join('') + '</div>';
+}
+
 function stayHTML(arrRaw, depRaw){
   var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var a = parseDepDate(arrRaw), d = parseDepDate(depRaw);
@@ -703,9 +725,11 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
           '<td class="c-din">'+dinner+'</td>'+
           '<td class="c-pax">'+(row.status==='in' ? (g.pax||1) : '')+'</td>'+
           '<td class="c-dep">'+stayHTML(g.arrives, g.departs)+'</td>'+
-          '<td>'+(dietHTML(g.diets, ', ', 'allergen') || (g.nodiet ? '<span class="muted">No dietaries</span>' : ''))+'</td>'+
-          '<td>'+(g.note||'')+
-            (g.dnote ? '<span class="dnote">Dietary: '+g.dnote+'</span>' : '')+'</td>'+
+          '<td class="c-dc" colspan="2">'+
+            (dietPills(g.diets) || (g.nodiet ? '<div class="muted">No dietaries</div>' : ''))+
+            ((g.note||g.dnote) ? '<div class="dcom">'+(g.note||'')+
+              (g.dnote ? '<span class="dnote">Dietary: '+g.dnote+'</span>' : '')+'</div>' : '')+
+          '</td>'+
         '</tr>');
     });
 

@@ -114,6 +114,17 @@ so tests and scripts can tell it from the original. Tables print with
 `border-collapse:collapse`, which Safari requires before it will repeat a
 header group at all.
 
+## Dietaries
+
+Shown as pills, on the reservations board and the printed sheet. An allergy is
+a solid red pill with the word "allergy" dropped from the label, since the fill
+already says it; a preference is a tinted red pill at full label. Pills lay out
+horizontally and wrap.
+
+On the printed sheet, dietaries and comments share ONE column at their combined
+width, pills on the first line and the comment beneath. Split across two narrow
+columns a busy guest stacked three deep and left the row half empty.
+
 ## Housekeeping badges and order
 
 - **Service** is a faint outline pill, **Clean** a solid ink pill, **Verify** a

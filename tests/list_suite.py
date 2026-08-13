@@ -80,15 +80,21 @@ with sync_playwright() as p:
       const trs=[...document.querySelectorAll('#rows tr')];
       const cell=(tr,i)=>tr.cells[i].textContent.trim();
       const data=trs.filter(t=>!t.className.includes('blank')).map(t=>({cls:t.className,
-        name:cell(t,0),room:cell(t,1),din:cell(t,4),pax:cell(t,5),stay:cell(t,6),diet:cell(t,7),com:cell(t,8),
+        name:cell(t,0),room:cell(t,1),din:cell(t,4),pax:cell(t,5),stay:cell(t,6),
+        diet:(t.querySelector('.dwrap')||{textContent:''}).textContent.trim(),
+        dietHTML:(t.querySelector('td.c-dc')||{innerHTML:''}).innerHTML,
+        com:(t.querySelector('.dcom')||{textContent:''}).textContent.trim(),
         html:t.cells[0].innerHTML}));
       return {n:trs.length, data, blanks:trs.filter(t=>t.className.includes('blank')).length};}""")
     d=rw["data"]
     ck("19 data rows + pad to 21 total", len(d)==19 and rw["n"]==21 and rw["blanks"]==2)
     r1=d[0]
     ck("r1 conflict row + FLAG + PRE-MENU", "row-conflict" in r1["cls"] and "FLAG" in r1["name"] and "PRE-MENU" in r1["name"])
-    ck("r1 dietaries comma-joined, allergen marked", "Nut allergy, Vegetarian" in r1["diet"] and 'class="allergen"' in pg.evaluate("()=>document.querySelectorAll('#rows tr')[0].cells[7].innerHTML"))
-    ck("r1 checkout tomorrow red", "checkout" in pg.evaluate("()=>document.querySelectorAll('#rows tr')[0].cells[6].innerHTML"))
+    ck("r1 dietaries as pills, allergy solid and shortened",
+       "NUT" in r1["diet"].upper() and "VEGETARIAN" in r1["diet"].upper()
+       and "ALLERGY" not in r1["diet"].upper()
+       and 'dpill dpill-al' in r1["dietHTML"] and 'class="dpill"' in r1["dietHTML"])
+    ck("r1 checkout tomorrow red", "checkout" in pg.evaluate("()=>document.querySelectorAll('#rows tr')[0].querySelector('td.c-dep').innerHTML"))
 
     rowsz=pg.evaluate("""()=>[...document.querySelectorAll('#rows tr')].map(r=>{
       const c=r.querySelector('td.c-dep')||r.cells[6];
@@ -109,6 +115,22 @@ with sync_playwright() as p:
     print("   stay text lines:", tall)
     ck("every stay cell renders on one line", all(t["lines"]==1 for t in tall))
     ck("r1 comment + dietary note", "Window seat" in r1["com"] and "Dietary: Very allergic" in r1["com"])
+
+    hdr=pg.evaluate("""()=>{const th=[...document.querySelectorAll('thead th')].map(x=>x.textContent.trim());
+      const dc=document.querySelector('thead th.c-dc');
+      const cells=document.querySelector('#rows tr').cells.length;
+      return {heads:th, span:dc?+dc.getAttribute('colspan'):0, cells:cells};}""")
+    print("   header:", hdr)
+    ck("dietaries and comments are one column at combined width",
+       hdr["span"]==2 and hdr["cells"]==8 and "Comments" not in hdr["heads"])
+    rows=pg.evaluate("""()=>[...document.querySelectorAll('#rows tr')]
+      .filter(t=>t.querySelector('.dwrap') && t.querySelector('.dcom'))
+      .map(t=>{const p=t.querySelector('.dwrap').getBoundingClientRect();
+               const c=t.querySelector('.dcom').getBoundingClientRect();
+               return {below: Math.round(c.top) >= Math.round(p.bottom)-1};})""")
+    print("   pills-then-comment rows:", rows)
+    ck("comment sits beneath the pills, not beside them",
+       len(rows)>0 and all(r["below"] for r in rows))
     ck("r2 declined tinted", "row-out" in d[1]["cls"] and d[1]["din"]=="No")
     ck("rooms 3+4 boxed pair", "g-in g-first" in d[2]["cls"] and "g-in g-last" in d[3]["cls"] and d[3]["name"]=="Lucy")
     ck("r4 known-but-silent shows dash", d[3]["din"]=="—" and "row-unk" in d[3]["cls"])
