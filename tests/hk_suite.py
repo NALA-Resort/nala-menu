@@ -23,7 +23,9 @@ roomguests={
  "8":{"name":"Dev","departs":plus(1)},
 }
 donets=now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"
-hk={"1":{"done":donets},"2":{"bfast":now.isoformat()},"4":{"departed":True},"7":{"bfast":now.isoformat(),"done":now.isoformat()}}
+hk={"1":{"done":donets},"2":{"bfast":now.isoformat()},"4":{"departed":True},
+    "7":{"bfast":now.isoformat(),"done":now.isoformat()},
+    "3":{"kind":"clean"}}   # villa 3 is a verify by the dates; staff set it to clean
 def fb(route,request):
     u=request.url; body="null"
     if STATE["break"] and "/responses/" in u:
@@ -52,15 +54,17 @@ with sync_playwright() as p:
     hd=pg.evaluate("()=>({k:'n/a',d:title.textContent,c:nClean.textContent,s:nSvc.textContent,v:nVer.textContent,vd:getComputedStyle(verWrap).display})")
     ck("printkick present for paper", pg.evaluate("()=>document.querySelector('.printkick').textContent.includes('HC print')"))
     ck("date format", bool(re.match(r'^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{1,2}(st|nd|rd|th) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$',hd["d"])))
-    ck("cleans 2 services 3", hd["c"]=="2" and hd["s"]=="3")
-    ck("verify 11 shown", hd["v"]=="11" and hd["vd"]!="none")
+    ck("cleans 3 services 3", hd["c"]=="3" and hd["s"]=="3")
+    ck("verify 10 shown", hd["v"]=="10" and hd["vd"]!="none")
     rw=pg.evaluate("""()=>[...document.querySelectorAll('#rows tr')].map(t=>({cls:t.className,
       room:t.cells[0].textContent.trim(),svc:t.cells[1].textContent.trim(),
       arr:t.cells[2].textContent.trim(),dep:t.cells[3].textContent.trim(),
       done:t.cells[4].innerHTML,insp:t.cells[6].innerHTML}))""")
     order=[r["room"] for r in rw]
-    ck("jobs only: 3 services, 2 cleans, then 3 blank write-in rows",
-       len(rw)==8 and order[:3]==["2","4","8"] and order[3:5]==["1","7"] and order[5:]==["","",""])
+    ck("jobs only: 3 services, 3 cleans, then 3 blank write-in rows",
+       len(rw)==9 and order[:3]==["2","4","8"] and order[3:6]==["1","3","7"] and order[6:]==["","",""])
+    ck("a staff-set job reaches the printed sheet too",
+       any(r["room"]=="3" and "Clean" in r["svc"] for r in rw))
     ck("verify and vacant rooms are off the sheet",
        not any("Verify" in r["svc"] or "Vacant" in r["svc"] for r in rw))
     wi=[r for r in rw if r["cls"]=="writein"]

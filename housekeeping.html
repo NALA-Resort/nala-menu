@@ -141,7 +141,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=7"></script>
-<script src="nala-shared.js?v=4"></script>
+<script src="nala-shared.js?v=5"></script>
 <script>
 // date state + header wiring, dates, look-back: nala-shared.js
 var nav = initDateNav();
@@ -177,7 +177,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
     var rows=[], nClean=0, nSvc=0, nVer=0;
     for (var n=1; n<=ROOMS; n++){
       var r = roomRecord(n, responses, manual, roomguests);
-      var kind = hkClassify(r, todayKey());
+      var kind = hkClassify(r, todayKey(), hk[n]);
       if (kind==='clean') nClean++;
       else if (kind==='svc') nSvc++;
       else if (kind==='ver') nVer++;

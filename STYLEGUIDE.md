@@ -122,6 +122,21 @@ variables, ids and CSS class names, where renaming it would orphan bookings
 already stored. In a list where every line is a villa, the word is dropped
 entirely and the number leads: **3 - Mark Whitfield**.
 
+## Setting the job by hand
+
+A manager can set a villa's job for the day from the Cleans board: **To be
+cleaned** or **To be serviced**, or hand it back to the booking dates. It is
+stored at `/hk/<date>/<villa>/kind`, beside the breakfast and done marks, so
+it expires with the day.
+
+The rule lives in `hkClassify()` in nala-shared.js, so the board and the
+printed sheet agree by construction rather than by remembering to change two
+places. A hand-set job beats whatever the dates imply.
+
+Management only. The controls reuse the same login check that hides the nav
+menu from the housekeeping user - one gate, not two. Note this is a display
+gate: the database rules still allow any signed-in user to write the field.
+
 ## Clean up
 
 After a run of edits to a page, stop and read the whole block, not the lines
@@ -139,6 +154,21 @@ Guests stay in **villas**, not rooms. Every visible label says villa. The word
 variables, ids and CSS class names, where renaming it would orphan bookings
 already stored. In a list where every line is a villa, the word is dropped
 entirely and the number leads: **3 - Mark Whitfield**.
+
+## Setting the job by hand
+
+A manager can set a villa's job for the day from the Cleans board: **To be
+cleaned** or **To be serviced**, or hand it back to the booking dates. It is
+stored at `/hk/<date>/<villa>/kind`, beside the breakfast and done marks, so
+it expires with the day.
+
+The rule lives in `hkClassify()` in nala-shared.js, so the board and the
+printed sheet agree by construction rather than by remembering to change two
+places. A hand-set job beats whatever the dates imply.
+
+Management only. The controls reuse the same login check that hides the nav
+menu from the housekeeping user - one gate, not two. Note this is a display
+gate: the database rules still allow any signed-in user to write the field.
 
 ## Clean up
 

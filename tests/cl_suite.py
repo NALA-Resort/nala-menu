@@ -21,7 +21,8 @@ roomguests={
  "7":{"name":"Priya","departs":today},
 }
 bf=(now-datetime.timedelta(minutes=12)).isoformat()
-hk={"7":{"done":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"},"2":{"bfast":bf}}
+hk={"7":{"done":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"},"2":{"bfast":bf},
+    "11":{"kind":"clean"}}
 def fb(route,request):
     u=request.url; m=request.method
     if m=="PATCH":
@@ -55,7 +56,8 @@ with sync_playwright() as p:
     hd=pg.evaluate("()=>({k:'n/a',d:title.textContent,c:nClean.textContent,s:nSvc.textContent,dn:nDone.textContent,nav:getComputedStyle(navWrap).display})")
     ck("header row present", pg.evaluate("()=>!!document.querySelector('.daterow .navwrap')"))
     ck("date format with year", bool(re.match(r'^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{1,2}(st|nd|rd|th) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$',hd["d"])))
-    ck("cleans 2 services 1 done 1", hd["c"]=="2" and hd["s"]=="1" and hd["dn"]=="1")
+    # villa 11 is a staff-set clean, so cleans is one higher than the dates imply
+    ck("cleans 3 services 1 done 1", hd["c"]=="3" and hd["s"]=="1" and hd["dn"]=="1")
     ck("management login sees menu", hd["nav"]=="block")
     pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
     ck("menu opens on tap", pg.evaluate("()=>navDrop.classList.contains('open')"))
@@ -131,6 +133,21 @@ with sync_playwright() as p:
     w=[x for x in WRITES if re.search(r"/hk/"+today+r"/7\.json",x["u"])]
     ck("PATCH done:null for room7", len(w)==1 and json.loads(w[0]["b"])["done"] is None)
     ck("done count back to 1", pg.evaluate("()=>nDone.textContent")=="1")
+
+    # a manager can set the morning's job by hand, and it beats the dates
+    t11=pg.evaluate("()=>{const t=[...document.querySelectorAll('.tile')]"
+                    ".find(x=>x.querySelector('.rn').textContent==='11');"
+                    "return t? t.innerText.toLowerCase().replace(/\\n/g,' | ') : null;}")
+    print("   villa 11 tile:", t11)
+    ck("villa 11 shows as a clean because staff set it", t11 and "clean" in t11)
+    WRITES.clear()
+    tile(pg,3).click(); pg.wait_for_timeout(250)
+    pg.locator(".pbtn",has_text="To be cleaned").click(); pg.wait_for_timeout(250)
+    kw=[x for x in WRITES if "/hk/" in x["u"] and "/3.json" in x["u"]]
+    print("   kind write:", kw[-1]["b"] if kw else None)
+    ck("setting the job writes kind to that villa's hk record",
+       kw and json.loads(kw[-1]["b"]).get("kind")=="clean")
+
     shot=pg.screenshot(full_page=True)
     open("/home/claude/nala/_p4_cleaners.png","wb").write(shot)
     pg.close()
@@ -138,6 +155,12 @@ with sync_playwright() as p:
     pg=page("housekeeping@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1200)
     ck("housekeeping login: menu hidden", pg.evaluate("()=>getComputedStyle(navWrap).display")=="none")
+    tile(pg,3).click(); pg.wait_for_timeout(300)
+    hkSheet = pg.locator("#sheetBox").inner_text().lower()
+    print("   housekeeping sheet:", hkSheet.replace("\n"," | "))
+    ck("housekeeping login cannot change the job",
+       "to be cleaned" not in hkSheet and "to be serviced" not in hkSheet
+       and "job for today" not in hkSheet)
     pg.close(); b.close()
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()

@@ -154,6 +154,8 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
           letter-spacing:.1em; text-transform:uppercase; background:#fff; color:var(--ink);
           border:1px solid var(--ink); border-radius:6px; cursor:pointer; font-family:inherit; }
   .pbtn.solid { background:var(--ink); color:#fff; }
+  .pdiv { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.18em;
+          text-transform:uppercase; color:var(--mid); margin:14px 0 6px; }
   .pbtn.ghost { border-color:var(--rule); color:var(--mid); }
   .pbtn.warn  { border-color:var(--red); color:var(--red); }
   .timerow { display:flex; gap:8px; margin-top:9px; }
@@ -234,13 +236,17 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
-  /* menu is management-only: stays hidden for the housekeeping login */
+  /* One gate for the whole page: the nav menu and the job controls are both
+     management-only and stay hidden for the housekeeping login.          */
+  window.IS_MANAGER = false;
   (function gate(){
     if (!window.firebase || !firebase.auth){ setTimeout(gate,300); return; }
     firebase.auth().onAuthStateChanged(function(u){
       var e=((u&&u.email)||'').toLowerCase();
+      window.IS_MANAGER = !!(u && e.indexOf('housekeeping')!==0);
       document.getElementById('navWrap').style.display =
-        (u && e.indexOf('housekeeping')!==0) ? 'block' : 'none';
+        window.IS_MANAGER ? 'block' : 'none';
+      if (document.getElementById('ov').className.indexOf('show')>-1) drawSheet('menu');
     });
   })();
 })();
@@ -470,7 +476,11 @@ function roomRecord(n, responses, manual, roomguests){
 
 /* clean = departing on the sheet date; service = staying on;
    verify = no usable data. The housekeeping rule, in one place.  */
-function hkClassify(rec, todayK){
+function hkClassify(rec, todayK, hk){
+  /* A manager can set the job for the day by hand - most often on a villa the
+     booking data cannot confirm - and that choice beats what the dates imply.
+     Stored at /hk/<date>/<villa>/kind so it expires with the day.          */
+  if (hk && (hk.kind === 'clean' || hk.kind === 'svc' || hk.kind === 'vac')) return hk.kind;
   if (rec && rec.status === 'vacant') return 'vac';
   if (rec){
     var d = parseDepDate(rec.departs);
@@ -503,7 +513,7 @@ function load(){
     var rows=[];
     for (var n=1;n<=ROOMS;n++){
       var r=roomRecord(n, responses, manual, roomguests);
-      rows.push({ n:n, kind:hkClassify(r, todayKey()) });
+      rows.push({ n:n, kind:hkClassify(r, todayKey(), hk[n]) });
     }
     // services first: they are attempted during breakfast, before the
     // departure cleans open up. Then cleans, verify, vacant, room order
@@ -588,6 +598,10 @@ function setField(n, obj, errEl){
   });
 }
 
+function setKind(k){
+  setField(CUR.n, { kind:k }, document.getElementById('perr'));
+}
+
 // ── popup ──────────────────────────────────────────────────
 var CUR=null;
 function openSheet(row){ CUR=row; drawSheet('menu'); document.getElementById('ov').className='ov show'; }
@@ -599,7 +613,9 @@ function drawSheet(mode){
   var n=CUR.n, h=STATE.hk[n]||{};
   var kindName = CUR.kind==='clean' ? 'Clean - departing today'
                : CUR.kind==='svc'   ? 'Service - staying on'
+               : CUR.kind==='vac'   ? 'Vacant'
                : 'Occupancy not confirmed';
+  if (h.kind) kindName += ' - set by staff';
   var head='<h2>Villa '+n+'</h2><div class="st">'+kindName+'</div>';
   var err='<div class="perr" id="perr"></div>';
 
@@ -620,6 +636,12 @@ function drawSheet(mode){
           ? '<button class="pbtn warn" onclick="drawSheet(\'undep\')">Undo departed</button>'
           : '<button class="pbtn" onclick="drawSheet(\'dep\')">Guest departed</button>';
       }
+    }
+    if (window.IS_MANAGER){
+      rows+='<div class="pdiv">Job for today</div>';
+      if (CUR.kind!=='clean') rows+='<button class="pbtn" onclick="setKind(\'clean\')">To be cleaned</button>';
+      if (CUR.kind!=='svc')   rows+='<button class="pbtn" onclick="setKind(\'svc\')">To be serviced</button>';
+      if (h.kind)             rows+='<button class="pbtn warn" onclick="setKind(null)">Use booking dates</button>';
     }
     rows+='<button class="pbtn ghost" onclick="closeSheet()">Close</button>';
     b.innerHTML=head+rows+err;

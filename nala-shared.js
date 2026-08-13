@@ -201,7 +201,11 @@ function roomRecord(n, responses, manual, roomguests){
 
 /* clean = departing on the sheet date; service = staying on;
    verify = no usable data. The housekeeping rule, in one place.  */
-function hkClassify(rec, todayK){
+function hkClassify(rec, todayK, hk){
+  /* A manager can set the job for the day by hand - most often on a villa the
+     booking data cannot confirm - and that choice beats what the dates imply.
+     Stored at /hk/<date>/<villa>/kind so it expires with the day.          */
+  if (hk && (hk.kind === 'clean' || hk.kind === 'svc' || hk.kind === 'vac')) return hk.kind;
   if (rec && rec.status === 'vacant') return 'vac';
   if (rec){
     var d = parseDepDate(rec.departs);
