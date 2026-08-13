@@ -6,8 +6,8 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nala — Tonight's Numbers</title>
-<link rel="stylesheet" href="nala-ui.css?v=7">
+<title>Nala · Tonight's Numbers</title>
+<link rel="stylesheet" href="nala-ui.css?v=8">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
@@ -187,9 +187,9 @@
          font-family:Helvetica,Arial,sans-serif; font-size:12px;
          letter-spacing:.12em; text-transform:uppercase; color:#fff; cursor:pointer; }
   /* matches the room tile palette */
-  .opt.solid { background:var(--green); border-color:var(--green); }   /* dining  — green */
-  .opt.out   { background:var(--terra); border-color:var(--terra); }   /* not dining — red */
-  .opt.vac   { background:var(--slate); border-color:var(--slate); }   /* vacant — slate */
+  .opt.solid { background:var(--green); border-color:var(--green); }   /* dining  - green */
+  .opt.out   { background:var(--terra); border-color:var(--terra); }   /* not dining - red */
+  .opt.vac   { background:var(--slate); border-color:var(--slate); }   /* vacant - slate */
   .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
   .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 16px; }
   .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
@@ -306,8 +306,8 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="auth.js?v=6"></script>
-<script src="nala-shared.js?v=3"></script>
+<script src="auth.js?v=7"></script>
+<script src="nala-shared.js?v=4"></script>
 <script>
 var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
@@ -362,7 +362,7 @@ function api(path, method, body){
     .then(function(r){
       if (!r.ok && method) {
         return r.text().then(function(t){
-          showError('Not saved \u2014 the database rejected the change. ' +
+          showError('Not saved - the database rejected the change. ' +
                     'Check the Realtime Database rules allow writes.');
           var err = new Error(t); err.shown = true; throw err;
         });
@@ -370,7 +370,7 @@ function api(path, method, body){
       return r.json();
     })
     .catch(function(e){
-      if (method && !e.shown) showError('Not saved \u2014 no connection to the database.');
+      if (method && !e.shown) showError('Not saved - no connection to the database.');
       throw e;
     });
 }
@@ -442,7 +442,7 @@ function openNotes(title, g, hits){
       var byDish = {};
       hits.forEach(function(x){ (byDish[x.dish] = byDish[x.dish] || []).push(x.diet); });
       h += '<div class="pop-t">' + Object.keys(byDish).map(function(dk){
-        return dk + ' \u2014 ' + byDish[dk].join(', ');
+        return dk + ' - ' + byDish[dk].join(', ');
       }).join('<br>') + '</div>';
     }
     h += '<div class="pop-t">' + (g.dnote
@@ -681,7 +681,7 @@ function render(){
 }
 
 // ── combined tables ────────────────────────────────────────
-// /combined/<date> = { <gid>: { rooms:["10","11"] } } — rooms dining as one table
+// /combined/<date> = { <gid>: { rooms:["10","11"] } } - rooms dining as one table
 var combined = {};
 
 function groupOf(room){
@@ -944,7 +944,7 @@ function openRoom(n, st){
       '<div class="note-box">Cancelled by staff.<br>'+
       'The guest had confirmed '+(guestAnswer.pax||1)+
       (guestAnswer.pax===1?' guest':' guests')+
-      (guestAnswer.name ? ' \u2014 '+guestAnswer.name : '')+'.</div>'+
+      (guestAnswer.name ? ' - '+guestAnswer.name : '')+'.</div>'+
       '<button class="opt solid" id="oRestore">Restore booking</button>'+
       '<button class="opt quiet" id="oClose">Close</button>'
     );
@@ -961,7 +961,7 @@ function openRoom(n, st){
         (guestAnswer
           ? 'Amended by staff.<br>The guest originally confirmed '+(guestAnswer.pax||1)+
             (guestAnswer.pax===1?' guest':' guests')+
-            (guestAnswer.name ? ' \u2014 '+guestAnswer.name : '')+'.'
+            (guestAnswer.name ? ' - '+guestAnswer.name : '')+'.'
           : 'Added by staff.')+
       '</div>'+
       paxBlock()+
@@ -993,7 +993,7 @@ function openRoom(n, st){
       pax = st.g.pax || 2;
       shell(
         '<div class="note-box">Confirmed by the guest'+
-        (st.g.name ? ' \u2014 '+st.g.name : '')+'.</div>'+
+        (st.g.name ? ' - '+st.g.name : '')+'.</div>'+
         paxBlock()+
         '<button class="opt solid" id="oSave">Update guests</button>'+
         '<button class="opt quiet" id="oDetails">Edit details</button>'+
@@ -1194,7 +1194,7 @@ function editExt(key, g){
     sheet.innerHTML =
       '<h3>'+(g.name || 'External guest')+'</h3>'+
       guestDataHTML(g, null) +
-      '<div class="note-box">Booked by the guest \u2014 details are theirs to change.</div>'+
+      '<div class="note-box">Booked by the guest - details are theirs to change.</div>'+
       '<button class="opt out" id="oDel">Cancel booking</button>'+
       '<button class="opt quiet" id="oClose">Close</button>';
     showSheet();
@@ -1213,7 +1213,7 @@ function editExt(key, g){
     if (isManual){
       saveManual(key);
     } else {
-      // guest booked via the link \u2014 record a staff cancellation
+      // guest booked via the link - record a staff cancellation
       var rec = { status:'out', pax:0, override:true, source:'manual',
                   name:g.name||'', phone:g.phone||'' };
       cancelledExt[key] = true;
@@ -1245,7 +1245,7 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
       var filled = ['bread','entree','main','dessert'].every(function(k){
         return m[k] && m[k].name && m[k].name.trim() !== '';
       });
-      // use the menu's own publish timestamp — GitHub rewrites Last-Modified
+      // use the menu's own publish timestamp - GitHub rewrites Last-Modified
       // on every deploy, so it can't tell us when the chef published.
       var pub = null;
       if (m.published) pub = parseISO(m.published);

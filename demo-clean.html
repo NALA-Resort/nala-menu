@@ -6,9 +6,9 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DEMO · Nala — Housekeeping Sheet</title>
+<title>DEMO · Nala · Housekeeping Sheet</title>
 <style>
-/* NALA staff UI — shared controls. See STYLEGUIDE.md.
+/* NALA staff UI - shared controls. See STYLEGUIDE.md.
    Pages declare <body class="tier-app"> or <body class="tier-print">.  */
 
 :root {
@@ -65,7 +65,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
               text-transform:uppercase; }
 .dnav.today:disabled { opacity:.35; cursor:default; }
 .navbtn { width:42px; height:36px; }
-/* page name on paper only — the screen row replaces it */
+/* page name on paper only - the screen row replaces it */
 .printkick { display:none; }
 @media print { .printkick { display:block; text-align:center; font-family:var(--ui-font);
   font-size:10px; letter-spacing:.34em; text-transform:uppercase; color:#666;
@@ -117,7 +117,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .c-done  { width:6%;  text-align:center; }
   .c-notes { width:42%; }
   .c-insp  { width:8%;  text-align:center; }
-  /* rows are sized so a full house — every room a job, plus the write-ins —
+  /* rows are sized so a full house - every room a job, plus the write-ins -
      still lands on one A5 page. Do not loosen without re-checking the fit. */
   tbody td { padding-top:4px; padding-bottom:4px; height:22px; }
 
@@ -222,7 +222,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   };
   document.addEventListener('DOMContentLoaded', function(){
     var b = document.createElement('div');
-    b.textContent = 'OFFLINE DEMO — fixed data, nothing saves';
+    b.textContent = 'OFFLINE DEMO - fixed data, nothing saves';
     b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99;background:#A8321E;'
       + 'color:#fff;font:10px/1.9 Helvetica,Arial,sans-serif;letter-spacing:.14em;'
       + 'text-align:center;text-transform:uppercase;';
@@ -277,7 +277,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 
 
 <script>
-/* NALA shared helpers — one copy of the logic every staff page repeats.
+/* NALA shared helpers - one copy of the logic every staff page repeats.
    Plain globals, same names the pages already use, so page code reads
    unchanged. See STYLEGUIDE.md and AUDIT.md.                      v2 */
 
@@ -306,7 +306,7 @@ function parseDepDate(s){
   s = String(s).trim();
   var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (m) return new Date(+m[3], +m[2]-1, +m[1]);
-  var i = s.match(/^(\d{4})-(\d{2})-(\d{2})/);       // ISO — build a LOCAL date,
+  var i = s.match(/^(\d{4})-(\d{2})-(\d{2})/);       // ISO - build a LOCAL date,
   if (i) return new Date(+i[1], +i[2]-1, +i[3]);     // never via the UTC parser
   var d = new Date(s);
   return isNaN(d) ? null : d;
@@ -441,7 +441,7 @@ function dietHTML(diets, sep, cls){
   }).join(sep || ' \u00b7 ');
 }
 
-/* ── housekeeping variants — deliberately different from above ──
+/* ── housekeeping variants - deliberately different from above ──
    resolveRoomGuestsHK KEEPS guests departing today: they are the
    cleans. The dinner resolver drops them. Do not merge the two.   */
 function resolveRoomGuestsHK(all, todayK){

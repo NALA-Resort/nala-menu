@@ -1,4 +1,4 @@
-/* NALA staff UI — shared controls. See STYLEGUIDE.md.
+/* NALA staff UI - shared controls. See STYLEGUIDE.md.
    Pages declare <body class="tier-app"> or <body class="tier-print">.  */
 
 :root {
@@ -55,7 +55,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
               text-transform:uppercase; }
 .dnav.today:disabled { opacity:.35; cursor:default; }
 .navbtn { width:42px; height:36px; }
-/* page name on paper only — the screen row replaces it */
+/* page name on paper only - the screen row replaces it */
 .printkick { display:none; }
 @media print { .printkick { display:block; text-align:center; font-family:var(--ui-font);
   font-size:10px; letter-spacing:.34em; text-transform:uppercase; color:#666;

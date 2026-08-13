@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>Nala — Printable Menu</title>
+<title>Nala · Printable Menu</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
@@ -294,7 +294,7 @@ fetch('menu.json?v=' + Date.now())
     // build and display the PDF
     setTimeout(function(){
       makePDF(false);
-      // iOS can't reliably render a PDF inside a frame — offer the button as well
+      // iOS can't reliably render a PDF inside a frame - offer the button as well
       if (isIOS()) document.getElementById('pdfBtn').style.display = 'inline-block';
     }, 60);
   })

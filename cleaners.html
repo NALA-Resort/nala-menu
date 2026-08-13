@@ -7,8 +7,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Nala Rooms">
 <link rel="apple-touch-icon" href="nala-logo.png">
-<title>Nala — Cleaners</title>
-<link rel="stylesheet" href="nala-ui.css?v=7">
+<title>Nala · Cleaners</title>
+<link rel="stylesheet" href="nala-ui.css?v=8">
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
           --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
@@ -130,11 +130,11 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="auth.js?v=6"></script>
-<script src="nala-shared.js?v=3"></script>
+<script src="auth.js?v=7"></script>
+<script src="nala-shared.js?v=4"></script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
-// this board is locked to today by design — no browsed dates
+// this board is locked to today by design - no browsed dates
 function todayKey(){ return dkey(new Date()); }
 document.getElementById('title').textContent = dateLabel(new Date());
 

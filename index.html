@@ -24,7 +24,7 @@
 <meta name="twitter:title" content="Tonight's menu at NALA">
 <meta name="twitter:description" content="This evening's menu, and let us know if you're dining with us.">
 <meta name="twitter:image" content="https://menu.nalaresort.com/preview.png?v=4">
-<title>Nala — Tonight's Menu</title>
+<title>Nala · Tonight's Menu</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root { --cream: #F7F5F1; --paper: #FEFEFC; --ink: #14140F; --mid: #47473F; --rule: #CFCFC8; }
@@ -584,7 +584,7 @@
       return '<b>' + dish + '</b> may not suit: ' + byDish[dish].join(', ');
     });
     document.getElementById('cfMsg').innerHTML =
-      'A note on tonight\u2019s menu \u2014 ' + parts.join('. ') + '. ' +
+      'A note on tonight\u2019s menu - ' + parts.join('. ') + '. ' +
       'Please tell us how you\u2019d like this handled and we\u2019ll look after you.';
     box.className = 'field cf show';
   }
@@ -704,7 +704,7 @@
       '<div class="field"><div class="field-label">Guests</div><div class="pax-row" id="paxRow"></div></div>'+
       '<div class="field"><div class="field-label">Dietary requirements</div><div class="chips" id="chips"></div></div>'+
       '<div class="field cf" id="cf"><div class="cf-msg" id="cfMsg"></div>'+
-        '<textarea class="note-input cf-input" id="dnote" rows="2" placeholder="Required \u2014 e.g. happy with an alternative dish"></textarea></div>'+
+        '<textarea class="note-input cf-input" id="dnote" rows="2" placeholder="Required - e.g. happy with an alternative dish"></textarea></div>'+
       '<div class="field"><div class="field-label">Anything else</div>'+
         '<textarea class="note-input" id="note" rows="2" placeholder="Celebrating something, arriving late\u2026"></textarea></div>'+
       '<div class="r-btns">'+
@@ -724,7 +724,7 @@
     var body = r.status==='in'
       ? '<div class="r-done-t">Confirmed for '+r.pax+(r.pax===1?' guest':' guests')+'</div>'+
         '<div class="r-done-s">We look forward to seeing you.</div>'
-      : '<div class="r-done-t">Noted \u2014 not dining tonight</div>'+
+      : '<div class="r-done-t">Noted - not dining tonight</div>'+
         '<div class="r-done-s">We hope to see you another evening.</div>';
     panel.innerHTML = '<div class="r-done">'+body+
       (pastCutoff() ? '' : '<a class="r-link" id="bEdit">Change</a>')+'</div>';
@@ -768,7 +768,7 @@
     if (!MENU){
       // menu not out yet: confirming requires an explicit acknowledgment
       var pn=document.createElement('div'); pn.className='premenu-note';
-      pn.textContent='Tonight\u2019s menu isn\u2019t published yet. If you\u2019d like to confirm now, please acknowledge below \u2014 or check back once the menu is out to add any dietaries.';
+      pn.textContent='Tonight\u2019s menu isn\u2019t published yet. If you\u2019d like to confirm now, please acknowledge below - or check back once the menu is out to add any dietaries.';
       box.appendChild(pn);
       var ack=document.createElement('div');
       ack.className='ack'+(state.nodiet?' on':''); ack.id='ack';

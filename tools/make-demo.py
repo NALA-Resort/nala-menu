@@ -4,7 +4,7 @@
 Each output is ONE file with no network calls at all: the shared CSS and JS
 are inlined, the Firebase and auth scripts are removed, and fetch() is
 replaced by a canned busy-night dataset. Save it to the phone and open it
-from Files — it works with no signal and cannot write to the database.
+from Files - it works with no signal and cannot write to the database.
 
     python3 tools/make-demo.py
 
@@ -33,7 +33,7 @@ def build_data():
                       "departs": ("~D0~" if r % 5 == 0 else "~D+2~")}
         if r in (6, 13):                       # not dining
             resp[phone] = {"status":"out","room":str(r),"name":names[r-1],"at":"~D0~T09:00:00"}
-        elif r in (9, 16):                     # no answer yet — left out of responses
+        elif r in (9, 16):                     # no answer yet - left out of responses
             pass
         else:
             resp[phone] = {"status":"in","pax": 2 if r % 3 else 3, "room":str(r),
@@ -99,7 +99,7 @@ STUB = """
   };
   document.addEventListener('DOMContentLoaded', function(){
     var b = document.createElement('div');
-    b.textContent = 'OFFLINE DEMO — fixed data, nothing saves';
+    b.textContent = 'OFFLINE DEMO - fixed data, nothing saves';
     b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99;background:#A8321E;'
       + 'color:#fff;font:10px/1.9 Helvetica,Arial,sans-serif;letter-spacing:.14em;'
       + 'text-align:center;text-transform:uppercase;';

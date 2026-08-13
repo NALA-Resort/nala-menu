@@ -143,7 +143,7 @@
   }, 500);
 
   /* The wiring below is unchanged. It is wrapped so that if auth-compat did
-     not arrive, the throw does not kill the rest of this file — and so the
+     not arrive, the throw does not kill the rest of this file - and so the
      same wiring can be run again if the script is recovered later.        */
   var wired = false;
   function wireAuth(){

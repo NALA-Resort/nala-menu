@@ -1,4 +1,4 @@
-/* NALA shared helpers — one copy of the logic every staff page repeats.
+/* NALA shared helpers - one copy of the logic every staff page repeats.
    Plain globals, same names the pages already use, so page code reads
    unchanged. See STYLEGUIDE.md and AUDIT.md.                      v2 */
 
@@ -27,7 +27,7 @@ function parseDepDate(s){
   s = String(s).trim();
   var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (m) return new Date(+m[3], +m[2]-1, +m[1]);
-  var i = s.match(/^(\d{4})-(\d{2})-(\d{2})/);       // ISO — build a LOCAL date,
+  var i = s.match(/^(\d{4})-(\d{2})-(\d{2})/);       // ISO - build a LOCAL date,
   if (i) return new Date(+i[1], +i[2]-1, +i[3]);     // never via the UTC parser
   var d = new Date(s);
   return isNaN(d) ? null : d;
@@ -162,7 +162,7 @@ function dietHTML(diets, sep, cls){
   }).join(sep || ' \u00b7 ');
 }
 
-/* ── housekeeping variants — deliberately different from above ──
+/* ── housekeeping variants - deliberately different from above ──
    resolveRoomGuestsHK KEEPS guests departing today: they are the
    cleans. The dinner resolver drops them. Do not merge the two.   */
 function resolveRoomGuestsHK(all, todayK){
