@@ -222,6 +222,13 @@
     padding:4.5vh 0 1.5vh;
   }
   #rsvp.show { display:block; }
+  /* The answer row is reserved at the height of its tallest resting state, so
+     answering does not resize the menu card above it. Choose and done then
+     occupy exactly the same space and only their contents change. The taller
+     mid-flow steps (pax, dietaries) are allowed to exceed it and scroll. */
+  #rsvp[data-step="choose"], #rsvp[data-step="done"] {
+    min-height: 12.9rem; display:flex; flex-direction:column; justify-content:center;
+  }
 
   .r-q {
     text-align:center; font-size:1.125rem; color:var(--ink);
