@@ -221,8 +221,12 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
          column-gap:10px; row-gap:0; padding:9px 0; border-bottom:1px solid var(--rule); }
   .row-main { flex:1 1 auto; min-width:0; }
   .row-name { font-size:14px; }
-  .row-name .rm { font-family:Helvetica,Arial,sans-serif; font-size:11px;
-                  letter-spacing:.08em; color:var(--mid); margin-right:2px; }
+  /* The villa number is the thing staff scan for, so it leads the line at a
+     larger size in ink, then a dash, then the guest name. The word "villa"
+     is dropped - every row is a villa, so repeating it says nothing.     */
+  .row-name .rm { font-family:Helvetica,Arial,sans-serif; font-size:15px;
+                  font-weight:bold; letter-spacing:0; color:var(--ink); }
+  .row-name .rm::after { content:' - '; font-weight:normal; color:var(--mid); }
   .row-name .tag { font-family:Helvetica,Arial,sans-serif; font-size:8px;
                    letter-spacing:.18em; text-transform:uppercase; color:var(--mid);
                    border:1px solid var(--rule); padding:2px 6px; margin-left:8px;
@@ -412,13 +416,13 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 
   <div class="stats">
     <div class="stat"><div class="stat-n" id="nCovers">–</div><div class="stat-l">Covers</div></div>
-    <div class="stat"><div class="stat-n" id="nOut">–</div><div class="stat-l">Rooms out</div></div>
-    <div class="stat" id="tileAwait"><div class="stat-n" id="nAwait">–</div><div class="stat-l">Rooms awaiting</div></div>
+    <div class="stat"><div class="stat-n" id="nOut">–</div><div class="stat-l">Villas out</div></div>
+    <div class="stat" id="tileAwait"><div class="stat-n" id="nAwait">–</div><div class="stat-l">Villas awaiting</div></div>
   </div>
   <div class="tablesline" id="tablesLine"></div>
 
   <div class="sec">
-    <span>Rooms</span>
+    <span>Villas</span>
     <a href="#" id="selToggle">Select multiple</a>
   </div>
   <div class="rooms" id="rooms"></div>
@@ -974,7 +978,7 @@ function render(){
         var st = document.createElement('div');
         st.className = 'row stubrow';
         var kn = roomguests[String(r.room)] || {};
-        st.innerHTML = '<div><div class="row-name"><span class="rm">Room '+r.room+'</span>'+
+        st.innerHTML = '<div><div class="row-name"><span class="rm">'+r.room+'</span>'+
           (kn.name ? '  '+kn.name : '')+'</div>'+
           '<div class="row-sub">Awaiting reply</div></div>';
         host.appendChild(st);
@@ -990,7 +994,7 @@ function render(){
     var shownName = g.name || known.name || '';
     var title;
     if (r.room) {
-      title = '<span class="rm">Room '+r.room+'</span>' + (shownName ? '  '+shownName : '');
+      title = '<span class="rm">'+r.room+'</span>' + (shownName ? '  '+shownName : '');
     } else {
       title = (g.name || g.phone || 'Guest') + '<span class="tag">External</span>';
     }
@@ -1242,7 +1246,7 @@ function editRoomDetails(n, st){
   var known = (roomguests[String(n)]||{});
   var diets = (g.diets || []).slice();
   sheet.innerHTML =
-    '<h3>Room '+n+' \u00b7 details</h3>'+
+    '<h3>Villa '+n+' \u00b7 details</h3>'+
     '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
     '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
     '<div class="sheet-label">Dietary requirements</div>'+
@@ -1291,10 +1295,10 @@ function openRoom(n, st){
   function shell(inner){
     var mates = groupMates(n);
     var combHtml = mates.length
-      ? '<div class="comb-note">Seated with Room '+mates.join(' & ')+
+      ? '<div class="comb-note">Seated with Villa '+mates.join(' & ')+
         '<button class="comb-undo" id="oUncomb">Seat separately</button></div>'
       : '';
-    sheet.innerHTML = '<h3>Room '+n+'</h3>' + combHtml +
+    sheet.innerHTML = '<h3>Villa '+n+'</h3>' + combHtml +
       guestDataHTML(st && st.g, knownName) + inner;
     showSheet();
     revealAction();
@@ -1356,7 +1360,7 @@ function openRoom(n, st){
       writeManual({ status:'in', pax:pax, room:String(n), override:true, source:'manual' });
     };
     document.getElementById('oCancel').onclick = function(){
-      confirmSheet('Room '+n, 'Cancel this booking?', 'Yes, cancel booking',
+      confirmSheet('Villa '+n, 'Cancel this booking?', 'Yes, cancel booking',
         function(){ writeManual({ status:'out', pax:0, room:String(n), override:true, source:'manual' }); },
         function(){ openRoom(n, st); });
     };
@@ -1386,7 +1390,7 @@ function openRoom(n, st){
       };
       document.getElementById('oDetails').onclick = function(){ editRoomDetails(n, st); };
       document.getElementById('oCancel').onclick = function(){
-        confirmSheet('Room '+n,
+        confirmSheet('Villa '+n,
           'Cancel this booking?<br>The guest confirmed it themselves.',
           'Yes, cancel booking',
           function(){ writeManual({ status:'out', pax:0, room:String(n), override:true, source:'manual' }); },
@@ -1433,7 +1437,7 @@ function openRoom(n, st){
   if (dt) dt.onclick = function(){ editRoomDetails(n, st); };
   var cl = document.getElementById('oClear');
   if (cl) cl.onclick = function(){
-    confirmSheet('Room '+n,
+    confirmSheet('Villa '+n,
       'Clear this room back to awaiting?',
       'Yes, clear',
       clearManual,

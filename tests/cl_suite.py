@@ -87,7 +87,7 @@ with sync_playwright() as p:
     sh=pg.locator("#sheetBox").inner_text()
     print("   room1 sheet:", repr(sh)[:220])
     sh=sh.lower()
-    ck("clean sheet: done + breakfast + departed", "room done" in sh and "guest at breakfast" in sh and "guest departed" in sh)
+    ck("clean sheet: done + breakfast + departed", "villa done" in sh and "guest at breakfast" in sh and "guest departed" in sh)
     pg.locator(".pbtn.ghost",has_text="Close").click()
     tile(pg,2).click(); pg.wait_for_timeout(200)
     sh=pg.locator("#sheetBox").inner_text()
@@ -97,7 +97,7 @@ with sync_playwright() as p:
     pg.locator(".pbtn.ghost",has_text="Close").click()
     # mark room1 done
     tile(pg,1).click(); pg.wait_for_timeout(150)
-    pg.locator(".pbtn.solid",has_text="Room done").click(); pg.wait_for_timeout(150)
+    pg.locator(".pbtn.solid",has_text="Villa done").click(); pg.wait_for_timeout(150)
     pg.locator(".pbtn.solid",has_text="Yes - done").click(); pg.wait_for_timeout(300)
     w=[x for x in WRITES if re.search(r"/hk/"+today+r"/1\.json",x["u"])]
     ck("PATCH done for room1", len(w)==1 and "done" in json.loads(w[0]["b"]))
@@ -117,7 +117,7 @@ with sync_playwright() as p:
     # rollback on rejection
     STATE["fail"]=True
     tile(pg,4).click(); pg.wait_for_timeout(150)
-    pg.locator(".pbtn.solid",has_text="Room done").click(); pg.wait_for_timeout(150)
+    pg.locator(".pbtn.solid",has_text="Villa done").click(); pg.wait_for_timeout(150)
     pg.locator(".pbtn.solid",has_text="Yes - done").click(); pg.wait_for_timeout(400)
     ck("rejected write: error shown, sheet stays", "tell the manager" in pg.locator("#perr").inner_text())
     ck("rejected write rolled back", "done" not in pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.querySelector('.rn').textContent==='4').className"))

@@ -114,6 +114,14 @@ so tests and scripts can tell it from the original. Tables print with
 `border-collapse:collapse`, which Safari requires before it will repeat a
 header group at all.
 
+## Wording
+
+Guests stay in **villas**, not rooms. Every visible label says villa. The word
+"room" survives only in code: database paths (`roomguests/<date>/<room>`),
+variables, ids and CSS class names, where renaming it would orphan bookings
+already stored. In a list where every line is a villa, the word is dropped
+entirely and the number leads: **3 - Mark Whitfield**.
+
 ## Clean up
 
 After a run of edits to a page, stop and read the whole block, not the lines
@@ -123,6 +131,14 @@ whose subject no longer exists, a comment describing behaviour the code no
 longer has, and a container quietly costing layout width. Patching around
 those is what makes a page get worse with every edit. Fix them at the source
 and re-measure; do not add a rule to counteract another rule.
+
+## Wording
+
+Guests stay in **villas**, not rooms. Every visible label says villa. The word
+"room" survives only in code: database paths (`roomguests/<date>/<room>`),
+variables, ids and CSS class names, where renaming it would orphan bookings
+already stored. In a list where every line is a villa, the word is dropped
+entirely and the number leads: **3 - Mark Whitfield**.
 
 ## Clean up
 

@@ -106,7 +106,7 @@ with sync_playwright() as p:
         grpbox:!!document.querySelector('.grpbox'),
         conflict:!!document.querySelector('.row.conflict .bub.flag'),
         ext:[...rows].some(r=>r.textContent.includes('External'))};}""")
-    ck("stub row for silent group member", bl["stub"] and "Room 4" in bl["stubTxt"] and "Awaiting" in bl["stubTxt"])
+    ck("stub row for silent group member", bl["stub"] and "4" in bl["stubTxt"] and "Awaiting" in bl["stubTxt"])
     ck("group boxed in bookings", bl["grpbox"])
     ck("dietary conflict flagged", bl["conflict"])
     ck("external booking listed", bl["ext"])
@@ -247,7 +247,7 @@ with sync_playwright() as p:
     ck("reservation survives seating", "Chef Guest" in pg.locator("#listBookings").inner_text())
     ck("12+13 ringed", "12,13" in pg.evaluate("()=>[...document.querySelectorAll('.tilegrp')].map(g=>[...g.querySelectorAll('.room-n')].map(e=>e.textContent).join(','))"))
     tile(pg,12).click(); pg.wait_for_timeout(200)
-    ck("room sheet notes seating + keeps guest data", "Seated with Room 13" in pg.locator("#sheet").inner_text() and "Chef Guest" in pg.locator("#sheet").inner_text())
+    ck("room sheet notes seating + keeps guest data", "Seated with Villa 13" in pg.locator("#sheet").inner_text() and "Chef Guest" in pg.locator("#sheet").inner_text())
     pg.locator("#oClose").click(); pg.wait_for_timeout(150)
 
     # Edit details on a digital room booking (room 3, Mark)

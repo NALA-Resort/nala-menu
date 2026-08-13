@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Nala Rooms">
+<meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-logo.png">
 <title>Nala · Cleaners</title>
 <link rel="stylesheet" href="nala-ui.css?v=8">
@@ -249,7 +249,7 @@ function drawSheet(mode){
   var kindName = CUR.kind==='clean' ? 'Clean - departing today'
                : CUR.kind==='svc'   ? 'Service - staying on'
                : 'Occupancy not confirmed';
-  var head='<h2>Room '+n+'</h2><div class="st">'+kindName+'</div>';
+  var head='<h2>Villa '+n+'</h2><div class="st">'+kindName+'</div>';
   var err='<div class="perr" id="perr"></div>';
 
   if (mode==='menu'){
@@ -257,7 +257,7 @@ function drawSheet(mode){
     if (h.done){
       rows+='<button class="pbtn warn" onclick="drawSheet(\'undone\')">Undo done</button>';
     } else {
-      rows+='<button class="pbtn solid" onclick="drawSheet(\'done\')">Room done</button>';
+      rows+='<button class="pbtn solid" onclick="drawSheet(\'done\')">Villa done</button>';
       if (h.bfast){
         rows+='<button class="pbtn" disabled style="opacity:.6">Seated at breakfast '+hhmm(h.bfast)+' ('+mins(h.bfast)+'m ago)</button>';
         rows+='<button class="pbtn warn" onclick="drawSheet(\'clearbf\')">Clear breakfast</button>';
