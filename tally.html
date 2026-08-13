@@ -98,7 +98,12 @@
   .tablesline { text-align:center; margin-top:8px; font-family:Helvetica,Arial,sans-serif;
                 font-size:11.5px; letter-spacing:.02em; color:var(--ink);
                 white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .grpbox { border:1.2px solid var(--ink); border-radius:10px; padding:0 12px; margin:10px 0; }
+  /* The ring is drawn as an overlay, the same way the room-tile group does it,
+     so grouping a booking no longer narrows its rows by 24px and compresses
+     everything inside. Layout width is identical grouped or not.          */
+  .grpbox { position:relative; border:0; padding:0; margin:14px 0; }
+  .grpbox::after { content:''; position:absolute; inset:-6px -9px;
+                   border:1.2px solid var(--ink); border-radius:10px; pointer-events:none; }
   .tilegrp { display:grid; gap:6px; position:relative; }
   .tilegrp::after { content:''; position:absolute; inset:-3.5px;
                     border:1.2px solid var(--ink); border-radius:9px; pointer-events:none; }
@@ -128,8 +133,13 @@
   #legSeen svg { fill:none; stroke-width:2.4; }
 
   /* rows */
-  .row { display:flex; justify-content:space-between; align-items:center; gap:10px;
-         padding:9px 0; border-bottom:1px solid var(--rule); }
+  /* One line per booking: room, name, then pax and its controls hard right.
+     The phone is not here - it is on the edit sheet, where it is used - so
+     nothing competes for the width and no row can wrap. Dietary pills wrap
+     onto a second line of their own beneath.                              */
+  .row { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center;
+         column-gap:10px; row-gap:0; padding:9px 0; border-bottom:1px solid var(--rule); }
+  .row-main { flex:1 1 auto; min-width:0; }
   .row-name { font-size:14px; }
   .row-name .rm { font-family:Helvetica,Arial,sans-serif; font-size:11px;
                   letter-spacing:.08em; color:var(--mid); margin-right:2px; }
@@ -139,13 +149,25 @@
                    border-radius:10px; vertical-align:middle; }
   .row-sub { font-style:italic; font-size:11px; color:var(--mid); }
   .row-pax { font-family:Helvetica,Arial,sans-serif; font-size:12px; white-space:nowrap; }
-  .row-right { display:flex; align-items:center; gap:4px; white-space:nowrap; }
+  /* The bubble sits BEFORE the pax count so the pax figures line up down the
+     list whether or not a booking carries a note.                         */
+  .row-right { display:flex; align-items:center; gap:4px; white-space:nowrap;
+               margin-left:auto; justify-content:flex-end; }
   .edit { display:flex; align-items:center; justify-content:center;
           width:40px; height:40px; margin:-10px -10px -10px 0;
           opacity:.45; cursor:pointer; }
   .edit svg { width:14px; height:14px; display:block; fill:var(--mid); }
   .edit:active { opacity:.9; }
   .alrg { color:var(--red); font-style:normal; }
+  /* An allergy is a solid red pill with the word "allergy" dropped, since the
+     fill already says it. A preference is a tinted pill at full label. The
+     pills take the whole row width, not just the half beside the pax count. */
+  .nm { white-space:nowrap; }
+  .dietline { flex:0 0 100%; margin:0 0 1px; display:flex; flex-wrap:wrap; gap:5px; }
+  .dpill { font-family:Helvetica,Arial,sans-serif; font-size:11px; font-weight:bold;
+           letter-spacing:.06em; text-transform:uppercase; padding:3px 8px;
+           border-radius:11px; background:rgba(168,50,30,.12); color:var(--red); }
+  .dpill-al { background:var(--red); color:#fff; }
   .row.conflict { border-left:3px solid var(--red); padding-left:10px;
                   background:rgba(168,50,30,.05); }
   .bub { width:26px; height:26px; border:1px solid var(--rule); background:transparent;
@@ -625,9 +647,15 @@ function render(){
     if (g.premenu) title += '<span class="tag">Pre-menu</span>';
 
     var sub = [];
-    var d = dietHTML(g.diets, ' \u00b7 ', 'alrg'); if(d) sub.push(d);
-    else if (g.nodiet) sub.push('No dietaries confirmed');
-    if (g.phone) sub.push(g.phone);
+    var dietLine = '';
+    if (g.diets && g.diets.length) {
+      dietLine = '<div class="dietline">' + g.diets.map(function(x){
+        var al = ALLERGENS.indexOf(x) > -1 || /allerg/i.test(x);
+        var label = al ? x.replace(/\s*allergy\s*/i,'') : x;
+        return '<span class="dpill'+(al?' dpill-al':'')+'">'+label+'</span>';
+      }).join('') + '</div>';
+    } else if (g.nodiet) { sub.push('No dietaries confirmed'); }
+
 
     var hits = menuConflicts(MENU, g.diets);
     var hasNotes = !!(g.note || g.dnote);
@@ -635,13 +663,14 @@ function render(){
     var row = document.createElement('div');
     row.className = 'row' + (hits.length ? ' conflict' : '');
     row.innerHTML =
-      '<div><div class="row-name">'+title+'</div>'+
+      '<div class="row-main"><div class="row-name"><span class="nm">'+title+'</span></div>'+
       (sub.length ? '<div class="row-sub">'+sub.join(' · ')+'</div>' : '')+
       '</div>'+
-      '<div class="row-right"><span class="row-pax">'+(g.pax||1)+' pax</span>'+
+      '<div class="row-right">'+
       ((hasNotes || hits.length)
         ? '<button class="bub'+(hits.length ? ' flag' : '')+'">'+ICON_BUBBLE+'</button>' : '')+
-      '<span class="edit">'+ICON_EDIT+'</span></div>';
+      '<span class="row-pax">'+(g.pax||1)+' pax</span>'+
+      '<span class="edit">'+ICON_EDIT+'</span></div>'+ dietLine;
     var bub = row.querySelector('.bub');
     if (bub) bub.onclick = (function(tt, gg, hh){
       return function(ev){ ev.stopPropagation(); openNotes(tt, gg, hh); };

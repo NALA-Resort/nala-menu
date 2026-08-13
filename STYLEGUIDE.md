@@ -114,6 +114,34 @@ so tests and scripts can tell it from the original. Tables print with
 `border-collapse:collapse`, which Safari requires before it will repeat a
 header group at all.
 
+## Clean up
+
+After a run of edits to a page, stop and read the whole block, not the lines
+you changed. Every time this has been skipped the page has accumulated the
+same four faults: two rules fighting each other for the same selector, a rule
+whose subject no longer exists, a comment describing behaviour the code no
+longer has, and a container quietly costing layout width. Patching around
+those is what makes a page get worse with every edit. Fix them at the source
+and re-measure; do not add a rule to counteract another rule.
+
+## Clean up
+
+Every piece of work ends with a clean-up pass over the whole block that was
+touched, not just the lines that were edited. Look for:
+
+- **rules that fight each other** - two selectors setting the same property,
+  usually one original and one added later
+- **dead rules** - styling for markup that no longer exists
+- **comments that describe behaviour the code no longer has**
+- **containers that cost layout width** - padding or borders on a wrapper make
+  everything inside narrower, which shows up later as mysterious compression
+  in one place and not another
+- **shorthand doing more than intended** - `gap` sets both axes, `padding` sets
+  all four sides
+
+Patching around these is what turns a readable file into an unreadable one
+over a handful of edits. The clean-up is part of the job, not an extra.
+
 ## Dietaries
 
 Shown as pills, on the reservations board and the printed sheet. An allergy is

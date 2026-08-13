@@ -260,9 +260,45 @@ with sync_playwright() as p:
     w3=[x for x in WRITES if re.search(r"/manual/"+today+r"/room-3\.json",x["u"])]
     b3=json.loads(w3[-1]["b"])
     ck("details save: override with phone+diets, pax kept", b3.get("override")==True and b3["phone"]=="0400 333 333" and "Vegan" in b3["diets"] and b3["pax"]==2 and b3["name"]=="Mark")
-    ck("row shows new dietary", "Vegan" in pg.locator("#listBookings").inner_text())
+    ck("row shows new dietary", "VEGAN" in pg.locator("#listBookings").inner_text().upper())
 
-    # guest data on a digital room booking's sheet
+    dp=pg.evaluate("""()=>{const r=[...document.querySelectorAll('#listBookings .row')]
+        .find(x=>x.querySelector('.dpill'));
+      if(!r) return null;
+      const pills=[...r.querySelectorAll('.dpill')].map(e=>({t:e.textContent,
+        al:e.className.includes('dpill-al'), bg:getComputedStyle(e).backgroundColor}));
+      const line=r.querySelector('.dietline').getBoundingClientRect();
+      const nm=r.querySelector('.row-name').getBoundingClientRect();
+      const ph=r.querySelector('.phinline');
+      return {pills:pills, below: Math.round(line.top) >= Math.round(nm.bottom)-1,
+              phoneOnNameLine: ph ? Math.abs(Math.round(ph.getBoundingClientRect().top - nm.top))<12 : null};}""")
+    print("   pills:", dp)
+    ck("dietaries render as pills below the name, phone on the name line",
+       dp and len(dp["pills"])>0 and dp["below"] and dp["phoneOnNameLine"] is not False)
+    ck("allergy pill solid, word 'allergy' dropped",
+       all(("ALLERGY" not in p["t"].upper()) for p in dp["pills"] if p["al"]))
+
+    geo=pg.evaluate("""()=>{const rows=[...document.querySelectorAll('#listBookings .row')];
+      const w=r=>Math.round(r.getBoundingClientRect().width);
+      const grouped=[...new Set(rows.filter(r=>r.closest('.grpbox')).map(w))];
+      const plain=[...new Set(rows.filter(r=>!r.closest('.grpbox')).map(w))];
+      const dropped=rows.filter(r=>{const n=r.querySelector('.row-name'),t=r.querySelector('.row-right');
+        return n&&t&&Math.round(t.getBoundingClientRect().top)>Math.round(n.getBoundingClientRect().bottom)-2;}).length;
+      return {grouped, plain, dropped, overflow:document.scrollingElement.scrollWidth-innerWidth};}""")
+    print("   row geometry:", geo)
+    ck("grouping a booking does not narrow its row",
+       geo["grouped"] and geo["plain"] and set(geo["grouped"])==set(geo["plain"]))
+    ck("no row wraps and nothing overflows the screen",
+       geo["dropped"]==0 and geo["overflow"]<=0)
+    ov=pg.evaluate("""()=>{const n=document.querySelector('#listBookings .row-name .nm');
+      const long='Konstantinos Papadopoulos';
+      const keep=n.innerHTML; n.innerHTML=long;
+      const r={doc: document.scrollingElement.scrollWidth - innerWidth,
+               nameLines: Math.round(n.getBoundingClientRect().height) <= 20};
+      n.innerHTML=keep; return r;}""")
+    print("   long name:", ov)
+    ck("a long name never widens the page, and never breaks mid-name",
+       ov["doc"]<=0 and ov["nameLines"])    # guest data on a digital room booking's sheet
     tile(pg,1).click(); pg.wait_for_timeout(200)
     sh1=pg.locator("#sheet").inner_text()
     ck("digital room sheet shows name+phone+diets+note", "James" in sh1 and "0400 000 001" in sh1 and "Nut allergy" in sh1 and "Window seat" in sh1)
