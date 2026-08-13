@@ -55,7 +55,8 @@
   .page {
     width: 100%;
     max-width: 440px;
-    padding: 0 clamp(20px, 7vw, 32px);
+    /* bottom pad so the pricing never sits hard against the screen edge */
+    padding: 0 clamp(20px, 7vw, 32px) clamp(14px, 3.2vh, 30px);
     min-height: 100vh;
     min-height: 100dvh;
     display: grid;
