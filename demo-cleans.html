@@ -818,7 +818,7 @@ function drawSheet(mode){
          A stale mark can still be cleared.                              */
       var stillHere = !(h.departed || CUR.pushedIn) && CUR.kind !== 'pre';
       if (h.bfast){
-        rows+='<button class="pbtn" disabled style="opacity:.6">Seen available '+hhmm(h.bfast)+' ('+mins(h.bfast)+'m ago)</button>';
+        rows+='<button class="pbtn" disabled style="opacity:.6">Marked available '+hhmm(h.bfast)+' ('+mins(h.bfast)+'m ago)</button>';
         rows+='<button class="pbtn warn" onclick="drawSheet(\'clearbf\')">Clear</button>';
       } else if (stillHere) {
         rows+='<button class="pbtn" onclick="drawSheet(\'bfast\')">Possibly available</button>';
@@ -887,7 +887,7 @@ function drawSheet(mode){
 
   if (mode==='bfast'){
     b.innerHTML=head+
-      '<div class="st" style="margin-bottom:6px">Seen available when?</div>'+
+      '<div class="st" style="margin-bottom:6px">Marked available when?</div>'+
       '<button class="pbtn solid" onclick="stampBf(0)">Just now</button>'+
       '<div class="timerow">'+
         '<button class="pbtn" onclick="stampBf(5)">5 min ago</button>'+

@@ -150,7 +150,7 @@ with sync_playwright() as p:
     print("   room2 sheet:", repr(sh)[:220])
     sh=sh.lower()
     ck("service sheet: no departed option, shows the note and a clear",
-       "guest departed" not in sh and "seen available" in sh and "clear" in sh)
+       "guest departed" not in sh and "marked available" in sh and "clear" in sh)
     pg.locator(".pbtn.ghost",has_text="Close").click()
     # mark room1 done
     tile(pg,1).click(); pg.wait_for_timeout(150)
