@@ -209,6 +209,25 @@ then any departed villa, then the rest. Two departed villas waiting to be
 cleaned sort numerically - once the guest has gone there is no reason to
 prefer one over the other, so they may as well be next to each other.
 
+## Possibly available
+
+Breakfast is one way to know a villa is free right now. Someone walking past
+and finding it empty is another, and anyone can record it: **Possibly
+available**, stamped with a time exactly as breakfast is.
+
+It behaves identically. It turns the tile green, it counts as ready for the
+ordering, and its elapsed timer ages amber at 15 minutes and red at 20,
+because an observation from half an hour ago is not worth acting on. It can
+be cleared the same way.
+
+The tile reads "Available 17m". The full phrase lives on the button and in
+the sheet, where there is room for it.
+
+**Empty, not vacant.** The word is empty everywhere a person reads it. Only
+management can set it. Note the display gate is only as good as the logins:
+while the housekeeping user does not exist, everyone signs in as management
+and sees everything.
+
 ## Pre-arrival
 
 A villa nobody is checking out of, but someone is checking into: it was
@@ -355,6 +374,25 @@ Within **cleans**, in order: a departed villa with a guest arriving today,
 then any departed villa, then the rest. Two departed villas waiting to be
 cleaned sort numerically - once the guest has gone there is no reason to
 prefer one over the other, so they may as well be next to each other.
+
+## Possibly available
+
+Breakfast is one way to know a villa is free right now. Someone walking past
+and finding it empty is another, and anyone can record it: **Possibly
+available**, stamped with a time exactly as breakfast is.
+
+It behaves identically. It turns the tile green, it counts as ready for the
+ordering, and its elapsed timer ages amber at 15 minutes and red at 20,
+because an observation from half an hour ago is not worth acting on. It can
+be cleared the same way.
+
+The tile reads "Available 17m". The full phrase lives on the button and in
+the sheet, where there is room for it.
+
+**Empty, not vacant.** The word is empty everywhere a person reads it. Only
+management can set it. Note the display gate is only as good as the logins:
+while the housekeeping user does not exist, everyone signs in as management
+and sees everything.
 
 ## Pre-arrival
 

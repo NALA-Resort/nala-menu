@@ -29,7 +29,8 @@ bf16=(now-datetime.timedelta(minutes=17)).isoformat()   # amber band
 bf24=(now-datetime.timedelta(minutes=24)).isoformat()   # red band
 hk={"7":{"done":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"},"2":{"bfast":bf},
     "11":{"kind":"clean"}, "17":{"kind":"pre"}, "13":{"kind":"pre","done":now.isoformat()}, "8":{"departed":True}, "12":{"departed":True},
-    "14":{"bfast":bf2}, "6":{"bfast":bf16}, "9":{"bfast":bf24}}
+    "14":{"bfast":bf2}, "6":{"bfast":bf16}, "9":{"bfast":bf24},
+    "4":{"avail":bf16}}
 prevHk={"16":{"pushed":(now-datetime.timedelta(days=1)).isoformat()}}
 def fb(route,request):
     u=request.url; m=request.method
@@ -100,6 +101,15 @@ with sync_playwright() as p:
     ck("17 minutes turns amber", "soon" in warn["amber"]["cls"])
     ck("24 minutes turns red", "late" in warn["red"]["cls"]
        and warn["red"]["col"]=="rgb(168, 50, 30)")
+
+    av=pg.evaluate("""()=>{const t=[...document.querySelectorAll('.tile')]
+        .find(x=>x.querySelector('.rn').textContent==='4');
+      const b=t.querySelector('.sub b');
+      return {txt:t.innerText.toLowerCase().replace(/\\n/g,' | '), cls:t.className,
+              band:b?b.className:''};}""")
+    print("   villa 4 seen available:", av)
+    ck("a villa seen available shows the note and ages like breakfast",
+       "available" in av["txt"] and "soon" in av["band"])
     chips=pg.evaluate("""()=>{const g=n=>[...document.querySelectorAll('#grid .tile')]
       .find(b=>b.querySelector('.rn').textContent===n).querySelector('.chip');
       const c=n=>{const e=g(n),s=getComputedStyle(e);return {bg:s.backgroundColor,fg:s.color,t:e.textContent};};
@@ -123,7 +133,7 @@ with sync_playwright() as p:
     ck("an unknown villa offers nothing to complete",
        "mark as clean" not in us and "guest at breakfast" not in us and "departed" not in us)
     ck("an unknown villa can be set to any of the three jobs",
-       "to be cleaned" in us and "to be serviced" in us and "mark as vacant" in us)
+       "to be cleaned" in us and "to be serviced" in us and "mark as empty" in us)
     ck("unknown is grey, not an alarm",
        "rgb(153, 153, 144)" in pg.evaluate(
          "()=>{const c=[...document.querySelectorAll('.tile .chip.ver')][0];"
@@ -303,7 +313,7 @@ with sync_playwright() as p:
 
     ck("a departed villa is not offered breakfast", "guest at breakfast" not in ps)
     ck("a departed villa cannot be set to a service", "to be serviced" not in ps)
-    ck("a departed villa cannot be marked vacant", "mark as vacant" not in ps)
+    ck("a departed villa cannot be marked empty", "mark as empty" not in ps)
 
     # pre-arrival: a villa nobody checks out of, but someone checks into
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
@@ -330,7 +340,7 @@ with sync_playwright() as p:
     ck("a finished pre-arrival offers only undo, back to unknown, and close",
        "undo done" in predone and "back to unknown" in predone
        and "mark as pre-arrived" not in predone and "to be cleaned" not in predone
-       and "mark as vacant" not in predone)
+       and "mark as empty" not in predone)
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
     # and it can only be set from an unknown or vacant villa, never a service
     tile(pg,10).click(); pg.wait_for_timeout(250)

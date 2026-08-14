@@ -201,7 +201,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
     }
 
     var tb = document.getElementById('rows');
-    // Only real jobs go on paper. Verify and vacant rooms are not jobs, and
+    // Only real jobs go on paper. Unknown and empty villas are not jobs, and
     // printing all 17 pushed the sheet off A4. The three blank rows below are
     // for the manager to pen in anything the board could not confirm; the
     // 'To verify' count above says how many that might be.
@@ -213,7 +213,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
       else if (row.kind==='clean') chip='<span class="chip">Clean</span>';
       else if (row.kind==='svc') chip='<span class="chip svc">Service</span>';
       else if (row.kind==='ver') chip='<span class="chip ver">Verify</span>';
-      else { cls=' class="vac"'; chip='<span class="muted">Vacant</span>'; }
+      else { cls=' class="vac"'; chip='<span class="muted">Empty</span>'; }
       var boxes = (row.kind==='vac') ? ['',''] : ['<span class="box"></span>','<span class="box"></span>'];
       var mk = hk[String(row.n)] || {};
       if (mk.done) boxes[0] = '<span class="donemark">&#10003; '+fmtT(mk.done)+'</span>';
