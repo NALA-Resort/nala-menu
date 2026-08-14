@@ -28,7 +28,7 @@ bf2=(now-datetime.timedelta(minutes=4)).isoformat()
 bf16=(now-datetime.timedelta(minutes=17)).isoformat()   # amber band
 bf24=(now-datetime.timedelta(minutes=24)).isoformat()   # red band
 hk={"7":{"done":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"},"2":{"bfast":bf},
-    "11":{"kind":"clean"}, "17":{"kind":"pre"}, "8":{"departed":True}, "12":{"departed":True},
+    "11":{"kind":"clean"}, "17":{"kind":"pre"}, "13":{"kind":"pre","done":now.isoformat()}, "8":{"departed":True}, "12":{"departed":True},
     "14":{"bfast":bf2}, "6":{"bfast":bf16}, "9":{"bfast":bf24}}
 prevHk={"16":{"pushed":(now-datetime.timedelta(days=1)).isoformat()}}
 def fb(route,request):
@@ -66,7 +66,7 @@ with sync_playwright() as p:
     ck("header row present", pg.evaluate("()=>!!document.querySelector('.daterow .navwrap')"))
     ck("date format with year", bool(re.match(r'^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{1,2}(st|nd|rd|th) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$',hd["d"])))
     # villa 11 is a staff-set clean, so cleans is one higher than the dates imply
-    ck("cleans 6 services 2 done 1", hd["c"]=="6" and hd["s"]=="2" and hd["dn"]=="1")
+    ck("cleans 6 services 2 done 2", hd["c"]=="6" and hd["s"]=="2" and hd["dn"]=="2")
     ck("management login sees menu", hd["nav"]=="block")
     pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
     ck("menu opens on tap", pg.evaluate("()=>navDrop.classList.contains('open')"))
@@ -86,7 +86,7 @@ with sync_playwright() as p:
        ordr[2]=="8" and ordr[3:5]==["12","16"] and ordr[5:7]==["1","11"])
     # villa 17 is a pre-arrival: after the cleans, before the finished villa 7
     ck("a pre-arrival sits after the cleans and before finished work",
-       ordr[7]=="17" and ordr[8]=="7")
+       ordr[7]=="17" and ordr[9]=="7")
     ck("finished sinks below outstanding, vacant last", ordr[-1]=="5")
 
     warn=pg.evaluate("""()=>{const g=n=>{const t=[...document.querySelectorAll('.tile')]
@@ -158,7 +158,7 @@ with sync_playwright() as p:
     w=[x for x in WRITES if re.search(r"/hk/"+today+r"/1\.json",x["u"])]
     ck("PATCH done for room1", len(w)==1 and "done" in json.loads(w[0]["b"]))
     ck("room1 tile green, done count 2, sheet closed",
-       pg.evaluate("()=>({c:nDone.textContent,cls:[...document.querySelectorAll('#grid .tile')].find(b=>b.querySelector('.rn').textContent==='1').className,ov:ov.className})")=={"c":"2","cls":"tile done","ov":"ov"})
+       pg.evaluate("()=>({c:nDone.textContent,cls:[...document.querySelectorAll('#grid .tile')].find(b=>b.querySelector('.rn').textContent==='1').className,ov:ov.className})")=={"c":"3","cls":"tile done","ov":"ov"})
     # breakfast stamp on a villa that has a job. Villa 2 is a service; 3 and 6
     # have no booking data so they are unknown and offer no cleaning actions.
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
@@ -193,7 +193,7 @@ with sync_playwright() as p:
     pg.locator(".pbtn.warn",has_text="Yes - not done").click(); pg.wait_for_timeout(300)
     w=[x for x in WRITES if re.search(r"/hk/"+today+r"/7\.json",x["u"])]
     ck("PATCH done:null for room7", len(w)==1 and json.loads(w[0]["b"])["done"] is None)
-    ck("done count back to 1", pg.evaluate("()=>nDone.textContent")=="1")
+    ck("done count back to 2", pg.evaluate("()=>nDone.textContent")=="2")
 
     # a manager can set the morning's job by hand, and it beats the dates
     t11=pg.evaluate("()=>{const t=[...document.querySelectorAll('.tile')]"
@@ -318,6 +318,19 @@ with sync_playwright() as p:
     pre = pg.locator("#sheetBox").inner_text().lower()
     print("   pre-arrival sheet:", pre.replace("\n"," | "))
     ck("its completion button names the job", "mark as pre-arrived" in pre)
+
+    ck("a pre-arrival offers only its own job, back to unknown, and close",
+       "guest at breakfast" not in pre and "to be cleaned" not in pre
+       and "to be serviced" not in pre and "mark as vacant" not in pre
+       and "push villa" not in pre and "back to unknown" in pre)
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
+    tile(pg,13).click(); pg.wait_for_timeout(250)
+    predone = pg.locator("#sheetBox").inner_text().lower()
+    print("   pre-arrived sheet:", predone.replace("\n"," | "))
+    ck("a finished pre-arrival offers only undo, back to unknown, and close",
+       "undo done" in predone and "back to unknown" in predone
+       and "mark as pre-arrived" not in predone and "to be cleaned" not in predone
+       and "mark as vacant" not in predone)
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
     # and it can only be set from an unknown or vacant villa, never a service
     tile(pg,10).click(); pg.wait_for_timeout(250)

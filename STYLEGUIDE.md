@@ -228,7 +228,14 @@ when there are any - folding it into Cleans would misreport the morning's
 workload. It sorts after the cleans and before finished work, and it prints
 on the sheet.
 
-No breakfast option: nobody is in the villa yet.
+Its sheet is short, because a pre-arrival is one job with one outcome: do it
+or decide it was never one.
+
+- Outstanding: **Mark as pre-arrived**, Back to unknown, Close
+- Done: **Undo done**, Back to unknown, Close
+
+No breakfast, no departure, no push, and no switching it to a clean or a
+service. Nobody is in the villa yet, and nobody is leaving it.
 
 ## Pushing a clean to tomorrow
 
@@ -368,7 +375,14 @@ when there are any - folding it into Cleans would misreport the morning's
 workload. It sorts after the cleans and before finished work, and it prints
 on the sheet.
 
-No breakfast option: nobody is in the villa yet.
+Its sheet is short, because a pre-arrival is one job with one outcome: do it
+or decide it was never one.
+
+- Outstanding: **Mark as pre-arrived**, Back to unknown, Close
+- Done: **Undo done**, Back to unknown, Close
+
+No breakfast, no departure, no push, and no switching it to a clean or a
+service. Nobody is in the villa yet, and nobody is leaving it.
 
 ## Pushing a clean to tomorrow
 

@@ -793,6 +793,19 @@ function drawSheet(mode){
       b.innerHTML=head+rows+err;
       return;
     }
+    /* A pre-arrival is a single job with a single outcome: do it, or decide it
+       was never one. Nothing else applies - no breakfast, no departure, no
+       pushing, and no switching it to a clean or a service.              */
+    if (CUR.kind==='pre'){
+      rows += h.done
+        ? '<button class="pbtn warn" onclick="drawSheet(\'undone\')">Undo done</button>'
+        : '<button class="pbtn solid" onclick="drawSheet(\'done\')">'+ICON_TICK+'Mark as pre-arrived</button>';
+      if (window.IS_MANAGER)
+        rows+='<button class="pbtn warn" onclick="drawSheet(\'k-none\')">Back to unknown</button>';
+      rows+='<button class="pbtn ghost" onclick="closeSheet()">Close</button>';
+      b.innerHTML=head+rows+err;
+      return;
+    }
     if (h.done){
       rows+='<button class="pbtn warn" onclick="drawSheet(\'undone\')">Undo done</button>';
     } else {
