@@ -160,6 +160,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .pbtn.solid { background:var(--ink); color:#fff; }
   .pdiv { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.18em;
           text-transform:uppercase; color:var(--mid); margin:14px 0 6px; }
+  .btick { width:15px; height:15px; margin-right:8px; vertical-align:-2px; display:inline-block; }
   .pbtn.ghost { border-color:var(--rule); color:var(--mid); }
   .pbtn.warn  { border-color:var(--red); color:var(--red); }
   .timerow { display:flex; gap:8px; margin-top:9px; }
@@ -506,6 +507,9 @@ document.getElementById('title').textContent = dateLabel(new Date());
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
 var STATE = { rows:[], hk:{} };
+var ICON_TICK = '<svg class="btick" viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
+                'stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">'+
+                '<path d="M4 12.5l5.2 5.2L20 6.9"/></svg>';
 
 function load(){
   return Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
@@ -542,6 +546,14 @@ function hhmm(iso){
 function render(){
   var g=document.getElementById('grid'); g.innerHTML='';
   var nClean=0,nSvc=0,nDone=0;
+  /* The job is derived here, not frozen at load, so setting one takes effect
+     on the tile immediately instead of waiting for a refresh - and the villa
+     re-sorts into its new block at the same time.                        */
+  var korder={svc:0, clean:1, ver:2, vac:3};
+  STATE.rows.forEach(function(r){
+    r.kind = (STATE.hk[r.n] && STATE.hk[r.n].kind) ? STATE.hk[r.n].kind : r.base;
+  });
+  STATE.rows.sort(function(a,b){ return (korder[a.kind]-korder[b.kind]) || (a.n-b.n); });
   STATE.rows.forEach(function(row){
     var h=STATE.hk[row.n]||{};
     if (row.kind==='clean') nClean++;
@@ -555,8 +567,8 @@ function render(){
     else if (h.bfast) cls+=' bfast';
 
     var chip='';
-    if (row.kind==='clean') chip='<span class="chip">Clean</span>';
-    else if (row.kind==='svc') chip='<span class="chip svc">Service</span>';
+    if (row.kind==='clean') chip='<span class="chip">'+(h.done?'Cleaned':'Clean')+'</span>';
+    else if (row.kind==='svc') chip='<span class="chip svc">'+(h.done?'Serviced':'Service')+'</span>';
     else if (row.kind==='ver') chip='<span class="chip ver">Unknown</span>';
     else chip='<span class="sub">Vacant</span>';
 
@@ -644,7 +656,8 @@ function drawSheet(mode){
     if (h.done){
       rows+='<button class="pbtn warn" onclick="drawSheet(\'undone\')">Undo done</button>';
     } else {
-      rows+='<button class="pbtn solid" onclick="drawSheet(\'done\')">Villa done</button>';
+      rows+='<button class="pbtn solid" onclick="drawSheet(\'done\')">'+ICON_TICK+
+            (CUR.kind==='clean' ? 'Mark as cleaned' : 'Mark as serviced')+'</button>';
       if (h.bfast){
         rows+='<button class="pbtn" disabled style="opacity:.6">Seated at breakfast '+hhmm(h.bfast)+' ('+mins(h.bfast)+'m ago)</button>';
         rows+='<button class="pbtn warn" onclick="drawSheet(\'clearbf\')">Clear breakfast</button>';
@@ -710,9 +723,10 @@ function drawSheet(mode){
   }
 
   if (mode==='done'){
+    var doneWord = CUR.kind==='clean' ? 'cleaned' : 'serviced';
     b.innerHTML=head+
-      '<div class="st" style="margin-bottom:6px">Mark room '+n+' as done?</div>'+
-      '<button class="pbtn solid" onclick="setField('+n+',{done:new Date().toISOString()},document.getElementById(\'perr\'))">Yes - done</button>'+
+      '<div class="st" style="margin-bottom:6px">Mark villa '+n+' as '+doneWord+'?</div>'+
+      '<button class="pbtn solid" onclick="setField('+n+',{done:new Date().toISOString()},document.getElementById(\'perr\'))">'+ICON_TICK+'Yes - '+doneWord+'</button>'+
       '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
   }
   if (mode==='undone'){

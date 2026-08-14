@@ -155,6 +155,18 @@ Management only. The controls reuse the same login check that hides the nav
 menu from the housekeeping user - one gate, not two. Note this is a display
 gate: the database rules still allow any signed-in user to write the field.
 
+## Tense on the Cleans board
+
+A villa reads **Clean** or **Service** while the work is outstanding and
+**Cleaned** or **Serviced** once it is done. The completion button names the
+job it completes - "Mark as cleaned", "Mark as serviced", with a tick - not a
+generic "done". Staff should never have to remember which kind of job they
+are finishing.
+
+The board derives each villa's job on every render rather than freezing it at
+load, so setting one takes effect on the tile immediately and the villa
+re-sorts into its block. Anything that requires a refresh to show is a bug.
+
 ## Clean up
 
 After a run of edits to a page, stop and read the whole block, not the lines
@@ -205,6 +217,18 @@ confirmed".
 Management only. The controls reuse the same login check that hides the nav
 menu from the housekeeping user - one gate, not two. Note this is a display
 gate: the database rules still allow any signed-in user to write the field.
+
+## Tense on the Cleans board
+
+A villa reads **Clean** or **Service** while the work is outstanding and
+**Cleaned** or **Serviced** once it is done. The completion button names the
+job it completes - "Mark as cleaned", "Mark as serviced", with a tick - not a
+generic "done". Staff should never have to remember which kind of job they
+are finishing.
+
+The board derives each villa's job on every render rather than freezing it at
+load, so setting one takes effect on the tile immediately and the villa
+re-sorts into its block. Anything that requires a refresh to show is a bug.
 
 ## Clean up
 

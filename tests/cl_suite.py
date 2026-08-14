@@ -89,28 +89,29 @@ with sync_playwright() as p:
     us = pg.locator("#sheetBox").inner_text().lower()
     print("   unknown sheet:", us.replace("\n"," | "))
     ck("an unknown villa offers nothing to complete",
-       "villa done" not in us and "guest at breakfast" not in us and "departed" not in us)
+       "mark as clean" not in us and "guest at breakfast" not in us and "departed" not in us)
     ck("an unknown villa can be set to any of the three jobs",
        "to be cleaned" in us and "to be serviced" in us and "mark as vacant" in us)
     ck("unknown is grey, not an alarm",
        "rgb(153, 153, 144)" in pg.evaluate(
          "()=>{const c=[...document.querySelectorAll('.tile .chip.ver')][0];"
          "return c? getComputedStyle(c).color+' '+getComputedStyle(c).borderColor : '';}"))
-    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)    # a vacant villa opens like any other, but offers no work to do
+
+    # a vacant villa opens like any other, but offers no work to do
     pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.className.includes('vac')).click()")
     pg.wait_for_timeout(200)
     vs = pg.locator("#sheetBox").inner_text().lower()
     print("   vacant sheet:", vs.replace("\n"," | "))
     ck("vacant tile opens its sheet", pg.evaluate("()=>ov.className").endswith("show"))
     ck("vacant sheet offers no cleaning actions",
-       "villa done" not in vs and "guest at breakfast" not in vs)
+       "mark as clean" not in vs and "guest at breakfast" not in vs)
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(150)
     # clean room sheet has departed option; svc doesn't
     tile(pg,1).click(); pg.wait_for_timeout(200)
     sh=pg.locator("#sheetBox").inner_text()
     print("   room1 sheet:", repr(sh)[:220])
     sh=sh.lower()
-    ck("clean sheet: done + breakfast + departed", "villa done" in sh and "guest at breakfast" in sh and "guest departed" in sh)
+    ck("clean sheet: done + breakfast + departed", "mark as cleaned" in sh and "guest at breakfast" in sh and "guest departed" in sh)
     pg.locator(".pbtn.ghost",has_text="Close").click()
     tile(pg,2).click(); pg.wait_for_timeout(200)
     sh=pg.locator("#sheetBox").inner_text()
@@ -120,8 +121,8 @@ with sync_playwright() as p:
     pg.locator(".pbtn.ghost",has_text="Close").click()
     # mark room1 done
     tile(pg,1).click(); pg.wait_for_timeout(150)
-    pg.locator(".pbtn.solid",has_text="Villa done").click(); pg.wait_for_timeout(150)
-    pg.locator(".pbtn.solid",has_text="Yes - done").click(); pg.wait_for_timeout(300)
+    pg.locator(".pbtn.solid",has_text="Mark as").click(); pg.wait_for_timeout(150)
+    pg.locator(".pbtn.solid",has_text="Yes -").click(); pg.wait_for_timeout(300)
     w=[x for x in WRITES if re.search(r"/hk/"+today+r"/1\.json",x["u"])]
     ck("PATCH done for room1", len(w)==1 and "done" in json.loads(w[0]["b"]))
     ck("room1 tile green, done count 2, sheet closed",
@@ -147,8 +148,8 @@ with sync_playwright() as p:
     STATE["fail"]=True
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
     tile(pg,2).click(); pg.wait_for_timeout(150)
-    pg.locator(".pbtn.solid",has_text="Villa done").click(); pg.wait_for_timeout(150)
-    pg.locator(".pbtn.solid",has_text="Yes - done").click(); pg.wait_for_timeout(400)
+    pg.locator(".pbtn.solid",has_text="Mark as").click(); pg.wait_for_timeout(150)
+    pg.locator(".pbtn.solid",has_text="Yes -").click(); pg.wait_for_timeout(400)
     ck("rejected write: error shown, sheet stays", "tell the manager" in pg.locator("#perr").inner_text())
     ck("rejected write rolled back", "done" not in pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.querySelector('.rn').textContent==='2').className"))
     STATE["fail"]=False
@@ -184,6 +185,35 @@ with sync_playwright() as p:
     print("   kind write:", kw[-1]["b"] if kw else None)
     ck("setting the job writes kind to that villa's hk record",
        kw and json.loads(kw[-1]["b"]).get("kind")=="clean")
+
+    # setting a job must show on the tile at once, without a refresh
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
+    tile(pg,6).click(); pg.wait_for_timeout(220)
+    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
+                ".find(x=>/^to be cleaned$/i.test(x.textContent.trim())).click()")
+    pg.wait_for_timeout(180)
+    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
+                ".find(x=>/yes/i.test(x.textContent) && /clean/i.test(x.textContent)).click()")
+    pg.wait_for_timeout(350)
+    live = pg.evaluate("()=>{const t=[...document.querySelectorAll('.tile')]"
+                       ".find(x=>x.querySelector('.rn').textContent==='6');"
+                       "return t.innerText.toLowerCase().replace(/\\n/g,' | ');}")
+    print("   villa 6 right after setting:", live)
+    ck("the tile changes as soon as the job is set, no refresh needed",
+       "clean" in live and "unknown" not in live)
+
+    tile(pg,6).click(); pg.wait_for_timeout(200)
+    ck("the completion button names the job", "mark as cleaned" in pg.locator("#sheetBox").inner_text().lower())
+    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/mark as/i.test(x.textContent)).click()")
+    pg.wait_for_timeout(180)
+    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/^yes/i.test(x.textContent.trim())).click()")
+    pg.wait_for_timeout(350)
+    fin = pg.evaluate("()=>{const t=[...document.querySelectorAll('.tile')]"
+                      ".find(x=>x.querySelector('.rn').textContent==='6');"
+                      "return t.innerText.toLowerCase().replace(/\\n/g,' | ');}")
+    print("   villa 6 once finished:", fin)
+    ck("a finished villa reads in the past tense", "cleaned" in fin)
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
 
     shot=pg.screenshot(full_page=True)
     open("/home/claude/nala/_p4_cleaners.png","wb").write(shot)
