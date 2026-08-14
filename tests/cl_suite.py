@@ -312,6 +312,14 @@ with sync_playwright() as p:
     ck("a pushed villa reads Pushed, in purple, styled like finished work",
        "pushed" in t12["txt"] and "pushed" in t12["cls"] and "done" in t12["cls"]
        and t12["col"]=="rgb(107, 78, 155)")
+
+    ordr2=pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].map(b=>b.querySelector('.rn').textContent)")
+    print("   order after pushing 12:", ordr2)
+    ck("a villa pushed today sinks below the finished ones",
+       ordr2.index("12") > ordr2.index("7"))
+    # villa 3 was decided earlier in this suite, so villa 10 is the unknown one
+    ck("but stays above unknown and vacant",
+       ordr2.index("12") < ordr2.index("10") and ordr2.index("12") < ordr2.index("5"))
     ck("a villa with an arrival today is not offered a push",
        "push villa" not in (tile(pg,8).click() or pg.wait_for_timeout(250) or
                             pg.locator("#sheetBox").inner_text().lower()))

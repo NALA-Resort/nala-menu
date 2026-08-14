@@ -188,7 +188,9 @@ clean with no arrival that day - a villa someone checks into tonight cannot
 wait. It writes `pushed` to `/hk/<date>/<villa>`.
 
 A pushed villa reads like finished work, grey and out of the way, but the
-word is **Pushed** in purple: deferred, not done. The board also reads
+word is **Pushed** in purple: deferred, not done. For the rest of today it
+sorts BELOW the finished villas - it is not today's work at all - while
+staying above the undecided and vacant ones. The board also reads
 yesterday's marks, so a villa pushed yesterday and never finished arrives
 today as a clean that is already departed - the guest left, the work did not
 happen - and sorts at priority 2 with the other departed cleans.
@@ -305,7 +307,9 @@ clean with no arrival that day - a villa someone checks into tonight cannot
 wait. It writes `pushed` to `/hk/<date>/<villa>`.
 
 A pushed villa reads like finished work, grey and out of the way, but the
-word is **Pushed** in purple: deferred, not done. The board also reads
+word is **Pushed** in purple: deferred, not done. For the rest of today it
+sorts BELOW the finished villas - it is not today's work at all - while
+staying above the undecided and vacant ones. The board also reads
 yesterday's marks, so a villa pushed yesterday and never finished arrives
 today as a clean that is already departed - the guest left, the work did not
 happen - and sorts at priority 2 with the other departed cleans.

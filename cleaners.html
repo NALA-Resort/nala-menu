@@ -241,13 +241,16 @@ function render(){
   /* The job is derived here, not frozen at load, so setting one takes effect
      on the tile immediately instead of waiting for a refresh - and the villa
      re-sorts into its new block at the same time.                        */
-  var korder={svc:0, clean:1, done:2, ver:3, vac:4};
+  var korder={svc:0, clean:1, done:2, pushed:3, ver:4, vac:5};
   STATE.rows.forEach(function(r){
     r.kind = (STATE.hk[r.n] && STATE.hk[r.n].kind) ? STATE.hk[r.n].kind : r.base;
   });
   function rank(r){
     var h = STATE.hk[r.n] || {};
-    if (r.kind !== 'vac' && h.done) return korder.done;   /* finished work sinks */
+    if (r.kind !== 'vac' && h.done) return korder.done;      /* finished work sinks */
+    /* pushed today is not today's work at all, so it sits below even the
+       finished villas. Tomorrow it arrives as an ordinary departed clean. */
+    if (r.kind !== 'vac' && h.pushed) return korder.pushed;
     return korder[r.kind];
   }
   /* Within services, the guest seated longest is the one most likely to walk
