@@ -28,7 +28,7 @@ bf2=(now-datetime.timedelta(minutes=4)).isoformat()
 bf16=(now-datetime.timedelta(minutes=17)).isoformat()   # amber band
 bf24=(now-datetime.timedelta(minutes=24)).isoformat()   # red band
 hk={"7":{"done":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"},"2":{"bfast":bf},
-    "11":{"kind":"clean"}, "8":{"departed":True}, "12":{"departed":True},
+    "11":{"kind":"clean"}, "17":{"kind":"pre"}, "8":{"departed":True}, "12":{"departed":True},
     "14":{"bfast":bf2}, "6":{"bfast":bf16}, "9":{"bfast":bf24}}
 prevHk={"16":{"pushed":(now-datetime.timedelta(days=1)).isoformat()}}
 def fb(route,request):
@@ -84,8 +84,10 @@ with sync_playwright() as p:
     # villa 16 was pushed yesterday, so it arrives today already departed
     ck("cleans: arrival today, then departed (16 pushed in), then the rest",
        ordr[2]=="8" and ordr[3:5]==["12","16"] and ordr[5:7]==["1","11"])
-    ck("finished sinks below outstanding, vacant last",
-       ordr[7]=="7" and ordr[-1]=="5")
+    # villa 17 is a pre-arrival: after the cleans, before the finished villa 7
+    ck("a pre-arrival sits after the cleans and before finished work",
+       ordr[7]=="17" and ordr[8]=="7")
+    ck("finished sinks below outstanding, vacant last", ordr[-1]=="5")
 
     warn=pg.evaluate("""()=>{const g=n=>{const t=[...document.querySelectorAll('.tile')]
         .find(x=>x.querySelector('.rn').textContent===n);
@@ -298,6 +300,37 @@ with sync_playwright() as p:
     tile(pg,12).click(); pg.wait_for_timeout(250)
     ps = pg.locator("#sheetBox").inner_text().lower()
     ck("a clean with no arrival today can be pushed", "push villa" in ps)
+
+    ck("a departed villa is not offered breakfast", "guest at breakfast" not in ps)
+    ck("a departed villa cannot be set to a service", "to be serviced" not in ps)
+    ck("a departed villa cannot be marked vacant", "mark as vacant" not in ps)
+
+    # pre-arrival: a villa nobody checks out of, but someone checks into
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
+    t17=pg.evaluate("()=>{const t=[...document.querySelectorAll('.tile')]"
+                    ".find(x=>x.querySelector('.rn').textContent==='17');"
+                    "return {txt:t.innerText.toLowerCase().replace(/\\n/g,' | '), cls:t.className};}")
+    print("   villa 17 pre-arrival:", t17)
+    ck("a pre-arrival reads Pre-arrival, arriving today, and takes no colour",
+       "pre-arrival" in t17["txt"] and "arriving today" in t17["txt"]
+       and "ready-" not in t17["cls"])
+    tile(pg,17).click(); pg.wait_for_timeout(250)
+    pre = pg.locator("#sheetBox").inner_text().lower()
+    print("   pre-arrival sheet:", pre.replace("\n"," | "))
+    ck("its completion button names the job", "mark as pre-arrived" in pre)
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
+    # and it can only be set from an unknown or vacant villa, never a service
+    tile(pg,10).click(); pg.wait_for_timeout(250)
+    ck("an unknown villa can be set as a pre-arrival",
+       "set as pre-arrival" in pg.locator("#sheetBox").inner_text().lower())
+    ck("a pre-arrival is not offered breakfast - nobody is there yet",
+       "guest at breakfast" not in pre)
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
+    tile(pg,2).click(); pg.wait_for_timeout(250)
+    ck("a service cannot be set as a pre-arrival",
+       "set as pre-arrival" not in pg.locator("#sheetBox").inner_text().lower())
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
+    tile(pg,12).click(); pg.wait_for_timeout(250)
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/push villa/i.test(x.textContent)).click()")
     pg.wait_for_timeout(180)
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/yes - push/i.test(x.textContent)).click()")

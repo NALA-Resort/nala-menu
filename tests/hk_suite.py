@@ -25,7 +25,7 @@ roomguests={
 donets=now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"
 hk={"1":{"done":donets},"2":{"bfast":now.isoformat()},"4":{"departed":True},
     "7":{"bfast":now.isoformat(),"done":now.isoformat()},
-    "3":{"kind":"clean"}}   # villa 3 is a verify by the dates; staff set it to clean
+    "3":{"kind":"clean"}, "9":{"kind":"pre"}}   # villa 3 is a verify by the dates; staff set it to clean
 def fb(route,request):
     u=request.url; body="null"
     if STATE["break"] and "/responses/" in u:
@@ -55,14 +55,18 @@ with sync_playwright() as p:
     ck("printkick present for paper", pg.evaluate("()=>document.querySelector('.printkick').textContent.includes('HC print')"))
     ck("date format", bool(re.match(r'^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{1,2}(st|nd|rd|th) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$',hd["d"])))
     ck("cleans 3 services 3", hd["c"]=="3" and hd["s"]=="3")
-    ck("verify 10 shown", hd["v"]=="10" and hd["vd"]!="none")
+    ck("verify 9 shown", hd["v"]=="9" and hd["vd"]!="none")
     rw=pg.evaluate("""()=>[...document.querySelectorAll('#rows tr')].map(t=>({cls:t.className,
       room:t.cells[0].textContent.trim(),svc:t.cells[1].textContent.trim(),
       arr:t.cells[2].textContent.trim(),dep:t.cells[3].textContent.trim(),
       done:t.cells[4].innerHTML,insp:t.cells[6].innerHTML}))""")
     order=[r["room"] for r in rw]
-    ck("jobs only: 3 services, 3 cleans, then 3 blank write-in rows",
-       len(rw)==9 and order[:3]==["2","4","8"] and order[3:6]==["1","3","7"] and order[6:]==["","",""])
+    # 3 services, 3 cleans, 1 pre-arrival, then the write-in rows
+    ck("jobs only, in priority order, then 3 blank write-in rows",
+       len(rw)==10 and order[:3]==["2","4","8"] and order[3:6]==["1","3","7"]
+       and order[6]=="9" and order[7:]==["","",""])
+    ck("a pre-arrival prints on the sheet too",
+       any(r["room"]=="9" and "Pre-arrival" in r["svc"] for r in rw))
     ck("a staff-set job reaches the printed sheet too",
        any(r["room"]=="3" and "Clean" in r["svc"] for r in rw))
     ck("verify and vacant rooms are off the sheet",

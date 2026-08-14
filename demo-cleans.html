@@ -120,6 +120,9 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      settled", but grey - red is reserved for something being wrong.     */
   .tile .chip.ver { background:transparent; border-style:dashed; border-color:var(--mid);
                     color:var(--mid); }
+  /* A pre-arrival is always ready - nobody has to leave first - so it never
+     takes a colour. Colour still means "something changed, go now".     */
+  .tile .chip.pre { background:transparent; border-color:var(--ink); color:var(--ink); }
   .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
   .tile .sub b { color:var(--ink); }
   /* the guest is coming back: amber from 15 minutes, red from 20 */
@@ -282,6 +285,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   <div class="stats">
     <div class="stat"><span class="stat-n" id="nClean">&ndash;</span><span class="stat-l">Cleans</span></div>
     <div class="stat"><span class="stat-n" id="nSvc">&ndash;</span><span class="stat-l">Services</span></div>
+    <div class="stat" id="preWrap" style="display:none"><span class="stat-n" id="nPre">&ndash;</span><span class="stat-l">Pre-arrivals</span></div>
     <div class="stat"><span class="stat-n" id="nDone">&ndash;</span><span class="stat-l">Done</span></div>
   </div>
 
@@ -509,7 +513,8 @@ function hkClassify(rec, todayK, hk){
   /* A manager can set the job for the day by hand - most often on a villa the
      booking data cannot confirm - and that choice beats what the dates imply.
      Stored at /hk/<date>/<villa>/kind so it expires with the day.          */
-  if (hk && (hk.kind === 'clean' || hk.kind === 'svc' || hk.kind === 'vac')) return hk.kind;
+  if (hk && (hk.kind === 'clean' || hk.kind === 'svc' ||
+             hk.kind === 'pre'   || hk.kind === 'vac')) return hk.kind;
   if (rec && rec.status === 'vacant') return 'vac';
   if (rec){
     var d = parseDepDate(rec.departs);
@@ -592,11 +597,11 @@ function hhmm(iso){
 
 function render(){
   var g=document.getElementById('grid'); g.innerHTML='';
-  var nClean=0,nSvc=0,nDone=0;
+  var nClean=0,nSvc=0,nDone=0,nPre=0;
   /* The job is derived here, not frozen at load, so setting one takes effect
      on the tile immediately instead of waiting for a refresh - and the villa
      re-sorts into its new block at the same time.                        */
-  var korder={svc:0, clean:1, done:2, pushed:3, ver:4, vac:5};
+  var korder={svc:0, clean:1, pre:2, done:3, pushed:4, ver:5, vac:6};
   STATE.rows.forEach(function(r){
     r.kind = (STATE.hk[r.n] && STATE.hk[r.n].kind) ? STATE.hk[r.n].kind : r.base;
   });
@@ -635,6 +640,7 @@ function render(){
     var h=STATE.hk[row.n]||{};
     if (row.kind==='clean') nClean++;
     if (row.kind==='svc') nSvc++;
+    if (row.kind==='pre') nPre++;
     if (h.done) nDone++;
 
     var cls='tile';
@@ -648,6 +654,7 @@ function render(){
     if (row.kind==='clean') chip='<span class="chip">'+
       (h.pushed ? 'Pushed' : (h.done?ICON_DTICK+'Cleaned':'Clean'))+'</span>';
     else if (row.kind==='svc') chip='<span class="chip svc">'+(h.done?ICON_DTICK+'Serviced':'Service')+'</span>';
+    else if (row.kind==='pre') chip='<span class="chip pre">'+(h.done?ICON_DTICK+'Pre-arrived':'Pre-arrival')+'</span>';
     else if (row.kind==='ver') chip='<span class="chip ver">Unknown</span>';
     else chip='<span class="sub">Vacant</span>';
 
@@ -661,6 +668,7 @@ function render(){
         var w = m >= 20 ? ' late' : (m >= 15 ? ' soon' : '');
         sub='B\u2019fast <b class="el'+w+'">'+m+'m</b>';
       }
+      else if (row.kind==='pre') sub='Arriving today';
       else if (row.kind==='ver') sub='';   /* the pill already says Unknown */
       else sub='Occupied';
     }
@@ -683,6 +691,8 @@ function render(){
   document.getElementById('nClean').textContent=nClean;
   document.getElementById('nSvc').textContent=nSvc;
   document.getElementById('nDone').textContent=nDone;
+  document.getElementById('nPre').textContent=nPre;
+  document.getElementById('preWrap').style.display = nPre ? '' : 'none';
 }
 
 // ── writes ─────────────────────────────────────────────────
@@ -757,6 +767,7 @@ function drawSheet(mode){
   var n=CUR.n, h=STATE.hk[n]||{};
   var kindName = CUR.kind==='clean' ? 'Clean - departing today'
                : CUR.kind==='svc'   ? 'Service - staying on'
+               : CUR.kind==='pre'   ? 'Pre-arrival - guest arriving today'
                : CUR.kind==='vac'   ? 'Vacant'
                : 'Unknown';
   if (h.kind) kindName += ' - set by staff';
@@ -773,6 +784,7 @@ function drawSheet(mode){
         rows+='<div class="pdiv">Job for today</div>';
         rows+='<button class="pbtn" onclick="drawSheet(\'k-clean\')">To be cleaned</button>';
         rows+='<button class="pbtn" onclick="drawSheet(\'k-svc\')">To be serviced</button>';
+        if (CUR.kind!=='pre') rows+='<button class="pbtn" onclick="drawSheet(\'k-pre\')">Set as pre-arrival</button>';
         if (CUR.kind!=='vac') rows+='<button class="pbtn" onclick="drawSheet(\'k-vac\')">Mark as vacant</button>';
         if (h.kind) rows+='<button class="pbtn warn" onclick="drawSheet(\'k-none\')">'+
           ((CUR.base==='clean'||CUR.base==='svc') ? 'Use booking dates' : 'Back to unknown')+'</button>';
@@ -785,11 +797,17 @@ function drawSheet(mode){
       rows+='<button class="pbtn warn" onclick="drawSheet(\'undone\')">Undo done</button>';
     } else {
       rows+='<button class="pbtn solid" onclick="drawSheet(\'done\')">'+ICON_TICK+
-            (CUR.kind==='clean' ? 'Mark as cleaned' : 'Mark as serviced')+'</button>';
+            (CUR.kind==='clean' ? 'Mark as cleaned'
+             : CUR.kind==='pre' ? 'Mark as pre-arrived' : 'Mark as serviced')+'</button>';
+      /* Breakfast only means something while the guest is still here. Once
+         they have departed, seating them is impossible, not just unlikely,
+         so the option goes rather than sitting there inviting a mistake.
+         A stale mark can still be cleared.                              */
+      var stillHere = !(h.departed || CUR.pushedIn) && CUR.kind !== 'pre';
       if (h.bfast){
         rows+='<button class="pbtn" disabled style="opacity:.6">Seated at breakfast '+hhmm(h.bfast)+' ('+mins(h.bfast)+'m ago)</button>';
         rows+='<button class="pbtn warn" onclick="drawSheet(\'clearbf\')">Clear breakfast</button>';
-      } else {
+      } else if (stillHere) {
         rows+='<button class="pbtn" onclick="drawSheet(\'bfast\')">Guest at breakfast</button>';
       }
       if (CUR.kind==='clean' && !CUR.arrivingToday){
@@ -804,18 +822,27 @@ function drawSheet(mode){
       }
     }
     if (window.IS_MANAGER){
-      rows+='<div class="pdiv">Job for today</div>';
-      if (CUR.kind!=='clean') rows+='<button class="pbtn" onclick="drawSheet(\'k-clean\')">To be cleaned</button>';
-      if (CUR.kind!=='svc')   rows+='<button class="pbtn" onclick="drawSheet(\'k-svc\')">To be serviced</button>';
-      if (CUR.kind!=='vac')   rows+='<button class="pbtn" onclick="drawSheet(\'k-vac\')">Mark as vacant</button>';
+      /* Only offer jobs the villa's state actually allows. Once the guest has
+         gone the villa can only be cleaned: it cannot be serviced, and it
+         cannot be called vacant while it is still standing dirty.        */
+      var gone       = !!(h.departed || CUR.pushedIn);
+      var canService = !gone;
+      var canVacant  = !gone;
+      var jobs='';
+      if (CUR.kind!=='clean') jobs+='<button class="pbtn" onclick="drawSheet(\'k-clean\')">To be cleaned</button>';
+      if (CUR.kind!=='svc' && canService)
+        jobs+='<button class="pbtn" onclick="drawSheet(\'k-svc\')">To be serviced</button>';
+      if (CUR.kind!=='vac' && canVacant)
+        jobs+='<button class="pbtn" onclick="drawSheet(\'k-vac\')">Mark as vacant</button>';
       /* Only offer the dates back when they actually decide something. On a
          villa the dates cannot place, reverting just returns it to unknown,
          so say that instead of pretending there is a booking to fall back on. */
       if (h.kind){
-        rows += (CUR.base==='clean' || CUR.base==='svc')
+        jobs += (CUR.base==='clean' || CUR.base==='svc')
           ? '<button class="pbtn warn" onclick="drawSheet(\'k-none\')">Use booking dates</button>'
           : '<button class="pbtn warn" onclick="drawSheet(\'k-none\')">Back to unknown</button>';
       }
+      if (jobs) rows+='<div class="pdiv">Job for today</div>'+jobs;
     }
     rows+='<button class="pbtn ghost" onclick="closeSheet()">Close</button>';
     b.innerHTML=head+rows+err;
@@ -825,6 +852,7 @@ function drawSheet(mode){
   var KINDS = {
     'k-clean': { v:'clean', q:'Set '+who+' to be cleaned?',   y:'Yes - to be cleaned',  cls:'solid' },
     'k-svc'  : { v:'svc',   q:'Set '+who+' to be serviced?',  y:'Yes - to be serviced', cls:'solid' },
+    'k-pre'  : { v:'pre',   q:'Set '+who+' as a pre-arrival?', y:'Yes - pre-arrival',    cls:'solid' },
     'k-vac'  : { v:'vac',   q:'Mark '+who+' as vacant?',      y:'Yes - vacant',         cls:'solid' },
     'k-none' : { v:null,
                  q:(CUR.base==='clean' || CUR.base==='svc')
@@ -857,7 +885,8 @@ function drawSheet(mode){
   }
 
   if (mode==='done'){
-    var doneWord = CUR.kind==='clean' ? 'cleaned' : 'serviced';
+    var doneWord = CUR.kind==='clean' ? 'cleaned'
+                 : CUR.kind==='pre' ? 'pre-arrived' : 'serviced';
     b.innerHTML=head+
       '<div class="st" style="margin-bottom:6px">Mark villa '+n+' as '+doneWord+'?</div>'+
       '<button class="pbtn solid" onclick="setField('+n+',{done:new Date().toISOString()},document.getElementById(\'perr\'))">'+ICON_TICK+'Yes - '+doneWord+'</button>'+

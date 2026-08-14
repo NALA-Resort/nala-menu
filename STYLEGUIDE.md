@@ -209,6 +209,27 @@ then any departed villa, then the rest. Two departed villas waiting to be
 cleaned sort numerically - once the guest has gone there is no reason to
 prefer one over the other, so they may as well be next to each other.
 
+## Pre-arrival
+
+A villa nobody is checking out of, but someone is checking into: it was
+cleaned yesterday or last week, or its state is unknown, and it needs a look
+before the guest walks in.
+
+Only an **unknown** or **vacant** villa can be set to it. Never a service -
+that guest is staying on, so nobody is arriving.
+
+It takes no colour. Colour means "something changed, go now", and a
+pre-arrival is ready from the start because nobody has to leave first. The
+pill reads PRE-ARRIVAL with "Arriving today" beneath, and PRE-ARRIVED with
+the green tick once done, on the same grey as other finished work.
+
+It is not a clean and not a service, so it carries its own count, shown only
+when there are any - folding it into Cleans would misreport the morning's
+workload. It sorts after the cleans and before finished work, and it prints
+on the sheet.
+
+No breakfast option: nobody is in the villa yet.
+
 ## Pushing a clean to tomorrow
 
 On a busy morning a clean can be deferred. **Push villa** appears only on a
@@ -327,6 +348,27 @@ Within **cleans**, in order: a departed villa with a guest arriving today,
 then any departed villa, then the rest. Two departed villas waiting to be
 cleaned sort numerically - once the guest has gone there is no reason to
 prefer one over the other, so they may as well be next to each other.
+
+## Pre-arrival
+
+A villa nobody is checking out of, but someone is checking into: it was
+cleaned yesterday or last week, or its state is unknown, and it needs a look
+before the guest walks in.
+
+Only an **unknown** or **vacant** villa can be set to it. Never a service -
+that guest is staying on, so nobody is arriving.
+
+It takes no colour. Colour means "something changed, go now", and a
+pre-arrival is ready from the start because nobody has to leave first. The
+pill reads PRE-ARRIVAL with "Arriving today" beneath, and PRE-ARRIVED with
+the green tick once done, on the same grey as other finished work.
+
+It is not a clean and not a service, so it carries its own count, shown only
+when there are any - folding it into Cleans would misreport the morning's
+workload. It sorts after the cleans and before finished work, and it prints
+on the sheet.
+
+No breakfast option: nobody is in the villa yet.
 
 ## Pushing a clean to tomorrow
 

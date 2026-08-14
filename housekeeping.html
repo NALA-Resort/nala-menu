@@ -45,6 +45,7 @@
           padding:1px 7px; font-weight:bold; font-size:8px; letter-spacing:.08em;
           background:#111; color:#fff; text-transform:uppercase;
           -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .chip.pre { background:transparent; border-color:#111; color:#111; font-weight:bold; }
   .chip.svc { background:transparent; border-color:#aaa; color:#555;
               font-weight:normal; letter-spacing:.12em; }
   .donemark { font-weight:bold; font-size:9px; white-space:nowrap; }
@@ -141,7 +142,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=7"></script>
-<script src="nala-shared.js?v=5"></script>
+<script src="nala-shared.js?v=6"></script>
 <script>
 // date state + header wiring, dates, look-back: nala-shared.js
 var nav = initDateNav();
@@ -184,7 +185,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
       rows.push({ n:n, rec:r||{}, kind:kind });
     }
 
-    var order={svc:0, clean:1, ver:2, vac:3};   // services first: done at breakfast
+    var order={svc:0, clean:1, pre:2, ver:3, vac:4};   // services first: done at breakfast
     rows.sort(function(a,b){ return (order[a.kind]-order[b.kind]) || (a.n-b.n); });
 
     document.getElementById('nClean').textContent = nClean;
@@ -204,11 +205,12 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
     // printing all 17 pushed the sheet off A4. The three blank rows below are
     // for the manager to pen in anything the board could not confirm; the
     // 'To verify' count above says how many that might be.
-    rows = rows.filter(function(r){ return r.kind==='svc' || r.kind==='clean'; });
+    rows = rows.filter(function(r){ return r.kind==='svc' || r.kind==='clean' || r.kind==='pre'; });
     rows.forEach(function(row){
       var g = row.rec;
       var chip='', cls='';
-      if (row.kind==='clean') chip='<span class="chip">Clean</span>';
+      if (row.kind==='pre') chip='<span class="chip pre">Pre-arrival</span>';
+      else if (row.kind==='clean') chip='<span class="chip">Clean</span>';
       else if (row.kind==='svc') chip='<span class="chip svc">Service</span>';
       else if (row.kind==='ver') chip='<span class="chip ver">Verify</span>';
       else { cls=' class="vac"'; chip='<span class="muted">Vacant</span>'; }
