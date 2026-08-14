@@ -113,9 +113,12 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 
 
 .menustate { text-align:center; margin-top:12px; }
-  .menustate span { display:inline-block; padding:6px 14px; border-radius:20px;
-                    font-family:var(--ui-font); font-size:9px;
-                    letter-spacing:.16em; text-transform:uppercase; }
+  /* Both states are pills. The published one renders as an <a> and the
+     unpublished as a <span>, so this must match either - selecting only
+     span left the published state unstyled but for its background.     */
+  .menustate > * { display:inline-block; padding:6px 14px; border-radius:20px;
+                   font-family:var(--ui-font); font-size:9px;
+                   letter-spacing:.16em; text-transform:uppercase; }
   .menustate .yes { background:rgba(122,160,130,.22); color:#3F6B4C;
                     text-decoration:none; }
   .menustate .yes b { font-weight:normal; opacity:.75; }

@@ -112,7 +112,23 @@ with sync_playwright() as p:
     ck("external booking listed", bl["ext"])
 
     # menu pill
-    ck("menu published pill", "Menu published" in pg.locator("#menuState").inner_text())
+    ck("menu published pill", "menu published" in pg.locator("#menuState").inner_text().lower())
+    # both states are the same pill: the published one renders as an <a>, so a
+    # selector matching only span left it unstyled but for its background
+    def pill(): return pg.evaluate("""()=>{const e=document.querySelector('.menustate > *');
+      const cs=getComputedStyle(e);
+      return {fs:cs.fontSize, pad:cs.padding, tt:cs.textTransform,
+              r:cs.borderRadius, h:Math.round(e.getBoundingClientRect().height)};}""")
+    pubPill = pill()
+    realPill = pg.evaluate("()=>document.querySelector('.menustate').innerHTML")
+    pg.evaluate("""()=>{document.querySelector('.menustate').innerHTML =
+      '<span class="no">Menu not published</span>';}""")
+    pg.wait_for_timeout(100)
+    unpubPill = pill()
+    print("   published:", pubPill, "\n   unpublished:", unpubPill)
+    ck("published and unpublished are the same pill", pubPill == unpubPill)
+    pg.evaluate("(h)=>{document.querySelector('.menustate').innerHTML=h;}", realPill)
+    pg.wait_for_timeout(120)
     pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
     ck("nav menu opens on tap", pg.evaluate("()=>navDrop.classList.contains('open')"))
     pg.locator(".stats").click(); pg.wait_for_timeout(150)
