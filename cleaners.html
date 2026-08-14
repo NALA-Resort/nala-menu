@@ -51,7 +51,7 @@
 
   /* Colour means "this villa is ready to work on now", and which colour says
      which job: blue for a clean once the guest has gone, green for a service
-     once they are at breakfast. Orange is deliberately unused - it is held
+     once someone has noticed it free. Orange is deliberately unused, held
      for a warning state. A finished villa loses its colour entirely: it is
      no longer work, and must stop competing for attention.               */
   .tile.ready-clean { background:var(--blue);  border-color:var(--blueb); }
@@ -220,7 +220,7 @@ function load(){
                   pushedIn: pushedIn,
                   arrivingToday: !!(a && dkey(a) === todayKey()) });
     }
-    // services first: they are attempted during breakfast, before the
+    // services first: they are attempted while the guest is out, before the
     // departure cleans open up. Then cleans, verify, vacant, room order
     // within each block.
     var korder={svc:0, clean:1, ver:2, vac:3};
@@ -263,7 +263,7 @@ function render(){
   function sub(r){
     var h = STATE.hk[r.n] || {};
     var gone = h.departed || r.pushedIn;
-    if (r.kind === 'svc') return (h.bfast || h.avail) ? 0 : 1;
+    if (r.kind === 'svc') return h.bfast ? 0 : 1;
     if (r.kind === 'clean'){
       if (gone && r.arrivingToday) return 0;
       if (gone) return 1;
@@ -273,10 +273,9 @@ function render(){
   }
   function seated(r){
     var h = STATE.hk[r.n] || {};
-    var mark = h.bfast || h.avail;
-    if (r.kind !== 'svc' || !mark) return 0;
-    var t = new Date(mark).getTime();
-    return isNaN(t) ? 0 : t;      /* earliest first = noticed longest ago */
+    if (r.kind !== 'svc' || !h.bfast) return 0;
+    var t = new Date(h.bfast).getTime();
+    return isNaN(t) ? 0 : t;      /* earliest first = seated longest */
   }
   STATE.rows.sort(function(a,b){
     return (rank(a)-rank(b)) || (sub(a)-sub(b)) || (seated(a)-seated(b)) || (a.n-b.n);
@@ -293,7 +292,7 @@ function render(){
     else if (h.pushed) cls+=' done pushed';
     else if (h.done) cls+=' done';
     else if (row.kind==='clean' && (h.departed || row.pushedIn)) cls+=' ready-clean';
-    else if (row.kind==='svc' && (h.bfast || h.avail)) cls+=' ready-svc';
+    else if (row.kind==='svc' && h.bfast) cls+=' ready-svc';
 
     var chip='';
     if (row.kind==='clean') chip='<span class="chip">'+
@@ -311,12 +310,7 @@ function render(){
       else if (h.bfast){
         var m = mins(h.bfast);
         var w = m >= 20 ? ' late' : (m >= 15 ? ' soon' : '');
-        sub='B\u2019fast <b class="el'+w+'">'+m+'m</b>';
-      }
-      else if (h.avail){
-        var ma = mins(h.avail);
-        var wa = ma >= 20 ? ' late' : (ma >= 15 ? ' soon' : '');
-        sub='Available <b class="el'+wa+'">'+ma+'m</b>';
+        sub='Available <b class="el'+w+'">'+m+'m</b>';
       }
       else if (row.kind==='pre') sub='Arriving today';
       else if (row.kind==='ver') sub='';   /* the pill already says Unknown */
@@ -444,7 +438,7 @@ function drawSheet(mode){
       return;
     }
     /* A pre-arrival is a single job with a single outcome: do it, or decide it
-       was never one. Nothing else applies - no breakfast, no departure, no
+       was never one. Nothing else applies - no availability, no departure, no
        pushing, and no switching it to a clean or a service.              */
     if (CUR.kind==='pre'){
       rows += h.done
@@ -468,19 +462,10 @@ function drawSheet(mode){
          A stale mark can still be cleared.                              */
       var stillHere = !(h.departed || CUR.pushedIn) && CUR.kind !== 'pre';
       if (h.bfast){
-        rows+='<button class="pbtn" disabled style="opacity:.6">Seated at breakfast '+hhmm(h.bfast)+' ('+mins(h.bfast)+'m ago)</button>';
-        rows+='<button class="pbtn warn" onclick="drawSheet(\'clearbf\')">Clear breakfast</button>';
+        rows+='<button class="pbtn" disabled style="opacity:.6">Seen available '+hhmm(h.bfast)+' ('+mins(h.bfast)+'m ago)</button>';
+        rows+='<button class="pbtn warn" onclick="drawSheet(\'clearbf\')">Clear</button>';
       } else if (stillHere) {
-        rows+='<button class="pbtn" onclick="drawSheet(\'bfast\')">Guest at breakfast</button>';
-      }
-      /* Breakfast is one way to know a villa is free right now. Someone
-         walking past and finding it empty is another, and it ages the same
-         way - an observation from half an hour ago is not worth acting on. */
-      if (h.avail){
-        rows+='<button class="pbtn" disabled style="opacity:.6">Seen available '+hhmm(h.avail)+' ('+mins(h.avail)+'m ago)</button>';
-        rows+='<button class="pbtn warn" onclick="drawSheet(\'clearav\')">Clear</button>';
-      } else if (stillHere) {
-        rows+='<button class="pbtn" onclick="drawSheet(\'avail\')">Possibly available</button>';
+        rows+='<button class="pbtn" onclick="drawSheet(\'bfast\')">Possibly available</button>';
       }
       if (CUR.kind==='clean' && !CUR.arrivingToday){
         rows += h.pushed
@@ -546,7 +531,7 @@ function drawSheet(mode){
 
   if (mode==='bfast'){
     b.innerHTML=head+
-      '<div class="st" style="margin-bottom:6px">Seated when?</div>'+
+      '<div class="st" style="margin-bottom:6px">Seen available when?</div>'+
       '<button class="pbtn solid" onclick="stampBf(0)">Just now</button>'+
       '<div class="timerow">'+
         '<button class="pbtn" onclick="stampBf(5)">5 min ago</button>'+
@@ -556,25 +541,6 @@ function drawSheet(mode){
       '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
   }
 
-  if (mode==='avail'){
-    b.innerHTML=head+
-      '<div class="st" style="margin-bottom:6px">Seen available when?</div>'+
-      '<button class="pbtn solid" onclick="stampAv(0)">Just now</button>'+
-      '<div class="timerow">'+
-        '<button class="pbtn" onclick="stampAv(5)">5 min ago</button>'+
-        '<button class="pbtn" onclick="stampAv(10)">10 min ago</button>'+
-        '<button class="pbtn" onclick="stampAv(15)">15 min ago</button>'+
-      '</div>'+
-      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
-    return;
-  }
-  if (mode==='clearav'){
-    b.innerHTML=head+
-      '<div class="st" style="margin-bottom:6px">Clear the available note for villa '+n+'?</div>'+
-      '<button class="pbtn warn" onclick="setField('+n+',{avail:null},document.getElementById(\'perr\'))">Yes - clear</button>'+
-      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
-    return;
-  }
   if (mode==='done'){
     var doneWord = CUR.kind==='clean' ? 'cleaned'
                  : CUR.kind==='pre' ? 'pre-arrived' : 'serviced';
@@ -618,7 +584,7 @@ function drawSheet(mode){
   }
   if (mode==='clearbf'){
     b.innerHTML=head+
-      '<div class="st" style="margin-bottom:6px">Clear the breakfast mark for room '+n+'?</div>'+
+      '<div class="st" style="margin-bottom:6px">Clear the available note for villa '+n+'?</div>'+
       '<button class="pbtn warn" onclick="setField('+n+',{bfast:null},document.getElementById(\'perr\'))">Yes - clear</button>'+
       '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
   }
@@ -626,11 +592,6 @@ function drawSheet(mode){
 function stampBf(minsAgo){
   var t=new Date(Date.now()-minsAgo*60000).toISOString();
   setField(CUR.n, {bfast:t}, document.getElementById('perr'));
-}
-
-function stampAv(minsAgo){
-  var t=new Date(Date.now()-minsAgo*60000).toISOString();
-  setField(CUR.n, {avail:t}, document.getElementById('perr'));
 }
 
 load();

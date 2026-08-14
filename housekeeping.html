@@ -201,7 +201,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
     }
 
     var tb = document.getElementById('rows');
-    // Only real jobs go on paper. Unknown and empty villas are not jobs, and
+    // Only real jobs go on paper. Verify and vacant rooms are not jobs, and
     // printing all 17 pushed the sheet off A4. The three blank rows below are
     // for the manager to pen in anything the board could not confirm; the
     // 'To verify' count above says how many that might be.

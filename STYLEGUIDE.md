@@ -36,7 +36,7 @@ Publish only once the mockup is approved. Then it is one commit.
 
 **tier-app** - the live tools: tally.html (res tally), cleaners.html (hc tally).
 Job: fast operational reading. Cream/ink palette, big tap targets, colour used
-only to encode state (green dining/done, amber breakfast, red attention,
+only to encode state (green dining/done/ready, amber ageing, red attention,
 dashed = unknown/awaiting).
 
 **tier-print** - the sheets: list.html (res print), housekeeping.html (hc print).
@@ -154,16 +154,16 @@ entirely and the number leads: **3 - Mark Whitfield**.
 
 A manager can set a villa's job for the day from the Cleans board: **To be
 cleaned** or **To be serviced**, or hand it back to the booking dates. It is
-stored at `/hk/<date>/<villa>/kind`, beside the breakfast and done marks, so
+stored at `/hk/<date>/<villa>/kind`, beside the availability and done marks, so
 it expires with the day.
 
 The rule lives in `hkClassify()` in nala-shared.js, so the board and the
 printed sheet agree by construction rather than by remembering to change two
 places. A hand-set job beats whatever the dates imply.
 
-Three options: **To be cleaned**, **To be serviced**, **Mark as vacant**.
+Three options: **To be cleaned**, **To be serviced**, **Mark as empty**.
 Each goes through a confirm screen, the same two-step every other action on
-this page uses. A vacant villa drops to 22% opacity and offers no cleaning
+this page uses. An empty villa drops to 22% opacity and offers no cleaning
 actions, only the job controls - it is not work, and must not compete with
 the villas that are.
 
@@ -190,43 +190,28 @@ colour says which job.
 
 - **White** - a job is set but the villa is not ready yet
 - **Blue** - ready to clean, the guest has departed
-- **Green** - ready to service, the guest is at breakfast
+- **Green** - ready to service, someone has noticed the villa is free
 - **Light grey with a green tick** - finished. It loses its colour entirely:
   it is no longer work and must stop competing for attention
-- **Very pale** - vacant, not a job at all
+- **Very pale** - empty, not a job at all
 - **Orange** - deliberately unused, held for a warning state
 
 Order down the board, top left is highest priority: services, then cleans,
-then finished work, then unknown, then vacant. Finished work sinks below
+then finished work, then unknown, then empty. Finished work sinks below
 outstanding work but stays above the villas nobody has decided about.
 
-Within **services**, the guest seated longest at breakfast leads - they are
-the most likely to walk back in. The elapsed timer turns amber at 15 minutes
-and red at 20, as a warning that the window is closing.
+Within **services**, the villa noticed free longest ago leads - the guest is
+the most likely to walk back in. The mark is **Possibly available**, stamped
+with a time, and its elapsed timer turns amber at 15 minutes and red at 20:
+an observation from half an hour ago is not worth acting on.
+
+One mark, not two. Breakfast was only ever a way of saying "the villa is free
+right now", so it says that instead, and it works whatever the hour.
 
 Within **cleans**, in order: a departed villa with a guest arriving today,
 then any departed villa, then the rest. Two departed villas waiting to be
 cleaned sort numerically - once the guest has gone there is no reason to
 prefer one over the other, so they may as well be next to each other.
-
-## Possibly available
-
-Breakfast is one way to know a villa is free right now. Someone walking past
-and finding it empty is another, and anyone can record it: **Possibly
-available**, stamped with a time exactly as breakfast is.
-
-It behaves identically. It turns the tile green, it counts as ready for the
-ordering, and its elapsed timer ages amber at 15 minutes and red at 20,
-because an observation from half an hour ago is not worth acting on. It can
-be cleared the same way.
-
-The tile reads "Available 17m". The full phrase lives on the button and in
-the sheet, where there is room for it.
-
-**Empty, not vacant.** The word is empty everywhere a person reads it. Only
-management can set it. Note the display gate is only as good as the logins:
-while the housekeeping user does not exist, everyone signs in as management
-and sees everything.
 
 ## Pre-arrival
 
@@ -234,7 +219,7 @@ A villa nobody is checking out of, but someone is checking into: it was
 cleaned yesterday or last week, or its state is unknown, and it needs a look
 before the guest walks in.
 
-Only an **unknown** or **vacant** villa can be set to it. Never a service -
+Only an **unknown** or **empty** villa can be set to it. Never a service -
 that guest is staying on, so nobody is arriving.
 
 It takes no colour. Colour means "something changed, go now", and a
@@ -253,7 +238,7 @@ or decide it was never one.
 - Outstanding: **Mark as pre-arrived**, Back to unknown, Close
 - Done: **Undo done**, Back to unknown, Close
 
-No breakfast, no departure, no push, and no switching it to a clean or a
+No availability, no departure, no push, and no switching it to a clean or a
 service. Nobody is in the villa yet, and nobody is leaving it.
 
 ## Pushing a clean to tomorrow
@@ -265,12 +250,17 @@ wait. It writes `pushed` to `/hk/<date>/<villa>`.
 A pushed villa reads like finished work, grey and out of the way, but the
 word is **Pushed** in purple: deferred, not done. For the rest of today it
 sorts BELOW the finished villas - it is not today's work at all - while
-staying above the undecided and vacant ones. The board also reads
+staying above the undecided and empty ones. The board also reads
 yesterday's marks, so a villa pushed yesterday and never finished arrives
 today as a clean that is already departed - the guest left, the work did not
 happen - and sorts at priority 2 with the other departed cleans.
 
 **Undo push** brings it back to today.
+
+**Empty, not vacant.** The word is empty everywhere a person reads it, on the
+board and on the printed sheet. Only management can set it - though the
+display gate is only as good as the logins, and while the housekeeping user
+does not exist everyone signs in as management and sees everything.
 
 ## Multi-select on the Cleans board
 
@@ -308,208 +298,6 @@ longer has, and a container quietly costing layout width. Patching around
 those is what makes a page get worse with every edit. Fix them at the source
 and re-measure; do not add a rule to counteract another rule.
 
-## Wording
-
-Guests stay in **villas**, not rooms. Every visible label says villa. The word
-"room" survives only in code: database paths (`roomguests/<date>/<room>`),
-variables, ids and CSS class names, where renaming it would orphan bookings
-already stored. In a list where every line is a villa, the word is dropped
-entirely and the number leads: **3 - Mark Whitfield**.
-
-## Setting the job by hand
-
-A manager can set a villa's job for the day from the Cleans board: **To be
-cleaned** or **To be serviced**, or hand it back to the booking dates. It is
-stored at `/hk/<date>/<villa>/kind`, beside the breakfast and done marks, so
-it expires with the day.
-
-The rule lives in `hkClassify()` in nala-shared.js, so the board and the
-printed sheet agree by construction rather than by remembering to change two
-places. A hand-set job beats whatever the dates imply.
-
-Three options: **To be cleaned**, **To be serviced**, **Mark as vacant**.
-Each goes through a confirm screen, the same two-step every other action on
-this page uses. A vacant villa drops to 22% opacity and offers no cleaning
-actions, only the job controls - it is not work, and must not compete with
-the villas that are.
-
-A villa whose job is unknown carries ONE label, the pill reading Unknown, and
-nothing beneath it - two labels for one state says nothing twice. The pill is
-dashed grey, not red: unknown is a gap in what we know, not something wrong.
-Red stays reserved for alarm. Its sheet offers only the job controls, all
-three of them, because nothing can be completed on a villa nobody has decided
-about yet. Decide first, then it becomes work.
-
-The revert button tells the truth about what it will do: **Use booking
-dates** only when the dates actually decide a job, otherwise **Back to
-unknown**. A villa the dates cannot place says Unknown, not "occupancy not
-confirmed".
-
-Management only. The controls reuse the same login check that hides the nav
-menu from the housekeeping user - one gate, not two. Note this is a display
-gate: the database rules still allow any signed-in user to write the field.
-
-## Colour on the Cleans board
-
-Colour means one thing: **this villa is ready to work on now**, and which
-colour says which job.
-
-- **White** - a job is set but the villa is not ready yet
-- **Blue** - ready to clean, the guest has departed
-- **Green** - ready to service, the guest is at breakfast
-- **Light grey with a green tick** - finished. It loses its colour entirely:
-  it is no longer work and must stop competing for attention
-- **Very pale** - vacant, not a job at all
-- **Orange** - deliberately unused, held for a warning state
-
-Order down the board, top left is highest priority: services, then cleans,
-then finished work, then unknown, then vacant. Finished work sinks below
-outstanding work but stays above the villas nobody has decided about.
-
-Within **services**, the guest seated longest at breakfast leads - they are
-the most likely to walk back in. The elapsed timer turns amber at 15 minutes
-and red at 20, as a warning that the window is closing.
-
-Within **cleans**, in order: a departed villa with a guest arriving today,
-then any departed villa, then the rest. Two departed villas waiting to be
-cleaned sort numerically - once the guest has gone there is no reason to
-prefer one over the other, so they may as well be next to each other.
-
-## Possibly available
-
-Breakfast is one way to know a villa is free right now. Someone walking past
-and finding it empty is another, and anyone can record it: **Possibly
-available**, stamped with a time exactly as breakfast is.
-
-It behaves identically. It turns the tile green, it counts as ready for the
-ordering, and its elapsed timer ages amber at 15 minutes and red at 20,
-because an observation from half an hour ago is not worth acting on. It can
-be cleared the same way.
-
-The tile reads "Available 17m". The full phrase lives on the button and in
-the sheet, where there is room for it.
-
-**Empty, not vacant.** The word is empty everywhere a person reads it. Only
-management can set it. Note the display gate is only as good as the logins:
-while the housekeeping user does not exist, everyone signs in as management
-and sees everything.
-
-## Pre-arrival
-
-A villa nobody is checking out of, but someone is checking into: it was
-cleaned yesterday or last week, or its state is unknown, and it needs a look
-before the guest walks in.
-
-Only an **unknown** or **vacant** villa can be set to it. Never a service -
-that guest is staying on, so nobody is arriving.
-
-It takes no colour. Colour means "something changed, go now", and a
-pre-arrival is ready from the start because nobody has to leave first. The
-pill reads PRE-ARRIVAL with "Arriving today" beneath, and PRE-ARRIVED with
-the green tick once done, on the same grey as other finished work.
-
-It is not a clean and not a service, so it carries its own count, shown only
-when there are any - folding it into Cleans would misreport the morning's
-workload. It sorts after the cleans and before finished work, and it prints
-on the sheet.
-
-Its sheet is short, because a pre-arrival is one job with one outcome: do it
-or decide it was never one.
-
-- Outstanding: **Mark as pre-arrived**, Back to unknown, Close
-- Done: **Undo done**, Back to unknown, Close
-
-No breakfast, no departure, no push, and no switching it to a clean or a
-service. Nobody is in the villa yet, and nobody is leaving it.
-
-## Pushing a clean to tomorrow
-
-On a busy morning a clean can be deferred. **Push villa** appears only on a
-clean with no arrival that day - a villa someone checks into tonight cannot
-wait. It writes `pushed` to `/hk/<date>/<villa>`.
-
-A pushed villa reads like finished work, grey and out of the way, but the
-word is **Pushed** in purple: deferred, not done. For the rest of today it
-sorts BELOW the finished villas - it is not today's work at all - while
-staying above the undecided and vacant ones. The board also reads
-yesterday's marks, so a villa pushed yesterday and never finished arrives
-today as a clean that is already departed - the guest left, the work did not
-happen - and sorts at priority 2 with the other departed cleans.
-
-**Undo push** brings it back to today.
-
-## Multi-select on the Cleans board
-
-The footer carries Refresh on the left and Select multiple on the right. In
-select mode the button reads **Cancel** while nothing is picked and
-**Options** once something is, so one button covers the whole flow.
-
-Only villas whose job is **unknown** can be picked: the point is to decide
-several at once, and anything already decided has nothing to decide. Villas
-that cannot take part dim rather than disappear, so the grid keeps its shape.
-
-The options are the same sheet an unknown villa shows on its own, applied to
-every villa picked, and the board leaves select mode once the decision is
-made.
-
-## Tense on the Cleans board
-
-A villa reads **Clean** or **Service** while the work is outstanding and
-**Cleaned** or **Serviced** once it is done. The completion button names the
-job it completes - "Mark as cleaned", "Mark as serviced", with a tick - not a
-generic "done". Staff should never have to remember which kind of job they
-are finishing.
-
-The board derives each villa's job on every render rather than freezing it at
-load, so setting one takes effect on the tile immediately and the villa
-re-sorts into its block. Anything that requires a refresh to show is a bug.
-
-## Mock up before you build
-
-**Every visual change is rendered and shown before it is published.** No
-exceptions, and no "this one is too small to bother".
-
-The evidence is one day's commit log. Changes that were mocked first went in
-as a single commit each and stayed. Changes published first and iterated on
-the phone took four and five commits and twice ended in a revert. The cost of
-a mockup is a minute; the cost of skipping it was hours.
-
-What a mockup means here:
-
-- Render it at the real width, 390pt for a phone screen, A4 or A5 for a sheet
-- Show the worst case as well as the ordinary one - the longest name, five
-  dietaries, a booking that carries a note AND a comment
-- Show the states side by side when a change alters one of them, so the
-  before is visible rather than remembered
-- Measure what the change was supposed to fix and quote the number, not an
-  impression
-
-If the target is subjective - "make it clearer", "more pronounced" - turn it
-into something measurable BEFORE writing code, or say plainly that it cannot
-be, and offer options instead of guessing. A guess at a subjective target is
-what leads to changing things nobody asked about in order to make the guess
-work.
-
-Publish only once the mockup is approved. Then it is one commit.
-
-## Clean up
-
-Every piece of work ends with a clean-up pass over the whole block that was
-touched, not just the lines that were edited. Look for:
-
-- **rules that fight each other** - two selectors setting the same property,
-  usually one original and one added later
-- **dead rules** - styling for markup that no longer exists
-- **comments that describe behaviour the code no longer has**
-- **containers that cost layout width** - padding or borders on a wrapper make
-  everything inside narrower, which shows up later as mysterious compression
-  in one place and not another
-- **shorthand doing more than intended** - `gap` sets both axes, `padding` sets
-  all four sides
-
-Patching around these is what turns a readable file into an unreadable one
-over a handful of edits. The clean-up is part of the job, not an extra.
-
 ## Dietaries
 
 Shown as pills, on the reservations board and the printed sheet. An allergy is
@@ -527,10 +315,10 @@ columns a busy guest stacked three deep and left the row half empty.
   dashed red pill. The three must separate at arm's length without reading
   the word, on the board and on paper.
 - **Order on both housekeeping pages: services, then cleans, then verify,
-  then vacant**, room order within each block. Services are attempted during
-  breakfast, before the departure cleans open up.
+  then empty**, villa order within each block. Services are attempted while
+  the guest is out, before the departure cleans open up.
 - **The printed clean sheet carries jobs only** - services and cleans - then
-  three blank write-in rows for anything penned on. Verify and vacant rooms
+  three blank write-in rows for anything penned on. Unknown and empty villas
   are not printed; the "To verify" count says how many to check. Rows are
   sized so that even a full house - all 17 rooms a job, plus the write-ins -
   stays within one A5 page. Do not loosen row padding without re-running the

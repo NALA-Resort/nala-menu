@@ -29,8 +29,7 @@ bf16=(now-datetime.timedelta(minutes=17)).isoformat()   # amber band
 bf24=(now-datetime.timedelta(minutes=24)).isoformat()   # red band
 hk={"7":{"done":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"},"2":{"bfast":bf},
     "11":{"kind":"clean"}, "17":{"kind":"pre"}, "13":{"kind":"pre","done":now.isoformat()}, "8":{"departed":True}, "12":{"departed":True},
-    "14":{"bfast":bf2}, "6":{"bfast":bf16}, "9":{"bfast":bf24},
-    "4":{"avail":bf16}}
+    "14":{"bfast":bf2}, "6":{"bfast":bf16}, "9":{"bfast":bf24}}
 prevHk={"16":{"pushed":(now-datetime.timedelta(days=1)).isoformat()}}
 def fb(route,request):
     u=request.url; m=request.method
@@ -101,15 +100,6 @@ with sync_playwright() as p:
     ck("17 minutes turns amber", "soon" in warn["amber"]["cls"])
     ck("24 minutes turns red", "late" in warn["red"]["cls"]
        and warn["red"]["col"]=="rgb(168, 50, 30)")
-
-    av=pg.evaluate("""()=>{const t=[...document.querySelectorAll('.tile')]
-        .find(x=>x.querySelector('.rn').textContent==='4');
-      const b=t.querySelector('.sub b');
-      return {txt:t.innerText.toLowerCase().replace(/\\n/g,' | '), cls:t.className,
-              band:b?b.className:''};}""")
-    print("   villa 4 seen available:", av)
-    ck("a villa seen available shows the note and ages like breakfast",
-       "available" in av["txt"] and "soon" in av["band"])
     chips=pg.evaluate("""()=>{const g=n=>[...document.querySelectorAll('#grid .tile')]
       .find(b=>b.querySelector('.rn').textContent===n).querySelector('.chip');
       const c=n=>{const e=g(n),s=getComputedStyle(e);return {bg:s.backgroundColor,fg:s.color,t:e.textContent};};
@@ -119,8 +109,8 @@ with sync_playwright() as p:
        chips["clean"]["bg"]=="rgb(28, 28, 26)" and chips["svc"]["bg"]=="rgba(0, 0, 0, 0)"
        and chips["clean"]["fg"]!=chips["svc"]["fg"])
     ck("room7 done green with time (6-digit ISO)", "done" in t["7"]["cls"] and re.search(r'Done \d{2}:\d{2}',t["7"]["txt"]))
-    ck("villa2 ready to service, with elapsed",
-       "ready-svc" in t["2"]["cls"] and re.search(r'B.fast 1[12]m',t["2"]["txt"]))
+    ck("villa2 ready to service, with elapsed since noticed",
+       "ready-svc" in t["2"]["cls"] and re.search(r'Available 1[12]m',t["2"]["txt"]))
     ck("room5 vacant faded", "vac" in t["5"]["cls"])
     ck("villa3 unknown, one label only",
        "Unknown" in t["3"]["txt"] and "Verify" not in t["3"]["txt"]
@@ -131,7 +121,7 @@ with sync_playwright() as p:
     us = pg.locator("#sheetBox").inner_text().lower()
     print("   unknown sheet:", us.replace("\n"," | "))
     ck("an unknown villa offers nothing to complete",
-       "mark as clean" not in us and "guest at breakfast" not in us and "departed" not in us)
+       "mark as clean" not in us and "possibly available" not in us and "departed" not in us)
     ck("an unknown villa can be set to any of the three jobs",
        "to be cleaned" in us and "to be serviced" in us and "mark as empty" in us)
     ck("unknown is grey, not an alarm",
@@ -146,20 +136,21 @@ with sync_playwright() as p:
     print("   vacant sheet:", vs.replace("\n"," | "))
     ck("vacant tile opens its sheet", pg.evaluate("()=>ov.className").endswith("show"))
     ck("vacant sheet offers no cleaning actions",
-       "mark as clean" not in vs and "guest at breakfast" not in vs)
+       "mark as clean" not in vs and "possibly available" not in vs)
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(150)
     # clean room sheet has departed option; svc doesn't
     tile(pg,1).click(); pg.wait_for_timeout(200)
     sh=pg.locator("#sheetBox").inner_text()
     print("   room1 sheet:", repr(sh)[:220])
     sh=sh.lower()
-    ck("clean sheet: done + breakfast + departed", "mark as cleaned" in sh and "guest at breakfast" in sh and "guest departed" in sh)
+    ck("clean sheet: done + breakfast + departed", "mark as cleaned" in sh and "possibly available" in sh and "guest departed" in sh)
     pg.locator(".pbtn.ghost",has_text="Close").click()
     tile(pg,2).click(); pg.wait_for_timeout(200)
     sh=pg.locator("#sheetBox").inner_text()
     print("   room2 sheet:", repr(sh)[:220])
     sh=sh.lower()
-    ck("service sheet: no departed option, shows seated info + clear", "guest departed" not in sh and "seated at breakfast" in sh and "clear breakfast" in sh)
+    ck("service sheet: no departed option, shows the note and a clear",
+       "guest departed" not in sh and "seen available" in sh and "clear" in sh)
     pg.locator(".pbtn.ghost",has_text="Close").click()
     # mark room1 done
     tile(pg,1).click(); pg.wait_for_timeout(150)
@@ -173,11 +164,11 @@ with sync_playwright() as p:
     # have no booking data so they are unknown and offer no cleaning actions.
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
     tile(pg,2).click(); pg.wait_for_timeout(150)
-    pg.locator(".pbtn",has_text="Clear breakfast").click(); pg.wait_for_timeout(200)
+    pg.locator(".pbtn",has_text="Clear").click(); pg.wait_for_timeout(200)
     pg.evaluate("()=>[...document.querySelectorAll('.pbtn')].find(x=>/yes/i.test(x.textContent)).click()")
     pg.wait_for_timeout(250)
     tile(pg,2).click(); pg.wait_for_timeout(150)
-    pg.locator(".pbtn",has_text="Guest at breakfast").click(); pg.wait_for_timeout(150)
+    pg.locator(".pbtn",has_text="Possibly available").click(); pg.wait_for_timeout(150)
     pg.locator(".pbtn",has_text="10 min ago").click(); pg.wait_for_timeout(300)
     w=[x for x in WRITES if re.search(r"/hk/"+today+r"/2\.json",x["u"]) and "bfast" in x["b"] and "null" not in x["b"]]
     okb=False
@@ -311,7 +302,7 @@ with sync_playwright() as p:
     ps = pg.locator("#sheetBox").inner_text().lower()
     ck("a clean with no arrival today can be pushed", "push villa" in ps)
 
-    ck("a departed villa is not offered breakfast", "guest at breakfast" not in ps)
+    ck("a departed villa is not offered breakfast", "possibly available" not in ps)
     ck("a departed villa cannot be set to a service", "to be serviced" not in ps)
     ck("a departed villa cannot be marked empty", "mark as empty" not in ps)
 
@@ -330,8 +321,8 @@ with sync_playwright() as p:
     ck("its completion button names the job", "mark as pre-arrived" in pre)
 
     ck("a pre-arrival offers only its own job, back to unknown, and close",
-       "guest at breakfast" not in pre and "to be cleaned" not in pre
-       and "to be serviced" not in pre and "mark as vacant" not in pre
+       "possibly available" not in pre and "to be cleaned" not in pre
+       and "to be serviced" not in pre and "mark as empty" not in pre
        and "push villa" not in pre and "back to unknown" in pre)
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
     tile(pg,13).click(); pg.wait_for_timeout(250)
@@ -347,7 +338,7 @@ with sync_playwright() as p:
     ck("an unknown villa can be set as a pre-arrival",
        "set as pre-arrival" in pg.locator("#sheetBox").inner_text().lower())
     ck("a pre-arrival is not offered breakfast - nobody is there yet",
-       "guest at breakfast" not in pre)
+       "possibly available" not in pre)
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
     tile(pg,2).click(); pg.wait_for_timeout(250)
     ck("a service cannot be set as a pre-arrival",
