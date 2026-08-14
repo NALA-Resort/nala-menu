@@ -410,7 +410,7 @@ with sync_playwright() as p:
     print("   housekeeping sheet:", hkSheet.replace("\n"," | "))
     ck("housekeeping login cannot change the job",
        "to be cleaned" not in hkSheet and "to be serviced" not in hkSheet
-       and "modify today" not in hkSheet)
+       and "admin options" not in hkSheet)
 
     print("   housekeeping sees:", hkSheet.replace("\n"," | "))
     ck("housekeeping sees no job controls at all, on any villa state",

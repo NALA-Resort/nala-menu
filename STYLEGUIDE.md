@@ -179,8 +179,11 @@ dates** only when the dates actually decide a job, otherwise **Back to
 unknown**. A villa the dates cannot place says Unknown, not "occupancy not
 confirmed".
 
-Everything under the **Modify today's job** heading is management only: the
-three jobs, the revert, and the heading itself. The controls reuse the same
+Everything under the **Admin options** heading is management only: the three
+jobs, the revert, and the heading itself. A cleaner sees only what sits above
+it - the job, the marks, and Close. The heading names who may use it rather
+than what it does, because that is the thing a cleaner needs to understand
+about it. The controls reuse the same
 login check that hides the nav menu from the housekeeping user - one gate,
 not two. Note this is a display
 gate: the database rules still allow any signed-in user to write the field.
