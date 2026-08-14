@@ -117,8 +117,15 @@ with sync_playwright() as p:
     # selector matching only span left it unstyled but for its background
     def pill(): return pg.evaluate("""()=>{const e=document.querySelector('.menustate > *');
       const cs=getComputedStyle(e);
+      const b=e.getBoundingClientRect();
+      const rng=document.createRange(); rng.selectNodeContents(e);
+      const t=rng.getBoundingClientRect();
+      /* letter-spacing leaves a trailing space inside the box, so the text
+         box is NOT the ink. Check the right padding compensates for it. */
       return {fs:cs.fontSize, pad:cs.padding, tt:cs.textTransform,
-              r:cs.borderRadius, h:Math.round(e.getBoundingClientRect().height)};}""")
+              r:cs.borderRadius, h:Math.round(b.height),
+              inkOff:(parseFloat(cs.paddingLeft) -
+                      (parseFloat(cs.paddingRight)+parseFloat(cs.letterSpacing))).toFixed(2)};}""")
     pubPill = pill()
     realPill = pg.evaluate("()=>document.querySelector('.menustate').innerHTML")
     pg.evaluate("""()=>{document.querySelector('.menustate').innerHTML =
@@ -127,6 +134,7 @@ with sync_playwright() as p:
     unpubPill = pill()
     print("   published:", pubPill, "\n   unpublished:", unpubPill)
     ck("published and unpublished are the same pill", pubPill == unpubPill)
+    ck("the text sits centred in the pill", abs(float(pubPill["inkOff"])) < 0.2)
     pg.evaluate("(h)=>{document.querySelector('.menustate').innerHTML=h;}", realPill)
     pg.wait_for_timeout(120)
     pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
