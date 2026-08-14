@@ -140,9 +140,11 @@ actions, only the job controls - it is not work, and must not compete with
 the villas that are.
 
 A villa whose job is unknown carries ONE label, the pill reading Unknown, and
-nothing beneath it - two labels for one state says nothing twice. Its sheet
-offers only the job controls: nothing can be completed on a villa nobody has
-decided about yet. Decide first, then it becomes work.
+nothing beneath it - two labels for one state says nothing twice. The pill is
+dashed grey, not red: unknown is a gap in what we know, not something wrong.
+Red stays reserved for alarm. Its sheet offers only the job controls, all
+three of them, because nothing can be completed on a villa nobody has decided
+about yet. Decide first, then it becomes work.
 
 The revert button tells the truth about what it will do: **Use booking
 dates** only when the dates actually decide a job, otherwise **Back to
@@ -189,9 +191,11 @@ actions, only the job controls - it is not work, and must not compete with
 the villas that are.
 
 A villa whose job is unknown carries ONE label, the pill reading Unknown, and
-nothing beneath it - two labels for one state says nothing twice. Its sheet
-offers only the job controls: nothing can be completed on a villa nobody has
-decided about yet. Decide first, then it becomes work.
+nothing beneath it - two labels for one state says nothing twice. The pill is
+dashed grey, not red: unknown is a gap in what we know, not something wrong.
+Red stays reserved for alarm. Its sheet offers only the job controls, all
+three of them, because nothing can be completed on a villa nobody has decided
+about yet. Decide first, then it becomes work.
 
 The revert button tells the truth about what it will do: **Use booking
 dates** only when the dates actually decide a job, otherwise **Back to

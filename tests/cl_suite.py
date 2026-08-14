@@ -90,6 +90,12 @@ with sync_playwright() as p:
     print("   unknown sheet:", us.replace("\n"," | "))
     ck("an unknown villa offers nothing to complete",
        "villa done" not in us and "guest at breakfast" not in us and "departed" not in us)
+    ck("an unknown villa can be set to any of the three jobs",
+       "to be cleaned" in us and "to be serviced" in us and "mark as vacant" in us)
+    ck("unknown is grey, not an alarm",
+       "rgb(153, 153, 144)" in pg.evaluate(
+         "()=>{const c=[...document.querySelectorAll('.tile .chip.ver')][0];"
+         "return c? getComputedStyle(c).color+' '+getComputedStyle(c).borderColor : '';}"))
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)    # a vacant villa opens like any other, but offers no work to do
     pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.className.includes('vac')).click()")
     pg.wait_for_timeout(200)

@@ -116,8 +116,10 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
                 background:var(--ink); color:var(--cream); text-transform:uppercase; }
   .tile .chip.svc { background:transparent; border-color:#B5B5AD; color:#6A6A63;
                     font-weight:normal; letter-spacing:.12em; }
-  .tile .chip.ver { background:transparent; border-style:dashed; border-color:var(--red);
-                    color:var(--red); }
+  /* Unknown is a gap in what we know, not an alarm. Dashed to say "not
+     settled", but grey - red is reserved for something being wrong.     */
+  .tile .chip.ver { background:transparent; border-style:dashed; border-color:var(--mid);
+                    color:var(--mid); }
   .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
   .tile .sub b { color:var(--ink); }
 
@@ -631,6 +633,7 @@ function drawSheet(mode){
         rows+='<div class="pdiv">Job for today</div>';
         rows+='<button class="pbtn" onclick="drawSheet(\'k-clean\')">To be cleaned</button>';
         rows+='<button class="pbtn" onclick="drawSheet(\'k-svc\')">To be serviced</button>';
+        if (CUR.kind!=='vac') rows+='<button class="pbtn" onclick="drawSheet(\'k-vac\')">Mark as vacant</button>';
         if (h.kind) rows+='<button class="pbtn warn" onclick="drawSheet(\'k-none\')">'+
           ((CUR.base==='clean'||CUR.base==='svc') ? 'Use booking dates' : 'Back to unknown')+'</button>';
       }
