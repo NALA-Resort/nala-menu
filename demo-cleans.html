@@ -555,7 +555,7 @@ function render(){
     var chip='';
     if (row.kind==='clean') chip='<span class="chip">Clean</span>';
     else if (row.kind==='svc') chip='<span class="chip svc">Service</span>';
-    else if (row.kind==='ver') chip='<span class="chip ver">Verify</span>';
+    else if (row.kind==='ver') chip='<span class="chip ver">Unknown</span>';
     else chip='<span class="sub">Vacant</span>';
 
     var sub='';
@@ -563,7 +563,7 @@ function render(){
       if (h.done) sub='Done '+hhmm(h.done);
       else if (h.departed) sub='Departed';
       else if (h.bfast) sub='B\u2019fast <b>'+mins(h.bfast)+'m</b>';
-      else if (row.kind==='ver') sub='Occupancy unknown';
+      else if (row.kind==='ver') sub='';   /* the pill already says Unknown */
       else sub='Occupied';
     }
 
@@ -624,7 +624,9 @@ function drawSheet(mode){
 
   if (mode==='menu'){
     var rows='';
-    if (CUR.kind==='vac'){
+    /* Nothing can be completed on a villa whose job is unknown - decide what
+       it is first. Same shape as a vacant villa: job controls only.      */
+    if (CUR.kind==='vac' || CUR.kind==='ver'){
       if (window.IS_MANAGER){
         rows+='<div class="pdiv">Job for today</div>';
         rows+='<button class="pbtn" onclick="drawSheet(\'k-clean\')">To be cleaned</button>';

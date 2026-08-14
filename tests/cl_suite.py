@@ -80,8 +80,17 @@ with sync_playwright() as p:
     ck("room7 done green with time (6-digit ISO)", "done" in t["7"]["cls"] and re.search(r'Done \d{2}:\d{2}',t["7"]["txt"]))
     ck("room2 breakfast amber with elapsed", "bfast" in t["2"]["cls"] and re.search(r'B.fast 1[12]m',t["2"]["txt"]))
     ck("room5 vacant faded", "vac" in t["5"]["cls"])
-    ck("room3 verify, occupancy unknown", "Verify" in t["3"]["txt"] and "Occupancy unknown" in t["3"]["txt"])
-    # a vacant villa opens like any other, but offers no work to do
+    ck("villa3 unknown, one label only",
+       "Unknown" in t["3"]["txt"] and "Verify" not in t["3"]["txt"]
+       and "Occupancy" not in t["3"]["txt"])
+
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
+    tile(pg,3).click(); pg.wait_for_timeout(250)
+    us = pg.locator("#sheetBox").inner_text().lower()
+    print("   unknown sheet:", us.replace("\n"," | "))
+    ck("an unknown villa offers nothing to complete",
+       "villa done" not in us and "guest at breakfast" not in us and "departed" not in us)
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)    # a vacant villa opens like any other, but offers no work to do
     pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.className.includes('vac')).click()")
     pg.wait_for_timeout(200)
     vs = pg.locator("#sheetBox").inner_text().lower()
@@ -111,24 +120,31 @@ with sync_playwright() as p:
     ck("PATCH done for room1", len(w)==1 and "done" in json.loads(w[0]["b"]))
     ck("room1 tile green, done count 2, sheet closed",
        pg.evaluate("()=>({c:nDone.textContent,cls:[...document.querySelectorAll('#grid .tile')].find(b=>b.querySelector('.rn').textContent==='1').className,ov:ov.className})")=={"c":"2","cls":"tile done","ov":"ov"})
-    # breakfast stamp 10 min ago on room 3
-    tile(pg,3).click(); pg.wait_for_timeout(150)
+    # breakfast stamp on a villa that has a job. Villa 2 is a service; 3 and 6
+    # have no booking data so they are unknown and offer no cleaning actions.
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
+    tile(pg,2).click(); pg.wait_for_timeout(150)
+    pg.locator(".pbtn",has_text="Clear breakfast").click(); pg.wait_for_timeout(200)
+    pg.evaluate("()=>[...document.querySelectorAll('.pbtn')].find(x=>/yes/i.test(x.textContent)).click()")
+    pg.wait_for_timeout(250)
+    tile(pg,2).click(); pg.wait_for_timeout(150)
     pg.locator(".pbtn",has_text="Guest at breakfast").click(); pg.wait_for_timeout(150)
     pg.locator(".pbtn",has_text="10 min ago").click(); pg.wait_for_timeout(300)
-    w=[x for x in WRITES if re.search(r"/hk/"+today+r"/3\.json",x["u"])]
+    w=[x for x in WRITES if re.search(r"/hk/"+today+r"/2\.json",x["u"]) and "bfast" in x["b"] and "null" not in x["b"]]
     okb=False
     if w:
         ts=json.loads(w[0]["b"]).get("bfast",""); t3=datetime.datetime.fromisoformat(ts.replace("Z","+00:00"))
         okb=8<= (now.astimezone(datetime.timezone.utc)-t3.astimezone(datetime.timezone.utc)).total_seconds()/60 <=12
     ck("PATCH bfast ~10m ago", okb)
-    ck("room3 amber ~10m", "bfast" in pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.querySelector('.rn').textContent==='3').className"))
+    ck("villa2 amber ~10m", "bfast" in pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.querySelector('.rn').textContent==='2').className"))
     # rollback on rejection
     STATE["fail"]=True
-    tile(pg,4).click(); pg.wait_for_timeout(150)
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
+    tile(pg,2).click(); pg.wait_for_timeout(150)
     pg.locator(".pbtn.solid",has_text="Villa done").click(); pg.wait_for_timeout(150)
     pg.locator(".pbtn.solid",has_text="Yes - done").click(); pg.wait_for_timeout(400)
     ck("rejected write: error shown, sheet stays", "tell the manager" in pg.locator("#perr").inner_text())
-    ck("rejected write rolled back", "done" not in pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.querySelector('.rn').textContent==='4').className"))
+    ck("rejected write rolled back", "done" not in pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.querySelector('.rn').textContent==='2').className"))
     STATE["fail"]=False
     pg.locator(".pbtn.ghost",has_text="Back").click(); pg.wait_for_timeout(100)
     pg.locator(".pbtn.ghost",has_text="Close").click()

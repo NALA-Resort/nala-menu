@@ -139,6 +139,11 @@ this page uses. A vacant villa drops to 22% opacity and offers no cleaning
 actions, only the job controls - it is not work, and must not compete with
 the villas that are.
 
+A villa whose job is unknown carries ONE label, the pill reading Unknown, and
+nothing beneath it - two labels for one state says nothing twice. Its sheet
+offers only the job controls: nothing can be completed on a villa nobody has
+decided about yet. Decide first, then it becomes work.
+
 The revert button tells the truth about what it will do: **Use booking
 dates** only when the dates actually decide a job, otherwise **Back to
 unknown**. A villa the dates cannot place says Unknown, not "occupancy not
@@ -182,6 +187,11 @@ Each goes through a confirm screen, the same two-step every other action on
 this page uses. A vacant villa drops to 22% opacity and offers no cleaning
 actions, only the job controls - it is not work, and must not compete with
 the villas that are.
+
+A villa whose job is unknown carries ONE label, the pill reading Unknown, and
+nothing beneath it - two labels for one state says nothing twice. Its sheet
+offers only the job controls: nothing can be completed on a villa nobody has
+decided about yet. Decide first, then it becomes work.
 
 The revert button tells the truth about what it will do: **Use booking
 dates** only when the dates actually decide a job, otherwise **Back to
