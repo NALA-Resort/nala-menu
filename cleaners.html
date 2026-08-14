@@ -42,6 +42,9 @@
                     color:var(--mid); }
   .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
   .tile .sub b { color:var(--ink); }
+  /* the guest is coming back: amber from 15 minutes, red from 20 */
+  .tile .sub b.soon { color:var(--amberb); }
+  .tile .sub b.late { color:var(--red); }
 
   /* Colour means "this villa is ready to work on now", and which colour says
      which job: blue for a clean once the guest has gone, green for a service
@@ -175,12 +178,17 @@ function load(){
   .then(function(res){
     var responses=res[0]||{}, manual=res[1]||{}, hk=res[3]||{};
     var roomguests=resolveRoomGuestsHK(res[2]||{}, todayKey());
+    /* today's own bucket, unmerged: a villa with a guest arriving today is
+       the one that has to be turned around first */
+    var arriving = (res[2]||{})[todayKey()] || {};
 
     var rows=[];
     for (var n=1;n<=ROOMS;n++){
       var r=roomRecord(n, responses, manual, roomguests);
+      var a = arriving[n] && arriving[n].arrives ? parseDepDate(arriving[n].arrives) : null;
       rows.push({ n:n, kind:hkClassify(r, todayKey(), hk[n]),
-                  base:hkClassify(r, todayKey()) });
+                  base:hkClassify(r, todayKey()),
+                  arrivingToday: !!(a && dkey(a) === todayKey()) });
     }
     // services first: they are attempted during breakfast, before the
     // departure cleans open up. Then cleans, verify, vacant, room order
@@ -216,7 +224,28 @@ function render(){
     if (r.kind !== 'vac' && h.done) return korder.done;   /* finished work sinks */
     return korder[r.kind];
   }
-  STATE.rows.sort(function(a,b){ return (rank(a)-rank(b)) || (a.n-b.n); });
+  /* Within services, the guest seated longest is the one most likely to walk
+     back in, so it leads. Within cleans: a departed villa with someone
+     arriving today first, then any departed villa, then the rest.        */
+  function sub(r){
+    var h = STATE.hk[r.n] || {};
+    if (r.kind === 'svc') return h.bfast ? 0 : 1;
+    if (r.kind === 'clean'){
+      if (h.departed && r.arrivingToday) return 0;
+      if (h.departed) return 1;
+      return 2;
+    }
+    return 0;
+  }
+  function seated(r){
+    var h = STATE.hk[r.n] || {};
+    if (r.kind !== 'svc' || !h.bfast) return 0;
+    var t = new Date(h.bfast).getTime();
+    return isNaN(t) ? 0 : t;      /* earliest first = seated longest */
+  }
+  STATE.rows.sort(function(a,b){
+    return (rank(a)-rank(b)) || (sub(a)-sub(b)) || (seated(a)-seated(b)) || (a.n-b.n);
+  });
   STATE.rows.forEach(function(row){
     var h=STATE.hk[row.n]||{};
     if (row.kind==='clean') nClean++;
@@ -239,7 +268,11 @@ function render(){
     if (row.kind!=='vac'){
       if (h.done) sub='Done '+hhmm(h.done);
       else if (h.departed) sub='Departed';
-      else if (h.bfast) sub='B\u2019fast <b>'+mins(h.bfast)+'m</b>';
+      else if (h.bfast){
+        var m = mins(h.bfast);
+        var w = m >= 20 ? ' late' : (m >= 15 ? ' soon' : '');
+        sub='B\u2019fast <b class="el'+w+'">'+m+'m</b>';
+      }
       else if (row.kind==='ver') sub='';   /* the pill already says Unknown */
       else sub='Occupied';
     }

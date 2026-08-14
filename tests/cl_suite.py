@@ -19,10 +19,17 @@ roomguests={
  "1":{"name":"James","departs":today},
  "2":{"name":"Elena","departs":plus(2)},
  "7":{"name":"Priya","departs":today},
+ "8":{"name":"Owen","departs":today,"arrives":today},   # departed, arrival today
+ "12":{"name":"Sam","departs":today},          # departed, nobody arriving
+ "14":{"name":"Iris","departs":plus(3)},       # a service, seated later than villa 2
 }
 bf=(now-datetime.timedelta(minutes=12)).isoformat()
+bf2=(now-datetime.timedelta(minutes=4)).isoformat()
+bf16=(now-datetime.timedelta(minutes=17)).isoformat()   # amber band
+bf24=(now-datetime.timedelta(minutes=24)).isoformat()   # red band
 hk={"7":{"done":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"},"2":{"bfast":bf},
-    "11":{"kind":"clean"}}
+    "11":{"kind":"clean"}, "8":{"departed":True}, "12":{"departed":True},
+    "14":{"bfast":bf2}, "6":{"bfast":bf16}, "9":{"bfast":bf24}}
 def fb(route,request):
     u=request.url; m=request.method
     if m=="PATCH":
@@ -57,7 +64,7 @@ with sync_playwright() as p:
     ck("header row present", pg.evaluate("()=>!!document.querySelector('.daterow .navwrap')"))
     ck("date format with year", bool(re.match(r'^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{1,2}(st|nd|rd|th) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$',hd["d"])))
     # villa 11 is a staff-set clean, so cleans is one higher than the dates imply
-    ck("cleans 3 services 1 done 1", hd["c"]=="3" and hd["s"]=="1" and hd["dn"]=="1")
+    ck("cleans 5 services 2 done 1", hd["c"]=="5" and hd["s"]=="2" and hd["dn"]=="1")
     ck("management login sees menu", hd["nav"]=="block")
     pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
     ck("menu opens on tap", pg.evaluate("()=>navDrop.classList.contains('open')"))
@@ -68,8 +75,26 @@ with sync_playwright() as p:
     ordr=pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].map(b=>b.querySelector('.rn').textContent)")
     print("   tile order:", ordr)
     # services, then cleans, then finished work, then unknown, then vacant
-    ck("outstanding first, finished sinks below it, vacant last",
-       ordr[0]=="2" and ordr[1:3]==["1","11"] and ordr[3]=="7" and ordr[-1]=="5")
+    # services by how long the guest has been seated (villa 2 at 12m before
+    # villa 14 at 4m), then cleans: departed with an arrival today (8),
+    # departed (12), then the rest; finished (7) sinks; vacant (5) last
+    ck("services lead, seated longest first", ordr[0]=="2" and ordr[1]=="14")
+    ck("cleans: arrival today, then departed, then the rest",
+       ordr[2]=="8" and ordr[3]=="12" and ordr[4:6]==["1","11"])
+    ck("finished sinks below outstanding, vacant last",
+       ordr[6]=="7" and ordr[-1]=="5")
+
+    warn=pg.evaluate("""()=>{const g=n=>{const t=[...document.querySelectorAll('.tile')]
+        .find(x=>x.querySelector('.rn').textContent===n);
+      const b=t?t.querySelector('.sub b'):null;
+      return b? {t:b.textContent, cls:b.className, col:getComputedStyle(b).color} : null;};
+      return {twelveMin:g('2'), fourMin:g('14'), amber:g('6'), red:g('9')};}""")
+    print("   breakfast timers:", warn)
+    ck("a guest seated under 15 minutes is not warned yet", warn["fourMin"]["cls"]=="el")
+    ck("12 minutes is not yet amber", warn["twelveMin"]["cls"]=="el")
+    ck("17 minutes turns amber", "soon" in warn["amber"]["cls"])
+    ck("24 minutes turns red", "late" in warn["red"]["cls"]
+       and warn["red"]["col"]=="rgb(168, 50, 30)")
     chips=pg.evaluate("""()=>{const g=n=>[...document.querySelectorAll('#grid .tile')]
       .find(b=>b.querySelector('.rn').textContent===n).querySelector('.chip');
       const c=n=>{const e=g(n),s=getComputedStyle(e);return {bg:s.backgroundColor,fg:s.color,t:e.textContent};};

@@ -168,9 +168,18 @@ colour says which job.
 - **Very pale** - vacant, not a job at all
 - **Orange** - deliberately unused, held for a warning state
 
-Order down the board: services, then cleans, then finished work, then
-unknown, then vacant. Finished work sinks below outstanding work but stays
-above the villas nobody has decided about.
+Order down the board, top left is highest priority: services, then cleans,
+then finished work, then unknown, then vacant. Finished work sinks below
+outstanding work but stays above the villas nobody has decided about.
+
+Within **services**, the guest seated longest at breakfast leads - they are
+the most likely to walk back in. The elapsed timer turns amber at 15 minutes
+and red at 20, as a warning that the window is closing.
+
+Within **cleans**, in order: a departed villa with a guest arriving today,
+then any departed villa, then the rest. Two departed villas waiting to be
+cleaned sort numerically - once the guest has gone there is no reason to
+prefer one over the other, so they may as well be next to each other.
 
 ## Tense on the Cleans board
 
@@ -248,9 +257,18 @@ colour says which job.
 - **Very pale** - vacant, not a job at all
 - **Orange** - deliberately unused, held for a warning state
 
-Order down the board: services, then cleans, then finished work, then
-unknown, then vacant. Finished work sinks below outstanding work but stays
-above the villas nobody has decided about.
+Order down the board, top left is highest priority: services, then cleans,
+then finished work, then unknown, then vacant. Finished work sinks below
+outstanding work but stays above the villas nobody has decided about.
+
+Within **services**, the guest seated longest at breakfast leads - they are
+the most likely to walk back in. The elapsed timer turns amber at 15 minutes
+and red at 20, as a warning that the window is closing.
+
+Within **cleans**, in order: a departed villa with a guest arriving today,
+then any departed villa, then the rest. Two departed villas waiting to be
+cleaned sort numerically - once the guest has gone there is no reason to
+prefer one over the other, so they may as well be next to each other.
 
 ## Tense on the Cleans board
 
