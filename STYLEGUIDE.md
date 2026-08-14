@@ -104,6 +104,22 @@ content is guaranteed to collide with something at some width.
   button); every other corner in the row stays square.
 - **Sign-in**: owned by auth.js on every staff page; guest pages never see it.
 
+## Fonts
+
+Staff tools use **San Francisco**, the Apple system font, for everything:
+numbers, labels, chips, content. It is what every other app on the phone
+uses, it is built for small sizes, and its figures line up. Georgia's
+old-style figures made the stats look randomly sized, because 6 and 8 rise
+and 5, 7 and 9 drop.
+
+It is set once, as `--ui-font` in nala-ui.css. No page hardcodes a font
+stack. Changing the staff font is one line.
+
+**The guest pages are separate.** index.html, welcome.html and
+menu-print.html carry the brand and set their own font (Raleway today). They
+deliberately do NOT use these tokens, so the staff font can change without
+touching anything a guest sees.
+
 ## Tokens (defined once in nala-ui.css)
 
 Cream #F9F7F4 · Ink #1C1C1A · Mid #999990 · Rule #E0E0DA · Red #A8321E

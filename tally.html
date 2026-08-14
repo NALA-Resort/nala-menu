@@ -7,7 +7,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nala · Tonight's Numbers</title>
-<link rel="stylesheet" href="nala-ui.css?v=8">
+<link rel="stylesheet" href="nala-ui.css?v=9">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
@@ -15,20 +15,20 @@
           --green:#5E7D67;  --green-t:rgba(122,160,130,.26);  --green-b:rgba(122,160,130,.65);
           --terra:#9E6455;  --terra-t:rgba(184,106,90,.16);   --terra-b:rgba(184,106,90,.45);
           --slate:#57575E;  --slate-t:rgba(87,87,94,.10);     --slate-b:rgba(87,87,94,.28); }
-  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
+  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
          padding:28px 24px 0; -webkit-tap-highlight-color:transparent; }
   .wrap { max-width:520px; margin:0 auto; }
 
   .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
             background:#A8321E; color:#fff; padding:12px 18px;
-            font-family:Helvetica,Arial,sans-serif; font-size:11px; line-height:1.5;
+            font-family:var(--ui-font); font-size:11px; line-height:1.5;
             transform:translateY(-100%); transition:transform .25s; }
   .errbar.show { transform:translateY(0); }
 
 
 .menustate { text-align:center; margin-top:12px; }
   .menustate span { display:inline-block; padding:6px 14px; border-radius:20px;
-                    font-family:Helvetica,Arial,sans-serif; font-size:9px;
+                    font-family:var(--ui-font); font-size:9px;
                     letter-spacing:.16em; text-transform:uppercase; }
   .menustate .yes { background:rgba(122,160,130,.22); color:#3F6B4C;
                     text-decoration:none; }
@@ -36,7 +36,7 @@
   .menustate .no  { background:rgba(184,106,90,.18);  color:#8E4433; }
 
 
-.sec { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
+.sec { font-family:var(--ui-font); font-size:8px; letter-spacing:.3em;
          text-transform:uppercase; color:var(--mid); margin:26px 0 12px;
          display:flex; justify-content:space-between; align-items:baseline; }
   .sec a { color:var(--ink); text-decoration:none; border:1px solid var(--rule);
@@ -49,15 +49,15 @@
   .room {
     aspect-ratio:1; border:1px solid var(--rule); background:transparent;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    font-family:Helvetica,Arial,sans-serif; cursor:pointer; padding:0; position:relative;
+    font-family:var(--ui-font); cursor:pointer; padding:0; position:relative;
   }
   .room-n { font-size:13px; color:var(--ink); }
   .room-p { font-size:8px; color:var(--mid); margin-top:2px; min-height:10px; }
   .comb-note { display:flex; align-items:center; justify-content:space-between; gap:10px;
                border:1px solid var(--ink); border-radius:8px; padding:9px 12px; margin-bottom:12px;
-               font-family:Helvetica,Arial,sans-serif; font-size:11px; letter-spacing:.04em; }
+               font-family:var(--ui-font); font-size:11px; letter-spacing:.04em; }
   .comb-undo { border:none; background:transparent; color:var(--red); cursor:pointer;
-               font-family:Helvetica,Arial,sans-serif; font-size:10px; font-weight:bold;
+               font-family:var(--ui-font); font-size:10px; font-weight:bold;
                letter-spacing:.1em; text-transform:uppercase; padding:4px 0;
                -webkit-tap-highlight-color:transparent; }
   .room.in     { background:var(--green-t); border-color:var(--green-b); }
@@ -87,7 +87,7 @@
             transform:translateY(110%); transition:transform .22s; }
   .selbar.show { transform:translateY(0); }
   .selbar-inner { max-width:520px; margin:0 auto; }
-  .selcount { font-family:Helvetica,Arial,sans-serif; font-size:10px;
+  .selcount { font-family:var(--ui-font); font-size:10px;
               letter-spacing:.16em; text-transform:uppercase; color:var(--mid);
               text-align:center; margin-bottom:10px; }
   .selactions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
@@ -95,7 +95,7 @@
   .selbtn.comb:disabled { opacity:.35; }
   /* the make-up is a statement, not a label: sentence case and normal spacing
      so a full house still fits one line at 390pt (see STYLEGUIDE type scale) */
-  .tablesline { text-align:center; margin-top:8px; font-family:Helvetica,Arial,sans-serif;
+  .tablesline { text-align:center; margin-top:8px; font-family:var(--ui-font);
                 font-size:11.5px; letter-spacing:.02em; color:var(--ink);
                 white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   /* The ring is drawn as an overlay, the same way the room-tile group does it,
@@ -111,7 +111,7 @@
   .row.stubrow .row-name, .row.stubrow .row-sub { color:var(--mid); }
   .row.stubrow .row-sub { font-style:italic; }
   .selbtn { padding:13px 6px; border:1px solid transparent; color:#fff;
-            font-family:Helvetica,Arial,sans-serif; font-size:11px;
+            font-family:var(--ui-font); font-size:11px;
             letter-spacing:.1em; text-transform:uppercase; cursor:pointer; }
   .selbtn.vac  { background:var(--slate); }
   .selbtn.din  { background:var(--green); }
@@ -119,7 +119,7 @@
   .selbtn.quiet{ background:transparent; border-color:var(--rule); color:var(--mid); }
 
   .legend { display:flex; gap:14px; justify-content:center; margin-top:12px;
-            font-family:Helvetica,Arial,sans-serif; font-size:8px;
+            font-family:var(--ui-font); font-size:8px;
             letter-spacing:.12em; text-transform:uppercase; color:var(--mid); }
   .legend span { display:flex; align-items:center; gap:5px; }
   .sw { width:9px; height:9px; border:1px solid var(--rule); display:inline-block; }
@@ -144,15 +144,15 @@
   /* The villa number is the thing staff scan for, so it leads the line at a
      larger size in ink, then a dash, then the guest name. The word "villa"
      is dropped - every row is a villa, so repeating it says nothing.     */
-  .row-name .rm { font-family:Helvetica,Arial,sans-serif; font-size:15px;
+  .row-name .rm { font-family:var(--ui-font); font-size:15px;
                   font-weight:bold; letter-spacing:0; color:var(--ink); }
   .row-name .rm::after { content:' - '; font-weight:normal; color:var(--mid); }
-  .row-name .tag { font-family:Helvetica,Arial,sans-serif; font-size:8px;
+  .row-name .tag { font-family:var(--ui-font); font-size:8px;
                    letter-spacing:.18em; text-transform:uppercase; color:var(--mid);
                    border:1px solid var(--rule); padding:2px 6px; margin-left:8px;
                    border-radius:10px; vertical-align:middle; }
   .row-sub { font-style:italic; font-size:11px; color:var(--mid); margin-top:8px; }
-  .row-pax { font-family:Helvetica,Arial,sans-serif; font-size:12px; white-space:nowrap; }
+  .row-pax { font-family:var(--ui-font); font-size:12px; white-space:nowrap; }
   /* The bubble sits BEFORE the pax count so the pax figures line up down the
      list whether or not a booking carries a note.                         */
   .row-right { display:flex; align-items:center; gap:6px; white-space:nowrap;
@@ -169,7 +169,7 @@
      pills take the whole row width, not just the half beside the pax count. */
   .nm { white-space:nowrap; }
   .dietline { flex:0 0 100%; margin:8px 0 0; display:flex; flex-wrap:wrap; gap:5px; }
-  .dpill { font-family:Helvetica,Arial,sans-serif; font-size:11px; font-weight:bold;
+  .dpill { font-family:var(--ui-font); font-size:11px; font-weight:bold;
            letter-spacing:.06em; text-transform:uppercase; padding:3px 8px;
            border-radius:11px; background:rgba(168,50,30,.12); color:var(--red); }
   .dpill-al { background:var(--red); color:#fff; }
@@ -186,7 +186,7 @@
   .bub.flag svg { fill:var(--red); }
   .pop-who { font-size:15px; margin-bottom:14px; padding-bottom:12px;
              border-bottom:1px solid var(--rule); }
-  .pop-h { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.18em;
+  .pop-h { font-family:var(--ui-font); font-size:10px; letter-spacing:.18em;
            text-transform:uppercase; color:var(--mid); margin-bottom:6px; }
   .pop-h.dh { color:var(--red); }
   .pop-t { font-size:14px; line-height:1.45; margin-bottom:16px; }
@@ -197,7 +197,7 @@
              padding:12px 0 calc(12px + env(safe-area-inset-bottom)); }
   .actions .btn { flex:1 1 40%; text-align:center; white-space:nowrap; }
   .btn { flex:1; text-align:center; padding:13px; border:1px solid var(--ink);
-         font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
+         font-family:var(--ui-font); font-size:10px; letter-spacing:.15em;
          text-transform:uppercase; color:var(--ink); text-decoration:none;
          background:transparent; cursor:pointer; }
   .btn.solid { background:var(--ink); color:var(--cream); }
@@ -209,11 +209,11 @@
   .sheet { width:100%; max-width:520px; background:var(--cream);
            padding:26px 24px 34px; border-top:1px solid var(--rule);
            max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
-  .sheet h3 { font-family:Helvetica,Arial,sans-serif; font-size:11px; letter-spacing:.2em;
+  .sheet h3 { font-family:var(--ui-font); font-size:11px; letter-spacing:.2em;
               text-transform:uppercase; color:var(--mid); font-weight:normal;
               text-align:center; margin-bottom:18px; }
   .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid transparent;
-         font-family:Helvetica,Arial,sans-serif; font-size:12px;
+         font-family:var(--ui-font); font-size:12px;
          letter-spacing:.12em; text-transform:uppercase; color:#fff; cursor:pointer; }
   /* matches the room tile palette */
   .opt.solid { background:var(--green); border-color:var(--green); }   /* dining  - green */
@@ -222,36 +222,36 @@
   .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
   .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 16px; }
   .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
-         border-radius:50%; font-family:Helvetica,Arial,sans-serif; font-size:13px;
+         border-radius:50%; font-family:var(--ui-font); font-size:13px;
          color:var(--ink); cursor:pointer; }
   .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
   .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
-          border-radius:20px; font-family:Helvetica,Arial,sans-serif; font-size:10px;
+          border-radius:20px; font-family:var(--ui-font); font-size:10px;
           color:var(--mid); cursor:pointer; }
   .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
 
   .seg { display:flex; gap:6px; margin:2px 0 12px; }
   .seg button { flex:1; padding:11px 0; border:1px solid var(--rule); background:transparent;
-                font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.12em;
+                font-family:var(--ui-font); font-size:10px; letter-spacing:.12em;
                 text-transform:uppercase; color:var(--mid); cursor:pointer; border-radius:6px; }
   .seg button.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   .rm-row { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:2px 0 14px; }
   .rmp { height:40px; border:1px solid var(--rule); background:transparent;
-         font-family:Helvetica,Arial,sans-serif; font-size:12px; color:var(--ink);
+         font-family:var(--ui-font); font-size:12px; color:var(--ink);
          cursor:pointer; border-radius:6px; }
   .rmp.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   .gd { text-align:center; margin:-4px 0 14px; font-size:13px; line-height:1.55; }
-  .gd .gd-sub { display:block; font-family:Helvetica,Arial,sans-serif; font-size:10.5px;
+  .gd .gd-sub { display:block; font-family:var(--ui-font); font-size:10.5px;
                 color:var(--mid); letter-spacing:.03em; }
   .gd .gd-note { display:block; font-style:italic; font-size:12px; color:var(--mid); }
 
   .note-box { font-style:italic; font-size:13px; color:var(--mid); text-align:center;
               line-height:1.6; padding:0 4px 16px; }
-  .sheet-label { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.25em;
+  .sheet-label { font-family:var(--ui-font); font-size:8px; letter-spacing:.25em;
                  text-transform:uppercase; color:var(--mid); text-align:center; margin-bottom:8px; }
   .txt { width:100%; padding:12px; margin-bottom:8px; border:1px solid var(--rule);
-         background:transparent; font-family:Georgia,serif; font-size:16px; color:var(--ink); }
+         background:transparent; font-family:var(--ui-font); font-size:16px; color:var(--ink); }
   .txt::placeholder { color:var(--mid); font-style:italic; }
   .txt:focus { outline:none; border-color:var(--ink); }
 </style>

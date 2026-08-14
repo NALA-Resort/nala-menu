@@ -3,7 +3,13 @@
 
 :root {
   --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-  --ui-font:Helvetica,Arial,sans-serif;
+  /* Staff tools use the Apple system font: it is what every other app on the
+     phone uses, its figures line up, and it is built for small sizes. The
+     guest pages do NOT use these tokens - they carry the brand and set their
+     own font, so this can change without touching them.                  */
+  --ui-font:-apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto,
+            Helvetica, Arial, sans-serif;
+  --num-font:var(--ui-font);
 }
 
 /* tier surfaces used by controls */
@@ -66,7 +72,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
          font-family:var(--ui-font); }
 .stat { text-align:center; }
 .stat-n { display:block; font-size:27px; line-height:1; color:var(--ctl-ink);
-          font-family:Georgia,serif; }
+          font-family:var(--num-font); }
 .stat-l { display:block; font-size:8px; letter-spacing:.2em; text-transform:uppercase;
           color:var(--mid); margin-top:6px; }
 .stat.warn .stat-n { color:var(--red); }

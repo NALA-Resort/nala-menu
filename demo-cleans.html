@@ -14,7 +14,13 @@
 
 :root {
   --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-  --ui-font:Helvetica,Arial,sans-serif;
+  /* Staff tools use the Apple system font: it is what every other app on the
+     phone uses, its figures line up, and it is built for small sizes. The
+     guest pages do NOT use these tokens - they carry the brand and set their
+     own font, so this can change without touching them.                  */
+  --ui-font:-apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto,
+            Helvetica, Arial, sans-serif;
+  --num-font:var(--ui-font);
 }
 
 /* tier surfaces used by controls */
@@ -77,7 +83,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
          font-family:var(--ui-font); }
 .stat { text-align:center; }
 .stat-n { display:block; font-size:27px; line-height:1; color:var(--ctl-ink);
-          font-family:Georgia,serif; }
+          font-family:var(--num-font); }
 .stat-l { display:block; font-size:8px; letter-spacing:.2em; text-transform:uppercase;
           color:var(--mid); margin-top:6px; }
 .stat.warn .stat-n { color:var(--red); }
@@ -94,19 +100,19 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
           --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
           --blue:#E7E9EF; --blueb:#8A90A8; }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
+  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
          padding:24px 18px 0; -webkit-tap-highlight-color:transparent; }
   .wrap { max-width:520px; margin:0 auto; }
 
-  .brand { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.35em;
+  .brand { font-family:var(--ui-font); font-size:10px; letter-spacing:.35em;
            color:var(--mid); text-transform:uppercase; text-align:center; }
   h1 { font-size:19px; font-weight:bold; text-align:center; margin:8px 0 4px;
-       font-family:Helvetica,Arial,sans-serif; letter-spacing:.02em; }
+       font-family:var(--ui-font); letter-spacing:.02em; }
 
   .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:10px; }
   .tile { border:1.2px solid var(--rule); border-radius:10px; background:#fff;
           padding:12px 8px 10px; text-align:center; cursor:pointer; color:var(--ink);
-          font-family:Helvetica,Arial,sans-serif; position:relative; min-height:96px;
+          font-family:var(--ui-font); position:relative; min-height:96px;
           display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; }
   .tile .rn { font-size:20px; font-weight:bold; }
   /* Clean is a solid ink pill, Service a faint outline: the two jobs must be
@@ -156,7 +162,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .btn.active  { background:var(--ink); color:var(--cream); }
 
   .legend { margin-top:20px; display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
-            font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.1em;
+            font-family:var(--ui-font); font-size:9px; letter-spacing:.1em;
             text-transform:uppercase; color:var(--mid); }
   .legend i { display:inline-block; width:11px; height:11px; border-radius:3px;
               border:1.2px solid var(--rule); vertical-align:-1px; margin-right:5px; }
@@ -166,7 +172,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .legend .lf { background:#F2F2EF; border-color:var(--rule); }
 
   .bar { margin-top:22px; gap:10px; }
-  .btn { flex:1; padding:13px 0; text-align:center; font-family:Helvetica,Arial,sans-serif;
+  .btn { flex:1; padding:13px 0; text-align:center; font-family:var(--ui-font);
          font-size:11px; letter-spacing:.14em; text-transform:uppercase; cursor:pointer;
          border:1px solid var(--ink); background:transparent; color:var(--ink);
          border-radius:2px; text-decoration:none; }
@@ -176,7 +182,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
         align-items:flex-end; justify-content:center; z-index:40; }
   .ov.show { display:flex; }
   .sheet { background:var(--cream); width:100%; max-width:520px; border-radius:14px 14px 0 0;
-           padding:22px 20px 30px; font-family:Helvetica,Arial,sans-serif; }
+           padding:22px 20px 30px; font-family:var(--ui-font); }
   .sheet h2 { font-size:15px; letter-spacing:.04em; margin-bottom:2px; }
   .sheet .st { font-size:10.5px; color:var(--mid); letter-spacing:.08em; text-transform:uppercase;
                margin-bottom:16px; }
@@ -184,7 +190,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
           letter-spacing:.1em; text-transform:uppercase; background:#fff; color:var(--ink);
           border:1px solid var(--ink); border-radius:6px; cursor:pointer; font-family:inherit; }
   .pbtn.solid { background:var(--ink); color:#fff; }
-  .pdiv { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.18em;
+  .pdiv { font-family:var(--ui-font); font-size:9px; letter-spacing:.18em;
           text-transform:uppercase; color:var(--mid); margin:14px 0 6px; }
   .btick { width:15px; height:15px; margin-right:8px; vertical-align:-2px; display:inline-block; }
   .pbtn.ghost { border-color:var(--rule); color:var(--mid); }

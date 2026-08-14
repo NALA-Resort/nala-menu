@@ -7,14 +7,14 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nala · Service Sheet</title>
-<link rel="stylesheet" href="nala-ui.css?v=8">
+<link rel="stylesheet" href="nala-ui.css?v=9">
 <style>
   @page { size: A4 portrait; margin: 10mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: Helvetica, Arial, sans-serif; color:#111; background:#fff; padding:16px 16px 0; }
+  body { font-family:var(--ui-font); color:#111; background:#fff; padding:16px 16px 0; }
 
   .btn { padding:10px 20px; background:#111; color:#fff; border:none;
-         font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
+         font-family:var(--ui-font); font-size:10px; letter-spacing:.15em;
          text-transform:uppercase; cursor:pointer; }
   .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
   .stamp { margin-top:10px; font-size:7.5px; letter-spacing:.1em;
@@ -66,7 +66,7 @@
   .c-dc { width:48%; }
   .dwrap { display:flex; flex-wrap:wrap; gap:5px; align-items:baseline; }
   .dcom { font-size:9px; color:#333; margin-top:3px; }
-  .dpill { display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:8.5px;
+  .dpill { display:inline-block; font-family:var(--ui-font); font-size:8.5px;
            font-weight:bold; letter-spacing:.06em; text-transform:uppercase;
            padding:2px 7px; border-radius:9px;
            background:rgba(168,50,30,.12); color:#A8321E;
@@ -74,11 +74,11 @@
   .dpill-al { background:#A8321E; color:#fff; }
   .checkout { color:#A8321E; font-weight:bold; }
   .row-conflict td { background:#F7E4DF; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  .flag { display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:7px; font-weight:bold;
+  .flag { display:inline-block; font-family:var(--ui-font); font-size:7px; font-weight:bold;
           letter-spacing:.12em; border:1.2px solid #A8321E; color:#A8321E; padding:1px 4px;
           margin-right:5px; vertical-align:1px; }
   .dnote { display:block; font-size:8px; color:#333; font-style:italic; margin-top:2px; }
-  .pre { display:inline-block; font-family:Helvetica,Arial,sans-serif; font-size:7px; font-weight:bold;
+  .pre { display:inline-block; font-family:var(--ui-font); font-size:7px; font-weight:bold;
          letter-spacing:.12em; border:1px solid #888; color:#555; padding:1px 4px;
          margin-right:5px; vertical-align:1px; }
   tr.g-in td:first-child { border-left:1px solid #8C8C86; }
