@@ -5,10 +5,10 @@ database route intercepted, writes captured and inspected). Run from the
 repo root with a local copy of the site:
 
     python3 tests/tally_suite.py     # 69 - res tally
-    python3 tests/list_suite.py      # 29 — res print (incl. Safari-fraction regression)
+    python3 tests/list_suite.py      # 29 - res print (incl. Safari-fraction regression)
     python3 tests/hk_suite.py        # 21 - HC print
     python3 tests/cl_suite.py        # 55 - HC tally (incl. management menu gate)
-    python3 tests/auth_suite.py      # 6  — sign-in when the Firebase SDK does not load
+    python3 tests/auth_suite.py      # 6  - sign-in when the Firebase SDK does not load
 
 They assert rendered outcomes, not markup: computed colours, fixed-footer
 geometry, tap-target sizes, menu interaction, write bodies, and
@@ -25,4 +25,4 @@ removed, and fetch() replaced by a fixed busy-night dataset. No network at
 all, so they open on a phone with no signal, and no tap can write anything.
 A red band marks them on screen; it is hidden when printing.
 
-Re-run after changing either sheet — the demos do not track changes.
+Re-run after changing either sheet - the demos do not track changes.
