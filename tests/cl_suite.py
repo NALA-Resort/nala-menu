@@ -81,9 +81,15 @@ with sync_playwright() as p:
     ck("room2 breakfast amber with elapsed", "bfast" in t["2"]["cls"] and re.search(r'B.fast 1[12]m',t["2"]["txt"]))
     ck("room5 vacant faded", "vac" in t["5"]["cls"])
     ck("room3 verify, occupancy unknown", "Verify" in t["3"]["txt"] and "Occupancy unknown" in t["3"]["txt"])
-    # vacant untappable
+    # a vacant villa opens like any other, but offers no work to do
     pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.className.includes('vac')).click()")
-    ck("vacant tile opens nothing", pg.evaluate("()=>ov.className")=="ov")
+    pg.wait_for_timeout(200)
+    vs = pg.locator("#sheetBox").inner_text().lower()
+    print("   vacant sheet:", vs.replace("\n"," | "))
+    ck("vacant tile opens its sheet", pg.evaluate("()=>ov.className").endswith("show"))
+    ck("vacant sheet offers no cleaning actions",
+       "villa done" not in vs and "guest at breakfast" not in vs)
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(150)
     # clean room sheet has departed option; svc doesn't
     tile(pg,1).click(); pg.wait_for_timeout(200)
     sh=pg.locator("#sheetBox").inner_text()
@@ -141,8 +147,17 @@ with sync_playwright() as p:
     print("   villa 11 tile:", t11)
     ck("villa 11 shows as a clean because staff set it", t11 and "clean" in t11)
     WRITES.clear()
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(150)
     tile(pg,3).click(); pg.wait_for_timeout(250)
-    pg.locator(".pbtn",has_text="To be cleaned").click(); pg.wait_for_timeout(250)
+    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
+                ".find(x=>/^to be cleaned$/i.test(x.textContent.trim())).click()")
+    pg.wait_for_timeout(250)
+    print("   confirm sheet:", pg.locator("#sheetBox").inner_text().replace("\n"," | "))
+    ck("setting the job asks to confirm first, like every other action",
+       "yes - to be cleaned" in pg.locator("#sheetBox").inner_text().lower())
+    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
+                ".find(x=>/yes/i.test(x.textContent) && /clean/i.test(x.textContent)).click()")
+    pg.wait_for_timeout(300)
     kw=[x for x in WRITES if "/hk/" in x["u"] and "/3.json" in x["u"]]
     print("   kind write:", kw[-1]["b"] if kw else None)
     ck("setting the job writes kind to that villa's hk record",

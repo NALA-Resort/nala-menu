@@ -133,6 +133,17 @@ The rule lives in `hkClassify()` in nala-shared.js, so the board and the
 printed sheet agree by construction rather than by remembering to change two
 places. A hand-set job beats whatever the dates imply.
 
+Three options: **To be cleaned**, **To be serviced**, **Mark as vacant**.
+Each goes through a confirm screen, the same two-step every other action on
+this page uses. A vacant villa drops to 22% opacity and offers no cleaning
+actions, only the job controls - it is not work, and must not compete with
+the villas that are.
+
+The revert button tells the truth about what it will do: **Use booking
+dates** only when the dates actually decide a job, otherwise **Back to
+unknown**. A villa the dates cannot place says Unknown, not "occupancy not
+confirmed".
+
 Management only. The controls reuse the same login check that hides the nav
 menu from the housekeeping user - one gate, not two. Note this is a display
 gate: the database rules still allow any signed-in user to write the field.
@@ -165,6 +176,17 @@ it expires with the day.
 The rule lives in `hkClassify()` in nala-shared.js, so the board and the
 printed sheet agree by construction rather than by remembering to change two
 places. A hand-set job beats whatever the dates imply.
+
+Three options: **To be cleaned**, **To be serviced**, **Mark as vacant**.
+Each goes through a confirm screen, the same two-step every other action on
+this page uses. A vacant villa drops to 22% opacity and offers no cleaning
+actions, only the job controls - it is not work, and must not compete with
+the villas that are.
+
+The revert button tells the truth about what it will do: **Use booking
+dates** only when the dates actually decide a job, otherwise **Back to
+unknown**. A villa the dates cannot place says Unknown, not "occupancy not
+confirmed".
 
 Management only. The controls reuse the same login check that hides the nav
 menu from the housekeeping user - one gate, not two. Note this is a display

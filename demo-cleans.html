@@ -124,7 +124,9 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .tile.done   { background:var(--green); border-color:var(--greenb); }
   .tile.bfast  { background:var(--amber); border-color:var(--amberb); }
   .tile.dep    { background:var(--blue);  border-color:var(--blueb); }
-  .tile.vac    { opacity:.38; }
+  /* a vacant villa is not a job - it stays visible for orientation but must
+     not compete with the villas that need work */
+  .tile.vac    { opacity:.22; }
 
   .legend { margin-top:20px; display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
             font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.1em;
@@ -513,7 +515,8 @@ function load(){
     var rows=[];
     for (var n=1;n<=ROOMS;n++){
       var r=roomRecord(n, responses, manual, roomguests);
-      rows.push({ n:n, kind:hkClassify(r, todayKey(), hk[n]) });
+      rows.push({ n:n, kind:hkClassify(r, todayKey(), hk[n]),
+                  base:hkClassify(r, todayKey()) });
     }
     // services first: they are attempted during breakfast, before the
     // departure cleans open up. Then cleans, verify, vacant, room order
@@ -567,7 +570,7 @@ function render(){
     var el=document.createElement('button');
     el.className=cls;
     el.innerHTML='<span class="rn">'+row.n+'</span>'+chip+'<span class="sub">'+sub+'</span>';
-    if (row.kind!=='vac') el.onclick=function(){ openSheet(row); };
+    el.onclick=function(){ openSheet(row); };
     g.appendChild(el);
   });
   document.getElementById('nClean').textContent=nClean;
@@ -614,13 +617,25 @@ function drawSheet(mode){
   var kindName = CUR.kind==='clean' ? 'Clean - departing today'
                : CUR.kind==='svc'   ? 'Service - staying on'
                : CUR.kind==='vac'   ? 'Vacant'
-               : 'Occupancy not confirmed';
+               : 'Unknown';
   if (h.kind) kindName += ' - set by staff';
   var head='<h2>Villa '+n+'</h2><div class="st">'+kindName+'</div>';
   var err='<div class="perr" id="perr"></div>';
 
   if (mode==='menu'){
     var rows='';
+    if (CUR.kind==='vac'){
+      if (window.IS_MANAGER){
+        rows+='<div class="pdiv">Job for today</div>';
+        rows+='<button class="pbtn" onclick="drawSheet(\'k-clean\')">To be cleaned</button>';
+        rows+='<button class="pbtn" onclick="drawSheet(\'k-svc\')">To be serviced</button>';
+        if (h.kind) rows+='<button class="pbtn warn" onclick="drawSheet(\'k-none\')">'+
+          ((CUR.base==='clean'||CUR.base==='svc') ? 'Use booking dates' : 'Back to unknown')+'</button>';
+      }
+      rows+='<button class="pbtn ghost" onclick="closeSheet()">Close</button>';
+      b.innerHTML=head+rows+err;
+      return;
+    }
     if (h.done){
       rows+='<button class="pbtn warn" onclick="drawSheet(\'undone\')">Undo done</button>';
     } else {
@@ -639,12 +654,42 @@ function drawSheet(mode){
     }
     if (window.IS_MANAGER){
       rows+='<div class="pdiv">Job for today</div>';
-      if (CUR.kind!=='clean') rows+='<button class="pbtn" onclick="setKind(\'clean\')">To be cleaned</button>';
-      if (CUR.kind!=='svc')   rows+='<button class="pbtn" onclick="setKind(\'svc\')">To be serviced</button>';
-      if (h.kind)             rows+='<button class="pbtn warn" onclick="setKind(null)">Use booking dates</button>';
+      if (CUR.kind!=='clean') rows+='<button class="pbtn" onclick="drawSheet(\'k-clean\')">To be cleaned</button>';
+      if (CUR.kind!=='svc')   rows+='<button class="pbtn" onclick="drawSheet(\'k-svc\')">To be serviced</button>';
+      if (CUR.kind!=='vac')   rows+='<button class="pbtn" onclick="drawSheet(\'k-vac\')">Mark as vacant</button>';
+      /* Only offer the dates back when they actually decide something. On a
+         villa the dates cannot place, reverting just returns it to unknown,
+         so say that instead of pretending there is a booking to fall back on. */
+      if (h.kind){
+        rows += (CUR.base==='clean' || CUR.base==='svc')
+          ? '<button class="pbtn warn" onclick="drawSheet(\'k-none\')">Use booking dates</button>'
+          : '<button class="pbtn warn" onclick="drawSheet(\'k-none\')">Back to unknown</button>';
+      }
     }
     rows+='<button class="pbtn ghost" onclick="closeSheet()">Close</button>';
     b.innerHTML=head+rows+err;
+  }
+
+  var KINDS = {
+    'k-clean': { v:'clean', q:'Set villa '+n+' to be cleaned?',   y:'Yes - to be cleaned',  cls:'solid' },
+    'k-svc'  : { v:'svc',   q:'Set villa '+n+' to be serviced?',  y:'Yes - to be serviced', cls:'solid' },
+    'k-vac'  : { v:'vac',   q:'Mark villa '+n+' as vacant?',      y:'Yes - vacant',         cls:'solid' },
+    'k-none' : { v:null,
+                 q:(CUR.base==='clean' || CUR.base==='svc')
+                   ? 'Go back to the booking dates for villa '+n+'?'
+                   : 'Clear the job for villa '+n+'? It will show as unknown.',
+                 y:'Yes - clear', cls:'warn' }
+  };
+  if (KINDS[mode]){
+    var K = KINDS[mode];
+    b.innerHTML = head +
+      '<div class="st" style="margin-bottom:6px">'+K.q+'</div>'+
+      '<button class="pbtn '+K.cls+'" id="kGo">'+K.y+'</button>'+
+      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+    /* the value is handed over directly rather than serialised into an
+       onclick attribute, where its quotes had nowhere safe to go */
+    document.getElementById('kGo').onclick = function(){ setKind(K.v); };
+    return;
   }
 
   if (mode==='bfast'){
