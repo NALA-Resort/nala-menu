@@ -30,6 +30,7 @@ bf24=(now-datetime.timedelta(minutes=24)).isoformat()   # red band
 hk={"7":{"done":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"},"2":{"bfast":bf},
     "11":{"kind":"clean"}, "8":{"departed":True}, "12":{"departed":True},
     "14":{"bfast":bf2}, "6":{"bfast":bf16}, "9":{"bfast":bf24}}
+prevHk={"16":{"pushed":(now-datetime.timedelta(days=1)).isoformat()}}
 def fb(route,request):
     u=request.url; m=request.method
     if m=="PATCH":
@@ -41,7 +42,8 @@ def fb(route,request):
     elif "/manual/" in u: body=json.dumps(manual)
     elif "/roomguests/"+today in u: body=json.dumps(roomguests)
     elif "/roomguests/" in u: body="null"
-    elif "/hk/" in u: body=json.dumps(hk)
+    elif "/hk/"+today in u: body=json.dumps(hk)
+    elif "/hk/" in u: body=json.dumps(prevHk)
     route.fulfill(status=200,content_type="application/json",body=body)
 from playwright.sync_api import sync_playwright
 P=F=0
@@ -64,7 +66,7 @@ with sync_playwright() as p:
     ck("header row present", pg.evaluate("()=>!!document.querySelector('.daterow .navwrap')"))
     ck("date format with year", bool(re.match(r'^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{1,2}(st|nd|rd|th) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$',hd["d"])))
     # villa 11 is a staff-set clean, so cleans is one higher than the dates imply
-    ck("cleans 5 services 2 done 1", hd["c"]=="5" and hd["s"]=="2" and hd["dn"]=="1")
+    ck("cleans 6 services 2 done 1", hd["c"]=="6" and hd["s"]=="2" and hd["dn"]=="1")
     ck("management login sees menu", hd["nav"]=="block")
     pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
     ck("menu opens on tap", pg.evaluate("()=>navDrop.classList.contains('open')"))
@@ -79,10 +81,11 @@ with sync_playwright() as p:
     # villa 14 at 4m), then cleans: departed with an arrival today (8),
     # departed (12), then the rest; finished (7) sinks; vacant (5) last
     ck("services lead, seated longest first", ordr[0]=="2" and ordr[1]=="14")
-    ck("cleans: arrival today, then departed, then the rest",
-       ordr[2]=="8" and ordr[3]=="12" and ordr[4:6]==["1","11"])
+    # villa 16 was pushed yesterday, so it arrives today already departed
+    ck("cleans: arrival today, then departed (16 pushed in), then the rest",
+       ordr[2]=="8" and ordr[3:5]==["12","16"] and ordr[5:7]==["1","11"])
     ck("finished sinks below outstanding, vacant last",
-       ordr[6]=="7" and ordr[-1]=="5")
+       ordr[7]=="7" and ordr[-1]=="5")
 
     warn=pg.evaluate("""()=>{const g=n=>{const t=[...document.querySelectorAll('.tile')]
         .find(x=>x.querySelector('.rn').textContent===n);
@@ -281,6 +284,37 @@ with sync_playwright() as p:
     ck("one decision writes to every villa picked", len(kinds)==2)
     ck("the board leaves select mode afterwards",
        pg.locator("#selToggle").inner_text().strip().lower()=="select multiple")
+
+    # a villa pushed yesterday arrives today as a clean, already departed
+    t16=pg.evaluate("()=>{const t=[...document.querySelectorAll('.tile')]"
+                    ".find(x=>x.querySelector('.rn').textContent==='16');"
+                    "return {txt:t.innerText.toLowerCase().replace(/\\n/g,' | '), cls:t.className};}")
+    print("   villa 16 (pushed yesterday):", t16)
+    ck("a pushed villa returns tomorrow as a departed clean",
+       "clean" in t16["txt"] and "departed" in t16["txt"] and "ready-clean" in t16["cls"])
+
+    # pushing today: only offered where there is no arrival, and reads purple
+    WRITES.clear()
+    tile(pg,12).click(); pg.wait_for_timeout(250)
+    ps = pg.locator("#sheetBox").inner_text().lower()
+    ck("a clean with no arrival today can be pushed", "push villa" in ps)
+    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/push villa/i.test(x.textContent)).click()")
+    pg.wait_for_timeout(180)
+    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/yes - push/i.test(x.textContent)).click()")
+    pg.wait_for_timeout(400)
+    pw=[x for x in WRITES if "/12.json" in x["u"] and "pushed" in x["b"]]
+    ck("pushing writes to that villa", len(pw)==1)
+    t12=pg.evaluate("()=>{const t=[...document.querySelectorAll('.tile')]"
+                    ".find(x=>x.querySelector('.rn').textContent==='12');"
+                    "return {txt:t.innerText.toLowerCase(), cls:t.className,"
+                    "col:getComputedStyle(t.querySelector('.chip')).color};}")
+    print("   villa 12 once pushed:", t12)
+    ck("a pushed villa reads Pushed, in purple, styled like finished work",
+       "pushed" in t12["txt"] and "pushed" in t12["cls"] and "done" in t12["cls"]
+       and t12["col"]=="rgb(107, 78, 155)")
+    ck("a villa with an arrival today is not offered a push",
+       "push villa" not in (tile(pg,8).click() or pg.wait_for_timeout(250) or
+                            pg.locator("#sheetBox").inner_text().lower()))
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
 
     shot=pg.screenshot(full_page=True)

@@ -56,6 +56,9 @@
   .tile.done   { background:#F2F2EF; border-color:var(--rule); }
   .tile.done .rn, .tile.done .chip { opacity:.75; }
   .tile.done .chip { background:transparent; border-color:var(--rule); color:var(--mid); }
+  /* pushed reads like finished - it is off today's list - but purple says it
+     is deferred rather than done                                         */
+  .tile.pushed .chip { color:#6B4E9B; border-color:#C7B6E0; }
   .dtick { width:11px; height:11px; margin-right:4px; vertical-align:-1px;
            display:inline-block; color:#5C7A57; }
   /* a vacant villa is not a job - it stays visible for orientation but must
@@ -190,10 +193,11 @@ document.getElementById('selToggle').onclick = function(){
 };
 
 function load(){
+  var yest = (function(){ var d=new Date(); d.setDate(d.getDate()-1); return dkey(d); })();
   return Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
-                fetchRoomGuests(todayKey()), api('/hk/'+todayKey()) ])
+                fetchRoomGuests(todayKey()), api('/hk/'+todayKey()), api('/hk/'+yest) ])
   .then(function(res){
-    var responses=res[0]||{}, manual=res[1]||{}, hk=res[3]||{};
+    var responses=res[0]||{}, manual=res[1]||{}, hk=res[3]||{}, prevHk=res[4]||{};
     var roomguests=resolveRoomGuestsHK(res[2]||{}, todayKey());
     /* today's own bucket, unmerged: a villa with a guest arriving today is
        the one that has to be turned around first */
@@ -203,8 +207,13 @@ function load(){
     for (var n=1;n<=ROOMS;n++){
       var r=roomRecord(n, responses, manual, roomguests);
       var a = arriving[n] && arriving[n].arrives ? parseDepDate(arriving[n].arrives) : null;
+      /* A villa pushed yesterday and never finished arrives today as a clean
+         that is already departed - the guest left, the work did not happen. */
+      var p = prevHk[n] || {};
+      var pushedIn = !!(p.pushed && !p.done);
       rows.push({ n:n, kind:hkClassify(r, todayKey(), hk[n]),
-                  base:hkClassify(r, todayKey()),
+                  base: pushedIn ? 'clean' : hkClassify(r, todayKey()),
+                  pushedIn: pushedIn,
                   arrivingToday: !!(a && dkey(a) === todayKey()) });
     }
     // services first: they are attempted during breakfast, before the
@@ -246,10 +255,11 @@ function render(){
      arriving today first, then any departed villa, then the rest.        */
   function sub(r){
     var h = STATE.hk[r.n] || {};
+    var gone = h.departed || r.pushedIn;
     if (r.kind === 'svc') return h.bfast ? 0 : 1;
     if (r.kind === 'clean'){
-      if (h.departed && r.arrivingToday) return 0;
-      if (h.departed) return 1;
+      if (gone && r.arrivingToday) return 0;
+      if (gone) return 1;
       return 2;
     }
     return 0;
@@ -271,20 +281,23 @@ function render(){
 
     var cls='tile';
     if (row.kind==='vac') cls+=' vac';
+    else if (h.pushed) cls+=' done pushed';
     else if (h.done) cls+=' done';
-    else if (row.kind==='clean' && h.departed) cls+=' ready-clean';
+    else if (row.kind==='clean' && (h.departed || row.pushedIn)) cls+=' ready-clean';
     else if (row.kind==='svc' && h.bfast) cls+=' ready-svc';
 
     var chip='';
-    if (row.kind==='clean') chip='<span class="chip">'+(h.done?ICON_DTICK+'Cleaned':'Clean')+'</span>';
+    if (row.kind==='clean') chip='<span class="chip">'+
+      (h.pushed ? 'Pushed' : (h.done?ICON_DTICK+'Cleaned':'Clean'))+'</span>';
     else if (row.kind==='svc') chip='<span class="chip svc">'+(h.done?ICON_DTICK+'Serviced':'Service')+'</span>';
     else if (row.kind==='ver') chip='<span class="chip ver">Unknown</span>';
     else chip='<span class="sub">Vacant</span>';
 
     var sub='';
     if (row.kind!=='vac'){
-      if (h.done) sub='Done '+hhmm(h.done);
-      else if (h.departed) sub='Departed';
+      if (h.pushed) sub='To tomorrow';
+      else if (h.done) sub='Done '+hhmm(h.done);
+      else if (h.departed || row.pushedIn) sub='Departed';
       else if (h.bfast){
         var m = mins(h.bfast);
         var w = m >= 20 ? ' late' : (m >= 15 ? ' soon' : '');
@@ -421,6 +434,11 @@ function drawSheet(mode){
       } else {
         rows+='<button class="pbtn" onclick="drawSheet(\'bfast\')">Guest at breakfast</button>';
       }
+      if (CUR.kind==='clean' && !CUR.arrivingToday){
+        rows += h.pushed
+          ? '<button class="pbtn warn" onclick="drawSheet(\'unpush\')">Undo push</button>'
+          : '<button class="pbtn" onclick="drawSheet(\'push\')">Push villa</button>';
+      }
       if (CUR.kind==='clean'){
         rows += h.departed
           ? '<button class="pbtn warn" onclick="drawSheet(\'undep\')">Undo departed</button>'
@@ -492,6 +510,21 @@ function drawSheet(mode){
       '<div class="st" style="margin-bottom:6px">Remove the done mark from room '+n+'?</div>'+
       '<button class="pbtn warn" onclick="setField('+n+',{done:null},document.getElementById(\'perr\'))">Yes - not done</button>'+
       '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+  }
+  if (mode==='push'){
+    b.innerHTML=head+
+      '<div class="st" style="margin-bottom:6px">Push villa '+n+' to tomorrow? '+
+      'It will appear tomorrow as a clean, already departed.</div>'+
+      '<button class="pbtn solid" onclick="setField('+n+',{pushed:new Date().toISOString()},document.getElementById(\'perr\'))">Yes - push</button>'+
+      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+    return;
+  }
+  if (mode==='unpush'){
+    b.innerHTML=head+
+      '<div class="st" style="margin-bottom:6px">Bring villa '+n+' back to today?</div>'+
+      '<button class="pbtn warn" onclick="setField('+n+',{pushed:null},document.getElementById(\'perr\'))">Yes - bring back</button>'+
+      '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+    return;
   }
   if (mode==='dep'){
     b.innerHTML=head+

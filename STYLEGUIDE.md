@@ -181,6 +181,20 @@ then any departed villa, then the rest. Two departed villas waiting to be
 cleaned sort numerically - once the guest has gone there is no reason to
 prefer one over the other, so they may as well be next to each other.
 
+## Pushing a clean to tomorrow
+
+On a busy morning a clean can be deferred. **Push villa** appears only on a
+clean with no arrival that day - a villa someone checks into tonight cannot
+wait. It writes `pushed` to `/hk/<date>/<villa>`.
+
+A pushed villa reads like finished work, grey and out of the way, but the
+word is **Pushed** in purple: deferred, not done. The board also reads
+yesterday's marks, so a villa pushed yesterday and never finished arrives
+today as a clean that is already departed - the guest left, the work did not
+happen - and sorts at priority 2 with the other departed cleans.
+
+**Undo push** brings it back to today.
+
 ## Multi-select on the Cleans board
 
 The footer carries Refresh on the left and Select multiple on the right. In
@@ -283,6 +297,20 @@ Within **cleans**, in order: a departed villa with a guest arriving today,
 then any departed villa, then the rest. Two departed villas waiting to be
 cleaned sort numerically - once the guest has gone there is no reason to
 prefer one over the other, so they may as well be next to each other.
+
+## Pushing a clean to tomorrow
+
+On a busy morning a clean can be deferred. **Push villa** appears only on a
+clean with no arrival that day - a villa someone checks into tonight cannot
+wait. It writes `pushed` to `/hk/<date>/<villa>`.
+
+A pushed villa reads like finished work, grey and out of the way, but the
+word is **Pushed** in purple: deferred, not done. The board also reads
+yesterday's marks, so a villa pushed yesterday and never finished arrives
+today as a clean that is already departed - the guest left, the work did not
+happen - and sorts at priority 2 with the other departed cleans.
+
+**Undo push** brings it back to today.
 
 ## Multi-select on the Cleans board
 
