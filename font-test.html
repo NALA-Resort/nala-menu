@@ -22,17 +22,17 @@
   .stat { text-align:center; }
   .stat-n { display:block; font-size:27px; line-height:1; }
   .stat-l { display:block; font-size:8px; letter-spacing:.2em; text-transform:uppercase;
-            color:var(--mid); margin-top:6px; font-family:Helvetica,Arial,sans-serif; }
+            color:var(--mid); margin-top:6px; }
   .row { display:flex; gap:8px; }
   .tile { flex:1; border:1.2px solid var(--rule); border-radius:10px; background:#fff;
           padding:10px 6px; text-align:center; min-height:74px;
           display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
   .tile.ok { background:var(--green); border-color:var(--greenb); }
-  .rn { font-size:20px; font-weight:bold; font-family:Helvetica,Arial,sans-serif; }
-  .chip { font-family:Helvetica,Arial,sans-serif; font-size:9px; font-weight:bold;
+  .rn { font-size:20px; font-weight:bold; }
+  .chip { font-size:9px; font-weight:bold;
           letter-spacing:.08em; text-transform:uppercase; padding:1px 7px;
           border:1.2px solid var(--ink); border-radius:5px; }
-  .sub { font-size:9.5px; color:var(--mid); font-family:Helvetica,Arial,sans-serif; }
+  .sub { font-size:9.5px; color:var(--mid); }
   .sample { margin-top:12px; font-size:15px; line-height:1.5; }
 </style>
 </head>
@@ -47,6 +47,8 @@ it. That uneven look is what Georgia is doing now.</p>
 
 <script>
 var FONTS = [
+  ['San Francisco - the Apple system font', "-apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif"],
+  ['San Francisco Rounded', "ui-rounded, -apple-system, system-ui, sans-serif"],
   ['Georgia - what we have now', "Georgia, serif"],
   ['New York - the Apple system serif', "ui-serif, 'New York', serif"],
   ['Charter', "Charter, 'Bitstream Charter', serif"],
