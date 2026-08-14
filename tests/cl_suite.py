@@ -143,7 +143,10 @@ with sync_playwright() as p:
     sh=pg.locator("#sheetBox").inner_text()
     print("   room1 sheet:", repr(sh)[:220])
     sh=sh.lower()
-    ck("clean sheet: done + breakfast + departed", "mark as cleaned" in sh and "possibly available" in sh and "guest departed" in sh)
+    # a clean is decided by departure, not by someone glancing in
+    ck("clean sheet: done + departed, and no availability mark",
+       "mark as cleaned" in sh and "guest departed" in sh
+       and "possibly available" not in sh)
     pg.locator(".pbtn.ghost",has_text="Close").click()
     tile(pg,2).click(); pg.wait_for_timeout(200)
     sh=pg.locator("#sheetBox").inner_text()
@@ -151,7 +154,30 @@ with sync_playwright() as p:
     sh=sh.lower()
     ck("service sheet: no departed option, shows the note and a clear",
        "guest departed" not in sh and "marked available" in sh and "clear" in sh)
-    pg.locator(".pbtn.ghost",has_text="Close").click()
+
+    # an existing mark stays clearable whatever the villa's job becomes
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
+    tile(pg,2).click(); pg.wait_for_timeout(200)
+    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
+                ".find(x=>/^to be cleaned$/i.test(x.textContent.trim())).click()")
+    pg.wait_for_timeout(180)
+    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
+                ".find(x=>/^yes/i.test(x.textContent.trim())).click()")
+    pg.wait_for_timeout(400)
+    tile(pg,2).click(); pg.wait_for_timeout(220)
+    st2 = pg.locator("#sheetBox").inner_text().lower()
+    print("   villa 2 once switched to a clean:", st2.replace("\n"," | "))
+    ck("a stale availability mark can still be cleared on a clean",
+       "marked available" in st2 and "clear" in st2
+       and "possibly available" not in st2)
+    # put villa 2 back to a service for the checks that follow
+    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
+                ".find(x=>/use booking dates/i.test(x.textContent)).click()")
+    pg.wait_for_timeout(180)
+    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
+                ".find(x=>/^yes/i.test(x.textContent.trim())).click()")
+    pg.wait_for_timeout(400)
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
     # mark room1 done
     tile(pg,1).click(); pg.wait_for_timeout(150)
     pg.locator(".pbtn.solid",has_text="Mark as").click(); pg.wait_for_timeout(150)

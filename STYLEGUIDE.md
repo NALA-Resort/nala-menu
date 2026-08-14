@@ -208,6 +208,11 @@ an observation from half an hour ago is not worth acting on.
 One mark, not two. Breakfast was only ever a way of saying "the villa is free
 right now", so it says that instead, and it works whatever the hour.
 
+**Services only.** A clean is decided by whether the guest has departed, not
+by whether someone glanced in, so the option is not offered there. A mark
+already set stays visible and clearable whatever the villa's job becomes -
+otherwise a stale one would be stranded.
+
 Within **cleans**, in order: a departed villa with a guest arriving today,
 then any departed villa, then the rest. Two departed villas waiting to be
 cleaned sort numerically - once the guest has gone there is no reason to

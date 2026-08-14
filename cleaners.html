@@ -464,7 +464,12 @@ function drawSheet(mode){
       if (h.bfast){
         rows+='<button class="pbtn" disabled style="opacity:.6">Marked available '+hhmm(h.bfast)+' ('+mins(h.bfast)+'m ago)</button>';
         rows+='<button class="pbtn warn" onclick="drawSheet(\'clearbf\')">Clear</button>';
-      } else if (stillHere) {
+      } else if (stillHere && CUR.kind === 'svc') {
+        /* Only a service can be "possibly available": it is a way in to a
+           villa whose guest is staying on. A clean is decided by whether the
+           guest has departed, not by whether someone glanced in. An existing
+           mark stays visible above whatever the villa's job is, so a stale
+           one can always be cleared.                                      */
         rows+='<button class="pbtn" onclick="drawSheet(\'bfast\')">Possibly available</button>';
       }
       if (CUR.kind==='clean' && !CUR.arrivingToday){
