@@ -67,8 +67,9 @@ with sync_playwright() as p:
     ck("room1 Clean occupied", "Clean" in t["1"]["txt"] and "Occupied" in t["1"]["txt"])
     ordr=pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].map(b=>b.querySelector('.rn').textContent)")
     print("   tile order:", ordr)
-    ck("services first, then cleans, vacant last",
-       ordr[0]=="2" and ordr[1:3]==["1","7"] and ordr[-1]=="5")
+    # services, then cleans, then finished work, then unknown, then vacant
+    ck("outstanding first, finished sinks below it, vacant last",
+       ordr[0]=="2" and ordr[1:3]==["1","11"] and ordr[3]=="7" and ordr[-1]=="5")
     chips=pg.evaluate("""()=>{const g=n=>[...document.querySelectorAll('#grid .tile')]
       .find(b=>b.querySelector('.rn').textContent===n).querySelector('.chip');
       const c=n=>{const e=g(n),s=getComputedStyle(e);return {bg:s.backgroundColor,fg:s.color,t:e.textContent};};
@@ -78,7 +79,8 @@ with sync_playwright() as p:
        chips["clean"]["bg"]=="rgb(28, 28, 26)" and chips["svc"]["bg"]=="rgba(0, 0, 0, 0)"
        and chips["clean"]["fg"]!=chips["svc"]["fg"])
     ck("room7 done green with time (6-digit ISO)", "done" in t["7"]["cls"] and re.search(r'Done \d{2}:\d{2}',t["7"]["txt"]))
-    ck("room2 breakfast amber with elapsed", "bfast" in t["2"]["cls"] and re.search(r'B.fast 1[12]m',t["2"]["txt"]))
+    ck("villa2 ready to service, with elapsed",
+       "ready-svc" in t["2"]["cls"] and re.search(r'B.fast 1[12]m',t["2"]["txt"]))
     ck("room5 vacant faded", "vac" in t["5"]["cls"])
     ck("villa3 unknown, one label only",
        "Unknown" in t["3"]["txt"] and "Verify" not in t["3"]["txt"]
@@ -143,7 +145,7 @@ with sync_playwright() as p:
         ts=json.loads(w[0]["b"]).get("bfast",""); t3=datetime.datetime.fromisoformat(ts.replace("Z","+00:00"))
         okb=8<= (now.astimezone(datetime.timezone.utc)-t3.astimezone(datetime.timezone.utc)).total_seconds()/60 <=12
     ck("PATCH bfast ~10m ago", okb)
-    ck("villa2 amber ~10m", "bfast" in pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.querySelector('.rn').textContent==='2').className"))
+    ck("villa2 ready to service ~10m", "ready-svc" in pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.querySelector('.rn').textContent==='2').className"))
     # rollback on rejection
     STATE["fail"]=True
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
@@ -213,6 +215,16 @@ with sync_playwright() as p:
                       "return t.innerText.toLowerCase().replace(/\\n/g,' | ');}")
     print("   villa 6 once finished:", fin)
     ck("a finished villa reads in the past tense", "cleaned" in fin)
+
+    cols=pg.evaluate("""()=>{const g=n=>{const t=[...document.querySelectorAll('.tile')]
+        .find(x=>x.querySelector('.rn').textContent===n);
+      return t? {cls:t.className, bg:getComputedStyle(t).backgroundColor} : null;};
+      return {finished:g('6'), readySvc:g('2')};}""")
+    print("   colours:", cols)
+    ck("a finished villa carries no job colour",
+       "done" in cols["finished"]["cls"] and cols["finished"]["bg"]!=cols["readySvc"]["bg"])
+    ck("a finished villa shows a tick beside the past-tense word",
+       pg.evaluate("()=>!!document.querySelector('.tile.done .dtick')"))
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
 
     shot=pg.screenshot(full_page=True)

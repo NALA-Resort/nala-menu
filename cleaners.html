@@ -43,9 +43,18 @@
   .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
   .tile .sub b { color:var(--ink); }
 
-  .tile.done   { background:var(--green); border-color:var(--greenb); }
-  .tile.bfast  { background:var(--amber); border-color:var(--amberb); }
-  .tile.dep    { background:var(--blue);  border-color:var(--blueb); }
+  /* Colour means "this villa is ready to work on now", and which colour says
+     which job: blue for a clean once the guest has gone, green for a service
+     once they are at breakfast. Orange is deliberately unused - it is held
+     for a warning state. A finished villa loses its colour entirely: it is
+     no longer work, and must stop competing for attention.               */
+  .tile.ready-clean { background:var(--blue);  border-color:var(--blueb); }
+  .tile.ready-svc   { background:var(--green); border-color:var(--greenb); }
+  .tile.done   { background:#F2F2EF; border-color:var(--rule); }
+  .tile.done .rn, .tile.done .chip { opacity:.75; }
+  .tile.done .chip { background:transparent; border-color:var(--rule); color:var(--mid); }
+  .dtick { width:11px; height:11px; margin-right:4px; vertical-align:-1px;
+           display:inline-block; color:#5C7A57; }
   /* a vacant villa is not a job - it stays visible for orientation but must
      not compete with the villas that need work */
   .tile.vac    { opacity:.22; }
@@ -58,6 +67,7 @@
   .legend .lg { background:var(--green); border-color:var(--greenb); }
   .legend .lb { background:var(--amber); border-color:var(--amberb); }
   .legend .ld { background:var(--blue);  border-color:var(--blueb); }
+  .legend .lf { background:#F2F2EF; border-color:var(--rule); }
 
   .bar { margin-top:22px; gap:10px; }
   .btn { flex:1; padding:13px 0; text-align:center; font-family:Helvetica,Arial,sans-serif;
@@ -127,9 +137,9 @@
   <div class="grid" id="grid"></div>
 
   <div class="legend">
-    <span><i class="lb"></i>At breakfast</span>
-    <span><i class="ld"></i>Departed</span>
-    <span><i class="lg"></i>Done</span>
+    <span><i class="ld"></i>Ready to clean</span>
+    <span><i class="lg"></i>Ready to service</span>
+    <span><i class="lf"></i>Finished</span>
   </div>
 
   <div class="foot bar">
@@ -152,6 +162,9 @@ document.getElementById('title').textContent = dateLabel(new Date());
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
 var STATE = { rows:[], hk:{} };
+var ICON_DTICK = '<svg class="dtick" viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
+                 'stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">'+
+                 '<path d="M4 12.5l5.2 5.2L20 6.9"/></svg>';
 var ICON_TICK = '<svg class="btick" viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
                 'stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">'+
                 '<path d="M4 12.5l5.2 5.2L20 6.9"/></svg>';
@@ -194,11 +207,16 @@ function render(){
   /* The job is derived here, not frozen at load, so setting one takes effect
      on the tile immediately instead of waiting for a refresh - and the villa
      re-sorts into its new block at the same time.                        */
-  var korder={svc:0, clean:1, ver:2, vac:3};
+  var korder={svc:0, clean:1, done:2, ver:3, vac:4};
   STATE.rows.forEach(function(r){
     r.kind = (STATE.hk[r.n] && STATE.hk[r.n].kind) ? STATE.hk[r.n].kind : r.base;
   });
-  STATE.rows.sort(function(a,b){ return (korder[a.kind]-korder[b.kind]) || (a.n-b.n); });
+  function rank(r){
+    var h = STATE.hk[r.n] || {};
+    if (r.kind !== 'vac' && h.done) return korder.done;   /* finished work sinks */
+    return korder[r.kind];
+  }
+  STATE.rows.sort(function(a,b){ return (rank(a)-rank(b)) || (a.n-b.n); });
   STATE.rows.forEach(function(row){
     var h=STATE.hk[row.n]||{};
     if (row.kind==='clean') nClean++;
@@ -208,12 +226,12 @@ function render(){
     var cls='tile';
     if (row.kind==='vac') cls+=' vac';
     else if (h.done) cls+=' done';
-    else if (h.departed) cls+=' dep';
-    else if (h.bfast) cls+=' bfast';
+    else if (row.kind==='clean' && h.departed) cls+=' ready-clean';
+    else if (row.kind==='svc' && h.bfast) cls+=' ready-svc';
 
     var chip='';
-    if (row.kind==='clean') chip='<span class="chip">'+(h.done?'Cleaned':'Clean')+'</span>';
-    else if (row.kind==='svc') chip='<span class="chip svc">'+(h.done?'Serviced':'Service')+'</span>';
+    if (row.kind==='clean') chip='<span class="chip">'+(h.done?ICON_DTICK+'Cleaned':'Clean')+'</span>';
+    else if (row.kind==='svc') chip='<span class="chip svc">'+(h.done?ICON_DTICK+'Serviced':'Service')+'</span>';
     else if (row.kind==='ver') chip='<span class="chip ver">Unknown</span>';
     else chip='<span class="sub">Vacant</span>';
 

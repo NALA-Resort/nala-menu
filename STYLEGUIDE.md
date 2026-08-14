@@ -155,6 +155,23 @@ Management only. The controls reuse the same login check that hides the nav
 menu from the housekeeping user - one gate, not two. Note this is a display
 gate: the database rules still allow any signed-in user to write the field.
 
+## Colour on the Cleans board
+
+Colour means one thing: **this villa is ready to work on now**, and which
+colour says which job.
+
+- **White** - a job is set but the villa is not ready yet
+- **Blue** - ready to clean, the guest has departed
+- **Green** - ready to service, the guest is at breakfast
+- **Light grey with a green tick** - finished. It loses its colour entirely:
+  it is no longer work and must stop competing for attention
+- **Very pale** - vacant, not a job at all
+- **Orange** - deliberately unused, held for a warning state
+
+Order down the board: services, then cleans, then finished work, then
+unknown, then vacant. Finished work sinks below outstanding work but stays
+above the villas nobody has decided about.
+
 ## Tense on the Cleans board
 
 A villa reads **Clean** or **Service** while the work is outstanding and
@@ -217,6 +234,23 @@ confirmed".
 Management only. The controls reuse the same login check that hides the nav
 menu from the housekeeping user - one gate, not two. Note this is a display
 gate: the database rules still allow any signed-in user to write the field.
+
+## Colour on the Cleans board
+
+Colour means one thing: **this villa is ready to work on now**, and which
+colour says which job.
+
+- **White** - a job is set but the villa is not ready yet
+- **Blue** - ready to clean, the guest has departed
+- **Green** - ready to service, the guest is at breakfast
+- **Light grey with a green tick** - finished. It loses its colour entirely:
+  it is no longer work and must stop competing for attention
+- **Very pale** - vacant, not a job at all
+- **Orange** - deliberately unused, held for a warning state
+
+Order down the board: services, then cleans, then finished work, then
+unknown, then vacant. Finished work sinks below outstanding work but stays
+above the villas nobody has decided about.
 
 ## Tense on the Cleans board
 
