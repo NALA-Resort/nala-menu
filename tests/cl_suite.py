@@ -250,6 +250,37 @@ with sync_playwright() as p:
        "done" in cols["finished"]["cls"] and cols["finished"]["bg"]!=cols["readySvc"]["bg"])
     ck("a finished villa shows a tick beside the past-tense word",
        pg.evaluate("()=>!!document.querySelector('.tile.done .dtick')"))
+
+    # multi-select: only undecided villas, and one decision applies to all
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
+    pg.locator("#selToggle").click(); pg.wait_for_timeout(200)
+    ck("toggle switches to Cancel with nothing picked",
+       pg.locator("#selToggle").inner_text().strip().lower()=="cancel")
+    picks=pg.evaluate("""()=>{const sel=[...document.querySelectorAll('.tile.selectable')]
+        .map(t=>t.querySelector('.rn').textContent);
+      const notSel=[...document.querySelectorAll('.tile:not(.selectable)')]
+        .map(t=>t.querySelector('.rn').textContent);
+      return {selectable:sel, blocked:notSel.slice(0,3)};}""")
+    print("   selectable:", picks)
+    ck("only undecided villas can be selected", len(picks["selectable"])>1)
+    pg.evaluate("""()=>{const t=[...document.querySelectorAll('.tile.selectable')];
+      t[0].click(); t[1].click();}""")
+    pg.wait_for_timeout(200)
+    ck("toggle switches to Options once villas are picked",
+       pg.locator("#selToggle").inner_text().strip().lower()=="options")
+    WRITES.clear()
+    pg.locator("#selToggle").click(); pg.wait_for_timeout(250)
+    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
+                ".find(x=>/^to be cleaned$/i.test(x.textContent.trim())).click()")
+    pg.wait_for_timeout(180)
+    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
+                ".find(x=>/^yes/i.test(x.textContent.trim())).click()")
+    pg.wait_for_timeout(500)
+    kinds=[x for x in WRITES if "/hk/" in x["u"] and "kind" in x["b"]]
+    print("   multi writes:", [x["u"].split("/")[-1] for x in kinds])
+    ck("one decision writes to every villa picked", len(kinds)==2)
+    ck("the board leaves select mode afterwards",
+       pg.locator("#selToggle").inner_text().strip().lower()=="select multiple")
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
 
     shot=pg.screenshot(full_page=True)

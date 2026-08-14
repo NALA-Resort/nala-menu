@@ -61,6 +61,13 @@
   /* a vacant villa is not a job - it stays visible for orientation but must
      not compete with the villas that need work */
   .tile.vac    { opacity:.22; }
+  /* Multi-select applies only to villas whose job is undecided, so the ones
+     that cannot take part are dimmed rather than removed - the grid keeps
+     its shape and nothing jumps.                                        */
+  .tile.sel    { outline:2px solid var(--ink); outline-offset:-2px; }
+  body.selmode .tile { opacity:.3; }
+  body.selmode .tile.selectable { opacity:1; }
+  .btn.active  { background:var(--ink); color:var(--cream); }
 
   .legend { margin-top:20px; display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
             font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.1em;
@@ -147,6 +154,7 @@
 
   <div class="foot bar">
     <button class="btn" onclick="location.reload()">Refresh</button>
+    <button class="btn" id="selToggle">Select multiple</button>
   </div>
 </div>
 
@@ -165,12 +173,21 @@ document.getElementById('title').textContent = dateLabel(new Date());
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
 var STATE = { rows:[], hk:{} };
+var selectMode = false, selected = {};
 var ICON_DTICK = '<svg class="dtick" viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
                  'stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">'+
                  '<path d="M4 12.5l5.2 5.2L20 6.9"/></svg>';
 var ICON_TICK = '<svg class="btick" viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
                 'stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">'+
                 '<path d="M4 12.5l5.2 5.2L20 6.9"/></svg>';
+
+document.getElementById('selToggle').onclick = function(){
+  if (selectMode && selCount()) { openMulti(); return; }   /* Options */
+  selectMode = !selectMode;
+  selected = {};
+  document.body.classList.toggle('selmode', selectMode);
+  selLabel(); render();
+};
 
 function load(){
   return Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
@@ -277,10 +294,19 @@ function render(){
       else sub='Occupied';
     }
 
+    if (selectMode && selectableRow(row)) cls += ' selectable';
+    if (selected[row.n]) cls += ' sel';
     var el=document.createElement('button');
     el.className=cls;
     el.innerHTML='<span class="rn">'+row.n+'</span>'+chip+'<span class="sub">'+sub+'</span>';
-    el.onclick=function(){ openSheet(row); };
+    el.onclick = function(){
+      if (selectMode){
+        if (!selectableRow(row)) return;
+        if (selected[row.n]) delete selected[row.n]; else selected[row.n] = true;
+        selLabel(); render(); return;
+      }
+      openSheet(row);
+    };
     g.appendChild(el);
   });
   document.getElementById('nClean').textContent=nClean;
@@ -312,7 +338,41 @@ function setField(n, obj, errEl){
 }
 
 function setKind(k){
-  setField(CUR.n, { kind:k }, document.getElementById('perr'));
+  var err = document.getElementById('perr');
+  if (CUR.multi){
+    /* several villas at once: apply to each, then leave select mode so the
+       board returns to its normal state rather than a half-selected one */
+    var ns = CUR.multi.slice();
+    Promise.all(ns.map(function(n){ return setField(n, { kind:k }, err); }))
+      .then(function(){ exitSelect(); });
+    return;
+  }
+  setField(CUR.n, { kind:k }, err);
+}
+
+// ── multi-select ───────────────────────────────────────────
+/* Only villas whose job is unknown can be selected: the point is to decide
+   several at once, and anything already decided has nothing to decide.  */
+function selectableRow(row){ return row.kind === 'ver'; }
+
+function selCount(){ return Object.keys(selected).length; }
+
+function selLabel(){
+  var t = document.getElementById('selToggle');
+  if (!selectMode) { t.textContent = 'Select multiple'; t.className = 'btn'; return; }
+  t.className = 'btn active';
+  t.textContent = selCount() ? 'Options' : 'Cancel';
+}
+
+function exitSelect(){ selectMode = false; selected = {}; document.body.classList.remove('selmode');
+                       selLabel(); render(); }
+
+function openMulti(){
+  var ns = Object.keys(selected).map(Number).sort(function(a,b){ return a-b; });
+  if (!ns.length) return;
+  CUR = { n:ns.join(', '), kind:'ver', base:'ver', multi:ns };
+  drawSheet('menu');
+  document.getElementById('ov').className = 'ov show';
 }
 
 // ── popup ──────────────────────────────────────────────────
@@ -329,7 +389,8 @@ function drawSheet(mode){
                : CUR.kind==='vac'   ? 'Vacant'
                : 'Unknown';
   if (h.kind) kindName += ' - set by staff';
-  var head='<h2>Villa '+n+'</h2><div class="st">'+kindName+'</div>';
+  var head='<h2>'+(CUR.multi ? (CUR.multi.length+' villas') : 'Villa '+n)+
+           '</h2><div class="st">'+(CUR.multi ? 'Villas '+n : kindName)+'</div>';
   var err='<div class="perr" id="perr"></div>';
 
   if (mode==='menu'){
@@ -384,10 +445,11 @@ function drawSheet(mode){
     b.innerHTML=head+rows+err;
   }
 
+  var who = CUR.multi ? (CUR.multi.length+' villas') : 'villa '+n;
   var KINDS = {
-    'k-clean': { v:'clean', q:'Set villa '+n+' to be cleaned?',   y:'Yes - to be cleaned',  cls:'solid' },
-    'k-svc'  : { v:'svc',   q:'Set villa '+n+' to be serviced?',  y:'Yes - to be serviced', cls:'solid' },
-    'k-vac'  : { v:'vac',   q:'Mark villa '+n+' as vacant?',      y:'Yes - vacant',         cls:'solid' },
+    'k-clean': { v:'clean', q:'Set '+who+' to be cleaned?',   y:'Yes - to be cleaned',  cls:'solid' },
+    'k-svc'  : { v:'svc',   q:'Set '+who+' to be serviced?',  y:'Yes - to be serviced', cls:'solid' },
+    'k-vac'  : { v:'vac',   q:'Mark '+who+' as vacant?',      y:'Yes - vacant',         cls:'solid' },
     'k-none' : { v:null,
                  q:(CUR.base==='clean' || CUR.base==='svc')
                    ? 'Go back to the booking dates for villa '+n+'?'

@@ -181,6 +181,20 @@ then any departed villa, then the rest. Two departed villas waiting to be
 cleaned sort numerically - once the guest has gone there is no reason to
 prefer one over the other, so they may as well be next to each other.
 
+## Multi-select on the Cleans board
+
+The footer carries Refresh on the left and Select multiple on the right. In
+select mode the button reads **Cancel** while nothing is picked and
+**Options** once something is, so one button covers the whole flow.
+
+Only villas whose job is **unknown** can be picked: the point is to decide
+several at once, and anything already decided has nothing to decide. Villas
+that cannot take part dim rather than disappear, so the grid keeps its shape.
+
+The options are the same sheet an unknown villa shows on its own, applied to
+every villa picked, and the board leaves select mode once the decision is
+made.
+
 ## Tense on the Cleans board
 
 A villa reads **Clean** or **Service** while the work is outstanding and
@@ -269,6 +283,20 @@ Within **cleans**, in order: a departed villa with a guest arriving today,
 then any departed villa, then the rest. Two departed villas waiting to be
 cleaned sort numerically - once the guest has gone there is no reason to
 prefer one over the other, so they may as well be next to each other.
+
+## Multi-select on the Cleans board
+
+The footer carries Refresh on the left and Select multiple on the right. In
+select mode the button reads **Cancel** while nothing is picked and
+**Options** once something is, so one button covers the whole flow.
+
+Only villas whose job is **unknown** can be picked: the point is to decide
+several at once, and anything already decided has nothing to decide. Villas
+that cannot take part dim rather than disappear, so the grid keeps its shape.
+
+The options are the same sheet an unknown villa shows on its own, applied to
+every villa picked, and the board leaves select mode once the decision is
+made.
 
 ## Tense on the Cleans board
 
