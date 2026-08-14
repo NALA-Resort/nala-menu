@@ -781,7 +781,7 @@ function drawSheet(mode){
        it is first. Same shape as a vacant villa: job controls only.      */
     if (CUR.kind==='vac' || CUR.kind==='ver'){
       if (window.IS_MANAGER){
-        rows+='<div class="pdiv">Job for today</div>';
+        rows+='<div class="pdiv">Modify today&rsquo;s job</div>';
         rows+='<button class="pbtn" onclick="drawSheet(\'k-clean\')">To be cleaned</button>';
         rows+='<button class="pbtn" onclick="drawSheet(\'k-svc\')">To be serviced</button>';
         if (CUR.kind!=='pre') rows+='<button class="pbtn" onclick="drawSheet(\'k-pre\')">Set as pre-arrival</button>';
@@ -860,7 +860,7 @@ function drawSheet(mode){
           ? '<button class="pbtn warn" onclick="drawSheet(\'k-none\')">Use booking dates</button>'
           : '<button class="pbtn warn" onclick="drawSheet(\'k-none\')">Back to unknown</button>';
       }
-      if (jobs) rows+='<div class="pdiv">Job for today</div>'+jobs;
+      if (jobs) rows+='<div class="pdiv">Modify today&rsquo;s job</div>'+jobs;
     }
     rows+='<button class="pbtn ghost" onclick="closeSheet()">Close</button>';
     b.innerHTML=head+rows+err;

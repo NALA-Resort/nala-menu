@@ -410,7 +410,13 @@ with sync_playwright() as p:
     print("   housekeeping sheet:", hkSheet.replace("\n"," | "))
     ck("housekeeping login cannot change the job",
        "to be cleaned" not in hkSheet and "to be serviced" not in hkSheet
-       and "job for today" not in hkSheet)
+       and "modify today" not in hkSheet)
+
+    print("   housekeeping sees:", hkSheet.replace("\n"," | "))
+    ck("housekeeping sees no job controls at all, on any villa state",
+       all(w not in hkSheet for w in
+           ["to be cleaned","to be serviced","set as pre-arrival",
+            "mark as empty","use booking dates","back to unknown"]))
     pg.close(); b.close()
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()
