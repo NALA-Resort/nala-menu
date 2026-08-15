@@ -31,6 +31,14 @@
 <h2>Environment</h2>
 <pre id="env">checking...</pre>
 
+<h2>Try a passcode (domain added for you)</h2>
+<!-- Typing the domain by hand kept getting autocorrected, which is itself
+     worth knowing. This box takes the six digits only and appends the same
+     domain auth.js appends, so it tests exactly what the app does. -->
+<input id="code" placeholder="485211" inputmode="numeric" pattern="[0-9]*" autocapitalize="off" autocorrect="off" spellcheck="false">
+<button onclick="goCode()">Try passcode</button>
+<pre id="codeout" style="margin-top:8px">not run</pre>
+
 <h2>Try a sign-in</h2>
 <input id="who" placeholder="485211@staff.nala or an email" autocapitalize="off" autocorrect="off" spellcheck="false">
 <input id="pw" placeholder="passcode or password" autocapitalize="off" autocorrect="off" spellcheck="false">
@@ -72,6 +80,37 @@ catch (e){ env.storage = 'BLOCKED - ' + e.message; }
 try { firebase.initializeApp(CFG); env.init = true; } catch (e){ env.init = 'failed: ' + e.message; }
 try { env.auth = (typeof firebase.auth === 'function'); } catch (e){ env.auth = 'threw: ' + e.message; }
 document.getElementById('env').textContent = JSON.stringify(env, null, 1);
+
+var PAD_DOMAIN = '@staff.nala';   /* the exact string auth.js appends */
+
+function attempt(who, pw, target){
+  var el = document.getElementById(target);
+  el.innerHTML = 'trying: ' + who;
+  var done = false;
+  setTimeout(function(){
+    if (!done) el.innerHTML = '<span class="bad">NO ANSWER after 20s.</span>';
+  }, 20000);
+  var pr;
+  try { pr = firebase.auth().signInWithEmailAndPassword(who, pw); }
+  catch (e){ done = true; el.innerHTML = '<span class="bad">threw: ' + (e.code || e.message) + '</span>'; return; }
+  if (!pr || !pr.then){ done = true; el.innerHTML = '<span class="bad">no promise returned</span>'; return; }
+  pr.then(function(c){
+      done = true;
+      var u = c && c.user;
+      el.innerHTML = '<span class="ok">SIGNED IN as ' + who + '\nuid: ' + (u && u.uid) + '</span>';
+    })
+   .catch(function(e){
+      done = true;
+      el.innerHTML = '<span class="bad">FAILED for ' + who + '\ncode: ' + (e && e.code) + '</span>';
+    });
+}
+
+function goCode(){
+  var c = document.getElementById('code').value.replace(/[^0-9]/g, '');
+  if (c.length !== 6){ document.getElementById('codeout').innerHTML =
+    '<span class="bad">Enter six digits.</span>'; return; }
+  attempt(c + PAD_DOMAIN, c, 'codeout');
+}
 
 function out(cls, t){
   document.getElementById('out').innerHTML = '<span class="'+cls+'">'+t+'</span>';
