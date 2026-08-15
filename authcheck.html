@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Nala - sign-in check</title>
+<style>
+  body { font-family:-apple-system,Helvetica,Arial,sans-serif; background:#F9F7F4;
+         color:#1C1C1A; padding:14px; font-size:13px; line-height:1.45; }
+  h2 { font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:#999990;
+       margin:14px 0 4px; font-weight:normal; }
+  pre { background:#fff; border:1px solid #E0E0DA; padding:8px; border-radius:4px;
+        font-size:11px; white-space:pre-wrap; word-break:break-all; margin:0; }
+  input { width:100%; box-sizing:border-box; padding:11px; margin-bottom:8px;
+          border:1px solid #E0E0DA; border-radius:6px; font-size:16px; background:#fff; }
+  button { width:100%; padding:13px; background:#1C1C1A; color:#fff; border:0;
+           border-radius:6px; font-size:12px; letter-spacing:.14em;
+           text-transform:uppercase; }
+  .ok  { color:#3F7A52; font-weight:bold; }
+  .bad { color:#A8321E; font-weight:bold; }
+</style>
+</head>
+<body>
+
+<!-- Deliberately does NOT load auth.js. This page answers one question: does
+     Firebase itself sign this account in on this phone. If it works here and
+     not in the app, the fault is in auth.js. If it fails here too, the fault
+     is the account, the SDK or the connection. -->
+
+<h2>Environment</h2>
+<pre id="env">checking...</pre>
+
+<h2>Try a sign-in</h2>
+<input id="who" placeholder="485211@staff.nala or an email" autocapitalize="off" autocorrect="off" spellcheck="false">
+<input id="pw" placeholder="passcode or password" autocapitalize="off" autocorrect="off" spellcheck="false">
+<button onclick="go()">Try it</button>
+<pre id="out" style="margin-top:8px">not run</pre>
+
+<h2>Everything that went wrong</h2>
+<pre id="errs">none</pre>
+
+<script>
+var LOG = [];
+function logErr(t){ LOG.push(t); document.getElementById('errs').textContent = LOG.join('\n\n'); }
+window.onerror = function(m, s, l, c, e){ logErr('error: ' + m + ' @' + (s||'') + ':' + (l||'')); };
+window.addEventListener('unhandledrejection', function(e){
+  var r = e && e.reason;
+  logErr('unhandled rejection: ' + ((r && (r.code || r.message)) || String(r)));
+});
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script>
+var CFG = {
+  apiKey: "AIzaSyA0zAzL-zfPivrIRhY_ip8BABjuYVMlzqI",
+  authDomain: "nala-menu.firebaseapp.com",
+  databaseURL: "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "nala-menu",
+  storageBucket: "nala-menu.firebasestorage.app",
+  messagingSenderId: "1079369772100",
+  appId: "1:1079369772100:web:56be2a37c04e49a7a6e011"
+};
+
+var env = {
+  firebase: (typeof firebase !== 'undefined'),
+  auth: false, init: false, storage: false, fetch: (typeof fetch === 'function')
+};
+try { localStorage.setItem('t','1'); localStorage.removeItem('t'); env.storage = true; }
+catch (e){ env.storage = 'BLOCKED - ' + e.message; }
+try { firebase.initializeApp(CFG); env.init = true; } catch (e){ env.init = 'failed: ' + e.message; }
+try { env.auth = (typeof firebase.auth === 'function'); } catch (e){ env.auth = 'threw: ' + e.message; }
+document.getElementById('env').textContent = JSON.stringify(env, null, 1);
+
+function out(cls, t){
+  document.getElementById('out').innerHTML = '<span class="'+cls+'">'+t+'</span>';
+}
+
+function go(){
+  var who = document.getElementById('who').value.trim();
+  var pw  = document.getElementById('pw').value;
+  if (!who || !pw){ out('bad','Fill both boxes.'); return; }
+  out('', 'trying...');
+  var done = false;
+  setTimeout(function(){
+    if (!done) out('bad','NO ANSWER after 20s. The request never came back.');
+  }, 20000);
+  var pr;
+  try { pr = firebase.auth().signInWithEmailAndPassword(who, pw); }
+  catch (e){ done = true; out('bad','threw immediately: ' + (e.code || e.message)); return; }
+  if (!pr || !pr.then){ done = true; out('bad','no promise returned'); return; }
+  pr.then(function(c){
+      done = true;
+      var u = c && c.user;
+      out('ok','SIGNED IN\nuid: ' + (u && u.uid) + '\nemail: ' + (u && u.email));
+    })
+   .catch(function(e){
+      done = true;
+      out('bad','FAILED\ncode: ' + (e && e.code) + '\nmessage: ' + (e && e.message));
+    });
+}
+</script>
+</body>
+</html>
