@@ -666,6 +666,31 @@ with sync_playwright() as p:
     w7 = marks("waiter@nalaresort.com.au", 7)
     ck("and the waiter does not get them", not any("undo done" in x.lower() for x in w7))
 
+    # live updates: a poll must be cheap, and must never redraw under a hand
+    pg=page("staff@nalaresort.com.au")
+    hits=[]
+    pg.on("request", lambda r: hits.append(r.url) if "firebasedatabase.app" in r.url else None)
+    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1500)
+    first=len(hits); hits.clear()
+    pg.evaluate("()=>load()"); pg.wait_for_timeout(700)
+    poll=len(hits)
+    print("   requests: first load %d, one poll %d" % (first, poll))
+    ck("a poll costs far less than a full load (%d vs %d)" % (poll, first), poll <= first/3)
+    ck("a poll refetches none of the fortnight of roomguests",
+       not any("/roomguests/" in u for u in hits))
+    hits.clear()
+    pg.evaluate("()=>load(true)"); pg.wait_for_timeout(900)
+    ck("a full load does refetch them, so bookings are never stale",
+       any("/roomguests/" in u for u in hits))
+
+    # with a villa sheet open the board must hold still
+    tile(pg,3).click(); pg.wait_for_timeout(300)
+    before=pg.evaluate("()=>document.getElementById('ov').className")
+    ck("a sheet is open", "show" in before)
+    ck("the poll stands down while a sheet is open",
+       pg.evaluate("()=>typeof CUR!=='undefined' && !!CUR"))
+    pg.close()
+
     # the link must actually call auth.js's signOut, not just look like it
     pg=page("staff@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1400)

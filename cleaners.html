@@ -290,7 +290,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=12"></script>
+<script src="nala-shared.js?v=13"></script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
 // this board is locked to today by design - no browsed dates
@@ -316,10 +316,10 @@ document.getElementById('selToggle').onclick = function(){
   selLabel(); render();
 };
 
-function load(){
+function load(full){
   var yest = (function(){ var d=new Date(); d.setDate(d.getDate()-1); return dkey(d); })();
   return Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
-                fetchRoomGuests(todayKey()), api('/hk/'+todayKey()), api('/hk/'+yest) ])
+                fetchRoomGuests(todayKey(), 14, !!full), api('/hk/'+todayKey()), api('/hk/'+yest) ])
   .then(function(res){
     var responses=res[0]||{}, manual=res[1]||{}, hk=res[3]||{}, prevHk=res[4]||{};
     var roomguests=resolveRoomGuestsHK(res[2]||{}, todayKey());
@@ -726,9 +726,22 @@ function stampBf(minsAgo){
   setField(CUR.n, {bfast:t}, document.getElementById('perr'));
 }
 
-load();
+load(true);
 setInterval(function(){ if(!CUR) render(); }, 30000);          // tick elapsed times
-setInterval(function(){ if(!CUR) load().catch(function(){}); }, 90000);  // background re-fetch
+
+/* Twenty seconds, and only the four paths that actually move: a fortnight of
+   roomguests is held in the cache in nala-shared.js, so this costs four
+   requests rather than nineteen. CUR is a villa sheet being open, and the
+   board never redraws under someone's hand.                             */
+setInterval(function(){
+  if (!CUR && !document.hidden) load().catch(function(){});
+}, 20000);
+
+/* Returning to the app is when a stale board is most obvious, and when the
+   poll has been asleep. Full, because the phone may have been away a while. */
+document.addEventListener('visibilitychange', function(){
+  if (!document.hidden && !CUR) load(true).catch(function(){});
+});
 </script>
 </body>
 </html>

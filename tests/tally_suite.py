@@ -403,6 +403,19 @@ with sync_playwright() as p:
     print("   foot radii:", rad)
     ck("footer outer lower corners rounded, inner corners square",
        len(rad)==2 and rad[0]=="0px|0px|0px|8px" and rad[1]=="0px|0px|8px|0px")
+    # Reservations had no auto refresh at all, only the manual button
+    hits=[]
+    pg.on("request", lambda r: hits.append(r.url) if "firebasedatabase.app" in r.url else None)
+    pg.evaluate("()=>load()"); pg.wait_for_timeout(700)
+    poll=len(hits)
+    print("   one poll:", poll, "requests")
+    ck("the board can reload itself", pg.evaluate("()=>typeof load==='function'"))
+    ck("a poll skips the fortnight of roomguests (%d requests)" % poll,
+       poll>0 and not any("/roomguests/" in u for u in hits))
+    ck("it stands down mid multi-select",
+       pg.evaluate("()=>{selectMode=true; const b=busy(); selectMode=false; return b;}"))
+    ck("and runs when nothing is in progress", pg.evaluate("()=>!busy()"))
+
     pg.close()
 
     # ---- roles on this board, per the ROLES.md matrix ----

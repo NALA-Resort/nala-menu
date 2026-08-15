@@ -443,7 +443,7 @@ body.readonly .comb-undo { display:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=12"></script>
+<script src="nala-shared.js?v=13"></script>
 <script>
 var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
@@ -1460,17 +1460,40 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
     });
 })();
 
-Promise.all([
-  api('/responses/'+todayKey()),
-  api('/manual/'+todayKey()),
-  fetchRoomGuests(todayKey()),
-  api('/combined/'+todayKey())
-]).then(function(r){
-  responses  = r[0] || {};
-  manual     = r[1] || {};
-  roomguests = resolveRoomGuests(r[2], todayKey());
-  combined   = r[3] || {};
-  render();
+/* One load, callable again. "full" refetches the fortnight of roomguests;
+   without it that comes from the cache in nala-shared.js, which is what makes
+   a 20 second poll cost four requests instead of nineteen.               */
+function load(full){
+  return Promise.all([
+    api('/responses/'+todayKey()),
+    api('/manual/'+todayKey()),
+    fetchRoomGuests(todayKey(), 14, !!full),
+    api('/combined/'+todayKey())
+  ]).then(function(r){
+    responses  = r[0] || {};
+    manual     = r[1] || {};
+    roomguests = resolveRoomGuests(r[2], todayKey());
+    combined   = r[3] || {};
+    render();
+  });
+}
+
+/* Nothing is redrawn under someone's hand: a sheet open or a multi-select in
+   progress means they are mid-decision, and the board can wait.          */
+function busy(){
+  var bd = document.getElementById('backdrop');
+  return (bd && (bd.className.indexOf('show') > -1 ||
+                 getComputedStyle(bd).display !== 'none')) || selectMode;
+}
+
+load(true);
+setInterval(function(){ if (!busy() && !document.hidden) load().catch(function(){}); }, 20000);
+
+/* Coming back to the app is the moment a stale board is most obvious, and it
+   is also when the poll has been asleep, so refresh at once. Full, because
+   the phone may have been away long enough for a booking to change.     */
+document.addEventListener('visibilitychange', function(){
+  if (!document.hidden && !busy()) load(true).catch(function(){});
 });
 </script>
 </body>

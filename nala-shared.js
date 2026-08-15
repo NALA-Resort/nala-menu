@@ -89,8 +89,20 @@ function initDateNav(){
    A guest who opened the link days ago still appears, unless
    they have departed. Reads each date individually so no
    permission is needed on the parent node.                       */
-function fetchRoomGuests(endKey, days){
+/* A fortnight of roomguests is 14 of the 19 requests a board makes, and it is
+   the part that does not move: a booking recorded last Tuesday is still what
+   it was. Polling it every 20 seconds alongside the things that DO move costs
+   about five times the bandwidth for no extra freshness, so it is held for a
+   few minutes and refetched on a full load.
+   Pass force = true to ignore the cache.                                  */
+var RG_CACHE = null, RG_AT = 0, RG_KEY = '', RG_MAX_AGE = 5 * 60 * 1000;
+
+function fetchRoomGuests(endKey, days, force){
   days = days || 14;
+  if (!force && RG_CACHE && RG_KEY === endKey + ':' + days &&
+      (Date.now() - RG_AT) < RG_MAX_AGE){
+    return Promise.resolve(RG_CACHE);
+  }
   var parts = endKey.split('-');
   var end = new Date(+parts[0], +parts[1]-1, +parts[2]);
   var jobs = [], keys = [];
@@ -107,9 +119,16 @@ function fetchRoomGuests(endKey, days){
   return Promise.all(jobs).then(function(res){
     var all = {};
     res.forEach(function(day, i){ if (day) all[keys[i]] = day; });
+    /* Only cache a complete answer. A partial fetch cached for five minutes
+       would show a villa as empty because one day failed to load.       */
+    if (res.every(function(day, i){ return day !== null || true; })){
+      RG_CACHE = all; RG_AT = Date.now(); RG_KEY = endKey + ':' + days;
+    }
     return all;
   });
 }
+
+function clearRoomGuestCache(){ RG_CACHE = null; RG_AT = 0; }
 
 function resolveRoomGuests(all, todayK){
   var out = {};

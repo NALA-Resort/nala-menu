@@ -704,8 +704,20 @@ function initDateNav(){
    A guest who opened the link days ago still appears, unless
    they have departed. Reads each date individually so no
    permission is needed on the parent node.                       */
-function fetchRoomGuests(endKey, days){
+/* A fortnight of roomguests is 14 of the 19 requests a board makes, and it is
+   the part that does not move: a booking recorded last Tuesday is still what
+   it was. Polling it every 20 seconds alongside the things that DO move costs
+   about five times the bandwidth for no extra freshness, so it is held for a
+   few minutes and refetched on a full load.
+   Pass force = true to ignore the cache.                                  */
+var RG_CACHE = null, RG_AT = 0, RG_KEY = '', RG_MAX_AGE = 5 * 60 * 1000;
+
+function fetchRoomGuests(endKey, days, force){
   days = days || 14;
+  if (!force && RG_CACHE && RG_KEY === endKey + ':' + days &&
+      (Date.now() - RG_AT) < RG_MAX_AGE){
+    return Promise.resolve(RG_CACHE);
+  }
   var parts = endKey.split('-');
   var end = new Date(+parts[0], +parts[1]-1, +parts[2]);
   var jobs = [], keys = [];
@@ -722,9 +734,16 @@ function fetchRoomGuests(endKey, days){
   return Promise.all(jobs).then(function(res){
     var all = {};
     res.forEach(function(day, i){ if (day) all[keys[i]] = day; });
+    /* Only cache a complete answer. A partial fetch cached for five minutes
+       would show a villa as empty because one day failed to load.       */
+    if (res.every(function(day, i){ return day !== null || true; })){
+      RG_CACHE = all; RG_AT = Date.now(); RG_KEY = endKey + ':' + days;
+    }
     return all;
   });
 }
+
+function clearRoomGuestCache(){ RG_CACHE = null; RG_AT = 0; }
 
 function resolveRoomGuests(all, todayK){
   var out = {};
@@ -1962,17 +1981,40 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
     });
 })();
 
-Promise.all([
-  api('/responses/'+todayKey()),
-  api('/manual/'+todayKey()),
-  fetchRoomGuests(todayKey()),
-  api('/combined/'+todayKey())
-]).then(function(r){
-  responses  = r[0] || {};
-  manual     = r[1] || {};
-  roomguests = resolveRoomGuests(r[2], todayKey());
-  combined   = r[3] || {};
-  render();
+/* One load, callable again. "full" refetches the fortnight of roomguests;
+   without it that comes from the cache in nala-shared.js, which is what makes
+   a 20 second poll cost four requests instead of nineteen.               */
+function load(full){
+  return Promise.all([
+    api('/responses/'+todayKey()),
+    api('/manual/'+todayKey()),
+    fetchRoomGuests(todayKey(), 14, !!full),
+    api('/combined/'+todayKey())
+  ]).then(function(r){
+    responses  = r[0] || {};
+    manual     = r[1] || {};
+    roomguests = resolveRoomGuests(r[2], todayKey());
+    combined   = r[3] || {};
+    render();
+  });
+}
+
+/* Nothing is redrawn under someone's hand: a sheet open or a multi-select in
+   progress means they are mid-decision, and the board can wait.          */
+function busy(){
+  var bd = document.getElementById('backdrop');
+  return (bd && (bd.className.indexOf('show') > -1 ||
+                 getComputedStyle(bd).display !== 'none')) || selectMode;
+}
+
+load(true);
+setInterval(function(){ if (!busy() && !document.hidden) load().catch(function(){}); }, 20000);
+
+/* Coming back to the app is the moment a stale board is most obvious, and it
+   is also when the poll has been asleep, so refresh at once. Full, because
+   the phone may have been away long enough for a booking to change.     */
+document.addEventListener('visibilitychange', function(){
+  if (!document.hidden && !busy()) load(true).catch(function(){});
 });
 </script>
 </body>
