@@ -112,7 +112,10 @@
     OV = document.createElement('div');
     css(OV, { position:'fixed', inset:'0', background:'#F9F7F4', zIndex:'9999',
               display:'flex', alignItems:'center', justifyContent:'center',
-              fontFamily:'Helvetica,Arial,sans-serif' });
+              fontFamily:'Helvetica,Arial,sans-serif',
+              /* six keys in a row invite a fast second tap, which would
+                 otherwise zoom the page mid-passcode                    */
+              touchAction:'manipulation' });
     OV.innerHTML = '<div id="nalaAuthBox" style="width:82%;max-width:320px;text-align:center;"></div>';
     (document.body || document.documentElement).appendChild(OV);
   }
@@ -125,8 +128,8 @@
     var b = OV.querySelector('#nalaAuthBox');
     b.innerHTML =
       '<div style="font-size:11px;letter-spacing:.35em;color:#999990;margin-bottom:26px;">N A L A</div>'+
-      '<input id="naEmail" type="email" placeholder="Email" autocomplete="username" style="width:100%;box-sizing:border-box;padding:13px 12px;margin-bottom:10px;border:1px solid #E0E0DA;border-radius:6px;font-size:15px;background:#fff;color:#1C1C1A;">'+
-      '<input id="naPass" type="password" placeholder="Password" autocomplete="current-password" style="width:100%;box-sizing:border-box;padding:13px 12px;margin-bottom:14px;border:1px solid #E0E0DA;border-radius:6px;font-size:15px;background:#fff;color:#1C1C1A;">'+
+      '<input id="naEmail" type="email" placeholder="Email" autocomplete="username" style="width:100%;box-sizing:border-box;padding:13px 12px;margin-bottom:10px;border:1px solid #E0E0DA;border-radius:6px;font-size:16px;background:#fff;color:#1C1C1A;">'+
+      '<input id="naPass" type="password" placeholder="Password" autocomplete="current-password" style="width:100%;box-sizing:border-box;padding:13px 12px;margin-bottom:14px;border:1px solid #E0E0DA;border-radius:6px;font-size:16px;background:#fff;color:#1C1C1A;">'+
       '<button id="naGo" style="width:100%;padding:14px;background:#1C1C1A;color:#fff;border:0;border-radius:6px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;">Sign in</button>'+
       '<div id="naErr" style="color:#A8321E;font-size:12px;margin-top:12px;min-height:15px;">'+(msg||'')+'</div>';
     var go = function(){

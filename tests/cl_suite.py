@@ -527,6 +527,16 @@ with sync_playwright() as p:
     print("   lookup failed:", m)
     pg.close()
 
+    # double tap to zoom must be off on the board, and pinch zoom must NOT be
+    pg=page("staff@nalaresort.com.au")
+    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
+    ta=pg.evaluate("""()=>({body:getComputedStyle(document.body).touchAction,
+        tile:getComputedStyle(document.querySelector('#grid .tile')).touchAction})""")
+    print("   touch-action:", ta)
+    ck("double tap zoom off on the board", ta["body"]=="manipulation")
+    ck("pinch zoom still allowed, not 'none'", ta["body"]!="none")
+    pg.close()
+
     # the link must actually call auth.js's signOut, not just look like it
     pg=page("staff@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1400)

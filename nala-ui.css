@@ -12,6 +12,13 @@
   --num-font:var(--ui-font);
 }
 
+/* Double tap to zoom is a hazard on a board of tap targets: a quick second
+   tap on a villa tile zooms the page instead of doing the thing. This turns
+   that gesture off while LEAVING pinch zoom alone, so nobody who needs to
+   magnify the page loses it. The old user-scalable=no meta does not do this;
+   iOS ignores it on purpose.                                             */
+body.tier-app, body.tier-print { touch-action:manipulation; }
+
 /* tier surfaces used by controls */
 .tier-app   { --ctl-bg:var(--cream); --ctl-bdr:var(--rule); --ctl-ink:var(--ink); }
 .tier-print { --ctl-bg:#fff;         --ctl-bdr:#ddd;        --ctl-ink:#111;      }
