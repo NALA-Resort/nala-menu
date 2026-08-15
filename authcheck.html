@@ -31,6 +31,20 @@
 <h2>Environment</h2>
 <pre id="env">checking...</pre>
 
+<h2>Storage probe</h2>
+<!-- Firebase Auth persists the session in IndexedDB, not localStorage. If
+     IndexedDB never opens, a SUCCESSFUL sign-in hangs while a failed one
+     returns straight away, because only success needs to be written down. -->
+<pre id="idb">checking...</pre>
+
+<h2>Try a passcode without saving the session</h2>
+<!-- Same credentials, but persistence set to memory only, which does not
+     touch IndexedDB. If this works and the normal one hangs, storage is the
+     fault and not the passcode. -->
+<input id="code2" placeholder="485211" inputmode="numeric" pattern="[0-9]*" autocapitalize="off" autocorrect="off" spellcheck="false">
+<button onclick="goNoPersist()">Try without saving</button>
+<pre id="npout" style="margin-top:8px">not run</pre>
+
 <h2>Try a passcode (domain added for you)</h2>
 <!-- Typing the domain by hand kept getting autocorrected, which is itself
      worth knowing. This box takes the six digits only and appends the same
@@ -102,6 +116,42 @@ function attempt(who, pw, target){
    .catch(function(e){
       done = true;
       el.innerHTML = '<span class="bad">FAILED for ' + who + '\ncode: ' + (e && e.code) + '</span>';
+    });
+}
+
+/* Does IndexedDB open at all, and how long does it take? */
+(function(){
+  var el = document.getElementById('idb');
+  if (!window.indexedDB){ el.innerHTML = '<span class="bad">indexedDB missing entirely</span>'; return; }
+  var t0 = Date.now(), settled = false;
+  setTimeout(function(){
+    if (!settled){ settled = true;
+      el.innerHTML = '<span class="bad">IndexedDB NEVER OPENED after 8s. This is the fault.</span>'; }
+  }, 8000);
+  try {
+    var rq = indexedDB.open('nala-probe', 1);
+    rq.onsuccess = function(){ if (settled) return; settled = true;
+      el.innerHTML = '<span class="ok">IndexedDB opened in ' + (Date.now()-t0) + 'ms</span>';
+      try { rq.result.close(); indexedDB.deleteDatabase('nala-probe'); } catch(e){} };
+    rq.onerror = function(){ if (settled) return; settled = true;
+      el.innerHTML = '<span class="bad">IndexedDB error: ' + (rq.error && rq.error.message) + '</span>'; };
+    rq.onblocked = function(){ if (settled) return; settled = true;
+      el.innerHTML = '<span class="bad">IndexedDB blocked</span>'; };
+  } catch (e){
+    settled = true;
+    el.innerHTML = '<span class="bad">IndexedDB threw: ' + e.message + '</span>';
+  }
+})();
+
+function goNoPersist(){
+  var c = document.getElementById('code2').value.replace(/[^0-9]/g, '');
+  var el = document.getElementById('npout');
+  if (c.length !== 6){ el.innerHTML = '<span class="bad">Enter six digits.</span>'; return; }
+  el.textContent = 'setting persistence to memory...';
+  firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE)
+    .then(function(){ attempt(c + PAD_DOMAIN, c, 'npout'); })
+    .catch(function(e){
+      el.innerHTML = '<span class="bad">could not set persistence: ' + (e.code || e.message) + '</span>';
     });
 }
 
