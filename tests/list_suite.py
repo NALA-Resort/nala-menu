@@ -193,10 +193,15 @@ with sync_playwright() as p:
     q.close()
 
     q=as_role("housekeeping@x")
-    ck("housekeeping gets no Reservations Sheet",
-       q.evaluate("""()=>noAccess.className.indexOf('show')>-1
-                      && getComputedStyle(sheetScroller).display=='none'"""))
-    ck("and is told where to go", "see the manager" in q.evaluate("()=>noAccess.textContent").lower())
+    q.wait_for_timeout(600)
+    ck("housekeeping is sent to the Cleans board, not shown a refusal",
+       q.url.endswith("cleaners.html"))
+    # a login with no record has nowhere to be sent, so it still gets the message
+    q.close()
+    q=as_role("nobody@x")
+    q.wait_for_timeout(600)
+    ck("a login with no role still gets the message, having nowhere to go",
+       "see the manager" in q.evaluate("()=>noAccess.textContent").lower())
     q.close()
     b.close()
 print("RESULT: %d passed, %d failed" % (P,F))

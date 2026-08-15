@@ -63,20 +63,46 @@
       loadScript(SDK_URLS[i++] + '?r=' + Date.now(), next);
     })();
   }
-  function trySignIn(e, p, btn, err, fail){
+  /* One place that turns a Firebase code into words, for both ways in. They
+     had drifted into two lists saying different things about the same code,
+     and only one of them had a timeout.                                  */
+  function authMessage(code, wrongText){
+    var c = code || '';
+    return c.indexOf('network') > -1        ? 'No connection - try again.' :
+           c.indexOf('too-many') > -1       ? 'Too many attempts - wait a minute.' :
+           c.indexOf('user-not-found') > -1 ? 'No account for that ' + wrongText.noun + '.' :
+           c.indexOf('user-disabled') > -1  ? 'That ' + wrongText.noun + ' has been turned off.' :
+           c.indexOf('wrong-password') > -1 ||
+           c.indexOf('invalid-credential') > -1 ? wrongText.wrong :
+           c ? ('Sign-in failed: ' + c) : wrongText.wrong;
+  }
+
+  /* One sign-in, used by the pad and by the form. Always ends in a callback:
+     a request that never comes back still says so, which is the failure that
+     left a dead screen for an afternoon.                                 */
+  var SIGNIN_TIMEOUT = 15000;
+  function runSignIn(who, pw, words, fail, ok){
     var pr;
-    try { pr = firebase.auth().signInWithEmailAndPassword(e, p); }
+    try { pr = firebase.auth().signInWithEmailAndPassword(who, pw); }
     catch (ex){ fail('Could not start sign-in - reload the page.'); return; }
     if (!pr || !pr.then){ fail('Could not start sign-in - reload the page.'); return; }
-    pr.then(function(){ btn.disabled = false; })
+    var answered = false;
+    var slow = setTimeout(function(){
+      if (!answered){ answered = true;
+        fail('No answer from the sign-in service - check the connection.'); }
+    }, SIGNIN_TIMEOUT);
+    pr.then(function(){
+        if (answered) return;
+        answered = true; clearTimeout(slow); if (ok) ok();
+      })
       .catch(function(ex){
-        var c = (ex && ex.code) || '';
-        fail(
-          c.indexOf('network') > -1 ? 'No connection - try again.' :
-          c.indexOf('too-many') > -1 ? 'Too many attempts - wait a minute.' :
-          'Wrong email or password.');
+        if (answered) return;
+        answered = true; clearTimeout(slow);
+        fail(authMessage(ex && ex.code, words));
       });
   }
+  var WORDS_EMAIL = { noun:'email', wrong:'Wrong email or password.' };
+  var WORDS_CODE  = { noun:'passcode', wrong:'Wrong passcode.' };
 
   /* ── overlay ─────────────────────────────────────────── */
   var OV = null, formShown = false;
@@ -115,13 +141,13 @@
       /* If auth-compat never arrived, the sign-in method does not exist and the
          tap used to die here leaving a dead grey button. Fetch the script and
          try again; whatever happens, the button comes back with a message.  */
-      if (canSignIn()){ trySignIn(e, p, btn, err, fail); return; }
+      if (canSignIn()){ runSignIn(e, p, WORDS_EMAIL, fail, function(){ btn.disabled = false; }); return; }
       err.textContent = 'Starting sign-in service...';
       recoverSDK(function(){
         if (!canSignIn()){ fail('Sign-in service did not load - check the connection and reload.'); return; }
         wireAuth();
         err.textContent = '';
-        trySignIn(e, p, btn, err, fail);
+        runSignIn(e, p, WORDS_EMAIL, fail, function(){ btn.disabled = false; });
       });
     };
     document.getElementById('naGo').onclick = go;
@@ -211,11 +237,7 @@
 
     function submit(){
       var code = padDigitsOf(padEl);
-      /* Between the sixth press and Firebase answering there was nothing on
-         screen at all, so a slow or hanging request looked like a dead pad.
-         Say so immediately, in muted ink rather than red: waiting is not an
-         error yet.                                                        */
-      waiting('Checking...');
+      waiting('Logging you in...');
       function fail(t){
         PAD_ATTEMPTS++;
         setErr(t, true);
@@ -223,39 +245,22 @@
         if (PAD_ATTEMPTS >= 5) lock();
       }
       if (!canSignIn()){
-        setErr('Starting sign-in service...');
+        waiting('Starting sign-in service...');
         recoverSDK(function(){
-          if (!canSignIn()){ setErr('Sign-in service did not load - check the connection and reload.', true); clearCode(); return; }
-          wireAuth(); setErr(''); doSignIn(code, fail);
+          if (!canSignIn()){
+            setErr('Sign-in service did not load - check the connection and reload.', true);
+            clearCode(); return;
+          }
+          wireAuth();
+          waiting('Logging you in...');
+          runSignIn(code + PAD_DOMAIN, code, WORDS_CODE, fail, done);
         });
         return;
       }
-      doSignIn(code, fail);
+      runSignIn(code + PAD_DOMAIN, code, WORDS_CODE, fail, done);
     }
-    function doSignIn(code, fail){
-      var pr;
-      try { pr = firebase.auth().signInWithEmailAndPassword(code + PAD_DOMAIN, code); }
-      catch (ex){ fail('Could not start sign-in - reload the page.'); return; }
-      if (!pr || !pr.then){ fail('Could not start sign-in - reload the page.'); return; }
-      var answered = false;
-      var slow = setTimeout(function(){
-        if (!answered) fail('No answer from the sign-in service - check the connection.');
-      }, 15000);
-      pr.then(function(){ answered = true; clearTimeout(slow); PAD_ATTEMPTS = 0; })
-        .catch(function(ex){
-          answered = true; clearTimeout(slow);
-          var c = (ex && ex.code) || '';
-          /* The code is named for anything that is not simply a wrong number.
-             "Wrong passcode" on an account that does not exist sends someone
-             hunting for a typo that is not there.                          */
-          fail(c.indexOf('network') > -1      ? 'No connection - try again.' :
-               c.indexOf('too-many') > -1     ? 'Too many attempts - wait a minute.' :
-               c.indexOf('user-not-found') > -1 ? 'No account for that passcode.' :
-               c.indexOf('user-disabled') > -1  ? 'That passcode has been turned off.' :
-               c.indexOf('wrong-password') > -1 ? 'Wrong passcode.' :
-               c ? ('Sign-in failed: ' + c) : 'Wrong passcode.');
-        });
-    }
+    function done(){ PAD_ATTEMPTS = 0; }
+
     function lock(){
       PAD_LOCKED = true;
       setErr('Too many attempts - wait a minute.', true);
@@ -310,9 +315,15 @@
   firebase.initializeApp(CFG);
 
   makeOverlay();                 // instant cream cover, no content flash
-  setTimeout(function(){         // if no cached login materialises, show the pad
-    if (!settled && !formShown) showPad();
-  }, 500);
+
+  /* The pad used to appear on a 500ms timer, so every page load with a
+     perfectly good session flashed a sign-in screen before the token
+     arrived. It is now shown only when auth actually reports nobody signed
+     in. The timer stays as a long stop for the case where the SDK never
+     calls back at all, which is the only reason it existed.            */
+  setTimeout(function(){
+    if (!settled && !formShown && !window.__idToken) showPad();
+  }, 6000);
 
   /* The wiring below is unchanged. It is wrapped so that if auth-compat did
      not arrive, the throw does not kill the rest of this file - and so the
@@ -341,7 +352,11 @@
     } catch (e){ wired = false; }
     return wired;
   }
-  wireAuth();
+  /* If the wiring failed, auth-compat is not there and nothing will ever
+     report a signed-in user, so there is no point waiting: show the way in
+     at once. The long stop above is only for the case where the wiring
+     worked but no callback ever arrived.                               */
+  if (!wireAuth()) showPad();
 
   window.NALA_SIGNOUT = function(){ try { firebase.auth().signOut(); } catch(e){} };
 })();

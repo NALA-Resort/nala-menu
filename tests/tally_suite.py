@@ -460,11 +460,12 @@ with sync_playwright() as p:
        q.evaluate("()=>window.CAN_EDIT===true && noAccess.className.indexOf('show')<0"))
     q.close()
 
+    # housekeeping is ROUTED, not refused: their own board is the right first
+    # screen, and a refusal was the wrong answer to a routing problem
     q=as_role("housekeeping@x")
-    ck("housekeeping gets no Reservations board at all",
-       q.evaluate("""()=>noAccess.className.indexOf('show')>-1
-                      && getComputedStyle(rooms).display=='none'
-                      && getComputedStyle(statsRow).display=='none'"""))
+    q.wait_for_timeout(600)
+    ck("housekeeping is sent to the Cleans board, not shown a refusal",
+       q.url.endswith("cleaners.html"))
     q.close()
     b.close()
     open("/home/claude/nala/_p1_tally.png","wb").write(shot1)

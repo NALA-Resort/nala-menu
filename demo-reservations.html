@@ -351,6 +351,15 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
            + 'not your login.</div>'
            + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
            : 'This login has no access to the Reservations Sheet. See the manager.');
+    /* A role that cannot see this page but has a board of its own is sent
+       there rather than shown a refusal. Only a login with no role at all
+       gets the message, because it has nowhere to be sent.             */
+    if (on && !err){
+      var home = homeFor(window.NALA_ROLE);
+      if (home && home !== location.pathname.split('/').pop()){
+        location.replace(home); return;
+      }
+    }
     box.className = 'noaccess' + (on ? ' show' : '');
     ['statsRow','sheetScroller','footBar'].forEach(function(id){
       var el = document.getElementById(id);
@@ -659,6 +668,14 @@ function can(role, what){
   var g = ROLE_GRANTS[normaliseRole(role)];
   return !!(g && g.indexOf(what) > -1);
 }
+
+/* Where a role should land. Housekeeping opening the app got the Reservations
+   board, which they may not see, so their first screen was a refusal. A role
+   that cannot see the page it arrived on is a routing problem, not an access
+   one: send them to their own board instead of telling them off.        */
+var ROLE_HOME = { admin:'tally.html', chef:'tally.html', waiter:'tally.html',
+                  housekeeping:'cleaners.html' };
+function homeFor(role){ return ROLE_HOME[normaliseRole(role)] || null; }
 
 function setStaffRecords(map){
   STAFF_RECORDS = (map && typeof map === 'object') ? map : {};

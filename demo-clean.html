@@ -575,6 +575,14 @@ function can(role, what){
   return !!(g && g.indexOf(what) > -1);
 }
 
+/* Where a role should land. Housekeeping opening the app got the Reservations
+   board, which they may not see, so their first screen was a refusal. A role
+   that cannot see the page it arrived on is a routing problem, not an access
+   one: send them to their own board instead of telling them off.        */
+var ROLE_HOME = { admin:'tally.html', chef:'tally.html', waiter:'tally.html',
+                  housekeeping:'cleaners.html' };
+function homeFor(role){ return ROLE_HOME[normaliseRole(role)] || null; }
+
 function setStaffRecords(map){
   STAFF_RECORDS = (map && typeof map === 'object') ? map : {};
   return STAFF_RECORDS;

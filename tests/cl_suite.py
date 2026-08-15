@@ -494,14 +494,12 @@ with sync_playwright() as p:
     pg.close()
 
     # ---- the gate on the page ----
+    # a chef has a board of their own, so they are sent to it rather than
+    # refused: a refusal is the wrong answer when there is somewhere to go
     pg=page("chef@nalaresort.com.au")
-    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1500)
-    g=pg.evaluate("""()=>({msg:noAccess.textContent, shown:noAccess.className.indexOf('show')>-1,
-                          grid:getComputedStyle(grid).display, nav:getComputedStyle(navWrap).display})""")
-    ck("a chef gets no Cleans board", g["shown"] and g["grid"]=="none")
-    ck("but still has a menu to leave by", g["nav"]!="none")
-    ck("and is told where to go, once", "see the manager" in g["msg"].lower())
-    print("   chef on Cleans:", g["msg"])
+    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1800)
+    ck("a chef opening Cleans is sent to Reservations", pg.url.endswith("tally.html"))
+    print("   chef on Cleans landed at:", pg.url.split("/")[-1])
     pg.close()
 
     # a login with no record at all: the case that used to be full access

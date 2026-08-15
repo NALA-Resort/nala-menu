@@ -350,6 +350,15 @@ body.readonly .comb-undo { display:none; }
            + 'not your login.</div>'
            + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
            : 'This login has no access to Reservations. See the manager.');
+    /* A role that cannot see this page but has a board of its own is sent
+       there rather than shown a refusal. Only a login with no role at all
+       gets the message, because it has nowhere to be sent.             */
+    if (on && !err){
+      var home = homeFor(window.NALA_ROLE);
+      if (home && home !== location.pathname.split('/').pop()){
+        location.replace(home); return;
+      }
+    }
     box.className = 'noaccess' + (on ? ' show' : '');
     ['menuState','statsRow','tablesLine','roomsSec','rooms','listSec',
      'listBookings','footActions'].forEach(function(id){
@@ -429,8 +438,8 @@ body.readonly .comb-undo { display:none; }
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="auth.js?v=9"></script>
-<script src="nala-shared.js?v=8"></script>
+<script src="auth.js?v=10"></script>
+<script src="nala-shared.js?v=9"></script>
 <script>
 var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
