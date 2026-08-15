@@ -169,9 +169,11 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      building exactly as it did and only the offer changes. Every undo is
      listed on its own: the quote sits before the "un", so a pattern for
      'dep' does NOT catch 'undep', and leaving them off handed the waiter an
-     Undo departed button on a villa whose guest had gone.               */
-  body.marks-limited .pbtn[onclick*="'dep'"],
-  body.marks-limited .pbtn[onclick*="'undep'"],
+     Undo departed button on a villa whose guest had gone.
+
+     Departures are NOT on this list: a waiter clearing breakfast sees a
+     guest leave before anyone else does, so they mark it and can take it
+     back. What stays hidden is the work itself and the pushing.        */
   body.marks-limited .pbtn[onclick*="'push'"],
   body.marks-limited .pbtn[onclick*="'unpush'"],
   body.marks-limited .pbtn[onclick*="'done'"],
@@ -1083,7 +1085,7 @@ function drawSheet(mode){
       var stillHere = !(h.departed || CUR.pushedIn) && CUR.kind !== 'pre';
       if (h.bfast){
         rows+='<button class="pbtn" disabled style="opacity:.6">Marked available '+hhmm(h.bfast)+' ('+mins(h.bfast)+'m ago)</button>';
-        rows+='<button class="pbtn warn" onclick="drawSheet(\'clearbf\')">Clear</button>';
+        rows+='<button class="pbtn warn" onclick="drawSheet(\'clearbf\')">Clear availability</button>';
       } else if (stillHere && CUR.kind === 'svc') {
         /* Only a service can be "possibly available": it is a way in to a
            villa whose guest is staying on. A clean is decided by whether the
@@ -1216,8 +1218,8 @@ function drawSheet(mode){
   }
   if (mode==='clearbf'){
     b.innerHTML=head+
-      '<div class="st" style="margin-bottom:6px">Clear the available note for villa '+n+'?</div>'+
-      '<button class="pbtn warn" onclick="setField('+n+',{bfast:null},document.getElementById(\'perr\'))">Yes - clear</button>'+
+      '<div class="st" style="margin-bottom:6px">Clear the availability mark on villa '+n+'?</div>'+
+      '<button class="pbtn warn" onclick="setField('+n+',{bfast:null},document.getElementById(\'perr\'))">Yes - clear it</button>'+
       '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
   }
 }

@@ -649,14 +649,15 @@ with sync_playwright() as p:
     # in waiter_svc below rather than pretended at here.
     ck("waiter sees the board itself, not a refusal",
        len(w6) > 0)
-    ck("waiter cannot mark work done, push, or touch departed",
+    ck("waiter cannot mark work done or push a villa",
        not any(k in " ".join(w6).lower() for k in
-               ["mark as cleaned","mark as serviced","push","departed"]))
+               ["mark as cleaned","mark as serviced","push"]))
+    # a waiter clearing breakfast sees a guest leave before anyone else, so
+    # departures are theirs to mark and to take back
     w8 = marks("waiter@nalaresort.com.au", 8)
     print("   waiter, departed villa:", w8)
-    ck("waiter gets no undo either: the quote sits before the un, so a "
-       "pattern for dep does not catch undep",
-       not any("undo" in x.lower() for x in w8))
+    ck("waiter can undo a departure", any("undo departed" in x.lower() for x in w8))
+    ck("but still cannot push that villa", not any("push" in x.lower() for x in w8))
 
     hk7 = marks("housekeeping@nalaresort.com.au", 7)
     print("   housekeeping, finished villa:", hk7)
