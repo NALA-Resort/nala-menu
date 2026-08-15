@@ -1,23 +1,23 @@
 {
-  "published": "2026-08-15T12:38:30.845436+10:00",
+  "published": "2026-08-16T08:26:31.458816+10:00",
   "bread": {
-    "name": "House focaccia",
-    "desc": "warm olive salsa",
+    "name": "Housemade focaccia",
+    "desc": "aged balsamic, olive oil",
     "aus": false
   },
   "entree": {
-    "name": "Cured salmon",
-    "desc": "buttermilk, dill, watermelon radish, salmon roe",
+    "name": "Hervey Bay scallops",
+    "desc": "cauliflower, morcilla, chives",
     "aus": true
   },
   "main": {
-    "name": "Pan-roasted veal",
-    "desc": "potato, green beans, lemon & caper butter",
+    "name": "Duck tagliatelle",
+    "desc": "chilli, garlic, orange gremolata, stracciatella",
     "aus": false
   },
   "dessert": {
-    "name": "Honey panna cotta",
-    "desc": "poached pear, candied almond crumb",
+    "name": "Tiramisu",
+    "desc": "",
     "aus": false
   }
 }
