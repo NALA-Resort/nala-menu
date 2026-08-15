@@ -112,7 +112,13 @@ references it, in the same commit. Current: `nala-ui.css?v=9`,
 
 ### Cleans (cleaners.html) - most of the work
 
-This page grew a full state machine. See the next section.
+This page grew a full state machine. See its own section below.
+
+- **Departure controls.** A villa pushed in from yesterday is departed as a
+  matter of fact, so it is offered no departure mark at all. It used to offer
+  one, and undoing that mark appeared to do nothing, because the tile was
+  never reading it. General rule now in the styleguide: only offer an undo
+  for something a person actually set.
 
 ### Everywhere
 
@@ -277,6 +283,11 @@ made. Room-plus-check-in-date was the leading alternative if a booking ID
 never materialises from GuestTouch.
 
 **Print header repetition** has still never been confirmed on a real phone.
+
+**The role mechanism is a single email prefix check.** It cannot express the
+four roles that were asked for, and it misfires on per-person logins:
+`housekeeping.maria@` would be a cleaner, `maria@` would silently be full
+access. Replacing it is the next piece of work; see ROLES.md.
 
 **Georgia, San Francisco and the iOS fonts are not installed in the sandbox.**
 Renders fall back, so anything font-dependent needs the user's eyes. There is
