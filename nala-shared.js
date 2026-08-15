@@ -300,7 +300,19 @@ function loadStaff(cb){
    that leave the site, open a new tab, or do something on the page rather
    than go somewhere are left alone.                                     */
 (function(){
-  if (!window.navigator || !window.navigator.standalone) return;
+  /* navigator.standalone is a Safari property and is undefined in Chrome,
+     where a saved page still opens without the bars. Asking only Safari
+     meant this did nothing at all on half the phones, which is why the app
+     view kept being handed back to the browser.                        */
+  function inApp(){
+    if (window.navigator && window.navigator.standalone) return true;
+    try {
+      return window.matchMedia('(display-mode: standalone)').matches ||
+             window.matchMedia('(display-mode: fullscreen)').matches ||
+             window.matchMedia('(display-mode: minimal-ui)').matches;
+    } catch (e){ return false; }
+  }
+  if (!inApp()) return;
   document.addEventListener('click', function(e){
     var a = e.target;
     while (a && a.nodeName !== 'A') a = a.parentNode;

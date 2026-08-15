@@ -550,6 +550,29 @@ with sync_playwright() as p:
        pg.url.endswith("cleaners.html"))
     pg.close()
 
+    # Chrome has no navigator.standalone, so the display mode is the only
+    # signal there. This is the case that shipped broken.
+    pg=b.new_page(viewport={"width":390,"height":844})
+    pg.add_init_script("""delete Object.getPrototypeOf(navigator).standalone;
+        window.NALA_GO=function(u){ window.__went=u; };
+        const mm=window.matchMedia;
+        window.matchMedia=function(q){
+          if(q.indexOf('display-mode: standalone')>-1) return {matches:true,media:q,
+            addListener:function(){},removeListener:function(){},addEventListener:function(){},
+            removeEventListener:function(){}};
+          return mm.call(window,q); };""")
+    pg.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
+        content_type="application/javascript",body=sdk("staff@nalaresort.com.au")))
+    pg.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,
+        content_type="application/javascript",body="/*n*/"))
+    pg.route("**firebasedatabase.app/**",fb)
+    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
+    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#navDrop a[href='housekeeping.html']").click(); pg.wait_for_timeout(250)
+    ck("display-mode standalone is honoured, not just Safari's flag",
+       (pg.evaluate("()=>window.__went||''") or "").endswith("housekeeping.html"))
+    pg.close()
+
     # an ordinary tab must be left completely alone
     pg=b.new_page(viewport={"width":390,"height":844})
     pg.add_init_script("window.NALA_GO=function(u){ window.__went=u; };")
