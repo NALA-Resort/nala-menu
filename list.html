@@ -7,7 +7,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nala · Service Sheet</title>
-<link rel="stylesheet" href="nala-ui.css?v=10">
+<link rel="stylesheet" href="nala-ui.css?v=11">
 <style>
   @page { size: A4 portrait; margin: 10mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -126,7 +126,7 @@
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="cleaners.html">Cleans</a><a href="housekeeping.html">Clean sheet</a></div>
+    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="cleaners.html">Cleans</a><a href="housekeeping.html">Clean sheet</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 <script>
@@ -134,6 +134,9 @@
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
+  var so=document.getElementById('navSignout');
+  if (so) so.onclick=function(e){ e.preventDefault();
+    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
 
   /* Role gate, per the matrix in ROLES.md. The sheet is read and print for
      everyone who may see it at all, so there is one question here, not two. */
@@ -169,6 +172,7 @@
                  'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard' };
     var links = document.querySelectorAll('#navDrop a');
     for (var i=0;i<links.length;i++){
+      if (links[i].className.indexOf('signout')>-1) continue;   /* never filtered */
       var href = (links[i].getAttribute('href')||'').split('?')[0];
       links[i].style.display = can(role, need[href]) ? '' : 'none';
     }

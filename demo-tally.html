@@ -40,6 +40,11 @@
 .navdrop a { display:block; padding:12px 18px; font-size:10px; letter-spacing:.14em;
              text-transform:uppercase; color:var(--ctl-ink); text-decoration:none;
              white-space:nowrap; }
+/* Signing out is an action, not a destination, so it sits below a rule rather
+   than reading as one more page in the list. It is never filtered by role:
+   every login has to be able to get out.                                  */
+.navdrop a.signout { border-top:1px solid var(--ctl-bdr); margin-top:5px;
+                     padding-top:13px; color:var(--mid); }
 
 /* ── floating footer ──────────────────────────────────────
    sticky pins it while scrolling long pages; the flex column
@@ -384,7 +389,7 @@ body.readonly .comb-undo { display:none; }
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="demo-reservations.html">Reservations Sheet</a><a href="demo-cleans.html">Cleans</a><a href="demo-clean.html">Clean sheet</a></div>
+    <div class="navdrop" id="navDrop"><a href="demo-reservations.html">Reservations Sheet</a><a href="demo-cleans.html">Cleans</a><a href="demo-clean.html">Clean sheet</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 
@@ -454,6 +459,9 @@ body.readonly .comb-undo { display:none; }
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
+  var so=document.getElementById('navSignout');
+  if (so) so.onclick=function(e){ e.preventDefault();
+    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
 
   /* Role gate, per the matrix in ROLES.md. Two different things here: a role
      that may not see this board at all, and a role that may read it but not
@@ -493,6 +501,7 @@ body.readonly .comb-undo { display:none; }
                  'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard' };
     var links = document.querySelectorAll('#navDrop a');
     for (var i=0;i<links.length;i++){
+      if (links[i].className.indexOf('signout')>-1) continue;   /* never filtered */
       var href = (links[i].getAttribute('href')||'').split('?')[0];
       links[i].style.display = can(role, need[href]) ? '' : 'none';
     }

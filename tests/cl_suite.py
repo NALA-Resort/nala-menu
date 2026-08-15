@@ -422,10 +422,16 @@ with sync_playwright() as p:
     shot=pg.screenshot(full_page=True)
     open("/home/claude/nala/_p4_cleaners.png","wb").write(shot)
     pg.close()
-    # gate: housekeeping login sees no menu
+    # gate: the housekeeping login gets a menu, because Sign out lives in it
     pg=page("housekeeping@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1200)
-    ck("housekeeping login: menu hidden", pg.evaluate("()=>getComputedStyle(navWrap).display")=="none")
+    ck("housekeeping login: menu present, so there is a way to sign out",
+       pg.evaluate("()=>getComputedStyle(navWrap).display")!="none")
+    hknav=pg.evaluate("""()=>[].filter.call(document.querySelectorAll('#navDrop a'),
+        a=>getComputedStyle(a).display!=='none').map(a=>a.textContent.trim())""")
+    ck("housekeeping is offered no board it would be refused, but can sign out",
+       "Sign out" in hknav and "Reservations" not in hknav and "Reservations Sheet" not in hknav)
+    print("   housekeeping menu:", hknav)
     tile(pg,3).click(); pg.wait_for_timeout(300)
     hkSheet = pg.locator("#sheetBox").inner_text().lower()
     print("   housekeeping sheet:", hkSheet.replace("\n"," | "))
@@ -489,7 +495,8 @@ with sync_playwright() as p:
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1500)
     g=pg.evaluate("""()=>({msg:noAccess.textContent, shown:noAccess.className.indexOf('show')>-1,
                           grid:getComputedStyle(grid).display, nav:getComputedStyle(navWrap).display})""")
-    ck("a chef gets no Cleans board", g["shown"] and g["grid"]=="none" and g["nav"]=="none")
+    ck("a chef gets no Cleans board", g["shown"] and g["grid"]=="none")
+    ck("but still has a menu to leave by", g["nav"]!="none")
     ck("and is told where to go, once", "see the manager" in g["msg"].lower())
     print("   chef on Cleans:", g["msg"])
     pg.close()
@@ -517,6 +524,16 @@ with sync_playwright() as p:
        "see the manager" not in m.lower() and "connection" in m.lower())
     ck("and offers a retry", pg.evaluate("()=>!!document.querySelector('#noAccess .na-retry')"))
     print("   lookup failed:", m)
+    pg.close()
+
+    # the link must actually call auth.js's signOut, not just look like it
+    pg=page("staff@nalaresort.com.au")
+    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1400)
+    pg.evaluate("()=>{window.__out=0; window.NALA_SIGNOUT=function(){window.__out++;};}")
+    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#navSignout").click(); pg.wait_for_timeout(200)
+    ck("sign out calls NALA_SIGNOUT", pg.evaluate("()=>window.__out")==1)
+    ck("and does not navigate away to '#'", "cleaners.html" in pg.url and "#" not in pg.url)
     pg.close(); b.close()
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()

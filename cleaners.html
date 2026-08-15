@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-logo.png">
 <title>Nala · Cleaners</title>
-<link rel="stylesheet" href="nala-ui.css?v=10">
+<link rel="stylesheet" href="nala-ui.css?v=11">
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
           --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
@@ -121,7 +121,7 @@
   <div class="date" id="title"></div>
   <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="list.html">Reservations Sheet</a><a href="housekeeping.html">Clean sheet</a></div>
+    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="list.html">Reservations Sheet</a><a href="housekeeping.html">Clean sheet</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 <script>
@@ -129,6 +129,9 @@
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
+  var so=document.getElementById('navSignout');
+  if (so) so.onclick=function(e){ e.preventDefault();
+    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
   /* One gate for the whole page. The role comes from the record at
      /staff/<emailkey>, never from the address - see ROLES.md. The nav menu
      and the job controls both need setJob; the marks need cleansMarks; a
@@ -152,8 +155,13 @@
         var role = roleOf(u);
         window.NALA_ROLE  = role;
         window.IS_MANAGER = can(role,'setJob');
-        document.getElementById('navWrap').style.display =
-          window.IS_MANAGER ? 'block' : 'none';
+        /* The menu is no longer manager-only. It has to exist for every
+           login, because Sign out lives in it and the Cleans board is the
+           housekeeping login's only page: hiding the menu from them left
+           them with no way out. The LINKS are filtered by role instead, so
+           nobody is offered a board that would refuse them.            */
+        document.getElementById('navWrap').style.display = 'block';
+        navFilter(role);
         showAccess(can(role,'cleansBoard'), err);
         if (document.getElementById('ov').className.indexOf('show')>-1) drawSheet('menu');
       });
@@ -163,6 +171,19 @@
   /* A login with no record is a different thing from a lookup that failed,
      and they are worded differently: sending someone to the manager when
      the database simply did not answer wastes a walk.                  */
+
+  /* Only the boards this role may open. Sign out is never filtered. */
+  function navFilter(role){
+    var need = { 'tally.html':'resBoard', 'list.html':'resSheet',
+                 'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard' };
+    var links = document.querySelectorAll('#navDrop a');
+    for (var i=0;i<links.length;i++){
+      if (links[i].className.indexOf('signout')>-1) continue;
+      var href=(links[i].getAttribute('href')||'').split('?')[0];
+      links[i].style.display = can(role, need[href]) ? '' : 'none';
+    }
+  }
+
   function showAccess(allowed, err){
     var box = document.getElementById('noAccess');
     var on  = !allowed;

@@ -30,6 +30,11 @@
 .navdrop a { display:block; padding:12px 18px; font-size:10px; letter-spacing:.14em;
              text-transform:uppercase; color:var(--ctl-ink); text-decoration:none;
              white-space:nowrap; }
+/* Signing out is an action, not a destination, so it sits below a rule rather
+   than reading as one more page in the list. It is never filtered by role:
+   every login has to be able to get out.                                  */
+.navdrop a.signout { border-top:1px solid var(--ctl-bdr); margin-top:5px;
+                     padding-top:13px; color:var(--mid); }
 
 /* ── floating footer ──────────────────────────────────────
    sticky pins it while scrolling long pages; the flex column
