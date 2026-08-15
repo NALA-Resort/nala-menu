@@ -15,18 +15,52 @@
           --blue:#E7E9EF; --blueb:#8A90A8; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
-         padding:24px 18px 0; -webkit-tap-highlight-color:transparent; }
-  .wrap { max-width:520px; margin:0 auto; }
+         padding:calc(24px + env(safe-area-inset-top)) 18px 0;
+         -webkit-tap-highlight-color:transparent; }
+  /* height, not min-height, and a shrinkable wrap: without these the column
+     grows past the screen and the page scrolls, instead of the grid taking
+     the space it has and scrolling inside itself.                       */
+  body { height:100vh; height:100dvh; }
+  /* flex:1 1, not the shared 1 0: a wrap that refuses to shrink pushes the
+     page past the screen however small the tiles are told to be.       */
+  /* matches the shared "body > .wrap" selector: a plain .wrap rule loses to
+     it and silently does nothing. flex:1 1, not the shared 1 0, because a
+     wrap that refuses to shrink pushes the page past the screen however
+     small the tiles are told to be.                                     */
+  body > .wrap { max-width:520px; margin:0 auto; flex:1 1 auto; min-height:0; }
 
   .brand { font-family:var(--ui-font); font-size:10px; letter-spacing:.35em;
            color:var(--mid); text-transform:uppercase; text-align:center; }
   h1 { font-size:19px; font-weight:bold; text-align:center; margin:8px 0 4px;
        font-family:var(--ui-font); letter-spacing:.02em; }
 
-  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:10px; }
+  /* The board takes whatever height the phone has left after the header,
+     stats, legend and footer, and the rows share it. No fixed tile height,
+     because a number that fits a 14 Pro overflows an SE and leaves a 15 Plus
+     half empty. 17 villas land on one screen on both; the tiles simply
+     breathe more on the bigger one.
+     The floor is a safety net, NOT the working size: set it near the size
+     you want and the rows take exactly that, so a screen one pixel short
+     scrolls for no reason. Set low, the rows share the real space and land
+     wherever it allows. Below the floor the grid scrolls instead, because
+     an unhittable target is worse than a scroll.                        */
+  /* On a short phone the furniture is what does not fit, so the furniture
+     gives way first: the tiles are the thing being tapped and should be the
+     last to shrink.                                                     */
+  @media (max-height: 720px) {
+    body { padding-top:calc(12px + env(safe-area-inset-top)); }
+    .stats { margin-bottom:6px !important; }
+    .stat-n { font-size:22px; }
+    .grid { gap:8px !important; }
+    .legend { margin:6px 0 !important; }
+  }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr));
+          gap:10px; flex:1 1 auto; min-height:0;
+          grid-auto-rows:minmax(56px,1fr); overflow-y:auto; }
   .tile { border:1.2px solid var(--rule); border-radius:10px; background:#fff;
-          padding:12px 8px 10px; text-align:center; cursor:pointer; color:var(--ink);
-          font-family:var(--ui-font); position:relative; min-height:96px;
+          padding:10px 8px 9px; text-align:center; cursor:pointer; color:var(--ink);
+          font-family:var(--ui-font); position:relative; min-height:0;
           display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; }
   .tile .rn { font-size:20px; font-weight:bold; }
   /* Clean is a solid ink pill, Service a faint outline: the two jobs must be

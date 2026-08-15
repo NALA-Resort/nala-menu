@@ -588,6 +588,37 @@ with sync_playwright() as p:
        pg.url.endswith("housekeeping.html") and pg.evaluate("()=>window.__went||null") is None)
     pg.close()
 
+    # the board sizes itself to the phone. Heights here are REAL usable
+    # heights, not the marketing screen size: the status bar, home indicator
+    # and browser bars all take their cut first.
+    for label,w,h,mustFit in [("iPhone 14/15 app view",390,763,True),
+                              ("iPhone 15 Max app",430,851,True),
+                              ("iPhone 12 mini app",360,719,True),
+                              ("iPhone 14/15 browser",390,664,True),
+                              ("iPhone SE app view",375,647,True),
+                              ("iPhone SE browser",375,553,False)]:
+        q=b.new_page(viewport={"width":w,"height":h})
+        q.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
+            content_type="application/javascript",body=sdk("staff@nalaresort.com.au")))
+        q.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,
+            content_type="application/javascript",body="/*n*/"))
+        q.route("**firebasedatabase.app/**",fb)
+        q.goto("http://localhost:8957/cleaners.html"); q.wait_for_timeout(1300)
+        m=q.evaluate("""()=>{const g=document.getElementById('grid');
+          const t=document.querySelector('.tile').getBoundingClientRect();
+          const f=document.getElementById('footBar').getBoundingClientRect();
+          return {page:document.body.scrollHeight-window.innerHeight,
+                  gs:g.scrollHeight-g.clientHeight, tH:Math.round(t.height),
+                  cols:getComputedStyle(g).gridTemplateColumns.split(' ').length,
+                  footIn:Math.round(f.bottom)<=window.innerHeight+1};}""")
+        ck("%s: the page itself never scrolls" % label, m["page"]<=1)
+        ck("%s: footer stays on screen" % label, m["footIn"])
+        ck("%s: three columns, never two" % label, m["cols"]==3)
+        ck("%s: tiles stay tappable (%dpx)" % (label,m["tH"]), m["tH"]>=44)
+        if mustFit:
+            ck("%s: all 17 villas on one screen (tile %dpx)" % (label,m["tH"]), m["gs"]<=1)
+        q.close()
+
     # double tap to zoom must be off on the board, and pinch zoom must NOT be
     pg=page("staff@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
