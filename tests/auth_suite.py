@@ -43,7 +43,10 @@ def run(mode, page="tally.html"):
         pg.route("**/firebase-auth-compat.js*",auth_route)
         pg.route("**firebasedatabase.app/**",fb)
         pg.goto("http://localhost:8958/"+page); pg.wait_for_timeout(1400)
-        out={"form":pg.evaluate("()=>!!document.getElementById('naGo')"),"errs":errs}
+        out={"pad":pg.evaluate("()=>!!document.getElementById('nalaPad')"),"errs":errs}
+        # the email form is the fallback, behind the long press on the wordmark
+        pg.evaluate("()=>window.__NALA_PAD_EMAIL&&window.__NALA_PAD_EMAIL()"); pg.wait_for_timeout(200)
+        out["form"]=pg.evaluate("()=>!!document.getElementById('naGo')")
         if out["form"]:
             pg.fill("#naEmail","staff@nala"); pg.fill("#naPass","secret")
             pg.click("#naGo"); pg.wait_for_timeout(2500)
@@ -72,6 +75,130 @@ ck("unrecoverable: message names the cause", "sign-in service" in r.get("msg",""
 r=run("healthy")
 print("   healthy:", r)
 ck("healthy SDK: sign-in goes straight through", r.get("signed")==["staff@nala","secret"])
+
+
+# ---- the passcode pad ----
+def pad(fn, page="tally.html", h=844):
+    with sync_playwright() as p:
+        b=p.chromium.launch(); pg=b.new_page(viewport={"width":390,"height":h})
+        errs=[]; pg.on("pageerror", lambda e: errs.append(str(e)))
+        pg.route("**/firebase-app-compat.js*",lambda r,_:r.fulfill(status=200,
+            content_type="application/javascript",body=WORKING))
+        pg.route("**/firebase-auth-compat.js*",lambda r,_:r.fulfill(status=200,
+            content_type="application/javascript",body="/*n*/"))
+        pg.route("**firebasedatabase.app/**",fb)
+        pg.goto("http://localhost:8958/"+page); pg.wait_for_timeout(1400)
+        out=fn(pg); out["errs"]=errs
+        b.close(); return out
+
+def tap(pg, digits):
+    for d in digits:
+        pg.click('.naKey[data-k="%s"]'%d); pg.wait_for_timeout(60)
+
+# 4. the pad is the default way in, and it is the approved shape
+r=pad(lambda pg: pg.evaluate("""()=>({
+  pad:!!document.getElementById('nalaPad'),
+  slots:document.querySelectorAll('.naSlot').length,
+  keys:[].map.call(document.querySelectorAll('.naKey'),k=>k.getAttribute('data-k')),
+  signin:!!document.getElementById('naGo'),
+  emailLink:/use email/i.test(document.body.innerText)})"""))
+print("   pad:", {k:v for k,v in r.items() if k!="errs"})
+ck("pad is the default sign-in, not the email form", r["pad"] and not r["signin"])
+ck("six slots", r["slots"]==6)
+ck("keypad is 0-9 plus backspace, no sign-in button",
+   r["keys"]==["1","2","3","4","5","6","7","8","9","0","back"])
+ck("no visible email link: it is behind the long press", not r["emailLink"])
+ck("pad renders without a page error", not r["errs"])
+
+# 5. slots pinned 162px from the top and keypad hard to the bottom, in every
+#    state and at both heights: a message must never move the thumb target
+def geom(pg):
+    return pg.evaluate("""()=>{const s=document.querySelector('.naSlot').getBoundingClientRect(),
+      k=document.getElementById('naKeys').getBoundingClientRect(),
+      m=document.getElementById('naPadMsg').getBoundingClientRect();
+      return {slotTop:Math.round(s.top), keyBottom:Math.round(window.innerHeight-k.bottom),
+              msgH:Math.round(m.height), keyH:Math.round(
+                document.querySelector('.naKey').getBoundingClientRect().height)};}""")
+tall=pad(geom); short=pad(geom, h=667)
+def with_msg(pg):
+    pg.evaluate("()=>{naPadMsg.textContent='Sign-in service did not load - check the connection and reload.';}")
+    pg.wait_for_timeout(80); return geom(pg)
+tallmsg=pad(with_msg); shortmsg=pad(with_msg, h=667)
+print("   geometry:", tall, short, tallmsg, shortmsg)
+ck("slots sit 162px from the top", tall["slotTop"]==162)
+ck("slot position identical at both heights and with a two-line message",
+   len({tall["slotTop"],short["slotTop"],tallmsg["slotTop"],shortmsg["slotTop"]})==1)
+ck("keypad hard against the bottom, 22px, in every state",
+   {tall["keyBottom"],short["keyBottom"],tallmsg["keyBottom"],shortmsg["keyBottom"]}=={22})
+ck("keys are 58px tall", tall["keyH"]==58)
+ck("message zone never falls below 52px", min(tall["msgH"],short["msgH"])>=52)
+
+# 6. six presses submit on their own, and the code IS the credential
+def six(pg):
+    tap(pg,"482913"); pg.wait_for_timeout(600)
+    return {"signed":pg.evaluate("()=>window.__SIGNED||null"),
+            "clear":pg.evaluate("()=>!document.getElementById('nalaPad')")}
+r=pad(six)
+print("   submit:", {k:v for k,v in r.items() if k!="errs"})
+ck("the sixth press submits with no button",
+   r["signed"]==["482913@staff.nala","482913"])
+ck("overlay clears once the token lands", r["clear"] is True)
+
+# 7. dots, not digits, and backspace takes one off
+def dots(pg):
+    tap(pg,"4821")
+    return {"code":pg.evaluate("()=>nalaPad.getAttribute('data-code')"),
+            "shown":pg.evaluate("""()=>[].filter.call(document.querySelectorAll('.naSlot'),
+                s=>getComputedStyle(s.firstChild).display!=='none').length"""),
+            "leaks":pg.evaluate("()=>/4821/.test(document.getElementById('naSlots').innerText)")}
+r=pad(dots)
+ck("four presses fill four slots", r["shown"]==4 and r["code"]=="4821")
+ck("slots show a dot, never the digit", not r["leaks"])
+def back(pg):
+    tap(pg,"4821"); pg.click('.naKey[data-k="back"]'); pg.wait_for_timeout(80)
+    return {"code":pg.evaluate("()=>nalaPad.getAttribute('data-code')")}
+ck("backspace removes one digit", pad(back)["code"]=="482")
+
+# 8. a wrong code reddens all six and clears them
+def wrong(pg):
+    pg.evaluate("""()=>{window.__A.signInWithEmailAndPassword=function(){
+        return Promise.reject({code:'auth/wrong-password'});};}""")
+    tap(pg,"111111"); pg.wait_for_timeout(500)
+    return {"code":pg.evaluate("()=>nalaPad.getAttribute('data-code')"),
+            "red":pg.evaluate("""()=>[].filter.call(document.querySelectorAll('.naSlot'),
+                s=>getComputedStyle(s).borderColor==='rgb(168, 50, 30)').length"""),
+            "msg":pg.evaluate("()=>naPadMsg.textContent")}
+r=pad(wrong)
+print("   wrong:", {k:v for k,v in r.items() if k!="errs"})
+ck("wrong code turns all six slots red", r["red"]==6)
+ck("wrong code clears the slots", r["code"]=="")
+ck("wrong code says so", "passcode" in r["msg"].lower())
+
+# 9. five attempts, then a minute
+def lock(pg):
+    pg.evaluate("""()=>{window.__A.signInWithEmailAndPassword=function(){
+        return Promise.reject({code:'auth/wrong-password'});};}""")
+    for _ in range(5):
+        tap(pg,"111111"); pg.wait_for_timeout(320)
+    m=pg.evaluate("()=>naPadMsg.textContent")
+    tap(pg,"9"); pg.wait_for_timeout(120)
+    return {"msg":m,"afterLock":pg.evaluate("()=>nalaPad.getAttribute('data-code')")}
+r=pad(lock)
+print("   lockout:", {k:v for k,v in r.items() if k!="errs"})
+ck("five wrong attempts locks the pad", "too many" in r["msg"].lower())
+ck("locked pad ignores further presses", r["afterLock"]=="")
+
+# 10. the fallback door still opens and still works
+def fallback(pg):
+    pg.evaluate("()=>window.__NALA_PAD_EMAIL()"); pg.wait_for_timeout(200)
+    ok=pg.evaluate("()=>!!document.getElementById('naGo')")
+    pg.fill("#naEmail","staff@nalaresort.com.au"); pg.fill("#naPass","longpassword")
+    pg.click("#naGo"); pg.wait_for_timeout(800)
+    return {"form":ok,"signed":pg.evaluate("()=>window.__SIGNED||null")}
+r=pad(fallback)
+ck("the email fallback opens from the pad", r["form"] is True)
+ck("and signs in with a real address, which can receive a reset",
+   r["signed"]==["staff@nalaresort.com.au","longpassword"])
 
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()
