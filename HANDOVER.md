@@ -1,9 +1,13 @@
 # NALA menu app - handover
 
-Written 14 Aug 2026. Covers everything since the previous handover (12 Aug),
+Written 14 Aug 2026, updated 15 Aug. Covers everything since the previous
+handover (12 Aug),
 and carries forward that handover's open items so this file stands alone.
 
 Companion documents:
+- **firebase-rules.json** - a copy of the live database rules. The console is
+  the source of truth; this is here so a change can be written and reviewed
+  before it is pasted, and so the next session can see them without asking.
 - **STYLEGUIDE.md** - what things must look like and how to work. Read the
   first section before touching anything visual.
 - **AUDIT.md** - what was found and changed during the four-part cleanup.
@@ -47,6 +51,11 @@ python3 tests/auth_suite.py     #  6 - sign-in
 copies (`demo-tally.html` and friends) with fixed busy-night data. They inline
 everything and stub the network, so they are the safe place to look at a
 change. Rebuild them in the same commit as any page change.
+
+**Firebase rules.** I cannot change them; there is no service account and I
+would not suggest one for a file edited a few times a year. Write the new
+rules into `firebase-rules.json`, show the user, they paste into the console.
+Keep the file in step with what is live.
 
 **Cache.** Changing a shared file means bumping its `?v=` on every page that
 references it, in the same commit. Current: `nala-ui.css?v=9`,
@@ -181,29 +190,46 @@ villas. Only unknown villas can be picked; the rest dim.
 
 ---
 
+## Logins and rules
+
+Two accounts in Firebase Auth:
+
+- `staff@...` - management. Sees the nav menu and the Admin options group.
+- `housekeeping@...` - cleaners. Sees the job, the marks and Close.
+
+The page decides by whether the email begins with "housekeeping". **The
+database enforces it too**: the rules allow any signed-in user to write
+`done`, `bfast`, `departed` and `pushed`, but only a non-housekeeping account
+may write `kind`. So a cleaner cannot set a villa's job even by sending the
+request directly.
+
+Rules live in the console (Realtime Database, Rules). Nobody here has write
+access to them, so a rules change means pasting the current ones in, getting
+a complete replacement back, and pasting it once. Do not write a replacement
+from memory: the `extcancel` path exists only in the rules and would be
+dropped, breaking guest cancellations.
+
+Still open in the rules: anyone who knows a guest's phone number can write
+that guest's booking. Fixing it properly means signed links.
+
 ## Backlog
 
-**1. Create the `housekeeping@` Firebase login.** Two minutes in the console,
-and it is the highest-value item here. Every gate on the Cleans page depends
-on it, and until it exists every device signs in as management and sees
-everything. This is why cleaners were confused by admin controls.
-
-**2. Rotate the GitHub token.** The classic PAT is exposed in the chef brief.
+**1. Rotate the GitHub token.** The classic PAT is exposed in the chef brief.
 Revoke it, issue fine-grained per-user tokens, reissue the brief FIRST.
 
-**3. Commit `CHEF-BRIEF.md` to the repo.** It exists at
+**2. Commit `CHEF-BRIEF.md` to the repo.** It exists at
 `/mnt/user-data/outputs/CHEF-BRIEF.md` but was never committed.
 
-**4. Remove the merge-tag test panel** from `welcome.html` once GuestTouch is
+**3. Remove the merge-tag test panel** from `welcome.html` once GuestTouch is
 settled.
 
-**5. Clear stale test data** in villas 3, 4 and 5.
+**4. Clear stale test data** in villas 3, 4 and 5.
 
-**6. Confirm dinner and breakfast hours.** Still provisional.
+**5. Confirm dinner and breakfast hours.** Still provisional.
 
-**7. Mews PMS sync.** Not started.
+**6. Mews PMS sync.** Not started.
 
-**8. Sign-in form flash and spinner.** Touched and reverted twice. Leave alone
+**7. Sign-in form flash and spinner.** Touched and reverted twice. Leave alone
 until it can be tested against real Firebase.
 
 ---
@@ -214,9 +240,20 @@ until it can be tested against real Firebase.
 over these three days happened on one of those two files. Everything with a
 suite has been reliable. This is the single most useful thing to fix.
 
-**The manager gate is display-only.** The database rules still allow any
-signed-in user to write the fields. Locking it properly needs a rules change,
-which is tangled with backlog item 1.
+**The manager gate is enforced, not cosmetic.** As of 15 Aug the database
+rules restrict `hk/<date>/<villa>/kind` to accounts whose email does not begin
+with `housekeeping`. Cleaners keep `done`, `bfast`, `departed` and `pushed`,
+which is their work. The `housekeeping@nalaresort.com.au` login exists.
+
+Note the rules still carry a `$other` catch-all granting any signed-in user
+read and write on paths not named explicitly. That is what lets new fields
+work without a rules change; it is also why anything genuinely sensitive must
+be named explicitly, as `kind` now is.
+
+**Anyone who knows a phone number can write that guest's booking.**
+`responses/<date>/<phone>` is writable without signing in, because guests must
+be able to reply. Fixing it properly means signed links, which is a project
+rather than a rules edit.
 
 **Arrival detection is fragile.** "Arriving today" reads the villa's record in
 today's `roomguests` bucket, which is written when a guest opens their link.

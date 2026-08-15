@@ -1,0 +1,42 @@
+{
+  "rules": {
+    "guests": {
+      "$phone": { ".read": true, ".write": true }
+    },
+    "roomguests": {
+      ".read": "auth != null",
+      "$date": {
+        "$room": { ".write": true }
+      }
+    },
+    "responses": {
+      "$date": {
+        ".read": "auth != null",
+        "$phone": { ".read": true, ".write": true }
+      }
+    },
+    "manual": {
+      "$date": {
+        ".read": "auth != null",
+        "$key": { ".write": "auth != null" }
+      }
+    },
+    "menutags": {
+      "$date": { ".read": true, ".write": "auth != null" }
+    },
+    "dietaries": { ".read": true, ".write": "auth != null" },
+    "extcancel": { ".read": "auth != null", ".write": true },
+    "hk": {
+      "$date": {
+        ".read": "auth != null",
+        "$villa": {
+          ".write": "auth != null",
+          "kind": {
+            ".write": "auth != null && !auth.token.email.beginsWith('housekeeping')"
+          }
+        }
+      }
+    },
+    "$other": { ".read": "auth != null", ".write": "auth != null" }
+  }
+}

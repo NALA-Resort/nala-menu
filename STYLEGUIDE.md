@@ -199,10 +199,13 @@ Everything under the **Admin options** heading is management only: the three
 jobs, the revert, and the heading itself. A cleaner sees only what sits above
 it - the job, the marks, and Close. The heading names who may use it rather
 than what it does, because that is the thing a cleaner needs to understand
-about it. The controls reuse the same
-login check that hides the nav menu from the housekeeping user - one gate,
-not two. Note this is a display
-gate: the database rules still allow any signed-in user to write the field.
+about it. The controls reuse the same login check that hides the nav menu
+from the housekeeping user - one gate, not two.
+
+The database enforces it as well as the page: the rules let any signed-in
+user write `done`, `bfast`, `departed` and `pushed`, but only a
+non-housekeeping account may write `kind`. Hiding a control is not the same
+as preventing the write, and both are needed.
 
 ## Colour on the Cleans board
 
@@ -290,9 +293,7 @@ was never reading it. The rule generally: only offer an undo for something a
 person actually set.
 
 **Empty, not vacant.** The word is empty everywhere a person reads it, on the
-board and on the printed sheet. Only management can set it - though the
-display gate is only as good as the logins, and while the housekeeping user
-does not exist everyone signs in as management and sees everything.
+board and on the printed sheet. Only management can set it.
 
 ## Multi-select on the Cleans board
 
