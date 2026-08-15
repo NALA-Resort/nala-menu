@@ -159,6 +159,30 @@ function isIOS(){
          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
 
+/* The logo is drawn into the PDF with addImage, because this menu is built
+   from vector text calls rather than a screenshot of the page. It is loaded
+   once, through a canvas, so the PDF carries the image data itself and does
+   not depend on the file being reachable when the PDF is opened.       */
+var LOGO = null, LOGO_RATIO = 460 / 193;
+function loadLogo(done){
+  if (LOGO) { done(); return; }
+  var img = new Image();
+  img.onload = function(){
+    try {
+      var c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      LOGO = c.toDataURL('image/png');
+      LOGO_RATIO = img.naturalWidth / img.naturalHeight;
+    } catch (e){ LOGO = null; }
+    done();
+  };
+  /* A missing logo must not cost anyone their menu, so a failure just
+     carries on without it.                                            */
+  img.onerror = function(){ LOGO = null; done(); };
+  img.src = 'nala-logo.png';
+}
+
 function makePDF(open){
   if (!MENU) return;
   var doc = new jspdf.jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
@@ -184,11 +208,21 @@ function makePDF(open){
     return h + 9.5;                                   // gap after the course
   }
 
+  /* The logo sits above the menu, and the whole block is centred together:
+     centring the text and then dropping a logo on top would push the menu
+     off centre by exactly the height of the logo.                       */
+  var LOGO_W = 30.5, LOGO_H = LOGO_W / LOGO_RATIO, LOGO_GAP = 7;
+  var logoBlock = LOGO ? (LOGO_H + LOGO_GAP) : 0;
+
   // distance from the first label baseline to the last footer baseline
   var total = courses.reduce(function(t,k){ return t + heightOf(k); }, 0) + 1 + 5.4;
-  var startY = (H - total) / 2 + 2;   // +2 lifts baselines to optical centre
+  var startY = (H - (total + logoBlock)) / 2 + 2 + logoBlock;
 
   centres.forEach(function(cx){
+    if (LOGO){
+      doc.addImage(LOGO, 'PNG', cx - LOGO_W / 2,
+                   startY - logoBlock - 3.3, LOGO_W, LOGO_H);
+    }
     var y = startY;
 
     courses.forEach(function(k){
@@ -258,7 +292,7 @@ function makePDF(open){
   window.__pdfURL = url;
 }
 
-document.getElementById('pdfBtn').onclick = function(){ makePDF(true); };
+document.getElementById('pdfBtn').onclick = function(){ loadLogo(function(){ makePDF(true); }); };
 
 // ── load ──────────────────────────────────────────────────
 fetch('menu.json?v=' + Date.now())
@@ -291,9 +325,9 @@ fetch('menu.json?v=' + Date.now())
         ' ' + pub.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})
       : '';
 
-    // build and display the PDF
+    // build and display the PDF, once the logo is in hand
     setTimeout(function(){
-      makePDF(false);
+      loadLogo(function(){ makePDF(false); });
       // iOS can't reliably render a PDF inside a frame - offer the button as well
       if (isIOS()) document.getElementById('pdfBtn').style.display = 'inline-block';
     }, 60);
