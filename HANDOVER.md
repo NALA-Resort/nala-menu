@@ -212,6 +212,14 @@ dropped, breaking guest cancellations.
 Still open in the rules: anyone who knows a guest's phone number can write
 that guest's booking. Fixing it properly means signed links.
 
+## Next piece of work
+
+**Roles.** Four of them - staff, chef, waiter, housekeeping - replacing the
+current "does the email begin with housekeeping" check, which cannot express
+them and breaks on per-person logins. Design agreed and written up in
+**ROLES.md**, including the permission matrix, where the record lives, the
+rules change and the build order. Not started.
+
 ## Backlog
 
 **1. Rotate the GitHub token.** The classic PAT is exposed in the chef brief.
