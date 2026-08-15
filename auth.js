@@ -195,7 +195,13 @@
         slotEls[j].firstChild.style.display = j < code.length ? 'block' : 'none';
       }
     }
+    function waiting(t){
+      msgEl.style.color = '#999990';
+      msgEl.textContent = t;
+      for (var j = 0; j < slotEls.length; j++){ slotEls[j].style.borderColor = '#1C1C1A'; }
+    }
     function setErr(t, red){
+      msgEl.style.color = '#A8321E';
       msgEl.textContent = t || '';
       for (var j = 0; j < slotEls.length; j++){
         slotEls[j].style.borderColor = red ? '#A8321E' : '#1C1C1A';
@@ -205,7 +211,11 @@
 
     function submit(){
       var code = padDigitsOf(padEl);
-      setErr('');
+      /* Between the sixth press and Firebase answering there was nothing on
+         screen at all, so a slow or hanging request looked like a dead pad.
+         Say so immediately, in muted ink rather than red: waiting is not an
+         error yet.                                                        */
+      waiting('Checking...');
       function fail(t){
         PAD_ATTEMPTS++;
         setErr(t, true);
@@ -227,12 +237,23 @@
       try { pr = firebase.auth().signInWithEmailAndPassword(code + PAD_DOMAIN, code); }
       catch (ex){ fail('Could not start sign-in - reload the page.'); return; }
       if (!pr || !pr.then){ fail('Could not start sign-in - reload the page.'); return; }
-      pr.then(function(){ PAD_ATTEMPTS = 0; })
+      var answered = false;
+      var slow = setTimeout(function(){
+        if (!answered) fail('No answer from the sign-in service - check the connection.');
+      }, 15000);
+      pr.then(function(){ answered = true; clearTimeout(slow); PAD_ATTEMPTS = 0; })
         .catch(function(ex){
+          answered = true; clearTimeout(slow);
           var c = (ex && ex.code) || '';
-          fail(c.indexOf('network') > -1 ? 'No connection - try again.' :
-               c.indexOf('too-many') > -1 ? 'Too many attempts - wait a minute.' :
-               'Wrong passcode.');
+          /* The code is named for anything that is not simply a wrong number.
+             "Wrong passcode" on an account that does not exist sends someone
+             hunting for a typo that is not there.                          */
+          fail(c.indexOf('network') > -1      ? 'No connection - try again.' :
+               c.indexOf('too-many') > -1     ? 'Too many attempts - wait a minute.' :
+               c.indexOf('user-not-found') > -1 ? 'No account for that passcode.' :
+               c.indexOf('user-disabled') > -1  ? 'That passcode has been turned off.' :
+               c.indexOf('wrong-password') > -1 ? 'Wrong passcode.' :
+               c ? ('Sign-in failed: ' + c) : 'Wrong passcode.');
         });
     }
     function lock(){

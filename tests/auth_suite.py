@@ -188,6 +188,28 @@ print("   lockout:", {k:v for k,v in r.items() if k!="errs"})
 ck("five wrong attempts locks the pad", "too many" in r["msg"].lower())
 ck("locked pad ignores further presses", r["afterLock"]=="")
 
+# 9b. the pad must never sit silent: a slow or dead request still says something
+def hang(pg):
+    pg.evaluate("""()=>{window.__A.signInWithEmailAndPassword=function(){
+        return new Promise(function(){});};}""")   # never settles
+    for d in "482913": pg.click('.naKey[data-k="%s"]'%d); pg.wait_for_timeout(50)
+    pg.wait_for_timeout(400)
+    return {"msg":pg.evaluate("()=>naPadMsg.textContent")}
+r=pad(hang)
+print("   pending:", {k:v for k,v in r.items() if k!="errs"})
+ck("the sixth press says something at once, never a dead pad", len(r["msg"])>0)
+
+def missing(pg):
+    pg.evaluate("""()=>{window.__A.signInWithEmailAndPassword=function(){
+        return Promise.reject({code:'auth/user-not-found'});};}""")
+    for d in "482913": pg.click('.naKey[data-k="%s"]'%d); pg.wait_for_timeout(50)
+    pg.wait_for_timeout(400)
+    return {"msg":pg.evaluate("()=>naPadMsg.textContent")}
+r=pad(missing)
+print("   no account:", {k:v for k,v in r.items() if k!="errs"})
+ck("a passcode with no account says so, not 'wrong passcode'",
+   "no account" in r["msg"].lower())
+
 # 10. the fallback door still opens and still works
 def fallback(pg):
     pg.evaluate("()=>window.__NALA_PAD_EMAIL()"); pg.wait_for_timeout(200)
