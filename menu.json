@@ -1,23 +1,23 @@
 {
-  "published": "2026-08-14T16:04:12.504921+10:00",
+  "published": "2026-08-15T12:38:30.845436+10:00",
   "bread": {
-    "name": "Light sourdough",
-    "desc": "aged balsamic, olive oil",
+    "name": "House focaccia",
+    "desc": "warm olive salsa",
     "aus": false
   },
   "entree": {
-    "name": "Chargrilled king prawn",
-    "desc": "red pepper, olive, smoked paprika",
+    "name": "Cured salmon",
+    "desc": "buttermilk, dill, watermelon radish, salmon roe",
     "aus": true
   },
   "main": {
-    "name": "King George whiting",
-    "desc": "cauliflower, sugar snap, white grapes & verjus salsa",
-    "aus": true
+    "name": "Pan-roasted veal",
+    "desc": "potato, green beans, lemon & caper butter",
+    "aus": false
   },
   "dessert": {
-    "name": "Raspberry",
-    "desc": "blood orange, pistachio, meringue",
+    "name": "Honey panna cotta",
+    "desc": "poached pear, candied almond crumb",
     "aus": false
   }
 }
