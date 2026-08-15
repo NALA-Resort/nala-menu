@@ -2,6 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nala Villas">
+<link rel="apple-touch-icon" href="nala-logo.png">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -900,6 +904,34 @@ function loadStaff(cb){
     .then(function(j){ cb(setStaffRecords(j), null); })
     .catch(function(err){ STAFF_RECORDS = null; cb(null, err); });
 }
+
+/* ── staying inside the home screen app ────────────────────────
+   A page saved to the home screen opens without Safari's bars, which is the
+   whole point of saving it. Tapping an ordinary link from there hands the
+   next page back to Safari, bars and all, so the app view lasts exactly one
+   screen. Navigating by script instead keeps it inside.
+
+   Only runs in standalone mode, so nothing changes in an ordinary tab. Links
+   that leave the site, open a new tab, or do something on the page rather
+   than go somewhere are left alone.                                     */
+(function(){
+  if (!window.navigator || !window.navigator.standalone) return;
+  document.addEventListener('click', function(e){
+    var a = e.target;
+    while (a && a.nodeName !== 'A') a = a.parentNode;
+    if (!a || !a.getAttribute) return;
+    var href = a.getAttribute('href');
+    if (!href || href.charAt(0) === '#') return;        /* in-page, or an action */
+    if (a.target && a.target !== '_self') return;       /* meant for a new tab */
+    if (/^(mailto|tel|sms):/i.test(href)) return;
+    if (a.host && a.host !== location.host) return;     /* off site, let it go */
+    e.preventDefault();
+    /* Routed through a replaceable function purely so this can be tested:
+       no browser but Safari does the breakout being worked around here, so
+       the only checkable part is that the link is taken over at all.   */
+    (window.NALA_GO || function(u){ location.href = u; })(a.href);
+  });
+})();
 
 </script>
 <script>

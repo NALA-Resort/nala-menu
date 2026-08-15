@@ -527,6 +527,44 @@ with sync_playwright() as p:
     print("   lookup failed:", m)
     pg.close()
 
+    # saved to the home screen, the app view must survive a link tap.
+    # Safari hands an ordinary link to a new browser window, bars and all,
+    # which no test browser reproduces, so this watches the navigation the
+    # code would perform instead of the one the browser would.
+    pg=b.new_page(viewport={"width":390,"height":844})
+    pg.add_init_script("""Object.defineProperty(navigator,'standalone',{get:()=>true});
+        window.NALA_GO=function(u){ window.__went=u; };""")
+    pg.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
+        content_type="application/javascript",body=sdk("staff@nalaresort.com.au")))
+    pg.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,
+        content_type="application/javascript",body="/*n*/"))
+    pg.route("**firebasedatabase.app/**",fb)
+    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
+    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#navDrop a[href='housekeeping.html']").click(); pg.wait_for_timeout(250)
+    went=pg.evaluate("()=>window.__went||null")
+    print("   standalone nav:", went)
+    ck("standalone: the app keeps the page instead of handing it to Safari",
+       bool(went) and went.endswith("housekeeping.html"))
+    ck("standalone: still on the same page, not navigated by the browser",
+       pg.url.endswith("cleaners.html"))
+    pg.close()
+
+    # an ordinary tab must be left completely alone
+    pg=b.new_page(viewport={"width":390,"height":844})
+    pg.add_init_script("window.NALA_GO=function(u){ window.__went=u; };")
+    pg.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
+        content_type="application/javascript",body=sdk("staff@nalaresort.com.au")))
+    pg.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,
+        content_type="application/javascript",body="/*n*/"))
+    pg.route("**firebasedatabase.app/**",fb)
+    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
+    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    pg.locator("#navDrop a[href='housekeeping.html']").click(); pg.wait_for_timeout(600)
+    ck("ordinary tab: the browser navigates as normal, nothing intercepted",
+       pg.url.endswith("housekeeping.html") and pg.evaluate("()=>window.__went||null") is None)
+    pg.close()
+
     # double tap to zoom must be off on the board, and pinch zoom must NOT be
     pg=page("staff@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
