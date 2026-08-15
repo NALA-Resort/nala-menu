@@ -30,7 +30,7 @@ bf24=(now-datetime.timedelta(minutes=24)).isoformat()   # red band
 hk={"7":{"done":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"},"2":{"bfast":bf},
     "11":{"kind":"clean"}, "17":{"kind":"pre"}, "13":{"kind":"pre","done":now.isoformat()}, "8":{"departed":True}, "12":{"departed":True},
     "14":{"bfast":bf2}, "6":{"bfast":bf16}, "9":{"bfast":bf24}}
-staff={"staff@nalaresort,com,au":{"name":"Ben","role":"staff"},
+staff={"staff@nalaresort,com,au":{"name":"Admin","role":"admin"},
        "housekeeping@nalaresort,com,au":{"name":"Housekeeping","role":"housekeeping"},
        "chef@nalaresort,com,au":{"name":"Chef","role":"chef"}}
 prevHk={"16":{"pushed":(now-datetime.timedelta(days=1)).isoformat()}}
@@ -463,7 +463,7 @@ with sync_playwright() as p:
       ben:   roleOf({email:'ben@nalaresort.com.au'}),
       empty: roleOf(null)})""")
     ck("roleOf reads the record, not the address",
-       roles["staff"]=="staff" and roles["hk"]=="housekeeping" and roles["chef"]=="chef")
+       roles["staff"]=="admin" and roles["hk"]=="housekeeping" and roles["chef"]=="chef")
     ck("roleOf is case insensitive on the address", roles["hk"]=="housekeeping")
     # the two failures the old prefix check made, named in ROLES.md
     ck("housekeeping.maria@ is not silently a cleaner", roles["hkm"] is None)
@@ -471,7 +471,7 @@ with sync_playwright() as p:
     ck("no user is no role", roles["empty"] is None)
 
     # the matrix in ROLES.md, cell by cell
-    M={"staff":       {"cleansBoard":1,"cleansMarks":1,"setJob":1,"resBoard":1,
+    M={"admin":       {"cleansBoard":1,"cleansMarks":1,"setJob":1,"resBoard":1,
                        "editBookings":1,"resSheet":1,"publishMenu":1,"manageStaff":1},
        "chef":        {"cleansBoard":0,"cleansMarks":0,"setJob":0,"resBoard":1,
                        "editBookings":0,"resSheet":1,"publishMenu":1,"manageStaff":0},
@@ -485,9 +485,12 @@ with sync_playwright() as p:
             got=pg.evaluate("()=>can('%s','%s')"%(role,cap))
             if got!=bool(want): bad.append("%s/%s"%(role,cap))
     ck("can() matches the ROLES.md matrix in all 32 cells, wrong: "+str(bad), not bad)
+    # the rename must not be the thing that locks the owner out
+    ck("a record still saying 'staff' is read as admin",
+       pg.evaluate("()=>can('staff','manageStaff')&&can('staff','setJob')"))
     ck("no record grants nothing", not pg.evaluate("()=>can(null,'resBoard')||can('typo','setJob')"))
-    ck("staff is the FULL ACCESS role, not a middling one",
-       pg.evaluate("()=>can('staff','manageStaff')&&can('staff','setJob')&&can('staff','editBookings')"))
+    ck("admin is the FULL ACCESS role, not a middling one",
+       pg.evaluate("()=>can('admin','manageStaff')&&can('admin','setJob')&&can('admin','editBookings')"))
     pg.close()
 
     # ---- the gate on the page ----

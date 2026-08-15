@@ -235,7 +235,7 @@ function emailKey(email){
 }
 
 var ROLE_GRANTS = {
-  staff:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff'],
+  admin:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff'],
   chef:         ['resBoard','resSheet','publishMenu'],
   waiter:       ['resBoard','editBookings','resSheet'],
   housekeeping: ['cleansBoard','cleansMarks']
@@ -243,18 +243,25 @@ var ROLE_GRANTS = {
 
 function isRole(r){ return Object.prototype.hasOwnProperty.call(ROLE_GRANTS, r); }
 
+/* The full access role was called "staff" until the word collided with the
+   /staff node, the staff@ login and the "staff" tier of user generally. It is
+   "admin" now. Records written before the rename still say staff, so they are
+   read as admin rather than as nothing: renaming a role must never be the
+   thing that locks the owner out. Drop this once no record says staff.   */
+function normaliseRole(r){ return r === 'staff' ? 'admin' : r; }
+
 /* null means no usable record, and no record is no access. Deliberately not
    the lowest role: a typo in an address would otherwise grant something. */
 function roleOf(user){
   var e = user && (typeof user === 'string' ? user : user.email);
   if (!e || !STAFF_RECORDS) return null;
   var rec = STAFF_RECORDS[emailKey(e)];
-  var r = rec && rec.role;
+  var r = normaliseRole(rec && rec.role);
   return isRole(r) ? r : null;
 }
 
 function can(role, what){
-  var g = ROLE_GRANTS[role];
+  var g = ROLE_GRANTS[normaliseRole(role)];
   return !!(g && g.indexOf(what) > -1);
 }
 

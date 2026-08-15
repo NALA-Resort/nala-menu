@@ -28,7 +28,7 @@ combined={"g1":{"rooms":["3","4"]}}
 menu={"published":now.isoformat(),"bread":{"name":"Sourdough"},"entree":{"name":"Prawns"},
       "main":{"name":"Satay Chicken"},"dessert":{"name":"Pavlova"}}
 menutags={"main":["Nut allergy"]}
-staff={"staff@x":{"name":"Ben","role":"staff"},
+staff={"staff@x":{"name":"Admin","role":"admin"},
        "chef@x":{"name":"Chef","role":"chef"},
        "waiter@x":{"name":"Waiter","role":"waiter"},
        "housekeeping@x":{"name":"Housekeeping","role":"housekeeping"}}

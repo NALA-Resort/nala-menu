@@ -93,7 +93,7 @@ STUB = """
     /* The demo signs in as demo@nala, so it needs a role record like any
        other login: since the roles change, no record means no board. The
        demos show the management view, so the record is the staff role.  */
-    if (on('/staff'))       return reply({'demo@nala':{name:'Demo', role:'staff'}});
+    if (on('/staff'))       return reply({'demo@nala':{name:'Demo', role:'admin'}});
     if (on('/responses/'))  return reply(on(TODAY) ? D.responses : {});
     if (on('/manual/'))     return reply(on(TODAY) ? D.manual    : {});
     if (on('/roomguests/')) return reply(on(TODAY) ? D.roomguests: null);
