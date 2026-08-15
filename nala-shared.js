@@ -237,7 +237,7 @@ function emailKey(email){
 var ROLE_GRANTS = {
   admin:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff'],
   chef:         ['resBoard','resSheet','publishMenu'],
-  waiter:       ['resBoard','editBookings','resSheet'],
+  waiter:       ['cleansBoard','resBoard','editBookings','resSheet'],
   housekeeping: ['cleansBoard','cleansMarks']
 };
 

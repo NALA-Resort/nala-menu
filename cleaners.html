@@ -55,6 +55,18 @@
     .legend { margin:6px 0 !important; }
   }
 
+  /* Buttons are matched on the action in their onclick, so the sheet keeps
+     building exactly as it did and only the offer changes. Every undo is
+     listed on its own: the quote sits before the "un", so a pattern for
+     'dep' does NOT catch 'undep', and leaving them off handed the waiter an
+     Undo departed button on a villa whose guest had gone.               */
+  body.marks-limited .pbtn[onclick*="'dep'"],
+  body.marks-limited .pbtn[onclick*="'undep'"],
+  body.marks-limited .pbtn[onclick*="'push'"],
+  body.marks-limited .pbtn[onclick*="'unpush'"],
+  body.marks-limited .pbtn[onclick*="'done'"],
+  body.marks-limited .pbtn[onclick*="'undone'"] { display:none; }
+
   .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr));
           gap:10px; flex:1 1 auto; min-height:0;
           grid-auto-rows:minmax(56px,1fr); overflow-y:auto; }
@@ -189,6 +201,11 @@
         var role = roleOf(u);
         window.NALA_ROLE  = role;
         window.IS_MANAGER = can(role,'setJob');
+        /* A waiter is on this board to say a villa looks free after
+           breakfast, nothing more. The other marks are hidden rather than
+           disabled: this is about not pressing something by accident, so
+           the button simply is not there.                              */
+        document.body.classList.toggle('marks-limited', !can(role,'cleansMarks'));
         /* The menu is no longer manager-only. It has to exist for every
            login, because Sign out lives in it and the Cleans board is the
            housekeeping login's only page: hiding the menu from them left
@@ -271,7 +288,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=11"></script>
+<script src="nala-shared.js?v=12"></script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
 // this board is locked to today by design - no browsed dates

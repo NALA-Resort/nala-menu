@@ -32,7 +32,8 @@ hk={"7":{"done":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"},"2":{"bfast":bf},
     "14":{"bfast":bf2}, "6":{"bfast":bf16}, "9":{"bfast":bf24}}
 staff={"staff@nalaresort,com,au":{"name":"Admin","role":"admin"},
        "housekeeping@nalaresort,com,au":{"name":"Housekeeping","role":"housekeeping"},
-       "chef@nalaresort,com,au":{"name":"Chef","role":"chef"}}
+       "chef@nalaresort,com,au":{"name":"Chef","role":"chef"},
+       "waiter@nalaresort,com,au":{"name":"Waiter","role":"waiter"}}
 prevHk={"16":{"pushed":(now-datetime.timedelta(days=1)).isoformat()}}
 def fb(route,request):
     u=request.url; m=request.method
@@ -475,7 +476,7 @@ with sync_playwright() as p:
                        "editBookings":1,"resSheet":1,"publishMenu":1,"manageStaff":1},
        "chef":        {"cleansBoard":0,"cleansMarks":0,"setJob":0,"resBoard":1,
                        "editBookings":0,"resSheet":1,"publishMenu":1,"manageStaff":0},
-       "waiter":      {"cleansBoard":0,"cleansMarks":0,"setJob":0,"resBoard":1,
+       "waiter":      {"cleansBoard":1,"cleansMarks":0,"setJob":0,"resBoard":1,
                        "editBookings":1,"resSheet":1,"publishMenu":0,"manageStaff":0},
        "housekeeping":{"cleansBoard":1,"cleansMarks":1,"setJob":0,"resBoard":0,
                        "editBookings":0,"resSheet":0,"publishMenu":0,"manageStaff":0}}
@@ -628,6 +629,41 @@ with sync_playwright() as p:
     ck("double tap zoom off on the board", ta["body"]=="manipulation")
     ck("pinch zoom still allowed, not 'none'", ta["body"]!="none")
     pg.close()
+
+    # a waiter is on the Cleans board only to say a villa looks free after
+    # breakfast. The rest is hidden, not disabled: this is about not pressing
+    # something by accident.
+    def marks(email, villa):
+        q=page(email)
+        q.goto("http://localhost:8957/cleaners.html"); q.wait_for_timeout(1400)
+        tile(q, villa).click(); q.wait_for_timeout(400)
+        out=q.evaluate("""()=>[].filter.call(document.querySelectorAll('#ov .pbtn'),
+            e=>getComputedStyle(e).display!=='none').map(e=>e.textContent.trim())""")
+        q.close(); return out
+
+    w6 = marks("waiter@nalaresort.com.au", 6)
+    print("   waiter, villa on service:", w6)
+    ck("waiter reaches the Cleans board at all", "Close" in " ".join(w6))
+    # "Possibly available" only shows on a villa set to Service whose guest is
+    # staying, which this fixture has none of, so the positive case is checked
+    # in waiter_svc below rather than pretended at here.
+    ck("waiter sees the board itself, not a refusal",
+       len(w6) > 0)
+    ck("waiter cannot mark work done, push, or touch departed",
+       not any(k in " ".join(w6).lower() for k in
+               ["mark as cleaned","mark as serviced","push","departed"]))
+    w8 = marks("waiter@nalaresort.com.au", 8)
+    print("   waiter, departed villa:", w8)
+    ck("waiter gets no undo either: the quote sits before the un, so a "
+       "pattern for dep does not catch undep",
+       not any("undo" in x.lower() for x in w8))
+
+    hk7 = marks("housekeeping@nalaresort.com.au", 7)
+    print("   housekeeping, finished villa:", hk7)
+    ck("housekeeping keeps its own marks, untouched by the waiter change",
+       any("undo done" in x.lower() for x in hk7))
+    w7 = marks("waiter@nalaresort.com.au", 7)
+    ck("and the waiter does not get them", not any("undo done" in x.lower() for x in w7))
 
     # the link must actually call auth.js's signOut, not just look like it
     pg=page("staff@nalaresort.com.au")
