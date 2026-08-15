@@ -28,6 +28,10 @@ combined={"g1":{"rooms":["3","4"]}}
 menu={"published":now.isoformat(),"bread":{"name":"Sourdough"},"entree":{"name":"Prawns"},
       "main":{"name":"Satay Chicken"},"dessert":{"name":"Pavlova"}}
 menutags={"main":["Nut allergy"]}
+staff={"staff@x":{"name":"Ben","role":"staff"},
+       "chef@x":{"name":"Chef","role":"chef"},
+       "waiter@x":{"name":"Waiter","role":"waiter"},
+       "housekeeping@x":{"name":"Housekeeping","role":"housekeeping"}}
 def fb(route,request):
     u=request.url; m=request.method
     if m in ("PUT","DELETE","PATCH"):
@@ -36,7 +40,8 @@ def fb(route,request):
             route.fulfill(status=401,content_type="application/json",body='{"error":"denied"}'); return
         route.fulfill(status=200,content_type="application/json",body=request.post_data or "null"); return
     body="null"
-    if "/responses/" in u: body=json.dumps(responses) if today in u else "{}"
+    if "/staff" in u: body=json.dumps(staff)
+    elif "/responses/" in u: body=json.dumps(responses) if today in u else "{}"
     elif "/manual/" in u and today not in u: body="{}"
     elif "/manual/" in u: body=json.dumps(manual)
     elif "/roomguests/"+today in u: body=json.dumps(roomguests[today])
@@ -395,7 +400,70 @@ with sync_playwright() as p:
     print("   foot radii:", rad)
     ck("footer outer lower corners rounded, inner corners square",
        len(rad)==2 and rad[0]=="0px|0px|0px|8px" and rad[1]=="0px|0px|8px|0px")
-    pg.close(); b.close()
+    pg.close()
+
+    # ---- roles on this board, per the ROLES.md matrix ----
+    def as_role(email):
+        q=b.new_page(viewport={"width":430,"height":930},device_scale_factor=2)
+        q.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
+            content_type="application/javascript",body=SDK.replace("staff@x",email)))
+        q.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,
+            content_type="application/javascript",body="/*n*/"))
+        q.route("**firebasedatabase.app/**",fb)
+        q.route("**/menu.json*",lambda r,_:r.fulfill(status=200,
+            content_type="application/json",body=json.dumps(menu)))
+        q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1500)
+        return q
+
+    # the chef opens the app to see who is eating and what they cannot have,
+    # so the board stays; every way of writing to it goes
+    q=as_role("chef@x")
+    st=q.evaluate("""()=>({rooms:document.querySelectorAll('#rooms .room').length,
+        blocked:noAccess.className.indexOf('show')>-1,
+        sel:selToggle?getComputedStyle(selToggle).display:'gone',
+        add:addExt?getComputedStyle(addExt).display:'gone',
+        edit:window.CAN_EDIT, role:window.NALA_ROLE})""")
+    ck("chef reads the board", not st["blocked"] and st["rooms"]>0 and st["role"]=="chef")
+    ck("chef cannot edit bookings", st["edit"] is False)
+    ck("chef gets no select-multiple and no add reservation",
+       st["sel"]=="none" and st["add"]=="none")
+    # the chef opens the sheet to READ it: the phone, the dietaries and the
+    # comment are the reason they open the app at all
+    q.evaluate("()=>openRoom(1, roomState(1))"); q.wait_for_timeout(400)
+    live=q.evaluate("""()=>[].filter.call(document.querySelectorAll('#sheet button'),
+        e=>getComputedStyle(e).display!=='none').map(e=>e.textContent.trim())""")
+    txt=q.evaluate("()=>sheet.innerText")
+    ck("chef opens the sheet and sees the guest's details",
+       "0400" in txt and "allergy" in txt.lower())
+    ck("chef's sheet offers nothing that writes, only Close",
+       [x.lower() for x in live]==["close"])
+    ck("chef still sees the guest count, as a fact not a picker",
+       q.evaluate("()=>!!document.querySelector('#paxRow .pax-fact') && !document.querySelector('#paxRow button')"))
+    print("   chef sheet buttons:", live)
+    print("   chef on Reservations: rooms=%s edit=%s" % (st["rooms"],st["edit"]))
+    q.close()
+
+    # a waiter has the same board and may write to it
+    q=as_role("staff@x")
+    q.evaluate("()=>openRoom(1, roomState(1))"); q.wait_for_timeout(400)
+    ck("staff keeps the pax picker and the write controls",
+       q.evaluate("""()=>document.querySelectorAll('#paxRow button').length===6
+                      && !!document.getElementById('oSave')
+                      && getComputedStyle(document.getElementById('oSave')).display!=='none'"""))
+    q.close()
+
+    q=as_role("waiter@x")
+    ck("waiter keeps the full board",
+       q.evaluate("()=>window.CAN_EDIT===true && noAccess.className.indexOf('show')<0"))
+    q.close()
+
+    q=as_role("housekeeping@x")
+    ck("housekeeping gets no Reservations board at all",
+       q.evaluate("""()=>noAccess.className.indexOf('show')>-1
+                      && getComputedStyle(rooms).display=='none'
+                      && getComputedStyle(statsRow).display=='none'"""))
+    q.close()
+    b.close()
     open("/home/claude/nala/_p1_tally.png","wb").write(shot1)
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()

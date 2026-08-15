@@ -7,7 +7,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nala · Tonight's Numbers</title>
-<link rel="stylesheet" href="nala-ui.css?v=9">
+<link rel="stylesheet" href="nala-ui.css?v=10">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
@@ -228,6 +228,7 @@
   .opt.vac   { background:var(--slate); border-color:var(--slate); }   /* vacant - slate */
   .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
   .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 16px; }
+  .pax-fact { font:600 20px/1 var(--ui-font); color:var(--ink); }
   .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
          border-radius:50%; font-family:var(--ui-font); font-size:13px;
          color:var(--ink); cursor:pointer; }
@@ -261,6 +262,17 @@
          background:transparent; font-family:var(--ui-font); font-size:16px; color:var(--ink); }
   .txt::placeholder { color:var(--mid); font-style:italic; }
   .txt:focus { outline:none; border-color:var(--ink); }
+
+/* A read-only role opens the sheet to READ it - the phone, the dietaries and
+   the comment all live in there and the chef needs them. What goes is every
+   control that WRITES. Close and Back stay, so no sheet is a dead end.
+   Keyed on ids because the sheet is rebuilt on every open, so a rule that
+   ran once per render would let the buttons back in.                    */
+body.readonly #oSave, body.readonly #oDetails, body.readonly #oCancel,
+body.readonly #oRevert, body.readonly #oRestore, body.readonly #oDel,
+body.readonly #oIn, body.readonly #oOut, body.readonly #oVac,
+body.readonly #oClear, body.readonly #oUncomb, body.readonly #cYes,
+body.readonly .comb-undo { display:none; }
 </style>
 </head>
 <body class="tier-app">
@@ -282,18 +294,89 @@
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
+
+  /* Role gate, per the matrix in ROLES.md. Two different things here: a role
+     that may not see this board at all, and a role that may read it but not
+     write to it. The chef is the second - they open the app to see who is
+     eating and what they cannot have, and print the sheet.             */
+  window.NALA_ROLE = null;
+  window.CAN_EDIT  = false;
+  (function gate(){
+    /* Wait for the helper too, not just firebase: a stubbed SDK calls back
+       synchronously, and nala-shared.js loads at the foot of the page.
+       auth() itself throws when no app has been initialised, and a partial
+       SDK can arrive without onAuthStateChanged, so both are guarded: a
+       throw here would take the whole page down with it.               */
+    if (!window.firebase || !firebase.auth ||
+        typeof loadStaff !== 'function'){ setTimeout(gate,300); return; }
+    var A;
+    try { A = firebase.auth(); } catch (e){ setTimeout(gate,300); return; }
+    if (!A || typeof A.onAuthStateChanged !== 'function'){ setTimeout(gate,300); return; }
+    A.onAuthStateChanged(function(u){
+      if (!u) return;                 /* auth.js owns the signed-out state */
+      loadStaff(function(recs, err){
+        var role = roleOf(u);
+        window.NALA_ROLE = role;
+        window.CAN_EDIT  = can(role,'editBookings');
+        window.NALA_NAVFILTER(role);
+        showAccess(can(role,'resBoard'), err);
+      });
+    });
+  })();
+
+
+  /* The menu lists only the boards this role may open: offering a link that
+     lands on "no access" is a door to nowhere. Cleans needs cleansBoard,
+     the sheets need their own permission.                              */
+  window.NALA_NAVFILTER = function(role){
+    var need = { 'tally.html':'resBoard', 'list.html':'resSheet',
+                 'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard' };
+    var links = document.querySelectorAll('#navDrop a');
+    for (var i=0;i<links.length;i++){
+      var href = (links[i].getAttribute('href')||'').split('?')[0];
+      links[i].style.display = can(role, need[href]) ? '' : 'none';
+    }
+  };
+
+  function showAccess(allowed, err){
+    var box = document.getElementById('noAccess');
+    var on  = !allowed;
+    box.innerHTML = !on ? '' :
+      (err ? '<div>Could not check access. This is usually the connection, '
+           + 'not your login.</div>'
+           + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+           : 'This login has no access to Reservations. See the manager.');
+    box.className = 'noaccess' + (on ? ' show' : '');
+    ['menuState','statsRow','tablesLine','roomsSec','rooms','listSec',
+     'listBookings','footActions'].forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) el.style.display = on ? 'none' : '';
+    });
+    /* Read only: the board stays, every way of writing to it goes. The
+       tile sheet is the edit surface, so it does not open at all - see
+       the guard in openRoom.                                          */
+    document.body.classList.toggle('readonly', !on && !window.CAN_EDIT);
+    if (!on && !window.CAN_EDIT){
+      ['selToggle','addExt'].forEach(function(id){
+        var el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+    }
+  }
 })();
 </script>
   <div class="menustate" id="menuState"></div>
 
-  <div class="stats">
+  <div class="noaccess" id="noAccess"></div>
+
+  <div class="stats" id="statsRow">
     <div class="stat"><div class="stat-n" id="nCovers">–</div><div class="stat-l">Covers</div></div>
     <div class="stat"><div class="stat-n" id="nOut">–</div><div class="stat-l">Villas out</div></div>
     <div class="stat" id="tileAwait"><div class="stat-n" id="nAwait">–</div><div class="stat-l">Villas awaiting</div></div>
   </div>
   <div class="tablesline" id="tablesLine"></div>
 
-  <div class="sec">
+  <div class="sec" id="roomsSec">
     <span>Villas</span>
     <a href="#" id="selToggle">Select multiple</a>
   </div>
@@ -310,13 +393,13 @@
     <span><i class="ico" id="legSeen"></i>Link opened</span>
   </div>
 
-  <div class="sec">
+  <div class="sec" id="listSec">
     <span>Bookings</span>
     <a href="#" id="addExt">+ Add reservation</a>
   </div>
   <div id="listBookings"></div>
 
-  <div class="foot actions">
+  <div class="foot actions" id="footActions">
     <button class="btn" onclick="location.reload()">Refresh</button>
     <a class="btn" href="stats.html">Stats</a>
   </div>
@@ -343,7 +426,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=7"></script>
-<script src="nala-shared.js?v=6"></script>
+<script src="nala-shared.js?v=7"></script>
 <script>
 var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
@@ -880,6 +963,15 @@ function paxPicker(max, get, set){
   function paint(){
     var r=document.getElementById('paxRow'); if(!r) return;
     r.innerHTML='';
+    /* A read-only role still needs the number - covers are the chef's whole
+       reason for opening this - but not the picker. Six buttons that set a
+       value nothing can save is a control that does nothing. Plain
+       typography instead, which is what a fact is supposed to wear.    */
+    if (window.CAN_EDIT === false){
+      var f=document.createElement('span');
+      f.className='pax-fact'; f.textContent=get();
+      r.appendChild(f); return;
+    }
     for(var i=1;i<=max;i++)(function(v){
       var b=document.createElement('button');
       b.className='pax'+(get()===v?' on':''); b.textContent=v;

@@ -30,6 +30,9 @@ bf24=(now-datetime.timedelta(minutes=24)).isoformat()   # red band
 hk={"7":{"done":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"},"2":{"bfast":bf},
     "11":{"kind":"clean"}, "17":{"kind":"pre"}, "13":{"kind":"pre","done":now.isoformat()}, "8":{"departed":True}, "12":{"departed":True},
     "14":{"bfast":bf2}, "6":{"bfast":bf16}, "9":{"bfast":bf24}}
+staff={"staff@nalaresort,com,au":{"name":"Ben","role":"staff"},
+       "housekeeping@nalaresort,com,au":{"name":"Housekeeping","role":"housekeeping"},
+       "chef@nalaresort,com,au":{"name":"Chef","role":"chef"}}
 prevHk={"16":{"pushed":(now-datetime.timedelta(days=1)).isoformat()}}
 def fb(route,request):
     u=request.url; m=request.method
@@ -38,7 +41,8 @@ def fb(route,request):
         if STATE["fail"]: route.fulfill(status=401,body="no"); return
         route.fulfill(status=200,content_type="application/json",body=request.post_data); return
     body="null"
-    if "/responses/" in u: body=json.dumps(responses)
+    if "/staff" in u: body=json.dumps(staff)
+    elif "/responses/" in u: body=json.dumps(responses)
     elif "/manual/" in u: body=json.dumps(manual)
     elif "/roomguests/"+today in u: body=json.dumps(roomguests)
     elif "/roomguests/" in u: body="null"
@@ -60,7 +64,7 @@ with sync_playwright() as p:
         pg.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body="/*n*/"))
         pg.route("**firebasedatabase.app/**",fb)
         return pg
-    pg=page("ben@nalaresort.com.au")
+    pg=page("staff@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1500)
     hd=pg.evaluate("()=>({k:'n/a',d:title.textContent,c:nClean.textContent,s:nSvc.textContent,dn:nDone.textContent,nav:getComputedStyle(navWrap).display})")
     ck("header row present", pg.evaluate("()=>!!document.querySelector('.daterow .navwrap')"))
@@ -434,6 +438,85 @@ with sync_playwright() as p:
        all(w not in hkSheet for w in
            ["to be cleaned","to be serviced","set as pre-arrival",
             "mark as empty","use booking dates","back to unknown"]))
+    pg.close()
+
+    # ---- roles: the helper, straight out of the shipped nala-shared.js ----
+    pg=page("staff@nalaresort.com.au")
+    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1200)
+
+    # every dot becomes a comma, not just the first: a single replace would
+    # key staff@nalaresort.com.au as staff@nalaresort,com.au and match nothing
+    ck("emailKey converts every dot",
+       pg.evaluate("()=>emailKey('Staff@NalaResort.Com.AU')")=="staff@nalaresort,com,au")
+
+    roles=pg.evaluate("""()=>({
+      staff: roleOf({email:'staff@nalaresort.com.au'}),
+      hk:    roleOf({email:'HOUSEKEEPING@nalaresort.com.au'}),
+      chef:  roleOf({email:'chef@nalaresort.com.au'}),
+      hkm:   roleOf({email:'housekeeping.maria@nalaresort.com.au'}),
+      ben:   roleOf({email:'ben@nalaresort.com.au'}),
+      empty: roleOf(null)})""")
+    ck("roleOf reads the record, not the address",
+       roles["staff"]=="staff" and roles["hk"]=="housekeeping" and roles["chef"]=="chef")
+    ck("roleOf is case insensitive on the address", roles["hk"]=="housekeeping")
+    # the two failures the old prefix check made, named in ROLES.md
+    ck("housekeeping.maria@ is not silently a cleaner", roles["hkm"] is None)
+    ck("an unseeded address is not silently management", roles["ben"] is None)
+    ck("no user is no role", roles["empty"] is None)
+
+    # the matrix in ROLES.md, cell by cell
+    M={"staff":       {"cleansBoard":1,"cleansMarks":1,"setJob":1,"resBoard":1,
+                       "editBookings":1,"resSheet":1,"publishMenu":1,"manageStaff":1},
+       "chef":        {"cleansBoard":0,"cleansMarks":0,"setJob":0,"resBoard":1,
+                       "editBookings":0,"resSheet":1,"publishMenu":1,"manageStaff":0},
+       "waiter":      {"cleansBoard":0,"cleansMarks":0,"setJob":0,"resBoard":1,
+                       "editBookings":1,"resSheet":1,"publishMenu":0,"manageStaff":0},
+       "housekeeping":{"cleansBoard":1,"cleansMarks":1,"setJob":0,"resBoard":0,
+                       "editBookings":0,"resSheet":0,"publishMenu":0,"manageStaff":0}}
+    bad=[]
+    for role,caps in M.items():
+        for cap,want in caps.items():
+            got=pg.evaluate("()=>can('%s','%s')"%(role,cap))
+            if got!=bool(want): bad.append("%s/%s"%(role,cap))
+    ck("can() matches the ROLES.md matrix in all 32 cells, wrong: "+str(bad), not bad)
+    ck("no record grants nothing", not pg.evaluate("()=>can(null,'resBoard')||can('typo','setJob')"))
+    ck("staff is the FULL ACCESS role, not a middling one",
+       pg.evaluate("()=>can('staff','manageStaff')&&can('staff','setJob')&&can('staff','editBookings')"))
+    pg.close()
+
+    # ---- the gate on the page ----
+    pg=page("chef@nalaresort.com.au")
+    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1500)
+    g=pg.evaluate("""()=>({msg:noAccess.textContent, shown:noAccess.className.indexOf('show')>-1,
+                          grid:getComputedStyle(grid).display, nav:getComputedStyle(navWrap).display})""")
+    ck("a chef gets no Cleans board", g["shown"] and g["grid"]=="none" and g["nav"]=="none")
+    ck("and is told where to go, once", "see the manager" in g["msg"].lower())
+    print("   chef on Cleans:", g["msg"])
+    pg.close()
+
+    # a login with no record at all: the case that used to be full access
+    pg=page("ben@nalaresort.com.au")
+    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1500)
+    ck("an unseeded login is refused rather than trusted",
+       pg.evaluate("()=>noAccess.className.indexOf('show')>-1 && getComputedStyle(grid).display=='none'"))
+    pg.close()
+
+    # a lookup that fails is not the same as a login that is not on the list
+    pg=b.new_page(viewport={"width":390,"height":844})
+    pg.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
+        content_type="application/javascript",body=sdk("staff@nalaresort.com.au")))
+    pg.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,
+        content_type="application/javascript",body="/*n*/"))
+    def fbfail(route,request):
+        if "/staff" in request.url: route.fulfill(status=500,body="nope"); return
+        fb(route,request)
+    pg.route("**firebasedatabase.app/**",fbfail)
+    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1500)
+    m=pg.evaluate("()=>noAccess.textContent")
+    ck("a failed lookup blames the connection, not the login",
+       "see the manager" not in m.lower() and "connection" in m.lower())
+    ck("and offers a retry", pg.evaluate("()=>!!document.querySelector('#noAccess .na-retry')"))
+    print("   lookup failed:", m)
     pg.close(); b.close()
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()

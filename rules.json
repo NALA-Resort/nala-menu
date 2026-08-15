@@ -26,13 +26,17 @@
     },
     "dietaries": { ".read": true, ".write": "auth != null" },
     "extcancel": { ".read": "auth != null", ".write": true },
+    "staff": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff'"
+    },
     "hk": {
       "$date": {
         ".read": "auth != null",
         "$villa": {
           ".write": "auth != null",
           "kind": {
-            ".write": "auth != null && !auth.token.email.beginsWith('housekeeping')"
+            ".write": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff'"
           }
         }
       }

@@ -7,7 +7,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nala · Service Sheet</title>
-<link rel="stylesheet" href="nala-ui.css?v=9">
+<link rel="stylesheet" href="nala-ui.css?v=10">
 <style>
   @page { size: A4 portrait; margin: 10mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -134,14 +134,70 @@
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
+
+  /* Role gate, per the matrix in ROLES.md. The sheet is read and print for
+     everyone who may see it at all, so there is one question here, not two. */
+  window.NALA_ROLE = null;
+  (function gate(){
+    /* Wait for the helper too, not just firebase: a stubbed SDK calls back
+       synchronously, and nala-shared.js loads at the foot of the page.
+       auth() itself throws when no app has been initialised, and a partial
+       SDK can arrive without onAuthStateChanged, so both are guarded: a
+       throw here would take the whole page down with it.               */
+    if (!window.firebase || !firebase.auth ||
+        typeof loadStaff !== 'function'){ setTimeout(gate,300); return; }
+    var A;
+    try { A = firebase.auth(); } catch (e){ setTimeout(gate,300); return; }
+    if (!A || typeof A.onAuthStateChanged !== 'function'){ setTimeout(gate,300); return; }
+    A.onAuthStateChanged(function(u){
+      if (!u) return;                 /* auth.js owns the signed-out state */
+      loadStaff(function(recs, err){
+        var role = roleOf(u);
+        window.NALA_ROLE = role;
+        window.NALA_NAVFILTER(role);
+        showAccess(can(role,'resSheet'), err);
+      });
+    });
+  })();
+
+
+  /* The menu lists only the boards this role may open: offering a link that
+     lands on "no access" is a door to nowhere. Cleans needs cleansBoard,
+     the sheets need their own permission.                              */
+  window.NALA_NAVFILTER = function(role){
+    var need = { 'tally.html':'resBoard', 'list.html':'resSheet',
+                 'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard' };
+    var links = document.querySelectorAll('#navDrop a');
+    for (var i=0;i<links.length;i++){
+      var href = (links[i].getAttribute('href')||'').split('?')[0];
+      links[i].style.display = can(role, need[href]) ? '' : 'none';
+    }
+  };
+
+  function showAccess(allowed, err){
+    var box = document.getElementById('noAccess');
+    var on  = !allowed;
+    box.innerHTML = !on ? '' :
+      (err ? '<div>Could not check access. This is usually the connection, '
+           + 'not your login.</div>'
+           + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+           : 'This login has no access to the Reservations Sheet. See the manager.');
+    box.className = 'noaccess' + (on ? ' show' : '');
+    ['statsRow','sheetScroller','footBar'].forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) el.style.display = on ? 'none' : '';
+    });
+  }
 })();
 </script>
-<div class="stats">
+<div class="noaccess" id="noAccess"></div>
+
+<div class="stats" id="statsRow">
     <div class="stat statmix"><span class="stat-n" id="tblBreak">&ndash;</span><span class="stat-l"><span id="nTables">&ndash;</span> <span id="nTablesWord">tables</span></span></div>
     <div class="stat"><span class="stat-n" id="nCovers">&ndash;</span><span class="stat-l">Covers</span></div>
   </div>
 
-<div class="scroller">
+<div class="scroller" id="sheetScroller">
   <table>
     <thead>
       <tr class="printhead"><td colspan="7"><div id="printHead"></div></td></tr>
@@ -161,7 +217,7 @@
 </div>
 <div class="stamp" id="stamp"></div>
 
-<div class="foot">
+<div class="foot" id="footBar">
   <button class="btn" onclick="window.print()">Print</button>
   <button class="btn ghost" onclick="location.reload()">Refresh</button>
 </div>
@@ -170,7 +226,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=7"></script>
-<script src="nala-shared.js?v=6"></script>
+<script src="nala-shared.js?v=7"></script>
 <script>
 // date state + header wiring from nala-shared.js
 var nav = initDateNav();

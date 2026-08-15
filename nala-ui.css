@@ -77,6 +77,18 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
           color:var(--mid); margin-top:6px; }
 .stat.warn .stat-n { color:var(--red); }
 
+/* ── access message ───────────────────────────────────────
+   Stands in for a board the signed-in login may not see. Plain typography,
+   never a bordered or filled box: that dress belongs to buttons alone, and
+   a message wearing it reads as something to tap. One statement, not a
+   fact stacked under a fact. The retry action IS a button, so it wears
+   the page's .btn.                                                       */
+.noaccess { display:none; font-family:var(--ui-font); font-size:15px;
+            line-height:1.5; color:var(--ctl-ink); max-width:420px;
+            margin:24px 0; }
+.noaccess.show { display:block; }
+.noaccess .na-retry { margin-top:16px; display:block; width:max-content; }
+
 /* keep controls off paper */
 @media print {
   .navwrap, .foot, .dnav { display:none !important; }

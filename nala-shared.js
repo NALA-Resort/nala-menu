@@ -217,3 +217,60 @@ function hkClassify(rec, todayK, hk){
   }
   return 'ver';         // no data at all
 }
+
+/* ── roles and access ──────────────────────────────────────────
+   Who may do what. The role comes from the record at /staff/<emailkey>,
+   never from the address - the email only finds the record. Pages ask
+   can(), never the email, so a permission changes in one place.
+   Matrix and rationale in ROLES.md.                                   */
+
+var STAFF_RECORDS = null;    /* the /staff map once loaded, null until then */
+
+/* Firebase keys cannot hold a dot, so the key is the lowercased email with
+   EVERY dot turned into a comma. Note the global regex: a plain
+   replace('.', ',') changes only the first, which would key
+   staff@nalaresort.com.au as staff@nalaresort,com.au and match nothing. */
+function emailKey(email){
+  return String(email || '').trim().toLowerCase().replace(/\./g, ',');
+}
+
+var ROLE_GRANTS = {
+  staff:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff'],
+  chef:         ['resBoard','resSheet','publishMenu'],
+  waiter:       ['resBoard','editBookings','resSheet'],
+  housekeeping: ['cleansBoard','cleansMarks']
+};
+
+function isRole(r){ return Object.prototype.hasOwnProperty.call(ROLE_GRANTS, r); }
+
+/* null means no usable record, and no record is no access. Deliberately not
+   the lowest role: a typo in an address would otherwise grant something. */
+function roleOf(user){
+  var e = user && (typeof user === 'string' ? user : user.email);
+  if (!e || !STAFF_RECORDS) return null;
+  var rec = STAFF_RECORDS[emailKey(e)];
+  var r = rec && rec.role;
+  return isRole(r) ? r : null;
+}
+
+function can(role, what){
+  var g = ROLE_GRANTS[role];
+  return !!(g && g.indexOf(what) > -1);
+}
+
+function setStaffRecords(map){
+  STAFF_RECORDS = (map && typeof map === 'object') ? map : {};
+  return STAFF_RECORDS;
+}
+
+/* Loads /staff once. On a network or permission failure the records stay
+   null, which still grants nothing, but it is a DIFFERENT state from
+   "signed in and not on the list" and the pages word it differently:
+   telling someone to see the manager when the database simply did not
+   answer sends them down the hall for nothing.                        */
+function loadStaff(cb){
+  fetch(DB + '/staff.json')
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+    .then(function(j){ cb(setStaffRecords(j), null); })
+    .catch(function(err){ STAFF_RECORDS = null; cb(null, err); });
+}

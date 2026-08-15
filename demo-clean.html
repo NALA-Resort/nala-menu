@@ -87,6 +87,18 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
           color:var(--mid); margin-top:6px; }
 .stat.warn .stat-n { color:var(--red); }
 
+/* ── access message ───────────────────────────────────────
+   Stands in for a board the signed-in login may not see. Plain typography,
+   never a bordered or filled box: that dress belongs to buttons alone, and
+   a message wearing it reads as something to tap. One statement, not a
+   fact stacked under a fact. The retry action IS a button, so it wears
+   the page's .btn.                                                       */
+.noaccess { display:none; font-family:var(--ui-font); font-size:15px;
+            line-height:1.5; color:var(--ctl-ink); max-width:420px;
+            margin:24px 0; }
+.noaccess.show { display:block; }
+.noaccess .na-retry { margin-top:16px; display:block; width:max-content; }
+
 /* keep controls off paper */
 @media print {
   .navwrap, .foot, .dnav { display:none !important; }
@@ -220,6 +232,10 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
                     entree:{name:'Prawn cocktail'}, main:{name:'Satay chicken'},
                     dessert:{name:'Pavlova'}});
     function on(p){ return url.indexOf(p) > -1; }
+    /* The demo signs in as demo@nala, so it needs a role record like any
+       other login: since the roles change, no record means no board. The
+       demos show the management view, so the record is the staff role.  */
+    if (on('/staff'))       return reply({'demo@nala':{name:'Demo', role:'staff'}});
     if (on('/responses/'))  return reply(on(TODAY) ? D.responses : {});
     if (on('/manual/'))     return reply(on(TODAY) ? D.manual    : {});
     if (on('/roomguests/')) return reply(on(TODAY) ? D.roomguests: null);
@@ -502,6 +518,63 @@ function hkClassify(rec, todayK, hk){
     return 'ver';       // stale or missing departure
   }
   return 'ver';         // no data at all
+}
+
+/* ── roles and access ──────────────────────────────────────────
+   Who may do what. The role comes from the record at /staff/<emailkey>,
+   never from the address - the email only finds the record. Pages ask
+   can(), never the email, so a permission changes in one place.
+   Matrix and rationale in ROLES.md.                                   */
+
+var STAFF_RECORDS = null;    /* the /staff map once loaded, null until then */
+
+/* Firebase keys cannot hold a dot, so the key is the lowercased email with
+   EVERY dot turned into a comma. Note the global regex: a plain
+   replace('.', ',') changes only the first, which would key
+   staff@nalaresort.com.au as staff@nalaresort,com.au and match nothing. */
+function emailKey(email){
+  return String(email || '').trim().toLowerCase().replace(/\./g, ',');
+}
+
+var ROLE_GRANTS = {
+  staff:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff'],
+  chef:         ['resBoard','resSheet','publishMenu'],
+  waiter:       ['resBoard','editBookings','resSheet'],
+  housekeeping: ['cleansBoard','cleansMarks']
+};
+
+function isRole(r){ return Object.prototype.hasOwnProperty.call(ROLE_GRANTS, r); }
+
+/* null means no usable record, and no record is no access. Deliberately not
+   the lowest role: a typo in an address would otherwise grant something. */
+function roleOf(user){
+  var e = user && (typeof user === 'string' ? user : user.email);
+  if (!e || !STAFF_RECORDS) return null;
+  var rec = STAFF_RECORDS[emailKey(e)];
+  var r = rec && rec.role;
+  return isRole(r) ? r : null;
+}
+
+function can(role, what){
+  var g = ROLE_GRANTS[role];
+  return !!(g && g.indexOf(what) > -1);
+}
+
+function setStaffRecords(map){
+  STAFF_RECORDS = (map && typeof map === 'object') ? map : {};
+  return STAFF_RECORDS;
+}
+
+/* Loads /staff once. On a network or permission failure the records stay
+   null, which still grants nothing, but it is a DIFFERENT state from
+   "signed in and not on the list" and the pages word it differently:
+   telling someone to see the manager when the database simply did not
+   answer sends them down the hall for nothing.                        */
+function loadStaff(cb){
+  fetch(DB + '/staff.json')
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+    .then(function(j){ cb(setStaffRecords(j), null); })
+    .catch(function(err){ STAFF_RECORDS = null; cb(null, err); });
 }
 
 </script>

@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-logo.png">
 <title>Nala · Cleaners</title>
-<link rel="stylesheet" href="nala-ui.css?v=9">
+<link rel="stylesheet" href="nala-ui.css?v=10">
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
           --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
@@ -129,37 +129,74 @@
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
-  /* One gate for the whole page: the nav menu and the job controls are both
-     management-only and stay hidden for the housekeeping login.          */
+  /* One gate for the whole page. The role comes from the record at
+     /staff/<emailkey>, never from the address - see ROLES.md. The nav menu
+     and the job controls both need setJob; the marks need cleansMarks; a
+     login the record does not name gets neither and is told so.        */
   window.IS_MANAGER = false;
+  window.NALA_ROLE  = null;
   (function gate(){
-    if (!window.firebase || !firebase.auth){ setTimeout(gate,300); return; }
-    firebase.auth().onAuthStateChanged(function(u){
-      var e=((u&&u.email)||'').toLowerCase();
-      window.IS_MANAGER = !!(u && e.indexOf('housekeeping')!==0);
-      document.getElementById('navWrap').style.display =
-        window.IS_MANAGER ? 'block' : 'none';
-      if (document.getElementById('ov').className.indexOf('show')>-1) drawSheet('menu');
+    /* Wait for the helper too, not just firebase: a stubbed SDK calls back
+       synchronously, and nala-shared.js loads at the foot of the page.
+       auth() itself throws when no app has been initialised, and a partial
+       SDK can arrive without onAuthStateChanged, so both are guarded: a
+       throw here would take the whole page down with it.               */
+    if (!window.firebase || !firebase.auth ||
+        typeof loadStaff !== 'function'){ setTimeout(gate,300); return; }
+    var A;
+    try { A = firebase.auth(); } catch (e){ setTimeout(gate,300); return; }
+    if (!A || typeof A.onAuthStateChanged !== 'function'){ setTimeout(gate,300); return; }
+    A.onAuthStateChanged(function(u){
+      if (!u) return;                 /* auth.js owns the signed-out state */
+      loadStaff(function(recs, err){
+        var role = roleOf(u);
+        window.NALA_ROLE  = role;
+        window.IS_MANAGER = can(role,'setJob');
+        document.getElementById('navWrap').style.display =
+          window.IS_MANAGER ? 'block' : 'none';
+        showAccess(can(role,'cleansBoard'), err);
+        if (document.getElementById('ov').className.indexOf('show')>-1) drawSheet('menu');
+      });
     });
   })();
+
+  /* A login with no record is a different thing from a lookup that failed,
+     and they are worded differently: sending someone to the manager when
+     the database simply did not answer wastes a walk.                  */
+  function showAccess(allowed, err){
+    var box = document.getElementById('noAccess');
+    var on  = !allowed;
+    box.innerHTML = !on ? '' :
+      (err ? '<div>Could not check access. This is usually the connection, '
+           + 'not your login.</div>'
+           + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+           : 'This login has no access to the Cleans board. See the manager.');
+    box.className = 'noaccess' + (on ? ' show' : '');
+    ['grid','legend','statsRow','footBar'].forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) el.style.display = on ? 'none' : '';
+    });
+  }
 })();
 </script>
-  <div class="stats">
+  <div class="stats" id="statsRow">
     <div class="stat"><span class="stat-n" id="nClean">&ndash;</span><span class="stat-l">Cleans</span></div>
     <div class="stat"><span class="stat-n" id="nSvc">&ndash;</span><span class="stat-l">Services</span></div>
     <div class="stat" id="preWrap" style="display:none"><span class="stat-n" id="nPre">&ndash;</span><span class="stat-l">Pre-arrivals</span></div>
     <div class="stat"><span class="stat-n" id="nDone">&ndash;</span><span class="stat-l">Done</span></div>
   </div>
 
+  <div class="noaccess" id="noAccess"></div>
+
   <div class="grid" id="grid"></div>
 
-  <div class="legend">
+  <div class="legend" id="legend">
     <span><i class="ld"></i>Ready to clean</span>
     <span><i class="lg"></i>Ready to service</span>
     <span><i class="lf"></i>Finished</span>
   </div>
 
-  <div class="foot bar">
+  <div class="foot bar" id="footBar">
     <button class="btn" onclick="location.reload()">Refresh</button>
     <button class="btn" id="selToggle">Select multiple</button>
   </div>
@@ -170,7 +207,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=7"></script>
-<script src="nala-shared.js?v=6"></script>
+<script src="nala-shared.js?v=7"></script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
 // this board is locked to today by design - no browsed dates

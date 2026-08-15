@@ -87,6 +87,18 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
           color:var(--mid); margin-top:6px; }
 .stat.warn .stat-n { color:var(--red); }
 
+/* ── access message ───────────────────────────────────────
+   Stands in for a board the signed-in login may not see. Plain typography,
+   never a bordered or filled box: that dress belongs to buttons alone, and
+   a message wearing it reads as something to tap. One statement, not a
+   fact stacked under a fact. The retry action IS a button, so it wears
+   the page's .btn.                                                       */
+.noaccess { display:none; font-family:var(--ui-font); font-size:15px;
+            line-height:1.5; color:var(--ctl-ink); max-width:420px;
+            margin:24px 0; }
+.noaccess.show { display:block; }
+.noaccess .na-retry { margin-top:16px; display:block; width:max-content; }
+
 /* keep controls off paper */
 @media print {
   .navwrap, .foot, .dnav { display:none !important; }
@@ -253,6 +265,10 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
                     entree:{name:'Prawn cocktail'}, main:{name:'Satay chicken'},
                     dessert:{name:'Pavlova'}});
     function on(p){ return url.indexOf(p) > -1; }
+    /* The demo signs in as demo@nala, so it needs a role record like any
+       other login: since the roles change, no record means no board. The
+       demos show the management view, so the record is the staff role.  */
+    if (on('/staff'))       return reply({'demo@nala':{name:'Demo', role:'staff'}});
     if (on('/responses/'))  return reply(on(TODAY) ? D.responses : {});
     if (on('/manual/'))     return reply(on(TODAY) ? D.manual    : {});
     if (on('/roomguests/')) return reply(on(TODAY) ? D.roomguests: null);
@@ -278,14 +294,70 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
+
+  /* Role gate, per the matrix in ROLES.md. The sheet is read and print for
+     everyone who may see it at all, so there is one question here, not two. */
+  window.NALA_ROLE = null;
+  (function gate(){
+    /* Wait for the helper too, not just firebase: a stubbed SDK calls back
+       synchronously, and nala-shared.js loads at the foot of the page.
+       auth() itself throws when no app has been initialised, and a partial
+       SDK can arrive without onAuthStateChanged, so both are guarded: a
+       throw here would take the whole page down with it.               */
+    if (!window.firebase || !firebase.auth ||
+        typeof loadStaff !== 'function'){ setTimeout(gate,300); return; }
+    var A;
+    try { A = firebase.auth(); } catch (e){ setTimeout(gate,300); return; }
+    if (!A || typeof A.onAuthStateChanged !== 'function'){ setTimeout(gate,300); return; }
+    A.onAuthStateChanged(function(u){
+      if (!u) return;                 /* auth.js owns the signed-out state */
+      loadStaff(function(recs, err){
+        var role = roleOf(u);
+        window.NALA_ROLE = role;
+        window.NALA_NAVFILTER(role);
+        showAccess(can(role,'resSheet'), err);
+      });
+    });
+  })();
+
+
+  /* The menu lists only the boards this role may open: offering a link that
+     lands on "no access" is a door to nowhere. Cleans needs cleansBoard,
+     the sheets need their own permission.                              */
+  window.NALA_NAVFILTER = function(role){
+    var need = { 'tally.html':'resBoard', 'list.html':'resSheet',
+                 'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard' };
+    var links = document.querySelectorAll('#navDrop a');
+    for (var i=0;i<links.length;i++){
+      var href = (links[i].getAttribute('href')||'').split('?')[0];
+      links[i].style.display = can(role, need[href]) ? '' : 'none';
+    }
+  };
+
+  function showAccess(allowed, err){
+    var box = document.getElementById('noAccess');
+    var on  = !allowed;
+    box.innerHTML = !on ? '' :
+      (err ? '<div>Could not check access. This is usually the connection, '
+           + 'not your login.</div>'
+           + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+           : 'This login has no access to the Reservations Sheet. See the manager.');
+    box.className = 'noaccess' + (on ? ' show' : '');
+    ['statsRow','sheetScroller','footBar'].forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) el.style.display = on ? 'none' : '';
+    });
+  }
 })();
 </script>
-<div class="stats">
+<div class="noaccess" id="noAccess"></div>
+
+<div class="stats" id="statsRow">
     <div class="stat statmix"><span class="stat-n" id="tblBreak">&ndash;</span><span class="stat-l"><span id="nTables">&ndash;</span> <span id="nTablesWord">tables</span></span></div>
     <div class="stat"><span class="stat-n" id="nCovers">&ndash;</span><span class="stat-l">Covers</span></div>
   </div>
 
-<div class="scroller">
+<div class="scroller" id="sheetScroller">
   <table>
     <thead>
       <tr class="printhead"><td colspan="7"><div id="printHead"></div></td></tr>
@@ -305,7 +377,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 </div>
 <div class="stamp" id="stamp"></div>
 
-<div class="foot">
+<div class="foot" id="footBar">
   <button class="btn" onclick="window.print()">Print</button>
   <button class="btn ghost" onclick="location.reload()">Refresh</button>
 </div>
@@ -530,6 +602,63 @@ function hkClassify(rec, todayK, hk){
     return 'ver';       // stale or missing departure
   }
   return 'ver';         // no data at all
+}
+
+/* ── roles and access ──────────────────────────────────────────
+   Who may do what. The role comes from the record at /staff/<emailkey>,
+   never from the address - the email only finds the record. Pages ask
+   can(), never the email, so a permission changes in one place.
+   Matrix and rationale in ROLES.md.                                   */
+
+var STAFF_RECORDS = null;    /* the /staff map once loaded, null until then */
+
+/* Firebase keys cannot hold a dot, so the key is the lowercased email with
+   EVERY dot turned into a comma. Note the global regex: a plain
+   replace('.', ',') changes only the first, which would key
+   staff@nalaresort.com.au as staff@nalaresort,com.au and match nothing. */
+function emailKey(email){
+  return String(email || '').trim().toLowerCase().replace(/\./g, ',');
+}
+
+var ROLE_GRANTS = {
+  staff:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff'],
+  chef:         ['resBoard','resSheet','publishMenu'],
+  waiter:       ['resBoard','editBookings','resSheet'],
+  housekeeping: ['cleansBoard','cleansMarks']
+};
+
+function isRole(r){ return Object.prototype.hasOwnProperty.call(ROLE_GRANTS, r); }
+
+/* null means no usable record, and no record is no access. Deliberately not
+   the lowest role: a typo in an address would otherwise grant something. */
+function roleOf(user){
+  var e = user && (typeof user === 'string' ? user : user.email);
+  if (!e || !STAFF_RECORDS) return null;
+  var rec = STAFF_RECORDS[emailKey(e)];
+  var r = rec && rec.role;
+  return isRole(r) ? r : null;
+}
+
+function can(role, what){
+  var g = ROLE_GRANTS[role];
+  return !!(g && g.indexOf(what) > -1);
+}
+
+function setStaffRecords(map){
+  STAFF_RECORDS = (map && typeof map === 'object') ? map : {};
+  return STAFF_RECORDS;
+}
+
+/* Loads /staff once. On a network or permission failure the records stay
+   null, which still grants nothing, but it is a DIFFERENT state from
+   "signed in and not on the list" and the pages word it differently:
+   telling someone to see the manager when the database simply did not
+   answer sends them down the hall for nothing.                        */
+function loadStaff(cb){
+  fetch(DB + '/staff.json')
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+    .then(function(j){ cb(setStaffRecords(j), null); })
+    .catch(function(err){ STAFF_RECORDS = null; cb(null, err); });
 }
 
 </script>

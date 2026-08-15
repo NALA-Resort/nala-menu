@@ -32,9 +32,14 @@ menu={"published":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456",
       "bread":{"name":"Sourdough"},"entree":{"name":"Prawns"},
       "main":{"name":"Satay Chicken"},"dessert":{"name":"Pavlova"}}
 menutags={"main":["Nut allergy"]}
+staff={"staff@x":{"name":"Ben","role":"staff"},
+       "chef@x":{"name":"Chef","role":"chef"},
+       "waiter@x":{"name":"Waiter","role":"waiter"},
+       "housekeeping@x":{"name":"Housekeeping","role":"housekeeping"}}
 def fb(route,request):
     u=request.url; body="null"
-    if "/responses/" in u: body=json.dumps(responses)
+    if "/staff" in u: body=json.dumps(staff)
+    elif "/responses/" in u: body=json.dumps(responses)
     elif "/manual/" in u: body=json.dumps(manual)
     elif "/roomguests/"+today in u: body=json.dumps(roomguests)
     elif "/roomguests/" in u: body="null"
@@ -165,6 +170,34 @@ with sync_playwright() as p:
 
     # (auth-failure checks parked with the auth.js rollback — see AUDIT.md)
     open("/home/claude/nala/_p2_list.png","wb").write(shot)
-    pg.close(); b.close()
+    pg.close()
+
+    # ---- roles on the sheet, per the ROLES.md matrix ----
+    def as_role(email):
+        q=b.new_page(viewport={"width":900,"height":1100})
+        q.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
+            content_type="application/javascript",body=SDK.replace("staff@x",email)))
+        q.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,
+            content_type="application/javascript",body="/*n*/"))
+        q.route("**firebasedatabase.app/**",fb)
+        q.route("**/menu.json*",lambda r,_:r.fulfill(status=200,
+            content_type="application/json",body=json.dumps(menu)))
+        q.goto("http://localhost:8955/list.html"); q.wait_for_timeout(1500)
+        return q
+
+    q=as_role("chef@x")
+    ck("chef reads and prints the sheet",
+       q.evaluate("""()=>noAccess.className.indexOf('show')<0
+                      && document.querySelectorAll('table tbody tr').length>0
+                      && getComputedStyle(footBar).display!='none'"""))
+    q.close()
+
+    q=as_role("housekeeping@x")
+    ck("housekeeping gets no Reservations Sheet",
+       q.evaluate("""()=>noAccess.className.indexOf('show')>-1
+                      && getComputedStyle(sheetScroller).display=='none'"""))
+    ck("and is told where to go", "see the manager" in q.evaluate("()=>noAccess.textContent").lower())
+    q.close()
+    b.close()
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()
