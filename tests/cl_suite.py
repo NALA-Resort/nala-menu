@@ -322,6 +322,23 @@ with sync_playwright() as p:
     ck("a pushed villa returns tomorrow as a departed clean",
        "clean" in t16["txt"] and "departed" in t16["txt"] and "ready-clean" in t16["cls"])
 
+    # villa 16 is departed because it was pushed in, not because of a mark
+    tile(pg,16).click(); pg.wait_for_timeout(250)
+    pin = pg.locator("#sheetBox").inner_text().lower()
+    print("   pushed-in villa sheet:", pin.replace("\n"," | "))
+    ck("a pushed-in villa is not offered a departure mark",
+       "guest departed" not in pin and "undo departed" not in pin)
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
+    # villa 11 is a clean nobody has marked departed, so it still offers one,
+    # and villa 12 was marked by hand, so it offers the undo
+    tile(pg,11).click(); pg.wait_for_timeout(250)
+    ck("an unmarked clean is still offered a departure mark",
+       "guest departed" in pg.locator("#sheetBox").inner_text().lower())
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
+    tile(pg,12).click(); pg.wait_for_timeout(250)
+    ck("a hand-marked departure can be undone",
+       "undo departed" in pg.locator("#sheetBox").inner_text().lower())
+    pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
     # pushing today: only offered where there is no arrival, and reads purple
     WRITES.clear()
     tile(pg,12).click(); pg.wait_for_timeout(250)

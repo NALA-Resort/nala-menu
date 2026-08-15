@@ -478,9 +478,16 @@ function drawSheet(mode){
           : '<button class="pbtn" onclick="drawSheet(\'push\')">Push villa</button>';
       }
       if (CUR.kind==='clean'){
-        rows += h.departed
-          ? '<button class="pbtn warn" onclick="drawSheet(\'undep\')">Undo departed</button>'
-          : '<button class="pbtn" onclick="drawSheet(\'dep\')">Guest departed</button>';
+        /* A villa pushed in from yesterday is departed as a matter of fact -
+           the guest left yesterday - not because anyone marked it. Offering
+           "Guest departed" there invites a mark that changes nothing, and
+           undoing that mark then appears to do nothing, because the tile was
+           never reading it. So: undo only what was actually set, and offer
+           nothing where the departure is inherent.                        */
+        if (h.departed)
+          rows += '<button class="pbtn warn" onclick="drawSheet(\'undep\')">Undo departed</button>';
+        else if (!CUR.pushedIn)
+          rows += '<button class="pbtn" onclick="drawSheet(\'dep\')">Guest departed</button>';
       }
     }
     if (window.IS_MANAGER){

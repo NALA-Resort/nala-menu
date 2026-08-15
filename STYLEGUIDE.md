@@ -283,6 +283,12 @@ happen - and sorts at priority 2 with the other departed cleans.
 
 **Undo push** brings it back to today.
 
+A villa that arrives pushed-in is departed as a matter of fact, so it is
+offered no departure control at all. Offering one there invites a mark that
+changes nothing, and undoing that mark then looks broken, because the tile
+was never reading it. The rule generally: only offer an undo for something a
+person actually set.
+
 **Empty, not vacant.** The word is empty everywhere a person reads it, on the
 board and on the printed sheet. Only management can set it - though the
 display gate is only as good as the logins, and while the housekeeping user
