@@ -95,6 +95,25 @@ ck("three nights indexed, departure night excluded",
    STORE["/stays/2026-09-12/3"] === "res-guid-1" &&
    STORE["/stays/2026-09-13/3"] === undefined);
 
+/* ── the field names the Zap actually sends ─────────────────── */
+/* Mapped by hand in Zapier, so the spellings are whatever was typed that day.
+   UpdateUtc without the d is the one in the live Zap. */
+install();
+await post({ Id: "res-2", "Companions 0 First Name": "x",
+             UpdateUtc: "2026-08-01T10:00:00Z", StartUtc: "2026-09-10T04:00:00Z",
+             EndUtc: "2026-09-12T02:00:00Z", SpaceName: "11", State: "Confirmed",
+             BookingId: 169, GroupId: "grp-1", AdultCount: 2,
+             NotesText: "Package includes flights", NotesType: "General",
+             SpaceState: "Dirty" });
+const kept = STORE["/bookings/res-2/pms"];
+ck("UpdateUtc without the d still arms the late event guard",
+   kept.updated === "2026-08-01T10:00:00Z");
+ck("SpaceName is accepted as the villa, which is what Mews calls it",
+   kept.villa === "11");
+ck("the extra Mews fields are kept rather than dropped",
+   kept.bookingNumber === 169 && kept.groupId === "grp-1" && kept.adults === 2 &&
+   kept.notes === "Package includes flights" && kept.spaceState === "Dirty");
+
 /* ── the same event twice ───────────────────────────────────── */
 /* syncedAt is expected to move: it records when we last heard, which is a
    different fact from when the booking last changed. What must not move is

@@ -121,7 +121,26 @@ function readReservation(p) {
     state:   String(pick(p, ["State", "state", "Status", "status"]) || "confirmed").toLowerCase(),
     /* Mews' own last-changed stamp, not ours. Webhook delivery is not ordered,
        so this is the only way to tell a late old event from a new one. */
-    updated: pick(p, ["UpdatedUtc", "updated_utc", "UpdatedAt", "LastUpdateUtc", "updated"])
+    /* UpdateUtc without the d is included because that is what the Zap was
+       mapped to, and a silently missing update stamp turns the late event
+       guard off without any visible sign. */
+    updated: pick(p, ["UpdatedUtc", "UpdateUtc", "updated_utc", "UpdatedAt",
+                      "LastUpdateUtc", "updated"]),
+
+    /* Carried through but not acted on. Mews sends them, storing them is free,
+       and the alternative is discovering later that a year of bookings lack a
+       field nobody thought to keep. */
+    bookingNumber: pick(p, ["BookingId", "Number", "ConfirmationNumber"]),
+    groupId:       pick(p, ["GroupId", "ReservationGroupId"]),
+    adults:        pick(p, ["AdultCount", "adults"]),
+    children:      pick(p, ["ChildCount", "children"]),
+    notes:         pick(p, ["NotesText", "Notes"]),
+    notesType:     pick(p, ["NotesType"]),
+    /* Mews' own housekeeping state for the space. Recorded for interest only.
+       It must never drive the Cleans board: that is /hk, it is ours, and two
+       systems disagreeing about whether a villa is clean is worse than one. */
+    spaceState:    pick(p, ["SpaceState"]),
+    guestNotes:    pick(p, ["Companions0Notes", "CompanionNotes"])
   };
 }
 
@@ -197,6 +216,10 @@ export default {
            rather than discarded: the next question about this data will be
            easier to answer with it than without it. */
         mewsState: r.state,
+        bookingNumber: r.bookingNumber, groupId: r.groupId,
+        adults: r.adults, children: r.children,
+        notes: r.notes, notesType: r.notesType,
+        spaceState: r.spaceState, guestNotes: r.guestNotes,
         updated: r.updated || null,
         syncedAt: new Date().toISOString()
       });
