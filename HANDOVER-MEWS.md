@@ -329,3 +329,203 @@ function vacantIsStale(m, known){
 arrival night, allergies and dietaries, estimated arrival time. GuestTouch
 fires it one week out and that timing is configured in GuestTouch, so there is
 no timing code on our side.
+
+---
+
+## The original brief
+
+Reproduced so this file stands alone. Lightly cleaned of dictation slips:
+"Zappia" and "Zaia" are Zapier throughout, and the note about storing in GitHub
+is left as written, because the decision to store elsewhere is recorded in the
+next section.
+
+> Next feature I want to build is to update a current feature that might not be
+> stable. The current feature is extracting guest data from the URL that is
+> being sent via text message from GuestTouch data.
+>
+> The new proposal is that by using a Zapier connection to Mews PMS we can send
+> data directly to GitHub when a new reservation action is triggered. This will
+> build the upcoming guest database. From here we can send a triggered text
+> message using GuestTouch with only the booking ID as the dynamic portion, and
+> in that text message will be a link to a new page called "pre-arrival". The
+> data from this pre-arrival questionnaire will be stored against the booking
+> ID in GitHub. Data will also be sent back by Zapier to an appropriate field
+> in Mews.
+>
+> The benefit of this flow is twofold. One is that we can capture an unlimited
+> amount of data and store it for future reservations. Secondly it does not
+> rely on guests clicking welcome messages in order to fulfil the data required
+> in each room on the web app. In my experience the click through rate of a
+> welcome message might not be as high as I hoped, and a reservation screen
+> with missing guest data will become annoying.
+>
+> In order to not bloat the amount of data circling around, and the direction
+> in which it flows, the Zapier integration will be the largest payload. From
+> then on that payload will remain untouched and we will only ever add
+> additional information relating to dinner reservations and allergies and
+> things that we continue to build from time to time.
+>
+> The data could be broken up into two parts. 1. The first part is reservation
+> data which will come from Zapier. It will contain the booking ID, first name,
+> last name, phone number, check-in date and check-out date. 2. The second part
+> would be things that we build in the web app that may get attached to the
+> booking ID: things like allergies, dietary requirements, the date that guests
+> will be dining, whether the guest has departed or not, or any additional
+> things we decide to add as we develop the app.
+>
+> This next phase is to architect a plan of attack and a step-by-step process
+> to building out the Zapier integration with Mews, and then tidying up the
+> welcome letter and dinner reservations code so that it is not relying on all
+> the existing data in the URL. It will just be relying on one unique piece of
+> information, ideally the booking ID from Mews.
+>
+> In addition there will be a pre-arrival page that needs to be built that will
+> contain questions about the type of stay they are looking for, whether or not
+> they will be eating dinner on their arrival, if they have any allergies or
+> dietary requirements and that sort of thing.
+>
+> So from a working flow, it goes like this:
+> 1. Guest makes a booking.
+> 2. Data is sent via Zapier to create a booking ID and guest profile.
+> 3. A triggered correspondence is sent via GuestTouch a set number of days
+>    before arrival, containing a link to the pre-arrival page with the booking
+>    ID appended to the URL.
+> 4. The guest fills out the pre-arrival questionnaire and any additional data
+>    captured is added to their profile.
+> 5. If the guest does not fill out their pre-arrival questionnaire, it can be
+>    done on check-in at reception.
+> 6. On the day of arrival we will be able to print out individually each
+>    guest's registration form containing their details and the responses to
+>    their questionnaire. This way we can attach their key cards to their
+>    registration letter and confirm them on arrival.
+> 7. Any guest that has not completed the pre-arrival form will have the
+>    registration card printed also, but with the answers ready to be filled out
+>    by pencil, or able to be edited on the computer in front of the guest and
+>    saved.
+>
+> This plan needs to be read carefully and assessed from a logistics
+> perspective, a code writing perspective and an integration perspective, to
+> see if there are easier or better ways to do it using practices that already
+> exist. Currently the only open API that I can find is via Zapier between Mews
+> and GitHub, unless somebody has written one before.
+
+---
+
+## Assessment of the brief, and where the build differs
+
+The brief was accepted almost entirely. Three changes, each with a reason.
+
+**1. Booking data goes to Firebase, not GitHub.** This is the only structural
+change and it matters. The repo is world readable and git history is
+permanent, so a guest's name, phone and allergies would be public forever and
+unremovable. Allergies are health data. A commit per booking would also put a
+third writer on main, alongside the two chat sessions already working there.
+Firebase RTDB is already in the app, already has rules and already holds the
+operational data, so this is not new infrastructure. Everything else in the
+brief is unchanged by it: the booking ID is still the key, the payload is still
+written once and then only added to.
+
+**2. Zapier does not write to Firebase directly.** It posts to a small
+Cloudflare Worker, which signs in as a `sync` staff account and writes. Zapier
+cannot hold a database credential safely, and the Worker is where the shaping
+lives: one reservation becomes one `/bookings` record plus one `/stays` entry
+per night, which is what makes a board render in four requests instead of
+nineteen. It is also the only place that can clean up when a booking moves
+villa or shortens.
+
+**3. The payload is bigger than the brief's six fields.** Booking ID, first,
+last, phone, arrival and departure are all there, plus villa, adult count,
+booking state and the Mews updated timestamp. Villa is what lets the board show
+the guest at all. The updated timestamp is what lets a staff decision be told
+apart from a stale one.
+
+**On the "only open API is Zapier" question.** Mews does publish a Connector
+API, which would remove Zapier and its paid plan from the chain. It is not
+worth doing now: it needs an enrolled integration and a server to receive
+webhooks, and the Worker already is that server, so the swap later is a change
+of what calls the Worker, not a rebuild. Revisit if Zapier's cost or its
+polling window become a real constraint. The 100 hour window is already the
+main limitation.
+
+**On the logistics.** Steps 5 and 7 of the brief are the parts that make it
+work in practice, because they mean a guest who ignores the message costs
+reception a pencil rather than a rebuild of the record. Both are kept. The one
+thing the brief does not say, and which the build assumes, is that Mews stays
+authoritative for who is in a villa: reception can mark a villa vacant against
+Mews, but that decision expires when Mews changes the booking.
+
+---
+
+## Every task, with status
+
+**Stage 1, the pipeline. DONE.**
+
+- Architecture decided and written up: MEWS-SYNC.md
+- `sync` role, rules for `/bookings` and `/stays`, six tests
+- Worker written, 38 tests
+- Cloudflare deployed, four secrets set, Git integration connected
+- Zapier paid plan, Mews Marketplace token, trigger Zap published
+- Second Zap on `Updated` for changes
+- Field mapping worked out
+- Stale index bug found and fixed (published, not yet pasted into Cloudflare)
+
+**Stage 2, the boards read the PMS. DONE.**
+
+- `overlayStays`, `mewsRecord`, `fetchStays`, `isMewsOnly`
+- All four pages, cl suite to 176
+- Debug page: fortnight scan, merge preview, junk finder, clean slate
+
+**Stage 2b, Mews versus staff precedence. WRITTEN, NOT PUBLISHED.**
+
+Code is in this file. Needs suites, tests, a 390pt mockup of the warning
+sheet, a v19 bump on five pages, demos rebuilt.
+
+**Stage 3, prearrival.html. NOT STARTED. Blocked.**
+
+- Decide type of stay: picklist or free text, and if a picklist, the list
+- Four fields: type of stay, dining on arrival night, allergies and dietaries,
+  estimated arrival time
+- Page reads the booking ID from the URL and nothing else
+- Writes to `/bookings/<id>/prearrival`
+- Handle an unknown or expired booking ID gracefully
+- Mock at 390pt before building
+- GuestTouch: switch the template to a pre-arrival link carrying only the
+  booking ID, firing one week out. Timing lives in GuestTouch, no code our side
+
+**Stage 4, the guest page rewrite. NOT STARTED.**
+
+This is the brief's main clean-up: stop reading guest data from the URL.
+
+- index.html reads booking ID only, looks the guest up
+- Re-key `responses` to the booking ID. The key is only written today, at
+  `index.html:823`, never read, which is why this was deferred to here
+- Retire the merge tag fields, and with them the `{{firstname}}` junk records
+  that had to be cleaned out of `/roomguests` by hand
+- Old style links must not break while any are still in flight
+
+**Stage 5, registration cards. NOT STARTED.**
+
+- One card per arriving guest, printed for the day
+- Print tier rules apply: paper clarity, minimum ink, STYLEGUIDE.md
+- Completed questionnaires print filled
+- Uncompleted ones print with blank ruled answers for pencil
+- Reception can fill the same form on screen and save, which covers brief
+  step 5 and step 7 with one page rather than two
+
+**Stage 6, write back to Mews. NOT STARTED.**
+
+- A Zap the other way, into the reservation Notes field
+- Decide what goes back: at minimum allergies and dietaries, since that is what
+  a Mews user would look for
+- Guard against a loop, since Notes changes can themselves trigger an Updated
+  event
+
+**Running alongside, on the sync itself:**
+
+- Paste the current Worker into Cloudflare (blocking)
+- Clear `/bookings` of test PII in the Firebase console (blocking)
+- Fix the missing phone on villa 3
+- Widen the lookahead with a negative Start Time Modifier
+- Backfill in-house guests with Time Filter `Colliding`, then revert
+- Then, and only then, make vacant the default villa state
+- Rotate the shared secret, the Firebase key and the `sync` passcode
