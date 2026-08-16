@@ -36,9 +36,6 @@
 <h2>Read /stays/&lt;tomorrow&gt;</h2>
 <pre id="stayN">loading…</pre>
 
-<h2>Read /bookings (whole node)</h2>
-<pre id="bk">loading…</pre>
-
 <h2>Read /roomguests (whole node)</h2>
 <pre id="rg">loading…</pre>
 
@@ -72,33 +69,55 @@ function read(path, id){
 var TM = dkey(new Date(Date.now() + 86400000));
 read('/stays/'+T,  'stayT');
 read('/stays/'+TM, 'stayN');
-read('/bookings',  'bk');
 
-/* One line that says what is actually true, so nobody has to read JSON to find
-   out whether the sync is working. It also separates the two failures that
-   look identical on a board: nothing has ever arrived, versus entries exist in
-   the shape used before the guest summary was moved into them.            */
-fetch(DB+'/bookings.json?shallow=true&v='+Date.now())
-  .then(function(r){ return r.ok ? r.json() : null; })
-  .then(function(b){
-    var n = b ? Object.keys(b).length : 0;
-    return fetch(DB+'/stays/'+T+'.json?v='+Date.now())
+/* Scans a fortnight rather than today, because a booking made now is usually
+   for a date some way off: checking only today answers "is anyone here
+   tonight", which is a different question from "is the sync working".
+
+   /bookings is NOT counted. Reading that node returns 401 by design, since the
+   rules put read permission on an individual booking so the whole guest list
+   cannot be pulled in one request. Treating that as "no data" reported a
+   working safeguard as a broken sync.                                      */
+(function(){
+  var days = [], jobs = [];
+  for (var i = 0; i < 14; i++){
+    var d = new Date(Date.now() + i * 86400000);
+    days.push(dkey(d));
+  }
+  days.forEach(function(k){
+    jobs.push(fetch(DB + '/stays/' + k + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(st){
-        var villas = st ? Object.keys(st) : [];
-        var old = villas.filter(function(v){ return typeof st[v] !== 'object'; });
-        var msg;
-        if (!n && !villas.length) msg = 'NOTHING YET. No bookings and no stays. The Zap has not delivered.';
-        else if (!villas.length)  msg = n + ' booking(s) stored, but NOBODY IN HOUSE TODAY. Normal if no guest is staying tonight.';
-        else if (old.length === villas.length)
-          msg = villas.length + ' villa(s) tonight, ALL IN THE OLD SHAPE. The boards ignore these. They need the Worker redeployed and a fresh Mews event.';
-        else msg = villas.length + ' villa(s) tonight: ' + villas.join(', ') +
-                   (old.length ? '. ' + old.length + ' still in the old shape.' : '. All readable by the boards.') +
-                   ' ' + n + ' booking(s) stored in total.';
-        show('syncv', 200, msg);
-      });
-  })
-  .catch(function(e){ show('syncv', 0, String(e)); });
+      .catch(function(){ return null; }));
+  });
+  Promise.all(jobs).then(function(res){
+    var hits = [], oldShape = 0, total = 0;
+    res.forEach(function(day, i){
+      if (!day) return;
+      var villas = Object.keys(day);
+      if (!villas.length) return;
+      total += villas.length;
+      villas.forEach(function(v){ if (typeof day[v] !== 'object') oldShape++; });
+      hits.push(days[i] + ' (' + villas.join(', ') + ')');
+    });
+    var msg;
+    if (!hits.length){
+      msg = 'NOTHING IN THE NEXT FORTNIGHT.\n' +
+            'Checked ' + days[0] + ' to ' + days[13] + '.\n' +
+            'Either the Zap has not delivered, or nothing arrives in that span.\n' +
+            'Check Zap History in Zapier next.';
+    } else {
+      msg = total + ' villa night(s) across ' + hits.length + ' date(s):\n' + hits.join('\n');
+      if (oldShape === total)
+        msg += '\n\nALL IN THE OLD SHAPE (a bare booking id). The boards ignore these.\n' +
+               'Redeploy the Worker, then make any change in Mews to that booking.';
+      else if (oldShape)
+        msg += '\n\n' + oldShape + ' of them still in the old shape and ignored by the boards.';
+      else
+        msg += '\n\nAll readable by the boards.';
+    }
+    show('syncv', 200, msg);
+  });
+})();
 
 read('/roomguests', 'rg');
 read('/responses/'+T, 'resp');
@@ -112,38 +131,7 @@ function writeTest(){
   })
   .then(function(r){ return r.text().then(function(t){
       show('write', r.status, t);
-      var TM = dkey(new Date(Date.now() + 86400000));
-read('/stays/'+T,  'stayT');
-read('/stays/'+TM, 'stayN');
-read('/bookings',  'bk');
-
-/* One line that says what is actually true, so nobody has to read JSON to find
-   out whether the sync is working. It also separates the two failures that
-   look identical on a board: nothing has ever arrived, versus entries exist in
-   the shape used before the guest summary was moved into them.            */
-fetch(DB+'/bookings.json?shallow=true&v='+Date.now())
-  .then(function(r){ return r.ok ? r.json() : null; })
-  .then(function(b){
-    var n = b ? Object.keys(b).length : 0;
-    return fetch(DB+'/stays/'+T+'.json?v='+Date.now())
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(st){
-        var villas = st ? Object.keys(st) : [];
-        var old = villas.filter(function(v){ return typeof st[v] !== 'object'; });
-        var msg;
-        if (!n && !villas.length) msg = 'NOTHING YET. No bookings and no stays. The Zap has not delivered.';
-        else if (!villas.length)  msg = n + ' booking(s) stored, but NOBODY IN HOUSE TODAY. Normal if no guest is staying tonight.';
-        else if (old.length === villas.length)
-          msg = villas.length + ' villa(s) tonight, ALL IN THE OLD SHAPE. The boards ignore these. They need the Worker redeployed and a fresh Mews event.';
-        else msg = villas.length + ' villa(s) tonight: ' + villas.join(', ') +
-                   (old.length ? '. ' + old.length + ' still in the old shape.' : '. All readable by the boards.') +
-                   ' ' + n + ' booking(s) stored in total.';
-        show('syncv', 200, msg);
-      });
-  })
-  .catch(function(e){ show('syncv', 0, String(e)); });
-
-read('/roomguests', 'rg');
+      read('/roomguests', 'rg');
   }); })
   .catch(function(e){ show('write', 0, String(e)); });
 }
