@@ -1,0 +1,22 @@
+{
+  // Tells Workers Builds what to deploy when a commit lands on main.
+  //
+  // "name" must match the Worker that already exists in the dashboard exactly.
+  // A different name here does not fail: it quietly creates a SECOND Worker on
+  // a different subdomain, leaves the live one untouched and stale, and the Zap
+  // keeps posting to the old URL while every deploy appears to succeed.
+  "name": "nala-mews-sync",
+
+  // Relative to this file. Cloudflare's root directory setting is "worker".
+  "main": "mews-sync.js",
+
+  // The date the Worker runtime behaves as. Matches what the dashboard set when
+  // the Worker was created by hand. Changing it changes runtime behaviour, so
+  // it is pinned rather than tracking today.
+  "compatibility_date": "2026-08-16",
+
+  // Deliberately no "vars" block. The four secrets are set in the dashboard and
+  // are not in this repo, which is public. Declaring vars here would overwrite
+  // what is deployed; secrets set in the dashboard survive a deploy untouched.
+  "observability": { "enabled": true }
+}
