@@ -24,6 +24,11 @@ manual={
  "room-6":{"status":"in","pax":3,"room":"6","source":"manual"},
 }
 roomguests={today:{"9":{"name":"Priya","departs":plus(3)},"4":{"name":"Lucy","departs":plus(2)}}}
+# Villa 9 as Mews has it. Same name and departure as the guest written record,
+# so nothing on the board shifts and the only new fact is the party size, which
+# Mews knows and the app used to store and show nowhere.
+stays={today:{"9":{"id":"res-9","first":"Priya","last":"","arrive":plus(-1),
+                   "depart":plus(3),"adults":2,"updated":"2026-08-16T10:00:00Z"}}}
 combined={"g1":{"rooms":["3","4"]}}
 menu={"published":now.isoformat(),"bread":{"name":"Sourdough"},"entree":{"name":"Prawns"},
       "main":{"name":"Satay Chicken"},"dessert":{"name":"Pavlova"}}
@@ -44,6 +49,8 @@ def fb(route,request):
     elif "/responses/" in u: body=json.dumps(responses) if today in u else "{}"
     elif "/manual/" in u and today not in u: body="{}"
     elif "/manual/" in u: body=json.dumps(manual)
+    elif "/stays/"+today in u: body=json.dumps(stays[today])
+    elif "/stays/" in u: body="null"
     elif "/roomguests/"+today in u: body=json.dumps(roomguests[today])
     elif "/roomguests/" in u: body="null"
     elif "/combined/" in u: body=json.dumps(combined)
@@ -174,6 +181,14 @@ with sync_playwright() as p:
     # 5 staff sets room 9 dining pax4
     tile(pg,9).click(); pg.wait_for_timeout(200)
     ck("open-room sheet shows seen note", "opened the link" in pg.locator("#sheet").inner_text())
+    # Mews knows the party size. It belongs beside the name as a fact about who
+    # is staying, and must never seed the covers picker: covers is how many are
+    # eating tonight, and defaulting it here would inflate the kitchen's count
+    # for every villa that has not replied.
+    gd9 = pg.locator("#sheet .gd").inner_text()
+    ck("the villa sheet shows the party size Mews knows", "2 adults" in gd9)
+    ck("and the covers picker is still the app's own default, not Mews'",
+       pg.evaluate("()=>document.querySelector('#paxRow .pax.on').textContent")=="2")
     pg.locator(".pax", has_text="4").click()
     pg.locator("#oIn").click(); pg.wait_for_timeout(300)
     w=[x for x in WRITES if "/manual/"+today+"/room-9" in x["u"] and x["m"]=="PUT"]

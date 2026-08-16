@@ -1008,12 +1008,25 @@ function paxPicker(max, get, set){
   paint();
 }
 
-function guestDataHTML(g, knownName){
+function guestDataHTML(g, knownName, known){
   g = g || {};
+  known = known || {};
   var name = g.name || knownName || '';
   var top = [];
   if (name) top.push(name);
   if (g.phone) top.push(g.phone);
+  /* Mews knows how many people are booked into the villa. The app was storing
+     that and showing it nowhere, which is half of the brief's complaint about
+     a board with missing guest data.
+
+     Deliberately NOT folded into the covers picker below. Covers is how many
+     are eating tonight and belongs to the kitchen; this is how many are
+     staying and belongs to Mews. They are often the same and sometimes are
+     not, and defaulting covers to it would silently inflate the kitchen's
+     count for every villa that has not replied. Shown as a fact, not as an
+     answer.                                                                */
+  if (known.bookingId && known.adults)
+    top.push(known.adults + (Number(known.adults) === 1 ? ' adult' : ' adults'));
   var d = dietHTML(g.diets, ' \u00b7 ', 'alrg');
   var h = '';
   if (top.length) h += top.join(' \u00b7 ');
@@ -1081,7 +1094,7 @@ function openRoom(n, st){
         '<button class="comb-undo" id="oUncomb">Seat separately</button></div>'
       : '';
     sheet.innerHTML = '<h3>Villa '+n+'</h3>' + combHtml +
-      guestDataHTML(st && st.g, knownName) + inner;
+      guestDataHTML(st && st.g, knownName, roomguests[String(n)]) + inner;
     showSheet();
     revealAction();
     var u = document.getElementById('oUncomb');
