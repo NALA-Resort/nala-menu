@@ -30,6 +30,14 @@
 <h2>Mews sync: is data arriving?</h2>
 <pre id="syncv">checking…</pre>
 
+<h2>Find and clear merge tag junk in /roomguests</h2>
+<p style="margin:.3em 0 .6em">Finds records whose name or departure date still
+contains an unsubstituted <code>{{tag}}</code>. Shows them first. Nothing is
+deleted until you press the second button.</p>
+<button onclick="findJunk()">Find junk</button>
+<button id="junkDel" onclick="deleteJunk()" disabled>Delete listed</button>
+<pre id="junk">not run</pre>
+
 <h2>What the boards will show</h2>
 <p style="margin:.3em 0 .6em">Runs the real merge, read only. Nothing is written.</p>
 <input type="date" id="mDate" style="font:inherit;padding:.4em">
@@ -165,6 +173,71 @@ function runMerge(){
     if (old.length) head += '\n' + old.length + ' stay entr(ies) in the old shape are being ignored: villa ' + old.join(', ') + '.';
     show('merge', 200, head + (lines.length ? '\n\n' + lines.join('\n') : ''));
   }).catch(function(e){ show('merge', 0, String(e)); });
+}
+
+/* A record written by a welcome link that never substituted its variables:
+   name "{{firstname}} {{lastname}}", departs "{{check-out_date}}". The broken
+   date is the worse half. parseDepDate cannot read it, so hkClassify falls back
+   to verify and the villa has been wrong on the Cleans board as well as the
+   dinner one.
+
+   Deliberately narrow: only records containing "{{" are touched. A record that
+   is merely old is left alone, because "looks stale to me" is not a rule this
+   should be applying to live data.                                         */
+var JUNK = [];
+
+function isJunk(v){ return typeof v === 'string' && v.indexOf('{{') > -1; }
+
+function findJunk(){
+  document.getElementById('junk').textContent = 'scanning…';
+  fetch(DB+'/roomguests.json?v='+Date.now())
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(all){
+      JUNK = [];
+      for (var date in (all || {})){
+        var day = all[date] || {};
+        for (var villa in day){
+          var rec = day[villa] || {};
+          if (isJunk(rec.name) || isJunk(rec.departs) || isJunk(rec.arrives) || isJunk(rec.phone)){
+            JUNK.push({ date: date, villa: villa, rec: rec });
+          }
+        }
+      }
+      var btn = document.getElementById('junkDel');
+      if (!JUNK.length){
+        btn.disabled = true;
+        show('junk', 200, 'No merge tag junk found.');
+        return;
+      }
+      btn.disabled = false;
+      var lines = JUNK.map(function(j){
+        return j.date + '  villa ' + j.villa +
+               '  name: ' + (j.rec.name || '(none)') +
+               '  departs: ' + (j.rec.departs || '(none)');
+      });
+      show('junk', 200, JUNK.length + ' record(s) to delete:\n' + lines.join('\n') +
+                        '\n\nRead the list. Press "Delete listed" only if every line above should go.');
+    })
+    .catch(function(e){ show('junk', 0, String(e)); });
+}
+
+function deleteJunk(){
+  if (!JUNK.length) return;
+  if (!confirm('Delete ' + JUNK.length + ' roomguests record(s)? This cannot be undone.')) return;
+  document.getElementById('junk').textContent = 'deleting…';
+  Promise.all(JUNK.map(function(j){
+    return fetch(DB+'/roomguests/'+j.date+'/'+j.villa+'.json', { method:'DELETE' })
+      .then(function(r){ return { j:j, ok:r.ok, status:r.status }; })
+      .catch(function(){ return { j:j, ok:false, status:0 }; });
+  })).then(function(res){
+    var bad = res.filter(function(x){ return !x.ok; });
+    var msg = (res.length - bad.length) + ' deleted.';
+    if (bad.length) msg += '\n' + bad.length + ' failed:\n' +
+      bad.map(function(x){ return x.j.date+' villa '+x.j.villa+' HTTP '+x.status; }).join('\n');
+    JUNK = [];
+    document.getElementById('junkDel').disabled = true;
+    show('junk', bad.length ? 207 : 200, msg);
+  });
 }
 
 function writeTest(){
