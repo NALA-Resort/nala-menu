@@ -111,6 +111,21 @@
   @media print {
     body { padding:0; }
     .scroller { overflow:visible; }
+
+    /* No tinted rows on paper. On screen they group the sheet at a glance;
+       printed they come out as grey slabs that read as a photocopy, and a
+       vacant villa is already obvious from having no name in it. The text
+       stays lighter, which is enough.                                    */
+    .row-out td, .row-unk td, .row-vacant td, .row-conflict td { background:none; }
+    .row-vacant td { color:#8A8A82; }
+
+    /* The sheet was filling about three quarters of the page, so it read as
+       compressed and left a band of white at the foot. The rows are given
+       the height back: this is a working document that gets written on, and
+       the writing needs somewhere to go.                                  */
+    td { padding:13px 5px; font-size:11px; }
+    th { font-size:8px; padding-bottom:9px; }
+    tr.blank td { height:38px; }
     table { min-width:0; width:100%; }
     tr { page-break-inside:avoid; }
     thead { display:table-header-group; }

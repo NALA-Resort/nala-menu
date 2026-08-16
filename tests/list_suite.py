@@ -172,6 +172,33 @@ with sync_playwright() as p:
     open("/home/claude/nala/_p2_list.png","wb").write(shot)
     pg.close()
 
+    # printed: no tinted rows, and the sheet fills the page
+    pg2=b.new_page(viewport={"width":1000,"height":1200})
+    pg2.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
+        content_type="application/javascript",body=SDK))
+    pg2.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,
+        content_type="application/javascript",body="/*n*/"))
+    pg2.route("**firebasedatabase.app/**",fb)
+    pg2.route("**/menu.json*",lambda r,_:r.fulfill(status=200,
+        content_type="application/json",body=json.dumps(menu)))
+    pg2.goto("http://localhost:8955/list.html"); pg2.wait_for_timeout(1600)
+    pg2.emulate_media(media="print")
+    tint=pg2.evaluate("""()=>[].map.call(document.querySelectorAll('tbody tr td'),
+        e=>getComputedStyle(e).backgroundColor)
+        .filter(c=>c!=='rgba(0, 0, 0, 0)' && c!=='transparent'
+                   && c!=='rgb(255, 255, 255)').length""")
+    ck("no tinted rows on paper, whatever the villa's state (%d found)" % tint, tint==0)
+    rowH=pg2.evaluate("""()=>{const r=document.querySelector('tbody tr');
+        return Math.round(r.getBoundingClientRect().height);}""")
+    print("   printed row height:", rowH, "px")
+    ck("rows have room to be written on (%dpx)" % rowH, rowH >= 34)
+    pg2.emulate_media(media="screen")
+    tintScreen=pg2.evaluate("""()=>[].map.call(document.querySelectorAll('tbody tr td'),
+        e=>getComputedStyle(e).backgroundColor)
+        .filter(c=>c!=='rgba(0, 0, 0, 0)' && c!=='transparent').length""")
+    ck("but the screen keeps its tints for grouping", tintScreen>0)
+    pg2.close()
+
     # ---- roles on the sheet, per the ROLES.md matrix ----
     def as_role(email):
         q=b.new_page(viewport={"width":900,"height":1100})
