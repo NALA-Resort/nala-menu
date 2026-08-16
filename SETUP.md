@@ -78,16 +78,24 @@ an address, which is normal for a passcode account.
 
 ### Job 4. Paste the rules
 
-**Software:** Firebase console, console.firebase.google.com.
-**Where exactly:** your project, then Realtime Database, then the **Rules** tab.
+**Software:** Firebase console.
+**Time:** about two minutes.
 
-Only after job 3. Take the whole of `rules.json` from this repo and paste it
-over what is there. It is a complete replacement built from the live copy, not
-written from memory, so nothing existing is dropped.
+1. Go to **https://console.firebase.google.com**
+2. Select the project **nala-menu**.
+3. Left sidebar: **Build**, then **Realtime Database**.
+4. Along the top of the database panel, click the **Rules** tab. You will see
+   the current rules in an editor.
+5. In another tab open
+   **https://github.com/NALA-Resort/nala-menu/blob/main/rules.json**
+   and click the **copy** icon at the top right of the file.
+6. Back in Firebase: click into the editor, select all (Ctrl+A or Cmd+A) and
+   paste over it. All of it. This is a complete replacement, not an addition.
+7. Click **Publish**. It goes live instantly.
 
-Nothing breaks if this waits, because the new paths are currently covered by
-the `$other` catch all and will function without it. It must land before any
-real guest data does, because catch all means any signed in user can write it.
+If it refuses to publish it will underline the line it dislikes. Send me the
+message rather than editing it: the file is generated from the live copy and a
+hand edit is how `extcancel` gets dropped.
 
 ## The Worker is written and published
 
@@ -96,67 +104,119 @@ with `node worker/test.mjs`.
 
 ### Job 5. Deploy the Worker
 
-**Software:** Cloudflare dashboard, dash.cloudflare.com.
-**Where exactly:** Workers and Pages, then Create, then Create Worker. Paste
-the whole of `worker/mews-sync.js` over the starter code and deploy.
+**Software:** Cloudflare dashboard.
+**Time:** about ten minutes.
 
-This is a **second** Worker, separate from the push sender you already run. Do
-not add it to that one: the push sender holds your VAPID key and no database
-credential, and that is worth keeping true.
+**Create it**
 
-Then Settings, Variables and Secrets, and add these four. The names must match
-exactly or the Worker cannot see them.
+1. Go to **https://dash.cloudflare.com** and sign in.
+2. Left sidebar: **Compute**, then **Workers & Pages**. (If your account still
+   shows it at the top level, that is the same page.)
+3. Click **Create**, then the **Workers** tab, then **Start with Hello World**.
+   Do NOT choose Import a Git repository. You are pasting one file, not
+   connecting this repo.
+4. Name it **nala-mews-sync**. Click **Deploy**. It deploys the placeholder;
+   that is expected.
+5. Click **Edit code** (or **Continue to project**, then **Edit code**).
+6. In the editor, select all of `worker.js` and delete it. Open
+   **https://github.com/NALA-Resort/nala-menu/blob/main/worker/mews-sync.js**,
+   click the **copy** icon, and paste the whole file in.
+7. Click **Deploy** in the editor, then confirm.
 
-| Name | Value |
+**Add the four secrets**
+
+8. Go back to the Worker, then **Settings**.
+9. Find **Variables and Secrets** and click **Add**.
+10. For each of the four: set **Type** to **Secret**, then the name and value:
+
+| Variable name | Value |
 |---|---|
-| `SYNC_EMAIL` | the six digit code from job 3, then `@staff.nala` |
+| `SYNC_EMAIL` | the six digits from job 3, then `@staff.nala` |
 | `SYNC_PASSWORD` | the same six digits on their own |
-| `ZAP_SECRET` | any long random string you invent. Keep it, job 6 needs it |
+| `ZAP_SECRET` | a long random string you invent. Keep it, job 6 needs it |
 | `FB_API_KEY` | `AIzaSyA0zAzL-zfPivrIRhY_ip8BABjuYVMlzqI` |
 
-Set them as **Secrets**, not plain variables, so they are not readable back
-from the dashboard afterwards.
+    Use **Add variable** between each one so all four go in together.
+11. Click **Deploy** to apply them. Secrets do nothing until you do.
 
-`FB_API_KEY` is a secret for tidiness only. Firebase web API keys are public by
-design and this one is already in `auth.js` in this public repo. The rules
-protect the data, not the key.
+**Type must be Secret, not Text.** A Text variable is readable back from the
+dashboard by anyone with access to the account. A Secret is not.
 
 **Never put `SYNC_EMAIL` or `SYNC_PASSWORD` in this repo.** It is public, and
-the address contains the passcode.
+that address contains the passcode.
 
-Copy the deployed URL when it is done. Loading it in a browser should give you
-**401**, because a GET with no secret is exactly what it should refuse.
+`FB_API_KEY` is a secret for tidiness only. Firebase web API keys are public by
+design and this one is already in `auth.js` here. The rules protect the data,
+not the key.
+
+**Check it**
+
+12. Copy the Worker URL. It looks like
+    `https://nala-mews-sync.<your-subdomain>.workers.dev`
+13. Open it in a browser. You should see **405 POST only**. That is correct: it
+    proves the code deployed and refuses a GET. If you see the Hello World text
+    instead, step 7 did not take.
+14. Send me the URL. I cannot reach it, but I can tell you whether it looks
+    right.
 
 ### Job 6. Build the Zap
 
-**Software:** Zapier, from job 2.
+**Software:** Zapier.
+**Time:** about fifteen minutes.
 
-**Trigger:** Mews, *Reservation Event*.
-**Action:** Webhooks by Zapier, *POST*.
+**The trigger**
 
-- URL: your Worker URL from job 5, with `?secret=` and the `ZAP_SECRET` on the
-  end. Alternatively send it as an `x-nala-secret` header. Either works.
-- Payload type: **JSON**.
+1. Go to **https://zapier.com** and click **Create**, then **Zaps**.
+2. Click the **Trigger** box. Search **Mews** and select it.
+3. Event: **Reservation Event**. Continue.
+4. Account: connect Mews using the access token from job 1. Continue.
+5. Click **Test trigger**. Zapier pulls a recent reservation. If nothing comes
+   back, make a test booking on the Mews demo property and try again. Continue.
 
-Map these fields. The Worker also accepts several other spellings of each, so
-close variants are fine, but these are the names it looks for first:
+**The action**
 
-| Send as | From the Mews trigger |
+6. Click the **Action** box. Search **Webhooks by Zapier** and select it.
+7. Event: **POST**. Continue.
+8. Fill the fields:
+
+   - **URL**: your Worker URL from job 5, with the secret on the end, so
+     `https://nala-mews-sync.xxx.workers.dev/?secret=YOUR_ZAP_SECRET`
+   - **Payload Type**: **JSON**
+   - **Wrap Request In Array**: no
+   - **Unflatten**: no
+
+9. Under **Data**, add these nine rows. Left side is typed by you exactly as
+   written. Right side you pick from the Mews trigger fields using the **+**
+   button:
+
+| Key (type this) | Value (pick from Mews) |
 |---|---|
-| `Id` | the reservation id |
-| `FirstName`, `LastName` | the guest |
-| `Phone` | the guest's number |
-| `StartUtc`, `EndUtc` | arrival and departure |
-| `ResourceName` | the villa |
-| `State` | Confirmed, Canceled, and so on |
-| `UpdatedUtc` | when Mews last changed it |
+| `Id` | the reservation Id |
+| `FirstName` | guest first name |
+| `LastName` | guest last name |
+| `Phone` | guest phone |
+| `StartUtc` | start / arrival |
+| `EndUtc` | end / departure |
+| `ResourceName` | the villa or space name |
+| `State` | reservation state |
+| `UpdatedUtc` | last updated |
 
-`UpdatedUtc` is the one people skip and it matters. Webhook delivery is not
-ordered, and it is the only way the Worker can tell a late old event from a new
-one. Without it, a cancellation arriving after a rebooking wins.
+10. Click **Continue**, then **Test step**.
 
-Test with one booking on the Mews **demo** property before pointing this at
-live. A success returns JSON saying how many nights were indexed.
+**A pass looks like this.** The response body says `"ok": true` with an `id`, a
+`villa` and a `nights` count. A `401` means the secret does not match. A `400`
+means `Id` did not map. A `500` means the Worker reached Firebase and Firebase
+said no, which is usually job 4 not being done.
+
+11. **Publish** the Zap.
+
+**Map `UpdatedUtc`.** It is the one that looks like metadata and gets skipped.
+Webhook delivery is not ordered, and it is the only way the Worker can tell a
+late old event from a new one. Without it a cancellation arriving after a
+rebooking wins, and the villa silently empties.
+
+**Test on the demo property first.** Point it at live only once one booking has
+gone through cleanly end to end.
 
 ## Later, at stage 3
 
