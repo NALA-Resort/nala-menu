@@ -30,6 +30,12 @@
 <h2>Mews sync: is data arriving?</h2>
 <pre id="syncv">checking…</pre>
 
+<h2>What the boards will show</h2>
+<p style="margin:.3em 0 .6em">Runs the real merge, read only. Nothing is written.</p>
+<input type="date" id="mDate" style="font:inherit;padding:.4em">
+<button onclick="runMerge()">Show</button>
+<pre id="merge">pick a date</pre>
+
 <h2>Read /stays/&lt;today&gt; (what the boards read)</h2>
 <pre id="stayT">loading…</pre>
 
@@ -48,6 +54,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
+<script src="nala-shared.js?v=18"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -122,6 +129,43 @@ read('/stays/'+TM, 'stayN');
 read('/roomguests', 'rg');
 read('/responses/'+T, 'resp');
 read('/manual/'+T, 'man');
+
+/* The real functions from nala-shared.js, on real data, for any date. This is
+   the only way to see what a board WILL show for a future date without waiting
+   for it to be today, and it distinguishes the three things that look identical
+   on a tile: the PMS knows them, a guest opened their link, or nobody knows
+   anything.                                                                 */
+document.getElementById('mDate').value = T;
+
+function runMerge(){
+  var k = document.getElementById('mDate').value || T;
+  document.getElementById('merge').textContent = 'loading…';
+  Promise.all([
+    fetch(DB+'/stays/'+k+'.json?v='+Date.now()).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }),
+    fetchRoomGuests(k, 14, true),
+    fetch(DB+'/responses/'+k+'.json?v='+Date.now()).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }),
+    fetch(DB+'/manual/'+k+'.json?v='+Date.now()).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; })
+  ]).then(function(res){
+    var stays = res[0] || {}, responses = res[2] || {}, manual = res[3] || {};
+    var rg = overlayStays(resolveRoomGuests(res[1], k), stays);
+    var lines = [], shown = 0;
+    for (var n = 1; n <= 17; n++){
+      var rec = roomRecord(n, responses, manual, rg);
+      if (!rec) continue;
+      shown++;
+      var from = isMewsOnly(rg[String(n)]) ? 'PMS only, guest has not clicked'
+               : (stays[String(n)] ? 'PMS, and the guest clicked too'
+               : 'guest link only, no PMS record');
+      lines.push('villa ' + n + ': ' + (rec.name || '(no name)') +
+                 (rec.departs ? '  departs ' + rec.departs : '  NO DEPARTURE DATE') +
+                 '\n           ' + from);
+    }
+    var old = Object.keys(stays).filter(function(v){ return typeof stays[v] !== 'object'; });
+    var head = k + ': ' + shown + ' villa(s) would show.';
+    if (old.length) head += '\n' + old.length + ' stay entr(ies) in the old shape are being ignored: villa ' + old.join(', ') + '.';
+    show('merge', 200, head + (lines.length ? '\n\n' + lines.join('\n') : ''));
+  }).catch(function(e){ show('merge', 0, String(e)); });
+}
 
 function writeTest(){
   fetch(DB+'/roomguests/'+T+'/99.json', {
