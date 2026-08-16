@@ -279,6 +279,26 @@ which is checked in the suite.
 Browser headers and footers are the print dialog's, not ours. No CSS removes
 them. The PDF path avoids them entirely.
 
+## Print design is being done in a parallel chat
+
+The print and PDF work is owned by a second chat running at the same time.
+That chat owns `list.html`, `menu-print.html` and `housekeeping.html`. This
+one must not edit those three, and that chat must not edit anything else.
+
+Both chats publish to main through the same script, and each commit lands on
+top of whatever main is at that moment. There is no merge and no warning: two
+chats editing one file means the second silently replaces the first. Fetch
+before editing and check main has not moved.
+
+**Shared file version bumps stay with this chat.** If `nala-shared.js`,
+`nala-ui.css` or `auth.js` changes, this chat bumps the `?v=` everywhere. Two
+chats bumping the same version will fight.
+
+**That work is visual only**: font size, weight, spacing, rules, what sits
+where on the page. It is not to change what the sheets MEAN or where their
+data comes from. If a print change seems to need a data change, or a change
+to `nala-shared.js`, it stops and comes back here.
+
 ## Backlog
 
 **1. Rotate the GitHub token. STILL OPEN and now worse.** One token serves
