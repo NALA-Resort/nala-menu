@@ -180,6 +180,13 @@ with sync_playwright() as p:
     ck("a PDF button is offered", 'id="sheetPdf"' in src)
     ck("fonts are embedded, so the text stays vector", "addFileToVFS" in src)
 
+    # the PDF must reach the share sheet on a phone: Print lives in there,
+    # and a download leaves someone hunting through Files for it
+    ck("the PDF is offered to the share sheet first", "navigator.canShare" in src)
+    ck("with a new tab as the fallback", "window.open(url" in src)
+    ck("and a download only if the tab was blocked",
+       src.index("navigator.canShare") < src.index("a.download"))
+
     # printed: no tinted rows, and the sheet fills the page
     pg2=b.new_page(viewport={"width":1000,"height":1200})
     pg2.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
