@@ -424,6 +424,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
         var role = roleOf(u);
         window.NALA_ROLE  = role;
         window.NALA_USER  = u;      /* kept so sign out can unsubscribe */
+        if (typeof ensureNotifySettings === 'function') ensureNotifySettings(role);
         window.IS_MANAGER = can(role,'setJob');
         /* A waiter is on this board to say a villa looks free after
            breakfast, nothing more. The other marks are hidden rather than
@@ -967,6 +968,40 @@ function notifyPush(event, villa, user){
   } catch (e){}
 }
 
+/* The notification settings, written by the app the first time an admin opens
+   a board and finds none. Typing this into the console by hand was slow and
+   easy to get wrong, and every new event type would mean doing it again.
+   Only an admin may write /notify, which the rules enforce, so this quietly
+   does nothing for everyone else.                                        */
+var NOTIFY_DEFAULTS = {
+  on: true,
+  hours: { from: '07:30', to: '18:00' },
+  events: {
+    departed:  { housekeeping:true, admin:true, waiter:false, chef:false },
+    available: { housekeeping:true, admin:true, waiter:false, chef:false },
+    cleaned:   { housekeeping:true, admin:true, waiter:true,  chef:false },
+    serviced:  { housekeeping:true, admin:true, waiter:true,  chef:false }
+  }
+};
+
+function ensureNotifySettings(role){
+  if (normaliseRole(role) !== 'admin') return;
+  fetch(DB + '/notify.json')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(cfg){
+      /* Only fill in what is missing. Overwriting would undo the manager's
+         own choices every time a board loaded.                          */
+      if (cfg && cfg.events && cfg.hours) return;
+      var merged = {
+        on:     (cfg && typeof cfg.on === 'boolean') ? cfg.on : NOTIFY_DEFAULTS.on,
+        hours:  (cfg && cfg.hours) ? cfg.hours : NOTIFY_DEFAULTS.hours,
+        events: (cfg && cfg.events) ? cfg.events : NOTIFY_DEFAULTS.events
+      };
+      return fetch(DB + '/notify.json', { method:'PUT', body: JSON.stringify(merged) });
+    })
+    .catch(function(){});
+}
+
 </script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
@@ -1157,6 +1192,14 @@ function setField(n, obj, errEl){
     try {
       if (obj.departed === true)      notifyPush('departed', n, window.NALA_USER);
       else if (obj.bfast && obj.bfast !== null) notifyPush('available', n, window.NALA_USER);
+      else if (obj.done && obj.done !== null){
+        /* One tap finishes either job, so the villa's own kind decides which
+           of the two it was. Anything else finished is not announced.   */
+        var k = (STATE.rows||[]).filter(function(r){ return r.n===n; })[0];
+        var kind = k && k.kind;
+        if (kind === 'clean')     notifyPush('cleaned', n, window.NALA_USER);
+        else if (kind === 'svc')  notifyPush('serviced', n, window.NALA_USER);
+      }
     } catch (e){}
     closeSheet();
   })

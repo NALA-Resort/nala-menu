@@ -719,6 +719,36 @@ with sync_playwright() as p:
     ck("sign out unsubscribes first, then signs out", order==["unsub","signout"])
     pg.close()
 
+    # the four events, and which one a "done" tap counts as
+    pg=page("staff@nalaresort.com.au")
+    sent=[]
+    pg.on("request", lambda r: sent.append(r.url) if "workers.dev" in r.url else None)
+    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1500)
+    fired=pg.evaluate("""()=>{window.__fired=[];
+      window.notifyPush=function(ev,n){window.__fired.push(ev+':'+n);};
+      // villa 11 is a clean, villa 2 has a breakfast mark already
+      setField(11,{done:new Date().toISOString()});
+      setField(8,{departed:true});
+      return null;}""")
+    pg.wait_for_timeout(700)
+    fired=pg.evaluate("()=>window.__fired")
+    print("   events fired:", fired)
+    ck("finishing a clean announces it as cleaned", "cleaned:11" in fired)
+    ck("a departure announces itself", "departed:8" in fired)
+    ck("the defaults name all four events",
+       sorted(pg.evaluate("()=>Object.keys(NOTIFY_DEFAULTS.events)"))
+         == ["available","cleaned","departed","serviced"])
+    ck("cleaned and serviced reach everyone with Cleans access",
+       pg.evaluate("""()=>NOTIFY_DEFAULTS.events.cleaned.waiter===true
+                       && NOTIFY_DEFAULTS.events.cleaned.housekeeping===true
+                       && NOTIFY_DEFAULTS.events.cleaned.chef===false"""))
+    ck("departures stay with housekeeping and admin",
+       pg.evaluate("""()=>NOTIFY_DEFAULTS.events.departed.waiter===false
+                       && NOTIFY_DEFAULTS.events.departed.admin===true"""))
+    ck("only an admin writes the settings",
+       pg.evaluate("()=>{let hit=0; const f=window.fetch; window.fetch=function(u,o){ if(o&&o.method==='PUT'&&(''+u).indexOf('/notify')>-1) hit++; return f.apply(this,arguments);}; ensureNotifySettings('waiter'); window.fetch=f; return hit===0;}"))
+    pg.close()
+
     # the link must actually call auth.js's signOut, not just look like it
     pg=page("staff@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1400)

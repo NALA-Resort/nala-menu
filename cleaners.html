@@ -252,6 +252,7 @@
         var role = roleOf(u);
         window.NALA_ROLE  = role;
         window.NALA_USER  = u;      /* kept so sign out can unsubscribe */
+        if (typeof ensureNotifySettings === 'function') ensureNotifySettings(role);
         window.IS_MANAGER = can(role,'setJob');
         /* A waiter is on this board to say a villa looks free after
            breakfast, nothing more. The other marks are hidden rather than
@@ -340,7 +341,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=14"></script>
+<script src="nala-shared.js?v=15"></script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
 // this board is locked to today by design - no browsed dates
@@ -530,6 +531,14 @@ function setField(n, obj, errEl){
     try {
       if (obj.departed === true)      notifyPush('departed', n, window.NALA_USER);
       else if (obj.bfast && obj.bfast !== null) notifyPush('available', n, window.NALA_USER);
+      else if (obj.done && obj.done !== null){
+        /* One tap finishes either job, so the villa's own kind decides which
+           of the two it was. Anything else finished is not announced.   */
+        var k = (STATE.rows||[]).filter(function(r){ return r.n===n; })[0];
+        var kind = k && k.kind;
+        if (kind === 'clean')     notifyPush('cleaned', n, window.NALA_USER);
+        else if (kind === 'svc')  notifyPush('serviced', n, window.NALA_USER);
+      }
     } catch (e){}
     closeSheet();
   })
