@@ -169,7 +169,7 @@
   <div class="date" id="title"></div>
   <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="list.html">Reservations Sheet</a><a href="housekeeping.html">Clean sheet</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="list.html">Reservations Sheet</a><a href="housekeeping.html">Clean sheet</a><a href="#" class="signout" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 <script>
@@ -177,9 +177,58 @@
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
+  var nb=document.getElementById('navNotify');
+  function paintNotify(state){
+    if (!nb) return;
+    nb.textContent = state==='on'        ? 'Notifications on'
+                   : state==='off'       ? 'Notifications off'
+                   : state==='blocked'   ? 'Notifications blocked'
+                   : state==='unsupported' ? 'Notifications unavailable'
+                   : 'Notifications';
+    nb.setAttribute('data-state', state);
+  }
+  if (nb){
+    /* nala-shared.js loads at the foot of the page, so its helpers are not
+       here yet when this runs. Calling one now throws and takes the rest of
+       the menu wiring with it, including the sign out link.            */
+    (function waitForShared(){
+      if (typeof pushState !== 'function'){ setTimeout(waitForShared, 300); return; }
+      pushState(paintNotify);
+    })();
+    nb.onclick = function(e){
+      e.preventDefault(); e.stopPropagation();
+      var u = firebase.auth().currentUser;
+      if (typeof pushOn !== 'function'){ return; }   /* not loaded yet */
+      var st = nb.getAttribute('data-state');
+      if (st === 'unsupported'){
+        paintNotify('unsupported');
+        alert('Notifications need the app added to the Home Screen. Open the share menu and choose Add to Home Screen, then try again.');
+        return;
+      }
+      if (st === 'blocked'){
+        alert('Notifications are blocked for this site. Turn them on in your phone settings, then try again.');
+        return;
+      }
+      nb.textContent = 'Working...';
+      if (st === 'on') pushOff(u, paintNotify);
+      else pushOn(u, window.NALA_ROLE, function(r){
+        paintNotify(r);
+        if (r === 'blocked') alert('Notifications were not allowed. You can turn them on in your phone settings.');
+        if (r === 'failed')  alert('Could not turn notifications on. Check the connection and try again.');
+      });
+    };
+  }
+
   var so=document.getElementById('navSignout');
   if (so) so.onclick=function(e){ e.preventDefault();
-    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+    var u = window.NALA_USER || null;
+    try { u = firebase.auth().currentUser || u; } catch (ex){}
+    var go = function(){ if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+    /* Unsubscribe first, while the token is still valid enough to delete the
+       record. If it fails, sign out anyway: being stuck signed in would be
+       the worse outcome.                                                 */
+    if (u && typeof pushOff === 'function'){ pushOff(u, go); } else { go(); }
+  };
   /* One gate for the whole page. The role comes from the record at
      /staff/<emailkey>, never from the address - see ROLES.md. The nav menu
      and the job controls both need setJob; the marks need cleansMarks; a
@@ -202,6 +251,7 @@
       loadStaff(function(recs, err){
         var role = roleOf(u);
         window.NALA_ROLE  = role;
+        window.NALA_USER  = u;      /* kept so sign out can unsubscribe */
         window.IS_MANAGER = can(role,'setJob');
         /* A waiter is on this board to say a villa looks free after
            breakfast, nothing more. The other marks are hidden rather than
@@ -290,7 +340,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=13"></script>
+<script src="nala-shared.js?v=14"></script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
 // this board is locked to today by design - no browsed dates
@@ -473,7 +523,16 @@ function setField(n, obj, errEl){
   STATE.hk[n]=Object.assign({},prev,obj);
   for (var k in obj){ if (obj[k]===null) delete STATE.hk[n][k]; }
   render();
-  return patchRoom(n,obj).then(function(){ closeSheet(); })
+  return patchRoom(n,obj).then(function(){
+    /* Only after the write succeeds, and only for the two marks anyone asked
+       to be told about. Setting a mark notifies; clearing or undoing one does
+       not, because nothing has become available by undoing something.    */
+    try {
+      if (obj.departed === true)      notifyPush('departed', n, window.NALA_USER);
+      else if (obj.bfast && obj.bfast !== null) notifyPush('available', n, window.NALA_USER);
+    } catch (e){}
+    closeSheet();
+  })
   .catch(function(e){
     STATE.hk[n]=prev; render();
     errEl.textContent = (e && e.message==='rejected')

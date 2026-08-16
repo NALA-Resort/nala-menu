@@ -279,7 +279,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   <div class="date" id="title"></div>
   <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="demo-tally.html">Reservations</a><a href="demo-reservations.html">Reservations Sheet</a><a href="demo-clean.html">Clean sheet</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="demo-tally.html">Reservations</a><a href="demo-reservations.html">Reservations Sheet</a><a href="demo-clean.html">Clean sheet</a><a href="#" class="signout" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 
@@ -349,9 +349,58 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
+  var nb=document.getElementById('navNotify');
+  function paintNotify(state){
+    if (!nb) return;
+    nb.textContent = state==='on'        ? 'Notifications on'
+                   : state==='off'       ? 'Notifications off'
+                   : state==='blocked'   ? 'Notifications blocked'
+                   : state==='unsupported' ? 'Notifications unavailable'
+                   : 'Notifications';
+    nb.setAttribute('data-state', state);
+  }
+  if (nb){
+    /* nala-shared.js loads at the foot of the page, so its helpers are not
+       here yet when this runs. Calling one now throws and takes the rest of
+       the menu wiring with it, including the sign out link.            */
+    (function waitForShared(){
+      if (typeof pushState !== 'function'){ setTimeout(waitForShared, 300); return; }
+      pushState(paintNotify);
+    })();
+    nb.onclick = function(e){
+      e.preventDefault(); e.stopPropagation();
+      var u = firebase.auth().currentUser;
+      if (typeof pushOn !== 'function'){ return; }   /* not loaded yet */
+      var st = nb.getAttribute('data-state');
+      if (st === 'unsupported'){
+        paintNotify('unsupported');
+        alert('Notifications need the app added to the Home Screen. Open the share menu and choose Add to Home Screen, then try again.');
+        return;
+      }
+      if (st === 'blocked'){
+        alert('Notifications are blocked for this site. Turn them on in your phone settings, then try again.');
+        return;
+      }
+      nb.textContent = 'Working...';
+      if (st === 'on') pushOff(u, paintNotify);
+      else pushOn(u, window.NALA_ROLE, function(r){
+        paintNotify(r);
+        if (r === 'blocked') alert('Notifications were not allowed. You can turn them on in your phone settings.');
+        if (r === 'failed')  alert('Could not turn notifications on. Check the connection and try again.');
+      });
+    };
+  }
+
   var so=document.getElementById('navSignout');
   if (so) so.onclick=function(e){ e.preventDefault();
-    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+    var u = window.NALA_USER || null;
+    try { u = firebase.auth().currentUser || u; } catch (ex){}
+    var go = function(){ if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+    /* Unsubscribe first, while the token is still valid enough to delete the
+       record. If it fails, sign out anyway: being stuck signed in would be
+       the worse outcome.                                                 */
+    if (u && typeof pushOff === 'function'){ pushOff(u, go); } else { go(); }
+  };
   /* One gate for the whole page. The role comes from the record at
      /staff/<emailkey>, never from the address - see ROLES.md. The nav menu
      and the job controls both need setJob; the marks need cleansMarks; a
@@ -374,6 +423,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
       loadStaff(function(recs, err){
         var role = roleOf(u);
         window.NALA_ROLE  = role;
+        window.NALA_USER  = u;      /* kept so sign out can unsubscribe */
         window.IS_MANAGER = can(role,'setJob');
         /* A waiter is on this board to say a villa looks free after
            breakfast, nothing more. The other marks are hidden rather than
@@ -811,6 +861,112 @@ function loadStaff(cb){
   });
 })();
 
+/* ── notifications ─────────────────────────────────────────────
+   A phone subscribes once, from a tap, and the subscription is stored under
+   its own login. The sending is done by a worker that holds the signing key:
+   nothing secret lives here. The public key below is meant to be public.
+
+   iOS only allows this for a site added to the Home Screen. In an ordinary
+   tab the browser reports no support at all, so the toggle says why rather
+   than failing silently.                                                 */
+var VAPID_PUBLIC = 'BEP_gBL_c7YGzV9EoU8Bv5DeA79I32NUxjGA2atk1239hSBZXEatGYrIfI7nofzLwdVZ1fWw1ycBZ1lWrKlOZGs';
+var PUSH_URL = 'https://nala-push.ben-681.workers.dev';
+
+function pushSupported(){
+  return !!(window.navigator && 'serviceWorker' in navigator &&
+            'PushManager' in window && 'Notification' in window);
+}
+
+/* A stable id per phone, so re-subscribing replaces that phone's record
+   instead of leaving a dead one behind every time.                      */
+function deviceId(){
+  var k = 'nala-device';
+  try {
+    var v = localStorage.getItem(k);
+    if (!v){ v = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+             localStorage.setItem(k, v); }
+    return v;
+  } catch (e){ return 'd-nostore'; }
+}
+
+function b64ToU8(base64){
+  var pad = '='.repeat((4 - base64.length % 4) % 4);
+  var s = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  var raw = atob(s);
+  var out = new Uint8Array(raw.length);
+  for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+function subPath(user){
+  return '/pushsubs/' + emailKey(user && user.email) + '/' + deviceId() + '.json';
+}
+
+/* Whether this phone is currently subscribed. Asked of the browser rather
+   than of a saved flag, because the browser is the thing that decides: a
+   subscription can be dropped by iOS without telling anyone.            */
+function pushState(cb){
+  if (!pushSupported()) return cb('unsupported');
+  if (Notification.permission === 'denied') return cb('blocked');
+  navigator.serviceWorker.getRegistration().then(function(reg){
+    if (!reg) return cb('off');
+    reg.pushManager.getSubscription().then(function(sub){ cb(sub ? 'on' : 'off'); },
+                                          function(){ cb('off'); });
+  }, function(){ cb('off'); });
+}
+
+function pushOn(user, role, cb){
+  if (!pushSupported()) return cb('unsupported');
+  navigator.serviceWorker.register('/sw.js').then(function(reg){
+    return Notification.requestPermission().then(function(perm){
+      if (perm !== 'granted') throw new Error('denied');
+      return reg.pushManager.subscribe({
+        userVisibleOnly: true,                 /* iOS requires this */
+        applicationServerKey: b64ToU8(VAPID_PUBLIC)
+      });
+    });
+  }).then(function(sub){
+    var j = sub.toJSON();
+    return fetch(DB + subPath(user), {
+      method: 'PUT',
+      body: JSON.stringify({ endpoint: j.endpoint, keys: j.keys,
+                             role: role, at: new Date().toISOString() })
+    });
+  }).then(function(){ cb('on'); })
+    .catch(function(e){ cb((e && e.message === 'denied') ? 'blocked' : 'failed'); });
+}
+
+/* Off means gone from the database as well: a record left behind would keep
+   the phone on the list and the notification would arrive anyway.        */
+function pushOff(user, cb){
+  var done = function(){ cb('off'); };
+  fetch(DB + subPath(user), { method: 'DELETE' }).catch(function(){}).then(function(){
+    if (!pushSupported()) return done();
+    navigator.serviceWorker.getRegistration().then(function(reg){
+      if (!reg) return done();
+      reg.pushManager.getSubscription().then(function(sub){
+        if (!sub) return done();
+        sub.unsubscribe().then(done, done);
+      }, done);
+    }, done);
+  });
+}
+
+/* Tell the worker something happened. Deliberately not awaited by whatever
+   called it: a notification that fails must never cost someone their mark,
+   which is already saved by the time this runs.                          */
+function notifyPush(event, villa, user){
+  if (!PUSH_URL || !window.__idToken) return;
+  try {
+    fetch(PUSH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: window.__idToken, event: event,
+                             villa: villa, actor: emailKey(user && user.email) })
+    }).catch(function(){});
+  } catch (e){}
+}
+
 </script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
@@ -994,7 +1150,16 @@ function setField(n, obj, errEl){
   STATE.hk[n]=Object.assign({},prev,obj);
   for (var k in obj){ if (obj[k]===null) delete STATE.hk[n][k]; }
   render();
-  return patchRoom(n,obj).then(function(){ closeSheet(); })
+  return patchRoom(n,obj).then(function(){
+    /* Only after the write succeeds, and only for the two marks anyone asked
+       to be told about. Setting a mark notifies; clearing or undoing one does
+       not, because nothing has become available by undoing something.    */
+    try {
+      if (obj.departed === true)      notifyPush('departed', n, window.NALA_USER);
+      else if (obj.bfast && obj.bfast !== null) notifyPush('available', n, window.NALA_USER);
+    } catch (e){}
+    closeSheet();
+  })
   .catch(function(e){
     STATE.hk[n]=prev; render();
     errEl.textContent = (e && e.message==='rejected')

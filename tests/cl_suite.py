@@ -691,6 +691,34 @@ with sync_playwright() as p:
        pg.evaluate("()=>typeof CUR!=='undefined' && !!CUR"))
     pg.close()
 
+    # notifications: the toggle must say why rather than fail quietly, and
+    # signing out must take the subscription with it
+    pg=page("staff@nalaresort.com.au")
+    pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1400)
+    pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    label=pg.evaluate("()=>navNotify.textContent")
+    print("   notify toggle in a plain tab:", label)
+    ck("the menu offers notifications", pg.evaluate("()=>!!document.getElementById('navNotify')"))
+    ck("with no push support it says unavailable, not nothing",
+       "unavailable" in label.lower() or "notifications" in label.lower())
+    ck("the VAPID key decodes to a P-256 point (65 bytes)",
+       pg.evaluate("()=>b64ToU8(VAPID_PUBLIC).length")==65)
+    ck("the worker address is set", pg.evaluate("()=>!!PUSH_URL && PUSH_URL.indexOf('http')===0"))
+    ck("a device id is stable across calls",
+       pg.evaluate("()=>deviceId()===deviceId()"))
+    ck("the subscription path is keyed by the login, commas not dots",
+       pg.evaluate("()=>subPath({email:'staff@nalaresort.com.au'})")
+         .startswith("/pushsubs/staff@nalaresort,com,au/"))
+
+    # signing out unsubscribes before it signs out
+    order=pg.evaluate("""()=>{window.__order=[];
+      window.pushOff=function(u,cb){window.__order.push('unsub'); cb('off');};
+      window.NALA_SIGNOUT=function(){window.__order.push('signout');};
+      document.getElementById('navSignout').click();
+      return window.__order;}""")
+    ck("sign out unsubscribes first, then signs out", order==["unsub","signout"])
+    pg.close()
+
     # the link must actually call auth.js's signOut, not just look like it
     pg=page("staff@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1400)

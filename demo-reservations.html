@@ -764,6 +764,112 @@ function loadStaff(cb){
   });
 })();
 
+/* ── notifications ─────────────────────────────────────────────
+   A phone subscribes once, from a tap, and the subscription is stored under
+   its own login. The sending is done by a worker that holds the signing key:
+   nothing secret lives here. The public key below is meant to be public.
+
+   iOS only allows this for a site added to the Home Screen. In an ordinary
+   tab the browser reports no support at all, so the toggle says why rather
+   than failing silently.                                                 */
+var VAPID_PUBLIC = 'BEP_gBL_c7YGzV9EoU8Bv5DeA79I32NUxjGA2atk1239hSBZXEatGYrIfI7nofzLwdVZ1fWw1ycBZ1lWrKlOZGs';
+var PUSH_URL = 'https://nala-push.ben-681.workers.dev';
+
+function pushSupported(){
+  return !!(window.navigator && 'serviceWorker' in navigator &&
+            'PushManager' in window && 'Notification' in window);
+}
+
+/* A stable id per phone, so re-subscribing replaces that phone's record
+   instead of leaving a dead one behind every time.                      */
+function deviceId(){
+  var k = 'nala-device';
+  try {
+    var v = localStorage.getItem(k);
+    if (!v){ v = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+             localStorage.setItem(k, v); }
+    return v;
+  } catch (e){ return 'd-nostore'; }
+}
+
+function b64ToU8(base64){
+  var pad = '='.repeat((4 - base64.length % 4) % 4);
+  var s = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  var raw = atob(s);
+  var out = new Uint8Array(raw.length);
+  for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+function subPath(user){
+  return '/pushsubs/' + emailKey(user && user.email) + '/' + deviceId() + '.json';
+}
+
+/* Whether this phone is currently subscribed. Asked of the browser rather
+   than of a saved flag, because the browser is the thing that decides: a
+   subscription can be dropped by iOS without telling anyone.            */
+function pushState(cb){
+  if (!pushSupported()) return cb('unsupported');
+  if (Notification.permission === 'denied') return cb('blocked');
+  navigator.serviceWorker.getRegistration().then(function(reg){
+    if (!reg) return cb('off');
+    reg.pushManager.getSubscription().then(function(sub){ cb(sub ? 'on' : 'off'); },
+                                          function(){ cb('off'); });
+  }, function(){ cb('off'); });
+}
+
+function pushOn(user, role, cb){
+  if (!pushSupported()) return cb('unsupported');
+  navigator.serviceWorker.register('/sw.js').then(function(reg){
+    return Notification.requestPermission().then(function(perm){
+      if (perm !== 'granted') throw new Error('denied');
+      return reg.pushManager.subscribe({
+        userVisibleOnly: true,                 /* iOS requires this */
+        applicationServerKey: b64ToU8(VAPID_PUBLIC)
+      });
+    });
+  }).then(function(sub){
+    var j = sub.toJSON();
+    return fetch(DB + subPath(user), {
+      method: 'PUT',
+      body: JSON.stringify({ endpoint: j.endpoint, keys: j.keys,
+                             role: role, at: new Date().toISOString() })
+    });
+  }).then(function(){ cb('on'); })
+    .catch(function(e){ cb((e && e.message === 'denied') ? 'blocked' : 'failed'); });
+}
+
+/* Off means gone from the database as well: a record left behind would keep
+   the phone on the list and the notification would arrive anyway.        */
+function pushOff(user, cb){
+  var done = function(){ cb('off'); };
+  fetch(DB + subPath(user), { method: 'DELETE' }).catch(function(){}).then(function(){
+    if (!pushSupported()) return done();
+    navigator.serviceWorker.getRegistration().then(function(reg){
+      if (!reg) return done();
+      reg.pushManager.getSubscription().then(function(sub){
+        if (!sub) return done();
+        sub.unsubscribe().then(done, done);
+      }, done);
+    }, done);
+  });
+}
+
+/* Tell the worker something happened. Deliberately not awaited by whatever
+   called it: a notification that fails must never cost someone their mark,
+   which is already saved by the time this runs.                          */
+function notifyPush(event, villa, user){
+  if (!PUSH_URL || !window.__idToken) return;
+  try {
+    fetch(PUSH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: window.__idToken, event: event,
+                             villa: villa, actor: emailKey(user && user.email) })
+    }).catch(function(){});
+  } catch (e){}
+}
+
 </script>
 <script>
 // date state + header wiring from nala-shared.js
