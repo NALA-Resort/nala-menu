@@ -17,6 +17,11 @@ a mockup is a minute; the cost of skipping it was hours.
 What a mockup means here:
 
 - Render it at the real width, 390pt for a phone screen, A4 or A5 for a sheet
+- Check it at 360pt too, the common Samsung Galaxy width, and do not break at
+  320pt, the narrowest phone still in use. The app has no width media queries
+  and is fluid rather than breakpointed, which is why 360 costs nothing today.
+  Measured 17 Aug: the boards are clean at all three, the Service Sheet header
+  bleeds about 12pt at 320
 - Show the worst case as well as the ordinary one - the longest name, five
   dietaries, a booking that carries a note AND a comment
 - Show the states side by side when a change alters one of them, so the
