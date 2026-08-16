@@ -1,0 +1,185 @@
+/* Worker suite. Run: node worker/test.mjs
+ *
+ * Firebase is stubbed, exactly as the five browser suites stub it, so this
+ * checks the logic and says nothing about the real service. The same warning
+ * in HANDOVER.md applies: green here is not proof it works against Mews.
+ */
+import worker from "./mews-sync.js";
+
+let P = 0, F = 0;
+const ck = (name, ok) => { ok ? P++ : F++; console.log((ok ? "PASS " : "FAIL ") + name); };
+
+const env = { SYNC_EMAIL: "x@staff.nala", SYNC_PASSWORD: "000000",
+              ZAP_SECRET: "shh", FB_API_KEY: "k" };
+
+/* A tiny in-memory database, plus a log of every call, so a test can assert
+   on what was written AND on what was not. */
+let STORE, CALLS, SIGNINS, FAIL_DB;
+
+function install() {
+  STORE = {}; CALLS = []; SIGNINS = 0; FAIL_DB = false;
+  globalThis.fetch = async (url, opt = {}) => {
+    if (String(url).includes("identitytoolkit")) {
+      SIGNINS++;
+      return new Response(JSON.stringify({ idToken: "T" }), { status: 200 });
+    }
+    if (FAIL_DB) return new Response("boom", { status: 500 });
+    const path = String(url).split("firebasedatabase.app")[1].split(".json")[0];
+    const m = opt.method || "GET";
+    CALLS.push(m + " " + path);
+    if (m === "GET") {
+      return new Response(JSON.stringify(STORE[path] === undefined ? null : STORE[path]),
+                          { status: 200 });
+    }
+    if (m === "DELETE") { delete STORE[path]; return new Response(null, { status: 204 }); }
+    const body = JSON.parse(opt.body);
+    STORE[path] = m === "PATCH" ? Object.assign({}, STORE[path] || {}, body) : body;
+    return new Response(JSON.stringify(body), { status: 200 });
+  };
+}
+
+const post = (body, secret = "shh") => worker.fetch(new Request(
+  "https://w.dev/?secret=" + secret,
+  { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body) }), env);
+
+const RES = { Id: "res-guid-1", FirstName: "Mark", LastName: "Whitfield",
+              Phone: "+61400000000", StartUtc: "2026-09-10T04:00:00Z",
+              EndUtc: "2026-09-13T02:00:00Z", ResourceName: "3", State: "Confirmed" };
+
+/* ── the secret ─────────────────────────────────────────────── */
+install();
+ck("a wrong secret is refused", (await post(RES, "nope")).status === 401);
+ck("and nothing was written", Object.keys(STORE).length === 0);
+ck("a right secret is accepted", (await post(RES)).status === 200);
+
+install();
+ck("GET is refused, this is a webhook",
+   (await worker.fetch(new Request("https://w.dev/?secret=shh"), env)).status === 405);
+
+install();
+ck("a payload with no reservation id is refused",
+   (await post({ FirstName: "Nobody" })).status === 400);
+
+/* ── a new booking ──────────────────────────────────────────── */
+install();
+await post(RES);
+const pms = STORE["/bookings/res-guid-1/pms"];
+ck("the booking is stored under the Mews id", !!pms);
+ck("dates are stored as dkey does, not as ISO timestamps",
+   pms.arrive === "2026-09-10" && pms.depart === "2026-09-13");
+ck("villa is a string even when Mews sends a bare number", pms.villa === "3");
+ck("the raw Mews state is kept alongside ours",
+   pms.state === "confirmed" && pms.mewsState === "confirmed");
+
+/* Arrival inclusive, departure exclusive: a guest leaving on the 13th does
+   not occupy the villa on the night of the 13th. Including it would collide
+   with the next arrival on every single turnover. */
+ck("three nights indexed, departure night excluded",
+   STORE["/stays/2026-09-10/3"] === "res-guid-1" &&
+   STORE["/stays/2026-09-11/3"] === "res-guid-1" &&
+   STORE["/stays/2026-09-12/3"] === "res-guid-1" &&
+   STORE["/stays/2026-09-13/3"] === undefined);
+
+/* ── the same event twice ───────────────────────────────────── */
+/* syncedAt is expected to move: it records when we last heard, which is a
+   different fact from when the booking last changed. What must not move is
+   the guest data and the index, because Zapier retries on any 500. */
+const strip = () => JSON.stringify(STORE, (k, v) => k === "syncedAt" ? undefined : v);
+install();
+await post(RES); const first = strip();
+await post(RES);
+ck("replaying an event changes nothing, so Zapier may safely retry",
+   strip() === first);
+
+/* The sign in costs a round trip on every event if it is not cached. The
+   token is cleared on failure, so a failure is how a fresh one is forced. */
+install();
+FAIL_DB = true; await post(RES);          // clears the cached token
+FAIL_DB = false; SIGNINS = 0;
+await post(RES); await post(RES);
+ck("one sign in serves many events, rather than one each", SIGNINS === 1);
+
+/* ── a villa move ───────────────────────────────────────────── */
+install();
+await post(RES);
+await post(Object.assign({}, RES, { ResourceName: "9" }));
+ck("a moved guest is indexed under the new villa",
+   STORE["/stays/2026-09-10/9"] === "res-guid-1");
+ck("and is GONE from the old one, not left in both",
+   STORE["/stays/2026-09-10/3"] === undefined &&
+   STORE["/stays/2026-09-11/3"] === undefined &&
+   STORE["/stays/2026-09-12/3"] === undefined);
+ck("the record itself is still one record", !!STORE["/bookings/res-guid-1/pms"]);
+
+/* ── a shortened stay ───────────────────────────────────────── */
+install();
+await post(RES);
+await post(Object.assign({}, RES, { EndUtc: "2026-09-12T02:00:00Z" }));
+ck("a shortened stay drops the night it no longer covers",
+   STORE["/stays/2026-09-12/3"] === undefined);
+ck("and keeps the nights it still does",
+   STORE["/stays/2026-09-10/3"] === "res-guid-1" &&
+   STORE["/stays/2026-09-11/3"] === "res-guid-1");
+
+/* ── an extended stay ───────────────────────────────────────── */
+install();
+await post(RES);
+await post(Object.assign({}, RES, { EndUtc: "2026-09-15T02:00:00Z" }));
+ck("an extended stay gains the new nights",
+   STORE["/stays/2026-09-13/3"] === "res-guid-1" &&
+   STORE["/stays/2026-09-14/3"] === "res-guid-1");
+
+/* ── cancellation ───────────────────────────────────────────── */
+install();
+await post(RES);
+await post(Object.assign({}, RES, { State: "Canceled" }));
+ck("a cancellation clears every night, so no card prints",
+   STORE["/stays/2026-09-10/3"] === undefined &&
+   STORE["/stays/2026-09-11/3"] === undefined &&
+   STORE["/stays/2026-09-12/3"] === undefined);
+ck("American and British spellings both count as cancelled",
+   STORE["/bookings/res-guid-1/pms"].state === "cancelled");
+ck("but the record survives: what was asked for is worth knowing",
+   STORE["/bookings/res-guid-1/pms"].first === "Mark");
+
+/* ── late delivery ──────────────────────────────────────────── */
+/* Webhooks are not ordered. A move delivered, then the pre-move event
+   arriving behind it, must not put the guest back in the old villa. */
+install();
+await post(Object.assign({}, RES, { UpdatedUtc: "2026-08-01T10:00:00Z" }));
+await post(Object.assign({}, RES, { ResourceName: "9", UpdatedUtc: "2026-08-01T11:00:00Z" }));
+await post(Object.assign({}, RES, { ResourceName: "3", UpdatedUtc: "2026-08-01T10:30:00Z" }));
+ck("a late event is ignored, not applied",
+   STORE["/bookings/res-guid-1/pms"].villa === "9");
+ck("and the index still reflects the newest event only",
+   STORE["/stays/2026-09-10/9"] === "res-guid-1" &&
+   STORE["/stays/2026-09-10/3"] === undefined);
+
+/* ── what it must never touch ───────────────────────────────── */
+install();
+STORE["/bookings/res-guid-1/prearrival"] = { dining: true };
+STORE["/bookings/res-guid-1/dining"] = { covers: 2 };
+await post(RES);
+ck("the questionnaire is untouched",
+   JSON.stringify(STORE["/bookings/res-guid-1/prearrival"]) === '{"dining":true}');
+ck("the dining data is untouched",
+   JSON.stringify(STORE["/bookings/res-guid-1/dining"]) === '{"covers":2}');
+ck("it writes only under pms and stays",
+   CALLS.filter(c => !c.startsWith("GET"))
+        .every(c => c.includes("/pms") || c.includes("/stays/")));
+
+/* ── failure ────────────────────────────────────────────────── */
+install();
+FAIL_DB = true;
+const bad = await post(RES);
+ck("a database failure returns 500 so Zapier retries", bad.status === 500);
+
+/* ── a runaway range ────────────────────────────────────────── */
+install();
+await post(Object.assign({}, RES, { EndUtc: "2035-01-01T00:00:00Z" }));
+ck("a nonsense date range is capped rather than written forever",
+   CALLS.filter(c => c.startsWith("PUT")).length <= 121);
+
+console.log("RESULT: %d passed, %d failed", P, F);
+if (F) process.exit(1);

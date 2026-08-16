@@ -1,0 +1,195 @@
+/* NALA Mews sync Worker
+ *
+ * Zapier posts one reservation here on every Mews reservation event. This
+ * signs in as the sync staff account, writes the PMS half of the booking, and
+ * maintains the per night index the boards read.
+ *
+ * It writes exactly two things and nothing else:
+ *   /bookings/<id>/pms          the reservation as Mews states it
+ *   /stays/<date>/<villa>       one entry per villa night, value = <id>
+ *
+ * It never touches prearrival or dining. Those belong to the app, and the
+ * rules enforce the split rather than trusting this file.
+ *
+ * Secrets to set in the Cloudflare dashboard, exactly these four names:
+ *   SYNC_EMAIL     the sync account address: the six digit code you wrote down
+ *                  in job 3, followed by @staff.nala. Do not write it into
+ *                  this file, or anywhere else in this repo, which is public.
+ *   SYNC_PASSWORD  its six digit code, which is the same six digits
+ *   ZAP_SECRET     any long random string you invent, also given to Zapier
+ *   FB_API_KEY     AIzaSyA0zAzL-zfPivrIRhY_ip8BABjuYVMlzqI
+ *
+ * FB_API_KEY is a secret only for tidiness. Firebase web API keys are public
+ * by design and this one is already in auth.js in a public repo. The rules are
+ * what protect the data, not the key.
+ */
+
+const DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+/* The sign in costs a round trip, so the token is held for the life of the
+   isolate. Firebase ID tokens last an hour; expiring at fifty minutes leaves
+   room for a slow request rather than discovering the expiry mid write. */
+let TOKEN = null, TOKEN_AT = 0;
+
+async function idToken(env) {
+  if (TOKEN && Date.now() - TOKEN_AT < 50 * 60 * 1000) return TOKEN;
+  const r = await fetch(
+    "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + env.FB_API_KEY,
+    { method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: env.SYNC_EMAIL, password: env.SYNC_PASSWORD,
+                             returnSecureToken: true }) });
+  const j = await r.json();
+  if (!r.ok || !j.idToken) throw new Error("sign in failed: " + (j.error && j.error.message));
+  TOKEN = j.idToken; TOKEN_AT = Date.now();
+  return TOKEN;
+}
+
+async function db(env, path, method, body) {
+  const t = await idToken(env);
+  const r = await fetch(DB + path + ".json?auth=" + t, {
+    method: method,
+    headers: body === undefined ? {} : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body) });
+  if (!r.ok) throw new Error(method + " " + path + " -> " + r.status + " " + await r.text());
+  return r.status === 204 ? null : r.json();
+}
+
+/* Dates are stored the way dkey() in nala-shared.js writes them, YYYY-MM-DD,
+   so /bookings joins to /hk/<date> and roomguests with no conversion. Mews
+   sends ISO timestamps in UTC; only the date part is kept. */
+function dkey(v) {
+  if (!v) return null;
+  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[0] : null;
+}
+
+/* Every night the villa is occupied: arrival inclusive, departure exclusive.
+   A guest departing on the 14th does not occupy the villa on the night of the
+   14th, and including it would put two bookings in one villa on turnover day
+   for every single stay. */
+function nights(arrive, depart) {
+  const out = [];
+  if (!arrive || !depart) return out;
+  const a = new Date(arrive + "T00:00:00Z"), b = new Date(depart + "T00:00:00Z");
+  for (let d = a; d < b; d.setUTCDate(d.getUTCDate() + 1)) {
+    out.push(d.toISOString().slice(0, 10));
+    if (out.length > 120) break;   /* a runaway range must not write forever */
+  }
+  return out;
+}
+
+/* Zapier field names vary with how the Zap is mapped, so each value is looked
+   for under several plausible keys rather than one. Mapping in Zapier to any
+   of these works; mapping to something else does not, which is why the list
+   is here where it can be read rather than in a doc that drifts. */
+function pick(o, names) {
+  for (const n of names) {
+    if (o[n] !== undefined && o[n] !== null && o[n] !== "") return o[n];
+  }
+  return null;
+}
+
+function readReservation(p) {
+  return {
+    id:      pick(p, ["Id", "id", "ReservationId", "reservation_id", "bookingId"]),
+    first:   pick(p, ["FirstName", "first_name", "firstName", "CustomerFirstName"]),
+    last:    pick(p, ["LastName", "last_name", "lastName", "CustomerLastName"]),
+    phone:   pick(p, ["Phone", "phone", "PhoneNumber", "phone_number", "CustomerPhone"]),
+    arrive:  dkey(pick(p, ["StartUtc", "start_utc", "ArrivalUtc", "arrive", "CheckInDate"])),
+    depart:  dkey(pick(p, ["EndUtc", "end_utc", "DepartureUtc", "depart", "CheckOutDate"])),
+    /* String, always. Mews may send 3 or "3" depending on the mapping, and a
+       number here compares unequal to the stored string, which makes every
+       event look like a villa move and churn the index for nothing. */
+    villa:   (function(v){ return v === null ? null : String(v); })(
+               pick(p, ["ResourceName", "resource_name", "SpaceName", "RoomNumber", "villa", "room"])),
+    state:   String(pick(p, ["State", "state", "Status", "status"]) || "confirmed").toLowerCase(),
+    /* Mews' own last-changed stamp, not ours. Webhook delivery is not ordered,
+       so this is the only way to tell a late old event from a new one. */
+    updated: pick(p, ["UpdatedUtc", "updated_utc", "UpdatedAt", "LastUpdateUtc", "updated"])
+  };
+}
+
+export default {
+  async fetch(request, env) {
+    if (request.method !== "POST") return new Response("POST only", { status: 405 });
+
+    /* The shared secret may arrive as a header or as a query parameter,
+       because Zapier makes one easier than the other depending on the action
+       chosen, and being strict here only produces a silent failure later. */
+    const url = new URL(request.url);
+    const given = request.headers.get("x-nala-secret") || url.searchParams.get("secret");
+    if (!env.ZAP_SECRET || given !== env.ZAP_SECRET) {
+      return new Response("no", { status: 401 });
+    }
+
+    let payload;
+    try { payload = await request.json(); }
+    catch (e) { return new Response("bad json", { status: 400 }); }
+
+    const r = readReservation(payload);
+    if (!r.id) return new Response("no reservation id in payload", { status: 400 });
+
+    try {
+      /* Read what is already stored before writing, because a reservation that
+         moved villa or changed dates leaves index entries behind under the OLD
+         values. Without this a moved guest appears in two villas and the board
+         is wrong in the way that is hardest to notice: it looks plausible. */
+      let prev = null;
+      try { prev = await db(env, "/bookings/" + r.id + "/pms", "GET"); }
+      catch (e) { prev = null; }
+
+      /* An event that Mews stamped earlier than what we already hold is a late
+         delivery, not a change. Applying it would quietly undo a villa move
+         and look like the sync inventing things. Nothing is written. */
+      if (prev && prev.updated && r.updated && r.updated < prev.updated) {
+        return new Response(JSON.stringify({ ok: true, id: r.id, skipped: "stale event" }),
+                            { headers: { "Content-Type": "application/json" } });
+      }
+
+      const stale = prev ? nights(prev.arrive, prev.depart) : [];
+      const staleVilla = prev ? prev.villa : null;
+
+      const cancelled = r.state.indexOf("cancel") > -1;
+      const fresh = cancelled ? [] : nights(r.arrive, r.depart);
+
+      /* Clear the old index entries first. A cancelled booking clears all of
+         them and keeps its record: what was asked for is worth knowing even
+         when it is not happening. */
+      for (const d of stale) {
+        const gone = staleVilla !== r.villa || fresh.indexOf(d) === -1 || cancelled;
+        if (gone && staleVilla) await db(env, "/stays/" + d + "/" + staleVilla, "DELETE");
+      }
+
+      await db(env, "/bookings/" + r.id + "/pms", "PATCH", {
+        first: r.first, last: r.last, phone: r.phone,
+        arrive: r.arrive, depart: r.depart, villa: r.villa,
+        state: cancelled ? "cancelled" : "confirmed",
+        /* Mews has more states than we act on (Optional, Started, Processed).
+           Only cancellation changes what we do, but the raw value is kept
+           rather than discarded: the next question about this data will be
+           easier to answer with it than without it. */
+        mewsState: r.state,
+        updated: r.updated || null,
+        syncedAt: new Date().toISOString()
+      });
+
+      for (const d of fresh) {
+        if (r.villa) await db(env, "/stays/" + d + "/" + r.villa, "PUT", r.id);
+      }
+
+      return new Response(JSON.stringify({
+        ok: true, id: r.id, villa: r.villa,
+        state: cancelled ? "cancelled" : "confirmed",
+        nights: fresh.length, cleared: stale.length
+      }), { headers: { "Content-Type": "application/json" } });
+
+    } catch (e) {
+      /* A 500 makes Zapier retry, which is what should happen: a booking that
+         failed to land is worse than one that lands twice, since every write
+         here is idempotent. */
+      TOKEN = null;
+      return new Response("sync failed: " + e.message, { status: 500 });
+    }
+  }
+};
