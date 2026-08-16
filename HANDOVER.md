@@ -40,10 +40,10 @@ writes a single commit. GitHub occasionally 503s; just retry.
 **Test.** Five Playwright suites, all must stay green:
 
 ```
-python3 tests/tally_suite.py    # 71 - Reservations
-python3 tests/list_suite.py     # 29 - Reservations Sheet
+python3 tests/tally_suite.py    # 85 - Reservations
+python3 tests/list_suite.py     # 42 - Reservations Sheet
 python3 tests/hk_suite.py       # 22 - Clean Sheet
-python3 tests/cl_suite.py       # 68 - Cleans
+python3 tests/cl_suite.py       # 161 - Cleans
 python3 tests/auth_suite.py     #  6 - sign-in
 ```
 
@@ -83,61 +83,47 @@ references it, in the same commit. Current: `nala-ui.css?v=9`,
 
 ## Since the last handover
 
-### Reservations (tally.html)
+Thirty seven commits on 15 and 16 August. In order of consequence:
 
-- **Dietaries are pills.** Allergy = solid red with the word "allergy"
-  dropped, since the fill says it. Preference = tinted red, full label. Pills
-  sit on their own line under the name.
-- **Villas, not rooms**, in every visible label. The word "room" survives only
-  in code: database paths (`roomguests/`, `room-N`), variables, ids, CSS class
-  names. Renaming those would orphan every stored booking.
-- **The villa number leads each booking line** at 15px bold, then a dash, then
-  the name. The word "villa" is dropped - every row is one.
-- **Phone is off the row**, it lives on the edit sheet where it is used.
-- **The notes bubble is icon-only** in a fixed 20px slot, so a booking with a
-  note occupies the same width as one without and the pax column never shifts.
-- **Bug fixed:** a staff override used to hide the guest's pre-menu tag and
-  "no dietaries confirmed" note. The screen took the staff record as the whole
-  truth; it now merges the guest's answer underneath, as the printed sheet
-  always did.
-- **Menu state pill:** both published and unpublished states are now the same
-  pill. The rule selected `span` only, and the published state renders as an
-  `<a>`, so it had been unstyled but for its background.
+**Roles, stage one, shipped.** The email prefix check is gone. `roleOf()` and
+`can()` in `nala-shared.js`, gates on Cleans, Reservations and the Sheet, and
+the rules changed to match. The chef reads the reservations board and opens a
+booking to see dietaries but writes nothing; the waiter has the board plus the
+Cleans marks for departures and breakfast; housekeeping is unchanged.
 
-### Reservations Sheet (list.html)
+**Passcode sign in.** A six digit keypad replaced the email form as the way in,
+with the email form kept behind a long press on the wordmark. `auth.js` was
+touched, with permission, and gained a test suite in the same commit: 6 tests
+to 30.
 
-- **Dietaries and comments share one column** at their combined width, pills
-  on the first line, comment beneath. Split across two narrow columns, a busy
-  guest stacked three deep and left the row half empty.
+**Notifications.** Web push, four events, a Cloudflare Worker sender.
 
-### Cleans (cleaners.html) - most of the work
+**A Settings page.** `staff.html`.
 
-This page grew a full state machine. See its own section below.
+**Boards refresh themselves** every 20 seconds, fetching only the four paths
+that actually change. A full reload happens on returning to the app. This cut
+a poll from 19 requests to 4, which is the difference between about 9GB and
+1.9GB a month across five phones.
 
-- **Departure controls.** A villa pushed in from yesterday is departed as a
-  matter of fact, so it is offered no departure mark at all. It used to offer
-  one, and undoing that mark appeared to do nothing, because the tile was
-  never reading it. General rule now in the styleguide: only offer an undo
-  for something a person actually set.
+**The Cleans board fits one screen.** The rows share whatever height the phone
+has rather than a fixed tile height, tested at real usable heights across
+twelve devices.
 
-### Everywhere
+**The home screen app stays an app.** Tapping a link used to hand the next
+page back to the browser with all its bars.
 
-- **San Francisco.** Staff tools moved off Georgia, whose old-style figures
-  made the stats look randomly sized (6 and 8 rise, 5, 7 and 9 drop). Set once
-  as `--ui-font`; no page hardcodes a font stack any more. **Guest pages
-  deliberately do not use these tokens** - they carry the brand and set their
-  own font, so the staff font can change without touching them.
-- **Em dashes removed** from every page, shared file and document.
+**Printing rebuilt.** Also a square home screen icon, since the wide wordmark
+was being stretched into it.
 
-### Guest pages
+**No double tap zoom** on staff pages, and sign in fields are 16px so iOS
+stops zooming the page when they are tapped.
 
-- Pricing lifted off the bottom edge of the screen (`index.html`).
-- Welcome page greeting is generic - no guest name is displayed, even when the
-  link carries one.
-- A **temporary merge-tag test panel** is live on `welcome.html`, shown only
-  when the link carries `&t=1`. **Remove it when GuestTouch is settled.**
+## Next piece of work
 
----
+**Mews PMS sync**, backlog item 6. Nothing designed yet.
+
+Roles stage two is effectively done: `staff.html` covers managing people and
+roles, which is what it described.
 
 ## The Cleans state machine
 
@@ -198,41 +184,112 @@ villas. Only unknown villas can be picked; the rest dim.
 
 ## Logins and rules
 
-Two accounts in Firebase Auth:
+**Passcodes, not emails.** Everyone signs in on a six digit keypad. The code
+IS the credential: the account is `<code>@staff.nala` with the same six digits
+as the password. Six because Firebase rejects passwords under six characters.
 
-- `staff@...` - management. Sees the nav menu and the Admin options group.
-- `housekeeping@...` - cleaners. Sees the job, the marks and Close.
+The email form still exists as the recovery door, behind a **long press on the
+NALA wordmark**. Only `admin@nalaresort.com.au` uses it. Keep it: Firebase can
+send a password reset to a real address and cannot to `485211@staff.nala`.
 
-The page decides by whether the email begins with "housekeeping". **The
-database enforces it too**: the rules allow any signed-in user to write
-`done`, `bfast`, `departed` and `pushed`, but only a non-housekeeping account
-may write `kind`. So a cleaner cannot set a villa's job even by sending the
-request directly.
+**Roles come from the database, never from the address.** Each person has a
+record at `/staff/<emailkey>` with `name` and `role`, where emailkey is the
+lowercased address with every dot turned into a comma. No record means no
+access, deliberately, so a typo grants nothing.
 
-Rules live in the console (Realtime Database, Rules). Nobody here has write
-access to them, so a rules change means pasting the current ones in, getting
-a complete replacement back, and pasting it once. Do not write a replacement
-from memory: the `extcancel` path exists only in the rules and would be
-dropped, breaking guest cancellations.
+Four roles: `admin`, `chef`, `waiter`, `housekeeping`. The full access role
+was called `staff` until the word collided with the `/staff` node; records
+saying `staff` are still read as `admin` by `normaliseRole`, and that alias
+can go once none do.
 
-Still open in the rules: anyone who knows a guest's phone number can write
-that guest's booking. Fixing it properly means signed links.
+`nala-shared.js` holds the whole matrix in `ROLE_GRANTS` and answers through
+`can(role, capability)`. Pages never ask which role someone has. Changing a
+permission is one word on one line.
 
-## Next piece of work
+**What the database enforces**, as opposed to what the UI merely hides: only
+an `admin` may write `hk/<date>/<villa>/kind`, `/staff` or `/notify`. Everything
+else the roles do is UI only. Hiding a button prevents accidents, not
+determined pokes, and the waiter restrictions in particular are CSS.
 
-**Roles.** Four of them - staff, chef, waiter, housekeeping - replacing the
-current "does the email begin with housekeeping" check, which cannot express
-them and breaks on per-person logins. Design agreed and written up in
-**ROLES.md**, including the permission matrix, where the record lives, the
-rules change and the build order. Not started.
+`/pushsubs/<emailkey>` is writable only by that person, readable by any
+signed in user, because the push worker reads it with the caller's own token.
+
+Rules live in the console. Nobody here has write access, so a rules change
+means pasting the current ones in and getting a complete replacement back.
+Do not write one from memory: `extcancel` exists only in the rules.
+
+Still open: anyone who knows a guest's phone number can write that guest's
+booking. Fixing it properly means signed links.
+
+## Settings page
+
+`staff.html`, admin only, reached from **Settings** in the hamburger. It ended
+the console typing for staff and notifications, and should be the first place
+you reach for before telling anyone to open Firebase.
+
+It lists everyone, adds a person (creating the login and the record together),
+changes names and roles, and removes people. Removing deletes the `/staff`
+record, which is the actual revoke because the rules require it. It cannot
+delete the Firebase Auth login: that is a console tidy up, and it means the
+passcode cannot be reused until it is done.
+
+Two people can never be removed, by rule rather than by passcode: yourself,
+and the last remaining admin.
+
+The same page holds the notification settings.
+
+## Notifications
+
+Real web push. A phone buzzes on the lock screen when a villa is marked.
+
+- iOS only allows this for a site added to the Home Screen. In a browser tab
+  the toggle says it is unavailable, because it is.
+- The toggle is per phone, in the hamburger. Signing out unsubscribes.
+- Four events: `departed`, `available`, `cleaned`, `serviced`. One "mark as
+  done" tap is `cleaned` or `serviced` depending on the villa's job.
+- Nobody is told about their own tap.
+- Quiet hours and per role targeting live at `/notify`, changed on the
+  Settings page. The app writes the defaults itself if the node is missing.
+
+**The sender is a Cloudflare Worker**, not in this repo. Source is handed over
+separately. It holds the VAPID private key and no database credential: the
+phone sends its own Firebase token, the worker passes it to the database, and
+the rules decide. An expired token gets a 401 and nothing is sent.
+
+`sw.js` handles notifications and nothing else. It has no fetch handler and no
+caching on purpose: a caching service worker would serve stale pages after
+every publish and make "clear your browser data" a permanent instruction.
+
+## Printing
+
+Two paths, and the difference matters.
+
+`window.print()` on an iPhone hands the printer a **bitmap**, which is why the
+paper came out soft and pixelated. It is fine from a computer.
+
+So both sheets build a **real PDF** with jsPDF and embedded Raleway. The
+Reservations Sheet has a PDF button beside Print; the menu has always worked
+this way. On a phone the PDF goes to the **share sheet**, because Print is in
+there, and a download leaves someone hunting through Files.
+
+The printed HTML has no tinted rows: on screen they group the sheet, on paper
+they read as a photocopy. It fits one page at any margin from 10mm to 25mm,
+which is checked in the suite.
+
+Browser headers and footers are the print dialog's, not ours. No CSS removes
+them. The PDF path avoids them entirely.
 
 ## Backlog
 
-**1. Rotate the GitHub token.** The classic PAT is exposed in the chef brief.
-Revoke it, issue fine-grained per-user tokens, reissue the brief FIRST.
+**1. Rotate the GitHub token. STILL OPEN and now worse.** One token serves
+both the owner and the chef brief, and it has been pasted into chat more than
+once. Issue two fine grained tokens, `nala-menu publish` and `nala-menu chef`,
+so either can be revoked without breaking the other.
 
-**2. Commit `CHEF-BRIEF.md` to the repo.** It exists at
-`/mnt/user-data/outputs/CHEF-BRIEF.md` but was never committed.
+**2. Do NOT commit the chef brief.** The earlier note said to. The repo is
+public, so a token pushed there is world readable and GitHub revokes it
+automatically, breaking the chef's publishing. Strip the token first if it
+ever goes in.
 
 **3. Remove the merge-tag test panel** from `welcome.html` once GuestTouch is
 settled.
@@ -241,23 +298,43 @@ settled.
 
 **5. Confirm dinner and breakfast hours.** Still provisional.
 
-**6. Mews PMS sync.** Not started.
+**6. Mews PMS sync.** Not started, and the next piece of work. The intent is
+Mews to Zapier to GitHub, presumably to stop `roomguests` being kept by hand.
+Worth settling before any code: what Zapier writes to, whether it writes to the
+database directly or commits a file, and what happens when a booking changes
+after the fact.
 
-**7. Sign-in form flash and spinner.** Touched and reverted twice. Leave alone
-until it can be tested against real Firebase.
+**7. Sign in form flash.** Fixed. The pad appeared on a 500ms timer, so every
+load with a good session flashed a sign in screen first. It now appears only
+when auth reports nobody signed in.
+
+**8. Delete the leftover Firebase Auth logins** for anyone removed on the
+Settings page. Their access is already gone; this frees the passcode for reuse.
+
+**9. `list.html` still contains one em dash**, the no reply marker in the HTML
+table, and the suite asserts on it.
 
 ---
 
 ## Known gaps and risks
 
-**No test suite on `index.html` or `auth.js`.** Every episode that went badly
-over these three days happened on one of those two files. Everything with a
-suite has been reliable. This is the single most useful thing to fix.
+**`auth.js` now has a suite, 30 tests.** `index.html` still has none, and it
+is the guest page.
 
-**The manager gate is enforced, not cosmetic.** As of 15 Aug the database
-rules restrict `hk/<date>/<villa>/kind` to accounts whose email does not begin
-with `housekeeping`. Cleaners keep `done`, `bfast`, `departed` and `pushed`,
-which is their work. The `housekeeping@nalaresort.com.au` login exists.
+**A green suite is not proof.** On 16 Aug the passcode screen shipped with 30
+passing tests and broke sign in on a real phone for two hours. The suites stub
+Firebase entirely, so they check the logic and the layout and can say nothing
+about how the real SDK behaves on a real handset. Anything touching sign in,
+push, or printing needs a device before it is believed.
+
+**The thing that actually broke it was cached state**, not code: Firebase's
+stored session on that phone was wedged, and clearing the browser's site data
+fixed it instantly. Try that first, before any theory.
+
+**Know which gates are real.** The database enforces only three things: who
+may write `kind`, `/staff` and `/notify`, all admin. Every other role
+restriction is the UI hiding buttons, which prevents accidents and nothing
+else. The waiter's Cleans restrictions in particular are CSS.
 
 Note the rules still carry a `$other` catch-all granting any signed-in user
 read and write on paths not named explicitly. That is what lets new fields
