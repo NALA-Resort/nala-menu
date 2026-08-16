@@ -172,6 +172,14 @@ with sync_playwright() as p:
     open("/home/claude/nala/_p2_list.png","wb").write(shot)
     pg.close()
 
+    # the PDF: text drawn as text, because iOS prints the page as a bitmap
+    src = open("/home/claude/nala/list.html").read()
+    ck("the sheet can build a real PDF", "function sheetPDF" in src)
+    ck("it draws from captured data, not by reading the table back",
+       "SHEET.push" in src and "innerHTML" not in src.split("function sheetPDF")[1][:4000])
+    ck("a PDF button is offered", 'id="sheetPdf"' in src)
+    ck("fonts are embedded, so the text stays vector", "addFileToVFS" in src)
+
     # printed: no tinted rows, and the sheet fills the page
     pg2=b.new_page(viewport={"width":1000,"height":1200})
     pg2.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,

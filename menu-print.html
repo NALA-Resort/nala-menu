@@ -199,7 +199,7 @@ function makePDF(open){
   function heightOf(k){
     var c = MENU[k], h = 0;
     h += 3.3 + 6.9;                                   // label step + rule step
-    doc.setFont('Raleway','normal').setFontSize(16);
+    doc.setFont('RalewayLight','normal').setFontSize(16);
     h += doc.splitTextToSize(titled(c.name), COL).length * 7.2;
     if (c.desc){
       doc.setFont('Raleway','italic').setFontSize(10.5);
@@ -236,7 +236,7 @@ function makePDF(open){
       doc.line(cx - 13, y, cx + 13, y);
       y += 6.9;
 
-      doc.setFont('Raleway','normal').setFontSize(16).setTextColor(28,28,26);
+      doc.setFont('RalewayLight','normal').setFontSize(16).setTextColor(28,28,26);
       var lines = doc.splitTextToSize(titled(c.name), COL);
       lines.forEach(function(ln, idx){
         doc.text(ln, cx, y, { align:'center' });
@@ -244,7 +244,7 @@ function makePDF(open){
           var w = doc.getTextWidth(ln);
           doc.setFont('Raleway','normal').setFontSize(7).setTextColor(138,138,130);
           doc.text('(AUS)', cx + w/2 + 1.6, y - 2.9);
-          doc.setFont('Raleway','normal').setFontSize(16).setTextColor(28,28,26);
+          doc.setFont('RalewayLight','normal').setFontSize(16).setTextColor(28,28,26);
         }
         y += 7.2;
       });
