@@ -597,7 +597,15 @@ var ROLE_GRANTS = {
   admin:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff'],
   chef:         ['resBoard','resSheet','publishMenu'],
   waiter:       ['cleansBoard','resBoard','editBookings','resSheet'],
-  housekeeping: ['cleansBoard','cleansMarks']
+  housekeeping: ['cleansBoard','cleansMarks'],
+  /* A machine account, held by the Mews sync Worker. Deliberately empty: it
+     grants nothing in the UI and lands on no page, so a human signing in as
+     it gets the "see the manager" message rather than a half working board.
+     Its actual permission lives in the rules, which name the role directly
+     and let it write only bookings/<id>/pms and stays. Listed here because a
+     role that exists in the database and not in the code is what the next
+     session trips over.                                                  */
+  sync:         []
 };
 
 function isRole(r){ return Object.prototype.hasOwnProperty.call(ROLE_GRANTS, r); }

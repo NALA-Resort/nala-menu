@@ -51,6 +51,20 @@
         }
       }
     },
+    "bookings": {
+      "$id": {
+        ".read": true,
+        "pms": {
+          ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'sync' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')"
+        },
+        "prearrival": { ".write": true },
+        "dining": { ".write": "auth != null" }
+      }
+    },
+    "stays": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'sync' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')"
+    },
     "$other": { ".read": "auth != null", ".write": "auth != null" }
   }
 }

@@ -221,6 +221,21 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   @media print {
     body { padding:0; }
     .scroller { overflow:visible; }
+
+    /* No tinted rows on paper. On screen they group the sheet at a glance;
+       printed they come out as grey slabs that read as a photocopy, and a
+       vacant villa is already obvious from having no name in it. The text
+       stays lighter, which is enough.                                    */
+    .row-out td, .row-unk td, .row-vacant td, .row-conflict td { background:none; }
+    .row-vacant td { color:#8A8A82; }
+
+    /* The sheet was filling about three quarters of the page, so it read as
+       compressed and left a band of white at the foot. The rows are given
+       the height back: this is a working document that gets written on, and
+       the writing needs somewhere to go.                                  */
+    td { padding:9px 5px; font-size:10.5px; }
+    th { font-size:8px; padding-bottom:9px; }
+    tr.blank td { height:30px; }
     table { min-width:0; width:100%; }
     tr { page-break-inside:avoid; }
     thead { display:table-header-group; }
@@ -306,6 +321,12 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 })();
 </script>
 <script>
+var SHEET = [];
+function stripTags(h){
+  var d = document.createElement('div');
+  d.innerHTML = h || '';
+  return (d.textContent || '').replace(/\s+/g,' ').trim();
+}
 (function(){
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
@@ -408,6 +429,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 <div class="stamp" id="stamp"></div>
 
 <div class="foot" id="footBar">
+  <button class="btn" id="sheetPdf">PDF</button>
   <button class="btn" onclick="window.print()">Print</button>
   <button class="btn ghost" onclick="location.reload()">Refresh</button>
 </div>
@@ -673,7 +695,15 @@ var ROLE_GRANTS = {
   admin:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff'],
   chef:         ['resBoard','resSheet','publishMenu'],
   waiter:       ['cleansBoard','resBoard','editBookings','resSheet'],
-  housekeeping: ['cleansBoard','cleansMarks']
+  housekeeping: ['cleansBoard','cleansMarks'],
+  /* A machine account, held by the Mews sync Worker. Deliberately empty: it
+     grants nothing in the UI and lands on no page, so a human signing in as
+     it gets the "see the manager" message rather than a half working board.
+     Its actual permission lives in the rules, which name the role directly
+     and let it write only bookings/<id>/pms and stays. Listed here because a
+     role that exists in the database and not in the code is what the next
+     session trips over.                                                  */
+  sync:         []
 };
 
 function isRole(r){ return Object.prototype.hasOwnProperty.call(ROLE_GRANTS, r); }
@@ -1066,6 +1096,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
       rows = ordered.concat(extRows);
     })();
 
+    SHEET = [];
     rows.forEach(function(row){
       var g = row.rec;
       var phone = tidyPhone(g.phone);
@@ -1097,6 +1128,23 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
         cls = ' class="row-vacant"';
         nameCell = '<span class="muted">Vacant</span>';
       }
+
+      /* The PDF is drawn from these, not from the table: reading values back
+         out of HTML would break the moment a cell gained a span.        */
+      SHEET.push({
+        name: (row.status==='vacant') ? 'Vacant' : (name || ''),
+        vacant: row.status==='vacant',
+        flag: hits.length > 0,
+        pre: !!(row.status === 'in' && g.premenu),
+        villa: row.room ? String(row.room) : 'ext',
+        dinner: row.status==='vacant' ? '' :
+                row.status==='in' ? 'Yes' : row.status==='out' ? 'No' : '-',
+        pax: row.status==='in' ? String(g.pax||1) : '',
+        stay: stripTags(stayHTML(g.arrives, g.departs)),
+        diets: (g.diets||[]).slice(),
+        nodiet: !!g.nodiet,
+        note: [g.note||'', g.dnote ? 'Dietary: '+g.dnote : ''].filter(Boolean).join(' ')
+      });
 
       var gcls = row.grp ? ' g-in g-'+row.grp : '';
       cls = cls ? cls.replace('class="','class="'+gcls.trim()+' ') : (gcls ? ' class="'+gcls.trim()+'"' : '');
@@ -1176,6 +1224,151 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
   fillWhenReady(15);
   window.addEventListener('beforeprint', fill);
 })();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="raleway.js"></script>
+<script>
+/* The sheet as a real PDF. Printing the page from a phone hands the printer
+   a bitmap, which is why the paper came out soft: iOS renders the page to an
+   image first. Drawing the document instead keeps the text as text at any
+   size, and takes the browser's own header and footer out of the picture. */
+function sheetPDF(open){
+  if (!window.jspdf || !window.RALEWAY) return;
+  var doc = new jspdf.jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  doc.addFileToVFS('Raleway-Regular.ttf', RALEWAY.RalewayRegular);
+  doc.addFont('Raleway-Regular.ttf', 'Raleway', 'normal');
+  doc.addFileToVFS('Raleway-Light.ttf', RALEWAY.RalewayLight);
+  doc.addFont('Raleway-Light.ttf', 'RalewayLight', 'normal');
+  doc.addFileToVFS('Raleway-Italic.ttf', RALEWAY.RalewayItalic);
+  doc.addFont('Raleway-Italic.ttf', 'Raleway', 'italic');
+
+  var M = 12, W = 210, H = 297, right = W - M;
+  /* Columns in mm, not percentages: on paper a column has to fit what goes
+     in it, and Dietaries is the one that needs the room.                */
+  var COLS = [
+    { k:'name',   w:34, t:'Name' },
+    { k:'villa',  w:11, t:'Villa',  c:1 },
+    { k:'dt',     w:17, t:'Dinner table', c:1 },
+    { k:'bt',     w:17, t:'B\'fast table', c:1 },
+    { k:'dinner', w:13, t:'Dinner', c:1 },
+    { k:'pax',    w:9,  t:'Pax',    c:1 },
+    { k:'stay',   w:19, t:'Stay' },
+    { k:'diet',   w:66, t:'Dietaries and comments' }
+  ];
+  var x0 = M, xs = []; COLS.reduce(function(x,c){ xs.push(x); return x + c.w; }, x0);
+
+  var title = (document.getElementById('title')||{}).textContent || '';
+  var covers = (document.getElementById('nCovers')||{}).textContent || '';
+  var tables = (document.getElementById('tableLine')||{}).textContent || '';
+
+  doc.setFont('RalewayLight','normal').setFontSize(7).setTextColor(150,150,144);
+  doc.text('NALA', M, M + 2);
+  doc.setFont('Raleway','normal').setFontSize(13).setTextColor(28,28,26);
+  doc.text(title.toUpperCase(), M, M + 10);
+  if (covers){
+    doc.setFont('Raleway','normal').setFontSize(13);
+    doc.text(covers, right, M + 10, { align:'right' });
+    doc.setFont('RalewayLight','normal').setFontSize(6.5).setTextColor(150,150,144);
+    doc.text('COVERS', right, M + 14, { align:'right' });
+  }
+  if (tables){
+    doc.setFont('RalewayLight','normal').setFontSize(8).setTextColor(120,120,114);
+    doc.text(stripTags(tables), M, M + 15);
+  }
+
+  var y = M + 22;
+  /* Headings wrap to two lines and sit ON the rule, so a long one like
+     "Dinner table" does not overrun the column beside it. The block grows
+     upward from the rule, which keeps every heading's last line level.  */
+  doc.setFont('RalewayLight','normal').setFontSize(6).setTextColor(110,110,104);
+  var HEAD_LINE = 2.4;
+  COLS.forEach(function(c,i){
+    var lines = doc.splitTextToSize(c.t.toUpperCase(), c.w - 2).slice(0,2);
+    lines.forEach(function(l,n){
+      doc.text(l, c.c ? xs[i] + c.w/2 : xs[i],
+               y - (lines.length - 1 - n) * HEAD_LINE,
+               { align: c.c ? 'center' : 'left' });
+    });
+  });
+  y += 2.5;
+  doc.setDrawColor(60).setLineWidth(0.4).line(M, y, right, y);
+
+  /* Every row the same height, and enough of them to fill the page: this is
+     a working sheet and the blanks are where a table number gets written. */
+  var ROW = 11.4, ROWS = Math.max(SHEET.length + 4, 21);
+  var bottom = y;
+  for (var i = 0; i < ROWS; i++){
+    var r = SHEET[i], ty = bottom + ROW * i + 7;
+    if (r){
+      doc.setTextColor(r.vacant ? 138 : 28, r.vacant ? 138 : 28, r.vacant ? 130 : 26);
+      doc.setFont('Raleway', r.vacant ? 'italic' : 'normal').setFontSize(8.5);
+      var nm = (r.flag ? 'FLAG ' : '') + (r.pre ? 'PRE-MENU ' : '') + r.name;
+      doc.text(doc.splitTextToSize(nm, COLS[0].w - 2)[0] || '', xs[0], ty);
+
+      doc.setFont('Raleway','normal').setFontSize(8.5).setTextColor(28,28,26);
+      doc.text(r.villa, xs[1] + COLS[1].w/2, ty, { align:'center' });
+      if (r.dinner){
+        if (r.dinner === 'Yes') doc.setTextColor(58,110,74);
+        else if (r.dinner === 'No') doc.setTextColor(168,50,30);
+        else doc.setTextColor(170,170,164);
+        doc.setFont('Raleway','normal').text(r.dinner, xs[4] + COLS[4].w/2, ty, { align:'center' });
+        doc.setTextColor(28,28,26);
+      }
+      if (r.pax) doc.setFont('Raleway','normal').text(r.pax, xs[5] + COLS[5].w/2, ty, { align:'center' });
+      if (r.stay){
+        doc.setFont('Raleway','normal').setFontSize(7.5).setTextColor(80,80,76);
+        doc.text(doc.splitTextToSize(r.stay, COLS[6].w - 1)[0] || '', xs[6], ty);
+      }
+      var d = r.diets.join(', ') || (r.nodiet ? 'No dietaries' : '');
+      var extra = [d, r.note].filter(Boolean).join('  ');
+      if (extra){
+        doc.setFont('Raleway','normal').setFontSize(7.5).setTextColor(50,50,46);
+        doc.splitTextToSize(extra, COLS[7].w - 2).slice(0,2).forEach(function(l,n){
+          doc.text(l, xs[7], ty + n * 3.6);
+        });
+      }
+    }
+    doc.setDrawColor(215).setLineWidth(0.15);
+    doc.line(M, bottom + ROW * (i+1), right, bottom + ROW * (i+1));
+  }
+
+  /* The two writing columns get their rules, so the sheet reads as a form. */
+  doc.setDrawColor(190).setLineWidth(0.15);
+  [1,2,3,4].forEach(function(i){ doc.line(xs[i], y, xs[i], bottom + ROW * ROWS); });
+  doc.line(xs[6], y, xs[6], bottom + ROW * ROWS);
+
+  var st = (document.getElementById('stamp')||{}).textContent || '';
+  doc.setFont('RalewayLight','normal').setFontSize(6).setTextColor(150,150,144);
+  doc.text(stripTags(st), right, bottom + ROW * ROWS + 5, { align:'right' });
+
+  var blob = doc.output('blob'), url = URL.createObjectURL(blob);
+  var fname = 'Nala sheet ' + stripTags(title) + '.pdf';
+  window.__sheetURL = url;
+  if (!open) return url;
+
+  /* Three ways out, best first. The share sheet is the one that matters on a
+     phone, because Print is in it: a download leaves the person hunting
+     through Files for something they wanted to put on paper.            */
+  try {
+    var file = new File([blob], fname, { type:'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files:[file] })){
+      navigator.share({ files:[file], title:fname }).catch(function(){});
+      return url;
+    }
+  } catch (e){}
+
+  var w = window.open(url, '_blank');
+  if (w) return url;
+
+  /* Only if the browser blocked the tab. */
+  var a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ a.remove(); }, 5000);
+  return url;
+}
+var sb = document.getElementById('sheetPdf');
+if (sb) sb.onclick = function(){ sheetPDF(true); };
 </script>
 </body>
 </html>

@@ -134,9 +134,14 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=15"></script>
+<script src="nala-shared.js?v=16"></script>
 <script>
 var ROLES = ['admin','chef','waiter','housekeeping'];
+/* The human roles, and the ones the notification matrix targets. sync is a
+   machine account with no phone, so it is assignable and sortable but takes
+   no part in notifications: giving it a column would ask who to buzz on a
+   login that cannot receive a buzz. */
+var ROLES_ASSIGN = ROLES.concat(['sync']);
 var EVENTS = [['departed','Departed'],['available','Possibly available'],
               ['cleaned','Cleaned'],['serviced','Serviced']];
 var STAFF = {}, CFG = null;
@@ -230,8 +235,8 @@ function drawPeople(){
   var host = document.getElementById('people');
   host.innerHTML = '';
   var keys = Object.keys(STAFF).sort(function(a,b){
-    var ra = ROLES.indexOf(normaliseRole((STAFF[a]||{}).role));
-    var rb = ROLES.indexOf(normaliseRole((STAFF[b]||{}).role));
+    var ra = ROLES_ASSIGN.indexOf(normaliseRole((STAFF[a]||{}).role));
+    var rb = ROLES_ASSIGN.indexOf(normaliseRole((STAFF[b]||{}).role));
     return (ra - rb) || a.localeCompare(b);
   });
   keys.forEach(function(k){
@@ -264,7 +269,7 @@ document.getElementById('backdrop').onclick = function(e){
 
 function personSheet(key){
   var r = STAFF[key] || {};
-  var opts = ROLES.map(function(x){
+  var opts = ROLES_ASSIGN.map(function(x){
     return '<option value="'+x+'"'+(normaliseRole(r.role)===x?' selected':'')+'>'+x+'</option>';
   }).join('');
   openSheet(
@@ -324,7 +329,7 @@ function removePerson(key){
 }
 
 document.getElementById('addBtn').onclick = function(){
-  var opts = ROLES.map(function(x){ return '<option value="'+x+'">'+x+'</option>'; }).join('');
+  var opts = ROLES_ASSIGN.map(function(x){ return '<option value="'+x+'">'+x+'</option>'; }).join('');
   openSheet(
     '<div class="st">Add someone</div>'+
     '<div class="sub">Six digits, and they are the passcode. Write it down: '+

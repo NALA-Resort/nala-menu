@@ -33,7 +33,8 @@ hk={"7":{"done":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"},"2":{"bfast":bf},
 staff={"staff@nalaresort,com,au":{"name":"Admin","role":"admin"},
        "housekeeping@nalaresort,com,au":{"name":"Housekeeping","role":"housekeeping"},
        "chef@nalaresort,com,au":{"name":"Chef","role":"chef"},
-       "waiter@nalaresort,com,au":{"name":"Waiter","role":"waiter"}}
+       "waiter@nalaresort,com,au":{"name":"Waiter","role":"waiter"},
+       "482913@staff,nala":{"name":"NALA Sync","role":"sync"}}
 prevHk={"16":{"pushed":(now-datetime.timedelta(days=1)).isoformat()}}
 def fb(route,request):
     u=request.url; m=request.method
@@ -471,6 +472,17 @@ with sync_playwright() as p:
     ck("an unseeded address is not silently management", roles["ben"] is None)
     ck("no user is no role", roles["empty"] is None)
 
+    # The sync role is the Mews Worker's login. It is a real role, so roleOf
+    # must return it rather than null, but it lands nowhere and grants nothing.
+    sync=pg.evaluate("""()=>({
+      role: roleOf({email:'482913@staff.nala'}),
+      home: homeFor('sync'),
+      caps: Object.keys(ROLE_GRANTS.sync||{}).length + (ROLE_GRANTS.sync||[]).length})""")
+    ck("a sync record reads as the sync role, not as nothing", sync["role"]=="sync")
+    ck("sync grants no capability at all", sync["caps"]==0)
+    ck("sync lands on no page, so a human signing in as it is told, not looped",
+       sync["home"] is None)
+
     # the matrix in ROLES.md, cell by cell
     M={"admin":       {"cleansBoard":1,"cleansMarks":1,"setJob":1,"resBoard":1,
                        "editBookings":1,"resSheet":1,"publishMenu":1,"manageStaff":1},
@@ -479,6 +491,11 @@ with sync_playwright() as p:
        "waiter":      {"cleansBoard":1,"cleansMarks":0,"setJob":0,"resBoard":1,
                        "editBookings":1,"resSheet":1,"publishMenu":0,"manageStaff":0},
        "housekeeping":{"cleansBoard":1,"cleansMarks":1,"setJob":0,"resBoard":0,
+                       "editBookings":0,"resSheet":0,"publishMenu":0,"manageStaff":0},
+       # the Mews sync Worker. Every cell zero, on purpose: its permission is
+       # in the rules, not here, and a machine account must not gain a board
+       # by someone adding a capability to a list and not thinking about it.
+       "sync":        {"cleansBoard":0,"cleansMarks":0,"setJob":0,"resBoard":0,
                        "editBookings":0,"resSheet":0,"publishMenu":0,"manageStaff":0}}
     bad=[]
     for role,caps in M.items():
@@ -759,6 +776,16 @@ with sync_playwright() as p:
     ck("the last admin cannot be removed", "last admin cannot be removed" in src)
     ck("the check runs again on confirm, not only where the bin was drawn",
        src.count("protectedReason(key)") >= 2)
+
+    # sync is assignable, so the account can be made on this page instead of in
+    # the Firebase console, but it has no phone and must not appear in the
+    # notification matrix: a column there asks who to buzz on a login that
+    # cannot be buzzed.
+    ck("both role pickers offer sync", src.count("ROLES_ASSIGN.map") == 2)
+    ck("the staff list sorts by the assignable order, so sync sorts last",
+       src.count("ROLES_ASSIGN.indexOf") == 2)
+    ck("the notification matrix stays on the human roles",
+       src.count("ROLES.map") == 2 and "ROLES_ASSIGN" in src)
 
     # Every staff page must load the SDK before auth.js. staff.html shipped
     # without it and showed "could not load the sign-in service" to everyone.
