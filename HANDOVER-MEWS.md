@@ -529,3 +529,22 @@ This is the brief's main clean-up: stop reading guest data from the URL.
 - Backfill in-house guests with Time Filter `Colliding`, then revert
 - Then, and only then, make vacant the default villa state
 - Rotate the shared secret, the Firebase key and the `sync` passcode
+
+---
+
+## What a fresh session needs
+
+**No credentials are in this file, on purpose.** The repo is public, so the
+shared secret, the Firebase web API key and the `sync` passcode are named here
+but never written down. They are already stored where they are used, as
+Cloudflare secrets, so the Worker keeps running without anyone re-entering
+them.
+
+The sandbox is wiped between sessions. To publish again, a new session needs
+**one thing from the user: a GitHub token** with contents:write, saved to
+`/home/claude/.ghtoken`. The publisher itself is now in the repo at
+`tools/push.py`, so it does not have to be rewritten. Copy it to
+`/home/claude/push.py`, edit `FILES` and `MSG`, run it.
+
+Nothing else is needed. The clone is public, the Worker is deployed, the Zaps
+are published and the rules are live.
