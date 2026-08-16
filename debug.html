@@ -30,6 +30,14 @@
 <h2>Mews sync: is data arriving?</h2>
 <pre id="syncv">checking…</pre>
 
+<h2>Clean slate</h2>
+<p style="margin:.3em 0 .6em">Wipes the operational data: roomguests, responses,
+manual, hk, stays, guests, combined. Leaves staff, notify, menutags, dietaries
+and the menu alone. Counts first, deletes only on the second button.</p>
+<button onclick="scanWipe()">Count what would go</button>
+<button id="wipeGo" onclick="doWipe()" disabled>Delete everything listed</button>
+<pre id="wipe">not run</pre>
+
 <h2>Find and clear merge tag junk in /roomguests</h2>
 <p style="margin:.3em 0 .6em">Finds records whose name or departure date still
 contains an unsubstituted <code>{{tag}}</code>. Shows them first. Nothing is
@@ -183,6 +191,91 @@ function runMerge(){
     if (old.length) head += '\n' + old.length + ' stay entr(ies) in the old shape are being ignored: villa ' + old.join(', ') + '.';
     show('merge', 200, head + (lines.length ? '\n\n' + lines.join('\n') : ''));
   }).catch(function(e){ show('merge', 0, String(e)); });
+}
+
+/* A clean slate for the operational nodes, leaving configuration alone.
+   Deletes leaf by leaf rather than whole nodes, because the rules grant write
+   at the leaf: roomguests is writable at $room, responses at $phone, manual and
+   hk at their key. A DELETE on the parent is refused, which would look like a
+   permissions problem rather than the rules working.
+
+   /bookings cannot be cleared from here at all. No rule grants write on that
+   node or on an individual booking, only on its children, and the node cannot
+   be listed either. That one is a single delete in the Firebase console.
+
+   Requires an admin sign in: auth.js appends the token to every database fetch
+   on this page.                                                            */
+var WIPE = [];
+
+function scanWipe(){
+  document.getElementById('wipe').textContent = 'counting…';
+  var nodes = ['roomguests','responses','manual','hk','stays','guests','combined'];
+  Promise.all(nodes.map(function(n){
+    return fetch(DB+'/'+n+'.json?v='+Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; });
+  })).then(function(res){
+    WIPE = [];
+    var lines = [];
+    nodes.forEach(function(n, i){
+      var v = res[i], paths = [];
+      if (v && typeof v === 'object'){
+        if (n === 'guests'){
+          for (var k in v) paths.push('/guests/'+k);
+        } else if (n === 'combined'){
+          for (var d in v) paths.push('/combined/'+d);
+        } else {
+          for (var date in v){
+            var day = v[date];
+            if (day && typeof day === 'object'){
+              for (var leaf in day) paths.push('/'+n+'/'+date+'/'+leaf);
+            } else {
+              paths.push('/'+n+'/'+date);
+            }
+          }
+        }
+      }
+      lines.push(n + ': ' + paths.length + ' record(s)');
+      WIPE = WIPE.concat(paths);
+    });
+    var btn = document.getElementById('wipeGo');
+    btn.disabled = !WIPE.length;
+    show('wipe', 200, lines.join('\n') +
+      '\n\nTOTAL ' + WIPE.length + ' record(s).\n' +
+      'Not touched: staff, notify, menutags, dietaries, the menu.\n' +
+      'Cannot be touched from here: /bookings. Delete that node in the Firebase console.');
+  }).catch(function(e){ show('wipe', 0, String(e)); });
+}
+
+function doWipe(){
+  if (!WIPE.length) return;
+  if (!confirm('Delete ' + WIPE.length + ' records across roomguests, responses, manual, hk, stays, guests and combined?\n\nThis cannot be undone.')) return;
+  if (!confirm('Last check. This wipes every villa\'s guest data and every staff mark. Proceed?')) return;
+  document.getElementById('wipe').textContent = 'deleting…';
+  var done = 0, failed = [];
+  /* Sequential in small batches. Firing several hundred deletes at once gets
+     some of them dropped, and a half wiped database is harder to reason about
+     than one that failed cleanly. */
+  function batch(i){
+    if (i >= WIPE.length){
+      var msg = done + ' deleted.';
+      if (failed.length) msg += '\n' + failed.length + ' failed:\n' + failed.slice(0,20).join('\n');
+      else msg += '\nClean. Reload this page to confirm.';
+      WIPE = []; document.getElementById('wipeGo').disabled = true;
+      show('wipe', failed.length ? 207 : 200, msg);
+      return;
+    }
+    var slice = WIPE.slice(i, i + 10);
+    Promise.all(slice.map(function(path){
+      return fetch(DB+path+'.json', { method:'DELETE' })
+        .then(function(r){ if (r.ok) done++; else failed.push(path+' HTTP '+r.status); })
+        .catch(function(){ failed.push(path+' network'); });
+    })).then(function(){
+      document.getElementById('wipe').textContent = 'deleting… ' + Math.min(i+10, WIPE.length) + ' / ' + WIPE.length;
+      batch(i + 10);
+    });
+  }
+  batch(0);
 }
 
 /* A record written by a welcome link that never substituted its variables:
