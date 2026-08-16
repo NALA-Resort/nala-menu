@@ -156,20 +156,30 @@ function runMerge(){
   ]).then(function(res){
     var stays = res[0] || {}, responses = res[2] || {}, manual = res[3] || {};
     var rg = overlayStays(resolveRoomGuests(res[1], k), stays);
-    var lines = [], shown = 0;
+    /* Four origins, not three. A villa can carry a staff override with no guest
+       behind it at all, which is most of the board on a normal day: vacant is a
+       decision someone made, not a guest we know nothing about. Reporting those
+       as "guest link only" made a working board look like a broken one. */
+    var lines = [], guests = 0, vacant = 0;
     for (var n = 1; n <= 17; n++){
       var rec = roomRecord(n, responses, manual, rg);
       if (!rec) continue;
-      shown++;
-      var from = isMewsOnly(rg[String(n)]) ? 'PMS only, guest has not clicked'
-               : (stays[String(n)] ? 'PMS, and the guest clicked too'
-               : 'guest link only, no PMS record');
+      var hasGuest = !!(rg[String(n)] && (rg[String(n)].name || rg[String(n)].departs));
+      if (rec.status === 'vacant'){ vacant++; continue; }
+      guests++;
+      var from;
+      if (!hasGuest)                          from = 'staff entry only, nothing from a guest or the PMS';
+      else if (isMewsOnly(rg[String(n)]))     from = 'PMS only, guest has not clicked';
+      else if (stays[String(n)])              from = 'PMS, and the guest clicked too';
+      else                                    from = 'guest link only, no PMS record';
       lines.push('villa ' + n + ': ' + (rec.name || '(no name)') +
-                 (rec.departs ? '  departs ' + rec.departs : '  NO DEPARTURE DATE') +
+                 (rec.status ? '  [' + rec.status + ']' : '') +
+                 (rec.departs ? '  departs ' + rec.departs : '  no departure date') +
                  '\n           ' + from);
     }
     var old = Object.keys(stays).filter(function(v){ return typeof stays[v] !== 'object'; });
-    var head = k + ': ' + shown + ' villa(s) would show.';
+    var head = k + ': ' + guests + ' villa(s) with someone in them, ' +
+                          vacant + ' marked vacant by staff.';
     if (old.length) head += '\n' + old.length + ' stay entr(ies) in the old shape are being ignored: villa ' + old.join(', ') + '.';
     show('merge', 200, head + (lines.length ? '\n\n' + lines.join('\n') : ''));
   }).catch(function(e){ show('merge', 0, String(e)); });
