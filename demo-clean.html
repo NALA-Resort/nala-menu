@@ -540,8 +540,65 @@ function resolveRoomGuestsHK(all, todayK){
   return out;
 }
 
+/* One request, one date. Unlike roomguests, which needs a fortnight of history
+   because a guest may have opened their link days ago, /stays is written by the
+   PMS sync for every night of a stay, so the date being shown is the only date
+   worth asking for. That is why each night carries the guest rather than a
+   pointer: a pointer would cost a request per villa and undo the work that took
+   a poll from nineteen requests to four.                                    */
+function fetchStays(dateKey){
+  return fetch(DB + '/stays/' + dateKey + '.json?v=' + Date.now())
+    .then(function(r){ return r.ok ? r.json() : null; })
+    /* A failure here must not empty the boards. Returning null means the merge
+       simply falls back to roomguests, which is what it did before any of this
+       existed.                                                             */
+    .catch(function(){ return null; });
+}
+
+/* Turns one /stays/<date>/<villa> entry into the shape roomguests uses, so it
+   can sit in the same merge instead of needing its own handling everywhere.
+   Tolerates the older shape, where the value was the booking id as a bare
+   string: those entries carry no guest and are ignored rather than crashing.  */
+function mewsRecord(stay){
+  if (!stay || typeof stay !== 'object') return null;
+  var name = [stay.first, stay.last].filter(Boolean).join(' ').trim();
+  if (!name && !stay.depart) return null;
+  var out = { source:'mews', bookingId: stay.id };
+  if (name)          out.name    = name;
+  if (stay.phone)    out.phone   = stay.phone;
+  if (stay.depart)   out.departs = stay.depart;
+  if (stay.arrive)   out.arrives = stay.arrive;
+  if (stay.adults)   out.adults  = stay.adults;
+  return out;
+}
+
+/* Lays the PMS over the guest written records. Mews wins on identity and
+   dates, because it is the authority on who is in a villa and when they leave;
+   roomguests only knows what a guest happened to type after opening a link.
+
+   Done here, at the roomguests layer, rather than inside roomRecord, because
+   tally.html reads roomguests directly in eight places and does not call
+   roomRecord at all. Two mechanisms would let the board and the sheet disagree
+   about the same villa, which is the failure that looks plausible.
+
+   It sits BELOW responses, which is correct rather than accidental: a response
+   carries a name and a dinner answer but never a departure date, so Mews keeps
+   the dates while a guest keeps the name they gave.                        */
+function overlayStays(roomguests, stays){
+  var out = Object.assign({}, roomguests || {});
+  for (var villa in (stays || {})){
+    var rec = mewsRecord(stays[villa]);
+    if (rec) out[String(villa)] = Object.assign({}, out[String(villa)] || {}, rec);
+  }
+  return out;
+}
+
 /* one room, one record: staff override beats the guest's own answer,
-   whoever opened the link fills the gaps                            */
+   whoever opened the link fills the gaps.
+
+   The PMS is already folded into roomguests by overlayStays before this runs,
+   so this function is unchanged by the Mews work and stays the one place that
+   knows the order of precedence.                                           */
 function roomRecord(n, responses, manual, roomguests){
   var mk = 'room-'+n, m = manual[mk];
   var best = null;
@@ -855,11 +912,11 @@ var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
 Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
-              fetchRoomGuests(todayKey()), api('/hk/'+todayKey()) ])
+              fetchRoomGuests(todayKey()), api('/hk/'+todayKey()), fetchStays(todayKey()) ])
   .then(function(res){
     var responses  = res[0] || {};
     var manual     = res[1] || {};
-    var roomguests = resolveRoomGuestsHK(res[2] || {}, todayKey());
+    var roomguests = overlayStays(resolveRoomGuestsHK(res[2] || {}, todayKey()), res[4]);
     var hk         = res[3] || {};
 
     function fmtT(iso){

@@ -72,13 +72,20 @@ to a native webhook later changes the front half only.
   prearrival/               the questionnaire answers
   dining/                   per date: covers, dietaries, notes, departed
 
-/stays/<date>/<villa>  =  <mewsReservationId>
+/stays/<date>/<villa>  =  { id, first, last, phone, arrive, depart, adults }
 ```
 
 **Two nodes under one id** so the rules enforce the split rather than everyone
 remembering it. The app can never write `pms`; the Worker never writes
 anything else. That is what makes "the Zapier payload is written once and then
 left alone" true rather than a convention.
+
+**Each night carries the guest, not a pointer to one.** The original design
+stored the reservation id alone. A board reads one date and needs the guest for
+each villa, so an id would cost one request per villa: a full house would be
+eighteen where roomguests is fourteen. Writes happen per reservation event and
+reads happen every twenty seconds on five phones, so the duplication is paid in
+the cheap direction.
 
 **`/stays` is not optional.** Keyed by reservation id alone, "who is here
 tonight" means downloading every booking ever made, on every board, every
@@ -123,6 +130,21 @@ already how the function works.
   root of "arrival detection is fragile". Mews wins over `roomguests` and over
   the guest's own answer. Staff override still wins over Mews.
 - **`villa`,** for a guest who gets moved after booking. Mews wins.
+
+## How it reaches the boards, as built
+
+`overlayStays()` lays the PMS over `roomguests` at the point that map is
+resolved, on all four pages. Not inside `roomRecord()`, because `tally.html`
+reads `roomguests` directly in eight places and never calls `roomRecord`: two
+mechanisms would let the board and the sheet disagree about the same villa.
+
+The overlay sits below `responses`, which is correct rather than accidental. A
+response carries a name and a dinner answer but never a departure date, so Mews
+keeps the dates while a guest keeps the name they gave.
+
+Existing bookings still work from `roomguests`, so there is no cut over and no
+backfill, and a failed `/stays` fetch returns null and falls back to exactly the
+behaviour that existed before any of this.
 
 ## Bookings change
 

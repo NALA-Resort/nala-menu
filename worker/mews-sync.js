@@ -6,7 +6,7 @@
  *
  * It writes exactly two things and nothing else:
  *   /bookings/<id>/pms          the reservation as Mews states it
- *   /stays/<date>/<villa>       one entry per villa night, value = <id>
+ *   /stays/<date>/<villa>       one entry per villa night, holding a summary
  *
  * It never touches prearrival or dining. Those belong to the app, and the
  * rules enforce the split rather than trusting this file.
@@ -224,8 +224,19 @@ export default {
         syncedAt: new Date().toISOString()
       });
 
+      /* The summary is duplicated into every night rather than stored once
+         with the nights pointing at it. A board reads one date and needs the
+         guest for each villa: with a pointer that is one request per villa, so
+         a full house would cost eighteen where roomguests costs fourteen, and
+         the boards were deliberately taken from nineteen requests to four.
+         Writes happen per reservation event, reads happen every twenty seconds
+         on five phones, so the duplication is paid in the cheap direction. */
+      const summary = {
+        id: r.id, first: r.first, last: r.last, phone: r.phone,
+        arrive: r.arrive, depart: r.depart, adults: r.adults
+      };
       for (const d of fresh) {
-        if (r.villa) await db(env, "/stays/" + d + "/" + r.villa, "PUT", r.id);
+        if (r.villa) await db(env, "/stays/" + d + "/" + r.villa, "PUT", summary);
       }
 
       return new Response(JSON.stringify({

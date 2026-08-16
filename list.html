@@ -266,7 +266,7 @@ function stripTags(h){
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=16"></script>
+<script src="nala-shared.js?v=17"></script>
 <script>
 // date state + header wiring from nala-shared.js
 var nav = initDateNav();
@@ -351,11 +351,11 @@ function fetchMenu(){
 
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
-Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRoomGuests(todayKey()), fetchMenu(), api('/combined/'+todayKey()) ])
+Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRoomGuests(todayKey()), fetchMenu(), api('/combined/'+todayKey()), fetchStays(todayKey()) ])
   .then(function(res){
     var responses  = res[0] || {};
     var manual     = res[1] || {};
-    var roomguests = resolveRoomGuests(res[2], todayKey());
+    var roomguests = overlayStays(resolveRoomGuests(res[2], todayKey()), res[5]);
     var combined   = res[4] || {};
     function groupOf(room){
       for (var gid in combined){

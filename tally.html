@@ -444,7 +444,7 @@ body.readonly .comb-undo { display:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=16"></script>
+<script src="nala-shared.js?v=17"></script>
 <script>
 var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
@@ -1469,11 +1469,12 @@ function load(full){
     api('/responses/'+todayKey()),
     api('/manual/'+todayKey()),
     fetchRoomGuests(todayKey(), 14, !!full),
-    api('/combined/'+todayKey())
+    api('/combined/'+todayKey()),
+    fetchStays(todayKey())
   ]).then(function(r){
     responses  = r[0] || {};
     manual     = r[1] || {};
-    roomguests = resolveRoomGuests(r[2], todayKey());
+    roomguests = overlayStays(resolveRoomGuests(r[2], todayKey()), r[4]);
     combined   = r[3] || {};
     render();
   });

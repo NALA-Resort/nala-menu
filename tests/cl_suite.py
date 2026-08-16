@@ -472,6 +472,35 @@ with sync_playwright() as p:
     ck("an unseeded address is not silently management", roles["ben"] is None)
     ck("no user is no role", roles["empty"] is None)
 
+    # The PMS layer. Mews is the authority on who is in a villa and when they
+    # leave; roomguests only knows what a guest typed after opening a link.
+    mews = pg.evaluate("""()=>{
+      const rg = { '1': {name:'Old Name', departs:'2026-01-01'},
+                   '4': {name:'Link Guest', departs:'2026-09-20'} };
+      const stays = {
+        '1': {id:'r1', first:'Robyn', last:'Williams', phone:'0409',
+              arrive:'2026-08-19', depart:'2026-08-27', adults:2},
+        '2': {id:'r2', first:'New', last:'Villa', depart:'2026-08-30'},
+        '9': 'r9-bare-id-from-the-older-shape'
+      };
+      const o = overlayStays(rg, stays);
+      return { one:o['1'], two:o['2'], four:o['4'], nine:o['9'],
+               noStays: overlayStays(rg, null)['1'] };
+    }""")
+    ck("the PMS replaces a stale departure date, which is what hkClassify reads",
+       mews["one"]["departs"] == "2026-08-27")
+    ck("and the PMS name wins over the one a guest typed",
+       mews["one"]["name"] == "Robyn Williams")
+    ck("a villa with no roomguests record at all still appears",
+       mews["two"]["name"] == "New Villa")
+    ck("a villa the PMS says nothing about is left alone",
+       mews["four"]["name"] == "Link Guest")
+    # /stays held a bare booking id before the summary was moved into it
+    ck("an entry in the older shape is ignored rather than crashing",
+       mews["nine"] is None)
+    ck("no stays at all leaves roomguests exactly as it was",
+       mews["noStays"]["name"] == "Old Name")
+
     # The sync role is the Mews Worker's login. It is a real role, so roleOf
     # must return it rather than null, but it lands nowhere and grants nothing.
     sync=pg.evaluate("""()=>({

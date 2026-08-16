@@ -342,7 +342,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=16"></script>
+<script src="nala-shared.js?v=17"></script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
 // this board is locked to today by design - no browsed dates
@@ -371,10 +371,11 @@ document.getElementById('selToggle').onclick = function(){
 function load(full){
   var yest = (function(){ var d=new Date(); d.setDate(d.getDate()-1); return dkey(d); })();
   return Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
-                fetchRoomGuests(todayKey(), 14, !!full), api('/hk/'+todayKey()), api('/hk/'+yest) ])
+                fetchRoomGuests(todayKey(), 14, !!full), api('/hk/'+todayKey()), api('/hk/'+yest),
+                fetchStays(todayKey()) ])
   .then(function(res){
     var responses=res[0]||{}, manual=res[1]||{}, hk=res[3]||{}, prevHk=res[4]||{};
-    var roomguests=resolveRoomGuestsHK(res[2]||{}, todayKey());
+    var roomguests=overlayStays(resolveRoomGuestsHK(res[2]||{}, todayKey()), res[5]);
     /* today's own bucket, unmerged: a villa with a guest arriving today is
        the one that has to be turned around first */
     var arriving = (res[2]||{})[todayKey()] || {};

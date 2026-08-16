@@ -90,10 +90,14 @@ ck("the raw Mews state is kept alongside ours",
    not occupy the villa on the night of the 13th. Including it would collide
    with the next arrival on every single turnover. */
 ck("three nights indexed, departure night excluded",
-   STORE["/stays/2026-09-10/3"] === "res-guid-1" &&
-   STORE["/stays/2026-09-11/3"] === "res-guid-1" &&
-   STORE["/stays/2026-09-12/3"] === "res-guid-1" &&
-   STORE["/stays/2026-09-13/3"] === undefined);
+   !!STORE["/stays/2026-09-10/3"] && !!STORE["/stays/2026-09-11/3"] &&
+   !!STORE["/stays/2026-09-12/3"] && STORE["/stays/2026-09-13/3"] === undefined);
+/* A board reads one date and must get the guest without a second request. */
+ck("each night carries the guest, not just a pointer",
+   STORE["/stays/2026-09-10/3"].first === "Mark" &&
+   STORE["/stays/2026-09-10/3"].last === "Whitfield" &&
+   STORE["/stays/2026-09-10/3"].depart === "2026-09-13" &&
+   STORE["/stays/2026-09-10/3"].id === "res-guid-1");
 
 /* ── the field names the Zap actually sends ─────────────────── */
 /* Mapped by hand in Zapier, so the spellings are whatever was typed that day.
@@ -138,7 +142,7 @@ install();
 await post(RES);
 await post(Object.assign({}, RES, { ResourceName: "9" }));
 ck("a moved guest is indexed under the new villa",
-   STORE["/stays/2026-09-10/9"] === "res-guid-1");
+   STORE["/stays/2026-09-10/9"].id === "res-guid-1");
 ck("and is GONE from the old one, not left in both",
    STORE["/stays/2026-09-10/3"] === undefined &&
    STORE["/stays/2026-09-11/3"] === undefined &&
@@ -152,16 +156,14 @@ await post(Object.assign({}, RES, { EndUtc: "2026-09-12T02:00:00Z" }));
 ck("a shortened stay drops the night it no longer covers",
    STORE["/stays/2026-09-12/3"] === undefined);
 ck("and keeps the nights it still does",
-   STORE["/stays/2026-09-10/3"] === "res-guid-1" &&
-   STORE["/stays/2026-09-11/3"] === "res-guid-1");
+   !!STORE["/stays/2026-09-10/3"] && !!STORE["/stays/2026-09-11/3"]);
 
 /* ── an extended stay ───────────────────────────────────────── */
 install();
 await post(RES);
 await post(Object.assign({}, RES, { EndUtc: "2026-09-15T02:00:00Z" }));
 ck("an extended stay gains the new nights",
-   STORE["/stays/2026-09-13/3"] === "res-guid-1" &&
-   STORE["/stays/2026-09-14/3"] === "res-guid-1");
+   !!STORE["/stays/2026-09-13/3"] && !!STORE["/stays/2026-09-14/3"]);
 
 /* ── cancellation ───────────────────────────────────────────── */
 install();
@@ -186,7 +188,7 @@ await post(Object.assign({}, RES, { ResourceName: "3", UpdatedUtc: "2026-08-01T1
 ck("a late event is ignored, not applied",
    STORE["/bookings/res-guid-1/pms"].villa === "9");
 ck("and the index still reflects the newest event only",
-   STORE["/stays/2026-09-10/9"] === "res-guid-1" &&
+   STORE["/stays/2026-09-10/9"].id === "res-guid-1" &&
    STORE["/stays/2026-09-10/3"] === undefined);
 
 /* ── what it must never touch ───────────────────────────────── */

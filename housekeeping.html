@@ -168,7 +168,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=16"></script>
+<script src="nala-shared.js?v=17"></script>
 <script>
 // date state + header wiring, dates, look-back: nala-shared.js
 var nav = initDateNav();
@@ -186,11 +186,11 @@ var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
 Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
-              fetchRoomGuests(todayKey()), api('/hk/'+todayKey()) ])
+              fetchRoomGuests(todayKey()), api('/hk/'+todayKey()), fetchStays(todayKey()) ])
   .then(function(res){
     var responses  = res[0] || {};
     var manual     = res[1] || {};
-    var roomguests = resolveRoomGuestsHK(res[2] || {}, todayKey());
+    var roomguests = overlayStays(resolveRoomGuestsHK(res[2] || {}, todayKey()), res[4]);
     var hk         = res[3] || {};
 
     function fmtT(iso){
