@@ -28,8 +28,21 @@ function install() {
     const m = opt.method || "GET";
     CALLS.push(m + " " + path);
     if (m === "GET") {
-      return new Response(JSON.stringify(STORE[path] === undefined ? null : STORE[path]),
-                          { status: 200 });
+      /* Firebase returns a whole subtree, not just exact keys. The flat mock
+         has to synthesise that or a read of /stays/<date> comes back empty and
+         the clear-by-inspection pass looks broken when it is not. */
+      if (STORE[path] !== undefined) {
+        return new Response(JSON.stringify(STORE[path]), { status: 200 });
+      }
+      var kids = null;
+      for (var key in STORE) {
+        if (key.indexOf(path + "/") !== 0) continue;
+        var rest = key.slice(path.length + 1);
+        if (rest.indexOf("/") > -1) continue;   // one level only, enough here
+        kids = kids || {};
+        kids[rest] = STORE[key];
+      }
+      return new Response(JSON.stringify(kids), { status: 200 });
     }
     if (m === "DELETE") { delete STORE[path]; return new Response(null, { status: 204 }); }
     const body = JSON.parse(opt.body);
@@ -148,6 +161,31 @@ ck("and is GONE from the old one, not left in both",
    STORE["/stays/2026-09-11/3"] === undefined &&
    STORE["/stays/2026-09-12/3"] === undefined);
 ck("the record itself is still one record", !!STORE["/bookings/res-guid-1/pms"]);
+
+/* ── damage done before the fix existed ─────────────────────── */
+/* Exactly what happened on 16 Aug: one booking left in three villas at once,
+   because the old clearing trusted a remembered villa and cleared only that.
+   The fix must remove entries it never wrote and has no memory of. */
+install();
+STORE["/stays/2026-09-10/13"] = { id: "res-guid-1", first: "Ben", last: "Davidson" };
+STORE["/stays/2026-09-10/14"] = { id: "res-guid-1", first: "Ben", last: "Davidson" };
+STORE["/stays/2026-09-11/13"] = "res-guid-1";              // and in the older shape
+await post(Object.assign({}, RES, { ResourceName: "15" }));
+ck("a booking stranded across several villas is cleared from all of them",
+   STORE["/stays/2026-09-10/13"] === undefined &&
+   STORE["/stays/2026-09-10/14"] === undefined &&
+   STORE["/stays/2026-09-11/13"] === undefined);
+ck("and ends up in the one villa Mews says it is in",
+   STORE["/stays/2026-09-10/15"].id === "res-guid-1" &&
+   STORE["/stays/2026-09-11/15"].id === "res-guid-1");
+
+/* Another booking in the same villa must survive: the sweep removes entries
+   claiming to be THIS reservation, not everything it finds. */
+install();
+STORE["/stays/2026-09-10/3"] = { id: "someone-else", first: "Not", last: "Ours" };
+await post(Object.assign({}, RES, { ResourceName: "9" }));
+ck("another guest's night in that villa is left alone",
+   STORE["/stays/2026-09-10/3"].id === "someone-else");
 
 /* ── a shortened stay ───────────────────────────────────────── */
 install();

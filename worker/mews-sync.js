@@ -199,12 +199,37 @@ export default {
       const cancelled = r.state.indexOf("cancel") > -1;
       const fresh = cancelled ? [] : nights(r.arrive, r.depart);
 
-      /* Clear the old index entries first. A cancelled booking clears all of
-         them and keeps its record: what was asked for is worth knowing even
-         when it is not happening. */
-      for (const d of stale) {
-        const gone = staleVilla !== r.villa || fresh.indexOf(d) === -1 || cancelled;
-        if (gone && staleVilla) await db(env, "/stays/" + d + "/" + staleVilla, "DELETE");
+      /* Clear by looking, not by remembering.
+      
+         The first version deleted only the villa recorded in `prev`. That is a
+         guess dressed as a fact: if prev is missing, or was written wrong, or
+         the guest was moved twice between polls, the abandoned night is never
+         touched and the same guest appears in two villas at once. It cost an
+         evening and three copies of one booking across villas 13, 14 and 15.
+
+         So instead: for every date this booking could touch, read what is
+         actually there and delete any entry claiming to be THIS reservation
+         that should not be. It is self healing, it fixes damage done before it
+         existed, and it costs one read per date on an event that fires a few
+         times a day.
+
+         It cannot fix a booking that was cancelled and recreated in Mews. That
+         is a different reservation id, so nothing links the two, and the old
+         one only clears when its own cancellation arrives. */
+      const window = stale.concat(fresh)
+        .filter(function(d, i, a){ return a.indexOf(d) === i; })
+        .sort();
+      for (const d of window) {
+        let day = null;
+        try { day = await db(env, "/stays/" + d, "GET"); } catch (e) { day = null; }
+        for (const v in (day || {})) {
+          const entry = day[v];
+          /* Tolerates the older shape, where the value was the id on its own. */
+          const heldBy = (entry && typeof entry === "object") ? entry.id : entry;
+          if (heldBy !== r.id) continue;
+          const keep = !cancelled && String(v) === String(r.villa) && fresh.indexOf(d) > -1;
+          if (!keep) await db(env, "/stays/" + d + "/" + v, "DELETE");
+        }
       }
 
       await db(env, "/bookings/" + r.id + "/pms", "PATCH", {
