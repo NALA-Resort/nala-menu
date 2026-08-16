@@ -212,6 +212,60 @@ a time.
    booking id as the only dynamic portion. The timing lives here and nowhere
    else, so changing it later is a GuestTouch setting, not a deploy.
 
+## What the live setup actually is
+
+Built and published 16 Aug. Several things differ from the design above and
+are recorded here because the next session will otherwise repeat the guessing.
+
+**Zapier needs a paid plan.** Webhooks by Zapier is a premium app and is the
+only way Zapier can POST. There is no free route.
+
+**The trigger is polling, and it only looks forward.** Time Filter is
+`Reservations starting (= arriving) within the specified interval`. The
+Created and Updated filters cannot match anything, because the window runs
+from now into the future and nothing is created or updated in the future.
+
+**The window is capped near 100 hours.** Mews rejects a longer interval with
+"The interval must not exceed 100:00:00". Live setting is Start Time Modifier
+0, End Time Modifier 60, which with the built in 24 gives about 84 hours.
+
+**That cap is the main open problem.** GuestTouch sends the pre-arrival link
+seven days out, and a booking is not visible until roughly three days before
+arrival. The likely fix, untested: Start Time Modifier shifts the window's
+start and accepts negatives, so Start 168 with End 216 puts a two day window
+seven to nine days ahead, inside the cap. Time Filter also accepts a custom
+value, so the dropdown is not the limit.
+
+**Field names, as Zapier presents them.** These are not the Connector API
+names and were found by looking, not by reading docs:
+
+| Mapped as | Zapier label |
+|---|---|
+| `Id` | ID |
+| `FirstName` `LastName` `Phone` | Companions 0 First Name, Last Name, Phone |
+| `StartUtc` `EndUtc` | Start Utc, End Utc |
+| `ResourceName` | **Space Name** |
+| `State` | State |
+| `UpdateUtc` | Updated Utc. Note the missing d, mapped that way in the live Zap and accepted by the Worker |
+| `BookingId` | Number, the human readable booking reference |
+| `GroupId` `AdultCount` `NotesText` `NotesType` `SpaceState` | as labelled |
+
+**The guest is `Companions 0`.** Companions is a list and Zapier exposes it as
+numbered fields, so a second guest is `Companions 1 First Name` and a party of
+four needs four pairs mapped by hand. Unresolved. If the picker offers
+`Companions` as a single item, mapping that once and parsing it in the Worker
+would remove the problem permanently.
+
+**`SpaceState` is stored and deliberately unused.** It is Mews' own
+housekeeping status for the space. The Cleans board is `/hk` and stays ours.
+Two systems disagreeing about whether a villa is clean is worse than one.
+
+**Still unproven: whether a change re-fires.** A polling trigger normally
+sends each record once. If a villa move or a cancellation on an already seen
+reservation never reaches the Worker, the change handling in it has nothing
+feeding it, and a Mews webhook becomes necessary rather than merely better.
+Test by moving a booking in Mews and watching the Zap history.
+
 ## Open questions
 
 - Whether **type of stay** is a picklist or free text. A picklist can be

@@ -23,6 +23,13 @@ Listed first, because each one cost hours in a previous session.
 - **Do not paste the rules before job 3.** They grant a role that does not
   exist until the account does.
 
+## Jobs 1 to 6 are done
+
+The sync is live as of 16 Aug: a real booking reached Firebase and indexed
+eight nights in villa 11. What follows is kept as the record of how it was
+built. See MEWS-SYNC.md for what the live configuration actually is, which
+differs from what these steps first said.
+
 ## Start now, nothing blocks these
 
 ### Job 1. Get the Mews access token
