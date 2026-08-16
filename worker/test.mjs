@@ -128,8 +128,14 @@ ck("UpdateUtc without the d still arms the late event guard",
 ck("SpaceName is accepted as the villa, which is what Mews calls it",
    kept.villa === "11");
 ck("the extra Mews fields are kept rather than dropped",
-   kept.bookingNumber === 169 && kept.groupId === "grp-1" && kept.adults === 2 &&
-   kept.notes === "Package includes flights" && kept.spaceState === "Dirty");
+   kept.bookingNumber === 169 && kept.groupId === "grp-1" && kept.adults === 2);
+/* The notes fields are reception's free text about the guest, and /bookings/<id>
+   is readable by anyone holding the id so the guest can open a pre-arrival link
+   without signing in. Null rather than absent, so a booking synced before this
+   change loses them on its next event instead of keeping them forever. */
+ck("reception's notes never reach the world readable node",
+   kept.notes === null && kept.notesType === null &&
+   kept.guestNotes === null && kept.spaceState === null);
 
 /* ── the same event twice ───────────────────────────────────── */
 /* syncedAt is expected to move: it records when we last heard, which is a
@@ -253,6 +259,49 @@ install();
 await post(Object.assign({}, RES, { EndUtc: "2035-01-01T00:00:00Z" }));
 ck("a nonsense date range is capped rather than written forever",
    CALLS.filter(c => c.startsWith("PUT")).length <= 121);
+
+/* ── an unrecognised villa ──────────────────────────────────── */
+/* Mews sends whatever the space is called and the Zap maps Space Name. A name
+   the app does not know would become a /stays key no board ever reads, so the
+   guest would be invisible while the sync reported success. */
+install();
+let odd = await post(Object.assign({}, RES, { ResourceName: "Spa Suite" }));
+ck("an unknown space name writes no stay at all",
+   !Object.keys(STORE).some(k => k.startsWith("/stays/")));
+ck("but the booking is still recorded",
+   !!STORE["/bookings/res-guid-1/pms"]);
+ck("and the reply names the value it refused, so the Zap history shows it",
+   (await odd.json()).unknownVilla === "Spa Suite");
+
+install();
+await post(Object.assign({}, RES, { ResourceName: "18" }));
+ck("a villa number above the seventeen that exist is refused too",
+   !Object.keys(STORE).some(k => k.startsWith("/stays/")));
+
+install();
+await post(Object.assign({}, RES, { ResourceName: "17" }));
+ck("seventeen itself is accepted, the boundary is inclusive",
+   Object.keys(STORE).some(k => k.startsWith("/stays/") && k.endsWith("/17")));
+
+/* ── the PMS stamp on each night ────────────────────────────── */
+/* The app stamps a staff "vacant" with the version of the booking it was
+   decided against. Without this in the summary there is nothing to compare to,
+   and the decision either sticks forever or is undone on the next poll. */
+install();
+await post(Object.assign({}, RES, { UpdateUtc: "2026-09-01T08:00:00Z" }));
+ck("every night carries the Mews updated stamp",
+   STORE["/stays/2026-09-10/3"].updated === "2026-09-01T08:00:00Z");
+ck("and a booking Mews never stamped carries null rather than nothing",
+   (install(), await post(RES),
+    STORE["/stays/2026-09-10/3"].updated === null));
+
+/* ── the cleared count ──────────────────────────────────────── */
+/* It used to report the previous booking's night count whether or not anything
+   was deleted, which overstated on a first sync and understated on a rescue. */
+install();
+let firstSync = await post(RES);
+ck("a first sync clears nothing and says so",
+   (await firstSync.json()).cleared === 0);
 
 console.log("RESULT: %d passed, %d failed", P, F);
 if (F) process.exit(1);

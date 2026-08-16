@@ -133,15 +133,42 @@ function readReservation(p) {
     bookingNumber: pick(p, ["BookingId", "Number", "ConfirmationNumber"]),
     groupId:       pick(p, ["GroupId", "ReservationGroupId"]),
     adults:        pick(p, ["AdultCount", "adults"]),
-    children:      pick(p, ["ChildCount", "children"]),
-    notes:         pick(p, ["NotesText", "Notes"]),
-    notesType:     pick(p, ["NotesType"]),
-    /* Mews' own housekeeping state for the space. Recorded for interest only.
-       It must never drive the Cleans board: that is /hk, it is ours, and two
-       systems disagreeing about whether a villa is clean is worse than one. */
-    spaceState:    pick(p, ["SpaceState"]),
-    guestNotes:    pick(p, ["Companions0Notes", "CompanionNotes"])
+    children:      pick(p, ["ChildCount", "children"])
+
+    /* NotesText, NotesType, Companions0Notes and SpaceState were read here and
+       written into /bookings/<id>/pms. They are no longer.
+
+       /bookings/<id> is readable by anyone holding the id, deliberately, so
+       that a guest can open a pre-arrival link without signing in. The notes
+       fields are free text written by reception, about the guest, for staff.
+       Nobody typing one in Mews expects the guest to read it, and the
+       pre-arrival SMS carries exactly the id needed to. One forwarded message
+       was the whole exposure.
+
+       Dropping them rather than moving them to a node behind auth, because
+       nothing reads them: stage 6 writes notes TO Mews from the app, it never
+       reads them back. Storing staff free text next to a public link earned
+       nothing. If a later stage does need them, give them their own node with
+       an auth rule, and do the rules first.
+
+       SpaceState went with them. It was stored while being explicitly never
+       used, which is the worst side of the trade: no benefit, some exposure. */
   };
+}
+
+/* The app has seventeen villas, keyed "1" to "17" everywhere: /hk/<date>/<villa>,
+   roomguests, and now /stays. Mews sends whatever the space is called, and the
+   Zap maps Space Name, which nobody here controls.
+
+   An unrecognised name is not written to /stays. It would create a key no board
+   ever reads, so the guest would be invisible while every log line said the
+   sync succeeded, which is the failure that is hardest to notice. The booking
+   still lands under /bookings, and the response names the rejected value so it
+   shows up in the Zap history instead of nowhere. */
+const VILLAS = 17;
+function knownVilla(v) {
+  if (v === null || v === undefined) return false;
+  return /^\d+$/.test(String(v)) && +v >= 1 && +v <= VILLAS;
 }
 
 export default {
@@ -194,10 +221,13 @@ export default {
       }
 
       const stale = prev ? nights(prev.arrive, prev.depart) : [];
-      const staleVilla = prev ? prev.villa : null;
 
       const cancelled = r.state.indexOf("cancel") > -1;
-      const fresh = cancelled ? [] : nights(r.arrive, r.depart);
+      /* An unrecognised villa is treated as having no nights at all: the
+         booking is recorded, the index is left alone rather than filled with a
+         key nothing reads, and any nights this reservation previously held are
+         still cleared below. */
+      const fresh = (cancelled || !knownVilla(r.villa)) ? [] : nights(r.arrive, r.depart);
 
       /* Clear by looking, not by remembering.
       
@@ -219,6 +249,7 @@ export default {
       const window = stale.concat(fresh)
         .filter(function(d, i, a){ return a.indexOf(d) === i; })
         .sort();
+      let cleared = 0;
       for (const d of window) {
         let day = null;
         try { day = await db(env, "/stays/" + d, "GET"); } catch (e) { day = null; }
@@ -228,7 +259,7 @@ export default {
           const heldBy = (entry && typeof entry === "object") ? entry.id : entry;
           if (heldBy !== r.id) continue;
           const keep = !cancelled && String(v) === String(r.villa) && fresh.indexOf(d) > -1;
-          if (!keep) await db(env, "/stays/" + d + "/" + v, "DELETE");
+          if (!keep) { await db(env, "/stays/" + d + "/" + v, "DELETE"); cleared++; }
         }
       }
 
@@ -243,8 +274,12 @@ export default {
         mewsState: r.state,
         bookingNumber: r.bookingNumber, groupId: r.groupId,
         adults: r.adults, children: r.children,
-        notes: r.notes, notesType: r.notesType,
-        spaceState: r.spaceState, guestNotes: r.guestNotes,
+        /* Explicit nulls, not omissions. A PATCH that simply stops sending a
+           field leaves the old value sitting there, so every booking synced
+           before today would keep the notes this change exists to remove.
+           Null deletes the key, which makes the fix retroactive on the next
+           event for each booking rather than only on new ones. */
+        notes: null, notesType: null, spaceState: null, guestNotes: null,
         updated: r.updated || null,
         syncedAt: new Date().toISOString()
       });
@@ -258,16 +293,25 @@ export default {
          on five phones, so the duplication is paid in the cheap direction. */
       const summary = {
         id: r.id, first: r.first, last: r.last, phone: r.phone,
-        arrive: r.arrive, depart: r.depart, adults: r.adults
+        arrive: r.arrive, depart: r.depart, adults: r.adults,
+        /* Carried into every night so the app can tell a staff decision made
+           against THIS version of the booking from one made before Mews last
+           changed it. Without it, a villa staff marked vacant either sticks
+           forever or is undone on the next poll, and neither is what was
+           asked for. */
+        updated: r.updated || null
       };
       for (const d of fresh) {
-        if (r.villa) await db(env, "/stays/" + d + "/" + r.villa, "PUT", summary);
+        await db(env, "/stays/" + d + "/" + r.villa, "PUT", summary);
       }
 
       return new Response(JSON.stringify({
         ok: true, id: r.id, villa: r.villa,
         state: cancelled ? "cancelled" : "confirmed",
-        nights: fresh.length, cleared: stale.length
+        nights: fresh.length, cleared: cleared,
+        /* Named rather than silent. A space Mews calls something the app does
+           not recognise is a mapping problem, and this is where it surfaces. */
+        unknownVilla: (!cancelled && !knownVilla(r.villa)) ? String(r.villa) : undefined
       }), { headers: { "Content-Type": "application/json" } });
 
     } catch (e) {
