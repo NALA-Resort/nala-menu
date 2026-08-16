@@ -11,6 +11,10 @@ Companion documents:
 - **STYLEGUIDE.md** - what things must look like and how to work. Read the
   first section before touching anything visual.
 - **AUDIT.md** - what was found and changed during the four-part cleanup.
+- **HANDOVER-MEWS.md** - the Mews to Zapier to Worker to Firebase sync, written
+  16 Aug. Read it before touching bookings, the boards' guest data, or the
+  pre-arrival work. It carries the original brief, the live configuration, and
+  one change that was written but not published.
 - **tests/README.md** - how to run the suites.
 
 ---
@@ -36,6 +40,14 @@ Live at `menu.nalaresort.com`. Data in Firebase RTDB.
 
 **Push.** Edit `FILES` and `MSG` in `/home/claude/push.py`, then run it. It
 writes a single commit. GitHub occasionally 503s; just retry.
+
+**First thing in a new session.** The sandbox is wiped between sessions, so
+`/home/claude/push.py` and `/home/claude/.ghtoken` are both gone. The
+publisher is kept in the repo: copy `tools/push.py` to `/home/claude/push.py`.
+The token is not, and cannot be, because this repo is public. **Ask the user
+for a GitHub token with contents:write and save it to `/home/claude/.ghtoken`.**
+Ask at the start, not at the moment of the first push, so it is not discovered
+halfway through a change.
 
 **Test.** Five Playwright suites, all must stay green:
 
