@@ -636,7 +636,7 @@ function sheetPDF(open){
       var nm = (r.flag ? 'FLAG ' : '') + (r.pre ? 'PRE-MENU ' : '') + r.name;
       doc.text(doc.splitTextToSize(nm, COLS[0].w - 2)[0] || '', xs[0], ty);
 
-      doc.setFont('RalewayLight','normal').setFontSize(8.5).setTextColor(28,28,26);
+      doc.setFont('Raleway','normal').setFontSize(8.5).setTextColor(28,28,26);
       doc.text(r.villa, xs[1] + COLS[1].w/2, ty, { align:'center' });
       if (r.dinner){
         if (r.dinner === 'Yes') doc.setTextColor(58,110,74);
@@ -645,15 +645,15 @@ function sheetPDF(open){
         doc.setFont('Raleway','normal').text(r.dinner, xs[4] + COLS[4].w/2, ty, { align:'center' });
         doc.setTextColor(28,28,26);
       }
-      if (r.pax) doc.setFont('RalewayLight','normal').text(r.pax, xs[5] + COLS[5].w/2, ty, { align:'center' });
+      if (r.pax) doc.setFont('Raleway','normal').text(r.pax, xs[5] + COLS[5].w/2, ty, { align:'center' });
       if (r.stay){
-        doc.setFont('RalewayLight','normal').setFontSize(7.5).setTextColor(90,90,86);
+        doc.setFont('Raleway','normal').setFontSize(7.5).setTextColor(80,80,76);
         doc.text(doc.splitTextToSize(r.stay, COLS[6].w - 1)[0] || '', xs[6], ty);
       }
       var d = r.diets.join(', ') || (r.nodiet ? 'No dietaries' : '');
       var extra = [d, r.note].filter(Boolean).join('  ');
       if (extra){
-        doc.setFont('RalewayLight','normal').setFontSize(7.5).setTextColor(60,60,56);
+        doc.setFont('Raleway','normal').setFontSize(7.5).setTextColor(50,50,46);
         doc.splitTextToSize(extra, COLS[7].w - 2).slice(0,2).forEach(function(l,n){
           doc.text(l, xs[7], ty + n * 3.6);
         });
