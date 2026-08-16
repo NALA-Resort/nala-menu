@@ -57,7 +57,7 @@
         "pms": {
           ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'sync' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')"
         },
-        "prearrival": { ".write": true },
+        "prearrival": { ".write": "data.parent().child('pms').exists()" },
         "dining": { ".write": "auth != null" }
       }
     },

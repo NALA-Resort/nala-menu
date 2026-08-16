@@ -320,7 +320,9 @@ function vacantIsStale(m, known){
 8. Stage 3, prearrival.html. **Blocked**: needs to know whether type of stay is
    a picklist or free text, and if a picklist, the actual list of stay types.
 9. Stage 4, the guest page rewrite. This is where `responses` gets re-keyed to
-   the booking id. The key is never read today, only written at
+   the booking id. CORRECTED 17 Aug: the key IS read, at index.html:846, to
+   restore what the guest already answered tonight. Re-keying breaks that
+   unless line 846 changes with it. Originally written as: only written at
    `index.html:823`.
 10. Stage 5, registration cards.
 11. Stage 6, write back to Mews reservation Notes.
@@ -463,7 +465,10 @@ Mews, but that decision expires when Mews changes the booking.
 - Architecture decided and written up: MEWS-SYNC.md
 - `sync` role, rules for `/bookings` and `/stays`, six tests
 - Worker written, 38 tests
-- Cloudflare deployed, four secrets set, Git integration connected
+- Cloudflare deployed, four secrets set. CORRECTED 17 Aug: the Git integration
+  was NEVER connected, which is why the stale index fix sat undeployed and was
+  recorded as needing a manual paste. It is connected now, root directory
+  `worker`, branch `main`, and the Worker deploys on every commit.
 - Zapier paid plan, Mews Marketplace token, trigger Zap published
 - Second Zap on `Updated` for changes
 - Field mapping worked out
@@ -497,8 +502,9 @@ sheet, a v19 bump on five pages, demos rebuilt.
 This is the brief's main clean-up: stop reading guest data from the URL.
 
 - index.html reads booking ID only, looks the guest up
-- Re-key `responses` to the booking ID. The key is only written today, at
-  `index.html:823`, never read, which is why this was deferred to here
+- Re-key `responses` to the booking ID. CORRECTED 17 Aug: the key is read at
+  `index.html:846` and must change with it. Stage 4 is also larger than this
+  list: see the section on the two paths running at once in MEWS-AUDIT.md
 - Retire the merge tag fields, and with them the `{{firstname}}` junk records
   that had to be cleaned out of `/roomguests` by hand
 - Old style links must not break while any are still in flight
