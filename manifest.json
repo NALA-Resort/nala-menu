@@ -1,0 +1,14 @@
+{
+  "name": "Nala Villas",
+  "short_name": "Nala Villas",
+  "start_url": "/cleaners.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F9F7F4",
+  "theme_color": "#F9F7F4",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "nala-icon.png?v=1", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "nala-icon.png?v=1", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
