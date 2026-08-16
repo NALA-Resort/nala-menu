@@ -749,6 +749,17 @@ with sync_playwright() as p:
        pg.evaluate("()=>{let hit=0; const f=window.fetch; window.fetch=function(u,o){ if(o&&o.method==='PUT'&&(''+u).indexOf('/notify')>-1) hit++; return f.apply(this,arguments);}; ensureNotifySettings('waiter'); window.fetch=f; return hit===0;}"))
     pg.close()
 
+    # The two people who must never be removable, checked by rule rather
+    # than by passcode: a code can be regenerated and the rule would then
+    # protect nobody.
+    src = open("/home/claude/nala/staff.html").read()
+    ck("removal is protected by rule, not by a hardcoded passcode",
+       "protectedReason" in src and "485211" not in src)
+    ck("you cannot remove yourself", "This is you." in src)
+    ck("the last admin cannot be removed", "last admin cannot be removed" in src)
+    ck("the check runs again on confirm, not only where the bin was drawn",
+       src.count("protectedReason(key)") >= 2)
+
     # Every staff page must load the SDK before auth.js. staff.html shipped
     # without it and showed "could not load the sign-in service" to everyone.
     import re as _re

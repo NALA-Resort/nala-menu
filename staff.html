@@ -35,6 +35,12 @@
   .person .rl { font-size:11px; color:var(--mid); text-transform:uppercase;
                 letter-spacing:.1em; }
   .person .cd { font-size:11px; color:var(--mid); font-variant-numeric:tabular-nums; }
+  /* The bin is the icon alone, no border and no fill: that dress belongs to
+     buttons, and a row of bordered bins would read as five buttons.      */
+  .binwrap { display:flex; align-items:baseline; }
+  .bin { background:none; border:0; padding:0 0 0 12px; font-size:15px;
+         color:var(--mid); line-height:1; }
+  .bin:disabled { opacity:0; }        /* protected rows show nothing at all */
 
   .btn { display:block; width:100%; padding:13px 0; text-align:center;
          font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
@@ -202,6 +208,24 @@ function codeOf(key){
   return /^[0-9]{6}$/.test(local) ? local : key.replace(/,/g, '.');
 }
 
+/* Two people can never be removed, and neither is named by passcode: a code
+   can be regenerated, and a rule written against one would quietly stop
+   protecting anybody. You cannot remove yourself, and the last admin cannot
+   be removed by anyone, because either would leave nobody able to let
+   people back in.                                                        */
+function adminCount(){
+  return Object.keys(STAFF).filter(function(k){
+    return normaliseRole((STAFF[k]||{}).role) === 'admin';
+  }).length;
+}
+function protectedReason(key){
+  var me = emailKey((window.NALA_USER||{}).email);
+  if (key === me) return 'This is you.';
+  if (normaliseRole((STAFF[key]||{}).role) === 'admin' && adminCount() <= 1)
+    return 'The last admin cannot be removed.';
+  return null;
+}
+
 function drawPeople(){
   var host = document.getElementById('people');
   host.innerHTML = '';
@@ -212,14 +236,20 @@ function drawPeople(){
   });
   keys.forEach(function(k){
     var r = STAFF[k] || {};
-    var b = document.createElement('button');
-    b.className = 'person';
-    b.innerHTML = '<span class="nm"></span><span class="rl"></span><span class="cd"></span>';
-    b.querySelector('.nm').textContent = r.name || '(no name)';
-    b.querySelector('.rl').textContent = normaliseRole(r.role) || '';
-    b.querySelector('.cd').textContent = codeOf(k);
-    b.onclick = function(){ personSheet(k); };
-    host.appendChild(b);
+    var row = document.createElement('div');
+    row.className = 'person';
+    row.innerHTML = '<span class="nm"></span><span class="rl"></span>'+
+                    '<span class="binwrap"><span class="cd"></span>'+
+                    '<button class="bin" aria-label="Remove">&#128465;</button></span>';
+    row.querySelector('.nm').textContent = r.name || '(no name)';
+    row.querySelector('.rl').textContent = normaliseRole(r.role) || '';
+    row.querySelector('.cd').textContent = codeOf(k);
+    var why = protectedReason(k);
+    var bin = row.querySelector('.bin');
+    if (why){ bin.disabled = true; bin.title = why; }
+    else { bin.onclick = function(e){ e.stopPropagation(); removeSheet(k); }; }
+    row.onclick = function(){ personSheet(k); };
+    host.appendChild(row);
   });
 }
 
@@ -243,7 +273,9 @@ function personSheet(key){
     '<label>Name</label><input id="pName" value="'+(r.name||'').replace(/"/g,'&quot;')+'">'+
     '<label>Role</label><select id="pRole">'+opts+'</select>'+
     '<button class="btn solid" onclick="savePerson(\''+key+'\')">Save</button>'+
-    '<button class="btn warn" onclick="removeSheet(\''+key+'\')">Remove from staff</button>'+
+    (protectedReason(key)
+       ? '<div class="note">' + protectedReason(key) + ' They cannot be removed.</div>'
+       : '<button class="btn warn" onclick="removeSheet(\''+key+'\')">Remove from staff</button>')+
     '<button class="btn ghost" onclick="closeSheet()">Close</button>'+
     '<div class="err" id="sErr"></div>');
 }
@@ -276,6 +308,10 @@ function removeSheet(key){
 
 function removePerson(key){
   var e = document.getElementById('sErr');
+  /* Checked again here, not only where the button was drawn: the list can
+     change under you while a sheet is open.                             */
+  var why = protectedReason(key);
+  if (why){ e.textContent = why + ' They cannot be removed.'; return; }
   e.textContent = 'Removing...';
   /* Deleting the record IS the revoke: the rules need it, so their next
      request fails even on a phone that is still signed in.              */
