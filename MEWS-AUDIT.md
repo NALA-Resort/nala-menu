@@ -1,5 +1,13 @@
 # Mews sync - audit and new brief
 
+> **SUPERSEDED IN PART, 17 Aug.** Several findings here were reasoned from
+> reading code and stated as though measured in production. `GUEST-DATA.md`
+> carries the settled design and lists every correction. Where the two
+> disagree, that one is right. In short: the old guest-written URL path is not
+> running, finding 1 could not fire, `samePerson` solves a problem that may not
+> exist, the lookahead does not block stage 3, and the `prearrival` rules
+> change must not be pasted.
+
 Written 16 Aug 2026, in the session after the one that built it. Audits the
 brief, the plan (MEWS-SYNC.md) and the code as it stands on main at `139971c`.
 
@@ -44,18 +52,22 @@ comment justifies sitting below `responses` like this:
 into every response payload. So `roomRecord()` applies the response over the
 overlay and the guest's date wins.
 
-The URL merge tags are today's source of that date, but they are not the only
-one, and stage 4 does not remove the problem. `/guests/<phone>` stores
-`arrives` and `departs` (line 826), and lines 853 and 854 backfill them
-whenever the URL does not supply them. A booking-id-only link still produces a
-response carrying a departure date for any phone that has replied before.
+This is a bridge, not the design. The new link carries a booking id and
+nothing else, `?b=<reservation-guid>`, so the guest page reads name, villa,
+dates and phone from `/bookings/<id>/pms`, which is Mews. There is no second
+copy of anything, and precedence stops being a question rather than being
+answered.
 
-The real point is one level up: `responses` holds a **copy** of the dates,
-taken at the moment the guest replied. It is a snapshot, it sits above Mews in
-the merge, and it is stale the instant Mews changes the booking. Stage 4
-changes where the copy comes from, not that there is one. The ordering has to
-be fixed regardless, and old style links must keep working while any are in
-flight, so merge-tag responses outlive the rewrite in any case.
+**The principle, which belongs here rather than in a chat: `responses` holds
+only what the guest told us. Every fact about the booking is read live from
+`/bookings/<id>`, never copied into a response.** Dinner status, covers,
+dietaries and notes are the guest's and are stored. Name, villa, arrival and
+departure are Mews' and are looked up. Nothing that is looked up can go stale.
+
+The merge ordering below still has to be fixed, because links carrying merge
+tags are live today and the bug is measurable today, and old style links must
+keep working while any are in flight. But it is scaffolding to be removed at
+stage 4, not a permanent rule to maintain.
 
 Measured, on a stay Mews shortened from the 25th to the 22nd:
 
@@ -104,6 +116,21 @@ thing independently: the response carries `room` from the URL and
 The fix belongs in `overlayStays`, which is the one place that can see both
 sides: a booking id present in `/stays` at one villa should clear that same
 booking id out of every other villa in the merged map.
+
+**How the two sides are matched is scaffolding, for the same reason as the
+dates.** A `roomguests` record holds a phone a guest's URL supplied, so Mews'
+`+61400000000` has to be reconciled with a link's `0400000000`, which is done
+on the last nine digits. Once every record carries a booking id the match is
+exact and the whole heuristic goes.
+
+It has a sharp edge worth naming. Phone matching is sound. Name matching, which
+covers the case where Mews sends no phone at all, is a guess: two different
+real guests sharing a name, one guest written and one from Mews, and the wrong
+villa's record is deleted. Rare and silent, which is the bad combination. It
+exists only because villa 3's Zap mapping drops the phone, so one workaround is
+propping up another, and fixing that mapping removes the need for the name
+half. Only guest written entries are ever dropped, so a villa the PMS itself
+claims is never at risk.
 
 ## Finding 3. Internal Mews notes are readable by anyone holding the booking id
 
@@ -360,6 +387,9 @@ retirement of the old path rather than as a page edit. In order:
   `index.html:846` with it
 - Drop `roomguests` from the four boards, and with it `resolveRoomGuests`,
   `resolveRoomGuestsHK` and the tolerance in `parseDepDate`
+- Replace `samePerson` with an exact booking id match, and delete the phone
+  normalisation and the name fallback with it. Both exist only to reconcile
+  records that will by then carry the same key
 - Remove the merge-tag test panel and the `{{tag}}` junk finder, which have
   nothing left to find
 - Old style links keep working throughout, so the URL parsing is the last thing

@@ -90,16 +90,17 @@ another chat rather than me.
 
 ## Questions that need you
 
-**1. Paste the rules.** `rules.json` has one change and I cannot apply it.
-`/bookings/<id>/prearrival` was writable by anyone, unauthenticated, with no
-requirement that the booking exist, so a stranger could create nodes under
-invented ids indefinitely. It now requires `pms` to already exist under that
-id. Nothing writes prearrival yet, so pasting it is safe today and closes the
-hole before stage 3 ships.
+**1. WITHDRAWN. Do not paste the rules.** I asked for a `prearrival` rule
+requiring `pms` to exist first. That blocks the guest-first case the design
+depends on: the link goes at seven days, Mews arrives later, so the guest
+writes before `pms` exists. Reverted, `rules.json` is back to what is live, and
+there is nothing to paste. A `.validate` bounding shape and size is still worth
+adding, and cannot be tested from here. See `GUEST-DATA.md`.
 
-Firebase console, Realtime Database, **Rules** tab, paste the file, **Publish**.
+**2. RESOLVED in conversation.** Cancellations can be made to fire from
+Zapier, which removes what was the largest open risk. Original note follows.
 
-**2. Cancellations have never been seen to fire.** Handled correctly in the
+**Cancellations had never been seen to fire.** Handled correctly in the
 Worker and covered by tests, but the Zap that would deliver one filters on
 reservations *starting* in a window, and a cancelled reservation may drop out
 of that filter entirely. If it never fires, a cancelled guest keeps their villa
@@ -111,14 +112,17 @@ history. This is the most expensive unknown left and it needs a real booking.
 ## Still open, none of it blocked on me
 
 Zapier work, which I cannot reach: villa 3's missing phone mapping, and
-widening the lookahead with a negative Start Time Modifier. The lookahead
-blocks stage 3, because at seven days out the booking is not in Firebase and
-the pre-arrival page cannot show a guest their own booking.
+widening the lookahead. CORRECTED: the lookahead does NOT block stage 3. The
+pre-arrival link carries the guest's name and dates for display, so the page
+works before Mews has the booking. It is a boards question only.
 
-Then the backfill with Time Filter `Colliding`, making vacant the default villa
-state, and rotating the four credentials.
+No backfill is needed. A few bookings get added by hand and every new one
+arrives through Mews.
 
-Stage 3 still needs the picklist answer.
+Then making vacant the default villa state, and rotating the four credentials.
+
+Stage 3 still needs the picklist answer. Front Desk Arrival is newly specified
+in `GUEST-DATA.md` and is ready to build.
 
 The full reasoning for all of it is in `MEWS-AUDIT.md`, including the section
 on the old guest written path and the new PMS path both running, which is the
