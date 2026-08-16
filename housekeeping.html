@@ -97,7 +97,7 @@
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="list.html">Reservations Sheet</a><a href="cleaners.html">Cleans</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="list.html">Reservations Sheet</a><a href="cleaners.html">Cleans</a><a href="staff.html">Settings</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 <script>
@@ -105,6 +105,25 @@
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
+  /* This page is not gated, but the Settings link must still only appear for
+     someone it would let in: a link that bounces you back is a door to
+     nowhere. Only the LINK is hidden here, not the page.               */
+  (function hideSettings(){
+    var a = document.querySelector('#navDrop a[href="staff.html"]');
+    if (!a) return;
+    a.style.display = 'none';
+    (function wait(){
+      if (typeof loadStaff !== 'function' || !window.firebase || !firebase.auth){
+        setTimeout(wait, 300); return; }
+      var A; try { A = firebase.auth(); } catch (e){ setTimeout(wait,300); return; }
+      if (!A || typeof A.onAuthStateChanged !== 'function'){ setTimeout(wait,300); return; }
+      A.onAuthStateChanged(function(u){
+        if (!u) return;
+        loadStaff(function(){ a.style.display = can(roleOf(u),'manageStaff') ? '' : 'none'; });
+      });
+    })();
+  })();
+
   var so=document.getElementById('navSignout');
   if (so) so.onclick=function(e){ e.preventDefault();
     if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };

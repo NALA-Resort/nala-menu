@@ -290,7 +290,7 @@ body.readonly .comb-undo { display:none; }
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="list.html">Reservations Sheet</a><a href="cleaners.html">Cleans</a><a href="housekeeping.html">Clean sheet</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="list.html">Reservations Sheet</a><a href="cleaners.html">Cleans</a><a href="housekeeping.html">Clean sheet</a><a href="staff.html">Settings</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 <script>
@@ -337,7 +337,8 @@ body.readonly .comb-undo { display:none; }
      the sheets need their own permission.                              */
   window.NALA_NAVFILTER = function(role){
     var need = { 'tally.html':'resBoard', 'list.html':'resSheet',
-                 'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard' };
+                 'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard',
+                 'staff.html':'manageStaff' };
     var links = document.querySelectorAll('#navDrop a');
     for (var i=0;i<links.length;i++){
       if (links[i].className.indexOf('signout')>-1) continue;   /* never filtered */

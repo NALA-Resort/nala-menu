@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nala</title>
+<!-- A mistyped or dead link should land on the menu rather than a GitHub
+     error page. The redirect is a replace, so Back does not bounce the
+     person straight into the missing address again. The meta refresh is
+     the fallback for anything that does not run scripts. -->
+<meta http-equiv="refresh" content="0; url=/">
+<style>
+  body { background:#F9F7F4; color:#999990; font-family:-apple-system,Helvetica,Arial,sans-serif;
+         display:flex; align-items:center; justify-content:center; height:100vh;
+         margin:0; font-size:11px; letter-spacing:.16em; text-transform:uppercase; }
+</style>
+</head>
+<body>
+  <div>Taking you to the menu</div>
+  <script>location.replace('/');</script>
+</body>
+</html>

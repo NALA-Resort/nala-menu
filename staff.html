@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nala Villas">
+<link rel="apple-touch-icon" href="nala-icon.png?v=1">
+<title>Nala &middot; Staff</title>
+<link rel="stylesheet" href="nala-ui.css?v=12">
+<style>
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+          --ui-font:-apple-system,Helvetica,Arial,sans-serif; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
+         padding:calc(24px + env(safe-area-inset-top)) 18px 40px;
+         -webkit-tap-highlight-color:transparent; }
+  .wrap { max-width:520px; margin:0 auto; }
+  .daterow { display:flex; align-items:center; gap:8px; margin-bottom:16px; }
+  .date { font-size:15px; font-weight:bold; letter-spacing:.02em; flex:1;
+          text-transform:uppercase; }
+
+  .sec { font-size:8px; letter-spacing:.16em; text-transform:uppercase;
+         color:var(--mid); margin:22px 0 8px; }
+
+  /* A person is a line, not a card: plain typography is information, and a
+     bordered box would read as something to press.                        */
+  .person { display:flex; align-items:baseline; gap:8px; padding:11px 0;
+            border-bottom:1px solid var(--rule); width:100%; background:none;
+            border-left:0; border-right:0; border-top:0; text-align:left;
+            font-family:var(--ui-font); color:var(--ink); }
+  .person .nm { font-size:15px; flex:1; }
+  .person .rl { font-size:11px; color:var(--mid); text-transform:uppercase;
+                letter-spacing:.1em; }
+  .person .cd { font-size:11px; color:var(--mid); font-variant-numeric:tabular-nums; }
+
+  .btn { display:block; width:100%; padding:13px 0; text-align:center;
+         font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
+         text-transform:uppercase; background:var(--cream); color:var(--ink);
+         border:1px solid var(--ink); border-radius:8px; margin-top:14px; }
+  .btn.solid { background:var(--ink); color:var(--cream); }
+  .btn.warn  { border-color:var(--red); color:var(--red); }
+  .btn.ghost { border-color:var(--rule); color:var(--mid); }
+
+  .master { display:flex; align-items:center; padding:13px 0;
+            border-bottom:1px solid var(--rule); width:100%; background:none;
+            border-left:0; border-right:0; border-top:0; text-align:left;
+            font-family:var(--ui-font); color:var(--ink); }
+  .master .mnm { flex:1; font-size:15px; }
+  /* Off greys the rest: the boxes still say what WOULD be sent, but nothing
+     is going out and the page should not pretend otherwise.              */
+  .dim { opacity:.4; }
+
+  table { width:100%; border-collapse:collapse; }
+  th { font-size:8px; letter-spacing:.12em; text-transform:uppercase;
+       color:var(--mid); font-weight:normal; padding:0 0 8px; }
+  th.who { text-align:center; }
+  td { font-size:15px; padding:11px 0; border-bottom:1px solid var(--rule); }
+  td.who { text-align:center; }
+  .tick { display:inline-block; width:20px; height:20px; border-radius:5px;
+          border:1px solid var(--rule); background:none; position:relative;
+          vertical-align:middle; }
+  .tick.on { background:var(--ink); border-color:var(--ink); }
+  .tick.on:after { content:''; position:absolute; left:6px; top:2px; width:5px;
+                   height:10px; border:solid var(--cream); border-width:0 2px 2px 0;
+                   transform:rotate(45deg); }
+
+  .hours { display:flex; gap:8px; align-items:center; font-size:15px;
+           padding:11px 0; border-bottom:1px solid var(--rule); flex-wrap:wrap; }
+  .hours input { font-family:var(--ui-font); font-size:16px; width:74px;
+                 border:0; border-bottom:1px solid var(--rule); background:none;
+                 color:var(--ink); text-align:center; padding:2px 0; }
+  .note { font-size:11px; color:var(--mid); line-height:1.5; margin-top:10px; }
+  .err  { font-size:11px; color:var(--red); line-height:1.5; margin-top:10px; }
+
+  /* the sheet, same shape as the boards use */
+  .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35); display:none;
+              align-items:flex-end; z-index:50; }
+  .backdrop.show { display:flex; }
+  .sheet { background:var(--cream); width:100%; max-width:520px; margin:0 auto;
+           border-radius:14px 14px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+           max-height:88vh; overflow-y:auto; }
+  .sheet .st { font-size:15px; margin-bottom:4px; }
+  .sheet .sub { font-size:11px; color:var(--mid); margin-bottom:14px; }
+  .sheet label { display:block; font-size:8px; letter-spacing:.16em;
+                 text-transform:uppercase; color:var(--mid); margin:14px 0 5px; }
+  .sheet input, .sheet select {
+      width:100%; font-family:var(--ui-font); font-size:16px; padding:11px;
+      border:1px solid var(--rule); border-radius:8px; background:#fff;
+      color:var(--ink); }
+</style>
+</head>
+<body class="tier-app">
+<div class="wrap">
+
+  <div class="daterow">
+    <div class="date">Staff</div>
+    <div class="navwrap">
+      <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="list.html">Reservations Sheet</a><a href="cleaners.html">Cleans</a><a href="housekeeping.html">Clean sheet</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    </div>
+  </div>
+
+  <div class="noaccess" id="noAccess"></div>
+
+  <div id="main">
+    <div class="sec">People</div>
+    <div id="people"></div>
+    <button class="btn" id="addBtn">Add someone</button>
+
+    <div class="sec">Notifications</div>
+    <button class="master" id="master"><div class="mnm" id="masterNm">All notifications</div><i class="tick" id="masterTick"></i></button>
+    <div class="hours" id="hoursRow">Send between
+      <input id="hFrom" inputmode="numeric" placeholder="07:30">and
+      <input id="hTo" inputmode="numeric" placeholder="18:00">
+    </div>
+    <table id="grid"></table>
+    <div class="note">Tapping a box saves it straight away. Turning every box
+    off for a role is the same as turning notifications off for those people.</div>
+    <div class="err" id="err"></div>
+  </div>
+</div>
+
+<div class="backdrop" id="backdrop"><div class="sheet" id="sheet"></div></div>
+
+<script src="auth.js?v=11"></script>
+<script src="nala-shared.js?v=15"></script>
+<script>
+var ROLES = ['admin','chef','waiter','housekeeping'];
+var EVENTS = [['departed','Departed'],['available','Possibly available'],
+              ['cleaned','Cleaned'],['serviced','Serviced']];
+var STAFF = {}, CFG = null;
+
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+  var so=document.getElementById('navSignout');
+  if (so) so.onclick=function(e){ e.preventDefault();
+    var u = window.NALA_USER || null;
+    var go = function(){ if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+    if (u && typeof pushOff === 'function'){ pushOff(u, go); } else { go(); }
+  };
+})();
+
+/* This page changes who may do what, so it is admin only. Anyone else is sent
+   to their own board rather than shown a refusal.                        */
+(function gate(){
+  if (!window.firebase || !firebase.auth ||
+      typeof loadStaff !== 'function'){ setTimeout(gate,300); return; }
+  var A;
+  try { A = firebase.auth(); } catch (e){ setTimeout(gate,300); return; }
+  if (!A || typeof A.onAuthStateChanged !== 'function'){ setTimeout(gate,300); return; }
+  A.onAuthStateChanged(function(u){
+    if (!u) return;
+    window.NALA_USER = u;
+    loadStaff(function(recs, err){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      navFilter(role);
+      if (!can(role,'manageStaff')){
+        if (!err){
+          var home = homeFor(role);
+          if (home){ location.replace(home); return; }
+        }
+        document.getElementById('main').style.display = 'none';
+        var box = document.getElementById('noAccess');
+        box.textContent = err
+          ? 'Could not check access. This is usually the connection, not your login.'
+          : 'This login has no access to Staff. See the manager.';
+        box.className = 'noaccess show';
+        return;
+      }
+      STAFF = recs || {};
+      drawPeople();
+      loadNotify();
+    });
+  });
+})();
+
+function navFilter(role){
+  var need = { 'tally.html':'resBoard', 'list.html':'resSheet',
+               'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard',
+               'staff.html':'manageStaff' };
+  var links = document.querySelectorAll('#navDrop a');
+  for (var i=0;i<links.length;i++){
+    if (links[i].className.indexOf('signout')>-1) continue;
+    var href=(links[i].getAttribute('href')||'').split('?')[0];
+    links[i].style.display = can(role, need[href]) ? '' : 'none';
+  }
+}
+
+/* The passcode is the part of the login before the @, for the accounts that
+   use one. An email login has no code to show, so it shows the address. */
+function codeOf(key){
+  var at = key.indexOf('@');
+  var local = at > -1 ? key.slice(0, at) : key;
+  return /^[0-9]{6}$/.test(local) ? local : key.replace(/,/g, '.');
+}
+
+function drawPeople(){
+  var host = document.getElementById('people');
+  host.innerHTML = '';
+  var keys = Object.keys(STAFF).sort(function(a,b){
+    var ra = ROLES.indexOf(normaliseRole((STAFF[a]||{}).role));
+    var rb = ROLES.indexOf(normaliseRole((STAFF[b]||{}).role));
+    return (ra - rb) || a.localeCompare(b);
+  });
+  keys.forEach(function(k){
+    var r = STAFF[k] || {};
+    var b = document.createElement('button');
+    b.className = 'person';
+    b.innerHTML = '<span class="nm"></span><span class="rl"></span><span class="cd"></span>';
+    b.querySelector('.nm').textContent = r.name || '(no name)';
+    b.querySelector('.rl').textContent = normaliseRole(r.role) || '';
+    b.querySelector('.cd').textContent = codeOf(k);
+    b.onclick = function(){ personSheet(k); };
+    host.appendChild(b);
+  });
+}
+
+function openSheet(html){
+  document.getElementById('sheet').innerHTML = html;
+  document.getElementById('backdrop').className = 'backdrop show';
+}
+function closeSheet(){ document.getElementById('backdrop').className = 'backdrop'; }
+document.getElementById('backdrop').onclick = function(e){
+  if (e.target.id === 'backdrop') closeSheet();
+};
+
+function personSheet(key){
+  var r = STAFF[key] || {};
+  var opts = ROLES.map(function(x){
+    return '<option value="'+x+'"'+(normaliseRole(r.role)===x?' selected':'')+'>'+x+'</option>';
+  }).join('');
+  openSheet(
+    '<div class="st">'+(r.name||'(no name)')+'</div>'+
+    '<div class="sub">'+codeOf(key)+'</div>'+
+    '<label>Name</label><input id="pName" value="'+(r.name||'').replace(/"/g,'&quot;')+'">'+
+    '<label>Role</label><select id="pRole">'+opts+'</select>'+
+    '<button class="btn solid" onclick="savePerson(\''+key+'\')">Save</button>'+
+    '<button class="btn warn" onclick="removeSheet(\''+key+'\')">Remove from staff</button>'+
+    '<button class="btn ghost" onclick="closeSheet()">Close</button>'+
+    '<div class="err" id="sErr"></div>');
+}
+
+function savePerson(key){
+  var name = document.getElementById('pName').value.trim();
+  var role = document.getElementById('pRole').value;
+  var e = document.getElementById('sErr');
+  e.textContent = 'Saving...';
+  fetch(DB + '/staff/' + key + '.json', {
+    method:'PATCH', body: JSON.stringify({ name:name, role:role })
+  }).then(function(r){
+    if (!r.ok) throw new Error('rejected');
+    STAFF[key] = Object.assign({}, STAFF[key], { name:name, role:role });
+    drawPeople(); closeSheet();
+  }).catch(function(){ e.textContent = 'Could not save. Check the connection.'; });
+}
+
+function removeSheet(key){
+  var r = STAFF[key] || {};
+  openSheet(
+    '<div class="st">Remove '+(r.name||'this person')+'?</div>'+
+    '<div class="sub">They lose access straight away, on any phone already '+
+    'signed in. Their login still exists and can be tidied up in the Firebase '+
+    'console later.</div>'+
+    '<button class="btn warn" onclick="removePerson(\''+key+'\')">Yes, remove</button>'+
+    '<button class="btn ghost" onclick="personSheet(\''+key+'\')">Back</button>'+
+    '<div class="err" id="sErr"></div>');
+}
+
+function removePerson(key){
+  var e = document.getElementById('sErr');
+  e.textContent = 'Removing...';
+  /* Deleting the record IS the revoke: the rules need it, so their next
+     request fails even on a phone that is still signed in.              */
+  fetch(DB + '/staff/' + key + '.json', { method:'DELETE' }).then(function(r){
+    if (!r.ok) throw new Error('rejected');
+    delete STAFF[key];
+    fetch(DB + '/pushsubs/' + key + '.json', { method:'DELETE' }).catch(function(){});
+    drawPeople(); closeSheet();
+  }).catch(function(){ e.textContent = 'Could not remove. Check the connection.'; });
+}
+
+document.getElementById('addBtn').onclick = function(){
+  var opts = ROLES.map(function(x){ return '<option value="'+x+'">'+x+'</option>'; }).join('');
+  openSheet(
+    '<div class="st">Add someone</div>'+
+    '<div class="sub">Six digits, and they are the passcode. Write it down: '+
+    'it cannot be looked up anywhere else.</div>'+
+    '<label>Name</label><input id="aName" placeholder="Maria">'+
+    '<label>Role</label><select id="aRole">'+opts+'</select>'+
+    '<label>Passcode</label><input id="aCode" inputmode="numeric" maxlength="6" placeholder="610487">'+
+    '<button class="btn solid" onclick="addPerson()">Create</button>'+
+    '<button class="btn ghost" onclick="closeSheet()">Close</button>'+
+    '<div class="err" id="sErr"></div>');
+};
+
+/* The login is created on a SECOND Firebase app. Creating a user signs that
+   app in as the new person, and doing it on the main one would sign the
+   manager out mid task.                                                  */
+function secondApp(){
+  try { return firebase.app('mk'); }
+  catch (e){ return firebase.initializeApp(firebase.app().options, 'mk'); }
+}
+
+function addPerson(){
+  var name = document.getElementById('aName').value.trim();
+  var role = document.getElementById('aRole').value;
+  var code = document.getElementById('aCode').value.replace(/[^0-9]/g,'');
+  var e = document.getElementById('sErr');
+  if (!name){ e.textContent = 'A name is needed.'; return; }
+  if (code.length !== 6){ e.textContent = 'The passcode must be six digits.'; return; }
+  var email = code + '@staff.nala';
+  var key = emailKey(email);
+  if (STAFF[key]){ e.textContent = 'That passcode is already in use.'; return; }
+  e.textContent = 'Creating...';
+  var app = secondApp();
+  app.auth().createUserWithEmailAndPassword(email, code)
+    .then(function(){ return app.auth().signOut(); })
+    .then(function(){
+      return fetch(DB + '/staff/' + key + '.json', {
+        method:'PUT', body: JSON.stringify({ name:name, role:role })
+      });
+    })
+    .then(function(r){
+      if (!r.ok) throw new Error('rejected');
+      STAFF[key] = { name:name, role:role };
+      drawPeople(); closeSheet();
+    })
+    .catch(function(ex){
+      var c = (ex && ex.code) || '';
+      e.textContent = c.indexOf('email-already-in-use') > -1
+        ? 'That passcode already belongs to a login. Pick another.'
+        : c.indexOf('weak-password') > -1
+        ? 'Firebase will not accept that passcode.'
+        : 'Could not create them. Check the connection.';
+    });
+}
+
+/* ── notification settings ─────────────────────────────────── */
+var NOTIFY = null;
+
+function loadNotify(){
+  fetch(DB + '/notify.json').then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(cfg){
+      NOTIFY = cfg || JSON.parse(JSON.stringify(NOTIFY_DEFAULTS));
+      if (!NOTIFY.events) NOTIFY.events = JSON.parse(JSON.stringify(NOTIFY_DEFAULTS.events));
+      if (!NOTIFY.hours)  NOTIFY.hours  = JSON.parse(JSON.stringify(NOTIFY_DEFAULTS.hours));
+      drawNotify();
+    })
+    .catch(function(){ document.getElementById('err').textContent =
+      'Could not load the notification settings.'; });
+}
+
+function drawNotify(){
+  var on = NOTIFY.on !== false;
+  document.getElementById('masterNm').textContent = 'All notifications ' + (on ? 'on' : 'off');
+  document.getElementById('masterTick').className = 'tick' + (on ? ' on' : '');
+  document.getElementById('hoursRow').className = 'hours' + (on ? '' : ' dim');
+  document.getElementById('grid').className = on ? '' : 'dim';
+  document.getElementById('hFrom').value = NOTIFY.hours.from || '';
+  document.getElementById('hTo').value   = NOTIFY.hours.to   || '';
+
+  var head = '<tr><th></th>' + ROLES.map(function(r){
+    return '<th class="who">' + (r === 'housekeeping' ? 'House<br>keeping' : r) + '</th>';
+  }).join('') + '</tr>';
+  var rows = EVENTS.map(function(ev){
+    return '<tr><td>' + ev[1] + '</td>' + ROLES.map(function(r){
+      var isOn = !!((NOTIFY.events[ev[0]]||{})[r]);
+      return '<td class="who"><button class="tick' + (isOn ? ' on' : '') +
+             '" data-ev="' + ev[0] + '" data-role="' + r + '" aria-label="' +
+             ev[1] + ' ' + r + '"></button></td>';
+    }).join('') + '</tr>';
+  }).join('');
+  document.getElementById('grid').innerHTML = head + rows;
+
+  var ticks = document.querySelectorAll('#grid .tick');
+  for (var i=0;i<ticks.length;i++){
+    ticks[i].onclick = function(){
+      var ev = this.getAttribute('data-ev'), r = this.getAttribute('data-role');
+      if (!NOTIFY.events[ev]) NOTIFY.events[ev] = {};
+      NOTIFY.events[ev][r] = !NOTIFY.events[ev][r];
+      drawNotify(); saveNotify();
+    };
+  }
+}
+
+document.getElementById('master').onclick = function(){
+  if (!NOTIFY) return;
+  NOTIFY.on = (NOTIFY.on === false);
+  drawNotify(); saveNotify();
+};
+
+['hFrom','hTo'].forEach(function(id){
+  document.getElementById(id).onchange = function(){
+    var v = this.value.trim();
+    /* A time that cannot be read would silently mean "never", so it is
+       refused here rather than saved and puzzled over later.           */
+    if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(v)){
+      document.getElementById('err').textContent =
+        'Times are written as 07:30 or 18:00.';
+      this.value = (id === 'hFrom' ? NOTIFY.hours.from : NOTIFY.hours.to) || '';
+      return;
+    }
+    document.getElementById('err').textContent = '';
+    if (id === 'hFrom') NOTIFY.hours.from = v; else NOTIFY.hours.to = v;
+    saveNotify();
+  };
+});
+
+function saveNotify(){
+  fetch(DB + '/notify.json', { method:'PUT', body: JSON.stringify(NOTIFY) })
+    .then(function(r){
+      document.getElementById('err').textContent = r.ok ? ''
+        : 'That change was not saved. Only an admin may change these.';
+    })
+    .catch(function(){
+      document.getElementById('err').textContent =
+        'That change was not saved. Check the connection.';
+    });
+}
+</script>
+</body>
+</html>

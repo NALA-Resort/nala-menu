@@ -749,6 +749,19 @@ with sync_playwright() as p:
        pg.evaluate("()=>{let hit=0; const f=window.fetch; window.fetch=function(u,o){ if(o&&o.method==='PUT'&&(''+u).indexOf('/notify')>-1) hit++; return f.apply(this,arguments);}; ensureNotifySettings('waiter'); window.fetch=f; return hit===0;}"))
     pg.close()
 
+    # Settings is admin only, and must not appear as a door to nowhere
+    for email, who, expect in [("staff@nalaresort.com.au","admin",True),
+                               ("housekeeping@nalaresort.com.au","housekeeping",False),
+                               ("waiter@nalaresort.com.au","waiter",False),
+                               ("chef@nalaresort.com.au","chef",False)]:
+        q=page(email)
+        q.goto("http://localhost:8957/cleaners.html"); q.wait_for_timeout(1400)
+        vis=q.evaluate("""()=>{const a=document.querySelector('#navDrop a[href="staff.html"]');
+            return !!a && getComputedStyle(a).display!=='none';}""")
+        ck("%s %s Settings in the menu" % (who, "sees" if expect else "does not see"),
+           vis == expect)
+        q.close()
+
     # the link must actually call auth.js's signOut, not just look like it
     pg=page("staff@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1400)

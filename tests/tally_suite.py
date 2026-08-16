@@ -391,8 +391,8 @@ with sync_playwright() as p:
     print("   nav items:", nav)
     dest=[i for i in nav if i["href"]!="#"]
     ck("menu labels and order",
-       [i["t"] for i in dest]==["Reservations Sheet","Cleans","Clean sheet"] and
-       [i["href"] for i in dest]==["list.html","cleaners.html","housekeeping.html"])
+       [i["t"] for i in dest]==["Reservations Sheet","Cleans","Clean sheet","Settings"] and
+       [i["href"] for i in dest]==["list.html","cleaners.html","housekeeping.html","staff.html"])
     # signing out is an action, so it comes last, after the destinations
     ck("sign out is the last item in the menu", nav[-1]["t"]=="Sign out")
     ck("no menu label wraps to a second line", all(i["h"]<=38 for i in nav))
