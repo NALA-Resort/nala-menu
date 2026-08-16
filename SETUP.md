@@ -89,30 +89,74 @@ Nothing breaks if this waits, because the new paths are currently covered by
 the `$other` catch all and will function without it. It must land before any
 real guest data does, because catch all means any signed in user can write it.
 
-## After I hand you the Worker
+## The Worker is written and published
+
+Source: `worker/mews-sync.js`. Its suite is `worker/test.mjs`, 28 tests, run
+with `node worker/test.mjs`.
 
 ### Job 5. Deploy the Worker
 
 **Software:** Cloudflare dashboard, dash.cloudflare.com.
-**Where exactly:** Workers and Pages, Create, then paste the source.
+**Where exactly:** Workers and Pages, then Create, then Create Worker. Paste
+the whole of `worker/mews-sync.js` over the starter code and deploy.
 
-This is a second Worker, separate from the push sender you already run. Do not
-add this to that one: it holds your VAPID key and no database credential, and
-that is worth keeping true.
+This is a **second** Worker, separate from the push sender you already run. Do
+not add it to that one: the push sender holds your VAPID key and no database
+credential, and that is worth keeping true.
 
-Four secrets to set, and I will name them exactly in the source: the sync
-account's email and six digit code from job 3, and a shared secret you invent
-for Zapier. Copy the deployed URL when it is done.
+Then Settings, Variables and Secrets, and add these four. The names must match
+exactly or the Worker cannot see them.
+
+| Name | Value |
+|---|---|
+| `SYNC_EMAIL` | the six digit code from job 3, then `@staff.nala` |
+| `SYNC_PASSWORD` | the same six digits on their own |
+| `ZAP_SECRET` | any long random string you invent. Keep it, job 6 needs it |
+| `FB_API_KEY` | `AIzaSyA0zAzL-zfPivrIRhY_ip8BABjuYVMlzqI` |
+
+Set them as **Secrets**, not plain variables, so they are not readable back
+from the dashboard afterwards.
+
+`FB_API_KEY` is a secret for tidiness only. Firebase web API keys are public by
+design and this one is already in `auth.js` in this public repo. The rules
+protect the data, not the key.
+
+**Never put `SYNC_EMAIL` or `SYNC_PASSWORD` in this repo.** It is public, and
+the address contains the passcode.
+
+Copy the deployed URL when it is done. Loading it in a browser should give you
+**401**, because a GET with no secret is exactly what it should refuse.
 
 ### Job 6. Build the Zap
 
 **Software:** Zapier, from job 2.
 
-Trigger: **Mews**, reservation event. Action: **Webhooks by Zapier**, POST, to
-the Worker URL from job 5, carrying the shared secret. The field mapping will
-be written out in the Worker source, so you are not guessing at names.
+**Trigger:** Mews, *Reservation Event*.
+**Action:** Webhooks by Zapier, *POST*.
 
-Test with one booking on the Mews demo property before pointing it at live.
+- URL: your Worker URL from job 5, with `?secret=` and the `ZAP_SECRET` on the
+  end. Alternatively send it as an `x-nala-secret` header. Either works.
+- Payload type: **JSON**.
+
+Map these fields. The Worker also accepts several other spellings of each, so
+close variants are fine, but these are the names it looks for first:
+
+| Send as | From the Mews trigger |
+|---|---|
+| `Id` | the reservation id |
+| `FirstName`, `LastName` | the guest |
+| `Phone` | the guest's number |
+| `StartUtc`, `EndUtc` | arrival and departure |
+| `ResourceName` | the villa |
+| `State` | Confirmed, Canceled, and so on |
+| `UpdatedUtc` | when Mews last changed it |
+
+`UpdatedUtc` is the one people skip and it matters. Webhook delivery is not
+ordered, and it is the only way the Worker can tell a late old event from a new
+one. Without it, a cancellation arriving after a rebooking wins.
+
+Test with one booking on the Mews **demo** property before pointing this at
+live. A success returns JSON saying how many nights were indexed.
 
 ## Later, at stage 3
 
@@ -127,7 +171,7 @@ dynamic portion. Not needed until the pre-arrival page exists.
 
 1. The `sync` role. Done, published.
 2. `rules.json`. Done, published, waiting on job 4.
-3. The Worker source. Next.
-4. Stage 2, the `roomRecord()` merge, once data is landing.
+3. The Worker source. Done, published, with a suite of 28.
+4. Stage 2, the `roomRecord()` merge. Next, once data is landing.
 
 Every one of those is a commit to this repo and needs nothing from you.

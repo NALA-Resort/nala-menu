@@ -4,11 +4,19 @@ Playwright suites with a fully mocked Firebase (auth SDK stubbed, every
 database route intercepted, writes captured and inspected). Run from the
 repo root with a local copy of the site:
 
-    python3 tests/tally_suite.py     # 71 - res tally
-    python3 tests/list_suite.py      # 29 - res print (incl. Safari-fraction regression)
-    python3 tests/hk_suite.py        # 22 - HC print
-    python3 tests/cl_suite.py        # 67 - HC tally (incl. management menu gate)
-    python3 tests/auth_suite.py      # 6  - sign-in when the Firebase SDK does not load
+    python3 tests/tally_suite.py     # 85  - Reservations
+    python3 tests/list_suite.py      # 42  - Reservations Sheet (incl. Safari-fraction regression)
+    python3 tests/hk_suite.py        # 22  - Clean Sheet
+    python3 tests/cl_suite.py        # 167 - Cleans (incl. roles, Settings and the menu gate)
+    python3 tests/auth_suite.py      # 30  - passcode sign-in and the email fallback
+
+The Mews sync Worker has its own, in node rather than Playwright because it
+never runs in a browser:
+
+    node worker/test.mjs             # 28  - Mews sync Worker
+
+Counts drift. If yours do not match, the suite moved and this line did not:
+trust the suite.
 
 They assert rendered outcomes, not markup: computed colours, fixed-footer
 geometry, tap-target sizes, menu interaction, write bodies, and
