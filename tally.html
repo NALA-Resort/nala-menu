@@ -444,7 +444,7 @@ body.readonly .comb-undo { display:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=17"></script>
+<script src="nala-shared.js?v=18"></script>
 <script>
 var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
@@ -627,7 +627,10 @@ function roomTile(n){
   }
 
   var mark = '';
-  if (!st && roomguests[String(n)]) {
+  /* Only a guest written record earns this. A booking known only from the PMS
+     has been opened by nobody, and marking it as opened would put the icon on
+     every future night of every stay. */
+  if (!st && roomguests[String(n)] && !isMewsOnly(roomguests[String(n)])) {
     mark = '<span class="mark seen">'+ICON_LINK+'</span>';   // opened, no answer yet
   }
   if (st && (st.g.status==='in' || st.g.status==='out')) {
@@ -1189,6 +1192,7 @@ function openRoom(n, st){
 
   // ── no guest answer: plain staff entry ──────────────────
   var seen = roomguests[String(n)];
+  if (isMewsOnly(seen)) seen = null;   // known from the PMS, not from a click
   shell(
     (!st && seen
       ? '<div class="note-box">'+

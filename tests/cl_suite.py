@@ -501,6 +501,22 @@ with sync_playwright() as p:
     ck("no stays at all leaves roomguests exactly as it was",
        mews["noStays"]["name"] == "Old Name")
 
+    # "we know who is in villa 4" is not "villa 4 has replied to us". Marking a
+    # synced booking as link-opened put the icon on every night of every stay.
+    marks = pg.evaluate("""()=>{
+      const o = overlayStays(
+        { '4': {name:'Clicked', departs:'2026-09-20'} },
+        { '4': {id:'r4', first:'Clicked', last:'Guest', depart:'2026-09-20'},
+          '5': {id:'r5', first:'Never', last:'Clicked', depart:'2026-09-21'} });
+      return { four: isMewsOnly(o['4']), five: isMewsOnly(o['5']),
+               none: isMewsOnly(null) };
+    }""")
+    ck("a booking known only from the PMS is not treated as link opened",
+       marks["five"] is True)
+    ck("a guest who did open their link keeps that fact after the overlay",
+       marks["four"] is False)
+    ck("an empty villa is neither", marks["none"] is False)
+
     # The sync role is the Mews Worker's login. It is a real role, so roleOf
     # must return it rather than null, but it lands nowhere and grants nothing.
     sync=pg.evaluate("""()=>({

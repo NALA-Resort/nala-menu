@@ -835,6 +835,15 @@ function fetchStays(dateKey){
    can sit in the same merge instead of needing its own handling everywhere.
    Tolerates the older shape, where the value was the booking id as a bare
    string: those entries carry no guest and are ignored rather than crashing.  */
+/* True when a record came from the PMS and the guest has not opened their link.
+   The two are different facts and must not be conflated: "we know who is in
+   villa 4" is not "villa 4 has replied to us". Conflating them puts the link
+   opened mark on every synced booking, which is the exact signal the sync
+   exists to stop staff relying on.                                         */
+function isMewsOnly(rec){
+  return !!(rec && rec.source === 'mews');
+}
+
 function mewsRecord(stay){
   if (!stay || typeof stay !== 'object') return null;
   var name = [stay.first, stay.last].filter(Boolean).join(' ').trim();
@@ -864,7 +873,14 @@ function overlayStays(roomguests, stays){
   var out = Object.assign({}, roomguests || {});
   for (var villa in (stays || {})){
     var rec = mewsRecord(stays[villa]);
-    if (rec) out[String(villa)] = Object.assign({}, out[String(villa)] || {}, rec);
+    if (!rec) continue;
+    var had = out[String(villa)];
+    var merged = Object.assign({}, had || {}, rec);
+    /* source stays 'mews' ONLY when there was no guest written record to begin
+       with. A guest who did open their link keeps that fact, so the link opened
+       mark still means what it always meant. */
+    if (had) delete merged.source;
+    out[String(villa)] = merged;
   }
   return out;
 }
@@ -1353,7 +1369,10 @@ function roomTile(n){
   }
 
   var mark = '';
-  if (!st && roomguests[String(n)]) {
+  /* Only a guest written record earns this. A booking known only from the PMS
+     has been opened by nobody, and marking it as opened would put the icon on
+     every future night of every stay. */
+  if (!st && roomguests[String(n)] && !isMewsOnly(roomguests[String(n)])) {
     mark = '<span class="mark seen">'+ICON_LINK+'</span>';   // opened, no answer yet
   }
   if (st && (st.g.status==='in' || st.g.status==='out')) {
@@ -1915,6 +1934,7 @@ function openRoom(n, st){
 
   // ── no guest answer: plain staff entry ──────────────────
   var seen = roomguests[String(n)];
+  if (isMewsOnly(seen)) seen = null;   // known from the PMS, not from a click
   shell(
     (!st && seen
       ? '<div class="note-box">'+
