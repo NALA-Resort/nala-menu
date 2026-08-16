@@ -746,13 +746,27 @@ function mewsRecord(stay){
   if (!stay || typeof stay !== 'object') return null;
   var name = [stay.first, stay.last].filter(Boolean).join(' ').trim();
   if (!name && !stay.depart) return null;
-  var out = { source:'mews', bookingId: stay.id };
+  var out = { source:'mews', bookingId: stay.id, pmsUpdated: stay.updated || null };
   if (name)          out.name    = name;
   if (stay.phone)    out.phone   = stay.phone;
   if (stay.depart)   out.departs = stay.depart;
   if (stay.arrive)   out.arrives = stay.arrive;
   if (stay.adults)   out.adults  = stay.adults;
   return out;
+}
+
+/* Two records describe the same person if the PMS and a guest written entry
+   agree on a phone or a name. Phones are compared on their last nine digits
+   because Mews stores +61400000000 and a GuestTouch link carries 0400000000,
+   and those are one person.                                                */
+function samePerson(a, b){
+  if (!a || !b) return false;
+  var pa = String(a.phone || '').replace(/\D/g, '').slice(-9);
+  var pb = String(b.phone || '').replace(/\D/g, '').slice(-9);
+  if (pa && pa === pb) return true;
+  var na = String(a.name || '').trim().toLowerCase();
+  var nb = String(b.name || '').trim().toLowerCase();
+  return !!(na && na === nb);
 }
 
 /* Lays the PMS over the guest written records. Mews wins on identity and
@@ -764,11 +778,11 @@ function mewsRecord(stay){
    roomRecord at all. Two mechanisms would let the board and the sheet disagree
    about the same villa, which is the failure that looks plausible.
 
-   It sits BELOW responses, which is correct rather than accidental: a response
-   carries a name and a dinner answer but never a departure date, so Mews keeps
-   the dates while a guest keeps the name they gave.                        */
+   It sits BELOW responses in roomRecord, which is where the fields the PMS
+   owns outright are reapplied on top. See pmsFields.                       */
 function overlayStays(roomguests, stays){
   var out = Object.assign({}, roomguests || {});
+  var pmsVillas = {};
   for (var villa in (stays || {})){
     var rec = mewsRecord(stays[villa]);
     if (!rec) continue;
@@ -779,28 +793,95 @@ function overlayStays(roomguests, stays){
        mark still means what it always meant. */
     if (had) delete merged.source;
     out[String(villa)] = merged;
+    pmsVillas[String(villa)] = merged;
+  }
+  /* A guest moved after opening their link is left behind in the old villa.
+     roomguests keeps a record until its own departure date passes, so the same
+     person shows in two villas at once: exactly the bug the Worker fixed on the
+     /stays side, reappearing one layer up because nothing cleans this side.
+
+     The PMS is the authority on where somebody is, so any OTHER villa holding
+     the same person is stale by definition and goes. Only guest written entries
+     are dropped: a villa the PMS itself claims is never touched, so two genuine
+     bookings that happen to share a phone stay put.                        */
+  for (var v in out){
+    if (pmsVillas[v]) continue;
+    for (var pv in pmsVillas){
+      if (samePerson(out[v], pmsVillas[pv])){ delete out[v]; break; }
+    }
   }
   return out;
+}
+
+/* Where the PMS places a person, or null if it does not know them. Used to
+   ignore a response a guest wrote while they were still in their old villa. */
+function pmsVillaOf(roomguests, rec){
+  for (var v in (roomguests || {})){
+    var r = roomguests[v];
+    if (r && r.bookingId && samePerson(r, rec)) return String(v);
+  }
+  return null;
+}
+
+/* The fields the PMS owns outright. Mews knows who is in a villa, when they
+   arrive and leave and how many of them there are. It knows nothing about
+   dinner, so dining, covers, notes and dietaries are never touched here: they
+   would only be overwritten with nothing.
+
+   This is reapplied ABOVE responses rather than left to the overlay, because a
+   response carries a copy of the dates taken when the guest replied. That copy
+   is a snapshot and goes stale the moment Mews changes the booking, and it was
+   winning: a stay shortened in Mews still read as a service on the departure
+   day, so the villa was never offered for cleaning on the day it was vacated.
+   The design said Mews wins on depart. This is where that becomes true.    */
+function pmsFields(known){
+  if (!(known && known.bookingId)) return {};
+  var out = {};
+  ['name','departs','arrives','phone','adults'].forEach(function(k){
+    if (known[k] !== undefined && known[k] !== null && known[k] !== '') out[k] = known[k];
+  });
+  return out;
+}
+
+/* A villa the PMS knows about can still be marked vacant by staff, after a
+   warning, and that decision stands until Mews changes the booking. It is
+   stamped with the PMS version it was made against: once Mews sends a newer
+   one, the staff decision was about a different state of the world and is
+   dropped rather than silently outliving the facts it was based on.        */
+function vacantIsStale(m, known){
+  return !!(m && m.status === 'vacant' && known && known.bookingId &&
+            m.pmsUpdated !== known.pmsUpdated);
 }
 
 /* one room, one record: staff override beats the guest's own answer,
    whoever opened the link fills the gaps.
 
-   The PMS is already folded into roomguests by overlayStays before this runs,
-   so this function is unchanged by the Mews work and stays the one place that
-   knows the order of precedence.                                           */
+   The PMS is folded into roomguests by overlayStays before this runs, and the
+   fields Mews owns outright are then reapplied ON TOP of the response, because
+   a response carries a snapshot of the dates from when the guest replied. See
+   pmsFields for why that snapshot cannot be allowed to win.                */
 function roomRecord(n, responses, manual, roomguests){
   var mk = 'room-'+n, m = manual[mk];
+  var known = roomguests[String(n)] || {};
+  /* A staff vacant made against an older version of the booking was a decision
+     about a different state of the world, so it is dropped rather than left to
+     outlive the facts behind it. */
+  if (vacantIsStale(m, known)) m = null;
   var best = null;
   for (var k in responses){
     var g = responses[k];
     if (String(g.room) !== String(n)) continue;
+    /* A guest who replied and was then moved left their answer attached to the
+       old villa. The PMS says where they actually are, so the answer does not
+       hold this villa open behind them. */
+    var at = pmsVillaOf(roomguests, g);
+    if (at && at !== String(n)) continue;
     if (!best || (g.at||'') > (best.at||'')) best = g;
   }
-  var known = roomguests[String(n)] || {};
-  if (m && m.override) return Object.assign({}, known, best || {}, m, { room:String(n) });
-  if (best) return Object.assign({}, known, best);
-  if (m)    return Object.assign({}, known, m, { room:String(n) });
+  var pms = pmsFields(known);
+  if (m && m.override) return Object.assign({}, known, best || {}, m, pms, { room:String(n) });
+  if (best) return Object.assign({}, known, best, pms);
+  if (m)    return Object.assign({}, known, m, pms, { room:String(n) });
   if (known.name) return Object.assign({}, known, { room:String(n), status:null });
   return null;
 }

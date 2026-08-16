@@ -444,7 +444,7 @@ body.readonly .comb-undo { display:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=18"></script>
+<script src="nala-shared.js?v=19"></script>
 <script>
 var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
@@ -915,6 +915,11 @@ function applyToSelected(status){
     var keepPax = (status==='in' && prev && prev.status==='in' && prev.pax) ? prev.pax : null;
     var rec = { status:status, pax:(status==='in' ? (keepPax||2) : 0), room:String(n), source:'manual' };
     if (hasGuest) rec.override = true;
+    /* Same stamp as the single villa path. Without it a multi-select vacant
+       would be dropped by the next render, since an unstamped vacant on a PMS
+       villa reads as stale. */
+    var kn = roomguests[String(n)] || {};
+    if (status === 'vacant' && kn.bookingId) rec.pmsUpdated = kn.pmsUpdated || null;
     saveManual('room-'+n, withExtras('room-'+n, rec));
   });
 
@@ -1210,7 +1215,28 @@ function openRoom(n, st){
   paintPax();
   document.getElementById('oIn').onclick  = function(){ writeManual({ status:'in',  pax:pax, room:String(n), source:'manual' }); };
   document.getElementById('oOut').onclick = function(){ writeManual({ status:'out', pax:0,  room:String(n), source:'manual' }); };
-  document.getElementById('oVac').onclick = function(){ writeManual({ status:'vacant', pax:0, room:String(n), source:'manual' }); };
+  /* Vacant contradicts the PMS rather than filling a gap in it, so it warns
+     first on a villa Mews knows about. Allowed, not blocked: reception can see
+     the villa and Mews cannot. The decision is stamped with the PMS version it
+     was made against, so it stands until Mews changes the booking and then
+     stops, rather than outliving the facts behind it. */
+  document.getElementById('oVac').onclick = function(){
+    var kn = roomguests[String(n)] || {};
+    var rec = { status:'vacant', pax:0, room:String(n), source:'manual' };
+    if (kn.bookingId) rec.pmsUpdated = kn.pmsUpdated || null;
+    if (!kn.bookingId) return writeManual(rec);
+    /* Dates on screen use the one format in the styleguide. The raw value here
+       is a dkey from Mews, which is what the database wants and not what a
+       person reads. */
+    var dep = kn.departs ? parseDepDate(kn.departs) : null;
+    confirmSheet('Villa '+n,
+      'Mews has a booking here'+(kn.name ? ' for '+kn.name : '')+
+      (dep ? ', departing '+dateLabel(dep) : '')+
+      '. Marking it vacant will hold until Mews changes this booking.',
+      'Mark vacant anyway',
+      function(){ writeManual(rec); },
+      function(){ openRoom(n, st); });
+  };
   var dt = document.getElementById('oDetails');
   if (dt) dt.onclick = function(){ editRoomDetails(n, st); };
   var cl = document.getElementById('oClear');

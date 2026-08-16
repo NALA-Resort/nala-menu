@@ -517,6 +517,109 @@ with sync_playwright() as p:
        marks["four"] is False)
     ck("an empty villa is neither", marks["none"] is False)
 
+    # A guest moved after opening their link was left behind in the old villa,
+    # because roomguests keeps a record until its own departure date passes.
+    # Same person in two villas at once: the bug the Worker fixed on the /stays
+    # side, reappearing one layer up.
+    moved = pg.evaluate("""()=>{
+      const rg = { '5': {name:'Jane Doe', phone:'0400000000', departs:'2026-08-25'},
+                   '7': {name:'Someone Else', phone:'0411111111', departs:'2026-08-25'} };
+      const stays = { '9': {id:'r1', first:'Jane', last:'Doe', phone:'+61400000000',
+                            arrive:'2026-08-18', depart:'2026-08-25', adults:2} };
+      const o = overlayStays(rg, stays);
+      // matched on name alone, with no phone on either side
+      const byName = overlayStays(
+        { '3': {name:'Ann Brown', departs:'2026-08-25'} },
+        { '8': {id:'r2', first:'Ann', last:'Brown', depart:'2026-08-25'} });
+      // two genuine bookings that share a phone must both survive
+      const shared = overlayStays({},
+        { '2': {id:'a', first:'Sam', last:'Reed', phone:'0400', depart:'2026-08-25'},
+          '6': {id:'b', first:'Sam', last:'Reed', phone:'0400', depart:'2026-08-25'} });
+      return { five:o['5'], nine:o['9'], seven:o['7'],
+               three:byName['3'], eight:byName['8'],
+               sharedTwo:shared['2'], sharedSix:shared['6'] };
+    }""")
+    ck("a moved guest is gone from the villa they left",
+       moved["five"] is None)
+    ck("and present in the one the PMS says they are in",
+       moved["nine"]["name"] == "Jane Doe")
+    ck("an unrelated villa is untouched",
+       moved["seven"]["name"] == "Someone Else")
+    # +61400000000 and 0400000000 are one person
+    ck("a phone written two ways still matches",
+       moved["five"] is None)
+    ck("a name match alone is enough when neither side has a phone",
+       moved["three"] is None and moved["eight"]["name"] == "Ann Brown")
+    ck("two PMS bookings sharing a phone both survive",
+       moved["sharedTwo"] is not None and moved["sharedSix"] is not None)
+
+    # The design said Mews wins on depart, over roomguests AND over the guest's
+    # own answer. A response carries a copy of the dates from when the guest
+    # replied, and that copy was winning, so a stay shortened in Mews still read
+    # as a service on the departure day and the villa was never offered for
+    # cleaning on the day it was vacated.
+    prec = pg.evaluate("""()=>{
+      const rg = overlayStays({}, { '5': {id:'r1', first:'Jane', last:'Doe',
+                 phone:'0400', arrive:'2026-08-18', depart:'2026-08-22', adults:2} });
+      const resp = { '0400': { name:'Jane Doe', room:'5', phone:'0400',
+                     arrives:'2026-08-18', departs:'2026-08-25', status:'in',
+                     pax:3, diets:['Nut allergy'], note:'window table',
+                     at:'2026-08-18T10:00:00Z' } };
+      const rec = roomRecord(5, resp, {}, rg);
+      return { departs: rec.departs, pax: rec.pax, diets: rec.diets,
+               note: rec.note, status: rec.status,
+               job: hkClassify(rec, '2026-08-22', null) };
+    }""")
+    ck("a stay shortened in Mews beats the date the guest's reply carried",
+       prec["departs"] == "2026-08-22")
+    ck("so the villa is a clean on the day it is actually vacated",
+       prec["job"] == "clean")
+    ck("the dinner answer survives untouched: covers",
+       prec["pax"] == 3)
+    ck("dietaries", prec["diets"] == ["Nut allergy"])
+    ck("notes and the dining status", prec["note"] == "window table" and
+       prec["status"] == "in")
+
+    # A guest who replied and was then moved left their answer on the old villa,
+    # which held it open behind them.
+    stray = pg.evaluate("""()=>{
+      const rg = overlayStays({}, { '9': {id:'r1', first:'Jane', last:'Doe',
+                 phone:'0400', arrive:'2026-08-18', depart:'2026-08-25'} });
+      const resp = { '0400': { name:'Jane Doe', room:'5', phone:'0400',
+                     status:'in', pax:2, at:'2026-08-18T10:00:00Z' } };
+      return { old: roomRecord(5, resp, {}, rg),
+               now: roomRecord(9, resp, {}, rg) };
+    }""")
+    ck("a response written from the old villa does not hold it open",
+       stray["old"] is None)
+    ck("and the villa the PMS names still reads the guest",
+       stray["now"]["name"] == "Jane Doe")
+
+    # Reception can see a villa is empty when Mews cannot, so a staff vacant is
+    # allowed to contradict the PMS. It is stamped with the version it was
+    # decided against, and dropped once Mews changes that booking.
+    vac = pg.evaluate("""()=>{
+      const mk = (upd) => overlayStays({}, { '5': {id:'r1', first:'Jane',
+                 last:'Doe', depart:'2026-08-25', updated:upd} });
+      const vacant = { status:'vacant', pax:0, room:'5', source:'manual',
+                       pmsUpdated:'2026-08-16T10:00:00Z' };
+      return {
+        same:  roomRecord(5, {}, {'room-5':vacant}, mk('2026-08-16T10:00:00Z')),
+        newer: roomRecord(5, {}, {'room-5':vacant}, mk('2026-08-17T09:00:00Z')),
+        noPms: roomRecord(5, {}, {'room-5':{status:'vacant',pax:0,room:'5',
+                                            source:'manual'}}, {}),
+        fresh: vacantIsStale(vacant, {bookingId:'r1',
+                                      pmsUpdated:'2026-08-16T10:00:00Z'})
+      };
+    }""")
+    ck("a staff vacant holds while the booking is unchanged",
+       vac["same"]["status"] == "vacant")
+    ck("and is dropped once Mews changes that booking",
+       vac["newer"]["status"] != "vacant")
+    ck("a vacant on a villa the PMS knows nothing about is never stale",
+       vac["noPms"]["status"] == "vacant")
+    ck("vacantIsStale says no when the stamps agree", vac["fresh"] is False)
+
     # The sync role is the Mews Worker's login. It is a real role, so roleOf
     # must return it rather than null, but it lands nowhere and grants nothing.
     sync=pg.evaluate("""()=>({
