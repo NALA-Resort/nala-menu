@@ -1,23 +1,23 @@
 {
-  "published": "2026-08-16T11:29:58.935979+10:00",
+  "published": "2026-08-17T09:26:50.531004+10:00",
   "bread": {
-    "name": "House Focaccia",
-    "desc": "warm olive salsa",
+    "name": "Housemade focaccia",
+    "desc": "aged balsamic, olive oil",
     "aus": false
   },
   "entree": {
-    "name": "Cured Salmon",
-    "desc": "buttermilk \u00b7 dill \u00b7 watermelon radish \u00b7 salmon roe",
+    "name": "Salmon Crudo",
+    "desc": "buttermilk, dill, cucumber, salmon roe",
     "aus": true
   },
   "main": {
-    "name": "Pan-roasted Veal",
-    "desc": "potato \u00b7 green beans \u00b7 lemon & caper butter",
+    "name": "Duck tagliatelle",
+    "desc": "chilli, garlic, orange gremolata, stracciatella",
     "aus": false
   },
   "dessert": {
-    "name": "Honey Panna Cotta",
-    "desc": "poached pear \u00b7 candied almond crumb",
+    "name": "Tiramisu",
+    "desc": "",
     "aus": false
   }
 }
