@@ -27,6 +27,18 @@
 <button onclick="writeTest()">Run write test</button>
 <pre id="write">not run</pre>
 
+<h2>Mews sync: is data arriving?</h2>
+<pre id="syncv">checking…</pre>
+
+<h2>Read /stays/&lt;today&gt; (what the boards read)</h2>
+<pre id="stayT">loading…</pre>
+
+<h2>Read /stays/&lt;tomorrow&gt;</h2>
+<pre id="stayN">loading…</pre>
+
+<h2>Read /bookings (whole node)</h2>
+<pre id="bk">loading…</pre>
+
 <h2>Read /roomguests (whole node)</h2>
 <pre id="rg">loading…</pre>
 
@@ -57,6 +69,37 @@ function read(path, id){
     .catch(function(e){ show(id, 0, String(e)); });
 }
 
+var TM = dkey(new Date(Date.now() + 86400000));
+read('/stays/'+T,  'stayT');
+read('/stays/'+TM, 'stayN');
+read('/bookings',  'bk');
+
+/* One line that says what is actually true, so nobody has to read JSON to find
+   out whether the sync is working. It also separates the two failures that
+   look identical on a board: nothing has ever arrived, versus entries exist in
+   the shape used before the guest summary was moved into them.            */
+fetch(DB+'/bookings.json?shallow=true&v='+Date.now())
+  .then(function(r){ return r.ok ? r.json() : null; })
+  .then(function(b){
+    var n = b ? Object.keys(b).length : 0;
+    return fetch(DB+'/stays/'+T+'.json?v='+Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(st){
+        var villas = st ? Object.keys(st) : [];
+        var old = villas.filter(function(v){ return typeof st[v] !== 'object'; });
+        var msg;
+        if (!n && !villas.length) msg = 'NOTHING YET. No bookings and no stays. The Zap has not delivered.';
+        else if (!villas.length)  msg = n + ' booking(s) stored, but NOBODY IN HOUSE TODAY. Normal if no guest is staying tonight.';
+        else if (old.length === villas.length)
+          msg = villas.length + ' villa(s) tonight, ALL IN THE OLD SHAPE. The boards ignore these. They need the Worker redeployed and a fresh Mews event.';
+        else msg = villas.length + ' villa(s) tonight: ' + villas.join(', ') +
+                   (old.length ? '. ' + old.length + ' still in the old shape.' : '. All readable by the boards.') +
+                   ' ' + n + ' booking(s) stored in total.';
+        show('syncv', 200, msg);
+      });
+  })
+  .catch(function(e){ show('syncv', 0, String(e)); });
+
 read('/roomguests', 'rg');
 read('/responses/'+T, 'resp');
 read('/manual/'+T, 'man');
@@ -69,7 +112,38 @@ function writeTest(){
   })
   .then(function(r){ return r.text().then(function(t){
       show('write', r.status, t);
-      read('/roomguests', 'rg');
+      var TM = dkey(new Date(Date.now() + 86400000));
+read('/stays/'+T,  'stayT');
+read('/stays/'+TM, 'stayN');
+read('/bookings',  'bk');
+
+/* One line that says what is actually true, so nobody has to read JSON to find
+   out whether the sync is working. It also separates the two failures that
+   look identical on a board: nothing has ever arrived, versus entries exist in
+   the shape used before the guest summary was moved into them.            */
+fetch(DB+'/bookings.json?shallow=true&v='+Date.now())
+  .then(function(r){ return r.ok ? r.json() : null; })
+  .then(function(b){
+    var n = b ? Object.keys(b).length : 0;
+    return fetch(DB+'/stays/'+T+'.json?v='+Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(st){
+        var villas = st ? Object.keys(st) : [];
+        var old = villas.filter(function(v){ return typeof st[v] !== 'object'; });
+        var msg;
+        if (!n && !villas.length) msg = 'NOTHING YET. No bookings and no stays. The Zap has not delivered.';
+        else if (!villas.length)  msg = n + ' booking(s) stored, but NOBODY IN HOUSE TODAY. Normal if no guest is staying tonight.';
+        else if (old.length === villas.length)
+          msg = villas.length + ' villa(s) tonight, ALL IN THE OLD SHAPE. The boards ignore these. They need the Worker redeployed and a fresh Mews event.';
+        else msg = villas.length + ' villa(s) tonight: ' + villas.join(', ') +
+                   (old.length ? '. ' + old.length + ' still in the old shape.' : '. All readable by the boards.') +
+                   ' ' + n + ' booking(s) stored in total.';
+        show('syncv', 200, msg);
+      });
+  })
+  .catch(function(e){ show('syncv', 0, String(e)); });
+
+read('/roomguests', 'rg');
   }); })
   .catch(function(e){ show('write', 0, String(e)); });
 }
