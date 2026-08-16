@@ -37,10 +37,25 @@ async function idToken(env) {
     "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + env.FB_API_KEY,
     { method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: env.SYNC_EMAIL, password: env.SYNC_PASSWORD,
+      /* Trimmed for the same reason as the shared secret: a value pasted into
+         a dashboard often carries a trailing newline, and Firebase answers a
+         newline in an address with INVALID_EMAIL, which reads like the address
+         is wrong rather than merely untidy. */
+      body: JSON.stringify({ email: (env.SYNC_EMAIL || "").trim(),
+                             password: (env.SYNC_PASSWORD || "").trim(),
                              returnSecureToken: true }) });
   const j = await r.json();
-  if (!r.ok || !j.idToken) throw new Error("sign in failed: " + (j.error && j.error.message));
+  if (!r.ok || !j.idToken) {
+    var m = j.error && j.error.message;
+    /* Name the likely cause rather than passing Firebase's code straight
+       through, because INVALID_EMAIL sounds like the account is wrong when it
+       usually means SYNC_EMAIL is missing its @staff.nala part. */
+    if (m === "INVALID_EMAIL") m = "INVALID_EMAIL: SYNC_EMAIL should be the six digit code then @staff.nala";
+    if (m === "EMAIL_NOT_FOUND") m = "EMAIL_NOT_FOUND: no such account, check the six digits";
+    if (m === "INVALID_LOGIN_CREDENTIALS" || m === "INVALID_PASSWORD")
+      m = "wrong passcode: SYNC_PASSWORD is the six digits alone, no @staff.nala";
+    throw new Error("sign in failed: " + m);
+  }
   TOKEN = j.idToken; TOKEN_AT = Date.now();
   return TOKEN;
 }
