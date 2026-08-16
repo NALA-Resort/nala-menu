@@ -49,9 +49,23 @@ const RES = { Id: "res-guid-1", FirstName: "Mark", LastName: "Whitfield",
 
 /* ── the secret ─────────────────────────────────────────────── */
 install();
-ck("a wrong secret is refused", (await post(RES, "nope")).status === 401);
+const refused = await post(RES, "nope");
+ck("a wrong secret is refused", refused.status === 401);
+const why = await refused.json();
+ck("the refusal says the secret was configured, not missing", why.configured === true);
+ck("and reports lengths without revealing the secret",
+   why.configuredLength === 3 && why.receivedLength === 4 &&
+   !JSON.stringify(why).includes("shh"));
+
 ck("and nothing was written", Object.keys(STORE).length === 0);
 ck("a right secret is accepted", (await post(RES)).status === 200);
+/* A trailing newline on either side is invisible in a dashboard and is the
+   most common reason two identical looking secrets compare unequal. */
+install();
+const nl = await worker.fetch(new Request("https://w.dev/?secret=" + encodeURIComponent("shh\n"),
+  { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(RES) }), { ...env, ZAP_SECRET: "shh\n" });
+ck("a trailing newline on both sides still matches", nl.status === 200);
 
 install();
 ck("GET is refused, this is a webhook",

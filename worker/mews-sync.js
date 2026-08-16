@@ -117,10 +117,22 @@ export default {
     /* The shared secret may arrive as a header or as a query parameter,
        because Zapier makes one easier than the other depending on the action
        chosen, and being strict here only produces a silent failure later. */
+    /* Both sides trimmed. Copying a secret into a dashboard very often carries
+       a trailing newline, which is invisible and makes an identical looking
+       pair compare unequal. */
     const url = new URL(request.url);
-    const given = request.headers.get("x-nala-secret") || url.searchParams.get("secret");
-    if (!env.ZAP_SECRET || given !== env.ZAP_SECRET) {
-      return new Response("no", { status: 401 });
+    const want  = (env.ZAP_SECRET || "").trim();
+    const given = (request.headers.get("x-nala-secret") ||
+                   url.searchParams.get("secret") || "").trim();
+    if (!want || given !== want) {
+      /* Lengths only. They say whether the secret is missing, truncated or
+         simply different, and they cannot be used to reconstruct it. */
+      return new Response(JSON.stringify({
+        error: "secret rejected",
+        configured: !!want,
+        configuredLength: want.length,
+        receivedLength: given.length
+      }), { status: 401, headers: { "Content-Type": "application/json" } });
     }
 
     let payload;
