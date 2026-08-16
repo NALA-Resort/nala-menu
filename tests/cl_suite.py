@@ -749,6 +749,18 @@ with sync_playwright() as p:
        pg.evaluate("()=>{let hit=0; const f=window.fetch; window.fetch=function(u,o){ if(o&&o.method==='PUT'&&(''+u).indexOf('/notify')>-1) hit++; return f.apply(this,arguments);}; ensureNotifySettings('waiter'); window.fetch=f; return hit===0;}"))
     pg.close()
 
+    # Every staff page must load the SDK before auth.js. staff.html shipped
+    # without it and showed "could not load the sign-in service" to everyone.
+    import re as _re
+    for f in ["cleaners.html","tally.html","list.html","housekeeping.html","staff.html"]:
+        src = open("/home/claude/nala/" + f).read()
+        tags = [x.split("/")[-1] for x in
+                _re.findall(r'<script[^>]*src=[\'"]([^\'"]+)', src)]
+        ck("%s loads firebase before auth.js" % f,
+           "firebase-app-compat.js" in tags and "firebase-auth-compat.js" in tags and
+           tags.index("firebase-auth-compat.js") < [i for i,t in enumerate(tags)
+                                                    if t.startswith("auth.js")][0])
+
     # Settings is admin only, and must not appear as a door to nowhere
     for email, who, expect in [("staff@nalaresort.com.au","admin",True),
                                ("housekeeping@nalaresort.com.au","housekeeping",False),
