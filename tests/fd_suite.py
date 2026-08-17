@@ -132,11 +132,16 @@ with sync_playwright() as p:
        todo[3:] == sorted(todo[3:], key=int))
     ck("and the ones still to do come first, because that is the job",
        villas == todo + doneV)
-    ck("the count is the arrivals, not every stay",
-       pg.evaluate("()=>nArr.textContent") == str(len(villas)))
+    # The two stats mirror the two sections.
+    ck("arrived counts the ones reception has been through",
+       pg.evaluate("()=>nArr.textContent") == "2")
     # six arrivals, of which villas 7 and 11 are already confirmed
-    ck("to confirm counts only those reception has not been through",
+    ck("arriving counts those still to come through the desk",
        pg.evaluate("()=>nLeft.textContent") == "5")
+    ck("the sections read as what the guest does, not what reception does",
+       [e.strip() for e in pg.evaluate(
+        "()=>[...document.querySelectorAll('.seclabel')].map(e=>e.textContent)")]
+       == ["Arriving", "Arrived"])
     ck("and goes red while any remain",
        pg.evaluate("()=>tileLeft.className.indexOf('due')>-1"))
 
@@ -150,6 +155,22 @@ with sync_playwright() as p:
     # Before a guest arrives, the ETA is the fact reception plans around.
     ck("the arrival slot shows on the list, without opening anything",
        "4pm" in pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"] .arr-s').textContent"))
+    ck("and carries more weight than the rest of the line",
+       pg.evaluate("()=>!!document.querySelector('.arr[data-villa=\"4\"] .arr-s .eta')"))
+    # Everyone here arrives today, so the range's first half is the same on
+    # every row. How long they stay is the part that differs.
+    ck("the row says how many nights, not a date range",
+       "4 nights" in pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"] .arr-s').textContent"))
+    ck("and one night is singular",
+       "1 night" in pg.evaluate("()=>document.querySelector('.arr[data-villa=\"14\"] .arr-s').textContent"))
+    ck("the full range is still in the sheet for anyone who needs the date",
+       (pg.locator('.arr[data-villa="4"]').click(), pg.wait_for_timeout(300),
+        pg.locator('.sum-btns button[data-act="edit"]').click(), pg.wait_for_timeout(400),
+        "Mon 17-Fri 21" in pg.locator("#sheet").inner_text())[4])
+    pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
+    # closing the sheet leaves the summary open behind it; collapse it so the
+    # tests after this one start from a clean board
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
     ck("but the note explaining an odd arrival stays off the row",
        "flight lands" not in pg.evaluate("()=>document.querySelector('.arr[data-villa=\"9\"] .arr-s').textContent"))
 
@@ -349,6 +370,29 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.querySelector('.arr[data-villa=\"9\"]').className")
        .find("is-done") == -1)
     STATE["fail"] = False
+    pg.close()
+
+
+    # ── moving between days ─────────────────────────────────────
+    # Wired by initDateNav in nala-shared.js, the same header every staff page
+    # uses. Tested here because "the shared thing handles it" is exactly the
+    # claim that turns out to be wrong on the one page nobody checked.
+    pg = board()
+    ck("Today is dimmed while already on today",
+       pg.evaluate("()=>dToday.disabled === true"))
+    pg.locator("#dNext").click(); pg.wait_for_timeout(1200)
+    ck("forward moves the browsed date", "date=" + plus(1) in pg.url)
+    ck("and Today wakes up once you have moved off it",
+       pg.evaluate("()=>dToday.disabled === false"))
+    ck("tomorrow has no arrivals in this fixture, and says so",
+       "No arrivals" in pg.locator("#board").inner_text())
+    pg.locator("#dPrev").click(); pg.wait_for_timeout(1200)
+    pg.locator("#dPrev").click(); pg.wait_for_timeout(1200)
+    ck("back moves it the other way", "date=" + plus(-1) in pg.url)
+    pg.locator("#dToday").click(); pg.wait_for_timeout(1200)
+    ck("Today returns to today and drops the parameter", "date=" not in pg.url)
+    ck("and the arrivals are back",
+       pg.evaluate("()=>document.querySelectorAll('.arr').length") == 7)
     pg.close()
 
     # ── access ──────────────────────────────────────────────────

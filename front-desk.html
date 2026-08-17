@@ -40,6 +40,9 @@
      omitted, one line, because a wrapped range doubles the row height. */
   .arr-s { font-size:11px; color:var(--mid); margin-top:2px; white-space:nowrap;
            overflow:hidden; text-overflow:ellipsis; }
+  /* When they are getting here is what reception plans the afternoon around,
+     so it does not read as quietly as the stay length beside it. */
+  .arr-s .eta { font-size:12.5px; font-weight:600; color:var(--ink); }
 
   /* Confirmed rows recede but stay legible: reception still has to find a
      guest who checked in an hour ago. */
@@ -71,7 +74,7 @@
   /* Whether they are eating, readable without opening anything. Only on rows
      that have a form: there is nothing to report about a guest who has not
      answered, and an icon there would be an answer we do not have. */
-  .fork { width:15px; height:15px; flex:0 0 15px; opacity:.9; }
+  .fork { width:19px; height:19px; flex:0 0 19px; opacity:1; }
   .fork svg { width:100%; height:100%; display:block; }
   .fork.in  svg { fill:var(--dine); }
   .fork.out svg { fill:var(--nodine); }
@@ -166,8 +169,8 @@
 <div class="noaccess" id="noAccess"></div>
 
 <div class="stats" id="statsRow">
-  <div class="stat" id="tileLeft"><div class="stat-n" id="nLeft">&ndash;</div><div class="stat-l">To confirm</div></div>
-  <div class="stat"><div class="stat-n" id="nArr">&ndash;</div><div class="stat-l">Arrivals today</div></div>
+  <div class="stat" id="tileLeft"><div class="stat-n" id="nLeft">&ndash;</div><div class="stat-l">Arriving</div></div>
+  <div class="stat"><div class="stat-n" id="nArr">&ndash;</div><div class="stat-l">Arrived</div></div>
 </div>
 
 <div id="board"></div>
@@ -253,6 +256,19 @@ function stayLabel(s){
   return D[a.getDay()]+' '+a.getDate()+'-'+D[b.getDay()]+' '+b.getDate();
 }
 
+/* How long they are staying, rather than when they leave. On an arrivals list
+   the departure date is not the question: everyone on this screen arrives
+   today, so the range's first half is the same on every row and only the
+   second half carries anything. "3 nights" says the useful part in less
+   space, and the full range is in the sheet for anyone who needs the date. */
+function nightsLabel(s){
+  var a = parseDepDate(dkeyOf(s.arrive)), b = parseDepDate(dkeyOf(s.depart));
+  if (!a || !b) return '';
+  var n = Math.round((b - a) / 86400000);
+  if (n < 1) return '';
+  return n + (n === 1 ? ' night' : ' nights');
+}
+
 /* Confirmed means reception has been through it with the guest at the desk.
    That is NOT the same as the form being complete: a guest can fill in
    everything from their phone days earlier and still need confirming. */
@@ -297,9 +313,9 @@ function rowHTML(r){
 
      The slot only, never the note. Why they are early or late belongs in the
      summary, not squeezed into a row that already truncates. */
-  var bits = [stayLabel(r.stay)];
+  var bits = [nightsLabel(r.stay)];
   var i = etaIndex(r.pre && r.pre.arriveSlot);
-  if (i >= 0) bits.push(ETA_SLOTS[i][2]);   /* short form: the row truncates */
+  if (i >= 0) bits.push('<span class="eta">' + ETA_SLOTS[i][2] + '</span>');
   else if (r.stay.adults)
     bits.push(r.stay.adults + (Number(r.stay.adults)===1 ? ' adult' : ' adults'));
   var open = OPEN === r.villa;
@@ -420,7 +436,7 @@ function render(){
   var todo = ROWS.filter(function(r){ return !isConfirmed(r.pre); });
   var done = ROWS.filter(function(r){ return  isConfirmed(r.pre); });
 
-  document.getElementById('nArr').textContent  = ROWS.length;
+  document.getElementById('nArr').textContent  = done.length;
   document.getElementById('nLeft').textContent = todo.length;
   document.getElementById('tileLeft').className = 'stat' + (todo.length ? ' due' : '');
 
@@ -428,11 +444,14 @@ function render(){
   if (!ROWS.length){
     h = '<div class="empty">No arrivals on this date.</div>';
   } else {
-    h += '<div class="seclabel">To confirm</div>';
+    /* Arriving and Arrived rather than to confirm and confirmed. Confirming is
+       what reception does; arriving is what the guest does, and the guest is
+       what the receptionist is looking at when they scan this list. */
+    h += '<div class="seclabel">Arriving</div>';
     h += todo.length ? todo.map(rowHTML).join('')
-                     : '<div class="empty">All confirmed.</div>';
+                     : '<div class="empty">Everyone has arrived.</div>';
     if (done.length)
-      h += '<div class="seclabel">Confirmed</div>' + done.map(rowHTML).join('');
+      h += '<div class="seclabel">Arrived</div>' + done.map(rowHTML).join('');
   }
   document.getElementById('board').innerHTML = h;
 }
