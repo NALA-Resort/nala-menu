@@ -388,6 +388,57 @@ with sync_playwright() as p:
 
 
 
+
+    # ── the confirmation has to reach the chef ──────────────────
+    # The chef's board reads /manual, not /bookings. Without this the path
+    # stops one step short: reception types "dining, two guests, nut allergy"
+    # and Reservations still shows that villa as awaiting, which is the
+    # handwritten sheet problem the project exists to remove.
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(350)
+    del WRITES[:]
+    pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
+    man = [x for x in WRITES if "/manual/" in x["u"] and "room-4" in x["u"]]
+    ck("confirming also puts the guest on tonight's board", len(man) == 1)
+    if man:
+        rec = json.loads(man[0]["b"])
+        ck("as dining, with the covers", rec["status"] == "in" and rec["pax"] == 2)
+        ck("carrying the dietaries the kitchen acts on",
+           rec["diets"] == ["Nut allergy"] and "daughter" in rec["dnote"])
+        ck("and the name, so the sheet is not anonymous",
+           "Robyn" in rec["name"])
+        ck("marked as staff entered, which is what it is",
+           rec["source"] == "manual")
+        ck("written to the night they arrive", today in man[0]["u"])
+    pg.close()
+
+    # Not dining has to reach the board too, or the villa sits as awaiting all
+    # evening and somebody chases a guest who already said no.
+    pg = board()
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(350)
+    del WRITES[:]
+    pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
+    man = [x for x in WRITES if "/manual/" in x["u"] and "room-9" in x["u"]]
+    ck("a guest who declined is put on the board as not dining", len(man) == 1)
+    if man:
+        rec = json.loads(man[0]["b"])
+        ck("with no covers", rec["status"] == "out" and rec["pax"] == 0)
+        ck("and no allergies, because they declared none",
+           rec["diets"] == [] and rec["dnote"] == "")
+    pg.close()
+
+    # A confirmation the chef never sees is worse than one that visibly failed.
+    STATE["fail"] = True
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(350)
+    pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(700)
+    ck("if either write is rejected the guest is put back, not left half done",
+       "Could not save" in pg.locator("#errBar").inner_text() and
+       pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"]').className")
+       .find("is-done") == -1)
+    STATE["fail"] = False
+    pg.close()
+
     # ── the allergy nobody could have flagged earlier ───────────
     # The guest answered days before tonight's menu existed, so check-in is the
     # first moment the two halves can be compared, and reception is holding the

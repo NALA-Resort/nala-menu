@@ -163,6 +163,22 @@ guest filled it in. The chef reads one thing and does not care who typed it.
 **It is not a new output.** The Reservations screen is the chef's screen and
 already exists. Front Desk Arrival is an input path into it.
 
+**Which means confirming has to write to `/manual`, not only to
+`prearrival`.** The chef's board reads `/manual` and `/responses`; it has never
+read `/bookings`. Built on 17 Aug, and it was missing until then: reception
+could type "dining, two guests, nut allergy" and Reservations would still show
+that villa as awaiting. The path stopped one step short of the person it exists
+to serve.
+
+The record goes to the night the guest arrives, in the shape the board already
+understands, so nothing changed on the board side. Both writes succeed or the
+guest is put back: a confirmation the chef never sees is worse than one that
+visibly failed.
+
+The nightly dinner request never goes out for an arrival night, because guests
+check in after 2pm, so this write is the only thing that will ever put an
+arriving guest on that board.
+
 ---
 
 ## Manual bookings

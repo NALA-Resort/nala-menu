@@ -851,6 +851,33 @@ function openGuest(r){
    PATCH rather than PUT, so a field this screen does not carry is left alone
    rather than deleted. `at` is set only if the form had never been started,
    so it keeps meaning "when the answers first existed". */
+/* Confirming at the desk has to reach the chef, and the chef's board reads
+   /manual, not /bookings. Without this the whole path stops one step short:
+   reception types "dining, two guests, nut allergy" and Reservations still
+   shows that villa as awaiting, which is exactly the handwritten sheet problem
+   the project exists to remove.
+
+   Written to the date being viewed, which is the night they arrive. The
+   nightly dinner request never goes out for an arrival night, because guests
+   check in after 2pm, so nothing else will ever put them on that board.
+
+   The record is the same shape the board already understands, so it needs no
+   change over there: status, covers, and the dietaries the kitchen acts on. */
+function boardRecord(r, a){
+  var rec = {
+    status: a.dining ? 'in' : 'out',
+    pax:    a.dining ? a.pax : 0,
+    room:   String(r.villa),
+    source: 'manual',
+    name:   nameOf(r.stay),
+    diets:  a.noDiets ? [] : a.diets,
+    dnote:  a.noDiets ? '' : a.dnote,
+    note:   a.note || ''
+  };
+  if (r.stay.phone) rec.phone = r.stay.phone;
+  return rec;
+}
+
 function save(r, a){
   var payload = {
     dining: a.dining, pax: a.dining ? a.pax : 0,
@@ -869,11 +896,20 @@ function save(r, a){
   OPEN = null;
   render(); closeSheet();
 
-  fetch(DB + '/bookings/' + r.stay.id + '/prearrival.json', {
-    method: 'PATCH', headers: { 'Content-Type':'application/json' },
-    body: JSON.stringify(payload)
-  }).then(function(res){
-    if (!res.ok) throw new Error(res.status);
+  /* Both writes or neither. A confirmation the chef never sees is worse than
+     one that visibly failed, so the guest is put back if either half is
+     rejected rather than left looking confirmed on a board nobody else has. */
+  Promise.all([
+    fetch(DB + '/bookings/' + r.stay.id + '/prearrival.json', {
+      method: 'PATCH', headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify(payload)
+    }),
+    fetch(DB + '/manual/' + nav.todayKey() + '/room-' + r.villa + '.json', {
+      method: 'PUT', headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify(boardRecord(r, a))
+    })
+  ]).then(function(res){
+    if (!res[0].ok || !res[1].ok) throw new Error('save');
   }).catch(function(){
     r.pre = before; render();      /* put it back rather than lie about it */
     err('Could not save. Nothing was changed.');
