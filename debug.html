@@ -160,9 +160,11 @@ function runMerge(){
     fetch(DB+'/stays/'+k+'.json?v='+Date.now()).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }),
     fetchRoomGuests(k, 14, true),
     fetch(DB+'/responses/'+k+'.json?v='+Date.now()).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }),
-    fetch(DB+'/manual/'+k+'.json?v='+Date.now()).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; })
+    fetch(DB+'/manual/'+k+'.json?v='+Date.now()).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }),
+    fetch(DB+'/dinner/'+k+'.json?v='+Date.now()).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; })
   ]).then(function(res){
     var stays = res[0] || {}, responses = res[2] || {}, manual = res[3] || {};
+    var dinner = res[4] || {};
     var rg = overlayStays(resolveRoomGuests(res[1], k), stays);
     /* Four origins, not three. A villa can carry a staff override with no guest
        behind it at all, which is most of the board on a normal day: vacant is a
@@ -170,7 +172,7 @@ function runMerge(){
        as "guest link only" made a working board look like a broken one. */
     var lines = [], guests = 0, vacant = 0;
     for (var n = 1; n <= 17; n++){
-      var rec = roomRecord(n, responses, manual, rg);
+      var rec = roomRecord(n, responses, manual, rg, dinner);
       if (!rec) continue;
       var hasGuest = !!(rg[String(n)] && (rg[String(n)].name || rg[String(n)].departs));
       if (rec.status === 'vacant'){ vacant++; continue; }

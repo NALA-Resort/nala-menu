@@ -398,18 +398,19 @@ with sync_playwright() as p:
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(350)
     del WRITES[:]
     pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
-    man = [x for x in WRITES if "/manual/" in x["u"] and "room-4" in x["u"]]
-    ck("confirming also puts the guest on tonight's board", len(man) == 1)
+    man = [x for x in WRITES if "/dinner/" in x["u"] and x["u"].split("/dinner/")[1].startswith(today)]
+    ck("confirming writes the one dinner cell", len(man) == 1)
     if man:
         rec = json.loads(man[0]["b"])
         ck("as dining, with the covers", rec["status"] == "in" and rec["pax"] == 2)
         ck("carrying the dietaries the kitchen acts on",
            rec["diets"] == ["Nut allergy"] and "daughter" in rec["dnote"])
-        ck("and the name, so the sheet is not anonymous",
-           "Robyn" in rec["name"])
-        ck("marked as staff entered, which is what it is",
-           rec["source"] == "manual")
-        ck("written to the night they arrive", today in man[0]["u"])
+        ck("and the booking it belongs to, so the record knows whose it is",
+           rec["bookingId"] == "b4")
+        # This is what stops a guest overwriting it from their link afterwards.
+        ck("stamped as set by staff", rec["by"] == "staff")
+        ck("written to the night they arrive, keyed by villa",
+           today in man[0]["u"] and man[0]["u"].split("/dinner/")[1].startswith(today + "/4")) 
     pg.close()
 
     # Not dining has to reach the board too, or the villa sits as awaiting all
@@ -418,7 +419,7 @@ with sync_playwright() as p:
     pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(350)
     del WRITES[:]
     pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
-    man = [x for x in WRITES if "/manual/" in x["u"] and "room-9" in x["u"]]
+    man = [x for x in WRITES if "/dinner/" in x["u"] and "/9.json" in x["u"]]
     ck("a guest who declined is put on the board as not dining", len(man) == 1)
     if man:
         rec = json.loads(man[0]["b"])

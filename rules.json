@@ -15,6 +15,14 @@
         "$phone": { ".read": true, ".write": true }
       }
     },
+    "dinner": {
+      "$date": {
+        ".read": true,
+        "$villa": {
+          ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'waiter' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'chef')"
+        }
+      }
+    },
     "manual": {
       "$date": {
         ".read": "auth != null",

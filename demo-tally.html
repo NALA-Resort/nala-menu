@@ -974,13 +974,51 @@ function vacantIsStale(m, known){
    fields Mews owns outright are then reapplied ON TOP of the response, because
    a response carries a snapshot of the dates from when the guest replied. See
    pmsFields for why that snapshot cannot be allowed to win.                */
-function roomRecord(n, responses, manual, roomguests){
+/* ── the dinner cell ───────────────────────────────────────────
+   ONE record per villa per night, at /dinner/<date>/<villa>, holding the
+   answer to "are you eating with us tonight" whoever gave it.
+
+   It replaces two cells that held the same fact: /responses/<date>/<phone>
+   when a guest replied, and /manual/<date>/room-<villa> when staff typed it.
+   Two cells is why roomRecord needed precedence rules at all, and precedence
+   rules are how two copies of one fact quietly disagree.
+
+   The rule, which is what the app already did for guest replies and failed to
+   do for staff ones: whoever answers first sets it, and after that only staff
+   can change it. A guest opening their link sees what is booked rather than a
+   question they could overwrite. `by` records who, `at` records when.
+
+   Villa keyed, not booking keyed, because a board reads one night in one
+   request and a booking-keyed node would cost one request per villa. The
+   booking id rides along inside so the record still knows whose it is.     */
+function dinnerRecord(cell){
+  if (!cell || typeof cell !== 'object') return null;
+  return cell;
+}
+
+/* Staff outrank a guest, always. A guest cannot overwrite a booking reception
+   made, and this is the only precedence left in the app. */
+function dinnerLocked(cell){
+  return !!(cell && cell.by === 'staff');
+}
+
+function roomRecord(n, responses, manual, roomguests, dinner){
   var mk = 'room-'+n, m = manual[mk];
   var known = roomguests[String(n)] || {};
   /* A staff vacant made against an older version of the booking was a decision
      about a different state of the world, so it is dropped rather than left to
      outlive the facts behind it. */
   if (vacantIsStale(m, known)) m = null;
+
+  /* The one cell wins outright when it exists. No merge, because there is
+     nothing to merge it with: it holds the whole answer. The two older nodes
+     are still read beneath it while links and pages are moved across, and both
+     partition by date, so they empty themselves as the days pass rather than
+     needing a migration. */
+  var cell = dinnerRecord(dinner && dinner[String(n)]);
+  if (cell && !vacantIsStale(cell, known))
+    return Object.assign({}, known, cell, pmsFields(known), { room:String(n) });
+
   var best = null;
   for (var k in responses){
     var g = responses[k];
@@ -1326,6 +1364,7 @@ var responses = {};   // keyed by phone (digital) or manual key
 var cancelledExt = {};
 var roomguests = {};
 var manual = {};      // keyed by 'room-N' or 'ext-<id>'
+var dinner = {};      // the one cell, keyed by villa: /dinner/<date>/<villa>
 
 function api(path, method, body){
   var o = { method: method||'GET' };
@@ -1387,6 +1426,17 @@ function saveManual(key, rec){
 function roomState(n){
   var mk = 'room-'+n;
   var m  = manual[mk];
+
+  /* The one dinner cell, at /dinner/<date>/<villa>. It holds the whole answer
+     whoever gave it, so when it exists there is nothing to merge and the two
+     older nodes below are not consulted at all.
+
+     `by` says who set it, and it drives the icon the same way src did: a guest
+     answering from their link, or staff typing it at a desk. */
+  var cell = dinner[String(n)];
+  if (cell && typeof cell === 'object' && !vacantIsStale(cell, roomguests[String(n)] || {}))
+    return { src: (cell.by === 'guest' ? 'digital' : 'manual'),
+             key: mk, g: cell, cell: true };
 
   // latest digital response for this room
   var best = null;
@@ -2348,12 +2398,16 @@ function load(full){
     api('/manual/'+todayKey()),
     fetchRoomGuests(todayKey(), 14, !!full),
     api('/combined/'+todayKey()),
-    fetchStays(todayKey())
+    fetchStays(todayKey()),
+    api('/dinner/'+todayKey())
   ]).then(function(r){
     responses  = r[0] || {};
     manual     = r[1] || {};
     roomguests = overlayStays(resolveRoomGuests(r[2], todayKey()), r[4]);
     combined   = r[3] || {};
+    /* One more request on a poll that already makes five, and it retires two
+       of the others once every page writes here instead. */
+    dinner     = r[5] || {};
     render();
   });
 }

@@ -491,6 +491,7 @@ var responses = {};   // keyed by phone (digital) or manual key
 var cancelledExt = {};
 var roomguests = {};
 var manual = {};      // keyed by 'room-N' or 'ext-<id>'
+var dinner = {};      // the one cell, keyed by villa: /dinner/<date>/<villa>
 
 function api(path, method, body){
   var o = { method: method||'GET' };
@@ -552,6 +553,17 @@ function saveManual(key, rec){
 function roomState(n){
   var mk = 'room-'+n;
   var m  = manual[mk];
+
+  /* The one dinner cell, at /dinner/<date>/<villa>. It holds the whole answer
+     whoever gave it, so when it exists there is nothing to merge and the two
+     older nodes below are not consulted at all.
+
+     `by` says who set it, and it drives the icon the same way src did: a guest
+     answering from their link, or staff typing it at a desk. */
+  var cell = dinner[String(n)];
+  if (cell && typeof cell === 'object' && !vacantIsStale(cell, roomguests[String(n)] || {}))
+    return { src: (cell.by === 'guest' ? 'digital' : 'manual'),
+             key: mk, g: cell, cell: true };
 
   // latest digital response for this room
   var best = null;
@@ -1513,12 +1525,16 @@ function load(full){
     api('/manual/'+todayKey()),
     fetchRoomGuests(todayKey(), 14, !!full),
     api('/combined/'+todayKey()),
-    fetchStays(todayKey())
+    fetchStays(todayKey()),
+    api('/dinner/'+todayKey())
   ]).then(function(r){
     responses  = r[0] || {};
     manual     = r[1] || {};
     roomguests = overlayStays(resolveRoomGuests(r[2], todayKey()), r[4]);
     combined   = r[3] || {};
+    /* One more request on a poll that already makes five, and it retires two
+       of the others once every page writes here instead. */
+    dinner     = r[5] || {};
     render();
   });
 }

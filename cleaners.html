@@ -372,9 +372,13 @@ function load(full){
   var yest = (function(){ var d=new Date(); d.setDate(d.getDate()-1); return dkey(d); })();
   return Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
                 fetchRoomGuests(todayKey(), 14, !!full), api('/hk/'+todayKey()), api('/hk/'+yest),
-                fetchStays(todayKey()) ])
+                fetchStays(todayKey()), api('/dinner/'+todayKey()) ])
   .then(function(res){
     var responses=res[0]||{}, manual=res[1]||{}, hk=res[3]||{}, prevHk=res[4]||{};
+    /* The one dinner cell. This board only needs it to tell a departure from a
+       stay-over, but reading it from the same node the other pages write keeps
+       one villa from being two things on two screens. */
+    var dinner=res[6]||{};
     var roomguests=overlayStays(resolveRoomGuestsHK(res[2]||{}, todayKey()), res[5]);
     /* today's own bucket, unmerged: a villa with a guest arriving today is
        the one that has to be turned around first */
@@ -382,7 +386,7 @@ function load(full){
 
     var rows=[];
     for (var n=1;n<=ROOMS;n++){
-      var r=roomRecord(n, responses, manual, roomguests);
+      var r=roomRecord(n, responses, manual, roomguests, dinner);
       var a = arriving[n] && arriving[n].arrives ? parseDepDate(arriving[n].arrives) : null;
       /* A villa pushed yesterday and never finished arrives today as a clean
          that is already departed - the guest left, the work did not happen. */

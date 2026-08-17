@@ -851,30 +851,32 @@ function openGuest(r){
    PATCH rather than PUT, so a field this screen does not carry is left alone
    rather than deleted. `at` is set only if the form had never been started,
    so it keeps meaning "when the answers first existed". */
-/* Confirming at the desk has to reach the chef, and the chef's board reads
-   /manual, not /bookings. Without this the whole path stops one step short:
-   reception types "dining, two guests, nut allergy" and Reservations still
-   shows that villa as awaiting, which is exactly the handwritten sheet problem
-   the project exists to remove.
+/* The one dinner cell, at /dinner/<date>/<villa>. Confirming at the desk IS
+   the dinner reservation: there is no separate staff record and no bridge
+   between two nodes, because there is only one node.
 
    Written to the date being viewed, which is the night they arrive. The
-   nightly dinner request never goes out for an arrival night, because guests
+   nightly dinner request never goes out for an arrival night, since guests
    check in after 2pm, so nothing else will ever put them on that board.
 
-   The record is the same shape the board already understands, so it needs no
-   change over there: status, covers, and the dietaries the kitchen acts on. */
-function boardRecord(r, a){
+   `by: 'staff'` is what stops a guest overwriting it afterwards. Whoever
+   answers first sets the cell, and after that only staff can change it. */
+function dinnerCell(r, a){
   var rec = {
-    status: a.dining ? 'in' : 'out',
-    pax:    a.dining ? a.pax : 0,
-    room:   String(r.villa),
-    source: 'manual',
-    name:   nameOf(r.stay),
-    diets:  a.noDiets ? [] : a.diets,
-    dnote:  a.noDiets ? '' : a.dnote,
-    note:   a.note || ''
+    status:    a.dining ? 'in' : 'out',
+    pax:       a.dining ? a.pax : 0,
+    room:      String(r.villa),
+    bookingId: r.stay.id,
+    by:        'staff',
+    at:        new Date().toISOString(),
+    diets:     a.noDiets ? [] : a.diets,
+    dnote:     a.noDiets ? '' : a.dnote,
+    note:      a.note || ''
   };
-  if (r.stay.phone) rec.phone = r.stay.phone;
+  /* Only when the PMS knows about this villa, so an unstamped vacant is not
+     read as stale on the next render. */
+  var kn = r.pre && r.stay.id ? r.stay : null;
+  if (kn) rec.pmsUpdated = r.stay.updated || null;
   return rec;
 }
 
@@ -904,9 +906,9 @@ function save(r, a){
       method: 'PATCH', headers: { 'Content-Type':'application/json' },
       body: JSON.stringify(payload)
     }),
-    fetch(DB + '/manual/' + nav.todayKey() + '/room-' + r.villa + '.json', {
+    fetch(DB + '/dinner/' + nav.todayKey() + '/' + r.villa + '.json', {
       method: 'PUT', headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify(boardRecord(r, a))
+      body: JSON.stringify(dinnerCell(r, a))
     })
   ]).then(function(res){
     if (!res[0].ok || !res[1].ok) throw new Error('save');

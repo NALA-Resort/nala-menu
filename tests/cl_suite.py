@@ -620,6 +620,70 @@ with sync_playwright() as p:
        vac["noPms"]["status"] == "vacant")
     ck("vacantIsStale says no when the stamps agree", vac["fresh"] is False)
 
+
+    # ── the one dinner cell ─────────────────────────────────────
+    # One record per villa per night, replacing two that held the same fact:
+    # /responses keyed by phone and /manual keyed by villa. Two cells is why
+    # roomRecord needed precedence at all, and precedence is how two copies of
+    # one fact quietly disagree.
+    cell = pg.evaluate("""()=>{
+      const rg = overlayStays({}, { '5': {id:'r1', first:'Jane', last:'Doe',
+                 arrive:'2026-08-18', depart:'2026-08-22', adults:2} });
+      const resp = { '0400': { name:'Jane Doe', room:'5', status:'out', pax:0,
+                     at:'2026-08-18T09:00:00Z' } };
+      const man  = { 'room-5': { status:'in', pax:9, room:'5', source:'manual' } };
+      const din  = { '5': { status:'in', pax:3, diets:['Nut allergy'],
+                     by:'staff', at:'2026-08-18T18:00:00Z' } };
+      return {
+        wins:    roomRecord(5, resp, man, rg, din),
+        noCell:  roomRecord(5, resp, man, rg, {}),
+        absent:  roomRecord(5, {}, {}, rg, {}),
+        guestBy: roomRecord(5, {}, {}, rg, { '5': { status:'in', pax:2, by:'guest' } })
+      };
+    }""")
+    ck("the cell wins outright over both older nodes",
+       cell["wins"]["status"] == "in" and cell["wins"]["pax"] == 3)
+    ck("and brings its dietaries with it, since it holds the whole answer",
+       cell["wins"]["diets"] == ["Nut allergy"])
+    ck("the guest's own facts still come from Mews above it",
+       cell["wins"]["name"] == "Jane Doe")
+    # And this is the argument for one cell, in one line. With no dinner cell
+    # the fallback gives the RESPONSE, not the staff entry, because a staff
+    # record only outranks a guest when it carries an override flag. I wrote
+    # this test expecting the opposite, which is the point: nobody holds that
+    # rule in their head correctly, including whoever wrote it.
+    ck("with no cell, the older two still work while pages are moved across",
+       cell["noCell"]["status"] == "out" and cell["noCell"]["pax"] == 0)
+    ck("and no answer anywhere is still no answer",
+       cell["absent"]["status"] is None)
+    ck("a cell set by a guest reads the same as one set by staff",
+       cell["guestBy"]["status"] == "in" and cell["guestBy"]["pax"] == 2)
+
+    # Staff outrank a guest. This is the only precedence left in the app.
+    lock = pg.evaluate("""()=>({
+      staff: dinnerLocked({ status:'in', by:'staff' }),
+      guest: dinnerLocked({ status:'in', by:'guest' }),
+      none:  dinnerLocked(null)
+    })""")
+    ck("a cell set by staff is locked against the guest", lock["staff"] is True)
+    ck("one set by a guest is not", lock["guest"] is False)
+    ck("and an empty villa is not", lock["none"] is False)
+
+    # A staff vacant on a PMS villa still expires when Mews changes the booking,
+    # exactly as it did in the node this replaces.
+    stale = pg.evaluate("""()=>{
+      const mk = (upd) => overlayStays({}, { '5': {id:'r1', first:'Jane',
+                 last:'Doe', depart:'2026-08-25', updated:upd} });
+      const vac = { status:'vacant', pax:0, by:'staff',
+                    pmsUpdated:'2026-08-16T10:00:00Z' };
+      return { same:  roomRecord(5, {}, {}, mk('2026-08-16T10:00:00Z'), {'5':vac}),
+               newer: roomRecord(5, {}, {}, mk('2026-08-17T09:00:00Z'), {'5':vac}) };
+    }""")
+    ck("a vacant in the cell holds while the booking is unchanged",
+       stale["same"]["status"] == "vacant")
+    ck("and is dropped once Mews changes that booking",
+       stale["newer"]["status"] != "vacant")
+
     # The sync role is the Mews Worker's login. It is a real role, so roleOf
     # must return it rather than null, but it lands nowhere and grants nothing.
     sync=pg.evaluate("""()=>({
