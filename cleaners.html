@@ -169,7 +169,7 @@
   <div class="date" id="title"></div>
   <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="list.html">Reservations Sheet</a><a href="housekeeping.html">Clean sheet</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="list.html">Reservations Sheet</a><a href="housekeeping.html">Clean sheet</a><a href="registration.html">Registration</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 <script>
@@ -279,7 +279,7 @@
   /* Only the boards this role may open. Sign out is never filtered. */
   function navFilter(role){
     var need = { 'tally.html':'resBoard', 'front-desk.html':'editBookings', 'list.html':'resSheet',
-                 'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard',
+                 'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard', 'registration.html':'editBookings',
                  'staff.html':'manageStaff', 'pages.html':'manageStaff' };
     var links = document.querySelectorAll('#navDrop a');
     for (var i=0;i<links.length;i++){

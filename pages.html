@@ -48,7 +48,7 @@
   <div class="date" id="title">Pages</div>
   <div class="navwrap" id="navWrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="list.html">Reservations Sheet</a><a href="cleaners.html">Cleans</a><a href="housekeeping.html">Clean sheet</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="list.html">Reservations Sheet</a><a href="cleaners.html">Cleans</a><a href="housekeeping.html">Clean sheet</a><a href="registration.html">Registration</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 
@@ -90,6 +90,10 @@
     <div class="p-t">Reservations Sheet</div><div class="p-f">list.html</div></a>
   <a class="p" href="housekeeping.html">
     <div class="p-t">Clean Sheet</div><div class="p-f">housekeeping.html</div></a>
+  <a class="p" href="registration.html">
+    <div class="p-t">Registration Cards</div><div class="p-f">registration.html</div>
+    <div class="p-n">One card per arriving villa. Answers printed where they
+      exist, a rule to write on where they do not.</div></a>
   <a class="p" href="menu-print.html">
     <div class="p-t">Printable Menu</div><div class="p-f">menu-print.html</div>
     <div class="p-n">No sign in.</div></a>
@@ -159,7 +163,7 @@
 function navFilter(role){
   var need = { 'tally.html':'resBoard', 'front-desk.html':'editBookings',
                'list.html':'resSheet', 'cleaners.html':'cleansBoard',
-               'housekeeping.html':'cleansBoard', 'staff.html':'manageStaff',
+               'housekeeping.html':'cleansBoard', 'registration.html':'editBookings', 'staff.html':'manageStaff',
                'pages.html':'manageStaff' };
   var links = document.getElementById('navDrop').getElementsByTagName('a');
   for (var i=0;i<links.length;i++){

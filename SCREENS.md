@@ -183,10 +183,24 @@ Nut allergy" is enough to start the conversation.
 It warns and does not block. The guest page requires a note before saving;
 reception is talking to the guest and can settle it out loud.
 
-### 3. Registration cards, print
+### 3. Registration cards, print. BUILT 17 Aug
 
-`registration.html`. One card per arriving villa, questionnaire answers filled
-in or left blank for pen. Editable at reception with a save.
+`registration.html`, `tests/reg_suite.py`, 22 assertions. One card per arriving
+villa, one page each.
+
+An unanswered question prints as a **rule to write on**, not as blank space.
+The card is the working document at the desk, so a gap has to be writable. A
+guest who sent nothing gets eight rules and their name and stay still printed,
+because Mews knows those.
+
+It carries the menu conflict too, and here it earns its place twice over: the
+card goes to the kitchen, and the kitchen is who acts on it.
+
+Not built: editing on the card itself with a save. Front Desk Arrival already
+edits and confirms, so a second editor for the same data would be two ways to
+change one thing. Worth deciding rather than assuming: if reception works from
+paper and types it up later, that is a different design from confirming at the
+screen.
 
 ### 4. Write back to Mews
 

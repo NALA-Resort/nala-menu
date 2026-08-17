@@ -126,7 +126,7 @@ can send the parameter names. See `TESTING.md`.
 - **[me]** Works before Mews has the booking, which is the normal case at seven
   days out
 
-## Stage F. Registration cards. NEXT
+## Stage F. Registration cards. DONE 17 Aug
 
 - **[me]** `registration.html`, print tier, one card per arriving villa
 - **[me]** Answers filled in or left blank for pen, editable with a save

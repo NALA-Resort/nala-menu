@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nala &middot; Registration Cards</title>
+<link rel="stylesheet" href="nala-ui.css?v=12">
+<style>
+  @page { size: A4 portrait; margin: 12mm; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:var(--ui-font); color:#111; background:#fff; padding:16px 16px 0; }
+
+  .btn { padding:10px 20px; background:#111; color:#fff; border:none;
+         font-family:var(--ui-font); font-size:10px; letter-spacing:.15em;
+         text-transform:uppercase; cursor:pointer; }
+  .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+
+  /* One card per arriving villa, one page each. A card that breaks across a
+     page is a card somebody hands over half of. */
+  .card { border:1px solid #111; padding:18px 20px 20px; margin-bottom:18px;
+          page-break-inside:avoid; page-break-after:always; }
+  .card:last-child { page-break-after:auto; }
+
+  .c-head { display:flex; align-items:baseline; gap:14px;
+            border-bottom:1px solid #111; padding-bottom:10px; margin-bottom:14px; }
+  .c-villa { font-size:30px; line-height:1; font-weight:bold; }
+  .c-who { flex:1; }
+  .c-name { font-size:17px; line-height:1.25; }
+  .c-stay { font-size:9px; letter-spacing:.1em; text-transform:uppercase;
+            color:#666; margin-top:4px; }
+
+  .row { display:flex; gap:12px; padding:7px 0; border-bottom:1px solid #ddd; }
+  .row:last-of-type { border-bottom:none; }
+  .lbl { flex:0 0 26%; font-size:7.5px; letter-spacing:.14em; text-transform:uppercase;
+         color:#666; padding-top:3px; }
+  .val { flex:1; font-size:11px; line-height:1.45; min-height:15px; }
+  /* An unanswered field prints as a rule to write on, not as blank space.
+     Reception fills it in with the guest and the card is the working document. */
+  .val.blank { border-bottom:1px solid #bbb; min-height:15px; }
+  .val.blank.tall { min-height:32px; }
+
+  .flag { color:#9E6455; font-weight:bold; }
+  .sig { display:flex; gap:24px; margin-top:16px; padding-top:12px;
+         border-top:1px solid #111; }
+  .sig div { flex:1; font-size:7.5px; letter-spacing:.14em; text-transform:uppercase;
+             color:#666; }
+  .sig span { display:block; border-bottom:1px solid #111; height:26px; margin-bottom:4px; }
+
+  .stamp { font-size:7.5px; letter-spacing:.1em; text-transform:uppercase;
+           color:#999; text-align:right; margin-top:10px; }
+  .empty { font-size:13px; color:#666; font-style:italic; padding:20px 0; }
+
+  @media print {
+    body { padding:0; }
+    .daterow, .foot, .noaccess, .screen-only { display:none !important; }
+    .card { border:none; padding:0; }
+  }
+</style>
+</head>
+<body class="tier-print">
+
+<div class="printkick">Nala &middot; Registration</div>
+
+<div class="daterow">
+  <button class="dnav today" id="dToday">Today</button>
+  <button class="dnav" id="dPrev">&#8249;</button>
+  <div class="date" id="title"></div>
+  <button class="dnav" id="dNext">&#8250;</button>
+  <div class="navwrap" id="navWrap">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="list.html">Reservations Sheet</a><a href="cleaners.html">Cleans</a><a href="housekeeping.html">Clean sheet</a><a href="registration.html">Registration</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+  </div>
+</div>
+
+<div class="noaccess" id="noAccess"></div>
+<div id="cards"></div>
+<div class="stamp" id="stamp"></div>
+
+<div class="foot">
+  <button class="btn" onclick="window.print()">Print</button>
+  <button class="btn ghost" onclick="location.reload()">Refresh</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="auth.js?v=11"></script>
+<script src="nala-shared.js?v=19"></script>
+<script>
+var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+var nav = initDateNav();
+var TAGS = null;
+
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+  var so=document.getElementById('navSignout');
+  if (so) so.onclick=function(e){ e.preventDefault();
+    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+})();
+
+function api(path){
+  return fetch(DB + path + '.json?v=' + Date.now())
+    .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); });
+}
+function esc(t){
+  return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){
+    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c];
+  });
+}
+function dkeyOf(v){
+  var m = String(v||'').match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : null;
+}
+
+/* Same six slots and the same keys as the guest form and the front desk. Three
+   copies of a list is two chances to disagree, so if a slot is ever added it
+   has to be added in all three. */
+var ETA_SLOTS = { before2:'Before 2pm', '14':'Approx 2pm', '15':'Approx 3pm',
+                  '16':'Approx 4pm', '17':'Approx 5pm', after5:'After 5pm' };
+var APPROACH = { most:'Dining in most nights', mix:'A mix of in and out',
+                 out:'Mostly eating out' };
+
+/* An arrival is a stay whose FIRST night is the printed date. /stays holds one
+   row per night, so without this every in house guest would get a card every
+   morning of their stay. */
+function arrivingOn(day, key){
+  var out = [];
+  for (var villa in (day || {})){
+    var s = day[villa];
+    if (!s || typeof s !== 'object' || !s.id) continue;
+    if (dkeyOf(s.arrive) !== key) continue;
+    out.push({ villa:String(villa), stay:s, pre:null });
+  }
+  return out.sort(function(a,b){ return (+a.villa) - (+b.villa); });
+}
+
+function nightsLabel(s){
+  var a = parseDepDate(dkeyOf(s.arrive)), b = parseDepDate(dkeyOf(s.depart));
+  if (!a || !b) return '';
+  var n = Math.round((b - a) / 86400000);
+  return n < 1 ? '' : n + (n === 1 ? ' night' : ' nights');
+}
+function stayRange(s){
+  var a = parseDepDate(dkeyOf(s.arrive)), b = parseDepDate(dkeyOf(s.depart));
+  if (!a || !b) return '';
+  var D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return D[a.getDay()]+' '+a.getDate()+' '+M[a.getMonth()]+' to '+
+         D[b.getDay()]+' '+b.getDate()+' '+M[b.getMonth()];
+}
+function dayLabel(key){
+  var d = parseDepDate(key); if (!d) return key;
+  var D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  return D[d.getDay()] + ' ' + d.getDate();
+}
+
+/* Which of a guest's dietaries the night's menu contains. Same comparison as
+   the front desk, against the same /menutags node. On paper it earns its place
+   twice over: the card goes to the kitchen, and the kitchen is who acts. */
+function conflictsFor(diets){
+  var hits = [];
+  if (!diets || !diets.length || !TAGS) return hits;
+  ['bread','entree','main','dessert'].forEach(function(course){
+    (TAGS[course] || []).forEach(function(tag){
+      diets.forEach(function(d){
+        if (String(d).toLowerCase() === String(tag).toLowerCase()) hits.push(course);
+      });
+    });
+  });
+  return hits.filter(function(c,i,x){ return x.indexOf(c) === i; });
+}
+
+/* A value, or a rule to write on. The card is the working document at the
+   desk, so an unanswered question has to be writable rather than absent. */
+function row(label, value, tall){
+  return '<div class="row"><div class="lbl">' + label + '</div>' +
+         (value ? '<div class="val">' + value + '</div>'
+                : '<div class="val blank' + (tall ? ' tall' : '') + '"></div>') +
+         '</div>';
+}
+
+function cardHTML(r){
+  var s = r.stay, p = r.pre || {};
+  var h = '<div class="card">' +
+    '<div class="c-head">' +
+      '<div class="c-villa">' + r.villa + '</div>' +
+      '<div class="c-who">' +
+        '<div class="c-name">' +
+          esc(((s.first||'') + ' ' + (s.last||'')).trim() || 'Guest') + '</div>' +
+        '<div class="c-stay">' + stayRange(s) +
+          (nightsLabel(s) ? ' \u00b7 ' + nightsLabel(s) : '') +
+          (s.adults ? ' \u00b7 ' + s.adults +
+            (Number(s.adults)===1 ? ' adult' : ' adults') : '') + '</div>' +
+      '</div>' +
+    '</div>';
+
+  h += row('Arriving', p.arriveSlot
+        ? esc(ETA_SLOTS[p.arriveSlot] || p.arriveSlot) +
+          (p.arriveNote ? ' \u00b7 ' + esc(p.arriveNote) : '')
+        : '');
+
+  h += row('Dinner tonight', p.dining === undefined ? ''
+        : (p.dining ? 'Dining \u00b7 ' + (p.pax || '') +
+             (Number(p.pax)===1 ? ' guest' : ' guests') : 'Not dining'));
+
+  var diet = p.noDiets ? 'None to declare'
+           : ((p.diets && p.diets.length) ? esc(p.diets.join(' \u00b7 ')) : '');
+  if (diet && p.dnote) diet += '<br>' + esc(p.dnote);
+  /* The kitchen reads this card. If the night's menu contains something the
+     guest declared, it says so here in as many words. */
+  if (diet && p.dining !== false){
+    var clash = conflictsFor(p.diets);
+    if (clash.length)
+      diet += '<br><span class="flag">Menu conflict: ' + clash.join(', ') + '</span>';
+  }
+  h += row('Dietary', diet, true);
+
+  h += row('Purpose', (p.purpose && p.purpose.length)
+        ? esc(p.purpose.join(' \u00b7 ')) : '');
+  h += row('Dining plans', p.approach ? esc(APPROACH[p.approach] || p.approach) : '');
+  h += row('Occasion', p.occasion ? esc(p.occasion) : '');
+  h += row('Wellness', p.wellness === undefined ? ''
+        : (p.wellness
+            ? 'Interested' + (p.wellDay ? ' \u00b7 ' + dayLabel(p.wellDay) : '') +
+              (p.wellTime ? ' \u00b7 ' + esc(p.wellTime) : '')
+            : 'Not interested'));
+  h += row('Notes', p.note ? esc(p.note) : '', true);
+
+  h += '<div class="sig"><div><span></span>Guest signature</div>' +
+       '<div><span></span>Checked in by</div></div>';
+  return h + '</div>';
+}
+
+function render(rows){
+  document.getElementById('cards').innerHTML = rows.length
+    ? rows.map(cardHTML).join('')
+    : '<div class="empty">No arrivals on this date.</div>';
+  var d = new Date();
+  document.getElementById('stamp').textContent =
+    'Printed ' + dateLabel(d) + ' ' +
+    String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+
+function load(){
+  var key = nav.todayKey();
+  api('/menutags/'+key).then(function(t){ TAGS = t; }).catch(function(){ TAGS = null; })
+    .then(function(){ return api('/stays/'+key); })
+    .then(function(day){
+      var rows = arrivingOn(day, key);
+      render(rows);
+      /* One read per booking. /bookings cannot be listed by design. */
+      return Promise.all(rows.map(function(r){
+        return api('/bookings/'+r.stay.id+'/prearrival')
+          .then(function(p){ r.pre = p; }).catch(function(){ r.pre = null; });
+      })).then(function(){ render(rows); });
+    })
+    .catch(function(){
+      document.getElementById('cards').innerHTML =
+        '<div class="empty">Could not load arrivals. This is usually the connection.</div>';
+    });
+}
+
+function navFilter(role){
+  var need = { 'tally.html':'resBoard', 'front-desk.html':'editBookings',
+               'list.html':'resSheet', 'cleaners.html':'cleansBoard',
+               'housekeeping.html':'cleansBoard', 'registration.html':'editBookings', 'staff.html':'manageStaff',
+               'pages.html':'manageStaff' };
+  var links = document.getElementById('navDrop').getElementsByTagName('a');
+  for (var i=0;i<links.length;i++){
+    if (links[i].className.indexOf('signout') > -1) continue;
+    var href = (links[i].getAttribute('href')||'').split('?')[0];
+    links[i].style.display = can(role, need[href]) ? '' : 'none';
+  }
+}
+
+function showAccess(allowed, e){
+  var box = document.getElementById('noAccess');
+  var on = !allowed;
+  box.innerHTML = !on ? '' :
+    (e ? '<div>Could not check access. This is usually the connection, '
+       + 'not your login.</div>'
+       + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+       : 'This login has no access to registration cards. See the manager.');
+  if (on && !e){
+    var home = homeFor(window.NALA_ROLE);
+    if (home && home !== location.pathname.split('/').pop()){
+      location.replace(home); return;
+    }
+  }
+  box.className = 'noaccess' + (on ? ' show' : '');
+  ['cards','stamp'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.style.display = on ? 'none' : '';
+  });
+  if (!on) load();
+}
+
+window.NALA_ROLE = null;
+(function gate(){
+  if (!window.firebase || !firebase.auth || typeof loadStaff !== 'function')
+    return setTimeout(gate, 40);
+  var A; try { A = firebase.auth(); } catch(e){ return setTimeout(gate, 40); }
+  if (!A || !A.onAuthStateChanged) return setTimeout(gate, 40);
+  A.onAuthStateChanged(function(u){
+    if (!u) return;
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      window.NALA_USER = u;
+      document.getElementById('navWrap').style.display = 'block';
+      navFilter(role);
+      showAccess(can(role, 'editBookings'), e);
+    });
+  });
+})();
+</script>
+</body>
+</html>
