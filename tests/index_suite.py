@@ -243,8 +243,20 @@ with sync_playwright() as p:
     pg = guest(LINK)
     txt = pg.locator("#rsvp").inner_text()
     ck("a guest who already replied is not asked again", "dining with us" not in txt)
-    ck("and is offered a way to change their own answer",
-       pg.locator("#bEdit").count() == 1)
+    # The Change link is hidden after the noon cutoff, so this depends on the
+    # clock. Pinned to before noon rather than left to fail every afternoon.
+    ck("and is offered a way to change their own answer, before the cutoff",
+       pg.evaluate("()=>{ const was = Date.prototype.getHours;"
+                   "Date.prototype.getHours = function(){ return 9; };"
+                   "try { stepDone({status:'in', pax:3, by:'guest'});"
+                   "return !!document.getElementById('bEdit'); }"
+                   "finally { Date.prototype.getHours = was; } }"))
+    ck("and not offered it after the cutoff",
+       pg.evaluate("()=>{ const was = Date.prototype.getHours;"
+                   "Date.prototype.getHours = function(){ return 14; };"
+                   "try { stepDone({status:'in', pax:3, by:'guest'});"
+                   "return !document.getElementById('bEdit'); }"
+                   "finally { Date.prototype.getHours = was; } }"))
     pg.close()
 
     # ── a booking reception made at the desk ────────────────────

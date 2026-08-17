@@ -37,7 +37,8 @@ STAFF = {"staff@x": {"name": "Admin", "role": "admin"},
          "housekeeping@x": {"name": "HK", "role": "housekeeping"}}
 
 STAYS = {
-  "4":  {"id":"b4","first":"Robyn","last":"Williams","arrive":today,"depart":plus(4),"adults":2},
+  "4":  {"id":"b4","first":"Robyn","last":"Williams","arrive":today,"depart":plus(4),
+         "adults":2,"number":1159},
   "9":  {"id":"b9","first":"Konstantinos","last":"Papadopoulos","arrive":today,"depart":plus(2),"adults":4},
   "2":  {"id":"b2","first":"James","last":"Fisher","arrive":today,"depart":plus(6),"adults":2},
   "7":  {"id":"b7","first":"Mark","last":"Whitfield","arrive":today,"depart":plus(3),"adults":2},
@@ -591,6 +592,16 @@ with sync_playwright() as p:
        len([x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]) == 1)
     pg.close()
 
+
+
+    # The GUID is the key, but nobody can read a GUID out over the phone. The
+    # reservation number is what staff see in Mews.
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    ck("the sheet shows the Mews reservation number",
+       "Mews 1159" in pg.locator("#sheet").inner_text())
+    pg.close()
 
     # ── one party, two villas ───────────────────────────────────
     # A family booking two villas is two reservations under one group. Two rows

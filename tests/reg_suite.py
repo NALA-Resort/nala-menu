@@ -35,7 +35,8 @@ STAFF = {"staff@x": {"name":"Admin","role":"admin"},
          "housekeeping@x": {"name":"HK","role":"housekeeping"}}
 
 STAYS = {
-  "4":  {"id":"b4","first":"Robyn","last":"Williams","arrive":today,"depart":plus(4),"adults":2},
+  "4":  {"id":"b4","first":"Robyn","last":"Williams","arrive":today,"depart":plus(4),
+         "adults":2,"number":1159},
   "9":  {"id":"b9","first":"Konstantinos","last":"Papadopoulos","arrive":today,"depart":plus(2),"adults":4},
   "2":  {"id":"b2","first":"James","last":"Fisher","arrive":today,"depart":plus(6),"adults":2},
   # in house, arrived two days ago. Must not get a card this morning.
@@ -116,6 +117,8 @@ with sync_playwright() as p:
     ck("the treatment day and time", "Interested" in c4 and "late morning" in c4)
     ck("dining plans in words, not a stored code", "Dining in most nights" in c4)
     # .c-stay is uppercased by CSS, so innerText comes back shouting.
+    # On paper it is the only way back to the PMS record: the card has no GUID.
+    ck("the card carries the Mews reservation number", "MEWS 1159" in c4.upper())
     ck("the stay as a range, since paper has room for it",
        " TO " in c4.upper() and "NIGHTS" in c4.upper())
 

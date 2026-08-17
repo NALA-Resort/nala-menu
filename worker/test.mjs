@@ -409,5 +409,16 @@ const held = Object.keys(STORE).filter(k => k.startsWith("/stays/"));
 ck("a booking created then moved holds one villa, not two",
    held.length === 1 && held[0].endsWith("/15"));
 
+
+/* ── the number a human can read ────────────────────────────── */
+/* The GUID is the key, but nobody can read it out over the phone. The
+   reservation number is what staff see in Mews. */
+install();
+await post(Object.assign({}, RES, { Number: 1159, BookingId: 900 }));
+ck("the reservation number reaches every night",
+   STORE["/stays/2026-09-10/3"].number === 1159);
+ck("and Number wins over BookingId, which numbers the group not the booking",
+   STORE["/bookings/" + RES.MewsId + "/pms"].bookingNumber === 1159);
+
 console.log("RESULT: %d passed, %d failed", P, F);
 if (F) process.exit(1);

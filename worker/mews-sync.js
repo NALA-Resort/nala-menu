@@ -162,7 +162,12 @@ function readReservation(p) {
     /* Carried through but not acted on. Mews sends them, storing them is free,
        and the alternative is discovering later that a year of bookings lack a
        field nobody thought to keep. */
-    bookingNumber: pick(p, ["BookingId", "Number", "ConfirmationNumber"]),
+    /* The reservation number staff see in Mews, 1159 in the 17 Aug run. Number
+       first, because BookingId is the group's number rather than this
+       reservation's, and the number on the screen is what somebody will read
+       out over the phone. Not used as a key: a GUID is guaranteed unique and a
+       sequential number is only unique per property. */
+    bookingNumber: pick(p, ["Number", "ConfirmationNumber", "BookingId"]),
     groupId:       pick(p, ["GroupId", "ReservationGroupId"]),
     adults:        pick(p, ["AdultCount", "adults"]),
     children:      pick(p, ["ChildCount", "children"])
@@ -358,6 +363,9 @@ export default {
            Only a cancellation separates them, which is why the cancellation
            feed matters more than any of this. */
         groupId: r.groupId || null,
+        /* Carried so staff can cross-check a booking against Mews without
+           opening it. It is the only identifier here a human can read. */
+        number: r.bookingNumber || null,
         /* Carried into every night so the app can tell a staff decision made
            against THIS version of the booking from one made before Mews last
            changed it. Without it, a villa staff marked vacant either sticks

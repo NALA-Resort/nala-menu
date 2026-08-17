@@ -740,6 +740,10 @@ function openGuest(r){
   sheetEl.innerHTML =
     '<h3>Villa ' + r.villa + '</h3>' +
     '<div class="gd">' + esc(nameOf(r.stay)) +
+      /* The Mews reservation number, so anyone can cross-check this booking
+         against the PMS without opening it. The GUID is the key, but nobody
+         can read a GUID out over the phone. */
+      (r.stay.number ? '<span class="gd-sub">Mews ' + esc(r.stay.number) + '</span>' : '') +
       '<span class="gd-sub">' + stayLabel(r.stay) +
         (r.stay.adults ? ' \u00b7 ' + r.stay.adults +
           (Number(r.stay.adults)===1?' adult':' adults') : '') +

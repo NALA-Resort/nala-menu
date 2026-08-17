@@ -215,7 +215,10 @@ function cardHTML(r){
       '<div class="c-who">' +
         '<div class="c-name">' +
           esc(((s.first||'') + ' ' + (s.last||'')).trim() || 'Guest') + '</div>' +
-        '<div class="c-stay">' + stayRange(s) +
+        '<div class="c-stay">' +
+          /* The number staff read in Mews. On paper it is the only way back to
+             the PMS record, since the card carries no GUID. */
+          (s.number ? 'Mews ' + esc(s.number) + ' \u00b7 ' : '') + stayRange(s) +
           (nightsLabel(s) ? ' \u00b7 ' + nightsLabel(s) : '') +
           (s.adults ? ' \u00b7 ' + s.adults +
             (Number(s.adults)===1 ? ' adult' : ' adults') : '') + '</div>' +
