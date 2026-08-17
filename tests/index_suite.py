@@ -279,6 +279,64 @@ with sync_playwright() as p:
     STATE["fail"] = False
     pg.close()
 
+
+    # ── ported from a second suite for this page ────────────────
+    # Two suites for index.html existed for one night, from a stopped
+    # generation. These four cases were only in the other one. The rest
+    # overlapped, so the other suite was removed and these came across.
+
+    # A dietary the menu does NOT contain must raise nothing. The positive
+    # case is easy to get right and the negative is where a flag starts
+    # crying wolf.
+    STATE.update({"menu": MENU, "dietaries": DIETS, "menutags": TAGS,
+                  "guests": {}, "responses": {}})
+    del WRITES[:]
+    pg = guest(LINK)
+    pg.locator("#bIn").click(); pg.wait_for_timeout(300)
+    chip = pg.locator(".chip", has_text="Gluten free")
+    if chip.count():
+        chip.first.click(); pg.wait_for_timeout(150)
+        pg.locator("#bSave").click(); pg.wait_for_timeout(400)
+        w = wrote("/responses/" + today + "/0400000001")
+        ck("a dietary tonight's menu does not contain raises no flag",
+           len(w) == 1 and json.loads(w[0]["b"])["flag"] is False)
+    else:
+        ck("a non clashing dietary chip renders", False)
+    pg.close()
+
+    # Typed a note for a clash, then removed the dietary. The note has to go
+    # with it or the kitchen reads an instruction about a dish nobody is
+    # avoiding.
+    del WRITES[:]
+    pg = guest(LINK)
+    pg.locator("#bIn").click(); pg.wait_for_timeout(300)
+    pg.locator(".chip", has_text="Nut allergy").first.click(); pg.wait_for_timeout(150)
+    pg.fill("#dnote", "typed then changed my mind")
+    pg.locator(".chip", has_text="Nut allergy").first.click(); pg.wait_for_timeout(150)
+    pg.locator("#bSave").click(); pg.wait_for_timeout(400)
+    w = wrote("/responses/" + today + "/0400000001")
+    ck("a note typed for a dietary that was then removed is not saved",
+       len(w) == 1 and json.loads(w[0]["b"])["dnote"] == "")
+    pg.close()
+
+    # The page has two jobs. A visitor with no link still gets the menu.
+    STATE["responses"] = {}
+    pg = guest("")
+    ck("with no link the menu is still readable, which is the page's other job",
+       pg.evaluate("()=>{const m=document.getElementById('stateMenu');"
+                   "return !!m && m.style.display!=='none';}"))
+    pg.close()
+
+    # A guest who replied can still change it, until the cutoff.
+    STATE["responses"] = {today + "/0400000001": {
+        "status": "in", "pax": 3, "diets": ["Gluten free"],
+        "note": "window table", "at": "2026-08-17T09:00:00Z"}}
+    pg = guest(LINK)
+    ck("a guest who already replied is offered a way to change it",
+       pg.locator("#bEdit").count() == 1)
+    pg.close()
+    STATE["responses"] = {}
+
     # ── the page at Android widths ───────────────────────────────
     # New standard as of 17 Aug: mock at 390, check at 360, do not break at 320.
     for w in (390, 360, 320):
