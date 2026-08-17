@@ -32,9 +32,11 @@ in themselves.
 
 ## Stage B. Foundations. No design decisions, no dependencies
 
-- **[me]** Write a suite for `index.html` describing what it does **today**.
-  It is the only untested guest facing page and Stage D rewrites it. The suite
-  has to exist first or the rewrite has nothing to fail against
+- **[me]** ~~Write a suite for `index.html`~~ **DONE 17 Aug.**
+  `tests/guest_suite.py`, 42 assertions. Every behaviour Stage D will change is
+  labelled `STAGE D:` in its name, so a red test after the rewrite reads as
+  "this changed on purpose" rather than "this broke". Verified by breaking the
+  returning-guest read on purpose: four assertions fire
 - **[you]** Move the notification Worker source into `worker/`. Send it and I
   will add tests and the deploy config, same as the Mews one
 - **[you]** Rotate all four credentials: GitHub token, Firebase key, `sync`
