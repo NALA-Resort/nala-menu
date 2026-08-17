@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nala Villas">
+<link rel="apple-touch-icon" href="nala-icon.png?v=1">
+<title>Nala &middot; Front Desk Arrival</title>
+<link rel="stylesheet" href="nala-ui.css?v=12">
+<style>
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+          --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
+         padding:calc(24px + env(safe-area-inset-top)) 18px 0;
+         -webkit-tap-highlight-color:transparent; }
+
+  .seclabel { font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+              color:var(--mid); margin:22px 0 8px; }
+
+  /* One arrival. The whole row is the control surface, the same idea as the
+     villa tile grid, which is the documented exception to "a bordered
+     rectangle is a button". */
+  .arr { display:flex; align-items:center; gap:12px; width:100%;
+         background:none; border:1px solid var(--rule); border-radius:8px;
+         padding:11px 13px; margin-bottom:7px; text-align:left;
+         font-family:inherit; color:inherit; cursor:pointer; }
+
+  /* The villa number is how reception finds the guest standing in front of
+     them, so it carries tile weight. 20 on the type scale. */
+  .arr-v { font-size:20px; min-width:30px; text-align:center; }
+  .arr-mid { flex:1; min-width:0; }
+  .arr-n { font-size:15px; white-space:nowrap; overflow:hidden;
+           text-overflow:ellipsis; }
+  /* Stay dates as the styleguide sets them: Tue 11-Fri 14. No ordinal, month
+     omitted, one line, because a wrapped range doubles the row height. */
+  .arr-s { font-size:11px; color:var(--mid); margin-top:2px; white-space:nowrap;
+           overflow:hidden; text-overflow:ellipsis; }
+
+  /* Status is a tinted pill, never tappable; the row around it is the button.
+     The pill carries the ANSWER rather than the word "confirmed", because
+     confirmed means a dining status exists and it includes not dining. */
+  .pill { font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+          padding:4px 9px; border-radius:11px; white-space:nowrap;
+          border:1px solid transparent; }
+  .pill.din  { background:var(--green); border-color:var(--greenb); }
+  .pill.out  { background:none; border-color:var(--mid); color:var(--mid); }
+  .pill.part { background:var(--amber); border-color:var(--amberb); }
+  .pill.none { background:none; border-color:var(--rule); color:var(--mid);
+               border-style:dashed; }
+
+  /* Confirmed rows recede but stay legible: reception still has to find a
+     guest who checked in an hour ago. */
+  .arr.is-done { opacity:.68; }
+
+  /* Attention turns the number red, never the frame. */
+  #tileLeft.due .stat-n { color:var(--red); }
+
+  .empty { font-size:15px; color:var(--mid); font-style:italic; padding:4px 0 2px; }
+  .spacer { height:40px; }
+  #errBar { display:none; background:var(--red); color:#fff; font-size:13px;
+            padding:9px 12px; border-radius:6px; margin-top:12px; }
+  #errBar.show { display:block; }
+</style>
+</head>
+<body class="tier-app">
+
+<div class="daterow">
+  <button class="dnav today" id="dToday">Today</button>
+  <button class="dnav" id="dPrev">&#8249;</button>
+  <div class="date" id="title"></div>
+  <button class="dnav" id="dNext">&#8250;</button>
+  <div class="navwrap" id="navWrap">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="list.html">Reservations Sheet</a><a href="cleaners.html">Cleans</a><a href="housekeeping.html">Clean sheet</a><a href="staff.html">Settings</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+  </div>
+</div>
+
+<div class="noaccess" id="noAccess"></div>
+
+<div class="stats" id="statsRow">
+  <div class="stat" id="tileLeft"><div class="stat-n" id="nLeft">&ndash;</div><div class="stat-l">To confirm</div></div>
+  <div class="stat"><div class="stat-n" id="nArr">&ndash;</div><div class="stat-l">Arrivals today</div></div>
+</div>
+
+<div id="board"></div>
+<div id="errBar"></div>
+<div class="spacer"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="auth.js?v=11"></script>
+<script src="nala-shared.js?v=19"></script>
+<script>
+var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+var nav = initDateNav();     /* wires Today, the arrows and the title itself */
+var ROWS = [];               /* [{ villa, stay, pre }] for the viewed date */
+
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+  var so=document.getElementById('navSignout');
+  if (so) so.onclick=function(e){ e.preventDefault();
+    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+})();
+
+function api(path){
+  return fetch(DB + path + '.json?v=' + Date.now())
+    .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); });
+}
+
+function err(msg){
+  var e = document.getElementById('errBar');
+  e.textContent = msg || '';
+  e.className = msg ? 'show' : '';
+}
+
+/* Mews sends a full timestamp on some mappings and a bare date on others. */
+function dkeyOf(v){
+  var m = String(v || '').match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : null;
+}
+
+/* An arrival is a stay whose FIRST night is the date being viewed. /stays
+   holds one row per night, so without this every in-house guest would sit on
+   the arrivals list for the whole of their stay. */
+function arrivingOn(dayStays, key){
+  var out = [];
+  for (var villa in (dayStays || {})){
+    var s = dayStays[villa];
+    /* Tolerates the older shape, where the value was a bare booking id. */
+    if (!s || typeof s !== 'object' || !s.id) continue;
+    if (dkeyOf(s.arrive) !== key) continue;
+    out.push({ villa: String(villa), stay: s, pre: null });
+  }
+  return out.sort(function(a,b){ return (+a.villa) - (+b.villa); });
+}
+
+function nameOf(s){
+  return (((s.first||'') + ' ' + (s.last||'')).trim()) || 'Guest';
+}
+
+function stayLabel(s){
+  var a = parseDepDate(dkeyOf(s.arrive)), b = parseDepDate(dkeyOf(s.depart));
+  if (!a || !b) return '';
+  var D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  return D[a.getDay()]+' '+a.getDate()+'-'+D[b.getDay()]+' '+b.getDate();
+}
+
+/* Confirmed means reception has been through it with the guest at the desk.
+   That is NOT the same as the form being complete: a guest can fill in
+   everything from their phone days earlier and still need confirming. */
+function isConfirmed(p){ return !!(p && p.confirmedAt); }
+function hasForm(p){ return !!(p && p.at); }
+
+function pillFor(p){
+  if (isConfirmed(p))
+    return p.dining === false ? '<div class="pill out">Not dining</div>'
+                              : '<div class="pill din">Dining</div>';
+  return hasForm(p) ? '<div class="pill part">Form done</div>'
+                    : '<div class="pill none">No form</div>';
+}
+
+function esc(t){
+  return String(t).replace(/[&<>"]/g, function(c){
+    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c];
+  });
+}
+
+function rowHTML(r){
+  var bits = [stayLabel(r.stay)];
+  if (r.stay.adults)
+    bits.push(r.stay.adults + (Number(r.stay.adults)===1 ? ' adult' : ' adults'));
+  return '<button class="arr'+(isConfirmed(r.pre)?' is-done':'')+
+         '" data-villa="'+r.villa+'">'+
+         '<div class="arr-v">'+r.villa+'</div>'+
+         '<div class="arr-mid">'+
+           '<div class="arr-n">'+esc(nameOf(r.stay))+'</div>'+
+           '<div class="arr-s">'+bits.join(' \u00b7 ')+'</div>'+
+         '</div>'+pillFor(r.pre)+'</button>';
+}
+
+function render(){
+  var todo = ROWS.filter(function(r){ return !isConfirmed(r.pre); });
+  var done = ROWS.filter(function(r){ return  isConfirmed(r.pre); });
+
+  document.getElementById('nArr').textContent  = ROWS.length;
+  document.getElementById('nLeft').textContent = todo.length;
+  document.getElementById('tileLeft').className = 'stat' + (todo.length ? ' due' : '');
+
+  var h = '';
+  if (!ROWS.length){
+    h = '<div class="empty">No arrivals on this date.</div>';
+  } else {
+    h += '<div class="seclabel">To confirm</div>';
+    h += todo.length ? todo.map(rowHTML).join('')
+                     : '<div class="empty">All confirmed.</div>';
+    if (done.length)
+      h += '<div class="seclabel">Confirmed</div>' + done.map(rowHTML).join('');
+  }
+  document.getElementById('board').innerHTML = h;
+}
+
+/* One read per booking. /bookings cannot be listed, by design, so there is no
+   cheaper shape: reading the node itself returns 401. Seventeen villas is the
+   ceiling, and this runs on a date change rather than on a poll. */
+function loadPrearrivals(rows){
+  return Promise.all(rows.map(function(r){
+    return api('/bookings/'+r.stay.id+'/prearrival')
+      .then(function(p){ r.pre = p; })
+      .catch(function(){ r.pre = null; });
+  }));
+}
+
+function load(){
+  var key = nav.todayKey();
+  err('');
+  api('/stays/'+key)
+    .then(function(day){
+      ROWS = arrivingOn(day, key);
+      render();                     /* the list shows before the extra reads */
+      return loadPrearrivals(ROWS).then(render);
+    })
+    .catch(function(){
+      ROWS = []; render();
+      err('Could not load arrivals. This is usually the connection.');
+    });
+}
+
+/* Only the boards this role may open. Sign out is never filtered. */
+function navFilter(role){
+  var need = { 'tally.html':'resBoard', 'list.html':'resSheet',
+               'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard',
+               'staff.html':'manageStaff' };
+  var links = document.getElementById('navDrop').getElementsByTagName('a');
+  for (var i=0;i<links.length;i++){
+    if (links[i].className.indexOf('signout') > -1) continue;
+    var href = (links[i].getAttribute('href')||'').split('?')[0];
+    links[i].style.display = can(role, need[href]) ? '' : 'none';
+  }
+}
+
+function showAccess(allowed, e){
+  var box = document.getElementById('noAccess');
+  var on = !allowed;
+  box.innerHTML = !on ? '' :
+    (e ? '<div>Could not check access. This is usually the connection, '
+       + 'not your login.</div>'
+       + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+       : 'This login has no access to Front Desk Arrival. See the manager.');
+  /* A role with a board of its own is sent there rather than shown a refusal.
+     Only a login with no role at all gets the message. */
+  if (on && !e){
+    var home = homeFor(window.NALA_ROLE);
+    if (home && home !== location.pathname.split('/').pop()){
+      location.replace(home); return;
+    }
+  }
+  box.className = 'noaccess' + (on ? ' show' : '');
+  ['statsRow','board'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.style.display = on ? 'none' : '';
+  });
+  if (!on) load();
+}
+
+window.NALA_ROLE = null;
+(function gate(){
+  /* Wait for the helper too, not just firebase: a stubbed SDK calls back
+     synchronously, and a partial SDK can arrive without onAuthStateChanged.
+     auth() itself throws before an app is initialised, so it is guarded. */
+  if (!window.firebase || !firebase.auth || typeof loadStaff !== 'function')
+    return setTimeout(gate, 40);
+  var A; try { A = firebase.auth(); } catch(e){ return setTimeout(gate, 40); }
+  if (!A || !A.onAuthStateChanged) return setTimeout(gate, 40);
+  A.onAuthStateChanged(function(u){
+    if (!u) return;                 /* auth.js owns the signed-out state */
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      window.NALA_USER = u;
+      document.getElementById('navWrap').style.display = 'block';
+      navFilter(role);
+      showAccess(can(role, 'editBookings'), e);
+    });
+  });
+})();
+</script>
+</body>
+</html>

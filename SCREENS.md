@@ -81,6 +81,35 @@ and already exists. It is not a new output.
 Closes the gap the paper process never could: today only some guests return the
 form and the chef gets handwritten sheets.
 
+### 2b. Allergy conflict at the desk. FUTURE JOB, not built
+
+The mechanic that already exists: the chef publishes a menu and tags which
+dietaries each dish conflicts with, per day, at `/menutags/<date>`. When a
+guest opts in for dinner and selects one of those dietaries, the guest page
+flags it, tells them the menu contains it, and requires a note before the reply
+will save. That is live today in `index.html` and covered by `index_suite.py`.
+
+**Pre-arrival cannot do this, and that is the gap.** The form is filled days
+ahead, when the menu for the arrival night does not exist yet. A guest can
+declare a nut allergy and opt in for dinner on their arrival night and nothing
+can be checked, because there is nothing to check against.
+
+**On the day of check-in the menu IS live.** So Front Desk Arrival should
+compute the conflict between the guest's declared allergies and that day's
+published tags, and show it to the receptionist. It is the same comparison,
+run at the one moment when both halves finally exist. The receptionist raises
+it with the guest standing in front of them, which is a better conversation
+than a warning on a phone days earlier.
+
+Two notes for whoever builds it:
+
+- The conflict logic is `menuConflicts()` inside `index.html`. It would need to
+  move to `nala-shared.js` first, or be written twice, and written twice is how
+  the two screens start disagreeing about the same allergy.
+- The guest page requires a note before saving. Reception should almost
+  certainly not be blocked the same way: they are talking to the guest and can
+  resolve it verbally. Worth deciding rather than inheriting.
+
 ### 3. Registration cards, print
 
 `registration.html`. One card per arriving villa, questionnaire answers filled

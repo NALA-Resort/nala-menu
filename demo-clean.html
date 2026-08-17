@@ -584,7 +584,19 @@ function mewsRecord(stay){
 /* Two records describe the same person if the PMS and a guest written entry
    agree on a phone or a name. Phones are compared on their last nine digits
    because Mews stores +61400000000 and a GuestTouch link carries 0400000000,
-   and those are one person.                                                */
+   and those are one person.
+
+   SCAFFOLDING. This exists only because a roomguests record is keyed on what a
+   guest's URL supplied rather than on the booking. Once every record carries a
+   booking id the match is exact and this whole function goes: see stage 4.
+
+   The name fallback is the weak half. It covers Mews sending no phone at all,
+   which is villa 3's Zap mapping bug, so one workaround is propping up
+   another. Two different real guests sharing a name would match, and the wrong
+   villa's record would be dropped: rare, and silent, which is the combination
+   worth knowing about. Fixing the villa 3 mapping removes the need for it.
+   Only guest written entries are ever dropped, so a villa the PMS itself
+   claims is never at risk.                                                 */
 function samePerson(a, b){
   if (!a || !b) return false;
   var pa = String(a.phone || '').replace(/\D/g, '').slice(-9);

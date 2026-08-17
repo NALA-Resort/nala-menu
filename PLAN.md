@@ -93,7 +93,16 @@ rather than later.
 
 ## Stage E. Guest pre-arrival questionnaire
 
-- Blocked on the type of stay answer from Stage A
+- **UNBLOCKED 17 Aug.** Purpose of visit is a multi select and it is advisory
+  only: it exists so that when a guest cannot be reached, staff can judge
+  whether they are the type to eat out. It never drives logic. The picklist
+  question that blocked this stage since before the audit is answered
+- The 48 hour deadline on the live form is guest facing encouragement, not a
+  rule. No cutoff, no lock, no expiry is to be built
+- Pre-arrival asks about the ARRIVAL NIGHT only. The live form's per night
+  planner for the whole stay is dropped: guests do not follow it even when they
+  fill it in accurately, so it collects work rather than information
+- Allergy conflict at the desk is a separate future job, see `SCREENS.md`
 - **[me]** `prearrival.html`, guest tier, four questions, one screen, no scroll
 - **[me]** Inherits the shape settled in Stage C
 - **[me]** Works before Mews has the booking, which is the normal case at seven

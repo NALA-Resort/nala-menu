@@ -400,7 +400,7 @@ body.readonly .comb-undo { display:none; }
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="demo-reservations.html">Reservations Sheet</a><a href="demo-cleans.html">Cleans</a><a href="demo-clean.html">Clean sheet</a><a href="staff.html">Settings</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk Arrival</a><a href="demo-reservations.html">Reservations Sheet</a><a href="demo-cleans.html">Cleans</a><a href="demo-clean.html">Clean sheet</a><a href="staff.html">Settings</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 
@@ -508,7 +508,7 @@ body.readonly .comb-undo { display:none; }
      lands on "no access" is a door to nowhere. Cleans needs cleansBoard,
      the sheets need their own permission.                              */
   window.NALA_NAVFILTER = function(role){
-    var need = { 'tally.html':'resBoard', 'list.html':'resSheet',
+    var need = { 'tally.html':'resBoard', 'front-desk.html':'editBookings', 'list.html':'resSheet',
                  'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard',
                  'staff.html':'manageStaff' };
     var links = document.querySelectorAll('#navDrop a');
@@ -860,7 +860,19 @@ function mewsRecord(stay){
 /* Two records describe the same person if the PMS and a guest written entry
    agree on a phone or a name. Phones are compared on their last nine digits
    because Mews stores +61400000000 and a GuestTouch link carries 0400000000,
-   and those are one person.                                                */
+   and those are one person.
+
+   SCAFFOLDING. This exists only because a roomguests record is keyed on what a
+   guest's URL supplied rather than on the booking. Once every record carries a
+   booking id the match is exact and this whole function goes: see stage 4.
+
+   The name fallback is the weak half. It covers Mews sending no phone at all,
+   which is villa 3's Zap mapping bug, so one workaround is propping up
+   another. Two different real guests sharing a name would match, and the wrong
+   villa's record would be dropped: rare, and silent, which is the combination
+   worth knowing about. Fixing the villa 3 mapping removes the need for it.
+   Only guest written entries are ever dropped, so a villa the PMS itself
+   claims is never at risk.                                                 */
 function samePerson(a, b){
   if (!a || !b) return false;
   var pa = String(a.phone || '').replace(/\D/g, '').slice(-9);
