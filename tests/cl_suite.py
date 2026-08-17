@@ -704,6 +704,38 @@ with sync_playwright() as p:
     ck("and a caller that passed its own is not overridden by the fallback",
        fallback["passedIn"]["status"] == "out")
 
+
+    # ── the moved guest, third home ─────────────────────────────
+    # A guest answers dinner, Mews then moves them to another villa, and the
+    # answer stays behind: the board shows a booking in an empty villa and
+    # counts the covers twice. It cost an evening once and produced three Ben
+    # Davidsons. /stays was fixed in the Worker and roomguests in overlayStays;
+    # the dinner cell is the third place it can happen.
+    moved = pg.evaluate("""()=>{
+      const rg = overlayStays({}, { '9': {id:'b1', first:'Ben', last:'Davidson',
+                 arrive:'2026-08-18', depart:'2026-08-22'} });
+      const cells = { '5': { status:'in', pax:2, bookingId:'b1', by:'guest' },
+                      '9': { status:'in', pax:2, bookingId:'b1', by:'guest' } };
+      // no booking id at all: an external diner or a staff entry
+      const anon  = { '5': { status:'in', pax:2, by:'staff' } };
+      return {
+        left:  roomRecord(5, {}, {}, rg, cells),
+        now:   roomRecord(9, {}, {}, rg, cells),
+        anon:  roomRecord(5, {}, {}, rg, anon),
+        stale: dinnerElsewhere(cells, 5, rg),
+        here:  dinnerElsewhere(cells, 9, rg),
+        none:  dinnerElsewhere(anon, 5, rg)
+      };
+    }""")
+    ck("the villa they left stops holding their booking",
+       moved["left"] is None or moved["left"]["status"] is None)
+    ck("and the villa Mews puts them in keeps it",
+       moved["now"]["status"] == "in")
+    ck("a cell with no booking id is never dropped, since Mews has no opinion",
+       moved["anon"]["status"] == "in" and moved["none"] is False)
+    ck("dinnerElsewhere says stale for the old villa", moved["stale"] is True)
+    ck("and not for the new one", moved["here"] is False)
+
     # The sync role is the Mews Worker's login. It is a real role, so roleOf
     # must return it rather than null, but it lands nowhere and grants nothing.
     sync=pg.evaluate("""()=>({

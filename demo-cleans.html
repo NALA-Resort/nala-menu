@@ -918,6 +918,31 @@ function dinnerRecord(cell){
   return cell;
 }
 
+/* A guest who answered dinner and was then moved leaves the answer behind in
+   the villa they left, so the board shows a booking in an empty villa and
+   counts the covers twice. Same bug as the one that produced three Ben
+   Davidsons, in its third home: /stays was fixed in the Worker, roomguests in
+   overlayStays, and this is the dinner cell.
+
+   Mews is the authority on where somebody is. A cell whose booking id the PMS
+   places in a DIFFERENT villa is stale by definition. Only cells carrying a
+   booking id are touched: an external diner or a staff entry with no booking
+   is not something Mews has an opinion about.
+
+   It does not move the answer, only drops it. Moving it would be guessing that
+   a booking made for one villa still holds for another, and a villa change is
+   usually a change of party size or plan. The guest is asked again, which is
+   what the empty villa on the board is telling reception to do. */
+function dinnerElsewhere(cells, villa, roomguests){
+  var cell = cells && cells[String(villa)];
+  if (!cell || !cell.bookingId) return false;
+  for (var v in (roomguests || {})){
+    var r = roomguests[v];
+    if (r && r.bookingId === cell.bookingId) return String(v) !== String(villa);
+  }
+  return false;
+}
+
 /* Staff outrank a guest, always. A guest cannot overwrite a booking reception
    made, and this is the only precedence left in the app. */
 function dinnerLocked(cell){
@@ -940,7 +965,9 @@ function roomRecord(n, responses, manual, roomguests, dinner){
   /* A caller that fetched its own cells passes them. One that did not gets the
      ones fetchStays picked up for the same date. */
   var cells = dinner || DINNER_CELLS;
-  var cell = dinnerRecord(cells && cells[String(n)]);
+  var cell = dinnerElsewhere(cells, n, roomguests)
+    ? null
+    : dinnerRecord(cells && cells[String(n)]);
   if (cell && !vacantIsStale(cell, known))
     return Object.assign({}, known, cell, pmsFields(known), { room:String(n) });
 

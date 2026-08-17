@@ -92,6 +92,28 @@ Still to retire, once no live data depends on them: the `/responses` and
 `/manual` fallback in `roomRecord`, `roomguests`, and `samePerson`. Both old
 nodes partition by date, so they empty themselves as the days pass.
 
+## The moved guest has three homes, not one
+
+A guest moved between villas after Mews first sent the booking leaves a record
+behind in the villa they left. It has happened in three places and each needed
+its own fix:
+
+- `/stays`, fixed in the Worker by clearing what is actually there rather than
+  trusting a remembered villa
+- `roomguests`, fixed in `overlayStays`, which drops any other villa holding
+  the same person
+- **the dinner cell**, fixed 17 Aug in `dinnerElsewhere`: a cell whose booking
+  id the PMS places in a different villa is stale and is not read
+
+The dinner cell one was introduced the same day the cell was, and found by
+being asked about it rather than by any test. Anything new that stores a fact
+against a villa needs the same question asked of it.
+
+It drops the answer rather than moving it. Moving would guess that a booking
+made for one villa still holds for another, and a villa change usually comes
+with a change of party or plan. The empty villa on the board is telling
+reception to ask again.
+
 ## The scheme
 
 **The booking id is the only identifier for a guest. The date and the villa

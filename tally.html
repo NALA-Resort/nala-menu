@@ -610,7 +610,7 @@ function roomState(n){
 
      `by` says who set it, and it drives the icon the same way src did: a guest
      answering from their link, or staff typing it at a desk. */
-  var cell = dinner[String(n)];
+  var cell = dinnerElsewhere(dinner, n, roomguests) ? null : dinner[String(n)];
   if (cell && typeof cell === 'object' && !vacantIsStale(cell, roomguests[String(n)] || {}))
     return { src: (cell.by === 'guest' ? 'digital' : 'manual'),
              key: mk, cell: true,
