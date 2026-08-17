@@ -56,6 +56,9 @@ PRE = {
 }
 TAGS = {"main": ["Nut allergy"]}
 
+# The booking as Mews states it. Its villa settles a disagreement with /stays.
+PMS = {}
+
 def fb(route, request):
     u = request.url
     if "/staff" in u: body = json.dumps(STAFF)
@@ -65,6 +68,9 @@ def fb(route, request):
     elif "/bookings/" in u and "/prearrival" in u:
         k = u.split("/bookings/")[1].split("/")[0]
         body = json.dumps(PRE[k]) if k in PRE else "null"
+    elif "/bookings/" in u and "/pms" in u:
+        k = u.split("/bookings/")[1].split("/")[0]
+        body = json.dumps(PMS[k]) if k in PMS else "null"
     else: body = "null"
     route.fulfill(status=200, content_type="application/json", body=body)
 
@@ -147,6 +153,23 @@ with sync_playwright() as p:
          .every(c=>getComputedStyle(c).breakAfter==='page'
                 || getComputedStyle(c).pageBreakAfter==='always')"""))
     pg.close()
+
+
+    # Three cards for one guest is three registration forms at the desk. A move
+    # leaves entries behind in /stays and the Worker only clears them on that
+    # booking's next event.
+    for v in ("13", "15", "16"):
+        STAYS[v] = {"id":"bmoved","first":"Ben","last":"Davidson",
+                    "arrive":today,"depart":plus(1),"adults":2}
+    PMS["bmoved"] = {"villa": "15"}
+    pg = sheet()
+    villas = pg.evaluate("()=>[...document.querySelectorAll('.c-villa')].map(e=>e.textContent)")
+    ck("one booking prints one card, not three",
+       len([v for v in villas if v in ("13","15","16")]) == 1)
+    ck("and it is the villa Mews says they are in", "15" in villas)
+    pg.close()
+    for v in ("13", "15", "16"): del STAYS[v]
+    del PMS["bmoved"]
 
     # Nothing to print is a sentence, not an empty page.
     STAYS_BACKUP = dict(STAYS)

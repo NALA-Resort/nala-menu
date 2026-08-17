@@ -79,6 +79,10 @@ TAGS = {"main": ["Nut allergy"]}
 # Tonight's dinner cells, keyed by villa. Seeded per test.
 DINNER = {}
 
+# The booking as Mews states it. Its villa is a single value, so it settles a
+# disagreement with /stays.
+PMS = {}
+
 WRITES = []
 STATE = {"fail": False}
 
@@ -102,6 +106,9 @@ def fb(route, request):
     elif "/bookings/" in u and "/prearrival" in u:
         k = u.split("/bookings/")[1].split("/")[0]
         body = json.dumps(PRE[k]) if k in PRE else "null"
+    elif "/bookings/" in u and "/pms" in u:
+        k = u.split("/bookings/")[1].split("/")[0]
+        body = json.dumps(PMS[k]) if k in PMS else "null"
     route.fulfill(status=200, content_type="application/json", body=body)
 
 P = F = 0
@@ -164,6 +171,7 @@ with sync_playwright() as p:
        [e.strip() for e in pg.evaluate(
         "()=>[...document.querySelectorAll('.seclabel')].map(e=>e.textContent)")]
        == ["Arriving", "Arrived"])
+
 
 
     # ── no pills: every state is said once, by tint, section or icon ──
@@ -582,6 +590,32 @@ with sync_playwright() as p:
     ck("no allergies to declare counts as having asked",
        len([x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]) == 1)
     pg.close()
+
+    # ── one booking, three villas ───────────────────────────────
+    # Seen live on 17 Aug: the same guest listed in villas 13, 14 and 15. A
+    # move leaves an entry behind in /stays and the Worker only clears it on
+    # that booking's next event, so anything stranded earlier just sits there.
+    for v in ("13", "15", "16"):
+        STAYS[v] = {"id": "bmoved", "first": "Ben", "last": "Davidson",
+                    "arrive": today, "depart": plus(1), "adults": 2}
+    PMS["bmoved"] = {"villa": "15"}
+    pg = board()
+    villas = pg.evaluate("()=>[...document.querySelectorAll('.arr')].map(e=>e.dataset.villa)")
+    ck("one booking gets one row, not three",
+       len([v for v in villas if v in ("13","15","16")]) == 1)
+    ck("and it is the villa Mews says they are in", "15" in villas)
+    ck("so the arrivals count is not inflated either",
+       pg.evaluate("()=>nArr.textContent").split("/")[1] == "8")
+    pg.close()
+
+    # With no pms to ask, one row is still right and three are not.
+    del PMS["bmoved"]
+    pg = board()
+    villas = pg.evaluate("()=>[...document.querySelectorAll('.arr')].map(e=>e.dataset.villa)")
+    ck("with nothing to ask, it still shows one row",
+       len([v for v in villas if v in ("13","15","16")]) == 1)
+    pg.close()
+    for v in ("13", "15", "16"): del STAYS[v]
 
     # ── moving between days ─────────────────────────────────────
     # Wired by initDateNav in nala-shared.js, the same header every staff page

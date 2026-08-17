@@ -138,6 +138,30 @@ function arrivingOn(day, key){
   return out.sort(function(a,b){ return (+a.villa) - (+b.villa); });
 }
 
+/* One card per booking, whatever /stays says. A guest moved between villas
+   leaves an entry behind, and the Worker only clears it on that booking's next
+   event. Three cards for one guest is three registration forms at the desk.
+   Mews' own villa settles which one to print. */
+function oneRowPerBooking(rows){
+  var pick = {};
+  rows.forEach(function(r){
+    var id = r.stay.id;
+    if (!id) return;
+    var kept = pick[id];
+    if (!kept){ pick[id] = r; return; }
+    var says = (r.pms && r.pms.villa) || (kept.pms && kept.pms.villa) || null;
+    if (says != null) pick[id] = (String(r.villa) === String(says)) ? r : kept;
+    else              pick[id] = (+r.villa < +kept.villa) ? r : kept;
+  });
+  var out = [], seen = {};
+  rows.forEach(function(r){
+    var id = r.stay.id;
+    if (!id || seen[id]) return;
+    seen[id] = true; out.push(pick[id]);
+  });
+  return out;
+}
+
 function nightsLabel(s){
   var a = parseDepDate(dkeyOf(s.arrive)), b = parseDepDate(dkeyOf(s.depart));
   if (!a || !b) return '';
@@ -254,9 +278,11 @@ function load(){
       render(rows);
       /* One read per booking. /bookings cannot be listed by design. */
       return Promise.all(rows.map(function(r){
-        return api('/bookings/'+r.stay.id+'/prearrival')
-          .then(function(p){ r.pre = p; }).catch(function(){ r.pre = null; });
-      })).then(function(){ render(rows); });
+        return Promise.all([
+          api('/bookings/'+r.stay.id+'/prearrival').catch(function(){ return null; }),
+          api('/bookings/'+r.stay.id+'/pms').catch(function(){ return null; })
+        ]).then(function(res){ r.pre = res[0]; r.pms = res[1]; });
+      })).then(function(){ render(oneRowPerBooking(rows)); });
     })
     .catch(function(){
       document.getElementById('cards').innerHTML =

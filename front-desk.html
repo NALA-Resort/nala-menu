@@ -568,10 +568,46 @@ function conflictsFor(diets){
    ceiling, and this runs on a date change rather than on a poll. */
 function loadPrearrivals(rows){
   return Promise.all(rows.map(function(r){
-    return api('/bookings/'+r.stay.id+'/prearrival')
-      .then(function(p){ r.pre = p; })
-      .catch(function(){ r.pre = null; });
+    return Promise.all([
+      api('/bookings/'+r.stay.id+'/prearrival').catch(function(){ return null; }),
+      api('/bookings/'+r.stay.id+'/pms').catch(function(){ return null; })
+    ]).then(function(res){ r.pre = res[0]; r.pms = res[1]; });
   }));
+}
+
+/* One row per booking, whatever /stays says.
+
+   A guest moved between villas leaves an entry behind in the one they left.
+   The Worker clears those, but only when the next event for that booking
+   arrives, so anything stranded before that fix existed simply sits there.
+   Seen live on 17 Aug: the same booking listed in villas 13, 14 and 15.
+
+   /bookings/<id>/pms.villa is where Mews says they are and it is a single
+   value, so it settles it. Where it disagrees with /stays, Mews wins. Where
+   there is no pms to ask, the lowest villa is kept: arbitrary, but one row is
+   right and three are not.
+
+   Display defence, not a repair. The stale /stays entries stay until something
+   clears them, and debug.html is where to see them. */
+function oneRowPerBooking(rows){
+  var pick = {};
+  rows.forEach(function(r){
+    var id = r.stay.id;
+    if (!id) return;
+    var kept = pick[id];
+    if (!kept){ pick[id] = r; return; }
+    var says = (r.pms && r.pms.villa) || (kept.pms && kept.pms.villa) || null;
+    if (says != null) pick[id] = (String(r.villa) === String(says)) ? r : kept;
+    else              pick[id] = (+r.villa < +kept.villa) ? r : kept;
+  });
+  var out = [], seen = {};
+  rows.forEach(function(r){
+    var id = r.stay.id;
+    if (!id || seen[id]) return;
+    seen[id] = true;
+    out.push(pick[id]);
+  });
+  return out;
 }
 
 /* Tonight's cells, one request for the whole night. The desk needs these as
@@ -606,7 +642,7 @@ function load(){
          has a null pre at that point. */
       return Promise.all([loadPrearrivals(ROWS), loadDinner(key, ROWS)])
         .then(function(){
-          ROWS = sortRows(ROWS);
+          ROWS = sortRows(oneRowPerBooking(ROWS));
           render();
         });
     })
