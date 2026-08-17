@@ -194,6 +194,22 @@ most. Nothing there has been done.
   they drift.
 - Widening the Mews look-ahead beyond about 84 hours. It is a boards question
   only: pre-arrival works without it.
+- **A permission matrix in Settings.** Asked for 18 Aug. Roles against what
+  each may do, on screen and editable, rather than the table in `ROLES.md` and
+  a rules file only a developer can read. The reason it is worth doing is the
+  hole found the same day: housekeeping could set a villa's job for months
+  because the rule that forbade it never ran, and nothing anywhere showed the
+  gap between what the document said and what the database allowed.
+
+  The catch is that Realtime Database rules are a file, not data. A matrix that
+  only writes a node the pages consult is a display of intent, not a
+  permission: anyone with a login could still write directly. So either the
+  matrix drives generated rules that still have to be pasted into the console,
+  which makes it a document that produces a paste rather than a control, or
+  every rule is rewritten to read the matrix out of the database, which is
+  slower on every write and puts the lock inside the thing being locked. Worth
+  designing properly before building. `tests/rules_test.js` is the safety net
+  for whichever way it goes.
 
 ---
 
