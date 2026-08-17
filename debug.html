@@ -226,15 +226,28 @@ function scanWipe(){
      being wiped, so a clean slate left every reservation on the board. */
   var nodes = ['roomguests','responses','manual','hk','stays','guests','combined',
                'dinner','bookings'];
+  /* A read that FAILS must not read as an empty node. Until 17 Aug it did:
+     the rules grant read on /manual/<date> rather than on /manual, so listing
+     the whole node returned 401, the catch turned it into null, and the count
+     said 0 records. A clean slate then reported success and deleted nothing. */
   Promise.all(nodes.map(function(n){
     return fetch(DB+'/'+n+'.json?v='+Date.now())
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .catch(function(){ return null; });
+      .then(function(r){
+        if (!r.ok) return { __failed: r.status };
+        return r.json();
+      })
+      .catch(function(){ return { __failed: 0 }; });
   })).then(function(res){
     WIPE = [];
     var lines = [];
+    var failed = [];
     nodes.forEach(function(n, i){
       var v = res[i], paths = [];
+      if (v && v.__failed !== undefined){
+        failed.push(n + ' (HTTP ' + v.__failed + ')');
+        lines.push(n + ': COULD NOT READ, so nothing here will be deleted');
+        return;
+      }
       if (v && typeof v === 'object'){
         if (n === 'guests'){
           for (var k in v) paths.push('/guests/'+k);
@@ -258,8 +271,13 @@ function scanWipe(){
     btn.disabled = !WIPE.length;
     show('wipe', 200, lines.join('\n') +
       '\n\nTOTAL ' + WIPE.length + ' record(s).\n' +
-      'Not touched: staff, notify, menutags, dietaries, the menu.\n' +
-      'Cannot be touched from here: /bookings. Delete that node in the Firebase console.');
+      'Not touched: staff, notify, menutags, dietaries, the menu.' +
+      (failed.length
+        ? '\n\nCOULD NOT READ: ' + failed.join(', ') +
+          '\nThose nodes are NOT empty, they simply could not be listed, and ' +
+          'nothing in them will be deleted. Paste the current rules.json, which ' +
+          'grants staff read on the whole node rather than only on a date.'
+        : ''));
   }).catch(function(e){ show('wipe', 0, String(e)); });
 }
 

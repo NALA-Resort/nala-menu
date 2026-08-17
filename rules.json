@@ -18,18 +18,28 @@
         "$villa": {
           ".write": "auth != null || !data.exists() || data.child('by').val() != 'staff'"
         }
-      }
+      },
+      ".read": "auth != null"
     },
     "manual": {
       "$date": {
         ".read": "auth != null",
-        "$key": { ".write": "auth != null" }
-      }
+        "$key": {
+          ".write": "auth != null"
+        }
+      },
+      ".read": "auth != null"
     },
     "menutags": {
-      "$date": { ".read": true, ".write": "auth != null" }
+      "$date": {
+        ".read": true,
+        ".write": "auth != null"
+      }
     },
-    "dietaries": { ".read": true, ".write": "auth != null" },
+    "dietaries": {
+      ".read": true,
+      ".write": "auth != null"
+    },
     "pushsubs": {
       ".read": "auth != null",
       "$emailkey": {
@@ -53,7 +63,8 @@
             ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')"
           }
         }
-      }
+      },
+      ".read": "auth != null"
     },
     "bookings": {
       "$id": {
@@ -61,14 +72,22 @@
         "pms": {
           ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'sync' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')"
         },
-        "prearrival": { ".write": true },
-        "dining": { ".write": "auth != null" }
-      }
+        "prearrival": {
+          ".write": true
+        },
+        "dining": {
+          ".write": "auth != null"
+        }
+      },
+      ".read": "auth != null"
     },
     "stays": {
       ".read": "auth != null",
       ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'sync' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')"
     },
-    "$other": { ".read": "auth != null", ".write": "auth != null" }
+    "$other": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
   }
 }
