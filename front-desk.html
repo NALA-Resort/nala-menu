@@ -58,6 +58,26 @@
   /* Attention turns the number red, never the frame. */
   #tileLeft.due .stat-n { color:var(--red); }
 
+  /* The summary drops out of the row it belongs to, so it is inset and shares
+     the row's left edge rather than floating as its own card. */
+  .sum { border:1px solid var(--rule); border-top:none; border-radius:0 0 8px 8px;
+         margin:-8px 0 7px; padding:12px 13px 13px; }
+  .sum-r { display:flex; gap:10px; font-size:13px; line-height:1.5;
+           padding:3px 0; align-items:baseline; }
+  .sum-l { flex:0 0 88px; font-size:8px; letter-spacing:.2em; text-transform:uppercase;
+           color:var(--mid); padding-top:3px; }
+  .sum-v { flex:1; min-width:0; }
+  .sum-v.none { color:var(--mid); font-style:italic; }
+  .sum-btns { display:flex; gap:7px; margin-top:12px; }
+  .sum-btns button { flex:1; padding:12px 0; border:1px solid var(--rule);
+                     border-radius:6px; font-family:var(--ui-font); font-size:11px;
+                     letter-spacing:.14em; text-transform:uppercase; cursor:pointer;
+                     background:transparent; color:var(--mid); }
+  .sum-btns button.go { background:var(--green); border-color:var(--greenb);
+                        color:var(--ink); }
+  /* The row a summary is hanging from keeps its top corners only. */
+  .arr.open { border-radius:8px 8px 0 0; margin-bottom:8px; }
+
   .empty { font-size:15px; color:var(--mid); font-style:italic; padding:4px 0 2px; }
   .spacer { height:40px; }
   #errBar { display:none; background:var(--red); color:#fff; font-size:13px;
@@ -221,17 +241,80 @@ function esc(t){
 }
 
 function rowHTML(r){
+  /* Before a guest arrives, when they are coming is the fact reception plans
+     around, so it takes the second slot. Party size gives way to it rather
+     than both fighting for the width and the ETA losing: it is one tap away in
+     the summary, and an ETA truncated to "after..." helps nobody. */
   var bits = [stayLabel(r.stay)];
-  if (r.stay.adults)
+  var eta = r.pre && r.pre.arriveBy;
+  if (eta) bits.push(esc(eta));
+  else if (r.stay.adults)
     bits.push(r.stay.adults + (Number(r.stay.adults)===1 ? ' adult' : ' adults'));
-  if (r.pre && r.pre.arriveBy) bits.push(esc(r.pre.arriveBy));
-  return '<button class="arr'+(isConfirmed(r.pre)?' is-done':'')+
+  var open = OPEN === r.villa;
+  return '<button class="arr'+(isConfirmed(r.pre)?' is-done':'')+(open?' open':'')+
          '" data-villa="'+r.villa+'">'+
          '<div class="arr-v">'+r.villa+'</div>'+
          '<div class="arr-mid">'+
            '<div class="arr-n">'+esc(nameOf(r.stay))+'</div>'+
            '<div class="arr-s">'+bits.join(' \u00b7 ')+'</div>'+
-         '</div>'+pillFor(r.pre)+'</button>';
+         '</div>'+pillFor(r.pre)+'</button>'+
+         (open ? summaryHTML(r) : '');
+}
+
+/* Which row is showing its summary. One at a time: two open summaries and the
+   list stops being a list. */
+var OPEN = null;
+
+var APPROACH_LABEL = { most:'Dining in most nights', mix:'A mix of in and out',
+                       out:'Mostly eating out' };
+
+function dayLabel(key){
+  var d = parseDepDate(key); if (!d) return key;
+  var D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  return D[d.getDay()] + ' ' + d.getDate();
+}
+
+/* The guest's answers, read back as sentences so reception can say them out
+   loud and the guest can agree or not. Empty answers are shown as unanswered
+   rather than hidden: a blank line is the thing reception needs to fill. */
+function sumRow(label, value, empty){
+  return '<div class="sum-r"><div class="sum-l">' + label + '</div>' +
+         '<div class="sum-v' + (value ? '' : ' none') + '">' +
+         (value || empty || 'Not answered') + '</div></div>';
+}
+
+function summaryHTML(r){
+  var a = answersOf(r), h = '';
+
+  h += sumRow('Dinner', a.dining === null ? '' :
+        (a.dining ? 'Dining \u00b7 ' + a.pax +
+          (a.pax === 1 ? ' guest' : ' guests') : 'Not dining'));
+
+  var diet = a.noDiets ? 'No allergies to declare'
+           : (a.diets.length ? esc(a.diets.join(' \u00b7 ')) : '');
+  if (diet && a.dnote) diet += '<br><span style="color:var(--mid);font-style:italic">' +
+                               esc(a.dnote) + '</span>';
+  h += sumRow('Dietary', diet);
+
+  if (a.arriveBy)  h += sumRow('Arriving', esc(a.arriveBy));
+  if (a.purpose.length) h += sumRow('Purpose', esc(a.purpose.join(' \u00b7 ')));
+  if (a.approach)  h += sumRow('Dining', esc(APPROACH_LABEL[a.approach] || a.approach));
+  if (a.occasion)  h += sumRow('Occasion', esc(a.occasion));
+
+  if (a.wellness !== null){
+    var w = a.wellness ? 'Interested' : 'Not interested';
+    if (a.wellness && a.wellDay)  w += ' \u00b7 ' + dayLabel(a.wellDay);
+    if (a.wellness && a.wellTime) w += ' \u00b7 ' + esc(a.wellTime);
+    h += sumRow('Wellness', w);
+  }
+  if (a.note) h += sumRow('Notes', esc(a.note));
+
+  h += '<div class="sum-btns">' +
+         '<button data-act="edit" data-villa="' + r.villa + '">Edit</button>' +
+         '<button class="go" data-act="confirm" data-villa="' + r.villa + '">' +
+         (isConfirmed(r.pre) ? 'Confirm again' : 'Confirm') + '</button>' +
+       '</div>';
+  return '<div class="sum">' + h + '</div>';
 }
 
 function render(){
@@ -308,11 +391,12 @@ function showSheet(){ bd.className = 'backdrop show'; }
 function closeSheet(){ bd.className = 'backdrop'; }
 bd.onclick = function(e){ if (e.target === bd) closeSheet(); };
 
-function openGuest(r){
+/* One reading of what is stored, used by the summary, the edit sheet and the
+   confirm button alike. Three readings would be three chances to disagree
+   about the same guest. */
+function answersOf(r){
   var p = r.pre || {};
-  /* Answers are seeded from what is already stored, so a guest who filled the
-     form in never has to repeat themselves at the desk. */
-  var a = {
+  return {
     dining:   p.dining === undefined ? null : !!p.dining,
     pax:      p.pax || r.stay.adults || 2,
     diets:    (p.diets || []).slice(),
@@ -327,6 +411,11 @@ function openGuest(r){
     wellTime: p.wellTime || '',
     note:     p.note || ''
   };
+}
+
+function openGuest(r){
+  var p = r.pre || {};
+  var a = answersOf(r);
 
   var pax = a.pax;
 
@@ -519,6 +608,7 @@ function save(r, a){
 
   var before = r.pre;
   r.pre = Object.assign({}, r.pre || {}, payload);   /* optimistic */
+  OPEN = null;
   render(); closeSheet();
 
   fetch(DB + '/bookings/' + r.stay.id + '/prearrival.json', {
@@ -532,12 +622,37 @@ function save(r, a){
   });
 }
 
+function rowFor(v){
+  return ROWS.filter(function(x){ return x.villa === v; })[0];
+}
+
 document.getElementById('board').addEventListener('click', function(e){
-  var btn = e.target.closest ? e.target.closest('.arr') : null;
+  var t = e.target;
+  if (!t.closest) return;
+
+  /* Edit and Confirm inside an open summary. */
+  var act = t.closest('.sum-btns button');
+  if (act){
+    var ra = rowFor(act.getAttribute('data-villa'));
+    if (!ra) return;
+    if (act.getAttribute('data-act') === 'edit') return openGuest(ra);
+    /* Confirming from the summary saves exactly what is on screen. The guest
+       just agreed to it out loud, so there is nothing to open and nothing to
+       retype. */
+    return save(ra, answersOf(ra));
+  }
+
+  var btn = t.closest('.arr');
   if (!btn) return;
-  var v = btn.getAttribute('data-villa');
-  var r = ROWS.filter(function(x){ return x.villa === v; })[0];
-  if (r) openGuest(r);
+  var r = rowFor(btn.getAttribute('data-villa'));
+  if (!r) return;
+
+  /* A guest who filled the form in gets it read back to them, and reception
+     confirms or edits from there. A guest with nothing to read back goes
+     straight to the form, because an empty summary says nothing. */
+  if (!hasForm(r.pre)) return openGuest(r);
+  OPEN = (OPEN === r.villa) ? null : r.villa;
+  render();
 });
 
 /* Only the boards this role may open. Sign out is never filtered. */

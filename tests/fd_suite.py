@@ -142,9 +142,36 @@ with sync_playwright() as p:
        "din|Dining" in pill("7"))
     ck("and confirmed includes not dining", "out|Not dining" in pill("11"))
 
-    # ── the sheet is edit, not create ───────────────────────────
+    # ── tapping a completed row reads the answers back ──────────
+    # Reception says them out loud, the guest agrees or does not, and one of
+    # two buttons follows. No sheet unless something has to change.
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
-    ck("the sheet opens on the villa tapped",
+    ck("tapping a completed row drops down their answers",
+       pg.evaluate("()=>document.querySelectorAll('.sum').length") == 1)
+    ck("and does not open the edit sheet",
+       pg.evaluate("()=>backdrop.className.indexOf('show')<0"))
+    sumtxt = pg.locator(".sum").inner_text()
+    ck("the dinner answer reads as a sentence", "Dining" in sumtxt and "2 guests" in sumtxt)
+    ck("the dietary and whose it is", "Nut allergy" in sumtxt and "the daughter" in sumtxt)
+    ck("the arrival time they gave", "4pm" in sumtxt)
+    ck("the occasion", "anniversary" in sumtxt)
+    ck("purpose, in words rather than a stored code", "Celebration" in sumtxt)
+    ck("dining approach, in words rather than 'most'",
+       "Dining in most nights" in sumtxt)
+    ck("and both ways out", pg.evaluate(
+       "()=>[...document.querySelectorAll('.sum-btns button')].map(b=>b.dataset.act).join()")
+       == "edit,confirm")
+    ck("only one summary is ever open",
+       (pg.locator('.arr[data-villa="9"]').click(), pg.wait_for_timeout(300),
+        pg.evaluate("()=>document.querySelectorAll('.sum').length"))[2] == 1)
+    ck("tapping the same row again closes it",
+       (pg.locator('.arr[data-villa="9"]').click(), pg.wait_for_timeout(300),
+        pg.evaluate("()=>document.querySelectorAll('.sum').length"))[2] == 0)
+
+    # ── the sheet is edit, not create ───────────────────────────
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    ck("edit opens the sheet on the villa tapped",
        "VILLA 4" in pg.locator("#sheet h3").inner_text().upper())
     ck("the guest's own answers are already there: dining",
        pg.evaluate("()=>sDin.className==='on'"))
@@ -192,9 +219,13 @@ with sync_playwright() as p:
     ck("with the count following", pg.evaluate("()=>nLeft.textContent") == "3")
     pg.close()
 
-    # ── a guest with no form is the same screen, empty ──────────
+    # ── a guest with no form goes straight to the form ──────────
+    # There is nothing to read back, so a summary would say nothing.
     pg = board()
     pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
+    ck("a guest with no form skips the summary and opens the form",
+       pg.evaluate("()=>document.querySelectorAll('.sum').length") == 0 and
+       pg.evaluate("()=>backdrop.className.indexOf('show')>-1"))
     ck("a guest with no form gets the same fields, not a different flow",
        pg.evaluate("()=>!!document.getElementById('fDnote')&&!!document.getElementById('fOcc')"
                    "&&!!document.getElementById('sDin')&&!!document.getElementById('wYes')"))
@@ -219,12 +250,28 @@ with sync_playwright() as p:
            bool(body.get("at")))
     pg.close()
 
+    # ── confirming from the summary, without opening anything ───
+    pg = board()
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    del WRITES[:]
+    pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(500)
+    w = [x for x in WRITES if "/bookings/b9/prearrival" in x["u"]]
+    ck("confirm from the summary saves without opening the form", len(w) == 1)
+    if w:
+        body = json.loads(w[0]["b"])
+        ck("it saves exactly what was read back, not a blank",
+           body["dining"] is False and body["noDiets"] is True)
+        ck("stamped confirmed", bool(body.get("confirmedAt")))
+    ck("and the summary closes behind it",
+       pg.evaluate("()=>document.querySelectorAll('.sum').length") == 0)
+    ck("the guest is now confirmed", "out|Not dining" in pill("9"))
+    pg.close()
+
     # ── a failed save must not look like success ────────────────
     STATE["fail"] = True
     pg = board()
-    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(400)
-    pg.locator("#sDin").click()
-    pg.locator("#sConfirm").click(); pg.wait_for_timeout(600)
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
     ck("a rejected save says so", "Could not save" in pg.locator("#errBar").inner_text())
     ck("and the guest is put back rather than left looking confirmed",
        "part|Form done" in pill("9"))
@@ -248,6 +295,9 @@ with sync_playwright() as p:
         ck("the board does not scroll sideways at %dpt" % w, not pg.evaluate(
            "()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
         pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+        ck("nor does the summary at %dpt" % w, not pg.evaluate(
+           "()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
+        pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
         ck("nor does the sheet at %dpt" % w, not pg.evaluate(
            "()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
         pg.close()
