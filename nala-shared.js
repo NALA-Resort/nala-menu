@@ -262,7 +262,29 @@ function mewsRecord(stay){
   if (stay.depart)   out.departs = stay.depart;
   if (stay.arrive)   out.arrives = stay.arrive;
   if (stay.adults)   out.adults  = stay.adults;
+  /* One party can hold several villas. Two reservations under one group are
+     not two guests who happen to share a surname, and a board that treats them
+     as strangers will seat them apart. */
+  if (stay.groupId)  out.groupId = stay.groupId;
   return out;
+}
+
+/* Every OTHER villa the same party holds tonight. Empty for the ordinary case
+   of one booking in one villa, which is nearly all of them.
+
+   It cannot tell a two villa booking from a guest who was moved: both look
+   like one group across two villas with overlapping dates. Only a cancellation
+   separates those, so this reports rather than decides. */
+function groupVillas(roomguests, villa){
+  var me = roomguests && roomguests[String(villa)];
+  if (!me || !me.groupId) return [];
+  var out = [];
+  for (var v in roomguests){
+    if (String(v) === String(villa)) continue;
+    var r = roomguests[v];
+    if (r && r.groupId === me.groupId) out.push(String(v));
+  }
+  return out.sort(function(a,b){ return (+a) - (+b); });
 }
 
 /* Two records describe the same person if the PMS and a guest written entry

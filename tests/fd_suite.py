@@ -591,6 +591,37 @@ with sync_playwright() as p:
        len([x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]) == 1)
     pg.close()
 
+
+    # ── one party, two villas ───────────────────────────────────
+    # A family booking two villas is two reservations under one group. Two rows
+    # is correct: two villas, two registration cards, two sets of answers. What
+    # would be wrong is showing them as strangers who share a surname.
+    STAYS["6"] = {"id":"bj1","first":"Jane","last":"Smith","arrive":today,
+                  "depart":plus(2),"adults":2,"groupId":"grp-jane"}
+    STAYS["8"] = {"id":"bj2","first":"Jane","last":"Smith","arrive":today,
+                  "depart":plus(2),"adults":2,"groupId":"grp-jane"}
+    pg = board()
+    villas = pg.evaluate("()=>[...document.querySelectorAll('.arr')].map(e=>e.dataset.villa)")
+    ck("both villas of one party are listed, because both need checking in",
+       "6" in villas and "8" in villas)
+    def line(v):
+        return pg.evaluate("()=>document.querySelector('.arr[data-villa=\"%s\"] .arr-s').textContent" % v)
+    ck("and each says which other villa the party holds",
+       "villa 8" in line("6") and "villa 6" in line("8"))
+    ck("a booking on its own says nothing about a party",
+       "with villa" not in line("4"))
+    pg.close()
+
+    # Three villas reads as a list, not as three separate notes.
+    STAYS["10"] = {"id":"bj3","first":"Jane","last":"Smith","arrive":today,
+                   "depart":plus(2),"adults":2,"groupId":"grp-jane"}
+    pg = board()
+    ck("three villas in one party read as a list",
+       "villas 8 & 10" in pg.evaluate(
+         "()=>document.querySelector('.arr[data-villa=\"6\"] .arr-s').textContent"))
+    pg.close()
+    for v in ("6", "8", "10"): del STAYS[v]
+
     # ── one booking, three villas ───────────────────────────────
     # Seen live on 17 Aug: the same guest listed in villas 13, 14 and 15. A
     # move leaves an entry behind in /stays and the Worker only clears it on

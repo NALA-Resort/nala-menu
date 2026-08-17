@@ -92,6 +92,23 @@ Still to retire, once no live data depends on them: the `/responses` and
 `/manual` fallback in `roomRecord`, `roomguests`, and `samePerson`. Both old
 nodes partition by date, so they empty themselves as the days pass.
 
+## One party can hold several villas
+
+A family booking two villas is **two reservations under one group**. Each villa
+gets its own reservation id, its own answers and its own registration card,
+which is right: two villas need checking in twice.
+
+What was missing is that nothing showed they were one party. Mews sends a
+`groupId` and the Worker already stored it, just not where the boards could see
+it. It is now on every night, and Front Desk Arrival says "with villa 8" on the
+row so reception knows before they start.
+
+**It cannot tell a two villa booking from a guest who was moved.** Both look
+like one group across two villas with overlapping dates. Only a cancellation
+separates them, which is why the cancellation feed matters more than any of
+this. Seen live on 17 Aug: moving a booking in Mews created a NEW reservation
+id, and the old one stayed on the board because its cancellation never arrived.
+
 ## The moved guest has three homes, not one
 
 A guest moved between villas after Mews first sent the booking leaves a record

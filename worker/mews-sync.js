@@ -294,6 +294,16 @@ export default {
       const summary = {
         id: r.id, first: r.first, last: r.last, phone: r.phone,
         arrive: r.arrive, depart: r.depart, adults: r.adults,
+        /* One party can hold several villas: a family booking two of them is
+           two reservations under one group, and each gets its own id. Without
+           the group id on the night, the boards see two unrelated guests who
+           happen to share a surname, and would seat them apart.
+
+           It does NOT tell a two villa booking from a guest who was moved.
+           Both look like one group across two villas with overlapping dates.
+           Only a cancellation separates them, which is why the cancellation
+           feed matters more than any of this. */
+        groupId: r.groupId || null,
         /* Carried into every night so the app can tell a staff decision made
            against THIS version of the booking from one made before Mews last
            changed it. Without it, a villa staff marked vacant either sticks

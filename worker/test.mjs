@@ -303,5 +303,20 @@ let firstSync = await post(RES);
 ck("a first sync clears nothing and says so",
    (await firstSync.json()).cleared === 0);
 
+
+/* ── one party, several villas ──────────────────────────────── */
+/* A family booking two villas is two reservations under one group. Without the
+   group id on the night, the boards see two unrelated guests who happen to
+   share a surname. */
+install();
+await post(Object.assign({}, RES, { GroupId: "grp-9" }));
+ck("every night carries the group id, so one party can be recognised",
+   STORE["/stays/2026-09-10/3"].groupId === "grp-9");
+
+install();
+await post(RES);
+ck("and a booking with no group carries null rather than nothing",
+   STORE["/stays/2026-09-10/3"].groupId === null);
+
 console.log("RESULT: %d passed, %d failed", P, F);
 if (F) process.exit(1);

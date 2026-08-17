@@ -736,6 +736,24 @@ with sync_playwright() as p:
     ck("dinnerElsewhere says stale for the old villa", moved["stale"] is True)
     ck("and not for the new one", moved["here"] is False)
 
+
+    # ── one party across several villas ─────────────────────────
+    party = pg.evaluate("""()=>{
+      const rg = overlayStays({}, {
+        '2': {id:'j1', first:'Jane', last:'Smith', depart:'2026-08-22', groupId:'g1'},
+        '3': {id:'j2', first:'Jane', last:'Smith', depart:'2026-08-22', groupId:'g1'},
+        '7': {id:'k1', first:'Other', last:'Guest', depart:'2026-08-22', groupId:'g2'},
+        '9': {id:'n1', first:'No',    last:'Group', depart:'2026-08-22'} });
+      return { two: groupVillas(rg, '2'), three: groupVillas(rg, '3'),
+               alone: groupVillas(rg, '7'), none: groupVillas(rg, '9'),
+               carried: rg['2'].groupId };
+    }""")
+    ck("the group reaches the board record", party["carried"] == "g1")
+    ck("a villa knows the others its party holds", party["two"] == ["3"])
+    ck("from either side", party["three"] == ["2"])
+    ck("a lone booking in a group of one has no others", party["alone"] == [])
+    ck("and a booking with no group at all is never grouped", party["none"] == [])
+
     # The sync role is the Mews Worker's login. It is a real role, so roleOf
     # must return it rather than null, but it lands nowhere and grants nothing.
     sync=pg.evaluate("""()=>({

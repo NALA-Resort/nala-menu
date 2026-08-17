@@ -334,6 +334,17 @@ function esc(t){
   });
 }
 
+/* The other villas the same party holds today. Built from the rows already
+   loaded, so it costs no extra request. */
+function groupMates(r){
+  var g = r.stay && r.stay.groupId;
+  if (!g) return [];
+  return ROWS.filter(function(x){
+    return x !== r && x.stay && x.stay.groupId === g;
+  }).map(function(x){ return x.villa; })
+    .sort(function(a,b){ return (+a) - (+b); });
+}
+
 function rowHTML(r){
   /* Before a guest arrives, when they are coming is the fact reception plans
      around, so it takes the second slot. Party size gives way to it rather
@@ -342,7 +353,13 @@ function rowHTML(r){
 
      The slot only, never the note. Why they are early or late belongs in the
      summary, not squeezed into a row that already truncates. */
+  /* One party holding more than one villa. Reception needs to know before
+     they start, because the answers and the table are shared. */
+  var withVillas = groupMates(r);
   var bits = [nightsLabel(r.stay)];
+  if (withVillas.length)
+    bits.push('with ' + (withVillas.length === 1 ? 'villa ' : 'villas ') +
+              withVillas.join(' &amp; '));
   var i = etaIndex(r.pre && r.pre.arriveSlot);
   if (i >= 0) bits.push('<span class="eta">' + ETA_SLOTS[i][2] + '</span>');
   else if (r.stay.adults)
