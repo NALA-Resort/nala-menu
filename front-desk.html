@@ -48,8 +48,16 @@
      guest who checked in an hour ago. */
   .arr.is-done { opacity:.68; }
 
-  /* Attention turns the number red, never the frame. */
-  #tileLeft.due .stat-n { color:var(--red); }
+  /* Four stats rather than two, so they sit closer than the shared default. */
+  .stats { gap:22px; }
+  /* The same three colours the fork icons use, so the number and the row it
+     counts are read as one thing. */
+  .stat-n.dine   { color:var(--dine); }
+  .stat-n.nodine { color:var(--nodine); }
+  .stat-n.unsure { color:var(--mid); }
+  /* Arrived is a fraction: the number alone says nothing without the total,
+     and reception is watching one climb towards the other. */
+  .stat-n .of { font-size:16px; color:var(--mid); }
 
   /* The summary drops out of the row it belongs to, so it is inset and shares
      the row's left edge rather than floating as its own card. */
@@ -169,8 +177,10 @@
 <div class="noaccess" id="noAccess"></div>
 
 <div class="stats" id="statsRow">
-  <div class="stat" id="tileLeft"><div class="stat-n" id="nLeft">&ndash;</div><div class="stat-l">Arriving</div></div>
-  <div class="stat"><div class="stat-n" id="nArr">&ndash;</div><div class="stat-l">Arrived</div></div>
+  <div class="stat" id="tileLeft"><div class="stat-n" id="nArr">&ndash;</div><div class="stat-l">Arrived</div></div>
+  <div class="stat"><div class="stat-n dine" id="nIn">&ndash;</div><div class="stat-l">Dining</div></div>
+  <div class="stat"><div class="stat-n nodine" id="nOut">&ndash;</div><div class="stat-l">Not dining</div></div>
+  <div class="stat"><div class="stat-n unsure" id="nUn">&ndash;</div><div class="stat-l">Not sure</div></div>
 </div>
 
 <div id="board"></div>
@@ -436,9 +446,22 @@ function render(){
   var todo = ROWS.filter(function(r){ return !isConfirmed(r.pre); });
   var done = ROWS.filter(function(r){ return  isConfirmed(r.pre); });
 
-  document.getElementById('nArr').textContent  = done.length;
-  document.getElementById('nLeft').textContent = todo.length;
-  document.getElementById('tileLeft').className = 'stat' + (todo.length ? ' due' : '');
+  document.getElementById('nArr').innerHTML =
+    done.length + '<span class="of">/' + ROWS.length + '</span>';
+
+  /* Of everyone arriving today, how many are eating tonight. The three add up
+     to the total on purpose: a guest with no form and a guest who skipped the
+     dinner question are both unknown to the kitchen, however differently they
+     got there, and a count that did not add up would send someone looking for
+     the missing one. */
+  var din = 0, out = 0, un = 0;
+  ROWS.forEach(function(r){
+    var d = r.pre && r.pre.dining;
+    if (d === true) din++; else if (d === false) out++; else un++;
+  });
+  document.getElementById('nIn').textContent  = din;
+  document.getElementById('nOut').textContent = out;
+  document.getElementById('nUn').textContent  = un;
 
   var h = '';
   if (!ROWS.length){

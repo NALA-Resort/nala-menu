@@ -132,18 +132,24 @@ with sync_playwright() as p:
        todo[3:] == sorted(todo[3:], key=int))
     ck("and the ones still to do come first, because that is the job",
        villas == todo + doneV)
-    # The two stats mirror the two sections.
-    ck("arrived counts the ones reception has been through",
-       pg.evaluate("()=>nArr.textContent") == "2")
+    # Arrived is a fraction: the number alone says nothing without the total.
+    ck("arrived reads as a fraction of the day's arrivals",
+       pg.evaluate("()=>nArr.textContent") == "2/7")
     # six arrivals, of which villas 7 and 11 are already confirmed
-    ck("arriving counts those still to come through the desk",
-       pg.evaluate("()=>nLeft.textContent") == "5")
+    # Of everyone arriving today, how many are eating tonight.
+    ck("dining, not dining and not sure are counted separately",
+       [pg.evaluate("()=>nIn.textContent"), pg.evaluate("()=>nOut.textContent"),
+        pg.evaluate("()=>nUn.textContent")] == ["2", "2", "3"])
+    ck("and the three add up to the day, so nobody looks for a missing one",
+       sum(int(pg.evaluate("()=>%s.textContent" % i)) for i in ("nIn","nOut","nUn")) == 7)
+    ck("they carry the same three colours as the fork icons",
+       pg.evaluate("()=>[nIn.className,nOut.className,nUn.className].join()")
+       == "stat-n dine,stat-n nodine,stat-n unsure")
     ck("the sections read as what the guest does, not what reception does",
        [e.strip() for e in pg.evaluate(
         "()=>[...document.querySelectorAll('.seclabel')].map(e=>e.textContent)")]
        == ["Arriving", "Arrived"])
-    ck("and goes red while any remain",
-       pg.evaluate("()=>tileLeft.className.indexOf('due')>-1"))
+
 
     # ── no pills: every state is said once, by tint, section or icon ──
     # A pill repeating the tint makes the reader check whether the two agree
@@ -308,7 +314,7 @@ with sync_playwright() as p:
     ck("and the guest moves into the confirmed section without a reload",
        pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"]').className")
        .find("is-done") > -1)
-    ck("with the count following", pg.evaluate("()=>nLeft.textContent") == "4")
+    ck("with the fraction following", pg.evaluate("()=>nArr.textContent") == "3/7")
     pg.close()
 
     # ── a guest with no form goes straight to the form ──────────
