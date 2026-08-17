@@ -1,5 +1,10 @@
 # Plan of attack
 
+> **17 Aug: read `HANDOVER.md` first.** Stages A to F below are largely done.
+> The handover's "Open, and what it needs" is the current list; this file is
+> kept for the reasoning behind the ordering.
+
+
 17 Aug. Everything open, in one order. Consolidates `MEWS-AUDIT.md`,
 `GUEST-DATA.md`, `SCREENS.md`, `GAPS.md`, `MORNING-17-AUG.md` and the
 `HANDOVER.md` backlog. Where any of those disagree with this, this is newer.

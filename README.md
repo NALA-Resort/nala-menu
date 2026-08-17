@@ -1,15 +1,11 @@
 # nala-menu
 
-Dinner service tool for NALA Resort. Start with **PLAN.md** for what to build
-next and in what order, then **STYLEGUIDE.md** before changing anything visual.
-**HANDOVER.md** has the current state, but check PLAN.md first: several of its
-gaps and backlog items are out of date as of 17 Aug.
+Dinner service tool for NALA Resort. Live at menu.nalaresort.com.
 
-Supporting documents: **GUEST-DATA.md** for who owns which data and why,
-**SCREENS.md** for the screens still to build, **GAPS.md** for what the
-architecture implies and the repo lacks, **MEWS-AUDIT.md** for the sync audit,
-which carries a correction notice at the top.
+**Read `HANDOVER.md` first.** It is the only document you have to read, and it
+points at the rest.
 
+Before anything visual, `STYLEGUIDE.md`.
 
 `rules.json` is a copy of the live Realtime Database rules, kept here so a
 change can be reviewed and diffed. It is NOT deployed from the repo: paste it
