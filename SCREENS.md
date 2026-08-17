@@ -51,6 +51,19 @@ Writes to `/bookings/<id>/prearrival`. Never writes name, villa or dates: those
 come from the link for display and from Mews for truth. Works before Mews has
 the booking, which is the normal case at seven days out.
 
+**Every question on the form is mandatory.** So a submitted form always
+carries a dining answer, and "form done but the dinner question unanswered"
+cannot happen. That state was designed for and then removed once the rule was
+known.
+
+**Which makes no form a tentative yes, not an unknown.** The kitchen cooks for
+it: oversupplying is the cheap mistake and undersupplying is not, and reception
+settles it at check-in either way. So on Front Desk Arrival every guest carries
+a fork icon, and grey means assumed dining and still to be pinned down rather
+than ignore this one. The kitchen's planning number is dining plus not sure;
+only not dining is genuinely off the list. The three are still counted
+separately because how firm a number is matters as much as the number.
+
 **Answers are written on submission only, never as the guest types.** A
 half-written record is indistinguishable from a considered one, so "Form done"
 would come to mean "some fields exist" and reception would stop trusting it.

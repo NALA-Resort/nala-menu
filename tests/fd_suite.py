@@ -191,10 +191,12 @@ with sync_playwright() as p:
     ck("and a confirmed decline", fork("11") == "fork out")
     # There is nothing to report about a guest who has not answered, and an
     # icon there would be an answer we do not have.
-    ck("no fork icon until they answer the dinner question", fork("2") is None)
+    # Every question on the form is mandatory, so a submitted form always has a
+    # dining answer and grey can only mean no form. No form is a tentative yes,
+    # which the kitchen cooks for, so it earns an icon rather than a blank.
+    ck("a guest with no form still carries a fork, greyed", fork("2") == "fork un")
     # Grey is a real answer: they filled the form in and left dinner open.
-    ck("a form that skipped the dinner question reads grey, not green",
-       fork("12") == "fork un")
+    ck("and so does one who opened the link and stopped", fork("14") == "fork un")
 
 
     # Opened the pre-arrival link and did not finish. A different message from
@@ -203,9 +205,8 @@ with sync_playwright() as p:
     def seen(v):
         return pg.evaluate("()=>!!document.querySelector('.arr[data-villa=\"%s\"] .seen')" % v)
     ck("a guest who opened the link and stopped shows it", seen("14"))
-    ck("a guest who never opened it shows nothing on the right at all",
-       not seen("2") and
-       pg.evaluate("()=>document.querySelectorAll('.arr[data-villa=\"2\"] .fork').length") == 0)
+    ck("a guest who never opened it carries no link icon, only the grey fork",
+       not seen("2") and fork("2") == "fork un")
     ck("and one who submitted has nothing left to say", not seen("4"))
 
     # The tint answers the thing reception scans for.

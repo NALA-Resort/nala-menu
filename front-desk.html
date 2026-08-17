@@ -384,12 +384,21 @@ var ICON_FORK = '<svg viewBox="0 0 24 24" stroke-width="0">' +
   '<path d="M6.2 2.5v6a2.4 2.4 0 001.6 2.3V21h1.6v-10.2A2.4 2.4 0 0011 8.5v-6H9.6v5.2H8.7V2.5H7.3v5.2h-.9V2.5H6.2z"/>' +
   '<path d="M15.6 2.5c-1.5 0-2.5 1.9-2.5 5.1 0 2.4.7 3.9 1.8 4.3V21h1.6V2.5h-.9z"/></svg>';
 
-/* Grey is a real answer here, not a missing one: a guest can open the form,
-   fill in their allergies and leave the dinner question alone. Reception needs
-   to see that it is still open rather than assume either way. */
+/* Every question on the pre-arrival form is mandatory, so a submitted form
+   always carries a dining answer and "form done, dinner unanswered" cannot
+   happen. Grey therefore means no form, and no form is not the absence of an
+   answer: it is a tentative yes.
+
+   The kitchen cooks for it. Oversupplying is the cheap mistake and
+   undersupplying is not, and reception settles it at check-in either way. So
+   every arrival carries a fork, and the grey ones are the ones still to be
+   pinned down rather than the ones to be ignored.
+
+   The undefined case is still handled rather than assumed away: a mandatory
+   field is a rule in a form, not a guarantee from a database. */
 function forkFor(p){
-  if (!hasForm(p)) return '';
-  var cls = p.dining === true ? 'in' : (p.dining === false ? 'out' : 'un');
+  var cls = (p && p.dining === true) ? 'in'
+          : ((p && p.dining === false) ? 'out' : 'un');
   return '<span class="fork ' + cls + '">' + ICON_FORK + '</span>';
 }
 
@@ -459,6 +468,9 @@ function render(){
     var d = r.pre && r.pre.dining;
     if (d === true) din++; else if (d === false) out++; else un++;
   });
+  /* Not sure is a tentative yes, so the kitchen plans for din + un and only
+     out is genuinely off the list. The three are still shown separately
+     because how firm a number is matters as much as the number. */
   document.getElementById('nIn').textContent  = din;
   document.getElementById('nOut').textContent = out;
   document.getElementById('nUn').textContent  = un;
