@@ -153,6 +153,15 @@ button, on a two page day.
 
 ## 9. Push notifications
 
+**New 18 Aug: publishing a menu now fires a `menu` event to the manager.** The
+notification Worker is not in this repo, so nothing here can tell whether it
+understands that event name. After the next publish, check the manager's phone.
+If nothing arrives, the Worker needs a case for it, and the manual notify link
+in the chef brief is still doing the job in the meantime.
+
+The original check:
+
+
 iOS only allows these for a site added to the Home Screen, so a browser tab
 cannot test it.
 

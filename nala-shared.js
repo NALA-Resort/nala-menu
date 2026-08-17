@@ -788,7 +788,12 @@ var NOTIFY_DEFAULTS = {
     departed:  { housekeeping:true, admin:true, waiter:false, chef:false },
     available: { housekeeping:true, admin:true, waiter:false, chef:false },
     cleaned:   { housekeeping:true, admin:true, waiter:true,  chef:false },
-    serviced:  { housekeeping:true, admin:true, waiter:true,  chef:false }
+    serviced:  { housekeeping:true, admin:true, waiter:true,  chef:false },
+    /* The chef publishes by pushing a commit, not by writing here, so nothing
+       in the database changes when a menu goes up. The board notices on its
+       next load and fires this. Off for the chef, who already knows: they
+       just published it. */
+    menu:      { housekeeping:false, admin:true, waiter:false, chef:false }
   }
 };
 

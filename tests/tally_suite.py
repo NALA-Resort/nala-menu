@@ -503,6 +503,31 @@ with sync_playwright() as p:
        q.url.endswith("cleaners.html"))
     q.close()
 
+    # ── the manager is told when a menu is published ───────────
+    # The chef publishes by pushing a commit, so nothing in the database moves
+    # and there is nothing to watch. The board noticing the change and
+    # archiving it is the only moment the app can tell, so the notification
+    # hangs off exactly that, and must not fire again on the next poll.
+    pushes = []
+    q = as_role("staff@x")
+    q.route("**/nala-push*/**", lambda r, req: (pushes.append(req.post_data),
+        r.fulfill(status=200, content_type="application/json", body="{}")))
+    q.route("**nala-push*", lambda r, req: (pushes.append(req.post_data),
+        r.fulfill(status=200, content_type="application/json", body="{}")))
+    q.reload(); q.wait_for_timeout(1800)
+    ck("publishing a menu notifies", any('"event":"menu"' in (p or "") for p in pushes))
+    # No actor. Everywhere else the actor is the person who tapped, so they are
+    # not told about their own action. Here the chef caused it and the manager
+    # merely has a board open: naming them would suppress the one notification
+    # this exists to send.
+    ck("and names nobody as having caused it, so nobody is excluded",
+       all('"actor":""' in (p or "") or '"actor":null' in (p or "")
+           for p in pushes if '"event":"menu"' in (p or "")))
+    before = len(pushes)
+    q.evaluate("()=>load(true)"); q.wait_for_timeout(1200)
+    ck("and does not notify again on the next poll", len(pushes) == before)
+    q.close()
+
     # ── a note belongs to a night ──────────────────────────────
     # roomguests is carried forward across a stay so a guest keeps their villa.
     # Anything left on an old record there is from an earlier night, and shown

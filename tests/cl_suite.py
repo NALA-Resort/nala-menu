@@ -1043,9 +1043,16 @@ with sync_playwright() as p:
     print("   events fired:", fired)
     ck("finishing a clean announces it as cleaned", "cleaned:11" in fired)
     ck("a departure announces itself", "departed:8" in fired)
-    ck("the defaults name all four events",
+    ck("the defaults name every event the app can fire",
        sorted(pg.evaluate("()=>Object.keys(NOTIFY_DEFAULTS.events)"))
-         == ["available","cleaned","departed","serviced"])
+         == ["available","cleaned","departed","menu","serviced"])
+    # A menu going up is the manager's business, not the cleaners'. The chef
+    # published it, so telling the chef is telling them what they just did.
+    ck("a published menu goes to the manager only",
+       pg.evaluate("""()=>NOTIFY_DEFAULTS.events.menu.admin===true
+                       && NOTIFY_DEFAULTS.events.menu.housekeeping===false
+                       && NOTIFY_DEFAULTS.events.menu.waiter===false
+                       && NOTIFY_DEFAULTS.events.menu.chef===false"""))
     ck("cleaned and serviced reach everyone with Cleans access",
        pg.evaluate("""()=>NOTIFY_DEFAULTS.events.cleaned.waiter===true
                        && NOTIFY_DEFAULTS.events.cleaned.housekeeping===true

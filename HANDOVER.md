@@ -218,14 +218,26 @@ most. Nothing there has been done.
    the kind of thing that reaches a plate. The dinner cell is per date, so the
    date is already there to stamp with. Check every board that renders the
    bubble, not just the one it was noticed on.
-3. **Chef brief needs a link to Menu Dietaries.** So the chef publishes the
-   menu and then tags it, rather than remembering to. See item 5, which changes
-   the same document.
-4. **Publishing the menu should notify the manager.** That removes the reason
-   the chef brief carries a "notify managers" link at all, so the brief gets
-   shorter by one step. The notify plumbing already exists at `/notify` with
-   per event, per role toggles, so this is a new event in that list rather than
-   a new mechanism.
+3. ~~Chef brief needs a link to Menu Dietaries.~~ **Done 18 Aug.** Step 4 of
+   the brief now prints three lines: the confirmation, a link to tag tonight's
+   dietaries, and the notify link. Tagging comes after publishing because the
+   page has nothing to tag before it.
+4. **Publishing the menu notifies the manager. Built 18 Aug, NOT PROVEN.**
+   `menu` is a new event in the existing per event, per role list, on for the
+   manager and nobody else. The chef publishes by pushing a commit, so nothing
+   in the database moves and there is nothing to watch: the notification hangs
+   off the one moment the app can tell, which is a board noticing the menu
+   changed and archiving it for Statistics. It fires once per published menu,
+   and it names no actor, because naming the manager whose board happened to
+   notice would suppress the one notification it exists to send.
+
+   Two things stop this being finished. **If no staff board is open, nobody is
+   told until one is.** A commit hook into the notification Worker would close
+   that. And **the notification Worker is not in this repo**, so whether it
+   handles an event called `menu` is unknown and untestable from here. Until
+   that is confirmed on a real phone, the manual notify link stays in the chef
+   brief. Removing it first would leave the manager relying on something nobody
+   has seen work.
 5. **The demo sheets do not update themselves.** Asked 18 Aug. They are
    standalone copies built by `python3 tools/make-demo.py`, and they cover four
    pages only: Reservations, the Reservations Sheet, Cleans and the Clean

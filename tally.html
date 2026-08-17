@@ -1608,6 +1608,22 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
                 at: new Date().toISOString()
               })
             });
+            /* The manager is told here because this is the only moment the app
+               can tell a menu changed: the chef publishes by pushing a commit,
+               so nothing in the database moves and there is nothing to watch.
+               This branch runs exactly once per published menu, on whichever
+               board notices first, which is what stops it firing on every poll.
+
+               The limit is honest and worth knowing: if no staff board is open,
+               nobody is told until one is. A commit hook into the notification
+               Worker would close that, and the Worker is not in this repo. */
+            /* No actor. Everywhere else the actor is the person who caused
+               the event, so the Worker can avoid telling them about their own
+               tap. Here the person who caused it is the chef, and the person
+               who happens to have a board open did not do anything. Passing
+               them would suppress the notification for the very manager it is
+               meant to reach. */
+            notifyPush('menu', null, null);
           });
       }
     })
