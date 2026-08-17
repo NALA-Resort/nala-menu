@@ -8,11 +8,18 @@ the below.
 That is not a caveat, it is the actual record: on 16 Aug the passcode screen
 shipped with 30 passing tests and broke sign in on a real phone for two hours.
 
-Ordered by what would hurt most if it were broken.
+Ordered by what would hurt most if it were broken. Answered items are kept
+rather than deleted, struck through, so nobody re-asks them.
+
+**Standing at 18 Aug:** four checks answered, none of the remaining ones run.
+Everything in section 0 was added today and is the direct consequence of a
+change that went live today.
 
 ---
 
-## 0. The new rules went live 18 Aug. Do this once, today
+## 0. Everything that changed on 18 Aug. Do this lot once
+
+### 0a. The database rules, live since this morning
 
 Every write now has to pass a validate rule as well as a permission one. The
 suite proved that against a copy of the rules, using write bodies taken from
@@ -41,6 +48,55 @@ yesterday.
 Anything that fails here is a rule that is too strict, not a page that broke.
 Nothing needs reverting in the app: the fix is a corrected rules file pasted
 over the top, the same way these went in.
+
+### 0b. Dining notes now say which night they belong to
+
+Open the Reservations board on a villa that has been in for more than one
+night, and tap the speech bubble.
+
+**Expect** either "Tonight's dining notes", or "Previous dining notes" with a
+line saying not to cook to it without asking, or both. **Expect** the dietary
+pills on the row to be tonight's only.
+
+**Why it matters:** until today a dietary given on Monday was rendered,
+undated, as Tuesday's and Wednesday's answer as well.
+
+### 0c. The availability timer is green for ten minutes
+
+On the Cleans board, mark a villa available and watch the figure beside it.
+
+**Expect** green under ten minutes, plain ink from ten, amber from fifteen,
+red from twenty. **Check it in daylight**, which is the case the colour was
+darkened for.
+
+### 0d. Mews dates are now converted to resort time
+
+Nothing to do until it happens. **After the next early arrival or early
+checkout,** confirm the villa appears on the right night on the Cleans board
+and the right night on Reservations.
+
+**Why:** the Worker kept the date exactly as Mews wrote it, which is only the
+local date until 2pm UTC. Every arrival and every checkout before 10am local
+was filed a day early.
+
+### 0e. Publishing a menu should reach your phone
+
+Covered in full at section 9. After the next publish, check whether anything
+arrives. If not, the notification Worker on your machine needs a case for the
+event, and the manual link in the chef brief is still doing the job.
+
+### 0f. The chef brief now has three links
+
+Ask the chef to publish as normal. **Expect** three lines at the end: live
+confirmation, "Tag tonight's dietaries", and the notify link. **Then** open
+`tag.html` yourself and confirm the dishes are there to tick, which they are
+only once a menu is published for that day.
+
+### 0g. The pre-arrival form describes dining before it asks
+
+Open the form. **Expect**, above the two buttons, a short italic line about a
+set menu at one sitting from 6:00 to 6:30. The words are mine and are meant to
+be replaced by yours.
 
 ---
 
@@ -183,7 +239,12 @@ summary open.
 
 Every suite runs on every change: layout at three widths, every branch of the
 logic, the failure paths, the role gates, and that each suite still fails when
-the thing it protects is broken. 540 assertions across nine suites.
+the thing it protects is broken. About 1160 assertions across fifteen suites,
+which as of 18 Aug covers every page in the app plus the Mews sync Worker and
+the database rules.
 
 I also open every link on the site map and confirm no page in the repo is
 missing from it, which is the check that stops that page rotting.
+
+None of that reaches a real phone, a printer, Mews, Zapier, or the notification
+Worker. That is what this document is for.
