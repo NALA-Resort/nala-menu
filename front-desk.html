@@ -224,6 +224,7 @@ function rowHTML(r){
   var bits = [stayLabel(r.stay)];
   if (r.stay.adults)
     bits.push(r.stay.adults + (Number(r.stay.adults)===1 ? ' adult' : ' adults'));
+  if (r.pre && r.pre.arriveBy) bits.push(esc(r.pre.arriveBy));
   return '<button class="arr'+(isConfirmed(r.pre)?' is-done':'')+
          '" data-villa="'+r.villa+'">'+
          '<div class="arr-v">'+r.villa+'</div>'+
@@ -322,6 +323,8 @@ function openGuest(r){
     approach: p.approach || '',
     occasion: p.occasion || '',
     wellness: p.wellness === undefined ? null : !!p.wellness,
+    wellDay:  p.wellDay || '',
+    wellTime: p.wellTime || '',
     note:     p.note || ''
   };
 
@@ -334,6 +337,8 @@ function openGuest(r){
         (r.stay.adults ? ' \u00b7 ' + r.stay.adults +
           (Number(r.stay.adults)===1?' adult':' adults') : '') +
       '</span></div>' +
+    (a.arriveBy ? '<div class="note-box">Told us they would arrive ' +
+       esc(a.arriveBy) + '.</div>' : '') +
     (hasForm(p) ? '' :
       '<div class="note-box">No pre-arrival form. Fill it in together.</div>') +
 
@@ -348,10 +353,7 @@ function openGuest(r){
     '<div class="sheet-label">Dietary requirements</div>' +
     '<div class="chips" id="dChips"></div>' +
     '<div class="chips" id="dNone"></div>' +
-    '<input class="txt" id="fDnote" type="text" placeholder="Whose, and how severe" autocomplete="off">' +
-
-    '<div class="sheet-label">Estimated arrival</div>' +
-    '<input class="txt" id="fArrive" type="text" placeholder="e.g. 4pm, or after 5pm" autocomplete="off">' +
+    '<input class="txt" id="fDnote" type="text" placeholder="Notes" autocomplete="off">' +
 
     '<div class="sheet-label">Purpose of visit</div>' +
     '<div class="chips" id="pChips"></div>' +
@@ -367,6 +369,11 @@ function openGuest(r){
       '<button id="wYes">Interested</button>' +
       '<button id="wNo">Not interested</button>' +
     '</div>' +
+    '<div id="wWrap">' +
+      '<div class="sheet-label">Preferred day</div>' +
+      '<div class="chips" id="wDays"></div>' +
+      '<input class="txt" id="fWtime" type="text" placeholder="Preferred time" autocomplete="off" style="margin-top:8px">' +
+    '</div>' +
 
     '<div class="sheet-label">Anything else</div>' +
     '<input class="txt" id="fNote" type="text" placeholder="Preferences, requests" autocomplete="off">' +
@@ -375,9 +382,9 @@ function openGuest(r){
     '<button class="opt quiet" id="sClose">Close</button>';
 
   document.getElementById('fDnote').value  = a.dnote;
-  document.getElementById('fArrive').value = a.arriveBy;
   document.getElementById('fOcc').value    = a.occasion;
   document.getElementById('fNote').value   = a.note;
+  document.getElementById('fWtime').value  = a.wellTime;
 
   function paintDining(){
     document.getElementById('sDin').className = a.dining === true  ? 'on' : '';
@@ -448,9 +455,31 @@ function openGuest(r){
       box.appendChild(b);
     });
   }
+  /* Only the nights they are actually here. Offering a day outside the stay is
+     an appointment nobody can keep. Arrival and departure days are included:
+     a treatment on the afternoon of arrival or the morning of departure is
+     normal, and excluding them would be the app deciding for the spa. */
+  function stayDays(){
+    var out = [], a1 = parseDepDate(dkeyOf(r.stay.arrive)),
+                  b1 = parseDepDate(dkeyOf(r.stay.depart));
+    if (!a1 || !b1) return out;
+    var D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    for (var d = new Date(a1); d <= b1 && out.length < 30; d.setDate(d.getDate()+1))
+      out.push({ key: dkey(d), label: D[d.getDay()] + ' ' + d.getDate() });
+    return out;
+  }
   function paintWellness(){
     document.getElementById('wYes').className = a.wellness === true  ? 'on' : '';
     document.getElementById('wNo').className  = a.wellness === false ? 'on' : '';
+    /* A day and a time only mean something once they have said yes. */
+    document.getElementById('wWrap').style.display = a.wellness === true ? '' : 'none';
+    var box = document.getElementById('wDays'); box.innerHTML = '';
+    stayDays().forEach(function(d){
+      var b = document.createElement('button');
+      b.className = 'chip' + (a.wellDay === d.key ? ' on' : ''); b.textContent = d.label;
+      b.onclick = function(){ a.wellDay = (a.wellDay === d.key ? '' : d.key); paintWellness(); };
+      box.appendChild(b);
+    });
   }
   document.getElementById('wYes').onclick = function(){ a.wellness = true;  paintWellness(); };
   document.getElementById('wNo').onclick  = function(){ a.wellness = false; paintWellness(); };
@@ -462,9 +491,9 @@ function openGuest(r){
   document.getElementById('sConfirm').onclick = function(){
     a.pax      = pax;
     a.dnote    = document.getElementById('fDnote').value.trim();
-    a.arriveBy = document.getElementById('fArrive').value.trim();
     a.occasion = document.getElementById('fOcc').value.trim();
     a.note     = document.getElementById('fNote').value.trim();
+    a.wellTime = document.getElementById('fWtime').value.trim();
     save(r, a);
   };
   showSheet();
@@ -481,7 +510,9 @@ function save(r, a){
     dining: a.dining, pax: a.dining ? a.pax : 0,
     diets: a.diets, noDiets: a.noDiets, dnote: a.dnote,
     arriveBy: a.arriveBy, purpose: a.purpose, approach: a.approach,
-    occasion: a.occasion, wellness: a.wellness, note: a.note,
+    occasion: a.occasion, wellness: a.wellness,
+    wellDay: a.wellness ? a.wellDay : '', wellTime: a.wellness ? a.wellTime : '',
+    note: a.note,
     confirmedAt: new Date().toISOString()
   };
   if (!hasForm(r.pre)) payload.at = payload.confirmedAt;

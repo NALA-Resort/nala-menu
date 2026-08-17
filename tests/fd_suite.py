@@ -134,6 +134,9 @@ with sync_playwright() as p:
         return pg.evaluate("()=>{const e=document.querySelector('.arr[data-villa=\"%s\"] .pill');"
                            "return e?e.className+'|'+e.textContent:null;}" % v)
     ck("a guest with no form at all", "none|No form" in pill("2"))
+    # Before a guest arrives, the ETA is the fact reception plans around.
+    ck("the arrival time they gave shows on the list, without opening anything",
+       "4pm" in pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"] .arr-s').textContent"))
     ck("a guest who filled it in but has not been confirmed", "part|Form done" in pill("4"))
     ck("a confirmed guest shows the answer, not the word confirmed",
        "din|Dining" in pill("7"))
@@ -151,13 +154,21 @@ with sync_playwright() as p:
        "()=>[...document.querySelectorAll('#dChips .chip')].some(e=>e.textContent==='Nut allergy'&&e.className.indexOf('on')>-1)"))
     ck("the note about whose allergy it is",
        pg.evaluate("()=>fDnote.value") == "the daughter, severe")
-    ck("their arrival time", pg.evaluate("()=>fArrive.value") == "4pm")
+    # ETA is not editable here: the guest is standing at the desk, so there is
+    # nothing left to estimate. It is shown if they told us earlier.
+    ck("the arrival time is shown, not offered for editing",
+       pg.evaluate("()=>!document.getElementById('fArrive')") and
+       "arrive 4pm" in pg.locator("#sheet").inner_text())
     ck("their special occasion", pg.evaluate("()=>fOcc.value") == "anniversary")
     ck("their free text", pg.evaluate("()=>fNote.value") == "quiet villa please")
     ck("purpose of visit, which is advisory and never drives logic",
        pg.evaluate("()=>[...document.querySelectorAll('#pChips .chip')]"
                    ".some(e=>e.textContent==='Celebration'&&e.className.indexOf('on')>-1)"))
     ck("and the wellness answer", pg.evaluate("()=>wYes.className==='on'"))
+    ck("a day and a time appear once they are interested",
+       pg.evaluate("()=>wWrap.style.display!=='none'"))
+    ck("the days offered are only the nights they are here",
+       pg.evaluate("()=>document.querySelectorAll('#wDays .chip').length") == 5)
     ck("covers are shown because they are dining",
        pg.evaluate("()=>paxWrap.style.display!=='none'"))
 
@@ -185,7 +196,8 @@ with sync_playwright() as p:
     pg = board()
     pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
     ck("a guest with no form gets the same fields, not a different flow",
-       pg.evaluate("()=>!!document.getElementById('fArrive')"))
+       pg.evaluate("()=>!!document.getElementById('fDnote')&&!!document.getElementById('fOcc')"
+                   "&&!!document.getElementById('sDin')&&!!document.getElementById('wYes')"))
     ck("and is told there is nothing to work from",
        "No pre-arrival form" in pg.locator("#sheet").inner_text())
     ck("nothing is preselected", pg.evaluate("()=>sDin.className===''&&sOut.className===''"))
