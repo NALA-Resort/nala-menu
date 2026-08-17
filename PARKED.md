@@ -45,7 +45,30 @@ quietly offering to replace the chef's dietaries with the eight built-in ones.
 **Watch for:** the chef reporting that Save is greyed out. That means a sign in
 problem, not a lost list, and reloading after signing in fixes it.
 
-## 5. Still yours from before, unchanged
+## 5. The new database rules need pasting into the console
+
+`rules.json` in the repo now has a validate rule on every node, and nothing in
+it is real until you paste it into the Firebase console and press Publish. The
+steps are the ones already written down in `SETUP.md`, the section on the
+database rules: open the file on GitHub, copy button, select all in the Rules
+editor, paste over the lot, Publish. It is a complete replacement, not an
+addition. Say the word if you would rather have it as a block in chat.
+
+Before you paste: this refuses twenty six shapes the database accepts today,
+and refuses nothing the app actually writes. Both halves of that were tested
+rather than reasoned about. The thing to watch for afterwards is any page
+reporting that a save was not allowed, which would mean a field somebody writes
+was missed.
+
+## 6. Housekeeping can set a villa's job, and ROLES.md says they cannot
+
+The rule meant to stop them has never worked. The new file stops them.
+
+**Question for you:** is ROLES.md right? If housekeeping should be able to mark
+a villa as a clean or a service themselves, say so and the rule comes out
+before you paste. Nothing else in the file depends on it.
+
+## 7. Still yours from before, unchanged
 
 None of these moved today, and none of them can move without you.
 
@@ -58,7 +81,7 @@ None of these moved today, and none of them can move without you.
 6. Dinner and breakfast hours.
 7. The placeholder line on the pre-arrival form.
 
-## 6. For the print chat, not for you
+## 8. For the print chat, not for you
 
 `menu-print.html` now has a suite and passes it, so nothing is owed there. The
 three nav entries it owes in `list.html` and `housekeeping.html`, the 320pt

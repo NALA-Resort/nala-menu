@@ -23,7 +23,21 @@ repo root with a local copy of the site:
 The Mews sync Worker has its own, in node rather than Playwright because it
 never runs in a browser:
 
-    node worker/test.mjs             # 47  - Mews sync Worker
+    node worker/test.mjs             # 62  - Mews sync Worker
+
+So do the database rules, which run on Google's servers and cannot be reached
+by opening a page. targaryen evaluates them exactly as the database does:
+
+    npm install targaryen            # once
+    node tests/rules_test.js         # 68  - who may write what, and what shape
+
+Two halves, and the first matters more. Before asking whether a bad write is
+refused it asks whether every real write the app makes is still allowed: a
+validate rule that is too strict does not look like security, it looks like
+reception being unable to seat a guest. Every body in it was copied from the
+code that sends it. `RULES_FILE=/path/to/rules.json node tests/rules_test.js`
+points the same suite at another copy, which is how these were diffed against
+the deployed ones.
 
 Counts drift. If yours do not match, the suite moved and this line did not:
 trust the suite.

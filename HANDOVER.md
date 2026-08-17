@@ -151,9 +151,22 @@ most. Nothing there has been done.
 
 ### Mine to build
 
-- **No `.validate` rule anywhere.** Fourteen nodes, nothing bounds a shape, a
-  type or a size. Every rules conversation so far has been about who may write,
-  never what.
+- ~~No `.validate` rule anywhere~~ **written 18 Aug, NOT DEPLOYED.** `rules.json`
+  now bounds every node: types, ranges, allowed values, text lengths, and date
+  and villa key formats. `tests/rules_test.js` checks them with targaryen, 68
+  assertions. Twenty six shapes the live database accepts today are refused by
+  the new file, and not one real write the app makes is broken by it, which was
+  checked by running the same suite against both copies.
+
+  **The repo copy is now ahead of what is deployed.** Until it is pasted into
+  the Firebase console and Published, none of it is real.
+
+  Writing them turned up a live permissions hole: housekeeping could set a
+  villa's job, which `ROLES.md` has always said they cannot. Write permission
+  in Firebase cascades down and cannot be taken back at a child, so the rule on
+  `kind` never did anything, because write was already granted at the villa
+  above it. The restriction now lives in a validate rule, which does not
+  cascade.
 - **Nothing reports the sync stopping.** If the Zap dies the boards do not go
   red, they show fewer bookings, which looks like a quiet week. Needs a
   heartbeat, which needs a Zapier schedule trigger to be honest.
