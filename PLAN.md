@@ -99,7 +99,17 @@ rather than later.
   have nothing left to find
 - **[me]** Old style links keep working throughout, so URL parsing goes last
 
-## Stage E. Guest pre-arrival questionnaire
+## Stage E. Guest pre-arrival questionnaire. DONE 17 Aug
+
+`prearrival.html`, `tests/pre_suite.py`, 46 assertions. Six required questions
+and two optional. Written only on Send, stamped on open, PATCH so a desk
+confirmation survives, and a guest can reopen and change their answers.
+
+Two things outstanding and both are yours: the help line under the first night
+question, which is a marked placeholder in the page, and confirming GuestTouch
+can send the parameter names. See `TESTING.md`.
+
+## Stage E as originally written
 
 - **UNBLOCKED 17 Aug.** Purpose of visit is a multi select and it is advisory
   only: it exists so that when a guest cannot be reached, staff can judge
@@ -116,7 +126,7 @@ rather than later.
 - **[me]** Works before Mews has the booking, which is the normal case at seven
   days out
 
-## Stage F. Registration cards
+## Stage F. Registration cards. NEXT
 
 - **[me]** `registration.html`, print tier, one card per arriving villa
 - **[me]** Answers filled in or left blank for pen, editable with a save
