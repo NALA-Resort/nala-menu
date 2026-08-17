@@ -151,12 +151,12 @@ most. Nothing there has been done.
 
 ### Mine to build
 
-- ~~No `.validate` rule anywhere~~ **written 18 Aug, NOT DEPLOYED.** `rules.json`
+- ~~No `.validate` rule anywhere~~ **written and deployed 18 Aug.** `rules.json`
   now bounds every node: types, ranges, allowed values, text lengths, and date
   and villa key formats. `tests/rules_test.js` checks them with targaryen, 68
-  assertions. Twenty six shapes the live database accepts today are refused by
-  the new file, and not one real write the app makes is broken by it, which was
-  checked by running the same suite against both copies.
+  assertions. Twenty six shapes the database accepted before are now refused, and
+  not one real write the app makes is broken by it, which was checked by running
+  the same suite against both copies.
 
   **Published to the console 18 Aug.** The repo copy and the live rules match.
   `TESTING.md` section 0 is the six tap smoke test that has not been run yet:
