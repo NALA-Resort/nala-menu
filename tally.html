@@ -535,15 +535,65 @@ function withExtras(key, rec){
 
 // ── every /manual write goes through here: optimistic update,
 //    rolled back if the database rejects it (same pattern as saveCombined)
+/* Every write from this board goes through here, and it goes to the one dinner
+   cell at /dinner/<date>/<villa>.
+
+   It used to write /manual/<date>/room-<villa>, which is how a dietary added
+   here became invisible at the front desk: the desk read the booking, this
+   board wrote /manual, and the next save from either wiped the other. Three
+   nodes held `diets` and none of them owned it.
+
+   Villa-keyed records move across. `ext-<id>` keys are external diners with no
+   villa and no booking, and they stay in /manual until they have somewhere
+   better to be: they are not a villa on a night, which is what the cell is. */
 function saveManual(key, rec){
   var had  = Object.prototype.hasOwnProperty.call(manual, key);
   var prev = manual[key];
   if (rec === undefined) delete manual[key]; else manual[key] = rec;
+
+  var villa = /^room-(\d+)$/.test(key) ? key.slice(5) : null;
+  var path, body = rec;
+  if (villa){
+    path = '/dinner/'+todayKey()+'/'+villa;
+    if (rec !== undefined){
+      /* Staff, because this board is staff only. That is what stops a guest
+         overwriting it from their link afterwards. */
+      body = Object.assign({}, rec, { by:'staff', at:new Date().toISOString() });
+      /* Staff overwriting a guest's own answer keeps that answer underneath.
+         With two nodes the guest's record simply stayed where it was and the
+         board merged them; with one cell there is nowhere else for it to be,
+         and losing it would lose the fact that the guest had booked at all.
+         That is what draws the crossed-out guest icon. */
+      var was = dinner[villa];
+      if (was && was.by === 'guest') body.guest = was;
+      else if (was && was.guest)     body.guest = was.guest;
+      else {
+        /* Transitional: a guest answer given before this board moved across
+           still sits in /responses. Overriding it has to carry it into the
+           cell, or the fact that the guest booked at all is lost the first
+           time staff touch the villa. Harmless once nothing writes there:
+           no response, no guest. */
+        var had = roomState(+villa);
+        /* roomState already sees the optimistic staff record set above, so it
+           reports the override branch rather than the guest one. The guest's
+           own answer is what it puts under `guest`. */
+        var gst = had && (had.guest || (had.src === 'digital' ? had.g : null));
+        if (gst) body.guest = gst;
+      }
+      dinner[villa] = body;
+    } else {
+      delete dinner[villa];
+    }
+  } else {
+    path = '/manual/'+todayKey()+'/'+key;
+  }
+
   var req = (rec === undefined)
-    ? api('/manual/'+todayKey()+'/'+key, 'DELETE')
-    : api('/manual/'+todayKey()+'/'+key, 'PUT', rec);
+    ? api(path, 'DELETE')
+    : api(path, 'PUT', body);
   req.catch(function(){
     if (had) manual[key] = prev; else delete manual[key];
+    if (villa){ if (prev) dinner[villa] = prev; else delete dinner[villa]; }
     render();
   });
   return req;
@@ -563,7 +613,14 @@ function roomState(n){
   var cell = dinner[String(n)];
   if (cell && typeof cell === 'object' && !vacantIsStale(cell, roomguests[String(n)] || {}))
     return { src: (cell.by === 'guest' ? 'digital' : 'manual'),
-             key: mk, g: cell, cell: true };
+             key: mk, cell: true,
+             /* The guest's own answer, kept under the staff one so nothing
+                they told us is lost: their pre-menu acknowledgement and their
+                "no dietaries" confirmation both live there and are never
+                re-entered by staff. */
+             g: cell.guest ? Object.assign({}, cell.guest, cell) : cell,
+             override: !!cell.override,
+             guest: cell.guest || null };
 
   // latest digital response for this room
   var best = null;

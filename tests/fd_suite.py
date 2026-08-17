@@ -74,6 +74,9 @@ PRE = {
 # filled in days before this existed.
 TAGS = {"main": ["Nut allergy"]}
 
+# Tonight's dinner cells, keyed by villa. Seeded per test.
+DINNER = {}
+
 WRITES = []
 STATE = {"fail": False}
 
@@ -88,6 +91,8 @@ def fb(route, request):
                       body=request.post_data or "null"); return
     body = "null"
     if "/staff" in u: body = json.dumps(STAFF)
+    elif "/dinner/" + today in u: body = json.dumps(DINNER)
+    elif "/dinner/" in u: body = "null"
     elif "/stays/" + today in u: body = json.dumps(STAYS)
     elif "/stays/" in u: body = "null"
     elif "/menutags/" in u:
@@ -439,6 +444,27 @@ with sync_playwright() as p:
        .find("is-done") == -1)
     STATE["fail"] = False
     pg.close()
+
+
+    # ── the bug found in testing on 17 Aug ──────────────────────
+    # Reception saved a dietary at check in, the Reservations board added
+    # another, and the next save from the desk wiped it. Three nodes held
+    # `diets` and none of them owned it: the desk read the booking, the board
+    # wrote /manual, and neither knew about the other.
+    PRE["b4"]["diets"] = ["Nut allergy"]
+    DINNER["4"] = {"status": "in", "pax": 2, "by": "staff",
+                   "diets": ["Nut allergy", "Vegan"], "dnote": "the daughter"}
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    ck("a dietary added on the board is visible at the desk",
+       "Vegan" in pg.locator(".sum").inner_text())
+    del WRITES[:]
+    pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
+    w = [x for x in WRITES if "/dinner/" in x["u"] and "/4.json" in x["u"]]
+    ck("and saving again at the desk does not wipe it",
+       len(w) == 1 and json.loads(w[0]["b"])["diets"] == ["Nut allergy", "Vegan"])
+    pg.close()
+    DINNER.clear()
 
     # ── the allergy nobody could have flagged earlier ───────────
     # The guest answered days before tonight's menu existed, so check-in is the

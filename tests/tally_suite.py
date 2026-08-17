@@ -191,8 +191,13 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.querySelector('#paxRow .pax.on').textContent")=="2")
     pg.locator(".pax", has_text="4").click()
     pg.locator("#oIn").click(); pg.wait_for_timeout(300)
-    w=[x for x in WRITES if "/manual/"+today+"/room-9" in x["u"] and x["m"]=="PUT"]
-    ck("PUT room-9 pax4 in", len(w)==1 and json.loads(w[0]["b"])["pax"]==4 and json.loads(w[0]["b"])["status"]=="in")
+    # Writes go to the one dinner cell now, keyed by villa. /manual held the
+    # same fact as /dinner and /bookings, which is how a dietary added here
+    # became invisible at the front desk.
+    w=[x for x in WRITES if "/dinner/"+today+"/9" in x["u"] and x["m"]=="PUT"]
+    ck("PUT villa 9 pax4 in", len(w)==1 and json.loads(w[0]["b"])["pax"]==4 and json.loads(w[0]["b"])["status"]=="in")
+    ck("stamped as set by staff, which locks it against the guest's own link",
+       len(w)==1 and json.loads(w[0]["b"])["by"]=="staff")
     s5=pg.evaluate("()=>({c:+nCovers.textContent,a:+nAwait.textContent})")
     ck("covers 13 awaiting 11 after save", s5["c"]==13 and s5["a"]==11)
 
@@ -272,7 +277,7 @@ with sync_playwright() as p:
     pg.locator(".pax", has_text="3").click()
     pg.locator(".chip", has_text="Gluten free").click()
     pg.locator("#oIn").click(); pg.wait_for_timeout(300)
-    wr=[x for x in WRITES if re.search(r"/manual/"+today+r"/room-12\.json",x["u"]) and x["m"]=="PUT"]
+    wr=[x for x in WRITES if re.search(r"/dinner/"+today+r"/12\.json",x["u"]) and x["m"]=="PUT"]
     okr=len(wr)==1 and json.loads(wr[0]["b"])["name"]=="Chef Guest" and "Gluten free" in json.loads(wr[0]["b"])["diets"] and json.loads(wr[0]["b"])["pax"]==3
     ck("room reservation PUT with name+diets", okr)
     ck("room 12 tile dining, row shows name", "in" in pg.evaluate("()=>[...document.querySelectorAll('#rooms .room')].find(b=>b.querySelector('.room-n').textContent==='12').className") and "Chef Guest" in pg.locator("#listBookings").inner_text())
@@ -283,7 +288,7 @@ with sync_playwright() as p:
     ck("room sheet shows guest data", "Chef Guest" in sh12 and "Gluten free" in sh12)
     pg.locator(".pax", has_text="4").click()
     pg.locator("#oIn").click(); pg.wait_for_timeout(300)
-    wr2=[x for x in WRITES if re.search(r"/manual/"+today+r"/room-12\.json",x["u"])][-1]
+    wr2=[x for x in WRITES if re.search(r"/dinner/"+today+r"/12\.json",x["u"])][-1]
     b12=json.loads(wr2["b"])
     ck("pax update kept name+diets", b12["pax"]==4 and b12.get("name")=="Chef Guest" and "Gluten free" in b12.get("diets",[]))
 
@@ -291,7 +296,7 @@ with sync_playwright() as p:
     pg.locator("#selToggle").click()
     tile(pg,12).click(); tile(pg,13).click(); pg.wait_for_timeout(150)
     pg.locator("#sbDin").click(); pg.wait_for_timeout(300)
-    wb=[x for x in WRITES if re.search(r"/manual/"+today+r"/room-12\.json",x["u"])][-1]
+    wb=[x for x in WRITES if re.search(r"/dinner/"+today+r"/12\.json",x["u"])][-1]
     bb=json.loads(wb["b"])
     ck("bulk Dining kept name, diets and pax 4", bb.get("name")=="Chef Guest" and "Gluten free" in bb.get("diets",[]) and bb["pax"]==4)
     pg.locator("#selToggle").click()
@@ -313,7 +318,7 @@ with sync_playwright() as p:
     pg.fill("#xPhone","0400 333 333")
     pg.locator(".chip", has_text="Vegan").click()
     pg.locator("#oSave").click(); pg.wait_for_timeout(300)
-    w3=[x for x in WRITES if re.search(r"/manual/"+today+r"/room-3\.json",x["u"])]
+    w3=[x for x in WRITES if re.search(r"/dinner/"+today+r"/3\.json",x["u"])]
     b3=json.loads(w3[-1]["b"])
     ck("details save: override with phone+diets, pax kept", b3.get("override")==True and b3["phone"]=="0400 333 333" and "Vegan" in b3["diets"] and b3["pax"]==2 and b3["name"]=="Mark")
     ck("row shows new dietary", "VEGAN" in pg.locator("#listBookings").inner_text().upper())
@@ -381,7 +386,7 @@ with sync_playwright() as p:
     ck("guest-confirmed sheet", "Confirmed by the guest" in pg.locator("#sheet").inner_text())
     pg.locator("#oCancel").click(); pg.wait_for_timeout(200)
     pg.locator("#cYes").click(); pg.wait_for_timeout(300)
-    wo=[x for x in WRITES if re.search(r"/room-1\.json", x["u"]) and x["m"]=="PUT"]
+    wo=[x for x in WRITES if re.search(r"/dinner/[^\"]*/1\.json", x["u"]) and x["m"]=="PUT"]
     oko=len(wo)==1 and json.loads(wo[0]["b"])["override"]==True and json.loads(wo[0]["b"])["status"]=="out"
     ck("override cancel PUT", oko)
     ck("room1 shows guest-cancelled icon", pg.evaluate("""()=>{

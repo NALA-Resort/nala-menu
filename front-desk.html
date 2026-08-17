@@ -558,6 +558,18 @@ function loadPrearrivals(rows){
   }));
 }
 
+/* Tonight's cells, one request for the whole night. The desk needs these as
+   well as the bookings, or an edit made on the Reservations board is invisible
+   here and the next save from the desk quietly wipes it. */
+function loadDinner(key, rows){
+  return api('/dinner/'+key)
+    .then(function(d){
+      d = d || {};
+      rows.forEach(function(r){ r.cell = d[r.villa] || null; });
+    })
+    .catch(function(){ rows.forEach(function(r){ r.cell = null; }); });
+}
+
 function load(){
   var key = nav.todayKey();
   err('');
@@ -576,10 +588,11 @@ function load(){
          order is settled then rather than on the first paint. Sorting only in
          arrivingOn leaves the list in villa order forever, because every row
          has a null pre at that point. */
-      return loadPrearrivals(ROWS).then(function(){
-        ROWS = sortRows(ROWS);
-        render();
-      });
+      return Promise.all([loadPrearrivals(ROWS), loadDinner(key, ROWS)])
+        .then(function(){
+          ROWS = sortRows(ROWS);
+          render();
+        });
     })
     .catch(function(){
       ROWS = []; render();
@@ -619,21 +632,33 @@ bd.onclick = function(e){ if (e.target === bd) closeSheet(); };
    about the same guest. */
 function answersOf(r){
   var p = r.pre || {};
+  /* Tonight's cell outranks the booking on the fields it holds, because the
+     Reservations board edits the cell and the desk must not lose an edit made
+     there.
+
+     The bug this fixes: reception saved a dietary at check in, the kitchen
+     added another on Reservations, and the next save from the desk wiped it,
+     because the desk was reading the booking and the board was writing the
+     cell. Two lists, one fact. */
+  var c = r.cell || {};
+  var haveCell = !!(c && c.status);
   return {
-    dining:   p.dining === undefined ? null : !!p.dining,
-    pax:      p.pax || r.stay.adults || 2,
-    diets:    (p.diets || []).slice(),
-    noDiets:  !!p.noDiets,
-    dnote:    p.dnote || '',
+    dining:   haveCell ? (c.status === 'in')
+                       : (p.dining === undefined ? null : !!p.dining),
+    pax:      haveCell ? (c.pax || r.stay.adults || 2)
+                       : (p.pax || r.stay.adults || 2),
+    diets:    ((haveCell && c.diets) ? c.diets : (p.diets || [])).slice(),
+    noDiets:  haveCell ? !!c.noDiets : !!p.noDiets,
+    dnote:    (haveCell ? c.dnote : p.dnote) || '',
     arriveSlot: p.arriveSlot || '',
     arriveNote: p.arriveNote || '',
     purpose:  (p.purpose || []).slice(),
     approach: p.approach || '',
+    note:     (haveCell && c.note !== undefined) ? c.note : (p.note || ''),
     occasion: p.occasion || '',
     wellness: p.wellness === undefined ? null : !!p.wellness,
     wellDay:  p.wellDay || '',
-    wellTime: p.wellTime || '',
-    note:     p.note || ''
+    wellTime: p.wellTime || ''
   };
 }
 
@@ -893,8 +918,9 @@ function save(r, a){
   };
   if (!hasForm(r.pre)) payload.at = payload.confirmedAt;
 
-  var before = r.pre;
-  r.pre = Object.assign({}, r.pre || {}, payload);   /* optimistic */
+  var before = r.pre, beforeCell = r.cell;
+  r.pre  = Object.assign({}, r.pre || {}, payload);  /* optimistic */
+  r.cell = dinnerCell(r, a);
   OPEN = null;
   render(); closeSheet();
 
@@ -913,7 +939,8 @@ function save(r, a){
   ]).then(function(res){
     if (!res[0].ok || !res[1].ok) throw new Error('save');
   }).catch(function(){
-    r.pre = before; render();      /* put it back rather than lie about it */
+    r.pre = before; r.cell = beforeCell;   /* put it back rather than lie */
+    render();
     err('Could not save. Nothing was changed.');
   });
 }
