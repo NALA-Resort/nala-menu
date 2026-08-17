@@ -330,8 +330,8 @@ const zapKey = await post({ Id: "5f593a0c708cbb49e77f324e07bee616",
   ResourceName: "3", State: "Confirmed" });
 ck("Zapier's own event key is refused, not stored as a booking",
    zapKey.status === 400);
-ck("and the refusal says which field to map instead",
-   (await zapKey.json()).hint.indexOf("Mews Id") > -1);
+ck("and the refusal says what to send instead",
+   (await zapKey.json()).hint.indexOf("whichever is a GUID") > -1);
 ck("nothing was written", Object.keys(STORE).length === 0);
 
 /* Both present is the likely shape of a half-corrected mapping. */
@@ -373,6 +373,41 @@ await post(RES);
 const known = await post(Object.assign({}, RES, { State: "Canceled" }));
 ck("and a cancellation for one we know does not",
    (await known.json()).unknownCancellation === undefined);
+
+
+/* ── the three triggers name the id differently ─────────────── */
+/* Measured 17 Aug. No single field name is right, so the Worker takes
+   whichever value is a GUID.
+
+     New reservation  the GUID arrives as Id, and there is no MewsId
+     Modification     the GUID arrives as MewsId, and Id is Zapier's own key
+     Cancellation     the GUID arrives as Id                                 */
+const GUID = "c0a444b2-b2d8-4e5f-90bb-b4a900c12ed8";
+const BASE = { StartUtc: "2026-09-10T04:00:00Z", EndUtc: "2026-09-11T02:00:00Z",
+               ResourceName: "3", State: "Confirmed" };
+
+install();
+await post(Object.assign({}, BASE, { Id: GUID }));
+ck("a new reservation, where the GUID is in Id", !!STORE["/bookings/" + GUID + "/pms"]);
+
+install();
+await post(Object.assign({}, BASE, { Id: "be99712182a11b7e1c854af0ecdaf669", MewsId: GUID }));
+ck("a modification, where Id is Zapier's key and the GUID is in MewsId",
+   !!STORE["/bookings/" + GUID + "/pms"]);
+ck("and Zapier's key is not used as a booking",
+   !STORE["/bookings/be99712182a11b7e1c854af0ecdaf669/pms"]);
+
+/* The one that mattered: a new reservation and its later modification must be
+   the SAME booking, or every change looks like a new arrival. */
+install();
+await post(Object.assign({}, BASE, { Id: GUID, ResourceName: "13",
+                                     UpdateUtc: "2026-08-17T07:36:00Z" }));
+await post(Object.assign({}, BASE, { Id: "be99712182a11b7e1c854af0ecdaf669",
+                                     MewsId: GUID, ResourceName: "15",
+                                     UpdateUtc: "2026-08-17T11:02:00Z" }));
+const held = Object.keys(STORE).filter(k => k.startsWith("/stays/"));
+ck("a booking created then moved holds one villa, not two",
+   held.length === 1 && held[0].endsWith("/15"));
 
 console.log("RESULT: %d passed, %d failed", P, F);
 if (F) process.exit(1);

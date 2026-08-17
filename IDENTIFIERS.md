@@ -103,11 +103,23 @@ clearing the villa it left. The duplicate finder reporting nothing, because the
 three entries genuinely had three different ids. It was not the cancellation
 feed, which is what I said twice.
 
-How to tell them apart, since the Zap gives no description: every real Mews
-identifier in that list is a GUID with dashes. Zapier's `ID` is 32 hex
-characters without. The Worker now refuses anything that is not a GUID and says
-which field to map instead, so a wrong mapping fails loudly rather than quietly
-creating bookings.
+**And no single field name is right.** Measured across three Zapier triggers:
+
+| Trigger | Where the reservation GUID arrives |
+|---|---|
+| New reservation | `Id`, and there is no `MewsId` at all |
+| Modification | `MewsId`. `Id` is Zapier's own 32 character key |
+| Cancellation | `Id` |
+
+So the first correction, "always use Mews Id", was also wrong: on a new
+reservation that field does not exist.
+
+The Worker takes **whichever value is a GUID**, because the shape is consistent
+even when the name is not. Every Mews identifier has dashes; Zapier's key is 32
+hex characters without. Anything that is not a GUID is refused with a message,
+so a bad mapping fails loudly rather than quietly creating bookings.
+
+The Zap should send both `Id` and `MewsId` and let the Worker choose.
 
 Also in that list and worth mapping later: **Customer Id**, the guest across
 all their stays, and **Group Id**, the party.

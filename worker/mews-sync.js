@@ -105,6 +105,16 @@ function isGuid(v) {
     .test(String(v || ""));
 }
 
+/* The first candidate that is actually a GUID. Falls back to the first one
+   present so the caller can report what arrived, which is then refused with a
+   message rather than stored as a new booking. */
+function pickGuid(o, names) {
+  for (const n of names) {
+    if (isGuid(o[n])) return o[n];
+  }
+  return pick(o, names);
+}
+
 function pick(o, names) {
   for (const n of names) {
     if (o[n] !== undefined && o[n] !== null && o[n] !== "") return o[n];
@@ -114,17 +124,22 @@ function pick(o, names) {
 
 function readReservation(p) {
   return {
-    /* MewsId first, deliberately. Zapier's own "ID" is a per-event dedupe key
-       and changes on every event, so keying on it made every change look like
-       a brand new booking: one guest appearing in three villas at once, and a
-       move never clearing the villa it left.
+    /* By shape, not by name, because the name is not consistent.
 
-       Every real Mews identifier is a GUID with dashes. Zapier's is 32 hex
-       characters without. isGuid below refuses anything that is not a GUID, so
-       a mapping pointed at the wrong field fails loudly instead of quietly
-       filing a new booking. */
-    id:      pick(p, ["MewsId", "Mews Id", "mews_id", "mewsId",
-                      "Id", "id", "ReservationId", "reservation_id", "bookingId"]),
+       Measured from three Zapier triggers on 17 Aug:
+         New reservation  the reservation GUID arrives as  Id      (no MewsId)
+         Modification     the reservation GUID arrives as  MewsId  (Id is
+                          Zapier's own 32 character event key)
+         Cancellation     the reservation GUID arrives as  Id
+
+       So no single field name is right, and picking the first one present gets
+       modifications wrong. Every Mews identifier is a GUID with dashes and
+       Zapier's key is 32 hex characters without, so the shape settles it.
+
+       Keying on Zapier's key was the cause of one guest appearing in three
+       villas at once, and of a move never clearing the villa it left. */
+    id:      pickGuid(p, ["MewsId", "Mews Id", "mews_id", "mewsId",
+                          "Id", "id", "ReservationId", "reservation_id", "bookingId"]),
     first:   pick(p, ["FirstName", "first_name", "firstName", "CustomerFirstName"]),
     last:    pick(p, ["LastName", "last_name", "lastName", "CustomerLastName"]),
     phone:   pick(p, ["Phone", "phone", "PhoneNumber", "phone_number", "CustomerPhone"]),
@@ -227,7 +242,7 @@ export default {
       return new Response(JSON.stringify({
         ok: false, error: "reservation id is not a Mews GUID",
         received: String(r.id).slice(0, 40),
-        hint: "map the Zap's reservation id field to Mews Id, not to ID"
+        hint: "send both Id and MewsId from the Zap; the Worker takes whichever is a GUID"
       }), { status: 400, headers: { "Content-Type": "application/json" } });
     }
 
