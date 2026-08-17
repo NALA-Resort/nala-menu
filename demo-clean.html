@@ -546,13 +546,37 @@ function resolveRoomGuestsHK(all, todayK){
    worth asking for. That is why each night carries the guest rather than a
    pointer: a pointer would cost a request per villa and undo the work that took
    a poll from nineteen requests to four.                                    */
+/* The dinner cells for the date fetchStays was last called with.
+
+   Every page that renders a night already calls fetchStays for that date, so
+   the cells are fetched alongside and kept here. roomRecord falls back to this
+   when a caller passes nothing, which means the two printed sheets pick the
+   cell up without their own files changing.
+
+   That matters because those two belong to a different chat. Without it, a
+   villa booked on the board today shows on screen and is missing from the
+   paper, which is the worst kind of wrong: the chef has no way to know.
+
+   Worth making explicit later, when the sheets are next open: they should read
+   /dinner themselves and pass it in, like the boards do. Until then this is
+   the seam that keeps screen and paper agreeing.                          */
+var DINNER_CELLS = {};
+
 function fetchStays(dateKey){
-  return fetch(DB + '/stays/' + dateKey + '.json?v=' + Date.now())
-    .then(function(r){ return r.ok ? r.json() : null; })
-    /* A failure here must not empty the boards. Returning null means the merge
-       simply falls back to roomguests, which is what it did before any of this
-       existed.                                                             */
-    .catch(function(){ return null; });
+  return Promise.all([
+    fetch(DB + '/stays/' + dateKey + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      /* A failure here must not empty the boards. Returning null means the
+         merge simply falls back to roomguests, which is what it did before any
+         of this existed.                                                   */
+      .catch(function(){ return null; }),
+    fetch(DB + '/dinner/' + dateKey + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; })
+  ]).then(function(res){
+    DINNER_CELLS = res[1] || {};
+    return res[0];
+  });
 }
 
 /* Turns one /stays/<date>/<villa> entry into the shape roomguests uses, so it
@@ -739,7 +763,10 @@ function roomRecord(n, responses, manual, roomguests, dinner){
      are still read beneath it while links and pages are moved across, and both
      partition by date, so they empty themselves as the days pass rather than
      needing a migration. */
-  var cell = dinnerRecord(dinner && dinner[String(n)]);
+  /* A caller that fetched its own cells passes them. One that did not gets the
+     ones fetchStays picked up for the same date. */
+  var cells = dinner || DINNER_CELLS;
+  var cell = dinnerRecord(cells && cells[String(n)]);
   if (cell && !vacantIsStale(cell, known))
     return Object.assign({}, known, cell, pmsFields(known), { room:String(n) });
 

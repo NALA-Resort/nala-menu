@@ -684,6 +684,26 @@ with sync_playwright() as p:
     ck("and is dropped once Mews changes that booking",
        stale["newer"]["status"] != "vacant")
 
+
+    # The two printed sheets belong to another chat and cannot be edited here,
+    # so they never learned to fetch the dinner cell. fetchStays picks it up
+    # for the same date and roomRecord falls back to it, which is what keeps
+    # screen and paper agreeing. Without this a villa booked on the board today
+    # is missing from the chef's paper, and he has no way to know.
+    fallback = pg.evaluate("""()=>{
+      const rg = overlayStays({}, { '5': {id:'r1', first:'Jane', last:'Doe',
+                 arrive:'2026-08-18', depart:'2026-08-22'} });
+      DINNER_CELLS = { '5': { status:'in', pax:4, by:'staff' } };
+      const withFallback = roomRecord(5, {}, {}, rg);
+      const passedIn = roomRecord(5, {}, {}, rg, { '5': { status:'out', pax:0, by:'staff' } });
+      DINNER_CELLS = {};
+      return { withFallback: withFallback, passedIn: passedIn };
+    }""")
+    ck("a caller that fetched nothing still sees the cell",
+       fallback["withFallback"]["status"] == "in" and fallback["withFallback"]["pax"] == 4)
+    ck("and a caller that passed its own is not overridden by the fallback",
+       fallback["passedIn"]["status"] == "out")
+
     # The sync role is the Mews Worker's login. It is a real role, so roleOf
     # must return it rather than null, but it lands nowhere and grants nothing.
     sync=pg.evaluate("""()=>({
