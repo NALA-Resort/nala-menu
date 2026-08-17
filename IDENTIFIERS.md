@@ -75,6 +75,23 @@ bridge.
 
 ---
 
+## Built 17 Aug
+
+The dinner cell exists at `/dinner/<date>/<villa>`. Every board reads it,
+reception writes it at the desk, and the guest page writes it from a link
+carrying `?b=<booking id>`.
+
+`index.html` no longer reads or writes anything keyed on a phone. It does not
+write `/roomguests` either: Mews records who is in a villa now, through
+`/stays`, and it does that for guests who never open their link.
+
+A cell set by staff cannot be changed by a guest. That is enforced twice, in
+the page and in the rules, because a hidden button is not a rule.
+
+Still to retire, once no live data depends on them: the `/responses` and
+`/manual` fallback in `roomRecord`, `roomguests`, and `samePerson`. Both old
+nodes partition by date, so they empty themselves as the days pass.
+
 ## The scheme
 
 **The booking id is the only identifier for a guest. The date and the villa

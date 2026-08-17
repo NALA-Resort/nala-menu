@@ -550,8 +550,16 @@
   function pastCutoff(){ return new Date().getHours() >= CUTOFF_HOUR; }
 
   var qs = new URLSearchParams(location.search);
-  var G = { phone:(qs.get('p')||'').replace(/\D/g,''), room:qs.get('r')||'',
-            name:qs.get('n')||'', arrives:qs.get('a')||'', departs:qs.get('d')||'' };
+  /* The booking id is the only identifier. Everything else in the link is for
+     display and is never written back: those are Mews' facts, and a copy taken
+     here would be stale the moment Mews changed the booking.
+
+     `p`, `r`, `a`, `d` were the old scheme, keyed on a phone number. That made
+     /responses/<date>/<phone> guessable in order, which is why this page now
+     writes the dinner cell instead. */
+  var G = { id:(qs.get('b')||'').trim(), room:'', phone:'',
+            name:((qs.get('n')||'') + ' ' + (qs.get('s')||'')).trim(),
+            arrives:qs.get('a')||'', departs:qs.get('d')||'' };
 
   var DIETGROUPS = {};   // name -> 'common' | 'menu', from the chef's master list
   var state = { pax:2, diets:[], note:'', dnote:'', nodiet:false };
@@ -727,7 +735,10 @@
       : '<div class="r-done-t">Noted - not dining tonight</div>'+
         '<div class="r-done-s">We hope to see you another evening.</div>';
     panel.innerHTML = '<div class="r-done">'+body+
-      (pastCutoff() ? '' : '<a class="r-link" id="bEdit">Change</a>')+'</div>';
+      /* No Change link on a booking reception made. Only staff can alter it,
+         which is what the page already did for a guest's own answer and never
+         did for a staff one. Same markup, one more reason to omit it. */
+      ((pastCutoff() || LOCKED) ? '' : '<a class="r-link" id="bEdit">Change</a>')+'</div>';
     var e = document.getElementById('bEdit');
     if (e) e.onclick = stepChoose;
     panel.setAttribute('data-step','done'); scheduleFit();
@@ -791,7 +802,13 @@
     }
   }
 
+  /* Set when the cell was made by staff. Reception can see the villa and the
+     guest; the guest cannot see reception's reasons. So after a staff booking
+     this page reports rather than asks. */
+  var LOCKED = false;
+
   function save(status){
+    if (LOCKED) return;
     var noteEl = document.getElementById('note');
     if (noteEl) state.note = noteEl.value.trim();
     var dEl = document.getElementById('dnote');
@@ -808,6 +825,9 @@
     }
     if (status==='in' && !MENU) state.diets = [];   // acknowledged: none to declare
     if (!clash) state.dnote = '';   // diet was untoggled after typing
+    /* No name, phone or dates. Those are Mews' and the boards read them from
+       /stays; a copy written here would be a second version of a fact this
+       page does not own. */
     var payload = {
       status: status,
       pax: status==='in' ? state.pax : 0,
@@ -817,48 +837,61 @@
       note: status==='in' ? state.note : '',
       dnote: status==='in' ? state.dnote : '',
       diets: state.diets,
-      name: G.name, room: G.room, phone: G.phone, arrives: G.arrives, departs: G.departs,
+      room: G.room, bookingId: G.id,
+      by: 'guest',
       at: new Date().toISOString()
     };
-    db('/responses/'+todayKey()+'/'+G.phone, 'PUT', payload);
-    // pre-menu, the acknowledgment covers tonight only - keep the guest's
-    // standing dietaries on their profile for future nights
-    var prof = { name:G.name, room:G.room, arrives:G.arrives, departs:G.departs };
-    if (MENU) prof.diets = state.diets;
-    db('/guests/'+G.phone, 'PATCH', prof);
+    /* The one dinner cell, at /dinner/<date>/<villa>. Not a second record: the
+       same one reception writes at the desk and every board reads. */
+    db('/dinner/'+todayKey()+'/'+G.room, 'PUT', payload);
+    /* Standing dietaries go on the booking, so they carry across the nights of
+       this stay. Pre-menu, the acknowledgement covers tonight only, so nothing
+       is claimed for future nights. */
+    if (MENU) db('/bookings/'+G.id+'/prearrival', 'PATCH', { diets: state.diets });
     stepDone(payload);
   }
 
   function initRSVP(){
-    if (!G.phone || !G.name) return;   // opt-in needs an identified guest
+    if (!G.id) return;   // opt-in needs a booking, which the link carries
     panel.className = 'show';
     document.querySelector('.page').classList.add('has-rsvp');
 
-    // record who is in this room as soon as the link is opened,
-    // so staff-entered bookings still carry the guest's details
-    if (G.room) {
-      db('/roomguests/'+todayKey()+'/'+G.room, 'PUT', {
-        name: G.name, phone: G.phone, arrives: G.arrives, departs: G.departs,
-        at: new Date().toISOString()
-      });
-    }
-
-    Promise.all([ db('/guests/'+G.phone), db('/responses/'+todayKey()+'/'+G.phone) ])
+    /* Nothing is written on opening any more. The old page recorded the guest
+       in /roomguests so staff could see who was in a villa; Mews does that now,
+       through /stays, and it does it for guests who never open their link. */
+    db('/bookings/'+G.id+'/pms')
+      .then(function(pms){
+        pms = pms || {};
+        /* Mews is the authority on who is where. The link is only a fallback,
+           and it is older than the database by definition. */
+        if (pms.villa)  G.room  = String(pms.villa);
+        if (pms.phone)  G.phone = pms.phone;
+        var nm = ((pms.first||'') + ' ' + (pms.last||'')).trim();
+        if (nm) G.name = nm;
+        if (pms.arrive) G.arrives = pms.arrive;
+        if (pms.depart) G.departs = pms.depart;
+        return Promise.all([
+          G.room ? db('/dinner/'+todayKey()+'/'+G.room) : null,
+          db('/bookings/'+G.id+'/prearrival')
+        ]);
+      })
       .then(function(res){
-        var profile = res[0] || {};
-        var tonight = res[1];
-        if (profile.diets) state.diets = profile.diets;
-        if (!G.name && profile.name) G.name = profile.name;
-        if (!G.room && profile.room) G.room = profile.room;
-        if (!G.arrives && profile.arrives) G.arrives = profile.arrives;
-        if (!G.departs && profile.departs) G.departs = profile.departs;
+        var tonight = res[0];
+        var pre = res[1] || {};
+        /* Standing dietaries carry across nights. They come from the guest's
+           own pre-arrival answers now, not from a profile keyed on a phone. */
+        if (pre.diets && pre.diets.length) state.diets = pre.diets;
 
-        if (tonight){
+        if (tonight && tonight.status){
           state.pax   = Math.min(tonight.pax || 2, G.room ? 2 : 4);
           state.diets = tonight.diets || state.diets;
           state.note  = tonight.note || '';
           state.dnote = tonight.dnote || '';
           state.nodiet = !!tonight.nodiet;
+          /* Whoever answered first set it. A booking reception made at the desk
+             shows here exactly as the guest's own answer would, and the guest
+             is told rather than asked. */
+          LOCKED = tonight.by === 'staff';
           stepDone(tonight);
         } else {
           stepChoose();

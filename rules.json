@@ -19,7 +19,7 @@
       "$date": {
         ".read": true,
         "$villa": {
-          ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'waiter' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'chef')"
+          ".write": "auth != null || !data.exists() || data.child('by').val() != 'staff'"
         }
       }
     },
