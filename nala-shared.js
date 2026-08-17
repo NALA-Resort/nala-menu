@@ -457,6 +457,33 @@ function dinnerLocked(cell){
   return !!(cell && cell.by === 'staff');
 }
 
+/* A note, a dietary and a dietary note are answers to one night's dinner
+   invitation. Every node that holds them is partitioned by date except
+   roomguests, which is deliberately carried forward for up to a fortnight so a
+   guest keeps their villa across a stay. So a note written on Monday rode
+   along into Tuesday and was rendered as Tuesday's answer. That is how a
+   dietary from a previous night reaches the kitchen as though it were
+   tonight's, which is the one failure here that ends up on a plate.
+
+   Nothing is thrown away: an allergy is still an allergy and hiding it would
+   be worse than mislabelling it. The record now says which night each answer
+   belongs to, and the boards say so on screen. `note` and `dnote` keep their
+   old meaning and their old values, because the printed sheets read them and
+   are owned by another chat. */
+var DINE_FIELDS = ['note', 'dnote', 'diets'];
+function hasValue(v){
+  if (v === undefined || v === null || v === '') return false;
+  return !(Object.prototype.toString.call(v) === '[object Array]' && !v.length);
+}
+function withDineProvenance(out, tonight, known){
+  DINE_FIELDS.forEach(function(k){
+    var cap = k.charAt(0).toUpperCase() + k.slice(1);
+    if (hasValue(tonight && tonight[k])) out['dine' + cap] = tonight[k];
+    else if (hasValue(known && known[k])) out['prev' + cap] = known[k];
+  });
+  return out;
+}
+
 function roomRecord(n, responses, manual, roomguests, dinner){
   var mk = 'room-'+n, m = manual[mk];
   var known = roomguests[String(n)] || {};
@@ -477,7 +504,9 @@ function roomRecord(n, responses, manual, roomguests, dinner){
     ? null
     : dinnerRecord(cells && cells[String(n)]);
   if (cell && !vacantIsStale(cell, known))
-    return Object.assign({}, known, cell, pmsFields(known), { room:String(n) });
+    return withDineProvenance(
+      Object.assign({}, known, cell, pmsFields(known), { room:String(n) }),
+      cell, known);
 
   var best = null;
   for (var k in responses){
@@ -491,10 +520,14 @@ function roomRecord(n, responses, manual, roomguests, dinner){
     if (!best || (g.at||'') > (best.at||'')) best = g;
   }
   var pms = pmsFields(known);
-  if (m && m.override) return Object.assign({}, known, best || {}, m, pms, { room:String(n) });
-  if (best) return Object.assign({}, known, best, pms);
-  if (m)    return Object.assign({}, known, m, pms, { room:String(n) });
-  if (known.name) return Object.assign({}, known, { room:String(n), status:null });
+  if (m && m.override) return withDineProvenance(
+    Object.assign({}, known, best || {}, m, pms, { room:String(n) }), m, known);
+  if (best) return withDineProvenance(
+    Object.assign({}, known, best, pms), best, known);
+  if (m)    return withDineProvenance(
+    Object.assign({}, known, m, pms, { room:String(n) }), m, known);
+  if (known.name) return withDineProvenance(
+    Object.assign({}, known, { room:String(n), status:null }), null, known);
   return null;
 }
 

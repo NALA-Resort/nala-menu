@@ -600,7 +600,19 @@ function saveManual(key, rec){
 }
 
 // ── build a unified view keyed by room ─────────────────────
+/* Every node roomStateRaw consults is partitioned by date, so what it returns
+   is tonight's answer. roomguests is not: it is carried forward across a stay
+   so a guest keeps their villa, and any note or dietary left on an old record
+   there belongs to an earlier night. Stamping which is which here means the
+   bubble can say so rather than presenting both as tonight's. */
 function roomState(n){
+  var s = roomStateRaw(n);
+  if (s && s.g)
+    s.g = withDineProvenance(Object.assign({}, s.g), s.g, roomguests[String(n)]);
+  return s;
+}
+
+function roomStateRaw(n){
   var mk = 'room-'+n;
   var m  = manual[mk];
 
@@ -646,8 +658,17 @@ function roomState(n){
 
 function openNotes(title, g, hits){
   var h = '<div class="pop-who">' + title + '</div>';
-  if (hits.length || g.dnote) {
-    h += '<div class="pop-h dh">Dietary comments</div>';
+  var tonight = !!(g.dineNote || g.dineDnote || (g.dineDiets || []).length);
+  var prev    = !!(g.prevNote || g.prevDnote || (g.prevDiets || []).length);
+
+  /* Two headings, always, when there is anything from an earlier night. The
+     kitchen has to be able to tell an answer given for tonight from one given
+     three nights ago, and a single undated list cannot say which is which. */
+  if (hits.length || g.dineDnote || tonight) {
+    /* Stamped whether or not there is an older note to distinguish it from.
+       A heading that only appears when there is something to contrast with is
+       a heading nobody learns to read. */
+    h += '<div class="pop-h dh">Tonight\u2019s dining notes</div>';
     if (hits.length) {
       var byDish = {};
       hits.forEach(function(x){ (byDish[x.dish] = byDish[x.dish] || []).push(x.diet); });
@@ -655,14 +676,26 @@ function openNotes(title, g, hits){
         return dk + ' - ' + byDish[dk].join(', ');
       }).join('<br>') + '</div>';
     }
-    h += '<div class="pop-t">' + (g.dnote
-      ? '\u201C' + g.dnote + '\u201D'
+    h += '<div class="pop-t">' + (g.dineDnote
+      ? '\u201C' + g.dineDnote + '\u201D'
       : '<i>No note from the guest yet.</i>') + '</div>';
   }
-  if (g.note) {
+  if (g.dineNote) {
     h += '<div class="pop-h">General comments</div>' +
-         '<div class="pop-t">\u201C' + g.note + '\u201D</div>';
+         '<div class="pop-t">\u201C' + g.dineNote + '\u201D</div>';
   }
+
+  if (prev) {
+    h += '<div class="pop-h dh">Previous dining notes</div>';
+    if ((g.prevDiets || []).length) {
+      h += '<div class="pop-t">' + dietHTML(g.prevDiets, ', ', 'alrg') + '</div>';
+    }
+    if (g.prevDnote) h += '<div class="pop-t">\u201C' + g.prevDnote + '\u201D</div>';
+    if (g.prevNote)  h += '<div class="pop-t">\u201C' + g.prevNote + '\u201D</div>';
+    h += '<div class="pop-t"><i>From an earlier night, not confirmed for ' +
+         'tonight. Ask before cooking to it.</i></div>';
+  }
+
   h += '<button class="btn solid" style="width:100%" id="npClose">Close</button>';
   sheet.innerHTML = h;
   document.getElementById('npClose').onclick = close;
@@ -751,15 +784,19 @@ function render(){
     if (s && s.g.status==='in') rows.push({ g:s.g, room:n2, src:s.src, key:s.key });
   }
 
+  /* An external diner has no villa, so there is no carried forward record to
+     confuse theirs with. Everything they have said is tonight's. */
   for (var k in responses){
     var g = responses[k];
     if (!g.room && g.status==='in' && !cancelledExt[k] && !manual['extcancel-'+k])
-      rows.push({ g:g, room:null, src:'digital', key:k });
+      rows.push({ g:withDineProvenance(Object.assign({}, g), g, null),
+                  room:null, src:'digital', key:k });
   }
   for (var k in manual){
     if (k.indexOf('ext-')!==0) continue;
     if (manual[k].status!=='in') continue;
-    rows.push({ g:manual[k], room:null, src:'manual', key:k });
+    rows.push({ g:withDineProvenance(Object.assign({}, manual[k]), manual[k], null),
+                room:null, src:'manual', key:k });
   }
 
   var covers=0, notDining=0, awaiting=0;
@@ -839,8 +876,13 @@ function render(){
 
     var sub = [];
     var dietLine = '';
-    if (g.diets && g.diets.length) {
-      dietLine = '<div class="dietline">' + g.diets.map(function(x){
+    /* Tonight's dietaries only. One carried over from an earlier night is not
+       an answer to tonight's invitation and must not sit on the row as though
+       it were: it goes in the bubble, under its own heading, where it is
+       labelled as previous. */
+    var tonightDiets = g.dineDiets || [];
+    if (tonightDiets.length) {
+      dietLine = '<div class="dietline">' + tonightDiets.map(function(x){
         var al = ALLERGENS.indexOf(x) > -1 || /allerg/i.test(x);
         var label = al ? x.replace(/\s*allergy\s*/i,'') : x;
         return '<span class="dpill'+(al?' dpill-al':'')+'">'+label+'</span>';
@@ -848,8 +890,9 @@ function render(){
     } else if (g.nodiet) { sub.push('No dietaries confirmed'); }
 
 
-    var hits = menuConflicts(MENU, g.diets);
-    var hasNotes = !!(g.note || g.dnote);
+    var hits = menuConflicts(MENU, tonightDiets);
+    var hasNotes = !!(g.dineNote || g.dineDnote ||
+                      g.prevNote || g.prevDnote || (g.prevDiets || []).length);
 
     var row = document.createElement('div');
     row.className = 'row' + (hits.length ? ' conflict' : '');

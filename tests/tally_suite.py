@@ -502,6 +502,51 @@ with sync_playwright() as p:
     ck("housekeeping is sent to the Cleans board, not shown a refusal",
        q.url.endswith("cleaners.html"))
     q.close()
+
+    # ── a note belongs to a night ──────────────────────────────
+    # roomguests is carried forward across a stay so a guest keeps their villa.
+    # Anything left on an old record there is from an earlier night, and shown
+    # as tonight's it is a stale dietary in front of the kitchen.
+    roomguests[today]["11"] = {"name":"Carla","departs":plus(2),
+                               "diets":["Shellfish allergy"],
+                               "note":"quiet table",
+                               "dnote":"severe, no cross contact"}
+    responses["0400000011"] = {"status":"in","pax":2,"name":"Carla","room":"11",
+                               "at":"2026-08-12T09:20:00"}
+    q=as_role("staff@x"); q.wait_for_timeout(400)
+    row=q.locator("#listBookings .row").filter(has_text="Carla").first
+    ck("a dietary from an earlier night is not shown as tonight's",
+       "Shellfish" not in row.inner_text())
+    ck("but the villa still carries a bubble, so it is not hidden either",
+       row.locator(".bub").count()==1)
+    row.locator(".bub").click(); q.wait_for_timeout(400)
+    # The headings are upper-cased in CSS, so compare on the rendered text.
+    notes=q.locator("#sheet").inner_text().upper()
+    ck("the bubble labels it as a previous night", "PREVIOUS DINING NOTES" in notes)
+    ck("and shows what it was", "SHELLFISH" in notes)
+    ck("and says not to cook to it without asking", "ASK BEFORE COOKING" in notes)
+    ck("nothing is headed as tonight's that was not given tonight",
+       "DINING NOTES" not in notes.replace("PREVIOUS DINING NOTES", ""))
+    q.close()
+
+    # The same villa once tonight's answer carries its own.
+    responses["0400000011"] = {"status":"in","pax":2,"name":"Carla","room":"11",
+                               "diets":["Vegan"],"note":"by the window",
+                               "dnote":"no dairy at all","at":"2026-08-12T09:20:00"}
+    q=as_role("staff@x"); q.wait_for_timeout(400)
+    row=q.locator("#listBookings .row").filter(has_text="Carla").first
+    ck("tonight's dietary is on the row", "VEGAN" in row.inner_text().upper())
+    row.locator(".bub").click(); q.wait_for_timeout(400)
+    notes=q.locator("#sheet").inner_text().upper()
+    ck("tonight's notes are headed as tonight's",
+       "DINING NOTES" in notes and "TONIGHT" in notes)
+    ck("and tonight's answer replaces the old rather than sitting beside it",
+       "PREVIOUS DINING NOTES" not in notes and "SHELLFISH" not in notes)
+    ck("the general comment is tonight's too", "BY THE WINDOW" in notes)
+    q.close()
+    del responses["0400000011"]
+    del roomguests[today]["11"]
+
     b.close()
     open("/home/claude/nala/_p1_tally.png","wb").write(shot1)
 print("RESULT: %d passed, %d failed" % (P,F))
