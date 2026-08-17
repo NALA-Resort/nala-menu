@@ -52,7 +52,7 @@ added to their nav dropdowns. Both belong to the print chat.
 
 ## To build
 
-### 1. Pre-arrival questionnaire, guest
+### 1. Pre-arrival questionnaire, guest. BUILT 17 Aug
 
 `prearrival.html?b=<id>&n=<first>&s=<last>&a=<arrive>&d=<depart>`
 
@@ -109,7 +109,14 @@ tried first and it reads "late morning" and "after 5pm" correctly often enough
 to be trusted and wrongly often enough to matter, which is the worst
 combination.
 
-**Blocked on one answer:** is type of stay a picklist, and if so what is on it.
+Built as six required questions plus two optional ones. Purpose of visit is
+the multi select, and it is advisory only. Special occasion and "anything else"
+are NOT required: the live form does not star them, and forcing free text is
+the fastest way to lose a completion.
+
+**One thing still to write:** the help line under the first night question. The
+guest is answering before that night's menu exists, so something has to stand
+in for it. There is a marked placeholder in the page.
 
 Resist a fifth question without deciding which of the four it replaces.
 

@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Nala &middot; Before you arrive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --cream:#F7F5F1; --paper:#FEFEFC; --ink:#14140F; --mid:#47473F;
+          --rule:#CFCFC8; --warn:#9E6455; }
+
+  /* Guest tier, so it carries the brand rather than the staff tokens, and
+     sets its own font exactly as index.html does. The staff font can change
+     without touching anything a guest sees. */
+  html { font-size:16px; }
+  html, body { width:100%; min-height:100dvh; background:var(--cream);
+               font-family:'Raleway',Helvetica,Arial,sans-serif; color:var(--ink); }
+  body { display:flex; justify-content:center;
+         -webkit-tap-highlight-color:transparent; }
+
+  /* Unlike the nightly menu, this page does NOT try to fit one screen. It is
+     six questions and it is expected to scroll: shrinking type to avoid a
+     scroll on a form this long would cost more completions than the scroll
+     does. */
+  .page { width:100%; max-width:34rem; padding:0 1.4rem 3rem;
+          display:flex; flex-direction:column; }
+
+  header { text-align:center; padding:3.4vh 0 1.2rem; }
+  .logo { width:5rem; height:auto; display:block; margin:0 auto 1.1rem; }
+  .greet { font-size:1.35rem; line-height:1.4; }
+  .sub { font-style:italic; font-size:0.9rem; color:var(--mid); line-height:1.6;
+         margin-top:0.5rem; }
+
+  .q { border-top:1px solid var(--rule); padding:1.35rem 0 0.2rem; }
+  .q-t { font-size:1.05rem; line-height:1.4; margin-bottom:0.3rem; }
+  .q-h { font-style:italic; font-size:0.85rem; color:var(--mid); line-height:1.6;
+         margin-bottom:0.85rem; }
+  .q.miss .q-t { color:var(--warn); }
+
+  .opts { display:flex; flex-direction:column; gap:8px; }
+  .opt { width:100%; padding:14px 15px; border:1px solid var(--rule);
+         background:transparent; border-radius:10px; text-align:left;
+         font-family:inherit; font-size:0.95rem; color:var(--ink); cursor:pointer; }
+  .opt.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .q.miss .opt { border-color:var(--warn); }
+
+  .chips { display:flex; flex-wrap:wrap; gap:7px; }
+  .chip { padding:9px 14px; border:1px solid var(--rule); background:transparent;
+          border-radius:20px; font-family:inherit; font-size:0.8rem;
+          color:var(--ink); cursor:pointer; }
+  .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .q.miss .chip { border-color:var(--warn); }
+
+  /* 16px literal: iOS zooms the whole page on focus below this, and a form
+     that jumps when you tap a field feels broken. */
+  .txt { width:100%; padding:12px; border:1px solid var(--rule);
+         background:transparent; border-radius:10px; font-family:inherit;
+         font-size:16px; color:var(--ink); resize:none; margin-top:9px; }
+  .txt::placeholder { color:var(--mid); font-style:italic; }
+  .txt:focus { outline:none; border-color:var(--ink); }
+  .txt.miss { border-color:var(--warn); }
+
+  .sublabel { font-size:0.7rem; letter-spacing:.2em; text-transform:uppercase;
+              color:var(--mid); margin:1rem 0 0.5rem; }
+
+  .send { width:100%; padding:17px; margin-top:1.8rem; border-radius:10px;
+          border:1px solid var(--ink); background:var(--ink); color:var(--cream);
+          font-family:inherit; font-size:0.8rem; font-weight:500;
+          letter-spacing:.12em; text-transform:uppercase; cursor:pointer; }
+  .send[disabled] { opacity:.55; }
+
+  .err { display:none; font-size:0.85rem; color:var(--warn); text-align:center;
+         line-height:1.55; margin-top:0.9rem; }
+  .err.show { display:block; }
+
+  .done { text-align:center; padding:6vh 0; }
+  .done-t { font-size:1.35rem; line-height:1.4; margin-bottom:0.6rem; }
+  .done-s { font-style:italic; font-size:0.9rem; color:var(--mid); line-height:1.6; }
+  .again { margin-top:1.6rem; background:transparent; border:1px solid var(--rule);
+           color:var(--ink); padding:13px 20px; border-radius:10px;
+           font-family:inherit; font-size:0.75rem; letter-spacing:.12em;
+           text-transform:uppercase; cursor:pointer; }
+
+  #form.hide, #done.hide { display:none; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <img class="logo" src="nala-logo.png" alt="Nala Resort">
+    <div class="greet" id="greet">Before you arrive</div>
+    <div class="sub" id="sub"></div>
+  </header>
+
+  <div id="form">
+    <!-- 1. arrival time -->
+    <div class="q" id="qEta">
+      <div class="q-t">What time do you expect to arrive?</div>
+      <div class="q-h">Reception closes at 5pm. If you will be later than that,
+        tell us and we will make arrangements.</div>
+      <div class="opts" id="etaOpts"></div>
+      <textarea class="txt" id="etaNote" rows="2" style="display:none"
+        placeholder="Roughly what time, so we can plan for you"></textarea>
+    </div>
+
+    <!-- 2. dinner on the arrival night -->
+    <div class="q" id="qDine">
+      <div class="q-t">Will you dine with us on your first night?</div>
+      <div class="q-h" id="dineHelp">PLACEHOLDER: a line describing what an
+        evening at Nala looks like, so the guest can answer this before the
+        menu for that night exists.</div>
+      <div class="opts">
+        <button class="opt" id="dIn">Yes, we will dine with you</button>
+        <button class="opt" id="dOut">Not on the first night</button>
+      </div>
+      <div id="paxWrap" style="display:none">
+        <div class="sublabel">How many of you</div>
+        <div class="chips" id="paxChips"></div>
+      </div>
+    </div>
+
+    <!-- 3. dietaries -->
+    <div class="q" id="qDiet">
+      <div class="q-t">Does anyone in your party have allergies or dietary
+        requirements?</div>
+      <div class="q-h">Our menu is set. We are happy to leave things out of a
+        dish, but we cannot rebuild one, so it helps to know early.</div>
+      <div class="chips" id="dietChips"></div>
+      <div class="chips" id="dietNone" style="margin-top:7px"></div>
+      <textarea class="txt" id="dietNote" rows="2"
+        placeholder="Whose, and how severe"></textarea>
+    </div>
+
+    <!-- 4. purpose -->
+    <div class="q" id="qPurpose">
+      <div class="q-t">What brings you to Nala?</div>
+      <div class="q-h">Choose as many as fit.</div>
+      <div class="chips" id="purposeChips"></div>
+    </div>
+
+    <!-- 5. how they like to travel -->
+    <div class="q" id="qApproach">
+      <div class="q-t">How do you plan to eat during your stay?</div>
+      <div class="q-h">No right answer. It only helps us plan.</div>
+      <div class="opts" id="approachOpts"></div>
+    </div>
+
+    <!-- 6. wellness -->
+    <div class="q" id="qWell">
+      <div class="q-t">Would you like us to arrange a massage or treatment?</div>
+      <div class="q-h">Worth booking before you arrive. Availability is limited,
+        particularly in peak season.</div>
+      <div class="opts">
+        <button class="opt" id="wYes">Yes, please</button>
+        <button class="opt" id="wNo">No thank you</button>
+      </div>
+      <div id="wWrap" style="display:none">
+        <div class="sublabel">Which day suits</div>
+        <div class="chips" id="wDays"></div>
+        <textarea class="txt" id="wTime" rows="1"
+          placeholder="Preferred time of day"></textarea>
+      </div>
+    </div>
+
+    <!-- optional -->
+    <div class="q">
+      <div class="q-t">Anything else?</div>
+      <div class="q-h">A special occasion, a preference, or something that would
+        make your stay feel more like you. Optional.</div>
+      <textarea class="txt" id="occasion" rows="1"
+        placeholder="A birthday, an anniversary"></textarea>
+      <textarea class="txt" id="note" rows="2"
+        placeholder="Anything you would like us to know"></textarea>
+    </div>
+
+    <button class="send" id="send">Send to Nala</button>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div id="done" class="done hide">
+    <div class="done-t" id="doneT">Thank you</div>
+    <div class="done-s" id="doneS">We have everything we need. We will go
+      through it with you when you arrive.</div>
+    <button class="again" id="again">Change an answer</button>
+  </div>
+</div>
+
+<script>
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+/* The link carries the booking id and, for display only, the guest's name and
+   dates. Those are Mews' facts and are NEVER written back from this page: a
+   copy written here would be a snapshot, and stale the moment Mews changed the
+   booking. See GUEST-DATA.md. */
+var qs = new URLSearchParams(location.search);
+var G = {
+  id:      (qs.get('b') || '').trim(),
+  first:   (qs.get('n') || '').trim(),
+  last:    (qs.get('s') || '').trim(),
+  arrive:  (qs.get('a') || '').trim(),
+  depart:  (qs.get('d') || '').trim()
+};
+
+/* Same six slots as the front desk, in the same order and with the same keys,
+   because the arrivals list is ordered by them. The two open ended ones need a
+   note: "before 2pm" with no time is the answer that causes the problem it is
+   warning about. */
+var ETA_SLOTS = [
+  ['before2', 'Before 2pm',  true],
+  ['14',      'Around 2pm',  false],
+  ['15',      'Around 3pm',  false],
+  ['16',      'Around 4pm',  false],
+  ['17',      'Around 5pm',  false],
+  ['after5',  'After 5pm',   true]
+];
+var PURPOSE = ['Somewhere to stay while we work or travel',
+               'Exploring Mission Beach and around',
+               'A celebration',
+               'A short break',
+               'Rest and recovery'];
+var APPROACH = [['most','We will dine at Nala most nights'],
+                ['mix', 'A mix of meals in and out'],
+                ['out', 'We will mostly eat out']];
+
+/* Falls back to a sensible list if the chef's master list cannot be read, so a
+   failed fetch never leaves a guest with no way to declare an allergy. */
+var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+                 'Nut allergy','Shellfish allergy','Egg allergy'];
+
+var a = { eta:'', etaNote:'', dining:null, pax:2, diets:[], noDiets:false,
+          dietNote:'', purpose:[], approach:'', wellness:null, wellDay:'',
+          wellTime:'', occasion:'', note:'' };
+
+function el(id){ return document.getElementById(id); }
+function dkey(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+
+         String(d.getDate()).padStart(2,'0');
+}
+function dayOnly(v){
+  var m = String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? new Date(+m[1], +m[2]-1, +m[3]) : null;
+}
+
+function db(path, method, body){
+  var o = { method: method || 'GET' };
+  if (body){ o.headers = {'Content-Type':'application/json'};
+             o.body = JSON.stringify(body); }
+  return fetch(DB + path + '.json' + (method ? '' : '?v=' + Date.now()), o)
+    .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); });
+}
+
+/* ── greeting ────────────────────────────────────────────────
+   Display comes from the link, and from /bookings/<id>/pms when Mews has
+   caught up, because that is fresher than a link sent days earlier. */
+function paintGreeting(pms){
+  var first = (pms && pms.first) || G.first;
+  var arr = dayOnly((pms && pms.arrive) || G.arrive);
+  var dep = dayOnly((pms && pms.depart) || G.depart);
+  el('greet').textContent = first ? 'Welcome, ' + first : 'Before you arrive';
+  var bits = [];
+  if (arr && dep){
+    var n = Math.round((dep - arr) / 86400000);
+    var D = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    var M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    bits.push('Arriving ' + D[arr.getDay()] + ' ' + arr.getDate() + ' ' +
+              M[arr.getMonth()] + (n >= 1 ? ', ' + n + (n===1?' night':' nights') : ''));
+  }
+  bits.push('A few questions so everything is ready before you get here.');
+  el('sub').textContent = bits.join(' \u00b7 ');
+}
+
+/* ── painters ────────────────────────────────────────────────
+   Every one repaints from `a`, so there is one source of truth for what is on
+   screen and no way for a control to disagree with what will be sent. */
+function paintEta(){
+  var box = el('etaOpts'); box.innerHTML = '';
+  ETA_SLOTS.forEach(function(s){
+    var b = document.createElement('button');
+    b.className = 'opt' + (a.eta === s[0] ? ' on' : '');
+    b.textContent = s[1];
+    b.onclick = function(){ a.eta = s[0]; clearMiss('qEta'); paintEta(); };
+    box.appendChild(b);
+  });
+  var needsNote = false;
+  ETA_SLOTS.forEach(function(s){ if (s[0] === a.eta && s[2]) needsNote = true; });
+  el('etaNote').style.display = needsNote ? '' : 'none';
+}
+
+function paintDine(){
+  el('dIn').className  = 'opt' + (a.dining === true  ? ' on' : '');
+  el('dOut').className = 'opt' + (a.dining === false ? ' on' : '');
+  el('paxWrap').style.display = a.dining === true ? '' : 'none';
+  var box = el('paxChips'); box.innerHTML = '';
+  for (var i = 1; i <= 8; i++)(function(v){
+    var b = document.createElement('button');
+    b.className = 'chip' + (a.pax === v ? ' on' : ''); b.textContent = v;
+    b.onclick = function(){ a.pax = v; paintDine(); };
+    box.appendChild(b);
+  })(i);
+}
+
+function paintDiets(){
+  var box = el('dietChips'); box.innerHTML = '';
+  DIETARIES.forEach(function(d){
+    var b = document.createElement('button');
+    b.className = 'chip' + (a.diets.indexOf(d) > -1 ? ' on' : ''); b.textContent = d;
+    b.onclick = function(){
+      var i = a.diets.indexOf(d);
+      if (i > -1) a.diets.splice(i,1); else { a.diets.push(d); a.noDiets = false; }
+      clearMiss('qDiet'); paintDiets();
+    };
+    box.appendChild(b);
+  });
+  /* "None to declare" is a positive answer, not the absence of one. Without it
+     a guest with no allergies is indistinguishable from one who skipped the
+     question, and the kitchen cannot tell those apart. */
+  var none = el('dietNone'); none.innerHTML = '';
+  var nb = document.createElement('button');
+  nb.className = 'chip' + (a.noDiets ? ' on' : '');
+  nb.textContent = 'No allergies or dietary requirements';
+  nb.onclick = function(){
+    a.noDiets = !a.noDiets;
+    if (a.noDiets) a.diets = [];
+    clearMiss('qDiet'); paintDiets();
+  };
+  none.appendChild(nb);
+  el('dietNote').style.display = a.diets.length ? '' : 'none';
+}
+
+function paintPurpose(){
+  var box = el('purposeChips'); box.innerHTML = '';
+  PURPOSE.forEach(function(t){
+    var b = document.createElement('button');
+    b.className = 'chip' + (a.purpose.indexOf(t) > -1 ? ' on' : ''); b.textContent = t;
+    b.onclick = function(){
+      var i = a.purpose.indexOf(t);
+      if (i > -1) a.purpose.splice(i,1); else a.purpose.push(t);
+      clearMiss('qPurpose'); paintPurpose();
+    };
+    box.appendChild(b);
+  });
+}
+
+function paintApproach(){
+  var box = el('approachOpts'); box.innerHTML = '';
+  APPROACH.forEach(function(pair){
+    var b = document.createElement('button');
+    b.className = 'opt' + (a.approach === pair[0] ? ' on' : ''); b.textContent = pair[1];
+    b.onclick = function(){ a.approach = pair[0]; clearMiss('qApproach'); paintApproach(); };
+    box.appendChild(b);
+  });
+}
+
+/* Only the nights they are actually here. Offering a day outside the stay is
+   an appointment nobody can keep. Arrival and departure days are included: a
+   treatment on the afternoon of arrival or the morning of departure is normal,
+   and excluding them would be the app deciding for the spa. */
+function stayDays(){
+  var out = [], arr = dayOnly(G.arrive), dep = dayOnly(G.depart);
+  if (!arr || !dep) return out;
+  var D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  for (var d = new Date(arr); d <= dep && out.length < 30; d.setDate(d.getDate()+1))
+    out.push({ key: dkey(d), label: D[d.getDay()] + ' ' + d.getDate() });
+  return out;
+}
+
+function paintWell(){
+  el('wYes').className = 'opt' + (a.wellness === true  ? ' on' : '');
+  el('wNo').className  = 'opt' + (a.wellness === false ? ' on' : '');
+  el('wWrap').style.display = a.wellness === true ? '' : 'none';
+  var box = el('wDays'); box.innerHTML = '';
+  stayDays().forEach(function(d){
+    var b = document.createElement('button');
+    b.className = 'chip' + (a.wellDay === d.key ? ' on' : ''); b.textContent = d.label;
+    b.onclick = function(){ a.wellDay = (a.wellDay === d.key ? '' : d.key); paintWell(); };
+    box.appendChild(b);
+  });
+}
+
+el('dIn').onclick  = function(){ a.dining = true;  clearMiss('qDine'); paintDine(); };
+el('dOut').onclick = function(){ a.dining = false; clearMiss('qDine'); paintDine(); };
+el('wYes').onclick = function(){ a.wellness = true;  clearMiss('qWell'); paintWell(); };
+el('wNo').onclick  = function(){ a.wellness = false; clearMiss('qWell'); paintWell(); };
+
+function clearMiss(id){
+  el(id).className = 'q';
+  el('err').className = 'err';
+}
+
+/* ── sending ─────────────────────────────────────────────────
+   Nothing is written until Send. A half filled record is indistinguishable
+   from a considered one, and "form done" would come to mean "some fields
+   exist". See GUEST-DATA.md. */
+function collect(){
+  a.etaNote  = el('etaNote').value.trim();
+  a.dietNote = el('dietNote').value.trim();
+  a.wellTime = el('wTime').value.trim();
+  a.occasion = el('occasion').value.trim();
+  a.note     = el('note').value.trim();
+}
+
+function firstMissing(){
+  if (!a.eta) return ['qEta', 'Please tell us when you expect to arrive.'];
+  var needsNote = false;
+  ETA_SLOTS.forEach(function(s){ if (s[0] === a.eta && s[2]) needsNote = true; });
+  if (needsNote && !a.etaNote)
+    return ['qEta', 'Please add a rough time, so we can plan for you.'];
+  if (a.dining === null) return ['qDine', 'Please let us know about your first night.'];
+  if (!a.noDiets && !a.diets.length)
+    return ['qDiet', 'Please answer about allergies, even to say there are none.'];
+  if (!a.purpose.length) return ['qPurpose', 'Please tell us what brings you.'];
+  if (!a.approach) return ['qApproach', 'Please tell us how you plan to eat.'];
+  if (a.wellness === null) return ['qWell', 'Please answer about treatments.'];
+  return null;
+}
+
+el('send').onclick = function(){
+  collect();
+  var miss = firstMissing();
+  if (miss){
+    /* One at a time, scrolled to, and named. A form that marks six things at
+       once and jumps to the top is how a guest gives up. */
+    el(miss[0]).className = 'q miss';
+    el('err').textContent = miss[1];
+    el('err').className = 'err show';
+    el(miss[0]).scrollIntoView({ block:'center', behavior:'smooth' });
+    return;
+  }
+  submitForm();
+};
+
+/* Not called send: there is a button with id="send", and a global function of
+   the same name shadows it, so `send.disabled` would reach the function and
+   silently do nothing. */
+function submitForm(){
+  var btn = el('send');
+  btn.disabled = true; btn.textContent = 'Sending';
+  var payload = {
+    arriveSlot: a.eta, arriveNote: a.etaNote,
+    dining: a.dining, pax: a.dining ? a.pax : 0,
+    diets: a.diets, noDiets: a.noDiets, dnote: a.diets.length ? a.dietNote : '',
+    purpose: a.purpose, approach: a.approach,
+    wellness: a.wellness,
+    wellDay: a.wellness ? a.wellDay : '', wellTime: a.wellness ? a.wellTime : '',
+    occasion: a.occasion, note: a.note,
+    at: new Date().toISOString()
+  };
+  /* PATCH, not PUT: reception may already have confirmed this booking, and a
+     PUT would wipe confirmedAt and quietly un-confirm a guest who is standing
+     at the desk. */
+  db('/bookings/' + G.id + '/prearrival', 'PATCH', payload)
+    .then(function(){
+      el('form').className = 'hide';
+      el('done').className = 'done';
+      window.scrollTo({ top:0, behavior:'smooth' });
+    })
+    .catch(function(){
+      btn.disabled = false; btn.textContent = 'Send to Nala';
+      el('err').textContent = 'That did not send. Please check your connection and try again.';
+      el('err').className = 'err show';
+    });
+}
+
+el('again').onclick = function(){
+  el('done').className = 'done hide';
+  el('form').className = '';
+};
+
+/* ── boot ────────────────────────────────────────────────────
+   The opened stamp is separate from submitting, and it is the only thing this
+   page writes before Send. Without it there is no way to tell a message that
+   never arrived from one that arrived and was ignored, and those need
+   different chasing. */
+function boot(){
+  paintGreeting(null);
+  paintEta(); paintDine(); paintDiets(); paintPurpose(); paintApproach(); paintWell();
+
+  if (!G.id){
+    el('form').className = 'hide';
+    el('done').className = 'done';
+    el('doneT').textContent = 'This link is incomplete';
+    el('doneS').textContent = 'Please open the link from the message we sent, ' +
+      'or call us and we will sort it out.';
+    el('again').style.display = 'none';
+    return;
+  }
+
+  db('/bookings/' + G.id + '/prearrival', 'PATCH',
+     { openedAt: new Date().toISOString() }).catch(function(){});
+
+  /* Mews is fresher than a link sent days ago, so its name and dates win for
+     display. It may not exist yet, which is the normal case at seven days
+     out, and the page works either way. */
+  db('/bookings/' + G.id + '/pms')
+    .then(function(pms){ if (pms) paintGreeting(pms); })
+    .catch(function(){});
+
+  /* The chef's master list, so the choices here match the ones the kitchen
+     actually recognises. Inactive entries never reach a guest. */
+  db('/dietaries').then(function(master){
+    if (!master) return;
+    var names = [];
+    Object.keys(master).forEach(function(k){
+      var d = master[k];
+      if (d && d.active) names.push(d.name || k);
+    });
+    if (names.length){ DIETARIES = names.sort(); paintDiets(); }
+  }).catch(function(){});
+
+  /* A guest who already sent it sees what they said, and can change it. Plans
+     change, and a form that refuses to reopen sends them to the phone. */
+  db('/bookings/' + G.id + '/prearrival').then(function(p){
+    if (!p || !p.at) return;
+    a.eta = p.arriveSlot || ''; a.etaNote = p.arriveNote || '';
+    a.dining = (p.dining === undefined) ? null : !!p.dining;
+    a.pax = p.pax || 2;
+    a.diets = (p.diets || []).slice(); a.noDiets = !!p.noDiets;
+    a.dietNote = p.dnote || '';
+    a.purpose = (p.purpose || []).slice(); a.approach = p.approach || '';
+    a.wellness = (p.wellness === undefined) ? null : !!p.wellness;
+    a.wellDay = p.wellDay || ''; a.wellTime = p.wellTime || '';
+    a.occasion = p.occasion || ''; a.note = p.note || '';
+    el('etaNote').value = a.etaNote; el('dietNote').value = a.dietNote;
+    el('wTime').value = a.wellTime; el('occasion').value = a.occasion;
+    el('note').value = a.note;
+    paintEta(); paintDine(); paintDiets(); paintPurpose(); paintApproach(); paintWell();
+    el('form').className = 'hide';
+    el('done').className = 'done';
+    el('doneT').textContent = 'Thank you';
+    el('doneS').textContent = 'We have your answers. We will go through them ' +
+      'with you when you arrive.';
+  }).catch(function(){});
+}
+boot();
+</script>
+</body>
+</html>

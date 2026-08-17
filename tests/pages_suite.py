@@ -76,11 +76,12 @@ with sync_playwright() as p:
     ck("no page exists in the repo that the map does not mention", not missing)
     if missing: print("   unlisted:", missing)
 
-    ck("a page that is not built yet is named but not linked",
-       pg.evaluate("()=>{const t=[...document.querySelectorAll('.p.todo')];"
-                   "return t.length>0 && t.every(e=>e.tagName!=='A');}"))
-    ck("and prearrival is the one it names",
-       "prearrival.html" in pg.locator(".p.todo").inner_text())
+    # Nothing is unbuilt at the moment. When something is, it must be named
+    # and not linked: a map should describe the app being built, not only the
+    # one that exists, or the next person wonders what they missed.
+    ck("anything not built is named but not linked",
+       pg.evaluate("()=>[...document.querySelectorAll('.p.todo')]"
+                   ".every(e=>e.tagName!=='A')"))
 
     ck("Pages is in the hamburger, where it was asked for",
        pg.evaluate("()=>[...document.querySelectorAll('.navdrop a')]"
