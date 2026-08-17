@@ -85,6 +85,16 @@ Covered in full at section 9. After the next publish, check whether anything
 arrives. If not, the notification Worker on your machine needs a case for the
 event, and the manual link in the chef brief is still doing the job.
 
+### 0e2. Vacant is now the default villa state
+
+On the Reservations board, a villa with nobody booked into it reads vacant, not
+awaiting. **Expect** the awaiting figure to mean villas somebody has to chase,
+which on a quiet night used to read seventeen.
+
+**The one to watch:** a villa that genuinely holds a guest but reads vacant.
+That means the booking never reached the app, and it is now invisible rather
+than merely unanswered. If you see one, tell me the villa and the date.
+
 ### 0f. The chef brief now has three links
 
 Ask the chef to publish as normal. **Expect** three lines at the end: live

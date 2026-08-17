@@ -210,6 +210,13 @@ most. Nothing there has been done.
 - **Write back to Mews:** check-in status and dietaries into the reservation.
   Needs the Connector API. The hook is marked in `front-desk.html`.
 - **Map Customer Id**, which identifies a guest across all their stays.
+- ~~Vacant as the default villa state~~ **done 18 Aug**, to the owner's
+  definition: vacant means no guest profile is attached to the villa for that
+  date; awaiting means one is and there is no yes or no to dinner yet. A Mews
+  reservation moves a villa from the first to the second for every night of the
+  stay. Nothing is written: it is what the board shows in the absence of an
+  answer. The awaiting count now means villas somebody has to chase, which on a
+  quiet night used to read seventeen.
 
 #### Asked for 18 Aug
 

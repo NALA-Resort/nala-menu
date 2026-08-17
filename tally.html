@@ -721,7 +721,13 @@ function computeTileOrder(){
 
 function roomTile(n){
   var st = roomState(n);
-  var cls = 'room await', pax='';
+  /* Two empty states, and they are not the same question. A villa with nobody
+     booked into it is vacant: there is nothing to chase. A villa with a guest
+     in it who has not answered is awaiting: somebody has to ask them. The
+     default is vacant, and a Mews reservation is what turns it to awaiting for
+     every night of that stay. */
+  var cls = hasGuestProfile(roomguests[String(n)]) ? 'room await' : 'room vacant';
+  var pax = '';
   if (st){
     if (st.g.status==='in'){ cls='room in'; pax=(st.g.pax||1)+'p'; }
     else if (st.g.status==='out'){ cls='room out'; }
@@ -803,7 +809,10 @@ function render(){
   rows.forEach(function(r){ covers += (r.g.pax||1); });
   for (var n2=1; n2<=ROOMS; n2++){
     var s = roomState(n2);
-    if (!s) awaiting++;                          // no answer yet
+    /* Only a villa with somebody in it is awaiting an answer. An empty villa
+       is not an outstanding question, and counting it as one meant the figure
+       read seventeen on a quiet night and nobody could act on it. */
+    if (!s){ if (hasGuestProfile(roomguests[String(n2)])) awaiting++; }
     else if (s.g.status==='out') notDining++;    // declined rooms
   }
 

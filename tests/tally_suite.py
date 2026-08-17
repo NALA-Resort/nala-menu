@@ -93,7 +93,18 @@ with sync_playwright() as p:
         warn:tileAwait.className,tl:tablesLine.textContent})""")
     ck("covers 9", s2["c"]==9)
     ck("rooms out 1", s2["o"]==1)
-    ck("awaiting 12 + red number", s2["a"]==12 and "warn" in s2["warn"])
+    # Awaiting means somebody is in the villa and has not answered. An empty
+    # villa is not an outstanding question, so it is not counted as one: villa
+    # 4 has a guest and no reply, villa 9 has a Mews booking and no reply.
+    ck("awaiting counts only villas with a guest in them",
+       s2["a"]==2 and "warn" in s2["warn"])
+    # The default, which is the whole point of the change.
+    ck("a villa nobody is booked into reads as vacant, not awaiting",
+       "room vacant" in t["r"]["11"]["cls"])
+    ck("and a villa with a Mews booking and no reply reads as awaiting",
+       "await" in t["r"]["9"]["cls"])
+    ck("a guest written record with no reply is awaiting too",
+       "await" in t["r"]["4"]["cls"])
     ck("tables line named not multiplied",
        "3 twos" in s2["tl"] and "1 three" in s2["tl"] and "×" not in s2["tl"]
        and "4 tables" in s2["tl"])
@@ -199,7 +210,9 @@ with sync_playwright() as p:
     ck("stamped as set by staff, which locks it against the guest's own link",
        len(w)==1 and json.loads(w[0]["b"])["by"]=="staff")
     s5=pg.evaluate("()=>({c:+nCovers.textContent,a:+nAwait.textContent})")
-    ck("covers 13 awaiting 11 after save", s5["c"]==13 and s5["a"]==11)
+    # Villa 9 has now answered, so the only villa still awaiting is 4.
+    ck("covers 13, and one villa still awaiting after the save",
+       s5["c"]==13 and s5["a"]==1)
 
     # 6 rollback on failure
     STATE["fail"]=True
@@ -208,7 +221,10 @@ with sync_playwright() as p:
     err=pg.locator("#errBar").inner_text()
     s6=pg.evaluate("()=>({c:+nCovers.textContent,cls:[...document.querySelectorAll('#rooms .room')].find(b=>b.querySelector('.room-n').textContent==='10').className})")
     ck("failed write shows error banner", "Not saved" in err)
-    ck("failed write rolled back (tile await, covers 13)", "await" in s6["cls"] and s6["c"]==13)
+    # Villa 10 has nobody booked into it, so rolling back returns it to vacant
+    # rather than to awaiting: that is what it was before the tap.
+    ck("failed write rolled back to what the tile was before",
+       "room vacant" in s6["cls"] and s6["c"]==13)
     STATE["fail"]=False
 
     # colours must resolve to real pixels, not classes
@@ -501,6 +517,39 @@ with sync_playwright() as p:
     q.wait_for_timeout(600)
     ck("housekeeping is sent to the Cleans board, not shown a refusal",
        q.url.endswith("cleaners.html"))
+    q.close()
+
+    # ── a new Mews reservation turns vacant into awaiting ──────
+    # The spec, in the owner's words on 18 Aug: vacant means no guest profile
+    # is attached to the villa; awaiting means one is, with no yes or no to
+    # dinner for that day. A reservation arriving from Mews is what moves a
+    # villa from the first to the second, for every night of the stay.
+    q = as_role("staff@x"); q.wait_for_timeout(400)
+    def tilecls(pg_, n):
+        return pg_.evaluate("n=>[...document.querySelectorAll('#rooms .room')]"
+                            ".find(b=>b.querySelector('.room-n').textContent===n).className", str(n))
+    ck("villa 13 starts vacant, nobody is booked into it",
+       "room vacant" in tilecls(q, 13))
+    stays[today]["13"] = {"id":"res-13","first":"Nina","last":"Roy",
+                          "arrive":plus(-1),"depart":plus(2),"adults":2,
+                          "updated":"2026-08-18T02:00:00Z"}
+    q.evaluate("()=>load(true)"); q.wait_for_timeout(900)
+    ck("a reservation arriving from Mews turns it to awaiting",
+       "await" in tilecls(q, 13))
+    ck("and it is counted as a villa awaiting an answer",
+       q.evaluate("()=>+nAwait.textContent") >= 1)
+    del stays[today]["13"]
+    q.evaluate("()=>load(true)"); q.wait_for_timeout(900)
+    ck("and back to vacant when the reservation goes",
+       "room vacant" in tilecls(q, 13))
+    # An empty record is not a guest. roomguests carries these around from
+    # older writes, and one of them counting as a booking made the board look
+    # busier than the resort was.
+    roomguests[today]["15"] = {}
+    q.evaluate("()=>load(true)"); q.wait_for_timeout(900)
+    ck("an empty record does not make a villa look occupied",
+       "room vacant" in tilecls(q, 15))
+    del roomguests[today]["15"]
     q.close()
 
     # ── the manager is told when a menu is published ───────────

@@ -252,6 +252,22 @@ function isMewsOnly(rec){
   return !!(rec && rec.source === 'mews');
 }
 
+/* Is anybody attached to this villa on this date at all: a Mews reservation, a
+   guest who opened their link, or a record reception typed in. It is the line
+   between the two empty states on the boards, which mean different things and
+   want different reactions.
+
+     vacant   nobody is booked into this villa, so there is no question to ask
+     awaiting somebody is, and they have not said yes or no to dinner yet
+
+   A record with nothing in it is not a guest. `roomguests` carries empty
+   objects around from older writes, and one of those showing as a booking was
+   what made the boards look busier than the resort was. */
+function hasGuestProfile(rec){
+  return !!(rec && typeof rec === 'object' &&
+            (rec.name || rec.bookingId || rec.departs || rec.arrives || rec.phone));
+}
+
 function mewsRecord(stay){
   if (!stay || typeof stay !== 'object') return null;
   var name = [stay.first, stay.last].filter(Boolean).join(' ').trim();
