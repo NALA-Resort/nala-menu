@@ -86,9 +86,15 @@ python3 - "$MSG" "$@" <<'EOF'
 import re, sys, json
 msg, files = sys.argv[1], sys.argv[2:]
 p = '/home/claude/push.py'; s = open(p).read()
-s = re.sub(r'^FILES=.*$', 'FILES=' + json.dumps(files), s, flags=re.M)
-s = re.sub(r'^MSG=.*$', 'MSG=' + json.dumps(msg), s, flags=re.M)
+# Functions, not strings. re.sub reads backslashes in a replacement string, so
+# a multi line commit message wrote a real newline into push.py and broke it
+# for that run and every run after.
+s, n1 = re.subn(r'^FILES=.*$', lambda m: 'FILES=' + json.dumps(files), s, flags=re.M)
+s, n2 = re.subn(r'^MSG=.*$', lambda m: 'MSG=' + json.dumps(msg), s, flags=re.M)
+if n1 != 1 or n2 != 1:
+    sys.exit('push.py does not have exactly one FILES and one MSG line, refusing to write')
 open(p, 'w').write(s)
+import py_compile; py_compile.compile(p, doraise=True)
 EOF
 python3 /home/claude/push.py
 git fetch -q origin main:refs/remotes/origin/main
