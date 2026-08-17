@@ -32,8 +32,9 @@
 
 <h2>Clean slate</h2>
 <p style="margin:.3em 0 .6em">Wipes the operational data: roomguests, responses,
-manual, hk, stays, guests, combined. Leaves staff, notify, menutags, dietaries
-and the menu alone. Counts first, deletes only on the second button.</p>
+manual, hk, stays, guests, combined, dinner and bookings. Leaves staff, notify,
+menutags, dietaries and the menu alone. Counts first, deletes only on the second
+button.</p>
 <button onclick="scanWipe()">Count what would go</button>
 <button id="wipeGo" onclick="doWipe()" disabled>Delete everything listed</button>
 <pre id="wipe">not run</pre>
@@ -221,7 +222,10 @@ var WIPE = [];
 
 function scanWipe(){
   document.getElementById('wipe').textContent = 'counting…';
-  var nodes = ['roomguests','responses','manual','hk','stays','guests','combined'];
+  /* dinner and bookings were added after this list was written and were not
+     being wiped, so a clean slate left every reservation on the board. */
+  var nodes = ['roomguests','responses','manual','hk','stays','guests','combined',
+               'dinner','bookings'];
   Promise.all(nodes.map(function(n){
     return fetch(DB+'/'+n+'.json?v='+Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
