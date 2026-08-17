@@ -71,6 +71,16 @@ on Tonight's Numbers belongs to the NIGHTLY dinner message and is written when
 a guest opens `index.html`. It says nothing about pre-arrival. The two sends
 are separate and need separate signals.
 
+**Estimated arrival is a picklist, not free text.** Six slots in the order
+reception works through them: Before 2pm, Approx 2pm, 3pm, 4pm, 5pm, After 5pm.
+The two open ended ones carry a compulsory note, because "before 2pm" with no
+time is the answer that causes the problem it is warning about.
+
+Stored as the slot key, so the arrivals list orders exactly. Free text was
+tried first and it reads "late morning" and "after 5pm" correctly often enough
+to be trusted and wrongly often enough to matter, which is the worst
+combination.
+
 **Blocked on one answer:** is type of stay a picklist, and if so what is on it.
 
 Resist a fifth question without deciding which of the four it replaces.

@@ -89,6 +89,32 @@
   .fork.out svg { fill:var(--nodine); }
   .fork.un  svg { fill:var(--mid); opacity:.6; }
 
+  /* Opened the message and did not finish. Outlined rather than filled, so it
+     reads as the absence of an answer rather than as one.
+
+     Same icon as the Reservations board, deliberately. It means the same thing
+     in both places: this guest received what we sent and has not replied. The
+     two boards track DIFFERENT messages, the nightly dinner invite there and
+     the pre-arrival link here, so an icon on one says nothing about the other.
+     Any future message asking a guest for something follows the same rule, and
+     the question each time is which screen the answer lands on, because that
+     is the screen the icon belongs on. */
+  .seen { width:15px; height:15px; flex:0 0 15px; opacity:.55; }
+  .seen svg { width:100%; height:100%; display:block; fill:none; stroke:var(--mid); }
+
+  /* Nothing has come back at all. An icon rather than a pill, because a pill
+     reads as a status the guest reached, and this is the absence of one. */
+  .paper { width:15px; height:15px; flex:0 0 15px; opacity:.5; }
+  .paper svg { width:100%; height:100%; display:block; fill:none; stroke:var(--mid);
+               stroke-width:1.8; }
+
+  /* The tint answers the thing reception scans for: is there something to read
+     back, or is this one we fill in together. Kept very light so the villa
+     number and the name still carry the row. */
+  .arr.done-form { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
+  .arr.todo-form { background:rgba(194,154,85,.11); border-color:rgba(194,154,85,.36); }
+  .sum { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
+
   .empty { font-size:15px; color:var(--mid); font-style:italic; padding:4px 0 2px; }
   .spacer { height:40px; }
   #errBar { display:none; background:var(--red); color:#fff; font-size:13px;
@@ -217,7 +243,21 @@ function arrivingOn(dayStays, key){
     if (dkeyOf(s.arrive) !== key) continue;
     out.push({ villa: String(villa), stay: s, pre: null });
   }
-  return out.sort(function(a,b){ return (+a.villa) - (+b.villa); });
+  return sortRows(out);
+}
+
+/* Earliest expected arrival first, so the list reads in the order reception
+   works through it. Guests who gave no time sort last rather than first:
+   assuming an unknown is early would push a known 2pm arrival below it. */
+function sortRows(rows){
+  return rows.sort(function(a, b){
+    var ta = etaIndex(a.pre && a.pre.arriveSlot);
+    var tb = etaIndex(b.pre && b.pre.arriveSlot);
+    if (ta >= 0 && tb >= 0 && ta !== tb) return ta - tb;
+    if (ta >= 0 && tb <  0) return -1;
+    if (ta <  0 && tb >= 0) return 1;
+    return (+a.villa) - (+b.villa);
+  });
 }
 
 function nameOf(s){
@@ -241,8 +281,21 @@ function pillFor(p){
   if (isConfirmed(p))
     return p.dining === false ? '<div class="pill out">Not dining</div>'
                               : '<div class="pill din">Dining</div>';
-  return hasForm(p) ? '<div class="pill part">Form done</div>'
-                    : '<div class="pill none">No form</div>';
+  return hasForm(p) ? '<div class="pill part">Form done</div>' : '';
+}
+
+/* Nothing back at all. Distinct from the link icon, which says the message
+   reached them and they stopped partway. */
+function paperFor(p){
+  if (hasForm(p) || (p && p.openedAt)) return '';
+  return '<span class="paper">' + ICON_PAPER + '</span>';
+}
+
+/* Opened the pre-arrival link and did not submit it. It has nothing left to
+   say once a form exists: a guest who submitted obviously opened it. */
+function seenFor(p){
+  if (!p || !p.openedAt || hasForm(p)) return '';
+  return '<span class="seen">' + ICON_LINK + '</span>';
 }
 
 function esc(t){
@@ -255,20 +308,24 @@ function rowHTML(r){
   /* Before a guest arrives, when they are coming is the fact reception plans
      around, so it takes the second slot. Party size gives way to it rather
      than both fighting for the width and the ETA losing: it is one tap away in
-     the summary, and an ETA truncated to "after..." helps nobody. */
+     the summary, and an ETA truncated to "after..." helps nobody.
+
+     The slot only, never the note. Why they are early or late belongs in the
+     summary, not squeezed into a row that already truncates. */
   var bits = [stayLabel(r.stay)];
-  var eta = r.pre && r.pre.arriveBy;
-  if (eta) bits.push(esc(eta));
+  var i = etaIndex(r.pre && r.pre.arriveSlot);
+  if (i >= 0) bits.push(ETA_SLOTS[i][2]);   /* short form: the row truncates */
   else if (r.stay.adults)
     bits.push(r.stay.adults + (Number(r.stay.adults)===1 ? ' adult' : ' adults'));
   var open = OPEN === r.villa;
-  return '<button class="arr'+(isConfirmed(r.pre)?' is-done':'')+(open?' open':'')+
+  var tint = hasForm(r.pre) ? ' done-form' : ' todo-form';
+  return '<button class="arr'+tint+(isConfirmed(r.pre)?' is-done':'')+(open?' open':'')+
          '" data-villa="'+r.villa+'">'+
          '<div class="arr-v">'+r.villa+'</div>'+
          '<div class="arr-mid">'+
            '<div class="arr-n">'+esc(nameOf(r.stay))+'</div>'+
            '<div class="arr-s">'+bits.join(' \u00b7 ')+'</div>'+
-         '</div>'+forkFor(r.pre)+pillFor(r.pre)+'</button>'+
+         '</div>'+paperFor(r.pre)+seenFor(r.pre)+forkFor(r.pre)+pillFor(r.pre)+'</button>'+
          (open ? summaryHTML(r) : '');
 }
 
@@ -278,6 +335,42 @@ var OPEN = null;
 
 var APPROACH_LABEL = { most:'Dining in most nights', mix:'A mix of in and out',
                        out:'Mostly eating out' };
+
+var ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round">' +
+  '<path d="M9.5 14.5l5-5"/>' +
+  '<path d="M12.8 7.2l1.6-1.6a3.6 3.6 0 015.1 5.1l-1.6 1.6"/>' +
+  '<path d="M11.2 16.8l-1.6 1.6a3.6 3.6 0 01-5.1-5.1l1.6-1.6"/></svg>';
+
+var ICON_PAPER = '<svg viewBox="0 0 24 24" stroke-linejoin="round">' +
+  '<path d="M6 2.8h7.2L18 7.6V21.2H6z"/><path d="M13.2 2.8v4.8H18"/></svg>';
+
+/* Arrival time is a choice, not free text, and these six are in the order
+   reception works through them. The two open ended ones carry a compulsory
+   note, because "before 2pm" with no time is the answer that causes the
+   problem it is warning about.
+
+   Stored as the slot key, so the list orders exactly rather than by reading
+   somebody's phrasing. Free text was tried and it parses "late morning" and
+   "after 5pm" correctly often enough to be trusted and wrongly often enough
+   to matter, which is the worst combination. */
+var ETA_SLOTS = [
+  ['before2', 'Before 2pm', 'Before 2pm', true],
+  ['14',      'Approx 2pm', '2pm',        false],
+  ['15',      'Approx 3pm', '3pm',        false],
+  ['16',      'Approx 4pm', '4pm',        false],
+  ['17',      'Approx 5pm', '5pm',        false],
+  ['after5',  'After 5pm',  'After 5pm',  true]
+];
+function etaIndex(slot){
+  for (var i = 0; i < ETA_SLOTS.length; i++)
+    if (ETA_SLOTS[i][0] === slot) return i;
+  return -1;
+}
+function etaLabel(p){
+  var i = etaIndex(p && p.arriveSlot);
+  if (i < 0) return '';
+  return p.arriveNote ? ETA_SLOTS[i][1] + ' \u00b7 ' + p.arriveNote : ETA_SLOTS[i][1];
+}
 
 var ICON_FORK = '<svg viewBox="0 0 24 24" stroke-width="0">' +
   '<path d="M6.2 2.5v6a2.4 2.4 0 001.6 2.3V21h1.6v-10.2A2.4 2.4 0 0011 8.5v-6H9.6v5.2H8.7V2.5H7.3v5.2h-.9V2.5H6.2z"/>' +
@@ -320,7 +413,7 @@ function summaryHTML(r){
                                esc(a.dnote) + '</span>';
   h += sumRow('Dietary', diet);
 
-  if (a.arriveBy)  h += sumRow('Arriving', esc(a.arriveBy));
+  if (etaLabel(r.pre)) h += sumRow('Arriving', esc(etaLabel(r.pre)));
   if (a.purpose.length) h += sumRow('Purpose', esc(a.purpose.join(' \u00b7 ')));
   if (a.approach)  h += sumRow('Dining', esc(APPROACH_LABEL[a.approach] || a.approach));
   if (a.occasion)  h += sumRow('Occasion', esc(a.occasion));
@@ -380,7 +473,14 @@ function load(){
     .then(function(day){
       ROWS = arrivingOn(day, key);
       render();                     /* the list shows before the extra reads */
-      return loadPrearrivals(ROWS).then(render);
+      /* The arrival slots only exist once the per booking reads land, so the
+         order is settled then rather than on the first paint. Sorting only in
+         arrivingOn leaves the list in villa order forever, because every row
+         has a null pre at that point. */
+      return loadPrearrivals(ROWS).then(function(){
+        ROWS = sortRows(ROWS);
+        render();
+      });
     })
     .catch(function(){
       ROWS = []; render();
@@ -426,7 +526,8 @@ function answersOf(r){
     diets:    (p.diets || []).slice(),
     noDiets:  !!p.noDiets,
     dnote:    p.dnote || '',
-    arriveBy: p.arriveBy || '',
+    arriveSlot: p.arriveSlot || '',
+    arriveNote: p.arriveNote || '',
     purpose:  (p.purpose || []).slice(),
     approach: p.approach || '',
     occasion: p.occasion || '',
@@ -450,8 +551,8 @@ function openGuest(r){
         (r.stay.adults ? ' \u00b7 ' + r.stay.adults +
           (Number(r.stay.adults)===1?' adult':' adults') : '') +
       '</span></div>' +
-    (a.arriveBy ? '<div class="note-box">Told us they would arrive ' +
-       esc(a.arriveBy) + '.</div>' : '') +
+    (etaLabel(p) ? '<div class="note-box">Told us they would arrive ' +
+       esc(etaLabel(p).toLowerCase()) + '.</div>' : '') +
     (hasForm(p) ? '' :
       '<div class="note-box">No pre-arrival form. Fill it in together.</div>') +
 
@@ -622,7 +723,8 @@ function save(r, a){
   var payload = {
     dining: a.dining, pax: a.dining ? a.pax : 0,
     diets: a.diets, noDiets: a.noDiets, dnote: a.dnote,
-    arriveBy: a.arriveBy, purpose: a.purpose, approach: a.approach,
+    arriveSlot: a.arriveSlot, arriveNote: a.arriveNote,
+    purpose: a.purpose, approach: a.approach,
     occasion: a.occasion, wellness: a.wellness,
     wellDay: a.wellness ? a.wellDay : '', wellTime: a.wellness ? a.wellTime : '',
     note: a.note,

@@ -42,6 +42,7 @@ STAYS = {
   "2":  {"id":"b2","first":"James","last":"Fisher","arrive":today,"depart":plus(6),"adults":2},
   "7":  {"id":"b7","first":"Mark","last":"Whitfield","arrive":today,"depart":plus(3),"adults":2},
   "11": {"id":"b11","first":"Priya","last":"Raghunathan","arrive":today,"depart":plus(5),"adults":3},
+  "14": {"id":"b14","first":"Ann","last":"Brown","arrive":today,"depart":plus(1),"adults":1},
   # mid stay: in house tonight, arrived two days ago. Must NOT be an arrival.
   "3":  {"id":"b3","first":"Midstay","last":"Guest","arrive":plus(-2),"depart":plus(2),"adults":2},
   # the older shape, when the value was a bare booking id
@@ -55,15 +56,18 @@ PRE = {
   # filled in from the guest's phone, not yet confirmed at the desk
   "b4":  {"at":"2026-08-16T10:00:00Z","dining":True,"pax":2,
           "diets":["Nut allergy"],"dnote":"the daughter, severe",
-          "arriveBy":"4pm","purpose":["Celebration"],"approach":"most",
+          "arriveSlot":"16","purpose":["Celebration"],"approach":"most",
           "occasion":"anniversary","wellness":True,"wellDay":plus(1),"wellTime":"late morning",
           "note":"quiet villa please"},
-  "b9":  {"at":"2026-08-16T11:00:00Z","dining":False,"noDiets":True},
+  "b9":  {"at":"2026-08-16T11:00:00Z","dining":False,"noDiets":True,
+          "arriveSlot":"before2","arriveNote":"flight lands 11am"},
   # confirmed at the desk
   "b7":  {"at":"2026-08-15T10:00:00Z","confirmedAt":"2026-08-17T14:00:00Z","dining":True,"pax":2},
   "b11": {"at":"2026-08-15T10:00:00Z","confirmedAt":"2026-08-17T14:05:00Z","dining":False},
-  # opened the form, gave their allergies, left the dinner question alone
-  "b12": {"at":"2026-08-16T09:00:00Z","diets":["Gluten free"]}
+  # opened the form, gave allergies, left the dinner question alone
+  "b12": {"at":"2026-08-16T09:00:00Z","diets":["Gluten free"],"arriveSlot":"15"},
+  # opened the pre-arrival link and never submitted it
+  "b14": {"openedAt":"2026-08-16T08:00:00Z"}
 }
 
 WRITES = []
@@ -120,15 +124,19 @@ with sync_playwright() as p:
     # villa WITHIN each section rather than globally.
     todo = pg.evaluate("()=>[...document.querySelectorAll('.arr')].filter(e=>!e.className.includes('is-done')).map(e=>e.dataset.villa)")
     doneV = pg.evaluate("()=>[...document.querySelectorAll('.arr.is-done')].map(e=>e.dataset.villa)")
-    ck("arrivals are ordered by villa within each section",
-       todo == sorted(todo, key=int) and doneV == sorted(doneV, key=int))
+    # Slots are stored as keys, so the order is exact rather than parsed:
+    # b9 before 2pm, b12 3pm, b4 4pm, then the guests who gave no time.
+    ck("arrivals are ordered by the slot they chose",
+       todo[:3] == ["9", "12", "4"])
+    ck("and guests who gave no time sort last, by villa",
+       todo[3:] == sorted(todo[3:], key=int))
     ck("and the ones still to do come first, because that is the job",
        villas == todo + doneV)
     ck("the count is the arrivals, not every stay",
        pg.evaluate("()=>nArr.textContent") == str(len(villas)))
     # six arrivals, of which villas 7 and 11 are already confirmed
     ck("to confirm counts only those reception has not been through",
-       pg.evaluate("()=>nLeft.textContent") == "4")
+       pg.evaluate("()=>nLeft.textContent") == "5")
     ck("and goes red while any remain",
        pg.evaluate("()=>tileLeft.className.indexOf('due')>-1"))
 
@@ -136,10 +144,14 @@ with sync_playwright() as p:
     def pill(v):
         return pg.evaluate("()=>{const e=document.querySelector('.arr[data-villa=\"%s\"] .pill');"
                            "return e?e.className+'|'+e.textContent:null;}" % v)
-    ck("a guest with no form at all", "none|No form" in pill("2"))
+    ck("a guest with nothing back carries a paper icon and no pill",
+       pg.evaluate("()=>!!document.querySelector('.arr[data-villa=\"2\"] .paper')")
+       and pill("2") is None)
     # Before a guest arrives, the ETA is the fact reception plans around.
-    ck("the arrival time they gave shows on the list, without opening anything",
+    ck("the arrival slot shows on the list, without opening anything",
        "4pm" in pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"] .arr-s').textContent"))
+    ck("but the note explaining an odd arrival stays off the row",
+       "flight lands" not in pg.evaluate("()=>document.querySelector('.arr[data-villa=\"9\"] .arr-s').textContent"))
     ck("a guest who filled it in but has not been confirmed", "part|Form done" in pill("4"))
     ck("a confirmed guest shows the answer, not the word confirmed",
        "din|Dining" in pill("7"))
@@ -155,10 +167,47 @@ with sync_playwright() as p:
     ck("and a confirmed decline", fork("11") == "fork out")
     # There is nothing to report about a guest who has not answered, and an
     # icon there would be an answer we do not have.
-    ck("a guest with no form gets no icon at all", fork("2") is None)
+    ck("no fork icon until they answer the dinner question", fork("2") is None)
     # Grey is a real answer: they filled the form in and left dinner open.
     ck("a form that skipped the dinner question reads grey, not green",
        fork("12") == "fork un")
+
+
+    # Opened the pre-arrival link and did not finish. A different message from
+    # the nightly dinner invite the Reservations board tracks: an icon on one
+    # board says nothing about the other.
+    def seen(v):
+        return pg.evaluate("()=>!!document.querySelector('.arr[data-villa=\"%s\"] .seen')" % v)
+    ck("a guest who opened the link and stopped shows it", seen("14"))
+    ck("and carries no paper icon, because something did reach them",
+       not pg.evaluate("()=>!!document.querySelector('.arr[data-villa=\"14\"] .paper')"))
+    ck("a guest who never opened it shows the paper icon instead", not seen("2"))
+    ck("and one who submitted has nothing left to say", not seen("4"))
+
+    # The tint answers the thing reception scans for.
+    def tint(v):
+        return pg.evaluate("()=>document.querySelector('.arr[data-villa=\"%s\"]').className" % v)
+    ck("a completed form tints the row green", "done-form" in tint("4"))
+    ck("one still to do tints it amber", "todo-form" in tint("2"))
+    ck("opened but unfinished still counts as to do", "todo-form" in tint("14"))
+
+    # An opened-only record is not a form, so there is nothing to read back.
+    pg.locator('.arr[data-villa="14"]').click(); pg.wait_for_timeout(350)
+    ck("an opened-only record drops down no summary",
+       pg.evaluate("()=>document.querySelectorAll('.sum').length") == 0)
+    ck("it opens the form instead", pg.evaluate("()=>backdrop.className.indexOf('show')>-1"))
+    pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
+
+    # The slot order has to be exact, since ordering the day depends on it.
+    ck("the six slots run earliest to latest",
+       pg.evaluate("()=>ETA_SLOTS.map(s=>s[0]).join()")
+       == "before2,14,15,16,17,after5")
+    ck("the row uses the short form so it does not truncate",
+       pg.evaluate("()=>ETA_SLOTS.map(s=>s[2]).join()")
+       == "Before 2pm,2pm,3pm,4pm,5pm,After 5pm")
+    ck("and only the two open ended ones demand a note",
+       pg.evaluate("()=>ETA_SLOTS.filter(s=>s[3]).map(s=>s[0]).join()")
+       == "before2,after5")
 
     # ── tapping a completed row reads the answers back ──────────
     # Reception says them out loud, the guest agrees or does not, and one of
@@ -208,7 +257,7 @@ with sync_playwright() as p:
     # nothing left to estimate. It is shown if they told us earlier.
     ck("the arrival time is shown, not offered for editing",
        pg.evaluate("()=>!document.getElementById('fArrive')") and
-       "arrive 4pm" in pg.locator("#sheet").inner_text())
+       "arrive approx 4pm" in pg.locator("#sheet").inner_text())
     ck("their special occasion", pg.evaluate("()=>fOcc.value") == "anniversary")
     ck("their free text", pg.evaluate("()=>fNote.value") == "quiet villa please")
     ck("purpose of visit, which is advisory and never drives logic",
@@ -239,7 +288,7 @@ with sync_playwright() as p:
     ck("the sheet closes", pg.evaluate("()=>backdrop.className.indexOf('show')<0"))
     ck("and the guest moves to confirmed without a reload",
        "din|Dining" in pill("4"))
-    ck("with the count following", pg.evaluate("()=>nLeft.textContent") == "3")
+    ck("with the count following", pg.evaluate("()=>nLeft.textContent") == "4")
     pg.close()
 
     # ── a guest with no form goes straight to the form ──────────
