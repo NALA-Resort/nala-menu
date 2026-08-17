@@ -27,10 +27,10 @@ deletion that looks published and is not cost hours on 17 Aug.
 **Fetch before pushing.** A second chat owns the print work, and both publish to
 `main`. `/home/claude/publish.sh` refuses if `main` moved since your last push.
 
-**Run every suite before publishing.** Ten of them, about 700 assertions, in
-`tests/`. See `tests/README.md`. They take a few minutes; publishing without
-them is how the printed sheet went blind for two commits without a single test
-failing.
+**Run every suite before publishing.** Fifteen of them, about 900 assertions,
+in `tests/`. See `tests/README.md`. They take about half an hour; publishing
+without them is how the printed sheet went blind for two commits without a
+single test failing.
 
 **Mock up before you build anything visual.** Render it at 390pt, check 360,
 do not break at 320. `STYLEGUIDE.md` first, always.
@@ -160,8 +160,14 @@ most. Nothing there has been done.
 - **The notification Worker is not in this repo.** It holds the VAPID key and
   exists only on the owner's machine. If lost, a working feature cannot be
   rebuilt.
-- **Five pages have no suite:** `welcome`, `debug`, `stats`, `tag`,
-  `menu-print`.
+- ~~Five pages have no suite~~ **done 18 Aug.** `welcome`, `debug`, `stats`,
+  `tag` and `menu-print` now have one each, 184 assertions. Writing them found
+  three live bugs, all fixed: Statistics was reading only the retired
+  `/responses` node so every night since 17 Aug was invisible; it grouped by
+  cut name before animal, so a lamb rump counted as beef; and Menu Dietaries
+  treated a refused read as an empty list, seeded the eight defaults over it,
+  and offered a Save that would have written them over the chef's real list.
+  `debug` and `menu-print` were already correct.
 - **Orphan `prearrival` records** against cancelled or mistyped ids sit forever.
 - **Write back to Mews:** check-in status and dietaries into the reservation.
   Needs the Connector API. The hook is marked in `front-desk.html`.
@@ -212,6 +218,8 @@ the sandbox, so every render falls back. `font-test.html` exists for this.
 
 ## The rest of the documents
 
+- `PARKED.md` questions waiting on an answer, each with the decision taken in
+  the meantime so nothing is stalled on them.
 - `STYLEGUIDE.md` before anything visual. Not optional.
 - `TESTING.md` the ten checks only a human can run.
 - `PLAN.md` the ordered build queue.

@@ -77,70 +77,125 @@
 <script src="auth.js?v=11"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
-var ROOMS = 17;
 var LOOKBACK = 120;   // days
 
 function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function daysAgo(n){ var d = new Date(); d.setDate(d.getDate()-n); return dkey(d); }
 
-// ── categorise a main course into a protein group ─────────
+/* Categorise a main course into a protein group.
+
+   Two passes, and the order of them is the whole point. The animal is looked
+   for first, the cut only afterwards, because cut names are shared: lamb rump
+   was being counted as beef, pork cheek as beef, and a tuna steak would have
+   gone the same way. Chef writes "Lamb rump, smoked eggplant", so the word
+   that settles it is always there, just not always first.               */
 var GROUPS = [
-  ['Beef',        ['beef','steak','sirloin','striploin','eye fillet','rump','wagyu','onyx','rib fillet','tartare','brisket','cheek']],
-  ['Lamb',        ['lamb']],
-  ['Pork',        ['pork','belly','porchetta']],
-  ['Chicken',     ['chicken','poussin','quail']],
-  ['Duck',        ['duck']],
-  ['Fish',        ['barramundi','kingfish','snapper','cobia','perch','tuna','salmon','mahi','fish','trout','crudo']],
-  ['Shellfish',   ['prawn','scallop','crab','oyster','lobster','squid','octopus','mussel']],
-  ['Vegetarian',  ['mushroom','cabbage','eggplant','risotto','gnocchi','cauliflower','zucchini','panisse','chawanmushi','leek']]
+  ['Beef',        ['beef','wagyu','onyx','sirloin','striploin'],
+                  ['steak','eye fillet','rib fillet','rump','tartare','brisket','cheek']],
+  ['Lamb',        ['lamb'], []],
+  ['Pork',        ['pork','porchetta'], ['belly']],
+  ['Chicken',     ['chicken','poussin','quail'], []],
+  ['Duck',        ['duck'], []],
+  ['Fish',        ['barramundi','kingfish','snapper','cobia','perch','tuna','salmon','mahi','fish','trout','crudo'], []],
+  ['Shellfish',   ['prawn','scallop','crab','oyster','lobster','squid','octopus','mussel'], []],
+  ['Vegetarian',  ['mushroom','cabbage','eggplant','risotto','gnocchi','cauliflower','zucchini','panisse','chawanmushi','leek'], []]
 ];
 
 function groupOf(name){
   var n = (name||'').toLowerCase();
-  for (var i=0;i<GROUPS.length;i++){
-    var g = GROUPS[i];
-    for (var j=0;j<g[1].length;j++){ if (n.indexOf(g[1][j]) > -1) return g[0]; }
+  for (var pass=1; pass<=2; pass++){
+    for (var i=0;i<GROUPS.length;i++){
+      var words = GROUPS[i][pass];
+      for (var j=0;j<words.length;j++){ if (n.indexOf(words[j]) > -1) return GROUPS[i][0]; }
+    }
   }
   return 'Other';
 }
 
-function get(path){
+/* One request a node, not one a day. This page used to fetch two nodes for
+   each of 120 dates, which is 240 requests from a phone on resort wifi, and a
+   dropped handful of them looked exactly like a quiet fortnight.
+
+   A read that FAILS is not an empty node. That distinction cost hours on Clean
+   Slate, which counted 0 records for four nodes it could not read and reported
+   success. Here it would show a page of dashes and the words "no data", which
+   reads as a quiet season rather than a broken permission.                  */
+function readNode(path){
   return fetch(DB+path+'.json?v='+Date.now())
-    .then(function(r){ return r.ok ? r.json() : null; })
-    .catch(function(){ return null; });
+    .then(function(r){ return r.ok ? r.json() : { __failed: r.status }; })
+    .catch(function(){ return { __failed: 0 }; });
 }
 
-// build the list of dates to examine
-var dates = [];
-var today = new Date();
-for (var i=LOOKBACK-1; i>=0; i--){
-  var d = new Date(today); d.setDate(d.getDate()-i);
-  dates.push(dkey(d));
+function failure(node, res){
+  return (res && res.__failed !== undefined) ? (node + ' (HTTP ' + res.__failed + ')') : null;
 }
 
-Promise.all([
-  Promise.all(dates.map(function(k){ return get('/menuhistory/'+k); })),
-  Promise.all(dates.map(function(k){ return get('/responses/'+k); }))
-]).then(function(res){
-  var menus = res[0], resps = res[1];
+Promise.all([readNode('/dinner'), readNode('/responses'), readNode('/menuhistory')])
+.then(function(res){
+  var failed = [failure('dinner', res[0]), failure('responses', res[1]),
+                failure('menuhistory', res[2])].filter(Boolean);
+  if (failed.length){
+    document.getElementById('range').textContent = 'Could not read the history';
+    document.getElementById('byProtein').innerHTML =
+      '<div class="note">The database would not return ' + failed.join(', ') +
+      '. Nothing here is a count of zero: these numbers could not be read at ' +
+      'all. Sign in as staff, and if that does not fix it paste the current ' +
+      'rules.json into the Firebase console and press Publish.</div>';
+    return;
+  }
+
+  var dinnerAll = res[0] || {}, respAll = res[1] || {}, menus = res[2] || {};
+  var from = daysAgo(LOOKBACK - 1);
+
+  /* Every date either node knows about, inside the window. The dates are
+     sortable strings, so the window is a comparison rather than a calendar. */
+  var dates = {};
+  for (var k in dinnerAll) if (k >= from) dates[k] = true;
+  for (var k in respAll)   if (k >= from) dates[k] = true;
 
   var nights = [];        // { date, group, covers, dining, replied, diets[] }
-  for (var i=0;i<dates.length;i++){
-    var r = resps[i];
-    if (!r) continue;
-    var covers=0, dining=0, replied=0, diets=[];
-    for (var k in r){
-      var g = r[k];
-      replied++;
-      if (g.status === 'in'){ dining++; covers += (g.pax||1); }
-      if (g.diets) diets = diets.concat(g.diets);
+
+  Object.keys(dates).sort().forEach(function(date){
+    /* One answer a villa. The dinner cell holds the whole answer and outranks
+       anything left in the retired node, exactly as roomRecord treats it: the
+       two are not merged, because a villa answered twice is one guest, and
+       adding them together inflates every cover on this page. */
+    var seen = {};
+    var day = dinnerAll[date] || {};
+    for (var v in day){
+      var c = day[v];
+      if (c && typeof c === 'object') seen[String(v)] = { rec: c, cell: true };
     }
-    if (!replied) continue;
+    var rday = respAll[date] || {};
+    for (var key in rday){
+      var g = rday[key];
+      if (!g || typeof g !== 'object') continue;
+      var v = String(g.room || '');
+      if (!v) continue;
+      if (seen[v] && seen[v].cell) continue;
+      if (seen[v] && (seen[v].rec.at || '') > (g.at || '')) continue;
+      seen[v] = { rec: g, cell: false };
+    }
+
+    var covers = 0, dining = 0, replied = 0, diets = [];
+    for (var v in seen){
+      var r = seen[v].rec;
+      /* A villa marked vacant is reception saying nobody is in it. It is not a
+         guest declining dinner, and counting it as one drags every take-up
+         figure towards zero on a half full week. */
+      if (r.status !== 'in' && r.status !== 'out') continue;
+      replied++;
+      if (r.status === 'in'){ dining++; covers += (r.pax||1); }
+      if (r.diets && r.diets.length) diets = diets.concat(r.diets);
+    }
+    if (!replied) return;
+
     nights.push({
-      date: dates[i],
-      group: menus[i] ? groupOf(menus[i].main) : null,
+      date: date,
+      group: menus[date] ? groupOf(menus[date].main) : null,
       covers: covers, dining: dining, replied: replied, diets: diets
     });
-  }
+  });
 
   if (!nights.length){
     document.getElementById('range').textContent = 'No data recorded yet';
@@ -150,7 +205,6 @@ Promise.all([
     return;
   }
 
-  var first = nights[0].date, last = nights[nights.length-1].date;
   document.getElementById('range').textContent =
     nights.length + (nights.length===1?' night':' nights') + ' recorded';
 
@@ -158,7 +212,7 @@ Promise.all([
   var totalCovers = nights.reduce(function(t,n){ return t+n.covers; }, 0);
   document.getElementById('hCovers').textContent = Math.round(totalCovers / nights.length);
 
-  // ── by protein ──
+  // by protein
   var byG = {};
   nights.forEach(function(n){
     if (!n.group) return;
@@ -183,13 +237,13 @@ Promise.all([
         '<div class="stat"><div style="flex:1">'+
           '<div class="stat-name">'+r.name+'</div>'+
           '<div class="stat-sub">'+r.nights+(r.nights===1?' night':' nights')+
-            ' · '+r.avg.toFixed(1)+' covers avg</div>'+
+            ' \u00b7 '+r.avg.toFixed(1)+' covers avg</div>'+
           '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
         '</div><div class="stat-val">'+pct+'%</div></div>');
     });
   }
 
-  // ── by weekday ──
+  // by weekday
   var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var byD = {};
   nights.forEach(function(n){
@@ -209,14 +263,14 @@ Promise.all([
       '<div class="stat"><div style="flex:1">'+
         '<div class="stat-name">'+r.name+'</div>'+
         '<div class="stat-sub">'+r.nights+(r.nights===1?' night':' nights')+'</div>'+
-        '<div class="bar"><i style="width:'+Math.round(r.avg/maxD*100)+'%"></i></div>'+
+        '<div class="bar"><i style="width:'+Math.round(maxD ? r.avg/maxD*100 : 0)+'%"></i></div>'+
       '</div><div class="stat-val">'+r.avg.toFixed(1)+'</div></div>');
   });
 
-  // ── dietaries ──
-  var byDiet = {}, totalDiet = 0;
+  // dietaries
+  var byDiet = {};
   nights.forEach(function(n){
-    n.diets.forEach(function(d){ byDiet[d] = (byDiet[d]||0)+1; totalDiet++; });
+    n.diets.forEach(function(d){ byDiet[d] = (byDiet[d]||0)+1; });
   });
   var rowsDiet = Object.keys(byDiet).map(function(k){
     return { name:k, n:byDiet[k] };

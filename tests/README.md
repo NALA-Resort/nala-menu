@@ -12,8 +12,13 @@ repo root with a local copy of the site:
     python3 tests/index_suite.py     # 40  - the guest menu page
     python3 tests/fd_suite.py        # 123 - Front Desk Arrival
     python3 tests/pre_suite.py       # 46  - the guest pre-arrival form
-    python3 tests/reg_suite.py       # 22  - registration cards
+    python3 tests/reg_suite.py       # 25  - registration cards
     python3 tests/pages_suite.py     # 10  - the site map, and every link on it
+    python3 tests/stats_suite.py     # 38  - Statistics, incl. where the numbers come from
+    python3 tests/tag_suite.py       # 45  - Menu Dietaries, incl. the destructive save
+    python3 tests/debug_suite.py     # 44  - Diagnostics, incl. Clean Slate and the deletes
+    python3 tests/print_suite.py     # 34  - Printable Menu, asserted on the PDF not the DOM
+    python3 tests/welcome_suite.py   # 23  - the welcome page
 
 The Mews sync Worker has its own, in node rather than Playwright because it
 never runs in a browser:
@@ -22,6 +27,14 @@ never runs in a browser:
 
 Counts drift. If yours do not match, the suite moved and this line did not:
 trust the suite.
+
+`print_suite.py` is the odd one. menu-print.html draws its menu with jsPDF, so
+the page's own HTML is a staging area and reading the DOM would tell you
+nothing about the sheet that comes out of the printer. The suite replaces jsPDF
+with a stub that records every draw call and asserts against those, then checks
+the screen and the paper agree. That last comparison is the one that did not
+exist when the Service Sheet went blind to a whole node for two commits with
+every suite passing.
 
 They assert rendered outcomes, not markup: computed colours, fixed-footer
 geometry, tap-target sizes, menu interaction, write bodies, and

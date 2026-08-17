@@ -80,7 +80,7 @@
              transform:translateY(110%); transition:transform .25s; }
   .savebar.show { transform:translateY(0); }
   .savebar .in { max-width:520px; margin:0 auto; display:flex; gap:10px; align-items:center; }
-  .savebtn { flex:1; padding:13px; border:none; background:var(--ink); color:var(--cream);
+  .savebtn { flex:1; padding:13px; min-height:44px; border:none; background:var(--ink); color:var(--cream);
              border-radius:8px; font-family:Helvetica,Arial,sans-serif; font-size:11px;
              letter-spacing:.15em; text-transform:uppercase; cursor:pointer;
              -webkit-tap-highlight-color:transparent; }
@@ -135,6 +135,7 @@
   function keyOf(name){ return name.trim().replace(/[.#$\/\[\]]/g,'').replace(/\s+/g,' '); }
 
   var MENU=null, MASTER={}, TAGS={}, newGroup='common', dirty=false;
+  var LOCKED=null;   // set to a message when a read failed and saving is unsafe
 
   function markDirty(){ dirty=true;
     document.getElementById('savebar').classList.add('show');
@@ -217,6 +218,11 @@
   };
 
   document.getElementById('saveBtn').onclick=function(){
+    /* Save is a PUT of the whole master list, so it is only safe when the list
+       on screen is the list in the database. If either read failed, it is not,
+       and saving would replace the chef's dietaries with the eight defaults or
+       wipe tonight's tags. Locked rather than trusted. */
+    if (LOCKED) return err(LOCKED);
     var btn=this; btn.disabled=true;
     Promise.all([
       fetch(DB+'/dietaries.json',{method:'PUT',body:JSON.stringify(MASTER)}),
@@ -233,15 +239,46 @@
     if (dirty){ e.preventDefault(); e.returnValue=''; } });
 
   // ── load ──
+  /* A read that FAILS is not an empty node. Returning null for both made a
+     refused request look like a database with no dietaries in it, the eight
+     defaults were seeded on top, and Save would then have written them over
+     the real list. Same shape of bug as the Clean Slate one, with worse
+     consequences, because this one had a button that overwrote. */
+  function readNode(path){
+    return fetch(DB+path+'.json?v='+Date.now())
+      .then(function(r){ return r.ok ? r.json() : { __failed:r.status }; })
+      .catch(function(){ return { __failed:0 }; });
+  }
+  function failedRead(v){ return !!(v && v.__failed !== undefined); }
+
   Promise.all([
-    fetch('menu.json?v='+Date.now()).then(function(r){ return r.json(); }).catch(function(){ return null; }),
-    fetch(DB+'/dietaries.json').then(function(r){ return r.json(); }).catch(function(){ return null; }),
-    fetch(DB+'/menutags/'+todayKey()+'.json').then(function(r){ return r.json(); }).catch(function(){ return null; })
+    fetch('menu.json?v='+Date.now()).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }),
+    readNode('/dietaries'),
+    readNode('/menutags/'+todayKey())
   ]).then(function(res){
     var menu=res[0], master=res[1], tags=res[2];
+
+    /* Tonight's menu, whatever the chef put on it. This used to insist on a
+       bread course by name, so a menu without bread was treated as no menu at
+       all and the chef was told to publish one that was already published. */
     var freshToday = menu && menu.published &&
       new Date(menu.published).toDateString() === new Date().toDateString();
-    if (freshToday && menu.bread && menu.bread.name) MENU=menu;
+    var hasCourse = menu && COURSES.some(function(c){ return menu[c[0]] && menu[c[0]].name; });
+    if (freshToday && hasCourse) MENU=menu;
+
+    if (failedRead(master) || failedRead(tags)){
+      LOCKED = 'Could not read ' +
+        (failedRead(master) ? 'the dietary list' : "tonight's tags") +
+        '. Nothing is saved until it loads, so nothing gets overwritten. ' +
+        'Sign in again, then refresh.';
+      err(LOCKED);
+      document.getElementById('saveBtn').disabled = true;
+      if (!failedRead(master) && master) MASTER = master;
+      if (!failedRead(tags) && tags) TAGS = tags;
+      paintCourses(); paintMng();
+      return;
+    }
+
     if (master) MASTER=master;
     else DEFAULTS.forEach(function(n){ MASTER[keyOf(n)]={name:n,active:true,group:'common'}; });
     if (tags) TAGS=tags;

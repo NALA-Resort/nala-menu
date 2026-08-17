@@ -82,6 +82,17 @@ if [ -f "$MARK" ] && [ "$(cat $MARK)" != "$REMOTE" ]; then
   git log --oneline $(cat $MARK)..$REMOTE
   exit 1
 fi
+# This script ends in git reset --hard, which throws away any modified file it
+# did not publish. A failed push followed by a successful one silently deleted
+# a session's work that way. Refuse rather than discard.
+LEFT=$(git diff --name-only)
+for f in "$@"; do LEFT=$(echo "$LEFT" | grep -vx -- "$f" || true); done
+if [ -n "$(echo "$LEFT" | tr -d '[:space:]')" ]; then
+  echo "STOP: these files are modified but not in this publish, and the reset would discard them:"
+  echo "$LEFT"
+  echo "Add them to the command, or git checkout them first."
+  exit 1
+fi
 python3 - "$MSG" "$@" <<'EOF'
 import re, sys, json
 msg, files = sys.argv[1], sys.argv[2:]
