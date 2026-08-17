@@ -63,6 +63,52 @@
   #errBar { display:none; background:var(--red); color:#fff; font-size:13px;
             padding:9px 12px; border-radius:6px; margin-top:12px; }
   #errBar.show { display:block; }
+
+  /* Sheet chrome and controls, matching tally.html exactly. Copied rather
+     than reinvented: two screens with their own idea of a chip is how the
+     app starts looking like two apps. */
+  .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35);
+              display:none; align-items:flex-end; justify-content:center; z-index:10; }
+  .backdrop.show { display:flex; }
+  .sheet { width:100%; max-width:520px; background:var(--cream);
+           padding:26px 24px 34px; border-top:1px solid var(--rule);
+           max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .sheet h3 { font-family:var(--ui-font); font-size:11px; letter-spacing:.2em;
+              text-transform:uppercase; color:var(--mid); font-weight:normal;
+              text-align:center; margin-bottom:18px; }
+  .sheet-label { font-family:var(--ui-font); font-size:8px; letter-spacing:.25em;
+                 text-transform:uppercase; color:var(--mid); text-align:center;
+                 margin:16px 0 8px; }
+  .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid transparent;
+         border-radius:6px; font-family:var(--ui-font); font-size:11px;
+         letter-spacing:.14em; text-transform:uppercase; color:var(--ink);
+         cursor:pointer; }
+  .opt.solid { background:var(--green); border-color:var(--greenb); }
+  .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
+  .seg { display:flex; gap:6px; margin:2px 0 4px; }
+  .seg button { flex:1; padding:11px 0; border:1px solid var(--rule); background:transparent;
+                font-family:var(--ui-font); font-size:10px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--mid); cursor:pointer; border-radius:6px; }
+  .seg button.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 4px; }
+  .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
+         font-family:var(--ui-font); font-size:14px; color:var(--ink);
+         cursor:pointer; border-radius:6px; }
+  .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
+  .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
+          border-radius:20px; font-family:var(--ui-font); font-size:10px;
+          color:var(--mid); cursor:pointer; }
+  .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .txt { width:100%; padding:12px; margin-bottom:8px; border:1px solid var(--rule);
+         background:transparent; font-family:var(--ui-font); font-size:16px; color:var(--ink); }
+  .txt::placeholder { color:var(--mid); font-style:italic; }
+  .txt:focus { outline:none; border-color:var(--ink); }
+  .gd { text-align:center; margin:-4px 0 6px; font-size:13px; line-height:1.55; }
+  .gd .gd-sub { display:block; font-family:var(--ui-font); font-size:10.5px;
+                color:var(--mid); letter-spacing:.03em; }
+  .note-box { font-style:italic; font-size:13px; color:var(--mid); text-align:center;
+              line-height:1.6; padding:0 4px 14px; }
 </style>
 </head>
 <body class="tier-app">
@@ -88,6 +134,10 @@
 <div id="board"></div>
 <div id="errBar"></div>
 <div class="spacer"></div>
+
+<div class="backdrop" id="backdrop">
+  <div class="sheet" id="sheet"></div>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -229,6 +279,235 @@ function load(){
       err('Could not load arrivals. This is usually the connection.');
     });
 }
+
+
+/* ── the guest sheet ───────────────────────────────────────────
+   One screen, two starting states. A guest who filled the form in from their
+   phone arrives here prefilled; one who did not arrives here empty. Same
+   fields, same confirm, which is what makes this edit rather than create.
+
+   Reception's script is the order: verify the dietaries, verify tonight's
+   dining against the real menu, amend, confirm. So those two sit at the top
+   and the softer context sits below them.                                */
+
+var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+                 'Nut allergy','Shellfish allergy','Egg allergy'];
+
+/* Advisory only. It exists so that when a guest cannot be reached, staff can
+   judge whether they are the type to eat out. It never drives logic. */
+var PURPOSE = ['Independent or business','Exploring the area',
+               'Celebration','Short break','Rest and recovery'];
+var APPROACH = [['most','Dining in most nights'],
+                ['mix','A mix of in and out'],
+                ['out','Mostly eating out']];
+
+var bd = document.getElementById('backdrop');
+var sheetEl = document.getElementById('sheet');
+function showSheet(){ bd.className = 'backdrop show'; }
+function closeSheet(){ bd.className = 'backdrop'; }
+bd.onclick = function(e){ if (e.target === bd) closeSheet(); };
+
+function openGuest(r){
+  var p = r.pre || {};
+  /* Answers are seeded from what is already stored, so a guest who filled the
+     form in never has to repeat themselves at the desk. */
+  var a = {
+    dining:   p.dining === undefined ? null : !!p.dining,
+    pax:      p.pax || r.stay.adults || 2,
+    diets:    (p.diets || []).slice(),
+    noDiets:  !!p.noDiets,
+    dnote:    p.dnote || '',
+    arriveBy: p.arriveBy || '',
+    purpose:  (p.purpose || []).slice(),
+    approach: p.approach || '',
+    occasion: p.occasion || '',
+    wellness: p.wellness === undefined ? null : !!p.wellness,
+    note:     p.note || ''
+  };
+
+  var pax = a.pax;
+
+  sheetEl.innerHTML =
+    '<h3>Villa ' + r.villa + '</h3>' +
+    '<div class="gd">' + esc(nameOf(r.stay)) +
+      '<span class="gd-sub">' + stayLabel(r.stay) +
+        (r.stay.adults ? ' \u00b7 ' + r.stay.adults +
+          (Number(r.stay.adults)===1?' adult':' adults') : '') +
+      '</span></div>' +
+    (hasForm(p) ? '' :
+      '<div class="note-box">No pre-arrival form. Fill it in together.</div>') +
+
+    '<div class="sheet-label">Dining on arrival night</div>' +
+    '<div class="seg">' +
+      '<button id="sDin">Dining</button>' +
+      '<button id="sOut">Not dining</button>' +
+    '</div>' +
+    '<div id="paxWrap"><div class="sheet-label">Guests at dinner</div>' +
+      '<div class="pax-row" id="paxRow"></div></div>' +
+
+    '<div class="sheet-label">Dietary requirements</div>' +
+    '<div class="chips" id="dChips"></div>' +
+    '<div class="chips" id="dNone"></div>' +
+    '<input class="txt" id="fDnote" type="text" placeholder="Whose, and how severe" autocomplete="off">' +
+
+    '<div class="sheet-label">Estimated arrival</div>' +
+    '<input class="txt" id="fArrive" type="text" placeholder="e.g. 4pm, or after 5pm" autocomplete="off">' +
+
+    '<div class="sheet-label">Purpose of visit</div>' +
+    '<div class="chips" id="pChips"></div>' +
+
+    '<div class="sheet-label">How they plan to dine</div>' +
+    '<div class="chips" id="aChips"></div>' +
+
+    '<div class="sheet-label">Special occasion</div>' +
+    '<input class="txt" id="fOcc" type="text" placeholder="Birthday, anniversary" autocomplete="off">' +
+
+    '<div class="sheet-label">Wellness or massage</div>' +
+    '<div class="seg">' +
+      '<button id="wYes">Interested</button>' +
+      '<button id="wNo">Not interested</button>' +
+    '</div>' +
+
+    '<div class="sheet-label">Anything else</div>' +
+    '<input class="txt" id="fNote" type="text" placeholder="Preferences, requests" autocomplete="off">' +
+
+    '<button class="opt solid" id="sConfirm" style="margin-top:18px">Confirm</button>' +
+    '<button class="opt quiet" id="sClose">Close</button>';
+
+  document.getElementById('fDnote').value  = a.dnote;
+  document.getElementById('fArrive').value = a.arriveBy;
+  document.getElementById('fOcc').value    = a.occasion;
+  document.getElementById('fNote').value   = a.note;
+
+  function paintDining(){
+    document.getElementById('sDin').className = a.dining === true  ? 'on' : '';
+    document.getElementById('sOut').className = a.dining === false ? 'on' : '';
+    /* Covers only mean something if they are eating. */
+    document.getElementById('paxWrap').style.display = a.dining === true ? '' : 'none';
+  }
+  document.getElementById('sDin').onclick = function(){ a.dining = true;  paintDining(); };
+  document.getElementById('sOut').onclick = function(){ a.dining = false; paintDining(); };
+
+  function paintPax(){
+    var box = document.getElementById('paxRow'); box.innerHTML = '';
+    for (var i=1;i<=8;i++)(function(v){
+      var b = document.createElement('button');
+      b.className = 'pax' + (pax===v ? ' on' : ''); b.textContent = v;
+      b.onclick = function(){ pax = v; paintPax(); };
+      box.appendChild(b);
+    })(i);
+  }
+
+  function paintDiets(){
+    var box = document.getElementById('dChips'); box.innerHTML = '';
+    DIETARIES.forEach(function(d){
+      var b = document.createElement('button');
+      b.className = 'chip' + (a.diets.indexOf(d)>-1 ? ' on' : ''); b.textContent = d;
+      b.onclick = function(){
+        var i = a.diets.indexOf(d);
+        if (i>-1) a.diets.splice(i,1); else { a.diets.push(d); a.noDiets = false; }
+        paintDiets(); paintNone();
+      };
+      box.appendChild(b);
+    });
+  }
+  /* "None to declare" is a positive answer, not the absence of one. Without
+     it, a guest who genuinely has no allergies is indistinguishable from one
+     nobody asked, which is the whole reason reception is going through this. */
+  function paintNone(){
+    var box = document.getElementById('dNone'); box.innerHTML = '';
+    var b = document.createElement('button');
+    b.className = 'chip' + (a.noDiets ? ' on' : ''); b.textContent = 'No allergies to declare';
+    b.onclick = function(){
+      a.noDiets = !a.noDiets;
+      if (a.noDiets) a.diets = [];
+      paintDiets(); paintNone();
+    };
+    box.appendChild(b);
+  }
+
+  function paintPurpose(){
+    var box = document.getElementById('pChips'); box.innerHTML = '';
+    PURPOSE.forEach(function(t){
+      var b = document.createElement('button');
+      b.className = 'chip' + (a.purpose.indexOf(t)>-1 ? ' on' : ''); b.textContent = t;
+      b.onclick = function(){
+        var i = a.purpose.indexOf(t);
+        if (i>-1) a.purpose.splice(i,1); else a.purpose.push(t);
+        paintPurpose();
+      };
+      box.appendChild(b);
+    });
+  }
+  function paintApproach(){
+    var box = document.getElementById('aChips'); box.innerHTML = '';
+    APPROACH.forEach(function(pair){
+      var b = document.createElement('button');
+      b.className = 'chip' + (a.approach===pair[0] ? ' on' : ''); b.textContent = pair[1];
+      b.onclick = function(){ a.approach = (a.approach===pair[0] ? '' : pair[0]); paintApproach(); };
+      box.appendChild(b);
+    });
+  }
+  function paintWellness(){
+    document.getElementById('wYes').className = a.wellness === true  ? 'on' : '';
+    document.getElementById('wNo').className  = a.wellness === false ? 'on' : '';
+  }
+  document.getElementById('wYes').onclick = function(){ a.wellness = true;  paintWellness(); };
+  document.getElementById('wNo').onclick  = function(){ a.wellness = false; paintWellness(); };
+
+  paintDining(); paintPax(); paintDiets(); paintNone();
+  paintPurpose(); paintApproach(); paintWellness();
+
+  document.getElementById('sClose').onclick = closeSheet;
+  document.getElementById('sConfirm').onclick = function(){
+    a.pax      = pax;
+    a.dnote    = document.getElementById('fDnote').value.trim();
+    a.arriveBy = document.getElementById('fArrive').value.trim();
+    a.occasion = document.getElementById('fOcc').value.trim();
+    a.note     = document.getElementById('fNote').value.trim();
+    save(r, a);
+  };
+  showSheet();
+}
+
+/* Writes the guest's own node, whoever typed it. No record of who filled it
+   in: the chef reads one thing and does not care.
+
+   PATCH rather than PUT, so a field this screen does not carry is left alone
+   rather than deleted. `at` is set only if the form had never been started,
+   so it keeps meaning "when the answers first existed". */
+function save(r, a){
+  var payload = {
+    dining: a.dining, pax: a.dining ? a.pax : 0,
+    diets: a.diets, noDiets: a.noDiets, dnote: a.dnote,
+    arriveBy: a.arriveBy, purpose: a.purpose, approach: a.approach,
+    occasion: a.occasion, wellness: a.wellness, note: a.note,
+    confirmedAt: new Date().toISOString()
+  };
+  if (!hasForm(r.pre)) payload.at = payload.confirmedAt;
+
+  var before = r.pre;
+  r.pre = Object.assign({}, r.pre || {}, payload);   /* optimistic */
+  render(); closeSheet();
+
+  fetch(DB + '/bookings/' + r.stay.id + '/prearrival.json', {
+    method: 'PATCH', headers: { 'Content-Type':'application/json' },
+    body: JSON.stringify(payload)
+  }).then(function(res){
+    if (!res.ok) throw new Error(res.status);
+  }).catch(function(){
+    r.pre = before; render();      /* put it back rather than lie about it */
+    err('Could not save. Nothing was changed.');
+  });
+}
+
+document.getElementById('board').addEventListener('click', function(e){
+  var btn = e.target.closest ? e.target.closest('.arr') : null;
+  if (!btn) return;
+  var v = btn.getAttribute('data-villa');
+  var r = ROWS.filter(function(x){ return x.villa === v; })[0];
+  if (r) openGuest(r);
+});
 
 /* Only the boards this role may open. Sign out is never filtered. */
 function navFilter(role){

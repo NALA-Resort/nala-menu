@@ -48,10 +48,16 @@ in themselves.
   Measured. Not a Galaxy problem, only the narrowest phones
 - **[print]** The one em dash in `list.html`, backlog item 9
 
-## Stage C. Front Desk Arrival
+## Stage C. Front Desk Arrival. DONE 17 Aug
 
-Unblocked, highest value, and it settles the questionnaire shape that Stage E
-inherits. This is where building actually starts.
+Published as `front-desk.html`, with `tests/fd_suite.py`, 49 assertions.
+Verified the suite fails on real breaks rather than merely passing: removing
+the arrival filter fails three tests, removing the prefill fails three more.
+
+Still outstanding on this screen: the allergy conflict check at the desk, which
+is a separate future job described in `SCREENS.md`. And `list.html` and
+`housekeeping.html` need one line each adding Front Desk Arrival to their nav
+dropdown. Those two belong to the print chat, so this chat must not touch them.
 
 - **[me]** Mock at 390, check at 360, do not break at 320. Show you before it
   ships
