@@ -143,6 +143,20 @@ and confirmed includes not dining. See `GUEST-DATA.md`.
 This is an input path into the Reservations screen, which is the chef's screen
 and already exists. It is not a new output.
 
+**Confirming and checking in are two buttons and two fields.** Confirm verifies
+the answers and leaves the guest under Arriving. Confirm and check in does the
+same and moves them to Arrived. They are not one event: reception can verify on
+the phone the day before and the guest turns up hours later, so the sections
+follow arrival rather than confirmation.
+
+`checkedInAt` is only ever set, never cleared. A guest who has arrived has
+arrived, and editing their answers afterwards must not un-arrive them.
+
+FUTURE: check in is where the Mews reservation moves to Checked in, through the
+Connector API. Nothing writes back to Mews yet, so until that exists the app is
+the only record that a guest has arrived. The hook is marked in
+`front-desk.html`.
+
 Closes the gap the paper process never could: today only some guests return the
 form and the chef gets handwritten sheets.
 
