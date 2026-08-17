@@ -145,6 +145,22 @@ Name and dates may ride along for display and are never written.
 
 ---
 
+## Done 17 Aug
+
+- `welcome.html` takes a booking id and writes nothing at all. It was the last
+  guest page reading a phone out of a link, and it wrote both `/guests` and
+  `/roomguests` on every open. The merge-tag test panel went with it.
+- `/guests`, `/roomguests` and `/responses` are no longer world writable. They
+  are admin write only now, kept read-only so the boards can fall back while
+  old dates age out.
+- `/extcancel` removed from the rules entirely. It was world writable and
+  nothing used it: those keys live inside `/manual`.
+- **One world writable node remains, and it has to:**
+  `/bookings/<id>/prearrival`, because a guest cannot sign in.
+- Diagnostics can find and clear a booking left in two villas. It only offers
+  to delete the villas Mews disagrees with, and lists the rest untouched rather
+  than guessing.
+
 ## What this costs
 
 - `index.html` and `welcome.html` take a booking id, and the reply panel stops

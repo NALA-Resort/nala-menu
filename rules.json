@@ -1,19 +1,17 @@
 {
   "rules": {
+    "_comment_old_scheme": "guests, roomguests and responses are the old scheme, keyed on a phone number or written by a guest page. Nothing writes them since 17 Aug: the dinner cell replaced responses, and Mews records who is in a villa through stays. They are read-only for staff now, kept only so the boards can fall back while old dates age out. Delete the nodes and these rules once no date within the look-back window still uses them.",
     "guests": {
-      "$phone": { ".read": true, ".write": true }
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin'"
     },
     "roomguests": {
       ".read": "auth != null",
-      "$date": {
-        "$room": { ".write": true }
-      }
+      ".write": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin'"
     },
     "responses": {
-      "$date": {
-        ".read": "auth != null",
-        "$phone": { ".read": true, ".write": true }
-      }
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin'"
     },
     "dinner": {
       "$date": {
@@ -33,7 +31,6 @@
       "$date": { ".read": true, ".write": "auth != null" }
     },
     "dietaries": { ".read": true, ".write": "auth != null" },
-    "extcancel": { ".read": "auth != null", ".write": true },
     "pushsubs": {
       ".read": "auth != null",
       "$emailkey": {

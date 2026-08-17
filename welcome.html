@@ -197,94 +197,23 @@
 </div>
 
 <script>
-  var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
-
-  function todayKey(){
-    var d = new Date();
-    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  }
-
   var qs = new URLSearchParams(location.search);
-  var G = { phone:(qs.get('p')||'').replace(/\D/g,''), room:qs.get('r')||'',
-            name:(qs.get('n')||'').trim(), arrives:qs.get('a')||'', departs:qs.get('d')||'' };
+  /* The booking id is the only thing this page needs, and it only needs it to
+     pass along. Nothing here is stored: Mews records who is in a villa, through
+     /stays, and it does that for guests who never open a link at all.
+
+     Until 17 Aug this read a phone, a villa and dates out of the URL and wrote
+     them to /guests and /roomguests. Both are gone. */
+  var G = { id:(qs.get('b')||'').trim() };
 
   // No guest-specific information is shown on this page. The greeting stays
   // generic even when a name is present in the link, so the page is safe to
   // read over a shoulder, screenshot, or leave open on a shared device.
 
-  /* ── TEMPORARY: merge-tag test panel ──────────────────────────────────
-     Shows the raw link parameters so GuestTouch's tags can be checked end
-     to end. Only ever renders when the link carries &t=1, so real guest
-     links are unaffected. Delete this block when testing is finished. */
-  if (qs.get('t') === '1') {
-    var rows = [
-      ['p  phone',      qs.get('p')],
-      ['r  room',       qs.get('r')],
-      ['n  name',       qs.get('n')],
-      ['a  arrival',    qs.get('a')],
-      ['d  departure',  qs.get('d')]
-    ];
-    function fmt(v){
-      if (v === null) return '<b style="color:#A8321E">MISSING</b>';
-      if (v === '')   return '<b style="color:#A8321E">EMPTY</b>';
-      if (/\{\{|\}\}/.test(v)) return '<b style="color:#A8321E">' + v + '</b> &larr; tag did not resolve';
-      return v;
-    }
-    function readsAs(v){
-      /* welcome.html does not load nala-shared.js, so parse the two formats
-         the app accepts here: ISO YYYY-MM-DD and DD/MM/YYYY. */
-      var d = null, m;
-      if (v && (m = String(v).trim().match(/^(\d{4})-(\d{2})-(\d{2})/))) d = new Date(+m[1], +m[2]-1, +m[3]);
-      else if (v && (m = String(v).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) d = new Date(+m[3], +m[2]-1, +m[1]);
-      if (!d || isNaN(d)) return '<b style="color:#A8321E">unreadable</b>';
-      var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-      var mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      return days[d.getDay()]+' '+d.getDate()+' '+mon[d.getMonth()]+' '+d.getFullYear();
-    }
-    var html = '<div style="margin:24px 0;padding:14px;border:1px solid #A8321E;'
-      + 'background:#fff;font:12px/1.7 Menlo,Consolas,monospace;text-align:left;color:#1C1C1A">'
-      + '<div style="font-weight:bold;color:#A8321E;margin-bottom:8px">MERGE TAG TEST - remove before go-live</div>';
-    rows.forEach(function(r){
-      html += '<div><span style="color:#777">' + r[0] + '</span> &nbsp; ' + fmt(r[1]) + '</div>';
-    });
-    html += '<div style="margin-top:8px;color:#777">arrival reads as</div><div>' + readsAs(qs.get('a')) + '</div>'
-         +  '<div style="margin-top:6px;color:#777">departure reads as</div><div>' + readsAs(qs.get('d')) + '</div>'
-         +  '<div style="margin-top:8px;color:#777">writes to</div>'
-         +  '<div>guests/' + (G.phone || '?') + '</div>'
-         +  '<div>roomguests/' + todayKey() + '/' + (G.room || '?') + '</div>'
-         +  '<div style="margin-top:8px;color:#777">raw query</div>'
-         +  '<div style="word-break:break-all">' + (location.search || '(none)') + '</div>'
-         +  '</div>';
-    document.querySelector('main').insertAdjacentHTML('beforeend', html);
-  }
-
   // The menu button carries the guest through, so the RSVP knows them.
   document.getElementById('menuBtn').href = '/' + location.search;
 
-  // Register the guest against their room the moment the page opens.
-  // Identical writes to the menu page, so staff pages need no changes.
-  function put(path, body){
-    return fetch(DB + path + '.json', {
-      method: 'PUT', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(body)
-    }).catch(function(){});
-  }
-  function patch(path, body){
-    return fetch(DB + path + '.json', {
-      method: 'PATCH', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(body)
-    }).catch(function(){});
-  }
-
-  if (G.phone) {
-    patch('/guests/' + G.phone, { name:G.name, room:G.room, arrives:G.arrives, departs:G.departs });
-    if (G.room) {
-      put('/roomguests/' + todayKey() + '/' + G.room, {
-        name: G.name, phone: G.phone, arrives: G.arrives, departs: G.departs,
-        at: new Date().toISOString()
-      });
-    }
-  }
+  /* This page writes nothing. It is a greeting and a door. */
 </script>
 </body>
 </html>

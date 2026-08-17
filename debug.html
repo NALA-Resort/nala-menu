@@ -46,6 +46,16 @@ deleted until you press the second button.</p>
 <button id="junkDel" onclick="deleteJunk()" disabled>Delete listed</button>
 <pre id="junk">not run</pre>
 
+<h2>Find and clear a booking left in two villas</h2>
+<p style="margin:.3em 0 .6em">A guest moved between villas leaves an entry
+behind in the one they left. The Worker clears it, but only when Mews next
+sends an event for that booking, so anything stranded before that fix existed
+sits there until it is removed by hand. It is what puts one guest in three
+villas at once.</p>
+<button onclick="findDupes()">Find duplicates</button>
+<button id="dupeDel" onclick="deleteDupes()" disabled>Delete listed</button>
+<pre id="dupes">not run</pre>
+
 <h2>What the boards will show</h2>
 <p style="margin:.3em 0 .6em">Runs the real merge, read only. Nothing is written.</p>
 <input type="date" id="mDate" style="font:inherit;padding:.4em">
@@ -290,6 +300,100 @@ function doWipe(){
    is merely old is left alone, because "looks stale to me" is not a rule this
    should be applying to live data.                                         */
 var JUNK = [];
+
+/* One booking should hold one villa per night. Where it holds two, Mews
+   decides which survives: /bookings/<id>/pms.villa is a single value.
+
+   Only ever offers to delete the ones Mews disagrees with. If Mews cannot be
+   read, nothing is listed rather than guessing: deleting the wrong villa is
+   worse than leaving both, because both is at least visible. */
+var DUPES = [];
+
+function findDupes(){
+  document.getElementById('dupes').textContent = 'scanning…';
+  fetch(DB+'/stays.json?v='+Date.now())
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(all){
+      var byDate = {}, ids = {};
+      for (var date in (all || {})){
+        var day = all[date] || {};
+        var seen = {};
+        for (var villa in day){
+          var e = day[villa];
+          if (!e || typeof e !== 'object' || !e.id) continue;
+          (seen[e.id] = seen[e.id] || []).push({ villa: villa, rec: e });
+          ids[e.id] = true;
+        }
+        for (var id in seen) if (seen[id].length > 1) {
+          byDate[date] = byDate[date] || {};
+          byDate[date][id] = seen[id];
+        }
+      }
+      if (!Object.keys(byDate).length){
+        document.getElementById('dupeDel').disabled = true;
+        show('dupes', 200, 'No booking is in more than one villa on any night.');
+        return;
+      }
+      /* Ask Mews about each booking involved, once. */
+      var need = [];
+      for (var d in byDate) for (var i in byDate[d]) need.push(i);
+      need = need.filter(function(x,i,a){ return a.indexOf(x) === i; });
+      return Promise.all(need.map(function(id){
+        return fetch(DB+'/bookings/'+id+'/pms.json?v='+Date.now())
+          .then(function(r){ return r.ok ? r.json() : null; })
+          .then(function(p){ return { id:id, villa: p && p.villa }; })
+          .catch(function(){ return { id:id, villa:null }; });
+      })).then(function(says){
+        var villaOf = {};
+        says.forEach(function(x){ villaOf[x.id] = x.villa; });
+        DUPES = [];
+        var lines = [], unknown = [];
+        for (var d in byDate) for (var id in byDate[d]){
+          var keep = villaOf[id];
+          if (keep == null){
+            unknown.push(d + '  ' + id + '  villas ' +
+              byDate[d][id].map(function(x){ return x.villa; }).join(', '));
+            continue;
+          }
+          byDate[d][id].forEach(function(x){
+            if (String(x.villa) === String(keep)) return;
+            DUPES.push({ date:d, villa:x.villa, id:id, keep:keep, rec:x.rec });
+            lines.push(d + '  villa ' + x.villa + '  ' +
+              ((x.rec.first||'') + ' ' + (x.rec.last||'')).trim() +
+              '  (Mews says villa ' + keep + ')');
+          });
+        }
+        document.getElementById('dupeDel').disabled = !DUPES.length;
+        var msg = DUPES.length
+          ? DUPES.length + ' stale entr(y/ies) to delete:\n' + lines.join('\n') +
+            '\n\nRead the list. Every line is a villa Mews says the guest is NOT in.'
+          : 'Duplicates found, but Mews could not settle any of them.';
+        if (unknown.length)
+          msg += '\n\nLeft alone, because Mews had nothing to say:\n' + unknown.join('\n');
+        show('dupes', 200, msg);
+      });
+    })
+    .catch(function(e){ show('dupes', 0, String(e)); });
+}
+
+function deleteDupes(){
+  if (!DUPES.length) return;
+  if (!confirm('Delete ' + DUPES.length + ' stale stay entr(y/ies)? This cannot be undone.')) return;
+  document.getElementById('dupes').textContent = 'deleting…';
+  Promise.all(DUPES.map(function(j){
+    return fetch(DB+'/stays/'+j.date+'/'+j.villa+'.json', { method:'DELETE' })
+      .then(function(r){ return { j:j, ok:r.ok, status:r.status }; })
+      .catch(function(){ return { j:j, ok:false, status:0 }; });
+  })).then(function(res){
+    var bad = res.filter(function(x){ return !x.ok; });
+    var msg = (res.length - bad.length) + ' deleted.';
+    if (bad.length) msg += '\n' + bad.length + ' failed:\n' +
+      bad.map(function(x){ return x.j.date + ' villa ' + x.j.villa + ' -> ' + x.status; }).join('\n');
+    DUPES = [];
+    document.getElementById('dupeDel').disabled = true;
+    show('dupes', bad.length ? 0 : 200, msg);
+  });
+}
 
 function isJunk(v){ return typeof v === 'string' && v.indexOf('{{') > -1; }
 
