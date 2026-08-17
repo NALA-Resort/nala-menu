@@ -159,6 +159,15 @@
                 color:var(--mid); letter-spacing:.03em; }
   .note-box { font-style:italic; font-size:13px; color:var(--mid); text-align:center;
               line-height:1.6; padding:0 4px 14px; }
+  /* What is missing, said in words. A button that silently does nothing is
+     the worst of both. */
+  .miss-note { display:none; font-size:12px; color:var(--red); text-align:center;
+               padding:2px 4px 8px; }
+  .miss-note.show { display:block; }
+  /* The menu did not exist when the guest answered, so this is the first
+     chance anyone has had to notice. */
+  .clash { display:block; color:var(--red); font-size:12px; margin-top:3px; }
+  .seg.miss button, .chips.miss .chip { border-color:var(--red); }
 </style>
 </head>
 <body class="tier-app">
@@ -428,6 +437,21 @@ function summaryHTML(r){
            : (a.diets.length ? esc(a.diets.join(' \u00b7 ')) : '');
   if (diet && a.dnote) diet += '<br><span style="color:var(--mid);font-style:italic">' +
                                esc(a.dnote) + '</span>';
+  /* The one thing on this screen the guest could not have been told. Their
+     form was filled in days before tonight's menu existed, so this is the
+     first moment the two halves can be compared, and reception is holding the
+     menu. It warns rather than blocks: they can settle it in conversation. */
+  if (a.dining !== false){
+    var clash = conflictsFor(a.diets);
+    if (clash.length){
+      var names = clash.map(function(c){ return c.course; })
+        .filter(function(c,i,x){ return x.indexOf(c) === i; });
+      diet += '<br><span class="clash">Tonight\u2019s ' + names.join(' and ') +
+              ' contains ' + esc(clash.map(function(c){ return c.diet; })
+                .filter(function(c,i,x){ return x.indexOf(c) === i; }).join(', ')) +
+              '</span>';
+    }
+  }
   h += sumRow('Dietary', diet);
 
   if (etaLabel(r.pre)) h += sumRow('Arriving', esc(etaLabel(r.pre)));
@@ -491,6 +515,38 @@ function render(){
   document.getElementById('board').innerHTML = h;
 }
 
+/* Which of a guest's dietaries tonight's menu actually contains.
+
+   The chef tags each course at publish time and those tags live at
+   /menutags/<date>. Only explicit tags count: no keyword guessing, the same
+   rule the guest page follows.
+
+   Deliberately NOT shared with index.html's menuConflicts, and the reason
+   matters before somebody "fixes" the duplication. index.html is guest tier
+   and does not load nala-shared.js, by design, so a shared function would drag
+   staff code onto a guest page. What keeps the two honest is that both compare
+   the guest's dietaries against the same /menutags node: change what a
+   conflict means and both have to change.
+
+   This one names the course rather than the dish, because it does not read
+   menu.json. Reception is standing in front of the guest holding the menu, so
+   "the main contains Nut allergy" is enough to start the conversation. */
+function conflictsFor(diets){
+  var hits = [];
+  if (!diets || !diets.length || !TAGS) return hits;
+  ['bread','entree','main','dessert'].forEach(function(course){
+    var tagged = TAGS[course];
+    if (!tagged || !tagged.length) return;
+    tagged.forEach(function(tag){
+      diets.forEach(function(d){
+        if (String(d).toLowerCase() === String(tag).toLowerCase())
+          hits.push({ course: course, diet: d });
+      });
+    });
+  });
+  return hits;
+}
+
 /* One read per booking. /bookings cannot be listed, by design, so there is no
    cheaper shape: reading the node itself returns 401. Seventeen villas is the
    ceiling, and this runs on a date change rather than on a poll. */
@@ -505,6 +561,13 @@ function loadPrearrivals(rows){
 function load(){
   var key = nav.todayKey();
   err('');
+  /* The tags belong to the night being viewed, so they move with the date. A
+     failure here must not take the arrivals down with it: an unflagged allergy
+     is bad, and a blank screen is worse. */
+  api('/menutags/'+key)
+    .then(function(t){ TAGS = t; render(); })
+    .catch(function(){ TAGS = null; });
+
   api('/stays/'+key)
     .then(function(day){
       ROWS = arrivingOn(day, key);
@@ -593,10 +656,11 @@ function openGuest(r){
       '<div class="note-box">No pre-arrival form. Fill it in together.</div>') +
 
     '<div class="sheet-label">Dining on arrival night</div>' +
-    '<div class="seg">' +
+    '<div class="seg" id="diningSeg">' +
       '<button id="sDin">Dining</button>' +
       '<button id="sOut">Not dining</button>' +
     '</div>' +
+    '<div class="miss-note" id="sMiss"></div>' +
     '<div id="paxWrap"><div class="sheet-label">Guests at dinner</div>' +
       '<div class="pax-row" id="paxRow"></div></div>' +
 
@@ -642,8 +706,13 @@ function openGuest(r){
     /* Covers only mean something if they are eating. */
     document.getElementById('paxWrap').style.display = a.dining === true ? '' : 'none';
   }
-  document.getElementById('sDin').onclick = function(){ a.dining = true;  paintDining(); };
-  document.getElementById('sOut').onclick = function(){ a.dining = false; paintDining(); };
+  function clearMiss(){
+    document.getElementById('sMiss').className = 'miss-note';
+    document.getElementById('diningSeg').className = 'seg';
+    document.getElementById('dChips').className = 'chips';
+  }
+  document.getElementById('sDin').onclick = function(){ a.dining = true;  clearMiss(); paintDining(); };
+  document.getElementById('sOut').onclick = function(){ a.dining = false; clearMiss(); paintDining(); };
 
   function paintPax(){
     var box = document.getElementById('paxRow'); box.innerHTML = '';
@@ -663,7 +732,7 @@ function openGuest(r){
       b.onclick = function(){
         var i = a.diets.indexOf(d);
         if (i>-1) a.diets.splice(i,1); else { a.diets.push(d); a.noDiets = false; }
-        paintDiets(); paintNone();
+        clearMiss(); paintDiets(); paintNone();
       };
       box.appendChild(b);
     });
@@ -678,7 +747,7 @@ function openGuest(r){
     b.onclick = function(){
       a.noDiets = !a.noDiets;
       if (a.noDiets) a.diets = [];
-      paintDiets(); paintNone();
+      clearMiss(); paintDiets(); paintNone();
     };
     box.appendChild(b);
   }
@@ -739,6 +808,16 @@ function openGuest(r){
 
   document.getElementById('sClose').onclick = closeSheet;
   document.getElementById('sConfirm').onclick = function(){
+    /* Confirmed means a dining status exists. Saving without one would put a
+       guest in the Arrived section wearing a grey fork, which reads as
+       assumed dining and unconfirmed at the same time. Dietary is asked for
+       too: "no allergies to declare" is a positive answer and the point of
+       going through this at the desk is to have asked. */
+    var missing = [];
+    if (a.dining === null) missing.push('dining');
+    if (!a.noDiets && !a.diets.length) missing.push('dietary');
+    if (missing.length) return flagMissing(missing);
+
     a.pax      = pax;
     a.dnote    = document.getElementById('fDnote').value.trim();
     a.occasion = document.getElementById('fOcc').value.trim();
@@ -746,6 +825,23 @@ function openGuest(r){
     a.wellTime = document.getElementById('fWtime').value.trim();
     save(r, a);
   };
+
+  /* Name what is missing and put it on screen, rather than a button that does
+     nothing when pressed. */
+  function flagMissing(which){
+    var seg = document.getElementById('diningSeg');
+    var chips = document.getElementById('dChips');
+    seg.className   = 'seg' + (which.indexOf('dining') > -1 ? ' miss' : '');
+    chips.className = 'chips' + (which.indexOf('dietary') > -1 ? ' miss' : '');
+    var el = document.getElementById('sMiss');
+    el.textContent = which.length === 2
+      ? 'Ask about dinner and dietaries before confirming.'
+      : (which[0] === 'dining' ? 'Ask whether they are dining tonight.'
+                               : 'Ask about dietaries, even to rule them out.');
+    el.className = 'miss-note show';
+    (which.indexOf('dining') > -1 ? seg : chips)
+      .scrollIntoView({ block:'center', behavior:'smooth' });
+  }
   showSheet();
 }
 

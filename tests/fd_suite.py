@@ -70,6 +70,10 @@ PRE = {
   "b14": {"openedAt":"2026-08-16T08:00:00Z"}
 }
 
+# Tonight's dish tags, written by the chef at publish. The guest's form was
+# filled in days before this existed.
+TAGS = {"main": ["Nut allergy"]}
+
 WRITES = []
 STATE = {"fail": False}
 
@@ -86,6 +90,8 @@ def fb(route, request):
     if "/staff" in u: body = json.dumps(STAFF)
     elif "/stays/" + today in u: body = json.dumps(STAYS)
     elif "/stays/" in u: body = "null"
+    elif "/menutags/" in u:
+        body = json.dumps(TAGS) if today in u else "null"
     elif "/bookings/" in u and "/prearrival" in u:
         k = u.split("/bookings/")[1].split("/")[0]
         body = json.dumps(PRE[k]) if k in PRE else "null"
@@ -379,6 +385,70 @@ with sync_playwright() as p:
     STATE["fail"] = False
     pg.close()
 
+
+
+
+    # ── the allergy nobody could have flagged earlier ───────────
+    # The guest answered days before tonight's menu existed, so check-in is the
+    # first moment the two halves can be compared, and reception is holding the
+    # menu. It warns rather than blocks: they settle it in conversation.
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    sumtxt = pg.locator(".sum").inner_text()
+    ck("a dietary tonight's menu contains is flagged at the desk",
+       "Nut allergy" in sumtxt and "main contains" in sumtxt)
+    ck("and it does not block confirming, since reception can resolve it",
+       pg.evaluate("()=>!!document.querySelector('.sum-btns button[data-act=\"confirm\"]')"))
+    pg.close()
+
+    # A guest who is not dining cannot clash with tonight's menu.
+    PRE["b4"]["dining"] = False
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    ck("a guest who is not dining is never flagged",
+       "contains" not in pg.locator(".sum").inner_text())
+    PRE["b4"]["dining"] = True
+    pg.close()
+
+    # A dietary the chef did not tag is not a conflict. No keyword guessing,
+    # same rule as the guest page.
+    TAGS.clear(); TAGS.update({"dessert": ["Gluten free"]})
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    ck("an untagged dietary is not invented into a conflict",
+       "contains" not in pg.locator(".sum").inner_text())
+    pg.close()
+    TAGS.clear(); TAGS.update({"main": ["Nut allergy"]})
+
+    # ── confirming needs an answer ──────────────────────────────
+    # Confirmed means a dining status exists. Saving without one would put a
+    # guest in Arrived wearing a grey fork, which reads as assumed dining and
+    # confirmed at the same time.
+    pg = board()
+    pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(400)
+    ck("confirming a blank guest saves nothing",
+       len([x for x in WRITES if "/prearrival" in x["u"]]) == 0)
+    ck("and says what is missing rather than doing nothing",
+       "dinner and dietaries" in pg.locator("#sMiss").inner_text())
+    ck("marking the fields that need it",
+       pg.evaluate("()=>diningSeg.className.indexOf('miss')>-1") and
+       pg.evaluate("()=>dChips.className.indexOf('miss')>-1"))
+    pg.locator("#sOut").click(); pg.wait_for_timeout(200)
+    ck("answering one clears the warning", pg.evaluate(
+       "()=>sMiss.className.indexOf('show')<0"))
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(400)
+    ck("but the other is still required",
+       len([x for x in WRITES if "/prearrival" in x["u"]]) == 0 and
+       "dietaries" in pg.locator("#sMiss").inner_text())
+    # "None to declare" is a positive answer, so it satisfies the requirement
+    pg.evaluate("()=>[...document.querySelectorAll('#dNone .chip')][0].click()")
+    pg.wait_for_timeout(200)
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(500)
+    ck("no allergies to declare counts as having asked",
+       len([x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]) == 1)
+    pg.close()
 
     # ── moving between days ─────────────────────────────────────
     # Wired by initDateNav in nala-shared.js, the same header every staff page

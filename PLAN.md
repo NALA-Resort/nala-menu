@@ -54,8 +54,10 @@ Published as `front-desk.html`, with `tests/fd_suite.py`, 49 assertions.
 Verified the suite fails on real breaks rather than merely passing: removing
 the arrival filter fails three tests, removing the prefill fails three more.
 
-Still outstanding on this screen: the allergy conflict check at the desk, which
-is a separate future job described in `SCREENS.md`. And `list.html` and
+Complete as of 17 Aug, including the allergy conflict check at the desk.
+`tests/fd_suite.py` is at 113 assertions.
+
+One thing still outstanding and it is not mine: `list.html` and
 `housekeeping.html` need one line each adding Front Desk Arrival to their nav
 dropdown. Those two belong to the print chat, so this chat must not touch them.
 

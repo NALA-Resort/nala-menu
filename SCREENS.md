@@ -124,7 +124,7 @@ and already exists. It is not a new output.
 Closes the gap the paper process never could: today only some guests return the
 form and the chef gets handwritten sheets.
 
-### 2b. Allergy conflict at the desk. FUTURE JOB, not built
+### 2b. Allergy conflict at the desk. BUILT 17 Aug
 
 The mechanic that already exists: the chef publishes a menu and tags which
 dietaries each dish conflicts with, per day, at `/menutags/<date>`. When a
@@ -144,14 +144,22 @@ run at the one moment when both halves finally exist. The receptionist raises
 it with the guest standing in front of them, which is a better conversation
 than a warning on a phone days earlier.
 
-Two notes for whoever builds it:
+How it was resolved, since the plan called for moving `menuConflicts()` out of
+`index.html` into `nala-shared.js` and that turned out to be wrong:
 
-- The conflict logic is `menuConflicts()` inside `index.html`. It would need to
-  move to `nala-shared.js` first, or be written twice, and written twice is how
-  the two screens start disagreeing about the same allergy.
-- The guest page requires a note before saving. Reception should almost
-  certainly not be blocked the same way: they are talking to the guest and can
-  resolve it verbally. Worth deciding rather than inheriting.
+`index.html` does not load `nala-shared.js` and must not. It is guest tier, and
+a shared function would drag staff code onto a guest page. So Front Desk
+Arrival compares the guest's dietaries against `/menutags/<date>` directly,
+which is the same node the guest page's tags come from. Two comparisons, one
+source of truth. Change what a conflict means and both have to change, which is
+what keeps them honest.
+
+The desk version names the course rather than the dish, because it does not
+read `menu.json`. Reception is holding the menu, so "tonight's main contains
+Nut allergy" is enough to start the conversation.
+
+It warns and does not block. The guest page requires a note before saving;
+reception is talking to the guest and can settle it out loud.
 
 ### 3. Registration cards, print
 
