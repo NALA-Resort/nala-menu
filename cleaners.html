@@ -93,7 +93,17 @@
   .tile .chip.pre { background:transparent; border-color:var(--ink); color:var(--ink); }
   .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
   .tile .sub b { color:var(--ink); }
-  /* the guest is coming back: amber from 15 minutes, red from 20 */
+  /* The clock on an available villa, and the only place on this board where
+     colour is about time rather than about state. Green for the first ten
+     minutes, because a villa turned around inside the window is the thing
+     going right and it read identically to one nobody had touched. Ink from
+     ten, amber from fifteen, red from twenty: the guest is coming back.
+
+     A darker green than the tile border, because this one is 9.5px text and
+     often sits on a green tile. --greenb reads at 2.8 to 1 against that fill,
+     which is not a colour anybody picks out on a phone in daylight. This is
+     5 to 1 on every background it lands on. */
+  .tile .sub b.fresh { color:#4E6B4B; }
   .tile .sub b.soon { color:var(--amberb); }
   .tile .sub b.late { color:var(--red); }
 
@@ -486,7 +496,7 @@ function render(){
       else if (h.departed || row.pushedIn) sub='Departed';
       else if (h.bfast){
         var m = mins(h.bfast);
-        var w = m >= 20 ? ' late' : (m >= 15 ? ' soon' : '');
+        var w = m >= 20 ? ' late' : (m >= 15 ? ' soon' : (m < 10 ? ' fresh' : ''));
         sub='Available <b class="el'+w+'">'+m+'m</b>';
       }
       else if (row.kind==='pre') sub='Arriving today';

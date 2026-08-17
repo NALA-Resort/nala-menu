@@ -101,11 +101,20 @@ with sync_playwright() as p:
       return b? {t:b.textContent, cls:b.className, col:getComputedStyle(b).color} : null;};
       return {twelveMin:g('2'), fourMin:g('14'), amber:g('6'), red:g('9')};}""")
     print("   breakfast timers:", warn)
-    ck("a guest seated under 15 minutes is not warned yet", warn["fourMin"]["cls"]=="el")
-    ck("12 minutes is not yet amber", warn["twelveMin"]["cls"]=="el")
+    # Four bands, and the first one is the point of the exercise: a villa turned
+    # around inside ten minutes is the thing going right, and it used to read
+    # exactly like one nobody had touched.
+    ck("4 minutes is green, because that is a villa being turned around fast",
+       "fresh" in warn["fourMin"]["cls"] and warn["fourMin"]["col"]=="rgb(78, 107, 75)")
+    ck("12 minutes has dropped out of green", "fresh" not in warn["twelveMin"]["cls"])
+    ck("and is not amber yet either",
+       "soon" not in warn["twelveMin"]["cls"] and "late" not in warn["twelveMin"]["cls"])
     ck("17 minutes turns amber", "soon" in warn["amber"]["cls"])
     ck("24 minutes turns red", "late" in warn["red"]["cls"]
        and warn["red"]["col"]=="rgb(168, 50, 30)")
+    ck("no tile carries two bands at once", pg.evaluate(
+       "()=>[...document.querySelectorAll('.tile .sub b')].every(b=>"
+       "['fresh','soon','late'].filter(c=>b.classList.contains(c)).length<=1)"))
     chips=pg.evaluate("""()=>{const g=n=>[...document.querySelectorAll('#grid .tile')]
       .find(b=>b.querySelector('.rn').textContent===n).querySelector('.chip');
       const c=n=>{const e=g(n),s=getComputedStyle(e);return {bg:s.backgroundColor,fg:s.color,t:e.textContent};};
