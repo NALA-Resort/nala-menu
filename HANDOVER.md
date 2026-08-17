@@ -311,6 +311,17 @@ where on the page. It is not to change what the sheets MEAN or where their
 data comes from. If a print change seems to need a data change, or a change
 to `nala-shared.js`, it stops and comes back here.
 
+## Publishing can add and update, but not delete
+
+`tools/push.py` builds a tree from the files it is given on top of the existing
+one, so a path it is not told about simply stays. Deleting a file locally and
+publishing looks like it worked and does not: on 17 Aug a duplicate test suite
+sat on main for hours after it had been removed.
+
+`tools/rm.py` does deletions, same token, same one commit:
+
+    python3 tools/rm.py "why it is going" path/to/file
+
 ## Backlog
 
 **1. Rotate the GitHub token. STILL OPEN and now worse.** One token serves
