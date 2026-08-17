@@ -241,6 +241,28 @@ with sync_playwright() as p:
     STATE["fail"] = False
     pg.close()
 
+    # ── the dining description ──────────────────────────────────
+    # Placeholder copy, but the shape is not a placeholder: the guest is asked
+    # to commit to dinner on a night whose menu does not exist yet, so the
+    # explanation has to be read BEFORE the two buttons, not under them.
+    pg = guest()
+    intro = pg.locator("#dineHelp")
+    ck("the dining description is on the page", intro.is_visible())
+    ck("it states the seating time, which is the one thing a guest plans around",
+       "6:00" in intro.inner_text() and "6:30" in intro.inner_text())
+    ck("it explains why there is no menu to show yet",
+       "not exist yet" in intro.inner_text() or "will not exist" in intro.inner_text())
+    ck("breakfast is not mentioned, which was asked for",
+       "breakfast" not in intro.inner_text().lower())
+    ck("no placeholder marker is left where a guest can read it",
+       "PLACEHOLDER" not in pg.inner_text("body"))
+    ck("it sits above the two buttons, not below them", pg.evaluate(
+       "()=>document.getElementById('dineHelp').getBoundingClientRect().bottom"
+       "<=document.querySelector('#qDine .opts').getBoundingClientRect().top+1"))
+    ck("and it is one block, not a stack of two",
+       pg.locator("#qDine .q-h").count() == 1)
+    pg.close()
+
     # ── widths ──────────────────────────────────────────────────
     for w in (390, 360, 320):
         pg = guest(w=w)

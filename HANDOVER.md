@@ -149,8 +149,14 @@ rather than handwritten.
    6:30, breakfast 8:00 to 9:30. Nothing displays them yet: no page has ever
    stated a service time. Where they should appear is a design decision, so it
    is in `PARKED.md` with a proposal rather than guessed at here.
-7. **The pre-arrival help line** under "will you dine on your first night" is a
-   marked placeholder. Owner asked on 18 Aug to leave it for now. The guest answers before that night's menu exists, so
+7. **The pre-arrival dining description is placeholder copy.** Asked for on
+   18 Aug: a short description of how dining works, above the opt in rather
+   than under it, because the guest is being asked to commit to something
+   nobody has described. Written and live. The seating time in it is real; the
+   rest stands in and is deliberately plausible, because the page is live and
+   a guest may read it before the final words arrive. Breakfast is not
+   mentioned, as asked. The marker is a comment in the source, not on screen.
+   Replace the words in `prearrival.html`, id `dineHelp`. The guest answers before that night's menu exists, so
    something has to stand in for it.
 
 `TESTING.md` has ten checks a sandbox cannot run, ordered by what would hurt

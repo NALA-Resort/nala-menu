@@ -95,7 +95,9 @@ None of these moved today, and none of them can move without you.
 5. ~~Whether Mews sends true UTC.~~ Answered: it does, and the Worker now
    converts. See `TESTING.md` section 7.
 6. ~~Dinner and breakfast hours.~~ Answered, see above.
-7. ~~The placeholder line on the pre-arrival form.~~ Leave for now, 18 Aug.
+7. **The wording of the dining description on the pre-arrival form.** Standing
+   in and live. Only the 6:00 to 6:30 seating is a real fact; the rest is mine
+   and should be yours. `prearrival.html`, id `dineHelp`.
 
 ## 9. For the print chat, not for you
 
