@@ -11,6 +11,70 @@ came from the user, not from the database.
 
 ---
 
+## Two conversations, not one
+
+These were fused in earlier drafts and it caused several wrong conclusions.
+They have different purposes, different lifetimes and different homes.
+
+**Pre-arrival.** Gathers data that sits against the guest for their whole stay:
+type of stay, dietaries, arrival time, and dining on the arrival night. Happens
+once, before or at check-in. Lives in `/bookings/<id>/prearrival`.
+
+**The nightly dinner request.** Goes to in-house guests each day asking whether
+they are dining that evening. Resets every night. Lives per date, where nightly
+answers already live.
+
+One is a profile. The other is tonight. Do not put them in the same node
+because they look like the same question.
+
+### The arrival night is answered by pre-arrival, not by a text
+
+Most guests check in after 2pm, so the nightly request would arrive too late to
+be useful. That is why the pre-arrival form asks about the arrival night
+specifically, and why it describes what the menu will be like.
+
+It is also why reception shows the guest the actual menu at the desk and
+confirms the answer is still right. The guest answered days ago, against a
+description. At the desk they see the real thing.
+
+## The three villa states
+
+- **Vacant.** No guest attached to the room.
+- **Awaiting.** A guest is in house and has not answered tonight's request.
+  Resets each night.
+- **Confirmed.** A dining status is set for tonight.
+
+**Confirmed includes not dining.** It is about an answer existing, not about
+the answer being yes. Confirmed and dining are two different things and the
+board has to keep them apart.
+
+## The link icon is a delivery signal
+
+It says the guest received the message and opened it. It stays whether or not
+they answered, because that is the useful state: opened and unanswered means
+chase gently, never opened means the phone is off or the number is wrong, so
+reach out another way.
+
+It is replaced the moment a dining status exists, because by then it says
+nothing: a guest icon already means they answered, and a hotel icon already
+means staff entered it. Verified 17 Aug that the tile and the villa sheet both
+already behave this way. No change needed.
+
+## Check-in at the desk
+
+One screen, two starting states, same fields and same confirm. Not two flows.
+
+**Form completed.** Reception sees the answers. Verifies the dietaries aloud,
+verifies tonight's dining against the real menu, amends anything that changed,
+presses confirm.
+
+**Form not completed.** Reception fills it in with the guest, then confirms.
+
+This is why the screen is edit rather than create, and why every arriving guest
+ends the day confirmed.
+
+---
+
 ## The principle
 
 **A node has one writer. `responses` and `prearrival` hold only what a person

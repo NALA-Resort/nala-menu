@@ -69,6 +69,12 @@ and one place whoever typed it. It is edit rather than create: a guest who
 answered half the form should see those answers, not a blank one. No record of
 who filled it in.
 
+Settled 17 Aug: the arrival night's dining answer comes from pre-arrival, not
+from the nightly text, because guests check in after 2pm and the text would
+arrive too late. Reception shows the guest the real menu at the desk and
+confirms the answer still holds. Every arriving guest ends the day confirmed,
+and confirmed includes not dining. See `GUEST-DATA.md`.
+
 This is an input path into the Reservations screen, which is the chef's screen
 and already exists. It is not a new output.
 
