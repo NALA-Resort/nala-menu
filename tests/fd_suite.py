@@ -140,22 +140,19 @@ with sync_playwright() as p:
     ck("and goes red while any remain",
        pg.evaluate("()=>tileLeft.className.indexOf('due')>-1"))
 
-    # ── the pills say what state each guest is in ───────────────
-    def pill(v):
-        return pg.evaluate("()=>{const e=document.querySelector('.arr[data-villa=\"%s\"] .pill');"
-                           "return e?e.className+'|'+e.textContent:null;}" % v)
-    ck("a guest with nothing back carries a paper icon and no pill",
-       pg.evaluate("()=>!!document.querySelector('.arr[data-villa=\"2\"] .paper')")
-       and pill("2") is None)
+    # ── no pills: every state is said once, by tint, section or icon ──
+    # A pill repeating the tint makes the reader check whether the two agree
+    # instead of reading one.
+    ck("no row carries a pill at all",
+       pg.evaluate("()=>document.querySelectorAll('.arr .pill').length") == 0)
+    ck("and no paper icon either, since an amber row already says no form",
+       pg.evaluate("()=>document.querySelectorAll('.arr .paper').length") == 0)
     # Before a guest arrives, the ETA is the fact reception plans around.
     ck("the arrival slot shows on the list, without opening anything",
        "4pm" in pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"] .arr-s').textContent"))
     ck("but the note explaining an odd arrival stays off the row",
        "flight lands" not in pg.evaluate("()=>document.querySelector('.arr[data-villa=\"9\"] .arr-s').textContent"))
-    ck("a guest who filled it in but has not been confirmed", "part|Form done" in pill("4"))
-    ck("a confirmed guest shows the answer, not the word confirmed",
-       "din|Dining" in pill("7"))
-    ck("and confirmed includes not dining", "out|Not dining" in pill("11"))
+
 
     # Whether they are eating, readable without opening anything.
     def fork(v):
@@ -179,9 +176,9 @@ with sync_playwright() as p:
     def seen(v):
         return pg.evaluate("()=>!!document.querySelector('.arr[data-villa=\"%s\"] .seen')" % v)
     ck("a guest who opened the link and stopped shows it", seen("14"))
-    ck("and carries no paper icon, because something did reach them",
-       not pg.evaluate("()=>!!document.querySelector('.arr[data-villa=\"14\"] .paper')"))
-    ck("a guest who never opened it shows the paper icon instead", not seen("2"))
+    ck("a guest who never opened it shows nothing on the right at all",
+       not seen("2") and
+       pg.evaluate("()=>document.querySelectorAll('.arr[data-villa=\"2\"] .fork').length") == 0)
     ck("and one who submitted has nothing left to say", not seen("4"))
 
     # The tint answers the thing reception scans for.
@@ -286,8 +283,10 @@ with sync_playwright() as p:
         ck("and 'at' is NOT overwritten, so it still means when the answers first existed",
            "at" not in body)
     ck("the sheet closes", pg.evaluate("()=>backdrop.className.indexOf('show')<0"))
-    ck("and the guest moves to confirmed without a reload",
-       "din|Dining" in pill("4"))
+    # Confirmation is the section, and the fork is the answer.
+    ck("and the guest moves into the confirmed section without a reload",
+       pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"]').className")
+       .find("is-done") > -1)
     ck("with the count following", pg.evaluate("()=>nLeft.textContent") == "4")
     pg.close()
 
@@ -336,7 +335,8 @@ with sync_playwright() as p:
         ck("stamped confirmed", bool(body.get("confirmedAt")))
     ck("and the summary closes behind it",
        pg.evaluate("()=>document.querySelectorAll('.sum').length") == 0)
-    ck("the guest is now confirmed", "out|Not dining" in pill("9"))
+    ck("the guest is now confirmed", pg.evaluate(
+       "()=>document.querySelector('.arr[data-villa=\"9\"]').className").find("is-done") > -1)
     pg.close()
 
     # ── a failed save must not look like success ────────────────
@@ -346,7 +346,8 @@ with sync_playwright() as p:
     pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
     ck("a rejected save says so", "Could not save" in pg.locator("#errBar").inner_text())
     ck("and the guest is put back rather than left looking confirmed",
-       "part|Form done" in pill("9"))
+       pg.evaluate("()=>document.querySelector('.arr[data-villa=\"9\"]').className")
+       .find("is-done") == -1)
     STATE["fail"] = False
     pg.close()
 

@@ -41,18 +41,6 @@
   .arr-s { font-size:11px; color:var(--mid); margin-top:2px; white-space:nowrap;
            overflow:hidden; text-overflow:ellipsis; }
 
-  /* Status is a tinted pill, never tappable; the row around it is the button.
-     The pill carries the ANSWER rather than the word "confirmed", because
-     confirmed means a dining status exists and it includes not dining. */
-  .pill { font-size:11px; letter-spacing:.06em; text-transform:uppercase;
-          padding:4px 9px; border-radius:11px; white-space:nowrap;
-          border:1px solid transparent; }
-  .pill.din  { background:var(--green); border-color:var(--greenb); }
-  .pill.out  { background:none; border-color:var(--mid); color:var(--mid); }
-  .pill.part { background:var(--amber); border-color:var(--amberb); }
-  .pill.none { background:none; border-color:var(--rule); color:var(--mid);
-               border-style:dashed; }
-
   /* Confirmed rows recede but stay legible: reception still has to find a
      guest who checked in an hour ago. */
   .arr.is-done { opacity:.68; }
@@ -101,12 +89,6 @@
      is the screen the icon belongs on. */
   .seen { width:15px; height:15px; flex:0 0 15px; opacity:.55; }
   .seen svg { width:100%; height:100%; display:block; fill:none; stroke:var(--mid); }
-
-  /* Nothing has come back at all. An icon rather than a pill, because a pill
-     reads as a status the guest reached, and this is the absence of one. */
-  .paper { width:15px; height:15px; flex:0 0 15px; opacity:.5; }
-  .paper svg { width:100%; height:100%; display:block; fill:none; stroke:var(--mid);
-               stroke-width:1.8; }
 
   /* The tint answers the thing reception scans for: is there something to read
      back, or is this one we fill in together. Kept very light so the villa
@@ -277,19 +259,22 @@ function stayLabel(s){
 function isConfirmed(p){ return !!(p && p.confirmedAt); }
 function hasForm(p){ return !!(p && p.at); }
 
-function pillFor(p){
-  if (isConfirmed(p))
-    return p.dining === false ? '<div class="pill out">Not dining</div>'
-                              : '<div class="pill din">Dining</div>';
-  return hasForm(p) ? '<div class="pill part">Form done</div>' : '';
-}
+/* No pills on this screen. Every state a pill carried is already said once,
+   and said better:
 
-/* Nothing back at all. Distinct from the link icon, which says the message
-   reached them and they stopped partway. */
-function paperFor(p){
-  if (hasForm(p) || (p && p.openedAt)) return '';
-  return '<span class="paper">' + ICON_PAPER + '</span>';
-}
+     form done or not      the row tint, green or amber
+     confirmed or not      which of the two sections the row is in
+     dining or not         the fork icon, green, red or grey
+     nothing came back     an amber row with no link icon
+
+   The pills repeated all four. "FORM DONE" on a green row, and "Dining" beside
+   a green fork, are the same fact twice in one row, which makes the reader
+   check whether the two agree instead of just reading one.
+
+   The link icon survives because it is the only thing here saying something
+   the tint cannot: amber says no form, and the link icon says the message did
+   reach them and they stopped partway, which is a different conversation from
+   a guest who never saw it. */
 
 /* Opened the pre-arrival link and did not submit it. It has nothing left to
    say once a form exists: a guest who submitted obviously opened it. */
@@ -325,7 +310,7 @@ function rowHTML(r){
          '<div class="arr-mid">'+
            '<div class="arr-n">'+esc(nameOf(r.stay))+'</div>'+
            '<div class="arr-s">'+bits.join(' \u00b7 ')+'</div>'+
-         '</div>'+paperFor(r.pre)+seenFor(r.pre)+forkFor(r.pre)+pillFor(r.pre)+'</button>'+
+         '</div>'+seenFor(r.pre)+forkFor(r.pre)+'</button>'+
          (open ? summaryHTML(r) : '');
 }
 
@@ -340,9 +325,6 @@ var ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-
   '<path d="M9.5 14.5l5-5"/>' +
   '<path d="M12.8 7.2l1.6-1.6a3.6 3.6 0 015.1 5.1l-1.6 1.6"/>' +
   '<path d="M11.2 16.8l-1.6 1.6a3.6 3.6 0 01-5.1-5.1l1.6-1.6"/></svg>';
-
-var ICON_PAPER = '<svg viewBox="0 0 24 24" stroke-linejoin="round">' +
-  '<path d="M6 2.8h7.2L18 7.6V21.2H6z"/><path d="M13.2 2.8v4.8H18"/></svg>';
 
 /* Arrival time is a choice, not free text, and these six are in the order
    reception works through them. The two open ended ones carry a compulsory
