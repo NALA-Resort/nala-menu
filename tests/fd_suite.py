@@ -62,8 +62,10 @@ PRE = {
   "b9":  {"at":"2026-08-16T11:00:00Z","dining":False,"noDiets":True,
           "arriveSlot":"before2","arriveNote":"flight lands 11am"},
   # confirmed at the desk
-  "b7":  {"at":"2026-08-15T10:00:00Z","confirmedAt":"2026-08-17T14:00:00Z","dining":True,"pax":2},
-  "b11": {"at":"2026-08-15T10:00:00Z","confirmedAt":"2026-08-17T14:05:00Z","dining":False},
+  "b7":  {"at":"2026-08-15T10:00:00Z","confirmedAt":"2026-08-17T14:00:00Z",
+          "checkedInAt":"2026-08-17T14:00:00Z","dining":True,"pax":2},
+  "b11": {"at":"2026-08-15T10:00:00Z","confirmedAt":"2026-08-17T14:05:00Z",
+          "checkedInAt":"2026-08-17T14:05:00Z","dining":False},
   # opened the form, gave allergies, left the dinner question alone
   "b12": {"at":"2026-08-16T09:00:00Z","diets":["Gluten free"],"arriveSlot":"15"},
   # opened the pre-arrival link and never submitted it
@@ -144,6 +146,8 @@ with sync_playwright() as p:
     ck("and the ones still to do come first, because that is the job",
        villas == todo + doneV)
     # Arrived is a fraction: the number alone says nothing without the total.
+    # Arrived counts guests checked in, not guests confirmed. Reception can
+    # verify the answers on the phone the day before; the guest turns up later.
     ck("arrived reads as a fraction of the day's arrivals",
        pg.evaluate("()=>nArr.textContent") == "2/7")
     # six arrivals, of which villas 7 and 11 are already confirmed
@@ -266,9 +270,9 @@ with sync_playwright() as p:
        ["Interested" in l and "late morning" in l for l in sumtxt.split("\n")].count(True) == 1)
     ck("dining approach, in words rather than 'most'",
        "Dining in most nights" in sumtxt)
-    ck("and both ways out", pg.evaluate(
+    ck("and three ways out: edit, confirm, or confirm and check in", pg.evaluate(
        "()=>[...document.querySelectorAll('.sum-btns button')].map(b=>b.dataset.act).join()")
-       == "edit,confirm")
+       == "edit,confirm,checkin")
     ck("only one summary is ever open",
        (pg.locator('.arr[data-villa="9"]').click(), pg.wait_for_timeout(300),
         pg.evaluate("()=>document.querySelectorAll('.sum').length"))[2] == 1)
@@ -322,11 +326,12 @@ with sync_playwright() as p:
         ck("and 'at' is NOT overwritten, so it still means when the answers first existed",
            "at" not in body)
     ck("the sheet closes", pg.evaluate("()=>backdrop.className.indexOf('show')<0"))
-    # Confirmation is the section, and the fork is the answer.
-    ck("and the guest moves into the confirmed section without a reload",
+    # Confirming alone does NOT move them: they have not arrived yet.
+    ck("confirming leaves them under Arriving, because they have not arrived",
        pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"]').className")
-       .find("is-done") > -1)
-    ck("with the fraction following", pg.evaluate("()=>nArr.textContent") == "3/7")
+       .find("is-done") == -1)
+    ck("and the arrived count does not move either",
+       pg.evaluate("()=>nArr.textContent") == "2/7")
     pg.close()
 
     # ── a guest with no form goes straight to the form ──────────
@@ -374,8 +379,8 @@ with sync_playwright() as p:
         ck("stamped confirmed", bool(body.get("confirmedAt")))
     ck("and the summary closes behind it",
        pg.evaluate("()=>document.querySelectorAll('.sum').length") == 0)
-    ck("the guest is now confirmed", pg.evaluate(
-       "()=>document.querySelector('.arr[data-villa=\"9\"]').className").find("is-done") > -1)
+    ck("the guest is confirmed but still arriving", pg.evaluate(
+       "()=>document.querySelector('.arr[data-villa=\"9\"]').className").find("is-done") == -1)
     pg.close()
 
     # ── a failed save must not look like success ────────────────
@@ -445,6 +450,56 @@ with sync_playwright() as p:
     STATE["fail"] = False
     pg.close()
 
+
+
+    # ── confirm and check in ────────────────────────────────────
+    # Two different events. Reception can verify the answers on the phone the
+    # day before; the guest arrives hours later. Only the second moves them.
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(350)
+    del WRITES[:]
+    pg.locator('.sum-btns button[data-act="checkin"]').click(); pg.wait_for_timeout(600)
+    w = [x for x in WRITES if "/bookings/b4/prearrival" in x["u"]]
+    ck("check in saves the answers like confirm does", len(w) == 1)
+    if w:
+        body = json.loads(w[0]["b"])
+        ck("stamped confirmed", bool(body.get("confirmedAt")))
+        ck("and stamped arrived, which confirm alone does not",
+           bool(body.get("checkedInAt")))
+    ck("and moves them to Arrived on the spot",
+       pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"]').className")
+       .find("is-done") > -1)
+    ck("with the count following", pg.evaluate("()=>nArr.textContent") == "3/7")
+    pg.close()
+
+    # A guest who has arrived has arrived. Editing their answers afterwards
+    # must not quietly un-arrive them.
+    PRE["b4"]["checkedInAt"] = "2026-08-17T15:00:00Z"
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(350)
+    del WRITES[:]
+    pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
+    w = [x for x in WRITES if "/bookings/b4/prearrival" in x["u"]]
+    ck("confirming again after arrival keeps them arrived",
+       len(w) == 1 and json.loads(w[0]["b"])["checkedInAt"] == "2026-08-17T15:00:00Z")
+    pg.close()
+    del PRE["b4"]["checkedInAt"]
+
+    # The sheet offers the same two, since a guest with no form never sees a
+    # summary at all.
+    pg = board()
+    pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
+    ck("the form offers check in as well as confirm",
+       pg.evaluate("()=>!!document.getElementById('sCheckin')") and
+       pg.evaluate("()=>!!document.getElementById('sConfirm')"))
+    pg.locator("#sOut").click()
+    pg.evaluate("()=>[...document.querySelectorAll('#dNone .chip')][0].click()")
+    del WRITES[:]
+    pg.locator("#sCheckin").click(); pg.wait_for_timeout(600)
+    w = [x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]
+    ck("and checking in from the form arrives them too",
+       len(w) == 1 and bool(json.loads(w[0]["b"]).get("checkedInAt")))
+    pg.close()
 
     # ── the bug found in testing on 17 Aug ──────────────────────
     # Reception saved a dietary at check in, the Reservations board added

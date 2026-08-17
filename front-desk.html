@@ -70,6 +70,8 @@
   .sum-v { flex:1; min-width:0; }
   .sum-v.none { color:var(--mid); font-style:italic; }
   .sum-btns { display:flex; gap:7px; margin-top:12px; }
+  .sum-btns + .sum-btns { margin-top:7px; }
+  .sum-btns button.wide { flex:1 1 100%; }
   .sum-btns button { flex:1; padding:12px 0; border:1px solid var(--rule);
                      border-radius:6px; font-family:var(--ui-font); font-size:11px;
                      letter-spacing:.14em; text-transform:uppercase; cursor:pointer;
@@ -288,10 +290,18 @@ function nightsLabel(s){
   return n + (n === 1 ? ' night' : ' nights');
 }
 
-/* Confirmed means reception has been through it with the guest at the desk.
-   That is NOT the same as the form being complete: a guest can fill in
-   everything from their phone days earlier and still need confirming. */
+/* Three different facts, and they were two until 17 Aug.
+
+   hasForm     the guest sent the pre-arrival form
+   confirmedAt reception has been through the answers with them
+   checkedInAt they have physically arrived and been checked in
+
+   Confirming and arriving are not the same event: reception can verify the
+   answers on the phone, or the day before, and the guest turns up hours later.
+   The sections track arriving, because that is what the receptionist is
+   working through. */
 function isConfirmed(p){ return !!(p && p.confirmedAt); }
+function isArrived(p){ return !!(p && p.checkedInAt); }
 function hasForm(p){ return !!(p && p.at); }
 
 /* No pills on this screen. Every state a pill carried is already said once,
@@ -339,7 +349,7 @@ function rowHTML(r){
     bits.push(r.stay.adults + (Number(r.stay.adults)===1 ? ' adult' : ' adults'));
   var open = OPEN === r.villa;
   var tint = hasForm(r.pre) ? ' done-form' : ' todo-form';
-  return '<button class="arr'+tint+(isConfirmed(r.pre)?' is-done':'')+(open?' open':'')+
+  return '<button class="arr'+tint+(isArrived(r.pre)?' is-done':'')+(open?' open':'')+
          '" data-villa="'+r.villa+'">'+
          '<div class="arr-v">'+r.villa+'</div>'+
          '<div class="arr-mid">'+
@@ -469,15 +479,21 @@ function summaryHTML(r){
 
   h += '<div class="sum-btns">' +
          '<button data-act="edit" data-villa="' + r.villa + '">Edit</button>' +
-         '<button class="go" data-act="confirm" data-villa="' + r.villa + '">' +
-         (isConfirmed(r.pre) ? 'Confirm again' : 'Confirm') + '</button>' +
+         '<button data-act="confirm" data-villa="' + r.villa + '">' +
+         (isConfirmed(r.pre) ? 'Confirmed' : 'Confirm') + '</button>' +
+       '</div>' +
+       /* Its own row and full width: it is the one that ends the interaction,
+          and three buttons abreast do not fit a narrow phone. */
+       '<div class="sum-btns">' +
+         '<button class="go wide" data-act="checkin" data-villa="' + r.villa + '">' +
+         (isArrived(r.pre) ? 'Checked in' : 'Confirm &amp; check in') + '</button>' +
        '</div>';
   return '<div class="sum">' + h + '</div>';
 }
 
 function render(){
-  var todo = ROWS.filter(function(r){ return !isConfirmed(r.pre); });
-  var done = ROWS.filter(function(r){ return  isConfirmed(r.pre); });
+  var todo = ROWS.filter(function(r){ return !isArrived(r.pre); });
+  var done = ROWS.filter(function(r){ return  isArrived(r.pre); });
 
   document.getElementById('nArr').innerHTML =
     done.length + '<span class="of">/' + ROWS.length + '</span>';
@@ -717,7 +733,8 @@ function openGuest(r){
     '<div class="sheet-label">Anything else</div>' +
     '<input class="txt" id="fNote" type="text" placeholder="Preferences, requests" autocomplete="off">' +
 
-    '<button class="opt solid" id="sConfirm" style="margin-top:18px">Confirm</button>' +
+    '<button class="opt solid" id="sCheckin" style="margin-top:18px">Confirm and check in</button>' +
+    '<button class="opt quiet" id="sConfirm">Confirm only</button>' +
     '<button class="opt quiet" id="sClose">Close</button>';
 
   document.getElementById('fDnote').value  = a.dnote;
@@ -832,7 +849,9 @@ function openGuest(r){
   paintPurpose(); paintApproach(); paintWellness();
 
   document.getElementById('sClose').onclick = closeSheet;
-  document.getElementById('sConfirm').onclick = function(){
+  /* Both buttons run the same checks and the same save. The only difference is
+     whether the guest is standing there. */
+  function finish(checkin){
     /* Confirmed means a dining status exists. Saving without one would put a
        guest in the Arrived section wearing a grey fork, which reads as
        assumed dining and unconfirmed at the same time. Dietary is asked for
@@ -848,8 +867,10 @@ function openGuest(r){
     a.occasion = document.getElementById('fOcc').value.trim();
     a.note     = document.getElementById('fNote').value.trim();
     a.wellTime = document.getElementById('fWtime').value.trim();
-    save(r, a);
-  };
+    save(r, a, checkin);
+  }
+  document.getElementById('sConfirm').onclick = function(){ finish(false); };
+  document.getElementById('sCheckin').onclick = function(){ finish(true); };
 
   /* Name what is missing and put it on screen, rather than a button that does
      nothing when pressed. */
@@ -905,7 +926,7 @@ function dinnerCell(r, a){
   return rec;
 }
 
-function save(r, a){
+function save(r, a, checkin){
   var payload = {
     dining: a.dining, pax: a.dining ? a.pax : 0,
     diets: a.diets, noDiets: a.noDiets, dnote: a.dnote,
@@ -916,6 +937,15 @@ function save(r, a){
     note: a.note,
     confirmedAt: new Date().toISOString()
   };
+  /* Checking in is a separate fact from confirming the answers, so it is a
+     separate field. Only ever set, never cleared: a guest who has arrived has
+     arrived, and a later edit to their answers does not un-arrive them.
+
+     FUTURE: this is where the Mews reservation moves to Checked in, through
+     the Connector API. Nothing writes back to Mews yet, so the app is the only
+     record of it until that exists. */
+  if (checkin) payload.checkedInAt = payload.confirmedAt;
+  else if (isArrived(r.pre)) payload.checkedInAt = r.pre.checkedInAt;
   if (!hasForm(r.pre)) payload.at = payload.confirmedAt;
 
   var before = r.pre, beforeCell = r.cell;
@@ -958,11 +988,12 @@ document.getElementById('board').addEventListener('click', function(e){
   if (act){
     var ra = rowFor(act.getAttribute('data-villa'));
     if (!ra) return;
-    if (act.getAttribute('data-act') === 'edit') return openGuest(ra);
+    var what = act.getAttribute('data-act');
+    if (what === 'edit') return openGuest(ra);
     /* Confirming from the summary saves exactly what is on screen. The guest
        just agreed to it out loud, so there is nothing to open and nothing to
-       retype. */
-    return save(ra, answersOf(ra));
+       retype. Check in does the same and moves them to Arrived. */
+    return save(ra, answersOf(ra), what === 'checkin');
   }
 
   var btn = t.closest('.arr');
