@@ -92,6 +92,26 @@ Still to retire, once no live data depends on them: the `/responses` and
 `/manual` fallback in `roomRecord`, `roomguests`, and `samePerson`. Both old
 nodes partition by date, so they empty themselves as the days pass.
 
+## The id was wrong all along
+
+Found 17 Aug, from two Zap runs for one booking: the `ID` field changed on
+every event while `Mews Id` stayed the same. The Worker took `Id` first, so
+**every event was filed as a brand new booking.**
+
+That is the cause of all of it. One guest in three villas. A move never
+clearing the villa it left. The duplicate finder reporting nothing, because the
+three entries genuinely had three different ids. It was not the cancellation
+feed, which is what I said twice.
+
+How to tell them apart, since the Zap gives no description: every real Mews
+identifier in that list is a GUID with dashes. Zapier's `ID` is 32 hex
+characters without. The Worker now refuses anything that is not a GUID and says
+which field to map instead, so a wrong mapping fails loudly rather than quietly
+creating bookings.
+
+Also in that list and worth mapping later: **Customer Id**, the guest across
+all their stays, and **Group Id**, the party.
+
 ## One party can hold several villas
 
 A family booking two villas is **two reservations under one group**. Each villa

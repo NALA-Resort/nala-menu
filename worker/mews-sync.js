@@ -98,6 +98,13 @@ function nights(arrive, depart) {
    for under several plausible keys rather than one. Mapping in Zapier to any
    of these works; mapping to something else does not, which is why the list
    is here where it can be read rather than in a doc that drifts. */
+/* A Mews identifier is a GUID. Zapier's event key is 32 hex characters with no
+   dashes, and the two are easy to mix up in a field mapping. */
+function isGuid(v) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    .test(String(v || ""));
+}
+
 function pick(o, names) {
   for (const n of names) {
     if (o[n] !== undefined && o[n] !== null && o[n] !== "") return o[n];
@@ -107,7 +114,17 @@ function pick(o, names) {
 
 function readReservation(p) {
   return {
-    id:      pick(p, ["Id", "id", "ReservationId", "reservation_id", "bookingId"]),
+    /* MewsId first, deliberately. Zapier's own "ID" is a per-event dedupe key
+       and changes on every event, so keying on it made every change look like
+       a brand new booking: one guest appearing in three villas at once, and a
+       move never clearing the villa it left.
+
+       Every real Mews identifier is a GUID with dashes. Zapier's is 32 hex
+       characters without. isGuid below refuses anything that is not a GUID, so
+       a mapping pointed at the wrong field fails loudly instead of quietly
+       filing a new booking. */
+    id:      pick(p, ["MewsId", "Mews Id", "mews_id", "mewsId",
+                      "Id", "id", "ReservationId", "reservation_id", "bookingId"]),
     first:   pick(p, ["FirstName", "first_name", "firstName", "CustomerFirstName"]),
     last:    pick(p, ["LastName", "last_name", "lastName", "CustomerLastName"]),
     phone:   pick(p, ["Phone", "phone", "PhoneNumber", "phone_number", "CustomerPhone"]),
@@ -202,6 +219,17 @@ export default {
 
     const r = readReservation(payload);
     if (!r.id) return new Response("no reservation id in payload", { status: 400 });
+    /* Refused rather than stored. A non GUID here means the Zap is mapping
+       Zapier's own event key instead of the Mews reservation id, and storing it
+       would create a fresh booking on every event, which is exactly the bug
+       this check exists to prevent recurring. */
+    if (!isGuid(r.id)) {
+      return new Response(JSON.stringify({
+        ok: false, error: "reservation id is not a Mews GUID",
+        received: String(r.id).slice(0, 40),
+        hint: "map the Zap's reservation id field to Mews Id, not to ID"
+      }), { status: 400, headers: { "Content-Type": "application/json" } });
+    }
 
     try {
       /* Read what is already stored before writing, because a reservation that

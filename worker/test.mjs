@@ -56,7 +56,7 @@ const post = (body, secret = "shh") => worker.fetch(new Request(
   { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body) }), env);
 
-const RES = { Id: "res-guid-1", FirstName: "Mark", LastName: "Whitfield",
+const RES = { MewsId: "ff129c05-9902-4d9f-9bfd-b4a800a91f52", FirstName: "Mark", LastName: "Whitfield",
               Phone: "+61400000000", StartUtc: "2026-09-10T04:00:00Z",
               EndUtc: "2026-09-13T02:00:00Z", ResourceName: "3", State: "Confirmed" };
 
@@ -91,7 +91,7 @@ ck("a payload with no reservation id is refused",
 /* ── a new booking ──────────────────────────────────────────── */
 install();
 await post(RES);
-const pms = STORE["/bookings/res-guid-1/pms"];
+const pms = STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/pms"];
 ck("the booking is stored under the Mews id", !!pms);
 ck("dates are stored as dkey does, not as ISO timestamps",
    pms.arrive === "2026-09-10" && pms.depart === "2026-09-13");
@@ -110,19 +110,19 @@ ck("each night carries the guest, not just a pointer",
    STORE["/stays/2026-09-10/3"].first === "Mark" &&
    STORE["/stays/2026-09-10/3"].last === "Whitfield" &&
    STORE["/stays/2026-09-10/3"].depart === "2026-09-13" &&
-   STORE["/stays/2026-09-10/3"].id === "res-guid-1");
+   STORE["/stays/2026-09-10/3"].id === "ff129c05-9902-4d9f-9bfd-b4a800a91f52");
 
 /* ── the field names the Zap actually sends ─────────────────── */
 /* Mapped by hand in Zapier, so the spellings are whatever was typed that day.
    UpdateUtc without the d is the one in the live Zap. */
 install();
-await post({ Id: "res-2", "Companions 0 First Name": "x",
+await post({ Id: "a1b2c3d4-0000-4000-8000-000000000002", "Companions 0 First Name": "x",
              UpdateUtc: "2026-08-01T10:00:00Z", StartUtc: "2026-09-10T04:00:00Z",
              EndUtc: "2026-09-12T02:00:00Z", SpaceName: "11", State: "Confirmed",
              BookingId: 169, GroupId: "grp-1", AdultCount: 2,
              NotesText: "Package includes flights", NotesType: "General",
              SpaceState: "Dirty" });
-const kept = STORE["/bookings/res-2/pms"];
+const kept = STORE["/bookings/a1b2c3d4-0000-4000-8000-000000000002/pms"];
 ck("UpdateUtc without the d still arms the late event guard",
    kept.updated === "2026-08-01T10:00:00Z");
 ck("SpaceName is accepted as the villa, which is what Mews calls it",
@@ -161,29 +161,29 @@ install();
 await post(RES);
 await post(Object.assign({}, RES, { ResourceName: "9" }));
 ck("a moved guest is indexed under the new villa",
-   STORE["/stays/2026-09-10/9"].id === "res-guid-1");
+   STORE["/stays/2026-09-10/9"].id === "ff129c05-9902-4d9f-9bfd-b4a800a91f52");
 ck("and is GONE from the old one, not left in both",
    STORE["/stays/2026-09-10/3"] === undefined &&
    STORE["/stays/2026-09-11/3"] === undefined &&
    STORE["/stays/2026-09-12/3"] === undefined);
-ck("the record itself is still one record", !!STORE["/bookings/res-guid-1/pms"]);
+ck("the record itself is still one record", !!STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/pms"]);
 
 /* ── damage done before the fix existed ─────────────────────── */
 /* Exactly what happened on 16 Aug: one booking left in three villas at once,
    because the old clearing trusted a remembered villa and cleared only that.
    The fix must remove entries it never wrote and has no memory of. */
 install();
-STORE["/stays/2026-09-10/13"] = { id: "res-guid-1", first: "Ben", last: "Davidson" };
-STORE["/stays/2026-09-10/14"] = { id: "res-guid-1", first: "Ben", last: "Davidson" };
-STORE["/stays/2026-09-11/13"] = "res-guid-1";              // and in the older shape
+STORE["/stays/2026-09-10/13"] = { id: "ff129c05-9902-4d9f-9bfd-b4a800a91f52", first: "Ben", last: "Davidson" };
+STORE["/stays/2026-09-10/14"] = { id: "ff129c05-9902-4d9f-9bfd-b4a800a91f52", first: "Ben", last: "Davidson" };
+STORE["/stays/2026-09-11/13"] = "ff129c05-9902-4d9f-9bfd-b4a800a91f52";              // and in the older shape
 await post(Object.assign({}, RES, { ResourceName: "15" }));
 ck("a booking stranded across several villas is cleared from all of them",
    STORE["/stays/2026-09-10/13"] === undefined &&
    STORE["/stays/2026-09-10/14"] === undefined &&
    STORE["/stays/2026-09-11/13"] === undefined);
 ck("and ends up in the one villa Mews says it is in",
-   STORE["/stays/2026-09-10/15"].id === "res-guid-1" &&
-   STORE["/stays/2026-09-11/15"].id === "res-guid-1");
+   STORE["/stays/2026-09-10/15"].id === "ff129c05-9902-4d9f-9bfd-b4a800a91f52" &&
+   STORE["/stays/2026-09-11/15"].id === "ff129c05-9902-4d9f-9bfd-b4a800a91f52");
 
 /* Another booking in the same villa must survive: the sweep removes entries
    claiming to be THIS reservation, not everything it finds. */
@@ -218,9 +218,9 @@ ck("a cancellation clears every night, so no card prints",
    STORE["/stays/2026-09-11/3"] === undefined &&
    STORE["/stays/2026-09-12/3"] === undefined);
 ck("American and British spellings both count as cancelled",
-   STORE["/bookings/res-guid-1/pms"].state === "cancelled");
+   STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/pms"].state === "cancelled");
 ck("but the record survives: what was asked for is worth knowing",
-   STORE["/bookings/res-guid-1/pms"].first === "Mark");
+   STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/pms"].first === "Mark");
 
 /* ── late delivery ──────────────────────────────────────────── */
 /* Webhooks are not ordered. A move delivered, then the pre-move event
@@ -230,20 +230,20 @@ await post(Object.assign({}, RES, { UpdatedUtc: "2026-08-01T10:00:00Z" }));
 await post(Object.assign({}, RES, { ResourceName: "9", UpdatedUtc: "2026-08-01T11:00:00Z" }));
 await post(Object.assign({}, RES, { ResourceName: "3", UpdatedUtc: "2026-08-01T10:30:00Z" }));
 ck("a late event is ignored, not applied",
-   STORE["/bookings/res-guid-1/pms"].villa === "9");
+   STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/pms"].villa === "9");
 ck("and the index still reflects the newest event only",
-   STORE["/stays/2026-09-10/9"].id === "res-guid-1" &&
+   STORE["/stays/2026-09-10/9"].id === "ff129c05-9902-4d9f-9bfd-b4a800a91f52" &&
    STORE["/stays/2026-09-10/3"] === undefined);
 
 /* ── what it must never touch ───────────────────────────────── */
 install();
-STORE["/bookings/res-guid-1/prearrival"] = { dining: true };
-STORE["/bookings/res-guid-1/dining"] = { covers: 2 };
+STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/prearrival"] = { dining: true };
+STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/dining"] = { covers: 2 };
 await post(RES);
 ck("the questionnaire is untouched",
-   JSON.stringify(STORE["/bookings/res-guid-1/prearrival"]) === '{"dining":true}');
+   JSON.stringify(STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/prearrival"]) === '{"dining":true}');
 ck("the dining data is untouched",
-   JSON.stringify(STORE["/bookings/res-guid-1/dining"]) === '{"covers":2}');
+   JSON.stringify(STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/dining"]) === '{"covers":2}');
 ck("it writes only under pms and stays",
    CALLS.filter(c => !c.startsWith("GET"))
         .every(c => c.includes("/pms") || c.includes("/stays/")));
@@ -269,7 +269,7 @@ let odd = await post(Object.assign({}, RES, { ResourceName: "Spa Suite" }));
 ck("an unknown space name writes no stay at all",
    !Object.keys(STORE).some(k => k.startsWith("/stays/")));
 ck("but the booking is still recorded",
-   !!STORE["/bookings/res-guid-1/pms"]);
+   !!STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/pms"]);
 ck("and the reply names the value it refused, so the Zap history shows it",
    (await odd.json()).unknownVilla === "Spa Suite");
 
@@ -317,6 +317,43 @@ install();
 await post(RES);
 ck("and a booking with no group carries null rather than nothing",
    STORE["/stays/2026-09-10/3"].groupId === null);
+
+
+/* ── the id that caused three Ben Davidsons ─────────────────── */
+/* Zapier's own "ID" is a per-event dedupe key: 32 hex characters, no dashes,
+   different on every event. Keyed on it, every change looked like a brand new
+   booking, so one guest appeared in three villas and a move never cleared the
+   villa it left. Found on 17 Aug by comparing two Zap runs for one booking. */
+install();
+const zapKey = await post({ Id: "5f593a0c708cbb49e77f324e07bee616",
+  StartUtc: "2026-09-10T04:00:00Z", EndUtc: "2026-09-13T02:00:00Z",
+  ResourceName: "3", State: "Confirmed" });
+ck("Zapier's own event key is refused, not stored as a booking",
+   zapKey.status === 400);
+ck("and the refusal says which field to map instead",
+   (await zapKey.json()).hint.indexOf("Mews Id") > -1);
+ck("nothing was written", Object.keys(STORE).length === 0);
+
+/* Both present is the likely shape of a half-corrected mapping. */
+install();
+await post({ Id: "5f593a0c708cbb49e77f324e07bee616",
+  MewsId: "ff129c05-9902-4d9f-9bfd-b4a800a91f52",
+  StartUtc: "2026-09-10T04:00:00Z", EndUtc: "2026-09-13T02:00:00Z",
+  ResourceName: "3", State: "Confirmed" });
+ck("with both present the Mews id wins",
+   !!STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/pms"]);
+
+/* The same booking moving villa twice must stay ONE booking. */
+install();
+const RES_MOVE = { MewsId: "ff129c05-9902-4d9f-9bfd-b4a800a91f52",
+  StartUtc: "2026-09-10T04:00:00Z", EndUtc: "2026-09-11T02:00:00Z",
+  State: "Confirmed" };
+await post(Object.assign({}, RES_MOVE, { ResourceName: "13", UpdateUtc: "2026-08-17T07:36:00Z" }));
+await post(Object.assign({}, RES_MOVE, { ResourceName: "14", UpdateUtc: "2026-08-17T09:00:00Z" }));
+await post(Object.assign({}, RES_MOVE, { ResourceName: "15", UpdateUtc: "2026-08-17T11:02:00Z" }));
+const nights = Object.keys(STORE).filter(k => k.startsWith("/stays/"));
+ck("a booking moved twice holds exactly one villa, not three",
+   nights.length === 1 && nights[0].endsWith("/15"));
 
 console.log("RESULT: %d passed, %d failed", P, F);
 if (F) process.exit(1);
