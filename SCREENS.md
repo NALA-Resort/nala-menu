@@ -51,6 +51,26 @@ Writes to `/bookings/<id>/prearrival`. Never writes name, villa or dates: those
 come from the link for display and from Mews for truth. Works before Mews has
 the booking, which is the normal case at seven days out.
 
+**Answers are written on submission only, never as the guest types.** A
+half-written record is indistinguishable from a considered one, so "Form done"
+would come to mean "some fields exist" and reception would stop trusting it.
+Incomplete guests are finished at the desk anyway, so a partial record adds a
+state without adding an action. If losing a long form to a dropped connection
+turns out to matter, save a draft on the guest's own phone rather than writing
+partial records to the database: it costs nothing and creates no status.
+
+**But the page MUST stamp an opened time when the guest lands on it**, separate
+from submitting. Without it there is no way to tell a message that never
+arrived from one that arrived and was ignored, and those need different
+chasing: a wrong number needs another channel, an ignored message needs a
+nudge. This mirrors what the dinner flow already has and the pre-arrival flow
+does not.
+
+Worth being precise, because it has been confused once already: the link icon
+on Tonight's Numbers belongs to the NIGHTLY dinner message and is written when
+a guest opens `index.html`. It says nothing about pre-arrival. The two sends
+are separate and need separate signals.
+
 **Blocked on one answer:** is type of stay a picklist, and if so what is on it.
 
 Resist a fifth question without deciding which of the four it replaces.
