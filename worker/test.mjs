@@ -420,5 +420,65 @@ ck("the reservation number reaches every night",
 ck("and Number wins over BookingId, which numbers the group not the booking",
    STORE["/bookings/" + RES.MewsId + "/pms"].bookingNumber === 1159);
 
+/* ── the clock ──────────────────────────────────────────────── */
+/* Mews sends true UTC. Confirmed 18 Aug: 04:00Z is 2pm at the resort, which is
+   UTC+10. So the date part of the timestamp is the local date only until 2pm
+   UTC, and anything after that belongs to the next local day. Every case here
+   was filed a day early before that was fixed. */
+
+install();
+await post(Object.assign({}, RES, { StartUtc: "2026-09-10T04:00:00Z",
+                                    EndUtc: "2026-09-11T00:00:00Z" }));
+ck("the ordinary case is unchanged: 2pm local arrival",
+   !!STORE["/stays/2026-09-10/3"] && !STORE["/stays/2026-09-11/3"]);
+
+/* An early arrival. 22:00 UTC on the 9th is 8am on the 10th at the resort, and
+   the guest is in the villa on the night of the 10th, not the 9th. */
+install();
+await post(Object.assign({}, RES, { StartUtc: "2026-09-09T22:00:00Z",
+                                    EndUtc: "2026-09-11T00:00:00Z" }));
+ck("an arrival before 10am local is not filed on the night before",
+   !STORE["/stays/2026-09-09/3"] && !!STORE["/stays/2026-09-10/3"]);
+
+/* And the far side of it. 15:00 UTC is 1am the following day at the resort. */
+install();
+await post(Object.assign({}, RES, { StartUtc: "2026-09-10T15:00:00Z",
+                                    EndUtc: "2026-09-12T00:00:00Z" }));
+ck("a late arrival is filed on the local day it lands, not the UTC one",
+   !STORE["/stays/2026-09-10/3"] && !!STORE["/stays/2026-09-11/3"]);
+
+/* Departure is exclusive, so a checkout before 10am local must not hold the
+   villa for the night before it. A cleaner sent to a villa a day early is the
+   visible half of this bug. */
+install();
+await post(Object.assign({}, RES, { StartUtc: "2026-09-10T04:00:00Z",
+                                    EndUtc: "2026-09-12T23:00:00Z" }));
+ck("a checkout at 9am local holds the villa for the night before it",
+   !!STORE["/stays/2026-09-12/3"] && !STORE["/stays/2026-09-13/3"]);
+
+install();
+await post(Object.assign({}, RES, { StartUtc: "2026-09-10T04:00:00Z",
+                                    EndUtc: "2026-09-13T02:00:00Z" }));
+const tzPms = STORE["/bookings/" + RES.MewsId + "/pms"];
+ck("the dates on the booking are resort dates too",
+   tzPms.arrive === "2026-09-10" && tzPms.depart === "2026-09-13");
+
+/* Midsummer, when a state that observes daylight saving would be +11 and a
+   hardcoded +10 would be an hour out. Brisbane does not, so this is the case
+   that has to be revisited if the zone name ever changes. */
+install();
+await post(Object.assign({}, RES, { StartUtc: "2027-01-15T04:00:00Z",
+                                    EndUtc: "2027-01-17T00:00:00Z" }));
+ck("summer is handled by the zone, not by a number in the code",
+   !!STORE["/stays/2027-01-15/3"]);
+
+/* A Zap mapped to a date field rather than a timestamp. Reinterpreting a bare
+   date in a timezone would move it a day, so it is left alone. */
+install();
+await post(Object.assign({}, RES, { StartUtc: "2026-09-10", EndUtc: "2026-09-12" }));
+ck("a date with no time is taken as written",
+   !!STORE["/stays/2026-09-10/3"] && !!STORE["/stays/2026-09-11/3"] &&
+   !STORE["/stays/2026-09-12/3"]);
+
 console.log("RESULT: %d passed, %d failed", P, F);
 if (F) process.exit(1);

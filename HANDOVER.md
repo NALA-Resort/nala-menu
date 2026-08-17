@@ -129,7 +129,9 @@ rather than handwritten.
 
 1. **Cancellations have never been seen to fire.** The Zap does not trigger.
    Until it does, a cancelled booking stays on the board. Worker handles it and
-   is tested; the feed is the problem.
+   is tested; the feed is the only problem. Confirmed 18 Aug that the
+   cancellation `Id` is the same GUID as the reservation's, so nothing needs
+   building: when the feed fires it will match.
 2. **GuestTouch links** need `?b=<booking id>`. Nightly menu needs only that;
    pre-arrival also takes name and dates.
 3. **Rotate four credentials:** GitHub token, Firebase key, `sync` passcode,
@@ -137,13 +139,18 @@ rather than handwritten.
    `nala-menu publish` and `nala-menu chef`, so either can be revoked alone.
 4. **Delete leftover Firebase Auth logins** for anyone removed on Settings.
    Their access is already gone; this frees the passcode for reuse.
-5. **Does Mews send true UTC?** The Worker takes the date part of `StartUtc`;
-   the app uses the phone's clock. At UTC+8 an arrival after 4pm local would be
-   recorded on the night before. One evening check-in in the Zap history settles
-   it.
-6. **Confirm dinner and breakfast hours.** Still provisional.
+5. ~~Does Mews send true UTC?~~ **Answered 18 Aug: it does.** 04:00Z is 2pm at
+   the resort, UTC+10. The Worker converted nothing, so any timestamp after 2pm
+   UTC was filed a day early, which is every arrival before 10am local and
+   every checkout before 10am local. Fixed, with six cases in the Worker suite.
+   The app still takes "today" from the phone's clock, which agrees as long as
+   the phone is at the resort.
+6. ~~Confirm dinner and breakfast hours.~~ **Answered 18 Aug.** Dinner 6:00 to
+   6:30, breakfast 8:00 to 9:30. Nothing displays them yet: no page has ever
+   stated a service time. Where they should appear is a design decision, so it
+   is in `PARKED.md` with a proposal rather than guessed at here.
 7. **The pre-arrival help line** under "will you dine on your first night" is a
-   marked placeholder. The guest answers before that night's menu exists, so
+   marked placeholder. Owner asked on 18 Aug to leave it for now. The guest answers before that night's menu exists, so
    something has to stand in for it.
 
 `TESTING.md` has ten checks a sandbox cannot run, ordered by what would hurt

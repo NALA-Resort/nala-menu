@@ -96,7 +96,14 @@ Open **font-test.html** on an iPhone. Then open **front-desk.html** and
 **prearrival.html** on the same phone and check the numbers line up in the stats
 row and the guest form's Raleway is loading rather than falling back.
 
-## 5. Does the cancellation id match the reservation id
+## 5. Does the cancellation id match the reservation id. ANSWERED 18 Aug
+
+**It does.** Same GUID, so a cancellation can find its booking and the Worker's
+clearing logic will work the moment the feed fires. Nothing to build. What is
+left is section 6, seeing one actually arrive.
+
+The original check, kept because it is the thing to redo if cancellations ever
+clear the wrong booking:
 
 **Before anything else about cancellations.** The cancellation trigger in
 Zapier has no `Mews Id` field, only `Id`. It has dashes, so it is a GUID, but
@@ -124,17 +131,17 @@ Worker to be called and the villa to clear from `/stays`. **If nothing fires,**
 the Zap's filter is dropping cancellations and that is the argument for the Mews
 Connector API.
 
-## 7. Does Mews send true UTC
+## 7. Does Mews send true UTC. ANSWERED 18 Aug
 
-The Worker takes the date part of Mews' `StartUtc`. The app uses the phone's
-local clock. At UTC+8, any arrival after 4pm local would be recorded on the
-night before.
+It does. `2026-09-18T04:00:00Z` is 2pm at the resort, which is UTC+10. The
+Worker now converts every Mews timestamp to the resort's local date before
+filing it, using the zone name `Australia/Brisbane` rather than a fixed offset,
+so summer time is the runtime's problem. Six cases in `worker/test.mjs` pin the
+boundaries, and three of them fail against the old code.
 
-Find a booking whose local check-in time you know and compare it to the
-`StartUtc` in the Zap history. **If they differ by the timezone offset,** Mews
-is sending true UTC and evening arrivals are on the wrong night. **If they
-match,** Mews is sending local time in a field named Utc and there is nothing to
-fix.
+What is left here is a live check rather than a question: after the next early
+arrival or early checkout, confirm the villa appears on the right night on the
+Cleans board. Before this, an 8am arrival was filed on the night before.
 
 ## 8. Printing
 

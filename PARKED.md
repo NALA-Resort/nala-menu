@@ -68,7 +68,22 @@ supposed to enforce that had never worked. It works in the new file, and the
 suite now pins that a waiter and the chef cannot do it either. Nothing more is
 needed here, it just has to be pasted with the rest.
 
-## 7. Still yours from before, unchanged
+## 7. Where the service hours should appear
+
+Answered 18 Aug: dinner 6:00 to 6:30, breakfast 8:00 to 9:30. They are written
+down now, but nothing shows them: no page in the app has ever stated a service
+time, so putting them on one is a design change rather than filling a blank.
+
+**Proposed, needs a yes from you before it is built.** Dinner goes on the
+welcome page, under the menu button, where a guest reading it has just arrived
+and is deciding about tonight. Breakfast goes on the pre-arrival form beside
+the dining question, since that is the only place a guest is asked about a
+meal before they get here. Neither appears on a staff board: reception knows
+the hours and the space is worth more to a villa number.
+
+Anything visual gets a mock first, at 390pt, checked at 360, unbroken at 320.
+
+## 8. Still yours from before, unchanged
 
 None of these moved today, and none of them can move without you.
 
@@ -77,11 +92,12 @@ None of these moved today, and none of them can move without you.
 3. Four credentials to rotate, now five: the token issued on 18 Aug has been in
    chat too. Issue `nala-menu publish` and `nala-menu chef` separately.
 4. Leftover Firebase Auth logins to delete.
-5. Whether Mews sends true UTC.
-6. Dinner and breakfast hours.
-7. The placeholder line on the pre-arrival form.
+5. ~~Whether Mews sends true UTC.~~ Answered: it does, and the Worker now
+   converts. See `TESTING.md` section 7.
+6. ~~Dinner and breakfast hours.~~ Answered, see above.
+7. ~~The placeholder line on the pre-arrival form.~~ Leave for now, 18 Aug.
 
-## 8. For the print chat, not for you
+## 9. For the print chat, not for you
 
 `menu-print.html` now has a suite and passes it, so nothing is owed there. The
 three nav entries it owes in `list.html` and `housekeeping.html`, the 320pt

@@ -71,12 +71,37 @@ async function db(env, path, method, body) {
 }
 
 /* Dates are stored the way dkey() in nala-shared.js writes them, YYYY-MM-DD,
-   so /bookings joins to /hk/<date> and roomguests with no conversion. Mews
-   sends ISO timestamps in UTC; only the date part is kept. */
+   so /bookings joins to /hk/<date> and roomguests with no conversion.
+
+   Mews sends true UTC. Confirmed 18 Aug: 2026-09-18T04:00:00Z is 2pm at the
+   resort. Until then this kept the date part of the string as written, which
+   is the local date only for timestamps before 2pm UTC. Everything after that
+   belongs to the NEXT local day and was being filed a day early: an early
+   arrival at 8am local is 22:00 UTC the evening before, and the villa would
+   have shown the guest arriving, and the Cleans board a job, on the wrong day.
+
+   A zone name rather than a fixed +10, so summer time is the runtime's problem
+   rather than a number in here that is right for half the year. Queensland
+   does not observe it; if the resort is in a state that does, change this one
+   line and the suite will still hold. */
+const RESORT_TZ = "Australia/Brisbane";
+const DATE_AT_RESORT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: RESORT_TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+
 function dkey(v) {
   if (!v) return null;
-  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  return m ? m[0] : null;
+  const s = String(v);
+  /* A date with no time is already a date. Mews sends timestamps, but the Zap
+     can be mapped to a date-only field, and reinterpreting midnight in a zone
+     would move it a day. */
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s.trim())) return s.trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  const t = new Date(s);
+  /* Something shaped like a date but not parseable as an instant keeps the
+     old behaviour rather than becoming null: half a date beats none. */
+  if (isNaN(t)) return m[0];
+  return DATE_AT_RESORT.format(t);
 }
 
 /* Every night the villa is occupied: arrival inclusive, departure exclusive.
