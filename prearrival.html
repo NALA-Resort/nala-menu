@@ -194,7 +194,7 @@ var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 /* The link carries the booking id and, for display only, the guest's name and
    dates. Those are Mews' facts and are NEVER written back from this page: a
    copy written here would be a snapshot, and stale the moment Mews changed the
-   booking. See GUEST-DATA.md. */
+   booking. See DESIGN.md. */
 var qs = new URLSearchParams(location.search);
 var G = {
   id:      (qs.get('b') || '').trim(),
@@ -393,7 +393,7 @@ function clearMiss(id){
 /* ── sending ─────────────────────────────────────────────────
    Nothing is written until Send. A half filled record is indistinguishable
    from a considered one, and "form done" would come to mean "some fields
-   exist". See GUEST-DATA.md. */
+   exist". See DESIGN.md. */
 function collect(){
   a.etaNote  = el('etaNote').value.trim();
   a.dietNote = el('dietNote').value.trim();

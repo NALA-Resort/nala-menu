@@ -5,8 +5,8 @@
 > kept for the reasoning behind the ordering.
 
 
-17 Aug. Everything open, in one order. Consolidates `MEWS-AUDIT.md`,
-`GUEST-DATA.md`, `SCREENS.md`, `GAPS.md`, `MORNING-17-AUG.md` and the
+17 Aug. Everything open, in one order. Consolidates `DESIGN.md`,
+`DESIGN.md`, `DESIGN.md`, `HANDOVER.md`, `HANDOVER.md` and the
 `HANDOVER.md` backlog. Where any of those disagree with this, this is newer.
 
 Marked **[you]** where it cannot be done from a chat, **[me]** where it can,
@@ -80,7 +80,7 @@ dropdown. Those two belong to the print chat, so this chat must not touch them.
 
 ## Stage D. The rewrite. The biggest single piece
 
-**Read `IDENTIFIERS.md` first.** It audits every URL parameter and every
+**Read `DESIGN.md` first.** It audits every URL parameter and every
 database key in the app and shows the real problem: four things identify a
 guest depending on which file you are in, and one dinner answer can live in
 three cells. Stage D as written below is the page edit; the document is the
@@ -131,7 +131,7 @@ can send the parameter names. See `TESTING.md`.
 - Pre-arrival asks about the ARRIVAL NIGHT only. The live form's per night
   planner for the whole stay is dropped: guests do not follow it even when they
   fill it in accurately, so it collects work rather than information
-- Allergy conflict at the desk is a separate future job, see `SCREENS.md`
+- Allergy conflict at the desk is a separate future job, see `DESIGN.md`
 - **[me]** `prearrival.html`, guest tier, four questions, one screen, no scroll
 - **[me]** Inherits the shape settled in Stage C
 - **[me]** Works before Mews has the booking, which is the normal case at seven

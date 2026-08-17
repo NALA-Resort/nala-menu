@@ -175,7 +175,7 @@ with sync_playwright() as p:
         ck("purpose and approach", body["purpose"] and body["approach"] == "most")
         ck("the treatment day and time", body["wellDay"] and body["wellTime"] == "late morning")
         ck("and a timestamp for when the answers first existed", bool(body["at"]))
-        # The whole point of GUEST-DATA.md: identity and dates are Mews'.
+        # The whole point of DESIGN.md: identity and dates are Mews'.
         for f in ("name", "first", "last", "villa", "room", "arrive", "depart",
                   "arrives", "departs", "phone"):
             if f in body:

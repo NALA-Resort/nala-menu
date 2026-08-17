@@ -168,7 +168,7 @@ with sync_playwright() as p:
     ck("off-today date matches param", str((now+datetime.timedelta(days=1)).day) in pg.locator("#title").inner_text())
 
 
-    # (auth-failure checks parked with the auth.js rollback — see AUDIT.md)
+    # (auth-failure checks parked with the auth.js rollback — see HANDOVER.md)
     open("/home/claude/nala/_p2_list.png","wb").write(shot)
     pg.close()
 

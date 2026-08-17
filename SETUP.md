@@ -1,6 +1,6 @@
 # Mews sync - setup jobs
 
-Companion to MEWS-SYNC.md. Everything here needs an account only Ben has.
+Companion to DESIGN.md. Everything here needs an account only Ben has.
 Anything not listed is being done in the repo and needs nothing from you.
 
 Five different pieces of software appear below, so each job names which one,
@@ -27,7 +27,7 @@ Listed first, because each one cost hours in a previous session.
 
 The sync is live as of 16 Aug: a real booking reached Firebase and indexed
 eight nights in villa 11. What follows is kept as the record of how it was
-built. See MEWS-SYNC.md for what the live configuration actually is, which
+built. See DESIGN.md for what the live configuration actually is, which
 differs from what these steps first said.
 
 ## Start now, nothing blocks these

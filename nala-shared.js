@@ -1,6 +1,6 @@
 /* NALA shared helpers - one copy of the logic every staff page repeats.
    Plain globals, same names the pages already use, so page code reads
-   unchanged. See STYLEGUIDE.md and AUDIT.md.                      v2 */
+   unchanged. See STYLEGUIDE.md and HANDOVER.md.                      v2 */
 
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var ROOMS = 17;
