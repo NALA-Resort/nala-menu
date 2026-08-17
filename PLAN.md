@@ -75,6 +75,12 @@ dropdown. Those two belong to the print chat, so this chat must not touch them.
 
 ## Stage D. The rewrite. The biggest single piece
 
+**Read `IDENTIFIERS.md` first.** It audits every URL parameter and every
+database key in the app and shows the real problem: four things identify a
+guest depending on which file you are in, and one dinner answer can live in
+three cells. Stage D as written below is the page edit; the document is the
+shape.
+
 This is stage 4 from the original plan, and it is larger than that plan says.
 It also closes the worst live security hole, which is the reason to do it here
 rather than later.
