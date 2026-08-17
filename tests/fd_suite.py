@@ -61,7 +61,9 @@ PRE = {
   "b9":  {"at":"2026-08-16T11:00:00Z","dining":False,"noDiets":True},
   # confirmed at the desk
   "b7":  {"at":"2026-08-15T10:00:00Z","confirmedAt":"2026-08-17T14:00:00Z","dining":True,"pax":2},
-  "b11": {"at":"2026-08-15T10:00:00Z","confirmedAt":"2026-08-17T14:05:00Z","dining":False}
+  "b11": {"at":"2026-08-15T10:00:00Z","confirmedAt":"2026-08-17T14:05:00Z","dining":False},
+  # opened the form, gave their allergies, left the dinner question alone
+  "b12": {"at":"2026-08-16T09:00:00Z","diets":["Gluten free"]}
 }
 
 WRITES = []
@@ -142,6 +144,21 @@ with sync_playwright() as p:
     ck("a confirmed guest shows the answer, not the word confirmed",
        "din|Dining" in pill("7"))
     ck("and confirmed includes not dining", "out|Not dining" in pill("11"))
+
+    # Whether they are eating, readable without opening anything.
+    def fork(v):
+        return pg.evaluate("()=>{const e=document.querySelector('.arr[data-villa=\"%s\"] .fork');"
+                           "return e?e.className:null;}" % v)
+    ck("a guest opted in for dinner reads green", fork("4") == "fork in")
+    ck("one who declined reads red", fork("9") == "fork out")
+    ck("a confirmed guest carries it too", fork("7") == "fork in")
+    ck("and a confirmed decline", fork("11") == "fork out")
+    # There is nothing to report about a guest who has not answered, and an
+    # icon there would be an answer we do not have.
+    ck("a guest with no form gets no icon at all", fork("2") is None)
+    # Grey is a real answer: they filled the form in and left dinner open.
+    ck("a form that skipped the dinner question reads grey, not green",
+       fork("12") == "fork un")
 
     # ── tapping a completed row reads the answers back ──────────
     # Reception says them out loud, the guest agrees or does not, and one of

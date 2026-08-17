@@ -11,7 +11,9 @@
 <link rel="stylesheet" href="nala-ui.css?v=12">
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-          --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55; }
+          --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
+          /* The same two the boards already use to mean dining and not. */
+          --dine:#5E7D67; --nodine:#9E6455; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
          padding:calc(24px + env(safe-area-inset-top)) 18px 0;
@@ -77,6 +79,15 @@
                         color:var(--ink); }
   /* The row a summary is hanging from keeps its top corners only. */
   .arr.open { border-radius:8px 8px 0 0; margin-bottom:8px; }
+
+  /* Whether they are eating, readable without opening anything. Only on rows
+     that have a form: there is nothing to report about a guest who has not
+     answered, and an icon there would be an answer we do not have. */
+  .fork { width:15px; height:15px; flex:0 0 15px; opacity:.9; }
+  .fork svg { width:100%; height:100%; display:block; }
+  .fork.in  svg { fill:var(--dine); }
+  .fork.out svg { fill:var(--nodine); }
+  .fork.un  svg { fill:var(--mid); opacity:.6; }
 
   .empty { font-size:15px; color:var(--mid); font-style:italic; padding:4px 0 2px; }
   .spacer { height:40px; }
@@ -257,7 +268,7 @@ function rowHTML(r){
          '<div class="arr-mid">'+
            '<div class="arr-n">'+esc(nameOf(r.stay))+'</div>'+
            '<div class="arr-s">'+bits.join(' \u00b7 ')+'</div>'+
-         '</div>'+pillFor(r.pre)+'</button>'+
+         '</div>'+forkFor(r.pre)+pillFor(r.pre)+'</button>'+
          (open ? summaryHTML(r) : '');
 }
 
@@ -267,6 +278,19 @@ var OPEN = null;
 
 var APPROACH_LABEL = { most:'Dining in most nights', mix:'A mix of in and out',
                        out:'Mostly eating out' };
+
+var ICON_FORK = '<svg viewBox="0 0 24 24" stroke-width="0">' +
+  '<path d="M6.2 2.5v6a2.4 2.4 0 001.6 2.3V21h1.6v-10.2A2.4 2.4 0 0011 8.5v-6H9.6v5.2H8.7V2.5H7.3v5.2h-.9V2.5H6.2z"/>' +
+  '<path d="M15.6 2.5c-1.5 0-2.5 1.9-2.5 5.1 0 2.4.7 3.9 1.8 4.3V21h1.6V2.5h-.9z"/></svg>';
+
+/* Grey is a real answer here, not a missing one: a guest can open the form,
+   fill in their allergies and leave the dinner question alone. Reception needs
+   to see that it is still open rather than assume either way. */
+function forkFor(p){
+  if (!hasForm(p)) return '';
+  var cls = p.dining === true ? 'in' : (p.dining === false ? 'out' : 'un');
+  return '<span class="fork ' + cls + '">' + ICON_FORK + '</span>';
+}
 
 function dayLabel(key){
   var d = parseDepDate(key); if (!d) return key;
