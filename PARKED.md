@@ -45,14 +45,15 @@ quietly offering to replace the chef's dietaries with the eight built-in ones.
 **Watch for:** the chef reporting that Save is greyed out. That means a sign in
 problem, not a lost list, and reloading after signing in fixes it.
 
-## 5. The new database rules need pasting into the console
+## 5. The new database rules: published 18 Aug
 
-`rules.json` in the repo now has a validate rule on every node, and nothing in
-it is real until you paste it into the Firebase console and press Publish. The
-steps are the ones already written down in `SETUP.md`, the section on the
-database rules: open the file on GitHub, copy button, select all in the Rules
-editor, paste over the lot, Publish. It is a complete replacement, not an
-addition. Say the word if you would rather have it as a block in chat.
+Done. The live rules and the repo copy match.
+
+What is left is the smoke test in `TESTING.md` section 0, six taps, worst
+first. The suite proved the rules against write bodies taken from the code, so
+the only thing it cannot rule out is a page writing a field that is not visible
+in the code that appears to send it. A write refused by a rule does not
+announce itself: the change simply is not there on the next refresh.
 
 Before you paste: this refuses twenty six shapes the database accepts today,
 and refuses nothing the app actually writes. Both halves of that were tested

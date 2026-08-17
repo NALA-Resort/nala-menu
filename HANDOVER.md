@@ -158,8 +158,10 @@ most. Nothing there has been done.
   the new file, and not one real write the app makes is broken by it, which was
   checked by running the same suite against both copies.
 
-  **The repo copy is now ahead of what is deployed.** Until it is pasted into
-  the Firebase console and Published, none of it is real.
+  **Published to the console 18 Aug.** The repo copy and the live rules match.
+  `TESTING.md` section 0 is the six tap smoke test that has not been run yet:
+  the one thing the suite cannot prove is that a page does not write a field
+  nobody wrote down, and such a write now fails silently.
 
   Writing them turned up a live permissions hole: housekeeping could set a
   villa's job, which `ROLES.md` has always said they cannot, confirmed by the

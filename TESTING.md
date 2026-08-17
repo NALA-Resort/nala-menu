@@ -12,6 +12,38 @@ Ordered by what would hurt most if it were broken.
 
 ---
 
+## 0. The new rules went live 18 Aug. Do this once, today
+
+Every write now has to pass a validate rule as well as a permission one. The
+suite proved that against a copy of the rules, using write bodies taken from
+the code, and 70 assertions passed. What it cannot prove is that the code sends
+only what the code appears to send. If a page writes a field nobody wrote down,
+that write now fails, and it fails the way a rejected write always does: the
+change vanishes on the next refresh rather than announcing itself.
+
+Six taps, in this order, worst first. Each should behave exactly as it did
+yesterday.
+
+1. **The guest pre-arrival form.** Open a real one and Send. This is the
+   tightest rule in the file, because anyone holding a booking id can write to
+   it, so only known fields are allowed. If Send fails, stop and tell me the
+   field: it is a one line change and I will publish a corrected file.
+2. **The guest menu page.** Answer dinner as a guest, with a dietary and a
+   note, and confirm it appears on the Reservations board.
+3. **Front Desk.** Confirm a booking, with a dietary and a note, and check in.
+4. **Cleans.** Mark a villa clean, mark a breakfast, then undo one of them.
+   Housekeeping's own login, not yours.
+5. **Set a villa's job by hand** from your own login. This one changed on
+   purpose: housekeeping can no longer do it, and never should have been able
+   to. If a cleaner reports the buttons doing nothing, that is why.
+6. **Menu Dietaries.** Add a dietary and Save.
+
+Anything that fails here is a rule that is too strict, not a page that broke.
+Nothing needs reverting in the app: the fix is a corrected rules file pasted
+over the top, the same way these went in.
+
+---
+
 ## 1. The pre-arrival round trip. NEW, never run on live data
 
 The first time the guest form and the front desk have met outside a fixture.
