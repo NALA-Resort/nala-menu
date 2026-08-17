@@ -355,5 +355,24 @@ const nights = Object.keys(STORE).filter(k => k.startsWith("/stays/"));
 ck("a booking moved twice holds exactly one villa, not three",
    nights.length === 1 && nights[0].endsWith("/15"));
 
+
+/* ── a cancellation for a booking we never saw ──────────────── */
+/* The cancellation trigger has no MewsId field, only Id, so it works only if
+   that Id is the same GUID as the reservation trigger's Mews Id. If it is a
+   cancellation event id instead, every cancellation lands here clearing
+   nothing, and used to reply with a cheerful ok. */
+install();
+const orphan = await post({ MewsId: "00000000-0000-4000-8000-00000000dead",
+  State: "Canceled", StartUtc: "2026-09-10T04:00:00Z",
+  EndUtc: "2026-09-11T02:00:00Z", ResourceName: "3" });
+ck("a cancellation for an unknown booking says so",
+   (await orphan.json()).unknownCancellation === true);
+
+install();
+await post(RES);
+const known = await post(Object.assign({}, RES, { State: "Canceled" }));
+ck("and a cancellation for one we know does not",
+   (await known.json()).unknownCancellation === undefined);
+
 console.log("RESULT: %d passed, %d failed", P, F);
 if (F) process.exit(1);

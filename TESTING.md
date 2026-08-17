@@ -64,7 +64,26 @@ Open **font-test.html** on an iPhone. Then open **front-desk.html** and
 **prearrival.html** on the same phone and check the numbers line up in the stats
 row and the guest form's Raleway is loading rather than falling back.
 
-## 5. Cancellation actually firing
+## 5. Does the cancellation id match the reservation id
+
+**Before anything else about cancellations.** The cancellation trigger in
+Zapier has no `Mews Id` field, only `Id`. It has dashes, so it is a GUID, but
+that is not enough: it only works if it is the SAME GUID as the reservation
+trigger's `Mews Id`. If it identifies the cancellation event instead, nothing
+links the two and every cancellation clears nothing.
+
+Cancel a test booking. Compare the `Id` in the cancellation run against the
+`Mews Id` from that same booking's reservation run.
+
+**Same value:** nothing to do, it already works.
+**Different:** cancellations cannot find their booking, and that needs solving
+before the feed is worth switching on.
+
+The Worker now reports `unknownCancellation: true` in its reply when a
+cancellation matches no booking it has seen, so the Zap history will show this
+without you comparing anything by hand.
+
+## 6. Cancellation actually firing
 
 Handled in the Worker and covered by 47 tests, but never observed arriving.
 
@@ -73,7 +92,7 @@ Worker to be called and the villa to clear from `/stays`. **If nothing fires,**
 the Zap's filter is dropping cancellations and that is the argument for the Mews
 Connector API.
 
-## 6. Does Mews send true UTC
+## 7. Does Mews send true UTC
 
 The Worker takes the date part of Mews' `StartUtc`. The app uses the phone's
 local clock. At UTC+8, any arrival after 4pm local would be recorded on the
@@ -85,7 +104,7 @@ is sending true UTC and evening arrivals are on the wrong night. **If they
 match,** Mews is sending local time in a field named Utc and there is nothing to
 fix.
 
-## 7. Printing
+## 8. Printing
 
 Never confirmed on a real phone: whether the repeating header actually repeats,
 and whether the PDF path avoids the browser's own headers.
@@ -93,7 +112,7 @@ and whether the PDF path avoids the browser's own headers.
 Print the Reservations Sheet from an iPhone, both via Print and via the PDF
 button, on a two page day.
 
-## 8. Push notifications
+## 9. Push notifications
 
 iOS only allows these for a site added to the Home Screen, so a browser tab
 cannot test it.
@@ -102,7 +121,7 @@ Add the app to the Home Screen, enable notifications in the hamburger, and have
 someone else mark a villa. **Expect** a lock screen buzz, and no notification
 for your own tap.
 
-## 9. Widths, on real devices
+## 10. Widths, on real devices
 
 Measured at 390, 360 and 320 in a headless browser, which is not a phone.
 

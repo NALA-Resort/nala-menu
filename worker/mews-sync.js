@@ -251,6 +251,17 @@ export default {
       const stale = prev ? nights(prev.arrive, prev.depart) : [];
 
       const cancelled = r.state.indexOf("cancel") > -1;
+
+      /* A cancellation for a booking we have never seen clears nothing, and
+         until now said so nowhere: the reply was a cheerful ok and the guest
+         stayed on the board.
+
+         The likely cause is an id mismatch. The cancellation trigger in Zapier
+         has no MewsId field, only Id, so it only works if that Id is the SAME
+         GUID as the reservation trigger's Mews Id. If it is a cancellation
+         event id instead, nothing links the two and every cancellation lands
+         here. Reported rather than swallowed, so the Zap history shows it. */
+      const unknownCancel = cancelled && !prev;
       /* An unrecognised villa is treated as having no nights at all: the
          booking is recorded, the index is left alone rather than filled with a
          key nothing reads, and any nights this reservation previously held are
@@ -347,6 +358,9 @@ export default {
         ok: true, id: r.id, villa: r.villa,
         state: cancelled ? "cancelled" : "confirmed",
         nights: fresh.length, cleared: cleared,
+        /* Named so a mismatch is visible in the Zap history rather than
+           looking like a success. */
+        unknownCancellation: unknownCancel || undefined,
         /* Named rather than silent. A space Mews calls something the app does
            not recognise is a mapping problem, and this is where it surfaces. */
         unknownVilla: (!cancelled && !knownVilla(r.villa)) ? String(r.villa) : undefined
