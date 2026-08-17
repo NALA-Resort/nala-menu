@@ -56,7 +56,8 @@ PRE = {
   "b4":  {"at":"2026-08-16T10:00:00Z","dining":True,"pax":2,
           "diets":["Nut allergy"],"dnote":"the daughter, severe",
           "arriveBy":"4pm","purpose":["Celebration"],"approach":"most",
-          "occasion":"anniversary","wellness":True,"note":"quiet villa please"},
+          "occasion":"anniversary","wellness":True,"wellDay":plus(1),"wellTime":"late morning",
+          "note":"quiet villa please"},
   "b9":  {"at":"2026-08-16T11:00:00Z","dining":False,"noDiets":True},
   # confirmed at the desk
   "b7":  {"at":"2026-08-15T10:00:00Z","confirmedAt":"2026-08-17T14:00:00Z","dining":True,"pax":2},
@@ -156,6 +157,11 @@ with sync_playwright() as p:
     ck("the arrival time they gave", "4pm" in sumtxt)
     ck("the occasion", "anniversary" in sumtxt)
     ck("purpose, in words rather than a stored code", "Celebration" in sumtxt)
+    # A wellness interest with no day or time is a note to nobody. When they
+    # gave one, it reads beside the answer rather than needing the form opened.
+    ck("wellness carries the day and time they chose, on the same line",
+       "Interested" in sumtxt and "late morning" in sumtxt and
+       ["Interested" in l and "late morning" in l for l in sumtxt.split("\n")].count(True) == 1)
     ck("dining approach, in words rather than 'most'",
        "Dining in most nights" in sumtxt)
     ck("and both ways out", pg.evaluate(
