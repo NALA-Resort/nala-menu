@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nala Villas">
+<link rel="apple-touch-icon" href="nala-icon.png?v=1">
+<title>Nala &middot; Pages</title>
+<link rel="stylesheet" href="nala-ui.css?v=12">
+<style>
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
+         padding:calc(24px + env(safe-area-inset-top)) 18px 0;
+         -webkit-tap-highlight-color:transparent; }
+
+  h1 { font-size:15px; font-weight:normal; margin-bottom:2px; }
+  .lede { font-size:12px; color:var(--mid); line-height:1.55; margin-bottom:4px; }
+
+  .seclabel { font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+              color:var(--mid); margin:24px 0 4px; }
+  .secnote { font-size:11px; color:var(--mid); line-height:1.5; margin-bottom:9px; }
+
+  /* A row is a link, so it wears the link dress rather than the button dress:
+     underlined name, no border, no fill. The affordance rules reserve a
+     bordered rectangle for buttons, and seventeen bordered rectangles would
+     read as seventeen things to press rather than a map. */
+  .p { display:block; padding:9px 0 10px; border-bottom:1px solid var(--rule);
+       text-decoration:none; color:inherit; }
+  .p:last-child { border-bottom:none; }
+  .p-t { font-size:15px; text-decoration:underline; text-underline-offset:3px; }
+  .p-f { font-size:11px; color:var(--mid); margin-top:3px; }
+  .p-n { font-size:11px; color:var(--mid); margin-top:3px; font-style:italic; }
+
+  /* Not a link, because there is nothing to open. */
+  .p.todo .p-t { text-decoration:none; color:var(--mid); }
+  .p.todo .p-t::after { content:' \00b7 not built'; font-style:italic; }
+
+  .warn { color:var(--red); }
+  .spacer { height:40px; }
+</style>
+</head>
+<body class="tier-app">
+
+<div class="daterow">
+  <div class="date" id="title">Pages</div>
+  <div class="navwrap" id="navWrap">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="list.html">Reservations Sheet</a><a href="cleaners.html">Cleans</a><a href="housekeeping.html">Clean sheet</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+  </div>
+</div>
+
+<div class="noaccess" id="noAccess"></div>
+
+<div id="body">
+  <h1>Every page in the app</h1>
+  <div class="lede">Each name is a live link. Opening one from here is the same
+    as opening it from anywhere else, so a link that fails here fails for
+    everyone.</div>
+
+  <div class="seclabel">Staff boards</div>
+  <div class="secnote">Sign in required. Which of these a login may open depends
+    on its role, so a refusal here is the role gate working, not a broken link.</div>
+  <a class="p" href="tally.html">
+    <div class="p-t">Reservations</div><div class="p-f">tally.html</div>
+    <div class="p-n">Tonight's numbers. The board the chef reads.</div></a>
+  <a class="p" href="front-desk.html">
+    <div class="p-t">Front Desk Arrival</div><div class="p-f">front-desk.html</div>
+    <div class="p-n">Today's arrivals, and what reception still has to confirm.</div></a>
+  <a class="p" href="cleaners.html">
+    <div class="p-t">Cleans</div><div class="p-f">cleaners.html</div>
+    <div class="p-n">Housekeeping's board.</div></a>
+  <a class="p" href="staff.html">
+    <div class="p-t">Settings</div><div class="p-f">staff.html</div>
+    <div class="p-n">People, roles and notifications. Admin only.</div></a>
+  <a class="p" href="tag.html">
+    <div class="p-t">Menu Dietaries</div><div class="p-f">tag.html</div>
+    <div class="p-n">Where the chef tags which dietaries each dish conflicts
+      with. Those tags are what flags an allergy to a guest and at the desk.</div></a>
+  <a class="p" href="stats.html">
+    <div class="p-t">Statistics</div><div class="p-f">stats.html</div></a>
+
+  <div class="seclabel">Sheets, for paper</div>
+  <div class="secnote">Print tier. Black on white, and they build a real PDF
+    rather than relying on the browser's print, which an iPhone renders as a
+    bitmap.</div>
+  <a class="p" href="list.html">
+    <div class="p-t">Reservations Sheet</div><div class="p-f">list.html</div></a>
+  <a class="p" href="housekeeping.html">
+    <div class="p-t">Clean Sheet</div><div class="p-f">housekeeping.html</div></a>
+  <a class="p" href="menu-print.html">
+    <div class="p-t">Printable Menu</div><div class="p-f">menu-print.html</div>
+    <div class="p-n">No sign in.</div></a>
+
+  <div class="seclabel">Guest pages</div>
+  <div class="secnote">No sign in, by necessity: a guest cannot have a login.
+    These expect a link that identifies the booking, so opening them bare shows
+    the page with nothing in it. That is not a fault.</div>
+  <a class="p" href="index.html">
+    <div class="p-t">Tonight's Menu</div><div class="p-f">index.html</div>
+    <div class="p-n">The nightly dinner invite. Opening it bare shows the menu
+      and no reply panel.</div></a>
+  <a class="p" href="welcome.html">
+    <div class="p-t">Welcome</div><div class="p-f">welcome.html</div></a>
+  <div class="p todo">
+    <div class="p-t">Pre-arrival questionnaire</div><div class="p-f">prearrival.html</div>
+    <div class="p-n">Next to build. Carries a booking id and the guest's name
+      and dates, for display only.</div></div>
+
+  <div class="seclabel">Tools</div>
+  <a class="p" href="debug.html">
+    <div class="p-t">Diagnostics</div><div class="p-f">debug.html</div>
+    <div class="p-n">Is Mews data arriving, and what does each board actually
+      read. The first place to look when a board is wrong.</div></a>
+  <a class="p" href="pages.html">
+    <div class="p-t">Pages</div><div class="p-f">pages.html</div>
+    <div class="p-n">This page.</div></a>
+  <a class="p" href="font-test.html">
+    <div class="p-t">Font test</div><div class="p-f">font-test.html</div>
+    <div class="p-n">The sandbox has no iOS fonts, so anything type dependent
+      needs a real handset. This is that check.</div></a>
+  <a class="p" href="404.html">
+    <div class="p-t">Not found</div><div class="p-f">404.html</div></a>
+
+  <div class="seclabel">Demos</div>
+  <div class="secnote">Self contained copies with invented data baked in. No
+    sign in, no database, safe to send to anyone. Rebuilt whenever a page
+    changes, so a stale demo means somebody skipped a step.</div>
+  <a class="p" href="demo-tally.html">
+    <div class="p-t">Reservations demo</div><div class="p-f">demo-tally.html</div></a>
+  <a class="p" href="demo-reservations.html">
+    <div class="p-t">Reservations Sheet demo</div><div class="p-f">demo-reservations.html</div></a>
+  <a class="p" href="demo-cleans.html">
+    <div class="p-t">Cleans demo</div><div class="p-f">demo-cleans.html</div></a>
+  <a class="p" href="demo-clean.html">
+    <div class="p-t">Clean Sheet demo</div><div class="p-f">demo-clean.html</div></a>
+
+  <div class="spacer"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="auth.js?v=11"></script>
+<script src="nala-shared.js?v=19"></script>
+<script>
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+  var so=document.getElementById('navSignout');
+  if (so) so.onclick=function(e){ e.preventDefault();
+    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+})();
+
+/* Only the boards this role may open. Sign out is never filtered. */
+function navFilter(role){
+  var need = { 'tally.html':'resBoard', 'front-desk.html':'editBookings',
+               'list.html':'resSheet', 'cleaners.html':'cleansBoard',
+               'housekeeping.html':'cleansBoard', 'staff.html':'manageStaff',
+               'pages.html':'manageStaff' };
+  var links = document.getElementById('navDrop').getElementsByTagName('a');
+  for (var i=0;i<links.length;i++){
+    if (links[i].className.indexOf('signout') > -1) continue;
+    var href = (links[i].getAttribute('href')||'').split('?')[0];
+    links[i].style.display = can(role, need[href]) ? '' : 'none';
+  }
+}
+
+function showAccess(allowed, e){
+  var box = document.getElementById('noAccess');
+  var on = !allowed;
+  box.innerHTML = !on ? '' :
+    (e ? '<div>Could not check access. This is usually the connection, '
+       + 'not your login.</div>'
+       + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+       : 'This login has no access to Pages. See the manager.');
+  if (on && !e){
+    var home = homeFor(window.NALA_ROLE);
+    if (home && home !== location.pathname.split('/').pop()){
+      location.replace(home); return;
+    }
+  }
+  box.className = 'noaccess' + (on ? ' show' : '');
+  document.getElementById('body').style.display = on ? 'none' : '';
+}
+
+window.NALA_ROLE = null;
+(function gate(){
+  if (!window.firebase || !firebase.auth || typeof loadStaff !== 'function')
+    return setTimeout(gate, 40);
+  var A; try { A = firebase.auth(); } catch(e){ return setTimeout(gate, 40); }
+  if (!A || !A.onAuthStateChanged) return setTimeout(gate, 40);
+  A.onAuthStateChanged(function(u){
+    if (!u) return;                 /* auth.js owns the signed-out state */
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      window.NALA_USER = u;
+      document.getElementById('navWrap').style.display = 'block';
+      navFilter(role);
+      /* A map of the whole app is an admin tool, gated like Settings. */
+      showAccess(can(role, 'manageStaff'), e);
+    });
+  });
+})();
+</script>
+</body>
+</html>

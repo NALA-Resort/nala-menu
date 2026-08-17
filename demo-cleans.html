@@ -279,7 +279,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   <div class="date" id="title"></div>
   <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="demo-tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="demo-reservations.html">Reservations Sheet</a><a href="demo-clean.html">Clean sheet</a><a href="staff.html">Settings</a><a href="#" class="signout" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="demo-tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="demo-reservations.html">Reservations Sheet</a><a href="demo-clean.html">Clean sheet</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 
@@ -452,7 +452,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   function navFilter(role){
     var need = { 'tally.html':'resBoard', 'front-desk.html':'editBookings', 'list.html':'resSheet',
                  'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard',
-                 'staff.html':'manageStaff' };
+                 'staff.html':'manageStaff', 'pages.html':'manageStaff' };
     var links = document.querySelectorAll('#navDrop a');
     for (var i=0;i<links.length;i++){
       if (links[i].className.indexOf('signout')>-1) continue;

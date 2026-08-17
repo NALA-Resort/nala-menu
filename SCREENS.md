@@ -35,6 +35,21 @@ Front Desk Arrival is the first screen built to that from the start.
 
 ---
 
+## Built 17 Aug: Pages, the site map
+
+`pages.html`, admin only, in the hamburger. Every page in the app as a live
+link, grouped by tier, with a note on what each is for and which need a link or
+a sign in.
+
+Its suite does the thing the page exists for: it opens every link it lists and
+confirms the file is served, and it checks the reverse too, that no page exists
+in the repo which the map fails to mention. A hand written map rots the first
+time somebody ships a page and forgets it, and a map that lies is worse than
+none, because it is what you check when you are already unsure.
+
+`list.html` and `housekeeping.html` still need Pages and Front Desk Arrival
+added to their nav dropdowns. Both belong to the print chat.
+
 ## To build
 
 ### 1. Pre-arrival questionnaire, guest
