@@ -221,6 +221,60 @@ with sync_playwright() as p:
        "No merge tag junk" in pg.inner_text("#junk") and pg.is_disabled("#junkDel"))
     pg.close()
 
+    # ── orphan pre-arrival answers ────────────────────────────
+    # A guest answers the form, then the booking is cancelled or the link
+    # carried an id Mews never had. The answers sit against nothing forever.
+    reset()
+    DATA["bookings"] = {
+        "b1": {"pms": {"villa": "1", "first": "James", "last": "Hall",
+                       "state": "confirmed"},
+               "prearrival": {"dining": True, "at": now.isoformat()}},
+        "b-cancelled": {"pms": {"first": "Ruth", "last": "Bell",
+                                "state": "cancelled"},
+                        "prearrival": {"dining": True, "diets": ["Vegan"],
+                                       "at": now.isoformat()}},
+        "b-typo": {"prearrival": {"dining": False, "at": now.isoformat()}},
+        "b-old": {"pms": {"first": "Gone", "last": "Long", "state": "confirmed",
+                          "depart": "2026-01-04"},
+                  "prearrival": {"dining": True, "at": "2026-01-01T00:00:00Z"}},
+        "b-nopre": {"pms": {"villa": "9", "state": "cancelled"}},
+    }
+    pg = open_debug()
+    pg.click("button:text-is('Find orphans')"); pg.wait_for_timeout(700)
+    o = pg.inner_text("#orphans")
+    ck("a cancelled booking's answers are found", "b-cancelled" in o)
+    ck("and an id Mews has never heard of", "b-typo" in o)
+    ck("a live booking's answers are left alone", "b1" not in o)
+    ck("and so are old ones, because age is not a reason", "b-old" not in o)
+    ck("a cancelled booking with no answers is not listed", "b-nopre" not in o)
+    ck("the guest is named where Mews knows them", "Ruth" in o)
+    ck("and what they said is shown before it is deleted", "Vegan" in o)
+    ck("finding deletes nothing", not deletes())
+    pg.click("#orphanDel"); pg.wait_for_timeout(700)
+    gone = sorted([w["parts"][0] for w in deletes()])
+    ck("only the listed answers are deleted", gone == ["b-cancelled", "b-typo"])
+    ck("and only the answers, not the booking",
+       all(w["parts"][1] == "prearrival" for w in deletes()))
+    pg.close()
+
+    reset()
+    pg = open_debug()
+    pg.click("button:text-is('Find orphans')"); pg.wait_for_timeout(700)
+    ck("nothing to clear says so and offers no delete",
+       "No orphan" in pg.inner_text("#orphans") and pg.is_disabled("#orphanDel"))
+    pg.close()
+
+    # A refused read must not read as a clean database. Same lesson as Clean
+    # Slate, in the newest place it could happen.
+    reset(); DATA["bookings"] = "denied"
+    pg = open_debug()
+    pg.click("button:text-is('Find orphans')"); pg.wait_for_timeout(700)
+    o = pg.inner_text("#orphans")
+    ck("a refused read is not reported as no orphans", "No orphan" not in o)
+    ck("it says what went wrong", "could not read" in o.lower())
+    ck("and offers nothing to delete", pg.is_disabled("#orphanDel"))
+    pg.close()
+
     # ── a booking in two villas ───────────────────────────────
     reset()
     DATA["stays"] = {today: {"1": {"id": "b1", "first": "James", "last": "Hall"},

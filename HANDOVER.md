@@ -197,7 +197,16 @@ most. Nothing there has been done.
   treated a refused read as an empty list, seeded the eight defaults over it,
   and offered a Save that would have written them over the chef's real list.
   `debug` and `menu-print` were already correct.
-- **Orphan `prearrival` records** against cancelled or mistyped ids sit forever.
+- ~~Orphan `prearrival` records~~ **done 18 Aug.** Diagnostics has a find and
+  clear pair for them, listing before deleting like the other two. Deliberately
+  narrow: only a booking Mews calls cancelled, and an id Mews has no record of
+  at all. A stay merely in the past is never listed, because those answers are
+  the record of a guest who came, and "looks old to me" is not a rule to apply
+  to somebody's words about their own allergies. Only the `prearrival` child is
+  deleted, since the rules grant write there and not on the booking, so an id
+  with nothing else on it is left as an empty shell rather than half deleted.
+  Fourteen cases in the Diagnostics suite, including that a refused read is not
+  reported as a clean database.
 - **Write back to Mews:** check-in status and dietaries into the reservation.
   Needs the Connector API. The hook is marked in `front-desk.html`.
 - **Map Customer Id**, which identifies a guest across all their stays.

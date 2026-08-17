@@ -47,6 +47,18 @@ deleted until you press the second button.</p>
 <button id="junkDel" onclick="deleteJunk()" disabled>Delete listed</button>
 <pre id="junk">not run</pre>
 
+<h2>Find and clear orphan pre-arrival answers</h2>
+<p style="margin:.3em 0 .6em">A guest fills in the pre-arrival form, then the
+booking is cancelled, or the link carried an id Mews has never heard of. The
+answers sit against nothing forever: reception cannot see them, no board reads
+them, and they are the guest's own words about allergies and occasions. Only
+two cases are listed, and both are ones Mews has settled: a booking Mews calls
+cancelled, and an id Mews has no record of at all. Age alone is never a
+reason.</p>
+<button onclick="findOrphans()">Find orphans</button>
+<button id="orphanDel" onclick="deleteOrphans()" disabled>Delete listed</button>
+<pre id="orphans">not run</pre>
+
 <h2>Find and clear a booking left in two villas</h2>
 <p style="margin:.3em 0 .6em">A guest moved between villas leaves an entry
 behind in the one they left. The Worker clears it, but only when Mews next
@@ -322,6 +334,94 @@ function doWipe(){
    is merely old is left alone, because "looks stale to me" is not a rule this
    should be applying to live data.                                         */
 var JUNK = [];
+
+/* A pre-arrival answer belongs to a booking. When the booking is cancelled, or
+   when the link carried an id Mews never had, the answer is stranded: no board
+   reads it, reception never sees it, and it stays there for good.
+
+   Deliberately narrow, for the same reason the junk finder is. Two cases only,
+   and Mews decides both of them:
+
+     the booking exists and Mews says it is cancelled
+     no /pms at all, so Mews has never heard of this id
+
+   A booking whose stay is simply in the past is NOT listed. Those answers are
+   the record of a guest who came, and "looks old to me" is not a rule to apply
+   to somebody's words about their own allergies.
+
+   Only the prearrival child is deleted. The rules grant write there and not on
+   the booking itself, so an id with nothing else on it is left as an empty
+   shell rather than half deleted with an error. */
+var ORPHANS = [];
+
+function orphanReason(rec){
+  if (!rec || typeof rec !== 'object') return null;
+  if (!rec.prearrival || typeof rec.prearrival !== 'object') return null;
+  var pms = rec.pms;
+  if (!pms || typeof pms !== 'object') return 'Mews has no record of this id';
+  if (String(pms.state || '').toLowerCase() === 'cancelled') return 'cancelled in Mews';
+  return null;
+}
+
+function findOrphans(){
+  document.getElementById('orphans').textContent = 'scanning…';
+  fetch(DB+'/bookings.json?v='+Date.now())
+    .then(function(r){
+      /* A read that fails is not an empty node. Reporting "no orphans" because
+         the rules refused the request is the Clean Slate mistake again. */
+      if (!r.ok) throw new Error('could not read /bookings, HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(all){
+      ORPHANS = [];
+      var lines = [];
+      for (var id in (all || {})){
+        var why = orphanReason(all[id]);
+        if (!why) continue;
+        var p = all[id].prearrival || {};
+        var pms = all[id].pms || {};
+        var who = ((pms.first||'') + ' ' + (pms.last||'')).trim();
+        var when = p.at || p.openedAt || p.confirmedAt || '';
+        ORPHANS.push({ id:id, why:why });
+        lines.push(id + '  ' + (who || '(no name in Mews)') +
+                   '  ' + why +
+                   (when ? '  answered ' + String(when).slice(0,10) : '') +
+                   (p.dining !== undefined ? (p.dining ? '  dining' : '  not dining') : '') +
+                   ((p.diets && p.diets.length) ? '  ' + p.diets.join(', ') : ''));
+      }
+      var btn = document.getElementById('orphanDel');
+      if (!ORPHANS.length){
+        btn.disabled = true;
+        show('orphans', 200, 'No orphan pre-arrival answers.');
+        return;
+      }
+      btn.disabled = false;
+      show('orphans', 200, ORPHANS.length + ' answer(s) to delete:\n' + lines.join('\n') +
+        '\n\nRead the list. Every line is a guest whose booking Mews says is ' +
+        'cancelled or has never existed. Nothing whose stay is merely in the ' +
+        'past is here.');
+    })
+    .catch(function(e){ show('orphans', 0, String(e && e.message || e)); });
+}
+
+function deleteOrphans(){
+  if (!ORPHANS.length) return;
+  if (!confirm('Delete ' + ORPHANS.length + ' pre-arrival answer(s)? This cannot be undone.')) return;
+  document.getElementById('orphans').textContent = 'deleting…';
+  Promise.all(ORPHANS.map(function(o){
+    return fetch(DB+'/bookings/'+o.id+'/prearrival.json', { method:'DELETE' })
+      .then(function(r){ return { o:o, ok:r.ok, status:r.status }; })
+      .catch(function(){ return { o:o, ok:false, status:0 }; });
+  })).then(function(res){
+    var bad = res.filter(function(x){ return !x.ok; });
+    var msg = (res.length - bad.length) + ' deleted.';
+    if (bad.length) msg += '\n' + bad.length + ' failed:\n' +
+      bad.map(function(x){ return x.o.id + ' HTTP ' + x.status; }).join('\n');
+    ORPHANS = [];
+    document.getElementById('orphanDel').disabled = true;
+    show('orphans', bad.length ? 207 : 200, msg);
+  });
+}
 
 /* One booking should hold one villa per night. Where it holds two, Mews
    decides which survives: /bookings/<id>/pms.villa is a single value.
