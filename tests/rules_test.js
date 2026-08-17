@@ -56,6 +56,7 @@ const ADMIN  = signedIn('staff@nalaresort.com.au');
 const DESK   = signedIn('reception@nalaresort.com.au');
 const CHEF   = signedIn('chef@nalaresort.com.au');
 const HK     = signedIn('housekeeping@nalaresort.com.au');
+const WAITER = signedIn('waiter@nalaresort.com.au');
 const SYNC   = signedIn('482913@staff.nala');
 const GUEST  = null;
 
@@ -166,6 +167,9 @@ cannotPatch('nor by patching the villa around it', HK, `/hk/${TODAY}/4`,
             { kind: 'pre' });
 cannotPatch('nor tucked in beside a mark they are allowed to make', HK,
             `/hk/${TODAY}/4`, { done: NOW, kind: 'vac' });
+/* Confirmed 18 Aug: setting the job is the manager's, nobody else's. */
+cannot('a waiter cannot set the job either', WAITER, `/hk/${TODAY}/4/kind`, 'clean');
+cannot('nor the chef', CHEF, `/hk/${TODAY}/4/kind`, 'clean');
 canPatch('housekeeping can still mark a villa clean', HK, `/hk/${TODAY}/4`, { done: NOW });
 canPatch('and clear a mark they made by mistake', HK, `/hk/${TODAY}/4`, { done: null });
 can('and Clean Slate can still delete the whole villa record', ADMIN,

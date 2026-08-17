@@ -162,7 +162,8 @@ most. Nothing there has been done.
   the Firebase console and Published, none of it is real.
 
   Writing them turned up a live permissions hole: housekeeping could set a
-  villa's job, which `ROLES.md` has always said they cannot. Write permission
+  villa's job, which `ROLES.md` has always said they cannot, confirmed by the
+  owner on 18 Aug. Write permission
   in Firebase cascades down and cannot be taken back at a child, so the rule on
   `kind` never did anything, because write was already granted at the villa
   above it. The restriction now lives in a validate rule, which does not

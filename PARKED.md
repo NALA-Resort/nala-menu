@@ -60,13 +60,12 @@ rather than reasoned about. The thing to watch for afterwards is any page
 reporting that a save was not allowed, which would mean a field somebody writes
 was missed.
 
-## 6. Housekeeping can set a villa's job, and ROLES.md says they cannot
+## 6. Housekeeping setting a villa's job: answered 18 Aug
 
-The rule meant to stop them has never worked. The new file stops them.
-
-**Question for you:** is ROLES.md right? If housekeeping should be able to mark
-a villa as a clean or a service themselves, say so and the rule comes out
-before you paste. Nothing else in the file depends on it.
+ROLES.md was right. Setting the job is the manager's, and the rule that was
+supposed to enforce that had never worked. It works in the new file, and the
+suite now pins that a waiter and the chef cannot do it either. Nothing more is
+needed here, it just has to be pasted with the rest.
 
 ## 7. Still yours from before, unchanged
 
