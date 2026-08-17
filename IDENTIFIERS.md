@@ -147,6 +147,18 @@ Name and dates may ride along for display and are never written.
 
 ## Done 17 Aug
 
+`guests`, `roomguests` and `responses` are the old scheme, keyed on a phone
+number or written by a guest page. Nothing has written them since 17 Aug: the
+dinner cell replaced `responses`, and Mews records who is in a villa through
+`stays`. They are admin write only now, and kept readable so the boards can
+fall back while old dates age out. Delete the nodes and their rules once no
+date in the look-back window still uses them.
+
+Note for anyone editing `rules.json`: Firebase rejects a plain string value
+anywhere in it. Every key must be a rule such as `.read` or a node whose value
+is an object. A comment key breaks the whole file, which is why this note lives
+here instead.
+
 - `welcome.html` takes a booking id and writes nothing at all. It was the last
   guest page reading a phone out of a link, and it wrote both `/guests` and
   `/roomguests` on every open. The merge-tag test panel went with it.
