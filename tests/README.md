@@ -39,6 +39,16 @@ code that sends it. `RULES_FILE=/path/to/rules.json node tests/rules_test.js`
 points the same suite at another copy, which is how these were diffed against
 the deployed ones.
 
+    node tests/matrix_probe.js       # 8   - can a matrix in Settings be a real permission
+
+Not a suite for anything that is built. It is a working prototype of the
+permission matrix asked for on 18 Aug, kept because the answer was not obvious
+and the first answer given was wrong. A matrix stored in the database CAN
+enforce a permission, because the rules already read the database to find a
+role, so ticking a box changes what is allowed with no paste. The probe pins
+the shape that makes it safe: the manager is allowed regardless, a missing
+matrix falls back to manager only, and nobody can tick their own box.
+
 Counts drift. If yours do not match, the suite moved and this line did not:
 trust the suite.
 

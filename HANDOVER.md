@@ -201,15 +201,22 @@ most. Nothing there has been done.
   because the rule that forbade it never ran, and nothing anywhere showed the
   gap between what the document said and what the database allowed.
 
-  The catch is that Realtime Database rules are a file, not data. A matrix that
-  only writes a node the pages consult is a display of intent, not a
-  permission: anyone with a login could still write directly. So either the
-  matrix drives generated rules that still have to be pasted into the console,
-  which makes it a document that produces a paste rather than a control, or
-  every rule is rewritten to read the matrix out of the database, which is
-  slower on every write and puts the lock inside the thing being locked. Worth
-  designing properly before building. `tests/rules_test.js` is the safety net
-  for whichever way it goes.
+  It works the way the notifications matrix works, and it is a real permission
+  rather than a display of one. The rules already read the database on every
+  write, because that is how they find a role in `/staff`, so reading one more
+  node costs nothing new. Ticking a box in Settings changes what the database
+  allows, with no paste in between. Proven, not assumed: `tests/matrix_probe.js`
+  is a working set of rules and 8 assertions against them.
+
+  What that probe pins is the shape it has to take. The manager is allowed
+  regardless of the matrix, so a bad toggle cannot lock everyone out of the
+  app. A missing matrix falls back to manager only rather than to open. Only
+  the manager may tick a box, and a box has to be a boolean.
+
+  Two limits stay. The rule text still has to exist per node, so toggling a row
+  is free but ADDING a row is still a rules change and still a paste. And it
+  only covers permissions that are a write to this database: the chef
+  publishing the menu is a commit, not a write, so no matrix can enforce it.
 
 ---
 
