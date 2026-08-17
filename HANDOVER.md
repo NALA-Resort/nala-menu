@@ -196,6 +196,45 @@ most. Nothing there has been done.
   Needs the Connector API. The hook is marked in `front-desk.html`.
 - **Map Customer Id**, which identifies a guest across all their stays.
 
+#### Asked for 18 Aug
+
+1. **Cleans timers: green for the first ten minutes.** Today the elapsed
+   figure beside "Available" is plain ink until 15 minutes, amber from 15, red
+   from 20. There is no green at all, so a villa turned around inside the
+   window looks the same as one nobody has touched. Ink to green under 10,
+   ink 10 to 15, then the existing amber and red. `cleaners.html:489` and the
+   three rules at `cleaners.html:95`. Colours already exist as `--green` and
+   `--greenb`. Mock at 390 first: this is the tile everyone reads at a glance.
+2. **The notes bubble is showing the wrong notes.** It should carry only the
+   dietaries and notes written on the dining invitation, and it must say which
+   night they belong to: "Today's dining notes" against "Previous dining
+   notes". Right now a note from an earlier stay reads as tonight's, which is
+   the kind of thing that reaches a plate. The dinner cell is per date, so the
+   date is already there to stamp with. Check every board that renders the
+   bubble, not just the one it was noticed on.
+3. **Chef brief needs a link to Menu Dietaries.** So the chef publishes the
+   menu and then tags it, rather than remembering to. See item 5, which changes
+   the same document.
+4. **Publishing the menu should notify the manager.** That removes the reason
+   the chef brief carries a "notify managers" link at all, so the brief gets
+   shorter by one step. The notify plumbing already exists at `/notify` with
+   per event, per role toggles, so this is a new event in that list rather than
+   a new mechanism.
+5. **The demo sheets do not update themselves.** Asked 18 Aug. They are
+   standalone copies built by `python3 tools/make-demo.py`, and they cover four
+   pages only: Reservations, the Reservations Sheet, Cleans and the Clean
+   Sheet. Nothing rebuilds them on a commit, so any change to those four pages
+   leaves the demos showing the old one until somebody runs the script. Worth
+   putting in whatever checklist ends up governing a release, or better,
+   running it from the same place the suites run.
+6. **Not a bug: no menu published means nothing to tag.** Reported 18 Aug as
+   "cannot select dietaries, only archive them". The tick rows are built from
+   tonight's published menu, and `menu.json` was last published 17 Aug at 9:26,
+   so the page correctly had no dishes to offer and only the manage list was
+   interactive. The page does say so, and it was still read as broken, which
+   makes it a wording problem rather than a logic one. Say it where the ticks
+   would have been, not above them.
+
 ### Discussed, not designed
 
 - Editing a registration card and saving from paper, rather than at the screen.
