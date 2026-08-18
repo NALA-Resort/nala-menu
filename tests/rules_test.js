@@ -289,5 +289,64 @@ cannot('the chef cannot edit the staff list', CHEF, '/staff/x@y,com',
 cannot('housekeeping cannot write a reservation', HK, '/stays/2026-09-10/3',
        { id: 'b-2' });
 
+console.log('--- the permission matrix ---');
+
+/* The matrix is the manager changing the shipped defaults from Settings. Most
+   of what it changes is a button appearing or not appearing, which the rules
+   cannot see. Setting the job a villa needs is the exception: it is a write,
+   so it can be enforced here as well, and it is the one worth enforcing
+   because it decides what housekeeping is sent to do. */
+function withPerms(perms) {
+  return targaryen.database(RULES, Object.assign({}, SEED, { permissions: perms }));
+}
+const KIND = `/hk/${TODAY}/4/kind`;
+
+ck('with no matrix at all, only the manager sets the job',
+   as(HK).write(KIND, 'clean').allowed === false &&
+   as(ADMIN).write(KIND, 'clean').allowed === true);
+
+const ticked = withPerms({ setJob: { housekeeping: true, waiter: false } });
+ck('ticking the box in Settings lets housekeeping set it',
+   ticked.as(HK).write(KIND, 'clean').allowed === true);
+ck('and leaves the role in the next column alone',
+   ticked.as(WAITER).write(KIND, 'clean').allowed === false);
+
+const untickedM = withPerms({ setJob: { housekeeping: false } });
+ck('unticking it takes the job back off them',
+   untickedM.as(HK).write(KIND, 'clean').allowed === false);
+ck('and the manager is unaffected either way',
+   untickedM.as(ADMIN).write(KIND, 'clean').allowed === true);
+
+can('the manager ticks a box', ADMIN, '/permissions/setJob/housekeeping', true);
+cannot('housekeeping cannot tick their own box', HK,
+       '/permissions/setJob/housekeeping', true);
+cannot('the chef cannot tick anybody\'s', CHEF,
+       '/permissions/publishMenu/waiter', true);
+cannot('and a box has to be a yes or a no', ADMIN,
+       '/permissions/setJob/housekeeping', 'sometimes');
+
+/* Two invariants that live in the rules rather than in the page, because the
+   page is not the only way to write here. Handing out manageStaff hands out
+   the ability to hand things out, which is a second manager rather than a
+   permission. And a false against admin would lock the only person who can
+   undo it out of the page where it is undone. */
+cannot('manageStaff cannot be handed out at all', ADMIN,
+       '/permissions/manageStaff/waiter', true);
+cannot('the manager cannot be switched off, even by hand', ADMIN,
+       '/permissions/setJob/admin', false);
+cannot('nor can a capability that does not exist be invented', ADMIN,
+       '/permissions/deleteEverything/waiter', true);
+ck('anyone signed in may read it, because every gate in the app needs it',
+   as(HK).read('/permissions').allowed === true);
+cannot('a signed out browser cannot read it', GUEST, '/permissions', null);
+
+console.log('--- the customer id ---');
+
+canPatch('the sync writes the customer id onto the booking', SYNC,
+         '/bookings/b-1/pms', { customerId: '7c1e4a90-3b55-4a11-9d02-b4a900c12abc' });
+cannotPatch('but not something the length of a paragraph', SYNC,
+            '/bookings/b-1/pms',
+            { customerId: 'x'.repeat(65) });
+
 console.log('RESULT: %d passed, %d failed', P, F);
 process.exit(F ? 1 : 0);

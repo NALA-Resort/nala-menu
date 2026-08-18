@@ -78,6 +78,8 @@
   .hours input { font-family:var(--ui-font); font-size:16px; width:74px;
                  border:0; border-bottom:1px solid var(--rule); background:none;
                  color:var(--ink); text-align:center; padding:2px 0; }
+  .moved { font-size:8px; letter-spacing:.1em; text-transform:uppercase;
+           color:var(--mid); display:block; margin-top:3px; }
   .note { font-size:11px; color:var(--mid); line-height:1.5; margin-top:10px; }
   .err  { font-size:11px; color:var(--red); line-height:1.5; margin-top:10px; }
 
@@ -116,6 +118,15 @@
     <div id="people"></div>
     <button class="btn" id="addBtn">Add someone</button>
 
+    <div class="sec">What each role may do</div>
+    <table id="perms"></table>
+    <div class="note">The manager always has everything, so there is no column
+    for them. A box you have changed from how the app came is marked. Only
+    "Change what a villa needs" is enforced by the database as well as by the
+    app: the others hide the button, which is enough for an honest mistake and
+    is not a lock.</div>
+    <div class="err" id="permErr"></div>
+
     <div class="sec">Notifications</div>
     <button class="master" id="master"><div class="mnm" id="masterNm">All notifications</div><i class="tick" id="masterTick"></i></button>
     <div class="hours" id="hoursRow">Send between
@@ -134,7 +145,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=19"></script>
+<script src="nala-shared.js?v=20"></script>
 <script>
 var ROLES = ['admin','chef','waiter','housekeeping'];
 /* The human roles, and the ones the notification matrix targets. sync is a
@@ -189,6 +200,7 @@ var STAFF = {}, CFG = null;
       }
       STAFF = recs || {};
       drawPeople();
+      loadPerms();
       loadNotify();
     });
   });
@@ -382,6 +394,70 @@ function addPerson(){
         : c.indexOf('weak-password') > -1
         ? 'Firebase will not accept that passcode.'
         : 'Could not create them. Check the connection.';
+    });
+}
+
+/* ── what each role may do ─────────────────────────────────────
+   The same shape as the notification grid on purpose. A manager who has
+   learnt one has learnt both, and the difference between "who gets told" and
+   "who may do it" is carried by the heading rather than by a second idiom.
+
+   PERMS holds only the boxes that have been changed away from the shipped
+   default, not a full copy of the matrix. Storing every cell would freeze
+   today's defaults into the database, and the next capability added to the
+   app would arrive switched off for everybody with no sign of why.      */
+var PERMS = {};
+
+function loadPerms(){
+  fetch(DB + '/permissions.json').then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){ PERMS = j || {}; setPermissions(PERMS); drawPerms(); })
+    .catch(function(){ document.getElementById('permErr').textContent =
+      'Could not load who may do what. The app is running on its defaults.'; });
+}
+
+function drawPerms(){
+  var head = '<tr><th></th>' + PERM_ROLES.map(function(r){
+    return '<th class="who">' + (r === 'housekeeping' ? 'House<br>keeping' : r) + '</th>';
+  }).join('') + '</tr>';
+  var rows = PERM_ACTIONS.map(function(ac){
+    return '<tr><td>' + ac[1] + '</td>' + PERM_ROLES.map(function(r){
+      var def = grantedByDefault(r, ac[0]);
+      var row = PERMS[ac[0]] || {};
+      var isOn = (typeof row[r] === 'boolean') ? row[r] : def;
+      /* Marked, not explained. A manager wants to know at a glance which of
+         these they have fiddled with, and the reason is their own memory. */
+      var moved = isOn !== def ? ' <span class="moved">changed</span>' : '';
+      return '<td class="who"><button class="tick' + (isOn ? ' on' : '') +
+             '" data-act="' + ac[0] + '" data-role="' + r + '" aria-label="' +
+             ac[1] + ' ' + r + '"></button>' + moved + '</td>';
+    }).join('') + '</tr>';
+  }).join('');
+  document.getElementById('perms').innerHTML = head + rows;
+
+  var ticks = document.querySelectorAll('#perms .tick');
+  for (var i=0;i<ticks.length;i++){
+    ticks[i].onclick = function(){
+      var ac = this.getAttribute('data-act'), r = this.getAttribute('data-role');
+      var def = grantedByDefault(r, ac);
+      var row = PERMS[ac] || {};
+      var now = (typeof row[r] === 'boolean') ? row[r] : def;
+      if (!PERMS[ac]) PERMS[ac] = {};
+      PERMS[ac][r] = !now;
+      setPermissions(PERMS);
+      drawPerms(); savePerms();
+    };
+  }
+}
+
+function savePerms(){
+  fetch(DB + '/permissions.json', { method:'PUT', body: JSON.stringify(PERMS) })
+    .then(function(r){
+      document.getElementById('permErr').textContent = r.ok ? ''
+        : 'That change was not saved. Only an admin may change these.';
+    })
+    .catch(function(){
+      document.getElementById('permErr').textContent =
+        'That change was not saved. Check the connection.';
     });
 }
 

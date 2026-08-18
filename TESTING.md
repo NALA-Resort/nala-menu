@@ -108,6 +108,40 @@ Open the form. **Expect**, above the two buttons, a short italic line about a
 set menu at one sitting from 6:00 to 6:30. The words are mine and are meant to
 be replaced by yours.
 
+### 0h. Paste the rules again, then try the new grid
+
+**The rules changed again this afternoon**, so the copy in the Firebase console
+is now one version behind. Paste `rules.json` in again the same way you did
+this morning, before doing anything below: until you do, ticking a box in the
+new grid will change the button and not the database, which looks like it
+worked and is not the whole thing.
+
+Then, in **Settings**, there is a new section between People and Notifications
+called *What each role may do*.
+
+1. **Tick "Change what a villa needs" for housekeeping.** Sign in on a second
+   device as housekeeping and set a villa's job. **Expect** it to work now,
+   where this morning it did not.
+2. **Untick it again.** **Expect** the buttons to disappear for them on their
+   next refresh, and the write to be refused even if they had the page open.
+3. **Untick "See Reservations" for the chef.** **Expect** the chef's menu to
+   lose Reservations, and the chef to land somewhere else on sign in rather
+   than on a refusal.
+4. **Tick it back on.** **Expect** the word *changed* to disappear from under
+   the box, because it now matches how the app shipped.
+
+**If a change does not survive a refresh** the write was refused, and that is
+the rules paste, not the grid.
+
+### 0i. The customer id, which you cannot see
+
+Nothing on any screen shows this. It is worth one look because it can only be
+collected going forward. Move any Mews booking to a different villa, so an
+event fires, then open **debug.html**, find that booking, and look for
+`customerId` on it. **Expect** a GUID with dashes. **If it is missing**, the
+Zap is not sending a customer field at all and I need to know which trigger you
+are using.
+
 ---
 
 ## 1. The pre-arrival round trip. NEW, never run on live data

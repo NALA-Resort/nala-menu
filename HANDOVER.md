@@ -209,7 +209,13 @@ most. Nothing there has been done.
   reported as a clean database.
 - **Write back to Mews:** check-in status and dietaries into the reservation.
   Needs the Connector API. The hook is marked in `front-desk.html`.
-- **Map Customer Id**, which identifies a guest across all their stays.
+- ~~Map Customer Id~~ **done 18 Aug.** Read by GUID shape from `CustomerId`,
+  `AccountId` and their variants, so Zapier's own 32 character event key cannot
+  land there and attach every booking to a customer who does not exist. Stored
+  on `/bookings/<id>/pms` only: the nights are read constantly and never need
+  it, while the write back to Mews happens once per booking. Stored now because
+  backfilling it means replaying every reservation event that has ever fired,
+  and Zapier does not keep them.
 - ~~Vacant as the default villa state~~ **done 18 Aug**, to the owner's
   definition: vacant means no guest profile is attached to the villa for that
   date; awaiting means one is and there is no yes or no to dinner yet. A Mews
@@ -276,29 +282,36 @@ most. Nothing there has been done.
   they drift.
 - Widening the Mews look-ahead beyond about 84 hours. It is a boards question
   only: pre-arrival works without it.
-- **A permission matrix in Settings.** Asked for 18 Aug. Roles against what
-  each may do, on screen and editable, rather than the table in `ROLES.md` and
-  a rules file only a developer can read. The reason it is worth doing is the
+- ~~A permission matrix in Settings~~ **done 18 Aug.** Roles against what each
+  may do, on screen and editable, rather than the table in `ROLES.md` and a
+  rules file only a developer can read. The reason it was worth doing is the
   hole found the same day: housekeeping could set a villa's job for months
   because the rule that forbade it never ran, and nothing anywhere showed the
   gap between what the document said and what the database allowed.
 
-  It works the way the notifications matrix works, and it is a real permission
-  rather than a display of one. The rules already read the database on every
-  write, because that is how they find a role in `/staff`, so reading one more
-  node costs nothing new. Ticking a box in Settings changes what the database
-  allows, with no paste in between. Proven, not assumed: `tests/matrix_probe.js`
-  is a working set of rules and 8 assertions against them.
+  `/permissions/<action>/<role>` holds only the boxes moved away from the
+  shipped defaults, and `can()` treats anything that is not an explicit true or
+  false as no opinion. Storing every cell would have frozen today's defaults
+  into the database, so the next capability added to the app would arrive
+  switched off for everybody with nothing to say why. `loadStaff()` fetches the
+  matrix with the records, so no page needed changing, and a failed matrix read
+  is not reported to the pages: the defaults are a working app, and refusing
+  everyone because an override list did not answer turns a small outage into a
+  locked door.
 
-  What that probe pins is the shape it has to take. The manager is allowed
-  regardless of the matrix, so a bad toggle cannot lock everyone out of the
-  app. A missing matrix falls back to manager only rather than to open. Only
-  the manager may tick a box, and a box has to be a boolean.
+  Two invariants are in the rules and not only in the page, since the page is
+  not the only way to write there. `manageStaff` cannot be handed out, because
+  handing out the ability to hand things out is a second manager rather than a
+  permission. And `admin` is not a column, and is answered before the matrix is
+  consulted, so a stray false typed into the console cannot lock the only
+  person who can undo it out of the page where it is undone.
 
-  Two limits stay. The rule text still has to exist per node, so toggling a row
-  is free but ADDING a row is still a rules change and still a paste. And it
-  only covers permissions that are a write to this database: the chef
-  publishing the menu is a commit, not a write, so no matrix can enforce it.
+  Two limits stay, both from the probe. The rule text still has to exist per
+  node, so toggling a row is free but ADDING a row is still a rules change and
+  still a paste. And only `setJob` is a write these rules can see, so it is the
+  only one of the seven enforced by the database; the other six hide a button,
+  which is honest-mistake protection and not a lock. The note under the grid
+  and the manager's manual both say so rather than implying more.
 
 ---
 

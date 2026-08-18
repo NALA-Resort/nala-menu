@@ -193,16 +193,21 @@ The Mews sync, Front Desk Arrival, the guest pre-arrival form, registration
 cards and the single dinner record are all built and live. `HANDOVER.md` has the
 current open list; the short version is:
 
-**Waiting on the user:** cancellations do not fire from Zapier; GuestTouch links
-need `?b=<booking id>`; four credentials need rotating; leftover Firebase Auth
-logins need deleting; whether Mews sends true UTC; dinner and breakfast hours;
-the placeholder line on the pre-arrival form.
+**Waiting on the user:** the rules need pasting into the Firebase console
+again, since they changed on 18 Aug after the morning paste; cancellations do
+not fire from Zapier; GuestTouch links need `?b=<booking id>`; five credentials
+need rotating; leftover Firebase Auth logins need deleting; dinner and breakfast
+hours; the placeholder line on the pre-arrival form.
 
-**Waiting on a developer:** no `.validate` rule exists anywhere; nothing reports
-the sync stopping; the notification Worker exists only on the user's machine;
-five pages have no test suite; write back to Mews is unbuilt.
+**Waiting on a developer:** nothing reports the sync stopping, which needs a
+Zapier schedule trigger; the notification Worker exists only on the user's
+machine and it is not known whether it handles the `menu` event; write back to
+Mews is unbuilt and needs Connector API credentials; the demo sheets do not
+rebuild themselves.
 
-`TESTING.md` lists ten checks a sandbox cannot run. None have been done.
+`TESTING.md` section 0 lists the smoke tests for everything that changed on
+18 Aug, and sections 1 onward the checks a sandbox cannot run. None have been
+done.
 
 ---
 

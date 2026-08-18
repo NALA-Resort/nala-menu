@@ -88,12 +88,28 @@ colour means time rather than state:
 
 ## Settings
 
-Two things live here.
+Three things live here.
 
 **Logins.** Add a person, give them a role, and they get exactly the screens
 that role allows. Removing someone here removes their access immediately; the
 Firebase login itself still needs deleting separately, which frees the
 passcode for reuse.
+
+**What each role may do.** A grid of jobs against the three roles below you.
+Every box starts where the app shipped it, and a box you change is marked
+*changed* so you can see at a glance what you have fiddled with. You are not a
+column, because you always have everything, and a column of ticks nobody may
+untick teaches people the ticks do nothing.
+
+There is no box for Settings itself. Giving somebody the power to hand
+permissions out is not a permission, it is a second manager, and that is done
+by changing their role in the list above, where you can see it.
+
+**One of the seven is real, the other six are polite.** "Change what a villa
+needs" is enforced by the database: untick it and that person cannot set a job
+even if they find another way in. The other six hide the button. That stops an
+honest mistake, which is what it is for, and it is not a lock. If somebody
+must genuinely be unable to do a thing, change their role.
 
 **Notifications.** A grid of events against roles. Tick who gets told what,
 and set quiet hours. "Menu published" is on for you and nobody else: the chef

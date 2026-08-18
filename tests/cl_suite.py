@@ -800,6 +800,58 @@ with sync_playwright() as p:
     ck("no record grants nothing", not pg.evaluate("()=>can(null,'resBoard')||can('typo','setJob')"))
     ck("admin is the FULL ACCESS role, not a middling one",
        pg.evaluate("()=>can('admin','manageStaff')&&can('admin','setJob')&&can('admin','editBookings')"))
+
+    # ---- the matrix overriding the shipped defaults ----
+    # The manager changing their mind in Settings. Only an explicit yes or no
+    # counts: anything else and the shipped default stands, so a capability
+    # added to the app next year is not switched off by a matrix written
+    # before it existed.
+    ck("a tick grants something the role did not ship with",
+       pg.evaluate("""()=>{setPermissions({setJob:{housekeeping:true}});
+                          const a=can('housekeeping','setJob');
+                          setPermissions(null); return a===true;}"""))
+    ck("and an untick takes away something it did",
+       pg.evaluate("""()=>{setPermissions({cleansMarks:{housekeeping:false}});
+                          const a=can('housekeeping','cleansMarks');
+                          setPermissions(null); return a===false;}"""))
+    ck("a role the matrix says nothing about keeps its default",
+       pg.evaluate("""()=>{setPermissions({setJob:{housekeeping:true}});
+                          const a=can('waiter','setJob'), b=can('waiter','resBoard');
+                          setPermissions(null); return a===false&&b===true;}"""))
+    ck("an action the matrix has never heard of keeps its default",
+       pg.evaluate("""()=>{setPermissions({setJob:{housekeeping:true}});
+                          const a=can('chef','publishMenu');
+                          setPermissions(null); return a===true;}"""))
+    ck("a value that is not a yes or a no is not an opinion",
+       pg.evaluate("""()=>{setPermissions({resBoard:{chef:'maybe'}});
+                          const a=can('chef','resBoard');
+                          setPermissions(null); return a===true;}"""))
+    # A stray false against admin, typed into the console at midnight, would
+    # lock the only person who can undo it out of the page where it is undone.
+    ck("the manager cannot be switched off by the matrix",
+       pg.evaluate("""()=>{setPermissions({manageStaff:{admin:false},setJob:{admin:false}});
+                          const a=can('admin','manageStaff')&&can('admin','setJob');
+                          setPermissions(null); return a===true;}"""))
+    ck("an empty matrix is the same as no matrix",
+       pg.evaluate("""()=>{setPermissions({});
+                          const a=can('housekeeping','cleansMarks')&&!can('housekeeping','resBoard');
+                          setPermissions(null); return a===true;}"""))
+    # The grid is drawn from these two lists, so what they contain is what a
+    # manager can hand out. manageStaff being absent is the point: handing it
+    # out is a second manager, not a permission, and it is done by changing a
+    # role in the People list where it is visible.
+    ck("manageStaff is not in the grid",
+       pg.evaluate("()=>PERM_ACTIONS.every(a=>a[0]!=='manageStaff')"))
+    ck("nor is admin a column, nor sync",
+       pg.evaluate("()=>PERM_ROLES.indexOf('admin')<0&&PERM_ROLES.indexOf('sync')<0"))
+    ck("every other capability is offered",
+       pg.evaluate("""()=>ROLE_GRANTS.admin.filter(x=>x!=='manageStaff')
+                        .every(x=>PERM_ACTIONS.some(a=>a[0]===x))"""))
+    ck("and every action in the grid is a real one",
+       pg.evaluate("()=>PERM_ACTIONS.every(a=>ROLE_GRANTS.admin.indexOf(a[0])>-1)"))
+    ck("the defaults are still readable on their own",
+       pg.evaluate("""()=>grantedByDefault('housekeeping','cleansMarks')===true
+                        && grantedByDefault('housekeeping','setJob')===false"""))
     pg.close()
 
     # ---- the gate on the page ----
@@ -1082,12 +1134,29 @@ with sync_playwright() as p:
     ck("both role pickers offer sync", src.count("ROLES_ASSIGN.map") == 2)
     ck("the staff list sorts by the assignable order, so sync sorts last",
        src.count("ROLES_ASSIGN.indexOf") == 2)
+    import re as _re
+    # Counted with a boundary: PERM_ROLES.map ends in the same nine characters
+    # and turned this into a false failure the day the permission grid landed.
     ck("the notification matrix stays on the human roles",
-       src.count("ROLES.map") == 2 and "ROLES_ASSIGN" in src)
+       len(_re.findall(r"(?<![A-Z_])ROLES\.map", src)) == 2 and "ROLES_ASSIGN" in src)
+
+    # The permission grid is drawn from the shared lists rather than from a
+    # second copy kept here, so adding a capability in one place adds the row.
+    ck("the permission grid reads the shared lists",
+       "PERM_ACTIONS.map" in src and "PERM_ROLES.map" in src)
+    ck("it saves the moment a box is tapped, like the one above it",
+       "savePerms()" in src and "'/permissions.json'" in src)
+    # Only the boxes moved away from the default are stored. Writing every
+    # cell would freeze today's defaults into the database, and the next
+    # capability added would arrive switched off for everybody.
+    ck("only the changed boxes are stored, not a copy of every cell",
+       "grantedByDefault" in src and "PERMS[ac][r] = !now" in src)
+    ck("a failed load says the app is running on its defaults",
+       "running on its defaults" in src)
+    ck("the matrix is loaded on the way in", "loadPerms();" in src)
 
     # Every staff page must load the SDK before auth.js. staff.html shipped
     # without it and showed "could not load the sign-in service" to everyone.
-    import re as _re
     for f in ["cleaners.html","tally.html","list.html","housekeeping.html","staff.html"]:
         src = open("/home/claude/nala/" + f).read()
         tags = [x.split("/")[-1] for x in

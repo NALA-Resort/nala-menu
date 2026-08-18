@@ -420,6 +420,40 @@ ck("the reservation number reaches every night",
 ck("and Number wins over BookingId, which numbers the group not the booking",
    STORE["/bookings/" + RES.MewsId + "/pms"].bookingNumber === 1159);
 
+/* ── the person behind the stay ─────────────────────────────── */
+/* The reservation id names one stay. The customer id names the guest across
+   all of them, and stage 6 writes a dietary back against the guest. Kept on
+   the booking only: the nights are read constantly and never need it. */
+install();
+await post(Object.assign({}, RES, {
+  CustomerId: "7c1e4a90-3b55-4a11-9d02-b4a900c12abc" }));
+ck("the customer id is kept on the booking",
+   STORE["/bookings/" + RES.MewsId + "/pms"].customerId ===
+     "7c1e4a90-3b55-4a11-9d02-b4a900c12abc");
+ck("and is not copied into every night",
+   STORE["/stays/2026-09-10/3"].customerId === undefined);
+
+install();
+await post(Object.assign({}, RES, { AccountId: "3f0d1188-2c44-4e77-8a90-b4a900c12def" }));
+ck("AccountId is read when CustomerId is not sent",
+   STORE["/bookings/" + RES.MewsId + "/pms"].customerId ===
+     "3f0d1188-2c44-4e77-8a90-b4a900c12def");
+
+/* Zapier's own 32 character event key turns up in fields that sound like an
+   identifier, and storing it here would attach every booking to a customer
+   who does not exist. Shape settles it, as it does for the reservation id. */
+install();
+await post(Object.assign({}, RES, { CustomerId: "be99712182a11b7e1c854af0ecdaf669",
+                                    AccountId:  "9a2b7c31-88d4-4e0b-9c1f-2b6d5e7a1c04" }));
+ck("a Zapier key in the customer field loses to the real GUID beside it",
+   STORE["/bookings/" + RES.MewsId + "/pms"].customerId ===
+     "9a2b7c31-88d4-4e0b-9c1f-2b6d5e7a1c04");
+
+install();
+await post(RES);
+ck("a booking with no customer id at all is still written",
+   STORE["/bookings/" + RES.MewsId + "/pms"].customerId === null);
+
 /* ── the clock ──────────────────────────────────────────────── */
 /* Mews sends true UTC. Confirmed 18 Aug: 04:00Z is 2pm at the resort, which is
    UTC+10. So the date part of the timestamp is the local date only until 2pm

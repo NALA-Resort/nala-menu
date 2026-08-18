@@ -92,6 +92,43 @@ can(role, 'setJob' | 'editBookings' | 'manageStaff' | ...) -> bool
 
 Pages ask `can()`, never the email. One place to change a permission.
 
+## Changing it without changing the code
+
+`ROLE_GRANTS` is what the app ships with. `/permissions` is the manager
+changing their mind, and it is edited from the grid in Settings.
+
+```
+/permissions/<action>/<role> = true | false
+```
+
+Only the boxes moved away from the shipped default are stored. A missing
+action, a missing role, or a value that is not a boolean all mean no opinion,
+and the default stands. That is on purpose: writing every cell would freeze
+today's defaults into the database, and the next capability added to the app
+would arrive switched off for everybody with nothing to say why.
+
+Two things the grid will not do, both enforced in the rules as well as in the
+page, because the page is not the only way to write there:
+
+- **`manageStaff` cannot be handed out.** Handing out the ability to hand
+  things out is a second manager, not a permission. Do it by changing
+  somebody's role in the People list, where it is visible.
+- **`admin` is not a column.** `can()` answers for admin before it consults
+  the matrix, so a stray `false` typed into the Firebase console cannot lock
+  the only person who can undo it out of the page where it is undone.
+
+`loadStaff()` fetches the matrix along with the records, so no page had to
+change. A failed matrix read is not reported to the pages: the records decide
+whether somebody is staff at all, the matrix only adjusts what a known role
+may do, and the defaults are a working app. Refusing everyone because an
+override list did not answer would turn a small outage into a locked door.
+
+**What the grid actually enforces.** Only `setJob` is enforced by the database
+as well, because it is the only one of the seven that is a write the rules can
+see. The other six hide a button. That is enough for an honest mistake and it
+is not a lock, and the note under the grid says so rather than implying more
+than it does.
+
 ## Rules
 
 The database must enforce it too - hiding a control is not preventing a write.

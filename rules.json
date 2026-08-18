@@ -115,6 +115,16 @@
         }
       }
     },
+    "permissions": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')",
+      "$action": {
+        ".validate": "$action == 'resBoard' || $action == 'editBookings' || $action == 'resSheet' || $action == 'publishMenu' || $action == 'cleansBoard' || $action == 'cleansMarks' || $action == 'setJob'",
+        "$role": {
+          ".validate": "newData.isBoolean() && ($role == 'chef' || $role == 'waiter' || $role == 'housekeeping')"
+        }
+      }
+    },
     "notify": {
       ".read": "auth != null",
       ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')",
@@ -149,7 +159,7 @@
           ".write": "auth != null",
           ".validate": "$villa.matches(/^[0-9]{1,3}$/)",
           "kind": {
-            ".validate": "newData.isString() && (newData.val() == 'clean' || newData.val() == 'svc' || newData.val() == 'pre' || newData.val() == 'vac') && auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')"
+            ".validate": "newData.isString() && (newData.val() == 'clean' || newData.val() == 'svc' || newData.val() == 'pre' || newData.val() == 'vac') && auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('permissions').child('setJob').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)"
           },
           "done":     { ".validate": "newData.isString() && newData.val().length <= 40" },
           "bfast":    { ".validate": "newData.isString() && newData.val().length <= 40" },
@@ -174,6 +184,7 @@
           "mewsState": { ".validate": "newData.isString() && newData.val().length <= 30" },
           "bookingNumber": { ".validate": "newData.isString() || newData.isNumber()" },
           "groupId": { ".validate": "newData.isString() && newData.val().length <= 64" },
+          "customerId": { ".validate": "newData.isString() && newData.val().length <= 64" },
           "adults":   { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 40" },
           "children": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 40" },
           "updated":  { ".validate": "newData.isString() && newData.val().length <= 40" },

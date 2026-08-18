@@ -194,6 +194,18 @@ function readReservation(p) {
        sequential number is only unique per property. */
     bookingNumber: pick(p, ["Number", "ConfirmationNumber", "BookingId"]),
     groupId:       pick(p, ["GroupId", "ReservationGroupId"]),
+    /* The person, as opposed to the stay. A reservation id changes every time
+       somebody books; the customer id does not, so it is the only handle on
+       "this is the same guest as last March", and stage 6 needs it to write a
+       dietary back to the profile rather than to one night.
+
+       Stored now because it costs nothing now. Backfilling it later means
+       replaying every reservation event that has ever fired, and Zapier does
+       not keep them. Read by shape as well as name for the same reason as the
+       reservation id: the field is CustomerId on the reservation trigger and
+       AccountId on some others, and one of them is the wrong person.        */
+    customerId:    pickGuid(p, ["CustomerId", "customer_id", "CustomerID",
+                                "AccountId", "customerId"]),
     adults:        pick(p, ["AdultCount", "adults"]),
     children:      pick(p, ["ChildCount", "children"])
 
@@ -357,6 +369,11 @@ export default {
            easier to answer with it than without it. */
         mewsState: r.state,
         bookingNumber: r.bookingNumber, groupId: r.groupId,
+        /* On the booking and not on the nights. A night is read by the boards
+           twenty times an hour and none of them care who the person is; the
+           write back to Mews happens once per booking and does. Copying it
+           into every night would be fourteen copies of a fact used nowhere. */
+        customerId: r.customerId || null,
         adults: r.adults, children: r.children,
         /* Explicit nulls, not omissions. A PATCH that simply stops sending a
            field leaves the old value sitting there, so every booking synced

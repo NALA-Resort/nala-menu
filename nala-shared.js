@@ -616,9 +616,66 @@ function roleOf(user){
   return isRole(r) ? r : null;
 }
 
-function can(role, what){
+/* ── the permission matrix ─────────────────────────────────────
+   ROLE_GRANTS above is what the app ships with. /permissions is the manager
+   changing their mind, and it wins where it has an opinion.
+
+   Only an explicit true or false counts as an opinion. A missing action, a
+   missing role, or a value that is not a boolean all mean "no opinion", and
+   the shipped default stands. That is deliberate: adding a new capability to
+   ROLE_GRANTS must not silently switch it off for everybody because the
+   matrix written last March has never heard of it.
+
+   The manager is never overridable. A stray false against admin, typed in the
+   Firebase console at midnight, would lock the only person who can undo it
+   out of the page where it is undone. So admin is answered before the matrix
+   is consulted at all.
+
+   Matrix and rationale in ROLES.md.                                     */
+var PERMISSIONS = null;      /* the /permissions map once loaded, null until then */
+
+/* The actions a manager may hand out, in the order the grid shows them, in
+   the words staff use rather than the words the code uses.
+
+   manageStaff is deliberately not here. Handing it out hands out the ability
+   to hand things out, which is not a permission, it is a second manager. Do
+   that by changing somebody's role, where it is visible in the People list,
+   rather than by a tick nobody will ever look at again.                  */
+var PERM_ACTIONS = [
+  ['resBoard',     'See Reservations'],
+  ['editBookings', 'Edit a booking'],
+  ['resSheet',     'See the Reservations Sheet'],
+  ['publishMenu',  'Tag the menu dietaries'],
+  ['cleansBoard',  'See the Cleans board'],
+  ['cleansMarks',  'Mark a clean done'],
+  ['setJob',       'Change what a villa needs']
+];
+
+/* The columns. admin is absent because it always has everything, and a column
+   of ticks nobody may untick teaches people the ticks do nothing. sync is
+   absent because it is a machine with no screen.                        */
+var PERM_ROLES = ['chef','waiter','housekeeping'];
+
+/* What the app shipped with, asked directly. The grid shows it beside the
+   current answer so a manager can see what they have changed.           */
+function grantedByDefault(role, what){
   var g = ROLE_GRANTS[normaliseRole(role)];
   return !!(g && g.indexOf(what) > -1);
+}
+
+function setPermissions(map){
+  PERMISSIONS = (map && typeof map === 'object') ? map : null;
+  return PERMISSIONS;
+}
+
+function can(role, what){
+  var r = normaliseRole(role);
+  /* Answered first, and only for a capability that exists: an unknown name is
+     a typo, and a typo must not be the thing that grants the run of the app. */
+  if (r === 'admin' && ROLE_GRANTS.admin.indexOf(what) > -1) return true;
+  var row = PERMISSIONS && PERMISSIONS[what];
+  if (row && typeof row[r] === 'boolean') return row[r];
+  return grantedByDefault(r, what);
 }
 
 /* Where a role should land. Housekeeping opening the app got the Reservations
@@ -639,11 +696,29 @@ function setStaffRecords(map){
    "signed in and not on the list" and the pages word it differently:
    telling someone to see the manager when the database simply did not
    answer sends them down the hall for nothing.                        */
+/* The matrix is fetched here, with the records, rather than by each page.
+   Every gate in the app already waits on loadStaff before it decides
+   anything, so this is the one place where adding a second read cannot leave
+   a page deciding with half the answer.
+
+   A failed matrix read is NOT an error the pages hear about. The records are
+   what decide whether somebody is staff at all; the matrix only adjusts what
+   a known role may do, and the shipped defaults are a working app. Refusing
+   everyone because an override list did not answer would turn a small outage
+   into a locked door.                                                    */
 function loadStaff(cb){
+  var recs = null, err = null;
   fetch(DB + '/staff.json')
     .then(function(r){ return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
-    .then(function(j){ cb(setStaffRecords(j), null); })
-    .catch(function(err){ STAFF_RECORDS = null; cb(null, err); });
+    .then(function(j){ recs = setStaffRecords(j); })
+    .catch(function(e){ STAFF_RECORDS = null; err = e; })
+    .then(function(){
+      return fetch(DB + '/permissions.json')
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){ setPermissions(j); })
+        .catch(function(){ setPermissions(null); });
+    })
+    .then(function(){ cb(recs, err); });
 }
 
 /* ── staying inside the home screen app ────────────────────────
