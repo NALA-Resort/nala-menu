@@ -1345,10 +1345,15 @@ with sync_playwright() as p:
         return ""
 
     q = as_cleaner("ana@x")
-    ck("a clean with an arrival tonight says so on the tile",
-       "arriving tonight" in tile_text(q, "9"))
-    ck("and it is still a clean, because the room must be turned around first",
-       "clean" in tile_text(q, "9"))
+    # One job, one label. The first version added a second chip beside the
+    # first, which made that tile taller than every other one, broke the grid
+    # and clipped its own sub-line.
+    ck("a clean with an arrival tonight is labelled clean-pre",
+       "clean-pre" in tile_text(q, "9"))
+    ck("and carries one label, not two",
+       q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
+                  ".find(t=>t.innerText.startsWith('9'))"
+                  ".querySelectorAll('.chip').length") == 1)
     # Your own claim comes back as You, not as your own name read off a board.
     # The first paint happens before sign in resolves, so this also proves the
     # board repaints once it knows who is looking at it.

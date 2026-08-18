@@ -201,9 +201,6 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   /* A pre-arrival is always ready - nobody has to leave first - so it never
      takes a colour. Colour still means "something changed, go now".     */
   .tile .chip.pre { background:transparent; border-color:var(--ink); color:var(--ink); }
-  /* An arrival tonight rides alongside the job rather than replacing it: the
-     villa still has to be cleaned, and it also has to be made ready. */
-  .tile .chip.pre.arr { border-style:dashed; }
   /* Who is on it. Solid, because it is about a person rather than a state of
      the room, and it has to be picked out at a glance from across a corridor. */
   .tile .chip.taken { background:var(--ink); border-color:var(--ink);
@@ -1805,21 +1802,22 @@ function render(){
     else if (row.kind==='svc' && h.bfast) cls+=' ready-svc';
 
     var chip='';
-    if (row.kind==='clean') chip='<span class="chip">'+
-      (h.pushed ? 'Pushed' : (h.done?ICON_DTICK+'Cleaned':'Clean'))+'</span>';
+    /* An arrival tonight changes the label rather than adding a second one.
+       The first version put a chip beside the chip, which made that one tile
+       taller than every other, broke the grid and clipped its own sub-line.
+       One job, one label. */
+    if (row.kind==='clean'){
+      var arr = row.arrivingToday && !h.pushed;
+      chip='<span class="chip">'+
+        (h.pushed ? 'Pushed'
+         : h.done ? ICON_DTICK+(arr ? 'Cleaned-pre' : 'Cleaned')
+         : (arr ? 'Clean-pre' : 'Clean'))+'</span>';
+    }
     else if (row.kind==='svc') chip='<span class="chip svc">'+(h.done?ICON_DTICK+'Serviced':'Service')+'</span>';
     else if (row.kind==='pre') chip='<span class="chip pre">'+(h.done?ICON_DTICK+'Pre-arrived':'Pre-arrival')+'</span>';
     else if (row.kind==='ver') chip='<span class="chip ver">Unknown</span>';
     else chip='<span class="sub">Empty</span>';
 
-    /* A clean with somebody arriving tonight is not the same job as a clean on
-       a villa that will sit empty. The room has to be made ready as well as
-       cleaned: lights on, the things you do for an arrival. It was already
-       known here and used only to decide sort order, so the cleaner standing
-       in front of the villa was the one person it was never told to.        */
-    if (row.kind==='clean' && row.arrivingToday && !h.pushed)
-      chip += '<span class="chip pre arr">'+
-              (h.done ? 'Ready for arrival' : 'Arriving tonight')+'</span>';
 
     /* Who is on it. Two cleaners walking to the same villa is the waste this
        is here to stop, so it goes on the tile rather than inside the sheet:
