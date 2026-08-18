@@ -554,9 +554,12 @@ with sync_playwright() as p:
 
     # ── the manager is told when a menu is published ───────────
     # The chef publishes by pushing a commit, so nothing in the database moves
-    # and there is nothing to watch. The board noticing the change and
-    # archiving it is the only moment the app can tell, so the notification
-    # hangs off exactly that, and must not fire again on the next poll.
+    # and there is nothing to watch. Something signed in has to notice. This
+    # used to hang off the Reservations board's own load, which meant the
+    # manager was told when a manager happened to have this one board open.
+    # It now lives in nala-shared.js and every signed in page announces it, so
+    # the chef opening the tagging page is what tells management. Still must
+    # not fire twice: the archive row is the record of having announced it.
     pushes = []
     q = as_role("staff@x")
     q.route("**/nala-push*/**", lambda r, req: (pushes.append(req.post_data),

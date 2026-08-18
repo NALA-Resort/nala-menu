@@ -1105,6 +1105,39 @@ with sync_playwright() as p:
                        && NOTIFY_DEFAULTS.events.menu.housekeeping===false
                        && NOTIFY_DEFAULTS.events.menu.waiter===false
                        && NOTIFY_DEFAULTS.events.menu.chef===false"""))
+    # A published menu has to reach the manager whether or not a manager has
+    # a board open. It used to be announced from inside the Reservations board
+    # only, so on a quiet afternoon the chef published and nobody was told.
+    # It now lives in nala-shared.js and any signed in page announces it.
+    ck("the announcement lives in the shared file, not in one board",
+       "function announceMenu" in open("/home/claude/nala/nala-shared.js").read()
+       and "menuhistory" not in open("/home/claude/nala/tally.html").read())
+    ck("it runs itself once a page is signed in",
+       pg.evaluate("()=>typeof announceMenu==='function'"))
+    # The guest pages load the same file. The token is what keeps them out,
+    # rather than a list of page names that would go stale.
+    ck("a page with no sign in token announces nothing",
+       pg.evaluate("""()=>{const t=window.__idToken; window.__idToken=null;
+                          let hit=0; const f=window.fetch;
+                          window.fetch=function(u){ if((''+u).indexOf('menu.json')>-1) hit++;
+                                                    return f.apply(this,arguments); };
+                          announceMenu(); window.fetch=f; window.__idToken=t;
+                          return hit===0;}"""))
+    # Firing the buzz before the row is written would spend the one
+    # announcement on a menu that was never recorded.
+    ck("the notification comes after the archive write, not before",
+       open("/home/claude/nala/nala-shared.js").read()
+         .index("if (!r.ok) return;")
+       < open("/home/claude/nala/nala-shared.js").read()
+         .index("notifyPush('menu', null, null)"))
+    # The chef's SMS link was a second way to say the same thing, and it put
+    # a personal mobile number in a public repository.
+    brief = open("/home/claude/nala/CHEF-BRIEF.md").read()
+    ck("the chef brief no longer carries a phone number",
+       "0468067233" not in brief and "sms:" not in brief)
+    ck("and says what tells management instead",
+       "automatically" in brief)
+
     ck("cleaned and serviced reach everyone with Cleans access",
        pg.evaluate("""()=>NOTIFY_DEFAULTS.events.cleaned.waiter===true
                        && NOTIFY_DEFAULTS.events.cleaned.housekeeping===true

@@ -93,23 +93,19 @@ If the token is missing or rejected, stop. Say the publish failed and why. Never
 
 ## Step 4 - Confirm, notify, then tag the dietaries
 
-After a successful publish, end your reply with these three lines exactly, each on its own line:
+After a successful publish, end your reply with these two lines exactly, each on its own line:
 
 **Live at https://menu.nalaresort.com**
 
 [Tag tonight's dietaries](https://menu.nalaresort.com/tag.html)
 
-[Notify management](sms:+61468067233?&body=Tonight%27s%20menu%20is%20published.%20https%3A%2F%2Fmenu.nalaresort.com)
-
-Print the second and third lines as markdown links, never as bare URLs. Do not reword the message text, change the number, or add anything to it. If the publish failed, omit all three and say what went wrong.
+Print the second line as a markdown link, never as a bare URL. If the publish failed, omit both and say what went wrong.
 
 **Tag tonight's dietaries** opens the page where each dish is ticked against what it does not suit. Until that is done, a guest with a dietary is not asked for a note, so the kitchen finds out at service instead of in the afternoon. The page has nothing to tag until the menu is published, which is why the link comes after publishing rather than before.
 
-Tapping **Notify management** opens Messages with the manager's number and this text ready to send:
+**Management is told automatically, and tapping the tagging link is what tells them.** The chef publishes by pushing a commit, so nothing in the database moves and nothing can watch for it. The first signed in page to load after a publish notices, records the menu, and notifies. Opening the tagging page is that page, which is why the link matters even on a night with nothing to tag.
 
-> Tonight's menu is published. https://menu.nalaresort.com
-
-Sending it is the chef's tap. Nothing sends by itself.
+There used to be a third line here, a "notify management" link that opened Messages with the manager's number in it. It is gone. It was a second way to say the same thing, it put a personal mobile number in a public file, and it depended on somebody remembering to tap it.
 
 ---
 

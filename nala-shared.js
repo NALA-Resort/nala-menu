@@ -867,6 +867,103 @@ function notifyPush(event, villa, user){
   } catch (e){}
 }
 
+/* ── announcing a published menu ───────────────────────────────
+   The chef publishes by pushing a commit, so nothing in the database moves
+   and there is nothing for a listener to watch. Something signed in has to
+   notice. This used to live inside the Reservations board, which meant the
+   manager was told when a manager happened to have that one board open, and
+   on a quiet afternoon that is nobody.
+
+   So it lives here and every staff page calls it on load. The chef's own next
+   step after publishing is to open the tagging page, which is signed in and
+   calls this, so in the normal course of a service the manager is told within
+   a minute of the menu going up by the very person who put it up.
+
+   It is still a poll rather than a push, and the honest limit is that if no
+   staff device opens anything at all, nobody is told. Closing that needs the
+   notification Worker to fire on the commit itself, and the Worker is not in
+   this repo.
+
+   Runs once per published menu. The archive row is the record of having
+   announced it: if the row already matches, this has been done, and a second
+   board loading a minute later reads that and stops. Two boards loading in
+   the same second can still both announce, which is a duplicate buzz rather
+   than a wrong one, and is not worth a lock to prevent.               */
+function announceMenu(){
+  /* Guests must not call this. The rules refuse them the write, so the worst
+     case is a refused request rather than a wrong notification, but there is
+     no reason to make it.                                                */
+  if (!window.__idToken) return;
+  fetch('menu.json?v=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(m){
+      m = m || {};
+      var filled = ['bread','entree','main','dessert'].every(function(k){
+        return m[k] && m[k].name && m[k].name.trim() !== '';
+      });
+      /* The menu's own stamp, not Last-Modified: GitHub rewrites that on
+         every deploy, so it cannot say when the chef published.         */
+      var pub = m.published ? parseISO(m.published) : null;
+      var today = dkey(new Date());
+      if (!filled || !pub || dkey(pub) !== today) return;
+      var main = (m.main && m.main.name) || '';
+      return fetch(DB + '/menuhistory/' + today + '.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(existing){
+          if (existing && existing.main === main &&
+              existing.published === m.published) return;
+          return fetch(DB + '/menuhistory/' + today + '.json', {
+            method:'PUT', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+              bread:   (m.bread   && m.bread.name)   || '',
+              entree:  (m.entree  && m.entree.name)  || '',
+              main:    main,
+              dessert: (m.dessert && m.dessert.name) || '',
+              mainDesc: (m.main   && m.main.desc)    || '',
+              published: m.published || '',
+              at: new Date().toISOString()
+            })
+          }).then(function(r){
+            /* Only after the row is written. A refused write means the row is
+               not there, so the next page to load will try again, and firing
+               the notification first would have used up the one announcement
+               on a menu that was never recorded. */
+            if (!r.ok) return;
+            /* No actor. Everywhere else the actor is the person who caused the
+               event, so the Worker can avoid telling them about their own tap.
+               Here the person who caused it is the chef, and the person whose
+               page happened to notice did not do anything. Passing them would
+               suppress the notification for the very manager it is meant to
+               reach. */
+            notifyPush('menu', null, null);
+          });
+        });
+    })
+    .catch(function(){});
+}
+
+/* Called from here rather than from each page, so a page added later gets it
+   without anybody remembering to. Waits for the sign in token, which only
+   exists on staff pages: the guest pages load this file too and must never
+   run it, and the absence of a token is what keeps them out rather than a
+   list of page names that would go stale.
+
+   Gives up after a minute. A page that has not signed in by then is a signed
+   out browser sitting on a login screen, and polling it forever is a request
+   every second for as long as the tab is open.                          */
+(function(){
+  var tries = 0;
+  /* Checked immediately as well as on the interval. A menu announced two
+     seconds after the board is usable is two seconds in which the chef opens
+     the tagging page, sees it work, and closes it again. */
+  function tick(){
+    if (window.__idToken){ announceMenu(); return true; }
+    return ++tries > 60;
+  }
+  if (tick()) return;
+  var t = setInterval(function(){ if (tick()) clearInterval(t); }, 1000);
+})();
+
 /* The notification settings, written by the app the first time an admin opens
    a board and finds none. Typing this into the console by hand was slow and
    easy to get wrong, and every new event type would mean doing it again.
