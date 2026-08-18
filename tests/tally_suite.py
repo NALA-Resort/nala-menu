@@ -724,17 +724,52 @@ with sync_playwright() as p:
         q.locator("#gdClose").click(); q.wait_for_timeout(500)
         ck("%s: Close shuts it" % label,
            not q.evaluate("()=>gdPanel.classList.contains('open')"))
-        # Collapsed to nothing, not merely hidden: a panel that keeps its
-        # height pushes the service buttons down whether it is open or not.
-        ck("%s: and it takes no room when shut" % label,
-           q.evaluate("()=>gdPanel.getBoundingClientRect().height") < 4)
+        # The card must not move at all. Two earlier attempts pushed it down,
+        # and the second one collided with the guest picker as the panel grew.
+        # Reception presses those three buttons from memory, so a control that
+        # shifts under the thumb is worse than one that is hard to find.
+        def card_top():
+            return q.evaluate("""()=>{const g=document.getElementById('paxRow')
+              ||document.querySelector('.pax-row');
+              const d=[...document.querySelectorAll('.opt')][0];
+              return [Math.round(g.getBoundingClientRect().top),
+                      Math.round(d.getBoundingClientRect().top)];}""")
+        q.locator("#gdEye").click(); q.wait_for_timeout(500)
+        opened_at = card_top()
+        q.locator("#gdClose").click(); q.wait_for_timeout(500)
+        ck("%s: opening the panel does not move the card" % label,
+           opened_at == card_top())
+        ck("%s: the panel floats above the card" % label,
+           int(q.evaluate("()=>getComputedStyle(gdPanel).zIndex") or 0) > 0
+           and q.evaluate("()=>getComputedStyle(gdPanel).position") == "absolute")
         # The name still works as a toggle for anyone who reaches for it.
+        # Asserted from a known shut state rather than from whatever the step
+        # before happened to leave behind: a toggle test that inherits its
+        # starting point tests the sequence, not the toggle.
+        ck("%s: shut before testing the toggle" % label,
+           not q.evaluate("()=>gdPanel.classList.contains('open')"))
         q.locator("#gdEye").click(); q.wait_for_timeout(500)
         ck("%s: the name still reopens it" % label,
            q.evaluate("()=>gdPanel.classList.contains('open')"))
         q.locator("#gdEye").click(); q.wait_for_timeout(400)
         ck("%s: and still shuts it" % label,
            not q.evaluate("()=>gdPanel.classList.contains('open')"))
+
+        # Floating over the card means a tap outside lands on something the
+        # panel is covering. It must shut first and swallow that tap, or
+        # somebody clears a villa while trying to dismiss a panel.
+        q.locator("#gdEye").click(); q.wait_for_timeout(500)
+        ck("%s: open before testing the outside tap" % label,
+           q.evaluate("()=>gdPanel.classList.contains('open')"))
+        before_status = q.evaluate("()=>JSON.stringify(window.dinner||{})")
+        box = q.evaluate("()=>{const r=gdPanel.getBoundingClientRect();"
+                         "return [Math.round(r.left+r.width/2),"
+                         "Math.round(r.bottom+40)];}")
+        q.mouse.click(box[0], box[1]); q.wait_for_timeout(500)
+        ck("%s: a tap outside shuts the panel" % label,
+           not q.evaluate("()=>gdPanel.classList.contains('open')"))
+        ck("%s: and that tap changes nothing underneath" % label,
+           q.evaluate("()=>JSON.stringify(window.dinner||{})") == before_status)
         q.close()
 
     # A villa with nothing known offers no eye at all: a control that opens an

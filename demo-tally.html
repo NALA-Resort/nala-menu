@@ -374,8 +374,8 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      know the button was there. The name line is given room to breathe and the
      panel below it is set a little tighter, so a full snapshot and the three
      service buttons still fit one screen without scrolling. */
-  .gd { text-align:center; margin:-4px 44px 12px; font-size:13px;
-        line-height:1.5; }
+  .gd { position:relative; text-align:center; margin:-4px 44px 12px;
+        font-size:13px; line-height:1.5; }
   .gd .gd-sub { display:block; font-family:var(--ui-font); font-size:10.5px;
                 color:var(--mid); letter-spacing:.03em; }
   .gd .gd-note { display:block; font-style:italic; font-size:12px; color:var(--mid); }
@@ -400,21 +400,32 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .gd-name:active { opacity:.6; }
   /* Grid rather than a list: the labels line up down the left so the eye can
      run down the values, which is how a sheet like this is read. */
-  /* Reveals downward rather than folding open in place. The height is
-     animated so the eye follows it down instead of the buttons appearing to
-     jump, and it carries its own Close: reported 18 Aug that having to find
-     the name again to shut it is the wrong way round, and it is, because by
-     then you are reading the bottom of the panel and the name is off the top
-     of your attention. */
-  .gd-panel { display:block; overflow:hidden; max-height:0;
-              margin:0; padding:0; text-align:left;
-              border-top:1px solid transparent;
-              transition:max-height .22s ease, margin .22s ease,
-                         padding .22s ease, border-color .22s ease; }
-  .gd-panel.open { max-height:640px; margin:9px 0 2px; padding-top:9px;
-                   border-top-color:var(--rule); }
+  /* Lies OVER the card rather than pushing it down. Two tries got this wrong.
+     Folding open in place moved the service buttons every time the panel was
+     opened, and then reveals-downward still displaced them, so the guest
+     count and Dining collided with the panel as it grew. Reception presses
+     those three buttons from memory, and a control that moves under the thumb
+     is worse than one that is hard to find.
+
+     So the card stays exactly where it is and the snapshot floats above it,
+     anchored under the name it belongs to. Nothing below moves at all.
+
+     Pulled out to the full width of the sheet: the name line is inset to keep
+     clear of the menu button, and the panel has no such problem. */
+  .gd-panel { position:absolute; top:100%; left:-44px; right:-44px; z-index:6;
+              margin-top:8px; padding:12px 16px 4px; text-align:left;
+              background:var(--cream); border:1px solid var(--rule);
+              border-radius:12px;
+              box-shadow:0 10px 28px rgba(28,28,26,.14);
+              opacity:0; visibility:hidden; transform:translateY(-6px);
+              transition:opacity .18s ease, transform .18s ease,
+                         visibility 0s linear .18s; }
+  .gd-panel.open { opacity:1; visibility:visible; transform:translateY(0);
+                   transition:opacity .18s ease, transform .18s ease,
+                              visibility 0s; }
   @media (prefers-reduced-motion: reduce) {
     .gd-panel { transition:none; }
+    .gd-panel.open { transition:none; }
   }
   .gd-close { display:block; width:100%; margin:8px 0 0; padding:9px 0;
               border:0; border-top:1px solid var(--rule);
@@ -2580,11 +2591,36 @@ function wireGuestPanel(g, known){
     }
   });
 
-  eye.onclick = function(){
+  eye.onclick = function(e){
+    e.stopPropagation();
     var open = !panel.classList.contains('open');
     setOpen(open);
     if (open) loadPrearrival(known, panel, g);
   };
+
+  /* Floating over the card means a tap outside it is a tap on something the
+     panel is covering. Shut first and let that tap land nowhere, rather than
+     have somebody set a villa vacant through a panel they were trying to get
+     rid of. */
+  panel.addEventListener('click', function(e){ e.stopPropagation(); });
+  var host = document.getElementById('sheet') || document;
+  host.addEventListener('click', function(e){
+    /* Capture phase, so this runs BEFORE the handlers on the panel and the
+       name. That is what makes the tap land nowhere, and it is also why the
+       name has to be exempt: without this check the capture shut the panel
+       and the name's own handler then reopened it, so the name could open the
+       panel and never close it again. */
+    if (eye.contains(e.target) || panel.contains(e.target)) return;
+    if (!panel.classList.contains('open')) return;
+    setOpen(false);
+    /* Swallowed, not merely intercepted. Closing without stopping the event
+       let the tap carry on to whatever the panel was covering, so dismissing
+       the snapshot could set a villa vacant on the way past. The first tap
+       shuts the panel and does nothing else; the second does what it looks
+       like it does. */
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
 }
 
 /* Every render of the panel ends with its own way out. Put here rather than at
