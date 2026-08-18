@@ -79,9 +79,20 @@
   .tile .rn { font-size:20px; font-weight:bold; }
   /* Clean is a solid ink pill, Service a faint outline: the two jobs must be
      tellable apart at arm's length, not by reading the word.               */
+  /* One line, always. Cleaned-pre and Pre-arrived wrapped to two lines on a
+     390pt phone, which pushed the sub-line out of the tile and clipped the
+     time the job was finished. A label that has to wrap is too long for the
+     space, so the label is fitted to the tile rather than the tile to the
+     label. */
   .tile .chip { display:inline-block; border:1.2px solid var(--ink); border-radius:5px;
-                padding:1px 8px; font-weight:bold; font-size:9px; letter-spacing:.08em;
-                background:var(--ink); color:var(--cream); text-transform:uppercase; }
+                padding:1px 5px; font-weight:bold; font-size:8px; letter-spacing:.02em;
+                background:var(--ink); color:var(--cream); text-transform:uppercase;
+                white-space:nowrap; max-width:100%; overflow:hidden;
+                text-overflow:ellipsis; }
+  /* Who is on it, on the sub-line. Ink rather than the usual grey, because a
+     person is a stronger fact than a room state and has to carry from across
+     a corridor. */
+  .tile .sub.who { color:var(--ink); font-weight:bold; }
   .tile .chip.svc { background:transparent; border-color:#B5B5AD; color:#6A6A63;
                     font-weight:normal; letter-spacing:.12em; }
   /* Unknown is a gap in what we know, not an alarm. Dashed to say "not
@@ -538,26 +549,29 @@ function render(){
       var arr = row.arrivingToday && !h.pushed;
       chip='<span class="chip">'+
         (h.pushed ? 'Pushed'
-         : h.done ? ICON_DTICK+(arr ? 'Cleaned-pre' : 'Cleaned')
+         : h.done ? (arr ? 'Cleaned-pre' : 'Cleaned')
          : (arr ? 'Clean-pre' : 'Clean'))+'</span>';
     }
-    else if (row.kind==='svc') chip='<span class="chip svc">'+(h.done?ICON_DTICK+'Serviced':'Service')+'</span>';
-    else if (row.kind==='pre') chip='<span class="chip pre">'+(h.done?ICON_DTICK+'Pre-arrived':'Pre-arrival')+'</span>';
+    else if (row.kind==='svc') chip='<span class="chip svc">'+(h.done?'Serviced':'Service')+'</span>';
+    else if (row.kind==='pre') chip='<span class="chip pre">'+(h.done?'Pre-arrived':'Pre-arrival')+'</span>';
     else if (row.kind==='ver') chip='<span class="chip ver">Unknown</span>';
     else chip='<span class="sub">Empty</span>';
 
 
-    /* Who is on it. Two cleaners walking to the same villa is the waste this
-       is here to stop, so it goes on the tile rather than inside the sheet:
-       the whole point is to be seen without opening anything. Dropped once
-       the job is done, when who is going next stops being a question. */
-    if (h.takenBy && !h.done)
-      chip += '<span class="chip taken">'+
-              (h.takenBy === window.NALA_ME ? 'You' : esc(h.takenBy))+'</span>';
 
     var sub='';
+    var claimed = !!(h.takenBy && !h.done && !h.pushed);
     if (row.kind!=='vac'){
-      if (h.pushed) sub='To tomorrow';
+      /* Who is on it outranks what the room is. Two cleaners walking to the
+         same villa is the waste this exists to stop, and Departed or Occupied
+         is the least useful thing a tile can say once somebody has taken it.
+         It had a pill of its own at first, which stacked two chips on one tile
+         and was the same fault as the arrival label. Gone once the job is
+         done, when who is going next stops being a question. */
+      if (claimed)
+        sub = (h.takenBy === window.NALA_ME
+                 ? 'You have this' : esc(h.takenBy)+' has this');
+      else if (h.pushed) sub='To tomorrow';
       else if (h.done) sub='Done '+hhmm(h.done);
       else if (h.departed || row.pushedIn) sub='Departed';
       else if (h.bfast){
@@ -575,7 +589,8 @@ function render(){
     if (selected[row.n]) cls += ' sel';
     var el=document.createElement('button');
     el.className=cls;
-    el.innerHTML='<span class="rn">'+row.n+'</span>'+chip+'<span class="sub">'+sub+'</span>';
+    el.innerHTML='<span class="rn">'+row.n+'</span>'+chip+
+                 '<span class="sub'+(claimed ? ' who' : '')+'">'+sub+'</span>';
     el.onclick = function(){
       if (selectMode){
         if (!selectableRow(row)) return;

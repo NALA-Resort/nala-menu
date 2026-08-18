@@ -296,8 +296,21 @@ with sync_playwright() as p:
     print("   colours:", cols)
     ck("a finished villa carries no job colour",
        "done" in cols["finished"]["cls"] and cols["finished"]["bg"]!=cols["readySvc"]["bg"])
-    ck("a finished villa shows a tick beside the past-tense word",
-       pg.evaluate("()=>!!document.querySelector('.tile.done .dtick')"))
+    # The tick is gone from the tile. It was a third way of saying done, next
+    # to the greyed tile and the finish time, and it was the only one costing
+    # anything: it pushed Pre-arrived and Cleaned-pre past the tile width so
+    # they ellipsised to PRE-ARRIV... and CLEANED-... The word and the time
+    # say it, and both stay readable.
+    print("   done tiles:", pg.evaluate("""()=>[...document.querySelectorAll('.tile.done')]
+      .map(t=>{const c=t.querySelector('.chip');
+        return c?[c.textContent.trim(), c.scrollWidth, c.clientWidth]:null;})"""))
+    ck("a finished villa says so in the past tense and in full",
+       pg.evaluate("""()=>{const t=document.querySelector('.tile.done');
+         const c=t&&t.querySelector('.chip');
+         return !!c && /ed$|ed-pre$/i.test(c.textContent.trim())
+                && c.scrollWidth<=c.clientWidth+1;}"""))
+    ck("and carries no tick, which is what made the label overflow",
+       not pg.evaluate("()=>!!document.querySelector('.tile.done .dtick')"))
 
     # multi-select: only undecided villas, and one decision applies to all
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
