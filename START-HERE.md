@@ -170,9 +170,14 @@ a function called but never defined, twice, and a duplicated fixture key that
 silently overrode the first. Use edits that error on no match, and check each
 one landed.
 
-**Run every suite before publishing.** Ten of them, about 700 assertions. The
-printed sheet went blind to a whole node for two commits with everything green,
-because nothing tested screen and paper agreeing.
+**Run every suite before publishing.** Fifteen page suites in `tests/`, plus
+`worker/test.mjs`, `tests/rules_test.js` and `tests/matrix_probe.js`, about 1085
+assertions. `/home/claude/runall.sh` runs the lot, but the whole run exceeds the
+sandbox command timeout, so run them in batches of three or four. The printed
+sheet went blind to a whole node for two commits with everything green, because
+nothing tested screen and paper agreeing.
+
+The two node suites need `npm install targaryen` in the repo root once.
 
 **A failed read is not an empty node.** Clean Slate reported zero records for
 four nodes it could not read, said it had succeeded, and deleted nothing.
@@ -184,6 +189,12 @@ four nodes it could not read, said it had succeeded, and deleted nothing.
 
 **Do not edit `list.html`, `menu-print.html` or `housekeeping.html`.** A second
 chat owns them.
+
+**Check the sandbox before saying it is gone.** After a context compaction this
+chat twice told the user the working copy and the repo were unreachable and
+suggested starting over. Both were intact the whole time. A `view` tool call
+failing, or a `web_fetch` being refused, says nothing about the files: read them
+with bash or code execution instead.
 
 ---
 

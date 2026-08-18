@@ -4,6 +4,15 @@ Written 17 Aug 2026, replacing thirteen documents that had grown to contradict
 each other. **This is the only one you have to read.** Everything else is
 reference, listed at the end.
 
+**Last worked on 18 Aug 2026**, commit `ccf0094`. That day added test suites for
+five untested pages, `.validate` rules on all fourteen nodes, the Mews timezone
+fix, dated notes provenance, the cleans availability timer, the menu publish
+notification, the orphan pre-arrival cleaner, vacant as the default villa state,
+four role manuals, role gates on three pages that had none, the permission
+matrix in Settings, and the Mews customer id. The live rules were pasted and
+published that evening and match `rules.json`. Nothing is half finished: the
+tree is clean and every suite was green at that commit.
+
 ---
 
 ## What it is
@@ -134,9 +143,10 @@ rather than handwritten.
    building: when the feed fires it will match.
 2. **GuestTouch links** need `?b=<booking id>`. Nightly menu needs only that;
    pre-arrival also takes name and dates.
-3. **Rotate four credentials:** GitHub token, Firebase key, `sync` passcode,
-   shared secret. All have been pasted into chat. Issue two GitHub tokens,
-   `nala-menu publish` and `nala-menu chef`, so either can be revoked alone.
+3. **Rotate five credentials:** two GitHub tokens, Firebase key, `sync`
+   passcode, shared secret. All have been pasted into chat. The two GitHub
+   tokens are `nala-menu publish` and `nala-menu chef`, issued separately so
+   either can be revoked alone.
 4. **Delete leftover Firebase Auth logins** for anyone removed on Settings.
    Their access is already gone; this frees the passcode for reuse.
 5. ~~Does Mews send true UTC?~~ **Answered 18 Aug: it does.** 04:00Z is 2pm at
