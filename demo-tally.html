@@ -368,6 +368,37 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
                 color:var(--mid); letter-spacing:.03em; }
   .gd .gd-note { display:block; font-style:italic; font-size:12px; color:var(--mid); }
 
+  /* ── the guest snapshot ───────────────────────────────────────────────
+     Everything the app holds about whoever is in the villa, behind one tap.
+     The sheet showed a name and a phone number and nothing else, so the
+     dates, the head count from Mews and the guest's own pre-arrival answers
+     were all being collected and shown nowhere.
+
+     Shut by default. Reception opens this sheet twenty times a service to
+     press one of three buttons, and a panel of detail sitting open in front
+     of those buttons would be in the way every time for the once it is
+     wanted. */
+  .gd-eye { display:inline-flex; align-items:center; justify-content:center;
+            width:26px; height:26px; margin-left:6px; padding:0;
+            vertical-align:-7px; border:1px solid var(--rule);
+            background:var(--cream); border-radius:50%; cursor:pointer;
+            color:var(--mid); }
+  .gd-eye:active { background:var(--rule); }
+  .gd-eye svg { width:14px; height:14px; display:block; }
+  .gd-eye.on { border-color:var(--ink); color:var(--ink); }
+  /* Grid rather than a list: the labels line up down the left so the eye can
+     run down the values, which is how a sheet like this is read. */
+  .gd-panel { display:none; margin:10px 0 2px; text-align:left;
+              border-top:1px solid var(--rule); padding-top:10px; }
+  .gd-panel.open { display:block; }
+  .gd-row { display:flex; gap:10px; padding:3px 0; font-size:12.5px;
+            line-height:1.5; }
+  .gd-k { flex:0 0 82px; font-family:var(--ui-font); font-size:9.5px;
+          letter-spacing:.16em; text-transform:uppercase; color:var(--mid);
+          padding-top:3px; }
+  .gd-v { flex:1 1 auto; min-width:0; color:var(--ink); }
+  .gd-v.quiet { color:var(--mid); font-style:italic; }
+
   .note-box { font-style:italic; font-size:13px; color:var(--mid); text-align:center;
               line-height:1.6; padding:0 4px 16px; }
   .sheet-label { font-family:var(--ui-font); font-size:8px; letter-spacing:.25em;
@@ -898,6 +929,10 @@ function mewsRecord(stay){
      not two guests who happen to share a surname, and a board that treats them
      as strangers will seat them apart. */
   if (stay.groupId)  out.groupId = stay.groupId;
+  /* The human readable reservation number. Carried so reception can look a
+     booking up in Mews without opening the app's own id, which is a GUID and
+     no use to anybody standing at a desk. */
+  if (stay.number)   out.number  = stay.number;
   return out;
 }
 
@@ -2378,10 +2413,173 @@ function guestDataHTML(g, knownName, known){
   var d = dietHTML(g.diets, ' \u00b7 ', 'alrg');
   var h = '';
   if (top.length) h += top.join(' \u00b7 ');
+  /* The eye goes beside the name, and only when there is something behind it.
+     A control that opens an empty panel teaches people not to press it. */
+  if (snapshotRows(g, known).length)
+    h += '<button class="gd-eye" id="gdEye" type="button"'+
+         ' aria-expanded="false" aria-controls="gdPanel"'+
+         ' title="Guest details" aria-label="Guest details">'+ EYE_SVG +'</button>';
   if (d) h += '<span class="gd-sub">'+d+'</span>';
   if (g.note)  h += '<span class="gd-note">\u201C'+g.note+'\u201D</span>';
   if (g.dnote) h += '<span class="gd-note">Dietary: \u201C'+g.dnote+'\u201D</span>';
+  h += '<div class="gd-panel" id="gdPanel"></div>';
   return h ? '<div class="gd">'+h+'</div>' : '';
+}
+
+var EYE_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"'+
+  ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
+  '<path d="M1.8 12S5.5 5.2 12 5.2 22.2 12 22.2 12 18.5 18.8 12 18.8 1.8 12 1.8 12Z"/>'+
+  '<circle cx="12" cy="12" r="3.1"/></svg>';
+
+function esc(v){
+  return String(v == null ? '' : v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+/* One night is not a range, and "18 Aug to 18 Aug" reads like a mistake. */
+function stayLine(known){
+  var a = known.arrives, d = known.departs;
+  if (!a && !d) return null;
+  var txt = (a ? prettyDay(a) : '?') + ' to ' + (d ? prettyDay(d) : '?');
+  var n = nightsBetween(a, d);
+  if (n != null) txt += ' \u00b7 ' + n + (n === 1 ? ' night' : ' nights');
+  return txt;
+}
+
+function prettyDay(v){
+  var d = new Date(String(v).slice(0,10) + 'T00:00:00');
+  if (isNaN(d)) return String(v).slice(0,10);
+  var M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return d.getDate() + ' ' + M[d.getMonth()];
+}
+
+function nightsBetween(a, d){
+  if (!a || !d) return null;
+  var x = new Date(String(a).slice(0,10)+'T00:00:00');
+  var y = new Date(String(d).slice(0,10)+'T00:00:00');
+  if (isNaN(x) || isNaN(y)) return null;
+  var n = Math.round((y - x) / 86400000);
+  return n >= 0 ? n : null;
+}
+
+/* What the app actually holds, in the order reception asks for it. Rows with
+   no value are left out rather than shown empty: a blank beside a label reads
+   as data that failed to load, and this panel is meant to settle questions
+   rather than raise them. */
+function snapshotRows(g, known){
+  g = g || {}; known = known || {};
+  var rows = [];
+  var stay = stayLine(known);
+  if (stay) rows.push(['Staying', stay]);
+  if (known.adults)
+    rows.push(['In villa', known.adults + (Number(known.adults) === 1 ? ' adult' : ' adults')]);
+  var phone = g.phone || known.phone;
+  if (phone) rows.push(['Phone', phone]);
+  if (known.number) rows.push(['Booking', known.number]);
+  if (known.groupId) rows.push(['Group', 'Booked with another villa']);
+  /* Where the record came from, and whether the guest has been in touch. Two
+     different facts, which the app is careful never to conflate, so they are
+     two rows rather than one sentence.
+
+     The first version made them one sentence and got it wrong: it read the
+     source flag on the villa record, which says only that Mews wrote it, and
+     announced that a guest who had plainly answered had never opened their
+     link. Whether they answered is what the answer itself says. */
+  if (known.bookingId) rows.push(['Source', 'From Mews']);
+  else if (known.name || known.phone)
+    rows.push(['Source', 'The guest opened their link. Not in Mews']);
+  if (g.status)
+    rows.push(['Tonight', g.by === 'staff'
+      ? 'Answered at the desk'
+      : 'The guest answered themselves']);
+  else if (known.bookingId && known.source !== 'mews')
+    rows.push(['Tonight', 'Link opened, no answer yet']);
+  return rows;
+}
+
+/* Opening and shutting the panel, and going after the pre-arrival answers only
+   when somebody asks for them. Those live under /bookings/<id>/prearrival,
+   which this board does not read: fetching them for eighteen villas on every
+   render to serve the one villa somebody opens would be eighteen requests an
+   hour for nothing. So the eye pays for itself, once, on the villa in hand. */
+var PRE_CACHE = {};
+
+function wireGuestPanel(g, known){
+  var eye = document.getElementById('gdEye');
+  var panel = document.getElementById('gdPanel');
+  if (!eye || !panel) return;
+  known = known || {};
+
+  panel.innerHTML = rowsHTML(snapshotRows(g, known));
+
+  eye.onclick = function(){
+    var open = panel.classList.toggle('open');
+    eye.classList.toggle('on', open);
+    eye.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) loadPrearrival(known, panel, g);
+  };
+}
+
+function rowsHTML(rows){
+  return rows.map(function(r){
+    return '<div class="gd-row"><div class="gd-k">'+esc(r[0])+'</div>'+
+           '<div class="gd-v'+(r[2] ? ' quiet' : '')+'">'+esc(r[1])+'</div></div>';
+  }).join('');
+}
+
+var ETA_WORDS = { before2:'Before 2pm', '14':'Around 2pm', '15':'Around 3pm',
+                  '16':'Around 4pm', '17':'Around 5pm', after5:'After 5pm' };
+var APPROACH_WORDS = { most:'Dining most nights', mix:'A mix of meals in and out',
+                       out:'Mostly eating out' };
+
+function preRows(pre){
+  if (!pre || typeof pre !== 'object') return [];
+  var rows = [];
+  if (pre.arriveSlot)
+    rows.push(['Arriving', ETA_WORDS[pre.arriveSlot] || String(pre.arriveSlot)]);
+  if (pre.arriveNote) rows.push(['', '\u201C'+pre.arriveNote+'\u201D']);
+  if (pre.purpose)    rows.push(['Here for', pre.purpose]);
+  if (pre.occasion)   rows.push(['Occasion', pre.occasion]);
+  if (pre.approach)
+    rows.push(['Dining', APPROACH_WORDS[pre.approach] || String(pre.approach)]);
+  if (pre.wellness)   rows.push(['Wellness', 'Interested'
+    + (pre.wellDay ? ', ' + pre.wellDay : '')
+    + (pre.wellTime ? ' ' + pre.wellTime : '')]);
+  if (pre.note)       rows.push(['Note', '\u201C'+pre.note+'\u201D']);
+  if (pre.dnote)      rows.push(['Dietary', '\u201C'+pre.dnote+'\u201D']);
+  return rows;
+}
+
+function loadPrearrival(known, panel, g){
+  var id = known.bookingId;
+  var base = snapshotRows(g, known);
+  if (!id){
+    /* No booking means no pre-arrival form was ever sent, which is worth
+       saying: an empty panel looks like a failed load. */
+    if (!base.length)
+      panel.innerHTML = rowsHTML([['', 'Nothing recorded for this villa yet', true]]);
+    return;
+  }
+  if (PRE_CACHE[id] !== undefined){
+    panel.innerHTML = rowsHTML(base.concat(preRows(PRE_CACHE[id])));
+    return;
+  }
+  panel.innerHTML = rowsHTML(base.concat([['', 'Looking for the pre-arrival answers', true]]));
+  api('/bookings/'+id+'/prearrival')
+    .then(function(pre){
+      PRE_CACHE[id] = pre || null;
+      var extra = preRows(pre);
+      panel.innerHTML = rowsHTML(base.concat(
+        extra.length ? extra : [['', 'No pre-arrival answers yet', true]]));
+    })
+    .catch(function(){
+      /* A failed read is not an empty one, and saying "none" here would be a
+         lie that reception would act on. */
+      panel.innerHTML = rowsHTML(base.concat(
+        [['', 'Could not load the pre-arrival answers. Usually the connection', true]]));
+    });
 }
 
 function editRoomDetails(n, st){
@@ -2443,6 +2641,7 @@ function openRoom(n, st){
       : '';
     sheet.innerHTML = '<h3>Villa '+n+'</h3>' + combHtml +
       guestDataHTML(st && st.g, knownName, roomguests[String(n)]) + inner;
+    wireGuestPanel(st && st.g, roomguests[String(n)]);
     showSheet();
     revealAction();
     var u = document.getElementById('oUncomb');

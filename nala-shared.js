@@ -282,6 +282,10 @@ function mewsRecord(stay){
      not two guests who happen to share a surname, and a board that treats them
      as strangers will seat them apart. */
   if (stay.groupId)  out.groupId = stay.groupId;
+  /* The human readable reservation number. Carried so reception can look a
+     booking up in Mews without opening the app's own id, which is a GUID and
+     no use to anybody standing at a desk. */
+  if (stay.number)   out.number  = stay.number;
   return out;
 }
 

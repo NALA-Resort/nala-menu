@@ -490,8 +490,17 @@ with sync_playwright() as p:
     txt=q.evaluate("()=>sheet.innerText")
     ck("chef opens the sheet and sees the guest's details",
        "0400" in txt and "allergy" in txt.lower())
+    # The eye is excluded by id, not by trusting its label. It reveals what the
+    # app already holds and writes nothing, and the chef is the person who most
+    # wants it: they open this sheet to read the dietaries and the comment.
+    # Everything else on a chef's sheet must still be Close and only Close.
+    writes = q.evaluate("""()=>[].filter.call(document.querySelectorAll('#sheet button'),
+        e=>getComputedStyle(e).display!=='none' && e.id!=='gdEye')
+        .map(e=>e.textContent.trim())""")
     ck("chef's sheet offers nothing that writes, only Close",
-       [x.lower() for x in live]==["close"])
+       [x.lower() for x in writes]==["close"])
+    ck("the chef is offered the guest snapshot, which only reads",
+       q.evaluate("()=>!!document.getElementById('gdEye')"))
     ck("chef still sees the guest count, as a fact not a picker",
        q.evaluate("()=>!!document.querySelector('#paxRow .pax-fact') && !document.querySelector('#paxRow button')"))
     print("   chef sheet buttons:", live)
@@ -624,6 +633,105 @@ with sync_playwright() as p:
     q.close()
     del responses["0400000011"]
     del roomguests[today]["11"]
+
+    # ── the guest snapshot behind the eye ───────────────────────────────
+    # The sheet showed a name and a phone number. The dates, the head count
+    # from Mews and the guest's own pre-arrival answers were all being
+    # collected and shown nowhere, which is what a manager means by a board
+    # with missing guest data.
+    BID = "6cb6d13f-beda-45eb-9c1b-b4880157a2bf"
+    SNAP_CASES = [
+        ("a guest who answered themselves",
+         {"4": {"id": BID, "first": "Kathryn", "last": "Steele",
+                "phone": "0418387632", "arrive": today, "depart": plus(3),
+                "adults": 2, "number": "10231"}},
+         {"4": {"status": "in", "pax": 2, "by": "guest"}},
+         {"arriveSlot": "15", "purpose": "A celebration", "note": "Late flight"},
+         ["3 nights", "2 adults", "0418387632", "10231",
+          "answered themselves", "Around 3pm", "Late flight"]),
+        ("a booking Mews knows and nobody has answered",
+         {"4": {"id": BID, "first": "Ana", "last": "Diaz", "arrive": today,
+                "depart": plus(1), "adults": 2, "number": "10240"}},
+         {}, None,
+         ["1 night", "From Mews", "No pre-arrival answers yet"]),
+        ("an answer taken at the desk",
+         {"4": {"id": BID, "first": "Sol", "last": "Kim", "arrive": today,
+                "depart": plus(1), "adults": 1, "number": "9"}},
+         {"4": {"status": "in", "pax": 1, "by": "staff"}}, None,
+         ["1 adult", "Answered at the desk"]),
+    ]
+
+    for label, stays, din, pre, expect in SNAP_CASES:
+        def snap_fb(route, request, _s=stays, _d=din, _p=pre):
+            u = request.url
+            if "/stays/" + today in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps(_s)); return
+            if "/prearrival" in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps(_p) if _p else "null"); return
+            if "/dinner/" + today in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps(_d)); return
+            fb(route, request)
+        # 320pt, the narrowest phone: a detail panel is the easiest thing to
+        # push off the edge of a small screen.
+        q = b.new_page(viewport={"width": 320, "height": 900})
+        q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body=SDK))
+        q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body="/*n*/"))
+        q.route("**firebasedatabase.app/**", snap_fb)
+        q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1700)
+        q.evaluate("()=>[...document.querySelectorAll('button')]"
+                   ".find(b=>b.querySelector('.room-n')"
+                   "&&b.querySelector('.room-n').textContent==='4').click()")
+        q.wait_for_timeout(500)
+
+        ck("%s: the eye is offered" % label,
+           q.evaluate("()=>!!document.getElementById('gdEye')"))
+        # Shut to start with. Reception opens this sheet many times a service
+        # to press one of three buttons, and detail sitting open in front of
+        # them would be in the way every time for the once it is wanted.
+        ck("%s: the panel starts shut" % label,
+           not q.evaluate("()=>gdPanel.classList.contains('open')"))
+        q.locator("#gdEye").click(); q.wait_for_timeout(1000)
+        ck("%s: it opens" % label,
+           q.evaluate("()=>gdPanel.classList.contains('open')"))
+        text = q.evaluate("()=>gdPanel.textContent")
+        for want in expect:
+            ck("%s: shows %r" % (label, want), want in text)
+        ck("%s: no sideways scroll at 320pt" % label,
+           q.evaluate("()=>document.documentElement.scrollWidth"
+                      "<=document.documentElement.clientWidth"))
+        q.locator("#gdEye").click(); q.wait_for_timeout(300)
+        ck("%s: it shuts again" % label,
+           not q.evaluate("()=>gdPanel.classList.contains('open')"))
+        q.close()
+
+    # A villa with nothing known offers no eye at all: a control that opens an
+    # empty panel teaches people not to press it.
+    def bare_fb(route, request):
+        u = request.url
+        if "/stays/" in u or "/dinner/" in u or "/responses/" in u or "/manual/" in u:
+            route.fulfill(status=200, content_type="application/json", body="null"); return
+        if "/roomguests/" in u:
+            route.fulfill(status=200, content_type="application/json", body="null"); return
+        fb(route, request)
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body=SDK))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", bare_fb)
+    q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1600)
+    q.evaluate("()=>[...document.querySelectorAll('button')]"
+               ".find(b=>b.querySelector('.room-n')"
+               "&&b.querySelector('.room-n').textContent==='4').click()")
+    q.wait_for_timeout(500)
+    ck("an empty villa offers no eye to press",
+       not q.evaluate("()=>!!document.getElementById('gdEye')"))
+    q.close()
 
     b.close()
     open("/home/claude/nala/_p1_tally.png","wb").write(shot1)
