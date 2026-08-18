@@ -171,8 +171,16 @@ function loadLogo(done){
     try {
       var c = document.createElement('canvas');
       c.width = img.naturalWidth; c.height = img.naturalHeight;
-      c.getContext('2d').drawImage(img, 0, 0);
-      LOGO = c.toDataURL('image/png');
+      var cx2 = c.getContext('2d');
+      /* White behind the logo before drawing it. nala-logo.png is 86 percent
+         fully transparent, and an empty canvas is transparent too, so the data
+         URL carried an alpha channel that jsPDF rendered as hairline scribble
+         instead of the wordmark. The menu prints on white, so filling costs
+         nothing. JPEG as well, so there is no alpha left to misread at all. */
+      cx2.fillStyle = '#ffffff';
+      cx2.fillRect(0, 0, c.width, c.height);
+      cx2.drawImage(img, 0, 0);
+      LOGO = c.toDataURL('image/jpeg', 0.95);
       LOGO_RATIO = img.naturalWidth / img.naturalHeight;
     } catch (e){ LOGO = null; }
     done();
@@ -220,7 +228,7 @@ function makePDF(open){
 
   centres.forEach(function(cx){
     if (LOGO){
-      doc.addImage(LOGO, 'PNG', cx - LOGO_W / 2,
+      doc.addImage(LOGO, 'JPEG', cx - LOGO_W / 2,
                    startY - logoBlock - 3.3, LOGO_W, LOGO_H);
     }
     var y = startY;
