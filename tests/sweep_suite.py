@@ -328,6 +328,51 @@ with sync_playwright() as p:
     swept = dead = threw = broken = 0
     depth2_used = {}
 
+    # ── layout at the three phone widths ────────────────────────────────
+    # The click sweep runs at 390 only, because a handler that is not wired
+    # is not wired at any size and pressing everything three times over would
+    # treble an already slow run. What does change with width is layout, so
+    # that is checked separately and for every page and role.
+    #
+    # 390 is the mock width, 360 the common Android, 320 the narrowest phone
+    # still in use. A page that scrolls sideways on a phone is read one
+    # handed during service, so a column pushed off the edge is invisible
+    # rather than merely awkward.
+    for page, qs in pages:
+        for email, role in ROLES:
+            if want_roles and role not in want_roles:
+                continue
+            for w in (390, 360, 320):
+                try:
+                    pg, failed, bad = open_page(email, page, qs, width=w)
+                except Exception as ex:
+                    ck("%s as %s at %dpt loads" % (page, role, w), False, str(ex)[:70])
+                    continue
+                if pg.url.split("/")[-1].split("?")[0] != page:
+                    pg.close(); continue
+                m = pg.evaluate("""()=>{
+                  const de=document.documentElement;
+                  const over=[...document.querySelectorAll('body *')].filter(e=>{
+                    const r=e.getBoundingClientRect();
+                    if(r.width<1||r.height<1) return false;
+                    const s=getComputedStyle(e);
+                    if(s.position==='fixed') return false;
+                    /* A scroller is allowed to be wider than the screen: that
+                       is what it is for. Only the page itself must not be. */
+                    let p=e.parentElement;
+                    while(p){ const ps=getComputedStyle(p);
+                      if(ps.overflowX==='auto'||ps.overflowX==='scroll') return false;
+                      p=p.parentElement; }
+                    return r.right > de.clientWidth + 1;})
+                    .map(e=>(e.id?'#'+e.id:e.tagName.toLowerCase()+'.'+
+                             ((e.className||'').toString().split(' ')[0]||'')));
+                  return {vw:de.clientWidth, sw:de.scrollWidth,
+                          over:[...new Set(over)].slice(0,4)};}""")
+                ck("%s as %s does not scroll sideways at %dpt" % (page, role, w),
+                   m["sw"] <= m["vw"] + 1, ", ".join(m["over"]))
+                pg.close()
+
+
     for page, qs in pages:
         for email, role in ROLES:
             if want_roles and role not in want_roles:

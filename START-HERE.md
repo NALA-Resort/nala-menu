@@ -172,9 +172,12 @@ a function called but never defined, twice, and a duplicated fixture key that
 silently overrode the first. Use edits that error on no match, and check each
 one landed.
 
-**Run every suite before publishing.** Fifteen page suites in `tests/`, plus
-`worker/test.mjs`, `tests/rules_test.js` and `tests/matrix_probe.js`, about 1085
-assertions. `/home/claude/runall.sh` runs the lot, but the whole run exceeds the
+**Run every suite before publishing.** Seventeen page suites in `tests/`, plus
+`worker/test.mjs`, `tests/rules_test.js` and `tests/matrix_probe.js`, about 1200
+assertions. Two of the seventeen are not about one page: `sweep_suite.py`
+presses every control on every page as every role and checks the three phone
+widths, and `demo_suite.py` catches the demo sheets drifting from the pages
+they copy. `/home/claude/runall.sh` runs the lot, but the whole run exceeds the
 sandbox command timeout, so run them in batches of three or four. The printed
 sheet went blind to a whole node for two commits with everything green, because
 nothing tested screen and paper agreeing.

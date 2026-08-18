@@ -203,7 +203,17 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .tile .chip.pre { background:transparent; border-color:var(--ink); color:var(--ink); }
   .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
   .tile .sub b { color:var(--ink); }
-  /* the guest is coming back: amber from 15 minutes, red from 20 */
+  /* The clock on an available villa, and the only place on this board where
+     colour is about time rather than about state. Green for the first ten
+     minutes, because a villa turned around inside the window is the thing
+     going right and it read identically to one nobody had touched. Ink from
+     ten, amber from fifteen, red from twenty: the guest is coming back.
+
+     A darker green than the tile border, because this one is 9.5px text and
+     often sits on a green tile. --greenb reads at 2.8 to 1 against that fill,
+     which is not a colour anybody picks out on a phone in daylight. This is
+     5 to 1 on every background it lands on. */
+  .tile .sub b.fresh { color:#4E6B4B; }
   .tile .sub b.soon { color:var(--amberb); }
   .tile .sub b.late { color:var(--red); }
 
@@ -766,6 +776,22 @@ function isMewsOnly(rec){
   return !!(rec && rec.source === 'mews');
 }
 
+/* Is anybody attached to this villa on this date at all: a Mews reservation, a
+   guest who opened their link, or a record reception typed in. It is the line
+   between the two empty states on the boards, which mean different things and
+   want different reactions.
+
+     vacant   nobody is booked into this villa, so there is no question to ask
+     awaiting somebody is, and they have not said yes or no to dinner yet
+
+   A record with nothing in it is not a guest. `roomguests` carries empty
+   objects around from older writes, and one of those showing as a booking was
+   what made the boards look busier than the resort was. */
+function hasGuestProfile(rec){
+  return !!(rec && typeof rec === 'object' &&
+            (rec.name || rec.bookingId || rec.departs || rec.arrives || rec.phone));
+}
+
 function mewsRecord(stay){
   if (!stay || typeof stay !== 'object') return null;
   var name = [stay.first, stay.last].filter(Boolean).join(' ').trim();
@@ -971,6 +997,33 @@ function dinnerLocked(cell){
   return !!(cell && cell.by === 'staff');
 }
 
+/* A note, a dietary and a dietary note are answers to one night's dinner
+   invitation. Every node that holds them is partitioned by date except
+   roomguests, which is deliberately carried forward for up to a fortnight so a
+   guest keeps their villa across a stay. So a note written on Monday rode
+   along into Tuesday and was rendered as Tuesday's answer. That is how a
+   dietary from a previous night reaches the kitchen as though it were
+   tonight's, which is the one failure here that ends up on a plate.
+
+   Nothing is thrown away: an allergy is still an allergy and hiding it would
+   be worse than mislabelling it. The record now says which night each answer
+   belongs to, and the boards say so on screen. `note` and `dnote` keep their
+   old meaning and their old values, because the printed sheets read them and
+   are owned by another chat. */
+var DINE_FIELDS = ['note', 'dnote', 'diets'];
+function hasValue(v){
+  if (v === undefined || v === null || v === '') return false;
+  return !(Object.prototype.toString.call(v) === '[object Array]' && !v.length);
+}
+function withDineProvenance(out, tonight, known){
+  DINE_FIELDS.forEach(function(k){
+    var cap = k.charAt(0).toUpperCase() + k.slice(1);
+    if (hasValue(tonight && tonight[k])) out['dine' + cap] = tonight[k];
+    else if (hasValue(known && known[k])) out['prev' + cap] = known[k];
+  });
+  return out;
+}
+
 function roomRecord(n, responses, manual, roomguests, dinner){
   var mk = 'room-'+n, m = manual[mk];
   var known = roomguests[String(n)] || {};
@@ -991,7 +1044,9 @@ function roomRecord(n, responses, manual, roomguests, dinner){
     ? null
     : dinnerRecord(cells && cells[String(n)]);
   if (cell && !vacantIsStale(cell, known))
-    return Object.assign({}, known, cell, pmsFields(known), { room:String(n) });
+    return withDineProvenance(
+      Object.assign({}, known, cell, pmsFields(known), { room:String(n) }),
+      cell, known);
 
   var best = null;
   for (var k in responses){
@@ -1005,10 +1060,14 @@ function roomRecord(n, responses, manual, roomguests, dinner){
     if (!best || (g.at||'') > (best.at||'')) best = g;
   }
   var pms = pmsFields(known);
-  if (m && m.override) return Object.assign({}, known, best || {}, m, pms, { room:String(n) });
-  if (best) return Object.assign({}, known, best, pms);
-  if (m)    return Object.assign({}, known, m, pms, { room:String(n) });
-  if (known.name) return Object.assign({}, known, { room:String(n), status:null });
+  if (m && m.override) return withDineProvenance(
+    Object.assign({}, known, best || {}, m, pms, { room:String(n) }), m, known);
+  if (best) return withDineProvenance(
+    Object.assign({}, known, best, pms), best, known);
+  if (m)    return withDineProvenance(
+    Object.assign({}, known, m, pms, { room:String(n) }), m, known);
+  if (known.name) return withDineProvenance(
+    Object.assign({}, known, { room:String(n), status:null }), null, known);
   return null;
 }
 
@@ -1081,9 +1140,66 @@ function roleOf(user){
   return isRole(r) ? r : null;
 }
 
-function can(role, what){
+/* ── the permission matrix ─────────────────────────────────────
+   ROLE_GRANTS above is what the app ships with. /permissions is the manager
+   changing their mind, and it wins where it has an opinion.
+
+   Only an explicit true or false counts as an opinion. A missing action, a
+   missing role, or a value that is not a boolean all mean "no opinion", and
+   the shipped default stands. That is deliberate: adding a new capability to
+   ROLE_GRANTS must not silently switch it off for everybody because the
+   matrix written last March has never heard of it.
+
+   The manager is never overridable. A stray false against admin, typed in the
+   Firebase console at midnight, would lock the only person who can undo it
+   out of the page where it is undone. So admin is answered before the matrix
+   is consulted at all.
+
+   Matrix and rationale in ROLES.md.                                     */
+var PERMISSIONS = null;      /* the /permissions map once loaded, null until then */
+
+/* The actions a manager may hand out, in the order the grid shows them, in
+   the words staff use rather than the words the code uses.
+
+   manageStaff is deliberately not here. Handing it out hands out the ability
+   to hand things out, which is not a permission, it is a second manager. Do
+   that by changing somebody's role, where it is visible in the People list,
+   rather than by a tick nobody will ever look at again.                  */
+var PERM_ACTIONS = [
+  ['resBoard',     'See Reservations'],
+  ['editBookings', 'Edit a booking'],
+  ['resSheet',     'See the Reservations Sheet'],
+  ['publishMenu',  'Tag the menu dietaries'],
+  ['cleansBoard',  'See the Cleans board'],
+  ['cleansMarks',  'Mark a clean done'],
+  ['setJob',       'Change what a villa needs']
+];
+
+/* The columns. admin is absent because it always has everything, and a column
+   of ticks nobody may untick teaches people the ticks do nothing. sync is
+   absent because it is a machine with no screen.                        */
+var PERM_ROLES = ['chef','waiter','housekeeping'];
+
+/* What the app shipped with, asked directly. The grid shows it beside the
+   current answer so a manager can see what they have changed.           */
+function grantedByDefault(role, what){
   var g = ROLE_GRANTS[normaliseRole(role)];
   return !!(g && g.indexOf(what) > -1);
+}
+
+function setPermissions(map){
+  PERMISSIONS = (map && typeof map === 'object') ? map : null;
+  return PERMISSIONS;
+}
+
+function can(role, what){
+  var r = normaliseRole(role);
+  /* Answered first, and only for a capability that exists: an unknown name is
+     a typo, and a typo must not be the thing that grants the run of the app. */
+  if (r === 'admin' && ROLE_GRANTS.admin.indexOf(what) > -1) return true;
+  var row = PERMISSIONS && PERMISSIONS[what];
+  if (row && typeof row[r] === 'boolean') return row[r];
+  return grantedByDefault(r, what);
 }
 
 /* Where a role should land. Housekeeping opening the app got the Reservations
@@ -1104,11 +1220,29 @@ function setStaffRecords(map){
    "signed in and not on the list" and the pages word it differently:
    telling someone to see the manager when the database simply did not
    answer sends them down the hall for nothing.                        */
+/* The matrix is fetched here, with the records, rather than by each page.
+   Every gate in the app already waits on loadStaff before it decides
+   anything, so this is the one place where adding a second read cannot leave
+   a page deciding with half the answer.
+
+   A failed matrix read is NOT an error the pages hear about. The records are
+   what decide whether somebody is staff at all; the matrix only adjusts what
+   a known role may do, and the shipped defaults are a working app. Refusing
+   everyone because an override list did not answer would turn a small outage
+   into a locked door.                                                    */
 function loadStaff(cb){
+  var recs = null, err = null;
   fetch(DB + '/staff.json')
     .then(function(r){ return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
-    .then(function(j){ cb(setStaffRecords(j), null); })
-    .catch(function(err){ STAFF_RECORDS = null; cb(null, err); });
+    .then(function(j){ recs = setStaffRecords(j); })
+    .catch(function(e){ STAFF_RECORDS = null; err = e; })
+    .then(function(){
+      return fetch(DB + '/permissions.json')
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){ setPermissions(j); })
+        .catch(function(){ setPermissions(null); });
+    })
+    .then(function(){ cb(recs, err); });
 }
 
 /* ── staying inside the home screen app ────────────────────────
@@ -1257,6 +1391,103 @@ function notifyPush(event, villa, user){
   } catch (e){}
 }
 
+/* ── announcing a published menu ───────────────────────────────
+   The chef publishes by pushing a commit, so nothing in the database moves
+   and there is nothing for a listener to watch. Something signed in has to
+   notice. This used to live inside the Reservations board, which meant the
+   manager was told when a manager happened to have that one board open, and
+   on a quiet afternoon that is nobody.
+
+   So it lives here and every staff page calls it on load. The chef's own next
+   step after publishing is to open the tagging page, which is signed in and
+   calls this, so in the normal course of a service the manager is told within
+   a minute of the menu going up by the very person who put it up.
+
+   It is still a poll rather than a push, and the honest limit is that if no
+   staff device opens anything at all, nobody is told. Closing that needs the
+   notification Worker to fire on the commit itself, and the Worker is not in
+   this repo.
+
+   Runs once per published menu. The archive row is the record of having
+   announced it: if the row already matches, this has been done, and a second
+   board loading a minute later reads that and stops. Two boards loading in
+   the same second can still both announce, which is a duplicate buzz rather
+   than a wrong one, and is not worth a lock to prevent.               */
+function announceMenu(){
+  /* Guests must not call this. The rules refuse them the write, so the worst
+     case is a refused request rather than a wrong notification, but there is
+     no reason to make it.                                                */
+  if (!window.__idToken) return;
+  fetch('menu.json?v=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(m){
+      m = m || {};
+      var filled = ['bread','entree','main','dessert'].every(function(k){
+        return m[k] && m[k].name && m[k].name.trim() !== '';
+      });
+      /* The menu's own stamp, not Last-Modified: GitHub rewrites that on
+         every deploy, so it cannot say when the chef published.         */
+      var pub = m.published ? parseISO(m.published) : null;
+      var today = dkey(new Date());
+      if (!filled || !pub || dkey(pub) !== today) return;
+      var main = (m.main && m.main.name) || '';
+      return fetch(DB + '/menuhistory/' + today + '.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(existing){
+          if (existing && existing.main === main &&
+              existing.published === m.published) return;
+          return fetch(DB + '/menuhistory/' + today + '.json', {
+            method:'PUT', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+              bread:   (m.bread   && m.bread.name)   || '',
+              entree:  (m.entree  && m.entree.name)  || '',
+              main:    main,
+              dessert: (m.dessert && m.dessert.name) || '',
+              mainDesc: (m.main   && m.main.desc)    || '',
+              published: m.published || '',
+              at: new Date().toISOString()
+            })
+          }).then(function(r){
+            /* Only after the row is written. A refused write means the row is
+               not there, so the next page to load will try again, and firing
+               the notification first would have used up the one announcement
+               on a menu that was never recorded. */
+            if (!r.ok) return;
+            /* No actor. Everywhere else the actor is the person who caused the
+               event, so the Worker can avoid telling them about their own tap.
+               Here the person who caused it is the chef, and the person whose
+               page happened to notice did not do anything. Passing them would
+               suppress the notification for the very manager it is meant to
+               reach. */
+            notifyPush('menu', null, null);
+          });
+        });
+    })
+    .catch(function(){});
+}
+
+/* Called from here rather than from each page, so a page added later gets it
+   without anybody remembering to. Waits for the sign in token, which only
+   exists on staff pages: the guest pages load this file too and must never
+   run it, and the absence of a token is what keeps them out rather than a
+   list of page names that would go stale.
+
+   Gives up after a minute. A page that has not signed in by then is a signed
+   out browser sitting on a login screen, and polling it forever is a request
+   every second for as long as the tab is open.                          */
+(function(){
+  var tries = 0;
+  /* Checked immediately as well as on the interval. A menu announced two
+     seconds after the board is usable is two seconds in which the chef opens
+     the tagging page, sees it work, and closes it again. */
+  function tick(){
+    if (window.__idToken){ announceMenu(); return true; }
+    return ++tries > 60;
+  }
+  if (tick()) return;
+  var t = setInterval(function(){ if (tick()) clearInterval(t); }, 1000);
+})();
+
 /* The notification settings, written by the app the first time an admin opens
    a board and finds none. Typing this into the console by hand was slow and
    easy to get wrong, and every new event type would mean doing it again.
@@ -1269,7 +1500,12 @@ var NOTIFY_DEFAULTS = {
     departed:  { housekeeping:true, admin:true, waiter:false, chef:false },
     available: { housekeeping:true, admin:true, waiter:false, chef:false },
     cleaned:   { housekeeping:true, admin:true, waiter:true,  chef:false },
-    serviced:  { housekeeping:true, admin:true, waiter:true,  chef:false }
+    serviced:  { housekeeping:true, admin:true, waiter:true,  chef:false },
+    /* The chef publishes by pushing a commit, not by writing here, so nothing
+       in the database changes when a menu goes up. The board notices on its
+       next load and fires this. Off for the chef, who already knows: they
+       just published it. */
+    menu:      { housekeeping:false, admin:true, waiter:false, chef:false }
   }
 };
 
@@ -1290,6 +1526,58 @@ function ensureNotifySettings(role){
     })
     .catch(function(){});
 }
+
+
+/* ── the staff menu ──────────────────────────────────────────────────────
+   Which board each link needs, in one place. This lived in five pages as
+   five copies, and by 18 Aug they disagreed: list.html was missing
+   front-desk, registration and pages, so it offered all three to roles that
+   cannot open them, and housekeeping.html and stats.html filtered nothing at
+   all and offered Settings to everybody.
+
+   Offering a link that lands on "no access" is a door to nowhere. Worse, it
+   reads as a fault in the app rather than as a permission working.
+
+   A page needs no filter code of its own now: this runs itself once a role is
+   known, and again if the menu is built later. Sign out is never filtered.  */
+var NAV_NEEDS = {
+  'tally.html':        'resBoard',
+  'front-desk.html':   'editBookings',
+  'list.html':         'resSheet',
+  'cleaners.html':     'cleansBoard',
+  'housekeeping.html': 'cleansBoard',
+  'registration.html': 'editBookings',
+  'staff.html':        'manageStaff',
+  'pages.html':        'manageStaff'
+};
+
+function navFilterShared(role){
+  var drop = document.getElementById('navDrop');
+  if (!drop) return;
+  var links = drop.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++){
+    if (links[i].className.indexOf('signout') > -1) continue;
+    var href = (links[i].getAttribute('href') || '').split('?')[0];
+    /* An unlisted link is left alone rather than hidden. Hiding by default
+       would make every new menu entry invisible until somebody remembered
+       to add it here, and the failure would look like the link was broken. */
+    if (!(href in NAV_NEEDS)) continue;
+    links[i].style.display = can(role, NAV_NEEDS[href]) ? '' : 'none';
+  }
+}
+window.NALA_NAVFILTER = navFilterShared;
+
+/* Pages that never filtered their own menu get it applied for them. Pages
+   that call it themselves are unaffected: running twice is harmless. */
+(function(){
+  var tries = 0;
+  var t = setInterval(function(){
+    if (++tries > 60) { clearInterval(t); return; }
+    if (!window.NALA_ROLE) return;
+    navFilterShared(window.NALA_ROLE);
+    clearInterval(t);
+  }, 250);
+})();
 
 </script>
 <script>
@@ -1435,7 +1723,7 @@ function render(){
       else if (h.departed || row.pushedIn) sub='Departed';
       else if (h.bfast){
         var m = mins(h.bfast);
-        var w = m >= 20 ? ' late' : (m >= 15 ? ' soon' : '');
+        var w = m >= 20 ? ' late' : (m >= 15 ? ' soon' : (m < 10 ? ' fresh' : ''));
         sub='Available <b class="el'+w+'">'+m+'m</b>';
       }
       else if (row.kind==='pre') sub='Arriving today';

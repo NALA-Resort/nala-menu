@@ -54,7 +54,8 @@ deletion that looks published and is not cost hours on 17 Aug.
 since your last push. Written for a period when two chats published here; that
 ended on 18 Aug, but the guard is kept against a stale clone.
 
-**Run every suite before publishing.** Fifteen of them, about 900 assertions,
+**Run every suite before publishing.** Seventeen page suites, about 1200
+assertions,
 in `tests/`. See `tests/README.md`. They take about half an hour; publishing
 without them is how the printed sheet went blind for two commits without a
 single test failing.

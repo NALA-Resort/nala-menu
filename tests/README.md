@@ -76,3 +76,26 @@ all, so they open on a phone with no signal, and no tap can write anything.
 A red band marks them on screen; it is hidden when printing.
 
 Re-run after changing either sheet - the demos do not track changes.
+
+## sweep_suite.py
+
+Presses every control on every page, as every role, and asks whether anything
+happened. Not what each control does, which the page suites cover, but that no
+control is dead. Goes two levels deep, so it reaches the buttons that only
+exist once a sheet is open. Also checks every page at 390, 360 and 320 for
+sideways scroll.
+
+Slow. Run a slice: `python3 tests/sweep_suite.py cleaners admin`.
+
+## demo_suite.py
+
+The four demo sheets are built by `tools/make-demo.py` and nothing rebuilds
+them, so every change to a real sheet leaves them further behind, silently.
+This rebuilds them in a scratch copy and fails if the committed files differ.
+
+When it fails: `python3 tools/make-demo.py`, then publish the four demo files.
+
+It also opens each demo in a browser and asserts it asks the network for
+nothing, even after its buttons are pressed. That is checked by watching the
+requests, not by searching the text: the database address does appear in each
+file and is harmless, because fetch is replaced before anything uses it.
