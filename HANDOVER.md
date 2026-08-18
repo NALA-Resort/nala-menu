@@ -13,6 +13,18 @@ matrix in Settings, and the Mews customer id. The live rules were pasted and
 published that evening and match `rules.json`. Nothing is half finished: the
 tree is clean and every suite was green at that commit.
 
+**None of it has been tested by a human.** Every suite passes, and a suite is a
+sandbox: it stubs Firebase, runs no real login, prints nothing, has no phone and
+never sees Mews. Not one of the changes above has been used by a person on a
+real device against live data. `TESTING.md` section 0 is the list of what to
+tap, in order, and every item on it is unrun. Section 1 onward has been unrun
+since the app was built.
+
+So when the owner reports something not working, the first assumption is that it
+does not work, not that they have misread it. Several times on 18 Aug their
+instinct was right and this chat's reading of the code was wrong. A green suite
+is evidence about the code, not about the app.
+
 ---
 
 ## What it is

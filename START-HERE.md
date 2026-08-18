@@ -217,8 +217,11 @@ Mews is unbuilt and needs Connector API credentials; the demo sheets do not
 rebuild themselves.
 
 `TESTING.md` section 0 lists the smoke tests for everything that changed on
-18 Aug, and sections 1 onward the checks a sandbox cannot run. None have been
-done.
+18 Aug, and sections 1 onward the checks a sandbox cannot run. **None of them
+have been done, and nothing built on 18 Aug has ever been touched by a human on
+a real device.** Everything you inherit is code that passes its own tests and
+has not otherwise been used. Treat a bug report as true until you have proved
+otherwise.
 
 ---
 
