@@ -99,3 +99,19 @@ It also opens each demo in a browser and asserts it asks the network for
 nothing, even after its buttons are pressed. That is checked by watching the
 requests, not by searching the text: the database address does appear in each
 file and is harmless, because fetch is replaced before anything uses it.
+
+## coercion_test.js
+
+Asks whether what the Worker sends is what the rules will accept. Two files
+nobody edits together: rules.json is pasted into the Firebase console by hand,
+the Worker deploys from the repo, and nothing connects them.
+
+The failure this exists to stop is not a plain outage. The database refuses the
+WHOLE write when one field fails validation, and the error is "Permission
+denied", which reads like a credentials fault and sends the reader to the wrong
+place. That happened on 18 Aug.
+
+It reads the coercion helpers out of the Worker rather than copying them, so it
+cannot pass against code that no longer ships.
+
+    node tests/coercion_test.js

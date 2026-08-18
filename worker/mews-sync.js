@@ -133,6 +133,57 @@ function isGuid(v) {
 /* The first candidate that is actually a GUID. Falls back to the first one
    present so the caller can report what arrived, which is then refused with a
    message rather than stored as a new booking. */
+/* ── coercion to what the rules will accept ────────────────────────────
+   The database validates every field it knows about, and one wrong type
+   refuses the WHOLE write, not the offending field. So a single unexpected
+   value from Zapier costs the entire reservation, and the error that comes
+   back says only "Permission denied", which reads like a credentials problem
+   and sends whoever is debugging it to the wrong place entirely. That is
+   exactly what happened on 18 Aug: check-ins were failing with 401 and the
+   sync account was blameless.
+
+   Zapier does not promise types. The same field arrives as a string on one
+   trigger and a number on the next, and a field that is normally a GUID can
+   arrive as an object when Mews nests it. So nothing is trusted: every value
+   is coerced to what the rule expects, or dropped.
+
+   Dropped, not guessed. A number where a name should be is not a name, and
+   writing "123" as somebody's first name to satisfy a validator would put a
+   lie on the arrivals board. Null deletes the key, which is honest: we do not
+   know, rather than we know this.                                          */
+function asText(v, max) {
+  if (typeof v === "string") return v.length > max ? v.slice(0, max) : v;
+  /* A number is a reasonable text value for identifiers and phone numbers,
+     which Mews and Zapier both send either way round. */
+  if (typeof v === "number" && Number.isFinite(v)) {
+    const s = String(v);
+    return s.length > max ? s.slice(0, max) : s;
+  }
+  return null;
+}
+
+function asCount(v, min, max) {
+  const n = typeof v === "number" ? v
+          : (typeof v === "string" && v.trim() !== "") ? Number(v)
+          : NaN;
+  if (!Number.isFinite(n)) return null;
+  if (n < min || n > max) return null;
+  return n;
+}
+
+/* villa validates as a short string OR a number, so either is passed through
+   and anything else becomes null. */
+function asVilla(v) {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  return asText(v, 10);
+}
+
+/* bookingNumber validates as string or number with no length bound. */
+function asNumberOrText(v) {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  return asText(v, 120);
+}
+
 function pickGuid(o, names) {
   for (const n of names) {
     if (isGuid(o[n])) return o[n];
@@ -360,28 +411,36 @@ export default {
       }
 
       await db(env, "/bookings/" + r.id + "/pms", "PATCH", {
-        first: r.first, last: r.last, phone: r.phone,
-        arrive: r.arrive, depart: r.depart, villa: r.villa,
+        /* Every value coerced to what the rule expects. See asText above for
+           why nothing here is trusted and why a bad value becomes null rather
+           than a guess. The lengths match rules.json exactly: a value trimmed
+           to 120 here is a value the database will accept, and a value trimmed
+           to the wrong length is the same outage in a quieter form. */
+        first: asText(r.first, 120), last: asText(r.last, 120),
+        phone: asText(r.phone, 40),
+        arrive: asText(r.arrive, 40), depart: asText(r.depart, 40),
+        villa: asVilla(r.villa),
         state: cancelled ? "cancelled" : "confirmed",
         /* Mews has more states than we act on (Optional, Started, Processed).
            Only cancellation changes what we do, but the raw value is kept
            rather than discarded: the next question about this data will be
            easier to answer with it than without it. */
-        mewsState: r.state,
-        bookingNumber: r.bookingNumber, groupId: r.groupId,
+        mewsState: asText(r.state, 30),
+        bookingNumber: asNumberOrText(r.bookingNumber),
+        groupId: asText(r.groupId, 64),
         /* On the booking and not on the nights. A night is read by the boards
            twenty times an hour and none of them care who the person is; the
            write back to Mews happens once per booking and does. Copying it
            into every night would be fourteen copies of a fact used nowhere. */
-        customerId: r.customerId || null,
-        adults: r.adults, children: r.children,
+        customerId: asText(r.customerId, 64),
+        adults: asCount(r.adults, 0, 40), children: asCount(r.children, 0, 40),
         /* Explicit nulls, not omissions. A PATCH that simply stops sending a
            field leaves the old value sitting there, so every booking synced
            before today would keep the notes this change exists to remove.
            Null deletes the key, which makes the fix retroactive on the next
            event for each booking rather than only on new ones. */
         notes: null, notesType: null, spaceState: null, guestNotes: null,
-        updated: r.updated || null,
+        updated: asText(r.updated, 40),
         syncedAt: new Date().toISOString()
       });
 
@@ -393,8 +452,14 @@ export default {
          Writes happen per reservation event, reads happen every twenty seconds
          on five phones, so the duplication is paid in the cheap direction. */
       const summary = {
-        id: r.id, first: r.first, last: r.last, phone: r.phone,
-        arrive: r.arrive, depart: r.depart, adults: r.adults,
+        /* Coerced for the same reason as the booking write, and it matters
+           more here: a night refused is a guest missing from the arrivals
+           board and the reservation sheet, with nothing on screen to say so. */
+        id: asText(r.id, 64),
+        first: asText(r.first, 120), last: asText(r.last, 120),
+        phone: asText(r.phone, 40),
+        arrive: asText(r.arrive, 40), depart: asText(r.depart, 40),
+        adults: asCount(r.adults, 0, 40),
         /* One party can hold several villas: a family booking two of them is
            two reservations under one group, and each gets its own id. Without
            the group id on the night, the boards see two unrelated guests who
@@ -404,16 +469,16 @@ export default {
            Both look like one group across two villas with overlapping dates.
            Only a cancellation separates them, which is why the cancellation
            feed matters more than any of this. */
-        groupId: r.groupId || null,
+        groupId: asText(r.groupId, 64),
         /* Carried so staff can cross-check a booking against Mews without
            opening it. It is the only identifier here a human can read. */
-        number: r.bookingNumber || null,
+        number: asNumberOrText(r.bookingNumber),
         /* Carried into every night so the app can tell a staff decision made
            against THIS version of the booking from one made before Mews last
            changed it. Without it, a villa staff marked vacant either sticks
            forever or is undone on the next poll, and neither is what was
            asked for. */
-        updated: r.updated || null
+        updated: asText(r.updated, 40)
       };
       for (const d of fresh) {
         await db(env, "/stays/" + d + "/" + r.villa, "PUT", summary);
@@ -436,7 +501,32 @@ export default {
          failed to land is worse than one that lands twice, since every write
          here is idempotent. */
       TOKEN = null;
-      return new Response("sync failed: " + e.message, { status: 500 });
+      /* "Permission denied" from the database means one of two very different
+         things, and the message alone cannot tell them apart. Either the sync
+         account is not signed in or has lost its role, which is a credentials
+         problem, or every credential is fine and one field in the write failed
+         validation, which refuses the whole write.
+
+         On 18 Aug that ambiguity cost an evening: check-ins were failing with
+         401 and the sync login was blameless. So the two are separated here.
+         Whoever reads this in a Zap alert should not have to guess. */
+      let msg = e.message;
+      if (/Permission denied/i.test(msg)) {
+        let who = null;
+        try {
+          const key = String(env.SYNC_EMAIL || "").toLowerCase().replace(/\./g, ",");
+          who = await db(env, "/staff/" + key + "/role", "GET");
+        } catch (probe) { who = "unreadable"; }
+        msg += who === "sync" || who === "admin" || who === "staff"
+          ? " | the sync account is signed in and holds the role '" + who
+            + "', so this is NOT a credentials problem: a field in the write"
+            + " failed validation, and one bad field refuses the whole write."
+            + " Compare the payload against rules.json."
+          : " | the sync account's role reads '" + String(who) + "'."
+            + " It must be 'sync' at /staff/<email with dots as commas>."
+            + " This IS a credentials or staff record problem.";
+      }
+      return new Response("sync failed: " + msg, { status: 500 });
     }
   }
 };
