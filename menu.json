@@ -1,23 +1,23 @@
 {
-  "published": "2026-08-18T08:16:31.043900+10:00",
+  "published": "2026-08-19T08:46:29.925740+10:00",
   "bread": {
-    "name": "Housemade focaccia",
-    "desc": "aged balsamic, olive oil",
+    "name": "Baguette la Parisienne",
+    "desc": "Vietnamese butter",
     "aus": false
   },
   "entree": {
-    "name": "Salmon Crudo",
-    "desc": "buttermilk, dill, cucumber, salmon roe",
-    "aus": true
-  },
-  "main": {
-    "name": "Duck tagliatelle",
-    "desc": "chilli, garlic, orange gremolata, stracciatella",
+    "name": "Pork rillettes",
+    "desc": "caramelised pear, pickled grapes, toast",
     "aus": false
   },
+  "main": {
+    "name": "Barramundi",
+    "desc": "braised fennel, cauliflower pur\u00e9e, beurre blanc",
+    "aus": true
+  },
   "dessert": {
-    "name": "Tiramisu",
-    "desc": "",
+    "name": "L'Assiette au Chocolat",
+    "desc": "chocolate, caramel, coffee",
     "aus": false
   }
 }
