@@ -215,6 +215,63 @@ with sync_playwright() as p:
        q.get_attribute(".btn.ghost", "href") == "tally.html")
     q.close()
 
+    # ── the role gate ───────────────────────────────────────────────────
+    # Until 18 Aug this page had none: anybody with the address could open
+    # it. It leaks nothing, since the menu comes from menu.json, which the
+    # guest dining page already serves publicly, but a staff page sitting
+    # open is a thing somebody has to reason about at every audit.
+    #
+    # These assertions exist because the suite above passes either way. It
+    # never loads Firebase, so the gate simply never runs, and a gate that
+    # is never exercised is indistinguishable from no gate at all.
+    SDK = """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
+auth:function(){return window.__A;}};
+window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:window.__EMAIL,
+getIdToken:function(){return Promise.resolve('T');}});},20);},
+onAuthStateChanged:function(cb){setTimeout(function(){cb({email:window.__EMAIL});},25);},
+signOut:function(){}};"""
+    GATE_STAFF = {"chef@x": {"name": "Chef", "role": "chef"},
+                  "hk@x": {"name": "HK", "role": "housekeeping"},
+                  "nobody@x": {"name": "Nobody", "role": ""}}
+
+    def as_role(email):
+        pg = b.new_page(viewport={"width": 390, "height": 900})
+        pg.add_init_script(JSPDF_STUB)
+        pg.add_init_script(SDK)
+        pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
+        pg.route("**/cdnjs.cloudflare.com/**", lambda r: r.fulfill(status=200, body=""))
+        pg.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        pg.route("**/fonts.googleapis.com/**", lambda r: r.fulfill(status=200, body=""))
+        pg.route("**firebasedatabase.app/**", lambda r: r.fulfill(
+            status=200, content_type="application/json",
+            body=(json.dumps(GATE_STAFF) if "/staff" in r.request.url else "null")))
+        pg.route("**/menu.json*", lambda r: r.fulfill(
+            status=200, content_type="application/json",
+            body=json.dumps(STATE["menu"] or {})))
+        pg.goto("http://localhost:8975/menu-print.html")
+        pg.wait_for_timeout(1600)
+        return pg
+
+    q = as_role("chef@x")
+    ck("a chef may still print the menus",
+       q.evaluate("()=>getComputedStyle(document.getElementById('viewer')).display") != "none"
+       and "cannot print" not in q.evaluate("()=>state.textContent").lower())
+    q.close()
+
+    q = as_role("hk@x")
+    q.wait_for_timeout(600)
+    ck("housekeeping is sent to its own board rather than shown a refusal",
+       q.url.endswith("cleaners.html"))
+    q.close()
+
+    q = as_role("nobody@x")
+    q.wait_for_timeout(600)
+    ck("a login with no role is refused, having nowhere to be sent",
+       "see the manager" in q.evaluate("()=>state.textContent").lower())
+    ck("and the menu is not rendered behind the refusal",
+       q.evaluate("()=>getComputedStyle(document.getElementById('viewer')).display") == "none")
+    q.close()
+
     b.close()
 
 print("RESULT: %d passed, %d failed" % (P, F))

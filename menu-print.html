@@ -344,5 +344,47 @@ fetch('menu.json?v=' + Date.now())
     document.getElementById('state').textContent = 'Could not load the menu';
   });
 </script>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="auth.js?v=11"></script>
+<script src="nala-shared.js?v=20"></script>
+<script>
+/* This page had no gate at all: anyone with the address could open it, signed
+   in or not. It leaks nothing, because the menu it prints comes from
+   menu.json, a public file the guest dining page already serves to anybody.
+   The gate is here because a staff page sitting open is a thing somebody has
+   to reason about every time they audit the site, and because the next
+   version of this page may well read something that is not public.
+
+   Printing menus is service work, so it follows the Reservations Sheet:
+   whoever may read the sheet may print the menus that go on the tables. */
+(function gate(){
+  if (!window.firebase || !firebase.auth || typeof loadStaff !== 'function'){
+    setTimeout(gate, 300); return; }
+  var A; try { A = firebase.auth(); } catch (e){ setTimeout(gate,300); return; }
+  if (!A || typeof A.onAuthStateChanged !== 'function'){ setTimeout(gate,300); return; }
+  A.onAuthStateChanged(function(u){
+    if (!u) return;                 /* auth.js owns the signed-out state */
+    loadStaff(function(recs, err){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      if (can(role, 'resSheet')) return;
+      /* A role with a board of its own is sent there rather than shown a
+         refusal. Only a login with no role at all gets the message, because
+         it has nowhere to be sent. */
+      var home = err ? null : homeFor(role);
+      if (home && home !== location.pathname.split('/').pop()){
+        location.replace(home); return;
+      }
+      document.getElementById('viewer').style.display = 'none';
+      document.getElementById('pdfBtn').style.display = 'none';
+      document.getElementById('state').textContent = err
+        ? 'Could not check access. This is usually the connection, not your login.'
+        : 'This login cannot print the menus. See the manager.';
+    });
+  });
+})();
+</script>
 </body>
 </html>

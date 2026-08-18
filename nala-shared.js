@@ -1002,3 +1002,55 @@ function ensureNotifySettings(role){
     })
     .catch(function(){});
 }
+
+
+/* ── the staff menu ──────────────────────────────────────────────────────
+   Which board each link needs, in one place. This lived in five pages as
+   five copies, and by 18 Aug they disagreed: list.html was missing
+   front-desk, registration and pages, so it offered all three to roles that
+   cannot open them, and housekeeping.html and stats.html filtered nothing at
+   all and offered Settings to everybody.
+
+   Offering a link that lands on "no access" is a door to nowhere. Worse, it
+   reads as a fault in the app rather than as a permission working.
+
+   A page needs no filter code of its own now: this runs itself once a role is
+   known, and again if the menu is built later. Sign out is never filtered.  */
+var NAV_NEEDS = {
+  'tally.html':        'resBoard',
+  'front-desk.html':   'editBookings',
+  'list.html':         'resSheet',
+  'cleaners.html':     'cleansBoard',
+  'housekeeping.html': 'cleansBoard',
+  'registration.html': 'editBookings',
+  'staff.html':        'manageStaff',
+  'pages.html':        'manageStaff'
+};
+
+function navFilterShared(role){
+  var drop = document.getElementById('navDrop');
+  if (!drop) return;
+  var links = drop.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++){
+    if (links[i].className.indexOf('signout') > -1) continue;
+    var href = (links[i].getAttribute('href') || '').split('?')[0];
+    /* An unlisted link is left alone rather than hidden. Hiding by default
+       would make every new menu entry invisible until somebody remembered
+       to add it here, and the failure would look like the link was broken. */
+    if (!(href in NAV_NEEDS)) continue;
+    links[i].style.display = can(role, NAV_NEEDS[href]) ? '' : 'none';
+  }
+}
+window.NALA_NAVFILTER = navFilterShared;
+
+/* Pages that never filtered their own menu get it applied for them. Pages
+   that call it themselves are unaffected: running twice is harmless. */
+(function(){
+  var tries = 0;
+  var t = setInterval(function(){
+    if (++tries > 60) { clearInterval(t); return; }
+    if (!window.NALA_ROLE) return;
+    navFilterShared(window.NALA_ROLE);
+    clearInterval(t);
+  }, 250);
+})();

@@ -142,7 +142,7 @@ with sync_playwright() as p:
        len(rows)>0 and all(r["below"] for r in rows))
     ck("r2 declined tinted", "row-out" in d[1]["cls"] and d[1]["din"]=="No")
     ck("rooms 3+4 boxed pair", "g-in g-first" in d[2]["cls"] and "g-in g-last" in d[3]["cls"] and d[3]["name"]=="Lucy")
-    ck("r4 known-but-silent shows dash", d[3]["din"]=="—" and "row-unk" in d[3]["cls"])
+    ck("r4 known-but-silent shows dash", d[3]["din"]=="\u2013" and "row-unk" in d[3]["cls"])
     # Villa 5 is vacant, so it is not on the sheet at all: the sheet is read
     # down in service and every line on it should be somebody to look after.
     # That shifts every row after it up by one.
@@ -151,7 +151,7 @@ with sync_playwright() as p:
        and all(x["name"] != "Vacant" for x in d))
     ck("the villa after the vacant one is not renumbered",
        any(x["room"] == "6" for x in d))
-    ck("r9 Priya listed silent", d[7]["name"]=="Priya" and d[7]["din"]=="—")
+    ck("r9 Priya listed silent", d[7]["name"]=="Priya" and d[7]["din"]=="\u2013")
     ext=d[16:]
     ck("externals sorted Alfie,Zara with ext cell", (ext[0]["name"].startswith("Alfie") and ext[1]["name"].startswith("Zara")) and all(e["room"]=="ext" for e in ext))
     ck("cancelled external Bob excluded", all("Bob" not in e["name"] for e in ext))
@@ -256,6 +256,40 @@ with sync_playwright() as p:
     ck("a login with no role still gets the message, having nowhere to go",
        "see the manager" in q.evaluate("()=>noAccess.textContent").lower())
     q.close()
+
+    # The header make-up grows with the number of party sizes in the house.
+    # A full mixed night ran to 397pt and pushed the covers figure off the
+    # right edge at every phone width, not at 320 only as first recorded, so
+    # the whole page scrolled sideways. Checked with the widest house the
+    # sheet can hold rather than the tidy one the other assertions use.
+    MIXED = {}
+    for i in range(1, 18):
+        MIXED["room-%d" % i] = {"status": "in", "room": str(i),
+                                "pax": [2,3,4,2,5,3,6,2,4][i % 9] or 2}
+    for w in (390, 360, 320):
+        q = b.new_page(viewport={"width": w, "height": 900})
+        q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body=SDK))
+        q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body="/*n*/"))
+        def mixed_fb(route, request, _m=MIXED):
+            u = request.url
+            if "/responses/" in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps(_m)); return
+            fb(route, request)
+        q.route("**firebasedatabase.app/**", mixed_fb)
+        q.route("**/menu.json*", lambda r,_: r.fulfill(status=200,
+            content_type="application/json", body=json.dumps(menu)))
+        q.goto("http://localhost:8955/list.html"); q.wait_for_timeout(1600)
+        m = q.evaluate("""()=>({vw:document.documentElement.clientWidth,
+                              sw:document.documentElement.scrollWidth,
+                              mix:document.querySelector('.statmix').textContent.trim()})""")
+        print("   %dpt: scroll %d, make-up %r" % (w, m["sw"], m["mix"][:44]))
+        ck("a full mixed house does not bleed sideways at %dpt" % w,
+           m["sw"] <= m["vw"])
+        q.close()
+
     b.close()
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()
