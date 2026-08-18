@@ -161,7 +161,8 @@ rather than handwritten.
 3. **Rotate five credentials:** two GitHub tokens, Firebase key, `sync`
    passcode, shared secret. All have been pasted into chat. The two GitHub
    tokens are `nala-menu publish` and `nala-menu chef`, issued separately so
-   either can be revoked alone.
+   either can be revoked alone. **Click by click in `SECURITY.md`**, along with
+   what breaks during each rotation and how long for.
 4. **Delete leftover Firebase Auth logins** for anyone removed on Settings.
    Their access is already gone; this frees the passcode for reuse.
 5. ~~Does Mews send true UTC?~~ **Answered 18 Aug: it does.** 04:00Z is 2pm at
@@ -406,6 +407,10 @@ three:
 - `DESIGN.md` who owns which data, the screens, and why the identifiers are
   what they are.
 - `SETUP.md` Firebase, Cloudflare and Zapier configuration.
+- `SECURITY.md` the credential rotations, the login tidy up, locking the
+  Firebase key to the site, and what making the repository private does and
+  does not protect. Click by click, because all of it is done by the owner in a
+  browser and none of it can be done from here.
 - `CHEF-BRIEF.md` how the chef publishes a menu.
 - `ROLES.md` the permission matrix.
 - `tests/README.md` what each suite covers.

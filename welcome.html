@@ -115,16 +115,10 @@
     -webkit-tap-highlight-color: transparent;
   }
   .btn.primary { background: var(--ink); color: var(--cream); }
-  .btn.outline { border: 1px solid #B8B8B0; color: var(--ink); }
-  .btn .sub {
-    display: block;
-    margin-top: 3px;
-    font-size: 0.72rem;
-    font-weight: 400;
-    letter-spacing: .12em;
-    color: inherit;
-    opacity: .75;
-  }
+  /* The outline button and its .sub caption went with the Text Us button,
+     which printed a mobile number the guest already had in the message they
+     were reading the link from. Rules kept for nothing are the reason a
+     stylesheet stops describing the page. */
 
   footer {
     border-top: 1px solid var(--rule);
@@ -181,11 +175,10 @@
     <div class="body">
       Whether it&rsquo;s confirming your dinner or breakfast reservations,
       minibar supplies for your room, or a cocktail by the pool,
-      we&rsquo;re only a message away.
+      we&rsquo;re only a message away. Just reply to the message this link
+      came in on, and it reaches us.
     </div>
     <div class="btns">
-      <a class="btn outline" href="sms:0468067233">Text Us
-        <span class="sub">0468 067 233</span></a>
       <a class="btn primary" id="menuBtn" href="/">This Evening&rsquo;s Menu</a>
     </div>
   </main>

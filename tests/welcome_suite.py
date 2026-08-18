@@ -82,14 +82,25 @@ with sync_playwright() as p:
     ck("the page makes no database request at all", not DB_HITS)
 
     # ── the ways out ──────────────────────────────────────────
-    sms = pg.get_attribute("a.btn.outline", "href")
-    ck("the text link is an sms link", sms.startswith("sms:"))
-    ck("and carries the resort number", "0468067233" in sms.replace(" ", ""))
+    # There used to be a Text Us button here printing a mobile number. The
+    # guest is reading this page from a link in a message from that number, so
+    # it told them something they already had, and it put a personal mobile on
+    # a public page. The words point at the thread they are already in.
+    src = open("/home/claude/nala/welcome.html").read()
+    ck("no phone number is printed on the page", "0468067233" not in src)
+    ck("nor any sms link at all", "sms:" not in src)
+    ck("and the page says to reply to the message instead",
+       "reply to the message" in src)
+    ck("the button that printed it is gone",
+       pg.locator("a.btn.outline").count() == 0)
+    # A style rule with nothing to style is how a stylesheet stops describing
+    # the page it belongs to.
+    ck("and its styles went with it",
+       ".btn.outline {" not in src and ".btn .sub {" not in src)
 
-    # Both buttons are pressed one handed by someone who has just arrived.
-    for sel, label in (("#menuBtn", "menu"), ("a.btn.outline", "text us")):
-        box = pg.locator(sel).bounding_box()
-        ck("the %s button is a comfortable tap target" % label, box["height"] >= 44)
+    # Pressed one handed by someone who has just arrived.
+    box = pg.locator("#menuBtn").bounding_box()
+    ck("the menu button is a comfortable tap target", box["height"] >= 44)
 
     ck("the logo actually loads",
        pg.evaluate("()=>{var i=document.querySelector('.logo');"
