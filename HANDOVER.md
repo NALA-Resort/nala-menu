@@ -77,9 +77,8 @@ over rather than edited.
 If a document still says otherwise, it is out of date and should be corrected
 rather than obeyed.
 
-**Still owed on those three pages**, inherited from that period: three nav
-entries in `list.html` and `housekeeping.html` (Front Desk Arrival,
-Registration and Pages), the 320pt header bleed on the Service Sheet, the one
+**All four items inherited from that period were cleared on 18 Aug** in commit
+`5e974f0`: the missing nav entries, the header bleed on the Service Sheet, the
 em dash in `list.html`, and the missing role gate on `menu-print.html`.
 
 ---

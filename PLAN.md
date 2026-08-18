@@ -49,7 +49,10 @@ in themselves.
   can be revoked alone. Both current tokens have been in chat
 - **[you]** Delete the leftover Firebase Auth logins for anyone removed on the
   Settings page. Frees their passcodes
-- **[print]** Service Sheet header stats bleed about 12pt at 320pt width.
+- ~~**[print]** Service Sheet header stats bleed about 12pt at 320pt width.~~
+  **Done 18 Aug, and it was wider than this.** With a mixed house the make-up
+  ran to 397pt and bled at 390 and 360 too. The first measurement used a tidy
+  house, where the string is short.
   Measured. Not a Galaxy problem, only the narrowest phones
 - **[print]** The one em dash in `list.html`, backlog item 9
 
@@ -62,9 +65,9 @@ the arrival filter fails three tests, removing the prefill fails three more.
 Complete as of 17 Aug, including the allergy conflict check at the desk.
 `tests/fd_suite.py` is at 113 assertions.
 
-One thing still outstanding: `list.html` and `housekeeping.html` need one line
-each adding Front Desk Arrival to their nav dropdown. These were another chat's
-files until 18 Aug; they are now this chat's to fix.
+`list.html` and `housekeeping.html` were missing nav entries. Done 18 Aug, and
+the filter that decides which links a role sees now lives in `nala-shared.js`
+once instead of in five drifting copies.
 
 - **[me]** Mock at 390, check at 360, do not break at 320. Show you before it
   ships

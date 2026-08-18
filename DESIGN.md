@@ -431,10 +431,13 @@ The layout is fluid rather than breakpointed, which turns out to be why.
 `.scroller { overflow-x:auto }` deliberately, because they are A4 sheets read
 on a phone. The page itself does not bleed.
 
-**One real finding, at 320pt only.** The Service Sheet header stats push about
-12pt past the right edge, so the whole page scrolls sideways. 320pt is the
-narrowest phone still in use, older and budget Android. Worth fixing, not
-urgent, and not a Galaxy problem.
+**One real finding. ~~At 320pt only.~~ Fixed 18 Aug, and it was not 320 only.**
+The Service Sheet header stats pushed past the right edge, so the whole page
+scrolled sideways. Re-measured 18 Aug with a full mixed house: the make-up
+grows with the number of party sizes and was set never to wrap, so it ran to
+397pt and bled at 390 and 360 as well. The original measurement used a tidy
+house where the string is short, which is the lesson worth keeping: a width
+check is only as wide as the fixture behind it.
 
 **So the standard becomes: mock at 390, check at 360, and do not break at 320.**
 Front Desk Arrival is the first screen built to that from the start.
