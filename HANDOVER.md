@@ -45,8 +45,9 @@ during service, one handed, interrupted.
 It can add and update but **cannot delete**: use `tools/rm.py` for that. A
 deletion that looks published and is not cost hours on 17 Aug.
 
-**Fetch before pushing.** A second chat owns the print work, and both publish to
-`main`. `/home/claude/publish.sh` refuses if `main` moved since your last push.
+**Fetch before pushing.** `/home/claude/publish.sh` refuses if `main` moved
+since your last push. Written for a period when two chats published here; that
+ended on 18 Aug, but the guard is kept against a stale clone.
 
 **Run every suite before publishing.** Fifteen of them, about 900 assertions,
 in `tests/`. See `tests/README.md`. They take about half an hour; publishing
@@ -65,15 +66,21 @@ key. Use something that errors on no match, and check every edit landed.
 
 ---
 
-## What another chat owns
+## Ownership
 
-The print chat owns `list.html`, `menu-print.html` and `housekeeping.html`.
-Do not edit them. If a change is needed there, do it in shared code or hand it
-over.
+**One chat owns every file in the repo.** For part of 17 and 18 Aug a second
+chat owned `list.html`, `menu-print.html` and `housekeeping.html` so design
+work could run in parallel, and nothing else was allowed to touch them. The
+owner ended that on 18 Aug. There is no longer any file that has to be handed
+over rather than edited.
 
-**It currently owes three nav entries** in `list.html` and `housekeeping.html`:
-Front Desk Arrival, Registration and Pages. Plus the 320pt header bleed on the
-Service Sheet and the one em dash in `list.html`.
+If a document still says otherwise, it is out of date and should be corrected
+rather than obeyed.
+
+**Still owed on those three pages**, inherited from that period: three nav
+entries in `list.html` and `housekeeping.html` (Front Desk Arrival,
+Registration and Pages), the 320pt header bleed on the Service Sheet, the one
+em dash in `list.html`, and the missing role gate on `menu-print.html`.
 
 ---
 

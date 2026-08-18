@@ -454,7 +454,7 @@ time somebody ships a page and forgets it, and a map that lies is worse than
 none, because it is what you check when you are already unsure.
 
 `list.html` and `housekeeping.html` still need Pages and Front Desk Arrival
-added to their nav dropdowns. Both belong to the print chat.
+added to their nav dropdowns.
 
 ## To build
 

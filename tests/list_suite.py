@@ -93,7 +93,10 @@ with sync_playwright() as p:
         html:t.cells[0].innerHTML}));
       return {n:trs.length, data, blanks:trs.filter(t=>t.className.includes('blank')).length};}""")
     d=rw["data"]
-    ck("19 data rows + pad to 21 total", len(d)==19 and rw["n"]==21 and rw["blanks"]==2)
+    print("   rows:", rw["n"], "data:", len(d), "blanks:", rw["blanks"])
+    # One fewer than before: villa 5 is vacant and no longer takes a line.
+    ck("18 data rows + pad to 21 total",
+       len(d)==18 and rw["n"]==21 and rw["blanks"]==3)
     r1=d[0]
     ck("r1 conflict row + FLAG + PRE-MENU", "row-conflict" in r1["cls"] and "FLAG" in r1["name"] and "PRE-MENU" in r1["name"])
     ck("r1 dietaries as pills, allergy solid and shortened",
@@ -140,9 +143,16 @@ with sync_playwright() as p:
     ck("r2 declined tinted", "row-out" in d[1]["cls"] and d[1]["din"]=="No")
     ck("rooms 3+4 boxed pair", "g-in g-first" in d[2]["cls"] and "g-in g-last" in d[3]["cls"] and d[3]["name"]=="Lucy")
     ck("r4 known-but-silent shows dash", d[3]["din"]=="—" and "row-unk" in d[3]["cls"])
-    ck("r5 vacant muted", "row-vacant" in d[4]["cls"] and d[4]["name"]=="Vacant")
-    ck("r9 Priya listed silent", d[8]["name"]=="Priya" and d[8]["din"]=="—")
-    ext=d[17:]
+    # Villa 5 is vacant, so it is not on the sheet at all: the sheet is read
+    # down in service and every line on it should be somebody to look after.
+    # That shifts every row after it up by one.
+    ck("vacant villa 5 is absent, not listed empty",
+       all("row-vacant" not in x["cls"] for x in d)
+       and all(x["name"] != "Vacant" for x in d))
+    ck("the villa after the vacant one is not renumbered",
+       any(x["room"] == "6" for x in d))
+    ck("r9 Priya listed silent", d[7]["name"]=="Priya" and d[7]["din"]=="—")
+    ext=d[16:]
     ck("externals sorted Alfie,Zara with ext cell", (ext[0]["name"].startswith("Alfie") and ext[1]["name"].startswith("Zara")) and all(e["room"]=="ext" for e in ext))
     ck("cancelled external Bob excluded", all("Bob" not in e["name"] for e in ext))
     ck("Zara phone tidied to leading zero", "0400000090" in ext[1]["name"] or "0400000090" in pg.evaluate("()=>[...document.querySelectorAll('#rows tr')].filter(t=>t.textContent.includes('Zara'))[0].innerHTML"))

@@ -62,9 +62,9 @@ the arrival filter fails three tests, removing the prefill fails three more.
 Complete as of 17 Aug, including the allergy conflict check at the desk.
 `tests/fd_suite.py` is at 113 assertions.
 
-One thing still outstanding and it is not mine: `list.html` and
-`housekeeping.html` need one line each adding Front Desk Arrival to their nav
-dropdown. Those two belong to the print chat, so this chat must not touch them.
+One thing still outstanding: `list.html` and `housekeeping.html` need one line
+each adding Front Desk Arrival to their nav dropdown. These were another chat's
+files until 18 Aug; they are now this chat's to fix.
 
 - **[me]** Mock at 390, check at 360, do not break at 320. Show you before it
   ships

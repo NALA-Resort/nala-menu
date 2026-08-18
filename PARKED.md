@@ -99,9 +99,11 @@ None of these moved today, and none of them can move without you.
    in and live. Only the 6:00 to 6:30 seating is a real fact; the rest is mine
    and should be yours. `prearrival.html`, id `dineHelp`.
 
-## 9. For the print chat, not for you
+## 9. Left over from the print work
 
-`menu-print.html` now has a suite and passes it, so nothing is owed there. The
-three nav entries it owes in `list.html` and `housekeeping.html`, the 320pt
-header bleed on the Service Sheet and the one em dash in `list.html` are all
-still outstanding.
+These were another chat's to do while it owned the print pages. That
+arrangement ended on 18 Aug and they are now this chat's, still undone:
+the three nav entries in `list.html` and `housekeeping.html`, the 320pt header
+bleed on the Service Sheet, the one em dash in `list.html`, and the missing
+role gate on `menu-print.html`. `menu-print.html` otherwise has a suite and
+passes it.

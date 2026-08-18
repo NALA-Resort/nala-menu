@@ -66,8 +66,10 @@ print("COMMIT",nc["sha"],"->",upd["object"]["sha"])
 
 ### /home/claude/publish.sh
 
-A second chat owns the print work and both publish to `main`. This refuses if
-`main` moved since your last push, rather than silently pushing over it.
+Refuses if `main` moved since your last push, rather than silently pushing over
+it. This was written when a second chat published here too. That arrangement
+ended on 18 Aug and this chat owns every file, but the guard is kept: it costs
+nothing and it catches a push made from a stale clone.
 
 ```bash
 #!/bin/bash

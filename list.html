@@ -370,13 +370,19 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     for (var n=1; n<=ROOMS; n++){
       var r = roomRecord(n, responses, manual, roomguests);
       var vacant = !!(r && r.status === 'vacant');
-      if (!vacant) roomsInHouse++;
+      /* A vacant villa is not a reservation, so it is left off the sheet
+         entirely rather than listed as an empty labelled row. The sheet is
+         carried into service and read down: every line on it should be
+         somebody to look after. Vacancy is the Cleans board's business, and
+         it is shown there. */
+      if (vacant) continue;
+      roomsInHouse++;
       rows.push({
-        rec: vacant ? { room:String(n) } : (r || { room:String(n) }),
+        rec: r || { room:String(n) },
         room: n,
-        status: vacant ? 'vacant' : ((r && r.status) ? r.status : null)  // null = no reply yet
+        status: (r && r.status) ? r.status : null  // null = no reply yet
       });
-      if (!vacant && r && r.status === 'in') covers += (r.pax || 1);
+      if (r && r.status === 'in') covers += (r.pax || 1);
     }
 
     var externals = [];
