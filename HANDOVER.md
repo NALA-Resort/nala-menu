@@ -154,7 +154,10 @@ rather than handwritten.
    cancellation `Id` is the same GUID as the reservation's, so nothing needs
    building: when the feed fires it will match.
 2. **GuestTouch links** need `?b=<booking id>`. Nightly menu needs only that;
-   pre-arrival also takes name and dates.
+   pre-arrival also takes name and dates. The full mapping onto Mews field
+   names, and what goes wrong if `b` resolves to the customer id or the
+   reservation number instead of the reservation GUID, is written out in
+   `SETUP.md` job 7. The owner was briefing a programmer on this on 18 Aug.
 3. **Rotate five credentials:** two GitHub tokens, Firebase key, `sync`
    passcode, shared secret. All have been pasted into chat. The two GitHub
    tokens are `nala-menu publish` and `nala-menu chef`, issued separately so

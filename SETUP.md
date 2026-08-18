@@ -231,8 +231,57 @@ gone through cleanly end to end.
 
 **Software:** GuestTouch.
 
-The triggered message, one week before arrival, with the booking id as the only
-dynamic portion. Not needed until the pre-arrival page exists.
+The triggered message, one week before arrival. The page exists now, so this is
+buildable, and it is the last thing standing between a guest and answering
+before they arrive.
+
+**The link, with the Mews field names on the right:**
+
+```
+https://menu.nalaresort.com/prearrival.html?b={Id}&n={FirstName}&s={LastName}&a={StartUtc}&d={EndUtc}
+```
+
+| Parameter | Mews field | Required |
+|---|---|---|
+| `b` | `Id`, the reservation Id | yes |
+| `n` | `FirstName` | no, display only |
+| `s` | `LastName` | no, display only |
+| `a` | `StartUtc` | no, display only |
+| `d` | `EndUtc` | no, display only |
+
+Filled in, it looks like this:
+
+```
+https://menu.nalaresort.com/prearrival.html?b=3f9c2a71-88d4-4e0b-9c1f-2b6d5e7a1c04&n=Sarah&s=Whitfield&a=2026-09-04&d=2026-09-08
+```
+
+**`b` is the only one that matters.** It must be the reservation GUID, the same
+one the sync writes under. Not `CustomerId`, which is the person rather than the
+stay, and not the reservation Number, which is the five digit thing staff read
+out in Mews and is only unique per property. If `b` resolves to any of those the
+page loads and looks perfectly normal, and the answers land under an id nothing
+reads.
+
+**Name and dates are never written back.** They are Mews' facts and a copy
+stored here would be stale the moment the booking changed. They exist so the
+guest sees their own name and stay. See the display precedence note in
+`DESIGN.md`: if `pms` has arrived, the page shows from that instead, because it
+is fresher than the link by definition.
+
+`StartUtc` and `EndUtc` arrive as full timestamps. The page reads the first ten
+characters, so either the timestamp or a plain `YYYY-MM-DD` works.
+
+**The parameter names are mine, not a standard.** If GuestTouch cannot emit a
+parameter called `b`, that is a one line change at the top of the script block
+in `prearrival.html`, where the five are read. Change the page, not the link.
+
+**A note on reading field names off a Zapier screen.** Zapier prettifies them
+for display: it adds spaces and capitalises, so `AssignedSpaceId` shows as
+"Assigned Space Id" and `Id` shows as "ID". The raw key underneath is unchanged,
+and the true spelling cannot be read off that list. It does not matter for the
+sync, because `readReservation()` accepts every spelling seen and picks the
+reservation id by GUID shape rather than by name. It matters here only in that
+GuestTouch has its own merge tag list and Zapier's labels say nothing about it.
 
 ## What I am doing meanwhile
 
