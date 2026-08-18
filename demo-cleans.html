@@ -189,22 +189,35 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .tile .rn { font-size:20px; font-weight:bold; }
   /* Clean is a solid ink pill, Service a faint outline: the two jobs must be
      tellable apart at arm's length, not by reading the word.               */
-  /* One line, always. Cleaned-pre and Pre-arrived wrapped to two lines on a
-     390pt phone, which pushed the sub-line out of the tile and clipped the
-     time the job was finished. A label that has to wrap is too long for the
-     space, so the label is fitted to the tile rather than the tile to the
-     label. */
-  .tile .chip { display:inline-block; border:1.2px solid var(--ink); border-radius:5px;
-                padding:1px 5px; font-weight:bold; font-size:8px; letter-spacing:.02em;
-                background:var(--ink); color:var(--cream); text-transform:uppercase;
-                white-space:nowrap; max-width:100%; overflow:hidden;
-                text-overflow:ellipsis; }
+  /* No words. The job is a bar, read by fill and by weight, and the words are
+     what kept breaking: they wrapped, then they ellipsised, then they had to be
+     shrunk until they barely read anyway. A bar cannot wrap.
+
+     Two things to know, in this order:
+
+       filled  = the room needs cleaning
+       outline = it does not
+
+       thin  = nobody arriving into it tonight
+       thick = somebody is
+
+     So a clean with an arrival is a thick filled bar: the most work, and the
+     heaviest mark on the board. Unknown is dashed, because it is a gap in what
+     we know rather than a job.
+
+     The word is still on the element, in aria-label and title, so a screen
+     reader says it and a long press shows it. The legend below the grid is
+     what teaches it, and it now shows the bars themselves rather than colours
+     that no longer carry the meaning. */
+  .tile .chip { display:block; width:62%; height:3px; padding:0; font-size:0;
+                border:1.2px solid var(--ink); border-radius:2px;
+                background:var(--ink); color:transparent; overflow:hidden; }
+  .tile .chip.thick { height:7px; border-radius:3px; }
   /* Who is on it, on the sub-line. Ink rather than the usual grey, because a
      person is a stronger fact than a room state and has to carry from across
      a corridor. */
   .tile .sub.who { color:var(--ink); font-weight:bold; }
-  .tile .chip.svc { background:transparent; border-color:#B5B5AD; color:#6A6A63;
-                    font-weight:normal; letter-spacing:.12em; }
+  .tile .chip.svc { background:transparent; border-color:#8C8C84; }
   /* Unknown is a gap in what we know, not an alarm. Dashed to say "not
      settled", but grey - red is reserved for something being wrong.     */
   .tile .chip.ver { background:transparent; border-style:dashed; border-color:var(--mid);
@@ -267,6 +280,13 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .legend .lb { background:var(--amber); border-color:var(--amberb); }
   .legend .ld { background:var(--blue);  border-color:var(--blueb); }
   .legend .lf { background:#F2F2EF; border-color:var(--rule); }
+  /* The same bars the tiles use, at the same weights, so the legend is a key
+     rather than a separate drawing that can drift from what it explains. */
+  .legend .lgb { width:22px; height:3px; border-radius:2px; border:1.2px solid var(--ink);
+                 background:var(--ink); vertical-align:2px; }
+  .legend .lgb.thick { height:7px; border-radius:3px; vertical-align:0; }
+  .legend .lgb.out  { background:transparent; border-color:#8C8C84; }
+  .legend .lgb.dash { border-style:dashed; border-color:var(--mid); }
 
   .bar { margin-top:22px; gap:10px; }
   .btn { flex:1; padding:13px 0; text-align:center; font-family:var(--ui-font);
@@ -527,10 +547,15 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 
   <div class="grid" id="grid"></div>
 
+  <!-- The legend now teaches the bars, because they carry the job and the
+       tile colour only says a villa has become ready to start. Filled means
+       the room needs cleaning; thick means somebody arrives into it tonight. -->
   <div class="legend" id="legend">
-    <span><i class="ld"></i>Ready to clean</span>
-    <span><i class="lg"></i>Ready to service</span>
-    <span><i class="lf"></i>Finished</span>
+    <span><i class="lgb"></i>Clean</span>
+    <span><i class="lgb thick"></i>Clean, arriving</span>
+    <span><i class="lgb out"></i>Service</span>
+    <span><i class="lgb out thick"></i>Pre-arrival</span>
+    <span><i class="lgb out dash"></i>Unknown</span>
   </div>
 
   <div class="foot bar" id="footBar">
@@ -1812,21 +1837,29 @@ function render(){
     else if (row.kind==='clean' && (h.departed || row.pushedIn)) cls+=' ready-clean';
     else if (row.kind==='svc' && h.bfast) cls+=' ready-svc';
 
+    /* The bar. `job` is the machine readable name of what this villa needs,
+       and the word is what a screen reader says and a long press shows. The
+       shape is what a cleaner reads: see the chip rules for the two axes. */
+    function bar(job, word, cls){
+      return '<span class="chip'+(cls?' '+cls:'')+'" data-job="'+job+'"'+
+             ' role="img" aria-label="'+esc(word)+'" title="'+esc(word)+'">'+
+             esc(word)+'</span>';
+    }
     var chip='';
-    /* An arrival tonight changes the label rather than adding a second one.
-       The first version put a chip beside the chip, which made that one tile
-       taller than every other, broke the grid and clipped its own sub-line.
-       One job, one label. */
     if (row.kind==='clean'){
       var arr = row.arrivingToday && !h.pushed;
-      chip='<span class="chip">'+
-        (h.pushed ? 'Pushed'
-         : h.done ? (arr ? 'Cleaned-pre' : 'Cleaned')
-         : (arr ? 'Clean-pre' : 'Clean'))+'</span>';
+      chip = h.pushed ? bar('pushed', 'Pushed')
+           : arr ? bar(h.done ? 'cleaned-pre' : 'clean-pre',
+                       h.done ? 'Cleaned, ready for arrival' : 'Clean, arriving tonight',
+                       'thick')
+           : bar(h.done ? 'cleaned' : 'clean', h.done ? 'Cleaned' : 'Clean');
     }
-    else if (row.kind==='svc') chip='<span class="chip svc">'+(h.done?'Serviced':'Service')+'</span>';
-    else if (row.kind==='pre') chip='<span class="chip pre">'+(h.done?'Pre-arrived':'Pre-arrival')+'</span>';
-    else if (row.kind==='ver') chip='<span class="chip ver">Unknown</span>';
+    else if (row.kind==='svc')
+      chip = bar(h.done ? 'serviced' : 'svc', h.done ? 'Serviced' : 'Service', 'svc');
+    else if (row.kind==='pre')
+      chip = bar(h.done ? 'pre-arrived' : 'pre', h.done ? 'Pre-arrived' : 'Pre-arrival',
+                 'pre thick');
+    else if (row.kind==='ver') chip = bar('ver', 'Unknown', 'ver');
     else chip='<span class="sub">Empty</span>';
 
 

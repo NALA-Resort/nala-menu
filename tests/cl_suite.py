@@ -118,12 +118,22 @@ with sync_playwright() as p:
        "['fresh','soon','late'].filter(c=>b.classList.contains(c)).length<=1)"))
     chips=pg.evaluate("""()=>{const g=n=>[...document.querySelectorAll('#grid .tile')]
       .find(b=>b.querySelector('.rn').textContent===n).querySelector('.chip');
-      const c=n=>{const e=g(n),s=getComputedStyle(e);return {bg:s.backgroundColor,fg:s.color,t:e.textContent};};
+      const c=n=>{const e=g(n),s=getComputedStyle(e);
+        return {bg:s.backgroundColor, h:Math.round(e.getBoundingClientRect().height),
+                job:e.dataset.job, label:e.getAttribute('aria-label')};};
       return {clean:c('1'),svc:c('2')};}""")
     print("   chips:", chips)
-    ck("Clean badge solid ink, Service badge unfilled",
-       chips["clean"]["bg"]=="rgb(28, 28, 26)" and chips["svc"]["bg"]=="rgba(0, 0, 0, 0)"
-       and chips["clean"]["fg"]!=chips["svc"]["fg"])
+    # The bar carries the job now, with no words on it. Filled means the room
+    # needs cleaning; outline means it does not. The words wrapped, then
+    # ellipsised, then had to be shrunk until they barely read, and a bar
+    # cannot wrap.
+    ck("a clean is a filled bar and a service is an outline",
+       chips["clean"]["bg"]=="rgb(28, 28, 26)"
+       and chips["svc"]["bg"]=="rgba(0, 0, 0, 0)")
+    # Nothing readable is lost: the word is still there for a screen reader
+    # and for a long press, it is simply not drawn.
+    ck("and each still names itself for anyone who cannot read a shape",
+       chips["clean"]["label"]=="Clean" and chips["svc"]["label"]=="Service")
     ck("room7 done green with time (6-digit ISO)", "done" in t["7"]["cls"] and re.search(r'Done \d{2}:\d{2}',t["7"]["txt"]))
     ck("villa2 ready to service, with elapsed since noticed",
        "ready-svc" in t["2"]["cls"] and re.search(r'Available 1[12]m',t["2"]["txt"]))
@@ -1361,8 +1371,19 @@ with sync_playwright() as p:
     # One job, one label. The first version added a second chip beside the
     # first, which made that tile taller than every other one, broke the grid
     # and clipped its own sub-line.
-    ck("a clean with an arrival tonight is labelled clean-pre",
-       "clean-pre" in tile_text(q, "9"))
+    # Thick means somebody arrives into it tonight, so a clean with an arrival
+    # is the heaviest mark on the board: filled because it needs cleaning,
+    # thick because somebody is coming into it.
+    ck("a clean with an arrival tonight is the heavier bar",
+       q.evaluate("""()=>{const t=[...document.querySelectorAll('#grid .tile')]
+         .find(x=>x.innerText.startsWith('9'));
+         const c=t.querySelector('.chip');
+         const plain=[...document.querySelectorAll('#grid .tile')]
+           .map(x=>x.querySelector('.chip'))
+           .find(x=>x&&x.dataset.job==='clean');
+         return c.dataset.job==='clean-pre'
+           && c.getBoundingClientRect().height >
+              plain.getBoundingClientRect().height;}"""))
     ck("and carries one label, not two",
        q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
                   ".find(t=>t.innerText.startsWith('9'))"
