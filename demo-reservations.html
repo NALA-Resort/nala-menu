@@ -989,24 +989,52 @@ function roomRecord(n, responses, manual, roomguests, dinner){
     Object.assign({}, known, best, pms), best, known);
   if (m)    return withDineProvenance(
     Object.assign({}, known, m, pms, { room:String(n) }), m, known);
-  if (known.name) return withDineProvenance(
+  /* A booking with no name is still a booking. This used to require a name,
+     so a villa Mews knows about but has sent no first or last name for
+     returned nothing at all and showed on the Cleans board as unknown, with
+     no clue that a reservation existed. hasGuestProfile is the test the rest
+     of the app already uses for is anybody here, and a booking id or a pair
+     of dates answers that perfectly well without a name.
+
+     It matters most exactly when things are already going wrong: on 18 Aug
+     every reservation write was being refused, so the app held dates and ids
+     and no names, and the board went blank rather than showing the work. */
+  if (hasGuestProfile(known)) return withDineProvenance(
     Object.assign({}, known, { room:String(n), status:null }), null, known);
   return null;
 }
 
 /* clean = departing on the sheet date; service = staying on;
    verify = no usable data. The housekeeping rule, in one place.  */
-function hkClassify(rec, todayK, hk){
+function hkClassify(rec, todayK, hk, leftThisMorning){
   /* A manager can set the job for the day by hand - most often on a villa the
      booking data cannot confirm - and that choice beats what the dates imply.
      Stored at /hk/<date>/<villa>/kind so it expires with the day.          */
   if (hk && (hk.kind === 'clean' || hk.kind === 'svc' ||
              hk.kind === 'pre'   || hk.kind === 'vac')) return hk.kind;
   if (rec && rec.status === 'vacant') return 'vac';
+  /* Somebody slept here last night and left this morning. On a same day
+     turnover the villa also has a new guest arriving, and tonight's record
+     has overwritten last night's, so the departure is invisible in `rec`
+     and the villa would read as a pre-arrival. It is a clean first: nobody
+     can be shown into a room that has not been turned around. The caller
+     passes this because only it holds both nights. */
+  if (leftThisMorning) return 'clean';
   if (rec){
     var d = parseDepDate(rec.departs);
     var dk = d ? dkey(d) : null;
+    /* A departure outranks an arrival, always. On a same day turnover both are
+       true of the same villa, and the clean has to happen before anybody can
+       be shown in: calling it a pre-arrival would hide the work that has to
+       come first. */
     if (dk === todayK) return 'clean';
+    /* Arriving today, nobody in last night. The villa needs preparing rather
+       than cleaning, which is a different job with a different finished state:
+       Pre-arrival becomes Pre-arrived. Checked before the staying-on rule
+       because an arriving guest's departure is also in the future, so the
+       stay-over test would otherwise swallow every arrival. */
+    var a = parseDepDate(rec.arrives);
+    if (a && dkey(a) === todayK) return 'pre';
     if (dk && dk > todayK) return 'svc';
     return 'ver';       // stale or missing departure
   }

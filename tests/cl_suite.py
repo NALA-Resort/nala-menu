@@ -1221,6 +1221,78 @@ with sync_playwright() as p:
     pg.locator("#navSignout").click(); pg.wait_for_timeout(200)
     ck("sign out calls NALA_SIGNOUT", pg.evaluate("()=>window.__out")==1)
     ck("and does not navigate away to '#'", "cleaners.html" in pg.url and "#" not in pg.url)
-    pg.close(); b.close()
+    pg.close()
+
+    # ── which job a villa gets, from the two nights ─────────────────────
+    # /stays files a guest under the nights they SLEEP, arrival inclusive and
+    # departure exclusive, so somebody who checked out this morning is not in
+    # tonight's file. This board reads only tonight, so every departure, the
+    # exact thing it exists for, was classified as unknown.
+    #
+    # Reported 18 Aug: the Cleans screen represents who stayed the night
+    # before, and is not the same view as the reservation board.
+    yest = (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    stays_last = {
+        "3": {"id": "a", "arrive": plus(-2), "depart": today},   # left this morning
+        "5": {"id": "b", "arrive": plus(-1), "depart": plus(2)}, # staying on
+        "9": {"id": "d", "arrive": plus(-2), "depart": today},   # turnover, out
+    }
+    stays_tonight = {
+        "5": {"id": "b", "arrive": plus(-1), "depart": plus(2)},
+        "7": {"id": "c", "arrive": today,    "depart": plus(2)}, # arriving tonight
+        "9": {"id": "e", "arrive": today,    "depart": plus(1)}, # turnover, in
+    }
+    def two_night_fb(route, request):
+        u = request.url
+        if "/stays/" + yest in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(stays_last)); return
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(stays_tonight)); return
+        if "/roomguests/" in u or "/responses/" in u or "/manual/" in u \
+           or "/hk/" in u or "/dinner/" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body="null"); return
+        fb(route, request)
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body=sdk("staff@nalaresort.com.au")))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", two_night_fb)
+    q.goto("http://localhost:8957/cleaners.html"); q.wait_for_timeout(2000)
+    tiles = {}
+    for t in q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
+                        ".map(t=>t.innerText.replace(/\\n/g,' | '))"):
+        tiles[t.split(" |")[0].strip()] = t.lower()
+    print("   two-night board:", tiles)
+
+    ck("a guest who left this morning leaves a clean, not an unknown",
+       "clean" in tiles.get("3", ""))
+    ck("a guest staying on is a service",
+       "service" in tiles.get("5", ""))
+    ck("a villa arriving tonight is a pre-arrival",
+       "pre-arrival" in tiles.get("7", ""))
+    # The one that decides the ordering of two true facts. Both a departure
+    # and an arrival apply, and tonight's record has overwritten last night's,
+    # so without the extra night this reads as a pre-arrival and the work that
+    # has to happen first disappears. Nobody is shown into a room that has not
+    # been turned around.
+    ck("a same day turnover is a clean first, not a pre-arrival",
+       "clean" in tiles.get("9", "") and "pre-arrival" not in tiles.get("9", ""))
+    ck("a villa nobody has booked stays unknown",
+       "unknown" in tiles.get("11", ""))
+
+    # A booking with no name is still a booking. roomRecord used to require a
+    # name, so a villa Mews knows about but has sent no name for returned
+    # nothing and showed as unknown, which is exactly the state the app was in
+    # on 18 Aug while every reservation write was being refused.
+    ck("none of these fixtures carry a name, and the board still knows them",
+       all("name" not in v for v in stays_tonight.values())
+       and "unknown" not in tiles.get("5", ""))
+    q.close()
+
+    b.close()
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()

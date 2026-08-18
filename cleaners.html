@@ -380,19 +380,50 @@ document.getElementById('selToggle').onclick = function(){
 
 function load(full){
   var yest = (function(){ var d=new Date(); d.setDate(d.getDate()-1); return dkey(d); })();
+  /* Last night as well as tonight. /stays files a guest under the nights they
+     SLEEP, arrival inclusive and departure exclusive, so somebody who checked
+     out this morning is not in tonight's file at all. They are the person this
+     board exists for: the villa needs cleaning precisely because they left.
+     Reading only tonight left every departure classified as unknown. */
   return Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
                 fetchRoomGuests(todayKey(), 14, !!full), api('/hk/'+todayKey()), api('/hk/'+yest),
-                fetchStays(todayKey()), api('/dinner/'+todayKey()) ])
+                fetchStays(todayKey()), api('/dinner/'+todayKey()),
+                api('/stays/'+yest) ])
   .then(function(res){
     var responses=res[0]||{}, manual=res[1]||{}, hk=res[3]||{}, prevHk=res[4]||{};
     /* The one dinner cell. This board only needs it to tell a departure from a
        stay-over, but reading it from the same node the other pages write keeps
        one villa from being two things on two screens. */
     var dinner=res[6]||{};
-    var roomguests=overlayStays(resolveRoomGuestsHK(res[2]||{}, todayKey()), res[5]);
-    /* today's own bucket, unmerged: a villa with a guest arriving today is
-       the one that has to be turned around first */
-    var arriving = (res[2]||{})[todayKey()] || {};
+    var tonight = res[5] || {};
+    var lastNight = res[7] || {};
+    /* Last night underneath, tonight over the top, so a villa occupied both
+       nights reads as tonight's guest and a villa emptied this morning still
+       reads as the guest who left. */
+    var roomguests = overlayStays(
+      overlayStays(resolveRoomGuestsHK(res[2]||{}, todayKey()), lastNight),
+      tonight);
+
+    /* A villa nobody slept in last night, with somebody arriving tonight, is
+       a preparation rather than a clean. Taken from the two stay files rather
+       than from /roomguests, which nothing has written to since the PMS sync
+       began writing /stays, so the old check was reading an empty node and
+       every arrival looked like an ordinary stay-over. */
+    var arriving = {};
+    /* Both sources, because a villa can be known through either. /stays comes
+       from the PMS sync; the today bucket of /roomguests still carries anyone
+       who opened their link, and pages are still being moved across. Reading
+       only the new one dropped arrivals the old one knew about. */
+    var rgToday = (res[2]||{})[todayKey()] || {};
+    for (var rv in rgToday){
+      if (rgToday[rv] && rgToday[rv].arrives)
+        arriving[rv] = { arrives: rgToday[rv].arrives };
+    }
+    for (var v in tonight){
+      var t = tonight[v] || {};
+      if (t.arrive && String(t.arrive).slice(0,10) === todayKey())
+        arriving[v] = { arrives: t.arrive };
+    }
 
     var rows=[];
     for (var n=1;n<=ROOMS;n++){
@@ -402,15 +433,23 @@ function load(full){
          that is already departed - the guest left, the work did not happen. */
       var p = prevHk[n] || {};
       var pushedIn = !!(p.pushed && !p.done);
-      rows.push({ n:n, kind:hkClassify(r, todayKey(), hk[n]),
-                  base: pushedIn ? 'clean' : hkClassify(r, todayKey()),
+      /* Only this function holds both nights, so it is the only place that can
+         tell a same day turnover from a plain arrival. */
+      var ln = lastNight[String(n)];
+      var left = !!(ln && ln.depart &&
+                    String(ln.depart).slice(0,10) === todayKey());
+      rows.push({ n:n, kind:hkClassify(r, todayKey(), hk[n], left),
+                  base: pushedIn ? 'clean' : hkClassify(r, todayKey(), null, left),
                   pushedIn: pushedIn,
                   arrivingToday: !!(a && dkey(a) === todayKey()) });
     }
     // services first: they are attempted while the guest is out, before the
     // departure cleans open up. Then cleans, verify, vacant, room order
     // within each block.
-    var korder={svc:0, clean:1, ver:2, vac:3};
+    /* Preparations first: an arriving guest has a time attached to them and
+       everything else on this board does not. Then services, attempted while
+       the guest is out, then the departure cleans they open up. */
+    var korder={pre:0, svc:1, clean:2, ver:3, vac:4};
     rows.sort(function(a,b){ return (korder[a.kind]-korder[b.kind]) || (a.n-b.n); });
     STATE.rows=rows; STATE.hk=hk;
     render();
