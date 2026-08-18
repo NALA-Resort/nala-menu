@@ -11,6 +11,7 @@ paper:
 It also carries the menu conflict, and here it earns its place twice over: the
 card goes to the kitchen, and the kitchen is who acts on it.
 """
+import errortrap   # fails the run if any page throws
 import threading, http.server, socketserver, json, time, datetime, os
 
 os.chdir('/home/claude/nala')

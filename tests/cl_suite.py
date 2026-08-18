@@ -1,3 +1,4 @@
+import errortrap   # fails the run if any page throws
 import threading,http.server,socketserver,json,time,datetime,os,re
 os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):

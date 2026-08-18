@@ -14,6 +14,7 @@ The second is the gate on whether a menu exists. It asked for a bread course by
 name, so a menu with no bread read as no menu at all, and the chef was told to
 publish a menu that was already published.
 """
+import errortrap   # fails the run if any page throws
 import threading, http.server, socketserver, json, time, datetime, os
 
 os.chdir('/home/claude/nala')

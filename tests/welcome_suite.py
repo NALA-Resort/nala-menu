@@ -9,6 +9,7 @@ cannot answer their own dinner.
 The page writes nothing. That is asserted rather than assumed: every database
 request is intercepted and the count has to stay at zero.
 """
+import errortrap   # fails the run if any page throws
 import threading, http.server, socketserver, json, time, os
 
 os.chdir('/home/claude/nala')

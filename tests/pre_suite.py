@@ -12,6 +12,7 @@ down are the ones that are easy to get wrong and invisible when they are:
   4. Send is a PATCH. Reception may already have confirmed this booking, and a
      PUT would wipe confirmedAt and un-confirm a guest at the desk.
 """
+import errortrap   # fails the run if any page throws
 import threading, http.server, socketserver, json, time, datetime, os
 
 os.chdir('/home/claude/nala')

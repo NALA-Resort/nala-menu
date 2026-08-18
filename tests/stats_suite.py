@@ -20,6 +20,7 @@ The rules that matter beyond the arithmetic:
 That last one is the Clean Slate lesson in a second place: a page that cannot
 read its data must never render as a page whose data is empty.
 """
+import errortrap   # fails the run if any page throws
 import threading, http.server, socketserver, json, time, datetime, os
 
 os.chdir('/home/claude/nala')

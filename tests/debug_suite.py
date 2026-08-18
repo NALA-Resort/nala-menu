@@ -15,6 +15,7 @@ The first of those is the 17 Aug bug, which reported 0 records for four nodes
 it had no permission to list, said it had succeeded, and deleted nothing. The
 fix is in the page; this pins it there.
 """
+import errortrap   # fails the run if any page throws
 import threading, http.server, socketserver, json, time, datetime, os
 
 os.chdir('/home/claude/nala')

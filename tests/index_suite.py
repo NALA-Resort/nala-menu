@@ -13,6 +13,10 @@ it.
 No Firebase SDK on this page and no sign in: db() is a plain fetch, so the
 harness only has to intercept the database host.
 """
+import errortrap   # fails the run if any page throws
+# This suite refuses a write on purpose, to prove the guest is told. The page
+# is supposed to complain about it.
+errortrap.expect("failed: 401")
 import threading, http.server, socketserver, json, time, datetime, os
 
 os.chdir('/home/claude/nala')

@@ -15,6 +15,7 @@ missing before.
 The page belongs to the print chat. This suite does not edit it: anything found
 here is handed over rather than fixed.
 """
+import errortrap   # fails the run if any page throws
 import threading, http.server, socketserver, json, time, datetime, os
 
 os.chdir('/home/claude/nala')

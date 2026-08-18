@@ -12,6 +12,7 @@ Reception's screen for check-in. The two things most worth pinning down:
 Confirmed means a dining status exists and reception has been through it at
 the desk. It includes not dining.
 """
+import errortrap   # fails the run if any page throws
 import threading, http.server, socketserver, json, time, datetime, os
 
 os.chdir('/home/claude/nala')

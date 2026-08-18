@@ -8,6 +8,7 @@ already unsure.
 It also checks the reverse, which is the failure a hand written map always
 reaches eventually: a page exists in the repo and the map does not mention it.
 """
+import errortrap   # fails the run if any page throws
 import threading, http.server, socketserver, json, time, os, re, urllib.request
 
 os.chdir('/home/claude/nala')
