@@ -64,8 +64,14 @@
   }
   .room-n { font-size:13px; color:var(--ink); }
   .room-p { font-size:8px; color:var(--mid); margin-top:2px; min-height:10px; }
-  .comb-note { display:flex; align-items:center; justify-content:space-between; gap:10px;
-               border:1px solid var(--ink); border-radius:8px; padding:9px 12px; margin-bottom:12px;
+  /* Kept clear of the menu button on the right, which was cutting "Seat
+     separately" in half on a real handset. Wraps rather than shrinks: the
+     label and the action both have to stay readable, and a squeezed control
+     next to a squeezed label is how a wrong button gets pressed. */
+  .comb-note { display:flex; align-items:center; justify-content:space-between;
+               gap:8px; flex-wrap:wrap;
+               border:1px solid var(--ink); border-radius:8px;
+               padding:9px 12px; margin:0 44px 12px;
                font-family:var(--ui-font); font-size:11px; letter-spacing:.04em; }
   .comb-undo { border:none; background:transparent; color:var(--red); cursor:pointer;
                font-family:var(--ui-font); font-size:10px; font-weight:bold;
@@ -284,9 +290,29 @@
   .gd-name:active { opacity:.6; }
   /* Grid rather than a list: the labels line up down the left so the eye can
      run down the values, which is how a sheet like this is read. */
-  .gd-panel { display:none; margin:9px 0 2px; text-align:left;
-              border-top:1px solid var(--rule); padding-top:9px; }
-  .gd-panel.open { display:block; }
+  /* Reveals downward rather than folding open in place. The height is
+     animated so the eye follows it down instead of the buttons appearing to
+     jump, and it carries its own Close: reported 18 Aug that having to find
+     the name again to shut it is the wrong way round, and it is, because by
+     then you are reading the bottom of the panel and the name is off the top
+     of your attention. */
+  .gd-panel { display:block; overflow:hidden; max-height:0;
+              margin:0; padding:0; text-align:left;
+              border-top:1px solid transparent;
+              transition:max-height .22s ease, margin .22s ease,
+                         padding .22s ease, border-color .22s ease; }
+  .gd-panel.open { max-height:640px; margin:9px 0 2px; padding-top:9px;
+                   border-top-color:var(--rule); }
+  @media (prefers-reduced-motion: reduce) {
+    .gd-panel { transition:none; }
+  }
+  .gd-close { display:block; width:100%; margin:8px 0 0; padding:9px 0;
+              border:0; border-top:1px solid var(--rule);
+              background:none; cursor:pointer; color:var(--mid);
+              font-family:var(--ui-font); font-size:9.5px;
+              letter-spacing:.18em; text-transform:uppercase;
+              -webkit-tap-highlight-color:transparent; }
+  .gd-close:active { color:var(--ink); }
   .gd-row { display:flex; gap:9px; padding:2px 0; font-size:12px;
             line-height:1.45; }
   .gd-k { flex:0 0 74px; font-family:var(--ui-font); font-size:9px;
@@ -1302,14 +1328,39 @@ function wireGuestPanel(g, known){
   if (!eye || !panel) return;
   known = known || {};
 
-  panel.innerHTML = rowsHTML(snapshotRows(g, known));
+  panel.innerHTML = panelHTML(snapshotRows(g, known));
 
-  eye.onclick = function(){
-    var open = panel.classList.toggle('open');
+  function setOpen(open){
+    panel.classList.toggle('open', open);
     eye.classList.toggle('on', open);
     eye.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  /* Delegated, because the panel's contents are replaced when the pre-arrival
+     answers land and a handler bound to the old Close would go with them. */
+  panel.addEventListener('click', function(e){
+    var t = e.target;
+    if (t && t.id === 'gdClose'){
+      setOpen(false);
+      /* Back to the control that opened it, so the next thing pressed is a
+         deliberate choice rather than whatever happened to be under a thumb
+         once the panel collapsed. */
+      try { eye.focus(); } catch (err) {}
+    }
+  });
+
+  eye.onclick = function(){
+    var open = !panel.classList.contains('open');
+    setOpen(open);
     if (open) loadPrearrival(known, panel, g);
   };
+}
+
+/* Every render of the panel ends with its own way out. Put here rather than at
+   each call site so a path that forgets it cannot exist. */
+function panelHTML(rows){
+  return rowsHTML(rows) +
+    '<button class="gd-close" id="gdClose" type="button">Close details</button>';
 }
 
 function rowsHTML(rows){
@@ -1387,25 +1438,25 @@ function loadPrearrival(known, panel, g){
     /* No booking means no pre-arrival form was ever sent, which is worth
        saying: an empty panel looks like a failed load. */
     if (!base.length)
-      panel.innerHTML = rowsHTML([['', 'Nothing recorded for this villa yet', true]]);
+      panel.innerHTML = panelHTML([['', 'Nothing recorded for this villa yet', true]]);
     return;
   }
   if (PRE_CACHE[id] !== undefined){
-    panel.innerHTML = rowsHTML(base.concat(preRows(PRE_CACHE[id])));
+    panel.innerHTML = panelHTML(base.concat(preRows(PRE_CACHE[id])));
     return;
   }
-  panel.innerHTML = rowsHTML(base.concat([['', 'Looking for the pre-arrival answers', true]]));
+  panel.innerHTML = panelHTML(base.concat([['', 'Looking for the pre-arrival answers', true]]));
   api('/bookings/'+id+'/prearrival')
     .then(function(pre){
       PRE_CACHE[id] = pre || null;
       var extra = preRows(pre);
-      panel.innerHTML = rowsHTML(base.concat(
+      panel.innerHTML = panelHTML(base.concat(
         extra.length ? extra : [['', 'No pre-arrival answers yet', true]]));
     })
     .catch(function(){
       /* A failed read is not an empty one, and saying "none" here would be a
          lie that reception would act on. */
-      panel.innerHTML = rowsHTML(base.concat(
+      panel.innerHTML = panelHTML(base.concat(
         [['', 'Could not load the pre-arrival answers. Usually the connection', true]]));
     });
 }

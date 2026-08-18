@@ -500,8 +500,12 @@ with sync_playwright() as p:
     # app already holds and writes nothing, and the chef is the person who most
     # wants it: they open this sheet to read the dietaries and the comment.
     # Everything else on a chef's sheet must still be Close and only Close.
+    # Both controls belonging to the snapshot are excluded by id, not by
+    # trusting their labels. Neither writes anything: one opens the panel and
+    # one shuts it again.
     writes = q.evaluate("""()=>[].filter.call(document.querySelectorAll('#sheet button'),
-        e=>getComputedStyle(e).display!=='none' && e.id!=='gdEye')
+        e=>getComputedStyle(e).display!=='none'
+           && e.id!=='gdEye' && e.id!=='gdClose')
         .map(e=>e.textContent.trim())""")
     ck("chef's sheet offers nothing that writes, only Close",
        [x.lower() for x in writes]==["close"])
@@ -712,8 +716,24 @@ with sync_playwright() as p:
         ck("%s: no sideways scroll at 320pt" % label,
            q.evaluate("()=>document.documentElement.scrollWidth"
                       "<=document.documentElement.clientWidth"))
-        q.locator("#gdEye").click(); q.wait_for_timeout(300)
-        ck("%s: it shuts again" % label,
+        # Its own way out. Having to find the name again to shut it is the
+        # wrong way round: by then you are reading the bottom of the panel
+        # and the name is off the top of your attention.
+        ck("%s: the panel carries its own Close" % label,
+           q.evaluate("()=>!!document.getElementById('gdClose')"))
+        q.locator("#gdClose").click(); q.wait_for_timeout(500)
+        ck("%s: Close shuts it" % label,
+           not q.evaluate("()=>gdPanel.classList.contains('open')"))
+        # Collapsed to nothing, not merely hidden: a panel that keeps its
+        # height pushes the service buttons down whether it is open or not.
+        ck("%s: and it takes no room when shut" % label,
+           q.evaluate("()=>gdPanel.getBoundingClientRect().height") < 4)
+        # The name still works as a toggle for anyone who reaches for it.
+        q.locator("#gdEye").click(); q.wait_for_timeout(500)
+        ck("%s: the name still reopens it" % label,
+           q.evaluate("()=>gdPanel.classList.contains('open')"))
+        q.locator("#gdEye").click(); q.wait_for_timeout(400)
+        ck("%s: and still shuts it" % label,
            not q.evaluate("()=>gdPanel.classList.contains('open')"))
         q.close()
 
@@ -790,6 +810,46 @@ with sync_playwright() as p:
     ck("a villa with its own group says nothing about groups",
        "Booked with" not in open_snapshot("6"))
     q.close()
+
+    # ── the seated-together bar ─────────────────────────────────────────
+    # It ran the full width of the sheet and straight under the menu button,
+    # which cut "Seat separately" in half on a real handset: a control you can
+    # only half read is one you press by accident or not at all.
+    def comb_fb(route, request):
+        u = request.url
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(group_stays)); return
+        if "/combined/" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps({"g1": {"rooms": ["4", "5"]}})); return
+        if "/prearrival" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body="null"); return
+        fb(route, request)
+    for w in (390, 320):
+        q = b.new_page(viewport={"width": w, "height": 900})
+        q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body=SDK))
+        q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body="/*n*/"))
+        q.route("**firebasedatabase.app/**", comb_fb)
+        q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1700)
+        q.evaluate("()=>[...document.querySelectorAll('button')]"
+                   ".find(b=>b.querySelector('.room-n')"
+                   "&&b.querySelector('.room-n').textContent==='4').click()")
+        q.wait_for_timeout(500)
+        geo = q.evaluate("""()=>{const u=document.querySelector('.comb-undo');
+          const n=document.querySelector('.navwrap');
+          if(!u) return null;
+          const a=u.getBoundingClientRect(), b=n?n.getBoundingClientRect():null;
+          return {clear: b ? a.right <= b.left : true,
+                  readable: a.width > 60};}""")
+        ck("at %dpt the seat-separately control clears the menu button" % w,
+           bool(geo) and geo["clear"])
+        ck("at %dpt it is wide enough to read" % w,
+           bool(geo) and geo["readable"])
+        q.close()
 
     b.close()
     open("/home/claude/nala/_p1_tally.png","wb").write(shot1)
