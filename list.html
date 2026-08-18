@@ -61,10 +61,18 @@
      it bled at 390 as well as 320, not at 320 only as first recorded.
      It wraps now, and covers stays anchored right where the eye expects it. */
   .stat.statmix { text-align:left; min-width:0; flex:1 1 auto; }
-  .stat.statmix .stat-n { font-size:15px; letter-spacing:.01em; }
+  /* The make-up is what a waiter reads to set the room, so it is the biggest
+     thing in the header. It used to be the smallest: 15px against covers at
+     20px, in the same grey as a label, so the one instruction on the sheet
+     had to be hunted for. Covers is the kitchen's number and stays, smaller,
+     because nobody sets a table from it. Reported from the printed sheet on
+     18 Aug: too small and too grey to read at a glance. */
+  .stat.statmix .stat-n { font-size:23px; line-height:1.15; letter-spacing:.01em;
+                          font-weight:400; color:var(--ink); }
+  .stat.statmix .stat-l { font-size:9px; color:#55554F; }
   .stats .stat:not(.statmix) { flex:0 0 auto; }
   .stats .stat:last-child { text-align:right; }
-  .stats .stat:last-child .stat-n { font-size:20px; }
+  .stats .stat:last-child .stat-n { font-size:19px; }
   .row-out td { background:#FAF6F5; }
   .row-unk td { background:#FCFCFB; }
 
@@ -122,6 +130,11 @@
        printed they come out as grey slabs that read as a photocopy. The text
        stays lighter, which is enough.                                    */
     .row-out td, .row-unk td, .row-conflict td { background:none; }
+
+    /* The make-up carries onto paper at full size. The printed sheet is
+       where a waiter actually reads it, standing at the pass. */
+    .stat.statmix .stat-n { font-size:19px; color:#1C1C1A; }
+    .stat.statmix .stat-l { font-size:8.5px; color:#55554F; }
 
     /* The sheet was filling about three quarters of the page, so it read as
        compressed and left a band of white at the foot. The rows are given
@@ -250,7 +263,6 @@ function stripTags(h){
 <div class="stamp" id="stamp"></div>
 
 <div class="foot" id="footBar">
-  <button class="btn" id="sheetPdf">PDF</button>
   <button class="btn" onclick="window.print()">Print</button>
   <button class="btn ghost" onclick="location.reload()">Refresh</button>
 </div>
@@ -504,10 +516,18 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     var tables = Object.keys(tblPax).length;
     var sizes = {};
     for (var u in tblPax) sizes[tblPax[u]] = (sizes[tblPax[u]]||0) + 1;
+    /* Plurals are spelled, not built by adding an s: "six" and "seven" would
+       come out "sixs" and "sevens" is right but "sixs" is not, and the line is
+       the first thing a waiter reads on the sheet. Reported from the printed
+       sheet on 18 Aug. */
+    var PLURAL = ['', 'ones', 'twos', 'threes', 'fours', 'fives',
+                  'sixes', 'sevens', 'eights', 'nines', 'tens'];
+    var SINGLE = ['', 'one', 'two', 'three', 'four', 'five',
+                  'six', 'seven', 'eight', 'nine', 'ten'];
     var parts = Object.keys(sizes).map(Number).sort(function(a,b){return a-b;})
-      .map(function(sz){ var n=sizes[sz];
-        var W=['','one','two','three','four','five','six','seven','eight','nine','ten'];
-        var w=W[sz]||sz; return n+' '+w+(n>1?'s':''); });
+      .map(function(sz){ var n = sizes[sz];
+        var w = (n > 1 ? PLURAL[sz] : SINGLE[sz]) || (sz + (n > 1 ? 's' : ''));
+        return n + ' ' + w; });
     document.getElementById('nTables').textContent = tables;
     document.getElementById('tblBreak').textContent = parts.length ? parts.join(' \u00b7 ') : '\u2014';
     document.getElementById('nTablesWord').textContent = (tables === 1) ? 'table' : 'tables';
@@ -548,150 +568,11 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
   window.addEventListener('beforeprint', fill);
 })();
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="raleway.js"></script>
-<script>
-/* The sheet as a real PDF. Printing the page from a phone hands the printer
-   a bitmap, which is why the paper came out soft: iOS renders the page to an
-   image first. Drawing the document instead keeps the text as text at any
-   size, and takes the browser's own header and footer out of the picture. */
-function sheetPDF(open){
-  if (!window.jspdf || !window.RALEWAY) return;
-  var doc = new jspdf.jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-  doc.addFileToVFS('Raleway-Regular.ttf', RALEWAY.RalewayRegular);
-  doc.addFont('Raleway-Regular.ttf', 'Raleway', 'normal');
-  doc.addFileToVFS('Raleway-Light.ttf', RALEWAY.RalewayLight);
-  doc.addFont('Raleway-Light.ttf', 'RalewayLight', 'normal');
-  doc.addFileToVFS('Raleway-Italic.ttf', RALEWAY.RalewayItalic);
-  doc.addFont('Raleway-Italic.ttf', 'Raleway', 'italic');
-
-  var M = 12, W = 210, H = 297, right = W - M;
-  /* Columns in mm, not percentages: on paper a column has to fit what goes
-     in it, and Dietaries is the one that needs the room.                */
-  var COLS = [
-    { k:'name',   w:34, t:'Name' },
-    { k:'villa',  w:11, t:'Villa',  c:1 },
-    { k:'dt',     w:17, t:'Dinner table', c:1 },
-    { k:'bt',     w:17, t:'B\'fast table', c:1 },
-    { k:'dinner', w:13, t:'Dinner', c:1 },
-    { k:'pax',    w:9,  t:'Pax',    c:1 },
-    { k:'stay',   w:19, t:'Stay' },
-    { k:'diet',   w:66, t:'Dietaries and comments' }
-  ];
-  var x0 = M, xs = []; COLS.reduce(function(x,c){ xs.push(x); return x + c.w; }, x0);
-
-  var title = (document.getElementById('title')||{}).textContent || '';
-  var covers = (document.getElementById('nCovers')||{}).textContent || '';
-  var tables = (document.getElementById('tableLine')||{}).textContent || '';
-
-  doc.setFont('RalewayLight','normal').setFontSize(7).setTextColor(150,150,144);
-  doc.text('NALA', M, M + 2);
-  doc.setFont('Raleway','normal').setFontSize(13).setTextColor(28,28,26);
-  doc.text(title.toUpperCase(), M, M + 10);
-  if (covers){
-    doc.setFont('Raleway','normal').setFontSize(13);
-    doc.text(covers, right, M + 10, { align:'right' });
-    doc.setFont('RalewayLight','normal').setFontSize(6.5).setTextColor(150,150,144);
-    doc.text('COVERS', right, M + 14, { align:'right' });
-  }
-  if (tables){
-    doc.setFont('RalewayLight','normal').setFontSize(8).setTextColor(120,120,114);
-    doc.text(stripTags(tables), M, M + 15);
-  }
-
-  var y = M + 22;
-  /* Headings wrap to two lines and sit ON the rule, so a long one like
-     "Dinner table" does not overrun the column beside it. The block grows
-     upward from the rule, which keeps every heading's last line level.  */
-  doc.setFont('RalewayLight','normal').setFontSize(6).setTextColor(110,110,104);
-  var HEAD_LINE = 2.4;
-  COLS.forEach(function(c,i){
-    var lines = doc.splitTextToSize(c.t.toUpperCase(), c.w - 2).slice(0,2);
-    lines.forEach(function(l,n){
-      doc.text(l, c.c ? xs[i] + c.w/2 : xs[i],
-               y - (lines.length - 1 - n) * HEAD_LINE,
-               { align: c.c ? 'center' : 'left' });
-    });
-  });
-  y += 2.5;
-  doc.setDrawColor(60).setLineWidth(0.4).line(M, y, right, y);
-
-  /* Every row the same height, and enough of them to fill the page: this is
-     a working sheet and the blanks are where a table number gets written. */
-  var ROW = 11.4, ROWS = Math.max(SHEET.length + 4, 21);
-  var bottom = y;
-  for (var i = 0; i < ROWS; i++){
-    var r = SHEET[i], ty = bottom + ROW * i + 7;
-    if (r){
-      doc.setTextColor(28, 28, 26);
-      doc.setFont('Raleway', 'normal').setFontSize(8.5);
-      var nm = (r.flag ? 'FLAG ' : '') + (r.pre ? 'PRE-MENU ' : '') + r.name;
-      doc.text(doc.splitTextToSize(nm, COLS[0].w - 2)[0] || '', xs[0], ty);
-
-      doc.setFont('Raleway','normal').setFontSize(8.5).setTextColor(28,28,26);
-      doc.text(r.villa, xs[1] + COLS[1].w/2, ty, { align:'center' });
-      if (r.dinner){
-        if (r.dinner === 'Yes') doc.setTextColor(58,110,74);
-        else if (r.dinner === 'No') doc.setTextColor(168,50,30);
-        else doc.setTextColor(170,170,164);
-        doc.setFont('Raleway','normal').text(r.dinner, xs[4] + COLS[4].w/2, ty, { align:'center' });
-        doc.setTextColor(28,28,26);
-      }
-      if (r.pax) doc.setFont('Raleway','normal').text(r.pax, xs[5] + COLS[5].w/2, ty, { align:'center' });
-      if (r.stay){
-        doc.setFont('Raleway','normal').setFontSize(7.5).setTextColor(80,80,76);
-        doc.text(doc.splitTextToSize(r.stay, COLS[6].w - 1)[0] || '', xs[6], ty);
-      }
-      var d = r.diets.join(', ') || (r.nodiet ? 'No dietaries' : '');
-      var extra = [d, r.note].filter(Boolean).join('  ');
-      if (extra){
-        doc.setFont('Raleway','normal').setFontSize(7.5).setTextColor(50,50,46);
-        doc.splitTextToSize(extra, COLS[7].w - 2).slice(0,2).forEach(function(l,n){
-          doc.text(l, xs[7], ty + n * 3.6);
-        });
-      }
-    }
-    doc.setDrawColor(215).setLineWidth(0.15);
-    doc.line(M, bottom + ROW * (i+1), right, bottom + ROW * (i+1));
-  }
-
-  /* The two writing columns get their rules, so the sheet reads as a form. */
-  doc.setDrawColor(190).setLineWidth(0.15);
-  [1,2,3,4].forEach(function(i){ doc.line(xs[i], y, xs[i], bottom + ROW * ROWS); });
-  doc.line(xs[6], y, xs[6], bottom + ROW * ROWS);
-
-  var st = (document.getElementById('stamp')||{}).textContent || '';
-  doc.setFont('RalewayLight','normal').setFontSize(6).setTextColor(150,150,144);
-  doc.text(stripTags(st), right, bottom + ROW * ROWS + 5, { align:'right' });
-
-  var blob = doc.output('blob'), url = URL.createObjectURL(blob);
-  var fname = 'Nala sheet ' + stripTags(title) + '.pdf';
-  window.__sheetURL = url;
-  if (!open) return url;
-
-  /* Three ways out, best first. The share sheet is the one that matters on a
-     phone, because Print is in it: a download leaves the person hunting
-     through Files for something they wanted to put on paper.            */
-  try {
-    var file = new File([blob], fname, { type:'application/pdf' });
-    if (navigator.canShare && navigator.canShare({ files:[file] })){
-      navigator.share({ files:[file], title:fname }).catch(function(){});
-      return url;
-    }
-  } catch (e){}
-
-  var w = window.open(url, '_blank');
-  if (w) return url;
-
-  /* Only if the browser blocked the tab. */
-  var a = document.createElement('a');
-  a.href = url; a.download = fname;
-  document.body.appendChild(a); a.click();
-  setTimeout(function(){ a.remove(); }, 5000);
-  return url;
-}
-var sb = document.getElementById('sheetPdf');
-if (sb) sb.onclick = function(){ sheetPDF(true); };
-</script>
+<!-- The PDF button was removed on 18 Aug. It drew its own document rather
+     than printing the page, which kept the text sharp from a phone, but it
+     rebuilt the sheet by hand and so carried less than the page it came from.
+     A second version of a document that is missing things is worse than no
+     second version: whoever picks it up cannot tell what is absent. Print
+     still works, and prints the page itself. -->
 </body>
 </html>

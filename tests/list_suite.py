@@ -76,11 +76,21 @@ with sync_playwright() as p:
               wrapLeft:Math.round(document.body.getBoundingClientRect().left),
               vw:innerWidth, mixSize:getComputedStyle(m.querySelector('.stat-n')).fontSize,
               covSize:getComputedStyle(c.querySelector('.stat-n')).fontSize,
+              mixColour:getComputedStyle(m.querySelector('.stat-n')).color,
               rows:Math.round(document.querySelector('.stats').getBoundingClientRect().height)};}""")
     print("   header geom:", hg)
     ck("make-up left-anchored, covers right-anchored, one row",
        hg["mixLeft"]<=20 and hg["covRight"]>=hg["vw"]-20 and hg["rows"]<=46)
-    ck("make-up one step below covers", hg["mixSize"]=="15px" and hg["covSize"]=="20px")
+    # Reversed on 18 Aug. The make-up is the instruction a waiter reads to set
+    # the room; covers is the kitchen's number and nobody sets a table from
+    # it. The make-up was the smaller of the two and in label grey, so the one
+    # instruction on the sheet had to be hunted for. Asserted as a comparison
+    # rather than as fixed pixel sizes, so the sizes can be tuned without a
+    # test failing over a point.
+    ck("the make-up is the larger of the two, not the smaller",
+       float(hg["mixSize"][:-2]) > float(hg["covSize"][:-2]))
+    ck("and it is set in ink, not in label grey",
+       hg["mixColour"] == "rgb(28, 28, 26)")
 
     rw=pg.evaluate("""()=>{
       const trs=[...document.querySelectorAll('#rows tr')];
@@ -183,20 +193,16 @@ with sync_playwright() as p:
     open("/home/claude/nala/_p2_list.png","wb").write(shot)
     pg.close()
 
-    # the PDF: text drawn as text, because iOS prints the page as a bitmap
+    # The PDF button was removed on 18 Aug: it rebuilt the sheet by hand and
+    # so carried less than the page it came from, and a second version of a
+    # document that is silently missing things is worse than no second
+    # version. These assert it stays gone, machinery included, because a
+    # half-removed feature is how a dead button appears.
     src = open("/home/claude/nala/list.html").read()
-    ck("the sheet can build a real PDF", "function sheetPDF" in src)
-    ck("it draws from captured data, not by reading the table back",
-       "SHEET.push" in src and "innerHTML" not in src.split("function sheetPDF")[1][:4000])
-    ck("a PDF button is offered", 'id="sheetPdf"' in src)
-    ck("fonts are embedded, so the text stays vector", "addFileToVFS" in src)
-
-    # the PDF must reach the share sheet on a phone: Print lives in there,
-    # and a download leaves someone hunting through Files for it
-    ck("the PDF is offered to the share sheet first", "navigator.canShare" in src)
-    ck("with a new tab as the fallback", "window.open(url" in src)
-    ck("and a download only if the tab was blocked",
-       src.index("navigator.canShare") < src.index("a.download"))
+    ck("no PDF button", 'id="sheetPdf"' not in src)
+    ck("and no PDF machinery left behind",
+       "sheetPDF" not in src and "jspdf" not in src.lower()
+       and "addFileToVFS" not in src)
 
     # printed: no tinted rows, and the sheet fills the page
     pg2=b.new_page(viewport={"width":1000,"height":1200})
@@ -290,48 +296,49 @@ with sync_playwright() as p:
            m["sw"] <= m["vw"])
         q.close()
 
-    # ── what actually lands on the paper ────────────────────────────────
-    # The assertions above check the PDF's source code, not its contents, so
-    # they would pass on a PDF that printed the wrong thing. The sheet is
-    # carried into service on paper, so the paper is worth checking.
-    PDF_STUB = """window.__PDF={texts:[]};
-window.jspdf={jsPDF:function(){return {
-  internal:{pageSize:{getWidth:function(){return 210;},getHeight:function(){return 297;}}},
-  setFont:function(){return this;},setFontSize:function(){return this;},
-  setTextColor:function(){return this;},setDrawColor:function(){return this;},
-  setFillColor:function(){return this;},setLineWidth:function(){return this;},
-  line:function(){return this;},rect:function(){return this;},
-  addImage:function(){return this;},addPage:function(){return this;},
-  addFileToVFS:function(){return this;},addFont:function(){return this;},
-  splitTextToSize:function(t){return [t];},
-  getTextWidth:function(t){return String(t).length*2;},
-  text:function(t){window.__PDF.texts.push(String(t));return this;},
-  output:function(){return new Blob(['x']);},save:function(){return this;}};}};"""
-
-    q = b.new_page(viewport={"width": 900, "height": 1100})
-    q.add_init_script(PDF_STUB)
-    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
-        content_type="application/javascript", body=SDK))
-    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
-        content_type="application/javascript", body="/*n*/"))
-    q.route("**/cdnjs.cloudflare.com/**", lambda r,_: r.fulfill(status=200, body=""))
-    q.route("**firebasedatabase.app/**", fb)
-    q.route("**/menu.json*", lambda r,_: r.fulfill(status=200,
-        content_type="application/json", body=json.dumps(menu)))
-    q.goto("http://localhost:8955/list.html"); q.wait_for_timeout(1700)
-    built = q.evaluate("()=>{try{sheetPDF();return true;}catch(e){return String(e.message);}}")
-    q.wait_for_timeout(1200)
-    drawn = q.evaluate("()=>window.__PDF.texts")
-    print("   pdf strings:", len(drawn), drawn[:12])
-    ck("the PDF builds without throwing", built is True)
-    ck("the PDF draws something", len(drawn) > 20)
-    # Villa 5 is vacant in the fixture. It is off the screen sheet, and the
-    # paper is drawn from the same rows, so it must be off the paper too.
-    ck("no vacant villa is printed on the PDF",
-       not any("vacant" in str(t).lower() for t in drawn))
-    ck("a real guest still reaches the paper",
-       any("Priya" in str(t) for t in drawn))
-    q.close()
+    # ── the make-up wording ─────────────────────────────────────────────
+    # Plurals were built by adding an s to the spelled number, which gave
+    # "2 sixs" on any night with two tables of six. Found on the printed
+    # sheet on 18 Aug, on the line a waiter reads first.
+    WORD_CASES = [
+        ({1:6},                      "1 six"),
+        ({1:6, 2:6},                 "2 sixes"),
+        ({1:2},                      "1 two"),
+        ({1:7, 2:7, 3:7},            "3 sevens"),
+        ({1:2, 2:2, 3:6, 4:6},       "2 twos \u00b7 2 sixes"),
+    ]
+    for pax, expect in WORD_CASES:
+        def word_fb(route, request, _p=pax):
+            u = request.url
+            if "/roomguests/" in u and today in u:
+                route.fulfill(status=200, content_type="application/json",
+                    body=json.dumps({str(i): {"name": "G%d" % i, "departs": today}
+                                     for i in _p})); return
+            if "/responses/" in u:
+                route.fulfill(status=200, content_type="application/json",
+                    body=json.dumps({"room-%d" % i: {"status": "in", "pax": _p[i],
+                                                     "room": str(i)} for i in _p})); return
+            # The base fixture combines villas 3 and 4 onto one table, and
+            # carries Alfie, a walk-in party of three in /manual. Both would
+            # add tables this case never asked for.
+            if "/combined/" in u or "/manual/" in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body="null"); return
+            fb(route, request)
+        q = b.new_page(viewport={"width": 390, "height": 900})
+        q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body=SDK))
+        q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body="/*n*/"))
+        q.route("**firebasedatabase.app/**", word_fb)
+        q.route("**/menu.json*", lambda r,_: r.fulfill(status=200,
+            content_type="application/json", body=json.dumps(menu)))
+        q.goto("http://localhost:8955/list.html"); q.wait_for_timeout(1500)
+        got = q.evaluate("()=>tblBreak.textContent").strip()
+        ck("make-up reads %r" % expect, got == expect, )
+        if got != expect:
+            print("      got %r" % got)
+        q.close()
 
     b.close()
 print("RESULT: %d passed, %d failed" % (P,F))
