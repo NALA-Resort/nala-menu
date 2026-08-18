@@ -41,6 +41,11 @@ during service, one handed, interrupted.
 
 ## How to work here
 
+**Reply in short point form.** What changed, what was found, what is left. The
+explanation goes in the commit message, which is kept and can be read later. A
+long reply is not thoroughness, it is work the user has to do. This is the
+thing the user has asked for most often, so it is first on the list.
+
 **Publish with `tools/push.py`.** Set `FILES` and `MSG`, run it, one commit.
 It can add and update but **cannot delete**: use `tools/rm.py` for that. A
 deletion that looks published and is not cost hours on 17 Aug.

@@ -189,8 +189,19 @@ four nodes it could not read, said it had succeeded, and deleted nothing.
 
 **Never em dashes**, anywhere, including code comments.
 
-**Do not edit `list.html`, `menu-print.html` or `housekeeping.html`.** A second
-chat owns them.
+**Answer in short point form, not prose.** A few bullets: what changed, what
+was found, what is left. The user has asked for this more than once, which
+means it was being missed. The reasoning belongs in the commit message, where
+it is kept and can be read later, not in the reply, where it has to be waded
+through. Long replies are the single thing this user has complained about most.
+
+**Report findings, not process.** Do not narrate what you are about to do or
+what you just ran. If a step is worth mentioning it is because it changed the
+answer.
+
+**One request at a time.** Finish it, report, stop. Do not batch several asks
+into one long turn: the user loses track of which one is being worked on, and
+a compaction mid-turn makes it worse.
 
 **Check the sandbox before saying it is gone.** After a context compaction this
 chat twice told the user the working copy and the repo were unreachable and
