@@ -1293,6 +1293,117 @@ with sync_playwright() as p:
        and "unknown" not in tiles.get("5", ""))
     q.close()
 
+    # ── an arrival on top of a clean, and who is on the job ─────────────
+    # A clean on a villa somebody is arriving into tonight is not the same job
+    # as a clean on one that will sit empty: it has to be made ready as well,
+    # lights on and the rest. The board already knew and used it only for sort
+    # order, so the cleaner standing at the villa was the one person never
+    # told. And two cleaners walking to the same villa is pure waste, so a
+    # claim has to be visible without opening anything.
+    claim_hk = {"3": {"takenBy": "Ana", "takenAt": now.isoformat()}}
+    claim_writes = []
+    def claim_fb(route, request):
+        u = request.url
+        if request.method in ("PATCH", "PUT"):
+            claim_writes.append(request.post_data or "")
+            route.fulfill(status=200, content_type="application/json",
+                          body=request.post_data or "{}"); return
+        if "/staff" in u:
+            route.fulfill(status=200, content_type="application/json",
+                body=json.dumps({"ana@x": {"name": "Ana", "role": "housekeeping"},
+                                 "bo@x":  {"name": "Bo",  "role": "housekeeping"}})); return
+        if "/stays/" + yest in u:
+            route.fulfill(status=200, content_type="application/json",
+                body=json.dumps({"3": {"id": "a", "arrive": plus(-2), "depart": today},
+                                 "9": {"id": "d", "arrive": plus(-2), "depart": today}})); return
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                body=json.dumps({"9": {"id": "e", "arrive": today, "depart": plus(1)}})); return
+        if "/hk/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(claim_hk)); return
+        if "/roomguests/" in u or "/responses/" in u or "/manual/" in u \
+           or "/hk/" in u or "/dinner/" in u:
+            route.fulfill(status=200, content_type="application/json", body="null"); return
+        fb(route, request)
+
+    def as_cleaner(email):
+        pgx = b.new_page(viewport={"width": 390, "height": 900})
+        pgx.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body=sdk(email)))
+        pgx.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body="/*n*/"))
+        pgx.route("**firebasedatabase.app/**", claim_fb)
+        pgx.goto("http://localhost:8957/cleaners.html"); pgx.wait_for_timeout(2100)
+        return pgx
+
+    def tile_text(pgx, villa):
+        for t in pgx.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
+                              ".map(t=>t.innerText.replace(/\\n/g,' | '))"):
+            if t.split(" |")[0].strip() == villa:
+                return t.lower()
+        return ""
+
+    q = as_cleaner("ana@x")
+    ck("a clean with an arrival tonight says so on the tile",
+       "arriving tonight" in tile_text(q, "9"))
+    ck("and it is still a clean, because the room must be turned around first",
+       "clean" in tile_text(q, "9"))
+    # Your own claim comes back as You, not as your own name read off a board.
+    # The first paint happens before sign in resolves, so this also proves the
+    # board repaints once it knows who is looking at it.
+    ck("your own claim reads as You once the board knows who you are",
+       "you" in tile_text(q, "3") and "ana" not in tile_text(q, "3"))
+    q.close()
+
+    q = as_cleaner("bo@x")
+    ck("somebody else's claim shows their name on the tile",
+       "ana" in tile_text(q, "3"))
+    q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
+               ".find(t=>t.innerText.startsWith('3')).click()")
+    q.wait_for_timeout(400)
+    sheet = q.locator("#sheetBox").inner_text().lower()
+    ck("and the sheet says who took it and when", "ana took this at" in sheet)
+    # Takeover without a confirm screen: plans change constantly during a
+    # turnaround, and asking twice would teach people to tap through it.
+    ck("anyone can take it over", "take it over" in sheet)
+    claim_writes[:] = []
+    q.evaluate("()=>[...document.querySelectorAll('#sheetBox button')]"
+               ".find(x=>/take it over/i.test(x.textContent)).click()")
+    q.wait_for_timeout(600)
+    ck("taking it over records the new holder",
+       any('"takenBy":"Bo"' in w for w in claim_writes))
+    q.close()
+
+    # An unclaimed job offers the claim, and a claim can be given back: a claim
+    # nobody can release becomes a villa nobody cleans the moment someone
+    # goes home.
+    claim_hk.clear()
+    q = as_cleaner("ana@x")
+    q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
+               ".find(t=>t.innerText.startsWith('9')).click()")
+    q.wait_for_timeout(400)
+    ck("an unclaimed job offers to be taken",
+       "take this one" in q.locator("#sheetBox").inner_text().lower())
+    claim_writes[:] = []
+    q.evaluate("()=>[...document.querySelectorAll('#sheetBox button')]"
+               ".find(x=>/take this one/i.test(x.textContent)).click()")
+    q.wait_for_timeout(600)
+    ck("taking a job records who and when",
+       any('"takenBy":"Ana"' in w and '"takenAt"' in w for w in claim_writes))
+    q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
+               ".find(t=>t.innerText.startsWith('9')).click()")
+    q.wait_for_timeout(400)
+    ck("and it can be handed back",
+       "hand it back" in q.locator("#sheetBox").inner_text().lower())
+    claim_writes[:] = []
+    q.evaluate("()=>[...document.querySelectorAll('#sheetBox button')]"
+               ".find(x=>/hand it back/i.test(x.textContent)).click()")
+    q.wait_for_timeout(600)
+    ck("handing back clears the holder and the time",
+       any('"takenBy":null' in w and '"takenAt":null' in w for w in claim_writes))
+    q.close()
+
     b.close()
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()

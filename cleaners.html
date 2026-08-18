@@ -91,6 +91,13 @@
   /* A pre-arrival is always ready - nobody has to leave first - so it never
      takes a colour. Colour still means "something changed, go now".     */
   .tile .chip.pre { background:transparent; border-color:var(--ink); color:var(--ink); }
+  /* An arrival tonight rides alongside the job rather than replacing it: the
+     villa still has to be cleaned, and it also has to be made ready. */
+  .tile .chip.pre.arr { border-style:dashed; }
+  /* Who is on it. Solid, because it is about a person rather than a state of
+     the room, and it has to be picked out at a glance from across a corridor. */
+  .tile .chip.taken { background:var(--ink); border-color:var(--ink);
+                      color:var(--cream); }
   .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
   .tile .sub b { color:var(--ink); }
   /* The clock on an available villa, and the only place on this board where
@@ -262,6 +269,11 @@
         var role = roleOf(u);
         window.NALA_ROLE  = role;
         window.NALA_USER  = u;      /* kept so sign out can unsubscribe */
+        window.NALA_ME    = displayNameOf(u);
+        /* The board paints before sign in resolves, so the first paint does
+           not know who you are and your own claim came back at you as your
+           name rather than as You. Repaint once it does. */
+        if (typeof render === 'function' && STATE && STATE.rows) render();
         if (typeof ensureNotifySettings === 'function') ensureNotifySettings(role);
         window.IS_MANAGER = can(role,'setJob');
         /* A waiter is on this board to say a villa looks free after
@@ -528,6 +540,23 @@ function render(){
     else if (row.kind==='ver') chip='<span class="chip ver">Unknown</span>';
     else chip='<span class="sub">Empty</span>';
 
+    /* A clean with somebody arriving tonight is not the same job as a clean on
+       a villa that will sit empty. The room has to be made ready as well as
+       cleaned: lights on, the things you do for an arrival. It was already
+       known here and used only to decide sort order, so the cleaner standing
+       in front of the villa was the one person it was never told to.        */
+    if (row.kind==='clean' && row.arrivingToday && !h.pushed)
+      chip += '<span class="chip pre arr">'+
+              (h.done ? 'Ready for arrival' : 'Arriving tonight')+'</span>';
+
+    /* Who is on it. Two cleaners walking to the same villa is the waste this
+       is here to stop, so it goes on the tile rather than inside the sheet:
+       the whole point is to be seen without opening anything. Dropped once
+       the job is done, when who is going next stops being a question. */
+    if (h.takenBy && !h.done)
+      chip += '<span class="chip taken">'+
+              (h.takenBy === window.NALA_ME ? 'You' : esc(h.takenBy))+'</span>';
+
     var sub='';
     if (row.kind!=='vac'){
       if (h.pushed) sub='To tomorrow';
@@ -539,6 +568,7 @@ function render(){
         sub='Available <b class="el'+w+'">'+m+'m</b>';
       }
       else if (row.kind==='pre') sub='Arriving today';
+      else if (row.kind==='clean' && row.arrivingToday) sub='Occupied';
       else if (row.kind==='ver') sub='';   /* the pill already says Unknown */
       else sub='Occupied';
     }
@@ -563,6 +593,14 @@ function render(){
   document.getElementById('nDone').textContent=nDone;
   document.getElementById('nPre').textContent=nPre;
   document.getElementById('preWrap').style.display = nPre ? '' : 'none';
+}
+
+/* Names come from the staff list, which a manager types, so they reach the
+   board as text and are escaped before they become HTML. */
+function esc(v){
+  return String(v == null ? '' : v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
 }
 
 // ── writes ─────────────────────────────────────────────────
@@ -693,6 +731,24 @@ function drawSheet(mode){
       b.innerHTML=head+rows+err;
       return;
     }
+    /* Taking a job. The problem is two cleaners walking to the same villa, so
+       what matters is that the claim is visible and easy to give back: a claim
+       nobody can release becomes a villa nobody cleans the moment somebody
+       goes home. Anyone can take over one already held, without a warning
+       screen, because plans change constantly during a turnaround and asking
+       twice would just teach people to tap through it. */
+    if (!h.done && !CUR.multi){
+      if (!h.takenBy){
+        rows+='<button class="pbtn" onclick="drawSheet(\'take\')">I\u2019ll take this one</button>';
+      } else if (h.takenBy === window.NALA_ME){
+        rows+='<button class="pbtn" disabled style="opacity:.6">You took this at '+hhmm(h.takenAt)+'</button>';
+        rows+='<button class="pbtn warn" onclick="drawSheet(\'untake\')">Hand it back</button>';
+      } else {
+        rows+='<button class="pbtn" disabled style="opacity:.6">'+esc(h.takenBy)+' took this at '+hhmm(h.takenAt)+'</button>';
+        rows+='<button class="pbtn" onclick="drawSheet(\'take\')">Take it over</button>';
+      }
+    }
+
     if (h.done){
       rows+='<button class="pbtn warn" onclick="drawSheet(\'undone\')">Undo done</button>';
     } else {
@@ -794,6 +850,21 @@ function drawSheet(mode){
         '<button class="pbtn" onclick="stampBf(15)">15 min ago</button>'+
       '</div>'+
       '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+  }
+
+  /* Taking a job writes straight through rather than asking are you sure.
+     It is reversible in one tap, it stops somebody else walking to the same
+     villa, and a confirm screen between a cleaner and a claim is the reason
+     they would stop bothering to claim at all. */
+  if (mode==='take'){
+    setField(n, { takenBy: window.NALA_ME || 'Someone',
+                  takenAt: new Date().toISOString() },
+             document.getElementById('perr'));
+    return;
+  }
+  if (mode==='untake'){
+    setField(n, { takenBy:null, takenAt:null }, document.getElementById('perr'));
+    return;
   }
 
   if (mode==='done'){

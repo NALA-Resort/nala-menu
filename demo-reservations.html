@@ -1083,6 +1083,19 @@ function normaliseRole(r){ return r === 'staff' ? 'admin' : r; }
 
 /* null means no usable record, and no record is no access. Deliberately not
    the lowest role: a typo in an address would otherwise grant something. */
+/* The name on the staff record, for showing WHO did something rather than
+   which address they signed in with. Falls back to the part of the address
+   before the at sign, which is a poor name but a better one than nothing, and
+   never to the full address: these appear on a board a guest can see over a
+   shoulder. */
+function displayNameOf(user){
+  var e = user && (typeof user === 'string' ? user : user.email);
+  if (!e) return '';
+  var rec = STAFF_RECORDS && STAFF_RECORDS[emailKey(e)];
+  if (rec && rec.name) return String(rec.name);
+  return String(e).split('@')[0];
+}
+
 function roleOf(user){
   var e = user && (typeof user === 'string' ? user : user.email);
   if (!e || !STAFF_RECORDS) return null;
