@@ -50,6 +50,13 @@ thing the user has asked for most often, so it is first on the list.
 It can add and update but **cannot delete**: use `tools/rm.py` for that. A
 deletion that looks published and is not cost hours on 17 Aug.
 
+**A write refused is not a login refused.** The database validates every field
+it knows and refuses the WHOLE write when one fails, and the error it returns
+is "Permission denied". That reads like a credentials fault and is usually not
+one. On 18 Aug it cost an evening looking at logins that were fine. The Worker
+now says which of the two it is; believe it. `tests/coercion_test.js` keeps the
+Worker's payload and `rules.json` in step, since nothing else does.
+
 **Fetch before pushing.** `/home/claude/publish.sh` refuses if `main` moved
 since your last push. Written for a period when two chats published here; that
 ended on 18 Aug, but the guard is kept against a stale clone.
@@ -165,6 +172,20 @@ rather than handwritten.
    is tested; the feed is the only problem. Confirmed 18 Aug that the
    cancellation `Id` is the same GUID as the reservation's, so nothing needs
    building: when the feed fires it will match.
+
+   **Re-examine this now.** It was written while every reservation write was
+   failing validation, so a cancellation that did fire would have been refused
+   with the same 401 as everything else and looked like a feed that never
+   triggered. Fixed 18 Aug in `9fea5ba`. Cancel a test booking in Mews before
+   assuming the trigger is still the problem.
+
+   Worth knowing either way: Zapier's Mews integration lists a raw HTTP request
+   action that carries the integration's own authentication, and Zapier has an
+   API Request action in beta. Paired with a Schedule trigger that gives
+   polling, which would remove the dependency on Mews firing at all. Zapier
+   stopped enabling the feature for new integrations in July 2024, so whether
+   it is switched on for this account is unknown. Ten minutes in the Zap editor
+   under Mews actions would answer it.
 2. **GuestTouch links** need `?b=<booking id>`. Nightly menu needs only that;
    pre-arrival also takes name and dates. The full mapping onto Mews field
    names, and what goes wrong if `b` resolves to the customer id or the
