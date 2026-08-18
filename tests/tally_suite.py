@@ -193,12 +193,18 @@ with sync_playwright() as p:
     # 5 staff sets room 9 dining pax4
     tile(pg,9).click(); pg.wait_for_timeout(200)
     ck("open-room sheet shows seen note", "opened the link" in pg.locator("#sheet").inner_text())
-    # Mews knows the party size. It belongs beside the name as a fact about who
-    # is staying, and must never seed the covers picker: covers is how many are
-    # eating tonight, and defaulting it here would inflate the kitchen's count
-    # for every villa that has not replied.
+    # Mews knows the party size, and it must never seed the covers picker:
+    # covers is how many are eating tonight, and defaulting it here would
+    # inflate the kitchen's count for every villa that has not replied.
+    #
+    # It moved into the snapshot on 18 Aug. It used to sit beside the name as
+    # well, and two copies on one sheet was what pushed a long name onto a
+    # second line and into the menu button.
+    pg.locator("#gdEye").click(); pg.wait_for_timeout(600)
     gd9 = pg.locator("#sheet .gd").inner_text()
     ck("the villa sheet shows the party size Mews knows", "2 adults" in gd9)
+    ck("and shows it once, not twice", gd9.count("2 adults") == 1)
+    pg.locator("#gdEye").click(); pg.wait_for_timeout(250)
     ck("and the covers picker is still the app's own default, not Mews'",
        pg.evaluate("()=>document.querySelector('#paxRow .pax.on').textContent")=="2")
     pg.locator(".pax", has_text="4").click()
@@ -647,7 +653,7 @@ with sync_playwright() as p:
                 "adults": 2, "number": "10231"}},
          {"4": {"status": "in", "pax": 2, "by": "guest"}},
          {"arriveSlot": "15", "purpose": "A celebration", "note": "Late flight"},
-         ["3 nights", "2 adults", "0418387632", "10231",
+         ["3 nights", "2 adults", "0418 387 632", "10231",
           "answered themselves", "Around 3pm", "Late flight"]),
         ("a booking Mews knows and nobody has answered",
          {"4": {"id": BID, "first": "Ana", "last": "Diaz", "arrive": today,
@@ -688,8 +694,10 @@ with sync_playwright() as p:
                    "&&b.querySelector('.room-n').textContent==='4').click()")
         q.wait_for_timeout(500)
 
-        ck("%s: the eye is offered" % label,
-           q.evaluate("()=>!!document.getElementById('gdEye')"))
+        ck("%s: the name is the control" % label,
+           q.evaluate("()=>{const e=document.getElementById('gdEye');"
+                      "return !!e && e.tagName==='BUTTON'"
+                      " && e.className.indexOf('gd-name')>-1;}"))
         # Shut to start with. Reception opens this sheet many times a service
         # to press one of three buttons, and detail sitting open in front of
         # them would be in the way every time for the once it is wanted.
@@ -729,8 +737,58 @@ with sync_playwright() as p:
                ".find(b=>b.querySelector('.room-n')"
                "&&b.querySelector('.room-n').textContent==='4').click()")
     q.wait_for_timeout(500)
-    ck("an empty villa offers no eye to press",
+    ck("an empty villa offers no name to press",
        not q.evaluate("()=>!!document.getElementById('gdEye')"))
+    q.close()
+
+    # ── the group row ───────────────────────────────────────────────────
+    # Mews puts a groupId on EVERY reservation, not only the ones spanning
+    # villas, so reading its presence as "booked with another villa" put that
+    # line on all seventeen. Reported from a real handset on 18 Aug as looking
+    # like an exposed bug, which is exactly what it was.
+    GB = "6cb6d13f-beda-45eb-9c1b-b4880157a2bf"
+    group_stays = {
+        "4": {"id": GB, "first": "Darren", "last": "Rubach", "arrive": today,
+              "depart": plus(2), "adults": 2, "groupId": "G-A"},
+        "5": {"id": GB[:-1] + "c", "first": "Mia", "last": "Rubach",
+              "arrive": today, "depart": plus(2), "adults": 2, "groupId": "G-A"},
+        "6": {"id": GB[:-1] + "d", "first": "Solo", "last": "Guest",
+              "arrive": today, "depart": plus(1), "adults": 2, "groupId": "G-B"},
+    }
+    def group_fb(route, request):
+        u = request.url
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(group_stays)); return
+        if "/prearrival" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body="null"); return
+        fb(route, request)
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body=SDK))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", group_fb)
+    q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1700)
+
+    def open_snapshot(villa):
+        q.evaluate("(v)=>[...document.querySelectorAll('button')]"
+                   ".find(b=>b.querySelector('.room-n')"
+                   "&&b.querySelector('.room-n').textContent===v).click()", villa)
+        q.wait_for_timeout(400)
+        q.locator("#gdEye").click(); q.wait_for_timeout(700)
+        t = q.evaluate("()=>gdPanel.textContent")
+        q.evaluate("()=>{const c=document.getElementById('oClose');if(c)c.click();}")
+        q.wait_for_timeout(250)
+        return t
+
+    # Naming the other villa is the point: "booked with another villa" is a
+    # riddle, "booked with villa 5" is a fact reception can act on.
+    ck("a villa sharing a group names the villa it shares with",
+       "villa 5" in open_snapshot("4"))
+    ck("a villa with its own group says nothing about groups",
+       "Booked with" not in open_snapshot("6"))
     q.close()
 
     b.close()
