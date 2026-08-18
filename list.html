@@ -67,7 +67,6 @@
   .stats .stat:last-child .stat-n { font-size:20px; }
   .row-out td { background:#FAF6F5; }
   .row-unk td { background:#FCFCFB; }
-  .row-vacant td { background:#F4F4F2; color:#B0B0AA; }
 
   .sub { display:block; font-size:8px; color:#777; font-weight:normal; margin-top:2px; }
   .allergen { color:#A8321E; font-weight:bold; }
@@ -120,11 +119,9 @@
     .scroller { overflow:visible; }
 
     /* No tinted rows on paper. On screen they group the sheet at a glance;
-       printed they come out as grey slabs that read as a photocopy, and a
-       vacant villa is already obvious from having no name in it. The text
+       printed they come out as grey slabs that read as a photocopy. The text
        stays lighter, which is enough.                                    */
-    .row-out td, .row-unk td, .row-vacant td, .row-conflict td { background:none; }
-    .row-vacant td { color:#8A8A82; }
+    .row-out td, .row-unk td, .row-conflict td { background:none; }
 
     /* The sheet was filling about three quarters of the page, so it read as
        compressed and left a band of white at the foot. The rows are given
@@ -457,23 +454,14 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
         nameCell = '<span class="pre">PRE-MENU</span>' + nameCell;
       }
 
-      // Vacant rooms stay on the sheet, labelled and otherwise empty.
-      if (row.status === 'vacant') {
-        dinner = '';
-        cls = ' class="row-vacant"';
-        nameCell = '<span class="muted">Vacant</span>';
-      }
-
       /* The PDF is drawn from these, not from the table: reading values back
          out of HTML would break the moment a cell gained a span.        */
       SHEET.push({
-        name: (row.status==='vacant') ? 'Vacant' : (name || ''),
-        vacant: row.status==='vacant',
+        name: name || '',
         flag: hits.length > 0,
         pre: !!(row.status === 'in' && g.premenu),
         villa: row.room ? String(row.room) : 'ext',
-        dinner: row.status==='vacant' ? '' :
-                row.status==='in' ? 'Yes' : row.status==='out' ? 'No' : '-',
+        dinner: row.status==='in' ? 'Yes' : row.status==='out' ? 'No' : '-',
         pax: row.status==='in' ? String(g.pax||1) : '',
         stay: stripTags(stayHTML(g.arrives, g.departs)),
         diets: (g.diets||[]).slice(),
@@ -635,8 +623,8 @@ function sheetPDF(open){
   for (var i = 0; i < ROWS; i++){
     var r = SHEET[i], ty = bottom + ROW * i + 7;
     if (r){
-      doc.setTextColor(r.vacant ? 138 : 28, r.vacant ? 138 : 28, r.vacant ? 130 : 26);
-      doc.setFont('Raleway', r.vacant ? 'italic' : 'normal').setFontSize(8.5);
+      doc.setTextColor(28, 28, 26);
+      doc.setFont('Raleway', 'normal').setFontSize(8.5);
       var nm = (r.flag ? 'FLAG ' : '') + (r.pre ? 'PRE-MENU ' : '') + r.name;
       doc.text(doc.splitTextToSize(nm, COLS[0].w - 2)[0] || '', xs[0], ty);
 

@@ -290,6 +290,49 @@ with sync_playwright() as p:
            m["sw"] <= m["vw"])
         q.close()
 
+    # ── what actually lands on the paper ────────────────────────────────
+    # The assertions above check the PDF's source code, not its contents, so
+    # they would pass on a PDF that printed the wrong thing. The sheet is
+    # carried into service on paper, so the paper is worth checking.
+    PDF_STUB = """window.__PDF={texts:[]};
+window.jspdf={jsPDF:function(){return {
+  internal:{pageSize:{getWidth:function(){return 210;},getHeight:function(){return 297;}}},
+  setFont:function(){return this;},setFontSize:function(){return this;},
+  setTextColor:function(){return this;},setDrawColor:function(){return this;},
+  setFillColor:function(){return this;},setLineWidth:function(){return this;},
+  line:function(){return this;},rect:function(){return this;},
+  addImage:function(){return this;},addPage:function(){return this;},
+  addFileToVFS:function(){return this;},addFont:function(){return this;},
+  splitTextToSize:function(t){return [t];},
+  getTextWidth:function(t){return String(t).length*2;},
+  text:function(t){window.__PDF.texts.push(String(t));return this;},
+  output:function(){return new Blob(['x']);},save:function(){return this;}};}};"""
+
+    q = b.new_page(viewport={"width": 900, "height": 1100})
+    q.add_init_script(PDF_STUB)
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body=SDK))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**/cdnjs.cloudflare.com/**", lambda r,_: r.fulfill(status=200, body=""))
+    q.route("**firebasedatabase.app/**", fb)
+    q.route("**/menu.json*", lambda r,_: r.fulfill(status=200,
+        content_type="application/json", body=json.dumps(menu)))
+    q.goto("http://localhost:8955/list.html"); q.wait_for_timeout(1700)
+    built = q.evaluate("()=>{try{sheetPDF();return true;}catch(e){return String(e.message);}}")
+    q.wait_for_timeout(1200)
+    drawn = q.evaluate("()=>window.__PDF.texts")
+    print("   pdf strings:", len(drawn), drawn[:12])
+    ck("the PDF builds without throwing", built is True)
+    ck("the PDF draws something", len(drawn) > 20)
+    # Villa 5 is vacant in the fixture. It is off the screen sheet, and the
+    # paper is drawn from the same rows, so it must be off the paper too.
+    ck("no vacant villa is printed on the PDF",
+       not any("vacant" in str(t).lower() for t in drawn))
+    ck("a real guest still reaches the paper",
+       any("Priya" in str(t) for t in drawn))
+    q.close()
+
     b.close()
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()
