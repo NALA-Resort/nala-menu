@@ -204,11 +204,15 @@ The Mews sync, Front Desk Arrival, the guest pre-arrival form, registration
 cards and the single dinner record are all built and live. `HANDOVER.md` has the
 current open list; the short version is:
 
-**Waiting on the user:** the rules need pasting into the Firebase console
-again, since they changed on 18 Aug after the morning paste; cancellations do
-not fire from Zapier; GuestTouch links need `?b=<booking id>`; five credentials
-need rotating; leftover Firebase Auth logins need deleting; dinner and breakfast
-hours; the placeholder line on the pre-arrival form.
+**Waiting on the user:** the four security jobs in `SECURITY.md`, which is
+credential rotation, deleting leftover logins, locking the Firebase key to the
+site, and optionally making the repo private; cancellations do not fire from
+Zapier; GuestTouch links need `?b=<booking id>`; dinner and breakfast hours; the
+placeholder line on the pre-arrival form.
+
+The 18 Aug rules were pasted into the Firebase console and published that
+evening, so `rules.json` and the live rules match. Any further change to that
+file is another paste.
 
 **Waiting on a developer:** nothing reports the sync stopping, which needs a
 Zapier schedule trigger; the notification Worker exists only on the user's

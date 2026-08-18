@@ -158,13 +158,36 @@ rather than handwritten.
    names, and what goes wrong if `b` resolves to the customer id or the
    reservation number instead of the reservation GUID, is written out in
    `SETUP.md` job 7. The owner was briefing a programmer on this on 18 Aug.
-3. **Rotate five credentials:** two GitHub tokens, Firebase key, `sync`
-   passcode, shared secret. All have been pasted into chat. The two GitHub
-   tokens are `nala-menu publish` and `nala-menu chef`, issued separately so
-   either can be revoked alone. **Click by click in `SECURITY.md`**, along with
-   what breaks during each rotation and how long for.
-4. **Delete leftover Firebase Auth logins** for anyone removed on Settings.
-   Their access is already gone; this frees the passcode for reuse.
+3. **Work through `SECURITY.md`.** Four jobs, about forty five minutes, all of
+   it done by the owner in a browser and none of it doable from here. Written
+   one action per step, with what breaks while each is half done. The owner
+   said on 18 Aug they would action it that night, so check before assuming any
+   of it is still outstanding.
+
+   - **Rotate the five credentials:** two GitHub tokens, `sync` passcode,
+     shared secret, and the Firebase web API key. All have been pasted into
+     chat. The two GitHub tokens are `nala-menu publish` and `nala-menu chef`,
+     issued separately so either can be revoked alone. The passcode and the
+     secret each stop the Mews sync while they are half done.
+   - **The Firebase web API key is the exception: advise against rotating it.**
+     It is public by design, it is in `auth.js` and in every browser that has
+     loaded the app, and rotating it breaks the site between the new key
+     existing and somebody publishing it into the code. Restricting it by
+     referrer is the job that helps.
+   - **Delete leftover Firebase Auth logins** for anyone removed on Settings.
+     Their access is already gone; this frees the six digit passcode for reuse.
+   - **Restrict the Firebase key** to `nalaresort.com` in the Google Cloud
+     console, and prune the Authorised domains list in Firebase Auth. **Leave
+     `localhost` in that list**: it is how the suites sign in, and removing it
+     turns every suite red for a reason nobody would guess at.
+   - **Optionally make the repository private.** Needs GitHub Team, since
+     `NALA-Resort` is an organisation. It hides the documents, the rules copy
+     and the tests. It does not hide the app, which is served to browsers and
+     always readable. Going private can silently drop Cloudflare's access to
+     the repo and stop the Worker deploying.
+
+   If the owner reports a step that does not match what is on screen, fix
+   `SECURITY.md` at the same time as answering. These consoles rename things.
 5. ~~Does Mews send true UTC?~~ **Answered 18 Aug: it does.** 04:00Z is 2pm at
    the resort, UTC+10. The Worker converted nothing, so any timestamp after 2pm
    UTC was filed a day early, which is every arrival before 10am local and
@@ -402,7 +425,8 @@ three:
 - `PARKED.md` questions waiting on an answer, each with the decision taken in
   the meantime so nothing is stalled on them.
 - `STYLEGUIDE.md` before anything visual. Not optional.
-- `TESTING.md` the ten checks only a human can run.
+- `TESTING.md` the checks only a human can run: section 0 is everything that
+  changed on 18 Aug, sections 1 onward the older ones. **All of it unrun.**
 - `PLAN.md` the ordered build queue.
 - `DESIGN.md` who owns which data, the screens, and why the identifiers are
   what they are.
