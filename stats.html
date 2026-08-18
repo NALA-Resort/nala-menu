@@ -75,7 +75,29 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
+<script src="nala-shared.js?v=19"></script>
 <script>
+/* Reading only, no writes, but it is the resort's numbers and there was no
+   gate on it at all until 18 Aug. Same audience as the Reservations board. */
+(function gate(){
+  if (!window.firebase || !firebase.auth ||
+      typeof loadStaff !== 'function'){ setTimeout(gate,300); return; }
+  var A;
+  try { A = firebase.auth(); } catch (e){ setTimeout(gate,300); return; }
+  if (!A || typeof A.onAuthStateChanged !== 'function'){ setTimeout(gate,300); return; }
+  A.onAuthStateChanged(function(u){
+    if (!u) return;
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      if (can(role, 'resBoard') || e) return;
+      document.querySelector('.wrap').style.display = 'none';
+      var home = homeFor(role);
+      if (home) location.replace(home);
+    });
+  });
+})();
+
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var LOOKBACK = 120;   // days
 

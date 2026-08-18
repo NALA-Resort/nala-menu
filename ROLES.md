@@ -1,10 +1,15 @@
 # Roles and access - design
 
-Agreed 15 Aug. Not built yet. This replaces the current mechanism, which is a
-single check in `cleaners.html`: does the signed-in email begin with
-"housekeeping". That cannot express four roles, and it fails badly on
+Agreed 15 Aug, built 17 Aug, table corrected 18 Aug against the code. It
+replaced a single check in `cleaners.html`: does the signed-in email begin with
+"housekeeping". That could not express four roles, and it failed badly on
 per-person accounts - `housekeeping.maria@` would be a cleaner but `maria@`
 would silently be management.
+
+**The table below is the one in `ROLE_GRANTS` in `nala-shared.js`. If they ever
+disagree, the code is what runs and this file is wrong.** They did disagree
+until 18 Aug: this said a waiter had no access to the Cleans board, and the
+code has given them one since the day it was written.
 
 ## The four roles
 
@@ -17,13 +22,36 @@ the address.
 
 | | Cleans board | Set a villa's job | Reservations board | Edit bookings | Reservations Sheet | Publish menu | Manage staff |
 |---|---|---|---|---|---|---|---|
-| **staff** | yes | yes | yes | yes | yes | yes | yes |
+| **admin** | yes | yes | yes | yes | yes | yes | yes |
 | **chef** | no | no | read only | no | read and print | yes | no |
-| **waiter** | no | no | yes | yes | yes | no | no |
+| **waiter** | availability and departures | no | yes | yes | yes | no | no |
 | **housekeeping** | marks only | no | no | no | no | no | no |
 
 "Marks only" means `done`, `bfast`, `departed`, `pushed` - the cleaner's own
 work. Not `kind`.
+
+A waiter is on the Cleans board for one reason: clearing breakfast puts them
+in the villa before anybody else knows the guest has gone. So they get
+`cleansBoard` but not `cleansMarks`, which in practice means they may say a
+villa looks available and may mark or unmark a departure, and the buttons for
+finishing work or pushing a villa to tomorrow are hidden rather than disabled.
+
+### Pages with no permission of their own
+
+Three pages are gated on a permission borrowed from elsewhere, because
+inventing one for each would be four names for four pages:
+
+| Page | Needs | Why |
+|---|---|---|
+| Diagnostics | `manageStaff` | It deletes live data. Manager only. |
+| Menu Dietaries | `publishMenu` | The chef's page, and the manager's. |
+| Statistics | `resBoard` | Reading, no writes, same audience as the board. |
+| Site map | `manageStaff` | A map of the whole app is an admin tool. |
+
+Until 18 Aug the first two had no gate at all, which meant any login that
+could sign in could open Diagnostics and run Clean Slate. The rules cannot
+catch that: the deletes it makes are the same writes those roles legitimately
+make elsewhere, so the page has to be the gate.
 
 **No record means no access.** Someone who signs in without a staff record
 gets no boards and a message to see the manager. Deliberately not the lowest

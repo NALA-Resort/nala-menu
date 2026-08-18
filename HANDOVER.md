@@ -335,6 +335,29 @@ the sandbox, so every render falls back. `font-test.html` exists for this.
 
 ---
 
+## The manuals
+
+Four cheat sheets, one per role, written 18 Aug: `MANUAL-ADMIN.md`,
+`MANUAL-CHEF.md`, `MANUAL-WAITER.md`, `MANUAL-HOUSEKEEPING.md`. Each says what
+the screens are for and why they behave as they do, not how to tap them.
+
+They were written partly to be handed out and partly as an audit. Explaining a
+design to somebody who has not read the code is the fastest way to find the
+places where the code does not agree with itself. Writing these four found
+three:
+
+1. **Diagnostics had no role gate.** Any login that could sign in could open it
+   and run Clean Slate, which deletes the operational database. A cleaner, a
+   waiter, the chef. Now manager only. The rules cannot catch this, because the
+   deletes it makes are the same writes those roles legitimately make
+   elsewhere, so the page has to be the gate.
+2. **Menu Dietaries and Statistics had no gate either.** Dietaries is now the
+   chef's and the manager's, Statistics matches the Reservations board.
+3. **`ROLES.md` said a waiter has no access to the Cleans board.** The code has
+   given them one since it was written, deliberately, so they can say a villa
+   looks free after breakfast. The document was wrong, not the code, and it
+   now says which of the two wins when they disagree.
+
 ## The rest of the documents
 
 - `PARKED.md` questions waiting on an answer, each with the decision taken in

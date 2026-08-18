@@ -31,6 +31,13 @@ signOut:function(){}};"""
 now = datetime.datetime.now().astimezone()
 today = now.strftime("%Y-%m-%d")
 def plus(d): return (now + datetime.timedelta(days=d)).strftime("%Y-%m-%d")
+def short(d):
+    """The way the sheet writes a date: Mon 17. Built from the clock rather
+    than typed, because a suite that only passes on the day it was written
+    fails every following morning and teaches everyone to ignore it."""
+    t = now + datetime.timedelta(days=d)
+    return t.strftime("%a ") + str(t.day)
+RANGE_4 = short(0) + "-" + short(4)
 
 STAFF = {"staff@x": {"name": "Admin", "role": "admin"},
          "chef@x": {"name": "Chef", "role": "chef"},
@@ -196,7 +203,7 @@ with sync_playwright() as p:
     ck("the full range is still in the sheet for anyone who needs the date",
        (pg.locator('.arr[data-villa="4"]').click(), pg.wait_for_timeout(300),
         pg.locator('.sum-btns button[data-act="edit"]').click(), pg.wait_for_timeout(400),
-        "Mon 17-Fri 21" in pg.locator("#sheet").inner_text())[4])
+        RANGE_4 in pg.locator("#sheet").inner_text())[4])
     pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
     # closing the sheet leaves the summary open behind it; collapse it so the
     # tests after this one start from a clean board

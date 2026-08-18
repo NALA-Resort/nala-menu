@@ -29,22 +29,30 @@ today = now.strftime("%Y-%m-%d")
 def plus(n):
     return (now + datetime.timedelta(days=n)).strftime("%Y-%m-%d")
 
-SDK = """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
+def sdk(email="staff@x"):
+    return """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
 auth:function(){ if(!window.firebase.__i) throw new Error("no app"); return window.__A;}};
-window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:'staff@x',
+window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:'%s',
 getIdToken:function(){return Promise.resolve('T');}});},20);},
-onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'staff@x'});},25);},
-signOut:function(){}};"""
+onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'%s'});},25);},
+signOut:function(){}};""" % (email, email)
+SDK = sdk()
 
 # The whole database as the page sees it, node by node. Anything set to the
 # string "denied" is served as a 401, which is how the rules refuse a node.
 DATA = {}
 WRITES = []
 
+STAFF = {"staff@x": {"name": "Admin", "role": "admin"},
+         "chef@x": {"name": "Chef", "role": "chef"},
+         "waiter@x": {"name": "Waiter", "role": "waiter"},
+         "housekeeping@x": {"name": "HK", "role": "housekeeping"}}
+
 def reset():
     del WRITES[:]
     DATA.clear()
     DATA.update({
+        "staff": dict(STAFF),
         "roomguests": {today: {"1": {"name": "James Hall", "departs": plus(2),
                                      "bookingId": "b1"}}},
         "responses": {},
@@ -95,9 +103,9 @@ from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b = p.chromium.launch()
 
-    def open_debug(accept=True, w=390):
+    def open_debug(accept=True, w=390, email="staff@x"):
         pg = b.new_page(viewport={"width": w, "height": 900})
-        pg.add_init_script(SDK)
+        pg.add_init_script(sdk(email))
         pg.on("dialog", lambda d: d.accept() if accept else d.dismiss())
         pg.route("**/*.firebasedatabase.app/**", fb)
         pg.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
@@ -342,6 +350,34 @@ with sync_playwright() as p:
        bool(w) and w[0]["parts"] == [today, "99"])
     ck("and shows the status it got back", "HTTP 200" in pg.inner_text("#write"))
     pg.close()
+
+    # ── who may open it at all ────────────────────────────────
+    # Three of the tools on this page delete live data, and until 18 Aug the
+    # page had no role gate: any login that could sign in could run Clean
+    # Slate. The rules cannot catch it, because those deletes are the same
+    # writes these roles legitimately make elsewhere, so the page is the gate.
+    reset()
+    pg = open_debug(email="staff@x")
+    ck("the manager sees the tools", pg.locator("#tools").is_visible())
+    pg.close()
+
+    for who, role in (("chef@x", "the chef"), ("waiter@x", "a waiter"),
+                      ("housekeeping@x", "housekeeping")):
+        q = open_debug(email=who)
+        q.wait_for_timeout(600)
+        ck("%s cannot reach Diagnostics" % role, not q.url.endswith("debug.html"))
+        q.close()
+
+    # A login with no record at all has nowhere to be sent, so it gets the
+    # message rather than a redirect.
+    q = open_debug(email="nobody@x")
+    q.wait_for_timeout(600)
+    ck("a login with no role is told, not redirected into a loop",
+       q.url.endswith("debug.html")
+       and "manager" in q.inner_text("#noAccess").lower())
+    ck("and the tools are not on the page for them",
+       not q.locator("#tools").is_visible())
+    q.close()
 
     # ── it is opened on a phone, in a hurry ───────────────────
     reset()

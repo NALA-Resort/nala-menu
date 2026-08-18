@@ -20,6 +20,9 @@
 </style>
 </head>
 <body>
+<div id="noAccess" style="display:none;padding:14px;background:#A8321E;color:#fff;
+     font-size:12px;line-height:1.5"></div>
+<div id="tools">
 <h2>Today</h2>
 <pre id="today"></pre>
 
@@ -92,9 +95,48 @@ villas at once.</p>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+</div>
 <script src="auth.js?v=11"></script>
 <script src="nala-shared.js?v=19"></script>
 <script>
+/* This page deletes live data. Until 18 Aug it had no role gate at all, so any
+   login that could sign in could open it and run Clean Slate: a cleaner, a
+   waiter, the chef. The rules cannot help here, because the deletes it makes
+   are the same writes those roles legitimately make elsewhere, so the gate has
+   to be the page. Manager only, the same permission that guards Settings and
+   the site map. */
+(function gate(){
+  if (!window.firebase || !firebase.auth ||
+      typeof loadStaff !== 'function'){ setTimeout(gate,300); return; }
+  var A;
+  try { A = firebase.auth(); } catch (e){ setTimeout(gate,300); return; }
+  if (!A || typeof A.onAuthStateChanged !== 'function'){ setTimeout(gate,300); return; }
+  A.onAuthStateChanged(function(u){
+    if (!u) return;                 /* auth.js owns the signed-out state */
+    loadStaff(function(recs, err){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      if (can(role, 'manageStaff')){
+        document.getElementById('noAccess').style.display = 'none';
+        return;
+      }
+      /* A role with a board of its own is sent there rather than told off.
+         Only a login with no role at all gets the message, because it has
+         nowhere to be sent. */
+      document.getElementById('tools').style.display = 'none';
+      var box = document.getElementById('noAccess');
+      box.textContent = err
+        ? 'Could not check access. This is usually the connection, not your login.'
+        : 'Diagnostics is for the manager. This page can delete live data.';
+      box.style.display = 'block';
+      if (!err){
+        var home = homeFor(role);
+        if (home) location.replace(home);
+      }
+    });
+  });
+})();
+
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 var T = dkey(new Date());

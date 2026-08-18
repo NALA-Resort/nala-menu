@@ -26,12 +26,14 @@ threading.Thread(target=httpd.serve_forever, daemon=True).start(); time.sleep(0.
 now = datetime.datetime.now().astimezone()
 today = now.strftime("%Y-%m-%d")
 
-SDK = """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
+def sdk(email="chef@x"):
+    return """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
 auth:function(){ if(!window.firebase.__i) throw new Error("no app"); return window.__A;}};
-window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:'chef@x',
+window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:'%s',
 getIdToken:function(){return Promise.resolve('T');}});},20);},
-onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'chef@x'});},25);},
-signOut:function(){}};"""
+onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'%s'});},25);},
+signOut:function(){}};""" % (email, email)
+SDK = sdk()
 
 FULL_MENU = {"published": now.isoformat(),
              "bread": {"name": "Sourdough"}, "entree": {"name": "Kingfish crudo"},
@@ -41,6 +43,11 @@ MASTER = {"Gluten free": {"name": "Gluten free", "active": True, "group": "commo
           "Nut allergy": {"name": "Nut allergy", "active": True, "group": "common"},
           "Chilli":      {"name": "Chilli", "active": True, "group": "menu"},
           "Old thing":   {"name": "Old thing", "active": False, "group": "common"}}
+
+STAFF = {"chef@x": {"name": "Chef", "role": "chef"},
+         "staff@x": {"name": "Admin", "role": "admin"},
+         "waiter@x": {"name": "Waiter", "role": "waiter"},
+         "housekeeping@x": {"name": "HK", "role": "housekeeping"}}
 
 STATE = {"menu": FULL_MENU, "master": MASTER, "tags": {"main": ["Nut allergy"]},
          "failMaster": False, "failTags": False, "failSave": False}
@@ -61,6 +68,9 @@ def fb(route, request):
                           body='{"error":"Permission denied"}'); return
         route.fulfill(status=200, content_type="application/json",
                       body=json.dumps(STATE["master"])); return
+    if "/staff" in u:
+        route.fulfill(status=200, content_type="application/json",
+                      body=json.dumps(STAFF)); return
     if "/menutags" in u:
         if STATE["failTags"]:
             route.fulfill(status=401, content_type="application/json",
@@ -82,10 +92,10 @@ from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b = p.chromium.launch()
 
-    def open_tag(w=390):
+    def open_tag(w=390, email="chef@x"):
         del WRITES[:]
         pg = b.new_page(viewport={"width": w, "height": 900})
-        pg.add_init_script(SDK)
+        pg.add_init_script(sdk(email))
         pg.route("**/*.firebasedatabase.app/**", fb)
         pg.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.route("**/menu.json*", lambda r: r.fulfill(
@@ -270,6 +280,22 @@ with sync_playwright() as p:
        "show" in pg.get_attribute("#savebar", "class"))
     pg.close()
     STATE["failSave"] = False
+
+    # ── who may tag a menu ────────────────────────────────────
+    # Until 18 Aug this page had no gate, so any login could archive the
+    # chef's dietary list. It is the chef's page and the manager's.
+    pg = open_tag(email="chef@x")
+    ck("the chef gets the page", pg.locator("#courses").is_visible())
+    pg.close()
+    pg = open_tag(email="staff@x")
+    ck("and so does the manager", pg.locator("#courses").is_visible())
+    pg.close()
+    for who, label in (("waiter@x", "a waiter"), ("housekeeping@x", "housekeeping")):
+        q = open_tag(email=who)
+        q.wait_for_timeout(600)
+        ck("%s is sent to their own board instead" % label,
+           not q.url.endswith("tag.html"))
+        q.close()
 
     # ── phone geometry ────────────────────────────────────────
     for w in (390, 360, 320):

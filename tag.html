@@ -120,7 +120,35 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
+<script src="nala-shared.js?v=19"></script>
 <script>
+/* Tagging a menu is the chef's job and the manager's. Until 18 Aug there was
+   no gate at all, so a cleaner could archive the dietary list. Sent to their
+   own board rather than refused, since a role with somewhere to be does not
+   need telling off. */
+(function gate(){
+  if (!window.firebase || !firebase.auth ||
+      typeof loadStaff !== 'function'){ setTimeout(gate,300); return; }
+  var A;
+  try { A = firebase.auth(); } catch (e){ setTimeout(gate,300); return; }
+  if (!A || typeof A.onAuthStateChanged !== 'function'){ setTimeout(gate,300); return; }
+  A.onAuthStateChanged(function(u){
+    if (!u) return;
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      if (can(role, 'publishMenu') || e) return;
+      document.querySelector('.wrap').style.display = 'none';
+      document.getElementById('savebar').style.display = 'none';
+      var home = homeFor(role);
+      if (home) location.replace(home);
+      else document.body.insertAdjacentHTML('afterbegin',
+        '<div style="padding:16px;font-family:Helvetica,Arial,sans-serif;font-size:12px">' +
+        'This login has no access to Menu Dietaries. See the manager.</div>');
+    });
+  });
+})();
+
   var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
   var COURSES = [['bread','Bread'],['entree','Entr\u00e9e'],['main','Main'],['dessert','Dessert']];
   var DEFAULTS = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',

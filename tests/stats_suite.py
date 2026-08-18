@@ -35,14 +35,17 @@ def dkey(n):
 def weekday(n):
     return (now - datetime.timedelta(days=n)).strftime("%A")
 
-SDK = """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
+def sdk(email="staff@x"):
+    return """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
 auth:function(){ if(!window.firebase.__i) throw new Error("no app"); return window.__A;}};
-window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:'staff@x',
+window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:'%s',
 getIdToken:function(){return Promise.resolve('T');}});},20);},
-onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'staff@x'});},25);},
-signOut:function(){}};"""
+onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'%s'});},25);},
+signOut:function(){}};""" % (email, email)
+SDK = sdk()
 
-STAFF = {"staff@x": {"name": "Admin", "role": "admin"}}
+STAFF = {"staff@x": {"name": "Admin", "role": "admin"},
+         "housekeeping@x": {"name": "HK", "role": "housekeeping"}}
 
 STATE = {"dinner": {}, "responses": {}, "menuhistory": {}, "fail": None}
 
@@ -79,9 +82,9 @@ from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b = p.chromium.launch()
 
-    def open_stats(w=390):
+    def open_stats(w=390, email="staff@x"):
         pg = b.new_page(viewport={"width": w, "height": 900})
-        pg.add_init_script(SDK)
+        pg.add_init_script(sdk(email))
         pg.route("**/*.firebasedatabase.app/**", fb)
         pg.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.goto("http://localhost:8972/stats.html")
@@ -253,6 +256,14 @@ with sync_playwright() as p:
        "1 night" in pg.inner_text("#range")
        and pg.inner_text("#hCovers").strip() == "2")
     pg.close()
+
+    # ── who may read the numbers ──────────────────────────────
+    STATE["dinner"] = {dkey(1): {"1": cell(pax=2)}}
+    q = open_stats(email="housekeeping@x")
+    q.wait_for_timeout(700)
+    ck("housekeeping is sent to their own board rather than the numbers",
+       not q.url.endswith("stats.html"))
+    q.close()
 
     # ── phone geometry and the way back ───────────────────────
     STATE["dinner"] = {dkey(1): {"1": cell(pax=2, diets=["Gluten free"])}}
