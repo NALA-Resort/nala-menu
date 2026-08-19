@@ -268,6 +268,21 @@ most. Nothing there has been done.
 - **Nothing reports the sync stopping.** If the Zap dies the boards do not go
   red, they show fewer bookings, which looks like a quiet week. Needs a
   heartbeat, which needs a Zapier schedule trigger to be honest.
+
+  **This is also why the Cleans board says Unknown rather than Empty** for a
+  villa with no booking on either night, and the reasoning is worth keeping
+  because it looks like a missing feature. Mews only ever tells us about
+  reservations, so there is no positive signal for a vacant villa: absence is
+  the only evidence available, and absence cannot tell a quiet night from a
+  broken sync. On 19 Aug every reservation write was being refused, `/stays`
+  genuinely held nothing, and a board willing to read absence as vacant would
+  have reported seventeen empty villas with total confidence.
+
+  A heartbeat is what would earn it. With the Worker recording its last
+  successful run, absence becomes conditional: no booking and a sync twenty
+  minutes old is vacant; no booking and a sync from yesterday is unknown, and
+  says so loudly. Until then Unknown is the honest answer and "Mark as empty"
+  is the manager saying what the data cannot.
 - **The notification Worker is not in this repo.** It holds the VAPID key and
   exists only on the owner's machine. If lost, a working feature cannot be
   rebuilt.
