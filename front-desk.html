@@ -1003,24 +1003,37 @@ function openGuest(r){
   /* Both buttons run the same checks and the same save. The only difference is
      whether the guest is standing there. */
   function finish(checkin){
-    /* Confirmed means a dining status exists. Saving without one would put a
-       guest in the Arrived section wearing a grey fork, which reads as
-       assumed dining and unconfirmed at the same time. Dietary is asked for
-       too: "no allergies to declare" is a positive answer and the point of
-       going through this at the desk is to have asked. */
     /* Read before checking, not after. The note is part of the answer when
        Other is chosen, and a check that runs before the field is read is
        checking the value from the last time the sheet was opened. */
     a.dnote = document.getElementById('fDnote').value.trim();
     a.arriveNote = document.getElementById('fEtaNote').value.trim();
 
-    var missing = [];
-    if (a.dining === null) missing.push('dining');
-    if (!a.noDiets && !a.diets.length) missing.push('dietary');
-    /* Other with an empty note tells the kitchen nothing at all, which is
-       worse than the answer nobody gave, because it looks like one. */
-    else if (hasOther() && !a.dnote) missing.push('othernote');
-    if (missing.length) return flagMissing(missing);
+    /* The required answers are required at CHECK IN, not at every save.
+       Reception adds what they hear across the day: a dietary in the morning,
+       an arrival time when the guest rings at noon. Refusing to keep any of it
+       until all of it exists means it gets written on paper instead, which is
+       the thing this screen replaces.
+
+       Check in is different. The guest is standing there, it is the last
+       moment anyone will ask, and a guest sent to their villa with no dining
+       answer is a cover the kitchen never hears about. So the questions are
+       asked once, at the point they can still be answered. */
+    if (checkin){
+      var missing = [];
+      if (a.dining === null) missing.push('dining');
+      if (!a.noDiets && !a.diets.length) missing.push('dietary');
+      /* Other with an empty note tells the kitchen nothing at all, which is
+         worse than the answer nobody gave, because it looks like one. */
+      else if (hasOther() && !a.dnote) missing.push('othernote');
+      if (missing.length) return flagMissing(missing);
+    } else if (hasOther() && !a.dnote){
+      /* The one check that survives a partial save. Other means the answer is
+         in the note, so Other with an empty note is not an incomplete answer,
+         it is a wrong one: it tells the kitchen there is something to know and
+         never says what. */
+      return flagMissing(['othernote']);
+    }
 
     a.pax      = pax;
     a.occasion = document.getElementById('fOcc').value.trim();
@@ -1120,24 +1133,35 @@ function save(r, a, checkin){
 
   var before = r.pre, beforeCell = r.cell;
   r.pre  = Object.assign({}, r.pre || {}, payload);  /* optimistic */
-  r.cell = dinnerCell(r, a);
+  /* Only when there is a dining answer to show. Building the cell first and
+     putting it back after would paint the guest as not dining for the frame
+     between the two. */
+  if (a.dining !== null) r.cell = dinnerCell(r, a);
   OPEN = null;
   render(); closeSheet();
 
   /* Both writes or neither. A confirmation the chef never sees is worse than
      one that visibly failed, so the guest is put back if either half is
      rejected rather than left looking confirmed on a board nobody else has. */
-  Promise.all([
+  /* No dining answer, no dinner cell. The cell has to say in or out, and there
+     is no third value, so writing one for a guest nobody has asked yet would
+     put them on the kitchen's board as not dining. That is a worse lie than
+     silence: the board would show a decision nobody made. A partial save keeps
+     everything else and leaves the cell alone until somebody answers. */
+  var writes = [
     fetch(DB + '/bookings/' + r.stay.id + '/prearrival.json', {
       method: 'PATCH', headers: { 'Content-Type':'application/json' },
       body: JSON.stringify(payload)
-    }),
-    fetch(DB + '/dinner/' + nav.todayKey() + '/' + r.villa + '.json', {
+    })
+  ];
+  if (a.dining !== null){
+    writes.push(fetch(DB + '/dinner/' + nav.todayKey() + '/' + r.villa + '.json', {
       method: 'PUT', headers: { 'Content-Type':'application/json' },
       body: JSON.stringify(dinnerCell(r, a))
-    })
-  ]).then(function(res){
-    if (!res[0].ok || !res[1].ok) throw new Error('save');
+    }));
+  }
+  Promise.all(writes).then(function(res){
+    if (res.some(function(x){ return !x.ok; })) throw new Error('save');
   }).catch(function(){
     r.pre = before; r.cell = beforeCell;   /* put it back rather than lie */
     render();

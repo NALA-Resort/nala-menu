@@ -584,15 +584,20 @@ with sync_playwright() as p:
     pg.close()
     TAGS.clear(); TAGS.update({"main": ["Nut allergy"]})
 
-    # ── confirming needs an answer ──────────────────────────────
-    # Confirmed means a dining status exists. Saving without one would put a
-    # guest in Arrived wearing a grey fork, which reads as assumed dining and
-    # confirmed at the same time.
+    # ── checking in needs an answer ─────────────────────────────
+    # These used to be asked at every save, including Confirm arriving, which
+    # meant reception could not write down what they heard across the day: a
+    # dietary at nine, an arrival time at noon. The form kept none of it until
+    # all of it existed, so it went on paper instead.
+    #
+    # They are asked at CHECK IN, the last moment anyone still can, where a
+    # guest sent to their villa with no dining answer is a cover the kitchen
+    # never hears about.
     pg = board()
     pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
     del WRITES[:]
-    pg.locator("#sConfirm").click(); pg.wait_for_timeout(400)
-    ck("confirming a blank guest saves nothing",
+    pg.locator("#sCheckin").click(); pg.wait_for_timeout(400)
+    ck("checking in a blank guest saves nothing",
        len([x for x in WRITES if "/prearrival" in x["u"]]) == 0)
     ck("and says what is missing rather than doing nothing",
        "dinner and dietaries" in pg.locator("#sMiss").inner_text())
@@ -602,14 +607,14 @@ with sync_playwright() as p:
     pg.locator("#sOut").click(); pg.wait_for_timeout(200)
     ck("answering one clears the warning", pg.evaluate(
        "()=>sMiss.className.indexOf('show')<0"))
-    pg.locator("#sConfirm").click(); pg.wait_for_timeout(400)
+    pg.locator("#sCheckin").click(); pg.wait_for_timeout(400)
     ck("but the other is still required",
        len([x for x in WRITES if "/prearrival" in x["u"]]) == 0 and
        "dietaries" in pg.locator("#sMiss").inner_text())
     # "None to declare" is a positive answer, so it satisfies the requirement
     pg.evaluate("()=>[...document.querySelectorAll('#dNone .chip')][0].click()")
     pg.wait_for_timeout(200)
-    pg.locator("#sConfirm").click(); pg.wait_for_timeout(500)
+    pg.locator("#sCheckin").click(); pg.wait_for_timeout(500)
     ck("no allergies to declare counts as having asked",
        len([x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]) == 1)
     pg.close()
@@ -835,6 +840,73 @@ with sync_playwright() as p:
     # The answers are still confirmed: only where the guest is has changed.
     ck("without throwing away the answers that were confirmed",
        bool(sent) and all(d.get("confirmedAt") for d in sent))
+    pg.close()
+
+    # ── adding what you hear, when you hear it ──────────────────────────
+    # The required answers used to be required at every save, so reception
+    # could not write down a dietary at nine and an arrival time at noon: the
+    # form refused to keep any of it until all of it existed, and it went on
+    # paper instead, which is the thing this screen replaces.
+    #
+    # They are required at CHECK IN, which is the last moment anyone can still
+    # ask, and where a guest sent to their villa with no dining answer is a
+    # cover the kitchen never hears about.
+    # Villa 14 has a stay and no pre-arrival at all, so nothing has been
+    # answered for it. Earlier blocks answer villa 2, and a test that inherits
+    # another test's answers is testing the order they ran in.
+    PRE.pop("b14", None)
+    pg = board()
+    pg.locator('.arr[data-villa="14"]').click(); pg.wait_for_timeout(600)
+    if pg.evaluate("()=>!!document.querySelector('.sum-btns [data-act=edit]')"):
+        pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+        pg.wait_for_timeout(600)
+
+    pg.evaluate("""()=>[...document.querySelectorAll('#eChips button')]
+        .find(b=>/Around 3pm/.test(b.textContent)).click()""")
+    pg.wait_for_timeout(200)
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(900)
+    saved = [json.loads(x["b"]) for x in WRITES if x["b"] and "/prearrival" in x["u"]]
+    ck("an arrival time alone can be saved, with nothing else answered",
+       bool(saved) and saved[0].get("arriveSlot") == "15")
+    # No dining answer, no dinner cell. The cell has to say in or out and there
+    # is no third value, so writing one for a guest nobody has asked yet puts
+    # them on the kitchen's board as NOT dining: a decision nobody made.
+    ck("and no dinner cell is written for a guest nobody has asked yet",
+       not [x for x in WRITES if "/dinner/" in x["u"]])
+    pg.close()
+
+    # Check in still insists, because it is the last moment to ask.
+    PRE.pop("b14", None)
+    pg = board()
+    pg.locator('.arr[data-villa="14"]').click(); pg.wait_for_timeout(600)
+    if pg.evaluate("()=>!!document.querySelector('.sum-btns [data-act=edit]')"):
+        pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+        pg.wait_for_timeout(600)
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sCheckin').click()")
+    pg.wait_for_timeout(700)
+    ck("checking in with nothing answered saves nothing", not WRITES)
+    ck("and says what is still needed",
+       pg.evaluate("()=>document.getElementById('sMiss').textContent").strip() != "")
+
+    # The one check that survives a partial save: Other means the answer is in
+    # the note, so Other with an empty note is not an incomplete answer, it is
+    # a wrong one. It tells the kitchen there is something to know and never
+    # says what.
+    pg.evaluate("""()=>[...document.querySelectorAll('#dNone button')]
+        .find(b=>b.textContent.trim()==='Other').click()""")
+    pg.wait_for_timeout(250)
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(700)
+    ck("even a partial save refuses Other with an empty note", not WRITES)
+    pg.fill("#fDnote", "Severe sesame allergy")
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(900)
+    ck("and keeps it once the note is there", bool(WRITES))
     pg.close()
 
     b.close()
