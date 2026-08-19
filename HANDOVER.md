@@ -46,6 +46,25 @@ explanation goes in the commit message, which is kept and can be read later. A
 long reply is not thoroughness, it is work the user has to do. This is the
 thing the user has asked for most often, so it is first on the list.
 
+**Give an estimate before starting any fix or upgrade.** One line, before the
+first edit, split three ways: writing, verifying, publishing. Say what would
+make it longer.
+
+    Roughly: 5 min to write, 5 min of suites, 1 min to publish. Longer if the
+    rules need a change, because that needs a paste into the console.
+
+This is a rule because of what happened on 19 Aug. A seventy line fix took
+thirty minutes, the user had opted into it mid-conversation believing it was
+small, and it WAS small: the time went on suites run one at a time and on a
+suite that hung. None of that was visible from outside, so a fix that was
+proceeding normally was indistinguishable from one that had gone wrong. The
+estimate is not a promise about speed. It is what lets the user tell those two
+apart, and decide whether to spend the time at all before it is already spent.
+
+Update the estimate out loud when it moves, and say why. An estimate that
+silently doubles is worse than none, because it teaches the user to stop
+believing the next one.
+
 **Publish with `tools/push.py`.** Set `FILES` and `MSG`, run it, one commit.
 It can add and update but **cannot delete**: use `tools/rm.py` for that. A
 deletion that looks published and is not cost hours on 17 Aug.
@@ -61,11 +80,33 @@ Worker's payload and `rules.json` in step, since nothing else does.
 since your last push. Written for a period when two chats published here; that
 ended on 18 Aug, but the guard is kept against a stale clone.
 
-**Run every suite before publishing.** Seventeen page suites, about 1200
-assertions,
-in `tests/`. See `tests/README.md`. They take about half an hour; publishing
-without them is how the printed sheet went blind for two commits without a
-single test failing.
+**Run the suites with `python3 tests/run.py`.** One command, runs them in
+parallel, prints a table. Do not type them out one at a time: that is what made
+a seventy line change cost half an hour on 19 Aug, and it was never the app
+being slow, only the habit of running independent things in sequence.
+
+    python3 tests/run.py              # everything except the demo check
+    python3 tests/run.py --changed    # only what covers your modified files
+    python3 tests/run.py tally index  # by name
+
+Still run everything before a publish. The point of the runner is that doing so
+now costs minutes rather than half an hour, so there is no longer a reason to
+skip it. Publishing without them is how the printed sheet went blind for two
+commits without a single test failing.
+
+Every suite has a timeout and a suite that stops is reported as `TIMEOUT`
+rather than stalling the session. `sweep_suite` hung twice on 19 Aug and cost
+thirty minutes of waiting, because it holds its output to the end and a hang
+looks exactly like slow progress from outside.
+
+**The demo sheets are rebuilt on request, not on every change.** They are
+built from the real pages by `tools/make-demo.py`, and any change to a sheet
+leaves them behind. That is expected and it is not a reason to hold up a fix to
+the live app: nobody is looking at a demo during service. `tests/run.py` ends
+every run with a line saying how many have drifted, so it can never be a
+surprise, and `demo_suite` is out of the default run. When somebody asks for a
+demo, run the builder and publish the four files with whatever else is going
+out.
 
 **Mock up before you build anything visual.** Render it at 390pt, check 360,
 do not break at 320. `STYLEGUIDE.md` first, always.

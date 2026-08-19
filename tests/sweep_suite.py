@@ -33,7 +33,10 @@ sandbox's patience.
 import threading, http.server, socketserver, json, time, os, sys, datetime, hashlib
 
 os.chdir('/home/claude/nala')
-PORT = 8973
+# Overridable so several sweeps can run at once, one per page. Hard coded, the
+# second copy dies on "Address already in use" before it has loaded anything,
+# which reads as a broken page rather than a busy port.
+PORT = int(os.environ.get("SWEEP_PORT", "8973"))
 
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass

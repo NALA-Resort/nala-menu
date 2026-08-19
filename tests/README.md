@@ -1,8 +1,28 @@
 # Verification suites
 
 Playwright suites with a fully mocked Firebase (auth SDK stubbed, every
-database route intercepted, writes captured and inspected). Run from the
-repo root with a local copy of the site:
+database route intercepted, writes captured and inspected).
+
+## Run them all at once
+
+    python3 tests/run.py              # everything except the demo check
+    python3 tests/run.py --changed    # only what covers your modified files
+    python3 tests/run.py tally index  # by name
+    python3 tests/run.py --demos      # include the demo drift check
+
+The suites are independent: each owns its port, its browser and its stubbed
+database. Nothing was making them serial except the habit of typing them out
+one after another, which is what made them feel like a reason to skip them.
+
+Every suite has a timeout, and one that stops is reported as `TIMEOUT` with a
+name on it. Before that existed, a hang and slow progress looked identical from
+outside, because every suite holds its output until the end.
+
+The demo drift check is not in the default run. See the bottom of this file.
+
+## Or one at a time
+
+Run from the repo root with a local copy of the site:
 
     python3 tests/tally_suite.py     # 87  - Reservations
     python3 tests/list_suite.py      # 42  - Reservations Sheet (incl. Safari-fraction regression)
@@ -66,6 +86,17 @@ order-independence of seating vs reservations. wk_harness.py loads res
 tally in WebKitGTK (Safari's engine) at 390pt and prints layout geometry.
 
 ## Offline demo sheets
+
+**Rebuilt on request, not on every change.** They are built from the real
+pages, so any change to a sheet leaves them behind, and `demo_suite` fails the
+moment that happens. That is the check doing its job, and it is still the wrong
+thing to hold a publish on: the demos are shown to somebody who is not going to
+sign in, and nobody looks at one during service.
+
+So `demo_suite` is out of the default run, and `tests/run.py` instead ends with
+a line saying how many have drifted. The drift is reported every run and never
+blocks one. When somebody asks for a demo, rebuild and publish the four files
+with whatever else is going out.
 
     python3 tools/make-demo.py
 

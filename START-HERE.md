@@ -172,17 +172,58 @@ a function called but never defined, twice, and a duplicated fixture key that
 silently overrode the first. Use edits that error on no match, and check each
 one landed.
 
-**Run every suite before publishing.** Seventeen page suites in `tests/`, plus
-`worker/test.mjs`, `tests/rules_test.js` and `tests/matrix_probe.js`, about 1200
-assertions. Two of the seventeen are not about one page: `sweep_suite.py`
-presses every control on every page as every role and checks the three phone
-widths, and `demo_suite.py` catches the demo sheets drifting from the pages
-they copy. `/home/claude/runall.sh` runs the lot, but the whole run exceeds the
-sandbox command timeout, so run them in batches of three or four. The printed
-sheet went blind to a whole node for two commits with everything green, because
-nothing tested screen and paper agreeing.
+**Give an estimate before starting any fix or upgrade.** One line, before the
+first edit, split three ways: writing, verifying, publishing. Say what would
+make it longer, and say it out loud again if it moves.
 
-The two node suites need `npm install targaryen` in the repo root once.
+    Roughly: 5 min to write, 5 min of suites, 1 min to publish. Longer if
+    rules.json changes, because that needs a paste into the console.
+
+On 19 Aug a seventy line fix took thirty minutes. The user had agreed to it
+mid conversation believing it was small, and it was: the time went on suites
+run one at a time and on output that looked hung. From outside, a fix going
+normally and a fix gone wrong were indistinguishable. The estimate is not a
+promise about speed, it is what lets the user tell those apart and decide
+whether to spend the time before it is already spent.
+
+**Run every suite before publishing, with one command.**
+
+    python3 tests/run.py              # everything except the demo check
+    python3 tests/run.py --changed    # only what covers your modified files
+
+Do NOT type the suites out one at a time and do NOT run them in batches. That
+is what every chat before 19 Aug did, and it is why a seventy line fix cost
+half an hour: the app was never the slow part, the habit was. The suites are
+independent, so the runner runs them in parallel, gives each a timeout, and
+prints one table. It exits non zero if anything failed.
+
+Run it in the background and poll, because a full run still takes longer than
+the sandbox command timeout:
+
+    (setsid python3 -u tests/run.py > /home/claude/run.log 2>&1 &)
+
+The `-u` matters. Without it Python buffers the output, the log sits still for
+minutes, and a run that is working looks exactly like one that has hung. That
+cost half an hour on 19 Aug chasing a hang that did not exist.
+
+Two suites are not about one page. `sweep_suite.py` presses every control on
+every page as every role and checks the three phone widths; the runner splits
+it into twelve jobs, one per page, because whole it takes longer than every
+other suite combined. `demo_suite.py` catches the demo sheets drifting, and is
+deliberately NOT in the default run: see the demo note below.
+
+The printed sheet went blind to a whole node for two commits with everything
+green, because nothing tested screen and paper agreeing.
+
+The node suites need `npm install targaryen` in `tests/` once.
+
+**The demo sheets are rebuilt on request, not on every change.** They are built
+from the real pages by `tools/make-demo.py`, so every change to a sheet leaves
+them behind. Do not fix that as a matter of course. Nobody looks at a demo
+during service, and holding a live fix while a demo regenerates spends real
+time on nothing. `tests/run.py` ends every run with a line saying how many have
+drifted, so it stays visible; rebuild and publish the four files when somebody
+actually asks for a demo.
 
 **A failed read is not an empty node.** Clean Slate reported zero records for
 four nodes it could not read, said it had succeeded, and deleted nothing.
