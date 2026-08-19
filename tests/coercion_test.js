@@ -187,5 +187,26 @@ ck('and separates purposes the same way the staff copy does',
    (guest.match(/PURPOSE_SEP\s*=\s*'([^']*)'/) || [])[1] ===
    (shared.match(/PURPOSE_SEP\s*=\s*'([^']*)'/) || [])[1]);
 
+/* ── the short name on the Cleans board ──────────────────────────────
+ * This was initials, and initials do not work here: the staff record holds
+ * ONE name field, and most of them are a single first name, so nearly
+ * everybody came out as one letter. B is not a person, and it reached a real
+ * board before anybody noticed, because the fixtures all used two names.
+ */
+eval(grab('shortNameOf'));
+[['Ben Doyle', 'BEN'],
+ ['Ana',       'ANA'],      // the case initials got wrong
+ ['Jo',        'JO'],       // shorter than three, taken as it is
+ ['bo',        'BO'],
+ ['  Ana Ruiz ', 'ANA'],    // stray spaces from a typed field
+ ['',          ''],
+ [null,        ''],
+ [undefined,   '']].forEach(function (pair) {
+  ck('a staff name of ' + JSON.stringify(pair[0]) + ' reads as ' +
+     JSON.stringify(pair[1]), shortNameOf(pair[0]) === pair[1]);
+});
+ck('two people with different first names do not collide',
+   shortNameOf('Ana') !== shortNameOf('Ben'));
+
 console.log('RESULT: ' + P + ' passed, ' + F + ' failed');
 process.exit(F ? 1 : 0);

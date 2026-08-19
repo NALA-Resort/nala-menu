@@ -1302,15 +1302,19 @@ function displayNameOf(user){
   return String(e).split('@')[0];
 }
 
-/* Initials, for a board where the space is a tile. Two letters from two words,
-   one from a single name: a made up second initial would be somebody else's.
-   Falls back to nothing rather than to a guess, and the caller drops the
-   whole phrase when there is nothing to show. */
-function initialsOf(name){
-  var parts = String(name == null ? '' : name).trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return '';
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+/* A short tag for a person, for a board where the space is a tile.
+
+   This was initials, and initials do not work here: the staff record holds ONE
+   name field, and most of them are a single first name, so nearly everybody
+   came out as one letter. B is not a person.
+
+   First three letters of the first word instead. Ben Doyle is BEN, Ana is ANA,
+   Jo is JO. Predictable, and it reads as a name rather than as a code. Falls
+   back to nothing rather than to a guess, and the caller drops the whole
+   phrase when there is nothing to show. */
+function shortNameOf(name){
+  var first = String(name == null ? '' : name).trim().split(/\s+/)[0] || '';
+  return first.slice(0, 3).toUpperCase();
 }
 
 function roleOf(user){
@@ -1969,10 +1973,10 @@ function render(){
          only line about the villa itself. */
       if (h.pushed) sub='To tomorrow';
       else if (h.done){
-        /* Who finished it, in initials: a finished board that cannot say who
-           did the work is a board you have to ask about. Older records carry
-           no name, so the phrase drops rather than showing an empty by. */
-        var who = initialsOf(h.doneBy);
+        /* Who finished it, shortened: a finished board that cannot say who did
+           the work is a board you have to ask about. Older records carry no
+           name, so the phrase drops rather than showing an empty by. */
+        var who = shortNameOf(h.doneBy);
         sub = who ? 'Done by '+esc(who)+' '+hhmm(h.done) : 'Done '+hhmm(h.done);
       }
       else if (h.departed || row.pushedIn) sub='Departed';
@@ -1997,7 +2001,7 @@ function render(){
       badge = '<span class="who-badge'+(mine ? ' mine' : '')+'"'+
               ' title="'+esc(h.takenBy)+' is on this villa"'+
               ' aria-label="'+esc(h.takenBy)+' is on this villa">'+
-              esc(initialsOf(h.takenBy) || h.takenBy)+'</span>';
+              esc(shortNameOf(h.takenBy) || h.takenBy)+'</span>';
     }
     /* The badge is drawn in the corner but comes last in the markup, so the
        tile still READS villa, job, state, person. Put first, the tile's text

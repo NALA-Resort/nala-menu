@@ -661,10 +661,10 @@ function render(){
          only line about the villa itself. */
       if (h.pushed) sub='To tomorrow';
       else if (h.done){
-        /* Who finished it, in initials: a finished board that cannot say who
-           did the work is a board you have to ask about. Older records carry
-           no name, so the phrase drops rather than showing an empty by. */
-        var who = initialsOf(h.doneBy);
+        /* Who finished it, shortened: a finished board that cannot say who did
+           the work is a board you have to ask about. Older records carry no
+           name, so the phrase drops rather than showing an empty by. */
+        var who = shortNameOf(h.doneBy);
         sub = who ? 'Done by '+esc(who)+' '+hhmm(h.done) : 'Done '+hhmm(h.done);
       }
       else if (h.departed || row.pushedIn) sub='Departed';
@@ -689,7 +689,7 @@ function render(){
       badge = '<span class="who-badge'+(mine ? ' mine' : '')+'"'+
               ' title="'+esc(h.takenBy)+' is on this villa"'+
               ' aria-label="'+esc(h.takenBy)+' is on this villa">'+
-              esc(initialsOf(h.takenBy) || h.takenBy)+'</span>';
+              esc(shortNameOf(h.takenBy) || h.takenBy)+'</span>';
     }
     /* The badge is drawn in the corner but comes last in the markup, so the
        tile still READS villa, job, state, person. Put first, the tile's text

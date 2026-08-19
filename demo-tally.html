@@ -1370,15 +1370,19 @@ function displayNameOf(user){
   return String(e).split('@')[0];
 }
 
-/* Initials, for a board where the space is a tile. Two letters from two words,
-   one from a single name: a made up second initial would be somebody else's.
-   Falls back to nothing rather than to a guess, and the caller drops the
-   whole phrase when there is nothing to show. */
-function initialsOf(name){
-  var parts = String(name == null ? '' : name).trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return '';
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+/* A short tag for a person, for a board where the space is a tile.
+
+   This was initials, and initials do not work here: the staff record holds ONE
+   name field, and most of them are a single first name, so nearly everybody
+   came out as one letter. B is not a person.
+
+   First three letters of the first word instead. Ben Doyle is BEN, Ana is ANA,
+   Jo is JO. Predictable, and it reads as a name rather than as a code. Falls
+   back to nothing rather than to a guess, and the caller drops the whole
+   phrase when there is nothing to show. */
+function shortNameOf(name){
+  var first = String(name == null ? '' : name).trim().split(/\s+/)[0] || '';
+  return first.slice(0, 3).toUpperCase();
 }
 
 function roleOf(user){

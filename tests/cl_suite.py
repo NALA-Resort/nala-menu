@@ -1455,8 +1455,8 @@ with sync_playwright() as p:
 
     mine = badge(q, "3")
     ck("a claimed villa carries a badge rather than a line to read", bool(mine))
-    ck("the badge is initials, so it says who as well as that somebody is on it",
-       bool(mine) and mine["txt"] == "A")
+    ck("the badge names them, so it says who as well as that somebody is on it",
+       bool(mine) and mine["txt"] == "ANA")
     # Yours is inverted rather than coloured: colour on this board means which
     # job, and a second meaning for one signal is how a board stops reading.
     ck("and your own is marked out without borrowing a job colour",
@@ -1471,8 +1471,8 @@ with sync_playwright() as p:
 
     q = as_cleaner("bo@x")
     theirs = badge(q, "3")
-    ck("somebody else's badge shows their initials, plainly not yours",
-       bool(theirs) and theirs["txt"] == "A" and not theirs["mine"])
+    ck("somebody else's badge names them, plainly not yours",
+       bool(theirs) and theirs["txt"] == "ANA" and not theirs["mine"])
     q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
                ".find(t=>t.innerText.startsWith('3')).click()")
     q.wait_for_timeout(400)
@@ -1591,10 +1591,13 @@ with sync_playwright() as p:
 
     # Who did it. A finished board that cannot say who did the work is a board
     # you have to ask about.
-    ck("a finished villa says who finished it, in initials",
-       "Done by BD" in look["1"]["sub"])
-    ck("a single name gives one initial rather than an invented second",
-       "Done by A " in look["9"]["sub"])
+    # Initials were tried first and do not work here: the staff record holds
+    # ONE name field and most of them are a single first name, so nearly
+    # everybody came out as one letter. B is not a person.
+    ck("a finished villa says who finished it",
+       "Done by BEN" in look["1"]["sub"])
+    ck("a single name shortens the same way as a full one",
+       "Done by ANA" in look["9"]["sub"])
     # Older records carry no name at all, so the phrase has to drop rather
     # than print an empty by.
     ck("and a record with no name says only when",
