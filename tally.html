@@ -1011,9 +1011,18 @@ function render(){
         var st = document.createElement('div');
         st.className = 'row stubrow';
         var kn = roomguests[String(r.room)] || {};
+        /* The dietaries belong to the person, not to the night, so a villa
+           that has not answered TONIGHT still shows its allergy. Without this
+           the allergy looked stuck to the date it was typed on: flip the board
+           a day forward, the villa turns into an awaiting stub, and the stub
+           said nothing but the name. */
+        var od = overlayReservationDiets({}, r.room);
+        var dline = (od.diets && od.diets.length)
+          ? '<div class="row-sub">' + dietHTML(od.diets) +
+            (od.dnote ? ' \u00b7 ' + od.dnote : '') + '</div>' : '';
         st.innerHTML = '<div><div class="row-name"><span class="rm">'+r.room+'</span>'+
           (kn.name ? '  '+kn.name : '')+'</div>'+
-          '<div class="row-sub">Awaiting reply</div></div>';
+          '<div class="row-sub">Awaiting reply</div>'+dline+'</div>';
         host.appendChild(st);
         return;
       }
@@ -1036,13 +1045,18 @@ function render(){
 
     var sub = [];
     var dietLine = '';
-    /* Tonight's dietaries only. One carried over from an earlier night is not
-       an answer to tonight's invitation and must not sit on the row as though
-       it were: it goes in the bubble, under its own heading, where it is
-       labelled as previous. */
-    var tonightDiets = g.dineDiets || [];
-    if (tonightDiets.length) {
-      dietLine = '<div class="dietline">' + tonightDiets.map(function(x){
+    /* The person's dietaries, wherever they were typed. This block used to
+       show tonight's answer only, on the old rule that a carried-over dietary
+       was not an answer to tonight's invitation. NOTES-AUDIT.md corrected the
+       model: there is one dietary list per person and it lives on the
+       reservation, because an allergy is not true on Tuesday and false on
+       Wednesday. g.diets already carries reservation-first with the night as
+       fallback; a row that hid it until somebody re-typed it tonight was the
+       bug. The menu conflict check runs on the same list, since the kitchen
+       cooks for the person, not for the night's paperwork. */
+    var personDiets = (g.diets && g.diets.length) ? g.diets : (g.dineDiets || []);
+    if (personDiets.length) {
+      dietLine = '<div class="dietline">' + personDiets.map(function(x){
         var al = ALLERGENS.indexOf(x) > -1 || /allerg/i.test(x);
         var label = al ? x.replace(/\s*allergy\s*/i,'') : x;
         return '<span class="dpill'+(al?' dpill-al':'')+'">'+label+'</span>';
@@ -1050,7 +1064,7 @@ function render(){
     } else if (g.nodiet) { sub.push('No dietaries confirmed'); }
 
 
-    var hits = menuConflicts(MENU, tonightDiets);
+    var hits = menuConflicts(MENU, personDiets);
     var hasNotes = !!(g.dineNote || g.dineDnote ||
                       g.prevNote || g.prevDnote || (g.prevDiets || []).length);
 
@@ -1581,7 +1595,12 @@ function loadPrearrival(known, panel, g){
 function editRoomDetails(n, st){
   var g = st.g || {};
   var known = (roomguests[String(n)]||{});
-  var diets = (g.diets || []).slice();
+  /* The chips open showing the person's dietaries, wherever they were typed.
+     The night's record wins when it has any, then the reservation. Opening
+     blank on a villa that answered last week is what made an allergy look
+     stuck to the date it was typed on. */
+  var od = overlayReservationDiets({}, n);
+  var diets = ((g.diets && g.diets.length) ? g.diets : (od.diets || [])).slice();
   sheet.innerHTML =
     '<h3>Villa '+n+' \u00b7 details</h3>'+
     '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
