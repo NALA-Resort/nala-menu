@@ -1121,6 +1121,17 @@ function displayNameOf(user){
   return String(e).split('@')[0];
 }
 
+/* Initials, for a board where the space is a tile. Two letters from two words,
+   one from a single name: a made up second initial would be somebody else's.
+   Falls back to nothing rather than to a guess, and the caller drops the
+   whole phrase when there is nothing to show. */
+function initialsOf(name){
+  var parts = String(name == null ? '' : name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '';
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
 function roleOf(user){
   var e = user && (typeof user === 'string' ? user : user.email);
   if (!e || !STAFF_RECORDS) return null;

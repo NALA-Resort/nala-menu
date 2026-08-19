@@ -1482,6 +1482,85 @@ with sync_playwright() as p:
        any('"takenBy":null' in w and '"takenAt":null' in w for w in claim_writes))
     q.close()
 
+    # ── a finished board still has to say what was done ─────────────────
+    # Emptying every finished bar to grey turned a done board into seventeen
+    # identical marks. Hollow says finished; the colour says which job.
+    done_hk = {
+        "1":  {"done": now.isoformat(), "doneBy": "Ben Doyle"},   # a clean
+        "9":  {"done": now.isoformat(), "doneBy": "Ana"},         # a clean + arrival
+        "4":  {"done": now.isoformat()},                          # a service, no name
+        "11": {"done": now.isoformat(), "doneBy": "Ben Doyle"},   # a pre-arrival
+    }
+    def done_fb(route, request):
+        u = request.url
+        if request.method not in ("PUT", "PATCH", "DELETE"):
+            if "/staff" in u:
+                route.fulfill(status=200, content_type="application/json",
+                    body=json.dumps({"bd@nalaresort,com,au":
+                        {"name": "Ben Doyle", "role": "housekeeping"}})); return
+            if "/stays/" + yest in u:
+                route.fulfill(status=200, content_type="application/json",
+                    body=json.dumps({
+                        "1":  {"id": "m", "arrive": plus(-2), "depart": today},
+                        "9":  {"id": "d", "arrive": plus(-2), "depart": today}})); return
+            if "/stays/" + today in u:
+                route.fulfill(status=200, content_type="application/json",
+                    body=json.dumps({
+                        "9":  {"id": "e", "arrive": today,   "depart": plus(1)},
+                        "11": {"id": "i", "arrive": today,   "depart": plus(2)},
+                        "4":  {"id": "h", "arrive": plus(-1), "depart": plus(2)}})); return
+            if "/hk/" + today in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps(done_hk)); return
+            if "/roomguests/" in u or "/responses/" in u or "/manual/" in u \
+               or "/hk/" in u or "/dinner/" in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body="null"); return
+        fb(route, request)
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body=sdk("bd@nalaresort.com.au")))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", done_fb)
+    q.goto("http://localhost:8957/cleaners.html"); q.wait_for_timeout(2100)
+
+    look = q.evaluate("""()=>{const out={};
+      [...document.querySelectorAll('#grid .tile')].forEach(t=>{
+        const c=t.querySelector('.chip'); if(!c) return;
+        const s=getComputedStyle(c);
+        out[t.querySelector('.rn').textContent]={
+          job:c.dataset.job, border:s.borderColor,
+          filled:s.backgroundColor!=='rgba(0, 0, 0, 0)',
+          striped:s.backgroundImage.indexOf('gradient')>-1,
+          sub:t.querySelector('.sub').textContent};});
+      return out;}""")
+    print("   finished board:", look)
+
+    ck("a finished clean is hollow but still a clean's colour",
+       look["1"]["border"] == "rgb(138, 144, 168)" and not look["1"]["filled"])
+    ck("a finished service is hollow but still a service's colour",
+       look["4"]["border"] == "rgb(126, 147, 122)" and not look["4"]["filled"])
+    ck("a finished pre-arrival keeps its own colour too",
+       look["11"]["border"] == "rgb(194, 154, 85)" and not look["11"]["filled"])
+    # The one exception to hollow: a finished clean and a finished clean with
+    # an arrival are different pieces of work, and emptying both would make
+    # them the same mark, which is the fault being fixed.
+    ck("a finished clean with an arrival is still told apart from a plain one",
+       look["9"]["striped"] and not look["1"]["striped"])
+
+    # Who did it. A finished board that cannot say who did the work is a board
+    # you have to ask about.
+    ck("a finished villa says who finished it, in initials",
+       "Done by BD" in look["1"]["sub"])
+    ck("a single name gives one initial rather than an invented second",
+       "Done by A " in look["9"]["sub"])
+    # Older records carry no name at all, so the phrase has to drop rather
+    # than print an empty by.
+    ck("and a record with no name says only when",
+       look["4"]["sub"].startswith("Done ") and "by" not in look["4"]["sub"])
+    q.close()
+
     b.close()
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()

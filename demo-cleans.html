@@ -249,8 +249,27 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .tile.ready-clean { background:var(--blue);  border-color:var(--blueb); }
   .tile.ready-svc   { background:var(--green); border-color:var(--greenb); }
   .tile.done   { background:#F2F2EF; border-color:var(--rule); }
-  .tile.done .rn, .tile.done .chip { opacity:.75; }
-  .tile.done .chip { background:transparent; border-color:var(--rule); color:var(--mid); }
+  .tile.done .rn { opacity:.75; }
+  /* Hollow once it is done, but still the colour of the job that was done.
+     Emptying it to grey threw that away: a finished board became seventeen
+     identical marks and there was no way to see WHAT had been done, which is
+     most of what a finished board is for. Hollow says finished, the colour
+     says which job.
+
+     The stripe has to be turned off by hand, since a background image would
+     otherwise sit inside the hollow outline and read as still to do. */
+  .tile.done .chip { background:transparent !important; opacity:.85; }
+  /* The one exception to hollow. A finished clean and a finished clean with an
+     arrival are different pieces of work, and emptying both made them the same
+     mark, which is the fault this change was fixing one line further up. The
+     stripe stays, faded, so it still says which of the two it was. */
+  .tile.done .chip.arr {
+    background:repeating-linear-gradient(45deg,
+      var(--blueb) 0 4px, transparent 4px 8px) !important;
+    opacity:.45; }
+  .tile.done .chip.svc { border-color:var(--greenb); }
+  .tile.done .chip.pre { border-color:var(--amberb); }
+  .tile.done .chip.ver { border-color:var(--mid); }
   /* pushed reads like finished - it is off today's list - but purple says it
      is deferred rather than done                                         */
   .tile.pushed .chip { color:#6B4E9B; border-color:#C7B6E0; }
@@ -1252,6 +1271,17 @@ function displayNameOf(user){
   return String(e).split('@')[0];
 }
 
+/* Initials, for a board where the space is a tile. Two letters from two words,
+   one from a single name: a made up second initial would be somebody else's.
+   Falls back to nothing rather than to a guess, and the caller drops the
+   whole phrase when there is nothing to show. */
+function initialsOf(name){
+  var parts = String(name == null ? '' : name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '';
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
 function roleOf(user){
   var e = user && (typeof user === 'string' ? user : user.email);
   if (!e || !STAFF_RECORDS) return null;
@@ -1907,7 +1937,13 @@ function render(){
         sub = (h.takenBy === window.NALA_ME
                  ? 'You have this' : esc(h.takenBy)+' has this');
       else if (h.pushed) sub='To tomorrow';
-      else if (h.done) sub='Done '+hhmm(h.done);
+      else if (h.done){
+        /* Who finished it, in initials: a finished board that cannot say who
+           did the work is a board you have to ask about. Older records carry
+           no name, so the phrase drops rather than showing an empty by. */
+        var who = initialsOf(h.doneBy);
+        sub = who ? 'Done by '+esc(who)+' '+hhmm(h.done) : 'Done '+hhmm(h.done);
+      }
       else if (h.departed || row.pushedIn) sub='Departed';
       else if (h.bfast){
         var m = mins(h.bfast);
@@ -2220,13 +2256,21 @@ function drawSheet(mode){
                  : CUR.kind==='pre' ? 'pre-arrived' : 'serviced';
     b.innerHTML=head+
       '<div class="st" style="margin-bottom:6px">Mark villa '+n+' as '+doneWord+'?</div>'+
-      '<button class="pbtn solid" onclick="setField('+n+',{done:new Date().toISOString()},document.getElementById(\'perr\'))">'+ICON_TICK+'Yes - '+doneWord+'</button>'+
+      '<button class="pbtn solid" id="doneGo">'+ICON_TICK+'Yes - '+doneWord+'</button>'+
       '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
+    /* Wired rather than serialised into an onclick, so the name can carry an
+       apostrophe without breaking the attribute it is sitting in. */
+    document.getElementById('doneGo').onclick = function(){
+      setField(n, { done: new Date().toISOString(),
+                    doneBy: window.NALA_ME || null },
+               document.getElementById('perr'));
+    };
+    return;
   }
   if (mode==='undone'){
     b.innerHTML=head+
       '<div class="st" style="margin-bottom:6px">Remove the done mark from room '+n+'?</div>'+
-      '<button class="pbtn warn" onclick="setField('+n+',{done:null},document.getElementById(\'perr\'))">Yes - not done</button>'+
+      '<button class="pbtn warn" onclick="setField('+n+',{done:null,doneBy:null},document.getElementById(\'perr\'))">Yes - not done</button>'+
       '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;
   }
   if (mode==='push'){
