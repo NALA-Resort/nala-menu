@@ -217,6 +217,64 @@ The guest's own form should prefill from the booking too, which is seeded from
 `/guests/<customerId>` by the sync, so a returning guest opens their dining
 request with their allergy already ticked.
 
+---
+
+## The four notes, in plain words
+
+Written 19 Aug after the shorthand in this document caused more confusion than
+it saved. Three names are used below and nowhere else:
+
+- **the night** is `/dinner/<date>/<villa>`. One record per villa per evening.
+  It exists only once somebody answers for that date. Tomorrow is a different
+  record and next week is another.
+- **the reservation** is `/bookings/<id>/prearrival`. One record per booking.
+  It lasts the whole stay and ends when the booking does.
+- **the guest** is `/guests/<customerId>`. One record per person in Mews. It
+  survives the booking ending, so it is still there next time they come.
+
+### Where each of the four belongs
+
+| Note | Belongs to | Why |
+|---|---|---|
+| Internal | the reservation | management's record of this stay |
+| Guest note | the reservation | what they told us before this stay |
+| **Dietary** | **the guest** | true of the person, not of an evening |
+| Dinner note | **the night** | true of one evening only |
+
+### The dinner note is the one that SHOULD expire
+
+An example, and it is the reason the distinction matters. The menu goes out and
+it is spicy meatballs. The guest has no allergy at all, but does not like heat,
+so they ask for the spice on the side. That is true of tonight's dish. It must
+not follow them to tomorrow, when the menu is something else, and it must not
+be waiting for them next year as though it were a standing requirement.
+
+A dietary is the opposite. There is no such thing as tonight's allergies being
+different from the guest's allergies. There is **one list per person**. It is
+shown to them for approval, they correct it if it is wrong, and it is the same
+list on every screen and every night.
+
+### What is actually wrong
+
+Dietaries were stored beside the dinner note, on the night, so they inherited
+its lifetime. Everything follows from that one mistake:
+
+- three screens read dietaries from the night, so tomorrow shows none;
+- the same list can disagree with itself between two dates;
+- a returning guest starts empty, having told us already.
+
+### The chain it should be
+
+**guest → reservation → every screen.**
+
+The sync seeds the reservation from the guest record. The guest approves or
+corrects it on their pre-arrival form. Every screen reads that one list. The
+night holds the dinner note and the dining answer, and no dietaries at all.
+
+There is no case where the night should win. That was written down as a caution
+on 19 Aug and it was wrong: it assumed an allergy could be true tonight and not
+tomorrow, and no such thing exists.
+
 ## What to do, in order
 
 1. **Make the reservations board write the dietary to the booking**, as the
