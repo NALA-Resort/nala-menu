@@ -756,6 +756,9 @@ function answersOf(r){
     diets:    ((haveCell && c.diets) ? c.diets : (p.diets || [])).slice(),
     noDiets:  haveCell ? !!c.noDiets : !!p.noDiets,
     dnote:    (haveCell ? c.dnote : p.dnote) || '',
+    /* The desk shows what the guest typed, falling back to what Mews holds:
+       a name entered at booking is still the answer to the same question. */
+    companion: p.companion || (r.pms && r.pms.companion) || '',
     arriveSlot: p.arriveSlot || '',
     arriveNote: p.arriveNote || '',
     purpose:  purposeList(p.purpose),
@@ -795,6 +798,14 @@ function openGuest(r){
        form, and no way to correct one who rang ahead to say they were running
        late. Same slots, same words, so reception and guest are answering the
        same question. */
+    /* Who else is coming. Only for a booking of more than one, and the desk
+       always gets the field even when Mews knows the name, because reception
+       is the one who corrects it. */
+    (Number(r.stay.adults) >= 2
+      ? '<div class="sheet-label">Guest travelling with them</div>' +
+        '<input class="txt" id="fCompanion" type="text" placeholder="Their name" autocomplete="off">'
+      : '') +
+
     '<div class="sheet-label">Arriving</div>' +
     '<div class="chips" id="eChips"></div>' +
     '<input class="txt" id="fEtaNote" type="text" placeholder="Flight, ferry, anything to note" autocomplete="off" style="display:none">' +
@@ -997,6 +1008,8 @@ function openGuest(r){
   paintEta(); paintDining(); paintPax(); paintDiets(); paintNone();
   paintPurpose(); paintApproach(); paintWellness();
   document.getElementById('fEtaNote').value = a.arriveNote || '';
+  var cEl = document.getElementById('fCompanion');
+  if (cEl) cEl.value = a.companion || '';
   paintEta();   /* again, so the note shows if the slot they chose wants one */
 
   document.getElementById('sClose').onclick = closeSheet;
@@ -1008,6 +1021,8 @@ function openGuest(r){
        checking the value from the last time the sheet was opened. */
     a.dnote = document.getElementById('fDnote').value.trim();
     a.arriveNote = document.getElementById('fEtaNote').value.trim();
+    var cf = document.getElementById('fCompanion');
+    a.companion = cf ? cf.value.trim() : (a.companion || '');
 
     /* The required answers are required at CHECK IN, not at every save.
        Reception adds what they hear across the day: a dietary in the morning,
@@ -1109,7 +1124,7 @@ function save(r, a, checkin){
     diets: a.diets, noDiets: a.noDiets, dnote: a.dnote,
     arriveSlot: a.arriveSlot, arriveNote: a.arriveNote,
     purpose: purposeText(a.purpose), approach: a.approach,
-    occasion: a.occasion, wellness: a.wellness,
+    occasion: a.occasion, wellness: a.wellness, companion: a.companion,
     wellDay: a.wellness ? a.wellDay : '', wellTime: a.wellness ? a.wellTime : '',
     note: a.note,
     confirmedAt: new Date().toISOString()

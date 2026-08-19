@@ -255,6 +255,19 @@ function readReservation(p) {
        not keep them. Read by shape as well as name for the same reason as the
        reservation id: the field is CustomerId on the reservation trigger and
        AccountId on some others, and one of them is the wrong person.        */
+    /* The second guest's name, when Mews has it. It usually does not: the
+       companion is normally gathered on the pre-arrival form, and Mews only
+       knows when the booking was taken over the phone and somebody typed it.
+
+       THE FIELD NAME IS A GUESS. Zapier flattens nested Mews objects into keys
+       like "Companions 1 Name", and which index holds the companion rather
+       than the booker has not been confirmed against a real payload. Several
+       plausible shapes are tried; if none match, companion is null and the
+       pre-arrival form asks for it, which is the normal case anyway. Confirm
+       it against one live Zap run before trusting it. */
+    companion:     pick(p, ["Companions 1 Name", "companions_1_name",
+                            "Companion 1 Name", "CompanionName",
+                            "SecondGuestName", "second_guest_name"]),
     customerId:    pickGuid(p, ["CustomerId", "customer_id", "CustomerID",
                                 "AccountId", "customerId"]),
     adults:        pick(p, ["AdultCount", "adults"]),
@@ -425,6 +438,7 @@ export default {
            Only cancellation changes what we do, but the raw value is kept
            rather than discarded: the next question about this data will be
            easier to answer with it than without it. */
+        companion: asText(r.companion, 120),
         mewsState: asText(r.state, 30),
         bookingNumber: asNumberOrText(r.bookingNumber),
         groupId: asText(r.groupId, 64),
@@ -458,6 +472,7 @@ export default {
         id: asText(r.id, 64),
         first: asText(r.first, 120), last: asText(r.last, 120),
         phone: asText(r.phone, 40),
+        companion: asText(r.companion, 120),
         arrive: asText(r.arrive, 40), depart: asText(r.depart, 40),
         adults: asCount(r.adults, 0, 40),
         /* One party can hold several villas: a family booking two of them is

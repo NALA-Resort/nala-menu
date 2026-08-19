@@ -291,10 +291,39 @@ ck('and the same words about how they plan to eat',
 /* Every field the guest can answer must be settable at the desk, or a guest
    with no form has no way to have it recorded. */
 ['arriveSlot', 'arriveNote', 'dining', 'pax', 'diets', 'noDiets', 'dnote',
- 'purpose', 'approach', 'occasion', 'wellness', 'wellDay', 'wellTime', 'note'
+ 'purpose', 'approach', 'occasion', 'wellness', 'wellDay', 'wellTime', 'note',
+ 'companion'
 ].forEach(function (f) {
   ck('the desk saves ' + f, new RegExp('\\b' + f + '\\s*:').test(desk));
 });
+
+/* ── the companion ───────────────────────────────────────────────────
+ * The second guest's name. Usually gathered on the pre-arrival form, but Mews
+ * has it when the booking was taken over the phone, so both forms need it and
+ * the desk has to be able to correct whatever Mews holds.
+ */
+ck('the guest form asks who is coming with them',
+   /id="companion"/.test(guest) && /a\.companion/.test(guest));
+ck('and the desk offers the same field',
+   /id="fCompanion"/.test(desk) && /a\.companion/.test(desk));
+/* Asked only when there is somebody else to name. A booking for one has no
+   companion, and the question would read as nobody having looked. */
+ck('the guest is asked only when the booking is for more than one',
+   /adults\s*>=\s*2/.test(guest));
+ck('and so is the desk', /adults\)\s*>=\s*2/.test(desk));
+/* The rules had $other false on prearrival, so a field they do not name is
+   refused outright: this one needed adding, and needs the console paste. */
+ck('the rules accept it, which they did not before',
+   !!rules.rules.bookings.$id.prearrival.companion);
+ck('a name saves, and something the length of a paragraph does not',
+   db.update('/bookings/' + GUID + '/prearrival', { companion: 'Ana Ruiz' }).allowed
+   && !db.update('/bookings/' + GUID + '/prearrival',
+                 { companion: 'x'.repeat(200) }).allowed);
+/* The Worker's field name is a guess against Zapier's flattening of nested
+   Mews objects, so what is asserted is that it is coerced like everything
+   else: a wrong guess must yield null, never a rejected write. */
+ck('the Worker carries it onto the booking and the night',
+   /companion:\s*asText/.test(fs.readFileSync(path.join(ROOT, 'worker/mews-sync.js'), 'utf8')));
 
 console.log('RESULT: ' + P + ' passed, ' + F + ' failed');
 process.exit(F ? 1 : 0);

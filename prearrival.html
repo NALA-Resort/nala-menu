@@ -96,6 +96,17 @@
   </header>
 
   <div id="form">
+    <!-- 0. who else is coming. Hidden unless the booking is for more than one
+         person, and hidden too when Mews already knows the name, because a
+         guest asked to type something the resort was told at booking reads as
+         nobody having looked. -->
+    <div class="q" id="qCompanion" style="display:none">
+      <div class="q-t">Who is coming with you?</div>
+      <div class="q-h">So we can greet them by name. Optional.</div>
+      <textarea class="txt" id="companion" rows="1"
+        placeholder="Their name"></textarea>
+    </div>
+
     <!-- 1. arrival time -->
     <div class="q" id="qEta">
       <div class="q-t">What time do you expect to arrive?</div>
@@ -264,6 +275,7 @@ function purposeText(v){ return purposeList(v).join(PURPOSE_SEP); }
 
 var a = { eta:'', etaNote:'', dining:null, pax:2, diets:[], noDiets:false,
           dietNote:'', purpose:[], approach:'', wellness:null, wellDay:'',
+          companion:'',
           wellTime:'', occasion:'', note:'' };
 
 function el(id){ return document.getElementById(id); }
@@ -302,6 +314,14 @@ function paintGreeting(pms){
   }
   bits.push('A few questions so everything is ready before you get here.');
   el('sub').textContent = bits.join(' \u00b7 ');
+
+  /* Ask who else is coming only when there IS somebody else, and only when we
+     do not already know. Mews carries the name when the booking was taken over
+     the phone, and asking a guest to type something the resort was told at
+     booking reads as nobody having looked. */
+  var adults = pms && Number(pms.adults);
+  var known  = pms && pms.companion;
+  el('qCompanion').style.display = (adults >= 2 && !known) ? '' : 'none';
 }
 
 /* ── painters ────────────────────────────────────────────────
@@ -431,6 +451,7 @@ function collect(){
   a.dietNote = el('dietNote').value.trim();
   a.wellTime = el('wTime').value.trim();
   a.occasion = el('occasion').value.trim();
+  a.companion = el('companion').value.trim();
   a.note     = el('note').value.trim();
 }
 
@@ -477,7 +498,7 @@ function submitForm(){
     purpose: purposeText(a.purpose), approach: a.approach,
     wellness: a.wellness,
     wellDay: a.wellness ? a.wellDay : '', wellTime: a.wellness ? a.wellTime : '',
-    occasion: a.occasion, note: a.note,
+    occasion: a.occasion, note: a.note, companion: a.companion,
     at: new Date().toISOString()
   };
   /* PATCH, not PUT: reception may already have confirmed this booking, and a
@@ -528,7 +549,7 @@ function boot(){
      somebody's record. Sending it is the same as sending any other link with
      no id, which is to say it goes nowhere. */
   if (DEMO){
-    paintGreeting({ first:'Alex', last:'Marsh',
+    paintGreeting({ first:'Alex', last:'Marsh', adults:2,
                     arrive: dkey(new Date()),
                     depart: dkey(new Date(Date.now() + 3 * 86400000)) });
     el('form').className = '';
@@ -585,8 +606,10 @@ function boot(){
     a.wellness = (p.wellness === undefined) ? null : !!p.wellness;
     a.wellDay = p.wellDay || ''; a.wellTime = p.wellTime || '';
     a.occasion = p.occasion || ''; a.note = p.note || '';
+    a.companion = p.companion || '';
     el('etaNote').value = a.etaNote; el('dietNote').value = a.dietNote;
     el('wTime').value = a.wellTime; el('occasion').value = a.occasion;
+    el('companion').value = a.companion;
     el('note').value = a.note;
     paintEta(); paintDine(); paintDiets(); paintPurpose(); paintApproach(); paintWell();
     el('form').className = 'hide';
