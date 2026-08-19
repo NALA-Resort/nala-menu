@@ -170,6 +170,9 @@
      chance anyone has had to notice. */
   .clash { display:block; color:var(--red); font-size:12px; margin-top:3px; }
   .seg.miss button, .chips.miss .chip { border-color:var(--red); }
+  /* The note is part of the answer when Other is chosen, so it can be the
+     thing that is missing, and has to be able to say so. */
+  .txt.miss { border-color:var(--red); }
 </style>
 </head>
 <body class="tier-app">
@@ -682,6 +685,17 @@ function load(){
 var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
 
+/* Not every allergy is on the list, and the list cannot grow to hold them all.
+   Without this the only way past a required answer was "No allergies to
+   declare", which is a lie, and it also wiped the note the real allergy had
+   just been typed into: the note is cleared whenever that chip is on, because
+   nothing to declare means nothing to write down.
+
+   Stored as an ordinary dietary, so the chef's board, the sheet and the rules
+   need no changes: they already carry a list of strings. It is the one entry
+   that means read the note. */
+var DIET_OTHER = 'Other';
+
 /* Advisory only. It exists so that when a guest cannot be reached, staff can
    judge whether they are the type to eat out. It never drives logic. */
 var PURPOSE = ['Independent or business','Exploring the area',
@@ -838,18 +852,40 @@ function openGuest(r){
   }
   /* "None to declare" is a positive answer, not the absence of one. Without
      it, a guest who genuinely has no allergies is indistinguishable from one
-     nobody asked, which is the whole reason reception is going through this. */
+     nobody asked, which is the whole reason reception is going through this.
+
+     "Other" sits beside it because they are the two answers that are not on
+     the list above, and they are opposites: one says there is nothing to
+     write down, the other says the answer is only in the note. Choosing
+     either clears the other. */
   function paintNone(){
     var box = document.getElementById('dNone'); box.innerHTML = '';
-    var b = document.createElement('button');
-    b.className = 'chip' + (a.noDiets ? ' on' : ''); b.textContent = 'No allergies to declare';
-    b.onclick = function(){
+
+    var none = document.createElement('button');
+    none.className = 'chip' + (a.noDiets ? ' on' : '');
+    none.textContent = 'No allergies to declare';
+    none.onclick = function(){
       a.noDiets = !a.noDiets;
       if (a.noDiets) a.diets = [];
       clearMiss(); paintDiets(); paintNone();
     };
-    box.appendChild(b);
+    box.appendChild(none);
+
+    var other = document.createElement('button');
+    other.className = 'chip' + (hasOther() ? ' on' : '');
+    other.textContent = DIET_OTHER;
+    other.onclick = function(){
+      var i = a.diets.indexOf(DIET_OTHER);
+      if (i > -1) a.diets.splice(i, 1);
+      else { a.diets.push(DIET_OTHER); a.noDiets = false; }
+      clearMiss(); paintDiets(); paintNone();
+      /* The note IS the answer when this is on, so put the cursor in it
+         rather than leaving somebody to find it. */
+      if (hasOther()) { var f = document.getElementById('fDnote'); if (f) f.focus(); }
+    };
+    box.appendChild(other);
   }
+  function hasOther(){ return a.diets.indexOf(DIET_OTHER) > -1; }
 
   function paintPurpose(){
     var box = document.getElementById('pChips'); box.innerHTML = '';
@@ -914,13 +950,20 @@ function openGuest(r){
        assumed dining and unconfirmed at the same time. Dietary is asked for
        too: "no allergies to declare" is a positive answer and the point of
        going through this at the desk is to have asked. */
+    /* Read before checking, not after. The note is part of the answer when
+       Other is chosen, and a check that runs before the field is read is
+       checking the value from the last time the sheet was opened. */
+    a.dnote = document.getElementById('fDnote').value.trim();
+
     var missing = [];
     if (a.dining === null) missing.push('dining');
     if (!a.noDiets && !a.diets.length) missing.push('dietary');
+    /* Other with an empty note tells the kitchen nothing at all, which is
+       worse than the answer nobody gave, because it looks like one. */
+    else if (hasOther() && !a.dnote) missing.push('othernote');
     if (missing.length) return flagMissing(missing);
 
     a.pax      = pax;
-    a.dnote    = document.getElementById('fDnote').value.trim();
     a.occasion = document.getElementById('fOcc').value.trim();
     a.note     = document.getElementById('fNote').value.trim();
     a.wellTime = document.getElementById('fWtime').value.trim();
@@ -936,14 +979,19 @@ function openGuest(r){
     var chips = document.getElementById('dChips');
     seg.className   = 'seg' + (which.indexOf('dining') > -1 ? ' miss' : '');
     chips.className = 'chips' + (which.indexOf('dietary') > -1 ? ' miss' : '');
+    var note = document.getElementById('fDnote');
+    if (note) note.className = 'txt' + (which.indexOf('othernote') > -1 ? ' miss' : '');
     var el = document.getElementById('sMiss');
     el.textContent = which.length === 2
       ? 'Ask about dinner and dietaries before confirming.'
-      : (which[0] === 'dining' ? 'Ask whether they are dining tonight.'
-                               : 'Ask about dietaries, even to rule them out.');
+      : which[0] === 'dining' ? 'Ask whether they are dining tonight.'
+      : which[0] === 'othernote' ? 'Write the allergy in the notes, or it reaches nobody.'
+      : 'Ask about dietaries, even to rule them out.';
     el.className = 'miss-note show';
-    (which.indexOf('dining') > -1 ? seg : chips)
+    (which.indexOf('dining') > -1 ? seg
+       : which.indexOf('othernote') > -1 ? (note || chips) : chips)
       .scrollIntoView({ block:'center', behavior:'smooth' });
+    if (which.indexOf('othernote') > -1 && note) note.focus();
   }
   showSheet();
 }

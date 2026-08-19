@@ -713,6 +713,62 @@ with sync_playwright() as p:
            "()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
         pg.close()
 
+    # ── an allergy that is not on the list ──────────────────────
+    # Reported 19 Aug: dietary notes were not saving. The list of pills does
+    # not cover every allergy, an answer is required, so the only way past was
+    # "No allergies to declare" -- which is a lie, and which also wipes the
+    # note the real allergy had just been typed into, because nothing to
+    # declare means nothing to write down.
+    pg = board()
+    pg.locator("#board .arr").first.click(); pg.wait_for_timeout(600)
+    # A guest who already filled the form in gets their answers read back
+    # first, so the form is one step further in for them.
+    if pg.evaluate("()=>!!document.querySelector('.sum-btns [data-act=edit]')"):
+        pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+        pg.wait_for_timeout(600)
+    pg.locator("#sDin").click(); pg.wait_for_timeout(200)
+
+    extra = pg.evaluate("()=>[...document.querySelectorAll('#dNone button')]"
+                        ".map(b=>b.textContent.trim())")
+    print("   answers beside the list:", extra)
+    ck("there is a way to say the allergy is not on the list", "Other" in extra)
+    # The two answers that are not on the list are opposites: one says there
+    # is nothing to write down, the other says the answer is only in the note.
+    ck("and it sits beside 'no allergies', not inside the list",
+       "No allergies to declare" in extra and len(extra) == 2)
+
+    pg.evaluate("()=>[...document.querySelectorAll('#dNone button')]"
+                ".find(b=>b.textContent.trim()==='Other').click()")
+    pg.wait_for_timeout(250)
+    ck("choosing it clears 'no allergies', since they contradict",
+       pg.evaluate("""()=>[...document.querySelectorAll('#dNone button')]
+         .find(b=>/^No allergies/.test(b.textContent)).className.indexOf('on')<0"""))
+
+    # Other with an empty note tells the kitchen nothing, and looks like an
+    # answer, which is worse than no answer at all.
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(700)
+    ck("'Other' with an empty note does not save", not WRITES)
+    ck("and says what is actually needed",
+       "notes" in pg.evaluate("()=>document.getElementById('sMiss').textContent").lower())
+
+    pg.fill("#fDnote", "Severe sesame allergy")
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(900)
+    saved = [json.loads(x["b"]) for x in WRITES if x["b"]]
+    print("   saved:", [(d.get("diets"), d.get("dnote")) for d in saved])
+    ck("with a note it saves, and the note survives",
+       bool(saved) and all(d.get("dnote") == "Severe sesame allergy" for d in saved))
+    # Stored as an ordinary dietary, so the chef's board, the sheet and the
+    # rules need no changes: they already carry a list of strings.
+    ck("and 'Other' rides along as an ordinary dietary",
+       all(d.get("diets") == ["Other"] for d in saved))
+    ck("without claiming there is nothing to declare",
+       all(not d.get("noDiets") for d in saved))
+    pg.close()
+
     b.close()
 
 print("RESULT: %d passed, %d failed" % (P, F))
