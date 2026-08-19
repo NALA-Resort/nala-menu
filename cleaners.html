@@ -353,6 +353,7 @@
         window.NALA_ROLE  = role;
         window.NALA_USER  = u;      /* kept so sign out can unsubscribe */
         window.NALA_ME    = displayNameOf(u);
+        window.NALA_KEY   = staffKeyOf(u);
         /* The board paints before sign in resolves, so the first paint does
            not know who you are and your own claim came back at you as your
            name rather than as You. Repaint once it does. */
@@ -664,7 +665,7 @@ function render(){
         /* Who finished it, shortened: a finished board that cannot say who did
            the work is a board you have to ask about. Older records carry no
            name, so the phrase drops rather than showing an empty by. */
-        var who = shortNameOf(h.doneBy);
+        var who = shortTagFor(h.doneBy);
         sub = who ? 'Done by '+esc(who)+' '+hhmm(h.done) : 'Done '+hhmm(h.done);
       }
       else if (h.departed || row.pushedIn) sub='Departed';
@@ -685,11 +686,13 @@ function render(){
     el.className=cls;
     var badge = '';
     if (claimed){
-      var mine = h.takenBy === window.NALA_ME;
+      /* Compared on the key, with the name as the fallback for records
+         written before keys were stored. */
+      var mine = h.takenBy === window.NALA_KEY || h.takenBy === window.NALA_ME;
       badge = '<span class="who-badge'+(mine ? ' mine' : '')+'"'+
-              ' title="'+esc(h.takenBy)+' is on this villa"'+
-              ' aria-label="'+esc(h.takenBy)+' is on this villa">'+
-              esc(shortNameOf(h.takenBy) || h.takenBy)+'</span>';
+              ' title="'+esc(fullNameFor(h.takenBy))+' is on this villa"'+
+              ' aria-label="'+esc(fullNameFor(h.takenBy))+' is on this villa">'+
+              esc(shortTagFor(h.takenBy) || h.takenBy)+'</span>';
     }
     /* The badge is drawn in the corner but comes last in the markup, so the
        tile still READS villa, job, state, person. Put first, the tile's text
@@ -868,11 +871,11 @@ function drawSheet(mode){
     if (!h.done && !CUR.multi){
       if (!h.takenBy){
         rows+='<button class="pbtn" onclick="drawSheet(\'take\')">I\u2019ll take this one</button>';
-      } else if (h.takenBy === window.NALA_ME){
+      } else if (h.takenBy === window.NALA_KEY || h.takenBy === window.NALA_ME){
         rows+='<button class="pbtn" disabled style="opacity:.6">You took this at '+hhmm(h.takenAt)+'</button>';
         rows+='<button class="pbtn warn" onclick="drawSheet(\'untake\')">Hand it back</button>';
       } else {
-        rows+='<button class="pbtn" disabled style="opacity:.6">'+esc(h.takenBy)+' took this at '+hhmm(h.takenAt)+'</button>';
+        rows+='<button class="pbtn" disabled style="opacity:.6">'+esc(fullNameFor(h.takenBy))+' took this at '+hhmm(h.takenAt)+'</button>';
         rows+='<button class="pbtn" onclick="drawSheet(\'take\')">Take it over</button>';
       }
     }
@@ -985,7 +988,7 @@ function drawSheet(mode){
      villa, and a confirm screen between a cleaner and a claim is the reason
      they would stop bothering to claim at all. */
   if (mode==='take'){
-    setField(n, { takenBy: window.NALA_ME || 'Someone',
+    setField(n, { takenBy: window.NALA_KEY || window.NALA_ME || 'Someone',
                   takenAt: new Date().toISOString() },
              document.getElementById('perr'));
     return;
@@ -1006,7 +1009,7 @@ function drawSheet(mode){
        apostrophe without breaking the attribute it is sitting in. */
     document.getElementById('doneGo').onclick = function(){
       setField(n, { done: new Date().toISOString(),
-                    doneBy: window.NALA_ME || null },
+                    doneBy: window.NALA_KEY || window.NALA_ME || null },
                document.getElementById('perr'));
     };
     return;

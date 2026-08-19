@@ -1485,8 +1485,11 @@ with sync_playwright() as p:
     q.evaluate("()=>[...document.querySelectorAll('#sheetBox button')]"
                ".find(x=>/take it over/i.test(x.textContent)).click()")
     q.wait_for_timeout(600)
-    ck("taking it over records the new holder",
-       any('"takenBy":"Bo"' in w for w in claim_writes))
+    # The KEY, not the name. Storing the name froze it: renaming somebody in
+    # Settings changed nothing on any board, which read as the shortening
+    # being broken when it was the record.
+    ck("taking it over records who took it, by key",
+       any('"takenBy":"bo@x"' in w for w in claim_writes))
     q.close()
 
     # An unclaimed job offers the claim, and a claim can be given back: a claim
@@ -1503,8 +1506,8 @@ with sync_playwright() as p:
     q.evaluate("()=>[...document.querySelectorAll('#sheetBox button')]"
                ".find(x=>/take this one/i.test(x.textContent)).click()")
     q.wait_for_timeout(600)
-    ck("taking a job records who and when",
-       any('"takenBy":"Ana"' in w and '"takenAt"' in w for w in claim_writes))
+    ck("taking a job records who and when, by key",
+       any('"takenBy":"ana@x"' in w and '"takenAt"' in w for w in claim_writes))
     q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
                ".find(t=>t.innerText.startsWith('9')).click()")
     q.wait_for_timeout(400)
@@ -1522,18 +1525,21 @@ with sync_playwright() as p:
     # Emptying every finished bar to grey turned a done board into seventeen
     # identical marks. Hollow says finished; the colour says which job.
     done_hk = {
-        "1":  {"done": now.isoformat(), "doneBy": "Ben Doyle"},   # a clean
-        "9":  {"done": now.isoformat(), "doneBy": "Ana"},         # a clean + arrival
-        "4":  {"done": now.isoformat()},                          # a service, no name
-        "11": {"done": now.isoformat(), "doneBy": "Ben Doyle"},   # a pre-arrival
+        # Keys, which is what the board writes now, so the name is looked up
+        # when the tile is drawn and follows a rename in Settings.
+        "1":  {"done": now.isoformat(), "doneBy": "bd@nalaresort,com,au"},
+        "9":  {"done": now.isoformat(), "doneBy": "ana@nalaresort,com,au"},
+        "4":  {"done": now.isoformat()},                          # no name at all
+        "11": {"done": now.isoformat(), "doneBy": "bd@nalaresort,com,au"},
     }
     def done_fb(route, request):
         u = request.url
         if request.method not in ("PUT", "PATCH", "DELETE"):
             if "/staff" in u:
                 route.fulfill(status=200, content_type="application/json",
-                    body=json.dumps({"bd@nalaresort,com,au":
-                        {"name": "Ben Doyle", "role": "housekeeping"}})); return
+                    body=json.dumps({
+                        "bd@nalaresort,com,au":  {"name": "Ben Doyle", "role": "housekeeping"},
+                        "ana@nalaresort,com,au": {"name": "Ana", "role": "housekeeping"}})); return
             if "/stays/" + yest in u:
                 route.fulfill(status=200, content_type="application/json",
                     body=json.dumps({
@@ -1595,8 +1601,10 @@ with sync_playwright() as p:
     # ONE name field and most of them are a single first name, so nearly
     # everybody came out as one letter. B is not a person.
     ck("a finished villa says who finished it",
-       "Done by BEN" in look["1"]["sub"])
-    ck("a single name shortens the same way as a full one",
+       "Done by BD" in look["1"]["sub"])
+    # A one word name takes three letters rather than one: a single letter is
+    # not a person, and two staff whose names start alike would collide.
+    ck("a one word name gives three letters, not one",
        "Done by ANA" in look["9"]["sub"])
     # Older records carry no name at all, so the phrase has to drop rather
     # than print an empty by.

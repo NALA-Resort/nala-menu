@@ -187,26 +187,61 @@ ck('and separates purposes the same way the staff copy does',
    (guest.match(/PURPOSE_SEP\s*=\s*'([^']*)'/) || [])[1] ===
    (shared.match(/PURPOSE_SEP\s*=\s*'([^']*)'/) || [])[1]);
 
-/* ── the short name on the Cleans board ──────────────────────────────
- * This was initials, and initials do not work here: the staff record holds
- * ONE name field, and most of them are a single first name, so nearly
- * everybody came out as one letter. B is not a person, and it reached a real
- * board before anybody noticed, because the fixtures all used two names.
+/* ── who did it, on the Cleans board ─────────────────────────────────
+ * Two faults, one after the other, both found on a real board.
+ *
+ * First it was initials against a record that holds ONE name field, so a
+ * single first name came out as one letter. B is not a person, and two staff
+ * whose names start alike were the same badge.
+ *
+ * Then, renaming Ben to Ben Davidson in Settings changed nothing at all, which
+ * looked like the shortening was still broken and was not. takenBy and doneBy
+ * stored the NAME as it read when the button was pressed, so every record kept
+ * the old one for ever. The key is stored now and the name is looked up when
+ * the tile is drawn.
  */
-eval(grab('shortNameOf'));
-[['Ben Doyle', 'BEN'],
- ['Ana',       'ANA'],      // the case initials got wrong
- ['Jo',        'JO'],       // shorter than three, taken as it is
- ['bo',        'BO'],
- ['  Ana Ruiz ', 'ANA'],    // stray spaces from a typed field
- ['',          ''],
- [null,        ''],
- [undefined,   '']].forEach(function (pair) {
-  ck('a staff name of ' + JSON.stringify(pair[0]) + ' reads as ' +
+eval("var STAFF_RECORDS=null;" + grab('shortNameOf') + grab('shortTagFor')
+     + grab('fullNameFor'));
+STAFF_RECORDS = {
+  'ben@nala,com': { name: 'Ben Davidson', role: 'housekeeping' },
+  'ana@nala,com': { name: 'Ana',          role: 'housekeeping' }
+};
+
+[['Ben Davidson', 'BD'],
+ ['Ana',          'ANA'],   // one word: three letters, never one
+ ['Jo',           'JO'],
+ ['  Ana Ruiz ',  'AR'],
+ ['',             ''],
+ [null,           ''],
+ [undefined,      '']].forEach(function (pair) {
+  ck('a name of ' + JSON.stringify(pair[0]) + ' shortens to ' +
      JSON.stringify(pair[1]), shortNameOf(pair[0]) === pair[1]);
 });
-ck('two people with different first names do not collide',
-   shortNameOf('Ana') !== shortNameOf('Ben'));
+ck('two people whose names start alike are not the same badge',
+   shortNameOf('Ana') !== shortNameOf('Ali'));
+
+/* The rename. This is the whole point of storing a key. */
+ck('a record holding a key follows a rename in Settings',
+   shortTagFor('ben@nala,com') === 'BD');
+ck('and the full name behind it is the new one too',
+   fullNameFor('ben@nala,com') === 'Ben Davidson');
+
+/* Records written before the change hold a plain name. They cannot follow a
+   rename, but they must still read as somebody. */
+ck('an older record holding a name still reads as that name',
+   shortTagFor('Ben') === 'BEN' && fullNameFor('Ben') === 'Ben');
+ck('and a key for somebody since removed reads as the key, not as blank',
+   shortTagFor('gone@nala,com') !== '');
+ck('nothing stored stays nothing, so the phrase can drop',
+   shortTagFor('') === '' && shortTagFor(null) === '' && fullNameFor(null) === '');
+
+/* The board writes the key, not the name. A single grep is worth more here
+   than any amount of reasoning: this is the line that regressed. */
+const cleaners = fs.readFileSync(path.join(ROOT, 'cleaners.html'), 'utf8');
+ck('the board stores the staff key when a job is taken',
+   /takenBy:\s*window\.NALA_KEY/.test(cleaners));
+ck('and when a job is finished',
+   /doneBy:\s*window\.NALA_KEY/.test(cleaners));
 
 console.log('RESULT: ' + P + ' passed, ' + F + ' failed');
 process.exit(F ? 1 : 0);

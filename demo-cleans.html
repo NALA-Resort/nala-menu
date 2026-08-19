@@ -525,6 +525,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
         window.NALA_ROLE  = role;
         window.NALA_USER  = u;      /* kept so sign out can unsubscribe */
         window.NALA_ME    = displayNameOf(u);
+        window.NALA_KEY   = staffKeyOf(u);
         /* The board paints before sign in resolves, so the first paint does
            not know who you are and your own claim came back at you as your
            name rather than as You. Repaint once it does. */
@@ -1304,17 +1305,60 @@ function displayNameOf(user){
 
 /* A short tag for a person, for a board where the space is a tile.
 
-   This was initials, and initials do not work here: the staff record holds ONE
-   name field, and most of them are a single first name, so nearly everybody
-   came out as one letter. B is not a person.
+   Initials, with the whole name as the fallback for anyone who has only one.
+   Ben Davidson is BD, Ana is ANA, Jo is JO. A single letter is not a person
+   and two staff whose names start alike would be the same badge, so a one word
+   name takes three letters rather than one.
 
-   First three letters of the first word instead. Ben Doyle is BEN, Ana is ANA,
-   Jo is JO. Predictable, and it reads as a name rather than as a code. Falls
-   back to nothing rather than to a guess, and the caller drops the whole
-   phrase when there is nothing to show. */
+   Fed by shortTagFor below, not called with a stored name. Getting that wrong
+   is what made a rename in Settings appear to do nothing. */
 function shortNameOf(name){
-  var first = String(name == null ? '' : name).trim().split(/\s+/)[0] || '';
-  return first.slice(0, 3).toUpperCase();
+  var parts = String(name == null ? '' : name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '';
+  if (parts.length === 1) return parts[0].slice(0, 3).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
+/* WHO did something, not what they were called at the time.
+
+   takenBy and doneBy used to store the person's name as it read when the
+   button was pressed. A record is a fact about the past, so it kept the old
+   name for ever: renaming yourself in Settings changed nothing on any board,
+   including your own claims, and looked like the shortening was broken.
+
+   The staff key is stored instead, and the name is looked up when the tile is
+   drawn. A rename now shows everywhere at once, on old records as well as new
+   ones, and the way names are shortened can change again without rewriting
+   anything.
+
+   Records written before this hold a name rather than a key. Those are read as
+   the name they hold, which is the best that can be done for them: they will
+   not follow a rename, and there is nothing in them that could. */
+function shortTagFor(stored){
+  var v = String(stored == null ? '' : stored).trim();
+  if (!v) return '';
+  var rec = STAFF_RECORDS && STAFF_RECORDS[v];
+  if (rec && rec.name) return shortNameOf(rec.name);
+  /* Not a key we know: either an old record holding a plain name, or somebody
+     since removed from Settings. Both read better as what they hold than as
+     nothing at all. */
+  return shortNameOf(v);
+}
+
+/* The full name behind a stored key, for the places with room for one. Same
+   fallback as shortTagFor: an old record holding a name reads as that name. */
+function fullNameFor(stored){
+  var v = String(stored == null ? '' : stored).trim();
+  if (!v) return '';
+  var rec = STAFF_RECORDS && STAFF_RECORDS[v];
+  return (rec && rec.name) ? rec.name : v;
+}
+
+/* The key a record should store: stable, and the same key /staff is filed
+   under, so the lookup above is a direct hit rather than a search. */
+function staffKeyOf(user){
+  var e = user && (typeof user === 'string' ? user : user.email);
+  return e ? emailKey(e) : '';
 }
 
 function roleOf(user){
@@ -1976,7 +2020,7 @@ function render(){
         /* Who finished it, shortened: a finished board that cannot say who did
            the work is a board you have to ask about. Older records carry no
            name, so the phrase drops rather than showing an empty by. */
-        var who = shortNameOf(h.doneBy);
+        var who = shortTagFor(h.doneBy);
         sub = who ? 'Done by '+esc(who)+' '+hhmm(h.done) : 'Done '+hhmm(h.done);
       }
       else if (h.departed || row.pushedIn) sub='Departed';
@@ -1997,11 +2041,13 @@ function render(){
     el.className=cls;
     var badge = '';
     if (claimed){
-      var mine = h.takenBy === window.NALA_ME;
+      /* Compared on the key, with the name as the fallback for records
+         written before keys were stored. */
+      var mine = h.takenBy === window.NALA_KEY || h.takenBy === window.NALA_ME;
       badge = '<span class="who-badge'+(mine ? ' mine' : '')+'"'+
-              ' title="'+esc(h.takenBy)+' is on this villa"'+
-              ' aria-label="'+esc(h.takenBy)+' is on this villa">'+
-              esc(shortNameOf(h.takenBy) || h.takenBy)+'</span>';
+              ' title="'+esc(fullNameFor(h.takenBy))+' is on this villa"'+
+              ' aria-label="'+esc(fullNameFor(h.takenBy))+' is on this villa">'+
+              esc(shortTagFor(h.takenBy) || h.takenBy)+'</span>';
     }
     /* The badge is drawn in the corner but comes last in the markup, so the
        tile still READS villa, job, state, person. Put first, the tile's text
@@ -2180,11 +2226,11 @@ function drawSheet(mode){
     if (!h.done && !CUR.multi){
       if (!h.takenBy){
         rows+='<button class="pbtn" onclick="drawSheet(\'take\')">I\u2019ll take this one</button>';
-      } else if (h.takenBy === window.NALA_ME){
+      } else if (h.takenBy === window.NALA_KEY || h.takenBy === window.NALA_ME){
         rows+='<button class="pbtn" disabled style="opacity:.6">You took this at '+hhmm(h.takenAt)+'</button>';
         rows+='<button class="pbtn warn" onclick="drawSheet(\'untake\')">Hand it back</button>';
       } else {
-        rows+='<button class="pbtn" disabled style="opacity:.6">'+esc(h.takenBy)+' took this at '+hhmm(h.takenAt)+'</button>';
+        rows+='<button class="pbtn" disabled style="opacity:.6">'+esc(fullNameFor(h.takenBy))+' took this at '+hhmm(h.takenAt)+'</button>';
         rows+='<button class="pbtn" onclick="drawSheet(\'take\')">Take it over</button>';
       }
     }
@@ -2297,7 +2343,7 @@ function drawSheet(mode){
      villa, and a confirm screen between a cleaner and a claim is the reason
      they would stop bothering to claim at all. */
   if (mode==='take'){
-    setField(n, { takenBy: window.NALA_ME || 'Someone',
+    setField(n, { takenBy: window.NALA_KEY || window.NALA_ME || 'Someone',
                   takenAt: new Date().toISOString() },
              document.getElementById('perr'));
     return;
@@ -2318,7 +2364,7 @@ function drawSheet(mode){
        apostrophe without breaking the attribute it is sitting in. */
     document.getElementById('doneGo').onclick = function(){
       setField(n, { done: new Date().toISOString(),
-                    doneBy: window.NALA_ME || null },
+                    doneBy: window.NALA_KEY || window.NALA_ME || null },
                document.getElementById('perr'));
     };
     return;
