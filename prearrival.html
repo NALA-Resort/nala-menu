@@ -239,6 +239,24 @@ var APPROACH = [['most','We will dine at Nala most nights'],
 var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
 
+/* "Here for" is a multi select, so this page holds it as a list. The database
+   validates it as one string, and one field of the wrong type refuses the
+   WHOLE write, so any guest who ticked a reason silently failed to save their
+   whole form. Stored as one string now, which needs no rules change.
+
+   Its own copy rather than the shared one: this is a guest page and does not
+   load nala-shared.js, by design, so that staff code never reaches a guest's
+   browser. The separator has to match the staff copy, and both have to accept
+   a list, because every record written before today holds one. */
+var PURPOSE_SEP = ' \u00b7 ';
+function purposeList(v){
+  if (Array.isArray(v)) return v.filter(Boolean);
+  if (typeof v === 'string' && v.trim())
+    return v.split(PURPOSE_SEP).map(function(x){ return x.trim(); }).filter(Boolean);
+  return [];
+}
+function purposeText(v){ return purposeList(v).join(PURPOSE_SEP); }
+
 var a = { eta:'', etaNote:'', dining:null, pax:2, diets:[], noDiets:false,
           dietNote:'', purpose:[], approach:'', wellness:null, wellDay:'',
           wellTime:'', occasion:'', note:'' };
@@ -451,7 +469,7 @@ function submitForm(){
     arriveSlot: a.eta, arriveNote: a.etaNote,
     dining: a.dining, pax: a.dining ? a.pax : 0,
     diets: a.diets, noDiets: a.noDiets, dnote: a.diets.length ? a.dietNote : '',
-    purpose: a.purpose, approach: a.approach,
+    purpose: purposeText(a.purpose), approach: a.approach,
     wellness: a.wellness,
     wellDay: a.wellness ? a.wellDay : '', wellTime: a.wellness ? a.wellTime : '',
     occasion: a.occasion, note: a.note,
@@ -528,7 +546,7 @@ function boot(){
     a.pax = p.pax || 2;
     a.diets = (p.diets || []).slice(); a.noDiets = !!p.noDiets;
     a.dietNote = p.dnote || '';
-    a.purpose = (p.purpose || []).slice(); a.approach = p.approach || '';
+    a.purpose = purposeList(p.purpose); a.approach = p.approach || '';
     a.wellness = (p.wellness === undefined) ? null : !!p.wellness;
     a.wellDay = p.wellDay || ''; a.wellTime = p.wellTime || '';
     a.occasion = p.occasion || ''; a.note = p.note || '';

@@ -129,5 +129,63 @@ ck('a number is accepted as text, because Zapier sends ids both ways',
 ck('a numeric head count sent as text is read as a number',
    asCount('2', 0, 40) === 2);
 
+/* ── the pre-arrival form ────────────────────────────────────────────
+ * Same fault, found on 19 Aug from the other end. "Here for" is a multi
+ * select, both forms held it as a list, and the rule validates one string.
+ * One field of the wrong type refuses the WHOLE write, so a guest who ticked
+ * a reason silently failed to save their entire form, and reception could not
+ * confirm them from the arrivals row. Both screens said only "could not save",
+ * which reads as a connection problem.
+ *
+ * The helpers are lifted out of the shipped nala-shared.js for the same reason
+ * as the Worker's: a copy here would pass after the real one drifted.
+ */
+const shared = fs.readFileSync(path.join(ROOT, 'nala-shared.js'), 'utf8');
+const grab = function (n) {
+  const i = shared.indexOf('function ' + n + '(');
+  if (i < 0) throw new Error('nala-shared.js no longer defines ' + n);
+  let depth = 0, k = shared.indexOf('{', i);
+  for (;; k++) {
+    if (shared[k] === '{') depth++;
+    else if (shared[k] === '}') depth--;
+    if (depth === 0) break;
+  }
+  return shared.slice(i, k + 1);
+};
+eval("var PURPOSE_SEP=' \u00b7 ';" + grab('purposeList') + grab('purposeText'));
+
+[[], ['A celebration'], ['A celebration', 'Exploring the area']].forEach(function (v) {
+  ck('a pre-arrival with ' + v.length + ' purpose(s) is accepted',
+     db.update('/bookings/' + GUID + '/prearrival',
+               { dining: true, purpose: purposeText(v) }).allowed);
+  ck('and the same purposes as a raw list are still refused, uncoerced',
+     v.length === 0 ||
+     !db.update('/bookings/' + GUID + '/prearrival',
+                { dining: true, purpose: v }).allowed);
+});
+
+/* Records written before 19 Aug hold a list and will for as long as those
+   bookings live, so reading has to accept both shapes forever. */
+ck('a list written before today still reads back',
+   purposeList(['A celebration', 'Exploring the area']).length === 2);
+ck('and so does the string written from now on',
+   purposeList('A celebration \u00b7 Exploring the area').length === 2);
+ck('nothing chosen stays nothing, rather than becoming a phantom entry',
+   purposeList('').length === 0 && purposeList(null).length === 0
+   && purposeList(undefined).length === 0);
+
+/* The guest page keeps its own copy on purpose: it must not load staff code.
+   The separator has to match, or a guest's answers come back as one long
+   string on the desk. */
+const guest = fs.readFileSync(path.join(ROOT, 'prearrival.html'), 'utf8');
+ck('the guest page carries its own copy, not the staff file',
+   guest.indexOf('function purposeText') > -1
+   /* The script TAG, not any mention of it: the comment saying why the file
+      is not loaded here is exactly the sentence a text search trips over. */
+   && !/<script[^>]+nala-shared\.js/.test(guest));
+ck('and separates purposes the same way the staff copy does',
+   (guest.match(/PURPOSE_SEP\s*=\s*'([^']*)'/) || [])[1] ===
+   (shared.match(/PURPOSE_SEP\s*=\s*'([^']*)'/) || [])[1]);
+
 console.log('RESULT: ' + P + ' passed, ' + F + ' failed');
 process.exit(F ? 1 : 0);

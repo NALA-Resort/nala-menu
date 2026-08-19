@@ -645,6 +645,31 @@ function normaliseRole(r){ return r === 'staff' ? 'admin' : r; }
    before the at sign, which is a poor name but a better one than nothing, and
    never to the full address: these appear on a board a guest can see over a
    shoulder. */
+/* ── the purpose field ────────────────────────────────────────────────
+   "Here for" is a multi select in both forms, so the pages hold it as a list.
+   The database validates it as a single string, and one field of the wrong
+   type refuses the WHOLE write, so a guest who ticked a reason could not save
+   their pre-arrival form at all, and reception could not confirm them from the
+   arrivals row. Neither screen said why: the message was the generic could not
+   save, which reads as a connection problem.
+
+   Stored as one string from here on. That needs no rules change, so nothing has
+   to be pasted into the Firebase console and no guest is locked out while it
+   is. Reading accepts either shape, because records written before today are
+   already lists and will be for as long as those bookings live.            */
+var PURPOSE_SEP = ' \u00b7 ';
+
+function purposeList(v){
+  if (Array.isArray(v)) return v.filter(Boolean);
+  if (typeof v === 'string' && v.trim())
+    return v.split(PURPOSE_SEP).map(function(x){ return x.trim(); }).filter(Boolean);
+  return [];
+}
+
+function purposeText(v){
+  return purposeList(v).join(PURPOSE_SEP);
+}
+
 function displayNameOf(user){
   var e = user && (typeof user === 'string' ? user : user.email);
   if (!e) return '';
