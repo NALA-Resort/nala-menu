@@ -134,6 +134,43 @@ with sync_playwright() as p:
     # and for a long press, it is simply not drawn.
     ck("and each still names itself for anyone who cannot read a shape",
        chips["clean"]["label"]=="Clean" and chips["svc"]["label"]=="Service")
+
+    # The marks were 3px tall at first and the suite passed anyway, because it
+    # checked the fill was DECLARED different and never that the difference
+    # could be SEEN. At 3px the 1.5px border top and bottom is most of the
+    # height, so a hollow bar and a solid one are the same mark, and on a real
+    # phone the two jobs were indistinguishable.
+    #
+    # So the sizes are asserted, not just the colours. A bar needs a visible
+    # middle before fill can mean anything, and the thick one has to be far
+    # enough from the thin one to be read at a glance rather than by holding
+    # them side by side.
+    geom = pg.evaluate("""()=>{const pick=j=>{const e=[...document.querySelectorAll('#grid .chip')]
+        .find(x=>x.dataset.job===j); return e?Math.round(e.getBoundingClientRect().height):null;};
+      return {thin:pick('clean'), svc:pick('svc')};}""")
+    print("   bar heights:", geom)
+    ck("a bar is tall enough for its middle to show, so fill can be read",
+       geom["thin"] is not None and geom["thin"] >= 6)
+    ck("filled and hollow are the same height, so only the fill differs",
+       geom["thin"] == geom["svc"])
+
+    # The key is drawn at the size the tiles use. A key smaller than the thing
+    # it explains teaches nothing, which is what it was: five marks wrapped
+    # across two lines at 22 by 3, all looking the same.
+    key = pg.evaluate("""()=>[...document.querySelectorAll('.legend .lgb')].map(i=>{
+      const r=i.getBoundingClientRect(), s=getComputedStyle(i);
+      return {h:Math.round(r.height), w:Math.round(r.width),
+              filled:s.backgroundColor!=='rgba(0, 0, 0, 0)', dash:s.borderStyle==='dashed'};})""")
+    print("   key marks:", key)
+    ck("the key shows every mark the board can draw", len(key) == 5)
+    ck("the key's marks are drawn at tile size, not smaller",
+       all(k["h"] >= 6 and k["w"] >= 20 for k in key))
+    ck("and no two of them look alike",
+       len({(k["h"], k["filled"], k["dash"]) for k in key}) == 5)
+    thin_k = [k["h"] for k in key if k["h"] < 10]
+    thick_k = [k["h"] for k in key if k["h"] >= 10]
+    ck("thick reads as thick: not a few pixels, close to double",
+       bool(thin_k) and bool(thick_k) and min(thick_k) >= max(thin_k) * 1.6)
     ck("room7 done green with time (6-digit ISO)", "done" in t["7"]["cls"] and re.search(r'Done \d{2}:\d{2}',t["7"]["txt"]))
     ck("villa2 ready to service, with elapsed since noticed",
        "ready-svc" in t["2"]["cls"] and re.search(r'Available 1[12]m',t["2"]["txt"]))

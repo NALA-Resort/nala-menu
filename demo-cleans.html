@@ -209,10 +209,17 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      reader says it and a long press shows it. The legend below the grid is
      what teaches it, and it now shows the bars themselves rather than colours
      that no longer carry the meaning. */
-  .tile .chip { display:block; width:62%; height:3px; padding:0; font-size:0;
-                border:1.2px solid var(--ink); border-radius:2px;
+  /* Sizes matter more than they look here. At 3px a hollow bar and a solid one
+     are the same mark: the 1.2px border top and bottom is most of the height,
+     so an outline reads as filled and the two jobs became indistinguishable on
+     a real phone. A bar has to be tall enough for its middle to be visible
+     before fill can mean anything, which is 7px, and the thick one has to be
+     far enough from it to be told apart at a glance rather than by comparison,
+     which is nearly double. */
+  .tile .chip { display:block; width:56%; height:7px; padding:0; font-size:0;
+                border:1.5px solid var(--ink); border-radius:4px;
                 background:var(--ink); color:transparent; overflow:hidden; }
-  .tile .chip.thick { height:7px; border-radius:3px; }
+  .tile .chip.thick { height:13px; border-radius:7px; }
   /* Who is on it, on the sub-line. Ink rather than the usual grey, because a
      person is a stronger fact than a room state and has to carry from across
      a corridor. */
@@ -280,11 +287,18 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .legend .lb { background:var(--amber); border-color:var(--amberb); }
   .legend .ld { background:var(--blue);  border-color:var(--blueb); }
   .legend .lf { background:#F2F2EF; border-color:var(--rule); }
-  /* The same bars the tiles use, at the same weights, so the legend is a key
-     rather than a separate drawing that can drift from what it explains. */
-  .legend .lgb { width:22px; height:3px; border-radius:2px; border:1.2px solid var(--ink);
-                 background:var(--ink); vertical-align:2px; }
-  .legend .lgb.thick { height:7px; border-radius:3px; vertical-align:0; }
+  /* The key was a row of five marks wrapped across two lines, each 22px by
+     3px, and at that size they were all the same mark. It is a two column
+     list now, one entry per line, and the marks are drawn at the size they
+     appear on a tile, because a key smaller than the thing it explains
+     teaches nothing. */
+  .legend { display:grid !important; grid-template-columns:repeat(2, auto);
+            justify-content:center; gap:5px 18px; text-align:left; }
+  .legend span { display:flex; align-items:center; gap:8px; }
+  .legend .lgb { flex:0 0 auto; width:26px; height:7px; border-radius:4px;
+                 border:1.5px solid var(--ink); background:var(--ink);
+                 vertical-align:0; margin:0; }
+  .legend .lgb.thick { height:13px; border-radius:7px; }
   .legend .lgb.out  { background:transparent; border-color:#8C8C84; }
   .legend .lgb.dash { border-style:dashed; border-color:var(--mid); }
 
@@ -552,8 +566,8 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
        the room needs cleaning; thick means somebody arrives into it tonight. -->
   <div class="legend" id="legend">
     <span><i class="lgb"></i>Clean</span>
-    <span><i class="lgb thick"></i>Clean, arriving</span>
     <span><i class="lgb out"></i>Service</span>
+    <span><i class="lgb thick"></i>Clean + arrival</span>
     <span><i class="lgb out thick"></i>Pre-arrival</span>
     <span><i class="lgb out dash"></i>Unknown</span>
   </div>
