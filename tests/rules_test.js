@@ -128,6 +128,21 @@ canPatch('the guest pre-arrival form saves', GUEST, '/bookings/b-1/prearrival', 
 });
 canPatch('and stamps that the link was opened', GUEST, '/bookings/b-1/prearrival',
          { openedAt: NOW });
+
+/* index.html markOpened(). The menu link is a different link from the
+   pre-arrival form, and its mark is filed by night rather than on the guest,
+   so opening Monday's link says nothing about Thursday. */
+can('the guest menu link marks itself opened', GUEST, `/opened/${TODAY}/5`,
+    { at: NOW, bookingId: 'b-1' });
+can('and staff may clear the night', ADMIN, `/opened/${TODAY}/5`, null);
+cannot('a mark without a booking is refused', GUEST, `/opened/${TODAY}/6`,
+       { at: NOW });
+cannot('and so is a mark carrying anything else', GUEST, `/opened/${TODAY}/6`,
+       { at: NOW, bookingId: 'b-1', status: 'in' });
+cannot('a villa that is not a number is refused', GUEST, `/opened/${TODAY}/abc`,
+       { at: NOW, bookingId: 'b-1' });
+cannot('and a date that is not a date', GUEST, '/opened/tonight/5',
+       { at: NOW, bookingId: 'b-1' });
 canPatch('Front Desk confirms the same record', DESK, '/bookings/b-1/prearrival', {
   dining: true, pax: 2, diets: [], noDiets: true, dnote: '',
   arriveSlot: '', arriveNote: '', purpose: '', approach: '',

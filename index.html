@@ -851,14 +851,39 @@
     stepDone(payload);
   }
 
+  /* Filed by night, not by guest. Dinner is asked once a night, so opening
+     Monday's link says nothing about Thursday, and a mark that lives on the
+     guest would show every night of the stay as looked at.
+
+     Deliberately not a field on the dinner cell. Rules require a status on any
+     /dinner write, so putting it there would turn a look into an answer, and
+     the whole point is that a look is not an answer.
+
+     Silent. This is the resort's record keeping, not the guest's, and a
+     failure here must not warn them their booking did not save, which is what
+     db() would do. Repeat opens overwrite, so `at` is the most recent look. */
+  function markOpened(room){
+    fetch(DB+'/opened/'+todayKey()+'/'+room+'.json', {
+      method: 'PUT',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ at:new Date().toISOString(), bookingId:G.id })
+    }).catch(function(){});
+  }
+
   function initRSVP(){
     if (!G.id) return;   // opt-in needs a booking, which the link carries
     panel.className = 'show';
     document.querySelector('.page').classList.add('has-rsvp');
 
-    /* Nothing is written on opening any more. The old page recorded the guest
-       in /roomguests so staff could see who was in a villa; Mews does that now,
-       through /stays, and it does it for guests who never open their link. */
+    /* The old page recorded the guest in /roomguests so staff could see who
+       was in a villa. Mews does that now, through /stays, and it does it for
+       guests who never open their link, so that write is gone. What went with
+       it was the only evidence that anybody had LOOKED, which is a different
+       fact and the one reception acts on: a guest who opened the link and did
+       not choose is the guest to chase, and a guest who never opened it is a
+       message that did not land. The boards kept drawing that distinction for
+       two days after nothing was left to draw it from. It is written again
+       below, in its own node this time. */
     db('/bookings/'+G.id+'/pms')
       .then(function(pms){
         pms = pms || {};
@@ -870,6 +895,7 @@
         if (nm) G.name = nm;
         if (pms.arrive) G.arrives = pms.arrive;
         if (pms.depart) G.departs = pms.depart;
+        if (G.room) markOpened(G.room);
         return Promise.all([
           G.room ? db('/dinner/'+todayKey()+'/'+G.room) : null,
           db('/bookings/'+G.id+'/prearrival')

@@ -860,10 +860,14 @@ function roomTile(n){
   }
 
   var mark = '';
-  /* Only a guest written record earns this. A booking known only from the PMS
-     has been opened by nobody, and marking it as opened would put the icon on
-     every future night of every stay. */
-  if (!st && roomguests[String(n)] && !isMewsOnly(roomguests[String(n)])) {
+  /* Opened tonight's link and has not answered tonight. Both halves matter.
+
+     Until 19 Aug this was inferred from a guest written /roomguests record,
+     which worked until the guest page stopped writing one on 17 Aug. The
+     condition survived and its evidence did not, so no villa had carried this
+     icon for two days. It now reads the mark the guest page writes per night,
+     which is also what makes it mean tonight rather than some night. */
+  if (!st && openedTonight(n)) {
     mark = '<span class="mark seen">'+ICON_LINK+'</span>';   // opened, no answer yet
   }
   if (st && (st.g.status==='in' || st.g.status==='out')) {
@@ -1728,8 +1732,10 @@ function openRoom(n, st){
   }
 
   // ── no guest answer: plain staff entry ──────────────────
-  var seen = roomguests[String(n)];
-  if (isMewsOnly(seen)) seen = null;   // known from the PMS, not from a click
+  /* Same source as the tile icon, so the sheet cannot disagree with the tile
+     that opened it. The name still comes from the villa record: the mark knows
+     a link was pressed, not who pressed it. */
+  var seen = openedTonight(n) ? (roomguests[String(n)] || {}) : null;
   shell(
     (!st && seen
       ? '<div class="note-box">'+

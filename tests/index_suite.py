@@ -132,12 +132,24 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.getElementById('rsvp').className.indexOf('show')<0"))
     pg.close()
 
-    # ── opening the link writes nothing ─────────────────────────
+    # ── opening the link records the look and nothing else ──────
     # The old page recorded the guest in /roomguests on arrival. Mews does that
-    # now, through /stays, and for guests who never open their link at all.
+    # now, through /stays, and for guests who never open their link at all, so
+    # that write went. It took with it the only evidence anybody had LOOKED,
+    # which is the fact reception acts on, and for two days the boards drew a
+    # distinction nothing was feeding. One write is right here, and it is a
+    # mark against tonight, not a guest record coming back.
     del WRITES[:]
     pg = guest(LINK)
-    ck("opening the link writes nothing anywhere", len(WRITES) == 0)
+    pg.wait_for_timeout(400)
+    marks = [w for w in WRITES if "/opened/" in w["u"]]
+    ck("opening the link marks the night as looked at",
+       len(marks) == 1 and marks[0]["m"] == "PUT")
+    ck("and files it against the villa Mews gives, not the link",
+       len(marks) == 1 and "/opened/%s/4.json" % today in marks[0]["u"])
+    ck("and carries the booking so the mark can be traced",
+       len(marks) == 1 and json.loads(marks[0]["b"]).get("bookingId") == "res-guid-1")
+    ck("and writes nothing else at all", len(WRITES) == len(marks))
     ck("the panel is shown for a guest with a booking",
        pg.evaluate("()=>document.getElementById('rsvp').className.indexOf('show')>-1"))
     ck("and the first question is whether they are dining",

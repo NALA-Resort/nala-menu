@@ -30,6 +30,11 @@ roomguests={today:{"9":{"name":"Priya","departs":plus(3)},"4":{"name":"Lucy","de
 # Mews knows and the app used to store and show nowhere.
 stays={today:{"9":{"id":"res-9","first":"Priya","last":"","arrive":plus(-1),
                    "depart":plus(3),"adults":2,"updated":"2026-08-16T10:00:00Z"}}}
+# Villa 9 pressed the menu link tonight and has not answered. Until 19 Aug this
+# was inferred from the guest written roomguests record above, which stopped
+# being written on 17 Aug, so the fixture was asserting a signal the live app
+# could no longer produce. It is now a fact of its own, filed by night.
+opened={today:{"9":{"at":now.isoformat(),"bookingId":"res-9"}}}
 combined={"g1":{"rooms":["3","4"]}}
 menu={"published":now.isoformat(),"bread":{"name":"Sourdough"},"entree":{"name":"Prawns"},
       "main":{"name":"Satay Chicken"},"dessert":{"name":"Pavlova"}}
@@ -54,6 +59,8 @@ def fb(route,request):
     elif "/stays/" in u: body="null"
     elif "/roomguests/"+today in u: body=json.dumps(roomguests[today])
     elif "/roomguests/" in u: body="null"
+    elif "/opened/"+today in u: body=json.dumps(opened[today])
+    elif "/opened/" in u: body="null"
     elif "/combined/" in u: body=json.dumps(combined)
     elif "/menutags/" in u: body=json.dumps(menutags)
     elif "/menuhistory/" in u: body="null"
@@ -87,6 +94,10 @@ with sync_playwright() as p:
     ck("room5 vacant", "room vacant" in t["r"]["5"]["cls"])
     ck("room6 dining 3p staff", t["r"]["6"]["pax"]=="3p")
     ck("room9 awaiting + link-opened mark", "await" in t["r"]["9"]["cls"] and "seen" in t["r"]["9"]["mark"])
+    # The other half of the same signal. Villa 4 is booked and has not opened
+    # its link, so it must stay bare: an icon there would tell reception the
+    # message landed when nothing says it did.
+    ck("room4 booked but never opened carries no mark", t["r"]["4"]["mark"]=="")
     ck("rooms 3+4 ringed as a group", t["grp"] and t["grpRooms"]==["3","4"])
 
     # 2 stats + tables

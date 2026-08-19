@@ -222,6 +222,21 @@ function resolveRoomGuestsHK(all, todayK){
    the seam that keeps screen and paper agreeing.                          */
 var DINNER_CELLS = {};
 
+/* Which villas opened their menu link on the date fetchStays was last called
+   with. Kept beside DINNER_CELLS for the same reason: every page that renders
+   a night already asks for that night, so the marks ride along and no page
+   grows a fetch of its own.
+
+   It answers the question the dinner cell cannot. An empty cell says nobody
+   has answered. It does not say whether anybody was asked. */
+var OPENED_MARKS = {};
+
+/* True when this villa opened its link on the night being shown. */
+function openedTonight(villa, marks){
+  var m = (marks || OPENED_MARKS)[String(villa)];
+  return !!(m && m.at);
+}
+
 function fetchStays(dateKey){
   return Promise.all([
     fetch(DB + '/stays/' + dateKey + '.json?v=' + Date.now())
@@ -232,9 +247,17 @@ function fetchStays(dateKey){
       .catch(function(){ return null; }),
     fetch(DB + '/dinner/' + dateKey + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
+    /* A failed read here must not read as nobody opened anything: that would
+       put every villa back in the never reached pile and send reception
+       chasing guests who already answered. Null, and the caller shows no
+       marks rather than wrong ones. */
+    fetch(DB + '/opened/' + dateKey + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; })
   ]).then(function(res){
     DINNER_CELLS = res[1] || {};
+    OPENED_MARKS = res[2] || {};
     return res[0];
   });
 }

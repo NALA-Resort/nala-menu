@@ -279,7 +279,7 @@ function scanWipe(){
   /* dinner and bookings were added after this list was written and were not
      being wiped, so a clean slate left every reservation on the board. */
   var nodes = ['roomguests','responses','manual','hk','stays','guests','combined',
-               'dinner','bookings'];
+               'dinner','bookings','opened'];
   /* A read that FAILS must not read as an empty node. Until 17 Aug it did:
      the rules grant read on /manual/<date> rather than on /manual, so listing
      the whole node returned 401, the catch turned it into null, and the count
