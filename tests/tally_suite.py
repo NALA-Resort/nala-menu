@@ -886,6 +886,72 @@ with sync_playwright() as p:
            bool(geo) and geo["readable"])
         q.close()
 
+    # ── an unlisted allergy, here too ───────────────────────────────────
+    # The desk gained an Other pill; this board edits the same dietaries on the
+    # same guest and had no way to record one. A board that cannot show what
+    # the desk recorded is a board that quietly loses it.
+    WROTE = []
+    def diet_fb(route, request):
+        u = request.url
+        if request.method in ("PUT", "PATCH"):
+            WROTE.append((u.split("firebasedatabase.app")[1].split("?")[0],
+                          request.post_data))
+            route.fulfill(status=200, content_type="application/json",
+                          body=request.post_data or "{}"); return
+        if "/staff" in u:
+            route.fulfill(status=200, content_type="application/json",
+                body=json.dumps({"staff@x": {"name": "A", "role": "admin"}})); return
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                body=json.dumps({"4": {"id": "b4", "first": "K", "last": "S",
+                                       "arrive": plus(-1), "depart": plus(3),
+                                       "adults": 2}})); return
+        if "/dinner/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                body=json.dumps({"4": {"status": "in", "pax": 2, "by": "staff"}})); return
+        fb(route, request)
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body=SDK))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", diet_fb)
+    q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1900)
+    q.evaluate("""()=>[...document.querySelectorAll('button')]
+      .find(b=>b.querySelector('.room-n')
+        &&b.querySelector('.room-n').textContent==='4').click()""")
+    q.wait_for_timeout(400)
+    q.evaluate("""()=>{const b=[...document.querySelectorAll('#sheet button')]
+      .find(x=>/edit details/i.test(x.textContent)); if(b)b.click();}""")
+    q.wait_for_timeout(500)
+
+    chips = q.evaluate("()=>[...document.querySelectorAll('#dietChips button')]"
+                       ".map(b=>b.textContent.trim())")
+    ck("the reservations board offers Other, like the desk", "Other" in chips)
+    # Not in DIETARIES itself: that list is also the chef's, and Other is not a
+    # dietary a dish can conflict with.
+    ck("and it is the last of them, not mixed into the chef's list",
+       bool(chips) and chips[-1] == "Other")
+
+    q.evaluate("""()=>[...document.querySelectorAll('#dietChips button')]
+      .find(b=>b.textContent.trim()==='Other').click()""")
+    q.wait_for_timeout(200)
+    del WROTE[:]
+    q.evaluate("()=>{const b=document.getElementById('oSave'); if(b)b.click();}")
+    q.wait_for_timeout(600)
+    ck("Other with an empty note saves nothing here either", not WROTE)
+
+    q.fill("#xNote", "Severe sesame allergy")
+    del WROTE[:]
+    q.evaluate("()=>document.getElementById('oSave').click()")
+    q.wait_for_timeout(700)
+    saved = [json.loads(x[1]) for x in WROTE if x[1]]
+    ck("and saves once the allergy is written down",
+       bool(saved) and any(d.get("diets") == ["Other"] for d in saved))
+    ck("with the note that explains it",
+       any("sesame" in str(d.get("note", "")).lower() for d in saved))
+    q.close()
+
     b.close()
     open("/home/claude/nala/_p1_tally.png","wb").write(shot1)
 print("RESULT: %d passed, %d failed" % (P,F))

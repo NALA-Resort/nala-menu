@@ -1877,6 +1877,27 @@ window.NALA_NAVFILTER = navFilterShared;
 
 </script>
 <script>
+/* Not every allergy is on the list and the list cannot grow to hold them all,
+   so Other means read the note. The same entry the front desk writes, because
+   these two screens edit the same dietaries on the same guest and a board that
+   cannot show what the desk recorded is a board that quietly loses it.
+
+   Kept out of DIETARIES itself: that list is also the chef's, and Other is not
+   a dietary a dish can conflict with. */
+var DIET_OTHER = 'Other';
+
+/* Other means read the note, so Other with an empty note tells the kitchen
+   there is something to know and never says what: an answer that looks like
+   one and is not. The same rule the front desk applies, because these two
+   screens edit the same dietaries on the same guest.
+
+   The note here is the villa's general note rather than a dietary note of its
+   own, which is the one difference from the desk. It is where somebody
+   reading this row will look, so it is where the allergy has to be. */
+function otherNeedsNote(diets, note){
+  return diets.indexOf(DIET_OTHER) > -1 && !String(note || '').trim();
+}
+
 var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
 
@@ -2872,7 +2893,7 @@ function editRoomDetails(n, st){
   document.getElementById('xNote').value  = g.note  || '';
   (function paintChips(){
     var box=document.getElementById('dietChips'); box.innerHTML='';
-    DIETARIES.forEach(function(d){
+    DIETARIES.concat([DIET_OTHER]).forEach(function(d){
       var b=document.createElement('button');
       b.className='chip'+(diets.indexOf(d)>-1?' on':''); b.textContent=d;
       b.onclick=function(){
@@ -2889,6 +2910,11 @@ function editRoomDetails(n, st){
     rec.name  = document.getElementById('xName').value.trim();
     rec.phone = document.getElementById('xPhone').value.trim();
     rec.note  = document.getElementById('xNote').value.trim();
+    if (otherNeedsNote(diets, rec.note)){
+      showError('Write the allergy in the notes, or it reaches nobody.');
+      document.getElementById('xNote').focus();
+      return;
+    }
     rec.diets = diets.slice();
     if (g.dnote) rec.dnote = g.dnote;   // the guest's own dietary note stays theirs
     saveManual('room-'+n, rec);
@@ -3126,7 +3152,7 @@ document.getElementById('addExt').onclick = function(e){
   function paintPax(){ paxPicker(8, function(){return pax;}, function(v){pax=v;}); }
   function paintChips(){
     var box=document.getElementById('dietChips'); box.innerHTML='';
-    DIETARIES.forEach(function(d){
+    DIETARIES.concat([DIET_OTHER]).forEach(function(d){
       var b=document.createElement('button');
       b.className='chip'+(diets.indexOf(d)>-1?' on':''); b.textContent=d;
       b.onclick=function(){
@@ -3143,6 +3169,11 @@ document.getElementById('addExt').onclick = function(e){
     var nm=document.getElementById('xName').value.trim();
     var ph=document.getElementById('xPhone').value.trim();
     var nt=document.getElementById('xNote').value.trim();
+    if (otherNeedsNote(diets, nt)){
+      showError('Write the allergy in the notes, or it reaches nobody.');
+      document.getElementById('xNote').focus();
+      return;
+    }
     if (dest===null){
       if(!nm){ document.getElementById('xName').focus(); return; }
       var id='ext-'+Date.now();
@@ -3189,7 +3220,7 @@ function editExt(key, g){
     paxPicker(8, function(){return pax;}, function(v){pax=v;});
     (function paintChips(){
       var box=document.getElementById('dietChips'); box.innerHTML='';
-      DIETARIES.forEach(function(d){
+      DIETARIES.concat([DIET_OTHER]).forEach(function(d){
         var b=document.createElement('button');
         b.className='chip'+(diets.indexOf(d)>-1?' on':''); b.textContent=d;
         b.onclick=function(){
