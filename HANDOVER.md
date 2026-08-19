@@ -208,7 +208,21 @@ rather than handwritten.
 
 ### Waiting on a person
 
-1. **Cancellations have never been seen to fire.** The Zap does not trigger.
+1. **Paste `rules.json` into the Firebase console.** FOUR nodes added on 19 Aug
+   are not live, and each one silently breaks a finished feature:
+
+   - `companion` on prearrival: a guest typing a companion's name fails their
+     WHOLE pre-arrival form, not just that field, and nothing on screen says
+     why.
+   - `internal`: management's private note does not save.
+   - `guests`: a dietary never reaches the guest record, so it cannot outlive
+     the booking.
+   - `opened`: the link-opened icon stays dark.
+
+   Paste the file wholesale. Merging by hand is how three of these came to be
+   missing in the first place.
+
+2. **Cancellations have never been seen to fire.** The Zap does not trigger.
    Until it does, a cancelled booking stays on the board. Worker handles it and
    is tested; the feed is the only problem. Confirmed 18 Aug that the
    cancellation `Id` is the same GUID as the reservation's, so nothing needs
@@ -262,6 +276,9 @@ rather than handwritten.
 
    If the owner reports a step that does not match what is on screen, fix
    `SECURITY.md` at the same time as answering. These consoles rename things.
+4. **Confirm the Mews companion field against a live Zap run.** The key names
+   are confirmed from a real payload and the position is not assumed, but it
+   has never been seen working end to end.
 5. ~~Does Mews send true UTC?~~ **Answered 18 Aug: it does.** 04:00Z is 2pm at
    the resort, UTC+10. The Worker converted nothing, so any timestamp after 2pm
    UTC was filed a day early, which is every arrival before 10am local and
@@ -520,11 +537,12 @@ three:
 - `DESIGN.md` who owns which data, the screens, and why the identifiers are
   what they are.
 - `SETUP.md` Firebase, Cloudflare and Zapier configuration.
-- `NOTES-AUDIT.md` every place free text about a guest is stored, what it is
-  for and how long it lasts. **It names one live bug:** the reservations board
-  writes a dietary note to the night only, so one typed there is gone at
-  midnight, while the same note from the desk survives. Fix that before the
-  larger question of typing notes.
+- `NOTES-AUDIT.md` **read this before touching any note or dietary.** The four
+  note model in plain words, every place free text about a guest is stored, and
+  one live bug with the fix already worked out: dietaries are stored on the
+  NIGHT, so three screens show none on tomorrow's date. There is one dietary
+  list per person and never a nightly one; the nightly note is a different
+  thing and should expire.
 - `SECURITY.md` the credential rotations, the login tidy up, locking the
   Firebase key to the site, and what making the repository private does and
   does not protect. Click by click, because all of it is done by the owner in a

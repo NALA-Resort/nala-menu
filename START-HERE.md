@@ -272,11 +272,11 @@ current open list; the short version is:
 
 **Waiting on the user, and the first one blocks working features:**
 
-1. **Paste `rules.json` into the Firebase console.** Three additions on 19 Aug
-   are not live yet: `companion` on prearrival, the whole `internal` node, and
-   the whole `guests` node. Until it is pasted, a guest typing a companion name
-   fails the WHOLE pre-arrival save, internal notes do not save, and dietaries
-   do not reach the guest record. Copy the file wholesale rather than merging
+1. **Paste `rules.json` into the Firebase console.** Four additions on 19 Aug
+   are not live: `companion` on prearrival, and the whole `internal`, `guests`
+   and `opened` nodes. Until it is pasted: a guest typing a companion name
+   fails their WHOLE pre-arrival save, internal notes do not save, dietaries do
+   not reach the guest record, and the link-opened icon stays dark. Copy the file wholesale rather than merging
    by hand.
 2. The four security jobs in `SECURITY.md`: credential rotation, deleting
    leftover logins, locking the Firebase key to the site, and optionally making
