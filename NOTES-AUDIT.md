@@ -163,6 +163,24 @@ record failing to write must never cost the evening its answers.
 before the single cell. Nothing writes it now except older records, so it can
 go once those have aged out with their dates.
 
+---
+
+## Decided against: a dietary per person
+
+Asked 19 Aug, and answered no on the same day. Attaching dietaries to each
+guest separately would mean the companion needs their own record, keyed on
+their own Mews id, and every screen would have to ask which of them a dietary
+belongs to before it could store one.
+
+It is not worth it. A dietary stays with one of the two guests in practice, and
+a short note saying whose it is answers the question in the time it takes to
+type four words. The dietary note field already holds exactly that, and the
+front desk sheet has carried "the daughter, severe" as its example since it was
+written.
+
+If this is ever revisited, the thing that changed will be that somebody needed
+to filter or count by person, not that the note was unclear.
+
 ## What to do, in order
 
 1. **Make the reservations board write the dietary to the booking**, as the
