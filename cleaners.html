@@ -115,6 +115,26 @@
      something being wrong. */
   .tile .chip.ver { background:transparent; border-style:dashed;
                     border-color:var(--mid); }
+  /* Who is on it, as a badge in the corner rather than a line of text. Reading
+     H doing at the bottom of a tile is reading; a filled circle is seeing, and
+     the question it answers is which room to walk to, asked from across a
+     corridor while carrying something.
+
+     Initials rather than a person icon. A generic icon says somebody is on it,
+     which is one fact; the initials say that same fact and who, in the same
+     space. The full name is on the title and the accessible label.
+
+     Yours is inverted rather than given a colour. Colour on this board means
+     which job, and a second meaning for the same signal is how a board stops
+     being readable. */
+  .tile .who-badge { position:absolute; top:5px; right:5px;
+                     min-width:20px; height:20px; padding:0 4px;
+                     border-radius:10px; border:1.5px solid var(--ink);
+                     background:var(--ink); color:var(--cream);
+                     font-family:var(--ui-font); font-size:9px; font-weight:bold;
+                     letter-spacing:.02em; display:flex; align-items:center;
+                     justify-content:center; box-sizing:border-box; }
+  .tile .who-badge.mine { background:var(--cream); color:var(--ink); }
   .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
   .tile .sub b { color:var(--ink); }
   /* The clock on an available villa, and the only place on this board where
@@ -630,21 +650,11 @@ function render(){
     var sub='';
     var claimed = !!(h.takenBy && !h.done && !h.pushed);
     if (row.kind!=='vac'){
-      /* Who is on it outranks what the room is. Two cleaners walking to the
-         same villa is the waste this exists to stop, and Departed or Occupied
-         is the least useful thing a tile can say once somebody has taken it.
-         It had a pill of its own at first, which stacked two chips on one tile
-         and was the same fault as the arrival label. Gone once the job is
-         done, when who is going next stops being a question. */
-      if (claimed)
-        /* Initials, like the finished line. The full name wrapped to two
-           lines on a tile and pushed everything else out: Housekeeping has
-           this is four words to say what two letters say. Yours stays as You,
-           because knowing a job is already yours is the one thing initials
-           cannot tell you. */
-        sub = (h.takenBy === window.NALA_ME
-                 ? 'You doing' : esc(initialsOf(h.takenBy) || h.takenBy)+' doing');
-      else if (h.pushed) sub='To tomorrow';
+      /* The badge in the corner says who is on it, so this line goes back to
+         saying what the room is. It spent two versions saying who instead,
+         first as a second pill and then as text, and both cost the tile its
+         only line about the villa itself. */
+      if (h.pushed) sub='To tomorrow';
       else if (h.done){
         /* Who finished it, in initials: a finished board that cannot say who
            did the work is a board you have to ask about. Older records carry
@@ -668,8 +678,20 @@ function render(){
     if (selected[row.n]) cls += ' sel';
     var el=document.createElement('button');
     el.className=cls;
+    var badge = '';
+    if (claimed){
+      var mine = h.takenBy === window.NALA_ME;
+      badge = '<span class="who-badge'+(mine ? ' mine' : '')+'"'+
+              ' title="'+esc(h.takenBy)+' is on this villa"'+
+              ' aria-label="'+esc(h.takenBy)+' is on this villa">'+
+              esc(initialsOf(h.takenBy) || h.takenBy)+'</span>';
+    }
+    /* The badge is drawn in the corner but comes last in the markup, so the
+       tile still READS villa, job, state, person. Put first, the tile's text
+       began with somebody's initials instead of the villa number, which is
+       the wrong order for a screen reader and for anything matching on it. */
     el.innerHTML='<span class="rn">'+row.n+'</span>'+chip+
-                 '<span class="sub'+(claimed ? ' who' : '')+'">'+sub+'</span>';
+                 '<span class="sub">'+sub+'</span>'+badge;
     el.onclick = function(){
       if (selectMode){
         if (!selectableRow(row)) return;

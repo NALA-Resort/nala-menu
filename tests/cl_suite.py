@@ -1430,19 +1430,40 @@ with sync_playwright() as p:
        q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
                   ".find(t=>t.innerText.startsWith('9'))"
                   ".querySelectorAll('.chip').length") == 1)
-    # Your own claim comes back as You, not as your own name read off a board.
+    # Who is on it, as a badge in the corner. Reading a line at the bottom of a
+    # tile is reading; a filled circle is seeing, and the question it answers
+    # is which room to walk to, asked from across a corridor.
+    #
     # The first paint happens before sign in resolves, so this also proves the
-    # board repaints once it knows who is looking at it.
-    # Initials, like the finished line: the full name wrapped to two lines on a
-    # tile and pushed the rest out. Yours stays as You, because knowing a job
-    # is already yours is the one thing initials cannot tell you.
-    ck("your own claim reads as You once the board knows who you are",
-       "you doing" in tile_text(q, "3") and "ana" not in tile_text(q, "3"))
+    # board repaints once it knows who is looking at it: without that, your own
+    # badge comes back looking like somebody else's.
+    def badge(pgx, villa):
+        return pgx.evaluate("""(v)=>{const t=[...document.querySelectorAll('#grid .tile')]
+          .find(x=>x.querySelector('.rn').textContent===v);
+          const b=t&&t.querySelector('.who-badge');
+          return b?{txt:b.textContent.trim(), mine:b.className.indexOf('mine')>-1,
+                    label:b.getAttribute('aria-label')}:null;}""", villa)
+
+    mine = badge(q, "3")
+    ck("a claimed villa carries a badge rather than a line to read", bool(mine))
+    ck("the badge is initials, so it says who as well as that somebody is on it",
+       bool(mine) and mine["txt"] == "A")
+    # Yours is inverted rather than coloured: colour on this board means which
+    # job, and a second meaning for one signal is how a board stops reading.
+    ck("and your own is marked out without borrowing a job colour",
+       bool(mine) and mine["mine"])
+    ck("the full name is still there for anyone who needs it",
+       bool(mine) and "Ana" in (mine["label"] or ""))
+    # The badge freed the line underneath, which had spent two versions saying
+    # who instead of what the room is.
+    ck("and the line underneath is about the villa again",
+       "doing" not in tile_text(q, "3"))
     q.close()
 
     q = as_cleaner("bo@x")
-    ck("somebody else's claim shows their initials on the tile",
-       "a doing" in tile_text(q, "3") and "ana" not in tile_text(q, "3"))
+    theirs = badge(q, "3")
+    ck("somebody else's badge shows their initials, plainly not yours",
+       bool(theirs) and theirs["txt"] == "A" and not theirs["mine"])
     q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
                ".find(t=>t.innerText.startsWith('3')).click()")
     q.wait_for_timeout(400)
