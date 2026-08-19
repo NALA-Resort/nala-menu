@@ -66,6 +66,65 @@ one on one of the two screens that writes it.
 
 ---
 
+---
+
+## The model to build towards
+
+Decided 19 Aug. Four notes, and no others.
+
+| # | Note | Comes from | Belongs to | Who may read it | Who may edit it |
+|---|---|---|---|---|---|
+| 1 | **Internal** | Mews, then edited here | the reservation | management only | management only |
+| 2 | **Guest note** | the pre-arrival form | the reservation | staff and the guest | the guest, and the desk |
+| 3 | **Dietary** | anywhere it is asked | the **person** | staff and the guest | anyone who may edit a guest |
+| 4 | **Dinner note** | tonight's service | **one night** | staff | anyone editing tonight |
+
+Rules that fall out of it:
+
+- A dinner note is only ever offered where a dietary note is also offered, so
+  nobody types an allergy into the wrong box for want of finding the right one.
+- A dietary outlives the booking. A guest who comes back is not asked again.
+- An internal note is never shown to a guest, on any screen, in any state.
+
+### What each one needs
+
+**1. Internal notes: not built, and the obvious place is wrong.**
+`/bookings/<id>` has `".read": true`. Anything under it is readable by anybody
+holding a pre-arrival link, which is the whole point of that node: the guest
+form reads it without signing in. An internal note stored there would be one
+URL away from the guest it is about.
+
+So it needs its own node outside `/bookings`, readable only by staff. That is a
+rules change and cannot be avoided by putting it somewhere convenient.
+
+It also needs the sync to stop deleting it. `notes`, `notesType` and
+`guestNotes` are sent as null on every write, so any edit would be wiped by the
+next Mews event for that booking. The sync should write the Mews note ONCE, on
+first sight, and never overwrite an edited one: otherwise a manager's
+correction survives until the guest changes their booking.
+
+**2. Guest note: built.** `prearrival.note`, written by both forms, lives with
+the booking. Nothing to do.
+
+**3. Dietary: built in the wrong place, twice.** It is on the booking
+(`prearrival.dnote`) and on the night (`dinner/<date>/<villa>/dnote`), and the
+reservations board writes only the night, so a dietary typed there is gone at
+midnight. Belonging to the PERSON needs a third home: `customerId` is already
+collected on every booking for exactly this and nothing reads it yet.
+
+Two steps, and the first is worth doing on its own: make every screen write the
+dietary to the booking, then move it to the customer.
+
+**4. Dinner note: built.** `dinner/<date>/<villa>/note`, expires with the date.
+
+### What has to go
+
+- `manual/<date>/<key>/note` is a second dinner note from before the one cell
+  existed. Same lifetime, same purpose, one of them is enough.
+- `prearrival.arriveNote` is not one of the four. It is part of the answer to
+  when are you arriving rather than a note about the guest, and it should keep
+  living beside `arriveSlot` rather than being counted here.
+
 ## What to do, in order
 
 1. **Make the reservations board write the dietary to the booking**, as the
