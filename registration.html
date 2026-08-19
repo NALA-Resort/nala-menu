@@ -19,8 +19,20 @@
   .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
 
   /* One card per arriving villa, one page each. A card that breaks across a
-     page is a card somebody hands over half of. */
-  .card { border:1px solid #111; padding:18px 20px 20px; margin-bottom:18px;
+     page is a card somebody hands over half of. Sized so that even a card with
+     EVERY question unanswered, boxes and all, fits one A4 page with the
+     signature block on it: the 19 Aug sizes did not, and the first real print
+     came back with Notes and the signatures orphaned on a second page.
+
+     The card is set in Georgia, per the approved mock and STYLEGUIDE's content
+     serif. Screen controls above the cards stay in the UI font.
+
+     Width is the A4 printable width, stated explicitly. Without it the card
+     shrank to phone width on screen and every row wrapped into rubble; the
+     sideways scroll on #cards only works if the card actually keeps its
+     printed width. */
+  .card { border:1px solid #111; padding:16px 18px 18px; margin-bottom:18px;
+          width:186mm; font-family:Georgia, 'Times New Roman', serif;
           page-break-inside:avoid; page-break-after:always; }
   .card:last-child { page-break-after:auto; }
 
@@ -41,43 +53,44 @@
   .c-stay b { font-size:27px; font-weight:bold; color:#111; letter-spacing:.01em;
               white-space:nowrap; }
 
-  .row { display:flex; gap:14px; padding:9px 0; border-bottom:1px solid #ddd; }
+  .row { display:flex; gap:14px; padding:7px 0; border-bottom:1px solid #ddd; }
   .row:last-of-type { border-bottom:none; }
   .lbl { flex:0 0 22%; font-size:15px; letter-spacing:.12em; text-transform:uppercase;
          color:#555; padding-top:5px; }
-  .val { flex:1; font-size:22px; line-height:1.4; min-height:30px; }
+  .val { flex:1; font-size:21px; line-height:1.35; min-height:28px; }
   /* An unanswered field prints as a rule to write on, not as blank space.
      Reception fills it in with the guest and the card is the working document. */
-  .val.blank { border-bottom:1px solid #999; min-height:32px; }
+  .val.blank { border-bottom:1px solid #999; min-height:30px; }
 
   /* An unanswered question prints the guest form's own options as boxes, so
      reception ticks rather than writes. Same options in the same order as the
      form, because the guest may answer half of it at the desk and the two
      have to be the same question. */
   .ticks { display:flex; flex-wrap:wrap; gap:6px 20px; }
-  .tk { display:flex; align-items:center; gap:8px; font-size:20px; line-height:1.2; }
-  .tk i { display:block; width:20px; height:20px; border:1.5px solid #333; flex:0 0 20px; }
-  .writeline { border-bottom:1px solid #999; height:32px; margin-top:8px; }
-  .count { display:flex; align-items:flex-end; gap:10px; font-size:20px; margin-top:10px; }
+  .tk { display:flex; align-items:center; gap:8px; font-size:18px; line-height:1.2;
+        white-space:nowrap; }
+  .tk i { display:block; width:18px; height:18px; border:1.5px solid #333; flex:0 0 18px; }
+  .writeline { border-bottom:1px solid #999; height:28px; margin-top:7px; }
+  .count { display:flex; align-items:flex-end; gap:10px; font-size:18px; margin-top:8px; }
   .count span { display:block; width:130px; border-bottom:1px solid #999; height:26px; }
 
   /* Arriving is the one reception reads at a glance while the guest walks in,
      so it is set three times the old size rather than two. No tick boxes: the
      answer is a time and a reason, and six boxes crowd out the room to write
      the reason, which is the part that matters. */
-  .row.eta { padding:14px 0; }
+  .row.eta { padding:10px 0; }
   .row.eta .lbl { font-size:22px; padding-top:8px; }
   .row.eta .val { font-size:30px; }
-  .row.eta .val.blank { min-height:52px; }
+  .row.eta .val.blank { min-height:44px; }
 
-  .notelines div { border-bottom:1px solid #999; height:34px; }
+  .notelines div { border-bottom:1px solid #999; height:30px; }
 
   .flag { color:#9E6455; font-weight:bold; }
-  .sig { display:flex; gap:28px; margin-top:18px; padding-top:14px;
+  .sig { display:flex; gap:28px; margin-top:12px; padding-top:10px;
          border-top:1.5px solid #111; }
   .sig div { flex:1; font-size:13px; letter-spacing:.12em; text-transform:uppercase;
              color:#555; }
-  .sig span { display:block; border-bottom:1px solid #111; height:34px; margin-bottom:6px; }
+  .sig span { display:block; border-bottom:1px solid #111; height:30px; margin-bottom:6px; }
 
   .stamp { font-size:7.5px; letter-spacing:.1em; text-transform:uppercase;
            color:#999; text-align:right; margin-top:10px; }
@@ -375,7 +388,11 @@ function load(){
         ]).then(function(res){ r.pre = res[0]; r.pms = res[1]; });
       })).then(function(){ render(oneRowPerBooking(rows)); });
     })
-    .catch(function(){
+    .catch(function(e){
+      /* The message below is for reception. The console line is for whoever
+         debugs this on a device: without it the real error dies here and the
+         only symptom is an empty page that blames the connection. */
+      console.error('registration load failed:', e);
       document.getElementById('cards').innerHTML =
         '<div class="empty">Could not load arrivals. This is usually the connection.</div>';
     });
