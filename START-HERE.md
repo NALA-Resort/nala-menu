@@ -217,18 +217,37 @@ with bash or code execution instead.
 ## Where things stand
 
 The Mews sync, Front Desk Arrival, the guest pre-arrival form, registration
-cards and the single dinner record are all built and live. `HANDOVER.md` has the
+cards and the single dinner record are all built and live.
+
+**19 Aug, in one paragraph.** The Cleans board was rewritten: it reads last
+night as well as tonight, so a departure is no longer invisible to it; jobs are
+coloured bars rather than words; cleaners can claim a villa; and pre-arrivals
+are derived from the booking rather than set by hand. The front desk gained an
+arrival time, a companion name, an Other dietary, and partial saves, so
+reception can add what they hear across the day. `NOTES-AUDIT.md` is new and
+worth reading before touching any note: it maps every place free text about a
+guest is stored, and the four-note model the app is now built to. `HANDOVER.md` has the
 current open list; the short version is:
 
-**Waiting on the user:** the four security jobs in `SECURITY.md`, which is
-credential rotation, deleting leftover logins, locking the Firebase key to the
-site, and optionally making the repo private; cancellations do not fire from
-Zapier; GuestTouch links need `?b=<booking id>`; dinner and breakfast hours; the
-placeholder line on the pre-arrival form.
+**Waiting on the user, and the first one blocks working features:**
 
-The 18 Aug rules were pasted into the Firebase console and published that
-evening, so `rules.json` and the live rules match. Any further change to that
-file is another paste.
+1. **Paste `rules.json` into the Firebase console.** Three additions on 19 Aug
+   are not live yet: `companion` on prearrival, the whole `internal` node, and
+   the whole `guests` node. Until it is pasted, a guest typing a companion name
+   fails the WHOLE pre-arrival save, internal notes do not save, and dietaries
+   do not reach the guest record. Copy the file wholesale rather than merging
+   by hand.
+2. The four security jobs in `SECURITY.md`: credential rotation, deleting
+   leftover logins, locking the Firebase key to the site, and optionally making
+   the repo private.
+3. Cancellations do not fire from Zapier, **but re-test before believing it**:
+   that was recorded while every reservation write was failing validation, so a
+   cancellation that did fire would have looked identical to one that never
+   came.
+4. Confirm the Mews companion field against a live Zap run. The names are
+   confirmed, the position is not assumed, but it has never been seen working
+   end to end.
+5. Dinner and breakfast hours; the placeholder line on the pre-arrival form.
 
 **Waiting on a developer:** nothing reports the sync stopping, which needs a
 Zapier schedule trigger; the notification Worker exists only on the user's
