@@ -179,6 +179,18 @@ var ETA_SLOTS = { before2:'Before 2pm', '14':'Approx 2pm', '15':'Approx 3pm',
 var APPROACH = { most:'Dining in most nights', mix:'A mix of in and out',
                  out:'Mostly eating out' };
 
+/* Purpose is stored as one middot separated string, which is what the rules
+   validate and what the guest form and the front desk both write. This is the
+   same parser those two pages carry. Reading it raw as an array is what killed
+   this page for a whole day the moment one guest answered the question. */
+var PURPOSE_SEP = ' \u00b7 ';
+function purposeList(v){
+  if (Array.isArray(v)) return v.filter(Boolean);
+  if (typeof v === 'string' && v.trim())
+    return v.split(PURPOSE_SEP).map(function(x){ return x.trim(); }).filter(Boolean);
+  return [];
+}
+
 /* An arrival is a stay whose FIRST night is the printed date. /stays holds one
    row per night, so without this every in house guest would get a card every
    morning of their stay. */
@@ -346,8 +358,8 @@ function cardHTML(r){
   }
   h += row('Dietary', diet, { ticks:DIET_TICKS, line:true });
 
-  h += row('Purpose', (p.purpose && p.purpose.length)
-        ? esc(p.purpose.join(' \u00b7 ')) : '', { ticks:PURPOSE_TICKS });
+  var purp = purposeList(p.purpose).join(' \u00b7 ');
+  h += row('Purpose', purp ? esc(purp) : '', { ticks:PURPOSE_TICKS });
   h += row('Dining plans', p.approach ? esc(APPROACH[p.approach] || p.approach) : '',
         { ticks:APPROACH_TICKS });
   h += row('Occasion', p.occasion ? esc(p.occasion) : '');
