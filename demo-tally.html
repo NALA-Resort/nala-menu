@@ -1337,6 +1337,34 @@ function normaliseRole(r){ return r === 'staff' ? 'admin' : r; }
    before the at sign, which is a poor name but a better one than nothing, and
    never to the full address: these appear on a board a guest can see over a
    shoulder. */
+/* ── a dietary that outlives the booking ──────────────────────────────
+   A dietary is about the person, not about a night or a reservation. Kept only
+   on the booking, a guest who comes back next year arrives with an empty
+   record and is asked all over again, having told us once already.
+
+   So it is mirrored to /guests/<customerId>, the Mews customer, which is the
+   only identifier that survives a booking ending. customerId has been
+   collected on every booking since 18 Aug and this is what it was for.
+
+   The booking keeps its copy and stays the working one: every screen reads it,
+   tonight's service depends on it, and a guest record that failed to write
+   must not take the evening's answers with it. This is a mirror, not a move,
+   and it is deliberately quiet for the same reason.                        */
+function rememberDietary(bookingId, diets, dnote){
+  if (!bookingId) return Promise.resolve();
+  return fetch(DB + '/bookings/' + bookingId + '/pms/customerId.json')
+    .then(function(r){ return r.json(); })
+    .then(function(cid){
+      if (!cid) return;   /* older bookings have none: nothing to key on */
+      return fetch(DB + '/guests/' + cid + '.json', {
+        method: 'PATCH', headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ diets: diets || [], dnote: dnote || '',
+                               updatedAt: new Date().toISOString() })
+      });
+    })
+    .catch(function(){});
+}
+
 /* ── the purpose field ────────────────────────────────────────────────
    "Here for" is a multi select in both forms, so the pages hold it as a list.
    The database validates it as a single string, and one field of the wrong
@@ -2022,6 +2050,8 @@ function persistDietary(villa, rec){
   /* Quietly. A failure here must not undo the save that succeeded, and the
      cell already carries the answer for tonight either way. */
   api('/bookings/' + id + '/prearrival', 'PATCH', patch).catch(function(){});
+  /* And onto the person, so next year they are not asked again. */
+  rememberDietary(id, patch.diets, patch.dnote);
 }
 
 function saveManual(key, rec){

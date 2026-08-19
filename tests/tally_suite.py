@@ -909,6 +909,12 @@ with sync_playwright() as p:
         if "/dinner/" + today in u:
             route.fulfill(status=200, content_type="application/json",
                 body=json.dumps({"4": {"status": "in", "pax": 2, "by": "staff"}})); return
+        # The Mews customer. Without one there is nobody to key a lasting
+        # dietary on, and the mirror correctly does nothing, which is what
+        # happens for every booking written before 18 Aug.
+        if "customerId" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps("cust-9f2b")); return
         fb(route, request)
     q = b.new_page(viewport={"width": 390, "height": 900})
     q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
@@ -966,6 +972,12 @@ with sync_playwright() as p:
               if "/bookings/" in x[0] and x[1]]
     ck("the booking gets the dietaries themselves, not a reference to them",
        bool(booked) and any(b.get("diets") == ["Other"] for b in booked))
+    # And onto the person. A dietary is about the guest, not about a night or
+    # a reservation, so kept only on the booking a returning guest arrives
+    # with an empty record and is asked all over again, having told us once.
+    # customerId is the only identifier that outlives a booking.
+    ck("and the dietary reaches the person, so next year they are not asked again",
+       any("/guests/" in p for p in paths))
     q.close()
 
     b.close()

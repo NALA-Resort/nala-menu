@@ -141,10 +141,21 @@ must not roll back the service's.
 
 **2. Guest note: was already right.** No change.
 
-**3. Dietary: half done.** Every screen now writes it to the booking, so the
-reservations board no longer loses one at midnight. It still belongs to the
-booking rather than to the person, so a returning guest is still asked again.
-That is the remaining move, onto `customerId`.
+**3. Dietary: done.** It now lives in three places on purpose, and the
+distinction between them is the whole point:
+
+- the **night** (`dinner/<date>/<villa>/dnote`) is what tonight's service
+  reads, and expires with the date;
+- the **booking** (`prearrival.dnote`) is what every screen reads and edits;
+- the **person** (`guests/<customerId>`) is what outlasts the booking.
+
+Every screen that edits a dietary now mirrors it to the person, and the sync
+seeds a newly seen booking from what the person already told us, so a returning
+guest is not asked twice. Seeded only when the booking has no answers of its
+own, or last year's answer would overwrite what somebody just said.
+
+The mirror is quiet and separate from the save everywhere it appears: a guest
+record failing to write must never cost the evening its answers.
 
 **4. Dinner note: was already right.** No change.
 

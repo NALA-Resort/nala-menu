@@ -512,6 +512,19 @@ function submitForm(){
     el('doneS').textContent = 'Demonstration only. Nothing was saved.';
     return;
   }
+  /* The dietary onto the person too. Its own copy of the helper, because this
+     is a guest page and does not load nala-shared.js: staff code must never
+     reach a guest's browser. Quiet, and after the real save is under way, so a
+     mirror cannot cost the guest their answers. */
+  db('/bookings/' + G.id + '/pms')
+    .then(function(pms){
+      if (!pms || !pms.customerId) return;
+      return db('/guests/' + pms.customerId, 'PATCH',
+                { diets: a.noDiets ? [] : a.diets, dnote: a.noDiets ? '' : a.dietNote,
+                  updatedAt: new Date().toISOString() });
+    })
+    .catch(function(){});
+
   db('/bookings/' + G.id + '/prearrival', 'PATCH', payload)
     .then(function(){
       el('form').className = 'hide';

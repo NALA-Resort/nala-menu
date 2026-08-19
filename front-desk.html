@@ -1207,6 +1207,11 @@ function save(r, a, checkin){
     }).catch(function(){});
   }
 
+  /* The dietary onto the person as well as the booking. Quiet and outside the
+     pair below for the same reason as the internal note: a mirror failing must
+     not take tonight's answers with it. */
+  rememberDietary(r.stay.id, payload.diets, payload.dnote);
+
   var writes = [
     fetch(DB + '/bookings/' + r.stay.id + '/prearrival.json', {
       method: 'PATCH', headers: { 'Content-Type':'application/json' },

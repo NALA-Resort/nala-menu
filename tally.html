@@ -667,6 +667,8 @@ function persistDietary(villa, rec){
   /* Quietly. A failure here must not undo the save that succeeded, and the
      cell already carries the answer for tonight either way. */
   api('/bookings/' + id + '/prearrival', 'PATCH', patch).catch(function(){});
+  /* And onto the person, so next year they are not asked again. */
+  rememberDietary(id, patch.diets, patch.dnote);
 }
 
 function saveManual(key, rec){

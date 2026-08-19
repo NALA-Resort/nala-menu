@@ -1,8 +1,24 @@
 {
   "rules": {
     "guests": {
-      ".read": "auth != null",
-      ".write": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin'"
+      "$cid": {
+        ".read": true,
+        ".write": true,
+        "diets": {
+          "$i": {
+            ".validate": "newData.isString() && newData.val().length <= 80"
+          }
+        },
+        "dnote": {
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
+        "updatedAt": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     },
     "roomguests": {
       ".read": "auth != null",

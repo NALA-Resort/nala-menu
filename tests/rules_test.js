@@ -379,5 +379,30 @@ cannotPatch('but not something the length of a paragraph', SYNC,
      as(null).read('/bookings/b4/prearrival').allowed);
 })();
 
+
+/* ── a dietary that outlives the booking ─────────────────────────────
+ * Kept against the Mews customer, which is the only identifier that survives
+ * a booking ending. Reachable by a guest holding their own link, like the
+ * booking is, so they can read back and correct what we hold about them.
+ */
+(function guestDietaries(){
+  var data = { staff:{ 'st@x':{name:'S',role:'staff'} }, guests:{} };
+  var as = function(e){
+    return targaryen.database(RULES, data).as(e ? {uid:e, token:{email:e}} : null);
+  };
+  var CID = 'cust-6cb6d13f-beda-45eb-9c1b';
+  ck('a guest holding their link may record a dietary against themselves',
+     as(null).update('/guests/' + CID,
+       {diets:['Nut allergy'], dnote:'severe', updatedAt:'2026-08-19T00:00:00Z'}).allowed);
+  ck('and read back what we hold about them', as(null).read('/guests/' + CID).allowed);
+  ck('staff may write one too',  as('st@x').update('/guests/' + CID, {diets:[]}).allowed);
+  ck('a field nobody named is refused',
+     !as('st@x').update('/guests/' + CID, {secret:'x'}).allowed);
+  ck('a note the length of a paragraph is refused',
+     !as('st@x').update('/guests/' + CID, {dnote:new Array(600).join('x')}).allowed);
+  ck('and an entry longer than any dietary name is too',
+     !as('st@x').update('/guests/' + CID, {diets:[new Array(100).join('x')]}).allowed);
+})();
+
 console.log('RESULT: %d passed, %d failed', P, F);
 process.exit(F ? 1 : 0);

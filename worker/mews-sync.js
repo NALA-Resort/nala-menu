@@ -563,6 +563,30 @@ export default {
         }
       }
 
+      /* A returning guest should not be asked again. The dietary is kept
+         against the Mews customer, which outlives any one booking, so a
+         booking seen for the first time is seeded from it.
+
+         Only when the booking has no pre-arrival answers of its own: `at` is
+         set the moment a guest or the desk touches the form, and seeding over
+         that would replace what somebody just said with what they said last
+         year. */
+      if (r.customerId && !cancelled) {
+        let started = null;
+        try { started = await db(env, "/bookings/" + r.id + "/prearrival/at", "GET"); }
+        catch (e) { started = null; }
+        if (!started) {
+          let known = null;
+          try { known = await db(env, "/guests/" + r.customerId, "GET"); }
+          catch (e) { known = null; }
+          if (known && (known.diets || known.dnote)) {
+            await db(env, "/bookings/" + r.id + "/prearrival", "PATCH",
+                     { diets: Array.isArray(known.diets) ? known.diets : [],
+                       dnote: asText(known.dnote, 500) || "" });
+          }
+        }
+      }
+
       for (const d of fresh) {
         await db(env, "/stays/" + d + "/" + r.villa, "PUT", summary);
       }
