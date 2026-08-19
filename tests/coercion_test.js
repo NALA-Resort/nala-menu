@@ -319,11 +319,74 @@ ck('a name saves, and something the length of a paragraph does not',
    db.update('/bookings/' + GUID + '/prearrival', { companion: 'Ana Ruiz' }).allowed
    && !db.update('/bookings/' + GUID + '/prearrival',
                  { companion: 'x'.repeat(200) }).allowed);
-/* The Worker's field name is a guess against Zapier's flattening of nested
-   Mews objects, so what is asserted is that it is coerced like everything
-   else: a wrong guess must yield null, never a rejected write. */
 ck('the Worker carries it onto the booking and the night',
-   /companion:\s*asText/.test(fs.readFileSync(path.join(ROOT, 'worker/mews-sync.js'), 'utf8')));
+   /companion:\s*asText/.test(src));
+
+/* ── which companion ─────────────────────────────────────────────────
+ * Confirmed against a real Zap run on 19 Aug rather than guessed. companions
+ * is an ARRAY, index 0 was the guest already named on the reservation, and
+ * the names are split into First Name and Last Name.
+ *
+ * Which index holds the companion is still not assumed. Taking index 1 would
+ * have been right that day and wrong the day a booking arrives the other way
+ * round, so the one matching the reservation's own guest is dropped instead.
+ */
+/* Out of the WORKER, not nala-shared.js: grab above reads the shared file and
+   these three live in the sync. Lifted rather than copied for the same reason
+   as everything else here, so this cannot pass against code that has changed. */
+function grabWorker(n) {
+  const i = src.indexOf('function ' + n + '(');
+  if (i < 0) throw new Error('the Worker no longer defines ' + n);
+  let depth = 0, k = src.indexOf('{', i);
+  for (;; k++) {
+    if (src[k] === '{') depth++;
+    else if (src[k] === '}') depth--;
+    if (depth === 0) break;
+  }
+  return src.slice(i, k + 1);
+}
+const cfns = eval('(function(){' + grabWorker('pick') + grabWorker('companionNames')
+                  + grabWorker('companionName') + 'return {companionName};})()');
+const companionName = cfns.companionName;
+
+const BOOKER = { FirstName: 'Erik Anders', LastName: 'Lindqvist' };
+function withCompanions(pairs) {
+  const o = Object.assign({}, BOOKER);
+  pairs.forEach(function (nm, i) {
+    o['Companions ' + i + ' First Name'] = nm[0];
+    if (nm[1]) o['Companions ' + i + ' Last Name'] = nm[1];
+  });
+  return o;
+}
+
+ck('the real payload gives the second guest, not the booker',
+   companionName(withCompanions([['Erik Anders', 'Lindqvist'],
+                                 ['Malin Ingrid', 'Westberg']]))
+   === 'Malin Ingrid Westberg');
+ck('and still does when the companion comes first',
+   companionName(withCompanions([['Malin Ingrid', 'Westberg'],
+                                 ['Erik Anders', 'Lindqvist']]))
+   === 'Malin Ingrid Westberg');
+/* Zapier sends this two ways depending on how the Zap maps it: a real nested
+   array, or flattened keys. Which one arrives is a choice made in a Zap
+   editor and not something this code can see, so both are read. */
+ck('a nested companions array reads the same way',
+   companionName({ FirstName: 'Erik Anders', LastName: 'Lindqvist',
+     companions: [{ FirstName: 'Erik Anders', LastName: 'Lindqvist' },
+                  { FirstName: 'Malin Ingrid', LastName: 'Westberg' }] })
+   === 'Malin Ingrid Westberg');
+ck('a solo booking has no companion',
+   companionName(withCompanions([['Erik Anders', 'Lindqvist']])) === null);
+ck('and neither does a payload carrying none at all',
+   companionName(BOOKER) === null);
+ck('a third guest does not displace the second',
+   companionName(withCompanions([['Erik Anders', 'Lindqvist'],
+                                 ['Malin Ingrid', 'Westberg'],
+                                 ['Sven', 'Karlsson']]))
+   === 'Malin Ingrid Westberg');
+ck('a companion with only a first name still counts',
+   companionName(withCompanions([['Erik Anders', 'Lindqvist'], ['Malin']]))
+   === 'Malin');
 
 console.log('RESULT: ' + P + ' passed, ' + F + ' failed');
 process.exit(F ? 1 : 0);

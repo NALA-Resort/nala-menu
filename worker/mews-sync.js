@@ -198,6 +198,51 @@ function pick(o, names) {
   return null;
 }
 
+/* Zapier sends this two ways depending on how the Zap maps it: a real nested
+   array under `companions`, or flattened keys like "Companions 1 First Name".
+   Both are read, because which one arrives is a choice made in a Zap editor
+   and not something this code can see. */
+function companionNames(p) {
+  const out = [];
+  const arr = p && p.companions;
+  if (Array.isArray(arr)) {
+    for (const c of arr) {
+      if (!c || typeof c !== "object") continue;
+      const f = pick(c, ["FirstName", "First Name", "first_name", "firstName"]);
+      const l = pick(c, ["LastName", "Last Name", "last_name", "lastName"]);
+      const n = [f, l].filter(Boolean).join(" ").trim();
+      if (n) out.push(n);
+    }
+  }
+  for (let i = 0; i < 8; i++) {
+    const f = pick(p, ["Companions " + i + " First Name",
+                       "companions_" + i + "_first_name"]);
+    const l = pick(p, ["Companions " + i + " Last Name",
+                       "companions_" + i + "_last_name"]);
+    const n = [f, l].filter(Boolean).join(" ").trim();
+    if (n) out.push(n);
+  }
+  return out;
+}
+
+/* The first companion who is NOT the guest already named on the reservation.
+   Index 0 was Erik Anders in the run this was written against, and Erik Anders
+   was also the reservation's own guest, so taking index 1 would have been
+   right that day and wrong the day a booking arrives the other way round. */
+function companionName(p) {
+  const mine = [pick(p, ["FirstName", "first_name", "firstName", "CustomerFirstName"]),
+                pick(p, ["LastName", "last_name", "lastName", "CustomerLastName"])]
+                 .filter(Boolean).join(" ").trim().toLowerCase();
+  const seen = {};
+  for (const n of companionNames(p)) {
+    const k = n.toLowerCase();
+    if (k === mine || seen[k]) continue;   /* the booker, or a duplicate */
+    seen[k] = true;
+    return n;
+  }
+  return null;
+}
+
 function readReservation(p) {
   return {
     /* By shape, not by name, because the name is not consistent.
@@ -255,19 +300,16 @@ function readReservation(p) {
        not keep them. Read by shape as well as name for the same reason as the
        reservation id: the field is CustomerId on the reservation trigger and
        AccountId on some others, and one of them is the wrong person.        */
-    /* The second guest's name, when Mews has it. It usually does not: the
-       companion is normally gathered on the pre-arrival form, and Mews only
-       knows when the booking was taken over the phone and somebody typed it.
+    /* The second guest. Confirmed against a real Zap run on 19 Aug rather
+       than guessed: companions is an ARRAY, index 0 is the guest whose name
+       is already on the reservation, and the names are split into First Name
+       and Last Name.
 
-       THE FIELD NAME IS A GUESS. Zapier flattens nested Mews objects into keys
-       like "Companions 1 Name", and which index holds the companion rather
-       than the booker has not been confirmed against a real payload. Several
-       plausible shapes are tried; if none match, companion is null and the
-       pre-arrival form asks for it, which is the normal case anyway. Confirm
-       it against one live Zap run before trusting it. */
-    companion:     pick(p, ["Companions 1 Name", "companions_1_name",
-                            "Companion 1 Name", "CompanionName",
-                            "SecondGuestName", "second_guest_name"]),
+       Which index holds the companion is NOT assumed. Every companion is read
+       and the one matching the reservation's own guest is dropped, so a
+       booking where the companion happens to come first still works. That
+       costs nothing and removes the only guess left in it. */
+    companion:     companionName(p),
     customerId:    pickGuid(p, ["CustomerId", "customer_id", "CustomerID",
                                 "AccountId", "customerId"]),
     adults:        pick(p, ["AdultCount", "adults"]),
