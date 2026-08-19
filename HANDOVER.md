@@ -479,6 +479,11 @@ three:
 - `DESIGN.md` who owns which data, the screens, and why the identifiers are
   what they are.
 - `SETUP.md` Firebase, Cloudflare and Zapier configuration.
+- `NOTES-AUDIT.md` every place free text about a guest is stored, what it is
+  for and how long it lasts. **It names one live bug:** the reservations board
+  writes a dietary note to the night only, so one typed there is gone at
+  midnight, while the same note from the desk survives. Fix that before the
+  larger question of typing notes.
 - `SECURITY.md` the credential rotations, the login tidy up, locking the
   Firebase key to the site, and what making the repository private does and
   does not protect. Click by click, because all of it is done by the owner in a
