@@ -79,53 +79,42 @@
   .tile .rn { font-size:20px; font-weight:bold; }
   /* Clean is a solid ink pill, Service a faint outline: the two jobs must be
      tellable apart at arm's length, not by reading the word.               */
-  /* No words. The job is a bar, read by fill and by weight, and the words are
-     what kept breaking: they wrapped, then they ellipsised, then they had to be
-     shrunk until they barely read anyway. A bar cannot wrap.
-
-     Two things to know, in this order:
-
-       filled  = the room needs cleaning
-       outline = it does not
-
-       thin  = nobody arriving into it tonight
-       thick = somebody is
-
-     So a clean with an arrival is a thick filled bar: the most work, and the
-     heaviest mark on the board. Unknown is dashed, because it is a gap in what
-     we know rather than a job.
+  /* No words. The job is a bar, read by colour and by pattern, and the words
+     are what kept breaking: they wrapped, then they ellipsised, then they had
+     to be shrunk until they barely read anyway. A bar cannot wrap.
 
      The word is still on the element, in aria-label and title, so a screen
      reader says it and a long press shows it. The legend below the grid is
-     what teaches it, and it now shows the bars themselves rather than colours
-     that no longer carry the meaning. */
-  /* Sizes matter more than they look here. At 3px a hollow bar and a solid one
-     are the same mark: the 1.2px border top and bottom is most of the height,
-     so an outline reads as filled and the two jobs became indistinguishable on
-     a real phone. A bar has to be tall enough for its middle to be visible
-     before fill can mean anything, which is 7px, and the thick one has to be
-     far enough from it to be told apart at a glance rather than by comparison,
-     which is nearly double. */
-  .tile .chip { display:block; width:56%; height:7px; padding:0; font-size:0;
-                border:1.5px solid var(--ink); border-radius:4px;
-                background:var(--ink); color:transparent; overflow:hidden; }
-  .tile .chip.thick { height:13px; border-radius:7px; }
-  /* Who is on it, on the sub-line. Ink rather than the usual grey, because a
-     person is a stronger fact than a room state and has to carry from across
-     a corridor. */
-  .tile .sub.who { color:var(--ink); font-weight:bold; }
-  .tile .chip.svc { background:transparent; border-color:#8C8C84; }
-  /* Unknown is a gap in what we know, not an alarm. Dashed to say "not
-     settled", but grey - red is reserved for something being wrong.     */
-  .tile .chip.ver { background:transparent; border-style:dashed; border-color:var(--mid);
-                    color:var(--mid); }
-  /* A pre-arrival is always ready - nobody has to leave first - so it never
-     takes a colour. Colour still means "something changed, go now".     */
-  .tile .chip.pre { background:transparent; border-color:var(--ink); color:var(--ink); }
-  /* Who is on it. Solid, because it is about a person rather than a state of
-     the room, and it has to be picked out at a glance from across a corridor. */
-  .tile .chip.taken { background:var(--ink); border-color:var(--ink);
-                      color:var(--cream); }
+     what teaches the colours. */
+  /* Every bar is the same size. Thin against thick was a comparison, and a
+     comparison needs both examples on screen at once: on a board that is all
+     services you cannot tell a thin bar from a thick one, because there is
+     nothing to hold it against. Reported 19 Aug, and it is right.
+
+     So the bar says what the job IS, in its own right, using the colours the
+     tiles already use for the same jobs. Blue is a clean and the tile turns
+     blue when it is ready to be cleaned; green is a service and the tile turns
+     green when it is ready to service. One meaning, two places.
+
+     A clean that also has somebody arriving is striped blue and white, like a
+     barber's pole. Not a third colour, because it is not a third job: it is a
+     clean, with something extra to do.
+
+     The saturated tones are used, not the tints. The tints are backgrounds
+     built to sit behind text; at 9px on cream they would be nearly invisible. */
+  .tile .chip { display:block; width:56%; height:9px; padding:0; font-size:0;
+                border:1.5px solid var(--blueb); border-radius:5px;
+                background:var(--blueb); color:transparent; overflow:hidden; }
+  .tile .chip.svc { background:var(--greenb); border-color:var(--greenb); }
+  .tile .chip.pre { background:var(--amberb); border-color:var(--amberb); }
+  .tile .chip.arr { border-color:var(--blueb);
+                    background:repeating-linear-gradient(45deg,
+                      var(--blueb) 0 4px, #FFFFFF 4px 8px); }
+  /* Unknown is a gap in what we know, not a job, so it is the only one with
+     no fill and the only dashed one. Grey, because red is reserved for
+     something being wrong. */
+  .tile .chip.ver { background:transparent; border-style:dashed;
+                    border-color:var(--mid); }
   .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
   .tile .sub b { color:var(--ink); }
   /* The clock on an available villa, and the only place on this board where
@@ -177,20 +166,22 @@
   .legend .lb { background:var(--amber); border-color:var(--amberb); }
   .legend .ld { background:var(--blue);  border-color:var(--blueb); }
   .legend .lf { background:#F2F2EF; border-color:var(--rule); }
-  /* The key was a row of five marks wrapped across two lines, each 22px by
-     3px, and at that size they were all the same mark. It is a two column
-     list now, one entry per line, and the marks are drawn at the size they
-     appear on a tile, because a key smaller than the thing it explains
-     teaches nothing. */
+  /* The key draws the same bars at the same size and in the same colours. A
+     key that is a separate drawing can disagree with the thing it explains;
+     this one cannot, because it is the thing. */
   .legend { display:grid !important; grid-template-columns:repeat(2, auto);
             justify-content:center; gap:5px 18px; text-align:left; }
   .legend span { display:flex; align-items:center; gap:8px; }
-  .legend .lgb { flex:0 0 auto; width:26px; height:7px; border-radius:4px;
-                 border:1.5px solid var(--ink); background:var(--ink);
+  .legend .lgb { flex:0 0 auto; width:26px; height:9px; border-radius:5px;
+                 border:1.5px solid var(--blueb); background:var(--blueb);
                  vertical-align:0; margin:0; }
-  .legend .lgb.thick { height:13px; border-radius:7px; }
-  .legend .lgb.out  { background:transparent; border-color:#8C8C84; }
-  .legend .lgb.dash { border-style:dashed; border-color:var(--mid); }
+  .legend .lgb.svc { background:var(--greenb); border-color:var(--greenb); }
+  .legend .lgb.pre { background:var(--amberb); border-color:var(--amberb); }
+  .legend .lgb.arr { border-color:var(--blueb);
+                     background:repeating-linear-gradient(45deg,
+                       var(--blueb) 0 4px, #FFFFFF 4px 8px); }
+  .legend .lgb.dash { background:transparent; border-style:dashed;
+                      border-color:var(--mid); }
 
   .bar { margin-top:22px; gap:10px; }
   .btn { flex:1; padding:13px 0; text-align:center; font-family:var(--ui-font);
@@ -389,15 +380,15 @@
 
   <div class="grid" id="grid"></div>
 
-  <!-- The legend now teaches the bars, because they carry the job and the
-       tile colour only says a villa has become ready to start. Filled means
-       the room needs cleaning; thick means somebody arrives into it tonight. -->
+  <!-- The key teaches the bars. Each job has its own colour and the tile
+       already uses that colour when the job is ready to start, so blue means
+       clean in both places. -->
   <div class="legend" id="legend">
     <span><i class="lgb"></i>Clean</span>
-    <span><i class="lgb out"></i>Service</span>
-    <span><i class="lgb thick"></i>Clean + arrival</span>
-    <span><i class="lgb out thick"></i>Pre-arrival</span>
-    <span><i class="lgb out dash"></i>Unknown</span>
+    <span><i class="lgb svc"></i>Service</span>
+    <span><i class="lgb arr"></i>Clean + arrival</span>
+    <span><i class="lgb pre"></i>Pre-arrival</span>
+    <span><i class="lgb dash"></i>Unknown</span>
   </div>
 
   <div class="foot bar" id="footBar">
@@ -593,14 +584,14 @@ function render(){
       chip = h.pushed ? bar('pushed', 'Pushed')
            : arr ? bar(h.done ? 'cleaned-pre' : 'clean-pre',
                        h.done ? 'Cleaned, ready for arrival' : 'Clean, arriving tonight',
-                       'thick')
+                       'arr')
            : bar(h.done ? 'cleaned' : 'clean', h.done ? 'Cleaned' : 'Clean');
     }
     else if (row.kind==='svc')
       chip = bar(h.done ? 'serviced' : 'svc', h.done ? 'Serviced' : 'Service', 'svc');
     else if (row.kind==='pre')
       chip = bar(h.done ? 'pre-arrived' : 'pre', h.done ? 'Pre-arrived' : 'Pre-arrival',
-                 'pre thick');
+                 'pre');
     else if (row.kind==='ver') chip = bar('ver', 'Unknown', 'ver');
     else chip='<span class="sub">Empty</span>';
 

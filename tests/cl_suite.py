@@ -123,35 +123,38 @@ with sync_playwright() as p:
                 job:e.dataset.job, label:e.getAttribute('aria-label')};};
       return {clean:c('1'),svc:c('2')};}""")
     print("   chips:", chips)
-    # The bar carries the job now, with no words on it. Filled means the room
-    # needs cleaning; outline means it does not. The words wrapped, then
-    # ellipsised, then had to be shrunk until they barely read, and a bar
-    # cannot wrap.
-    ck("a clean is a filled bar and a service is an outline",
-       chips["clean"]["bg"]=="rgb(28, 28, 26)"
-       and chips["svc"]["bg"]=="rgba(0, 0, 0, 0)")
+    # The bar carries the job, with no words on it, and says what the job IS
+    # rather than how it compares to another. Thin against thick was a
+    # comparison, and a comparison needs both examples on screen: on a board
+    # that is all services there is nothing to hold a thin bar against.
+    #
+    # Blue is a clean and green is a service, the same colours the tiles use
+    # when those jobs become ready, so one colour means one thing in both
+    # places.
+    ck("a clean and a service are different colours, not different sizes",
+       chips["clean"]["bg"] != chips["svc"]["bg"]
+       and chips["clean"]["h"] == chips["svc"]["h"])
+    ck("and the bar colours are the tile colours for the same jobs",
+       chips["clean"]["bg"] == "rgb(138, 144, 168)"
+       and chips["svc"]["bg"] == "rgb(126, 147, 122)")
     # Nothing readable is lost: the word is still there for a screen reader
     # and for a long press, it is simply not drawn.
     ck("and each still names itself for anyone who cannot read a shape",
        chips["clean"]["label"]=="Clean" and chips["svc"]["label"]=="Service")
 
-    # The marks were 3px tall at first and the suite passed anyway, because it
-    # checked the fill was DECLARED different and never that the difference
-    # could be SEEN. At 3px the 1.5px border top and bottom is most of the
-    # height, so a hollow bar and a solid one are the same mark, and on a real
-    # phone the two jobs were indistinguishable.
-    #
-    # So the sizes are asserted, not just the colours. A bar needs a visible
-    # middle before fill can mean anything, and the thick one has to be far
-    # enough from the thin one to be read at a glance rather than by holding
-    # them side by side.
+    # The suite passed when every mark was 3px tall, because it checked the
+    # fill was DECLARED different and never that the difference could be SEEN.
+    # It then passed again when the only difference was thickness, which
+    # cannot be read without a second bar beside it. Both faults reached a
+    # real phone. What is asserted now is that every job is identifiable on
+    # its own.
     geom = pg.evaluate("""()=>{const pick=j=>{const e=[...document.querySelectorAll('#grid .chip')]
         .find(x=>x.dataset.job===j); return e?Math.round(e.getBoundingClientRect().height):null;};
       return {thin:pick('clean'), svc:pick('svc')};}""")
     print("   bar heights:", geom)
-    ck("a bar is tall enough for its middle to show, so fill can be read",
-       geom["thin"] is not None and geom["thin"] >= 6)
-    ck("filled and hollow are the same height, so only the fill differs",
+    ck("a bar is tall enough to carry a colour",
+       geom["thin"] is not None and geom["thin"] >= 8)
+    ck("and every bar is the same size, so none is read by comparison",
        geom["thin"] == geom["svc"])
 
     # The key is drawn at the size the tiles use. A key smaller than the thing
@@ -160,17 +163,16 @@ with sync_playwright() as p:
     key = pg.evaluate("""()=>[...document.querySelectorAll('.legend .lgb')].map(i=>{
       const r=i.getBoundingClientRect(), s=getComputedStyle(i);
       return {h:Math.round(r.height), w:Math.round(r.width),
-              filled:s.backgroundColor!=='rgba(0, 0, 0, 0)', dash:s.borderStyle==='dashed'};})""")
+              bg:s.backgroundColor, img:s.backgroundImage!=='none',
+              dash:s.borderStyle==='dashed'};})""")
     print("   key marks:", key)
     ck("the key shows every mark the board can draw", len(key) == 5)
     ck("the key's marks are drawn at tile size, not smaller",
-       all(k["h"] >= 6 and k["w"] >= 20 for k in key))
+       all(k["h"] >= 8 and k["w"] >= 20 for k in key))
     ck("and no two of them look alike",
-       len({(k["h"], k["filled"], k["dash"]) for k in key}) == 5)
-    thin_k = [k["h"] for k in key if k["h"] < 10]
-    thick_k = [k["h"] for k in key if k["h"] >= 10]
-    ck("thick reads as thick: not a few pixels, close to double",
-       bool(thin_k) and bool(thick_k) and min(thick_k) >= max(thin_k) * 1.6)
+       len({(k["bg"], k["img"], k["dash"]) for k in key}) == 5)
+    ck("each is told apart by its own colour or pattern, not by its size",
+       len({k["h"] for k in key}) == 1)
     ck("room7 done green with time (6-digit ISO)", "done" in t["7"]["cls"] and re.search(r'Done \d{2}:\d{2}',t["7"]["txt"]))
     ck("villa2 ready to service, with elapsed since noticed",
        "ready-svc" in t["2"]["cls"] and re.search(r'Available 1[12]m',t["2"]["txt"]))
@@ -1411,16 +1413,16 @@ with sync_playwright() as p:
     # Thick means somebody arrives into it tonight, so a clean with an arrival
     # is the heaviest mark on the board: filled because it needs cleaning,
     # thick because somebody is coming into it.
-    ck("a clean with an arrival tonight is the heavier bar",
+    # Striped, not a third colour, because it is not a third job: it is a
+    # clean with something extra to do, so it keeps the clean's blue and adds
+    # the stripe.
+    ck("a clean with an arrival tonight is striped, and still a clean's colour",
        q.evaluate("""()=>{const t=[...document.querySelectorAll('#grid .tile')]
          .find(x=>x.innerText.startsWith('9'));
-         const c=t.querySelector('.chip');
-         const plain=[...document.querySelectorAll('#grid .tile')]
-           .map(x=>x.querySelector('.chip'))
-           .find(x=>x&&x.dataset.job==='clean');
+         const c=t.querySelector('.chip'), s=getComputedStyle(c);
          return c.dataset.job==='clean-pre'
-           && c.getBoundingClientRect().height >
-              plain.getBoundingClientRect().height;}"""))
+           && s.backgroundImage.indexOf('gradient')>-1
+           && s.borderColor==='rgb(138, 144, 168)';}"""))
     ck("and carries one label, not two",
        q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
                   ".find(t=>t.innerText.startsWith('9'))"
