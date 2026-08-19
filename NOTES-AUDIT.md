@@ -181,6 +181,42 @@ written.
 If this is ever revisited, the thing that changed will be that somebody needed
 to filter or count by person, not that the note was unclear.
 
+---
+
+## Where notes and dietaries are DISPLAYED
+
+Added 19 Aug after a report that dietaries vanished on tomorrow's board. The
+storage audit above was not enough: what a screen SHOWS depends on which of the
+three copies it reads, and they do not agree.
+
+| Screen | Dietaries read from | Falls back to the booking? |
+|---|---|---|
+| Reservations board, tile and comment sheet | the night's dinner cell | **no** |
+| Reservations board, Edit details | the night's dinner cell | **no** |
+| Front desk sheet | the cell **if it exists**, else the booking | yes |
+| Reservation sheet (print) | the night's dinner cell | **no** |
+| Registration card | the booking | n/a |
+| Guest pre-arrival form | the booking | n/a |
+
+**That is the bug.** The dinner cell exists only for a night somebody has
+answered. On tomorrow's board there is no cell, so the reservations board and
+the printed sheet show no dietaries at all, and Edit details opens with the
+allergy chips blank. The front desk is the only screen that already falls back,
+which is why it looked right there and nowhere else.
+
+A dietary is not a fact about a night. Reading it from the night is the mistake,
+and it is repeated on three screens.
+
+### What it should be
+
+One rule, everywhere: **the booking is the source, the cell is an override for
+tonight only.** Read the cell if it has dietaries, otherwise the booking, which
+is exactly what the front desk already does and what the other three do not.
+
+The guest's own form should prefill from the booking too, which is seeded from
+`/guests/<customerId>` by the sync, so a returning guest opens their dining
+request with their allergy already ticked.
+
 ## What to do, in order
 
 1. **Make the reservations board write the dietary to the booking**, as the
