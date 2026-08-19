@@ -389,12 +389,13 @@ function load(){
       })).then(function(){ render(oneRowPerBooking(rows)); });
     })
     .catch(function(e){
-      /* The message below is for reception. The console line is for whoever
-         debugs this on a device: without it the real error dies here and the
-         only symptom is an empty page that blames the connection. */
+      /* The console line is for a device debugger; the second line on screen
+         is for everyone else, because reception has a phone and a phone has
+         no console. Today's failure gets named where it can be read. */
       console.error('registration load failed:', e);
       document.getElementById('cards').innerHTML =
-        '<div class="empty">Could not load arrivals. This is usually the connection.</div>';
+        '<div class="empty">Could not load arrivals. This is usually the connection.' +
+        '<br><span style="font-size:11px">' + esc(e && (e.message || e)) + '</span></div>';
     });
 }
 
