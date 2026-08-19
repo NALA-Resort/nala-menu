@@ -193,6 +193,52 @@ with sync_playwright() as p:
     open("/home/claude/nala/_p2_list.png","wb").write(shot)
     pg.close()
 
+    # The reported bug of 19 Aug, on the sheet that goes to the kitchen: a
+    # dietary on the reservation, no dinner cell for the viewed night, viewed
+    # on TOMORROW's date. An allergy does not expire overnight. Checked in the
+    # PDF's own text, not only on screen, because the printed copy is the one
+    # a plate is cooked from.
+    BID7 = "7a1b2c3d-1111-2222-3333-444455556666"
+    stays7 = {"7": {"id": BID7, "first": "Mara", "last": "Okafor",
+                    "arrive": plus(-1), "depart": plus(3), "adults": 2,
+                    "number": "10260"}}
+    pre7 = {"diets": ["Egg allergy"], "dnote": "Anaphylaxis"}
+    def diet_fb(route, request):
+        u = request.url
+        if "/stays/" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(stays7)); return
+        if "/bookings/" + BID7 + "/prearrival" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(pre7)); return
+        if "/responses/" in u or "/manual/" in u or "/dinner/" in u \
+           or "/combined/" in u or "/roomguests/" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body="null"); return
+        fb(route, request)
+    q = b.new_page(viewport={"width": 900, "height": 1100})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body=SDK))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", diet_fb)
+    q.goto("http://localhost:8955/list.html?date="+plus(1)); q.wait_for_timeout(1400)
+    # dietPills shortens "Egg allergy" to "Egg"; the dnote prints whole.
+    # The pill renders uppercase by CSS, so the visible text is EGG: compare
+    # case-blind rather than against the stored casing.
+    t7 = q.locator("body").inner_text().lower()
+    ck("reservation dietary reaches the sheet on screen",
+       "egg" in t7 and "anaphylaxis" in t7)
+    q.emulate_media(media="print")
+    pdf7 = q.pdf(format="A4")
+    open("/home/claude/nala/_p2_dietpdf.pdf","wb").write(pdf7)
+    import subprocess
+    txt = subprocess.run(["pdftotext","/home/claude/nala/_p2_dietpdf.pdf","-"],
+                         capture_output=True, text=True).stdout
+    ck("reservation dietary is in the printed PDF text",
+       "egg" in txt.lower() and "anaphylaxis" in txt.lower())
+    q.close()
+
     # The PDF button was removed on 18 Aug: it rebuilt the sheet by hand and
     # so carried less than the page it came from, and a second version of a
     # document that is silently missing things is worse than no second

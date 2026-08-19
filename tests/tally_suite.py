@@ -680,6 +680,17 @@ with sync_playwright() as p:
                 "depart": plus(1), "adults": 1, "number": "9"}},
          {"4": {"status": "in", "pax": 1, "by": "staff"}}, None,
          ["1 adult", "Answered at the desk"]),
+        # The reported bug of 19 Aug: a dietary lives on the reservation, the
+        # villa has NO dinner cell for the viewed night, and the board must
+        # still show it. An allergy is not true on Tuesday and false on
+        # Wednesday. Nothing asserted this before, which is why every suite
+        # was green with the bug in place.
+        ("a dietary on the reservation with no dinner cell",
+         {"4": {"id": BID, "first": "Noor", "last": "Haddad", "arrive": today,
+                "depart": plus(2), "adults": 2, "number": "10250"}},
+         {},
+         {"diets": ["Nut allergy"], "dnote": "Severe, carries an epipen"},
+         ["Nut allergy", "Severe, carries an epipen"]),
     ]
 
     for label, stays, din, pre, expect in SNAP_CASES:

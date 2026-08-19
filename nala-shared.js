@@ -258,8 +258,43 @@ function fetchStays(dateKey){
   ]).then(function(res){
     DINNER_CELLS = res[1] || {};
     OPENED_MARKS = res[2] || {};
-    return res[0];
+    /* One more read per occupied villa: the reservation's own answers. There
+       is one dietary list per person and it lives on the reservation, not on
+       a night, so the boards have to be able to see it even when the viewed
+       night holds no dinner cell at all. A failed read leaves that villa's
+       entry empty and the merge falls back to the night, which is exactly
+       yesterday's behaviour rather than a blank board. */
+    var stays = res[0] || {}, map = {};
+    return Promise.all(Object.keys(stays).map(function(v){
+      var id = stays[v] && stays[v].id;
+      if (!id) return null;
+      return fetch(DB + '/bookings/' + id + '/prearrival.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .catch(function(){ return null; })
+        .then(function(p){ if (p) map[String(v)] = p; });
+    })).then(function(){
+      PREARRIVAL_BY_VILLA = map;
+      return res[0];
+    });
   });
+}
+
+/* The reservation's dietaries, laid over a built record. The reservation wins
+   when it has any, because an allergy is not true on Tuesday and false on
+   Wednesday; the night's copy stands only as the fallback while older records
+   still hold dietaries there and nowhere else. NOTES-AUDIT.md has the model
+   and the correction: an earlier version said the night should win, and it
+   was wrong. */
+var PREARRIVAL_BY_VILLA = {};
+function overlayReservationDiets(rec, villa){
+  if (!rec) return rec;
+  var pre = PREARRIVAL_BY_VILLA[String(villa)];
+  if (!pre) return rec;
+  if (pre.diets && pre.diets.length){
+    rec.diets = pre.diets.slice();
+    if (pre.dnote) rec.dnote = pre.dnote;
+  }
+  return rec;
 }
 
 /* Turns one /stays/<date>/<villa> entry into the shape roomguests uses, so it
@@ -528,6 +563,10 @@ function withDineProvenance(out, tonight, known){
 }
 
 function roomRecord(n, responses, manual, roomguests, dinner){
+  return overlayReservationDiets(
+    roomRecordCore(n, responses, manual, roomguests, dinner), n);
+}
+function roomRecordCore(n, responses, manual, roomguests, dinner){
   var mk = 'room-'+n, m = manual[mk];
   var known = roomguests[String(n)] || {};
   /* A staff vacant made against an older version of the booking was a decision

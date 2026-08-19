@@ -732,8 +732,14 @@ function saveManual(key, rec){
    bubble can say so rather than presenting both as tonight's. */
 function roomState(n){
   var s = roomStateRaw(n);
-  if (s && s.g)
+  if (s && s.g){
     s.g = withDineProvenance(Object.assign({}, s.g), s.g, roomguests[String(n)]);
+    /* Same rule as roomRecord: the reservation's dietaries win when it has
+       any. This board builds its record here rather than through roomRecord,
+       so the overlay has to be applied here too or the two screens disagree
+       about somebody's allergy. */
+    s.g = overlayReservationDiets(s.g, n);
+  }
   return s;
 }
 
@@ -1516,6 +1522,12 @@ function preRows(pre){
     + (pre.wellDay ? ', ' + pre.wellDay : '')
     + (pre.wellTime ? ' ' + pre.wellTime : '')]);
   if (pre.note)       rows.push(['Note', '\u201C'+pre.note+'\u201D']);
+  /* The dietaries themselves, not only the note about them. This panel showed
+     the note and skipped the list, so an allergy on the reservation was
+     invisible here exactly when the viewed night had no dinner cell to carry
+     a copy. One list per person: it lives on the reservation. */
+  if (pre.diets && pre.diets.length)
+    rows.push(['Dietaries', pre.diets.join(' \u00b7 ')]);
   if (pre.dnote)      rows.push(['Dietary', '\u201C'+pre.dnote+'\u201D']);
   return rows;
 }
