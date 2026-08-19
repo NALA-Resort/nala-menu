@@ -950,6 +950,22 @@ with sync_playwright() as p:
        bool(saved) and any(d.get("diets") == ["Other"] for d in saved))
     ck("with the note that explains it",
        any("sesame" in str(d.get("note", "")).lower() for d in saved))
+
+    # ── and the dietary has to outlive tonight ──────────────────────────
+    # This board writes the one dinner cell, which lives under a date and is
+    # gone at midnight. A dietary typed here was right this evening and gone
+    # tomorrow, and nothing said so: the guest still had a booking and the
+    # board still looked right. The desk had always written both places, so
+    # the same allergy survived from one screen and not the other.
+    paths = [x[0] for x in WROTE]
+    ck("a dietary saved here reaches the booking, not only tonight",
+       any("/bookings/b4/prearrival" in p for p in paths))
+    ck("and still reaches tonight, which is what service reads",
+       any("/dinner/" in p for p in paths))
+    booked = [json.loads(x[1]) for x in WROTE
+              if "/bookings/" in x[0] and x[1]]
+    ck("the booking gets the dietaries themselves, not a reference to them",
+       bool(booked) and any(b.get("diets") == ["Other"] for b in booked))
     q.close()
 
     b.close()

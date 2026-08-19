@@ -446,6 +446,27 @@
     "$other": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "internal": {
+      "$id": {
+        ".read": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')",
+        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'sync')",
+        "note": {
+          ".validate": "newData.isString() && newData.val().length <= 2000"
+        },
+        "fromMews": {
+          ".validate": "newData.isString() && newData.val().length <= 2000"
+        },
+        "editedAt": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "editedBy": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     }
   }
 }

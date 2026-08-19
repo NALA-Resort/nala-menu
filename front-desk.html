@@ -806,6 +806,16 @@ function openGuest(r){
         '<input class="txt" id="fCompanion" type="text" placeholder="Their name" autocomplete="off">'
       : '') +
 
+    /* The internal note. Management only, both to read and to write, and it
+       lives at /internal rather than under the booking because /bookings is
+       readable by anybody holding a pre-arrival link. It is the one note a
+       guest must never see, so it is the one that cannot live where the guest
+       form can reach it. See NOTES-AUDIT.md. */
+    (canInternal() ?
+      '<div class="sheet-label">Internal note, never shown to the guest</div>' +
+      '<textarea class="txt" id="fInternal" rows="2" placeholder="For management. The guest cannot see this."></textarea>'
+      : '') +
+
     '<div class="sheet-label">Arriving</div>' +
     '<div class="chips" id="eChips"></div>' +
     '<input class="txt" id="fEtaNote" type="text" placeholder="Flight, ferry, anything to note" autocomplete="off" style="display:none">' +
@@ -1010,6 +1020,24 @@ function openGuest(r){
   document.getElementById('fEtaNote').value = a.arriveNote || '';
   var cEl = document.getElementById('fCompanion');
   if (cEl) cEl.value = a.companion || '';
+
+  /* Fetched when the sheet opens rather than with the board: it is one guest's
+     note, wanted by one person, and pulling it for every arrival on every
+     render would be a request an hour for something nobody had asked to see. */
+  var iEl = document.getElementById('fInternal');
+  if (iEl){
+    iEl.value = '';
+    api('/internal/' + r.stay.id)
+      .then(function(rec){
+        rec = rec || {};
+        /* The edited note if there is one, otherwise what Mews said. The
+           original is kept in its own field so it is still there after
+           somebody rewrites it. */
+        iEl.value = rec.note || rec.fromMews || '';
+        iEl.dataset.was = iEl.value;
+      })
+      .catch(function(){});
+  }
   paintEta();   /* again, so the note shows if the slot they chose wants one */
 
   document.getElementById('sClose').onclick = closeSheet;
@@ -1163,6 +1191,22 @@ function save(r, a, checkin){
      put them on the kitchen's board as not dining. That is a worse lie than
      silence: the board would show a decision nobody made. A partial save keeps
      everything else and leaves the cell alone until somebody answers. */
+  /* The internal note is its own write, to its own node, and deliberately not
+     part of the both-or-neither pair below. It is management's private record
+     and the guest's answers are the service's: a failure to save one must not
+     roll back the other, and the note is never what the kitchen is waiting
+     for. Only written when it changed, so opening a sheet and closing it does
+     not stamp an edit nobody made. */
+  var iNote = document.getElementById('fInternal');
+  if (iNote && iNote.value.trim() !== (iNote.dataset.was || '').trim()){
+    fetch(DB + '/internal/' + r.stay.id + '.json', {
+      method: 'PATCH', headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ note: iNote.value.trim(),
+                             editedAt: new Date().toISOString(),
+                             editedBy: window.NALA_ME || '' })
+    }).catch(function(){});
+  }
+
   var writes = [
     fetch(DB + '/bookings/' + r.stay.id + '/prearrival.json', {
       method: 'PATCH', headers: { 'Content-Type':'application/json' },
@@ -1255,6 +1299,14 @@ function showAccess(allowed, e){
   if (!on) load();
 }
 
+/* Who may see an internal note. Not can(), because there is no permission for
+   it and inventing one would put a new row on the Settings grid for a thing
+   nobody asked to delegate. Management is admin and staff, as everywhere else
+   on this page. */
+function canInternal(){
+  return window.NALA_ROLE === 'admin' || window.NALA_ROLE === 'staff';
+}
+
 window.NALA_ROLE = null;
 (function gate(){
   /* Wait for the helper too, not just firebase: a stubbed SDK calls back
@@ -1270,6 +1322,9 @@ window.NALA_ROLE = null;
       var role = roleOf(u);
       window.NALA_ROLE = role;
       window.NALA_USER = u;
+      /* Who edited an internal note. Stored as the staff key, not the name, so
+         a rename in Settings carries: the same lesson as the Cleans board. */
+      window.NALA_ME   = staffKeyOf(u);
       document.getElementById('navWrap').style.display = 'block';
       navFilter(role);
       showAccess(can(role, 'editBookings'), e);

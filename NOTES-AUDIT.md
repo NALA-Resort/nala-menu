@@ -125,6 +125,33 @@ dietary to the booking, then move it to the customer.
   when are you arriving rather than a note about the guest, and it should keep
   living beside `arriveSlot` rather than being counted here.
 
+---
+
+## Where it got to, 19 Aug
+
+**1. Internal notes: built.** Live at `/internal/<booking id>`, a node outside
+`/bookings` because that one is world readable. Rules restrict both reading and
+writing to admin and staff; the sync may seed but a waiter cannot see one at
+all, which is asserted rather than assumed. The Mews note is read for the first
+time and written ONCE, on first sight, into its own `fromMews` field, so a
+manager's rewrite survives the next event for that booking and the original is
+still there underneath. Editable on the front desk sheet, management only, and
+saved separately from the guest's answers: management's private record failing
+must not roll back the service's.
+
+**2. Guest note: was already right.** No change.
+
+**3. Dietary: half done.** Every screen now writes it to the booking, so the
+reservations board no longer loses one at midnight. It still belongs to the
+booking rather than to the person, so a returning guest is still asked again.
+That is the remaining move, onto `customerId`.
+
+**4. Dinner note: was already right.** No change.
+
+**Still to remove:** `manual/<date>/<key>/note`, the second dinner note from
+before the single cell. Nothing writes it now except older records, so it can
+go once those have aged out with their dates.
+
 ## What to do, in order
 
 1. **Make the reservations board write the dietary to the booking**, as the

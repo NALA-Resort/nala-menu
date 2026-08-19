@@ -643,6 +643,32 @@ function withExtras(key, rec){
    Villa-keyed records move across. `ext-<id>` keys are external diners with no
    villa and no booking, and they stay in /manual until they have somewhere
    better to be: they are not a villa on a night, which is what the cell is. */
+/* A dietary belongs to the guest, not to tonight.
+
+   This board writes the one dinner cell, which lives under a date and is gone
+   at midnight, so a dietary typed here was right this evening and gone
+   tomorrow, and nothing said so: the guest still had a booking and the board
+   still looked right. The front desk had always written both places, so the
+   same allergy survived from one screen and not the other.
+
+   The cell keeps its copy, because tonight's service reads the cell and
+   nothing else. The booking gets one too, which is what the desk, the sheet
+   and tomorrow read. See NOTES-AUDIT.md: this is the first of the four notes
+   to be put where it belongs, and the dietary still has one move left in it,
+   onto the customer, so it outlives the booking as well as the night. */
+function persistDietary(villa, rec){
+  var kn = roomguests[String(villa)];
+  var id = kn && kn.bookingId;
+  if (!id) return;                 /* a walk in has no booking to carry it */
+  if (!('diets' in rec) && !('dnote' in rec)) return;
+  var patch = {};
+  if ('diets' in rec) patch.diets = rec.diets || [];
+  if ('dnote' in rec) patch.dnote = rec.dnote || '';
+  /* Quietly. A failure here must not undo the save that succeeded, and the
+     cell already carries the answer for tonight either way. */
+  api('/bookings/' + id + '/prearrival', 'PATCH', patch).catch(function(){});
+}
+
 function saveManual(key, rec){
   var had  = Object.prototype.hasOwnProperty.call(manual, key);
   var prev = manual[key];
@@ -1563,6 +1589,7 @@ function editRoomDetails(n, st){
     rec.diets = diets.slice();
     if (g.dnote) rec.dnote = g.dnote;   // the guest's own dietary note stays theirs
     saveManual('room-'+n, rec);
+    persistDietary(n, rec);
     close(); render();
   };
   document.getElementById('oBack').onclick = function(){ openRoom(n, st); };
@@ -1833,6 +1860,7 @@ document.getElementById('addExt').onclick = function(e){
       if (nt) rec2.note=nt;
       if (diets.length) rec2.diets=diets.slice();
       saveManual('room-'+dest, rec2);
+      persistDietary(dest, rec2);
     }
     close(); render();
   };

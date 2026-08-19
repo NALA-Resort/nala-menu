@@ -348,5 +348,36 @@ cannotPatch('but not something the length of a paragraph', SYNC,
             '/bookings/b-1/pms',
             { customerId: 'x'.repeat(65) });
 
+
+/* ── internal notes ──────────────────────────────────────────────────
+ * The one note a guest must never see, which is exactly why it cannot live
+ * under /bookings: that node has read set to true, because the pre-arrival
+ * form reads it without signing in. A note about a guest stored there would
+ * be one URL away from the guest it is about.
+ *
+ * The last assertion is the contrast, and it is the reason this node exists.
+ */
+(function internalNotes(){
+  var data = { staff:{ 'bd@x':{name:'B',role:'admin'}, 'wt@x':{name:'W',role:'waiter'},
+                       'st@x':{name:'S',role:'staff'}, 'sy@x':{name:'Y',role:'sync'} },
+               internal:{ b4:{ fromMews:'noise' } } };
+  var as = function(e){
+    return targaryen.database(RULES, data).as(e ? {uid:e, token:{email:e}} : null);
+  };
+  ck('a manager may read an internal note', as('bd@x').read('/internal/b4').allowed);
+  ck('and a staff login may too',           as('st@x').read('/internal/b4').allowed);
+  ck('a waiter may not',                   !as('wt@x').read('/internal/b4').allowed);
+  ck('nor may anybody signed out',         !as(null).read('/internal/b4').allowed);
+  ck('a manager may write one',
+     as('bd@x').update('/internal/b4', {note:'x', editedAt:'2026-08-19T00:00:00Z'}).allowed);
+  ck('a waiter may not',                   !as('wt@x').update('/internal/b4', {note:'x'}).allowed);
+  ck('the sync may seed one from Mews',     as('sy@x').update('/internal/b4', {fromMews:'y'}).allowed);
+  ck('a field nobody named is refused',    !as('bd@x').update('/internal/b4', {sneaky:'x'}).allowed);
+  ck('and so is something the length of a book',
+     !as('bd@x').update('/internal/b4', {note:new Array(3000).join('x')}).allowed);
+  ck('while a booking stays readable by anyone holding the link, which is why this node exists',
+     as(null).read('/bookings/b4/prearrival').allowed);
+})();
+
 console.log('RESULT: %d passed, %d failed', P, F);
 process.exit(F ? 1 : 0);

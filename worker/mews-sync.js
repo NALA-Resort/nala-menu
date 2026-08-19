@@ -310,6 +310,11 @@ function readReservation(p) {
        booking where the companion happens to come first still works. That
        costs nothing and removes the only guess left in it. */
     companion:     companionName(p),
+    /* Whatever a receptionist typed into Mews. Read for the first time on
+       19 Aug: it was being discarded, so the two systems held different facts
+       about the same guest and neither showed the other's. */
+    mewsNote:      pick(p, ["Notes", "notes", "Note", "note",
+                            "GuestNotes", "guest_notes", "CustomerNotes"]),
     customerId:    pickGuid(p, ["CustomerId", "customer_id", "CustomerID",
                                 "AccountId", "customerId"]),
     adults:        pick(p, ["AdultCount", "adults"]),
@@ -495,6 +500,10 @@ export default {
            before today would keep the notes this change exists to remove.
            Null deletes the key, which makes the fix retroactive on the next
            event for each booking rather than only on new ones. */
+        /* Still cleared from /bookings, and now for a reason rather than by
+           omission: /bookings is readable by anybody holding a pre-arrival
+           link, so a note about a guest must never be written there. The Mews
+           note goes to /internal instead, below. */
         notes: null, notesType: null, spaceState: null, guestNotes: null,
         updated: asText(r.updated, 40),
         syncedAt: new Date().toISOString()
@@ -537,6 +546,23 @@ export default {
            asked for. */
         updated: asText(r.updated, 40)
       };
+      /* The Mews note, once. Written to its own staff-only node, and only
+         when nothing is there: a manager's correction has to survive the next
+         event for that booking, and Mews sends the whole reservation every
+         time. So this seeds the record and never overwrites it.
+
+         Kept in its own field, apart from the edited one, so the original is
+         still readable after somebody rewrites it. */
+      if (r.mewsNote) {
+        let had = null;
+        try { had = await db(env, "/internal/" + r.id + "/fromMews", "GET"); }
+        catch (e) { had = null; }
+        if (!had) {
+          await db(env, "/internal/" + r.id, "PATCH",
+                   { fromMews: asText(r.mewsNote, 2000) });
+        }
+      }
+
       for (const d of fresh) {
         await db(env, "/stays/" + d + "/" + r.villa, "PUT", summary);
       }

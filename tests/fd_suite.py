@@ -909,6 +909,68 @@ with sync_playwright() as p:
     ck("and keeps it once the note is there", bool(WRITES))
     pg.close()
 
+    # ── the internal note ───────────────────────────────────────────────
+    # The one note a guest must never see, which is why it does not live under
+    # the booking: /bookings has read set to true so the pre-arrival form can
+    # read it without signing in, and a note about a guest stored there would
+    # be one URL away from the guest it is about.
+    INTERNAL = {"b4": {"fromMews": "Complained about noise last stay"}}
+    def note_fb(route, request):
+        u = request.url
+        if request.method not in ("PUT", "PATCH", "DELETE") and "/internal/b4" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(INTERNAL["b4"])); return
+        fb(route, request)
+
+    def desk_as(email):
+        pgx = b.new_page(viewport={"width": 390, "height": 900})
+        pgx.add_init_script(SDK)
+        pgx.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
+        pgx.route("**/*.firebasedatabase.app/**", note_fb)
+        pgx.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        pgx.goto("http://localhost:8964/front-desk.html")
+        pgx.wait_for_timeout(1700)
+        pgx.locator('.arr[data-villa="4"]').click(); pgx.wait_for_timeout(500)
+        if pgx.evaluate("()=>!!document.querySelector('.sum-btns [data-act=edit]')"):
+            pgx.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+            pgx.wait_for_timeout(900)
+        return pgx
+
+    pg = desk_as("staff@x")
+    ck("a manager is offered the internal note",
+       pg.evaluate("()=>!!document.getElementById('fInternal')"))
+    # Seeded from Mews and shown, which is the point of reading it at all: the
+    # two systems used to hold different facts and neither showed the other's.
+    ck("and it arrives holding what Mews said",
+       "noise" in (pg.evaluate("()=>document.getElementById('fInternal').value") or ""))
+
+    # Written only when it changed, so opening a sheet and closing it does not
+    # stamp an edit nobody made.
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(800)
+    ck("closing without touching it writes nothing",
+       not [x for x in WRITES if "/internal/" in x["u"]])
+    pg.close()
+
+    pg = desk_as("staff@x")
+    pg.fill("#fInternal", "Do not seat near the kitchen")
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(900)
+    wrote = [json.loads(x["b"]) for x in WRITES if "/internal/" in x["u"] and x["b"]]
+    ck("an edit is saved to its own node, away from the booking",
+       bool(wrote) and wrote[0].get("note") == "Do not seat near the kitchen")
+    # The staff key, not the name: a rename in Settings has to carry, which is
+    # the lesson the Cleans board learned the hard way.
+    ck("recording who edited it, by key",
+       bool(wrote) and wrote[0].get("editedBy") == "staff@x")
+    # Its own write, not part of the both-or-neither pair: management's private
+    # record failing must not roll back the guest's answers.
+    ck("and it does not ride along with the guest's answers",
+       any("/prearrival" in x["u"] for x in WRITES))
+    pg.close()
+
     b.close()
 
 print("RESULT: %d passed, %d failed" % (P, F))
