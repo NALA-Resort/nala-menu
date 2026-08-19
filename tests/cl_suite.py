@@ -1018,12 +1018,28 @@ with sync_playwright() as p:
     # the board sizes itself to the phone. Heights here are REAL usable
     # heights, not the marketing screen size: the status bar, home indicator
     # and browser bars all take their cut first.
-    for label,w,h,mustFit in [("iPhone 14/15 app view",390,763,True),
-                              ("iPhone 15 Max app",430,851,True),
-                              ("iPhone 12 mini app",360,719,True),
-                              ("iPhone 14/15 browser",390,664,True),
-                              ("iPhone SE app view",375,647,True),
-                              ("iPhone SE browser",375,553,False)]:
+    # Every one of these was portrait, so a phone held sideways was never
+    # checked at all and a Galaxy in landscape had to be scrolled to reach the
+    # bottom of the board. The height is what runs out in landscape, and the
+    # grid was choosing its columns by width alone: five columns of seventeen
+    # villas is four rows, and four rows do not fit 412 points.
+    #
+    # The narrow portrait sizes are here for the same reason: at 320 the body's
+    # own padding took the third column away and the board became six rows.
+    # The expected column count is named per size rather than assumed, because
+    # three is right upright and wrong sideways.
+    for label,w,h,mustFit,wantCols in [
+            ("iPhone 14/15 app view",   390, 763, True, 3),
+            ("iPhone 15 Max app",       430, 851, True, 3),
+            ("iPhone 12 mini app",      360, 719, True, 3),
+            ("iPhone 14/15 browser",    390, 664, True, 3),
+            ("iPhone SE app view",      375, 647, True, 3),
+            ("iPhone SE browser",       375, 553, True, 3),
+            ("narrow phone browser",    320, 568, True, 3),
+            ("Galaxy landscape",        915, 412, True, 6),
+            ("iPhone landscape",        844, 390, True, 6),
+            ("small phone landscape",   740, 360, True, 6),
+            ("tiny phone landscape",    667, 320, True, 6)]:
         q=b.new_page(viewport={"width":w,"height":h})
         q.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
             content_type="application/javascript",body=sdk("staff@nalaresort.com.au")))
@@ -1040,7 +1056,7 @@ with sync_playwright() as p:
                   footIn:Math.round(f.bottom)<=window.innerHeight+1};}""")
         ck("%s: the page itself never scrolls" % label, m["page"]<=1)
         ck("%s: footer stays on screen" % label, m["footIn"])
-        ck("%s: three columns, never two" % label, m["cols"]==3)
+        ck("%s: %d columns" % (label, wantCols), m["cols"]==wantCols)
         ck("%s: tiles stay tappable (%dpx)" % (label,m["tH"]), m["tH"]>=44)
         if mustFit:
             ck("%s: all 17 villas on one screen (tile %dpx)" % (label,m["tH"]), m["gs"]<=1)
@@ -1575,17 +1591,26 @@ with sync_playwright() as p:
           job:c.dataset.job, border:s.borderColor,
           filled:s.backgroundColor!=='rgba(0, 0, 0, 0)',
           striped:s.backgroundImage.indexOf('gradient')>-1,
-          img:s.backgroundImage,
+          img:s.backgroundImage, op:s.opacity,
           sub:t.querySelector('.sub').textContent};});
       return out;}""")
     print("   finished board:", look)
 
-    ck("a finished clean is hollow but still a clean's colour",
-       look["1"]["border"] == "rgb(138, 144, 168)" and not look["1"]["filled"])
-    ck("a finished service is hollow but still a service's colour",
-       look["4"]["border"] == "rgb(126, 147, 122)" and not look["4"]["filled"])
+    # Done is one rule for every job: the same pill, faded. It was hollow for
+    # most and a faded fill for the clean with an arrival, which is two ways of
+    # saying one thing, and left the striped one looking louder than work that
+    # was still outstanding. The tile already says done by its colour and by
+    # the time underneath.
+    ck("a finished clean is still a clean's colour",
+       look["1"]["border"] == "rgb(138, 144, 168)")
+    ck("a finished service is still a service's colour",
+       look["4"]["border"] == "rgb(126, 147, 122)")
     ck("a finished pre-arrival keeps its own colour too",
-       look["11"]["border"] == "rgb(194, 154, 85)" and not look["11"]["filled"])
+       look["11"]["border"] == "rgb(194, 154, 85)")
+    ck("and every finished pill fades the same way, whatever the job",
+       len({look[v]["op"] for v in ("1", "4", "9", "11")}) == 1)
+    ck("faded enough to read as finished beside one that is not",
+       float(look["1"]["op"]) < 0.6)
     # The one exception to hollow: a finished clean and a finished clean with
     # an arrival are different pieces of work, and emptying both would make
     # them the same mark, which is the fault being fixed.
