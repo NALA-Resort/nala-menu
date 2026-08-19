@@ -1416,16 +1416,25 @@ with sync_playwright() as p:
     # Thick means somebody arrives into it tonight, so a clean with an arrival
     # is the heaviest mark on the board: filled because it needs cleaning,
     # thick because somebody is coming into it.
-    # Striped, not a third colour, because it is not a third job: it is a
-    # clean with something extra to do, so it keeps the clean's blue and adds
-    # the stripe.
-    ck("a clean with an arrival tonight is striped, and still a clean's colour",
-       q.evaluate("""()=>{const t=[...document.querySelectorAll('#grid .tile')]
-         .find(x=>x.innerText.startsWith('9'));
-         const c=t.querySelector('.chip'), s=getComputedStyle(c);
-         return c.dataset.job==='clean-pre'
-           && s.backgroundImage.indexOf('gradient')>-1
-           && s.borderColor==='rgb(138, 144, 168)';}"""))
+    # Half clean, half arrival: the bar shows the two jobs rather than a third
+    # pattern standing for them. Asserted as the two job colours in that
+    # order, not merely as some gradient, because stripes also satisfied that
+    # and said nothing about which jobs.
+    grad = q.evaluate("""()=>{const t=[...document.querySelectorAll('#grid .tile')]
+      .find(x=>x.innerText.startsWith('9'));
+      const c=t.querySelector('.chip'), s=getComputedStyle(c);
+      return {job:c.dataset.job, img:s.backgroundImage, border:s.borderColor};}""")
+    print("   clean + arrival bar:", grad)
+    ck("a clean with an arrival is half a clean and half an arrival",
+       grad["job"] == "clean-pre"
+       and "rgb(138, 144, 168)" in grad["img"]      # the clean's blue
+       and "rgb(194, 154, 85)" in grad["img"])      # the arrival's amber
+    # The clean half leads because the clean has to happen first, and the
+    # border is one colour on a two colour bar, so it takes the half it
+    # starts with.
+    ck("and it leads with the clean, which has to happen first",
+       grad["img"].index("rgb(138, 144, 168)") < grad["img"].index("rgb(194, 154, 85)")
+       and grad["border"] == "rgb(138, 144, 168)")
     ck("and carries one label, not two",
        q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
                   ".find(t=>t.innerText.startsWith('9'))"
@@ -1560,6 +1569,7 @@ with sync_playwright() as p:
           job:c.dataset.job, border:s.borderColor,
           filled:s.backgroundColor!=='rgba(0, 0, 0, 0)',
           striped:s.backgroundImage.indexOf('gradient')>-1,
+          img:s.backgroundImage,
           sub:t.querySelector('.sub').textContent};});
       return out;}""")
     print("   finished board:", look)
@@ -1575,6 +1585,9 @@ with sync_playwright() as p:
     # them the same mark, which is the fault being fixed.
     ck("a finished clean with an arrival is still told apart from a plain one",
        look["9"]["striped"] and not look["1"]["striped"])
+    ck("and still shows both jobs it was",
+       "rgb(138, 144, 168)" in look["9"]["img"]
+       and "rgb(194, 154, 85)" in look["9"]["img"])
 
     # Who did it. A finished board that cannot say who did the work is a board
     # you have to ask about.

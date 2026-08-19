@@ -96,9 +96,9 @@
      blue when it is ready to be cleaned; green is a service and the tile turns
      green when it is ready to service. One meaning, two places.
 
-     A clean that also has somebody arriving is striped blue and white, like a
-     barber's pole. Not a third colour, because it is not a third job: it is a
-     clean, with something extra to do.
+     A clean that also has somebody arriving is half clean blue and half
+     arrival amber: the two jobs it actually is, rather than a third mark
+     standing for the pair.
 
      The saturated tones are used, not the tints. The tints are backgrounds
      built to sit behind text; at 9px on cream they would be nearly invisible. */
@@ -107,9 +107,14 @@
                 background:var(--blueb); color:transparent; overflow:hidden; }
   .tile .chip.svc { background:var(--greenb); border-color:var(--greenb); }
   .tile .chip.pre { background:var(--amberb); border-color:var(--amberb); }
+  /* Half clean, half arrival: the bar shows the two jobs rather than a third
+     pattern standing for them. Stripes said something is different about this
+     one and left you to remember what; a split bar says which two, in the
+     colours already used for each. The clean half leads because the clean has
+     to happen first. */
   .tile .chip.arr { border-color:var(--blueb);
-                    background:repeating-linear-gradient(45deg,
-                      var(--blueb) 0 4px, #FFFFFF 4px 8px); }
+                    background:linear-gradient(90deg,
+                      var(--blueb) 0 50%, var(--amberb) 50% 100%); }
   /* Unknown is a gap in what we know, not a job, so it is the only one with
      no fill and the only dashed one. Grey, because red is reserved for
      something being wrong. */
@@ -174,9 +179,9 @@
      mark, which is the fault this change was fixing one line further up. The
      stripe stays, faded, so it still says which of the two it was. */
   .tile.done .chip.arr {
-    background:repeating-linear-gradient(45deg,
-      var(--blueb) 0 4px, transparent 4px 8px) !important;
-    opacity:.45; }
+    background:linear-gradient(90deg,
+      var(--blueb) 0 50%, var(--amberb) 50% 100%) !important;
+    opacity:.4; }
   .tile.done .chip.svc { border-color:var(--greenb); }
   .tile.done .chip.pre { border-color:var(--amberb); }
   .tile.done .chip.ver { border-color:var(--mid); }
@@ -223,8 +228,8 @@
   .legend .lgb.svc { background:var(--greenb); border-color:var(--greenb); }
   .legend .lgb.pre { background:var(--amberb); border-color:var(--amberb); }
   .legend .lgb.arr { border-color:var(--blueb);
-                     background:repeating-linear-gradient(45deg,
-                       var(--blueb) 0 3px, #FFFFFF 3px 6px); }
+                     background:linear-gradient(90deg,
+                       var(--blueb) 0 50%, var(--amberb) 50% 100%); }
   .legend .lgb.dash { background:transparent; border-style:dashed;
                       border-color:var(--mid); }
 
