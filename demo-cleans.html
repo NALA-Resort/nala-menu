@@ -1964,10 +1964,26 @@ function load(full){
       var ln = lastNight[String(n)];
       var left = !!(ln && ln.depart &&
                     String(ln.depart).slice(0,10) === todayKey());
+      /* Whether somebody arrives into this villa tonight is a fact about the
+         booking, and a manager can say otherwise for the day.
+
+         It is kept separate from the job rather than made a fifth kind. A
+         clean with an arrival IS a clean, with something else also true of it,
+         and the two combine: making it a kind would need every rule that asks
+         is this a clean to learn a second answer. It also needs no change to
+         the database rules, which name the four kinds they accept and would
+         otherwise have to be pasted in again.
+
+         true forces it on, false forces it off, absent leaves the booking to
+         decide. */
       rows.push({ n:n, kind:hkClassify(r, todayKey(), hk[n], left),
                   base: pushedIn ? 'clean' : hkClassify(r, todayKey(), null, left),
                   pushedIn: pushedIn,
-                  arrivingToday: !!(a && dkey(a) === todayKey()) });
+                  /* What the BOOKING says. What the board shows is decided at
+                     draw time by arrivingNow, because a manager's override is
+                     written after this ran and a row built once at load would
+                     hold yesterday's answer until a refresh. */
+                  arrivingBooked: !!(a && dkey(a) === todayKey()) });
     }
     // services first: they are attempted while the guest is out, before the
     // departure cleans open up. Then cleans, verify, vacant, room order
@@ -1989,6 +2005,19 @@ function mins(iso){
 function hhmm(iso){
   var t=parseISO(iso); if (!t) return '';
   return String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
+}
+
+/* Does somebody arrive into this villa tonight. The booking decides unless a
+   manager has said otherwise for the day: true forces it on, false forces it
+   off, anything else leaves the booking to answer.
+
+   Read from the day's record every time rather than from the row, so setting
+   it shows immediately instead of at the next refresh. */
+function arrivingNow(row, h){
+  var set = h && h.arriving;
+  if (set === true)  return true;
+  if (set === false) return false;
+  return !!(row && row.arrivingBooked);
 }
 
 /* The key. Held rather than looked up, because every render clears the grid
@@ -2022,7 +2051,7 @@ function render(){
     var gone = h.departed || r.pushedIn;
     if (r.kind === 'svc') return h.bfast ? 0 : 1;
     if (r.kind === 'clean'){
-      if (gone && r.arrivingToday) return 0;
+      if (gone && arrivingNow(r, STATE.hk[r.n])) return 0;
       if (gone) return 1;
       return 2;
     }
@@ -2061,7 +2090,7 @@ function render(){
     }
     var chip='';
     if (row.kind==='clean'){
-      var arr = row.arrivingToday && !h.pushed;
+      var arr = arrivingNow(row, h) && !h.pushed;
       chip = h.pushed ? bar('pushed', 'Pushed')
            : arr ? bar(h.done ? 'cleaned-pre' : 'clean-pre',
                        h.done ? 'Cleaned, ready for arrival' : 'Clean, arriving tonight',
@@ -2100,7 +2129,7 @@ function render(){
         sub='Available <b class="el'+w+'">'+m+'m</b>';
       }
       else if (row.kind==='pre') sub='Arriving today';
-      else if (row.kind==='clean' && row.arrivingToday) sub='Occupied';
+      else if (row.kind==='clean' && arrivingNow(row, h)) sub='Occupied';
       else if (row.kind==='ver') sub='';   /* the pill already says Unknown */
       else sub='Occupied';
     }
@@ -2327,7 +2356,7 @@ function drawSheet(mode){
            one can always be cleared.                                      */
         rows+='<button class="pbtn" onclick="drawSheet(\'bfast\')">Possibly available</button>';
       }
-      if (CUR.kind==='clean' && !CUR.arrivingToday){
+      if (CUR.kind==='clean' && !arrivingNow(CUR, h)){
         rows += h.pushed
           ? '<button class="pbtn warn" onclick="drawSheet(\'unpush\')">Undo push</button>'
           : '<button class="pbtn" onclick="drawSheet(\'push\')">Push villa</button>';
@@ -2361,6 +2390,23 @@ function drawSheet(mode){
       /* Only offer the dates back when they actually decide something. On a
          villa the dates cannot place, reverting just returns it to unknown,
          so say that instead of pretending there is a booking to fall back on. */
+      /* Whether somebody arrives tonight is separate from what the job is, so
+         it is its own control rather than a fifth job.
+
+         Only on a clean. A service is a guest staying on, so nobody is
+         arriving; a pre-arrival already IS the arrival and has its own sheet
+         with one outcome; and an empty or unknown villa has no job to attach
+         it to. Offering it there would be a control that changes nothing. */
+      if (CUR.kind === 'clean'){
+        jobs += arrivingNow(CUR, h)
+          ? '<button class="pbtn" onclick="drawSheet(\'a-off\')">No arrival tonight</button>'
+          : '<button class="pbtn" onclick="drawSheet(\'a-on\')">Arriving tonight</button>';
+        /* Only offer the booking back when it disagrees with what is set, or
+           the button undoes nothing and says so to nobody. */
+        if (h.arriving !== undefined && h.arriving !== null &&
+            !!h.arriving !== CUR.arrivingBooked)
+          jobs += '<button class="pbtn warn" onclick="drawSheet(\'a-none\')">Use the booking for arrivals</button>';
+      }
       if (h.kind){
         jobs += (CUR.base==='clean' || CUR.base==='svc')
           ? '<button class="pbtn warn" onclick="drawSheet(\'k-none\')">Use booking dates</button>'
@@ -2412,6 +2458,15 @@ function drawSheet(mode){
      It is reversible in one tap, it stops somebody else walking to the same
      villa, and a confirm screen between a cleaner and a claim is the reason
      they would stop bothering to claim at all. */
+  /* Arrivals are set straight through, like the claim: one tap, reversible in
+     one tap, and it changes what the tile says rather than what anybody has
+     already done. */
+  if (mode==='a-on' || mode==='a-off' || mode==='a-none'){
+    setField(n, { arriving: mode==='a-on' ? true : mode==='a-off' ? false : null },
+             document.getElementById('perr'));
+    return;
+  }
+
   if (mode==='take'){
     setField(n, { takenBy: window.NALA_KEY || window.NALA_ME || 'Someone',
                   takenAt: new Date().toISOString() },

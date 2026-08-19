@@ -1637,6 +1637,100 @@ with sync_playwright() as p:
        look["4"]["sub"].startswith("Done ") and "by" not in look["4"]["sub"])
     q.close()
 
+    # ── setting an arrival by hand ──────────────────────────────────────
+    # Whether somebody arrives tonight comes from the booking, and a manager
+    # can say otherwise for the day. Kept separate from the job rather than
+    # made a fifth kind: a clean with an arrival IS a clean with something
+    # else also true of it, and a fifth kind would make every rule that asks
+    # "is this a clean" learn a second answer. It also needs no rules change,
+    # since the four kinds are named in rules.json and would need a repaste.
+    arr_hk = {}
+    def arr_fb(route, request):
+        u = request.url
+        if request.method in ("PUT", "PATCH"):
+            try:
+                villa = u.split("firebasedatabase.app")[1].split("?")[0]
+                villa = villa.rsplit("/", 1)[1].replace(".json", "")
+                arr_hk.setdefault(villa, {}).update(json.loads(request.post_data))
+                for k in [k for k, v in arr_hk[villa].items() if v is None]:
+                    del arr_hk[villa][k]
+            except Exception:
+                pass
+            route.fulfill(status=200, content_type="application/json",
+                          body=request.post_data or "{}"); return
+        if "/staff" in u:
+            route.fulfill(status=200, content_type="application/json",
+                body=json.dumps({"bd@nalaresort,com,au":
+                    {"name": "Ben Davidson", "role": "admin"}})); return
+        if "/stays/" + yest in u:
+            route.fulfill(status=200, content_type="application/json",
+                body=json.dumps({
+                    "1": {"id": "a", "arrive": plus(-2), "depart": today},
+                    "9": {"id": "d", "arrive": plus(-2), "depart": today}})); return
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                body=json.dumps({
+                    "9": {"id": "e", "arrive": today, "depart": plus(1)}})); return
+        if "/hk/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(arr_hk)); return
+        if "/roomguests/" in u or "/responses/" in u or "/manual/" in u \
+           or "/hk/" in u or "/dinner/" in u:
+            route.fulfill(status=200, content_type="application/json", body="null"); return
+        fb(route, request)
+
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body=sdk("bd@nalaresort.com.au")))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", arr_fb)
+    q.goto("http://localhost:8957/cleaners.html"); q.wait_for_timeout(2000)
+
+    def job_of(villa):
+        return q.evaluate("""(v)=>{const t=[...document.querySelectorAll('#grid .tile')]
+          .find(x=>x.querySelector('.rn').textContent===v);
+          const c=t&&t.querySelector('.chip'); return c?c.dataset.job:null;}""", villa)
+    def sheet_of(villa):
+        q.evaluate("""(v)=>[...document.querySelectorAll('#grid .tile')]
+          .find(x=>x.querySelector('.rn').textContent===v).click()""", villa)
+        q.wait_for_timeout(350)
+        return q.evaluate("()=>[...document.querySelectorAll('#sheetBox button')]"
+                          ".map(b=>b.textContent.trim())")
+    def tap(villa, rx):
+        sheet_of(villa)
+        q.evaluate("(rx)=>[...document.querySelectorAll('#sheetBox button')]"
+                   ".find(b=>new RegExp(rx,'i').test(b.textContent)).click()", rx)
+        q.wait_for_timeout(700)
+
+    ck("a clean with no arrival in the booking starts as a plain clean",
+       job_of("1") == "clean")
+    ck("and offers to be set as arriving", "Arriving tonight" in sheet_of("1"))
+    tap("1", "Arriving tonight")
+    # Shown at once, not at the next refresh: the flag is read from the day's
+    # record when the tile is drawn, not baked into the row at load.
+    ck("setting it shows immediately", job_of("1") == "clean-pre")
+    ck("and it is stored as a flag beside the job, not as a new kind",
+       arr_hk.get("1", {}).get("arriving") is True
+       and "kind" not in arr_hk.get("1", {}))
+    tap("1", "No arrival tonight")
+    ck("and it can be taken off again", job_of("1") == "clean")
+
+    # A villa the booking says is arriving, forced off, then handed back.
+    ck("a booked arrival shows without anybody setting it",
+       job_of("9") == "clean-pre")
+    ck("a booked arrival is not offered a revert it does not need",
+       "Use the booking for arrivals" not in sheet_of("9"))
+    tap("9", "No arrival tonight")
+    ck("overriding the booking holds", job_of("9") == "clean")
+    ck("and only now is the booking offered back",
+       "Use the booking for arrivals" in sheet_of("9"))
+    tap("9", "Use the booking for arrivals")
+    ck("which puts it back to what the booking says", job_of("9") == "clean-pre")
+    ck("and leaves nothing behind to disagree with it later",
+       "arriving" not in arr_hk.get("9", {}))
+    q.close()
+
     b.close()
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()
