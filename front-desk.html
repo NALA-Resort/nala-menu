@@ -499,8 +499,12 @@ function summaryHTML(r){
 
   h += '<div class="sum-btns">' +
          '<button data-act="edit" data-villa="' + r.villa + '">Edit</button>' +
+         /* Always the same words, because it is now an action rather than a
+            state: on a guest who has been checked in by accident, pressing it
+            puts them back in Arriving. A label that changed to "Confirmed"
+            read as a finished thing and gave no hint there was a way back. */
          '<button data-act="confirm" data-villa="' + r.villa + '">' +
-         (isConfirmed(r.pre) ? 'Confirmed' : 'Confirm') + '</button>' +
+         'Confirm arriving' + '</button>' +
        '</div>' +
        /* Its own row and full width: it is the one that ends the interaction,
           and three buttons abreast do not fit a narrow phone. */
@@ -805,7 +809,7 @@ function openGuest(r){
     '<input class="txt" id="fNote" type="text" placeholder="Preferences, requests" autocomplete="off">' +
 
     '<button class="opt solid" id="sCheckin" style="margin-top:18px">Confirm and check in</button>' +
-    '<button class="opt quiet" id="sConfirm">Confirm only</button>' +
+    '<button class="opt quiet" id="sConfirm">Confirm arriving</button>' +
     '<button class="opt quiet" id="sClose">Close</button>';
 
   document.getElementById('fDnote').value  = a.dnote;
@@ -1043,14 +1047,20 @@ function save(r, a, checkin){
     confirmedAt: new Date().toISOString()
   };
   /* Checking in is a separate fact from confirming the answers, so it is a
-     separate field. Only ever set, never cleared: a guest who has arrived has
-     arrived, and a later edit to their answers does not un-arrive them.
+     separate field.
+
+     It used to be set and never cleared, on the reasoning that a guest who has
+     arrived has arrived. What that missed is the accidental press: the two
+     buttons sit together, check in is the big one, and there was no way back
+     from it. So Confirm arriving now CLEARS it, which is what the name says.
+     Confirming is a statement about tonight's answers and about where the
+     guest is, and both are true whichever way round they are pressed.
 
      FUTURE: this is where the Mews reservation moves to Checked in, through
      the Connector API. Nothing writes back to Mews yet, so the app is the only
-     record of it until that exists. */
-  if (checkin) payload.checkedInAt = payload.confirmedAt;
-  else if (isArrived(r.pre)) payload.checkedInAt = r.pre.checkedInAt;
+     record of it until that exists, and this undo will have to reverse that
+     too rather than only the local field. */
+  payload.checkedInAt = checkin ? payload.confirmedAt : null;
   if (!hasForm(r.pre)) payload.at = payload.confirmedAt;
 
   var before = r.pre, beforeCell = r.cell;

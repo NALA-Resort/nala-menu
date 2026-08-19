@@ -489,16 +489,19 @@ with sync_playwright() as p:
     ck("with the count following", pg.evaluate("()=>nArr.textContent") == "3/7")
     pg.close()
 
-    # A guest who has arrived has arrived. Editing their answers afterwards
-    # must not quietly un-arrive them.
+    # This used to assert the opposite: that confirming again kept a guest
+    # arrived, on the reasoning that a guest who has arrived has arrived. True
+    # of guests, not of taps. The two buttons sit together, check in is the
+    # big one, and there was no way back from pressing it by mistake. Confirm
+    # arriving is that way back, which is what its name says.
     PRE["b4"]["checkedInAt"] = "2026-08-17T15:00:00Z"
     pg = board()
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(350)
     del WRITES[:]
     pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
     w = [x for x in WRITES if "/bookings/b4/prearrival" in x["u"]]
-    ck("confirming again after arrival keeps them arrived",
-       len(w) == 1 and json.loads(w[0]["b"])["checkedInAt"] == "2026-08-17T15:00:00Z")
+    ck("confirming arriving puts an accidentally checked in guest back",
+       len(w) == 1 and json.loads(w[0]["b"])["checkedInAt"] is None)
     pg.close()
     del PRE["b4"]["checkedInAt"]
 
@@ -767,6 +770,60 @@ with sync_playwright() as p:
        all(d.get("diets") == ["Other"] for d in saved))
     ck("without claiming there is nothing to declare",
        all(not d.get("noDiets") for d in saved))
+    pg.close()
+
+    # ── the way back from an accidental check in ────────────────
+    # The two buttons sit together and check in is the big one, so it gets
+    # pressed by mistake. checkedInAt used to be set and never cleared, on the
+    # reasoning that a guest who has arrived has arrived, which is true of
+    # guests and not of taps.
+    ARRIVED = dict(PRE_FULL) if "PRE_FULL" in dir() else None
+    arrived_pre = {"at": now.isoformat(), "dining": True, "pax": 2,
+                   "diets": ["Gluten free"], "noDiets": False,
+                   "confirmedAt": now.isoformat(),
+                   "checkedInAt": now.isoformat()}
+    def arrived_fb(route, request):
+        u = request.url
+        if request.method not in ("PUT", "PATCH", "DELETE") and "/prearrival" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(arrived_pre)); return
+        fb(route, request)
+    pg = b.new_page(viewport={"width": 390, "height": 900})
+    pg.add_init_script(SDK)
+    pg.add_init_script("window.__EMAIL=%s;" % json.dumps("staff@x"))
+    pg.route("**/*.firebasedatabase.app/**", arrived_fb)
+    pg.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    pg.goto("http://localhost:8964/front-desk.html"); pg.wait_for_timeout(1700)
+
+    # Every guest reads as arrived under this fixture, so the assertions name
+    # the one villa being acted on rather than asking whether ANY row is
+    # arrived, which would be true either way and prove nothing.
+    villa = pg.evaluate("()=>document.querySelector('#board .arr').dataset.villa")
+    ck("the guest being acted on starts out marked as arrived",
+       pg.evaluate("(v)=>document.querySelector('.arr[data-villa=\"'+v+'\"]')"
+                   ".className.indexOf('is-done')>-1", villa))
+    pg.evaluate("()=>document.querySelector('#board .arr').click()")
+    pg.wait_for_timeout(700)
+    labels = pg.evaluate("()=>[...document.querySelectorAll('.sum-btns button')]"
+                         ".map(b=>b.dataset.act+':'+b.textContent.trim())")
+    print("   summary buttons:", labels)
+    # Always the same words: it is an action, not a state. A label that
+    # changed to "Confirmed" read as finished and gave no hint of a way back.
+    ck("the button says where it puts them, not that they are done",
+       "confirm:Confirm arriving" in labels)
+
+    del WRITES[:]
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=confirm]').click()")
+    pg.wait_for_timeout(900)
+    sent = [json.loads(x["b"]) for x in WRITES if x["b"] and "/prearrival" in x["u"]]
+    ck("confirming arriving clears the check in",
+       bool(sent) and all("checkedInAt" in d and d["checkedInAt"] is None for d in sent))
+    ck("and that guest goes back to the arriving list",
+       pg.evaluate("(v)=>{const e=document.querySelector('.arr[data-villa=\"'+v+'\"]');"
+                   "return !!e && e.className.indexOf('is-done')<0;}", villa))
+    # The answers are still confirmed: only where the guest is has changed.
+    ck("without throwing away the answers that were confirmed",
+       bool(sent) and all(d.get("confirmedAt") for d in sent))
     pg.close()
 
     b.close()
