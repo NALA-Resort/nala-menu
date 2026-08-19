@@ -910,7 +910,23 @@ function paintTiles(){
       host.style.gridTemplateColumns = 'repeat(' + Math.min(unit.members.length, 6) + ',1fr)';
       grid.appendChild(host);
     }
-    unit.members.forEach(function(m){ host.appendChild(roomTile(Number(m))); });
+    /* One bad record must cost one tile, not every tile after it. On 20 Aug
+       a single villa's data killed the loop mid-render: three tiles drawn,
+       fourteen missing, stats left as dashes, and nothing anywhere said why.
+       The bad villa now renders as a tile that names its own error, because
+       the phones this board lives on have no console to read. */
+    unit.members.forEach(function(m){
+      try { host.appendChild(roomTile(Number(m))); }
+      catch(e){
+        console.error('villa '+m+' tile failed:', e);
+        var t = document.createElement('button');
+        t.className = 'room vacant';
+        t.innerHTML = '<span class="room-n">'+m+'</span>'+
+          '<span class="room-p" style="font-size:8px;color:var(--red)">'+
+          String(e && (e.message||e)).slice(0,60)+'</span>';
+        host.appendChild(t);
+      }
+    });
   });
 }
 
@@ -2060,7 +2076,12 @@ function busy(){
                  getComputedStyle(bd).display !== 'none')) || selectMode;
 }
 
-load(true);
+load(true).catch(function(e){
+  /* A load that dies must say so where reception can read it. Silent was how
+     a half-rendered board sat unexplained on 20 Aug. */
+  console.error('board load failed:', e);
+  showError('Board failed to load: ' + (e && (e.message || e)));
+});
 setInterval(function(){ if (!busy() && !document.hidden) load().catch(function(){}); }, 20000);
 
 /* Coming back to the app is the moment a stale board is most obvious, and it
