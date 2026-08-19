@@ -52,7 +52,7 @@
     .stats { margin-bottom:6px !important; }
     .stat-n { font-size:22px; }
     .grid { gap:8px !important; }
-    .legend { margin:6px 0 !important; }
+    .legend { padding:4px 5px !important; font-size:6.5px !important; }
   }
 
   /* Buttons are matched on the action in their onclick, so the sheet keeps
@@ -187,18 +187,24 @@
   .legend .lf { background:#F2F2EF; border-color:var(--rule); }
   /* The key draws the same bars at the same size and in the same colours. A
      key that is a separate drawing can disagree with the thing it explains;
-     this one cannot, because it is the thing. */
-  .legend { display:grid !important; grid-template-columns:repeat(2, auto);
-            justify-content:center; gap:5px 18px; text-align:left; }
-  .legend span { display:flex; align-items:center; gap:8px; }
-  .legend .lgb { flex:0 0 auto; width:26px; height:9px; border-radius:5px;
-                 border:1.5px solid var(--blueb); background:var(--blueb);
+     this one cannot, because it is the thing.
+
+     It lives in the grid's eighteenth cell, so it costs no height of its own.
+     That means it has to fit a tile, which is why it is a single narrow
+     column rather than the two it used to be. */
+  .legend { display:flex !important; flex-direction:column; justify-content:center;
+            gap:2px; margin:0 !important; padding:6px 7px; text-align:left;
+            border:1.2px solid var(--rule); border-radius:10px;
+            background:transparent; font-size:7px; letter-spacing:.06em; }
+  .legend span { display:flex; align-items:center; gap:5px; line-height:1.15; }
+  .legend .lgb { flex:0 0 auto; width:15px; height:6px; border-radius:3px;
+                 border:1.2px solid var(--blueb); background:var(--blueb);
                  vertical-align:0; margin:0; }
   .legend .lgb.svc { background:var(--greenb); border-color:var(--greenb); }
   .legend .lgb.pre { background:var(--amberb); border-color:var(--amberb); }
   .legend .lgb.arr { border-color:var(--blueb);
                      background:repeating-linear-gradient(45deg,
-                       var(--blueb) 0 4px, #FFFFFF 4px 8px); }
+                       var(--blueb) 0 3px, #FFFFFF 3px 6px); }
   .legend .lgb.dash { background:transparent; border-style:dashed;
                       border-color:var(--mid); }
 
@@ -534,8 +540,13 @@ function hhmm(iso){
   return String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
 }
 
+/* The key. Held rather than looked up, because every render clears the grid
+   it now lives in, and a lookup after the first clear finds nothing. */
+var LEGEND = null;
+
 function render(){
   var g=document.getElementById('grid'); g.innerHTML='';
+  if (!LEGEND) LEGEND = document.getElementById('legend');
   var nClean=0,nSvc=0,nDone=0,nPre=0;
   /* The job is derived here, not frozen at load, so setting one takes effect
      on the tile immediately instead of waiting for a refresh - and the villa
@@ -626,8 +637,13 @@ function render(){
          and was the same fault as the arrival label. Gone once the job is
          done, when who is going next stops being a question. */
       if (claimed)
+        /* Initials, like the finished line. The full name wrapped to two
+           lines on a tile and pushed everything else out: Housekeeping has
+           this is four words to say what two letters say. Yours stays as You,
+           because knowing a job is already yours is the one thing initials
+           cannot tell you. */
         sub = (h.takenBy === window.NALA_ME
-                 ? 'You have this' : esc(h.takenBy)+' has this');
+                 ? 'You doing' : esc(initialsOf(h.takenBy) || h.takenBy)+' doing');
       else if (h.pushed) sub='To tomorrow';
       else if (h.done){
         /* Who finished it, in initials: a finished board that cannot say who
@@ -664,6 +680,15 @@ function render(){
     };
     g.appendChild(el);
   });
+  /* Seventeen villas in three columns leave exactly one cell spare, and the
+     key was taking a strip of height below the grid to say something that
+     fits in a tile. Moved rather than copied, so there is still one key.
+
+     The node is held rather than looked up. Every render clears the grid, so
+     the first pass moved the key in and the second deleted it: after one
+     refresh the board had no key at all, and getElementById could never find
+     it again. */
+  if (LEGEND) g.appendChild(LEGEND);
   document.getElementById('nClean').textContent=nClean;
   document.getElementById('nSvc').textContent=nSvc;
   document.getElementById('nDone').textContent=nDone;

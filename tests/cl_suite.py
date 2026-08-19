@@ -167,8 +167,11 @@ with sync_playwright() as p:
               dash:s.borderStyle==='dashed'};})""")
     print("   key marks:", key)
     ck("the key shows every mark the board can draw", len(key) == 5)
-    ck("the key's marks are drawn at tile size, not smaller",
-       all(k["h"] >= 8 and k["w"] >= 20 for k in key))
+    # Smaller than a tile's bar now, because the key lives inside a tile sized
+    # cell and five entries have to fit it. Still big enough for the fill and
+    # the stripe to read, which is what the size is for.
+    ck("the key's marks are big enough for fill and pattern to show",
+       all(k["h"] >= 5 and k["w"] >= 12 for k in key))
     ck("and no two of them look alike",
        len({(k["bg"], k["img"], k["dash"]) for k in key}) == 5)
     ck("each is told apart by its own colour or pattern, not by its size",
@@ -1430,13 +1433,16 @@ with sync_playwright() as p:
     # Your own claim comes back as You, not as your own name read off a board.
     # The first paint happens before sign in resolves, so this also proves the
     # board repaints once it knows who is looking at it.
+    # Initials, like the finished line: the full name wrapped to two lines on a
+    # tile and pushed the rest out. Yours stays as You, because knowing a job
+    # is already yours is the one thing initials cannot tell you.
     ck("your own claim reads as You once the board knows who you are",
-       "you" in tile_text(q, "3") and "ana" not in tile_text(q, "3"))
+       "you doing" in tile_text(q, "3") and "ana" not in tile_text(q, "3"))
     q.close()
 
     q = as_cleaner("bo@x")
-    ck("somebody else's claim shows their name on the tile",
-       "ana" in tile_text(q, "3"))
+    ck("somebody else's claim shows their initials on the tile",
+       "a doing" in tile_text(q, "3") and "ana" not in tile_text(q, "3"))
     q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
                ".find(t=>t.innerText.startsWith('3')).click()")
     q.wait_for_timeout(400)
