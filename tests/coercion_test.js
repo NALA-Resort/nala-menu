@@ -243,5 +243,58 @@ ck('the board stores the staff key when a job is taken',
 ck('and when a job is finished',
    /doneBy:\s*window\.NALA_KEY/.test(cleaners));
 
+/* ── the two forms have to ask the same questions ────────────────────
+ * front-desk.html and prearrival.html are the SAME form: one filled in by the
+ * guest, one filled in with them at the desk. They cannot share their option
+ * lists, because the guest page deliberately does not load nala-shared.js and
+ * sharing would put staff code in a guest's browser. So the lists are
+ * duplicated on purpose, and nothing but this checks they agree.
+ *
+ * They did not. Purpose is stored as the LABEL, not a key, so a list differing
+ * by one word threw the guest's answer away: they chose "A celebration", the
+ * desk offered "Celebration", nothing matched, the chip came up unselected and
+ * the next save dropped it.
+ */
+const desk = fs.readFileSync(path.join(ROOT, 'front-desk.html'), 'utf8');
+
+function listOf(src, name) {
+  const i = src.indexOf('var ' + name + ' = ');
+  if (i < 0) throw new Error(name + ' is gone from one of the forms');
+  const end = src.indexOf('];', i);
+  return src.slice(i, end + 1)
+            .match(/'((?:[^'\\]|\\.)*)'/g)
+            .map(function (x) { return x.slice(1, -1); });
+}
+
+/* Purpose is compared exactly, because the label IS the stored value. */
+const dp = listOf(desk, 'PURPOSE'), gp = listOf(guest, 'PURPOSE');
+ck('both forms offer the same reasons for the stay, word for word',
+   JSON.stringify(dp) === JSON.stringify(gp));
+
+/* The arrival slots: the desk carries a short form as well, so only the keys
+   and the guest facing wording are compared. */
+const de = listOf(desk, 'ETA_SLOTS'), ge = listOf(guest, 'ETA_SLOTS');
+ck('both forms offer the same arrival times',
+   ge.every(function (v) { return de.indexOf(v) > -1; }));
+ck('and the desk can actually set one, rather than only read it back',
+   /id="eChips"/.test(desk) && /a\.arriveSlot\s*=/.test(desk));
+ck('including the note the open ended slots ask for',
+   /id="fEtaNote"/.test(desk) && /a\.arriveNote\s*=/.test(desk));
+
+/* Approach stores a key, so its labels are free to differ. They are matched
+   anyway: reading a guest back a different sentence to the one they answered
+   is how you lose them at the desk. */
+const da = listOf(desk, 'APPROACH'), ga = listOf(guest, 'APPROACH');
+ck('and the same words about how they plan to eat',
+   JSON.stringify(da) === JSON.stringify(ga));
+
+/* Every field the guest can answer must be settable at the desk, or a guest
+   with no form has no way to have it recorded. */
+['arriveSlot', 'arriveNote', 'dining', 'pax', 'diets', 'noDiets', 'dnote',
+ 'purpose', 'approach', 'occasion', 'wellness', 'wellDay', 'wellTime', 'note'
+].forEach(function (f) {
+  ck('the desk saves ' + f, new RegExp('\\b' + f + '\\s*:').test(desk));
+});
+
 console.log('RESULT: ' + P + ' passed, ' + F + ' failed');
 process.exit(F ? 1 : 0);

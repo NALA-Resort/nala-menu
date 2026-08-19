@@ -65,7 +65,7 @@ PRE = {
   # filled in from the guest's phone, not yet confirmed at the desk
   "b4":  {"at":"2026-08-16T10:00:00Z","dining":True,"pax":2,
           "diets":["Nut allergy"],"dnote":"the daughter, severe",
-          "arriveSlot":"16","purpose":["Celebration"],"approach":"most",
+          "arriveSlot":"16","purpose":["A celebration"],"approach":"most",
           "occasion":"anniversary","wellness":True,"wellDay":plus(1),"wellTime":"late morning",
           "note":"quiet villa please"},
   "b9":  {"at":"2026-08-16T11:00:00Z","dining":False,"noDiets":True,
@@ -279,7 +279,7 @@ with sync_playwright() as p:
     ck("the dietary and whose it is", "Nut allergy" in sumtxt and "the daughter" in sumtxt)
     ck("the arrival time they gave", "4pm" in sumtxt)
     ck("the occasion", "anniversary" in sumtxt)
-    ck("purpose, in words rather than a stored code", "Celebration" in sumtxt)
+    ck("purpose, in words rather than a stored code", "A celebration" in sumtxt)
     # A wellness interest with no day or time is a note to nobody. When they
     # gave one, it reads beside the answer rather than needing the form opened.
     ck("wellness carries the day and time they chose, on the same line",
@@ -310,16 +310,27 @@ with sync_playwright() as p:
        "()=>[...document.querySelectorAll('#dChips .chip')].some(e=>e.textContent==='Nut allergy'&&e.className.indexOf('on')>-1)"))
     ck("the note about whose allergy it is",
        pg.evaluate("()=>fDnote.value") == "the daughter, severe")
-    # ETA is not editable here: the guest is standing at the desk, so there is
-    # nothing left to estimate. It is shown if they told us earlier.
-    ck("the arrival time is shown, not offered for editing",
-       pg.evaluate("()=>!document.getElementById('fArrive')") and
-       "arrive approx 4pm" in pg.locator("#sheet").inner_text())
+    # This used to say the arrival time was deliberately read only, on the
+    # reasoning that the guest is standing at the desk so there is nothing left
+    # to estimate. That is true of a guest in front of you and of nobody else:
+    # a guest with no form has no arrival time at all, and one who rings to say
+    # they are running late has one that is wrong. The desk can set it now,
+    # with the same slots and the same words the guest was offered.
+    ck("the arrival time can be set at the desk, not only read back",
+       pg.evaluate("()=>!!document.getElementById('eChips')"))
+    ck("and the slot the guest chose comes up already selected",
+       pg.evaluate("""()=>[...document.querySelectorAll('#eChips button')]
+         .some(e=>/Around 4pm/.test(e.textContent) && e.className.indexOf('on')>-1)"""))
     ck("their special occasion", pg.evaluate("()=>fOcc.value") == "anniversary")
     ck("their free text", pg.evaluate("()=>fNote.value") == "quiet villa please")
+    # The desk offered "Celebration" and the guest's form offered "A
+    # celebration". Purpose is stored as the LABEL, not a key, so nothing
+    # matched: the chip came up unselected and the next save from the desk
+    # dropped the guest's answer. The guest's wording is now used on both,
+    # because it is what every record written so far already holds.
     ck("purpose of visit, which is advisory and never drives logic",
        pg.evaluate("()=>[...document.querySelectorAll('#pChips .chip')]"
-                   ".some(e=>e.textContent==='Celebration'&&e.className.indexOf('on')>-1)"))
+                   ".some(e=>e.textContent==='A celebration'&&e.className.indexOf('on')>-1)"))
     ck("and the wellness answer", pg.evaluate("()=>wYes.className==='on'"))
     ck("a day and a time appear once they are interested",
        pg.evaluate("()=>wWrap.style.display!=='none'"))

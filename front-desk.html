@@ -400,12 +400,15 @@ var ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-
    somebody's phrasing. Free text was tried and it parses "late morning" and
    "after 5pm" correctly often enough to be trusted and wrongly often enough
    to matter, which is the worst combination. */
+/* Key, the guest's own wording, the short form for the row, and whether the
+   slot wants a note. The middle column matches prearrival.html word for word,
+   for the same reason as the purposes above. */
 var ETA_SLOTS = [
   ['before2', 'Before 2pm', 'Before 2pm', true],
-  ['14',      'Approx 2pm', '2pm',        false],
-  ['15',      'Approx 3pm', '3pm',        false],
-  ['16',      'Approx 4pm', '4pm',        false],
-  ['17',      'Approx 5pm', '5pm',        false],
+  ['14',      'Around 2pm', '2pm',        false],
+  ['15',      'Around 3pm', '3pm',        false],
+  ['16',      'Around 4pm', '4pm',        false],
+  ['17',      'Around 5pm', '5pm',        false],
   ['after5',  'After 5pm',  'After 5pm',  true]
 ];
 function etaIndex(slot){
@@ -702,11 +705,27 @@ var DIET_OTHER = 'Other';
 
 /* Advisory only. It exists so that when a guest cannot be reached, staff can
    judge whether they are the type to eat out. It never drives logic. */
-var PURPOSE = ['Independent or business','Exploring the area',
-               'Celebration','Short break','Rest and recovery'];
-var APPROACH = [['most','Dining in most nights'],
-                ['mix','A mix of in and out'],
-                ['out','Mostly eating out']];
+/* WORD FOR WORD the same as prearrival.html. Purpose is stored as the label
+   itself, not as a key, so a list that differs by a single word silently
+   throws the guest's answer away: they chose "A celebration", the desk offered
+   "Celebration", nothing matched, the chip came up unselected and the next
+   save dropped it. The guest's wording is the one kept, because it is what
+   every record written so far already holds.
+
+   coercion_test.js compares the two files, since nothing else can: this page
+   loads nala-shared.js and the guest page deliberately does not, so the lists
+   cannot be shared without putting staff code in a guest's browser. */
+var PURPOSE = ['Somewhere to stay while we work or travel',
+               'Exploring Mission Beach and around',
+               'A celebration',
+               'A short break',
+               'Rest and recovery'];
+/* Approach stores the key, so the labels are free to differ. They are matched
+   anyway: reception reading the guest back a different sentence to the one
+   they answered is how you lose their confidence at the desk. */
+var APPROACH = [['most','We will dine at Nala most nights'],
+                ['mix', 'A mix of meals in and out'],
+                ['out', 'We will mostly eat out']];
 
 var bd = document.getElementById('backdrop');
 var sheetEl = document.getElementById('sheet');
@@ -770,6 +789,15 @@ function openGuest(r){
        esc(etaLabel(p).toLowerCase()) + '.</div>' : '') +
     (hasForm(p) ? '' :
       '<div class="note-box">No pre-arrival form. Fill it in together.</div>') +
+
+    /* The arrival time. The guest's form has always asked it and the desk
+       could only read it back: there was no way to set it for a guest with no
+       form, and no way to correct one who rang ahead to say they were running
+       late. Same slots, same words, so reception and guest are answering the
+       same question. */
+    '<div class="sheet-label">Arriving</div>' +
+    '<div class="chips" id="eChips"></div>' +
+    '<input class="txt" id="fEtaNote" type="text" placeholder="Flight, ferry, anything to note" autocomplete="off" style="display:none">' +
 
     '<div class="sheet-label">Dining on arrival night</div>' +
     '<div class="seg" id="diningSeg">' +
@@ -891,6 +919,30 @@ function openGuest(r){
   }
   function hasOther(){ return a.diets.indexOf(DIET_OTHER) > -1; }
 
+  /* Tapping the chosen slot again clears it, because "we did ask and they did
+     not know" is a real answer and there has to be a way back to it. */
+  function paintEta(){
+    var box = document.getElementById('eChips'); box.innerHTML = '';
+    var wantsNote = false;
+    ETA_SLOTS.forEach(function(sl){
+      var b = document.createElement('button');
+      b.className = 'chip' + (a.arriveSlot === sl[0] ? ' on' : '');
+      b.textContent = sl[1];
+      b.onclick = function(){
+        a.arriveSlot = (a.arriveSlot === sl[0]) ? '' : sl[0];
+        paintEta();
+      };
+      box.appendChild(b);
+      if (a.arriveSlot === sl[0] && sl[3]) wantsNote = true;
+    });
+    /* The note only appears for the two open ended slots, which is where the
+       guest's form asks for it too: before 2pm and after 5pm are the ones that
+       need a time attached to be worth anything. */
+    var note = document.getElementById('fEtaNote');
+    note.style.display = wantsNote ? '' : 'none';
+    if (!wantsNote) note.value = '';
+  }
+
   function paintPurpose(){
     var box = document.getElementById('pChips'); box.innerHTML = '';
     PURPOSE.forEach(function(t){
@@ -942,8 +994,10 @@ function openGuest(r){
   document.getElementById('wYes').onclick = function(){ a.wellness = true;  paintWellness(); };
   document.getElementById('wNo').onclick  = function(){ a.wellness = false; paintWellness(); };
 
-  paintDining(); paintPax(); paintDiets(); paintNone();
+  paintEta(); paintDining(); paintPax(); paintDiets(); paintNone();
   paintPurpose(); paintApproach(); paintWellness();
+  document.getElementById('fEtaNote').value = a.arriveNote || '';
+  paintEta();   /* again, so the note shows if the slot they chose wants one */
 
   document.getElementById('sClose').onclick = closeSheet;
   /* Both buttons run the same checks and the same save. The only difference is
@@ -958,6 +1012,7 @@ function openGuest(r){
        Other is chosen, and a check that runs before the field is read is
        checking the value from the last time the sheet was opened. */
     a.dnote = document.getElementById('fDnote').value.trim();
+    a.arriveNote = document.getElementById('fEtaNote').value.trim();
 
     var missing = [];
     if (a.dining === null) missing.push('dining');

@@ -70,7 +70,15 @@ with sync_playwright() as p:
     # The reverse, which is where a hand written map rots: a page ships and
     # nobody adds it here.
     on_disk = set(f for f in os.listdir(".") if f.endswith(".html"))
-    listed = set(links) | set(
+    # Compared on the file, not the whole address. The pre-arrival form is
+    # linked as prearrival.html?b=demo, because without a booking id it can
+    # only show the incomplete-link message and the one form a guest sees was
+    # the one nobody here could open. A query string does not make it a
+    # different page.
+    def just_file(u):
+        return str(u).split("?")[0].split("#")[0]
+    listed = set(just_file(x) for x in links) | set(
+        just_file(x) for x in
         pg.evaluate("()=>[...document.querySelectorAll('#body .p-f')]"
                     ".map(e=>e.textContent)"))
     missing = sorted(on_disk - listed)

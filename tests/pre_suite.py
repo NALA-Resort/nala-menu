@@ -271,7 +271,54 @@ with sync_playwright() as p:
            "()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
         pg.close()
 
-    b.close()
 
+    # ── the demo booking ────────────────────────────────────────────────
+    # The site map linked here with no booking id, so the one form a guest
+    # actually sees was the one nobody at the resort could open: it showed the
+    # incomplete-link message and nothing else. b=demo opens it with a made up
+    # guest.
+    #
+    # The whole point is that it writes nothing, so that is what is asserted,
+    # by watching the requests rather than by trusting the branch.
+    calls = []
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.on("request", lambda r: calls.append((r.method, r.url))
+         if "firebasedatabase.app" in r.url else None)
+    q.route("**/*.firebasedatabase.app/**", lambda r: r.fulfill(
+        status=200, content_type="application/json", body="null"))
+    q.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    q.goto("http://localhost:8967/prearrival.html?b=demo"); q.wait_for_timeout(1500)
+
+    ck("the demo opens the form rather than the incomplete link message",
+       q.evaluate("()=>document.getElementById('form').className.indexOf('hide')<0"))
+    ck("with a guest to greet",
+       "Alex" in q.evaluate("()=>document.getElementById('greet').textContent"))
+    ck("and says plainly that it is a demonstration",
+       "demonstration" in q.evaluate(
+           "()=>{const n=document.querySelector('#form .note-box');"
+           "return n?n.textContent:'';}").lower())
+    ck("opening it touches the database not at all", not calls)
+
+    q.evaluate("""()=>{
+      document.querySelectorAll('#etaOpts button')[2].click();
+      document.getElementById('dIn').click();
+      const d=document.querySelector('#dietNone button'); if(d)d.click();
+      const p=document.querySelector('#purposeChips button'); if(p)p.click();
+      const a=document.querySelector('#approachOpts button'); if(a)a.click();
+      document.getElementById('wNo').click();}""")
+    q.wait_for_timeout(300)
+    q.evaluate("()=>[...document.querySelectorAll('button')]"
+               ".find(x=>/send to nala/i.test(x.textContent)).click()")
+    q.wait_for_timeout(900)
+    ck("sending it shows the guest what they would see",
+       q.evaluate("()=>document.getElementById('done').className") == "done")
+    ck("while saying nothing was saved",
+       "nothing was saved" in q.evaluate(
+           "()=>document.getElementById('doneS').textContent").lower())
+    ck("and writes nothing, which is the whole point",
+       not [c for c in calls if c[0] in ("PATCH", "PUT", "POST")])
+    q.close()
+
+    b.close()
 print("RESULT: %d passed, %d failed" % (P, F))
 httpd.shutdown()

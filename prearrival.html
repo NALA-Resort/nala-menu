@@ -217,6 +217,11 @@ var G = {
    because the arrivals list is ordered by them. The two open ended ones need a
    note: "before 2pm" with no time is the answer that causes the problem it is
    warning about. */
+/* The site map opens this form with b=demo so it can be tried without a real
+   guest. Declared beside G, not inside the start up function, because the
+   submit handler has to know as well: a demo that writes is not a demo. */
+var DEMO = G.id === 'demo';
+
 var ETA_SLOTS = [
   ['before2', 'Before 2pm',  true],
   ['14',      'Around 2pm',  false],
@@ -478,6 +483,14 @@ function submitForm(){
   /* PATCH, not PUT: reception may already have confirmed this booking, and a
      PUT would wipe confirmedAt and quietly un-confirm a guest who is standing
      at the desk. */
+  if (DEMO){
+    /* Shows the guest exactly what they would see, having written nothing. */
+    el('form').className = 'hide';
+    el('done').className = 'done';
+    el('doneT').textContent = 'That is everything, thank you';
+    el('doneS').textContent = 'Demonstration only. Nothing was saved.';
+    return;
+  }
   db('/bookings/' + G.id + '/prearrival', 'PATCH', payload)
     .then(function(){
       el('form').className = 'hide';
@@ -504,6 +517,28 @@ el('again').onclick = function(){
 function boot(){
   paintGreeting(null);
   paintEta(); paintDine(); paintDiets(); paintPurpose(); paintApproach(); paintWell();
+
+  /* A demo booking, so the form can be opened and tried without a real guest
+     and without a link from a message. The site map links here, and until now
+     that link opened the incomplete-link message, which meant the one form a
+     guest sees was the one nobody could look at.
+
+     Nothing is written and nothing is read: DEMO short circuits every database
+     call below, so trying it cannot touch a booking or leave an openedAt on
+     somebody's record. Sending it is the same as sending any other link with
+     no id, which is to say it goes nowhere. */
+  if (DEMO){
+    paintGreeting({ first:'Alex', last:'Marsh',
+                    arrive: dkey(new Date()),
+                    depart: dkey(new Date(Date.now() + 3 * 86400000)) });
+    el('form').className = '';
+    var banner = document.createElement('div');
+    banner.className = 'note-box';
+    banner.style.cssText = 'margin:0 0 14px;text-align:center';
+    banner.textContent = 'Demonstration only. Nothing here is saved.';
+    el('form').insertBefore(banner, el('form').firstChild);
+    return;
+  }
 
   if (!G.id){
     el('form').className = 'hide';
