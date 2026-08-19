@@ -135,11 +135,35 @@ with sync_playwright() as p:
        "None to declare" in c9)
 
     # A guest who sent nothing. This is the case the card exists for.
-    blanks = pg.evaluate("""()=>{const c=[...document.querySelectorAll('.card')]
+    #
+    # Counting .val.blank alone stopped meaning anything on 19 Aug, when an
+    # unanswered question started printing the guest form's own options as
+    # tick boxes instead of an empty rule. Three questions still take a rule,
+    # the rest take boxes or writing lines, and the assertion that matters is
+    # that NO question is left with nothing to fill in.
+    fillable = pg.evaluate("""()=>{const c=[...document.querySelectorAll('.card')]
       .find(c=>c.querySelector('.c-villa').textContent==='2');
-      return c.querySelectorAll('.val.blank').length;}""")
-    ck("a guest who sent nothing gets a rule to write on for every question",
-       blanks == 8)
+      const rows=[...c.querySelectorAll('.row')];
+      return {total:rows.length, ok:rows.filter(r=>r.querySelector(
+        '.val.blank, .ticks, .notelines')).length};}""")
+    ck("a guest who sent nothing gets somewhere to answer every question",
+       fillable["total"] > 0 and fillable["ok"] == fillable["total"])
+
+    ticked = pg.evaluate("""()=>{const c=[...document.querySelectorAll('.card')]
+      .find(c=>c.querySelector('.c-villa').textContent==='2');
+      return [...c.querySelectorAll('.tk')].map(e=>e.textContent);}""")
+    ck("and the boxes offer the same dietaries the guest form does",
+       "Gluten free" in ticked and "Nut allergy" in ticked and "Other" in ticked)
+    ck("and Dining carries a count, because Dining alone is not a cover number",
+       "How many" in card("2"))
+
+    # Arriving is read at a glance and its answer is a time plus a reason.
+    # Six boxes there would crowd out the room to write the reason.
+    ck("but Arriving is a rule to write on, not boxes",
+       pg.evaluate("""()=>{const c=[...document.querySelectorAll('.card')]
+         .find(c=>c.querySelector('.c-villa').textContent==='2');
+         const r=c.querySelector('.row.eta');
+         return !!r && !r.querySelector('.tk') && !!r.querySelector('.val.blank');}"""))
     ck("but their name and stay are still printed, because Mews knows those",
        "James Fisher" in card("2"))
 

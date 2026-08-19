@@ -24,39 +24,81 @@
           page-break-inside:avoid; page-break-after:always; }
   .card:last-child { page-break-after:auto; }
 
-  .c-head { display:flex; align-items:baseline; gap:14px;
-            border-bottom:1px solid #111; padding-bottom:10px; margin-bottom:14px; }
-  .c-villa { font-size:30px; line-height:1; font-weight:bold; }
+  /* Sized off the printed card of 19 Aug, which came back with every field
+     written over in pen because nothing on it was large enough to read at
+     arm's length across a desk. Roughly double throughout, and the card now
+     fills at least two thirds of the page rather than a third of it. */
+  .c-head { display:flex; align-items:baseline; gap:16px;
+            border-bottom:1.5px solid #111; padding-bottom:12px; margin-bottom:10px; }
+  .c-villa { font-size:52px; line-height:1; font-weight:bold; }
   .c-who { flex:1; }
-  .c-name { font-size:17px; line-height:1.25; }
-  .c-stay { font-size:9px; letter-spacing:.1em; text-transform:uppercase;
-            color:#666; margin-top:4px; }
+  .c-name { font-size:32px; line-height:1.2; }
+  .c-stay { font-size:16px; letter-spacing:.015em; text-transform:uppercase;
+            color:#444; margin-top:6px; line-height:1.3; }
+  /* Nights and party size are what reception says out loud while the guest is
+     standing there, so they are set larger than the dates around them and kept
+     on one line: a party size that wraps reads as two facts. */
+  .c-stay b { font-size:27px; font-weight:bold; color:#111; letter-spacing:.01em;
+              white-space:nowrap; }
 
-  .row { display:flex; gap:12px; padding:7px 0; border-bottom:1px solid #ddd; }
+  .row { display:flex; gap:14px; padding:9px 0; border-bottom:1px solid #ddd; }
   .row:last-of-type { border-bottom:none; }
-  .lbl { flex:0 0 26%; font-size:7.5px; letter-spacing:.14em; text-transform:uppercase;
-         color:#666; padding-top:3px; }
-  .val { flex:1; font-size:11px; line-height:1.45; min-height:15px; }
+  .lbl { flex:0 0 22%; font-size:15px; letter-spacing:.12em; text-transform:uppercase;
+         color:#555; padding-top:5px; }
+  .val { flex:1; font-size:22px; line-height:1.4; min-height:30px; }
   /* An unanswered field prints as a rule to write on, not as blank space.
      Reception fills it in with the guest and the card is the working document. */
-  .val.blank { border-bottom:1px solid #bbb; min-height:15px; }
-  .val.blank.tall { min-height:32px; }
+  .val.blank { border-bottom:1px solid #999; min-height:32px; }
+
+  /* An unanswered question prints the guest form's own options as boxes, so
+     reception ticks rather than writes. Same options in the same order as the
+     form, because the guest may answer half of it at the desk and the two
+     have to be the same question. */
+  .ticks { display:flex; flex-wrap:wrap; gap:6px 20px; }
+  .tk { display:flex; align-items:center; gap:8px; font-size:20px; line-height:1.2; }
+  .tk i { display:block; width:20px; height:20px; border:1.5px solid #333; flex:0 0 20px; }
+  .writeline { border-bottom:1px solid #999; height:32px; margin-top:8px; }
+  .count { display:flex; align-items:flex-end; gap:10px; font-size:20px; margin-top:10px; }
+  .count span { display:block; width:130px; border-bottom:1px solid #999; height:26px; }
+
+  /* Arriving is the one reception reads at a glance while the guest walks in,
+     so it is set three times the old size rather than two. No tick boxes: the
+     answer is a time and a reason, and six boxes crowd out the room to write
+     the reason, which is the part that matters. */
+  .row.eta { padding:14px 0; }
+  .row.eta .lbl { font-size:22px; padding-top:8px; }
+  .row.eta .val { font-size:30px; }
+  .row.eta .val.blank { min-height:52px; }
+
+  .notelines div { border-bottom:1px solid #999; height:34px; }
 
   .flag { color:#9E6455; font-weight:bold; }
-  .sig { display:flex; gap:24px; margin-top:16px; padding-top:12px;
-         border-top:1px solid #111; }
-  .sig div { flex:1; font-size:7.5px; letter-spacing:.14em; text-transform:uppercase;
-             color:#666; }
-  .sig span { display:block; border-bottom:1px solid #111; height:26px; margin-bottom:4px; }
+  .sig { display:flex; gap:28px; margin-top:18px; padding-top:14px;
+         border-top:1.5px solid #111; }
+  .sig div { flex:1; font-size:13px; letter-spacing:.12em; text-transform:uppercase;
+             color:#555; }
+  .sig span { display:block; border-bottom:1px solid #111; height:34px; margin-bottom:6px; }
 
   .stamp { font-size:7.5px; letter-spacing:.1em; text-transform:uppercase;
            color:#999; text-align:right; margin-top:10px; }
   .empty { font-size:13px; color:#666; font-style:italic; padding:20px 0; }
 
+  /* This page is an A4 sheet, not a board. The card was doubled in size on
+     19 Aug so it can be read across a desk, and a 52px villa number does not
+     fit a 320pt phone and does not need to: nobody reads a registration card
+     on a handset during service, they read the printed one at the desk.
+
+     So the cards scroll sideways on screen rather than being shrunk to fit a
+     width that does not apply to them. The page itself still does not, which
+     is the rule that matters and the one sweep_suite is actually checking.
+     Print is untouched. */
+  #cards { overflow-x:auto; }
+
   @media print {
     body { padding:0; }
     .daterow, .foot, .noaccess, .screen-only { display:none !important; }
     .card { border:none; padding:0; }
+    #cards { overflow-x:visible; }
   }
 </style>
 </head>
@@ -198,13 +240,49 @@ function conflictsFor(diets){
   return hits.filter(function(c,i,x){ return x.indexOf(c) === i; });
 }
 
-/* A value, or a rule to write on. The card is the working document at the
-   desk, so an unanswered question has to be writable rather than absent. */
-function row(label, value, tall){
-  return '<div class="row"><div class="lbl">' + label + '</div>' +
-         (value ? '<div class="val">' + value + '</div>'
-                : '<div class="val blank' + (tall ? ' tall' : '') + '"></div>') +
-         '</div>';
+/* The options the guest form offers, in the guest form's order. A blank field
+   prints these as boxes so reception ticks rather than writes, and so the two
+   are visibly the same question when a guest answers half of it at the desk.
+   Adding an option to the form means adding it here. */
+var DIET_TICKS = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+                  'Nut allergy','Shellfish allergy','Egg allergy','Other'];
+var PURPOSE_TICKS = ['Work or travel','Exploring','Celebration','Short break',
+                     'Rest and recovery'];
+var APPROACH_TICKS = ['Most nights in','A mix','Mostly out'];
+var DINE_TICKS = ['Dining','Not dining'];
+var WELL_TICKS = ['Interested','Not interested'];
+
+function ticks(list){
+  return '<div class="ticks">' + list.map(function(t){
+    return '<div class="tk"><i></i>' + t + '</div>'; }).join('') + '</div>';
+}
+
+/* A value, or something to fill in. The card is the working document at the
+   desk, so an unanswered question has to be answerable on paper rather than
+   absent. Which form that takes depends on the question:
+
+     opts.ticks   the form's own options, as boxes
+     opts.line    a rule under the boxes, for Dietary's "Other"
+     opts.count   "How many ____", because Dining alone is not a cover count
+     opts.lines   n writing lines, for a question with no fixed answers
+     neither      a single rule
+
+   An ANSWERED field prints as plain text with no boxes. A tick row beside a
+   filled answer invites a second answer, and the card would then carry two. */
+function row(label, value, opts){
+  opts = opts || {};
+  var inner;
+  if (value) inner = '<div class="val">' + value + '</div>';
+  else if (opts.ticks) inner = '<div class="val">' + ticks(opts.ticks) +
+        (opts.line ? '<div class="writeline"></div>' : '') +
+        (opts.count ? '<div class="count">How many <span></span></div>' : '') + '</div>';
+  else if (opts.lines) {
+    var l = ''; for (var i=0;i<opts.lines;i++) l += '<div></div>';
+    inner = '<div class="val notelines">' + l + '</div>';
+  }
+  else inner = '<div class="val blank"></div>';
+  return '<div class="row' + (opts.cls ? ' ' + opts.cls : '') + '">' +
+         '<div class="lbl">' + label + '</div>' + inner + '</div>';
 }
 
 function cardHTML(r){
@@ -219,20 +297,29 @@ function cardHTML(r){
           /* The number staff read in Mews. On paper it is the only way back to
              the PMS record, since the card carries no GUID. */
           (s.number ? 'Mews ' + esc(s.number) + ' \u00b7 ' : '') + stayRange(s) +
-          (nightsLabel(s) ? ' \u00b7 ' + nightsLabel(s) : '') +
-          (s.adults ? ' \u00b7 ' + s.adults +
-            (Number(s.adults)===1 ? ' adult' : ' adults') : '') + '</div>' +
+          /* Nights and party size in one bold run, on the same line as the
+             dates. Reception reads these two out; the dates are reference. */
+          ((nightsLabel(s) || s.adults) ? ' \u00b7 <b>' +
+            [nightsLabel(s),
+             s.adults ? s.adults + (Number(s.adults)===1 ? ' adult' : ' adults') : ''
+            ].filter(Boolean).join(' \u00b7 ') + '</b>' : '') + '</div>' +
       '</div>' +
     '</div>';
 
   h += row('Arriving', p.arriveSlot
         ? esc(ETA_SLOTS[p.arriveSlot] || p.arriveSlot) +
           (p.arriveNote ? ' \u00b7 ' + esc(p.arriveNote) : '')
-        : '');
+        : '', { cls:'eta' });
+
+  /* A second adult gets their own line whenever Mews says there is one. Named
+     if the guest gave a name at pre-arrival, a rule to write on if not. It is
+     the first thing reception asks and there was nowhere to put the answer. */
+  if (Number(s.adults) > 1) h += row('Second guest', p.companion ? esc(p.companion) : '');
 
   h += row('Dinner tonight', p.dining === undefined ? ''
         : (p.dining ? 'Dining \u00b7 ' + (p.pax || '') +
-             (Number(p.pax)===1 ? ' guest' : ' guests') : 'Not dining'));
+             (Number(p.pax)===1 ? ' guest' : ' guests') : 'Not dining'),
+        { ticks:DINE_TICKS, count:true });
 
   var diet = p.noDiets ? 'None to declare'
            : ((p.diets && p.diets.length) ? esc(p.diets.join(' \u00b7 ')) : '');
@@ -244,18 +331,19 @@ function cardHTML(r){
     if (clash.length)
       diet += '<br><span class="flag">Menu conflict: ' + clash.join(', ') + '</span>';
   }
-  h += row('Dietary', diet, true);
+  h += row('Dietary', diet, { ticks:DIET_TICKS, line:true });
 
   h += row('Purpose', (p.purpose && p.purpose.length)
-        ? esc(p.purpose.join(' \u00b7 ')) : '');
-  h += row('Dining plans', p.approach ? esc(APPROACH[p.approach] || p.approach) : '');
+        ? esc(p.purpose.join(' \u00b7 ')) : '', { ticks:PURPOSE_TICKS });
+  h += row('Dining plans', p.approach ? esc(APPROACH[p.approach] || p.approach) : '',
+        { ticks:APPROACH_TICKS });
   h += row('Occasion', p.occasion ? esc(p.occasion) : '');
   h += row('Wellness', p.wellness === undefined ? ''
         : (p.wellness
             ? 'Interested' + (p.wellDay ? ' \u00b7 ' + dayLabel(p.wellDay) : '') +
               (p.wellTime ? ' \u00b7 ' + esc(p.wellTime) : '')
-            : 'Not interested'));
-  h += row('Notes', p.note ? esc(p.note) : '', true);
+            : 'Not interested'), { ticks:WELL_TICKS });
+  h += row('Notes', p.note ? esc(p.note) : '', { lines:4 });
 
   h += '<div class="sig"><div><span></span>Guest signature</div>' +
        '<div><span></span>Checked in by</div></div>';
