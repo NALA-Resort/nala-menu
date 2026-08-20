@@ -1474,6 +1474,10 @@ function wireGuestPanel(g, known){
   var panel = document.getElementById('gdPanel');
   if (!eye || !panel) return;
   known = known || {};
+  /* The edit-mode flag rides on the panel element because paint() is built
+     inside loadPrearrival, a sibling function: a closure variable here
+     would be out of its reach. Shut on every wiring. */
+  panel._intEditing = false;
 
   panel.innerHTML = panelHTML(snapshotRows(g, known));
 
@@ -1515,6 +1519,13 @@ function wireGuestPanel(g, known){
   });
   panel.addEventListener('click', function(e){
     var t = e.target;
+    if (t && t.id === 'gdIntEdit'){
+      panel._intEditing = true;
+      if (panel._paint) panel._paint();
+      var ta = document.getElementById('gdIntNote');
+      if (ta) try { ta.focus(); } catch (err) {}
+      return;
+    }
     if (t && t.id === 'gdIntSave' && !t.disabled){
       var ta = document.getElementById('gdIntNote');
       if (!ta || !known.bookingId) return;
@@ -1527,7 +1538,9 @@ function wireGuestPanel(g, known){
             editedBy: window.NALA_ME || '' })
         .then(function(){
           INT_CACHE[known.bookingId] = { ok: true, note: note || null };
-          t.textContent = 'Saved';
+          /* Back to reading: the saved note takes its place as a row. */
+          panel._intEditing = false;
+          if (panel._paint) panel._paint();
         })
         .catch(function(){
           /* api() already showed the toast; the button owns up too rather
@@ -1669,7 +1682,7 @@ function loadPrearrival(known, panel, g){
       panel.innerHTML = panelHTML([['', 'Nothing recorded for this villa yet', true]]);
     return;
   }
-  function paint(){
+  var paint = panel._paint = function(){
     var extra = preRows(PRE_CACHE[id]);
     /* The staff note is the whole team's, decided 20 Aug: every staff
        login reads it and writes it, because the chef holding the phone
@@ -1680,14 +1693,27 @@ function loadPrearrival(known, panel, g){
        rendering of not being allowed, and because an editor opened on
        an unverified blank would invite overwriting a note nobody saw. */
     var it = INT_CACHE[id];
+    /* Reading first: a saved note renders as a row like every other note,
+       in full. The box is a MODE, entered by asking to edit and left by
+       saving, because a note permanently stuck inside a small editor
+       cannot be read, which was the reported problem with the first
+       version of this. */
+    if (it && it.ok && it.note && !panel._intEditing)
+      extra = extra.concat([['Staff notes', '\u201C'+it.note+'\u201D']]);
     var body = rowsHTML(base.concat(
       extra.length ? extra : [['', 'No pre-arrival answers yet', true]]));
     if (it && it.ok){
-      body += '<div class="gd-int"><label for="gdIntNote">Staff notes</label>'
-            + '<textarea id="gdIntNote" rows="2">'
-            + esc(it.note || '') + '</textarea>'
-            + '<button class="gd-int-save" id="gdIntSave" type="button"'
-            + ' disabled>Save staff notes</button></div>';
+      if (panel._intEditing){
+        body += '<div class="gd-int"><label for="gdIntNote">Staff notes</label>'
+              + '<textarea id="gdIntNote" rows="3">'
+              + esc(it.note || '') + '</textarea>'
+              + '<button class="gd-int-save" id="gdIntSave" type="button"'
+              + ' disabled>Save staff notes</button></div>';
+      } else {
+        body += '<button class="gd-int-save" id="gdIntEdit" type="button">'
+              + (it.note ? 'Edit staff notes' : 'Add staff notes')
+              + '</button>';
+      }
     }
     panel.innerHTML = body +
       '<button class="gd-close" id="gdClose" type="button">Close details</button>';

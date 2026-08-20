@@ -948,25 +948,30 @@ with sync_playwright() as p:
         ck("%s: the arrival note is gone from the booking's panel" % label,
            "Ferry lands" not in text)
         if tier == "edit-light":
-            ck("%s: the editor is there for the staff role too" % label,
-               q.evaluate("()=>{const t=document.getElementById('gdIntNote');"
-                          "return !!t && t.value==='VIP, comp the champagne';}"))
+            ck("%s: the note displays as a row with an edit control" % label,
+               "Staff notes" in text and "comp the champagne" in text
+               and q.evaluate("()=>!document.getElementById('gdIntNote')"
+                              "&&!!document.getElementById('gdIntEdit')"))
         if tier == "none":
             ck("%s: no staff section, no editor, no complaint" % label,
                "Staff notes" not in text and "denied" not in text
                and "Could not load" not in text
                and q.evaluate("()=>!document.getElementById('gdIntNote')"))
         if tier == "edit":
-            # Decided 20 Aug: administration writes the note where it reads
-            # it. The editor replaces the row, carries its visible label,
-            # arrives holding the saved note, and its Save sleeps until the
-            # text actually differs: opening a panel is not an edit.
+            # Decided 20 Aug, twice: the note READS as a row like every
+            # other note, in full, and the box is a mode entered by the
+            # edit control and left by saving. A note stuck permanently
+            # inside a small editor cannot be read.
+            ck("%s: the note displays as a row first" % label,
+               "Staff notes" in text and "comp the champagne" in text
+               and q.evaluate("()=>!document.getElementById('gdIntNote')"))
+            q.locator("#gdIntEdit").click(); q.wait_for_timeout(300)
             ok = q.evaluate("""()=>{const t=document.getElementById('gdIntNote');
                 const s=document.getElementById('gdIntSave');
                 if(!t||!s) return {here:false};
                 return {here:true, val:t.value, asleep:s.disabled,
                         labelled:!!document.querySelector('.gd-int label')};}""")
-            ck("%s: the editor is there holding the note" % label,
+            ck("%s: the edit control opens the editor holding the note" % label,
                ok.get("here") and ok.get("val") == "VIP, comp the champagne")
             ck("%s: it carries a visible label" % label, ok.get("labelled"))
             # The 16px protocol: every focusable field on a phone is 16px or
@@ -994,16 +999,16 @@ with sync_playwright() as p:
                bodyw.get("note") == "VIP, comp the champagne, late checkout"
                and bodyw.get("editedBy") == "staff@x"
                and bool(bodyw.get("editedAt")))
-            ck("%s: the button owns the save" % label,
-               q.evaluate("()=>document.getElementById('gdIntSave')"
-                          ".textContent") == "Saved")
-            # And the cache learned it: shut, reopen, the new text is what
-            # the editor holds, without another fetch inventing the old one.
+            ck("%s: saving returns the note to a readable row" % label,
+               q.evaluate("()=>!document.getElementById('gdIntNote')")
+               and "late checkout" in q.evaluate("()=>gdPanel.textContent"))
+            # And the cache learned it: shut, reopen, the new text is the
+            # row, without another fetch inventing the old one.
             q.locator("#gdClose").click(); q.wait_for_timeout(300)
             q.locator("#gdEye").click(); q.wait_for_timeout(700)
-            ck("%s: reopening holds the saved text" % label,
-               q.evaluate("()=>document.getElementById('gdIntNote').value")
-               == "VIP, comp the champagne, late checkout")
+            ck("%s: reopening shows the saved text as the row" % label,
+               "late checkout" in q.evaluate("()=>gdPanel.textContent")
+               and q.evaluate("()=>!document.getElementById('gdIntNote')"))
         q.close()
 
     # ── the panel against the screen, not the sheet ─────────────────────
