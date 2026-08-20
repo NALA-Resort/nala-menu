@@ -92,6 +92,8 @@
     .tile .sub { font-size:8px !important; min-height:10px !important; }
     .tile .who-badge { top:3px; right:3px; min-width:16px; height:16px;
                        font-size:8px; border-radius:8px; }
+    .tile .task-icons { top:3px; left:3px; }
+    .tile .task-icons svg { width:11px; height:11px; }
     .legend { padding:3px 4px !important; font-size:5.5px !important;
               gap:1px !important; }
     .legend .lgb { width:11px; height:5px; }
@@ -118,6 +120,9 @@
   body.marks-limited .pbtn[onclick*="'unpush'"],
   body.marks-limited .pbtn[onclick*="'done'"],
   body.marks-limited .pbtn[onclick*="'undone'"] { display:none; }
+  /* Strip and linen are cleaning work, so a login without the cleaning marks
+     does not get the toggles either.                                     */
+  body.marks-limited .ttog { display:none; }
 
   .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr));
           gap:10px; flex:1 1 auto; min-height:0;
@@ -230,6 +235,15 @@
                      letter-spacing:.02em; display:flex; align-items:center;
                      justify-content:center; box-sizing:border-box; }
   .tile .who-badge.mine { background:var(--cream); color:var(--ink); }
+  /* Strip and fresh linen: the two jobs a helper can do ahead of a clean.
+     On the tile they live in the top-left corner, opposite the who badge,
+     and only when done - an absent mark is the default and costs nothing.
+     Dark grey rather than a job colour, because colour on this board means
+     which job is ready, and these say a part is already finished.       */
+  .tile .task-icons { position:absolute; top:5px; left:5px; display:flex;
+                      gap:3px; color:#55554F; }
+  .tile .task-icons svg { width:14px; height:14px; display:block; }
+  .tile.done .task-icons { opacity:.4; }
   .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
   .tile .sub b { color:var(--ink); }
   /* The clock on an available villa, and the only place on this board where
@@ -318,6 +332,21 @@
   .sheet h2 { font-size:15px; letter-spacing:.04em; margin-bottom:2px; }
   .sheet .st { font-size:10.5px; color:var(--mid); letter-spacing:.08em; text-transform:uppercase;
                margin-bottom:16px; }
+  /* The strip and linen toggles sit beside the title, right aligned, above
+     the buttons: they are state about the villa, not actions on the job, so
+     they read with the heading rather than queueing with the buttons.
+     Light grey is off, dark grey is on - the same two greys the tile uses,
+     so the sheet and the corner of the tile say it the same way.        */
+  .headrow { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .headrow .st { margin-bottom:0; }
+  .headrow { margin-bottom:16px; }
+  .tasks { display:flex; gap:8px; flex:0 0 auto; }
+  .ttog { width:44px; height:44px; border-radius:8px; padding:0; cursor:pointer;
+          border:1.5px solid var(--rule); background:#fff; color:#C6C6BF;
+          display:flex; align-items:center; justify-content:center;
+          font-family:inherit; }
+  .ttog svg { width:22px; height:22px; display:block; }
+  .ttog.on { background:#55554F; border-color:#55554F; color:var(--cream); }
   .pbtn { display:block; width:100%; padding:14px; margin-top:9px; font-size:12px;
           letter-spacing:.1em; text-transform:uppercase; background:#fff; color:var(--ink);
           border:1px solid var(--ink); border-radius:6px; cursor:pointer; font-family:inherit; }
@@ -540,6 +569,31 @@ var ICON_DTICK = '<svg class="dtick" viewBox="0 0 24 24" fill="none" stroke="cur
 var ICON_TICK = '<svg class="btick" viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
                 'stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">'+
                 '<path d="M4 12.5l5.2 5.2L20 6.9"/></svg>';
+/* The trolley is the strip - dirty linen leaves on the cart - and the folded
+   stack is the fresh linen going on. Drawn like every other icon here: stroke
+   only, currentColor, so the same drawing serves the grey-on-white toggle and
+   the dark mark on the tile.
+
+   The linen stack is drawn twice. On the 44px toggle it carries the fold curl
+   that says folded towels; at 14px on a tile the curl is noise, so the tile
+   gets the same stack without it rather than a smaller copy of everything. */
+var ICON_CART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
+                'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+
+                '<circle cx="9" cy="20.4" r="1.6"/><circle cx="18.6" cy="20.4" r="1.6"/>'+
+                '<path d="M2 3.2h3l2.5 12a2 2 0 0 0 2 1.6h8.3a2 2 0 0 0 2-1.6L21.8 8H6"/></svg>';
+var ICON_LINEN =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
+  'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+
+  '<path d="M4.3 10.2c0-.8.45-1.5 1.15-1.9l5.4-3c.7-.4 1.6-.4 2.3 0l5.4 3c.7.4 1.15 1.1 1.15 1.9v.4c0 .8-.45 1.5-1.15 1.9l-5.4 3c-.7.4-1.6.4-2.3 0l-5.4-3c-.7-.4-1.15-1.1-1.15-1.9z"/>'+
+  '<path d="M19.4 11.5c-2.2 1.5-5 1.9-8 1.4"/>'+
+  '<path d="M4.3 10.9v2c0 .8.45 1.5 1.15 1.9l5.4 3c.7.4 1.6.4 2.3 0l5.4-3c.7-.4 1.15-1.1 1.15-1.9v-2"/>'+
+  '<path d="M4.3 13.6v1.7c0 .8.45 1.5 1.15 1.9l5.4 3c.7.4 1.6.4 2.3 0l5.4-3c.7-.4 1.15-1.1 1.15-1.9v-1.7"/></svg>';
+var ICON_LINEN_SM =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+
+  '<path d="M4.3 10.2c0-.8.45-1.5 1.15-1.9l5.4-3c.7-.4 1.6-.4 2.3 0l5.4 3c.7.4 1.15 1.1 1.15 1.9v.4c0 .8-.45 1.5-1.15 1.9l-5.4 3c-.7.4-1.6.4-2.3 0l-5.4-3c-.7-.4-1.15-1.1-1.15-1.9z"/>'+
+  '<path d="M4.3 10.9v2c0 .8.45 1.5 1.15 1.9l5.4 3c.7.4 1.6.4 2.3 0l5.4-3c.7-.4 1.15-1.1 1.15-1.9v-2"/>'+
+  '<path d="M4.3 13.6v1.7c0 .8.45 1.5 1.15 1.9l5.4 3c.7.4 1.6.4 2.3 0l5.4-3c.7-.4 1.15-1.1 1.15-1.9v-1.7"/></svg>';
 
 document.getElementById('selToggle').onclick = function(){
   if (selectMode && selCount()) { openMulti(); return; }   /* Options */
@@ -797,8 +851,19 @@ function render(){
        tile still READS villa, job, state, person. Put first, the tile's text
        began with somebody's initials instead of the villa number, which is
        the wrong order for a screen reader and for anything matching on it. */
+    /* Strip and linen only exist on a clean: they are the two jobs done ahead
+       of one, and a service or a pre-arrival has no linen turnaround for a
+       helper to get ahead of. Same corner rule as the badge: drawn top-left,
+       listed last, so the tile still reads villa first. */
+    var tasks='';
+    if (row.kind==='clean' && (h.stripped || h.linen)){
+      tasks='<span class="task-icons">'+
+        (h.stripped ? '<span role="img" aria-label="Stripped" title="Stripped">'+ICON_CART+'</span>' : '')+
+        (h.linen ? '<span role="img" aria-label="Fresh linen on" title="Fresh linen on">'+ICON_LINEN_SM+'</span>' : '')+
+        '</span>';
+    }
     el.innerHTML='<span class="rn">'+row.n+'</span>'+chip+
-                 '<span class="sub">'+sub+'</span>'+badge;
+                 '<span class="sub">'+sub+'</span>'+badge+tasks;
     el.onclick = function(){
       if (selectMode){
         if (!selectableRow(row)) return;
@@ -873,6 +938,37 @@ function setField(n, obj, errEl){
   });
 }
 
+/* Strip and linen write straight through, like the claim: one tap on, one tap
+   off. The sheet stays OPEN rather than closing the way setField does -
+   whoever strips a villa usually puts the fresh linen on in the same visit,
+   and closing between the two marks would cost a walk back through the grid.
+   Nobody is notified: nothing has become available, a part of the clean has
+   simply been done early. */
+function toggleTask(field){
+  if (!CUR || CUR.multi) return;
+  var n = CUR.n;
+  /* Same gate the sheet draws by, re-checked at the tap: a sheet can sit open
+     while a poll or another phone changes the villa under it. Clearing an
+     existing mark is always allowed - it is the way back out. */
+  var h0 = STATE.hk[n]||{};
+  if (!(h0.departed || CUR.pushedIn || h0.pushed || h0[field])) return;
+  var prev = JSON.parse(JSON.stringify(STATE.hk[n]||{}));
+  var obj = {}; obj[field] = prev[field] ? null : new Date().toISOString();
+  STATE.hk[n] = Object.assign({}, prev, obj);
+  if (obj[field]===null) delete STATE.hk[n][field];
+  render();
+  if (CUR) drawSheet('menu');
+  patchRoom(n, obj).catch(function(e){
+    STATE.hk[n]=prev; render();
+    if (!CUR) return;
+    drawSheet('menu');
+    var el = document.getElementById('perr');
+    if (el) el.textContent = (e && e.message==='rejected')
+      ? 'The change was not allowed - tell the manager.'
+      : 'No connection - try again.';
+  });
+}
+
 function setKind(k){
   var err = document.getElementById('perr');
   if (CUR.multi){
@@ -928,6 +1024,29 @@ function drawSheet(mode){
   if (h.kind) kindName += ' - set by staff';
   var head='<h2>'+(CUR.multi ? (CUR.multi.length+' villas') : 'Villa '+n)+
            '</h2><div class="st">'+(CUR.multi ? 'Villas '+n : kindName)+'</div>';
+  /* The two toggles ride beside the title, only on a clean's own menu: on the
+     confirm screens they would be a second thing to press on a screen that
+     exists to ask one question.
+
+     And only once the guest has gone - departed, pushed in from yesterday
+     (the guest left, the work did not happen), or pushed to tomorrow -
+     because a villa cannot be stripped around its guest, and offering the
+     mark earlier invites it. A mark already set keeps its toggle whatever
+     the state, or undoing a departure would strand it un-undoable. */
+  var TASKS_OPEN = !!(h.departed || CUR.pushedIn || h.pushed || h.stripped || h.linen);
+  if (mode==='menu' && CUR.kind==='clean' && !CUR.multi && TASKS_OPEN){
+    var ttog = function(field, on, word, icon){
+      var label = word+(on ? ' - done. Tap to undo' : '. Tap when done');
+      return '<button type="button" class="ttog'+(on ? ' on' : '')+'"'+
+             ' aria-pressed="'+(on ? 'true' : 'false')+'"'+
+             ' aria-label="'+label+'" title="'+label+'"'+
+             ' onclick="toggleTask(\''+field+'\')">'+icon+'</button>';
+    };
+    head='<div class="headrow"><div>'+head+'</div><div class="tasks">'+
+         ttog('stripped', h.stripped, 'Stripped', ICON_CART)+
+         ttog('linen', h.linen, 'Fresh linen', ICON_LINEN)+
+         '</div></div>';
+  }
   var err='<div class="perr" id="perr"></div>';
 
   if (mode==='menu'){

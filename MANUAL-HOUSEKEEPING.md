@@ -48,6 +48,24 @@ nothing has become available by taking something back.
 
 ---
 
+## Stripped and fresh linen
+
+Two small toggles beside the villa's name on a clean's sheet, for a helper
+working ahead of the cleaners:
+
+- **Trolley** - the villa is stripped, the old linen is off.
+- **Folded stack** - the fresh linen is on.
+
+Tap to set, tap again to undo. Light grey means not done, dark grey means
+done. The toggles only appear once the guest has gone - the villa is marked
+departed, or it was pushed - because a villa cannot be stripped around its
+guest. A set mark also appears in the top-left corner of the villa's tile, so
+whoever takes the clean can see from the board that part of the job is
+already finished. Nobody is notified either way - it is a note on the villa,
+not an announcement.
+
+---
+
 ## The clock beside an available villa
 
 - **green** under ten minutes

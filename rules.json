@@ -311,6 +311,12 @@
           },
           "departed": {
             ".validate": "newData.isBoolean()"
+          },
+          "stripped": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "linen": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
           }
         }
       },
