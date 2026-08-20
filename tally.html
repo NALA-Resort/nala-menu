@@ -1607,6 +1607,7 @@ function editRoomDetails(n, st){
     '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
     '<div class="sheet-label">Dietary requirements</div>'+
     '<div class="chips" id="dietChips"></div>'+
+    '<input class="txt" id="xDnote" type="text" placeholder="Dietary note" autocomplete="off" style="margin-top:10px;display:none">'+
     '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
     '<button class="opt solid" id="oSave" style="margin-top:8px">Save details</button>'+
     '<button class="opt quiet" id="oBack">Back</button>';
@@ -1615,6 +1616,15 @@ function editRoomDetails(n, st){
   document.getElementById('xName').value  = g.name  || known.name || '';
   document.getElementById('xPhone').value = g.phone || '';
   document.getElementById('xNote').value  = g.note  || '';
+  /* The dietary note belongs to the person and rides with the dietaries to
+     the reservation. Comments stays a note about tonight. Before this, an
+     Other dietary FORCED its explanation into Comments, so the one text that
+     must follow the guest was stored in the box that expires at midnight. */
+  document.getElementById('xDnote').value = g.dnote || od.dnote || '';
+  function syncDnote(){
+    var el=document.getElementById('xDnote');
+    el.style.display = (diets.indexOf(DIET_OTHER)>-1 || el.value) ? '' : 'none';
+  }
   (function paintChips(){
     var box=document.getElementById('dietChips'); box.innerHTML='';
     DIETARIES.concat([DIET_OTHER]).forEach(function(d){
@@ -1623,24 +1633,29 @@ function editRoomDetails(n, st){
       b.onclick=function(){
         var i=diets.indexOf(d);
         if(i>-1) diets.splice(i,1); else diets.push(d);
-        paintChips();
+        paintChips(); syncDnote();
       };
       box.appendChild(b);
     });
   })();
+  syncDnote();
   document.getElementById('oSave').onclick = function(){
     var rec = { status:'in', pax:(g.pax||2), room:String(n), source:'manual' };
     if (st.src==='digital' || st.override) rec.override = true;
     rec.name  = document.getElementById('xName').value.trim();
     rec.phone = document.getElementById('xPhone').value.trim();
     rec.note  = document.getElementById('xNote').value.trim();
-    if (otherNeedsNote(diets, rec.note)){
-      showError('Write the allergy in the notes, or it reaches nobody.');
-      document.getElementById('xNote').focus();
+    var dn = document.getElementById('xDnote').value.trim();
+    if (otherNeedsNote(diets, dn)){
+      syncDnote();
+      showError('Write the allergy in the dietary note, or it reaches nobody.');
+      document.getElementById('xDnote').style.display='';
+      document.getElementById('xDnote').focus();
       return;
     }
     rec.diets = diets.slice();
-    if (g.dnote) rec.dnote = g.dnote;   // the guest's own dietary note stays theirs
+    if (dn) rec.dnote = dn;
+    else if (g.dnote) rec.dnote = g.dnote;   // the guest's own dietary note stays theirs
     saveManual('room-'+n, rec);
     persistDietary(n, rec);
     close(); render();
@@ -1851,6 +1866,7 @@ document.getElementById('addExt').onclick = function(e){
     '<div class="pax-row" id="paxRow"></div>'+
     '<div class="sheet-label">Dietary requirements</div>'+
     '<div class="chips" id="dietChips"></div>'+
+    '<input class="txt" id="xDnote" type="text" placeholder="Dietary note" autocomplete="off" style="margin-top:10px;display:none">'+
     '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
     '<button class="opt solid" id="oIn" style="margin-top:8px">Add</button>'+
     '<button class="opt quiet" id="oCancel">Cancel</button>';
@@ -1877,6 +1893,10 @@ document.getElementById('addExt').onclick = function(e){
   segR.onclick=function(){ if(dest===null) dest=1; paintRooms(); paintSeg(); };
 
   function paintPax(){ paxPicker(8, function(){return pax;}, function(v){pax=v;}); }
+  function syncDnote(){
+    var el=document.getElementById('xDnote');
+    el.style.display = (diets.indexOf(DIET_OTHER)>-1 || el.value) ? '' : 'none';
+  }
   function paintChips(){
     var box=document.getElementById('dietChips'); box.innerHTML='';
     DIETARIES.concat([DIET_OTHER]).forEach(function(d){
@@ -1885,26 +1905,29 @@ document.getElementById('addExt').onclick = function(e){
       b.onclick=function(){
         var i=diets.indexOf(d);
         if(i>-1) diets.splice(i,1); else diets.push(d);
-        paintChips();
+        paintChips(); syncDnote();
       };
       box.appendChild(b);
     });
   }
-  paintPax(); paintChips(); paintSeg();
+  paintPax(); paintChips(); paintSeg(); syncDnote();
 
   document.getElementById('oIn').onclick=function(){
     var nm=document.getElementById('xName').value.trim();
     var ph=document.getElementById('xPhone').value.trim();
     var nt=document.getElementById('xNote').value.trim();
-    if (otherNeedsNote(diets, nt)){
-      showError('Write the allergy in the notes, or it reaches nobody.');
-      document.getElementById('xNote').focus();
+    var dn=document.getElementById('xDnote').value.trim();
+    if (otherNeedsNote(diets, dn)){
+      showError('Write the allergy in the dietary note, or it reaches nobody.');
+      document.getElementById('xDnote').style.display='';
+      document.getElementById('xDnote').focus();
       return;
     }
     if (dest===null){
       if(!nm){ document.getElementById('xName').focus(); return; }
       var id='ext-'+Date.now();
       var rec={ status:'in', pax:pax, name:nm, phone:ph, note:nt, diets:diets, source:'manual' };
+      if (dn) rec.dnote=dn;
       saveManual(id, rec);
     } else {
       var rec2={ status:'in', pax:pax, room:String(dest), source:'manual' };
@@ -1913,6 +1936,7 @@ document.getElementById('addExt').onclick = function(e){
       if (nm) rec2.name=nm;
       if (ph) rec2.phone=ph;
       if (nt) rec2.note=nt;
+      if (dn) rec2.dnote=dn;
       if (diets.length) rec2.diets=diets.slice();
       saveManual('room-'+dest, rec2);
       persistDietary(dest, rec2);
@@ -1936,6 +1960,7 @@ function editExt(key, g){
       '<div class="pax-row" id="paxRow"></div>'+
       '<div class="sheet-label">Dietary requirements</div>'+
       '<div class="chips" id="dietChips"></div>'+
+      '<input class="txt" id="xDnote" type="text" placeholder="Dietary note" autocomplete="off" style="margin-top:10px;display:none">'+
       '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
       '<button class="opt solid" id="oSave" style="margin-top:8px">Save changes</button>'+
       '<button class="opt out" id="oDel">Cancel booking</button>'+
@@ -1945,6 +1970,11 @@ function editExt(key, g){
     document.getElementById('xName').value  = g.name  || '';
     document.getElementById('xPhone').value = g.phone || '';
     document.getElementById('xNote').value  = g.note  || '';
+    document.getElementById('xDnote').value = g.dnote || '';
+    function syncDnote(){
+      var el=document.getElementById('xDnote');
+      el.style.display = (diets.indexOf(DIET_OTHER)>-1 || el.value) ? '' : 'none';
+    }
     paxPicker(8, function(){return pax;}, function(v){pax=v;});
     (function paintChips(){
       var box=document.getElementById('dietChips'); box.innerHTML='';
@@ -1954,17 +1984,26 @@ function editExt(key, g){
         b.onclick=function(){
           var i=diets.indexOf(d);
           if(i>-1) diets.splice(i,1); else diets.push(d);
-          paintChips();
+          paintChips(); syncDnote();
         };
         box.appendChild(b);
       });
     })();
+    syncDnote();
     document.getElementById('oSave').onclick = function(){
       var rec = JSON.parse(JSON.stringify(g));
       rec.name  = document.getElementById('xName').value.trim() || rec.name;
       rec.phone = document.getElementById('xPhone').value.trim();
       rec.note  = document.getElementById('xNote').value.trim();
+      var dn = document.getElementById('xDnote').value.trim();
+      if (otherNeedsNote(diets, dn)){
+        showError('Write the allergy in the dietary note, or it reaches nobody.');
+        document.getElementById('xDnote').style.display='';
+        document.getElementById('xDnote').focus();
+        return;
+      }
       rec.diets = diets.slice();
+      if (dn) rec.dnote = dn; else delete rec.dnote;
       rec.pax   = pax;
       saveManual(key, rec);
       close(); render();

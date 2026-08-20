@@ -969,15 +969,31 @@ with sync_playwright() as p:
     q.wait_for_timeout(600)
     ck("Other with an empty note saves nothing here either", not WROTE)
 
-    q.fill("#xNote", "Severe sesame allergy")
+    # The allergy goes in the Dietary note, which belongs to the person and
+    # rides to the reservation. Comments stays a note about tonight; an Other
+    # typed there was stored in the box that expires at midnight, which is
+    # the spicy meatballs bug in its purest form. Both fields filled here to
+    # prove they land in different places.
+    ck("the dietary note appears once Other is ticked",
+       q.evaluate("()=>document.getElementById('xDnote').style.display!=='none'"))
+    q.fill("#xDnote", "Severe sesame allergy")
+    q.fill("#xNote", "Window table tonight")
     del WROTE[:]
     q.evaluate("()=>document.getElementById('oSave').click()")
     q.wait_for_timeout(700)
     saved = [json.loads(x[1]) for x in WROTE if x[1]]
     ck("and saves once the allergy is written down",
        bool(saved) and any(d.get("diets") == ["Other"] for d in saved))
-    ck("with the note that explains it",
-       any("sesame" in str(d.get("note", "")).lower() for d in saved))
+    ck("with the note that explains it, on the person",
+       any("sesame" in str(d.get("dnote", "")).lower() for d in saved))
+    ck("while Comments stays a note about tonight",
+       any("window" in str(d.get("note", "")).lower() for d in saved
+           if "/dinner/" in "".join(x[0] for x in WROTE if x[1] == json.dumps(d))) or
+       any("window" in str(json.loads(x[1]).get("note","")).lower()
+           for x in WROTE if "/dinner/" in x[0] and x[1]))
+    ck("and the reservation never receives tonight's comment",
+       not any("window" in str(json.loads(x[1]).get("note","")).lower()
+               for x in WROTE if "/bookings/" in x[0] and x[1]))
 
     # ── and the dietary has to outlive tonight ──────────────────────────
     # This board writes the one dinner cell, which lives under a date and is
