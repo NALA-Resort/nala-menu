@@ -610,6 +610,27 @@ document.getElementById('selToggle').onclick = function(){
   selLabel(); render();
 };
 
+/* The most recent day before the viewed one that has hk records at all,
+   walking back a fortnight. Yesterday is the answer almost every time and
+   costs the one request it always did; the walk exists for the day nobody
+   opened the board, so a strip marked Saturday still reaches Monday. It is
+   sound to stop at the first day with data: marks are only ever written
+   through this board, and every load carries the older state in before
+   anyone can write - so the newest day with records already holds
+   everything still open behind it. */
+function lastHk(maxDays){
+  function step(i){
+    if (i >= maxDays) return Promise.resolve({ key:null, data:{} });
+    var d = new Date(VIEW); d.setDate(d.getDate()-1-i);
+    var k = dkey(d);
+    return api('/hk/'+k).then(function(v){
+      if (v && typeof v === 'object' && Object.keys(v).length) return { key:k, data:v };
+      return step(i+1);
+    });
+  }
+  return step(0);
+}
+
 function load(full){
   /* Yesterday relative to the viewed day, not to the clock: on a browsed date
      the same-day-turnover and pushed-in logic have to read the night before
@@ -621,19 +642,22 @@ function load(full){
      board exists for: the villa needs cleaning precisely because they left.
      Reading only tonight left every departure classified as unknown. */
   return Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
-                fetchRoomGuests(todayKey(), 14, !!full), api('/hk/'+todayKey()), api('/hk/'+yest),
+                fetchRoomGuests(todayKey(), 14, !!full), api('/hk/'+todayKey()), lastHk(14),
                 fetchStays(todayKey()), api('/dinner/'+todayKey()),
                 api('/stays/'+yest) ])
   .then(function(res){
-    var responses=res[0]||{}, manual=res[1]||{}, hk=res[3]||{}, prevHk=res[4]||{};
+    var responses=res[0]||{}, manual=res[1]||{}, hk=res[3]||{};
+    var prevSrc=res[4]||{key:null,data:{}}, prevHk=prevSrc.data||{}, prevKey=prevSrc.key;
     /* State carries until the work is done. The records live under one date,
        so a strip marked at 4pm vanished at midnight, and a villa departed on
        Tuesday read as unknown on Wednesday. So the night's open marks are
        copied into today the first time anyone loads the board: departed - a
        push counts, a pushed villa is departed and waiting - stripped, and
        linen. Each carries until Mark as cleaned or its own undo, and the
-       chain holds day over day because each copy becomes the next night's
-       source. A record that has carried once is stamped and never re-copied:
+       chain holds day over day because each copy becomes the next source -
+       and survives days nobody opened the board, because the source is the
+       newest day with records, not literally yesterday (see lastHk).
+       A record that has carried once is stamped and never re-copied:
        the copy must lose to anything staff then do to today's record, or no
        carried mark could ever be undone.
        Today only. Browsing a past day must read it, never rewrite it. */
@@ -647,7 +671,7 @@ function load(full){
         if (cp.stripped && ct.stripped === undefined) cc.stripped = cp.stripped;
         if (cp.linen && ct.linen === undefined) cc.linen = cp.linen;
         if (!cc.departed && !cc.stripped && !cc.linen) continue;
-        cc.carried = yest;
+        cc.carried = prevKey || yest;
         hk[cn] = Object.assign({}, ct, cc);
         patchRoom(cn, cc).catch(function(){});
       }
@@ -720,6 +744,9 @@ function load(full){
       rows.push({ n:n, kind:hkClassify(r, todayKey(), hk[n], left),
                   base: goneIn ? 'clean' : hkClassify(r, todayKey(), null, left),
                   pushedIn: pushedIn,
+                  /* which day the push came from, so the tile can say
+                     yesterday when it was, and name the day when not */
+                  pushedFrom: pushedIn ? (prevKey || yest) : null,
                   /* What the BOOKING says. What the board shows is decided at
                      draw time by arrivingNow, because a manager's override is
                      written after this ran and a row built once at load would
@@ -864,8 +891,16 @@ function render(){
         sub = who ? 'Done by '+esc(who)+' '+hhmm(h.done) : 'Done '+hhmm(h.done);
       }
       /* A villa pushed in reads as what it is first thing in the morning: a
-         departed clean that was deliberately left, not one that was missed. */
-      else if (row.pushedIn) sub='Pushed from yesterday';
+         departed clean that was deliberately left, not one that was missed.
+         Usually that was yesterday; after a day nobody opened the board it
+         names the day, because "yesterday" would then be a lie. */
+      else if (row.pushedIn){
+        var py=(function(){ var d=new Date(VIEW); d.setDate(d.getDate()-1); return dkey(d); })();
+        if (!row.pushedFrom || row.pushedFrom===py) sub='Pushed from yesterday';
+        else { var pf=parseDepDate(row.pushedFrom),
+                   dys=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+               sub='Pushed '+(pf ? dys[pf.getDay()]+' '+ord(pf.getDate()) : 'earlier'); }
+      }
       else if (h.departed) sub='Departed';
       else if (h.bfast){
         /* The elapsed clock is a live instrument: on a browsed day "1440m
