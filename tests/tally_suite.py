@@ -215,7 +215,25 @@ with sync_playwright() as p:
     gd9 = pg.locator("#sheet .gd").inner_text()
     ck("the villa sheet shows the party size Mews knows", "2 adults" in gd9)
     ck("and shows it once, not twice", gd9.count("2 adults") == 1)
+    # The sheet is bottom-anchored and clips its overflow, and the snapshot
+    # is taller than the room below the name on a short sheet, so the chef
+    # had to know to scroll. Reported 20 Aug. The panel now floats UP from
+    # the name over the dimmed grid, the sheet releases its clip while the
+    # panel is open, and nothing laid out moves: the card-stays-put law
+    # below still holds.
+    box = pg.locator("#gdPanel").bounding_box()
+    ck("the open snapshot sits fully on screen, no scrolling to find it",
+       bool(box) and box["y"] >= 0 and box["y"] + box["height"] <= 900)
+    ck("because it floats up from the name",
+       pg.evaluate("()=>getComputedStyle(gdPanel).bottom") == "100%"
+       or pg.evaluate("""()=>{const p=gdPanel.getBoundingClientRect();
+            const e=document.getElementById('gdEye').getBoundingClientRect();
+            return p.bottom <= e.top + 2;}"""))
+    ck("and the sheet releases its clip while it is open",
+       pg.evaluate("()=>document.getElementById('sheet').classList.contains('gd-float')"))
     pg.locator("#gdEye").click(); pg.wait_for_timeout(250)
+    ck("and takes it back when it shuts",
+       pg.evaluate("()=>!document.getElementById('sheet').classList.contains('gd-float')"))
     ck("and the covers picker is still the app's own default, not Mews'",
        pg.evaluate("()=>document.querySelector('#paxRow .pax.on').textContent")=="2")
     pg.locator(".pax", has_text="4").click()
