@@ -982,6 +982,26 @@ with sync_playwright() as p:
     ck("and it is the last of them, not mixed into the chef's list",
        bool(chips) and chips[-1] == "Other")
 
+    # The box was summoned by Other alone, so a villa with Gluten free and
+    # Shellfish ticked had nowhere to type whose, and how severe: the label
+    # rendered on a day the note existed and vanished on a day it did not,
+    # which read from a phone as the option itself coming and going. The
+    # guest's own form has always shown the box for any ticked dietary.
+    # Reported 20 Aug, villa 10.
+    ck("the dietary note box starts hidden on a villa with nothing ticked",
+       q.evaluate("()=>document.getElementById('xDnote').style.display==='none'"))
+    q.evaluate("""()=>[...document.querySelectorAll('#dietChips button')]
+      .find(b=>b.textContent.trim()==='Gluten free').click()""")
+    q.wait_for_timeout(200)
+    ck("any ticked dietary reveals it, not only Other",
+       q.evaluate("()=>document.getElementById('xDnote').style.display!=='none'"))
+    ck("and its label with it",
+       q.evaluate("()=>{const l=document.getElementById('xDnoteLab');"
+                  "return !!l && l.style.display!=='none';}"))
+    q.evaluate("""()=>[...document.querySelectorAll('#dietChips button')]
+      .find(b=>b.textContent.trim()==='Gluten free').click()""")
+    q.wait_for_timeout(200)
+
     q.evaluate("""()=>[...document.querySelectorAll('#dietChips button')]
       .find(b=>b.textContent.trim()==='Other').click()""")
     q.wait_for_timeout(200)

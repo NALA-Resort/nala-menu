@@ -1622,7 +1622,7 @@ function editRoomDetails(n, st){
   document.getElementById('xDnote').value = g.dnote || od.dnote || '';
   function syncDnote(){
     var el=document.getElementById('xDnote');
-    el.style.display = (diets.indexOf(DIET_OTHER)>-1 || el.value) ? '' : 'none';
+    el.style.display = (diets.length || el.value) ? '' : 'none';
     var lb=document.getElementById('xDnoteLab');
     if (lb) lb.style.display = el.style.display;
   }
@@ -1898,7 +1898,7 @@ document.getElementById('addExt').onclick = function(e){
   function paintPax(){ paxPicker(8, function(){return pax;}, function(v){pax=v;}); }
   function syncDnote(){
     var el=document.getElementById('xDnote');
-    el.style.display = (diets.indexOf(DIET_OTHER)>-1 || el.value) ? '' : 'none';
+    el.style.display = (diets.length || el.value) ? '' : 'none';
     var lb=document.getElementById('xDnoteLab');
     if (lb) lb.style.display = el.style.display;
   }
@@ -1980,7 +1980,7 @@ function editExt(key, g){
     document.getElementById('xDnote').value = g.dnote || '';
     function syncDnote(){
       var el=document.getElementById('xDnote');
-      el.style.display = (diets.indexOf(DIET_OTHER)>-1 || el.value) ? '' : 'none';
+      el.style.display = (diets.length || el.value) ? '' : 'none';
       var lb=document.getElementById('xDnoteLab');
       if (lb) lb.style.display = el.style.display;
     }
