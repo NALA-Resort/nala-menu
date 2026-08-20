@@ -64,6 +64,47 @@ window.addEventListener('unhandledrejection',function(e){
   window.__ERRS.push('unhandled rejection: '+String(e.reason&&e.reason.message||e.reason));});"""
 
 now = datetime.datetime.now().astimezone()
+
+# menu-print.html needs jsPDF, which comes from a CDN the sandbox cannot
+# reach. The sweep reaches that page through the board's "Menu published"
+# banner, but only on a day the chef has already published, which is why this
+# went unseen until 20 Aug. The stand-in is print_suite's, copied rather than
+# imported because importing print_suite runs it. If menu-print grows a jsPDF
+# call the stub lacks, fix it THERE first; this copy only needs to not throw.
+JSPDF_STUB = """
+window.__PDF = { texts: [], lines: [], images: [], made: 0 };
+(function(){
+  function Doc(opts){ this.opts = opts; window.__PDF.made++; }
+  var chain = ['setFont','setFontSize','setTextColor','setDrawColor','setLineWidth',
+               'setLineDashPattern','addFileToVFS','addFont'];
+  chain.forEach(function(m){ Doc.prototype[m] = function(){ return this; }; });
+  Doc.prototype.splitTextToSize = function(s, w){
+    s = String(s == null ? '' : s);
+    var words = s.split(' '), lines = [], cur = '';
+    var per = Math.max(1, Math.floor(w / 2.6));
+    words.forEach(function(word){
+      if (!cur.length) { cur = word; return; }
+      if ((cur + ' ' + word).length <= per) cur += ' ' + word;
+      else { lines.push(cur); cur = word; }
+    });
+    if (cur.length || !lines.length) lines.push(cur);
+    return lines;
+  };
+  Doc.prototype.getTextWidth = function(s){ return String(s||'').length * 2.6; };
+  Doc.prototype.text = function(t, x, y, o){
+    window.__PDF.texts.push({ t: String(t), x: x, y: y });
+    return this;
+  };
+  Doc.prototype.line = function(x1,y1,x2,y2){
+    window.__PDF.lines.push({ x1:x1, y1:y1, x2:x2, y2:y2 }); return this;
+  };
+  Doc.prototype.addImage = function(d, f, x, y, w, h){
+    window.__PDF.images.push({ x:x, y:y, w:w, h:h }); return this;
+  };
+  Doc.prototype.output = function(){ return new Blob(['%PDF-stub'], {type:'application/pdf'}); };
+  window.jspdf = { jsPDF: Doc };
+})();
+"""
 today = now.strftime("%Y-%m-%d")
 def plus(d): return (now + datetime.timedelta(days=d)).strftime("%Y-%m-%d")
 
@@ -307,9 +348,11 @@ with sync_playwright() as p:
         pg = b.new_page(viewport={"width": width, "height": 900})
         pg.add_init_script(SDK)
         pg.add_init_script(TRAPS)
+        pg.add_init_script(JSPDF_STUB)
         pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
         pg.route("**/*.firebasedatabase.app/**", fb)
         pg.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        pg.route("**/cdnjs.cloudflare.com/**", lambda r: r.fulfill(status=200, body=""))
         failed = []
         pg.on("requestfailed", lambda r: failed.append(r.url.split("/")[-1][:50]))
         # A link that navigates to a missing page still changes the URL, and

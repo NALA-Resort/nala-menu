@@ -40,6 +40,12 @@
          margin-bottom:0.85rem; }
   .q.miss .q-t { color:var(--warn); }
 
+  /* The name of a note, above its box. Every box that takes a note carries
+     its name as a visible label, because a placeholder vanishes the moment
+     there is text in it. See NOTES-AUDIT.md, the five names. */
+  .n-lab { font-size:0.7rem; letter-spacing:0.08em; text-transform:uppercase;
+           color:var(--mid); margin:10px 0 4px; }
+
   .opts { display:flex; flex-direction:column; gap:8px; }
   .opt { width:100%; padding:14px 15px; border:1px solid var(--rule);
          background:transparent; border-radius:10px; text-align:left;
@@ -113,6 +119,7 @@
       <div class="q-h">Reception closes at 5pm. If you will be later than that,
         tell us and we will make arrangements.</div>
       <div class="opts" id="etaOpts"></div>
+      <div class="n-lab" id="etaNoteLab" style="display:none">Arrival notes</div>
       <textarea class="txt" id="etaNote" rows="2" style="display:none"
         placeholder="Roughly what time, so we can plan for you"></textarea>
     </div>
@@ -150,6 +157,7 @@
         dish, but we cannot rebuild one, so it helps to know early.</div>
       <div class="chips" id="dietChips"></div>
       <div class="chips" id="dietNone" style="margin-top:7px"></div>
+      <div class="n-lab" id="dietNoteLab" style="display:none">Dietary notes</div>
       <textarea class="txt" id="dietNote" rows="2"
         placeholder="Whose, and how severe"></textarea>
     </div>
@@ -192,6 +200,7 @@
         make your stay feel more like you. Optional.</div>
       <textarea class="txt" id="occasion" rows="1"
         placeholder="A birthday, an anniversary"></textarea>
+      <div class="n-lab">Booking notes</div>
       <textarea class="txt" id="note" rows="2"
         placeholder="Anything you would like us to know"></textarea>
     </div>
@@ -339,6 +348,7 @@ function paintEta(){
   var needsNote = false;
   ETA_SLOTS.forEach(function(s){ if (s[0] === a.eta && s[2]) needsNote = true; });
   el('etaNote').style.display = needsNote ? '' : 'none';
+  el('etaNoteLab').style.display = needsNote ? '' : 'none';
 }
 
 function paintDine(){
@@ -380,6 +390,7 @@ function paintDiets(){
   };
   none.appendChild(nb);
   el('dietNote').style.display = a.diets.length ? '' : 'none';
+  el('dietNoteLab').style.display = a.diets.length ? '' : 'none';
 }
 
 function paintPurpose(){

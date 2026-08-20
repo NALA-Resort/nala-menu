@@ -368,7 +368,7 @@ function cardHTML(r){
             ? 'Interested' + (p.wellDay ? ' \u00b7 ' + dayLabel(p.wellDay) : '') +
               (p.wellTime ? ' \u00b7 ' + esc(p.wellTime) : '')
             : 'Not interested'), { ticks:WELL_TICKS });
-  h += row('Notes', p.note ? esc(p.note) : '', { lines:4 });
+  h += row('Booking notes', p.note ? esc(p.note) : '', { lines:4 });
 
   h += '<div class="sig"><div><span></span>Guest signature</div>' +
        '<div><span></span>Checked in by</div></div>';

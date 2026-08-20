@@ -812,7 +812,7 @@ function openNotes(title, g, hits){
       : '<i>No note from the guest yet.</i>') + '</div>';
   }
   if (g.dineNote) {
-    h += '<div class="pop-h">General comments</div>' +
+    h += '<div class="pop-h">Dinner notes</div>' +
          '<div class="pop-t">\u201C' + g.dineNote + '\u201D</div>';
   }
 
@@ -821,8 +821,8 @@ function openNotes(title, g, hits){
     if ((g.prevDiets || []).length) {
       h += '<div class="pop-t">' + dietHTML(g.prevDiets, ', ', 'alrg') + '</div>';
     }
-    if (g.prevDnote) h += '<div class="pop-t">\u201C' + g.prevDnote + '\u201D</div>';
-    if (g.prevNote)  h += '<div class="pop-t">\u201C' + g.prevNote + '\u201D</div>';
+    if (g.prevDnote) h += '<div class="pop-t">Dietary notes \u00b7 \u201C' + g.prevDnote + '\u201D</div>';
+    if (g.prevNote)  h += '<div class="pop-t">Dinner notes \u00b7 \u201C' + g.prevNote + '\u201D</div>';
     h += '<div class="pop-t"><i>From an earlier night, not confirmed for ' +
          'tonight. Ask before cooking to it.</i></div>';
   }
@@ -1551,7 +1551,7 @@ function preRows(pre){
   if (pre.wellness)   rows.push(['Wellness', 'Interested'
     + (pre.wellDay ? ', ' + pre.wellDay : '')
     + (pre.wellTime ? ' ' + pre.wellTime : '')]);
-  if (pre.note)       rows.push(['Note', '\u201C'+pre.note+'\u201D']);
+  if (pre.note)       rows.push(['Booking notes', '\u201C'+pre.note+'\u201D']);
   /* The dietaries themselves, not only the note about them. This panel showed
      the note and skipped the list, so an allergy on the reservation was
      invisible here exactly when the viewed night had no dinner cell to carry
@@ -1607,8 +1607,10 @@ function editRoomDetails(n, st){
     '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
     '<div class="sheet-label">Dietary requirements</div>'+
     '<div class="chips" id="dietChips"></div>'+
-    '<input class="txt" id="xDnote" type="text" placeholder="Dietary note" autocomplete="off" style="margin-top:10px;display:none">'+
-    '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
+    '<div class="sheet-label" id="xDnoteLab" style="display:none">Dietary notes</div>'+
+    '<input class="txt" id="xDnote" type="text" placeholder="Dietary notes" autocomplete="off" style="margin-top:10px;display:none">'+
+    '<div class="sheet-label">Dinner notes</div>'+
+    '<input class="txt" id="xNote" type="text" placeholder="Dinner notes" autocomplete="off" style="margin-top:14px">'+
     '<button class="opt solid" id="oSave" style="margin-top:8px">Save details</button>'+
     '<button class="opt quiet" id="oBack">Back</button>';
   showSheet();
@@ -1624,6 +1626,8 @@ function editRoomDetails(n, st){
   function syncDnote(){
     var el=document.getElementById('xDnote');
     el.style.display = (diets.indexOf(DIET_OTHER)>-1 || el.value) ? '' : 'none';
+    var lb=document.getElementById('xDnoteLab');
+    if (lb) lb.style.display = el.style.display;
   }
   (function paintChips(){
     var box=document.getElementById('dietChips'); box.innerHTML='';
@@ -1866,8 +1870,10 @@ document.getElementById('addExt').onclick = function(e){
     '<div class="pax-row" id="paxRow"></div>'+
     '<div class="sheet-label">Dietary requirements</div>'+
     '<div class="chips" id="dietChips"></div>'+
-    '<input class="txt" id="xDnote" type="text" placeholder="Dietary note" autocomplete="off" style="margin-top:10px;display:none">'+
-    '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
+    '<div class="sheet-label" id="xDnoteLab" style="display:none">Dietary notes</div>'+
+    '<input class="txt" id="xDnote" type="text" placeholder="Dietary notes" autocomplete="off" style="margin-top:10px;display:none">'+
+    '<div class="sheet-label">Dinner notes</div>'+
+    '<input class="txt" id="xNote" type="text" placeholder="Dinner notes" autocomplete="off" style="margin-top:14px">'+
     '<button class="opt solid" id="oIn" style="margin-top:8px">Add</button>'+
     '<button class="opt quiet" id="oCancel">Cancel</button>';
   showSheet();
@@ -1896,6 +1902,8 @@ document.getElementById('addExt').onclick = function(e){
   function syncDnote(){
     var el=document.getElementById('xDnote');
     el.style.display = (diets.indexOf(DIET_OTHER)>-1 || el.value) ? '' : 'none';
+    var lb=document.getElementById('xDnoteLab');
+    if (lb) lb.style.display = el.style.display;
   }
   function paintChips(){
     var box=document.getElementById('dietChips'); box.innerHTML='';
@@ -1960,8 +1968,10 @@ function editExt(key, g){
       '<div class="pax-row" id="paxRow"></div>'+
       '<div class="sheet-label">Dietary requirements</div>'+
       '<div class="chips" id="dietChips"></div>'+
-      '<input class="txt" id="xDnote" type="text" placeholder="Dietary note" autocomplete="off" style="margin-top:10px;display:none">'+
-      '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
+      '<div class="sheet-label" id="xDnoteLab" style="display:none">Dietary notes</div>'+
+      '<input class="txt" id="xDnote" type="text" placeholder="Dietary notes" autocomplete="off" style="margin-top:10px;display:none">'+
+      '<div class="sheet-label">Dinner notes</div>'+
+      '<input class="txt" id="xNote" type="text" placeholder="Dinner notes" autocomplete="off" style="margin-top:14px">'+
       '<button class="opt solid" id="oSave" style="margin-top:8px">Save changes</button>'+
       '<button class="opt out" id="oDel">Cancel booking</button>'+
       '<button class="opt quiet" id="oClose">Close</button>';
@@ -1974,6 +1984,8 @@ function editExt(key, g){
     function syncDnote(){
       var el=document.getElementById('xDnote');
       el.style.display = (diets.indexOf(DIET_OTHER)>-1 || el.value) ? '' : 'none';
+      var lb=document.getElementById('xDnoteLab');
+      if (lb) lb.style.display = el.style.display;
     }
     paxPicker(8, function(){return pax;}, function(v){pax=v;});
     (function paintChips(){

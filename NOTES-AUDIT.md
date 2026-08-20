@@ -70,7 +70,9 @@ one on one of the two screens that writes it.
 
 ## The model to build towards
 
-Decided 19 Aug. Four notes, and no others.
+Decided 19 Aug. Four notes, and no others. **Superseded on 20 Aug: five
+names, and two renames. See "The five names" below. The data model here
+still stands; the names and the arrival note do not.**
 
 | # | Note | Comes from | Belongs to | Who may read it | Who may edit it |
 |---|---|---|---|---|---|
@@ -294,3 +296,116 @@ tomorrow, and no such thing exists.
 
 Steps 3 and 4 are decisions, not code. Step 1 is a fix and should not wait for
 them.
+
+---
+
+## The five names
+
+Decided 20 Aug, in conversation. This section supersedes the NAMES above, not
+the data model: nothing moves, nothing changes lifetime. Two renames and one
+promotion.
+
+| Name on screen | Field | Belongs to | Guest may read it? |
+|---|---|---|---|
+| **Booking notes** | `prearrival.note` | the reservation | yes, they wrote it |
+| **Arrival notes** | `prearrival.arriveNote` | the reservation, dead at check-in | yes, they wrote it |
+| **Staff notes** | `/internal/<booking id>` | the reservation | **never** |
+| **Dietary notes** | `dnote`, guest → reservation → night | the person | yes |
+| **Dinner notes** | `dinner/<date>/<villa>/note` | one night | no |
+
+- **Internal → Staff notes.** Same node, same rules. The old name said where
+  it lived; the new one says who it is for, which is the thing a receptionist
+  needs to know while typing.
+- **Guest note → Booking notes.** "Guest notes" survived one morning: it reads
+  as notes ABOUT the guest, and staff type into this field too. Booking notes
+  is what it is: free text that lives the length of the booking.
+- **Arrival notes, promoted.** The 19 Aug decision said arriveNote "is not one
+  of the four" and only part of the arrival answer. Half right: it is arrival
+  data with words attached, but it IS free text a guest writes, so it gets a
+  name. It keeps its own field because it has a different lifetime to Booking
+  notes: nobody needs "ferry lands 3pm" on day four.
+
+### The two rules every screen must follow
+
+Decided 20 Aug after "booking comment one, booking comment two" had to be
+typed into live fields to find out where they surface. That must never be the
+method again.
+
+1. **Every input that takes a note carries its name as a visible label.** A
+   placeholder is not a label: it vanishes the moment the box has text in it,
+   which is precisely when someone needs to know what the text is. The board's
+   three editors are the standing offenders.
+2. **Every place a note is displayed carries a heading saying which note it
+   is.** No orphan quotes. A bare "Notes" heading is half an answer; the
+   heading is one of the five names.
+
+And a working rule for conversation, same date: "notes" or "comments" without
+one of the five names in front of it gets a clarifying question, not a guess.
+"Comments" has meant the dinner note on the board and the general note in the
+bubble, which is exactly how the ambiguity started.
+
+### Where guest free text may travel
+
+Decided 20 Aug. Free text typed by a guest on the pre-arrival form stays on
+the pre-arrival form and the front desk, with **one exception: the dietary
+note**, which must reach the kitchen because Other means read the note.
+
+- **Booking notes** come OFF the reservations board row and the printed
+  list's comment column. The chef does not need the guest's private context
+  on a dinner row. They remain readable from the board through the bubble and
+  the snapshot panel, under their own heading.
+- **Arrival notes** appear on the arrivals views only, beside the time.
+- **Dietary notes** travel exactly as dietaries do: person, reservation,
+  every screen.
+
+### The bubble
+
+One bubble per row, as today, because the column's width is already balanced
+around it. The colour carries the meaning, worst state wins:
+
+| Colour | Means | Contains |
+|---|---|---|
+| none | nothing to read | — |
+| **grey** | context, not kitchen | Booking notes |
+| **amber** | kitchen content, complete | dietaries, Dietary notes, Dinner notes |
+| **red** | alarm, act before cooking | Other with no note written, a menu conflict with tonight's dishes |
+
+Red stays what it is everywhere else in the app: something is wrong. A normal
+allergy, properly recorded, is amber. The popover it opens keeps its sections,
+each under one of the five names, and carried-over DIETARIES leave the
+"Previous dining notes" section: a dietary is person-level now, so showing it
+as "not confirmed for tonight" contradicts the row above it. Notes from
+another night keep the warning; the dietaries move up into the current list.
+
+### What this costs, screen by screen
+
+The audit behind this, 20 Aug. What exists today against the two rules:
+
+| Screen | Field | Today | Needed |
+|---|---|---|---|
+| Pre-arrival | `note` | under "Anything else?", unnamed | titled Booking notes |
+| Pre-arrival | `etaNote` | placeholder only | titled, Arrival notes |
+| Pre-arrival | `dietNote` | placeholder only | titled, Dietary notes |
+| Front desk sheet | `fNote` | labelled Guest notes (unpublished) | relabel Booking notes |
+| Front desk sheet | `fEtaNote` | under "Arriving", unnamed | titled Arrival notes |
+| Front desk sheet | `fInternal` | labelled Staff notes (unpublished) | done |
+| Front desk summary | `note` | heading "Notes" | heading Booking notes |
+| Board, three editors | `xNote`, `xDnote` | placeholder only | visible labels above both |
+| Board, booking row | dinner note | bare quote, no label | comes off the row (bubble instead) |
+| Board, booking row | booking note | printed on row | comes off the row (bubble instead) |
+| Board, snapshot panel | `note` | heading "Note" | heading Booking notes |
+| Board, bubble | previous section | mixes old dinner + dietary notes | split under their names, dietaries out |
+| Printed list | column head | "Dietaries & comments" | "Dietaries & dinner notes" |
+| Registration card | `note` | heading "Notes" | heading Booking notes |
+
+Housekeeping's "Manager notes" and "Housekeeper notes" are handwriting lines
+on a printed sheet, never stored, and are left alone.
+
+### Order of work
+
+1. Labels and headings, all fourteen rows above. Boring, low risk, no
+   behaviour change.
+2. Booking note off the board row and the printed list, into the bubble under
+   its own heading. Small, with tests.
+3. Bubble colours. The fiddly one: "what is kitchen content" gets computed in
+   ONE place and tested first, because three screens will want the answer.
