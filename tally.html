@@ -15,6 +15,7 @@
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+         --amber:#B07D2B;
           /* state palette: dining green, declined terracotta, vacant slate */
           --green:#5E7D67;  --green-t:rgba(122,160,130,.26);  --green-b:rgba(122,160,130,.65);
           --terra:#9E6455;  --terra-t:rgba(184,106,90,.16);   --terra-b:rgba(184,106,90,.45);
@@ -200,6 +201,7 @@
          position:relative; }
   .bub::after { content:''; position:absolute; inset:-11px; }  /* 42px tap target */
   .bub svg { width:15px; height:15px; display:block; fill:var(--mid); }
+  .bub.kitchen svg { fill:var(--amber); }
   .bub.flag svg { fill:var(--red); }
   .pop-who { font-size:15px; margin-bottom:14px; padding-bottom:12px;
              border-bottom:1px solid var(--rule); }
@@ -787,7 +789,20 @@ function roomStateRaw(n){
 }
 
 
-function openNotes(title, g, hits){
+/* The bubble's colour is decided here and nowhere else. Worst wins.
+   red: act before cooking tonight. amber: kitchen content to read. grey:
+   context for the house, nothing the chef acts on. A bubble that is only
+   grey opens only Booking notes. See NOTES-AUDIT.md, the bubble. */
+function bubbleState(personDiets, g, hits, bookNote){
+  if (hits.length) return 'red';
+  if (personDiets.indexOf(DIET_OTHER) > -1 && !g.dineDnote) return 'red';
+  if (g.dineDnote || g.dineNote ||
+      g.prevNote || g.prevDnote || (g.prevDiets || []).length) return 'amber';
+  if (bookNote) return 'grey';
+  return '';
+}
+
+function openNotes(title, g, hits, bookNote){
   var h = '<div class="pop-who">' + title + '</div>';
   var prev = !!(g.prevNote || g.prevDnote || (g.prevDiets || []).length);
 
@@ -811,6 +826,13 @@ function openNotes(title, g, hits){
   if (g.dineNote) {
     h += '<div class="pop-h">Dinner notes</div>' +
          '<div class="pop-t">\u201C' + g.dineNote + '\u201D</div>';
+  }
+  /* The guest's context for the whole stay, off the reservation. It is why
+     a bubble can be grey: something for the house to read that the kitchen
+     does not act on. */
+  if (bookNote) {
+    h += '<div class="pop-h">Booking notes</div>' +
+         '<div class="pop-t">\u201C' + esc(bookNote) + '\u201D</div>';
   }
 
   if (prev) {
@@ -1062,8 +1084,9 @@ function render(){
 
 
     var hits = menuConflicts(MENU, personDiets);
-    var hasNotes = !!(g.dineNote || g.dineDnote ||
-                      g.prevNote || g.prevDnote || (g.prevDiets || []).length);
+    var pre = r.room ? (PREARRIVAL_BY_VILLA[String(r.room)] || null) : null;
+    var bookNote = (pre && pre.note) ? String(pre.note) : '';
+    var bubState = bubbleState(personDiets, g, hits, bookNote);
 
     var row = document.createElement('div');
     row.className = 'row' + (hits.length ? ' conflict' : '');
@@ -1072,15 +1095,17 @@ function render(){
       (sub.length ? '<div class="row-sub">'+sub.join(' · ')+'</div>' : '')+
       '</div>'+
       '<div class="row-right">'+
-      ((hasNotes || hits.length)
-        ? '<button class="bub'+(hits.length ? ' flag' : '')+'">'+ICON_BUBBLE+'</button>'
+      (bubState
+        ? '<button class="bub'+(bubState==='red' ? ' flag'
+                              : bubState==='amber' ? ' kitchen' : ' info')+'">'+
+          ICON_BUBBLE+'</button>'
         : '<span class="bub-slot"></span>')+
       '<span class="row-pax">'+(g.pax||1)+' pax</span>'+
       '<span class="edit">'+ICON_EDIT+'</span></div>'+ dietLine;
     var bub = row.querySelector('.bub');
-    if (bub) bub.onclick = (function(tt, gg, hh){
-      return function(ev){ ev.stopPropagation(); openNotes(tt, gg, hh); };
-    })(title, g, hits);
+    if (bub) bub.onclick = (function(tt, gg, hh, bn){
+      return function(ev){ ev.stopPropagation(); openNotes(tt, gg, hh, bn); };
+    })(title, g, hits, bookNote);
     row.querySelector('.edit').onclick = (function(rr){
       return function(ev){
         ev.stopPropagation();
@@ -1328,8 +1353,8 @@ function guestDataHTML(g, knownName, known){
      A control that opens an empty panel teaches people not to press it. */
 
   if (d) h += '<span class="gd-sub">'+d+'</span>';
-  if (g.note)  h += '<span class="gd-note">\u201C'+g.note+'\u201D</span>';
-  if (g.dnote) h += '<span class="gd-note">Dietary: \u201C'+g.dnote+'\u201D</span>';
+  if (g.note)  h += '<span class="gd-note">Dinner notes \u00b7 \u201C'+g.note+'\u201D</span>';
+  if (g.dnote) h += '<span class="gd-note">Dietary notes \u00b7 \u201C'+g.dnote+'\u201D</span>';
   h += '<div class="gd-panel" id="gdPanel"></div>';
   return h ? '<div class="gd">'+h+'</div>' : '';
 }

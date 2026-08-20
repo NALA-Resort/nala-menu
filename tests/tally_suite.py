@@ -676,6 +676,39 @@ with sync_playwright() as p:
     del responses["0400000011"]
     del roomguests[today]["11"]
 
+    # ── the bubble's colour is one decision ─────────────────────────────
+    # Worst wins: red to act on before cooking, amber to read, grey for
+    # context the kitchen does not act on. Decided in bubbleState and
+    # nowhere else, so it is tested as the function it is.
+    q=as_role("staff@x"); q.wait_for_timeout(400)
+    ck("a menu conflict is red",
+       q.evaluate("()=>bubbleState([], {}, [{dish:'a',diet:'b'}], '')")=="red")
+    ck("Other with nothing written is red",
+       q.evaluate("()=>bubbleState([DIET_OTHER], {}, [], '')")=="red")
+    ck("Other explained is not",
+       q.evaluate("()=>bubbleState([DIET_OTHER], {dineDnote:'sesame'}, [], '')")=="amber")
+    ck("a dietary note is amber",
+       q.evaluate("()=>bubbleState([], {dineDnote:'x'}, [], '')")=="amber")
+    ck("a dinner note is amber",
+       q.evaluate("()=>bubbleState([], {dineNote:'x'}, [], '')")=="amber")
+    ck("an earlier night's leavings are amber",
+       q.evaluate("()=>bubbleState([], {prevDiets:['Vegan']}, [], '')")=="amber")
+    ck("a booking note alone is grey",
+       q.evaluate("()=>bubbleState([], {}, [], 'golf buggy please')")=="grey")
+    ck("worst wins over grey",
+       q.evaluate("()=>bubbleState([], {dineNote:'x'}, [], 'golf buggy')")=="amber")
+    ck("nothing at all is no bubble",
+       q.evaluate("()=>bubbleState([], {}, [], '')")=="")
+    # The grey bubble opens the booking note under its name, and only that.
+    q.evaluate("()=>openNotes('Villa 4', {}, [], 'A golf buggy on arrival')")
+    q.wait_for_timeout(200)
+    notes=q.locator("#sheet").inner_text().upper()
+    ck("a grey bubble opens Booking notes",
+       "BOOKING NOTES" in notes and "GOLF BUGGY" in notes)
+    ck("and no kitchen sections it has nothing for",
+       "DIETARY NOTES" not in notes and "DINNER NOTES" not in notes)
+    q.close()
+
     # ── the guest snapshot behind the eye ───────────────────────────────
     # The sheet showed a name and a phone number. The dates, the head count
     # from Mews and the guest's own pre-arrival answers were all being
