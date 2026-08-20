@@ -317,6 +317,9 @@
           },
           "linen": {
             ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "carried": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
           }
         }
       },

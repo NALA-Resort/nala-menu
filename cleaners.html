@@ -626,6 +626,32 @@ function load(full){
                 api('/stays/'+yest) ])
   .then(function(res){
     var responses=res[0]||{}, manual=res[1]||{}, hk=res[3]||{}, prevHk=res[4]||{};
+    /* State carries until the work is done. The records live under one date,
+       so a strip marked at 4pm vanished at midnight, and a villa departed on
+       Tuesday read as unknown on Wednesday. So the night's open marks are
+       copied into today the first time anyone loads the board: departed - a
+       push counts, a pushed villa is departed and waiting - stripped, and
+       linen. Each carries until Mark as cleaned or its own undo, and the
+       chain holds day over day because each copy becomes the next night's
+       source. A record that has carried once is stamped and never re-copied:
+       the copy must lose to anything staff then do to today's record, or no
+       carried mark could ever be undone.
+       Today only. Browsing a past day must read it, never rewrite it. */
+    if (isToday()){
+      for (var cn=1; cn<=ROOMS; cn++){
+        var cp = prevHk[cn] || {};
+        var ct = hk[cn] || {};
+        if (ct.carried || ct.done || cp.done) continue;
+        var cc = {};
+        if ((cp.departed || cp.pushed) && ct.departed === undefined) cc.departed = true;
+        if (cp.stripped && ct.stripped === undefined) cc.stripped = cp.stripped;
+        if (cp.linen && ct.linen === undefined) cc.linen = cp.linen;
+        if (!cc.departed && !cc.stripped && !cc.linen) continue;
+        cc.carried = yest;
+        hk[cn] = Object.assign({}, ct, cc);
+        patchRoom(cn, cc).catch(function(){});
+      }
+    }
     /* The one dinner cell. This board only needs it to tell a departure from a
        stay-over, but reading it from the same node the other pages write keeps
        one villa from being two things on two screens. */
@@ -685,8 +711,14 @@ function load(full){
 
          true forces it on, false forces it off, absent leaves the booking to
          decide. */
+      /* A carried departure is the same fact as a pushed-in villa: the guest
+         is gone and the clean has not happened, however many midnights ago
+         that became true. Both force the job to a clean, because the booking
+         dates stopped saying so the moment the day rolled over. */
+      var th = hk[n] || {};
+      var goneIn = pushedIn || !!(th.carried && th.departed && !th.done);
       rows.push({ n:n, kind:hkClassify(r, todayKey(), hk[n], left),
-                  base: pushedIn ? 'clean' : hkClassify(r, todayKey(), null, left),
+                  base: goneIn ? 'clean' : hkClassify(r, todayKey(), null, left),
                   pushedIn: pushedIn,
                   /* What the BOOKING says. What the board shows is decided at
                      draw time by arrivingNow, because a manager's override is
@@ -831,7 +863,10 @@ function render(){
         var who = shortTagFor(h.doneBy);
         sub = who ? 'Done by '+esc(who)+' '+hhmm(h.done) : 'Done '+hhmm(h.done);
       }
-      else if (h.departed || row.pushedIn) sub='Departed';
+      /* A villa pushed in reads as what it is first thing in the morning: a
+         departed clean that was deliberately left, not one that was missed. */
+      else if (row.pushedIn) sub='Pushed from yesterday';
+      else if (h.departed) sub='Departed';
       else if (h.bfast){
         /* The elapsed clock is a live instrument: on a browsed day "1440m
            late" is an alarm about nothing, so the mark keeps its time and

@@ -59,7 +59,13 @@ working ahead of the cleaners:
 Tap to set, tap again to undo. Light grey means not done, dark grey means
 done. The toggles only appear once the guest has gone - the villa is marked
 departed, or it was pushed - because a villa cannot be stripped around its
-guest. A set mark also appears in the top-left corner of the villa's tile, so
+guest.
+
+These marks do not expire at midnight, and neither does a departure. A villa
+that is departed and waiting stays on the board as a clean, with its strip
+and linen marks, day after day until somebody marks it cleaned. A pushed
+villa arrives the next morning the same way, labelled as pushed, so the
+morning shift can see it was left deliberately. A set mark also appears in the top-left corner of the villa's tile, so
 whoever takes the clean can see from the board that part of the job is
 already finished. Nobody is notified either way - it is a note on the villa,
 not an announcement.
