@@ -339,6 +339,12 @@
                      text-transform:uppercase;
                      -webkit-tap-highlight-color:transparent; }
   .gd-int .gd-int-save:disabled { opacity:.45; cursor:default; }
+  .gd-int-link { display:inline-block; margin:6px 0 2px; padding:2px 0;
+                 border:0; background:none; cursor:pointer;
+                 color:var(--mid); font-family:inherit; font-size:14px;
+                 text-decoration:underline; text-underline-offset:3px;
+                 -webkit-tap-highlight-color:transparent; }
+  .gd-int-link:active { color:var(--ink); }
   .gd-close { display:block; width:100%; margin:8px 0 0; padding:9px 0;
               border:0; border-top:1px solid var(--rule);
               background:none; cursor:pointer; color:var(--mid);
@@ -1710,7 +1716,7 @@ function loadPrearrival(known, panel, g){
               + '<button class="gd-int-save" id="gdIntSave" type="button"'
               + ' disabled>Save staff notes</button></div>';
       } else {
-        body += '<button class="gd-int-save" id="gdIntEdit" type="button">'
+        body += '<button class="gd-int-link" id="gdIntEdit" type="button">'
               + (it.note ? 'Edit staff notes' : 'Add staff notes')
               + '</button>';
       }
