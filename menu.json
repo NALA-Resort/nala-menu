@@ -1,23 +1,23 @@
 {
-  "published": "2026-08-19T08:46:29.925740+10:00",
+  "published": "2026-08-20T10:26:57.599664+10:00",
   "bread": {
-    "name": "Baguette la Parisienne",
-    "desc": "Vietnamese butter",
+    "name": "Housemade focaccia",
+    "desc": "aged balsamic, olive oil",
     "aus": false
   },
   "entree": {
-    "name": "Pork rillettes",
-    "desc": "caramelised pear, pickled grapes, toast",
-    "aus": false
-  },
-  "main": {
-    "name": "Barramundi",
-    "desc": "braised fennel, cauliflower pur\u00e9e, beurre blanc",
+    "name": "Ora King salmon",
+    "desc": "buttermilk, watermelon radish, salmon roe, dill",
     "aus": true
   },
+  "main": {
+    "name": "Eye fillet",
+    "desc": "Hasselback potato, charred broccolini, smoked beef-fat hollandaise",
+    "aus": false
+  },
   "dessert": {
-    "name": "L'Assiette au Chocolat",
-    "desc": "chocolate, caramel, coffee",
+    "name": "Macadamia",
+    "desc": "vanilla, banana, caramel",
     "aus": false
   }
 }
