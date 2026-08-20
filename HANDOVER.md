@@ -208,8 +208,10 @@ rather than handwritten.
 
 ### Waiting on a person
 
-1. **Paste `rules.json` into the Firebase console.** FOUR nodes added on 19 Aug
-   are not live, and each one silently breaks a finished feature:
+1. **DONE 20 Aug: `rules.json` pasted into the Firebase console** by Ben,
+   including the same-day widening of `/internal` to every staff record, and
+   confirmed live: the chef read and edited a staff note from a phone. Kept
+   for history, the four 19 Aug nodes this paste also carried:
 
    - `companion` on prearrival: a guest typing a companion's name fails their
      WHOLE pre-arrival form, not just that field, and nothing on screen says
@@ -470,6 +472,37 @@ most. Nothing there has been done.
 
 ---
 
+### Next task, chosen by Ben, 20 Aug: the details panel becomes a screen of its own
+
+The name dropdown on tally.html was rebuilt three times in one day, each
+version computing its room from the layout and each breaking on a login that
+was never measured. Ben's direction, verbatim in spirit: stop computing, one
+version for everyone, full screen or better. The design that answers it, half
+built then reverted to wrap the session cleanly:
+
+- `.gd-panel` goes `position:fixed; z-index:60;` with
+  `top/bottom: calc(12px + env(safe-area-inset-*, 0px)); left:12px;
+  right:12px; max-width:520px; margin:0 auto;` keeping the existing
+  border, radius, shadow, transition and `overflow-y:auto`, adding
+  `-webkit-overflow-scrolling:touch`. The browser measures the screen, so
+  the panel is identical for every login by construction.
+- `setOpen` DELETES the whole maxHeight computation; on open, only
+  `panel.scrollTop = 0`.
+- Consequence: the open panel covers the name, so the eye cannot be
+  clicked to shut it. Close details and the 12px backdrop reveal are the
+  ways out. The suite knows the old world in three places and each must be
+  rewritten, not deleted: around line 218 of tests/tally_suite.py, "the
+  open snapshot sits fully on screen" and "drops down from the name" plus
+  the eye-click that follows (times out against the overlay; close with
+  #gdClose); the outside-tap block, whose tap point must land on the 12px
+  reveal; and the panel height-law block, which becomes an overlay law:
+  top >= 0, bottom <= viewport, fits or scrolls. The one-card-size law and
+  the sheet's min-height 560px stay as they are.
+- Chef edit flow on a phone is the acceptance test: open a name, Edit
+  staff notes, keyboard up, save, note returns to its row, nothing
+  clipped. Two phone screenshots from 20 Aug show the cramped version
+  this replaces.
+
 ## Things that were true and are not
 
 Worth knowing because they are written elsewhere and they are wrong now.
@@ -500,6 +533,26 @@ pushed to it, and that breaks the chef's publishing.
 
 **Fonts.** Georgia, San Francisco and the iOS system fonts are not installed in
 the sandbox, so every render falls back. `font-test.html` exists for this.
+
+**The sandbox proxy lies about the live site.** curl to menu.nalaresort.com can
+return the proxy's own 403 block page, which greps as "the old build" and cost
+a false alarm on 20 Aug. Verify deploys by the Pages build API and
+raw.githubusercontent.com, never by curling the site.
+
+**A Pages build can wedge** at status building, duration 0, indefinitely. The
+token cannot POST /pages/builds (403). The fix is a fresh push: a one-line
+change to `.build-nudge` queues a new build that supersedes the wedged one.
+Happened on 20 Aug to 1474f8d; the user saw "doesn't exist yet" while every
+check of the repo said published.
+
+**Suite fixture traps, learned 20 Aug.** `staff@x` in tally_suite is role
+ADMIN; `desk@x` is the true staff role; `normaliseRole` maps staff to admin on
+purpose, so there is no read-only staff tier. The shared `fb` router's
+date-keyed fixtures get rebound by late scenarios, so a new test block that
+falls through to `fb` for reads can hit KeyError on today's date: new blocks
+own their routers, and route non-GET to `fb` so WRITES still records saves.
+run.py auto-pairs sweep:tally with tally and a killed run holds port 8973 for
+about 70 seconds.
 
 ---
 
