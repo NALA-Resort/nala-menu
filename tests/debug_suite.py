@@ -110,6 +110,15 @@ with sync_playwright() as p:
         pg.on("dialog", lambda d: d.accept() if accept else d.dismiss())
         pg.route("**/*.firebasedatabase.app/**", fb)
         pg.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        # The shared script's announceMenu archives today's menu on every
+        # signed-in page load, and the repo's real menu.json is published
+        # for the run date whenever the chef has published before the tests
+        # run. That PUT lands inside this suite's "writes nothing" windows,
+        # which held every day until 20 Aug only because it was racing the
+        # assertions. Diagnostics do not need a menu: serve an unpublished
+        # one and announceMenu correctly does nothing.
+        pg.route("**/menu.json*", lambda r: r.fulfill(
+            status=200, content_type="application/json", body="{}"))
         pg.goto("http://localhost:8974/debug.html")
         pg.wait_for_timeout(900)
         return pg

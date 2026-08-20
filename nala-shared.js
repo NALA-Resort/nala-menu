@@ -292,7 +292,20 @@ function overlayReservationDiets(rec, villa){
   if (!pre) return rec;
   if (pre.diets && pre.diets.length){
     rec.diets = pre.diets.slice();
-    if (pre.dnote) rec.dnote = pre.dnote;
+    /* The reservation's list is the person's list, so dietaries are never
+       "previous": a copy carried forward on roomguests is an old copy of a
+       current fact, not an unconfirmed answer. Leaving prevDiets set showed
+       the same allergy twice, once with a warning to ask first. */
+    delete rec.prevDiets;
+    if (pre.dnote){
+      rec.dnote = pre.dnote;
+      /* The bubble and its popover read the stamped field, and the stamp
+         runs before this overlay, so a note living only on the reservation
+         was invisible to both: the bubble called an explained Other
+         unexplained and went red, and opened onto nothing. 20 Aug. */
+      rec.dineDnote = pre.dnote;
+      delete rec.prevDnote;
+    }
   }
   return rec;
 }

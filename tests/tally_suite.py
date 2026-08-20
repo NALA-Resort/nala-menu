@@ -699,6 +699,26 @@ with sync_playwright() as p:
        q.evaluate("()=>bubbleState([], {dineNote:'x'}, [], 'golf buggy')")=="amber")
     ck("nothing at all is no bubble",
        q.evaluate("()=>bubbleState([], {}, [], '')")=="")
+    # The overlay settles provenance. Robyn's case, 20 Aug: Other ticked and
+    # explained, but the note lived on the reservation only, the stamp runs
+    # before the overlay, and the bubble read the stamped field: it called an
+    # explained Other unexplained, went red, and opened onto nothing.
+    ck("a reservation-only dietary note lands in the stamped field",
+       q.evaluate("""()=>{PREARRIVAL_BY_VILLA['99']={diets:[DIET_OTHER],dnote:'Low tolerance to garlic'};
+         const r=overlayReservationDiets({prevDnote:'old copy',prevDiets:['Vegan']},'99');
+         delete PREARRIVAL_BY_VILLA['99'];
+         return r.dineDnote==='Low tolerance to garlic'
+             && !r.prevDnote && !r.prevDiets;}"""))
+    ck("so an explained Other is amber, not red",
+       q.evaluate("""()=>{PREARRIVAL_BY_VILLA['99']={diets:[DIET_OTHER],dnote:'garlic'};
+         const r=overlayReservationDiets({},'99');
+         delete PREARRIVAL_BY_VILLA['99'];
+         return bubbleState(r.diets, r, [], '')==='amber';}"""))
+    ck("and an unexplained Other stays red",
+       q.evaluate("""()=>{PREARRIVAL_BY_VILLA['99']={diets:[DIET_OTHER]};
+         const r=overlayReservationDiets({},'99');
+         delete PREARRIVAL_BY_VILLA['99'];
+         return bubbleState(r.diets, r, [], '')==='red';}"""))
     # The grey bubble opens the booking note under its name, and only that.
     q.evaluate("()=>openNotes('Villa 4', {}, [], 'A golf buggy on arrival')")
     q.wait_for_timeout(200)
