@@ -940,6 +940,65 @@ with sync_playwright() as p:
                and "Could not load" not in text)
         q.close()
 
+    # ── the panel against the screen, not the sheet ─────────────────────
+    # Reported twice on 20 Aug: the panel's allowance was measured from the
+    # sheet's bottom, and the sheet's bottom is wherever that login's
+    # buttons end. The staff sheet carries five buttons and fitted; the
+    # chef's carries none and the panel ran off the screen. The law: the
+    # open panel's bottom edge stays on the screen for EVERY login, and a
+    # booking longer than the room scrolls inside the panel.
+    for who in ["staff@x", "chef@x"]:
+        def tallpre_fb(route, request):
+            u = request.url
+            if "/stays/" + today in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps({"4": {"id": BID, "first": "Ana",
+                                "last": "Diaz", "arrive": today, "depart": plus(3),
+                                "adults": 2, "number": "10261"}})); return
+            if "/prearrival" in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps({"arriveSlot": "15",
+                                "purpose": "A celebration", "occasion": "An anniversary",
+                                "approach": "mix", "wellness": True, "wellDay": plus(1),
+                                "wellTime": "am", "note": "A golf buggy on arrival",
+                                "diets": ["Vegan", "Gluten free"],
+                                "dnote": "Strict, please, no butter at all"})); return
+            if "/internal/" in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps({"note": "VIP, comp the champagne"})); return
+            if "/dinner/" + today in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body="{}"); return
+            fb(route, request)
+        # 600pt tall: short enough that this booking cannot fit, so the law
+        # has to actually hold rather than the content happening to be small.
+        q = b.new_page(viewport={"width": 390, "height": 600})
+        q.route("**/firebase-app-compat.js", lambda r,_,__w=who: r.fulfill(status=200,
+            content_type="application/javascript", body=SDK.replace("staff@x", __w)))
+        q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body="/*n*/"))
+        q.route("**firebasedatabase.app/**", tallpre_fb)
+        q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1700)
+        q.evaluate("()=>[...document.querySelectorAll('button')]"
+                   ".find(b=>b.querySelector('.room-n')"
+                   "&&b.querySelector('.room-n').textContent==='4').click()")
+        q.wait_for_timeout(500)
+        q.evaluate("()=>document.getElementById('gdEye')"
+                   ".scrollIntoView({block:'center'})")
+        q.wait_for_timeout(300)
+        q.locator("#gdEye").click(); q.wait_for_timeout(1200)
+        m = q.evaluate("""()=>{const p=document.getElementById('gdPanel');
+            const r=p.getBoundingClientRect();
+            return {open:p.classList.contains('open'),
+                    bottom:Math.round(r.bottom), vh:window.innerHeight,
+                    scrolls:p.scrollHeight>p.clientHeight+2};}""")
+        ck("%s: the panel opened" % who, m["open"])
+        ck("%s: its bottom edge stays on the screen (%s <= %s)"
+           % (who, m["bottom"], m["vh"]), m["bottom"] <= m["vh"])
+        ck("%s: the booking that cannot fit scrolls inside the panel" % who,
+           m["scrolls"])
+        q.close()
+
     # A villa with nothing known offers no eye at all: a control that opens an
     # empty panel teaches people not to press it.
     def bare_fb(route, request):

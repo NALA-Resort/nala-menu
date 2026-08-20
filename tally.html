@@ -1466,13 +1466,16 @@ function wireGuestPanel(g, known){
        the room the sheet actually has below the name, with its own scroll
        for the booking that carries more than the room can take. */
     if (open){
-      var sh = document.getElementById('sheet');
-      var shR = sh ? sh.getBoundingClientRect() : null;
+      /* Measured against the VIEWPORT, not the sheet. The sheet's bottom is
+         wherever that login's buttons end, so measuring it gave the chef a
+         panel allowance that ran off the screen while the admin's fitted:
+         the one bug reported twice on 20 Aug. The screen is the same fact
+         for every login, so the panel's room is too, and anything longer
+         scrolls inside the panel. */
       var eyR = eye.getBoundingClientRect();
-      if (shR){
-        var room = Math.max(140, Math.floor(shR.bottom - eyR.bottom - 28));
-        panel.style.maxHeight = room + 'px';
-      }
+      var room = Math.max(140,
+        Math.floor((window.innerHeight || 800) - eyR.bottom - 28));
+      panel.style.maxHeight = room + 'px';
     }
   }
 
