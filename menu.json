@@ -1,23 +1,23 @@
 {
-  "published": "2026-08-20T10:26:57.599664+10:00",
+  "published": "2026-08-21T07:54:48.996258+10:00",
   "bread": {
     "name": "Housemade focaccia",
-    "desc": "aged balsamic, olive oil",
+    "desc": "smoked paprika butter",
     "aus": false
   },
   "entree": {
-    "name": "Ora King salmon",
-    "desc": "buttermilk, watermelon radish, salmon roe, dill",
-    "aus": true
-  },
-  "main": {
-    "name": "Eye fillet",
-    "desc": "Hasselback potato, charred broccolini, smoked beef-fat hollandaise",
+    "name": "Poblano pepper",
+    "desc": "braised beef, smoked cheddar, coriander",
     "aus": false
   },
+  "main": {
+    "name": "Yellowtail kingfish",
+    "desc": "corn, saffron, tomato, black cabbage",
+    "aus": true
+  },
   "dessert": {
-    "name": "Macadamia",
-    "desc": "vanilla, banana, caramel",
+    "name": "Tres leches",
+    "desc": "passionfruit, coconut",
     "aus": false
   }
 }
