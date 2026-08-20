@@ -1508,8 +1508,9 @@ function wireGuestPanel(g, known){
     var t = e.target;
     if (t && t.id === 'gdIntNote'){
       var sv = document.getElementById('gdIntSave');
+      var it = INT_CACHE[known.bookingId];
       if (sv) sv.disabled =
-        t.value.trim() === (INT_CACHE[known.bookingId] || '').trim();
+        t.value.trim() === ((it && it.note) || '').trim();
     }
   });
   panel.addEventListener('click', function(e){
@@ -1525,7 +1526,7 @@ function wireGuestPanel(g, known){
           { note: note, editedAt: new Date().toISOString(),
             editedBy: window.NALA_ME || '' })
         .then(function(){
-          INT_CACHE[known.bookingId] = note || null;
+          INT_CACHE[known.bookingId] = { ok: true, note: note || null };
           t.textContent = 'Saved';
         })
         .catch(function(){
@@ -1670,23 +1671,21 @@ function loadPrearrival(known, panel, g){
   }
   function paint(){
     var extra = preRows(PRE_CACHE[id]);
-    /* The staff note, admin and staff logins only: the rules refuse the
-       read to everyone else, and a refusal comes back as an error body
-       rather than a rejection. A login the rules refuse simply has no
-       Staff notes row, silently, because the section not existing IS the
-       correct rendering of not being allowed to see it. Administration
-       gets an editor rather than a row, decided 20 Aug: the panel is
-       where the note is read, so for the one role allowed to change it
-       from here, it is also where the note is written. */
-    var admin = window.NALA_ROLE === 'admin';
-    if (INT_CACHE[id] && !admin)
-      extra = extra.concat([['Staff notes', '\u201C'+INT_CACHE[id]+'\u201D']]);
+    /* The staff note is the whole team's, decided 20 Aug: every staff
+       login reads it and writes it, because the chef holding the phone
+       at service is exactly who it is for. The rules enforce the only
+       real boundary, staff against guest. The editor renders only when
+       the read SUCCEEDED: on a refused or failed read there is no
+       section at all, both because not existing is the correct
+       rendering of not being allowed, and because an editor opened on
+       an unverified blank would invite overwriting a note nobody saw. */
+    var it = INT_CACHE[id];
     var body = rowsHTML(base.concat(
       extra.length ? extra : [['', 'No pre-arrival answers yet', true]]));
-    if (admin){
+    if (it && it.ok){
       body += '<div class="gd-int"><label for="gdIntNote">Staff notes</label>'
             + '<textarea id="gdIntNote" rows="2">'
-            + esc(INT_CACHE[id] || '') + '</textarea>'
+            + esc(it.note || '') + '</textarea>'
             + '<button class="gd-int-save" id="gdIntSave" type="button"'
             + ' disabled>Save staff notes</button></div>';
     }
@@ -1701,9 +1700,11 @@ function loadPrearrival(known, panel, g){
     : api('/internal/'+id).then(function(rec){
         rec = rec || {};
         /* The edited note if there is one, otherwise what Mews said: the
-           same precedence the front desk uses for the same node. */
-        INT_CACHE[id] = rec.error ? null : (rec.note || rec.fromMews || null);
-      }).catch(function(){ INT_CACHE[id] = null; });
+           same precedence the front desk uses for the same node. A rules
+           refusal arrives as an error body, not a rejection. */
+        INT_CACHE[id] = rec.error ? { ok: false }
+                      : { ok: true, note: rec.note || rec.fromMews || null };
+      }).catch(function(){ INT_CACHE[id] = { ok: false }; });
   Promise.all([pPre, pInt]).then(paint).catch(function(){
       /* A failed read is not an empty one, and saying "none" here would be a
          lie that reception would act on. */

@@ -895,11 +895,16 @@ with sync_playwright() as p:
     for label, email, internal_body, tier in [
         ("the admin", "staff@x",
          json.dumps({"note": "VIP, comp the champagne"}), "edit"),
-        # The database role "staff" normalises to admin in the app, on
-        # purpose, and the rules let it write the node: the desk edits too.
+        # Decided 20 Aug: the note is the whole team's. Every staff
+        # login reads and writes it; the rules only fence out guests.
         ("the desk", "desk@x",
          json.dumps({"note": "VIP, comp the champagne"}), "edit-light"),
-        ("a refused login", "waiter@x",
+        ("the chef", "chef@x",
+         json.dumps({"note": "VIP, comp the champagne"}), "edit-light"),
+        # A refused or failed read renders no section and, above all, no
+        # editor: an editor on an unverified blank invites overwriting a
+        # note nobody saw.
+        ("a refused read", "waiter@x",
          json.dumps({"error": "Permission denied"}), "none"),
     ]:
         def notes_fb(route, request, _b=internal_body):
@@ -947,7 +952,7 @@ with sync_playwright() as p:
                q.evaluate("()=>{const t=document.getElementById('gdIntNote');"
                           "return !!t && t.value==='VIP, comp the champagne';}"))
         if tier == "none":
-            ck("%s: no staff row, no editor, no complaint" % label,
+            ck("%s: no staff section, no editor, no complaint" % label,
                "Staff notes" not in text and "denied" not in text
                and "Could not load" not in text
                and q.evaluate("()=>!document.getElementById('gdIntNote')"))

@@ -313,9 +313,14 @@ promotion.
 | **Dietary notes** | `dnote`, guest → reservation → night | the person | yes |
 | **Dinner notes** | `dinner/<date>/<villa>/note` | one night | no |
 
-- **Internal → Staff notes.** Same node, same rules. The old name said where
+- **Internal → Staff notes.** Same node. The old name said where
   it lived; the new one says who it is for, which is the thing a receptionist
-  needs to know while typing.
+  needs to know while typing. Decided 20 Aug: the note is the whole team's.
+  EVERY staff login reads it and writes it, from the front desk and from the
+  board's name dropdown alike, because the chef holding the phone at service
+  is exactly who it is for. The rules fence one boundary only: staff against
+  guest. A guest can never read it. (Rules change of 20 Aug needs its paste
+  into the Firebase console before the wider read works live.)
 - **Guest note → Booking notes.** "Guest notes" survived one morning: it reads
   as notes ABOUT the guest, and staff type into this field too. Booking notes
   is what it is: free text that lives the length of the booking.

@@ -484,8 +484,8 @@
     },
     "internal": {
       "$id": {
-        ".read": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')",
-        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'sync')",
+        ".read": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').exists()",
+        ".write": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').exists()",
         "note": {
           ".validate": "newData.isString() && newData.val().length <= 2000"
         },
