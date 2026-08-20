@@ -365,7 +365,10 @@
 
 <div class="wrap">
     <div class="daterow">
+  <button class="dnav today" id="dToday">Today</button>
+  <button class="dnav" id="dPrev">&#8249;</button>
   <div class="date" id="title"></div>
+  <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
     <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="list.html">Reservations Sheet</a><a href="housekeeping.html">Clean sheet</a><a href="registration.html">Registration</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
@@ -552,12 +555,16 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=22"></script>
+<script src="nala-shared.js?v=23"></script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
-// this board is locked to today by design - no browsed dates
-function todayKey(){ return dkey(new Date()); }
-document.getElementById('title').textContent = dateLabel(new Date());
+/* Browsed dates, same header as every other board: ‹ › Today, and the date
+   itself opens a picker (wired in initDateNav). todayKey() follows the viewed
+   day, so every read and write on this page lands on it. What stays live-only
+   is the elapsed clock and the notifications - a minute count and an
+   announcement only mean something on the day it is happening.          */
+var nav = initDateNav();
+var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
 
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
@@ -604,7 +611,10 @@ document.getElementById('selToggle').onclick = function(){
 };
 
 function load(full){
-  var yest = (function(){ var d=new Date(); d.setDate(d.getDate()-1); return dkey(d); })();
+  /* Yesterday relative to the viewed day, not to the clock: on a browsed date
+     the same-day-turnover and pushed-in logic have to read the night before
+     THAT day, or every historic departure classifies as unknown. */
+  var yest = (function(){ var d=new Date(VIEW); d.setDate(d.getDate()-1); return dkey(d); })();
   /* Last night as well as tonight. /stays files a guest under the nights they
      SLEEP, arrival inclusive and departure exclusive, so somebody who checked
      out this morning is not in tonight's file at all. They are the person this
@@ -823,9 +833,14 @@ function render(){
       }
       else if (h.departed || row.pushedIn) sub='Departed';
       else if (h.bfast){
-        var m = mins(h.bfast);
-        var w = m >= 20 ? ' late' : (m >= 15 ? ' soon' : (m < 10 ? ' fresh' : ''));
-        sub='Available <b class="el'+w+'">'+m+'m</b>';
+        /* The elapsed clock is a live instrument: on a browsed day "1440m
+           late" is an alarm about nothing, so the mark keeps its time and
+           loses its urgency. */
+        if (isToday()){
+          var m = mins(h.bfast);
+          var w = m >= 20 ? ' late' : (m >= 15 ? ' soon' : (m < 10 ? ' fresh' : ''));
+          sub='Available <b class="el'+w+'">'+m+'m</b>';
+        } else sub='Available '+hhmm(h.bfast);
       }
       else if (row.kind==='pre') sub='Arriving today';
       else if (row.kind==='clean' && arrivingNow(row, h)) sub='Occupied';
@@ -915,8 +930,10 @@ function setField(n, obj, errEl){
   return patchRoom(n,obj).then(function(){
     /* Only after the write succeeds, and only for the two marks anyone asked
        to be told about. Setting a mark notifies; clearing or undoing one does
-       not, because nothing has become available by undoing something.    */
-    try {
+       not, because nothing has become available by undoing something.
+       And only on the live day: a correction typed into last Tuesday is
+       bookkeeping, not something to buzz a phone about.                  */
+    try { if (isToday()) {
       if (obj.departed === true)      notifyPush('departed', n, window.NALA_USER);
       else if (obj.bfast && obj.bfast !== null) notifyPush('available', n, window.NALA_USER);
       else if (obj.done && obj.done !== null){
@@ -927,7 +944,7 @@ function setField(n, obj, errEl){
         if (kind === 'clean')     notifyPush('cleaned', n, window.NALA_USER);
         else if (kind === 'svc')  notifyPush('serviced', n, window.NALA_USER);
       }
-    } catch (e){}
+    } } catch (e){}
     closeSheet();
   })
   .catch(function(e){
@@ -1110,7 +1127,8 @@ function drawSheet(mode){
          A stale mark can still be cleared.                              */
       var stillHere = !(h.departed || CUR.pushedIn) && CUR.kind !== 'pre';
       if (h.bfast){
-        rows+='<button class="pbtn" disabled style="opacity:.6">Marked available '+hhmm(h.bfast)+' ('+mins(h.bfast)+'m ago)</button>';
+        rows+='<button class="pbtn" disabled style="opacity:.6">Marked available '+hhmm(h.bfast)+
+              (isToday() ? ' ('+mins(h.bfast)+'m ago)' : '')+'</button>';
         rows+='<button class="pbtn warn" onclick="drawSheet(\'clearbf\')">Clear availability</button>';
       } else if (stillHere && CUR.kind === 'svc') {
         /* Only a service can be "possibly available": it is a way in to a

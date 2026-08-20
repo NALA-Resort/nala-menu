@@ -81,6 +81,37 @@ function initDateNav(){
     td.onclick = function(e){ if (e) e.preventDefault(); goToday(); };
     td.disabled = isToday();     // always visible; dimmed when already on today
   }
+  /* Tapping the date itself opens the phone's own date picker, for the jump
+     the arrows are bad at: next Friday is four taps of an arrow and one of a
+     calendar. A real date input is laid invisibly over the label, so the tap
+     that opens the picker is a genuine tap on a genuine input - iOS opens it
+     from focus alone, where showPicker() does not exist on older Safari.
+     Desktop browsers focus the field but only open the calendar from its
+     icon, so showPicker() is called too, where it does exist. Picking today
+     drops the ?date rather than pinning it, same as the Today button, so the
+     page follows the clock again instead of freezing on a written date. */
+  if (el){
+    el.style.position = 'relative';
+    el.style.cursor = 'pointer';
+    var pick = document.createElement('input');
+    pick.type = 'date';
+    pick.value = dkey(VIEW);
+    pick.setAttribute('aria-label', 'Choose a date');
+    pick.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;'+
+      'opacity:0;border:0;padding:0;margin:0;cursor:pointer;'+
+      '-webkit-appearance:none;appearance:none;background:transparent;';
+    pick.onclick = function(){
+      if (pick.showPicker){ try { pick.showPicker(); } catch (e){} }
+    };
+    pick.onchange = function(){
+      var v = pick.value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+      var q = new URLSearchParams(location.search);
+      if (v === dkey(new Date())) q.delete('date'); else q.set('date', v);
+      location.search = q.toString();
+    };
+    el.appendChild(pick);
+  }
   return { VIEW:VIEW, todayKey:todayKey, isToday:isToday };
 }
 
