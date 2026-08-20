@@ -964,6 +964,16 @@ with sync_playwright() as p:
             ck("%s: the editor is there holding the note" % label,
                ok.get("here") and ok.get("val") == "VIP, comp the champagne")
             ck("%s: it carries a visible label" % label, ok.get("labelled"))
+            # The 16px protocol: every focusable field on a phone is 16px or
+            # more, because iOS zooms the page into anything smaller. Checked
+            # across the whole page while the editor is open, so the next
+            # field added below 16 fails here by name.
+            small = q.evaluate("""()=>[...document.querySelectorAll(
+                'input,textarea,select')].filter(el=>
+                  parseFloat(getComputedStyle(el).fontSize)<16)
+                .map(el=>el.id||el.className)""")
+            ck("%s: no input under 16px (found: %s)" % (label, small),
+               small == [])
             ck("%s: Save sleeps until something changes" % label, ok.get("asleep"))
             del WRITES[:]
             q.fill("#gdIntNote", "VIP, comp the champagne, late checkout")
