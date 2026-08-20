@@ -646,11 +646,32 @@ with sync_playwright() as p:
     ck("tonight's dietary is on the row", "VEGAN" in row.inner_text().upper())
     row.locator(".bub").click(); q.wait_for_timeout(400)
     notes=q.locator("#sheet").inner_text().upper()
-    ck("tonight's notes are headed as tonight's",
-       "DINING NOTES" in notes and "TONIGHT" in notes)
+    ck("tonight's dietaries are headed with their name",
+       "DIETARY NOTES" in notes and "NO DAIRY AT ALL" in notes)
+    ck("and nothing claims to be a note the guest has not written",
+       "NO NOTE FROM THE GUEST" not in notes)
     ck("and tonight's answer replaces the old rather than sitting beside it",
        "PREVIOUS DINING NOTES" not in notes and "SHELLFISH" not in notes)
-    ck("the general comment is tonight's too", "BY THE WINDOW" in notes)
+    ck("the dinner note is tonight's too, under its own name",
+       "DINNER NOTES" in notes and "BY THE WINDOW" in notes)
+    q.close()
+
+    # A dinner note with no dietaries at all. The dietary section used to be
+    # forced open by it and printed "No note from the guest yet": an empty
+    # section apologising for being empty, above the one real note. Reported
+    # from a phone on 20 Aug, villa 10, "Red shellfish".
+    roomguests[today]["11"] = {"name":"Carla","departs":plus(2)}
+    responses["0400000011"] = {"status":"in","pax":2,"name":"Carla","room":"11",
+                               "note":"Red shellfish","at":"2026-08-12T09:20:00"}
+    q=as_role("staff@x"); q.wait_for_timeout(400)
+    row=q.locator("#listBookings .row").filter(has_text="Carla").first
+    row.locator(".bub").click(); q.wait_for_timeout(400)
+    notes=q.locator("#sheet").inner_text().upper()
+    ck("a dinner note alone opens no dietary section",
+       "DIETARY NOTES" not in notes)
+    ck("and apologises for nothing", "NO NOTE FROM THE GUEST" not in notes)
+    ck("the note itself is there under its name",
+       "DINNER NOTES" in notes and "RED SHELLFISH" in notes)
     q.close()
     del responses["0400000011"]
     del roomguests[today]["11"]

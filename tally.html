@@ -789,17 +789,16 @@ function roomStateRaw(n){
 
 function openNotes(title, g, hits){
   var h = '<div class="pop-who">' + title + '</div>';
-  var tonight = !!(g.dineNote || g.dineDnote || (g.dineDiets || []).length);
-  var prev    = !!(g.prevNote || g.prevDnote || (g.prevDiets || []).length);
+  var prev = !!(g.prevNote || g.prevDnote || (g.prevDiets || []).length);
 
-  /* Two headings, always, when there is anything from an earlier night. The
-     kitchen has to be able to tell an answer given for tonight from one given
-     three nights ago, and a single undated list cannot say which is which. */
-  if (hits.length || g.dineDnote || tonight) {
-    /* Stamped whether or not there is an older note to distinguish it from.
-       A heading that only appears when there is something to contrast with is
-       a heading nobody learns to read. */
-    h += '<div class="pop-h dh">Tonight\u2019s dining notes</div>';
+  /* The dietary section: the note and tonight's menu conflicts, and it only
+     appears when there is something dietary to show. It used to be headed
+     "Tonight's dining notes" and to print "No note from the guest yet" even
+     when only a dinner note existed: an empty section apologising for being
+     empty, above the one real note. A dietary is person-level now, so it
+     needs no tonight stamp; the dinner notes below keep theirs. 20 Aug. */
+  if (hits.length || g.dineDnote) {
+    h += '<div class="pop-h dh">Dietary notes</div>';
     if (hits.length) {
       var byDish = {};
       hits.forEach(function(x){ (byDish[x.dish] = byDish[x.dish] || []).push(x.diet); });
@@ -807,9 +806,7 @@ function openNotes(title, g, hits){
         return dk + ' - ' + byDish[dk].join(', ');
       }).join('<br>') + '</div>';
     }
-    h += '<div class="pop-t">' + (g.dineDnote
-      ? '\u201C' + g.dineDnote + '\u201D'
-      : '<i>No note from the guest yet.</i>') + '</div>';
+    if (g.dineDnote) h += '<div class="pop-t">\u201C' + g.dineDnote + '\u201D</div>';
   }
   if (g.dineNote) {
     h += '<div class="pop-h">Dinner notes</div>' +
