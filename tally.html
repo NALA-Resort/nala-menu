@@ -226,6 +226,7 @@
               display:none; align-items:flex-end; justify-content:center; z-index:10; }
   .backdrop.show { display:flex; }
   .sheet { width:100%; max-width:520px; background:var(--cream);
+           min-height:560px;
            padding:26px 24px 120px; border-top:1px solid var(--rule);
            max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .sheet h3 { font-family:var(--ui-font); font-size:11px; letter-spacing:.2em;
@@ -320,6 +321,22 @@
     .gd-panel { transition:none; }
     .gd-panel.open { transition:none; }
   }
+  .gd-int { margin:10px 0 2px; }
+  .gd-int label { display:block; font-family:var(--ui-font); font-size:8px;
+                  letter-spacing:.25em; text-transform:uppercase;
+                  color:var(--mid); margin:0 0 4px; }
+  .gd-int textarea { width:100%; min-height:56px; padding:8px 10px;
+                     border:1px solid var(--rule); border-radius:6px;
+                     background:var(--cream); color:var(--ink);
+                     font-family:inherit; font-size:14px; resize:vertical; }
+  .gd-int .gd-int-save { display:block; width:100%; margin:6px 0 0;
+                     padding:8px 0; border:1px solid var(--rule);
+                     border-radius:6px; background:none; cursor:pointer;
+                     color:var(--mid); font-family:var(--ui-font);
+                     font-size:9.5px; letter-spacing:.18em;
+                     text-transform:uppercase;
+                     -webkit-tap-highlight-color:transparent; }
+  .gd-int .gd-int-save:disabled { opacity:.45; cursor:default; }
   .gd-close { display:block; width:100%; margin:8px 0 0; padding:9px 0;
               border:0; border-top:1px solid var(--rule);
               background:none; cursor:pointer; color:var(--mid);
@@ -403,6 +420,10 @@ body.readonly .comb-undo { display:none; }
       loadStaff(function(recs, err){
         var role = roleOf(u);
         window.NALA_ROLE = role;
+        /* Who, for the editedBy stamp on the staff note. The front desk
+           sets this at its own login; the board never needed it until the
+           panel learned to write. */
+        window.NALA_ME   = u.email || '';
         window.CAN_EDIT  = can(role,'editBookings');
         window.NALA_NAVFILTER(role);
         showAccess(can(role,'resBoard'), err);
@@ -1481,8 +1502,37 @@ function wireGuestPanel(g, known){
 
   /* Delegated, because the panel's contents are replaced when the pre-arrival
      answers land and a handler bound to the old Close would go with them. */
+  panel.addEventListener('input', function(e){
+    var t = e.target;
+    if (t && t.id === 'gdIntNote'){
+      var sv = document.getElementById('gdIntSave');
+      if (sv) sv.disabled =
+        t.value.trim() === (INT_CACHE[known.bookingId] || '').trim();
+    }
+  });
   panel.addEventListener('click', function(e){
     var t = e.target;
+    if (t && t.id === 'gdIntSave' && !t.disabled){
+      var ta = document.getElementById('gdIntNote');
+      if (!ta || !known.bookingId) return;
+      var note = ta.value.trim();
+      t.disabled = true; t.textContent = 'Saving\u2026';
+      /* The front desk's own write shape for the same node: the note, when,
+         and who, PATCHed so the fromMews original survives a rewrite. */
+      api('/internal/' + known.bookingId, 'PATCH',
+          { note: note, editedAt: new Date().toISOString(),
+            editedBy: window.NALA_ME || '' })
+        .then(function(){
+          INT_CACHE[known.bookingId] = note || null;
+          t.textContent = 'Saved';
+        })
+        .catch(function(){
+          /* api() already showed the toast; the button owns up too rather
+             than sitting on "Saving" forever. */
+          t.disabled = false; t.textContent = 'Save staff notes';
+        });
+      return;
+    }
     if (t && t.id === 'gdClose'){
       setOpen(false);
       /* Back to the control that opened it, so the next thing pressed is a
@@ -1622,11 +1672,24 @@ function loadPrearrival(known, panel, g){
        read to everyone else, and a refusal comes back as an error body
        rather than a rejection. A login the rules refuse simply has no
        Staff notes row, silently, because the section not existing IS the
-       correct rendering of not being allowed to see it. */
-    if (INT_CACHE[id])
+       correct rendering of not being allowed to see it. Administration
+       gets an editor rather than a row, decided 20 Aug: the panel is
+       where the note is read, so for the one role allowed to change it
+       from here, it is also where the note is written. */
+    var admin = window.NALA_ROLE === 'admin';
+    if (INT_CACHE[id] && !admin)
       extra = extra.concat([['Staff notes', '\u201C'+INT_CACHE[id]+'\u201D']]);
-    panel.innerHTML = panelHTML(base.concat(
+    var body = rowsHTML(base.concat(
       extra.length ? extra : [['', 'No pre-arrival answers yet', true]]));
+    if (admin){
+      body += '<div class="gd-int"><label for="gdIntNote">Staff notes</label>'
+            + '<textarea id="gdIntNote" rows="2">'
+            + esc(INT_CACHE[id] || '') + '</textarea>'
+            + '<button class="gd-int-save" id="gdIntSave" type="button"'
+            + ' disabled>Save staff notes</button></div>';
+    }
+    panel.innerHTML = body +
+      '<button class="gd-close" id="gdClose" type="button">Close details</button>';
   }
   if (PRE_CACHE[id] !== undefined && INT_CACHE[id] !== undefined){ paint(); return; }
   panel.innerHTML = panelHTML(base.concat([['', 'Looking for the pre-arrival answers', true]]));

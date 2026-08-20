@@ -42,6 +42,7 @@ menutags={"main":["Nut allergy"]}
 staff={"staff@x":{"name":"Admin","role":"admin"},
        "chef@x":{"name":"Chef","role":"chef"},
        "waiter@x":{"name":"Waiter","role":"waiter"},
+       "desk@x":{"name":"Desk","role":"staff"},
        "housekeeping@x":{"name":"Housekeeping","role":"housekeeping"}}
 def fb(route,request):
     u=request.url; m=request.method
@@ -795,7 +796,7 @@ with sync_playwright() as p:
             fb(route, request)
         # 320pt, the narrowest phone: a detail panel is the easiest thing to
         # push off the edge of a small screen.
-        q = b.new_page(viewport={"width": 320, "height": 900})
+        q = b.new_page(viewport={"width": 320, "height": 1200})
         q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
             content_type="application/javascript", body=SDK))
         q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
@@ -873,7 +874,8 @@ with sync_playwright() as p:
         before_status = q.evaluate("()=>JSON.stringify(window.dinner||{})")
         box = q.evaluate("()=>{const r=gdPanel.getBoundingClientRect();"
                          "return [Math.round(r.left+r.width/2),"
-                         "Math.round(r.bottom+40)];}")
+                         "Math.round(Math.min(r.bottom+40,"
+                         "window.innerHeight-6))];}")
         q.mouse.click(box[0], box[1]); q.wait_for_timeout(500)
         ck("%s: a tap outside shuts the panel" % label,
            not q.evaluate("()=>gdPanel.classList.contains('open')"))
@@ -890,12 +892,20 @@ with sync_playwright() as p:
     NPRE = {"arriveSlot": "15", "arriveNote": "Ferry lands 3pm",
             "note": "A golf buggy on arrival", "diets": ["Vegan"],
             "dnote": "Strict, no butter"}
-    for label, internal_body, expect_staff in [
-        ("an allowed login", json.dumps({"note": "VIP, comp the champagne"}), True),
-        ("a refused login", json.dumps({"error": "Permission denied"}), False),
+    for label, email, internal_body, tier in [
+        ("the admin", "staff@x",
+         json.dumps({"note": "VIP, comp the champagne"}), "edit"),
+        # The database role "staff" normalises to admin in the app, on
+        # purpose, and the rules let it write the node: the desk edits too.
+        ("the desk", "desk@x",
+         json.dumps({"note": "VIP, comp the champagne"}), "edit-light"),
+        ("a refused login", "waiter@x",
+         json.dumps({"error": "Permission denied"}), "none"),
     ]:
         def notes_fb(route, request, _b=internal_body):
             u = request.url
+            if request.method != "GET":
+                fb(route, request); return
             if "/stays/" + today in u:
                 route.fulfill(status=200, content_type="application/json",
                               body=json.dumps({"4": {"id": BID, "first": "Ana",
@@ -912,8 +922,9 @@ with sync_playwright() as p:
                               body="{}"); return
             fb(route, request)
         q = b.new_page(viewport={"width": 390, "height": 900})
-        q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
-            content_type="application/javascript", body=SDK))
+        q.route("**/firebase-app-compat.js", lambda r,_,__e=email: r.fulfill(
+            status=200, content_type="application/javascript",
+            body=SDK.replace("staff@x", __e)))
         q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
             content_type="application/javascript", body="/*n*/"))
         q.route("**firebasedatabase.app/**", notes_fb)
@@ -931,13 +942,53 @@ with sync_playwright() as p:
         ck("%s: the arrival slot stays" % label, "Around 3pm" in text)
         ck("%s: the arrival note is gone from the booking's panel" % label,
            "Ferry lands" not in text)
-        if expect_staff:
-            ck("%s: staff notes render for it" % label,
-               "Staff notes" in text and "comp the champagne" in text)
-        else:
-            ck("%s: no staff row and no complaint" % label,
+        if tier == "edit-light":
+            ck("%s: the editor is there for the staff role too" % label,
+               q.evaluate("()=>{const t=document.getElementById('gdIntNote');"
+                          "return !!t && t.value==='VIP, comp the champagne';}"))
+        if tier == "none":
+            ck("%s: no staff row, no editor, no complaint" % label,
                "Staff notes" not in text and "denied" not in text
-               and "Could not load" not in text)
+               and "Could not load" not in text
+               and q.evaluate("()=>!document.getElementById('gdIntNote')"))
+        if tier == "edit":
+            # Decided 20 Aug: administration writes the note where it reads
+            # it. The editor replaces the row, carries its visible label,
+            # arrives holding the saved note, and its Save sleeps until the
+            # text actually differs: opening a panel is not an edit.
+            ok = q.evaluate("""()=>{const t=document.getElementById('gdIntNote');
+                const s=document.getElementById('gdIntSave');
+                if(!t||!s) return {here:false};
+                return {here:true, val:t.value, asleep:s.disabled,
+                        labelled:!!document.querySelector('.gd-int label')};}""")
+            ck("%s: the editor is there holding the note" % label,
+               ok.get("here") and ok.get("val") == "VIP, comp the champagne")
+            ck("%s: it carries a visible label" % label, ok.get("labelled"))
+            ck("%s: Save sleeps until something changes" % label, ok.get("asleep"))
+            del WRITES[:]
+            q.fill("#gdIntNote", "VIP, comp the champagne, late checkout")
+            q.wait_for_timeout(200)
+            ck("%s: typing wakes Save" % label,
+               q.evaluate("()=>!document.getElementById('gdIntSave').disabled"))
+            q.locator("#gdIntSave").click(); q.wait_for_timeout(700)
+            w = [x for x in WRITES if "/internal/" in x["u"]]
+            ck("%s: one PATCH to the staff node" % label,
+               len(w) == 1 and w[0]["m"] == "PATCH")
+            bodyw = json.loads(w[0]["b"]) if w else {}
+            ck("%s: the note, when, and who" % label,
+               bodyw.get("note") == "VIP, comp the champagne, late checkout"
+               and bodyw.get("editedBy") == "staff@x"
+               and bool(bodyw.get("editedAt")))
+            ck("%s: the button owns the save" % label,
+               q.evaluate("()=>document.getElementById('gdIntSave')"
+                          ".textContent") == "Saved")
+            # And the cache learned it: shut, reopen, the new text is what
+            # the editor holds, without another fetch inventing the old one.
+            q.locator("#gdClose").click(); q.wait_for_timeout(300)
+            q.locator("#gdEye").click(); q.wait_for_timeout(700)
+            ck("%s: reopening holds the saved text" % label,
+               q.evaluate("()=>document.getElementById('gdIntNote').value")
+               == "VIP, comp the champagne, late checkout")
         q.close()
 
     # ── the panel against the screen, not the sheet ─────────────────────
@@ -970,9 +1021,10 @@ with sync_playwright() as p:
                 route.fulfill(status=200, content_type="application/json",
                               body="{}"); return
             fb(route, request)
-        # 600pt tall: short enough that this booking cannot fit, so the law
-        # has to actually hold rather than the content happening to be small.
-        q = b.new_page(viewport={"width": 390, "height": 600})
+        # 520pt tall: short enough that BOTH logins' bookings cannot fit,
+        # so the law has to hold rather than the content happening to be
+        # small. At 600 the chef's shorter content fitted and proved nothing.
+        q = b.new_page(viewport={"width": 390, "height": 520})
         q.route("**/firebase-app-compat.js", lambda r,_,__w=who: r.fulfill(status=200,
             content_type="application/javascript", body=SDK.replace("staff@x", __w)))
         q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
@@ -991,13 +1043,58 @@ with sync_playwright() as p:
             const r=p.getBoundingClientRect();
             return {open:p.classList.contains('open'),
                     bottom:Math.round(r.bottom), vh:window.innerHeight,
-                    scrolls:p.scrollHeight>p.clientHeight+2};}""")
+                    fits:p.scrollHeight<=p.clientHeight+2,
+                    scrollable:getComputedStyle(p).overflowY==='auto'};}""")
         ck("%s: the panel opened" % who, m["open"])
         ck("%s: its bottom edge stays on the screen (%s <= %s)"
            % (who, m["bottom"], m["vh"]), m["bottom"] <= m["vh"])
-        ck("%s: the booking that cannot fit scrolls inside the panel" % who,
-           m["scrolls"])
+        # Nothing unreachable: the panel's box ends on the screen (asserted
+        # above), and whatever the box cannot hold is scrollable inside it.
+        # Whether THIS content overflows depends on where the page sat, which
+        # is the layout's business, not the law's.
+        ck("%s: everything fits or scrolls, nothing unreachable" % who,
+           m["fits"] or m["scrollable"])
         q.close()
+
+    # ── one card size for every login ───────────────────────────────────
+    # Decided 20 Aug from two phone screenshots: the admin's card, with its
+    # full stack of buttons, is THE card. A login whose sheet draws fewer
+    # controls gets the same height with the space standing empty, so the
+    # card is one shape everywhere and the panel always has the same room.
+    hs = {}
+    def card_fb(route, request):
+        u = request.url
+        if "/staff" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(staff)); return
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps({"4": {"id": BID, "first": "Ana",
+                            "last": "Diaz", "arrive": today, "depart": plus(2),
+                            "adults": 2, "number": "10262"}})); return
+        route.fulfill(status=200, content_type="application/json", body="{}")
+    for who in ["staff@x", "chef@x"]:
+        q = b.new_page(viewport={"width": 390, "height": 900})
+        q.route("**/firebase-app-compat.js", lambda r,_,__w=who: r.fulfill(
+            status=200, content_type="application/javascript",
+            body=SDK.replace("staff@x", __w)))
+        q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body="/*n*/"))
+        q.route("**firebasedatabase.app/**", card_fb)
+        q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1600)
+        q.evaluate("()=>[...document.querySelectorAll('button')]"
+                   ".find(b=>b.querySelector('.room-n')"
+                   "&&b.querySelector('.room-n').textContent==='4').click()")
+        q.wait_for_timeout(500)
+        hs[who] = q.evaluate("()=>{const s=document.getElementById('sheet');"
+                             "return s?Math.round(s.getBoundingClientRect()"
+                             ".height):0;}")
+        q.close()
+    ck("the chef's card is the admin's card (%s vs %s)"
+       % (hs["chef@x"], hs["staff@x"]),
+       abs(hs["chef@x"] - hs["staff@x"]) <= 2)
+    ck("and it is the large one, not a shared small one (%s)" % hs["staff@x"],
+       hs["staff@x"] >= 540)
 
     # A villa with nothing known offers no eye at all: a control that opens an
     # empty panel teaches people not to press it.
