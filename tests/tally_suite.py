@@ -881,6 +881,65 @@ with sync_playwright() as p:
            q.evaluate("()=>JSON.stringify(window.dinner||{})") == before_status)
         q.close()
 
+    # ── the booking's notes in the panel ────────────────────────────────
+    # Decided 20 Aug: the dropdown is the booking's notes. Staff notes join
+    # it for the logins the rules allow, the arrival note leaves it because
+    # it dies at check-in and belongs to the arrivals views, and a refused
+    # read renders as no row at all: the section not existing IS the correct
+    # rendering of not being allowed to see it.
+    NPRE = {"arriveSlot": "15", "arriveNote": "Ferry lands 3pm",
+            "note": "A golf buggy on arrival", "diets": ["Vegan"],
+            "dnote": "Strict, no butter"}
+    for label, internal_body, expect_staff in [
+        ("an allowed login", json.dumps({"note": "VIP, comp the champagne"}), True),
+        ("a refused login", json.dumps({"error": "Permission denied"}), False),
+    ]:
+        def notes_fb(route, request, _b=internal_body):
+            u = request.url
+            if "/stays/" + today in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps({"4": {"id": BID, "first": "Ana",
+                                "last": "Diaz", "arrive": today, "depart": plus(2),
+                                "adults": 2, "number": "10260"}})); return
+            if "/prearrival" in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps(NPRE)); return
+            if "/internal/" in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body=_b); return
+            if "/dinner/" + today in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body="{}"); return
+            fb(route, request)
+        q = b.new_page(viewport={"width": 390, "height": 900})
+        q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body=SDK))
+        q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body="/*n*/"))
+        q.route("**firebasedatabase.app/**", notes_fb)
+        q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1700)
+        q.evaluate("()=>[...document.querySelectorAll('button')]"
+                   ".find(b=>b.querySelector('.room-n')"
+                   "&&b.querySelector('.room-n').textContent==='4').click()")
+        q.wait_for_timeout(500)
+        q.locator("#gdEye").click(); q.wait_for_timeout(1000)
+        text = q.evaluate("()=>gdPanel.textContent")
+        ck("%s: the booking note is there under its name" % label,
+           "Booking notes" in text and "golf buggy" in text)
+        ck("%s: the dietary note row carries its full name" % label,
+           "Dietary notes" in text)
+        ck("%s: the arrival slot stays" % label, "Around 3pm" in text)
+        ck("%s: the arrival note is gone from the booking's panel" % label,
+           "Ferry lands" not in text)
+        if expect_staff:
+            ck("%s: staff notes render for it" % label,
+               "Staff notes" in text and "comp the champagne" in text)
+        else:
+            ck("%s: no staff row and no complaint" % label,
+               "Staff notes" not in text and "denied" not in text
+               and "Could not load" not in text)
+        q.close()
+
     # A villa with nothing known offers no eye at all: a control that opens an
     # empty panel teaches people not to press it.
     def bare_fb(route, request):

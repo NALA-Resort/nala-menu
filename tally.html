@@ -1444,6 +1444,7 @@ function snapshotRows(g, known){
    render to serve the one villa somebody opens would be eighteen requests an
    hour for nothing. So the eye pays for itself, once, on the villa in hand. */
 var PRE_CACHE = {};
+var INT_CACHE = {};
 
 function wireGuestPanel(g, known){
   var eye = document.getElementById('gdEye');
@@ -1582,7 +1583,8 @@ function preRows(pre){
   var rows = [];
   if (pre.arriveSlot)
     rows.push(['Arriving', ETA_WORDS[pre.arriveSlot] || String(pre.arriveSlot)]);
-  if (pre.arriveNote) rows.push(['', '\u201C'+pre.arriveNote+'\u201D']);
+  /* No arrival note here by decision, 20 Aug: it dies at check-in and
+     belongs to the arrivals views. This panel is the booking's notes. */
   if (pre.purpose)    rows.push(['Here for', pre.purpose]);
   if (pre.occasion)   rows.push(['Occasion', pre.occasion]);
   if (pre.approach)
@@ -1597,7 +1599,7 @@ function preRows(pre){
      a copy. One list per person: it lives on the reservation. */
   if (pre.diets && pre.diets.length)
     rows.push(['Dietaries', pre.diets.join(' \u00b7 ')]);
-  if (pre.dnote)      rows.push(['Dietary', '\u201C'+pre.dnote+'\u201D']);
+  if (pre.dnote)      rows.push(['Dietary notes', '\u201C'+pre.dnote+'\u201D']);
   return rows;
 }
 
@@ -1611,19 +1613,30 @@ function loadPrearrival(known, panel, g){
       panel.innerHTML = panelHTML([['', 'Nothing recorded for this villa yet', true]]);
     return;
   }
-  if (PRE_CACHE[id] !== undefined){
-    panel.innerHTML = panelHTML(base.concat(preRows(PRE_CACHE[id])));
-    return;
+  function paint(){
+    var extra = preRows(PRE_CACHE[id]);
+    /* The staff note, admin and staff logins only: the rules refuse the
+       read to everyone else, and a refusal comes back as an error body
+       rather than a rejection. A login the rules refuse simply has no
+       Staff notes row, silently, because the section not existing IS the
+       correct rendering of not being allowed to see it. */
+    if (INT_CACHE[id])
+      extra = extra.concat([['Staff notes', '\u201C'+INT_CACHE[id]+'\u201D']]);
+    panel.innerHTML = panelHTML(base.concat(
+      extra.length ? extra : [['', 'No pre-arrival answers yet', true]]));
   }
+  if (PRE_CACHE[id] !== undefined && INT_CACHE[id] !== undefined){ paint(); return; }
   panel.innerHTML = panelHTML(base.concat([['', 'Looking for the pre-arrival answers', true]]));
-  api('/bookings/'+id+'/prearrival')
-    .then(function(pre){
-      PRE_CACHE[id] = pre || null;
-      var extra = preRows(pre);
-      panel.innerHTML = panelHTML(base.concat(
-        extra.length ? extra : [['', 'No pre-arrival answers yet', true]]));
-    })
-    .catch(function(){
+  var pPre = PRE_CACHE[id] !== undefined ? Promise.resolve()
+    : api('/bookings/'+id+'/prearrival').then(function(pre){ PRE_CACHE[id] = pre || null; });
+  var pInt = INT_CACHE[id] !== undefined ? Promise.resolve()
+    : api('/internal/'+id).then(function(rec){
+        rec = rec || {};
+        /* The edited note if there is one, otherwise what Mews said: the
+           same precedence the front desk uses for the same node. */
+        INT_CACHE[id] = rec.error ? null : (rec.note || rec.fromMews || null);
+      }).catch(function(){ INT_CACHE[id] = null; });
+  Promise.all([pPre, pInt]).then(paint).catch(function(){
       /* A failed read is not an empty one, and saying "none" here would be a
          lie that reception would act on. */
       panel.innerHTML = panelHTML(base.concat(
