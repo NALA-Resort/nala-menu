@@ -12,6 +12,14 @@
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
           --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
+          /* The bars only. --amberb is a muted gold that sits behind text and
+             reads as a browner blue-grey at 9px, which made a clean and a
+             clean-plus-arrival hard to tell apart on a phone: the amber half
+             of the split bar was the thing that had to shout and did not.
+             This is the same hue, saturated, and it is deliberately NOT used
+             for the small "soon" text, where a brighter orange on cream would
+             lose the contrast that colour is carrying. */
+          --amberbar:#E8891A;
           --blue:#E7E9EF; --blueb:#8A90A8; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
@@ -161,7 +169,7 @@
                 border:1.5px solid var(--blueb); border-radius:5px;
                 background:var(--blueb); color:transparent; overflow:hidden; }
   .tile .chip.svc { background:var(--greenb); border-color:var(--greenb); }
-  .tile .chip.pre { background:var(--amberb); border-color:var(--amberb); }
+  .tile .chip.pre { background:var(--amberbar); border-color:var(--amberbar); }
   /* Half clean, half arrival: the bar shows the two jobs rather than a third
      pattern standing for them. Stripes said something is different about this
      one and left you to remember what; a split bar says which two, in the
@@ -169,7 +177,7 @@
      to happen first. */
   .tile .chip.arr { border-color:var(--blueb);
                     background:linear-gradient(90deg,
-                      var(--blueb) 0 50%, var(--amberb) 50% 100%); }
+                      var(--blueb) 0 50%, var(--amberbar) 50% 100%); }
   /* Unknown is a gap in what we know, not a job, so it is the only one with
      no fill and the only dashed one. Grey, because red is reserved for
      something being wrong. */
@@ -310,10 +318,10 @@
                  border:1.2px solid var(--blueb); background:var(--blueb);
                  vertical-align:0; margin:0; }
   .legend .lgb.svc { background:var(--greenb); border-color:var(--greenb); }
-  .legend .lgb.pre { background:var(--amberb); border-color:var(--amberb); }
+  .legend .lgb.pre { background:var(--amberbar); border-color:var(--amberbar); }
   .legend .lgb.arr { border-color:var(--blueb);
                      background:linear-gradient(90deg,
-                       var(--blueb) 0 50%, var(--amberb) 50% 100%); }
+                       var(--blueb) 0 50%, var(--amberbar) 50% 100%); }
   .legend .lgb.dash { background:transparent; border-style:dashed;
                       border-color:var(--mid); }
 
@@ -882,7 +890,7 @@ function render(){
          saying what the room is. It spent two versions saying who instead,
          first as a second pill and then as text, and both cost the tile its
          only line about the villa itself. */
-      if (h.pushed) sub='To tomorrow';
+      if (h.pushed) sub='Pushed';
       else if (h.done){
         /* Who finished it, shortened: a finished board that cannot say who did
            the work is a board you have to ask about. Older records carry no
@@ -896,7 +904,7 @@ function render(){
          names the day, because "yesterday" would then be a lie. */
       else if (row.pushedIn){
         var py=(function(){ var d=new Date(VIEW); d.setDate(d.getDate()-1); return dkey(d); })();
-        if (!row.pushedFrom || row.pushedFrom===py) sub='Pushed from yesterday';
+        if (!row.pushedFrom || row.pushedFrom===py) sub='Pushed';
         else { var pf=parseDepDate(row.pushedFrom),
                    dys=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
                sub='Pushed '+(pf ? dys[pf.getDay()]+' '+ord(pf.getDate()) : 'earlier'); }
@@ -1211,7 +1219,7 @@ function drawSheet(mode){
       if (CUR.kind==='clean' && !arrivingNow(CUR, h)){
         rows += h.pushed
           ? '<button class="pbtn warn" onclick="drawSheet(\'unpush\')">Undo push</button>'
-          : '<button class="pbtn" onclick="drawSheet(\'push\')">Push villa</button>';
+          : '<button class="pbtn" onclick="drawSheet(\'push\')">Push</button>';
       }
       if (CUR.kind==='clean'){
         /* A villa pushed in from yesterday is departed as a matter of fact -
@@ -1354,7 +1362,7 @@ function drawSheet(mode){
   }
   if (mode==='push'){
     b.innerHTML=head+
-      '<div class="st" style="margin-bottom:6px">Push villa '+n+' to tomorrow? '+
+      '<div class="st" style="margin-bottom:6px">Push villa '+n+'? '+
       'It will appear tomorrow as a clean, already departed.</div>'+
       '<button class="pbtn solid" onclick="setField('+n+',{pushed:new Date().toISOString()},document.getElementById(\'perr\'))">Yes - push</button>'+
       '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;

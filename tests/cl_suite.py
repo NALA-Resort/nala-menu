@@ -424,7 +424,9 @@ with sync_playwright() as p:
     WRITES.clear()
     tile(pg,12).click(); pg.wait_for_timeout(250)
     ps = pg.locator("#sheetBox").inner_text().lower()
-    ck("a clean with no arrival today can be pushed", "push villa" in ps)
+    ck("a clean with no arrival today can be pushed", ">push<" in
+       pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
+                   ".map(x=>'>'+x.textContent.trim().toLowerCase()+'<').join('')"))
 
     ck("a departed villa is not offered breakfast", "possibly available" not in ps)
     ck("a departed villa cannot be set to a service", "to be serviced" not in ps)
@@ -447,7 +449,7 @@ with sync_playwright() as p:
     ck("a pre-arrival offers only its own job, back to unknown, and close",
        "possibly available" not in pre and "to be cleaned" not in pre
        and "to be serviced" not in pre and "mark as empty" not in pre
-       and "push villa" not in pre and "back to unknown" in pre)
+       and "push" not in pre and "back to unknown" in pre)
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
     tile(pg,13).click(); pg.wait_for_timeout(250)
     predone = pg.locator("#sheetBox").inner_text().lower()
@@ -469,7 +471,7 @@ with sync_playwright() as p:
        "set as pre-arrival" not in pg.locator("#sheetBox").inner_text().lower())
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
     tile(pg,12).click(); pg.wait_for_timeout(250)
-    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/push villa/i.test(x.textContent)).click()")
+    pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/^push$/i.test(x.textContent.trim())).click()")
     pg.wait_for_timeout(180)
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/yes - push/i.test(x.textContent)).click()")
     pg.wait_for_timeout(400)
@@ -492,7 +494,7 @@ with sync_playwright() as p:
     ck("but stays above unknown and vacant",
        ordr2.index("12") < ordr2.index("10") and ordr2.index("12") < ordr2.index("5"))
     ck("a villa with an arrival today is not offered a push",
-       "push villa" not in (tile(pg,8).click() or pg.wait_for_timeout(250) or
+       "push" not in (tile(pg,8).click() or pg.wait_for_timeout(250) or
                             pg.locator("#sheetBox").inner_text().lower()))
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
 
@@ -1444,12 +1446,13 @@ with sync_playwright() as p:
     ck("a clean with an arrival is half a clean and half an arrival",
        grad["job"] == "clean-pre"
        and "rgb(138, 144, 168)" in grad["img"]      # the clean's blue
-       and "rgb(194, 154, 85)" in grad["img"])      # the arrival's amber
+       and "rgb(232, 137, 26)" in grad["img"])      # the arrival's amber, brightened 21 Aug so the two halves of a
+       # clean-plus-arrival could be told apart on a phone
     # The clean half leads because the clean has to happen first, and the
     # border is one colour on a two colour bar, so it takes the half it
     # starts with.
     ck("and it leads with the clean, which has to happen first",
-       grad["img"].index("rgb(138, 144, 168)") < grad["img"].index("rgb(194, 154, 85)")
+       grad["img"].index("rgb(138, 144, 168)") < grad["img"].index("rgb(232, 137, 26)")
        and grad["border"] == "rgb(138, 144, 168)")
     ck("and carries one label, not two",
        q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
@@ -1606,7 +1609,7 @@ with sync_playwright() as p:
     ck("a finished service is still a service's colour",
        look["4"]["border"] == "rgb(126, 147, 122)")
     ck("a finished pre-arrival keeps its own colour too",
-       look["11"]["border"] == "rgb(194, 154, 85)")
+       look["11"]["border"] == "rgb(232, 137, 26)")
     ck("and every finished pill fades the same way, whatever the job",
        len({look[v]["op"] for v in ("1", "4", "9", "11")}) == 1)
     ck("faded enough to read as finished beside one that is not",
@@ -1618,7 +1621,7 @@ with sync_playwright() as p:
        look["9"]["striped"] and not look["1"]["striped"])
     ck("and still shows both jobs it was",
        "rgb(138, 144, 168)" in look["9"]["img"]
-       and "rgb(194, 154, 85)" in look["9"]["img"])
+       and "rgb(232, 137, 26)" in look["9"]["img"])
 
     # Who did it. A finished board that cannot say who did the work is a board
     # you have to ask about.
