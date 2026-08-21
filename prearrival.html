@@ -90,6 +90,39 @@
            font-family:inherit; font-size:0.75rem; letter-spacing:.12em;
            text-transform:uppercase; cursor:pointer; }
 
+  /* ── steps ──────────────────────────────────────────────────
+     One question to a page. A guest who can see eight questions at once
+     counts them; a guest who sees one answers it. The count is still shown,
+     because a form with no visible end is worse than a long one. */
+  .q { display:none; }
+  .q.now { display:block; }
+
+  /* Why we ask. Closed, always, on every page. The constraint lives in here
+     and the invitation stays on the page: a guest reading eight limits before
+     they have arrived has been told what they cannot have eight times. Open
+     by default would put it straight back. */
+  .why { margin:0.9rem 0 0; }
+  .why summary { display:inline-block; font-size:0.75rem; letter-spacing:.06em;
+                 color:var(--mid); cursor:pointer; list-style:none;
+                 border-bottom:1px dotted var(--rule); padding-bottom:2px; }
+  .why summary::-webkit-details-marker { display:none; }
+  .why summary::after { content:' +'; }
+  .why[open] summary::after { content:' \2212'; }
+  .why-b { font-style:italic; font-size:0.85rem; color:var(--mid);
+           line-height:1.6; margin-top:0.7rem; }
+
+  .nav { display:flex; align-items:center; gap:12px; margin-top:1.8rem; }
+  .prog { font-size:0.7rem; letter-spacing:.16em; text-transform:uppercase;
+          color:var(--mid); white-space:nowrap; }
+  .back { background:transparent; border:1px solid var(--rule); color:var(--mid);
+          padding:15px 18px; border-radius:10px; font-family:inherit;
+          font-size:0.75rem; letter-spacing:.12em; text-transform:uppercase;
+          cursor:pointer; }
+  .back.hide { display:none; }
+  /* The send button's own rule sets a top margin for the old one-page form.
+     Inside the nav row it would push itself off the line. */
+  .nav .send { margin-top:0; flex:1; }
+
   #form.hide, #done.hide { display:none; }
 </style>
 </head>
@@ -109,6 +142,10 @@
     <div class="q" id="qCompanion" style="display:none">
       <div class="q-t">Who is coming with you?</div>
       <div class="q-h">So we can greet them by name. Optional.</div>
+      <details class="why"><summary>Why we ask</summary>
+        <div class="why-b">Nothing more than a name on the welcome, and a
+          second glass poured without anyone having to ask. Leave it blank if
+          you would rather.</div></details>
       <textarea class="txt" id="companion" rows="1"
         placeholder="Their name"></textarea>
     </div>
@@ -116,8 +153,11 @@
     <!-- 1. arrival time -->
     <div class="q" id="qEta">
       <div class="q-t">What time do you expect to arrive?</div>
-      <div class="q-h">Reception closes at 5pm. If you will be later than that,
-        tell us and we will make arrangements.</div>
+      <div class="q-h">So that someone is here to meet you.</div>
+      <details class="why"><summary>Arriving late?</summary>
+        <div class="why-b">Reception is here until 5pm. Later than that is no
+          trouble at all, but do tell us, and we will arrange for someone to
+          let you in and settle you.</div></details>
       <div class="opts" id="etaOpts"></div>
       <div class="n-lab" id="etaNoteLab" style="display:none">Arrival notes</div>
       <textarea class="txt" id="etaNote" rows="2" style="display:none"
@@ -135,10 +175,17 @@
            standing in and reads as plausible on purpose: this page is live,
            so a guest may see it before the real words arrive. Breakfast is
            deliberately not mentioned. -->
-      <div class="q-h" id="dineHelp">Dinner is a set menu, one sitting from
-        6:00 to 6:30. The kitchen writes it on the day, so the dishes for your
-        first night will not exist yet. We will send them to you once they
-        do.</div>
+      <div class="q-h" id="dineHelp">One sitting, from 6:00 to 6:30.</div>
+      <!-- PLACEHOLDER COPY, owner to write, asked for 18 Aug. The seating
+           time is the only confirmed fact and it stays on the page above,
+           because a guest saying yes is agreeing to it. The rest is standing
+           in and reads as plausible on purpose: this page is live. Breakfast
+           is deliberately not mentioned. -->
+      <details class="why" id="dineWhy"><summary>How dinner works here</summary>
+        <div class="why-b">Dinner is a set menu, written by the kitchen on the
+          day, from whatever is best that morning. That means the dishes for
+          your first night do not exist yet. We will send them to you as soon
+          as they do.</div></details>
       <div class="opts">
         <button class="opt" id="dIn">Yes, we will dine with you</button>
         <button class="opt" id="dOut">Not on the first night</button>
@@ -153,8 +200,13 @@
     <div class="q" id="qDiet">
       <div class="q-t">Does anyone in your party have allergies or dietary
         requirements?</div>
-      <div class="q-h">Our menu is set. We are happy to leave things out of a
-        dish, but we cannot rebuild one, so it helps to know early.</div>
+      <div class="q-h">We would rather know now than on the night.</div>
+      <details class="why"><summary>How much we can change</summary>
+        <div class="why-b">The menu is set each day, so a dish cannot be
+          rebuilt around a requirement on the night. What we can do, and gladly
+          do, is leave things out and cook something alongside instead. The
+          earlier we know, the more room the kitchen has to work with.</div>
+      </details>
       <div class="chips" id="dietChips"></div>
       <div class="chips" id="dietNone" style="margin-top:7px"></div>
       <div class="n-lab" id="dietNoteLab" style="display:none">Dietary notes</div>
@@ -166,6 +218,10 @@
     <div class="q" id="qPurpose">
       <div class="q-t">What brings you to Nala?</div>
       <div class="q-h">Choose as many as fit.</div>
+      <details class="why"><summary>Why we ask</summary>
+        <div class="why-b">It changes how we look after you. A celebration and
+          a working week want opposite things from us, and we would rather
+          guess correctly than not guess at all.</div></details>
       <div class="chips" id="purposeChips"></div>
     </div>
 
@@ -173,14 +229,21 @@
     <div class="q" id="qApproach">
       <div class="q-t">How do you plan to eat during your stay?</div>
       <div class="q-h">No right answer. It only helps us plan.</div>
+      <details class="why"><summary>Why we ask</summary>
+        <div class="why-b">The kitchen shops for the number of people it
+          expects. Knowing roughly how often you plan to eat with us means less
+          waste and a better table on the nights you do.</div></details>
       <div class="opts" id="approachOpts"></div>
     </div>
 
     <!-- 6. wellness -->
     <div class="q" id="qWell">
       <div class="q-t">Would you like us to arrange a massage or treatment?</div>
-      <div class="q-h">Worth booking before you arrive. Availability is limited,
-        particularly in peak season.</div>
+      <div class="q-h">We can have it booked before you get here.</div>
+      <details class="why"><summary>Booking ahead</summary>
+        <div class="why-b">There are only so many hours in a therapist's day,
+          and in peak season they go early. Asking now is the surest way to get
+          the time you would like.</div></details>
       <div class="opts">
         <button class="opt" id="wYes">Yes, please</button>
         <button class="opt" id="wNo">No thank you</button>
@@ -194,10 +257,14 @@
     </div>
 
     <!-- optional -->
-    <div class="q">
+    <div class="q" id="qElse">
       <div class="q-t">Anything else?</div>
       <div class="q-h">A special occasion, a preference, or something that would
         make your stay feel more like you. Optional.</div>
+      <details class="why"><summary>Why we ask</summary>
+        <div class="why-b">This is the one that most often changes a stay. An
+          anniversary nobody mentioned is an anniversary we cannot mark.</div>
+      </details>
       <textarea class="txt" id="occasion" rows="1"
         placeholder="A birthday, an anniversary"></textarea>
       <div class="n-lab">Booking notes</div>
@@ -205,7 +272,11 @@
         placeholder="Anything you would like us to know"></textarea>
     </div>
 
-    <button class="send" id="send">Send to Nala</button>
+    <div class="nav">
+      <button class="back hide" id="back">Back</button>
+      <button class="send" id="send">Next</button>
+    </div>
+    <div class="prog" id="prog" style="text-align:center;margin-top:0.9rem"></div>
     <div class="err" id="err"></div>
   </div>
 
@@ -343,6 +414,7 @@ function paintGreeting(pms){
   var adults = pms && Number(pms.adults);
   var known  = pms && pms.companion;
   el('qCompanion').style.display = (adults >= 2 && !known) ? '' : 'none';
+  resyncSteps();
 }
 
 /* ── painters ────────────────────────────────────────────────
@@ -354,7 +426,11 @@ function paintEta(){
     var b = document.createElement('button');
     b.className = 'opt' + (a.eta === s[0] ? ' on' : '');
     b.textContent = s[1];
-    b.onclick = function(){ a.eta = s[0]; clearMiss('qEta'); paintEta(); };
+    b.onclick = function(){
+      a.eta = s[0]; clearMiss('qEta'); paintEta();
+      /* The two open ended slots open a note on this page, so they wait. */
+      advanceIfClean(s[2]);
+    };
     box.appendChild(b);
   });
   var needsNote = false;
@@ -442,7 +518,10 @@ function paintApproach(){
   APPROACH.forEach(function(pair){
     var b = document.createElement('button');
     b.className = 'opt' + (a.approach === pair[0] ? ' on' : ''); b.textContent = pair[1];
-    b.onclick = function(){ a.approach = pair[0]; clearMiss('qApproach'); paintApproach(); };
+    b.onclick = function(){
+      a.approach = pair[0]; clearMiss('qApproach'); paintApproach();
+      advanceIfClean(false);
+    };
     box.appendChild(b);
   });
 }
@@ -473,20 +552,147 @@ function paintWell(){
   });
 }
 
-el('dIn').onclick  = function(){ a.dining = true;  clearMiss('qDine'); paintDine(); };
-el('dOut').onclick = function(){ a.dining = false; clearMiss('qDine'); paintDine(); };
-el('wYes').onclick = function(){ a.wellness = true;  clearMiss('qWell'); paintWell(); };
-el('wNo').onclick  = function(){ a.wellness = false; clearMiss('qWell'); paintWell(); };
+/* Yes opens a follow up on the same page and so stays put. No opens nothing
+   and carries on. */
+el('dIn').onclick  = function(){ a.dining = true;  clearMiss('qDine'); paintDine();
+                                 advanceIfClean(true); };
+el('dOut').onclick = function(){ a.dining = false; clearMiss('qDine'); paintDine();
+                                 advanceIfClean(false); };
+el('wYes').onclick = function(){ a.wellness = true;  clearMiss('qWell'); paintWell();
+                                 advanceIfClean(true); };
+el('wNo').onclick  = function(){ a.wellness = false; clearMiss('qWell'); paintWell();
+                                 advanceIfClean(false); };
 
 function clearMiss(id){
-  el(id).className = 'q';
+  /* Keeps `now`: this is the page on screen, and stripping the class would
+     hide the very question the guest is answering. */
+  el(id).className = 'q' + (el(id).classList.contains('now') ? ' now' : '');
   el('err').className = 'err';
 }
 
+/* ── steps ───────────────────────────────────────────────────
+   One question to a page, in the order they were already in.
+
+   A step is a subject, not a question: everything an answer opens up lives on
+   the page where that answer is given. A guest must never say yes on one page
+   and discover what yes costs on the next, because the only way back from
+   that is to return and change an answer they meant. So the pax chips sit
+   with the dinner question, the treatment days sit with the treatment
+   question, and each note sits with the choice that asks for it. */
+var STEPS = [
+  { id:'qCompanion', fields:['companion'] },
+  { id:'qEta',       fields:['arriveSlot','arriveNote'] },
+  { id:'qDine',      fields:['dining','pax'] },
+  { id:'qDiet',      fields:['diets','noDiets','dnote'] },
+  { id:'qPurpose',   fields:['purpose'] },
+  { id:'qApproach',  fields:['approach'] },
+  { id:'qWell',      fields:['wellness','wellDay','wellTime'] },
+  { id:'qElse',      fields:['occasion','note'] }
+];
+
+/* The companion step is hidden for a single booking, and for a party whose
+   second name Mews already carries. So the count is not always eight, and it
+   has to be settled before the first page draws: a total that changes halfway
+   is worse than no total. */
+function liveSteps(){
+  return STEPS.filter(function(st){
+    return el(st.id).style.display !== 'none';
+  });
+}
+
+var CUR = 0, CURID = '';
+
+function showStep(i){
+  var live = liveSteps();
+  if (i < 0) i = 0;
+  if (i > live.length - 1) i = live.length - 1;
+  CUR = i;
+  CURID = live[CUR].id;
+  STEPS.forEach(function(st){ el(st.id).classList.remove('now'); });
+  el(live[CUR].id).classList.add('now');
+  el('back').className = 'back' + (CUR === 0 ? ' hide' : '');
+  el('send').textContent = (CUR === live.length - 1) ? 'Send to Nala' : 'Next';
+  el('prog').textContent = (CUR + 1) + ' of ' + live.length;
+  el('err').className = 'err';
+  window.scrollTo({ top:0, behavior:'auto' });
+}
+
+/* Mews answers after the first page is already drawn, and its answer decides
+   whether the companion question exists, which moves every step after it by
+   one. Held by id rather than by number so a guest is not thrown onto a
+   different question when that lands. A guest still on the first page is put
+   back to the first page, because the question that just appeared is the one
+   in front of them. */
+function resyncSteps(){
+  if (!CURID) return;
+  var live = liveSteps();
+  if (CUR === 0) { showStep(0); return; }
+  for (var i = 0; i < live.length; i++)
+    if (live[i].id === CURID) { showStep(i); return; }
+  showStep(0);
+}
+
+/* Saved on the way out of every page, so a guest who stops halfway has still
+   told us the things that matter most, which are the two they answer first:
+   when they are arriving and what they cannot eat.
+
+   This reverses the old rule that nothing was written until Send. That rule
+   existed because a half filled record could not be told apart from a
+   considered one. It can now: `at` is written only by the final send, and it
+   is already what the desk reads to decide a form is done, so answers with no
+   `at` are a form still in progress and answers with one are a form finished.
+   Nothing downstream needed changing to make that true. */
+function saveStep(idx){
+  if (DEMO || !G.id) return;
+  var live = liveSteps();
+  if (!live[idx]) return;
+  collect();
+  var all = fullPayload(), out = {};
+  live[idx].fields.forEach(function(f){
+    if (all[f] !== undefined) out[f] = all[f];
+  });
+  /* No `at`. That is the finished stamp and this is not finished. */
+  db('/bookings/' + G.id + '/prearrival', 'PATCH', out).catch(function(){});
+}
+
+function goNext(){
+  var live = liveSteps();
+  collect();
+  var miss = missingOn(live[CUR].id);
+  if (miss){
+    el(live[CUR].id).className = 'q now miss';
+    el('err').textContent = miss;
+    el('err').className = 'err show';
+    return;
+  }
+  saveStep(CUR);
+  if (CUR === live.length - 1){ submitForm(); return; }
+  showStep(CUR + 1);
+}
+
+function goBack(){
+  saveStep(CUR);
+  showStep(CUR - 1);
+}
+
+/* A picked option that opens nothing carries the guest onward by itself. One
+   that opens a follow up does not, because the follow up is on this page and
+   moving would hide it. The pause is so the choice is seen to register: a
+   page that vanishes the instant it is touched reads as a mis-tap. */
+function advanceIfClean(opensMore){
+  if (opensMore) return;
+  setTimeout(function(){
+    var live = liveSteps();
+    if (!missingOn(live[CUR].id)) goNext();
+  }, 260);
+}
+
+el('back').onclick = goBack;
+
 /* ── sending ─────────────────────────────────────────────────
-   Nothing is written until Send. A half filled record is indistinguishable
-   from a considered one, and "form done" would come to mean "some fields
-   exist". See DESIGN.md. */
+   Every page is saved as the guest leaves it. The final send writes the whole
+   record again in one PATCH, so a page save that failed on a bad connection
+   costs nothing: the send is still authoritative. */
 function collect(){
   a.etaNote  = el('etaNote').value.trim();
   a.dietNote = el('dietNote').value.trim();
@@ -496,40 +702,68 @@ function collect(){
   a.note     = el('note').value.trim();
 }
 
-function firstMissing(){
-  if (!a.eta) return ['qEta', 'Please tell us when you expect to arrive.'];
-  var needsNote = false;
-  ETA_SLOTS.forEach(function(s){ if (s[0] === a.eta && s[2]) needsNote = true; });
-  if (needsNote && !a.etaNote)
-    return ['qEta', 'Please add a rough time, so we can plan for you.'];
-  if (a.dining === null) return ['qDine', 'Please let us know about your first night.'];
-  if (!a.noDiets && !a.diets.length)
-    return ['qDiet', 'Please answer about allergies, even to say there are none.'];
-  /* "Other" with an empty note is the one answer that tells the kitchen a
-     guest has an allergy and nothing about what it is, which is worse than
-     silence: it looks answered. */
-  if (hasOther() && !a.dietNote)
-    return ['qDiet', 'Please tell us what the allergy or requirement is.'];
-  if (!a.purpose.length) return ['qPurpose', 'Please tell us what brings you.'];
-  if (!a.approach) return ['qApproach', 'Please tell us how you plan to eat.'];
-  if (a.wellness === null) return ['qWell', 'Please answer about treatments.'];
+/* Asked one page at a time now, so it answers about one page. Returns the
+   message, or null when the page is answered. The companion page and the last
+   page are optional and always pass. */
+function missingOn(id){
+  if (id === 'qEta'){
+    if (!a.eta) return 'Please tell us when you expect to arrive.';
+    var needsNote = false;
+    ETA_SLOTS.forEach(function(s){ if (s[0] === a.eta && s[2]) needsNote = true; });
+    if (needsNote && !a.etaNote)
+      return 'Please add a rough time, so we can plan for you.';
+    return null;
+  }
+  if (id === 'qDine')
+    return a.dining === null ? 'Please let us know about your first night.' : null;
+  if (id === 'qDiet'){
+    if (!a.noDiets && !a.diets.length)
+      return 'Please answer about allergies, even to say there are none.';
+    /* "Other" with an empty note is the one answer that tells the kitchen a
+       guest has an allergy and nothing about what it is, which is worse than
+       silence: it looks answered. */
+    if (hasOther() && !a.dietNote)
+      return 'Please tell us what the allergy or requirement is.';
+    return null;
+  }
+  if (id === 'qPurpose')
+    return a.purpose.length ? null : 'Please tell us what brings you.';
+  if (id === 'qApproach')
+    return a.approach ? null : 'Please tell us how you plan to eat.';
+  if (id === 'qWell')
+    return a.wellness === null ? 'Please answer about treatments.' : null;
   return null;
 }
 
-el('send').onclick = function(){
-  collect();
-  var miss = firstMissing();
-  if (miss){
-    /* One at a time, scrolled to, and named. A form that marks six things at
-       once and jumps to the top is how a guest gives up. */
-    el(miss[0]).className = 'q miss';
-    el('err').textContent = miss[1];
-    el('err').className = 'err show';
-    el(miss[0]).scrollIntoView({ block:'center', behavior:'smooth' });
-    return;
-  }
-  submitForm();
-};
+/* The first page a returning guest has not answered, so somebody who stopped
+   halfway is put back where they stopped rather than made to tap Next through
+   their own answers. */
+function firstUnanswered(){
+  var live = liveSteps();
+  for (var i = 0; i < live.length; i++)
+    if (missingOn(live[i].id)) return i;
+  return live.length - 1;
+}
+
+/* One button. It is Next until the last page and Send on it, because a form
+   with both is a form asking the guest to work out which one they want. */
+el('send').onclick = goNext;
+
+/* One shape, used by the page saves and by the final send, so a field cannot
+   be written one way halfway through and another way at the end. `at` is NOT
+   in here: it is added by the send alone, and it is the whole difference
+   between a form in progress and a form finished. */
+function fullPayload(){
+  return {
+    arriveSlot: a.eta, arriveNote: a.etaNote,
+    dining: a.dining, pax: a.dining ? a.pax : 0,
+    diets: a.diets, noDiets: a.noDiets, dnote: a.diets.length ? a.dietNote : '',
+    purpose: purposeText(a.purpose), approach: a.approach,
+    wellness: a.wellness,
+    wellDay: a.wellness ? a.wellDay : '', wellTime: a.wellness ? a.wellTime : '',
+    occasion: a.occasion, note: a.note, companion: a.companion
+  };
+}
 
 /* Not called send: there is a button with id="send", and a global function of
    the same name shadows it, so `send.disabled` would reach the function and
@@ -537,16 +771,8 @@ el('send').onclick = function(){
 function submitForm(){
   var btn = el('send');
   btn.disabled = true; btn.textContent = 'Sending';
-  var payload = {
-    arriveSlot: a.eta, arriveNote: a.etaNote,
-    dining: a.dining, pax: a.dining ? a.pax : 0,
-    diets: a.diets, noDiets: a.noDiets, dnote: a.diets.length ? a.dietNote : '',
-    purpose: purposeText(a.purpose), approach: a.approach,
-    wellness: a.wellness,
-    wellDay: a.wellness ? a.wellDay : '', wellTime: a.wellness ? a.wellTime : '',
-    occasion: a.occasion, note: a.note, companion: a.companion,
-    at: new Date().toISOString()
-  };
+  var payload = fullPayload();
+  payload.at = new Date().toISOString();
   /* PATCH, not PUT: reception may already have confirmed this booking, and a
      PUT would wipe confirmedAt and quietly un-confirm a guest who is standing
      at the desk. */
@@ -587,6 +813,7 @@ function submitForm(){
 el('again').onclick = function(){
   el('done').className = 'done hide';
   el('form').className = '';
+  showStep(0);
 };
 
 /* ── boot ────────────────────────────────────────────────────
@@ -597,6 +824,7 @@ el('again').onclick = function(){
 function boot(){
   paintGreeting(null);
   paintEta(); paintDine(); paintDiets(); paintPurpose(); paintApproach(); paintWell();
+  showStep(0);
 
   /* A demo booking, so the form can be opened and tried without a real guest
      and without a link from a message. The site map links here, and until now
@@ -617,6 +845,7 @@ function boot(){
     banner.style.cssText = 'margin:0 0 14px;text-align:center';
     banner.textContent = 'Demonstration only. Nothing here is saved.';
     el('form').insertBefore(banner, el('form').firstChild);
+    showStep(0);
     return;
   }
 
@@ -665,9 +894,18 @@ function boot(){
   }).catch(function(){});
 
   /* A guest who already sent it sees what they said, and can change it. Plans
-     change, and a form that refuses to reopen sends them to the phone. */
+     change, and a form that refuses to reopen sends them to the phone.
+
+     A guest who got halfway and stopped is a different case and is now
+     possible, because pages save as they are left. Their answers are loaded
+     the same way, but they are put back on the first page they had not
+     answered instead of being shown the thank you. */
   db('/bookings/' + G.id + '/prearrival').then(function(p){
-    if (!p || !p.at) return;
+    if (!p) return;
+    var started = p.arriveSlot || p.dining !== undefined || (p.diets && p.diets.length) ||
+                  p.noDiets || p.purpose || p.approach || p.wellness !== undefined ||
+                  p.occasion || p.note || p.companion;
+    if (!p.at && !started) return;
     a.eta = p.arriveSlot || ''; a.etaNote = p.arriveNote || '';
     a.dining = (p.dining === undefined) ? null : !!p.dining;
     a.pax = p.pax || 2;
@@ -683,6 +921,11 @@ function boot(){
     el('companion').value = a.companion;
     el('note').value = a.note;
     paintEta(); paintDine(); paintDiets(); paintPurpose(); paintApproach(); paintWell();
+
+    if (!p.at){
+      showStep(firstUnanswered());
+      return;
+    }
     el('form').className = 'hide';
     el('done').className = 'done';
     el('doneT').textContent = 'Thank you';
