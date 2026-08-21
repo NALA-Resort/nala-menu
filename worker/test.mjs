@@ -514,5 +514,102 @@ ck("a date with no time is taken as written",
    !!STORE["/stays/2026-09-10/3"] && !!STORE["/stays/2026-09-11/3"] &&
    !STORE["/stays/2026-09-12/3"]);
 
+/* ── the arriving-soon sweep ─────────────────────────────────────────────
+ *
+ * The clock is frozen at 13:30 resort time, half past one in the afternoon,
+ * so which villas sit inside their red hour is the same whenever the suite
+ * runs: 2pm arrivals are red, 4pm ones are not. */
+const RealDate = Date;
+const FIXED = new RealDate("2026-09-10T03:30:00Z").getTime();
+globalThis.Date = class extends RealDate {
+  constructor(...a) { a.length ? super(...a) : super(FIXED); }
+  static now() { return FIXED; }
+};
+const TODAY = "2026-09-10", YESTER = "2026-09-09";
+
+let PUSHES;
+function installSweep(stays, hk, pre) {
+  install();
+  PUSHES = [];
+  const inner = globalThis.fetch;
+  globalThis.fetch = async (url, opt = {}) => {
+    if (String(url).includes("nala-push")) {
+      const b = JSON.parse(opt.body);
+      PUSHES.push(b);
+      CALLS.push("PUSH " + b.villa);
+      return new Response("ok", { status: 200 });
+    }
+    return inner(url, opt);
+  };
+  STORE["/stays/" + TODAY] = stays;
+  STORE["/hk/" + TODAY] = hk;
+  for (const id in (pre || {})) STORE["/bookings/" + id + "/prearrival"] = pre[id];
+}
+async function wake() {
+  const jobs = [];
+  await worker.scheduled({}, env, { waitUntil: (p) => jobs.push(p) });
+  await Promise.all(jobs);
+}
+
+installSweep({
+  /* red: approved 2pm, 13:30 is inside the hour before it */
+  "1": { id: "p1", arrive: TODAY, depart: "2026-09-12" },
+  /* not yet: the guest asked for 4pm and 13:30 is 90 minutes early */
+  "2": { id: "p2", arrive: TODAY, depart: "2026-09-12" },
+  /* red: said nothing, and a silent arrival is a 2pm arrival */
+  "3": { id: "p3", arrive: TODAY, depart: "2026-09-12" },
+  /* claimed: somebody is on it, so it stays quiet */
+  "4": { id: "p4", arrive: TODAY, depart: "2026-09-12" },
+  /* done: quiet however early the hour was */
+  "5": { id: "p5", arrive: TODAY, depart: "2026-09-12" },
+  /* stay-over: arrived yesterday, not an arrival at all */
+  "7": { id: "p7", arrive: YESTER, depart: "2026-09-12" },
+  /* the manager said no arrival tonight, and the override wins */
+  "8": { id: "p8", arrive: TODAY, depart: "2026-09-12" },
+}, {
+  "4": { takenBy: "Ana" },
+  "5": { done: "2026-09-10T01:00:00Z" },
+  "8": { arriving: false },
+  /* a manual Arriving tonight tick with no booking behind it: 2pm, so red */
+  "9": { arriving: true },
+}, {
+  "p1": { arriveApproved: 14 },
+  "p2": { arriveSlot: "16" },
+  "p4": { arriveApproved: 14 },
+  "p5": { arriveApproved: 11 },
+  "p8": { arriveApproved: 11 },
+});
+await wake();
+const buzzed = PUSHES.map((p) => p.villa).sort();
+ck("the villas inside their red hour and unclaimed are announced, no others",
+   buzzed.join() === "1,3,9");
+ck("every announcement is the arriving event, signed in",
+   PUSHES.every((p) => p.event === "arriving" && p.idToken === "T"));
+ck("a silent 2pm arrival warns like a stated one", buzzed.includes("3"));
+ck("the manual tick with no booking warns at 2pm like anything else",
+   buzzed.includes("9"));
+ck("the marker is written per villa announced",
+   !!STORE["/alerts/" + TODAY + "/1"] && !!STORE["/alerts/" + TODAY + "/3"] &&
+   !!STORE["/alerts/" + TODAY + "/9"] && !STORE["/alerts/" + TODAY + "/2"]);
+ck("and written BEFORE the send, so a crash cannot buzz forever",
+   ["1", "3", "9"].every((v) =>
+     CALLS.indexOf("PUT /alerts/" + TODAY + "/" + v) > -1 &&
+     CALLS.indexOf("PUT /alerts/" + TODAY + "/" + v) < CALLS.indexOf("PUSH " + v)));
+
+/* The next wake finds the markers and sends nothing. */
+PUSHES.length = 0;
+await wake();
+ck("a second wake announces nobody twice", PUSHES.length === 0);
+
+/* A villa that becomes red later is picked up by a later wake, once. */
+STORE["/stays/" + TODAY]["2"] = { id: "p2", arrive: TODAY, depart: "2026-09-12" };
+STORE["/bookings/p2/prearrival"] = { arriveApproved: 14 };
+PUSHES.length = 0;
+await wake();
+ck("a villa whose hour arrives later gets its one announcement then",
+   PUSHES.length === 1 && PUSHES[0].villa === "2");
+
+globalThis.Date = RealDate;
+
 console.log("RESULT: %d passed, %d failed", P, F);
 if (F) process.exit(1);

@@ -119,6 +119,89 @@ function nights(arrive, depart) {
   return out;
 }
 
+/* ── the arriving-soon sweep, run from the cron trigger ──────────────────
+ *
+ * nala-push, the notification Worker. Not in this repo: it holds the VAPID
+ * keys and routes an event to the roles that switched it on. This is the
+ * same URL every page posts to from notifyPush() in nala-shared.js. */
+const PUSH_URL = "https://nala-push.ben-681.workers.dev";
+
+const HOUR_AT_RESORT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: RESORT_TZ, hour: "2-digit", hourCycle: "h23" });
+
+/* The same resolution cleaners.html renders, kept in step by hand and by the
+ * suite: reception's approved hour, else the guest's slot, else 14, because
+ * 2pm is the resort's standing promise and an absent answer is not an
+ * unknown one. */
+function effectiveEta(pre) {
+  pre = pre || {};
+  const ap = Number(pre.arriveApproved);
+  if (pre.arriveApproved != null && ap >= 11 && ap <= 23) return ap;
+  const s = String(pre.arriveSlot || "");
+  if (s === "before2") return 14;
+  if (s === "after5") return 17;
+  if (s === "14" || s === "15" || s === "16" || s === "17") return Number(s);
+  return 14;
+}
+
+/* A villa inside its red hour that nobody has claimed gets one notification.
+ * The board can only colour a tile; if no cleaner is looking at it, the red
+ * hour passes silently, and this is triggered by nothing happening, so no
+ * tap exists to hang a page side send on.
+ *
+ * Send once: the /alerts marker is written before the send and checked
+ * first, in the manner of the menu announcement, so however many wakes
+ * cross the red hour the phone buzzes for a villa once per day. A claimed,
+ * done or pushed villa stays quiet: the point is a guest who is close with
+ * nobody on the job, and management resolves the board nightly, so a late
+ * red never finds unclaimed work to announce. */
+async function alertArrivals(env) {
+  const now = new Date();
+  const today = DATE_AT_RESORT.format(now);
+  const h = Number(HOUR_AT_RESORT.format(now));
+  const stays = await db(env, "/stays/" + today, "GET") || {};
+  const hk = await db(env, "/hk/" + today, "GET") || {};
+  const alerts = await db(env, "/alerts/" + today, "GET") || {};
+  const sent = [];
+
+  /* Arrivals the way the board decides them: the manager's override wins,
+     otherwise the booking. A manual "Arriving tonight" tick has no booking
+     at all, so the candidates are the union of both sources. */
+  const villas = new Set(Object.keys(stays));
+  for (const v in hk) if (hk[v] && hk[v].arriving === true) villas.add(v);
+
+  for (const v of villas) {
+    const s = stays[v], k = hk[v] || {};
+    const booked = !!(s && typeof s === "object" && s.id && dkey(s.arrive) === today);
+    const arriving = k.arriving === true ? true
+                   : k.arriving === false ? false : booked;
+    if (!arriving) continue;
+    if (k.done || k.pushed || k.takenBy) continue;
+    if (alerts[v]) continue;
+    /* One read per candidate, after the cheap filters: most wakes read
+       nothing beyond the three lists above. */
+    const pre = booked
+      ? await db(env, "/bookings/" + s.id + "/prearrival", "GET") : null;
+    if (h < effectiveEta(pre) - 1) continue;
+    /* Marker first. If this write fails the send never happens, and the
+       next wake tries again; the reverse order could buzz every five
+       minutes forever. */
+    await db(env, "/alerts/" + today + "/" + v, "PUT",
+             { at: now.toISOString() });
+    /* Fire and tolerate: a lost notification costs a buzz, not data, and
+       the marker already says this villa had its one chance. */
+    try {
+      await fetch(PUSH_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: await idToken(env),
+                               event: "arriving", villa: v }) });
+    } catch (e) {}
+    sent.push(v);
+  }
+  return sent;
+}
+
 /* Zapier field names vary with how the Zap is mapped, so each value is looked
    for under several plausible keys rather than one. Mapping in Zapier to any
    of these works; mapping to something else does not, which is why the list
@@ -635,5 +718,15 @@ export default {
       }
       return new Response("sync failed: " + msg, { status: 500 });
     }
+  },
+
+  /* The cron wake. Kept to a dispatcher so the trigger can host more than
+     one job: the parked sync heartbeat wants exactly this wake, and adding
+     it later is one more waitUntil line, not a redesign. */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(alertArrivals(env).catch(function (e) {
+      /* A failed sweep must not look like a quiet one in the logs. */
+      console.log("arriving sweep failed: " + e.message);
+    }));
   }
 };

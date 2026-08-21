@@ -18,5 +18,10 @@
   // Deliberately no "vars" block. The four secrets are set in the dashboard and
   // are not in this repo, which is public. Declaring vars here would overwrite
   // what is deployed; secrets set in the dashboard survive a deploy untouched.
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+
+  // The arriving-soon sweep. Five minutes is deliberate slack: the red hour
+  // is sixty minutes long, so the worst case notification is five minutes
+  // into it. The same wake is where the parked sync heartbeat will live.
+  "triggers": { "crons": ["*/5 * * * *"] }
 }
