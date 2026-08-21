@@ -26,8 +26,9 @@ now = datetime.datetime.now().astimezone()
 def plus(d): return (now + datetime.timedelta(days=d)).strftime("%Y-%m-%d")
 
 # The chef's master list. An inactive entry must never reach a guest.
-DIETS = {"gf":  {"name": "Gluten free", "active": True},
-         "nut": {"name": "Nut allergy", "active": True},
+DIETS = {"gf":  {"name": "Gluten free", "active": True, "group": "common"},
+         "nut": {"name": "Nut allergy", "active": True, "group": "common"},
+         "chi": {"name": "Red pepper spice", "active": True, "group": "menu"},
          "old": {"name": "Retired Entry", "active": False}}
 
 STATE = {"pms": None, "pre": None, "fail": False}
@@ -95,6 +96,12 @@ with sync_playwright() as p:
        "Gluten free" in pg.locator("#dietChips").inner_text())
     ck("and a retired entry never reaches a guest",
        "Retired" not in pg.locator("#dietChips").inner_text())
+    #  A "this menu only" entry is a warning about tonight's cooking, such as
+    #  a chilli heat level. This form is filled days ahead, when the menu for
+    #  the arrival night does not exist, so offering one asks a guest about a
+    #  dish nobody has planned. Those belong on the nightly form.
+    ck("a this-menu-only dietary is not offered days ahead",
+       "Red pepper spice" not in pg.locator("#dietChips").inner_text())
 
     # ── an allergy that is not on the list ──────────────────────
     #  Filled in days ahead with nobody to ask, so a guest whose allergy is

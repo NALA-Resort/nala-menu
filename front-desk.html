@@ -659,6 +659,31 @@ function load(){
     .then(function(t){ TAGS = t; render(); })
     .catch(function(){ TAGS = null; });
 
+  /* The chef's list, so reception offers what the kitchen recognises. The
+     eight below were a fixed copy, which meant a dietary the chef added
+     existed on the guest form and on the nightly form and nowhere at the one
+     place a guest is standing in front of somebody: reception could only
+     record it as a typed note, which no board counts and no filter finds.
+
+     Common entries only. A "this menu only" entry warns about tonight's
+     cooking, such as a chilli heat level, and belongs on the nightly form
+     where the menu is already published. Check-in is not that moment.
+
+     A failed read leaves the eight in place. They are the ordinary ones, so
+     the desk degrades to what it did yesterday rather than to nothing. */
+  api('/dietaries')
+    .then(function(master){
+      if (!master) return;
+      var names = [];
+      Object.keys(master).forEach(function(k){
+        var d = master[k];
+        if (d && d.active && (d.group || 'common') !== 'menu' &&
+            (d.name || k) !== DIET_OTHER) names.push(d.name || k);
+      });
+      if (names.length){ DIETARIES = names.sort(); render(); }
+    })
+    .catch(function(){});
+
   api('/stays/'+key)
     .then(function(day){
       ROWS = arrivingOn(day, key);

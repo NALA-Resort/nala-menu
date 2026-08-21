@@ -93,6 +93,16 @@ DINNER = {}
 PMS = {}
 
 WRITES = []
+#  The chef's list, which is the one the kitchen recognises. "Sesame allergy"
+#  is one he added; it must reach the desk or a guest with it can only be
+#  recorded as a typed note. "Red pepper spice" is marked this-menu-only and
+#  is a warning about tonight's cooking, so it belongs on the nightly form.
+DIETS = {"gf":  {"name": "Gluten free",      "active": True,  "group": "common"},
+         "nut": {"name": "Nut allergy",      "active": True,  "group": "common"},
+         "ses": {"name": "Sesame allergy",   "active": True,  "group": "common"},
+         "chi": {"name": "Red pepper spice", "active": True,  "group": "menu"},
+         "old": {"name": "Retired Entry",    "active": False, "group": "common"}}
+
 STATE = {"fail": False}
 
 def fb(route, request):
@@ -105,7 +115,8 @@ def fb(route, request):
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
     body = "null"
-    if "/staff" in u: body = json.dumps(STAFF)
+    if "/dietaries" in u: body = json.dumps(DIETS)
+    elif "/staff" in u: body = json.dumps(STAFF)
     elif "/dinner/" + today in u: body = json.dumps(DINNER)
     elif "/dinner/" in u: body = "null"
     elif "/stays/" + today in u: body = json.dumps(STAYS)
@@ -310,6 +321,21 @@ with sync_playwright() as p:
        "()=>[...document.querySelectorAll('#dChips .chip')].some(e=>e.textContent==='Nut allergy'&&e.className.indexOf('on')>-1)"))
     ck("the note about whose allergy it is",
        pg.evaluate("()=>fDnote.value") == "the daughter, severe")
+    #  The desk offered eight fixed dietaries while the guest form offered the
+    #  chef's, so anything he added existed everywhere except at the one place
+    #  a guest is standing in front of somebody.
+    ck("a dietary the chef added reaches the desk", pg.evaluate(
+       "()=>[...document.querySelectorAll('#dChips .chip')]"
+       ".some(e=>e.textContent==='Sesame allergy')"))
+    ck("and a retired one does not", pg.evaluate(
+       "()=>[...document.querySelectorAll('#dChips .chip')]"
+       ".every(e=>e.textContent!=='Retired Entry')"))
+    ck("a this-menu-only dietary stays on the nightly form", pg.evaluate(
+       "()=>[...document.querySelectorAll('#dChips .chip')]"
+       ".every(e=>e.textContent!=='Red pepper spice')"))
+    ck("and Other is still offered beside them", pg.evaluate(
+       "()=>[...document.querySelectorAll('#dNone .chip')]"
+       ".some(e=>e.textContent==='Other')"))
     # This used to say the arrival time was deliberately read only, on the
     # reasoning that the guest is standing at the desk so there is nothing left
     # to estimate. That is true of a guest in front of you and of nobody else:

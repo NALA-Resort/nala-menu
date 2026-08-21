@@ -641,13 +641,22 @@ function boot(){
     .catch(function(){});
 
   /* The chef's master list, so the choices here match the ones the kitchen
-     actually recognises. Inactive entries never reach a guest. */
+     actually recognises. Inactive entries never reach a guest.
+
+     Common entries only. The chef can also mark one "this menu only", which
+     is a warning about tonight's cooking, such as a chilli heat level. This
+     form is filled days ahead, when the menu for the arrival night does not
+     exist yet, so offering one asks a guest about a dish nobody has planned
+     and stores an answer to a question that will have moved on by the time
+     they arrive. Those belong on the nightly form, which is written against
+     a menu that is already published. */
   db('/dietaries').then(function(master){
     if (!master) return;
     var names = [];
     Object.keys(master).forEach(function(k){
       var d = master[k];
-      if (d && d.active) names.push(d.name || k);
+      if (d && d.active && (d.group || 'common') !== 'menu')
+        names.push(d.name || k);
     });
     /* If the chef ever adds one called Other it would paint twice, once as an
        ordinary chip that means nothing and once as this one. */
