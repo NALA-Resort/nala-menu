@@ -6,7 +6,7 @@ os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*a): pass
 socketserver.TCPServer.allow_reuse_address=True
-httpd=socketserver.TCPServer(("",8963),Q)
+httpd=http.server.ThreadingHTTPServer(("",8963),Q)
 threading.Thread(target=httpd.serve_forever,daemon=True).start()
 
 now=datetime.datetime.now().astimezone(); today=now.strftime("%Y-%m-%d")

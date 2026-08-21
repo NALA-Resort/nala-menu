@@ -16,7 +16,7 @@ os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
 socketserver.TCPServer.allow_reuse_address = True
-httpd = socketserver.TCPServer(("", 8971), Q)
+httpd = http.server.ThreadingHTTPServer(("", 8971), Q)
 threading.Thread(target=httpd.serve_forever, daemon=True).start(); time.sleep(0.3)
 
 DB_HITS = []
@@ -33,7 +33,7 @@ with sync_playwright() as p:
 
     def open_page(query="", w=390, h=844):
         pg = b.new_page(viewport={"width": w, "height": h})
-        pg.route("**/*.firebasedatabase.app/**",
+        pg.route("**firebasedatabase.app/**",
                  lambda r, req: (DB_HITS.append(req.url),
                                  r.fulfill(status=200, content_type="application/json",
                                            body="null")))

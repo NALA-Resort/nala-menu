@@ -223,6 +223,9 @@ def run_one(entry):
     # print_suite, which is a collision that only appears when the two happen
     # to overlap in the pool and therefore would not have shown up every run.
     env = dict(os.environ)
+    # Windows pipes default to the legacy codepage, and one suite printing an
+    # emoji then dies with UnicodeEncodeError before it reports a result.
+    env["PYTHONUTF8"] = "1"
     if name.startswith("sweep:"):
         env["SWEEP_PORT"] = str(9100 + SWEEP_PAGES.index(name.split(":", 1)[1]))
     t0 = time.time()

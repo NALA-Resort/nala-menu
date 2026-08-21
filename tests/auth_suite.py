@@ -4,7 +4,7 @@ os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*a): pass
 socketserver.TCPServer.allow_reuse_address=True
-httpd=socketserver.TCPServer(("",8958),Q)
+httpd=http.server.ThreadingHTTPServer(("",8958),Q)
 threading.Thread(target=httpd.serve_forever,daemon=True).start(); time.sleep(0.3)
 
 # app-compat only. firebase exists, firebase.auth does NOT — auth-compat failed.

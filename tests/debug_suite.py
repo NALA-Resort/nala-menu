@@ -22,7 +22,7 @@ os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
 socketserver.TCPServer.allow_reuse_address = True
-httpd = socketserver.TCPServer(("", 8974), Q)
+httpd = http.server.ThreadingHTTPServer(("", 8974), Q)
 threading.Thread(target=httpd.serve_forever, daemon=True).start(); time.sleep(0.3)
 
 now = datetime.datetime.now().astimezone()
@@ -108,8 +108,8 @@ with sync_playwright() as p:
         pg = b.new_page(viewport={"width": w, "height": 900})
         pg.add_init_script(sdk(email))
         pg.on("dialog", lambda d: d.accept() if accept else d.dismiss())
-        pg.route("**/*.firebasedatabase.app/**", fb)
-        pg.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        pg.route("**firebasedatabase.app/**", fb)
+        pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         # The shared script's announceMenu archives today's menu on every
         # signed-in page load, and the repo's real menu.json is published
         # for the run date whenever the chef has published before the tests

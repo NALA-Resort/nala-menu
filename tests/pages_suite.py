@@ -15,7 +15,7 @@ os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
 socketserver.TCPServer.allow_reuse_address = True
-httpd = socketserver.TCPServer(("", 8966), Q)
+httpd = http.server.ThreadingHTTPServer(("", 8966), Q)
 threading.Thread(target=httpd.serve_forever, daemon=True).start(); time.sleep(0.3)
 
 SDK = """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
@@ -47,8 +47,8 @@ with sync_playwright() as p:
         pg = b.new_page(viewport={"width": w, "height": 900})
         pg.add_init_script(SDK)
         pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
-        pg.route("**/*.firebasedatabase.app/**", fb)
-        pg.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        pg.route("**firebasedatabase.app/**", fb)
+        pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.goto("http://localhost:8966/pages.html")
         pg.wait_for_timeout(900)
         return pg

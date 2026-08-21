@@ -19,7 +19,7 @@ os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
 socketserver.TCPServer.allow_reuse_address = True
-httpd = socketserver.TCPServer(("", 8967), Q)
+httpd = http.server.ThreadingHTTPServer(("", 8967), Q)
 threading.Thread(target=httpd.serve_forever, daemon=True).start(); time.sleep(0.3)
 
 now = datetime.datetime.now().astimezone()
@@ -66,7 +66,7 @@ with sync_playwright() as p:
 
     def guest(link=LINK, w=390):
         pg = b.new_page(viewport={"width": w, "height": 844})
-        pg.route("**/*.firebasedatabase.app/**", fb)
+        pg.route("**firebasedatabase.app/**", fb)
         pg.route("**/fonts.googleapis.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.route("**/fonts.gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.goto("http://localhost:8967/prearrival.html" + link)
@@ -336,9 +336,9 @@ with sync_playwright() as p:
     q = b.new_page(viewport={"width": 390, "height": 900})
     q.on("request", lambda r: calls.append((r.method, r.url))
          if "firebasedatabase.app" in r.url else None)
-    q.route("**/*.firebasedatabase.app/**", lambda r: r.fulfill(
+    q.route("**firebasedatabase.app/**", lambda r: r.fulfill(
         status=200, content_type="application/json", body="null"))
-    q.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    q.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
     q.goto("http://localhost:8967/prearrival.html?b=demo"); q.wait_for_timeout(1500)
 
     ck("the demo opens the form rather than the incomplete link message",

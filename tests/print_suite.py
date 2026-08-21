@@ -22,7 +22,7 @@ os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
 socketserver.TCPServer.allow_reuse_address = True
-httpd = socketserver.TCPServer(("", 8975), Q)
+httpd = http.server.ThreadingHTTPServer(("", 8975), Q)
 threading.Thread(target=httpd.serve_forever, daemon=True).start(); time.sleep(0.3)
 
 now = datetime.datetime.now().astimezone()
@@ -240,7 +240,7 @@ signOut:function(){}};"""
         pg.add_init_script(SDK)
         pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
         pg.route("**/cdnjs.cloudflare.com/**", lambda r: r.fulfill(status=200, body=""))
-        pg.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.route("**/fonts.googleapis.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.route("**firebasedatabase.app/**", lambda r: r.fulfill(
             status=200, content_type="application/json",

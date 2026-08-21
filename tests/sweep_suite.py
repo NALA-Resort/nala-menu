@@ -41,7 +41,7 @@ PORT = int(os.environ.get("SWEEP_PORT", "8973"))
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
 socketserver.TCPServer.allow_reuse_address = True
-httpd = socketserver.TCPServer(("", PORT), Q)
+httpd = http.server.ThreadingHTTPServer(("", PORT), Q)
 threading.Thread(target=httpd.serve_forever, daemon=True).start(); time.sleep(0.3)
 
 SDK = """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
@@ -350,8 +350,8 @@ with sync_playwright() as p:
         pg.add_init_script(TRAPS)
         pg.add_init_script(JSPDF_STUB)
         pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
-        pg.route("**/*.firebasedatabase.app/**", fb)
-        pg.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        pg.route("**firebasedatabase.app/**", fb)
+        pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.route("**/cdnjs.cloudflare.com/**", lambda r: r.fulfill(status=200, body=""))
         failed = []
         pg.on("requestfailed", lambda r: failed.append(r.url.split("/")[-1][:50]))

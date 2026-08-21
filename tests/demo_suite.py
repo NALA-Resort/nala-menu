@@ -114,7 +114,7 @@ PORT = 9007
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
 socketserver.TCPServer.allow_reuse_address = True
-httpd = socketserver.TCPServer(("", PORT), Q)
+httpd = http.server.ThreadingHTTPServer(("", PORT), Q)
 threading.Thread(target=httpd.serve_forever, daemon=True).start()
 time.sleep(0.3)
 

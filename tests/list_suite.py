@@ -4,7 +4,7 @@ os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*a): pass
 socketserver.TCPServer.allow_reuse_address=True
-httpd=socketserver.TCPServer(("",8955),Q)
+httpd=http.server.ThreadingHTTPServer(("",8955),Q)
 threading.Thread(target=httpd.serve_forever,daemon=True).start(); time.sleep(0.3)
 SDK="""window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
 auth:function(){ if(!window.firebase.__i) throw new Error("No Firebase App '[DEFAULT]' has been created"); return window.__A;}};

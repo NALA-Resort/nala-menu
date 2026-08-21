@@ -23,7 +23,7 @@ os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
 socketserver.TCPServer.allow_reuse_address = True
-httpd = socketserver.TCPServer(("", 8962), Q)
+httpd = http.server.ThreadingHTTPServer(("", 8962), Q)
 threading.Thread(target=httpd.serve_forever, daemon=True).start(); time.sleep(0.3)
 
 now = datetime.datetime.now().astimezone()
@@ -99,7 +99,7 @@ with sync_playwright() as p:
         """Open the guest page with a given link, at phone width."""
         pg = b.new_page(viewport={"width": w, "height": 844})
         pg.route("**/menu.json*", menu_route)
-        pg.route("**/*.firebasedatabase.app/**", fb)
+        pg.route("**firebasedatabase.app/**", fb)
         pg.goto("http://localhost:8962/index.html" + query)
         pg.wait_for_timeout(900)
         return pg

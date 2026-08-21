@@ -27,7 +27,7 @@ os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
 socketserver.TCPServer.allow_reuse_address = True
-httpd = socketserver.TCPServer(("", 8972), Q)
+httpd = http.server.ThreadingHTTPServer(("", 8972), Q)
 threading.Thread(target=httpd.serve_forever, daemon=True).start(); time.sleep(0.3)
 
 now = datetime.datetime.now().astimezone()
@@ -86,8 +86,8 @@ with sync_playwright() as p:
     def open_stats(w=390, email="staff@x"):
         pg = b.new_page(viewport={"width": w, "height": 900})
         pg.add_init_script(sdk(email))
-        pg.route("**/*.firebasedatabase.app/**", fb)
-        pg.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        pg.route("**firebasedatabase.app/**", fb)
+        pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.goto("http://localhost:8972/stats.html")
         pg.wait_for_timeout(1100)
         return pg
