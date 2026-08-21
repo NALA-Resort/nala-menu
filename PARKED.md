@@ -99,6 +99,32 @@ None of these moved today, and none of them can move without you.
    in and live. Only the 6:00 to 6:30 seating is a real fact; the rest is mine
    and should be yours. `prearrival.html`, id `dineHelp`.
 
+## 10. Two finished worker edits, held back for the ETA upgrade
+
+Found uncommitted on the Windows machine, 21 Aug, written by an earlier
+session and never published. Both look complete. Parked so the ETA upgrade
+starts from a clean tree; they live in `git stash` on that machine under the
+message "PARKED: phone scrub in worker+index".
+
+1. **Stop syncing the guest's phone number to the open booking node.** The
+   pre-arrival link opens `/bookings/<id>/pms` without a login, and the phone
+   sat there earning nothing: no guest page ever displayed it. The edit nulls
+   it in the Worker (clearing old bookings on their next event) and drops the
+   dead read in `index.html`. Staff screens read the phone from `/stays` and
+   are unaffected.
+2. **A diagnostic to learn the Mews customer id field name.** `customerId` has
+   never arrived from a live event, so a dietary cannot outlive its booking.
+   The edit reports the payload's top level key names in the Worker's response
+   so the Zap history shows what Mews actually calls it. Temporary by design.
+
+## 11. A "logs" upgrade, named 21 Aug
+
+Accepted risk: a guest holding their pre-arrival link can erase, though never
+set or fake, reception's approved arrival hour. The board then falls back to
+the 2pm default. Accepted because preventing it means restructuring the node.
+The future answer is an audit trail, working name **logs**, searchable, so a
+value that goes missing can be traced to who and when.
+
 ## 9. Left over from the print work: all cleared
 
 These were another chat's while it owned the print pages. That arrangement
