@@ -4,7 +4,10 @@ os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*a): pass
 socketserver.TCPServer.allow_reuse_address=True
-httpd=socketserver.TCPServer(("",8957),Q)
+# Threaded, not single threaded: Chromium opens speculative connections that
+# never carry a request, and a one thread server blocks on the first of them
+# forever. Never seen on Linux, deadlocked every run on Windows.
+httpd=http.server.ThreadingHTTPServer(("",8957),Q)
 threading.Thread(target=httpd.serve_forever,daemon=True).start(); time.sleep(0.3)
 def sdk(email):
     return """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
@@ -1732,6 +1735,111 @@ with sync_playwright() as p:
     ck("which puts it back to what the booking says", job_of("9") == "clean-pre")
     ck("and leaves nothing behind to disagree with it later",
        "arriving" not in arr_hk.get("9", {}))
+    q.close()
+
+    # ── the expected arrival in the corner ──────────────────────────────
+    # Reception's approved hour wins the display, the guest's slot stands
+    # next, and an arrival that stated nothing draws nothing while still
+    # meaning 2pm. Colour is an instruction: orange for earlier than the
+    # 2pm promise, red from an hour out, neither once the villa is done.
+    # The clock is frozen at 10:00 so the bands are the same whatever time
+    # the suite runs: 11am is inside its red hour, 1pm is not.
+    eta_pre = {
+        "e3":  {"arriveApproved": 11},
+        "e4":  {"arriveApproved": 13},
+        "e6":  {"arriveSlot": "before2"},
+        "e8":  {"arriveSlot": "after5"},
+        "e10": {"arriveSlot": "16"},
+        "e12": {"arriveSlot": "before2", "arriveApproved": 15},
+        "e16": {"arriveApproved": 11},
+    }
+    eta_last = {
+        "3":  {"id": "x3",  "arrive": plus(-2), "depart": today},
+        "5":  {"id": "x5",  "arrive": plus(-2), "depart": today},
+        "16": {"id": "x16", "arrive": plus(-2), "depart": today},
+    }
+    eta_tonight = {
+        "3":  {"id": "e3",  "arrive": today, "depart": plus(2)},
+        "4":  {"id": "e4",  "arrive": today, "depart": plus(2)},
+        "6":  {"id": "e6",  "arrive": today, "depart": plus(2)},
+        "8":  {"id": "e8",  "arrive": today, "depart": plus(2)},
+        "10": {"id": "e10", "arrive": today, "depart": plus(1)},
+        "12": {"id": "e12", "arrive": today, "depart": plus(1)},
+        "14": {"id": "e14", "arrive": today, "depart": plus(1)},
+        "16": {"id": "e16", "arrive": today, "depart": plus(1)},
+    }
+    eta_hk = {"16": {"done": now.isoformat()}, "5": {"departed": True}}
+    def eta_fb(route, request):
+        u = request.url
+        if request.method != "GET":
+            fb(route, request); return
+        if "/stays/" + yest in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(eta_last)); return
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(eta_tonight)); return
+        if "/prearrival" in u:
+            bid = u.split("/bookings/")[1].split("/")[0]
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(eta_pre.get(bid))); return
+        if "/hk/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(eta_hk)); return
+        if "/roomguests/" in u or "/responses/" in u or "/manual/" in u \
+           or "/hk/" in u or "/dinner/" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body="null"); return
+        fb(route, request)
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.add_init_script("""(function(){
+      const R = Date, fixed = new R(%d, %d, %d, 10, 0, 0).getTime();
+      window.Date = class extends R {
+        constructor(...a){ a.length ? super(...a) : super(fixed); }
+        static now(){ return fixed; }
+      };
+    })();""" % (now.year, now.month - 1, now.day))
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body=sdk("staff@nalaresort.com.au")))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", eta_fb)
+    q.goto("http://localhost:8957/cleaners.html"); q.wait_for_timeout(2000)
+    etas = q.evaluate("""()=>{const o={};document.querySelectorAll('#grid .tile').forEach(t=>{
+      const n=t.querySelector('.rn').textContent, e=t.querySelector('.eta');
+      o[n]=e?{txt:e.textContent, cls:e.className, col:getComputedStyle(e).color,
+              aria:e.getAttribute('aria-label')}:null;});return o;}""")
+    print("   corner etas:", etas)
+    ck("an approved 11am renders as itself", etas["3"] and etas["3"]["txt"] == "11am")
+    ck("and at 10:00 it is inside its red hour, and red beats orange",
+       "due" in etas["3"]["cls"] and etas["3"]["col"] == "rgb(168, 50, 30)")
+    ck("an approved 1pm is orange: ahead of the 2pm promise",
+       etas["4"] and etas["4"]["txt"] == "1pm" and "early" in etas["4"]["cls"]
+       and etas["4"]["col"] == "rgb(232, 137, 26)")
+    ck("before2 shows its bound, sign first, and is orange",
+       etas["6"] and etas["6"]["txt"] == "<2pm" and "early" in etas["6"]["cls"])
+    ck("after5 shows its bound and is plain grey at 10:00",
+       etas["8"] and etas["8"]["txt"] == ">5pm" and "early" not in etas["8"]["cls"]
+       and "due" not in etas["8"]["cls"] and etas["8"]["col"] == "rgb(85, 85, 79)")
+    ck("a guest slot renders as its hour", etas["10"] and etas["10"]["txt"] == "4pm")
+    ck("an approved hour beats the guest's before2, including the display",
+       etas["12"] and etas["12"]["txt"] == "3pm" and "early" not in etas["12"]["cls"])
+    ck("an arrival that stated nothing draws nothing, though it means 2pm",
+       etas["14"] is None)
+    ck("a villa with no arrival shows no time at all", etas["5"] is None)
+    ck("a finished villa keeps the time and loses the colour",
+       etas["16"] and etas["16"]["txt"] == "11am"
+       and "due" not in etas["16"]["cls"] and "early" not in etas["16"]["cls"])
+    ck("the corner names itself for a screen reader",
+       etas["3"]["aria"] == "Arriving 11am"
+       and etas["6"]["aria"] == "Arriving before 2pm")
+    # The corner must not change what the tile is: 3 is a turnover clean
+    # with an arrival, 4 is a plain pre-arrival.
+    kinds = q.evaluate("""()=>{const g=n=>[...document.querySelectorAll('#grid .tile')]
+      .find(t=>t.querySelector('.rn').textContent===n).querySelector('.chip');
+      return {three:g('3').dataset.job, four:g('4').dataset.job};}""")
+    ck("the tile under the corner keeps its job",
+       kinds["three"] == "clean-pre" and kinds["four"] == "pre")
     q.close()
 
     b.close()

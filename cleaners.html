@@ -102,6 +102,7 @@
                        font-size:8px; border-radius:8px; }
     .tile .task-icons { top:3px; left:3px; }
     .tile .task-icons svg { width:11px; height:11px; }
+    .tile .eta { top:3px; left:3px; font-size:8px; }
     .legend { padding:3px 4px !important; font-size:5.5px !important;
               gap:1px !important; }
     .legend .lgb { width:11px; height:5px; }
@@ -252,6 +253,17 @@
                       gap:3px; color:#55554F; }
   .tile .task-icons svg { width:14px; height:14px; display:block; }
   .tile.done .task-icons { opacity:.4; }
+  /* When the guest lands, top left, time only. Grey at rest, in the same ink
+     as the strip and linen marks. Orange and red are instructions, so a
+     finished villa never carries them: the time stays readable, the urgency
+     is spent. The saturated --amberbar, not --amberb: this is 9.5px bold and
+     the muted gold disappears at that size (see the bar note above). */
+  .tile .eta { position:absolute; top:5px; left:5px; font-family:var(--ui-font);
+               font-size:9.5px; font-weight:bold; letter-spacing:.02em;
+               color:#55554F; }
+  .tile .eta.early { color:var(--amberbar); }
+  .tile .eta.due { color:var(--red); }
+  .tile.done .eta { opacity:.4; }
   .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
   .tile .sub b { color:var(--ink); }
   /* The clock on an available villa, and the only place on this board where
@@ -796,6 +808,28 @@ function arrivingNow(row, h){
   return !!(row && row.arrivingBooked);
 }
 
+/* When the arriving guest lands, as an hour on the 24 hour clock. Reception's
+   approved hour wins outright; the guest's own slot stands next; and 2pm
+   stands for every arrival that says nothing, because 2pm is the resort's
+   standing promise, not a guess. disp is empty for that silent default: it
+   sorts and warns like a stated 2pm but nobody set it, so nothing is drawn. */
+function effectiveEta(villa){
+  var pre = PREARRIVAL_BY_VILLA[String(villa)] || {};
+  var ap = Number(pre.arriveApproved);
+  if (pre.arriveApproved != null && ap >= 11 && ap <= 23)
+    return { h: ap, disp: hour12(ap), early: ap < 14 };
+  var s = String(pre.arriveSlot || '');
+  if (s === 'before2') return { h: 14, disp: '<2pm', early: true };
+  if (s === 'after5')  return { h: 17, disp: '>5pm', early: false };
+  if (s === '14' || s === '15' || s === '16' || s === '17')
+    return { h: +s, disp: hour12(+s), early: false };
+  return { h: 14, disp: '', early: false };
+}
+function hour12(h){ return (h > 12 ? h - 12 : h) + (h < 12 ? 'am' : 'pm'); }
+function etaWord(disp){
+  return disp === '<2pm' ? 'before 2pm' : disp === '>5pm' ? 'after 5pm' : disp;
+}
+
 /* The key. Held rather than looked up, because every render clears the grid
    it now lives in, and a lookup after the first clear finds nothing. */
 var LEGEND = null;
@@ -955,8 +989,26 @@ function render(){
         (h.linen ? '<span role="img" aria-label="Fresh linen on" title="Fresh linen on">'+ICON_LINEN_SM+'</span>' : '')+
         '</span>';
     }
+    /* The expected arrival, drawn top left and listed last like the other
+       corner marks. Red only when viewing today: on a browsed day the clock
+       this compares against belongs to a different day entirely, the same
+       reasoning as the elapsed timer above. */
+    var eta='';
+    if (row.kind!=='vac' && arrivingNow(row, h)){
+      var ev = effectiveEta(row.n);
+      if (ev.disp){
+        var ecls='eta';
+        if (!h.done && !h.pushed){
+          if (isToday() && new Date().getHours() >= ev.h - 1) ecls+=' due';
+          else if (ev.early) ecls+=' early';
+        }
+        eta='<span class="'+ecls+'" role="img"'+
+            ' aria-label="Arriving '+etaWord(ev.disp)+'"'+
+            ' title="Arriving '+etaWord(ev.disp)+'">'+esc(ev.disp)+'</span>';
+      }
+    }
     el.innerHTML='<span class="rn">'+row.n+'</span>'+chip+
-                 '<span class="sub">'+sub+'</span>'+badge+tasks;
+                 '<span class="sub">'+sub+'</span>'+badge+tasks+eta;
     el.onclick = function(){
       if (selectMode){
         if (!selectableRow(row)) return;
