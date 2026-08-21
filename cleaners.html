@@ -100,9 +100,9 @@
     .tile .sub { font-size:8px !important; min-height:10px !important; }
     .tile .who-badge { bottom:3px; right:3px; min-width:16px; height:16px;
                        font-size:8px; border-radius:8px; }
-    .tile .task-icons { top:3px; right:3px; }
+    .tile .task-icons { top:3px; left:3px; }
     .tile .task-icons svg { width:11px; height:11px; }
-    .tile .eta { top:3px; left:3px; font-size:8px; }
+    .tile .eta { top:3px; right:3px; font-size:8px; }
     .legend { padding:3px 4px !important; font-size:5.5px !important;
               gap:1px !important; }
     .legend .lgb { width:11px; height:5px; }
@@ -245,20 +245,21 @@
                      justify-content:center; box-sizing:border-box; }
   .tile .who-badge.mine { background:var(--cream); color:var(--ink); }
   /* Strip and fresh linen: the two jobs a helper can do ahead of a clean.
-     On the tile they live in the top-right corner, above the who badge,
-     and only when done - an absent mark is the default and costs nothing.
-     Dark grey rather than a job colour, because colour on this board means
-     which job is ready, and these say a part is already finished.       */
-  .tile .task-icons { position:absolute; top:5px; right:5px; display:flex;
+     On the tile they live in the top-left corner, and only when done - an
+     absent mark is the default and costs nothing. Dark grey rather than a
+     job colour, because colour on this board means which job is ready, and
+     these say a part is already finished.                               */
+  .tile .task-icons { position:absolute; top:5px; left:5px; display:flex;
                       gap:3px; color:#55554F; }
   .tile .task-icons svg { width:14px; height:14px; display:block; }
   .tile.done .task-icons { opacity:.4; }
-  /* When the guest lands, top left, time only. Grey at rest, in the same ink
-     as the strip and linen marks. Orange and red are instructions, so a
-     finished villa never carries them: the time stays readable, the urgency
-     is spent. The saturated --amberbar, not --amberb: this is 9.5px bold and
-     the muted gold disappears at that size (see the bar note above). */
-  .tile .eta { position:absolute; top:5px; left:5px; font-family:var(--ui-font);
+  /* When the guest lands, top right, time only, above the who badge. Grey at
+     rest, in the same ink as the strip and linen marks. Orange and red are
+     instructions, so a finished villa never carries them: the time stays
+     readable, the urgency is spent. The saturated --amberbar, not --amberb:
+     this is 9.5px bold and the muted gold disappears at that size (see the
+     bar note above). */
+  .tile .eta { position:absolute; top:5px; right:5px; font-family:var(--ui-font);
                font-size:9.5px; font-weight:bold; letter-spacing:.02em;
                color:#55554F; }
   .tile .eta.early { color:var(--amberbar); }
@@ -994,7 +995,7 @@ function render(){
        the wrong order for a screen reader and for anything matching on it. */
     /* Strip and linen only exist on a clean: they are the two jobs done ahead
        of one, and a service or a pre-arrival has no linen turnaround for a
-       helper to get ahead of. Same corner rule as the badge: drawn top-right,
+       helper to get ahead of. Same corner rule as the badge: drawn top-left,
        listed last, so the tile still reads villa first. */
     var tasks='';
     if (row.kind==='clean' && (h.stripped || h.linen)){
@@ -1003,7 +1004,7 @@ function render(){
         (h.linen ? '<span role="img" aria-label="Fresh linen on" title="Fresh linen on">'+ICON_LINEN_SM+'</span>' : '')+
         '</span>';
     }
-    /* The expected arrival, drawn top left and listed last like the other
+    /* The expected arrival, drawn top right and listed last like the other
        corner marks. Red only when viewing today: on a browsed day the clock
        this compares against belongs to a different day entirely, the same
        reasoning as the elapsed timer above. */

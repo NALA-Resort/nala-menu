@@ -1862,10 +1862,11 @@ with sync_playwright() as p:
        eordr[3:9] == ["4", "6", "14", "12", "10", "8"])
     ck("a finished villa sinks whatever its hour", eordr[9] == "16")
 
-    # ── the corners: ETA top left, icons top right, badge bottom right ──
-    # Asserted as geometry rather than declared style, because the two
-    # faults worth catching are a corner that did not move and two corner
-    # marks drawn on top of each other.
+    # ── the corners: icons top left, ETA top right, badge bottom right ──
+    # The owner moved the time to the right on 21 Aug, over the badge, with
+    # the strip marks opposite. Asserted as geometry rather than declared
+    # style, because the two faults worth catching are a corner that did not
+    # move and two corner marks drawn on top of each other.
     def corners(pgx):
         return pgx.evaluate("""()=>{const t=[...document.querySelectorAll('#grid .tile')]
           .find(x=>x.querySelector('.rn').textContent==='3');
@@ -1875,14 +1876,14 @@ with sync_playwright() as p:
                 i=r(t.querySelector('.task-icons')),
                 w=r(t.querySelector('.who-badge'));
           const mid=(T.l+T.r)/2, cy=(T.t+T.b)/2;
-          return {etaLeftTop: e.l<mid && e.t<cy,
-                  iconsRightTop: i.l>mid && i.t<cy,
+          return {iconsLeftTop: i.r<mid && i.t<cy,
+                  etaRightTop: e.l>mid && e.t<cy,
                   badgeRightBottom: w.l>mid && w.b>cy && w.t>cy,
-                  apart: e.r<=i.l && i.b<=w.t };}""")
+                  apart: i.r<=e.l && e.b<=w.t };}""")
     c = corners(q)
     print("   corners:", c)
-    ck("the time sits top left", c["etaLeftTop"])
-    ck("the strip mark sits top right", c["iconsRightTop"])
+    ck("the strip mark sits top left", c["iconsLeftTop"])
+    ck("the time sits top right", c["etaRightTop"])
     ck("the who badge sits bottom right", c["badgeRightBottom"])
     ck("and no two corner marks overlap", c["apart"])
     # The same three corners hold in the landscape breakpoint, which carries
@@ -1890,8 +1891,8 @@ with sync_playwright() as p:
     q.set_viewport_size({"width": 700, "height": 500}); q.wait_for_timeout(400)
     c = corners(q)
     print("   corners landscape:", c)
-    ck("landscape: time top left, icons top right, badge bottom right",
-       c["etaLeftTop"] and c["iconsRightTop"] and c["badgeRightBottom"])
+    ck("landscape: icons top left, time top right, badge bottom right",
+       c["iconsLeftTop"] and c["etaRightTop"] and c["badgeRightBottom"])
     ck("landscape: still no overlap", c["apart"])
     q.close()
 
