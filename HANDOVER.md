@@ -4,6 +4,23 @@ Written 17 Aug 2026, replacing thirteen documents that had grown to contradict
 each other. **This is the only one you have to read.** Everything else is
 reference, listed at the end.
 
+**21 Aug 2026: the clean screen ETA upgrade shipped**, all three jobs of
+`CLEAN-SCREEN-ETA-UPGRADE.md`. The cleans tile shows when its guest lands,
+top left, grey then orange then red, and arrivals sort by hour inside the
+existing bands; reception approves an hour at the desk, 11am to 11pm, beside
+what the guest asked; and the Worker gained a five minute cron that buzzes a
+housekeeper once when a villa enters its red hour unclaimed. The rules paste
+of the same day carries `arriveApproved` and the `/alerts` marker node.
+Unproven from here: whether nala-push forwards the new `arriving` event, and
+the notify matrix row for it. Built on a Windows machine, which surfaced that
+every suite's route glob was silently missing its fixtures on current
+Playwright, that the one thread file server deadlocks against Chromium, and
+that `sweep:staff` died on the legacy codepage: all fixed in the suites, not
+the pages. The Clean Sheet's "17 jobs fits A5" check fails on that machine's
+real fonts and needs one real print to settle. The badge on a 320 point
+screen can cover the tail of the state word since the corners swapped: raised
+with the owner, undecided.
+
 **Last worked on 18 Aug 2026**, commit `ccf0094`. That day added test suites for
 five untested pages, `.validate` rules on all fourteen nodes, the Mews timezone
 fix, dated notes provenance, the cleans availability timer, the menu publish
