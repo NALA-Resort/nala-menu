@@ -655,7 +655,25 @@ document.getElementById('selToggle').onclick = function(){
    through this board, and every load carries the older state in before
    anyone can write - so the newest day with records already holds
    everything still open behind it. */
+/* Answered once per page. The poll runs this every twenty seconds and the
+   answer cannot have changed: the walk reads days BEFORE the viewed one, the
+   carry stamps itself into the viewed day's record and never writes back, and
+   the date is a page reload, so VIEW is fixed for as long as this page lives.
+   Uncached it cost a wasted request every twenty seconds on a good day, and
+   fourteen sequential ones on a board nobody had opened in a fortnight, which
+   is exactly the board most likely to be someone's phone on a slow morning.
+
+   The promise is held rather than the value, so two loads racing at startup
+   share one walk instead of each starting their own.
+
+   Dropped on failure. A cached rejection would be permanent, and the next
+   poll must be free to try again. The rejection is still returned to this
+   caller, so a failed walk fails its load exactly as it did before. */
+var LASTHK = null;
+
 function lastHk(maxDays){
+  var vk = dkey(VIEW);
+  if (LASTHK && LASTHK.key === vk) return LASTHK.p;
   function step(i){
     if (i >= maxDays) return Promise.resolve({ key:null, data:{} });
     var d = new Date(VIEW); d.setDate(d.getDate()-1-i);
@@ -665,7 +683,9 @@ function lastHk(maxDays){
       return step(i+1);
     });
   }
-  return step(0);
+  LASTHK = { key:vk, p:step(0) };
+  LASTHK.p.catch(function(){ if (LASTHK && LASTHK.key === vk) LASTHK = null; });
+  return LASTHK.p;
 }
 
 function load(full){

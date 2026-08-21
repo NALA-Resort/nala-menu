@@ -1151,6 +1151,17 @@ with sync_playwright() as p:
     ck("a poll costs far less than a full load (%d vs %d)" % (poll, first), poll <= first/3)
     ck("a poll refetches none of the fortnight of roomguests",
        not any("/roomguests/" in u for u in hits))
+    #  The walk back for the last night with records is answered once per
+    #  page. It reads days BEFORE the viewed one, the carry stamps itself into
+    #  the viewed day and never writes back, and changing the date is a page
+    #  reload, so the answer cannot move while this page is open. Uncached it
+    #  cost a request every twenty seconds on a good day and fourteen of them
+    #  on a board nobody had opened in a fortnight.
+    days = [u for u in hits if re.search(r"/hk/\d{4}-\d{2}-\d{2}\.json", u)]
+    ck("a poll reads one day of housekeeping, not two (%d)" % len(days),
+       len(days) == 1)
+    ck("and the one it reads is the day on screen",
+       bool(days) and today in days[0])
     hits.clear()
     pg.evaluate("()=>load(true)"); pg.wait_for_timeout(900)
     ck("a full load does refetch them, so bookings are never stale",
@@ -1481,8 +1492,8 @@ with sync_playwright() as p:
     # border is one colour on a two colour bar, so it takes the half it
     # starts with.
     ck("and it leads with the clean, which has to happen first",
-       grad["img"].index("rgb(138, 144, 168)") < grad["img"].index("rgb(232, 137, 26)")
-       and grad["border"] == "rgb(138, 144, 168)")
+       grad["img"].index("rgb(46, 116, 192)") < grad["img"].index("rgb(232, 137, 26)")
+       and grad["border"] == "rgb(46, 116, 192)")
     ck("and carries one label, not two",
        q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
                   ".find(t=>t.innerText.startsWith('9'))"
@@ -1634,9 +1645,9 @@ with sync_playwright() as p:
     # was still outstanding. The tile already says done by its colour and by
     # the time underneath.
     ck("a finished clean is still a clean's colour",
-       look["1"]["border"] == "rgb(138, 144, 168)")
+       look["1"]["border"] == "rgb(46, 116, 192)")
     ck("a finished service is still a service's colour",
-       look["4"]["border"] == "rgb(126, 147, 122)")
+       look["4"]["border"] == "rgb(78, 143, 74)")
     ck("a finished pre-arrival keeps its own colour too",
        look["11"]["border"] == "rgb(232, 137, 26)")
     ck("and every finished pill fades the same way, whatever the job",
@@ -1649,7 +1660,7 @@ with sync_playwright() as p:
     ck("a finished clean with an arrival is still told apart from a plain one",
        look["9"]["striped"] and not look["1"]["striped"])
     ck("and still shows both jobs it was",
-       "rgb(138, 144, 168)" in look["9"]["img"]
+       "rgb(46, 116, 192)" in look["9"]["img"]
        and "rgb(232, 137, 26)" in look["9"]["img"])
 
     # Who did it. A finished board that cannot say who did the work is a board
