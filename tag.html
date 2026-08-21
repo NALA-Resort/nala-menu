@@ -280,7 +280,12 @@
   function failedRead(v){ return !!(v && v.__failed !== undefined); }
 
   Promise.all([
-    fetch('menu.json?v='+Date.now()).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }),
+    /* Tonight's menu, from wherever it was published. Publishing moved off
+       GitHub into the database at /menu, so the repo file is no longer
+       written and reading it alone showed a chef the menu he published
+       before the move. fetchMenuAnywhere tries the database first and falls
+       back to the file, which is what every other reader does. */
+    fetchMenuAnywhere(),
     readNode('/dietaries'),
     readNode('/menutags/'+todayKey())
   ]).then(function(res){

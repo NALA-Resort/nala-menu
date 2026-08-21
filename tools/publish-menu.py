@@ -24,12 +24,14 @@ Usage, from the chat:
 """
 
 import json
+import time
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone, timedelta
 
 AEST = timezone(timedelta(hours=10))
 DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app"
+TAG_URL = "https://menu.nalaresort.com/tag.html"
 API_KEY = "AIzaSyA0zAzL-zfPivrIRhY_ip8BABjuYVMlzqI"
 SIGNIN = ("https://identitytoolkit.googleapis.com/v1/"
           "accounts:signInWithPassword?key=" + API_KEY)
@@ -129,4 +131,15 @@ def publish(who, courses, code=None):
         if d.get("desc"):
             print("         " + d["desc"])
     print("\nIt is on the guests' phones now.")
+
+    # The menu is live but untagged, and an untagged menu checks nothing: the
+    # guest page and the front desk both compare a guest's allergies against
+    # /menutags, so until the courses are tagged a nut allergy meets a nut
+    # dish in silence. Tagging is a separate page and nothing here used to
+    # mention it, which is how a menu could go out with the check switched
+    # off. The link is the last thing printed because it is the next thing to
+    # do, and it is dated so it never opens a cached copy.
+    print("\nNext: mark which courses clash with a dietary. Until that is")
+    print("done tonight's menu warns nobody.")
+    print(TAG_URL + "?v=" + str(int(time.time())))
     return live

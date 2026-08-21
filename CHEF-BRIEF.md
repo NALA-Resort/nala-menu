@@ -98,6 +98,17 @@ can see what the guests are seeing. If it prints nothing, it did not publish.
 
 ## If it does not work
 
+## After publishing: mark the clashes
+
+Publishing puts the menu on the guests' phones. It does not yet warn anybody.
+
+The guest page and the front desk both check a guest's declared allergies
+against tonight's tags, so until the courses are tagged a nut allergy meets a
+nut dish in silence. The publisher prints a link when it finishes. Open it,
+tick which dietaries each course clashes with, save.
+
+It takes under a minute and it is the half that does the protecting.
+
 **"Could not sign in"** - wrong passcode. It is the same six digits that open
 the app, not a Google or a GitHub account.
 

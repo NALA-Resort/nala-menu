@@ -50,7 +50,7 @@ STAFF = {"chef@x": {"name": "Chef", "role": "chef"},
          "waiter@x": {"name": "Waiter", "role": "waiter"},
          "housekeeping@x": {"name": "HK", "role": "housekeeping"}}
 
-STATE = {"menu": FULL_MENU, "master": MASTER, "tags": {"main": ["Nut allergy"]},
+STATE = {"menu": FULL_MENU, "fileMenu": True, "master": MASTER, "tags": {"main": ["Nut allergy"]},
          "failMaster": False, "failTags": False, "failSave": False}
 WRITES = []
 
@@ -99,10 +99,19 @@ with sync_playwright() as p:
         pg.add_init_script(sdk(email))
         pg.route("**/*.firebasedatabase.app/**", fb)
         pg.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
-        pg.route("**/menu.json*", lambda r: r.fulfill(
-            status=(404 if STATE["menu"] is None else 200),
-            content_type="application/json",
-            body=("" if STATE["menu"] is None else json.dumps(STATE["menu"]))))
+        #  The database node is /menu, which over REST is spelled
+        #  .../menu.json, exactly like the repo file. One route used to catch
+        #  both, so a page reading only the stale file looked fine here. They
+        #  are answered separately now: the file can be missing while the
+        #  database has tonight's menu, which is the arrangement since
+        #  publishing moved off GitHub.
+        def menu_route(r):
+            from_db = "firebasedatabase.app" in r.request.url
+            have = STATE["menu"] if (from_db or STATE["fileMenu"]) else None
+            r.fulfill(status=(404 if have is None else 200),
+                      content_type="application/json",
+                      body=("" if have is None else json.dumps(have)))
+        pg.route("**/menu.json*", menu_route)
         pg.goto("http://localhost:8973/tag.html")
         pg.wait_for_timeout(900)
         return pg
@@ -203,6 +212,19 @@ with sync_playwright() as p:
     ck("but the dietary itself is kept, archived, not deleted",
        json.loads(wrote("/dietaries")[0]["b"]).get("Nut allergy", {}).get("active") is False)
     pg.close()
+
+    # ── published to the database, with no file at all ────────
+    #  Publishing moved into the database, so menu.json in the repo is no
+    #  longer written. A chef who publishes tonight and comes here to tag it
+    #  must see tonight's courses, not be told to publish a menu he has just
+    #  published.
+    STATE["fileMenu"] = False
+    pg.close(); pg = open_tag()
+    ck("a menu published to the database is offered for tagging",
+       pg.locator(".course.show").count() == 4)
+    ck("with the menu in the database the page does not ask for one",
+       "show" not in (pg.get_attribute("#nomenu", "class") or ""))
+    STATE["fileMenu"] = True
 
     # ── a menu that is missing, stale, or short a course ──────
     STATE["menu"] = None
