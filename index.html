@@ -485,10 +485,34 @@
   }
 
   var MENU = null;   // tonight's menu, kept for dietary conflict checks
-  fetch('menu.json?v=' + Date.now())
-    .then(function(r){
-      var lm = r.headers.get('Last-Modified');
-      return r.json().then(function(data){ return { data: data, lastModified: lm }; });
+
+  /* The menu moved into the database on 21 Aug so that publishing needs a
+     staff login rather than a GitHub token, which cannot be narrowed to one
+     file. Its own copy of the read, because this is a guest page and must not
+     load staff code.
+
+     menu.json is still written and still read as the fallback. Guests read
+     this page without signing in and it is the first thing they see, so an
+     empty node or a failed read must not leave them looking at a placeholder
+     while the chef swears the menu is up. */
+  var MENU_DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+  function menuFromNode(){
+    return fetch(MENU_DB + '/menu.json?v=' + Date.now())
+      .then(function(r){ return r.json(); })
+      .then(function(m){
+        return (m && m.published && m.main && m.main.name)
+          ? { data: m, lastModified: null } : null;
+      })
+      .catch(function(){ return null; });
+  }
+  menuFromNode()
+    .then(function(hit){
+      if (hit) return hit;
+      return fetch('menu.json?v=' + Date.now())
+        .then(function(r){
+          var lm = r.headers.get('Last-Modified');
+          return r.json().then(function(data){ return { data: data, lastModified: lm }; });
+        });
     })
     .then(function(res) {
       if (!hasContent(res.data)) return;           // empty -> placeholder

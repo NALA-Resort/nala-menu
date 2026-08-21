@@ -751,6 +751,41 @@ function normaliseRole(r){ return r === 'staff' ? 'admin' : r; }
    before the at sign, which is a poor name but a better one than nothing, and
    never to the full address: these appear on a board a guest can see over a
    shoulder. */
+/* ── tonight's menu ───────────────────────────────────────────────────
+   The menu moved into the database on 21 Aug, so that publishing needs a
+   staff login rather than a GitHub token.
+
+   A GitHub token cannot be narrowed to one file: the smallest scope that can
+   write menu.json is Contents write, which is every file in the repository,
+   including the pages and the Worker. So the chef's credential could change
+   the whole live site, and no amount of care in the brief could stop it. The
+   database CAN be narrowed: /menu is writable by a chef and an admin, and by
+   nobody else, and the rules enforce it rather than the document.
+
+   menu.json is still written alongside, and is still read as the fallback
+   here, deliberately. Four screens read the menu and this is a live resort:
+   the file means that if the node is empty, or a read fails, or something in
+   this change is wrong, the guest's menu does not go dark. It can be dropped
+   once a few services have gone by.                                       */
+function fetchMenuNode(){
+  return fetch(DB + '/menu.json?v=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(m){
+      if (m && m.published && m.main && m.main.name) return m;
+      return null;
+    })
+    .catch(function(){ return null; });
+}
+
+function fetchMenuAnywhere(){
+  return fetchMenuNode().then(function(m){
+    if (m) return m;
+    return fetch('menu.json?v=' + Date.now())
+      .then(function(r){ return r.json(); })
+      .catch(function(){ return null; });
+  });
+}
+
 /* ── a dietary that outlives the booking ──────────────────────────────
    A dietary is about the person, not about a night or a reservation. Kept only
    on the booking, a guest who comes back next year arrives with an empty
@@ -1156,8 +1191,7 @@ function announceMenu(){
      case is a refused request rather than a wrong notification, but there is
      no reason to make it.                                                */
   if (!window.__idToken) return;
-  fetch('menu.json?v=' + Date.now())
-    .then(function(r){ return r.json(); })
+  fetchMenuAnywhere()
     .then(function(m){
       m = m || {};
       var filled = ['bread','entree','main','dessert'].every(function(k){

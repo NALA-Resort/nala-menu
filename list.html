@@ -327,8 +327,7 @@ function depHTML(raw){
 // tonight's tagged menu, for dietary conflict flags
 var MENU = null;
 function fetchMenu(){
-  return fetch('menu.json?v=' + Date.now())
-    .then(function(r){ return r.json(); })
+  return fetchMenuAnywhere()
     .then(function(m){
       m = m || {};
       var filled = ['bread','entree','main','dessert'].every(function(k){

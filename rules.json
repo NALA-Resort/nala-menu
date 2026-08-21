@@ -511,6 +511,72 @@
           ".validate": false
         }
       }
+    },
+    "menu": {
+      ".read": true,
+      ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'chef' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('permissions').child('publishMenu').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
+      "published": {
+        ".validate": "newData.isString() && newData.val().length <= 40"
+      },
+      "bread": {
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
+        },
+        "desc": {
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
+        "aus": {
+          ".validate": "newData.isBoolean()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
+      "entree": {
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
+        },
+        "desc": {
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
+        "aus": {
+          ".validate": "newData.isBoolean()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
+      "main": {
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
+        },
+        "desc": {
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
+        "aus": {
+          ".validate": "newData.isBoolean()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
+      "dessert": {
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
+        },
+        "desc": {
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
+        "aus": {
+          ".validate": "newData.isBoolean()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
+      "$other": {
+        ".validate": false
+      }
     }
   }
 }

@@ -419,5 +419,38 @@ cannotPatch('but not something the length of a paragraph', SYNC,
      !as('st@x').update('/guests/' + CID, {diets:[new Array(100).join('x')]}).allowed);
 })();
 
+
+/* ── publishing the menu ─────────────────────────────────────────────
+ * The menu moved into the database on 21 Aug so that publishing needs a staff
+ * login rather than a GitHub token. A token cannot be narrowed to one file:
+ * the smallest scope that can write menu.json is Contents write, which is
+ * every file in the repository. A role can be narrowed, and these are the
+ * assertions that make that true rather than merely intended.
+ */
+(function menuPublishing(){
+  var data = { staff:{ 'ch@x':{name:'C',role:'chef'}, 'ad@x':{name:'A',role:'admin'},
+                       'wt@x':{name:'W',role:'waiter'} },
+               permissions:{}, menu:{} };
+  var as = function(e){
+    return targaryen.database(RULES, data).as(e ? {uid:e, token:{email:e}} : null);
+  };
+  var M = { published:'2026-08-21T07:54:48+10:00',
+            bread:{name:'Focaccia',desc:'paprika butter',aus:false},
+            entree:{name:'Poblano',desc:'braised beef',aus:false},
+            main:{name:'Kingfish',desc:'corn, saffron',aus:true},
+            dessert:{name:'Tres leches',desc:'coconut',aus:false} };
+  ck('a chef may publish the menu',  as('ch@x').write('/menu', M).allowed);
+  ck('and so may an admin',          as('ad@x').write('/menu', M).allowed);
+  ck('a waiter may not',            !as('wt@x').write('/menu', M).allowed);
+  ck('nor may anybody signed out',  !as(null).write('/menu', M).allowed);
+  /* Guests read the menu without signing in. That is the whole point of it. */
+  ck('a guest signed out can read it', as(null).read('/menu').allowed);
+  ck('a course nobody named is refused',
+     !as('ch@x').write('/menu', Object.assign({}, M, {supper:{name:'x'}})).allowed);
+  ck('the seafood flag must be a flag, not a word',
+     !as('ch@x').write('/menu',
+        Object.assign({}, M, {main:{name:'K',desc:'c',aus:'yes'}})).allowed);
+})();
+
 console.log('RESULT: %d passed, %d failed', P, F);
 process.exit(F ? 1 : 0);

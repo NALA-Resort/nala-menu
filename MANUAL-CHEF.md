@@ -9,9 +9,15 @@ Your evening, in order. Four steps, and the reason for each.
 You do this in the menu chat, not in the app: send the photo, confirm the four
 courses, and it goes live.
 
-Publishing writes the menu to the website itself rather than into the app's
-database. That is why it appears on the guest's phone instantly, and why the
-manager is only told about it once somebody has a board open.
+Publishing writes the menu into the app's database, signed in as you. That is
+why it appears on the guest's phone instantly, and why the manager is only told
+about it once somebody has a board open.
+
+It used to write to the website with a token kept in the chat document. A token
+like that cannot be narrowed to the menu, so anybody holding the document could
+have changed the whole site. Your login can be narrowed: it publishes menus and
+does nothing else. If publishing is refused, your role needs setting to chef in
+Settings, and the manager does that.
 
 **Publish before service, not after.** Guests answering their invitation
 before the menu exists are asked to acknowledge that they are agreeing to a

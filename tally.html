@@ -2218,11 +2218,12 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
 // ── menu published? and archive it for statistics ──────────
 (function menuCheck(){
   var el = document.getElementById('menuState');
-  fetch('menu.json?v=' + Date.now())
-    .then(function(r){
-      var lm = r.headers.get('Last-Modified');
-      return r.json().then(function(m){ return { m:m, lm:lm }; });
-    })
+  /* The node first, the file as the fallback. Last-Modified is not read from
+     the node and was never trustworthy anyway: GitHub rewrites it on every
+     deploy, so the menu's own published stamp is what says when the chef
+     published. */
+  fetchMenuAnywhere()
+    .then(function(m){ return { m:m, lm:null }; })
     .then(function(res){
       var m = res.m || {};
       var filled = ['bread','entree','main','dessert'].every(function(k){
