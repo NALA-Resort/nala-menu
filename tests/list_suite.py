@@ -247,8 +247,11 @@ with sync_playwright() as p:
     pdf7 = q.pdf(format="A4")
     open("/home/claude/nala/_p2_dietpdf.pdf","wb").write(pdf7)
     import subprocess
-    txt = subprocess.run(["pdftotext","/home/claude/nala/_p2_dietpdf.pdf","-"],
-                         capture_output=True, text=True).stdout
+    # -enc UTF-8, because pdftotext defaults to Latin-1 and the runner sets
+    # PYTHONUTF8: a middot in the sheet decoded as invalid UTF-8 and stdout
+    # came back None, which crashed the suite instead of failing a check.
+    txt = subprocess.run(["pdftotext","-enc","UTF-8","/home/claude/nala/_p2_dietpdf.pdf","-"],
+                         capture_output=True, text=True, encoding="utf-8").stdout
     ck("reservation dietary is in the printed PDF text",
        "egg" in txt.lower() and "anaphylaxis" in txt.lower())
     q.close()

@@ -317,6 +317,33 @@ function fetchStays(dateKey){
    and the correction: an earlier version said the night should win, and it
    was wrong. */
 var PREARRIVAL_BY_VILLA = {};
+
+/* When the arriving guest lands, as an hour on the 24 hour clock. Reception's
+   approved hour wins outright; the guest's own slot stands next; and 2pm
+   stands for every arrival that says nothing, because 2pm is the resort's
+   standing promise, not a guess. disp is empty for that silent default: it
+   sorts and warns like a stated 2pm but nobody set it, so nothing is drawn.
+
+   Here rather than in a page, because the Cleans board and the printed Clean
+   Sheet both render it, and two copies of when the guest lands is how screen
+   and paper drift apart. The Worker holds the server side mirror. */
+function effectiveEta(villa){
+  var pre = PREARRIVAL_BY_VILLA[String(villa)] || {};
+  var ap = Number(pre.arriveApproved);
+  if (pre.arriveApproved != null && ap >= 11 && ap <= 23)
+    return { h: ap, disp: hour12(ap), early: ap < 14 };
+  var s = String(pre.arriveSlot || '');
+  if (s === 'before2') return { h: 14, disp: '<2pm', early: true };
+  if (s === 'after5')  return { h: 17, disp: '>5pm', early: false };
+  if (s === '14' || s === '15' || s === '16' || s === '17')
+    return { h: +s, disp: hour12(+s), early: false };
+  return { h: 14, disp: '', early: false };
+}
+function hour12(h){ return (h > 12 ? h - 12 : h) + (h < 12 ? 'am' : 'pm'); }
+function etaWord(disp){
+  return disp === '<2pm' ? 'before 2pm' : disp === '>5pm' ? 'after 5pm' : disp;
+}
+
 function overlayReservationDiets(rec, villa){
   if (!rec) return rec;
   var pre = PREARRIVAL_BY_VILLA[String(villa)];

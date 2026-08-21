@@ -21,6 +21,16 @@ real fonts and needs one real print to settle. The badge on a 320 point
 screen can cover the tail of the state word since the corners swapped: raised
 with the owner, undecided.
 
+Later the same day the owner reported the printed Clean Sheet's badges not
+matching the board, and was right: the sheet never received the board's
+19 Aug two-night fix, so a same day turnover printed as a Pre-arrival and a
+plain departure fell off the paper into the To verify count. The sheet now
+reads both nights and the carried marks, read only, and prints the arrival
+hour beside the day. effectiveEta moved to nala-shared.js so board and paper
+render one definition; the Worker keeps the server side mirror. The owner
+also moved the tile's time to the top right, over the badge, strip marks to
+the left.
+
 **Last worked on 18 Aug 2026**, commit `ccf0094`. That day added test suites for
 five untested pages, `.validate` rules on all fourteen nodes, the Mews timezone
 fix, dated notes provenance, the cleans availability timer, the menu publish

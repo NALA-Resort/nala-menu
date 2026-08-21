@@ -576,7 +576,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=23"></script>
+<script src="nala-shared.js?v=24"></script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
 /* Browsed dates, same header as every other board: ‹ › Today, and the date
@@ -809,27 +809,9 @@ function arrivingNow(row, h){
   return !!(row && row.arrivingBooked);
 }
 
-/* When the arriving guest lands, as an hour on the 24 hour clock. Reception's
-   approved hour wins outright; the guest's own slot stands next; and 2pm
-   stands for every arrival that says nothing, because 2pm is the resort's
-   standing promise, not a guess. disp is empty for that silent default: it
-   sorts and warns like a stated 2pm but nobody set it, so nothing is drawn. */
-function effectiveEta(villa){
-  var pre = PREARRIVAL_BY_VILLA[String(villa)] || {};
-  var ap = Number(pre.arriveApproved);
-  if (pre.arriveApproved != null && ap >= 11 && ap <= 23)
-    return { h: ap, disp: hour12(ap), early: ap < 14 };
-  var s = String(pre.arriveSlot || '');
-  if (s === 'before2') return { h: 14, disp: '<2pm', early: true };
-  if (s === 'after5')  return { h: 17, disp: '>5pm', early: false };
-  if (s === '14' || s === '15' || s === '16' || s === '17')
-    return { h: +s, disp: hour12(+s), early: false };
-  return { h: 14, disp: '', early: false };
-}
-function hour12(h){ return (h > 12 ? h - 12 : h) + (h < 12 ? 'am' : 'pm'); }
-function etaWord(disp){
-  return disp === '<2pm' ? 'before 2pm' : disp === '>5pm' ? 'after 5pm' : disp;
-}
+/* effectiveEta, hour12 and etaWord live in nala-shared.js: the printed Clean
+   Sheet renders the same hour, and the sheet going blind to what a board
+   shows is a fault this file has already paid for once. */
 
 /* The key. Held rather than looked up, because every render clears the grid
    it now lives in, and a lookup after the first clear finds nothing. */

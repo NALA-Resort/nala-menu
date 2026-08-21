@@ -174,7 +174,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=23"></script>
+<script src="nala-shared.js?v=24"></script>
 <script>
 // date state + header wiring, dates, look-back: nala-shared.js
 var nav = initDateNav();
@@ -191,13 +191,55 @@ var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
 
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
+/* The most recent day before the viewed one with hk records, walking back a
+   fortnight, exactly as the Cleans board does: a strip marked Saturday still
+   reaches Monday's sheet. Read only. The board owns writing the carry. */
+function lastHk(maxDays){
+  function step(i){
+    if (i >= maxDays) return Promise.resolve({ key:null, data:{} });
+    var d = new Date(VIEW); d.setDate(d.getDate()-1-i);
+    return api('/hk/'+dkey(d)).then(function(v){
+      if (v && typeof v === 'object' && Object.keys(v).length) return { data:v };
+      return step(i+1);
+    });
+  }
+  return step(0);
+}
+
+var yest = (function(){ var d=new Date(VIEW); d.setDate(d.getDate()-1); return dkey(d); })();
+
+/* Last night as well as tonight, the fix the board got on 19 Aug and this
+   sheet did not: /stays files a guest under the nights they SLEEP, so
+   somebody who checked out this morning is not in tonight's file at all.
+   They are the person this sheet exists for. Reading only tonight printed a
+   same day turnover as a Pre-arrival and dropped a plain departure into the
+   To verify count, off the paper entirely. */
 Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
-              fetchRoomGuests(todayKey()), api('/hk/'+todayKey()), fetchStays(todayKey()) ])
+              fetchRoomGuests(todayKey()), api('/hk/'+todayKey()), fetchStays(todayKey()),
+              api('/stays/'+yest), lastHk(14) ])
   .then(function(res){
     var responses  = res[0] || {};
     var manual     = res[1] || {};
-    var roomguests = overlayStays(resolveRoomGuestsHK(res[2] || {}, todayKey()), res[4]);
     var hk         = res[3] || {};
+    var tonight    = res[4] || {};
+    var lastNight  = res[5] || {};
+    var prevHk     = (res[6] || {}).data || {};
+    /* Last night underneath, tonight over the top, like the board: a villa
+       occupied both nights reads as tonight's guest, and a villa emptied
+       this morning still reads as the guest who left. */
+    var roomguests = overlayStays(
+      overlayStays(resolveRoomGuestsHK(res[2] || {}, todayKey()), lastNight),
+      tonight);
+
+    /* Somebody arrives into the villa today, from either source, with the
+       manager's override read the way the board reads it at draw time. */
+    var arriving = {};
+    var rgToday = (res[2] || {})[todayKey()] || {};
+    for (var rv in rgToday){ if (rgToday[rv] && rgToday[rv].arrives) arriving[rv] = true; }
+    for (var sv in tonight){
+      var t = tonight[sv] || {};
+      if (t.arrive && String(t.arrive).slice(0,10) === todayKey()) arriving[sv] = true;
+    }
 
     function fmtT(iso){
       var d = parseISO(iso);
@@ -210,11 +252,31 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
     var rows=[], nClean=0, nSvc=0, nVer=0;
     for (var n=1; n<=ROOMS; n++){
       var r = roomRecord(n, responses, manual, roomguests);
-      var kind = hkClassify(r, todayKey(), hk[n]);
+      var ct = hk[n] || {}, cp = prevHk[n] || {};
+      /* The carry, derived the way the board derives it before writing it:
+         a departure or a push left open on the newest previous day is a
+         departed clean today, however many midnights ago that became true.
+         Derived in memory only. */
+      var pushedIn = !!(cp.pushed && !cp.done);
+      var carriedDep = !!(ct.carried && ct.departed && !ct.done) ||
+        (!(ct.carried || ct.done || cp.done) &&
+         (cp.departed || cp.pushed) && ct.departed === undefined);
+      var goneIn = pushedIn || carriedDep;
+      /* Same day turnover: only the two night files can tell it from a plain
+         arrival, and it is a clean first, exactly as on the board. */
+      var ln = lastNight[String(n)];
+      var left = !!(ln && ln.depart &&
+                    String(ln.depart).slice(0,10) === todayKey());
+      var kOver = (ct.kind==='clean'||ct.kind==='svc'||ct.kind==='pre'||ct.kind==='vac')
+                  ? ct.kind : null;
+      var kind = kOver || (goneIn ? 'clean' : hkClassify(r, todayKey(), null, left));
+      var arr = ct.arriving === true ? true
+              : ct.arriving === false ? false : !!arriving[n];
       if (kind==='clean') nClean++;
       else if (kind==='svc') nSvc++;
       else if (kind==='ver') nVer++;
-      rows.push({ n:n, rec:r||{}, kind:kind });
+      rows.push({ n:n, rec:r||{}, kind:kind, arr:arr,
+                  departed: !!(ct.departed || carriedDep) });
     }
 
     var order={svc:0, clean:1, pre:2, ver:3, vac:4};   // services first: done at breakfast
@@ -249,15 +311,26 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
       var boxes = (row.kind==='vac') ? ['',''] : ['<span class="box"></span>','<span class="box"></span>'];
       var mk = hk[String(row.n)] || {};
       if (mk.done) boxes[0] = '<span class="donemark">&#10003; '+fmtT(mk.done)+'</span>';
+      /* Pushed off today's list is not done and not waiting for a tick, and
+         a tick box on it invites the wrong mark. */
+      else if (mk.pushed) boxes[0] = '<span class="muted">Pushed</span>';
       if (row.kind!=='vac'){
-        if (mk.departed)      chip += '<div class="subtag">Departed</div>';
+        if (row.departed)     chip += '<div class="subtag">Departed</div>';
         else if (mk.bfast && !mk.done) chip += '<div class="subtag">At breakfast '+fmtT(mk.bfast)+'</div>';
+      }
+      /* When the guest lands, beside the day they land, resolved by the same
+         shared rule the board draws: stated times only, so a silent 2pm
+         stays silent on paper too. */
+      var arrCell = fmtD(g.arrives);
+      if (row.arr && (row.kind==='clean' || row.kind==='pre')){
+        var ev = effectiveEta(row.n);
+        if (ev.disp) arrCell += (arrCell ? ' · ' : '') + ev.disp;
       }
       tb.insertAdjacentHTML('beforeend',
         '<tr'+cls+'>'+
           '<td class="c-room">'+row.n+'</td>'+
           '<td class="c-svc">'+chip+'</td>'+
-          '<td class="c-arr">'+fmtD(g.arrives)+'</td>'+
+          '<td class="c-arr">'+arrCell+'</td>'+
           '<td class="c-dep">'+fmtD(g.departs)+'</td>'+
           '<td class="c-done">'+boxes[0]+'</td>'+
           '<td class="c-notes"></td>'+

@@ -139,7 +139,68 @@ with sync_playwright() as p:
     err=pg.evaluate("()=>({t:document.getElementById('rows').textContent,cs:(document.querySelector('#rows td')||{}).colSpan||0})")
     ck("load failure shows red message across 7 cols", "Could not load" in err["t"] and err["cs"]==7)
     STATE["break"]=False
-    pg.close(); b.close()
+    pg.close()
+
+    # ── the sheet reads both nights, like the board it prints ───────────
+    # Reported 21 Aug: the badges did not match the jobs. The sheet read only
+    # tonight's stays, so a same day turnover printed as a Pre-arrival and a
+    # plain departure fell into the To verify count, off the paper entirely.
+    # The exact class of bug the printed menu already had once: screen and
+    # paper deriving the same fact two different ways.
+    yest = plus(-1)
+    two_last = {
+        "10": {"id":"g0",  "arrive":plus(-2), "depart":today},
+        "11": {"id":"g11", "arrive":plus(-3), "depart":today},
+        "14": {"id":"g14", "arrive":plus(-2), "depart":today},
+        "15": {"id":"g15", "arrive":plus(-2), "depart":today},
+    }
+    two_tonight = {
+        "10": {"id":"g10", "arrive":today, "depart":plus(2)},
+        "13": {"id":"g13", "arrive":today, "depart":plus(1)},
+    }
+    two_pre  = {"g10": {"arriveApproved": 15}, "g13": {"arriveSlot": "16"}}
+    two_hk   = {"15": {"pushed": now.isoformat(), "departed": True}}
+    two_prev = {"12": {"pushed": (now-datetime.timedelta(days=1)).isoformat()}}
+    def two_fb(route, request):
+        u = request.url
+        def give(body): route.fulfill(status=200, content_type="application/json",
+                                      body=json.dumps(body))
+        if "/stays/"+yest in u: give(two_last); return
+        if "/stays/"+today in u: give(two_tonight); return
+        if "/hk/"+today in u: give(two_hk); return
+        if "/hk/" in u: give(two_prev); return
+        if "/prearrival" in u:
+            bid = u.split("/bookings/")[1].split("/")[0]
+            give(two_pre.get(bid)); return
+        give(None)
+    q = b.new_page(viewport={"width":900,"height":1100})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body=SDK))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", two_fb)
+    q.goto("http://localhost:8956/housekeeping.html"); q.wait_for_timeout(1800)
+    tw = {}
+    for t in q.evaluate("""()=>[...document.querySelectorAll('#rows tr:not(.writein)')]
+        .map(t=>({room:t.cells[0].textContent.trim(), svc:t.cells[1].textContent.trim(),
+                  arr:t.cells[2].textContent.trim(), done:t.cells[4].textContent.trim()}))"""):
+        tw[t["room"]] = t
+    print("   two-night sheet:", tw)
+    ck("a same day turnover prints as a Clean, not a Pre-arrival",
+       "10" in tw and "Clean" in tw["10"]["svc"] and "Pre-arrival" not in tw["10"]["svc"])
+    ck("and carries the new guest's approved hour beside the arrival day",
+       "10" in tw and "3pm" in tw["10"]["arr"])
+    ck("a guest who left this morning prints as a Clean, not To verify",
+       "11" in tw and "Clean" in tw["11"]["svc"])
+    ck("a villa pushed yesterday prints as a departed clean",
+       "12" in tw and "Clean" in tw["12"]["svc"] and "Departed" in tw["12"]["svc"])
+    ck("a pre-arrival prints with the guest's own slot",
+       "13" in tw and "Pre-arrival" in tw["13"]["svc"] and "4pm" in tw["13"]["arr"])
+    ck("a villa pushed today says Pushed where the tick box would be",
+       "15" in tw and "Pushed" in tw["15"]["done"])
+    ck("the cleans count agrees with the board's reading",
+       q.evaluate("()=>nClean.textContent") == "5")
+    q.close(); b.close()
     open("/home/claude/nala/_p3_hk.png","wb").write(shot)
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()
