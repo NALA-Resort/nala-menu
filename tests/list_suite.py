@@ -33,6 +33,15 @@ menu={"published":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456",
       "bread":{"name":"Sourdough"},"entree":{"name":"Prawns"},
       "main":{"name":"Satay Chicken"},"dessert":{"name":"Pavlova"}}
 menutags={"main":["Nut allergy"]}
+#  Villas the PMS knows about, which is where the booking ids come from. The
+#  internal note hangs off the reservation, not the night, so a sheet can only
+#  reach one through the id on the stay.
+STAYS={"1":{"id":"b1","name":"James"},"3":{"id":"b3","name":"Mark"},
+       "4":{"id":"b4","name":"Lucy"},"9":{"id":"b9","name":"Priya"}}
+internal={"b1":{"note":"Owner's friend, do not charge for wine"},
+          "b3":{"fromMews":"Complained about noise last stay"},
+          "b9":{"note":""}}
+
 staff={"staff@x":{"name":"Admin","role":"admin"},
        "chef@x":{"name":"Chef","role":"chef"},
        "waiter@x":{"name":"Waiter","role":"waiter"},
@@ -46,6 +55,11 @@ def fb(route,request):
     elif "/roomguests/" in u: body="null"
     elif "/combined/" in u: body=json.dumps(combined)
     elif "/menutags/" in u: body=json.dumps(menutags)
+    elif "/stays/"+today in u: body=json.dumps(STAYS)
+    elif "/stays/" in u: body="null"
+    elif "/internal/" in u:
+        k=u.split("/internal/")[1].split(".json")[0]
+        body=json.dumps(internal[k]) if k in internal else "null"
     route.fulfill(status=200,content_type="application/json",body=body)
 from playwright.sync_api import sync_playwright
 P=F=0
@@ -290,11 +304,38 @@ with sync_playwright() as p:
         q.goto("http://localhost:8955/list.html"); q.wait_for_timeout(1500)
         return q
 
+    #  The staff note belongs to the reservation and is management's. The sheet
+    #  is carried into service and left on a pass, so it is gated on the role
+    #  rather than on the permission that opens the page: a chef and a waiter
+    #  may both read this sheet and neither may read that note.
+    q=as_role("staff@x")
+    q.wait_for_timeout(1200)   # the notes are one read per villa, after the role
+    ck("the staff note reaches the sheet",
+       q.evaluate("()=>[...document.querySelectorAll('.snote')]"
+                   ".some(e=>e.textContent.indexOf('do not charge for wine')>-1)"))
+    ck("and is labelled so nobody cooks to it",
+       q.evaluate("()=>[...document.querySelectorAll('.snote')]"
+                   ".every(e=>e.textContent.indexOf('Staff')>-1)"))
+    ck("what Mews said stands in when nobody has rewritten it",
+       q.evaluate("()=>document.body.innerText.indexOf('Complained about noise')>-1"))
+    ck("an empty note prints nothing at all",
+       q.evaluate("()=>[...document.querySelectorAll('.snote')].length===2"))
+    q.close()
+
     q=as_role("chef@x")
+    q.wait_for_timeout(1200)
+    ck("the chef reads the sheet but not the staff note",
+       q.evaluate("()=>document.querySelectorAll('.snote').length===0"))
     ck("chef reads and prints the sheet",
        q.evaluate("""()=>noAccess.className.indexOf('show')<0
                       && document.querySelectorAll('table tbody tr').length>0
                       && getComputedStyle(footBar).display!='none'"""))
+    q.close()
+
+    q=as_role("waiter@x")
+    q.wait_for_timeout(1200)
+    ck("nor does a waiter carrying it into service",
+       q.evaluate("()=>document.querySelectorAll('.snote').length===0"))
     q.close()
 
     q=as_role("housekeeping@x")
