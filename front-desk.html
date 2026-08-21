@@ -108,6 +108,12 @@
      number and the name still carry the row. */
   .arr.done-form { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
   .arr.todo-form { background:rgba(194,154,85,.11); border-color:rgba(194,154,85,.36); }
+  /* Started and not finished. The same amber as not-started, because it is
+     still a row reception has to do something about, with a solid left edge
+     to say the guest has met them halfway. A third colour would have made the
+     list a palette to decode rather than two things to work through. */
+  .arr.part-form { background:rgba(194,154,85,.11); border-color:rgba(194,154,85,.36);
+                   border-left:3px solid rgba(194,154,85,.85); }
   .sum { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
 
   .empty { font-size:15px; color:var(--mid); font-style:italic; padding:4px 0 2px; }
@@ -307,6 +313,37 @@ function isConfirmed(p){ return !!(p && p.confirmedAt); }
 function isArrived(p){ return !!(p && p.checkedInAt); }
 function hasForm(p){ return !!(p && p.at); }
 
+/* Three states, not two, since the guest form began saving each page as it is
+   left. Before that a record either existed or did not, and `at` alone said
+   which. Now a guest can answer three questions, put the phone down and never
+   come back, and those three answers are real and worth having.
+
+   `at` is still written by the final send alone, so it remains the whole test
+   for a finished form. A record carrying answers WITHOUT it is a form still in
+   progress. The distinction matters at this desk more than anywhere: a partial
+   form is the one case where reception knows what to ask about, because the
+   guest has already given the rest.
+
+   Listed explicitly rather than testing the record for any key at all: the
+   page also writes openedAt and, since 21 Aug, reception's own arriveApproved,
+   and neither is the guest answering anything. A guest who opened the link and
+   read it has not started, and a time reception approved on the telephone is
+   the desk's answer, not the guest's. */
+var GUEST_ANSWERS = ['arriveSlot','arriveNote','dining','diets','noDiets',
+                     'dnote','purpose','approach','wellness','wellDay',
+                     'wellTime','occasion','note','companion'];
+
+function startedForm(p){
+  if (!p || hasForm(p)) return false;
+  return GUEST_ANSWERS.some(function(k){
+    var v = p[k];
+    if (v === undefined || v === null || v === '') return false;
+    if (Array.isArray(v)) return v.length > 0;
+    if (v === false) return true;   /* "no" is an answer */
+    return true;
+  });
+}
+
 /* No pills on this screen. Every state a pill carried is already said once,
    and said better:
 
@@ -324,10 +361,17 @@ function hasForm(p){ return !!(p && p.at); }
    reach them and they stopped partway, which is a different conversation from
    a guest who never saw it. */
 
-/* Opened the pre-arrival link and did not submit it. It has nothing left to
-   say once a form exists: a guest who submitted obviously opened it. */
+/* Opened the pre-arrival link and answered nothing. It has nothing left to say
+   once a form exists: a guest who submitted obviously opened it.
+
+   Nor once one is under way. Until the guest form saved as it went, opened was
+   the strongest signal short of finished, so this icon carried "the message
+   reached them and they stopped partway". A part-finished form now says that,
+   and says it better, with the answers to prove it. Left on both, the icon and
+   the marked edge would be the same fact twice in one row, which is the thing
+   the note above this section says the pills were removed for. */
 function seenFor(p){
-  if (!p || !p.openedAt || hasForm(p)) return '';
+  if (!p || !p.openedAt || hasForm(p) || startedForm(p)) return '';
   return '<span class="seen">' + ICON_LINK + '</span>';
 }
 
@@ -368,7 +412,8 @@ function rowHTML(r){
   else if (r.stay.adults)
     bits.push(r.stay.adults + (Number(r.stay.adults)===1 ? ' adult' : ' adults'));
   var open = OPEN === r.villa;
-  var tint = hasForm(r.pre) ? ' done-form' : ' todo-form';
+  var tint = hasForm(r.pre) ? ' done-form'
+           : startedForm(r.pre) ? ' part-form' : ' todo-form';
   return '<button class="arr'+tint+(isArrived(r.pre)?' is-done':'')+(open?' open':'')+
          '" data-villa="'+r.villa+'">'+
          '<div class="arr-v">'+r.villa+'</div>'+
@@ -819,7 +864,9 @@ function openGuest(r){
       '</span></div>' +
     (etaLabel(p) ? '<div class="note-box">Told us they would arrive ' +
        esc(etaLabel(p).toLowerCase()) + '.</div>' : '') +
-    (hasForm(p) ? '' :
+    (hasForm(p) ? '' : startedForm(p) ?
+      '<div class="note-box">They started the form and did not finish it. ' +
+        'Their answers are below. Anything still blank is still unanswered.</div>' :
       '<div class="note-box">No pre-arrival form. Fill it in together.</div>') +
 
     /* The arrival time. The guest's form has always asked it and the desk

@@ -52,6 +52,8 @@ STAYS = {
   "7":  {"id":"b7","first":"Mark","last":"Whitfield","arrive":today,"depart":plus(3),"adults":2},
   "11": {"id":"b11","first":"Priya","last":"Raghunathan","arrive":today,"depart":plus(5),"adults":3},
   "14": {"id":"b14","first":"Ann","last":"Brown","arrive":today,"depart":plus(1),"adults":1},
+  "6":  {"id":"b6","first":"Nadia","last":"Okonkwo","arrive":today,"depart":plus(3),"adults":2},
+  "8":  {"id":"b8","first":"Tomas","last":"Lind","arrive":today,"depart":plus(2),"adults":2},
   # mid stay: in house tonight, arrived two days ago. Must NOT be an arrival.
   "3":  {"id":"b3","first":"Midstay","last":"Guest","arrive":plus(-2),"depart":plus(2),"adults":2},
   # the older shape, when the value was a bare booking id
@@ -78,7 +80,17 @@ PRE = {
   # opened the form, gave allergies, left the dinner question alone
   "b12": {"at":"2026-08-16T09:00:00Z","diets":["Gluten free"],"arriveSlot":"15"},
   # opened the pre-arrival link and never submitted it
-  "b14": {"openedAt":"2026-08-16T08:00:00Z"}
+  "b14": {"openedAt":"2026-08-16T08:00:00Z"},
+  # started the form and stopped partway. Possible since the guest page began
+  # saving each page as it is left: real answers, no `at`, and the rest still
+  # unasked. Its own villa rather than villa 2's, because villa 2 is this
+  # suite's guest-with-no-form and three other checks lean on that.
+  "b6":  {"openedAt":"2026-08-16T07:00:00Z","arriveSlot":"15",
+          "dining":False,"noDiets":True},
+  # reception approved a time on the telephone for a guest who never touched
+  # the form. The desk's answer, not the guest's, so it must not on its own
+  # make a form look started.
+  "b8":  {"arriveApproved":15}
 }
 
 # Tonight's dish tags, written by the chef at publish. The guest's form was
@@ -165,25 +177,27 @@ with sync_playwright() as p:
     todo = pg.evaluate("()=>[...document.querySelectorAll('.arr')].filter(e=>!e.className.includes('is-done')).map(e=>e.dataset.villa)")
     doneV = pg.evaluate("()=>[...document.querySelectorAll('.arr.is-done')].map(e=>e.dataset.villa)")
     # Slots are stored as keys, so the order is exact rather than parsed:
-    # b9 before 2pm, b12 3pm, b4 4pm, then the guests who gave no time.
+    # b9 before 2pm, then 3pm from b6 and b12, then b4 at 4pm, then the guests
+    # who gave no time. Villa 6's answer counts even though it was left on a
+    # form the guest never finished: a stated time is a stated time.
     ck("arrivals are ordered by the slot they chose",
-       todo[:3] == ["9", "12", "4"])
+       todo[:4] == ["9", "6", "12", "4"])
     ck("and guests who gave no time sort last, by villa",
-       todo[3:] == sorted(todo[3:], key=int))
+       todo[4:] == sorted(todo[4:], key=int))
     ck("and the ones still to do come first, because that is the job",
        villas == todo + doneV)
     # Arrived is a fraction: the number alone says nothing without the total.
     # Arrived counts guests checked in, not guests confirmed. Reception can
     # verify the answers on the phone the day before; the guest turns up later.
     ck("arrived reads as a fraction of the day's arrivals",
-       pg.evaluate("()=>nArr.textContent") == "2/7")
-    # six arrivals, of which villas 7 and 11 are already confirmed
+       pg.evaluate("()=>nArr.textContent") == "2/9")
+    # nine arrivals, of which villas 7 and 11 are already checked in
     # Of everyone arriving today, how many are eating tonight.
     ck("dining, not dining and not sure are counted separately",
        [pg.evaluate("()=>nIn.textContent"), pg.evaluate("()=>nOut.textContent"),
-        pg.evaluate("()=>nUn.textContent")] == ["2", "2", "3"])
+        pg.evaluate("()=>nUn.textContent")] == ["2", "3", "4"])
     ck("and the three add up to the day, so nobody looks for a missing one",
-       sum(int(pg.evaluate("()=>%s.textContent" % i)) for i in ("nIn","nOut","nUn")) == 7)
+       sum(int(pg.evaluate("()=>%s.textContent" % i)) for i in ("nIn","nOut","nUn")) == 9)
     ck("they carry the same three colours as the fork icons",
        pg.evaluate("()=>[nIn.className,nOut.className,nUn.className].join()")
        == "stat-n dine,stat-n nodine,stat-n unsure")
@@ -258,6 +272,28 @@ with sync_playwright() as p:
     ck("a completed form tints the row green", "done-form" in tint("4"))
     ck("one still to do tints it amber", "todo-form" in tint("2"))
     ck("opened but unfinished still counts as to do", "todo-form" in tint("14"))
+
+    # ── started and not finished ────────────────────────────────
+    #  A third state, and only since the guest page began saving each page as
+    #  it is left. Before that a record either existed or did not.
+    ck("a form started and not finished is marked apart from one not started",
+       "part-form" in tint("6") and "part-form" not in tint("2"))
+    ck("and is not mistaken for a finished one",
+       "done-form" not in tint("6"))
+    ck("it stays amber, because it is still a row to do something about",
+       "todo-form" not in tint("6") and
+       pg.evaluate("()=>getComputedStyle(document.querySelector("
+                   "'.arr[data-villa=\"6\"]')).borderLeftWidth") == "3px")
+    #  Left on both, the icon and the marked edge would be the same fact twice
+    #  in one row, which is what the pills were removed for.
+    ck("the link icon steps aside once there are answers to show instead",
+       not seen("6"))
+    ck("but still speaks for a guest who opened it and answered nothing",
+       seen("14"))
+    #  A time reception approved by telephone is the desk answering, not the
+    #  guest. Counting it would make every such booking look half filled.
+    ck("an approved arrival time alone does not make a form look started",
+       "todo-form" in tint("8") and "part-form" not in tint("8"))
 
     # An opened-only record is not a form, so there is nothing to read back.
     pg.locator('.arr[data-villa="14"]').click(); pg.wait_for_timeout(350)
@@ -385,7 +421,7 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"]').className")
        .find("is-done") == -1)
     ck("and the arrived count does not move either",
-       pg.evaluate("()=>nArr.textContent") == "2/7")
+       pg.evaluate("()=>nArr.textContent") == "2/9")
     pg.close()
 
     # ── reception's approved hour, beside the guest's slot ──────
@@ -569,7 +605,7 @@ with sync_playwright() as p:
     ck("and moves them to Arrived on the spot",
        pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"]').className")
        .find("is-done") > -1)
-    ck("with the count following", pg.evaluate("()=>nArr.textContent") == "3/7")
+    ck("with the count following", pg.evaluate("()=>nArr.textContent") == "3/9")
     pg.close()
 
     # This used to assert the opposite: that confirming again kept a guest
