@@ -2,11 +2,11 @@
 
 ## Setup
 
-You need your Nala app login: the same email and password you use for the app.
-Nothing else to set up.
+You need your six digit passcode: the same one you use to open the app.
+Nothing else.
 
-If you do not have one, ask the manager to add you in Settings with the role
-**chef**.
+If you do not have one, or publishing is refused, ask the manager to set your
+role to **chef** in Settings.
 
 ---
 
@@ -68,9 +68,9 @@ only in a sauce or condiment, such as XO, fish sauce, anchovy or bonito, reads
 `False`. It is for sourcing, not for allergies: a guest's allergies are handled
 separately in the app.
 
-Ask the chef for his email and password the first time in a session. Do not
-save them anywhere. The login lasts about an hour, so ask again if a later
-publish is refused.
+Ask the chef for his passcode the first time in a session. Do not save it
+anywhere. The login lasts about an hour, so ask again if a later publish is
+refused.
 
 ```python
 import urllib.request, importlib.util, tempfile, os
@@ -83,7 +83,7 @@ spec = importlib.util.spec_from_file_location("publish_menu", path)
 pm = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pm)
 
-pm.publish(EMAIL, PASSWORD, {
+pm.publish(PASSCODE, {
     "bread":   ("FILL", "FILL", False),
     "entree":  ("FILL", "FILL", False),
     "main":    ("FILL", "FILL", False),
@@ -98,8 +98,8 @@ can see what the guests are seeing. If it prints nothing, it did not publish.
 
 ## If it does not work
 
-**"Could not sign in"** - wrong email or password. It is the app login, not a
-Google or a GitHub account.
+**"Could not sign in"** - wrong passcode. It is the same six digits that open
+the app, not a Google or a GitHub account.
 
 **"Not allowed to publish menus"** - the login worked but the role is wrong.
 The manager sets it to **chef** in Settings.
@@ -116,7 +116,7 @@ narrowed to the menu: the smallest permission that can change the menu can
 change the whole website. Anybody ever forwarded this file could have changed
 anything on it.
 
-A login can be narrowed. The chef's account may publish menus and do nothing
+A passcode can be narrowed. The chef's account may publish menus and do nothing
 else, the database enforces that rather than this document asking nicely, it
 expires, and the manager can turn it off in Settings.
 

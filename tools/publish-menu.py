@@ -45,6 +45,26 @@ def _post(url, payload, token=None):
     return json.loads(urllib.request.urlopen(req).read())
 
 
+PAD_DOMAIN = "@staff.nala"
+
+
+def as_login(who, code=None):
+    """Turn what the chef knows into what Firebase expects.
+
+    Staff sign into the app with a six digit passcode and nothing else, so the
+    chef does not have an email address and should not be asked for one. The
+    pad builds the account from the code itself: 123456 signs in as
+    123456@staff.nala with 123456 as the password, which is how auth.js has
+    always done it.
+
+    An email is still accepted, for an admin who has one.
+    """
+    who = str(who).strip()
+    if who.isdigit():
+        return who + PAD_DOMAIN, who
+    return who, code
+
+
 def sign_in(email, password):
     """A staff login, good for about an hour. The password is never stored."""
     try:
@@ -54,13 +74,18 @@ def sign_in(email, password):
     except urllib.error.HTTPError as e:
         detail = e.read().decode()[:200]
         raise SystemExit(
-            "Could not sign in. Check the email and password.\n"
-            "This is a staff login for the app, not a GitHub account.\n\n"
+            "Could not sign in. Check the passcode.\n"
+            "It is the same six digits used to open the app.\n\n"
             + detail)
 
 
-def publish(email, password, courses):
-    """Write the menu, then read it back and show what is live."""
+def publish(who, courses, code=None):
+    """Write the menu, then read it back and show what is live.
+
+    `who` is the chef's six digit passcode, which is all he has. An email and
+    a password still work, for an admin who signs in that way.
+    """
+    email, password = as_login(who, code)
     for c in COURSES:
         if c not in courses:
             raise SystemExit("Missing course: " + c)
