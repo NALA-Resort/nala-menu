@@ -72,23 +72,90 @@ Ask the chef for his passcode the first time in a session. Do not save it
 anywhere. The login lasts about an hour, so ask again if a later publish is
 refused.
 
+Fill in the four courses and the passcode, then run this. It is the whole
+program: it does not download anything, and there is nothing else to fetch.
+
 ```python
-import urllib.request, importlib.util, tempfile, os
+import json, time, urllib.request, urllib.error
+from datetime import datetime, timezone, timedelta
 
-url = "https://raw.githubusercontent.com/NALA-Resort/nala-menu/main/tools/publish-menu.py"
-src = urllib.request.urlopen(url).read().decode()
-path = os.path.join(tempfile.gettempdir(), "publish_menu.py")
-open(path, "w").write(src)
-spec = importlib.util.spec_from_file_location("publish_menu", path)
-pm = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(pm)
-
-pm.publish(PASSCODE, {
+PASSCODE = "FILL"          # the chef's six digits
+PASSWORD = ""              # leave empty; only for an admin signing in by email
+COURSES = {
     "bread":   ("FILL", "FILL", False),
     "entree":  ("FILL", "FILL", False),
     "main":    ("FILL", "FILL", False),
     "dessert": ("FILL", "FILL", False),
-})
+}
+
+DB      = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app"
+API_KEY = "AIzaSyA0zAzL-zfPivrIRhY_ip8BABjuYVMlzqI"
+SIGNIN  = ("https://identitytoolkit.googleapis.com/v1/"
+           "accounts:signInWithPassword?key=" + API_KEY)
+TAG_URL = "https://menu.nalaresort.com/tag.html"
+AEST    = timezone(timedelta(hours=10))
+ORDER   = ("bread", "entree", "main", "dessert")
+
+# Staff sign in with a passcode and nothing else, so the chef has no email
+# address and must not be asked for one. 123456 signs in as 123456@staff.nala
+# with 123456 as the password, which is how the app has always done it.
+who = str(PASSCODE).strip()
+email, password = ((who + "@staff.nala", who) if who.isdigit()
+                   else (who, PASSWORD))
+
+missing = [c for c in ORDER if c not in COURSES or "FILL" in COURSES[c][:2]]
+if missing:
+    raise SystemExit("Not filled in: " + ", ".join(missing))
+
+def post(url, payload):
+    req = urllib.request.Request(
+        url, data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json"}, method="POST")
+    return json.loads(urllib.request.urlopen(req).read())
+
+try:
+    token = post(SIGNIN, {"email": email, "password": password,
+                          "returnSecureToken": True})["idToken"]
+except urllib.error.HTTPError as e:
+    raise SystemExit("Could not sign in. Check the passcode: it is the same "
+                     "six digits that open the app.\n\n" + e.read().decode()[:200])
+
+menu = {"published": datetime.now(AEST).isoformat()}
+for c in ORDER:
+    name, desc, aus = COURSES[c]
+    menu[c] = {"name": name.strip(), "desc": desc.strip(), "aus": bool(aus)}
+
+req = urllib.request.Request(DB + "/menu.json?auth=" + token,
+                             data=json.dumps(menu).encode(),
+                             headers={"Content-Type": "application/json"},
+                             method="PUT")
+try:
+    urllib.request.urlopen(req)
+except urllib.error.HTTPError as e:
+    if e.code in (401, 403):
+        raise SystemExit("Signed in, but this login may not publish menus. Ask "
+                         "the manager to set the role to chef in Settings.\n\n"
+                         + e.read().decode()[:300])
+    raise SystemExit("The menu was not saved.\n\n" + e.read().decode()[:300])
+
+# Read it back rather than trust the write. A publish that half worked and one
+# that worked look identical from here otherwise, and the chef has no way to
+# tell until a guest asks.
+live = json.loads(urllib.request.urlopen(DB + "/menu.json").read())
+if not live or not live.get("published"):
+    raise SystemExit("The menu did not save. Nothing is live.")
+
+print("Published " + live["published"][:16].replace("T", " ") + "\n")
+for c in ORDER:
+    d = live.get(c) or {}
+    print(c.title().ljust(8) + " " + str(d.get("name", "")) +
+          ("  [seafood]" if d.get("aus") else ""))
+    if d.get("desc"):
+        print("         " + d["desc"])
+print("\nIt is on the guests' phones now.")
+print("\nNext: mark which courses clash with a dietary. Until that is done")
+print("tonight's menu warns nobody.")
+print(TAG_URL + "?v=" + str(int(time.time())))
 ```
 
 The script prints the four courses back, read from the live menu, so the chef
@@ -111,8 +178,6 @@ lamb in silence. The link closes it.
 
 ---
 
-## If it does not work
-
 ## After publishing: mark the clashes
 
 Publishing puts the menu on the guests' phones **immediately**. It does not yet
@@ -120,16 +185,24 @@ warn anybody. Tag it now, not after service.
 
 The guest page and the front desk both check a guest's declared allergies
 against tonight's tags, so until the courses are tagged a nut allergy meets a
-nut dish in silence. The publisher prints a link when it finishes. Open it,
-tick which dietaries each course clashes with, save.
+nut dish in silence. Open the printed link, tick which dietaries each course
+clashes with, save.
 
 It takes under a minute and it is the half that does the protecting.
+
+---
+
+## If it does not work
 
 **"Could not sign in"** - wrong passcode. It is the same six digits that open
 the app, not a Google or a GitHub account.
 
 **"Not allowed to publish menus"** - the login worked but the role is wrong.
 The manager sets it to **chef** in Settings.
+
+**A syntax error, or the code looks cut off** - the block above was truncated
+on its way here. Do not try to repair it by guessing the missing lines. Ask for
+this document to be attached as a file rather than pasted into the chat.
 
 **Anything else** - show the chef the error and stop. Do not look for another
 way to publish, and do not edit the script.
@@ -138,14 +211,26 @@ way to publish, and do not edit the script.
 
 ## Why it is done this way
 
-Publishing used to carry a token in this document. A token like that cannot be
-narrowed to the menu: the smallest permission that can change the menu can
-change the whole website. Anybody ever forwarded this file could have changed
-anything on it.
+**The code is here, in full, rather than downloaded.** It used to live in the
+repository and be fetched at runtime, because a long code block pasted between
+people gets truncated and a truncated Python file fails with a syntax error
+that looks nothing like its cause. That fixed the smaller problem and created a
+worse one: it asked an assistant to download a program from the internet, run
+it without seeing it, and hand it a passcode the chef had just typed. That is
+indistinguishable from an attack, it is exactly what an assistant should refuse,
+and on 22 Aug one did. It was right to. Everything the publisher does is now
+visible above before it runs, and truncation is handled by saying so in the
+troubleshooting list instead.
+
+**Signing in rather than carrying a token.** Publishing once carried a GitHub
+token in this document. A token like that cannot be narrowed to the menu: the
+smallest permission that can write menu.json is write access to every file in
+the repository, including the pages and the Worker. Anybody ever forwarded this
+file could have changed anything on the site.
 
 A passcode can be narrowed. The chef's account may publish menus and do nothing
 else, the database enforces that rather than this document asking nicely, it
-expires, and the manager can turn it off in Settings.
+expires in about an hour, and the manager can turn it off in Settings.
 
 Keep this document to yourself anyway. It is not a secret, but it is not for
 guests.
