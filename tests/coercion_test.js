@@ -288,6 +288,23 @@ const da = listOf(desk, 'APPROACH'), ga = listOf(guest, 'APPROACH');
 ck('and the same words about how they plan to eat',
    JSON.stringify(da) === JSON.stringify(ga));
 
+/* The dietary fallbacks are compared for the same reason as purpose: the
+   dietary name IS the stored value. Both forms replace this list with the
+   chef's live one when it loads, so the fallback only shows when that read
+   fails, which is exactly when a guest most needs the question to work.
+
+   "Other" is compared separately. It is not one of the eight, it is the
+   answer for an allergy no list can hold, and it was on the desk and not on
+   the guest form: a guest with an allergy nobody had thought of could only
+   choose between a wrong chip and declaring nothing. */
+const dd = listOf(desk, 'DIETARIES'), gd = listOf(guest, 'DIETARIES');
+ck('both forms fall back to the same dietaries',
+   JSON.stringify(dd) === JSON.stringify(gd));
+ck('the guest can declare an allergy that is not on the list',
+   /DIET_OTHER\s*=\s*'Other'/.test(guest));
+ck('and is asked to write down what it is',
+   /hasOther\(\)\s*&&\s*!a\.dietNote/.test(guest));
+
 /* Every field the guest can answer must be settable at the desk, or a guest
    with no form has no way to have it recorded. */
 ['arriveSlot', 'arriveNote', 'dining', 'pax', 'diets', 'noDiets', 'dnote',

@@ -264,6 +264,18 @@ var APPROACH = [['most','We will dine at Nala most nights'],
 var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
 
+/* No list can hold every allergy, and this one is filled in days ahead by
+   somebody with nobody to ask. Without it a guest whose allergy is not among
+   the eight had two choices, and both were wrong: pick a chip that is not
+   their allergy, or answer "no allergies or dietary requirements" and arrive
+   undeclared. The desk has had this since 19 Aug. The guest form is where
+   most of these answers actually come from.
+
+   Stored as an ordinary dietary, the one entry that means read the note, so
+   the chef's board, the printed sheet and the rules need no changes. */
+var DIET_OTHER = 'Other';
+function hasOther(){ return a.diets.indexOf(DIET_OTHER) > -1; }
+
 /* "Here for" is a multi select, so this page holds it as a list. The database
    validates it as one string, and one field of the wrong type refuses the
    WHOLE write, so any guest who ticked a reason silently failed to save their
@@ -389,6 +401,24 @@ function paintDiets(){
     clearMiss('qDiet'); paintDiets();
   };
   none.appendChild(nb);
+
+  /* Beside "none", because they are the two answers that are not on the list
+     and they are opposites: one says there is nothing to write down, the
+     other says the answer is only in the note. Either one clears the other. */
+  var ob = document.createElement('button');
+  ob.className = 'chip' + (hasOther() ? ' on' : '');
+  ob.textContent = DIET_OTHER;
+  ob.onclick = function(){
+    var i = a.diets.indexOf(DIET_OTHER);
+    if (i > -1) a.diets.splice(i,1);
+    else { a.diets.push(DIET_OTHER); a.noDiets = false; }
+    clearMiss('qDiet'); paintDiets();
+    /* The note IS the answer here, so put the cursor in it rather than
+       leaving a guest to find it on their own phone. */
+    if (hasOther()) { var f = el('dietNote'); if (f) f.focus(); }
+  };
+  none.appendChild(ob);
+
   el('dietNote').style.display = a.diets.length ? '' : 'none';
   el('dietNoteLab').style.display = a.diets.length ? '' : 'none';
 }
@@ -475,6 +505,11 @@ function firstMissing(){
   if (a.dining === null) return ['qDine', 'Please let us know about your first night.'];
   if (!a.noDiets && !a.diets.length)
     return ['qDiet', 'Please answer about allergies, even to say there are none.'];
+  /* "Other" with an empty note is the one answer that tells the kitchen a
+     guest has an allergy and nothing about what it is, which is worse than
+     silence: it looks answered. */
+  if (hasOther() && !a.dietNote)
+    return ['qDiet', 'Please tell us what the allergy or requirement is.'];
   if (!a.purpose.length) return ['qPurpose', 'Please tell us what brings you.'];
   if (!a.approach) return ['qApproach', 'Please tell us how you plan to eat.'];
   if (a.wellness === null) return ['qWell', 'Please answer about treatments.'];
@@ -614,6 +649,9 @@ function boot(){
       var d = master[k];
       if (d && d.active) names.push(d.name || k);
     });
+    /* If the chef ever adds one called Other it would paint twice, once as an
+       ordinary chip that means nothing and once as this one. */
+    names = names.filter(function(n){ return n !== DIET_OTHER; });
     if (names.length){ DIETARIES = names.sort(); paintDiets(); }
   }).catch(function(){});
 

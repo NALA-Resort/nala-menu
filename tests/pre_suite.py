@@ -96,6 +96,29 @@ with sync_playwright() as p:
     ck("and a retired entry never reaches a guest",
        "Retired" not in pg.locator("#dietChips").inner_text())
 
+    # ── an allergy that is not on the list ──────────────────────
+    #  Filled in days ahead with nobody to ask, so a guest whose allergy is
+    #  not among the chef's entries needs somewhere to put it. Without this
+    #  the only ways past were a chip that is not their allergy, or declaring
+    #  nothing at all.
+    ck("a guest can declare an allergy that is not on the list",
+       "Other" in pg.locator("#dietNone").inner_text())
+    pg.evaluate("()=>[...document.querySelectorAll('#dietNone .chip')]"
+                ".find(b=>b.textContent.trim()==='Other').click()")
+    pg.wait_for_timeout(150)
+    ck("choosing it opens the note",
+       pg.eval_on_selector("#dietNote", "e=>getComputedStyle(e).display") != "none")
+    ck("and puts the cursor in it, since the note is the answer",
+       pg.evaluate("()=>document.activeElement.id") == "dietNote")
+    ck("choosing it clears no allergies to declare",
+       pg.evaluate("()=>a.noDiets") is False)
+    pg.evaluate("()=>[...document.querySelectorAll('#dietNone .chip')]"
+                ".find(b=>b.textContent.trim()==='Other').click()")
+    pg.wait_for_timeout(120)
+    ck("and it can be taken back off",
+       pg.evaluate("()=>a.diets.indexOf('Other')") == -1)
+
+    pg = guest()
     # ── nothing is written while filling in ─────────────────────
     del WRITES[:]
     pg.locator("#dIn").click(); pg.wait_for_timeout(150)
@@ -200,6 +223,28 @@ with sync_playwright() as p:
     ck("with their answers still there",
        pg.evaluate("()=>occasion.value") == "anniversary" and
        pg.evaluate("()=>dOut.className.indexOf('on')>-1"))
+
+    #  Every other answer is in place here, so an "Other" carrying no note is
+    #  the one thing between this form and Send. It has to be: it tells the
+    #  kitchen a guest has an allergy and nothing about what it is, which is
+    #  worse than silence, because it looks answered.
+    del WRITES[:]
+    pg.evaluate("()=>[...document.querySelectorAll('#dietNone .chip')]"
+                ".find(b=>b.textContent.trim()==='Other').click()")
+    pg.wait_for_timeout(150)
+    pg.locator("#send").click(); pg.wait_for_timeout(300)
+    ck("an allergy declared as Other with no note is refused",
+       "allergy or requirement" in pg.inner_text("#err"))
+    ck("and nothing is sent", len(WRITES) == 0)
+    pg.fill("#dietNote", "Sesame")
+    pg.locator("#send").click(); pg.wait_for_timeout(500)
+    w2 = wrote("/bookings/res-guid-1/prearrival")
+    ck("with the note written it sends", len(w2) == 1)
+    if w2:
+        ck("Other is stored as an ordinary dietary the kitchen already reads",
+           "Other" in (w2[0]["b"].get("diets") or []))
+        ck("and the note beside it says what the allergy is",
+           w2[0]["b"].get("dnote") == "Sesame")
     pg.close()
     STATE["pre"] = None
 
