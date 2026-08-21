@@ -19,7 +19,7 @@ os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
 socketserver.TCPServer.allow_reuse_address = True
-httpd = socketserver.TCPServer(("", 8964), Q)
+httpd = http.server.ThreadingHTTPServer(("", 8964), Q)
 threading.Thread(target=httpd.serve_forever, daemon=True).start(); time.sleep(0.3)
 
 SDK = """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
@@ -65,7 +65,7 @@ PRE = {
   # filled in from the guest's phone, not yet confirmed at the desk
   "b4":  {"at":"2026-08-16T10:00:00Z","dining":True,"pax":2,
           "diets":["Nut allergy"],"dnote":"the daughter, severe",
-          "arriveSlot":"16","purpose":["A celebration"],"approach":"most",
+          "arriveSlot":"16","arriveApproved":15,"purpose":["A celebration"],"approach":"most",
           "occasion":"anniversary","wellness":True,"wellDay":plus(1),"wellTime":"late morning",
           "note":"quiet villa please"},
   "b9":  {"at":"2026-08-16T11:00:00Z","dining":False,"noDiets":True,
@@ -145,8 +145,8 @@ with sync_playwright() as p:
         pg = b.new_page(viewport={"width": w, "height": 900})
         pg.add_init_script(SDK)
         pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
-        pg.route("**/*.firebasedatabase.app/**", fb)
-        pg.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        pg.route("**firebasedatabase.app/**", fb)
+        pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.goto("http://localhost:8964/front-desk.html")
         pg.wait_for_timeout(1600)
         return pg
@@ -386,6 +386,52 @@ with sync_playwright() as p:
        .find("is-done") == -1)
     ck("and the arrived count does not move either",
        pg.evaluate("()=>nArr.textContent") == "2/7")
+    pg.close()
+
+    # ── reception's approved hour, beside the guest's slot ──────
+    # The guest asks, reception decides. The approved hour is its own field:
+    # setting it never touches the slot the guest chose, clearing it leaves
+    # that slot standing, and the desk offers every hour 11am to 11pm
+    # whatever the guest answered, because a guest who chose Around 4pm and
+    # rang to say half three can be set to 3pm.
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    ck("the desk offers thirteen hours, 11am through 11pm",
+       pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
+                   ".map(b=>b.textContent).join()")
+       == "11am,12pm,1pm,2pm,3pm,4pm,5pm,6pm,7pm,8pm,9pm,10pm,11pm")
+    ck("the approved hour comes up selected from the record",
+       pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
+                   ".find(b=>b.className.indexOf('on')>-1).textContent") == "3pm")
+    ck("with the guest's own slot still selected beside it",
+       pg.evaluate("""()=>[...document.querySelectorAll('#eChips button')]
+         .some(e=>/Around 4pm/.test(e.textContent) && e.className.indexOf('on')>-1)"""))
+    # Reception moves it to 1pm, an hour the guest's form never offers.
+    pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
+                ".find(b=>b.textContent==='1pm').click()")
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(500)
+    w = [x for x in WRITES if "/bookings/b4/prearrival" in x["u"]]
+    ck("approving writes the hour as a number",
+       len(w) == 1 and json.loads(w[0]["b"]).get("arriveApproved") == 13)
+    if w:
+        ck("and the guest's slot goes with it, untouched",
+           json.loads(w[0]["b"])["arriveSlot"] == "16")
+    # Tapping the chosen hour again is the way back, like the slot chips.
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
+                ".find(b=>b.className.indexOf('on')>-1).click()")
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(500)
+    w = [x for x in WRITES if "/bookings/b4/prearrival" in x["u"]]
+    ck("clearing writes null rather than omitting the key, or nothing clears",
+       len(w) == 1 and "arriveApproved" in json.loads(w[0]["b"])
+       and json.loads(w[0]["b"])["arriveApproved"] is None)
+    if w:
+        ck("and clearing leaves the guest's slot intact",
+           json.loads(w[0]["b"])["arriveSlot"] == "16")
     pg.close()
 
     # ── a guest with no form goes straight to the form ──────────
@@ -833,8 +879,8 @@ with sync_playwright() as p:
     pg = b.new_page(viewport={"width": 390, "height": 900})
     pg.add_init_script(SDK)
     pg.add_init_script("window.__EMAIL=%s;" % json.dumps("staff@x"))
-    pg.route("**/*.firebasedatabase.app/**", arrived_fb)
-    pg.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    pg.route("**firebasedatabase.app/**", arrived_fb)
+    pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
     pg.goto("http://localhost:8964/front-desk.html"); pg.wait_for_timeout(1700)
 
     # Every guest reads as arrived under this fixture, so the assertions name
@@ -952,8 +998,8 @@ with sync_playwright() as p:
         pgx = b.new_page(viewport={"width": 390, "height": 900})
         pgx.add_init_script(SDK)
         pgx.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
-        pgx.route("**/*.firebasedatabase.app/**", note_fb)
-        pgx.route("**/gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        pgx.route("**firebasedatabase.app/**", note_fb)
+        pgx.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         pgx.goto("http://localhost:8964/front-desk.html")
         pgx.wait_for_timeout(1700)
         pgx.locator('.arr[data-villa="4"]').click(); pgx.wait_for_timeout(500)

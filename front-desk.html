@@ -786,6 +786,10 @@ function answersOf(r){
     companion: p.companion || (r.pms && r.pms.companion) || '',
     arriveSlot: p.arriveSlot || '',
     arriveNote: p.arriveNote || '',
+    /* Reception's approved hour sits BESIDE the guest's slot, never in it:
+       the slot is what the guest asked for, this is what reception agreed
+       to, and collapsing the two loses the only record of who decided. */
+    arriveApproved: (typeof p.arriveApproved === 'number' ? p.arriveApproved : null),
     purpose:  purposeList(p.purpose),
     approach: p.approach || '',
     note:     (haveCell && c.note !== undefined) ? c.note : (p.note || ''),
@@ -845,6 +849,16 @@ function openGuest(r){
     '<div class="chips" id="eChips"></div>' +
     '<div class="sheet-label" id="fEtaNoteLab" style="display:none">Arrival notes</div>' +
     '<input class="txt" id="fEtaNote" type="text" placeholder="Flight, ferry, anything to note" autocomplete="off" style="display:none">' +
+
+    /* The guest asks, reception decides. The early hours are deliberately
+       not on the guest's form: offering 11am there would read as an
+       invitation the resort then declines. Here they are reception's to
+       give, so an early hour on the cleans board is authoritative: a
+       person agreed to it. No guard against approving before the current
+       guest departs, considered and declined by the owner: the red tile
+       it causes is the prompt to chase the departure. */
+    '<div class="sheet-label">Approved arrival, set by reception</div>' +
+    '<div class="chips" id="apChips"></div>' +
 
     '<div class="sheet-label">Dining on arrival night</div>' +
     '<div class="seg" id="diningSeg">' +
@@ -992,6 +1006,24 @@ function openGuest(r){
     if (!wantsNote) note.value = '';
   }
 
+  /* Every hour reception may give, 11am to 11pm, whatever the guest picked:
+     a guest who chose Around 4pm and rang to say half three can be set to 3pm.
+     Tapping the chosen hour again clears it, the same way back the slot chips
+     give, and clearing leaves the guest's own slot untouched. */
+  function paintApproved(){
+    var box = document.getElementById('apChips'); box.innerHTML = '';
+    for (var hr = 11; hr <= 23; hr++)(function(hr){
+      var b = document.createElement('button');
+      b.className = 'chip' + (a.arriveApproved === hr ? ' on' : '');
+      b.textContent = (hr > 12 ? hr - 12 : hr) + (hr < 12 ? 'am' : 'pm');
+      b.onclick = function(){
+        a.arriveApproved = (a.arriveApproved === hr) ? null : hr;
+        paintApproved();
+      };
+      box.appendChild(b);
+    })(hr);
+  }
+
   function paintPurpose(){
     var box = document.getElementById('pChips'); box.innerHTML = '';
     PURPOSE.forEach(function(t){
@@ -1043,7 +1075,7 @@ function openGuest(r){
   document.getElementById('wYes').onclick = function(){ a.wellness = true;  paintWellness(); };
   document.getElementById('wNo').onclick  = function(){ a.wellness = false; paintWellness(); };
 
-  paintEta(); paintDining(); paintPax(); paintDiets(); paintNone();
+  paintEta(); paintApproved(); paintDining(); paintPax(); paintDiets(); paintNone();
   paintPurpose(); paintApproach(); paintWellness();
   document.getElementById('fEtaNote').value = a.arriveNote || '';
   var cEl = document.getElementById('fCompanion');
@@ -1179,6 +1211,10 @@ function save(r, a, checkin){
     dining: a.dining, pax: a.dining ? a.pax : 0,
     diets: a.diets, noDiets: a.noDiets, dnote: a.dnote,
     arriveSlot: a.arriveSlot, arriveNote: a.arriveNote,
+    /* null, not omission: a PATCH that leaves the key out cannot clear a
+       previously approved hour, and null is how the clear reaches the
+       database. */
+    arriveApproved: (typeof a.arriveApproved === 'number' ? a.arriveApproved : null),
     purpose: purposeText(a.purpose), approach: a.approach,
     occasion: a.occasion, wellness: a.wellness, companion: a.companion,
     wellDay: a.wellness ? a.wellDay : '', wellTime: a.wellness ? a.wellTime : '',

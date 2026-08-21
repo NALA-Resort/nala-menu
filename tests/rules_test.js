@@ -150,6 +150,46 @@ canPatch('Front Desk confirms the same record', DESK, '/bookings/b-1/prearrival'
   confirmedAt: NOW, checkedInAt: NOW
 });
 
+/* The approved arrival hour: reception's to give, never the guest's. Write
+   on prearrival cascades from the node, so the gate lives in the validate
+   rule, the setJob pattern. A validate rule does not run on a delete, so a
+   guest CLEARING it is accepted risk, logged in PARKED.md as the logs
+   upgrade. */
+canPatch('reception approves an arrival hour', DESK,
+         '/bookings/b-1/prearrival', { arriveApproved: 11 });
+canPatch('a manager can too, at the top of the range', ADMIN,
+         '/bookings/b-1/prearrival', { arriveApproved: 23 });
+canPatch('the approved hour and the guest slot coexist in one save', DESK,
+         '/bookings/b-1/prearrival', { arriveSlot: '16', arriveApproved: 15 });
+canPatch('and reception can clear it', DESK,
+         '/bookings/b-1/prearrival', { arriveApproved: null });
+cannotPatch('the guest cannot set one, even a sensible one', GUEST,
+            '/bookings/b-1/prearrival', { arriveApproved: 15 });
+cannotPatch('nor smuggle one in with an honest save', GUEST,
+            '/bookings/b-1/prearrival',
+            { dining: true, arriveApproved: 11, at: NOW });
+cannotPatch('housekeeping does not approve arrivals', HK,
+            '/bookings/b-1/prearrival', { arriveApproved: 15 });
+cannotPatch('below the range is refused', DESK,
+            '/bookings/b-1/prearrival', { arriveApproved: 10 });
+cannotPatch('above the range is refused', DESK,
+            '/bookings/b-1/prearrival', { arriveApproved: 24 });
+cannotPatch('an hour written as text is refused', DESK,
+            '/bookings/b-1/prearrival', { arriveApproved: '15' });
+
+/* The arriving-soon marker. The Worker writes it before it sends, so a villa
+   is announced once however many cron wakes cross its red hour. */
+can('the sync writes the arriving-soon marker', SYNC,
+    '/alerts/2026-09-10/5', { at: NOW });
+can('a manager can clear one', ADMIN, '/alerts/2026-09-10/5', null);
+cannot('a guest cannot write one', GUEST, '/alerts/2026-09-10/5', { at: NOW });
+ck('nor read the list of them',
+   as(GUEST).read('/alerts/2026-09-10').allowed === false);
+cannot('a marker with extra fields is refused', SYNC,
+       '/alerts/2026-09-10/5', { at: NOW, actor: 'x' });
+cannot('and a marker on a villa that is not a number', SYNC,
+       '/alerts/2026-09-10/spa', { at: NOW });
+
 /* worker/mews-sync.js */
 canPatch('the Mews sync writes a reservation', SYNC, '/bookings/b-2/pms', {
   first: 'Mark', last: 'Whitfield', phone: '+61400000002',
