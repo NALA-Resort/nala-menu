@@ -1756,19 +1756,25 @@ with sync_playwright() as p:
     eta_last = {
         "3":  {"id": "x3",  "arrive": plus(-2), "depart": today},
         "5":  {"id": "x5",  "arrive": plus(-2), "depart": today},
+        "7":  {"id": "x7",  "arrive": plus(-2), "depart": today},
         "16": {"id": "x16", "arrive": plus(-2), "depart": today},
     }
     eta_tonight = {
         "3":  {"id": "e3",  "arrive": today, "depart": plus(2)},
         "4":  {"id": "e4",  "arrive": today, "depart": plus(2)},
         "6":  {"id": "e6",  "arrive": today, "depart": plus(2)},
+        "7":  {"id": "e7",  "arrive": today, "depart": plus(2)},
         "8":  {"id": "e8",  "arrive": today, "depart": plus(2)},
         "10": {"id": "e10", "arrive": today, "depart": plus(1)},
         "12": {"id": "e12", "arrive": today, "depart": plus(1)},
         "14": {"id": "e14", "arrive": today, "depart": plus(1)},
         "16": {"id": "e16", "arrive": today, "depart": plus(1)},
     }
-    eta_hk = {"16": {"done": now.isoformat()}, "5": {"departed": True}}
+    eta_pre["e7"] = {"arriveSlot": "16"}
+    eta_hk = {"16": {"done": now.isoformat()},
+              "3": {"departed": True, "takenBy": "Ana", "stripped": True},
+              "5": {"departed": True},
+              "7": {"departed": True}}
     def eta_fb(route, request):
         u = request.url
         if request.method != "GET":
@@ -1840,6 +1846,53 @@ with sync_playwright() as p:
       return {three:g('3').dataset.job, four:g('4').dataset.job};}""")
     ck("the tile under the corner keeps its job",
        kinds["three"] == "clean-pre" and kinds["four"] == "pre")
+
+    # ── the ETA orders villas inside the blocks it found them in ────────
+    # Earliest first among the departed cleans, earliest first among the
+    # pre-arrivals, and neither ordering reaches across a boundary: no hour
+    # lifts an undeparted villa over a departed one, and finished work still
+    # sinks. A silent arrival is a 2pm and ties fall to villa number, so the
+    # stated 2pm at villa 14 sits after villa 6 only because 6 is 6.
+    eordr = q.evaluate("()=>[...document.querySelectorAll('#grid .tile')]"
+                       ".map(b=>b.querySelector('.rn').textContent)")
+    print("   eta order:", eordr)
+    ck("departed cleans by hour, then departed with no arrival",
+       eordr[:3] == ["3", "7", "5"])
+    ck("pre-arrivals by hour, silent 2pm among the stated, latest last",
+       eordr[3:9] == ["4", "6", "14", "12", "10", "8"])
+    ck("a finished villa sinks whatever its hour", eordr[9] == "16")
+
+    # ── the corners: ETA top left, icons top right, badge bottom right ──
+    # Asserted as geometry rather than declared style, because the two
+    # faults worth catching are a corner that did not move and two corner
+    # marks drawn on top of each other.
+    def corners(pgx):
+        return pgx.evaluate("""()=>{const t=[...document.querySelectorAll('#grid .tile')]
+          .find(x=>x.querySelector('.rn').textContent==='3');
+          const r=e=>{const b=e.getBoundingClientRect();
+            return {l:b.left,r:b.right,t:b.top,b:b.bottom};};
+          const T=r(t), e=r(t.querySelector('.eta')),
+                i=r(t.querySelector('.task-icons')),
+                w=r(t.querySelector('.who-badge'));
+          const mid=(T.l+T.r)/2, cy=(T.t+T.b)/2;
+          return {etaLeftTop: e.l<mid && e.t<cy,
+                  iconsRightTop: i.l>mid && i.t<cy,
+                  badgeRightBottom: w.l>mid && w.b>cy && w.t>cy,
+                  apart: e.r<=i.l && i.b<=w.t };}""")
+    c = corners(q)
+    print("   corners:", c)
+    ck("the time sits top left", c["etaLeftTop"])
+    ck("the strip mark sits top right", c["iconsRightTop"])
+    ck("the who badge sits bottom right", c["badgeRightBottom"])
+    ck("and no two corner marks overlap", c["apart"])
+    # The same three corners hold in the landscape breakpoint, which carries
+    # its own positions for all three marks.
+    q.set_viewport_size({"width": 700, "height": 500}); q.wait_for_timeout(400)
+    c = corners(q)
+    print("   corners landscape:", c)
+    ck("landscape: time top left, icons top right, badge bottom right",
+       c["etaLeftTop"] and c["iconsRightTop"] and c["badgeRightBottom"])
+    ck("landscape: still no overlap", c["apart"])
     q.close()
 
     b.close()

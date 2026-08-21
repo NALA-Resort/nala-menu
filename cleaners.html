@@ -98,9 +98,9 @@
     .tile { padding:5px 5px 4px !important; gap:3px !important; }
     .tile .rn { font-size:17px !important; }
     .tile .sub { font-size:8px !important; min-height:10px !important; }
-    .tile .who-badge { top:3px; right:3px; min-width:16px; height:16px;
+    .tile .who-badge { bottom:3px; right:3px; min-width:16px; height:16px;
                        font-size:8px; border-radius:8px; }
-    .tile .task-icons { top:3px; left:3px; }
+    .tile .task-icons { top:3px; right:3px; }
     .tile .task-icons svg { width:11px; height:11px; }
     .tile .eta { top:3px; left:3px; font-size:8px; }
     .legend { padding:3px 4px !important; font-size:5.5px !important;
@@ -196,7 +196,7 @@
      Yours is inverted rather than given a colour. Colour on this board means
      which job, and a second meaning for the same signal is how a board stops
      being readable. */
-  .tile .who-badge { position:absolute; top:5px; right:5px;
+  .tile .who-badge { position:absolute; bottom:5px; right:5px;
                      min-width:20px; height:20px; padding:0 4px;
                      border-radius:10px; border:1.5px solid var(--ink);
                      background:var(--ink); color:var(--cream);
@@ -236,7 +236,7 @@
      colour and by the time underneath, so the pill only has to stay
      recognisable as the job it was. */
   .tile.done .chip { opacity:.4; }
-  .tile .who-badge { position:absolute; top:5px; right:5px;
+  .tile .who-badge { position:absolute; bottom:5px; right:5px;
                      min-width:20px; height:20px; padding:0 4px;
                      border-radius:10px; border:1.5px solid var(--ink);
                      background:var(--ink); color:var(--cream);
@@ -245,11 +245,11 @@
                      justify-content:center; box-sizing:border-box; }
   .tile .who-badge.mine { background:var(--cream); color:var(--ink); }
   /* Strip and fresh linen: the two jobs a helper can do ahead of a clean.
-     On the tile they live in the top-left corner, opposite the who badge,
+     On the tile they live in the top-right corner, above the who badge,
      and only when done - an absent mark is the default and costs nothing.
      Dark grey rather than a job colour, because colour on this board means
      which job is ready, and these say a part is already finished.       */
-  .tile .task-icons { position:absolute; top:5px; left:5px; display:flex;
+  .tile .task-icons { position:absolute; top:5px; right:5px; display:flex;
                       gap:3px; color:#55554F; }
   .tile .task-icons svg { width:14px; height:14px; display:block; }
   .tile.done .task-icons { opacity:.4; }
@@ -873,8 +873,22 @@ function render(){
     var t = new Date(h.bfast).getTime();
     return isNaN(t) ? 0 : t;      /* earliest first = seated longest */
   }
+  /* The arrival hour, as a tie-break INSIDE the sub bands, never across
+     them: an undeparted villa cannot be worked on, so no hour lifts it
+     above a departed one. Finished work keeps its villa-number order, and
+     a villa with no arrival takes the sentinel, which keeps it exactly
+     where it sorts today. 99, not Infinity: two Infinities subtract to
+     NaN and NaN silently breaks the whole comparator. */
+  function eta(r){
+    var h = STATE.hk[r.n] || {};
+    if (h.done || h.pushed) return 99;
+    if ((r.kind === 'clean' || r.kind === 'pre') && arrivingNow(r, h))
+      return effectiveEta(r.n).h;
+    return 99;
+  }
   STATE.rows.sort(function(a,b){
-    return (rank(a)-rank(b)) || (sub(a)-sub(b)) || (seated(a)-seated(b)) || (a.n-b.n);
+    return (rank(a)-rank(b)) || (sub(a)-sub(b)) || (eta(a)-eta(b)) ||
+           (seated(a)-seated(b)) || (a.n-b.n);
   });
   STATE.rows.forEach(function(row){
     var h=STATE.hk[row.n]||{};
@@ -980,7 +994,7 @@ function render(){
        the wrong order for a screen reader and for anything matching on it. */
     /* Strip and linen only exist on a clean: they are the two jobs done ahead
        of one, and a service or a pre-arrival has no linen turnaround for a
-       helper to get ahead of. Same corner rule as the badge: drawn top-left,
+       helper to get ahead of. Same corner rule as the badge: drawn top-right,
        listed last, so the tile still reads villa first. */
     var tasks='';
     if (row.kind==='clean' && (h.stripped || h.linen)){
