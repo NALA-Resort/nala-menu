@@ -427,6 +427,37 @@ function initDateNav(){
     td.onclick = function(e){ if (e) e.preventDefault(); goToday(); };
     td.disabled = isToday();     // always visible; dimmed when already on today
   }
+  /* Tapping the date itself opens the phone's own date picker, for the jump
+     the arrows are bad at: next Friday is four taps of an arrow and one of a
+     calendar. A real date input is laid invisibly over the label, so the tap
+     that opens the picker is a genuine tap on a genuine input - iOS opens it
+     from focus alone, where showPicker() does not exist on older Safari.
+     Desktop browsers focus the field but only open the calendar from its
+     icon, so showPicker() is called too, where it does exist. Picking today
+     drops the ?date rather than pinning it, same as the Today button, so the
+     page follows the clock again instead of freezing on a written date. */
+  if (el){
+    el.style.position = 'relative';
+    el.style.cursor = 'pointer';
+    var pick = document.createElement('input');
+    pick.type = 'date';
+    pick.value = dkey(VIEW);
+    pick.setAttribute('aria-label', 'Choose a date');
+    pick.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;'+
+      'opacity:0;border:0;padding:0;margin:0;cursor:pointer;'+
+      '-webkit-appearance:none;appearance:none;background:transparent;';
+    pick.onclick = function(){
+      if (pick.showPicker){ try { pick.showPicker(); } catch (e){} }
+    };
+    pick.onchange = function(){
+      var v = pick.value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+      var q = new URLSearchParams(location.search);
+      if (v === dkey(new Date())) q.delete('date'); else q.set('date', v);
+      location.search = q.toString();
+    };
+    el.appendChild(pick);
+  }
   return { VIEW:VIEW, todayKey:todayKey, isToday:isToday };
 }
 
@@ -568,6 +599,21 @@ function resolveRoomGuestsHK(all, todayK){
    the seam that keeps screen and paper agreeing.                          */
 var DINNER_CELLS = {};
 
+/* Which villas opened their menu link on the date fetchStays was last called
+   with. Kept beside DINNER_CELLS for the same reason: every page that renders
+   a night already asks for that night, so the marks ride along and no page
+   grows a fetch of its own.
+
+   It answers the question the dinner cell cannot. An empty cell says nobody
+   has answered. It does not say whether anybody was asked. */
+var OPENED_MARKS = {};
+
+/* True when this villa opened its link on the night being shown. */
+function openedTonight(villa, marks){
+  var m = (marks || OPENED_MARKS)[String(villa)];
+  return !!(m && m.at);
+}
+
 function fetchStays(dateKey){
   return Promise.all([
     fetch(DB + '/stays/' + dateKey + '.json?v=' + Date.now())
@@ -578,11 +624,94 @@ function fetchStays(dateKey){
       .catch(function(){ return null; }),
     fetch(DB + '/dinner/' + dateKey + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
+    /* A failed read here must not read as nobody opened anything: that would
+       put every villa back in the never reached pile and send reception
+       chasing guests who already answered. Null, and the caller shows no
+       marks rather than wrong ones. */
+    fetch(DB + '/opened/' + dateKey + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; })
   ]).then(function(res){
     DINNER_CELLS = res[1] || {};
-    return res[0];
+    OPENED_MARKS = res[2] || {};
+    /* One more read per occupied villa: the reservation's own answers. There
+       is one dietary list per person and it lives on the reservation, not on
+       a night, so the boards have to be able to see it even when the viewed
+       night holds no dinner cell at all. A failed read leaves that villa's
+       entry empty and the merge falls back to the night, which is exactly
+       yesterday's behaviour rather than a blank board. */
+    var stays = res[0] || {}, map = {};
+    return Promise.all(Object.keys(stays).map(function(v){
+      var id = stays[v] && stays[v].id;
+      if (!id) return null;
+      return fetch(DB + '/bookings/' + id + '/prearrival.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .catch(function(){ return null; })
+        .then(function(p){ if (p) map[String(v)] = p; });
+    })).then(function(){
+      PREARRIVAL_BY_VILLA = map;
+      return res[0];
+    });
   });
+}
+
+/* The reservation's dietaries, laid over a built record. The reservation wins
+   when it has any, because an allergy is not true on Tuesday and false on
+   Wednesday; the night's copy stands only as the fallback while older records
+   still hold dietaries there and nowhere else. NOTES-AUDIT.md has the model
+   and the correction: an earlier version said the night should win, and it
+   was wrong. */
+var PREARRIVAL_BY_VILLA = {};
+
+/* When the arriving guest lands, as an hour on the 24 hour clock. Reception's
+   approved hour wins outright; the guest's own slot stands next; and 2pm
+   stands for every arrival that says nothing, because 2pm is the resort's
+   standing promise, not a guess. disp is empty for that silent default: it
+   sorts and warns like a stated 2pm but nobody set it, so nothing is drawn.
+
+   Here rather than in a page, because the Cleans board and the printed Clean
+   Sheet both render it, and two copies of when the guest lands is how screen
+   and paper drift apart. The Worker holds the server side mirror. */
+function effectiveEta(villa){
+  var pre = PREARRIVAL_BY_VILLA[String(villa)] || {};
+  var ap = Number(pre.arriveApproved);
+  if (pre.arriveApproved != null && ap >= 11 && ap <= 23)
+    return { h: ap, disp: hour12(ap), early: ap < 14 };
+  var s = String(pre.arriveSlot || '');
+  if (s === 'before2') return { h: 14, disp: '<2pm', early: true };
+  if (s === 'after5')  return { h: 17, disp: '>5pm', early: false };
+  if (s === '14' || s === '15' || s === '16' || s === '17')
+    return { h: +s, disp: hour12(+s), early: false };
+  return { h: 14, disp: '', early: false };
+}
+function hour12(h){ return (h > 12 ? h - 12 : h) + (h < 12 ? 'am' : 'pm'); }
+function etaWord(disp){
+  return disp === '<2pm' ? 'before 2pm' : disp === '>5pm' ? 'after 5pm' : disp;
+}
+
+function overlayReservationDiets(rec, villa){
+  if (!rec) return rec;
+  var pre = PREARRIVAL_BY_VILLA[String(villa)];
+  if (!pre) return rec;
+  if (pre.diets && pre.diets.length){
+    rec.diets = pre.diets.slice();
+    /* The reservation's list is the person's list, so dietaries are never
+       "previous": a copy carried forward on roomguests is an old copy of a
+       current fact, not an unconfirmed answer. Leaving prevDiets set showed
+       the same allergy twice, once with a warning to ask first. */
+    delete rec.prevDiets;
+    if (pre.dnote){
+      rec.dnote = pre.dnote;
+      /* The bubble and its popover read the stamped field, and the stamp
+         runs before this overlay, so a note living only on the reservation
+         was invisible to both: the bubble called an explained Other
+         unexplained and went red, and opened onto nothing. 20 Aug. */
+      rec.dineDnote = pre.dnote;
+      delete rec.prevDnote;
+    }
+  }
+  return rec;
 }
 
 /* Turns one /stays/<date>/<villa> entry into the shape roomguests uses, so it
@@ -851,6 +980,10 @@ function withDineProvenance(out, tonight, known){
 }
 
 function roomRecord(n, responses, manual, roomguests, dinner){
+  return overlayReservationDiets(
+    roomRecordCore(n, responses, manual, roomguests, dinner), n);
+}
+function roomRecordCore(n, responses, manual, roomguests, dinner){
   var mk = 'room-'+n, m = manual[mk];
   var known = roomguests[String(n)] || {};
   /* A staff vacant made against an older version of the booking was a decision
@@ -991,6 +1124,41 @@ function normaliseRole(r){ return r === 'staff' ? 'admin' : r; }
    before the at sign, which is a poor name but a better one than nothing, and
    never to the full address: these appear on a board a guest can see over a
    shoulder. */
+/* ── tonight's menu ───────────────────────────────────────────────────
+   The menu moved into the database on 21 Aug, so that publishing needs a
+   staff login rather than a GitHub token.
+
+   A GitHub token cannot be narrowed to one file: the smallest scope that can
+   write menu.json is Contents write, which is every file in the repository,
+   including the pages and the Worker. So the chef's credential could change
+   the whole live site, and no amount of care in the brief could stop it. The
+   database CAN be narrowed: /menu is writable by a chef and an admin, and by
+   nobody else, and the rules enforce it rather than the document.
+
+   menu.json is still written alongside, and is still read as the fallback
+   here, deliberately. Four screens read the menu and this is a live resort:
+   the file means that if the node is empty, or a read fails, or something in
+   this change is wrong, the guest's menu does not go dark. It can be dropped
+   once a few services have gone by.                                       */
+function fetchMenuNode(){
+  return fetch(DB + '/menu.json?v=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(m){
+      if (m && m.published && m.main && m.main.name) return m;
+      return null;
+    })
+    .catch(function(){ return null; });
+}
+
+function fetchMenuAnywhere(){
+  return fetchMenuNode().then(function(m){
+    if (m) return m;
+    return fetch('menu.json?v=' + Date.now())
+      .then(function(r){ return r.json(); })
+      .catch(function(){ return null; });
+  });
+}
+
 /* ── a dietary that outlives the booking ──────────────────────────────
    A dietary is about the person, not about a night or a reservation. Kept only
    on the booking, a guest who comes back next year arrives with an empty
@@ -1396,8 +1564,7 @@ function announceMenu(){
      case is a refused request rather than a wrong notification, but there is
      no reason to make it.                                                */
   if (!window.__idToken) return;
-  fetch('menu.json?v=' + Date.now())
-    .then(function(r){ return r.json(); })
+  fetchMenuAnywhere()
     .then(function(m){
       m = m || {};
       var filled = ['bread','entree','main','dessert'].every(function(k){
@@ -1574,13 +1741,55 @@ var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
 
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
+/* The most recent day before the viewed one with hk records, walking back a
+   fortnight, exactly as the Cleans board does: a strip marked Saturday still
+   reaches Monday's sheet. Read only. The board owns writing the carry. */
+function lastHk(maxDays){
+  function step(i){
+    if (i >= maxDays) return Promise.resolve({ key:null, data:{} });
+    var d = new Date(VIEW); d.setDate(d.getDate()-1-i);
+    return api('/hk/'+dkey(d)).then(function(v){
+      if (v && typeof v === 'object' && Object.keys(v).length) return { data:v };
+      return step(i+1);
+    });
+  }
+  return step(0);
+}
+
+var yest = (function(){ var d=new Date(VIEW); d.setDate(d.getDate()-1); return dkey(d); })();
+
+/* Last night as well as tonight, the fix the board got on 19 Aug and this
+   sheet did not: /stays files a guest under the nights they SLEEP, so
+   somebody who checked out this morning is not in tonight's file at all.
+   They are the person this sheet exists for. Reading only tonight printed a
+   same day turnover as a Pre-arrival and dropped a plain departure into the
+   To verify count, off the paper entirely. */
 Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
-              fetchRoomGuests(todayKey()), api('/hk/'+todayKey()), fetchStays(todayKey()) ])
+              fetchRoomGuests(todayKey()), api('/hk/'+todayKey()), fetchStays(todayKey()),
+              api('/stays/'+yest), lastHk(14) ])
   .then(function(res){
     var responses  = res[0] || {};
     var manual     = res[1] || {};
-    var roomguests = overlayStays(resolveRoomGuestsHK(res[2] || {}, todayKey()), res[4]);
     var hk         = res[3] || {};
+    var tonight    = res[4] || {};
+    var lastNight  = res[5] || {};
+    var prevHk     = (res[6] || {}).data || {};
+    /* Last night underneath, tonight over the top, like the board: a villa
+       occupied both nights reads as tonight's guest, and a villa emptied
+       this morning still reads as the guest who left. */
+    var roomguests = overlayStays(
+      overlayStays(resolveRoomGuestsHK(res[2] || {}, todayKey()), lastNight),
+      tonight);
+
+    /* Somebody arrives into the villa today, from either source, with the
+       manager's override read the way the board reads it at draw time. */
+    var arriving = {};
+    var rgToday = (res[2] || {})[todayKey()] || {};
+    for (var rv in rgToday){ if (rgToday[rv] && rgToday[rv].arrives) arriving[rv] = true; }
+    for (var sv in tonight){
+      var t = tonight[sv] || {};
+      if (t.arrive && String(t.arrive).slice(0,10) === todayKey()) arriving[sv] = true;
+    }
 
     function fmtT(iso){
       var d = parseISO(iso);
@@ -1593,11 +1802,31 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
     var rows=[], nClean=0, nSvc=0, nVer=0;
     for (var n=1; n<=ROOMS; n++){
       var r = roomRecord(n, responses, manual, roomguests);
-      var kind = hkClassify(r, todayKey(), hk[n]);
+      var ct = hk[n] || {}, cp = prevHk[n] || {};
+      /* The carry, derived the way the board derives it before writing it:
+         a departure or a push left open on the newest previous day is a
+         departed clean today, however many midnights ago that became true.
+         Derived in memory only. */
+      var pushedIn = !!(cp.pushed && !cp.done);
+      var carriedDep = !!(ct.carried && ct.departed && !ct.done) ||
+        (!(ct.carried || ct.done || cp.done) &&
+         (cp.departed || cp.pushed) && ct.departed === undefined);
+      var goneIn = pushedIn || carriedDep;
+      /* Same day turnover: only the two night files can tell it from a plain
+         arrival, and it is a clean first, exactly as on the board. */
+      var ln = lastNight[String(n)];
+      var left = !!(ln && ln.depart &&
+                    String(ln.depart).slice(0,10) === todayKey());
+      var kOver = (ct.kind==='clean'||ct.kind==='svc'||ct.kind==='pre'||ct.kind==='vac')
+                  ? ct.kind : null;
+      var kind = kOver || (goneIn ? 'clean' : hkClassify(r, todayKey(), null, left));
+      var arr = ct.arriving === true ? true
+              : ct.arriving === false ? false : !!arriving[n];
       if (kind==='clean') nClean++;
       else if (kind==='svc') nSvc++;
       else if (kind==='ver') nVer++;
-      rows.push({ n:n, rec:r||{}, kind:kind });
+      rows.push({ n:n, rec:r||{}, kind:kind, arr:arr,
+                  departed: !!(ct.departed || carriedDep) });
     }
 
     var order={svc:0, clean:1, pre:2, ver:3, vac:4};   // services first: done at breakfast
@@ -1632,15 +1861,26 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
       var boxes = (row.kind==='vac') ? ['',''] : ['<span class="box"></span>','<span class="box"></span>'];
       var mk = hk[String(row.n)] || {};
       if (mk.done) boxes[0] = '<span class="donemark">&#10003; '+fmtT(mk.done)+'</span>';
+      /* Pushed off today's list is not done and not waiting for a tick, and
+         a tick box on it invites the wrong mark. */
+      else if (mk.pushed) boxes[0] = '<span class="muted">Pushed</span>';
       if (row.kind!=='vac'){
-        if (mk.departed)      chip += '<div class="subtag">Departed</div>';
+        if (row.departed)     chip += '<div class="subtag">Departed</div>';
         else if (mk.bfast && !mk.done) chip += '<div class="subtag">At breakfast '+fmtT(mk.bfast)+'</div>';
+      }
+      /* When the guest lands, beside the day they land, resolved by the same
+         shared rule the board draws: stated times only, so a silent 2pm
+         stays silent on paper too. */
+      var arrCell = fmtD(g.arrives);
+      if (row.arr && (row.kind==='clean' || row.kind==='pre')){
+        var ev = effectiveEta(row.n);
+        if (ev.disp) arrCell += (arrCell ? ' · ' : '') + ev.disp;
       }
       tb.insertAdjacentHTML('beforeend',
         '<tr'+cls+'>'+
           '<td class="c-room">'+row.n+'</td>'+
           '<td class="c-svc">'+chip+'</td>'+
-          '<td class="c-arr">'+fmtD(g.arrives)+'</td>'+
+          '<td class="c-arr">'+arrCell+'</td>'+
           '<td class="c-dep">'+fmtD(g.departs)+'</td>'+
           '<td class="c-done">'+boxes[0]+'</td>'+
           '<td class="c-notes"></td>'+

@@ -125,6 +125,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+         --amber:#B07D2B;
           /* state palette: dining green, declined terracotta, vacant slate */
           --green:#5E7D67;  --green-t:rgba(122,160,130,.26);  --green-b:rgba(122,160,130,.65);
           --terra:#9E6455;  --terra-t:rgba(184,106,90,.16);   --terra-b:rgba(184,106,90,.45);
@@ -310,6 +311,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
          position:relative; }
   .bub::after { content:''; position:absolute; inset:-11px; }  /* 42px tap target */
   .bub svg { width:15px; height:15px; display:block; fill:var(--mid); }
+  .bub.kitchen svg { fill:var(--amber); }
   .bub.flag svg { fill:var(--red); }
   .pop-who { font-size:15px; margin-bottom:14px; padding-bottom:12px;
              border-bottom:1px solid var(--rule); }
@@ -334,7 +336,8 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
               display:none; align-items:flex-end; justify-content:center; z-index:10; }
   .backdrop.show { display:flex; }
   .sheet { width:100%; max-width:520px; background:var(--cream);
-           padding:26px 24px 34px; border-top:1px solid var(--rule);
+           min-height:560px;
+           padding:26px 24px 120px; border-top:1px solid var(--rule);
            max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .sheet h3 { font-family:var(--ui-font); font-size:11px; letter-spacing:.2em;
               text-transform:uppercase; color:var(--mid); font-weight:normal;
@@ -414,6 +417,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      clear of the menu button, and the panel has no such problem. */
   .gd-panel { position:absolute; top:100%; left:-44px; right:-44px; z-index:6;
               margin-top:8px; padding:12px 16px 4px; text-align:left;
+              overflow-y:auto;
               background:var(--cream); border:1px solid var(--rule);
               border-radius:12px;
               box-shadow:0 10px 28px rgba(28,28,26,.14);
@@ -427,6 +431,30 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
     .gd-panel { transition:none; }
     .gd-panel.open { transition:none; }
   }
+  .gd-int { margin:10px 0 2px; }
+  .gd-int label { display:block; font-family:var(--ui-font); font-size:8px;
+                  letter-spacing:.25em; text-transform:uppercase;
+                  color:var(--mid); margin:0 0 4px; }
+  .gd-int textarea { width:100%; min-height:56px; padding:8px 10px;
+                     border:1px solid var(--rule); border-radius:6px;
+                     background:var(--cream); color:var(--ink);
+                     /* 16px is the floor for every input on a phone: iOS
+                        zooms the whole page into any field set smaller. */
+                     font-family:inherit; font-size:16px; resize:vertical; }
+  .gd-int .gd-int-save { display:block; width:100%; margin:6px 0 0;
+                     padding:8px 0; border:1px solid var(--rule);
+                     border-radius:6px; background:none; cursor:pointer;
+                     color:var(--mid); font-family:var(--ui-font);
+                     font-size:9.5px; letter-spacing:.18em;
+                     text-transform:uppercase;
+                     -webkit-tap-highlight-color:transparent; }
+  .gd-int .gd-int-save:disabled { opacity:.45; cursor:default; }
+  .gd-int-link { display:inline-block; margin:6px 0 2px; padding:2px 0;
+                 border:0; background:none; cursor:pointer;
+                 color:var(--mid); font-family:inherit; font-size:14px;
+                 text-decoration:underline; text-underline-offset:3px;
+                 -webkit-tap-highlight-color:transparent; }
+  .gd-int-link:active { color:var(--ink); }
   .gd-close { display:block; width:100%; margin:8px 0 0; padding:9px 0;
               border:0; border-top:1px solid var(--rule);
               background:none; cursor:pointer; color:var(--mid);
@@ -572,6 +600,10 @@ body.readonly .comb-undo { display:none; }
       loadStaff(function(recs, err){
         var role = roleOf(u);
         window.NALA_ROLE = role;
+        /* Who, for the editedBy stamp on the staff note. The front desk
+           sets this at its own login; the board never needed it until the
+           panel learned to write. */
+        window.NALA_ME   = u.email || '';
         window.CAN_EDIT  = can(role,'editBookings');
         window.NALA_NAVFILTER(role);
         showAccess(can(role,'resBoard'), err);
@@ -773,6 +805,37 @@ function initDateNav(){
     td.onclick = function(e){ if (e) e.preventDefault(); goToday(); };
     td.disabled = isToday();     // always visible; dimmed when already on today
   }
+  /* Tapping the date itself opens the phone's own date picker, for the jump
+     the arrows are bad at: next Friday is four taps of an arrow and one of a
+     calendar. A real date input is laid invisibly over the label, so the tap
+     that opens the picker is a genuine tap on a genuine input - iOS opens it
+     from focus alone, where showPicker() does not exist on older Safari.
+     Desktop browsers focus the field but only open the calendar from its
+     icon, so showPicker() is called too, where it does exist. Picking today
+     drops the ?date rather than pinning it, same as the Today button, so the
+     page follows the clock again instead of freezing on a written date. */
+  if (el){
+    el.style.position = 'relative';
+    el.style.cursor = 'pointer';
+    var pick = document.createElement('input');
+    pick.type = 'date';
+    pick.value = dkey(VIEW);
+    pick.setAttribute('aria-label', 'Choose a date');
+    pick.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;'+
+      'opacity:0;border:0;padding:0;margin:0;cursor:pointer;'+
+      '-webkit-appearance:none;appearance:none;background:transparent;';
+    pick.onclick = function(){
+      if (pick.showPicker){ try { pick.showPicker(); } catch (e){} }
+    };
+    pick.onchange = function(){
+      var v = pick.value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+      var q = new URLSearchParams(location.search);
+      if (v === dkey(new Date())) q.delete('date'); else q.set('date', v);
+      location.search = q.toString();
+    };
+    el.appendChild(pick);
+  }
   return { VIEW:VIEW, todayKey:todayKey, isToday:isToday };
 }
 
@@ -914,6 +977,21 @@ function resolveRoomGuestsHK(all, todayK){
    the seam that keeps screen and paper agreeing.                          */
 var DINNER_CELLS = {};
 
+/* Which villas opened their menu link on the date fetchStays was last called
+   with. Kept beside DINNER_CELLS for the same reason: every page that renders
+   a night already asks for that night, so the marks ride along and no page
+   grows a fetch of its own.
+
+   It answers the question the dinner cell cannot. An empty cell says nobody
+   has answered. It does not say whether anybody was asked. */
+var OPENED_MARKS = {};
+
+/* True when this villa opened its link on the night being shown. */
+function openedTonight(villa, marks){
+  var m = (marks || OPENED_MARKS)[String(villa)];
+  return !!(m && m.at);
+}
+
 function fetchStays(dateKey){
   return Promise.all([
     fetch(DB + '/stays/' + dateKey + '.json?v=' + Date.now())
@@ -924,11 +1002,94 @@ function fetchStays(dateKey){
       .catch(function(){ return null; }),
     fetch(DB + '/dinner/' + dateKey + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
+    /* A failed read here must not read as nobody opened anything: that would
+       put every villa back in the never reached pile and send reception
+       chasing guests who already answered. Null, and the caller shows no
+       marks rather than wrong ones. */
+    fetch(DB + '/opened/' + dateKey + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; })
   ]).then(function(res){
     DINNER_CELLS = res[1] || {};
-    return res[0];
+    OPENED_MARKS = res[2] || {};
+    /* One more read per occupied villa: the reservation's own answers. There
+       is one dietary list per person and it lives on the reservation, not on
+       a night, so the boards have to be able to see it even when the viewed
+       night holds no dinner cell at all. A failed read leaves that villa's
+       entry empty and the merge falls back to the night, which is exactly
+       yesterday's behaviour rather than a blank board. */
+    var stays = res[0] || {}, map = {};
+    return Promise.all(Object.keys(stays).map(function(v){
+      var id = stays[v] && stays[v].id;
+      if (!id) return null;
+      return fetch(DB + '/bookings/' + id + '/prearrival.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .catch(function(){ return null; })
+        .then(function(p){ if (p) map[String(v)] = p; });
+    })).then(function(){
+      PREARRIVAL_BY_VILLA = map;
+      return res[0];
+    });
   });
+}
+
+/* The reservation's dietaries, laid over a built record. The reservation wins
+   when it has any, because an allergy is not true on Tuesday and false on
+   Wednesday; the night's copy stands only as the fallback while older records
+   still hold dietaries there and nowhere else. NOTES-AUDIT.md has the model
+   and the correction: an earlier version said the night should win, and it
+   was wrong. */
+var PREARRIVAL_BY_VILLA = {};
+
+/* When the arriving guest lands, as an hour on the 24 hour clock. Reception's
+   approved hour wins outright; the guest's own slot stands next; and 2pm
+   stands for every arrival that says nothing, because 2pm is the resort's
+   standing promise, not a guess. disp is empty for that silent default: it
+   sorts and warns like a stated 2pm but nobody set it, so nothing is drawn.
+
+   Here rather than in a page, because the Cleans board and the printed Clean
+   Sheet both render it, and two copies of when the guest lands is how screen
+   and paper drift apart. The Worker holds the server side mirror. */
+function effectiveEta(villa){
+  var pre = PREARRIVAL_BY_VILLA[String(villa)] || {};
+  var ap = Number(pre.arriveApproved);
+  if (pre.arriveApproved != null && ap >= 11 && ap <= 23)
+    return { h: ap, disp: hour12(ap), early: ap < 14 };
+  var s = String(pre.arriveSlot || '');
+  if (s === 'before2') return { h: 14, disp: '<2pm', early: true };
+  if (s === 'after5')  return { h: 17, disp: '>5pm', early: false };
+  if (s === '14' || s === '15' || s === '16' || s === '17')
+    return { h: +s, disp: hour12(+s), early: false };
+  return { h: 14, disp: '', early: false };
+}
+function hour12(h){ return (h > 12 ? h - 12 : h) + (h < 12 ? 'am' : 'pm'); }
+function etaWord(disp){
+  return disp === '<2pm' ? 'before 2pm' : disp === '>5pm' ? 'after 5pm' : disp;
+}
+
+function overlayReservationDiets(rec, villa){
+  if (!rec) return rec;
+  var pre = PREARRIVAL_BY_VILLA[String(villa)];
+  if (!pre) return rec;
+  if (pre.diets && pre.diets.length){
+    rec.diets = pre.diets.slice();
+    /* The reservation's list is the person's list, so dietaries are never
+       "previous": a copy carried forward on roomguests is an old copy of a
+       current fact, not an unconfirmed answer. Leaving prevDiets set showed
+       the same allergy twice, once with a warning to ask first. */
+    delete rec.prevDiets;
+    if (pre.dnote){
+      rec.dnote = pre.dnote;
+      /* The bubble and its popover read the stamped field, and the stamp
+         runs before this overlay, so a note living only on the reservation
+         was invisible to both: the bubble called an explained Other
+         unexplained and went red, and opened onto nothing. 20 Aug. */
+      rec.dineDnote = pre.dnote;
+      delete rec.prevDnote;
+    }
+  }
+  return rec;
 }
 
 /* Turns one /stays/<date>/<villa> entry into the shape roomguests uses, so it
@@ -1197,6 +1358,10 @@ function withDineProvenance(out, tonight, known){
 }
 
 function roomRecord(n, responses, manual, roomguests, dinner){
+  return overlayReservationDiets(
+    roomRecordCore(n, responses, manual, roomguests, dinner), n);
+}
+function roomRecordCore(n, responses, manual, roomguests, dinner){
   var mk = 'room-'+n, m = manual[mk];
   var known = roomguests[String(n)] || {};
   /* A staff vacant made against an older version of the booking was a decision
@@ -1337,6 +1502,41 @@ function normaliseRole(r){ return r === 'staff' ? 'admin' : r; }
    before the at sign, which is a poor name but a better one than nothing, and
    never to the full address: these appear on a board a guest can see over a
    shoulder. */
+/* ── tonight's menu ───────────────────────────────────────────────────
+   The menu moved into the database on 21 Aug, so that publishing needs a
+   staff login rather than a GitHub token.
+
+   A GitHub token cannot be narrowed to one file: the smallest scope that can
+   write menu.json is Contents write, which is every file in the repository,
+   including the pages and the Worker. So the chef's credential could change
+   the whole live site, and no amount of care in the brief could stop it. The
+   database CAN be narrowed: /menu is writable by a chef and an admin, and by
+   nobody else, and the rules enforce it rather than the document.
+
+   menu.json is still written alongside, and is still read as the fallback
+   here, deliberately. Four screens read the menu and this is a live resort:
+   the file means that if the node is empty, or a read fails, or something in
+   this change is wrong, the guest's menu does not go dark. It can be dropped
+   once a few services have gone by.                                       */
+function fetchMenuNode(){
+  return fetch(DB + '/menu.json?v=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(m){
+      if (m && m.published && m.main && m.main.name) return m;
+      return null;
+    })
+    .catch(function(){ return null; });
+}
+
+function fetchMenuAnywhere(){
+  return fetchMenuNode().then(function(m){
+    if (m) return m;
+    return fetch('menu.json?v=' + Date.now())
+      .then(function(r){ return r.json(); })
+      .catch(function(){ return null; });
+  });
+}
+
 /* ── a dietary that outlives the booking ──────────────────────────────
    A dietary is about the person, not about a night or a reservation. Kept only
    on the booking, a guest who comes back next year arrives with an empty
@@ -1742,8 +1942,7 @@ function announceMenu(){
      case is a refused request rather than a wrong notification, but there is
      no reason to make it.                                                */
   if (!window.__idToken) return;
-  fetch('menu.json?v=' + Date.now())
-    .then(function(r){ return r.json(); })
+  fetchMenuAnywhere()
     .then(function(m){
       m = m || {};
       var filled = ['bread','entree','main','dessert'].every(function(k){
@@ -2115,8 +2314,14 @@ function saveManual(key, rec){
    bubble can say so rather than presenting both as tonight's. */
 function roomState(n){
   var s = roomStateRaw(n);
-  if (s && s.g)
+  if (s && s.g){
     s.g = withDineProvenance(Object.assign({}, s.g), s.g, roomguests[String(n)]);
+    /* Same rule as roomRecord: the reservation's dietaries win when it has
+       any. This board builds its record here rather than through roomRecord,
+       so the overlay has to be applied here too or the two screens disagree
+       about somebody's allergy. */
+    s.g = overlayReservationDiets(s.g, n);
+  }
   return s;
 }
 
@@ -2164,19 +2369,31 @@ function roomStateRaw(n){
 }
 
 
-function openNotes(title, g, hits){
-  var h = '<div class="pop-who">' + title + '</div>';
-  var tonight = !!(g.dineNote || g.dineDnote || (g.dineDiets || []).length);
-  var prev    = !!(g.prevNote || g.prevDnote || (g.prevDiets || []).length);
+/* The bubble's colour is decided here and nowhere else. Worst wins.
+   red: act before cooking tonight. amber: kitchen content to read. grey:
+   context for the house, nothing the chef acts on. A bubble that is only
+   grey opens only Booking notes. See NOTES-AUDIT.md, the bubble. */
+function bubbleState(personDiets, g, hits, bookNote){
+  if (hits.length) return 'red';
+  if (personDiets.indexOf(DIET_OTHER) > -1 && !g.dineDnote) return 'red';
+  if (g.dineDnote || g.dineNote ||
+      g.prevNote || g.prevDnote || (g.prevDiets || []).length) return 'amber';
+  if (bookNote) return 'grey';
+  return '';
+}
 
-  /* Two headings, always, when there is anything from an earlier night. The
-     kitchen has to be able to tell an answer given for tonight from one given
-     three nights ago, and a single undated list cannot say which is which. */
-  if (hits.length || g.dineDnote || tonight) {
-    /* Stamped whether or not there is an older note to distinguish it from.
-       A heading that only appears when there is something to contrast with is
-       a heading nobody learns to read. */
-    h += '<div class="pop-h dh">Tonight\u2019s dining notes</div>';
+function openNotes(title, g, hits, bookNote){
+  var h = '<div class="pop-who">' + title + '</div>';
+  var prev = !!(g.prevNote || g.prevDnote || (g.prevDiets || []).length);
+
+  /* The dietary section: the note and tonight's menu conflicts, and it only
+     appears when there is something dietary to show. It used to be headed
+     "Tonight's dining notes" and to print "No note from the guest yet" even
+     when only a dinner note existed: an empty section apologising for being
+     empty, above the one real note. A dietary is person-level now, so it
+     needs no tonight stamp; the dinner notes below keep theirs. 20 Aug. */
+  if (hits.length || g.dineDnote) {
+    h += '<div class="pop-h dh">Dietary notes</div>';
     if (hits.length) {
       var byDish = {};
       hits.forEach(function(x){ (byDish[x.dish] = byDish[x.dish] || []).push(x.diet); });
@@ -2184,13 +2401,18 @@ function openNotes(title, g, hits){
         return dk + ' - ' + byDish[dk].join(', ');
       }).join('<br>') + '</div>';
     }
-    h += '<div class="pop-t">' + (g.dineDnote
-      ? '\u201C' + g.dineDnote + '\u201D'
-      : '<i>No note from the guest yet.</i>') + '</div>';
+    if (g.dineDnote) h += '<div class="pop-t">\u201C' + g.dineDnote + '\u201D</div>';
   }
   if (g.dineNote) {
-    h += '<div class="pop-h">General comments</div>' +
+    h += '<div class="pop-h">Dinner notes</div>' +
          '<div class="pop-t">\u201C' + g.dineNote + '\u201D</div>';
+  }
+  /* The guest's context for the whole stay, off the reservation. It is why
+     a bubble can be grey: something for the house to read that the kitchen
+     does not act on. */
+  if (bookNote) {
+    h += '<div class="pop-h">Booking notes</div>' +
+         '<div class="pop-t">\u201C' + esc(bookNote) + '\u201D</div>';
   }
 
   if (prev) {
@@ -2198,8 +2420,8 @@ function openNotes(title, g, hits){
     if ((g.prevDiets || []).length) {
       h += '<div class="pop-t">' + dietHTML(g.prevDiets, ', ', 'alrg') + '</div>';
     }
-    if (g.prevDnote) h += '<div class="pop-t">\u201C' + g.prevDnote + '\u201D</div>';
-    if (g.prevNote)  h += '<div class="pop-t">\u201C' + g.prevNote + '\u201D</div>';
+    if (g.prevDnote) h += '<div class="pop-t">Dietary notes \u00b7 \u201C' + g.prevDnote + '\u201D</div>';
+    if (g.prevNote)  h += '<div class="pop-t">Dinner notes \u00b7 \u201C' + g.prevNote + '\u201D</div>';
     h += '<div class="pop-t"><i>From an earlier night, not confirmed for ' +
          'tonight. Ask before cooking to it.</i></div>';
   }
@@ -2243,10 +2465,14 @@ function roomTile(n){
   }
 
   var mark = '';
-  /* Only a guest written record earns this. A booking known only from the PMS
-     has been opened by nobody, and marking it as opened would put the icon on
-     every future night of every stay. */
-  if (!st && roomguests[String(n)] && !isMewsOnly(roomguests[String(n)])) {
+  /* Opened tonight's link and has not answered tonight. Both halves matter.
+
+     Until 19 Aug this was inferred from a guest written /roomguests record,
+     which worked until the guest page stopped writing one on 17 Aug. The
+     condition survived and its evidence did not, so no villa had carried this
+     icon for two days. It now reads the mark the guest page writes per night,
+     which is also what makes it mean tonight rather than some night. */
+  if (!st && openedTonight(n)) {
     mark = '<span class="mark seen">'+ICON_LINK+'</span>';   // opened, no answer yet
   }
   if (st && (st.g.status==='in' || st.g.status==='out')) {
@@ -2283,7 +2509,23 @@ function paintTiles(){
       host.style.gridTemplateColumns = 'repeat(' + Math.min(unit.members.length, 6) + ',1fr)';
       grid.appendChild(host);
     }
-    unit.members.forEach(function(m){ host.appendChild(roomTile(Number(m))); });
+    /* One bad record must cost one tile, not every tile after it. On 20 Aug
+       a single villa's data killed the loop mid-render: three tiles drawn,
+       fourteen missing, stats left as dashes, and nothing anywhere said why.
+       The bad villa now renders as a tile that names its own error, because
+       the phones this board lives on have no console to read. */
+    unit.members.forEach(function(m){
+      try { host.appendChild(roomTile(Number(m))); }
+      catch(e){
+        console.error('villa '+m+' tile failed:', e);
+        var t = document.createElement('button');
+        t.className = 'room vacant';
+        t.innerHTML = '<span class="room-n">'+m+'</span>'+
+          '<span class="room-p" style="font-size:8px;color:var(--red)">'+
+          String(e && (e.message||e)).slice(0,60)+'</span>';
+        host.appendChild(t);
+      }
+    });
   });
 }
 
@@ -2368,9 +2610,18 @@ function render(){
         var st = document.createElement('div');
         st.className = 'row stubrow';
         var kn = roomguests[String(r.room)] || {};
+        /* The dietaries belong to the person, not to the night, so a villa
+           that has not answered TONIGHT still shows its allergy. Without this
+           the allergy looked stuck to the date it was typed on: flip the board
+           a day forward, the villa turns into an awaiting stub, and the stub
+           said nothing but the name. */
+        var od = overlayReservationDiets({}, r.room);
+        var dline = (od.diets && od.diets.length)
+          ? '<div class="row-sub">' + dietHTML(od.diets) +
+            (od.dnote ? ' \u00b7 ' + od.dnote : '') + '</div>' : '';
         st.innerHTML = '<div><div class="row-name"><span class="rm">'+r.room+'</span>'+
           (kn.name ? '  '+kn.name : '')+'</div>'+
-          '<div class="row-sub">Awaiting reply</div></div>';
+          '<div class="row-sub">Awaiting reply</div>'+dline+'</div>';
         host.appendChild(st);
         return;
       }
@@ -2393,13 +2644,18 @@ function render(){
 
     var sub = [];
     var dietLine = '';
-    /* Tonight's dietaries only. One carried over from an earlier night is not
-       an answer to tonight's invitation and must not sit on the row as though
-       it were: it goes in the bubble, under its own heading, where it is
-       labelled as previous. */
-    var tonightDiets = g.dineDiets || [];
-    if (tonightDiets.length) {
-      dietLine = '<div class="dietline">' + tonightDiets.map(function(x){
+    /* The person's dietaries, wherever they were typed. This block used to
+       show tonight's answer only, on the old rule that a carried-over dietary
+       was not an answer to tonight's invitation. NOTES-AUDIT.md corrected the
+       model: there is one dietary list per person and it lives on the
+       reservation, because an allergy is not true on Tuesday and false on
+       Wednesday. g.diets already carries reservation-first with the night as
+       fallback; a row that hid it until somebody re-typed it tonight was the
+       bug. The menu conflict check runs on the same list, since the kitchen
+       cooks for the person, not for the night's paperwork. */
+    var personDiets = (g.diets && g.diets.length) ? g.diets : (g.dineDiets || []);
+    if (personDiets.length) {
+      dietLine = '<div class="dietline">' + personDiets.map(function(x){
         var al = ALLERGENS.indexOf(x) > -1 || /allerg/i.test(x);
         var label = al ? x.replace(/\s*allergy\s*/i,'') : x;
         return '<span class="dpill'+(al?' dpill-al':'')+'">'+label+'</span>';
@@ -2407,9 +2663,10 @@ function render(){
     } else if (g.nodiet) { sub.push('No dietaries confirmed'); }
 
 
-    var hits = menuConflicts(MENU, tonightDiets);
-    var hasNotes = !!(g.dineNote || g.dineDnote ||
-                      g.prevNote || g.prevDnote || (g.prevDiets || []).length);
+    var hits = menuConflicts(MENU, personDiets);
+    var pre = r.room ? (PREARRIVAL_BY_VILLA[String(r.room)] || null) : null;
+    var bookNote = (pre && pre.note) ? String(pre.note) : '';
+    var bubState = bubbleState(personDiets, g, hits, bookNote);
 
     var row = document.createElement('div');
     row.className = 'row' + (hits.length ? ' conflict' : '');
@@ -2418,15 +2675,17 @@ function render(){
       (sub.length ? '<div class="row-sub">'+sub.join(' · ')+'</div>' : '')+
       '</div>'+
       '<div class="row-right">'+
-      ((hasNotes || hits.length)
-        ? '<button class="bub'+(hits.length ? ' flag' : '')+'">'+ICON_BUBBLE+'</button>'
+      (bubState
+        ? '<button class="bub'+(bubState==='red' ? ' flag'
+                              : bubState==='amber' ? ' kitchen' : ' info')+'">'+
+          ICON_BUBBLE+'</button>'
         : '<span class="bub-slot"></span>')+
       '<span class="row-pax">'+(g.pax||1)+' pax</span>'+
       '<span class="edit">'+ICON_EDIT+'</span></div>'+ dietLine;
     var bub = row.querySelector('.bub');
-    if (bub) bub.onclick = (function(tt, gg, hh){
-      return function(ev){ ev.stopPropagation(); openNotes(tt, gg, hh); };
-    })(title, g, hits);
+    if (bub) bub.onclick = (function(tt, gg, hh, bn){
+      return function(ev){ ev.stopPropagation(); openNotes(tt, gg, hh, bn); };
+    })(title, g, hits, bookNote);
     row.querySelector('.edit').onclick = (function(rr){
       return function(ev){
         ev.stopPropagation();
@@ -2674,8 +2933,8 @@ function guestDataHTML(g, knownName, known){
      A control that opens an empty panel teaches people not to press it. */
 
   if (d) h += '<span class="gd-sub">'+d+'</span>';
-  if (g.note)  h += '<span class="gd-note">\u201C'+g.note+'\u201D</span>';
-  if (g.dnote) h += '<span class="gd-note">Dietary: \u201C'+g.dnote+'\u201D</span>';
+  if (g.note)  h += '<span class="gd-note">Dinner notes \u00b7 \u201C'+g.note+'\u201D</span>';
+  if (g.dnote) h += '<span class="gd-note">Dietary notes \u00b7 \u201C'+g.dnote+'\u201D</span>';
   h += '<div class="gd-panel" id="gdPanel"></div>';
   return h ? '<div class="gd">'+h+'</div>' : '';
 }
@@ -2764,12 +3023,17 @@ function snapshotRows(g, known){
    render to serve the one villa somebody opens would be eighteen requests an
    hour for nothing. So the eye pays for itself, once, on the villa in hand. */
 var PRE_CACHE = {};
+var INT_CACHE = {};
 
 function wireGuestPanel(g, known){
   var eye = document.getElementById('gdEye');
   var panel = document.getElementById('gdPanel');
   if (!eye || !panel) return;
   known = known || {};
+  /* The edit-mode flag rides on the panel element because paint() is built
+     inside loadPrearrival, a sibling function: a closure variable here
+     would be out of its reach. Shut on every wiring. */
+  panel._intEditing = false;
 
   panel.innerHTML = panelHTML(snapshotRows(g, known));
 
@@ -2777,12 +3041,70 @@ function wireGuestPanel(g, known){
     panel.classList.toggle('open', open);
     eye.classList.toggle('on', open);
     eye.setAttribute('aria-expanded', open ? 'true' : 'false');
+    /* The panel drops DOWN from the name into the sheet's standing bottom
+       padding: the padding is permanent, so the card sits in one place on
+       every login and opening the panel lays nothing out. Floating it up
+       instead was tried on 20 Aug and collided with the top of the screen
+       on the logins whose sheets are tall. The panel's height is capped to
+       the room the sheet actually has below the name, with its own scroll
+       for the booking that carries more than the room can take. */
+    if (open){
+      /* Measured against the VIEWPORT, not the sheet. The sheet's bottom is
+         wherever that login's buttons end, so measuring it gave the chef a
+         panel allowance that ran off the screen while the admin's fitted:
+         the one bug reported twice on 20 Aug. The screen is the same fact
+         for every login, so the panel's room is too, and anything longer
+         scrolls inside the panel. */
+      var eyR = eye.getBoundingClientRect();
+      var room = Math.max(140,
+        Math.floor((window.innerHeight || 800) - eyR.bottom - 28));
+      panel.style.maxHeight = room + 'px';
+    }
   }
 
   /* Delegated, because the panel's contents are replaced when the pre-arrival
      answers land and a handler bound to the old Close would go with them. */
+  panel.addEventListener('input', function(e){
+    var t = e.target;
+    if (t && t.id === 'gdIntNote'){
+      var sv = document.getElementById('gdIntSave');
+      var it = INT_CACHE[known.bookingId];
+      if (sv) sv.disabled =
+        t.value.trim() === ((it && it.note) || '').trim();
+    }
+  });
   panel.addEventListener('click', function(e){
     var t = e.target;
+    if (t && t.id === 'gdIntEdit'){
+      panel._intEditing = true;
+      if (panel._paint) panel._paint();
+      var ta = document.getElementById('gdIntNote');
+      if (ta) try { ta.focus(); } catch (err) {}
+      return;
+    }
+    if (t && t.id === 'gdIntSave' && !t.disabled){
+      var ta = document.getElementById('gdIntNote');
+      if (!ta || !known.bookingId) return;
+      var note = ta.value.trim();
+      t.disabled = true; t.textContent = 'Saving\u2026';
+      /* The front desk's own write shape for the same node: the note, when,
+         and who, PATCHed so the fromMews original survives a rewrite. */
+      api('/internal/' + known.bookingId, 'PATCH',
+          { note: note, editedAt: new Date().toISOString(),
+            editedBy: window.NALA_ME || '' })
+        .then(function(){
+          INT_CACHE[known.bookingId] = { ok: true, note: note || null };
+          /* Back to reading: the saved note takes its place as a row. */
+          panel._intEditing = false;
+          if (panel._paint) panel._paint();
+        })
+        .catch(function(){
+          /* api() already showed the toast; the button owns up too rather
+             than sitting on "Saving" forever. */
+          t.disabled = false; t.textContent = 'Save staff notes';
+        });
+      return;
+    }
     if (t && t.id === 'gdClose'){
       setOpen(false);
       /* Back to the control that opened it, so the next thing pressed is a
@@ -2886,7 +3208,8 @@ function preRows(pre){
   var rows = [];
   if (pre.arriveSlot)
     rows.push(['Arriving', ETA_WORDS[pre.arriveSlot] || String(pre.arriveSlot)]);
-  if (pre.arriveNote) rows.push(['', '\u201C'+pre.arriveNote+'\u201D']);
+  /* No arrival note here by decision, 20 Aug: it dies at check-in and
+     belongs to the arrivals views. This panel is the booking's notes. */
   if (pre.purpose)    rows.push(['Here for', pre.purpose]);
   if (pre.occasion)   rows.push(['Occasion', pre.occasion]);
   if (pre.approach)
@@ -2894,8 +3217,14 @@ function preRows(pre){
   if (pre.wellness)   rows.push(['Wellness', 'Interested'
     + (pre.wellDay ? ', ' + pre.wellDay : '')
     + (pre.wellTime ? ' ' + pre.wellTime : '')]);
-  if (pre.note)       rows.push(['Note', '\u201C'+pre.note+'\u201D']);
-  if (pre.dnote)      rows.push(['Dietary', '\u201C'+pre.dnote+'\u201D']);
+  if (pre.note)       rows.push(['Booking notes', '\u201C'+pre.note+'\u201D']);
+  /* The dietaries themselves, not only the note about them. This panel showed
+     the note and skipped the list, so an allergy on the reservation was
+     invisible here exactly when the viewed night had no dinner cell to carry
+     a copy. One list per person: it lives on the reservation. */
+  if (pre.diets && pre.diets.length)
+    rows.push(['Dietaries', pre.diets.join(' \u00b7 ')]);
+  if (pre.dnote)      rows.push(['Dietary notes', '\u201C'+pre.dnote+'\u201D']);
   return rows;
 }
 
@@ -2909,19 +3238,56 @@ function loadPrearrival(known, panel, g){
       panel.innerHTML = panelHTML([['', 'Nothing recorded for this villa yet', true]]);
     return;
   }
-  if (PRE_CACHE[id] !== undefined){
-    panel.innerHTML = panelHTML(base.concat(preRows(PRE_CACHE[id])));
-    return;
+  var paint = panel._paint = function(){
+    var extra = preRows(PRE_CACHE[id]);
+    /* The staff note is the whole team's, decided 20 Aug: every staff
+       login reads it and writes it, because the chef holding the phone
+       at service is exactly who it is for. The rules enforce the only
+       real boundary, staff against guest. The editor renders only when
+       the read SUCCEEDED: on a refused or failed read there is no
+       section at all, both because not existing is the correct
+       rendering of not being allowed, and because an editor opened on
+       an unverified blank would invite overwriting a note nobody saw. */
+    var it = INT_CACHE[id];
+    /* Reading first: a saved note renders as a row like every other note,
+       in full. The box is a MODE, entered by asking to edit and left by
+       saving, because a note permanently stuck inside a small editor
+       cannot be read, which was the reported problem with the first
+       version of this. */
+    if (it && it.ok && it.note && !panel._intEditing)
+      extra = extra.concat([['Staff notes', '\u201C'+it.note+'\u201D']]);
+    var body = rowsHTML(base.concat(
+      extra.length ? extra : [['', 'No pre-arrival answers yet', true]]));
+    if (it && it.ok){
+      if (panel._intEditing){
+        body += '<div class="gd-int"><label for="gdIntNote">Staff notes</label>'
+              + '<textarea id="gdIntNote" rows="3">'
+              + esc(it.note || '') + '</textarea>'
+              + '<button class="gd-int-save" id="gdIntSave" type="button"'
+              + ' disabled>Save staff notes</button></div>';
+      } else {
+        body += '<button class="gd-int-link" id="gdIntEdit" type="button">'
+              + (it.note ? 'Edit staff notes' : 'Add staff notes')
+              + '</button>';
+      }
+    }
+    panel.innerHTML = body +
+      '<button class="gd-close" id="gdClose" type="button">Close details</button>';
   }
+  if (PRE_CACHE[id] !== undefined && INT_CACHE[id] !== undefined){ paint(); return; }
   panel.innerHTML = panelHTML(base.concat([['', 'Looking for the pre-arrival answers', true]]));
-  api('/bookings/'+id+'/prearrival')
-    .then(function(pre){
-      PRE_CACHE[id] = pre || null;
-      var extra = preRows(pre);
-      panel.innerHTML = panelHTML(base.concat(
-        extra.length ? extra : [['', 'No pre-arrival answers yet', true]]));
-    })
-    .catch(function(){
+  var pPre = PRE_CACHE[id] !== undefined ? Promise.resolve()
+    : api('/bookings/'+id+'/prearrival').then(function(pre){ PRE_CACHE[id] = pre || null; });
+  var pInt = INT_CACHE[id] !== undefined ? Promise.resolve()
+    : api('/internal/'+id).then(function(rec){
+        rec = rec || {};
+        /* The edited note if there is one, otherwise what Mews said: the
+           same precedence the front desk uses for the same node. A rules
+           refusal arrives as an error body, not a rejection. */
+        INT_CACHE[id] = rec.error ? { ok: false }
+                      : { ok: true, note: rec.note || rec.fromMews || null };
+      }).catch(function(){ INT_CACHE[id] = { ok: false }; });
+  Promise.all([pPre, pInt]).then(paint).catch(function(){
       /* A failed read is not an empty one, and saying "none" here would be a
          lie that reception would act on. */
       panel.innerHTML = panelHTML(base.concat(
@@ -2932,14 +3298,22 @@ function loadPrearrival(known, panel, g){
 function editRoomDetails(n, st){
   var g = st.g || {};
   var known = (roomguests[String(n)]||{});
-  var diets = (g.diets || []).slice();
+  /* The chips open showing the person's dietaries, wherever they were typed.
+     The night's record wins when it has any, then the reservation. Opening
+     blank on a villa that answered last week is what made an allergy look
+     stuck to the date it was typed on. */
+  var od = overlayReservationDiets({}, n);
+  var diets = ((g.diets && g.diets.length) ? g.diets : (od.diets || [])).slice();
   sheet.innerHTML =
     '<h3>Villa '+n+' \u00b7 details</h3>'+
     '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
     '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
     '<div class="sheet-label">Dietary requirements</div>'+
     '<div class="chips" id="dietChips"></div>'+
-    '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
+    '<div class="sheet-label" id="xDnoteLab" style="display:none">Dietary notes</div>'+
+    '<input class="txt" id="xDnote" type="text" placeholder="Dietary notes" autocomplete="off" style="margin-top:10px;display:none">'+
+    '<div class="sheet-label">Dinner notes</div>'+
+    '<input class="txt" id="xNote" type="text" placeholder="Dinner notes" autocomplete="off" style="margin-top:14px">'+
     '<button class="opt solid" id="oSave" style="margin-top:8px">Save details</button>'+
     '<button class="opt quiet" id="oBack">Back</button>';
   showSheet();
@@ -2947,6 +3321,17 @@ function editRoomDetails(n, st){
   document.getElementById('xName').value  = g.name  || known.name || '';
   document.getElementById('xPhone').value = g.phone || '';
   document.getElementById('xNote').value  = g.note  || '';
+  /* The dietary note belongs to the person and rides with the dietaries to
+     the reservation. Comments stays a note about tonight. Before this, an
+     Other dietary FORCED its explanation into Comments, so the one text that
+     must follow the guest was stored in the box that expires at midnight. */
+  document.getElementById('xDnote').value = g.dnote || od.dnote || '';
+  function syncDnote(){
+    var el=document.getElementById('xDnote');
+    el.style.display = (diets.length || el.value) ? '' : 'none';
+    var lb=document.getElementById('xDnoteLab');
+    if (lb) lb.style.display = el.style.display;
+  }
   (function paintChips(){
     var box=document.getElementById('dietChips'); box.innerHTML='';
     DIETARIES.concat([DIET_OTHER]).forEach(function(d){
@@ -2955,24 +3340,29 @@ function editRoomDetails(n, st){
       b.onclick=function(){
         var i=diets.indexOf(d);
         if(i>-1) diets.splice(i,1); else diets.push(d);
-        paintChips();
+        paintChips(); syncDnote();
       };
       box.appendChild(b);
     });
   })();
+  syncDnote();
   document.getElementById('oSave').onclick = function(){
     var rec = { status:'in', pax:(g.pax||2), room:String(n), source:'manual' };
     if (st.src==='digital' || st.override) rec.override = true;
     rec.name  = document.getElementById('xName').value.trim();
     rec.phone = document.getElementById('xPhone').value.trim();
     rec.note  = document.getElementById('xNote').value.trim();
-    if (otherNeedsNote(diets, rec.note)){
-      showError('Write the allergy in the notes, or it reaches nobody.');
-      document.getElementById('xNote').focus();
+    var dn = document.getElementById('xDnote').value.trim();
+    if (otherNeedsNote(diets, dn)){
+      syncDnote();
+      showError('Write the allergy in the dietary note, or it reaches nobody.');
+      document.getElementById('xDnote').style.display='';
+      document.getElementById('xDnote').focus();
       return;
     }
     rec.diets = diets.slice();
-    if (g.dnote) rec.dnote = g.dnote;   // the guest's own dietary note stays theirs
+    if (dn) rec.dnote = dn;
+    else if (g.dnote) rec.dnote = g.dnote;   // the guest's own dietary note stays theirs
     saveManual('room-'+n, rec);
     persistDietary(n, rec);
     close(); render();
@@ -3111,8 +3501,10 @@ function openRoom(n, st){
   }
 
   // ── no guest answer: plain staff entry ──────────────────
-  var seen = roomguests[String(n)];
-  if (isMewsOnly(seen)) seen = null;   // known from the PMS, not from a click
+  /* Same source as the tile icon, so the sheet cannot disagree with the tile
+     that opened it. The name still comes from the villa record: the mark knows
+     a link was pressed, not who pressed it. */
+  var seen = openedTonight(n) ? (roomguests[String(n)] || {}) : null;
   shell(
     (!st && seen
       ? '<div class="note-box">'+
@@ -3181,7 +3573,10 @@ document.getElementById('addExt').onclick = function(e){
     '<div class="pax-row" id="paxRow"></div>'+
     '<div class="sheet-label">Dietary requirements</div>'+
     '<div class="chips" id="dietChips"></div>'+
-    '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
+    '<div class="sheet-label" id="xDnoteLab" style="display:none">Dietary notes</div>'+
+    '<input class="txt" id="xDnote" type="text" placeholder="Dietary notes" autocomplete="off" style="margin-top:10px;display:none">'+
+    '<div class="sheet-label">Dinner notes</div>'+
+    '<input class="txt" id="xNote" type="text" placeholder="Dinner notes" autocomplete="off" style="margin-top:14px">'+
     '<button class="opt solid" id="oIn" style="margin-top:8px">Add</button>'+
     '<button class="opt quiet" id="oCancel">Cancel</button>';
   showSheet();
@@ -3207,6 +3602,12 @@ document.getElementById('addExt').onclick = function(e){
   segR.onclick=function(){ if(dest===null) dest=1; paintRooms(); paintSeg(); };
 
   function paintPax(){ paxPicker(8, function(){return pax;}, function(v){pax=v;}); }
+  function syncDnote(){
+    var el=document.getElementById('xDnote');
+    el.style.display = (diets.length || el.value) ? '' : 'none';
+    var lb=document.getElementById('xDnoteLab');
+    if (lb) lb.style.display = el.style.display;
+  }
   function paintChips(){
     var box=document.getElementById('dietChips'); box.innerHTML='';
     DIETARIES.concat([DIET_OTHER]).forEach(function(d){
@@ -3215,26 +3616,29 @@ document.getElementById('addExt').onclick = function(e){
       b.onclick=function(){
         var i=diets.indexOf(d);
         if(i>-1) diets.splice(i,1); else diets.push(d);
-        paintChips();
+        paintChips(); syncDnote();
       };
       box.appendChild(b);
     });
   }
-  paintPax(); paintChips(); paintSeg();
+  paintPax(); paintChips(); paintSeg(); syncDnote();
 
   document.getElementById('oIn').onclick=function(){
     var nm=document.getElementById('xName').value.trim();
     var ph=document.getElementById('xPhone').value.trim();
     var nt=document.getElementById('xNote').value.trim();
-    if (otherNeedsNote(diets, nt)){
-      showError('Write the allergy in the notes, or it reaches nobody.');
-      document.getElementById('xNote').focus();
+    var dn=document.getElementById('xDnote').value.trim();
+    if (otherNeedsNote(diets, dn)){
+      showError('Write the allergy in the dietary note, or it reaches nobody.');
+      document.getElementById('xDnote').style.display='';
+      document.getElementById('xDnote').focus();
       return;
     }
     if (dest===null){
       if(!nm){ document.getElementById('xName').focus(); return; }
       var id='ext-'+Date.now();
       var rec={ status:'in', pax:pax, name:nm, phone:ph, note:nt, diets:diets, source:'manual' };
+      if (dn) rec.dnote=dn;
       saveManual(id, rec);
     } else {
       var rec2={ status:'in', pax:pax, room:String(dest), source:'manual' };
@@ -3243,6 +3647,7 @@ document.getElementById('addExt').onclick = function(e){
       if (nm) rec2.name=nm;
       if (ph) rec2.phone=ph;
       if (nt) rec2.note=nt;
+      if (dn) rec2.dnote=dn;
       if (diets.length) rec2.diets=diets.slice();
       saveManual('room-'+dest, rec2);
       persistDietary(dest, rec2);
@@ -3266,7 +3671,10 @@ function editExt(key, g){
       '<div class="pax-row" id="paxRow"></div>'+
       '<div class="sheet-label">Dietary requirements</div>'+
       '<div class="chips" id="dietChips"></div>'+
-      '<input class="txt" id="xNote" type="text" placeholder="Comments" autocomplete="off" style="margin-top:14px">'+
+      '<div class="sheet-label" id="xDnoteLab" style="display:none">Dietary notes</div>'+
+      '<input class="txt" id="xDnote" type="text" placeholder="Dietary notes" autocomplete="off" style="margin-top:10px;display:none">'+
+      '<div class="sheet-label">Dinner notes</div>'+
+      '<input class="txt" id="xNote" type="text" placeholder="Dinner notes" autocomplete="off" style="margin-top:14px">'+
       '<button class="opt solid" id="oSave" style="margin-top:8px">Save changes</button>'+
       '<button class="opt out" id="oDel">Cancel booking</button>'+
       '<button class="opt quiet" id="oClose">Close</button>';
@@ -3275,6 +3683,13 @@ function editExt(key, g){
     document.getElementById('xName').value  = g.name  || '';
     document.getElementById('xPhone').value = g.phone || '';
     document.getElementById('xNote').value  = g.note  || '';
+    document.getElementById('xDnote').value = g.dnote || '';
+    function syncDnote(){
+      var el=document.getElementById('xDnote');
+      el.style.display = (diets.length || el.value) ? '' : 'none';
+      var lb=document.getElementById('xDnoteLab');
+      if (lb) lb.style.display = el.style.display;
+    }
     paxPicker(8, function(){return pax;}, function(v){pax=v;});
     (function paintChips(){
       var box=document.getElementById('dietChips'); box.innerHTML='';
@@ -3284,17 +3699,26 @@ function editExt(key, g){
         b.onclick=function(){
           var i=diets.indexOf(d);
           if(i>-1) diets.splice(i,1); else diets.push(d);
-          paintChips();
+          paintChips(); syncDnote();
         };
         box.appendChild(b);
       });
     })();
+    syncDnote();
     document.getElementById('oSave').onclick = function(){
       var rec = JSON.parse(JSON.stringify(g));
       rec.name  = document.getElementById('xName').value.trim() || rec.name;
       rec.phone = document.getElementById('xPhone').value.trim();
       rec.note  = document.getElementById('xNote').value.trim();
+      var dn = document.getElementById('xDnote').value.trim();
+      if (otherNeedsNote(diets, dn)){
+        showError('Write the allergy in the dietary note, or it reaches nobody.');
+        document.getElementById('xDnote').style.display='';
+        document.getElementById('xDnote').focus();
+        return;
+      }
       rec.diets = diets.slice();
+      if (dn) rec.dnote = dn; else delete rec.dnote;
       rec.pax   = pax;
       saveManual(key, rec);
       close(); render();
@@ -3344,11 +3768,12 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
 // ── menu published? and archive it for statistics ──────────
 (function menuCheck(){
   var el = document.getElementById('menuState');
-  fetch('menu.json?v=' + Date.now())
-    .then(function(r){
-      var lm = r.headers.get('Last-Modified');
-      return r.json().then(function(m){ return { m:m, lm:lm }; });
-    })
+  /* The node first, the file as the fallback. Last-Modified is not read from
+     the node and was never trustworthy anyway: GitHub rewrites it on every
+     deploy, so the menu's own published stamp is what says when the chef
+     published. */
+  fetchMenuAnywhere()
+    .then(function(m){ return { m:m, lm:null }; })
     .then(function(res){
       var m = res.m || {};
       var filled = ['bread','entree','main','dessert'].every(function(k){
@@ -3425,7 +3850,12 @@ function busy(){
                  getComputedStyle(bd).display !== 'none')) || selectMode;
 }
 
-load(true);
+load(true).catch(function(e){
+  /* A load that dies must say so where reception can read it. Silent was how
+     a half-rendered board sat unexplained on 20 Aug. */
+  console.error('board load failed:', e);
+  showError('Board failed to load: ' + (e && (e.message || e)));
+});
 setInterval(function(){ if (!busy() && !document.hidden) load().catch(function(){}); }, 20000);
 
 /* Coming back to the app is the moment a stale board is most obvious, and it

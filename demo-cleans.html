@@ -122,6 +122,30 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
           --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
+          /* The bars only. --amberb is a muted gold that sits behind text and
+             reads as a browner blue-grey at 9px, which made a clean and a
+             clean-plus-arrival hard to tell apart on a phone: the amber half
+             of the split bar was the thing that had to shout and did not.
+             This is the same hue, saturated, and it is deliberately NOT used
+             for the small "soon" text, where a brighter orange on cream would
+             lose the contrast that colour is carrying. */
+          --amberbar:#E8891A;
+          /* Same reasoning, applied to the other two. A clean bar and a
+             service bar were a muted blue-grey and a muted green-grey: two
+             desaturated mid-tones of near enough the same lightness, and at
+             9px on a phone held at arm's length they were one colour with a
+             slight cast. Seen in a housekeeper's hand on 22 Aug.
+
+             Saturated here, and only here. The same two tokens draw the
+             border of a ready tile against its own pale fill, where muted is
+             correct and this would shout. So the bars get their own pair and
+             the tints keep theirs, exactly as the amber already does.
+
+             The blue is moved toward a true blue rather than simply
+             brightened. Brightness alone would have left two colours that
+             differ in strength and not in hue, which is the harder telling
+             apart, and the one that fails first in daylight. */
+          --bluebar:#2E74C0; --greenbar:#4E8F4A;
           --blue:#E7E9EF; --blueb:#8A90A8; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
@@ -200,8 +224,11 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
     .tile { padding:5px 5px 4px !important; gap:3px !important; }
     .tile .rn { font-size:17px !important; }
     .tile .sub { font-size:8px !important; min-height:10px !important; }
-    .tile .who-badge { top:3px; right:3px; min-width:16px; height:16px;
+    .tile .who-badge { bottom:3px; right:3px; min-width:16px; height:16px;
                        font-size:8px; border-radius:8px; }
+    .tile .task-icons { top:3px; left:3px; }
+    .tile .task-icons svg { width:11px; height:11px; }
+    .tile .eta { top:3px; right:3px; font-size:8px; }
     .legend { padding:3px 4px !important; font-size:5.5px !important;
               gap:1px !important; }
     .legend .lgb { width:11px; height:5px; }
@@ -228,6 +255,9 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   body.marks-limited .pbtn[onclick*="'unpush'"],
   body.marks-limited .pbtn[onclick*="'done'"],
   body.marks-limited .pbtn[onclick*="'undone'"] { display:none; }
+  /* Strip and linen are cleaning work, so a login without the cleaning marks
+     does not get the toggles either.                                     */
+  body.marks-limited .ttog { display:none; }
 
   .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr));
           gap:10px; flex:1 1 auto; min-height:0;
@@ -263,18 +293,18 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      The saturated tones are used, not the tints. The tints are backgrounds
      built to sit behind text; at 9px on cream they would be nearly invisible. */
   .tile .chip { display:block; width:56%; height:9px; padding:0; font-size:0;
-                border:1.5px solid var(--blueb); border-radius:5px;
-                background:var(--blueb); color:transparent; overflow:hidden; }
-  .tile .chip.svc { background:var(--greenb); border-color:var(--greenb); }
-  .tile .chip.pre { background:var(--amberb); border-color:var(--amberb); }
+                border:1.5px solid var(--bluebar); border-radius:5px;
+                background:var(--bluebar); color:transparent; overflow:hidden; }
+  .tile .chip.svc { background:var(--greenbar); border-color:var(--greenbar); }
+  .tile .chip.pre { background:var(--amberbar); border-color:var(--amberbar); }
   /* Half clean, half arrival: the bar shows the two jobs rather than a third
      pattern standing for them. Stripes said something is different about this
      one and left you to remember what; a split bar says which two, in the
      colours already used for each. The clean half leads because the clean has
      to happen first. */
-  .tile .chip.arr { border-color:var(--blueb);
+  .tile .chip.arr { border-color:var(--bluebar);
                     background:linear-gradient(90deg,
-                      var(--blueb) 0 50%, var(--amberb) 50% 100%); }
+                      var(--bluebar) 0 50%, var(--amberbar) 50% 100%); }
   /* Unknown is a gap in what we know, not a job, so it is the only one with
      no fill and the only dashed one. Grey, because red is reserved for
      something being wrong. */
@@ -292,7 +322,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      Yours is inverted rather than given a colour. Colour on this board means
      which job, and a second meaning for the same signal is how a board stops
      being readable. */
-  .tile .who-badge { position:absolute; top:5px; right:5px;
+  .tile .who-badge { position:absolute; bottom:5px; right:5px;
                      min-width:20px; height:20px; padding:0 4px;
                      border-radius:10px; border:1.5px solid var(--ink);
                      background:var(--ink); color:var(--cream);
@@ -332,7 +362,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      colour and by the time underneath, so the pill only has to stay
      recognisable as the job it was. */
   .tile.done .chip { opacity:.4; }
-  .tile .who-badge { position:absolute; top:5px; right:5px;
+  .tile .who-badge { position:absolute; bottom:5px; right:5px;
                      min-width:20px; height:20px; padding:0 4px;
                      border-radius:10px; border:1.5px solid var(--ink);
                      background:var(--ink); color:var(--cream);
@@ -340,6 +370,27 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
                      letter-spacing:.02em; display:flex; align-items:center;
                      justify-content:center; box-sizing:border-box; }
   .tile .who-badge.mine { background:var(--cream); color:var(--ink); }
+  /* Strip and fresh linen: the two jobs a helper can do ahead of a clean.
+     On the tile they live in the top-left corner, and only when done - an
+     absent mark is the default and costs nothing. Dark grey rather than a
+     job colour, because colour on this board means which job is ready, and
+     these say a part is already finished.                               */
+  .tile .task-icons { position:absolute; top:5px; left:5px; display:flex;
+                      gap:3px; color:#55554F; }
+  .tile .task-icons svg { width:14px; height:14px; display:block; }
+  .tile.done .task-icons { opacity:.4; }
+  /* When the guest lands, top right, time only, above the who badge. Grey at
+     rest, in the same ink as the strip and linen marks. Orange and red are
+     instructions, so a finished villa never carries them: the time stays
+     readable, the urgency is spent. The saturated --amberbar, not --amberb:
+     this is 9.5px bold and the muted gold disappears at that size (see the
+     bar note above). */
+  .tile .eta { position:absolute; top:5px; right:5px; font-family:var(--ui-font);
+               font-size:9.5px; font-weight:bold; letter-spacing:.02em;
+               color:#55554F; }
+  .tile .eta.early { color:var(--amberbar); }
+  .tile .eta.due { color:var(--red); }
+  .tile.done .eta { opacity:.4; }
   .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
   .tile .sub b { color:var(--ink); }
   /* The clock on an available villa, and the only place on this board where
@@ -403,13 +454,13 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
             background:transparent; font-size:7px; letter-spacing:.06em; }
   .legend span { display:flex; align-items:center; gap:5px; line-height:1.15; }
   .legend .lgb { flex:0 0 auto; width:15px; height:6px; border-radius:3px;
-                 border:1.2px solid var(--blueb); background:var(--blueb);
+                 border:1.2px solid var(--bluebar); background:var(--bluebar);
                  vertical-align:0; margin:0; }
-  .legend .lgb.svc { background:var(--greenb); border-color:var(--greenb); }
-  .legend .lgb.pre { background:var(--amberb); border-color:var(--amberb); }
-  .legend .lgb.arr { border-color:var(--blueb);
+  .legend .lgb.svc { background:var(--greenbar); border-color:var(--greenbar); }
+  .legend .lgb.pre { background:var(--amberbar); border-color:var(--amberbar); }
+  .legend .lgb.arr { border-color:var(--bluebar);
                      background:linear-gradient(90deg,
-                       var(--blueb) 0 50%, var(--amberb) 50% 100%); }
+                       var(--bluebar) 0 50%, var(--amberbar) 50% 100%); }
   .legend .lgb.dash { background:transparent; border-style:dashed;
                       border-color:var(--mid); }
 
@@ -428,6 +479,21 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .sheet h2 { font-size:15px; letter-spacing:.04em; margin-bottom:2px; }
   .sheet .st { font-size:10.5px; color:var(--mid); letter-spacing:.08em; text-transform:uppercase;
                margin-bottom:16px; }
+  /* The strip and linen toggles sit beside the title, right aligned, above
+     the buttons: they are state about the villa, not actions on the job, so
+     they read with the heading rather than queueing with the buttons.
+     Light grey is off, dark grey is on - the same two greys the tile uses,
+     so the sheet and the corner of the tile say it the same way.        */
+  .headrow { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .headrow .st { margin-bottom:0; }
+  .headrow { margin-bottom:16px; }
+  .tasks { display:flex; gap:8px; flex:0 0 auto; }
+  .ttog { width:44px; height:44px; border-radius:8px; padding:0; cursor:pointer;
+          border:1.5px solid var(--rule); background:#fff; color:#C6C6BF;
+          display:flex; align-items:center; justify-content:center;
+          font-family:inherit; }
+  .ttog svg { width:22px; height:22px; display:block; }
+  .ttog.on { background:#55554F; border-color:#55554F; color:var(--cream); }
   .pbtn { display:block; width:100%; padding:14px; margin-top:9px; font-size:12px;
           letter-spacing:.1em; text-transform:uppercase; background:#fff; color:var(--ink);
           border:1px solid var(--ink); border-radius:6px; cursor:pointer; font-family:inherit; }
@@ -446,7 +512,10 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 
 <div class="wrap">
     <div class="daterow">
+  <button class="dnav today" id="dToday">Today</button>
+  <button class="dnav" id="dPrev">&#8249;</button>
   <div class="date" id="title"></div>
+  <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
     <div class="navdrop" id="navDrop"><a href="demo-tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="demo-reservations.html">Reservations Sheet</a><a href="demo-clean.html">Clean sheet</a><a href="registration.html">Registration</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
@@ -776,6 +845,37 @@ function initDateNav(){
     td.onclick = function(e){ if (e) e.preventDefault(); goToday(); };
     td.disabled = isToday();     // always visible; dimmed when already on today
   }
+  /* Tapping the date itself opens the phone's own date picker, for the jump
+     the arrows are bad at: next Friday is four taps of an arrow and one of a
+     calendar. A real date input is laid invisibly over the label, so the tap
+     that opens the picker is a genuine tap on a genuine input - iOS opens it
+     from focus alone, where showPicker() does not exist on older Safari.
+     Desktop browsers focus the field but only open the calendar from its
+     icon, so showPicker() is called too, where it does exist. Picking today
+     drops the ?date rather than pinning it, same as the Today button, so the
+     page follows the clock again instead of freezing on a written date. */
+  if (el){
+    el.style.position = 'relative';
+    el.style.cursor = 'pointer';
+    var pick = document.createElement('input');
+    pick.type = 'date';
+    pick.value = dkey(VIEW);
+    pick.setAttribute('aria-label', 'Choose a date');
+    pick.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;'+
+      'opacity:0;border:0;padding:0;margin:0;cursor:pointer;'+
+      '-webkit-appearance:none;appearance:none;background:transparent;';
+    pick.onclick = function(){
+      if (pick.showPicker){ try { pick.showPicker(); } catch (e){} }
+    };
+    pick.onchange = function(){
+      var v = pick.value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+      var q = new URLSearchParams(location.search);
+      if (v === dkey(new Date())) q.delete('date'); else q.set('date', v);
+      location.search = q.toString();
+    };
+    el.appendChild(pick);
+  }
   return { VIEW:VIEW, todayKey:todayKey, isToday:isToday };
 }
 
@@ -917,6 +1017,21 @@ function resolveRoomGuestsHK(all, todayK){
    the seam that keeps screen and paper agreeing.                          */
 var DINNER_CELLS = {};
 
+/* Which villas opened their menu link on the date fetchStays was last called
+   with. Kept beside DINNER_CELLS for the same reason: every page that renders
+   a night already asks for that night, so the marks ride along and no page
+   grows a fetch of its own.
+
+   It answers the question the dinner cell cannot. An empty cell says nobody
+   has answered. It does not say whether anybody was asked. */
+var OPENED_MARKS = {};
+
+/* True when this villa opened its link on the night being shown. */
+function openedTonight(villa, marks){
+  var m = (marks || OPENED_MARKS)[String(villa)];
+  return !!(m && m.at);
+}
+
 function fetchStays(dateKey){
   return Promise.all([
     fetch(DB + '/stays/' + dateKey + '.json?v=' + Date.now())
@@ -927,11 +1042,94 @@ function fetchStays(dateKey){
       .catch(function(){ return null; }),
     fetch(DB + '/dinner/' + dateKey + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
+    /* A failed read here must not read as nobody opened anything: that would
+       put every villa back in the never reached pile and send reception
+       chasing guests who already answered. Null, and the caller shows no
+       marks rather than wrong ones. */
+    fetch(DB + '/opened/' + dateKey + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; })
   ]).then(function(res){
     DINNER_CELLS = res[1] || {};
-    return res[0];
+    OPENED_MARKS = res[2] || {};
+    /* One more read per occupied villa: the reservation's own answers. There
+       is one dietary list per person and it lives on the reservation, not on
+       a night, so the boards have to be able to see it even when the viewed
+       night holds no dinner cell at all. A failed read leaves that villa's
+       entry empty and the merge falls back to the night, which is exactly
+       yesterday's behaviour rather than a blank board. */
+    var stays = res[0] || {}, map = {};
+    return Promise.all(Object.keys(stays).map(function(v){
+      var id = stays[v] && stays[v].id;
+      if (!id) return null;
+      return fetch(DB + '/bookings/' + id + '/prearrival.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .catch(function(){ return null; })
+        .then(function(p){ if (p) map[String(v)] = p; });
+    })).then(function(){
+      PREARRIVAL_BY_VILLA = map;
+      return res[0];
+    });
   });
+}
+
+/* The reservation's dietaries, laid over a built record. The reservation wins
+   when it has any, because an allergy is not true on Tuesday and false on
+   Wednesday; the night's copy stands only as the fallback while older records
+   still hold dietaries there and nowhere else. NOTES-AUDIT.md has the model
+   and the correction: an earlier version said the night should win, and it
+   was wrong. */
+var PREARRIVAL_BY_VILLA = {};
+
+/* When the arriving guest lands, as an hour on the 24 hour clock. Reception's
+   approved hour wins outright; the guest's own slot stands next; and 2pm
+   stands for every arrival that says nothing, because 2pm is the resort's
+   standing promise, not a guess. disp is empty for that silent default: it
+   sorts and warns like a stated 2pm but nobody set it, so nothing is drawn.
+
+   Here rather than in a page, because the Cleans board and the printed Clean
+   Sheet both render it, and two copies of when the guest lands is how screen
+   and paper drift apart. The Worker holds the server side mirror. */
+function effectiveEta(villa){
+  var pre = PREARRIVAL_BY_VILLA[String(villa)] || {};
+  var ap = Number(pre.arriveApproved);
+  if (pre.arriveApproved != null && ap >= 11 && ap <= 23)
+    return { h: ap, disp: hour12(ap), early: ap < 14 };
+  var s = String(pre.arriveSlot || '');
+  if (s === 'before2') return { h: 14, disp: '<2pm', early: true };
+  if (s === 'after5')  return { h: 17, disp: '>5pm', early: false };
+  if (s === '14' || s === '15' || s === '16' || s === '17')
+    return { h: +s, disp: hour12(+s), early: false };
+  return { h: 14, disp: '', early: false };
+}
+function hour12(h){ return (h > 12 ? h - 12 : h) + (h < 12 ? 'am' : 'pm'); }
+function etaWord(disp){
+  return disp === '<2pm' ? 'before 2pm' : disp === '>5pm' ? 'after 5pm' : disp;
+}
+
+function overlayReservationDiets(rec, villa){
+  if (!rec) return rec;
+  var pre = PREARRIVAL_BY_VILLA[String(villa)];
+  if (!pre) return rec;
+  if (pre.diets && pre.diets.length){
+    rec.diets = pre.diets.slice();
+    /* The reservation's list is the person's list, so dietaries are never
+       "previous": a copy carried forward on roomguests is an old copy of a
+       current fact, not an unconfirmed answer. Leaving prevDiets set showed
+       the same allergy twice, once with a warning to ask first. */
+    delete rec.prevDiets;
+    if (pre.dnote){
+      rec.dnote = pre.dnote;
+      /* The bubble and its popover read the stamped field, and the stamp
+         runs before this overlay, so a note living only on the reservation
+         was invisible to both: the bubble called an explained Other
+         unexplained and went red, and opened onto nothing. 20 Aug. */
+      rec.dineDnote = pre.dnote;
+      delete rec.prevDnote;
+    }
+  }
+  return rec;
 }
 
 /* Turns one /stays/<date>/<villa> entry into the shape roomguests uses, so it
@@ -1200,6 +1398,10 @@ function withDineProvenance(out, tonight, known){
 }
 
 function roomRecord(n, responses, manual, roomguests, dinner){
+  return overlayReservationDiets(
+    roomRecordCore(n, responses, manual, roomguests, dinner), n);
+}
+function roomRecordCore(n, responses, manual, roomguests, dinner){
   var mk = 'room-'+n, m = manual[mk];
   var known = roomguests[String(n)] || {};
   /* A staff vacant made against an older version of the booking was a decision
@@ -1340,6 +1542,41 @@ function normaliseRole(r){ return r === 'staff' ? 'admin' : r; }
    before the at sign, which is a poor name but a better one than nothing, and
    never to the full address: these appear on a board a guest can see over a
    shoulder. */
+/* ── tonight's menu ───────────────────────────────────────────────────
+   The menu moved into the database on 21 Aug, so that publishing needs a
+   staff login rather than a GitHub token.
+
+   A GitHub token cannot be narrowed to one file: the smallest scope that can
+   write menu.json is Contents write, which is every file in the repository,
+   including the pages and the Worker. So the chef's credential could change
+   the whole live site, and no amount of care in the brief could stop it. The
+   database CAN be narrowed: /menu is writable by a chef and an admin, and by
+   nobody else, and the rules enforce it rather than the document.
+
+   menu.json is still written alongside, and is still read as the fallback
+   here, deliberately. Four screens read the menu and this is a live resort:
+   the file means that if the node is empty, or a read fails, or something in
+   this change is wrong, the guest's menu does not go dark. It can be dropped
+   once a few services have gone by.                                       */
+function fetchMenuNode(){
+  return fetch(DB + '/menu.json?v=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(m){
+      if (m && m.published && m.main && m.main.name) return m;
+      return null;
+    })
+    .catch(function(){ return null; });
+}
+
+function fetchMenuAnywhere(){
+  return fetchMenuNode().then(function(m){
+    if (m) return m;
+    return fetch('menu.json?v=' + Date.now())
+      .then(function(r){ return r.json(); })
+      .catch(function(){ return null; });
+  });
+}
+
 /* ── a dietary that outlives the booking ──────────────────────────────
    A dietary is about the person, not about a night or a reservation. Kept only
    on the booking, a guest who comes back next year arrives with an empty
@@ -1745,8 +1982,7 @@ function announceMenu(){
      case is a refused request rather than a wrong notification, but there is
      no reason to make it.                                                */
   if (!window.__idToken) return;
-  fetch('menu.json?v=' + Date.now())
-    .then(function(r){ return r.json(); })
+  fetchMenuAnywhere()
     .then(function(m){
       m = m || {};
       var filled = ['bread','entree','main','dessert'].every(function(k){
@@ -1909,9 +2145,13 @@ window.NALA_NAVFILTER = navFilterShared;
 </script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
-// this board is locked to today by design - no browsed dates
-function todayKey(){ return dkey(new Date()); }
-document.getElementById('title').textContent = dateLabel(new Date());
+/* Browsed dates, same header as every other board: ‹ › Today, and the date
+   itself opens a picker (wired in initDateNav). todayKey() follows the viewed
+   day, so every read and write on this page lands on it. What stays live-only
+   is the elapsed clock and the notifications - a minute count and an
+   announcement only mean something on the day it is happening.          */
+var nav = initDateNav();
+var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
 
 function api(path){ return fetch(DB+path+'.json?v='+Date.now()).then(function(r){return r.json();}); }
 
@@ -1923,6 +2163,31 @@ var ICON_DTICK = '<svg class="dtick" viewBox="0 0 24 24" fill="none" stroke="cur
 var ICON_TICK = '<svg class="btick" viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
                 'stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">'+
                 '<path d="M4 12.5l5.2 5.2L20 6.9"/></svg>';
+/* The trolley is the strip - dirty linen leaves on the cart - and the folded
+   stack is the fresh linen going on. Drawn like every other icon here: stroke
+   only, currentColor, so the same drawing serves the grey-on-white toggle and
+   the dark mark on the tile.
+
+   The linen stack is drawn twice. On the 44px toggle it carries the fold curl
+   that says folded towels; at 14px on a tile the curl is noise, so the tile
+   gets the same stack without it rather than a smaller copy of everything. */
+var ICON_CART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
+                'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+
+                '<circle cx="9" cy="20.4" r="1.6"/><circle cx="18.6" cy="20.4" r="1.6"/>'+
+                '<path d="M2 3.2h3l2.5 12a2 2 0 0 0 2 1.6h8.3a2 2 0 0 0 2-1.6L21.8 8H6"/></svg>';
+var ICON_LINEN =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
+  'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+
+  '<path d="M4.3 10.2c0-.8.45-1.5 1.15-1.9l5.4-3c.7-.4 1.6-.4 2.3 0l5.4 3c.7.4 1.15 1.1 1.15 1.9v.4c0 .8-.45 1.5-1.15 1.9l-5.4 3c-.7.4-1.6.4-2.3 0l-5.4-3c-.7-.4-1.15-1.1-1.15-1.9z"/>'+
+  '<path d="M19.4 11.5c-2.2 1.5-5 1.9-8 1.4"/>'+
+  '<path d="M4.3 10.9v2c0 .8.45 1.5 1.15 1.9l5.4 3c.7.4 1.6.4 2.3 0l5.4-3c.7-.4 1.15-1.1 1.15-1.9v-2"/>'+
+  '<path d="M4.3 13.6v1.7c0 .8.45 1.5 1.15 1.9l5.4 3c.7.4 1.6.4 2.3 0l5.4-3c.7-.4 1.15-1.1 1.15-1.9v-1.7"/></svg>';
+var ICON_LINEN_SM =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+
+  '<path d="M4.3 10.2c0-.8.45-1.5 1.15-1.9l5.4-3c.7-.4 1.6-.4 2.3 0l5.4 3c.7.4 1.15 1.1 1.15 1.9v.4c0 .8-.45 1.5-1.15 1.9l-5.4 3c-.7.4-1.6.4-2.3 0l-5.4-3c-.7-.4-1.15-1.1-1.15-1.9z"/>'+
+  '<path d="M4.3 10.9v2c0 .8.45 1.5 1.15 1.9l5.4 3c.7.4 1.6.4 2.3 0l5.4-3c.7-.4 1.15-1.1 1.15-1.9v-2"/>'+
+  '<path d="M4.3 13.6v1.7c0 .8.45 1.5 1.15 1.9l5.4 3c.7.4 1.6.4 2.3 0l5.4-3c.7-.4 1.15-1.1 1.15-1.9v-1.7"/></svg>';
 
 document.getElementById('selToggle').onclick = function(){
   if (selectMode && selCount()) { openMulti(); return; }   /* Options */
@@ -1932,19 +2197,72 @@ document.getElementById('selToggle').onclick = function(){
   selLabel(); render();
 };
 
+/* The most recent day before the viewed one that has hk records at all,
+   walking back a fortnight. Yesterday is the answer almost every time and
+   costs the one request it always did; the walk exists for the day nobody
+   opened the board, so a strip marked Saturday still reaches Monday. It is
+   sound to stop at the first day with data: marks are only ever written
+   through this board, and every load carries the older state in before
+   anyone can write - so the newest day with records already holds
+   everything still open behind it. */
+function lastHk(maxDays){
+  function step(i){
+    if (i >= maxDays) return Promise.resolve({ key:null, data:{} });
+    var d = new Date(VIEW); d.setDate(d.getDate()-1-i);
+    var k = dkey(d);
+    return api('/hk/'+k).then(function(v){
+      if (v && typeof v === 'object' && Object.keys(v).length) return { key:k, data:v };
+      return step(i+1);
+    });
+  }
+  return step(0);
+}
+
 function load(full){
-  var yest = (function(){ var d=new Date(); d.setDate(d.getDate()-1); return dkey(d); })();
+  /* Yesterday relative to the viewed day, not to the clock: on a browsed date
+     the same-day-turnover and pushed-in logic have to read the night before
+     THAT day, or every historic departure classifies as unknown. */
+  var yest = (function(){ var d=new Date(VIEW); d.setDate(d.getDate()-1); return dkey(d); })();
   /* Last night as well as tonight. /stays files a guest under the nights they
      SLEEP, arrival inclusive and departure exclusive, so somebody who checked
      out this morning is not in tonight's file at all. They are the person this
      board exists for: the villa needs cleaning precisely because they left.
      Reading only tonight left every departure classified as unknown. */
   return Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()),
-                fetchRoomGuests(todayKey(), 14, !!full), api('/hk/'+todayKey()), api('/hk/'+yest),
+                fetchRoomGuests(todayKey(), 14, !!full), api('/hk/'+todayKey()), lastHk(14),
                 fetchStays(todayKey()), api('/dinner/'+todayKey()),
                 api('/stays/'+yest) ])
   .then(function(res){
-    var responses=res[0]||{}, manual=res[1]||{}, hk=res[3]||{}, prevHk=res[4]||{};
+    var responses=res[0]||{}, manual=res[1]||{}, hk=res[3]||{};
+    var prevSrc=res[4]||{key:null,data:{}}, prevHk=prevSrc.data||{}, prevKey=prevSrc.key;
+    /* State carries until the work is done. The records live under one date,
+       so a strip marked at 4pm vanished at midnight, and a villa departed on
+       Tuesday read as unknown on Wednesday. So the night's open marks are
+       copied into today the first time anyone loads the board: departed - a
+       push counts, a pushed villa is departed and waiting - stripped, and
+       linen. Each carries until Mark as cleaned or its own undo, and the
+       chain holds day over day because each copy becomes the next source -
+       and survives days nobody opened the board, because the source is the
+       newest day with records, not literally yesterday (see lastHk).
+       A record that has carried once is stamped and never re-copied:
+       the copy must lose to anything staff then do to today's record, or no
+       carried mark could ever be undone.
+       Today only. Browsing a past day must read it, never rewrite it. */
+    if (isToday()){
+      for (var cn=1; cn<=ROOMS; cn++){
+        var cp = prevHk[cn] || {};
+        var ct = hk[cn] || {};
+        if (ct.carried || ct.done || cp.done) continue;
+        var cc = {};
+        if ((cp.departed || cp.pushed) && ct.departed === undefined) cc.departed = true;
+        if (cp.stripped && ct.stripped === undefined) cc.stripped = cp.stripped;
+        if (cp.linen && ct.linen === undefined) cc.linen = cp.linen;
+        if (!cc.departed && !cc.stripped && !cc.linen) continue;
+        cc.carried = prevKey || yest;
+        hk[cn] = Object.assign({}, ct, cc);
+        patchRoom(cn, cc).catch(function(){});
+      }
+    }
     /* The one dinner cell. This board only needs it to tell a departure from a
        stay-over, but reading it from the same node the other pages write keeps
        one villa from being two things on two screens. */
@@ -2004,9 +2322,18 @@ function load(full){
 
          true forces it on, false forces it off, absent leaves the booking to
          decide. */
+      /* A carried departure is the same fact as a pushed-in villa: the guest
+         is gone and the clean has not happened, however many midnights ago
+         that became true. Both force the job to a clean, because the booking
+         dates stopped saying so the moment the day rolled over. */
+      var th = hk[n] || {};
+      var goneIn = pushedIn || !!(th.carried && th.departed && !th.done);
       rows.push({ n:n, kind:hkClassify(r, todayKey(), hk[n], left),
-                  base: pushedIn ? 'clean' : hkClassify(r, todayKey(), null, left),
+                  base: goneIn ? 'clean' : hkClassify(r, todayKey(), null, left),
                   pushedIn: pushedIn,
+                  /* which day the push came from, so the tile can say
+                     yesterday when it was, and name the day when not */
+                  pushedFrom: pushedIn ? (prevKey || yest) : null,
                   /* What the BOOKING says. What the board shows is decided at
                      draw time by arrivingNow, because a manager's override is
                      written after this ran and a row built once at load would
@@ -2047,6 +2374,10 @@ function arrivingNow(row, h){
   if (set === false) return false;
   return !!(row && row.arrivingBooked);
 }
+
+/* effectiveEta, hour12 and etaWord live in nala-shared.js: the printed Clean
+   Sheet renders the same hour, and the sheet going blind to what a board
+   shows is a fault this file has already paid for once. */
 
 /* The key. Held rather than looked up, because every render clears the grid
    it now lives in, and a lookup after the first clear finds nothing. */
@@ -2091,8 +2422,22 @@ function render(){
     var t = new Date(h.bfast).getTime();
     return isNaN(t) ? 0 : t;      /* earliest first = seated longest */
   }
+  /* The arrival hour, as a tie-break INSIDE the sub bands, never across
+     them: an undeparted villa cannot be worked on, so no hour lifts it
+     above a departed one. Finished work keeps its villa-number order, and
+     a villa with no arrival takes the sentinel, which keeps it exactly
+     where it sorts today. 99, not Infinity: two Infinities subtract to
+     NaN and NaN silently breaks the whole comparator. */
+  function eta(r){
+    var h = STATE.hk[r.n] || {};
+    if (h.done || h.pushed) return 99;
+    if ((r.kind === 'clean' || r.kind === 'pre') && arrivingNow(r, h))
+      return effectiveEta(r.n).h;
+    return 99;
+  }
   STATE.rows.sort(function(a,b){
-    return (rank(a)-rank(b)) || (sub(a)-sub(b)) || (seated(a)-seated(b)) || (a.n-b.n);
+    return (rank(a)-rank(b)) || (sub(a)-sub(b)) || (eta(a)-eta(b)) ||
+           (seated(a)-seated(b)) || (a.n-b.n);
   });
   STATE.rows.forEach(function(row){
     var h=STATE.hk[row.n]||{};
@@ -2142,7 +2487,7 @@ function render(){
          saying what the room is. It spent two versions saying who instead,
          first as a second pill and then as text, and both cost the tile its
          only line about the villa itself. */
-      if (h.pushed) sub='To tomorrow';
+      if (h.pushed) sub='Pushed';
       else if (h.done){
         /* Who finished it, shortened: a finished board that cannot say who did
            the work is a board you have to ask about. Older records carry no
@@ -2150,11 +2495,27 @@ function render(){
         var who = shortTagFor(h.doneBy);
         sub = who ? 'Done by '+esc(who)+' '+hhmm(h.done) : 'Done '+hhmm(h.done);
       }
-      else if (h.departed || row.pushedIn) sub='Departed';
+      /* A villa pushed in reads as what it is first thing in the morning: a
+         departed clean that was deliberately left, not one that was missed.
+         Usually that was yesterday; after a day nobody opened the board it
+         names the day, because "yesterday" would then be a lie. */
+      else if (row.pushedIn){
+        var py=(function(){ var d=new Date(VIEW); d.setDate(d.getDate()-1); return dkey(d); })();
+        if (!row.pushedFrom || row.pushedFrom===py) sub='Pushed';
+        else { var pf=parseDepDate(row.pushedFrom),
+                   dys=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+               sub='Pushed '+(pf ? dys[pf.getDay()]+' '+ord(pf.getDate()) : 'earlier'); }
+      }
+      else if (h.departed) sub='Departed';
       else if (h.bfast){
-        var m = mins(h.bfast);
-        var w = m >= 20 ? ' late' : (m >= 15 ? ' soon' : (m < 10 ? ' fresh' : ''));
-        sub='Available <b class="el'+w+'">'+m+'m</b>';
+        /* The elapsed clock is a live instrument: on a browsed day "1440m
+           late" is an alarm about nothing, so the mark keeps its time and
+           loses its urgency. */
+        if (isToday()){
+          var m = mins(h.bfast);
+          var w = m >= 20 ? ' late' : (m >= 15 ? ' soon' : (m < 10 ? ' fresh' : ''));
+          sub='Available <b class="el'+w+'">'+m+'m</b>';
+        } else sub='Available '+hhmm(h.bfast);
       }
       else if (row.kind==='pre') sub='Arriving today';
       else if (row.kind==='clean' && arrivingNow(row, h)) sub='Occupied';
@@ -2180,8 +2541,37 @@ function render(){
        tile still READS villa, job, state, person. Put first, the tile's text
        began with somebody's initials instead of the villa number, which is
        the wrong order for a screen reader and for anything matching on it. */
+    /* Strip and linen only exist on a clean: they are the two jobs done ahead
+       of one, and a service or a pre-arrival has no linen turnaround for a
+       helper to get ahead of. Same corner rule as the badge: drawn top-left,
+       listed last, so the tile still reads villa first. */
+    var tasks='';
+    if (row.kind==='clean' && (h.stripped || h.linen)){
+      tasks='<span class="task-icons">'+
+        (h.stripped ? '<span role="img" aria-label="Stripped" title="Stripped">'+ICON_CART+'</span>' : '')+
+        (h.linen ? '<span role="img" aria-label="Fresh linen on" title="Fresh linen on">'+ICON_LINEN_SM+'</span>' : '')+
+        '</span>';
+    }
+    /* The expected arrival, drawn top right and listed last like the other
+       corner marks. Red only when viewing today: on a browsed day the clock
+       this compares against belongs to a different day entirely, the same
+       reasoning as the elapsed timer above. */
+    var eta='';
+    if (row.kind!=='vac' && arrivingNow(row, h)){
+      var ev = effectiveEta(row.n);
+      if (ev.disp){
+        var ecls='eta';
+        if (!h.done && !h.pushed){
+          if (isToday() && new Date().getHours() >= ev.h - 1) ecls+=' due';
+          else if (ev.early) ecls+=' early';
+        }
+        eta='<span class="'+ecls+'" role="img"'+
+            ' aria-label="Arriving '+etaWord(ev.disp)+'"'+
+            ' title="Arriving '+etaWord(ev.disp)+'">'+esc(ev.disp)+'</span>';
+      }
+    }
     el.innerHTML='<span class="rn">'+row.n+'</span>'+chip+
-                 '<span class="sub">'+sub+'</span>'+badge;
+                 '<span class="sub">'+sub+'</span>'+badge+tasks+eta;
     el.onclick = function(){
       if (selectMode){
         if (!selectableRow(row)) return;
@@ -2233,8 +2623,10 @@ function setField(n, obj, errEl){
   return patchRoom(n,obj).then(function(){
     /* Only after the write succeeds, and only for the two marks anyone asked
        to be told about. Setting a mark notifies; clearing or undoing one does
-       not, because nothing has become available by undoing something.    */
-    try {
+       not, because nothing has become available by undoing something.
+       And only on the live day: a correction typed into last Tuesday is
+       bookkeeping, not something to buzz a phone about.                  */
+    try { if (isToday()) {
       if (obj.departed === true)      notifyPush('departed', n, window.NALA_USER);
       else if (obj.bfast && obj.bfast !== null) notifyPush('available', n, window.NALA_USER);
       else if (obj.done && obj.done !== null){
@@ -2245,12 +2637,43 @@ function setField(n, obj, errEl){
         if (kind === 'clean')     notifyPush('cleaned', n, window.NALA_USER);
         else if (kind === 'svc')  notifyPush('serviced', n, window.NALA_USER);
       }
-    } catch (e){}
+    } } catch (e){}
     closeSheet();
   })
   .catch(function(e){
     STATE.hk[n]=prev; render();
     errEl.textContent = (e && e.message==='rejected')
+      ? 'The change was not allowed - tell the manager.'
+      : 'No connection - try again.';
+  });
+}
+
+/* Strip and linen write straight through, like the claim: one tap on, one tap
+   off. The sheet stays OPEN rather than closing the way setField does -
+   whoever strips a villa usually puts the fresh linen on in the same visit,
+   and closing between the two marks would cost a walk back through the grid.
+   Nobody is notified: nothing has become available, a part of the clean has
+   simply been done early. */
+function toggleTask(field){
+  if (!CUR || CUR.multi) return;
+  var n = CUR.n;
+  /* Same gate the sheet draws by, re-checked at the tap: a sheet can sit open
+     while a poll or another phone changes the villa under it. Clearing an
+     existing mark is always allowed - it is the way back out. */
+  var h0 = STATE.hk[n]||{};
+  if (!(h0.departed || CUR.pushedIn || h0.pushed || h0[field])) return;
+  var prev = JSON.parse(JSON.stringify(STATE.hk[n]||{}));
+  var obj = {}; obj[field] = prev[field] ? null : new Date().toISOString();
+  STATE.hk[n] = Object.assign({}, prev, obj);
+  if (obj[field]===null) delete STATE.hk[n][field];
+  render();
+  if (CUR) drawSheet('menu');
+  patchRoom(n, obj).catch(function(e){
+    STATE.hk[n]=prev; render();
+    if (!CUR) return;
+    drawSheet('menu');
+    var el = document.getElementById('perr');
+    if (el) el.textContent = (e && e.message==='rejected')
       ? 'The change was not allowed - tell the manager.'
       : 'No connection - try again.';
   });
@@ -2311,6 +2734,29 @@ function drawSheet(mode){
   if (h.kind) kindName += ' - set by staff';
   var head='<h2>'+(CUR.multi ? (CUR.multi.length+' villas') : 'Villa '+n)+
            '</h2><div class="st">'+(CUR.multi ? 'Villas '+n : kindName)+'</div>';
+  /* The two toggles ride beside the title, only on a clean's own menu: on the
+     confirm screens they would be a second thing to press on a screen that
+     exists to ask one question.
+
+     And only once the guest has gone - departed, pushed in from yesterday
+     (the guest left, the work did not happen), or pushed to tomorrow -
+     because a villa cannot be stripped around its guest, and offering the
+     mark earlier invites it. A mark already set keeps its toggle whatever
+     the state, or undoing a departure would strand it un-undoable. */
+  var TASKS_OPEN = !!(h.departed || CUR.pushedIn || h.pushed || h.stripped || h.linen);
+  if (mode==='menu' && CUR.kind==='clean' && !CUR.multi && TASKS_OPEN){
+    var ttog = function(field, on, word, icon){
+      var label = word+(on ? ' - done. Tap to undo' : '. Tap when done');
+      return '<button type="button" class="ttog'+(on ? ' on' : '')+'"'+
+             ' aria-pressed="'+(on ? 'true' : 'false')+'"'+
+             ' aria-label="'+label+'" title="'+label+'"'+
+             ' onclick="toggleTask(\''+field+'\')">'+icon+'</button>';
+    };
+    head='<div class="headrow"><div>'+head+'</div><div class="tasks">'+
+         ttog('stripped', h.stripped, 'Stripped', ICON_CART)+
+         ttog('linen', h.linen, 'Fresh linen', ICON_LINEN)+
+         '</div></div>';
+  }
   var err='<div class="perr" id="perr"></div>';
 
   if (mode==='menu'){
@@ -2374,7 +2820,8 @@ function drawSheet(mode){
          A stale mark can still be cleared.                              */
       var stillHere = !(h.departed || CUR.pushedIn) && CUR.kind !== 'pre';
       if (h.bfast){
-        rows+='<button class="pbtn" disabled style="opacity:.6">Marked available '+hhmm(h.bfast)+' ('+mins(h.bfast)+'m ago)</button>';
+        rows+='<button class="pbtn" disabled style="opacity:.6">Marked available '+hhmm(h.bfast)+
+              (isToday() ? ' ('+mins(h.bfast)+'m ago)' : '')+'</button>';
         rows+='<button class="pbtn warn" onclick="drawSheet(\'clearbf\')">Clear availability</button>';
       } else if (stillHere && CUR.kind === 'svc') {
         /* Only a service can be "possibly available": it is a way in to a
@@ -2387,7 +2834,7 @@ function drawSheet(mode){
       if (CUR.kind==='clean' && !arrivingNow(CUR, h)){
         rows += h.pushed
           ? '<button class="pbtn warn" onclick="drawSheet(\'unpush\')">Undo push</button>'
-          : '<button class="pbtn" onclick="drawSheet(\'push\')">Push villa</button>';
+          : '<button class="pbtn" onclick="drawSheet(\'push\')">Push</button>';
       }
       if (CUR.kind==='clean'){
         /* A villa pushed in from yesterday is departed as a matter of fact -
@@ -2530,7 +2977,7 @@ function drawSheet(mode){
   }
   if (mode==='push'){
     b.innerHTML=head+
-      '<div class="st" style="margin-bottom:6px">Push villa '+n+' to tomorrow? '+
+      '<div class="st" style="margin-bottom:6px">Push villa '+n+'? '+
       'It will appear tomorrow as a clean, already departed.</div>'+
       '<button class="pbtn solid" onclick="setField('+n+',{pushed:new Date().toISOString()},document.getElementById(\'perr\'))">Yes - push</button>'+
       '<button class="pbtn ghost" onclick="drawSheet(\'menu\')">Back</button>'+err;

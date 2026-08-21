@@ -20,6 +20,22 @@
              for the small "soon" text, where a brighter orange on cream would
              lose the contrast that colour is carrying. */
           --amberbar:#E8891A;
+          /* Same reasoning, applied to the other two. A clean bar and a
+             service bar were a muted blue-grey and a muted green-grey: two
+             desaturated mid-tones of near enough the same lightness, and at
+             9px on a phone held at arm's length they were one colour with a
+             slight cast. Seen in a housekeeper's hand on 22 Aug.
+
+             Saturated here, and only here. The same two tokens draw the
+             border of a ready tile against its own pale fill, where muted is
+             correct and this would shout. So the bars get their own pair and
+             the tints keep theirs, exactly as the amber already does.
+
+             The blue is moved toward a true blue rather than simply
+             brightened. Brightness alone would have left two colours that
+             differ in strength and not in hue, which is the harder telling
+             apart, and the one that fails first in daylight. */
+          --bluebar:#2E74C0; --greenbar:#4E8F4A;
           --blue:#E7E9EF; --blueb:#8A90A8; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
@@ -167,18 +183,18 @@
      The saturated tones are used, not the tints. The tints are backgrounds
      built to sit behind text; at 9px on cream they would be nearly invisible. */
   .tile .chip { display:block; width:56%; height:9px; padding:0; font-size:0;
-                border:1.5px solid var(--blueb); border-radius:5px;
-                background:var(--blueb); color:transparent; overflow:hidden; }
-  .tile .chip.svc { background:var(--greenb); border-color:var(--greenb); }
+                border:1.5px solid var(--bluebar); border-radius:5px;
+                background:var(--bluebar); color:transparent; overflow:hidden; }
+  .tile .chip.svc { background:var(--greenbar); border-color:var(--greenbar); }
   .tile .chip.pre { background:var(--amberbar); border-color:var(--amberbar); }
   /* Half clean, half arrival: the bar shows the two jobs rather than a third
      pattern standing for them. Stripes said something is different about this
      one and left you to remember what; a split bar says which two, in the
      colours already used for each. The clean half leads because the clean has
      to happen first. */
-  .tile .chip.arr { border-color:var(--blueb);
+  .tile .chip.arr { border-color:var(--bluebar);
                     background:linear-gradient(90deg,
-                      var(--blueb) 0 50%, var(--amberbar) 50% 100%); }
+                      var(--bluebar) 0 50%, var(--amberbar) 50% 100%); }
   /* Unknown is a gap in what we know, not a job, so it is the only one with
      no fill and the only dashed one. Grey, because red is reserved for
      something being wrong. */
@@ -328,13 +344,13 @@
             background:transparent; font-size:7px; letter-spacing:.06em; }
   .legend span { display:flex; align-items:center; gap:5px; line-height:1.15; }
   .legend .lgb { flex:0 0 auto; width:15px; height:6px; border-radius:3px;
-                 border:1.2px solid var(--blueb); background:var(--blueb);
+                 border:1.2px solid var(--bluebar); background:var(--bluebar);
                  vertical-align:0; margin:0; }
-  .legend .lgb.svc { background:var(--greenb); border-color:var(--greenb); }
+  .legend .lgb.svc { background:var(--greenbar); border-color:var(--greenbar); }
   .legend .lgb.pre { background:var(--amberbar); border-color:var(--amberbar); }
-  .legend .lgb.arr { border-color:var(--blueb);
+  .legend .lgb.arr { border-color:var(--bluebar);
                      background:linear-gradient(90deg,
-                       var(--blueb) 0 50%, var(--amberbar) 50% 100%); }
+                       var(--bluebar) 0 50%, var(--amberbar) 50% 100%); }
   .legend .lgb.dash { background:transparent; border-style:dashed;
                       border-color:var(--mid); }
 

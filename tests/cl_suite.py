@@ -137,9 +137,35 @@ with sync_playwright() as p:
     ck("a clean and a service are different colours, not different sizes",
        chips["clean"]["bg"] != chips["svc"]["bg"]
        and chips["clean"]["h"] == chips["svc"]["h"])
-    ck("and the bar colours are the tile colours for the same jobs",
-       chips["clean"]["bg"] == "rgb(138, 144, 168)"
-       and chips["svc"]["bg"] == "rgb(126, 147, 122)")
+    #  Saturated on 22 Aug. The muted pair drew the bars and the ready-tile
+    #  borders both, and as bars they were two desaturated mid-tones of the
+    #  same lightness: one colour with a cast, at 9px, at arm's length. The
+    #  bars now have their own tokens and the tile borders keep the muted
+    #  ones, which is why this no longer reads the same value in both places.
+    ck("and the bar colours are saturated enough to tell apart",
+       chips["clean"]["bg"] == "rgb(46, 116, 192)"
+       and chips["svc"]["bg"] == "rgb(78, 143, 74)")
+    #  Brightening alone would have left two colours differing in strength
+    #  and not in hue, which is the harder telling apart and the one that
+    #  fails first in daylight. So the separation is asserted as hue.
+    def hue(rgb):
+        r, g, bl = [int(x) / 255 for x in
+                    rgb.replace("rgb(", "").replace(")", "").split(",")]
+        mx, mn = max(r, g, bl), min(r, g, bl)
+        if mx == mn: return 0
+        d = mx - mn
+        h = (60 * ((g - bl) / d) % 360) if mx == r else \
+            (60 * ((bl - r) / d) + 120) if mx == g else \
+            (60 * ((r - g) / d) + 240)
+        return h % 360
+    gap = abs(hue(chips["clean"]["bg"]) - hue(chips["svc"]["bg"]))
+    ck("and differ in hue, not merely in brightness (%d degrees)" % gap,
+       gap > 80)
+    #  The ready tile borders are a different job: they sit against their own
+    #  pale fill, where the saturated pair would shout.
+    ck("while a ready tile keeps the muted border it always had",
+       pg.evaluate("""()=>getComputedStyle(document.documentElement)
+          .getPropertyValue('--blueb').trim()""") == "#8A90A8")
     # Nothing readable is lost: the word is still there for a screen reader
     # and for a long press, it is simply not drawn.
     ck("and each still names itself for anyone who cannot read a shape",
@@ -1448,7 +1474,7 @@ with sync_playwright() as p:
     print("   clean + arrival bar:", grad)
     ck("a clean with an arrival is half a clean and half an arrival",
        grad["job"] == "clean-pre"
-       and "rgb(138, 144, 168)" in grad["img"]      # the clean's blue
+       and "rgb(46, 116, 192)" in grad["img"]       # the clean's blue
        and "rgb(232, 137, 26)" in grad["img"])      # the arrival's amber, brightened 21 Aug so the two halves of a
        # clean-plus-arrival could be told apart on a phone
     # The clean half leads because the clean has to happen first, and the
