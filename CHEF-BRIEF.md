@@ -94,13 +94,29 @@ pm.publish(PASSCODE, {
 The script prints the four courses back, read from the live menu, so the chef
 can see what the guests are seeing. If it prints nothing, it did not publish.
 
+**Then show the tagging link, straight away, in the same reply.** The script
+prints it last. Put it in front of the chef as the next thing to do, not as a
+footnote and not on a later turn:
+
+> Published. Now mark the clashes: https://menu.nalaresort.com/tag.html?v=...
+
+Use the link exactly as printed. The `?v=` on the end is a timestamp that stops
+his phone opening a cached copy, so it is different every time and must not be
+trimmed or reused from an earlier session.
+
+Do not ask whether he wants it. Do not wait to be asked. The menu is already
+live on the guests' phones at this point and it is tagged with nothing, so the
+minute between publishing and tagging is the one minute a nut allergy meets the
+lamb in silence. The link closes it.
+
 ---
 
 ## If it does not work
 
 ## After publishing: mark the clashes
 
-Publishing puts the menu on the guests' phones. It does not yet warn anybody.
+Publishing puts the menu on the guests' phones **immediately**. It does not yet
+warn anybody. Tag it now, not after service.
 
 The guest page and the front desk both check a guest's declared allergies
 against tonight's tags, so until the courses are tagged a nut allergy meets a
