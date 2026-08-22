@@ -129,6 +129,42 @@ with sync_playwright() as p:
     ck("and nothing is cloned into the table head any more",
        pg.evaluate("()=>!document.querySelector('#printHead .phead')"))
 
+    #  A browser repeats thead and tfoot on every printed page and will not
+    #  repeat a plain block. As a div after the table this line flowed like any
+    #  other content, so the day the sheet spilled the summary went to the
+    #  bottom of page two and page one ended on a cut-off row.
+    ft = pg.evaluate("""()=>{const f=document.getElementById('pFoot');
+        const t=f&&f.closest('tfoot');
+        return {inFoot:!!t,
+                group:t?getComputedStyle(t).display:null,
+                lastInTable:!!(t&&t.parentNode.lastElementChild===t)};}""")
+    print("   summary placement:", ft)
+    ck("the summary lives in the table's own footer, not loose after it",
+       ft["inFoot"])
+    ck("declared as a footer group, which is the thing a browser repeats",
+       ft["group"] == "table-footer-group")
+    ck("and it is the last thing in the table",
+       ft["lastInTable"])
+    #  The timestamp travels with it. Left outside the table it flowed as its
+    #  own block, and a sheet whose rows filled the last page put the stamp
+    #  alone on the next one: a whole sheet of paper carrying one line of small
+    #  print. Verified by rendering a deliberately short page and reading the
+    #  PDF, which is the only way to see a page break at all.
+    st = pg.evaluate("""()=>{const f=document.getElementById('stampFoot');
+        const o=document.getElementById('stamp');
+        return {inFoot:!!(f&&f.closest('tfoot')),
+                printed:f?getComputedStyle(f).display!=='none':false,
+                outsideHidden:o?getComputedStyle(o).display==='none':true,
+                same:!!(f&&o&&f.textContent.trim()===o.textContent.trim()),
+                text:f?f.textContent.trim():''};}""")
+    print("   stamp:", st)
+    ck("the timestamp travels inside the footer, not loose after the table",
+       st["inFoot"] and st["printed"])
+    ck("and the screen's own copy does not print twice",
+       st["outsideHidden"])
+    ck("and both say the same thing",
+       st["same"] and st["text"].lower().startswith("printed"))
+
     #  The browser prints its own header and footer on top of this sheet: the
     #  URL, the date and time a second time, and a page number, under a
     #  timestamp the sheet had already printed itself. They belong to the print

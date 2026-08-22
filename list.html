@@ -244,6 +244,13 @@
   .syncwarn { font-size:11px; line-height:1.5; color:#A8321E; margin:10px 0 4px;
               max-width:60ch; }
 
+  /* Screen has the stats row above the table and does not need this as well. */
+  .printfoot { display:none; }
+  .printfoot > td { border:0; padding:0; }
+  /* The screen keeps the standalone stamp under the table; the copy inside the
+     footer is for paper only, or both would show. */
+  .printstamp { display:none; }
+
   .printhead { display:none; }
   .printhead > td { border:0; padding:0 0 6px; }
   @media print {
@@ -262,7 +269,13 @@
     .daterow, .stats { display:none !important; }
     /* Nothing above the table but its own column headings. */
     .phead, .printhead { display:none !important; }
+    /* table-footer-group, not block: the group is what a browser repeats. */
+    .printfoot { display:table-footer-group !important; }
     .pfoot { display:block !important; }
+    .printstamp { display:block !important; }
+    /* The one outside the table would print a second time, and on its own
+       page when the table filled the last one. */
+    #stamp { display:none !important; }
   }
   @media print {
     /* The page margin the @page rule gave up, taken here instead. Not less
@@ -428,20 +441,28 @@ function stripTags(h){
       </tr>
     </thead>
     <tbody id="rows"></tbody>
+    <!-- A real table footer, for the same reason the header used to be a table
+         header: a browser repeats thead and tfoot on every printed page and
+         will not repeat a plain block. As a div after the table this line
+         flowed like any other content, so the day it spilled onto a second
+         page the summary went with it and page one ended on a cut-off row. -->
+    <tfoot class="printfoot">
+      <tr><td colspan="9">
+        <div class="pfoot" id="pFoot">
+          <span id="fDate"></span>
+          <span class="sep">&middot;</span><span id="fMix">&ndash;</span>
+          <span class="sep">&middot;</span><span id="fTables"></span>
+          <span class="sep">&middot;</span><span id="fCovers">&ndash;</span> covers
+        </div>
+        <!-- The timestamp travels with the summary rather than trailing the
+             table. Outside it, it flowed as its own block, and a sheet that
+             filled its last page put the stamp alone on the next one: a whole
+             sheet of paper carrying one line of small print. -->
+        <div class="stamp printstamp" id="stampFoot"></div>
+      </td></tr>
+    </tfoot>
   </table>
 </div>
-<!-- The day's summary, at the foot and print only. It sat at the top in three
-     different sizes and weights, above a table that then needed its own column
-     headings, and the page has no room for two headers. Down here it is one
-     line in one voice, next to the timestamp, and the table starts at the top
-     of the paper where the reading starts. -->
-<div class="pfoot" id="pFoot">
-  <span id="fDate"></span>
-  <span class="sep">&middot;</span><span id="fMix">&ndash;</span>
-  <span class="sep">&middot;</span><span id="fTables"></span>
-  <span class="sep">&middot;</span><span id="fCovers">&ndash;</span> covers
-</div>
-
 <div class="stamp" id="stamp"></div>
 
 <div class="foot" id="footBar">
@@ -465,8 +486,15 @@ function tomorrowKey(){ var d=new Date(VIEW); d.setDate(d.getDate()+1); return d
   var n=new Date();
   var hh=n.getHours(), mm=String(n.getMinutes()).padStart(2,'0');
   var ap=hh>=12?'pm':'am'; hh=hh%12||12;
-  document.getElementById('stamp').textContent =
+  var stampText =
     'Printed '+n.getDate()+'/'+(n.getMonth()+1)+'/'+n.getFullYear()+' '+hh+':'+mm+ap;
+  /* Two copies of one fact, and only ever one of them visible: the screen's
+     under the table, the printed one inside the table's footer so it cannot be
+     orphaned onto a page of its own. */
+  ['stamp','stampFoot'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.textContent = stampText;
+  });
 })();
 
 // A stay range on ONE line: "Tue 11-Fri 14". Month is omitted - we know it,
