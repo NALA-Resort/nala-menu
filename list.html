@@ -760,7 +760,26 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
         '</tr>');
     });
 
-    for (var i=rows.length; i<21; i++){
+    /* Blank rows to write walk-ins on. Padded to a fixed 21 until 22 Aug,
+       which is what put a second page on a sheet whose content fitted:
+       thirteen guests plus eight blanks tipped it, and page two came out
+       carrying nothing but the footer. An empty second page is the worst kind
+       of overflow, because nothing on it says why it is there. The browser
+       adds its own header and footer to a printed page as well, which takes
+       height no stylesheet here can measure.
+
+       Four blanks, and never past seventeen rows in total. Every listed guest
+       now has a writing line of their own inside their row, so these are only
+       for somebody not on the sheet at all: a walk-in, a late external. Eight
+       of those was never the number, and on a full house even four is too
+       many, which is why the cap is on the total and not on the blanks.
+
+       A quiet night therefore stops in the middle of the page rather than
+       ruling lines to the foot. That is the cosmetic half of the trade and it
+       loses to the functional half: a sheet that reads as unfinished is a
+       smaller problem than a sheet that prints a blank page every night. */
+    var padTo = Math.max(rows.length, Math.min(17, rows.length + 4));
+    for (var i=rows.length; i<padTo; i++){
       tb.insertAdjacentHTML('beforeend',
         '<tr class="blank"><td></td><td></td><td class="c-dt"></td><td class="c-bt"></td>'+
         '<td></td><td></td><td></td><td></td><td></td></tr>');

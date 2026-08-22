@@ -151,8 +151,22 @@ with sync_playwright() as p:
     #  villas with a booking or an answer, plus the externals.
     ck("only villas somebody knows something about are listed",
        [x["room"] for x in d] == ["1","2","3","4","9","ext","ext"])
-    ck("and the sheet still pads out to 21 rows to write on",
-       rw["n"]==21 and rw["blanks"]==21-len(d))
+    #  Four spare lines, and never more than seventeen rows in total. A fixed
+    #  twenty-one is what put an empty second page on the printout: thirteen
+    #  guests plus eight blanks tipped it and page two carried only the footer.
+    ck("the sheet adds four lines to write walk-ins on",
+       rw["blanks"] == 4 and rw["n"] == len(d) + 4)
+    #  The cap is on the TOTAL, not on the blanks, because on a full house
+    #  even four spare lines is more than the page can hold. Checked as
+    #  arithmetic rather than by drawing seventeen fixtures.
+    def padded(n): return max(n, min(17, n + 4))
+    ck("a busy house gets four spare lines", padded(13) == 17)
+    ck("a fuller one gets fewer, not four more", padded(15) == 17)
+    ck("and a full house gets none at all", padded(17) == 17 and padded(18) == 18)
+    ck("no house ever prints more rows than it has guests plus four",
+       all(padded(n) - n <= 4 for n in range(0, 22)))
+    ck("and never fewer rows than it has guests",
+       all(padded(n) >= n for n in range(0, 22)))
     r1=d[0]
     ck("r1 conflict row + FLAG + PRE-MENU", "row-conflict" in r1["cls"] and "FLAG" in r1["name"] and "PRE-MENU" in r1["name"])
     ck("r1 dietaries as pills, allergy solid and shortened",
