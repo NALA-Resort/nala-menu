@@ -97,9 +97,9 @@ with sync_playwright() as p:
     #  way to anywhere. Pages is in every OTHER page's hamburger, which is what
     #  was actually asked for, and that is checked from a page that is not this
     #  one.
-    CANON = ["tally.html", "front-desk.html", "list.html", "publish.html",
-             "tag.html", "cleaners.html", "housekeeping.html",
-             "registration.html", "staff.html", "pages.html"]
+    CANON = ["front-desk.html", "tally.html", "cleaners.html", "publish.html",
+             "list.html", "housekeeping.html", "registration.html",
+             "staff.html", "tag.html", "pages.html"]
     got = pg.evaluate("""()=>[...document.querySelectorAll('.navdrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     ck("the map's own hamburger lists every other page, in the one order",

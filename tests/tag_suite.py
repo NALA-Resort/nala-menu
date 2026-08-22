@@ -159,9 +159,9 @@ with sync_playwright() as p:
     #  agreeing: the older pages did agree with each other, and the two newest
     #  were in none of their lists, so from Reservations there was no way to
     #  reach publishing at all.
-    CANON = ["tally.html", "front-desk.html", "list.html", "publish.html",
-             "tag.html", "cleaners.html", "housekeeping.html",
-             "registration.html", "staff.html", "pages.html"]
+    CANON = ["front-desk.html", "tally.html", "cleaners.html", "publish.html",
+             "list.html", "housekeeping.html", "registration.html",
+             "staff.html", "tag.html", "pages.html"]
     got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     ck("the menu is the one list, minus this page",

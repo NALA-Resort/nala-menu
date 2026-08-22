@@ -445,9 +445,11 @@ with sync_playwright() as p:
     #  older pages did agree with each other, and the two new ones were in none
     #  of their lists, so from Reservations there was no way to reach
     #  publishing at all.
-    CANON = ["tally.html", "front-desk.html", "list.html", "publish.html",
-             "tag.html", "cleaners.html", "housekeeping.html",
-             "registration.html", "staff.html", "pages.html"]
+    #  Grouped 22 Aug to the owner's own sketch: what you work on, what you
+    #  print, what you set.
+    CANON = ["front-desk.html", "tally.html", "cleaners.html", "publish.html",
+             "list.html", "housekeeping.html", "registration.html",
+             "staff.html", "tag.html", "pages.html"]
     got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     print("   publish nav:", got)
@@ -699,6 +701,53 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.querySelectorAll('.c-name').length") == 4)
     ck("and says so rather than looking broken",
        "link" in pg.inner_text("#lede").lower())
+    pg.close()
+
+    # ── who sees what in the menu ───────────────────────────────
+    #  NAV_NEEDS maps a link to the permission that opens it, and the filter
+    #  hides what a role cannot use. publish.html and tag.html were missing
+    #  from that map until 22 Aug, so every login saw them: a housekeeper's
+    #  menu offered to publish the dinner menu, and tapping it bounced her
+    #  back to her own board. Nothing tested this map, which is why.
+    pg = open_pub(LINK)
+    seen = pg.evaluate("""()=>{
+      const out = {};
+      ['chef','waiter','housekeeping','admin'].forEach(r=>{
+        window.NALA_NAVFILTER(r);
+        out[r] = [...document.querySelectorAll('#navDrop a')]
+          .filter(a=>getComputedStyle(a).display!=='none')
+          .map(a=>a.getAttribute('href')).filter(h=>h!=='#');
+      });
+      return out;
+    }""")
+    print("   menu by role:", seen)
+    ck("a housekeeper is not offered the menu pages",
+       "tag.html" not in seen["housekeeping"] and
+       "publish.html" not in seen["housekeeping"])
+    ck("nor a waiter", "tag.html" not in seen["waiter"] and
+       "publish.html" not in seen["waiter"])
+    ck("the chef is", "tag.html" in seen["chef"])
+    ck("and the manager is", "tag.html" in seen["admin"])
+    #  Every link left standing has to open. A link that bounces you back is a
+    #  door to nowhere, which is worse than no link.
+    NEEDS = {"tally.html":"resBoard", "front-desk.html":"editBookings",
+             "list.html":"resSheet", "publish.html":"publishMenu",
+             "tag.html":"publishMenu", "cleaners.html":"cleansBoard",
+             "housekeeping.html":"cleansBoard", "registration.html":"editBookings",
+             "staff.html":"manageStaff", "pages.html":"manageStaff"}
+    ck("every link in the menu has a permission behind it",
+       all(h in NEEDS for r in seen for h in seen[r]))
+    #  A heading with nothing under it promises something that is not there.
+    empty = pg.evaluate("""()=>{
+      window.NALA_NAVFILTER('housekeeping');
+      return [...document.querySelectorAll('#navDrop .navgrp')]
+        .filter(g=>getComputedStyle(g).display!=='none')
+        .map(g=>g.textContent);
+    }""")
+    print("   headings a housekeeper sees:", empty)
+    ck("a heading whose whole group is hidden goes with it",
+       "Settings" not in empty)
+    pg.evaluate("()=>window.NALA_NAVFILTER('admin')")
     pg.close()
 
     # ── a role that may not publish ─────────────────────────────

@@ -969,7 +969,11 @@ var PERM_ACTIONS = [
   ['resBoard',     'See Reservations'],
   ['editBookings', 'Edit a booking'],
   ['resSheet',     'See the Reservations Sheet'],
-  ['publishMenu',  'Tag the menu dietaries'],
+  /* Renamed 22 Aug. It was written when tagging was the whole of it; the same
+     permission now opens the page that publishes the menu, takes it down and
+     tags it, so a manager reading "Tag the menu dietaries" was being told
+     about the smallest thing it grants. */
+  ['publishMenu',  'Publish and tag the menu'],
   ['cleansBoard',  'See the Cleans board'],
   ['cleansMarks',  'Mark a clean done'],
   ['setJob',       'Change what a villa needs']
@@ -1343,6 +1347,13 @@ var NAV_NEEDS = {
   'tally.html':        'resBoard',
   'front-desk.html':   'editBookings',
   'list.html':         'resSheet',
+  /* Both were missing until 22 Aug, so every login saw them: a housekeeper's
+     menu offered to publish the dinner menu, and tapping it bounced her back
+     to her own board. An unlisted link is left alone by the filter on purpose,
+     which is right for a link nobody has thought about yet and wrong for two
+     that had simply been forgotten. */
+  'publish.html':      'publishMenu',
+  'tag.html':          'publishMenu',
   'cleaners.html':     'cleansBoard',
   'housekeeping.html': 'cleansBoard',
   'registration.html': 'editBookings',
@@ -1362,6 +1373,29 @@ function navFilterShared(role){
        to add it here, and the failure would look like the link was broken. */
     if (!(href in NAV_NEEDS)) continue;
     links[i].style.display = can(role, NAV_NEEDS[href]) ? '' : 'none';
+  }
+  hideEmptyGroups(drop);
+}
+
+/* A heading with nothing under it. The menu is grouped now, and a role that
+   may open none of the printed sheets would otherwise get the word Print
+   sitting above a rule with nothing beneath it: a promise of something that
+   is not there, which reads as a page that failed to load rather than as a
+   thing this login cannot do. */
+function hideEmptyGroups(drop){
+  var kids = drop.children, i, j, any;
+  for (i = 0; i < kids.length; i++){
+    if (kids[i].className.indexOf('navgrp') < 0) continue;
+    any = false;
+    for (j = i + 1; j < kids.length; j++){
+      if (kids[j].className.indexOf('navgrp') > -1) break;
+      /* Sign out sits under the last heading with no heading of its own and
+         is never filtered, so counting it made the last group look occupied
+         however empty it was. */
+      if (kids[j].className.indexOf('signout') > -1) continue;
+      if (kids[j].tagName === 'A' && kids[j].style.display !== 'none'){ any = true; break; }
+    }
+    kids[i].style.display = any ? '' : 'none';
   }
 }
 window.NALA_NAVFILTER = navFilterShared;

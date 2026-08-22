@@ -50,6 +50,10 @@
                text-decoration:none; white-space:nowrap; }
   /* Signing out is an action, not a destination, and is never filtered by
      role: every login has to be able to get out. */
+  .navgrp { padding:12px 18px 5px; font-size:8px; letter-spacing:.2em;
+            text-transform:uppercase; color:#B0B0A8;
+            border-top:1px solid var(--rule); margin-top:5px; }
+  .navdrop > .navgrp:first-child { border-top:0; margin-top:0; padding-top:6px; }
   .navdrop a.signout { border-top:1px solid var(--rule); margin-top:5px;
                        padding-top:13px; color:var(--mid); }
 
@@ -122,7 +126,9 @@
             font-family:Helvetica,Arial,sans-serif; font-size:10px;
             letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
             -webkit-tap-highlight-color:transparent; }
-  .dietlink { margin-top:10px; font-family:Helvetica,Arial,sans-serif;
+  /* Clear of the field above it. At 10px the line read as a caption belonging
+     to the Add button rather than as a separate thought about the list. */
+  .dietlink { margin-top:16px; font-family:Helvetica,Arial,sans-serif;
               font-size:10px; letter-spacing:.05em; line-height:1.6;
               color:var(--mid); }
   .dietlink a { color:var(--ink); }
@@ -190,7 +196,7 @@
        place to go back to from the dietary list, so it leads. -->
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="list.html">Reservations Sheet</a><a href="tag.html">Dietary Settings</a><a href="cleaners.html">Cleans</a><a href="housekeeping.html">Clean sheet</a><a href="registration.html">Registration</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="cleaners.html">Cleans</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
   </div>
   <div class="wordmark">Nala Resort</div>

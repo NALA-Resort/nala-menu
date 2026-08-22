@@ -460,16 +460,28 @@ with sync_playwright() as p:
     dest=[i for i in nav if i["href"]!="#"]
     # Live board then its sheet, reservations before cleans. Front Desk
     # Arrival sits with reservations, after the board it feeds.
-    #  One list, the same on every page, in one order, minus the page you are
-    #  on. Publish Menu and Dietary Settings were in nobody's hamburger until
-    #  22 Aug, so from this board there was no way to reach publishing at all.
+    #  Grouped 22 Aug, to the owner's own sketch: the screens you work on, then
+    #  what you print, then what you set. Named as the staff name them rather
+    #  than as the files are named - the sheet everyone calls the FOH sheet was
+    #  labelled Reservations Sheet, and Registration is the arrivals print.
     ck("menu labels and order",
-       [i["t"] for i in dest]==["Front Desk Arrival","Reservations Sheet",
-                                "Publish Menu","Dietary Settings","Cleans",
-                                "Clean sheet","Registration","Settings","Pages"] and
-       [i["href"] for i in dest]==["front-desk.html","list.html","publish.html",
-                                   "tag.html","cleaners.html","housekeeping.html",
-                                   "registration.html","staff.html","pages.html"])
+       [i["t"] for i in dest]==["Front Desk","Cleans","Publish Menu",
+                                "FOH Sheet","Clean Sheet","Arrivals",
+                                "General","Dietary","Pages"] and
+       [i["href"] for i in dest]==["front-desk.html","cleaners.html","publish.html",
+                                   "list.html","housekeeping.html","registration.html",
+                                   "staff.html","tag.html","pages.html"])
+    #  Headings, not choices. Light grey and small so a signpost is not mistaken
+    #  for a destination.
+    grp = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop .navgrp')]
+        .map(e=>({t:e.textContent, tag:e.tagName,
+                  c:getComputedStyle(e).color,
+                  rule:getComputedStyle(e).borderTopWidth}))""")
+    print("   nav groups:", grp)
+    ck("the menu is divided under two headings", [g["t"] for g in grp] == ["Print", "Settings"])
+    ck("and they are not links", all(g["tag"] != "A" for g in grp))
+    ck("each sitting under a rule that does the dividing",
+       all(g["rule"] != "0px" for g in grp))
     # signing out is an action, so it comes last, after the destinations
     ck("sign out is the last item in the menu", nav[-1]["t"]=="Sign out")
     ck("no menu label wraps to a second line", all(i["h"]<=38 for i in nav))
