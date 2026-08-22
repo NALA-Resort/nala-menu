@@ -194,7 +194,12 @@
   .phead .p-cov .n { font-size:17px; font-weight:bold; }
   .phead .p-cov .l { font-family:var(--ui-font); font-size:8px; letter-spacing:.14em;
                      text-transform:uppercase; color:#55554F; margin-left:5px; }
-  .printclone .phead { display:flex; }
+  /* The clone gets `printclone` on ITSELF, not on a wrapper, so a descendant
+     selector never matches it. It did not match from 22 Aug until this was
+     found, which is why the printed sheet came out with no date, no make-up
+     and no covers on it at all. Matched both ways now: by the class the clone
+     carries and by the slot it lives in. */
+  #printHead .phead, .phead.printclone { display:flex; }
 
   .syncwarn { font-size:11px; line-height:1.5; color:#A8321E; margin:10px 0 4px;
               max-width:60ch; }
@@ -206,8 +211,16 @@
     .noprintblock { display:none !important; }
     /* The screen's date buttons and its larger stat row are for a desk. On
        paper the one-line header in the table head carries the same facts. */
-    .daterow, .stats, .phead:not(.printclone .phead) { display:none !important; }
-    .printclone .phead { display:flex !important; }
+    /* The screen's date buttons and its larger stat row are for a desk. On
+       paper the one-line header in the table head carries the same facts, so
+       the originals are hidden and only the clone shows.
+
+       Written as two plain rules. The previous version used :not() with a
+       compound selector inside it, which older engines reject, and a rejected
+       selector takes the WHOLE comma-separated rule down with it: the date row
+       and the stats would print as well as being replaced. */
+    .daterow, .stats { display:none !important; }
+    #printHead .phead, .phead.printclone { display:flex !important; }
   }
   @media print {
     body { padding:0; }
@@ -227,9 +240,19 @@
        compressed and left a band of white at the foot. The rows are given
        the height back: this is a working document that gets written on, and
        the writing needs somewhere to go.                                  */
-    td { padding:9px 5px; font-size:10.5px; }
-    th { font-size:8px; padding-bottom:9px; }
-    tr.blank td { height:30px; }
+    /* Smaller on paper than it was. The sheet had been given its row height
+       back on 20 Aug because it was filling three quarters of the page and
+       reading as compressed; since then every guest has gained a dietary
+       stack and a writing line, so the page is full and the type can come
+       down. The writing line keeps its height: that is the part a person puts
+       a pen through and it does not scale with the reading. */
+    td { padding:7px 5px; font-size:9.5px; }
+    th { font-size:7.5px; padding-bottom:7px; }
+    tr.blank td { height:26px; }
+    .crow { padding:2px 0; }
+    .crow.write { height:17px; }
+    .dpill { font-size:8px; padding:1.5px 6px; }
+    .dclash, .crow.diet .inote, .crow.staff { font-size:8px; }
     table { min-width:0; width:100%; }
     tr { page-break-inside:avoid; }
     thead { display:table-header-group; }

@@ -103,6 +103,25 @@ with sync_playwright() as p:
                 oneLine: o.h.height < 40};}""")
     ck("date, make-up and covers sit on one line, in that order",
        box["sameLine"] and box["order"] and box["oneLine"])
+
+    #  The header is cloned into the table head so it repeats on every printed
+    #  page. From 22 Aug until this test existed it was cloned and then hidden:
+    #  the clone carries `printclone` on ITSELF and the rule looked for
+    #  `.printclone .phead`, a descendant that never exists. Every assertion
+    #  above passed the whole time, because they all read the ORIGINAL element
+    #  and never asked whether the copy on the paper was visible.
+    pg.wait_for_timeout(700)
+    clone = pg.evaluate("""()=>{const c=document.querySelector('#printHead .phead');
+        if(!c) return {there:false};
+        return {there:true, shown:getComputedStyle(c).display!=='none',
+                text:c.textContent.replace(/\s+/g,' ').trim()};}""")
+    print("   printed header:", clone)
+    ck("the header is cloned into the printed page's own head", clone["there"])
+    ck("and the clone is actually visible, not cloned and then hidden",
+       clone.get("shown") is True)
+    ck("and carries the date, the make-up and the covers",
+       "Aug" in clone.get("text","") and "twos" in clone.get("text","")
+       and "Covers" in clone.get("text",""))
     ck("date format", bool(re.match(r'^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{1,2}(st|nd|rd|th) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$',hd["d"])))
     ck("covers 9", hd["c"]=="9")
     ck("tables 4, make-up named not multiplied",
