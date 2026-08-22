@@ -174,6 +174,44 @@ with sync_playwright() as p:
     pg.wait_for_timeout(150)
     ck("and the menu opens when pressed",
        "open" in (pg.get_attribute("#navDrop", "class") or ""))
+    #  Notifications live under Settings on every page from 23 Aug. They were
+    #  written into the Cleans board alone, so the only way to turn them on was
+    #  to open a board a chef cannot, and subscribing is per person per device.
+    ck("notifications can be switched from here, not only from the Cleans board",
+       pg.evaluate("()=>!!document.getElementById('navNotify')"))
+    ck("and it sits under Settings, with the things you set",
+       pg.evaluate("""()=>{const k=[...navDrop.children];
+          const g=k.findIndex(e=>e.className.indexOf('navgrp')>-1 &&
+                                 e.textContent==='Settings');
+          return k.indexOf(document.getElementById('navNotify')) > g;}"""))
+    #  The word stays and a mark carries the state. "Notifications on" cannot
+    #  be read: there is no telling whether it describes what is true or what
+    #  tapping will do.
+    marks = pg.evaluate("""()=>{const out={};
+       ['on','off','blocked','unsupported'].forEach(s=>{
+         window.__paintNotify(s);
+         const m = navNotify.querySelector('.navmark');
+         out[s] = { label: navNotify.querySelector('.navlabel').textContent,
+                    mark: m ? m.className : null,
+                    note: (navNotify.querySelector('.navnote')||{}).textContent || null };
+       });
+       return out;}""")
+    print("   notify states:", marks)
+    ck("the word never changes, in any state",
+       all(v["label"] == "Notifications" for v in marks.values()))
+    ck("on wears a tick and off wears a cross",
+       "on" in marks["on"]["mark"] and "off" in marks["off"]["mark"])
+    #  Blocked and unavailable are not the off state and must not wear its
+    #  mark: off is a choice undone here, those two cannot be undone here at
+    #  all, so they say so in words.
+    ck("blocked wears neither, and says why",
+       marks["blocked"]["mark"] is None and marks["blocked"]["note"])
+    ck("nor does unavailable, which needs the Home Screen",
+       marks["unsupported"]["mark"] is None and
+       "home screen" in marks["unsupported"]["note"].lower())
+    #  Left open, the drop-down covers the page and every later click in this
+    #  suite lands on it instead of on the page.
+    pg.evaluate("()=>navDrop.classList.remove('open')")
 
     # ── and it writes only the list ───────────────────────────
     #  The one that matters: no second writer on /menutags. A page that still

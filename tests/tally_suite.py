@@ -175,7 +175,12 @@ with sync_playwright() as p:
     pg.wait_for_timeout(120)
     pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
     ck("nav menu opens on tap", pg.evaluate("()=>navDrop.classList.contains('open')"))
-    pg.locator(".stats").click(); pg.wait_for_timeout(150)
+    #  Closed by clicking well clear of the menu rather than on a named block.
+    #  The drop-down grew a row on 23 Aug and covered the one this used to aim
+    #  at, so the click landed on a link inside the menu instead of outside it.
+    pg.mouse.click(8, 500); pg.wait_for_timeout(150)
+    ck("and closes on a tap outside it",
+       not pg.evaluate("()=>navDrop.classList.contains('open')"))
 
     # 4 notes bubble
     pg.locator(".row.conflict .bub").click(); pg.wait_for_timeout(200)

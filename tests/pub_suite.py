@@ -745,8 +745,21 @@ with sync_playwright() as p:
         .map(g=>g.textContent);
     }""")
     print("   headings a housekeeper sees:", empty)
-    ck("a heading whose whole group is hidden goes with it",
-       "Settings" not in empty)
+    #  Settings now holds Notifications, which is not filtered by role: a
+    #  housekeeper subscribes to her own alerts. So the heading correctly
+    #  stands for her, and what proves the rule still works is that she is
+    #  offered the switch and none of the pages she cannot open.
+    ck("a heading only stands when something under it does",
+       empty == ["Print", "Settings"])
+    ck("and the housekeeper's Settings holds the switch and nothing else",
+       pg.evaluate("""()=>{ window.NALA_NAVFILTER('housekeeping');
+          const k=[...navDrop.children];
+          const g=k.findIndex(e=>e.textContent==='Settings' &&
+                                 e.className.indexOf('navgrp')>-1);
+          return k.slice(g+1).filter(e=>e.tagName==='A' &&
+                 e.className.indexOf('signout')<0 &&
+                 getComputedStyle(e).display!=='none')
+                 .map(e=>e.id); }""") == ["navNotify"])
     pg.evaluate("()=>window.NALA_NAVFILTER('admin')")
     pg.close()
 

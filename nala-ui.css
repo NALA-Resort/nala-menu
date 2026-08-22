@@ -48,6 +48,18 @@ body.tier-app, body.tier-print { touch-action:manipulation; }
           text-transform:uppercase; color:#B0B0A8; border-top:1px solid var(--ctl-bdr);
           margin-top:5px; }
 .navdrop > .navgrp:first-child { border-top:0; margin-top:0; padding-top:6px; }
+.navdrop a.navaction { display:flex; align-items:center; justify-content:space-between;
+                      gap:14px; color:var(--ctl-ink); }
+/* The mark carries the state, so it has to be legible at a glance and never
+   read as another thing to press. Green for on, grey for off: off is a choice
+   somebody made, not a fault, and a red cross would say otherwise. */
+.navmark { display:inline-flex; flex:0 0 auto; }
+.navmark.on  { color:#3F7A52; }
+.navmark.off { color:#B0B0A8; }
+/* Blocked and unavailable get words, because no mark can say "you cannot fix
+   this from here". */
+.navnote { flex:0 0 auto; font-size:8px; letter-spacing:.1em; color:#B0B0A8;
+           text-transform:none; }
 .navdrop a.signout { border-top:1px solid var(--ctl-bdr); margin-top:5px;
                      padding-top:13px; color:var(--mid); }
 

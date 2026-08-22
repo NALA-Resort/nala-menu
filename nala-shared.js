@@ -1400,6 +1400,86 @@ function hideEmptyGroups(drop){
 }
 window.NALA_NAVFILTER = navFilterShared;
 
+/* The Notifications entry, wired wherever it appears.
+
+   It lived on the Cleans board alone until 23 Aug, written into that page, so
+   the only way to turn notifications on or off was to go to a board a chef
+   cannot open. The push helpers were shared all along; only the wiring was
+   not. Nothing here is board specific.
+
+   It is a switch and not a destination, so it says what it will do rather than
+   what it is: Notifications on means they are on, and tapping turns them off.
+   A menu entry that reads the same in both states is a menu entry nobody
+   trusts. */
+function wireNotify(){
+  var nb = document.getElementById('navNotify');
+  if (!nb || nb.getAttribute('data-wired')) return;
+  nb.setAttribute('data-wired', '1');
+
+  /* The word stays put and a mark carries the state.
+
+     It used to read "Notifications on" and "Notifications off", which is
+     unreadable: there is no way to tell whether the words describe what is
+     true or what tapping will do. Half the menus in the world use each. A tick
+     or a cross beside a fixed word cannot be read as an instruction.
+
+     Blocked and unavailable are not the off state and must not wear its mark.
+     Off is a choice this person made and can undo here; blocked was decided in
+     the phone's own settings, and unavailable means the site is not on the
+     Home Screen and no tap here will change it. Both say so in words, because
+     a mark that means "you cannot fix this from here" does not exist. */
+  var TICK  = '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">' +
+              '<path d="M1 6.5 L4.5 10 L11 2" fill="none" stroke="currentColor" ' +
+              'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var CROSS = '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">' +
+              '<path d="M2 2 L10 10 M10 2 L2 10" fill="none" stroke="currentColor" ' +
+              'stroke-width="1.8" stroke-linecap="round"/></svg>';
+
+  function paint(state){
+    var mark = state === 'on'  ? '<span class="navmark on">' + TICK + '</span>'
+             : state === 'off' ? '<span class="navmark off">' + CROSS + '</span>'
+             : '';
+    var word = state === 'blocked'     ? 'Blocked on this phone'
+             : state === 'unsupported' ? 'Add to Home Screen first'
+             : '';
+    nb.innerHTML = '<span class="navlabel">Notifications</span>' +
+                   (word ? '<span class="navnote">' + word + '</span>' : mark);
+    nb.setAttribute('data-state', state);
+  }
+
+  /* Exposed for the suites: the three states cannot otherwise be produced in
+     a headless browser, which reports every one of them as blocked. */
+  window.__paintNotify = paint;
+  if (typeof pushState === 'function') pushState(paint);
+
+  nb.onclick = function(e){
+    e.preventDefault(); e.stopPropagation();
+    if (typeof pushOn !== 'function') return;
+    var u = null;
+    try { u = firebase.auth().currentUser; } catch (ex){}
+    var st = nb.getAttribute('data-state');
+    if (st === 'unsupported'){
+      alert('Notifications need the app added to the Home Screen. Open the ' +
+            'share menu and choose Add to Home Screen, then try again.');
+      return;
+    }
+    if (st === 'blocked'){
+      alert('Notifications are blocked for this site. Turn them on in your ' +
+            'phone settings, then try again.');
+      return;
+    }
+    nb.innerHTML = '<span class="navlabel">Notifications</span>' +
+                   '<span class="navnote">working</span>';
+    if (st === 'on') pushOff(u, paint);
+    else pushOn(u, window.NALA_ROLE, function(r){
+      paint(r);
+      if (r === 'blocked') alert('Notifications were not allowed. You can turn them on in your phone settings.');
+      if (r === 'failed')  alert('Could not turn notifications on. Check the connection and try again.');
+    });
+  };
+}
+window.NALA_WIRENOTIFY = wireNotify;
+
 /* Pages that never filtered their own menu get it applied for them. Pages
    that call it themselves are unaffected: running twice is harmless. */
 (function(){
@@ -1408,6 +1488,7 @@ window.NALA_NAVFILTER = navFilterShared;
     if (++tries > 60) { clearInterval(t); return; }
     if (!window.NALA_ROLE) return;
     navFilterShared(window.NALA_ROLE);
+    wireNotify();
     clearInterval(t);
   }, 250);
 })();

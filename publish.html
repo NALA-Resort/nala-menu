@@ -54,6 +54,13 @@
             text-transform:uppercase; color:#B0B0A8;
             border-top:1px solid var(--rule); margin-top:5px; }
   .navdrop > .navgrp:first-child { border-top:0; margin-top:0; padding-top:6px; }
+  .navdrop a.navaction { display:flex; align-items:center;
+                        justify-content:space-between; gap:14px; color:var(--ink); }
+  .navmark { display:inline-flex; flex:0 0 auto; }
+  .navmark.on  { color:#3F7A52; }
+  .navmark.off { color:#B0B0A8; }
+  .navnote { flex:0 0 auto; font-size:8px; letter-spacing:.1em; color:#B0B0A8;
+             text-transform:none; }
   .navdrop a.signout { border-top:1px solid var(--rule); margin-top:5px;
                        padding-top:13px; color:var(--mid); }
 
@@ -196,7 +203,7 @@
        place to go back to from the dietary list, so it leads. -->
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="cleaners.html">Cleans</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="cleaners.html">Cleans</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
   </div>
   <div class="wordmark">Nala Resort</div>
