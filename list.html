@@ -42,10 +42,19 @@
      glance the whole line is the same fact, which is what tonight looks like.
      The timestamp below keeps its own smaller style: it is about the piece of
      paper and not about the service. */
-  .pfoot { display:none; font-family:var(--ui-font); font-size:9px;
-           letter-spacing:.1em; text-transform:uppercase; color:#1C1C1A;
-           margin-top:10px; }
-  .pfoot .sep { color:#999; margin:0 6px; }
+  /* Half again as large as it was, and bold. It moved to the foot to stop
+     competing with the table for the top of the page, and at nine point it
+     went the other way and read as small print. It is the one line on the
+     sheet that says what tonight is, and whoever sets the room reads it before
+     anything else. Room at the foot to be loud.
+
+     One size and one weight across all of it, still. The version at the top
+     said this in four sizes and three weights, and making it bigger is not a
+     reason to start that again. */
+  .pfoot { display:none; font-family:var(--ui-font); font-size:13.5px;
+           font-weight:bold; letter-spacing:.1em; text-transform:uppercase;
+           color:#1C1C1A; margin-top:12px; }
+  .pfoot .sep { color:#999; margin:0 7px; font-weight:normal; }
 
   .stamp { margin-top:10px; font-size:7.5px; letter-spacing:.1em;
            text-transform:uppercase; color:#999; text-align:right; }

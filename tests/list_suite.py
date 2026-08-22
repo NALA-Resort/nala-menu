@@ -113,6 +113,13 @@ with sync_playwright() as p:
     ck("and every part of it is set the same way, not four styles in a row",
        len(look["styles"]) == 1)
     ck("and it is one line", look["oneLine"])
+    #  Half again as large as it started, and bold. It moved to the foot to
+    #  stop competing with the table for the top of the page, and at nine point
+    #  it overcorrected into small print: this is the line that says what
+    #  tonight is, and whoever sets the room reads it before anything else.
+    ck("and it is set loud enough to be the thing read first",
+       look["styles"] and float(look["styles"][0].split("px")[0]) >= 13
+       and "/700/" in look["styles"][0])
     #  The timestamp keeps its own smaller style: it is about the piece of
     #  paper, not about the service.
     ck("the printed timestamp stays its own size, below and quieter",
