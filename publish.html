@@ -157,6 +157,16 @@
   .done.show { display:block; }
   .done .big { font-size:20px; }
   .done a { color:var(--ink); }
+  /* A real target. It is the last thing the chef does before service and he is
+     holding the phone he will send it from. */
+  .notifylink { display:block; margin:4px auto 0; max-width:320px; padding:14px;
+                min-height:46px; box-sizing:border-box; border:1px solid var(--ink);
+                border-radius:8px; font-family:Helvetica,Arial,sans-serif;
+                font-size:11px; letter-spacing:.15em; text-transform:uppercase;
+                text-decoration:none; color:var(--ink);
+                -webkit-tap-highlight-color:transparent; }
+  .notifyhint { display:block; margin-top:10px; font-size:12px;
+                font-style:italic; color:var(--mid); }
 </style>
 </head>
 <body>
@@ -212,7 +222,7 @@
 
   <div class="done" id="done">
     <div class="big">Published</div>
-    <div class="lede">It is on the guests' phones now.</div>
+    <div class="lede" id="doneNotify">It is on the guests' phones now.</div>
     <div class="lede" id="doneWhere"><a href="https://menu.nalaresort.com" target="_blank">menu.nalaresort.com</a></div>
   </div>
 </div>
@@ -479,6 +489,7 @@
         if (!r.ok) throw new Error('tags ' + r.status);
         document.getElementById('stat').textContent = '';
         finishPage();
+        paintNotify();
         if (DEMO){
           /* The live site would show tonight's real menu and look like proof.
              Point at the sandbox node instead, which is the thing just
@@ -548,6 +559,40 @@
   document.getElementById('newDiet').onkeydown = function(e){
     if (e.key === 'Enter'){ e.preventDefault(); addOneOff(); }
   };
+
+  /* Telling the manager, by the chef's own tap.
+
+     announceMenu() sends a push when it fires, and it fires from any signed in
+     page, which is most of the time. This is the belt to that pair of braces
+     and it is what the brief carried before the token was retired: a link that
+     opens Messages with the number and the words already in it. Nothing sends
+     by itself. The chef taps send, or he does not, and either way he can see
+     which.
+
+     The number is NOT in this repository. It was taken out on 18 Aug for the
+     reason it should stay out: this repo is public until SECURITY.md job 4 is
+     done, and a manager's personal mobile in a public file is a manager's
+     personal mobile on the internet. It lives at /settings/managerMobile,
+     which the rules reach through their catch-all, so it needed no rules
+     change and it is readable by a signed in staff login and nobody else.
+
+     Absent, the line reads as it did before. A missing number is not worth an
+     error at the moment a chef has just published. */
+  function paintNotify(){
+    var el = document.getElementById('doneNotify');
+    if (!el || DEMO) return;
+    fetch(DB + '/settings/managerMobile.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(num){
+        if (!num || typeof num !== 'string') return;
+        var body = encodeURIComponent(
+          "Tonight's menu is published. https://menu.nalaresort.com");
+        el.innerHTML = '<a class="notifylink" href="sms:' + num +
+          '?&body=' + body + '">Notify management</a>' +
+          '<span class="notifyhint">It is on the guests\u2019 phones now.</span>';
+      })
+      .catch(function(){});
+  }
 
   /* Everything the page was for, once it is done being for it.
 

@@ -22,6 +22,7 @@ looks like success from the outside, so it is reported loudly.
 A read that fails is not an empty node. Treating the two the same would seed
 the eight default dietaries over the chef's real list and then publish them.
 """
+import re
 import errortrap   # fails the run if any page throws
 import threading, http.server, json, time, datetime, os, urllib.parse
 
@@ -53,7 +54,8 @@ STAFF = {"chef@x": {"name": "Chef", "role": "chef"},
          "housekeeping@x": {"name": "HK", "role": "housekeeping"}}
 
 STATE = {"master": MASTER, "tags": {}, "failMaster": False, "failTags": False,
-         "failMenuSave": False, "failTagSave": False, "menu": None}
+         "failMenuSave": False, "failTagSave": False, "menu": None,
+         "mobile": "+61400000000"}
 WRITES = []
 
 def fb(route, request):
@@ -68,6 +70,9 @@ def fb(route, request):
                           body='{"error":"denied"}'); return
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
+    if "/settings/managerMobile" in u:
+        route.fulfill(status=200, content_type="application/json",
+                      body=json.dumps(STATE["mobile"])); return
     if "/dietaries" in u:
         if STATE["failMaster"]:
             route.fulfill(status=401, content_type="application/json",
@@ -246,6 +251,29 @@ with sync_playwright() as p:
 
     ck("the chef is told it is live",
        pg.evaluate("()=>done.className.indexOf('show')>-1"))
+
+    #  Telling the manager, by the chef's own tap. announceMenu sends a push
+    #  when it fires; this is the belt to those braces, and it is what the
+    #  brief carried before the token was retired.
+    pg.wait_for_timeout(500)
+    link = pg.evaluate("""()=>{const a=document.querySelector('.notifylink');
+        return a ? {href:a.getAttribute('href'),
+                    h:Math.round(a.getBoundingClientRect().height)} : null;}""")
+    print("   notify link:", link)
+    ck("and offered a message to the manager", bool(link))
+    if link:
+        ck("addressed to the number, not to a name",
+           link["href"].startswith("sms:+61400000000"))
+        ck("with the words already in it, so nothing has to be typed",
+           "menu%20is%20published" in link["href"] and
+           "menu.nalaresort.com" in link["href"])
+        ck("as a real target for a thumb", link["h"] >= 44)
+    #  The number is NOT in this repository. It was taken out on 18 Aug and
+    #  this repo is public until SECURITY.md job 4 is done.
+    ck("and the number is nowhere in the page's own source",
+       "61400000000" not in open("publish.html").read())
+    ck("nor any other mobile number",
+       not re.search(r"sms:\+?[0-9]{6,}", open("publish.html").read()))
     ck("and the button is gone, so it cannot be pressed twice",
        pg.evaluate("()=>getComputedStyle(bar).display") == "none")
     #  Reported 22 Aug: publishing hid the courses and the ticks and left the
@@ -509,6 +537,8 @@ with sync_playwright() as p:
     tw = [w for w in WRITES if "/menutags/" in w["u"]]
     ck("and tonight's dietary ticks go with it", len(tw) == 1 and
        json.loads(tw[0]["b"] or "{}") == {})
+    #  A rehearsal never offers to tell anybody: a message saying the menu is
+    #  published is a lie about a menu nobody can see.
     ck("the chef is told the guests see no menu",
        "removed" in pg.inner_text("#done").lower())
     pg.close()

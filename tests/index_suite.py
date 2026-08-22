@@ -35,7 +35,7 @@ PMS = {"villa": "4", "first": "Robyn", "last": "Williams",
        "phone": "+61400000001", "arrive": "2026-08-17", "depart": "2026-08-21"}
 
 STATE = {"pms": PMS, "pre": None, "dinner": None, "menu": None,
-         "dietaries": None, "menutags": None, "fail": False}
+         "dietaries": None, "menutags": None, "fail": False, "dbmenu": None}
 WRITES = []
 
 def fb(route, request):
@@ -58,6 +58,11 @@ def fb(route, request):
         body = json.dumps(STATE["pre"]) if STATE["pre"] else "null"
     elif "/dinner/" in u:
         body = json.dumps(STATE["dinner"]) if STATE["dinner"] else "null"
+    elif u.split("?")[0].endswith("/menu.json"):
+        #  The DATABASE menu, which is a different thing from the committed
+        #  file the page falls back to. One route used to answer both and the
+        #  page's whole fallback path went untested because of it.
+        body = json.dumps(STATE["dbmenu"]) if STATE["dbmenu"] is not None else "null"
     route.fulfill(status=200, content_type="application/json", body=body)
 
 P = F = 0
@@ -417,6 +422,49 @@ with sync_playwright() as p:
            len([w for w in WRITES if "/dinner/" in w["u"]]) == 0)
         pg.close()
     STATE["pms"] = PMS
+
+    # ── a menu taken down ───────────────────────────────────────
+    #  Reported 22 Aug: the chef pressed Remove and the menu stayed on the
+    #  guests' phones. The takedown had worked. Blanking the database node made
+    #  it look like silence, the page fell back to the committed file, and the
+    #  file still held the menu published through GitHub earlier that day.
+    #
+    #  Three answers, not two. A node with a menu is a menu. A node that could
+    #  not be read, or has never held anything, is silence, and the file stands
+    #  in behind it so a guest is never shown a placeholder while the chef
+    #  swears the menu is up. A node that exists and has been deliberately
+    #  emptied is the resort saying there is no dinner, and it has to win.
+    STATE["menu"] = MENU          # the file still holds tonight's
+    STATE["dbmenu"] = {"published": "",
+                       "bread": {"name": "", "desc": "", "aus": False},
+                       "entree": {"name": "", "desc": "", "aus": False},
+                       "main": {"name": "", "desc": "", "aus": False},
+                       "dessert": {"name": "", "desc": "", "aus": False}}
+    pg = guest(LINK)
+    pg.wait_for_timeout(900)
+    seen = pg.inner_text("body")
+    ck("a menu taken down does not come back from the committed file",
+       MENU["main"]["name"] not in seen)
+    pg.close()
+
+    #  And the fallback still does its job where it was always meant to: a
+    #  database that has never held a menu is silence, not a takedown.
+    STATE["dbmenu"] = None
+    pg = guest(LINK)
+    pg.wait_for_timeout(900)
+    ck("a database with no menu at all still falls back to the file",
+       MENU["main"]["name"] in pg.inner_text("body"))
+    pg.close()
+
+    #  A published menu in the database beats the file, which is the ordinary
+    #  case since publishing moved off GitHub.
+    STATE["dbmenu"] = dict(MENU); STATE["dbmenu"]["main"] = {"name": "Database lamb"}
+    pg = guest(LINK)
+    pg.wait_for_timeout(900)
+    ck("and a menu in the database wins over the file",
+       "Database lamb" in pg.inner_text("body"))
+    pg.close()
+    STATE["dbmenu"] = None
 
     # ── the page at Android widths ──────────────────────────────
     for w in (390, 360, 320):

@@ -496,12 +496,31 @@
      empty node or a failed read must not leave them looking at a placeholder
      while the chef swears the menu is up. */
   var MENU_DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+  /* Three answers, not two, and the third is why this changed on 22 Aug.
+
+     A node with a menu in it is a menu. A node that could not be read, or that
+     has never held anything, is silence, and the repo file stands in behind it
+     so a guest is never left looking at a placeholder while the chef swears
+     the menu is up.
+
+     A node that EXISTS and has been deliberately emptied is neither. It is the
+     resort saying there is no menu tonight, and it has to beat the file. The
+     publish page grew a way to take a menu down, the chef pressed it, and the
+     menu stayed on the guests' phones: blanking the node made it look like
+     silence, the file was consulted, and the file still held the menu
+     published through GitHub earlier that day. The takedown worked. The
+     fallback undid it. */
   function menuFromNode(){
     return fetch(MENU_DB + '/menu.json?v=' + Date.now())
       .then(function(r){ return r.json(); })
       .then(function(m){
-        return (m && m.published && m.main && m.main.name)
-          ? { data: m, lastModified: null } : null;
+        if (m && m.published && m.main && m.main.name)
+          return { data: m, lastModified: null };
+        /* `published` present and empty is a takedown. Absent altogether is a
+           node nobody has written, which is the silence the file is for. */
+        if (m && typeof m.published !== 'undefined' && !m.published)
+          return { takenDown: true };
+        return null;
       })
       .catch(function(){ return null; });
   }
@@ -515,6 +534,7 @@
         });
     })
     .then(function(res) {
+      if (res && res.takenDown) return;            // taken down -> placeholder
       if (!hasContent(res.data)) return;           // empty -> placeholder
       var pub = publishTime(res.data, res.lastModified);
       if (!stillValid(pub)) return;                // stale -> placeholder
