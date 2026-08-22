@@ -87,8 +87,7 @@
   .dpill { display:inline-block; font-family:var(--ui-font); font-size:8.5px;
            font-weight:bold; letter-spacing:.06em; text-transform:uppercase;
            padding:2px 7px; border-radius:9px;
-           background:rgba(168,50,30,.12); color:#A8321E;
-           -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+           background:rgba(168,50,30,.12); color:#A8321E; }
   .dpill-al { background:#A8321E; color:#fff; }
   /* Blue, not red. Red is the allergy colour on this sheet: the flag, the
      pills, the clash lines. A checkout is a fact about the day and not a
@@ -103,7 +102,13 @@
   .row-out .dpill { background:#EFEFEC; color:#55554F; }
   .row-out .dpill-al { background:#9A9A92; color:#fff; }
   .row-out .dcom, .row-out .dnote, .row-out .inote { color:#8A8A82; }
-  .row-conflict td { background:#F7E4DF; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  /* No print-color-adjust here. It is an INHERITED property, so setting it on
+     the cell handed it to every coloured thing inside a flagged row: the Yes,
+     the No, the checkout date, the clash lines. Browsers honour exact colour
+     by rasterising, and rasterised text at this size prints soft where the
+     black around it stays sharp. It bought nothing either way, because the
+     print rules below drop this tint from paper anyway. */
+  .row-conflict td { background:#F7E4DF; }
   .flag { display:inline-block; font-family:var(--ui-font); font-size:7px; font-weight:bold;
           letter-spacing:.12em; border:1.2px solid #A8321E; color:#A8321E; padding:1px 4px;
           margin-right:5px; vertical-align:1px; }
@@ -230,6 +235,16 @@
        printed they come out as grey slabs that read as a photocopy. The text
        stays lighter, which is enough.                                    */
     .row-out td, .row-unk td, .row-conflict td { background:none; }
+
+    /* Exact colour asked for on the pills alone, and nowhere else, because a
+       pill without its fill is a word in a box and the fill is what makes an
+       allergy findable at a glance. Everything else on this sheet is coloured
+       TEXT, which prints as text and needs no help: asking for exact colour
+       there is what made it rasterise and go soft. */
+    .dpill { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .dpill * { -webkit-print-color-adjust:economy; print-color-adjust:economy; }
+    td, .yes, .no, .checkout, .dclash, .flag, .crow, .inote {
+      -webkit-print-color-adjust:economy; print-color-adjust:economy; }
 
     /* The make-up carries onto paper at full size. The printed sheet is
        where a waiter actually reads it, standing at the pass. */

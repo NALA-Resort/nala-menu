@@ -122,6 +122,32 @@ with sync_playwright() as p:
     ck("and carries the date, the make-up and the covers",
        "Aug" in clone.get("text","") and "twos" in clone.get("text","")
        and "Covers" in clone.get("text",""))
+
+    #  print-color-adjust is INHERITED. Set on the flagged row's cell it was
+    #  handed to every coloured thing inside it, and a browser honours exact
+    #  colour by rasterising: the Yes, the No and the checkout date printed
+    #  soft while the black around them stayed sharp. Asked for on the pills
+    #  alone now, where a missing fill would cost an allergy its visibility.
+    #  Read in PRINT media, because that is the only place these rules apply
+    #  and a screen-media reading would pass whatever the print rules said.
+    pg.emulate_media(media="print")
+    adj = pg.evaluate("""()=>{
+      const g=e=>e?getComputedStyle(e).printColorAdjust||
+                   getComputedStyle(e).webkitPrintColorAdjust:null;
+      const row=[...document.querySelectorAll('#rows tr')]
+        .find(t=>t.className.indexOf('row-conflict')>-1);
+      if(!row) return {none:true};
+      return {cell:g(row.querySelector('td')),
+              yes:g(row.querySelector('.yes')||row.querySelector('.no')),
+              pill:g(document.querySelector('.dpill'))};}""")
+    print("   colour-adjust:", adj)
+    ck("a flagged row does not force exact colour on its own cell",
+       adj.get("cell") != "exact")
+    ck("so the coloured text inside it is not rasterised",
+       adj.get("yes") != "exact")
+    ck("while a dietary pill still asks for its fill",
+       adj.get("pill") == "exact")
+    pg.emulate_media(media="screen")
     ck("date format", bool(re.match(r'^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{1,2}(st|nd|rd|th) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$',hd["d"])))
     ck("covers 9", hd["c"]=="9")
     ck("tables 4, make-up named not multiplied",
