@@ -125,6 +125,7 @@
   .dietlink { margin-top:10px; font-family:Helvetica,Arial,sans-serif;
               font-size:10px; letter-spacing:.05em; line-height:1.6;
               color:var(--mid); }
+  .dietlink a { color:var(--ink); }
 
   .bar { position:fixed; bottom:0; left:0; right:0; background:var(--cream);
          border-top:1px solid var(--rule); padding:12px 24px; }
@@ -214,17 +215,17 @@
        settings page, which is what the line under this says and what the link
        is for. -->
   <div class="addrow">
-    <input id="newDiet" placeholder="Something not on the list" autocomplete="off">
+    <input id="newDiet" placeholder="e.g. raw fish" autocomplete="off">
     <button class="addbtn" id="addDiet" type="button">Add for tonight</button>
   </div>
-  <!-- A line, not a link. Leaving this page mid-menu is the problem, not the
-       solution: everything here lives in memory until Publish, so a trip to
-       the settings page costs the chef every correction he has made to the
-       machine's reading of his handwriting. Promoting a one-off to the settled
-       list is not urgent work and does not belong at five o'clock. Dietary
-       Settings is in the menu, top right, for when he is not at a pass. -->
+  <!-- A new tab, deliberately. Leaving this page mid-menu is the thing to
+       avoid: everything here lives in memory until Publish, so navigating away
+       costs the chef every correction he has made to the machine's reading of
+       his handwriting. Opened beside the page, the page is still standing when
+       he comes back to it, and closing a tab is a thing a phone does well. -->
   <div class="dietlink">
-    <span>Added for tonight only. Keep one for good in Dietary Settings.</span>
+    <span>Added for tonight only. Keep one for good in
+      <a href="tag.html" target="_blank" rel="noopener">Dietary Settings</a>.</span>
   </div>
 
   <div class="done" id="done">
