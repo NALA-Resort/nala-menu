@@ -76,52 +76,52 @@ with sync_playwright() as p:
     pg.goto("http://localhost:8955/list.html"); pg.wait_for_timeout(1500)
 
     hd=pg.evaluate("()=>({k:'n/a',d:title.textContent,t:nTables.textContent,tb:tblBreak.textContent,tw:nTablesWord.textContent,c:nCovers.textContent})")
-    #  The kicker is gone. It named the document to whoever was already
-    #  holding it, and cost a line on a sheet that ran to two pages. What is
-    #  asserted now is the one line that replaced three: date, make-up, covers.
+    #  The kicker is gone, and so is the header it left behind. It named the
+    #  document to whoever was already holding it, and the page has no room for
+    #  two headers above a table that carries its own column headings.
     ck("no kicker naming the document to its own reader",
        pg.evaluate("()=>!document.querySelector('.printkick')"))
-    ph = pg.evaluate("""()=>({d:pDate.textContent.trim(), m:pMix.textContent.trim(),
-        t:pTables.textContent.trim(), c:pCovers.textContent.trim()})""")
-    ck("the printed header carries the date the sheet is for",
-       ph["d"] == hd["d"])
-    ck("and the make-up, which is the instruction to whoever sets the room",
-       "3 twos" in ph["m"] and "1 three" in ph["m"])
-    ck("and the table count beside it as its checksum", ph["t"] == "4 tables")
-    ck("and the covers", ph["c"] == "9")
-    #  Left, centre, right. It reads as one line or it is three again.
-    box = pg.evaluate("""()=>{const h=document.getElementById('pHead');
-        const r=e=>e.getBoundingClientRect();
-        h.style.display='flex';
-        const o={d:r(document.getElementById('pDate')),
-                 m:r(document.querySelector('#pHead .p-mix')),
-                 c:r(document.querySelector('#pHead .p-cov')),
-                 h:r(h)};
-        h.style.display='';
-        return {sameLine: Math.abs(o.d.top-o.c.top) < 6,
-                order: o.d.left < o.m.left && o.m.left < o.c.left,
-                oneLine: o.h.height < 40};}""")
-    ck("date, make-up and covers sit on one line, in that order",
-       box["sameLine"] and box["order"] and box["oneLine"])
+    ck("and no summary block above the table at all",
+       pg.evaluate("()=>!document.getElementById('pHead')"))
 
-    #  The header is cloned into the table head so it repeats on every printed
-    #  page. From 22 Aug until this test existed it was cloned and then hidden:
-    #  the clone carries `printclone` on ITSELF and the rule looked for
-    #  `.printclone .phead`, a descendant that never exists. Every assertion
-    #  above passed the whole time, because they all read the ORIGINAL element
-    #  and never asked whether the copy on the paper was visible.
-    pg.wait_for_timeout(700)
-    clone = pg.evaluate("""()=>{const c=document.querySelector('#printHead .phead');
-        if(!c) return {there:false};
-        return {there:true, shown:getComputedStyle(c).display!=='none',
-                text:c.textContent.replace(/\s+/g,' ').trim()};}""")
-    print("   printed header:", clone)
-    ck("the header is cloned into the printed page's own head", clone["there"])
-    ck("and the clone is actually visible, not cloned and then hidden",
-       clone.get("shown") is True)
-    ck("and carries the date, the make-up and the covers",
-       "Aug" in clone.get("text","") and "twos" in clone.get("text","")
-       and "Covers" in clone.get("text",""))
+    #  The day's summary is at the foot now, beside the timestamp, and the
+    #  table starts at the top of the paper where the reading starts.
+    pf = pg.evaluate("""()=>({d:fDate.textContent.trim(), m:fMix.textContent.trim(),
+        t:fTables.textContent.trim(), c:fCovers.textContent.trim(),
+        all:document.getElementById('pFoot').textContent.replace(/\s+/g,' ').trim()})""")
+    print("   printed foot:", pf["all"])
+    ck("the foot carries the date the sheet is for", pf["d"] == hd["d"])
+    ck("and the make-up, which is the instruction to whoever sets the room",
+       "3 twos" in pf["m"] and "1 three" in pf["m"])
+    ck("and the table count as its checksum", pf["t"] == "4 tables")
+    ck("and the covers", pf["c"] == "9")
+
+    #  One voice. The top of the sheet said this in four different sizes and
+    #  weights, which read as four separate announcements rather than one
+    #  sentence about tonight.
+    pg.emulate_media(media="print")
+    pg.wait_for_timeout(200)
+    look = pg.evaluate("""()=>{const f=document.getElementById('pFoot');
+        const kids=[...f.querySelectorAll('span')].filter(e=>!e.className.includes('sep'));
+        const g=e=>{const c=getComputedStyle(e);
+          return c.fontSize+'/'+c.fontWeight+'/'+c.fontFamily+'/'+c.textTransform;};
+        return {shown:getComputedStyle(f).display!=='none',
+                styles:[...new Set(kids.map(g))],
+                oneLine:Math.round(f.getBoundingClientRect().height) < 30};}""")
+    print("   foot styles:", look["styles"])
+    ck("the foot prints", look["shown"])
+    ck("and every part of it is set the same way, not four styles in a row",
+       len(look["styles"]) == 1)
+    ck("and it is one line", look["oneLine"])
+    #  The timestamp keeps its own smaller style: it is about the piece of
+    #  paper, not about the service.
+    ck("the printed timestamp stays its own size, below and quieter",
+       pg.evaluate("""()=>{const a=getComputedStyle(document.getElementById('pFoot')).fontSize;
+          const b=getComputedStyle(document.getElementById('stamp')).fontSize;
+          return parseFloat(b) < parseFloat(a);}"""))
+    ck("and nothing is cloned into the table head any more",
+       pg.evaluate("()=>!document.querySelector('#printHead .phead')"))
+    pg.emulate_media(media="screen")
 
     #  print-color-adjust is INHERITED. Set on the flagged row's cell it was
     #  handed to every coloured thing inside it, and a browser honours exact
@@ -204,10 +204,12 @@ with sync_playwright() as p:
     #  The cap is on the TOTAL, not on the blanks, because on a full house
     #  even four spare lines is more than the page can hold. Checked as
     #  arithmetic rather than by drawing seventeen fixtures.
-    def padded(n): return max(n, min(17, n + 4))
-    ck("a busy house gets four spare lines", padded(13) == 17)
-    ck("a fuller one gets fewer, not four more", padded(15) == 17)
-    ck("and a full house gets none at all", padded(17) == 17 and padded(18) == 18)
+    def padded(n): return max(n, min(14, n + 4))
+    #  Fourteen is measured, not reasoned: a printout on 22 Aug held fourteen
+    #  guest rows and pushed the three blanks after them onto a second page.
+    ck("a busy house gets its spare lines", padded(9) == 13)
+    ck("a fuller one gets fewer, not four more", padded(13) == 14)
+    ck("and a full house gets none at all", padded(14) == 14 and padded(18) == 18)
     ck("no house ever prints more rows than it has guests plus four",
        all(padded(n) - n <= 4 for n in range(0, 22)))
     ck("and never fewer rows than it has guests",

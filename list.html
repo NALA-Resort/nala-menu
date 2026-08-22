@@ -21,6 +21,18 @@
          font-family:var(--ui-font); font-size:10px; letter-spacing:.15em;
          text-transform:uppercase; cursor:pointer; }
   .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+  /* One line, one font, one size, one weight. The top of the sheet had the
+     date in a bold letter-spaced face, the make-up at fifteen point, the table
+     count at eight, and the covers at seventeen: four styles saying one
+     sentence. Nothing here is emphasised over anything else, because at a
+     glance the whole line is the same fact, which is what tonight looks like.
+     The timestamp below keeps its own smaller style: it is about the piece of
+     paper and not about the service. */
+  .pfoot { display:none; font-family:var(--ui-font); font-size:9px;
+           letter-spacing:.1em; text-transform:uppercase; color:#1C1C1A;
+           margin-top:10px; }
+  .pfoot .sep { color:#999; margin:0 6px; }
+
   .stamp { margin-top:10px; font-size:7.5px; letter-spacing:.1em;
            text-transform:uppercase; color:#999; text-align:right; }
 
@@ -225,7 +237,9 @@
        selector takes the WHOLE comma-separated rule down with it: the date row
        and the stats would print as well as being replaced. */
     .daterow, .stats { display:none !important; }
-    #printHead .phead, .phead.printclone { display:flex !important; }
+    /* Nothing above the table but its own column headings. */
+    .phead, .printhead { display:none !important; }
+    .pfoot { display:block !important; }
   }
   @media print {
     body { padding:0; }
@@ -281,14 +295,7 @@
 
 
 
-<!-- Print only, and cloned into the table header so it repeats on every
-     page. The kicker that used to sit here is gone: it named the document to
-     whoever was already holding it. -->
-<div class="phead" id="pHead">
-  <div class="p-date" id="pDate"></div>
-  <div class="p-mix"><span id="pMix">&ndash;</span><span class="sub" id="pTables"></span></div>
-  <div class="p-cov"><span class="n" id="pCovers">&ndash;</span><span class="l">Covers</span></div>
-</div>
+
 <div class="daterow">
   <button class="dnav today" id="dToday">Today</button>
   <button class="dnav" id="dPrev">&#8249;</button>
@@ -397,6 +404,18 @@ function stripTags(h){
     <tbody id="rows"></tbody>
   </table>
 </div>
+<!-- The day's summary, at the foot and print only. It sat at the top in three
+     different sizes and weights, above a table that then needed its own column
+     headings, and the page has no room for two headers. Down here it is one
+     line in one voice, next to the timestamp, and the table starts at the top
+     of the paper where the reading starts. -->
+<div class="pfoot" id="pFoot">
+  <span id="fDate"></span>
+  <span class="sep">&middot;</span><span id="fMix">&ndash;</span>
+  <span class="sep">&middot;</span><span id="fTables"></span>
+  <span class="sep">&middot;</span><span id="fCovers">&ndash;</span> covers
+</div>
+
 <div class="stamp" id="stamp"></div>
 
 <div class="foot" id="footBar">
@@ -707,10 +726,10 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     }
 
     document.getElementById('nCovers').textContent = covers;
-    document.getElementById('pCovers').textContent = covers;
+    document.getElementById('fCovers').textContent = covers;
     /* The date the sheet is FOR, not the day it was printed. Taken from the
        same element the screen shows so the two cannot drift. */
-    document.getElementById('pDate').textContent =
+    document.getElementById('fDate').textContent =
       (document.getElementById('title').textContent || '').trim();
 
     var tb = document.getElementById('rows');
@@ -817,8 +836,20 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
        A quiet night therefore stops in the middle of the page rather than
        ruling lines to the foot. That is the cosmetic half of the trade and it
        loses to the functional half: a sheet that reads as unfinished is a
-       smaller problem than a sheet that prints a blank page every night. */
-    var padTo = Math.max(rows.length, Math.min(17, rows.length + 4));
+       smaller problem than a sheet that prints a blank page every night.
+
+       Seventeen was still one too many. A printout on 22 Aug held fourteen
+       guest rows on the page and put the three blanks after them onto a second
+       one, so the real ceiling is fourteen rows and not seventeen. My earlier
+       arithmetic said 990px of budget and it was wrong: the browser's own
+       header and footer take more than I allowed, and default print margins
+       are wider than the 10mm this stylesheet asks for.
+
+       Fourteen is measured rather than reasoned, which is why it is the number
+       here. It costs a busy night its spare lines, and that is the right way
+       round: every guest already has a writing line inside their own row, and
+       these are only for somebody who was never on the sheet. */
+    var padTo = Math.max(rows.length, Math.min(14, rows.length + 4));
     for (var i=rows.length; i<padTo; i++){
       tb.insertAdjacentHTML('beforeend',
         '<tr class="blank"><td></td><td></td><td class="c-dt"></td><td class="c-bt"></td>'+
@@ -850,9 +881,9 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     document.getElementById('nTables').textContent = tables;
     document.getElementById('tblBreak').textContent = parts.length ? parts.join(' \u00b7 ') : '\u2014';
     document.getElementById('nTablesWord').textContent = (tables === 1) ? 'table' : 'tables';
-    document.getElementById('pMix').textContent =
+    document.getElementById('fMix').textContent =
       parts.length ? parts.join(' \u00b7 ') : '\u2014';
-    document.getElementById('pTables').textContent =
+    document.getElementById('fTables').textContent =
       tables + ' ' + (tables === 1 ? 'table' : 'tables');
 
 
@@ -866,7 +897,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     var slot = document.getElementById('printHead');
     if (!slot) return;
     slot.innerHTML = '';
-    ['.phead'].forEach(function(sel){
+    [].forEach(function(sel){
       var el = document.querySelector(sel);
       if (!el) return;
       var c = el.cloneNode(true);
