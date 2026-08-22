@@ -131,3 +131,28 @@ These were another chat's while it owned the print pages. That arrangement
 ended on 18 Aug and all four were done the same day, in `5e974f0`: the nav
 entries, the header bleed on the Service Sheet, the em dash in `list.html`,
 and the role gate on `menu-print.html`.
+
+## 12. Companions on the reservations sheet, named 22 Aug
+
+`list.html` prints one name per villa. It has never printed the companion at
+all: the front desk shows one, and Reservations shows one, and the sheet that
+goes to the pass shows none. So a villa of two arrives at a table as a single
+name, and whoever laid it had to know the second person from somewhere else.
+
+The owner's report was that "only companion zero prints, not companion one",
+which does not match anything in the sheet, so the shape of the fault is not
+yet established. Two candidates and they need separating before anything is
+built:
+
+- The sheet simply never had the field, and what he is reading as "companion
+  zero" is the reservation's own guest.
+- Or the Worker is picking the wrong one. `companionName()` in
+  `worker/mews-sync.js` returns the FIRST companion who is not the booker,
+  which is deliberate: on the run it was written against, index 0 WAS the
+  booker, and hard-coding index 1 would have been right that day and wrong the
+  day a booking arrived the other way round. A party of three has a second
+  companion that nothing reads.
+
+Worth settling first: whether a villa can hold more than one companion in
+practice, because the current field is a single value everywhere it is stored,
+and printing two means changing the shape and not just the sheet.
