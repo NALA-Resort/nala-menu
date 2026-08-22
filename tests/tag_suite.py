@@ -140,6 +140,20 @@ with sync_playwright() as p:
     #  window with none at all. Every other staff page has the hamburger.
     ck("there is a way off this page",
        pg.evaluate("()=>!!document.getElementById('navBtn')"))
+    #  It was drawn from the first and rendered invisible: the shared sheet
+    #  takes its colours from --ctl-* tokens that only exist on a body carrying
+    #  tier-app or tier-print, and this page carries neither. Every border and
+    #  every bar of the icon resolved to nothing. Asserting presence alone
+    #  passed the whole time, which is the same fault as reading the original
+    #  element instead of the printed clone.
+    ck("and it is actually visible, not drawn in colours that resolve to nothing",
+       pg.evaluate("""()=>{const b=document.getElementById('navBtn');
+          const r=b.getBoundingClientRect();
+          const c=getComputedStyle(b);
+          const bc=getComputedStyle(b.querySelector('span')).backgroundColor;
+          return r.width>20 && r.height>20 &&
+                 c.borderTopWidth!=='0px' &&
+                 bc!=='rgba(0, 0, 0, 0)' && bc!=='transparent';}"""))
     ck("and publishing leads the list, since that is where the chef came from",
        pg.evaluate("()=>{const a=document.querySelector('#navDrop a');"
                    "return a && a.getAttribute('href')==='publish.html';}"))

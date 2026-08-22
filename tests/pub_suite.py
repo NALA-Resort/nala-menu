@@ -248,6 +248,32 @@ with sync_playwright() as p:
        pg.evaluate("()=>done.className.indexOf('show')>-1"))
     ck("and the button is gone, so it cannot be pressed twice",
        pg.evaluate("()=>getComputedStyle(bar).display") == "none")
+    #  Reported 22 Aug: publishing hid the courses and the ticks and left the
+    #  rest standing - the headings, the field for adding a dietary, the line
+    #  about keeping one for good. A finished page with half its furniture on
+    #  it reads as one that half worked, and the chef looks for what he is
+    #  meant to do next.
+    left = pg.evaluate("""()=>[...document.querySelectorAll('#wrap > *')]
+        .filter(e=>getComputedStyle(e).display!=='none')
+        .map(e=>e.id || e.className.split(' ')[0])""")
+    print("   left on the finished page:", left)
+    ck("nothing is left standing but the finish and the way off it",
+       all(x in ("done", "navrow", "wordmark", "pagename", "demobar")
+           for x in left))
+    #  And there IS a way off it. This is the other half of the same report:
+    #  the menu was drawn all along and rendered invisible, because the shared
+    #  stylesheet takes its colours from tokens only a tier-app body carries.
+    ck("the way off the page is there",
+       pg.evaluate("()=>!!document.getElementById('navBtn')"))
+    ck("and is actually visible, not drawn in colours that resolve to nothing",
+       pg.evaluate("""()=>{const b=document.getElementById('navBtn');
+          const r=b.getBoundingClientRect();
+          const c=getComputedStyle(b);
+          const bar=b.querySelector('span');
+          const bc=getComputedStyle(bar).backgroundColor;
+          return r.width>20 && r.height>20 &&
+                 c.borderTopWidth!=='0px' &&
+                 bc!=='rgba(0, 0, 0, 0)' && bc!=='transparent';}"""))
     pg.close()
 
     # ── the rehearsal ───────────────────────────────────────────
