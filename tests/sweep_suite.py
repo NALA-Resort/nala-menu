@@ -172,11 +172,19 @@ def fb(route, request):
 # state with nothing on it, and a sweep would call that a clean page.
 GUEST_QS = ("?b=" + BOOKING + "&n=James&s=Reed&a=" + today + "&d=" + plus(3))
 
+PUBLISH_QS = ("?b=Tomato%20focaccia%20-%20whipped%20ricotta"
+              "&e=Hervey%20Bay%20scallops%20-%20burnt%20butter"
+              "&m=Sovereign%20lamb%20-%20salsa%20verde"
+              "&d=Mandarin%20cheesecake&sf=e")
+
 PAGES = [
     ("cleaners.html",     ""),
     ("front-desk.html",   ""),
     ("tally.html",        ""),
     ("tag.html",          ""),
+    #  The menu arrives in the address, so an empty publish page is not
+    #  the page the chef ever sees. Swept with a menu in it.
+    ("publish.html",      PUBLISH_QS),
     ("staff.html",        ""),
     ("stats.html",        ""),
     ("registration.html", ""),
@@ -194,6 +202,10 @@ ROLES = [("staff@x", "admin"), ("chef@x", "chef"),
 EXPECTED_INERT = {
     # page, descriptor fragment : why
     ("pages.html", "a.p"): "the site map's own links are opened by pages_suite",
+    ("publish.html", 'a "menu.nalaresort.com"'): (
+        "the link on the Published screen goes to the live guest site in a new "
+        "tab. There is nothing here to open and nothing to assert: it is there "
+        "so the chef can look at what the guests are looking at."),
     ("tag.html", "#addBtn"): ("Add dietary returns on an empty box, which is "
                               "correct. Worth knowing that it gives the chef "
                               "no hint about why nothing happened."),

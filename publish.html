@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nala · Publish Menu</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E; }
+  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
+         padding:28px 24px 90px; -webkit-tap-highlight-color:transparent; }
+  .wrap { max-width:520px; margin:0 auto; }
+
+  .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
+            background:#A8321E; color:#fff; padding:12px 18px;
+            font-family:Helvetica,Arial,sans-serif; font-size:11px; line-height:1.5;
+            transform:translateY(-100%); transition:transform .25s; }
+  .errbar.show { transform:translateY(0); }
+
+  .wordmark { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.45em;
+              text-transform:uppercase; color:var(--mid); text-align:center; }
+  .pagename { font-family:Helvetica,Arial,sans-serif; font-size:13px; font-weight:bold;
+              letter-spacing:.1em; text-transform:uppercase; text-align:center; margin-top:6px; }
+  .lede { text-align:center; font-style:italic; color:var(--mid); font-size:12px;
+          margin-top:8px; line-height:1.5; }
+
+  .course { margin-top:24px; }
+  .c-label { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
+             text-transform:uppercase; color:var(--mid); }
+  /* Editable on the page. The words came off a handwritten photo through an
+     assistant's reading of it, so the one thing this page must do is let a
+     misread word be fixed here, before it reaches a guest, rather than after. */
+  .c-name { width:100%; margin-top:4px; padding:10px 12px; border:1px solid var(--rule);
+            background:#fff; border-radius:8px; font-family:Georgia,serif;
+            font-size:17px; color:var(--ink); }
+  .c-desc { width:100%; margin-top:6px; padding:9px 12px; border:1px solid var(--rule);
+            background:#fff; border-radius:8px; font-family:Georgia,serif;
+            font-size:14px; color:var(--mid); }
+  .c-name:focus, .c-desc:focus { outline:none; border-color:var(--ink); }
+
+  .seafood { display:flex; align-items:center; gap:8px; margin-top:8px; }
+  .sfbtn { padding:7px 13px; border:1px solid #C9C9C2; background:transparent;
+           border-radius:20px; font-family:Helvetica,Arial,sans-serif; font-size:10px;
+           letter-spacing:.08em; text-transform:uppercase; color:var(--mid);
+           cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .sfbtn.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .sfhint { font-family:Helvetica,Arial,sans-serif; font-size:9px; color:var(--mid); }
+
+  .rule { border:none; border-top:1px solid var(--rule); margin-top:28px; }
+  .secthead { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
+              text-transform:uppercase; color:var(--mid); margin-top:28px; }
+  .sectnote { font-style:italic; color:var(--mid); font-size:12px; margin-top:8px;
+              line-height:1.6; }
+
+  /* Tagging, on this page rather than behind a link. A published menu that is
+     not tagged checks nothing: the guest page and the front desk both compare
+     a guest's allergies against tonight's tags, so an untagged nut dish meets
+     a nut allergy in silence. It was a separate page and a separate trip, and
+     a separate trip is a trip that gets skipped on a busy night. */
+  .tagblock { margin-top:20px; }
+  .tagcourse { margin-top:18px; }
+  .t-dish { font-size:15px; }
+  .t-dish .empty { color:var(--mid); font-style:italic; }
+  .ticks { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .tick { padding:8px 13px; border:1px solid #C9C9C2; background:transparent;
+          border-radius:20px; font-family:Helvetica,Arial,sans-serif; font-size:11px;
+          color:var(--ink); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .tick.on { background:var(--red); color:#fff; border-color:var(--red); }
+
+  .bar { position:fixed; bottom:0; left:0; right:0; background:var(--cream);
+         border-top:1px solid var(--rule); padding:12px 24px; }
+  .bar .in { max-width:520px; margin:0 auto; display:flex; gap:10px; align-items:center; }
+  .pubbtn { flex:1; padding:14px; min-height:46px; border:none; background:var(--ink);
+            color:var(--cream); border-radius:8px; font-family:Helvetica,Arial,sans-serif;
+            font-size:11px; letter-spacing:.15em; text-transform:uppercase;
+            cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .pubbtn:disabled { opacity:.45; }
+  .stat { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.1em;
+          text-transform:uppercase; color:var(--mid); }
+
+  .done { display:none; text-align:center; margin-top:40px; line-height:1.8; }
+  .done.show { display:block; }
+  .done .big { font-size:20px; }
+  .done a { color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="errbar" id="err"></div>
+<div class="wrap" id="wrap">
+  <div class="wordmark">Nala Resort</div>
+  <div class="pagename">Publish Menu</div>
+  <div class="lede" id="lede">Check it against the photo, then publish.</div>
+
+  <div id="courses"></div>
+
+  <hr class="rule">
+  <div class="secthead">What each dish does not suit</div>
+  <div class="sectnote">Tick a dietary and a guest who declared it is warned.
+    Nothing is checked until this is done, so it is part of publishing, not a
+    job for afterwards.</div>
+  <div class="tagblock" id="tagblock"></div>
+
+  <div class="done" id="done">
+    <div class="big">Published</div>
+    <div class="lede">It is on the guests' phones now.</div>
+    <div class="lede"><a href="https://menu.nalaresort.com" target="_blank">menu.nalaresort.com</a></div>
+  </div>
+</div>
+
+<div class="bar" id="bar"><div class="in">
+  <button class="pubbtn" id="pubBtn">Publish</button>
+  <span class="stat" id="stat"></span>
+</div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="auth.js?v=11"></script>
+<script src="nala-shared.js?v=24"></script>
+<script>
+/* Publishing is the chef's job and the manager's, gated on the same permission
+   the tagging page uses. Sent to their own board rather than refused, since a
+   role with somewhere to be does not need telling off. */
+(function gate(){
+  if (!window.firebase || !firebase.auth ||
+      typeof loadStaff !== 'function'){ setTimeout(gate,300); return; }
+  var A;
+  try { A = firebase.auth(); } catch (e){ setTimeout(gate,300); return; }
+  if (!A || typeof A.onAuthStateChanged !== 'function'){ setTimeout(gate,300); return; }
+  A.onAuthStateChanged(function(u){
+    if (!u) return;
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      if (can(role, 'publishMenu') || e) return;
+      document.getElementById('wrap').style.display = 'none';
+      document.getElementById('bar').style.display = 'none';
+      var home = homeFor(role);
+      if (home) location.replace(home);
+      else document.body.insertAdjacentHTML('afterbegin',
+        '<div style="padding:16px;font-family:Helvetica,Arial,sans-serif;font-size:12px">' +
+        'This login cannot publish menus. See the manager.</div>');
+    });
+  });
+})();
+
+  var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+  var COURSES = [['bread','Bread'],['entree','Entr\u00e9e'],['main','Main'],['dessert','Dessert']];
+  var DEFAULTS = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+                  'Nut allergy','Shellfish allergy','Egg allergy'];
+
+  function err(m){ var e=document.getElementById('err');
+    e.textContent=m; e.classList.add('show');
+    setTimeout(function(){ e.classList.remove('show'); }, 6000); }
+
+  function todayKey(){ var d=new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function keyOf(name){ return name.trim().replace(/[.#$\/\[\]]/g,'').replace(/\s+/g,' '); }
+
+  var M = { bread:{name:'',desc:'',aus:false}, entree:{name:'',desc:'',aus:false},
+            main:{name:'',desc:'',aus:false}, dessert:{name:'',desc:'',aus:false} };
+  var MASTER = {}, TAGS = {}, LOCKED = null;
+
+  /* The menu arrives in the address, one short parameter per course, because
+     the chef photographed a handwritten sheet and is not going to type it
+     again. The assistant that read the photo builds the link; this page is
+     where the reading gets checked by the person who wrote the menu.
+
+     Nothing is written by arriving here. The link fills the form and stops.
+     A misread word, a wrong flag or a change of mind costs nothing until
+     Publish is pressed, which is the whole reason the menu travels as a link
+     and not as a write. */
+  function fromLink(){
+    var q = new URLSearchParams(location.search);
+    var map = { bread:['bread','b'], entree:['entree','e'], main:['main','m'],
+                dessert:['dessert','d'] };
+    var any = false;
+    COURSES.forEach(function(c){
+      var k = c[0], v = null;
+      map[k].forEach(function(p){ if (v === null && q.get(p) !== null) v = q.get(p); });
+      if (v === null) return;
+      any = true;
+      /* "dish - description" in one parameter, split on the first dash, so a
+         description containing one does not lose its tail. A dish with no
+         dash is all name, which is the common case on a handwritten sheet. */
+      var s = String(v).trim(), i = s.search(/\s[-\u2013\u2014]\s/);
+      if (i > -1){ M[k].name = s.slice(0,i).trim(); M[k].desc = s.slice(i+3).trim(); }
+      else M[k].name = s;
+      var d = q.get(k.charAt(0) + 'd');
+      if (d !== null) M[k].desc = String(d).trim();
+    });
+    /* Seafood as a list of course letters rather than four parameters, to keep
+       the link short enough to survive a phone keyboard and a copy paste. */
+    var sf = q.get('sf') || q.get('aus') || '';
+    COURSES.forEach(function(c){
+      if (sf.toLowerCase().indexOf(c[0].charAt(0)) > -1) M[c[0]].aus = true;
+    });
+    return any;
+  }
+
+  function paintCourses(){
+    var h = '';
+    COURSES.forEach(function(c){
+      var k = c[0], d = M[k];
+      h += '<div class="course">' +
+        '<div class="c-label">' + c[1] + '</div>' +
+        '<input class="c-name" id="n_'+k+'" placeholder="Dish" value="' + esc(d.name) + '">' +
+        '<input class="c-desc" id="d_'+k+'" placeholder="Description, optional" value="' + esc(d.desc) + '">' +
+        '<div class="seafood">' +
+          '<button class="sfbtn' + (d.aus ? ' on' : '') + '" id="s_'+k+'">Seafood</button>' +
+          '<span class="sfhint">the dish\u2019s main protein</span>' +
+        '</div></div>';
+    });
+    document.getElementById('courses').innerHTML = h;
+    COURSES.forEach(function(c){
+      var k = c[0];
+      document.getElementById('n_'+k).oninput = function(){
+        M[k].name = this.value; paintTags(); };
+      document.getElementById('d_'+k).oninput = function(){ M[k].desc = this.value; };
+      document.getElementById('s_'+k).onclick = function(){
+        M[k].aus = !M[k].aus; this.classList.toggle('on', M[k].aus); };
+    });
+  }
+
+  function esc(s){ return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+  function activeNames(){
+    return Object.keys(MASTER).filter(function(k){ return MASTER[k].active; })
+      .map(function(k){ return MASTER[k].name; })
+      .sort(function(a,b){
+        var ga=MASTER[keyOf(a)].group==='menu'?1:0, gb=MASTER[keyOf(b)].group==='menu'?1:0;
+        return ga-gb || a.localeCompare(b); });
+  }
+
+  function paintTags(){
+    var names = activeNames(), h = '';
+    COURSES.forEach(function(c){
+      var k = c[0], nm = M[k].name.trim();
+      h += '<div class="tagcourse"><div class="c-label">' + c[1] + '</div>' +
+           '<div class="t-dish">' + (nm ? esc(nm) :
+             '<span class="empty">not filled in</span>') + '</div>' +
+           '<div class="ticks">';
+      names.forEach(function(n){
+        var on = TAGS[k] && TAGS[k][keyOf(n)];
+        h += '<button class="tick' + (on ? ' on' : '') + '" data-c="'+k+'" data-n="'+esc(n)+'">' +
+             esc(n) + '</button>';
+      });
+      h += '</div></div>';
+    });
+    document.getElementById('tagblock').innerHTML = h;
+    [].forEach.call(document.querySelectorAll('#tagblock .tick'), function(b){
+      b.onclick = function(){
+        var c = b.getAttribute('data-c'), n = keyOf(b.getAttribute('data-n'));
+        TAGS[c] = TAGS[c] || {};
+        if (TAGS[c][n]) delete TAGS[c][n]; else TAGS[c][n] = true;
+        b.classList.toggle('on');
+      };
+    });
+  }
+
+  /* Publish writes the menu and tonight's tags together, in that order, and
+     reports the tags failing as loudly as the menu failing. A menu that goes
+     live with its tags left behind is the failure this page exists to stop,
+     and it is the one that looks like success from the outside. */
+  document.getElementById('pubBtn').onclick = function(){
+    if (LOCKED) return err(LOCKED);
+    var missing = COURSES.filter(function(c){ return !M[c[0]].name.trim(); });
+    if (missing.length)
+      return err('Fill in ' + missing.map(function(c){ return c[1].toLowerCase(); }).join(', ') +
+                 ' before publishing.');
+
+    var btn = this; btn.disabled = true;
+    document.getElementById('stat').textContent = 'Publishing';
+
+    var menu = { published: new Date().toISOString() };
+    COURSES.forEach(function(c){
+      var k = c[0];
+      menu[k] = { name:M[k].name.trim(), desc:M[k].desc.trim(), aus:!!M[k].aus };
+    });
+
+    fetch(DB + '/menu.json', { method:'PUT', body:JSON.stringify(menu) })
+      .then(function(r){
+        if (!r.ok) throw new Error('menu ' + r.status);
+        return fetch(DB + '/menutags/' + todayKey() + '.json',
+                     { method:'PUT', body:JSON.stringify(TAGS) });
+      })
+      .then(function(r){
+        if (!r.ok) throw new Error('tags ' + r.status);
+        document.getElementById('stat').textContent = '';
+        document.getElementById('courses').style.display = 'none';
+        document.getElementById('tagblock').style.display = 'none';
+        document.getElementById('done').classList.add('show');
+        document.getElementById('bar').style.display = 'none';
+        if (typeof announceMenu === 'function') { try { announceMenu(); } catch(e){} }
+      })
+      .catch(function(e){
+        btn.disabled = false;
+        document.getElementById('stat').textContent = '';
+        var m = String(e.message || e);
+        if (m.indexOf('tags') === 0)
+          err('The menu is live but the dietary ticks did not save. ' +
+              'Nothing is being checked. Press Publish again.');
+        else if (m.indexOf('401') > -1 || m.indexOf('403') > -1)
+          err('Signed in, but this login cannot publish menus. ' +
+              'Ask the manager to set the role to chef in Settings.');
+        else err('Could not publish - check the connection and try again.');
+      });
+  };
+
+  /* A read that FAILS is not an empty node. Treating the two the same would
+     seed the eight defaults over a chef's real dietary list, and Publish would
+     then write them. Locked rather than trusted, the same way the tag page
+     does it and for the same reason. */
+  function readNode(path){
+    return fetch(DB + path + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : { __failed:r.status }; })
+      .catch(function(){ return { __failed:0 }; });
+  }
+  function failedRead(v){ return !!(v && v.__failed !== undefined); }
+
+  var hadLink = fromLink();
+  if (!hadLink)
+    document.getElementById('lede').textContent =
+      'Type tonight\u2019s menu, or open the link the menu chat gives you.';
+
+  paintCourses();
+
+  Promise.all([ readNode('/dietaries'), readNode('/menutags/' + todayKey()) ])
+    .then(function(res){
+      var master = res[0], tags = res[1];
+      if (failedRead(master)){
+        LOCKED = 'Could not read the dietary list. Nothing is published until ' +
+                 'it loads, so nothing gets overwritten. Sign in again, then refresh.';
+        err(LOCKED);
+        document.getElementById('pubBtn').disabled = true;
+        paintTags();
+        return;
+      }
+      if (master) MASTER = master;
+      else DEFAULTS.forEach(function(n){ MASTER[keyOf(n)] = {name:n, active:true, group:'common'}; });
+      /* Tonight's ticks, if the chef is republishing a corrected menu an hour
+         later. A failed read here is not locked out: it means starting the
+         ticks empty, which is recoverable, where publishing nothing is not. */
+      if (!failedRead(tags) && tags) TAGS = tags;
+      paintTags();
+    })
+    .catch(function(){ err('Could not load - refresh to try again.'); });
+</script>
+</body>
+</html>

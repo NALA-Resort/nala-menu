@@ -81,6 +81,7 @@ SUITES = [
     ("pages",      ["python3", "tests/pages_suite.py"],   300),
     ("stats",      ["python3", "tests/stats_suite.py"],   400),
     ("tag",        ["python3", "tests/tag_suite.py"],     400),
+    ("pub",        ["python3", "tests/pub_suite.py"],     400),
     ("debug",      ["python3", "tests/debug_suite.py"],   400),
     ("print",      ["python3", "tests/print_suite.py"],   400),
     ("welcome",    ["python3", "tests/welcome_suite.py"], 300),
@@ -98,9 +99,9 @@ SUITES = [
 # page load and still reloads the page for each of the three widths when it
 # could resize the viewport. Fixing those is the next job and worth more than
 # this was.
-SWEEP_PAGES = ["cleaners", "front-desk", "tally", "tag", "staff", "stats",
-               "registration", "debug", "pages", "index", "prearrival",
-               "welcome"]
+SWEEP_PAGES = ["cleaners", "front-desk", "tally", "tag", "publish", "staff",
+               "stats", "registration", "debug", "pages", "index",
+               "prearrival", "welcome"]
 SUITES += [("sweep:" + p, ["python3", "tests/sweep_suite.py", p], 600)
            for p in SWEEP_PAGES]
 
@@ -124,6 +125,7 @@ COVERS = {
     "pages.html":        ["pages", "sweep:pages"],
     "stats.html":        ["stats", "sweep:stats"],
     "tag.html":          ["tag", "sweep:tag"],
+    "publish.html":      ["pub", "sweep:publish"],
     "debug.html":        ["debug", "sweep:debug"],
     "menu-print.html":   ["print"],
     "welcome.html":      ["welcome", "sweep:welcome"],
