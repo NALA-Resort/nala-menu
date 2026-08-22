@@ -6,6 +6,9 @@ class Q(http.server.SimpleHTTPRequestHandler):
 socketserver.TCPServer.allow_reuse_address=True
 httpd=http.server.ThreadingHTTPServer(("",8956),Q)
 threading.Thread(target=httpd.serve_forever,daemon=True).start(); time.sleep(0.3)
+def sdk_as(email):
+    return SDK.replace("staff@x", email)
+
 SDK="""window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
 auth:function(){ if(!window.firebase.__i) throw new Error("No Firebase App '[DEFAULT]' has been created"); return window.__A;}};
 window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:'staff@x',getIdToken:function(){return Promise.resolve('T');}});},20);},
@@ -27,8 +30,22 @@ donets=now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"
 hk={"1":{"done":donets},"2":{"bfast":now.isoformat()},"4":{"departed":True},
     "7":{"bfast":now.isoformat(),"done":now.isoformat()},
     "3":{"kind":"clean"}, "9":{"kind":"pre"}}   # villa 3 is a verify by the dates; staff set it to clean
+#  The sheet is gated from 23 Aug, so a page under test has to be somebody.
+#  It never served /staff before, which meant the login had no role at all: the
+#  right refusal on a fixture that had simply never needed to say who it was.
+STAFF = {"staff@x": {"name": "Manager", "role": "admin"},
+         "hk@x":    {"name": "Ana", "role": "housekeeping"},
+         "chef@x":  {"name": "Chef", "role": "chef"}}
+
 def fb(route,request):
     u=request.url; body="null"
+    if "/staff" in u:
+        if STATE.get("staffbreak"):
+            route.fulfill(status=500, body="err"); return
+        route.fulfill(status=200,content_type="application/json",
+                      body=json.dumps(STAFF)); return
+    if "/permissions" in u:
+        route.fulfill(status=200,content_type="application/json",body="null"); return
     if STATE["break"] and "/responses/" in u:
         route.fulfill(status=500,body="err"); return
     if "/responses/" in u: body=json.dumps(responses)
@@ -44,9 +61,10 @@ def ck(n,c):
     print(("PASS " if c else "FAIL ")+n); P,F=(P+1,F) if c else (P,F+1)
 with sync_playwright() as p:
     b=p.chromium.launch()
-    def page():
+    def page(email="staff@x"):
         pg=b.new_page(viewport={"width":900,"height":1100})
-        pg.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body=SDK))
+        who = sdk_as(email)
+        pg.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body=who))
         pg.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body="/*n*/"))
         pg.route("**firebasedatabase.app/**",fb)
         return pg
@@ -200,7 +218,46 @@ with sync_playwright() as p:
        "15" in tw and "Pushed" in tw["15"]["done"])
     ck("the cleans count agrees with the board's reading",
        q.evaluate("()=>nClean.textContent") == "5")
-    q.close(); b.close()
+    q.close()
+
+    # ── who may open the sheet ──────────────────────────────────
+    #  Gated from 23 Aug, and until then it was the only page in the menu with
+    #  no gate at all: any signed-in login could open it, and it carries guest
+    #  names and villa assignments. Not a public leak, since the rules require
+    #  a login to read /stays, but no role restriction either.
+    #
+    #  The inconsistency was already visible in the app's own behaviour. The
+    #  menu hid this link from anyone without cleansBoard, so the app was
+    #  asserting those roles should not have it while the page let them in. A
+    #  chef with a bookmark walked straight past the menu that was hiding it.
+    for who, role, allowed in (("hk@x", "housekeeping", True),
+                               ("staff@x", "admin", True),
+                               ("chef@x", "chef", False)):
+        q = page(who)
+        q.goto("http://localhost:8956/housekeeping.html")
+        q.wait_for_timeout(1500)
+        shown = q.evaluate("""()=>{const e=document.querySelector('.scroller');
+            return !!e && getComputedStyle(e).display!=='none';}""")
+        here = q.url.endswith("housekeeping.html")
+        ck("a " + role + (" may read the clean sheet" if allowed
+                          else " is not left on the clean sheet"),
+           (shown and here) if allowed else (not shown or not here))
+        q.close()
+
+    #  A staff list that will not load is not a refusal. Locking housekeepers
+    #  out of their own work over a bad minute of signal would be a worse
+    #  failure than the one being fixed.
+    STATE["staffbreak"] = True
+    q = page("hk@x")
+    q.goto("http://localhost:8956/housekeeping.html")
+    q.wait_for_timeout(1500)
+    ck("a staff list that fails to load does not lock the sheet",
+       q.evaluate("""()=>{const e=document.querySelector('.scroller');
+          return !!e && getComputedStyle(e).display!=='none';}"""))
+    q.close()
+    STATE["staffbreak"] = False
+
+    b.close()
     open("/home/claude/nala/_p3_hk.png","wb").write(shot)
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()

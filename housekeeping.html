@@ -105,29 +105,55 @@
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
-  /* This page is not gated, but the Settings link must still only appear for
-     someone it would let in: a link that bounces you back is a door to
-     nowhere. Only the LINK is hidden here, not the page.               */
-  (function hideSettings(){
-    var a = document.querySelector('#navDrop a[href="staff.html"]');
-    if (!a) return;
-    a.style.display = 'none';
-    (function wait(){
-      if (typeof loadStaff !== 'function' || !window.firebase || !firebase.auth){
-        setTimeout(wait, 300); return; }
-      var A; try { A = firebase.auth(); } catch (e){ setTimeout(wait,300); return; }
-      if (!A || typeof A.onAuthStateChanged !== 'function'){ setTimeout(wait,300); return; }
-      A.onAuthStateChanged(function(u){
-        if (!u) return;
-        loadStaff(function(){
-          /* Publishing the role is all this page needs to do: the shared
-             filter in nala-shared.js hides every link this role cannot open,
-             not just Settings. */
-          window.NALA_ROLE = roleOf(u);
-          window.NALA_NAVFILTER(window.NALA_ROLE);
-        });
+  /* Gated like every other page, from 23 Aug.
+
+     It was the only page in the menu with no gate at all: any signed-in login
+     could open it, and it carries guest names and villa assignments. Not a
+     public leak, since the rules require a login to read /stays, but no role
+     restriction either.
+
+     The inconsistency was already visible in the app's own behaviour. The
+     menu hid this link from anyone without cleansBoard, so the app was
+     already asserting that those roles should not have it, and the page was
+     simply not enforcing what its own menu implied. A chef with a bookmark or
+     a typed address walked straight in.
+
+     cleansBoard, the same permission as the board it prints. The sheet IS the
+     board on paper and there is no argument for the paper being looser than
+     the screen. */
+  (function gate(){
+    if (!window.firebase || !firebase.auth ||
+        typeof loadStaff !== 'function'){ setTimeout(gate,300); return; }
+    var A;
+    try { A = firebase.auth(); } catch (e){ setTimeout(gate,300); return; }
+    if (!A || typeof A.onAuthStateChanged !== 'function'){ setTimeout(gate,300); return; }
+    A.onAuthStateChanged(function(u){
+      if (!u) return;
+      loadStaff(function(recs, e){
+        var role = roleOf(u);
+        window.NALA_ROLE = role;
+        /* A failed staff read is not a refusal. Locking the sheet because the
+           list would not load would keep housekeepers off their own work over
+           a bad minute of signal. */
+        if (can(role, 'cleansBoard') || e){
+          window.NALA_NAVFILTER(role);
+          return;
+        }
+        /* This page has no single wrapper: it is a print sheet built from
+           top level blocks. Hidden by name so a refused login never sees a
+           flash of the villas before the redirect lands. */
+        ['printkick','daterow','stats','mgrstrip','scroller','stamp','foot']
+          .forEach(function(c){
+            var el = document.querySelector('.' + c);
+            if (el) el.style.display = 'none';
+          });
+        var home = homeFor(role);
+        if (home) location.replace(home);
+        else document.body.insertAdjacentHTML('afterbegin',
+          '<div style="padding:16px;font-family:Helvetica,Arial,sans-serif;font-size:12px">' +
+          'This login has no access to the Clean Sheet. See the manager.</div>');
       });
-    })();
+    });
   })();
 
   var so=document.getElementById('navSignout');
