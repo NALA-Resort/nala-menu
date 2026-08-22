@@ -335,6 +335,9 @@ with sync_playwright() as p:
        len([w for w in WRITES if "/demo/" in w["u"]]) == 2)
     ck("the chef is told it was a rehearsal, not that it is live",
        "rehearsal" in pg.inner_text("#done").lower())
+    ck("the finished screen is not a full stop",
+       pg.evaluate("()=>{const a=document.querySelector('#doneActs .doneact');"
+                   "return !!a && a.getAttribute('href')==='publish.html';}"))
     ck("and is not sent to the guest site, which would show the real menu",
        "menu.nalaresort.com" not in pg.evaluate("()=>doneWhere.innerHTML"))
     pg.close()
@@ -431,6 +434,21 @@ with sync_playwright() as p:
        pg.evaluate("()=>[...document.querySelectorAll('#navDrop a')]"
                    ".some(a=>a.getAttribute('href')==='tag.html')"))
 
+    #  One list, the same on every page, minus the page you are on. The owner
+    #  reported pressing hamburgers everywhere and none of them agreeing; the
+    #  older pages did agree with each other, and the two new ones were in none
+    #  of their lists, so from Reservations there was no way to reach
+    #  publishing at all.
+    CANON = ["tally.html", "front-desk.html", "list.html", "publish.html",
+             "tag.html", "cleaners.html", "housekeeping.html",
+             "registration.html", "staff.html", "pages.html"]
+    got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
+        .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
+    print("   publish nav:", got)
+    ck("the menu lists every other page, in the one order",
+       got == [h for h in CANON if h != "publish.html"])
+    ck("and never itself", "publish.html" not in got)
+
     del WRITES[:]
     pg.fill("#newDiet", "Sesame")
     pg.locator("#addDiet").click(); pg.wait_for_timeout(600)
@@ -491,6 +509,47 @@ with sync_playwright() as p:
     pg.close()
     STATE["tags"] = {}; STATE["master"] = MASTER
 
+    # ── coming back to a menu already published ─────────────────
+    #  The page had one door: the link the chat builds. Opened any other way it
+    #  showed four empty boxes, so after publishing there was no way to correct
+    #  a dish, retag a course or take the menu down, and "press the link again"
+    #  is not an answer. The link is a shortcut for the first publish of the
+    #  night now, not the only way in.
+    STATE["menu"] = {"published": now.isoformat(),
+                     "bread": {"name": "Focaccia", "desc": "ricotta", "aus": False},
+                     "entree": {"name": "Scallops", "desc": "", "aus": True},
+                     "main": {"name": "Lamb", "desc": "salsa verde", "aus": False},
+                     "dessert": {"name": "Pavlova", "desc": "", "aus": False}}
+    pg = open_pub("")
+    pg.wait_for_timeout(700)
+    ck("opened with no link, the page shows what is published",
+       val(pg, "n_main") == "Lamb" and val(pg, "d_main") == "salsa verde")
+    ck("with AUS as it was published", pg.evaluate("()=>s_entree.className.indexOf('on')>-1"))
+    ck("and says so, rather than looking like a blank form",
+       "as the guests see it" in pg.inner_text("#lede"))
+    ck("the button says it is a change, not a first publish",
+       pg.locator("#pubBtn").text_content().strip() == "Publish changes")
+    ck("and the way to take it down is offered",
+       pg.evaluate("()=>getComputedStyle(removeRow).display") != "none")
+    pg.close()
+
+    #  A link is the chat handing over a NEW menu and beats what is up.
+    pg = open_pub(LINK)
+    pg.wait_for_timeout(700)
+    ck("a link still wins over what is already published",
+       val(pg, "n_main") == "Sovereign lamb")
+    pg.close()
+    STATE["menu"] = None
+
+    #  Nothing is published, so there is nothing to come back to.
+    pg = open_pub("")
+    pg.wait_for_timeout(600)
+    ck("with nothing published the page is a blank form, as it always was",
+       val(pg, "n_main") == "")
+    ck("and offers no way to take down a menu that is not there",
+       pg.evaluate("()=>getComputedStyle(removeRow).display") == "none")
+    pg.close()
+
     # ── taking a menu down ──────────────────────────────────────
     #  Restored 22 Aug. "Remove menu" was in the brief until 21 Aug and was
     #  lost with the Rules section in the rewrite that changed how publishing
@@ -541,6 +600,8 @@ with sync_playwright() as p:
     #  published is a lie about a menu nobody can see.
     ck("the chef is told the guests see no menu",
        "removed" in pg.inner_text("#done").lower())
+    ck("and offered the way back to publishing one",
+       "publish tonight" in pg.inner_text("#doneActs").lower())
     pg.close()
 
     #  A rehearsal takes down the rehearsal, never the real menu.

@@ -460,9 +460,16 @@ with sync_playwright() as p:
     dest=[i for i in nav if i["href"]!="#"]
     # Live board then its sheet, reservations before cleans. Front Desk
     # Arrival sits with reservations, after the board it feeds.
+    #  One list, the same on every page, in one order, minus the page you are
+    #  on. Publish Menu and Dietary Settings were in nobody's hamburger until
+    #  22 Aug, so from this board there was no way to reach publishing at all.
     ck("menu labels and order",
-       [i["t"] for i in dest]==["Front Desk Arrival","Reservations Sheet","Cleans","Clean sheet","Registration","Settings","Pages"] and
-       [i["href"] for i in dest]==["front-desk.html","list.html","cleaners.html","housekeeping.html","registration.html","staff.html","pages.html"])
+       [i["t"] for i in dest]==["Front Desk Arrival","Reservations Sheet",
+                                "Publish Menu","Dietary Settings","Cleans",
+                                "Clean sheet","Registration","Settings","Pages"] and
+       [i["href"] for i in dest]==["front-desk.html","list.html","publish.html",
+                                   "tag.html","cleaners.html","housekeeping.html",
+                                   "registration.html","staff.html","pages.html"])
     # signing out is an action, so it comes last, after the destinations
     ck("sign out is the last item in the menu", nav[-1]["t"]=="Sign out")
     ck("no menu label wraps to a second line", all(i["h"]<=38 for i in nav))

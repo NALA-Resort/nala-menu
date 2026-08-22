@@ -154,9 +154,20 @@ with sync_playwright() as p:
           return r.width>20 && r.height>20 &&
                  c.borderTopWidth!=='0px' &&
                  bc!=='rgba(0, 0, 0, 0)' && bc!=='transparent';}"""))
-    ck("and publishing leads the list, since that is where the chef came from",
-       pg.evaluate("()=>{const a=document.querySelector('#navDrop a');"
-                   "return a && a.getAttribute('href')==='publish.html';}"))
+    #  The same list as every other page, in the same order, minus this one.
+    #  The owner reported pressing hamburgers everywhere and none of them
+    #  agreeing: the older pages did agree with each other, and the two newest
+    #  were in none of their lists, so from Reservations there was no way to
+    #  reach publishing at all.
+    CANON = ["tally.html", "front-desk.html", "list.html", "publish.html",
+             "tag.html", "cleaners.html", "housekeeping.html",
+             "registration.html", "staff.html", "pages.html"]
+    got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
+        .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
+    ck("the menu is the one list, minus this page",
+       got == [h for h in CANON if h != "tag.html"])
+    ck("and publishing is on it, which is where the chef came from",
+       "publish.html" in got)
     ck("with a way out of the app entirely, which every login must have",
        pg.evaluate("()=>!!document.getElementById('navSignout')"))
     pg.evaluate("()=>navBtn.click()")

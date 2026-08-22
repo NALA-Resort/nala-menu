@@ -92,9 +92,19 @@ with sync_playwright() as p:
        pg.evaluate("()=>[...document.querySelectorAll('.p.todo')]"
                    ".every(e=>e.tagName!=='A')"))
 
-    ck("Pages is in the hamburger, where it was asked for",
-       pg.evaluate("()=>[...document.querySelectorAll('.navdrop a')]"
-                   ".some(a=>a.getAttribute('href')==='pages.html')"))
+    #  One list, the same on every page, minus the page you are on. Standing on
+    #  the site map, a link to the site map is one more thing to read and no
+    #  way to anywhere. Pages is in every OTHER page's hamburger, which is what
+    #  was actually asked for, and that is checked from a page that is not this
+    #  one.
+    CANON = ["tally.html", "front-desk.html", "list.html", "publish.html",
+             "tag.html", "cleaners.html", "housekeeping.html",
+             "registration.html", "staff.html", "pages.html"]
+    got = pg.evaluate("""()=>[...document.querySelectorAll('.navdrop a')]
+        .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
+    ck("the map's own hamburger lists every other page, in the one order",
+       got == [h for h in CANON if h != "pages.html"])
+    ck("and not itself", "pages.html" not in got)
 
     for w in (390, 360, 320):
         q = open_map(w=w)

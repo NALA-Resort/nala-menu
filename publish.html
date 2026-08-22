@@ -167,6 +167,13 @@
                 -webkit-tap-highlight-color:transparent; }
   .notifyhint { display:block; margin-top:10px; font-size:12px;
                 font-style:italic; color:var(--mid); }
+  .doneacts { margin-top:26px; padding-top:20px; border-top:1px solid var(--rule); }
+  .doneact { display:block; margin:0 auto; max-width:320px; padding:13px;
+             min-height:44px; box-sizing:border-box; border:1px solid var(--rule);
+             border-radius:8px; font-family:Helvetica,Arial,sans-serif;
+             font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+             color:var(--mid); text-decoration:none;
+             -webkit-tap-highlight-color:transparent; }
 </style>
 </head>
 <body>
@@ -182,7 +189,7 @@
        place to go back to from the dietary list, so it leads. -->
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="tag.html">Dietary Settings</a><a href="tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="cleaners.html">Cleans</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="list.html">Reservations Sheet</a><a href="tag.html">Dietary Settings</a><a href="cleaners.html">Cleans</a><a href="housekeeping.html">Clean sheet</a><a href="registration.html">Registration</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
   </div>
   <div class="wordmark">Nala Resort</div>
@@ -224,6 +231,13 @@
     <div class="big">Published</div>
     <div class="lede" id="doneNotify">It is on the guests' phones now.</div>
     <div class="lede" id="doneWhere"><a href="https://menu.nalaresort.com" target="_blank">menu.nalaresort.com</a></div>
+    <!-- The two things a chef wants after publishing, and nothing else. Until
+         now this screen was a full stop: no way back to the menu, and Remove
+         only appeared on a fresh load, so a wrong dish published at five had
+         no answer on the page that had just published it. -->
+    <div class="doneacts" id="doneActs">
+      <a class="doneact" href="publish.html">Change tonight's menu</a>
+    </div>
   </div>
 </div>
 
@@ -664,6 +678,8 @@
         if (!r.ok) throw new Error('tags ' + r.status);
         finishPage();
         document.querySelector('#done .big').textContent = 'Menu removed';
+        var act = document.querySelector('#doneActs .doneact');
+        if (act) act.textContent = "Publish tonight's menu";
         document.querySelectorAll('#done .lede')[0].textContent =
           'The guests see no menu for tonight.';
         document.getElementById('doneWhere').textContent = '';
@@ -694,18 +710,41 @@
   }
   function failedRead(v){ return !!(v && v.__failed !== undefined); }
 
-  /* Offered only when tonight's menu is actually up. The guest page treats a
-     menu as tonight's while `published` falls on today's date, so that is the
-     same test used here rather than a second opinion about the same fact. */
-  function showRemoveIfPublished(){
-    fetch(DB + ROOT + '/menu.json?v=' + Date.now())
+  /* Tonight's menu, read on the way in.
+
+     The page had exactly one door: the link the chat builds. Open it any other
+     way and it showed four empty boxes, so after publishing there was no way
+     to correct a dish, retag a course or take the menu down. "Press the link
+     again" is not an answer either, and the owner was right to say he felt
+     lost: the flow had no re-entry at all.
+
+     So the link is a shortcut for the first publish of the night, not the only
+     way in. With no link, the page loads what is currently published and
+     becomes the way to change it. The guest page treats a menu as tonight's
+     while `published` falls on today's date, and that is the same test used
+     here rather than a second opinion about one fact.
+
+     A link still wins. It is the chat handing over a NEW menu, and the newer
+     intent beats what is already up. */
+  function loadPublished(fillFields){
+    return fetch(DB + ROOT + '/menu.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(m){
-        var live = m && m.published &&
-          new Date(m.published).toDateString() === new Date().toDateString();
+        var live = !!(m && m.published && m.main &&
+          new Date(m.published).toDateString() === new Date().toDateString());
         document.getElementById('removeRow').style.display = live ? '' : 'none';
+        if (!live || !fillFields) return live;
+        COURSES.forEach(function(c){
+          var k = c[0], d = m[k] || {};
+          M[k] = { name:d.name || '', desc:d.desc || '', aus:!!d.aus };
+        });
+        paintCourses(); paintTags();
+        document.getElementById('lede').textContent =
+          'Tonight\u2019s menu, as the guests see it. Change it and publish again.';
+        document.getElementById('pubBtn').textContent = 'Publish changes';
+        return live;
       })
-      .catch(function(){});
+      .catch(function(){ return false; });
   }
 
   var hadLink = fromLink();
@@ -737,7 +776,7 @@
          ticks empty, which is recoverable, where publishing nothing is not. */
       if (!failedRead(tags) && tags) TAGS = tags;
       paintTags();
-      showRemoveIfPublished();
+      loadPublished(!hadLink);
     })
     .catch(function(){ err('Could not load - refresh to try again.'); });
 </script>
