@@ -4,6 +4,63 @@ Written 17 Aug 2026, replacing thirteen documents that had grown to contradict
 each other. **This is the only one you have to read.** Everything else is
 reference, listed at the end.
 
+**22 Aug 2026: a day of the owner reporting faults and being right about all
+of them.** Read the log for the reasoning; this is the index.
+
+The chef could not publish. The brief told the chat to fetch a Python file
+from GitHub, run it unread, and pass it the passcode the chef had just typed;
+a model refused, correctly. The deeper fault was mine and older: publishing had
+been moved into code running in Claude's sandbox, and sandboxes have a network
+allowlist where browsers do not. The chef's phone reaches Firebase every day.
+So `publish.html` now exists: the chat reads the handwritten menu from a photo
+and hands over a LINK with the four courses in the query string, the chef opens
+it already signed in, checks the reading against his own handwriting, fixes any
+misread word and publishes. Tagging is on the same page and goes up in the same
+press. `CHEF-BRIEF.md` is 133 lines with no token, no passcode and no code.
+`CHEF-BRIEF-CONSOLE.md` is the fallback that needs no network at all.
+`tools/publish-menu.py` is deleted. **Untested against a live sign-in.**
+
+Guest dinner confirmations were not reaching the boards. The cause was outside
+this repo: the invite links went out with `b={{bookingId}}` unmerged. What was
+ours is that the guest page fired the write and called stepDone on the next
+line, so every refused write read to the guest as a confirmation, and a blank
+villa built the path `/dinner/<date>/` which is the whole night's node. Both
+fixed. The link now also carries `r=` as a villa fallback, digits only.
+
+The pre-arrival form asks one question to a page, saves each page as it is
+left, and keeps every constraint in a shut dropdown rather than opening with
+it. `at` still means finished, so the desk gained a third state: not started,
+started, done. Also: a staff note cleared on purpose stayed cleared, in all
+three readers, which had been reading empty as absent.
+
+The reservations sheet fits one page. Villas Mews has said nothing about are
+dropped, with a guard that says so out loud when the whole house is silent,
+because absence is also what a broken sync looks like. Comments are a stack of
+ruled lines with a writing line under every guest. The day's summary is a real
+`tfoot` so it repeats and cannot leave its page. Print type went down, was too
+small, went back: the second page was never the type, it was a fixed row pad.
+
+**Open, and not mine to close.** The leaked GitHub PAT is in the chat again and
+still needs revoking. The sandbox cannot reach Firebase or Google, so nothing
+above is proven against live data: that is a network allowlist on the owner's
+account and it has been that way since the first session without my ever
+saying so.
+
+**Two bugs found and deliberately not fixed.** `dinnerElsewhere` returns on the
+first matching villa and JavaScript iterates integer-like keys in ascending
+order, so a party holding two villas loses the higher one's dinner; every
+fixture omits `bookingId` from the cell, so that gate has never been exercised.
+And a vacant mark stamped `pmsUpdated: null` is dropped by `vacantIsStale`,
+because Firebase deletes a null key and `undefined !== null`.
+
+**A pattern worth naming, three times in two days.** An assertion aimed next to
+the thing instead of at it: a test watching a variable instead of the screen, a
+test watching a substring instead of the shape, a test reading the original
+element instead of the clone that prints. All three passed while the bug
+shipped. Where it matters now, the check is made in print media, or by
+rendering a PDF and reading it back, or by reverting the fix and watching the
+test fail.
+
 **21 Aug 2026: the clean screen ETA upgrade shipped**, all three jobs of
 `CLEAN-SCREEN-ETA-UPGRADE.md`. The cleans tile shows when its guest lands,
 top left, grey then orange then red, and arrivals sort by hour inside the

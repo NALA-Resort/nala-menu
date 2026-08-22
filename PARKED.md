@@ -156,3 +156,35 @@ built:
 Worth settling first: whether a villa can hold more than one companion in
 practice, because the current field is a single value everywhere it is stored,
 and printing two means changing the shape and not just the sheet.
+
+## 13. Two found while looking elsewhere, 22 Aug
+
+Neither was the fault being chased, both are real, and both were left rather
+than folded into an unrelated change.
+
+**A party in two villas loses the higher one's dinner.** `dinnerElsewhere` in
+`nala-shared.js` drops a dinner cell when it finds the cell's booking id
+under a different villa, which is right: a guest who moved rooms should be
+asked again. But it returns on the FIRST match, and JavaScript iterates
+integer-like keys in ascending numeric order, so it answers about the lowest
+numbered villa holding that booking rather than the villa being asked about.
+One booking across villas 4 and 5 therefore keeps 4 and silently drops 5.
+
+Never caught because every fixture in every suite omits `bookingId` from the
+cell, so the function exits on its second line and the gate has not once been
+exercised. Production cells always carry one. Fixing it means deciding what a
+multi-villa booking means here, which is why it is not a one line change.
+
+**A vacant mark can be discarded the moment it is made.** Marking a villa
+vacant when Mews has a booking for it stamps `pmsUpdated`, so the decision
+expires when Mews changes the booking. When Mews sends no `UpdatedUtc` that
+stamp is `null`, Firebase DELETES a key written as null rather than storing
+it, and it reads back as `undefined`. `vacantIsStale` then compares `undefined
+!== null`, calls the mark stale, and the villa reverts on the next render.
+
+Reported by the owner as "I can select vacant but it doesn't change state",
+though there is a second candidate for what he saw: on Reservations a villa
+with no booking already draws as vacant by default, so marking it vacant
+changes nothing on screen and nothing is wrong. Which villa he was on decides
+whether one bug or two. Not established, and worth establishing before either
+is touched.
