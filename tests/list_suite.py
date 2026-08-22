@@ -121,6 +121,25 @@ with sync_playwright() as p:
           return parseFloat(b) < parseFloat(a);}"""))
     ck("and nothing is cloned into the table head any more",
        pg.evaluate("()=>!document.querySelector('#printHead .phead')"))
+
+    #  The browser prints its own header and footer on top of this sheet: the
+    #  URL, the date and time a second time, and a page number, under a
+    #  timestamp the sheet had already printed itself. They belong to the print
+    #  dialog and no stylesheet can remove them, except that Chrome and Edge
+    #  drop them when the page margin is zero. So the margin moves to the body
+    #  and the ink stays where it was.
+    css = pg.evaluate("""()=>[...document.styleSheets]
+      .flatMap(s=>{try{return [...s.cssRules]}catch(e){return []}})
+      .filter(r=>r.constructor.name==='CSSPageRule')
+      .map(r=>r.style.margin).join('|')""")
+    print("   @page margin:", repr(css))
+    ck("the printed page asks for no margin of its own", css.strip() in ("0", "0px"))
+    pad = pg.evaluate("()=>getComputedStyle(document.body).padding")
+    print("   body padding in print:", pad)
+    #  Printers have an unprintable edge of a few millimetres. 10mm is inside
+    #  the safe area on every consumer printer and matches what @page gave up.
+    ck("and the body carries that margin instead, clear of the unprintable edge",
+       all(float(v.replace("px","")) >= 30 for v in pad.split()))
     pg.emulate_media(media="screen")
 
     #  print-color-adjust is INHERITED. Set on the flagged row's cell it was

@@ -13,7 +13,21 @@
 <title>Nala · Service Sheet</title>
 <link rel="stylesheet" href="nala-ui.css?v=12">
 <style>
-  @page { size: A4 portrait; margin: 10mm; }
+  /* Zero, deliberately, and the margin is put on the body instead.
+
+     A printed page was carrying the browser's own header and footer as well as
+     this sheet's: the URL, the date and time again, and a page number, under a
+     timestamp the sheet had already printed itself. Those belong to the print
+     dialog and no stylesheet can remove them - except that Chrome and Edge
+     drop them when the page margin is zero, which is the one lever CSS has.
+
+     So the page keeps no margin and the body takes 10mm of padding, which puts
+     the ink in the same place it was. It also gives back the roughly fifteen
+     millimetres those two lines were taking, which is about three more rows.
+
+     Not universal. Safari has its own checkbox in the dialog and iOS may offer
+     none at all, so this makes the common case right rather than every case. */
+  @page { size: A4 portrait; margin: 0; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:var(--ui-font); color:#111; background:#fff; padding:16px 16px 0; }
 
@@ -242,7 +256,10 @@
     .pfoot { display:block !important; }
   }
   @media print {
-    body { padding:0; }
+    /* The page margin the @page rule gave up, taken here instead. Not less
+       than this: printers have an unprintable edge of a few millimetres and
+       anything inside it is clipped without warning. */
+    body { padding:10mm; }
     .scroller { overflow:visible; }
 
     /* No tinted rows on paper. On screen they group the sheet at a glance;
