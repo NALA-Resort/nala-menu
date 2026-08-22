@@ -148,8 +148,15 @@ with sync_playwright() as p:
     #  chat is told not to try, because it was a machine guessing from
     #  handwriting at something the man who wrote the menu already knows.
     ck("nothing arrives ticked for AUS, whatever the link says",
-       pg.evaluate("""()=>['bread','entree','main','dessert']
+       pg.evaluate("""()=>['entree','main']
           .every(k=>document.getElementById('s_'+k).className.indexOf('on')<0)"""))
+    #  A bread course and a dessert do not have a main protein, so the button
+    #  there was a question with one answer, on the two courses where pressing
+    #  it by accident puts (AUS) beside a focaccia on the guests' phones.
+    ck("AUS is offered on the entree and the main",
+       pg.evaluate("()=>!!(document.getElementById('s_entree') && document.getElementById('s_main'))"))
+    ck("and not on the bread or the dessert",
+       pg.evaluate("()=>!document.getElementById('s_bread') && !document.getElementById('s_dessert')"))
     ck("the button says what it does, not what it means",
        pg.evaluate("()=>s_main.textContent.trim()") == "AUS" and
        "(AUS)" in pg.inner_text("#courses"))
@@ -216,6 +223,8 @@ with sync_playwright() as p:
            body["entree"]["desc"] == "burnt butter")
         ck("and AUS false on a dish nobody pressed it for",
            body["entree"]["aus"] is False)
+        ck("and false on the courses that cannot carry it at all",
+           body["bread"]["aus"] is False and body["dessert"]["aus"] is False)
         ck("and a publish time, which is what makes it tonight's",
            bool(body.get("published")))
 
@@ -294,6 +303,79 @@ with sync_playwright() as p:
        len([w for w in WRITES if "/menu.json" in w["u"]]) == 1)
     ck("and carries no rehearsal banner",
        pg.evaluate("()=>demoBar.className.indexOf('show')<0"))
+    pg.close()
+
+    # ── every field big enough not to zoom the phone ────────────
+    #  Safari zooms the page when a field under 16px takes focus and does not
+    #  zoom back out, so the chef finishes the menu on a page he has to pinch
+    #  and drag. The description field was 14.
+    #  With a menu up, which is when the bar carries its second row and is at
+    #  its tallest. Measured against the short bar it clears at any padding and
+    #  the check proves nothing about the case that was reported.
+    STATE["menu"] = {"published": now.isoformat(),
+                     "bread": {"name": "Focaccia"}, "entree": {"name": "Scallops"},
+                     "main": {"name": "Lamb"}, "dessert": {"name": "Pavlova"}}
+    pg = open_pub(LINK, w=390)
+    pg.wait_for_timeout(500)
+    ck("the bar is at its tallest, with a menu up to take down",
+       pg.evaluate("()=>getComputedStyle(removeRow).display") != "none")
+    ck("no field on the page is under 16px",
+       pg.evaluate("""()=>[...document.querySelectorAll('input,textarea')]
+          .every(e=>parseFloat(getComputedStyle(e).fontSize) >= 16)"""))
+    #  The bar is fixed to the bottom and grew a second row when Remove
+    #  arrived. Under it, the last row of ticks is an allergy the chef cannot
+    #  reach.
+    #  Scrolled to the foot first: unscrolled, the last tick is simply below
+    #  the viewport and the measurement says nothing about the bar.
+    pg.evaluate("()=>window.scrollTo(0, document.body.scrollHeight)")
+    pg.wait_for_timeout(300)
+    room = pg.evaluate("""()=>{const t=[...document.querySelectorAll('#tagblock .tick')].pop();
+        const b=document.getElementById('bar');
+        if(!t||!b) return null;
+        return Math.round(b.getBoundingClientRect().top - t.getBoundingClientRect().bottom);}""")
+    print("   gap under the last tick, page scrolled to the foot:", room)
+    #  The rule, stated as the rule rather than as a distance that happens to
+    #  be positive today: the page's bottom padding has to clear the bar with
+    #  room to spare. A phone eats into whatever is left - the home indicator
+    #  sits over the bottom of the viewport and rubber-band scrolling hides a
+    #  little more - so a gap that merely exists on a desktop viewport is a
+    #  dietary that cannot be tapped in a kitchen.
+    box = pg.evaluate("""()=>({pad:parseFloat(getComputedStyle(document.body).paddingBottom),
+        bar:Math.round(document.getElementById('bar').getBoundingClientRect().height)})""")
+    print("   bottom padding %s against a bar of %s" % (box["pad"], box["bar"]))
+    ck("the page reserves more room than the bar takes, with margin to spare",
+       box["pad"] >= box["bar"] + 40)
+    ck("so the last dietary clears it when scrolled to the foot",
+       room is not None and room > 0)
+    STATE["menu"] = None
+    pg.close()
+
+    # ── the dietary list, which is managed elsewhere ────────────
+    #  The list lives on the dietary page. This is a link out and not a second
+    #  place to edit it: two screens writing one list is how the list quietly
+    #  disagrees with itself.
+    pg = open_pub(LINK)
+    ck("there is a way to the page that owns the dietary list",
+       pg.evaluate("()=>{const a=document.querySelector('.dietlink a');"
+                   "return !!a && a.getAttribute('href')==='tag.html';}"))
+    ck("and it opens beside this page rather than replacing it",
+       pg.evaluate("()=>document.querySelector('.dietlink a').target") == "_blank")
+    #  Nothing here is saved until Publish, so leaving and coming back would
+    #  cost every correction made to the reading.
+    pg.fill("#n_main", "Corrected lamb")
+    pg.evaluate("""()=>{var t=[...document.querySelectorAll('#tagblock .tick')]
+        .find(x=>x.getAttribute('data-c')==='main'); t.click();}""")
+    STATE["master"] = dict(MASTER)
+    STATE["master"]["Sesame"] = {"name": "Sesame", "active": True, "group": "menu"}
+    pg.locator("#reloadDiets").click(); pg.wait_for_timeout(700)
+    ck("reloading picks up a dietary added next door",
+       "Sesame" in pg.inner_text("#tagblock"))
+    ck("without losing a correction typed on this page",
+       val(pg, "n_main") == "Corrected lamb")
+    ck("or a tick already made",
+       pg.evaluate("""()=>[...document.querySelectorAll('#tagblock .tick')]
+          .some(x=>x.getAttribute('data-c')==='main' && x.className.indexOf('on')>-1)"""))
+    STATE["master"] = MASTER
     pg.close()
 
     # ── taking a menu down ──────────────────────────────────────

@@ -10,8 +10,12 @@
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E; }
+  /* The foot of the page has to clear the fixed bar, and the bar grew a second
+     row when Remove arrived. At 90px the last row of dietary ticks sat under
+     it and could not be read or pressed, which on this page means an allergy
+     the chef could not tick. */
   body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
-         padding:28px 24px 90px; -webkit-tap-highlight-color:transparent; }
+         padding:28px 24px 170px; -webkit-tap-highlight-color:transparent; }
   .wrap { max-width:520px; margin:0 auto; }
 
   .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
@@ -33,12 +37,15 @@
   /* Editable on the page. The words came off a handwritten photo through an
      assistant's reading of it, so the one thing this page must do is let a
      misread word be fixed here, before it reaches a guest, rather than after. */
+  /* Never under 16px. Safari zooms the page when a smaller field takes focus
+     and does not zoom back out, so the chef finishes the menu on a page he has
+     to pinch and drag. The description was 14. */
   .c-name { width:100%; margin-top:4px; padding:10px 12px; border:1px solid var(--rule);
             background:#fff; border-radius:8px; font-family:Georgia,serif;
             font-size:17px; color:var(--ink); }
   .c-desc { width:100%; margin-top:6px; padding:9px 12px; border:1px solid var(--rule);
             background:#fff; border-radius:8px; font-family:Georgia,serif;
-            font-size:14px; color:var(--mid); }
+            font-size:16px; color:var(--mid); }
   .c-name:focus, .c-desc:focus { outline:none; border-color:var(--ink); }
 
   .seafood { display:flex; align-items:center; gap:8px; margin-top:8px; }
@@ -69,6 +76,15 @@
           border-radius:20px; font-family:Helvetica,Arial,sans-serif; font-size:11px;
           color:var(--ink); cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .tick.on { background:var(--red); color:#fff; border-color:var(--red); }
+
+  .dietlink { display:flex; align-items:center; gap:14px; margin-top:18px;
+              padding-top:14px; border-top:1px solid var(--rule); }
+  .dietlink a { font-family:Helvetica,Arial,sans-serif; font-size:11px;
+                letter-spacing:.06em; color:var(--ink); }
+  .reload { border:1px solid var(--rule); background:transparent; color:var(--mid);
+            padding:8px 13px; border-radius:20px; font-family:Helvetica,Arial,sans-serif;
+            font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+            cursor:pointer; -webkit-tap-highlight-color:transparent; }
 
   .bar { position:fixed; bottom:0; left:0; right:0; background:var(--cream);
          border-top:1px solid var(--rule); padding:12px 24px; }
@@ -122,6 +138,20 @@
     Nothing is checked until this is done, so it is part of publishing, not a
     job for afterwards.</div>
   <div class="tagblock" id="tagblock"></div>
+
+  <!-- The list lives on the dietary page and is managed there, so this is a
+       link out and not a second place to edit it. Two screens that both write
+       the same list is how the list quietly disagrees with itself.
+
+       A new tab, and a reload beside it. Everything typed here is held on this
+       page and nothing is saved until Publish, so navigating away and back
+       would cost the chef every correction he has made to the reading. This
+       way he adds the dietary next door, comes back to a page that never
+       moved, and taps Reload to see it. -->
+  <div class="dietlink">
+    <a href="tag.html" target="_blank" rel="noopener">Add or change a dietary</a>
+    <button class="reload" id="reloadDiets" type="button">Reload the list</button>
+  </div>
 
   <div class="done" id="done">
     <div class="big">Published</div>
@@ -196,6 +226,11 @@
       'A rehearsal. Everything works, and nothing reaches the guests.';
   }
   var COURSES = [['bread','Bread'],['entree','Entr\u00e9e'],['main','Main'],['dessert','Dessert']];
+  /* AUS marks a dish whose main protein is seafood, which a bread course and a
+     dessert do not have. Offering the button there was offering a question with
+     one answer, on the two courses where pressing it by accident puts (AUS)
+     beside a focaccia on the guests' phones. */
+  var AUS_COURSES = { entree:true, main:true };
   var DEFAULTS = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                   'Nut allergy','Shellfish allergy','Egg allergy'];
 
@@ -262,10 +297,13 @@
         '<div class="c-label">' + c[1] + '</div>' +
         '<input class="c-name" id="n_'+k+'" placeholder="Dish" value="' + esc(d.name) + '">' +
         '<input class="c-desc" id="d_'+k+'" placeholder="Description, optional" value="' + esc(d.desc) + '">' +
-        '<div class="seafood">' +
-          '<button class="sfbtn' + (d.aus ? ' on' : '') + '" id="s_'+k+'">AUS</button>' +
-          '<span class="sfhint">prints (AUS) beside the dish</span>' +
-        '</div></div>';
+        (AUS_COURSES[k]
+          ? '<div class="seafood">' +
+              '<button class="sfbtn' + (d.aus ? ' on' : '') + '" id="s_'+k+'">AUS</button>' +
+              '<span class="sfhint">prints (AUS) beside the dish</span>' +
+            '</div>'
+          : '') +
+        '</div>';
     });
     document.getElementById('courses').innerHTML = h;
     COURSES.forEach(function(c){
@@ -273,7 +311,8 @@
       document.getElementById('n_'+k).oninput = function(){
         M[k].name = this.value; paintTags(); };
       document.getElementById('d_'+k).oninput = function(){ M[k].desc = this.value; };
-      document.getElementById('s_'+k).onclick = function(){
+      var sb = document.getElementById('s_'+k);
+      if (sb) sb.onclick = function(){
         M[k].aus = !M[k].aus; this.classList.toggle('on', M[k].aus); };
     });
   }
@@ -341,7 +380,8 @@
     var menu = { published: new Date().toISOString() };
     COURSES.forEach(function(c){
       var k = c[0];
-      menu[k] = { name:M[k].name.trim(), desc:M[k].desc.trim(), aus:!!M[k].aus };
+      menu[k] = { name:M[k].name.trim(), desc:M[k].desc.trim(),
+                  aus: !!(AUS_COURSES[k] && M[k].aus) };
     });
 
     fetch(DB + ROOT + '/menu.json', { method:'PUT', body:JSON.stringify(menu) })
@@ -387,6 +427,20 @@
               'Ask the manager to set the role to chef in Settings.');
         else err('Could not publish - check the connection and try again.');
       });
+  };
+
+  /* Re-read the list without touching anything the chef has typed. The ticks
+     already made are kept: a dietary added next door must not cost him the
+     ones he had ticked before he went. */
+  document.getElementById('reloadDiets').onclick = function(){
+    var b = this, was = b.textContent;
+    b.disabled = true; b.textContent = 'Reloading\u2026';
+    readNode('/dietaries').then(function(master){
+      b.disabled = false; b.textContent = was;
+      if (failedRead(master)) return err('Could not reload the dietary list.');
+      if (master) MASTER = master;
+      paintTags();
+    });
   };
 
   /* Taking a menu down. It is only offered when one is up: the guest page
