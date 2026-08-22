@@ -203,7 +203,17 @@ with sync_playwright() as p:
     ck("and writes tonight's tags in the same press", len(tw) == 1)
     if tw:
         ck("under tonight's date", today in tw[0]["u"])
-        ck("with the tick that was made", "Nut allergy" in (tw[0]["b"] or ""))
+        tagbody = json.loads(tw[0]["b"])
+        #  The SHAPE, not just the presence of the word. This page shipped
+        #  writing an object keyed by dietary name, while tag.html has always
+        #  written an array of names and every reader walks it with forEach:
+        #  an object throws there instead of flagging an allergy. The old
+        #  assertion looked for the name anywhere in the body, which is true
+        #  of both shapes, so it passed and caught nothing.
+        ck("tonight's tags are arrays of names, as every reader expects",
+           isinstance(tagbody.get("main"), list))
+        ck("holding the name a guest declared, not a key derived from it",
+           tagbody.get("main") == ["Nut allergy"])
 
     ck("the chef is told it is live",
        pg.evaluate("()=>done.className.indexOf('show')>-1"))
@@ -273,7 +283,7 @@ with sync_playwright() as p:
     pg.close()
 
     # ── republishing a corrected menu ───────────────────────────
-    STATE["tags"] = {"main": {"Nut allergy": True}}
+    STATE["tags"] = {"main": ["Nut allergy"]}
     pg = open_pub(LINK)
     ck("ticks already made tonight come back, so a correction keeps them",
        pg.evaluate("""()=>[...document.querySelectorAll('#tagblock .tick')]

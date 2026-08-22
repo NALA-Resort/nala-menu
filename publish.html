@@ -244,7 +244,7 @@
              '<span class="empty">not filled in</span>') + '</div>' +
            '<div class="ticks">';
       names.forEach(function(n){
-        var on = TAGS[k] && TAGS[k][keyOf(n)];
+        var on = (TAGS[k] || []).indexOf(n) > -1;
         h += '<button class="tick' + (on ? ' on' : '') + '" data-c="'+k+'" data-n="'+esc(n)+'">' +
              esc(n) + '</button>';
       });
@@ -252,10 +252,19 @@
     });
     document.getElementById('tagblock').innerHTML = h;
     [].forEach.call(document.querySelectorAll('#tagblock .tick'), function(b){
+      /* An ARRAY of dietary names, per course, which is what tag.html has
+         always written and what every reader expects: menuConflicts walks
+         dish.conflicts with forEach, and an object keyed by name would throw
+         there rather than flag an allergy. This page wrote the object shape
+         on its first day and the test asserted only that the name appeared
+         somewhere in the body, which is true of both shapes and caught
+         nothing. Names, not keyOf: the reader compares against the dietary
+         name a guest declared. */
       b.onclick = function(){
-        var c = b.getAttribute('data-c'), n = keyOf(b.getAttribute('data-n'));
-        TAGS[c] = TAGS[c] || {};
-        if (TAGS[c][n]) delete TAGS[c][n]; else TAGS[c][n] = true;
+        var c = b.getAttribute('data-c'), n = b.getAttribute('data-n');
+        TAGS[c] = TAGS[c] || [];
+        var i = TAGS[c].indexOf(n);
+        if (i > -1) TAGS[c].splice(i, 1); else TAGS[c].push(n);
         b.classList.toggle('on');
       };
     });

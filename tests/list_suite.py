@@ -129,6 +129,36 @@ with sync_playwright() as p:
        and 'dpill dpill-al' in r1["dietHTML"] and 'class="dpill"' in r1["dietHTML"])
     ck("r1 checkout tomorrow red", "checkout" in pg.evaluate("()=>document.querySelectorAll('#rows tr')[0].querySelector('td.c-dep').innerHTML"))
 
+    #  The FLAG badge said a guest had a conflict tonight and never said which
+    #  one. The detail lived only in the bubble on Reservations, which is a
+    #  screen, and this sheet exists for the moments nobody is at a screen: it
+    #  goes on the pass. A waiter could read that something was wrong with a
+    #  table and not what.
+    clash = pg.evaluate("""()=>{const e=document.querySelectorAll('#rows tr')[0]
+        .querySelectorAll('.dclash'); return [...e].map(x=>x.textContent.trim());}""")
+    print("   clash lines:", clash)
+    ck("the flagged row names the dish and the dietary it clashes with",
+       len(clash) == 1 and "Satay Chicken" in clash[0] and "Nut allergy" in clash[0])
+    #  Same wording as the bubble, so paper and screen do not disagree in
+    #  front of a guest.
+    ck("in the wording the bubble uses",
+       clash and clash[0].strip().startswith("Satay Chicken"))
+    #  A guest not dining cannot clash with tonight's menu, which is the guard
+    #  the row colour already used.
+    ck("a guest who is not dining carries no clash line",
+       pg.evaluate("""()=>[...document.querySelectorAll('#rows tr')]
+          .filter(t=>t.className.indexOf('row-out')>-1)
+          .every(t=>!t.querySelector('.dclash'))"""))
+    ck("and neither does a guest with no conflict",
+       pg.evaluate("""()=>[...document.querySelectorAll('#rows tr')]
+          .filter(t=>t.className.indexOf('row-conflict')<0)
+          .every(t=>!t.querySelector('.dclash'))"""))
+    #  Every flagged row explains itself. A flag with no reason is the bug.
+    ck("every flagged row says why it is flagged",
+       pg.evaluate("""()=>[...document.querySelectorAll('#rows tr')]
+          .filter(t=>t.className.indexOf('row-conflict')>-1)
+          .every(t=>!!t.querySelector('.dclash'))"""))
+
     rowsz=pg.evaluate("""()=>[...document.querySelectorAll('#rows tr')].map(r=>{
       const c=r.querySelector('td.c-dep')||r.cells[6];
       if(!c) return null;
