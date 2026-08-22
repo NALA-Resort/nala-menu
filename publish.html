@@ -90,10 +90,9 @@
             font-family:Helvetica,Arial,sans-serif; font-size:10px;
             letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
             -webkit-tap-highlight-color:transparent; }
-  .dietlink { display:flex; align-items:baseline; gap:8px; margin-top:12px;
-              font-family:Helvetica,Arial,sans-serif; font-size:10px;
-              letter-spacing:.05em; color:var(--mid); }
-  .dietlink a { color:var(--ink); }
+  .dietlink { margin-top:10px; font-family:Helvetica,Arial,sans-serif;
+              font-size:10px; letter-spacing:.05em; line-height:1.6;
+              color:var(--mid); }
 
   .bar { position:fixed; bottom:0; left:0; right:0; background:var(--cream);
          border-top:1px solid var(--rule); padding:12px 24px; }
@@ -142,7 +141,7 @@
        place to go back to from the dietary list, so it leads. -->
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="tag.html">Menu Dietaries</a><a href="tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="cleaners.html">Cleans</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="tag.html">Dietary Settings</a><a href="tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="cleaners.html">Cleans</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
   </div>
   <div class="wordmark">Nala Resort</div>
@@ -170,9 +169,14 @@
     <input id="newDiet" placeholder="Something not on the list" autocomplete="off">
     <button class="addbtn" id="addDiet" type="button">Add for tonight</button>
   </div>
+  <!-- A line, not a link. Leaving this page mid-menu is the problem, not the
+       solution: everything here lives in memory until Publish, so a trip to
+       the settings page costs the chef every correction he has made to the
+       machine's reading of his handwriting. Promoting a one-off to the settled
+       list is not urgent work and does not belong at five o'clock. Dietary
+       Settings is in the menu, top right, for when he is not at a pass. -->
   <div class="dietlink">
-    <span>Adding the same one every week?</span>
-    <a href="tag.html">Keep it on the list</a>
+    <span>Added for tonight only. Keep one for good in Dietary Settings.</span>
   </div>
 
   <div class="done" id="done">

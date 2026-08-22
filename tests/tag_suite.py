@@ -135,6 +135,21 @@ with sync_playwright() as p:
     ck("nothing is offered to save before anything is touched",
        "show" not in (pg.get_attribute("#savebar", "class") or ""))
 
+    #  Reported 22 Aug: this page had no navigation of any kind, so a chef who
+    #  reached it was stuck with the browser's back button, and in a standalone
+    #  window with none at all. Every other staff page has the hamburger.
+    ck("there is a way off this page",
+       pg.evaluate("()=>!!document.getElementById('navBtn')"))
+    ck("and publishing leads the list, since that is where the chef came from",
+       pg.evaluate("()=>{const a=document.querySelector('#navDrop a');"
+                   "return a && a.getAttribute('href')==='publish.html';}"))
+    ck("with a way out of the app entirely, which every login must have",
+       pg.evaluate("()=>!!document.getElementById('navSignout')"))
+    pg.evaluate("()=>navBtn.click()")
+    pg.wait_for_timeout(150)
+    ck("and the menu opens when pressed",
+       "open" in (pg.get_attribute("#navDrop", "class") or ""))
+
     # ── and it writes only the list ───────────────────────────
     #  The one that matters: no second writer on /menutags. A page that still
     #  wrote it would go on quietly overwriting the chef's tagging every time

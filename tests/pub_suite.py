@@ -363,9 +363,19 @@ with sync_playwright() as p:
        "Gluten free" in pg.inner_text("#tagblock"))
     ck("and can add something it has not got",
        pg.evaluate("()=>!!document.getElementById('newDiet')"))
-    ck("with a way to promote a repeat offender to the list itself",
-       pg.evaluate("()=>{const a=document.querySelector('.dietlink a');"
-                   "return !!a && a.getAttribute('href')==='tag.html';}"))
+    #  Told plainly, and NOT as a link. Everything on this page lives in memory
+    #  until Publish, so a trip to the settings page mid-menu costs the chef
+    #  every correction he has made to the machine's reading of his
+    #  handwriting. Promoting a one-off to the settled list is not urgent and
+    #  does not belong at five o'clock: the settings page is in the menu for
+    #  when he is not standing at a pass.
+    ck("the page says where a one-off becomes permanent",
+       "dietary settings" in pg.inner_text(".dietlink").lower())
+    ck("and does not offer to take him there mid-menu",
+       pg.evaluate("()=>!document.querySelector('.dietlink a')"))
+    ck("but the menu does, for later",
+       pg.evaluate("()=>[...document.querySelectorAll('#navDrop a')]"
+                   ".some(a=>a.getAttribute('href')==='tag.html')"))
 
     del WRITES[:]
     pg.fill("#newDiet", "Sesame")
