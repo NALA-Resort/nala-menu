@@ -76,7 +76,33 @@ with sync_playwright() as p:
     pg.goto("http://localhost:8955/list.html"); pg.wait_for_timeout(1500)
 
     hd=pg.evaluate("()=>({k:'n/a',d:title.textContent,t:nTables.textContent,tb:tblBreak.textContent,tw:nTablesWord.textContent,c:nCovers.textContent})")
-    ck("printkick present for paper", pg.evaluate("()=>document.querySelector('.printkick').textContent.includes('Res print')"))
+    #  The kicker is gone. It named the document to whoever was already
+    #  holding it, and cost a line on a sheet that ran to two pages. What is
+    #  asserted now is the one line that replaced three: date, make-up, covers.
+    ck("no kicker naming the document to its own reader",
+       pg.evaluate("()=>!document.querySelector('.printkick')"))
+    ph = pg.evaluate("""()=>({d:pDate.textContent.trim(), m:pMix.textContent.trim(),
+        t:pTables.textContent.trim(), c:pCovers.textContent.trim()})""")
+    ck("the printed header carries the date the sheet is for",
+       ph["d"] == hd["d"])
+    ck("and the make-up, which is the instruction to whoever sets the room",
+       "3 twos" in ph["m"] and "1 three" in ph["m"])
+    ck("and the table count beside it as its checksum", ph["t"] == "4 tables")
+    ck("and the covers", ph["c"] == "9")
+    #  Left, centre, right. It reads as one line or it is three again.
+    box = pg.evaluate("""()=>{const h=document.getElementById('pHead');
+        const r=e=>e.getBoundingClientRect();
+        h.style.display='flex';
+        const o={d:r(document.getElementById('pDate')),
+                 m:r(document.querySelector('#pHead .p-mix')),
+                 c:r(document.querySelector('#pHead .p-cov')),
+                 h:r(h)};
+        h.style.display='';
+        return {sameLine: Math.abs(o.d.top-o.c.top) < 6,
+                order: o.d.left < o.m.left && o.m.left < o.c.left,
+                oneLine: o.h.height < 40};}""")
+    ck("date, make-up and covers sit on one line, in that order",
+       box["sameLine"] and box["order"] and box["oneLine"])
     ck("date format", bool(re.match(r'^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{1,2}(st|nd|rd|th) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$',hd["d"])))
     ck("covers 9", hd["c"]=="9")
     ck("tables 4, make-up named not multiplied",
@@ -118,9 +144,15 @@ with sync_playwright() as p:
       return {n:trs.length, data, blanks:trs.filter(t=>t.className.includes('blank')).length};}""")
     d=rw["data"]
     print("   rows:", rw["n"], "data:", len(d), "blanks:", rw["blanks"])
-    # One fewer than before: villa 5 is vacant and no longer takes a line.
-    ck("18 data rows + pad to 21 total",
-       len(d)==18 and rw["n"]==21 and rw["blanks"]==3)
+    #  Villas Mews has said nothing about are no longer listed. On a sheet of
+    #  seventeen with a handful of bookings, those were most of the lines, and
+    #  they were what pushed the sheet onto a second page: a labelled row with
+    #  a dash in the dinner column and nothing to do about it. What remains is
+    #  villas with a booking or an answer, plus the externals.
+    ck("only villas somebody knows something about are listed",
+       [x["room"] for x in d] == ["1","2","3","4","9","ext","ext"])
+    ck("and the sheet still pads out to 21 rows to write on",
+       rw["n"]==21 and rw["blanks"]==21-len(d))
     r1=d[0]
     ck("r1 conflict row + FLAG + PRE-MENU", "row-conflict" in r1["cls"] and "FLAG" in r1["name"] and "PRE-MENU" in r1["name"])
     ck("r1 dietaries as pills, allergy solid and shortened",
@@ -177,7 +209,10 @@ with sync_playwright() as p:
         return {t:c.textContent.trim(), lines:tops.size};})""")
     print("   stay text lines:", tall)
     ck("every stay cell renders on one line", all(t["lines"]==1 for t in tall))
-    ck("r1 comment + dietary note", "Window seat" in r1["com"] and "Dietary: Very allergic" in r1["com"])
+    #  The note now shares the dietary line rather than sitting in its own
+    #  block beneath the pills. Same words, one line up.
+    ck("r1 comment and dietary note both reach the sheet",
+       "Window seat" in r1["dietHTML"] and "Very allergic" in r1["dietHTML"])
 
     hdr=pg.evaluate("""()=>{const th=[...document.querySelectorAll('thead th')].map(x=>x.textContent.trim());
       const dc=document.querySelector('thead th.c-dc');
@@ -186,14 +221,31 @@ with sync_playwright() as p:
     print("   header:", hdr)
     ck("dietaries and comments are one column at combined width",
        hdr["span"]==2 and hdr["cells"]==8 and "Comments" not in hdr["heads"])
-    rows=pg.evaluate("""()=>[...document.querySelectorAll('#rows tr')]
-      .filter(t=>t.querySelector('.dwrap') && t.querySelector('.dcom'))
-      .map(t=>{const p=t.querySelector('.dwrap').getBoundingClientRect();
-               const c=t.querySelector('.dcom').getBoundingClientRect();
-               return {below: Math.round(c.top) >= Math.round(p.bottom)-1};})""")
-    print("   pills-then-comment rows:", rows)
-    ck("comment sits beneath the pills, not beside them",
-       len(rows)>0 and all(r["below"] for r in rows))
+    #  Reversed on purpose, 22 Aug. The note used to sit in a block BENEATH
+    #  the pills, which made every dietary guest two lines tall inside a row
+    #  eight columns wide. The comments column is its own stack of ruled lines
+    #  now, and the dietary line spreads across the whole width of it: pills
+    #  and note beside each other, on one line, with the staff note on the next
+    #  and a blank one under both to write on.
+    lay=pg.evaluate("""()=>[...document.querySelectorAll('#rows tr')]
+      .filter(t=>t.querySelector('.crow.diet .dwrap') && t.querySelector('.crow.diet .inote'))
+      .map(t=>{const p=t.querySelector('.crow.diet .dwrap').getBoundingClientRect();
+               const c=t.querySelector('.crow.diet .inote').getBoundingClientRect();
+               return {sameLine: Math.abs(Math.round(c.top)-Math.round(p.top)) < 8};})""")
+    print("   pills-beside-note rows:", lay)
+    ck("the note sits beside the pills on one dietary line",
+       len(lay)>0 and all(r["sameLine"] for r in lay))
+    #  The writing line is the reason the stack exists: until now the only
+    #  place to note "moved to 7pm" against a named guest was the spare rows
+    #  at the foot, which belong to nobody.
+    ck("every listed guest gets a blank line of their own to write on",
+       pg.evaluate("""()=>[...document.querySelectorAll('#rows tr')]
+          .filter(t=>!t.className.includes('blank'))
+          .every(t=>!!t.querySelector('.crow.write'))"""))
+    ck("and the writing line is always last in the stack",
+       pg.evaluate("""()=>[...document.querySelectorAll('#rows tr .cbox')]
+          .every(b=>b.lastElementChild &&
+                    b.lastElementChild.className.indexOf('write')>-1)"""))
     ck("r2 declined tinted", "row-out" in d[1]["cls"] and d[1]["din"]=="No")
     ck("rooms 3+4 boxed pair", "g-in g-first" in d[2]["cls"] and "g-in g-last" in d[3]["cls"] and d[3]["name"]=="Lucy")
     ck("r4 known-but-silent shows dash", d[3]["din"]=="\u2013" and "row-unk" in d[3]["cls"])
@@ -203,10 +255,17 @@ with sync_playwright() as p:
     ck("vacant villa 5 is absent, not listed empty",
        all("row-vacant" not in x["cls"] for x in d)
        and all(x["name"] != "Vacant" for x in d))
-    ck("the villa after the vacant one is not renumbered",
-       any(x["room"] == "6" for x in d))
-    ck("r9 Priya listed silent", d[7]["name"]=="Priya" and d[7]["din"]=="\u2013")
-    ext=d[16:]
+    ck("dropping a villa does not renumber the ones after it",
+       any(x["room"] == "9" for x in d))
+    ck("and no warning while the house has bookings in it",
+       pg.evaluate("()=>getComputedStyle(syncWarn).display") == "none")
+    #  By name rather than by index: the row list changes length whenever the
+    #  house does, and an index here would break on a quiet night rather than
+    #  on a real fault.
+    priya=[x for x in d if x["name"]=="Priya"]
+    ck("r9 Priya listed silent",
+       len(priya)==1 and priya[0]["din"]=="\u2013" and priya[0]["room"]=="9")
+    ext=[x for x in d if x["room"]=="ext"]
     ck("externals sorted Alfie,Zara with ext cell", (ext[0]["name"].startswith("Alfie") and ext[1]["name"].startswith("Zara")) and all(e["room"]=="ext" for e in ext))
     ck("cancelled external Bob excluded", all("Bob" not in e["name"] for e in ext))
     ck("Zara phone tidied to leading zero", "0400000090" in ext[1]["name"] or "0400000090" in pg.evaluate("()=>[...document.querySelectorAll('#rows tr')].filter(t=>t.textContent.includes('Zara'))[0].innerHTML"))
@@ -344,15 +403,15 @@ with sync_playwright() as p:
     q=as_role("staff@x")
     q.wait_for_timeout(1200)   # the notes are one read per villa, after the role
     ck("the staff note reaches the sheet",
-       q.evaluate("()=>[...document.querySelectorAll('.snote')]"
+       q.evaluate("()=>[...document.querySelectorAll('.crow.staff')]"
                    ".some(e=>e.textContent.indexOf('do not charge for wine')>-1)"))
     ck("and is labelled so nobody cooks to it",
-       q.evaluate("()=>[...document.querySelectorAll('.snote')]"
+       q.evaluate("()=>[...document.querySelectorAll('.crow.staff')]"
                    ".every(e=>e.textContent.indexOf('Staff')>-1)"))
     ck("what Mews said stands in when nobody has rewritten it",
        q.evaluate("()=>document.body.innerText.indexOf('Complained about noise')>-1"))
     ck("an empty note prints nothing at all",
-       q.evaluate("()=>[...document.querySelectorAll('.snote')].length===2"))
+       q.evaluate("()=>[...document.querySelectorAll('.crow.staff')].length===2"))
     q.close()
 
     #  A note cleared on purpose, which until 22 Aug reappeared as the Mews
@@ -365,14 +424,37 @@ with sync_playwright() as p:
     ck("a note cleared on purpose does not print the Mews original",
        q.evaluate("()=>document.body.innerText.indexOf('Complained about noise')<0"))
     ck("and prints no empty staff line either",
-       q.evaluate("()=>[...document.querySelectorAll('.snote')].length===1"))
+       q.evaluate("()=>[...document.querySelectorAll('.crow.staff')].length===1"))
     q.close()
     internal["b3"] = {"fromMews": "Complained about noise last stay"}
+
+    #  ── the whole house silent ──────────────────────────────
+    #  Hiding villas Mews has said nothing about is only safe while silence
+    #  means an empty villa. Mews sends reservations and nothing else, so
+    #  silence is also what a broken sync looks like, and on 19 Aug every write
+    #  was being refused and /stays genuinely held nothing. The old sheet said
+    #  so by accident: seventeen labelled rows with dashes were unmistakable.
+    #  Hidden, the same morning prints a short calm sheet that looks correct,
+    #  which is the worse failure. So it says it out loud instead.
+    keep = (STAYS.copy(), dict(roomguests), dict(manual), dict(responses))
+    STAYS.clear(); roomguests.clear(); manual.clear(); responses.clear()
+    q = as_role("staff@x")
+    q.wait_for_timeout(600)
+    ck("a house with no bookings at all is called out, not printed blank",
+       q.evaluate("()=>getComputedStyle(syncWarn).display") != "none")
+    warn = q.evaluate("()=>syncWarn.textContent").lower()
+    ck("and names the likely cause rather than the house being empty",
+       "sync" in warn and "empty house" in warn)
+    ck("and says not to trust the sheet",
+       "trust" in warn)
+    q.close()
+    STAYS.update(keep[0]); roomguests.update(keep[1])
+    manual.update(keep[2]); responses.update(keep[3])
 
     q=as_role("chef@x")
     q.wait_for_timeout(1200)
     ck("the chef reads the sheet but not the staff note",
-       q.evaluate("()=>document.querySelectorAll('.snote').length===0"))
+       q.evaluate("()=>document.querySelectorAll('.crow.staff').length===0"))
     ck("chef reads and prints the sheet",
        q.evaluate("""()=>noAccess.className.indexOf('show')<0
                       && document.querySelectorAll('table tbody tr').length>0
@@ -382,7 +464,7 @@ with sync_playwright() as p:
     q=as_role("waiter@x")
     q.wait_for_timeout(1200)
     ck("nor does a waiter carrying it into service",
-       q.evaluate("()=>document.querySelectorAll('.snote').length===0"))
+       q.evaluate("()=>document.querySelectorAll('.crow.staff').length===0"))
     q.close()
 
     q=as_role("housekeeping@x")

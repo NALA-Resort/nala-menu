@@ -90,7 +90,19 @@
            background:rgba(168,50,30,.12); color:#A8321E;
            -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .dpill-al { background:#A8321E; color:#fff; }
-  .checkout { color:#A8321E; font-weight:bold; }
+  /* Blue, not red. Red is the allergy colour on this sheet: the flag, the
+     pills, the clash lines. A checkout is a fact about the day and not a
+     warning, and sharing the warning colour made every departing guest read as
+     a problem to be handled. Same blue the cleans board uses. */
+  .checkout { color:#2E74C0; font-weight:bold; }
+
+  /* A guest not dining tonight. Their dietaries are still true and are still
+     printed, because an allergy does not stop being one, but they are not
+     tonight's instruction to the kitchen and must not compete with the rows
+     that are. Greyed, not dropped. */
+  .row-out .dpill { background:#EFEFEC; color:#55554F; }
+  .row-out .dpill-al { background:#9A9A92; color:#fff; }
+  .row-out .dcom, .row-out .dnote, .row-out .inote { color:#8A8A82; }
   .row-conflict td { background:#F7E4DF; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .flag { display:inline-block; font-family:var(--ui-font); font-size:7px; font-weight:bold;
           letter-spacing:.12em; border:1.2px solid #A8321E; color:#A8321E; padding:1px 4px;
@@ -107,6 +119,8 @@
   /* The staff note is management's, not the kitchen's, so it must not read as
      one more line of the dinner comment. Upright where the dietary note is
      italic, and with its own label. */
+  /* Kept for anything still asking for it; the sheet's own staff line is
+     .crow.staff, which takes its rule from the stack. */
   .snote { display:block; font-size:8px; color:#000; margin-top:2px;
            border-top:1px dotted #999; padding-top:2px; }
   .snote b { font-weight:700; }
@@ -123,6 +137,36 @@
   tr.g-last td.c-room       { border-bottom-right-radius:9px; }
   .muted { color:#aaa; font-weight:normal; font-style:italic; }
 
+  /* ── the comments area as its own stack ─────────────────────
+     The dietaries used to sit inside the row and share its height with the
+     name, the villa and the stay, so one allergy held eight columns of white
+     space open beside it. Here the column is a stack of ruled lines: dietary
+     on one, staff on the next, and always a blank one at the foot to write on.
+     Nothing means one line, dietaries two, both three.
+
+     The writing line is the point and it is new. This sheet is a working
+     document before it is a report, and until now the only place to write
+     "moved to 7pm" against a named guest was the blank rows at the bottom,
+     which belong to nobody. It costs height rather than saving it, which was
+     weighed and accepted: thirteen guests each gain a line. */
+  .cbox { display:block; }
+  .crow { display:block; padding:3px 0; border-bottom:1px dotted #ccc; }
+  .crow:last-child { border-bottom:none; }
+  /* The slot is always in the markup so the note can land in it later. Empty,
+     it must take no room and draw no rule. */
+  .snotehere:empty { display:none; }
+  .crow.write { height:19px; }
+  .crow.diet .dwrap { display:inline-flex; vertical-align:middle; margin-right:8px; }
+  .crow.diet .dclash { display:inline; margin:0 10px 0 0; }
+  .crow.diet .inote { font-style:italic; font-size:8.5px; color:#333;
+                      margin-right:10px; }
+  .crow.diet .inote.dnote { display:inline; border:0; margin-top:0; padding:0;
+                            color:#111; }
+  .crow.staff { font-size:8.5px; }
+  .crow.staff b { font-family:var(--ui-font); font-size:7px; letter-spacing:.12em;
+                  text-transform:uppercase; color:#55554F; margin-right:6px;
+                  font-weight:700; }
+
   /* empty write-in rows: one rule only, from the cell border */
   tr.blank td { height:26px; }
 
@@ -130,11 +174,40 @@
   /* Printed sheets repeat everything above the table on every page. A table
      header group is the only thing browsers reliably repeat, so the block is
      cloned into a thead row for paper and the on-screen original is hidden. */
+  /* ── the printed header, one line ───────────────────────────
+     Was three: a kicker naming the document, the date row, and the stats row.
+     The kicker told whoever was holding the sheet what the sheet was, which is
+     not a question anybody holding it has, and each block cost a line on a
+     document that was running to two pages. Date left where it has always
+     been, the make-up centred because it is the instruction to whoever sets
+     the room, covers right. Print only: the screen keeps its date buttons and
+     its larger stats, which are read at a desk and not at a pass. */
+  .phead { display:none; align-items:baseline; justify-content:space-between;
+           gap:16px; padding-bottom:6px; }
+  .phead .p-date { font-family:var(--ui-font); font-size:13px; font-weight:bold;
+                   letter-spacing:.1em; text-transform:uppercase; white-space:nowrap; }
+  .phead .p-mix { flex:1 1 auto; text-align:center; font-size:15px; line-height:1.1;
+                  white-space:nowrap; }
+  .phead .p-mix .sub { font-family:var(--ui-font); font-size:8px; letter-spacing:.14em;
+                       text-transform:uppercase; color:#55554F; margin-left:8px; }
+  .phead .p-cov { text-align:right; white-space:nowrap; }
+  .phead .p-cov .n { font-size:17px; font-weight:bold; }
+  .phead .p-cov .l { font-family:var(--ui-font); font-size:8px; letter-spacing:.14em;
+                     text-transform:uppercase; color:#55554F; margin-left:5px; }
+  .printclone .phead { display:flex; }
+
+  .syncwarn { font-size:11px; line-height:1.5; color:#A8321E; margin:10px 0 4px;
+              max-width:60ch; }
+
   .printhead { display:none; }
   .printhead > td { border:0; padding:0 0 6px; }
   @media print {
     .printhead { display:table-row; }
     .noprintblock { display:none !important; }
+    /* The screen's date buttons and its larger stat row are for a desk. On
+       paper the one-line header in the table head carries the same facts. */
+    .daterow, .stats, .phead:not(.printclone .phead) { display:none !important; }
+    .printclone .phead { display:flex !important; }
   }
   @media print {
     body { padding:0; }
@@ -168,7 +241,14 @@
 
 
 
-<div class="printkick">Nala &middot; Res print</div>
+<!-- Print only, and cloned into the table header so it repeats on every
+     page. The kicker that used to sit here is gone: it named the document to
+     whoever was already holding it. -->
+<div class="phead" id="pHead">
+  <div class="p-date" id="pDate"></div>
+  <div class="p-mix"><span id="pMix">&ndash;</span><span class="sub" id="pTables"></span></div>
+  <div class="p-cov"><span class="n" id="pCovers">&ndash;</span><span class="l">Covers</span></div>
+</div>
 <div class="daterow">
   <button class="dnav today" id="dToday">Today</button>
   <button class="dnav" id="dPrev">&#8249;</button>
@@ -257,6 +337,8 @@ function stripTags(h){
     <div class="stat"><span class="stat-n" id="nCovers">&ndash;</span><span class="stat-l">Covers</span></div>
   </div>
 
+<div class="syncwarn" id="syncWarn" style="display:none"></div>
+
 <div class="scroller" id="sheetScroller">
   <table>
     <thead>
@@ -330,6 +412,32 @@ function clashHTML(hits){
     return '<span class="dclash">' + escText(d) + ' \u2013 ' +
            escText(byDish[d].join(', ')) + '</span>';
   }).join('');
+}
+
+/* The comments column, as its own stack of ruled lines.
+
+   One line for a guest with nothing, two with dietaries, three with a staff
+   note as well, and the blank writing line always at the foot. It is the
+   writing line that justifies the shape: this sheet is worked on at the pass,
+   and until now the only place to note "moved to 7pm" against a named guest
+   was the spare rows at the bottom, which belong to nobody.
+
+   The staff line is filled in later, by staffNotesWhenReady, because the notes
+   are one read per villa and arrive after the sheet has drawn. Its slot is put
+   here whether or not a note exists, and stays empty when none does. */
+function commentBox(g, hits, row){
+  var diet = (dietPills(g.diets) || (g.nodiet ? '<span class="muted">No dietaries</span>' : '')) +
+             clashHTML(hits) +
+             (g.note ? '<span class="inote">' + g.note + '</span>' : '') +
+             /* The dietary note keeps its label. Run together with the dinner
+                note behind a single space they read as one sentence, and they
+                are two different people's business: one is where the guest
+                would like to sit, the other is what will hurt them. */
+             (g.dnote ? '<span class="inote dnote">Dietary: ' + g.dnote + '</span>' : '');
+  return '<div class="cbox">' +
+         (diet.trim() ? '<span class="crow diet">' + diet + '</span>' : '') +
+         '<span class="snotehere" data-villa="' + (row.room || '') + '"></span>' +
+         '<span class="crow write"></span></div>';
 }
 
 function dietPills(diets){
@@ -433,10 +541,13 @@ function paintStaffNotes(){
     var t = v ? STAFFNOTES[String(v)] : '';
     slots[i].textContent = '';
     if (!t) continue;
-    var d = document.createElement('div');
-    d.className = 'snote';
+    /* A line in the stack, like the dietary line above it, rather than a
+       block hanging off the bottom of one. The dotted rule now comes from
+       .crow and not from .snote's own border, so the spacing matches. */
+    var d = document.createElement('span');
+    d.className = 'crow staff';
     var b = document.createElement('b');
-    b.textContent = 'Staff: ';
+    b.textContent = 'Staff';
     d.appendChild(b);
     d.appendChild(document.createTextNode(t));
     slots[i].appendChild(d);
@@ -482,17 +593,34 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
       return null;
     }
     // ── everyone in house, plus externals dining ──────────
-    var rows = [], covers = 0, roomsInHouse = 0;
+    var rows = [], covers = 0, roomsInHouse = 0, silent = 0;
 
     for (var n=1; n<=ROOMS; n++){
       var r = roomRecord(n, responses, manual, roomguests);
       var vacant = !!(r && r.status === 'vacant');
+      /* Something is known about this villa tonight: a booking Mews sent, or
+         an answer somebody gave at a desk. Either is a reason for a line. */
+      var known = !!(hasGuestProfile(roomguests[String(n)]) || (r && r.status));
       /* A vacant villa is not a reservation, so it is left off the sheet
          entirely rather than listed as an empty labelled row. The sheet is
          carried into service and read down: every line on it should be
          somebody to look after. Vacancy is the Cleans board's business, and
          it is shown there. */
       if (vacant) continue;
+
+      /* A villa Mews has said nothing about. Until now it printed as a labelled
+         line with a dash in the dinner column, and on a seventeen villa sheet
+         with nine bookings that is eight lines of nothing, which is what pushed
+         this onto a second page.
+
+         Dropped, but counted, because absence is not the same evidence as a
+         vacancy. Mews only ever tells us about reservations: there is no
+         positive signal for an empty villa, so a sheet willing to read silence
+         as an empty house would print a short and confident and wrong list on
+         the morning the sync is broken. See the note on the Cleans board and
+         Unknown, 19 Aug. The guard below is what makes hiding them safe. */
+      if (!known) { silent++; continue; }
+
       roomsInHouse++;
       rows.push({
         rec: r || { room:String(n) },
@@ -521,7 +649,29 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     externals.sort(function(a,b){ return (a.rec.name||'').localeCompare(b.rec.name||''); });
     rows = rows.concat(externals);
 
+    /* Every villa silent, on a resort that is never empty. That is a broken
+       sync far more often than it is a closed hotel, and the old sheet said so
+       by accident: seventeen dashes were ugly and unmistakable. Now that the
+       silent ones are hidden, the sheet would print blank and calm instead, so
+       it says it out loud. The line is deliberately not styled as a warning
+       pill or a colour: it is the only thing on the page, and it should read
+       as a sentence. */
+    var silentAll = (silent === ROOMS);
+    var warn = document.getElementById('syncWarn');
+    if (warn){
+      warn.textContent = silentAll
+        ? 'No villa has a booking tonight. That is usually the Mews sync, ' +
+          'not an empty house. Check before trusting this sheet.'
+        : '';
+      warn.style.display = silentAll ? '' : 'none';
+    }
+
     document.getElementById('nCovers').textContent = covers;
+    document.getElementById('pCovers').textContent = covers;
+    /* The date the sheet is FOR, not the day it was printed. Taken from the
+       same element the screen shows so the two cannot drift. */
+    document.getElementById('pDate').textContent =
+      (document.getElementById('title').textContent || '').trim();
 
     var tb = document.getElementById('rows');
 
@@ -606,13 +756,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
           '<td class="c-din">'+dinner+'</td>'+
           '<td class="c-pax">'+(row.status==='in' ? (g.pax||1) : '')+'</td>'+
           '<td class="c-dep">'+stayHTML(g.arrives, g.departs)+'</td>'+
-          '<td class="c-dc" colspan="2">'+
-            (dietPills(g.diets) || (g.nodiet ? '<div class="muted">No dietaries</div>' : ''))+
-            clashHTML(hits)+
-            ((g.note||g.dnote) ? '<div class="dcom">'+(g.note||'')+
-              (g.dnote ? '<span class="dnote">Dietary: '+g.dnote+'</span>' : '')+'</div>' : '')+
-            '<span class="snotehere" data-villa="'+(row.room||'')+'"></span>'+
-          '</td>'+
+          '<td class="c-dc" colspan="2">'+commentBox(g, hits, row)+'</td>'+
         '</tr>');
     });
 
@@ -647,6 +791,10 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     document.getElementById('nTables').textContent = tables;
     document.getElementById('tblBreak').textContent = parts.length ? parts.join(' \u00b7 ') : '\u2014';
     document.getElementById('nTablesWord').textContent = (tables === 1) ? 'table' : 'tables';
+    document.getElementById('pMix').textContent =
+      parts.length ? parts.join(' \u00b7 ') : '\u2014';
+    document.getElementById('pTables').textContent =
+      tables + ' ' + (tables === 1 ? 'table' : 'tables');
 
 
   });
@@ -659,10 +807,9 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     var slot = document.getElementById('printHead');
     if (!slot) return;
     slot.innerHTML = '';
-    ['.printkick','.daterow','.stats'].join(',').split(',').forEach(function(sel){
+    ['.phead'].forEach(function(sel){
       var el = document.querySelector(sel);
       if (!el) return;
-      el.classList.add('noprintblock');
       var c = el.cloneNode(true);
       c.classList.remove('noprintblock');
       c.classList.add('printclone');
