@@ -53,7 +53,7 @@ STAFF = {"chef@x": {"name": "Chef", "role": "chef"},
          "housekeeping@x": {"name": "HK", "role": "housekeeping"}}
 
 STATE = {"master": MASTER, "tags": {}, "failMaster": False, "failTags": False,
-         "failMenuSave": False, "failTagSave": False}
+         "failMenuSave": False, "failTagSave": False, "menu": None}
 WRITES = []
 
 def fb(route, request):
@@ -77,6 +77,9 @@ def fb(route, request):
     if "/staff" in u:
         route.fulfill(status=200, content_type="application/json",
                       body=json.dumps(STAFF)); return
+    if u.rstrip("/").endswith("/menu.json") or "/menu.json?" in u:
+        route.fulfill(status=200, content_type="application/json",
+                      body=json.dumps(STATE["menu"])); return
     if "/menutags" in u:
         if STATE["failTags"]:
             route.fulfill(status=401, content_type="application/json",
@@ -292,6 +295,67 @@ with sync_playwright() as p:
     ck("and carries no rehearsal banner",
        pg.evaluate("()=>demoBar.className.indexOf('show')<0"))
     pg.close()
+
+    # ── taking a menu down ──────────────────────────────────────
+    #  Restored 22 Aug. "Remove menu" was in the brief until 21 Aug and was
+    #  lost with the Rules section in the rewrite that changed how publishing
+    #  worked. It matters because the guest page keeps a published menu until
+    #  midnight of its own day: a wrong one put up at five has no way off the
+    #  phones for seven hours, and publishing a corrected one is no answer when
+    #  the correction is that there is no dinner.
+    pg = open_pub(LINK)
+    ck("nothing to remove when no menu is up",
+       pg.evaluate("()=>getComputedStyle(removeRow).display") == "none")
+    pg.close()
+
+    STATE["menu"] = {"published": now.isoformat(),
+                     "bread": {"name": "Focaccia"}, "entree": {"name": "Scallops"},
+                     "main": {"name": "Lamb"}, "dessert": {"name": "Pavlova"}}
+    pg = open_pub(LINK)
+    pg.wait_for_timeout(400)
+    ck("the way down is offered once a menu is up",
+       pg.evaluate("()=>getComputedStyle(removeRow).display") != "none")
+
+    #  One press arms it, and the second says what it will do. It is a stride
+    #  from Publish on a phone at service time, and this is the one control
+    #  here that destroys rather than replaces.
+    del WRITES[:]
+    pg.locator("#rmBtn").click(); pg.wait_for_timeout(200)
+    ck("one press does not take a menu down",
+       len(WRITES) == 0)
+    ck("it arms, and says what the next press does",
+       "take it down" in pg.locator("#rmBtn").text_content().lower())
+
+    pg.locator("#rmBtn").click(); pg.wait_for_timeout(900)
+    mw = [w for w in WRITES if "/menu.json" in w["u"]]
+    ck("the second press takes it down", len(mw) == 1)
+    if mw:
+        body = json.loads(mw[0]["b"])
+        #  The guest page checks `published` before anything else and shows its
+        #  placeholder without it.
+        ck("with no publish time, which is what the guest page reads as none",
+           body.get("published") == "")
+        ck("and the courses blanked, so nothing can surface them again",
+           all(body[c]["name"] == "" for c in ("bread","entree","main","dessert")))
+    #  A menu removed while its tags stay is a night where the front desk
+    #  checks a guest's allergies against dishes nobody is cooking.
+    tw = [w for w in WRITES if "/menutags/" in w["u"]]
+    ck("and tonight's dietary ticks go with it", len(tw) == 1 and
+       json.loads(tw[0]["b"] or "{}") == {})
+    ck("the chef is told the guests see no menu",
+       "removed" in pg.inner_text("#done").lower())
+    pg.close()
+
+    #  A rehearsal takes down the rehearsal, never the real menu.
+    pg = open_pub(LINK + "&demo=1")
+    pg.wait_for_timeout(400)
+    del WRITES[:]
+    pg.locator("#rmBtn").click(); pg.wait_for_timeout(200)
+    pg.locator("#rmBtn").click(); pg.wait_for_timeout(900)
+    ck("a rehearsal removal touches only the sandbox",
+       all("/demo/" in w["u"] for w in WRITES) and len(WRITES) == 2)
+    pg.close()
+    STATE["menu"] = None
 
     # ── a menu with a blank course ──────────────────────────────
     pg = open_pub("?b=Focaccia&m=Lamb")

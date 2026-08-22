@@ -80,6 +80,15 @@
   .pubbtn:disabled { opacity:.45; }
   .stat { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.1em;
           text-transform:uppercase; color:var(--mid); }
+  .removerow { margin-top:8px; }
+  /* Quiet, and not beside Publish in the same weight. It is the rarer action
+     and the more destructive one, and a button that looks like the main one is
+     a button somebody presses on the way past. */
+  .rmbtn { flex:1; padding:11px; border:1px solid var(--rule); background:transparent;
+           color:var(--mid); border-radius:8px; font-family:Helvetica,Arial,sans-serif;
+           font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+           cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .rmbtn.arm { border-color:var(--red); color:var(--red); }
 
   .demobar { display:none; background:var(--ink); color:var(--cream);
              font-family:Helvetica,Arial,sans-serif; font-size:10px;
@@ -124,6 +133,12 @@
 <div class="bar" id="bar"><div class="in">
   <button class="pubbtn" id="pubBtn">Publish</button>
   <span class="stat" id="stat"></span>
+</div>
+<!-- Only when there is something to take down. A menu stays on the guests'
+     phones until midnight of the day it was published, so a wrong one put up
+     at five has no way off the screen for seven hours. -->
+<div class="in removerow" id="removeRow" style="display:none">
+  <button class="rmbtn" id="rmBtn">Remove tonight's menu</button>
 </div></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -374,6 +389,72 @@
       });
   };
 
+  /* Taking a menu down. It is only offered when one is up: the guest page
+     keeps a published menu until midnight of its own day, so a wrong menu put
+     up at five has no way off the phones for seven hours, and "publish a
+     corrected one" is not an answer when the correction is that there is no
+     dinner.
+
+     Two presses, and the second says what it will do. This is the one control
+     here that destroys rather than replaces, and it is a stride from Publish
+     on a phone screen at service time. It is not a confirm dialogue because a
+     dialogue at a pass gets dismissed without reading; the button changing
+     under the thumb is harder to do by accident and quicker to undo.
+
+     The tags go with it. A menu removed while its tags stay is a night where
+     the front desk checks a guest's allergies against dishes nobody is
+     cooking. */
+  var armed = false, armTimer = null;
+  document.getElementById('rmBtn').onclick = function(){
+    var b = this;
+    if (!armed){
+      armed = true;
+      b.classList.add('arm');
+      b.textContent = 'Tap again to take it down';
+      armTimer = setTimeout(function(){
+        armed = false; b.classList.remove('arm');
+        b.textContent = "Remove tonight's menu";
+      }, 4000);
+      return;
+    }
+    clearTimeout(armTimer); armed = false;
+    b.disabled = true; b.textContent = 'Removing\u2026';
+    /* An empty publish time is what the guest page reads as no menu: it checks
+       `published` before anything else and shows its placeholder without it.
+       The courses are blanked too rather than left behind, so nothing can
+       surface them again. */
+    var blank = { published: '' };
+    COURSES.forEach(function(c){ blank[c[0]] = { name:'', desc:'', aus:false }; });
+    fetch(DB + ROOT + '/menu.json', { method:'PUT', body:JSON.stringify(blank) })
+      .then(function(r){
+        if (!r.ok) throw new Error('menu ' + r.status);
+        return fetch(DB + ROOT + '/menutags/' + todayKey() + '.json',
+                     { method:'PUT', body:JSON.stringify({}) });
+      })
+      .then(function(r){
+        if (!r.ok) throw new Error('tags ' + r.status);
+        document.getElementById('courses').style.display = 'none';
+        document.getElementById('tagblock').style.display = 'none';
+        document.querySelector('#done .big').textContent = 'Menu removed';
+        document.querySelectorAll('#done .lede')[0].textContent =
+          'The guests see no menu for tonight.';
+        document.getElementById('doneWhere').textContent = '';
+        document.getElementById('done').classList.add('show');
+        document.getElementById('bar').style.display = 'none';
+      })
+      .catch(function(e){
+        b.disabled = false; b.textContent = "Remove tonight's menu";
+        var m = String(e.message || e);
+        if (m.indexOf('tags') === 0)
+          err('The menu is down but its dietary ticks are still there. ' +
+              'Press it again.');
+        else if (m.indexOf('401') > -1 || m.indexOf('403') > -1)
+          err('Signed in, but this login cannot change menus. ' +
+              'Ask the manager to set the role to chef in Settings.');
+        else err('Could not remove it - check the connection and try again.');
+      });
+  };
+
   /* A read that FAILS is not an empty node. Treating the two the same would
      seed the eight defaults over a chef's real dietary list, and Publish would
      then write them. Locked rather than trusted, the same way the tag page
@@ -384,6 +465,20 @@
       .catch(function(){ return { __failed:0 }; });
   }
   function failedRead(v){ return !!(v && v.__failed !== undefined); }
+
+  /* Offered only when tonight's menu is actually up. The guest page treats a
+     menu as tonight's while `published` falls on today's date, so that is the
+     same test used here rather than a second opinion about the same fact. */
+  function showRemoveIfPublished(){
+    fetch(DB + ROOT + '/menu.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(m){
+        var live = m && m.published &&
+          new Date(m.published).toDateString() === new Date().toDateString();
+        document.getElementById('removeRow').style.display = live ? '' : 'none';
+      })
+      .catch(function(){});
+  }
 
   var hadLink = fromLink();
   if (!hadLink)
@@ -414,6 +509,7 @@
          ticks empty, which is recoverable, where publishing nothing is not. */
       if (!failedRead(tags) && tags) TAGS = tags;
       paintTags();
+      showRemoveIfPublished();
     })
     .catch(function(){ err('Could not load - refresh to try again.'); });
 </script>
