@@ -58,30 +58,20 @@ show the buttons again.
 
 ## Step 3 - Build the link
 
-**The seafood flag.** A course letter goes in `sf` for any dish whose primary
-protein is seafood: fin fish, shellfish, crustaceans, molluscs, cephalopods.
-Fish, salmon, tuna, barramundi, prawns, oysters, scallops, crab, lobster,
-squid, octopus, mussels, clams, abalone. If in doubt, include it. Apply it
-automatically, never ask.
-
-It tracks the dish's PRIMARY protein, not every ingredient. A dish with seafood
-only in a sauce or condiment, such as XO, fish sauce, anchovy or bonito, is
-left out. It is for sourcing, not for allergies: allergies are the ticks on the
-publish page.
+**You do not decide anything about AUS.** There is a button on the page for it
+and the chef presses it. Do not work it out, do not mention it, and do not put
+it in the link.
 
 The link is:
 
-    https://menu.nalaresort.com/publish.html?b=BREAD&e=ENTREE&m=MAIN&d=DESSERT&sf=LETTERS
+    https://menu.nalaresort.com/publish.html?b=BREAD&e=ENTREE&m=MAIN&d=DESSERT
 
 Each course is `dish - description`, URL encoded, with a spaced hyphen between
-the two. A dish with no description is just the dish. `sf` is the first letters
-of the seafood courses run together, `b` `e` `m` `d`, and is left off entirely
-when there are none.
+the two. A dish with no description is just the dish.
 
-Worked example. Focaccia, scallops, lamb, cheesecake, with the scallops the
-only seafood:
+Worked example. Focaccia, scallops, lamb, cheesecake:
 
-    https://menu.nalaresort.com/publish.html?b=Tomato%20focaccia%20-%20whipped%20ricotta&e=Hervey%20Bay%20scallops%20-%20burnt%20butter&m=Sovereign%20lamb%20-%20salsa%20verde&d=Mandarin%20cheesecake&sf=e
+    https://menu.nalaresort.com/publish.html?b=Tomato%20focaccia%20-%20whipped%20ricotta&e=Hervey%20Bay%20scallops%20-%20burnt%20butter&m=Sovereign%20lamb%20-%20salsa%20verde&d=Mandarin%20cheesecake
 
 Give it as a tapped link, on its own line, with one line above it:
 
@@ -119,6 +109,15 @@ safety grounds, raise it once, then defer to the kitchen.
 
 The chef photographs a handwritten sheet, so a machine has to read it and a
 machine can misread it. Everything here is built around that one fact.
+
+**AUS is a button because it always was one.** This brief used to carry a
+paragraph on how to derive it, a list of fish species, and an instruction to
+apply it automatically and never ask. The page then drew a toggle beside every
+course anyway, so the chef could change it. Two mechanisms for one fact, and
+the automatic one was a machine guessing from handwriting at something the man
+who wrote the menu already knows. The rule was never complicated: tick the
+dishes whose main protein is seafood. It prints (AUS) beside the dish on the
+guests' phones.
 
 The reading is checked before it is published, not after. The link fills the
 page in; it writes nothing. The chef sees your reading of his handwriting next

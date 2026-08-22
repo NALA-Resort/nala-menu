@@ -104,11 +104,13 @@ def published():
     return [w for w in WRITES
             if "/menu.json" in w["u"] or "/menutags/" in w["u"]]
 
+#  No sf. AUS is a button on the page and nothing else: the link used to carry
+#  a guess at it, worked out by the chat from a paragraph of fish species, and
+#  the page drew a toggle beside every course anyway.
 LINK = ("?b=" + urllib.parse.quote("Tomato focaccia - whipped ricotta") +
         "&e=" + urllib.parse.quote("Hervey Bay scallops - burnt butter") +
         "&m=" + urllib.parse.quote("Sovereign lamb - salsa verde") +
-        "&d=" + urllib.parse.quote("Mandarin cheesecake") +
-        "&sf=e")
+        "&d=" + urllib.parse.quote("Mandarin cheesecake"))
 
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
@@ -139,11 +141,24 @@ with sync_playwright() as p:
        val(pg, "d_entree") == "burnt butter")
     ck("a dish with no dash is all name, which handwriting usually is",
        val(pg, "n_dessert") == "Mandarin cheesecake" and val(pg, "d_dessert") == "")
-    ck("the seafood flag arrives set on the course named in the link",
-       pg.evaluate("()=>s_entree.className.indexOf('on')>-1"))
-    ck("and stays off on the courses not named",
-       not pg.evaluate("()=>s_main.className.indexOf('on')>-1") and
-       not pg.evaluate("()=>s_bread.className.indexOf('on')>-1"))
+    #  AUS is the chef's, and only the chef's. A link cannot set it and the
+    #  chat is told not to try, because it was a machine guessing from
+    #  handwriting at something the man who wrote the menu already knows.
+    ck("nothing arrives ticked for AUS, whatever the link says",
+       pg.evaluate("""()=>['bread','entree','main','dessert']
+          .every(k=>document.getElementById('s_'+k).className.indexOf('on')<0)"""))
+    ck("the button says what it does, not what it means",
+       pg.evaluate("()=>s_main.textContent.trim()") == "AUS" and
+       "(AUS)" in pg.inner_text("#courses"))
+    pg.close()
+
+    #  Opened WITH the old parameter, or this proves nothing: a link that
+    #  cannot set AUS has to be shown a link trying to.
+    pg = open_pub(LINK + "&sf=e")
+    ck("even when a link still carries the old sf parameter",
+       pg.evaluate("()=>s_entree.className.indexOf('on')<0"))
+    pg.close()
+    pg = open_pub(LINK)
 
     #  The reason it is a link and not a write. Everything up to Publish is
     #  reversible, which is what makes an OCR mistake survivable.
@@ -158,15 +173,16 @@ with sync_playwright() as p:
     ck("and the tagging list below follows the corrected name",
        "Sovereign lamb rump" in pg.inner_text("#tagblock"))
     pg.evaluate("()=>s_main.click()")
-    ck("the seafood flag can be corrected too",
+    ck("AUS is set by pressing it",
        pg.evaluate("()=>s_main.className.indexOf('on')>-1"))
     pg.evaluate("()=>s_main.click()")
-    ck("and corrected back", not pg.evaluate("()=>s_main.className.indexOf('on')>-1"))
+    ck("and unset by pressing it again",
+       not pg.evaluate("()=>s_main.className.indexOf('on')>-1"))
     ck("still nothing published", len(published()) == 0)
     pg.close()
 
     # ── tagging is on this page, not behind a link ──────────────
-    pg = open_pub(LINK)
+    pg = open_pub(LINK + "&sf=e")
     ck("the dietaries come from the chef's list, not a list this page invented",
        "Gluten free" in pg.inner_text("#tagblock") and
        "Nut allergy" in pg.inner_text("#tagblock"))
@@ -192,10 +208,11 @@ with sync_playwright() as p:
            mw[0]["m"] == "PUT")
         ck("with the four courses and nothing else",
            set(body) == {"published", "bread", "entree", "main", "dessert"})
-        ck("carrying the dish, the description and the flag",
+        ck("carrying the dish and the description",
            body["entree"]["name"] == "Hervey Bay scallops" and
-           body["entree"]["desc"] == "burnt butter" and
-           body["entree"]["aus"] is True)
+           body["entree"]["desc"] == "burnt butter")
+        ck("and AUS false on a dish nobody pressed it for",
+           body["entree"]["aus"] is False)
         ck("and a publish time, which is what makes it tonight's",
            bool(body.get("published")))
 

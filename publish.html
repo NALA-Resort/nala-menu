@@ -224,12 +224,18 @@
       var d = q.get(k.charAt(0) + 'd');
       if (d !== null) M[k].desc = String(d).trim();
     });
-    /* Seafood as a list of course letters rather than four parameters, to keep
-       the link short enough to survive a phone keyboard and a copy paste. */
-    var sf = q.get('sf') || q.get('aus') || '';
-    COURSES.forEach(function(c){
-      if (sf.toLowerCase().indexOf(c[0].charAt(0)) > -1) M[c[0]].aus = true;
-    });
+    /* AUS is NOT read from the link, and that is the change of 22 Aug.
+
+       It used to arrive as a list of course letters, worked out by the chat
+       from a rule in the brief that ran to a paragraph of fish species and
+       ended in "if in doubt, true". Then the page drew a toggle beside every
+       course anyway, so the chef could change it. Two mechanisms for one fact,
+       and the automatic one was a machine guessing from handwriting at the
+       thing the chef standing there already knows.
+
+       So it is a button and only a button. The chef ticks the dishes whose
+       main protein is seafood, which is the whole of the rule, and the page
+       says what the tick does rather than what it means. */
     return any;
   }
 
@@ -242,8 +248,8 @@
         '<input class="c-name" id="n_'+k+'" placeholder="Dish" value="' + esc(d.name) + '">' +
         '<input class="c-desc" id="d_'+k+'" placeholder="Description, optional" value="' + esc(d.desc) + '">' +
         '<div class="seafood">' +
-          '<button class="sfbtn' + (d.aus ? ' on' : '') + '" id="s_'+k+'">Seafood</button>' +
-          '<span class="sfhint">the dish\u2019s main protein</span>' +
+          '<button class="sfbtn' + (d.aus ? ' on' : '') + '" id="s_'+k+'">AUS</button>' +
+          '<span class="sfhint">prints (AUS) beside the dish</span>' +
         '</div></div>';
     });
     document.getElementById('courses').innerHTML = h;
