@@ -325,6 +325,20 @@ with sync_playwright() as p:
        q.evaluate("()=>[...document.querySelectorAll('.snote')].length===2"))
     q.close()
 
+    #  A note cleared on purpose, which until 22 Aug reappeared as the Mews
+    #  original because empty was read as absent. This sheet is printed and
+    #  left on a pass, so a note somebody deleted coming back on paper is the
+    #  worst of the three places that happened.
+    internal["b3"] = {"fromMews": "Complained about noise last stay", "note": ""}
+    q = as_role("staff@x")
+    q.wait_for_timeout(1200)
+    ck("a note cleared on purpose does not print the Mews original",
+       q.evaluate("()=>document.body.innerText.indexOf('Complained about noise')<0"))
+    ck("and prints no empty staff line either",
+       q.evaluate("()=>[...document.querySelectorAll('.snote')].length===1"))
+    q.close()
+    internal["b3"] = {"fromMews": "Complained about noise last stay"}
+
     q=as_role("chef@x")
     q.wait_for_timeout(1200)
     ck("the chef reads the sheet but not the staff note",

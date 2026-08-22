@@ -418,8 +418,14 @@ function fetchStaffNotes(stays){
       .then(function(rec){
         rec = rec || {};
         /* The rewritten note if there is one, otherwise what Mews sent. Same
-           order as the desk, so the sheet and the screen never disagree. */
-        var t = rec.note || rec.fromMews || '';
+           order as the desk, so the sheet and the screen never disagree, and
+           the same test for presence rather than truth: a note cleared on
+           purpose is empty here too, and must not print the Mews original the
+           staff just removed. This sheet is printed and left on a pass, so a
+           deleted note reappearing on paper is the worst of the three places
+           it happened. */
+        var t = (rec.note === undefined || rec.note === null)
+                  ? (rec.fromMews || '') : rec.note;
         if (t) STAFFNOTES[String(v)] = t;
       })
       .catch(function(){});

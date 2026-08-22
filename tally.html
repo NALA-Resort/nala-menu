@@ -1543,7 +1543,11 @@ function wireGuestPanel(g, known){
           { note: note, editedAt: new Date().toISOString(),
             editedBy: window.NALA_ME || '' })
         .then(function(){
-          INT_CACHE[known.bookingId] = { ok: true, note: note || null };
+          /* The empty string kept as the empty string. Collapsing it to null
+             here would put the cache back into the state the read was just
+             fixed for, and the Mews original would return on the next open
+             without a request being made. */
+          INT_CACHE[known.bookingId] = { ok: true, note: note };
           /* Back to reading: the saved note takes its place as a row. */
           panel._intEditing = false;
           if (panel._paint) panel._paint();
@@ -1734,8 +1738,13 @@ function loadPrearrival(known, panel, g){
         /* The edited note if there is one, otherwise what Mews said: the
            same precedence the front desk uses for the same node. A rules
            refusal arrives as an error body, not a rejection. */
+        /* Presence, not truth. An edited note of '' means somebody cleared
+           it on purpose, and collapsing that to the Mews original made a
+           cleared note reappear on the next open. */
         INT_CACHE[id] = rec.error ? { ok: false }
-                      : { ok: true, note: rec.note || rec.fromMews || null };
+                      : { ok: true,
+                          note: (rec.note === undefined || rec.note === null)
+                                  ? (rec.fromMews || null) : rec.note };
       }).catch(function(){ INT_CACHE[id] = { ok: false }; });
   Promise.all([pPre, pInt]).then(paint).catch(function(){
       /* A failed read is not an empty one, and saying "none" here would be a

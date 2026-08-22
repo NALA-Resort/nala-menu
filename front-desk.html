@@ -1139,8 +1139,16 @@ function openGuest(r){
         rec = rec || {};
         /* The edited note if there is one, otherwise what Mews said. The
            original is kept in its own field so it is still there after
-           somebody rewrites it. */
-        iEl.value = rec.note || rec.fromMews || '';
+           somebody rewrites it.
+
+           Tested for PRESENCE, not for truth. `rec.note || rec.fromMews` read
+           a note deliberately emptied as a note never written, so clearing the
+           box saved an empty string, the Mews original came back in its place,
+           and the only way to make a note go away was to leave a character in
+           it. An empty edited note is an answer: somebody decided this booking
+           needs no note, and that decision outranks what Mews sent. */
+        iEl.value = (rec.note === undefined || rec.note === null)
+                      ? (rec.fromMews || '') : rec.note;
         iEl.dataset.was = iEl.value;
       })
       .catch(function(){});

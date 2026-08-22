@@ -1079,6 +1079,49 @@ with sync_playwright() as p:
        any("/prearrival" in x["u"] for x in WRITES))
     pg.close()
 
+    # ── clearing a note ─────────────────────────────────────────
+    #  Reported 22 Aug: a staff note could only be saved with something in it,
+    #  so the only way to remove one was to leave a character behind. Nothing
+    #  refused the write. The note saved as an empty string exactly as asked,
+    #  and the READ then treated empty as absent and put the Mews original back
+    #  in its place, so the note appeared to survive deletion.
+    INTERNAL["b4"] = {"fromMews": "Complained about noise last stay",
+                      "note": "Do not seat near the kitchen"}
+    pg = desk_as("staff@x")
+    ck("an edited note is what shows, not the Mews original",
+       pg.evaluate("()=>document.getElementById('fInternal').value")
+         == "Do not seat near the kitchen")
+    pg.fill("#fInternal", "")
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(900)
+    wrote = [json.loads(x["b"]) for x in WRITES if "/internal/" in x["u"] and x["b"]]
+    ck("clearing the box saves the clearing",
+       bool(wrote) and wrote[0].get("note") == "")
+    pg.close()
+
+    #  The state that write leaves behind, read back. This is the half that was
+    #  broken: an empty edited note is a decision that this booking needs no
+    #  note, and it outranks what Mews sent.
+    INTERNAL["b4"] = {"fromMews": "Complained about noise last stay", "note": ""}
+    pg = desk_as("staff@x")
+    ck("and a cleared note stays cleared when the sheet is reopened",
+       pg.evaluate("()=>document.getElementById('fInternal').value") == "")
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(800)
+    ck("and closing it again writes nothing, since nothing changed",
+       not [x for x in WRITES if "/internal/" in x["u"]])
+    pg.close()
+
+    #  The fallback still does its job where it was always meant to: a booking
+    #  nobody has edited shows what Mews sent.
+    INTERNAL["b4"] = {"fromMews": "Complained about noise last stay"}
+    pg = desk_as("staff@x")
+    ck("a note nobody has touched still shows the Mews original",
+       "noise" in (pg.evaluate("()=>document.getElementById('fInternal').value") or ""))
+    pg.close()
+
     b.close()
 
 print("RESULT: %d passed, %d failed" % (P, F))
