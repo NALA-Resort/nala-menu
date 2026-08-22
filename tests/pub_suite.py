@@ -350,33 +350,82 @@ with sync_playwright() as p:
     STATE["menu"] = None
     pg.close()
 
-    # ── the dietary list, which is managed elsewhere ────────────
-    #  The list lives on the dietary page. This is a link out and not a second
-    #  place to edit it: two screens writing one list is how the list quietly
-    #  disagrees with itself.
+    # ── a dietary that is not on the list ───────────────────────
+    #  The model the owner set on 22 Aug. The settled list lives on the
+    #  settings page and is what a guest is offered; here the chef ticks from
+    #  it, and adds a one-off when tonight's menu needs something the list has
+    #  not got. A dish with sesame in it, on a night nobody has sesame on the
+    #  list yet. If he finds he is adding the same one weekly it has stopped
+    #  being a one-off and belongs on the settings page, which is what the line
+    #  under the field says.
     pg = open_pub(LINK)
-    ck("there is a way to the page that owns the dietary list",
+    ck("the chef ticks from the settled list",
+       "Gluten free" in pg.inner_text("#tagblock"))
+    ck("and can add something it has not got",
+       pg.evaluate("()=>!!document.getElementById('newDiet')"))
+    ck("with a way to promote a repeat offender to the list itself",
        pg.evaluate("()=>{const a=document.querySelector('.dietlink a');"
                    "return !!a && a.getAttribute('href')==='tag.html';}"))
-    ck("and it opens beside this page rather than replacing it",
-       pg.evaluate("()=>document.querySelector('.dietlink a').target") == "_blank")
-    #  Nothing here is saved until Publish, so leaving and coming back would
-    #  cost every correction made to the reading.
-    pg.fill("#n_main", "Corrected lamb")
-    pg.evaluate("""()=>{var t=[...document.querySelectorAll('#tagblock .tick')]
-        .find(x=>x.getAttribute('data-c')==='main'); t.click();}""")
-    STATE["master"] = dict(MASTER)
-    STATE["master"]["Sesame"] = {"name": "Sesame", "active": True, "group": "menu"}
-    pg.locator("#reloadDiets").click(); pg.wait_for_timeout(700)
-    ck("reloading picks up a dietary added next door",
+
+    del WRITES[:]
+    pg.fill("#newDiet", "Sesame")
+    pg.locator("#addDiet").click(); pg.wait_for_timeout(600)
+    ck("a one-off appears at once, because the next thing he does is tick it",
        "Sesame" in pg.inner_text("#tagblock"))
-    ck("without losing a correction typed on this page",
-       val(pg, "n_main") == "Corrected lamb")
-    ck("or a tick already made",
+    #  Written straight away rather than held until Publish: the guest page
+    #  reads this list, and a dietary a guest cannot declare warns nobody.
+    dw = [w for w in WRITES if "/dietaries" in w["u"]]
+    ck("and goes onto the list the guest page reads", len(dw) == 1)
+    if dw:
+        ck("as this-menu-only, not as one of the settled ones",
+           json.loads(dw[0]["b"]).get("Sesame", {}).get("group") == "menu")
+    ck("the field is cleared, so it is not added twice",
+       val(pg, "newDiet") == "")
+    ck("and it is not ticked on anything by being added",
        pg.evaluate("""()=>[...document.querySelectorAll('#tagblock .tick')]
-          .some(x=>x.getAttribute('data-c')==='main' && x.className.indexOf('on')>-1)"""))
-    STATE["master"] = MASTER
+          .filter(x=>x.getAttribute('data-n')==='Sesame')
+          .every(x=>x.className.indexOf('on')<0)"""))
+    ck("adding one does not disturb the menu being read",
+       val(pg, "n_main") == "Sovereign lamb")
     pg.close()
+
+    #  A one-off already on the list is not added twice.
+    STATE["master"] = dict(MASTER); STATE["master"]["Sesame"] = {
+        "name": "Sesame", "active": True, "group": "menu"}
+    pg = open_pub(LINK)
+    del WRITES[:]
+    pg.fill("#newDiet", "Sesame")
+    pg.locator("#addDiet").click(); pg.wait_for_timeout(400)
+    ck("a name already on the list is refused, not duplicated",
+       not [w for w in WRITES if "/dietaries" in w["u"]] and
+       "already on the list" in pg.inner_text("#err"))
+    pg.close()
+
+    #  The one that keeps the tick list short. Every one-off ever made would
+    #  otherwise pile up under the commons, and by the end of a season the chef
+    #  reads a list of every one-off since March to find the eight that matter.
+    STATE["tags"] = {}
+    pg = open_pub(LINK)
+    pg.wait_for_timeout(400)
+    ck("an old one-off nobody has ticked tonight is not in the way",
+       "Sesame" not in pg.inner_text("#tagblock"))
+    ck("while the settled list is always there",
+       "Gluten free" in pg.inner_text("#tagblock"))
+    pg.close()
+
+    #  But one that IS on tonight's menu comes back, or reopening the page
+    #  would lose the tick and the dietary with it.
+    STATE["tags"] = {"main": ["Sesame"]}
+    pg = open_pub(LINK)
+    pg.wait_for_timeout(400)
+    ck("a one-off already tagged tonight comes back with its tick",
+       "Sesame" in pg.inner_text("#tagblock") and
+       pg.evaluate("""()=>[...document.querySelectorAll('#tagblock .tick')]
+          .some(x=>x.getAttribute('data-n')==='Sesame' &&
+                   x.getAttribute('data-c')==='main' &&
+                   x.className.indexOf('on')>-1)"""))
+    pg.close()
+    STATE["tags"] = {}; STATE["master"] = MASTER
 
     # ── taking a menu down ──────────────────────────────────────
     #  Restored 22 Aug. "Remove menu" was in the brief until 21 Aug and was

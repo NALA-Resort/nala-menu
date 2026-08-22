@@ -116,47 +116,41 @@ with sync_playwright() as p:
         pg.wait_for_timeout(900)
         return pg
 
-    def ticks(pg, course_index=2):
-        return pg.locator(".course").nth(course_index).locator(".tick")
-
-    # ── the ordinary day ──────────────────────────────────────
+    # ── the page is the list, not tonight's menu ──────────────
+    #  Until 22 Aug this page also tagged tonight's dishes, and so did the
+    #  publish page. Both wrote the WHOLE of /menutags rather than a field, so
+    #  whichever saved second replaced the other's ticks without saying so.
+    #  Tagging moved to publishing, where the dishes are being written; this
+    #  page keeps the list those tags are made from.
     pg = open_tag()
-    ck("every published course is offered for tagging",
-       pg.locator(".course.show").count() == 4)
-    ck("the dish name is shown, not the course key",
-       "Lamb rump" in pg.inner_text(".course:nth-of-type(3)"))
-    ck("archived dietaries are not offered as ticks",
-       "Old thing" not in pg.inner_text("#courses"))
-    ck("an active dietary is offered on every course",
-       ticks(pg).filter(has_text="Gluten free").count() == 1)
-    ck("what is already tagged comes back ticked",
-       ticks(pg).filter(has_text="Nut allergy").first.get_attribute("class").find("on") > -1)
+    ck("the page does not tag tonight's dishes",
+       pg.locator(".course.show").count() == 0)
+    ck("and says where they are tagged instead",
+       "publish" in pg.inner_text(".lede").lower())
+    ck("it calls itself settings, not tonight's menu",
+       "dietary settings" in pg.inner_text(".pagename").lower())
+    ck("the list itself is here", "Gluten free" in pg.inner_text("#mng"))
+    ck("archived dietaries are shown, so they can be brought back",
+       "Old thing" in pg.inner_text("#mng"))
     ck("nothing is offered to save before anything is touched",
        "show" not in (pg.get_attribute("#savebar", "class") or ""))
 
-    # ── ticking, and what Save writes ─────────────────────────
-    ticks(pg).filter(has_text="Gluten free").first.click()
-    pg.wait_for_timeout(150)
-    ck("ticking offers a Save", "show" in pg.get_attribute("#savebar", "class"))
-    pg.click("#saveBtn"); pg.wait_for_timeout(400)
+    # ── and it writes only the list ───────────────────────────
+    #  The one that matters: no second writer on /menutags. A page that still
+    #  wrote it would go on quietly overwriting the chef's tagging every time
+    #  somebody opened settings and pressed Save.
+    pg.fill("#newName", "Sesame allergy")
+    pg.click("#addBtn"); pg.wait_for_timeout(150)
+    ck("adding offers a Save", "show" in pg.get_attribute("#savebar", "class"))
+    pg.click("#saveBtn"); pg.wait_for_timeout(500)
     ck("Save writes the master list", bool(wrote("/dietaries")))
-    ck("and tonight's tags, dated", bool(wrote("/menutags/" + today)))
-    tags = json.loads(wrote("/menutags/" + today)[0]["b"])
-    ck("the tick reaches the write body",
-       "Gluten free" in tags.get("main", []) and "Nut allergy" in tags.get("main", []))
-    ck("the master list written back is the one that was read",
-       set(json.loads(wrote("/dietaries")[0]["b"]).keys()) == set(MASTER.keys()))
+    ck("and writes nothing at all to tonight's tags",
+       not wrote("/menutags/"))
+    ck("the master list written back is the one that was read, plus the new one",
+       set(json.loads(wrote("/dietaries")[0]["b"]).keys())
+         == set(MASTER.keys()) | {"Sesame allergy"})
     # The label is upper-cased in CSS, so compare on the rendered text.
     ck("and the page says it saved", "SAVED" in pg.inner_text("#savedMsg").upper())
-    pg.close()
-
-    # Untick, and the tag has to actually leave the write. A tick that only
-    # ever adds is how a dish ends up flagged for everything.
-    pg = open_tag()
-    ticks(pg).filter(has_text="Nut allergy").first.click()
-    pg.click("#saveBtn"); pg.wait_for_timeout(400)
-    body = json.loads(wrote("/menutags/" + today)[0]["b"])
-    ck("unticking removes the tag from the write", "Nut allergy" not in body.get("main", []))
     pg.close()
 
     # ── adding and archiving ──────────────────────────────────
@@ -164,7 +158,8 @@ with sync_playwright() as p:
     pg.fill("#newName", "Sesame allergy")
     pg.click("#addBtn"); pg.wait_for_timeout(150)
     ck("a new dietary appears in the list", "Sesame allergy" in pg.inner_text("#mng"))
-    ck("and immediately on every course", "Sesame allergy" in pg.inner_text("#courses"))
+    ck("and is live to be tagged with, not waiting on a save",
+       "Sesame allergy" in pg.inner_text("#mng"))
     ck("the field is cleared, so it is not added twice",
        pg.input_value("#newName") == "")
     pg.click("#saveBtn"); pg.wait_for_timeout(400)
@@ -191,7 +186,7 @@ with sync_playwright() as p:
     pg.click("#addBtn"); pg.wait_for_timeout(150)
     ck("re-adding an archived name restores it rather than duplicating it",
        pg.inner_text("#mng").count("Old thing") == 1
-       and "Old thing" in pg.inner_text("#courses"))
+       and "Old thing" in pg.inner_text("#mng"))
     pg.close()
 
     pg = open_tag()
@@ -205,54 +200,32 @@ with sync_playwright() as p:
     pg = open_tag()
     row = pg.locator(".mrow").filter(has_text="Nut allergy")
     row.locator(".mtog").click(); pg.wait_for_timeout(150)
-    ck("archiving removes it from the courses", "Nut allergy" not in pg.inner_text("#courses"))
+    #  Archived means the guest is no longer offered it. The publish page
+    #  reads the same list and stops offering it as a tick for the same
+    #  reason, which is checked there.
+    ck("archiving marks it off, without deleting it",
+       "off" in (pg.evaluate("()=>[...document.querySelectorAll('.mrow')].find(r=>r.textContent.indexOf('Nut allergy')>-1).className") or ""))
     pg.click("#saveBtn"); pg.wait_for_timeout(400)
-    body = json.loads(wrote("/menutags/" + today)[0]["b"])
-    ck("and from the tags that get written", "Nut allergy" not in body.get("main", []))
+    ck("and nothing is written to tonight's tags by archiving either",
+       not wrote("/menutags/"))
     ck("but the dietary itself is kept, archived, not deleted",
+       "Nut allergy" in json.loads(wrote("/dietaries")[0]["b"]) and
        json.loads(wrote("/dietaries")[0]["b"]).get("Nut allergy", {}).get("active") is False)
     pg.close()
 
-    # ── published to the database, with no file at all ────────
-    #  Publishing moved into the database, so menu.json in the repo is no
-    #  longer written. A chef who publishes tonight and comes here to tag it
-    #  must see tonight's courses, not be told to publish a menu he has just
-    #  published.
-    STATE["fileMenu"] = False
-    pg.close(); pg = open_tag()
-    ck("a menu published to the database is offered for tagging",
-       pg.locator(".course.show").count() == 4)
-    ck("with the menu in the database the page does not ask for one",
-       "show" not in (pg.get_attribute("#nomenu", "class") or ""))
-    STATE["fileMenu"] = True
-
-    # ── a menu that is missing, stale, or short a course ──────
-    STATE["menu"] = None
+    # ── the menu is no longer this page's business ────────────
+    #  Three blocks lived here: a menu read from the database, a menu that was
+    #  missing or stale or short a course, and what the page said in each case.
+    #  All of it was about deciding which dishes to offer for tagging, and this
+    #  page does not tag. The publish page reads the menu now, because it is
+    #  the page writing it, and pub_suite covers that.
     pg = open_tag()
-    ck("with no menu at all the page says so",
-       "show" in pg.get_attribute("#nomenu", "class"))
-    ck("and offers no courses to tag", pg.locator(".course.show").count() == 0)
-    ck("but the dietary list is still manageable", "Gluten free" in pg.inner_text("#mng"))
+    ck("the page reads no menu at all",
+       not [w for w in WRITES if "/menu" in w["u"]] and
+       "No menu is published" not in pg.inner_text("body"))
+    ck("so a night with no menu published is not its problem",
+       pg.locator("#mng").is_visible())
     pg.close()
-
-    STATE["menu"] = dict(FULL_MENU)
-    STATE["menu"]["published"] = (now - datetime.timedelta(days=2)).isoformat()
-    pg = open_tag()
-    ck("yesterday's menu is not offered as tonight's",
-       "show" in pg.get_attribute("#nomenu", "class"))
-    pg.close()
-
-    # The gate used to be the bread course by name. Chef does not always serve
-    # bread, and on those nights the page insisted no menu was published.
-    STATE["menu"] = {"published": now.isoformat(),
-                     "entree": {"name": "Kingfish crudo"},
-                     "main": {"name": "Lamb rump"}, "dessert": {"name": "Pavlova"}}
-    pg = open_tag()
-    ck("a menu with no bread course is still a published menu",
-       "show" not in (pg.get_attribute("#nomenu", "class") or ""))
-    ck("and its three courses are all offered", pg.locator(".course.show").count() == 3)
-    pg.close()
-    STATE["menu"] = FULL_MENU
 
     # ── a read that failed is not an empty list ───────────────
     # This is the destructive one. Seeding the defaults over an unreadable list
@@ -287,14 +260,16 @@ with sync_playwright() as p:
     STATE["master"] = None
     pg = open_tag()
     ck("an empty list seeds the common dietaries", "Pescatarian" in pg.inner_text("#mng"))
-    ck("and they are offered on the dishes", "Vegan" in pg.inner_text("#courses"))
+    ck("and the whole set is listed", "Vegan" in pg.inner_text("#mng"))
     pg.close()
     STATE["master"] = MASTER
 
     # ── a save that fails must not look like a save ───────────
     STATE["failSave"] = True
     pg = open_tag()
-    ticks(pg).first.click()
+    #  Any change to the list will do; there are no ticks on this page now.
+    pg.fill("#newName", "Celery")
+    pg.click("#addBtn"); pg.wait_for_timeout(150)
     pg.click("#saveBtn"); pg.wait_for_timeout(500)
     ck("a refused save says so", "show" in pg.get_attribute("#err", "class"))
     ck("does not claim to have saved", "SAVED" not in pg.inner_text("#savedMsg").upper())
@@ -304,14 +279,15 @@ with sync_playwright() as p:
     pg.close()
     STATE["failSave"] = False
 
-    # ── who may tag a menu ────────────────────────────────────
+    # ── who may change the list ───────────────────────────────
     # Until 18 Aug this page had no gate, so any login could archive the
-    # chef's dietary list. It is the chef's page and the manager's.
+    # chef's dietary list. It is the chef's page and the manager's, and
+    # the owner confirmed on 22 Aug that admin belongs here too.
     pg = open_tag(email="chef@x")
-    ck("the chef gets the page", pg.locator("#courses").is_visible())
+    ck("the chef gets the page", pg.locator("#mng").is_visible())
     pg.close()
     pg = open_tag(email="staff@x")
-    ck("and so does the manager", pg.locator("#courses").is_visible())
+    ck("and so does the manager", pg.locator("#mng").is_visible())
     pg.close()
     for who, label in (("waiter@x", "a waiter"), ("housekeeping@x", "housekeeping")):
         q = open_tag(email=who)

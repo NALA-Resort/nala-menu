@@ -17,6 +17,9 @@
   body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
          padding:28px 24px 170px; -webkit-tap-highlight-color:transparent; }
   .wrap { max-width:520px; margin:0 auto; }
+  /* The bar sits above the wordmark and pushes nothing: the hamburger is the
+     only thing in it and it hangs to the right, as it does everywhere else. */
+  .navrow { display:flex; margin-bottom:6px; }
 
   .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
             background:#A8321E; color:#fff; padding:12px 18px;
@@ -77,14 +80,20 @@
           color:var(--ink); cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .tick.on { background:var(--red); color:#fff; border-color:var(--red); }
 
-  .dietlink { display:flex; align-items:center; gap:14px; margin-top:18px;
-              padding-top:14px; border-top:1px solid var(--rule); }
-  .dietlink a { font-family:Helvetica,Arial,sans-serif; font-size:11px;
-                letter-spacing:.06em; color:var(--ink); }
-  .reload { border:1px solid var(--rule); background:transparent; color:var(--mid);
-            padding:8px 13px; border-radius:20px; font-family:Helvetica,Arial,sans-serif;
-            font-size:10px; letter-spacing:.1em; text-transform:uppercase;
-            cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .addrow { display:flex; gap:8px; margin-top:18px; }
+  .addrow input { flex:1; min-width:0; padding:11px 12px; border:1px solid var(--rule);
+                  background:#fff; border-radius:8px; font-family:Georgia,serif;
+                  font-size:16px; color:var(--ink); }
+  .addrow input:focus { outline:none; border-color:var(--ink); }
+  .addbtn { border:1px solid var(--ink); background:transparent; color:var(--ink);
+            padding:11px 15px; border-radius:8px; white-space:nowrap;
+            font-family:Helvetica,Arial,sans-serif; font-size:10px;
+            letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
+            -webkit-tap-highlight-color:transparent; }
+  .dietlink { display:flex; align-items:baseline; gap:8px; margin-top:12px;
+              font-family:Helvetica,Arial,sans-serif; font-size:10px;
+              letter-spacing:.05em; color:var(--mid); }
+  .dietlink a { color:var(--ink); }
 
   .bar { position:fixed; bottom:0; left:0; right:0; background:var(--cream);
          border-top:1px solid var(--rule); padding:12px 24px; }
@@ -118,6 +127,7 @@
   .done .big { font-size:20px; }
   .done a { color:var(--ink); }
 </style>
+<link rel="stylesheet" href="nala-ui.css?v=12">
 </head>
 <body>
 <div class="errbar" id="err"></div>
@@ -126,6 +136,15 @@
        than no rehearsal: somebody publishes for real believing they are
        practising, or practises believing they have published. -->
   <div class="demobar" id="demoBar">Rehearsal &middot; nothing here reaches the guests</div>
+  <div class="navrow">  <!-- Every other staff page has this and these two did not, so a chef who
+       opened the dietary list had no way off it but the browser's back button,
+       and one opened in a new tab had none at all. Publishing is the natural
+       place to go back to from the dietary list, so it leads. -->
+  <div class="navwrap">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"><a href="tag.html">Menu Dietaries</a><a href="tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="cleaners.html">Cleans</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+  </div>
+  </div>
   <div class="wordmark">Nala Resort</div>
   <div class="pagename">Publish Menu</div>
   <div class="lede" id="lede">Check it against the photo, then publish.</div>
@@ -139,18 +158,21 @@
     job for afterwards.</div>
   <div class="tagblock" id="tagblock"></div>
 
-  <!-- The list lives on the dietary page and is managed there, so this is a
-       link out and not a second place to edit it. Two screens that both write
-       the same list is how the list quietly disagrees with itself.
+  <!-- One-offs are made here because that is where the need appears: a dish
+       with sesame in it, on a night nobody has sesame on the list. Made here it
+       belongs to tonight's menu, which is what "this menu only" means.
 
-       A new tab, and a reload beside it. Everything typed here is held on this
-       page and nothing is saved until Publish, so navigating away and back
-       would cost the chef every correction he has made to the reading. This
-       way he adds the dietary next door, comes back to a page that never
-       moved, and taps Reload to see it. -->
+       The settled list is not edited here. If the chef finds himself adding the
+       same one every week, it has stopped being a one-off and belongs on the
+       settings page, which is what the line under this says and what the link
+       is for. -->
+  <div class="addrow">
+    <input id="newDiet" placeholder="Something not on the list" autocomplete="off">
+    <button class="addbtn" id="addDiet" type="button">Add for tonight</button>
+  </div>
   <div class="dietlink">
-    <a href="tag.html" target="_blank" rel="noopener">Add or change a dietary</a>
-    <button class="reload" id="reloadDiets" type="button">Reload the list</button>
+    <span>Adding the same one every week?</span>
+    <a href="tag.html">Keep it on the list</a>
   </div>
 
   <div class="done" id="done">
@@ -320,12 +342,40 @@
   function esc(s){ return String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 
+  /* What the chef ticks against: the common list, plus anything menu-only that
+     is actually on tonight's menu.
+
+     The common list is the settled one, kept on the dietary settings page,
+     and it is what a guest is offered when they declare a requirement. A
+     menu-only dietary is a one-off made here for tonight - a dish with sesame
+     in it, on a night nobody has a sesame allergy on the list yet. It is real
+     and the guest page reads it, but it belongs to a menu and not to the
+     resort.
+
+     So menu-only ones show while they are ticked and vanish when they are not.
+     Every one ever added would otherwise pile up under the commons forever,
+     and by the end of a season the chef would be reading a list of every
+     one-off anybody had made since March to find the eight that matter. */
   function activeNames(){
-    return Object.keys(MASTER).filter(function(k){ return MASTER[k].active; })
+    return Object.keys(MASTER).filter(function(k){
+        if (!MASTER[k].active) return false;
+        if (MASTER[k].group !== 'menu') return true;
+        return tickedAnywhere(MASTER[k].name);
+      })
       .map(function(k){ return MASTER[k].name; })
       .sort(function(a,b){
         var ga=MASTER[keyOf(a)].group==='menu'?1:0, gb=MASTER[keyOf(b)].group==='menu'?1:0;
         return ga-gb || a.localeCompare(b); });
+  }
+
+  /* Just added and not yet ticked. Without this a one-off would appear on the
+     press and vanish on the next repaint, which is every repaint. */
+  var PENDING = {};
+
+  function tickedAnywhere(name){
+    if (PENDING[name]) return true;
+    for (var c in TAGS) if ((TAGS[c]||[]).indexOf(name) > -1) return true;
+    return false;
   }
 
   function paintTags(){
@@ -429,18 +479,40 @@
       });
   };
 
-  /* Re-read the list without touching anything the chef has typed. The ticks
-     already made are kept: a dietary added next door must not cost him the
-     ones he had ticked before he went. */
-  document.getElementById('reloadDiets').onclick = function(){
-    var b = this, was = b.textContent;
-    b.disabled = true; b.textContent = 'Reloading\u2026';
-    readNode('/dietaries').then(function(master){
-      b.disabled = false; b.textContent = was;
-      if (failedRead(master)) return err('Could not reload the dietary list.');
-      if (master) MASTER = master;
-      paintTags();
-    });
+  /* A one-off, for tonight. It goes onto the master list as menu-only, because
+     the guest page reads that list and a dietary a guest cannot declare is a
+     dietary that warns nobody.
+
+     Written straight away rather than held until Publish. It is the one thing
+     on this page that is not about tonight's menu: it is a fact about the
+     resort's list, the guest page needs it before the menu goes out, and a
+     chef who typed it and then closed the page would otherwise have tagged a
+     dish against something that does not exist.
+
+     Ticked on every course as it is added is NOT the behaviour. He is adding
+     it because one dish has it, and which dish is the next thing he will say. */
+  function addOneOff(){
+    var inp = document.getElementById('newDiet');
+    var name = (inp.value || '').trim();
+    if (!name) return;
+    var k = keyOf(name);
+    if (MASTER[k] && MASTER[k].active){
+      inp.value = '';
+      return err('\u201C' + MASTER[k].name + '\u201D is already on the list.');
+    }
+    MASTER[k] = { name:name, active:true, group:'menu' };
+    inp.value = '';
+    /* Shown at once, before the write lands, because the chef is mid-thought
+       and the next thing he does is tick it. Kept visible until he ticks it by
+       holding it in PENDING, which activeNames reads alongside the ticks. */
+    PENDING[name] = true;
+    paintTags();
+    fetch(DB + '/dietaries.json', { method:'PUT', body:JSON.stringify(MASTER) })
+      .catch(function(){ err('Added here, but it did not save to the list.'); });
+  }
+  document.getElementById('addDiet').onclick = addOneOff;
+  document.getElementById('newDiet').onkeydown = function(e){
+    if (e.key === 'Enter'){ e.preventDefault(); addOneOff(); }
   };
 
   /* Taking a menu down. It is only offered when one is up: the guest page
@@ -566,6 +638,18 @@
       showRemoveIfPublished();
     })
     .catch(function(){ err('Could not load - refresh to try again.'); });
+</script>
+
+<script>
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  if (!b || !d) return;
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+  var so=document.getElementById('navSignout');
+  if (so) so.onclick=function(e){ e.preventDefault();
+    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+})();
 </script>
 </body>
 </html>

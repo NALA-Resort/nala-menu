@@ -13,6 +13,9 @@
   body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
          padding:28px 24px 60px; -webkit-tap-highlight-color:transparent; }
   .wrap { max-width:520px; margin:0 auto; }
+  /* The bar sits above the wordmark and pushes nothing: the hamburger is the
+     only thing in it and it hangs to the right, as it does everywhere else. */
+  .navrow { display:flex; margin-bottom:6px; }
 
   .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
             background:#A8321E; color:#fff; padding:12px 18px;
@@ -87,19 +90,25 @@
   .saved { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.1em;
            text-transform:uppercase; color:var(--mid); }
 </style>
+<link rel="stylesheet" href="nala-ui.css?v=12">
 </head>
 <body>
 <div class="errbar" id="err"></div>
 <div class="wrap">
+  <div class="navrow">  <!-- Every other staff page has this and these two did not, so a chef who
+       opened the dietary list had no way off it but the browser's back button,
+       and one opened in a new tab had none at all. Publishing is the natural
+       place to go back to from the dietary list, so it leads. -->
+  <div class="navwrap">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"><a href="publish.html">Publish Menu</a><a href="tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="cleaners.html">Cleans</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+  </div>
+  </div>
   <div class="wordmark">Nala Resort</div>
-  <div class="pagename">Menu Dietaries</div>
-  <div class="lede">Tick what each dish does <b>not</b> suit.<br>Guests who pick a ticked dietary are asked for a note.</div>
+  <div class="pagename">Dietary Settings</div>
+  <div class="lede">The list a guest chooses from when they tell us what they
+    cannot eat.<br>Tonight's dishes are tagged on the publish page.</div>
 
-  <div class="nomenu" id="nomenu">No menu is published for tonight yet.<br>Publish the menu first, then tag it here.</div>
-
-  <div id="courses"></div>
-
-  <hr class="rule">
   <div class="secthead">Add a dietary</div>
   <div class="addrow"><input id="newName" placeholder="e.g. Red pepper spice" autocomplete="off"></div>
   <div class="grp">
@@ -113,7 +122,7 @@
 </div>
 
 <div class="savebar" id="savebar"><div class="in">
-  <button class="savebtn" id="saveBtn">Save</button>
+  <button class="savebtn" id="saveBtn">Save the list</button>
   <span class="saved" id="savedMsg"></span>
 </div></div>
 
@@ -177,33 +186,11 @@
         return ga-gb || a.localeCompare(b); });
   }
 
-  function paintCourses(){
-    var box=document.getElementById('courses'); box.innerHTML='';
-    if (!MENU){ document.getElementById('nomenu').classList.add('show'); return; }
-    document.getElementById('nomenu').classList.remove('show');
-    COURSES.forEach(function(c){
-      var id=c[0], dish=MENU[id];
-      if (!dish || !dish.name) return;
-      var d=document.createElement('div'); d.className='course show';
-      d.innerHTML='<div class="c-label">'+c[1]+'</div>'+
-        '<div class="c-dish">'+dish.name+'</div>'+
-        '<div class="c-hint">Does not suit:</div>';
-      var t=document.createElement('div'); t.className='ticks';
-      activeNames().forEach(function(n){
-        var on=(TAGS[id]||[]).indexOf(n)>-1;
-        var b=document.createElement('button');
-        b.className='tick'+(on?' on':''); b.textContent=n;
-        b.onclick=function(){
-          TAGS[id]=TAGS[id]||[];
-          var i=TAGS[id].indexOf(n);
-          if(i>-1) TAGS[id].splice(i,1); else TAGS[id].push(n);
-          markDirty(); paintCourses();
-        };
-        t.appendChild(b);
-      });
-      d.appendChild(t); box.appendChild(d);
-    });
-  }
+  /* Tonight's dishes are tagged on the publish page, where they are being
+     written. This page drew them too, and both wrote the whole of /menutags,
+     so whichever saved second replaced the other's ticks without saying so.
+     One writer now. What is left here is the list itself. */
+  function paintCourses(){ /* retired 22 Aug, see above */ }
 
   function paintMng(){
     var box=document.getElementById('mng'); box.innerHTML='';
@@ -247,14 +234,19 @@
 
   document.getElementById('saveBtn').onclick=function(){
     /* Save is a PUT of the whole master list, so it is only safe when the list
-       on screen is the list in the database. If either read failed, it is not,
-       and saving would replace the chef's dietaries with the eight defaults or
-       wipe tonight's tags. Locked rather than trusted. */
+       on screen is the list in the database. If the read failed, it is not, and
+       saving would replace the chef's dietaries with the eight defaults.
+       Locked rather than trusted.
+
+       Tonight's tags are NOT written here any more, 22 Aug. This page and the
+       publish page both wrote /menutags, both wrote the whole map rather than
+       a field, and whichever saved second silently replaced the other's work.
+       Tagging moved to publishing, where the dishes are; this page keeps the
+       list those tags are made from. */
     if (LOCKED) return err(LOCKED);
     var btn=this; btn.disabled=true;
     Promise.all([
-      fetch(DB+'/dietaries.json',{method:'PUT',body:JSON.stringify(MASTER)}),
-      fetch(DB+'/menutags/'+todayKey()+'.json',{method:'PUT',body:JSON.stringify(TAGS)})
+      fetch(DB+'/dietaries.json',{method:'PUT',body:JSON.stringify(MASTER)})
     ]).then(function(rs){
       if (rs.some(function(r){ return !r.ok; })) throw new Error('save failed');
       dirty=false; btn.disabled=false;
@@ -317,6 +309,18 @@
     if (tags) TAGS=tags;
     paintCourses(); paintMng();
   }).catch(function(e){ err('Could not load - refresh to try again.'); });
+</script>
+
+<script>
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  if (!b || !d) return;
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+  var so=document.getElementById('navSignout');
+  if (so) so.onclick=function(e){ e.preventDefault();
+    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+})();
 </script>
 </body>
 </html>
