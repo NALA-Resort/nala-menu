@@ -54,6 +54,26 @@ body.tier-app, body.tier-print { touch-action:manipulation; }
 /* Signing out is an action, not a destination, so it sits below a rule rather
    than reading as one more page in the list. It is never filtered by role:
    every login has to be able to get out.                                  */
+/* Group headings in the menu. Light grey and small on purpose: they are
+   signposts and not choices, and a heading that looks tappable is a heading
+   somebody taps. The rule above each one does the separating; the word only
+   says what the separation is for. */
+.navgrp { padding:12px 18px 5px; font-size:8px; letter-spacing:.2em;
+          text-transform:uppercase; color:#B0B0A8; border-top:1px solid var(--ctl-bdr);
+          margin-top:5px; }
+.navdrop > .navgrp:first-child { border-top:0; margin-top:0; padding-top:6px; }
+.navdrop a.navaction { display:flex; align-items:center; justify-content:space-between;
+                      gap:14px; color:var(--ctl-ink); }
+/* The mark carries the state, so it has to be legible at a glance and never
+   read as another thing to press. Green for on, grey for off: off is a choice
+   somebody made, not a fault, and a red cross would say otherwise. */
+.navmark { display:inline-flex; flex:0 0 auto; }
+.navmark.on  { color:#3F7A52; }
+.navmark.off { color:#B0B0A8; }
+/* Blocked and unavailable get words, because no mark can say "you cannot fix
+   this from here". */
+.navnote { flex:0 0 auto; font-size:8px; letter-spacing:.1em; color:#B0B0A8;
+           text-transform:none; }
 .navdrop a.signout { border-top:1px solid var(--ctl-bdr); margin-top:5px;
                      padding-top:13px; color:var(--mid); }
 
@@ -123,7 +143,21 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 
 </style>
 <style>
-  @page { size: A4 portrait; margin: 10mm; }
+  /* Zero, deliberately, and the margin is put on the body instead.
+
+     A printed page was carrying the browser's own header and footer as well as
+     this sheet's: the URL, the date and time again, and a page number, under a
+     timestamp the sheet had already printed itself. Those belong to the print
+     dialog and no stylesheet can remove them - except that Chrome and Edge
+     drop them when the page margin is zero, which is the one lever CSS has.
+
+     So the page keeps no margin and the body takes 10mm of padding, which puts
+     the ink in the same place it was. It also gives back the roughly fifteen
+     millimetres those two lines were taking, which is about three more rows.
+
+     Not universal. Safari has its own checkbox in the dialog and iOS may offer
+     none at all, so this makes the common case right rather than every case. */
+  @page { size: A4 portrait; margin: 0; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:var(--ui-font); color:#111; background:#fff; padding:16px 16px 0; }
 
@@ -131,6 +165,27 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
          font-family:var(--ui-font); font-size:10px; letter-spacing:.15em;
          text-transform:uppercase; cursor:pointer; }
   .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+  /* One line, one font, one size, one weight. The top of the sheet had the
+     date in a bold letter-spaced face, the make-up at fifteen point, the table
+     count at eight, and the covers at seventeen: four styles saying one
+     sentence. Nothing here is emphasised over anything else, because at a
+     glance the whole line is the same fact, which is what tonight looks like.
+     The timestamp below keeps its own smaller style: it is about the piece of
+     paper and not about the service. */
+  /* Half again as large as it was, and bold. It moved to the foot to stop
+     competing with the table for the top of the page, and at nine point it
+     went the other way and read as small print. It is the one line on the
+     sheet that says what tonight is, and whoever sets the room reads it before
+     anything else. Room at the foot to be loud.
+
+     One size and one weight across all of it, still. The version at the top
+     said this in four sizes and three weights, and making it bigger is not a
+     reason to start that again. */
+  .pfoot { display:none; font-family:var(--ui-font); font-size:13.5px;
+           font-weight:bold; letter-spacing:.1em; text-transform:uppercase;
+           color:#1C1C1A; margin-top:12px; }
+  .pfoot .sep { color:#999; margin:0 7px; font-weight:normal; }
+
   .stamp { margin-top:10px; font-size:7.5px; letter-spacing:.1em;
            text-transform:uppercase; color:#999; text-align:right; }
 
@@ -197,18 +252,45 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .dpill { display:inline-block; font-family:var(--ui-font); font-size:8.5px;
            font-weight:bold; letter-spacing:.06em; text-transform:uppercase;
            padding:2px 7px; border-radius:9px;
-           background:rgba(168,50,30,.12); color:#A8321E;
-           -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+           background:rgba(168,50,30,.12); color:#A8321E; }
   .dpill-al { background:#A8321E; color:#fff; }
-  .checkout { color:#A8321E; font-weight:bold; }
-  .row-conflict td { background:#F7E4DF; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  /* Blue, not red. Red is the allergy colour on this sheet: the flag, the
+     pills, the clash lines. A checkout is a fact about the day and not a
+     warning, and sharing the warning colour made every departing guest read as
+     a problem to be handled. Same blue the cleans board uses. */
+  .checkout { color:#2E74C0; font-weight:bold; }
+
+  /* A guest not dining tonight. Their dietaries are still true and are still
+     printed, because an allergy does not stop being one, but they are not
+     tonight's instruction to the kitchen and must not compete with the rows
+     that are. Greyed, not dropped. */
+  .row-out .dpill { background:#EFEFEC; color:#55554F; }
+  .row-out .dpill-al { background:#9A9A92; color:#fff; }
+  .row-out .dcom, .row-out .dnote, .row-out .inote { color:#8A8A82; }
+  /* No print-color-adjust here. It is an INHERITED property, so setting it on
+     the cell handed it to every coloured thing inside a flagged row: the Yes,
+     the No, the checkout date, the clash lines. Browsers honour exact colour
+     by rasterising, and rasterised text at this size prints soft where the
+     black around it stays sharp. It bought nothing either way, because the
+     print rules below drop this tint from paper anyway. */
+  .row-conflict td { background:#F7E4DF; }
   .flag { display:inline-block; font-family:var(--ui-font); font-size:7px; font-weight:bold;
           letter-spacing:.12em; border:1.2px solid #A8321E; color:#A8321E; padding:1px 4px;
           margin-right:5px; vertical-align:1px; }
   .dnote { display:block; font-size:8px; color:#333; font-style:italic; margin-top:2px; }
+  /* Which dish clashes with what. The FLAG badge said a guest had a conflict
+     and never said which one, so the sheet on the pass could tell a waiter
+     something was wrong and not what: the detail lived only in the bubble on
+     Reservations, which is a screen, and the sheet exists precisely for the
+     moments nobody is at a screen. Upright and dark rather than pilled: it is
+     read at a glance while carrying plates. */
+  .dclash { display:block; font-size:8.5px; color:#A8321E; font-weight:bold;
+            margin-top:3px; line-height:1.35; }
   /* The staff note is management's, not the kitchen's, so it must not read as
      one more line of the dinner comment. Upright where the dietary note is
      italic, and with its own label. */
+  /* Kept for anything still asking for it; the sheet's own staff line is
+     .crow.staff, which takes its rule from the stack. */
   .snote { display:block; font-size:8px; color:#000; margin-top:2px;
            border-top:1px dotted #999; padding-top:2px; }
   .snote b { font-weight:700; }
@@ -225,6 +307,36 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   tr.g-last td.c-room       { border-bottom-right-radius:9px; }
   .muted { color:#aaa; font-weight:normal; font-style:italic; }
 
+  /* ── the comments area as its own stack ─────────────────────
+     The dietaries used to sit inside the row and share its height with the
+     name, the villa and the stay, so one allergy held eight columns of white
+     space open beside it. Here the column is a stack of ruled lines: dietary
+     on one, staff on the next, and always a blank one at the foot to write on.
+     Nothing means one line, dietaries two, both three.
+
+     The writing line is the point and it is new. This sheet is a working
+     document before it is a report, and until now the only place to write
+     "moved to 7pm" against a named guest was the blank rows at the bottom,
+     which belong to nobody. It costs height rather than saving it, which was
+     weighed and accepted: thirteen guests each gain a line. */
+  .cbox { display:block; }
+  .crow { display:block; padding:3px 0; border-bottom:1px dotted #ccc; }
+  .crow:last-child { border-bottom:none; }
+  /* The slot is always in the markup so the note can land in it later. Empty,
+     it must take no room and draw no rule. */
+  .snotehere:empty { display:none; }
+  .crow.write { height:19px; }
+  .crow.diet .dwrap { display:inline-flex; vertical-align:middle; margin-right:8px; }
+  .crow.diet .dclash { display:inline; margin:0 10px 0 0; }
+  .crow.diet .inote { font-style:italic; font-size:8.5px; color:#333;
+                      margin-right:10px; }
+  .crow.diet .inote.dnote { display:inline; border:0; margin-top:0; padding:0;
+                            color:#111; }
+  .crow.staff { font-size:8.5px; }
+  .crow.staff b { font-family:var(--ui-font); font-size:7px; letter-spacing:.12em;
+                  text-transform:uppercase; color:#55554F; margin-right:6px;
+                  font-weight:700; }
+
   /* empty write-in rows: one rule only, from the cell border */
   tr.blank td { height:26px; }
 
@@ -232,20 +344,90 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   /* Printed sheets repeat everything above the table on every page. A table
      header group is the only thing browsers reliably repeat, so the block is
      cloned into a thead row for paper and the on-screen original is hidden. */
+  /* ── the printed header, one line ───────────────────────────
+     Was three: a kicker naming the document, the date row, and the stats row.
+     The kicker told whoever was holding the sheet what the sheet was, which is
+     not a question anybody holding it has, and each block cost a line on a
+     document that was running to two pages. Date left where it has always
+     been, the make-up centred because it is the instruction to whoever sets
+     the room, covers right. Print only: the screen keeps its date buttons and
+     its larger stats, which are read at a desk and not at a pass. */
+  .phead { display:none; align-items:baseline; justify-content:space-between;
+           gap:16px; padding-bottom:6px; }
+  .phead .p-date { font-family:var(--ui-font); font-size:13px; font-weight:bold;
+                   letter-spacing:.1em; text-transform:uppercase; white-space:nowrap; }
+  .phead .p-mix { flex:1 1 auto; text-align:center; font-size:15px; line-height:1.1;
+                  white-space:nowrap; }
+  .phead .p-mix .sub { font-family:var(--ui-font); font-size:8px; letter-spacing:.14em;
+                       text-transform:uppercase; color:#55554F; margin-left:8px; }
+  .phead .p-cov { text-align:right; white-space:nowrap; }
+  .phead .p-cov .n { font-size:17px; font-weight:bold; }
+  .phead .p-cov .l { font-family:var(--ui-font); font-size:8px; letter-spacing:.14em;
+                     text-transform:uppercase; color:#55554F; margin-left:5px; }
+  /* The clone gets `printclone` on ITSELF, not on a wrapper, so a descendant
+     selector never matches it. It did not match from 22 Aug until this was
+     found, which is why the printed sheet came out with no date, no make-up
+     and no covers on it at all. Matched both ways now: by the class the clone
+     carries and by the slot it lives in. */
+  #printHead .phead, .phead.printclone { display:flex; }
+
+  .syncwarn { font-size:11px; line-height:1.5; color:#A8321E; margin:10px 0 4px;
+              max-width:60ch; }
+
+  /* Screen has the stats row above the table and does not need this as well. */
+  .printfoot { display:none; }
+  .printfoot > td { border:0; padding:0; }
+  /* The screen keeps the standalone stamp under the table; the copy inside the
+     footer is for paper only, or both would show. */
+  .printstamp { display:none; }
+
   .printhead { display:none; }
   .printhead > td { border:0; padding:0 0 6px; }
   @media print {
     .printhead { display:table-row; }
     .noprintblock { display:none !important; }
+    /* The screen's date buttons and its larger stat row are for a desk. On
+       paper the one-line header in the table head carries the same facts. */
+    /* The screen's date buttons and its larger stat row are for a desk. On
+       paper the one-line header in the table head carries the same facts, so
+       the originals are hidden and only the clone shows.
+
+       Written as two plain rules. The previous version used :not() with a
+       compound selector inside it, which older engines reject, and a rejected
+       selector takes the WHOLE comma-separated rule down with it: the date row
+       and the stats would print as well as being replaced. */
+    .daterow, .stats { display:none !important; }
+    /* Nothing above the table but its own column headings. */
+    .phead, .printhead { display:none !important; }
+    /* table-footer-group, not block: the group is what a browser repeats. */
+    .printfoot { display:table-footer-group !important; }
+    .pfoot { display:block !important; }
+    .printstamp { display:block !important; }
+    /* The one outside the table would print a second time, and on its own
+       page when the table filled the last one. */
+    #stamp { display:none !important; }
   }
   @media print {
-    body { padding:0; }
+    /* The page margin the @page rule gave up, taken here instead. Not less
+       than this: printers have an unprintable edge of a few millimetres and
+       anything inside it is clipped without warning. */
+    body { padding:10mm; }
     .scroller { overflow:visible; }
 
     /* No tinted rows on paper. On screen they group the sheet at a glance;
        printed they come out as grey slabs that read as a photocopy. The text
        stays lighter, which is enough.                                    */
     .row-out td, .row-unk td, .row-conflict td { background:none; }
+
+    /* Exact colour asked for on the pills alone, and nowhere else, because a
+       pill without its fill is a word in a box and the fill is what makes an
+       allergy findable at a glance. Everything else on this sheet is coloured
+       TEXT, which prints as text and needs no help: asking for exact colour
+       there is what made it rasterise and go soft. */
+    .dpill { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .dpill * { -webkit-print-color-adjust:economy; print-color-adjust:economy; }
+    td, .yes, .no, .checkout, .dclash, .flag, .crow, .inote {
+      -webkit-print-color-adjust:economy; print-color-adjust:economy; }
 
     /* The make-up carries onto paper at full size. The printed sheet is
        where a waiter actually reads it, standing at the pass. */
@@ -256,6 +438,18 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
        compressed and left a band of white at the foot. The rows are given
        the height back: this is a working document that gets written on, and
        the writing needs somewhere to go.                                  */
+    /* The sheet was filling about three quarters of the page, so it read as
+       compressed and left a band of white at the foot. The rows are given
+       the height back: this is a working document that gets written on, and
+       the writing needs somewhere to go.
+
+       Taken down to 9.5px on 22 Aug to buy room, and put straight back the
+       same day: it was too hard to read. That was the wrong lever. The sheet
+       ran to a second page because it padded to twenty-one rows whatever the
+       house was doing, and capping the total at seventeen is what fixed it.
+       Shrinking the type was solving a problem that had already gone, at the
+       cost of the one thing this document has to do, which is be read at a
+       pass by somebody carrying plates. */
     td { padding:9px 5px; font-size:10.5px; }
     th { font-size:8px; padding-bottom:9px; }
     tr.blank td { height:30px; }
@@ -270,7 +464,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 
 
 
-<div class="printkick">Nala &middot; Res print</div>
+
 <div class="daterow">
   <button class="dnav today" id="dToday">Today</button>
   <button class="dnav" id="dPrev">&#8249;</button>
@@ -278,7 +472,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="demo-tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="demo-cleans.html">Cleans</a><a href="demo-clean.html">Clean sheet</a><a href="registration.html">Registration</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="demo-tally.html">Reservations</a><a href="demo-cleans.html">Cleans</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="demo-clean.html">Clean Sheet</a><a href="registration.html">Arrivals</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 
@@ -421,6 +615,8 @@ function stripTags(h){
     <div class="stat"><span class="stat-n" id="nCovers">&ndash;</span><span class="stat-l">Covers</span></div>
   </div>
 
+<div class="syncwarn" id="syncWarn" style="display:none"></div>
+
 <div class="scroller" id="sheetScroller">
   <table>
     <thead>
@@ -437,6 +633,26 @@ function stripTags(h){
       </tr>
     </thead>
     <tbody id="rows"></tbody>
+    <!-- A real table footer, for the same reason the header used to be a table
+         header: a browser repeats thead and tfoot on every printed page and
+         will not repeat a plain block. As a div after the table this line
+         flowed like any other content, so the day it spilled onto a second
+         page the summary went with it and page one ended on a cut-off row. -->
+    <tfoot class="printfoot">
+      <tr><td colspan="9">
+        <div class="pfoot" id="pFoot">
+          <span id="fDate"></span>
+          <span class="sep">&middot;</span><span id="fMix">&ndash;</span>
+          <span class="sep">&middot;</span><span id="fTables"></span>
+          <span class="sep">&middot;</span><span id="fCovers">&ndash;</span> covers
+        </div>
+        <!-- The timestamp travels with the summary rather than trailing the
+             table. Outside it, it flowed as its own block, and a sheet that
+             filled its last page put the stamp alone on the next one: a whole
+             sheet of paper carrying one line of small print. -->
+        <div class="stamp printstamp" id="stampFoot"></div>
+      </td></tr>
+    </tfoot>
   </table>
 </div>
 <div class="stamp" id="stamp"></div>
@@ -1419,7 +1635,11 @@ var PERM_ACTIONS = [
   ['resBoard',     'See Reservations'],
   ['editBookings', 'Edit a booking'],
   ['resSheet',     'See the Reservations Sheet'],
-  ['publishMenu',  'Tag the menu dietaries'],
+  /* Renamed 22 Aug. It was written when tagging was the whole of it; the same
+     permission now opens the page that publishes the menu, takes it down and
+     tags it, so a manager reading "Tag the menu dietaries" was being told
+     about the smallest thing it grants. */
+  ['publishMenu',  'Publish and tag the menu'],
   ['cleansBoard',  'See the Cleans board'],
   ['cleansMarks',  'Mark a clean done'],
   ['setJob',       'Change what a villa needs']
@@ -1793,6 +2013,13 @@ var NAV_NEEDS = {
   'tally.html':        'resBoard',
   'front-desk.html':   'editBookings',
   'list.html':         'resSheet',
+  /* Both were missing until 22 Aug, so every login saw them: a housekeeper's
+     menu offered to publish the dinner menu, and tapping it bounced her back
+     to her own board. An unlisted link is left alone by the filter on purpose,
+     which is right for a link nobody has thought about yet and wrong for two
+     that had simply been forgotten. */
+  'publish.html':      'publishMenu',
+  'tag.html':          'publishMenu',
   'cleaners.html':     'cleansBoard',
   'housekeeping.html': 'cleansBoard',
   'registration.html': 'editBookings',
@@ -1813,8 +2040,111 @@ function navFilterShared(role){
     if (!(href in NAV_NEEDS)) continue;
     links[i].style.display = can(role, NAV_NEEDS[href]) ? '' : 'none';
   }
+  hideEmptyGroups(drop);
+}
+
+/* A heading with nothing under it. The menu is grouped now, and a role that
+   may open none of the printed sheets would otherwise get the word Print
+   sitting above a rule with nothing beneath it: a promise of something that
+   is not there, which reads as a page that failed to load rather than as a
+   thing this login cannot do. */
+function hideEmptyGroups(drop){
+  var kids = drop.children, i, j, any;
+  for (i = 0; i < kids.length; i++){
+    if (kids[i].className.indexOf('navgrp') < 0) continue;
+    any = false;
+    for (j = i + 1; j < kids.length; j++){
+      if (kids[j].className.indexOf('navgrp') > -1) break;
+      /* Sign out sits under the last heading with no heading of its own and
+         is never filtered, so counting it made the last group look occupied
+         however empty it was. */
+      if (kids[j].className.indexOf('signout') > -1) continue;
+      if (kids[j].tagName === 'A' && kids[j].style.display !== 'none'){ any = true; break; }
+    }
+    kids[i].style.display = any ? '' : 'none';
+  }
 }
 window.NALA_NAVFILTER = navFilterShared;
+
+/* The Notifications entry, wired wherever it appears.
+
+   It lived on the Cleans board alone until 23 Aug, written into that page, so
+   the only way to turn notifications on or off was to go to a board a chef
+   cannot open. The push helpers were shared all along; only the wiring was
+   not. Nothing here is board specific.
+
+   It is a switch and not a destination, so it says what it will do rather than
+   what it is: Notifications on means they are on, and tapping turns them off.
+   A menu entry that reads the same in both states is a menu entry nobody
+   trusts. */
+function wireNotify(){
+  var nb = document.getElementById('navNotify');
+  if (!nb || nb.getAttribute('data-wired')) return;
+  nb.setAttribute('data-wired', '1');
+
+  /* The word stays put and a mark carries the state.
+
+     It used to read "Notifications on" and "Notifications off", which is
+     unreadable: there is no way to tell whether the words describe what is
+     true or what tapping will do. Half the menus in the world use each. A tick
+     or a cross beside a fixed word cannot be read as an instruction.
+
+     Blocked and unavailable are not the off state and must not wear its mark.
+     Off is a choice this person made and can undo here; blocked was decided in
+     the phone's own settings, and unavailable means the site is not on the
+     Home Screen and no tap here will change it. Both say so in words, because
+     a mark that means "you cannot fix this from here" does not exist. */
+  var TICK  = '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">' +
+              '<path d="M1 6.5 L4.5 10 L11 2" fill="none" stroke="currentColor" ' +
+              'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var CROSS = '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">' +
+              '<path d="M2 2 L10 10 M10 2 L2 10" fill="none" stroke="currentColor" ' +
+              'stroke-width="1.8" stroke-linecap="round"/></svg>';
+
+  function paint(state){
+    var mark = state === 'on'  ? '<span class="navmark on">' + TICK + '</span>'
+             : state === 'off' ? '<span class="navmark off">' + CROSS + '</span>'
+             : '';
+    var word = state === 'blocked'     ? 'Blocked on this phone'
+             : state === 'unsupported' ? 'Add to Home Screen first'
+             : '';
+    nb.innerHTML = '<span class="navlabel">Notifications</span>' +
+                   (word ? '<span class="navnote">' + word + '</span>' : mark);
+    nb.setAttribute('data-state', state);
+  }
+
+  /* Exposed for the suites: the three states cannot otherwise be produced in
+     a headless browser, which reports every one of them as blocked. */
+  window.__paintNotify = paint;
+  if (typeof pushState === 'function') pushState(paint);
+
+  nb.onclick = function(e){
+    e.preventDefault(); e.stopPropagation();
+    if (typeof pushOn !== 'function') return;
+    var u = null;
+    try { u = firebase.auth().currentUser; } catch (ex){}
+    var st = nb.getAttribute('data-state');
+    if (st === 'unsupported'){
+      alert('Notifications need the app added to the Home Screen. Open the ' +
+            'share menu and choose Add to Home Screen, then try again.');
+      return;
+    }
+    if (st === 'blocked'){
+      alert('Notifications are blocked for this site. Turn them on in your ' +
+            'phone settings, then try again.');
+      return;
+    }
+    nb.innerHTML = '<span class="navlabel">Notifications</span>' +
+                   '<span class="navnote">working</span>';
+    if (st === 'on') pushOff(u, paint);
+    else pushOn(u, window.NALA_ROLE, function(r){
+      paint(r);
+      if (r === 'blocked') alert('Notifications were not allowed. You can turn them on in your phone settings.');
+      if (r === 'failed')  alert('Could not turn notifications on. Check the connection and try again.');
+    });
+  };
+}
+window.NALA_WIRENOTIFY = wireNotify;
 
 /* Pages that never filtered their own menu get it applied for them. Pages
    that call it themselves are unaffected: running twice is harmless. */
@@ -1824,6 +2154,7 @@ window.NALA_NAVFILTER = navFilterShared;
     if (++tries > 60) { clearInterval(t); return; }
     if (!window.NALA_ROLE) return;
     navFilterShared(window.NALA_ROLE);
+    wireNotify();
     clearInterval(t);
   }, 250);
 })();
@@ -1840,8 +2171,15 @@ function tomorrowKey(){ var d=new Date(VIEW); d.setDate(d.getDate()+1); return d
   var n=new Date();
   var hh=n.getHours(), mm=String(n.getMinutes()).padStart(2,'0');
   var ap=hh>=12?'pm':'am'; hh=hh%12||12;
-  document.getElementById('stamp').textContent =
+  var stampText =
     'Printed '+n.getDate()+'/'+(n.getMonth()+1)+'/'+n.getFullYear()+' '+hh+':'+mm+ap;
+  /* Two copies of one fact, and only ever one of them visible: the screen's
+     under the table, the printed one inside the table's footer so it cannot be
+     orphaned onto a page of its own. */
+  ['stamp','stampFoot'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.textContent = stampText;
+  });
 })();
 
 // A stay range on ONE line: "Tue 11-Fri 14". Month is omitted - we know it,
@@ -1849,6 +2187,57 @@ function tomorrowKey(){ var d=new Date(VIEW); d.setDate(d.getDate()+1); return d
 // Falls back to just the checkout if no arrival date was captured.
 /* An allergy is a solid red pill, a preference a tinted one. The word
    "allergy" is dropped from the label because the fill already says it. */
+/* Tonight's clashes, grouped by dish, in the wording the bubble on
+   Reservations uses so the paper and the screen say the same thing. One line
+   per dish: a guest with two dietaries against one dish reads as one problem,
+   which is what it is on a plate.
+
+   Only ever drawn for a guest who is dining. menuConflicts is given an empty
+   list otherwise, which is the same guard the row colour uses. */
+function escText(t){
+  return String(t == null ? '' : t)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function clashHTML(hits){
+  if (!hits || !hits.length) return '';
+  var byDish = {}, order = [];
+  hits.forEach(function(x){
+    if (!byDish[x.dish]) { byDish[x.dish] = []; order.push(x.dish); }
+    if (byDish[x.dish].indexOf(x.diet) < 0) byDish[x.dish].push(x.diet);
+  });
+  return order.map(function(d){
+    return '<span class="dclash">' + escText(d) + ' \u2013 ' +
+           escText(byDish[d].join(', ')) + '</span>';
+  }).join('');
+}
+
+/* The comments column, as its own stack of ruled lines.
+
+   One line for a guest with nothing, two with dietaries, three with a staff
+   note as well, and the blank writing line always at the foot. It is the
+   writing line that justifies the shape: this sheet is worked on at the pass,
+   and until now the only place to note "moved to 7pm" against a named guest
+   was the spare rows at the bottom, which belong to nobody.
+
+   The staff line is filled in later, by staffNotesWhenReady, because the notes
+   are one read per villa and arrive after the sheet has drawn. Its slot is put
+   here whether or not a note exists, and stays empty when none does. */
+function commentBox(g, hits, row){
+  var diet = (dietPills(g.diets) || (g.nodiet ? '<span class="muted">No dietaries</span>' : '')) +
+             clashHTML(hits) +
+             (g.note ? '<span class="inote">' + g.note + '</span>' : '') +
+             /* The dietary note keeps its label. Run together with the dinner
+                note behind a single space they read as one sentence, and they
+                are two different people's business: one is where the guest
+                would like to sit, the other is what will hurt them. */
+             (g.dnote ? '<span class="inote dnote">Dietary: ' + g.dnote + '</span>' : '');
+  return '<div class="cbox">' +
+         (diet.trim() ? '<span class="crow diet">' + diet + '</span>' : '') +
+         '<span class="snotehere" data-villa="' + (row.room || '') + '"></span>' +
+         '<span class="crow write"></span></div>';
+}
+
 function dietPills(diets){
   if (!diets || !diets.length) return '';
   return '<div class="dwrap">' + diets.map(function(x){
@@ -1950,10 +2339,13 @@ function paintStaffNotes(){
     var t = v ? STAFFNOTES[String(v)] : '';
     slots[i].textContent = '';
     if (!t) continue;
-    var d = document.createElement('div');
-    d.className = 'snote';
+    /* A line in the stack, like the dietary line above it, rather than a
+       block hanging off the bottom of one. The dotted rule now comes from
+       .crow and not from .snote's own border, so the spacing matches. */
+    var d = document.createElement('span');
+    d.className = 'crow staff';
     var b = document.createElement('b');
-    b.textContent = 'Staff: ';
+    b.textContent = 'Staff';
     d.appendChild(b);
     d.appendChild(document.createTextNode(t));
     slots[i].appendChild(d);
@@ -1968,8 +2360,14 @@ function fetchStaffNotes(stays){
       .then(function(rec){
         rec = rec || {};
         /* The rewritten note if there is one, otherwise what Mews sent. Same
-           order as the desk, so the sheet and the screen never disagree. */
-        var t = rec.note || rec.fromMews || '';
+           order as the desk, so the sheet and the screen never disagree, and
+           the same test for presence rather than truth: a note cleared on
+           purpose is empty here too, and must not print the Mews original the
+           staff just removed. This sheet is printed and left on a pass, so a
+           deleted note reappearing on paper is the worst of the three places
+           it happened. */
+        var t = (rec.note === undefined || rec.note === null)
+                  ? (rec.fromMews || '') : rec.note;
         if (t) STAFFNOTES[String(v)] = t;
       })
       .catch(function(){});
@@ -1993,17 +2391,34 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
       return null;
     }
     // ── everyone in house, plus externals dining ──────────
-    var rows = [], covers = 0, roomsInHouse = 0;
+    var rows = [], covers = 0, roomsInHouse = 0, silent = 0;
 
     for (var n=1; n<=ROOMS; n++){
       var r = roomRecord(n, responses, manual, roomguests);
       var vacant = !!(r && r.status === 'vacant');
+      /* Something is known about this villa tonight: a booking Mews sent, or
+         an answer somebody gave at a desk. Either is a reason for a line. */
+      var known = !!(hasGuestProfile(roomguests[String(n)]) || (r && r.status));
       /* A vacant villa is not a reservation, so it is left off the sheet
          entirely rather than listed as an empty labelled row. The sheet is
          carried into service and read down: every line on it should be
          somebody to look after. Vacancy is the Cleans board's business, and
          it is shown there. */
       if (vacant) continue;
+
+      /* A villa Mews has said nothing about. Until now it printed as a labelled
+         line with a dash in the dinner column, and on a seventeen villa sheet
+         with nine bookings that is eight lines of nothing, which is what pushed
+         this onto a second page.
+
+         Dropped, but counted, because absence is not the same evidence as a
+         vacancy. Mews only ever tells us about reservations: there is no
+         positive signal for an empty villa, so a sheet willing to read silence
+         as an empty house would print a short and confident and wrong list on
+         the morning the sync is broken. See the note on the Cleans board and
+         Unknown, 19 Aug. The guard below is what makes hiding them safe. */
+      if (!known) { silent++; continue; }
+
       roomsInHouse++;
       rows.push({
         rec: r || { room:String(n) },
@@ -2032,7 +2447,29 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     externals.sort(function(a,b){ return (a.rec.name||'').localeCompare(b.rec.name||''); });
     rows = rows.concat(externals);
 
+    /* Every villa silent, on a resort that is never empty. That is a broken
+       sync far more often than it is a closed hotel, and the old sheet said so
+       by accident: seventeen dashes were ugly and unmistakable. Now that the
+       silent ones are hidden, the sheet would print blank and calm instead, so
+       it says it out loud. The line is deliberately not styled as a warning
+       pill or a colour: it is the only thing on the page, and it should read
+       as a sentence. */
+    var silentAll = (silent === ROOMS);
+    var warn = document.getElementById('syncWarn');
+    if (warn){
+      warn.textContent = silentAll
+        ? 'No villa has a booking tonight. That is usually the Mews sync, ' +
+          'not an empty house. Check before trusting this sheet.'
+        : '';
+      warn.style.display = silentAll ? '' : 'none';
+    }
+
     document.getElementById('nCovers').textContent = covers;
+    document.getElementById('fCovers').textContent = covers;
+    /* The date the sheet is FOR, not the day it was printed. Taken from the
+       same element the screen shows so the two cannot drift. */
+    document.getElementById('fDate').textContent =
+      (document.getElementById('title').textContent || '').trim();
 
     var tb = document.getElementById('rows');
 
@@ -2100,6 +2537,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
         pax: row.status==='in' ? String(g.pax||1) : '',
         stay: stripTags(stayHTML(g.arrives, g.departs)),
         diets: (g.diets||[]).slice(),
+        clashes: hits.map(function(x){ return { dish:x.dish, diet:x.diet }; }),
         nodiet: !!g.nodiet,
         note: [g.note||'', g.dnote ? 'Dietary: '+g.dnote : ''].filter(Boolean).join(' '),
         staffNote: row.room ? (STAFFNOTES[String(row.room)] || '') : ''
@@ -2116,16 +2554,42 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
           '<td class="c-din">'+dinner+'</td>'+
           '<td class="c-pax">'+(row.status==='in' ? (g.pax||1) : '')+'</td>'+
           '<td class="c-dep">'+stayHTML(g.arrives, g.departs)+'</td>'+
-          '<td class="c-dc" colspan="2">'+
-            (dietPills(g.diets) || (g.nodiet ? '<div class="muted">No dietaries</div>' : ''))+
-            ((g.note||g.dnote) ? '<div class="dcom">'+(g.note||'')+
-              (g.dnote ? '<span class="dnote">Dietary: '+g.dnote+'</span>' : '')+'</div>' : '')+
-            '<span class="snotehere" data-villa="'+(row.room||'')+'"></span>'+
-          '</td>'+
+          '<td class="c-dc" colspan="2">'+commentBox(g, hits, row)+'</td>'+
         '</tr>');
     });
 
-    for (var i=rows.length; i<21; i++){
+    /* Blank rows to write walk-ins on. Padded to a fixed 21 until 22 Aug,
+       which is what put a second page on a sheet whose content fitted:
+       thirteen guests plus eight blanks tipped it, and page two came out
+       carrying nothing but the footer. An empty second page is the worst kind
+       of overflow, because nothing on it says why it is there. The browser
+       adds its own header and footer to a printed page as well, which takes
+       height no stylesheet here can measure.
+
+       Four blanks, and never past seventeen rows in total. Every listed guest
+       now has a writing line of their own inside their row, so these are only
+       for somebody not on the sheet at all: a walk-in, a late external. Eight
+       of those was never the number, and on a full house even four is too
+       many, which is why the cap is on the total and not on the blanks.
+
+       A quiet night therefore stops in the middle of the page rather than
+       ruling lines to the foot. That is the cosmetic half of the trade and it
+       loses to the functional half: a sheet that reads as unfinished is a
+       smaller problem than a sheet that prints a blank page every night.
+
+       Seventeen was still one too many. A printout on 22 Aug held fourteen
+       guest rows on the page and put the three blanks after them onto a second
+       one, so the real ceiling is fourteen rows and not seventeen. My earlier
+       arithmetic said 990px of budget and it was wrong: the browser's own
+       header and footer take more than I allowed, and default print margins
+       are wider than the 10mm this stylesheet asks for.
+
+       Fourteen is measured rather than reasoned, which is why it is the number
+       here. It costs a busy night its spare lines, and that is the right way
+       round: every guest already has a writing line inside their own row, and
+       these are only for somebody who was never on the sheet. */
+    var padTo = Math.max(rows.length, Math.min(14, rows.length + 4));
+    for (var i=rows.length; i<padTo; i++){
       tb.insertAdjacentHTML('beforeend',
         '<tr class="blank"><td></td><td></td><td class="c-dt"></td><td class="c-bt"></td>'+
         '<td></td><td></td><td></td><td></td><td></td></tr>');
@@ -2156,6 +2620,10 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     document.getElementById('nTables').textContent = tables;
     document.getElementById('tblBreak').textContent = parts.length ? parts.join(' \u00b7 ') : '\u2014';
     document.getElementById('nTablesWord').textContent = (tables === 1) ? 'table' : 'tables';
+    document.getElementById('fMix').textContent =
+      parts.length ? parts.join(' \u00b7 ') : '\u2014';
+    document.getElementById('fTables').textContent =
+      tables + ' ' + (tables === 1 ? 'table' : 'tables');
 
 
   });
@@ -2168,10 +2636,9 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     var slot = document.getElementById('printHead');
     if (!slot) return;
     slot.innerHTML = '';
-    ['.printkick','.daterow','.stats'].join(',').split(',').forEach(function(sel){
+    [].forEach(function(sel){
       var el = document.querySelector(sel);
       if (!el) return;
-      el.classList.add('noprintblock');
       var c = el.cloneNode(true);
       c.classList.remove('noprintblock');
       c.classList.add('printclone');

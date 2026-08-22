@@ -51,6 +51,26 @@ body.tier-app, body.tier-print { touch-action:manipulation; }
 /* Signing out is an action, not a destination, so it sits below a rule rather
    than reading as one more page in the list. It is never filtered by role:
    every login has to be able to get out.                                  */
+/* Group headings in the menu. Light grey and small on purpose: they are
+   signposts and not choices, and a heading that looks tappable is a heading
+   somebody taps. The rule above each one does the separating; the word only
+   says what the separation is for. */
+.navgrp { padding:12px 18px 5px; font-size:8px; letter-spacing:.2em;
+          text-transform:uppercase; color:#B0B0A8; border-top:1px solid var(--ctl-bdr);
+          margin-top:5px; }
+.navdrop > .navgrp:first-child { border-top:0; margin-top:0; padding-top:6px; }
+.navdrop a.navaction { display:flex; align-items:center; justify-content:space-between;
+                      gap:14px; color:var(--ctl-ink); }
+/* The mark carries the state, so it has to be legible at a glance and never
+   read as another thing to press. Green for on, grey for off: off is a choice
+   somebody made, not a fault, and a red cross would say otherwise. */
+.navmark { display:inline-flex; flex:0 0 auto; }
+.navmark.on  { color:#3F7A52; }
+.navmark.off { color:#B0B0A8; }
+/* Blocked and unavailable get words, because no mark can say "you cannot fix
+   this from here". */
+.navnote { flex:0 0 auto; font-size:8px; letter-spacing:.1em; color:#B0B0A8;
+           text-transform:none; }
 .navdrop a.signout { border-top:1px solid var(--ctl-bdr); margin-top:5px;
                      padding-top:13px; color:var(--mid); }
 
@@ -518,7 +538,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="demo-tally.html">Reservations</a><a href="front-desk.html">Front Desk Arrival</a><a href="demo-reservations.html">Reservations Sheet</a><a href="demo-clean.html">Clean sheet</a><a href="registration.html">Registration</a><a href="staff.html">Settings</a><a href="pages.html">Pages</a><a href="#" class="signout" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="demo-tally.html">Reservations</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="demo-reservations.html">FOH Sheet</a><a href="demo-clean.html">Clean Sheet</a><a href="registration.html">Arrivals</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 
@@ -588,48 +608,10 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
-  var nb=document.getElementById('navNotify');
-  function paintNotify(state){
-    if (!nb) return;
-    nb.textContent = state==='on'        ? 'Notifications on'
-                   : state==='off'       ? 'Notifications off'
-                   : state==='blocked'   ? 'Notifications blocked'
-                   : state==='unsupported' ? 'Notifications unavailable'
-                   : 'Notifications';
-    nb.setAttribute('data-state', state);
-  }
-  if (nb){
-    /* nala-shared.js loads at the foot of the page, so its helpers are not
-       here yet when this runs. Calling one now throws and takes the rest of
-       the menu wiring with it, including the sign out link.            */
-    (function waitForShared(){
-      if (typeof pushState !== 'function'){ setTimeout(waitForShared, 300); return; }
-      pushState(paintNotify);
-    })();
-    nb.onclick = function(e){
-      e.preventDefault(); e.stopPropagation();
-      var u = firebase.auth().currentUser;
-      if (typeof pushOn !== 'function'){ return; }   /* not loaded yet */
-      var st = nb.getAttribute('data-state');
-      if (st === 'unsupported'){
-        paintNotify('unsupported');
-        alert('Notifications need the app added to the Home Screen. Open the share menu and choose Add to Home Screen, then try again.');
-        return;
-      }
-      if (st === 'blocked'){
-        alert('Notifications are blocked for this site. Turn them on in your phone settings, then try again.');
-        return;
-      }
-      nb.textContent = 'Working...';
-      if (st === 'on') pushOff(u, paintNotify);
-      else pushOn(u, window.NALA_ROLE, function(r){
-        paintNotify(r);
-        if (r === 'blocked') alert('Notifications were not allowed. You can turn them on in your phone settings.');
-        if (r === 'failed')  alert('Could not turn notifications on. Check the connection and try again.');
-      });
-    };
-  }
-
+  /* The Notifications switch was written into this page and lived only here,
+     so the only way to turn notifications on or off was to open a board a chef
+     cannot. The push helpers were shared all along; only the wiring was not.
+     It is wireNotify() in nala-shared.js now and runs on every page. */
   var so=document.getElementById('navSignout');
   if (so) so.onclick=function(e){ e.preventDefault();
     var u = window.NALA_USER || null;
@@ -694,16 +676,22 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      the database simply did not answer wastes a walk.                  */
 
   /* Only the boards this role may open. Sign out is never filtered. */
+  /* The shared one, not a copy.
+
+     This page carried its own filter with its own map, written before
+     nala-shared.js grew one, and the map had not been touched since. It knew
+     nothing of Publish Menu, Dietary or the Notifications switch, and it hid
+     anything it did not recognise rather than leaving it alone, so on this
+     board alone those three vanished. A housekeeper opening the Cleans board
+     had no Notifications switch at all, which is where the switch used to
+     live.
+
+     That difference is exactly why one copy: the shared filter leaves an
+     unlisted link visible on purpose, so a new page is merely ungated until
+     somebody says otherwise rather than invisible until somebody remembers
+     two files. */
   function navFilter(role){
-    var need = { 'tally.html':'resBoard', 'front-desk.html':'editBookings', 'list.html':'resSheet',
-                 'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard', 'registration.html':'editBookings',
-                 'staff.html':'manageStaff', 'pages.html':'manageStaff' };
-    var links = document.querySelectorAll('#navDrop a');
-    for (var i=0;i<links.length;i++){
-      if (links[i].className.indexOf('signout')>-1) continue;
-      var href=(links[i].getAttribute('href')||'').split('?')[0];
-      links[i].style.display = can(role, need[href]) ? '' : 'none';
-    }
+    if (window.NALA_NAVFILTER) window.NALA_NAVFILTER(role);
   }
 
   function showAccess(allowed, err){
@@ -1733,7 +1721,11 @@ var PERM_ACTIONS = [
   ['resBoard',     'See Reservations'],
   ['editBookings', 'Edit a booking'],
   ['resSheet',     'See the Reservations Sheet'],
-  ['publishMenu',  'Tag the menu dietaries'],
+  /* Renamed 22 Aug. It was written when tagging was the whole of it; the same
+     permission now opens the page that publishes the menu, takes it down and
+     tags it, so a manager reading "Tag the menu dietaries" was being told
+     about the smallest thing it grants. */
+  ['publishMenu',  'Publish and tag the menu'],
   ['cleansBoard',  'See the Cleans board'],
   ['cleansMarks',  'Mark a clean done'],
   ['setJob',       'Change what a villa needs']
@@ -2107,6 +2099,13 @@ var NAV_NEEDS = {
   'tally.html':        'resBoard',
   'front-desk.html':   'editBookings',
   'list.html':         'resSheet',
+  /* Both were missing until 22 Aug, so every login saw them: a housekeeper's
+     menu offered to publish the dinner menu, and tapping it bounced her back
+     to her own board. An unlisted link is left alone by the filter on purpose,
+     which is right for a link nobody has thought about yet and wrong for two
+     that had simply been forgotten. */
+  'publish.html':      'publishMenu',
+  'tag.html':          'publishMenu',
   'cleaners.html':     'cleansBoard',
   'housekeeping.html': 'cleansBoard',
   'registration.html': 'editBookings',
@@ -2127,8 +2126,111 @@ function navFilterShared(role){
     if (!(href in NAV_NEEDS)) continue;
     links[i].style.display = can(role, NAV_NEEDS[href]) ? '' : 'none';
   }
+  hideEmptyGroups(drop);
+}
+
+/* A heading with nothing under it. The menu is grouped now, and a role that
+   may open none of the printed sheets would otherwise get the word Print
+   sitting above a rule with nothing beneath it: a promise of something that
+   is not there, which reads as a page that failed to load rather than as a
+   thing this login cannot do. */
+function hideEmptyGroups(drop){
+  var kids = drop.children, i, j, any;
+  for (i = 0; i < kids.length; i++){
+    if (kids[i].className.indexOf('navgrp') < 0) continue;
+    any = false;
+    for (j = i + 1; j < kids.length; j++){
+      if (kids[j].className.indexOf('navgrp') > -1) break;
+      /* Sign out sits under the last heading with no heading of its own and
+         is never filtered, so counting it made the last group look occupied
+         however empty it was. */
+      if (kids[j].className.indexOf('signout') > -1) continue;
+      if (kids[j].tagName === 'A' && kids[j].style.display !== 'none'){ any = true; break; }
+    }
+    kids[i].style.display = any ? '' : 'none';
+  }
 }
 window.NALA_NAVFILTER = navFilterShared;
+
+/* The Notifications entry, wired wherever it appears.
+
+   It lived on the Cleans board alone until 23 Aug, written into that page, so
+   the only way to turn notifications on or off was to go to a board a chef
+   cannot open. The push helpers were shared all along; only the wiring was
+   not. Nothing here is board specific.
+
+   It is a switch and not a destination, so it says what it will do rather than
+   what it is: Notifications on means they are on, and tapping turns them off.
+   A menu entry that reads the same in both states is a menu entry nobody
+   trusts. */
+function wireNotify(){
+  var nb = document.getElementById('navNotify');
+  if (!nb || nb.getAttribute('data-wired')) return;
+  nb.setAttribute('data-wired', '1');
+
+  /* The word stays put and a mark carries the state.
+
+     It used to read "Notifications on" and "Notifications off", which is
+     unreadable: there is no way to tell whether the words describe what is
+     true or what tapping will do. Half the menus in the world use each. A tick
+     or a cross beside a fixed word cannot be read as an instruction.
+
+     Blocked and unavailable are not the off state and must not wear its mark.
+     Off is a choice this person made and can undo here; blocked was decided in
+     the phone's own settings, and unavailable means the site is not on the
+     Home Screen and no tap here will change it. Both say so in words, because
+     a mark that means "you cannot fix this from here" does not exist. */
+  var TICK  = '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">' +
+              '<path d="M1 6.5 L4.5 10 L11 2" fill="none" stroke="currentColor" ' +
+              'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var CROSS = '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">' +
+              '<path d="M2 2 L10 10 M10 2 L2 10" fill="none" stroke="currentColor" ' +
+              'stroke-width="1.8" stroke-linecap="round"/></svg>';
+
+  function paint(state){
+    var mark = state === 'on'  ? '<span class="navmark on">' + TICK + '</span>'
+             : state === 'off' ? '<span class="navmark off">' + CROSS + '</span>'
+             : '';
+    var word = state === 'blocked'     ? 'Blocked on this phone'
+             : state === 'unsupported' ? 'Add to Home Screen first'
+             : '';
+    nb.innerHTML = '<span class="navlabel">Notifications</span>' +
+                   (word ? '<span class="navnote">' + word + '</span>' : mark);
+    nb.setAttribute('data-state', state);
+  }
+
+  /* Exposed for the suites: the three states cannot otherwise be produced in
+     a headless browser, which reports every one of them as blocked. */
+  window.__paintNotify = paint;
+  if (typeof pushState === 'function') pushState(paint);
+
+  nb.onclick = function(e){
+    e.preventDefault(); e.stopPropagation();
+    if (typeof pushOn !== 'function') return;
+    var u = null;
+    try { u = firebase.auth().currentUser; } catch (ex){}
+    var st = nb.getAttribute('data-state');
+    if (st === 'unsupported'){
+      alert('Notifications need the app added to the Home Screen. Open the ' +
+            'share menu and choose Add to Home Screen, then try again.');
+      return;
+    }
+    if (st === 'blocked'){
+      alert('Notifications are blocked for this site. Turn them on in your ' +
+            'phone settings, then try again.');
+      return;
+    }
+    nb.innerHTML = '<span class="navlabel">Notifications</span>' +
+                   '<span class="navnote">working</span>';
+    if (st === 'on') pushOff(u, paint);
+    else pushOn(u, window.NALA_ROLE, function(r){
+      paint(r);
+      if (r === 'blocked') alert('Notifications were not allowed. You can turn them on in your phone settings.');
+      if (r === 'failed')  alert('Could not turn notifications on. Check the connection and try again.');
+    });
+  };
+}
+window.NALA_WIRENOTIFY = wireNotify;
 
 /* Pages that never filtered their own menu get it applied for them. Pages
    that call it themselves are unaffected: running twice is harmless. */
@@ -2138,6 +2240,7 @@ window.NALA_NAVFILTER = navFilterShared;
     if (++tries > 60) { clearInterval(t); return; }
     if (!window.NALA_ROLE) return;
     navFilterShared(window.NALA_ROLE);
+    wireNotify();
     clearInterval(t);
   }, 250);
 })();

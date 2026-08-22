@@ -127,5 +127,42 @@ with sync_playwright() as p:
 
     b.close()
 
+    # ── one filter, not nine ────────────────────────────────────
+    #  Reported 23 Aug: a housekeeper had no Notifications switch on the Cleans
+    #  board, which is the very page the switch used to live on. Six pages
+    #  carried their own copy of the menu filter with their own map, all
+    #  written before nala-shared.js grew one and none touched since. They knew
+    #  nothing of Publish Menu, Dietary or the switch, and they hid whatever
+    #  they did not recognise rather than leaving it alone. So those three
+    #  vanished on exactly the pages that kept a copy.
+    #
+    #  Read from the source rather than from a rendered page: a private copy
+    #  that happens to agree today is still the thing that goes stale next
+    #  time a page is added.
+    import glob, re as _re
+    offenders = []
+    for f in sorted(glob.glob("*.html")):
+        if f.startswith("demo-"):
+            continue                      # snapshots, rebuilt from the real pages
+        src = open(f).read()
+        if "navFilter" not in src:
+            continue
+        #  The function itself, brace matched, rather than a window of
+        #  characters after it: an 800 character window swept up the page's own
+        #  access gate and called it a menu filter.
+        i = src.index("function navFilter")
+        j = src.index("{", i); depth = 0; end = j
+        for k in range(j, len(src)):
+            if src[k] == "{": depth += 1
+            elif src[k] == "}":
+                depth -= 1
+                if depth == 0:
+                    end = k + 1; break
+        body = src[i:end]
+        if "manageStaff" in body or "style.display" in body:
+            offenders.append(f)
+    print("   pages with their own menu filter:", offenders)
+    ck("no page keeps its own copy of the menu filter", offenders == [])
+
 print("RESULT: %d passed, %d failed" % (P, F))
 httpd.shutdown()

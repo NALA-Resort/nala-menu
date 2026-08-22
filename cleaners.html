@@ -484,16 +484,22 @@
      the database simply did not answer wastes a walk.                  */
 
   /* Only the boards this role may open. Sign out is never filtered. */
+  /* The shared one, not a copy.
+
+     This page carried its own filter with its own map, written before
+     nala-shared.js grew one, and the map had not been touched since. It knew
+     nothing of Publish Menu, Dietary or the Notifications switch, and it hid
+     anything it did not recognise rather than leaving it alone, so on this
+     board alone those three vanished. A housekeeper opening the Cleans board
+     had no Notifications switch at all, which is where the switch used to
+     live.
+
+     That difference is exactly why one copy: the shared filter leaves an
+     unlisted link visible on purpose, so a new page is merely ungated until
+     somebody says otherwise rather than invisible until somebody remembers
+     two files. */
   function navFilter(role){
-    var need = { 'tally.html':'resBoard', 'front-desk.html':'editBookings', 'list.html':'resSheet',
-                 'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard', 'registration.html':'editBookings',
-                 'staff.html':'manageStaff', 'pages.html':'manageStaff' };
-    var links = document.querySelectorAll('#navDrop a');
-    for (var i=0;i<links.length;i++){
-      if (links[i].className.indexOf('signout')>-1) continue;
-      var href=(links[i].getAttribute('href')||'').split('?')[0];
-      links[i].style.display = can(role, need[href]) ? '' : 'none';
-    }
+    if (window.NALA_NAVFILTER) window.NALA_NAVFILTER(role);
   }
 
   function showAccess(allowed, err){
