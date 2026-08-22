@@ -581,7 +581,25 @@
      `p`, `r`, `a`, `d` were the old scheme, keyed on a phone number. That made
      /responses/<date>/<phone> guessable in order, which is why this page now
      writes the dinner cell instead. */
-  var G = { id:(qs.get('b')||'').trim(), room:'', phone:'',
+  /* `r` is the villa, and it is a fallback and nothing else. Mews is the
+     authority and is read below; this is only consulted when the booking id
+     fails to resolve to one.
+
+     It is here because of 22 Aug. The invite links went out with the booking
+     id unmerged, as the literal text {{bookingId}}, so /bookings/{{bookingId}}
+     /pms returned nothing, the villa was blank, and every confirmation was
+     refused by the database while the guest was thanked. The booking id field
+     had been added to the sending tool days earlier; the room number is an
+     older field that has always worked. One new field propped up by one old
+     one is not redundancy, but two fields failing together is rarer than one.
+
+     Digits only. The dinner cell is keyed on the villa number, so "Room 12"
+     or "Villa 12" is not a villa, and a value that is not one to three digits
+     is treated as absent rather than cleaned up into a guess. */
+  var linkRoom = (qs.get('r')||'').trim();
+  if (!/^[0-9]{1,3}$/.test(linkRoom)) linkRoom = '';
+
+  var G = { id:(qs.get('b')||'').trim(), room:'', phone:'', pmsOk:false,
             name:((qs.get('n')||'') + ' ' + (qs.get('s')||'')).trim(),
             arrives:qs.get('a')||'', departs:qs.get('d')||'' };
 
@@ -866,13 +884,67 @@
       at: new Date().toISOString()
     };
     /* The one dinner cell, at /dinner/<date>/<villa>. Not a second record: the
-       same one reception writes at the desk and every board reads. */
-    db('/dinner/'+todayKey()+'/'+G.room, 'PUT', payload);
-    /* Standing dietaries go on the booking, so they carry across the nights of
-       this stay. Pre-menu, the acknowledgement covers tonight only, so nothing
-       is claimed for future nights. */
-    if (MENU) db('/bookings/'+G.id+'/prearrival', 'PATCH', { diets: state.diets });
-    stepDone(payload);
+       same one reception writes at the desk and every board reads.
+
+       The villa is required, and was not checked from 17 Aug until 22 Aug. It
+       comes from /bookings/<id>/pms and the link no longer carries it, so a
+       booking Mews has not assigned a room to left it empty. The path built
+       then was /dinner/<date>/ with nothing on the end, which is the DATE
+       node: the database refused it, the guest was thanked anyway, and
+       reception saw nothing. There is no second place to look the villa up
+       either, since /stays needs a login and this page has none.
+
+       Refused rather than guessed. A dinner cell filed under the wrong villa
+       is worse than no cell at all: it feeds a table that is laid and food
+       that is cooked, and it removes the one signal reception has that
+       somebody needs chasing. */
+    if (!G.room){
+      stepFailed('room');
+      return;
+    }
+
+    /* Awaited, where it used to be fired and forgotten. stepDone ran on the
+       next line whatever the database said, so every refused write in those
+       five days read to the guest as a confirmation. A booking that did not
+       save must not look like one that did. */
+    db('/dinner/'+todayKey()+'/'+G.room, 'PUT', payload)
+      .then(function(){
+        if (window.__nalaWriteFailed) throw new Error('refused');
+        /* Standing dietaries go on the booking, so they carry across the
+           nights of this stay. Pre-menu, the acknowledgement covers tonight
+           only, so nothing is claimed for future nights. After the dinner
+           cell, not beside it: the dietaries are a detail of an answer that
+           has landed, and writing them for an answer that did not is how a
+           guest ends up with requirements recorded against a dinner nobody
+           knows they are coming to. */
+        /* Only against a booking that resolved. On 22 Aug the id arrived
+           unmerged, so this wrote standing dietaries to /bookings/{{bookingId}}
+           /prearrival: a junk node named after the placeholder, carrying a real
+           guest's allergies where nothing would ever read them. The villa
+           fallback makes that MORE likely, not less, because the dinner now
+           succeeds where it used to fail and this line is reached. A dietary
+           filed nowhere is worse than one not filed: it looks recorded. */
+        if (MENU && G.pmsOk) db('/bookings/'+G.id+'/prearrival', 'PATCH', { diets: state.diets });
+        stepDone(payload);
+      })
+      .catch(function(){ stepFailed('save'); });
+  }
+
+  /* An answer that did not save. Said plainly, with the one thing the guest
+     can actually do about it, because the alternative is a guest who believes
+     a table is held and a kitchen that has not been told. */
+  function stepFailed(why){
+    var msg = why === 'room'
+      ? 'We could not match your booking to a villa, so this has not reached the kitchen.'
+      : 'Your answer did not save.';
+    panel.innerHTML = '<div class="r-done">' +
+      '<div class="r-done-t">Not saved</div>' +
+      '<div class="r-done-s">' + msg +
+      ' Please let reception know and we will take care of it.</div>' +
+      '<a class="r-link" id="bEdit">Try again</a></div>';
+    var e = document.getElementById('bEdit');
+    if (e) e.onclick = function(){ window.__nalaWriteFailed = false; stepChoose(); };
+    panel.setAttribute('data-step','done'); scheduleFit();
   }
 
   /* Filed by night, not by guest. Dinner is asked once a night, so opening
@@ -913,7 +985,14 @@
         pms = pms || {};
         /* Mews is the authority on who is where. The link is only a fallback,
            and it is older than the database by definition. */
+        /* Mews first, always: a link is written once and Mews is current. The
+           link only answers when Mews has not, which in practice means the
+           booking id did not resolve. */
+        /* The booking id resolved to a real record. Anything written against
+           the booking rather than against the night depends on this. */
+        G.pmsOk = !!(pms && (pms.villa || pms.first || pms.arrive));
         if (pms.villa)  G.room  = String(pms.villa);
+        else if (linkRoom) G.room = linkRoom;
         if (pms.phone)  G.phone = pms.phone;
         var nm = ((pms.first||'') + ' ' + (pms.last||'')).trim();
         if (nm) G.name = nm;
@@ -947,7 +1026,9 @@
           stepChoose();
         }
       })
-      .catch(stepChoose);
+      /* A pms read that throws used to drop straight to the question with no
+         villa at all, which is the same dead end by another route. */
+      .catch(function(){ if (!G.room && linkRoom) G.room = linkRoom; stepChoose(); });
   }
 
   initRSVP();   // independent of menu state

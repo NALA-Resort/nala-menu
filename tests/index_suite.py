@@ -17,7 +17,7 @@ import errortrap   # fails the run if any page throws
 # This suite refuses a write on purpose, to prove the guest is told. The page
 # is supposed to complain about it.
 errortrap.expect("failed: 401")
-import threading, http.server, socketserver, json, time, datetime, os
+import threading, http.server, socketserver, json, time, datetime, os, re
 
 os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
@@ -310,14 +310,113 @@ with sync_playwright() as p:
     STATE["pre"] = None
 
     # ── a write that fails must not look like success ───────────
+    #  This check existed from the start and asserted the internal flag only.
+    #  The flag was set correctly the whole time and nothing looked at it: the
+    #  page called stepDone on the line after the write, so five days of
+    #  refused writes read to guests as confirmations. A test that watches a
+    #  variable instead of the screen passes while the bug ships.
     STATE["fail"] = True
     pg = guest(LINK)
     pg.locator("#bOut").click(); pg.wait_for_timeout(150)
-    pg.locator("#bYes").click(); pg.wait_for_timeout(500)
+    pg.locator("#bYes").click(); pg.wait_for_timeout(700)
     ck("a rejected write is recorded rather than swallowed",
        pg.evaluate("()=>window.__nalaWriteFailed===true"))
+    seen = pg.inner_text("#rsvp").lower()
+    ck("and the guest is told it did not save",
+       "not saved" in seen)
+    ck("and is NOT thanked for a booking that does not exist",
+       "look forward" not in seen and "confirmed for" not in seen)
+    ck("and is pointed at the one thing that can fix it",
+       "reception" in seen)
+    ck("and can try again",
+       pg.locator("#bEdit").count() == 1)
     STATE["fail"] = False
     pg.close()
+
+    # ── a booking with no villa ─────────────────────────────────
+    #  The dinner cell is filed by villa. From 17 Aug, when the link stopped
+    #  carrying the villa, it came only from /bookings/<id>/pms, and a booking
+    #  Mews had not assigned a room to left it empty. The path built then was
+    #  /dinner/<date>/ with nothing on the end, which is the date node holding
+    #  every villa's answer for the night. The database refused it, which is
+    #  the only reason this was a lost booking rather than a wiped service.
+    #
+    #  There is no second place to look: /stays needs a login and this page is
+    #  the one page with no login. So it is refused and said out loud. A cell
+    #  filed under a guessed villa would lay a table and cook for it.
+    STATE["pms"] = {k: v for k, v in PMS.items() if k != "villa"}
+    pg = guest(LINK)
+    del WRITES[:]
+    pg.locator("#bOut").click(); pg.wait_for_timeout(150)
+    pg.locator("#bYes").click(); pg.wait_for_timeout(700)
+    ck("a booking with no villa writes no dinner cell at all",
+       len([w for w in WRITES if "/dinner/" in w["u"]]) == 0)
+    ck("and never builds a path at the date node",
+       not any(re.search(r"/dinner/\d{4}-\d{2}-\d{2}/?\.json", w["u"]) for w in WRITES))
+    seen = pg.inner_text("#rsvp").lower()
+    ck("the guest is told, in terms of what went wrong",
+       "not saved" in seen and "villa" in seen)
+    ck("and not thanked",
+       "look forward" not in seen and "confirmed for" not in seen)
+    #  Dietaries are written after the cell lands, not beside it. Recording
+    #  requirements against a dinner nobody knows about is how a kitchen ends
+    #  up with an allergy note and no cover.
+    ck("and no dietaries are filed against a dinner that was refused",
+       len([w for w in WRITES if "prearrival" in w["u"]]) == 0)
+    STATE["pms"] = PMS
+    pg.close()
+
+    # ── the villa from the link ─────────────────────────────────
+    #  22 Aug: the invite links went out with the booking id unmerged, as the
+    #  literal text {{bookingId}}. /bookings/{{bookingId}}/pms returned nothing,
+    #  the villa was blank, every confirmation was refused, and every guest was
+    #  thanked. `r` is the villa carried in the link so the night survives that.
+    #  A fallback and nothing more: Mews is written once per change and a link
+    #  is written once, ever.
+    STATE["pms"] = None
+    pg = guest(LINK + "&r=12")
+    del WRITES[:]
+    pg.locator("#bOut").click(); pg.wait_for_timeout(150)
+    pg.locator("#bYes").click(); pg.wait_for_timeout(700)
+    dw = [w for w in WRITES if "/dinner/" in w["u"]]
+    ck("a booking that does not resolve still files against the link's villa",
+       len(dw) == 1 and "/12.json" in dw[0]["u"])
+    seen = pg.inner_text("#rsvp").lower()
+    ck("and the answer is taken, not refused",
+       "not saved" not in seen and "noted" in seen)
+    #  The id was junk in exactly this case, so anything filed against the
+    #  BOOKING has nowhere real to go. A dietary written to a node named after
+    #  the placeholder looks recorded and is not, which is worse than not
+    #  writing it. The villa fallback makes this reachable, so it is guarded.
+    ck("but nothing is filed against a booking id that resolved to nothing",
+       len([w for w in WRITES if "prearrival" in w["u"]]) == 0)
+    pg.close()
+
+    #  Mews outranks the link. A villa is current in one and frozen in the
+    #  other, so the link is read only when Mews has said nothing.
+    STATE["pms"] = PMS          # villa 4
+    pg = guest(LINK + "&r=12")
+    del WRITES[:]
+    pg.locator("#bOut").click(); pg.wait_for_timeout(150)
+    pg.locator("#bYes").click(); pg.wait_for_timeout(700)
+    dw = [w for w in WRITES if "/dinner/" in w["u"]]
+    ck("Mews wins over the link when both name a villa",
+       len(dw) == 1 and "/4.json" in dw[0]["u"])
+    pg.close()
+
+    #  The cell is keyed on the villa number. "Room 12" is not a villa number,
+    #  and cleaning it up would be guessing at the one value that decides which
+    #  table gets laid.
+    for bad in ("Room%2012", "Villa%2012", "abc", "1234"):
+        STATE["pms"] = None
+        pg = guest(LINK + "&r=" + bad)
+        del WRITES[:]
+        pg.locator("#bOut").click(); pg.wait_for_timeout(150)
+        pg.locator("#bYes").click(); pg.wait_for_timeout(600)
+        ck("a villa of '" + bad + "' in the link is treated as absent",
+           len([w for w in WRITES if "/dinner/" in w["u"]]) == 0)
+        pg.close()
+    STATE["pms"] = PMS
 
     # ── the page at Android widths ──────────────────────────────
     for w in (390, 360, 320):
