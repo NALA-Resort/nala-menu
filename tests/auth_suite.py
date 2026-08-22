@@ -211,6 +211,55 @@ print("   no account:", {k:v for k,v in r.items() if k!="errs"})
 ck("a passcode with no account says so, not 'wrong passcode'",
    "no account" in r["msg"].lower())
 
+# 9c. a persistence store that will not answer
+#  The SDK defaults to LOCAL persistence, which is IndexedDB, and the sign-in
+#  waits on that store before it resolves. Another tab of the same origin can
+#  hold it, and then the sign-in never settles at all: no network error, no
+#  rejection, fifteen seconds of nothing and then a message about the
+#  connection while the phone shows full signal.
+#
+#  Reported 22 Aug as "works first time, then the link fails, then works in a
+#  different browser", which is the shape of browser-held state and not of a
+#  network. Eight tabs were open. Closing them fixed it.
+#
+#  LOCAL is asked for with a short cap and SESSION is the fallback, because
+#  sessionStorage takes no cross-tab lock and cannot hang. A session that does
+#  not outlive the tab beats a staff member who cannot sign in at all.
+def locked(pg):
+    pg.evaluate("""()=>{
+      window.__log = [];
+      var P = {LOCAL:'local', SESSION:'session', NONE:'none'};
+      window.firebase.auth.Auth = { Persistence: P };
+      window.__A.__store = 'local';
+      window.__A.setPersistence = function(x){
+        window.__log.push(x);
+        if (x === 'local') return new Promise(function(){});   // never answers
+        window.__A.__store = x; return Promise.resolve();
+      };
+      var real = window.__A.signInWithEmailAndPassword;
+      window.__A.signInWithEmailAndPassword = function(e, p){
+        /* the real SDK waits on the store, so a locked one hangs the sign-in */
+        if (window.__A.__store === 'local') return new Promise(function(){});
+        return real(e, p);
+      };
+    }""")
+    for d in "482913": pg.click('.naKey[data-k="%s"]'%d); pg.wait_for_timeout(50)
+    pg.wait_for_timeout(4000)
+    return {"log": pg.evaluate("()=>window.__log"),
+            "signed": pg.evaluate("()=>window.__SIGNED || null"),
+            #  Gone is the best answer available: the sign-in went through and
+            #  the overlay took itself away.
+            "msg": pg.evaluate("()=>{var e=document.getElementById('naPadMsg');"
+                               "return e ? e.textContent : '(pad gone)';}")}
+r = pad(locked)
+print("   locked store:", {k:v for k,v in r.items() if k!="errs"})
+ck("a store that will not answer is asked once, then given up on",
+   r["log"] == ["local", "session"])
+ck("and the sign-in goes through on the store that cannot lock",
+   bool(r["signed"]))
+ck("without waiting out the fifteen second timeout",
+   "no answer" not in r["msg"].lower())
+
 # 10. the fallback door still opens and still works
 def fallback(pg):
     pg.evaluate("()=>window.__NALA_PAD_EMAIL()"); pg.wait_for_timeout(200)

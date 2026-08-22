@@ -81,7 +81,48 @@
      a request that never comes back still says so, which is the failure that
      left a dead screen for an afternoon.                                 */
   var SIGNIN_TIMEOUT = 15000;
+  /* Where the session is kept, and why this is not left to the default.
+
+     The SDK defaults to LOCAL persistence, which is IndexedDB, and
+     signInWithEmailAndPassword waits on that store before it resolves. Another
+     tab of the same origin can be holding it, and then the sign-in never
+     settles at all: no network error, no rejection, just fifteen seconds of
+     nothing and then the timeout message. Reported 22 Aug as "works first
+     time, then the link fails, then works again in a different browser", which
+     is exactly the shape of browser-held state. The owner had eight tabs open.
+     Closing them fixed it.
+
+     So LOCAL is asked for with a short cap, and SESSION is the fallback:
+     sessionStorage takes no cross-tab lock and cannot hang. A session that
+     does not outlive the tab is a poor second to one that does, and it is
+     enormously better than a staff member who cannot sign in at all while
+     holding a phone at five o'clock. */
+  var PERSIST_CAP = 2500;
+
+  function preparePersistence(cb){
+    var A, P;
+    try { A = firebase.auth(); P = firebase.auth.Auth.Persistence; }
+    catch (e){ cb(); return; }
+    if (!A || !P || typeof A.setPersistence !== 'function'){ cb(); return; }
+    var moved = false;
+    function on(){ if (!moved){ moved = true; cb(); } }
+    var cap = setTimeout(function(){
+      /* IndexedDB has not answered. Do not wait on it again: go to the store
+         that cannot be locked, and do not block on that either. */
+      try { A.setPersistence(P.SESSION).then(on, on); } catch (e){ on(); }
+      setTimeout(on, PERSIST_CAP);
+    }, PERSIST_CAP);
+    try {
+      A.setPersistence(P.LOCAL).then(function(){ clearTimeout(cap); on(); },
+                                     function(){ clearTimeout(cap); on(); });
+    } catch (e){ clearTimeout(cap); on(); }
+  }
+
   function runSignIn(who, pw, words, fail, ok){
+    preparePersistence(function(){ runSignInNow(who, pw, words, fail, ok); });
+  }
+
+  function runSignInNow(who, pw, words, fail, ok){
     var pr;
     try { pr = firebase.auth().signInWithEmailAndPassword(who, pw); }
     catch (ex){ fail('Could not start sign-in - reload the page.'); return; }
@@ -89,7 +130,12 @@
     var answered = false;
     var slow = setTimeout(function(){
       if (!answered){ answered = true;
-        fail('No answer from the sign-in service - check the connection.'); }
+        /* Names the cause that is actually likely. "Check the connection" sent
+           the owner looking at his wifi for an hour while the phone had full
+           signal, because a locked store and a dead network look identical
+           from here. */
+        fail('No answer from the sign-in service. Close any other tabs on ' +
+             'this site and try again.'); }
     }, SIGNIN_TIMEOUT);
     pr.then(function(){
         if (answered) return;
