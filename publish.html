@@ -81,6 +81,13 @@
   .stat { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.1em;
           text-transform:uppercase; color:var(--mid); }
 
+  .demobar { display:none; background:var(--ink); color:var(--cream);
+             font-family:Helvetica,Arial,sans-serif; font-size:10px;
+             letter-spacing:.14em; text-transform:uppercase; text-align:center;
+             padding:9px 12px; border-radius:8px; margin-bottom:18px; }
+  .demobar.show { display:block; }
+  body.demo .pubbtn { background:#55554F; }
+
   .done { display:none; text-align:center; margin-top:40px; line-height:1.8; }
   .done.show { display:block; }
   .done .big { font-size:20px; }
@@ -90,6 +97,10 @@
 <body>
 <div class="errbar" id="err"></div>
 <div class="wrap" id="wrap">
+  <!-- Loud on purpose. A rehearsal that looks like the real thing is worse
+       than no rehearsal: somebody publishes for real believing they are
+       practising, or practises believing they have published. -->
+  <div class="demobar" id="demoBar">Rehearsal &middot; nothing here reaches the guests</div>
   <div class="wordmark">Nala Resort</div>
   <div class="pagename">Publish Menu</div>
   <div class="lede" id="lede">Check it against the photo, then publish.</div>
@@ -106,7 +117,7 @@
   <div class="done" id="done">
     <div class="big">Published</div>
     <div class="lede">It is on the guests' phones now.</div>
-    <div class="lede"><a href="https://menu.nalaresort.com" target="_blank">menu.nalaresort.com</a></div>
+    <div class="lede" id="doneWhere"><a href="https://menu.nalaresort.com" target="_blank">menu.nalaresort.com</a></div>
   </div>
 </div>
 
@@ -147,6 +158,28 @@
 })();
 
   var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+  /* A rehearsal. `?demo=1` sends every write to /demo/menu and
+     /demo/menutags/<date> instead of the real ones, so the whole thing can be
+     tried end to end - a real sign in, a real write, a real read back - without
+     tonight's menu changing on the guests' phones.
+
+     No rules change was needed for this and that is worth knowing rather than
+     rediscovering: rules.json has an $other catch-all granting read and write
+     to any signed in user on a node it does not name, and /demo is such a node.
+     The chef's own login therefore reaches it and nothing else does.
+
+     It is a prefix and not a flag passed around. One place decides where the
+     writes go, so a demo cannot half happen: there is no path by which the
+     menu lands in the sandbox and the tags land on the live node. */
+  var DEMO = new URLSearchParams(location.search).get('demo') === '1';
+  var ROOT = DEMO ? '/demo' : '';
+  if (DEMO){
+    document.body.classList.add('demo');
+    document.getElementById('demoBar').classList.add('show');
+    document.getElementById('lede').textContent =
+      'A rehearsal. Everything works, and nothing reaches the guests.';
+  }
   var COURSES = [['bread','Bread'],['entree','Entr\u00e9e'],['main','Main'],['dessert','Dessert']];
   var DEFAULTS = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                   'Nut allergy','Shellfish allergy','Egg allergy'];
@@ -290,10 +323,10 @@
       menu[k] = { name:M[k].name.trim(), desc:M[k].desc.trim(), aus:!!M[k].aus };
     });
 
-    fetch(DB + '/menu.json', { method:'PUT', body:JSON.stringify(menu) })
+    fetch(DB + ROOT + '/menu.json', { method:'PUT', body:JSON.stringify(menu) })
       .then(function(r){
         if (!r.ok) throw new Error('menu ' + r.status);
-        return fetch(DB + '/menutags/' + todayKey() + '.json',
+        return fetch(DB + ROOT + '/menutags/' + todayKey() + '.json',
                      { method:'PUT', body:JSON.stringify(TAGS) });
       })
       .then(function(r){
@@ -301,9 +334,25 @@
         document.getElementById('stat').textContent = '';
         document.getElementById('courses').style.display = 'none';
         document.getElementById('tagblock').style.display = 'none';
+        if (DEMO){
+          /* The live site would show tonight's real menu and look like proof.
+             Point at the sandbox node instead, which is the thing just
+             written and the only honest place to check it. */
+          document.querySelector('#done .big').textContent = 'Rehearsal saved';
+          document.getElementById('doneWhere').innerHTML =
+            '<a href="' + DB + ROOT + '/menu.json" target="_blank">' +
+            'see what was written</a>';
+          document.querySelectorAll('#done .lede')[0].textContent =
+            'Nothing reached the guests.';
+        }
         document.getElementById('done').classList.add('show');
         document.getElementById('bar').style.display = 'none';
-        if (typeof announceMenu === 'function') { try { announceMenu(); } catch(e){} }
+        /* Never from a rehearsal. announceMenu buzzes the manager's phone, and
+           a notification saying the menu is published is a lie about a menu
+           nobody can see. */
+        if (!DEMO && typeof announceMenu === 'function') {
+          try { announceMenu(); } catch(e){}
+        }
       })
       .catch(function(e){
         btn.disabled = false;
@@ -337,7 +386,11 @@
 
   paintCourses();
 
-  Promise.all([ readNode('/dietaries'), readNode('/menutags/' + todayKey()) ])
+  /* The dietary list is read from the LIVE node even in a rehearsal. It is the
+     chef's real list, and ticking against invented dietaries would prove
+     nothing about the ticking. Only tonight's tags come from the sandbox, so a
+     rehearsal does not show yesterday's real ticks as though they were made. */
+  Promise.all([ readNode('/dietaries'), readNode(ROOT + '/menutags/' + todayKey()) ])
     .then(function(res){
       var master = res[0], tags = res[1];
       if (failedRead(master)){

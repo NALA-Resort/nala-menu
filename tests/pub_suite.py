@@ -221,6 +221,61 @@ with sync_playwright() as p:
        pg.evaluate("()=>getComputedStyle(bar).display") == "none")
     pg.close()
 
+    # ── the rehearsal ───────────────────────────────────────────
+    #  ?demo=1 sends every write to /demo instead of the real node, so the
+    #  whole thing can be tried end to end - a real sign in, a real write, a
+    #  real read back - without tonight's menu changing on the guests' phones.
+    #  No rules change was needed: rules.json has an $other catch-all granting
+    #  a signed in user read and write on a node it does not name.
+    pg = open_pub(LINK + "&demo=1")
+    ck("a rehearsal says so, loudly, before anything is pressed",
+       pg.evaluate("()=>demoBar.className.indexOf('show')>-1"))
+    ck("and says it in terms of what it does not do",
+       "guests" in pg.inner_text("#demoBar").lower())
+    pg.evaluate("""()=>{var t=[...document.querySelectorAll('#tagblock .tick')]
+        .find(x=>x.getAttribute('data-c')==='main'); t.click();}""")
+    del WRITES[:]
+    pg.locator("#pubBtn").click(); pg.wait_for_timeout(900)
+
+    #  The whole point: nothing lands on a node any guest or board reads.
+    ck("the menu is written to the sandbox, not the live node",
+       len([w for w in WRITES if "/demo/menu.json" in w["u"]]) == 1)
+    ck("and tonight's tags with it",
+       len([w for w in WRITES if "/demo/menutags/" in w["u"]]) == 1)
+    ck("and nothing at all touches the live menu or the live tags",
+       not [w for w in WRITES
+            if "/demo/" not in w["u"] and
+               ("/menu.json" in w["u"] or "/menutags/" in w["u"])])
+    #  A demo that half happens is worse than none: the prefix is decided in
+    #  one place so the menu cannot go to the sandbox while the tags go live.
+    ck("both halves go to the same place",
+       len([w for w in WRITES if "/demo/" in w["u"]]) == 2)
+    ck("the chef is told it was a rehearsal, not that it is live",
+       "rehearsal" in pg.inner_text("#done").lower())
+    ck("and is not sent to the guest site, which would show the real menu",
+       "menu.nalaresort.com" not in pg.evaluate("()=>doneWhere.innerHTML"))
+    pg.close()
+
+    #  The dietary list is read LIVE even in a rehearsal: it is the chef's real
+    #  list and ticking against invented ones would prove nothing.
+    pg = open_pub(LINK + "&demo=1")
+    ck("the rehearsal ticks against the chef's real dietary list",
+       "Gluten free" in pg.inner_text("#tagblock"))
+    ck("and reads its own tags, not tonight's real ones",
+       len([w for w in WRITES if "/menutags/" in w["u"] and "/demo/" not in w["u"]]) == 0)
+    pg.close()
+
+    #  Without the flag, nothing changes.
+    pg = open_pub(LINK)
+    del WRITES[:]
+    pg.locator("#pubBtn").click(); pg.wait_for_timeout(900)
+    ck("a normal publish still goes to the live node",
+       len([w for w in WRITES if "/demo/" in w["u"]]) == 0 and
+       len([w for w in WRITES if "/menu.json" in w["u"]]) == 1)
+    ck("and carries no rehearsal banner",
+       pg.evaluate("()=>demoBar.className.indexOf('show')<0"))
+    pg.close()
+
     # ── a menu with a blank course ──────────────────────────────
     pg = open_pub("?b=Focaccia&m=Lamb")
     del WRITES[:]

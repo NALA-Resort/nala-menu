@@ -87,6 +87,13 @@ Give it as a tapped link, on its own line, with one line above it:
 
 > Tap to check and publish: [link]
 
+**If, and only if, the chef says he is testing or practising**, add `&demo=1`
+to the end of the link. That sends the publish to a sandbox instead of to the
+guests, and the page says so across the top before anything is pressed.
+Everything else about it is real: the sign in, the write, the read back. Never
+add it otherwise, and never leave it on: a menu published in rehearsal reaches
+nobody and the chef has no way to tell from his phone.
+
 Then stop. Do not explain the page, do not list the steps on it, and do not ask
 him to report back. He can see it.
 
