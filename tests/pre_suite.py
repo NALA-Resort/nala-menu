@@ -160,9 +160,14 @@ with sync_playwright() as p:
     #  not among the chef's entries needs somewhere to put it. Without this
     #  the only ways past were a chip that is not their allergy, or declaring
     #  nothing at all.
+    #  The list sits behind a Yes since the owner's 23 Aug evening call:
+    #  None and Yes side by side first, the pills revealed beneath a Yes.
+    pg.locator("#dYes").click(); pg.wait_for_timeout(200)
+    ck("saying yes reveals the list on this page",
+       pg.evaluate("()=>dietWrap.className.indexOf('show')>-1"))
     ck("a guest can declare an allergy that is not on the list",
-       "Other" in pg.locator("#dietNone").inner_text())
-    pg.evaluate("()=>[...document.querySelectorAll('#dietNone .chip')]"
+       "Other" in pg.locator("#dietChips").inner_text())
+    pg.evaluate("()=>[...document.querySelectorAll('#dietChips .chip')]"
                 ".find(b=>b.textContent.trim()==='Other').click()")
     pg.wait_for_timeout(150)
     ck("choosing it opens the note",
@@ -171,7 +176,7 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.activeElement.id") == "dietNote")
     ck("choosing it clears no allergies to declare",
        pg.evaluate("()=>a.noDiets") is False)
-    pg.evaluate("()=>[...document.querySelectorAll('#dietNone .chip')]"
+    pg.evaluate("()=>[...document.querySelectorAll('#dietChips .chip')]"
                 ".find(b=>b.textContent.trim()==='Other').click()")
     pg.wait_for_timeout(120)
     ck("and it can be taken back off",
@@ -321,10 +326,9 @@ with sync_playwright() as p:
     nxt(pg)
     ck("which will not be skipped",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qDiet")
-    # "none to declare" is a positive answer and satisfies it
-    pg.evaluate("()=>[...document.querySelectorAll('#dietNone .chip')][0].click()")
-    pg.wait_for_timeout(200)
-    nxt(pg)
+    # "None" is a positive answer - it writes noDiets, same record as ever -
+    #  and opening nothing, it advances by itself like any clean answer.
+    pg.locator("#dNone").click(); pg.wait_for_timeout(450)
     ck("then treatments", pg.evaluate("()=>document.querySelector('.q.now').id") == "qWell")
     pg.locator("#wYes").click(); pg.wait_for_timeout(400)
     ck("saying yes offers only the days they are here",
@@ -412,7 +416,8 @@ with sync_playwright() as p:
     #  worse than silence, because it looks answered.
     jump(pg, "qDiet")
     del WRITES[:]
-    pg.evaluate("()=>[...document.querySelectorAll('#dietNone .chip')]"
+    pg.locator("#dYes").click(); pg.wait_for_timeout(200)
+    pg.evaluate("()=>[...document.querySelectorAll('#dietChips .chip')]"
                 ".find(b=>b.textContent.trim()==='Other').click()")
     pg.wait_for_timeout(150)
     nxt(pg)
@@ -599,6 +604,8 @@ with sync_playwright() as p:
            pg.evaluate("()=>!document.querySelector('.more-b.show')"))
         pg.evaluate("(q)=>document.querySelector('#'+q+' .more').click()", qid)
         if qid == "qEta": drag(pg, 8)
+        if qid == "qDiet":
+            pg.locator("#dYes").click()
         if qid == "qWell":
             pg.locator("#wYes").click()
         pg.wait_for_timeout(200)
@@ -642,7 +649,7 @@ with sync_playwright() as p:
     q.evaluate("""()=>{
       trail.value=2; trail.dispatchEvent(new Event('input'));
       document.getElementById('dIn').click();
-      const d=document.querySelector('#dietNone button'); if(d)d.click();
+      document.getElementById('dNone').click();
       const p=document.querySelector('#purposeChips button'); if(p)p.click();
       const a=document.querySelector('#approachOpts button'); if(a)a.click();
       document.getElementById('wNo').click();}""")

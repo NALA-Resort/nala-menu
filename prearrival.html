@@ -60,6 +60,14 @@
            color:var(--mid); margin:10px 0 4px; }
 
   .opts { display:flex; flex-direction:column; gap:8px; }
+  .opts.row { display:flex; flex-direction:row; gap:9px; }
+  .opts.row .opt { flex:1; text-align:center; margin-bottom:0; }
+  .sub { display:none; margin-top:14px; padding-top:12px;
+         border-top:1px solid var(--rule); }
+  .sub.show { display:block; }
+  .sub-l { font-family:var(--ui-font,Helvetica,Arial,sans-serif); font-size:10px;
+           letter-spacing:.1em; text-transform:uppercase; color:var(--mid);
+           margin-bottom:4px; }
   .opt { width:100%; padding:12px 15px; border:1px solid var(--rule);
          background:var(--paper); border-radius:10px; text-align:left;
          font-family:inherit; font-size:0.95rem; color:var(--ink); cursor:pointer; }
@@ -295,11 +303,17 @@
           rebuilt around a requirement on the night. What we can do, and gladly
           do, is leave things out and cook something alongside instead. The
           earlier we know, the more room the kitchen has to work with.</div>
-      <div class="chips" id="dietChips"></div>
-      <div class="chips" id="dietNone" style="margin-top:7px"></div>
-      <div class="n-lab" id="dietNoteLab" style="display:none">Dietary notes</div>
-      <textarea class="txt" id="dietNote" rows="2"
-        placeholder="Whose, and how severe"></textarea>
+      <div class="opts row">
+        <button class="opt" id="dNone">None</button>
+        <button class="opt" id="dYes">Yes</button>
+      </div>
+      <div class="sub" id="dietWrap">
+        <div class="sub-l">Which ones</div>
+        <div class="chips" id="dietChips"></div>
+        <div class="n-lab" id="dietNoteLab" style="display:none">Dietary notes</div>
+        <textarea class="txt" id="dietNote" rows="2"
+          placeholder="Whose, and how severe"></textarea>
+      </div>
     </div>
 
     <!-- 6. wellness -->
@@ -442,7 +456,10 @@ function purposeList(v){
 }
 function purposeText(v){ return purposeList(v).join(PURPOSE_SEP); }
 
-var a = { eta:'', etaNote:'', dining:null, diets:[], noDiets:false,
+/* dietYes is this page's memory of the Yes tap, so a guest who said Yes
+   and has not picked yet is told to pick, not told to answer. It is never
+   written: the record is still noDiets and the list, unchanged. */
+var a = { eta:'', etaNote:'', dining:null, diets:[], noDiets:false, dietYes:false,
           dietNote:'', purpose:[], approach:'', wellness:null, wellDay:'',
           companion:'',
           wellTime:'', occasion:'', note:'' };
@@ -531,47 +548,27 @@ function paintDine(){
 }
 
 function paintDiets(){
+  /* Two answers first, side by side, and the list only after a Yes: the
+     owner's 23 Aug call. "None" is still a positive answer, not the absence
+     of one - it writes noDiets, same record as always - so a guest with no
+     allergies is still distinguishable from one who skipped the question. */
+  el('dNone').className = 'opt' + (a.noDiets ? ' on' : '');
+  el('dYes').className  = 'opt' + (a.dietYes ? ' on' : '');
+  el('dietWrap').className = 'sub' + (a.dietYes ? ' show' : '');
   var box = el('dietChips'); box.innerHTML = '';
-  DIETARIES.forEach(function(d){
+  DIETARIES.concat([DIET_OTHER]).forEach(function(d){
     var b = document.createElement('button');
     b.className = 'chip' + (a.diets.indexOf(d) > -1 ? ' on' : ''); b.textContent = d;
     b.onclick = function(){
       var i = a.diets.indexOf(d);
       if (i > -1) a.diets.splice(i,1); else { a.diets.push(d); a.noDiets = false; }
       clearMiss('qDiet'); paintDiets();
+      /* For Other the note IS the answer, so the cursor goes to it rather
+         than leaving a guest to find it on their own phone. */
+      if (d === DIET_OTHER && hasOther()){ var f = el('dietNote'); if (f) f.focus(); }
     };
     box.appendChild(b);
   });
-  /* "None to declare" is a positive answer, not the absence of one. Without it
-     a guest with no allergies is indistinguishable from one who skipped the
-     question, and the kitchen cannot tell those apart. */
-  var none = el('dietNone'); none.innerHTML = '';
-  var nb = document.createElement('button');
-  nb.className = 'chip' + (a.noDiets ? ' on' : '');
-  nb.textContent = 'No allergies or dietary requirements';
-  nb.onclick = function(){
-    a.noDiets = !a.noDiets;
-    if (a.noDiets) a.diets = [];
-    clearMiss('qDiet'); paintDiets();
-  };
-  none.appendChild(nb);
-
-  /* Beside "none", because they are the two answers that are not on the list
-     and they are opposites: one says there is nothing to write down, the
-     other says the answer is only in the note. Either one clears the other. */
-  var ob = document.createElement('button');
-  ob.className = 'chip' + (hasOther() ? ' on' : '');
-  ob.textContent = DIET_OTHER;
-  ob.onclick = function(){
-    var i = a.diets.indexOf(DIET_OTHER);
-    if (i > -1) a.diets.splice(i,1);
-    else { a.diets.push(DIET_OTHER); a.noDiets = false; }
-    clearMiss('qDiet'); paintDiets();
-    /* The note IS the answer here, so put the cursor in it rather than
-       leaving a guest to find it on their own phone. */
-    if (hasOther()) { var f = el('dietNote'); if (f) f.focus(); }
-  };
-  none.appendChild(ob);
 
   el('dietNote').style.display = a.diets.length ? '' : 'none';
   el('dietNoteLab').style.display = a.diets.length ? '' : 'none';
@@ -632,6 +629,16 @@ function paintWell(){
 
 /* Yes opens a follow up on the same page and so stays put. No opens nothing
    and carries on. */
+el('dNone').onclick = function(){
+  a.noDiets = true; a.dietYes = false; a.diets = [];
+  clearMiss('qDiet'); paintDiets();
+  advanceIfClean(false);            /* a clean answer, it opens nothing */
+};
+el('dYes').onclick = function(){
+  a.dietYes = true; a.noDiets = false;
+  clearMiss('qDiet'); paintDiets();
+  advanceIfClean(true);             /* it opens the list, on this page */
+};
 el('dIn').onclick  = function(){ a.dining = true;  clearMiss('qDine'); paintDine();
                                  /* Yes used to open the pax chips and had to
                                     wait; it opens nothing now. */
@@ -815,8 +822,10 @@ function missingOn(id){
   if (id === 'qDine')
     return a.dining === null ? 'Please let us know about your first night.' : null;
   if (id === 'qDiet'){
-    if (!a.noDiets && !a.diets.length)
+    if (!a.noDiets && !a.dietYes)
       return 'Please answer about allergies, even to say there are none.';
+    if (a.dietYes && !a.diets.length)
+      return 'Please pick the ones that apply, or Other.';
     /* "Other" with an empty note is the one answer that tells the kitchen a
        guest has an allergy and nothing about what it is, which is worse than
        silence: it looks answered. */
@@ -1008,6 +1017,7 @@ function boot(){
     a.eta = p.arriveSlot || ''; a.etaNote = p.arriveNote || '';
     a.dining = (p.dining === undefined) ? null : !!p.dining;
     a.diets = (p.diets || []).slice(); a.noDiets = !!p.noDiets;
+    a.dietYes = a.diets.length > 0;
     a.dietNote = p.dnote || '';
     a.purpose = purposeList(p.purpose); a.approach = p.approach || '';
     a.wellness = (p.wellness === undefined) ? null : !!p.wellness;
