@@ -3,9 +3,63 @@
 **This is the only document you have to read.** Everything else is reference and
 is listed at the end.
 
-**Then ask the owner what he wants to work on.** Do not start on anything in
-the open lists below because it is written down. They are there so you can
-answer when he asks what is outstanding, not so you can pick.
+---
+
+## Starting from nothing
+
+A fresh sandbox has no clone and no credentials. This section exists because the
+first version of this document assumed both, which made it useless to the one
+reader it was written for.
+
+    cd /home/claude
+    git clone https://github.com/NALA-Resort/nala-menu.git nala
+    cd nala
+
+The repo is **public** (until `SECURITY.md` job 4), so the clone needs no
+credential. Publishing does.
+
+**To publish you need a GitHub token** with `contents: write` on
+`NALA-Resort/nala-menu`, saved to `/home/claude/.ghtoken`. Ask the owner for it;
+it is his to issue and it is never written into this repo. Two have already been
+leaked into chat and are on his list to rotate, so do not reuse one you find in
+a transcript.
+
+    printf '%s' 'ghp_...' > /home/claude/.ghtoken
+
+**`tools/publish.sh` publishes for real the moment that token exists**, from any
+clone, including a scratch one: the token lives at a fixed path outside the
+repo, so a second clone made for testing inherits it. On 23 Aug a run of it "to
+check it works from a fresh clone" put a commit called `test` on `main`. It
+changed nothing, because the file it published was byte for byte identical, but
+the log carries it. **There is no dry run. Do not invoke it to find out whether
+it works.**
+
+**To run the suites** you need Playwright and Chromium, and targaryen for the
+rules test:
+
+    pip install playwright --break-system-packages && playwright install chromium
+    npm install targaryen          # once, in the repo root
+
+Both were already present in the sandbox this was written in. Check before
+installing.
+
+**What the sandbox cannot do.** It cannot reach Firebase, Google or
+`menu.nalaresort.com`: every request returns the egress proxy's own 403. That is
+a network allowlist on the owner's account rather than a hard limit, and it has
+been so since the first session. It means every check here is local Playwright
+against a stubbed Firebase, and **nothing you do can be verified against live
+data**. Say that plainly rather than reporting a stubbed pass as proof. The
+domains to add, if he ever wants that: `identitytoolkit.googleapis.com` and
+`nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app`.
+
+**Where things are.** The site is the repo root, served by GitHub Pages at
+`menu.nalaresort.com`. Scripts are in `tools/`. Tests are in `tests/`. The
+Cloudflare Worker is `worker/mews-sync.js`; the notification Worker lives in the
+Cloudflare dashboard and is **not** in this repo.
+
+**Then ask the owner what he wants to work on.** Do not start on anything in the
+open lists below because it is written down. They are there so you can answer
+when he asks what is outstanding, not so you can pick.
 
 Consolidated 23 Aug 2026 from `HANDOVER.md` and `PARKED.md`, which had grown to
 843 and 213 lines and overlapped: the handover carried an open-work section and
