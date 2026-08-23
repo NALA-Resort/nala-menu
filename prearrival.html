@@ -61,8 +61,7 @@
 
   .opts { display:flex; flex-direction:column; gap:8px; }
   .opt { width:100%; padding:12px 15px; border:1px solid var(--rule);
-         background:var(--paper);
-         background:transparent; border-radius:10px; text-align:left;
+         background:var(--paper); border-radius:10px; text-align:left;
          font-family:inherit; font-size:0.95rem; color:var(--ink); cursor:pointer; }
   /* Chosen is a doubled ink border on white, not a fill: the solid blocks
      read heavy against the brand greige. Inset shadow thickens the line
@@ -120,7 +119,7 @@
      by default would put it straight back. */
   /* Guest tokens only on a guest page: two of the mockup's staff-tier
      hexes leaked in as fallbacks on 23 Aug and one of them rendered. */
-  .more { display:inline-block; margin-top:12px; background:var(--paper);
+  .more { display:inline-block; margin-top:12px; background:transparent;
           border:1px solid var(--rule); border-radius:20px; padding:7px 14px;
           font-family:var(--ui-font,Helvetica,Arial,sans-serif); font-size:10px;
           letter-spacing:.1em; text-transform:uppercase; color:var(--mid);
