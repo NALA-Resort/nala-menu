@@ -638,6 +638,31 @@ with sync_playwright() as p:
                        " && r.bottom<=window.innerHeight+1;}"))
     pg.close()
 
+    #  A one night stay has no week ahead: the only night is the first
+    #  night, and that page asks it. Dates come from the link here; Mews
+    #  overriding them re-syncs the same way the companion page does.
+    ONE = "?b=res-guid-1&n=Robyn&s=Williams&a=" + plus(0) + "&d=" + plus(1)
+    pg = guest(link=ONE)
+    live = pg.evaluate("()=>liveSteps().map(s=>s.id)")
+    ck("a one night stay is not asked about the week ahead",
+       "qApproach" not in live)
+    ck("but still about tonight, dietaries and treatments",
+       all(q in live for q in ("qDine", "qDiet", "qWell")))
+    ck("and the count says six, not eight",
+       pg.locator("#prog").inner_text().strip().lower().endswith("of 6"))
+    #  The answered walk must still send: approach was never asked, so an
+    #  empty approach cannot hold the form hostage.
+    pg.evaluate("""()=>{
+      a.purpose=['A short break']; a.eta='15'; a.dining=false;
+      a.noDiets=true; a.wellness=false;
+    }""")
+    jump(pg, "qElse")
+    del WRITES[:]
+    pg.locator("#send").click(); pg.wait_for_timeout(600)
+    ck("and the form sends without it",
+       len(sent("/bookings/res-guid-1/prearrival")) == 1)
+    pg.close()
+
     # ── the demo booking ────────────────────────────────────────────────
     # The site map linked here with no booking id, so the one form a guest
     # actually sees was the one nobody at the resort could open: it showed the

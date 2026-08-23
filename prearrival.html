@@ -528,6 +528,13 @@ function paintGreeting(pms){
   var adults = pms && Number(pms.adults);
   var known  = pms && pms.companion;
   el('qCompanion').style.display = (adults >= 2 && !known) ? '' : 'none';
+
+  /* One night has no "week ahead": the only night is the first night, and
+     that page already asks it. Unknown dates keep the question, because
+     hiding it on a guess loses an answer we could have had. Same machinery
+     as the companion page, so the count and the walk stay honest. */
+  var oneNight = arr && dep && Math.round((dep - arr) / 86400000) === 1;
+  el('qApproach').style.display = oneNight ? 'none' : '';
   resyncSteps();
 }
 
