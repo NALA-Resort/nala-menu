@@ -572,6 +572,19 @@ with sync_playwright() as p:
        pg.evaluate("()=>a.eta") == "1430")
     pg.close()
 
+    #  An error changes no height anywhere: the foot grew when its line was
+    #  display:none, and covered the page it was refusing.
+    pg = guest()
+    h1 = pg.evaluate("()=>foot.getBoundingClientRect().height")
+    y1 = pg.evaluate("()=>send.getBoundingClientRect().top")
+    nxt(pg)                                        # refused: purpose unanswered
+    ck("an error is shown in space already paid for",
+       "show" in pg.evaluate("()=>err.className") and
+       pg.evaluate("()=>foot.getBoundingClientRect().height") == h1)
+    ck("so the buttons hold perfectly still",
+       pg.evaluate("()=>send.getBoundingClientRect().top") == y1)
+    pg.close()
+
     #  Every page fits 390 x 780 with its Read more open, the nav fixed to
     #  the foot. Walked with follow ups open too, which is stricter than the
     #  brief asks, because those are the pages a real guest sees.

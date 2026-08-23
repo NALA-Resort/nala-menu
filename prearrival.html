@@ -31,14 +31,14 @@
 
   /* The wordmark, not the drawn logo: the approved mockup trades the image
      for headroom, and every page owes its fit on a phone to the trade. */
-  header { text-align:center; padding:22px 0 0; }
+  header { text-align:center; padding:16px 0 0; }
   .wordmark { font-family:var(--ui-font,Helvetica,Arial,sans-serif); font-size:9px;
               letter-spacing:.45em; text-transform:uppercase; color:var(--mid); }
   .greet { font-size:21px; line-height:1.3; margin-top:8px; }
   .sub { font-style:italic; font-size:12px; color:var(--mid); line-height:1.55;
          margin-top:7px; }
 
-  .q { border-top:1px solid var(--rule); padding:1.35rem 0 0.2rem; }
+  .q { border-top:1px solid var(--rule); padding:1.1rem 0 0.2rem; }
   .q-t { font-size:1.05rem; line-height:1.4; margin-bottom:0.3rem; }
   .q-h { font-style:italic; font-size:0.85rem; color:var(--mid); line-height:1.6;
          margin-bottom:0.85rem; }
@@ -51,14 +51,14 @@
            color:var(--mid); margin:10px 0 4px; }
 
   .opts { display:flex; flex-direction:column; gap:8px; }
-  .opt { width:100%; padding:14px 15px; border:1px solid var(--rule);
+  .opt { width:100%; padding:12px 15px; border:1px solid var(--rule);
          background:transparent; border-radius:10px; text-align:left;
          font-family:inherit; font-size:0.95rem; color:var(--ink); cursor:pointer; }
   .opt.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   .q.miss .opt { border-color:var(--warn); }
 
   .chips { display:flex; flex-wrap:wrap; gap:7px; }
-  .chip { padding:9px 14px; border:1px solid var(--rule); background:transparent;
+  .chip { padding:8px 13px; border:1px solid var(--rule); background:transparent;
           border-radius:20px; font-family:inherit; font-size:0.8rem;
           color:var(--ink); cursor:pointer; }
   .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
@@ -120,7 +120,7 @@
   .q .opts, .q .chips, .q .txt, .q .track { margin-top:16px; }
   /* The follow-up block a yes opens. Tighter than the mockup's 18px, because
      a five night stay adds a fifth day chip and the page must still fit. */
-  #wWrap, .needs { margin-top:12px; }
+  #wWrap, .needs { margin-top:10px; }
   #wWrap .txt { margin-top:10px; }
 
   .track { margin-top:20px; }
@@ -171,15 +171,20 @@
           height:100vh; height:100dvh; }
   .scrollarea { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
                 min-height:0; }
+  /* Safari brings its own toolbar under this, so the constant is small and
+     the env() carries the home-screen case where there is no toolbar. */
   .foot { flex:0 0 auto; background:var(--cream,#F9F7F4);
           border-top:1px solid var(--rule);
-          padding:10px 0 calc(14px + env(safe-area-inset-bottom)); }
-  .foot .prog { text-align:center; margin:0 0 10px; }
+          padding:8px 0 calc(8px + env(safe-area-inset-bottom)); }
+  .foot .prog { text-align:center; margin:0 0 6px; }
   .foot .nav { margin:0; padding:0 4px; }
-  /* Above the buttons, with its line reserved: an error that appears must
-     never move Back and Next under a thumb already falling. Growth extends
-     the foot upward; the buttons hold still at its base. */
-  .foot .err { margin:0 4px 8px; min-height:1.05rem; }
+  /* Above the buttons, its line ALWAYS occupying: display:none reserved
+     nothing, so the foot grew on error and covered the page. Hidden by
+     visibility instead, the space is paid for up front and an error changes
+     no height anywhere. */
+  .foot .err { display:block; visibility:hidden; min-height:1.35rem;
+               margin:0 4px 6px; }
+  .foot .err.show { visibility:visible; }
 </style>
 </head>
 <body>
