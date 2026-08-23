@@ -263,7 +263,7 @@
           trouble at all, but do tell us, and we will arrange for someone to
           let you in and settle you.</div>
       <div class="track">
-        <div class="tval" id="tval">&ndash;</div>
+        <div class="tval" id="tval">&#x2194;</div>
         <div class="tsub" id="tsub">drag to set</div>
         <div class="rail"><input type="range" id="trail" min="0" max="8"
           step="1" value="4" aria-label="Arrival time"></div>
@@ -444,9 +444,16 @@ var PURPOSE = ['Somewhere to stay while we work or travel',
                'A celebration',
                'A short break',
                'Rest and recovery'];
+/* Keys are what is stored, so the words are free to match the party:
+   "we" to a couple, "I" to a guest travelling alone. The desk reads the key
+   back in its own words either way. */
 var APPROACH = [['most','We will dine at Nala most nights'],
                 ['mix', 'A mix of meals in and out'],
                 ['out', 'We will mostly eat out']];
+var APPROACH_1 = [['most','I will dine at Nala most nights'],
+                  ['mix', 'A mix of meals in and out'],
+                  ['out', 'I will mostly eat out']];
+var SINGLE = false;
 
 /* Falls back to a sensible list if the chef's master list cannot be read, so a
    failed fetch never leaves a guest with no way to declare an allergy. */
@@ -535,6 +542,18 @@ function paintGreeting(pms){
      booking reads as nobody having looked. */
   var adults = pms && Number(pms.adults);
   var known  = pms && pms.companion;
+
+  /* One guest is not a party. The chips on "what brings you" keep one
+     wording for everyone because the words ARE the stored answer; here the
+     words are only worn, so they can fit. Unknown count speaks plural. */
+  SINGLE = adults === 1;
+  document.querySelector('#qDiet .q-t').textContent = SINGLE
+    ? 'Do you have any allergies or dietary requirements?'
+    : 'Does anyone in your party have allergies or dietary requirements?';
+  el('dietNote').placeholder = SINGLE
+    ? 'How severe, and anything else we should know'
+    : 'Whose, and how severe';
+  paintApproach();
   el('qCompanion').style.display = (adults >= 2 && !known) ? '' : 'none';
 
   /* One night has no "week ahead": the only night is the first night, and
@@ -563,7 +582,7 @@ function etaIdx(k){
 function paintEta(){
   var i = etaIdx(a.eta);
   if (i > -1) el('trail').value = i;
-  el('tval').innerHTML = i > -1 ? ETA_SLOTS[i][1] : '&ndash;';
+  el('tval').innerHTML = i > -1 ? ETA_SLOTS[i][1] : '&#x2194;';
   var needsNote = i > -1 && ETA_SLOTS[i][2];
   el('tsub').textContent = needsNote ? 'we need a rough time' : 'drag to set';
   el('etaNeeds').className = 'needs' + (needsNote ? ' req' : '');
@@ -630,7 +649,7 @@ function paintPurpose(){
 
 function paintApproach(){
   var box = el('approachOpts'); box.innerHTML = '';
-  APPROACH.forEach(function(pair){
+  (SINGLE ? APPROACH_1 : APPROACH).forEach(function(pair){
     var b = document.createElement('button');
     b.className = 'opt' + (a.approach === pair[0] ? ' on' : ''); b.textContent = pair[1];
     b.onclick = function(){
