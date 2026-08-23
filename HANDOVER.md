@@ -7,13 +7,18 @@ is listed at the end.
 
 ## Starting from nothing
 
-A fresh sandbox has no clone and no credentials. This section exists because the
-first version of this document assumed both, which made it useless to the one
-reader it was written for.
+You are most likely reading this having fetched it from
+`raw.githubusercontent.com`, with no clone and no credentials. Get the clone
+first; everything below assumes it.
 
-    cd /home/claude
-    git clone https://github.com/NALA-Resort/nala-menu.git nala
-    cd nala
+    git clone https://github.com/NALA-Resort/nala-menu.git /home/claude/nala
+    cd /home/claude/nala
+
+The suites expect the working copy at exactly that path.
+
+This section exists because the first version of this document assumed a clone
+and a token that a fresh chat does not have, and the owner tried it cold and
+stopped at the first step.
 
 The repo is **public** (until `SECURITY.md` job 4), so the clone needs no
 credential. Publishing does.
@@ -423,6 +428,9 @@ Anything else failing is yours.
 - `CHEF-BRIEF-CONSOLE.md` the fallback for a chat with no network, which pastes
   JSON into the Firebase console. Kept because the scripted path failed at
   service time once and there was nothing behind it.
+- `START-HERE.md` the one line to paste into a new chat, which fetches this
+  file. Nine lines and deliberately never changes. Everything it used to carry
+  is here instead.
 - `MANUAL-ADMIN.md`, `MANUAL-CHEF.md`, `MANUAL-WAITER.md`,
   `MANUAL-HOUSEKEEPING.md`: one cheat sheet per role, what the screens are for
   rather than how to tap them. Writing them found three real holes, which is
