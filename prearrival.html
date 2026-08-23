@@ -1002,7 +1002,10 @@ function boot(){
     /* &nights=1 walks the short-stay form; anything else, or nothing, is the
        usual three. Demo only - a real link's dates come from Mews. */
     var demoNights = Math.max(1, Number(qs.get('nights')) || 3);
-    paintGreeting({ first:'Alex', last:'Marsh', adults:2,
+    /* &adults=1 walks the single-guest form: no companion question, and the
+       covers write as one. Demo only, like nights. */
+    var demoAdults = Math.max(1, Number(qs.get('adults')) || 2);
+    paintGreeting({ first:'Alex', last:'Marsh', adults:demoAdults,
                     arrive: dkey(new Date()),
                     depart: dkey(new Date(Date.now() + demoNights * 86400000)) });
     showIntro();
