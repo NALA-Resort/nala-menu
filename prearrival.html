@@ -99,7 +99,9 @@
   .txt { width:100%; padding:12px; border:1px solid var(--rule);
          background:var(--paper); border-radius:10px; font-family:inherit;
          font-size:16px; color:var(--ink); resize:none; margin-top:9px; }
-  .txt::placeholder { color:var(--mid); font-style:italic; }
+  /* Lighter than --mid: a placeholder is an absence, and at full tan it
+     read as an answer already given. */
+  .txt::placeholder { color:#BCB0A0; font-style:italic; }
   .txt:focus { outline:none; border-color:var(--ink); }
   .txt.miss { border-color:var(--warn); }
 
@@ -535,6 +537,9 @@ function paintGreeting(pms){
      as the companion page, so the count and the walk stay honest. */
   var oneNight = arr && dep && Math.round((dep - arr) / 86400000) === 1;
   el('qApproach').style.display = oneNight ? 'none' : '';
+  /* Nor treatments: one afternoon is not a window the therapists can use,
+     the owner ruled, so a one night guest is not offered one. */
+  el('qWell').style.display = oneNight ? 'none' : '';
   resyncSteps();
 }
 
@@ -909,8 +914,11 @@ function fullPayload(){
     pax: (PMS && Number(PMS.adults) >= 1) ? Number(PMS.adults) : undefined,
     diets: a.diets, noDiets: a.noDiets, dnote: a.diets.length ? a.dietNote : '',
     purpose: purposeText(a.purpose), approach: a.approach,
-    wellness: a.wellness,
-    wellDay: a.wellness ? a.wellDay : '', wellTime: a.wellness ? a.wellTime : '',
+    /* undefined when the page never asked (a one night stay): absent and
+       false are different answers, and only one of them was given. */
+    wellness: a.wellness === null ? undefined : a.wellness,
+    wellDay: a.wellness ? a.wellDay : (a.wellness === null ? undefined : ''),
+    wellTime: a.wellness ? a.wellTime : (a.wellness === null ? undefined : ''),
     occasion: a.occasion, note: a.note, companion: a.companion
   };
 }

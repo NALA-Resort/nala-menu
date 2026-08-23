@@ -646,21 +646,26 @@ with sync_playwright() as p:
     live = pg.evaluate("()=>liveSteps().map(s=>s.id)")
     ck("a one night stay is not asked about the week ahead",
        "qApproach" not in live)
-    ck("but still about tonight, dietaries and treatments",
-       all(q in live for q in ("qDine", "qDiet", "qWell")))
-    ck("and the count says six, not eight",
-       pg.locator("#prog").inner_text().strip().lower().endswith("of 6"))
+    ck("nor offered a treatment its stay has no window for",
+       "qWell" not in live)
+    ck("but still about tonight and dietaries",
+       all(q in live for q in ("qDine", "qDiet")))
+    ck("and the count says five, not eight",
+       pg.locator("#prog").inner_text().strip().lower().endswith("of 5"))
     #  The answered walk must still send: approach was never asked, so an
     #  empty approach cannot hold the form hostage.
     pg.evaluate("""()=>{
       a.purpose=['A short break']; a.eta='15'; a.dining=false;
-      a.noDiets=true; a.wellness=false;
+      a.noDiets=true;
     }""")
     jump(pg, "qElse")
     del WRITES[:]
     pg.locator("#send").click(); pg.wait_for_timeout(600)
-    ck("and the form sends without it",
-       len(sent("/bookings/res-guid-1/prearrival")) == 1)
+    w1 = sent("/bookings/res-guid-1/prearrival")
+    ck("and the form sends without either", len(w1) == 1)
+    if w1:
+        ck("with wellness absent, not false, because it was never asked",
+           "wellness" not in w1[0]["b"])
     pg.close()
 
     # ── the demo booking ────────────────────────────────────────────────
