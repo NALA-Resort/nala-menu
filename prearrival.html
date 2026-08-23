@@ -10,8 +10,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  :root { --cream:#F7F5F1; --paper:#FEFEFC; --ink:#14140F; --mid:#47473F;
-          --rule:#CFCFC8; --warn:#9E6455; }
+  /* Sampled from nalaresort.com.au on 23 Aug: the flat band behind the
+     wordmark is #44382A exactly, the section ground #E0DFDA (lifted to #EDEBE6 by the owner's eye), the eyebrow
+     tan #876B53. The tan takes --mid because it does the same jobs there
+     that --mid does here: labels, eyebrows, quiet lines. */
+  :root { --cream:#EDEBE6; --paper:#FEFEFC; --ink:#44382A; --mid:#876B53;
+          --rule:#D6D0C7; --warn:#9E6455; }
 
   /* Guest tier, so it carries the brand rather than the staff tokens, and
      sets its own font exactly as index.html does. The staff font can change
