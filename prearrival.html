@@ -572,6 +572,14 @@ function paintGreeting(pms){
   el('dietNote').placeholder = SINGLE
     ? 'How severe, and anything else we should know'
     : 'Whose, and how severe';
+  el('occasion').placeholder = SINGLE
+    ? 'A birthday, a milestone'
+    : 'A birthday, an anniversary';
+  document.querySelector('#qElse .more-b').textContent = SINGLE
+    ? 'This is the one that most often changes a stay. A birthday nobody '
+      + 'mentioned is a birthday we cannot mark.'
+    : 'This is the one that most often changes a stay. An anniversary nobody '
+      + 'mentioned is an anniversary we cannot mark.';
   paintApproach();
   el('qCompanion').style.display = (adults >= 2 && !known) ? '' : 'none';
 
