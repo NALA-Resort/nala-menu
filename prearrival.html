@@ -110,6 +110,8 @@
      and the invitation stays on the page: a guest reading eight limits before
      they have arrived has been told what they cannot have eight times. Open
      by default would put it straight back. */
+  /* Guest tokens only on a guest page: two of the mockup's staff-tier
+     hexes leaked in as fallbacks on 23 Aug and one of them rendered. */
   .more { display:inline-block; margin-top:12px; background:transparent;
           border:1px solid var(--rule); border-radius:20px; padding:7px 14px;
           font-family:var(--ui-font,Helvetica,Arial,sans-serif); font-size:10px;
@@ -149,7 +151,7 @@
   .needs { margin-top:16px; padding-top:14px; border-top:1px solid var(--rule); }
   .needs-l { font-family:var(--ui-font,Helvetica,Arial,sans-serif); font-size:10px;
              letter-spacing:.1em; text-transform:uppercase; color:var(--mid); }
-  .needs.req .needs-l { color:var(--red,#A8321E); }
+  .needs.req .needs-l { color:var(--warn); }
 
   .nav { display:flex; align-items:center; gap:12px; margin-top:1.8rem; }
   .prog { font-size:0.7rem; letter-spacing:.16em; text-transform:uppercase;
@@ -167,7 +169,7 @@
 
   /* Safari brings its own toolbar under this, so the constant is small and
      the env() carries the home-screen case where there is no toolbar. */
-  .foot { flex:0 0 auto; background:var(--cream,#F9F7F4);
+  .foot { flex:0 0 auto; background:var(--cream);
           border-top:1px solid var(--rule);
           padding:8px 0 max(8px, env(safe-area-inset-bottom)); }
   .foot .prog { text-align:center; margin:0 0 6px; }
