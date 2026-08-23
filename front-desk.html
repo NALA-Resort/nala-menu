@@ -789,11 +789,14 @@ var DIET_OTHER = 'Other';
    coercion_test.js compares the two files, since nothing else can: this page
    loads nala-shared.js and the guest page deliberately does not, so the lists
    cannot be shared without putting staff code in a guest's browser. */
-var PURPOSE = ['Somewhere to stay while we work or travel',
-               'Exploring Mission Beach and around',
-               'A celebration',
-               'A short break',
-               'Rest and recovery'];
+/* The guest's four, word for word: the label is the stored value and the
+   coercion test holds the two lists together. Single select on both sides
+   since 23 Aug, which also ends the joined string ever nearing the field's
+   120 character ceiling. Old records show their retired labels as text. */
+var PURPOSE = ['Unhurried days at Nala',
+               'A balance of Nala and exploring',
+               'Days out exploring',
+               'Time to focus, with Nala around me'];
 /* Approach stores the key, so the labels are free to differ. They are matched
    anyway: reception reading the guest back a different sentence to the one
    they answered is how you lose their confidence at the desk. */
@@ -1081,12 +1084,19 @@ function openGuest(r){
 
   function paintPurpose(){
     var box = document.getElementById('pChips'); box.innerHTML = '';
-    PURPOSE.forEach(function(t){
+    /* A record may hold a label from before the 23 Aug vocabulary. It is
+       painted anyway, selected: invisible would mean the next save from
+       here drops the guest's answer, which is the exact bug this suite's
+       fixture remembers. Tapping a current label replaces it. */
+    var offered = PURPOSE.concat(a.purpose.filter(function(t){
+      return PURPOSE.indexOf(t) === -1; }));
+    offered.forEach(function(t){
       var b = document.createElement('button');
       b.className = 'chip' + (a.purpose.indexOf(t)>-1 ? ' on' : ''); b.textContent = t;
       b.onclick = function(){
-        var i = a.purpose.indexOf(t);
-        if (i>-1) a.purpose.splice(i,1); else a.purpose.push(t);
+        /* One answer replaces another; tapping it again clears it, the way
+           back every desk chip gives. */
+        a.purpose = (a.purpose.indexOf(t) > -1) ? [] : [t];
         paintPurpose();
       };
       box.appendChild(b);

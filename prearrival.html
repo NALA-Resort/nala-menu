@@ -249,12 +249,14 @@
 
     <!-- 4. purpose -->
     <div class="q" id="qPurpose">
-      <div class="q-t">What brings you to Nala?</div>
-      <div class="q-h">Choose as many as fit.</div>
+      <div class="q-t">What will set the pace for your stay?</div>
+      <div class="q-h">Choose the one that sounds most like you.</div>
       <button class="more" type="button">Read more</button>
-      <div class="more-b">It changes the type of experience that you might be
-          seeking, and we want to make sure everyone is looked after.</div>
-      <div class="chips" id="purposeChips"></div>
+      <div class="more-b">It gives us a sense of the rhythm of your stay, so
+          we can quietly shape things around it.</div>
+      <!-- Rectangles, because one answer replaces another: the form's own
+           shape for a single choice, since 23 Aug this was a multi select. -->
+      <div class="opts" id="purposeOpts"></div>
     </div>
 
     <!-- 1. arrival time -->
@@ -443,11 +445,14 @@ var ETA_SLOTS = [
   ['17',      '5:00pm',     false],
   ['after5',  'After 5pm',  true ]
 ];
-var PURPOSE = ['Somewhere to stay while we work or travel',
-               'Exploring Mission Beach and around',
-               'A celebration',
-               'A short break',
-               'Rest and recovery'];
+/* One choice, and the label IS the stored value, as before. Old records
+   hold the retired labels and still display them everywhere as plain text;
+   they are simply no longer offered. Single select also ends the joined
+   string ever nearing the field's 120 character ceiling. */
+var PURPOSE = ['Unhurried days at Nala',
+               'A balance of Nala and exploring',
+               'Days out exploring',
+               'Time to focus, with Nala around me'];
 /* Keys are what is stored, so the words are free to match the party:
    "we" to a couple, "I" to a guest travelling alone. The desk reads the key
    back in its own words either way. */
@@ -661,14 +666,14 @@ function paintDiets(){
 }
 
 function paintPurpose(){
-  var box = el('purposeChips'); box.innerHTML = '';
+  var box = el('purposeOpts'); box.innerHTML = '';
   PURPOSE.forEach(function(t){
     var b = document.createElement('button');
-    b.className = 'chip' + (a.purpose.indexOf(t) > -1 ? ' on' : ''); b.textContent = t;
+    b.className = 'opt' + (a.purpose.indexOf(t) > -1 ? ' on' : ''); b.textContent = t;
     b.onclick = function(){
-      var i = a.purpose.indexOf(t);
-      if (i > -1) a.purpose.splice(i,1); else a.purpose.push(t);
+      a.purpose = [t];                     /* one answer replaces another */
       clearMiss('qPurpose'); paintPurpose();
+      advanceIfClean(false);               /* it opens nothing */
     };
     box.appendChild(b);
   });
@@ -933,7 +938,7 @@ function missingOn(id){
     return null;
   }
   if (id === 'qPurpose')
-    return a.purpose.length ? null : 'Please tell us what brings you.';
+    return a.purpose.length ? null : 'Please tell us what will set the pace.';
   if (id === 'qApproach')
     return a.approach ? null : 'Please tell us how you plan to eat.';
   if (id === 'qWell')

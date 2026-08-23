@@ -290,18 +290,23 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qPurpose")
     ck("and nothing is sent", len(sent("/prearrival")) == 0)
     ck("it names what is missing, in words",
-       "what brings you" in pg.locator("#err").inner_text())
+       "set the pace" in pg.locator("#err").inner_text())
     ck("and marks only the page in front of them",
        pg.evaluate("()=>document.querySelectorAll('.q.miss').length") == 1)
     ck("without hiding the question being asked",
        pg.evaluate("()=>qPurpose.className.indexOf('now')>-1"))
-    pg.evaluate("()=>[...document.querySelectorAll('#purposeChips .chip')][2].click()")
+    #  Single choice since the 23 Aug brief: one answer replaces another and,
+    #  opening nothing, it carries the guest onward by itself.
+    pg.evaluate("()=>[...document.querySelectorAll('#purposeOpts .opt')][2].click()")
     pg.wait_for_timeout(150)
-    ck("a multi select does not run off the moment one is ticked",
-       pg.evaluate("()=>document.querySelector('.q.now').id") == "qPurpose")
-    nxt(pg)
-
-    ck("then arrival", pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta")
+    ck("one answer replaces another",
+       pg.evaluate("()=>a.purpose.length") == 1)
+    pg.evaluate("()=>[...document.querySelectorAll('#purposeOpts .opt')][0].click()")
+    pg.wait_for_timeout(450)
+    ck("choosing again keeps exactly one",
+       pg.evaluate("()=>a.purpose.join()") == "Unhurried days at Nala")
+    ck("and a clean answer carries them onward, to arrival",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta")
     nxt(pg)
     ck("which must be answered",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta" and
@@ -397,7 +402,7 @@ with sync_playwright() as p:
     #  answers a worse source of truth than a call, and reception can change
     #  every answer at the desk, so a submitted form is sealed.
     STATE["pre"] = {"at": "2026-08-16T10:00:00Z", "arriveSlot": "15",
-                    "dining": False, "noDiets": True, "purpose": ["A short break"],
+                    "dining": False, "noDiets": True, "purpose": ["Days out exploring"],
                     "approach": "mix", "wellness": False, "occasion": "anniversary"}
     pg = guest()
     ck("a guest who already sent it sees the thank you, not a blank form",
@@ -413,7 +418,7 @@ with sync_playwright() as p:
     #  they are left, so they resume at the first page they have not answered.
     #  The record carries an occasion from before the field left the form;
     #  it must not crash the resume, and the send must not erase it.
-    STATE["pre"] = {"arriveSlot": "15", "purpose": ["A short break"],
+    STATE["pre"] = {"arriveSlot": "15", "purpose": ["Days out exploring"],
                     "occasion": "anniversary", "note": "ground floor please"}
     pg = guest(begin=False)
     ck("a form in progress reopens, because it was never finished",
@@ -488,7 +493,7 @@ with sync_playwright() as p:
     #  what a rejected send does, not about the walk.
     pg.evaluate("""()=>{
       a.eta='16'; a.dining=false; a.noDiets=true;
-      a.purpose=['A short break']; a.approach='mix'; a.wellness=false;
+      a.purpose=['Days out exploring']; a.approach='mix'; a.wellness=false;
     }""")
     jump(pg, "qElse")
     pg.locator("#send").click(); pg.wait_for_timeout(700)
@@ -663,7 +668,7 @@ with sync_playwright() as p:
     #  The answered walk must still send: approach was never asked, so an
     #  empty approach cannot hold the form hostage.
     pg.evaluate("""()=>{
-      a.purpose=['A short break']; a.eta='15'; a.dining=false;
+      a.purpose=['Days out exploring']; a.eta='15'; a.dining=false;
       a.noDiets=true;
     }""")
     jump(pg, "qElse")
@@ -723,7 +728,7 @@ with sync_playwright() as p:
       trail.value=2; trail.dispatchEvent(new Event('input'));
       document.getElementById('dIn').click();
       document.getElementById('dNone').click();
-      const p=document.querySelector('#purposeChips button'); if(p)p.click();
+      const p=document.querySelector('#purposeOpts button'); if(p)p.click();
       const a=document.querySelector('#approachOpts button'); if(a)a.click();
       document.getElementById('wNo').click();}""")
     q.wait_for_timeout(300)
