@@ -116,7 +116,8 @@ with sync_playwright() as p:
     ck("dinner with the covers", "Dining" in c4 and "2 guests" in c4)
     ck("the dietary and whose it is", "Nut allergy" in c4 and "the daughter" in c4)
     ck("the treatment day and time", "Interested" in c4 and "late morning" in c4)
-    ck("dining plans in words, not a stored code", "Dining in most nights" in c4)
+    #  The 23 Aug rewrite asks frequency; "most" now prints as its new words.
+    ck("dining plans in words, not a stored code", "Most nights" in c4)
     # .c-stay is uppercased by CSS, so innerText comes back shouting.
     # On paper it is the only way back to the PMS record: the card has no GUID.
     ck("the card carries the Mews reservation number", "MEWS 1159" in c4.upper())

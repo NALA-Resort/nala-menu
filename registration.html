@@ -179,8 +179,10 @@ var ETA_SLOTS = { before2:'Before 2pm', '14':'Approx 2pm', '1430':'Approx 2:30pm
                   '15':'Approx 3pm', '1530':'Approx 3:30pm',
                   '16':'Approx 4pm', '1630':'Approx 4:30pm',
                   '17':'Approx 5pm', after5:'After 5pm' };
-var APPROACH = { most:'Dining in most nights', mix:'A mix of in and out',
-                 out:'Mostly eating out' };
+/* New keys and old: records written before 23 Aug hold mix and out. */
+var APPROACH = { most:'Most nights', few:'A few nights',
+                 once:'Probably just once', unsure:'Not sure yet',
+                 mix:'A mix of in and out', out:'Mostly eating out' };
 
 /* Purpose is stored as one middot separated string, which is what the rules
    validate and what the guest form and the front desk both write. This is the
@@ -274,9 +276,9 @@ function conflictsFor(diets){
    Adding an option to the form means adding it here. */
 var DIET_TICKS = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
                   'Nut allergy','Shellfish allergy','Egg allergy','Other'];
-var PURPOSE_TICKS = ['Unhurried at Nala','A balance','Days out',
-                     'Time to focus'];
-var APPROACH_TICKS = ['Most nights in','A mix','Mostly out'];
+var PURPOSE_TICKS = ['Relaxing at Nala','A mix','Out exploring',
+                     'Working'];
+var APPROACH_TICKS = ['Most nights','A few','Just once','Not sure'];
 var DINE_TICKS = ['Dining','Not dining'];
 var WELL_TICKS = ['Interested','Not interested'];
 

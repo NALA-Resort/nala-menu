@@ -1655,8 +1655,10 @@ function telHref(p){
 
 var ETA_WORDS = { before2:'Before 2pm', '14':'Around 2pm', '15':'Around 3pm',
                   '16':'Around 4pm', '17':'Around 5pm', after5:'After 5pm' };
-var APPROACH_WORDS = { most:'Dining most nights', mix:'A mix of meals in and out',
-                       out:'Mostly eating out' };
+/* New keys and old: records written before 23 Aug hold mix and out. */
+var APPROACH_WORDS = { most:'Most nights', few:'A few nights',
+                       once:'Probably just once', unsure:'Not sure yet',
+                       mix:'A mix of meals in and out', out:'Mostly eating out' };
 
 function preRows(pre){
   if (!pre || typeof pre !== 'object') return [];

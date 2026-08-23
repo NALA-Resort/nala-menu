@@ -290,7 +290,7 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qPurpose")
     ck("and nothing is sent", len(sent("/prearrival")) == 0)
     ck("it names what is missing, in words",
-       "set the pace" in pg.locator("#err").inner_text())
+       "what kind of stay" in pg.locator("#err").inner_text())
     ck("and marks only the page in front of them",
        pg.evaluate("()=>document.querySelectorAll('.q.miss').length") == 1)
     ck("without hiding the question being asked",
@@ -304,7 +304,7 @@ with sync_playwright() as p:
     pg.evaluate("()=>[...document.querySelectorAll('#purposeOpts .opt')][0].click()")
     pg.wait_for_timeout(450)
     ck("choosing again keeps exactly one",
-       pg.evaluate("()=>a.purpose.join()") == "Unhurried days at Nala")
+       pg.evaluate("()=>a.purpose.join()") == "Mostly relaxing at Nala")
     ck("and a clean answer carries them onward, to arrival",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta")
     nxt(pg)
@@ -402,7 +402,7 @@ with sync_playwright() as p:
     #  answers a worse source of truth than a call, and reception can change
     #  every answer at the desk, so a submitted form is sealed.
     STATE["pre"] = {"at": "2026-08-16T10:00:00Z", "arriveSlot": "15",
-                    "dining": False, "noDiets": True, "purpose": ["Days out exploring"],
+                    "dining": False, "noDiets": True, "purpose": ["Mostly out exploring"],
                     "approach": "mix", "wellness": False, "occasion": "anniversary"}
     pg = guest()
     ck("a guest who already sent it sees the thank you, not a blank form",
@@ -418,7 +418,7 @@ with sync_playwright() as p:
     #  they are left, so they resume at the first page they have not answered.
     #  The record carries an occasion from before the field left the form;
     #  it must not crash the resume, and the send must not erase it.
-    STATE["pre"] = {"arriveSlot": "15", "purpose": ["Days out exploring"],
+    STATE["pre"] = {"arriveSlot": "15", "purpose": ["Mostly out exploring"],
                     "occasion": "anniversary", "note": "ground floor please"}
     pg = guest(begin=False)
     ck("a form in progress reopens, because it was never finished",
@@ -493,7 +493,7 @@ with sync_playwright() as p:
     #  what a rejected send does, not about the walk.
     pg.evaluate("""()=>{
       a.eta='16'; a.dining=false; a.noDiets=true;
-      a.purpose=['Days out exploring']; a.approach='mix'; a.wellness=false;
+      a.purpose=['Mostly out exploring']; a.approach='few'; a.wellness=false;
     }""")
     jump(pg, "qElse")
     pg.locator("#send").click(); pg.wait_for_timeout(700)
@@ -523,8 +523,10 @@ with sync_playwright() as p:
     ck("but shut, so the page is an invitation and not a briefing",
        pg.evaluate("()=>!document.querySelector('#qDine .more-b.show')"))
     wt = why.text_content()   # closed, so inner_text would see nothing
-    ck("it explains why there is no menu to show yet",
-       "not exist yet" in wt or "will not exist" in wt)
+    #  The owner's 23 Aug words replaced the placeholder; the promise the
+    #  suite protects is the same one: the menu comes later, finalised.
+    ck("it explains the menu comes once finalised",
+       "finalised" in wt)
     ck("breakfast is not mentioned, which was asked for",
        "breakfast" not in wt.lower())
     ck("no placeholder marker is left where a guest can read it",
@@ -538,8 +540,9 @@ with sync_playwright() as p:
     #  The four that used to open by telling a guest what they could not have.
     #  Each limit is still on the page, one tap away, and no longer the first
     #  thing read.
-    for qid, word in (("qEta", "5pm"), ("qDiet", "menu is set"),
-                      ("qWell", "peak season")):
+    #  The owner's 23 Aug words carry the same limits in new phrases.
+    for qid, word in (("qEta", "5pm"), ("qDiet", "menu changes"),
+                      ("qWell", "fill quickly")):
         jump(pg, qid)
         ck("the limit on " + qid + " is kept, inside the explanation",
            word in pg.locator("#" + qid + " .more-b").text_content())
@@ -657,7 +660,7 @@ with sync_playwright() as p:
        "qApproach" not in live)
     ck("and its dinner question has no \"first night\", only the night",
        pg.evaluate("()=>document.querySelector('#qDine .q-t').textContent")
-       == "Will you be dining with us?" and
+       == "Will you dine with us?" and
        pg.evaluate("()=>dOut.textContent") == "Not this time")
     ck("nor offered a treatment its stay has no window for",
        "qWell" not in live)
@@ -668,7 +671,7 @@ with sync_playwright() as p:
     #  The answered walk must still send: approach was never asked, so an
     #  empty approach cannot hold the form hostage.
     pg.evaluate("""()=>{
-      a.purpose=['Days out exploring']; a.eta='15'; a.dining=false;
+      a.purpose=['Mostly out exploring']; a.eta='15'; a.dining=false;
       a.noDiets=true;
     }""")
     jump(pg, "qElse")

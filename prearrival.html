@@ -225,9 +225,9 @@
     <!-- No number: the count runs five to eight with the party and the
          stay, and a promise of eight to a guest asked five reads as an
          error somewhere, theirs or ours. -->
-    <div class="intro-why">A few quick questions, so your villa, your table
-      and your kitchen are ready the moment you step in. A page saves as you
-      go, so you can stop and come back.</div>
+    <div class="intro-why">A few details before you arrive, so we can have
+      everything ready for you. Each page saves as you go, so you can come
+      back at any time.</div>
     <button class="send" id="begin">Begin</button>
   </div>
 
@@ -237,23 +237,23 @@
          guest asked to type something the resort was told at booking reads as
          nobody having looked. -->
     <div class="q" id="qCompanion" style="display:none">
-      <div class="q-t">Additional guests?</div>
-      <div class="q-h">So we can greet them by name. Optional.</div>
+      <div class="q-t">Who else is staying with you?</div>
+      <div class="q-h">Just their name, so we know who to expect.</div>
       <button class="more" type="button">Read more</button>
-      <div class="more-b">Nothing more than a name on the welcome, and a
-          second glass poured without anyone having to ask. Leave it blank if
-          you would rather.</div>
+      <div class="more-b">We like to welcome everyone by name. A first name
+          is all we need.</div>
       <textarea class="txt" id="companion" rows="1"
         placeholder="Their name"></textarea>
     </div>
 
     <!-- 4. purpose -->
     <div class="q" id="qPurpose">
-      <div class="q-t">What will set the pace for your stay?</div>
-      <div class="q-h">Choose the one that sounds most like you.</div>
+      <div class="q-t">What kind of stay are you planning?</div>
+      <div class="q-h">Choose one.</div>
       <button class="more" type="button">Read more</button>
-      <div class="more-b">It gives us a sense of the rhythm of your stay, so
-          we can quietly shape things around it.</div>
+      <div class="more-b">This gives us a sense of how you are likely to
+          spend your time, so we can plan around you without having to ask
+          once you are here.</div>
       <!-- Rectangles, because one answer replaces another: the form's own
            shape for a single choice, since 23 Aug this was a multi select. -->
       <div class="opts" id="purposeOpts"></div>
@@ -262,11 +262,11 @@
     <!-- 1. arrival time -->
     <div class="q" id="qEta">
       <div class="q-t">What time do you expect to arrive?</div>
-      <div class="q-h">So that someone is here to meet you.</div>
+      <div class="q-h">A rough time is fine.</div>
       <button class="more" type="button">Read more</button>
-      <div class="more-b">Reception is here until 5pm. Later than that is no
-          trouble at all, but do tell us, and we will arrange for someone to
-          let you in and settle you.</div>
+      <div class="more-b">Reception is here until 5pm. If you are arriving
+          later, no problem. We will make sure someone is here to welcome you
+          and settle you in.</div>
       <div class="track">
         <div class="tval" id="tval">&#x2194;</div>
         <div class="tsub" id="tsub">drag to set</div>
@@ -283,53 +283,41 @@
 
     <!-- 5. how they like to travel -->
     <div class="q" id="qApproach">
-      <div class="q-t">Where do you plan on eating during your stay?</div>
-      <div class="q-h">No right answer. It only helps us plan.</div>
+      <div class="q-t">How often do you think you’ll dine with us?</div>
+      <div class="q-h">A rough idea is all we need.</div>
       <button class="more" type="button">Read more</button>
-      <div class="more-b">Our restaurant creates menus and meals for the number
-          of guests onsite. Knowing how often you plan on eating with us means
-          less waste, and a better experience on the nights that you do.</div>
+      <div class="more-b">We prepare dinner around the number of guests
+          dining with us each evening. Knowing roughly what you have in mind
+          helps the kitchen plan well, while still leaving you free to decide
+          as your stay unfolds.</div>
       <div class="opts" id="approachOpts"></div>
     </div>
 
     <!-- 2. dinner on the arrival night -->
     <div class="q" id="qDine">
       <div class="q-t">Will you be dining with us on your first night?</div>
-      <!-- PLACEHOLDER COPY, owner to write. Asked for 18 Aug: a short
-           description of how dining works here, placed BEFORE the opt in
-           rather than under it, because the guest is being asked to commit to
-           something they have not been told about yet. The only fact below
-           that is confirmed is the 6:00 to 6:30 seating. Everything else is
-           standing in and reads as plausible on purpose: this page is live,
-           so a guest may see it before the real words arrive. Breakfast is
-           deliberately not mentioned. -->
-      <div class="q-h" id="dineHelp">Dining is from 6:00 to 6:30.</div>
-      <!-- PLACEHOLDER COPY, owner to write, asked for 18 Aug. The seating
-           time is the only confirmed fact and it stays on the page above,
-           because a guest saying yes is agreeing to it. The rest is standing
-           in and reads as plausible on purpose: this page is live. Breakfast
-           is deliberately not mentioned. -->
+      <div class="q-h" id="dineHelp">Dinner begins between 6:00 and 6:30pm.</div>
+      <!-- The owner's words, 23 Aug, replacing the 18 Aug placeholder. -->
       <button class="more" type="button">Read more</button>
-      <div class="more-b">Dinner is a set menu, written by the kitchen on the
-          day, from whatever is best that morning. That means the dishes for
-          your first night do not exist yet. We will send them to you as soon
-          as they do.</div>
+      <div class="more-b">The menu is written each day around what is best
+          and available. We will send your first-night menu through once it
+          has been finalised.</div>
       <div class="opts">
-        <button class="opt" id="dIn">Yes please</button>
+        <button class="opt" id="dIn">Yes, please</button>
         <button class="opt" id="dOut">Not on the first night</button>
       </div>
     </div>
 
     <!-- 3. dietaries -->
     <div class="q" id="qDiet">
-      <div class="q-t">Does anyone in your party have allergies or dietary
-        requirements?</div>
-      <div class="q-h">We would rather know now than on the night.</div>
+      <div class="q-t">Does anyone staying with you have any allergies or
+        dietary requirements?</div>
+      <div class="q-h">It helps us to know before you arrive.</div>
       <button class="more" type="button">Read more</button>
-      <div class="more-b">The menu is set each day, so a dish cannot be
-          rebuilt around a requirement on the night. What we can do, and gladly
-          do, is leave things out and cook something alongside instead. The
-          earlier we know, the more room the kitchen has to work with.</div>
+      <div class="more-b">Because the menu changes each day, advance notice
+          gives the kitchen the best chance to prepare something properly for
+          you. If there is anything we should know, please include it
+          here.</div>
       <div class="opts row">
         <button class="opt" id="dNone">None</button>
         <button class="opt" id="dYes">Yes</button>
@@ -346,17 +334,17 @@
     <!-- 6. wellness -->
     <div class="q" id="qWell">
       <div class="q-t">Would you like us to arrange a massage or treatment?</div>
-      <div class="q-h">We can have it booked before you get here.</div>
+      <div class="q-h">We can organise this before you arrive.</div>
       <button class="more" type="button">Read more</button>
-      <div class="more-b">There are only so many hours in a therapist's day,
-          and in peak season they go early. Asking now is the surest way to get
-          the time you would like.</div>
+      <div class="more-b">Appointments can fill quickly, particularly during
+          busy periods. If you are interested, let us know and we can arrange
+          a suitable day and time for you.</div>
       <div class="opts">
         <button class="opt" id="wYes">Yes, please</button>
-        <button class="opt" id="wNo">No thank you</button>
+        <button class="opt" id="wNo">No, thank you</button>
       </div>
       <div id="wWrap" style="display:none">
-        <div class="sublabel">Which day suits</div>
+        <div class="sublabel">Which day would suit you best?</div>
         <div class="chips" id="wDays"></div>
         <textarea class="txt" id="wTime" rows="1"
           placeholder="Preferred time of day"></textarea>
@@ -365,12 +353,13 @@
 
     <!-- optional -->
     <div class="q" id="qElse">
-      <div class="q-t">Anything else?</div>
-      <div class="q-h">A special occasion, a preference, or something that would
-        make your stay feel more like you. Optional.</div>
+      <div class="q-t">Is there anything else you’d like us to know?</div>
+      <div class="q-h">A special occasion, a preference, or anything that may
+        help us prepare for your stay. Optional.</div>
       <button class="more" type="button">Read more</button>
-      <div class="more-b">This is the one that most often changes a stay. An
-          anniversary nobody mentioned is an anniversary we cannot mark.</div>
+      <div class="more-b">This can be anything you think may be useful for
+          us to know before you arrive. There is no need to repeat anything
+          you have already told us above.</div>
       <!-- One box since 23 Aug: a separate occasion field beside it read as
            the same question twice, the owner ruled. The desk keeps its own
            Special occasion field, and records already carrying one still
@@ -383,8 +372,8 @@
 
   <div id="done" class="done hide">
     <div class="done-t" id="doneT">Thank you</div>
-    <div class="done-s" id="doneS">We have everything we need. We will go
-      through it with you when you arrive.</div>
+    <div class="done-s" id="doneS">That is everything we need for now.
+      We look forward to welcoming you to Nala.</div>
   </div>
   </div><!-- /scrollarea -->
 
@@ -449,19 +438,17 @@ var ETA_SLOTS = [
    hold the retired labels and still display them everywhere as plain text;
    they are simply no longer offered. Single select also ends the joined
    string ever nearing the field's 120 character ceiling. */
-var PURPOSE = ['Unhurried days at Nala',
-               'A balance of Nala and exploring',
-               'Days out exploring',
-               'Time to focus, with Nala around me'];
-/* Keys are what is stored, so the words are free to match the party:
-   "we" to a couple, "I" to a guest travelling alone. The desk reads the key
-   back in its own words either way. */
-var APPROACH = [['most','We will dine at Nala most nights'],
-                ['mix', 'A mix of meals in and out'],
-                ['out', 'We will mostly eat out']];
-var APPROACH_1 = [['most','I will dine at Nala most nights'],
-                  ['mix', 'A mix of meals in and out'],
-                  ['out', 'I will mostly eat out']];
+var PURPOSE = ['Mostly relaxing at Nala',
+               'A mix of relaxing and exploring',
+               'Mostly out exploring',
+               'Working while I\u2019m here'];
+/* Keys are what is stored. The 23 Aug rewrite asks frequency, not style,
+   so 'few', 'once' and 'unsure' join 'most'; the retired 'mix' and 'out'
+   live on in every reader, because records hold them. */
+var APPROACH = [['most',  'Most nights'],
+                ['few',   'A few nights'],
+                ['once',  'Probably just once'],
+                ['unsure','Not sure yet']];
 var SINGLE = false;
 
 /* Falls back to a sensible list if the chef's master list cannot be read, so a
@@ -562,30 +549,23 @@ function paintGreeting(pms){
      that leans on "first" bends with it, in one place, here, where the
      dates are known. */
   document.querySelector('#qDine .q-t').textContent = oneNight
-    ? 'Will you be dining with us?'
-    : 'Will you be dining with us on your first night?';
+    ? 'Will you dine with us?'
+    : 'Will you dine with us on your first night?';
   el('dOut').textContent = oneNight ? 'Not this time' : 'Not on the first night';
   document.querySelector('#qDine .more-b').textContent = oneNight
-    ? 'Dinner is a set menu, written by the kitchen on the day, from whatever '
-      + 'is best that morning. That means the dishes for your night do not '
-      + 'exist yet. We will send them to you as soon as they do.'
-    : 'Dinner is a set menu, written by the kitchen on the day, from whatever '
-      + 'is best that morning. That means the dishes for your first night do '
-      + 'not exist yet. We will send them to you as soon as they do.';
+    ? 'The menu is written each day around what is best and available. We '
+      + 'will send your menu through once it has been finalised.'
+    : 'The menu is written each day around what is best and available. We '
+      + 'will send your first-night menu through once it has been finalised.';
   document.querySelector('#qDiet .q-t').textContent = SINGLE
     ? 'Do you have any allergies or dietary requirements?'
-    : 'Does anyone in your party have allergies or dietary requirements?';
-  el('dietNote').placeholder = SINGLE
-    ? 'How severe, and anything else we should know'
-    : 'Whose, and how severe';
+    : 'Does anyone staying with you have any allergies or dietary requirements?';
+  el('dietNote').placeholder = 'Please tell us what we should know';
+  /* The 23 Aug copy is the two-guest, multi-night base; the voices and
+     tenses still bend it - solo, one night - the way they always did. */
   el('note').placeholder = SINGLE
     ? 'A birthday, a milestone, or anything you would like us to know'
     : 'A birthday, an anniversary, or anything you would like us to know';
-  document.querySelector('#qElse .more-b').textContent = SINGLE
-    ? 'This is the one that most often changes a stay. A birthday nobody '
-      + 'mentioned is a birthday we cannot mark.'
-    : 'This is the one that most often changes a stay. An anniversary nobody '
-      + 'mentioned is an anniversary we cannot mark.';
   paintApproach();
   el('qCompanion').style.display = (adults >= 2 && !known) ? '' : 'none';
 
@@ -619,9 +599,9 @@ function paintEta(){
   el('tsub').textContent = needsNote ? 'we need a rough time' : 'drag to set';
   el('etaNeeds').className = 'needs' + (needsNote ? ' req' : '');
   el('etaNoteLab').textContent =
-    a.eta === 'before2' ? 'What time were you hoping for?' :
-    a.eta === 'after5'  ? 'What time do you expect to land?'
-                        : 'Arrival notes \u00b7 optional';
+    (a.eta === 'before2' || a.eta === 'after5')
+      ? 'Approximate arrival time'
+      : 'Arrival notes \u00b7 optional';
   el('etaNote').placeholder =
     a.eta === 'before2' ? 'e.g. around 11am' :
     a.eta === 'after5'  ? 'e.g. flight lands at 6'
@@ -681,7 +661,7 @@ function paintPurpose(){
 
 function paintApproach(){
   var box = el('approachOpts'); box.innerHTML = '';
-  (SINGLE ? APPROACH_1 : APPROACH).forEach(function(pair){
+  APPROACH.forEach(function(pair){
     var b = document.createElement('button');
     b.className = 'opt' + (a.approach === pair[0] ? ' on' : ''); b.textContent = pair[1];
     b.onclick = function(){
@@ -938,9 +918,9 @@ function missingOn(id){
     return null;
   }
   if (id === 'qPurpose')
-    return a.purpose.length ? null : 'Please tell us what will set the pace.';
+    return a.purpose.length ? null : 'Please tell us what kind of stay you are planning.';
   if (id === 'qApproach')
-    return a.approach ? null : 'Please tell us how you plan to eat.';
+    return a.approach ? null : 'Please tell us how often you think you\u2019ll dine.';
   if (id === 'qWell')
     return a.wellness === null ? 'Please answer about treatments.' : null;
   return null;
@@ -1160,8 +1140,8 @@ function boot(){
     el('foot').style.display = 'none';
     el('done').className = 'done';
     el('doneT').textContent = 'Thank you';
-    el('doneS').textContent = 'We have your answers. We will go through them ' +
-      'with you when you arrive.';
+    el('doneS').textContent = 'That is everything we need for now. ' +
+      'We look forward to welcoming you to Nala.';
   }).catch(function(){});
 }
 boot();

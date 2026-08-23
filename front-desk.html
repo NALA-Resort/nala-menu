@@ -793,16 +793,21 @@ var DIET_OTHER = 'Other';
    coercion test holds the two lists together. Single select on both sides
    since 23 Aug, which also ends the joined string ever nearing the field's
    120 character ceiling. Old records show their retired labels as text. */
-var PURPOSE = ['Unhurried days at Nala',
-               'A balance of Nala and exploring',
-               'Days out exploring',
-               'Time to focus, with Nala around me'];
+var PURPOSE = ['Mostly relaxing at Nala',
+               'A mix of relaxing and exploring',
+               'Mostly out exploring',
+               'Working while I\u2019m here'];
 /* Approach stores the key, so the labels are free to differ. They are matched
    anyway: reception reading the guest back a different sentence to the one
    they answered is how you lose their confidence at the desk. */
-var APPROACH = [['most','We will dine at Nala most nights'],
-                ['mix', 'A mix of meals in and out'],
-                ['out', 'We will mostly eat out']];
+/* The guest's four, word for word, plus the two retired keys records
+     still hold: painted only when a record carries one, so the desk never
+     silently drops an old answer. */
+var APPROACH = [['most',  'Most nights'],
+                ['few',   'A few nights'],
+                ['once',  'Probably just once'],
+                ['unsure','Not sure yet']];
+var APPROACH_OLD = { mix:'A mix of meals in and out', out:'We will mostly eat out' };
 
 var bd = document.getElementById('backdrop');
 var sheetEl = document.getElementById('sheet');
@@ -1104,7 +1109,10 @@ function openGuest(r){
   }
   function paintApproach(){
     var box = document.getElementById('aChips'); box.innerHTML = '';
-    APPROACH.forEach(function(pair){
+    var offered = APPROACH.slice();
+    if (a.approach && APPROACH_OLD[a.approach])
+      offered.push([a.approach, APPROACH_OLD[a.approach]]);
+    offered.forEach(function(pair){
       var b = document.createElement('button');
       b.className = 'chip' + (a.approach===pair[0] ? ' on' : ''); b.textContent = pair[1];
       b.onclick = function(){ a.approach = (a.approach===pair[0] ? '' : pair[0]); paintApproach(); };
