@@ -2263,7 +2263,10 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
       var when = isToday() ? '' : ' for this date';
       if (live) {
         var t = pub.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
-        el.innerHTML = '<a href="index.html" class="yes">Menu published ' + t +
+        /* A new window, deliberately: the guest menu has no staff navigation,
+           so opened in place it strands whoever tapped View. In the app the
+           overlay's X drops them back on this board; in Safari it is a tab. */
+        el.innerHTML = '<a href="index.html" target="_blank" rel="noopener" class="yes">Menu published ' + t +
                        ' <b>· View</b></a>';
       } else {
         el.innerHTML = '<span class="no">Menu not published' + when + '</span>';
