@@ -256,8 +256,8 @@ with sync_playwright() as p:
     pg.wait_for_timeout(450)
     ck("an open ended arrival stays put too, because it opens a note",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta")
-    ck("and the note it demands is on this page",
-       pg.evaluate("()=>etaNeeds.classList.contains('show')"))
+    ck("and the note it demands is on this page, marked required",
+       pg.evaluate("()=>etaNeeds.classList.contains('req')"))
     pg.close()
 
     # ── the walk, page by page ──────────────────────────────────
@@ -289,7 +289,7 @@ with sync_playwright() as p:
     # an open ended slot has to carry a note, and the note is on this page
     drag(pg, 8)
     ck("choosing After 5pm asks for a rough time",
-       pg.evaluate("()=>etaNeeds.classList.contains('show')"))
+       pg.evaluate("()=>etaNeeds.classList.contains('req')"))
     nxt(pg)
     ck("and will not go on without one",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta" and
@@ -297,8 +297,11 @@ with sync_playwright() as p:
     pg.fill("#etaNote", "flight gets in at 6")
     # a fixed slot does not, but nor does it advance: Next does
     drag(pg, 5)                                    # 4:00pm, key 16
-    ck("a fixed slot needs no note",
-       pg.evaluate("()=>!etaNeeds.classList.contains('show')"))
+    #  The box itself stays on the page since 23 Aug evening, so the page is
+    #  one height wherever the thumb sits; only the demand comes and goes.
+    ck("a fixed slot needs no note, though the box remains",
+       pg.evaluate("()=>!etaNeeds.classList.contains('req')") and
+       pg.evaluate("()=>!!etaNeeds.offsetParent"))
     nxt(pg)
     ck("and Next carries them onward, to the week",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qApproach")

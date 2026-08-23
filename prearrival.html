@@ -139,11 +139,12 @@
   .ends { display:flex; justify-content:space-between;
           font-family:var(--ui-font,Helvetica,Arial,sans-serif); font-size:9px;
           letter-spacing:.1em; text-transform:uppercase; color:var(--mid); }
-  .needs { display:none; margin-top:16px; padding-top:14px;
-           border-top:1px solid var(--rule); }
-  .needs.show { display:block; }
+  /* Always on the page, so the page is one height wherever the thumb sits;
+     the two ends change what it asks and whether it may be left empty. */
+  .needs { margin-top:16px; padding-top:14px; border-top:1px solid var(--rule); }
   .needs-l { font-family:var(--ui-font,Helvetica,Arial,sans-serif); font-size:10px;
-             letter-spacing:.1em; text-transform:uppercase; color:var(--red,#A8321E); }
+             letter-spacing:.1em; text-transform:uppercase; color:var(--mid); }
+  .needs.req .needs-l { color:var(--red,#A8321E); }
 
   .nav { display:flex; align-items:center; gap:12px; margin-top:1.8rem; }
   .prog { font-size:0.7rem; letter-spacing:.16em; text-transform:uppercase;
@@ -161,9 +162,13 @@
 
   /* The frame. Back, Next and the step count are part of it, not the end of
      the content: they hold still while the page scrolls behind them. */
-  html, body { height:100%; }
+  html, body { height:100%; overflow:hidden; }
   body { display:flex; flex-direction:column; }
-  .page { flex:1; display:flex; flex-direction:column; min-height:0; }
+  /* dvh, because 100% of an iPhone lies while the toolbar animates: the foot
+     was sliding with it. dvh is the visible height, whatever the toolbar is
+     doing, and vh stands in for browsers that lack it. */
+  .page { flex:1; display:flex; flex-direction:column; min-height:0;
+          height:100vh; height:100dvh; }
   .scrollarea { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
                 min-height:0; }
   .foot { flex:0 0 auto; background:var(--cream,#F9F7F4);
@@ -171,7 +176,10 @@
           padding:10px 0 calc(14px + env(safe-area-inset-bottom)); }
   .foot .prog { text-align:center; margin:0 0 10px; }
   .foot .nav { margin:0; padding:0 4px; }
-  .foot .err { margin:8px 4px 0; }
+  /* Above the buttons, with its line reserved: an error that appears must
+     never move Back and Next under a thumb already falling. Growth extends
+     the foot upward; the buttons hold still at its base. */
+  .foot .err { margin:0 4px 8px; min-height:1.05rem; }
 </style>
 </head>
 <body>
@@ -332,11 +340,11 @@
 
   <div class="foot" id="foot">
     <div class="prog" id="prog"></div>
+    <div class="err" id="err"></div>
     <div class="nav">
       <button class="back hide" id="back">Back</button>
       <button class="send" id="send">Next</button>
     </div>
-    <div class="err" id="err"></div>
   </div>
 </div>
 
@@ -493,12 +501,15 @@ function paintEta(){
   el('tval').innerHTML = i > -1 ? ETA_SLOTS[i][1] : '&ndash;';
   var needsNote = i > -1 && ETA_SLOTS[i][2];
   el('tsub').textContent = needsNote ? 'we need a rough time' : 'drag to set';
-  el('etaNeeds').className = 'needs' + (needsNote ? ' show' : '');
+  el('etaNeeds').className = 'needs' + (needsNote ? ' req' : '');
   el('etaNoteLab').textContent =
-    a.eta === 'before2' ? 'What time were you hoping for?'
-                        : 'What time do you expect to land?';
+    a.eta === 'before2' ? 'What time were you hoping for?' :
+    a.eta === 'after5'  ? 'What time do you expect to land?'
+                        : 'Arrival notes \u00b7 optional';
   el('etaNote').placeholder =
-    a.eta === 'before2' ? 'e.g. around 11am' : 'e.g. flight lands at 6';
+    a.eta === 'before2' ? 'e.g. around 11am' :
+    a.eta === 'after5'  ? 'e.g. flight lands at 6'
+                        : 'Anything about your arrival';
 }
 /* input fires while the thumb moves, change when it settles: both set the
    answer, neither advances the page. A drag is not a decision to leave. */
