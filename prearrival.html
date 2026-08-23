@@ -982,9 +982,12 @@ function boot(){
      somebody's record. Sending it is the same as sending any other link with
      no id, which is to say it goes nowhere. */
   if (DEMO){
+    /* &nights=1 walks the short-stay form; anything else, or nothing, is the
+       usual three. Demo only - a real link's dates come from Mews. */
+    var demoNights = Math.max(1, Number(qs.get('nights')) || 3);
     paintGreeting({ first:'Alex', last:'Marsh', adults:2,
                     arrive: dkey(new Date()),
-                    depart: dkey(new Date(Date.now() + 3 * 86400000)) });
+                    depart: dkey(new Date(Date.now() + demoNights * 86400000)) });
     showIntro();
     var banner = document.createElement('div');
     banner.className = 'note-box';
