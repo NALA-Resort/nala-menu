@@ -90,22 +90,37 @@ with sync_playwright() as p:
             "(e,i)=>{e.value=i;e.dispatchEvent(new Event('input'))}", idx)
         pg.wait_for_timeout(150)
 
-    def guest(link=LINK, w=390):
+    def guest(link=LINK, w=390, begin=True):
         pg = b.new_page(viewport={"width": w, "height": 844})
         pg.route("**firebasedatabase.app/**", fb)
         pg.route("**/fonts.googleapis.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.route("**/fonts.gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.goto("http://localhost:8967/prearrival.html" + link)
         pg.wait_for_timeout(900)
+        #  A fresh link lands on the greeting since 23 Aug evening; most
+        #  sections are about the questions, so they walk through it.
+        if begin and pg.evaluate("()=>{var i=document.getElementById('intro');"
+                                 "return i && i.style.display!=='none';}"):
+            pg.locator("#begin").click(); pg.wait_for_timeout(250)
         return pg
 
     # ── landing ─────────────────────────────────────────────────
     del WRITES[:]
-    pg = guest()
-    ck("the guest is greeted by name from the link",
+    pg = guest(begin=False)
+    ck("the guest lands on a greeting, not a question",
+       pg.evaluate("()=>intro.style.display!=='none'") and
+       pg.evaluate("()=>form.className") == "hide")
+    ck("greeted by name from the link",
        "Robyn" in pg.locator("#greet").inner_text())
     ck("and told how long they are staying",
        "4 nights" in pg.locator("#sub").inner_text())
+    ck("with why the form exists and a way in",
+       pg.locator(".intro-why").inner_text().strip() != "" and
+       pg.locator("#begin").is_visible())
+    pg.locator("#begin").click(); pg.wait_for_timeout(250)
+    ck("Begin hands the whole screen to the first question",
+       pg.evaluate("()=>!document.querySelector('header').offsetParent") and
+       pg.evaluate("()=>form.className") == "")
 
     opened = wrote("/bookings/res-guid-1/prearrival")
     ck("landing stamps that the link was opened", len(opened) == 1)
@@ -114,8 +129,8 @@ with sync_playwright() as p:
            list(opened[0]["b"].keys()) == ["openedAt"])
         ck("as a PATCH, so it cannot wipe an existing record",
            opened[0]["m"] == "PATCH")
-    ck("the form is shown, not a thank you",
-       pg.evaluate("()=>form.className") == "")
+    ck("and it is the form, not a thank you",
+       pg.evaluate("()=>done.className.indexOf('hide')>-1"))
 
     # ── one question to a page ──────────────────────────────────
     ck("the guest is shown one question, not eight",
@@ -398,9 +413,11 @@ with sync_playwright() as p:
     #  they are left, so they resume at the first page they have not answered.
     STATE["pre"] = {"arriveSlot": "15", "purpose": ["A short break"],
                     "occasion": "anniversary"}
-    pg = guest()
+    pg = guest(begin=False)
     ck("a form in progress reopens, because it was never finished",
        pg.evaluate("()=>form.className") == "")
+    ck("without asking a returning guest to Begin again",
+       pg.evaluate("()=>intro.style.display") == "none")
     ck("at the first page they have not answered",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qApproach")
     jump(pg, "qElse")
@@ -636,7 +653,10 @@ with sync_playwright() as p:
     q.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
     q.goto("http://localhost:8967/prearrival.html?b=demo"); q.wait_for_timeout(1500)
 
-    ck("the demo opens the form rather than the incomplete link message",
+    ck("the demo opens the greeting rather than the incomplete link message",
+       q.evaluate("()=>document.getElementById('intro').style.display!=='none'"))
+    q.locator("#begin").click(); q.wait_for_timeout(300)
+    ck("and Begin opens the form",
        q.evaluate("()=>document.getElementById('form').className.indexOf('hide')<0"))
     ck("with a guest to greet",
        "Alex" in q.evaluate("()=>document.getElementById('greet').textContent"))

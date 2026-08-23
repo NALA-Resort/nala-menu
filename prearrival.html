@@ -39,15 +39,20 @@
                 min-height:0; }
 
   /* The wordmark, not the drawn logo: the approved mockup trades the image
-     for headroom, and every page owes its fit on a phone to the trade. */
-  header { text-align:center; padding:16px 0 0; }
+     for headroom. The whole header lives on the landing screen now, so the
+     question pages start at the top of the glass. */
+  header { text-align:center; padding:40px 0 0; }
+  #intro { display:flex; flex-direction:column; min-height:100%; }
+  .intro-why { flex:1; text-align:center; font-style:italic; color:var(--mid);
+               font-size:0.95rem; line-height:1.7; margin:26px 8px 0; }
+  #begin { margin:20px 0 max(16px, env(safe-area-inset-bottom)); }
   .wordmark { font-family:var(--ui-font,Helvetica,Arial,sans-serif); font-size:9px;
               letter-spacing:.45em; text-transform:uppercase; color:var(--mid); }
   .greet { font-size:21px; line-height:1.3; margin-top:8px; }
   .sub { font-style:italic; font-size:12px; color:var(--mid); line-height:1.55;
          margin-top:7px; }
 
-  .q { border-top:1px solid var(--rule); padding:1.1rem 0 0.2rem; }
+  .q { padding:1.1rem 0 0.2rem; }
   .q-t { font-size:1.05rem; line-height:1.4; margin-bottom:0.3rem; }
   .q-h { font-style:italic; font-size:0.85rem; color:var(--mid); line-height:1.6;
          margin-bottom:0.85rem; }
@@ -62,12 +67,14 @@
   .opts { display:flex; flex-direction:column; gap:8px; }
   .opts.row { display:flex; flex-direction:row; gap:9px; }
   .opts.row .opt { flex:1; text-align:center; margin-bottom:0; }
-  .sub { display:none; margin-top:14px; padding-top:12px;
-         border-top:1px solid var(--rule); }
-  .sub.show { display:block; }
-  .sub-l { font-family:var(--ui-font,Helvetica,Arial,sans-serif); font-size:10px;
-           letter-spacing:.1em; text-transform:uppercase; color:var(--mid);
-           margin-bottom:4px; }
+  /* Its own name: this was .sub and silently display:none'd the header's
+     .sub greeting line - the date vanished from the live form for a spell. */
+  .drop { display:none; margin-top:14px; padding-top:12px;
+          border-top:1px solid var(--rule); }
+  .drop.show { display:block; }
+  .drop-l { font-family:var(--ui-font,Helvetica,Arial,sans-serif); font-size:10px;
+            letter-spacing:.1em; text-transform:uppercase; color:var(--mid);
+            margin-bottom:4px; }
   .opt { width:100%; padding:12px 15px; border:1px solid var(--rule);
          background:var(--paper); border-radius:10px; text-align:left;
          font-family:inherit; font-size:0.95rem; color:var(--ink); cursor:pointer; }
@@ -200,13 +207,23 @@
 </head>
 <body>
 <div class="page">
-  <div class="scrollarea"><header>
-    <div class="wordmark">Nala Resort</div>
-    <div class="greet" id="greet">Before you arrive</div>
-    <div class="sub" id="sub"></div>
-  </header>
+  <div class="scrollarea">
+  <!-- The landing. The greeting lives here alone since 23 Aug evening: a
+       header repeated above all eight questions cost every page the height
+       it now keeps. One tap of Begin and the questions own the screen. -->
+  <div id="intro" style="display:none">
+    <header>
+      <div class="wordmark">Nala Resort</div>
+      <div class="greet" id="greet">Before you arrive</div>
+      <div class="sub" id="sub"></div>
+    </header>
+    <div class="intro-why">Eight quick questions, so your villa, your table
+      and your kitchen are ready the moment you step in. A page saves as you
+      go, so you can stop and come back.</div>
+    <button class="send" id="begin">Begin</button>
+  </div>
 
-  <div id="form">
+  <div id="form" class="hide">
     <!-- 0. who else is coming. Hidden unless the booking is for more than one
          person, and hidden too when Mews already knows the name, because a
          guest asked to type something the resort was told at booking reads as
@@ -307,8 +324,8 @@
         <button class="opt" id="dNone">None</button>
         <button class="opt" id="dYes">Yes</button>
       </div>
-      <div class="sub" id="dietWrap">
-        <div class="sub-l">Which ones</div>
+      <div class="drop" id="dietWrap">
+        <div class="drop-l">Which ones</div>
         <div class="chips" id="dietChips"></div>
         <div class="n-lab" id="dietNoteLab" style="display:none">Dietary notes</div>
         <textarea class="txt" id="dietNote" rows="2"
@@ -499,7 +516,6 @@ function paintGreeting(pms){
     bits.push('Arriving ' + D[arr.getDay()] + ' ' + arr.getDate() + ' ' +
               M[arr.getMonth()] + (n >= 1 ? ', ' + n + (n===1?' night':' nights') : ''));
   }
-  bits.push('A few questions so everything is ready before you get here.');
   el('sub').textContent = bits.join(' \u00b7 ');
 
   /* Ask who else is coming only when there IS somebody else, and only when we
@@ -554,7 +570,7 @@ function paintDiets(){
      allergies is still distinguishable from one who skipped the question. */
   el('dNone').className = 'opt' + (a.noDiets ? ' on' : '');
   el('dYes').className  = 'opt' + (a.dietYes ? ' on' : '');
-  el('dietWrap').className = 'sub' + (a.dietYes ? ' show' : '');
+  el('dietWrap').className = 'drop' + (a.dietYes ? ' show' : '');
   var box = el('dietChips'); box.innerHTML = '';
   DIETARIES.concat([DIET_OTHER]).forEach(function(d){
     var b = document.createElement('button');
@@ -786,6 +802,20 @@ function advanceIfClean(opensMore){
 
 el('back').onclick = goBack;
 
+/* The landing's one job. The form and its frame stay hidden until it is
+   done, so a question page never shares the glass with the greeting. */
+function showIntro(){
+  el('intro').style.display = '';
+  el('form').className = 'hide';
+  el('foot').style.display = 'none';
+}
+function enterForm(){
+  el('intro').style.display = 'none';
+  el('form').className = '';
+  el('foot').style.display = '';
+}
+el('begin').onclick = function(){ enterForm(); showStep(0); };
+
 document.addEventListener('click', function(e){
   var b = e.target.closest && e.target.closest('.more');
   if (!b) return;
@@ -945,7 +975,7 @@ function boot(){
     paintGreeting({ first:'Alex', last:'Marsh', adults:2,
                     arrive: dkey(new Date()),
                     depart: dkey(new Date(Date.now() + 3 * 86400000)) });
-    el('form').className = '';
+    showIntro();
     var banner = document.createElement('div');
     banner.className = 'note-box';
     banner.style.cssText = 'margin:0 0 14px;text-align:center';
@@ -955,7 +985,12 @@ function boot(){
     return;
   }
 
+  /* The landing shows at once for a real link; the record read below may
+     replace it with the form in progress or the thank you. */
+  showIntro();
+
   if (!G.id){
+    el('intro').style.display = 'none';
     el('form').className = 'hide';
     el('foot').style.display = 'none';
     el('done').className = 'done';
@@ -1031,9 +1066,13 @@ function boot(){
     paintEta(); paintDine(); paintDiets(); paintPurpose(); paintApproach(); paintWell();
 
     if (!p.at){
+      /* Halfway through already: the greeting has been read once, and a
+         returning guest is owed their question, not a Begin button. */
+      enterForm();
       showStep(firstUnanswered());
       return;
     }
+    el('intro').style.display = 'none';
     el('form').className = 'hide';
     el('foot').style.display = 'none';
     el('done').className = 'done';
