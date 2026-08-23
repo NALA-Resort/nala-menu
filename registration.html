@@ -143,7 +143,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=26"></script>
+<script src="nala-shared.js?v=27"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();
@@ -172,11 +172,13 @@ function dkeyOf(v){
   return m ? m[1] : null;
 }
 
-/* Same six slots and the same keys as the guest form and the front desk. Three
-   copies of a list is two chances to disagree, so if a slot is ever added it
-   has to be added in all three. */
-var ETA_SLOTS = { before2:'Before 2pm', '14':'Approx 2pm', '15':'Approx 3pm',
-                  '16':'Approx 4pm', '17':'Approx 5pm', after5:'After 5pm' };
+/* Same nine slots and the same keys as the guest form and the front desk. Four
+   copies of a list is three chances to disagree, so if a slot is ever added
+   it has to be added in all four, effectiveEta in nala-shared.js included. */
+var ETA_SLOTS = { before2:'Before 2pm', '14':'Approx 2pm', '1430':'Approx 2:30pm',
+                  '15':'Approx 3pm', '1530':'Approx 3:30pm',
+                  '16':'Approx 4pm', '1630':'Approx 4:30pm',
+                  '17':'Approx 5pm', after5:'After 5pm' };
 var APPROACH = { most:'Dining in most nights', mix:'A mix of in and out',
                  out:'Mostly eating out' };
 

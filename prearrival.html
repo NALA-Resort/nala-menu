@@ -29,11 +29,14 @@
   .page { width:100%; max-width:34rem; padding:0 1.4rem 3rem;
           display:flex; flex-direction:column; }
 
-  header { text-align:center; padding:3.4vh 0 1.2rem; }
-  .logo { width:5rem; height:auto; display:block; margin:0 auto 1.1rem; }
-  .greet { font-size:1.35rem; line-height:1.4; }
-  .sub { font-style:italic; font-size:0.9rem; color:var(--mid); line-height:1.6;
-         margin-top:0.5rem; }
+  /* The wordmark, not the drawn logo: the approved mockup trades the image
+     for headroom, and every page owes its fit on a phone to the trade. */
+  header { text-align:center; padding:22px 0 0; }
+  .wordmark { font-family:var(--ui-font,Helvetica,Arial,sans-serif); font-size:9px;
+              letter-spacing:.45em; text-transform:uppercase; color:var(--mid); }
+  .greet { font-size:21px; line-height:1.3; margin-top:8px; }
+  .sub { font-style:italic; font-size:12px; color:var(--mid); line-height:1.55;
+         margin-top:7px; }
 
   .q { border-top:1px solid var(--rule); padding:1.35rem 0 0.2rem; }
   .q-t { font-size:1.05rem; line-height:1.4; margin-bottom:0.3rem; }
@@ -102,15 +105,45 @@
      and the invitation stays on the page: a guest reading eight limits before
      they have arrived has been told what they cannot have eight times. Open
      by default would put it straight back. */
-  .why { margin:0.9rem 0 0; }
-  .why summary { display:inline-block; font-size:0.75rem; letter-spacing:.06em;
-                 color:var(--mid); cursor:pointer; list-style:none;
-                 border-bottom:1px dotted var(--rule); padding-bottom:2px; }
-  .why summary::-webkit-details-marker { display:none; }
-  .why summary::after { content:' +'; }
-  .why[open] summary::after { content:' \2212'; }
-  .why-b { font-style:italic; font-size:0.85rem; color:var(--mid);
-           line-height:1.6; margin-top:0.7rem; }
+  .more { display:inline-block; margin-top:12px; background:transparent;
+          border:1px solid var(--rule); border-radius:20px; padding:7px 14px;
+          font-family:var(--ui-font,Helvetica,Arial,sans-serif); font-size:10px;
+          letter-spacing:.1em; text-transform:uppercase; color:var(--mid);
+          cursor:pointer; }
+  .more-b { display:none; font-style:italic; font-size:12.5px; color:var(--mid);
+            line-height:1.6; margin-top:10px; padding-left:12px;
+            border-left:2px solid var(--rule); }
+  .more-b.show { display:block; }
+  /* Clear space below the block before the answers start: the button belongs
+     to the text above it and must never read as one of the answers. */
+  .more, .more-b { margin-bottom:4px; }
+  .q .opts, .q .chips, .q .txt, .q .track { margin-top:16px; }
+  /* The follow-up block a yes opens. Tighter than the mockup's 18px, because
+     a five night stay adds a fifth day chip and the page must still fit. */
+  #wWrap, .needs { margin-top:12px; }
+  #wWrap .txt { margin-top:10px; }
+
+  .track { margin-top:20px; }
+  .tval { text-align:center; font-size:30px; line-height:1.1; }
+  .tsub { text-align:center; font-family:var(--ui-font,Helvetica,Arial,sans-serif);
+          font-size:9px; letter-spacing:.16em; text-transform:uppercase;
+          color:var(--mid); margin-top:6px; }
+  .rail { position:relative; margin-top:16px; height:40px; }
+  .rail input { width:100%; -webkit-appearance:none; appearance:none; height:4px;
+                background:var(--rule); border-radius:2px; margin-top:18px; }
+  .rail input::-webkit-slider-thumb { -webkit-appearance:none; width:30px;
+                height:30px; border-radius:50%; background:var(--ink);
+                cursor:pointer; margin-top:-13px; }
+  .rail input::-moz-range-thumb { width:30px; height:30px; border-radius:50%;
+                background:var(--ink); border:none; cursor:pointer; }
+  .ends { display:flex; justify-content:space-between;
+          font-family:var(--ui-font,Helvetica,Arial,sans-serif); font-size:9px;
+          letter-spacing:.1em; text-transform:uppercase; color:var(--mid); }
+  .needs { display:none; margin-top:16px; padding-top:14px;
+           border-top:1px solid var(--rule); }
+  .needs.show { display:block; }
+  .needs-l { font-family:var(--ui-font,Helvetica,Arial,sans-serif); font-size:10px;
+             letter-spacing:.1em; text-transform:uppercase; color:var(--red,#A8321E); }
 
   .nav { display:flex; align-items:center; gap:12px; margin-top:1.8rem; }
   .prog { font-size:0.7rem; letter-spacing:.16em; text-transform:uppercase;
@@ -125,12 +158,26 @@
   .nav .send { margin-top:0; flex:1; }
 
   #form.hide, #done.hide { display:none; }
+
+  /* The frame. Back, Next and the step count are part of it, not the end of
+     the content: they hold still while the page scrolls behind them. */
+  html, body { height:100%; }
+  body { display:flex; flex-direction:column; }
+  .page { flex:1; display:flex; flex-direction:column; min-height:0; }
+  .scrollarea { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
+                min-height:0; }
+  .foot { flex:0 0 auto; background:var(--cream,#F9F7F4);
+          border-top:1px solid var(--rule);
+          padding:10px 0 calc(14px + env(safe-area-inset-bottom)); }
+  .foot .prog { text-align:center; margin:0 0 10px; }
+  .foot .nav { margin:0; padding:0 4px; }
+  .foot .err { margin:8px 4px 0; }
 </style>
 </head>
 <body>
 <div class="page">
-  <header>
-    <img class="logo" src="nala-logo.png" alt="Nala Resort">
+  <div class="scrollarea"><header>
+    <div class="wordmark">Nala Resort</div>
     <div class="greet" id="greet">Before you arrive</div>
     <div class="sub" id="sub"></div>
   </header>
@@ -141,33 +188,62 @@
          guest asked to type something the resort was told at booking reads as
          nobody having looked. -->
     <div class="q" id="qCompanion" style="display:none">
-      <div class="q-t">Who is coming with you?</div>
+      <div class="q-t">Additional guests?</div>
       <div class="q-h">So we can greet them by name. Optional.</div>
-      <details class="why"><summary>Why we ask</summary>
-        <div class="why-b">Nothing more than a name on the welcome, and a
+      <button class="more" type="button">Read more</button>
+      <div class="more-b">Nothing more than a name on the welcome, and a
           second glass poured without anyone having to ask. Leave it blank if
-          you would rather.</div></details>
+          you would rather.</div>
       <textarea class="txt" id="companion" rows="1"
         placeholder="Their name"></textarea>
+    </div>
+
+    <!-- 4. purpose -->
+    <div class="q" id="qPurpose">
+      <div class="q-t">What brings you to Nala?</div>
+      <div class="q-h">Choose as many as fit.</div>
+      <button class="more" type="button">Read more</button>
+      <div class="more-b">It changes the type of experience that you might be
+          seeking, and we want to make sure everyone is looked after.</div>
+      <div class="chips" id="purposeChips"></div>
     </div>
 
     <!-- 1. arrival time -->
     <div class="q" id="qEta">
       <div class="q-t">What time do you expect to arrive?</div>
       <div class="q-h">So that someone is here to meet you.</div>
-      <details class="why"><summary>Arriving late?</summary>
-        <div class="why-b">Reception is here until 5pm. Later than that is no
+      <button class="more" type="button">Read more</button>
+      <div class="more-b">Reception is here until 5pm. Later than that is no
           trouble at all, but do tell us, and we will arrange for someone to
-          let you in and settle you.</div></details>
-      <div class="opts" id="etaOpts"></div>
-      <div class="n-lab" id="etaNoteLab" style="display:none">Arrival notes</div>
-      <textarea class="txt" id="etaNote" rows="2" style="display:none"
-        placeholder="Roughly what time, so we can plan for you"></textarea>
+          let you in and settle you.</div>
+      <div class="track">
+        <div class="tval" id="tval">&ndash;</div>
+        <div class="tsub" id="tsub">drag to set</div>
+        <div class="rail"><input type="range" id="trail" min="0" max="8"
+          step="1" value="4" aria-label="Arrival time"></div>
+        <div class="ends"><span>Before 2pm</span><span>After 5pm</span></div>
+      </div>
+      <div class="needs" id="etaNeeds">
+        <div class="needs-l" id="etaNoteLab">A rough time, please</div>
+        <textarea class="txt" id="etaNote" rows="2"
+          placeholder="Roughly what time, so we can plan for you"></textarea>
+      </div>
+    </div>
+
+    <!-- 5. how they like to travel -->
+    <div class="q" id="qApproach">
+      <div class="q-t">Where do you plan on eating during your stay?</div>
+      <div class="q-h">No right answer. It only helps us plan.</div>
+      <button class="more" type="button">Read more</button>
+      <div class="more-b">Our restaurant creates menus and meals for the number
+          of guests onsite. Knowing how often you plan on eating with us means
+          less waste, and a better experience on the nights that you do.</div>
+      <div class="opts" id="approachOpts"></div>
     </div>
 
     <!-- 2. dinner on the arrival night -->
     <div class="q" id="qDine">
-      <div class="q-t">Will you dine with us on your first night?</div>
+      <div class="q-t">Will you be dining with us on your first night?</div>
       <!-- PLACEHOLDER COPY, owner to write. Asked for 18 Aug: a short
            description of how dining works here, placed BEFORE the opt in
            rather than under it, because the guest is being asked to commit to
@@ -176,24 +252,20 @@
            standing in and reads as plausible on purpose: this page is live,
            so a guest may see it before the real words arrive. Breakfast is
            deliberately not mentioned. -->
-      <div class="q-h" id="dineHelp">One sitting, from 6:00 to 6:30.</div>
+      <div class="q-h" id="dineHelp">Dining is from 6:00 to 6:30.</div>
       <!-- PLACEHOLDER COPY, owner to write, asked for 18 Aug. The seating
            time is the only confirmed fact and it stays on the page above,
            because a guest saying yes is agreeing to it. The rest is standing
            in and reads as plausible on purpose: this page is live. Breakfast
            is deliberately not mentioned. -->
-      <details class="why" id="dineWhy"><summary>How dinner works here</summary>
-        <div class="why-b">Dinner is a set menu, written by the kitchen on the
+      <button class="more" type="button">Read more</button>
+      <div class="more-b">Dinner is a set menu, written by the kitchen on the
           day, from whatever is best that morning. That means the dishes for
           your first night do not exist yet. We will send them to you as soon
-          as they do.</div></details>
+          as they do.</div>
       <div class="opts">
-        <button class="opt" id="dIn">Yes, we will dine with you</button>
+        <button class="opt" id="dIn">Yes please</button>
         <button class="opt" id="dOut">Not on the first night</button>
-      </div>
-      <div id="paxWrap" style="display:none">
-        <div class="sublabel">How many of you</div>
-        <div class="chips" id="paxChips"></div>
       </div>
     </div>
 
@@ -202,12 +274,11 @@
       <div class="q-t">Does anyone in your party have allergies or dietary
         requirements?</div>
       <div class="q-h">We would rather know now than on the night.</div>
-      <details class="why"><summary>How much we can change</summary>
-        <div class="why-b">The menu is set each day, so a dish cannot be
+      <button class="more" type="button">Read more</button>
+      <div class="more-b">The menu is set each day, so a dish cannot be
           rebuilt around a requirement on the night. What we can do, and gladly
           do, is leave things out and cook something alongside instead. The
           earlier we know, the more room the kitchen has to work with.</div>
-      </details>
       <div class="chips" id="dietChips"></div>
       <div class="chips" id="dietNone" style="margin-top:7px"></div>
       <div class="n-lab" id="dietNoteLab" style="display:none">Dietary notes</div>
@@ -215,36 +286,14 @@
         placeholder="Whose, and how severe"></textarea>
     </div>
 
-    <!-- 4. purpose -->
-    <div class="q" id="qPurpose">
-      <div class="q-t">What brings you to Nala?</div>
-      <div class="q-h">Choose as many as fit.</div>
-      <details class="why"><summary>Why we ask</summary>
-        <div class="why-b">It changes how we look after you. A celebration and
-          a working week want opposite things from us, and we would rather
-          guess correctly than not guess at all.</div></details>
-      <div class="chips" id="purposeChips"></div>
-    </div>
-
-    <!-- 5. how they like to travel -->
-    <div class="q" id="qApproach">
-      <div class="q-t">How do you plan to eat during your stay?</div>
-      <div class="q-h">No right answer. It only helps us plan.</div>
-      <details class="why"><summary>Why we ask</summary>
-        <div class="why-b">The kitchen shops for the number of people it
-          expects. Knowing roughly how often you plan to eat with us means less
-          waste and a better table on the nights you do.</div></details>
-      <div class="opts" id="approachOpts"></div>
-    </div>
-
     <!-- 6. wellness -->
     <div class="q" id="qWell">
       <div class="q-t">Would you like us to arrange a massage or treatment?</div>
       <div class="q-h">We can have it booked before you get here.</div>
-      <details class="why"><summary>Booking ahead</summary>
-        <div class="why-b">There are only so many hours in a therapist's day,
+      <button class="more" type="button">Read more</button>
+      <div class="more-b">There are only so many hours in a therapist's day,
           and in peak season they go early. Asking now is the surest way to get
-          the time you would like.</div></details>
+          the time you would like.</div>
       <div class="opts">
         <button class="opt" id="wYes">Yes, please</button>
         <button class="opt" id="wNo">No thank you</button>
@@ -262,10 +311,9 @@
       <div class="q-t">Anything else?</div>
       <div class="q-h">A special occasion, a preference, or something that would
         make your stay feel more like you. Optional.</div>
-      <details class="why"><summary>Why we ask</summary>
-        <div class="why-b">This is the one that most often changes a stay. An
+      <button class="more" type="button">Read more</button>
+      <div class="more-b">This is the one that most often changes a stay. An
           anniversary nobody mentioned is an anniversary we cannot mark.</div>
-      </details>
       <textarea class="txt" id="occasion" rows="1"
         placeholder="A birthday, an anniversary"></textarea>
       <div class="n-lab">Booking notes</div>
@@ -273,19 +321,22 @@
         placeholder="Anything you would like us to know"></textarea>
     </div>
 
-    <div class="nav">
-      <button class="back hide" id="back">Back</button>
-      <button class="send" id="send">Next</button>
-    </div>
-    <div class="prog" id="prog" style="text-align:center;margin-top:0.9rem"></div>
-    <div class="err" id="err"></div>
   </div>
 
   <div id="done" class="done hide">
     <div class="done-t" id="doneT">Thank you</div>
     <div class="done-s" id="doneS">We have everything we need. We will go
       through it with you when you arrive.</div>
-    <button class="again" id="again">Change an answer</button>
+  </div>
+  </div><!-- /scrollarea -->
+
+  <div class="foot" id="foot">
+    <div class="prog" id="prog"></div>
+    <div class="nav">
+      <button class="back hide" id="back">Back</button>
+      <button class="send" id="send">Next</button>
+    </div>
+    <div class="err" id="err"></div>
   </div>
 </div>
 
@@ -297,6 +348,10 @@ var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
    copy written here would be a snapshot, and stale the moment Mews changed the
    booking. See DESIGN.md. */
 var qs = new URLSearchParams(location.search);
+/* Mews' adult count, held once paintGreeting has seen it. The covers number
+   is written from here or not at all: the guest is not asked, and a wrong
+   number is worse than an absent one, which reception can see and fill. */
+var PMS = null;
 var G = {
   id:      (qs.get('b') || '').trim(),
   first:   (qs.get('n') || '').trim(),
@@ -305,9 +360,11 @@ var G = {
   depart:  (qs.get('d') || '').trim()
 };
 
-/* Same six slots as the front desk, in the same order and with the same keys,
-   because the arrivals list is ordered by them. The two open ended ones need a
-   note: "before 2pm" with no time is the answer that causes the problem it is
+/* Same nine slots as the front desk, in the same order and with the same
+   keys, because the arrivals list is ordered by a key's position in this
+   list. Four files hold a copy: here, front-desk.html, registration.html and
+   effectiveEta in nala-shared.js. The two open ended ones need a note:
+   "before 2pm" with no time is the answer that causes the problem it is
    warning about. */
 /* The site map opens this form with b=demo so it can be tried without a real
    guest. Declared beside G, not inside the start up function, because the
@@ -315,12 +372,15 @@ var G = {
 var DEMO = G.id === 'demo';
 
 var ETA_SLOTS = [
-  ['before2', 'Before 2pm',  true],
-  ['14',      'Around 2pm',  false],
-  ['15',      'Around 3pm',  false],
-  ['16',      'Around 4pm',  false],
-  ['17',      'Around 5pm',  false],
-  ['after5',  'After 5pm',   true]
+  ['before2', 'Before 2pm', true ],
+  ['14',      '2:00pm',     false],
+  ['1430',    '2:30pm',     false],
+  ['15',      '3:00pm',     false],
+  ['1530',    '3:30pm',     false],
+  ['16',      '4:00pm',     false],
+  ['1630',    '4:30pm',     false],
+  ['17',      '5:00pm',     false],
+  ['after5',  'After 5pm',  true ]
 ];
 var PURPOSE = ['Somewhere to stay while we work or travel',
                'Exploring Mission Beach and around',
@@ -366,7 +426,7 @@ function purposeList(v){
 }
 function purposeText(v){ return purposeList(v).join(PURPOSE_SEP); }
 
-var a = { eta:'', etaNote:'', dining:null, pax:2, diets:[], noDiets:false,
+var a = { eta:'', etaNote:'', dining:null, diets:[], noDiets:false,
           dietNote:'', purpose:[], approach:'', wellness:null, wellDay:'',
           companion:'',
           wellTime:'', occasion:'', note:'' };
@@ -393,6 +453,7 @@ function db(path, method, body){
    Display comes from the link, and from /bookings/<id>/pms when Mews has
    caught up, because that is fresher than a link sent days earlier. */
 function paintGreeting(pms){
+  if (pms) PMS = pms;
   var first = (pms && pms.first) || G.first;
   var arr = dayOnly((pms && pms.arrive) || G.arrive);
   var dep = dayOnly((pms && pms.depart) || G.depart);
@@ -421,36 +482,33 @@ function paintGreeting(pms){
 /* ── painters ────────────────────────────────────────────────
    Every one repaints from `a`, so there is one source of truth for what is on
    screen and no way for a control to disagree with what will be sent. */
-function paintEta(){
-  var box = el('etaOpts'); box.innerHTML = '';
-  ETA_SLOTS.forEach(function(s){
-    var b = document.createElement('button');
-    b.className = 'opt' + (a.eta === s[0] ? ' on' : '');
-    b.textContent = s[1];
-    b.onclick = function(){
-      a.eta = s[0]; clearMiss('qEta'); paintEta();
-      /* The two open ended slots open a note on this page, so they wait. */
-      advanceIfClean(s[2]);
-    };
-    box.appendChild(b);
-  });
-  var needsNote = false;
-  ETA_SLOTS.forEach(function(s){ if (s[0] === a.eta && s[2]) needsNote = true; });
-  el('etaNote').style.display = needsNote ? '' : 'none';
-  el('etaNoteLab').style.display = needsNote ? '' : 'none';
+function etaIdx(k){
+  for (var i = 0; i < ETA_SLOTS.length; i++)
+    if (ETA_SLOTS[i][0] === k) return i;
+  return -1;
 }
+function paintEta(){
+  var i = etaIdx(a.eta);
+  if (i > -1) el('trail').value = i;
+  el('tval').innerHTML = i > -1 ? ETA_SLOTS[i][1] : '&ndash;';
+  var needsNote = i > -1 && ETA_SLOTS[i][2];
+  el('tsub').textContent = needsNote ? 'we need a rough time' : 'drag to set';
+  el('etaNeeds').className = 'needs' + (needsNote ? ' show' : '');
+  el('etaNoteLab').textContent =
+    a.eta === 'before2' ? 'What time were you hoping for?'
+                        : 'What time do you expect to land?';
+  el('etaNote').placeholder =
+    a.eta === 'before2' ? 'e.g. around 11am' : 'e.g. flight lands at 6';
+}
+/* input fires while the thumb moves, change when it settles: both set the
+   answer, neither advances the page. A drag is not a decision to leave. */
+el('trail').oninput = el('trail').onchange = function(){
+  a.eta = ETA_SLOTS[+this.value][0]; clearMiss('qEta'); paintEta();
+};
 
 function paintDine(){
   el('dIn').className  = 'opt' + (a.dining === true  ? ' on' : '');
   el('dOut').className = 'opt' + (a.dining === false ? ' on' : '');
-  el('paxWrap').style.display = a.dining === true ? '' : 'none';
-  var box = el('paxChips'); box.innerHTML = '';
-  for (var i = 1; i <= 8; i++)(function(v){
-    var b = document.createElement('button');
-    b.className = 'chip' + (a.pax === v ? ' on' : ''); b.textContent = v;
-    b.onclick = function(){ a.pax = v; paintDine(); };
-    box.appendChild(b);
-  })(i);
 }
 
 function paintDiets(){
@@ -556,7 +614,9 @@ function paintWell(){
 /* Yes opens a follow up on the same page and so stays put. No opens nothing
    and carries on. */
 el('dIn').onclick  = function(){ a.dining = true;  clearMiss('qDine'); paintDine();
-                                 advanceIfClean(true); };
+                                 /* Yes used to open the pax chips and had to
+                                    wait; it opens nothing now. */
+                                 advanceIfClean(false); };
 el('dOut').onclick = function(){ a.dining = false; clearMiss('qDine'); paintDine();
                                  advanceIfClean(false); };
 el('wYes').onclick = function(){ a.wellness = true;  clearMiss('qWell'); paintWell();
@@ -582,11 +642,11 @@ function clearMiss(id){
    question, and each note sits with the choice that asks for it. */
 var STEPS = [
   { id:'qCompanion', fields:['companion'] },
+  { id:'qPurpose',   fields:['purpose'] },
   { id:'qEta',       fields:['arriveSlot','arriveNote'] },
+  { id:'qApproach',  fields:['approach'] },
   { id:'qDine',      fields:['dining','pax'] },
   { id:'qDiet',      fields:['diets','noDiets','dnote'] },
-  { id:'qPurpose',   fields:['purpose'] },
-  { id:'qApproach',  fields:['approach'] },
   { id:'qWell',      fields:['wellness','wellDay','wellTime'] },
   { id:'qElse',      fields:['occasion','note'] }
 ];
@@ -615,6 +675,16 @@ function showStep(i){
   el('send').textContent = (CUR === live.length - 1) ? 'Send to Nala' : 'Next';
   el('prog').textContent = (CUR + 1) + ' of ' + live.length;
   el('err').className = 'err';
+  /* Closed on every page, every time: the invitation is on the page and the
+     limit is one tap behind it. An open one would put it straight back. */
+  [].forEach.call(document.querySelectorAll('.more-b.show'), function(d){
+    d.classList.remove('show');
+  });
+  [].forEach.call(document.querySelectorAll('.more'), function(b){
+    b.textContent = 'Read more';
+  });
+  var sc = document.querySelector('.scrollarea');
+  if (sc) sc.scrollTop = 0;
   window.scrollTo({ top:0, behavior:'auto' });
 }
 
@@ -690,6 +760,14 @@ function advanceIfClean(opensMore){
 
 el('back').onclick = goBack;
 
+document.addEventListener('click', function(e){
+  var b = e.target.closest && e.target.closest('.more');
+  if (!b) return;
+  var d = b.nextElementSibling;
+  d.classList.toggle('show');
+  b.textContent = d.classList.contains('show') ? 'Read less' : 'Read more';
+});
+
 /* ── sending ─────────────────────────────────────────────────
    Every page is saved as the guest leaves it. The final send writes the whole
    record again in one PATCH, so a page save that failed on a bad connection
@@ -757,7 +835,10 @@ el('send').onclick = goNext;
 function fullPayload(){
   return {
     arriveSlot: a.eta, arriveNote: a.etaNote,
-    dining: a.dining, pax: a.dining ? a.pax : 0,
+    dining: a.dining,
+    /* undefined, not zero, when Mews has not sent a count: JSON.stringify
+       drops the key and the record shows no covers rather than a wrong one. */
+    pax: (PMS && Number(PMS.adults) >= 1) ? Number(PMS.adults) : undefined,
     diets: a.diets, noDiets: a.noDiets, dnote: a.diets.length ? a.dietNote : '',
     purpose: purposeText(a.purpose), approach: a.approach,
     wellness: a.wellness,
@@ -780,6 +861,7 @@ function submitForm(){
   if (DEMO){
     /* Shows the guest exactly what they would see, having written nothing. */
     el('form').className = 'hide';
+    el('foot').style.display = 'none';
     el('done').className = 'done';
     el('doneT').textContent = 'That is everything, thank you';
     el('doneS').textContent = 'Demonstration only. Nothing was saved.';
@@ -801,6 +883,7 @@ function submitForm(){
   db('/bookings/' + G.id + '/prearrival', 'PATCH', payload)
     .then(function(){
       el('form').className = 'hide';
+      el('foot').style.display = 'none';
       el('done').className = 'done';
       window.scrollTo({ top:0, behavior:'smooth' });
     })
@@ -810,12 +893,6 @@ function submitForm(){
       el('err').className = 'err show';
     });
 }
-
-el('again').onclick = function(){
-  el('done').className = 'done hide';
-  el('form').className = '';
-  showStep(0);
-};
 
 /* ── boot ────────────────────────────────────────────────────
    The opened stamp is separate from submitting, and it is the only thing this
@@ -852,11 +929,11 @@ function boot(){
 
   if (!G.id){
     el('form').className = 'hide';
+    el('foot').style.display = 'none';
     el('done').className = 'done';
     el('doneT').textContent = 'This link is incomplete';
     el('doneS').textContent = 'Please open the link from the message we sent, ' +
       'or call us and we will sort it out.';
-    el('again').style.display = 'none';
     return;
   }
 
@@ -894,13 +971,15 @@ function boot(){
     if (names.length){ DIETARIES = names.sort(); paintDiets(); }
   }).catch(function(){});
 
-  /* A guest who already sent it sees what they said, and can change it. Plans
-     change, and a form that refuses to reopen sends them to the phone.
+  /* A submitted form does not reopen. It used to, because plans change and a
+     form that refuses to reopen sends the guest to the phone; the owner
+     reversed that on 23 Aug, judging a guest re-editing days-old answers a
+     worse source of truth than a call, and reception can still change every
+     answer at the desk, so nothing is lost operationally.
 
-     A guest who got halfway and stopped is a different case and is now
-     possible, because pages save as they are left. Their answers are loaded
-     the same way, but they are put back on the first page they had not
-     answered instead of being shown the thank you. */
+     A guest who got halfway and stopped is a different case: pages save as
+     they are left, so their answers are loaded and they are put back on the
+     first page they had not answered instead of being shown the thank you. */
   db('/bookings/' + G.id + '/prearrival').then(function(p){
     if (!p) return;
     var started = p.arriveSlot || p.dining !== undefined || (p.diets && p.diets.length) ||
@@ -909,7 +988,6 @@ function boot(){
     if (!p.at && !started) return;
     a.eta = p.arriveSlot || ''; a.etaNote = p.arriveNote || '';
     a.dining = (p.dining === undefined) ? null : !!p.dining;
-    a.pax = p.pax || 2;
     a.diets = (p.diets || []).slice(); a.noDiets = !!p.noDiets;
     a.dietNote = p.dnote || '';
     a.purpose = purposeList(p.purpose); a.approach = p.approach || '';
@@ -928,6 +1006,7 @@ function boot(){
       return;
     }
     el('form').className = 'hide';
+    el('foot').style.display = 'none';
     el('done').className = 'done';
     el('doneT').textContent = 'Thank you';
     el('doneS').textContent = 'We have your answers. We will go through them ' +

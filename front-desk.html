@@ -215,7 +215,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=26"></script>
+<script src="nala-shared.js?v=27"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -450,12 +450,15 @@ var ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-
    slot wants a note. The middle column matches prearrival.html word for word,
    for the same reason as the purposes above. */
 var ETA_SLOTS = [
-  ['before2', 'Before 2pm', 'Before 2pm', true],
-  ['14',      'Around 2pm', '2pm',        false],
-  ['15',      'Around 3pm', '3pm',        false],
-  ['16',      'Around 4pm', '4pm',        false],
-  ['17',      'Around 5pm', '5pm',        false],
-  ['after5',  'After 5pm',  'After 5pm',  true]
+  ['before2', 'Before 2pm',    'Before 2pm', true],
+  ['14',      'Around 2pm',    '2pm',        false],
+  ['1430',    'Around 2:30pm', '2:30pm',     false],
+  ['15',      'Around 3pm',    '3pm',        false],
+  ['1530',    'Around 3:30pm', '3:30pm',     false],
+  ['16',      'Around 4pm',    '4pm',        false],
+  ['1630',    'Around 4:30pm', '4:30pm',     false],
+  ['17',      'Around 5pm',    '5pm',        false],
+  ['after5',  'After 5pm',     'After 5pm',  true]
 ];
 function etaIndex(slot){
   for (var i = 0; i < ETA_SLOTS.length; i++)
@@ -1054,16 +1057,20 @@ function openGuest(r){
     if (!wantsNote) note.value = '';
   }
 
-  /* Every hour reception may give, 11am to 11pm, whatever the guest picked:
-     a guest who chose Around 4pm and rang to say half three can be set to 3pm.
-     Tapping the chosen hour again clears it, the same way back the slot chips
-     give, and clearing leaves the guest's own slot untouched. */
+  /* Every half hour reception may give, 11am to 11pm, whatever the guest
+     picked: a guest who chose Around 4pm and rang to say half three can be set
+     to 3:30pm. Halves, because the guest's own track offers them and the desk
+     cannot approve less than the form asks; 14.5 is already legal in the
+     rules. Tapping the chosen time again clears it, the same way back the
+     slot chips give, and clearing leaves the guest's own slot untouched. */
   function paintApproved(){
     var box = document.getElementById('apChips'); box.innerHTML = '';
-    for (var hr = 11; hr <= 23; hr++)(function(hr){
+    for (var hr = 11; hr <= 23; hr += 0.5)(function(hr){
       var b = document.createElement('button');
+      var w = Math.floor(hr);
       b.className = 'chip' + (a.arriveApproved === hr ? ' on' : '');
-      b.textContent = (hr > 12 ? hr - 12 : hr) + (hr < 12 ? 'am' : 'pm');
+      b.textContent = (w > 12 ? w - 12 : w) + (hr % 1 ? ':30' : '') +
+                      (w < 12 ? 'am' : 'pm');
       b.onclick = function(){
         a.arriveApproved = (a.arriveApproved === hr) ? null : hr;
         paintApproved();

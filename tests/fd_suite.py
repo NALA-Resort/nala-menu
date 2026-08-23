@@ -303,12 +303,14 @@ with sync_playwright() as p:
     pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
 
     # The slot order has to be exact, since ordering the day depends on it.
-    ck("the six slots run earliest to latest",
+    #  Nine since 23 Aug: the guest's track offers half hours, and position in
+    #  this list is the sort, so the halves slot between their hours.
+    ck("the nine slots run earliest to latest",
        pg.evaluate("()=>ETA_SLOTS.map(s=>s[0]).join()")
-       == "before2,14,15,16,17,after5")
+       == "before2,14,1430,15,1530,16,1630,17,after5")
     ck("the row uses the short form so it does not truncate",
        pg.evaluate("()=>ETA_SLOTS.map(s=>s[2]).join()")
-       == "Before 2pm,2pm,3pm,4pm,5pm,After 5pm")
+       == "Before 2pm,2pm,2:30pm,3pm,3:30pm,4pm,4:30pm,5pm,After 5pm")
     ck("and only the two open ended ones demand a note",
        pg.evaluate("()=>ETA_SLOTS.filter(s=>s[3]).map(s=>s[0]).join()")
        == "before2,after5")
@@ -427,16 +429,20 @@ with sync_playwright() as p:
     # ── reception's approved hour, beside the guest's slot ──────
     # The guest asks, reception decides. The approved hour is its own field:
     # setting it never touches the slot the guest chose, clearing it leaves
-    # that slot standing, and the desk offers every hour 11am to 11pm
-    # whatever the guest answered, because a guest who chose Around 4pm and
-    # rang to say half three can be set to 3pm.
+    # that slot standing, and the desk offers every half hour 11am to 11pm
+    # whatever the guest answered: halves since 23 Aug, because the guest's
+    # own track offers them and the desk cannot approve less than the form
+    # asks. A guest who chose Around 4pm and rang to say half three can be
+    # set to 3:30pm.
     pg = board()
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
     pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
-    ck("the desk offers thirteen hours, 11am through 11pm",
+    ck("the desk offers twenty five half hours, 11am through 11pm",
        pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
                    ".map(b=>b.textContent).join()")
-       == "11am,12pm,1pm,2pm,3pm,4pm,5pm,6pm,7pm,8pm,9pm,10pm,11pm")
+       == "11am,11:30am,12pm,12:30pm,1pm,1:30pm,2pm,2:30pm,3pm,3:30pm,"
+        + "4pm,4:30pm,5pm,5:30pm,6pm,6:30pm,7pm,7:30pm,8pm,8:30pm,"
+        + "9pm,9:30pm,10pm,10:30pm,11pm")
     ck("the approved hour comes up selected from the record",
        pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
                    ".find(b=>b.className.indexOf('on')>-1).textContent") == "3pm")

@@ -84,6 +84,12 @@ with sync_playwright() as p:
     def nxt(pg):
         pg.locator("#send").click(); pg.wait_for_timeout(320)
 
+    def drag(pg, idx):
+        """Set the arrival track, as the input event a real drag fires."""
+        pg.eval_on_selector("#trail",
+            "(e,i)=>{e.value=i;e.dispatchEvent(new Event('input'))}", idx)
+        pg.wait_for_timeout(150)
+
     def guest(link=LINK, w=390):
         pg = b.new_page(viewport={"width": w, "height": 844})
         pg.route("**firebasedatabase.app/**", fb)
@@ -114,8 +120,8 @@ with sync_playwright() as p:
     # ── one question to a page ──────────────────────────────────
     ck("the guest is shown one question, not eight",
        pg.evaluate("()=>document.querySelectorAll('.q.now').length") == 1)
-    ck("and it is the first one",
-       pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta")
+    ck("and it is the first one, which since 23 Aug is what brings them",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qPurpose")
     ck("with a count, so the form has a visible end",
        pg.locator("#prog").inner_text().strip() != "")
     ck("there is no Back on the first page",
@@ -123,14 +129,18 @@ with sync_playwright() as p:
     ck("the button reads Next, not Send, until the last page",
        pg.locator("#send").text_content().strip() == "Next")
 
-    # Every page carries an explanation, and every one of them is shut. The
-    # constraint lives in there; the invitation stays on the page.
+    # Every page carries an explanation behind a Read more, and every one of
+    # them is shut. The constraint lives in there; the invitation stays on the
+    # page. The details element became a plain button on 23 Aug, to the
+    # approved mockup, but the rule it obeys did not change.
     ck("every page can explain why it is asking",
        pg.evaluate("()=>[...document.querySelectorAll('.q')]"
-                   ".every(q=>q.querySelector('details.why'))"))
+                   ".every(q=>q.querySelector('.more')&&q.querySelector('.more-b'))"))
     ck("and none of them is open to begin with",
-       pg.evaluate("()=>[...document.querySelectorAll('details.why')]"
-                   ".every(d=>!d.open)"))
+       pg.evaluate("()=>!document.querySelector('.more-b.show')"))
+    ck("the button says Read more while shut",
+       pg.evaluate("()=>[...document.querySelectorAll('.more')]"
+                   ".every(b=>b.textContent==='Read more')"))
 
     jump(pg, "qDiet")
     # The chef's master list, not a list this page invented.
@@ -177,10 +187,12 @@ with sync_playwright() as p:
     #  arriving and what they cannot eat, which are the two the resort would
     #  otherwise have to telephone for.
     pg = guest()
+    jump(pg, "qEta")
     del WRITES[:]
-    pg.evaluate("()=>[...document.querySelectorAll('#etaOpts .opt')]"
-                ".find(b=>b.textContent.indexOf('3pm')>-1).click()")
-    pg.wait_for_timeout(500)
+    drag(pg, 3)                                    # 3:00pm, key 15
+    ck("a drag is not a decision to leave, so the track never advances by itself",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta")
+    nxt(pg)
     w = wrote("/bookings/res-guid-1/prearrival")
     ck("leaving a page saves that page", len(w) == 1)
     if w:
@@ -189,8 +201,8 @@ with sync_playwright() as p:
            "at" not in w[0]["b"])
         ck("as a PATCH, so it cannot wipe what is already there",
            w[0]["m"] == "PATCH")
-    ck("a clean answer carries the guest to the next page by itself",
-       pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine")
+    ck("Next carries them to the week, which follows arrival since 23 Aug",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qApproach")
 
     #  A page saves only its own fields. A PATCH carrying every field would
     #  write empty strings over answers the guest has not reached yet.
@@ -199,7 +211,8 @@ with sync_playwright() as p:
            set(w[0]["b"].keys()) <= {"arriveSlot", "arriveNote"})
 
     del WRITES[:]
-    pg.locator("#dOut").click(); pg.wait_for_timeout(500)
+    pg.evaluate("()=>[...document.querySelectorAll('#approachOpts .opt')][1].click()")
+    pg.wait_for_timeout(500)
     ck("going forward saves the page being left",
        len(wrote("/prearrival")) == 1)
     del WRITES[:]
@@ -207,15 +220,15 @@ with sync_playwright() as p:
     ck("and so does going back, so a change is never lost to a Back tap",
        len(wrote("/prearrival")) == 1)
     ck("Back returns to the question before",
-       pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine")
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qApproach")
     ck("with the answer still selected",
-       pg.evaluate("()=>dOut.className.indexOf('on')>-1"))
+       pg.evaluate("()=>[...document.querySelectorAll('#approachOpts .opt')]"
+                   ".some(b=>b.className.indexOf('on')>-1)"))
     pg.locator("#back").click(); pg.wait_for_timeout(450)
     ck("and Back again to the one before that",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta")
-    ck("with that answer still selected too",
-       pg.evaluate("()=>[...document.querySelectorAll('#etaOpts .opt')]"
-                   ".some(b=>b.className.indexOf('on')>-1)"))
+    ck("with the track still holding that answer too",
+       pg.evaluate("()=>tval.textContent") == "3:00pm")
     ck("no page save is ever mistaken for a finished form",
        len(sent("/prearrival")) == 0)
     pg.close()
@@ -227,10 +240,11 @@ with sync_playwright() as p:
     pg = guest()
     jump(pg, "qDine")
     pg.locator("#dIn").click(); pg.wait_for_timeout(600)
-    ck("saying yes to dinner does not skip past the question it opens",
-       pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine")
-    ck("and how many of you is on that same page",
-       pg.evaluate("()=>paxWrap.style.display!=='none'"))
+    #  Yes used to open the pax chips and had to stay; the chips went on
+    #  23 Aug (the count comes from Mews or nowhere), so yes now opens
+    #  nothing and advances like any clean answer.
+    ck("saying yes to dinner advances, since it no longer opens anything",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qDiet")
     jump(pg, "qWell")
     pg.locator("#wYes").click(); pg.wait_for_timeout(600)
     ck("saying yes to a treatment does not skip past the days it opens",
@@ -238,11 +252,12 @@ with sync_playwright() as p:
     ck("and the days are on that same page",
        pg.evaluate("()=>wWrap.style.display!=='none'"))
     jump(pg, "qEta")
-    pg.evaluate("()=>[...document.querySelectorAll('#etaOpts .opt')]"
-                ".find(b=>b.textContent.indexOf('After')>-1).click()")
-    pg.wait_for_timeout(600)
+    drag(pg, 8)                                    # the After 5pm end
+    pg.wait_for_timeout(450)
     ck("an open ended arrival stays put too, because it opens a note",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta")
+    ck("and the note it demands is on this page",
+       pg.evaluate("()=>etaNeeds.classList.contains('show')"))
     pg.close()
 
     # ── the walk, page by page ──────────────────────────────────
@@ -252,38 +267,53 @@ with sync_playwright() as p:
     del WRITES[:]
     nxt(pg)
     ck("an unanswered page does not advance",
-       pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta")
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qPurpose")
     ck("and nothing is sent", len(sent("/prearrival")) == 0)
     ck("it names what is missing, in words",
-       "when you expect to arrive" in pg.locator("#err").inner_text())
+       "what brings you" in pg.locator("#err").inner_text())
     ck("and marks only the page in front of them",
        pg.evaluate("()=>document.querySelectorAll('.q.miss').length") == 1)
     ck("without hiding the question being asked",
-       pg.evaluate("()=>qEta.className.indexOf('now')>-1"))
+       pg.evaluate("()=>qPurpose.className.indexOf('now')>-1"))
+    pg.evaluate("()=>[...document.querySelectorAll('#purposeChips .chip')][2].click()")
+    pg.wait_for_timeout(150)
+    ck("a multi select does not run off the moment one is ticked",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qPurpose")
+    nxt(pg)
 
+    ck("then arrival", pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta")
+    nxt(pg)
+    ck("which must be answered",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta" and
+       "when you expect to arrive" in pg.locator("#err").inner_text())
     # an open ended slot has to carry a note, and the note is on this page
-    pg.evaluate("()=>[...document.querySelectorAll('#etaOpts .opt')].find(b=>b.textContent.indexOf('After')>-1).click()")
-    pg.wait_for_timeout(400)
+    drag(pg, 8)
     ck("choosing After 5pm asks for a rough time",
-       pg.evaluate("()=>etaNote.style.display!=='none'"))
+       pg.evaluate("()=>etaNeeds.classList.contains('show')"))
     nxt(pg)
     ck("and will not go on without one",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta" and
        "rough time" in pg.locator("#err").inner_text())
     pg.fill("#etaNote", "flight gets in at 6")
-    # a fixed slot does not
-    pg.evaluate("()=>[...document.querySelectorAll('#etaOpts .opt')].find(b=>b.textContent.indexOf('4pm')>-1).click()")
-    pg.wait_for_timeout(500)
-    ck("a fixed slot needs no note", pg.evaluate("()=>etaNote.style.display==='none'"))
-    ck("and carries them onward", pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine")
+    # a fixed slot does not, but nor does it advance: Next does
+    drag(pg, 5)                                    # 4:00pm, key 16
+    ck("a fixed slot needs no note",
+       pg.evaluate("()=>!etaNeeds.classList.contains('show')"))
+    nxt(pg)
+    ck("and Next carries them onward, to the week",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qApproach")
 
     nxt(pg)
-    ck("the first night must be answered",
+    ck("the week must be answered",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qApproach")
+    pg.evaluate("()=>[...document.querySelectorAll('#approachOpts .opt')][0].click()")
+    pg.wait_for_timeout(500)
+    ck("then the first night",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine")
+    nxt(pg)
+    ck("which must be answered too",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine")
     pg.locator("#dIn").click(); pg.wait_for_timeout(400)
-    ck("saying yes asks how many, on the same page",
-       pg.evaluate("()=>paxWrap.style.display!=='none'"))
-    nxt(pg)
     ck("then allergies", pg.evaluate("()=>document.querySelector('.q.now').id") == "qDiet")
     nxt(pg)
     ck("which will not be skipped",
@@ -292,20 +322,6 @@ with sync_playwright() as p:
     pg.evaluate("()=>[...document.querySelectorAll('#dietNone .chip')][0].click()")
     pg.wait_for_timeout(200)
     nxt(pg)
-    ck("no allergies to declare counts as answering",
-       pg.evaluate("()=>document.querySelector('.q.now').id") == "qPurpose")
-    nxt(pg)
-    ck("what brings them must be answered",
-       pg.evaluate("()=>document.querySelector('.q.now').id") == "qPurpose")
-    pg.evaluate("()=>[...document.querySelectorAll('#purposeChips .chip')][2].click()")
-    pg.wait_for_timeout(150)
-    ck("a multi select does not run off the moment one is ticked",
-       pg.evaluate("()=>document.querySelector('.q.now').id") == "qPurpose")
-    nxt(pg)
-    ck("then how they plan to eat",
-       pg.evaluate("()=>document.querySelector('.q.now').id") == "qApproach")
-    pg.evaluate("()=>[...document.querySelectorAll('#approachOpts .opt')][0].click()")
-    pg.wait_for_timeout(500)
     ck("then treatments", pg.evaluate("()=>document.querySelector('.q.now').id") == "qWell")
     pg.locator("#wYes").click(); pg.wait_for_timeout(400)
     ck("saying yes offers only the days they are here",
@@ -331,7 +347,8 @@ with sync_playwright() as p:
            body["arriveSlot"] == "16")
         ck("the note from the rejected slot does not tag along",
            body["arriveNote"] == "flight gets in at 6")
-        ck("dining and covers", body["dining"] is True and body["pax"] == 2)
+        ck("dining, and covers absent rather than zero when Mews sent no count",
+           body["dining"] is True and "pax" not in body)
         ck("no allergies is recorded as an answer, not an empty list",
            body["noDiets"] is True and body["diets"] == [])
         ck("purpose and approach", body["purpose"] and body["approach"] == "most")
@@ -354,23 +371,37 @@ with sync_playwright() as p:
     pg.close()
 
     # ── coming back to it ───────────────────────────────────────
+    #  Reopening went on 23 Aug: the owner judged a guest re-editing days-old
+    #  answers a worse source of truth than a call, and reception can change
+    #  every answer at the desk, so a submitted form is sealed.
     STATE["pre"] = {"at": "2026-08-16T10:00:00Z", "arriveSlot": "15",
                     "dining": False, "noDiets": True, "purpose": ["A short break"],
                     "approach": "mix", "wellness": False, "occasion": "anniversary"}
     pg = guest()
     ck("a guest who already sent it sees the thank you, not a blank form",
        pg.evaluate("()=>done.className.indexOf('hide')<0"))
-    pg.locator("#again").click(); pg.wait_for_timeout(300)
-    ck("and can reopen it, because plans change",
+    ck("and the thank you offers no way back in",
+       pg.evaluate("()=>!document.getElementById('again')") and
+       pg.evaluate("()=>form.className") == "hide")
+    ck("not even the frame's own buttons",
+       pg.evaluate("()=>foot.style.display") == "none")
+    pg.close()
+
+    #  A guest who got halfway and stopped is a different case: pages save as
+    #  they are left, so they resume at the first page they have not answered.
+    STATE["pre"] = {"arriveSlot": "15", "purpose": ["A short break"],
+                    "occasion": "anniversary"}
+    pg = guest()
+    ck("a form in progress reopens, because it was never finished",
        pg.evaluate("()=>form.className") == "")
-    ck("reopening starts at the first question, not wherever it left off",
-       pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta")
+    ck("at the first page they have not answered",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qApproach")
     jump(pg, "qElse")
     ck("with their answers still there",
        pg.evaluate("()=>occasion.value") == "anniversary")
-    jump(pg, "qDine")
-    ck("and their choices still selected",
-       pg.evaluate("()=>dOut.className.indexOf('on')>-1"))
+    jump(pg, "qEta")
+    ck("and the track still holding their arrival",
+       pg.evaluate("()=>tval.textContent") == "3:00pm")
 
     #  Every other answer is in place here, so an "Other" carrying no note is
     #  the one thing between this form and Send. It has to be: it tells the
@@ -453,10 +484,10 @@ with sync_playwright() as p:
     #  same mistake as putting a follow up question on the next page.
     ck("the seating time stays on the page, because saying yes agrees to it",
        "6:00" in intro.inner_text() and "6:30" in intro.inner_text())
-    why = pg.locator("#dineWhy")
+    why = pg.locator("#qDine .more-b")
     ck("how dinner works is there to be opened", why.count() == 1)
     ck("but shut, so the page is an invitation and not a briefing",
-       pg.evaluate("()=>!dineWhy.open"))
+       pg.evaluate("()=>!document.querySelector('#qDine .more-b.show')"))
     wt = why.text_content()   # closed, so inner_text would see nothing
     ck("it explains why there is no menu to show yet",
        "not exist yet" in wt or "will not exist" in wt)
@@ -477,7 +508,7 @@ with sync_playwright() as p:
                       ("qWell", "peak season")):
         jump(pg, qid)
         ck("the limit on " + qid + " is kept, inside the explanation",
-           word in pg.locator("#" + qid + " .why-b").text_content())
+           word in pg.locator("#" + qid + " .more-b").text_content())
         ck("and is not the first thing a guest reads on " + qid,
            word not in pg.locator("#" + qid + " .q-h").inner_text())
     pg.close()
@@ -489,6 +520,81 @@ with sync_playwright() as p:
            "()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
         pg.close()
 
+
+    # ── the 23 Aug revision, asserted as decisions ──────────────
+    #  The order of the eight, as a list, so a later reshuffle is deliberate.
+    pg = guest()
+    ck("the eight pages run who, why, when, the week, tonight, dietaries, "
+       "treatments, anything else",
+       pg.evaluate("()=>STEPS.map(s=>s.id).join(',')") ==
+       "qCompanion,qPurpose,qEta,qApproach,qDine,qDiet,qWell,qElse")
+
+    #  The nine keys, in order, in all four files that hold a copy. A test
+    #  that reads one copy proves nothing about the other three, and
+    #  registration.html prints an unknown key raw onto a card a guest signs.
+    KEYS = ["before2","14","1430","15","1530","16","1630","17","after5"]
+    ck("the guest form holds the nine keys in order",
+       pg.evaluate("()=>ETA_SLOTS.map(s=>s[0]).join(',')") == ",".join(KEYS))
+    import re as _re
+    fd = open("front-desk.html").read()
+    ck("and so does the front desk",
+       [m for m in _re.findall(r"\['(\w+)',\s*'Around|\['(before2|after5)'", fd)] and
+       _re.search(r"var ETA_SLOTS = \[(.*?)\];", fd, _re.S) and
+       [t for t in _re.findall(r"\['([\w]+)'", _re.search(
+           r"var ETA_SLOTS = \[(.*?)\];", fd, _re.S).group(1))] == KEYS)
+    rg = open("registration.html").read()
+    rgm = _re.search(r"var ETA_SLOTS = \{(.*?)\};", rg, _re.S).group(1)
+    got = _re.findall(r"(?:\{|,)\s*'?([\w]+)'?\s*:", "{" + rgm)
+    ck("and registration, whose fallback prints an unknown key raw",
+       got == KEYS)
+    sh = open("nala-shared.js").read()
+    ck("and the shared mapper accepts every numbered key the track writes",
+       bool(_re.search(r"1\[4-7\]\(30\)\?", sh)))
+    ck("with the two open ends named beside them",
+       "'before2'" in sh and "'after5'" in sh)
+
+    #  The track produces the right key at both ends and at a half hour.
+    jump(pg, "qEta")
+    drag(pg, 0)
+    ck("the left end of the track is before2",
+       pg.evaluate("()=>a.eta") == "before2")
+    ck("and it demands a note before the page advances",
+       (nxt(pg), pg.evaluate("()=>document.querySelector('.q.now').id"))[1] == "qEta")
+    drag(pg, 8)
+    ck("the right end is after5", pg.evaluate("()=>a.eta") == "after5")
+    ck("which demands one too",
+       (nxt(pg), pg.evaluate("()=>document.querySelector('.q.now').id"))[1] == "qEta")
+    drag(pg, 2)
+    ck("and the half hours in the middle write their four digit key",
+       pg.evaluate("()=>a.eta") == "1430")
+    pg.close()
+
+    #  Every page fits 390 x 780 with its Read more open, the nav fixed to
+    #  the foot. Walked with follow ups open too, which is stricter than the
+    #  brief asks, because those are the pages a real guest sees.
+    pg = guest(w=390)
+    pg.set_viewport_size({"width": 390, "height": 780})
+    pg.wait_for_timeout(200)
+    seq = ["qCompanion","qPurpose","qEta","qApproach","qDine","qDiet","qWell","qElse"]
+    live = pg.evaluate("()=>liveSteps().map(s=>s.id)")
+    for qid in [q for q in seq if q in live]:
+        jump(pg, qid)
+        ck("read more is closed arriving on " + qid,
+           pg.evaluate("()=>!document.querySelector('.more-b.show')"))
+        pg.evaluate("(q)=>document.querySelector('#'+q+' .more').click()", qid)
+        if qid == "qEta": drag(pg, 8)
+        if qid == "qWell":
+            pg.locator("#wYes").click()
+        pg.wait_for_timeout(200)
+        ck(qid + " fits a phone with its Read more open",
+           pg.evaluate("()=>{var s=document.querySelector('.scrollarea');"
+                       "return s.scrollHeight<=s.clientHeight;}"))
+        ck("and the nav is part of the frame on " + qid + ", not the content",
+           pg.evaluate("()=>{var f=document.getElementById('foot');"
+                       "var r=f.getBoundingClientRect();"
+                       "return !document.querySelector('.scrollarea').contains(f)"
+                       " && r.bottom<=window.innerHeight+1;}"))
+    pg.close()
 
     # ── the demo booking ────────────────────────────────────────────────
     # The site map linked here with no booking id, so the one form a guest
@@ -518,7 +624,7 @@ with sync_playwright() as p:
     ck("opening it touches the database not at all", not calls)
 
     q.evaluate("""()=>{
-      document.querySelectorAll('#etaOpts button')[2].click();
+      trail.value=2; trail.dispatchEvent(new Event('input'));
       document.getElementById('dIn').click();
       const d=document.querySelector('#dietNone button'); if(d)d.click();
       const p=document.querySelector('#purposeChips button'); if(p)p.click();

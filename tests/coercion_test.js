@@ -271,11 +271,15 @@ const dp = listOf(desk, 'PURPOSE'), gp = listOf(guest, 'PURPOSE');
 ck('both forms offer the same reasons for the stay, word for word',
    JSON.stringify(dp) === JSON.stringify(gp));
 
-/* The arrival slots: the desk carries a short form as well, so only the keys
-   and the guest facing wording are compared. */
-const de = listOf(desk, 'ETA_SLOTS'), ge = listOf(guest, 'ETA_SLOTS');
-ck('both forms offer the same arrival times',
-   ge.every(function (v) { return de.indexOf(v) > -1; }));
+/* The arrival slots: the keys alone, exactly and in order. The wordings
+   parted on 23 Aug by design: the guest's track shows the bare time, the
+   desk keeps "Around", and neither is stored. The keys are what every
+   reader sorts and prints by, so the keys are what coercion protects. */
+const KEYRE = /^(before2|after5|1[4-7](30)?)$/;
+const de = listOf(desk, 'ETA_SLOTS').filter(function(v){ return KEYRE.test(v); });
+const ge = listOf(guest, 'ETA_SLOTS').filter(function(v){ return KEYRE.test(v); });
+ck('both forms offer the same arrival times, key for key and in order',
+   JSON.stringify(de) === JSON.stringify(ge));
 ck('and the desk can actually set one, rather than only read it back',
    /id="eChips"/.test(desk) && /a\.arriveSlot\s*=/.test(desk));
 ck('including the note the open ended slots ask for',

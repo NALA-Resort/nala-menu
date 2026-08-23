@@ -335,11 +335,18 @@ function effectiveEta(villa){
   var s = String(pre.arriveSlot || '');
   if (s === 'before2') return { h: 14, disp: '<2pm', early: true };
   if (s === 'after5')  return { h: 17, disp: '>5pm', early: false };
-  if (s === '14' || s === '15' || s === '16' || s === '17')
-    return { h: +s, disp: hour12(+s), early: false };
+  /* Two digits are an hour, four are an hour and its half: the nine keys the
+     guest's track writes. Same list as the three page copies. */
+  if (/^1[4-7](30)?$/.test(s)){
+    var hh = +s.slice(0, 2) + (s.length === 4 ? 0.5 : 0);
+    return { h: hh, disp: hour12(hh), early: false };
+  }
   return { h: 14, disp: '', early: false };
 }
-function hour12(h){ return (h > 12 ? h - 12 : h) + (h < 12 ? 'am' : 'pm'); }
+function hour12(h){
+  var w = Math.floor(h);
+  return (w > 12 ? w - 12 : w) + (h % 1 ? ':30' : '') + (w < 12 ? 'am' : 'pm');
+}
 function etaWord(disp){
   return disp === '<2pm' ? 'before 2pm' : disp === '>5pm' ? 'after 5pm' : disp;
 }
