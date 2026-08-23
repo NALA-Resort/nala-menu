@@ -411,8 +411,10 @@ with sync_playwright() as p:
 
     #  A guest who got halfway and stopped is a different case: pages save as
     #  they are left, so they resume at the first page they have not answered.
+    #  The record carries an occasion from before the field left the form;
+    #  it must not crash the resume, and the send must not erase it.
     STATE["pre"] = {"arriveSlot": "15", "purpose": ["A short break"],
-                    "occasion": "anniversary"}
+                    "occasion": "anniversary", "note": "ground floor please"}
     pg = guest(begin=False)
     ck("a form in progress reopens, because it was never finished",
        pg.evaluate("()=>form.className") == "")
@@ -422,7 +424,9 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qApproach")
     jump(pg, "qElse")
     ck("with their answers still there",
-       pg.evaluate("()=>occasion.value") == "anniversary")
+       pg.evaluate("()=>note.value") == "ground floor please")
+    ck("and an old record's occasion is not erased by the send shape",
+       pg.evaluate("()=>!('occasion' in fullPayload())"))
     jump(pg, "qEta")
     ck("and the track still holding their arrival",
        pg.evaluate("()=>tval.textContent") == "3:00pm")

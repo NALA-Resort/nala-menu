@@ -369,12 +369,12 @@
       <button class="more" type="button">Read more</button>
       <div class="more-b">This is the one that most often changes a stay. An
           anniversary nobody mentioned is an anniversary we cannot mark.</div>
-      <div class="n-lab">Special occasion</div>
-      <textarea class="txt" id="occasion" rows="1"
-        placeholder="A birthday, an anniversary"></textarea>
-      <div class="n-lab">Anything else for the booking</div>
-      <textarea class="txt" id="note" rows="2"
-        placeholder="Anything you would like us to know"></textarea>
+      <!-- One box since 23 Aug: a separate occasion field beside it read as
+           the same question twice, the owner ruled. The desk keeps its own
+           Special occasion field, and records already carrying one still
+           show it everywhere they did. -->
+      <textarea class="txt" id="note" rows="3"
+        placeholder="A birthday, an anniversary, or anything you would like us to know"></textarea>
     </div>
 
   </div>
@@ -500,7 +500,7 @@ function purposeText(v){ return purposeList(v).join(PURPOSE_SEP); }
 var a = { eta:'', etaNote:'', dining:null, diets:[], noDiets:false, dietYes:false,
           dietNote:'', purpose:[], approach:'', wellness:null, wellDay:'',
           companion:'',
-          wellTime:'', occasion:'', note:'' };
+          wellTime:'', note:'' };
 
 function el(id){ return document.getElementById(id); }
 function dkey(d){
@@ -573,9 +573,9 @@ function paintGreeting(pms){
   el('dietNote').placeholder = SINGLE
     ? 'How severe, and anything else we should know'
     : 'Whose, and how severe';
-  el('occasion').placeholder = SINGLE
-    ? 'A birthday, a milestone'
-    : 'A birthday, an anniversary';
+  el('note').placeholder = SINGLE
+    ? 'A birthday, a milestone, or anything you would like us to know'
+    : 'A birthday, an anniversary, or anything you would like us to know';
   document.querySelector('#qElse .more-b').textContent = SINGLE
     ? 'This is the one that most often changes a stay. A birthday nobody '
       + 'mentioned is a birthday we cannot mark.'
@@ -760,7 +760,7 @@ var STEPS = [
   { id:'qDine',      fields:['dining','pax'] },
   { id:'qDiet',      fields:['diets','noDiets','dnote'] },
   { id:'qWell',      fields:['wellness','wellDay','wellTime'] },
-  { id:'qElse',      fields:['occasion','note'] }
+  { id:'qElse',      fields:['note'] }
 ];
 
 /* The companion step is hidden for a single booking, and for a party whose
@@ -902,7 +902,6 @@ function collect(){
   a.etaNote  = el('etaNote').value.trim();
   a.dietNote = el('dietNote').value.trim();
   a.wellTime = el('wTime').value.trim();
-  a.occasion = el('occasion').value.trim();
   a.companion = el('companion').value.trim();
   a.note     = el('note').value.trim();
 }
@@ -974,7 +973,7 @@ function fullPayload(){
     wellness: a.wellness === null ? undefined : a.wellness,
     wellDay: a.wellness ? a.wellDay : (a.wellness === null ? undefined : ''),
     wellTime: a.wellness ? a.wellTime : (a.wellness === null ? undefined : ''),
-    occasion: a.occasion, note: a.note, companion: a.companion
+    note: a.note, companion: a.companion
   };
 }
 
@@ -1136,10 +1135,10 @@ function boot(){
     a.purpose = purposeList(p.purpose); a.approach = p.approach || '';
     a.wellness = (p.wellness === undefined) ? null : !!p.wellness;
     a.wellDay = p.wellDay || ''; a.wellTime = p.wellTime || '';
-    a.occasion = p.occasion || ''; a.note = p.note || '';
+    a.note = p.note || '';
     a.companion = p.companion || '';
     el('etaNote').value = a.etaNote; el('dietNote').value = a.dietNote;
-    el('wTime').value = a.wellTime; el('occasion').value = a.occasion;
+    el('wTime').value = a.wellTime;
     el('companion').value = a.companion;
     el('note').value = a.note;
     paintEta(); paintDine(); paintDiets(); paintPurpose(); paintApproach(); paintWell();
