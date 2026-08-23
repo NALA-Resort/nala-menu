@@ -222,7 +222,10 @@
       <div class="greet" id="greet">Before you arrive</div>
       <div class="sub" id="sub"></div>
     </header>
-    <div class="intro-why">Eight quick questions, so your villa, your table
+    <!-- No number: the count runs five to eight with the party and the
+         stay, and a promise of eight to a guest asked five reads as an
+         error somewhere, theirs or ours. -->
+    <div class="intro-why">A few quick questions, so your villa, your table
       and your kitchen are ready the moment you step in. A page saves as you
       go, so you can stop and come back.</div>
     <button class="send" id="begin">Begin</button>
@@ -542,11 +545,27 @@ function paintGreeting(pms){
      booking reads as nobody having looked. */
   var adults = pms && Number(pms.adults);
   var known  = pms && pms.companion;
+  var oneNight = STAY.arr && STAY.dep &&
+                 Math.round((STAY.dep - STAY.arr) / 86400000) === 1;
 
   /* One guest is not a party. The chips on "what brings you" keep one
      wording for everyone because the words ARE the stored answer; here the
      words are only worn, so they can fit. Unknown count speaks plural. */
   SINGLE = adults === 1;
+  /* A one night stay has no "first night" - it has THE night. Every string
+     that leans on "first" bends with it, in one place, here, where the
+     dates are known. */
+  document.querySelector('#qDine .q-t').textContent = oneNight
+    ? 'Will you be dining with us?'
+    : 'Will you be dining with us on your first night?';
+  el('dOut').textContent = oneNight ? 'Not this time' : 'Not on the first night';
+  document.querySelector('#qDine .more-b').textContent = oneNight
+    ? 'Dinner is a set menu, written by the kitchen on the day, from whatever '
+      + 'is best that morning. That means the dishes for your night do not '
+      + 'exist yet. We will send them to you as soon as they do.'
+    : 'Dinner is a set menu, written by the kitchen on the day, from whatever '
+      + 'is best that morning. That means the dishes for your first night do '
+      + 'not exist yet. We will send them to you as soon as they do.';
   document.querySelector('#qDiet .q-t').textContent = SINGLE
     ? 'Do you have any allergies or dietary requirements?'
     : 'Does anyone in your party have allergies or dietary requirements?';
@@ -560,7 +579,6 @@ function paintGreeting(pms){
      that page already asks it. Unknown dates keep the question, because
      hiding it on a guess loses an answer we could have had. Same machinery
      as the companion page, so the count and the walk stay honest. */
-  var oneNight = arr && dep && Math.round((dep - arr) / 86400000) === 1;
   el('qApproach').style.display = oneNight ? 'none' : '';
   /* Nor treatments: one afternoon is not a window the therapists can use,
      the owner ruled, so a one night guest is not offered one. */

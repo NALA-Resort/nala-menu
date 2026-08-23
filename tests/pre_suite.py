@@ -646,6 +646,10 @@ with sync_playwright() as p:
     live = pg.evaluate("()=>liveSteps().map(s=>s.id)")
     ck("a one night stay is not asked about the week ahead",
        "qApproach" not in live)
+    ck("and its dinner question has no \"first night\", only the night",
+       pg.evaluate("()=>document.querySelector('#qDine .q-t').textContent")
+       == "Will you be dining with us?" and
+       pg.evaluate("()=>dOut.textContent") == "Not this time")
     ck("nor offered a treatment its stay has no window for",
        "qWell" not in live)
     ck("but still about tonight and dietaries",
