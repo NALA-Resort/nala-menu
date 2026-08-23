@@ -125,6 +125,29 @@ the 2pm default. Accepted because preventing it means restructuring the node.
 The future answer is an audit trail, working name **logs**, searchable, so a
 value that goes missing can be traced to who and when.
 
+## 14. The guest page's dietaries, hidden 23 Aug: remove for good or bring back
+
+The nightly menu page (`index.html`) used to ask a confirming guest for their
+dietaries, show a note where one clashed with a tagged dish, and before the
+menu was out demand an "I have no allergies" acknowledgement. On 23 Aug the
+owner asked for the page to be a yes or no with a confirmation, nothing more.
+
+**Decided in the meantime:** hidden, not removed. One class, `hide-diet` on
+the `<body>` of `index.html`, switches every field on the confirm step off
+in CSS (guests, chips, conflict note, anything else, leaving Back and
+Confirm) and stands the two save checks aside that waited on those
+controls. Guests saves as 2 while hidden. The
+guest's standing dietaries from pre-arrival still ride on the saved answer and
+still flag a clash to the kitchen; the guest just is not asked again. The
+suite carries both states under `DIET_HIDDEN` in `tests/index_suite.py`.
+
+**Question for you:** remove for good, or bring it back, and if back, in what
+form. To bring it back: delete the class from the body tag, set
+`DIET_HIDDEN = False` in the suite, run the suites. To remove for good: take
+out the chips, `#cf`, `menuConflicts`, `paintChips` and the `nodiet` and
+`flag` fields, and re-read `NOTES-AUDIT.md` first, since the desk and the
+boards read those fields.
+
 ## 9. Left over from the print work: all cleared
 
 These were another chat's while it owned the print pages. That arrangement

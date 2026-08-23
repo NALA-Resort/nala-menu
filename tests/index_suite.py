@@ -85,6 +85,10 @@ DIETS = {"nut":    {"name": "Nut allergy",  "group": "common", "active": True},
          "retired":{"name": "Old Entry",    "group": "common", "active": False}}
 # Tonight's dish tags, written per day, NOT stored on the dish itself.
 TAGS = {"main": ["Nut allergy"]}
+# 23 Aug: the dietary controls on the guest page are hidden by the hide-diet
+# class on <body>, pending a decision (PARKED.md 14). Set False when that
+# class is removed and the original dietary blocks run again.
+DIET_HIDDEN = True
 
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
@@ -189,73 +193,130 @@ with sync_playwright() as p:
     # ── accepting, with a dietary the menu contains ─────────────
     STATE["dietaries"] = DIETS
     STATE["menutags"] = TAGS
-    del WRITES[:]
-    pg = guest(LINK)
-    pg.locator("#bIn").click(); pg.wait_for_timeout(300)
-    pg.locator(".chip", has_text="Nut allergy").first.click(); pg.wait_for_timeout(200)
-    pg.locator("#bSave").click(); pg.wait_for_timeout(300)
-    ck("a dietary that clashes with tonight's menu blocks the save",
-       len(wrote("/dinner/")) == 0)
-    ck("and marks the note field as the thing that is missing",
-       pg.locator("#dnote.miss").count() == 1)
-    pg.fill("#dnote", "severe, no substitutes")
-    pg.locator("#bSave").click(); pg.wait_for_timeout(400)
-    w = wrote(cell())
-    ck("once the note is given the save goes through", len(w) == 1)
-    if w:
-        body = json.loads(w[0]["b"])
-        ck("and is flagged for the kitchen", body["flag"] is True)
-        ck("with the guest's own words kept", body["dnote"] == "severe, no substitutes")
-    ck("standing dietaries are kept on the booking for the rest of the stay",
-       len(wrote("/bookings/res-guid-1/prearrival")) == 1)
-    pg.close()
+    if DIET_HIDDEN:
+        # Hidden, not removed: the chips are painted under a class the CSS
+        # switches off, so a plain yes has to go straight through, and a
+        # standing dietary the guest gave at pre-arrival must still reach the
+        # kitchen even though nobody can see it on this page.
+        del WRITES[:]
+        pg = guest(LINK)
+        pg.locator("#bIn").click(); pg.wait_for_timeout(300)
+        ck("the dietary chips are hidden from the guest",
+           pg.locator(".diet-field").count() == 1
+           and not pg.locator(".diet-field").is_visible())
+        ck("so are the guest count and the note, leaving only Back and Confirm",
+           pg.locator("#rsvp .field").count() == 4
+           and pg.locator("#rsvp .field:visible").count() == 0
+           and pg.locator("#bSave").is_visible() and pg.locator("#bBack").is_visible())
+        pg.locator("#bSave").click(); pg.wait_for_timeout(400)
+        w = wrote(cell())
+        ck("hidden, a plain yes saves without a dietary answer", len(w) == 1)
+        if w:
+            body = json.loads(w[0]["b"])
+            ck("and carries no flag, no note and no dietaries",
+               body["flag"] is False and body["dnote"] == "" and body["diets"] == [])
+        pg.close()
 
-    # A dietary the menu does not contain must raise nothing: the negative case
-    # is where a flag starts crying wolf.
-    del WRITES[:]
-    pg = guest(LINK)
-    pg.locator("#bIn").click(); pg.wait_for_timeout(300)
-    pg.locator(".chip", has_text="Gluten free").first.click(); pg.wait_for_timeout(150)
-    pg.locator("#bSave").click(); pg.wait_for_timeout(400)
-    w = wrote(cell())
-    ck("a dietary tonight's menu does not contain raises no flag",
-       len(w) == 1 and json.loads(w[0]["b"])["flag"] is False)
-    pg.close()
+        STATE["pre"] = {"diets": ["Nut allergy"], "at": "2026-08-15T10:00:00Z"}
+        del WRITES[:]
+        pg = guest(LINK)
+        pg.locator("#bIn").click(); pg.wait_for_timeout(400)
+        ck("a standing dietary that clashes shows the guest no conflict note",
+           not pg.locator("#cf").is_visible())
+        pg.locator("#bSave").click(); pg.wait_for_timeout(400)
+        w = wrote(cell())
+        ck("and does not block the save", len(w) == 1)
+        if w:
+            body = json.loads(w[0]["b"])
+            ck("the standing dietary still reaches the kitchen, flagged",
+               body["diets"] == ["Nut allergy"] and body["flag"] is True)
+        ck("and stays on the booking", len(wrote("/bookings/res-guid-1/prearrival")) == 1)
+        pg.close()
+        STATE["pre"] = None
+    else:
+        del WRITES[:]
+        pg = guest(LINK)
+        pg.locator("#bIn").click(); pg.wait_for_timeout(300)
+        pg.locator(".chip", has_text="Nut allergy").first.click(); pg.wait_for_timeout(200)
+        pg.locator("#bSave").click(); pg.wait_for_timeout(300)
+        ck("a dietary that clashes with tonight's menu blocks the save",
+           len(wrote("/dinner/")) == 0)
+        ck("and marks the note field as the thing that is missing",
+           pg.locator("#dnote.miss").count() == 1)
+        pg.fill("#dnote", "severe, no substitutes")
+        pg.locator("#bSave").click(); pg.wait_for_timeout(400)
+        w = wrote(cell())
+        ck("once the note is given the save goes through", len(w) == 1)
+        if w:
+            body = json.loads(w[0]["b"])
+            ck("and is flagged for the kitchen", body["flag"] is True)
+            ck("with the guest's own words kept", body["dnote"] == "severe, no substitutes")
+        ck("standing dietaries are kept on the booking for the rest of the stay",
+           len(wrote("/bookings/res-guid-1/prearrival")) == 1)
+        pg.close()
 
-    # Typed a note for a clash, then removed the dietary. The note goes with it
-    # or the kitchen reads an instruction about a dish nobody is avoiding.
-    del WRITES[:]
-    pg = guest(LINK)
-    pg.locator("#bIn").click(); pg.wait_for_timeout(300)
-    pg.locator(".chip", has_text="Nut allergy").first.click(); pg.wait_for_timeout(150)
-    pg.fill("#dnote", "typed then changed my mind")
-    pg.locator(".chip", has_text="Nut allergy").first.click(); pg.wait_for_timeout(150)
-    pg.locator("#bSave").click(); pg.wait_for_timeout(400)
-    w = wrote(cell())
-    ck("a note typed for a dietary that was then removed is not saved",
-       len(w) == 1 and json.loads(w[0]["b"])["dnote"] == "")
-    pg.close()
+        # A dietary the menu does not contain must raise nothing: the negative case
+        # is where a flag starts crying wolf.
+        del WRITES[:]
+        pg = guest(LINK)
+        pg.locator("#bIn").click(); pg.wait_for_timeout(300)
+        pg.locator(".chip", has_text="Gluten free").first.click(); pg.wait_for_timeout(150)
+        pg.locator("#bSave").click(); pg.wait_for_timeout(400)
+        w = wrote(cell())
+        ck("a dietary tonight's menu does not contain raises no flag",
+           len(w) == 1 and json.loads(w[0]["b"])["flag"] is False)
+        pg.close()
+
+        # Typed a note for a clash, then removed the dietary. The note goes with it
+        # or the kitchen reads an instruction about a dish nobody is avoiding.
+        del WRITES[:]
+        pg = guest(LINK)
+        pg.locator("#bIn").click(); pg.wait_for_timeout(300)
+        pg.locator(".chip", has_text="Nut allergy").first.click(); pg.wait_for_timeout(150)
+        pg.fill("#dnote", "typed then changed my mind")
+        pg.locator(".chip", has_text="Nut allergy").first.click(); pg.wait_for_timeout(150)
+        pg.locator("#bSave").click(); pg.wait_for_timeout(400)
+        w = wrote(cell())
+        ck("a note typed for a dietary that was then removed is not saved",
+           len(w) == 1 and json.loads(w[0]["b"])["dnote"] == "")
+        pg.close()
 
     # ── before the menu is published ────────────────────────────
     STATE["menu"] = None
-    del WRITES[:]
-    pg = guest(LINK)
-    pg.locator("#bIn").click(); pg.wait_for_timeout(300)
-    pg.locator("#bSave").click(); pg.wait_for_timeout(300)
-    ck("with no menu published, confirming needs the acknowledgment first",
-       len(wrote("/dinner/")) == 0)
-    ack = pg.locator("#ack")
-    if ack.count():
-        ack.click(); pg.wait_for_timeout(150)
+    if DIET_HIDDEN:
+        # No acknowledgement to tick, so none can be demanded.
+        del WRITES[:]
+        pg = guest(LINK)
+        pg.locator("#bIn").click(); pg.wait_for_timeout(300)
         pg.locator("#bSave").click(); pg.wait_for_timeout(400)
         w = wrote(cell())
-        ck("acknowledged, the reply saves", len(w) == 1)
+        ck("with no menu published and dietaries hidden, a yes saves at once", len(w) == 1)
         if w:
-            ck("and is marked as made before the menu existed",
+            ck("and is still marked as made before the menu existed",
                json.loads(w[0]["b"])["premenu"] is True)
-        ck("but nothing is claimed as a standing dietary for future nights",
+        ck("and nothing is claimed as a standing dietary for future nights",
            len(wrote("/bookings/res-guid-1/prearrival")) == 0)
-    pg.close()
+        pg.close()
+    else:
+        del WRITES[:]
+        pg = guest(LINK)
+        pg.locator("#bIn").click(); pg.wait_for_timeout(300)
+        pg.locator("#bSave").click(); pg.wait_for_timeout(300)
+        ck("with no menu published, confirming needs the acknowledgment first",
+           len(wrote("/dinner/")) == 0)
+        ack = pg.locator("#ack")
+        if ack.count():
+            ack.click(); pg.wait_for_timeout(150)
+            pg.locator("#bSave").click(); pg.wait_for_timeout(400)
+            w = wrote(cell())
+            ck("acknowledged, the reply saves", len(w) == 1)
+            if w:
+                ck("and is marked as made before the menu existed",
+                   json.loads(w[0]["b"])["premenu"] is True)
+            ck("but nothing is claimed as a standing dietary for future nights",
+               len(wrote("/bookings/res-guid-1/prearrival")) == 0)
+        pg.close()
+
     STATE["menu"] = MENU
 
     # ── coming back to an answer already given ──────────────────

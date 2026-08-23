@@ -301,6 +301,8 @@
   .note-input::placeholder { color:var(--mid); }
   .cf { display:none; }
   .cf.show { display:block; }
+  /* hide-diet, see the body tag */
+  body.hide-diet #rsvp .field { display:none; }
   .cf-msg { font-family:'Raleway',Helvetica,Arial,sans-serif; font-size:0.8rem; line-height:1.55;
     color:#9E6455; border:1px solid #D8C0B8; border-radius:10px; padding:10px 12px;
     margin-bottom:8px; text-align:left; }
@@ -350,7 +352,12 @@
   }
 </style>
 </head>
-<body>
+<!-- hide-diet: every field on the confirm step (guests, dietary chips, the
+     conflict note, anything else) is switched off on 23 Aug 2026, leaving
+     Back and Confirm, while the owner decides whether they come back or go
+     (PARKED.md 14). Delete this class and the page asks again; nothing else
+     was changed. Guests defaults to 2 while hidden. -->
+<body class="hide-diet">
 <div class="page">
 
   <header>
@@ -772,7 +779,7 @@
   function stepDetails(){
     panel.innerHTML =
       '<div class="field"><div class="field-label">Guests</div><div class="pax-row" id="paxRow"></div></div>'+
-      '<div class="field"><div class="field-label">Dietary requirements</div><div class="chips" id="chips"></div></div>'+
+      '<div class="field diet-field"><div class="field-label">Dietary requirements</div><div class="chips" id="chips"></div></div>'+
       '<div class="field cf" id="cf"><div class="cf-msg" id="cfMsg"></div>'+
         '<textarea class="note-input cf-input" id="dnote" rows="2" placeholder="Required - e.g. happy with an alternative dish"></textarea></div>'+
       '<div class="field"><div class="field-label">Anything else</div>'+
@@ -869,6 +876,12 @@
      this page reports rather than asks. */
   var LOCKED = false;
 
+  /* While the dietary controls are hidden (see the body tag) the guest cannot
+     tick an acknowledgement or type a conflict note, so the two checks that
+     wait for those must stand aside or every confirmation is refused with
+     nothing on screen to say why. The answer is saved as a plain yes. */
+  var HIDE_DIET = document.body.classList.contains('hide-diet');
+
   function save(status){
     if (LOCKED) return;
     var noteEl = document.getElementById('note');
@@ -876,16 +889,16 @@
     var dEl = document.getElementById('dnote');
     if (dEl) state.dnote = dEl.value.trim();
     var clash = menuConflicts(state.diets).length > 0;
-    if (status==='in' && clash && !state.dnote){
+    if (status==='in' && clash && !state.dnote && !HIDE_DIET){
       if (dEl){ dEl.classList.add('miss'); dEl.focus(); }
       return;   // a conflicting dietary needs a note before confirming
     }
-    if (status==='in' && !MENU && !state.nodiet){
+    if (status==='in' && !MENU && !state.nodiet && !HIDE_DIET){
       var ackEl = document.getElementById('ack');
       if (ackEl){ ackEl.classList.add('miss'); ackEl.scrollIntoView({block:'center',behavior:'smooth'}); }
       return;   // pre-menu confirming requires the acknowledgment
     }
-    if (status==='in' && !MENU) state.diets = [];   // acknowledged: none to declare
+    if (status==='in' && !MENU && !HIDE_DIET) state.diets = [];   // acknowledged: none to declare
     if (!clash) state.dnote = '';   // diet was untoggled after typing
     /* No name, phone or dates. Those are Mews' and the boards read them from
        /stays; a copy written here would be a second version of a fact this

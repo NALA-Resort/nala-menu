@@ -308,6 +308,10 @@ rather than handwritten.
    Paste the file wholesale. Merging by hand is how three of these came to be
    missing in the first place.
 
+2. **Decide the guest page's dietaries: gone for good, or back, and how.**
+   Hidden on 23 Aug at the owner's request, so the nightly menu page is a yes
+   or no with a confirmation. One class on the body tag of `index.html`,
+   `hide-diet`, and an undo recipe, in `PARKED.md` item 14.
 2. **Cancellations have never been seen to fire.** The Zap does not trigger.
    Until it does, a cancelled booking stays on the board. Worker handles it and
    is tested; the feed is the only problem. Confirmed 18 Aug that the
