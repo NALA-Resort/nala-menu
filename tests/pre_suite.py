@@ -549,11 +549,8 @@ with sync_playwright() as p:
     # ── the 23 Aug revision, asserted as decisions ──────────────
     #  The order of the eight, as a list, so a later reshuffle is deliberate.
     pg = guest()
-    ck("every page carries a short purpose heading, in the settled words",
-       pg.evaluate("()=>[...document.querySelectorAll('.q .q-k')]"
-                   ".map(k=>k.textContent).join('|')") ==
-       "Your party|Your stay|Getting here|The week ahead|Your first night|"
-       "Dietaries|Treatments|One last thing")
+    #  Page kickers were added and scrapped within the hour on 23 Aug -
+    #  clutter without a proper design pass. Only their spacing survives.
     ck("the eight pages run who, why, when, the week, tonight, dietaries, "
        "treatments, anything else",
        pg.evaluate("()=>STEPS.map(s=>s.id).join(',')") ==
