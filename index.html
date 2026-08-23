@@ -247,19 +247,19 @@
 
   .pax-row { display:flex; gap:6px; justify-content:center; }
   .pax {
-    width:2.5rem; height:2.5rem; border:1px solid var(--rule); background:transparent;
+    width:2.5rem; height:2.5rem; border:1px solid var(--rule); background:var(--paper);
     border-radius:50%; font-family:'Raleway',Helvetica,Arial,sans-serif; font-size:0.8125rem;
     color:var(--ink); cursor:pointer; -webkit-tap-highlight-color:transparent;
   }
-  .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .pax.on { border-color:var(--mid); box-shadow:inset 0 0 0 1px var(--mid); }
 
   .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; }
   .chip {
-    padding:8px 13px; border:1px solid #C3C3BC; background:transparent;
+    padding:8px 13px; border:1px solid var(--rule); background:var(--paper);
     border-radius:20px; font-family:'Raleway',Helvetica,Arial,sans-serif; font-size:0.75rem;
     color:var(--ink); cursor:pointer; -webkit-tap-highlight-color:transparent;
   }
-  .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .chip.on { border-color:var(--mid); box-shadow:inset 0 0 0 1px var(--mid); }
   .premenu-note {
     flex-basis:100%; text-align:center; font-style:italic; color:var(--mid);
     font-size:0.8rem; line-height:1.5; margin-bottom:6px;
@@ -295,7 +295,7 @@
   }
 
   .note-input {
-    width:100%; padding:11px; border:1px solid var(--rule); background:transparent;
+    width:100%; padding:11px; border:1px solid var(--rule); background:var(--paper);
     border-radius:10px; font-family:'Raleway',Helvetica,Arial,sans-serif; font-style:italic;
     font-size:16px; color:var(--ink); resize:none; /* keep 16px literal: iOS zooms the page on focus below this */
   }
