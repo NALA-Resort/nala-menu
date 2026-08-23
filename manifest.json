@@ -1,7 +1,6 @@
 {
   "name": "Nala Villas",
   "short_name": "Nala Villas",
-  "start_url": "/cleaners.html",
   "scope": "/",
   "display": "standalone",
   "background_color": "#F9F7F4",
