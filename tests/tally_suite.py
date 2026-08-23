@@ -486,10 +486,10 @@ with sync_playwright() as p:
     #  labelled Reservations Sheet, and Registration is the arrivals print.
     ck("menu labels and order",
        [i["t"] for i in dest]==["Front Desk","Cleans","Publish Menu",
-                                "FOH Sheet","Clean Sheet","Arrivals",
+                                "FOH Sheet","Clean Sheet","Arrivals","Menu",
                                 "General","Dietary","Pages"] and
        [i["href"] for i in dest]==["front-desk.html","cleaners.html","publish.html",
-                                   "list.html","housekeeping.html","registration.html",
+                                   "list.html","housekeeping.html","registration.html","menu-print.html",
                                    "staff.html","tag.html","pages.html"])
     #  Headings, not choices. Light grey and small so a signpost is not mistaken
     #  for a destination.

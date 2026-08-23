@@ -160,7 +160,7 @@ with sync_playwright() as p:
     #  were in none of their lists, so from Reservations there was no way to
     #  reach publishing at all.
     CANON = ["front-desk.html", "tally.html", "cleaners.html", "publish.html",
-             "list.html", "housekeeping.html", "registration.html",
+             "list.html", "housekeeping.html", "registration.html", "menu-print.html",
              "staff.html", "tag.html", "pages.html"]
     got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")

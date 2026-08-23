@@ -98,7 +98,7 @@ with sync_playwright() as p:
     #  was actually asked for, and that is checked from a page that is not this
     #  one.
     CANON = ["front-desk.html", "tally.html", "cleaners.html", "publish.html",
-             "list.html", "housekeeping.html", "registration.html",
+             "list.html", "housekeeping.html", "registration.html", "menu-print.html",
              "staff.html", "tag.html", "pages.html"]
     got = pg.evaluate("""()=>[...document.querySelectorAll('.navdrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")

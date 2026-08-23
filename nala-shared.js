@@ -1402,6 +1402,7 @@ var NAV_NEEDS = {
   'cleaners.html':     'cleansBoard',
   'housekeeping.html': 'cleansBoard',
   'registration.html': 'editBookings',
+  'menu-print.html':   'resSheet',
   'staff.html':        'manageStaff',
   'pages.html':        'manageStaff'
 };

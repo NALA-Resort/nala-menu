@@ -448,7 +448,7 @@ with sync_playwright() as p:
     #  Grouped 22 Aug to the owner's own sketch: what you work on, what you
     #  print, what you set.
     CANON = ["front-desk.html", "tally.html", "cleaners.html", "publish.html",
-             "list.html", "housekeeping.html", "registration.html",
+             "list.html", "housekeeping.html", "registration.html", "menu-print.html",
              "staff.html", "tag.html", "pages.html"]
     got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
@@ -734,6 +734,7 @@ with sync_playwright() as p:
              "list.html":"resSheet", "publish.html":"publishMenu",
              "tag.html":"publishMenu", "cleaners.html":"cleansBoard",
              "housekeeping.html":"cleansBoard", "registration.html":"editBookings",
+             "menu-print.html":"resSheet",
              "staff.html":"manageStaff", "pages.html":"manageStaff"}
     ck("every link in the menu has a permission behind it",
        all(h in NEEDS for r in seen for h in seen[r]))
