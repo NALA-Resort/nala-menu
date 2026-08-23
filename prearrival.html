@@ -17,17 +17,22 @@
      sets its own font exactly as index.html does. The staff font can change
      without touching anything a guest sees. */
   html { font-size:16px; }
-  html, body { width:100%; min-height:100dvh; background:var(--cream);
+  /* The shell. One page of the form fits one screen since the 23 Aug
+     revision, so the frame owns the viewport: the questions scroll inside
+     .scrollarea and the foot holds still beneath them. dvh, because 100% of
+     an iPhone lies while the toolbar animates; vh stands in where dvh is
+     unknown. The old scrolling layout's 3rem bottom padding died here - it
+     was a band of cream under the buttons on every phone. */
+  html, body { width:100%; height:100%; margin:0; overflow:hidden;
+               background:var(--cream);
                font-family:'Raleway',Helvetica,Arial,sans-serif; color:var(--ink); }
   body { display:flex; justify-content:center;
          -webkit-tap-highlight-color:transparent; }
-
-  /* Unlike the nightly menu, this page does NOT try to fit one screen. It is
-     six questions and it is expected to scroll: shrinking type to avoid a
-     scroll on a form this long would cost more completions than the scroll
-     does. */
-  .page { width:100%; max-width:34rem; padding:0 1.4rem 3rem;
-          display:flex; flex-direction:column; }
+  .page { width:100%; max-width:34rem; padding:0 1.4rem;
+          height:100vh; height:100dvh;
+          display:flex; flex-direction:column; min-height:0; }
+  .scrollarea { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
+                min-height:0; }
 
   /* The wordmark, not the drawn logo: the approved mockup trades the image
      for headroom, and every page owes its fit on a phone to the trade. */
@@ -160,22 +165,11 @@
 
   #form.hide, #done.hide { display:none; }
 
-  /* The frame. Back, Next and the step count are part of it, not the end of
-     the content: they hold still while the page scrolls behind them. */
-  html, body { height:100%; overflow:hidden; }
-  body { display:flex; flex-direction:column; }
-  /* dvh, because 100% of an iPhone lies while the toolbar animates: the foot
-     was sliding with it. dvh is the visible height, whatever the toolbar is
-     doing, and vh stands in for browsers that lack it. */
-  .page { flex:1; display:flex; flex-direction:column; min-height:0;
-          height:100vh; height:100dvh; }
-  .scrollarea { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
-                min-height:0; }
   /* Safari brings its own toolbar under this, so the constant is small and
      the env() carries the home-screen case where there is no toolbar. */
   .foot { flex:0 0 auto; background:var(--cream,#F9F7F4);
           border-top:1px solid var(--rule);
-          padding:8px 0 calc(8px + env(safe-area-inset-bottom)); }
+          padding:8px 0 max(8px, env(safe-area-inset-bottom)); }
   .foot .prog { text-align:center; margin:0 0 6px; }
   .foot .nav { margin:0; padding:0 4px; }
   /* Above the buttons, its line ALWAYS occupying: display:none reserved
