@@ -303,9 +303,34 @@ function makePDF(open){
 document.getElementById('pdfBtn').onclick = function(){ loadLogo(function(){ makePDF(true); }); };
 
 // ── load ──────────────────────────────────────────────────
-fetch('menu.json?v=' + Date.now())
-  .then(function(r){ return r.json(); })
+/* The database first, the committed file behind it, which is what every other
+   screen has done since publishing moved off GitHub.
+
+   This page never learned. It read the file and only the file, so it went on
+   showing whatever was last committed - the menu of the 22nd - while the
+   board beside it correctly said tonight's was published. Reported 23 Aug as
+   the View button showing an old menu, and it was: the button was right and
+   the page behind it was reading the wrong source.
+
+   fetchMenuAnywhere is the one reader, and it now refuses a file that is not
+   for the day being asked about, so a fallback cannot serve yesterday's
+   dinner as tonight's. */
+/* Waited for, not hoisted. nala-shared.js loads at the foot of this page and
+   moving it up would change the order everything else here depends on. */
+(function whenShared(){
+  if (typeof fetchMenuAnywhere !== 'function'){ setTimeout(whenShared, 100); return; }
+  showMenu();
+})();
+
+function showMenu(){
+fetchMenuAnywhere()
   .then(function(m){
+    /* The gate may have refused while this was in flight. Nothing below is
+       allowed to speak after that. */
+    if (window.__REFUSED) return;
+    /* Neither source could be read. Said plainly, because "nothing to print"
+       would send somebody to the kitchen to ask why there is no menu. */
+    if (m && m.failed) throw new Error('unreadable');
     m = m || {};
     MENU = m;
     var filled = ORDER.some(function(k){
@@ -335,6 +360,7 @@ fetch('menu.json?v=' + Date.now())
 
     // build and display the PDF, once the logo is in hand
     setTimeout(function(){
+      if (window.__REFUSED) return;
       loadLogo(function(){ makePDF(false); });
       // iOS can't reliably render a PDF inside a frame - offer the button as well
       if (isIOS()) document.getElementById('pdfBtn').style.display = 'inline-block';
@@ -343,12 +369,13 @@ fetch('menu.json?v=' + Date.now())
   .catch(function(){
     document.getElementById('state').textContent = 'Could not load the menu';
   });
+}
 </script>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="auth.js?v=11"></script>
-<script src="nala-shared.js?v=24"></script>
+<script src="auth.js?v=12"></script>
+<script src="nala-shared.js?v=25"></script>
 <script>
 /* This page had no gate at all: anyone with the address could open it, signed
    in or not. It leaks nothing, because the menu it prints comes from
@@ -377,8 +404,14 @@ fetch('menu.json?v=' + Date.now())
       if (home && home !== location.pathname.split('/').pop()){
         location.replace(home); return;
       }
+      /* Marked refused, not merely hidden. The menu is fetched in parallel
+         and used to land AFTER this and write its own line over the refusal,
+         so a login with no role read "Published Sunday" under a hidden
+         viewer. Whichever finishes first, the refusal is the last word. */
+      window.__REFUSED = true;
       document.getElementById('viewer').style.display = 'none';
       document.getElementById('pdfBtn').style.display = 'none';
+      document.getElementById('stage').style.display = 'none';
       document.getElementById('state').textContent = err
         ? 'Could not check access. This is usually the connection, not your login.'
         : 'This login cannot print the menus. See the manager.';

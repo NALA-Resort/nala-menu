@@ -1460,22 +1460,67 @@ function normaliseRole(r){ return r === 'staff' ? 'admin' : r; }
    the file means that if the node is empty, or a read fails, or something in
    this change is wrong, the guest's menu does not go dark. It can be dropped
    once a few services have gone by.                                       */
+/* Three answers, not two. The guest page learned this on 22 Aug and this, the
+   shared reader every staff page uses, did not.
+
+   A node with a menu in it is a menu. A node that could not be read, or has
+   never held anything, is silence, and the committed file stands in behind it
+   so nobody is shown a placeholder while the chef swears the menu is up. A
+   node that EXISTS and has been deliberately emptied is the resort saying
+   there is no dinner tonight, and it has to beat the file. */
 function fetchMenuNode(){
   return fetch(DB + '/menu.json?v=' + Date.now())
     .then(function(r){ return r.json(); })
     .then(function(m){
       if (m && m.published && m.main && m.main.name) return m;
+      if (m && typeof m.published !== 'undefined' && !m.published)
+        return { takenDown: true };
       return null;
     })
     .catch(function(){ return null; });
 }
 
-function fetchMenuAnywhere(){
+/* The committed file is a fallback, not an archive.
+
+   Reported 23 Aug: the Reservations board showed an old menu. menu.json still
+   held the menu of the 22nd, because publishing moved into the database and
+   nothing has rewritten that file since. Whenever the database had nothing for
+   tonight the reader handed back yesterday's dinner with no date on it, and
+   every screen that asks this question - the board, the printed sheet, the
+   dietary page - believed it.
+
+   Each caller went on to check the date itself, or did not, and that is the
+   fault: a reader that can return something stale makes every one of its
+   callers responsible for noticing. It checks here now, once. A menu that is
+   not for the day being asked about is not an answer to the question. */
+function fetchMenuAnywhere(dayKey){
+  /* The day being asked about: the caller's, else the page's browsed day, else
+     the actual date. Never null. It defaulted to null on a page with no date
+     navigation - menu-print.html has none - and null skipped the check
+     entirely, so the one page that was showing a stale menu went on showing
+     it. A guard that depends on a global the caller may not have is not a
+     guard. */
+  var want = dayKey ||
+             (typeof todayKey === 'function' ? todayKey() : dkey(new Date()));
   return fetchMenuNode().then(function(m){
+    if (m && m.takenDown) return null;
     if (m) return m;
     return fetch('menu.json?v=' + Date.now())
-      .then(function(r){ return r.json(); })
-      .catch(function(){ return null; });
+      .then(function(r){
+        if (!r.ok) throw new Error('http ' + r.status);
+        return r.json();
+      })
+      .then(function(f){
+        if (!f || !f.published) return null;
+        return dkey(new Date(f.published)) === want ? f : null;
+      })
+      /* Not null. "Nothing is published tonight" and "I could not find out"
+         are different facts and a caller has to be able to tell them apart:
+         one is no dinner, the other is a broken app, and a page that says the
+         first when it means the second sends somebody to the kitchen to ask
+         why there is no menu. Swallowing this to null is exactly the mistake
+         the takedown had, one layer up. */
+      .catch(function(){ return { failed: true }; });
   });
 }
 

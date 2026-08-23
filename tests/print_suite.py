@@ -71,7 +71,10 @@ MENU = {"published": now.isoformat(),
         "main": {"name": "lamb rump with smoked eggplant", "desc": "pomegranate, mint", "aus": True},
         "dessert": {"name": "pavlova"}}
 
-STATE = {"menu": MENU, "logo": True}
+#  "menu" is the committed FILE, "db" is the database. They were one thing in
+#  this suite until 23 Aug, because one route answered both, which is precisely
+#  how a stale file reached the printed menu with every assertion passing.
+STATE = {"menu": MENU, "logo": True, "db": None}
 
 P = F = 0
 def ck(name, cond):
@@ -83,9 +86,22 @@ from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b = p.chromium.launch()
 
+    #  The page reads the database first from 23 Aug, and auth.js queues every
+    #  database fetch until a sign-in settles. Without a session the read never
+    #  resolves at all and the page sits on "Preparing menu" forever, which is
+    #  correct for a gated page and looked like twenty-four broken assertions.
+    PRINT_SDK = """window.firebase={__i:false,
+      initializeApp:function(){window.firebase.__i=true;},
+      auth:function(){return window.__A;}};
+    window.__A={onIdTokenChanged:function(cb){setTimeout(function(){
+        cb({email:'staff@x',getIdToken:function(){return Promise.resolve('T');}});},20);},
+      onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'staff@x'});},25);},
+      signOut:function(){},currentUser:{email:'staff@x'}};"""
+
     def open_print(w=1100):
         pg = b.new_page(viewport={"width": w, "height": 900})
         pg.add_init_script(JSPDF_STUB)
+        pg.add_init_script(PRINT_SDK)
         # jsPDF itself comes from a CDN the sandbox cannot reach, and the stub
         # is already installed, so the request is answered with nothing.
         pg.route("**/cdnjs.cloudflare.com/**", lambda r: r.fulfill(status=200, body=""))
@@ -93,12 +109,43 @@ with sync_playwright() as p:
         pg.route("**/fonts.gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         if not STATE["logo"]:
             pg.route("**/nala-logo.png", lambda r: r.fulfill(status=404, body=""))
-        pg.route("**/menu.json*", lambda r: r.fulfill(
-            status=(404 if STATE["menu"] is None else 200),
-            content_type="application/json",
-            body=("" if STATE["menu"] is None else json.dumps(STATE["menu"]))))
+        #  The committed FILE only. This pattern matches the database URL too -
+        #  both end in /menu.json - and the page reads the database first since
+        #  23 Aug, so one route answering both left it reading a 404 as the
+        #  answer to a question it had not asked yet.
+        def menu_file(route):
+            if "firebasedatabase.app" in route.request.url:
+                route.fallback(); return
+            route.fulfill(
+                status=(404 if STATE["menu"] is None else 200),
+                content_type="application/json",
+                body=("" if STATE["menu"] is None else json.dumps(STATE["menu"])))
+        #  The database, which this page now asks first. Silent, so the file
+        #  behind it is what these tests are about, as they always were.
+        #  The page is gated on resSheet, so the login has to be somebody: a
+        #  blanket null starves loadStaff and the gate correctly refuses, which
+        #  reads as every print assertion failing at once.
+        def db(route):
+            u = route.request.url
+            if "/staff" in u:
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps({"staff@x": {"name": "M", "role": "admin"}})); return
+            if u.split("?")[0].endswith("/menu.json"):
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps(STATE["db"]) if STATE["db"] else "null"); return
+            route.fulfill(status=200, content_type="application/json", body="null")
+        pg.route("**firebasedatabase.app/**", db)
+        pg.route("**/menu.json*", menu_file)
         pg.goto("http://localhost:8975/menu-print.html")
-        pg.wait_for_timeout(1200)
+        #  Waited for, not timed. The page reads the database first from 23 Aug
+        #  and nala-shared.js loads at its foot, so the menu now arrives a beat
+        #  later than a fixed 1200ms allowed for. A wait on the thing itself
+        #  cannot go stale the next time the page gets slower.
+        try:
+            pg.wait_for_function("()=>window.__PDF && window.__PDF.made>=1",
+                                 timeout=8000)
+        except Exception:
+            pg.wait_for_timeout(1500)
         return pg
 
     def pdf_text(pg):
@@ -192,6 +239,49 @@ with sync_playwright() as p:
        "COULD NOT LOAD" in pg.inner_text("#state").upper())
     pg.close()
     STATE["menu"] = MENU
+
+    # ── the source of the menu ────────────────────────────────
+    #  Reported 23 Aug: the View button on the Reservations board showed an old
+    #  menu. The button was right and this page was reading the wrong source.
+    #  It read the committed menu.json and only that, and never learned when
+    #  publishing moved into the database, so it went on showing whatever was
+    #  last committed while the board beside it correctly said tonight's menu
+    #  was published.
+    STATE["menu"] = {"published": (now - datetime.timedelta(days=1)).isoformat(),
+                     "main": {"name": "yesterday lamb", "desc": ""}}
+    STATE["db"] = {"published": now.isoformat(),
+                   "main": {"name": "tonight lamb", "desc": ""}}
+    pg = open_print()
+    txt = " ".join(pdf_text(pg)).lower()
+    ck("the database is read first, not the committed file",
+       "tonight lamb" in txt)
+    ck("and the file's older menu is not printed",
+       "yesterday lamb" not in txt)
+    pg.close()
+
+    #  The file is a fallback, not an archive. Nothing rewrites it since
+    #  publishing moved, so what it holds is whatever was published the last
+    #  time it did, and serving that as tonight's is the fault above by
+    #  another route.
+    STATE["db"] = None
+    pg = open_print()
+    txt = " ".join(pdf_text(pg)).lower()
+    ck("a file left over from yesterday is not printed as tonight's",
+       "yesterday lamb" not in txt)
+    ck("and the page says there is nothing rather than showing it",
+       "nothing to print" in pg.inner_text("#state").lower())
+    pg.close()
+
+    #  But it still stands in where it was always meant to: a menu published
+    #  today, with the database silent, is a menu.
+    STATE["menu"] = {"published": now.isoformat(),
+                     "main": {"name": "filed lamb", "desc": ""}}
+    pg = open_print()
+    ck("a file published today still stands in when the database is silent",
+       "filed lamb" in " ".join(pdf_text(pg)).lower())
+    pg.close()
+    STATE["menu"] = MENU
+    STATE["db"] = None
 
     # ── a missing logo is not a missing menu ──────────────────
     STATE["logo"] = False

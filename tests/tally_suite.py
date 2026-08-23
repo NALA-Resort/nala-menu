@@ -66,6 +66,17 @@ def fb(route,request):
     elif "/menutags/" in u: body=json.dumps(menutags)
     elif "/menuhistory/" in u: body="null"
     route.fulfill(status=200,content_type="application/json",body=body)
+def file_menu(route, request):
+    """menu.json committed in the repo. Publishing moved into the database, so
+    nothing rewrites this file any more and what it holds is whatever was
+    published the last time it did."""
+    if "firebasedatabase.app" in request.url:
+        route.fallback(); return
+    route.fulfill(status=200, content_type="application/json",
+                  body=json.dumps(FILE_MENU["v"] if FILE_MENU["v"] is not None else menu))
+
+FILE_MENU = {"v": None}
+
 from playwright.sync_api import sync_playwright
 def tile(pg,n):
     return pg.locator("#rooms .room").filter(has=pg.locator(".room-n",has_text=re.compile(r"^%d$"%n)))
@@ -79,7 +90,11 @@ with sync_playwright() as p:
     pg.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body=SDK))
     pg.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body="/*n*/"))
     pg.route("**firebasedatabase.app/**",fb)
-    pg.route("**/menu.json*",lambda r,_:r.fulfill(status=200,content_type="application/json",body=json.dumps(menu)))
+    #  The committed FILE only. This pattern used to match the database URL as
+    #  well - both end in /menu.json - so one route answered both and the whole
+    #  fallback path went untested, which is how a stale file reached the board
+    #  unnoticed.
+    pg.route("**/menu.json*", file_menu)
     pg.goto("http://localhost:8953/tally.html"); pg.wait_for_timeout(1500)
 
     # 1 tiles
@@ -512,6 +527,19 @@ with sync_playwright() as p:
 
     pg.close()
 
+    def board():
+        """A fresh board, with the committed file answered separately from the
+        database. One route used to answer both, which is how a stale file
+        reached the board without any test noticing."""
+        q=b.new_page(viewport={"width":430,"height":930},device_scale_factor=2)
+        q.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
+            content_type="application/javascript",body=SDK))
+        q.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,
+            content_type="application/javascript",body="/*n*/"))
+        q.route("**firebasedatabase.app/**",fb)
+        q.route("**/menu.json*", file_menu)
+        return q
+
     # ---- roles on this board, per the ROLES.md matrix ----
     def as_role(email):
         q=b.new_page(viewport={"width":430,"height":930},device_scale_factor=2)
@@ -648,6 +676,42 @@ with sync_playwright() as p:
     q.evaluate("()=>load(true)"); q.wait_for_timeout(1200)
     ck("and does not notify again on the next poll", len(pushes) == before)
     q.close()
+
+    #  ── a menu the file still remembers ────────────────────────
+    #  Reported 23 Aug: the board showed an old menu. Publishing moved into the
+    #  database, so nothing rewrites the committed menu.json any more, and it
+    #  still held the dinner of the day before. Whenever the database had
+    #  nothing for tonight the shared reader handed that back with no date on
+    #  it, and every screen asking the question believed it.
+    #
+    #  The reader checks the date now, once, rather than leaving each caller to
+    #  notice. A reader that can return something stale makes every one of its
+    #  callers responsible for the same check, and they will not all do it.
+    stale = json.loads(json.dumps(menu))
+    stale["published"] = (now - datetime.timedelta(days=1)).isoformat()
+    stale["main"] = {"name": "Yesterday's lamb", "desc": "", "aus": False}
+    FILE_MENU["v"] = stale
+    q = board()
+    q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1600)
+    seen = q.inner_text("body")
+    ck("a menu the file remembers from yesterday is not shown as tonight's",
+       "Yesterday's lamb" not in seen)
+    ck("and the board says so rather than showing one",
+       "not published" in q.inner_text("#menuState").lower())
+    q.close()
+
+    #  And the file still stands in where it was always meant to: a menu
+    #  published today, with the database silent, is a menu.
+    FILE_MENU["v"] = json.loads(json.dumps(menu))
+    FILE_MENU["v"]["published"] = now.isoformat()
+    FILE_MENU["v"]["main"] = {"name": "Filed lamb", "desc": "", "aus": False}
+    q = board()
+    q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1600)
+    ck("a menu published today still stands in from the file",
+       "published" in q.inner_text("#menuState").lower())
+    q.close()
+    FILE_MENU["v"] = None
+
 
     # ── a note belongs to a night ──────────────────────────────
     # roomguests is carried forward across a stay so a guest keeps their villa.

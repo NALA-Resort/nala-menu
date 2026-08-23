@@ -164,5 +164,44 @@ with sync_playwright() as p:
     print("   pages with their own menu filter:", offenders)
     ck("no page keeps its own copy of the menu filter", offenders == [])
 
+    # ── the shared files carry one version, and it is current ───
+    #  The ?v= on the shared scripts is the whole caching story on this site,
+    #  and it had not been bumped in four changes: the sign-in persistence fix,
+    #  the menu filter, the notifications switch. Browsers went on running the
+    #  old copies, so fixes that were published and correct simply never
+    #  reached the phone that reported them. The owner guessed cache before I
+    #  looked.
+    import glob as _g, re as _r, subprocess as _sp
+    vers = {}
+    for f in sorted(_g.glob("*.html")):
+        if f.startswith("demo-"):
+            continue
+        for m in _r.finditer(r'(nala-shared\.js|auth\.js)\?v=(\d+)', open(f).read()):
+            vers.setdefault(m.group(1), set()).add(m.group(2))
+    print("   shared script versions:", {k: sorted(v) for k, v in vers.items()})
+    ck("every page asks for the same version of each shared script",
+       all(len(v) == 1 for v in vers.values()))
+
+    #  And the version has to move when the file does. A file changed since its
+    #  last bump is a file the browser will not fetch.
+    stale = []
+    for name, v in vers.items():
+        vv = list(v)[0]
+        touched = _sp.run(["git", "log", "-1", "--format=%H", "--", name],
+                          capture_output=True, text=True).stdout.strip()
+        bumped = _sp.run(["git", "log", "-1", "--format=%H", "-S",
+                          name + "?v=" + vv, "--", "tally.html"],
+                         capture_output=True, text=True).stdout.strip()
+        if not touched or not bumped:
+            continue
+        order = _sp.run(["git", "rev-list", "--count",
+                         bumped + ".." + touched], capture_output=True, text=True)
+        if order.returncode == 0 and order.stdout.strip().isdigit() \
+           and int(order.stdout.strip()) > 0:
+            stale.append(name)
+    print("   shared scripts changed since their version was bumped:", stale)
+    ck("no shared script has changed since the version browsers ask for",
+       stale == [])
+
 print("RESULT: %d passed, %d failed" % (P, F))
 httpd.shutdown()
