@@ -668,6 +668,19 @@ with sync_playwright() as p:
            "wellness" not in w1[0]["b"])
     pg.close()
 
+    #  The day chips read the resolved dates, not the raw link: a link with
+    #  no dates whose booking Mews knows still offers the days - the demo
+    #  itself was dateless and offered none for a spell.
+    STATE["pms"] = {"first": "Robyn", "adults": 2,
+                    "arrive": plus(0), "depart": plus(2)}
+    pg = guest(link="?b=res-guid-1&n=Robyn")
+    jump(pg, "qWell")
+    pg.locator("#wYes").click(); pg.wait_for_timeout(250)
+    ck("a dateless link still offers the days Mews knows",
+       pg.evaluate("()=>document.querySelectorAll('#wDays .chip').length") == 3)
+    pg.close()
+    STATE["pms"] = None
+
     # ── the demo booking ────────────────────────────────────────────────
     # The site map linked here with no booking id, so the one form a guest
     # actually sees was the one nobody at the resort could open: it showed the

@@ -404,6 +404,11 @@ var qs = new URLSearchParams(location.search);
    is written from here or not at all: the guest is not asked, and a wrong
    number is worse than an absent one, which reception can see and fill. */
 var PMS = null;
+/* The stay's resolved dates: the link's until Mews answers, Mews' after.
+   One source for the greeting, the one-night rule and the treatment days,
+   because the day chips were reading the raw link and showed nothing on a
+   dateless one - the demo included - and stale days on a corrected one. */
+var STAY = { arr: null, dep: null };
 var G = {
   id:      (qs.get('b') || '').trim(),
   first:   (qs.get('n') || '').trim(),
@@ -512,6 +517,7 @@ function paintGreeting(pms){
   var first = (pms && pms.first) || G.first;
   var arr = dayOnly((pms && pms.arrive) || G.arrive);
   var dep = dayOnly((pms && pms.depart) || G.depart);
+  STAY.arr = arr; STAY.dep = dep;
   el('greet').textContent = first ? 'Welcome, ' + first : 'Before you arrive';
   var bits = [];
   if (arr && dep){
@@ -540,6 +546,9 @@ function paintGreeting(pms){
   /* Nor treatments: one afternoon is not a window the therapists can use,
      the owner ruled, so a one night guest is not offered one. */
   el('qWell').style.display = oneNight ? 'none' : '';
+  /* Dates may have just changed hands, and the day chips are built from
+     them: repaint, so a guest mid-form is offered the days Mews knows. */
+  paintWell();
   resyncSteps();
 }
 
@@ -637,7 +646,7 @@ function paintApproach(){
    treatment on the afternoon of arrival or the morning of departure is normal,
    and excluding them would be the app deciding for the spa. */
 function stayDays(){
-  var out = [], arr = dayOnly(G.arrive), dep = dayOnly(G.depart);
+  var out = [], arr = STAY.arr, dep = STAY.dep;
   if (!arr || !dep) return out;
   var D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   for (var d = new Date(arr); d <= dep && out.length < 30; d.setDate(d.getDate()+1))
