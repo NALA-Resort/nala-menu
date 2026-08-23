@@ -4,6 +4,94 @@ Written 17 Aug 2026, replacing thirteen documents that had grown to contradict
 each other. **This is the only one you have to read.** Everything else is
 reference, listed at the end.
 
+**23 Aug 2026: the chef's whole job on one page, one menu on every page, and a
+cache that had been hiding the week's work.** Read the log for the reasoning;
+this is the index.
+
+**The cache, first, because it explains the shape of the day.** The `?v=` on
+the shared scripts is the entire caching story on this site, and it had not
+moved in four changes to `nala-shared.js` and `auth.js`. Browsers went on
+running the old copies, so fixes that were published and correct never reached
+the phone that reported them, and some of what the owner retested he was
+retesting against code from days earlier. `nala-shared` is v25 and `auth` v12,
+and `pages_suite` now fails if either file has been touched since the version
+browsers ask for. If a fix ever seems not to have landed, this is the first
+place to look. The owner guessed it before I did.
+
+**Publishing is a page now, not code in a chat.** `publish.html`: the chat
+reads the handwritten menu from a photo and hands over a LINK with the four
+courses in the query string; the chef opens it already signed in, checks the
+reading against his own handwriting, fixes any misread word, ticks the
+dietaries and publishes. Menu and tags go up in one press. `&demo=1` sends the
+whole thing to `/demo` instead of the guests, which needed no rules change
+because `rules.json` ends in an `$other` catch-all. Remove takes a menu down,
+asking twice. `?b=` absent means it loads what is currently published, so the
+page is also how you correct or retag tonight's menu.
+
+`tag.html` is `Dietary Settings` and no longer tags anything. It and the
+publish page were both writing the whole of `/menutags`, so whichever saved
+second replaced the other's ticks. One writer now: tagging belongs where the
+dishes are being written. The settings page keeps the list those tags are made
+from, and the chef adds a one-off for tonight on the publish page itself.
+
+**AUS is a button.** The brief used to carry a paragraph on deriving it and the
+page drew a toggle anyway: two mechanisms for one fact, with the automatic one
+guessing from handwriting at something the man who wrote the menu knows. It is
+on the entree and the main only, because a bread course has no main protein.
+
+**The menu on every page is one list**, grouped to the owner's sketch: the
+screens you work on, then Print, then Settings, then Sign out. Named as staff
+name them. `NAV_NEEDS` maps each link to the permission that opens it and
+`publish.html` and `tag.html` were in neither, so every login saw them.
+
+Six pages carried their own copy of that filter with their own stale map, and
+they hid what they did not recognise rather than leaving it alone, so the
+Notifications switch vanished on exactly the pages that kept a copy. All six
+call the shared one. `pages_suite` reads every page's SOURCE and fails if any
+keeps a private copy.
+
+Notifications live under Settings on every page and wear a tick or a cross
+rather than the words "on" and "off", which gave no way to tell whether they
+described the state or the action.
+
+**Sign-in could hang forever.** The SDK defaults to IndexedDB persistence and
+waits on that store, and another tab of the same origin can hold it: no error,
+no rejection, fifteen seconds of nothing and then a message about the
+connection on a phone with full signal. LOCAL is now asked for with a 2.5s cap
+and SESSION is the fallback.
+
+**The Clean Sheet is gated** on `cleansBoard`, like the board it prints. It was
+the only page in the menu with no gate at all while its own menu link was
+already being hidden from roles without that permission.
+
+**The reservations sheet fits one page**, and the three things that stopped it
+were a fixed 21-row pad, a 17-row cap that was still one too many, and the
+browser's own header and footer, which `@page { margin: 0 }` removes on Chrome
+and Edge. The day's summary is a real `tfoot` so it repeats and cannot leave
+its page. Print type went down, was too small, and went back: the second page
+was never the type.
+
+**The menu print page read the committed file and only that**, so the View
+button showed the last commit while the board correctly said tonight's was
+published. Every screen uses `fetchMenuAnywhere` now, which reads the database
+first, refuses a file that is not for the day being asked about, and reports an
+unreadable menu separately from an absent one.
+
+**Three suites had one route answering both `menu.json` requests**, the file
+and the database, because the URLs end the same way. That is why none of the
+above was caught: the whole fallback path was untested on every page that has
+one.
+
+**The guest page's dietaries are hidden**, by the other session, pending the
+owner's decision. PARKED.md item 14 carries the recipe for either outcome.
+
+**The pattern, now five times in three days.** An assertion aimed next to the
+thing instead of at it: a variable instead of the screen, a substring instead
+of the shape, the original element instead of the printed clone, the presence
+of a button instead of whether it renders, a gap measured before scrolling.
+Every one passed while the bug shipped. The habit that works is to break the
+fix deliberately and watch the test fail before trusting it.
+
 **22 Aug 2026: a day of the owner reporting faults and being right about all
 of them.** Read the log for the reasoning; this is the index.
 
@@ -270,8 +358,13 @@ reservation number staff can read out, shown at the desk and on the card).
 ## What is built
 
 **Staff:** Reservations (`tally.html`), Front Desk Arrival (`front-desk.html`),
-Cleans (`cleaners.html`), Settings (`staff.html`), Menu Dietaries (`tag.html`),
-Statistics (`stats.html`).
+Cleans (`cleaners.html`), Publish Menu (`publish.html`), Settings
+(`staff.html`), Dietary Settings (`tag.html`), Statistics (`stats.html`).
+
+The menu on every staff page is one list in one order, minus the page you are
+on, grouped: the screens you work on, then Print, then Settings, then Sign out.
+`NAV_NEEDS` in `nala-shared.js` maps each link to the permission that opens it.
+Add a page and add it there, or it appears in everyone's menu.
 
 **Paper:** Reservations Sheet (`list.html`), Clean Sheet (`housekeeping.html`),
 Registration Cards (`registration.html`), Printable Menu (`menu-print.html`).
@@ -285,6 +378,11 @@ name and dates for display, because it is sent before Mews has the booking.
 The flow it delivers: a guest fills in pre-arrival, reception confirms it at the
 desk against the real menu, and the answer lands on the chef's board typed
 rather than handwritten.
+
+The chef's own flow, since 23 Aug: he photographs the handwritten menu, a chat
+reads it and hands him a link, he checks the reading against his handwriting on
+`publish.html`, ticks the dietaries and publishes. `CHEF-BRIEF.md` is what that
+chat is given, and it contains no token, no passcode and no code.
 
 ---
 
@@ -312,7 +410,7 @@ rather than handwritten.
    Hidden on 23 Aug at the owner's request, so the nightly menu page is a yes
    or no with a confirmation. One class on the body tag of `index.html`,
    `hide-diet`, and an undo recipe, in `PARKED.md` item 14.
-2. **Cancellations have never been seen to fire.** The Zap does not trigger.
+3. **Cancellations have never been seen to fire.** The Zap does not trigger.
    Until it does, a cancelled booking stays on the board. Worker handles it and
    is tested; the feed is the only problem. Confirmed 18 Aug that the
    cancellation `Id` is the same GUID as the reservation's, so nothing needs
@@ -331,12 +429,22 @@ rather than handwritten.
    stopped enabling the feature for new integrations in July 2024, so whether
    it is switched on for this account is unknown. Ten minutes in the Zap editor
    under Mews actions would answer it.
-2. **GuestTouch links** need `?b=<booking id>`. Nightly menu needs only that;
+4. **GuestTouch links** need `?b=<booking id>`. Nightly menu needs only that;
    pre-arrival also takes name and dates. The full mapping onto Mews field
    names, and what goes wrong if `b` resolves to the customer id or the
    reservation number instead of the reservation GUID, is written out in
    `SETUP.md` job 7. The owner was briefing a programmer on this on 18 Aug.
-3. **Work through `SECURITY.md`.** Four jobs, about forty five minutes, all of
+
+   **This failed for real on 22 Aug.** The dinner invitations went out with the
+   booking id unmerged, as the literal text `{{bookingId}}`, so every
+   confirmation was refused by the database while the guest was thanked. The
+   merge field had been built for him days earlier. Two things came of it: the
+   guest page now tells a guest when their answer did not save, instead of
+   thanking them for nothing, and the link takes `&r=<villa>` as a fallback
+   when the booking id will not resolve. Bare digits: `Room 12` is treated as
+   absent rather than cleaned into a guess. So the link to give them is
+   `?b={{bookingId}}&r={{roomnumber}}`.
+5. **Work through `SECURITY.md`.** Four jobs, about forty five minutes, all of
    it done by the owner in a browser and none of it doable from here. Written
    one action per step, with what breaks while each is half done. The owner
    said on 18 Aug they would action it that night, so check before assuming any
@@ -366,20 +474,32 @@ rather than handwritten.
 
    If the owner reports a step that does not match what is on screen, fix
    `SECURITY.md` at the same time as answering. These consoles rename things.
-4. **Confirm the Mews companion field against a live Zap run.** The key names
+6. **Confirm the Mews companion field against a live Zap run.** The key names
    are confirmed from a real payload and the position is not assumed, but it
    has never been seen working end to end.
-5. ~~Does Mews send true UTC?~~ **Answered 18 Aug: it does.** 04:00Z is 2pm at
+7. ~~Does Mews send true UTC?~~ **Answered 18 Aug: it does.** 04:00Z is 2pm at
    the resort, UTC+10. The Worker converted nothing, so any timestamp after 2pm
    UTC was filed a day early, which is every arrival before 10am local and
    every checkout before 10am local. Fixed, with six cases in the Worker suite.
    The app still takes "today" from the phone's clock, which agrees as long as
    the phone is at the resort.
-6. ~~Confirm dinner and breakfast hours.~~ **Answered 18 Aug.** Dinner 6:00 to
+8. ~~Confirm dinner and breakfast hours.~~ **Answered 18 Aug.** Dinner 6:00 to
    6:30, breakfast 8:00 to 9:30. Nothing displays them yet: no page has ever
    stated a service time. Where they should appear is a design decision, so it
    is in `PARKED.md` with a proposal rather than guessed at here.
-7. **The pre-arrival dining description is placeholder copy.** Asked for on
+9. **Set the manager's mobile** at `/settings/managerMobile` in the Firebase
+   console, as a plain string like `+61400000000`. The publish page offers a
+   Notify management link on its confirmation screen and reads the number from
+   there. It is not in this repo and must not be: the repo is public until
+   `SECURITY.md` job 4. Until it is set the line reads as it did before, with
+   no error.
+
+10. **Delete `menu.json` from the repo.** It holds the menu of 22 Aug and
+    nothing rewrites it now that publishing is in the database. Harmless since
+    23 Aug, because the shared reader refuses a file that is not for the day
+    being asked about, but it is dead weight that only ever misleads.
+
+11. **The pre-arrival dining description is placeholder copy.** Asked for on
    18 Aug: a short description of how dining works, above the opt in rather
    than under it, because the guest is being asked to commit to something
    nobody has described. Written and live. The seating time in it is real; the
@@ -612,12 +732,35 @@ Worth knowing because they are written elsewhere and they are wrong now.
 passcode screen shipped with 30 passing tests and broke sign in on a real phone
 for two hours. Anything touching sign in, push or printing needs a device.
 
+**Break the fix and watch the test fail.** Five times in three days to 23 Aug a
+new assertion was aimed next to the thing rather than at it and passed while
+the bug shipped: a variable instead of the screen, a substring instead of the
+shape, the original element instead of the printed clone, a button's presence
+instead of whether it renders, a gap measured before scrolling. A test written
+after a fix proves nothing until it has been seen to fail without it.
+
+**One route cannot answer two sources.** The database URL and the committed file
+both end in `/menu.json`, so `pg.route("**/menu.json*")` catches both. Three
+suites did that, which is why every menu fallback path was untested and a stale
+file reached the printed menu unnoticed. Answer them separately.
+
 **When a page dies, look for a failed read reported as empty.** Clean Slate
 counted 0 records for four nodes it could not read, reported success, and
 deleted nothing.
 
-**Never commit the chef brief.** The repo is public, GitHub auto-revokes a token
-pushed to it, and that breaks the chef's publishing.
+**~~Never commit the chef brief.~~ No longer true, 22 Aug.** It carried a GitHub
+token then. It carries none now, nor a passcode nor any code, so it is in the
+repo and belongs there. The rule it replaces: **never put a credential in this
+repo at all**, because it is public until `SECURITY.md` job 4 is done. The
+manager's mobile lives at `/settings/managerMobile` in the database for exactly
+that reason.
+
+**Bump `?v=` when you change a shared file.** `nala-shared.js` and `auth.js` are
+cached by that query string and nothing else. It went unbumped through four
+changes to 23 Aug, so browsers ran old copies and correct published fixes never
+reached the phone reporting them. `pages_suite` fails if either file has been
+touched since the version browsers ask for. If a fix seems not to have landed,
+look here first.
 
 **Fonts.** Georgia, San Francisco and the iOS system fonts are not installed in
 the sandbox, so every render falls back. `font-test.html` exists for this.
@@ -688,7 +831,12 @@ three:
   Firebase key to the site, and what making the repository private does and
   does not protect. Click by click, because all of it is done by the owner in a
   browser and none of it can be done from here.
-- `CHEF-BRIEF.md` how the chef publishes a menu.
+- `CHEF-BRIEF.md` what the menu chat is given: read the photo, show the four
+  courses back, hand over a link. No token, no passcode, no code, and it is in
+  the repo for the first time because there is nothing in it to leak.
+- `CHEF-BRIEF-CONSOLE.md` the fallback for a chat with no network at all, which
+  pastes JSON into the Firebase console. Kept because the scripted path once
+  failed at service time and there was nothing to fall back to.
 - `ROLES.md` the permission matrix.
 - `tests/README.md` what each suite covers.
 - `rules.json` a copy of the live database rules. **Not deployed from here:**
