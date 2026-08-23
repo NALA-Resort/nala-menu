@@ -549,6 +549,11 @@ with sync_playwright() as p:
     # ── the 23 Aug revision, asserted as decisions ──────────────
     #  The order of the eight, as a list, so a later reshuffle is deliberate.
     pg = guest()
+    ck("every page carries a short purpose heading, in the settled words",
+       pg.evaluate("()=>[...document.querySelectorAll('.q .q-k')]"
+                   ".map(k=>k.textContent).join('|')") ==
+       "Your party|Your stay|Getting here|The week ahead|Your first night|"
+       "Dietaries|Treatments|One last thing")
     ck("the eight pages run who, why, when, the week, tonight, dietaries, "
        "treatments, anything else",
        pg.evaluate("()=>STEPS.map(s=>s.id).join(',')") ==
@@ -660,9 +665,9 @@ with sync_playwright() as p:
        q.evaluate("()=>document.getElementById('form').className.indexOf('hide')<0"))
     ck("with a guest to greet",
        "Alex" in q.evaluate("()=>document.getElementById('greet').textContent"))
-    ck("and says plainly that it is a demonstration",
+    ck("and says plainly on the landing that it is a demonstration",
        "demonstration" in q.evaluate(
-           "()=>{const n=document.querySelector('#form .note-box');"
+           "()=>{const n=document.querySelector('#intro .note-box');"
            "return n?n.textContent:'';}").lower())
     ck("opening it touches the database not at all", not calls)
 

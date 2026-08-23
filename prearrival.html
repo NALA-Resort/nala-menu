@@ -53,6 +53,11 @@
          margin-top:7px; }
 
   .q { padding:1.1rem 0 0.2rem; }
+  /* The page's purpose, in a word or three, where the demo banner used to
+     shout: a guest always knows which part of the stay they are settling. */
+  .q-k { font-family:var(--ui-font,Helvetica,Arial,sans-serif); font-size:10px;
+         letter-spacing:.18em; text-transform:uppercase; color:var(--mid);
+         margin-bottom:7px; }
   .q-t { font-size:1.05rem; line-height:1.4; margin-bottom:0.3rem; }
   .q-h { font-style:italic; font-size:0.85rem; color:var(--mid); line-height:1.6;
          margin-bottom:0.85rem; }
@@ -229,6 +234,7 @@
          guest asked to type something the resort was told at booking reads as
          nobody having looked. -->
     <div class="q" id="qCompanion" style="display:none">
+      <div class="q-k">Your party</div>
       <div class="q-t">Additional guests?</div>
       <div class="q-h">So we can greet them by name. Optional.</div>
       <button class="more" type="button">Read more</button>
@@ -241,6 +247,7 @@
 
     <!-- 4. purpose -->
     <div class="q" id="qPurpose">
+      <div class="q-k">Your stay</div>
       <div class="q-t">What brings you to Nala?</div>
       <div class="q-h">Choose as many as fit.</div>
       <button class="more" type="button">Read more</button>
@@ -251,6 +258,7 @@
 
     <!-- 1. arrival time -->
     <div class="q" id="qEta">
+      <div class="q-k">Getting here</div>
       <div class="q-t">What time do you expect to arrive?</div>
       <div class="q-h">So that someone is here to meet you.</div>
       <button class="more" type="button">Read more</button>
@@ -273,6 +281,7 @@
 
     <!-- 5. how they like to travel -->
     <div class="q" id="qApproach">
+      <div class="q-k">The week ahead</div>
       <div class="q-t">Where do you plan on eating during your stay?</div>
       <div class="q-h">No right answer. It only helps us plan.</div>
       <button class="more" type="button">Read more</button>
@@ -284,6 +293,7 @@
 
     <!-- 2. dinner on the arrival night -->
     <div class="q" id="qDine">
+      <div class="q-k">Your first night</div>
       <div class="q-t">Will you be dining with us on your first night?</div>
       <!-- PLACEHOLDER COPY, owner to write. Asked for 18 Aug: a short
            description of how dining works here, placed BEFORE the opt in
@@ -312,6 +322,7 @@
 
     <!-- 3. dietaries -->
     <div class="q" id="qDiet">
+      <div class="q-k">Dietaries</div>
       <div class="q-t">Does anyone in your party have allergies or dietary
         requirements?</div>
       <div class="q-h">We would rather know now than on the night.</div>
@@ -335,6 +346,7 @@
 
     <!-- 6. wellness -->
     <div class="q" id="qWell">
+      <div class="q-k">Treatments</div>
       <div class="q-t">Would you like us to arrange a massage or treatment?</div>
       <div class="q-h">We can have it booked before you get here.</div>
       <button class="more" type="button">Read more</button>
@@ -355,6 +367,7 @@
 
     <!-- optional -->
     <div class="q" id="qElse">
+      <div class="q-k">One last thing</div>
       <div class="q-t">Anything else?</div>
       <div class="q-h">A special occasion, a preference, or something that would
         make your stay feel more like you. Optional.</div>
@@ -980,7 +993,7 @@ function boot(){
     banner.className = 'note-box';
     banner.style.cssText = 'margin:0 0 14px;text-align:center';
     banner.textContent = 'Demonstration only. Nothing here is saved.';
-    el('form').insertBefore(banner, el('form').firstChild);
+    el('intro').insertBefore(banner, el('intro').firstChild);
     showStep(0);
     return;
   }
