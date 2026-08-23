@@ -2263,11 +2263,12 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
       var when = isToday() ? '' : ' for this date';
       if (live) {
         var t = pub.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
-        /* A new window, deliberately: the guest menu has no staff navigation,
-           so opened in place it strands whoever tapped View. In the app the
-           overlay's X drops them back on this board; in Safari it is a tab. */
-        el.innerHTML = '<a href="index.html" target="_blank" rel="noopener" class="yes">Menu published ' + t +
-                       ' <b>· View</b></a>';
+        /* Status only, as a pill should be. View used to live here and every
+           way of opening it broke in the home-screen app: navigation stranded
+           staff on the guest page, and iOS ignores _blank and window.open
+           (tried on a real phone, 23 Aug). Seeing the live menu is its own
+           home-screen icon now - index.html saved as an app of its own. */
+        el.innerHTML = '<span class="yes">Menu published ' + t + '</span>';
       } else {
         el.innerHTML = '<span class="no">Menu not published' + when + '</span>';
       }
