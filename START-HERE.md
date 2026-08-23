@@ -24,6 +24,18 @@ following the older one.
 `HANDOVER.md` is the only document that has to be read, and it says so. This
 one exists solely because a fresh chat has no way to know that sentence exists.
 
+## If what you fetch looks out of date
+
+`raw.githubusercontent.com` caches for about five minutes, so a handover updated
+moments ago can come back as the previous version. It is not wrong, only late.
+Add a cache buster, or clone and read the file there, which is never stale:
+
+    curl -s "https://raw.githubusercontent.com/NALA-Resort/nala-menu/main/HANDOVER.md?x=$(date +%s)"
+
+The same trap in a different coat is the `?v=` on this site's shared scripts,
+which cost the owner days of retesting against old code. The handover has that
+under Standing cautions.
+
 ## If the fetch fails
 
 The sandbox reaches `raw.githubusercontent.com` on its default allowlist, and
