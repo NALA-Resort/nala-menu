@@ -2,16 +2,19 @@
 
 Agreed with the owner by voice on 23 Aug. This file is the whole brief.
 
-Two halves that can be built and published separately, and should be:
+**Build all of it.** Two halves, and the order is page first because it is
+useful the moment it exists: it is the only screen that shows who has not
+answered about dinner.
 
 - **The page**, `invitations.html`, which decides who to send to and records
-  what was sent. Buildable and testable on its own, with sending stubbed.
-- **The sender**, a route on a Cloudflare Worker holding the ClickSend
-  credential. Cannot be built here: the sandbox reaches neither ClickSend nor
-  the Worker, and the credential is the owner's to issue.
+  what was sent. Fully testable here, with the send stubbed.
+- **The sender**, a Cloudflare Worker holding the ClickSend credential. Write
+  it and publish it. You cannot test or deploy it: the sandbox reaches neither
+  ClickSend nor Cloudflare, and the credential does not exist yet. Say so
+  plainly when you hand it over rather than implying it has been run.
 
-Build the page first. It is useful the moment it exists, because it is also the
-only screen that shows who has not answered about dinner.
+The owner sets up the ClickSend account and the Cloudflare secret. That is the
+last step and it is his: see **Setup, which is not yours** below.
 
 ---
 
@@ -271,10 +274,34 @@ Assert at least:
 - A partial failure names which villas failed.
 - A role without `editBookings` never sees the page or its link.
 
-**Do not test the Worker by calling it.** There is no dry run and the token is
-live, which is how a commit called `test` reached main on 23 Aug.
+**Do not test the Worker by calling it**, and do not test it by sending
+yourself a message once a credential exists. There is no dry run. A live token
+and a live sender ID is how a commit called `test` reached main on 23 Aug.
 
 ---
+
+## Setup, which is not yours
+
+The Worker needs a ClickSend account and an API credential, and neither exists.
+Both are the owner's to create, in a browser, and none of it can be done from
+here. Write the Worker to read its credential from the environment and leave it
+at that.
+
+What he has to do, in order, so the Worker can name what it expects:
+
+1. Create a ClickSend account with the resort's real business details. An
+   Australian street address is required and a PO box is refused: ACMA rules,
+   enforced at registration.
+2. Register the Guest Touch mobile as an **own number** and verify it. A code
+   is sent to that handset, so whoever holds the phone has to be present.
+3. Generate an API username and key.
+4. Set them as Cloudflare Worker secrets in the dashboard, never in this repo.
+   `wrangler.jsonc` has no vars block on purpose and must not gain one:
+   declaring vars there overwrites what is deployed, and dashboard secrets
+   survive a deploy untouched.
+
+Name the two environment variables in your Worker and say what you called them,
+so his last step is unambiguous.
 
 ## Not in this brief
 
@@ -298,5 +325,5 @@ for days.
 
 Reasoning goes in the commit message.
 
-Report back rather than deciding alone on: anything needing a credential, and
-anything in this brief that contradicts what you find in the code.
+If something here contradicts the code, the code wins and this file is wrong:
+fix the file in the same commit.
