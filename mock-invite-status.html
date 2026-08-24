@@ -1,0 +1,77 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--cream:#F9F7F4;--ink:#1C1C1A;--mid:#999990;--rule:#E0E0DA;
+ --green:#5E7D67;--green-t:rgba(122,160,130,.26);--green-b:rgba(122,160,130,.65);
+ --terra:#9E6455;--terra-t:rgba(184,106,90,.16);--terra-b:rgba(184,106,90,.45)}
+body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--ink);padding:14px 12px}
+h1{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin:4px 2px 12px}
+.grp{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--mid);margin:14px 2px 6px}
+.row{display:flex;align-items:center;gap:10px;border:1.2px solid var(--rule);
+ border-radius:10px;background:#fff;padding:11px 12px;margin-bottom:7px}
+.v{font-size:15px;font-weight:600;width:24px;text-align:center}
+.who{flex:1;min-width:0}
+.n{font-size:13.5px}
+.s{font-size:11px;color:var(--mid);margin-top:2px}
+.tick{width:22px;height:22px;border:1.4px solid var(--rule);border-radius:6px;flex:0 0 auto}
+.tick.on{background:var(--ink);border-color:var(--ink)}
+/* needs the message: white, ticked, top */
+/* confirmed dining: tally's green tile */
+.row.din{background:var(--green-t);border-color:var(--green-b)}
+.row.din .s{color:var(--green)}
+/* not dining: tally's terracotta tile */
+.row.out{background:var(--terra-t);border-color:var(--terra-b)}
+.row.out .s{color:var(--terra)}
+/* sent, awaiting answer: unknown is grey, not a promise of green.
+   Solid border and full opacity keep it apart from the sunk cannot-send. */
+.row.sent{background:rgba(28,28,26,.045);border-color:var(--rule)}
+.row.sent .s{color:var(--mid)}
+/* unsendable: grey and sunk, same voice as tally's vacant */
+.row.grey{background:transparent;border-style:dashed;opacity:.62}
+.row.grey .tick{visibility:hidden}
+</style></head><body>
+<h1>Invitations &middot; tonight</h1>
+
+<div class="grp">To send &middot; 4</div>
+<div class="row"><div class="v">3</div><div class="who"><div class="n">Harper Quinn</div>
+ <div class="s">Not asked, not answered</div></div><div class="tick on"></div></div>
+<div class="row"><div class="v">7</div><div class="who"><div class="n">Priya Anand</div>
+ <div class="s">Not asked, not answered</div></div><div class="tick on"></div></div>
+<div class="row"><div class="v">10</div><div class="who"><div class="n">Marco Reyes</div>
+ <div class="s">Send failed 9:02am &middot; network</div></div><div class="tick on"></div></div>
+<div class="row"><div class="v">14</div><div class="who"><div class="n">Elena Petrov</div>
+ <div class="s">Not asked, not answered</div></div><div class="tick on"></div></div>
+
+<div class="grp">Waiting on a reply &middot; 3</div>
+<div class="row sent"><div class="v">2</div><div class="who"><div class="n">Sofia Marino</div>
+ <div class="s">Sent 8:41am</div></div><div class="tick"></div></div>
+<div class="row sent"><div class="v">9</div><div class="who"><div class="n">James Okafor</div>
+ <div class="s">Sent 8:41am</div></div><div class="tick"></div></div>
+<div class="row sent"><div class="v">16</div><div class="who"><div class="n">Anna Lindqvist</div>
+ <div class="s">Sent 8:41am</div></div><div class="tick"></div></div>
+
+<div class="grp">Answered &middot; 8</div>
+<div class="row din"><div class="v">1</div><div class="who"><div class="n">Robyn Carter</div>
+ <div class="s">Dining &middot; 2 &middot; answered 8:55am</div></div><div class="tick"></div></div>
+<div class="row din"><div class="v">5</div><div class="who"><div class="n">Leo Marsh</div>
+ <div class="s">Dining &middot; 2 &middot; answered 9:10am</div></div><div class="tick"></div></div>
+<div class="row din"><div class="v">6</div><div class="who"><div class="n">Nina Tan</div>
+ <div class="s">Dining &middot; 4 &middot; set by reception</div></div><div class="tick"></div></div>
+<div class="row din"><div class="v">12</div><div class="who"><div class="n">Owen Blake</div>
+ <div class="s">Dining &middot; 2 &middot; answered 9:22am</div></div><div class="tick"></div></div>
+<div class="row out"><div class="v">4</div><div class="who"><div class="n">Mia Novak</div>
+ <div class="s">Not dining &middot; answered 8:47am</div></div><div class="tick"></div></div>
+<div class="row out"><div class="v">11</div><div class="who"><div class="n">Kai Werner</div>
+ <div class="s">Not dining &middot; set by reception</div></div><div class="tick"></div></div>
+<div class="row din"><div class="v">15</div><div class="who"><div class="n">Grace Ito</div>
+ <div class="s">Dining &middot; 3 &middot; answered 9:31am</div></div><div class="tick"></div></div>
+<div class="row out"><div class="v">17</div><div class="who"><div class="n">Tom Ellis</div>
+ <div class="s">Not dining &middot; answered 9:12am</div></div><div class="tick"></div></div>
+
+<div class="grp">Cannot send &middot; 2</div>
+<div class="row grey"><div class="v">8</div><div class="who"><div class="n">Walk-in hold</div>
+ <div class="s">No phone number on the booking</div></div><div class="tick"></div></div>
+<div class="row grey"><div class="v">13</div><div class="who"><div class="n">D. Kessler</div>
+ <div class="s">Not a mobile number &middot; 07 3358 1122</div></div><div class="tick"></div></div>
+</body></html>
