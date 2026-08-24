@@ -146,6 +146,30 @@ the other way, into a readable local number. Do not reuse it and do not confuse
 the two: one makes a number readable by a person, the other makes it dialable
 by a machine.
 
+### The domain has to be registered first
+
+**`menu.nalaresort.com` must be registered with ClickSend before any message
+containing it will send.** Their support confirmed it on 23 Aug: links are
+allowed via the API, but only to a URL registered at
+`dashboard.clicksend.com/sms/website-registration` first.
+
+This is the owner's to do and it is not optional. An unregistered domain is the
+kind of failure that shows up on the first real send and looks like a bug in
+this page.
+
+**Send `"shorten_urls": true` in the payload.** ClickSend then detects and
+shortens one URL per message. Three reasons, and only the first is obvious:
+
+- It halves the message. A Mews booking id is a 36 character GUID and it is
+  what pushes ours to two segments. Shortened, most fit in one.
+- A shortened link is one ClickSend generated, which is friendlier to their own
+  filtering than a raw URL. Insurance if the policy widens.
+- Click statistics become available per link, so it is possible to see which
+  guests opened the menu and which never did. That is the same list reception
+  would chase before service. **Not for version one**, but do not design the
+  send so it cannot be added: keep whatever they return about the shortened
+  link in the `/invites` record.
+
 ### The link
 
 Built by the page, fresh, at send time:
@@ -273,6 +297,11 @@ the fallback if ClickSend is unsuitable.
 It also suits the architecture: a single authenticated POST, no SDK, which is
 what a Worker wants.
 
+Everything this design needs is on the plan, trial included: own number sending,
+URL shortening and click statistics. ClickSend charges per message rather than
+gating features, so nothing here waits on an upgrade. Confirmed with their
+support on 23 Aug.
+
 Three things that are true of the own-number path and need to be known:
 
 - **Verification expires after twelve months** and sending stops. Diarise it.
@@ -329,10 +358,14 @@ What he has to do, in order, so the Worker can name what it expects:
 1. Create a ClickSend account with the resort's real business details. An
    Australian street address is required and a PO box is refused: ACMA rules,
    enforced at registration.
-2. Register the Guest Touch mobile as an **own number** and verify it. A code
+2. **Register `menu.nalaresort.com`** at
+   `dashboard.clicksend.com/sms/website-registration`. Without this, every
+   message carrying the link fails. Their support named this step; it is not in
+   the API docs.
+3. Register the Guest Touch mobile as an **own number** and verify it. A code
    is sent to that handset, so whoever holds the phone has to be present.
-3. Generate an API username and key.
-4. Set them as Cloudflare Worker secrets in the dashboard, never in this repo.
+4. Generate an API username and key.
+5. Set them as Cloudflare Worker secrets in the dashboard, never in this repo.
    `wrangler.jsonc` has no vars block on purpose and must not gain one:
    declaring vars there overwrites what is deployed, and dashboard secrets
    survive a deploy untouched.
