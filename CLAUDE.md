@@ -45,18 +45,28 @@ If two files need the same fact, one of them owns it and the other reads it.
 
 Already done this way — follow these:
 
-- `nala-shared.js` → `NAV` — the menu. Adding a page is one line.
+- `nala-shared.js` → `NAV_NEEDS` — the permission behind each menu link.
+  A page missing from it is shown to everyone: until 22 Aug `publish.html`
+  and `tag.html` were absent, so a housekeeper's menu offered to publish the
+  dinner menu.
 - `tests/phone_cases.json` — the phone rule's cases, read by both suites.
 - `rules.json` — the database's permissions.
 
-**Never** restate the menu in a suite. Read `NAV`. A suite with its own copy is
-a suite that passes while the app is wrong.
+**Never** restate the menu in a suite. Four suites currently hold their own
+copy of the menu order, which is why adding a page means editing them all. A
+suite with its own copy can pass while the app is wrong.
 
-### 2. A page is one line
+### 2. Adding a page costs 14 edits today, and shouldn't
 
-Adding a page means: create the file, add one entry to `NAV`, done. If you
-find yourself editing ten files, stop — you are working around this rule
-rather than using it.
+As things stand: the link is pasted into every page's `navdrop`, the
+permission goes in `NAV_NEEDS`, and four suites need the menu re-typed.
+That is the current reality — follow it, and do not skip the suites.
+
+It is also the largest known drag on feature work here. The fix is to
+generate the dropdown from one array instead of filtering pasted markup, so
+a page with no entry has no link. Not built. Worth doing next time someone
+is in `nala-shared.js` anyway — not as a standalone job, since it touches
+all fifteen pages of a live system.
 
 ### 3. Duplication that cannot be avoided gets a shared table
 
@@ -99,9 +109,10 @@ can find the reasoning for.
 
 - **`?v=` across 14 pages.** Should be one number rewritten by a pre-publish
   script. Until then it is hand-maintained and easy to miss.
-- **The nav refactor itself.** `NAV` exists, but pages still carrying pasted
-  markup need converting to `renderNav(role)` as they are touched. Do not do
-  all fifteen at once for its own sake; do each as you are in the file anyway.
+- **The menu, in fifteen copies.** See rule 2. Two things a generator must
+  get right that pasted markup does by hand: each page omits its own link,
+  and the permission keys are `resSheet` and `cleansBoard` — not the
+  `resBoard`/`cleanBoard` you would guess.
 
 ---
 
