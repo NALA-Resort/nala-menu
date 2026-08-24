@@ -120,9 +120,16 @@ one today.** The Worker stores what Mews sends, truncated and otherwise
 untouched: `asText(r.phone, 40)`. Real records hold `0412 345 678`,
 `+61412345678`, `0412345678` and worse, because a guest typed them.
 
-ClickSend wants E.164, and the sender number is registered as `+61...`. A local
-format is rejected or silently misrouted, and a rejection at five o'clock reads
-as a bug in this page.
+ClickSend confirmed on 23 Aug that `+61...` and `61...` are both accepted. They
+did not say whether a bare `04...` is, and it does not matter, because it is
+normalised before it ever reaches them. Do not rely on a provider being lenient
+about a format nobody has confirmed: a rejection at five o'clock reads as a bug
+in this page.
+
+Normalising is right regardless of what they accept. The stored numbers are a
+mess, so converting once means every message goes out in one shape, and it lets
+the page grey out a landline before anybody ticks it, which no amount of
+provider leniency does.
 
 So, at send time, in the Worker:
 
@@ -153,9 +160,9 @@ containing it will send.** Their support confirmed it on 23 Aug: links are
 allowed via the API, but only to a URL registered at
 `dashboard.clicksend.com/sms/website-registration` first.
 
-This is the owner's to do and it is not optional. An unregistered domain is the
-kind of failure that shows up on the first real send and looks like a bug in
-this page.
+**Done, 23 Aug.** Recorded because an unregistered domain is the kind of failure
+that shows up on the first real send and looks like a bug in this page, and
+because a later domain, or a second one, needs the same step.
 
 **Send `"shorten_urls": true` in the payload.** ClickSend then detects and
 shortens one URL per message. Three reasons, and only the first is obvious:
