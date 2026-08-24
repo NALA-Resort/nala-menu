@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nala Villas">
+<link rel="apple-touch-icon" href="nala-icon.png?v=1">
+<title>Nala &middot; SMS Templates</title>
+<link rel="stylesheet" href="nala-ui.css?v=12">
+<style>
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+          --green:#E4EDE2; --greenb:#7E937A; --tan:#C9C2B2; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
+         padding:calc(24px + env(safe-area-inset-top)) 18px 60px;
+         -webkit-tap-highlight-color:transparent; }
+
+  .intro { font-size:13px; color:var(--mid); line-height:1.5; margin:2px 0 6px; }
+  .seclabel { font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+              color:var(--mid); margin:24px 0 8px; }
+
+  .card { background:#fff; border:1px solid var(--rule); border-radius:12px;
+          padding:14px 14px 12px; margin-bottom:14px; }
+  .lblrow { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .lblrow input { flex:1; min-width:0; font-family:var(--ui-font); font-size:15px;
+                  font-weight:600; color:var(--ink); border:none;
+                  border-bottom:1px solid var(--rule); border-radius:0;
+                  padding:4px 2px; background:none; }
+  .del { flex:0 0 auto; font-family:var(--ui-font); font-size:11px; color:var(--mid);
+         text-decoration:underline; background:none; border:none; cursor:pointer;
+         padding:4px 0; }
+  .del.arm { color:var(--red); font-weight:600; }
+  .card textarea { width:100%; min-height:84px; font-family:var(--ui-font);
+                   font-size:15px; line-height:1.45; color:var(--ink);
+                   border:1px solid var(--rule); border-radius:8px; padding:10px;
+                   background:var(--cream); resize:vertical; }
+  .meta { display:flex; justify-content:space-between; align-items:center;
+          gap:12px; margin-top:8px; }
+  .count { font-size:12px; color:var(--mid); }
+  .save { font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
+          text-transform:uppercase; padding:8px 18px; border-radius:8px;
+          border:1px solid var(--ink); background:var(--ink); color:var(--cream);
+          cursor:pointer; }
+  .save:disabled { background:none; color:var(--mid); border-color:var(--rule);
+                   cursor:default; }
+  .warn { font-size:12px; color:var(--red); margin-top:6px; line-height:1.45; }
+
+  .add { display:block; width:100%; text-align:center; padding:13px;
+         font-family:var(--ui-font); font-size:13px; color:var(--mid);
+         background:none; border:1px dashed var(--tan); border-radius:12px;
+         cursor:pointer; }
+
+  .legend { background:#fff; border:1px solid var(--rule); border-radius:12px;
+            padding:4px 14px; }
+  .legend table { width:100%; border-collapse:collapse; font-size:14px; }
+  .legend td { padding:9px 0; vertical-align:top; line-height:1.45; }
+  .legend tr + tr td { border-top:1px solid var(--rule); }
+  .legend td:first-child { padding-right:12px; white-space:nowrap; }
+  .legend .d { color:var(--mid); }
+  .legend .soon { color:var(--mid); }
+  code { background:#EFEDE8; border-radius:4px; padding:1px 5px; font-size:13px;
+         font-family:ui-monospace,Menlo,Consolas,monospace; }
+  .note { font-size:13px; color:var(--mid); line-height:1.55; margin-top:22px;
+          border-top:1px solid var(--rule); padding-top:14px; }
+</style>
+</head>
+<body class="tier-app">
+
+<div class="daterow">
+  <div class="date" id="title">SMS Templates</div>
+  <div class="navwrap" id="navWrap" style="display:none">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="cleaners.html">Cleans</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+  </div>
+</div>
+
+<div class="noaccess" id="noAccess"></div>
+
+<p class="intro" id="intro">The messages offered on the Invitations page. Edits
+here change what every sender sees, tonight.</p>
+
+<div class="seclabel" id="secTmpl">Templates</div>
+<div id="cards"></div>
+<button class="add" id="addBtn">+ New template</button>
+
+<div class="seclabel" id="secLegend">Placeholders</div>
+<div class="legend" id="legend">
+  <table>
+    <tr>
+      <td><code>&lt;menu&gt;</code></td>
+      <td class="d">Tonight's menu link, unique per guest. Added on its own
+        last line if left out. A link must be the last thing in the message or
+        iPhones will not show the preview card, so it is moved there on
+        save.</td>
+    </tr>
+    <tr>
+      <td class="soon"><code>&lt;first&gt;</code></td>
+      <td class="soon">The guest's first name, off tonight's booking.
+        <i>Coming later</i> &mdash; new placeholders appear in this legend as
+        they are built.</td>
+    </tr>
+  </table>
+</div>
+
+<div class="note" id="note">Every message should name the resort: senders are
+required to identify themselves. Web addresses cannot be typed into a
+template; the only links that go out are the ones the placeholders build.</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="auth.js?v=12"></script>
+<script src="nala-shared.js?v=28"></script>
+<script>
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
+
+/* The same built-ins as invitations.html. They exist here only to seed
+   /smstemplates the first time this page is opened; after that, the database
+   is the single copy and invitations.html reads it. */
+var BUILTINS = {
+  ready:    { label:'Menu is ready', order:1,
+    body:'Tonight’s menu is ready. Nala Resort\n<menu>' },
+  join:     { label:'Will you join us', order:2,
+    body:'Good afternoon. Tonight’s menu, and a place to tell us if you will join us. Nala Resort\n<menu>' },
+  reminder: { label:'Reminder', order:3,
+    body:'A reminder that we have not heard about dinner tonight. The menu, and the link to answer, is below. Nala Resort\n<menu>' }
+};
+
+/* Mirrors of the invitations page: the same link budget and the same URL
+   refusal, so a template cannot be saved that the sending page would refuse
+   to send. */
+var LINK_SAMPLE = new Array(38).join('x');
+function bodyHasUrl(s){ return /(https?:\/\/|www\.)/i.test(s || ''); }
+function counted(s){
+  var len = s.replace('<menu>', LINK_SAMPLE).replace('<link>', LINK_SAMPLE).length;
+  if (!/<menu>|<link>/.test(s)) len += 1 + LINK_SAMPLE.length;   /* appended */
+  var segs = len <= 160 ? 1 : Math.ceil(len / 153);
+  return len + ' characters · ' +
+         (segs === 1 ? '1 segment' : 'about ' + segs + ' segments') +
+         ', link included';
+}
+/* The saved shape: the marker under its current name, and at the very end.
+   The rule is the legend's: a link anywhere else costs the iPhone preview
+   card. Applied on save rather than refused, because moving it is never
+   wrong and a refusal at the desk is one more thing to understand. */
+function normaliseBody(s){
+  s = String(s || '').replace(/<link>/g, '<menu>');
+  var n = (s.match(/<menu>/g) || []).length;
+  if (!n) return s.replace(/\s+$/, '');
+  s = s.replace(/<menu>/g, '').replace(/\s+$/, '');
+  return s + '\n<menu>';
+}
+
+var LIST = [];   /* [{id,label,body,order}] as rendered */
+
+function put(id, t){
+  return fetch(DB + '/smstemplates/' + id + '.json',
+    { method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(t) })
+    .then(function(r){ if (!r.ok) throw new Error('write refused'); });
+}
+function del(id){
+  return fetch(DB + '/smstemplates/' + id + '.json', { method:'DELETE' })
+    .then(function(r){ if (!r.ok) throw new Error('delete refused'); });
+}
+
+function card(t){
+  var el = document.createElement('div');
+  el.className = 'card'; el.setAttribute('data-id', t.id);
+  el.innerHTML =
+    '<div class="lblrow"><input maxlength="40" aria-label="Template name">' +
+    '<button class="del">Delete</button></div>' +
+    '<textarea maxlength="460" aria-label="Template text"></textarea>' +
+    '<div class="meta"><span class="count"></span>' +
+    '<button class="save" disabled>Saved</button></div>' +
+    '<div class="warn"></div>';
+  var lbl = el.querySelector('input'), box = el.querySelector('textarea'),
+      cnt = el.querySelector('.count'), save = el.querySelector('.save'),
+      warn = el.querySelector('.warn'), delBtn = el.querySelector('.del');
+  lbl.value = t.label; box.value = t.body;
+  cnt.textContent = counted(t.body);
+
+  var armed = false;
+  function changed(){
+    armed = false; delBtn.className = 'del'; delBtn.textContent = 'Delete';
+    cnt.textContent = counted(box.value);
+    var bad = bodyHasUrl(box.value) ? 'Links cannot be typed here. The menu ' +
+              'link is added automatically, at the end.'
+            : !lbl.value.trim() ? 'The template needs a name.'
+            : !box.value.trim() ? 'The template needs a message.' : '';
+    warn.textContent = bad;
+    save.disabled = !!bad;
+    save.textContent = 'Save';
+  }
+  lbl.oninput = changed; box.oninput = changed;
+
+  save.onclick = function(){
+    if (save.disabled) return;
+    var body = normaliseBody(box.value);
+    var rec = { label: lbl.value.trim(), body: body, order: t.order,
+                at: new Date().toISOString() };
+    save.disabled = true; save.textContent = 'Saving…';
+    put(t.id, rec).then(function(){
+      t.label = rec.label; t.body = body;
+      box.value = body; cnt.textContent = counted(body);
+      save.textContent = 'Saved';
+    }).catch(function(){
+      save.disabled = false; save.textContent = 'Save';
+      warn.textContent = 'The save did not reach the database. Try again.';
+    });
+  };
+
+  /* Deleting is two presses, same shape as Send: the annoying action is a
+     stride from the ordinary one. */
+  delBtn.onclick = function(){
+    if (!armed){ armed = true; delBtn.className = 'del arm';
+                 delBtn.textContent = 'Delete · press again'; return; }
+    del(t.id).then(function(){
+      LIST = LIST.filter(function(x){ return x.id !== t.id; });
+      el.remove();
+    }).catch(function(){
+      armed = false; delBtn.className = 'del'; delBtn.textContent = 'Delete';
+      warn.textContent = 'The delete did not reach the database. Try again.';
+    });
+  };
+  return el;
+}
+
+function render(){
+  var host = document.getElementById('cards');
+  host.innerHTML = '';
+  LIST.sort(function(a,b){ return a.order - b.order; })
+      .forEach(function(t){ host.appendChild(card(t)); });
+}
+
+document.getElementById('addBtn').onclick = function(){
+  var id = 't' + Math.random().toString(36).slice(2, 8);
+  var order = LIST.reduce(function(m,t){ return Math.max(m, t.order); }, 0) + 10;
+  var t = { id:id, label:'', body:'', order:order };
+  LIST.push(t);
+  var el = card(t);
+  document.getElementById('cards').appendChild(el);
+  el.querySelector('input').focus();
+  /* Unsaved and empty: the Save button's own validation holds it until it
+     has a name and a message. Nothing is written by adding a card. */
+  el.querySelector('.save').disabled = true;
+};
+
+function load(){
+  return fetch(DB + '/smstemplates.json?v=' + Date.now())
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(db){
+      if (!db || !Object.keys(db).length){
+        /* First visit: write the built-ins down, so from here on there is
+           ONE copy and it is the database's. A failed seed still renders,
+           unsaved, rather than showing an empty page. */
+        return Promise.all(Object.keys(BUILTINS).map(function(id){
+          return put(id, BUILTINS[id]).catch(function(){});
+        })).then(function(){
+          LIST = Object.keys(BUILTINS).map(function(id){
+            var t = BUILTINS[id];
+            return { id:id, label:t.label, body:t.body, order:t.order };
+          });
+          render();
+        });
+      }
+      LIST = Object.keys(db).map(function(k){
+        var t = db[k] || {};
+        return { id:k, label:String(t.label||k), body:String(t.body||''),
+                 order:+t.order || 999 };
+      });
+      render();
+    });
+}
+
+function showAccess(allowed, e){
+  var box = document.getElementById('noAccess');
+  var on = !allowed;
+  box.innerHTML = !on ? '' :
+    (e ? '<div>Could not check access. This is usually the connection, '
+       + 'not your login.</div>'
+       + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+       : 'This login has no access to SMS Templates. See the manager.');
+  if (on && !e){
+    var home = homeFor(window.NALA_ROLE);
+    if (home && home !== location.pathname.split('/').pop()){
+      location.replace(home); return;
+    }
+  }
+  box.className = 'noaccess' + (on ? ' show' : '');
+  ['intro','secTmpl','cards','addBtn','secLegend','legend','note']
+    .forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) el.style.display = on ? 'none' : '';
+    });
+  if (!on) load();
+}
+
+window.NALA_ROLE = null;
+(function gate(){
+  if (!window.firebase || !firebase.auth || typeof loadStaff !== 'function')
+    return setTimeout(gate, 40);
+  var A; try { A = firebase.auth(); } catch(e){ return setTimeout(gate, 40); }
+  if (!A || !A.onAuthStateChanged) return setTimeout(gate, 40);
+  A.onAuthStateChanged(function(u){
+    if (!u) return;                 /* auth.js owns the signed-out state */
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      window.NALA_USER = u;
+      document.getElementById('navWrap').style.display = 'block';
+      navFilter(role);
+      /* The same permission as sending: whoever may send may say what is
+         sent. */
+      showAccess(can(role, 'editBookings'), e);
+    });
+  });
+})();
+</script>
+</body>
+</html>

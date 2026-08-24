@@ -100,7 +100,7 @@ const post = (over = {}) => worker.fetch(new Request("https://w.dev/", {
   method: "POST", headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ idToken: "T", date: today, villas: ["4"],
                          template: "ready",
-                         body: "Tonight's menu is ready. <link>\nNala Resort",
+                         body: "Tonight's menu is ready. Nala Resort\n<menu>",
                          ...over }) }), env);
 
 /* ── who may call ───────────────────────────────────────────── */
@@ -165,6 +165,12 @@ install();
 r = await post({ body: "Menu tonight.\nNala Resort" });
 ck("a body whose marker was edited out still gets the link, at the end",
    /\nhttps:\/\/menu\.nalaresort\.com\/\?t=[a-z2-9]{6}$/.test(SENDS[0].messages[0].body));
+
+install();
+r = await post({ body: "Menu tonight. Nala Resort\n<link>" });
+ck("the marker's old name <link> still resolves, for anything saved before the rename",
+   /\nhttps:\/\/menu\.nalaresort\.com\/\?t=[a-z2-9]{6}$/.test(SENDS[0].messages[0].body) &&
+   !SENDS[0].messages[0].body.includes("<link>"));
 
 install(); STATE.linksOk = false;
 r = await post();

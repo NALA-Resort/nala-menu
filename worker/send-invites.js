@@ -219,9 +219,18 @@ export default {
         if (!placed) throw new Error("the link token did not store, nothing sent");
         rec.token = token;
         const link = "https://menu.nalaresort.com/?t=" + token;
-        rec.body = text.includes("<link>")
-          ? text.replace("<link>", link)
-          : text.replace(/\s*$/, "") + "\n" + link;
+        /* <menu> is the placeholder: named for what it inserts, so future
+           ones (<first>, <prearrival>, ...) sit beside it, each a line here
+           and a row in templates.html's legend. <link> is its old name and
+           stays accepted: a template saved before the rename must not send
+           its marker as literal text. No marker means the link goes on its
+           own last line, which is also where iPhones require it before they
+           will draw the preview card. */
+        rec.body = text.includes("<menu>")
+          ? text.replace("<menu>", link)
+          : text.includes("<link>")
+            ? text.replace("<link>", link)
+            : text.replace(/\s*$/, "") + "\n" + link;
 
         const send = await fetch(CLICKSEND, {
           method: "POST",

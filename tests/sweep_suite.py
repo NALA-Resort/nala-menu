@@ -181,6 +181,7 @@ PAGES = [
     ("cleaners.html",     ""),
     ("front-desk.html",   ""),
     ("invitations.html",  ""),
+    ("templates.html",    ""),
     ("tally.html",        ""),
     ("tag.html",          ""),
     #  The menu arrives in the address, so an empty publish page is not

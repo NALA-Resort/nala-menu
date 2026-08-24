@@ -20,11 +20,14 @@
 
   .seclabel { font-size:11px; letter-spacing:.14em; text-transform:uppercase;
               color:var(--mid); margin:22px 0 8px; }
+  .seclink  { float:right; font-size:11px; letter-spacing:.05em;
+              text-transform:none; color:var(--mid); text-decoration:underline; }
 
   /* Why this page refuses to send. A tinted pill is status, never tappable. */
   .menupill { display:inline-block; padding:6px 12px; border-radius:99px;
               background:#EFE3E0; color:var(--red); font-size:11px;
               letter-spacing:.14em; text-transform:uppercase; }
+  .menupill.ok { background:var(--green); color:var(--greenb); }
   .menuwhy { font-size:13px; color:var(--mid); margin-top:6px; line-height:1.45; }
   #menuGate { display:none; margin:14px 0 2px; }
   #menuGate.show { display:block; }
@@ -106,8 +109,9 @@
 
 <div id="board"></div>
 
-<div class="seclabel">Message</div>
+<div class="seclabel">Template <a class="seclink" href="templates.html">Edit templates</a></div>
 <select id="tmpl" aria-label="Template"></select>
+<div class="seclabel">Message</div>
 <textarea id="msgBox" aria-label="Message text"></textarea>
 <div class="msgmeta"><span id="msgWarn"></span><span id="msgCount"></span></div>
 <div class="linknote">The menu link is added for each guest automatically, from
@@ -160,18 +164,29 @@ function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
 var LINK_SAMPLE = new Array(38).join('x');
 
 /* ── templates ─────────────────────────────────────────────────
-   Editable before sending. <link> marks where the link goes; it is a marker,
+   Editable before sending. <menu> marks where the link goes (its old name
+   <link> still works); it is a marker,
    not a URL, and the box refuses anything that IS a URL. The resort's name is
    on every one: Australian rules require a commercial sender to identify
    itself, and the guest should know who is texting before they open a link. */
-var TEMPLATES = [
-  { id:'ready',    label:'Menu is ready',
-    body:'Tonight\u2019s menu is ready. <link>\nNala Resort' },
-  { id:'join',     label:'Will you join us',
-    body:'Good afternoon. Tonight\u2019s menu, and a place to tell us if you will join us. <link>\nNala Resort' },
-  { id:'reminder', label:'Reminder',
-    body:'A reminder that we have not heard about dinner tonight. The menu, and the link to answer, is here. <link>\nNala Resort' }
+/* The link is LAST in every template, on its own line. An iPhone only draws
+   the preview card when the URL is the first or last thing in the message;
+   proved on 24 Aug, when the signature after the link demoted it to a bare
+   blue line. The resort's name still appears, above the link.
+
+   These are the FALLBACK. The real set lives at /smstemplates, edited on
+   templates.html; these serve only until that node exists, or when it cannot
+   be read. <menu> marks where the link goes (its old name <link> is still
+   honoured by the Worker). */
+var BUILTIN_TEMPLATES = [
+  { id:'ready',    label:'Menu is ready', order:1,
+    body:'Tonight\u2019s menu is ready. Nala Resort\n<menu>' },
+  { id:'join',     label:'Will you join us', order:2,
+    body:'Good afternoon. Tonight\u2019s menu, and a place to tell us if you will join us. Nala Resort\n<menu>' },
+  { id:'reminder', label:'Reminder', order:3,
+    body:'A reminder that we have not heard about dinner tonight. The menu, and the link to answer, is below. Nala Resort\n<menu>' }
 ];
+var TEMPLATES = BUILTIN_TEMPLATES;
 
 var ROWS = {};          /* villa -> { stay, state, ticked } */
 var MENU_STATE = null;  /* 'live' | 'none' | 'failed' */
@@ -179,16 +194,39 @@ var ARMED = false;      /* the second press for a resend */
 
 /* ── the message box ─────────────────────────────────────────── */
 var tmplSel = document.getElementById('tmpl'), msgBox = document.getElementById('msgBox');
-TEMPLATES.forEach(function(t){
-  var o = document.createElement('option'); o.value = t.id; o.textContent = t.label;
-  tmplSel.appendChild(o);
-});
+function initTemplates(list){
+  TEMPLATES = list;
+  tmplSel.innerHTML = '';
+  TEMPLATES.forEach(function(t){
+    var o = document.createElement('option'); o.value = t.id; o.textContent = t.label;
+    tmplSel.appendChild(o);
+  });
+  setTemplate(TEMPLATES[0] && TEMPLATES[0].id);
+}
 function setTemplate(id){
   var t = TEMPLATES.filter(function(t){ return t.id === id; })[0] || TEMPLATES[0];
-  msgBox.value = t.body;
+  msgBox.value = t ? t.body : '';
   msgChanged();
 }
 tmplSel.onchange = function(){ setTemplate(tmplSel.value); };
+initTemplates(BUILTIN_TEMPLATES);
+/* The edited set, when there is one: read once signed in, from load().
+   A failed read leaves the fallback in place: an out-of-date template beats
+   an empty box at service time. */
+function loadTemplates(){
+  return fetch(DB + '/smstemplates.json?v=' + Date.now())
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(db){
+      var list = Object.keys(db || {}).map(function(k){
+        var t = db[k] || {};
+        return { id:k, label:String(t.label||k), body:String(t.body||''),
+                 order:+t.order || 999 };
+      }).filter(function(t){ return t.body; })
+        .sort(function(a,b){ return a.order - b.order; });
+      if (list.length) initTemplates(list);
+    })
+    .catch(function(){});
+}
 
 /* A URL a human can retype is a URL that goes out wrong to fourteen guests at
    once, which is the failure this page exists to remove. So the box cannot
@@ -204,7 +242,7 @@ function msgChanged(){
   /* An SMS is 160 characters and the link costs 37 of them, so a template
      plus the link usually still fits one segment. Shown so the writer knows
      what they are doing. */
-  var len = s.replace('<link>', LINK_SAMPLE).length;
+  var len = s.replace('<menu>', LINK_SAMPLE).replace('<link>', LINK_SAMPLE).length;
   var segs = len <= 160 ? 1 : Math.ceil(len / 153);
   document.getElementById('msgCount').textContent =
     len + ' characters \u00B7 ' + (segs === 1 ? '1 segment' : 'about ' + segs + ' segments');
@@ -304,7 +342,7 @@ function recount(){
   var btn = document.getElementById('sendBtn');
   var label = 'Send to ' + sel.length + ' guest' + (sel.length === 1 ? '' : 's') +
               (again ? ', ' + again + ' of them again' : '');
-  if (ARMED) label = 'Press again \u00B7 ' + label.charAt(0).toLowerCase() + label.slice(1);
+  if (ARMED) label = 'Please confirm \u00B7 ' + label.charAt(0).toLowerCase() + label.slice(1);
   btn.textContent = sel.length ? label : 'Send';
   btn.className = 'btn solid' + (ARMED ? ' arm' : '');
   btn.disabled = !sel.length || MENU_STATE !== 'live' || !window.__idToken;
@@ -322,6 +360,7 @@ function menuGate(){
         pill = document.getElementById('menuPill');
     if (m && m.failed){
       MENU_STATE = 'failed';
+      pill.className = 'menupill';
       pill.textContent = 'Menu could not be checked';
       why.textContent = 'Tonight\u2019s menu could not be read. This is usually ' +
         'the connection, not the menu. Nothing sends until it can be checked.';
@@ -334,8 +373,16 @@ function menuGate(){
         live = new Date() < expiry;
       }
       MENU_STATE = live ? 'live' : 'none';
-      if (live){ gate.className = ''; }
+      if (live){
+        /* The opposite state of the red pill, said out loud: silence read as
+           this page not having checked. Just the fact, no timestamp. */
+        pill.textContent = 'Menu published';
+        pill.className = 'menupill ok';
+        why.textContent = '';
+        gate.className = 'show';
+      }
       else {
+        pill.className = 'menupill';
         pill.textContent = 'Menu not published';
         why.textContent = 'No menu is published for tonight, so the link would ' +
           'land on a placeholder. Sending opens once the chef publishes.';
@@ -402,7 +449,8 @@ function load(){
     fetch(DB + '/invites/' + TODAY + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; }),
-    menuGate()
+    menuGate(),
+    loadTemplates()
   ]).then(function(res){
     render(res[0] || {}, res[1] || {});
   });

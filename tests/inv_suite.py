@@ -85,6 +85,8 @@ def fb(route, request):
     elif "/dinner/" + today in u: body = json.dumps(DINNER)
     elif "/opened/" in u: body = "null"
     elif "/invites/" + today in u: body = json.dumps(INVITES)
+    elif "/smstemplates" in u:
+        body = json.dumps(STATE["templates"]) if STATE.get("templates") else "null"
     elif "/bookings/" in u: body = "null"
     elif "/menutags/" in u: body = "null"
     elif "/menuhistory" in u: body = json.dumps({"main": "Barramundi",
@@ -182,7 +184,7 @@ with sync_playwright() as p:
 
     # ── the message ────────────────────────────────────────────
     ck("the box holds the template, with the marker and the resort's name",
-       "<link>" in pg.input_value("#msgBox") and "Nala Resort" in pg.input_value("#msgBox"))
+       "<menu>" in pg.input_value("#msgBox") and "Nala Resort" in pg.input_value("#msgBox"))
     ck("the short template, link included, is one segment and says so",
        "1 segment" in pg.inner_text("#msgCount"))
     pg.select_option("#tmpl", "reminder"); pg.wait_for_timeout(100)
@@ -208,7 +210,7 @@ with sync_playwright() as p:
     ck("one press sends when nobody is being sent to twice", len(SENT) == 1)
     ck("the page proposes villas and words, never numbers and never a link",
        SENT and sorted(SENT[0]["villas"]) == ["14", "4"]
-       and "<link>" in SENT[0]["body"]
+       and "<menu>" in SENT[0]["body"]
        and "http" not in SENT[0]["body"]
        and "phone" not in json.dumps(SENT[0]))
     ck("and says which day it is proposing for", SENT and SENT[0]["date"] == today)
@@ -222,7 +224,7 @@ with sync_playwright() as p:
     pg.locator("#sendBtn").click(); pg.wait_for_timeout(300)
     ck("the first press does not send", SENT == [])
     ck("it asks for the second",
-       "Press again" in pg.evaluate("()=>sendBtn.textContent"))
+       "Please confirm" in pg.evaluate("()=>sendBtn.textContent"))
     pg.locator("#sendBtn").click(); pg.wait_for_timeout(500)
     ck("the second press sends", len(SENT) == 1 and "9" in SENT[0]["villas"])
 
@@ -254,6 +256,12 @@ with sync_playwright() as p:
        pg.locator("#sendBtn").is_disabled()
        and "connection" in pg.inner_text("#menuGate"))
     STATE["menufail"] = False
+    # The check answers both ways: a live menu is a green pill saying so, not
+    # a silent absence of the red one. Just the fact, no timestamp.
+    pg = board()
+    ck("a published menu is a green pill saying Menu published",
+       pg.text_content("#menuPill").strip() == "Menu published"
+       and "ok" in pg.get_attribute("#menuPill", "class"))
 
     # ── the page holds no link builder at all ──────────────────
     #  The Worker mints a short token per send and stores it against the
@@ -314,12 +322,86 @@ with sync_playwright() as p:
        and "invitations.html" not in seen["housekeeping"])
     pg2.close()
 
+    # ── templates.html, where the messages are edited ──────────
+    def tpage(email="staff@x", w=390):
+        pg = b.new_page(viewport={"width": w, "height": 900})
+        pg.add_init_script(SDK)
+        pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
+        pg.route("**firebasedatabase.app/**", fb)
+        pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        pg.goto("http://localhost:8977/templates.html")
+        pg.wait_for_timeout(1600)
+        return pg
+
+    STATE["templates"] = None
+    del WRITES[:]
+    pg = tpage()
+    ck("an empty node is seeded with the three built-ins, one write each",
+       len([w for w in WRITES if "/smstemplates/" in w["u"]]) == 3)
+    ck("and three cards render",
+       pg.locator("#cards .card").count() == 3)
+    ck("each built-in ends with the marker on its own last line",
+       all(json.loads(w["b"])["body"].endswith("\n<menu>")
+           for w in WRITES if "/smstemplates/" in w["u"]))
+
+    #  A URL typed into a template is refused at the editor, the same rule as
+    #  the sending page and the Worker.
+    box = pg.locator("#cards .card").first.locator("textarea")
+    box.fill("See https://evil.example/x"); pg.wait_for_timeout(120)
+    ck("a typed URL blocks Save and says why",
+       pg.locator("#cards .card").first.locator(".save").is_disabled()
+       and "cannot be typed" in pg.locator("#cards .card").first.inner_text())
+
+    #  Save tidies: the marker is moved to the end, and its old name is
+    #  renamed, so what the database holds is always the preview-safe shape.
+    del WRITES[:]
+    box.fill("The menu <link> is attached. Nala Resort"); pg.wait_for_timeout(120)
+    pg.locator("#cards .card").first.locator(".save").click(); pg.wait_for_timeout(300)
+    saved = [w for w in WRITES if "/smstemplates/" in w["u"]]
+    ck("saving moves the marker to the end, under its new name",
+       len(saved) == 1 and
+       json.loads(saved[0]["b"])["body"] == "The menu  is attached. Nala Resort\n<menu>")
+
+    #  Deleting is a two-press action, like Send.
+    del WRITES[:]
+    dbtn = pg.locator("#cards .card").first.locator(".del")
+    dbtn.click(); pg.wait_for_timeout(120)
+    ck("the first press of Delete deletes nothing",
+       [w for w in WRITES if w["m"] == "DELETE"] == []
+       and "press again" in dbtn.text_content())
+    dbtn.click(); pg.wait_for_timeout(300)
+    ck("the second press deletes, and the card goes",
+       len([w for w in WRITES if w["m"] == "DELETE"]) == 1
+       and pg.locator("#cards .card").count() == 2)
+    pg.close()
+
+    #  The edited set is what the sending page offers. The built-ins survive
+    #  only as a fallback for a failed read.
+    STATE["templates"] = {"own": {"label": "House words", "order": 1,
+                                  "body": "Our words tonight. Nala Resort\n<menu>"}}
+    pg = tpage()
+    ck("a saved set renders instead of the built-ins, without reseeding",
+       pg.locator("#cards .card").count() == 1
+       and "House words" in pg.locator("#cards .card").first.locator("input").input_value())
+    pg.close()
+    pg = board()
+    ck("the sending page offers the edited set",
+       pg.locator("#tmpl option").count() == 1
+       and pg.locator("#tmpl option").first.text_content() == "House words"
+       and "Our words tonight" in pg.input_value("#msgBox"))
+    pg.close()
+    STATE["templates"] = None
+
     # ── widths ─────────────────────────────────────────────────
     for w in (390, 360, 320):
         q = board(w=w)
         ck("no sideways scroll at %dpt" % w, not q.evaluate(
            "()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
         q.close()
+    q = tpage()
+    ck("no sideways scroll on the template editor at 390pt", not q.evaluate(
+       "()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
+    q.close()
 
     b.close()
 

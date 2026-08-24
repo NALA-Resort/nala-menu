@@ -506,6 +506,28 @@
         }
       }
     },
+    "smstemplates": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('permissions').child('editBookings').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
+        ".validate": "$id.matches(/^[a-z0-9]{1,24}$/) && newData.hasChildren(['label','body'])",
+        "label": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40"
+        },
+        "body": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
+        },
+        "order": {
+          ".validate": "newData.isNumber()"
+        },
+        "at": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     "links": {
       "$token": {
         ".read": true,
