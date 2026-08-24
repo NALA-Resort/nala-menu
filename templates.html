@@ -117,6 +117,17 @@ template; the only links that go out are the ones the placeholders build.</div>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
 
+/* The hamburger's own wiring, same block as every other page: the button was
+   drawn here but nothing listened, which is why the menu did not open. */
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+  var so=document.getElementById('navSignout');
+  if (so) so.onclick=function(e){ e.preventDefault();
+    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+})();
+
 /* The same built-ins as invitations.html. They exist here only to seed
    /smstemplates the first time this page is opened; after that, the database
    is the single copy and invitations.html reads it. */

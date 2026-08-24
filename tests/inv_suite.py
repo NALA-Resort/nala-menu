@@ -166,9 +166,9 @@ with sync_playwright() as p:
        and "INVALID_RECIPIENT" in row("14").inner_text())
     ck("the older bare id shape is skipped rather than crashing",
        pg.evaluate("()=>document.querySelectorAll('.vrow[data-villa=\"5\"]').length") == 0)
-    ck("villas run in villa order",
+    ck("villas run in villa order within their bands",
        pg.evaluate("()=>[...document.querySelectorAll('.vrow')].map(e=>e.dataset.villa)")
-       == ["2", "3", "4", "7", "9", "11", "14"])
+       == ["4", "14", "9", "7", "11", "2", "3"])
     ck("the counts say the same thing as the rows",
        [pg.evaluate("()=>%s.textContent" % i) for i in ("nSend","nAns","nSent","nNoPh")]
        == ["2", "2", "1", "2"])
@@ -321,6 +321,50 @@ with sync_playwright() as p:
        "invitations.html" not in seen["chef"]
        and "invitations.html" not in seen["housekeeping"])
     pg2.close()
+
+    # ── the status bands, INVITATIONS-STATUS.md ────────────────
+    #  Colour assertions by computed style, not class name: the tints are the
+    #  contract with the Reservations board.
+    pg = board()
+    seq = pg.evaluate("""()=>[...document.getElementById('board').children]
+        .map(el=>el.classList.contains('grp') ? 'H:'+el.textContent
+                                              : el.dataset.villa)""")
+    ck("the four bands render in order, headers counting, work first done sunk",
+       seq == ["H:To send · 2", "4", "14",
+               "H:Waiting on a reply · 1", "9",
+               "H:Answered · 2", "7", "11",
+               "H:Cannot send · 2", "2", "3"], seq)
+    ck("a failed send sits in To send, its reason on the row",
+       seq[1:3] == ["4", "14"]
+       and "Send failed" in row("14").inner_text())
+    tint = lambda v: pg.evaluate(
+        "s=>getComputedStyle(document.querySelector(s))",
+        '.vrow[data-villa="%s"]' % v)
+    din, out, wait = tint("7"), tint("11"), tint("9")
+    ck("an answered dining villa wears the Reservations green tile",
+       din["backgroundColor"] == "rgba(122, 160, 130, 0.26)"
+       and din["borderTopColor"] == "rgba(122, 160, 130, 0.65)")
+    ck("a not-dining villa the terracotta",
+       out["backgroundColor"] == "rgba(184, 106, 90, 0.16)"
+       and out["borderTopColor"] == "rgba(184, 106, 90, 0.45)")
+    #  Chrome stores the .045 alpha as 8-bit and reads it back as 0.043.
+    ck("waiting is grey, not a promise of green, solid and full strength",
+       wait["backgroundColor"].startswith("rgba(28, 28, 26, 0.04")
+       and wait["borderTopStyle"] == "solid" and wait["opacity"] == "1")
+    grey = tint("2")
+    ck("cannot-send is dashed, sunk, its tick hidden",
+       grey["borderTopStyle"] == "dashed" and grey["opacity"] == "0.62"
+       and pg.evaluate("()=>getComputedStyle(document.querySelector("
+           "'.vrow[data-villa=\\\"2\\\"] .tick')).visibility") == "hidden")
+    #  A band with nothing in it shows no header.
+    INVITES_BAK = dict(INVITES)
+    INVITES.clear()
+    pg = board()
+    ck("a band with nothing in it shows no header",
+       "Waiting" not in pg.inner_text("#board")
+       and pg.locator("#board .grp").count() == 3)
+    INVITES.update(INVITES_BAK)
+    pg.close()
 
     # ── templates.html, where the messages are edited ──────────
     def tpage(email="staff@x", w=390):

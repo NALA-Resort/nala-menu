@@ -12,7 +12,14 @@
 <link rel="stylesheet" href="nala-ui.css?v=12">
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-          --green:#E4EDE2; --greenb:#7E937A; }
+          --green:#E4EDE2; --greenb:#7E937A;
+          /* The Reservations tiles' tints, verbatim from the approved mock
+             (mock-invite-status.html): the two boards speak one language.
+             Named res- because this page's --green already means the tick. */
+          --resgreen:#5E7D67; --resgreen-t:rgba(122,160,130,.26);
+          --resgreen-b:rgba(122,160,130,.65);
+          --resterra:#9E6455; --resterra-t:rgba(184,106,90,.16);
+          --resterra-b:rgba(184,106,90,.45); }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
          padding:calc(24px + env(safe-area-inset-top)) 18px 0;
@@ -39,6 +46,20 @@
           padding:11px 13px; margin-bottom:7px; text-align:left;
           font-family:inherit; color:inherit; cursor:pointer; }
   .vrow:disabled { opacity:.45; cursor:default; }
+  /* The four bands, INVITATIONS-STATUS.md. Work first, done sinks: white to
+     send, grey waiting (unknown promises nothing, so it is not green), the
+     Reservations tints once answered, and cannot-send sunk in the vacant
+     voice. Band classes only tint; the row itself is untouched. */
+  .grp { font-size:9px; letter-spacing:.16em; text-transform:uppercase;
+         color:var(--mid); margin:14px 2px 6px; }
+  .vrow.b-sent { background:rgba(28,28,26,.045); border-color:var(--rule); }
+  .vrow.b-sent .st { color:var(--mid); }
+  .vrow.b-din { background:var(--resgreen-t); border-color:var(--resgreen-b); }
+  .vrow.b-din .st { color:var(--resgreen); }
+  .vrow.b-out { background:var(--resterra-t); border-color:var(--resterra-b); }
+  .vrow.b-out .st { color:var(--resterra); }
+  .vrow.b-grey { background:transparent; border-style:dashed; opacity:.62; }
+  .vrow.b-grey .tick { visibility:hidden; }
   .vrow .v { font-size:20px; min-width:30px; text-align:center; }
   .vrow .mid { flex:1; min-width:0; }
   .vrow .nm { font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -283,10 +304,30 @@ function stateOf(villa, stay, cell, invite){
   return { kind:'ready', line:'Not asked, not answered', tickable:true, ticked:true };
 }
 
+/* The four bands, INVITATIONS-STATUS.md, in the Cleans order: work first,
+   done sinks. A band is a GROUPING of stateOf's kinds, not new state, and a
+   failed send is kind 'ready' so it lands back in To send, which is the
+   sender's question answered. Within a band, villa order as before; dining
+   and not-dining stay interleaved. An empty band shows no header. */
+var BANDS = [
+  { kind:'ready',    title:'To send' },
+  { kind:'sent',     title:'Waiting on a reply' },
+  { kind:'answered', title:'Answered' },
+  { kind:'nophone',  title:'Cannot send' }
+];
+function bandClass(st, cell){
+  if (st.kind === 'sent') return ' b-sent';
+  if (st.kind === 'nophone') return ' b-grey';
+  if (st.kind === 'answered')
+    return (cell && cell.status === 'in') ? ' b-din' : ' b-out';
+  return '';
+}
+
 function render(stays, invites){
   var board = document.getElementById('board');
   board.innerHTML = '';
   ROWS = {};
+  var rows = { ready:[], sent:[], answered:[], nophone:[] };
   Object.keys(stays || {}).sort(function(a, b){ return (+a) - (+b); }).forEach(function(v){
     var stay = stays[v];
     if (!stay || typeof stay !== 'object' || !stay.id) return;  /* the older bare id shape */
@@ -294,7 +335,7 @@ function render(stays, invites){
     ROWS[v] = { stay: stay, state: st, ticked: st.ticked };
     var b = document.createElement('button');
     b.type = 'button';
-    b.className = 'vrow' + (st.ticked ? ' on' : '');
+    b.className = 'vrow' + (st.ticked ? ' on' : '') + bandClass(st, DINNER_CELLS[v]);
     b.dataset.villa = v;
     b.dataset.state = st.kind;
     b.disabled = !st.tickable;
@@ -314,7 +355,15 @@ function render(stays, invites){
       b.setAttribute('aria-pressed', ROWS[v].ticked ? 'true' : 'false');
       recount();
     };
-    board.appendChild(b);
+    (rows[st.kind] || rows.ready).push(b);
+  });
+  BANDS.forEach(function(band){
+    if (!rows[band.kind].length) return;
+    var h = document.createElement('div');
+    h.className = 'grp';
+    h.textContent = band.title + ' \u00b7 ' + rows[band.kind].length;
+    board.appendChild(h);
+    rows[band.kind].forEach(function(b){ board.appendChild(b); });
   });
   recount();
 }
