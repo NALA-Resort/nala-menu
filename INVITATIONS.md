@@ -113,6 +113,39 @@ The resort's name is on every one of them. Australian rules require a
 commercial sender to identify itself, and the guest should know who is texting
 before they open a link.
 
+### The number
+
+**Every number has to be normalised before it is sent, and nothing normalises
+one today.** The Worker stores what Mews sends, truncated and otherwise
+untouched: `asText(r.phone, 40)`. Real records hold `0412 345 678`,
+`+61412345678`, `0412345678` and worse, because a guest typed them.
+
+ClickSend wants E.164, and the sender number is registered as `+61...`. A local
+format is rejected or silently misrouted, and a rejection at five o'clock reads
+as a bug in this page.
+
+So, at send time, in the Worker:
+
+- Strip spaces, brackets, hyphens and dots.
+- `04...` becomes `+614...`. This is the common case.
+- `+61...` is already right. Leave it.
+- `614...` with no plus gets one.
+- **Anything else is not sent.** Do not guess at an international number, a
+  landline, or a mobile with the wrong number of digits. Record it as a failure
+  with the reason, and show the row as unsendable in the page for the same
+  reason as a missing number: it cannot be fixed here, it is a Mews record.
+
+Note the page and the Worker BOTH need this: the page to decide whether a row
+is sendable and to grey it if not, the Worker to send. Write it once in
+`nala-shared.js` and have the Worker carry its own copy, because a Worker
+cannot import from the site. Two copies of one rule is the thing that goes
+stale, so the test must assert both against the same table of cases.
+
+There is a `tidyPhone` in `list.html` already. It is for DISPLAY and formats
+the other way, into a readable local number. Do not reuse it and do not confuse
+the two: one makes a number readable by a person, the other makes it dialable
+by a machine.
+
 ### The link
 
 Built by the page, fresh, at send time:
@@ -265,6 +298,10 @@ Assert at least:
 - A villa with no dinner answer is ticked; one that has answered is not, and
   its reason is on the row.
 - A villa with no phone number cannot be ticked at all.
+- A villa whose number cannot be normalised cannot be ticked either, and says
+  why. Cover `0412 345 678`, `+61 412 345 678`, `0412345678`, `61412345678`,
+  a landline, an international number and an empty string, and assert the page
+  and the Worker agree on every one of them.
 - A villa already sent to tonight is unticked and shows the time.
 - With no menu published, the send button is disabled and the page says why.
 - The link built for a villa carries that villa's booking id AND its villa
