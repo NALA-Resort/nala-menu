@@ -56,7 +56,7 @@ let STORE, SENDS, STATE;
 function install() {
   STORE = {}; SENDS = [];
   STATE = { tokenOk: true, email: "waiter@nala.x", clicksendOk: true,
-            recordOk: true };
+            recordOk: true, linksOk: true };
   STORE["/staff/waiter@nala,x"] = { role: "waiter" };
   STORE["/staff/hk@nala,x"] = { role: "housekeeping" };
   STORE["/staff/old@nala,x"] = { role: "staff" };   /* the pre-rename records */
@@ -82,7 +82,13 @@ function install() {
     }
     const path = u.split("firebasedatabase.app")[1].split(".json")[0];
     if ((opt.method || "GET") === "PUT") {
-      if (!STATE.recordOk) return new Response("no", { status: 401 });
+      /* recordOk gates the /invites record alone: the send-worked-but-the-
+         record-did-not case. linksOk gates the token store, which fails a
+         villa BEFORE anything is sent. */
+      if (!STATE.recordOk && path.startsWith("/invites/"))
+        return new Response("no", { status: 401 });
+      if (!STATE.linksOk && path.startsWith("/links/"))
+        return new Response("no", { status: 401 });
       STORE[path] = JSON.parse(opt.body);
       return new Response(opt.body, { status: 200 });
     }
@@ -133,8 +139,15 @@ r = await post();
 let j = await r.json();
 ck("a good send answers per villa", j.results["4"].status === "sent");
 const sentBody = SENDS[0].messages[0].body;
-ck("the link carries the booking id AND the villa, off the stay record",
-   sentBody.includes("?b=b4-guid&r=4"));
+const sentToken = (sentBody.match(/\?t=([a-z0-9]+)/) || [])[1] || "";
+ck("the SMS carries our short link: the domain and a 6 character token",
+   /https:\/\/menu\.nalaresort\.com\/\?t=[a-z2-9]{6}/.test(sentBody));
+ck("the token record holds the booking id AND the villa, off the stay record",
+   !!STORE["/links/" + sentToken] &&
+   STORE["/links/" + sentToken].b === "b4-guid" &&
+   STORE["/links/" + sentToken].r === "4");
+ck("and the record keeps the token, so the link can be chased later",
+   j.results && STORE["/invites/" + today + "/4"].token === sentToken);
 ck("the marker was replaced, not appended twice",
    (sentBody.match(/menu\.nalaresort\.com/g) || []).length === 1);
 ck("the number came off the stay record, normalised to E.164",
@@ -151,7 +164,13 @@ ck("and ClickSend's message id", rec.providerId === "mid-1");
 install();
 r = await post({ body: "Menu tonight.\nNala Resort" });
 ck("a body whose marker was edited out still gets the link, at the end",
-   SENDS[0].messages[0].body.endsWith("\nhttps://menu.nalaresort.com/?b=b4-guid&r=4"));
+   /\nhttps:\/\/menu\.nalaresort\.com\/\?t=[a-z2-9]{6}$/.test(SENDS[0].messages[0].body));
+
+install(); STATE.linksOk = false;
+r = await post();
+j = await r.json();
+ck("a token the database refuses fails the villa with nothing sent",
+   j.results["4"].status === "failed" && SENDS.length === 0);
 
 /* ── failures are per villa and every one is recorded ───────── */
 install();

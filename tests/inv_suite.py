@@ -188,8 +188,11 @@ with sync_playwright() as p:
     pg.select_option("#tmpl", "reminder"); pg.wait_for_timeout(100)
     ck("choosing a template rewrites the box",
        "not heard about dinner" in pg.input_value("#msgBox"))
-    ck("and the longer one, link included, is about two segments",
-       "2 segments" in pg.inner_text("#msgCount"))
+    #  With the 70 character GUID link this template was two segments; the
+    #  37 character token link is what brings it under 160. If this fails
+    #  after a template edit, the words got longer, not the link.
+    ck("and even the longest one, link included, stays one segment",
+       "1 segment" in pg.inner_text("#msgCount"))
     pg.fill("#msgBox", "Menu here: https://evil.example/x"); pg.wait_for_timeout(150)
     ck("typing a URL is warned about as it is typed",
        "cannot be typed" in pg.inner_text("#msgWarn"))
@@ -252,15 +255,17 @@ with sync_playwright() as p:
        and "connection" in pg.inner_text("#menuGate"))
     STATE["menufail"] = False
 
-    # ── the link comes off the stay record ─────────────────────
-    #  The page never builds the outgoing link itself: that is the Worker's,
-    #  from its own read. What the page must prove is that its one builder
-    #  carries both parameters, so the eventual short token is a one-function
-    #  swap here and in the Worker.
+    # ── the page holds no link builder at all ──────────────────
+    #  The Worker mints a short token per send and stores it against the
+    #  booking id and villa; the page never sees a link and cannot build one,
+    #  so an edited browser has nothing to substitute. What the page DOES
+    #  own is the counter's budget for the link the Worker will add: the
+    #  token link is exactly 37 characters.
     pg = board()
-    ck("the link built for a villa carries its booking id AND its villa number",
-       pg.evaluate("()=>inviteLink(ROWS['4'].stay.id, '4')")
-       == "https://menu.nalaresort.com/?b=b4-guid&r=4")
+    ck("the page cannot build a link: the Worker mints the token",
+       pg.evaluate("()=>typeof inviteLink") == "undefined")
+    ck("the counter budgets the 37 character token link",
+       pg.evaluate("()=>LINK_SAMPLE.length") == 37)
 
     # ── the number rule, against the one shared table ──────────
     #  normalisePhone exists twice: here in nala-shared.js for deciding

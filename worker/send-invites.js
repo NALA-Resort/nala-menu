@@ -55,13 +55,24 @@ const reply = (status, body) =>
   new Response(JSON.stringify(body), {
     status, headers: { "Content-Type": "application/json", ...CORS } });
 
-/* ── the link, in ONE function ──────────────────────────────────
-   The twin of inviteLink in invitations.html. Both parameters on purpose:
-   the villa traps a room move, the booking id is the secret. The eventual
-   short token per booking replaces this function and its twin, nothing else. */
-function inviteLink(bookingId, villa) {
-  return "https://menu.nalaresort.com/?b=" + encodeURIComponent(bookingId) +
-         "&r=" + encodeURIComponent(villa);
+/* ── the link: a short token, minted here ───────────────────────
+   The owner's call, 24 Aug, after the first live send: our own short link,
+   not ClickSend's shortener and not the 70-character GUID link. Six
+   characters from a 31-letter alphabet (no 0/O/1/l/i lookalikes a guest
+   might retype wrong) give ~890 million combinations against the handful
+   live at any time: unguessable in practice, and a collision is re-rolled
+   before writing. The token resolves at /links/<token> to the booking id
+   and the villa - the same two facts the long link carried, for the same
+   reason: the villa traps a room move, the booking id is the secret.
+   index.html reads that node (public per child, unlistable) and carries on
+   exactly as if ?b= and ?r= had arrived. */
+const TOKEN_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
+function newToken() {
+  const b = new Uint8Array(6);
+  crypto.getRandomValues(b);
+  let t = "";
+  for (const x of b) t += TOKEN_ALPHABET[x % TOKEN_ALPHABET.length];
+  return t;
 }
 
 /* ── a phone number a machine can dial ──────────────────────────
@@ -188,7 +199,26 @@ export default {
         if (!phone)
           throw new Error("number cannot be normalised for sending: " + raw);
         rec.to = phone;
-        const link = inviteLink(stay.id, v);
+        /* Mint and store the token BEFORE sending: a link that arrives
+           already resolving beats one that resolves eventually. A token the
+           database refuses to hold fails the villa here, with nothing sent,
+           rather than texting a guest a link to nowhere. */
+        let token = "", placed = false;
+        for (let tries = 0; tries < 5 && !placed; tries++) {
+          token = newToken();
+          const taken = await dbGet("/links/" + token, idToken).catch(() => null);
+          if (taken != null) continue;
+          const w = await fetch(
+            DB + "/links/" + token + ".json?auth=" + encodeURIComponent(idToken),
+            { method: "PUT", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ b: String(stay.id), r: v, d: date,
+                                     at: rec.sentAt }) });
+          placed = w.ok;
+          if (!w.ok && w.status !== 409) break;
+        }
+        if (!placed) throw new Error("the link token did not store, nothing sent");
+        rec.token = token;
+        const link = "https://menu.nalaresort.com/?t=" + token;
         rec.body = text.includes("<link>")
           ? text.replace("<link>", link)
           : text.replace(/\s*$/, "") + "\n" + link;
@@ -204,13 +234,9 @@ export default {
           body: JSON.stringify({ messages: [{
             from: (env.CLICKSEND_FROM || "").trim(),
             to: phone, body: rec.body, source: "nala-menu" }],
-            /* The owner's call, 24 Aug, after the first live send: no
-               ClickSend shortener. The guest sees menu.nalaresort.com in the
-               message, not a click.sy redirect, at the price of a second
-               segment (the Mews GUID makes the link about seventy
-               characters). If a shortener ever returns it is ours, or the
-               short token per booking that replaces inviteLink wholesale.
-               menu.nalaresort.com must still be registered at
+            /* No ClickSend shortener: the link is already short and already
+               ours, so the guest sees menu.nalaresort.com, not a redirect
+               domain. menu.nalaresort.com must still be registered at
                dashboard.clicksend.com/sms/website-registration, or a message
                carrying the link will not send at all. */
             shorten_urls: false }),

@@ -179,11 +179,19 @@ short token per booking that replaces `inviteLink` wholesale:
 
 ### The link
 
-Built by the page, fresh, at send time:
+**Built 24 Aug, after the first live send: the short token the section below
+asked for.** The Worker mints six characters per send (a 31-letter alphabet
+with no 0/O/1/l/i lookalikes, ~890 million combinations, collisions re-rolled)
+and stores the booking id and villa against it at `/links/<token>` before
+anything is sent:
 
-    https://menu.nalaresort.com/?b=<booking id>&r=<villa>
+    https://menu.nalaresort.com/?t=<token>
 
-Both values come off tonight's stay record.
+`index.html` resolves `?t=` through `/links` (public read per child, the list
+itself unreadable) and carries on exactly as if `?b=&r=` had arrived; the long
+form still works for pre-arrival links and anything already sent. The page no
+longer builds links at all - the Worker is the only place, and the token
+record is the same two facts the long link carried, off tonight's stay record.
 
 **Both parameters, not one.** The owner asked whether the villa alone would do,
 since generating the link at send time already traps a room move. It does trap
@@ -199,11 +207,12 @@ The booking id also carries the dietaries, which are written to
 `/bookings/<id>/prearrival` so they follow the guest across nights. Without it
 there is nowhere to put them.
 
-**Build the URL in ONE function**, so it can be swapped later without touching
-the guest page. A Mews id is a 36 character GUID and it is what makes these
-messages two segments. The eventual fix is a short unguessable token per
-booking, six or seven characters, resolving to the id. Not now: it needs a
-lookup table and a resolver. But build so that later is a small change.
+**Build the URL in ONE place**, so it can be swapped without touching the
+guest page. This paid for itself on day one: version one shipped the 36
+character GUID link, the owner ruled against both the long link and
+ClickSend's shortener after the first live send, and the token above replaced
+it the same evening - the Worker's link builder and one resolver in
+`index.html`, nothing else.
 
 ---
 

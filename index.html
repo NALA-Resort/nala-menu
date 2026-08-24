@@ -1001,7 +1001,25 @@
   }
 
   function initRSVP(){
-    if (!G.id) return;   // opt-in needs a booking, which the link carries
+    /* The SMS invitations carry a short token, ?t=, minted by the sending
+       Worker: /links/<token> resolves to the booking id and villa, the same
+       two facts the long ?b=&r= link carries, and the rest of this page
+       cannot tell the difference. The long form still works; pre-arrival
+       links and anything already sent keep resolving. A token that resolves
+       to nothing is a guest with a mistyped link, and the page simply stays
+       a menu, same as no link at all. */
+    if (!G.id){
+      var t = (qs.get('t') || '').trim().toLowerCase();
+      if (!/^[a-z0-9]{4,16}$/.test(t)) return;
+      db('/links/' + t).then(function(rec){
+        if (!rec || !rec.b) return;
+        G.id = String(rec.b);
+        var r = String(rec.r || '');
+        if (!linkRoom && /^[0-9]{1,3}$/.test(r)) linkRoom = r;
+        initRSVP();
+      }).catch(function(){});
+      return;
+    }
     panel.className = 'show';
     document.querySelector('.page').classList.add('has-rsvp');
 

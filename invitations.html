@@ -149,21 +149,15 @@ document.getElementById('title').textContent = dateLabel(new Date());
 function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
 
 /* ── the link ──────────────────────────────────────────────────
-   Built fresh at send time, in ONE function, so the eventual short token can
-   replace it without touching the guest page. Both parameters on purpose: the
-   villa traps a room move, and the booking id is the secret. With the villa
-   alone anybody can walk ?r=1 through ?r=17 and answer for the whole resort;
-   index.html records that the previous scheme died of exactly this. The
-   Worker holds its own copy and rebuilds the link itself, so an edited
-   browser cannot substitute a different one. */
-function inviteLink(bookingId, villa){
-  return 'https://menu.nalaresort.com/?b=' + encodeURIComponent(bookingId) +
-         '&r=' + encodeURIComponent(villa);
-}
-/* What the counter assumes a link costs. A Mews GUID makes the real thing
-   about seventy characters; the exact length varies by a character or two of
-   villa number, which the word "about" in the counter carries. */
-var LINK_SAMPLE = new Array(71).join('x');
+   The page does not build it and never sees it. The Worker mints a six
+   character token per send, stores the booking id and villa against it at
+   /links/<token>, and the SMS carries menu.nalaresort.com/?t=<token>. The
+   booking id is still the secret, held server side; with the villa alone
+   anybody can walk ?r=1 through ?r=17 and answer for the whole resort, which
+   index.html records as how the previous scheme died. */
+/* What the counter assumes the link costs: the token link is exactly 37
+   characters. */
+var LINK_SAMPLE = new Array(38).join('x');
 
 /* ── templates ─────────────────────────────────────────────────
    Editable before sending. <link> marks where the link goes; it is a marker,
@@ -207,8 +201,9 @@ function msgChanged(){
   warn.textContent = bodyHasUrl(s)
     ? 'Links cannot be typed here. The menu link is added automatically.' : '';
   warn.className = bodyHasUrl(s) ? 'warn' : '';
-  /* An SMS is 160 characters and the link alone is about seventy, so most of
-     these are two segments. Shown so the writer knows what they are doing. */
+  /* An SMS is 160 characters and the link costs 37 of them, so a template
+     plus the link usually still fits one segment. Shown so the writer knows
+     what they are doing. */
   var len = s.replace('<link>', LINK_SAMPLE).length;
   var segs = len <= 160 ? 1 : Math.ceil(len / 153);
   document.getElementById('msgCount').textContent =
