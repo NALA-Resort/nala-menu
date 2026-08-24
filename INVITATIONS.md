@@ -162,18 +162,20 @@ allowed via the API, but only to a URL registered at
 that shows up on the first real send and looks like a bug in this page, and
 because a later domain, or a second one, needs the same step.
 
-**Send `"shorten_urls": true` in the payload.** ClickSend then detects and
-shortens one URL per message. Three reasons, and only the first is obvious:
+**Send `"shorten_urls": false` in the payload.** The owner ruled it after the
+first live send, 24 Aug: the guest sees `menu.nalaresort.com/...` in the
+message, not a ClickSend redirect domain, which is worth the second segment
+the 36 character Mews GUID costs. The original case for shortening is kept
+below because it is the case for building our own shortener one day - the
+short token per booking that replaces `inviteLink` wholesale:
 
 - It halves the message. A Mews booking id is a 36 character GUID and it is
   what pushes ours to two segments. Shortened, most fit in one.
-- A shortened link is one ClickSend generated, which is friendlier to their own
-  filtering than a raw URL. Insurance if the policy widens.
 - Click statistics become available per link, so it is possible to see which
   guests opened the menu and which never did. That is the same list reception
   would chase before service. **Not for version one**, but do not design the
-  send so it cannot be added: keep whatever they return about the shortened
-  link in the `/invites` record.
+  send so it cannot be added: keep whatever comes back about the link in the
+  `/invites` record.
 
 ### The link
 

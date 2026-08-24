@@ -204,17 +204,16 @@ export default {
           body: JSON.stringify({ messages: [{
             from: (env.CLICKSEND_FROM || "").trim(),
             to: phone, body: rec.body, source: "nala-menu" }],
-            /* ClickSend detects and shortens one URL per message. A Mews
-               booking id is a 36 character GUID and it is what pushes these
-               to two segments; shortened, most fit in one. It also means the
-               link is one ClickSend generated, which suits their own
-               filtering, and it is what makes per-link click statistics
-               possible later. Not built on here, but the record below keeps
-               whatever comes back so adding it is a read rather than a
-               resend. menu.nalaresort.com must be registered at
-               dashboard.clicksend.com/sms/website-registration first, or a
-               message carrying the link will not send at all. */
-            shorten_urls: true }),
+            /* The owner's call, 24 Aug, after the first live send: no
+               ClickSend shortener. The guest sees menu.nalaresort.com in the
+               message, not a click.sy redirect, at the price of a second
+               segment (the Mews GUID makes the link about seventy
+               characters). If a shortener ever returns it is ours, or the
+               short token per booking that replaces inviteLink wholesale.
+               menu.nalaresort.com must still be registered at
+               dashboard.clicksend.com/sms/website-registration, or a message
+               carrying the link will not send at all. */
+            shorten_urls: false }),
         });
         const out = await send.json().catch(() => null);
         const msg = out && out.data && out.data.messages && out.data.messages[0];
