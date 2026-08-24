@@ -1,5 +1,11 @@
 # Start a new chat with this
 
+**Before adding anything, read `CLAUDE.md`.** It is the convention for how
+features get added here: a fact lives in one file, and adding a page is one
+line in `NAV` rather than markup pasted into ten. Claude Code reads it
+automatically; a chat session needs pointing at it, which is what this line
+is for.
+
 Paste this line, and nothing else:
 
 > Fetch https://raw.githubusercontent.com/NALA-Resort/nala-menu/main/HANDOVER.md
