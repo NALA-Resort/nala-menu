@@ -120,16 +120,14 @@ one today.** The Worker stores what Mews sends, truncated and otherwise
 untouched: `asText(r.phone, 40)`. Real records hold `0412 345 678`,
 `+61412345678`, `0412345678` and worse, because a guest typed them.
 
-ClickSend confirmed on 23 Aug that `+61...` and `61...` are both accepted. They
-did not say whether a bare `04...` is, and it does not matter, because it is
-normalised before it ever reaches them. Do not rely on a provider being lenient
-about a format nobody has confirmed: a rejection at five o'clock reads as a bug
-in this page.
+ClickSend confirmed on 23 Aug: `+61...` and `61...` are accepted, and **a bare
+`04...` is NOT**. So a guest whose Mews profile holds `0412 345 678` does not
+receive the message, and the conversion is not a tidy-up, it is the difference
+between the message arriving and not.
 
-Normalising is right regardless of what they accept. The stored numbers are a
-mess, so converting once means every message goes out in one shape, and it lets
-the page grey out a landline before anybody ticks it, which no amount of
-provider leniency does.
+That will be most of them. A number typed by an Australian into a booking form
+is a local number far more often than an international one, so without this the
+feature fails for the majority of guests on its first evening.
 
 So, at send time, in the Worker:
 
