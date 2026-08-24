@@ -180,6 +180,7 @@ PUBLISH_QS = ("?b=Tomato%20focaccia%20-%20whipped%20ricotta"
 PAGES = [
     ("cleaners.html",     ""),
     ("front-desk.html",   ""),
+    ("invitations.html",  ""),
     ("tally.html",        ""),
     ("tag.html",          ""),
     #  The menu arrives in the address, so an empty publish page is not

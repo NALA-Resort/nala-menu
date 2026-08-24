@@ -268,6 +268,30 @@ function openedTonight(villa, marks){
   return !!(m && m.at);
 }
 
+/* ── a phone number a machine can dial ─────────────────────────
+   ClickSend wants E.164 and the Worker stores what Mews sends, untouched:
+   real records hold `0412 345 678`, `+61412345678`, `0412345678` and worse,
+   because a guest typed them. This turns each into +614XXXXXXXX or refuses.
+
+   Refusal is deliberate: no guessing at an international number, a landline,
+   or a mobile with the wrong number of digits. A wrong guess sends a guest's
+   dinner link to a stranger; a refusal is a greyed row naming a Mews record
+   that cannot be fixed here.
+
+   The invitations Worker carries its own copy of this function, because a
+   Worker cannot import from the site. worker/invites-test.mjs asserts both
+   copies against one table of cases, so the two cannot drift apart quietly.
+
+   NOT tidyPhone in list.html, which goes the other way: that one makes a
+   number readable by a person, this one makes it dialable by a machine.  */
+function normalisePhone(raw){
+  var s = String(raw == null ? '' : raw).replace(/[\s().\-]/g, '');
+  if (/^04\d{8}$/.test(s))    return '+61' + s.slice(1);   /* the common case */
+  if (/^\+614\d{8}$/.test(s)) return s;                    /* already right   */
+  if (/^614\d{8}$/.test(s))   return '+' + s;              /* plus went missing */
+  return null;                                             /* not sent, ever  */
+}
+
 function fetchStays(dateKey){
   return Promise.all([
     fetch(DB + '/stays/' + dateKey + '.json?v=' + Date.now())
@@ -1398,6 +1422,7 @@ function ensureNotifySettings(role){
 var NAV_NEEDS = {
   'tally.html':        'resBoard',
   'front-desk.html':   'editBookings',
+  'invitations.html':  'editBookings',
   'list.html':         'resSheet',
   /* Both were missing until 22 Aug, so every login saw them: a housekeeper's
      menu offered to publish the dinner menu, and tapping it bounced her back

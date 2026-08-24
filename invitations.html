@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nala Villas">
+<link rel="apple-touch-icon" href="nala-icon.png?v=1">
+<title>Nala &middot; Invitations</title>
+<link rel="stylesheet" href="nala-ui.css?v=12">
+<style>
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+          --green:#E4EDE2; --greenb:#7E937A; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
+         padding:calc(24px + env(safe-area-inset-top)) 18px 0;
+         -webkit-tap-highlight-color:transparent; }
+
+  .seclabel { font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+              color:var(--mid); margin:22px 0 8px; }
+
+  /* Why this page refuses to send. A tinted pill is status, never tappable. */
+  .menupill { display:inline-block; padding:6px 12px; border-radius:99px;
+              background:#EFE3E0; color:var(--red); font-size:11px;
+              letter-spacing:.14em; text-transform:uppercase; }
+  .menuwhy { font-size:13px; color:var(--mid); margin-top:6px; line-height:1.45; }
+  #menuGate { display:none; margin:14px 0 2px; }
+  #menuGate.show { display:block; }
+
+  /* One villa. The whole row is the control surface, the same documented
+     exception as the villa tile grid: the row itself is the toggle. */
+  .vrow { display:flex; align-items:center; gap:12px; width:100%;
+          background:none; border:1px solid var(--rule); border-radius:8px;
+          padding:11px 13px; margin-bottom:7px; text-align:left;
+          font-family:inherit; color:inherit; cursor:pointer; }
+  .vrow:disabled { opacity:.45; cursor:default; }
+  .vrow .v { font-size:20px; min-width:30px; text-align:center; }
+  .vrow .mid { flex:1; min-width:0; }
+  .vrow .nm { font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vrow .st { font-size:11px; color:var(--mid); margin-top:2px; }
+  .vrow .st .bad { color:var(--red); }
+  /* The tick says what pressing Send will do to this villa. Adjacent steps of
+     the type scale, so the mark reads with the row rather than over it. */
+  .tick { flex:0 0 auto; width:24px; height:24px; border:1px solid var(--rule);
+          border-radius:6px; display:flex; align-items:center; justify-content:center;
+          font-size:15px; color:transparent; }
+  .vrow.on { border-color:var(--greenb); }
+  .vrow.on .tick { background:var(--green); border-color:var(--greenb); color:var(--ink); }
+
+  /* The message. The box holds the words; the link is never in the box. */
+  select, textarea { width:100%; font-family:var(--ui-font); font-size:15px;
+                     color:var(--ink); background:#fff; border:1px solid var(--rule);
+                     border-radius:8px; padding:11px 13px; }
+  select { -webkit-appearance:none; appearance:none; }
+  textarea { margin-top:8px; min-height:96px; resize:vertical; line-height:1.45; }
+  .msgmeta { display:flex; justify-content:space-between; gap:12px;
+             font-size:11px; color:var(--mid); margin-top:6px; }
+  .msgmeta .warn { color:var(--red); }
+  .linknote { font-size:11px; color:var(--mid); margin-top:4px; line-height:1.5; }
+
+  .btn { flex:1; text-align:center; padding:13px; border:1px solid var(--ink);
+         border-radius:8px; background:transparent; color:var(--ink);
+         font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
+         text-transform:uppercase; cursor:pointer; white-space:nowrap; }
+  /* The one button whose label counts guests. "Send to 17 guests, 3 of them
+     again" is longer than a phone, and a label that wraps beats a page that
+     scrolls sideways: measured 26px of overflow at 390 before this. */
+  #sendBtn { white-space:normal; line-height:1.4; }
+  .btn.solid { background:var(--ink); color:var(--cream); }
+  .btn:disabled { opacity:.35; cursor:default; }
+  /* The second press. Same shape as Remove on the publish page: the annoying
+     action is a stride from the ordinary one. */
+  .btn.arm { background:var(--red); border-color:var(--red); color:#fff; }
+
+  #errBar { font-size:13px; color:var(--red); margin:10px 0; line-height:1.45; }
+  .spacer { height:12px; }
+</style>
+</head>
+<body class="tier-app">
+
+<div class="daterow">
+  <!-- Locked to today, like the hc tally: an invitation is only ever about
+       tonight, and a page that can browse to a date can send for it. -->
+  <div class="date" id="title"></div>
+  <div class="navwrap" id="navWrap" style="display:none">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="cleaners.html">Cleans</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+  </div>
+</div>
+
+<div class="noaccess" id="noAccess"></div>
+
+<div class="stats" id="statsRow">
+  <div class="stat"><div class="stat-n" id="nSend">&ndash;</div><div class="stat-l">To send</div></div>
+  <div class="stat"><div class="stat-n" id="nAns">&ndash;</div><div class="stat-l">Answered</div></div>
+  <div class="stat"><div class="stat-n" id="nSent">&ndash;</div><div class="stat-l">Sent</div></div>
+  <div class="stat"><div class="stat-n" id="nNoPh">&ndash;</div><div class="stat-l">Unsendable</div></div>
+</div>
+
+<div id="menuGate">
+  <span class="menupill" id="menuPill">Menu not published</span>
+  <div class="menuwhy" id="menuWhy"></div>
+</div>
+
+<div id="board"></div>
+
+<div class="seclabel">Message</div>
+<select id="tmpl" aria-label="Template"></select>
+<textarea id="msgBox" aria-label="Message text"></textarea>
+<div class="msgmeta"><span id="msgWarn"></span><span id="msgCount"></span></div>
+<div class="linknote">The menu link is added for each guest automatically, from
+  tonight's booking, and cannot be typed into the message.</div>
+
+<div id="errBar"></div>
+<div class="spacer"></div>
+
+<div class="foot">
+  <button class="btn solid" id="sendBtn" disabled>Send</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="auth.js?v=12"></script>
+<script src="nala-shared.js?v=28"></script>
+<script>
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+/* The sender. A Cloudflare Worker holding the ClickSend credential, which is
+   never in the browser and never in this repo. The page proposes villas and a
+   message; the Worker verifies the login, re-reads the stays itself, rebuilds
+   every link server side and does the sending. worker/send-invites.js. */
+var INVITES_URL = 'https://nala-invites.ben-681.workers.dev';
+
+/* Locked to today on purpose: the guests to invite are the guests in house
+   tonight, and a page that could browse to another date could send for it. */
+var TODAY = dkey(new Date());
+document.getElementById('title').textContent = dateLabel(new Date());
+
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+  var so=document.getElementById('navSignout');
+  if (so) so.onclick=function(e){ e.preventDefault();
+    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+})();
+function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
+
+/* ── the link ──────────────────────────────────────────────────
+   Built fresh at send time, in ONE function, so the eventual short token can
+   replace it without touching the guest page. Both parameters on purpose: the
+   villa traps a room move, and the booking id is the secret. With the villa
+   alone anybody can walk ?r=1 through ?r=17 and answer for the whole resort;
+   index.html records that the previous scheme died of exactly this. The
+   Worker holds its own copy and rebuilds the link itself, so an edited
+   browser cannot substitute a different one. */
+function inviteLink(bookingId, villa){
+  return 'https://menu.nalaresort.com/?b=' + encodeURIComponent(bookingId) +
+         '&r=' + encodeURIComponent(villa);
+}
+/* What the counter assumes a link costs. A Mews GUID makes the real thing
+   about seventy characters; the exact length varies by a character or two of
+   villa number, which the word "about" in the counter carries. */
+var LINK_SAMPLE = new Array(71).join('x');
+
+/* ── templates ─────────────────────────────────────────────────
+   Editable before sending. <link> marks where the link goes; it is a marker,
+   not a URL, and the box refuses anything that IS a URL. The resort's name is
+   on every one: Australian rules require a commercial sender to identify
+   itself, and the guest should know who is texting before they open a link. */
+var TEMPLATES = [
+  { id:'ready',    label:'Menu is ready',
+    body:'Tonight\u2019s menu is ready. <link>\nNala Resort' },
+  { id:'join',     label:'Will you join us',
+    body:'Good afternoon. Tonight\u2019s menu, and a place to tell us if you will join us. <link>\nNala Resort' },
+  { id:'reminder', label:'Reminder',
+    body:'A reminder that we have not heard about dinner tonight. The menu, and the link to answer, is here. <link>\nNala Resort' }
+];
+
+var ROWS = {};          /* villa -> { stay, state, ticked } */
+var MENU_STATE = null;  /* 'live' | 'none' | 'failed' */
+var ARMED = false;      /* the second press for a resend */
+
+/* ── the message box ─────────────────────────────────────────── */
+var tmplSel = document.getElementById('tmpl'), msgBox = document.getElementById('msgBox');
+TEMPLATES.forEach(function(t){
+  var o = document.createElement('option'); o.value = t.id; o.textContent = t.label;
+  tmplSel.appendChild(o);
+});
+function setTemplate(id){
+  var t = TEMPLATES.filter(function(t){ return t.id === id; })[0] || TEMPLATES[0];
+  msgBox.value = t.body;
+  msgChanged();
+}
+tmplSel.onchange = function(){ setTemplate(tmplSel.value); };
+
+/* A URL a human can retype is a URL that goes out wrong to fourteen guests at
+   once, which is the failure this page exists to remove. So the box cannot
+   contain one, and the same check runs again in the Worker. */
+function bodyHasUrl(s){ return /(https?:\/\/|www\.)/i.test(s || ''); }
+
+function msgChanged(){
+  var s = msgBox.value;
+  var warn = document.getElementById('msgWarn');
+  warn.textContent = bodyHasUrl(s)
+    ? 'Links cannot be typed here. The menu link is added automatically.' : '';
+  warn.className = bodyHasUrl(s) ? 'warn' : '';
+  /* An SMS is 160 characters and the link alone is about seventy, so most of
+     these are two segments. Shown so the writer knows what they are doing. */
+  var len = s.replace('<link>', LINK_SAMPLE).length;
+  var segs = len <= 160 ? 1 : Math.ceil(len / 153);
+  document.getElementById('msgCount').textContent =
+    len + ' characters \u00B7 ' + (segs === 1 ? '1 segment' : 'about ' + segs + ' segments');
+  disarm();
+}
+msgBox.oninput = msgChanged;
+setTemplate('ready');
+
+/* ── the board ───────────────────────────────────────────────── */
+function timeOf(iso){
+  var d = parseISO(iso); if (!d) return '';
+  var h = d.getHours(), m = String(d.getMinutes()).padStart(2, '0');
+  return (h % 12 || 12) + ':' + m + (h < 12 ? 'am' : 'pm');
+}
+
+function stateOf(villa, stay, cell, invite){
+  var raw = String((stay && stay.phone) || '').trim();
+  if (!raw) return { kind:'nophone', line:'No phone number on the booking', tickable:false, ticked:false };
+  /* A number the rule cannot make dialable is as unsendable as no number,
+     and for the same reason: it is a Mews record and cannot be fixed here. */
+  if (!normalisePhone(raw))
+    return { kind:'nophone', line:'Not a mobile number \u00B7 ' + raw,
+             tickable:false, ticked:false };
+  if (cell && cell.status){
+    var what = cell.status === 'in'
+      ? 'Dining' + (cell.pax ? ' \u00B7 ' + cell.pax : '') : 'Not dining';
+    var who = cell.by === 'guest'
+      ? (cell.at ? 'answered ' + timeOf(cell.at) : 'answered')
+      : 'set by reception';
+    return { kind:'answered', line: what + ' \u00B7 ' + who, tickable:true, ticked:false };
+  }
+  if (invite && invite.status === 'sent')
+    return { kind:'sent', line:'Sent ' + timeOf(invite.sentAt), tickable:true, ticked:false };
+  if (invite && invite.status === 'failed')
+    return { kind:'ready', line:'Send failed ' + timeOf(invite.sentAt) +
+             (invite.error ? ' \u00B7 ' + invite.error : ''), bad:true,
+             tickable:true, ticked:true };
+  return { kind:'ready', line:'Not asked, not answered', tickable:true, ticked:true };
+}
+
+function render(stays, invites){
+  var board = document.getElementById('board');
+  board.innerHTML = '';
+  ROWS = {};
+  Object.keys(stays || {}).sort(function(a, b){ return (+a) - (+b); }).forEach(function(v){
+    var stay = stays[v];
+    if (!stay || typeof stay !== 'object' || !stay.id) return;  /* the older bare id shape */
+    var st = stateOf(v, stay, DINNER_CELLS[v], (invites || {})[v]);
+    ROWS[v] = { stay: stay, state: st, ticked: st.ticked };
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'vrow' + (st.ticked ? ' on' : '');
+    b.dataset.villa = v;
+    b.dataset.state = st.kind;
+    b.disabled = !st.tickable;
+    b.setAttribute('aria-pressed', st.ticked ? 'true' : 'false');
+    b.innerHTML = '<div class="v">' + v + '</div>' +
+      '<div class="mid"><div class="nm"></div><div class="st"></div></div>' +
+      '<div class="tick">\u2713</div>';
+    b.querySelector('.nm').textContent =
+      ((stay.first || '') + ' ' + (stay.last || '')).trim() || 'Guest';
+    var line = b.querySelector('.st');
+    if (st.bad){ var s = document.createElement('span'); s.className = 'bad';
+                 s.textContent = st.line; line.appendChild(s); }
+    else line.textContent = st.line;
+    b.onclick = function(){
+      ROWS[v].ticked = !ROWS[v].ticked;
+      b.classList.toggle('on', ROWS[v].ticked);
+      b.setAttribute('aria-pressed', ROWS[v].ticked ? 'true' : 'false');
+      recount();
+    };
+    board.appendChild(b);
+  });
+  recount();
+}
+
+function selected(){
+  return Object.keys(ROWS).filter(function(v){ return ROWS[v].ticked; })
+                          .sort(function(a, b){ return (+a) - (+b); });
+}
+
+function disarm(){
+  if (!ARMED) return;
+  ARMED = false;
+  recount();
+}
+
+function recount(){
+  var vs = Object.keys(ROWS), sel = selected();
+  var n = function(k){ return vs.filter(function(v){ return ROWS[v].state.kind === k; }).length; };
+  document.getElementById('nSend').textContent = sel.length;
+  document.getElementById('nAns').textContent  = n('answered');
+  document.getElementById('nSent').textContent = n('sent');
+  document.getElementById('nNoPh').textContent = n('nophone');
+
+  var again = sel.filter(function(v){ return ROWS[v].state.kind !== 'ready'; }).length;
+  var btn = document.getElementById('sendBtn');
+  var label = 'Send to ' + sel.length + ' guest' + (sel.length === 1 ? '' : 's') +
+              (again ? ', ' + again + ' of them again' : '');
+  if (ARMED) label = 'Press again \u00B7 ' + label.charAt(0).toLowerCase() + label.slice(1);
+  btn.textContent = sel.length ? label : 'Send';
+  btn.className = 'btn solid' + (ARMED ? ' arm' : '');
+  btn.disabled = !sel.length || MENU_STATE !== 'live' || !window.__idToken;
+}
+
+/* ── nothing sends before the menu is published ───────────────
+   The same test the guest page uses, not a second opinion: the shared reader
+   already refuses a stale fallback file, and a database menu counts only
+   until the midnight ending its publish day. A failed read is NOT an absent
+   menu and is worded as the connection, not as no dinner. */
+function menuGate(){
+  return fetchMenuAnywhere(TODAY).then(function(m){
+    var gate = document.getElementById('menuGate'),
+        why  = document.getElementById('menuWhy'),
+        pill = document.getElementById('menuPill');
+    if (m && m.failed){
+      MENU_STATE = 'failed';
+      pill.textContent = 'Menu could not be checked';
+      why.textContent = 'Tonight\u2019s menu could not be read. This is usually ' +
+        'the connection, not the menu. Nothing sends until it can be checked.';
+      gate.className = 'show';
+    } else {
+      var pub = m && m.published ? parseISO(m.published) : null;
+      var live = false;
+      if (pub && !isNaN(pub)){
+        var expiry = new Date(pub); expiry.setHours(24, 0, 0, 0);
+        live = new Date() < expiry;
+      }
+      MENU_STATE = live ? 'live' : 'none';
+      if (live){ gate.className = ''; }
+      else {
+        pill.textContent = 'Menu not published';
+        why.textContent = 'No menu is published for tonight, so the link would ' +
+          'land on a placeholder. Sending opens once the chef publishes.';
+        gate.className = 'show';
+      }
+    }
+    recount();
+  });
+}
+
+/* ── sending ─────────────────────────────────────────────────── */
+document.getElementById('sendBtn').onclick = function(){
+  var sel = selected();
+  if (!sel.length || MENU_STATE !== 'live') return;
+  var body = msgBox.value;
+  var err = document.getElementById('errBar');
+  if (bodyHasUrl(body)){
+    err.textContent = 'The message contains a link. Take it out: the menu ' +
+      'link is added automatically for each guest.';
+    return;
+  }
+  err.textContent = '';
+  /* A villa already sent to tonight takes a second press. Same shape as
+     Remove on the publish page: the annoying action is a stride from the
+     ordinary one on a phone at service time. */
+  var again = sel.some(function(v){ return ROWS[v].state.kind !== 'ready'; });
+  if (again && !ARMED){ ARMED = true; recount(); return; }
+  ARMED = false;
+
+  var btn = this;
+  btn.disabled = true; btn.textContent = 'Sending\u2026';
+  fetch(INVITES_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken: window.__idToken, date: TODAY,
+                           villas: sel, template: tmplSel.value, body: body })
+  })
+  .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
+  .then(function(res){
+    if (!res.ok || !res.j || !res.j.results)
+      throw new Error((res.j && res.j.error) || 'the sender did not answer');
+    /* Per villa, not per batch: four of six succeeding is the normal case for
+       a bad number, and it must be visible which two did not. Reload from the
+       database rather than trusting the summary, so the rows show what was
+       actually recorded. */
+    var failed = Object.keys(res.j.results).filter(function(v){
+      return res.j.results[v].status !== 'sent';
+    }).sort(function(a, b){ return (+a) - (+b); });
+    if (failed.length)
+      err.textContent = 'Did not send to villa' + (failed.length === 1 ? '' : 's') +
+        ' ' + failed.join(', ') + '. The reason is on each row.';
+    return load();
+  })
+  .catch(function(e){
+    err.textContent = 'Nothing was sent: ' + (e && e.message ? e.message : 'unknown fault') + '.';
+  })
+  .then(function(){ recount(); });
+};
+
+/* ── loading ─────────────────────────────────────────────────── */
+function load(){
+  return Promise.all([
+    fetchStays(TODAY),                  /* fills DINNER_CELLS alongside */
+    fetch(DB + '/invites/' + TODAY + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
+    menuGate()
+  ]).then(function(res){
+    render(res[0] || {}, res[1] || {});
+  });
+}
+
+function showAccess(allowed, e){
+  var box = document.getElementById('noAccess');
+  var on = !allowed;
+  box.innerHTML = !on ? '' :
+    (e ? '<div>Could not check access. This is usually the connection, '
+       + 'not your login.</div>'
+       + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+       : 'This login has no access to Invitations. See the manager.');
+  if (on && !e){
+    var home = homeFor(window.NALA_ROLE);
+    if (home && home !== location.pathname.split('/').pop()){
+      location.replace(home); return;
+    }
+  }
+  box.className = 'noaccess' + (on ? ' show' : '');
+  ['statsRow','board','sendBtn','tmpl','msgBox'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.style.display = on ? 'none' : '';
+  });
+  if (!on) load();
+}
+
+window.NALA_ROLE = null;
+(function gate(){
+  if (!window.firebase || !firebase.auth || typeof loadStaff !== 'function')
+    return setTimeout(gate, 40);
+  var A; try { A = firebase.auth(); } catch(e){ return setTimeout(gate, 40); }
+  if (!A || !A.onAuthStateChanged) return setTimeout(gate, 40);
+  A.onAuthStateChanged(function(u){
+    if (!u) return;                 /* auth.js owns the signed-out state */
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      window.NALA_USER = u;
+      document.getElementById('navWrap').style.display = 'block';
+      navFilter(role);
+      /* Reception's job and the manager's: the same permission that opens the
+         front desk, checked rather than assumed. */
+      showAccess(can(role, 'editBookings'), e);
+    });
+  });
+})();
+</script>
+</body>
+</html>

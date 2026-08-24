@@ -49,7 +49,7 @@
   <div class="date" id="title">Pages</div>
   <div class="navwrap" id="navWrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="cleaners.html">Cleans</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="cleaners.html">Cleans</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 
@@ -70,6 +70,10 @@
   <a class="p" href="front-desk.html">
     <div class="p-t">Front Desk Arrival</div><div class="p-f">front-desk.html</div>
     <div class="p-n">Today's arrivals, and what reception still has to confirm.</div></a>
+  <a class="p" href="invitations.html">
+    <div class="p-t">Invitations</div><div class="p-f">invitations.html</div>
+    <div class="p-n">Sends tonight's menu link by SMS, to the villas that have
+      not answered about dinner. The only screen that shows who has not.</div></a>
   <a class="p" href="cleaners.html">
     <div class="p-t">Cleans</div><div class="p-f">cleaners.html</div>
     <div class="p-n">Housekeeping's board.</div></a>
@@ -165,7 +169,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=27"></script>
+<script src="nala-shared.js?v=28"></script>
 <script>
 (function(){
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
