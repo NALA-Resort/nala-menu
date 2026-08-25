@@ -339,9 +339,17 @@ def ck(name, cond, detail=""):
         FAILURES.append(name + ((" | " + detail) if detail else ""))
 
 args = [a.lower() for a in sys.argv[1:]]
+# "spa" is a page AND a role, so a page name wins a bare word: run.py cuts
+# the sweep into per-page runs and "sweep:spa" must mean the page, or the
+# spa board is the one page the sweep never visits. Filter to the role by
+# writing role:spa (role: works for the other four too).
 ROLE_NAMES = {"admin", "chef", "waiter", "housekeeping", "spa"}
-want_roles = [a for a in args if a in ROLE_NAMES]
-want = [a for a in args if a not in ROLE_NAMES]
+PAGE_STEMS = {p[0].replace(".html", "") for p in PAGES}
+want_roles = [a.split(":", 1)[1] for a in args if a.startswith("role:")
+              and a.split(":", 1)[1] in ROLE_NAMES]
+args = [a for a in args if not a.startswith("role:")]
+want_roles += [a for a in args if a in ROLE_NAMES and a not in PAGE_STEMS]
+want = [a for a in args if a in PAGE_STEMS or a not in ROLE_NAMES]
 pages = [p for p in PAGES if not want or any(w in p[0] for w in want)]
 
 from playwright.sync_api import sync_playwright
