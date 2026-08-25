@@ -37,6 +37,18 @@
   .arr-mid { flex:1; min-width:0; }
   .arr-n { font-size:15px; white-space:nowrap; overflow:hidden;
            text-overflow:ellipsis; }
+  /* The number, its confidence mark and the pencil, as the Pre-arrival SMS
+     page draws them and from the same builder. On its own line rather than
+     beside the name: this row also carries the fork and the link icons, so
+     the name line clips at phone width and a clipped pencil cannot be
+     tapped. ok wears --dine, the same ink the SMS page's --resgreen is. */
+  .arr-p { font-size:11px; color:var(--mid); margin-top:2px; }
+  .arr-p .ph { font-weight:normal; }
+  .arr-p .conf { margin-left:4px; }
+  .arr-p .conf.ok { color:var(--dine); }
+  .arr-p .conf.un { color:var(--mid); }
+  .arr-p .pen { font-size:12px; color:var(--mid); margin-left:5px;
+                padding:2px 4px; cursor:pointer; }
   /* Stay dates as the styleguide sets them: Tue 11-Fri 14. No ordinal, month
      omitted, one line, because a wrapped range doubles the row height. */
   .arr-s { font-size:11px; color:var(--mid); margin-top:2px; white-space:nowrap;
@@ -280,6 +292,27 @@ function nameOf(s){
   return (((s.first||'') + ' ' + (s.last||'')).trim()) || 'Guest';
 }
 
+/* The number a row shows and the editor opens with: the desk's own fix when
+   one exists, else what Mews sent. */
+function phoneOf(r){
+  return String((r.fix && r.fix.phone) || r.stay.phone || '').trim();
+}
+
+/* The pencil's editor, shared with the SMS pages: see editPhoneNumber in
+   nala-shared.js for the prompt, the refusal and the /phonefix write. This
+   page's part is only where the words land and what reloads after a save. */
+function fixNumber(r){
+  editPhoneNumber({
+    id: r.stay.id,
+    name: nameOf(r.stay) === 'Guest' ? '' : nameOf(r.stay),
+    current: phoneOf(r),
+    was: r.stay.phone || ''
+  }, function(msg){
+    err(msg || '');
+    if (!msg) load();
+  });
+}
+
 function stayLabel(s){
   var a = parseDepDate(dkeyOf(s.arrive)), b = parseDepDate(dkeyOf(s.depart));
   if (!a || !b) return '';
@@ -421,6 +454,11 @@ function rowHTML(r){
          '<div class="arr-mid">'+
            '<div class="arr-n">'+esc(nameOf(r.stay))+'</div>'+
            '<div class="arr-s">'+bits.join(' \u00b7 ')+'</div>'+
+           /* The number, its confidence mark and the pencil, exactly as the
+              Pre-arrival SMS rows carry them and from the same builder. On
+              every row, arrived included: reception is the one who hears the
+              right number, and the fix outranks Mews wherever one is read. */
+           '<div class="arr-p">'+phoneBadgeHTML(phoneOf(r), true)+'</div>'+
          '</div>'+seenFor(r.pre)+forkFor(r.pre)+'</button>'+
          (open ? summaryHTML(r) : '');
 }
@@ -646,8 +684,12 @@ function loadPrearrivals(rows){
   return Promise.all(rows.map(function(r){
     return Promise.all([
       api('/bookings/'+r.stay.id+'/prearrival').catch(function(){ return null; }),
-      api('/bookings/'+r.stay.id+'/pms').catch(function(){ return null; })
-    ]).then(function(res){ r.pre = res[0]; r.pms = res[1]; });
+      api('/bookings/'+r.stay.id+'/pms').catch(function(){ return null; }),
+      /* A number fixed at the desk outranks the Mews copy: Mews cannot be
+         corrected from here and its next sync would revert any edit made to
+         the stay. The same record the SMS pages and the Worker read. */
+      api('/phonefix/'+r.stay.id).catch(function(){ return null; })
+    ]).then(function(res){ r.pre = res[0]; r.pms = res[1]; r.fix = res[2]; });
   }));
 }
 
@@ -1386,6 +1428,16 @@ document.getElementById('board').addEventListener('click', function(e){
   var t = e.target;
   if (!t.closest) return;
 
+  /* The pencil sits inside the row button, so it is claimed first: its tap
+     edits the number and must not also open or close the summary. */
+  var pen = t.closest('.pen');
+  if (pen){
+    var rowEl = pen.closest('.arr');
+    var rp = rowEl && rowFor(rowEl.getAttribute('data-villa'));
+    if (rp) fixNumber(rp);
+    return;
+  }
+
   /* Edit and Confirm inside an open summary. */
   var act = t.closest('.sum-btns button');
   if (act){
@@ -1453,10 +1505,11 @@ function showAccess(allowed, e){
 
 /* Who may see an internal note. Not can(), because there is no permission for
    it and inventing one would put a new row on the Settings grid for a thing
-   nobody asked to delegate. Management is admin and staff, as everywhere else
-   on this page. */
+   nobody asked to delegate. Management is admin, manager and the legacy
+   staff, as everywhere else on this page. */
 function canInternal(){
-  return window.NALA_ROLE === 'admin' || window.NALA_ROLE === 'staff';
+  return window.NALA_ROLE === 'admin' || window.NALA_ROLE === 'manager' ||
+         window.NALA_ROLE === 'staff';
 }
 
 window.NALA_ROLE = null;

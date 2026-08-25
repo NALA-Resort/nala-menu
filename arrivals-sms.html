@@ -381,27 +381,15 @@ function render(list){
     nm.textContent = ((it.stay.first || '') + ' ' + (it.stay.last || '')).trim() || 'Guest';
     /* The number beside the name, grey and small, with the pencil that edits
        it. Every row carries both: a valid number can still be a WRONG one,
-       and the fix outranks Mews either way. */
-    var ph = document.createElement('span'); ph.className = 'ph';
+       and the fix outranks Mews either way. Built by the shared helper the
+       Front Desk row uses too, so the two screens cannot drift apart. The
+       pencil is left off a disabled row: a completed form needs no number
+       and a dead pencil reads as a broken one. */
     var rawPh = String((it.fix && it.fix.phone) || it.stay.phone || '').trim();
-    ph.textContent = rawPh || 'no number';
-    nm.appendChild(ph);
-    var confidence = rawPh ? phoneConfidence(rawPh) : null;
-    if (confidence){
-      var cf = document.createElement('span');
-      cf.className = 'conf ' + (confidence === 'mobile' ? 'ok' : 'un');
-      cf.textContent = confidence === 'mobile' ? '\u2713' : '?';
-      cf.title = confidence === 'mobile'
-        ? 'Sits in this country\u2019s published mobile ranges'
-        : 'A real number, but this country\u2019s mobiles cannot be told from landlines; sending will find out';
-      nm.appendChild(cf);
-    }
-    var pen = document.createElement('span'); pen.className = 'pen';
-    /* Not on a disabled row: a completed form needs no number and a dead
-       pencil reads as a broken one. */
-    pen.textContent = '✎'; pen.setAttribute('aria-label', 'Edit number');
-    pen.onclick = function(e){ e.stopPropagation(); fixNumber(it); };
-    if (st.tickable || st.fixable) nm.appendChild(pen);
+    nm.insertAdjacentHTML('beforeend',
+      phoneBadgeHTML(rawPh, !!(st.tickable || st.fixable)));
+    var pen = nm.querySelector('.pen');
+    if (pen) pen.onclick = function(e){ e.stopPropagation(); fixNumber(it); };
     var line = b.querySelector('.st');
     if (st.bad){ var s = document.createElement('span'); s.className = 'bad';
                  s.textContent = st.line; line.appendChild(s); }
@@ -433,38 +421,20 @@ function render(list){
   recount();
 }
 
-/* The number editor. A browser prompt rather than a drawn form: it is rare,
-   it is one field, and the keyboard it summons is the phone's own. What is
-   saved is the normalised E.164, so the record can never hold a shape the
-   send would refuse; the raw Mews value rides along as `was` for the audit.
-   Mews itself stays wrong - it cannot be written from here - so the guest
-   should still be corrected in Mews when somebody is in there. */
+/* The number editor lives in nala-shared.js now, because the Front Desk
+   grew the same pencil: see editPhoneNumber for the prompt, the refusal and
+   the /phonefix write. This page's part is only where the words land and
+   what reloads after a save. */
 function fixNumber(it){
-  var raw = String((it.fix && it.fix.phone) || it.stay.phone || '').trim();
   var err = document.getElementById('errBar');
-  var typed = window.prompt(
-    'Mobile number for ' + (((it.stay.first || '') + ' ' +
-    (it.stay.last || '')).trim() || 'this guest') +
-    '.\nInclude the country code for an overseas number, e.g. +64 27 487 5277.',
-    raw);
-  if (typed == null) return;                       /* cancelled */
-  var phone = normalisePhone(typed);
-  if (!phone){
-    err.textContent = 'That is still not a sendable mobile number. Australian ' +
-      'numbers can be typed as 04...; anything overseas needs its + country code.';
-    return;
-  }
-  err.textContent = '';
-  fetch(DB + '/phonefix/' + it.id + '.json', {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone: phone, was: String(it.stay.phone || ''),
-                           by: (window.NALA_USER && NALA_USER.email) || '',
-                           at: new Date().toISOString() })
-  }).then(function(r){
-    if (!r.ok) throw new Error();
-    return load();
-  }).catch(function(){
-    err.textContent = 'The number did not save. Try again.';
+  editPhoneNumber({
+    id: it.id,
+    name: ((it.stay.first || '') + ' ' + (it.stay.last || '')).trim(),
+    current: (it.fix && it.fix.phone) || it.stay.phone || '',
+    was: it.stay.phone || ''
+  }, function(msg){
+    err.textContent = msg || '';
+    if (!msg) load();
   });
 }
 

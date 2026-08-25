@@ -121,11 +121,11 @@
 
     <div class="sec">What each role may do</div>
     <table id="perms"></table>
-    <div class="note">The manager always has everything, so there is no column
-    for them. A box you have changed from how the app came is marked. Only
-    "Change what a villa needs" is enforced by the database as well as by the
-    app: the others hide the button, which is enough for an honest mistake and
-    is not a lock.</div>
+    <div class="note">An admin always has everything, and a manager everything
+    but this page, so neither is a column here. A box you have changed from
+    how the app came is marked. Only "Change what a villa needs" is enforced
+    by the database as well as by the app: the others hide the button, which
+    is enough for an honest mistake and is not a lock.</div>
     <div class="err" id="permErr"></div>
 
     <div class="sec">Notifications</div>
@@ -148,13 +148,15 @@
 <script src="auth.js?v=12"></script>
 <script src="nala-shared.js?v=34"></script>
 <script>
-var ROLES = ['admin','chef','waiter','housekeeping'];
-/* The human roles, and the ones the notification matrix targets. sync is a
-   machine account with no phone, so it is assignable and sortable but takes
-   no part in notifications: giving it a column would ask who to buzz on a
-   login that cannot receive a buzz. spa is assignable too but stays out of
-   the matrix: every event in it is cleans and menus, none of which is the
-   masseuse's business, and a fifth column squeezes the grid at 320. */
+var ROLES = ['admin','manager','chef','waiter','housekeeping'];
+/* The human roles, and the ones the notification matrix targets. manager is
+   admin without manageStaff, so it cannot open this page but is assigned and
+   buzzed like anybody else. sync is a machine account with no phone, so it
+   is assignable and sortable but takes no part in notifications: giving it a
+   column would ask who to buzz on a login that cannot receive a buzz. spa is
+   assignable too but stays out of the matrix: every event in it is cleans
+   and menus, none of which is the masseuse's business, and a sixth column
+   squeezes the grid at 320. */
 var ROLES_ASSIGN = ROLES.concat(['spa','sync']);
 var EVENTS = [['departed','Departed'],['available','Possibly available'],
               ['cleaned','Cleaned'],['serviced','Serviced'],

@@ -639,7 +639,8 @@ function staffNotesWhenReady(stays){
   fetchStaffNotes(STAYS_FOR_NOTES).then(paintStaffNotes);
 }
 function canInternal(){
-  return window.NALA_ROLE === 'admin' || window.NALA_ROLE === 'staff';
+  return window.NALA_ROLE === 'admin' || window.NALA_ROLE === 'manager' ||
+         window.NALA_ROLE === 'staff';
 }
 /* One read per occupied villa. The note hangs off the reservation, so the only
    way to it is the booking id on the stay; /internal is readable per id and

@@ -333,6 +333,71 @@ function phoneConfidence(raw){
   return 'unsure';
 }
 
+/* ── the number beside a guest's name ──────────────────────────
+   The raw number, small and grey; the confidence mark (a tick where the
+   country's mobile ranges are published and this number sits in one, a
+   question mark where nobody can tell a mobile from a landline); and the
+   pencil that edits it. Grown on the Pre-arrival SMS page, wanted by the
+   Front Desk days later, so built here once rather than pasted twice.
+
+   Each page styles .ph/.conf/.pen in its own sheet and wires the pencil
+   itself - by delegation on a page built from strings, by onclick on one
+   built from nodes - and both hand the tap to editPhoneNumber below.
+   showPen=false leaves the pencil out where editing has nothing to offer
+   (a completed form needs no number and a dead pencil reads as broken). */
+function phoneBadgeHTML(raw, showPen){
+  raw = String(raw == null ? '' : raw).trim();
+  var esc = function(t){ return String(t).replace(/[&<>"]/g, function(c){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); };
+  var h = '<span class="ph">' + (raw ? esc(raw) : 'no number') + '</span>';
+  var confidence = raw ? phoneConfidence(raw) : null;
+  if (confidence === 'mobile')
+    h += '<span class="conf ok" title="Sits in this country’s published ' +
+         'mobile ranges">✓</span>';
+  else if (confidence)
+    h += '<span class="conf un" title="A real number, but this country’s ' +
+         'mobiles cannot be told from landlines; sending will find out">?</span>';
+  if (showPen)
+    h += '<span class="pen" role="button" aria-label="Edit number">✎</span>';
+  return h;
+}
+
+/* The number editor behind the pencil. A browser prompt rather than a drawn
+   form: it is rare, it is one field, and the keyboard it summons is the
+   phone's own. What is saved is the normalised E.164 at /phonefix/<booking>,
+   so the record can never hold a shape the send would refuse; the raw Mews
+   value rides along as `was` for the audit. Mews itself stays wrong - it
+   cannot be written from here - so the guest should still be corrected in
+   Mews when somebody is in there. The fix outranks the Mews copy everywhere
+   a number is read, because the next sync would revert an edit to the stay.
+
+   cb hears the outcome: null after a successful save, otherwise the words to
+   put on the page's error bar. Cancelling the prompt calls nothing at all. */
+function editPhoneNumber(booking, cb){
+  var typed = window.prompt(
+    'Mobile number for ' + (booking.name || 'this guest') +
+    '.\nInclude the country code for an overseas number, e.g. +64 27 487 5277.',
+    String(booking.current || '').trim());
+  if (typed == null) return;                       /* cancelled */
+  var phone = normalisePhone(typed);
+  if (!phone){
+    cb('That is still not a sendable mobile number. Australian ' +
+       'numbers can be typed as 04...; anything overseas needs its + country code.');
+    return;
+  }
+  fetch(DB + '/phonefix/' + booking.id + '.json', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone: phone, was: String(booking.was || ''),
+                           by: (window.NALA_USER && NALA_USER.email) || '',
+                           at: new Date().toISOString() })
+  }).then(function(r){
+    if (!r.ok) throw new Error();
+    cb(null);
+  }).catch(function(){
+    cb('The number did not save. Try again.');
+  });
+}
+
 function fetchStays(dateKey){
   return Promise.all([
     fetch(DB + '/stays/' + dateKey + '.json?v=' + Date.now())
@@ -821,6 +886,14 @@ function emailKey(email){
 
 var ROLE_GRANTS = {
   admin:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff','spaBoard'],
+  /* Everything the admin holds except manageStaff, asked for 25 Aug: a
+     management login that runs the whole day without the keys to Settings
+     General, Pages or Diagnostics, which are the three manageStaff gates.
+     Deliberately a role and not a permission column: handing manageStaff
+     out is a second admin, and this is the role for everybody who is
+     nearly one. spaBoard rides along because the definition is the admin's
+     list, whatever joins it, minus that one key. */
+  manager:      ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','spaBoard'],
   chef:         ['resBoard','resSheet','publishMenu'],
   waiter:       ['cleansBoard','resBoard','editBookings','resSheet','spaBoard'],
   housekeeping: ['cleansBoard','cleansMarks'],
@@ -1103,10 +1176,13 @@ var PERM_ACTIONS = [
 ];
 
 /* The columns. admin is absent because it always has everything, and a column
-   of ticks nobody may untick teaches people the ticks do nothing. sync is
-   absent because it is a machine with no screen. spa is absent because it is
-   an outside contractor: widening what that login can open is a decision for
-   the rules, made deliberately, not a tick in a grid.                   */
+/* The columns. admin is absent because it always has everything, and a column
+   of ticks nobody may untick teaches people the ticks do nothing. manager is
+   absent for the same reason: the role IS "everything but manageStaff", and
+   the rules refuse the matrix an opinion about it. sync is absent because it
+   is a machine with no screen. spa is absent because it is an outside
+   contractor: widening what that login can open is a decision for the rules,
+   made deliberately, not a tick in a grid.                              */
 var PERM_ROLES = ['chef','waiter','housekeeping'];
 
 /* What the app shipped with, asked directly. The grid shows it beside the
@@ -1135,8 +1211,9 @@ function can(role, what){
    board, which they may not see, so their first screen was a refusal. A role
    that cannot see the page it arrived on is a routing problem, not an access
    one: send them to their own board instead of telling them off.        */
-var ROLE_HOME = { admin:'tally.html', chef:'tally.html', waiter:'tally.html',
-                  housekeeping:'cleaners.html', spa:'spa.html' };
+var ROLE_HOME = { admin:'tally.html', manager:'tally.html', chef:'tally.html',
+                  waiter:'tally.html', housekeeping:'cleaners.html',
+                  spa:'spa.html' };
 function homeFor(role){ return ROLE_HOME[normaliseRole(role)] || null; }
 
 function setStaffRecords(map){
@@ -1425,15 +1502,15 @@ var NOTIFY_DEFAULTS = {
   on: true,
   hours: { from: '07:30', to: '18:00' },
   events: {
-    departed:  { housekeeping:true, admin:true, waiter:false, chef:false },
-    available: { housekeeping:true, admin:true, waiter:false, chef:false },
-    cleaned:   { housekeeping:true, admin:true, waiter:true,  chef:false },
-    serviced:  { housekeeping:true, admin:true, waiter:true,  chef:false },
+    departed:  { housekeeping:true, admin:true, manager:true, waiter:false, chef:false },
+    available: { housekeeping:true, admin:true, manager:true, waiter:false, chef:false },
+    cleaned:   { housekeeping:true, admin:true, manager:true, waiter:true,  chef:false },
+    serviced:  { housekeeping:true, admin:true, manager:true, waiter:true,  chef:false },
     /* The chef publishes by pushing a commit, not by writing here, so nothing
        in the database changes when a menu goes up. The board notices on its
        next load and fires this. Off for the chef, who already knows: they
        just published it. */
-    menu:      { housekeeping:false, admin:true, waiter:false, chef:false }
+    menu:      { housekeeping:false, admin:true, manager:true, waiter:false, chef:false }
   }
 };
 
@@ -1472,9 +1549,11 @@ var NAV_NEEDS = {
   'tally.html':        'resBoard',
   'front-desk.html':   'editBookings',
   'invitations.html':  'editBookings',
-  /* Missing from the day it shipped, found 25 Aug when the spa role arrived
-     with a menu that should hold nothing and held this: an unlisted link is
-     shown to every role, and this one bounces anyone without editBookings. */
+  /* Missing from the day it shipped, found twice on 25 Aug - once when the
+     spa role arrived with a menu that should hold nothing and held this,
+     once from the SMS side - the same way publish.html and tag.html were
+     once missing: an unlisted link is shown to every role, and this one
+     bounces anyone without editBookings. Same permission as the page. */
   'arrivals-sms.html': 'editBookings',
   'list.html':         'resSheet',
   /* Both were missing until 22 Aug, so every login saw them: a housekeeper's

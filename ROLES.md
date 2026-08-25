@@ -11,22 +11,24 @@ disagree, the code is what runs and this file is wrong.** They did disagree
 until 18 Aug: this said a waiter had no access to the Cleans board, and the
 code has given them one since the day it was written.
 
-## The five roles
+## The six roles
 
-`staff`, `chef`, `waiter`, `housekeeping`, `spa`.
+`staff`, `chef`, `waiter`, `housekeeping` - four when this was agreed - and
+two added 25 Aug, in separate sessions that met at the merge: `manager` and
+`spa`.
 
 Note "staff" is the FULL ACCESS role, not a middling one. The existing admin
 account is `staff@nalaresort.com.au`, so it maps to this role by name, which
 is convenient but coincidental - the role comes from the record, never from
 the address.
 
-| | Cleans board | Set a villa's job | Reservations board | Edit bookings | Reservations Sheet | Publish menu | Manage staff | Spa board |
-|---|---|---|---|---|---|---|---|---|
-| **admin** | yes | yes | yes | yes | yes | yes | yes | yes |
-| **chef** | no | no | read only | no | read and print | yes | no | no |
-| **waiter** | availability and departures | no | yes | yes | yes | no | no | yes |
-| **housekeeping** | marks only | no | no | no | no | no | no | no |
-| **spa** | no | no | no | no | no | no | no | yes |
+`manager` is the admin's grants minus `manageStaff`, and nothing else. That
+one exclusion is what keeps the three manageStaff gates - Settings General,
+Pages and Diagnostics - the admin's alone. It is a role rather than a row on
+the permissions grid because handing out `manageStaff` is a second admin
+(see below), and this is the role for somebody who is nearly one. For the
+same reason it is not a grid column: the role IS its definition, and the
+rules refuse the matrix an opinion about it.
 
 `spa` is the masseuse, an outside contractor, added 25 Aug. Like the chef, a
 real login for a real person with one job on one screen - but where the
@@ -39,6 +41,15 @@ corrections, SMS records, push endpoints and the settings catch-all all
 refuse it by role. It is deliberately absent from the permissions grid in
 Settings: widening an outside contractor's access is a rules decision, made
 in a commit, not a tick in a grid.
+
+| | Cleans board | Set a villa's job | Reservations board | Edit bookings | Reservations Sheet | Publish menu | Manage staff | Spa board |
+|---|---|---|---|---|---|---|---|---|
+| **admin** | yes | yes | yes | yes | yes | yes | yes | yes |
+| **manager** | yes | yes | yes | yes | yes | yes | no | yes |
+| **chef** | no | no | read only | no | read and print | yes | no | no |
+| **waiter** | availability and departures | no | yes | yes | yes | no | no | yes |
+| **housekeeping** | marks only | no | no | no | no | no | no | no |
+| **spa** | no | no | no | no | no | no | no | yes |
 
 "Marks only" means `done`, `bfast`, `departed`, `pushed` - the cleaner's own
 work. Not `kind`.
@@ -56,7 +67,7 @@ inventing one for each would be four names for four pages:
 
 | Page | Needs | Why |
 |---|---|---|
-| Diagnostics | `manageStaff` | It deletes live data. Manager only. |
+| Diagnostics | `manageStaff` | It deletes live data. Admin only - the manager role deliberately lacks it. |
 | Menu Dietaries | `publishMenu` | The chef's page, and the manager's. |
 | Statistics | `resBoard` | Reading, no writes, same audience as the board. |
 | Site map | `manageStaff` | A map of the whole app is an admin tool. |

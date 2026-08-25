@@ -34,6 +34,7 @@ const NOW = new Date().toISOString();
 const SEED = {
   staff: {
     'staff@nalaresort,com,au':        { name: 'Admin', role: 'admin' },
+    'manager@nalaresort,com,au':      { name: 'Manager', role: 'manager' },
     'reception@nalaresort,com,au':    { name: 'Reception', role: 'staff' },
     'chef@nalaresort,com,au':         { name: 'Chef', role: 'chef' },
     'waiter@nalaresort,com,au':       { name: 'Waiter', role: 'waiter' },
@@ -53,6 +54,7 @@ const SEED = {
    as a role quietly not applying. */
 function signedIn(email) { return { uid: email, email: email, token: { email: email } }; }
 const ADMIN  = signedIn('staff@nalaresort.com.au');
+const MANAGER = signedIn('manager@nalaresort.com.au');
 const DESK   = signedIn('reception@nalaresort.com.au');
 const CHEF   = signedIn('chef@nalaresort.com.au');
 const HK     = signedIn('housekeeping@nalaresort.com.au');
@@ -268,6 +270,31 @@ cannot('but not for somebody else', DESK, '/pushsubs/chef@nalaresort,com,au',
 /* debug.html write test */
 can('the diagnostics write test still writes', ADMIN, `/roomguests/${TODAY}/99`,
     { name: 'Write Test', phone: '0400000000', departs: '2026-12-31', at: NOW });
+
+/* The manager role, 25 Aug: the admin's grants minus manageStaff. Each write
+   below is one the admin can make; the refusals at the end are the three
+   nodes manageStaff guards, which is the whole difference between the two. */
+console.log('--- the manager role: an admin without the keys to Settings ---');
+
+can('an admin files somebody as a manager', ADMIN, '/staff/m2@nalaresort,com,au',
+    { name: 'Second Manager', role: 'manager' });
+can('a manager sets the job for a villa', MANAGER, `/hk/${TODAY}/4/kind`, 'svc');
+canPatch('a manager approves an arrival hour', MANAGER,
+         '/bookings/b-1/prearrival', { arriveApproved: 15 });
+can('a manager fixes a phone number', MANAGER, '/phonefix/b-100',
+    { phone: '+61400000001', was: '0400 000 001',
+      by: 'manager@nalaresort.com.au', at: NOW });
+can('a manager records a send', MANAGER, '/previnvites/b-100',
+    { sentAt: NOW, status: 'sent' });
+can('a manager publishes the menu', MANAGER, '/menu', { published: NOW });
+can('a manager clears an arriving-soon marker', MANAGER,
+    '/alerts/2026-09-10/5', null);
+cannot('but a manager cannot add or change staff', MANAGER, '/staff/x@y,com',
+       { name: 'X', role: 'waiter' });
+cannot('nor hand a permission out', MANAGER,
+       '/permissions/setJob/housekeeping', true);
+cannotPatch('nor change the notification settings', MANAGER,
+            '/notify', { on: false });
 
 console.log('--- and the shapes that should never reach the database ---');
 
