@@ -17,6 +17,46 @@ change that went live today.
 
 ---
 
+## The Spa upgrade, 25 Aug. Do this lot once, in this order
+
+The suite proved the state machine, the writes and both roles' buttons
+against stubbed Firebase, 41 assertions plus a 117 assertion sweep. What it
+cannot prove: the rules paste, a real sign in, real reads under the narrowed
+spa role, and push caching. Worst first.
+
+1. **Paste the rules, then one ordinary write from an ordinary login.**
+   Confirm a dinner at the desk, mark a clean done. The paste touched the
+   read rules of nine nodes; if either action fails, stop and say which -
+   the rules revert in one paste.
+2. **Create the masseuse.** Settings, Add someone, role spa, six digits. The
+   row appears with the role beside the name.
+3. **His sign in.** Passcode pad, six digits, on his own phone. He must land
+   on the Spa board, and his menu must hold only Notifications and Sign out.
+4. **The board fills under his login.** Guests, villas, stay dates render.
+   This is the test that the read narrowing did not overreach: the page
+   reads stays and the wellness answers, and both must still answer him.
+5. **He cannot wander.** Type tally.html into his address bar: bounced to
+   the Spa board with the no-access message, not shown the reservations.
+6. **The whole loop, once, with a real form.** Guest answers yes to a
+   massage with a day and time. It appears in his To answer with the stay
+   dates. Open it: the day chips offer only the stay's remaining days, the
+   times run 9 to 5 on the half hour.
+7. **Confirm as asked** turns the tile green, reading "as requested", on his
+   phone and on a desk login.
+8. **Suggest a different day** turns it amber with both sides of the
+   conversation on the tile. The desk opens it, Approves, green everywhere.
+9. **Decline** turns it red reading "let the guest know" on both logins.
+10. **Ask again from the desk** on an amber or red: it returns to his To
+    answer as a fresh white ask.
+11. **Add one at the desk** from All bookings for a stay with no treatment:
+    it lands in his To answer. **Add one as him**: it books directly. Add a
+    second treatment to a booking that already has one; both show.
+12. **The cache moved.** After publishing, every staff page's menu offers
+    Spa. A phone whose menu lacks it is running the old shared file: check
+    the ?v= first, as always.
+13. **Regression, quick.** Housekeeping still opens Cleans; the chef still
+    publishes; the registration card still prints the wellness line.
+
 ## 0. Everything that changed on 18 Aug. Do this lot once
 
 ### 0a. The database rules, live since this morning
