@@ -60,6 +60,7 @@ function install() {
   STORE["/staff/waiter@nala,x"] = { role: "waiter" };
   STORE["/staff/hk@nala,x"] = { role: "housekeeping" };
   STORE["/staff/old@nala,x"] = { role: "staff" };   /* the pre-rename records */
+  STORE["/staff/mgr@nala,x"] = { role: "manager" }; /* admin minus manageStaff */
   STORE["/menu"] = { main: { name: "Barramundi" },
                      published: new Date().toISOString() };
   STORE["/stays/" + today + "/4"] =
@@ -132,6 +133,11 @@ ck("and nothing was sent for it either", SENDS.length === 0);
 install(); STATE.email = "old@nala.x";
 r = await post();
 ck("a record still saying staff sends, read as admin", r.status === 200);
+
+install(); STATE.email = "mgr@nala.x";
+r = await post();
+ck("a manager sends: the role is the admin's grants minus manageStaff",
+   r.status === 200);
 
 install();
 STORE["/permissions"] = { editBookings: { waiter: false } };

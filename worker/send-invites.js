@@ -104,14 +104,16 @@ const emailKey = (e) => String(e || "").trim().toLowerCase().replace(/\./g, ",")
 
 /* editBookings as the app decides it: the permission matrix wins where it has
    an explicit boolean opinion, the shipped defaults stand otherwise, and the
-   manager is never overridable. Mirrors can() in nala-shared.js for the one
-   permission this Worker cares about. */
+   admin is never overridable. Mirrors can() in nala-shared.js for the one
+   permission this Worker cares about. The shipped defaults grant it to the
+   waiter and, since 25 Aug, the manager - the admin's grants minus
+   manageStaff. */
 function maySend(role, permissions) {
   role = role === "staff" ? "admin" : role;      /* the pre-rename records */
   if (role === "admin") return true;
   const row = permissions && permissions.editBookings;
   if (row && typeof row[role] === "boolean") return row[role];
-  return role === "waiter";
+  return role === "waiter" || role === "manager";
 }
 
 /* A URL a human can retype is a URL that goes out wrong to fourteen guests at

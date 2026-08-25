@@ -11,18 +11,28 @@ disagree, the code is what runs and this file is wrong.** They did disagree
 until 18 Aug: this said a waiter had no access to the Cleans board, and the
 code has given them one since the day it was written.
 
-## The four roles
+## The roles
 
-`staff`, `chef`, `waiter`, `housekeeping`.
+`staff`, `chef`, `waiter`, `housekeeping` - four when this was agreed - and
+`manager`, added 25 Aug.
 
 Note "staff" is the FULL ACCESS role, not a middling one. The existing admin
 account is `staff@nalaresort.com.au`, so it maps to this role by name, which
 is convenient but coincidental - the role comes from the record, never from
 the address.
 
+`manager` is the admin's grants minus `manageStaff`, and nothing else. That
+one exclusion is what keeps the three manageStaff gates - Settings General,
+Pages and Diagnostics - the admin's alone. It is a role rather than a row on
+the permissions grid because handing out `manageStaff` is a second admin
+(see below), and this is the role for somebody who is nearly one. For the
+same reason it is not a grid column: the role IS its definition, and the
+rules refuse the matrix an opinion about it.
+
 | | Cleans board | Set a villa's job | Reservations board | Edit bookings | Reservations Sheet | Publish menu | Manage staff |
 |---|---|---|---|---|---|---|---|
 | **admin** | yes | yes | yes | yes | yes | yes | yes |
+| **manager** | yes | yes | yes | yes | yes | yes | no |
 | **chef** | no | no | read only | no | read and print | yes | no |
 | **waiter** | availability and departures | no | yes | yes | yes | no | no |
 | **housekeeping** | marks only | no | no | no | no | no | no |
@@ -43,7 +53,7 @@ inventing one for each would be four names for four pages:
 
 | Page | Needs | Why |
 |---|---|---|
-| Diagnostics | `manageStaff` | It deletes live data. Manager only. |
+| Diagnostics | `manageStaff` | It deletes live data. Admin only - the manager role deliberately lacks it. |
 | Menu Dietaries | `publishMenu` | The chef's page, and the manager's. |
 | Statistics | `resBoard` | Reading, no writes, same audience as the board. |
 | Site map | `manageStaff` | A map of the whole app is an admin tool. |

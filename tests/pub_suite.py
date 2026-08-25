@@ -712,7 +712,7 @@ with sync_playwright() as p:
     pg = open_pub(LINK)
     seen = pg.evaluate("""()=>{
       const out = {};
-      ['chef','waiter','housekeeping','admin'].forEach(r=>{
+      ['chef','waiter','housekeeping','admin','manager'].forEach(r=>{
         window.NALA_NAVFILTER(r);
         out[r] = [...document.querySelectorAll('#navDrop a')]
           .filter(a=>getComputedStyle(a).display!=='none')
@@ -726,8 +726,20 @@ with sync_playwright() as p:
        "publish.html" not in seen["housekeeping"])
     ck("nor a waiter", "tag.html" not in seen["waiter"] and
        "publish.html" not in seen["waiter"])
+    #  Missing from NAV_NEEDS until 25 Aug, so every login was offered it and
+    #  the page bounced the ones it refuses: the publish.html story again.
+    ck("nor is a housekeeper or the chef offered Pre-arrival SMS",
+       "arrivals-sms.html" not in seen["housekeeping"] and
+       "arrivals-sms.html" not in seen["chef"])
     ck("the chef is", "tag.html" in seen["chef"])
-    ck("and the manager is", "tag.html" in seen["admin"])
+    ck("and the admin is", "tag.html" in seen["admin"])
+    #  The manager role, 25 Aug: an admin without manageStaff, so the menu
+    #  offers everything the admin's does except Settings General and Pages.
+    ck("a manager is offered everything but General and Pages",
+       seen["manager"] == [h for h in seen["admin"]
+                           if h not in ("staff.html", "pages.html")])
+    ck("which the admin still keeps",
+       "staff.html" in seen["admin"] and "pages.html" in seen["admin"])
     #  Every link left standing has to open. A link that bounces you back is a
     #  door to nowhere, which is worse than no link.
     NEEDS = {"tally.html":"resBoard", "front-desk.html":"editBookings",

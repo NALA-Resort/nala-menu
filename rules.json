@@ -221,7 +221,7 @@
       "$date": {
         ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
         "$villa": {
-          ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'sync' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')",
+          ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'sync' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager')",
           ".validate": "$villa.matches(/^[0-9]{1,3}$/) && newData.hasChildren(['at'])",
           "at": {
             ".validate": "newData.isString() && newData.val().length <= 40"
@@ -299,7 +299,7 @@
           ".validate": "newData.isString() && newData.val().length <= 120"
         },
         "role": {
-          ".validate": "newData.isString() && (newData.val() == 'admin' || newData.val() == 'staff' || newData.val() == 'chef' || newData.val() == 'waiter' || newData.val() == 'housekeeping' || newData.val() == 'sync')"
+          ".validate": "newData.isString() && (newData.val() == 'admin' || newData.val() == 'manager' || newData.val() == 'staff' || newData.val() == 'chef' || newData.val() == 'waiter' || newData.val() == 'housekeeping' || newData.val() == 'sync')"
         },
         "$other": {
           ".validate": false
@@ -314,7 +314,7 @@
           ".write": "auth != null",
           ".validate": "$villa.matches(/^[0-9]{1,3}$/)",
           "kind": {
-            ".validate": "newData.isString() && (newData.val() == 'clean' || newData.val() == 'svc' || newData.val() == 'pre' || newData.val() == 'vac') && auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('permissions').child('setJob').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)"
+            ".validate": "newData.isString() && (newData.val() == 'clean' || newData.val() == 'svc' || newData.val() == 'pre' || newData.val() == 'vac') && auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager' || root.child('permissions').child('setJob').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)"
           },
           "done": {
             ".validate": "newData.isString() && newData.val().length <= 40"
@@ -345,7 +345,7 @@
       "$id": {
         ".read": true,
         "pms": {
-          ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'sync' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')",
+          ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'sync' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager')",
           "first": {
             ".validate": "newData.isString() && newData.val().length <= 120"
           },
@@ -424,7 +424,7 @@
             ".validate": "newData.isString() && newData.val().length <= 500"
           },
           "arriveApproved": {
-            ".validate": "newData.isNumber() && newData.val() >= 11 && newData.val() <= 23 && auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')"
+            ".validate": "newData.isNumber() && newData.val() >= 11 && newData.val() <= 23 && auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager')"
           },
           "purpose": {
             ".validate": "newData.isString() && newData.val().length <= 120"
@@ -468,7 +468,7 @@
     },
     "stays": {
       ".read": "auth != null",
-      ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'sync' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')",
+      ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'sync' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager')",
       "$date": {
         ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
         "$villa": {
@@ -509,7 +509,7 @@
     "phonefix": {
       ".read": "auth != null",
       "$id": {
-        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('permissions').child('editBookings').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
+        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager' || root.child('permissions').child('editBookings').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
         ".validate": "$id.matches(/^[A-Za-z0-9-]{4,64}$/) && newData.hasChildren(['phone'])",
         "phone": {
           ".validate": "newData.isString() && newData.val().matches(/^\\+[0-9]{8,15}$/)"
@@ -531,7 +531,7 @@
     "previnvites": {
       ".read": "auth != null",
       "$id": {
-        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('permissions').child('editBookings').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
+        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager' || root.child('permissions').child('editBookings').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
         ".validate": "$id.matches(/^[A-Za-z0-9-]{4,64}$/) && newData.hasChildren(['sentAt','status'])",
         "sentAt": {
           ".validate": "newData.isString() && newData.val().length <= 40"
@@ -583,7 +583,7 @@
     "presmstemplates": {
       ".read": "auth != null",
       "$id": {
-        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('permissions').child('editBookings').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
+        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager' || root.child('permissions').child('editBookings').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
         ".validate": "$id.matches(/^[a-z0-9]{1,24}$/) && newData.hasChildren(['label','body'])",
         "label": {
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40"
@@ -605,7 +605,7 @@
     "smstemplates": {
       ".read": "auth != null",
       "$id": {
-        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('permissions').child('editBookings').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
+        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager' || root.child('permissions').child('editBookings').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
         ".validate": "$id.matches(/^[a-z0-9]{1,24}$/) && newData.hasChildren(['label','body'])",
         "label": {
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40"
@@ -627,7 +627,7 @@
     "links": {
       "$token": {
         ".read": true,
-        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('permissions').child('editBookings').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
+        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager' || root.child('permissions').child('editBookings').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
         ".validate": "$token.matches(/^[a-z0-9]{4,16}$/) && newData.hasChildren(['b','r'])",
         "b": {
           ".validate": "newData.isString() && newData.val().length <= 64"
@@ -673,7 +673,7 @@
     },
     "menu": {
       ".read": true,
-      ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'chef' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('permissions').child('publishMenu').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
+      ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'chef' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager' || root.child('permissions').child('publishMenu').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
       "published": {
         ".validate": "newData.isString() && newData.val().length <= 40"
       },

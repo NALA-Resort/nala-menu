@@ -45,9 +45,12 @@ STAFF = {"staff@x": {"name": "Admin", "role": "admin"},
          "housekeeping@x": {"name": "HK", "role": "housekeeping"}}
 
 STAYS = {
+  # b4 carries an AU mobile (confidence tick), b9 a +1 number (honestly
+  # unsure), and b2 none at all: the three states the number row can show.
   "4":  {"id":"b4","first":"Robyn","last":"Williams","arrive":today,"depart":plus(4),
-         "adults":2,"number":1159},
-  "9":  {"id":"b9","first":"Konstantinos","last":"Papadopoulos","arrive":today,"depart":plus(2),"adults":4},
+         "adults":2,"number":1159,"phone":"+61 411 222 333"},
+  "9":  {"id":"b9","first":"Konstantinos","last":"Papadopoulos","arrive":today,"depart":plus(2),"adults":4,
+         "phone":"+1 415 555 2671"},
   "2":  {"id":"b2","first":"James","last":"Fisher","arrive":today,"depart":plus(6),"adults":2},
   "7":  {"id":"b7","first":"Mark","last":"Whitfield","arrive":today,"depart":plus(3),"adults":2},
   "11": {"id":"b11","first":"Priya","last":"Raghunathan","arrive":today,"depart":plus(5),"adults":3},
@@ -105,6 +108,7 @@ DINNER = {}
 PMS = {}
 
 WRITES = []
+FIXES = {}   # bookingId -> the /phonefix record, persisted across the stub
 #  The chef's list, which is the one the kitchen recognises. "Sesame allergy"
 #  is one he added; it must reach the desk or a guest with it can only be
 #  recorded as a typed note. "Red pepper spice" is marked this-menu-only and
@@ -124,10 +128,17 @@ def fb(route, request):
         if STATE["fail"]:
             route.fulfill(status=401, content_type="application/json",
                           body='{"error":"denied"}'); return
+        #  /phonefix persists, because the fix flow reloads and must see it.
+        if m == "PUT" and "/phonefix/" in u:
+            FIXES[u.split("/phonefix/")[1].split(".json")[0]] = \
+                json.loads(request.post_data)
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
     body = "null"
-    if "/dietaries" in u: body = json.dumps(DIETS)
+    if "/phonefix/" in u:
+        bid = u.split("/phonefix/")[1].split(".json")[0]
+        body = json.dumps(FIXES[bid]) if bid in FIXES else "null"
+    elif "/dietaries" in u: body = json.dumps(DIETS)
     elif "/staff" in u: body = json.dumps(STAFF)
     elif "/dinner/" + today in u: body = json.dumps(DINNER)
     elif "/dinner/" in u: body = "null"
@@ -1126,6 +1137,43 @@ with sync_playwright() as p:
     pg = desk_as("staff@x")
     ck("a note nobody has touched still shows the Mews original",
        "noise" in (pg.evaluate("()=>document.getElementById('fInternal').value") or ""))
+    pg.close()
+
+    # ── the number beside the name, the SMS pages' display at the desk ──
+    #  Asked for 25 Aug: the same three parts the Pre-arrival SMS rows carry,
+    #  from the same shared builder, so the two screens cannot drift apart.
+    #  The raw number small and grey, the confidence mark, the pencil.
+    pg = board()
+    def nrow(v): return pg.locator('.arr[data-villa="%s"]' % v)
+    ck("a row shows its number in the small grey font, on its own line so the "
+       "fork and link icons cannot clip the pencil off the edge",
+       "+61 411 222 333" in nrow("4").locator(".arr-p .ph").text_content())
+    ck("an Australian mobile wears the confidence tick",
+       nrow("4").locator(".conf.ok").count() == 1)
+    ck("a +1 number is honestly unsure",
+       nrow("9").locator(".conf.un").count() == 1)
+    ck("a booking with no number says so instead of showing nothing",
+       "no number" in nrow("2").locator(".ph").text_content()
+       and nrow("2").locator(".conf").count() == 0)
+    ck("and every row carries the pencil, arrived guests included",
+       pg.evaluate("()=>[...document.querySelectorAll('.arr')]"
+                   ".every(e=>!!e.querySelector('.pen'))"))
+
+    #  The pencil edits the number: prompt, normalise, save to /phonefix with
+    #  the Mews value kept as `was`. The tap must not also open the summary
+    #  the row underneath it would open.
+    pg.on("dialog", lambda d: d.accept("(+64) 274875277"))
+    del WRITES[:]
+    nrow("4").locator(".pen").click(); pg.wait_for_timeout(900)
+    fixw = [w for w in WRITES if "/phonefix/b4" in w["u"]]
+    ck("the pencil saves the fix normalised, with the Mews value as `was`",
+       len(fixw) == 1 and json.loads(fixw[0]["b"])["phone"] == "+64274875277"
+       and json.loads(fixw[0]["b"])["was"] == "+61 411 222 333")
+    ck("without opening the summary underneath",
+       pg.evaluate("()=>!document.querySelector('.sum')"))
+    ck("and the row then shows the fix, which outranks the Mews copy",
+       "+64274875277" in nrow("4").locator(".ph").text_content())
+    FIXES.clear()
     pg.close()
 
     b.close()
