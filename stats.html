@@ -37,6 +37,12 @@
   .headline .cap { font-family:Helvetica,Arial,sans-serif; font-size:8px;
                    letter-spacing:.25em; text-transform:uppercase; color:var(--mid); margin-top:8px; }
 
+  .seemenus { text-align:center; margin:22px 0 4px; }
+  .seemenus a { font-family:Helvetica,Arial,sans-serif; font-size:10px;
+                letter-spacing:.18em; text-transform:uppercase; color:var(--mid);
+                text-decoration:none; border-bottom:1px solid var(--rule);
+                padding-bottom:3px; }
+
   .note { font-style:italic; font-size:12px; color:var(--mid); line-height:1.6;
           padding:10px 0; }
 
@@ -59,6 +65,10 @@
     <div class="cap">Average covers a night</div>
   </div>
 
+  <!-- The question this page provokes: these are the aggregates, and the
+       next thing anyone asks is what was actually on the menu that night. -->
+  <div class="seemenus"><a href="past-menus.html">See the menu for any night &#8250;</a></div>
+
   <div class="sec">Take-up by main course</div>
   <div id="byProtein"></div>
 
@@ -76,7 +86,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=28"></script>
+<script src="nala-shared.js?v=29"></script>
 <script>
 /* Reading only, no writes, but it is the resort's numbers and there was no
    gate on it at all until 18 Aug. Same audience as the Reservations board. */

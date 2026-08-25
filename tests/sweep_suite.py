@@ -181,6 +181,7 @@ PAGES = [
     ("cleaners.html",     ""),
     ("front-desk.html",   ""),
     ("invitations.html",  ""),
+    ("past-menus.html",   ""),
     ("templates.html",    ""),
     ("tally.html",        ""),
     ("tag.html",          ""),
