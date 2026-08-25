@@ -108,7 +108,7 @@
     <div class="date">Staff</div>
     <div class="navwrap">
       <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-      <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+      <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
     </div>
   </div>
 
@@ -146,15 +146,18 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=33"></script>
+<script src="nala-shared.js?v=34"></script>
 <script>
 var ROLES = ['admin','manager','chef','waiter','housekeeping'];
 /* The human roles, and the ones the notification matrix targets. manager is
    admin without manageStaff, so it cannot open this page but is assigned and
    buzzed like anybody else. sync is a machine account with no phone, so it
    is assignable and sortable but takes no part in notifications: giving it a
-   column would ask who to buzz on a login that cannot receive a buzz. */
-var ROLES_ASSIGN = ROLES.concat(['sync']);
+   column would ask who to buzz on a login that cannot receive a buzz. spa is
+   assignable too but stays out of the matrix: every event in it is cleans
+   and menus, none of which is the masseuse's business, and a sixth column
+   squeezes the grid at 320. */
+var ROLES_ASSIGN = ROLES.concat(['spa','sync']);
 var EVENTS = [['departed','Departed'],['available','Possibly available'],
               ['cleaned','Cleaned'],['serviced','Serviced'],
               ['menu','Menu published']];

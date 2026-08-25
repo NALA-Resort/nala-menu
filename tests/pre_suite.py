@@ -658,6 +658,8 @@ with sync_playwright() as p:
     live = pg.evaluate("()=>liveSteps().map(s=>s.id)")
     ck("a one night stay is not asked about the week ahead",
        "qApproach" not in live)
+    ck("nor what kind of stay it is planning",
+       "qPurpose" not in live)
     ck("and its dinner question has no \"first night\", only the night",
        pg.evaluate("()=>document.querySelector('#qDine .q-t').textContent")
        == "Will you dine with us?" and
@@ -666,12 +668,12 @@ with sync_playwright() as p:
        "qWell" not in live)
     ck("but still about tonight and dietaries",
        all(q in live for q in ("qDine", "qDiet")))
-    ck("and the count says five, not eight",
-       pg.locator("#prog").inner_text().strip().lower().endswith("of 5"))
-    #  The answered walk must still send: approach was never asked, so an
-    #  empty approach cannot hold the form hostage.
+    ck("and the count says four, not eight",
+       pg.locator("#prog").inner_text().strip().lower().endswith("of 4"))
+    #  The answered walk must still send: approach and purpose were never
+    #  asked, so an empty either cannot hold the form hostage.
     pg.evaluate("""()=>{
-      a.purpose=['Mostly out exploring']; a.eta='15'; a.dining=false;
+      a.eta='15'; a.dining=false;
       a.noDiets=true;
     }""")
     jump(pg, "qElse")

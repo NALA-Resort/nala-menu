@@ -519,5 +519,88 @@ cannotPatch('but not something the length of a paragraph', SYNC,
         Object.assign({}, M, {main:{name:'K',desc:'c',aus:'yes'}})).allowed);
 })();
 
+/* ── the spa board ───────────────────────────────────────────────────
+ * A treatment lives at /spa/<booking>/<tid>, beside the guest's request in
+ * prearrival rather than inside it: the request is the guest's and the
+ * booking is the masseuse's, and one node holding both is how a save on one
+ * screen wipes the other. The masseuse is an outside contractor, so the same
+ * pass asserts what that login can no longer reach: hiding a link is not the
+ * same as refusing the data.
+ */
+(function spaBoard(){
+  var data = { staff:{ 'ms@x':{name:'M',role:'spa'}, 'ad@x':{name:'A',role:'admin'},
+                       'st@x':{name:'S',role:'staff'}, 'wt@x':{name:'W',role:'waiter'},
+                       'hk@x':{name:'H',role:'housekeeping'}, 'ch@x':{name:'C',role:'chef'} },
+               spa:{}, manual:{}, hk:{}, settings:{ managerMobile:'+61400000000' } };
+  var db2 = function(extra){
+    return targaryen.database(RULES, Object.assign({}, data, extra || {}));
+  };
+  var as2 = function(e, extra){
+    return db2(extra).as(e ? {uid:e, token:{email:e}} : null);
+  };
+  var T = { status:'booked', day:'2026-09-11', time:'14:00',
+            reqDay:'2026-09-11', reqTime:'afternoon', name:'Robyn Williams',
+            source:'prearrival', by:'Masseuse', at:NOW };
+
+  ck('the masseuse books a treatment', as2('ms@x').write('/spa/b-1001/t1', T).allowed);
+  ck('and suggests a different day instead',
+     as2('ms@x').write('/spa/b-1001/t1',
+       Object.assign({}, T, {status:'suggested', day:'2026-09-12', time:'10:30'})).allowed);
+  ck('and declines a stay with nothing free',
+     as2('ms@x').write('/spa/b-1001/t1',
+       { status:'declined', reqDay:'2026-09-11', reqTime:'afternoon',
+         name:'Robyn Williams', note:'away until Monday', source:'prearrival',
+         by:'Masseuse', at:NOW }).allowed);
+  ck('the desk approves a suggestion', as2('st@x').write('/spa/b-1001/t1', T).allowed);
+  ck('and the manager may too',        as2('ad@x').write('/spa/b-1001/t1', T).allowed);
+  ck('a waiter may not, until the box is ticked',
+     !as2('wt@x').write('/spa/b-1001/t1', T).allowed);
+  ck('and may once it is',
+     as2('wt@x', { permissions:{ spaBoard:{ waiter:true } } })
+       .write('/spa/b-1001/t1', T).allowed);
+  ck('housekeeping may not', !as2('hk@x').write('/spa/b-1001/t1', T).allowed);
+  ck('nor the chef',         !as2('ch@x').write('/spa/b-1001/t1', T).allowed);
+  ck('nor a guest holding their link', !as2(null).write('/spa/b-1001/t1', T).allowed);
+  ck('nor may a guest read the board', !as2(null).read('/spa').allowed);
+
+  ck('a status nobody uses is refused',
+     !as2('ms@x').write('/spa/b-1001/t1', Object.assign({}, T, {status:'maybe'})).allowed);
+  ck('a record with no status is refused',
+     !as2('ms@x').write('/spa/b-1001/t1', {day:'2026-09-11', at:NOW}).allowed);
+  ck('a time off the half hour is refused',
+     !as2('ms@x').write('/spa/b-1001/t1', Object.assign({}, T, {time:'14:15'})).allowed);
+  ck('a time before nine is refused',
+     !as2('ms@x').write('/spa/b-1001/t1', Object.assign({}, T, {time:'08:30'})).allowed);
+  ck('and one after five',
+     !as2('ms@x').write('/spa/b-1001/t1', Object.assign({}, T, {time:'17:30'})).allowed);
+  ck('a day that is not a date is refused',
+     !as2('ms@x').write('/spa/b-1001/t1', Object.assign({}, T, {day:'Thursday'})).allowed);
+  ck('a field nobody named is refused',
+     !as2('ms@x').write('/spa/b-1001/t1', Object.assign({}, T, {price:180})).allowed);
+
+  /* What the masseuse's login may still reach, and what it may not. */
+  ck('the masseuse reads the board',      as2('ms@x').read('/spa').allowed);
+  ck('and the stays that name its tiles', as2('ms@x').read('/stays/2026-09-11').allowed);
+  ck('and the staff list, to learn its own role', as2('ms@x').read('/staff').allowed);
+  ck('but not the dining board',      !as2('ms@x').read('/manual/2026-09-11').allowed);
+  ck('nor the housekeeping board',    !as2('ms@x').read('/hk/2026-09-11').allowed);
+  ck('nor an internal note',          !as2('ms@x').read('/internal/b4').allowed);
+  ck('nor a corrected phone number',  !as2('ms@x').read('/phonefix').allowed);
+  ck('nor the SMS send records',      !as2('ms@x').read('/previnvites').allowed);
+  ck('nor anybody\'s push endpoints', !as2('ms@x').read('/pushsubs').allowed);
+  ck('nor the retired guest nodes',   !as2('ms@x').read('/roomguests').allowed &&
+                                      !as2('ms@x').read('/responses').allowed);
+  ck('nor the manager\'s mobile, under the catch-all',
+     !as2('ms@x').read('/settings').allowed);
+  ck('and cannot write the boards it cannot read',
+     !as2('ms@x').write('/manual/2026-09-11/5', {status:'in', pax:2}).allowed &&
+     !as2('ms@x').write('/hk/2026-09-11/5', {done:NOW}).allowed &&
+     !as2('ms@x').write('/dietaries/x', {name:'X'}).allowed);
+  ck('while the desk still reads what it always did',
+     as2('st@x').read('/manual/2026-09-11').allowed &&
+     as2('st@x').read('/settings').allowed);
+  ck('and housekeeping still has its board', as2('hk@x').read('/hk/2026-09-11').allowed);
+})();
+
 console.log('RESULT: %d passed, %d failed', P, F);
 process.exit(F ? 1 : 0);

@@ -76,6 +76,7 @@ SUITES = [
     ("invites",    ["python3", "tests/inv_suite.py"],     600),
     ("index",      ["python3", "tests/index_suite.py"],   400),
     ("prearrival", ["python3", "tests/pre_suite.py"],     400),
+    ("spa",        ["python3", "tests/spa_suite.py"],     400),
     ("list",       ["python3", "tests/list_suite.py"],    400),
     ("housekeep",  ["python3", "tests/hk_suite.py"],      300),
     ("auth",       ["python3", "tests/auth_suite.py"],    300),
@@ -101,7 +102,7 @@ SUITES = [
 # page load and still reloads the page for each of the three widths when it
 # could resize the viewport. Fixing those is the next job and worth more than
 # this was.
-SWEEP_PAGES = ["cleaners", "front-desk", "invitations", "arrivals-sms", "past-menus", "templates", "tally", "tag", "publish", "staff",
+SWEEP_PAGES = ["cleaners", "front-desk", "invitations", "arrivals-sms", "spa", "past-menus", "templates", "tally", "tag", "publish", "staff",
                "stats", "registration", "debug", "pages", "index",
                "prearrival", "welcome"]
 SUITES += [("sweep:" + p, ["python3", "tests/sweep_suite.py", p], 600)
@@ -125,6 +126,7 @@ COVERS = {
     "worker/send-invites.js": ["invworker"],
     "index.html":        ["index", "sweep:index"],
     "prearrival.html":   ["prearrival", "sweep:prearrival"],
+    "spa.html":          ["spa", "sweep:spa"],
     "list.html":         ["list"],
     "housekeeping.html": ["housekeep"],
     "staff.html":        ["auth", "sweep:staff"],

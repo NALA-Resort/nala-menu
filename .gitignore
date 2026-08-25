@@ -1,9 +1,7 @@
 node_modules/
 package-lock.json
-_p1_tally.png
-_p2_list.png
-_p2_print.pdf
-_p2_dietpdf.pdf
-_p3_hk.png
-_p4_cleaners.png
+# the print suites' rendered artifacts, one pattern rather than a name per
+# file: _p2_dietpdf.pdf arrived unlisted and BOTH sessions tripped over it
+# the same day, each fixing it their own way. The pattern ends the race.
+_p*
 __pycache__/

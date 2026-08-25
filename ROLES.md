@@ -11,10 +11,11 @@ disagree, the code is what runs and this file is wrong.** They did disagree
 until 18 Aug: this said a waiter had no access to the Cleans board, and the
 code has given them one since the day it was written.
 
-## The roles
+## The six roles
 
 `staff`, `chef`, `waiter`, `housekeeping` - four when this was agreed - and
-`manager`, added 25 Aug.
+two added 25 Aug, in separate sessions that met at the merge: `manager` and
+`spa`.
 
 Note "staff" is the FULL ACCESS role, not a middling one. The existing admin
 account is `staff@nalaresort.com.au`, so it maps to this role by name, which
@@ -29,13 +30,26 @@ the permissions grid because handing out `manageStaff` is a second admin
 same reason it is not a grid column: the role IS its definition, and the
 rules refuse the matrix an opinion about it.
 
-| | Cleans board | Set a villa's job | Reservations board | Edit bookings | Reservations Sheet | Publish menu | Manage staff |
-|---|---|---|---|---|---|---|---|
-| **admin** | yes | yes | yes | yes | yes | yes | yes |
-| **manager** | yes | yes | yes | yes | yes | yes | no |
-| **chef** | no | no | read only | no | read and print | yes | no |
-| **waiter** | availability and departures | no | yes | yes | yes | no | no |
-| **housekeeping** | marks only | no | no | no | no | no | no |
+`spa` is the masseuse, an outside contractor, added 25 Aug. Like the chef, a
+real login for a real person with one job on one screen - but where the
+chef's login can read the whole database like any staff login, the spa
+login's READS are narrowed in the rules as well: it can reach `/spa`,
+`/stays`, a booking by its id (which is public by design, the guest links
+depend on it), `/staff` and `/permissions` for its own gate, and the public
+menu nodes. The dining and housekeeping boards, internal notes, phone
+corrections, SMS records, push endpoints and the settings catch-all all
+refuse it by role. It is deliberately absent from the permissions grid in
+Settings: widening an outside contractor's access is a rules decision, made
+in a commit, not a tick in a grid.
+
+| | Cleans board | Set a villa's job | Reservations board | Edit bookings | Reservations Sheet | Publish menu | Manage staff | Spa board |
+|---|---|---|---|---|---|---|---|---|
+| **admin** | yes | yes | yes | yes | yes | yes | yes | yes |
+| **manager** | yes | yes | yes | yes | yes | yes | no | yes |
+| **chef** | no | no | read only | no | read and print | yes | no | no |
+| **waiter** | availability and departures | no | yes | yes | yes | no | no | yes |
+| **housekeeping** | marks only | no | no | no | no | no | no | no |
+| **spa** | no | no | no | no | no | no | no | yes |
 
 "Marks only" means `done`, `bfast`, `departed`, `pushed` - the cleaner's own
 work. Not `kind`.
@@ -177,11 +191,21 @@ someone. Mock it before building.
 
 ## What this does NOT do
 
-**Creating and deleting logins stays in the Firebase console.** Doing it from
-a web page needs server-side admin credentials, which is a large piece of work
-and more access than is warranted here. The console creates the login, the app
-decides what it may do. Removing someone in the console kills their access
-immediately, whatever their role record says.
+**Creating a login no longer needs the console.** This section said it did,
+from before the staff screen was built, and the correction is this file's own
+rule working: the code moved and the document had not. Add someone on
+Settings with a name, a role and a six digit passcode, and the page creates
+the Firebase login itself - the passcode becomes `<code>@staff.nala`, made on
+a second Firebase app so the manager is not signed out mid task - then writes
+the staff record. The person signs in on the passcode pad with those six
+digits. This is the only way staff are added in practice, the masseuse
+included.
+
+**Deleting is still two places.** Removing someone on Settings deletes their
+record, which ends their access at every gate, but the Firebase Auth login
+survives and holds the passcode hostage - the console deletion frees it.
+That leftover is item 1 in `SECURITY.md`'s standing jobs. Removing someone in
+the console alone also works, immediately, whatever their record says.
 
 **Passwords cannot be listed.** Firebase stores them hashed; nobody, including
 the owner, can read one back. The staff screen lists PEOPLE and their roles,

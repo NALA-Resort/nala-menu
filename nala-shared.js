@@ -885,17 +885,23 @@ function emailKey(email){
 }
 
 var ROLE_GRANTS = {
-  admin:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff'],
+  admin:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff','spaBoard'],
   /* Everything the admin holds except manageStaff, asked for 25 Aug: a
      management login that runs the whole day without the keys to Settings
      General, Pages or Diagnostics, which are the three manageStaff gates.
      Deliberately a role and not a permission column: handing manageStaff
      out is a second admin, and this is the role for everybody who is
-     nearly one. */
-  manager:      ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu'],
+     nearly one. spaBoard rides along because the definition is the admin's
+     list, whatever joins it, minus that one key. */
+  manager:      ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','spaBoard'],
   chef:         ['resBoard','resSheet','publishMenu'],
-  waiter:       ['cleansBoard','resBoard','editBookings','resSheet'],
+  waiter:       ['cleansBoard','resBoard','editBookings','resSheet','spaBoard'],
   housekeeping: ['cleansBoard','cleansMarks'],
+  /* The masseuse, an external contractor with one screen: the Spa board and
+     nothing else. Like the chef, a real login for a real person, but the
+     rules also narrow what the account can READ - see /spa in rules.json -
+     because hiding a link is not the same as refusing the data.          */
+  spa:          ['spaBoard'],
   /* A machine account, held by the Mews sync Worker. Deliberately empty: it
      grants nothing in the UI and lands on no page, so a human signing in as
      it gets the "see the manager" message rather than a half working board.
@@ -1165,14 +1171,18 @@ var PERM_ACTIONS = [
   ['publishMenu',  'Publish and tag the menu'],
   ['cleansBoard',  'See the Cleans board'],
   ['cleansMarks',  'Mark a clean done'],
-  ['setJob',       'Change what a villa needs']
+  ['setJob',       'Change what a villa needs'],
+  ['spaBoard',     'See the Spa board']
 ];
 
+/* The columns. admin is absent because it always has everything, and a column
 /* The columns. admin is absent because it always has everything, and a column
    of ticks nobody may untick teaches people the ticks do nothing. manager is
    absent for the same reason: the role IS "everything but manageStaff", and
    the rules refuse the matrix an opinion about it. sync is absent because it
-   is a machine with no screen.                                          */
+   is a machine with no screen. spa is absent because it is an outside
+   contractor: widening what that login can open is a decision for the rules,
+   made deliberately, not a tick in a grid.                              */
 var PERM_ROLES = ['chef','waiter','housekeeping'];
 
 /* What the app shipped with, asked directly. The grid shows it beside the
@@ -1202,7 +1212,8 @@ function can(role, what){
    that cannot see the page it arrived on is a routing problem, not an access
    one: send them to their own board instead of telling them off.        */
 var ROLE_HOME = { admin:'tally.html', manager:'tally.html', chef:'tally.html',
-                  waiter:'tally.html', housekeeping:'cleaners.html' };
+                  waiter:'tally.html', housekeeping:'cleaners.html',
+                  spa:'spa.html' };
 function homeFor(role){ return ROLE_HOME[normaliseRole(role)] || null; }
 
 function setStaffRecords(map){
@@ -1538,10 +1549,11 @@ var NAV_NEEDS = {
   'tally.html':        'resBoard',
   'front-desk.html':   'editBookings',
   'invitations.html':  'editBookings',
-  /* Missing until 25 Aug, the same way publish.html and tag.html once were:
-     the page has gated on editBookings since it was built, but the unlisted
-     link was left alone by the filter, so a housekeeper's menu offered a
-     board that would only bounce her home. Same permission as the page. */
+  /* Missing from the day it shipped, found twice on 25 Aug - once when the
+     spa role arrived with a menu that should hold nothing and held this,
+     once from the SMS side - the same way publish.html and tag.html were
+     once missing: an unlisted link is shown to every role, and this one
+     bounces anyone without editBookings. Same permission as the page. */
   'arrivals-sms.html': 'editBookings',
   'list.html':         'resSheet',
   /* Both were missing until 22 Aug, so every login saw them: a housekeeper's
@@ -1553,6 +1565,7 @@ var NAV_NEEDS = {
   'tag.html':          'publishMenu',
   'cleaners.html':     'cleansBoard',
   'housekeeping.html': 'cleansBoard',
+  'spa.html':          'spaBoard',
   'registration.html': 'editBookings',
   'menu-print.html':   'resSheet',
   'past-menus.html':   'resBoard',

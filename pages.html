@@ -49,7 +49,7 @@
   <div class="date" id="title">Pages</div>
   <div class="navwrap" id="navWrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 
@@ -85,6 +85,12 @@
   <a class="p" href="cleaners.html">
     <div class="p-t">Cleans</div><div class="p-f">cleaners.html</div>
     <div class="p-n">Housekeeping's board.</div></a>
+  <a class="p" href="spa.html">
+    <div class="p-t">Spa</div><div class="p-f">spa.html</div>
+    <div class="p-n">Treatment requests from the pre-arrival form, and what
+      became of each: the masseuse confirms, suggests another time or
+      declines, and the desk approves a suggestion with the guest. The
+      masseuse's own login opens this page and nothing else.</div></a>
   <a class="p" href="staff.html">
     <div class="p-t">Settings</div><div class="p-f">staff.html</div>
     <div class="p-n">People, roles and notifications. Admin only.</div></a>
@@ -183,6 +189,8 @@
     <div class="p-t">Invitations status bands</div><div class="p-f">mock-invite-status.html</div></a>
   <a class="p" href="mock-arrivals-sms.html">
     <div class="p-t">Pre-arrival SMS</div><div class="p-f">mock-arrivals-sms.html</div></a>
+  <a class="p" href="mock-spa.html">
+    <div class="p-t">Spa</div><div class="p-f">mock-spa.html</div></a>
 
   <div class="spacer"></div>
 </div>
@@ -190,7 +198,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=33"></script>
+<script src="nala-shared.js?v=34"></script>
 <script>
 (function(){
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
