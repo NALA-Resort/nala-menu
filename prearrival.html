@@ -574,6 +574,10 @@ function paintGreeting(pms){
      hiding it on a guess loses an answer we could have had. Same machinery
      as the companion page, so the count and the walk stay honest. */
   el('qApproach').style.display = oneNight ? 'none' : '';
+  /* Nor a kind of stay: one night is not a stay to plan around, the owner
+     ruled (25 Aug), so the question is not asked. The record's purpose is
+     '' - same as approach, whose never-asked answer is already ''. */
+  el('qPurpose').style.display = oneNight ? 'none' : '';
   /* Nor treatments: one afternoon is not a window the therapists can use,
      the owner ruled, so a one night guest is not offered one. */
   el('qWell').style.display = oneNight ? 'none' : '';

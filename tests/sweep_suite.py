@@ -368,6 +368,10 @@ with sync_playwright() as p:
         pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
         pg.route("**firebasedatabase.app/**", fb)
         pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        # Stubbed like pre_suite already does: on a machine with no direct
+        # egress the font stylesheet hangs and every load times out.
+        pg.route("**/fonts.googleapis.com/**",
+                 lambda r: r.fulfill(status=200, body=""))
         pg.route("**/cdnjs.cloudflare.com/**", lambda r: r.fulfill(status=200, body=""))
         failed = []
         pg.on("requestfailed", lambda r: failed.append(r.url.split("/")[-1][:50]))
