@@ -180,11 +180,21 @@ someone. Mock it before building.
 
 ## What this does NOT do
 
-**Creating and deleting logins stays in the Firebase console.** Doing it from
-a web page needs server-side admin credentials, which is a large piece of work
-and more access than is warranted here. The console creates the login, the app
-decides what it may do. Removing someone in the console kills their access
-immediately, whatever their role record says.
+**Creating a login no longer needs the console.** This section said it did,
+from before the staff screen was built, and the correction is this file's own
+rule working: the code moved and the document had not. Add someone on
+Settings with a name, a role and a six digit passcode, and the page creates
+the Firebase login itself - the passcode becomes `<code>@staff.nala`, made on
+a second Firebase app so the manager is not signed out mid task - then writes
+the staff record. The person signs in on the passcode pad with those six
+digits. This is the only way staff are added in practice, the masseuse
+included.
+
+**Deleting is still two places.** Removing someone on Settings deletes their
+record, which ends their access at every gate, but the Firebase Auth login
+survives and holds the passcode hostage - the console deletion frees it.
+That leftover is item 1 in `SECURITY.md`'s standing jobs. Removing someone in
+the console alone also works, immediately, whatever their record says.
 
 **Passwords cannot be listed.** Firebase stores them hashed; nobody, including
 the owner, can read one back. The staff screen lists PEOPLE and their roles,
