@@ -447,7 +447,7 @@ with sync_playwright() as p:
     #  publishing at all.
     #  Grouped 22 Aug to the owner's own sketch: what you work on, what you
     #  print, what you set.
-    CANON = ["front-desk.html", "tally.html", "invitations.html", "cleaners.html", "publish.html",
+    CANON = ["front-desk.html", "tally.html", "invitations.html", "arrivals-sms.html", "cleaners.html", "publish.html",
              "list.html", "housekeeping.html", "registration.html", "menu-print.html", "past-menus.html",
              "staff.html", "tag.html", "pages.html"]
     got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
@@ -732,6 +732,7 @@ with sync_playwright() as p:
     #  door to nowhere, which is worse than no link.
     NEEDS = {"tally.html":"resBoard", "front-desk.html":"editBookings",
              "invitations.html":"editBookings",
+             "arrivals-sms.html":"editBookings",
              "list.html":"resSheet", "publish.html":"publishMenu",
              "tag.html":"publishMenu", "cleaners.html":"cleansBoard",
              "housekeeping.html":"cleansBoard", "registration.html":"editBookings",

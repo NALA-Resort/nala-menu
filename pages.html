@@ -49,7 +49,7 @@
   <div class="date" id="title">Pages</div>
   <div class="navwrap" id="navWrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="cleaners.html">Cleans</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 
@@ -77,6 +77,11 @@
   <a class="p" href="past-menus.html">
     <div class="p-t">Past Menus</div><div class="p-f">past-menus.html</div>
     <div class="p-n">What was served on any given night, from the archive written when the chef publishes. Read only.</div></a>
+  <a class="p" href="arrivals-sms.html">
+    <div class="p-t">Pre-arrival SMS</div><div class="p-f">arrivals-sms.html</div>
+    <div class="p-n">Sends the pre-arrival form link to bookings arriving in
+      the days ahead, and tracks who has opened it and who has finished it.
+      Front Desk owns the day itself; this page owns the run-up.</div></a>
   <a class="p" href="cleaners.html">
     <div class="p-t">Cleans</div><div class="p-f">cleaners.html</div>
     <div class="p-n">Housekeeping's board.</div></a>
@@ -170,13 +175,22 @@
   <a class="p" href="demo-clean.html">
     <div class="p-t">Clean Sheet demo</div><div class="p-f">demo-clean.html</div></a>
 
+  <div class="seclabel">Design mock-ups</div>
+  <div class="secnote">Static pictures of an approved design, kept beside the
+    brief that describes it. Nothing works on them; the built page is the one
+    in the sections above.</div>
+  <a class="p" href="mock-invite-status.html">
+    <div class="p-t">Invitations status bands</div><div class="p-f">mock-invite-status.html</div></a>
+  <a class="p" href="mock-arrivals-sms.html">
+    <div class="p-t">Pre-arrival SMS</div><div class="p-f">mock-arrivals-sms.html</div></a>
+
   <div class="spacer"></div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=29"></script>
+<script src="nala-shared.js?v=30"></script>
 <script>
 (function(){
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');

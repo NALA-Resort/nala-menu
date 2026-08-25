@@ -1,0 +1,100 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mock · Pre-arrival SMS</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--cream:#F9F7F4;--ink:#1C1C1A;--mid:#999990;--rule:#E0E0DA;--red:#A8321E;
+ --green:#5E7D67;--green-t:rgba(122,160,130,.26);--green-b:rgba(122,160,130,.65);
+ --terra:#9E6455;--terra-t:rgba(184,106,90,.16);--terra-b:rgba(184,106,90,.45)}
+body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--ink);padding:14px 12px;max-width:430px;margin:0 auto}
+h1{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin:4px 2px 12px}
+.knob{display:flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;margin-bottom:12px}
+.knob button{flex:1;padding:9px 0;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+ background:none;border:none;color:var(--mid)}
+.knob button.on{background:var(--ink);color:var(--cream)}
+.stats{display:flex;gap:8px;margin-bottom:4px}
+.stat{flex:1;text-align:center;border:1px solid var(--rule);border-radius:8px;padding:8px 0}
+.stat b{display:block;font-size:17px;font-weight:600}
+.stat span{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mid)}
+.grp{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--mid);margin:14px 2px 6px}
+.row{display:flex;align-items:center;gap:10px;border:1.2px solid var(--rule);
+ border-radius:10px;background:#fff;padding:11px 12px;margin-bottom:7px}
+.v{font-size:15px;font-weight:600;width:24px;text-align:center}
+.who{flex:1;min-width:0}
+.n{font-size:13.5px}
+.s{font-size:11px;color:var(--mid);margin-top:2px}
+.s .bad{color:var(--red)}
+.tick{width:22px;height:22px;border:1.4px solid var(--rule);border-radius:6px;flex:0 0 auto}
+.tick.on{background:var(--ink);border-color:var(--ink)}
+/* opened but not finished: the follow-up band, terracotta = attention */
+.row.open{background:var(--terra-t);border-color:var(--terra-b)}
+.row.open .s{color:var(--terra)}
+/* sent, nothing heard: grey, unknown promises nothing */
+.row.sent{background:rgba(28,28,26,.045);border-color:var(--rule)}
+.row.sent .s{color:var(--mid)}
+/* form completed: the green of a job done */
+.row.done{background:var(--green-t);border-color:var(--green-b)}
+.row.done .s{color:var(--green)}
+/* unsendable: grey and sunk */
+.row.grey{background:transparent;border-style:dashed;opacity:.62}
+.row.grey .tick{visibility:hidden}
+.seclabel{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin:20px 0 8px}
+.seclabel a{float:right;font-size:11px;letter-spacing:.05em;text-transform:none;color:var(--mid)}
+select,textarea{width:100%;font-size:14px;border:1px solid var(--rule);border-radius:8px;
+ padding:10px 12px;background:#fff;font-family:inherit}
+textarea{margin-top:8px;min-height:78px;line-height:1.45}
+.cnt{font-size:11px;color:var(--mid);text-align:right;margin-top:5px}
+.send{width:100%;margin-top:12px;padding:13px;font-size:11px;letter-spacing:.14em;
+ text-transform:uppercase;background:var(--ink);color:var(--cream);border:none;border-radius:8px}
+</style></head><body>
+<h1>Pre-arrival SMS</h1>
+
+<div class="knob">
+ <button>Next 3 days</button><button class="on">Next 7 days</button><button>Next 14 days</button>
+</div>
+
+<div class="stats">
+ <div class="stat"><b>3</b><span>To send</span></div>
+ <div class="stat"><b>2</b><span>Waiting</span></div>
+ <div class="stat"><b>2</b><span>Opened</span></div>
+ <div class="stat"><b>2</b><span>Done</span></div>
+</div>
+
+<div class="grp">To send · 3</div>
+<div class="row"><div class="v">6</div><div class="who"><div class="n">Harper Quinn</div>
+ <div class="s">Arrives Wed 26 Aug · 2 nights · not asked</div></div><div class="tick on"></div></div>
+<div class="row"><div class="v">12</div><div class="who"><div class="n">Elena Petrov</div>
+ <div class="s">Arrives Fri 28 Aug · 5 nights · not asked</div></div><div class="tick on"></div></div>
+<div class="row"><div class="v">2</div><div class="who"><div class="n">Marco Reyes</div>
+ <div class="s"><span class="bad">Send failed Sun 9:02am · network</span> · arrives Thu 27 Aug</div></div><div class="tick on"></div></div>
+
+<div class="grp">Opened, not finished · 2</div>
+<div class="row open"><div class="v">9</div><div class="who"><div class="n">Sofia Marino</div>
+ <div class="s">Opened Sat · started, 3 answers · arrives Tue 25 Aug</div></div><div class="tick"></div></div>
+<div class="row open"><div class="v">4</div><div class="who"><div class="n">Kai Werner</div>
+ <div class="s">Opened Sun · nothing yet · arrives Sat 29 Aug</div></div><div class="tick"></div></div>
+
+<div class="grp">Waiting on the form · 2</div>
+<div class="row sent"><div class="v">15</div><div class="who"><div class="n">Anna Lindqvist</div>
+ <div class="s">Sent Sun 8:41am · arrives Mon 31 Aug</div></div><div class="tick"></div></div>
+<div class="row sent"><div class="v">7</div><div class="who"><div class="n">James Okafor</div>
+ <div class="s">Sent Sat 4:02pm · arrives Tue 25 Aug</div></div><div class="tick"></div></div>
+
+<div class="grp">Form completed · 2</div>
+<div class="row done"><div class="v">1</div><div class="who"><div class="n">Robyn Carter</div>
+ <div class="s">Completed Sun 9:12am · arrives Tue 25 Aug</div></div><div class="tick"></div></div>
+<div class="row done"><div class="v">11</div><div class="who"><div class="n">Grace Ito</div>
+ <div class="s">Completed Sat · arrives Wed 26 Aug</div></div><div class="tick"></div></div>
+
+<div class="grp">Cannot send · 1</div>
+<div class="row grey"><div class="v">13</div><div class="who"><div class="n">D. Kessler</div>
+ <div class="s">Not a mobile number · 07 3358 1122 · arrives Thu 27 Aug</div></div><div class="tick"></div></div>
+
+<div class="seclabel">Template <a href="#">Edit templates</a></div>
+<select><option>Before you arrive</option><option>A gentle reminder</option></select>
+<div class="seclabel">Message</div>
+<textarea>Good afternoon. Ahead of your stay with us, a few questions so everything is ready when you arrive. Nala Resort
+&lt;form&gt;</textarea>
+<div class="cnt">158 characters · 1 segment, link included</div>
+<button class="send">Send to 3 guests</button>
+</body></html>

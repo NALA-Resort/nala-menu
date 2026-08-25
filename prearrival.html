@@ -1015,6 +1015,24 @@ function submitForm(){
    never arrived from one that arrived and was ignored, and those need
    different chasing. */
 function boot(){
+  /* The SMS carries a short token, ?t=, minted by the sending Worker:
+     /links/<token> resolves to the booking id, and from there this page
+     cannot tell the difference from a long ?b= link. The long form still
+     works. A token that resolves to nothing falls through to the
+     incomplete-link message below, which is the right answer for a mistyped
+     link. */
+  if (!G.id && !DEMO){
+    var tok = (qs.get('t') || '').trim().toLowerCase();
+    if (/^[a-z0-9]{4,16}$/.test(tok)){
+      db('/links/' + tok).then(function(rec){
+        if (rec && rec.b) G.id = String(rec.b);
+        boot();
+      }).catch(function(){ boot(); });
+      /* Re-entered above with the id resolved (or not); either way once. */
+      qs.delete('t');
+      return;
+    }
+  }
   paintGreeting(null);
   paintEta(); paintDine(); paintDiets(); paintPurpose(); paintApproach(); paintWell();
   showStep(0);

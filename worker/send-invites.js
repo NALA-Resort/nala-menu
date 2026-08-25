@@ -117,6 +117,61 @@ async function dbGet(path, idToken) {
   return r.json();
 }
 
+/* Mint and store a token BEFORE sending: a link that arrives already
+   resolving beats one that resolves eventually. Returns the token, or null
+   when the database refuses to hold it - the caller fails that guest with
+   nothing sent, rather than texting a link to nowhere. */
+async function mintToken(idToken, b, r, d, at) {
+  for (let tries = 0; tries < 5; tries++) {
+    const token = newToken();
+    const taken = await dbGet("/links/" + token, idToken).catch(() => null);
+    if (taken != null) continue;
+    const w = await fetch(
+      DB + "/links/" + token + ".json?auth=" + encodeURIComponent(idToken),
+      { method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ b: String(b), r: String(r), d: String(d),
+                               at: at }) });
+    if (w.ok) return token;
+    if (w.status !== 409) return null;
+  }
+  return null;
+}
+
+/* Any marker means "the link this message carries": <form> on the
+   pre-arrival page, <menu> on invitations, <link> the old name kept so a
+   template saved before the rename cannot send its marker as literal text.
+   No marker means the link goes on its own last line, which is also where
+   iPhones require it before they will draw the preview card. */
+function fillMarkers(text, link) {
+  for (const m of ["<form>", "<menu>", "<link>"])
+    if (text.includes(m)) return text.replace(m, link);
+  return text.replace(/\s*$/, "") + "\n" + link;
+}
+
+async function clickSend(env, phone, bodyText) {
+  const send = await fetch(CLICKSEND, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Basic " + btoa(
+        (env.CLICKSEND_USERNAME || "").trim() + ":" +
+        (env.CLICKSEND_API_KEY || "").trim()),
+    },
+    body: JSON.stringify({ messages: [{
+      from: (env.CLICKSEND_FROM || "").trim(),
+      to: phone, body: bodyText, source: "nala-menu" }],
+      /* No ClickSend shortener: the link is already short and already ours,
+         so the guest sees menu.nalaresort.com, not a redirect domain.
+         menu.nalaresort.com must still be registered at
+         dashboard.clicksend.com/sms/website-registration, or a message
+         carrying the link will not send at all. */
+      shorten_urls: false }),
+  });
+  const out = await send.json().catch(() => null);
+  const msg = out && out.data && out.data.messages && out.data.messages[0];
+  return { ok: send.ok && msg && msg.status === "SUCCESS", msg: msg, out: out };
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
@@ -126,22 +181,34 @@ export default {
     try { body = await request.json(); }
     catch { return reply(400, { error: "not JSON" }); }
 
-    const { idToken, date, villas, template } = body || {};
+    const { idToken, date, villas, template, kind, bookings } = body || {};
     const text = body && body.body;
 
     if (!idToken) return reply(401, { error: "no idToken" });
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || ""))
-      return reply(400, { error: "bad date" });
-    /* Tonight only. The Worker's clock is UTC and the resort's is not, so
-       "today" is anywhere within a day of UTC today: wide enough for every
-       Australian offset, narrow enough that a written-out past date is
-       refused rather than sent for. */
-    const asked = Date.parse(date + "T00:00:00Z");
-    if (Math.abs(asked - Date.now()) > 36 * 60 * 60 * 1000)
-      return reply(400, { error: "not tonight" });
-    if (!Array.isArray(villas) || !villas.length || villas.length > 17 ||
-        !villas.every((v) => /^\d{1,2}$/.test(String(v))))
-      return reply(400, { error: "bad villa list" });
+    /* Two kinds of send share this Worker: tonight's menu invitation
+       (the default) and the pre-arrival form (kind "pre"). They differ in
+       who is addressed - villas in house tonight versus bookings arriving
+       soon - and in the link the marker becomes. Everything about
+       verification, phone rules, ClickSend and recording is one code path
+       lived in twice below, deliberately parallel. */
+    if (kind === "pre") {
+      if (!Array.isArray(bookings) || !bookings.length || bookings.length > 40 ||
+          !bookings.every((b) => /^[A-Za-z0-9-]{4,64}$/.test(String(b))))
+        return reply(400, { error: "bad booking list" });
+    } else {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date || ""))
+        return reply(400, { error: "bad date" });
+      /* Tonight only. The Worker's clock is UTC and the resort's is not, so
+         "today" is anywhere within a day of UTC today: wide enough for every
+         Australian offset, narrow enough that a written-out past date is
+         refused rather than sent for. */
+      const asked = Date.parse(date + "T00:00:00Z");
+      if (Math.abs(asked - Date.now()) > 36 * 60 * 60 * 1000)
+        return reply(400, { error: "not tonight" });
+      if (!Array.isArray(villas) || !villas.length || villas.length > 17 ||
+          !villas.every((v) => /^\d{1,2}$/.test(String(v))))
+        return reply(400, { error: "bad villa list" });
+    }
     if (typeof text !== "string" || !text.trim() || text.length > 500)
       return reply(400, { error: "bad message" });
     if (bodyHasUrl(text))
@@ -171,6 +238,72 @@ export default {
     if (!maySend(role, permissions))
       return reply(403, { error: "this login may not send invitations" });
 
+    /* ── kind "pre": the pre-arrival form, per booking ──────────
+       No menu backstop: the form exists whether or not tonight's menu does.
+       The addressee is a booking id; the Worker re-reads Mews' record
+       itself, so an edited browser can name a booking but not change whose
+       phone or which link. Only an upcoming arrival is sendable: a past
+       booking is a wrong tap, and a year away is a typo. */
+    if (kind === "pre") {
+      const results = {};
+      for (const id of bookings.map(String)) {
+        const rec = { sentAt: new Date().toISOString(), template: template || "",
+                      by: email, status: "failed", to: "", body: "", error: "" };
+        try {
+          const pms = await dbGet("/bookings/" + id + "/pms", idToken);
+          if (!pms || typeof pms !== "object" || !pms.arrive)
+            throw new Error("no such booking in Mews");
+          const arrive = String(pms.arrive);
+          const when = Date.parse(arrive + "T00:00:00Z");
+          if (isNaN(when) || when < Date.now() - 36 * 60 * 60 * 1000 ||
+              when > Date.now() + 45 * 24 * 60 * 60 * 1000)
+            throw new Error("not an upcoming arrival: " + arrive);
+          rec.arrive = arrive;
+          /* The villa rides on the token for the menu page's fallback; the
+             form never reads it. A booking not yet assigned a villa gets 0,
+             which no board draws. */
+          const villa = /^\d{1,3}$/.test(String(pms.villa || "")) ? String(pms.villa) : "0";
+          rec.villa = villa;
+          const raw = String(pms.phone || "").trim();
+          if (!raw) throw new Error("no phone number on the booking");
+          const phone = normalisePhone(raw);
+          if (!phone)
+            throw new Error("number cannot be normalised for sending: " + raw);
+          rec.to = phone;
+          const token = await mintToken(idToken, id, villa, arrive, rec.sentAt);
+          if (!token) throw new Error("the link token did not store, nothing sent");
+          rec.token = token;
+          rec.body = fillMarkers(text,
+            "https://menu.nalaresort.com/prearrival.html?t=" + token);
+          const cs = await clickSend(env, phone, rec.body);
+          if (cs.ok) {
+            rec.status = "sent";
+            rec.providerId = (cs.msg && cs.msg.message_id) || "";
+          } else {
+            throw new Error((cs.msg && cs.msg.status) ||
+                            (cs.out && cs.out.response_msg) || "ClickSend refused");
+          }
+        } catch (e) {
+          rec.error = String((e && e.message) || e);
+        }
+        /* One record per booking, not per villa-night: the question this
+           page answers is "has THIS guest been asked", and a booking id is
+           how the form and the front desk already say "this guest". */
+        try {
+          const w = await fetch(
+            DB + "/previnvites/" + id + ".json?auth=" + encodeURIComponent(idToken),
+            { method: "PUT", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(rec) });
+          if (!w.ok) throw new Error("record refused");
+        } catch {
+          rec.error = (rec.error ? rec.error + "; " : "") + "the record did not save";
+          if (rec.status === "sent") rec.status = "sent-unrecorded";
+        }
+        results[id] = { status: rec.status, error: rec.error || undefined };
+      }
+      return reply(200, { results });
+    }
+
     /* Backstop on the menu. The page owns the real test, the same one the
        guest page uses; this only stops an edited browser sending links to a
        placeholder. A menu node with no fresh publish stamp refuses the lot. */
@@ -199,71 +332,23 @@ export default {
         if (!phone)
           throw new Error("number cannot be normalised for sending: " + raw);
         rec.to = phone;
-        /* Mint and store the token BEFORE sending: a link that arrives
-           already resolving beats one that resolves eventually. A token the
-           database refuses to hold fails the villa here, with nothing sent,
-           rather than texting a guest a link to nowhere. */
-        let token = "", placed = false;
-        for (let tries = 0; tries < 5 && !placed; tries++) {
-          token = newToken();
-          const taken = await dbGet("/links/" + token, idToken).catch(() => null);
-          if (taken != null) continue;
-          const w = await fetch(
-            DB + "/links/" + token + ".json?auth=" + encodeURIComponent(idToken),
-            { method: "PUT", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ b: String(stay.id), r: v, d: date,
-                                     at: rec.sentAt }) });
-          placed = w.ok;
-          if (!w.ok && w.status !== 409) break;
-        }
-        if (!placed) throw new Error("the link token did not store, nothing sent");
+        const token = await mintToken(idToken, stay.id, v, date, rec.sentAt);
+        if (!token) throw new Error("the link token did not store, nothing sent");
         rec.token = token;
-        const link = "https://menu.nalaresort.com/?t=" + token;
-        /* <menu> is the placeholder: named for what it inserts, so future
-           ones (<first>, <prearrival>, ...) sit beside it, each a line here
-           and a row in templates.html's legend. <link> is its old name and
-           stays accepted: a template saved before the rename must not send
-           its marker as literal text. No marker means the link goes on its
-           own last line, which is also where iPhones require it before they
-           will draw the preview card. */
-        rec.body = text.includes("<menu>")
-          ? text.replace("<menu>", link)
-          : text.includes("<link>")
-            ? text.replace("<link>", link)
-            : text.replace(/\s*$/, "") + "\n" + link;
-
-        const send = await fetch(CLICKSEND, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Basic " + btoa(
-              (env.CLICKSEND_USERNAME || "").trim() + ":" +
-              (env.CLICKSEND_API_KEY || "").trim()),
-          },
-          body: JSON.stringify({ messages: [{
-            from: (env.CLICKSEND_FROM || "").trim(),
-            to: phone, body: rec.body, source: "nala-menu" }],
-            /* No ClickSend shortener: the link is already short and already
-               ours, so the guest sees menu.nalaresort.com, not a redirect
-               domain. menu.nalaresort.com must still be registered at
-               dashboard.clicksend.com/sms/website-registration, or a message
-               carrying the link will not send at all. */
-            shorten_urls: false }),
-        });
-        const out = await send.json().catch(() => null);
-        const msg = out && out.data && out.data.messages && out.data.messages[0];
-        if (send.ok && msg && msg.status === "SUCCESS") {
+        rec.body = fillMarkers(text, "https://menu.nalaresort.com/?t=" + token);
+        const cs = await clickSend(env, phone, rec.body);
+        if (cs.ok) {
           rec.status = "sent";
-          rec.providerId = msg.message_id || "";
+          rec.providerId = (cs.msg && cs.msg.message_id) || "";
           /* Kept verbatim, under one key, rather than picked apart: version
              one shows none of it, and guessing today which field the click
              statistics will hang off is how it turns out to be the one field
              that was dropped. */
-          if (msg.short_urls || msg.shortened_urls || msg.url)
-            rec.shortened = msg.short_urls || msg.shortened_urls || msg.url;
+          if (cs.msg.short_urls || cs.msg.shortened_urls || cs.msg.url)
+            rec.shortened = cs.msg.short_urls || cs.msg.shortened_urls || cs.msg.url;
         } else {
-          throw new Error((msg && msg.status) ||
-                          (out && out.response_msg) || "ClickSend refused");
+          throw new Error((cs.msg && cs.msg.status) ||
+                          (cs.out && cs.out.response_msg) || "ClickSend refused");
         }
       } catch (e) {
         rec.error = String((e && e.message) || e);

@@ -506,6 +506,71 @@
         }
       }
     },
+    "previnvites": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('permissions').child('editBookings').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
+        ".validate": "$id.matches(/^[A-Za-z0-9-]{4,64}$/) && newData.hasChildren(['sentAt','status'])",
+        "sentAt": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "template": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "by": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "status": {
+          ".validate": "newData.isString() && newData.val().length <= 30"
+        },
+        "to": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "body": {
+          ".validate": "newData.isString() && newData.val().length <= 600"
+        },
+        "error": {
+          ".validate": "newData.isString() && newData.val().length <= 300"
+        },
+        "token": {
+          ".validate": "newData.isString() && newData.val().length <= 16"
+        },
+        "providerId": {
+          ".validate": "newData.isString() && newData.val().length <= 64"
+        },
+        "arrive": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "villa": {
+          ".validate": "newData.isString() && newData.val().length <= 10"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "presmstemplates": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('permissions').child('editBookings').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
+        ".validate": "$id.matches(/^[a-z0-9]{1,24}$/) && newData.hasChildren(['label','body'])",
+        "label": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40"
+        },
+        "body": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
+        },
+        "order": {
+          ".validate": "newData.isNumber()"
+        },
+        "at": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     "smstemplates": {
       ".read": "auth != null",
       "$id": {

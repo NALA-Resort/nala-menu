@@ -101,7 +101,7 @@ SUITES = [
 # page load and still reloads the page for each of the three widths when it
 # could resize the viewport. Fixing those is the next job and worth more than
 # this was.
-SWEEP_PAGES = ["cleaners", "front-desk", "invitations", "past-menus", "templates", "tally", "tag", "publish", "staff",
+SWEEP_PAGES = ["cleaners", "front-desk", "invitations", "arrivals-sms", "past-menus", "templates", "tally", "tag", "publish", "staff",
                "stats", "registration", "debug", "pages", "index",
                "prearrival", "welcome"]
 SUITES += [("sweep:" + p, ["python3", "tests/sweep_suite.py", p], 600)
@@ -120,6 +120,7 @@ COVERS = {
     "front-desk.html":   ["frontdesk", "sweep:front-desk"],
     "invitations.html":  ["invites", "sweep:invitations"],
     "past-menus.html":   ["sweep:past-menus"],
+    "arrivals-sms.html": ["invites", "sweep:arrivals-sms"],
     "templates.html":    ["invites", "sweep:templates"],
     "worker/send-invites.js": ["invworker"],
     "index.html":        ["index", "sweep:index"],

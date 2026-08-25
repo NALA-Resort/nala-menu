@@ -97,7 +97,7 @@ with sync_playwright() as p:
     #  way to anywhere. Pages is in every OTHER page's hamburger, which is what
     #  was actually asked for, and that is checked from a page that is not this
     #  one.
-    CANON = ["front-desk.html", "tally.html", "invitations.html", "cleaners.html", "publish.html",
+    CANON = ["front-desk.html", "tally.html", "invitations.html", "arrivals-sms.html", "cleaners.html", "publish.html",
              "list.html", "housekeeping.html", "registration.html", "menu-print.html", "past-menus.html",
              "staff.html", "tag.html", "pages.html"]
     got = pg.evaluate("""()=>[...document.querySelectorAll('.navdrop a')]
@@ -144,7 +144,7 @@ with sync_playwright() as p:
     for f in sorted(glob.glob("*.html")):
         if f.startswith("demo-"):
             continue                      # snapshots, rebuilt from the real pages
-        src = open(f).read()
+        src = open(f, encoding='utf-8').read()
         if "navFilter" not in src:
             continue
         #  The function itself, brace matched, rather than a window of
@@ -176,7 +176,7 @@ with sync_playwright() as p:
     for f in sorted(_g.glob("*.html")):
         if f.startswith("demo-"):
             continue
-        for m in _r.finditer(r'(nala-shared\.js|auth\.js)\?v=(\d+)', open(f).read()):
+        for m in _r.finditer(r'(nala-shared\.js|auth\.js)\?v=(\d+)', open(f, encoding='utf-8').read()):
             vers.setdefault(m.group(1), set()).add(m.group(2))
     print("   shared script versions:", {k: sorted(v) for k, v in vers.items()})
     ck("every page asks for the same version of each shared script",

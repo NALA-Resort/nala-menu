@@ -183,6 +183,7 @@ PAGES = [
     ("invitations.html",  ""),
     ("past-menus.html",   ""),
     ("templates.html",    ""),
+    ("arrivals-sms.html", ""),
     ("tally.html",        ""),
     ("tag.html",          ""),
     #  The menu arrives in the address, so an empty publish page is not

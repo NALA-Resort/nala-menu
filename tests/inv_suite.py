@@ -67,6 +67,35 @@ MENU = {"bread":{"name":"Sourdough"},"entree":{"name":"Scallops"},
         "main":{"name":"Barramundi"},"dessert":{"name":"Pavlova"},
         "published": now.isoformat()}
 
+#  The pre-arrival window, for arrivals-sms.html. /stays holds every night
+#  mews-sync knows about; an arrival on d is the stay at /stays/<d> whose own
+#  arrive IS d. Villa 8 is in house already (arrived yesterday), so it must
+#  not appear; villa 3 spans two nights, so it must appear once.
+def dplus(n): return (now + datetime.timedelta(days=n)).strftime("%Y-%m-%d")
+def stay(id, first, last, phone, a, d, extra=None):
+    s = {"id": id, "first": first, "last": last, "phone": phone,
+         "arrive": dplus(a), "depart": dplus(d)}
+    s.update(extra or {})
+    return s
+NIGHTS = {
+  dplus(1): {"6":  stay("pa-ready", "Harper", "Quinn", "+61 411 000 001", 1, 3),
+             "8":  stay("pa-inhouse", "Old", "Guest", "+61 411 000 008", -1, 2),
+             "14": stay("pa-done", "Robyn", "Carter", "+61 411 000 002", 1, 2)},
+  dplus(2): {"3":  stay("pa-sent", "Anna", "Lindqvist", "+61 411 000 003", 2, 4),
+             "9":  stay("pa-landline", "D.", "Kessler", "07 3358 1122", 2, 3)},
+  dplus(3): {"3":  stay("pa-sent", "Anna", "Lindqvist", "+61 411 000 003", 2, 4),
+             "12": stay("pa-open", "Kai", "Werner", "+61 411 000 004", 3, 5)},
+  dplus(10): {"5": stay("pa-far", "Grace", "Ito", "+61 411 000 005", 10, 12)},
+}
+PRE_RECS = {
+  "pa-done": {"at": now.isoformat(), "openedAt": now.isoformat(), "dining": True},
+  "pa-open": {"openedAt": now.isoformat(), "purpose": "Rest"},
+}
+PREINV = {
+  "pa-sent": {"status": "sent", "sentAt": now.isoformat(), "to": "+61411000003",
+              "by": "staff@x"},
+}
+
 STATE = {"menu": MENU, "menufail": False}
 WRITES = []
 SENT = []            # every POST that reached the stubbed Worker
@@ -82,11 +111,21 @@ def fb(route, request):
     if "/staff" in u: body = json.dumps(STAFF)
     elif "/permissions" in u: body = "null"
     elif "/stays/" + today in u: body = json.dumps(STAYS)
+    elif "/stays/" in u:
+        d = u.split("/stays/")[1].split(".json")[0]
+        body = json.dumps(NIGHTS[d]) if d in NIGHTS else "null"
     elif "/dinner/" + today in u: body = json.dumps(DINNER)
     elif "/opened/" in u: body = "null"
     elif "/invites/" + today in u: body = json.dumps(INVITES)
+    elif "/previnvites/" in u:
+        bid = u.split("/previnvites/")[1].split(".json")[0]
+        body = json.dumps(PREINV[bid]) if bid in PREINV else "null"
+    elif "/presmstemplates" in u: body = "null"
     elif "/smstemplates" in u:
         body = json.dumps(STATE["templates"]) if STATE.get("templates") else "null"
+    elif "/bookings/" in u and "/prearrival" in u:
+        bid = u.split("/bookings/")[1].split("/")[0]
+        body = json.dumps(PRE_RECS[bid]) if bid in PRE_RECS else "null"
     elif "/bookings/" in u: body = "null"
     elif "/menutags/" in u: body = "null"
     elif "/menuhistory" in u: body = json.dumps({"main": "Barramundi",
@@ -99,8 +138,8 @@ def fb(route, request):
 
 def wk(route, request):
     SENT.append(json.loads(request.post_data))
-    villas = SENT[-1]["villas"]
-    results = WORKER["reply"] or {v: {"status": "sent"} for v in villas}
+    who = SENT[-1].get("villas") or SENT[-1].get("bookings") or []
+    results = WORKER["reply"] or {v: {"status": "sent"} for v in who}
     route.fulfill(status=200, content_type="application/json",
                   body=json.dumps({"results": results}))
 
@@ -436,6 +475,72 @@ with sync_playwright() as p:
     pg.close()
     STATE["templates"] = None
 
+    # ── arrivals-sms.html, the pre-arrival window ──────────────
+    def apage(email="staff@x", w=390):
+        pg = b.new_page(viewport={"width": w, "height": 900})
+        pg.add_init_script(SDK)
+        pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
+        pg.route("**firebasedatabase.app/**", fb)
+        pg.route("**nala-invites.ben-681.workers.dev/**", wk)
+        pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        pg.goto("http://localhost:8977/arrivals-sms.html")
+        pg.wait_for_timeout(1600)
+        return pg
+
+    pg = apage()
+    seq = pg.evaluate("""()=>[...document.getElementById('board').children]
+        .map(el=>el.classList.contains('grp') ? 'H:'+el.textContent
+                                              : el.dataset.booking)""")
+    ck("the five bands render in order: send, follow up, waiting, done, cannot",
+       seq == ["H:To send · 1", "pa-ready",
+               "H:Opened, not finished · 1", "pa-open",
+               "H:Waiting on the form · 1", "pa-sent",
+               "H:Form completed · 1", "pa-done",
+               "H:Cannot send · 1", "pa-landline"], seq)
+    ck("a guest already in house is not an arrival",
+       "pa-inhouse" not in seq)
+    ck("a booking spanning two nights is listed once",
+       seq.count("pa-sent") == 1)
+    ck("an arrival past the window is not offered",
+       "pa-far" not in seq)
+    arow = lambda id: pg.locator('.vrow[data-booking="%s"]' % id)
+    ck("only the unasked arrival is pre-ticked",
+       "on" in (arow("pa-ready").get_attribute("class") or "")
+       and "on" not in (arow("pa-sent").get_attribute("class") or ""))
+    ck("a completed form cannot be sent to again from here",
+       arow("pa-done").is_disabled())
+    ck("an opened, unfinished form can be chased",
+       not arow("pa-open").is_disabled())
+    ck("the row says when the guest arrives",
+       "arrives" in arow("pa-ready").inner_text())
+    ck("the counts strip says the same as the bands",
+       [pg.evaluate("()=>%s.textContent" % i)
+        for i in ("nSend","nWait","nOpen","nDone")] == ["1","1","1","1"])
+
+    #  The knob widens the window and the far arrival appears.
+    pg.locator('#knob button[data-days="14"]').click(); pg.wait_for_timeout(900)
+    ck("fourteen days finds the arrival seven could not",
+       pg.locator('.vrow[data-booking="pa-far"]').count() == 1)
+    pg.locator('#knob button[data-days="7"]').click(); pg.wait_for_timeout(900)
+
+    #  Sending posts booking ids with kind pre; the Worker owns the rest.
+    del SENT[:]
+    pg.locator("#sendBtn").click(); pg.wait_for_timeout(600)
+    ck("send posts the ticked bookings, as kind pre",
+       len(SENT) == 1 and SENT[0].get("kind") == "pre"
+       and SENT[0].get("bookings") == ["pa-ready"]
+       and "villas" not in SENT[0])
+    ck("and the template's marker is the form's",
+       "<form>" in SENT[0]["body"])
+    pg.close()
+
+    #  The same permission as Invitations: a housekeeper is turned away.
+    pg = apage(email="housekeeping@x")
+    ck("a role without editBookings is turned away from the window",
+       pg.locator("#sendBtn").count() == 0
+       or not pg.locator("#sendBtn").is_visible())
+    pg.close()
+
     # ── widths ─────────────────────────────────────────────────
     for w in (390, 360, 320):
         q = board(w=w)
@@ -444,6 +549,10 @@ with sync_playwright() as p:
         q.close()
     q = tpage()
     ck("no sideways scroll on the template editor at 390pt", not q.evaluate(
+       "()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
+    q.close()
+    q = apage()
+    ck("no sideways scroll on the pre-arrival window at 390pt", not q.evaluate(
        "()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
     q.close()
 

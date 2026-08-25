@@ -68,6 +68,16 @@ function install() {
     { id: "b7-guid", first: "Mark", last: "Whitfield", phone: "" };
   STORE["/stays/" + today + "/9"] =
     { id: "b9-guid", first: "Nadia", last: "Okonkwo", phone: "02 9999 9999" };
+  const plus = (days) => { const d = new Date(Date.now() + days * 86400000);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") +
+           "-" + String(d.getDate()).padStart(2, "0"); };
+  STORE["/bookings/bk-future/pms"] =
+    { arrive: plus(5), depart: plus(8), villa: 6, phone: "0411 222 333",
+      first: "Harper", last: "Quinn" };
+  STORE["/bookings/bk-past/pms"] =
+    { arrive: plus(-10), depart: plus(-7), villa: 3, phone: "0411 222 333" };
+  STORE["/bookings/bk-novilla/pms"] =
+    { arrive: plus(2), phone: "+61 400 111 222" };
   globalThis.fetch = async (url, opt = {}) => {
     const u = String(url);
     if (u.includes("accounts:lookup")) {
@@ -218,6 +228,57 @@ install();
 STORE["/menu"].published = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
 r = await post();
 ck("a stale publish stamp is no menu", r.status === 409);
+
+/* ── kind "pre": the pre-arrival form, per booking ──────────── */
+const pre = (over = {}) => worker.fetch(new Request("https://w.dev/", {
+  method: "POST", headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ idToken: "T", kind: "pre", bookings: ["bk-future"],
+                         template: "before",
+                         body: "Ahead of your stay, a few questions. Nala Resort\n<form>",
+                         ...over }) }), env);
+
+install(); STORE["/menu"] = null;
+r = await pre();
+j = await r.json();
+ck("a pre-arrival send needs no menu: the form exists either way",
+   r.status === 200 && j.results["bk-future"].status === "sent");
+const preBody = SENDS[0].messages[0].body;
+const preTok = (preBody.match(/\?t=([a-z0-9]+)/) || [])[1] || "";
+ck("the SMS carries the form's short link, not the menu's",
+   /https:\/\/menu\.nalaresort\.com\/prearrival\.html\?t=[a-z2-9]{6}$/.test(preBody));
+ck("the <form> marker was replaced, once",
+   !preBody.includes("<form>") &&
+   (preBody.match(/menu\.nalaresort\.com/g) || []).length === 1);
+ck("the token resolves to the booking, its villa and its arrival date",
+   !!STORE["/links/" + preTok] &&
+   STORE["/links/" + preTok].b === "bk-future" &&
+   STORE["/links/" + preTok].r === "6" &&
+   STORE["/links/" + preTok].d === STORE["/bookings/bk-future/pms"].arrive);
+let prec = STORE["/previnvites/bk-future"];
+ck("the send is recorded against the booking, not a villa-night",
+   !!prec && prec.status === "sent" && prec.to === "+61411222333" &&
+   prec.token === preTok && prec.by === "waiter@nala.x");
+
+install();
+r = await pre({ bookings: ["bk-past", "bk-future", "bk-none"] });
+j = await r.json();
+ck("a past booking is refused by the Worker, whatever the browser claimed",
+   j.results["bk-past"].status === "failed" &&
+   /upcoming/.test(j.results["bk-past"].error));
+ck("an unknown booking fails alone and the good one still goes",
+   j.results["bk-none"].status === "failed" &&
+   j.results["bk-future"].status === "sent" && SENDS.length === 1);
+
+install();
+r = await pre({ bookings: ["bk-novilla"] });
+j = await r.json();
+ck("a booking with no villa yet still sends, its token carrying villa 0",
+   j.results["bk-novilla"].status === "sent");
+
+install(); STATE.email = "hk@nala.x";
+r = await pre();
+ck("the pre-arrival send obeys the same permission as invitations",
+   r.status === 403 && SENDS.length === 0);
 
 console.log("RESULT: " + P + " passed, " + F + " failed");
 process.exit(F ? 1 : 0);
