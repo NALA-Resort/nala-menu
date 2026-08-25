@@ -522,9 +522,19 @@ with sync_playwright() as p:
     ck("an arrival past the window is not offered",
        "pa-far" not in seq)
     arow = lambda id: pg.locator('.vrow[data-booking="%s"]' % id)
-    ck("only the unasked arrival is pre-ticked",
+    #  The 25 Aug safety pass: nothing is pre-ticked, every send is a
+    #  deliberate tick, and Select all scopes itself to To send.
+    ck("nothing is ticked until somebody ticks it",
+       pg.locator(".vrow.on").count() == 0)
+    pg.locator("#selAll").click(); pg.wait_for_timeout(150)
+    ck("select-all ticks the To send band and nothing else",
        "on" in (arow("pa-ready").get_attribute("class") or "")
-       and "on" not in (arow("pa-sent").get_attribute("class") or ""))
+       and "on" not in (arow("pa-sent").get_attribute("class") or "")
+       and "on" not in (arow("pa-open").get_attribute("class") or ""))
+    pg.locator("#selAll").click(); pg.wait_for_timeout(150)
+    ck("and a second press clears its own ticks",
+       pg.locator(".vrow.on").count() == 0)
+    pg.locator("#selAll").click(); pg.wait_for_timeout(150)
     ck("a completed form cannot be sent to again from here",
        arow("pa-done").is_disabled())
     ck("an opened, unfinished form can be chased",
@@ -546,8 +556,9 @@ with sync_playwright() as p:
        len(fixw) == 1 and json.loads(fixw[0]["b"])["phone"] == "+64274875277"
        and json.loads(fixw[0]["b"])["was"] == "07 3358 1122")
     ck("and the guest climbs out of Cannot send, ready to message",
-       "on" in (arow("pa-landline").get_attribute("class") or "")
-       and arow("pa-landline").get_attribute("data-state") == "ready")
+       arow("pa-landline").get_attribute("data-state") == "ready"
+       and not arow("pa-landline").is_disabled()
+       and "on" not in (arow("pa-landline").get_attribute("class") or ""))
     FIXES.clear()
 
     #  The knob widens the window and the far arrival appears.
@@ -557,7 +568,14 @@ with sync_playwright() as p:
     pg.locator('#knob button[data-days="7"]').click(); pg.wait_for_timeout(900)
 
     #  Sending posts booking ids with kind pre; the Worker owns the rest.
+    #  EVERY send takes the red second press, not only resends. The knob
+    #  reloads above cleared the ticks, so tick afresh - which is itself the
+    #  safety feature working.
     del SENT[:]
+    pg.locator("#selAll").click(); pg.wait_for_timeout(150)
+    pg.locator("#sendBtn").click(); pg.wait_for_timeout(300)
+    ck("the first press of Send sends nothing and asks for the confirm",
+       SENT == [] and "Please confirm" in pg.evaluate("()=>sendBtn.textContent"))
     pg.locator("#sendBtn").click(); pg.wait_for_timeout(600)
     ck("send posts the ticked bookings, as kind pre",
        len(SENT) == 1 and SENT[0].get("kind") == "pre"

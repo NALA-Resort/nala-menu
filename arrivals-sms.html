@@ -67,6 +67,10 @@
           font-size:15px; color:transparent; }
   .vrow.on { border-color:var(--greenb); }
   .vrow.on .tick { background:var(--green); border-color:var(--greenb); color:var(--ink); }
+  /* Select-all wears the row dress so its tick reads like the rows' ticks,
+     dashed so it does not read as a guest. */
+  .selall { border-style:dashed; margin:0 0 10px; }
+  .selall .nm { font-size:13px; }
 
   select, textarea { width:100%; font-family:var(--ui-font); font-size:15px;
                      color:var(--ink); background:#fff; border:1px solid var(--rule);
@@ -116,6 +120,13 @@
   <div class="stat"><div class="stat-n" id="nOpen">&ndash;</div><div class="stat-l">Opened</div></div>
   <div class="stat"><div class="stat-n" id="nDone">&ndash;</div><div class="stat-l">Done</div></div>
 </div>
+
+<button class="vrow selall" id="selAll" style="display:none">
+  <div class="mid"><div class="nm">Select all in To send</div>
+    <div class="st">Ticks every guest with a sendable number who has not been
+      asked. Guests already messaged are ticked one by one.</div></div>
+  <div class="tick">✓</div>
+</button>
 
 <div id="board"></div>
 
@@ -300,10 +311,10 @@ function stateOf(stay, pre, invite, fix){
              line:'Sent ' + shortDay(akey(invite.sentAt)) + ' ' +
                   timeOf(invite.sentAt) + ' · ' + when };
   if (invite && invite.status)
-    return { kind:'ready', tickable:true, ticked:true, bad:true,
+    return { kind:'ready', tickable:true, ticked:false, bad:true,
              line:'Send failed ' + timeOf(invite.sentAt) +
                   (invite.error ? ' · ' + invite.error : '') + ' · ' + when };
-  return { kind:'ready', tickable:true, ticked:true,
+  return { kind:'ready', tickable:true, ticked:false,
            line:'Not asked · ' + when + nightsOf(stay) };
 }
 
@@ -351,6 +362,7 @@ function render(list){
       b.setAttribute('aria-pressed', ROWS[it.id].ticked ? 'true' : 'false');
       recount();
     };
+    ROWS[it.id].el = b;
     rows[st.kind].push(b);
   });
   BANDS.forEach(function(band){
@@ -408,6 +420,26 @@ function fixNumber(it){
 function selected(){
   return Object.keys(ROWS).filter(function(id){ return ROWS[id].ticked; });
 }
+
+/* Select all, scoped to To send on purpose: every guest it ticks has a
+   sendable number and has never been asked, so the bulk action cannot
+   double-message anyone. A resend stays a deliberate single tick. */
+function readyRows(){
+  return Object.keys(ROWS).filter(function(id){
+    return ROWS[id].state.kind === 'ready' && ROWS[id].state.tickable;
+  });
+}
+document.getElementById('selAll').onclick = function(){
+  var ids = readyRows();
+  var allOn = ids.length && ids.every(function(id){ return ROWS[id].ticked; });
+  ids.forEach(function(id){
+    ROWS[id].ticked = !allOn;
+    var el = ROWS[id].el;
+    if (el){ el.classList.toggle('on', !allOn);
+             el.setAttribute('aria-pressed', !allOn ? 'true' : 'false'); }
+  });
+  recount();
+};
 function disarm(){
   if (!ARMED) return;
   ARMED = false;
@@ -422,6 +454,11 @@ function recount(){
   document.getElementById('nDone').textContent = n('done');
 
   var again = sel.filter(function(id){ return ROWS[id].state.kind !== 'ready'; }).length;
+  var sa = document.getElementById('selAll');
+  var ready = readyRows();
+  sa.style.display = ready.length ? '' : 'none';
+  sa.classList.toggle('on',
+    !!ready.length && ready.every(function(id){ return ROWS[id].ticked; }));
   var btn = document.getElementById('sendBtn');
   var label = 'Send to ' + sel.length + ' guest' + (sel.length === 1 ? '' : 's') +
               (again ? ', ' + again + ' of them again' : '');
@@ -443,9 +480,10 @@ document.getElementById('sendBtn').onclick = function(){
     return;
   }
   err.textContent = '';
-  /* A guest already messaged takes a second press, same as Invitations. */
-  var again = sel.some(function(id){ return ROWS[id].state.kind !== 'ready'; });
-  if (again && !ARMED){ ARMED = true; recount(); return; }
+  /* EVERY send takes a second press here, not only resends: this page can
+     address a whole fortnight of guests at once, and the red Please confirm
+     is what stands between a stray tap and forty messages. */
+  if (!ARMED){ ARMED = true; recount(); return; }
   ARMED = false;
 
   var btn = this;
@@ -550,7 +588,7 @@ function showAccess(allowed, e){
     }
   }
   box.className = 'noaccess' + (on ? ' show' : '');
-  ['knob','statsRow','board','sendBtn','tmpl','msgBox'].forEach(function(id){
+  ['knob','statsRow','selAll','board','sendBtn','tmpl','msgBox'].forEach(function(id){
     var el = document.getElementById(id);
     if (el) el.style.display = on ? 'none' : '';
   });
