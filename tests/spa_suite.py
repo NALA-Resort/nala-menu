@@ -70,7 +70,7 @@ for v, bid, first, last, a, dep in BOOKINGS:
 PRE = {
   "b9":  {"wellness": True,  "wellDay": today,   "wellTime": "afternoon"},
   "b12": {"wellness": True,  "wellDay": plus(-1),"wellTime": "morning"},
-  "b4":  {"wellness": True,  "wellDay": plus(3), "wellTime": ""},
+  "b4":  {"wellness": True,  "wellDay": plus(3), "wellTime": "2:00 pm"},
   "b15": {"wellness": True,  "wellDay": "",      "wellTime": ""},
   "b2":  {"wellness": False},
 }
@@ -207,6 +207,35 @@ with sync_playwright() as p:
          .startswith("Suggest") and
        pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
                    ".every(b=>!b.textContent.startsWith('Confirm'))"))
+
+    # ── the card opens on the time the guest asked for ──────────
+    # Found live, 25 Aug: a 2pm ask opened - and got booked - at the 10am
+    # default, because the request was free text the card never read. The
+    # form and the desk write a slot label now, and the card parses it; a
+    # wish from before the change ("afternoon") still falls back.
+    pg.close()
+    pg = board()
+    pg.locator('#board [data-booking="b4"]').click(); pg.wait_for_timeout(300)
+    ck("a request naming a slot opens the card on that slot",
+       pg.evaluate("()=>document.querySelector('.card select').value") == "14:00" and
+       "2:00 pm" in pg.evaluate(
+         "()=>document.querySelector('.card .cbtn.solid').textContent"))
+    ck("and on the day the guest picked",
+       pg.evaluate("()=>document.querySelector('.card .chip.on').textContent")
+         == short(3))
+    pg.close()
+    pg = board()
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    ck("a wish that names no slot still gets the mid-morning stand-in",
+       pg.evaluate("()=>document.querySelector('.card select').value") == "10:00")
+    # The one slot list, pinned to the table both copies answer to.
+    slots_table = json.load(open("tests/slots.json"))["slots"]
+    got_opts = pg.evaluate("()=>[...document.querySelectorAll('.card option')]"
+                           ".map(o=>({v:o.value,label:o.textContent}))")
+    ck("the board's times are exactly the canonical table",
+       got_opts == [{"v": x["v"], "label": x["label"]} for x in slots_table])
+    # back onto the different day, which is what the write tests press
+    pg.locator('.card .chip').nth(1).click(); pg.wait_for_timeout(200)
 
     # ── the writes, which are the actual feature ────────────────
     del WRITES[:]

@@ -1590,6 +1590,49 @@ function navFilterShared(role){
   navActionBadges(role);
 }
 
+/* ── treatment hours ─────────────────────────────────────────
+   Nine to five on the half hour, the owner's numbers, 25 Aug. The Spa board
+   and the front desk read this list; the guest form keeps its own copy
+   because a guest page never loads this file, and BOTH copies are asserted
+   against tests/slots.json - the phone_cases.json pattern. The database
+   rules hold the same range. Change the hours in the table first.       */
+var SPA_SLOTS = (function(){
+  var out = [];
+  for (var h = 9; h <= 17; h++){
+    out.push((h < 10 ? '0' : '') + h + ':00');
+    if (h < 17) out.push((h < 10 ? '0' : '') + h + ':30');
+  }
+  return out;
+})();
+function spaSlotLabel(t){
+  if (!t) return '';
+  var p = String(t).split(':'), h = +p[0];
+  return (h % 12 || 12) + ':' + p[1] + ' ' + (h < 12 ? 'am' : 'pm');
+}
+/* The way back from what a guest or the desk stored: the label itself, a
+   24 hour HH:MM, or a bare H:MM that only fits the afternoon (a guest
+   writing 2:00 means 2pm; one writing 10:00 already matches the morning).
+   Anything else - "afternoon", "before dinner" - is a wish, not a slot,
+   and returns null rather than a guess.                                 */
+function spaSlotFromText(s){
+  s = String(s || '').trim().toLowerCase();
+  if (!s) return null;
+  for (var i = 0; i < SPA_SLOTS.length; i++)
+    if (SPA_SLOTS[i] === s ||
+        spaSlotLabel(SPA_SLOTS[i]).toLowerCase() === s) return SPA_SLOTS[i];
+  var m = s.match(/^([0-9]{1,2})[:.]([0-5][0-9])\s*(am|pm)?$/);
+  if (!m) return null;
+  var h = +m[1];
+  if (m[3] === 'pm' && h < 12) h += 12;
+  var t = (h < 10 ? '0' : '') + h + ':' + m[2];
+  if (SPA_SLOTS.indexOf(t) > -1) return t;
+  if (!m[3] && h < 12){
+    t = (h + 12) + ':' + m[2];
+    if (SPA_SLOTS.indexOf(t) > -1) return t;
+  }
+  return null;
+}
+
 /* ── the action icon ─────────────────────────────────────────
    A number beside a menu entry meaning: something in there waits on you.
    Never stored - it is recomputed from the queue it counts on every page

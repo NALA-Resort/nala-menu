@@ -227,7 +227,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=35"></script>
+<script src="nala-shared.js?v=36"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -992,7 +992,7 @@ function openGuest(r){
     '<div id="wWrap">' +
       '<div class="sheet-label">Preferred day</div>' +
       '<div class="chips" id="wDays"></div>' +
-      '<input class="txt" id="fWtime" type="text" placeholder="Preferred time" autocomplete="off" style="margin-top:8px">' +
+      '<select class="txt" id="fWtime" aria-label="Preferred time" style="margin-top:8px"></select>' +
     '</div>' +
 
     '<div class="sheet-label">Booking notes</div>' +
@@ -1005,7 +1005,29 @@ function openGuest(r){
   document.getElementById('fDnote').value  = a.dnote;
   document.getElementById('fOcc').value    = a.occasion;
   document.getElementById('fNote').value   = a.note;
-  document.getElementById('fWtime').value  = a.wellTime;
+  /* A slot, not free text, since 25 Aug: the Spa board opens on the asked
+     time, and a wish typed as words gave it nothing to open on. SPA_SLOTS
+     is the one list; the stored value is the label every screen prints. A
+     record from before the change keeps its words as one extra option, so
+     reopening a card never silently wipes what the guest said. */
+  (function(){
+    var sel = document.getElementById('fWtime');
+    var o = document.createElement('option');
+    o.value = ''; o.textContent = 'Preferred time';
+    sel.appendChild(o);
+    SPA_SLOTS.forEach(function(t){
+      var x = document.createElement('option');
+      x.value = spaSlotLabel(t); x.textContent = spaSlotLabel(t);
+      sel.appendChild(x);
+    });
+    if (a.wellTime && !spaSlotFromText(a.wellTime)){
+      var lg = document.createElement('option');
+      lg.value = a.wellTime; lg.textContent = a.wellTime;
+      sel.appendChild(lg);
+    }
+    sel.value = spaSlotFromText(a.wellTime)
+      ? spaSlotLabel(spaSlotFromText(a.wellTime)) : (a.wellTime || '');
+  })();
 
   function paintDining(){
     document.getElementById('sDin').className = a.dining === true  ? 'on' : '';
