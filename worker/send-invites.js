@@ -203,6 +203,8 @@ export default {
       if (!Array.isArray(bookings) || !bookings.length || bookings.length > 40 ||
           !bookings.every((b) => /^[A-Za-z0-9-]{4,64}$/.test(String(b))))
         return reply(400, { error: "bad booking list" });
+    } else if (kind === "delivery") {
+      /* Addressed by record references, validated at the point of use. */
     } else {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date || ""))
         return reply(400, { error: "bad date" });
@@ -217,10 +219,12 @@ export default {
           !villas.every((v) => /^\d{1,2}$/.test(String(v))))
         return reply(400, { error: "bad villa list" });
     }
-    if (typeof text !== "string" || !text.trim() || text.length > 500)
-      return reply(400, { error: "bad message" });
-    if (bodyHasUrl(text))
-      return reply(400, { error: "the message contains a URL; the link is added here, not typed" });
+    if (kind !== "delivery") {
+      if (typeof text !== "string" || !text.trim() || text.length > 500)
+        return reply(400, { error: "bad message" });
+      if (bodyHasUrl(text))
+        return reply(400, { error: "the message contains a URL; the link is added here, not typed" });
+    }
 
     /* 1. Verify the token. accounts:lookup checks the signature, the expiry
        and the project (the key is per project), and names the account, which
@@ -245,6 +249,60 @@ export default {
     const role = staffRec && staffRec.role;
     if (!maySend(role, permissions))
       return reply(403, { error: "this login may not send invitations" });
+
+    /* ── kind "delivery": did the messages actually arrive? ─────
+       "Sent" only means ClickSend accepted the message; the handset receipt
+       is the real answer and it arrives later. The pages ask here on load
+       for their still-unconfirmed records; this reads each record, asks
+       ClickSend for the receipt by message id, and writes the verdict back
+       onto the record - delivered, failed (with the carrier's words), or
+       nothing yet. Needs a delivery report rule with action POLL in the
+       ClickSend dashboard, or every receipt reads as nothing yet. */
+    if (kind === "pre-delivery" || kind === "delivery") {
+      const invites = Array.isArray(body.invites) ? body.invites.slice(0, 40) : [];
+      const pres = Array.isArray(body.pres) ? body.pres.slice(0, 40) : [];
+      const results = {}; let changed = 0;
+      const check = async (path, key) => {
+        let rec;
+        try { rec = await dbGet(path, idToken); } catch { return; }
+        if (!rec || !rec.providerId || rec.status !== "sent") return;
+        if (rec.delivery === "delivered" || rec.delivery === "failed") {
+          results[key] = rec.delivery; return;
+        }
+        const r = await fetch(
+          "https://rest.clicksend.com/v3/sms/receipts/" +
+            encodeURIComponent(rec.providerId),
+          { headers: { "Authorization": "Basic " + btoa(
+              (env.CLICKSEND_USERNAME || "").trim() + ":" +
+              (env.CLICKSEND_API_KEY || "").trim()) } });
+        const j = await r.json().catch(() => null);
+        const d = j && j.data && (j.data.status_code != null ? j.data
+                : j.data.data && j.data.data[0] ? j.data.data[0] : null);
+        if (!r.ok || !d || d.status_code == null) { results[key] = "unknown"; return; }
+        /* 200/201 is the handset saying yes; anything else is the carrier
+           naming a failure, kept in its own words. */
+        const ok = String(d.status_code) === "200" || String(d.status_code) === "201";
+        rec.delivery = ok ? "delivered" : "failed";
+        rec.deliveryText = String(d.status_text || d.error_text || "").slice(0, 200);
+        rec.deliveryAt = new Date().toISOString();
+        const w = await fetch(DB + path + ".json?auth=" + encodeURIComponent(idToken),
+          { method: "PUT", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(rec) });
+        if (w.ok) { changed++; results[key] = rec.delivery; }
+        else results[key] = "unknown";
+      };
+      for (const it of invites) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(it && it.date)) ||
+            !/^\d{1,2}$/.test(String(it && it.villa))) continue;
+        await check("/invites/" + it.date + "/" + it.villa,
+                    it.date + "/" + it.villa);
+      }
+      for (const id of pres) {
+        if (!/^[A-Za-z0-9-]{4,64}$/.test(String(id))) continue;
+        await check("/previnvites/" + id, id);
+      }
+      return reply(200, { results, changed });
+    }
 
     /* ── kind "pre": the pre-arrival form, per booking ──────────
        No menu backstop: the form exists whether or not tonight's menu does.

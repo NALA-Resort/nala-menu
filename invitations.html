@@ -64,6 +64,12 @@
   .vrow .mid { flex:1; min-width:0; }
   .vrow .nm { font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .vrow .ph { font-size:11px; color:var(--mid); font-weight:normal; margin-left:7px; }
+  /* The confidence mark: a tick where the country's mobile ranges are
+     published and this number sits in one, a question mark where nobody can
+     tell a mobile from a landline (all of +1, for a start). */
+  .vrow .conf { font-size:11px; margin-left:4px; }
+  .vrow .conf.ok { color:var(--resgreen); }
+  .vrow .conf.un { color:var(--mid); }
   /* The edit pencil. Inside the row button, so its click must not fall
      through to the tick: the handler stops the event. */
   .vrow .pen { font-size:12px; color:var(--mid); margin-left:5px;
@@ -153,7 +159,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=31"></script>
+<script src="nala-shared.js?v=32"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -302,8 +308,19 @@ function stateOf(villa, stay, cell, invite, fix){
       : 'set by reception';
     return { kind:'answered', line: what + ' \u00B7 ' + who, tickable:true, ticked:false };
   }
-  if (invite && invite.status === 'sent')
-    return { kind:'sent', line:'Sent ' + timeOf(invite.sentAt), tickable:true, ticked:false };
+  if (invite && invite.status === 'sent'){
+    /* "Sent" is only ClickSend accepting the message; the handset receipt
+       is the real answer. A failed delivery is the sender's problem again,
+       so it climbs back into To send with the carrier's words. */
+    if (invite.delivery === 'failed')
+      return { kind:'ready', bad:true, tickable:true, ticked:false,
+               line:'Not delivered' +
+                    (invite.deliveryText ? ' \u00b7 ' + invite.deliveryText : '') };
+    return { kind:'sent', tickable:true, ticked:false,
+             line:'Sent ' + timeOf(invite.sentAt) +
+                  (invite.delivery === 'delivered' ? ' \u00b7 delivered'
+                   : invite.providerId ? ' \u00b7 delivery unconfirmed' : '') };
+  }
   if (invite && invite.status === 'failed')
     return { kind:'ready', line:'Send failed ' + timeOf(invite.sentAt) +
              (invite.error ? ' \u00B7 ' + invite.error : ''), bad:true,
@@ -358,8 +375,19 @@ function render(stays, invites, fixes){
        it. Every row carries both: a valid number can still be a WRONG one,
        and the fix outranks Mews either way. */
     var ph = document.createElement('span'); ph.className = 'ph';
-    ph.textContent = String((fix && fix.phone) || stay.phone || '').trim() || 'no number';
+    var rawPh = String((fix && fix.phone) || stay.phone || '').trim();
+    ph.textContent = rawPh || 'no number';
     nm.appendChild(ph);
+    var confidence = rawPh ? phoneConfidence(rawPh) : null;
+    if (confidence){
+      var cf = document.createElement('span');
+      cf.className = 'conf ' + (confidence === 'mobile' ? 'ok' : 'un');
+      cf.textContent = confidence === 'mobile' ? '\u2713' : '?';
+      cf.title = confidence === 'mobile'
+        ? 'Sits in this country\u2019s published mobile ranges'
+        : 'A real number, but this country\u2019s mobiles cannot be told from landlines; sending will find out';
+      nm.appendChild(cf);
+    }
     var pen = document.createElement('span'); pen.className = 'pen';
     /* Not on a disabled row: a completed form needs no number and a dead
        pencil reads as a broken one. */
@@ -560,7 +588,29 @@ function load(){
       .catch(function(){ return null; })
   ]).then(function(res){
     render(res[0] || {}, res[1] || {}, res[4] || {});
+    checkDelivery(res[1] || {});
   });
+}
+
+/* Once per visit, ask the Worker to fetch handset receipts for anything
+   sent but unconfirmed; if a verdict landed, reload so the rows say so.
+   The flag stops the reload asking again forever. */
+var CHECKED_DELIVERY = false;
+function checkDelivery(invites){
+  if (CHECKED_DELIVERY || !window.__idToken) return;
+  var pending = Object.keys(invites || {}).filter(function(v){
+    var r = invites[v];
+    return r && r.status === 'sent' && r.providerId &&
+           r.delivery !== 'delivered' && r.delivery !== 'failed';
+  });
+  if (!pending.length) return;
+  CHECKED_DELIVERY = true;
+  fetch(INVITES_URL, { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ idToken: window.__idToken, kind:'delivery',
+      invites: pending.map(function(v){ return { date: TODAY, villa: v }; }) }) })
+  .then(function(r){ return r.json(); })
+  .then(function(j){ if (j && j.changed) return load(); })
+  .catch(function(){});
 }
 
 function showAccess(allowed, e){

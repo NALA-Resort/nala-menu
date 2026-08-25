@@ -93,7 +93,7 @@ PRE_RECS = {
 }
 PREINV = {
   "pa-sent": {"status": "sent", "sentAt": now.isoformat(), "to": "+61411000003",
-              "by": "staff@x"},
+              "by": "staff@x", "providerId": "mid-s", "delivery": "delivered"},
 }
 
 STATE = {"menu": MENU, "menufail": False}
@@ -218,6 +218,14 @@ with sync_playwright() as p:
        and row("2").locator(".pen").count() == 1)
     ck("a sendable row shows its number too, in the small grey font",
        "+61 411 111 111" in row("4").locator(".ph").text_content())
+    #  The confidence mark: tick for a published mobile range, question mark
+    #  where a country's mobiles cannot be told from landlines.
+    ck("an Australian mobile wears the tick",
+       row("4").locator(".conf.ok").count() == 1)
+    ck("the rule itself: NL mobile certain, +1 honestly unsure",
+       pg.evaluate("()=>phoneConfidence('+31612762241')") == "mobile"
+       and pg.evaluate("()=>phoneConfidence('+1 415 555 2671')") == "unsure"
+       and pg.evaluate("()=>phoneConfidence('02 9999 9999')") is None)
     ck("a villa already sent to is unticked and shows the time",
        "on" not in (row("9").get_attribute("class") or "")
        and "Sent 5:05pm" in row("9").inner_text())
@@ -549,6 +557,20 @@ with sync_playwright() as p:
        not arow("pa-open").is_disabled())
     ck("the row says when the guest arrives",
        "arrives" in arow("pa-ready").inner_text())
+    ck("a handset receipt shows on the row: sent AND delivered",
+       "delivered" in arow("pa-sent").inner_text())
+    #  A record still unconfirmed makes the page ask the Worker for receipts.
+    PREINV["pa-sent"] = dict(PREINV["pa-sent"]); PREINV["pa-sent"].pop("delivery")
+    del SENT[:]
+    pg2 = apage()
+    ck("the page asks for receipts for anything sent but unconfirmed",
+       any(x.get("kind") == "delivery" and x.get("pres") == ["pa-sent"]
+           for x in SENT))
+    ck("and says so on the row until the receipt lands",
+       "delivery unconfirmed" in pg2.locator('.vrow[data-booking="pa-sent"]').inner_text())
+    pg2.close()
+    PREINV["pa-sent"]["delivery"] = "delivered"
+    del SENT[:]
     ck("the counts strip says the same as the bands",
        [pg.evaluate("()=>%s.textContent" % i)
         for i in ("nSend","nWait","nOpen","nDone")] == ["1","1","1","1"])

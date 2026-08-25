@@ -84,6 +84,11 @@ function install() {
       if (!STATE.tokenOk) return new Response(JSON.stringify({ error: {} }), { status: 400 });
       return new Response(JSON.stringify({ users: [{ email: STATE.email }] }), { status: 200 });
     }
+    if (u.includes("/v3/sms/receipts/")) {
+      const rc = STATE.receipt;
+      if (!rc) return new Response(JSON.stringify({ data: null }), { status: 200 });
+      return new Response(JSON.stringify({ data: rc }), { status: 200 });
+    }
     if (u.includes("clicksend.com")) {
       SENDS.push(JSON.parse(opt.body));
       if (!STATE.clicksendOk)
@@ -299,6 +304,51 @@ j = await r.json();
 ck("the pre kind reads the same fix",
    j.results["bk-future"].status === "sent" &&
    SENDS[0].messages[0].to === "+61400999888");
+
+/* ── kind "delivery": the handset receipt becomes the record's verdict ── */
+const dlv = (over = {}) => worker.fetch(new Request("https://w.dev/", {
+  method: "POST", headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ idToken: "T", kind: "delivery", ...over }) }), env);
+
+install();
+STORE["/invites/" + today + "/9"] =
+  { status: "sent", providerId: "mid-9", sentAt: new Date().toISOString(), to: "+61411222333" };
+STATE.receipt = { status_code: "201", status_text: "Success: Message received on handset." };
+r = await dlv({ invites: [{ date: today, villa: "9" }] });
+j = await r.json();
+ck("a handset receipt turns sent into delivered, on the record",
+   j.changed === 1 && j.results[today + "/9"] === "delivered" &&
+   STORE["/invites/" + today + "/9"].delivery === "delivered");
+r = await dlv({ invites: [{ date: today, villa: "9" }] });
+j = await r.json();
+ck("a settled verdict is answered from the record, not asked again",
+   j.changed === 0 && j.results[today + "/9"] === "delivered");
+
+install();
+STORE["/previnvites/bk-future"] =
+  { status: "sent", providerId: "mid-p", sentAt: new Date().toISOString(), to: "+61411222333" };
+STATE.receipt = { status_code: "302", status_text: "Handset unreachable",
+                  error_text: "Handset unreachable" };
+r = await dlv({ pres: ["bk-future"] });
+j = await r.json();
+ck("a failure receipt lands as failed, in the carrier's words",
+   j.results["bk-future"] === "failed" &&
+   STORE["/previnvites/bk-future"].delivery === "failed" &&
+   /unreachable/i.test(STORE["/previnvites/bk-future"].deliveryText));
+
+install();
+STORE["/previnvites/bk-future"] =
+  { status: "sent", providerId: "mid-p", sentAt: new Date().toISOString(), to: "+61411222333" };
+STATE.receipt = null;
+r = await dlv({ pres: ["bk-future"] });
+j = await r.json();
+ck("no receipt yet is unknown, and the record is left alone",
+   j.results["bk-future"] === "unknown" &&
+   STORE["/previnvites/bk-future"].delivery === undefined);
+
+install(); STATE.email = "hk@nala.x";
+r = await dlv({ pres: ["bk-future"] });
+ck("the delivery check obeys the same permission as sending", r.status === 403);
 
 console.log("RESULT: " + P + " passed, " + F + " failed");
 process.exit(F ? 1 : 0);
