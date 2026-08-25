@@ -354,7 +354,12 @@ with sync_playwright() as p:
     ck("saying yes offers only the days they are here",
        pg.evaluate("()=>document.querySelectorAll('#wDays .chip').length") == 5)
     pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')][1].click()")
-    pg.fill("#wTime", "late morning")
+    ck("the time is a slot list pinned to the canonical table, plus the empty choice",
+       pg.evaluate("""()=>[...document.querySelectorAll('#wTime option')]
+           .map(o=>o.value)""")
+       == [""] + [x["label"] for x in
+                  __import__("json").load(open("tests/slots.json"))["slots"]])
+    pg.select_option("#wTime", "2:00 pm")
     nxt(pg)
     ck("and the last page is the optional one",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qElse")
@@ -379,7 +384,7 @@ with sync_playwright() as p:
         ck("no allergies is recorded as an answer, not an empty list",
            body["noDiets"] is True and body["diets"] == [])
         ck("purpose and approach", body["purpose"] and body["approach"] == "most")
-        ck("the treatment day and time", body["wellDay"] and body["wellTime"] == "late morning")
+        ck("the treatment day and time", body["wellDay"] and body["wellTime"] == "2:00 pm")
         ck("and a timestamp for when the answers first existed", bool(body["at"]))
         #  The send writes the whole record again, not just the last page, so
         #  a page save lost to a bad connection costs the guest nothing.

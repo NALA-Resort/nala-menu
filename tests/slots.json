@@ -1,0 +1,73 @@
+{
+  "comment": "The treatment hours, nine to five on the half hour - the owner's numbers, 25 Aug. THE canonical copy. nala-shared.js carries these for the staff pages and prearrival.html carries its own because a guest page never loads staff code; both copies are asserted against this file, the phone_cases.json pattern. The rules hold the same range in a regex. Change the hours HERE first and the suites name every copy that has not learned it.",
+  "slots": [
+    {
+      "v": "09:00",
+      "label": "9:00 am"
+    },
+    {
+      "v": "09:30",
+      "label": "9:30 am"
+    },
+    {
+      "v": "10:00",
+      "label": "10:00 am"
+    },
+    {
+      "v": "10:30",
+      "label": "10:30 am"
+    },
+    {
+      "v": "11:00",
+      "label": "11:00 am"
+    },
+    {
+      "v": "11:30",
+      "label": "11:30 am"
+    },
+    {
+      "v": "12:00",
+      "label": "12:00 pm"
+    },
+    {
+      "v": "12:30",
+      "label": "12:30 pm"
+    },
+    {
+      "v": "13:00",
+      "label": "1:00 pm"
+    },
+    {
+      "v": "13:30",
+      "label": "1:30 pm"
+    },
+    {
+      "v": "14:00",
+      "label": "2:00 pm"
+    },
+    {
+      "v": "14:30",
+      "label": "2:30 pm"
+    },
+    {
+      "v": "15:00",
+      "label": "3:00 pm"
+    },
+    {
+      "v": "15:30",
+      "label": "3:30 pm"
+    },
+    {
+      "v": "16:00",
+      "label": "4:00 pm"
+    },
+    {
+      "v": "16:30",
+      "label": "4:30 pm"
+    },
+    {
+      "v": "17:00",
+      "label": "5:00 pm"
+    }
+  ]
+}

@@ -346,8 +346,7 @@
       <div id="wWrap" style="display:none">
         <div class="sublabel">Which day would suit you best?</div>
         <div class="chips" id="wDays"></div>
-        <textarea class="txt" id="wTime" rows="1"
-          placeholder="Preferred time of day"></textarea>
+        <select class="txt" id="wTime" aria-label="Preferred time"></select>
       </div>
     </div>
 
@@ -688,6 +687,32 @@ function stayDays(){
     out.push({ key: dkey(d), label: D[d.getDay()] + ' ' + d.getDate() });
   return out;
 }
+
+/* Treatment hours, nine to five on the half hour. A COPY of SPA_SLOTS in
+   nala-shared.js, forced: this is a guest page and staff code never reaches
+   a guest, so it cannot import the list. Both copies are pinned to
+   tests/slots.json - change the hours there first and the suite names
+   whichever copy has not learned it. What is stored is the label, 2:00 pm,
+   which is what every staff screen prints and the Spa board parses. */
+var WELL_TIMES = (function(){
+  var out = [];
+  for (var h = 9; h <= 17; h++){
+    out.push((h % 12 || 12) + ':00 ' + (h < 12 ? 'am' : 'pm'));
+    if (h < 17) out.push((h % 12 || 12) + ':30 ' + (h < 12 ? 'am' : 'pm'));
+  }
+  return out;
+})();
+(function(){
+  var sel = el('wTime');
+  var o = document.createElement('option');
+  o.value = ''; o.textContent = 'Preferred time';
+  sel.appendChild(o);
+  WELL_TIMES.forEach(function(l){
+    var x = document.createElement('option');
+    x.value = l; x.textContent = l;
+    sel.appendChild(x);
+  });
+})();
 
 function paintWell(){
   el('wYes').className = 'opt' + (a.wellness === true  ? ' on' : '');
@@ -1142,6 +1167,12 @@ function boot(){
     a.purpose = purposeList(p.purpose); a.approach = p.approach || '';
     a.wellness = (p.wellness === undefined) ? null : !!p.wellness;
     a.wellDay = p.wellDay || ''; a.wellTime = p.wellTime || '';
+    if (a.wellTime && [].every.call(el('wTime').options,
+        function(o){ return o.value !== a.wellTime; })){
+      var lg = document.createElement('option');
+      lg.value = a.wellTime; lg.textContent = a.wellTime;
+      el('wTime').appendChild(lg);
+    }
     a.note = p.note || '';
     a.companion = p.companion || '';
     el('etaNote').value = a.etaNote; el('dietNote').value = a.dietNote;

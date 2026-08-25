@@ -129,7 +129,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=35"></script>
+<script src="nala-shared.js?v=36"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -163,22 +163,10 @@ var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
    desk would add one to. A knob can come later if it ever falls short. */
 var HORIZON = 21;
 
-/* Treatment hours: nine to five, on the half hour. The owner's numbers,
-   25 Aug. The rules hold the same range, so a slot outside it cannot be
-   written even by a page that forgets this list. */
-var SLOTS = (function(){
-  var out = [];
-  for (var h = 9; h <= 17; h++){
-    out.push((h < 10 ? '0' : '') + h + ':00');
-    if (h < 17) out.push((h < 10 ? '0' : '') + h + ':30');
-  }
-  return out;
-})();
-function slotLabel(t){
-  if (!t) return '';
-  var p = t.split(':'), h = +p[0];
-  return (h % 12 || 12) + ':' + p[1] + ' ' + (h < 12 ? 'am' : 'pm');
-}
+/* Treatment hours: SPA_SLOTS in nala-shared.js, one list for every staff
+   page, pinned with the guest form's copy to tests/slots.json. */
+var SLOTS = SPA_SLOTS;
+var slotLabel = spaSlotLabel;
 
 function akey(s){ return String(s || '').slice(0, 10); }
 function shortDay(key){
@@ -344,9 +332,14 @@ function card(it){
   var masseuse = role === 'spa';
   var days = stayDays(id);
   if (!days.length && rec.day) days = [rec.day];
+  /* The selection opens on what the guest asked for. reqTime was free text
+     until 25 Aug and can still arrive as a wish ("afternoon"), so the parse
+     may return null and mid-morning stands in - but a request that names a
+     slot must never open on a different one: the first live test booked a
+     2pm ask at the 10am default. */
   if (!SEL) SEL = {
     day: rec.day || (rec.reqDay && days.indexOf(rec.reqDay) > -1 ? rec.reqDay : days[0] || ''),
-    time: rec.time || '10:00'
+    time: rec.time || spaSlotFromText(rec.reqTime) || '10:00'
   };
 
   var el = document.createElement('div');
