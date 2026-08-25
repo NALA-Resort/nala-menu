@@ -108,6 +108,13 @@ content is guaranteed to collide with something at some width.
   the last button's bottom-right carry an 8px radius (matching the nav
   button); every other corner in the row stays square.
 - **Sign-in**: owned by auth.js on every staff page; guest pages never see it.
+- **The action icon** (`.navbadge`, since 25 Aug): a number beside a menu
+  entry meaning "something in there waits on you". Amber, the colour law's
+  word for attention. It is never stored - `NAV_ACTIONS` in nala-shared.js
+  recomputes it from the queue it counts on every page load, which is how it
+  "stays until the action is done" with nothing to remember to clear. First
+  carried by Spa, counting suggestions awaiting the desk; add an entry to
+  `NAV_ACTIONS` for the next feature that earns one, never a page-local copy.
 
 ## Fonts
 

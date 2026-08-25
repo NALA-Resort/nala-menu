@@ -296,32 +296,35 @@ with sync_playwright() as p:
        pg.evaluate("()=>nDay.nextElementSibling.textContent") == "Booked this day")
     pg.close()
 
-    # ── all bookings: the whole horizon under one button ────────
+    # ── all bookings: the masseuse sees only the guests who want him ──
+    # A stay with no request is none of an outside contractor's business,
+    # the owner ruled, 25 Aug. His horizon ends at Declined; the grey
+    # no-treatment tiles, D. Kessler's no-thank-you included, exist for the
+    # desk alone, and with them goes his add path - the desk adds when a
+    # guest asks in person.
     pg = board()
     pg.locator('#allBtn').click(); pg.wait_for_timeout(300)
     got = bands(pg, "#allBoard")
-    ck("the drop holds every band, ask first, no-treatment last",
-       got[0] == "Waiting for an answer · 3" and
+    ck("the masseuse's drop holds asks first and ends at Declined",
+       got[0] == "Waiting for an answer · 3" and got[-1] == "Declined · 1")
+    ck("no stay without a treatment shows for him at all",
+       pg.evaluate("()=>document.querySelectorAll('#allBoard .b-grey').length") == 0 and
+       not pg.evaluate("()=>!!document.querySelector('#allBoard [data-booking=\"b2\"]')") and
+       not pg.evaluate("()=>!!document.querySelector('#allBoard [data-booking=\"b6\"]')"))
+    pg.close()
+
+    # The desk keeps the whole horizon, no-treatment band included.
+    pg = board("staff@x")
+    pg.locator('#allBtn').click(); pg.wait_for_timeout(300)
+    got = bands(pg, "#allBoard")
+    ck("the desk's drop still ends with the no-treatment band",
        got[-1] == "No treatment · staying or arriving · 2")
     ck("a guest who said no thank you is named as such, not offered around",
        "no thank you" in pg.evaluate(
          "()=>document.querySelector('#allBoard [data-booking=\"b2\"] .st').textContent"))
-    # Adding one from a stay with no treatment: the masseuse was asked in
-    # person and knows his own book, so his add books directly.
-    pg.locator('#allBoard [data-booking="b6"]').click(); pg.wait_for_timeout(300)
-    ck("the masseuse's add offers Book",
-       pg.evaluate("()=>document.querySelector('.card .cbtn.solid').textContent")
-         .startswith("Book"))
-    del WRITES[:]
-    pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
-    w = [x for x in WRITES if "/spa/b6/" in x["u"]]
-    body = json.loads(w[0]["b"]) if w else {}
-    ck("and writes booked under a fresh treatment id",
-       body.get("status") == "booked" and body.get("source") == "spa")
-    SPA = spa_seed()
     pg.close()
 
-    # The desk's add asks the masseuse instead: the desk does not know his book.
+    # The desk's add asks the masseuse: the desk does not know his book.
     pg = board("staff@x")
     pg.locator('#allBtn').click(); pg.wait_for_timeout(300)
     pg.locator('#allBoard [data-booking="b6"]').click(); pg.wait_for_timeout(300)
@@ -337,6 +340,57 @@ with sync_playwright() as p:
        body.get("reqDay") and body.get("reqTime"))
     SPA = spa_seed()
     pg.close()
+
+    # ── the numbers are filters ─────────────────────────────────
+    # Tap a stat and the board is that queue alone; tap it again for the
+    # whole day. To answer and Suggested filter across the horizon, like the
+    # numbers they sit under; Booked keeps to the viewed day, like its label.
+    pg = board()
+    pg.locator('#statsRow .stat[data-f="requested"]').click(); pg.wait_for_timeout(200)
+    ck("tapping To answer shows every open ask, future and day-less included",
+       bands(pg) == ["Every open ask · 3"] and
+       pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b4\"]')") and
+       pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b15\"]')"))
+    ck("and the pressed number wears the amber mark",
+       pg.evaluate("()=>document.querySelector('.stat[data-f=\"requested\"]').className")
+         == "stat on")
+    pg.locator('#statsRow .stat[data-f="requested"]').click(); pg.wait_for_timeout(200)
+    ck("tapping it again brings the whole day back",
+       len(bands(pg)) == 4 and
+       pg.evaluate("()=>document.querySelectorAll('#statsRow .stat.on').length") == 0)
+    pg.locator('#statsRow .stat[data-f="suggested"]').click(); pg.wait_for_timeout(200)
+    ck("Suggested filters to the amber queue",
+       bands(pg) == ["Suggested · waiting on the guest · 1"])
+    pg.locator('#statsRow .stat[data-f="booked"]').click(); pg.wait_for_timeout(200)
+    ck("Booked filters to the day it is counting",
+       bands(pg) == ["Booked · today · 1"])
+    pg.close()
+
+    # ── the action icon ─────────────────────────────────────────
+    # The amber count beside Spa in every other page's menu: suggestions
+    # waiting on the desk. Recomputed from /spa on each load, so it clears
+    # itself the moment the queue is empty and never needs unsetting.
+    def badge_on_pages():
+        q = b.new_page(viewport={"width": 390, "height": 900})
+        q.add_init_script(SDK)
+        q.add_init_script("window.__EMAIL=%s;" % json.dumps("staff@x"))
+        q.route("**firebasedatabase.app/**", fb)
+        q.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        q.goto("http://localhost:8980/pages.html")
+        q.wait_for_timeout(1600)
+        v = q.evaluate("""()=>{
+          const a=[...document.querySelectorAll('#navDrop a')]
+            .find(x=>(x.getAttribute('href')||'')==='spa.html');
+          const b2=a && a.querySelector('.navbadge');
+          return b2 ? b2.textContent : null;}""")
+        q.close()
+        return v
+    ck("the Spa entry carries the action icon with the waiting count",
+       badge_on_pages() == "1")
+    SPA = {k: v for k, v in spa_seed().items() if k != "b12"}
+    ck("and no icon at all once nothing waits, rather than a zero",
+       badge_on_pages() is None)
+    SPA = spa_seed()
 
     # ── a write refused is said, not swallowed ──────────────────
     pg = board()

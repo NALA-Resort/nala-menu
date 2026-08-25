@@ -9,16 +9,18 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Spa</title>
-<link rel="stylesheet" href="nala-ui.css?v=12">
+<link rel="stylesheet" href="nala-ui.css?v=13">
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-          /* Booked wears the Reservations green, a suggestion wears the Cleans
-             board's amber - the app's one word for "awaiting a decision" - and
-             declined wears the red of something the desk must act on. */
+          /* The colour law, CLAUDE.md: booked wears the Reservations green,
+             a suggestion wears amber (attention, chase this), and declined
+             wears terracotta - a negative answer, not a failure. Red never
+             fills a tile; it keeps to the error bar, where it means one. */
           --resgreen:#5E7D67; --resgreen-t:rgba(122,160,130,.26);
           --resgreen-b:rgba(122,160,130,.65);
           --amber:#F6EAD5; --amberb:#C29A55; --ambert:#8A6A1E;
-          --red-t:rgba(168,50,30,.08); --red-b:rgba(168,50,30,.4); }
+          --terra:#9E6455; --terra-t:rgba(184,106,90,.16);
+          --terra-b:rgba(184,106,90,.45); }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
          padding:calc(24px + env(safe-area-inset-top)) 18px 0;
@@ -39,8 +41,8 @@
   .vrow.b-done .st { color:var(--resgreen); }
   .vrow.b-sugg { background:var(--amber); border-color:var(--amberb); }
   .vrow.b-sugg .st { color:var(--ambert); }
-  .vrow.b-decl { background:var(--red-t); border-color:var(--red-b); }
-  .vrow.b-decl .st { color:var(--red); }
+  .vrow.b-decl { background:var(--terra-t); border-color:var(--terra-b); }
+  .vrow.b-decl .st { color:var(--terra); }
   .vrow.b-grey { background:transparent; border-style:dashed; opacity:.62; }
 
   /* A tapped tile grows its controls in place rather than opening a second
@@ -49,8 +51,8 @@
           padding:11px 13px; margin-bottom:7px; }
   .card.b-sugg { background:var(--amber); border-color:var(--amberb); }
   .card.b-sugg .st { color:var(--ambert); }
-  .card.b-decl { background:var(--red-t); border-color:var(--red-b); }
-  .card.b-decl .st { color:var(--red); }
+  .card.b-decl { background:var(--terra-t); border-color:var(--terra-b); }
+  .card.b-decl .st { color:var(--terra); }
   .card .head { display:flex; align-items:center; gap:12px; }
   .card .v { font-size:20px; min-width:30px; text-align:center; }
   .card .mid { flex:1; min-width:0; }
@@ -85,6 +87,14 @@
             cursor:pointer; }
   .allbtn.open { background:var(--ink); color:var(--cream); border-color:var(--ink); }
 
+  /* The stats are buttons here and only here, so the dress is this page's to
+     set: no border and no fill, exactly as the shared .stat draws, and the
+     pressed one carries an amber rule under its number. */
+  button.stat { background:none; border:0; font-family:inherit; color:inherit;
+                cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  button.stat .stat-n { border-bottom:2px solid transparent; }
+  button.stat.on .stat-n { border-bottom-color:var(--amberb); }
+
   #errBar { font-size:13px; color:var(--red); margin:10px 0; line-height:1.45; }
   .empty { font-size:13px; color:var(--mid); margin:14px 2px; line-height:1.5; }
   .spacer { height:80px; }
@@ -105,10 +115,15 @@
 
 <div class="noaccess" id="noAccess"></div>
 
+<!-- The numbers are also the filters: tap one and the board shows only that
+     queue, tap it again for the whole day. Buttons wearing the stat dress,
+     which bends the affordance rule knowingly - the owner asked for exactly
+     this, 25 Aug, and the pressed one carries the amber underline so the
+     board never filters silently. -->
 <div class="stats" id="statsRow">
-  <div class="stat"><div class="stat-n" id="nAsk">&ndash;</div><div class="stat-l">To answer</div></div>
-  <div class="stat"><div class="stat-n" id="nSugg">&ndash;</div><div class="stat-l">Suggested</div></div>
-  <div class="stat"><div class="stat-n" id="nDay">&ndash;</div><div class="stat-l">Booked today</div></div>
+  <button class="stat" data-f="requested"><div class="stat-n" id="nAsk">&ndash;</div><div class="stat-l">To answer</div></button>
+  <button class="stat" data-f="suggested"><div class="stat-n" id="nSugg">&ndash;</div><div class="stat-l">Suggested</div></button>
+  <button class="stat" data-f="booked"><div class="stat-n" id="nDay">&ndash;</div><div class="stat-l">Booked today</div></button>
 </div>
 
 <div id="board"></div>
@@ -122,7 +137,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=33"></script>
+<script src="nala-shared.js?v=34"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -190,6 +205,7 @@ var SPA = {};        /* id -> { tid -> record } */
 var OPEN = null;     /* { id, tid } of the one card open, tid 'new' for an add */
 var SEL = null;      /* { day, time } while a card is open */
 var ALL_OPEN = false;
+var FILTER = null;   /* a tapped stat: 'requested' | 'suggested' | 'booked' */
 
 function nameOf(id, rec){
   var bk = BOOKINGS[id];
@@ -535,8 +551,32 @@ function paint(){
     return tile(it);
   }
 
+  /* The tapped stat filters the board to its own queue. To answer and
+     Suggested are horizon-wide, matching the numbers they sit under; Booked
+     is the viewed day's, matching its label. Tap again for the whole day. */
+  var statBtns = document.querySelectorAll('#statsRow .stat');
+  for (var sb = 0; sb < statBtns.length; sb++)
+    statBtns[sb].className = 'stat' +
+      (FILTER === statBtns[sb].getAttribute('data-f') ? ' on' : '');
+
   var board = document.getElementById('board');
   board.innerHTML = '';
+  if (FILTER){
+    var matches = list.filter(function(it){
+      if (it.rec.status !== FILTER) return false;
+      return FILTER === 'booked' ? dayOf(it.rec) === day : true;
+    });
+    var title = FILTER === 'requested' ? 'Every open ask'
+              : FILTER === 'suggested' ? 'Suggested · waiting on the guest'
+              : 'Booked · ' + (isToday() ? 'today' : 'this day');
+    band(board, title, matches.map(el));
+    if (!matches.length){
+      var e0 = document.createElement('div');
+      e0.className = 'empty';
+      e0.textContent = 'Nothing in this queue. Tap the number again for the whole day.';
+      board.appendChild(e0);
+    }
+  } else {
   var onDay = function(st){ return list.filter(function(it){
     return it.rec.status === st && dayOf(it.rec) === day; }).map(el); };
   band(board, 'To answer', onDay('requested'));
@@ -549,6 +589,7 @@ function paint(){
     e.textContent = 'No treatments ' + (isToday() ? 'today.' : 'on this day.') +
       ' The All bookings list below holds every stay.';
     board.appendChild(e);
+  }
   }
 
   /* The whole horizon under one button, so nobody goes looking for a
@@ -567,9 +608,15 @@ function paint(){
     band(all, 'Suggested · waiting on the guest', st('suggested', function(){ return true; }));
     band(all, 'Booked', st('booked', future));
     band(all, 'Declined', st('declined', future));
+    /* The masseuse sees the guests who want him and nobody else: a stay
+       with no request is none of an outside contractor's business, the
+       owner ruled, 25 Aug. The desk keeps the band, because the desk is
+       who adds a treatment when a guest asks in person. */
+    var none = [];
+    if (normaliseRole(window.NALA_ROLE) !== 'spa'){
     var covered = {};
     list.forEach(function(it){ covered[it.id] = true; });
-    var none = Object.keys(BOOKINGS).filter(function(id){ return !covered[id]; })
+    none = Object.keys(BOOKINGS).filter(function(id){ return !covered[id]; })
       .sort(function(a, b){
         return akey(BOOKINGS[a].arrive).localeCompare(akey(BOOKINGS[b].arrive));
       }).map(function(id){
@@ -590,6 +637,7 @@ function paint(){
         else line += ' · tap to add one';
         return greyTile(id, line, true);
       });
+    }
     band(all, 'No treatment · staying or arriving', none);
     if (!all.children.length){
       var e2 = document.createElement('div');
@@ -602,6 +650,13 @@ function paint(){
 
 document.getElementById('allBtn').onclick = function(){
   ALL_OPEN = !ALL_OPEN;
+  paint();
+};
+
+document.getElementById('statsRow').onclick = function(e){
+  var b = e.target.closest('button.stat'); if (!b) return;
+  var f = b.getAttribute('data-f');
+  FILTER = (FILTER === f) ? null : f;
   paint();
 };
 
