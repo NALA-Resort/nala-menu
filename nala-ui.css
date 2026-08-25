@@ -62,6 +62,18 @@ body.tier-app, body.tier-print { touch-action:manipulation; }
            text-transform:none; }
 .navdrop a.signout { border-top:1px solid var(--ctl-bdr); margin-top:5px;
                      padding-top:13px; color:var(--mid); }
+/* ── the action icon ─────────────────────────────────────────
+   A number beside a menu entry meaning: something in there waits on you.
+   Amber, the colour law's word for "attention, chase this", and it stays
+   until the queue it counts is empty, because it is recomputed from the
+   queue itself on every load and never stored. First carried by Spa for
+   suggestions awaiting the desk; any entry may carry one. */
+.navdrop a.hasact { display:flex; align-items:center; justify-content:space-between;
+                    gap:14px; }
+.navbadge { flex:0 0 auto; min-width:18px; height:18px; padding:0 5px;
+            border-radius:9px; background:#F6EAD5; border:1px solid #C29A55;
+            color:#8A6A2F; font-size:10px; letter-spacing:0;
+            display:inline-flex; align-items:center; justify-content:center; }
 
 /* ── floating footer ──────────────────────────────────────
    sticky pins it while scrolling long pages; the flex column

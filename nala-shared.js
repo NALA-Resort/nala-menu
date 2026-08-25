@@ -1508,6 +1508,60 @@ function navFilterShared(role){
     links[i].style.display = can(role, NAV_NEEDS[href]) ? '' : 'none';
   }
   hideEmptyGroups(drop);
+  navActionBadges(role);
+}
+
+/* ── the action icon ─────────────────────────────────────────
+   A number beside a menu entry meaning: something in there waits on you.
+   Never stored - it is recomputed from the queue it counts on every page
+   load, which is exactly why it "stays until the action is done" without
+   anything having to remember to clear it. Owner's naming, 25 Aug, first
+   carried by Spa: suggestions the masseuse has made that the desk has not
+   yet put to the guest. Add an entry to NAV_ACTIONS for the next feature
+   that earns one.
+
+   The fetch rides auth.js's queue, so it waits for a login like every
+   other database read, and a failed count is no badge rather than an
+   error: the menu must never break because a queue could not be asked. */
+var NAV_ACTIONS = [
+  { href: 'spa.html', need: 'spaBoard', count: function(cb){
+      if (typeof DB === 'undefined') return;
+      fetch(DB + '/spa.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(spa){
+          var n = 0;
+          Object.keys(spa || {}).forEach(function(id){
+            Object.keys(spa[id] || {}).forEach(function(tid){
+              if ((spa[id][tid] || {}).status === 'suggested') n++;
+            });
+          });
+          cb(n);
+        }).catch(function(){});
+  } }
+];
+var NAV_BADGED = {};       /* one count per entry per page load */
+function navActionBadges(role){
+  var drop = document.getElementById('navDrop');
+  if (!drop) return;
+  NAV_ACTIONS.forEach(function(a){
+    if (NAV_BADGED[a.href] || !can(role, a.need)) return;
+    var links = drop.getElementsByTagName('a'), link = null;
+    for (var i = 0; i < links.length; i++){
+      if ((links[i].getAttribute('href') || '').split('?')[0] === a.href){
+        link = links[i]; break;
+      }
+    }
+    if (!link) return;               /* the entry's own page omits its link */
+    NAV_BADGED[a.href] = true;
+    a.count(function(n){
+      if (!n) return;
+      if (link.className.indexOf('hasact') < 0) link.className += ' hasact';
+      var b = document.createElement('span');
+      b.className = 'navbadge';
+      b.textContent = n > 9 ? '9+' : String(n);
+      link.appendChild(b);
+    });
+  });
 }
 
 /* A heading with nothing under it. The menu is grouped now, and a role that
