@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Spa</title>
-<link rel="stylesheet" href="nala-ui.css?v=13">
+<link rel="stylesheet" href="nala-ui.css?v=14">
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
           /* The colour law, CLAUDE.md: booked wears the Reservations green,
@@ -80,13 +80,6 @@
   .cbtn.quiet { border-color:var(--rule); color:var(--mid); flex:0 0 auto; padding:12px 14px; }
   .hint { font-size:11px; color:var(--mid); margin-top:8px; line-height:1.45; }
 
-  .allbtn { display:flex; width:100%; align-items:center; justify-content:center;
-            gap:8px; padding:12px; border:1px solid var(--rule); border-radius:8px;
-            background:none; color:var(--mid); font-family:inherit; font-size:11px;
-            letter-spacing:.14em; text-transform:uppercase; margin:16px 0 4px;
-            cursor:pointer; }
-  .allbtn.open { background:var(--ink); color:var(--cream); border-color:var(--ink); }
-
   /* The stats are buttons here and only here, so the dress is this page's to
      set: no border and no fill, exactly as the shared .stat draws, and the
      pressed one carries an amber rule under its number. */
@@ -115,21 +108,20 @@
 
 <div class="noaccess" id="noAccess"></div>
 
-<!-- The numbers are also the filters: tap one and the board shows only that
-     queue, tap it again for the whole day. Buttons wearing the stat dress,
-     which bends the affordance rule knowingly - the owner asked for exactly
-     this, 25 Aug, and the pressed one carries the amber underline so the
-     board never filters silently. -->
+<!-- Four numbers, four filters, and All leads as the default: the owner
+     ruled it a fourth heading rather than a separate drop, 25 Aug, after the
+     button-and-drop version drew the same tile twice on one screen. Buttons
+     wearing the stat dress, which bends the affordance rule knowingly, and
+     the pressed one carries the amber underline so the board never filters
+     silently. -->
 <div class="stats" id="statsRow">
+  <button class="stat" data-f="all"><div class="stat-n" id="nAll">&ndash;</div><div class="stat-l">All</div></button>
   <button class="stat" data-f="requested"><div class="stat-n" id="nAsk">&ndash;</div><div class="stat-l">To answer</div></button>
   <button class="stat" data-f="suggested"><div class="stat-n" id="nSugg">&ndash;</div><div class="stat-l">Suggested</div></button>
   <button class="stat" data-f="booked"><div class="stat-n" id="nDay">&ndash;</div><div class="stat-l">Booked today</div></button>
 </div>
 
 <div id="board"></div>
-
-<button class="allbtn" id="allBtn">All bookings <span id="allArrow">&#9662;</span></button>
-<div id="allBoard" style="display:none"></div>
 
 <div id="errBar"></div>
 <div class="spacer"></div>
@@ -204,8 +196,7 @@ var BOOKINGS = {};   /* id -> { id, first, last, arrive, depart, villaByDate, pr
 var SPA = {};        /* id -> { tid -> record } */
 var OPEN = null;     /* { id, tid } of the one card open, tid 'new' for an add */
 var SEL = null;      /* { day, time } while a card is open */
-var ALL_OPEN = false;
-var FILTER = null;   /* a tapped stat: 'requested' | 'suggested' | 'booked' */
+var FILTER = 'all'; /* the pressed stat; All is the resting state */
 
 function nameOf(id, rec){
   var bk = BOOKINGS[id];
@@ -529,7 +520,14 @@ function paint(){
   var day = todayKey(), real = dkey(new Date());
 
   /* The masseuse's whole queue, not the viewed day's slice: the number is
-     "what is waiting on me", wherever it sits in the calendar. */
+     "what is waiting on me", wherever it sits in the calendar. All counts
+     every live tile its band shows, grey add-tiles aside. */
+  document.getElementById('nAll').textContent =
+    list.filter(function(it){
+      var st = it.rec.status, d0 = dayOf(it.rec);
+      if (st === 'requested' || st === 'suggested') return true;
+      return !d0 || d0 >= real;
+    }).length;
   document.getElementById('nAsk').textContent =
     list.filter(function(it){ return it.rec.status === 'requested'; }).length;
   document.getElementById('nSugg').textContent =
@@ -539,8 +537,7 @@ function paint(){
   document.getElementById('nDay').nextElementSibling.textContent =
     isToday() ? 'Booked today' : 'Booked this day';
 
-  /* The one open card draws once, in the first list that holds its item: an
-     item can sit on the day board and in the All drop at the same time, and
+  /* The one open card draws once, whichever band reaches its item first:
      two live copies of one form is a bug waiting for a tap. */
   var cardDrawn = false;
   function el(it){
@@ -551,21 +548,75 @@ function paint(){
     return tile(it);
   }
 
-  /* The tapped stat filters the board to its own queue. To answer and
-     Suggested are horizon-wide, matching the numbers they sit under; Booked
-     is the viewed day's, matching its label. Tap again for the whole day. */
+  /* Four filters, one board. All is the resting state and holds the whole
+     horizon in bands - every open ask wherever it sits, every suggestion,
+     everything booked from today on, recent declines, and (for the desk
+     alone) every stay with no treatment yet, tappable to add one. The other
+     three stats narrow to their own queue: horizon-wide for To answer and
+     Suggested, the viewed day for Booked, matching the labels they sit
+     under. Tapping the pressed one returns to All. */
   var statBtns = document.querySelectorAll('#statsRow .stat');
   for (var sb = 0; sb < statBtns.length; sb++)
     statBtns[sb].className = 'stat' +
       (FILTER === statBtns[sb].getAttribute('data-f') ? ' on' : '');
 
+  var of = function(st, keep){ return list.filter(function(it){
+    return it.rec.status === st && (!keep || keep(it)); }); };
+  var upcoming = function(it){ var d0 = dayOf(it.rec); return !d0 || d0 >= real; };
+  var byDay = function(a, b){
+    return ((dayOf(a.rec) || '9999') + (a.rec.time || ''))
+      .localeCompare((dayOf(b.rec) || '9999') + (b.rec.time || ''));
+  };
+
   var board = document.getElementById('board');
   board.innerHTML = '';
-  if (FILTER){
+  if (FILTER === 'all'){
+    band(board, 'To answer', of('requested').sort(byDay).map(el));
+    band(board, 'Suggested · waiting on the guest', of('suggested').sort(byDay).map(el));
+    band(board, 'Booked', of('booked', upcoming).sort(byDay).map(el));
+    band(board, 'Declined', of('declined', upcoming).sort(byDay).map(el));
+    /* The masseuse sees the guests who want him and nobody else: a stay
+       with no request is none of an outside contractor's business, the
+       owner ruled, 25 Aug. The desk keeps the band, because the desk is
+       who adds a treatment when a guest asks in person. */
+    if (normaliseRole(window.NALA_ROLE) !== 'spa'){
+      var covered = {};
+      list.forEach(function(it){ covered[it.id] = true; });
+      var none = Object.keys(BOOKINGS).filter(function(id){ return !covered[id]; })
+        .sort(function(a, b){
+          return akey(BOOKINGS[a].arrive).localeCompare(akey(BOOKINGS[b].arrive));
+        }).map(function(id){
+          /* An add in progress: the grey tile has no record behind it, so
+             the open card is built from nothing but the booking. */
+          if (OPEN && OPEN.id === id && OPEN.tid === 'new' && !cardDrawn){
+            cardDrawn = true;
+            return card({ id: id, tid: 'new',
+                          rec: { status: '', reqDay: '', reqTime: '' } });
+          }
+          var bk = BOOKINGS[id], p = bk.pre;
+          var here = akey(bk.arrive) <= real;
+          var line = (here ? 'In villa until ' + shortDay(akey(bk.depart))
+                           : 'Arrives ' + shortDay(akey(bk.arrive)) +
+                             ', until ' + shortDay(akey(bk.depart)));
+          if (p && p.wellness === false)
+            line = 'Said no thank you on the form · ' + line.charAt(0).toLowerCase() + line.slice(1);
+          else line += ' · tap to add one';
+          return greyTile(id, line, true);
+        });
+      band(board, 'No treatment · staying or arriving', none);
+    }
+    if (!board.children.length){
+      var e = document.createElement('div');
+      e.className = 'empty';
+      e.textContent = 'Nothing on the books in the next ' + HORIZON +
+        ' days. Requests from the pre-arrival form appear here on their own.';
+      board.appendChild(e);
+    }
+  } else {
     var matches = list.filter(function(it){
       if (it.rec.status !== FILTER) return false;
       return FILTER === 'booked' ? dayOf(it.rec) === day : true;
-    });
+    }).sort(byDay);
     var title = FILTER === 'requested' ? 'Every open ask'
               : FILTER === 'suggested' ? 'Suggested · waiting on the guest'
               : 'Booked · ' + (isToday() ? 'today' : 'this day');
@@ -573,90 +624,16 @@ function paint(){
     if (!matches.length){
       var e0 = document.createElement('div');
       e0.className = 'empty';
-      e0.textContent = 'Nothing in this queue. Tap the number again for the whole day.';
+      e0.textContent = 'Nothing in this queue. Tap All for everything.';
       board.appendChild(e0);
-    }
-  } else {
-  var onDay = function(st){ return list.filter(function(it){
-    return it.rec.status === st && dayOf(it.rec) === day; }).map(el); };
-  band(board, 'To answer', onDay('requested'));
-  band(board, 'Suggested · waiting on the guest', onDay('suggested'));
-  band(board, 'Booked', onDay('booked'));
-  band(board, 'Declined', onDay('declined'));
-  if (!board.children.length){
-    var e = document.createElement('div');
-    e.className = 'empty';
-    e.textContent = 'No treatments ' + (isToday() ? 'today.' : 'on this day.') +
-      ' The All bookings list below holds every stay.';
-    board.appendChild(e);
-  }
-  }
-
-  /* The whole horizon under one button, so nobody goes looking for a
-     booking: every ask wherever it sits, then everything booked, then every
-     stay with no treatment at all, tappable to add one. */
-  var all = document.getElementById('allBoard');
-  all.style.display = ALL_OPEN ? '' : 'none';
-  document.getElementById('allArrow').innerHTML = ALL_OPEN ? '&#9652;' : '&#9662;';
-  document.getElementById('allBtn').className = 'allbtn' + (ALL_OPEN ? ' open' : '');
-  all.innerHTML = '';
-  if (ALL_OPEN){
-    var st = function(s, keep){ return list.filter(function(it){
-      return it.rec.status === s && keep(it); }).map(el); };
-    var future = function(it){ var d0 = dayOf(it.rec); return !d0 || d0 >= real; };
-    band(all, 'Waiting for an answer', st('requested', function(){ return true; }));
-    band(all, 'Suggested · waiting on the guest', st('suggested', function(){ return true; }));
-    band(all, 'Booked', st('booked', future));
-    band(all, 'Declined', st('declined', future));
-    /* The masseuse sees the guests who want him and nobody else: a stay
-       with no request is none of an outside contractor's business, the
-       owner ruled, 25 Aug. The desk keeps the band, because the desk is
-       who adds a treatment when a guest asks in person. */
-    var none = [];
-    if (normaliseRole(window.NALA_ROLE) !== 'spa'){
-    var covered = {};
-    list.forEach(function(it){ covered[it.id] = true; });
-    none = Object.keys(BOOKINGS).filter(function(id){ return !covered[id]; })
-      .sort(function(a, b){
-        return akey(BOOKINGS[a].arrive).localeCompare(akey(BOOKINGS[b].arrive));
-      }).map(function(id){
-        /* An add in progress: the grey tile has no record behind it, so the
-           open card is built from nothing but the booking. */
-        if (OPEN && OPEN.id === id && OPEN.tid === 'new' && !cardDrawn){
-          cardDrawn = true;
-          return card({ id: id, tid: 'new',
-                        rec: { status: '', reqDay: '', reqTime: '' } });
-        }
-        var bk = BOOKINGS[id], p = bk.pre;
-        var here = akey(bk.arrive) <= real;
-        var line = (here ? 'In villa until ' + shortDay(akey(bk.depart))
-                         : 'Arrives ' + shortDay(akey(bk.arrive)) +
-                           ', until ' + shortDay(akey(bk.depart)));
-        if (p && p.wellness === false)
-          line = 'Said no thank you on the form · ' + line.charAt(0).toLowerCase() + line.slice(1);
-        else line += ' · tap to add one';
-        return greyTile(id, line, true);
-      });
-    }
-    band(all, 'No treatment · staying or arriving', none);
-    if (!all.children.length){
-      var e2 = document.createElement('div');
-      e2.className = 'empty';
-      e2.textContent = 'No stays in the next ' + HORIZON + ' days.';
-      all.appendChild(e2);
     }
   }
 }
 
-document.getElementById('allBtn').onclick = function(){
-  ALL_OPEN = !ALL_OPEN;
-  paint();
-};
-
 document.getElementById('statsRow').onclick = function(e){
   var b = e.target.closest('button.stat'); if (!b) return;
   var f = b.getAttribute('data-f');
-  FILTER = (FILTER === f) ? null : f;
+  FILTER = (FILTER === f) ? 'all' : f;
   paint();
 };
 
@@ -729,7 +706,7 @@ function showAccess(allowed, e){
     }
   }
   box.className = 'noaccess' + (on ? ' show' : '');
-  ['statsRow','board','allBtn','allBoard'].forEach(function(id){
+  ['statsRow','board'].forEach(function(id){
     var el = document.getElementById(id);
     if (el) el.style.display = on ? 'none' : '';
   });

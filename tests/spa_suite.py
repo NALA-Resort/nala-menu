@@ -140,15 +140,19 @@ with sync_playwright() as p:
         pg.wait_for_timeout(1600)
         return pg
 
-    # ── the day board, all four states at once ──────────────────
+    # ── the resting board is All: the whole horizon in bands ────
     pg = board()
     def bands(page, sel="#board"):
         return page.evaluate("""(s)=>[...document.querySelectorAll(s+' .grp')]
             .map(e=>e.textContent)""", sel)
     got = bands(pg)
-    ck("today shows all four bands, one item each",
-       got == ["To answer · 1", "Suggested · waiting on the guest · 1",
-               "Booked · 1", "Declined · 1"])
+    ck("All is pressed on arrival and holds every band",
+       got == ["To answer · 3", "Suggested · waiting on the guest · 1",
+               "Booked · 1", "Declined · 1"] and
+       pg.evaluate("()=>document.querySelector('.stat[data-f=\"all\"]').className")
+         == "stat on")
+    ck("and its number counts every live tile it shows",
+       pg.evaluate("()=>nAll.textContent") == "6")
     ck("the request from the form appears with no /spa record behind it",
        pg.evaluate("()=>document.querySelector('#board [data-booking=\"b9\"]')"
                    "?.dataset.status") == "requested")
@@ -303,31 +307,27 @@ with sync_playwright() as p:
     # desk alone, and with them goes his add path - the desk adds when a
     # guest asks in person.
     pg = board()
-    pg.locator('#allBtn').click(); pg.wait_for_timeout(300)
-    got = bands(pg, "#allBoard")
-    ck("the masseuse's drop holds asks first and ends at Declined",
-       got[0] == "Waiting for an answer · 3" and got[-1] == "Declined · 1")
+    ck("the masseuse's board ends at Declined",
+       bands(pg)[-1] == "Declined · 1")
     ck("no stay without a treatment shows for him at all",
-       pg.evaluate("()=>document.querySelectorAll('#allBoard .b-grey').length") == 0 and
-       not pg.evaluate("()=>!!document.querySelector('#allBoard [data-booking=\"b2\"]')") and
-       not pg.evaluate("()=>!!document.querySelector('#allBoard [data-booking=\"b6\"]')"))
+       pg.evaluate("()=>document.querySelectorAll('#board .b-grey').length") == 0 and
+       not pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b2\"]')") and
+       not pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b6\"]')"))
     pg.close()
 
     # The desk keeps the whole horizon, no-treatment band included.
     pg = board("staff@x")
-    pg.locator('#allBtn').click(); pg.wait_for_timeout(300)
-    got = bands(pg, "#allBoard")
-    ck("the desk's drop still ends with the no-treatment band",
+    got = bands(pg)
+    ck("the desk's board still ends with the no-treatment band",
        got[-1] == "No treatment · staying or arriving · 2")
     ck("a guest who said no thank you is named as such, not offered around",
        "no thank you" in pg.evaluate(
-         "()=>document.querySelector('#allBoard [data-booking=\"b2\"] .st').textContent"))
+         "()=>document.querySelector('#board [data-booking=\"b2\"] .st').textContent"))
     pg.close()
 
     # The desk's add asks the masseuse: the desk does not know his book.
     pg = board("staff@x")
-    pg.locator('#allBtn').click(); pg.wait_for_timeout(300)
-    pg.locator('#allBoard [data-booking="b6"]').click(); pg.wait_for_timeout(300)
+    pg.locator('#board [data-booking="b6"]').click(); pg.wait_for_timeout(300)
     ck("the desk's add offers Ask the masseuse",
        "Ask the masseuse" in pg.evaluate(
          "()=>document.querySelector('.card .cbtn.solid').textContent"))
@@ -355,9 +355,10 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.querySelector('.stat[data-f=\"requested\"]').className")
          == "stat on")
     pg.locator('#statsRow .stat[data-f="requested"]').click(); pg.wait_for_timeout(200)
-    ck("tapping it again brings the whole day back",
+    ck("tapping it again returns to All",
        len(bands(pg)) == 4 and
-       pg.evaluate("()=>document.querySelectorAll('#statsRow .stat.on').length") == 0)
+       pg.evaluate("()=>document.querySelector('#statsRow .stat.on')"
+                   ".getAttribute('data-f')") == "all")
     pg.locator('#statsRow .stat[data-f="suggested"]').click(); pg.wait_for_timeout(200)
     ck("Suggested filters to the amber queue",
        bands(pg) == ["Suggested · waiting on the guest · 1"])
@@ -420,8 +421,7 @@ with sync_playwright() as p:
     for w2 in (390, 360, 320):
         q = board(w=w2)
         q.locator('#board [data-booking="b9"]').click(); q.wait_for_timeout(300)
-        q.locator('#allBtn').click(); q.wait_for_timeout(300)
-        ck("no sideways scroll at %dpt, card and drop open" % w2, not q.evaluate(
+        ck("no sideways scroll at %dpt, card open" % w2, not q.evaluate(
            "()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
         q.close()
 

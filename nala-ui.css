@@ -70,9 +70,13 @@ body.tier-app, body.tier-print { touch-action:manipulation; }
    suggestions awaiting the desk; any entry may carry one. */
 .navdrop a.hasact { display:flex; align-items:center; justify-content:space-between;
                     gap:14px; }
-.navbadge { flex:0 0 auto; min-width:18px; height:18px; padding:0 5px;
-            border-radius:9px; background:#F6EAD5; border:1px solid #C29A55;
-            color:#8A6A2F; font-size:10px; letter-spacing:0;
+/* Solid gold rather than the pastel tint: the first live look, 25 Aug,
+   found the tinted version invisible at arm's length, and a count nobody
+   sees is a queue nobody clears. Still the amber family - attention, not
+   failure. */
+.navbadge { flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
+            border-radius:10px; background:#C29A55; color:#FFFDF8;
+            font-size:11px; letter-spacing:0; font-weight:600;
             display:inline-flex; align-items:center; justify-content:center; }
 
 /* ── floating footer ──────────────────────────────────────
