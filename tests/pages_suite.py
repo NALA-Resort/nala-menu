@@ -97,7 +97,7 @@ with sync_playwright() as p:
     #  way to anywhere. Pages is in every OTHER page's hamburger, which is what
     #  was actually asked for, and that is checked from a page that is not this
     #  one.
-    CANON = ["front-desk.html", "tally.html", "invitations.html", "arrivals-sms.html", "cleaners.html", "publish.html",
+    CANON = ["front-desk.html", "tally.html", "invitations.html", "arrivals-sms.html", "cleaners.html", "spa.html", "publish.html",
              "list.html", "housekeeping.html", "registration.html", "menu-print.html", "past-menus.html",
              "staff.html", "tag.html", "pages.html"]
     got = pg.evaluate("""()=>[...document.querySelectorAll('.navdrop a')]

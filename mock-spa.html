@@ -1,0 +1,206 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mock · Spa</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--cream:#F9F7F4;--ink:#1C1C1A;--mid:#999990;--rule:#E0E0DA;--red:#A8321E;
+ --green:#5E7D67;--green-t:rgba(122,160,130,.26);--green-b:rgba(122,160,130,.65);
+ /* the Cleans board's amber, the app's one word for "not settled yet" */
+ --amber:#F6EAD5;--amberb:#C29A55;--ambert:#8A6A1E;
+ --red-t:rgba(168,50,30,.08);--red-b:rgba(168,50,30,.4)}
+body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--ink);
+ padding:14px 12px 24px;max-width:430px;margin:0 auto}
+
+/* the divider between the mock's screens, not part of the page */
+.mockcut{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#fff;
+ background:var(--mid);border-radius:4px;padding:5px 10px;margin:34px 0 16px;text-align:center}
+
+/* header: the standard daterow, Today ‹ date › menu */
+.daterow{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.dnav{height:36px;border:1px solid var(--rule);border-radius:8px;background:none;
+ color:var(--ink);font-family:inherit;font-size:15px;padding:0 12px}
+.dnav.today{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid)}
+.date{font-size:15px;font-weight:600}
+.navbtn{margin-left:auto;width:36px;height:36px;border:1px solid var(--rule);border-radius:8px;
+ background:none;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px}
+.navbtn span{display:block;width:14px;height:1.6px;background:var(--ink)}
+
+.stats{display:flex;gap:8px;margin:0 0 4px}
+.stat{flex:1;text-align:center;padding:8px 0}
+.stat b{display:block;font-size:20px;font-weight:600}
+.stat span{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mid)}
+
+.grp{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--mid);margin:14px 2px 6px}
+.row{display:flex;align-items:center;gap:10px;border:1.2px solid var(--rule);
+ border-radius:10px;background:#fff;padding:11px 12px;margin-bottom:7px}
+.v{font-size:20px;min-width:30px;text-align:center}
+.who{flex:1;min-width:0}
+.n{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s{font-size:11px;color:var(--mid);margin-top:2px;line-height:1.4}
+/* confirmed: the green of a job done */
+.row.done{background:var(--green-t);border-color:var(--green-b)}
+.row.done .s{color:var(--green)}
+/* suggested: the masseuse offered a different day or time, nobody has said
+   yes yet - amber, the app's colour for a thing awaiting a decision */
+.row.sugg{background:var(--amber);border-color:var(--amberb)}
+.row.sugg .s{color:var(--ambert)}
+/* declined: nothing free in the window - red, the desk must tell the guest */
+.row.decl{background:var(--red-t);border-color:var(--red-b)}
+.row.decl .s{color:var(--red)}
+/* no treatment at all: grey and sunk */
+.row.grey{background:transparent;border-style:dashed;opacity:.62}
+
+/* the open tile: a tapped booking grows its controls in place */
+.card{border:1.2px solid var(--ink);border-radius:10px;background:#fff;
+ padding:11px 12px;margin-bottom:7px}
+.card.sugg{background:var(--amber);border-color:var(--amberb)}
+.card .head{display:flex;align-items:center;gap:10px}
+.card.sugg .s{color:var(--ambert)}
+.sub{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mid);margin:12px 0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:11px;padding:7px 11px;border:1px solid var(--rule);border-radius:16px;
+ background:none;color:var(--ink);font-family:inherit}
+.chip.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+select{width:100%;font-size:15px;border:1px solid var(--rule);border-radius:8px;
+ padding:10px 12px;background:#fff;font-family:inherit;margin-top:2px}
+.btns{display:flex;gap:8px;margin-top:12px}
+.btn{flex:1;text-align:center;padding:12px 4px;border:1px solid var(--ink);border-radius:8px;
+ background:none;color:var(--ink);font-family:inherit;font-size:11px;
+ letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+.btn.solid{background:var(--ink);color:var(--cream)}
+.btn.quiet{border-color:var(--rule);color:var(--mid);flex:0 0 auto;padding:12px 14px}
+.hint{font-size:11px;color:var(--mid);margin-top:8px;line-height:1.45}
+
+/* the all-bookings drop: one button, the whole horizon beneath it */
+.allbtn{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;
+ padding:12px;border:1px solid var(--rule);border-radius:8px;background:none;
+ color:var(--mid);font-family:inherit;font-size:11px;letter-spacing:.14em;
+ text-transform:uppercase;margin:16px 0 0}
+.allbtn.open{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+</style></head><body>
+
+<!-- ══ SCREEN 1 · the masseuse's day, one request open ══ -->
+
+<div class="daterow">
+  <button class="dnav today">Today</button>
+  <button class="dnav">&#8249;</button>
+  <div class="date">Wed 26th Aug</div>
+  <button class="dnav">&#8250;</button>
+  <button class="navbtn"><span></span><span></span><span></span></button>
+</div>
+
+<div class="stats">
+  <div class="stat"><b>1</b><span>To answer</span></div>
+  <div class="stat"><b>1</b><span>Suggested</span></div>
+  <div class="stat"><b>1</b><span>Booked today</span></div>
+</div>
+
+<div class="grp">To answer · 1</div>
+
+<div class="card">
+  <div class="head">
+    <div class="v">9</div>
+    <div class="who"><div class="n">Sofia Marino</div>
+      <div class="s">Asked for today, afternoon · staying Tue 25 - Sat 29</div></div>
+  </div>
+  <div class="sub">Day</div>
+  <div class="chips">
+    <button class="chip on">Wed 26</button>
+    <button class="chip">Thu 27</button>
+    <button class="chip">Fri 28</button>
+    <button class="chip">Sat 29</button>
+  </div>
+  <div class="sub">Time</div>
+  <select><option>2:00 pm</option></select>
+  <div class="btns">
+    <button class="btn solid">Confirm Wed 2:00 pm</button>
+    <button class="btn quiet">Decline</button>
+  </div>
+  <div class="hint">Only days of their stay are offered. Confirming the day and
+    time they asked for books it green. Picking a different day or time sends
+    it back as a suggestion - amber until the front desk approves it with the
+    guest. Decline is for a stay with nothing free, and turns the tile red so
+    the desk knows to let the guest down gently.</div>
+</div>
+
+<div class="grp">Suggested · waiting on the guest · 1</div>
+<div class="row sugg"><div class="v">12</div><div class="who"><div class="n">Elena Petrov</div>
+  <div class="s">Suggested today 4:30 pm · asked for Tue 25, morning</div></div></div>
+
+<div class="grp">Booked · 1</div>
+<div class="row done"><div class="v">3</div><div class="who"><div class="n">Robyn Carter</div>
+  <div class="s">11:00 am · as requested · confirmed Sat</div></div></div>
+
+<div class="grp">Declined · 1</div>
+<div class="row decl"><div class="v">7</div><div class="who"><div class="n">James Okafor</div>
+  <div class="s">Declined Sun · nothing free this stay · let the guest know</div></div></div>
+
+<button class="allbtn">All bookings &#9662;</button>
+
+<!-- ══ SCREEN 2 · the front desk approving a suggestion ══ -->
+
+<div class="mockcut">Screen 2 · Front desk, a suggestion opened</div>
+
+<div class="card sugg">
+  <div class="head">
+    <div class="v">12</div>
+    <div class="who"><div class="n">Elena Petrov</div>
+      <div class="s">Asked for Tue 25, morning · staying Mon 24 - Fri 28</div></div>
+  </div>
+  <div class="sub">The masseuse suggests</div>
+  <div class="chips"><span class="chip on">Wed 26 · 4:30 pm</span></div>
+  <div class="btns">
+    <button class="btn solid">Approve Wed 4:30 pm</button>
+    <button class="btn quiet">Decline</button>
+  </div>
+  <div class="hint">Approve once the guest has said yes - the booking turns
+    green for everyone. The guest's original ask stays on the record.</div>
+</div>
+
+<!-- ══ SCREEN 3 · all bookings, open ══ -->
+
+<div class="mockcut">Screen 3 · All bookings, dropped down</div>
+
+<div class="daterow">
+  <button class="dnav today">Today</button>
+  <button class="dnav">&#8249;</button>
+  <div class="date">Wed 26th Aug</div>
+  <button class="dnav">&#8250;</button>
+  <button class="navbtn"><span></span><span></span><span></span></button>
+</div>
+
+<button class="allbtn open">All bookings &#9652;</button>
+
+<div class="grp">Waiting for an answer · 3</div>
+<div class="row"><div class="v">9</div><div class="who"><div class="n">Sofia Marino</div>
+  <div class="s">Wed 26 · afternoon · staying Tue 25 - Sat 29</div></div></div>
+<div class="row"><div class="v">4</div><div class="who"><div class="n">Kai Werner</div>
+  <div class="s">Fri 28 · no time given · staying Thu 27 - Mon 31</div></div></div>
+<div class="row"><div class="v">15</div><div class="who"><div class="n">Anna Lindqvist</div>
+  <div class="s">Interested, no day picked · arrives Mon 31</div></div></div>
+
+<div class="grp">Suggested · waiting on the guest · 1</div>
+<div class="row sugg"><div class="v">12</div><div class="who"><div class="n">Elena Petrov</div>
+  <div class="s">Suggested today 4:30 pm · asked for Tue 25, morning</div></div></div>
+
+<div class="grp">Booked · 2</div>
+<div class="row done"><div class="v">3</div><div class="who"><div class="n">Robyn Carter</div>
+  <div class="s">Today 11:00 am · as requested</div></div></div>
+<div class="row done"><div class="v">1</div><div class="who"><div class="n">Grace Ito</div>
+  <div class="s">Sat 29 · 10:00 am · added at the desk</div></div></div>
+
+<div class="grp">Declined · 1</div>
+<div class="row decl"><div class="v">7</div><div class="who"><div class="n">James Okafor</div>
+  <div class="s">Declined Sun · nothing free this stay · let the guest know</div></div></div>
+
+<div class="grp">No treatment · staying or arriving · 4</div>
+<div class="row grey"><div class="v">2</div><div class="who"><div class="n">Marco Reyes</div>
+  <div class="s">In villa until Thu 27 · tap to add one</div></div></div>
+<div class="row grey"><div class="v">6</div><div class="who"><div class="n">Harper Quinn</div>
+  <div class="s">Arrives today, until Fri 28 · tap to add one</div></div></div>
+<div class="row grey"><div class="v">11</div><div class="who"><div class="n">Priya Nair</div>
+  <div class="s">Arrives Thu 27, until Sun 30 · tap to add one</div></div></div>
+<div class="row grey"><div class="v">13</div><div class="who"><div class="n">D. Kessler</div>
+  <div class="s">Said no thank you on the form · in villa until Thu 27</div></div></div>
+
+</body></html>

@@ -820,10 +820,15 @@ function emailKey(email){
 }
 
 var ROLE_GRANTS = {
-  admin:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff'],
+  admin:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff','spaBoard'],
   chef:         ['resBoard','resSheet','publishMenu'],
-  waiter:       ['cleansBoard','resBoard','editBookings','resSheet'],
+  waiter:       ['cleansBoard','resBoard','editBookings','resSheet','spaBoard'],
   housekeeping: ['cleansBoard','cleansMarks'],
+  /* The masseuse, an external contractor with one screen: the Spa board and
+     nothing else. Like the chef, a real login for a real person, but the
+     rules also narrow what the account can READ - see /spa in rules.json -
+     because hiding a link is not the same as refusing the data.          */
+  spa:          ['spaBoard'],
   /* A machine account, held by the Mews sync Worker. Deliberately empty: it
      grants nothing in the UI and lands on no page, so a human signing in as
      it gets the "see the manager" message rather than a half working board.
@@ -1093,12 +1098,15 @@ var PERM_ACTIONS = [
   ['publishMenu',  'Publish and tag the menu'],
   ['cleansBoard',  'See the Cleans board'],
   ['cleansMarks',  'Mark a clean done'],
-  ['setJob',       'Change what a villa needs']
+  ['setJob',       'Change what a villa needs'],
+  ['spaBoard',     'See the Spa board']
 ];
 
 /* The columns. admin is absent because it always has everything, and a column
    of ticks nobody may untick teaches people the ticks do nothing. sync is
-   absent because it is a machine with no screen.                        */
+   absent because it is a machine with no screen. spa is absent because it is
+   an outside contractor: widening what that login can open is a decision for
+   the rules, made deliberately, not a tick in a grid.                   */
 var PERM_ROLES = ['chef','waiter','housekeeping'];
 
 /* What the app shipped with, asked directly. The grid shows it beside the
@@ -1128,7 +1136,7 @@ function can(role, what){
    that cannot see the page it arrived on is a routing problem, not an access
    one: send them to their own board instead of telling them off.        */
 var ROLE_HOME = { admin:'tally.html', chef:'tally.html', waiter:'tally.html',
-                  housekeeping:'cleaners.html' };
+                  housekeeping:'cleaners.html', spa:'spa.html' };
 function homeFor(role){ return ROLE_HOME[normaliseRole(role)] || null; }
 
 function setStaffRecords(map){
@@ -1464,6 +1472,10 @@ var NAV_NEEDS = {
   'tally.html':        'resBoard',
   'front-desk.html':   'editBookings',
   'invitations.html':  'editBookings',
+  /* Missing from the day it shipped, found 25 Aug when the spa role arrived
+     with a menu that should hold nothing and held this: an unlisted link is
+     shown to every role, and this one bounces anyone without editBookings. */
+  'arrivals-sms.html': 'editBookings',
   'list.html':         'resSheet',
   /* Both were missing until 22 Aug, so every login saw them: a housekeeper's
      menu offered to publish the dinner menu, and tapping it bounced her back
@@ -1474,6 +1486,7 @@ var NAV_NEEDS = {
   'tag.html':          'publishMenu',
   'cleaners.html':     'cleansBoard',
   'housekeeping.html': 'cleansBoard',
+  'spa.html':          'spaBoard',
   'registration.html': 'editBookings',
   'menu-print.html':   'resSheet',
   'past-menus.html':   'resBoard',
