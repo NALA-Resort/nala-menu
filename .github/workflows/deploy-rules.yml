@@ -1,0 +1,50 @@
+# Publishes rules.json to the Firebase Realtime Database when it lands on
+# main. This replaces the console paste in SETUP.md job 4. DEPLOY.md is the
+# document: the one GitHub secret this needs, the one-time setup, and how to
+# tell a deploy really happened.
+#
+# Until FIREBASE_SERVICE_ACCOUNT exists this run fails red. Deliberate: a
+# deploy that quietly skipped and showed green would read as "the rules are
+# live" when they are not, which is the same trap as a failed read counting
+# as an empty one. While red, the console paste is still the way.
+
+name: Deploy Firebase rules
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - rules.json
+      - firebase.json
+      - .github/workflows/deploy-rules.yml
+  # The button in the Actions tab. It is how the first deploy is proven
+  # (DEPLOY.md job 4) and how a deploy is re-run without inventing a commit.
+  workflow_dispatch:
+
+# Two pushes close together deploy in order, and a queued run is replaced by
+# a newer one, so the last push wins and an old copy cannot deploy last.
+concurrency:
+  group: deploy-rules
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The Firebase editor refuses bad JSON and underlines the line; a
+      # failed deploy says less. Catch it here first, with a line number.
+      - name: Refuse rules that are not valid JSON
+        run: python3 -c "import json; json.load(open('rules.json'))"
+
+      - name: Publish the rules
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::The FIREBASE_SERVICE_ACCOUNT secret is not set, so nothing deployed. DEPLOY.md has the one-time setup; until then rules.json still needs the console paste (SETUP.md job 4)."
+            exit 1
+          fi
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
+          npx --yes firebase-tools@14 deploy --only database --project nala-menu --non-interactive

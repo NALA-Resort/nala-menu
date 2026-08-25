@@ -78,7 +78,11 @@ Bands, exclusions (in-house guest, double-listed booking, out-of-window
 arrival), knob widening, the kind-pre POST shape, and the permission gate are
 all pinned.
 
-## Deploy checklist (the repo is not the deployment for these two)
+## Deploy checklist
+
+Once `DEPLOY.md`'s one-time setup is done, publishing these files to `main`
+deploys them by itself and this checklist is a green run in the repo's
+Actions tab. Until then, by hand:
 
 1. Paste `worker/send-invites.js` into the `nala-invites` Worker, Deploy.
 2. Paste the whole `rules.json` into the Firebase console, Publish

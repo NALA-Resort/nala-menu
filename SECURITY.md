@@ -193,6 +193,15 @@ the old key. Not before.
 
 ---
 
+## 1e. The deploy credentials
+
+Only if `DEPLOY.md` is set up. Two more credentials then exist, a Cloudflare
+API token and a Firebase service account key, both stored as GitHub Actions
+secrets on the repository. `DEPLOY.md`'s Rotating section is the click by
+click; both rotate with no window where the site or the sync breaks.
+
+---
+
 # JOB 2. Delete the leftover logins
 
 **Time:** five minutes. **Breaks:** nothing.
@@ -333,6 +342,11 @@ Check the current price on GitHub's pricing page first.
 
 **Test it:** make any commit and watch the Worker redeploy. If it does not,
 step 23 is why.
+
+**If `DEPLOY.md` job 5 has been done**, that connection is gone on purpose
+and steps 21 to 24 do not apply: the Workers deploy from GitHub's side, so
+the check is instead a green **Deploy Cloudflare Workers** run in the repo's
+Actions tab after any `worker/` commit.
 
 ---
 

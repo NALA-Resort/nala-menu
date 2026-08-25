@@ -159,6 +159,13 @@ Anything else is a real break.
 `tools/publish.sh` pushes to `main` and GitHub Pages serves it to guests within
 minutes. **There is no dry run and no staging.**
 
+`rules.json` and `worker/` deploy themselves from `main` too: GitHub Actions
+(`.github/workflows/`) publishes the rules to Firebase and both Workers to
+Cloudflare, gated on the worker suites. `DEPLOY.md` owns this, including the
+one-time setup that turns it on. A red run in the repo's Actions tab means the
+change is **not** live, however green the suites were; until the setup is done
+every such run is red and the old console pastes are still the way.
+
 Never publish without being asked to, in that session, in as many words. A
 green suite is not permission.
 

@@ -1,0 +1,30 @@
+{
+  // The invitations and pre-arrival SMS Worker. Same shape as the sync's
+  // wrangler.jsonc, one file per Worker, because wrangler deploys exactly
+  // one config at a time. The deploy is .github/workflows/deploy-workers.yml
+  // on a push to main; DEPLOY.md is the document.
+  //
+  // "name" must match the Worker that already exists in the dashboard
+  // exactly. A different name here does not fail: it quietly creates a
+  // SECOND Worker on a different subdomain, leaves the live one untouched
+  // and stale, and the pages keep posting to the old URL while every deploy
+  // appears to succeed.
+  "name": "nala-invites",
+
+  // Relative to this file.
+  "main": "send-invites.js",
+
+  // Pinned to about when the Worker was created by hand in the dashboard.
+  // Changing it changes runtime behaviour, so it is pinned rather than
+  // tracking today.
+  "compatibility_date": "2026-08-24",
+
+  // Deliberately no "vars" block, same rule as the sync's config: declaring
+  // vars here would overwrite what is deployed, and the dashboard Secrets
+  // (CLICKSEND_USERNAME, CLICKSEND_API_KEY, CLICKSEND_FROM, FB_API_KEY)
+  // survive a deploy untouched only because this file never names them.
+  "observability": { "enabled": true }
+
+  // No crons: this Worker acts only when a page asks. The arriving-soon
+  // sweep lives on the sync Worker.
+}

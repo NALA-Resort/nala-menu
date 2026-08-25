@@ -59,8 +59,10 @@ domains to add, if he ever wants that: `identitytoolkit.googleapis.com` and
 
 **Where things are.** The site is the repo root, served by GitHub Pages at
 `menu.nalaresort.com`. Scripts are in `tools/`. Tests are in `tests/`. The
-Cloudflare Worker is `worker/mews-sync.js`; the notification Worker lives in the
-Cloudflare dashboard and is **not** in this repo.
+Cloudflare Workers are `worker/mews-sync.js` and `worker/send-invites.js`; the
+notification Worker lives in the Cloudflare dashboard and is **not** in this
+repo. Once `DEPLOY.md`'s one-time setup is done, a push to `main` deploys the
+Workers and `rules.json` by itself; until then they are pasted per `SETUP.md`.
 
 **Then ask the owner what he wants to work on.** Do not start on anything in the
 open lists below because it is written down. They are there so you can answer
@@ -418,6 +420,8 @@ Anything else failing is yours.
   the fix worked out.
 - `SECURITY.md` the credential rotations and the lock-down, click by click.
 - `SETUP.md` Firebase, Cloudflare and Zapier configuration.
+- `DEPLOY.md` how `rules.json` and the Workers deploy from `main` without
+  pasting, and the one-time setup that turns it on.
 - `DESIGN.md` who owns which data and why the identifiers are what they are.
 - `ROLES.md` the permission matrix. Where it and the code disagree, the code
   wins and the document gets corrected.

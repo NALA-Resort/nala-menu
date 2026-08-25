@@ -30,6 +30,11 @@ eight nights in villa 11. What follows is kept as the record of how it was
 built. See DESIGN.md for what the live configuration actually is, which
 differs from what these steps first said.
 
+**25 Aug: the pastes in jobs 4 and 5 are automated.** Once `DEPLOY.md`'s
+one-time setup is done, a push to `main` deploys `rules.json` and the Workers
+by itself. Those two jobs stand below as the record, and as the fallback
+while that setup is not done.
+
 ## Start now, nothing blocks these
 
 ### Job 1. Get the Mews access token

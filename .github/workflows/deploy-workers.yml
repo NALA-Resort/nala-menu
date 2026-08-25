@@ -1,0 +1,63 @@
+# Deploys both Cloudflare Workers when anything in worker/ lands on main.
+# This replaces the dashboard paste in SETUP.md job 5 and the ARRIVALS-SMS.md
+# checklist. DEPLOY.md is the document: the two GitHub secrets this needs,
+# the one-time setup, and how to tell a deploy really happened.
+#
+# Until the two secrets exist this run fails red. Deliberate: a deploy that
+# quietly skipped and showed green would read as "the Worker is live" when it
+# is not. While red, the dashboard paste is still the way.
+
+name: Deploy Cloudflare Workers
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "worker/**"
+      - .github/workflows/deploy-workers.yml
+  # The button in the Actions tab. It is how the first deploy is proven
+  # (DEPLOY.md job 4) and how a deploy is re-run without inventing a commit.
+  workflow_dispatch:
+
+# Two pushes close together deploy in order, and a queued run is replaced by
+# a newer one, so the last push wins and an old copy cannot deploy last.
+concurrency:
+  group: deploy-workers
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The suites gate the deploy: a Worker whose tests fail does not ship.
+      # Plain node, no install, the same commands a session runs by hand.
+      - name: Mews sync suite
+        run: node worker/test.mjs
+      - name: Invites suite
+        run: node worker/invites-test.mjs
+
+      - name: Check the deploy credentials exist
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not both set, so nothing deployed. DEPLOY.md has the one-time setup; until then the Workers still need the dashboard paste."
+            exit 1
+          fi
+
+      # Both Workers deploy on any worker/ change rather than diffing which
+      # file moved: redeploying unchanged code changes nothing live, and the
+      # diff would be one more branch to get wrong. Dashboard Secrets survive
+      # a deploy untouched, because neither config carries a vars block.
+      - name: Deploy nala-mews-sync
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy --config worker/wrangler.jsonc
+      - name: Deploy nala-invites
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy --config worker/invites.wrangler.jsonc

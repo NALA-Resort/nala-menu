@@ -1,5 +1,8 @@
 {
-  // Tells Workers Builds what to deploy when a commit lands on main.
+  // Tells the deploy what to ship when a commit lands on main. The deploy is
+  // .github/workflows/deploy-workers.yml running wrangler (DEPLOY.md);
+  // Cloudflare's own Workers Builds read this same file while it was
+  // connected, before DEPLOY.md job 5 retired it.
   //
   // "name" must match the Worker that already exists in the dashboard exactly.
   // A different name here does not fail: it quietly creates a SECOND Worker on
