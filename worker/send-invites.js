@@ -84,10 +84,18 @@ function newToken() {
    the shared one against the same table, so they cannot drift apart quietly.
    Exported for exactly that test. */
 export function normalisePhone(raw) {
-  const s = String(raw == null ? "" : raw).replace(/[\s().\-]/g, "");
+  let s = String(raw == null ? "" : raw).replace(/[\s().\-]/g, "");
+  /* 0011 is Australia's international dial-out and 00 most of the world's:
+     both mean the + of E.164. */
+  if (/^0011[1-9]\d/.test(s))    s = "+" + s.slice(4);
+  else if (/^00[1-9]\d/.test(s)) s = "+" + s.slice(2);
   if (/^04\d{8}$/.test(s))    return "+61" + s.slice(1);
-  if (/^\+614\d{8}$/.test(s)) return s;
   if (/^614\d{8}$/.test(s))   return "+" + s;
+  /* Our own country we can judge: +61 must be a mobile. Any other full
+     country code is not a guess and goes as typed; a foreign number WITHOUT
+     its code still returns null - see the twin in nala-shared.js. */
+  if (/^\+61\d+$/.test(s))    return /^\+614\d{8}$/.test(s) ? s : null;
+  if (/^\+[1-9]\d{7,14}$/.test(s)) return s;
   return null;
 }
 
@@ -264,7 +272,11 @@ export default {
              which no board draws. */
           const villa = /^\d{1,3}$/.test(String(pms.villa || "")) ? String(pms.villa) : "0";
           rec.villa = villa;
-          const raw = String(pms.phone || "").trim();
+          /* A number fixed at the desk outranks the Mews copy: Mews cannot
+             be corrected from here and re-syncs would revert an edit made
+             anywhere else. /phonefix/<booking> survives every sync. */
+          const fix = await dbGet("/phonefix/" + id, idToken).catch(() => null);
+          const raw = String((fix && fix.phone) || pms.phone || "").trim();
           if (!raw) throw new Error("no phone number on the booking");
           const phone = normalisePhone(raw);
           if (!phone)
@@ -326,7 +338,10 @@ export default {
         await dbGet("/dinner/" + date + "/" + v, idToken).catch(() => null);
         if (!stay || typeof stay !== "object" || !stay.id)
           throw new Error("no booking in this villa tonight");
-        const raw = String(stay.phone || "").trim();
+        /* The desk's fixed number outranks the Mews copy, same as the pre
+           kind: /phonefix/<booking> survives every sync. */
+        const fix = await dbGet("/phonefix/" + stay.id, idToken).catch(() => null);
+        const raw = String((fix && fix.phone) || stay.phone || "").trim();
         if (!raw) throw new Error("no phone number on the booking");
         const phone = normalisePhone(raw);
         if (!phone)

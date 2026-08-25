@@ -101,10 +101,16 @@ WRITES = []
 SENT = []            # every POST that reached the stubbed Worker
 WORKER = {"reply": None}   # per-villa results the stub answers with
 
+FIXES = {}   # bookingId -> the /phonefix record, persisted across the stub
+
 def fb(route, request):
     u, m = request.url, request.method
     if m in ("PUT", "PATCH", "DELETE", "POST"):
         WRITES.append({"m": m, "u": u, "b": request.post_data})
+        #  /phonefix persists, because the fix flow reloads and must see it.
+        if m == "PUT" and "/phonefix/" in u:
+            FIXES[u.split("/phonefix/")[1].split(".json")[0]] = \
+                json.loads(request.post_data)
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
     body = "null"
@@ -120,6 +126,11 @@ def fb(route, request):
     elif "/previnvites/" in u:
         bid = u.split("/previnvites/")[1].split(".json")[0]
         body = json.dumps(PREINV[bid]) if bid in PREINV else "null"
+    elif "/phonefix/" in u:
+        bid = u.split("/phonefix/")[1].split(".json")[0]
+        body = json.dumps(FIXES[bid]) if bid in FIXES else "null"
+    elif "/phonefix" in u:
+        body = json.dumps(FIXES) if FIXES else "null"
     elif "/presmstemplates" in u: body = "null"
     elif "/smstemplates" in u:
         body = json.dumps(STATE["templates"]) if STATE.get("templates") else "null"
@@ -189,14 +200,21 @@ with sync_playwright() as p:
        "Not dining · set by reception" in row("11").inner_text())
     ck("but both stay tickable, for the guest who wants to see tonight's menu",
        not row("7").is_disabled() and not row("11").is_disabled())
-    ck("a villa whose number cannot be normalised cannot be ticked either",
-       row("3").is_disabled())
-    ck("and says why, naming the number so reception can fix it in Mews",
-       "Not a mobile number · 02 9999 9999" in row("3").inner_text())
-    ck("a villa with no phone number cannot be ticked at all",
-       row("2").is_disabled())
-    ck("with the reason on the row, because it cannot be fixed here",
-       "No phone number" in row("2").inner_text())
+    #  Since 25 Aug an unsendable row is tappable, but to FIX, never to tick:
+    #  the tap opens the number editor and no tick appears.
+    pg.on("dialog", lambda d: d.dismiss())
+    ck("a villa whose number cannot be normalised offers a fix, not a tick",
+       not row("3").is_disabled())
+    row("3").click(); pg.wait_for_timeout(200)
+    ck("and tapping it never ticks it",
+       "on" not in (row("3").get_attribute("class") or ""))
+    ck("and says why, naming the number and the way out",
+       "Not a mobile number · 02 9999 9999" in row("3").inner_text()
+       and "tap to fix" in row("3").inner_text())
+    ck("a villa with no phone number offers to add one",
+       not row("2").is_disabled()
+       and "No phone number" in row("2").inner_text()
+       and "tap to add" in row("2").inner_text())
     ck("a villa already sent to is unticked and shows the time",
        "on" not in (row("9").get_attribute("class") or "")
        and "Sent 5:05pm" in row("9").inner_text())
@@ -516,6 +534,21 @@ with sync_playwright() as p:
     ck("the counts strip says the same as the bands",
        [pg.evaluate("()=>%s.textContent" % i)
         for i in ("nSend","nWait","nOpen","nDone")] == ["1","1","1","1"])
+
+    #  Fixing the number: the tap opens a prompt, the save is the NORMALISED
+    #  E.164 to /phonefix/<booking>, and on reload the guest is sendable.
+    #  The 25 Aug case verbatim: an NZ mobile with its country code.
+    pg.on("dialog", lambda d: d.accept("(+64) 274875277"))
+    del WRITES[:]
+    arow("pa-landline").click(); pg.wait_for_timeout(900)
+    fixw = [w for w in WRITES if "/phonefix/pa-landline" in w["u"]]
+    ck("the fix saves normalised, with the Mews value kept as `was`",
+       len(fixw) == 1 and json.loads(fixw[0]["b"])["phone"] == "+64274875277"
+       and json.loads(fixw[0]["b"])["was"] == "07 3358 1122")
+    ck("and the guest climbs out of Cannot send, ready to message",
+       "on" in (arow("pa-landline").get_attribute("class") or "")
+       and arow("pa-landline").get_attribute("data-state") == "ready")
+    FIXES.clear()
 
     #  The knob widens the window and the far arrival appears.
     pg.locator('#knob button[data-days="14"]').click(); pg.wait_for_timeout(900)

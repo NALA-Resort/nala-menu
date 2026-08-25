@@ -148,7 +148,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=30"></script>
+<script src="nala-shared.js?v=31"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -279,14 +279,16 @@ function timeOf(iso){
   return (h % 12 || 12) + ':' + m + (h < 12 ? 'am' : 'pm');
 }
 
-function stateOf(villa, stay, cell, invite){
-  var raw = String((stay && stay.phone) || '').trim();
-  if (!raw) return { kind:'nophone', line:'No phone number on the booking', tickable:false, ticked:false };
-  /* A number the rule cannot make dialable is as unsendable as no number,
-     and for the same reason: it is a Mews record and cannot be fixed here. */
+function stateOf(villa, stay, cell, invite, fix){
+  /* A number fixed at the desk (/phonefix/<booking>) outranks the Mews copy:
+     Mews cannot be written from here and its next sync would revert any edit
+     made to the stay. The Worker reads the same record before sending. */
+  var raw = String((fix && fix.phone) || (stay && stay.phone) || '').trim();
+  if (!raw) return { kind:'nophone', line:'No phone number on the booking \u00B7 tap to add one',
+                     tickable:false, fixable:true, ticked:false };
   if (!normalisePhone(raw))
-    return { kind:'nophone', line:'Not a mobile number \u00B7 ' + raw,
-             tickable:false, ticked:false };
+    return { kind:'nophone', line:'Not a mobile number \u00B7 ' + raw + ' \u00B7 tap to fix',
+             tickable:false, fixable:true, ticked:false };
   if (cell && cell.status){
     var what = cell.status === 'in'
       ? 'Dining' + (cell.pax ? ' \u00B7 ' + cell.pax : '') : 'Not dining';
@@ -323,7 +325,7 @@ function bandClass(st, cell){
   return '';
 }
 
-function render(stays, invites){
+function render(stays, invites, fixes){
   var board = document.getElementById('board');
   board.innerHTML = '';
   ROWS = {};
@@ -331,14 +333,16 @@ function render(stays, invites){
   Object.keys(stays || {}).sort(function(a, b){ return (+a) - (+b); }).forEach(function(v){
     var stay = stays[v];
     if (!stay || typeof stay !== 'object' || !stay.id) return;  /* the older bare id shape */
-    var st = stateOf(v, stay, DINNER_CELLS[v], (invites || {})[v]);
+    var fix = (fixes || {})[stay.id];
+    var st = stateOf(v, stay, DINNER_CELLS[v], (invites || {})[v], fix);
     ROWS[v] = { stay: stay, state: st, ticked: st.ticked };
     var b = document.createElement('button');
     b.type = 'button';
     b.className = 'vrow' + (st.ticked ? ' on' : '') + bandClass(st, DINNER_CELLS[v]);
     b.dataset.villa = v;
     b.dataset.state = st.kind;
-    b.disabled = !st.tickable;
+    /* An unsendable row is not dead: tapping it fixes the number. */
+    b.disabled = !st.tickable && !st.fixable;
     b.setAttribute('aria-pressed', st.ticked ? 'true' : 'false');
     b.innerHTML = '<div class="v">' + v + '</div>' +
       '<div class="mid"><div class="nm"></div><div class="st"></div></div>' +
@@ -350,6 +354,7 @@ function render(stays, invites){
                  s.textContent = st.line; line.appendChild(s); }
     else line.textContent = st.line;
     b.onclick = function(){
+      if (st.fixable){ fixNumber(stay, fix); return; }
       ROWS[v].ticked = !ROWS[v].ticked;
       b.classList.toggle('on', ROWS[v].ticked);
       b.setAttribute('aria-pressed', ROWS[v].ticked ? 'true' : 'false');
@@ -366,6 +371,40 @@ function render(stays, invites){
     rows[band.kind].forEach(function(b){ board.appendChild(b); });
   });
   recount();
+}
+
+/* The number editor, the same one the pre-arrival page carries. A browser
+   prompt rather than a drawn form: it is rare, it is one field, and the
+   keyboard it summons is the phone's own. Saved normalised, with the raw
+   Mews value as `was`; Mews itself stays wrong and should be corrected
+   there when somebody is in it. */
+function fixNumber(stay, fix){
+  var raw = String((fix && fix.phone) || stay.phone || '').trim();
+  var err = document.getElementById('errBar');
+  var typed = window.prompt(
+    'Mobile number for ' + (((stay.first || '') + ' ' +
+    (stay.last || '')).trim() || 'this guest') +
+    '.\nInclude the country code for an overseas number, e.g. +64 27 487 5277.',
+    raw);
+  if (typed == null) return;                       /* cancelled */
+  var phone = normalisePhone(typed);
+  if (!phone){
+    err.textContent = 'That is still not a sendable mobile number. Australian ' +
+      'numbers can be typed as 04...; anything overseas needs its + country code.';
+    return;
+  }
+  err.textContent = '';
+  fetch(DB + '/phonefix/' + stay.id + '.json', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone: phone, was: String(stay.phone || ''),
+                           by: (window.NALA_USER && NALA_USER.email) || '',
+                           at: new Date().toISOString() })
+  }).then(function(r){
+    if (!r.ok) throw new Error();
+    return load();
+  }).catch(function(){
+    err.textContent = 'The number did not save. Try again.';
+  });
 }
 
 function selected(){
@@ -499,9 +538,12 @@ function load(){
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; }),
     menuGate(),
-    loadTemplates()
+    loadTemplates(),
+    fetch(DB + '/phonefix.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; })
   ]).then(function(res){
-    render(res[0] || {}, res[1] || {});
+    render(res[0] || {}, res[1] || {}, res[4] || {});
   });
 }
 

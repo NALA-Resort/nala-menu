@@ -137,7 +137,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=30"></script>
+<script src="nala-shared.js?v=31"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -272,12 +272,15 @@ function answersIn(p){
    prearrival is the form's own record and /previnvites/<id> is the send's.
    The form's stamps outrank the send's - a guest who finished the form is
    done however the message got to them. */
-function stateOf(stay, pre, invite){
+function stateOf(stay, pre, invite, fix){
   var when = 'arrives ' + shortDay(akey(stay.arrive));
   if (pre && pre.at)
     return { kind:'done', tickable:false, ticked:false,
              line:'Completed ' + timeOf(pre.at) + ' · ' + when };
-  var raw = String((stay && stay.phone) || '').trim();
+  /* A number fixed at the desk outranks the Mews copy: Mews cannot be
+     corrected from here and its next sync would revert any edit made to the
+     stay. The Worker reads the same /phonefix record before sending. */
+  var raw = String((fix && fix.phone) || (stay && stay.phone) || '').trim();
   var phone = raw ? normalisePhone(raw) : null;
   var started = answersIn(pre);
   if (pre && (pre.openedAt || started))
@@ -287,11 +290,11 @@ function stateOf(stay, pre, invite){
                   (started === 1 ? ' answer' : ' answers') : 'nothing yet') +
                   ' · ' + when };
   if (!raw)
-    return { kind:'nophone', tickable:false, ticked:false,
-             line:'No phone number on the booking · ' + when };
+    return { kind:'nophone', tickable:false, fixable:true, ticked:false,
+             line:'No phone number on the booking · ' + when + ' · tap to add one' };
   if (!phone)
-    return { kind:'nophone', tickable:false, ticked:false,
-             line:'Not a mobile number · ' + raw + ' · ' + when };
+    return { kind:'nophone', tickable:false, fixable:true, ticked:false,
+             line:'Not a mobile number · ' + raw + ' · ' + when + ' · tap to fix' };
   if (invite && invite.status === 'sent')
     return { kind:'sent', tickable:true, ticked:false,
              line:'Sent ' + shortDay(akey(invite.sentAt)) + ' ' +
@@ -321,7 +324,7 @@ function render(list){
   ROWS = {};
   var rows = { ready:[], open:[], sent:[], done:[], nophone:[] };
   list.forEach(function(it){
-    var st = stateOf(it.stay, it.pre, it.invite);
+    var st = stateOf(it.stay, it.pre, it.invite, it.fix);
     ROWS[it.id] = { stay: it.stay, state: st, ticked: st.ticked };
     var b = document.createElement('button');
     b.type = 'button';
@@ -329,7 +332,8 @@ function render(list){
     b.dataset.booking = it.id;
     b.dataset.villa = it.villa;
     b.dataset.state = st.kind;
-    b.disabled = !st.tickable;
+    /* An unsendable row is not dead: tapping it fixes the number. */
+    b.disabled = !st.tickable && !st.fixable;
     b.setAttribute('aria-pressed', st.ticked ? 'true' : 'false');
     b.innerHTML = '<div class="v">' + it.villa + '</div>' +
       '<div class="mid"><div class="nm"></div><div class="st"></div></div>' +
@@ -341,6 +345,7 @@ function render(list){
                  s.textContent = st.line; line.appendChild(s); }
     else line.textContent = st.line;
     b.onclick = function(){
+      if (st.fixable){ fixNumber(it); return; }
       ROWS[it.id].ticked = !ROWS[it.id].ticked;
       b.classList.toggle('on', ROWS[it.id].ticked);
       b.setAttribute('aria-pressed', ROWS[it.id].ticked ? 'true' : 'false');
@@ -363,6 +368,41 @@ function render(list){
     board.appendChild(e);
   }
   recount();
+}
+
+/* The number editor. A browser prompt rather than a drawn form: it is rare,
+   it is one field, and the keyboard it summons is the phone's own. What is
+   saved is the normalised E.164, so the record can never hold a shape the
+   send would refuse; the raw Mews value rides along as `was` for the audit.
+   Mews itself stays wrong - it cannot be written from here - so the guest
+   should still be corrected in Mews when somebody is in there. */
+function fixNumber(it){
+  var raw = String((it.fix && it.fix.phone) || it.stay.phone || '').trim();
+  var err = document.getElementById('errBar');
+  var typed = window.prompt(
+    'Mobile number for ' + (((it.stay.first || '') + ' ' +
+    (it.stay.last || '')).trim() || 'this guest') +
+    '.\nInclude the country code for an overseas number, e.g. +64 27 487 5277.',
+    raw);
+  if (typed == null) return;                       /* cancelled */
+  var phone = normalisePhone(typed);
+  if (!phone){
+    err.textContent = 'That is still not a sendable mobile number. Australian ' +
+      'numbers can be typed as 04...; anything overseas needs its + country code.';
+    return;
+  }
+  err.textContent = '';
+  fetch(DB + '/phonefix/' + it.id + '.json', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone: phone, was: String(it.stay.phone || ''),
+                           by: (window.NALA_USER && NALA_USER.email) || '',
+                           at: new Date().toISOString() })
+  }).then(function(r){
+    if (!r.ok) throw new Error();
+    return load();
+  }).catch(function(){
+    err.textContent = 'The number did not save. Try again.';
+  });
 }
 
 function selected(){
@@ -475,9 +515,12 @@ function load(){
           .catch(function(){ return null; }),
         fetch(DB + '/previnvites/' + it.id + '.json?v=' + Date.now())
           .then(function(r){ return r.ok ? r.json() : null; })
+          .catch(function(){ return null; }),
+        fetch(DB + '/phonefix/' + it.id + '.json?v=' + Date.now())
+          .then(function(r){ return r.ok ? r.json() : null; })
           .catch(function(){ return null; })
       ]).then(function(rec){
-        it.pre = rec[0]; it.invite = rec[1];
+        it.pre = rec[0]; it.invite = rec[1]; it.fix = rec[2];
         return it;
       });
     }));

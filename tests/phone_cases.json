@@ -1,23 +1,130 @@
 {
   "_why": "One table, two readers. normalisePhone lives in nala-shared.js for the page and again in worker/send-invites.js for the send, because a Worker cannot import from the site. Two copies of one rule is the thing that goes stale, so inv_suite.py and invites-test.mjs both assert against THIS file rather than against their own idea of the rule. A case added here fails whichever copy has not learned it.",
   "cases": [
-    ["0412 345 678",    "+61412345678", "the common case: a guest typed spaces"],
-    ["0412345678",      "+61412345678", "the same, run together"],
-    ["(04) 1234 5678",  "+61412345678", "brackets and hyphens are punctuation, not digits"],
-    ["04-1234-5678",    "+61412345678", "hyphens likewise"],
-    ["0412.345.678",    "+61412345678", "dots likewise"],
-    ["+61 412 345 678", "+61412345678", "already right, only spaced"],
-    ["+61412345678",    "+61412345678", "already right, untouched"],
-    ["61412345678",     "+61412345678", "the plus was lost somewhere; give it back"],
-    ["",                null, "no number at all"],
-    ["   ",             null, "whitespace is no number"],
-    ["0298765432",      null, "a Sydney landline: not a mobile, do not guess"],
-    ["+442071234567",   null, "an international number: do not guess at the country"],
-    ["+64211234567",    null, "New Zealand mobile: same reason"],
-    ["041234567",       null, "one digit short of a mobile"],
-    ["04123456789",     null, "one digit long"],
-    ["+61212345678",    null, "+61 but a landline, not 4"],
-    ["Room 12",         null, "bare words, as GuestTouch once sent"],
-    ["0412 345 678 x2", null, "an extension is not part of a mobile number"]
+    [
+      "0412 345 678",
+      "+61412345678",
+      "the common case: a guest typed spaces"
+    ],
+    [
+      "0412345678",
+      "+61412345678",
+      "the same, run together"
+    ],
+    [
+      "(04) 1234 5678",
+      "+61412345678",
+      "brackets and hyphens are punctuation, not digits"
+    ],
+    [
+      "04-1234-5678",
+      "+61412345678",
+      "hyphens likewise"
+    ],
+    [
+      "0412.345.678",
+      "+61412345678",
+      "dots likewise"
+    ],
+    [
+      "+61 412 345 678",
+      "+61412345678",
+      "already right, only spaced"
+    ],
+    [
+      "+61412345678",
+      "+61412345678",
+      "already right, untouched"
+    ],
+    [
+      "61412345678",
+      "+61412345678",
+      "the plus was lost somewhere; give it back"
+    ],
+    [
+      "",
+      null,
+      "no number at all"
+    ],
+    [
+      "   ",
+      null,
+      "whitespace is no number"
+    ],
+    [
+      "0298765432",
+      null,
+      "a Sydney landline: not a mobile, do not guess"
+    ],
+    [
+      "+442071234567",
+      "+442071234567",
+      "an explicit country code is not a guess: accepted as typed"
+    ],
+    [
+      "+64211234567",
+      "+64211234567",
+      "New Zealand mobile with its code: likewise"
+    ],
+    [
+      "041234567",
+      null,
+      "one digit short of a mobile"
+    ],
+    [
+      "04123456789",
+      null,
+      "one digit long"
+    ],
+    [
+      "+61212345678",
+      null,
+      "+61 but a landline, not 4"
+    ],
+    [
+      "Room 12",
+      null,
+      "bare words, as GuestTouch once sent"
+    ],
+    [
+      "0412 345 678 x2",
+      null,
+      "an extension is not part of a mobile number"
+    ],
+    [
+      "(+64) 274875277",
+      "+64274875277",
+      "the 25 Aug case that showed the old rule wrong: punctuation stripped, code kept"
+    ],
+    [
+      "+64 27 487 5277",
+      "+64274875277",
+      "the same, spaced"
+    ],
+    [
+      "0064274875277",
+      "+64274875277",
+      "00 is most of the world's dial-out prefix for +"
+    ],
+    [
+      "0011 64 274 875 277",
+      "+64274875277",
+      "0011 is Australia's"
+    ],
+    [
+      "+61 2 9876 5432",
+      null,
+      "our own country we can judge: an AU landline stays refused"
+    ],
+    [
+      "0274875277",
+      null,
+      "a foreign mobile typed without its code reads as an AU landline: do not guess the country"
+    ],
+    [
+      "+640274875277",
+      "+640274875277",
+      "a national 0 left in after the code is the guest's typo, sent as typed rather than guessed at"
+    ]
   ]
 }

@@ -506,6 +506,28 @@
         }
       }
     },
+    "phonefix": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('permissions').child('editBookings').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
+        ".validate": "$id.matches(/^[A-Za-z0-9-]{4,64}$/) && newData.hasChildren(['phone'])",
+        "phone": {
+          ".validate": "newData.isString() && newData.val().matches(/^\\+[0-9]{8,15}$/)"
+        },
+        "was": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "by": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "at": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     "previnvites": {
       ".read": "auth != null",
       "$id": {

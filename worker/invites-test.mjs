@@ -280,5 +280,25 @@ r = await pre();
 ck("the pre-arrival send obeys the same permission as invitations",
    r.status === 403 && SENDS.length === 0);
 
+/* ── the desk's fixed number outranks the Mews copy ─────────── */
+install();
+STORE["/phonefix/b9-guid"] = { phone: "+64274875277", was: "02 9999 9999" };
+r = await post({ villas: ["9"] });
+j = await r.json();
+ck("a fixed number makes the Mews landline sendable, to the fix",
+   j.results["9"].status === "sent" &&
+   SENDS[0].messages[0].to === "+64274875277");
+ck("and the record holds the number as sent",
+   STORE["/invites/" + today + "/9"].to === "+64274875277");
+
+install();
+STORE["/phonefix/bk-future/"] = null;   /* no fix: the pms number stands */
+STORE["/phonefix/bk-future"] = { phone: "+61400999888" };
+r = await pre();
+j = await r.json();
+ck("the pre kind reads the same fix",
+   j.results["bk-future"].status === "sent" &&
+   SENDS[0].messages[0].to === "+61400999888");
+
 console.log("RESULT: " + P + " passed, " + F + " failed");
 process.exit(F ? 1 : 0);

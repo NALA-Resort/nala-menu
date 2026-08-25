@@ -286,9 +286,20 @@ function openedTonight(villa, marks){
    number readable by a person, this one makes it dialable by a machine.  */
 function normalisePhone(raw){
   var s = String(raw == null ? '' : raw).replace(/[\s().\-]/g, '');
+  /* 0011 is Australia's international dial-out and 00 most of the world's:
+     both mean the + of E.164. */
+  if (/^0011[1-9]\d/.test(s))    s = '+' + s.slice(4);
+  else if (/^00[1-9]\d/.test(s)) s = '+' + s.slice(2);
   if (/^04\d{8}$/.test(s))    return '+61' + s.slice(1);   /* the common case */
-  if (/^\+614\d{8}$/.test(s)) return s;                    /* already right   */
   if (/^614\d{8}$/.test(s))   return '+' + s;              /* plus went missing */
+  /* Our own country we can judge: +61 must be a mobile, a landline is
+     refused rather than sent. Any other full country code is not a guess -
+     the guest typed where they live - and is sent as typed. Widened 25 Aug
+     when (+64) 274875277, an ordinary NZ mobile, was refused. A foreign
+     number typed WITHOUT its code still returns null: 0274875277 reads as an
+     Australian landline, and guessing the country texts a stranger. */
+  if (/^\+61\d+$/.test(s))    return /^\+614\d{8}$/.test(s) ? s : null;
+  if (/^\+[1-9]\d{7,14}$/.test(s)) return s;
   return null;                                             /* not sent, ever  */
 }
 
