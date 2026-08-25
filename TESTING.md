@@ -48,8 +48,9 @@ spa role, and push caching. Worst first.
 9. **Decline** turns it red reading "let the guest know" on both logins.
 10. **Ask again from the desk** on an amber or red: it returns to his To
     answer as a fresh white ask.
-11. **Add one at the desk** from All bookings for a stay with no treatment:
-    it lands in his To answer. **Add one as him**: it books directly. Add a
+11. **Add one at the desk** from the All view's grey tiles for a stay with
+    no treatment: it lands in his To answer. The masseuse has no add and no
+    grey tiles - a stay with no request never reaches his screen. Add a
     second treatment to a booking that already has one; both show.
 12. **The cache moved.** After publishing, every staff page's menu offers
     Spa. A phone whose menu lacks it is running the old shared file: check
