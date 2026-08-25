@@ -559,6 +559,13 @@ with sync_playwright() as p:
        "arrives" in arow("pa-ready").inner_text())
     ck("a handset receipt shows on the row: sent AND delivered",
        "delivered" in arow("pa-sent").inner_text())
+    #  The colour law (CLAUDE.md): opened-not-finished is the front desk's
+    #  amber - attention, not the red family - asserted by computed colour.
+    amber = pg.evaluate(
+        "s=>getComputedStyle(document.querySelector(s)).backgroundColor",
+        '.vrow[data-booking="pa-open"]')
+    ck("opened-not-finished wears the front desk's amber, not red",
+       amber == "rgb(246, 234, 213)")
     #  A record still unconfirmed makes the page ask the Worker for receipts.
     PREINV["pa-sent"] = dict(PREINV["pa-sent"]); PREINV["pa-sent"].pop("delivery")
     del SENT[:]

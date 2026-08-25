@@ -97,6 +97,29 @@ is believed.
 
 ---
 
+## The colour law
+
+Ruled by the owner, 25 Aug, after red crept into a band that only meant
+"nothing yet". One meaning per colour, everywhere, so a glance at any board
+reads the same:
+
+| Colour | Tokens | Means | Never means |
+|---|---|---|---|
+| White / cream row | `#fff` on `--cream` | work to do (to send, unanswered) | — |
+| Light grey fill | `rgba(28,28,26,.045)`, border `--rule` | sent, waiting on the other side; unknown promises nothing | done |
+| Amber | `--amber:#F6EAD5`, border `--amberb:#C29A55`, ink `#8A6A2F` | attention, in progress, chase this (front desk's confirm queue, a form opened but unfinished) | failure |
+| Green tile | `rgba(122,160,130,.26)` / `.65`, ink `#5E7D67` | done, confirmed (the Reservations dining tile) | — |
+| Green pill/tick | `--green:#E4EDE2`, `--greenb:#7E937A` | a positive state or a selection mark | — |
+| Terracotta tile | `rgba(184,106,90,.16)` / `.45`, ink `#9E6455` | a **negative answer** — not dining, declined. A fact a guest gave us | a failure |
+| Red | `--red:#A8321E` | **failure only**: a send that failed, a delivery that failed, an error. Text and pills, never a whole tile | pending, unknown, "nothing yet" |
+| Grey dashed, sunk | `opacity:.62`, dashed `--rule` | nothing to do here (vacant villa, unsendable number) | — |
+
+The Reservations green and terracotta tiles are a contract between boards:
+suites assert them by computed colour, not class name. Change them in one
+place and the suites will name every other.
+
+---
+
 ## When you break these rules
 
 Sometimes you should. Write down why, in the file, next to the thing. A

@@ -18,7 +18,9 @@
           --resgreen:#5E7D67; --resgreen-t:rgba(122,160,130,.26);
           --resgreen-b:rgba(122,160,130,.65);
           --resterra:#9E6455; --resterra-t:rgba(184,106,90,.16);
-          --resterra-b:rgba(184,106,90,.45); }
+          --resterra-b:rgba(184,106,90,.45);
+          /* The front desk's amber, verbatim: attention, in progress. */
+          --amber:#F6EAD5; --amberb:#C29A55; --amberink:#8A6A2F; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
          padding:calc(24px + env(safe-area-inset-top)) 18px 0;
@@ -44,13 +46,16 @@
           padding:11px 13px; margin-bottom:7px; text-align:left;
           font-family:inherit; color:inherit; cursor:pointer; }
   .vrow:disabled { opacity:.45; cursor:default; }
-  /* The five bands: white to send, terracotta opened-but-not-finished (the
-     follow-up work), grey waiting (unknown promises nothing), green form
-     completed, and cannot-send sunk in the vacant voice. */
+  /* The five bands, in the site's colour law (CLAUDE.md): white to send,
+     AMBER opened-but-not-finished - the front desk's attention colour, not
+     terracotta, because red-family paint means failure or a declined answer
+     and a guest mid-form is neither - grey waiting (unknown promises
+     nothing), green form completed, and cannot-send sunk in the vacant
+     voice. Red text is reserved for failures: sends and deliveries. */
   .grp { font-size:9px; letter-spacing:.16em; text-transform:uppercase;
          color:var(--mid); margin:14px 2px 6px; }
-  .vrow.b-open { background:var(--resterra-t); border-color:var(--resterra-b); }
-  .vrow.b-open .st { color:var(--resterra); }
+  .vrow.b-open { background:var(--amber); border-color:var(--amberb); }
+  .vrow.b-open .st { color:var(--amberink); }
   .vrow.b-sent { background:rgba(28,28,26,.045); border-color:var(--rule); }
   .vrow.b-sent .st { color:var(--mid); }
   .vrow.b-done { background:var(--resgreen-t); border-color:var(--resgreen-b); }
