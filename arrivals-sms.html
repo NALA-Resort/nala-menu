@@ -60,6 +60,11 @@
   .vrow .v { font-size:20px; min-width:30px; text-align:center; }
   .vrow .mid { flex:1; min-width:0; }
   .vrow .nm { font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vrow .ph { font-size:11px; color:var(--mid); font-weight:normal; margin-left:7px; }
+  /* The edit pencil. Inside the row button, so its click must not fall
+     through to the tick: the handler stops the event. */
+  .vrow .pen { font-size:12px; color:var(--mid); margin-left:5px;
+               padding:2px 4px; cursor:pointer; }
   .vrow .st { font-size:11px; color:var(--mid); margin-top:2px; }
   .vrow .st .bad { color:var(--red); }
   .tick { flex:0 0 auto; width:24px; height:24px; border:1px solid var(--rule);
@@ -302,10 +307,10 @@ function stateOf(stay, pre, invite, fix){
                   ' · ' + when };
   if (!raw)
     return { kind:'nophone', tickable:false, fixable:true, ticked:false,
-             line:'No phone number on the booking · ' + when + ' · tap to add one' };
+             line:'No phone number on the booking · ' + when };
   if (!phone)
     return { kind:'nophone', tickable:false, fixable:true, ticked:false,
-             line:'Not a mobile number · ' + raw + ' · ' + when + ' · tap to fix' };
+             line:'Not a mobile number · ' + when };
   if (invite && invite.status === 'sent')
     return { kind:'sent', tickable:true, ticked:false,
              line:'Sent ' + shortDay(akey(invite.sentAt)) + ' ' +
@@ -349,8 +354,20 @@ function render(list){
     b.innerHTML = '<div class="v">' + it.villa + '</div>' +
       '<div class="mid"><div class="nm"></div><div class="st"></div></div>' +
       '<div class="tick">✓</div>';
-    b.querySelector('.nm').textContent =
-      ((it.stay.first || '') + ' ' + (it.stay.last || '')).trim() || 'Guest';
+    var nm = b.querySelector('.nm');
+    nm.textContent = ((it.stay.first || '') + ' ' + (it.stay.last || '')).trim() || 'Guest';
+    /* The number beside the name, grey and small, with the pencil that edits
+       it. Every row carries both: a valid number can still be a WRONG one,
+       and the fix outranks Mews either way. */
+    var ph = document.createElement('span'); ph.className = 'ph';
+    ph.textContent = String((it.fix && it.fix.phone) || it.stay.phone || '').trim() || 'no number';
+    nm.appendChild(ph);
+    var pen = document.createElement('span'); pen.className = 'pen';
+    /* Not on a disabled row: a completed form needs no number and a dead
+       pencil reads as a broken one. */
+    pen.textContent = '✎'; pen.setAttribute('aria-label', 'Edit number');
+    pen.onclick = function(e){ e.stopPropagation(); fixNumber(it); };
+    if (st.tickable || st.fixable) nm.appendChild(pen);
     var line = b.querySelector('.st');
     if (st.bad){ var s = document.createElement('span'); s.className = 'bad';
                  s.textContent = st.line; line.appendChild(s); }

@@ -63,6 +63,11 @@
   .vrow .v { font-size:20px; min-width:30px; text-align:center; }
   .vrow .mid { flex:1; min-width:0; }
   .vrow .nm { font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vrow .ph { font-size:11px; color:var(--mid); font-weight:normal; margin-left:7px; }
+  /* The edit pencil. Inside the row button, so its click must not fall
+     through to the tick: the handler stops the event. */
+  .vrow .pen { font-size:12px; color:var(--mid); margin-left:5px;
+               padding:2px 4px; cursor:pointer; }
   .vrow .st { font-size:11px; color:var(--mid); margin-top:2px; }
   .vrow .st .bad { color:var(--red); }
   /* The tick says what pressing Send will do to this villa. Adjacent steps of
@@ -347,8 +352,20 @@ function render(stays, invites, fixes){
     b.innerHTML = '<div class="v">' + v + '</div>' +
       '<div class="mid"><div class="nm"></div><div class="st"></div></div>' +
       '<div class="tick">\u2713</div>';
-    b.querySelector('.nm').textContent =
-      ((stay.first || '') + ' ' + (stay.last || '')).trim() || 'Guest';
+    var nm = b.querySelector('.nm');
+    nm.textContent = ((stay.first || '') + ' ' + (stay.last || '')).trim() || 'Guest';
+    /* The number beside the name, grey and small, with the pencil that edits
+       it. Every row carries both: a valid number can still be a WRONG one,
+       and the fix outranks Mews either way. */
+    var ph = document.createElement('span'); ph.className = 'ph';
+    ph.textContent = String((fix && fix.phone) || stay.phone || '').trim() || 'no number';
+    nm.appendChild(ph);
+    var pen = document.createElement('span'); pen.className = 'pen';
+    /* Not on a disabled row: a completed form needs no number and a dead
+       pencil reads as a broken one. */
+    pen.textContent = '✎'; pen.setAttribute('aria-label', 'Edit number');
+    pen.onclick = function(e){ e.stopPropagation(); fixNumber(stay, fix); };
+    if (st.tickable || st.fixable) nm.appendChild(pen);
     var line = b.querySelector('.st');
     if (st.bad){ var s = document.createElement('span'); s.className = 'bad';
                  s.textContent = st.line; line.appendChild(s); }
@@ -493,11 +510,10 @@ document.getElementById('sendBtn').onclick = function(){
     return;
   }
   err.textContent = '';
-  /* A villa already sent to tonight takes a second press. Same shape as
-     Remove on the publish page: the annoying action is a stride from the
-     ordinary one on a phone at service time. */
-  var again = sel.some(function(v){ return ROWS[v].state.kind !== 'ready'; });
-  if (again && !ARMED){ ARMED = true; recount(); return; }
+  /* EVERY send takes a second press since 25 Aug, not only resends. Same
+     shape as Remove on the publish page: the annoying action is a stride
+     from the ordinary one on a phone at service time. */
+  if (!ARMED){ ARMED = true; recount(); return; }
   ARMED = false;
 
   var btn = this;

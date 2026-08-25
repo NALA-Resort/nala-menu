@@ -208,13 +208,16 @@ with sync_playwright() as p:
     row("3").click(); pg.wait_for_timeout(200)
     ck("and tapping it never ticks it",
        "on" not in (row("3").get_attribute("class") or ""))
-    ck("and says why, naming the number and the way out",
-       "Not a mobile number · 02 9999 9999" in row("3").inner_text()
-       and "tap to fix" in row("3").inner_text())
+    ck("and shows the number beside the name, with the pencil that edits it",
+       "02 9999 9999" in row("3").locator(".ph").text_content()
+       and row("3").locator(".pen").count() == 1)
     ck("a villa with no phone number offers to add one",
        not row("2").is_disabled()
        and "No phone number" in row("2").inner_text()
-       and "tap to add" in row("2").inner_text())
+       and "no number" in row("2").locator(".ph").text_content()
+       and row("2").locator(".pen").count() == 1)
+    ck("a sendable row shows its number too, in the small grey font",
+       "+61 411 111 111" in row("4").locator(".ph").text_content())
     ck("a villa already sent to is unticked and shows the time",
        "on" not in (row("9").get_attribute("class") or "")
        and "Sent 5:05pm" in row("9").inner_text())
@@ -262,9 +265,13 @@ with sync_playwright() as p:
     pg.select_option("#tmpl", "ready"); pg.wait_for_timeout(100)
 
     # ── sending ────────────────────────────────────────────────
+    #  Since 25 Aug EVERY send takes the confirm press, not only resends.
     del SENT[:]
+    pg.locator("#sendBtn").click(); pg.wait_for_timeout(300)
+    ck("the first press never sends, even to fresh villas",
+       SENT == [] and "Please confirm" in pg.evaluate("()=>sendBtn.textContent"))
     pg.locator("#sendBtn").click(); pg.wait_for_timeout(500)
-    ck("one press sends when nobody is being sent to twice", len(SENT) == 1)
+    ck("the confirmed press sends", len(SENT) == 1)
     ck("the page proposes villas and words, never numbers and never a link",
        SENT and sorted(SENT[0]["villas"]) == ["14", "4"]
        and "<menu>" in SENT[0]["body"]
@@ -289,6 +296,7 @@ with sync_playwright() as p:
     pg = board()
     WORKER["reply"] = {"4": {"status": "sent"},
                        "14": {"status": "failed", "error": "INVALID_RECIPIENT"}}
+    pg.locator("#sendBtn").click(); pg.wait_for_timeout(200)
     pg.locator("#sendBtn").click(); pg.wait_for_timeout(600)
     ck("the two that did not go are named",
        "villa 14" in pg.inner_text("#errBar").replace("villas", "villa"))
