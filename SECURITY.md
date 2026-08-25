@@ -287,14 +287,16 @@ What it does: hides the documentation, the rules file and the tests from
 strangers. What it does not do: hide the app. Every page is HTML served to a
 browser, so anyone visiting the site reads the code whatever this setting says.
 
-`NALA-Resort` is an organisation, so this needs the **Team** plan, not Pro.
-Check the current price on GitHub's pricing page first.
+`NALA-Resort` is a personal account, so this needs the **Pro** plan. An
+earlier version of this file said Team, which is the plan for organisations
+and costs more; the profile page's contribution graph is how you can tell it
+is a personal account. Check the current price on GitHub's pricing page first.
 
-1. Go to **github.com/NALA-Resort**.
-2. Click **Settings**, in the row of tabs across the top of the organisation
-   page.
-3. Left sidebar, **Billing and licensing**, then **Plans and usage**.
-4. Click **Upgrade** and choose **Team**. Follow the payment steps.
+1. Go to **github.com**. Click your **profile picture**, top right corner.
+2. In the menu that drops down, click **Settings**.
+3. Left sidebar, **Billing and licensing**, then **Plans and usage**. On
+   older layouts it reads **Billing and plans**.
+4. Find the **Pro** plan and click **Upgrade**. Follow the payment steps.
 5. Go to **github.com/NALA-Resort/nala-menu**.
 6. Click **Settings**, in the row of tabs across the top of the repository.
 7. Stay on **General** and scroll all the way to the bottom.
@@ -334,6 +336,13 @@ Check the current price on GitHub's pricing page first.
 **Test it:** make any commit and watch the Worker redeploy. If it does not,
 step 23 is why.
 
+**One more thing this changes:** `START-HERE.md` tells a fresh chat to fetch
+`HANDOVER.md` from `raw.githubusercontent.com`, and that address stops
+working once the repository is private. A new chat will need the repo cloned
+with a token instead — the clone line is already in `START-HERE.md` under
+"If the fetch fails". Tell me once you have gone private and I will update
+both files so the next session is not sent down the dead path.
+
 ---
 
 # What none of this fixes
@@ -362,5 +371,5 @@ All three are written up in `DESIGN.md`.
 3. New shared secret into Cloudflare, the same secret into Zapier, test the Zap.
 4. Delete Firebase logins that are not in the app's People list.
 5. Restrict the Firebase key to `nalaresort.com`, then test in a private window.
-6. Repository private, only if you have bought Team, then test in a private
+6. Repository private, only if you have bought Pro, then test in a private
    window.
