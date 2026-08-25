@@ -105,7 +105,8 @@ reads the same:
 
 | Colour | Tokens | Means | Never means |
 |---|---|---|---|
-| White / cream row | `#fff` on `--cream` | work to do (to send, unanswered) | — |
+| Cream row | transparent on `--cream:#F9F7F4`, border `--rule` | work to do (to send, unanswered) | — |
+| True white | `#fff` | an editable surface: inputs, the message box, editor cards | a status |
 | Light grey fill | `rgba(28,28,26,.045)`, border `--rule` | sent, waiting on the other side; unknown promises nothing | done |
 | Amber | `--amber:#F6EAD5`, border `--amberb:#C29A55`, ink `#8A6A2F` | attention, in progress, chase this (front desk's confirm queue, a form opened but unfinished) | failure |
 | Green tile | `rgba(122,160,130,.26)` / `.65`, ink `#5E7D67` | done, confirmed (the Reservations dining tile) | — |
