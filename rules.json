@@ -609,6 +609,15 @@
         "villa": {
           ".validate": "newData.isString() && newData.val().length <= 10"
         },
+        "delivery": {
+          ".validate": "newData.isString() && (newData.val() == 'delivered' || newData.val() == 'failed')"
+        },
+        "deliveryText": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
+        },
+        "deliveryAt": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
         "$other": {
           ".validate": false
         }

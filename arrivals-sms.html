@@ -60,6 +60,17 @@
   .vrow .v { font-size:20px; min-width:30px; text-align:center; }
   .vrow .mid { flex:1; min-width:0; }
   .vrow .nm { font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vrow .ph { font-size:11px; color:var(--mid); font-weight:normal; margin-left:7px; }
+  /* The confidence mark: a tick where the country's mobile ranges are
+     published and this number sits in one, a question mark where nobody can
+     tell a mobile from a landline (all of +1, for a start). */
+  .vrow .conf { font-size:11px; margin-left:4px; }
+  .vrow .conf.ok { color:var(--resgreen); }
+  .vrow .conf.un { color:var(--mid); }
+  /* The edit pencil. Inside the row button, so its click must not fall
+     through to the tick: the handler stops the event. */
+  .vrow .pen { font-size:12px; color:var(--mid); margin-left:5px;
+               padding:2px 4px; cursor:pointer; }
   .vrow .st { font-size:11px; color:var(--mid); margin-top:2px; }
   .vrow .st .bad { color:var(--red); }
   .tick { flex:0 0 auto; width:24px; height:24px; border:1px solid var(--rule);
@@ -302,14 +313,26 @@ function stateOf(stay, pre, invite, fix){
                   ' · ' + when };
   if (!raw)
     return { kind:'nophone', tickable:false, fixable:true, ticked:false,
-             line:'No phone number on the booking · ' + when + ' · tap to add one' };
+             line:'No phone number on the booking · ' + when };
   if (!phone)
     return { kind:'nophone', tickable:false, fixable:true, ticked:false,
-             line:'Not a mobile number · ' + raw + ' · ' + when + ' · tap to fix' };
-  if (invite && invite.status === 'sent')
+             line:'Not a mobile number · ' + when };
+  if (invite && invite.status === 'sent'){
+    /* "Sent" is only ClickSend accepting the message; the handset receipt
+       is the real answer. A failed delivery is the sender's problem again,
+       so it climbs back into To send with the carrier's words. */
+    if (invite.delivery === 'failed')
+      return { kind:'ready', bad:true, tickable:true, ticked:false,
+               line:'Not delivered' +
+                    (invite.deliveryText ? ' \u00b7 ' + invite.deliveryText : '') +
+                    ' \u00b7 ' + when };
     return { kind:'sent', tickable:true, ticked:false,
              line:'Sent ' + shortDay(akey(invite.sentAt)) + ' ' +
-                  timeOf(invite.sentAt) + ' · ' + when };
+                  timeOf(invite.sentAt) +
+                  (invite.delivery === 'delivered' ? ' \u00b7 delivered'
+                   : invite.providerId ? ' \u00b7 delivery unconfirmed' : '') +
+                  ' \u00b7 ' + when };
+  }
   if (invite && invite.status)
     return { kind:'ready', tickable:true, ticked:false, bad:true,
              line:'Send failed ' + timeOf(invite.sentAt) +
@@ -349,8 +372,31 @@ function render(list){
     b.innerHTML = '<div class="v">' + it.villa + '</div>' +
       '<div class="mid"><div class="nm"></div><div class="st"></div></div>' +
       '<div class="tick">✓</div>';
-    b.querySelector('.nm').textContent =
-      ((it.stay.first || '') + ' ' + (it.stay.last || '')).trim() || 'Guest';
+    var nm = b.querySelector('.nm');
+    nm.textContent = ((it.stay.first || '') + ' ' + (it.stay.last || '')).trim() || 'Guest';
+    /* The number beside the name, grey and small, with the pencil that edits
+       it. Every row carries both: a valid number can still be a WRONG one,
+       and the fix outranks Mews either way. */
+    var ph = document.createElement('span'); ph.className = 'ph';
+    var rawPh = String((it.fix && it.fix.phone) || it.stay.phone || '').trim();
+    ph.textContent = rawPh || 'no number';
+    nm.appendChild(ph);
+    var confidence = rawPh ? phoneConfidence(rawPh) : null;
+    if (confidence){
+      var cf = document.createElement('span');
+      cf.className = 'conf ' + (confidence === 'mobile' ? 'ok' : 'un');
+      cf.textContent = confidence === 'mobile' ? '\u2713' : '?';
+      cf.title = confidence === 'mobile'
+        ? 'Sits in this country\u2019s published mobile ranges'
+        : 'A real number, but this country\u2019s mobiles cannot be told from landlines; sending will find out';
+      nm.appendChild(cf);
+    }
+    var pen = document.createElement('span'); pen.className = 'pen';
+    /* Not on a disabled row: a completed form needs no number and a dead
+       pencil reads as a broken one. */
+    pen.textContent = '✎'; pen.setAttribute('aria-label', 'Edit number');
+    pen.onclick = function(e){ e.stopPropagation(); fixNumber(it); };
+    if (st.tickable || st.fixable) nm.appendChild(pen);
     var line = b.querySelector('.st');
     if (st.bad){ var s = document.createElement('span'); s.className = 'bad';
                  s.textContent = st.line; line.appendChild(s); }
@@ -570,7 +616,28 @@ function load(){
       return d !== 0 ? d : (+a.villa) - (+b.villa);
     });
     render(list);
+    checkDelivery(list);
   });
+}
+
+/* Once per visit, ask the Worker to fetch handset receipts for anything
+   sent but unconfirmed; if a verdict landed, reload so the rows say so. */
+var CHECKED_DELIVERY = false;
+function checkDelivery(list){
+  if (CHECKED_DELIVERY || !window.__idToken) return;
+  var pending = list.filter(function(it){
+    var r = it.invite;
+    return r && r.status === 'sent' && r.providerId &&
+           r.delivery !== 'delivered' && r.delivery !== 'failed';
+  }).map(function(it){ return it.id; });
+  if (!pending.length) return;
+  CHECKED_DELIVERY = true;
+  fetch(INVITES_URL, { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ idToken: window.__idToken, kind:'delivery',
+                           pres: pending }) })
+  .then(function(r){ return r.json(); })
+  .then(function(j){ if (j && j.changed) return load(); })
+  .catch(function(){});
 }
 
 function showAccess(allowed, e){

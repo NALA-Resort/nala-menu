@@ -93,7 +93,7 @@ PRE_RECS = {
 }
 PREINV = {
   "pa-sent": {"status": "sent", "sentAt": now.isoformat(), "to": "+61411000003",
-              "by": "staff@x"},
+              "by": "staff@x", "providerId": "mid-s", "delivery": "delivered"},
 }
 
 STATE = {"menu": MENU, "menufail": False}
@@ -208,13 +208,24 @@ with sync_playwright() as p:
     row("3").click(); pg.wait_for_timeout(200)
     ck("and tapping it never ticks it",
        "on" not in (row("3").get_attribute("class") or ""))
-    ck("and says why, naming the number and the way out",
-       "Not a mobile number · 02 9999 9999" in row("3").inner_text()
-       and "tap to fix" in row("3").inner_text())
+    ck("and shows the number beside the name, with the pencil that edits it",
+       "02 9999 9999" in row("3").locator(".ph").text_content()
+       and row("3").locator(".pen").count() == 1)
     ck("a villa with no phone number offers to add one",
        not row("2").is_disabled()
        and "No phone number" in row("2").inner_text()
-       and "tap to add" in row("2").inner_text())
+       and "no number" in row("2").locator(".ph").text_content()
+       and row("2").locator(".pen").count() == 1)
+    ck("a sendable row shows its number too, in the small grey font",
+       "+61 411 111 111" in row("4").locator(".ph").text_content())
+    #  The confidence mark: tick for a published mobile range, question mark
+    #  where a country's mobiles cannot be told from landlines.
+    ck("an Australian mobile wears the tick",
+       row("4").locator(".conf.ok").count() == 1)
+    ck("the rule itself: NL mobile certain, +1 honestly unsure",
+       pg.evaluate("()=>phoneConfidence('+31612762241')") == "mobile"
+       and pg.evaluate("()=>phoneConfidence('+1 415 555 2671')") == "unsure"
+       and pg.evaluate("()=>phoneConfidence('02 9999 9999')") is None)
     ck("a villa already sent to is unticked and shows the time",
        "on" not in (row("9").get_attribute("class") or "")
        and "Sent 5:05pm" in row("9").inner_text())
@@ -262,9 +273,13 @@ with sync_playwright() as p:
     pg.select_option("#tmpl", "ready"); pg.wait_for_timeout(100)
 
     # ── sending ────────────────────────────────────────────────
+    #  Since 25 Aug EVERY send takes the confirm press, not only resends.
     del SENT[:]
+    pg.locator("#sendBtn").click(); pg.wait_for_timeout(300)
+    ck("the first press never sends, even to fresh villas",
+       SENT == [] and "Please confirm" in pg.evaluate("()=>sendBtn.textContent"))
     pg.locator("#sendBtn").click(); pg.wait_for_timeout(500)
-    ck("one press sends when nobody is being sent to twice", len(SENT) == 1)
+    ck("the confirmed press sends", len(SENT) == 1)
     ck("the page proposes villas and words, never numbers and never a link",
        SENT and sorted(SENT[0]["villas"]) == ["14", "4"]
        and "<menu>" in SENT[0]["body"]
@@ -289,6 +304,7 @@ with sync_playwright() as p:
     pg = board()
     WORKER["reply"] = {"4": {"status": "sent"},
                        "14": {"status": "failed", "error": "INVALID_RECIPIENT"}}
+    pg.locator("#sendBtn").click(); pg.wait_for_timeout(200)
     pg.locator("#sendBtn").click(); pg.wait_for_timeout(600)
     ck("the two that did not go are named",
        "villa 14" in pg.inner_text("#errBar").replace("villas", "villa"))
@@ -541,6 +557,20 @@ with sync_playwright() as p:
        not arow("pa-open").is_disabled())
     ck("the row says when the guest arrives",
        "arrives" in arow("pa-ready").inner_text())
+    ck("a handset receipt shows on the row: sent AND delivered",
+       "delivered" in arow("pa-sent").inner_text())
+    #  A record still unconfirmed makes the page ask the Worker for receipts.
+    PREINV["pa-sent"] = dict(PREINV["pa-sent"]); PREINV["pa-sent"].pop("delivery")
+    del SENT[:]
+    pg2 = apage()
+    ck("the page asks for receipts for anything sent but unconfirmed",
+       any(x.get("kind") == "delivery" and x.get("pres") == ["pa-sent"]
+           for x in SENT))
+    ck("and says so on the row until the receipt lands",
+       "delivery unconfirmed" in pg2.locator('.vrow[data-booking="pa-sent"]').inner_text())
+    pg2.close()
+    PREINV["pa-sent"]["delivery"] = "delivered"
+    del SENT[:]
     ck("the counts strip says the same as the bands",
        [pg.evaluate("()=>%s.textContent" % i)
         for i in ("nSend","nWait","nOpen","nDone")] == ["1","1","1","1"])

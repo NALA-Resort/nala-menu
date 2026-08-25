@@ -303,6 +303,36 @@ function normalisePhone(raw){
   return null;                                             /* not sent, ever  */
 }
 
+/* How sure are we that a sendable number is a MOBILE? Advisory only - the
+   send is still the judge - shown as the tick or the question mark beside
+   the number on the SMS pages. Countries where the mobile ranges are
+   published and unambiguous get a tick; everywhere else, including all of
+   +1 where mobiles and landlines share the same ranges, is honestly a
+   question mark. Extend the table as guests arrive from new countries. */
+var MOBILE_SHAPES = [
+  /^\+614\d{8}$/,          /* Australia: 04 */
+  /^\+642\d{7,9}$/,        /* New Zealand: 02 */
+  /^\+447\d{9}$/,          /* United Kingdom: 07 */
+  /^\+316\d{8}$/,          /* Netherlands: 06 */
+  /^\+49(15|16|17)\d{7,9}$/, /* Germany */
+  /^\+33[67]\d{8}$/,       /* France */
+  /^\+3538\d{8}$/,         /* Ireland: 08 */
+  /^\+65[89]\d{7}$/,       /* Singapore */
+  /^\+852[569]\d{7}$/,     /* Hong Kong */
+  /^\+861[3-9]\d{9}$/,     /* China */
+  /^\+91[6-9]\d{9}$/,      /* India */
+  /^\+81[789]0\d{8}$/,     /* Japan: 070/080/090 */
+  /^\+27[678]\d{8}$/,      /* South Africa */
+  /^\+9715\d{8}$/          /* UAE: 05 */
+];
+function phoneConfidence(raw){
+  var e = normalisePhone(raw);
+  if (!e) return null;
+  for (var i = 0; i < MOBILE_SHAPES.length; i++)
+    if (MOBILE_SHAPES[i].test(e)) return 'mobile';
+  return 'unsure';
+}
+
 function fetchStays(dateKey){
   return Promise.all([
     fetch(DB + '/stays/' + dateKey + '.json?v=' + Date.now())
