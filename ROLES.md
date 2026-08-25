@@ -11,21 +11,34 @@ disagree, the code is what runs and this file is wrong.** They did disagree
 until 18 Aug: this said a waiter had no access to the Cleans board, and the
 code has given them one since the day it was written.
 
-## The four roles
+## The five roles
 
-`staff`, `chef`, `waiter`, `housekeeping`.
+`staff`, `chef`, `waiter`, `housekeeping`, `spa`.
 
 Note "staff" is the FULL ACCESS role, not a middling one. The existing admin
 account is `staff@nalaresort.com.au`, so it maps to this role by name, which
 is convenient but coincidental - the role comes from the record, never from
 the address.
 
-| | Cleans board | Set a villa's job | Reservations board | Edit bookings | Reservations Sheet | Publish menu | Manage staff |
-|---|---|---|---|---|---|---|---|
-| **admin** | yes | yes | yes | yes | yes | yes | yes |
-| **chef** | no | no | read only | no | read and print | yes | no |
-| **waiter** | availability and departures | no | yes | yes | yes | no | no |
-| **housekeeping** | marks only | no | no | no | no | no | no |
+| | Cleans board | Set a villa's job | Reservations board | Edit bookings | Reservations Sheet | Publish menu | Manage staff | Spa board |
+|---|---|---|---|---|---|---|---|---|
+| **admin** | yes | yes | yes | yes | yes | yes | yes | yes |
+| **chef** | no | no | read only | no | read and print | yes | no | no |
+| **waiter** | availability and departures | no | yes | yes | yes | no | no | yes |
+| **housekeeping** | marks only | no | no | no | no | no | no | no |
+| **spa** | no | no | no | no | no | no | no | yes |
+
+`spa` is the masseuse, an outside contractor, added 25 Aug. Like the chef, a
+real login for a real person with one job on one screen - but where the
+chef's login can read the whole database like any staff login, the spa
+login's READS are narrowed in the rules as well: it can reach `/spa`,
+`/stays`, a booking by its id (which is public by design, the guest links
+depend on it), `/staff` and `/permissions` for its own gate, and the public
+menu nodes. The dining and housekeeping boards, internal notes, phone
+corrections, SMS records, push endpoints and the settings catch-all all
+refuse it by role. It is deliberately absent from the permissions grid in
+Settings: widening an outside contractor's access is a rules decision, made
+in a commit, not a tick in a grid.
 
 "Marks only" means `done`, `bfast`, `departed`, `pushed` - the cleaner's own
 work. Not `kind`.

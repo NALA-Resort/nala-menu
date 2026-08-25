@@ -485,10 +485,10 @@ with sync_playwright() as p:
     #  than as the files are named - the sheet everyone calls the FOH sheet was
     #  labelled Reservations Sheet, and Registration is the arrivals print.
     ck("menu labels and order",
-       [i["t"] for i in dest]==["Front Desk","Invitations","Pre-arrival SMS","Cleans","Publish Menu",
+       [i["t"] for i in dest]==["Front Desk","Invitations","Pre-arrival SMS","Cleans","Spa","Publish Menu",
                                 "FOH Sheet","Clean Sheet","Arrivals","Menu","Past Menus",
                                 "General","Dietary","Pages"] and
-       [i["href"] for i in dest]==["front-desk.html","invitations.html","arrivals-sms.html","cleaners.html","publish.html",
+       [i["href"] for i in dest]==["front-desk.html","invitations.html","arrivals-sms.html","cleaners.html","spa.html","publish.html",
                                    "list.html","housekeeping.html","registration.html","menu-print.html","past-menus.html",
                                    "staff.html","tag.html","pages.html"])
     #  Headings, not choices. Light grey and small so a signpost is not mistaken
