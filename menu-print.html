@@ -170,18 +170,52 @@ function loadLogo(done){
   var img = new Image();
   img.onload = function(){
     try {
+      /* What the printer gets matters more than what the screen shows. The
+         460px PNG placed at 30.5mm is fine on screen, but on paper (chef's
+         photo, 26 Aug) every stroke came out as halftone scribble: the
+         wordmark's ink is a brown no printer owns as a solid toner, so the
+         driver builds it from a dot screen, and its cells are as wide as
+         the wordmark's hairline strokes - the strokes disintegrate into
+         dashes. The menu text on the same sheet prints clean because it is
+         vector and near-black.
+
+         So the logo is carried the way the text is: at 4x resolution
+         (~1500dpi at print size, so the screen never gets a soft edge to
+         chew on) and snapped to two colours - paper white and the sheet's
+         own text ink - so the printer lays it down solid instead of
+         screening it. PNG, not JPEG: JPEG ringing would paint grey back
+         around every edge and reopen the door just closed.             */
+      var S = 4;
       var c = document.createElement('canvas');
-      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.width = img.naturalWidth * S; c.height = img.naturalHeight * S;
       var cx2 = c.getContext('2d');
       /* White behind the logo before drawing it. nala-logo.png is 86 percent
          fully transparent, and an empty canvas is transparent too, so the data
          URL carried an alpha channel that jsPDF rendered as hairline scribble
          instead of the wordmark. The menu prints on white, so filling costs
-         nothing. JPEG as well, so there is no alpha left to misread at all. */
+         nothing, and the flattened image carries no alpha to misread.  */
       cx2.fillStyle = '#ffffff';
       cx2.fillRect(0, 0, c.width, c.height);
-      cx2.drawImage(img, 0, 0);
-      LOGO = c.toDataURL('image/jpeg', 0.95);
+      cx2.imageSmoothingEnabled = true;
+      cx2.imageSmoothingQuality = 'high';
+      cx2.drawImage(img, 0, 0, c.width, c.height);
+      var px = cx2.getImageData(0, 0, c.width, c.height), d = px.data;
+      /* The cutoff is high because the RESORT hairlines are drawn light:
+         much of their antialiased weight lives between 176 and 235, and a
+         mid-grey cutoff prints the wordmark with the small letters eaten.
+         The background is pure white, so 240 claims every stroke pixel
+         while touching nothing else; the NALA strokes gain under three
+         hundredths of a millimetre a side, which no eye will find.     */
+      for (var i = 0; i < d.length; i += 4){
+        if ((d[i] + d[i+1] + d[i+2]) / 3 < 240){
+          d[i] = 28; d[i+1] = 28; d[i+2] = 26;      /* --ink, the text's colour */
+        } else {
+          d[i] = 255; d[i+1] = 255; d[i+2] = 255;
+        }
+        d[i+3] = 255;
+      }
+      cx2.putImageData(px, 0, 0);
+      LOGO = c.toDataURL('image/png');
       LOGO_RATIO = img.naturalWidth / img.naturalHeight;
     } catch (e){ LOGO = null; }
     done();
@@ -229,8 +263,11 @@ function makePDF(open){
 
   centres.forEach(function(cx){
     if (LOGO){
-      doc.addImage(LOGO, 'JPEG', cx - LOGO_W / 2,
-                   startY - logoBlock - 3.3, LOGO_W, LOGO_H);
+      /* 'SLOW' is jsPDF's flate compression, without which the PNG goes in
+         as raw pixels and the two-colour logo alone is 5MB of PDF.     */
+      doc.addImage(LOGO, 'PNG', cx - LOGO_W / 2,
+                   startY - logoBlock - 3.3, LOGO_W, LOGO_H,
+                   undefined, 'SLOW');
     }
     var y = startY;
 

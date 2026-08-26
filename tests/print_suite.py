@@ -58,7 +58,7 @@ window.__PDF = { texts: [], lines: [], images: [], made: 0 };
     window.__PDF.lines.push({ x1:x1, y1:y1, x2:x2, y2:y2 }); return this;
   };
   Doc.prototype.addImage = function(d, f, x, y, w, h){
-    window.__PDF.images.push({ x:x, y:y, w:w, h:h }); return this;
+    window.__PDF.images.push({ f:f, x:x, y:y, w:w, h:h }); return this;
   };
   Doc.prototype.output = function(){ return new Blob(['%PDF-stub'], {type:'application/pdf'}); };
   window.jspdf = { jsPDF: Doc };
@@ -182,6 +182,46 @@ with sync_playwright() as p:
     ck("a cut line is drawn down the middle", pg.evaluate(
         "()=>window.__PDF.lines.some(l=>Math.abs(l.x1-148.5)<0.6&&Math.abs(l.x2-148.5)<0.6)"))
     ck("the logo is placed on both halves", pg.evaluate("()=>window.__PDF.images.length") == 2)
+
+    # ── what the printer is given for the logo ────────────────
+    #  The chef's photo, 26 Aug: every stroke of the printed wordmark was
+    #  halftone scribble. The logo went to the printer as a small raster in a
+    #  brown no printer owns as a solid toner, so the driver built it from a
+    #  dot screen whose cells were as wide as the hairline strokes. These pin
+    #  the shape of the fix - the logo travels big, lossless, and in exactly
+    #  two colours, paper white and the sheet's text ink, so nothing on it
+    #  invites a screen. The screen assertion decodes the actual pixels: a
+    #  format string alone would pass a PNG that had quietly gone grey.
+    logo = pg.evaluate("""async () => {
+      const img = new Image();
+      await new Promise(res => { img.onload = res; img.src = window.LOGO; });
+      const src = new Image();
+      await new Promise(res => { src.onload = res; src.src = 'nala-logo.png'; });
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      let mid = 0, ink = 0;
+      for (let i = 0; i < d.length; i += 4){
+        const l = (d[i] + d[i+1] + d[i+2]) / 3;
+        if (l < 40) ink++;
+        else if (l < 250) mid++;
+      }
+      return { png: window.LOGO.slice(0, 15) === 'data:image/png;',
+               scale: img.naturalWidth / src.naturalWidth,
+               mid: mid, ink: ink,
+               fmts: window.__PDF.images.map(i => i.f) };
+    }""")
+    ck("the logo travels as PNG, which no JPEG ringing can grey",
+       logo["png"])
+    ck("at four times the source, so ~1500dpi where it lands",
+       logo["scale"] >= 4)
+    ck("in ink and paper only - a grey pixel is a screen invitation",
+       logo["mid"] == 0 and logo["ink"] > 1000)
+    ck("and jsPDF is told it is PNG on both halves",
+       logo["fmts"] == ["PNG", "PNG"])
+
     ck("the published time is shown to whoever is printing",
        "PUBLISHED" in pg.inner_text("#state").upper())
 
