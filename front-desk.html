@@ -1007,7 +1007,9 @@ function openGuest(r){
       '<div class="chips" id="wDays"></div>' +
       '<select class="txt" id="fWtime" aria-label="Preferred time" style="margin-top:8px"></select>' +
       '<div class="chips" id="fWqty" style="margin-top:8px"></div>' +
+      '<div class="sheet-label" id="fWdurLab" style="display:none">First massage</div>' +
       '<select class="txt" id="fWdur" aria-label="Massage length" style="margin-top:8px"></select>' +
+      '<div class="sheet-label" id="fWdur2Lab" style="display:none">Second massage</div>' +
       '<select class="txt" id="fWdur2" aria-label="Second massage length" style="margin-top:8px;display:none"></select>' +
     '</div>' +
 
@@ -1053,12 +1055,15 @@ function openGuest(r){
       SPA_DURS.forEach(function(x){
         var o = document.createElement('option');
         o.value = String(x.m);
-        o.textContent = (id === 'fWdur2' ? 'Second massage: ' : '') + x.label;
+        o.textContent = x.label;
         d.appendChild(o);
       });
       d.value = String(i === 0 ? a.wellDur : a.wellDur2);
     });
-    document.getElementById('fWdur2').style.display = a.wellQty === 2 ? '' : 'none';
+    var two = a.wellQty === 2;
+    ['fWdur2', 'fWdurLab', 'fWdur2Lab'].forEach(function(id){
+      document.getElementById(id).style.display = two ? '' : 'none';
+    });
     var qbox = document.getElementById('fWqty'); qbox.innerHTML = '';
     [1, 2].forEach(function(n){
       var b = document.createElement('button');
