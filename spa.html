@@ -255,7 +255,8 @@ function lineOf(rec, id){
     return shortDay(rec.day) + ' ' + slotLabel(rec.time) +
            (asRequested(rec) ? ' · as requested'
                              : ' · moved from ' + (rec.reqDay ? shortDay(rec.reqDay) : 'no day') +
-                               (rec.reqTime ? ', ' + rec.reqTime : ''));
+                               (rec.reqTime ? ', ' + rec.reqTime : '')) +
+           (rec.manual ? ' · approved at the desk' : '');
   if (rec.status === 'declined')
     return 'Declined' + (rec.note ? ' · ' + rec.note : '') +
            (rec.told ? ' · guest told' : ' · let the guest know');
@@ -497,11 +498,18 @@ function card(it){
       btn(changed ? 'Cancel' : 'Cancel booking', changed ? 'quiet' : 'solid',
           saveAs('declined'));
     } else {
-      /* requested: the masseuse's to answer, not the desk's. An edit to the
-         day or time re-asks with the new details. */
+      /* requested: normally the masseuse's to answer - but a verbal yes is
+         an answer too. Manually approve books the selection directly,
+         stamped as the desk's doing, for the time he agreed in person or
+         on the phone and was never going to tap himself. The ask path
+         stays for everything he has not agreed to. */
+      btn('Manually approve ' + when, 'solid',
+          saveAs('booked', { manual: true }));
       if (changed || rec.virtual)
-        btn('Ask for ' + when, 'solid', saveAs('requested', { req: true }));
-      hint = 'Waiting on the masseuse.';
+        btn('Ask for ' + when, 'quiet', saveAs('requested', { req: true }));
+      hint = 'Manually approve is only for a time the masseuse has already ' +
+             'agreed to out loud - it books without his tap and the tile ' +
+             'says the desk did it. Anything else waits on him.';
     }
   }
   el.appendChild(btns);
@@ -537,6 +545,8 @@ function save(it, status, opts){
   }
   var why = (opts.note !== undefined) ? opts.note : rec.note;
   if (status === 'declined' && why) body.note = why;
+  if (status === 'booked' && (opts.manual || rec.manual))
+    body.manual = rec.manual || new Date().toISOString();
   if (status === 'declined' && (opts.told || rec.told))
     body.told = rec.told || new Date().toISOString();
   var err = document.getElementById('errBar');
