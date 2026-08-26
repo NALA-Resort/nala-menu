@@ -129,7 +129,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=36"></script>
+<script src="nala-shared.js?v=37"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -240,7 +240,8 @@ function lineOf(rec, id){
                              : ' · moved from ' + (rec.reqDay ? shortDay(rec.reqDay) : 'no day') +
                                (rec.reqTime ? ', ' + rec.reqTime : ''));
   if (rec.status === 'declined')
-    return 'Declined' + (rec.note ? ' · ' + rec.note : '') + ' · let the guest know';
+    return 'Declined' + (rec.note ? ' · ' + rec.note : '') +
+           (rec.told ? ' · guest told' : ' · let the guest know');
   return '';
 }
 
@@ -404,10 +405,24 @@ function card(it){
   function saveAs(status, extra){
     return function(){ save(it, status, extra || {}); };
   }
+  /* A decline travels with its why: the guest's first question at the desk
+     is the reason, and a no with no reason sends the desk back to the
+     masseuse's phone - the loop this page exists to end. A browser prompt
+     rather than a drawn field, the phonefix pattern: it is rare and it is
+     one line. Cancel on the prompt aborts the decline, which also guards a
+     mis-tap; an empty answer declines with no note. */
+  function declineWith(it2){
+    return function(){
+      var why = window.prompt('Nothing free - any reason to pass on? ' +
+                              'The guest will ask. Optional.', '');
+      if (why === null) return;
+      save(it2, 'declined', { note: why.trim() });
+    };
+  }
 
   if (!days.length){
     /* Nothing can be picked; only a decline still makes sense. */
-    if (!isNew) btn('Decline', 'quiet', saveAs('declined'));
+    if (!isNew) btn('Decline', 'quiet', declineWith(it));
   } else if (masseuse){
     if (isNew){
       /* The masseuse adding one was asked in person and knows his own
@@ -422,7 +437,7 @@ function card(it){
     } else {
       if (matchesAsk) btn('Confirm ' + when, 'solid', saveAs('booked'));
       btn('Suggest ' + when, matchesAsk ? 'quiet' : 'solid', saveAs('suggested'));
-      btn('Decline', 'quiet', saveAs('declined'));
+      btn('Decline', 'quiet', declineWith(it));
       hint = matchesAsk
         ? 'Confirm books it. Suggest offers this time as a change instead, ' +
           'amber until the front desk approves it with the guest. Decline ' +
@@ -438,18 +453,25 @@ function card(it){
     } else if (rec.status === 'suggested'){
       if (rec.day === SEL.day && rec.time === SEL.time){
         btn('Approve ' + when, 'solid', saveAs('booked'));
-        btn('Decline', 'quiet', saveAs('declined'));
+        btn('Decline', 'quiet', declineWith(it));
         hint = 'Approve once the guest has said yes - the booking turns ' +
                'green for everyone. The guest’s original ask stays on ' +
                'the record.';
       } else {
         btn('Ask again for ' + when, 'solid', saveAs('requested', { req: true }));
-        btn('Decline', 'quiet', saveAs('declined'));
+        btn('Decline', 'quiet', declineWith(it));
         hint = 'A different day or time goes back to the masseuse as a ' +
                'fresh ask.';
       }
     } else if (rec.status === 'declined'){
-      btn('Ask again for ' + when, 'solid', saveAs('requested', { req: true }));
+      /* The decline's other half: the desk telling the guest IS the action
+         the terracotta tile and the menu icon are chasing, so it gets a
+         tap of its own. Told, the tile stops instructing and the icon
+         stops counting it - the same self-clearing as every queue. */
+      if (!rec.told)
+        btn('Guest told', 'solid', saveAs('declined', { told: true }));
+      btn('Ask again for ' + when, rec.told ? 'solid' : 'quiet',
+          saveAs('requested', { req: true }));
     } else if (rec.status === 'booked'){
       if (changed) btn('Ask again for ' + when, 'solid', saveAs('requested', { req: true }));
       btn(changed ? 'Cancel' : 'Cancel booking', changed ? 'quiet' : 'solid',
@@ -493,7 +515,10 @@ function save(it, status, opts){
   if (status === 'booked' || status === 'suggested'){
     body.day = SEL.day; body.time = SEL.time;
   }
-  if (status === 'declined' && rec.note) body.note = rec.note;
+  var why = (opts.note !== undefined) ? opts.note : rec.note;
+  if (status === 'declined' && why) body.note = why;
+  if (status === 'declined' && (opts.told || rec.told))
+    body.told = rec.told || new Date().toISOString();
   var err = document.getElementById('errBar');
   err.textContent = '';
   fetch(DB + '/spa/' + id + '/' + tid + '.json', {

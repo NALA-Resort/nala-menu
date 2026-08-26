@@ -1651,10 +1651,20 @@ var NAV_ACTIONS = [
       fetch(DB + '/spa.json?v=' + Date.now())
         .then(function(r){ return r.ok ? r.json() : null; })
         .then(function(spa){
-          var n = 0;
+          /* Two queues wait on the desk: suggestions to put to the guest,
+             and declines the guest has not yet been told about - a told
+             decline carries its stamp and stops counting, 25 Aug. A stale
+             record whose day has passed stops chasing too: nobody can act
+             on last Tuesday. */
+          var today = dkey(new Date()), n = 0;
           Object.keys(spa || {}).forEach(function(id){
             Object.keys(spa[id] || {}).forEach(function(tid){
-              if ((spa[id][tid] || {}).status === 'suggested') n++;
+              var r2 = spa[id][tid] || {};
+              var d = r2.status === 'suggested' ? r2.day
+                                                : (r2.reqDay || r2.day);
+              if (d && d < today) return;
+              if (r2.status === 'suggested') n++;
+              else if (r2.status === 'declined' && !r2.told) n++;
             });
           });
           cb(n);
