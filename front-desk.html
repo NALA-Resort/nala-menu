@@ -943,8 +943,14 @@ function answersOf(r){
   var c = r.cell || {};
   var haveCell = !!(c && c.status);
   return {
+    /* true and false are the only answers; undefined AND null read as
+       unanswered. Null appears in the local optimistic copy when a save
+       clears the question (the segments un-answer since 26 Aug), and
+       reading it as false is exactly the invented Not dining the Save
+       button was renamed over. */
     dining:   haveCell ? (c.status === 'in')
-                       : (p.dining === undefined ? null : !!p.dining),
+                       : (p.dining === true || p.dining === false
+                            ? !!p.dining : null),
     pax:      haveCell ? (c.pax || r.stay.adults || 2)
                        : (p.pax || r.stay.adults || 2),
     diets:    fixDietList((haveCell && c.diets) ? c.diets : (p.diets || [])),
@@ -965,7 +971,7 @@ function answersOf(r){
     approach: p.approach || '',
     note:     (haveCell && c.note !== undefined) ? c.note : (p.note || ''),
     occasion: p.occasion || '',
-    wellness: p.wellness === undefined ? null : !!p.wellness,
+    wellness: p.wellness === true || p.wellness === false ? !!p.wellness : null,
     wellDay:  p.wellDay || '',
     wellTime: p.wellTime || '',
     wellQty:  p.wellQty === 2 ? 2 : 1,
@@ -1169,8 +1175,14 @@ function openGuest(r){
     document.getElementById('diningSeg').className = 'seg';
     document.getElementById('dChips').className = 'chips';
   }
-  document.getElementById('sDin').onclick = function(){ a.dining = true;  clearMiss(); paintDining(); };
-  document.getElementById('sOut').onclick = function(){ a.dining = false; clearMiss(); paintDining(); };
+  /* Tapping the chosen answer again clears it, the way back every chip on
+     this sheet already gives. Ruled by the owner, 26 Aug: every answer must
+     be undoable, or a mis-tap can never be reverted to "nobody asked" - the
+     only honest state for a question without an answer. */
+  document.getElementById('sDin').onclick = function(){
+    a.dining = (a.dining === true)  ? null : true;  clearMiss(); paintDining(); };
+  document.getElementById('sOut').onclick = function(){
+    a.dining = (a.dining === false) ? null : false; clearMiss(); paintDining(); };
 
   function paintPax(){
     var box = document.getElementById('paxRow'); box.innerHTML = '';
@@ -1338,8 +1350,12 @@ function openGuest(r){
       box.appendChild(b);
     });
   }
-  document.getElementById('wYes').onclick = function(){ a.wellness = true;  paintWellness(); };
-  document.getElementById('wNo').onclick  = function(){ a.wellness = false; paintWellness(); };
+  /* Same way back as the dining segment: tapping the chosen answer again
+     un-asks the question. */
+  document.getElementById('wYes').onclick = function(){
+    a.wellness = (a.wellness === true)  ? null : true;  paintWellness(); };
+  document.getElementById('wNo').onclick  = function(){
+    a.wellness = (a.wellness === false) ? null : false; paintWellness(); };
 
   /* The flag chips: the admin's list from Flag Settings, plus any name this
      booking already carries that the list no longer offers - painted anyway,
@@ -1543,14 +1559,23 @@ function save(r, a, checkin, confirm){
     note: a.note
   };
   /* Only answers somebody actually gave. dining and wellness are null until
-     asked, and null is not an answer: written, it comes back through
-     answersOf as false, which is how an untouched sheet grew a Not dining
-     and a Not interested nobody chose. Omitted, the PATCH leaves the
-     questions unanswered, which is what they are. There is no way on this
-     sheet to un-answer either, so null always means never asked. */
+     asked, and null is not an answer: written for a guest nobody asked, it
+     comes back through answersOf as false, which is how an untouched sheet
+     grew a Not dining and a Not interested nobody chose. Omitted, the PATCH
+     leaves the questions unanswered, which is what they are.
+
+     But null IS written when the record already holds an answer, because
+     since 26 Aug the segments un-answer: tapping the chosen side again is
+     the way back from a mis-tap, and an omitted key cannot clear a stored
+     true - the arriveApproved lesson. Null through a PATCH deletes the key,
+     which puts the question back to "nobody asked". */
+  var stored = r.pre || {};
   if (a.dining !== null){
     payload.dining = a.dining;
     payload.pax = a.dining ? a.pax : 0;
+  } else if (stored.dining !== undefined && stored.dining !== null){
+    payload.dining = null;
+    payload.pax = null;
   }
   if (a.wellness !== null){
     payload.wellness = a.wellness;
@@ -1559,6 +1584,12 @@ function save(r, a, checkin, confirm){
     payload.wellQty = a.wellness ? a.wellQty : null;
     payload.wellDur = a.wellness ? a.wellDur : null;
     payload.wellDur2 = (a.wellness && a.wellQty === 2) ? a.wellDur2 : null;
+  } else if (stored.wellness !== undefined && stored.wellness !== null){
+    /* Un-answering takes the day, time and lengths with it: they only meant
+       something while the answer stood. */
+    payload.wellness = null;
+    payload.wellDay = null; payload.wellTime = null;
+    payload.wellQty = null; payload.wellDur = null; payload.wellDur2 = null;
   }
   /* noDiets true is an answer. noDiets false is only an answer when it is
      clearing a stored true or standing beside chosen dietaries; written for
@@ -1595,8 +1626,12 @@ function save(r, a, checkin, confirm){
   r.pre  = Object.assign({}, r.pre || {}, payload);  /* optimistic */
   /* Only when there is a dining answer to show. Building the cell first and
      putting it back after would paint the guest as not dining for the frame
-     between the two. */
+     between the two. Un-answering takes an existing cell WITH it: the cell
+     can only say in or out, there is no third value, so the only honest
+     board entry for "nobody knows any more" is no entry - the villa goes
+     back to awaiting, which is what reverting a mistake means. */
   if (a.dining !== null) r.cell = dinnerCell(r, a);
+  else if (beforeCell) r.cell = null;
   OPEN = null;
   render(); closeSheet();
 
@@ -1607,7 +1642,8 @@ function save(r, a, checkin, confirm){
      is no third value, so writing one for a guest nobody has asked yet would
      put them on the kitchen's board as not dining. That is a worse lie than
      silence: the board would show a decision nobody made. A partial save keeps
-     everything else and leaves the cell alone until somebody answers. */
+     everything else and leaves an unwritten cell unwritten; an un-answer of a
+     cell that exists deletes it, for the same reason read the other way. */
   /* The internal note is its own write, to its own node, and deliberately not
      part of the both-or-neither pair below. It is management's private record
      and the guest's answers are the service's: a failure to save one must not
@@ -1665,6 +1701,13 @@ function save(r, a, checkin, confirm){
     writes.push(fetch(DB + '/dinner/' + nav.todayKey() + '/' + r.villa + '.json', {
       method: 'PUT', headers: { 'Content-Type':'application/json' },
       body: JSON.stringify(dinnerCell(r, a))
+    }));
+  } else if (beforeCell){
+    /* The un-answer's other half. Inside the both-or-neither pair on
+       purpose: a booking cleared while the cell stands would leave the
+       kitchen acting on an answer the desk just took back. */
+    writes.push(fetch(DB + '/dinner/' + nav.todayKey() + '/' + r.villa + '.json', {
+      method: 'DELETE'
     }));
   }
   Promise.all(writes).then(function(res){

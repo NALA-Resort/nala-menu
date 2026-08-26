@@ -527,6 +527,76 @@ with sync_playwright() as p:
          "()=>document.querySelector('.arr[data-villa=\"2\"]').className"))
     pg.close()
 
+    # ── the way back to nobody-asked ────────────────────────────
+    # Ruled by the owner, 26 Aug: every answer must be undoable. The chips
+    # always toggled off; the two segments could only switch sides, so a
+    # mis-tapped Dining could become Not dining but never again unknown -
+    # and unknown is the only honest state for a question without an answer.
+    # Tapping the chosen side again now clears it, the save writes the clear
+    # (null through the PATCH deletes the key), and an existing dinner cell
+    # is deleted with it, because a cell has no third value and the villa
+    # must go back to awaiting.
+    DINNER["4"] = {"status": "in", "pax": 2, "by": "staff",
+                   "diets": ["Nut allergy"], "dnote": "the daughter"}
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    ck("the answers arrive selected, as before",
+       pg.evaluate("()=>sDin.className==='on'&&wYes.className==='on'"))
+    pg.locator("#sDin").click(); pg.wait_for_timeout(150)
+    ck("tapping the chosen dining answer again clears the segment",
+       pg.evaluate("()=>sDin.className===''&&sOut.className===''"))
+    ck("and the covers go with it, since they only mean something dining",
+       pg.evaluate("()=>paxWrap.style.display==='none'"))
+    pg.locator("#wYes").click(); pg.wait_for_timeout(150)
+    ck("the wellness segment gives the same way back",
+       pg.evaluate("()=>wYes.className===''&&wNo.className===''"))
+    ck("and the day and time fold away with it",
+       pg.evaluate("()=>wWrap.style.display==='none'"))
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(600)
+    w = [x for x in WRITES if "/bookings/b4/prearrival" in x["u"]]
+    ck("the save writes the clear as null, not omission, or nothing clears",
+       len(w) == 1 and "dining" in json.loads(w[0]["b"])
+       and json.loads(w[0]["b"])["dining"] is None
+       and json.loads(w[0]["b"])["pax"] is None)
+    ck("wellness clears the same way, taking day, time and lengths with it",
+       len(w) == 1 and all(json.loads(w[0]["b"]).get(k, "MISSING") is None
+       for k in ("wellness", "wellDay", "wellTime", "wellQty", "wellDur")))
+    ck("and the dinner cell is deleted, so the villa reads awaiting again",
+       len([x for x in WRITES if x["m"] == "DELETE"
+            and ("/dinner/" + today + "/4") in x["u"]]) == 1)
+    # What the boards then say: the summary reads unanswered, not a decision.
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    sumtxt = pg.locator(".sum").inner_text()
+    ck("the summary reads the question as unanswered again",
+       "Not answered" in sumtxt and "Not dining" not in sumtxt
+       and "Not interested" not in sumtxt)
+    ck("the fork goes back to grey",
+       pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"] .fork')"
+                   ".className") == "fork un")
+    ck("and the row drops from green to part answered",
+       "part-form" in pg.evaluate(
+         "()=>document.querySelector('.arr[data-villa=\"4\"]').className"))
+    pg.close()
+    DINNER.clear()
+
+    # A record that never held the answer gets no null either: the clear is
+    # written only when there is something to clear, or every bare save
+    # would stamp deletions over keys that do not exist.
+    pg = board()
+    pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
+    pg.locator("#sDin").click(); pg.wait_for_timeout(150)
+    pg.locator("#sDin").click(); pg.wait_for_timeout(150)
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(600)
+    w = [x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]
+    ck("answering and un-answering before ever saving writes no dining at all",
+       len(w) == 1 and "dining" not in json.loads(w[0]["b"]))
+    ck("and deletes no cell, since none was ever written",
+       not [x for x in WRITES if x["m"] == "DELETE"])
+    pg.close()
+
     # ── reception's approved hour, beside the guest's slot ──────
     # The guest asks, reception decides. The approved hour is its own field:
     # setting it never touches the slot the guest chose, clearing it leaves
