@@ -244,16 +244,23 @@ function lineOf(rec, id){
   var stay = bk ? ' · staying ' + stayRange(bk) : '';
   var ask = (rec.reqDay ? shortDay(rec.reqDay) : 'no day picked') +
             (rec.reqTime ? ' · ' + rec.reqTime : ' · no time given');
+  /* Both lengths on a pair, in order - '1.5 hr + 1 hr' - because the
+     masseuse plans his day by time and length, and a hidden second length
+     was the bug that forced the pair onto one tile. */
   var len = spaDur(rec.dur) ? ' · ' + spaDur(rec.dur).short : '';
+  if (rec.qty === 2)
+    len = ' · ' + (spaDur(rec.dur) ? spaDur(rec.dur).short : '?') +
+          ' + ' + (spaDur(rec.dur2) ? spaDur(rec.dur2).short : '?');
+  var two = rec.qty === 2 ? 'Two massages · ' : '';
   if (rec.status === 'requested' || rec.virtual)
-    return (rec.reqDay ? 'Asked for ' + ask
+    return two + (rec.reqDay ? 'Asked for ' + ask
                        : 'Interested, no day picked' +
                          (rec.reqTime ? ' · ' + rec.reqTime : '')) + len + stay;
   if (rec.status === 'suggested')
-    return 'Suggested ' + shortDay(rec.day) + ' ' + slotLabel(rec.time) + len +
+    return two + 'Suggested ' + shortDay(rec.day) + ' ' + slotLabel(rec.time) + len +
            ' · asked for ' + ask;
   if (rec.status === 'booked')
-    return shortDay(rec.day) + ' ' + slotLabel(rec.time) + len +
+    return two + shortDay(rec.day) + ' ' + slotLabel(rec.time) + len +
            (asRequested(rec) ? ' · as requested'
                              : ' · moved from ' + (rec.reqDay ? shortDay(rec.reqDay) : 'no day') +
                                (rec.reqTime ? ', ' + rec.reqTime : '')) +
@@ -283,31 +290,22 @@ function items(){
   Object.keys(BOOKINGS).forEach(function(id){
     var p = BOOKINGS[id].pre;
     if (!p || p.wellness !== true) return;
-    /* The form says how many; each unanswered one is its own white tile
-       with its own length. Answering writes a prearrival-source record,
-       and the count of those is how many of the asks are spoken for. */
-    var want = p.wellQty === 2 ? 2 : 1;
-    var have = Object.keys(SPA[id] || {}).filter(function(tid){
+    /* One ask for the whole request, however many massages it holds. Two
+       tiles for a pair hid the second massage's length behind the first,
+       the owner ruled 26 Aug: the pair travels together - one day, one
+       time, a length each - and the card shows both. Answering writes a
+       prearrival-source record, which is the ask spoken for. */
+    var have = Object.keys(SPA[id] || {}).some(function(tid){
       return (SPA[id][tid] || {}).source === 'prearrival';
-    }).length;
-    for (var i = have; i < want; i++)
-      out.push({ id: id, tid: 'ask' + i, rec: {
+    });
+    if (!have)
+      out.push({ id: id, tid: 'ask0', rec: {
         virtual: true, status: 'requested',
         reqDay: p.wellDay || '', reqTime: p.wellTime || '',
-        dur: i === 0 ? (spaDur(p.wellDur) ? p.wellDur : 0)
-                     : (spaDur(p.wellDur2) ? p.wellDur2 : 0)
+        qty: p.wellQty === 2 ? 2 : 1,
+        dur: spaDur(p.wellDur) ? p.wellDur : 0,
+        dur2: p.wellQty === 2 && spaDur(p.wellDur2) ? p.wellDur2 : 0
       } });
-  });
-  /* Which of the pair a tile is. Counted over what exists - real records
-     and open asks together - so a desk-added second massage numbers the
-     pair the same as a form ask, and a lone massage says nothing. */
-  var perBk = {};
-  out.forEach(function(it){ perBk[it.id] = (perBk[it.id] || 0) + 1; });
-  var seen = {};
-  out.forEach(function(it){
-    if (perBk[it.id] < 2) return;
-    seen[it.id] = (seen[it.id] || 0) + 1;
-    it.pair = 'Massage ' + seen[it.id] + ' of ' + perBk[it.id];
   });
   return out;
 }
@@ -326,8 +324,7 @@ function tile(it){
   el.querySelector('.v').textContent = villaOf(it.id, dayOf(rec) || todayKey());
   el.querySelector('.nm').textContent = nameOf(it.id, rec);
   setCmp(el, it.id);
-  el.querySelector('.st').textContent =
-    (it.pair ? it.pair + ' · ' : '') + lineOf(rec, it.id);
+  el.querySelector('.st').textContent = lineOf(rec, it.id);
   el.onclick = function(){
     OPEN = { id: it.id, tid: it.tid };
     SEL = null;
@@ -380,7 +377,9 @@ function card(it){
   if (!SEL) SEL = {
     day: rec.day || (rec.reqDay && days.indexOf(rec.reqDay) > -1 ? rec.reqDay : days[0] || ''),
     time: rec.time || spaSlotFromText(rec.reqTime) || '10:00',
-    dur: spaDur(rec.dur) ? rec.dur : 60
+    qty: rec.qty === 2 ? 2 : 1,
+    dur: spaDur(rec.dur) ? rec.dur : 60,
+    dur2: spaDur(rec.dur2) ? rec.dur2 : 60
   };
 
   var el = document.createElement('div');
@@ -396,7 +395,7 @@ function card(it){
   setCmp(head, id);
   head.querySelector('.st').textContent = isNew
     ? 'A new treatment · staying ' + stayRange(BOOKINGS[id])
-    : (it.pair ? it.pair + ' · ' : '') + lineOf(rec, id);
+    : lineOf(rec, id);
   head.onclick = function(){ OPEN = null; SEL = null; paint(); };
   el.appendChild(head);
 
@@ -432,18 +431,37 @@ function card(it){
   sel.onchange = function(){ SEL.time = sel.value; paint(); };
   el.appendChild(sel);
 
-  var subL = document.createElement('div'); subL.className = 'sub';
-  subL.textContent = 'Length'; el.appendChild(subL);
-  var lens = document.createElement('div'); lens.className = 'chips';
-  SPA_DURS.forEach(function(x){
+  /* How many, then a length for each - the pair edited whole from this
+     card, by the desk and the masseuse alike, the owner's ruling of
+     26 Aug after two tiles hid the second massage's length. */
+  var subQ = document.createElement('div'); subQ.className = 'sub';
+  subQ.textContent = 'Massages'; el.appendChild(subQ);
+  var qrow = document.createElement('div'); qrow.className = 'chips';
+  [1, 2].forEach(function(n){
     var c = document.createElement('button');
     c.type = 'button';
-    c.className = 'chip' + (SEL.dur === x.m ? ' on' : '');
-    c.textContent = x.label;
-    c.onclick = function(){ SEL.dur = x.m; paint(); };
-    lens.appendChild(c);
+    c.className = 'chip' + (SEL.qty === n ? ' on' : '');
+    c.textContent = n === 1 ? 'One' : 'Two';
+    c.onclick = function(){ SEL.qty = n; paint(); };
+    qrow.appendChild(c);
   });
-  el.appendChild(lens);
+  el.appendChild(qrow);
+  function lenRow(label, key){
+    var subL = document.createElement('div'); subL.className = 'sub';
+    subL.textContent = label; el.appendChild(subL);
+    var lens = document.createElement('div'); lens.className = 'chips';
+    SPA_DURS.forEach(function(x){
+      var c = document.createElement('button');
+      c.type = 'button';
+      c.className = 'chip' + (SEL[key] === x.m ? ' on' : '');
+      c.textContent = x.label;
+      c.onclick = function(){ SEL[key] = x.m; paint(); };
+      lens.appendChild(c);
+    });
+    el.appendChild(lens);
+  }
+  lenRow(SEL.qty === 2 ? '1st length' : 'Length', 'dur');
+  if (SEL.qty === 2) lenRow('2nd length', 'dur2');
 
   var btns = document.createElement('div'); btns.className = 'btns';
   var when = shortDay(SEL.day) + ' ' + slotLabel(SEL.time);
@@ -581,6 +599,14 @@ function save(it, status, opts){
   if (status === 'declined' && why) body.note = why;
   if (SEL && spaDur(SEL.dur)) body.dur = SEL.dur;
   else if (spaDur(rec.dur)) body.dur = rec.dur;
+  /* A pair is one record: qty 2 and a second length. A PUT of qty one
+     simply carries neither, which is what makes One a real answer. */
+  var qty = SEL ? SEL.qty : (rec.qty === 2 ? 2 : 1);
+  if (qty === 2){
+    body.qty = 2;
+    body.dur2 = (SEL && spaDur(SEL.dur2)) ? SEL.dur2
+              : (spaDur(rec.dur2) ? rec.dur2 : 60);
+  }
   if (status === 'booked' && (opts.manual || rec.manual))
     body.manual = rec.manual || new Date().toISOString();
   if (status === 'declined' && (opts.told || rec.told))

@@ -549,6 +549,12 @@
           "dur": {
             ".validate": "newData.isNumber() && (newData.val() == 60 || newData.val() == 90 || newData.val() == 120)"
           },
+          "qty": {
+            ".validate": "newData.isNumber() && (newData.val() == 1 || newData.val() == 2)"
+          },
+          "dur2": {
+            ".validate": "newData.isNumber() && (newData.val() == 60 || newData.val() == 90 || newData.val() == 120)"
+          },
           "told": {
             ".validate": "newData.isString() && newData.val().length <= 40"
           },

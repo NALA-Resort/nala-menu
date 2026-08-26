@@ -573,6 +573,14 @@ cannotPatch('but not something the length of a paragraph', SYNC,
      as2('ms@x').write('/spa/b-1001/t1', Object.assign({}, T, {dur: 90})).allowed);
   ck('a length off the menu is refused',
      !as2('ms@x').write('/spa/b-1001/t1', Object.assign({}, T, {dur: 45})).allowed);
+  ck('a pair rides one record: two massages, a length each',
+     as2('ms@x').write('/spa/b-1001/t1',
+       Object.assign({}, T, {qty: 2, dur: 60, dur2: 120})).allowed);
+  ck('three massages is not an answer the form can give',
+     !as2('ms@x').write('/spa/b-1001/t1', Object.assign({}, T, {qty: 3})).allowed);
+  ck('and the second length obeys the same menu',
+     !as2('ms@x').write('/spa/b-1001/t1',
+       Object.assign({}, T, {qty: 2, dur2: 45})).allowed);
   ck('and suggests a different day instead',
      as2('ms@x').write('/spa/b-1001/t1',
        Object.assign({}, T, {status:'suggested', day:'2026-09-12', time:'10:30'})).allowed);
