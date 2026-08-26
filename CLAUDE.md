@@ -119,6 +119,10 @@ The Reservations green and terracotta tiles are a contract between boards:
 suites assert them by computed colour, not class name. Change them in one
 place and the suites will name every other.
 
+Buttons have a law of their own — **the button law, STYLEGUIDE.md** (ruled
+26 Aug): one solid primary per surface, destructive actions wear terracotta
+outline and always confirm before writing. Read it before adding any button.
+
 ---
 
 ## When you break these rules
@@ -137,6 +141,10 @@ can find the reasoning for.
   get right that pasted markup does by hand: each page omits its own link,
   and the permission keys are `resSheet` and `cleansBoard` — not the
   `resBoard`/`cleanBoard` you would guess.
+- **Destructive buttons predating the button law** (STYLEGUIDE.md). spa.html
+  obeys it; every other page's cancels and deletes are still solid or quiet
+  ink with no confirmation. Dress and confirm them when you next touch the
+  page.
 
 ---
 

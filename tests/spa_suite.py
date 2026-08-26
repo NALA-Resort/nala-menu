@@ -266,6 +266,37 @@ with sync_playwright() as p:
        body3.get("status") == "booked" and body3.get("dur") == 120)
     SPA = spa_seed()
     pg.close()
+
+    # ── the button law ──────────────────────────────────────────
+    # Destructive wears terracotta outline, never solid ink, and always asks
+    # first - the dialog's Cancel costs nothing. STYLEGUIDE.md, 26 Aug.
+    pg = board()
+    pg.locator('#board [data-booking="b3"]').click(); pg.wait_for_timeout(300)
+    ck("Cancel booking wears the terracotta outline, not solid ink",
+       pg.evaluate("()=>{var b=[...document.querySelectorAll('.card .cbtn')]"
+                   ".find(x=>x.textContent==='Cancel booking');"
+                   "var s=getComputedStyle(b);"
+                   "return s.color==='rgb(158, 100, 85)' && "
+                   "s.backgroundColor==='rgba(0, 0, 0, 0)';}"))
+    del WRITES[:]
+    pg.once("dialog", lambda d: d.dismiss())
+    pg.locator('.card .cbtn', has_text="Cancel booking").click(); pg.wait_for_timeout(600)
+    ck("cancelling asks first, and the dialog's Cancel costs nothing",
+       not [x for x in WRITES if "/spa/b3/" in x["u"]])
+    pg.once("dialog", lambda d: d.accept())
+    pg.locator('.card .cbtn', has_text="Cancel booking").click(); pg.wait_for_timeout(900)
+    w3c = [x for x in WRITES if "/spa/b3/" in x["u"]]
+    ck("agreeing cancels it",
+       len(w3c) == 1 and json.loads(w3c[0]["b"]).get("status") == "declined")
+    SPA = spa_seed()
+    pg.close()
+    pg = board()
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    ck("Decline wears the same terracotta dress",
+       pg.evaluate("()=>{var b=[...document.querySelectorAll('.card .cbtn')]"
+                   ".find(x=>x.textContent==='Decline');"
+                   "return getComputedStyle(b).color==='rgb(158, 100, 85)';}"))
+    pg.close()
     pg = board()
 
     # The stats are the masseuse's whole queue, not today's slice: b9 today,

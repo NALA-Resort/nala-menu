@@ -57,6 +57,31 @@ the real site - pending screenshots). Staff controls never appear here.
 
 - **Rectangle with border or solid fill = a button.** Nothing else may use
   that dress. Primary solid ink, secondary outlined.
+
+## The button law
+
+Ruled by the owner, 26 Aug, after a solid-black Cancel booking sat beside a
+solid-black Save with neither a colour nor a question between them. One
+dress per job, and the dangerous ones both look it and ask first:
+
+| Dress | Job | Confirms before writing? |
+|---|---|---|
+| Solid ink | THE primary constructive action - book, save, send, approve. At most one per card or surface | Never - its undo is the cancel path |
+| Ink outline (quiet) | Secondary and neutral - back, ask again, options | Never |
+| Terracotta outline - border `--terra-b`, ink `--terra`, no fill | Destroys or walks back something a guest holds or was told: cancel, decline, delete, remove, resend-over | **Always** |
+
+- A destructive button never wears solid ink, and never red: red is
+  failure's alone (the colour law, CLAUDE.md).
+- The confirmation is a browser dialog that names the guest and the thing -
+  "Cancel Robyn's Thu 27 2:00 pm massage?" - and cancelling the dialog costs
+  nothing. A prompt that collects a reason (the decline pattern) counts as
+  the confirmation: its Cancel aborts the act.
+- Constructive buttons never confirm. If tapping one feels like it needs a
+  warning, the label is wrong, not the dialog missing.
+
+Applied on spa.html. Every other page's destructive buttons predate the law:
+dress and confirm them when that page is next touched, not as a standalone
+sweep of a live system.
 - **Tinted rounded pill = status** (e.g. MENU NOT PUBLISHED). Never tappable.
 - **Plain typography = information.** Stats are a bare number over a small
   label (`.stats`/`.stat`), never boxed. Attention turns the number red,
