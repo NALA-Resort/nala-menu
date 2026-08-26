@@ -548,7 +548,7 @@
       if (!stillValid(pub)) return;                // stale -> placeholder
       res.data.date = dateLabel(pub);
       MENU = res.data;
-      if (MENU.dietaries && MENU.dietaries.length) DIETARIES = MENU.dietaries.slice();
+      if (MENU.dietaries && MENU.dietaries.length) DIETARIES = fixDietList(MENU.dietaries);
       if (document.getElementById('chips')) paintChips();
       showMenu(res.data);
     })
@@ -567,7 +567,9 @@
         var names = [], groups = {};
         Object.keys(master).forEach(function(k){
           var d = master[k];
-          if (d && d.active){ names.push(d.name || k); groups[d.name || k] = d.group || 'common'; }
+          if (d && d.active){ var n = fixDietName(d.name || k);
+            if (names.indexOf(n) === -1) names.push(n);
+            groups[n] = d.group || 'common'; }
         });
         if (names.length){
           names.sort(function(a,b){
@@ -581,7 +583,7 @@
       }
       if (tags && MENU){
         ['bread','entree','main','dessert'].forEach(function(c){
-          if (MENU[c] && tags[c]) MENU[c].conflicts = tags[c];
+          if (MENU[c] && tags[c]) MENU[c].conflicts = fixDietList(tags[c]);
         });
       }
       if (document.getElementById('chips')) paintChips();
@@ -592,8 +594,28 @@
   // ══ RSVP ═══════════════════════════════════════════════════
   var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
   var CUTOFF_HOUR = 12;
-  var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+  var DIETARIES = ['Gluten','Dairy','Vegetarian','Vegan','Pescatarian',
                    'Nut allergy','Shellfish allergy','Egg allergy'];
+
+  /* Two pills were renamed on 26 Aug - a pill names the thing the guest
+     cannot eat, so "free" came off. Saved answers keep the old wording, in
+     this booking's pre-arrival record and in tonight's cell, so every read
+     maps old to new: the old answer still lights its chip, still hits the
+     menu-tag comparison, and the next save writes the new name back.
+
+     A copy of the table in nala-shared.js, forced: this is a guest page and
+     staff code never reaches it. tests/diet_renames.json is the shared table
+     all copies are checked against - add renames there, never to one copy. */
+  var DIET_RENAMES = { 'Gluten free': 'Gluten', 'Dairy free': 'Dairy' };
+  function fixDietName(d){ return DIET_RENAMES[d] || d; }
+  function fixDietList(list){
+    var out = [];
+    (list || []).forEach(function(d){
+      d = fixDietName(d);
+      if (out.indexOf(d) === -1) out.push(d);
+    });
+    return out;
+  }
 
   function todayKey(){
     var d=new Date();
@@ -1061,11 +1083,11 @@
         var pre = res[1] || {};
         /* Standing dietaries carry across nights. They come from the guest's
            own pre-arrival answers now, not from a profile keyed on a phone. */
-        if (pre.diets && pre.diets.length) state.diets = pre.diets;
+        if (pre.diets && pre.diets.length) state.diets = fixDietList(pre.diets);
 
         if (tonight && tonight.status){
           state.pax   = Math.min(tonight.pax || 2, G.room ? 2 : 4);
-          state.diets = tonight.diets || state.diets;
+          state.diets = tonight.diets ? fixDietList(tonight.diets) : state.diets;
           state.note  = tonight.note || '';
           state.dnote = tonight.dnote || '';
           state.nodiet = !!tonight.nodiet;

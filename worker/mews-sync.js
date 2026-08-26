@@ -440,6 +440,14 @@ function readReservation(p) {
        The clear-out above retires what those seven days imported. */
     customerId:    pickGuid(p, ["CustomerId", "customer_id", "CustomerID",
                                 "AccountId", "customerId"]),
+    /* The Mews rate, as words. The desk's booking flags (Luxury Escapes,
+       Breakfast included) switch themselves on from this string, matched in
+       BOOKING_FLAGS in nala-shared.js - matched THERE and not here, so the
+       rule lives once and this Worker stays a courier. Which key the Zap
+       maps it under has not been seen live, hence the spread; RateId is a
+       GUID and useless to a human, so only the name is kept. */
+    rate:          pick(p, ["RateName", "Rate Name", "rate_name", "rateName",
+                            "RatePlanName", "Rate", "rate"]),
     adults:        pick(p, ["AdultCount", "adults"]),
     children:      pick(p, ["ChildCount", "children"])
 
@@ -593,7 +601,7 @@ export default {
         }
       }
 
-      await db(env, "/bookings/" + r.id + "/pms", "PATCH", {
+      const pmsPatch = {
         /* Every value coerced to what the rule expects. See asText above for
            why nothing here is trusted and why a bad value becomes null rather
            than a guess. The lengths match rules.json exactly: a value trimmed
@@ -630,7 +638,18 @@ export default {
         notes: null, notesType: null, spaceState: null, guestNotes: null,
         updated: asText(r.updated, 40),
         syncedAt: new Date().toISOString()
-      });
+      };
+      /* The rate, only when the Zap sent one that coerces to text - an
+         omission, not an explicit null like the notes above. Those nulls
+         REMOVE fields on purpose; the rate is a field the triggers carry
+         unevenly, and a modification mapped without it must not delete what
+         the new-reservation event stored, or the breakfast pill vanishes
+         from the Service Sheet the first time the guest changes anything.
+         Coerced BEFORE the test for the same reason: a Rate mapped as a
+         nested object coerces to null, and null here is a deletion. */
+      const rateText = asText(r.rate, 120);
+      if (rateText !== null) pmsPatch.rate = rateText;
+      await db(env, "/bookings/" + r.id + "/pms", "PATCH", pmsPatch);
 
       /* The summary is duplicated into every night rather than stored once
          with the nights pointing at it. A board reads one date and needs the

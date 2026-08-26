@@ -188,6 +188,7 @@ PAGES = [
     ("tally.html",        ""),
     ("spa.html",          ""),
     ("tag.html",          ""),
+    ("flags.html",        ""),
     #  The menu arrives in the address, so an empty publish page is not
     #  the page the chef ever sees. Swept with a menu in it.
     ("publish.html",      PUBLISH_QS),

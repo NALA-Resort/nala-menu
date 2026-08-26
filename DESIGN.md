@@ -112,6 +112,16 @@ so they join with no lookup and no matching, whichever lands first. Mews
 updates `pms` forever after and never touches `prearrival`. The guest can
 revise `prearrival` and never touches `pms`.
 
+**Booking flags, 26 Aug.** Short facts pinned under a guest's name - VIP,
+Travel agent, Breakfast included. Three nodes, three owners, no exceptions
+to the split above: `/flags` is the master list an admin edits on Flag
+Settings (`flags.html`); `/bookflags/<booking id>` is the set the desk
+ticked for one booking, admin-written, staff-readable; and `pms.rate` is the
+Mews rate name the Worker carries, which by itself puts a Luxury Escapes
+pill on a booking - that rate and no other, the owner's ruling. What a
+booking wears resolves once, in `bookingFlagLabels` in `nala-shared.js`,
+read by the desk and the Service Sheet alike.
+
 **In house.** Boards read `/stays` for who is where and the booking node for
 what they said. Staff can override to dining, not dining or vacant. A vacant
 contradicting Mews warns first and holds until Mews next changes that booking.

@@ -40,10 +40,17 @@ FULL_MENU = {"published": now.isoformat(),
              "bread": {"name": "Sourdough"}, "entree": {"name": "Kingfish crudo"},
              "main": {"name": "Lamb rump"}, "dessert": {"name": "Pavlova"}}
 
-MASTER = {"Gluten free": {"name": "Gluten free", "active": True, "group": "common"},
+MASTER = {"Gluten":      {"name": "Gluten", "active": True, "group": "common"},
           "Nut allergy": {"name": "Nut allergy", "active": True, "group": "common"},
           "Chilli":      {"name": "Chilli", "active": True, "group": "menu"},
           "Old thing":   {"name": "Old thing", "active": False, "group": "common"}}
+
+# A list saved before the 26 Aug renames: two pills still wear the old
+# wording. The page must show them renamed and OFFER a save, never write one
+# unasked - Save is a PUT of the whole list and stays a person's decision.
+OLD_MASTER = {"Gluten free": {"name": "Gluten free", "active": True, "group": "common"},
+              "Dairy free":  {"name": "Dairy free", "active": False, "group": "common"},
+              "Nut allergy": {"name": "Nut allergy", "active": True, "group": "common"}}
 
 STAFF = {"chef@x": {"name": "Chef", "role": "chef"},
          "staff@x": {"name": "Admin", "role": "admin"},
@@ -129,7 +136,7 @@ with sync_playwright() as p:
        "publish" in pg.inner_text(".lede").lower())
     ck("it calls itself settings, not tonight's menu",
        "dietary settings" in pg.inner_text(".pagename").lower())
-    ck("the list itself is here", "Gluten free" in pg.inner_text("#mng"))
+    ck("the list itself is here", "Gluten" in pg.inner_text("#mng"))
     ck("archived dietaries are shown, so they can be brought back",
        "Old thing" in pg.inner_text("#mng"))
     ck("nothing is offered to save before anything is touched",
@@ -161,7 +168,7 @@ with sync_playwright() as p:
     #  reach publishing at all.
     CANON = ["front-desk.html", "tally.html", "invitations.html", "arrivals-sms.html", "cleaners.html", "spa.html", "publish.html",
              "list.html", "housekeeping.html", "registration.html", "menu-print.html", "past-menus.html",
-             "staff.html", "tag.html", "pages.html"]
+             "staff.html", "tag.html", "flags.html", "pages.html"]
     got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     ck("the menu is the one list, minus this page",
@@ -273,22 +280,47 @@ with sync_playwright() as p:
     ck("an empty name adds nothing", "show" not in (pg.get_attribute("#savebar", "class") or ""))
     pg.close()
 
-    # Archiving has to pull the dietary off the dishes as well, or the tag
-    # survives invisibly and the guest page keeps acting on it.
+    # Hiding has to pull the dietary off the dishes as well, or the tag
+    # survives invisibly and the guest page keeps acting on it. The button
+    # says Hide, not Archive - the owner's word, 26 Aug, same as Flag
+    # Settings, so the two Settings pages speak alike.
     pg = open_tag()
     row = pg.locator(".mrow").filter(has_text="Nut allergy")
+    ck("an active dietary offers Hide, and no Delete: hide first, then delete",
+       row.locator(".mtog").text_content() == "Hide"
+       and row.locator(".mdel").count() == 0)
     row.locator(".mtog").click(); pg.wait_for_timeout(150)
-    #  Archived means the guest is no longer offered it. The publish page
+    #  Hidden means the guest is no longer offered it. The publish page
     #  reads the same list and stops offering it as a tick for the same
     #  reason, which is checked there.
-    ck("archiving marks it off, without deleting it",
+    ck("hiding marks it off, without deleting it",
        "off" in (pg.evaluate("()=>[...document.querySelectorAll('.mrow')].find(r=>r.textContent.indexOf('Nut allergy')>-1).className") or ""))
     pg.click("#saveBtn"); pg.wait_for_timeout(400)
-    ck("and nothing is written to tonight's tags by archiving either",
+    ck("and nothing is written to tonight's tags by hiding either",
        not wrote("/menutags/"))
-    ck("but the dietary itself is kept, archived, not deleted",
+    ck("but the dietary itself is kept, hidden, not deleted",
        "Nut allergy" in json.loads(wrote("/dietaries")[0]["b"]) and
        json.loads(wrote("/dietaries")[0]["b"]).get("Nut allergy", {}).get("active") is False)
+
+    #  Delete, offered only once a dietary is hidden, lands only on Save: a
+    #  mis-tap costs a re-add, not a dietary. "Old thing" arrives hidden in
+    #  the fixture, so it is the one carrying the button.
+    old_row = pg.locator(".mrow").filter(has_text="Old thing")
+    ck("a hidden dietary offers Delete beside Show",
+       old_row.locator(".mtog").first.text_content() == "Show"
+       and old_row.locator(".mdel").count() == 1)
+    old_row.locator(".mdel").click(); pg.wait_for_timeout(150)
+    ck("Delete takes the row off the list",
+       pg.evaluate("()=>![...document.querySelectorAll('.mrow')]"
+                   ".some(r=>r.textContent.indexOf('Old thing')>-1)"))
+    del WRITES[:]
+    pg.click("#saveBtn"); pg.wait_for_timeout(400)
+    #  Anchored on Nut allergy, not Gluten free: the rename tests above have
+    #  already worked on the fixture by the time this runs.
+    ck("and Save writes the list without it, for good",
+       bool(wrote("/dietaries")) and
+       "Old thing" not in wrote("/dietaries")[0]["b"] and
+       "Nut allergy" in wrote("/dietaries")[0]["b"])
     pg.close()
 
     # ── the menu is no longer this page's business ────────────
@@ -339,6 +371,46 @@ with sync_playwright() as p:
     pg = open_tag()
     ck("an empty list seeds the common dietaries", "Pescatarian" in pg.inner_text("#mng"))
     ck("and the whole set is listed", "Vegan" in pg.inner_text("#mng"))
+    ck("and the seeded pills carry the renamed wording",
+       "Gluten" in pg.inner_text("#mng") and
+       "Gluten free" not in pg.inner_text("#mng"))
+    pg.close()
+    STATE["master"] = MASTER
+
+    # ── a list saved before the 26 Aug renames ────────────────────
+    # "Gluten free" and "Dairy free" became "Gluten" and "Dairy". The stored
+    # list still says the old names; the page shows the new ones and OFFERS
+    # the save that would teach the database - offered, never written unasked,
+    # because Save is a PUT of the whole list and stays a person's decision.
+    # Guest answers saved under the old names need no sweep: every reader
+    # maps them, which index/pre/fd/tally suites pin on their own screens.
+    STATE["master"] = OLD_MASTER
+    pg = open_tag()
+    ck("a pill saved under its old name is shown renamed",
+       "Gluten" in pg.inner_text("#mng") and
+       "Gluten free" not in pg.inner_text("#mng"))
+    ck("an archived one is renamed too, still archived",
+       "Dairy" in pg.inner_text("#mng") and
+       "Dairy free" not in pg.inner_text("#mng"))
+    ck("the rename is offered as a save, since screen and database now differ",
+       "show" in (pg.get_attribute("#savebar", "class") or ""))
+    ck("but nothing is written until somebody presses it", not WRITES)
+    # The rename table on this page comes from nala-shared.js; the guest pages
+    # carry forced copies. tests/diet_renames.json is the one table all of
+    # them are checked against.
+    RENAMES = json.load(open("tests/diet_renames.json"))
+    ck("the shared rename table matches tests/diet_renames.json",
+       pg.evaluate("()=>DIET_RENAMES") == RENAMES)
+    pg.click("#saveBtn"); pg.wait_for_timeout(400)
+    saved = json.loads(wrote("/dietaries")[0]["b"])
+    ck("pressing Save writes the list under the new names",
+       "Gluten" in saved and "Dairy" in saved and
+       "Gluten free" not in saved and "Dairy free" not in saved)
+    ck("with each record renamed, nothing else about it changed",
+       saved["Gluten"] == {"name": "Gluten", "active": True, "group": "common"} and
+       saved["Dairy"]["active"] is False)
+    ck("and the untouched pill rides along as it was",
+       saved.get("Nut allergy", {}).get("active") is True)
     pg.close()
     STATE["master"] = MASTER
 

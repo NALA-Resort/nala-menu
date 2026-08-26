@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<title>Nala · Booking Flags</title>
+<style>
+  /* tag.html's sheet, deliberately: the two pages are siblings under
+     Settings and should read as one family. The hamburger is written out
+     here for the same reason it is written out there - nala-ui.css is a
+     layout system whose tokens only exist on a tiered body, and this page
+     carries no tier. */
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E; }
+  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
+         padding:28px 24px 60px; -webkit-tap-highlight-color:transparent; }
+  .wrap { max-width:520px; margin:0 auto; }
+  .navrow { display:flex; margin-bottom:10px; }
+  .navwrap { position:relative; margin-left:auto; z-index:500; }
+  .navbtn { width:42px; height:36px; border:1px solid var(--rule);
+            background:var(--cream); border-radius:8px; cursor:pointer;
+            display:flex; flex-direction:column; align-items:center;
+            justify-content:center; gap:4px; padding:0;
+            -webkit-tap-highlight-color:transparent; }
+  .navbtn span { display:block; width:16px; height:1.6px; background:var(--ink); }
+  .navdrop { display:none; position:absolute; right:0; top:42px;
+             background:var(--cream); border:1px solid var(--rule);
+             border-radius:9px; min-width:150px; padding:5px 0;
+             box-shadow:0 4px 14px rgba(0,0,0,.09); }
+  .navdrop.open { display:block; }
+  .navdrop a { display:block; padding:12px 18px;
+               font-family:Helvetica,Arial,sans-serif; font-size:10px;
+               letter-spacing:.14em; text-transform:uppercase; color:var(--ink);
+               text-decoration:none; white-space:nowrap; }
+  .navgrp { padding:12px 18px 5px; font-size:8px; letter-spacing:.2em;
+            text-transform:uppercase; color:#B0B0A8;
+            border-top:1px solid var(--rule); margin-top:5px; }
+  .navdrop > .navgrp:first-child { border-top:0; margin-top:0; padding-top:6px; }
+  .navdrop a.navaction { display:flex; align-items:center;
+                        justify-content:space-between; gap:14px; color:var(--ink); }
+  .navmark { display:inline-flex; flex:0 0 auto; }
+  .navmark.on  { color:#3F7A52; }
+  .navmark.off { color:#B0B0A8; }
+  .navnote { flex:0 0 auto; font-size:8px; letter-spacing:.1em; color:#B0B0A8;
+             text-transform:none; }
+  .navdrop a.signout { border-top:1px solid var(--rule); margin-top:5px;
+                       padding-top:13px; color:var(--mid); }
+
+  .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
+            background:#A8321E; color:#fff; padding:12px 18px;
+            font-family:Helvetica,Arial,sans-serif; font-size:11px; line-height:1.5;
+            transform:translateY(-100%); transition:transform .25s; }
+  .errbar.show { transform:translateY(0); }
+
+  .wordmark { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.45em;
+              text-transform:uppercase; color:var(--mid); text-align:center; }
+  .pagename { font-family:Helvetica,Arial,sans-serif; font-size:13px; font-weight:bold;
+              letter-spacing:.1em; text-transform:uppercase; text-align:center; margin-top:6px; }
+  .lede { text-align:center; font-style:italic; color:var(--mid); font-size:12px;
+          margin-top:8px; line-height:1.5; }
+
+  .secthead { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
+              text-transform:uppercase; color:var(--mid); margin-top:26px; }
+  .addrow { display:flex; gap:8px; margin-top:10px; }
+  .addrow input { flex:1; padding:11px; border:1px solid var(--rule); background:#fff;
+                  border-radius:8px; font-family:Georgia,serif; font-size:16px; color:var(--ink); }
+  .addbtn { margin-top:8px; width:100%; padding:11px; border:1px solid var(--ink);
+            background:transparent; border-radius:8px; font-family:Helvetica,Arial,sans-serif;
+            font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink);
+            cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .addbtn:active { background:var(--rule); }
+
+  .mng { margin-top:12px; }
+  .mrow { display:flex; align-items:center; justify-content:space-between;
+          padding:9px 0; border-bottom:1px solid var(--rule); }
+  .mname { font-size:14px; }
+  .mrow.off .mname { color:var(--mid); font-style:italic; }
+  .mbtns { display:flex; gap:6px; }
+  .mtog { border:1px solid var(--rule); background:transparent; color:var(--mid);
+          padding:6px 12px; border-radius:16px; font-family:Helvetica,Arial,sans-serif;
+          font-size:9px; letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
+          -webkit-tap-highlight-color:transparent; }
+  .mrow.off .mtog { border-color:var(--ink); color:var(--ink); }
+  /* Delete wears the failure colour because it is the one press here with no
+     way back after Save. Offered only on a hidden row: hide first, then
+     delete, so a mis-tap cannot destroy a flag that is in use. */
+  .mtog.mdel { border-color:var(--red); color:var(--red); }
+
+  /* The one flag nobody manages from here, shown so nobody re-creates it. */
+  .autorow { margin-top:12px; padding:9px 0; border-bottom:1px solid var(--rule);
+             font-size:14px; }
+  .autorow .g { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.15em;
+                text-transform:uppercase; color:var(--mid); margin-left:8px; }
+
+  .savebar { position:fixed; bottom:0; left:0; right:0; background:var(--cream);
+             border-top:1px solid var(--rule); padding:12px 24px;
+             transform:translateY(110%); transition:transform .25s; }
+  .savebar.show { transform:translateY(0); }
+  .savebar .in { max-width:520px; margin:0 auto; display:flex; gap:10px; align-items:center; }
+  .savebtn { flex:1; padding:13px; min-height:44px; border:none; background:var(--ink); color:var(--cream);
+             border-radius:8px; font-family:Helvetica,Arial,sans-serif; font-size:11px;
+             letter-spacing:.15em; text-transform:uppercase; cursor:pointer;
+             -webkit-tap-highlight-color:transparent; }
+  .saved { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.1em;
+           text-transform:uppercase; color:var(--mid); }
+</style>
+</head>
+<body>
+<div class="errbar" id="err"></div>
+<div class="wrap">
+  <div class="navrow">
+  <div class="navwrap">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+  </div>
+  </div>
+  <div class="wordmark">Nala Resort</div>
+  <div class="pagename">Flag Settings</div>
+  <div class="lede">Short facts pinned under a guest's name: VIP, Travel agent,
+    Breakfast included.<br>Ticked per booking on the Front Desk sheet, admin
+    only, and printed on the FOH Sheet.</div>
+
+  <div class="secthead">Add a flag</div>
+  <div class="addrow"><input id="newName" placeholder="e.g. Travel agent" autocomplete="off"></div>
+  <button class="addbtn" id="addBtn">Add flag</button>
+
+  <div class="secthead">All flags</div>
+  <div class="mng" id="mng"></div>
+  <!-- Listed so nobody re-creates it by hand and prints it twice. It is not a
+       row in /flags: it rides on the Mews rate the sync stores, and hiding
+       it here could not stop the rate arriving. -->
+  <div class="autorow" id="autorow" style="display:none">Luxury Escapes<span class="g">automatic - set by the Mews rate</span></div>
+</div>
+
+<div class="savebar" id="savebar"><div class="in">
+  <button class="savebtn" id="saveBtn">Save the list</button>
+  <span class="saved" id="savedMsg"></span>
+</div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="auth.js?v=12"></script>
+<script src="nala-shared.js?v=41"></script>
+<script>
+/* Admin only, both by the menu (NAV_NEEDS says manageStaff) and here, because
+   a link can be typed. Ticking a flag on the desk is admin only too, so the
+   list that feeds the ticks is fenced the same way. Sent to their own board
+   rather than refused, since a role with somewhere to be does not need
+   telling off - the tag.html gate, word for word. */
+(function gate(){
+  if (!window.firebase || !firebase.auth ||
+      typeof loadStaff !== 'function'){ setTimeout(gate,300); return; }
+  var A;
+  try { A = firebase.auth(); } catch (e){ setTimeout(gate,300); return; }
+  if (!A || typeof A.onAuthStateChanged !== 'function'){ setTimeout(gate,300); return; }
+  A.onAuthStateChanged(function(u){
+    if (!u) return;
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      if (window.NALA_NAVFILTER) NALA_NAVFILTER(role);
+      if (can(role, 'manageStaff') || e) return;
+      document.querySelector('.wrap').style.display = 'none';
+      document.getElementById('savebar').style.display = 'none';
+      var home = homeFor(role);
+      if (home) location.replace(home);
+      else document.body.insertAdjacentHTML('afterbegin',
+        '<div style="padding:16px;font-family:Helvetica,Arial,sans-serif;font-size:12px">' +
+        'This login has no access to Flag Settings. See the manager.</div>');
+    });
+  });
+})();
+
+  var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+  /* The owner's own examples, 26 Aug. Seeded only while /flags is empty,
+     saved only when somebody presses Save, and each can be hidden: they
+     are suggestions, not fixtures. Luxury Escapes is deliberately NOT here -
+     it rides on the Mews rate and creating it by hand would print it twice. */
+  var DEFAULTS = ['VIP', 'Travel agent', 'Breakfast included'];
+
+  function err(m){ var e=document.getElementById('err');
+    e.textContent=m; e.classList.add('show');
+    setTimeout(function(){ e.classList.remove('show'); }, 5000); }
+
+  function keyOf(name){ return name.trim().replace(/[.#$\/\[\]]/g,'').replace(/\s+/g,' '); }
+
+  var MASTER={}, dirty=false;
+  var LOCKED=null;   // set to a message when the read failed and saving is unsafe
+
+  function markDirty(){ dirty=true;
+    document.getElementById('savebar').classList.add('show');
+    document.getElementById('savedMsg').textContent=''; }
+
+  function paintMng(){
+    var box=document.getElementById('mng'); box.innerHTML='';
+    Object.keys(MASTER).sort(function(a,b){
+      var da=MASTER[a], db_=MASTER[b];
+      return (db_.active?1:0)-(da.active?1:0) || da.name.localeCompare(db_.name);
+    }).forEach(function(k){
+      var d=MASTER[k];
+      var r=document.createElement('div'); r.className='mrow'+(d.active?'':' off');
+      var nm=document.createElement('div'); nm.className='mname';
+      nm.textContent=d.name;
+      var bs=document.createElement('span'); bs.className='mbtns';
+      var b=document.createElement('button'); b.className='mtog';
+      /* Hide keeps the flag: it comes off the desk's chips but a booking
+         already ticked keeps its pill, because the desk paints a stored name
+         it no longer offers. Nothing a person recorded is silently dropped.
+         The owner's word, 26 Aug: Hide, not Archive. */
+      b.textContent=d.active?'Hide':'Show';
+      b.onclick=function(){ d.active=!d.active; markDirty(); paintMng(); };
+      bs.appendChild(b);
+      /* Delete, only from hidden, lands only on Save - so a mis-tap costs a
+         re-add, not a flag. It removes the DEFINITION: a booking already
+         ticked still keeps its pill until somebody unticks it, same as a
+         hidden flag, for the same reason. */
+      if (!d.active){
+        var x=document.createElement('button'); x.className='mtog mdel';
+        x.textContent='Delete';
+        x.onclick=function(){ delete MASTER[k]; markDirty(); paintMng(); };
+        bs.appendChild(x);
+      }
+      r.appendChild(nm); r.appendChild(bs); box.appendChild(r);
+    });
+    document.getElementById('autorow').style.display = '';
+  }
+
+  document.getElementById('addBtn').onclick=function(){
+    var inp=document.getElementById('newName'), name=inp.value.trim();
+    if (!name) return;
+    /* The automatic flag cannot be created by hand: it would print twice,
+       once from the tick and once from the rate. Said, not swallowed. */
+    if (typeof rateFlagLabel === 'function' &&
+        name.toLowerCase() === 'luxury escapes'){
+      err('Luxury Escapes is automatic: it comes from the Mews rate and needs no flag here.');
+      return;
+    }
+    var k=keyOf(name);
+    if (MASTER[k]) MASTER[k].active=true;
+    else MASTER[k]={ name:name, active:true, at:new Date().toISOString() };
+    inp.value='';
+    markDirty(); paintMng();
+  };
+
+  document.getElementById('saveBtn').onclick=function(){
+    /* Save is a PUT of the whole list, so it is only safe when the list on
+       screen is the list in the database - the tag.html lesson, kept. */
+    if (LOCKED) return err(LOCKED);
+    var btn=this; btn.disabled=true;
+    fetch(DB+'/flags.json',{method:'PUT',body:JSON.stringify(MASTER)})
+      .then(function(r){
+        if (!r.ok) throw new Error('save failed');
+        dirty=false; btn.disabled=false;
+        document.getElementById('savedMsg').textContent='Saved';
+        setTimeout(function(){ if(!dirty) document.getElementById('savebar').classList.remove('show'); },1200);
+      }).catch(function(e){ btn.disabled=false; err('Could not save - check the connection and try again.'); });
+  };
+
+  window.addEventListener('beforeunload', function(e){
+    if (dirty){ e.preventDefault(); e.returnValue=''; } });
+
+  // ── load ──
+  /* A read that FAILS is not an empty node: returning null for both would
+     seed the defaults over a refused read and Save would write them over the
+     real list. The tag.html shape, kept exactly. */
+  fetch(DB+'/flags.json?v='+Date.now())
+    .then(function(r){ return r.ok ? r.json() : { __failed:r.status }; })
+    .catch(function(){ return { __failed:0 }; })
+    .then(function(master){
+      if (master && master.__failed !== undefined){
+        LOCKED = 'Could not read the flag list. Nothing is saved until it ' +
+          'loads, so nothing gets overwritten. Sign in again, then refresh.';
+        err(LOCKED);
+        document.getElementById('saveBtn').disabled = true;
+        paintMng();
+        return;
+      }
+      if (master) MASTER=master;
+      else DEFAULTS.forEach(function(n){
+        MASTER[keyOf(n)]={name:n,active:true,at:new Date().toISOString()}; });
+      paintMng();
+    });
+</script>
+
+<script>
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  if (!b || !d) return;
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+  var so=document.getElementById('navSignout');
+  if (so) so.onclick=function(e){ e.preventDefault();
+    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+})();
+</script>
+</body>
+</html>

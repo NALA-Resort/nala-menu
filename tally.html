@@ -395,7 +395,7 @@ body.readonly .comb-undo { display:none; }
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="flags.html">Flags</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 <script>
@@ -553,7 +553,7 @@ body.readonly .comb-undo { display:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=37"></script>
+<script src="nala-shared.js?v=41"></script>
 <script>
 /* Not every allergy is on the list and the list cannot grow to hold them all,
    so Other means read the note. The same entry the front desk writes, because
@@ -576,7 +576,7 @@ function otherNeedsNote(diets, note){
   return diets.indexOf(DIET_OTHER) > -1 && !String(note || '').trim();
 }
 
-var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+var DIETARIES = ['Gluten','Dairy','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
 
 
@@ -1070,8 +1070,13 @@ function render(){
         var dline = (od.diets && od.diets.length)
           ? '<div class="row-sub">' + dietHTML(od.diets) +
             (od.dnote ? ' \u00b7 ' + od.dnote : '') + '</div>' : '';
+        /* The awaiting stub carries the companion too: a villa that has not
+           answered tonight is still a named party, and this board is where
+           reception looks a booking up mid-service. */
+        var second = companionOf(PREARRIVAL_BY_VILLA[String(r.room)], kn);
         st.innerHTML = '<div><div class="row-name"><span class="rm">'+r.room+'</span>'+
           (kn.name ? '  '+kn.name : '')+'</div>'+
+          (second ? '<div class="row-sub">With '+esc(second)+'</div>' : '')+
           '<div class="row-sub">Awaiting reply</div>'+dline+'</div>';
         host.appendChild(st);
         return;
@@ -1094,6 +1099,12 @@ function render(){
     if (g.premenu) title += '<span class="tag">Pre-menu</span>';
 
     var sub = [];
+    /* The second guest, in the small print under the name. The board is
+       worked by name, and the person beside the booker is part of who the
+       table is. One shared reading - see companionOf in nala-shared.js. */
+    var second = r.room
+      ? companionOf(PREARRIVAL_BY_VILLA[String(r.room)], known) : '';
+    if (second) sub.push('With ' + esc(second));
     var dietLine = '';
     /* The person's dietaries, wherever they were typed. This block used to
        show tonight's answer only, on the old rule that a carried-over dietary
@@ -1104,7 +1115,7 @@ function render(){
        fallback; a row that hid it until somebody re-typed it tonight was the
        bug. The menu conflict check runs on the same list, since the kitchen
        cooks for the person, not for the night's paperwork. */
-    var personDiets = (g.diets && g.diets.length) ? g.diets : (g.dineDiets || []);
+    var personDiets = fixDietList((g.diets && g.diets.length) ? g.diets : (g.dineDiets || []));
     if (personDiets.length) {
       dietLine = '<div class="dietline">' + personDiets.map(function(x){
         var al = ALLERGENS.indexOf(x) > -1 || /allerg/i.test(x);
@@ -1680,7 +1691,7 @@ function preRows(pre){
      invisible here exactly when the viewed night had no dinner cell to carry
      a copy. One list per person: it lives on the reservation. */
   if (pre.diets && pre.diets.length)
-    rows.push(['Dietaries', pre.diets.join(' \u00b7 ')]);
+    rows.push(['Dietaries', fixDietList(pre.diets).join(' \u00b7 ')]);
   if (pre.dnote)      rows.push(['Dietary notes', '\u201C'+pre.dnote+'\u201D']);
   return rows;
 }
@@ -1765,7 +1776,7 @@ function editRoomDetails(n, st){
      blank on a villa that answered last week is what made an allergy look
      stuck to the date it was typed on. */
   var od = overlayReservationDiets({}, n);
-  var diets = ((g.diets && g.diets.length) ? g.diets : (od.diets || [])).slice();
+  var diets = fixDietList((g.diets && g.diets.length) ? g.diets : (od.diets || []));
   sheet.innerHTML =
     '<h3>Villa '+n+' \u00b7 details</h3>'+
     '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
@@ -2122,7 +2133,7 @@ document.getElementById('addExt').onclick = function(e){
 function editExt(key, g){
   var pax = g.pax || 2;
   var isManual = key.indexOf('ext-') === 0;
-  var diets = (g.diets || []).slice();
+  var diets = fixDietList(g.diets);
 
   if (isManual){
     sheet.innerHTML =

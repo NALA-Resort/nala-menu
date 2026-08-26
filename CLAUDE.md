@@ -162,6 +162,18 @@ minutes. **There is no dry run and no staging.**
 Never publish without being asked to, in that session, in as many words. A
 green suite is not permission.
 
+Every reply that ends a piece of work closes with this block, exactly, so the
+answer to "is it live?" is never buried in prose (ruled by the owner, 26 Aug,
+after it was):
+
+    Published: yes / no
+    Firebase rules change: yes / no
+    Human requirements: what only the owner can do, or none
+    Ready to publish? yes / no, and what blocks it if no
+
+"Firebase rules change: yes" means rules.json moved and needs its paste into
+the console - say whether the feature limps or fails without it.
+
 ## Secrets
 
 Nothing secret goes in this repo — it is public. Worker credentials live in

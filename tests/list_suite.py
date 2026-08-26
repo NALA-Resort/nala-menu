@@ -36,11 +36,23 @@ menutags={"main":["Nut allergy"]}
 #  Villas the PMS knows about, which is where the booking ids come from. The
 #  internal note hangs off the reservation, not the night, so a sheet can only
 #  reach one through the id on the stay.
-STAYS={"1":{"id":"b1","name":"James"},"3":{"id":"b3","name":"Mark"},
+#  Villa 1 carries a Mews companion AND a pre-arrival one, because the typed
+#  name must win; villa 3 a Mews copy alone, because a name only the Zap
+#  delivered must still reach paper; villa 9 none, so a sheet without second
+#  guests stays exactly as it was. The angle brackets in Ana's name are the
+#  escaping check: the cell is built by concatenation.
+STAYS={"1":{"id":"b1","first":"James","companion":"Zoe Wrong"},
+       "3":{"id":"b3","first":"Mark","companion":"Aria Stone"},
        "4":{"id":"b4","name":"Lucy"},"9":{"id":"b9","name":"Priya"}}
+prearrival={"b1":{"companion":"Ana <Ruiz>"}}
 internal={"b1":{"note":"Owner's friend, do not charge for wine"},
           "b3":{"fromMews":"Complained about noise last stay"},
           "b9":{"note":""}}
+# The PMS record and the desk's ticked flags per booking, for the flag
+# pills. Empty until that section seeds them, so the layout tests above it
+# keep drawing the sheet they always drew.
+PMSREC={}
+BOOKFLAGSREC={}
 
 staff={"staff@x":{"name":"Admin","role":"admin"},
        "chef@x":{"name":"Chef","role":"chef"},
@@ -60,6 +72,15 @@ def fb(route,request):
     elif "/internal/" in u:
         k=u.split("/internal/")[1].split(".json")[0]
         body=json.dumps(internal[k]) if k in internal else "null"
+    elif "/bookings/" in u and "/pms" in u:
+        k=u.split("/bookings/")[1].split("/")[0]
+        body=json.dumps(PMSREC[k]) if k in PMSREC else "null"
+    elif "/bookflags/" in u:
+        k=u.split("/bookflags/")[1].split(".json")[0]
+        body=json.dumps(BOOKFLAGSREC[k]) if k in BOOKFLAGSREC else "null"
+    elif "/bookings/" in u and "/prearrival" in u:
+        k=u.split("/bookings/")[1].split("/")[0]
+        body=json.dumps(prearrival[k]) if k in prearrival else "null"
     route.fulfill(status=200,content_type="application/json",body=body)
 from playwright.sync_api import sync_playwright
 P=F=0
@@ -76,6 +97,36 @@ with sync_playwright() as p:
     pg.goto("http://localhost:8955/list.html"); pg.wait_for_timeout(1500)
 
     hd=pg.evaluate("()=>({k:'n/a',d:title.textContent,t:nTables.textContent,tb:tblBreak.textContent,tw:nTablesWord.textContent,c:nCovers.textContent})")
+
+    #  ── the second guest, under the name they travel with ──────────
+    cells=pg.evaluate("""()=>[...document.querySelectorAll('#rows tr')]
+      .filter(r=>r.querySelector('.c-room')&&r.querySelector('.c-name'))
+      .map(r=>({
+        room:r.querySelector('.c-room').textContent.trim(),
+        html:r.querySelector('.c-name').innerHTML,
+        sub:(r.querySelector('.c-name .sub')||{}).textContent||''}))""")
+    byroom={c["room"]:c for c in cells}
+    ck("the name the guest typed prints under the primary guest",
+       byroom["1"]["sub"] == "Ana <Ruiz>")
+    ck("and outranks the copy Mews sent for the same villa",
+       "Zoe Wrong" not in byroom["1"]["html"])
+    ck("a companion only Mews knows still reaches the paper",
+       byroom["3"]["sub"] == "Aria Stone")
+    ck("a villa with no second guest carries no line for one",
+       byroom["9"]["sub"] == "")
+    ck("and the typed name lands as text, not as markup",
+       "&lt;Ruiz&gt;" in byroom["1"]["html"])
+    #  Ruled by the owner, 26 Aug: the second guest is a person the waiter
+    #  greets by name, not reference like the externals' phone, so it is set
+    #  a step larger. Compared against a live phone sub rather than a stated
+    #  number, so the rule survives a resize of the small print itself.
+    sizes=pg.evaluate("""()=>{
+      const px=e=>e?parseFloat(getComputedStyle(e).fontSize):null;
+      return {cmp:px(document.querySelector('.c-name .sub.cmp')),
+              phone:px(document.querySelector('.c-name .sub:not(.cmp)'))};}""")
+    ck("the second guest is set larger than the externals' phone line",
+       sizes["cmp"] is not None and sizes["phone"] is not None
+       and sizes["cmp"] > sizes["phone"])
     #  The kicker is gone, and so is the header it left behind. It named the
     #  document to whoever was already holding it, and the page has no room for
     #  two headers above a table that carries its own column headings.
@@ -568,6 +619,33 @@ with sync_playwright() as p:
     q.close()
     internal["b3"] = {"fromMews": "Complained about noise last stay"}
 
+    #  ── the booking flags on the sheet ──────────────────────
+    #  Short facts pinned UNDER THE GUEST'S NAME, where the owner asked for
+    #  them: the names the desk ticked at /bookflags, and Luxury Escapes when
+    #  the Mews rate says so - that rate and no other. Resolved through the
+    #  same bookingFlagLabels the desk reads, so the paper and the screen
+    #  cannot disagree.
+    PMSREC.update({"b1": {"rate": "Luxury Escapes AU"},
+                   "b4": {"rate": "Flexible with Breakfast"}})
+    BOOKFLAGSREC.update({"b3": {"flags": ["VIP", "Breakfast included"],
+                                "by": "staff@x", "at": "t"}})
+    q = as_role("staff@x")
+    q.wait_for_timeout(1200)
+    def pills(v):
+        return q.evaluate("""()=>[...document.querySelectorAll(
+            '.fkhere[data-villa="%s"] .fpill')].map(e=>e.textContent)""" % v)
+    ck("a Luxury Escapes rate prints its pill with nobody having ticked anything",
+       pills("1") == ["Luxury Escapes"])
+    ck("the desk's ticks print in their ticked order",
+       pills("3") == ["VIP", "Breakfast included"])
+    ck("any other rate prints nothing at all",
+       pills("4") == [] and "Flexible" not in q.locator("#rows").inner_text())
+    ck("the pills sit under the guest's name, not in the comments stack",
+       q.evaluate("""()=>[...document.querySelectorAll('.fkhere .fpill')].length>0
+           && [...document.querySelectorAll('.fkhere .fpill')]
+              .every(e=>e.closest('td.c-name') && !e.closest('.cbox'))"""))
+    q.close()
+
     #  ── the night that found the row-count cap out ──────────
     #  26 Aug: a sheet under its row cap and over the page. One staff note -
     #  a raw Mews order dump - ran to nine printed lines inside one row, so
@@ -669,6 +747,10 @@ with sync_playwright() as p:
     q.wait_for_timeout(1200)
     ck("the chef reads the sheet but not the staff note",
        q.evaluate("()=>document.querySelectorAll('.crow.staff').length===0"))
+    #  The flags are not the note: they are ungated, because Breakfast
+    #  included is an instruction to whoever is serving.
+    ck("while the flag pills still reach the chef",
+       q.evaluate("()=>document.querySelectorAll('.fpill').length>0"))
     ck("chef reads and prints the sheet",
        q.evaluate("""()=>noAccess.className.indexOf('show')<0
                       && document.querySelectorAll('table tbody tr').length>0

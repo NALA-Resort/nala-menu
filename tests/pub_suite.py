@@ -197,10 +197,14 @@ with sync_playwright() as p:
     pg.close()
 
     # ── tagging is on this page, not behind a link ──────────────
+    #  The list above still stores "Gluten free", as one saved before the
+    #  26 Aug renames does. The ticks wear the new name, never the old one.
     pg = open_pub(LINK + "&sf=e")
     ck("the dietaries come from the chef's list, not a list this page invented",
-       "Gluten free" in pg.inner_text("#tagblock") and
+       "Gluten" in pg.inner_text("#tagblock") and
        "Nut allergy" in pg.inner_text("#tagblock"))
+    ck("with a pill stored under its old name offered renamed",
+       "Gluten free" not in pg.inner_text("#tagblock"))
     ck("a retired dietary is not offered",
        "Old thing" not in pg.inner_text("#tagblock"))
     ck("every course can be tagged, not just the main",
@@ -346,7 +350,7 @@ with sync_playwright() as p:
     #  list and ticking against invented ones would prove nothing.
     pg = open_pub(LINK + "&demo=1")
     ck("the rehearsal ticks against the chef's real dietary list",
-       "Gluten free" in pg.inner_text("#tagblock"))
+       "Gluten" in pg.inner_text("#tagblock"))
     ck("and reads its own tags, not tonight's real ones",
        len([w for w in WRITES if "/menutags/" in w["u"] and "/demo/" not in w["u"]]) == 0)
     pg.close()
@@ -417,7 +421,7 @@ with sync_playwright() as p:
     #  under the field says.
     pg = open_pub(LINK)
     ck("the chef ticks from the settled list",
-       "Gluten free" in pg.inner_text("#tagblock"))
+       "Gluten" in pg.inner_text("#tagblock"))
     ck("and can add something it has not got",
        pg.evaluate("()=>!!document.getElementById('newDiet')"))
     #  Linked, but into a new tab. Everything on this page lives in memory
@@ -449,7 +453,7 @@ with sync_playwright() as p:
     #  print, what you set.
     CANON = ["front-desk.html", "tally.html", "invitations.html", "arrivals-sms.html", "cleaners.html", "spa.html", "publish.html",
              "list.html", "housekeeping.html", "registration.html", "menu-print.html", "past-menus.html",
-             "staff.html", "tag.html", "pages.html"]
+             "staff.html", "tag.html", "flags.html", "pages.html"]
     got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     print("   publish nav:", got)
@@ -469,6 +473,12 @@ with sync_playwright() as p:
     if dw:
         ck("as this-menu-only, not as one of the settled ones",
            json.loads(dw[0]["b"]).get("Sesame", {}).get("group") == "menu")
+        #  The PUT is the whole list, so it carries the renames with it: the
+        #  record stored as "Gluten free" goes back as "Gluten", which is how
+        #  the database learns the new names without a migration.
+        ck("and the write carries the renamed record, not the old key",
+           "Gluten" in json.loads(dw[0]["b"]) and
+           "Gluten free" not in json.loads(dw[0]["b"]))
     ck("the field is cleared, so it is not added twice",
        val(pg, "newDiet") == "")
     ck("and it is not ticked on anything by being added",
@@ -500,7 +510,7 @@ with sync_playwright() as p:
     ck("an old one-off nobody has ticked tonight is not in the way",
        "Sesame" not in pg.inner_text("#tagblock"))
     ck("while the settled list is always there",
-       "Gluten free" in pg.inner_text("#tagblock"))
+       "Gluten" in pg.inner_text("#tagblock"))
     pg.close()
 
     #  But one that IS on tonight's menu comes back, or reopening the page
@@ -512,6 +522,19 @@ with sync_playwright() as p:
        "Sesame" in pg.inner_text("#tagblock") and
        pg.evaluate("""()=>[...document.querySelectorAll('#tagblock .tick')]
           .some(x=>x.getAttribute('data-n')==='Sesame' &&
+                   x.getAttribute('data-c')==='main' &&
+                   x.className.indexOf('on')>-1)"""))
+    pg.close()
+
+    #  A tick written before the 26 Aug renames names the old pill. It must
+    #  come back onto the renamed one, or reopening the page silently drops
+    #  tonight's tag along with the warning it feeds.
+    STATE["tags"] = {"main": ["Gluten free"]}
+    pg = open_pub(LINK)
+    pg.wait_for_timeout(400)
+    ck("a tick saved under the old name comes back on the renamed pill",
+       pg.evaluate("""()=>[...document.querySelectorAll('#tagblock .tick')]
+          .some(x=>x.getAttribute('data-n')==='Gluten' &&
                    x.getAttribute('data-c')==='main' &&
                    x.className.indexOf('on')>-1)"""))
     pg.close()
@@ -737,7 +760,7 @@ with sync_playwright() as p:
     #  offers everything the admin's does except Settings General and Pages.
     ck("a manager is offered everything but General and Pages",
        seen["manager"] == [h for h in seen["admin"]
-                           if h not in ("staff.html", "pages.html")])
+                           if h not in ("staff.html", "flags.html", "pages.html")])
     ck("which the admin still keeps",
        "staff.html" in seen["admin"] and "pages.html" in seen["admin"])
     #  Every link left standing has to open. A link that bounces you back is a
@@ -750,7 +773,8 @@ with sync_playwright() as p:
              "spa.html":"spaBoard",
              "housekeeping.html":"cleansBoard", "registration.html":"editBookings",
              "menu-print.html":"resSheet", "past-menus.html":"resBoard",
-             "staff.html":"manageStaff", "pages.html":"manageStaff"}
+             "staff.html":"manageStaff", "flags.html":"manageStaff",
+             "pages.html":"manageStaff"}
     ck("every link in the menu has a permission behind it",
        all(h in NEEDS for r in seen for h in seen[r]))
     #  A heading with nothing under it promises something that is not there.

@@ -58,6 +58,10 @@
   .card .mid { flex:1; min-width:0; }
   .card .nm { font-size:15px; }
   .card .st { font-size:11px; color:var(--mid); margin-top:2px; line-height:1.4; }
+  /* The second guest's line, under the name on tile and card alike. Always
+     the resting grey: it is who is coming, not a state, so it never takes
+     the band's colour the way .st does. */
+  .vrow .cmp, .card .cmp { font-size:11px; color:var(--mid); margin-top:1px; line-height:1.4; }
   .sub { font-size:11px; letter-spacing:.12em; text-transform:uppercase;
          color:var(--mid); margin:12px 0 6px; }
   .chips { display:flex; flex-wrap:wrap; gap:6px; }
@@ -102,7 +106,7 @@
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="flags.html">Flags</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 
@@ -129,7 +133,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=37"></script>
+<script src="nala-shared.js?v=41"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -191,6 +195,19 @@ function nameOf(id, rec){
   if (bk) return ((bk.first || '') + ' ' + (bk.last || '')).trim() || 'Guest';
   return (rec && rec.name) || 'Guest';
 }
+/* The small line under the name: the second guest, when anyone has named
+   one. companionOf in nala-shared.js holds the one precedence rule. */
+function withLine(id){
+  var bk = BOOKINGS[id];
+  var c = bk ? companionOf(bk.pre, bk) : '';
+  return c ? 'With ' + c : '';
+}
+/* Written with textContent by every caller, never into an HTML string: the
+   name is typed by a guest or at the desk. */
+function setCmp(el, id){
+  var cm = el.querySelector('.cmp'), w = withLine(id);
+  if (w) cm.textContent = w; else cm.remove();
+}
 function villaOf(id, day){
   var bk = BOOKINGS[id];
   if (!bk) return '';
@@ -227,18 +244,27 @@ function lineOf(rec, id){
   var stay = bk ? ' · staying ' + stayRange(bk) : '';
   var ask = (rec.reqDay ? shortDay(rec.reqDay) : 'no day picked') +
             (rec.reqTime ? ' · ' + rec.reqTime : ' · no time given');
+  /* Both lengths on a pair, in order - '1.5 hr + 1 hr' - because the
+     masseuse plans his day by time and length, and a hidden second length
+     was the bug that forced the pair onto one tile. */
+  var len = spaDur(rec.dur) ? ' · ' + spaDur(rec.dur).short : '';
+  if (rec.qty === 2)
+    len = ' · ' + (spaDur(rec.dur) ? spaDur(rec.dur).short : '?') +
+          ' + ' + (spaDur(rec.dur2) ? spaDur(rec.dur2).short : '?');
+  var two = rec.qty === 2 ? 'Two massages · ' : '';
   if (rec.status === 'requested' || rec.virtual)
-    return (rec.reqDay ? 'Asked for ' + ask
+    return two + (rec.reqDay ? 'Asked for ' + ask
                        : 'Interested, no day picked' +
-                         (rec.reqTime ? ' · ' + rec.reqTime : '')) + stay;
+                         (rec.reqTime ? ' · ' + rec.reqTime : '')) + len + stay;
   if (rec.status === 'suggested')
-    return 'Suggested ' + shortDay(rec.day) + ' ' + slotLabel(rec.time) +
+    return two + 'Suggested ' + shortDay(rec.day) + ' ' + slotLabel(rec.time) + len +
            ' · asked for ' + ask;
   if (rec.status === 'booked')
-    return shortDay(rec.day) + ' ' + slotLabel(rec.time) +
+    return two + shortDay(rec.day) + ' ' + slotLabel(rec.time) + len +
            (asRequested(rec) ? ' · as requested'
                              : ' · moved from ' + (rec.reqDay ? shortDay(rec.reqDay) : 'no day') +
-                               (rec.reqTime ? ', ' + rec.reqTime : ''));
+                               (rec.reqTime ? ', ' + rec.reqTime : '')) +
+           (rec.manual ? ' · approved at the desk' : '');
   if (rec.status === 'declined')
     return 'Declined' + (rec.note ? ' · ' + rec.note : '') +
            (rec.told ? ' · guest told' : ' · let the guest know');
@@ -264,14 +290,22 @@ function items(){
   Object.keys(BOOKINGS).forEach(function(id){
     var p = BOOKINGS[id].pre;
     if (!p || p.wellness !== true) return;
-    var handled = Object.keys(SPA[id] || {}).some(function(tid){
+    /* One ask for the whole request, however many massages it holds. Two
+       tiles for a pair hid the second massage's length behind the first,
+       the owner ruled 26 Aug: the pair travels together - one day, one
+       time, a length each - and the card shows both. Answering writes a
+       prearrival-source record, which is the ask spoken for. */
+    var have = Object.keys(SPA[id] || {}).some(function(tid){
       return (SPA[id][tid] || {}).source === 'prearrival';
     });
-    if (handled) return;
-    out.push({ id: id, tid: 'ask', rec: {
-      virtual: true, status: 'requested',
-      reqDay: p.wellDay || '', reqTime: p.wellTime || ''
-    } });
+    if (!have)
+      out.push({ id: id, tid: 'ask0', rec: {
+        virtual: true, status: 'requested',
+        reqDay: p.wellDay || '', reqTime: p.wellTime || '',
+        qty: p.wellQty === 2 ? 2 : 1,
+        dur: spaDur(p.wellDur) ? p.wellDur : 0,
+        dur2: p.wellQty === 2 && spaDur(p.wellDur2) ? p.wellDur2 : 0
+      } });
   });
   return out;
 }
@@ -286,9 +320,10 @@ function tile(it){
   el.dataset.tid = it.tid;
   el.dataset.status = rec.status;
   el.innerHTML = '<div class="v"></div>' +
-    '<div class="mid"><div class="nm"></div><div class="st"></div></div>';
+    '<div class="mid"><div class="nm"></div><div class="cmp"></div><div class="st"></div></div>';
   el.querySelector('.v').textContent = villaOf(it.id, dayOf(rec) || todayKey());
   el.querySelector('.nm').textContent = nameOf(it.id, rec);
+  setCmp(el, it.id);
   el.querySelector('.st').textContent = lineOf(rec, it.id);
   el.onclick = function(){
     OPEN = { id: it.id, tid: it.tid };
@@ -305,9 +340,10 @@ function greyTile(id, line, addable){
   el.dataset.booking = id;
   el.dataset.status = 'none';
   el.innerHTML = '<div class="v"></div>' +
-    '<div class="mid"><div class="nm"></div><div class="st"></div></div>';
+    '<div class="mid"><div class="nm"></div><div class="cmp"></div><div class="st"></div></div>';
   el.querySelector('.v').textContent = villaOf(id, todayKey()) || villaOf(id, dkey(new Date()));
   el.querySelector('.nm').textContent = nameOf(id, null);
+  setCmp(el, id);
   el.querySelector('.st').textContent = line;
   if (addable) el.onclick = function(){ OPEN = { id: id, tid: 'new' }; SEL = null; paint(); };
   else el.disabled = true;
@@ -340,7 +376,10 @@ function card(it){
      2pm ask at the 10am default. */
   if (!SEL) SEL = {
     day: rec.day || (rec.reqDay && days.indexOf(rec.reqDay) > -1 ? rec.reqDay : days[0] || ''),
-    time: rec.time || spaSlotFromText(rec.reqTime) || '10:00'
+    time: rec.time || spaSlotFromText(rec.reqTime) || '10:00',
+    qty: rec.qty === 2 ? 2 : 1,
+    dur: spaDur(rec.dur) ? rec.dur : 60,
+    dur2: spaDur(rec.dur2) ? rec.dur2 : 60
   };
 
   var el = document.createElement('div');
@@ -350,9 +389,10 @@ function card(it){
   var head = document.createElement('div');
   head.className = 'head';
   head.innerHTML = '<div class="v"></div>' +
-    '<div class="mid"><div class="nm"></div><div class="st"></div></div>';
+    '<div class="mid"><div class="nm"></div><div class="cmp"></div><div class="st"></div></div>';
   head.querySelector('.v').textContent = villaOf(id, SEL.day || todayKey());
   head.querySelector('.nm').textContent = nameOf(id, rec);
+  setCmp(head, id);
   head.querySelector('.st').textContent = isNew
     ? 'A new treatment · staying ' + stayRange(BOOKINGS[id])
     : lineOf(rec, id);
@@ -390,6 +430,38 @@ function card(it){
   });
   sel.onchange = function(){ SEL.time = sel.value; paint(); };
   el.appendChild(sel);
+
+  /* How many, then a length for each - the pair edited whole from this
+     card, by the desk and the masseuse alike, the owner's ruling of
+     26 Aug after two tiles hid the second massage's length. */
+  var subQ = document.createElement('div'); subQ.className = 'sub';
+  subQ.textContent = 'Massages'; el.appendChild(subQ);
+  var qrow = document.createElement('div'); qrow.className = 'chips';
+  [1, 2].forEach(function(n){
+    var c = document.createElement('button');
+    c.type = 'button';
+    c.className = 'chip' + (SEL.qty === n ? ' on' : '');
+    c.textContent = n === 1 ? 'One' : 'Two';
+    c.onclick = function(){ SEL.qty = n; paint(); };
+    qrow.appendChild(c);
+  });
+  el.appendChild(qrow);
+  function lenRow(label, key){
+    var subL = document.createElement('div'); subL.className = 'sub';
+    subL.textContent = label; el.appendChild(subL);
+    var lens = document.createElement('div'); lens.className = 'chips';
+    SPA_DURS.forEach(function(x){
+      var c = document.createElement('button');
+      c.type = 'button';
+      c.className = 'chip' + (SEL[key] === x.m ? ' on' : '');
+      c.textContent = x.label;
+      c.onclick = function(){ SEL[key] = x.m; paint(); };
+      lens.appendChild(c);
+    });
+    el.appendChild(lens);
+  }
+  lenRow(SEL.qty === 2 ? '1st length' : 'Length', 'dur');
+  if (SEL.qty === 2) lenRow('2nd length', 'dur2');
 
   var btns = document.createElement('div'); btns.className = 'btns';
   var when = shortDay(SEL.day) + ' ' + slotLabel(SEL.time);
@@ -477,12 +549,35 @@ function card(it){
       btn(changed ? 'Cancel' : 'Cancel booking', changed ? 'quiet' : 'solid',
           saveAs('declined'));
     } else {
-      /* requested: the masseuse's to answer, not the desk's. An edit to the
-         day or time re-asks with the new details. */
+      /* requested: normally the masseuse's to answer - but a verbal yes is
+         an answer too. Manually approve books the selection directly,
+         stamped as the desk's doing, for the time he agreed in person or
+         on the phone and was never going to tap himself. The ask path
+         stays for everything he has not agreed to. */
+      btn('Manually approve ' + when, 'solid',
+          saveAs('booked', { manual: true }));
       if (changed || rec.virtual)
-        btn('Ask for ' + when, 'solid', saveAs('requested', { req: true }));
-      hint = 'Waiting on the masseuse.';
+        btn('Ask for ' + when, 'quiet', saveAs('requested', { req: true }));
+      hint = 'Manually approve is only for a time the masseuse has already ' +
+             'agreed to out loud - it books without his tap and the tile ' +
+             'says the desk did it. Anything else waits on him.';
     }
+  }
+  /* Editing the details is its own act. Confirm and Suggest carry the
+     pills with them, but a booked treatment being resized, or the desk
+     correcting an ask, changes nothing about the state - so the moment
+     how-many or a length differs from the record, Save changes appears
+     and writes the edit with the status it found. Day and time stay out
+     of it: moving a treatment goes through the buttons above, where the
+     guest hears about it. */
+  var lensChanged = !isNew && !changed &&
+    (SEL.qty !== (rec.qty === 2 ? 2 : 1) ||
+     SEL.dur !== (spaDur(rec.dur) ? rec.dur : 60) ||
+     (SEL.qty === 2 && SEL.dur2 !== (spaDur(rec.dur2) ? rec.dur2 : 60)));
+  if (lensChanged && days.length){
+    var sb = btn('Save changes', rec.status === 'booked' ? 'solid' : 'quiet',
+                 saveAs(rec.status || 'requested'));
+    if (rec.status === 'booked') btns.insertBefore(sb, btns.firstChild);
   }
   el.appendChild(btns);
   if (hint){
@@ -498,7 +593,8 @@ function card(it){
    linger under the state it entered. */
 function save(it, status, opts){
   var rec = it.rec, id = it.id;
-  var tid = (it.tid === 'ask' || it.tid === 'new') ? 't' + Date.now() : it.tid;
+  var tid = (it.tid.indexOf('ask') === 0 || it.tid === 'new')
+    ? 't' + Date.now() : it.tid;
   var body = {
     status: status,
     name: nameOf(id, rec),
@@ -517,6 +613,18 @@ function save(it, status, opts){
   }
   var why = (opts.note !== undefined) ? opts.note : rec.note;
   if (status === 'declined' && why) body.note = why;
+  if (SEL && spaDur(SEL.dur)) body.dur = SEL.dur;
+  else if (spaDur(rec.dur)) body.dur = rec.dur;
+  /* A pair is one record: qty 2 and a second length. A PUT of qty one
+     simply carries neither, which is what makes One a real answer. */
+  var qty = SEL ? SEL.qty : (rec.qty === 2 ? 2 : 1);
+  if (qty === 2){
+    body.qty = 2;
+    body.dur2 = (SEL && spaDur(SEL.dur2)) ? SEL.dur2
+              : (spaDur(rec.dur2) ? rec.dur2 : 60);
+  }
+  if (status === 'booked' && (opts.manual || rec.manual))
+    body.manual = rec.manual || new Date().toISOString();
   if (status === 'declined' && (opts.told || rec.told))
     body.told = rec.told || new Date().toISOString();
   var err = document.getElementById('errBar');
@@ -688,9 +796,13 @@ function load(){
         var bk = BOOKINGS[s.id];
         if (!bk){
           bk = BOOKINGS[s.id] = { id: s.id, first: s.first || '', last: s.last || '',
+                                  companion: s.companion || '',
                                   arrive: s.arrive, depart: s.depart,
                                   villaByDate: {}, pre: null };
         }
+        /* Nights synced before the Worker carried the companion lack it;
+           any later night that has it fills the gap. */
+        if (!bk.companion && s.companion) bk.companion = s.companion;
         bk.villaByDate[x.d] = v;
         if (!bk.villa) bk.villa = v;
       });

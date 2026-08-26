@@ -127,7 +127,7 @@
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap" id="navWrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="flags.html">Flags</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 
@@ -143,7 +143,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=37"></script>
+<script src="nala-shared.js?v=41"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();
@@ -259,7 +259,8 @@ function dayLabel(key){
    twice over: the card goes to the kitchen, and the kitchen is who acts. */
 function conflictsFor(diets){
   var hits = [];
-  if (!diets || !diets.length || !TAGS) return hits;
+  diets = fixDietList(diets);
+  if (!diets.length || !TAGS) return hits;
   ['bread','entree','main','dessert'].forEach(function(course){
     (TAGS[course] || []).forEach(function(tag){
       diets.forEach(function(d){
@@ -274,7 +275,7 @@ function conflictsFor(diets){
    prints these as boxes so reception ticks rather than writes, and so the two
    are visibly the same question when a guest answers half of it at the desk.
    Adding an option to the form means adding it here. */
-var DIET_TICKS = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+var DIET_TICKS = ['Gluten','Dairy','Vegetarian','Vegan','Pescatarian',
                   'Nut allergy','Shellfish allergy','Egg allergy','Other'];
 var PURPOSE_TICKS = ['Relaxing at Nala','A mix','Out exploring',
                      'Working'];
@@ -341,10 +342,14 @@ function cardHTML(r){
           (p.arriveNote ? ' \u00b7 ' + esc(p.arriveNote) : '')
         : '', { cls:'eta' });
 
-  /* A second adult gets their own line whenever Mews says there is one. Named
-     if the guest gave a name at pre-arrival, a rule to write on if not. It is
-     the first thing reception asks and there was nowhere to put the answer. */
-  if (Number(s.adults) > 1) h += row('Second guest', p.companion ? esc(p.companion) : '');
+  /* A second adult gets their own line whenever Mews says there is one, and
+     whenever anyone has already named one. Named if the guest gave a name at
+     pre-arrival or Mews sent one - companionOf holds that order for every
+     surface - a rule to write on if not. It is the first thing reception
+     asks and there was nowhere to put the answer. */
+  var second = companionOf(p, s);
+  if (Number(s.adults) > 1 || second)
+    h += row('Second guest', second ? esc(second) : '');
 
   h += row('Dinner tonight', p.dining === undefined ? ''
         : (p.dining ? 'Dining \u00b7 ' + (p.pax || '') +
@@ -352,7 +357,7 @@ function cardHTML(r){
         { ticks:DINE_TICKS, count:true });
 
   var diet = p.noDiets ? 'None to declare'
-           : ((p.diets && p.diets.length) ? esc(p.diets.join(' \u00b7 ')) : '');
+           : ((p.diets && p.diets.length) ? esc(fixDietList(p.diets).join(' \u00b7 ')) : '');
   if (diet && p.dnote) diet += '<br>' + esc(p.dnote);
   /* The kitchen reads this card. If the night's menu contains something the
      guest declared, it says so here in as many words. */
@@ -392,7 +397,7 @@ function render(rows){
 
 function load(){
   var key = nav.todayKey();
-  api('/menutags/'+key).then(function(t){ TAGS = t; }).catch(function(){ TAGS = null; })
+  api('/menutags/'+key).then(function(t){ TAGS = fixTagNames(t); }).catch(function(){ TAGS = null; })
     .then(function(){ return api('/stays/'+key); })
     .then(function(day){
       var rows = arrivingOn(day, key);

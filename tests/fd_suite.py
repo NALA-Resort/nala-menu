@@ -41,6 +41,7 @@ def short(d):
 RANGE_4 = short(0) + "-" + short(4)
 
 STAFF = {"staff@x": {"name": "Admin", "role": "admin"},
+         "manager@x": {"name": "Manager", "role": "manager"},
          "chef@x": {"name": "Chef", "role": "chef"},
          "housekeeping@x": {"name": "HK", "role": "housekeeping"}}
 
@@ -70,6 +71,7 @@ PRE = {
   # filled in from the guest's phone, not yet confirmed at the desk
   "b4":  {"at":"2026-08-16T10:00:00Z","dining":True,"pax":2,
           "diets":["Nut allergy"],"dnote":"the daughter, severe",
+          "companion":"Imogen Clarke",
           "arriveSlot":"16","arriveApproved":15,"purpose":["A celebration"],"approach":"most",
           "occasion":"anniversary","wellness":True,"wellDay":plus(1),"wellTime":"late morning",
           "note":"quiet villa please"},
@@ -104,8 +106,10 @@ TAGS = {"main": ["Nut allergy"]}
 DINNER = {}
 
 # The booking as Mews states it. Its villa is a single value, so it settles a
-# disagreement with /stays.
-PMS = {}
+# disagreement with /stays. b4's companion is the decoy the guest's own typed
+# name must beat; b9's is a name only Mews knows, which must still read back.
+PMS = {"b4": {"villa": "4", "companion": "Wrong Name"},
+       "b9": {"villa": "9", "companion": "Eleni Papadopoulou"}}
 
 WRITES = []
 FIXES = {}   # bookingId -> the /phonefix record, persisted across the stub
@@ -118,6 +122,15 @@ DIETS = {"gf":  {"name": "Gluten free",      "active": True,  "group": "common"}
          "ses": {"name": "Sesame allergy",   "active": True,  "group": "common"},
          "chi": {"name": "Red pepper spice", "active": True,  "group": "menu"},
          "old": {"name": "Retired Entry",    "active": False, "group": "common"}}
+
+# The admin's flag list, as flags.html writes it, with one archived entry
+# that must never be offered as a chip; and the ticks per booking, as this
+# page writes them to /bookflags.
+FLAGS = {"VIP": {"name": "VIP", "active": True},
+         "Travel agent": {"name": "Travel agent", "active": True},
+         "Breakfast included": {"name": "Breakfast included", "active": True},
+         "Honeymoon": {"name": "Honeymoon", "active": False}}
+BOOKFLAGS = {}
 
 STATE = {"fail": False}
 
@@ -152,6 +165,10 @@ def fb(route, request):
     elif "/bookings/" in u and "/pms" in u:
         k = u.split("/bookings/")[1].split("/")[0]
         body = json.dumps(PMS[k]) if k in PMS else "null"
+    elif "/bookflags/" in u:
+        k = u.split("/bookflags/")[1].split(".json")[0]
+        body = json.dumps(BOOKFLAGS[k]) if k in BOOKFLAGS else "null"
+    elif "/flags" in u: body = json.dumps(FLAGS)
     route.fulfill(status=200, content_type="application/json", body=body)
 
 P = F = 0
@@ -347,6 +364,11 @@ with sync_playwright() as p:
        ["Interested" in l and "late morning" in l for l in sumtxt.split("\n")].count(True) == 1)
     ck("dining approach, in words rather than 'most'",
        "Dining in most nights" in sumtxt)
+    # .sum-l is uppercased by CSS, so innerText comes back shouting.
+    ck("the second guest, under the name on the row above",
+       "SECOND GUEST" in sumtxt and "Imogen Clarke" in sumtxt)
+    ck("and the name the guest typed outranks the Mews copy",
+       "Wrong Name" not in sumtxt)
     ck("and three ways out: edit, confirm, or confirm and check in", pg.evaluate(
        "()=>[...document.querySelectorAll('.sum-btns button')].map(b=>b.dataset.act).join()")
        == "edit,confirm,checkin")
@@ -356,6 +378,13 @@ with sync_playwright() as p:
     ck("tapping the same row again closes it",
        (pg.locator('.arr[data-villa="9"]').click(), pg.wait_for_timeout(300),
         pg.evaluate("()=>document.querySelectorAll('.sum').length"))[2] == 0)
+
+    # A companion only Mews knows: nobody typed it here, and reception still
+    # has to greet both people.
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    ck("a companion only Mews knows reads back at the desk",
+       "Eleni Papadopoulou" in pg.locator(".sum").inner_text())
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
 
     # ── the sheet is edit, not create ───────────────────────────
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
@@ -382,6 +411,16 @@ with sync_playwright() as p:
     ck("a this-menu-only dietary stays on the nightly form", pg.evaluate(
        "()=>[...document.querySelectorAll('#dChips .chip')]"
        ".every(e=>e.textContent!=='Red pepper spice')"))
+    #  The master list above still stores "Gluten free", as a list saved
+    #  before the 26 Aug renames does. The desk shows the renamed pill and
+    #  never the old wording - the rename table in nala-shared.js, which
+    #  tests/diet_renames.json keeps in step with the guest pages' copies.
+    ck("a pill stored under its old name is offered renamed", pg.evaluate(
+       "()=>[...document.querySelectorAll('#dChips .chip')]"
+       ".some(e=>e.textContent==='Gluten')"))
+    ck("and the old wording is gone from the desk", pg.evaluate(
+       "()=>[...document.querySelectorAll('#dChips .chip')]"
+       ".every(e=>e.textContent!=='Gluten free')"))
     ck("and Other is still offered beside them", pg.evaluate(
        "()=>[...document.querySelectorAll('#dNone .chip')]"
        ".some(e=>e.textContent==='Other')"))
@@ -1138,6 +1177,97 @@ with sync_playwright() as p:
     ck("a note nobody has touched still shows the Mews original",
        "noise" in (pg.evaluate("()=>document.getElementById('fInternal').value") or ""))
     pg.close()
+
+    # ── the booking flags ───────────────────────────────────────
+    #  Short facts pinned under the guest's name: VIP, Travel agent, whatever
+    #  the admin defined on Flag Settings. Ticked here per booking, admin
+    #  only, stored at /bookflags. One flag sets itself: a Mews rate STARTING
+    #  with Luxury Escapes, that rate and no other - the owner's ruling.
+    PMS["b4"]["rate"] = "Luxury Escapes AU"
+    PMS["b9"]["rate"] = "Flexible with Breakfast"
+    BOOKFLAGS["b9"] = {"flags": ["VIP", "Old badge"], "by": "x", "at": "t"}
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    ck("a Luxury Escapes rate pins its pill before anybody ticks anything",
+       "Luxury Escapes" in pg.locator(".sum").inner_text())
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+    pg.wait_for_timeout(700)
+    def chip(label):
+        return pg.evaluate("""()=>{const b=[...document.querySelectorAll('#fkChips .chip')]
+            .find(x=>x.textContent==='%s'); return b?b.className:null;}""" % label)
+    ck("the sheet offers the admin's list as chips, none ticked yet",
+       chip("VIP") == "chip" and chip("Travel agent") == "chip"
+       and chip("Breakfast included") == "chip")
+    ck("an archived flag is not offered", chip("Honeymoon") is None)
+    ck("and the automatic one is words, not a chip, since a tick could not turn it off",
+       chip("Luxury Escapes") is None
+       and "automatic" in pg.locator(".flag-src").inner_text())
+    #  Nothing ticked, so a confirm must not stamp a flag record on the
+    #  booking: an edit nobody made, the internal-note lesson.
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(800)
+    ck("confirming without touching the flags writes no flag record",
+       not [x for x in WRITES if "/bookflags" in x["u"]])
+    pg.close()
+
+    pg = board()
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(400)
+    t = pg.locator(".sum").inner_text()
+    ck("a rate that is not Luxury Escapes pins nothing",
+       "Luxury Escapes" not in t and "Flexible" not in t)
+    ck("while the ticked names show, a retired one included",
+       "VIP" in t and "Old badge" in t)
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+    pg.wait_for_timeout(700)
+    ck("a stored tick arrives ticked", chip("VIP") == "chip on")
+    ck("and a stored name the list no longer offers is painted anyway, "
+       "selected, so a save cannot silently drop it",
+       chip("Old badge") == "chip on")
+    ck("no automatic line without the Luxury Escapes rate",
+       pg.locator(".flag-src").count() == 0)
+    #  Travel agent on, Old badge off: the save carries the whole new set.
+    for label in ("Travel agent", "Old badge"):
+        pg.evaluate("""()=>[...document.querySelectorAll('#fkChips .chip')]
+            .find(x=>x.textContent==='%s').click()""" % label)
+        pg.wait_for_timeout(150)
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(800)
+    w = [x for x in WRITES if "/bookflags/b9" in x["u"]]
+    ck("the ticks are saved to their own node, whole, with who and when",
+       len(w) == 1 and w[0]["m"] == "PUT"
+       and json.loads(w[0]["b"])["flags"] == ["VIP", "Travel agent"]
+       and json.loads(w[0]["b"])["by"] == "staff@x")
+    #  Its own write, outside the both-or-neither pair: a flag refused by the
+    #  rules must not roll tonight's answers back.
+    ck("and it rides beside the guest's answers, not inside them",
+       any("/prearrival" in x["u"] for x in WRITES)
+       and not [x for x in WRITES if "/prearrival" in x["u"]
+                and "Travel agent" in (x["b"] or "")])
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(400)
+    t = pg.locator(".sum").inner_text()
+    ck("the summary then reads the new set back",
+       "Travel agent" in t and "Old badge" not in t)
+    pg.close()
+
+    #  Admin only. A manager reads the pills but is offered no chips, and
+    #  their save must not carry a flag write at all.
+    pg = board("manager@x")
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(400)
+    ck("a manager still reads the pills on the summary",
+       "VIP" in pg.locator(".sum").inner_text())
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+    pg.wait_for_timeout(700)
+    ck("but is offered no flag chips",
+       pg.evaluate("()=>!document.getElementById('fkChips')"))
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(800)
+    ck("and their save carries no flag write",
+       not [x for x in WRITES if "/bookflags" in x["u"]])
+    pg.close()
+    del PMS["b4"]["rate"]; del PMS["b9"]["rate"]; BOOKFLAGS.clear()
 
     # ── the number beside the name, the SMS pages' display at the desk ──
     #  Asked for 25 Aug: the same three parts the Pre-arrival SMS rows carry,

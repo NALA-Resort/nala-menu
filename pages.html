@@ -49,7 +49,7 @@
   <div class="date" id="title">Pages</div>
   <div class="navwrap" id="navWrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="flags.html">Flags</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 
@@ -104,6 +104,12 @@
     <div class="p-n">The list a guest chooses from when they say what they
       cannot eat. Tonight's dishes are tagged against it on Publish Menu, which
       is the only page that writes those tags.</div></a>
+  <a class="p" href="flags.html">
+    <div class="p-t">Flag Settings</div><div class="p-f">flags.html</div>
+    <div class="p-n">The booking flags the desk can tick on an arrival - VIP,
+      Travel agent, Breakfast included - printed under the guest's name on the
+      FOH Sheet. Luxury Escapes adds itself from the Mews rate. Admin only,
+      both the list and the ticking.</div></a>
   <a class="p" href="templates.html">
     <div class="p-t">SMS Templates</div><div class="p-f">templates.html</div>
     <div class="p-n">The messages offered on the two SMS pages, and the legend
@@ -198,7 +204,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=37"></script>
+<script src="nala-shared.js?v=41"></script>
 <script>
 (function(){
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');

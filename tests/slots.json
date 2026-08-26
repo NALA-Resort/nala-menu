@@ -1,5 +1,5 @@
 {
-  "comment": "The treatment hours, nine to five on the half hour - the owner's numbers, 25 Aug. THE canonical copy. nala-shared.js carries these for the staff pages and prearrival.html carries its own because a guest page never loads staff code; both copies are asserted against this file, the phone_cases.json pattern. The rules hold the same range in a regex. Change the hours HERE first and the suites name every copy that has not learned it.",
+  "comment": "The treatment hours, nine to five on the half hour - the owner's numbers, 25 Aug. THE canonical copy. nala-shared.js carries these for the staff pages and prearrival.html carries its own because a guest page never loads staff code; both copies are asserted against this file, the phone_cases.json pattern. The rules hold the same range in a regex. Change the hours HERE first and the suites name every copy that has not learned it. The durations live here on the same terms: an hour, an hour and a half, two hours, with the label the guest reads and the short form the tiles wear.",
   "slots": [
     {
       "v": "09:00",
@@ -68,6 +68,23 @@
     {
       "v": "17:00",
       "label": "5:00 pm"
+    }
+  ],
+  "durations": [
+    {
+      "m": 60,
+      "label": "1 hour",
+      "short": "1 hr"
+    },
+    {
+      "m": 90,
+      "label": "1.5 hours",
+      "short": "1.5 hr"
+    },
+    {
+      "m": 120,
+      "label": "2 hours",
+      "short": "2 hr"
     }
   ]
 }

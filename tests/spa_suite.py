@@ -66,18 +66,24 @@ for v, bid, first, last, a, dep in BOOKINGS:
         STAYS_BY_DATE.setdefault(plus(n), {})[v] = {
             "id": bid, "first": first, "last": last,
             "arrive": plus(a), "depart": plus(dep), "adults": 2}
+# Robyn Carter's second guest, as Mews sent it on every night of the stay.
+for _d in STAYS_BY_DATE.values():
+    if "3" in _d: _d["3"]["companion"] = "Dan Carter"
 
 PRE = {
+  # Kai Werner named his companion on the form; nothing from Mews for b4, so
+  # the board is showing the pre-arrival copy.
   "b9":  {"wellness": True,  "wellDay": today,   "wellTime": "afternoon"},
   "b12": {"wellness": True,  "wellDay": plus(-1),"wellTime": "morning"},
-  "b4":  {"wellness": True,  "wellDay": plus(3), "wellTime": "2:00 pm"},
-  "b15": {"wellness": True,  "wellDay": "",      "wellTime": ""},
+  "b4":  {"wellness": True,  "wellDay": plus(3), "wellTime": "2:00 pm", "wellDur": 90,
+          "companion": "Lena Werner"},
+  "b15": {"wellness": True,  "wellDay": "",      "wellTime": "", "wellQty": 2, "wellDur": 90, "wellDur2": 60},
   "b2":  {"wellness": False},
 }
 
 def spa_seed():
     return {
-      "b12": {"t1": {"status": "suggested", "day": today, "time": "16:30",
+      "b12": {"t1": {"status": "suggested", "day": today, "time": "16:30", "dur": 60,
                      "reqDay": plus(-1), "reqTime": "morning",
                      "name": "Elena Petrov", "source": "prearrival",
                      "by": "masseuse@x", "at": "2026-08-20T10:00:00Z"}},
@@ -110,7 +116,9 @@ def fb(route, request):
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
     body = "null"
-    if "/staff" in u: body = json.dumps(STAFF)
+    if "/spasettings" in u:
+        body = json.dumps({"price60": 180, "price90": 250, "price120": 310})
+    elif "/staff" in u: body = json.dumps(STAFF)
     elif "/spa.json" in u: body = json.dumps(SPA)
     elif "/stays/" in u:
         d = u.split("/stays/")[1].split(".json")[0]
@@ -175,6 +183,91 @@ with sync_playwright() as p:
     ck("the villa number leads every tile",
        pg.evaluate("()=>document.querySelector('#board [data-booking=\"b3\"] .v').textContent") == "3")
 
+    # ── the second guest, in the small print under the name ────
+    ck("a tile carries the companion Mews sent",
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b3\"] .cmp')"
+                   "?.textContent") == "With Dan Carter")
+    ck("and the one the guest typed at pre-arrival",
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b4\"] .cmp')"
+                   "?.textContent") == "With Lena Werner")
+    ck("a booking with nobody named keeps its two-line tile",
+       pg.evaluate("()=>!document.querySelector('#board [data-booking=\"b9\"] .cmp')"))
+
+    # ── how many and how long ───────────────────────────────────
+    # A pair is ONE tile wearing both lengths, the owner's ruling of 26 Aug:
+    # two tiles hid the second massage's length behind the first. The card
+    # shows a length row for each, and the whole pair rides one record.
+    ck("two massages on the form are one tile saying so, both lengths on it",
+       pg.evaluate("()=>document.querySelectorAll('#board [data-booking=\"b15\"]').length") == 1 and
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b15\"] .st').textContent")
+         .startswith("Two massages") and
+       "1.5 hr + 1 hr" in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b15\"] .st').textContent"))
+    ck("a lone massage never says Two",
+       "Two massages" not in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b4\"] .st').textContent"))
+    ck("a tile wears its length",
+       "1.5 hr" in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b4\"] .st').textContent") and
+       "1 hr" in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b12\"] .st').textContent"))
+    pg.close()
+    pg = board()
+    pg.locator('#board [data-booking="b4"]').click(); pg.wait_for_timeout(300)
+    ck("the card opens on the length the guest picked",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .chips .chip.on')]"
+                   ".map(c=>c.textContent).join('|')").endswith("1.5 hours"))
+    ck("one massage is one length row, and it says Length plainly",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .sub')]"
+                   ".map(e=>e.textContent)").count("Length") == 1 and
+       "2nd length" not in pg.evaluate(
+         "()=>[...document.querySelectorAll('.card .sub')].map(e=>e.textContent).join('|')"))
+    del WRITES[:]
+    pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
+    w2 = [x for x in WRITES if "/spa/b4/" in x["u"]]
+    body2 = json.loads(w2[0]["b"]) if w2 else {}
+    ck("and the length rides the booking", body2.get("dur") == 90)
+    ck("a lone massage never writes a second", "dur2" not in body2 and "qty" not in body2)
+    SPA = spa_seed()
+    pg.close()
+    pg = board()
+    pg.locator('#board [data-booking="b15"]').click(); pg.wait_for_timeout(300)
+    ck("the pair's card offers a length for each, labelled 1st and 2nd",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .sub')]"
+                   ".map(e=>e.textContent).join('|')").count("1st length") == 1 and
+       pg.evaluate("()=>[...document.querySelectorAll('.card .sub')]"
+                   ".map(e=>e.textContent).join('|')").count("2nd length") == 1)
+    ck("each row open on what the guest picked",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .chips .chip.on')]"
+                   ".map(c=>c.textContent).join('|')").endswith("1.5 hours|1 hour"))
+    del WRITES[:]
+    pg.locator('.card .cbtn', has_text="Suggest").first.click(); pg.wait_for_timeout(900)
+    w15 = [x for x in WRITES if "/spa/b15/" in x["u"]]
+    body15 = json.loads(w15[0]["b"]) if w15 else {}
+    ck("answering the pair carries both lengths on the one record",
+       body15.get("qty") == 2 and body15.get("dur") == 90 and body15.get("dur2") == 60)
+    SPA = spa_seed()
+    pg.close()
+
+    # Editing the details is its own act: resize a booked treatment and
+    # Save changes appears, writing the edit with the status it found -
+    # no cancel, no re-ask, no state change.
+    pg = board()
+    pg.locator('#board [data-booking="b3"]').click(); pg.wait_for_timeout(300)
+    ck("an untouched card offers no Save changes",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
+                   ".map(b=>b.textContent).join('|')").count("Save changes") == 0)
+    pg.locator('.card .chip', has_text="2 hours").click(); pg.wait_for_timeout(200)
+    del WRITES[:]
+    pg.locator('.card .cbtn', has_text="Save changes").click(); pg.wait_for_timeout(900)
+    w3 = [x for x in WRITES if "/spa/b3/" in x["u"]]
+    body3 = json.loads(w3[0]["b"]) if w3 else {}
+    ck("Save changes writes the new length and the booking stays booked",
+       body3.get("status") == "booked" and body3.get("dur") == 120)
+    SPA = spa_seed()
+    pg.close()
+    pg = board()
+
     # The stats are the masseuse's whole queue, not today's slice: b9 today,
     # b4 in two days, b15 with no day picked - all waiting on him.
     ck("To answer counts every open ask on the horizon",
@@ -187,7 +280,8 @@ with sync_playwright() as p:
     # ── the open card: the stay bounds the day control ──────────
     pg.locator('#board [data-booking="b9"]').click()
     pg.wait_for_timeout(300)
-    chips = pg.evaluate("()=>[...document.querySelectorAll('.card .chip')].map(e=>e.textContent)")
+    chips = pg.evaluate("()=>[...document.querySelector('.card .chips')"
+                        ".querySelectorAll('.chip')].map(e=>e.textContent)")
     ck("the day chips are the guest's stay and nothing else",
        chips == [short(0), short(1), short(2), short(3), short(4)])
     ck("the time picker runs nine to five on the half hour",
@@ -326,6 +420,36 @@ with sync_playwright() as p:
     ck("asking again writes requested with the new ask",
        body.get("status") == "requested" and body.get("reqDay") == plus(2))
     SPA = spa_seed()
+
+    # ── the verbal yes: the desk books what he already agreed to ──
+    # The masseuse says yes in person and never opens the page; the desk's
+    # Manually approve books the ask directly, stamped, and the tile says
+    # the desk did it. Born from the form, so the pending ask clears.
+    pg = board("staff@x")
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    ck("the desk's request card leads with Manually approve",
+       pg.evaluate("()=>document.querySelector('.card .cbtn.solid').textContent")
+         .startswith("Manually approve"))
+    del WRITES[:]
+    pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
+    w = [x for x in WRITES if "/spa/b9/" in x["u"]]
+    body = json.loads(w[0]["b"]) if w else {}
+    ck("manually approving books the selection with the desk's stamp",
+       body.get("status") == "booked" and body.get("manual") and
+       body.get("day") == today and body.get("source") == "prearrival")
+    ck("and the tile says the desk did it",
+       "approved at the desk" in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b9\"] .st').textContent"))
+    SPA = spa_seed()
+    pg.close()
+
+    # The masseuse's own card never offers it: his yes is Confirm.
+    pg = board()
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    ck("no Manually approve exists on the masseuse's screen",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
+                   ".every(b=>!b.textContent.startsWith('Manually'))"))
+    pg.close()
 
     # ── the decline's other half: telling the guest ─────────────
     # The terracotta tile instructs the desk until somebody actually tells
@@ -475,6 +599,32 @@ with sync_playwright() as p:
        "did not save" in pg.evaluate("()=>errBar.textContent"))
     STATE["fail"] = False
     pg.close()
+
+    # ── the manager's spa prices, set from Settings ─────────────
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.add_init_script(SDK)
+    q.add_init_script("window.__EMAIL=%s;" % json.dumps("staff@x"))
+    q.route("**firebasedatabase.app/**", fb)
+    q.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    q.goto("http://localhost:8980/staff.html")
+    q.wait_for_timeout(1600)
+    ck("Settings shows the prices it holds",
+       q.evaluate("()=>sp60.value") == "180" and
+       q.evaluate("()=>sp90.value") == "250")
+    del WRITES[:]
+    q.fill("#sp60", "195")
+    q.evaluate("()=>{sp60.dispatchEvent(new Event('change'))}")
+    q.wait_for_timeout(600)
+    w3 = [x for x in WRITES if "/spasettings" in x["u"]]
+    body3 = json.loads(w3[0]["b"]) if w3 else {}
+    ck("changing a price saves that price, as a number",
+       w3 and w3[0]["m"] == "PATCH" and body3.get("price60") == 195)
+    q.fill("#sp60", "call us")
+    q.evaluate("()=>{sp60.dispatchEvent(new Event('change'))}")
+    q.wait_for_timeout(300)
+    ck("words are refused before they reach the database",
+       "whole number" in q.evaluate("()=>spaErr.textContent"))
+    q.close()
 
     # ── who may stand here ──────────────────────────────────────
     q = board("chef@x")

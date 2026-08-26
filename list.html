@@ -122,6 +122,11 @@
   .row-unk td { background:#FCFCFB; }
 
   .sub { display:block; font-size:8px; color:#777; font-weight:normal; margin-top:2px; }
+  /* The second guest, set a step up from the externals' phone line. The
+     phone is reference; this is a person the waiter greets by name, so it
+     sits just under the primary's size rather than in the small print.
+     Owner, 26 Aug. */
+  .sub.cmp { font-size:9.5px; }
   .allergen { color:#A8321E; font-weight:bold; }
   /* Dietaries and comments share one column at their combined width, so a long
      dietary list lays out horizontally instead of stacking three deep in a
@@ -216,6 +221,19 @@
   .crow.staff b { font-family:var(--ui-font); font-size:7px; letter-spacing:.12em;
                   text-transform:uppercase; color:#55554F; margin-right:6px;
                   font-weight:700; }
+  /* A booking flag: VIP, Travel agent, the Luxury Escapes rate. Pinned
+     under the guest's name, where the owner asked for it, in the row the
+     companion's small line already uses. A fact about the booking, not a
+     warning, so it is inked plainly - bordered like the PRE badge, never
+     red (red is failure, by the colour law) and never the allergy pill's
+     fill. Its slot follows the staff-note pattern: always in the markup,
+     invisible while empty, filled when the per-booking reads land. */
+  .fkhere { display:block; margin-top:3px; line-height:1.9; }
+  .fkhere:empty { display:none; }
+  .fpill { display:inline-block; font-family:var(--ui-font); font-size:7.5px;
+           font-weight:bold; letter-spacing:.1em; text-transform:uppercase;
+           border:1.2px solid #55554F; color:#1C1C1A; padding:1px 6px;
+           border-radius:9px; margin-right:4px; }
 
   /* empty write-in rows: one rule only, from the cell border */
   tr.blank td { height:26px; }
@@ -371,7 +389,7 @@
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="flags.html">Flags</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 <script>
@@ -503,7 +521,7 @@ function stripTags(h){
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=37"></script>
+<script src="nala-shared.js?v=41"></script>
 <script>
 // date state + header wiring from nala-shared.js
 var nav = initDateNav();
@@ -652,7 +670,8 @@ function commentBox(g, hits, row){
 }
 
 function dietPills(diets){
-  if (!diets || !diets.length) return '';
+  diets = fixDietList(diets);
+  if (!diets.length) return '';
   return '<div class="dwrap">' + diets.map(function(x){
     var al = (typeof ALLERGENS!=='undefined' && ALLERGENS.indexOf(x)>-1) || /allerg/i.test(x);
     var label = al ? x.replace(/\s*allergy\s*/i,'') : x;
@@ -769,6 +788,49 @@ function paintStaffNotes(){
      staff note. */
   padBlanks();
 }
+/* The booking flags, two reads per occupied villa: the staff-note shape, but
+   ungated, because a flag like Breakfast included is an instruction to
+   whoever is serving and every role that can print this sheet may see it.
+   The pills are what bookingFlagLabels (nala-shared.js) says: the names the
+   desk ticked at /bookflags, and Luxury Escapes when the Mews rate the sync
+   stored says so - that rate and no other, the owner's ruling. A failed
+   read leaves that villa flagless and the sheet otherwise whole. */
+var BOOKFLAGS = {};
+function fetchFlags(stays){
+  if (!stays) return Promise.resolve();
+  return Promise.all(Object.keys(stays).map(function(v){
+    var id = stays[v] && stays[v].id;
+    if (!id) return null;
+    return Promise.all([
+      api('/bookings/' + id + '/pms').catch(function(){ return null; }),
+      api('/bookflags/' + id).catch(function(){ return null; })
+    ]).then(function(res){
+        var labels = bookingFlagLabels(res[0], res[1]);
+        if (labels.length) BOOKFLAGS[String(v)] = labels;
+      })
+      .catch(function(){});
+  }));
+}
+/* textContent per pill, never markup: the names are typed by an admin and
+   the name cell is otherwise built by concatenation, the staff-note lesson. */
+function paintFlags(){
+  var slots = document.querySelectorAll('.fkhere');
+  for (var i=0; i<slots.length; i++){
+    var v = slots[i].getAttribute('data-villa');
+    var labels = v ? BOOKFLAGS[String(v)] : null;
+    slots[i].textContent = '';
+    if (!labels) continue;
+    labels.forEach(function(t){
+      var s = document.createElement('span');
+      s.className = 'fpill';
+      s.textContent = t;
+      slots[i].appendChild(s);
+    });
+  }
+  /* The flags changed row heights, so the blank-row decision is stale -
+     the same reason the staff notes re-measure. */
+  padBlanks();
+}
 function fetchStaffNotes(stays){
   if (!canInternal() || !stays) return Promise.resolve();
   return Promise.all(Object.keys(stays).map(function(v){
@@ -800,6 +862,8 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     /* Fired here and not awaited. The sheet draws on the reads it already has
        and the notes land a moment later into the rows that want them. */
     staffNotesWhenReady(res[5]);
+    /* The flags ride the same way, but wait on no role: they are not gated. */
+    fetchFlags(res[5]).then(paintFlags);
     var combined   = res[4] || {};
     function groupOf(room){
       for (var gid in combined){
@@ -927,6 +991,21 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
         ? g.name
         : (row.room ? '' : (phone || ''));
       var nameCell = name + (phone && !row.room ? '<span class="sub">'+phone+'</span>' : '');
+
+      /* The second guest, directly under the name they travel with, in the
+         same small grey line the externals use for a phone. Context, not a
+         second row: the sheet is read down by booking and the covers column
+         already counts them. Escaped, because it is typed by a guest or at
+         the desk and the cell is otherwise built by concatenation. */
+      var second = row.room
+        ? companionOf(PREARRIVAL_BY_VILLA[String(row.room)], g) : '';
+      if (second) nameCell += '<span class="sub cmp">'+escText(second)+'</span>';
+
+      /* The booking flags, under the name they describe: VIP, Travel agent,
+         the Luxury Escapes rate. The slot is always in the markup and is
+         filled in later, like the staff-note line, because the flags are
+         per-booking reads that land after the sheet first draws. */
+      nameCell += '<span class="fkhere" data-villa="' + (row.room || '') + '"></span>';
 
       var dinner, cls = '';
       var hits = (row.status === 'in') ? menuConflicts(MENU, g.diets) : [];

@@ -187,6 +187,65 @@ function tidyPhone(p){
   return p;
 }
 
+/* ── renamed dietaries ─────────────────────────────────────────
+   The owner renamed two pills on 26 Aug: a pill names the thing the guest
+   cannot eat, so "Gluten free" and "Dairy free" are "Gluten" and "Dairy".
+   Answers already saved carry the old wording - in dinner cells, in
+   pre-arrival records, in /guests, in tonight's tags - and nothing sweeps a
+   live database to rewrite a fact a guest gave us. So every reader maps the
+   old name to the new one: displays show the new word, the old answers still
+   light the chips and still hit the menu-tag comparison, and the next save
+   of any record writes the new name back, which is how the data converges
+   without a migration.
+
+   The table is copied into index.html and prearrival.html, which are guest
+   pages and deliberately load no staff code. tests/diet_renames.json is the
+   shared table all three copies are checked against - add a rename there,
+   never to one copy. */
+var DIET_RENAMES = { 'Gluten free': 'Gluten', 'Dairy free': 'Dairy' };
+function fixDietName(d){ return DIET_RENAMES[d] || d; }
+function fixDietList(list){
+  var out = [];
+  (list || []).forEach(function(d){
+    d = fixDietName(d);
+    if (out.indexOf(d) === -1) out.push(d);
+  });
+  return out;
+}
+/* Tonight's tags, per course, as /menutags stores them. */
+function fixTagNames(tags){
+  if (!tags) return tags;
+  var out = {};
+  Object.keys(tags).forEach(function(c){
+    out[c] = Array.isArray(tags[c]) ? fixDietList(tags[c]) : tags[c];
+  });
+  return out;
+}
+/* The master list, as /dietaries stores it: keyed by the name, so a rename
+   moves the record to the new key. The keying transform is keyOf() on the
+   pages that write the list - the same three steps, kept in step by the
+   suites. If the database somehow holds both spellings the two records
+   merge, active if either was. */
+function fixDietMaster(master){
+  if (!master) return master;
+  var out = {};
+  Object.keys(master).forEach(function(k){
+    var d = master[k] || {};
+    var nd = {}; for (var f in d) nd[f] = d[f];
+    nd.name = fixDietName(d.name || k);
+    var key = nd.name.trim().replace(/[.#$\/\[\]]/g,'').replace(/\s+/g,' ');
+    if (out[key]) out[key].active = !!(out[key].active || nd.active);
+    else out[key] = nd;
+  });
+  return out;
+}
+function dietMasterRenamed(master){
+  return !!master && Object.keys(master).some(function(k){
+    var n = (master[k] && master[k].name) || k;
+    return fixDietName(n) !== n;
+  });
+}
+
 /* ── dietary conflicts against the tagged menu ─────────────── */
 function menuConflicts(menu, diets){
   if (!diets || !diets.length || !menu) return [];
@@ -195,7 +254,9 @@ function menuConflicts(menu, diets){
     var dish = menu[k];
     if (!dish || !dish.conflicts) return;
     dish.conflicts.forEach(function(tag){
+      tag = fixDietName(tag);
       diets.forEach(function(d){
+        d = fixDietName(d);
         if (String(d).toLowerCase() === String(tag).toLowerCase())
           hits.push({ dish: dish.name || k, diet: d });
       });
@@ -205,7 +266,8 @@ function menuConflicts(menu, diets){
 }
 
 function dietHTML(diets, sep, cls){
-  if(!diets||!diets.length) return '';
+  diets = fixDietList(diets);
+  if(!diets.length) return '';
   cls = cls || 'allergen';
   return diets.map(function(d){
     return (ALLERGENS.indexOf(d)>-1 || /allerg/i.test(d)) ? '<span class="'+cls+'">'+d+'</span>' : d;
@@ -544,6 +606,10 @@ function mewsRecord(stay){
   if (stay.depart)   out.departs = stay.depart;
   if (stay.arrive)   out.arrives = stay.arrive;
   if (stay.adults)   out.adults  = stay.adults;
+  /* The second guest, as Mews sent it. The Worker has written this onto
+     every night since 19 Aug and this reader dropped it, which is why no
+     board could ever show a companion the Zap delivered. */
+  if (stay.companion) out.companion = stay.companion;
   /* One party can hold several villas. Two reservations under one group are
      not two guests who happen to share a surname, and a board that treats them
      as strangers will seat them apart. */
@@ -553,6 +619,17 @@ function mewsRecord(stay){
      no use to anybody standing at a desk. */
   if (stay.number)   out.number  = stay.number;
   return out;
+}
+
+/* The second guest's name, one reading for every surface that shows it.
+   What a person typed - the guest at pre-arrival, or reception at the desk,
+   both landing in prearrival.companion - wins; the name Mews sent stands
+   behind it. The same order the desk's answersOf established, now read
+   through here by every page. One name, never a list: whether a villa can
+   hold more than one companion is an open decision in HANDOVER.md, and the
+   field is a single value everywhere until it is settled. */
+function companionOf(pre, rec){
+  return String((pre && pre.companion) || (rec && rec.companion) || '').trim();
 }
 
 /* Every OTHER villa the same party holds tonight. Empty for the ordinary case
@@ -681,6 +758,43 @@ function pmsFields(known){
 function vacantIsStale(m, known){
   return !!(m && m.status === 'vacant' && known && known.bookingId &&
             m.pmsUpdated !== known.pmsUpdated);
+}
+
+/* ── booking flags ─────────────────────────────────────────────
+   Short facts pinned under a guest's name: VIP, Travel agent, Breakfast
+   included - whatever the admin defines on the Flags settings page
+   (flags.html, writing the /flags list, the dietaries shape). The desk
+   ticks them per booking, admin only, and the ticks live at
+   /bookflags/<booking id> as a plain list of names. The Service Sheet
+   prints each as a pill under the guest name.
+
+   One flag sets itself. The Worker carries the Mews rate name into
+   pms.rate, and a booking whose rate is Luxury Escapes wears that pill
+   with nobody ticking anything. Only that rate - the owner's ruling,
+   26 Aug: every other rate name stays off the paper. Matched on the
+   front of the string, case and spacing aside, because live rate names
+   usually carry suffixes ("Luxury Escapes AU") and none has been seen
+   from here yet - the companion field's standing caution. */
+var RATE_FLAG = { label: 'Luxury Escapes', match: /^\s*luxury\s*escapes/i };
+
+function rateFlagLabel(pms){
+  return (pms && typeof pms.rate === 'string' && RATE_FLAG.match.test(pms.rate))
+    ? RATE_FLAG.label : null;
+}
+
+/* Every pill a booking wears: the ticked names in their stored order, the
+   rate's own last, duplicates folded case-blind so an admin who also made
+   a "Luxury Escapes" flag does not print it twice. */
+function bookingFlagLabels(pms, rec){
+  var out = [], seen = {};
+  (((rec || {}).flags) || []).forEach(function(t){
+    t = String(t == null ? '' : t).trim();
+    if (!t || seen[t.toLowerCase()]) return;
+    seen[t.toLowerCase()] = true; out.push(t);
+  });
+  var r = rateFlagLabel(pms);
+  if (r && !seen[r.toLowerCase()]) out.push(r);
+  return out;
 }
 
 /* one room, one record: staff override beats the guest's own answer,
@@ -1570,6 +1684,10 @@ var NAV_NEEDS = {
   'menu-print.html':   'resSheet',
   'past-menus.html':   'resBoard',
   'staff.html':        'manageStaff',
+  /* Admin only, like the two beside it: the flags an admin defines here are
+     ticked on the front desk sheet by admins alone, so offering the list to
+     anyone else is a door to nowhere. */
+  'flags.html':        'manageStaff',
   'pages.html':        'manageStaff'
 };
 
@@ -1609,6 +1727,21 @@ function spaSlotLabel(t){
   var p = String(t).split(':'), h = +p[0];
   return (h % 12 || 12) + ':' + p[1] + ' ' + (h < 12 ? 'am' : 'pm');
 }
+/* The treatment lengths, on the same terms as the slots: one list here for
+   the staff pages, a forced copy on the guest form, both pinned to
+   tests/slots.json. label is what the guest reads, short is what a tile
+   wears, and the price key is what /spasettings stores against it.      */
+var SPA_DURS = [
+  { m: 60,  label: '1 hour',    short: '1 hr'   },
+  { m: 90,  label: '1.5 hours', short: '1.5 hr' },
+  { m: 120, label: '2 hours',   short: '2 hr'   }
+];
+function spaDur(m){
+  for (var i = 0; i < SPA_DURS.length; i++)
+    if (SPA_DURS[i].m === +m) return SPA_DURS[i];
+  return null;
+}
+
 /* The way back from what a guest or the desk stored: the label itself, a
    24 hour HH:MM, or a bare H:MM that only fits the afternoon (a guest
    writing 2:00 means 2pm; one writing 10:00 already matches the morning).
