@@ -298,6 +298,17 @@ function items(){
                      : (spaDur(p.wellDur2) ? p.wellDur2 : 0)
       } });
   });
+  /* Which of the pair a tile is. Counted over what exists - real records
+     and open asks together - so a desk-added second massage numbers the
+     pair the same as a form ask, and a lone massage says nothing. */
+  var perBk = {};
+  out.forEach(function(it){ perBk[it.id] = (perBk[it.id] || 0) + 1; });
+  var seen = {};
+  out.forEach(function(it){
+    if (perBk[it.id] < 2) return;
+    seen[it.id] = (seen[it.id] || 0) + 1;
+    it.pair = 'Massage ' + seen[it.id] + ' of ' + perBk[it.id];
+  });
   return out;
 }
 
@@ -315,7 +326,8 @@ function tile(it){
   el.querySelector('.v').textContent = villaOf(it.id, dayOf(rec) || todayKey());
   el.querySelector('.nm').textContent = nameOf(it.id, rec);
   setCmp(el, it.id);
-  el.querySelector('.st').textContent = lineOf(rec, it.id);
+  el.querySelector('.st').textContent =
+    (it.pair ? it.pair + ' · ' : '') + lineOf(rec, it.id);
   el.onclick = function(){
     OPEN = { id: it.id, tid: it.tid };
     SEL = null;
@@ -384,7 +396,7 @@ function card(it){
   setCmp(head, id);
   head.querySelector('.st').textContent = isNew
     ? 'A new treatment · staying ' + stayRange(BOOKINGS[id])
-    : lineOf(rec, id);
+    : (it.pair ? it.pair + ' · ' : '') + lineOf(rec, id);
   head.onclick = function(){ OPEN = null; SEL = null; paint(); };
   el.appendChild(head);
 
