@@ -438,6 +438,15 @@
           "wellDay": {
             ".validate": "newData.isString() && newData.val().length <= 60"
           },
+          "wellQty": {
+            ".validate": "newData.isNumber() && (newData.val() == 1 || newData.val() == 2)"
+          },
+          "wellDur": {
+            ".validate": "newData.isNumber() && (newData.val() == 60 || newData.val() == 90 || newData.val() == 120)"
+          },
+          "wellDur2": {
+            ".validate": "newData.isNumber() && (newData.val() == 60 || newData.val() == 90 || newData.val() == 120)"
+          },
           "wellTime": {
             ".validate": "newData.isString() && newData.val().length <= 60"
           },
@@ -537,6 +546,9 @@
           "source": {
             ".validate": "newData.isString() && (newData.val() == 'prearrival' || newData.val() == 'desk' || newData.val() == 'spa')"
           },
+          "dur": {
+            ".validate": "newData.isNumber() && (newData.val() == 60 || newData.val() == 90 || newData.val() == 120)"
+          },
           "told": {
             ".validate": "newData.isString() && newData.val().length <= 40"
           },
@@ -553,6 +565,28 @@
             ".validate": false
           }
         }
+      }
+    },
+    "spasettings": {
+      ".read": true,
+      ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager')",
+      "price60": {
+        ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000"
+      },
+      "price90": {
+        ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000"
+      },
+      "price120": {
+        ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000"
+      },
+      "by": {
+        ".validate": "newData.isString() && newData.val().length <= 120"
+      },
+      "at": {
+        ".validate": "newData.isString() && newData.val().length <= 40"
+      },
+      "$other": {
+        ".validate": false
       }
     },
     "phonefix": {

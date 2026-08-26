@@ -227,7 +227,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=38"></script>
+<script src="nala-shared.js?v=39"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -903,7 +903,10 @@ function answersOf(r){
     occasion: p.occasion || '',
     wellness: p.wellness === undefined ? null : !!p.wellness,
     wellDay:  p.wellDay || '',
-    wellTime: p.wellTime || ''
+    wellTime: p.wellTime || '',
+    wellQty:  p.wellQty === 2 ? 2 : 1,
+    wellDur:  spaDur(p.wellDur) ? p.wellDur : 60,
+    wellDur2: spaDur(p.wellDur2) ? p.wellDur2 : 60
   };
 }
 
@@ -1003,6 +1006,9 @@ function openGuest(r){
       '<div class="sheet-label">Preferred day</div>' +
       '<div class="chips" id="wDays"></div>' +
       '<select class="txt" id="fWtime" aria-label="Preferred time" style="margin-top:8px"></select>' +
+      '<div class="chips" id="fWqty" style="margin-top:8px"></div>' +
+      '<select class="txt" id="fWdur" aria-label="Massage length" style="margin-top:8px"></select>' +
+      '<select class="txt" id="fWdur2" aria-label="Second massage length" style="margin-top:8px;display:none"></select>' +
     '</div>' +
 
     '<div class="sheet-label">Booking notes</div>' +
@@ -1038,6 +1044,31 @@ function openGuest(r){
     sel.value = spaSlotFromText(a.wellTime)
       ? spaSlotLabel(spaSlotFromText(a.wellTime)) : (a.wellTime || '');
   })();
+  /* How many and how long, the same terms the guest form offers, from the
+     one shared list. */
+  function paintWellDurs(){
+    ['fWdur', 'fWdur2'].forEach(function(id, i){
+      var d = document.getElementById(id);
+      d.innerHTML = '';
+      SPA_DURS.forEach(function(x){
+        var o = document.createElement('option');
+        o.value = String(x.m);
+        o.textContent = (id === 'fWdur2' ? 'Second massage: ' : '') + x.label;
+        d.appendChild(o);
+      });
+      d.value = String(i === 0 ? a.wellDur : a.wellDur2);
+    });
+    document.getElementById('fWdur2').style.display = a.wellQty === 2 ? '' : 'none';
+    var qbox = document.getElementById('fWqty'); qbox.innerHTML = '';
+    [1, 2].forEach(function(n){
+      var b = document.createElement('button');
+      b.className = 'chip' + (a.wellQty === n ? ' on' : '');
+      b.textContent = n === 1 ? 'One massage' : 'Two massages';
+      b.onclick = function(){ a.wellQty = n; paintWellDurs(); };
+      qbox.appendChild(b);
+    });
+  }
+  paintWellDurs();
 
   function paintDining(){
     document.getElementById('sDin').className = a.dining === true  ? 'on' : '';
@@ -1297,6 +1328,8 @@ function openGuest(r){
     a.occasion = document.getElementById('fOcc').value.trim();
     a.note     = document.getElementById('fNote').value.trim();
     a.wellTime = document.getElementById('fWtime').value.trim();
+    a.wellDur = +document.getElementById('fWdur').value || 60;
+    a.wellDur2 = +document.getElementById('fWdur2').value || 60;
     save(r, a, checkin);
   }
   document.getElementById('sConfirm').onclick = function(){ finish(false); };
@@ -1373,6 +1406,9 @@ function save(r, a, checkin){
     purpose: purposeText(a.purpose), approach: a.approach,
     occasion: a.occasion, wellness: a.wellness, companion: a.companion,
     wellDay: a.wellness ? a.wellDay : '', wellTime: a.wellness ? a.wellTime : '',
+    wellQty: a.wellness ? a.wellQty : null,
+    wellDur: a.wellness ? a.wellDur : null,
+    wellDur2: (a.wellness && a.wellQty === 2) ? a.wellDur2 : null,
     note: a.note,
     confirmedAt: new Date().toISOString()
   };

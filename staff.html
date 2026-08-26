@@ -138,6 +138,15 @@
     <div class="note">Tapping a box saves it straight away. Turning every box
     off for a role is the same as turning notifications off for those people.</div>
     <div class="err" id="err"></div>
+
+    <div class="sec">Spa prices</div>
+    <div class="hours">1 hour&nbsp;$<input id="sp60" inputmode="numeric" placeholder="0"></div>
+    <div class="hours">1.5 hours&nbsp;$<input id="sp90" inputmode="numeric" placeholder="0"></div>
+    <div class="hours">2 hours&nbsp;$<input id="sp120" inputmode="numeric" placeholder="0"></div>
+    <div class="note">Shown to the guest beside each length on the pre-arrival
+    form, so they see the cost before they ask. A price left empty shows no
+    number rather than a zero.</div>
+    <div class="err" id="spaErr"></div>
   </div>
 </div>
 
@@ -146,7 +155,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=38"></script>
+<script src="nala-shared.js?v=39"></script>
 <script>
 var ROLES = ['admin','manager','chef','waiter','housekeeping'];
 /* The human roles, and the ones the notification matrix targets. manager is
@@ -521,6 +530,45 @@ document.getElementById('master').onclick = function(){
   NOTIFY.on = (NOTIFY.on === false);
   drawNotify(); saveNotify();
 };
+
+/* ── spa prices ────────────────────────────────────────────────
+   Three numbers at /spasettings, public to read the way the menu is: the
+   guest form shows them beside each length. Saved field by field on change,
+   like the quiet hours beside them. */
+function loadSpaPrices(){
+  fetch(DB + '/spasettings.json').then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(p){
+      [60, 90, 120].forEach(function(m){
+        var v = p && p['price' + m];
+        document.getElementById('sp' + m).value =
+          (typeof v === 'number' && v > 0) ? String(v) : '';
+      });
+    }).catch(function(){});
+}
+[60, 90, 120].forEach(function(m){
+  document.getElementById('sp' + m).onchange = function(){
+    var raw = this.value.trim().replace(/^\$/, '');
+    var err = document.getElementById('spaErr');
+    if (raw !== '' && !/^[0-9]{1,5}$/.test(raw)){
+      err.textContent = 'A price is a whole number of dollars, like 180.';
+      this.value = ''; return;
+    }
+    err.textContent = '';
+    var body = {};
+    body['price' + m] = raw === '' ? 0 : +raw;
+    body.by = (window.NALA_USER && NALA_USER.email) || '';
+    body.at = new Date().toISOString();
+    fetch(DB + '/spasettings.json', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(r){
+      if (!r.ok) throw new Error();
+    }).catch(function(){
+      err.textContent = 'The price did not save. Try again.';
+    });
+  };
+});
+loadSpaPrices();
 
 ['hFrom','hTo'].forEach(function(id){
   document.getElementById(id).onchange = function(){
