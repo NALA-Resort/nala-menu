@@ -258,24 +258,41 @@ with sync_playwright() as p:
     #  villas with a booking or an answer, plus the externals.
     ck("only villas somebody knows something about are listed",
        [x["room"] for x in d] == ["1","2","3","4","9","ext","ext"])
-    #  Four spare lines, and never more than seventeen rows in total. A fixed
-    #  twenty-one is what put an empty second page on the printout: thirteen
-    #  guests plus eight blanks tipped it and page two carried only the footer.
-    ck("the sheet adds four lines to write walk-ins on",
+    #  Four spare lines on a night this light. HOW MANY is decided by measured
+    #  print height now, not by a row count: the fourteen-row cap of 22 Aug
+    #  assumed even rows, and rows stopped being even when the comments column
+    #  became a stack. On 26 Aug one staff note - a raw Mews order dump - ran
+    #  to nine printed lines inside ONE row, the count could not see it, and
+    #  the last blank plus the day's summary printed on a second page carrying
+    #  nothing else.
+    ck("a light house gets its four spare lines",
        rw["blanks"] == 4 and rw["n"] == len(d) + 4)
-    #  The cap is on the TOTAL, not on the blanks, because on a full house
-    #  even four spare lines is more than the page can hold. Checked as
-    #  arithmetic rather than by drawing seventeen fixtures.
-    def padded(n): return max(n, min(14, n + 4))
-    #  Fourteen is measured, not reasoned: a printout on 22 Aug held fourteen
-    #  guest rows and pushed the three blanks after them onto a second page.
-    ck("a busy house gets its spare lines", padded(9) == 13)
-    ck("a fuller one gets fewer, not four more", padded(13) == 14)
-    ck("and a full house gets none at all", padded(14) == 14 and padded(18) == 18)
-    ck("no house ever prints more rows than it has guests plus four",
-       all(padded(n) - n <= 4 for n in range(0, 22)))
-    ck("and never fewer rows than it has guests",
-       all(padded(n) >= n for n in range(0, 22)))
+    #  The budget is the page's own fact, read from it rather than restated
+    #  here, so this suite cannot drift from what the sheet actually does.
+    #  window.-qualified so a sheet that has LOST the budget reads as a FAIL
+    #  with a name on it rather than a ReferenceError that kills the suite.
+    budget = pg.evaluate("()=>window.PRINT_TABLE_BUDGET_MM || 0")
+    print("   print budget:", budget, "mm")
+    ck("the print budget leaves real room for what no stylesheet can see",
+       isinstance(budget, (int, float)) and 200 <= budget <= 260)
+    #  The invariant that replaced the cap: laid out at the print metrics (the
+    #  same .pmeasure rules the page itself measures with), a table still
+    #  carrying blank rows fits the budget, summary footer included.
+    def printed_mm(page):
+        return page.evaluate("""()=>{
+          const box=document.createElement('div'); box.className='pmeasure';
+          const c=document.querySelector('#sheetScroller table').cloneNode(true);
+          c.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id'));
+          box.appendChild(c); document.body.appendChild(box);
+          const h=c.getBoundingClientRect().height;
+          document.body.removeChild(box);
+          return h/96*25.4;}""")
+    mm = printed_mm(pg)
+    print("   printed table: %.0fmm of %dmm" % (mm, budget))
+    ck("and with its blanks in it the printed table fits that budget",
+       mm <= budget)
+    ck("and the measuring box is never left in the page",
+       pg.evaluate("()=>!document.querySelector('.pmeasure')"))
     r1=d[0]
     ck("r1 conflict row + FLAG + PRE-MENU", "row-conflict" in r1["cls"] and "FLAG" in r1["name"] and "PRE-MENU" in r1["name"])
     ck("r1 dietaries as pills, allergy solid and shortened",
@@ -550,6 +567,80 @@ with sync_playwright() as p:
        q.evaluate("()=>[...document.querySelectorAll('.crow.staff')].length===1"))
     q.close()
     internal["b3"] = {"fromMews": "Complained about noise last stay"}
+
+    #  ── the night that found the row-count cap out ──────────
+    #  26 Aug: a sheet under its row cap and over the page. One staff note -
+    #  a raw Mews order dump - ran to nine printed lines inside one row, so
+    #  counting rows said the sheet fitted while measuring said it did not,
+    #  and the last blank went to a second page with the day's summary under
+    #  it: a printed page whose only ink was a footer. Drawn tall here on
+    #  purpose, three dump-sized notes across twelve dining villas, so the
+    #  measured answer and the counted answer disagree and the suite catches
+    #  whichever one the page is using.
+    DUMP = ("createdUtc: 2026-07-07T06:28:44Z id: c20eda2e-4c43-4e57-b62b "
+            "orderId: 203a773e-4fd0-4418-ad4d text: Hi, would prefer a view "
+            "over the beach rather than the pool, please. Many thanks, very "
+            "much looking forward to our stay :) type: General "
+            "updatedUtc: 2026-07-07T06:28:44Z") * 2
+    heavy_resp, heavy_guests, heavy_stays, heavy_internal = {}, {}, {}, {}
+    for i in range(1, 13):
+        heavy_resp["04000001%02d" % i] = {
+            "status": "in", "pax": 2, "room": str(i), "name": "Guest %d" % i,
+            "arrives": plus(-2), "departs": plus(2),
+            "diets": ["Dairy free", "Gluten free"],
+            "dnote": "No chilli, no cold food or drink below room temperature"}
+        heavy_guests[str(i)] = {"name": "Guest %d" % i, "departs": plus(2)}
+        heavy_stays[str(i)] = {"id": "hb%d" % i, "name": "Guest %d" % i}
+    for i in (1, 2, 3):
+        heavy_internal["hb%d" % i] = {"fromMews": DUMP}
+    def heavy_fb(route, request):
+        u = request.url
+        if "/responses/" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(heavy_resp)); return
+        if "/roomguests/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(heavy_guests)); return
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(heavy_stays)); return
+        if "/internal/" in u:
+            k = u.split("/internal/")[1].split(".json")[0]
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(heavy_internal.get(k))); return
+        if "/manual/" in u or "/combined/" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body="null"); return
+        fb(route, request)
+    q = b.new_page(viewport={"width": 900, "height": 1100})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body=SDK))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", heavy_fb)
+    q.route("**/menu.json*", lambda r,_: r.fulfill(status=200,
+        content_type="application/json", body=json.dumps(menu)))
+    q.goto("http://localhost:8955/list.html"); q.wait_for_timeout(2600)
+    hv = q.evaluate("""()=>({
+        blanks:document.querySelectorAll('#rows tr.blank').length,
+        guests:[...document.querySelectorAll('#rows tr')]
+          .filter(t=>!t.className.includes('blank')).length,
+        notes:document.querySelectorAll('.crow.staff').length})""")
+    mmh = printed_mm(q)
+    print("   heavy house: %d guests, %d blanks, %.0fmm of %dmm, %d staff notes"
+          % (hv["guests"], hv["blanks"], mmh, budget, hv["notes"]))
+    #  The notes are what make the rows tall, and they land AFTER the sheet
+    #  first draws, which is why the measurement re-runs when they do. A green
+    #  here on a sheet with no notes painted would be testing the wrong night.
+    ck("the dump-sized staff notes are on the sheet being measured",
+       hv["notes"] == 3)
+    ck("every guest is still on the sheet, whatever the budget says",
+       hv["guests"] == 12)
+    ck("spare lines are dropped before they can spill",
+       hv["blanks"] == 0 or mmh <= budget)
+    ck("and a house too tall for one page sheds all of them",
+       hv["blanks"] == 0)
+    q.close()
 
     #  ── the whole house silent ──────────────────────────────
     #  Hiding villas Mews has said nothing about is only safe while silence

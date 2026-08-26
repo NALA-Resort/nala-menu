@@ -29,6 +29,15 @@
      Not universal. Safari has its own checkbox in the dialog and iOS may offer
      none at all, so this makes the common case right rather than every case. */
   @page { size: A4 portrait; margin: 0; }
+  /* The print metrics, once. The @media print block prints with these and the
+     .pmeasure box lays out with the same ones, so the measurement that decides
+     the blank rows and the paper it is deciding for cannot drift apart. A
+     number changed here changes both. --print-w is A4's 210mm minus the two
+     10mm body pads. */
+  :root { --print-w:190mm;
+          --print-td-pad:9px 5px; --print-td-size:10.5px;
+          --print-th-size:8px;    --print-th-padb:9px;
+          --print-blank-h:30px; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:var(--ui-font); color:#111; background:#fff; padding:16px 16px 0; }
 
@@ -321,14 +330,33 @@
        Shrinking the type was solving a problem that had already gone, at the
        cost of the one thing this document has to do, which is be read at a
        pass by somebody carrying plates. */
-    td { padding:9px 5px; font-size:10.5px; }
-    th { font-size:8px; padding-bottom:9px; }
-    tr.blank td { height:30px; }
+    td { padding:var(--print-td-pad); font-size:var(--print-td-size); }
+    th { font-size:var(--print-th-size); padding-bottom:var(--print-th-padb); }
+    tr.blank td { height:var(--print-blank-h); }
     table { min-width:0; width:100%; }
     tr { page-break-inside:avoid; }
     thead { display:table-header-group; }
     table { border-collapse:collapse; }   /* Safari repeats headers only when collapsed */
   }
+
+  /* The measuring box: an off-screen copy of the table laid out exactly as
+     paper lays it out - the print metrics above, at the printed width - so the
+     sheet can ask "how tall will I print?" while it is still on screen. The
+     blank write-in rows are decided from this, by height; deciding them by
+     count is what printed the day's summary on a page of its own. See the
+     note at padBlanks. visibility rather than display, because display:none
+     has no layout to measure. Appended, read, removed in one breath: it is
+     never left in the page. */
+  .pmeasure { position:absolute; left:-9999px; top:0; width:var(--print-w);
+              visibility:hidden; }
+  .pmeasure table { min-width:0; width:100%; border-collapse:collapse; }
+  .pmeasure td { padding:var(--print-td-pad); font-size:var(--print-td-size); }
+  .pmeasure th { font-size:var(--print-th-size); padding-bottom:var(--print-th-padb); }
+  .pmeasure tr.blank td { height:var(--print-blank-h); }
+  .pmeasure .printfoot { display:table-footer-group; }
+  .pmeasure .pfoot { display:block; }
+  .pmeasure .printstamp { display:block; }
+  .pmeasure .printhead { display:none; }
 </style>
 </head>
 <body class="tier-print">
@@ -497,6 +525,75 @@ function tomorrowKey(){ var d=new Date(VIEW); d.setDate(d.getDate()+1); return d
     if (el) el.textContent = stampText;
   });
 })();
+
+/* One copy of the write-in row, because it is built in two places now: the
+   sheet's own foot and the measuring clone that prices one before it is
+   added. */
+var BLANK_ROW =
+  '<tr class="blank"><td></td><td></td><td class="c-dt"></td><td class="c-bt"></td>'+
+  '<td></td><td></td><td></td><td></td><td></td></tr>';
+
+/* How tall the printed table may grow before the sheet must stop adding
+   blank rows. A4 is 297mm and the body keeps 10mm top and bottom, which
+   leaves 277mm; the rest of the discount is for what no stylesheet can see
+   or measure - AirPrint's own margins, Safari's header and footer lines,
+   whatever the print dialog is set to. Those took the summary onto a second
+   page twice, 22 and 26 Aug, so the allowance is deliberately generous.
+
+   Conservative in the right direction: guessing low costs a heavy night a
+   spare write-in line, guessing high prints the day's summary on a page
+   carrying nothing else, which is the failure this number exists to end.
+   Guest rows are never dropped for it - a house that genuinely overruns a
+   page overruns it, blanks left off. */
+var PRINT_TABLE_BUDGET_MM = 240;
+
+/* Blank rows to write walk-ins on - as many as the PAGE has room for, up to
+   four, and none the page has not.
+
+   They were counted until 26 Aug: pad to fourteen rows, four blanks at most,
+   fourteen having been measured on 22 Aug on a night of even rows. Then rows
+   stopped being even. The comments column is a stack now, and a staff note
+   of nine lines - a raw Mews order dump, that night - is still ONE row, so
+   the count could not see it: ten guests plus four blanks measured fine by
+   rows and spilled by millimetres, and the last blank went to a second page
+   with the day's summary under it. A page whose only ink is a footer.
+
+   So the sheet measures instead of counting. The table is cloned into an
+   off-screen box laid out with the print metrics (the .pmeasure rules read
+   the same variables the @media print block does), one blank is added to the
+   clone to price a blank, and real blanks are added only while the whole
+   table - summary footer included, that is what the clone's tfoot is doing
+   there - still fits PRINT_TABLE_BUDGET_MM. Run again whenever a row can
+   have changed height after the first paint: the staff notes land a beat
+   after the sheet draws, and they are exactly what broke the count. */
+function padBlanks(){
+  var tb = document.getElementById('rows');
+  if (!tb || !tb.children.length) return;
+  var old = tb.querySelectorAll('tr.blank');
+  for (var i = old.length - 1; i >= 0; i--) tb.removeChild(old[i]);
+  var box = document.createElement('div');
+  box.className = 'pmeasure';
+  var clone = document.querySelector('#sheetScroller table').cloneNode(true);
+  /* Ids stripped for the same reason the print header's clone strips them:
+     a duplicated id makes every getElementById on the page a coin toss. */
+  var ids = clone.querySelectorAll('[id]');
+  for (var i = 0; i < ids.length; i++) ids[i].removeAttribute('id');
+  box.appendChild(clone);
+  document.body.appendChild(box);
+  var budget = PRINT_TABLE_BUDGET_MM * 96 / 25.4;
+  var base = clone.getBoundingClientRect().height;
+  clone.tBodies[0].insertAdjacentHTML('beforeend', BLANK_ROW);
+  var blankH = clone.getBoundingClientRect().height - base;
+  document.body.removeChild(box);
+  var n = blankH > 0 ? Math.floor((budget - base) / blankH) : 0;
+  n = Math.max(0, Math.min(4, n));
+  for (var i = 0; i < n; i++) tb.insertAdjacentHTML('beforeend', BLANK_ROW);
+}
+/* Where the browser says printing is about to happen, measure again at that
+   moment in case anything moved since load. iOS fires no beforeprint - the
+   same reason the print header is built at load - so it keeps the load-time
+   result, which the staff-notes re-run has already brought up to date. */
+window.addEventListener('beforeprint', padBlanks);
 
 // A stay range on ONE line: "Tue 11-Fri 14". Month is omitted - we know it,
 // and the ordinal is dropped so the range never wraps to a second row.
@@ -667,6 +764,10 @@ function paintStaffNotes(){
     d.appendChild(document.createTextNode(t));
     slots[i].appendChild(d);
   }
+  /* The notes just changed row heights, so the blank-row decision is stale.
+     This is not hypothetical: the row that spilled the 26 Aug sheet was a
+     staff note. */
+  padBlanks();
 }
 function fetchStaffNotes(stays){
   if (!canInternal() || !stays) return Promise.resolve();
@@ -875,43 +976,6 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
         '</tr>');
     });
 
-    /* Blank rows to write walk-ins on. Padded to a fixed 21 until 22 Aug,
-       which is what put a second page on a sheet whose content fitted:
-       thirteen guests plus eight blanks tipped it, and page two came out
-       carrying nothing but the footer. An empty second page is the worst kind
-       of overflow, because nothing on it says why it is there. The browser
-       adds its own header and footer to a printed page as well, which takes
-       height no stylesheet here can measure.
-
-       Four blanks, and never past seventeen rows in total. Every listed guest
-       now has a writing line of their own inside their row, so these are only
-       for somebody not on the sheet at all: a walk-in, a late external. Eight
-       of those was never the number, and on a full house even four is too
-       many, which is why the cap is on the total and not on the blanks.
-
-       A quiet night therefore stops in the middle of the page rather than
-       ruling lines to the foot. That is the cosmetic half of the trade and it
-       loses to the functional half: a sheet that reads as unfinished is a
-       smaller problem than a sheet that prints a blank page every night.
-
-       Seventeen was still one too many. A printout on 22 Aug held fourteen
-       guest rows on the page and put the three blanks after them onto a second
-       one, so the real ceiling is fourteen rows and not seventeen. My earlier
-       arithmetic said 990px of budget and it was wrong: the browser's own
-       header and footer take more than I allowed, and default print margins
-       are wider than the 10mm this stylesheet asks for.
-
-       Fourteen is measured rather than reasoned, which is why it is the number
-       here. It costs a busy night its spare lines, and that is the right way
-       round: every guest already has a writing line inside their own row, and
-       these are only for somebody who was never on the sheet. */
-    var padTo = Math.max(rows.length, Math.min(14, rows.length + 4));
-    for (var i=rows.length; i<padTo; i++){
-      tb.insertAdjacentHTML('beforeend',
-        '<tr class="blank"><td></td><td></td><td class="c-dt"></td><td class="c-bt"></td>'+
-        '<td></td><td></td><td></td><td></td><td></td></tr>');
-    }
-
     // ── total row, aligned under the Pax column ───────────
     // combined rooms share one table; sizes give the set-up breakdown
     var tblPax = {};
@@ -942,6 +1006,9 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     document.getElementById('fTables').textContent =
       tables + ' ' + (tables === 1 ? 'table' : 'tables');
 
+    /* After the summary is written, not before: the footer is part of what
+       gets measured, and it should be measured saying what it will print. */
+    padBlanks();
 
   });
 </script>
