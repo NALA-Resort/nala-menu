@@ -116,15 +116,18 @@
   .seen { width:15px; height:15px; flex:0 0 15px; opacity:.55; }
   .seen svg { width:100%; height:100%; display:block; fill:none; stroke:var(--mid); }
 
-  /* The tint answers the thing reception scans for: is there something to read
-     back, or is this one we fill in together. Kept very light so the villa
-     number and the name still carry the row. */
+  /* The tint is how complete the answers are, ruled by the owner 26 Aug:
+     grey when nobody has answered anything, amber when some answers exist,
+     green only when every question the desk settles holds one. Grey is the
+     colour law's light grey fill - unknown promises nothing - because an
+     untouched guest is not work in progress, they are not started. It used
+     to be amber, which made a row nobody had touched read the same as one
+     half done. Kept very light so the villa number and the name still carry
+     the row. */
   .arr.done-form { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
-  .arr.todo-form { background:rgba(194,154,85,.11); border-color:rgba(194,154,85,.36); }
-  /* Started and not finished. The same amber as not-started, because it is
-     still a row reception has to do something about, with a solid left edge
-     to say the guest has met them halfway. A third colour would have made the
-     list a palette to decode rather than two things to work through. */
+  .arr.todo-form { background:rgba(28,28,26,.045); border-color:var(--rule); }
+  /* Started and not finished: amber, the colour law's in-progress, with a
+     solid left edge to say somebody has met it halfway. */
   .arr.part-form { background:rgba(194,154,85,.11); border-color:rgba(194,154,85,.36);
                    border-left:3px solid rgba(194,154,85,.85); }
   .sum { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
@@ -379,10 +382,38 @@ function startedForm(p){
   });
 }
 
+/* Any answer at all, wherever it came from - the guest's form or the desk.
+   startedForm deliberately stops at hasForm because it answers a different
+   question (is the guest mid-form); the tint needs "is there anything here",
+   for which a submitted form obviously counts. */
+function anyAnswers(p){
+  return hasForm(p) || startedForm(p);
+}
+
+/* Every question the desk has to settle holds an answer: dinner, dietary and
+   massage. These three, because they are the decisions this sheet exists to
+   record and the ones another board acts on; occasion and notes are free text
+   nobody is required to have.
+
+   Ruled by the owner, 26 Aug: the row tint reads completeness - grey nothing,
+   amber some, green all - rather than whether the guest's form was submitted.
+   Computed from the answers, not from `at`, so a record with the form-done
+   stamp and a hole in it (a rule in a form is not a guarantee from a
+   database) reads amber and gets asked, and a record completed entirely at
+   the desk earns its green without pretending to be a submitted form. */
+function fullAnswers(p){
+  if (!p) return false;
+  var dinner  = p.dining === true || p.dining === false;
+  var dietary = !!p.noDiets ||
+                (Array.isArray(p.diets) ? p.diets.length > 0 : !!p.diets);
+  var massage = p.wellness === true || p.wellness === false;
+  return dinner && dietary && massage;
+}
+
 /* No pills on this screen. Every state a pill carried is already said once,
    and said better:
 
-     form done or not      the row tint, green or amber
+     how answered they are the row tint: green, amber or grey
      confirmed or not      which of the two sections the row is in
      dining or not         the fork icon, green, red or grey
      nothing came back     an amber row with no link icon
@@ -447,8 +478,9 @@ function rowHTML(r){
   else if (r.stay.adults)
     bits.push(r.stay.adults + (Number(r.stay.adults)===1 ? ' adult' : ' adults'));
   var open = OPEN === r.villa;
-  var tint = hasForm(r.pre) ? ' done-form'
-           : startedForm(r.pre) ? ' part-form' : ' todo-form';
+  /* Completeness, not form-submission: see fullAnswers. */
+  var tint = fullAnswers(r.pre) ? ' done-form'
+           : anyAnswers(r.pre) ? ' part-form' : ' todo-form';
   return '<button class="arr'+tint+(isArrived(r.pre)?' is-done':'')+(open?' open':'')+
          '" data-villa="'+r.villa+'">'+
          '<div class="arr-v">'+r.villa+'</div>'+
@@ -1062,8 +1094,13 @@ function openGuest(r){
     '<div class="sheet-label">Booking notes</div>' +
     '<input class="txt" id="fNote" type="text" placeholder="Preferences, requests" autocomplete="off">' +
 
+    /* Save, not a second Confirm arriving. Renamed by the owner, 26 Aug,
+       after the old wording did what it said: a sheet opened, changed
+       nowhere and "confirmed" saved decisions nobody had made. Saving
+       writes what is on the sheet and decides nothing; confirming is the
+       summary's button, and checking in is the one below. */
     '<button class="opt solid" id="sCheckin" style="margin-top:18px">Confirm and check in</button>' +
-    '<button class="opt quiet" id="sConfirm">Confirm arriving</button>' +
+    '<button class="opt quiet" id="sConfirm">Save</button>' +
     '<button class="opt quiet" id="sClose">Close</button>';
 
   document.getElementById('fDnote').value  = a.dnote;
@@ -1370,8 +1407,9 @@ function openGuest(r){
   paintEta();   /* again, so the note shows if the slot they chose wants one */
 
   document.getElementById('sClose').onclick = closeSheet;
-  /* Both buttons run the same checks and the same save. The only difference is
-     whether the guest is standing there. */
+  /* Both buttons read the sheet the same way. Save keeps what is on it and
+     nothing more; Confirm and check in also stamps the record, because the
+     guest is standing there agreeing to it. */
   function finish(checkin){
     /* Read before checking, not after. The note is part of the answer when
        Other is chosen, and a check that runs before the field is read is
@@ -1419,7 +1457,9 @@ function openGuest(r){
        it matches what was stored, so the changed-test below skips it. Only
        an admin's sheet carries the chips, so only an admin sets this. */
     if (canFlags()) r._flags = flags;
-    save(r, a, checkin);
+    /* Only check in confirms. Save is the third argument's false twice over:
+       it neither checks in nor stamps anything. */
+    save(r, a, checkin, checkin);
   }
   document.getElementById('sConfirm').onclick = function(){ finish(false); };
   document.getElementById('sCheckin').onclick = function(){ finish(true); };
@@ -1483,40 +1523,73 @@ function dinnerCell(r, a){
   return rec;
 }
 
-function save(r, a, checkin){
+/* `confirm` is what separates the sheet's Save from the two confirming
+   buttons. Save writes the sheet as it stands and decides nothing; confirm
+   and check in also stamp the record. The split exists because of the bug of
+   26 Aug: the sheet's old Confirm arriving wrote dining:null and
+   wellness:null for questions nobody had asked, the optimistic merge below
+   read null as false, and a sheet opened and saved untouched came back with
+   Not dining and Not interested selected - decisions nobody made. */
+function save(r, a, checkin, confirm){
   var payload = {
-    dining: a.dining, pax: a.dining ? a.pax : 0,
-    diets: a.diets, noDiets: a.noDiets, dnote: a.dnote,
+    diets: a.diets, dnote: a.dnote,
     arriveSlot: a.arriveSlot, arriveNote: a.arriveNote,
     /* null, not omission: a PATCH that leaves the key out cannot clear a
        previously approved hour, and null is how the clear reaches the
        database. */
     arriveApproved: (typeof a.arriveApproved === 'number' ? a.arriveApproved : null),
     purpose: purposeText(a.purpose), approach: a.approach,
-    occasion: a.occasion, wellness: a.wellness, companion: a.companion,
-    wellDay: a.wellness ? a.wellDay : '', wellTime: a.wellness ? a.wellTime : '',
-    wellQty: a.wellness ? a.wellQty : null,
-    wellDur: a.wellness ? a.wellDur : null,
-    wellDur2: (a.wellness && a.wellQty === 2) ? a.wellDur2 : null,
-    note: a.note,
-    confirmedAt: new Date().toISOString()
+    occasion: a.occasion, companion: a.companion,
+    note: a.note
   };
-  /* Checking in is a separate fact from confirming the answers, so it is a
-     separate field.
+  /* Only answers somebody actually gave. dining and wellness are null until
+     asked, and null is not an answer: written, it comes back through
+     answersOf as false, which is how an untouched sheet grew a Not dining
+     and a Not interested nobody chose. Omitted, the PATCH leaves the
+     questions unanswered, which is what they are. There is no way on this
+     sheet to un-answer either, so null always means never asked. */
+  if (a.dining !== null){
+    payload.dining = a.dining;
+    payload.pax = a.dining ? a.pax : 0;
+  }
+  if (a.wellness !== null){
+    payload.wellness = a.wellness;
+    payload.wellDay = a.wellness ? a.wellDay : '';
+    payload.wellTime = a.wellness ? a.wellTime : '';
+    payload.wellQty = a.wellness ? a.wellQty : null;
+    payload.wellDur = a.wellness ? a.wellDur : null;
+    payload.wellDur2 = (a.wellness && a.wellQty === 2) ? a.wellDur2 : null;
+  }
+  /* noDiets true is an answer. noDiets false is only an answer when it is
+     clearing a stored true or standing beside chosen dietaries; written for
+     a guest nobody has asked, it stamps the question answered ("no" counts
+     in GUEST_ANSWERS, deliberately) and paints an untouched row as started. */
+  if (a.noDiets || a.diets.length || (r.pre && r.pre.noDiets !== undefined))
+    payload.noDiets = a.noDiets;
 
-     It used to be set and never cleared, on the reasoning that a guest who has
-     arrived has arrived. What that missed is the accidental press: the two
-     buttons sit together, check in is the big one, and there was no way back
-     from it. So Confirm arriving now CLEARS it, which is what the name says.
-     Confirming is a statement about tonight's answers and about where the
-     guest is, and both are true whichever way round they are pressed.
+  if (confirm){
+    payload.confirmedAt = new Date().toISOString();
+    /* Checking in is a separate fact from confirming the answers, so it is a
+       separate field.
 
-     FUTURE: this is where the Mews reservation moves to Checked in, through
-     the Connector API. Nothing writes back to Mews yet, so the app is the only
-     record of it until that exists, and this undo will have to reverse that
-     too rather than only the local field. */
-  payload.checkedInAt = checkin ? payload.confirmedAt : null;
-  if (!hasForm(r.pre)) payload.at = payload.confirmedAt;
+       It used to be set and never cleared, on the reasoning that a guest who
+       has arrived has arrived. What that missed is the accidental press: the
+       two buttons sit together, check in is the big one, and there was no way
+       back from it. So the summary's Confirm arriving CLEARS it, which is
+       what the name says. The sheet's Save touches neither: editing a
+       checked-in guest's dietary must not quietly un-arrive them.
+
+       FUTURE: this is where the Mews reservation moves to Checked in, through
+       the Connector API. Nothing writes back to Mews yet, so the app is the
+       only record of it until that exists, and this undo will have to reverse
+       that too rather than only the local field. */
+    payload.checkedInAt = checkin ? payload.confirmedAt : null;
+    /* Only a confirmation may mark the answers as existing in full. A plain
+       Save stamping `at` was half the 26 Aug bug: one saved arrival slot and
+       the whole record read as a finished form on every screen that asks
+       hasForm. */
+    if (!hasForm(r.pre)) payload.at = payload.confirmedAt;
+  }
 
   var before = r.pre, beforeCell = r.cell;
   r.pre  = Object.assign({}, r.pre || {}, payload);  /* optimistic */
@@ -1630,8 +1703,9 @@ document.getElementById('board').addEventListener('click', function(e){
     if (what === 'edit') return openGuest(ra);
     /* Confirming from the summary saves exactly what is on screen. The guest
        just agreed to it out loud, so there is nothing to open and nothing to
-       retype. Check in does the same and moves them to Arrived. */
-    return save(ra, answersOf(ra), what === 'checkin');
+       retype. Check in does the same and moves them to Arrived. Both are
+       confirmations, unlike the sheet's Save, so both stamp the record. */
+    return save(ra, answersOf(ra), what === 'checkin', true);
   }
 
   var btn = t.closest('.arr');

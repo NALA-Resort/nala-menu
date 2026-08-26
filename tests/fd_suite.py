@@ -294,12 +294,22 @@ with sync_playwright() as p:
        not seen("2") and fork("2") == "fork un")
     ck("and one who submitted has nothing left to say", not seen("4"))
 
-    # The tint answers the thing reception scans for.
+    # The tint reads completeness, the owner's ruling of 26 Aug: grey until
+    # somebody answers something, amber while only some answers exist, green
+    # only once dinner, dietary and massage all hold one. It used to read
+    # whether the form was submitted, which let one saved field paint a row
+    # green and an untouched row wear the same amber as one half done.
     def tint(v):
         return pg.evaluate("()=>document.querySelector('.arr[data-villa=\"%s\"]').className" % v)
-    ck("a completed form tints the row green", "done-form" in tint("4"))
-    ck("one still to do tints it amber", "todo-form" in tint("2"))
-    ck("opened but unfinished still counts as to do", "todo-form" in tint("14"))
+    ck("a guest with every answer tints the row green", "done-form" in tint("4"))
+    ck("one nobody has edited reads not-started", "todo-form" in tint("2"))
+    ck("opened but never answered is still not-started", "todo-form" in tint("14"))
+    # By computed colour, because the class alone cannot say what the
+    # stylesheet paints it: not-started is grey now, and must not come back
+    # amber, which would make an untouched row read as one half done.
+    ck("and not-started wears grey, not the part-done amber",
+       pg.evaluate("()=>getComputedStyle(document.querySelector('.arr[data-villa=\"2\"]')).backgroundColor")
+       != pg.evaluate("()=>getComputedStyle(document.querySelector('.arr[data-villa=\"6\"]')).backgroundColor"))
 
     # ── started and not finished ────────────────────────────────
     #  A third state, and only since the guest page began saving each page as
@@ -453,27 +463,68 @@ with sync_playwright() as p:
     ck("covers are shown because they are dining",
        pg.evaluate("()=>paxWrap.style.display!=='none'"))
 
-    # ── confirming ──────────────────────────────────────────────
+    # ── saving from the sheet ───────────────────────────────────
+    # The sheet's quiet button is Save, not a second Confirm arriving.
+    # Renamed by the owner, 26 Aug, after the old wording did what it said: a
+    # sheet opened, changed nowhere and "confirmed" saved decisions nobody
+    # had made. Save keeps what is on the sheet and decides nothing;
+    # confirming belongs to the summary, where the guest has just agreed to
+    # the answers out loud.
+    ck("the sheet's quiet button says Save",
+       pg.evaluate("()=>sConfirm.textContent.trim()") == "Save")
     del WRITES[:]
     pg.locator("#sConfirm").click(); pg.wait_for_timeout(500)
     w = [x for x in WRITES if "/bookings/b4/prearrival" in x["u"]]
-    ck("confirming writes the guest's own node", len(w) == 1)
+    ck("saving writes the guest's own node", len(w) == 1)
     if w:
         body = json.loads(w[0]["b"])
         ck("as a PATCH, so a field this screen does not carry survives",
            w[0]["m"] == "PATCH")
-        ck("it is stamped confirmed", bool(body.get("confirmedAt")))
+        ck("a save is not a confirmation, so nothing is stamped confirmed",
+           "confirmedAt" not in body)
+        ck("nor moved: where the guest is is not the sheet's to change",
+           "checkedInAt" not in body)
         ck("the answers go with it", body["dining"] is True and body["pax"] == 2
            and body["diets"] == ["Nut allergy"])
-        ck("and 'at' is NOT overwritten, so it still means when the answers first existed",
+        ck("and 'at' is NOT written, so it still means when the answers first existed",
            "at" not in body)
     ck("the sheet closes", pg.evaluate("()=>backdrop.className.indexOf('show')<0"))
-    # Confirming alone does NOT move them: they have not arrived yet.
-    ck("confirming leaves them under Arriving, because they have not arrived",
+    # Saving does not move them: they have not arrived.
+    ck("saving leaves them under Arriving, because they have not arrived",
        pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"]').className")
        .find("is-done") == -1)
     ck("and the arrived count does not move either",
        pg.evaluate("()=>nArr.textContent") == "2/9")
+    pg.close()
+
+    # ── the bug of 26 Aug: a bare save invented answers ─────────
+    # Open a blank guest, change nothing, press the sheet's quiet button.
+    # The old save wrote dining:null and wellness:null for questions nobody
+    # had asked, the optimistic merge read null as false, and the reopened
+    # sheet showed Not dining and Not interested selected - decisions nobody
+    # made. It also stamped `at`, so the untouched row went green as a
+    # finished form.
+    pg = board()
+    pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(600)
+    w = [x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]
+    ck("a bare save answers no question nobody answered",
+       len(w) == 1 and not any(k in json.loads(w[0]["b"]) for k in
+       ("dining", "pax", "wellness", "wellQty", "wellDur", "noDiets")))
+    ck("and carries no stamp: not confirmed, not arrived, not a finished form",
+       len(w) == 1 and not any(k in json.loads(w[0]["b"]) for k in
+       ("confirmedAt", "checkedInAt", "at")))
+    ck("and writes no dinner cell, because nobody has asked them yet",
+       not [x for x in WRITES if "/dinner/" in x["u"]])
+    pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
+    ck("reopening the sheet offers every question still unanswered",
+       pg.evaluate("()=>sDin.className===''&&sOut.className===''"
+                   "&&wYes.className===''&&wNo.className===''"))
+    pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(300)
+    ck("and the row stays grey, because nothing was edited",
+       "todo-form" in pg.evaluate(
+         "()=>document.querySelector('.arr[data-villa=\"2\"]').className"))
     pg.close()
 
     # ── reception's approved hour, beside the guest's slot ──────
@@ -553,8 +604,12 @@ with sync_playwright() as p:
         ck("no allergies is recorded as an answer, not as an empty list",
            body["noDiets"] is True)
         ck("not dining is zero covers", body["dining"] is False and body["pax"] == 0)
-        ck("and 'at' IS set, because the answers did not exist before",
-           bool(body.get("at")))
+        # This used to stamp `at` on the reasoning that the answers did not
+        # exist before. But `at` is the whole test for a finished form, and a
+        # desk save can be one answer of six: check in stamps it instead,
+        # once everything required has actually been asked.
+        ck("and 'at' is NOT set by a save, so a part-answered guest never "
+           "reads as a finished form", "at" not in body)
     pg.close()
 
     # ── confirming from the summary, without opening anything ───
@@ -694,6 +749,11 @@ with sync_playwright() as p:
     w = [x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]
     ck("and checking in from the form arrives them too",
        len(w) == 1 and bool(json.loads(w[0]["b"]).get("checkedInAt")))
+    # Check in is where `at` gets stamped for a guest whose answers began at
+    # the desk: the required questions have just been enforced, so this is
+    # the first moment "the answers exist" is actually true.
+    ck("and stamps 'at', which a plain save never does",
+       len(w) == 1 and bool(json.loads(w[0]["b"]).get("at")))
     pg.close()
 
     # ── the bug found in testing on 17 Aug ──────────────────────
