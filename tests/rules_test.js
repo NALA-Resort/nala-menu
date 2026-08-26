@@ -551,6 +551,14 @@ cannotPatch('but not something the length of a paragraph', SYNC,
        { status:'declined', reqDay:'2026-09-11', reqTime:'afternoon',
          name:'Robyn Williams', note:'away until Monday', source:'prearrival',
          by:'Masseuse', at:NOW }).allowed);
+  ck('and marks a declined guest as told',
+     as2('ms@x').write('/spa/b-1001/t1',
+       { status:'declined', reqDay:'2026-09-11', reqTime:'2:00 pm',
+         name:'Robyn Williams', note:'away until Monday', told:NOW,
+         source:'prearrival', by:'desk', at:NOW }).allowed);
+  ck('a told stamp that is not a string is refused',
+     !as2('ms@x').write('/spa/b-1001/t1',
+       { status:'declined', told:true, at:NOW }).allowed);
   ck('the desk approves a suggestion', as2('st@x').write('/spa/b-1001/t1', T).allowed);
   ck('and the manager may too',        as2('ad@x').write('/spa/b-1001/t1', T).allowed);
   ck('a waiter may not, until the box is ticked',
