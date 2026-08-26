@@ -82,6 +82,9 @@
           white-space:nowrap; cursor:pointer; }
   .cbtn.solid { background:var(--ink); color:var(--cream); }
   .cbtn.quiet { border-color:var(--rule); color:var(--mid); flex:0 0 auto; padding:12px 14px; }
+  /* The button law, STYLEGUIDE.md: destructive wears terracotta outline,
+     never solid ink and never red, and always confirms before writing. */
+  .cbtn.danger { border-color:var(--terra-b); color:var(--terra); flex:0 0 auto; padding:12px 14px; }
   .hint { font-size:11px; color:var(--mid); margin-top:8px; line-height:1.45; }
 
   /* The stats are buttons here and only here, so the dress is this page's to
@@ -491,10 +494,20 @@ function card(it){
       save(it2, 'declined', { note: why.trim() });
     };
   }
+  /* The button law: cancelling a booking a guest holds asks first, naming
+     the guest and the thing, and the dialog's Cancel costs nothing. */
+  function cancelWith(it2){
+    return function(){
+      if (!window.confirm('Cancel ' + nameOf(id, rec) + '\u2019s ' +
+                          shortDay(rec.day) + ' ' + slotLabel(rec.time) +
+                          ' massage? The guest will need to be told.')) return;
+      save(it2, 'declined', {});
+    };
+  }
 
   if (!days.length){
     /* Nothing can be picked; only a decline still makes sense. */
-    if (!isNew) btn('Decline', 'quiet', declineWith(it));
+    if (!isNew) btn('Decline', 'danger', declineWith(it));
   } else if (masseuse){
     if (isNew){
       /* The masseuse adding one was asked in person and knows his own
@@ -502,14 +515,13 @@ function card(it){
       btn('Book ' + when, 'solid', saveAs('booked', { req: true }));
     } else if (rec.status === 'booked'){
       if (changed) btn('Suggest ' + when, 'solid', saveAs('suggested'));
-      btn(changed ? 'Cancel' : 'Cancel booking', changed ? 'quiet' : 'solid',
-          saveAs('declined'));
+      btn(changed ? 'Cancel' : 'Cancel booking', 'danger', cancelWith(it));
       if (changed) hint = 'A change to a booked treatment goes back through ' +
         'the front desk, so the guest hears before it moves.';
     } else {
       if (matchesAsk) btn('Confirm ' + when, 'solid', saveAs('booked'));
       btn('Suggest ' + when, matchesAsk ? 'quiet' : 'solid', saveAs('suggested'));
-      btn('Decline', 'quiet', declineWith(it));
+      btn('Decline', 'danger', declineWith(it));
       hint = matchesAsk
         ? 'Confirm books it. Suggest offers this time as a change instead, ' +
           'amber until the front desk approves it with the guest. Decline ' +
@@ -525,13 +537,13 @@ function card(it){
     } else if (rec.status === 'suggested'){
       if (rec.day === SEL.day && rec.time === SEL.time){
         btn('Approve ' + when, 'solid', saveAs('booked'));
-        btn('Decline', 'quiet', declineWith(it));
+        btn('Decline', 'danger', declineWith(it));
         hint = 'Approve once the guest has said yes - the booking turns ' +
                'green for everyone. The guest’s original ask stays on ' +
                'the record.';
       } else {
         btn('Ask again for ' + when, 'solid', saveAs('requested', { req: true }));
-        btn('Decline', 'quiet', declineWith(it));
+        btn('Decline', 'danger', declineWith(it));
         hint = 'A different day or time goes back to the masseuse as a ' +
                'fresh ask.';
       }
@@ -546,8 +558,7 @@ function card(it){
           saveAs('requested', { req: true }));
     } else if (rec.status === 'booked'){
       if (changed) btn('Ask again for ' + when, 'solid', saveAs('requested', { req: true }));
-      btn(changed ? 'Cancel' : 'Cancel booking', changed ? 'quiet' : 'solid',
-          saveAs('declined'));
+      btn(changed ? 'Cancel' : 'Cancel booking', 'danger', cancelWith(it));
     } else {
       /* requested: normally the masseuse's to answer - but a verbal yes is
          an answer too. Manually approve books the selection directly,
