@@ -327,6 +327,36 @@ with sync_playwright() as p:
        body.get("status") == "requested" and body.get("reqDay") == plus(2))
     SPA = spa_seed()
 
+    # ── the verbal yes: the desk books what he already agreed to ──
+    # The masseuse says yes in person and never opens the page; the desk's
+    # Manually approve books the ask directly, stamped, and the tile says
+    # the desk did it. Born from the form, so the pending ask clears.
+    pg = board("staff@x")
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    ck("the desk's request card leads with Manually approve",
+       pg.evaluate("()=>document.querySelector('.card .cbtn.solid').textContent")
+         .startswith("Manually approve"))
+    del WRITES[:]
+    pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
+    w = [x for x in WRITES if "/spa/b9/" in x["u"]]
+    body = json.loads(w[0]["b"]) if w else {}
+    ck("manually approving books the selection with the desk's stamp",
+       body.get("status") == "booked" and body.get("manual") and
+       body.get("day") == today and body.get("source") == "prearrival")
+    ck("and the tile says the desk did it",
+       "approved at the desk" in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b9\"] .st').textContent"))
+    SPA = spa_seed()
+    pg.close()
+
+    # The masseuse's own card never offers it: his yes is Confirm.
+    pg = board()
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    ck("no Manually approve exists on the masseuse's screen",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
+                   ".every(b=>!b.textContent.startsWith('Manually'))"))
+    pg.close()
+
     # ── the decline's other half: telling the guest ─────────────
     # The terracotta tile instructs the desk until somebody actually tells
     # the guest; Guest told stamps the record, the tile stops instructing,
