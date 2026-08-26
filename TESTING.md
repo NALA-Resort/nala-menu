@@ -300,6 +300,21 @@ understands that event name. After the next publish, check the manager's phone.
 If nothing arrives, the Worker needs a case for it, and the manual notify link
 in the chef brief is still doing the job in the meantime.
 
+**New 26 Aug: the villa and event are the headline.** The Worker titles every
+banner "Nala Villas" and puts the fact in the body, and iOS adds "from Nala
+Villas" itself, so the bold line said the app's name twice. `sw.js` now
+promotes the body to the title when the title is only the app's name. After
+the next mark, **expect** the bold line to read like "Villa 9 - possibly
+available", not "Nala Villas". If the Worker one day sends a real title, it
+wins and this promotion steps aside - that is `tests/sw_test.js`'s contract.
+
+**Still open, 26 Aug: completion events may have no case in the Worker.** The
+`available` banner demonstrably arrives; whether `cleaned` and `serviced` do
+was never confirmed. Have someone else mark one test villa cleaned and one
+serviced while you watch a subscribed phone. If nothing arrives, or the
+generic fallback does, the Worker predates the clean/service split and needs
+a case per event - which waits on recovering its source (PLAN.md, Stage A).
+
 The original check:
 
 

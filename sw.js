@@ -8,7 +8,7 @@
 
    It is inert until a phone subscribes from the Notifications toggle. */
 
-var SW_VERSION = 1;
+var SW_VERSION = 2;
 
 self.addEventListener('install', function(){ self.skipWaiting(); });
 self.addEventListener('activate', function(e){ e.waitUntil(self.clients.claim()); });
@@ -22,6 +22,18 @@ self.addEventListener('push', function(event){
 
   var title = d.title || 'Nala';
   var body  = d.body  || 'A villa has changed.';
+  /* The Worker titles every banner with the app's own name and puts the fact
+     in the body - so the lock screen's bold line said "Nala Villas" twice
+     (iOS adds "from Nala Villas" itself) and "Villa 9 - possibly available"
+     was the small print. Seen on a real phone, 26 Aug. The Worker is not in
+     this repo, so the promotion happens here: a title that is missing or is
+     just a name for the app hands the headline to the body. A payload that
+     arrives with a real title keeps it, which is how the Worker takes this
+     job back the day its source resurfaces and learns to send one. */
+  if (d.body && (!d.title || d.title === 'Nala' || d.title === 'Nala Villas')){
+    title = d.body;
+    body  = '';
+  }
   var opts  = {
     body: body,
     icon: '/nala-icon.png',

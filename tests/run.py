@@ -68,6 +68,7 @@ os.chdir(ROOT)
 SUITES = [
     ("rules",      ["node", "tests/rules_test.js"],       120),
     ("coercion",   ["node", "tests/coercion_test.js"],    120),
+    ("sw",         ["node", "tests/sw_test.js"],          120),
     ("worker",     ["node", "worker/test.mjs"],           300),
     ("invworker",  ["node", "worker/invites-test.mjs"],   120),
     ("tally",      ["python3", "tests/tally_suite.py"],   600),
@@ -139,8 +140,13 @@ COVERS = {
     "menu-print.html":   ["print"],
     "welcome.html":      ["welcome", "sweep:welcome"],
     "rules.json":        ["rules", "coercion"],
+    # Out of EVERYTHING now that a suite owns it: sw.js deliberately has no
+    # fetch handler and no caching, so the pages cannot see its internals and
+    # a change to it surfaces only in what a push puts on screen, which is
+    # exactly what sw_test.js asserts.
+    "sw.js":             ["sw"],
 }
-EVERYTHING = ["nala-shared.js", "auth.js", "sw.js"]
+EVERYTHING = ["nala-shared.js", "auth.js"]
 
 
 def changed_suites():
