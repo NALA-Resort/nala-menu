@@ -248,6 +248,24 @@ with sync_playwright() as p:
        body15.get("qty") == 2 and body15.get("dur") == 90 and body15.get("dur2") == 60)
     SPA = spa_seed()
     pg.close()
+
+    # Editing the details is its own act: resize a booked treatment and
+    # Save changes appears, writing the edit with the status it found -
+    # no cancel, no re-ask, no state change.
+    pg = board()
+    pg.locator('#board [data-booking="b3"]').click(); pg.wait_for_timeout(300)
+    ck("an untouched card offers no Save changes",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
+                   ".map(b=>b.textContent).join('|')").count("Save changes") == 0)
+    pg.locator('.card .chip', has_text="2 hours").click(); pg.wait_for_timeout(200)
+    del WRITES[:]
+    pg.locator('.card .cbtn', has_text="Save changes").click(); pg.wait_for_timeout(900)
+    w3 = [x for x in WRITES if "/spa/b3/" in x["u"]]
+    body3 = json.loads(w3[0]["b"]) if w3 else {}
+    ck("Save changes writes the new length and the booking stays booked",
+       body3.get("status") == "booked" and body3.get("dur") == 120)
+    SPA = spa_seed()
+    pg.close()
     pg = board()
 
     # The stats are the masseuse's whole queue, not today's slice: b9 today,

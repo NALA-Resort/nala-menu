@@ -563,6 +563,22 @@ function card(it){
              'says the desk did it. Anything else waits on him.';
     }
   }
+  /* Editing the details is its own act. Confirm and Suggest carry the
+     pills with them, but a booked treatment being resized, or the desk
+     correcting an ask, changes nothing about the state - so the moment
+     how-many or a length differs from the record, Save changes appears
+     and writes the edit with the status it found. Day and time stay out
+     of it: moving a treatment goes through the buttons above, where the
+     guest hears about it. */
+  var lensChanged = !isNew && !changed &&
+    (SEL.qty !== (rec.qty === 2 ? 2 : 1) ||
+     SEL.dur !== (spaDur(rec.dur) ? rec.dur : 60) ||
+     (SEL.qty === 2 && SEL.dur2 !== (spaDur(rec.dur2) ? rec.dur2 : 60)));
+  if (lensChanged && days.length){
+    var sb = btn('Save changes', rec.status === 'booked' ? 'solid' : 'quiet',
+                 saveAs(rec.status || 'requested'));
+    if (rec.status === 'booked') btns.insertBefore(sb, btns.firstChild);
+  }
   el.appendChild(btns);
   if (hint){
     var h = document.createElement('div');
