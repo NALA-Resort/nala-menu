@@ -158,9 +158,18 @@ with sync_playwright() as p:
                    ".every(b=>b.textContent==='Read more')"))
 
     jump(pg, "qDiet")
-    # The chef's master list, not a list this page invented.
-    ck("dietary choices come from the chef's list",
-       "Gluten free" in pg.locator("#dietChips").inner_text())
+    # The chef's master list, not a list this page invented. The list above
+    # still stores "Gluten free", as one saved before the 26 Aug renames does;
+    # the guest is offered the renamed pill, never the old wording. The rename
+    # table is this page's own copy (guest pages load no staff code), kept in
+    # step with tests/diet_renames.json.
+    ck("dietary choices come from the chef's list, renamed on the way in",
+       "Gluten" in pg.locator("#dietChips").inner_text())
+    ck("and never under the old wording",
+       "Gluten free" not in pg.locator("#dietChips").inner_text())
+    RENAMES = json.load(open("tests/diet_renames.json"))
+    ck("the page's rename table matches tests/diet_renames.json",
+       pg.evaluate("()=>DIET_RENAMES") == RENAMES)
     ck("and a retired entry never reaches a guest",
        "Retired" not in pg.locator("#dietChips").inner_text())
     #  A "this menu only" entry is a warning about tonight's cooking, such as

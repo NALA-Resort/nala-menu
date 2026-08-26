@@ -24,7 +24,7 @@ def build_data():
              "David Chen","Priya Sharma","Tom Ashby","Ruby Vance","Claire Donnelly",
              "Sam Okafor","Nina Brandt","Owen Reilly","Hana Sato","Marco Bianchi",
              "Freya Lindqvist","Jonah Adeyemi","Iris Kovac"]
-    diets = {3:["Nut allergy"], 7:["Dairy free"], 11:["Coeliac"], 15:["Vegetarian"]}
+    diets = {3:["Nut allergy"], 7:["Dairy"], 11:["Coeliac"], 15:["Vegetarian"]}
     notes = {1:"Window seat please", 8:"Birthday", 12:"Quiet corner"}
     resp, rg, hk = {}, {}, {}
     for r in range(1, ROOMS+1):
@@ -45,7 +45,7 @@ def build_data():
     for r in (5, 10): hk[str(r)] = {"done":"~D0~T10:0%d:00" % r}
     hk["15"] = {"departed": True}
     manual = {"ext-1": {"status":"in","pax":2,"name":"Cane","source":"manual",
-                        "diets":["Dairy free"],"external":True},
+                        "diets":["Dairy"],"external":True},
               "ext-2": {"status":"in","pax":2,"name":"Jill","source":"manual","external":True},
               "ext-3": {"status":"in","pax":2,"name":"Larry","source":"manual",
                         "note":"Birthday","external":True}}

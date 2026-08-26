@@ -77,6 +77,22 @@ body.tier-app, body.tier-print { touch-action:manipulation; }
            text-transform:none; }
 .navdrop a.signout { border-top:1px solid var(--ctl-bdr); margin-top:5px;
                      padding-top:13px; color:var(--mid); }
+/* ── the action icon ─────────────────────────────────────────
+   A number beside a menu entry meaning: something in there waits on you.
+   Amber, the colour law's word for "attention, chase this", and it stays
+   until the queue it counts is empty, because it is recomputed from the
+   queue itself on every load and never stored. First carried by Spa for
+   suggestions awaiting the desk; any entry may carry one. */
+.navdrop a.hasact { display:flex; align-items:center; justify-content:space-between;
+                    gap:14px; }
+/* Solid gold rather than the pastel tint: the first live look, 25 Aug,
+   found the tinted version invisible at arm's length, and a count nobody
+   sees is a queue nobody clears. Still the amber family - attention, not
+   failure. */
+.navbadge { flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
+            border-radius:10px; background:#C29A55; color:#FFFDF8;
+            font-size:11px; letter-spacing:0; font-weight:600;
+            display:inline-flex; align-items:center; justify-content:center; }
 
 /* ── floating footer ──────────────────────────────────────
    sticky pins it while scrolling long pages; the flex column
@@ -228,7 +244,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="demo-tally.html">Reservations</a><a href="demo-cleans.html">Cleans</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="demo-reservations.html">FOH Sheet</a><a href="registration.html">Arrivals</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="demo-tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="demo-cleans.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="demo-reservations.html">FOH Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 
@@ -236,7 +252,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 /* ── OFFLINE DEMO ─────────────────────────────────────────────────────
    No Firebase, no auth, no network. Fixed data below. Writes do nothing. */
 (function(){
-  var DATA = {"responses": {"0400000001": {"status": "in", "pax": 2, "room": "1", "name": "James Harrington", "phone": "0400 000 001", "at": "~D0~T09:01:00", "note": "Window seat please"}, "0400000002": {"status": "in", "pax": 2, "room": "2", "name": "Elena Petrova", "phone": "0400 000 002", "at": "~D0~T09:02:00"}, "0400000003": {"status": "in", "pax": 3, "room": "3", "name": "Mark Whitfield", "phone": "0400 000 003", "at": "~D0~T09:03:00", "diets": ["Nut allergy"]}, "0400000004": {"status": "in", "pax": 2, "room": "4", "name": "Lucy Whitfield", "phone": "0400 000 004", "at": "~D0~T09:04:00"}, "0400000005": {"status": "in", "pax": 2, "room": "5", "name": "David Chen", "phone": "0400 000 005", "at": "~D0~T09:05:00"}, "0400000006": {"status": "out", "room": "6", "name": "Priya Sharma", "at": "~D0~T09:00:00"}, "0400000007": {"status": "in", "pax": 2, "room": "7", "name": "Tom Ashby", "phone": "0400 000 007", "at": "~D0~T09:07:00", "diets": ["Dairy free"]}, "0400000008": {"status": "in", "pax": 2, "room": "8", "name": "Ruby Vance", "phone": "0400 000 008", "at": "~D0~T09:08:00", "note": "Birthday"}, "0400000010": {"status": "in", "pax": 2, "room": "10", "name": "Sam Okafor", "phone": "0400 000 010", "at": "~D0~T09:10:00"}, "0400000011": {"status": "in", "pax": 2, "room": "11", "name": "Nina Brandt", "phone": "0400 000 011", "at": "~D0~T09:11:00", "diets": ["Coeliac"]}, "0400000012": {"status": "in", "pax": 3, "room": "12", "name": "Owen Reilly", "phone": "0400 000 012", "at": "~D0~T09:12:00", "note": "Quiet corner"}, "0400000013": {"status": "out", "room": "13", "name": "Hana Sato", "at": "~D0~T09:00:00"}, "0400000014": {"status": "in", "pax": 2, "room": "14", "name": "Marco Bianchi", "phone": "0400 000 014", "at": "~D0~T09:14:00"}, "0400000015": {"status": "in", "pax": 3, "room": "15", "name": "Freya Lindqvist", "phone": "0400 000 015", "at": "~D0~T09:15:00", "diets": ["Vegetarian"]}, "0400000017": {"status": "in", "pax": 2, "room": "17", "name": "Iris Kovac", "phone": "0400 000 017", "at": "~D0~T09:17:00"}}, "roomguests": {"1": {"name": "James Harrington", "arrives": "~D-2~", "departs": "~D+2~"}, "2": {"name": "Elena Petrova", "arrives": "~D-2~", "departs": "~D+2~"}, "3": {"name": "Mark Whitfield", "arrives": "~D-2~", "departs": "~D+2~"}, "4": {"name": "Lucy Whitfield", "arrives": "~D-2~", "departs": "~D+2~"}, "5": {"name": "David Chen", "arrives": "~D-2~", "departs": "~D0~"}, "6": {"name": "Priya Sharma", "arrives": "~D-2~", "departs": "~D+2~"}, "7": {"name": "Tom Ashby", "arrives": "~D-2~", "departs": "~D+2~"}, "8": {"name": "Ruby Vance", "arrives": "~D-2~", "departs": "~D+2~"}, "9": {"name": "Claire Donnelly", "arrives": "~D-2~", "departs": "~D+2~"}, "10": {"name": "Sam Okafor", "arrives": "~D-2~", "departs": "~D0~"}, "11": {"name": "Nina Brandt", "arrives": "~D-2~", "departs": "~D+2~"}, "12": {"name": "Owen Reilly", "arrives": "~D-2~", "departs": "~D+2~"}, "13": {"name": "Hana Sato", "arrives": "~D-2~", "departs": "~D+2~"}, "14": {"name": "Marco Bianchi", "arrives": "~D-2~", "departs": "~D+2~"}, "15": {"name": "Freya Lindqvist", "arrives": "~D-2~", "departs": "~D0~"}, "16": {"name": "Jonah Adeyemi", "arrives": "~D-2~", "departs": "~D+2~"}, "17": {"name": "Iris Kovac", "arrives": "~D-2~", "departs": "~D+2~"}}, "hk": {"1": {"bfast": "~D0~T07:51:00"}, "2": {"bfast": "~D0~T07:52:00"}, "5": {"done": "~D0~T10:05:00"}, "10": {"done": "~D0~T10:010:00"}, "15": {"departed": true}}, "manual": {"ext-1": {"status": "in", "pax": 2, "name": "Cane", "source": "manual", "diets": ["Dairy free"], "external": true}, "ext-2": {"status": "in", "pax": 2, "name": "Jill", "source": "manual", "external": true}, "ext-3": {"status": "in", "pax": 2, "name": "Larry", "source": "manual", "note": "Birthday", "external": true}}, "combined": {"g1": {"rooms": ["3", "4"]}, "g2": {"rooms": ["7", "8", "9"]}}};
+  var DATA = {"responses": {"0400000001": {"status": "in", "pax": 2, "room": "1", "name": "James Harrington", "phone": "0400 000 001", "at": "~D0~T09:01:00", "note": "Window seat please"}, "0400000002": {"status": "in", "pax": 2, "room": "2", "name": "Elena Petrova", "phone": "0400 000 002", "at": "~D0~T09:02:00"}, "0400000003": {"status": "in", "pax": 3, "room": "3", "name": "Mark Whitfield", "phone": "0400 000 003", "at": "~D0~T09:03:00", "diets": ["Nut allergy"]}, "0400000004": {"status": "in", "pax": 2, "room": "4", "name": "Lucy Whitfield", "phone": "0400 000 004", "at": "~D0~T09:04:00"}, "0400000005": {"status": "in", "pax": 2, "room": "5", "name": "David Chen", "phone": "0400 000 005", "at": "~D0~T09:05:00"}, "0400000006": {"status": "out", "room": "6", "name": "Priya Sharma", "at": "~D0~T09:00:00"}, "0400000007": {"status": "in", "pax": 2, "room": "7", "name": "Tom Ashby", "phone": "0400 000 007", "at": "~D0~T09:07:00", "diets": ["Dairy"]}, "0400000008": {"status": "in", "pax": 2, "room": "8", "name": "Ruby Vance", "phone": "0400 000 008", "at": "~D0~T09:08:00", "note": "Birthday"}, "0400000010": {"status": "in", "pax": 2, "room": "10", "name": "Sam Okafor", "phone": "0400 000 010", "at": "~D0~T09:10:00"}, "0400000011": {"status": "in", "pax": 2, "room": "11", "name": "Nina Brandt", "phone": "0400 000 011", "at": "~D0~T09:11:00", "diets": ["Coeliac"]}, "0400000012": {"status": "in", "pax": 3, "room": "12", "name": "Owen Reilly", "phone": "0400 000 012", "at": "~D0~T09:12:00", "note": "Quiet corner"}, "0400000013": {"status": "out", "room": "13", "name": "Hana Sato", "at": "~D0~T09:00:00"}, "0400000014": {"status": "in", "pax": 2, "room": "14", "name": "Marco Bianchi", "phone": "0400 000 014", "at": "~D0~T09:14:00"}, "0400000015": {"status": "in", "pax": 3, "room": "15", "name": "Freya Lindqvist", "phone": "0400 000 015", "at": "~D0~T09:15:00", "diets": ["Vegetarian"]}, "0400000017": {"status": "in", "pax": 2, "room": "17", "name": "Iris Kovac", "phone": "0400 000 017", "at": "~D0~T09:17:00"}}, "roomguests": {"1": {"name": "James Harrington", "arrives": "~D-2~", "departs": "~D+2~"}, "2": {"name": "Elena Petrova", "arrives": "~D-2~", "departs": "~D+2~"}, "3": {"name": "Mark Whitfield", "arrives": "~D-2~", "departs": "~D+2~"}, "4": {"name": "Lucy Whitfield", "arrives": "~D-2~", "departs": "~D+2~"}, "5": {"name": "David Chen", "arrives": "~D-2~", "departs": "~D0~"}, "6": {"name": "Priya Sharma", "arrives": "~D-2~", "departs": "~D+2~"}, "7": {"name": "Tom Ashby", "arrives": "~D-2~", "departs": "~D+2~"}, "8": {"name": "Ruby Vance", "arrives": "~D-2~", "departs": "~D+2~"}, "9": {"name": "Claire Donnelly", "arrives": "~D-2~", "departs": "~D+2~"}, "10": {"name": "Sam Okafor", "arrives": "~D-2~", "departs": "~D0~"}, "11": {"name": "Nina Brandt", "arrives": "~D-2~", "departs": "~D+2~"}, "12": {"name": "Owen Reilly", "arrives": "~D-2~", "departs": "~D+2~"}, "13": {"name": "Hana Sato", "arrives": "~D-2~", "departs": "~D+2~"}, "14": {"name": "Marco Bianchi", "arrives": "~D-2~", "departs": "~D+2~"}, "15": {"name": "Freya Lindqvist", "arrives": "~D-2~", "departs": "~D0~"}, "16": {"name": "Jonah Adeyemi", "arrives": "~D-2~", "departs": "~D+2~"}, "17": {"name": "Iris Kovac", "arrives": "~D-2~", "departs": "~D+2~"}}, "hk": {"1": {"bfast": "~D0~T07:51:00"}, "2": {"bfast": "~D0~T07:52:00"}, "5": {"done": "~D0~T10:05:00"}, "10": {"done": "~D0~T10:010:00"}, "15": {"departed": true}}, "manual": {"ext-1": {"status": "in", "pax": 2, "name": "Cane", "source": "manual", "diets": ["Dairy"], "external": true}, "ext-2": {"status": "in", "pax": 2, "name": "Jill", "source": "manual", "external": true}, "ext-3": {"status": "in", "pax": 2, "name": "Larry", "source": "manual", "note": "Birthday", "external": true}}, "combined": {"g1": {"rooms": ["3", "4"]}, "g2": {"rooms": ["7", "8", "9"]}}};
   function todayISO(){ var d=new Date();
     return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
   function shift(n){ var d=new Date(); d.setDate(d.getDate()+n);
@@ -580,6 +596,65 @@ function tidyPhone(p){
   return p;
 }
 
+/* ── renamed dietaries ─────────────────────────────────────────
+   The owner renamed two pills on 26 Aug: a pill names the thing the guest
+   cannot eat, so "Gluten free" and "Dairy free" are "Gluten" and "Dairy".
+   Answers already saved carry the old wording - in dinner cells, in
+   pre-arrival records, in /guests, in tonight's tags - and nothing sweeps a
+   live database to rewrite a fact a guest gave us. So every reader maps the
+   old name to the new one: displays show the new word, the old answers still
+   light the chips and still hit the menu-tag comparison, and the next save
+   of any record writes the new name back, which is how the data converges
+   without a migration.
+
+   The table is copied into index.html and prearrival.html, which are guest
+   pages and deliberately load no staff code. tests/diet_renames.json is the
+   shared table all three copies are checked against - add a rename there,
+   never to one copy. */
+var DIET_RENAMES = { 'Gluten free': 'Gluten', 'Dairy free': 'Dairy' };
+function fixDietName(d){ return DIET_RENAMES[d] || d; }
+function fixDietList(list){
+  var out = [];
+  (list || []).forEach(function(d){
+    d = fixDietName(d);
+    if (out.indexOf(d) === -1) out.push(d);
+  });
+  return out;
+}
+/* Tonight's tags, per course, as /menutags stores them. */
+function fixTagNames(tags){
+  if (!tags) return tags;
+  var out = {};
+  Object.keys(tags).forEach(function(c){
+    out[c] = Array.isArray(tags[c]) ? fixDietList(tags[c]) : tags[c];
+  });
+  return out;
+}
+/* The master list, as /dietaries stores it: keyed by the name, so a rename
+   moves the record to the new key. The keying transform is keyOf() on the
+   pages that write the list - the same three steps, kept in step by the
+   suites. If the database somehow holds both spellings the two records
+   merge, active if either was. */
+function fixDietMaster(master){
+  if (!master) return master;
+  var out = {};
+  Object.keys(master).forEach(function(k){
+    var d = master[k] || {};
+    var nd = {}; for (var f in d) nd[f] = d[f];
+    nd.name = fixDietName(d.name || k);
+    var key = nd.name.trim().replace(/[.#$\/\[\]]/g,'').replace(/\s+/g,' ');
+    if (out[key]) out[key].active = !!(out[key].active || nd.active);
+    else out[key] = nd;
+  });
+  return out;
+}
+function dietMasterRenamed(master){
+  return !!master && Object.keys(master).some(function(k){
+    var n = (master[k] && master[k].name) || k;
+    return fixDietName(n) !== n;
+  });
+}
+
 /* ── dietary conflicts against the tagged menu ─────────────── */
 function menuConflicts(menu, diets){
   if (!diets || !diets.length || !menu) return [];
@@ -588,7 +663,9 @@ function menuConflicts(menu, diets){
     var dish = menu[k];
     if (!dish || !dish.conflicts) return;
     dish.conflicts.forEach(function(tag){
+      tag = fixDietName(tag);
       diets.forEach(function(d){
+        d = fixDietName(d);
         if (String(d).toLowerCase() === String(tag).toLowerCase())
           hits.push({ dish: dish.name || k, diet: d });
       });
@@ -598,7 +675,8 @@ function menuConflicts(menu, diets){
 }
 
 function dietHTML(diets, sep, cls){
-  if(!diets||!diets.length) return '';
+  diets = fixDietList(diets);
+  if(!diets.length) return '';
   cls = cls || 'allergen';
   return diets.map(function(d){
     return (ALLERGENS.indexOf(d)>-1 || /allerg/i.test(d)) ? '<span class="'+cls+'">'+d+'</span>' : d;
@@ -659,6 +737,136 @@ var OPENED_MARKS = {};
 function openedTonight(villa, marks){
   var m = (marks || OPENED_MARKS)[String(villa)];
   return !!(m && m.at);
+}
+
+/* ── a phone number a machine can dial ─────────────────────────
+   ClickSend wants E.164 and the Worker stores what Mews sends, untouched:
+   real records hold `0412 345 678`, `+61412345678`, `0412345678` and worse,
+   because a guest typed them. This turns each into +614XXXXXXXX or refuses.
+
+   Refusal is deliberate: no guessing at an international number, a landline,
+   or a mobile with the wrong number of digits. A wrong guess sends a guest's
+   dinner link to a stranger; a refusal is a greyed row naming a Mews record
+   that cannot be fixed here.
+
+   The invitations Worker carries its own copy of this function, because a
+   Worker cannot import from the site. worker/invites-test.mjs asserts both
+   copies against one table of cases, so the two cannot drift apart quietly.
+
+   NOT tidyPhone in list.html, which goes the other way: that one makes a
+   number readable by a person, this one makes it dialable by a machine.  */
+function normalisePhone(raw){
+  var s = String(raw == null ? '' : raw).replace(/[\s().\-]/g, '');
+  /* 0011 is Australia's international dial-out and 00 most of the world's:
+     both mean the + of E.164. */
+  if (/^0011[1-9]\d/.test(s))    s = '+' + s.slice(4);
+  else if (/^00[1-9]\d/.test(s)) s = '+' + s.slice(2);
+  if (/^04\d{8}$/.test(s))    return '+61' + s.slice(1);   /* the common case */
+  if (/^614\d{8}$/.test(s))   return '+' + s;              /* plus went missing */
+  /* Our own country we can judge: +61 must be a mobile, a landline is
+     refused rather than sent. Any other full country code is not a guess -
+     the guest typed where they live - and is sent as typed. Widened 25 Aug
+     when (+64) 274875277, an ordinary NZ mobile, was refused. A foreign
+     number typed WITHOUT its code still returns null: 0274875277 reads as an
+     Australian landline, and guessing the country texts a stranger. */
+  if (/^\+61\d+$/.test(s))    return /^\+614\d{8}$/.test(s) ? s : null;
+  if (/^\+[1-9]\d{7,14}$/.test(s)) return s;
+  return null;                                             /* not sent, ever  */
+}
+
+/* How sure are we that a sendable number is a MOBILE? Advisory only - the
+   send is still the judge - shown as the tick or the question mark beside
+   the number on the SMS pages. Countries where the mobile ranges are
+   published and unambiguous get a tick; everywhere else, including all of
+   +1 where mobiles and landlines share the same ranges, is honestly a
+   question mark. Extend the table as guests arrive from new countries. */
+var MOBILE_SHAPES = [
+  /^\+614\d{8}$/,          /* Australia: 04 */
+  /^\+642\d{7,9}$/,        /* New Zealand: 02 */
+  /^\+447\d{9}$/,          /* United Kingdom: 07 */
+  /^\+316\d{8}$/,          /* Netherlands: 06 */
+  /^\+49(15|16|17)\d{7,9}$/, /* Germany */
+  /^\+33[67]\d{8}$/,       /* France */
+  /^\+3538\d{8}$/,         /* Ireland: 08 */
+  /^\+65[89]\d{7}$/,       /* Singapore */
+  /^\+852[569]\d{7}$/,     /* Hong Kong */
+  /^\+861[3-9]\d{9}$/,     /* China */
+  /^\+91[6-9]\d{9}$/,      /* India */
+  /^\+81[789]0\d{8}$/,     /* Japan: 070/080/090 */
+  /^\+27[678]\d{8}$/,      /* South Africa */
+  /^\+9715\d{8}$/          /* UAE: 05 */
+];
+function phoneConfidence(raw){
+  var e = normalisePhone(raw);
+  if (!e) return null;
+  for (var i = 0; i < MOBILE_SHAPES.length; i++)
+    if (MOBILE_SHAPES[i].test(e)) return 'mobile';
+  return 'unsure';
+}
+
+/* ── the number beside a guest's name ──────────────────────────
+   The raw number, small and grey; the confidence mark (a tick where the
+   country's mobile ranges are published and this number sits in one, a
+   question mark where nobody can tell a mobile from a landline); and the
+   pencil that edits it. Grown on the Pre-arrival SMS page, wanted by the
+   Front Desk days later, so built here once rather than pasted twice.
+
+   Each page styles .ph/.conf/.pen in its own sheet and wires the pencil
+   itself - by delegation on a page built from strings, by onclick on one
+   built from nodes - and both hand the tap to editPhoneNumber below.
+   showPen=false leaves the pencil out where editing has nothing to offer
+   (a completed form needs no number and a dead pencil reads as broken). */
+function phoneBadgeHTML(raw, showPen){
+  raw = String(raw == null ? '' : raw).trim();
+  var esc = function(t){ return String(t).replace(/[&<>"]/g, function(c){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); };
+  var h = '<span class="ph">' + (raw ? esc(raw) : 'no number') + '</span>';
+  var confidence = raw ? phoneConfidence(raw) : null;
+  if (confidence === 'mobile')
+    h += '<span class="conf ok" title="Sits in this country’s published ' +
+         'mobile ranges">✓</span>';
+  else if (confidence)
+    h += '<span class="conf un" title="A real number, but this country’s ' +
+         'mobiles cannot be told from landlines; sending will find out">?</span>';
+  if (showPen)
+    h += '<span class="pen" role="button" aria-label="Edit number">✎</span>';
+  return h;
+}
+
+/* The number editor behind the pencil. A browser prompt rather than a drawn
+   form: it is rare, it is one field, and the keyboard it summons is the
+   phone's own. What is saved is the normalised E.164 at /phonefix/<booking>,
+   so the record can never hold a shape the send would refuse; the raw Mews
+   value rides along as `was` for the audit. Mews itself stays wrong - it
+   cannot be written from here - so the guest should still be corrected in
+   Mews when somebody is in there. The fix outranks the Mews copy everywhere
+   a number is read, because the next sync would revert an edit to the stay.
+
+   cb hears the outcome: null after a successful save, otherwise the words to
+   put on the page's error bar. Cancelling the prompt calls nothing at all. */
+function editPhoneNumber(booking, cb){
+  var typed = window.prompt(
+    'Mobile number for ' + (booking.name || 'this guest') +
+    '.\nInclude the country code for an overseas number, e.g. +64 27 487 5277.',
+    String(booking.current || '').trim());
+  if (typed == null) return;                       /* cancelled */
+  var phone = normalisePhone(typed);
+  if (!phone){
+    cb('That is still not a sendable mobile number. Australian ' +
+       'numbers can be typed as 04...; anything overseas needs its + country code.');
+    return;
+  }
+  fetch(DB + '/phonefix/' + booking.id + '.json', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone: phone, was: String(booking.was || ''),
+                           by: (window.NALA_USER && NALA_USER.email) || '',
+                           at: new Date().toISOString() })
+  }).then(function(r){
+    if (!r.ok) throw new Error();
+    cb(null);
+  }).catch(function(){
+    cb('The number did not save. Try again.');
+  });
 }
 
 function fetchStays(dateKey){
@@ -728,11 +936,18 @@ function effectiveEta(villa){
   var s = String(pre.arriveSlot || '');
   if (s === 'before2') return { h: 14, disp: '<2pm', early: true };
   if (s === 'after5')  return { h: 17, disp: '>5pm', early: false };
-  if (s === '14' || s === '15' || s === '16' || s === '17')
-    return { h: +s, disp: hour12(+s), early: false };
+  /* Two digits are an hour, four are an hour and its half: the nine keys the
+     guest's track writes. Same list as the three page copies. */
+  if (/^1[4-7](30)?$/.test(s)){
+    var hh = +s.slice(0, 2) + (s.length === 4 ? 0.5 : 0);
+    return { h: hh, disp: hour12(hh), early: false };
+  }
   return { h: 14, disp: '', early: false };
 }
-function hour12(h){ return (h > 12 ? h - 12 : h) + (h < 12 ? 'am' : 'pm'); }
+function hour12(h){
+  var w = Math.floor(h);
+  return (w > 12 ? w - 12 : w) + (h % 1 ? ':30' : '') + (w < 12 ? 'am' : 'pm');
+}
 function etaWord(disp){
   return disp === '<2pm' ? 'before 2pm' : disp === '>5pm' ? 'after 5pm' : disp;
 }
@@ -800,6 +1015,10 @@ function mewsRecord(stay){
   if (stay.depart)   out.departs = stay.depart;
   if (stay.arrive)   out.arrives = stay.arrive;
   if (stay.adults)   out.adults  = stay.adults;
+  /* The second guest, as Mews sent it. The Worker has written this onto
+     every night since 19 Aug and this reader dropped it, which is why no
+     board could ever show a companion the Zap delivered. */
+  if (stay.companion) out.companion = stay.companion;
   /* One party can hold several villas. Two reservations under one group are
      not two guests who happen to share a surname, and a board that treats them
      as strangers will seat them apart. */
@@ -809,6 +1028,17 @@ function mewsRecord(stay){
      no use to anybody standing at a desk. */
   if (stay.number)   out.number  = stay.number;
   return out;
+}
+
+/* The second guest's name, one reading for every surface that shows it.
+   What a person typed - the guest at pre-arrival, or reception at the desk,
+   both landing in prearrival.companion - wins; the name Mews sent stands
+   behind it. The same order the desk's answersOf established, now read
+   through here by every page. One name, never a list: whether a villa can
+   hold more than one companion is an open decision in HANDOVER.md, and the
+   field is a single value everywhere until it is settled. */
+function companionOf(pre, rec){
+  return String((pre && pre.companion) || (rec && rec.companion) || '').trim();
 }
 
 /* Every OTHER villa the same party holds tonight. Empty for the ordinary case
@@ -1141,10 +1371,23 @@ function emailKey(email){
 }
 
 var ROLE_GRANTS = {
-  admin:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff'],
+  admin:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff','spaBoard'],
+  /* Everything the admin holds except manageStaff, asked for 25 Aug: a
+     management login that runs the whole day without the keys to Settings
+     General, Pages or Diagnostics, which are the three manageStaff gates.
+     Deliberately a role and not a permission column: handing manageStaff
+     out is a second admin, and this is the role for everybody who is
+     nearly one. spaBoard rides along because the definition is the admin's
+     list, whatever joins it, minus that one key. */
+  manager:      ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','spaBoard'],
   chef:         ['resBoard','resSheet','publishMenu'],
-  waiter:       ['cleansBoard','resBoard','editBookings','resSheet'],
+  waiter:       ['cleansBoard','resBoard','editBookings','resSheet','spaBoard'],
   housekeeping: ['cleansBoard','cleansMarks'],
+  /* The masseuse, an external contractor with one screen: the Spa board and
+     nothing else. Like the chef, a real login for a real person, but the
+     rules also narrow what the account can READ - see /spa in rules.json -
+     because hiding a link is not the same as refusing the data.          */
+  spa:          ['spaBoard'],
   /* A machine account, held by the Mews sync Worker. Deliberately empty: it
      grants nothing in the UI and lands on no page, so a human signing in as
      it gets the "see the manager" message rather than a half working board.
@@ -1414,12 +1657,18 @@ var PERM_ACTIONS = [
   ['publishMenu',  'Publish and tag the menu'],
   ['cleansBoard',  'See the Cleans board'],
   ['cleansMarks',  'Mark a clean done'],
-  ['setJob',       'Change what a villa needs']
+  ['setJob',       'Change what a villa needs'],
+  ['spaBoard',     'See the Spa board']
 ];
 
 /* The columns. admin is absent because it always has everything, and a column
-   of ticks nobody may untick teaches people the ticks do nothing. sync is
-   absent because it is a machine with no screen.                        */
+/* The columns. admin is absent because it always has everything, and a column
+   of ticks nobody may untick teaches people the ticks do nothing. manager is
+   absent for the same reason: the role IS "everything but manageStaff", and
+   the rules refuse the matrix an opinion about it. sync is absent because it
+   is a machine with no screen. spa is absent because it is an outside
+   contractor: widening what that login can open is a decision for the rules,
+   made deliberately, not a tick in a grid.                              */
 var PERM_ROLES = ['chef','waiter','housekeeping'];
 
 /* What the app shipped with, asked directly. The grid shows it beside the
@@ -1448,8 +1697,9 @@ function can(role, what){
    board, which they may not see, so their first screen was a refusal. A role
    that cannot see the page it arrived on is a routing problem, not an access
    one: send them to their own board instead of telling them off.        */
-var ROLE_HOME = { admin:'tally.html', chef:'tally.html', waiter:'tally.html',
-                  housekeeping:'cleaners.html' };
+var ROLE_HOME = { admin:'tally.html', manager:'tally.html', chef:'tally.html',
+                  waiter:'tally.html', housekeeping:'cleaners.html',
+                  spa:'spa.html' };
 function homeFor(role){ return ROLE_HOME[normaliseRole(role)] || null; }
 
 function setStaffRecords(map){
@@ -1738,15 +1988,15 @@ var NOTIFY_DEFAULTS = {
   on: true,
   hours: { from: '07:30', to: '18:00' },
   events: {
-    departed:  { housekeeping:true, admin:true, waiter:false, chef:false },
-    available: { housekeeping:true, admin:true, waiter:false, chef:false },
-    cleaned:   { housekeeping:true, admin:true, waiter:true,  chef:false },
-    serviced:  { housekeeping:true, admin:true, waiter:true,  chef:false },
+    departed:  { housekeeping:true, admin:true, manager:true, waiter:false, chef:false },
+    available: { housekeeping:true, admin:true, manager:true, waiter:false, chef:false },
+    cleaned:   { housekeeping:true, admin:true, manager:true, waiter:true,  chef:false },
+    serviced:  { housekeeping:true, admin:true, manager:true, waiter:true,  chef:false },
     /* The chef publishes by pushing a commit, not by writing here, so nothing
        in the database changes when a menu goes up. The board notices on its
        next load and fires this. Off for the chef, who already knows: they
        just published it. */
-    menu:      { housekeeping:false, admin:true, waiter:false, chef:false }
+    menu:      { housekeeping:false, admin:true, manager:true, waiter:false, chef:false }
   }
 };
 
@@ -1784,6 +2034,13 @@ function ensureNotifySettings(role){
 var NAV_NEEDS = {
   'tally.html':        'resBoard',
   'front-desk.html':   'editBookings',
+  'invitations.html':  'editBookings',
+  /* Missing from the day it shipped, found twice on 25 Aug - once when the
+     spa role arrived with a menu that should hold nothing and held this,
+     once from the SMS side - the same way publish.html and tag.html were
+     once missing: an unlisted link is shown to every role, and this one
+     bounces anyone without editBookings. Same permission as the page. */
+  'arrivals-sms.html': 'editBookings',
   'list.html':         'resSheet',
   /* Both were missing until 22 Aug, so every login saw them: a housekeeper's
      menu offered to publish the dinner menu, and tapping it bounced her back
@@ -1794,7 +2051,10 @@ var NAV_NEEDS = {
   'tag.html':          'publishMenu',
   'cleaners.html':     'cleansBoard',
   'housekeeping.html': 'cleansBoard',
+  'spa.html':          'spaBoard',
   'registration.html': 'editBookings',
+  'menu-print.html':   'resSheet',
+  'past-menus.html':   'resBoard',
   'staff.html':        'manageStaff',
   'pages.html':        'manageStaff'
 };
@@ -1813,6 +2073,113 @@ function navFilterShared(role){
     links[i].style.display = can(role, NAV_NEEDS[href]) ? '' : 'none';
   }
   hideEmptyGroups(drop);
+  navActionBadges(role);
+}
+
+/* ── treatment hours ─────────────────────────────────────────
+   Nine to five on the half hour, the owner's numbers, 25 Aug. The Spa board
+   and the front desk read this list; the guest form keeps its own copy
+   because a guest page never loads this file, and BOTH copies are asserted
+   against tests/slots.json - the phone_cases.json pattern. The database
+   rules hold the same range. Change the hours in the table first.       */
+var SPA_SLOTS = (function(){
+  var out = [];
+  for (var h = 9; h <= 17; h++){
+    out.push((h < 10 ? '0' : '') + h + ':00');
+    if (h < 17) out.push((h < 10 ? '0' : '') + h + ':30');
+  }
+  return out;
+})();
+function spaSlotLabel(t){
+  if (!t) return '';
+  var p = String(t).split(':'), h = +p[0];
+  return (h % 12 || 12) + ':' + p[1] + ' ' + (h < 12 ? 'am' : 'pm');
+}
+/* The way back from what a guest or the desk stored: the label itself, a
+   24 hour HH:MM, or a bare H:MM that only fits the afternoon (a guest
+   writing 2:00 means 2pm; one writing 10:00 already matches the morning).
+   Anything else - "afternoon", "before dinner" - is a wish, not a slot,
+   and returns null rather than a guess.                                 */
+function spaSlotFromText(s){
+  s = String(s || '').trim().toLowerCase();
+  if (!s) return null;
+  for (var i = 0; i < SPA_SLOTS.length; i++)
+    if (SPA_SLOTS[i] === s ||
+        spaSlotLabel(SPA_SLOTS[i]).toLowerCase() === s) return SPA_SLOTS[i];
+  var m = s.match(/^([0-9]{1,2})[:.]([0-5][0-9])\s*(am|pm)?$/);
+  if (!m) return null;
+  var h = +m[1];
+  if (m[3] === 'pm' && h < 12) h += 12;
+  var t = (h < 10 ? '0' : '') + h + ':' + m[2];
+  if (SPA_SLOTS.indexOf(t) > -1) return t;
+  if (!m[3] && h < 12){
+    t = (h + 12) + ':' + m[2];
+    if (SPA_SLOTS.indexOf(t) > -1) return t;
+  }
+  return null;
+}
+
+/* ── the action icon ─────────────────────────────────────────
+   A number beside a menu entry meaning: something in there waits on you.
+   Never stored - it is recomputed from the queue it counts on every page
+   load, which is exactly why it "stays until the action is done" without
+   anything having to remember to clear it. Owner's naming, 25 Aug, first
+   carried by Spa: suggestions the masseuse has made that the desk has not
+   yet put to the guest. Add an entry to NAV_ACTIONS for the next feature
+   that earns one.
+
+   The fetch rides auth.js's queue, so it waits for a login like every
+   other database read, and a failed count is no badge rather than an
+   error: the menu must never break because a queue could not be asked. */
+var NAV_ACTIONS = [
+  { href: 'spa.html', need: 'spaBoard', count: function(cb){
+      if (typeof DB === 'undefined') return;
+      fetch(DB + '/spa.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(spa){
+          /* Two queues wait on the desk: suggestions to put to the guest,
+             and declines the guest has not yet been told about - a told
+             decline carries its stamp and stops counting, 25 Aug. A stale
+             record whose day has passed stops chasing too: nobody can act
+             on last Tuesday. */
+          var today = dkey(new Date()), n = 0;
+          Object.keys(spa || {}).forEach(function(id){
+            Object.keys(spa[id] || {}).forEach(function(tid){
+              var r2 = spa[id][tid] || {};
+              var d = r2.status === 'suggested' ? r2.day
+                                                : (r2.reqDay || r2.day);
+              if (d && d < today) return;
+              if (r2.status === 'suggested') n++;
+              else if (r2.status === 'declined' && !r2.told) n++;
+            });
+          });
+          cb(n);
+        }).catch(function(){});
+  } }
+];
+var NAV_BADGED = {};       /* one count per entry per page load */
+function navActionBadges(role){
+  var drop = document.getElementById('navDrop');
+  if (!drop) return;
+  NAV_ACTIONS.forEach(function(a){
+    if (NAV_BADGED[a.href] || !can(role, a.need)) return;
+    var links = drop.getElementsByTagName('a'), link = null;
+    for (var i = 0; i < links.length; i++){
+      if ((links[i].getAttribute('href') || '').split('?')[0] === a.href){
+        link = links[i]; break;
+      }
+    }
+    if (!link) return;               /* the entry's own page omits its link */
+    NAV_BADGED[a.href] = true;
+    a.count(function(n){
+      if (!n) return;
+      if (link.className.indexOf('hasact') < 0) link.className += ' hasact';
+      var b = document.createElement('span');
+      b.className = 'navbadge';
+      b.textContent = n > 9 ? '9+' : String(n);
+      link.appendChild(b);
+    });
+  });
 }
 
 /* A heading with nothing under it. The menu is grouped now, and a role that

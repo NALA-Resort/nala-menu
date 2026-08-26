@@ -452,8 +452,27 @@ var SINGLE = false;
 
 /* Falls back to a sensible list if the chef's master list cannot be read, so a
    failed fetch never leaves a guest with no way to declare an allergy. */
-var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+var DIETARIES = ['Gluten','Dairy','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
+
+/* Two pills were renamed on 26 Aug - a pill names the thing the guest cannot
+   eat, so "free" came off. A guest who answered before the rename saved the
+   old wording, so reads map old to new: the saved answer still lights its
+   chip and the next save writes the new name back.
+
+   A copy of the table in nala-shared.js, forced: this is a guest page and
+   staff code never reaches it. tests/diet_renames.json is the shared table
+   all copies are checked against - add renames there, never to one copy. */
+var DIET_RENAMES = { 'Gluten free': 'Gluten', 'Dairy free': 'Dairy' };
+function fixDietName(d){ return DIET_RENAMES[d] || d; }
+function fixDietList(list){
+  var out = [];
+  (list || []).forEach(function(d){
+    d = fixDietName(d);
+    if (out.indexOf(d) === -1) out.push(d);
+  });
+  return out;
+}
 
 /* No list can hold every allergy, and this one is filled in days ahead by
    somebody with nobody to ask. Without it a guest whose allergy is not among
@@ -1135,8 +1154,10 @@ function boot(){
     var names = [];
     Object.keys(master).forEach(function(k){
       var d = master[k];
-      if (d && d.active && (d.group || 'common') !== 'menu')
-        names.push(d.name || k);
+      if (d && d.active && (d.group || 'common') !== 'menu'){
+        var n = fixDietName(d.name || k);
+        if (names.indexOf(n) === -1) names.push(n);
+      }
     });
     /* If the chef ever adds one called Other it would paint twice, once as an
        ordinary chip that means nothing and once as this one. */
@@ -1161,7 +1182,7 @@ function boot(){
     if (!p.at && !started) return;
     a.eta = p.arriveSlot || ''; a.etaNote = p.arriveNote || '';
     a.dining = (p.dining === undefined) ? null : !!p.dining;
-    a.diets = (p.diets || []).slice(); a.noDiets = !!p.noDiets;
+    a.diets = fixDietList(p.diets); a.noDiets = !!p.noDiets;
     a.dietYes = a.diets.length > 0;
     a.dietNote = p.dnote || '';
     a.purpose = purposeList(p.purpose); a.approach = p.approach || '';

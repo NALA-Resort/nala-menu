@@ -503,7 +503,7 @@ function stripTags(h){
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=38"></script>
+<script src="nala-shared.js?v=39"></script>
 <script>
 // date state + header wiring from nala-shared.js
 var nav = initDateNav();
@@ -652,7 +652,8 @@ function commentBox(g, hits, row){
 }
 
 function dietPills(diets){
-  if (!diets || !diets.length) return '';
+  diets = fixDietList(diets);
+  if (!diets.length) return '';
   return '<div class="dwrap">' + diets.map(function(x){
     var al = (typeof ALLERGENS!=='undefined' && ALLERGENS.indexOf(x)>-1) || /allerg/i.test(x);
     var label = al ? x.replace(/\s*allergy\s*/i,'') : x;

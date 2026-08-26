@@ -227,7 +227,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=38"></script>
+<script src="nala-shared.js?v=39"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -753,7 +753,7 @@ function load(){
      failure here must not take the arrivals down with it: an unflagged allergy
      is bad, and a blank screen is worse. */
   api('/menutags/'+key)
-    .then(function(t){ TAGS = t; render(); })
+    .then(function(t){ TAGS = fixTagNames(t); render(); })
     .catch(function(){ TAGS = null; });
 
   /* The chef's list, so reception offers what the kitchen recognises. The
@@ -775,7 +775,10 @@ function load(){
       Object.keys(master).forEach(function(k){
         var d = master[k];
         if (d && d.active && (d.group || 'common') !== 'menu' &&
-            (d.name || k) !== DIET_OTHER) names.push(d.name || k);
+            (d.name || k) !== DIET_OTHER){
+          var n = fixDietName(d.name || k);
+          if (names.indexOf(n) === -1) names.push(n);
+        }
       });
       if (names.length){ DIETARIES = names.sort(); render(); }
     })
@@ -811,7 +814,7 @@ function load(){
    dining against the real menu, amend, confirm. So those two sit at the top
    and the softer context sits below them.                                */
 
-var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+var DIETARIES = ['Gluten','Dairy','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
 
 /* Not every allergy is on the list, and the list cannot grow to hold them all.
@@ -883,7 +886,7 @@ function answersOf(r){
                        : (p.dining === undefined ? null : !!p.dining),
     pax:      haveCell ? (c.pax || r.stay.adults || 2)
                        : (p.pax || r.stay.adults || 2),
-    diets:    ((haveCell && c.diets) ? c.diets : (p.diets || [])).slice(),
+    diets:    fixDietList((haveCell && c.diets) ? c.diets : (p.diets || [])),
     noDiets:  haveCell ? !!c.noDiets : !!p.noDiets,
     dnote:    (haveCell ? c.dnote : p.dnote) || '',
     /* The desk shows what the guest typed, falling back to what Mews holds:

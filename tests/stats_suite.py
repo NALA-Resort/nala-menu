@@ -192,14 +192,20 @@ with sync_playwright() as p:
     pg.close()
 
     # ── dietaries ─────────────────────────────────────────────
+    # Villa 1 answered before the 26 Aug renames and villa 2 after, so the
+    # same fact is stored under both spellings. The tally must read them as
+    # ONE dietary under the new name: two rows saying gluten twice is a
+    # kitchen count that understates both.
     STATE["dinner"] = {dkey(1): {"1": cell(diets=["Gluten free", "Nut allergy"]),
-                                 "2": cell(diets=["Gluten free"]),
+                                 "2": cell(diets=["Gluten"]),
                                  "3": cell("out", 0, diets=["Vegan"])}}
     pg = open_stats()
     dt = rows(pg, "byDiet")
-    ck("dietaries are tallied", [r["name"] for r in dt][:1] == ["Gluten free"])
-    ck("and counted, not merely listed",
-       [r["val"].strip() for r in dt if r["name"] == "Gluten free"] == ["2"])
+    ck("dietaries are tallied", [r["name"] for r in dt][:1] == ["Gluten"])
+    ck("and counted as one dietary across both spellings",
+       [r["val"].strip() for r in dt if r["name"] == "Gluten"] == ["2"])
+    ck("with the old wording gone from the board",
+       "Gluten free" not in [r["name"] for r in dt])
     ck("a dietary on a guest who is not dining is still recorded",
        "Vegan" in [r["name"] for r in dt])
     pg.close()

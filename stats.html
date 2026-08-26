@@ -86,7 +86,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=38"></script>
+<script src="nala-shared.js?v=39"></script>
 <script>
 /* Reading only, no writes, but it is the resort's numbers and there was no
    gate on it at all until 18 Aug. Same audience as the Reservations board. */
@@ -219,7 +219,7 @@ Promise.all([readNode('/dinner'), readNode('/responses'), readNode('/menuhistory
       if (r.status !== 'in' && r.status !== 'out') continue;
       replied++;
       if (r.status === 'in'){ dining++; covers += (r.pax||1); }
-      if (r.diets && r.diets.length) diets = diets.concat(r.diets);
+      if (r.diets && r.diets.length) diets = diets.concat(fixDietList(r.diets));
     }
     if (!replied) return;
 
