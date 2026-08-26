@@ -537,6 +537,9 @@
           "source": {
             ".validate": "newData.isString() && (newData.val() == 'prearrival' || newData.val() == 'desk' || newData.val() == 'spa')"
           },
+          "told": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
           "by": {
             ".validate": "newData.isString() && newData.val().length <= 120"
           },

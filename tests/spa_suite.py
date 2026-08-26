@@ -266,8 +266,9 @@ with sync_playwright() as p:
        body.get("status") == "booked" and body.get("day") == today)
     SPA = spa_seed()
 
-    # Declining writes the red record.
+    # Declining asks why, once, and the reason rides on the record.
     pg = board()
+    pg.on("dialog", lambda d: d.accept("away until Monday"))
     pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
     del WRITES[:]
     pg.locator('.card .cbtn', has_text="Decline").click()
@@ -276,6 +277,20 @@ with sync_playwright() as p:
     body = json.loads(w[0]["b"]) if w else {}
     ck("declining writes declined, keeping the ask for the record",
        body.get("status") == "declined" and body.get("reqDay") == today)
+    ck("and carries the reason the prompt collected",
+       body.get("note") == "away until Monday" and not body.get("told"))
+    SPA = spa_seed()
+    pg.close()
+
+    # Cancelling the prompt cancels the decline: a mis-tap costs nothing.
+    pg = board()
+    pg.on("dialog", lambda d: d.dismiss())
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    del WRITES[:]
+    pg.locator('.card .cbtn', has_text="Decline").click()
+    pg.wait_for_timeout(600)
+    ck("backing out of the prompt writes nothing",
+       not [x for x in WRITES if "/spa/" in x["u"]])
     SPA = spa_seed()
 
     # ── the desk's half: approving a suggestion ─────────────────
@@ -311,6 +326,30 @@ with sync_playwright() as p:
     ck("asking again writes requested with the new ask",
        body.get("status") == "requested" and body.get("reqDay") == plus(2))
     SPA = spa_seed()
+
+    # ── the decline's other half: telling the guest ─────────────
+    # The terracotta tile instructs the desk until somebody actually tells
+    # the guest; Guest told stamps the record, the tile stops instructing,
+    # and the menu icon stops counting it.
+    pg = board("staff@x")
+    pg.locator('#board [data-booking="b7"]').click(); pg.wait_for_timeout(300)
+    ck("the desk's declined card leads with Guest told",
+       pg.evaluate("()=>document.querySelector('.card .cbtn.solid').textContent")
+         == "Guest told")
+    del WRITES[:]
+    pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
+    w = [x for x in WRITES if "/spa/b7/" in x["u"]]
+    body = json.loads(w[0]["b"]) if w else {}
+    ck("telling the guest stamps the record and keeps the reason",
+       body.get("status") == "declined" and body.get("told") and
+       body.get("note") == "nothing free")
+    ck("and the tile stops instructing",
+       "guest told" in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b7\"] .st').textContent") and
+       "let the guest know" not in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b7\"] .st').textContent"))
+    SPA = spa_seed()
+    pg.close()
 
     # ── the masseuse cannot approve his own suggestion ──────────
     pg = board()
@@ -415,9 +454,14 @@ with sync_playwright() as p:
           return b2 ? b2.textContent : null;}""")
         q.close()
         return v
-    ck("the Spa entry carries the action icon with the waiting count",
-       badge_on_pages() == "1")
+    # One suggestion to put to the guest, one decline the guest has not
+    # heard about: two things wait on the desk.
+    ck("the Spa entry counts both queues that wait on the desk",
+       badge_on_pages() == "2")
     SPA = {k: v for k, v in spa_seed().items() if k != "b12"}
+    ck("a told decline stops counting",
+       badge_on_pages() == "1")
+    SPA["b7"]["t1"]["told"] = "2026-08-25T10:00:00Z"
     ck("and no icon at all once nothing waits, rather than a zero",
        badge_on_pages() is None)
     SPA = spa_seed()

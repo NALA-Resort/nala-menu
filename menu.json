@@ -1,23 +1,23 @@
 {
-  "published": "2026-08-22T10:15:57.176028+10:00",
+  "published": "2026-08-26T10:41:21.524695+10:00",
   "bread": {
-    "name": "Tomato focaccia",
-    "desc": "feta, white balsamic olive oil",
+    "name": "Focaccia",
+    "desc": "miso butter",
     "aus": false
   },
   "entree": {
-    "name": "Hervey Bay scallops",
-    "desc": "pea, 'nduja, chives",
-    "aus": true
-  },
-  "main": {
-    "name": "Sirloin lamb",
-    "desc": "white bean, leek, gordal olive, thyme",
+    "name": "Spinach",
+    "desc": "romesco (gluten free/no chilli), macadamia fetta",
     "aus": false
   },
+  "main": {
+    "name": "Market fish",
+    "desc": "sugar snap peas, cauliflower, baby carrot",
+    "aus": true
+  },
   "dessert": {
-    "name": "Mandarin cheesecake",
-    "desc": "",
+    "name": "Chocolate",
+    "desc": "dark chocolate, white mousse, meringue",
     "aus": false
   }
 }
