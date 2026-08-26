@@ -125,6 +125,7 @@ COVERS = {
     "arrivals-sms.html": ["invites", "sweep:arrivals-sms"],
     "templates.html":    ["invites", "sweep:templates"],
     "worker/send-invites.js": ["invworker"],
+    "worker/mews-sync.js": ["worker"],
     "index.html":        ["index", "sweep:index"],
     "prearrival.html":   ["prearrival", "sweep:prearrival"],
     "spa.html":          ["spa", "sweep:spa"],

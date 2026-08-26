@@ -335,6 +335,17 @@ None of these can move without him.
    should be his. `prearrival.html`, id `dineHelp`.
 8. **Confirm the Mews companion field** against a live Zap run.
 9. **`TESTING.md`** is the checks only a human can run. **All of it unrun.**
+10. **Map the Mews rate name into the Zap, and paste the 26 Aug rules.** The
+    booking flags (Luxury Escapes, Breakfast included - a tick at the desk, a
+    pill on the Service Sheet) switch themselves on from the rate name the
+    Worker stores, but the Worker only stores what the Zap sends: map Rate
+    Name (any of `RateName`, `Rate Name`, `rate_name`, `RatePlanName`,
+    `Rate` works) into every reservation trigger. Until then the ticks work
+    and the automation quietly does not. The rate patterns in
+    `BOOKING_FLAGS` (`nala-shared.js`) are a guess pending a real rate name,
+    like the companion field above. And `rules.json` of the same date needs
+    its paste into the Firebase console: it validates the new fields and is
+    what lets a waiter's tick save.
 
 ---
 

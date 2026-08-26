@@ -1139,6 +1139,73 @@ with sync_playwright() as p:
        "noise" in (pg.evaluate("()=>document.getElementById('fInternal').value") or ""))
     pg.close()
 
+    # ── the booking flags ───────────────────────────────────────
+    #  The two facts that used to be typed into a note on every such booking:
+    #  Luxury Escapes and Breakfast included. A tick each on the sheet, on by
+    #  itself when the Mews rate the Worker stores says so, and the desk's
+    #  tick outranks the rate. Stored beside the rate at pms.<key>, and ONLY
+    #  when it disagrees with the rate: agreement stores nothing, so an
+    #  untouched booking keeps listening to Mews.
+    PMS["b4"] = {"rate": "Luxury Escapes AU"}
+    PMS["b9"] = {"rate": "Flexible with Breakfast"}
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    ck("the summary names the flag the rate implies, before anybody ticks",
+       "Luxury Escapes" in pg.locator(".sum").inner_text())
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+    pg.wait_for_timeout(700)
+    def chip(label):
+        return pg.evaluate("""()=>{const b=[...document.querySelectorAll('#fkChips .chip')]
+            .find(x=>x.textContent==='%s'); return b?b.className:null;}""" % label)
+    ck("the sheet offers both flags as chips",
+       chip("Luxury Escapes") is not None and chip("Breakfast included") is not None)
+    ck("the rate has already ticked its own flag", chip("Luxury Escapes") == "chip on")
+    ck("and left the other alone", chip("Breakfast included") == "chip")
+    ck("the sheet shows the rate it read that from",
+       "Luxury Escapes AU" in pg.locator(".flag-src").inner_text())
+
+    #  Agreement with the rate is not an override, and a sheet opened and
+    #  confirmed must not stamp one: the rate has to keep speaking for the
+    #  bookings nobody has touched.
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(800)
+    ck("confirming without touching the flags writes nothing to the PMS record",
+       not [x for x in WRITES if "/pms" in x["u"]])
+    pg.close()
+
+    pg = board()
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(400)
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+    pg.wait_for_timeout(700)
+    ck("a breakfast rate ticks the breakfast flag",
+       chip("Breakfast included") == "chip on")
+    #  Both toggled: Luxury Escapes on against a rate that says nothing, the
+    #  rate's own breakfast off. Both disagreements, so both are stored.
+    for label in ("Luxury Escapes", "Breakfast included"):
+        pg.evaluate("""()=>[...document.querySelectorAll('#fkChips .chip')]
+            .find(x=>x.textContent==='%s').click()""" % label)
+        pg.wait_for_timeout(150)
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(800)
+    w = [json.loads(x["b"]) for x in WRITES if "/bookings/b9/pms" in x["u"]]
+    ck("a tick that disagrees with the rate is stored, and only as a disagreement",
+       len(w) == 1 and w[0] == {"luxEscapes": True, "breakfast": False})
+    #  Its own write, outside the both-or-neither pair: a flag refused by the
+    #  rules must not roll tonight's answers back.
+    ck("and it rides beside the guest's answers, not inside them",
+       any("/prearrival" in x["u"] for x in WRITES)
+       and not [x for x in WRITES if "/prearrival" in x["u"]
+                and "luxEscapes" in (x["b"] or "")])
+    #  The resolution order, read back: the tick outranks the rate both ways.
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(400)
+    t = pg.locator(".sum").inner_text()
+    ck("the summary then shows the ticks, which outrank the rate",
+       "Luxury Escapes" in t and "Breakfast included" not in t)
+    pg.close()
+    del PMS["b4"]; del PMS["b9"]
+
     # ── the number beside the name, the SMS pages' display at the desk ──
     #  Asked for 25 Aug: the same three parts the Pre-arrival SMS rows carry,
     #  from the same shared builder, so the two screens cannot drift apart.

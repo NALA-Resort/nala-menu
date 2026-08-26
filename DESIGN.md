@@ -112,6 +112,15 @@ so they join with no lookup and no matching, whichever lands first. Mews
 updates `pms` forever after and never touches `prearrival`. The guest can
 revise `prearrival` and never touches `pms`.
 
+**One deliberate exception, 26 Aug: the booking flag overrides.** The desk's
+tick for Luxury Escapes and Breakfast included is stored at `pms.luxEscapes`
+and `pms.breakfast`, beside the `pms.rate` it overrides, because the flag is
+an interpretation OF the PMS record and reads wrongly from anywhere else. It
+survives the sync because the Worker PATCHes only the fields it carries and
+never carries these two; the desk writes them only when they disagree with
+what the rate says, so an untouched booking keeps listening to Mews. See
+`BOOKING_FLAGS` in `nala-shared.js`.
+
 **In house.** Boards read `/stays` for who is where and the booking node for
 what they said. Staff can override to dining, not dining or vacant. A vacant
 contradicting Mews warns first and holds until Mews next changes that booking.

@@ -208,6 +208,23 @@ can('and one villa night per night of the stay', SYNC, '/stays/2026-09-10/3', {
 });
 can('a cancelled booking is cleared by deleting the night', SYNC, '/stays/2026-09-10/3', null);
 
+/* The booking flags: the Worker carries the rate, the desk ticks the
+   override beside it. The two flag keys carry their own write grant so
+   every non-spa staff login can tick them - a waiter may man the desk -
+   while the rest of the PMS record stays the sync's and management's. */
+canPatch('the sync carries the Mews rate name', SYNC, '/bookings/b-2/pms',
+         { rate: 'Luxury Escapes AU' });
+canPatch('the desk ticks a booking flag', DESK, '/bookings/b-1/pms',
+         { luxEscapes: true, breakfast: false });
+canPatch('and a waiter at the desk may too', WAITER, '/bookings/b-1/pms',
+         { breakfast: true });
+cannotPatch('though the rest of the PMS record is still not the waiter\'s',
+            WAITER, '/bookings/b-1/pms', { villa: '9' });
+cannotPatch('a flag that is not a boolean is refused', DESK,
+            '/bookings/b-1/pms', { breakfast: 'yes' });
+cannotPatch('and a guest cannot tick one', GUEST, '/bookings/b-1/pms',
+            { breakfast: true });
+
 /* cleaners.html patchRoom() */
 can('housekeeping marks a villa cleaned', HK, `/hk/${TODAY}/4`, { done: NOW });
 can('and marks breakfast delivered', HK, `/hk/${TODAY}/4`, { bfast: NOW });

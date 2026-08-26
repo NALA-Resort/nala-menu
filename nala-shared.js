@@ -683,6 +683,46 @@ function vacantIsStale(m, known){
             m.pmsUpdated !== known.pmsUpdated);
 }
 
+/* ── booking flags ─────────────────────────────────────────────
+   The two facts that used to arrive as free text in a booking note:
+   "Luxury Escapes" (the guest is booked through Luxury Escapes) and
+   "Breakfast included". Each is a tick at the desk and a pill on the
+   Service Sheet, and each can switch itself on from the Mews rate name
+   the Worker stores at /bookings/<id>/pms.rate.
+
+   One list, two readers (the desk and the sheet), one resolution rule: a
+   person's tick outranks the rate. The override lives beside the rate at
+   pms.<key>, and the desk writes it ONLY when it disagrees with what the
+   rate already says - null otherwise, which deletes the key. So a booking
+   nobody touched keeps listening to Mews, and a rate corrected in Mews is
+   not fought by a stale copy of the same answer.
+
+   The rate patterns are a guess until confirmed against a live Zap run,
+   the same standing caution as the companion field: no real rate name has
+   been seen from here. Widen them when one arrives; the tick covers the
+   gap either way. */
+var BOOKING_FLAGS = [
+  { key:'luxEscapes', label:'Luxury Escapes',     rate:/lux(?:ury)?\s*escapes?/i },
+  { key:'breakfast',  label:'Breakfast included', rate:/breakfast|\bb\s*&\s*b\b|\bbb\b/i }
+];
+
+/* What the rate alone would say, before anybody ticked anything. */
+function flagFromRate(pms, f){
+  return !!(pms && typeof pms.rate === 'string' && f.rate.test(pms.rate));
+}
+
+/* What the flag IS: the person's tick where one exists, the rate otherwise. */
+function bookingFlagOn(pms, f){
+  if (pms && typeof pms[f.key] === 'boolean') return pms[f.key];
+  return flagFromRate(pms, f);
+}
+
+/* The labels currently on, in BOOKING_FLAGS order, for display. */
+function bookingFlagLabels(pms){
+  return BOOKING_FLAGS.filter(function(f){ return bookingFlagOn(pms, f); })
+                      .map(function(f){ return f.label; });
+}
+
 /* one room, one record: staff override beats the guest's own answer,
    whoever opened the link fills the gaps.
 

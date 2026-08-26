@@ -41,6 +41,10 @@ STAYS={"1":{"id":"b1","name":"James"},"3":{"id":"b3","name":"Mark"},
 internal={"b1":{"note":"Owner's friend, do not charge for wine"},
           "b3":{"fromMews":"Complained about noise last stay"},
           "b9":{"note":""}}
+# The PMS record per booking, for the flag pills. Empty until that section
+# seeds it, so the layout tests above it keep drawing the sheet they always
+# drew.
+PMSREC={}
 
 staff={"staff@x":{"name":"Admin","role":"admin"},
        "chef@x":{"name":"Chef","role":"chef"},
@@ -60,6 +64,9 @@ def fb(route,request):
     elif "/internal/" in u:
         k=u.split("/internal/")[1].split(".json")[0]
         body=json.dumps(internal[k]) if k in internal else "null"
+    elif "/bookings/" in u and "/pms" in u:
+        k=u.split("/bookings/")[1].split("/")[0]
+        body=json.dumps(PMSREC[k]) if k in PMSREC else "null"
     route.fulfill(status=200,content_type="application/json",body=body)
 from playwright.sync_api import sync_playwright
 P=F=0
@@ -568,6 +575,31 @@ with sync_playwright() as p:
     q.close()
     internal["b3"] = {"fromMews": "Complained about noise last stay"}
 
+    #  ── the booking flags on the sheet ──────────────────────
+    #  Luxury Escapes and Breakfast included, the two facts that used to be
+    #  typed into a note. A pill each in the comments stack, resolved the way
+    #  the desk resolves them: the desk's tick where one exists, the Mews rate
+    #  otherwise, through the same bookingFlagLabels both screens read.
+    PMSREC.update({"b1": {"rate": "Luxury Escapes AU"},
+                   "b3": {"breakfast": True},
+                   "b4": {"rate": "Flexible with Breakfast", "breakfast": False}})
+    q = as_role("staff@x")
+    q.wait_for_timeout(1200)
+    def pills(v):
+        return q.evaluate("""()=>[...document.querySelectorAll(
+            '.fkhere[data-villa="%s"] .fpill')].map(e=>e.textContent)""" % v)
+    ck("a Luxury Escapes rate prints its pill with nobody having ticked anything",
+       pills("1") == ["Luxury Escapes"])
+    ck("a desk tick prints without any rate behind it",
+       pills("3") == ["Breakfast included"])
+    ck("and a desk untick beats a rate that says breakfast",
+       pills("4") == [])
+    ck("the pills sit in the comment stack as their own ruled line",
+       q.evaluate("""()=>[...document.querySelectorAll('.fkhere .fpill')].length>0
+           && [...document.querySelectorAll('.fkhere .fpill')]
+              .every(e=>e.closest('.crow.flags') && e.closest('.cbox'))"""))
+    q.close()
+
     #  ── the night that found the row-count cap out ──────────
     #  26 Aug: a sheet under its row cap and over the page. One staff note -
     #  a raw Mews order dump - ran to nine printed lines inside one row, so
@@ -669,6 +701,10 @@ with sync_playwright() as p:
     q.wait_for_timeout(1200)
     ck("the chef reads the sheet but not the staff note",
        q.evaluate("()=>document.querySelectorAll('.crow.staff').length===0"))
+    #  The flags are not the note: they are ungated, because Breakfast
+    #  included is an instruction to whoever is serving.
+    ck("while the flag pills still reach the chef",
+       q.evaluate("()=>document.querySelectorAll('.fpill').length>0"))
     ck("chef reads and prints the sheet",
        q.evaluate("""()=>noAccess.className.indexOf('show')<0
                       && document.querySelectorAll('table tbody tr').length>0

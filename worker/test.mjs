@@ -454,6 +454,32 @@ await post(RES);
 ck("a booking with no customer id at all is still written",
    STORE["/bookings/" + RES.MewsId + "/pms"].customerId === null);
 
+/* ── the rate ───────────────────────────────────────────────── */
+/* The Mews rate name, as words. The desk's booking flags read it through
+   BOOKING_FLAGS in nala-shared.js; this Worker only carries it, so all that
+   is pinned here is the carrying. */
+install();
+await post(Object.assign({}, RES, { RateName: "Luxury Escapes AU - BB" }));
+ck("the rate name is kept on the booking",
+   STORE["/bookings/" + RES.MewsId + "/pms"].rate === "Luxury Escapes AU - BB");
+ck("and is not copied into every night",
+   STORE["/stays/2026-09-10/3"].rate === undefined);
+
+/* The triggers carry the field unevenly, so an event without it must leave
+   the stored rate standing rather than nulling it away: the explicit-null
+   treatment is for fields being REMOVED, and this one is merely unmapped on
+   some triggers. Without this, the first modification after a new booking
+   would strip the breakfast pill off the Service Sheet. */
+await post(RES);
+ck("an event with no rate leaves the stored one standing",
+   STORE["/bookings/" + RES.MewsId + "/pms"].rate === "Luxury Escapes AU - BB");
+
+/* A Rate mapped as Mews nests it is an object, which coerces to null, and
+   null in this PATCH is a deletion. It must be treated as unmapped. */
+await post(Object.assign({}, RES, { Rate: { Id: "r-1", Name: "nested" } }));
+ck("and a rate mapped as a nested object does not wipe it either",
+   STORE["/bookings/" + RES.MewsId + "/pms"].rate === "Luxury Escapes AU - BB");
+
 /* ── the clock ──────────────────────────────────────────────── */
 /* Mews sends true UTC. Confirmed 18 Aug: 04:00Z is 2pm at the resort, which is
    UTC+10. So the date part of the timestamp is the local date only until 2pm

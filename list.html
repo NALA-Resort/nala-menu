@@ -216,6 +216,16 @@
   .crow.staff b { font-family:var(--ui-font); font-size:7px; letter-spacing:.12em;
                   text-transform:uppercase; color:#55554F; margin-right:6px;
                   font-weight:700; }
+  /* A booking flag: Luxury Escapes, Breakfast included. A fact about the
+     booking, not a warning, so it is inked plainly - bordered like the PRE
+     badge, never red (red is failure, by the colour law) and never the
+     allergy pill's fill. Its slot follows the staff-note pattern: always in
+     the markup, invisible while empty. */
+  .fkhere:empty { display:none; }
+  .fpill { display:inline-block; font-family:var(--ui-font); font-size:7.5px;
+           font-weight:bold; letter-spacing:.1em; text-transform:uppercase;
+           border:1.2px solid #55554F; color:#1C1C1A; padding:1px 6px;
+           border-radius:9px; margin-right:5px; }
 
   /* empty write-in rows: one rule only, from the cell border */
   tr.blank td { height:26px; }
@@ -503,7 +513,7 @@ function stripTags(h){
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=37"></script>
+<script src="nala-shared.js?v=38"></script>
 <script>
 // date state + header wiring from nala-shared.js
 var nav = initDateNav();
@@ -645,7 +655,10 @@ function commentBox(g, hits, row){
                 are two different people's business: one is where the guest
                 would like to sit, the other is what will hurt them. */
              (g.dnote ? '<span class="inote dnote">Dietary: ' + g.dnote + '</span>' : '');
+  /* The flags line first: it is about the whole booking, where the lines
+     under it are about tonight. Filled in later, like the staff line. */
   return '<div class="cbox">' +
+         '<span class="fkhere" data-villa="' + (row.room || '') + '"></span>' +
          (diet.trim() ? '<span class="crow diet">' + diet + '</span>' : '') +
          '<span class="snotehere" data-villa="' + (row.room || '') + '"></span>' +
          '<span class="crow write"></span></div>';
@@ -769,6 +782,47 @@ function paintStaffNotes(){
      staff note. */
   padBlanks();
 }
+/* The booking flags, one read per occupied villa: the staff-note shape, but
+   ungated, because Breakfast included is an instruction to whoever is serving
+   and every role that can print this sheet may see it. What a flag IS
+   resolves in bookingFlagLabels (nala-shared.js): the desk's tick where one
+   exists, the Mews rate's answer otherwise. A failed read leaves that villa
+   flagless and the sheet otherwise whole, like the notes. */
+var BOOKFLAGS = {};
+function fetchFlags(stays){
+  if (!stays) return Promise.resolve();
+  return Promise.all(Object.keys(stays).map(function(v){
+    var id = stays[v] && stays[v].id;
+    if (!id) return null;
+    return api('/bookings/' + id + '/pms')
+      .then(function(pms){
+        var labels = bookingFlagLabels(pms);
+        if (labels.length) BOOKFLAGS[String(v)] = labels;
+      })
+      .catch(function(){});
+  }));
+}
+function paintFlags(){
+  var slots = document.querySelectorAll('.fkhere');
+  for (var i=0; i<slots.length; i++){
+    var v = slots[i].getAttribute('data-villa');
+    var labels = v ? BOOKFLAGS[String(v)] : null;
+    slots[i].textContent = '';
+    if (!labels) continue;
+    var row = document.createElement('span');
+    row.className = 'crow flags';
+    labels.forEach(function(t){
+      var s = document.createElement('span');
+      s.className = 'fpill';
+      s.textContent = t;
+      row.appendChild(s);
+    });
+    slots[i].appendChild(row);
+  }
+  /* The flags changed row heights, so the blank-row decision is stale -
+     the same reason the staff notes re-measure. */
+  padBlanks();
+}
 function fetchStaffNotes(stays){
   if (!canInternal() || !stays) return Promise.resolve();
   return Promise.all(Object.keys(stays).map(function(v){
@@ -800,6 +854,8 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     /* Fired here and not awaited. The sheet draws on the reads it already has
        and the notes land a moment later into the rows that want them. */
     staffNotesWhenReady(res[5]);
+    /* The flags ride the same way, but wait on no role: they are not gated. */
+    fetchFlags(res[5]).then(paintFlags);
     var combined   = res[4] || {};
     function groupOf(room){
       for (var gid in combined){

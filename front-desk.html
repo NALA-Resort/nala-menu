@@ -180,6 +180,10 @@
                 color:var(--mid); letter-spacing:.03em; }
   .note-box { font-style:italic; font-size:13px; color:var(--mid); text-align:center;
               line-height:1.6; padding:0 4px 14px; }
+  /* The rate the flags were read from, under the flag chips. Small and grey:
+     it is the evidence, not the answer, and the chips are the answer. */
+  .flag-src { font-family:var(--ui-font); font-size:9.5px; color:var(--mid);
+              text-align:center; letter-spacing:.03em; margin:2px 0 4px; }
   /* What is missing, said in words. A button that silently does nothing is
      the worst of both. */
   .miss-note { display:none; font-size:12px; color:var(--red); text-align:center;
@@ -227,7 +231,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=37"></script>
+<script src="nala-shared.js?v=38"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -587,6 +591,11 @@ function summaryHTML(r){
   }
   if (a.note) h += sumRow('Booking notes', esc(a.note));
 
+  /* Only when one is on: an empty flags row is not a blank reception needs
+     to fill, unlike the answers above, so it earns no line. */
+  var fl = bookingFlagLabels(r.pms);
+  if (fl.length) h += sumRow('Booking flags', fl.join(' \u00b7 '));
+
   h += '<div class="sum-btns">' +
          '<button data-act="edit" data-villa="' + r.villa + '">Edit</button>' +
          /* Always the same words, because it is now an action rather than a
@@ -936,6 +945,14 @@ function openGuest(r){
         '<input class="txt" id="fCompanion" type="text" placeholder="Their name" autocomplete="off">'
       : '') +
 
+    /* The booking flags: the facts that used to be typed into a note on
+       every such booking. A tick each, already on when the Mews rate says
+       so, and printed on the Service Sheet either way. */
+    '<div class="sheet-label">Booking flags</div>' +
+    '<div class="chips" id="fkChips"></div>' +
+    (r.pms && r.pms.rate
+      ? '<div class="flag-src">Mews rate: ' + esc(r.pms.rate) + '</div>' : '') +
+
     /* The internal note. Management only, both to read and to write, and it
        lives at /internal rather than under the booking because /bookings is
        readable by anybody holding a pre-arrival link. It is the one note a
@@ -1212,8 +1229,24 @@ function openGuest(r){
   document.getElementById('wYes').onclick = function(){ a.wellness = true;  paintWellness(); };
   document.getElementById('wNo').onclick  = function(){ a.wellness = false; paintWellness(); };
 
+  /* The chip shows what each flag IS: the rate's answer until somebody
+     overrides it. The toggle lives here and is only written on save, like
+     every other answer on this sheet, so Close still discards it. */
+  var flags = {};
+  BOOKING_FLAGS.forEach(function(f){ flags[f.key] = bookingFlagOn(r.pms, f); });
+  function paintFlags(){
+    var box = document.getElementById('fkChips'); box.innerHTML = '';
+    BOOKING_FLAGS.forEach(function(f){
+      var b = document.createElement('button');
+      b.className = 'chip' + (flags[f.key] ? ' on' : '');
+      b.textContent = f.label;
+      b.onclick = function(){ flags[f.key] = !flags[f.key]; paintFlags(); };
+      box.appendChild(b);
+    });
+  }
+
   paintEta(); paintApproved(); paintDining(); paintPax(); paintDiets(); paintNone();
-  paintPurpose(); paintApproach(); paintWellness();
+  paintPurpose(); paintApproach(); paintWellness(); paintFlags();
   document.getElementById('fEtaNote').value = a.arriveNote || '';
   var cEl = document.getElementById('fCompanion');
   if (cEl) cEl.value = a.companion || '';
@@ -1287,6 +1320,11 @@ function openGuest(r){
     a.occasion = document.getElementById('fOcc').value.trim();
     a.note     = document.getElementById('fNote').value.trim();
     a.wellTime = document.getElementById('fWtime').value.trim();
+    /* Handed to save() on the row rather than read from the sheet there,
+       because save() also runs from the summary buttons with no sheet on
+       screen. A leftover copy from an earlier save of this row is harmless:
+       its values match what was stored, so the diff below it is empty. */
+    r._flags = flags;
     save(r, a, checkin);
   }
   document.getElementById('sConfirm').onclick = function(){ finish(false); };
@@ -1420,6 +1458,42 @@ function save(r, a, checkin){
      pair below for the same reason as the internal note: a mirror failing must
      not take tonight's answers with it. */
   rememberDietary(r.stay.id, payload.diets, payload.dnote);
+
+  /* The booking flags, their own write to the PMS record and outside the
+     both-or-neither pair: that pair is the guest's answers and the kitchen's
+     cell, and a flag refused must not roll tonight's answers back. Refused is
+     possible: the rules gate pms by role, so a login that may edit bookings
+     may still not carry a flag until the rules of 26 Aug are pasted. So the
+     failure is SAID rather than swallowed - a tick that silently failed
+     reads forever after as a fact recorded.
+
+     Only a disagreement with the rate is stored; agreement writes null,
+     which deletes any old override so the rate keeps speaking. Nothing at
+     all is written when nothing changed. */
+  if (r._flags){
+    var fpay = {}, pmsBefore = r.pms;
+    BOOKING_FLAGS.forEach(function(f){
+      var want = (r._flags[f.key] === flagFromRate(r.pms, f)) ? null : r._flags[f.key];
+      var have = (r.pms && typeof r.pms[f.key] === 'boolean') ? r.pms[f.key] : null;
+      if (want !== have) fpay[f.key] = want;
+    });
+    if (Object.keys(fpay).length){
+      r.pms = Object.assign({}, r.pms || {});          /* optimistic */
+      BOOKING_FLAGS.forEach(function(f){
+        if (!(f.key in fpay)) return;
+        if (fpay[f.key] === null) delete r.pms[f.key];
+        else r.pms[f.key] = fpay[f.key];
+      });
+      fetch(DB + '/bookings/' + r.stay.id + '/pms.json', {
+        method: 'PATCH', headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(fpay)
+      }).then(function(x){ if (!x.ok) throw new Error('flags'); })
+        .catch(function(){
+          r.pms = pmsBefore;
+          err('Could not save the booking flags. Everything else saved.');
+        });
+    }
+  }
 
   var writes = [
     fetch(DB + '/bookings/' + r.stay.id + '/prearrival.json', {

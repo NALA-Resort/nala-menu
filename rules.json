@@ -390,6 +390,17 @@
           },
           "syncedAt": {
             ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "rate": {
+            ".validate": "newData.isString() && newData.val().length <= 120"
+          },
+          "luxEscapes": {
+            ".write": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').exists() && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() != 'spa'",
+            ".validate": "newData.isBoolean()"
+          },
+          "breakfast": {
+            ".write": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').exists() && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() != 'spa'",
+            ".validate": "newData.isBoolean()"
           }
         },
         "prearrival": {
