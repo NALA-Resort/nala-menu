@@ -385,7 +385,11 @@ rather than guessing. A heartbeat would retire it and was impossible until the
 Worker gained a cron on 21 Aug. Now buildable.
 
 **Two finished Worker edits** are written and waiting on a deploy. The reasoning
-is in commit `25076ad`.
+is in commit `25076ad`. A third joined them on 26 Aug: mews-sync now lifts the
+receptionist's words out of Zapier's flattened note object instead of storing
+the whole dump in /internal, and repairs dumps already stored on each booking's
+next event - the fix that stops GUIDs and timestamps printing in the Service
+Sheet's staff rows. Until it is deployed, new bookings keep seeding dumps.
 
 **A logs upgrade**, named 21 Aug: the Worker writes nothing durable, so a sync
 that misbehaves leaves no trace to read afterwards.

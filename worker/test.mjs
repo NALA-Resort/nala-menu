@@ -42,7 +42,17 @@ function install() {
         kids = kids || {};
         kids[rest] = STORE[key];
       }
-      return new Response(JSON.stringify(kids), { status: 200 });
+      if (kids) return new Response(JSON.stringify(kids), { status: 200 });
+      /* And the other direction: Firebase serves a child of a stored object,
+         so a read of /internal/<id>/fromMews after a PATCH of /internal/<id>
+         must find the field inside the parent. Without this the seed-once
+         guard reads null forever and every event looks like a first seed. */
+      var slash = path.lastIndexOf("/");
+      var parent = STORE[path.slice(0, slash)], leaf = path.slice(slash + 1);
+      if (parent && typeof parent === "object" && leaf in parent) {
+        return new Response(JSON.stringify(parent[leaf]), { status: 200 });
+      }
+      return new Response("null", { status: 200 });
     }
     if (m === "DELETE") { delete STORE[path]; return new Response(null, { status: 204 }); }
     const body = JSON.parse(opt.body);
@@ -453,6 +463,68 @@ install();
 await post(RES);
 ck("a booking with no customer id at all is still written",
    STORE["/bookings/" + RES.MewsId + "/pms"].customerId === null);
+
+/* ── the Mews note, in the shape Zapier actually sends it ───── */
+/* Mews keeps notes as objects and Zapier flattens the array into one string
+   of "key: value" pairs. On 26 Aug that whole flattened object reached
+   /internal/<id>/fromMews and the Service Sheet printed nine lines of GUIDs
+   and timestamps in a staff row. The Worker lifts the text out now; these
+   pin both halves - the words survive, the metadata does not. */
+const NOTE_ID = "/internal/" + RES.MewsId;
+const DUMP = "createdUtc: 2026-07-07T06:28:44Z id: c20eda2e-4c43-4e57-b62b-b48008ac53aa " +
+  "orderId: 203a773e-4fd0-4418-ad4d-b48000b8ac4f text: Hi, would prefer a view over " +
+  "the beach rather than the pool, please. Many thanks, very much looking forward " +
+  "to our stay :) type: General updatedUtc: 2026-07-07T06:28:44Z";
+const WORDS = "Hi, would prefer a view over the beach rather than the pool, " +
+  "please. Many thanks, very much looking forward to our stay :)";
+
+install();
+await post(Object.assign({}, RES, { Notes: "Owner's friend, do not charge for wine" }));
+ck("a note typed by a person is stored word for word",
+   STORE[NOTE_ID].fromMews === "Owner's friend, do not charge for wine");
+
+/* A person may write "id:" once; only the object's keys in company mean a dump. */
+install();
+await post(Object.assign({}, RES, { Notes: "Paid deposit, invoice id: 4471" }));
+ck("one key-shaped word does not get a human note dissected",
+   STORE[NOTE_ID].fromMews === "Paid deposit, invoice id: 4471");
+
+install();
+await post(Object.assign({}, RES, { Notes: DUMP }));
+ck("the flattened note object gives up the receptionist's words",
+   STORE[NOTE_ID].fromMews === WORDS);
+ck("and none of the metadata around them",
+   !/createdUtc|orderId|General/.test(STORE[NOTE_ID].fromMews));
+
+/* Two notes flattened into one dump: both texts, neither's metadata. */
+install();
+await post(Object.assign({}, RES, { Notes: DUMP + " " + DUMP.replace(WORDS, "Late arrival, keep dinner warm") }));
+ck("several notes in one dump each keep their words",
+   STORE[NOTE_ID].fromMews === WORDS + " · Late arrival, keep dinner warm");
+
+/* A dump whose text is empty is metadata alone, which is not a note. */
+install();
+await post(Object.assign({}, RES, { Notes: DUMP.replace(WORDS, "") }));
+ck("a dump with nothing behind text: seeds nothing",
+   STORE[NOTE_ID] === undefined);
+
+/* The seed-once rule stands: a readable original survives every later event. */
+install();
+await post(Object.assign({}, RES, { Notes: "First words" }));
+await post(Object.assign({}, RES, { Notes: "Second words" }));
+ck("a readable original is never overwritten by a later event",
+   STORE[NOTE_ID].fromMews === "First words");
+
+/* The one exception: a dump stored before the fix existed repairs itself on
+   the next event for its booking. The manager's own rewrite lives in note,
+   not fromMews, and must come through untouched. */
+install();
+STORE[NOTE_ID] = { fromMews: DUMP, note: "the manager's rewrite" };
+await post(Object.assign({}, RES, { Notes: DUMP }));
+ck("a dump stored before the fix is repaired on the next event",
+   STORE[NOTE_ID].fromMews === WORDS);
+ck("and the manager's rewrite beside it is untouched",
+   STORE[NOTE_ID].note === "the manager's rewrite");
 
 /* ── the clock ──────────────────────────────────────────────── */
 /* Mews sends true UTC. Confirmed 18 Aug: 04:00Z is 2pm at the resort, which is
