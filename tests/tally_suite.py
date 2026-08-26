@@ -362,22 +362,22 @@ with sync_playwright() as p:
     pg.locator(".rmp", has_text=re.compile(r"^12$")).click()
     pg.fill("#xName","Chef Guest")
     pg.locator(".pax", has_text="3").click()
-    pg.locator(".chip", has_text="Gluten free").click()
+    pg.locator(".chip", has_text="Gluten").click()
     pg.locator("#oIn").click(); pg.wait_for_timeout(300)
     wr=[x for x in WRITES if re.search(r"/dinner/"+today+r"/12\.json",x["u"]) and x["m"]=="PUT"]
-    okr=len(wr)==1 and json.loads(wr[0]["b"])["name"]=="Chef Guest" and "Gluten free" in json.loads(wr[0]["b"])["diets"] and json.loads(wr[0]["b"])["pax"]==3
+    okr=len(wr)==1 and json.loads(wr[0]["b"])["name"]=="Chef Guest" and "Gluten" in json.loads(wr[0]["b"])["diets"] and json.loads(wr[0]["b"])["pax"]==3
     ck("room reservation PUT with name+diets", okr)
     ck("room 12 tile dining, row shows name", "in" in pg.evaluate("()=>[...document.querySelectorAll('#rooms .room')].find(b=>b.querySelector('.room-n').textContent==='12').className") and "Chef Guest" in pg.locator("#listBookings").inner_text())
 
     # room edit shows guest data; pax update preserves details
     tile(pg,12).click(); pg.wait_for_timeout(200)
     sh12=pg.locator("#sheet").inner_text()
-    ck("room sheet shows guest data", "Chef Guest" in sh12 and "Gluten free" in sh12)
+    ck("room sheet shows guest data", "Chef Guest" in sh12 and "Gluten" in sh12)
     pg.locator(".pax", has_text="4").click()
     pg.locator("#oIn").click(); pg.wait_for_timeout(300)
     wr2=[x for x in WRITES if re.search(r"/dinner/"+today+r"/12\.json",x["u"])][-1]
     b12=json.loads(wr2["b"])
-    ck("pax update kept name+diets", b12["pax"]==4 and b12.get("name")=="Chef Guest" and "Gluten free" in b12.get("diets",[]))
+    ck("pax update kept name+diets", b12["pax"]==4 and b12.get("name")=="Chef Guest" and "Gluten" in b12.get("diets",[]))
 
     # order independence: bulk Dining then Seat together must not touch the reservation
     pg.locator("#selToggle").click()
@@ -385,7 +385,7 @@ with sync_playwright() as p:
     pg.locator("#sbDin").click(); pg.wait_for_timeout(300)
     wb=[x for x in WRITES if re.search(r"/dinner/"+today+r"/12\.json",x["u"])][-1]
     bb=json.loads(wb["b"])
-    ck("bulk Dining kept name, diets and pax 4", bb.get("name")=="Chef Guest" and "Gluten free" in bb.get("diets",[]) and bb["pax"]==4)
+    ck("bulk Dining kept name, diets and pax 4", bb.get("name")=="Chef Guest" and "Gluten" in bb.get("diets",[]) and bb["pax"]==4)
     pg.locator("#selToggle").click()
     tile(pg,12).click(); tile(pg,13).click(); pg.wait_for_timeout(150)
     _st=pg.evaluate("()=>({btn:sbComb.textContent,sel:Object.keys(window.selected||{}),comb:JSON.stringify(window.combined),mode:window.selectMode})")
@@ -888,8 +888,13 @@ with sync_playwright() as p:
          ["Nut allergy", "Severe, carries an epipen"]),
     ]
 
-    for label, stays, din, pre, expect in SNAP_CASES:
-        def snap_fb(route, request, _s=stays, _d=din, _p=pre):
+    # snap_stays, NOT stays: the loop variable used to shadow the module-level
+    # stays fixture, so every scenario after this loop that fell back to plain
+    # fb() asked stays[today] of a per-villa dict and crashed the route with a
+    # KeyError. Nothing tripped it for weeks because each later scenario
+    # happened to stub /stays/ itself - until one did not.
+    for label, snap_stays, din, pre, expect in SNAP_CASES:
+        def snap_fb(route, request, _s=snap_stays, _d=din, _p=pre):
             u = request.url
             if "/stays/" + today in u:
                 route.fulfill(status=200, content_type="application/json",
@@ -1390,7 +1395,7 @@ with sync_playwright() as p:
     ck("and it is the last of them, not mixed into the chef's list",
        bool(chips) and chips[-1] == "Other")
 
-    # The box was summoned by Other alone, so a villa with Gluten free and
+    # The box was summoned by Other alone, so a villa with Gluten and
     # Shellfish ticked had nowhere to type whose, and how severe: the label
     # rendered on a day the note existed and vanished on a day it did not,
     # which read from a phone as the option itself coming and going. The
@@ -1399,7 +1404,7 @@ with sync_playwright() as p:
     ck("the dietary note box starts hidden on a villa with nothing ticked",
        q.evaluate("()=>document.getElementById('xDnote').style.display==='none'"))
     q.evaluate("""()=>[...document.querySelectorAll('#dietChips button')]
-      .find(b=>b.textContent.trim()==='Gluten free').click()""")
+      .find(b=>b.textContent.trim()==='Gluten').click()""")
     q.wait_for_timeout(200)
     ck("any ticked dietary reveals it, not only Other",
        q.evaluate("()=>document.getElementById('xDnote').style.display!=='none'"))
@@ -1407,7 +1412,7 @@ with sync_playwright() as p:
        q.evaluate("()=>{const l=document.getElementById('xDnoteLab');"
                   "return !!l && l.style.display!=='none';}"))
     q.evaluate("""()=>[...document.querySelectorAll('#dietChips button')]
-      .find(b=>b.textContent.trim()==='Gluten free').click()""")
+      .find(b=>b.textContent.trim()==='Gluten').click()""")
     q.wait_for_timeout(200)
 
     q.evaluate("""()=>[...document.querySelectorAll('#dietChips button')]
@@ -1466,6 +1471,44 @@ with sync_playwright() as p:
     ck("and the dietary reaches the person, so next year they are not asked again",
        any("/guests/" in p for p in paths))
     q.close()
+
+    # ── answers saved under the pills' old names ────────────────────────
+    # Two pills were renamed on 26 Aug: "Gluten free" -> "Gluten" and
+    # "Dairy free" -> "Dairy". A villa that answered before the rename still
+    # holds the old string, and the board must read it as the new pill: shown
+    # renamed on the row, lighting the renamed chip in the editor, and written
+    # back under the new name on the next save. Losing the selection is the
+    # failure this pins.
+    responses["0400000001"]["diets"] = ["Nut allergy", "Gluten free"]
+    r = b.new_page(viewport={"width": 430, "height": 930})
+    r.route("**/firebase-app-compat.js", lambda rt,_: rt.fulfill(status=200,
+        content_type="application/javascript", body=SDK))
+    r.route("**/firebase-auth-compat.js", lambda rt,_: rt.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    r.route("**firebasedatabase.app/**", fb)
+    r.route("**/menu.json*", file_menu)
+    r.goto("http://localhost:8953/tally.html"); r.wait_for_timeout(1500)
+    tile(r,1).click(); r.wait_for_timeout(300)
+    sheet1 = r.locator("#sheet").inner_text()
+    ck("an old-named stored dietary shows renamed on the villa sheet",
+       "Gluten" in sheet1 and "Gluten free" not in sheet1)
+    r.evaluate("""()=>{const b=[...document.querySelectorAll('#sheet button')]
+      .find(x=>/edit details/i.test(x.textContent)); if(b)b.click();}""")
+    r.wait_for_timeout(400)
+    ck("and lights the renamed chip in the editor, not nothing",
+       r.evaluate("""()=>{const c=[...document.querySelectorAll('#dietChips .chip')]
+         .find(b=>b.textContent.trim()==='Gluten');
+         return !!c && c.className.indexOf('on')>-1;}"""))
+    before = len(WRITES)
+    r.evaluate("()=>document.getElementById('oSave').click()")
+    r.wait_for_timeout(500)
+    wold = [json.loads(x["b"]) for x in WRITES[before:]
+            if re.search(r"/dinner/"+today+r"/1\.json", x["u"]) and x["b"]]
+    ck("and the next save writes the new name back, migrating the record",
+       bool(wold) and "Gluten" in wold[-1].get("diets", [])
+       and "Gluten free" not in wold[-1].get("diets", []))
+    r.close()
+    responses["0400000001"]["diets"] = ["Nut allergy"]
 
     b.close()
     open("/home/claude/nala/_p1_tally.png","wb").write(shot1)

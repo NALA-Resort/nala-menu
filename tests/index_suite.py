@@ -233,6 +233,26 @@ with sync_playwright() as p:
         ck("and stays on the booking", len(wrote("/bookings/res-guid-1/prearrival")) == 1)
         pg.close()
         STATE["pre"] = None
+
+        # The dangerous mismatch the 26 Aug renames could open: the dietary
+        # was stored before the rename and tonight's tag written after it, so
+        # the strings differ while the fact is the same. The flag must still
+        # reach the kitchen.
+        STATE["pre"] = {"diets": ["Gluten free"], "at": "2026-08-15T10:00:00Z"}
+        STATE["menutags"] = {"main": ["Gluten"]}
+        del WRITES[:]
+        pg = guest(LINK)
+        pg.locator("#bIn").click(); pg.wait_for_timeout(400)
+        pg.locator("#bSave").click(); pg.wait_for_timeout(400)
+        w = wrote(cell())
+        ck("an old-named dietary still flags against a newly tagged menu",
+           len(w) == 1 and json.loads(w[0]["b"])["flag"] is True)
+        if w:
+            ck("and is saved under the new name, migrating the record",
+               json.loads(w[0]["b"])["diets"] == ["Gluten"])
+        pg.close()
+        STATE["pre"] = None
+        STATE["menutags"] = TAGS
     else:
         del WRITES[:]
         pg = guest(LINK)
@@ -260,7 +280,7 @@ with sync_playwright() as p:
         del WRITES[:]
         pg = guest(LINK)
         pg.locator("#bIn").click(); pg.wait_for_timeout(300)
-        pg.locator(".chip", has_text="Gluten free").first.click(); pg.wait_for_timeout(150)
+        pg.locator(".chip", has_text="Gluten").first.click(); pg.wait_for_timeout(150)
         pg.locator("#bSave").click(); pg.wait_for_timeout(400)
         w = wrote(cell())
         ck("a dietary tonight's menu does not contain raises no flag",
@@ -365,6 +385,10 @@ with sync_playwright() as p:
     STATE["dinner"] = None
 
     # ── standing dietaries from their own pre-arrival ───────────
+    # The stored answer deliberately carries the OLD wording. Two pills were
+    # renamed on 26 Aug ("Gluten free" -> "Gluten", "Dairy free" -> "Dairy")
+    # and answers saved before the rename keep the old string in the database,
+    # so the page must read it as the new pill or the selection is lost.
     STATE["pre"] = {"diets": ["Gluten free"], "at": "2026-08-15T10:00:00Z"}
     pg = guest(LINK)
     pg.locator("#bIn").click(); pg.wait_for_timeout(400)
@@ -372,6 +396,19 @@ with sync_playwright() as p:
        pg.evaluate("()=>[...document.querySelectorAll('#chips .chip')]"
                    ".some(e=>e.textContent.indexOf('Gluten')>-1"
                    "&&e.className.indexOf('on')>-1)"))
+    ck("an answer saved under the old name lights the renamed pill",
+       pg.evaluate("()=>[...document.querySelectorAll('#chips .chip')]"
+                   ".some(e=>e.textContent.trim()==='Gluten'"
+                   "&&e.className.indexOf('on')>-1)"))
+    ck("and no pill still wears the old wording",
+       pg.evaluate("()=>![...document.querySelectorAll('#chips .chip')]"
+                   ".some(e=>e.textContent.indexOf('Gluten free')>-1)"))
+    # The rename table itself, against the shared table in tests/. This page
+    # holds a forced copy (guest pages load no staff code); a rename added to
+    # one copy and not the other is exactly the drift this catches.
+    RENAMES = json.load(open("tests/diet_renames.json"))
+    ck("the page's rename table matches tests/diet_renames.json",
+       pg.evaluate("()=>DIET_RENAMES") == RENAMES)
     pg.close()
     STATE["pre"] = None
 

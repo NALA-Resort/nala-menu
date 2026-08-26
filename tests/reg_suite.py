@@ -169,7 +169,9 @@ with sync_playwright() as p:
       .find(c=>c.querySelector('.c-villa').textContent==='2');
       return [...c.querySelectorAll('.tk')].map(e=>e.textContent);}""")
     ck("and the boxes offer the same dietaries the guest form does",
-       "Gluten free" in ticked and "Nut allergy" in ticked and "Other" in ticked)
+       "Gluten" in ticked and "Nut allergy" in ticked and "Other" in ticked)
+    ck("under the renamed wording, since the pills lost their 'free' on 26 Aug",
+       "Gluten free" not in ticked and "Dairy" in ticked)
     ck("and Dining carries a count, because Dining alone is not a cover number",
        "How many" in card("2"))
 

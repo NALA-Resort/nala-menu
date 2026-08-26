@@ -179,6 +179,32 @@ cannotPatch('above the range is refused', DESK,
 cannotPatch('an hour written as text is refused', DESK,
             '/bookings/b-1/prearrival', { arriveApproved: '15' });
 
+/* The massage count and lengths, guest-writable like the rest of the form,
+   bounded to the menu actually offered. */
+canPatch('the guest asks for two massages with their lengths', GUEST,
+         '/bookings/b-1/prearrival', { wellQty: 2, wellDur: 90, wellDur2: 60 });
+cannotPatch('a length off the menu is refused', GUEST,
+            '/bookings/b-1/prearrival', { wellDur: 45 });
+cannotPatch('and so is a party of three massages', GUEST,
+            '/bookings/b-1/prearrival', { wellQty: 3 });
+
+/* The manager's spa prices: public to read - the guest form runs signed
+   out and shows the cost before the ask - and management's to write. */
+can('the manager sets the spa prices', ADMIN, '/spasettings',
+    { price60: 180, price90: 250, price120: 310, by: 'staff@nalaresort.com.au', at: NOW });
+canPatch('and corrects one on its own', MANAGER, '/spasettings', { price90: 260 });
+ck('a guest signed out can read them, which is the whole point',
+   as(GUEST).read('/spasettings').allowed === true);
+(function(){
+  var d2 = targaryen.database(RULES, { staff: { 'ms@x': { name: 'M', role: 'spa' } } });
+  ck('the masseuse does not set his own prices',
+     d2.as({ uid: 'ms@x', token: { email: 'ms@x' } })
+       .write('/spasettings', { price60: 1 }).allowed === false);
+})();
+cannot('nor may a guest', GUEST, '/spasettings', { price60: 1 });
+cannotPatch('a price that is words is refused', ADMIN, '/spasettings', { price60: 'call us' });
+cannotPatch('and one past any massage ever sold', ADMIN, '/spasettings', { price60: 99999 });
+
 /* The arriving-soon marker. The Worker writes it before it sends, so a villa
    is announced once however many cron wakes cross its red hour. */
 can('the sync writes the arriving-soon marker', SYNC,
@@ -579,6 +605,10 @@ cannotPatch('but not something the length of a paragraph', SYNC,
             source:'prearrival', by:'Masseuse', at:NOW };
 
   ck('the masseuse books a treatment', as2('ms@x').write('/spa/b-1001/t1', T).allowed);
+  ck('and one carrying its length',
+     as2('ms@x').write('/spa/b-1001/t1', Object.assign({}, T, {dur: 90})).allowed);
+  ck('a length off the menu is refused',
+     !as2('ms@x').write('/spa/b-1001/t1', Object.assign({}, T, {dur: 45})).allowed);
   ck('and suggests a different day instead',
      as2('ms@x').write('/spa/b-1001/t1',
        Object.assign({}, T, {status:'suggested', day:'2026-09-12', time:'10:30'})).allowed);

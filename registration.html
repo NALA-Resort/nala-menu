@@ -143,7 +143,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=39"></script>
+<script src="nala-shared.js?v=41"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();
@@ -259,7 +259,8 @@ function dayLabel(key){
    twice over: the card goes to the kitchen, and the kitchen is who acts. */
 function conflictsFor(diets){
   var hits = [];
-  if (!diets || !diets.length || !TAGS) return hits;
+  diets = fixDietList(diets);
+  if (!diets.length || !TAGS) return hits;
   ['bread','entree','main','dessert'].forEach(function(course){
     (TAGS[course] || []).forEach(function(tag){
       diets.forEach(function(d){
@@ -274,7 +275,7 @@ function conflictsFor(diets){
    prints these as boxes so reception ticks rather than writes, and so the two
    are visibly the same question when a guest answers half of it at the desk.
    Adding an option to the form means adding it here. */
-var DIET_TICKS = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+var DIET_TICKS = ['Gluten','Dairy','Vegetarian','Vegan','Pescatarian',
                   'Nut allergy','Shellfish allergy','Egg allergy','Other'];
 var PURPOSE_TICKS = ['Relaxing at Nala','A mix','Out exploring',
                      'Working'];
@@ -356,7 +357,7 @@ function cardHTML(r){
         { ticks:DINE_TICKS, count:true });
 
   var diet = p.noDiets ? 'None to declare'
-           : ((p.diets && p.diets.length) ? esc(p.diets.join(' \u00b7 ')) : '');
+           : ((p.diets && p.diets.length) ? esc(fixDietList(p.diets).join(' \u00b7 ')) : '');
   if (diet && p.dnote) diet += '<br>' + esc(p.dnote);
   /* The kitchen reads this card. If the night's menu contains something the
      guest declared, it says so here in as many words. */
@@ -396,7 +397,7 @@ function render(rows){
 
 function load(){
   var key = nav.todayKey();
-  api('/menutags/'+key).then(function(t){ TAGS = t; }).catch(function(){ TAGS = null; })
+  api('/menutags/'+key).then(function(t){ TAGS = fixTagNames(t); }).catch(function(){ TAGS = null; })
     .then(function(){ return api('/stays/'+key); })
     .then(function(day){
       var rows = arrivingOn(day, key);

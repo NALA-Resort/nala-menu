@@ -75,15 +75,15 @@ PRE = {
   # the board is showing the pre-arrival copy.
   "b9":  {"wellness": True,  "wellDay": today,   "wellTime": "afternoon"},
   "b12": {"wellness": True,  "wellDay": plus(-1),"wellTime": "morning"},
-  "b4":  {"wellness": True,  "wellDay": plus(3), "wellTime": "2:00 pm",
+  "b4":  {"wellness": True,  "wellDay": plus(3), "wellTime": "2:00 pm", "wellDur": 90,
           "companion": "Lena Werner"},
-  "b15": {"wellness": True,  "wellDay": "",      "wellTime": ""},
+  "b15": {"wellness": True,  "wellDay": "",      "wellTime": "", "wellQty": 2, "wellDur": 90, "wellDur2": 60},
   "b2":  {"wellness": False},
 }
 
 def spa_seed():
     return {
-      "b12": {"t1": {"status": "suggested", "day": today, "time": "16:30",
+      "b12": {"t1": {"status": "suggested", "day": today, "time": "16:30", "dur": 60,
                      "reqDay": plus(-1), "reqTime": "morning",
                      "name": "Elena Petrov", "source": "prearrival",
                      "by": "masseuse@x", "at": "2026-08-20T10:00:00Z"}},
@@ -116,7 +116,9 @@ def fb(route, request):
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
     body = "null"
-    if "/staff" in u: body = json.dumps(STAFF)
+    if "/spasettings" in u:
+        body = json.dumps({"price60": 180, "price90": 250, "price120": 310})
+    elif "/staff" in u: body = json.dumps(STAFF)
     elif "/spa.json" in u: body = json.dumps(SPA)
     elif "/stays/" in u:
         d = u.split("/stays/")[1].split(".json")[0]
@@ -153,12 +155,12 @@ with sync_playwright() as p:
             .map(e=>e.textContent)""", sel)
     got = bands(pg)
     ck("All is pressed on arrival and holds every band",
-       got == ["To answer · 3", "Suggested · waiting on the guest · 1",
+       got == ["To answer · 4", "Suggested · waiting on the guest · 1",
                "Booked · 1", "Declined · 1"] and
        pg.evaluate("()=>document.querySelector('.stat[data-f=\"all\"]').className")
          == "stat on")
     ck("and its number counts every live tile it shows",
-       pg.evaluate("()=>nAll.textContent") == "6")
+       pg.evaluate("()=>nAll.textContent") == "7")
     ck("the request from the form appears with no /spa record behind it",
        pg.evaluate("()=>document.querySelector('#board [data-booking=\"b9\"]')"
                    "?.dataset.status") == "requested")
@@ -191,10 +193,50 @@ with sync_playwright() as p:
     ck("a booking with nobody named keeps its two-line tile",
        pg.evaluate("()=>!document.querySelector('#board [data-booking=\"b9\"] .cmp')"))
 
+    # ── how many and how long ───────────────────────────────────
+    # A form asking for two massages is two white tiles, each its own length;
+    # answering one leaves the other standing.
+    ck("two massages on the form are two asks on the board",
+       pg.evaluate("()=>document.querySelectorAll('#board [data-booking=\"b15\"]').length") == 2)
+    ck("each of the pair says which it is; a lone massage says nothing",
+       pg.evaluate("()=>[...document.querySelectorAll("
+                   "'#board [data-booking=\"b15\"] .st')].map(e=>e.textContent)"
+                   ".map(t=>t.split(' \\u00b7 ')[0]).join('|')")
+       == "Massage 1 of 2|Massage 2 of 2" and
+       "Massage" not in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b4\"] .st').textContent"))
+    ck("a tile wears its length",
+       "1.5 hr" in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b4\"] .st').textContent") and
+       "1 hr" in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b12\"] .st').textContent"))
+    pg.close()
+    pg = board()
+    pg.locator('#board [data-booking="b4"]').click(); pg.wait_for_timeout(300)
+    ck("the card opens on the length the guest picked",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .chips .chip.on')]"
+                   ".map(c=>c.textContent).join('|')").endswith("1.5 hours"))
+    del WRITES[:]
+    pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
+    w2 = [x for x in WRITES if "/spa/b4/" in x["u"]]
+    body2 = json.loads(w2[0]["b"]) if w2 else {}
+    ck("and the length rides the booking", body2.get("dur") == 90)
+    SPA = spa_seed()
+    pg.close()
+    pg = board()
+    pg.locator('#board [data-booking="b15"]').first.click(); pg.wait_for_timeout(300)
+    pg.locator('.card .cbtn', has_text="Suggest").first.click(); pg.wait_for_timeout(900)
+    ck("answering one of the pair leaves the other still asking",
+       pg.evaluate("()=>document.querySelectorAll("
+                   "'#board [data-booking=\"b15\"][data-status=\"requested\"]').length") == 1)
+    SPA = spa_seed()
+    pg.close()
+    pg = board()
+
     # The stats are the masseuse's whole queue, not today's slice: b9 today,
     # b4 in two days, b15 with no day picked - all waiting on him.
     ck("To answer counts every open ask on the horizon",
-       pg.evaluate("()=>nAsk.textContent") == "3")
+       pg.evaluate("()=>nAsk.textContent") == "4")
     ck("Suggested counts what waits on the guest",
        pg.evaluate("()=>nSugg.textContent") == "1")
     ck("Booked today counts the day being looked at",
@@ -203,7 +245,8 @@ with sync_playwright() as p:
     # ── the open card: the stay bounds the day control ──────────
     pg.locator('#board [data-booking="b9"]').click()
     pg.wait_for_timeout(300)
-    chips = pg.evaluate("()=>[...document.querySelectorAll('.card .chip')].map(e=>e.textContent)")
+    chips = pg.evaluate("()=>[...document.querySelector('.card .chips')"
+                        ".querySelectorAll('.chip')].map(e=>e.textContent)")
     ck("the day chips are the guest's stay and nothing else",
        chips == [short(0), short(1), short(2), short(3), short(4)])
     ck("the time picker runs nine to five on the half hour",
@@ -267,7 +310,7 @@ with sync_playwright() as p:
     ck("born from the form, so the ask stops showing as pending",
        body.get("source") == "prearrival")
     ck("and the board reflects it without a hand refresh",
-       pg.evaluate("()=>nAsk.textContent") == "2")
+       pg.evaluate("()=>nAsk.textContent") == "3")
     SPA = spa_seed()
 
     # Confirming on the asked-for day books it directly.
@@ -462,7 +505,7 @@ with sync_playwright() as p:
     pg = board()
     pg.locator('#statsRow .stat[data-f="requested"]').click(); pg.wait_for_timeout(200)
     ck("tapping To answer shows every open ask, future and day-less included",
-       bands(pg) == ["Every open ask · 3"] and
+       bands(pg) == ["Every open ask · 4"] and
        pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b4\"]')") and
        pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b15\"]')"))
     ck("and the pressed number wears the amber mark",
@@ -521,6 +564,32 @@ with sync_playwright() as p:
        "did not save" in pg.evaluate("()=>errBar.textContent"))
     STATE["fail"] = False
     pg.close()
+
+    # ── the manager's spa prices, set from Settings ─────────────
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.add_init_script(SDK)
+    q.add_init_script("window.__EMAIL=%s;" % json.dumps("staff@x"))
+    q.route("**firebasedatabase.app/**", fb)
+    q.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    q.goto("http://localhost:8980/staff.html")
+    q.wait_for_timeout(1600)
+    ck("Settings shows the prices it holds",
+       q.evaluate("()=>sp60.value") == "180" and
+       q.evaluate("()=>sp90.value") == "250")
+    del WRITES[:]
+    q.fill("#sp60", "195")
+    q.evaluate("()=>{sp60.dispatchEvent(new Event('change'))}")
+    q.wait_for_timeout(600)
+    w3 = [x for x in WRITES if "/spasettings" in x["u"]]
+    body3 = json.loads(w3[0]["b"]) if w3 else {}
+    ck("changing a price saves that price, as a number",
+       w3 and w3[0]["m"] == "PATCH" and body3.get("price60") == 195)
+    q.fill("#sp60", "call us")
+    q.evaluate("()=>{sp60.dispatchEvent(new Event('change'))}")
+    q.wait_for_timeout(300)
+    ck("words are refused before they reach the database",
+       "whole number" in q.evaluate("()=>spaErr.textContent"))
+    q.close()
 
     # ── who may stand here ──────────────────────────────────────
     q = board("chef@x")

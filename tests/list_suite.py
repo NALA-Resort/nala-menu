@@ -116,6 +116,17 @@ with sync_playwright() as p:
        byroom["9"]["sub"] == "")
     ck("and the typed name lands as text, not as markup",
        "&lt;Ruiz&gt;" in byroom["1"]["html"])
+    #  Ruled by the owner, 26 Aug: the second guest is a person the waiter
+    #  greets by name, not reference like the externals' phone, so it is set
+    #  a step larger. Compared against a live phone sub rather than a stated
+    #  number, so the rule survives a resize of the small print itself.
+    sizes=pg.evaluate("""()=>{
+      const px=e=>e?parseFloat(getComputedStyle(e).fontSize):null;
+      return {cmp:px(document.querySelector('.c-name .sub.cmp')),
+              phone:px(document.querySelector('.c-name .sub:not(.cmp)'))};}""")
+    ck("the second guest is set larger than the externals' phone line",
+       sizes["cmp"] is not None and sizes["phone"] is not None
+       and sizes["cmp"] > sizes["phone"])
     #  The kicker is gone, and so is the header it left behind. It named the
     #  document to whoever was already holding it, and the page has no room for
     #  two headers above a table that carries its own column headings.

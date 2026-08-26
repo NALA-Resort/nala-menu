@@ -187,6 +187,65 @@ function tidyPhone(p){
   return p;
 }
 
+/* ── renamed dietaries ─────────────────────────────────────────
+   The owner renamed two pills on 26 Aug: a pill names the thing the guest
+   cannot eat, so "Gluten free" and "Dairy free" are "Gluten" and "Dairy".
+   Answers already saved carry the old wording - in dinner cells, in
+   pre-arrival records, in /guests, in tonight's tags - and nothing sweeps a
+   live database to rewrite a fact a guest gave us. So every reader maps the
+   old name to the new one: displays show the new word, the old answers still
+   light the chips and still hit the menu-tag comparison, and the next save
+   of any record writes the new name back, which is how the data converges
+   without a migration.
+
+   The table is copied into index.html and prearrival.html, which are guest
+   pages and deliberately load no staff code. tests/diet_renames.json is the
+   shared table all three copies are checked against - add a rename there,
+   never to one copy. */
+var DIET_RENAMES = { 'Gluten free': 'Gluten', 'Dairy free': 'Dairy' };
+function fixDietName(d){ return DIET_RENAMES[d] || d; }
+function fixDietList(list){
+  var out = [];
+  (list || []).forEach(function(d){
+    d = fixDietName(d);
+    if (out.indexOf(d) === -1) out.push(d);
+  });
+  return out;
+}
+/* Tonight's tags, per course, as /menutags stores them. */
+function fixTagNames(tags){
+  if (!tags) return tags;
+  var out = {};
+  Object.keys(tags).forEach(function(c){
+    out[c] = Array.isArray(tags[c]) ? fixDietList(tags[c]) : tags[c];
+  });
+  return out;
+}
+/* The master list, as /dietaries stores it: keyed by the name, so a rename
+   moves the record to the new key. The keying transform is keyOf() on the
+   pages that write the list - the same three steps, kept in step by the
+   suites. If the database somehow holds both spellings the two records
+   merge, active if either was. */
+function fixDietMaster(master){
+  if (!master) return master;
+  var out = {};
+  Object.keys(master).forEach(function(k){
+    var d = master[k] || {};
+    var nd = {}; for (var f in d) nd[f] = d[f];
+    nd.name = fixDietName(d.name || k);
+    var key = nd.name.trim().replace(/[.#$\/\[\]]/g,'').replace(/\s+/g,' ');
+    if (out[key]) out[key].active = !!(out[key].active || nd.active);
+    else out[key] = nd;
+  });
+  return out;
+}
+function dietMasterRenamed(master){
+  return !!master && Object.keys(master).some(function(k){
+    var n = (master[k] && master[k].name) || k;
+    return fixDietName(n) !== n;
+  });
+}
+
 /* ── dietary conflicts against the tagged menu ─────────────── */
 function menuConflicts(menu, diets){
   if (!diets || !diets.length || !menu) return [];
@@ -195,7 +254,9 @@ function menuConflicts(menu, diets){
     var dish = menu[k];
     if (!dish || !dish.conflicts) return;
     dish.conflicts.forEach(function(tag){
+      tag = fixDietName(tag);
       diets.forEach(function(d){
+        d = fixDietName(d);
         if (String(d).toLowerCase() === String(tag).toLowerCase())
           hits.push({ dish: dish.name || k, diet: d });
       });
@@ -205,7 +266,8 @@ function menuConflicts(menu, diets){
 }
 
 function dietHTML(diets, sep, cls){
-  if(!diets||!diets.length) return '';
+  diets = fixDietList(diets);
+  if(!diets.length) return '';
   cls = cls || 'allergen';
   return diets.map(function(d){
     return (ALLERGENS.indexOf(d)>-1 || /allerg/i.test(d)) ? '<span class="'+cls+'">'+d+'</span>' : d;
@@ -1665,6 +1727,21 @@ function spaSlotLabel(t){
   var p = String(t).split(':'), h = +p[0];
   return (h % 12 || 12) + ':' + p[1] + ' ' + (h < 12 ? 'am' : 'pm');
 }
+/* The treatment lengths, on the same terms as the slots: one list here for
+   the staff pages, a forced copy on the guest form, both pinned to
+   tests/slots.json. label is what the guest reads, short is what a tile
+   wears, and the price key is what /spasettings stores against it.      */
+var SPA_DURS = [
+  { m: 60,  label: '1 hour',    short: '1 hr'   },
+  { m: 90,  label: '1.5 hours', short: '1.5 hr' },
+  { m: 120, label: '2 hours',   short: '2 hr'   }
+];
+function spaDur(m){
+  for (var i = 0; i < SPA_DURS.length; i++)
+    if (SPA_DURS[i].m === +m) return SPA_DURS[i];
+  return null;
+}
+
 /* The way back from what a guest or the desk stored: the label itself, a
    24 hour HH:MM, or a bare H:MM that only fits the afternoon (a guest
    writing 2:00 means 2pm; one writing 10:00 already matches the morning).

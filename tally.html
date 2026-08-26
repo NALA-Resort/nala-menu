@@ -553,7 +553,7 @@ body.readonly .comb-undo { display:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=39"></script>
+<script src="nala-shared.js?v=41"></script>
 <script>
 /* Not every allergy is on the list and the list cannot grow to hold them all,
    so Other means read the note. The same entry the front desk writes, because
@@ -576,7 +576,7 @@ function otherNeedsNote(diets, note){
   return diets.indexOf(DIET_OTHER) > -1 && !String(note || '').trim();
 }
 
-var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+var DIETARIES = ['Gluten','Dairy','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
 
 
@@ -1115,7 +1115,7 @@ function render(){
        fallback; a row that hid it until somebody re-typed it tonight was the
        bug. The menu conflict check runs on the same list, since the kitchen
        cooks for the person, not for the night's paperwork. */
-    var personDiets = (g.diets && g.diets.length) ? g.diets : (g.dineDiets || []);
+    var personDiets = fixDietList((g.diets && g.diets.length) ? g.diets : (g.dineDiets || []));
     if (personDiets.length) {
       dietLine = '<div class="dietline">' + personDiets.map(function(x){
         var al = ALLERGENS.indexOf(x) > -1 || /allerg/i.test(x);
@@ -1691,7 +1691,7 @@ function preRows(pre){
      invisible here exactly when the viewed night had no dinner cell to carry
      a copy. One list per person: it lives on the reservation. */
   if (pre.diets && pre.diets.length)
-    rows.push(['Dietaries', pre.diets.join(' \u00b7 ')]);
+    rows.push(['Dietaries', fixDietList(pre.diets).join(' \u00b7 ')]);
   if (pre.dnote)      rows.push(['Dietary notes', '\u201C'+pre.dnote+'\u201D']);
   return rows;
 }
@@ -1776,7 +1776,7 @@ function editRoomDetails(n, st){
      blank on a villa that answered last week is what made an allergy look
      stuck to the date it was typed on. */
   var od = overlayReservationDiets({}, n);
-  var diets = ((g.diets && g.diets.length) ? g.diets : (od.diets || [])).slice();
+  var diets = fixDietList((g.diets && g.diets.length) ? g.diets : (od.diets || []));
   sheet.innerHTML =
     '<h3>Villa '+n+' \u00b7 details</h3>'+
     '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
@@ -2133,7 +2133,7 @@ document.getElementById('addExt').onclick = function(e){
 function editExt(key, g){
   var pax = g.pax || 2;
   var isManual = key.indexOf('ext-') === 0;
-  var diets = (g.diets || []).slice();
+  var diets = fixDietList(g.diets);
 
   if (isManual){
     sheet.innerHTML =

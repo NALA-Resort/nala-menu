@@ -411,6 +411,16 @@ with sync_playwright() as p:
     ck("a this-menu-only dietary stays on the nightly form", pg.evaluate(
        "()=>[...document.querySelectorAll('#dChips .chip')]"
        ".every(e=>e.textContent!=='Red pepper spice')"))
+    #  The master list above still stores "Gluten free", as a list saved
+    #  before the 26 Aug renames does. The desk shows the renamed pill and
+    #  never the old wording - the rename table in nala-shared.js, which
+    #  tests/diet_renames.json keeps in step with the guest pages' copies.
+    ck("a pill stored under its old name is offered renamed", pg.evaluate(
+       "()=>[...document.querySelectorAll('#dChips .chip')]"
+       ".some(e=>e.textContent==='Gluten')"))
+    ck("and the old wording is gone from the desk", pg.evaluate(
+       "()=>[...document.querySelectorAll('#dChips .chip')]"
+       ".every(e=>e.textContent!=='Gluten free')"))
     ck("and Other is still offered beside them", pg.evaluate(
        "()=>[...document.querySelectorAll('#dNone .chip')]"
        ".some(e=>e.textContent==='Other')"))

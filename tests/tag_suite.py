@@ -40,10 +40,17 @@ FULL_MENU = {"published": now.isoformat(),
              "bread": {"name": "Sourdough"}, "entree": {"name": "Kingfish crudo"},
              "main": {"name": "Lamb rump"}, "dessert": {"name": "Pavlova"}}
 
-MASTER = {"Gluten free": {"name": "Gluten free", "active": True, "group": "common"},
+MASTER = {"Gluten":      {"name": "Gluten", "active": True, "group": "common"},
           "Nut allergy": {"name": "Nut allergy", "active": True, "group": "common"},
           "Chilli":      {"name": "Chilli", "active": True, "group": "menu"},
           "Old thing":   {"name": "Old thing", "active": False, "group": "common"}}
+
+# A list saved before the 26 Aug renames: two pills still wear the old
+# wording. The page must show them renamed and OFFER a save, never write one
+# unasked - Save is a PUT of the whole list and stays a person's decision.
+OLD_MASTER = {"Gluten free": {"name": "Gluten free", "active": True, "group": "common"},
+              "Dairy free":  {"name": "Dairy free", "active": False, "group": "common"},
+              "Nut allergy": {"name": "Nut allergy", "active": True, "group": "common"}}
 
 STAFF = {"chef@x": {"name": "Chef", "role": "chef"},
          "staff@x": {"name": "Admin", "role": "admin"},
@@ -129,7 +136,7 @@ with sync_playwright() as p:
        "publish" in pg.inner_text(".lede").lower())
     ck("it calls itself settings, not tonight's menu",
        "dietary settings" in pg.inner_text(".pagename").lower())
-    ck("the list itself is here", "Gluten free" in pg.inner_text("#mng"))
+    ck("the list itself is here", "Gluten" in pg.inner_text("#mng"))
     ck("archived dietaries are shown, so they can be brought back",
        "Old thing" in pg.inner_text("#mng"))
     ck("nothing is offered to save before anything is touched",
@@ -339,6 +346,46 @@ with sync_playwright() as p:
     pg = open_tag()
     ck("an empty list seeds the common dietaries", "Pescatarian" in pg.inner_text("#mng"))
     ck("and the whole set is listed", "Vegan" in pg.inner_text("#mng"))
+    ck("and the seeded pills carry the renamed wording",
+       "Gluten" in pg.inner_text("#mng") and
+       "Gluten free" not in pg.inner_text("#mng"))
+    pg.close()
+    STATE["master"] = MASTER
+
+    # ── a list saved before the 26 Aug renames ────────────────────
+    # "Gluten free" and "Dairy free" became "Gluten" and "Dairy". The stored
+    # list still says the old names; the page shows the new ones and OFFERS
+    # the save that would teach the database - offered, never written unasked,
+    # because Save is a PUT of the whole list and stays a person's decision.
+    # Guest answers saved under the old names need no sweep: every reader
+    # maps them, which index/pre/fd/tally suites pin on their own screens.
+    STATE["master"] = OLD_MASTER
+    pg = open_tag()
+    ck("a pill saved under its old name is shown renamed",
+       "Gluten" in pg.inner_text("#mng") and
+       "Gluten free" not in pg.inner_text("#mng"))
+    ck("an archived one is renamed too, still archived",
+       "Dairy" in pg.inner_text("#mng") and
+       "Dairy free" not in pg.inner_text("#mng"))
+    ck("the rename is offered as a save, since screen and database now differ",
+       "show" in (pg.get_attribute("#savebar", "class") or ""))
+    ck("but nothing is written until somebody presses it", not WRITES)
+    # The rename table on this page comes from nala-shared.js; the guest pages
+    # carry forced copies. tests/diet_renames.json is the one table all of
+    # them are checked against.
+    RENAMES = json.load(open("tests/diet_renames.json"))
+    ck("the shared rename table matches tests/diet_renames.json",
+       pg.evaluate("()=>DIET_RENAMES") == RENAMES)
+    pg.click("#saveBtn"); pg.wait_for_timeout(400)
+    saved = json.loads(wrote("/dietaries")[0]["b"])
+    ck("pressing Save writes the list under the new names",
+       "Gluten" in saved and "Dairy" in saved and
+       "Gluten free" not in saved and "Dairy free" not in saved)
+    ck("with each record renamed, nothing else about it changed",
+       saved["Gluten"] == {"name": "Gluten", "active": True, "group": "common"} and
+       saved["Dairy"]["active"] is False)
+    ck("and the untouched pill rides along as it was",
+       saved.get("Nut allergy", {}).get("active") is True)
     pg.close()
     STATE["master"] = MASTER
 

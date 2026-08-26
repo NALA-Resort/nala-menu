@@ -122,6 +122,11 @@
   .row-unk td { background:#FCFCFB; }
 
   .sub { display:block; font-size:8px; color:#777; font-weight:normal; margin-top:2px; }
+  /* The second guest, set a step up from the externals' phone line. The
+     phone is reference; this is a person the waiter greets by name, so it
+     sits just under the primary's size rather than in the small print.
+     Owner, 26 Aug. */
+  .sub.cmp { font-size:9.5px; }
   .allergen { color:#A8321E; font-weight:bold; }
   /* Dietaries and comments share one column at their combined width, so a long
      dietary list lays out horizontally instead of stacking three deep in a
@@ -516,7 +521,7 @@ function stripTags(h){
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=39"></script>
+<script src="nala-shared.js?v=41"></script>
 <script>
 // date state + header wiring from nala-shared.js
 var nav = initDateNav();
@@ -665,7 +670,8 @@ function commentBox(g, hits, row){
 }
 
 function dietPills(diets){
-  if (!diets || !diets.length) return '';
+  diets = fixDietList(diets);
+  if (!diets.length) return '';
   return '<div class="dwrap">' + diets.map(function(x){
     var al = (typeof ALLERGENS!=='undefined' && ALLERGENS.indexOf(x)>-1) || /allerg/i.test(x);
     var label = al ? x.replace(/\s*allergy\s*/i,'') : x;
@@ -993,7 +999,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
          the desk and the cell is otherwise built by concatenation. */
       var second = row.room
         ? companionOf(PREARRIVAL_BY_VILLA[String(row.room)], g) : '';
-      if (second) nameCell += '<span class="sub">'+escText(second)+'</span>';
+      if (second) nameCell += '<span class="sub cmp">'+escText(second)+'</span>';
 
       /* The booking flags, under the name they describe: VIP, Travel agent,
          the Luxury Escapes rate. The slot is always in the markup and is

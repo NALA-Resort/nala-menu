@@ -172,7 +172,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=39"></script>
+<script src="nala-shared.js?v=41"></script>
 <script>
 /* Tagging a menu is the chef's job and the manager's. Until 18 Aug there was
    no gate at all, so a cleaner could archive the dietary list. Sent to their
@@ -203,7 +203,7 @@
 
   var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
   var COURSES = [['bread','Bread'],['entree','Entr\u00e9e'],['main','Main'],['dessert','Dessert']];
-  var DEFAULTS = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+  var DEFAULTS = ['Gluten','Dairy','Vegetarian','Vegan','Pescatarian',
                   'Nut allergy','Shellfish allergy','Egg allergy'];
 
   function err(m){ var e=document.getElementById('err');
@@ -341,13 +341,22 @@
         'Sign in again, then refresh.';
       err(LOCKED);
       document.getElementById('saveBtn').disabled = true;
-      if (!failedRead(master) && master) MASTER = master;
+      if (!failedRead(master) && master) MASTER = fixDietMaster(master);
       if (!failedRead(tags) && tags) TAGS = tags;
       paintCourses(); paintMng();
       return;
     }
 
-    if (master) MASTER=master;
+    /* Read through the rename table (nala-shared.js): a list saved before the
+       26 Aug renames shows under the new names. That means the screen and the
+       database disagree, which on this page is exactly what the Save bar is
+       for - offered, not auto-saved, because saving is a PUT of the whole
+       list and stays a person's decision. Guest answers saved under the old
+       names need no sweep: every reader maps them. */
+    if (master){
+      MASTER = fixDietMaster(master);
+      if (dietMasterRenamed(master)) markDirty();
+    }
     else DEFAULTS.forEach(function(n){ MASTER[keyOf(n)]={name:n,active:true,group:'common'}; });
     if (tags) TAGS=tags;
     paintCourses(); paintMng();

@@ -231,7 +231,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=39"></script>
+<script src="nala-shared.js?v=41"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -768,7 +768,7 @@ function load(){
      failure here must not take the arrivals down with it: an unflagged allergy
      is bad, and a blank screen is worse. */
   api('/menutags/'+key)
-    .then(function(t){ TAGS = t; render(); })
+    .then(function(t){ TAGS = fixTagNames(t); render(); })
     .catch(function(){ TAGS = null; });
 
   /* The chef's list, so reception offers what the kitchen recognises. The
@@ -790,7 +790,10 @@ function load(){
       Object.keys(master).forEach(function(k){
         var d = master[k];
         if (d && d.active && (d.group || 'common') !== 'menu' &&
-            (d.name || k) !== DIET_OTHER) names.push(d.name || k);
+            (d.name || k) !== DIET_OTHER){
+          var n = fixDietName(d.name || k);
+          if (names.indexOf(n) === -1) names.push(n);
+        }
       });
       if (names.length){ DIETARIES = names.sort(); render(); }
     })
@@ -843,7 +846,7 @@ function load(){
    dining against the real menu, amend, confirm. So those two sit at the top
    and the softer context sits below them.                                */
 
-var DIETARIES = ['Gluten free','Dairy free','Vegetarian','Vegan','Pescatarian',
+var DIETARIES = ['Gluten','Dairy','Vegetarian','Vegan','Pescatarian',
                  'Nut allergy','Shellfish allergy','Egg allergy'];
 
 /* Not every allergy is on the list, and the list cannot grow to hold them all.
@@ -915,7 +918,7 @@ function answersOf(r){
                        : (p.dining === undefined ? null : !!p.dining),
     pax:      haveCell ? (c.pax || r.stay.adults || 2)
                        : (p.pax || r.stay.adults || 2),
-    diets:    ((haveCell && c.diets) ? c.diets : (p.diets || [])).slice(),
+    diets:    fixDietList((haveCell && c.diets) ? c.diets : (p.diets || [])),
     noDiets:  haveCell ? !!c.noDiets : !!p.noDiets,
     dnote:    (haveCell ? c.dnote : p.dnote) || '',
     /* The desk shows what the guest typed, falling back to what Mews holds:
@@ -935,7 +938,10 @@ function answersOf(r){
     occasion: p.occasion || '',
     wellness: p.wellness === undefined ? null : !!p.wellness,
     wellDay:  p.wellDay || '',
-    wellTime: p.wellTime || ''
+    wellTime: p.wellTime || '',
+    wellQty:  p.wellQty === 2 ? 2 : 1,
+    wellDur:  spaDur(p.wellDur) ? p.wellDur : 60,
+    wellDur2: spaDur(p.wellDur2) ? p.wellDur2 : 60
   };
 }
 
@@ -1049,6 +1055,11 @@ function openGuest(r){
       '<div class="sheet-label">Preferred day</div>' +
       '<div class="chips" id="wDays"></div>' +
       '<select class="txt" id="fWtime" aria-label="Preferred time" style="margin-top:8px"></select>' +
+      '<div class="chips" id="fWqty" style="margin-top:8px"></div>' +
+      '<div class="sheet-label" id="fWdurLab" style="display:none">First massage</div>' +
+      '<select class="txt" id="fWdur" aria-label="Massage length" style="margin-top:8px"></select>' +
+      '<div class="sheet-label" id="fWdur2Lab" style="display:none">Second massage</div>' +
+      '<select class="txt" id="fWdur2" aria-label="Second massage length" style="margin-top:8px;display:none"></select>' +
     '</div>' +
 
     '<div class="sheet-label">Booking notes</div>' +
@@ -1084,6 +1095,34 @@ function openGuest(r){
     sel.value = spaSlotFromText(a.wellTime)
       ? spaSlotLabel(spaSlotFromText(a.wellTime)) : (a.wellTime || '');
   })();
+  /* How many and how long, the same terms the guest form offers, from the
+     one shared list. */
+  function paintWellDurs(){
+    ['fWdur', 'fWdur2'].forEach(function(id, i){
+      var d = document.getElementById(id);
+      d.innerHTML = '';
+      SPA_DURS.forEach(function(x){
+        var o = document.createElement('option');
+        o.value = String(x.m);
+        o.textContent = x.label;
+        d.appendChild(o);
+      });
+      d.value = String(i === 0 ? a.wellDur : a.wellDur2);
+    });
+    var two = a.wellQty === 2;
+    ['fWdur2', 'fWdurLab', 'fWdur2Lab'].forEach(function(id){
+      document.getElementById(id).style.display = two ? '' : 'none';
+    });
+    var qbox = document.getElementById('fWqty'); qbox.innerHTML = '';
+    [1, 2].forEach(function(n){
+      var b = document.createElement('button');
+      b.className = 'chip' + (a.wellQty === n ? ' on' : '');
+      b.textContent = n === 1 ? 'One massage' : 'Two massages';
+      b.onclick = function(){ a.wellQty = n; paintWellDurs(); };
+      qbox.appendChild(b);
+    });
+  }
+  paintWellDurs();
 
   function paintDining(){
     document.getElementById('sDin').className = a.dining === true  ? 'on' : '';
@@ -1375,6 +1414,8 @@ function openGuest(r){
     a.occasion = document.getElementById('fOcc').value.trim();
     a.note     = document.getElementById('fNote').value.trim();
     a.wellTime = document.getElementById('fWtime').value.trim();
+    a.wellDur = +document.getElementById('fWdur').value || 60;
+    a.wellDur2 = +document.getElementById('fWdur2').value || 60;
     /* Handed to save() on the row rather than read from the sheet there,
        because save() also runs from the summary buttons with no sheet on
        screen. A leftover copy from an earlier save of this row is harmless:
@@ -1457,6 +1498,9 @@ function save(r, a, checkin){
     purpose: purposeText(a.purpose), approach: a.approach,
     occasion: a.occasion, wellness: a.wellness, companion: a.companion,
     wellDay: a.wellness ? a.wellDay : '', wellTime: a.wellness ? a.wellTime : '',
+    wellQty: a.wellness ? a.wellQty : null,
+    wellDur: a.wellness ? a.wellDur : null,
+    wellDur2: (a.wellness && a.wellQty === 2) ? a.wellDur2 : null,
     note: a.note,
     confirmedAt: new Date().toISOString()
   };
