@@ -155,12 +155,12 @@ with sync_playwright() as p:
             .map(e=>e.textContent)""", sel)
     got = bands(pg)
     ck("All is pressed on arrival and holds every band",
-       got == ["To answer · 4", "Suggested · waiting on the guest · 1",
+       got == ["To answer · 3", "Suggested · waiting on the guest · 1",
                "Booked · 1", "Declined · 1"] and
        pg.evaluate("()=>document.querySelector('.stat[data-f=\"all\"]').className")
          == "stat on")
     ck("and its number counts every live tile it shows",
-       pg.evaluate("()=>nAll.textContent") == "7")
+       pg.evaluate("()=>nAll.textContent") == "6")
     ck("the request from the form appears with no /spa record behind it",
        pg.evaluate("()=>document.querySelector('#board [data-booking=\"b9\"]')"
                    "?.dataset.status") == "requested")
@@ -194,16 +194,17 @@ with sync_playwright() as p:
        pg.evaluate("()=>!document.querySelector('#board [data-booking=\"b9\"] .cmp')"))
 
     # ── how many and how long ───────────────────────────────────
-    # A form asking for two massages is two white tiles, each its own length;
-    # answering one leaves the other standing.
-    ck("two massages on the form are two asks on the board",
-       pg.evaluate("()=>document.querySelectorAll('#board [data-booking=\"b15\"]').length") == 2)
-    ck("each of the pair says which it is; a lone massage says nothing",
-       pg.evaluate("()=>[...document.querySelectorAll("
-                   "'#board [data-booking=\"b15\"] .st')].map(e=>e.textContent)"
-                   ".map(t=>t.split(' \\u00b7 ')[0]).join('|')")
-       == "Massage 1 of 2|Massage 2 of 2" and
-       "Massage" not in pg.evaluate(
+    # A pair is ONE tile wearing both lengths, the owner's ruling of 26 Aug:
+    # two tiles hid the second massage's length behind the first. The card
+    # shows a length row for each, and the whole pair rides one record.
+    ck("two massages on the form are one tile saying so, both lengths on it",
+       pg.evaluate("()=>document.querySelectorAll('#board [data-booking=\"b15\"]').length") == 1 and
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b15\"] .st').textContent")
+         .startswith("Two massages") and
+       "1.5 hr + 1 hr" in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b15\"] .st').textContent"))
+    ck("a lone massage never says Two",
+       "Two massages" not in pg.evaluate(
          "()=>document.querySelector('#board [data-booking=\"b4\"] .st').textContent"))
     ck("a tile wears its length",
        "1.5 hr" in pg.evaluate(
@@ -216,19 +217,53 @@ with sync_playwright() as p:
     ck("the card opens on the length the guest picked",
        pg.evaluate("()=>[...document.querySelectorAll('.card .chips .chip.on')]"
                    ".map(c=>c.textContent).join('|')").endswith("1.5 hours"))
+    ck("one massage is one length row, and it says Length plainly",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .sub')]"
+                   ".map(e=>e.textContent)").count("Length") == 1 and
+       "2nd length" not in pg.evaluate(
+         "()=>[...document.querySelectorAll('.card .sub')].map(e=>e.textContent).join('|')"))
     del WRITES[:]
     pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
     w2 = [x for x in WRITES if "/spa/b4/" in x["u"]]
     body2 = json.loads(w2[0]["b"]) if w2 else {}
     ck("and the length rides the booking", body2.get("dur") == 90)
+    ck("a lone massage never writes a second", "dur2" not in body2 and "qty" not in body2)
     SPA = spa_seed()
     pg.close()
     pg = board()
-    pg.locator('#board [data-booking="b15"]').first.click(); pg.wait_for_timeout(300)
+    pg.locator('#board [data-booking="b15"]').click(); pg.wait_for_timeout(300)
+    ck("the pair's card offers a length for each, labelled 1st and 2nd",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .sub')]"
+                   ".map(e=>e.textContent).join('|')").count("1st length") == 1 and
+       pg.evaluate("()=>[...document.querySelectorAll('.card .sub')]"
+                   ".map(e=>e.textContent).join('|')").count("2nd length") == 1)
+    ck("each row open on what the guest picked",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .chips .chip.on')]"
+                   ".map(c=>c.textContent).join('|')").endswith("1.5 hours|1 hour"))
+    del WRITES[:]
     pg.locator('.card .cbtn', has_text="Suggest").first.click(); pg.wait_for_timeout(900)
-    ck("answering one of the pair leaves the other still asking",
-       pg.evaluate("()=>document.querySelectorAll("
-                   "'#board [data-booking=\"b15\"][data-status=\"requested\"]').length") == 1)
+    w15 = [x for x in WRITES if "/spa/b15/" in x["u"]]
+    body15 = json.loads(w15[0]["b"]) if w15 else {}
+    ck("answering the pair carries both lengths on the one record",
+       body15.get("qty") == 2 and body15.get("dur") == 90 and body15.get("dur2") == 60)
+    SPA = spa_seed()
+    pg.close()
+
+    # Editing the details is its own act: resize a booked treatment and
+    # Save changes appears, writing the edit with the status it found -
+    # no cancel, no re-ask, no state change.
+    pg = board()
+    pg.locator('#board [data-booking="b3"]').click(); pg.wait_for_timeout(300)
+    ck("an untouched card offers no Save changes",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
+                   ".map(b=>b.textContent).join('|')").count("Save changes") == 0)
+    pg.locator('.card .chip', has_text="2 hours").click(); pg.wait_for_timeout(200)
+    del WRITES[:]
+    pg.locator('.card .cbtn', has_text="Save changes").click(); pg.wait_for_timeout(900)
+    w3 = [x for x in WRITES if "/spa/b3/" in x["u"]]
+    body3 = json.loads(w3[0]["b"]) if w3 else {}
+    ck("Save changes writes the new length and the booking stays booked",
+       body3.get("status") == "booked" and body3.get("dur") == 120)
     SPA = spa_seed()
     pg.close()
     pg = board()
@@ -236,7 +271,7 @@ with sync_playwright() as p:
     # The stats are the masseuse's whole queue, not today's slice: b9 today,
     # b4 in two days, b15 with no day picked - all waiting on him.
     ck("To answer counts every open ask on the horizon",
-       pg.evaluate("()=>nAsk.textContent") == "4")
+       pg.evaluate("()=>nAsk.textContent") == "3")
     ck("Suggested counts what waits on the guest",
        pg.evaluate("()=>nSugg.textContent") == "1")
     ck("Booked today counts the day being looked at",
@@ -310,7 +345,7 @@ with sync_playwright() as p:
     ck("born from the form, so the ask stops showing as pending",
        body.get("source") == "prearrival")
     ck("and the board reflects it without a hand refresh",
-       pg.evaluate("()=>nAsk.textContent") == "3")
+       pg.evaluate("()=>nAsk.textContent") == "2")
     SPA = spa_seed()
 
     # Confirming on the asked-for day books it directly.
@@ -505,7 +540,7 @@ with sync_playwright() as p:
     pg = board()
     pg.locator('#statsRow .stat[data-f="requested"]').click(); pg.wait_for_timeout(200)
     ck("tapping To answer shows every open ask, future and day-less included",
-       bands(pg) == ["Every open ask · 4"] and
+       bands(pg) == ["Every open ask · 3"] and
        pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b4\"]')") and
        pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b15\"]')"))
     ck("and the pressed number wears the amber mark",
