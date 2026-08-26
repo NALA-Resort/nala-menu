@@ -254,46 +254,6 @@ function asCount(v, min, max) {
   return n;
 }
 
-/* ── the imported-note clear-out, run from the cron wake ─────────────────
-   Ruled by the owner, 26 Aug: Mews notes are NOT imported any more. What
-   Zapier sends under Notes is its own flattening of Mews' note objects -
-   GUIDs and timestamps around the words - and after one printed sheet
-   carried nine lines of that in a staff row, the ruling is simpler than
-   any parser: whatever matters about a guest is entered at the desk on the
-   day, into /internal/<id>/note, which this Worker never writes.
-
-   This pass retires what earlier syncs had already imported. Once a day it
-   walks tonight's stays and deletes each booking's imported copy, so every
-   board and printed sheet is clean of them from the first wake of the day;
-   with the import gone, nothing ever refills them. The desk's own note
-   sits beside fromMews in the same record and is not touched.
-
-   Once per isolate-day rather than per five-minute wake, in the manner of
-   the token cache: the delete is idempotent, so a recycled isolate merely
-   re-checks, and a villa whose delete failed is caught by the next fresh
-   isolate or the next day, whichever comes first. */
-let NOTES_CLEARED_DAY = null;
-async function clearImportedNotes(env) {
-  const today = DATE_AT_RESORT.format(new Date());
-  if (NOTES_CLEARED_DAY === today) return [];
-  const stays = await db(env, "/stays/" + today, "GET") || {};
-  const cleared = [];
-  for (const v in stays) {
-    /* Tolerates the older index shape, where the value was the id alone. */
-    const id = stays[v] && typeof stays[v] === "object" ? stays[v].id : stays[v];
-    if (!id) continue;
-    try {
-      const had = await db(env, "/internal/" + id + "/fromMews", "GET");
-      if (typeof had === "string") {
-        await db(env, "/internal/" + id, "PATCH", { fromMews: null });
-        cleared.push(String(v));
-      }
-    } catch (e) { /* that villa waits for the next pass */ }
-  }
-  NOTES_CLEARED_DAY = today;
-  return cleared;
-}
-
 /* villa validates as a short string OR a number, so either is passed through
    and anything else becomes null. */
 function asVilla(v) {
@@ -437,7 +397,8 @@ function readReservation(p) {
        26 Aug and retired by the owner: Zapier sends it as its own flattening
        of Mews' note objects, and the resort's rule is now that whatever
        matters is typed at the desk on the day, into /internal/<id>/note.
-       The clear-out above retires what those seven days imported. */
+       What those seven days imported was cleared by hand, once, the same
+       day - a console pass over the future arrivals, not a job. */
     customerId:    pickGuid(p, ["CustomerId", "customer_id", "CustomerID",
                                 "AccountId", "customerId"]),
     /* The Mews rate, as words. The desk's booking flags (Luxury Escapes,
@@ -691,8 +652,8 @@ export default {
       /* No Mews note import here. It lived in this spot from 19 to 26 Aug -
          first the whole field, then only the text dug out of Zapier's
          flattening - and the owner retired it the same day the second
-         version shipped: the desk types what matters, on the day, and
-         clearImportedNotes retires what those seven days left behind. */
+         version shipped: the desk types what matters, on the day. What the
+         seven days of importing left behind was cleared by hand, once. */
 
       /* A returning guest should not be asked again. The dietary is kept
          against the Mews customer, which outlives any one booking, so a
@@ -775,11 +736,6 @@ export default {
     ctx.waitUntil(alertArrivals(env).catch(function (e) {
       /* A failed sweep must not look like a quiet one in the logs. */
       console.log("arriving sweep failed: " + e.message);
-    }));
-    ctx.waitUntil(clearImportedNotes(env).catch(function (e) {
-      /* Same rule; and the once-a-day flag is only set on success, so a
-         failed pass is retried on the next wake rather than tomorrow. */
-      console.log("note clear-out failed: " + e.message);
     }));
   }
 };

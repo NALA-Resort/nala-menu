@@ -413,11 +413,12 @@ Zapier's flattening of the note objects printed nine lines of GUIDs and
 timestamps in a Service Sheet staff row. An extraction that dug the words out
 of the flattening was written, deployed and retired the same day in favour of
 the simpler rule: the desk types what matters, on the day, into
-/internal/<id>/note, and the Worker's cron wake clears the previously imported
-copies for tonight's house once a day until none are left. The intermediate
-extraction build is what is live in the dashboard until the current
-worker/mews-sync.js is deployed over it - it still imports, so deploy soon,
-and know that a paste of an OLDER file re-imports on every event.
+/internal/<id>/note, and the Worker imports nothing. What the week of
+importing left behind was cleared by hand, once - a console pass over the
+future arrivals, no job left running. The intermediate extraction build is
+what is live in the dashboard until the current worker/mews-sync.js is
+deployed over it - it still imports, so deploy soon, and know that a paste
+of an OLDER file re-imports on every event.
 
 **A logs upgrade**, named 21 Aug: the Worker writes nothing durable, so a sync
 that misbehaves leaves no trace to read afterwards.

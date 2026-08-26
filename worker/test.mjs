@@ -42,17 +42,7 @@ function install() {
         kids = kids || {};
         kids[rest] = STORE[key];
       }
-      if (kids) return new Response(JSON.stringify(kids), { status: 200 });
-      /* And the other direction: Firebase serves a child of a stored object,
-         so a read of /internal/<id>/fromMews after a PATCH of /internal/<id>
-         must find the field inside the parent. Without this the seed-once
-         guard reads null forever and every event looks like a first seed. */
-      var slash = path.lastIndexOf("/");
-      var parent = STORE[path.slice(0, slash)], leaf = path.slice(slash + 1);
-      if (parent && typeof parent === "object" && leaf in parent) {
-        return new Response(JSON.stringify(parent[leaf]), { status: 200 });
-      }
-      return new Response("null", { status: 200 });
+      return new Response(JSON.stringify(kids), { status: 200 });
     }
     if (m === "DELETE") { delete STORE[path]; return new Response(null, { status: 204 }); }
     const body = JSON.parse(opt.body);
@@ -639,19 +629,7 @@ installSweep({
   "p5": { arriveApproved: 11 },
   "p8": { arriveApproved: 11 },
 });
-/* Rode along for the clear-out: villa 1 still holds a note imported before
-   the owner retired the import, beside a note the desk typed; villa 3 has
-   only the desk's. The same wake that sweeps arrivals retires the import. */
-STORE["/internal/p1"] = { fromMews: DUMP, note: "the desk's own words" };
-STORE["/internal/p3"] = { note: "typed at the desk" };
 await wake();
-ck("the wake clears the imported note for tonight's house",
-   STORE["/internal/p1"].fromMews === null);
-ck("and leaves the desk's notes alone",
-   STORE["/internal/p1"].note === "the desk's own words" &&
-   STORE["/internal/p3"].note === "typed at the desk");
-ck("a record with nothing imported is read, not written",
-   !CALLS.includes("PATCH /internal/p3"));
 const buzzed = PUSHES.map((p) => p.villa).sort();
 ck("the villas inside their red hour and unclaimed are announced, no others",
    buzzed.join() === "1,3,9");
@@ -680,11 +658,6 @@ PUSHES.length = 0;
 await wake();
 ck("a villa whose hour arrives later gets its one announcement then",
    PUSHES.length === 1 && PUSHES[0].villa === "2");
-
-/* Three wakes have now crossed the same frozen day. The clear-out is once
-   a day, in the manner of the token cache, not once per five-minute wake. */
-ck("the clear-out ran once across every wake of the day",
-   CALLS.filter(c => c === "PATCH /internal/p1").length === 1);
 
 globalThis.Date = RealDate;
 
