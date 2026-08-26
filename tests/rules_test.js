@@ -208,22 +208,41 @@ can('and one villa night per night of the stay', SYNC, '/stays/2026-09-10/3', {
 });
 can('a cancelled booking is cleared by deleting the night', SYNC, '/stays/2026-09-10/3', null);
 
-/* The booking flags: the Worker carries the rate, the desk ticks the
-   override beside it. The two flag keys carry their own write grant so
-   every non-spa staff login can tick them - a waiter may man the desk -
-   while the rest of the PMS record stays the sync's and management's. */
+/* The booking flags. Three nodes: the Worker carries the Mews rate name on
+   the booking (the Luxury Escapes pill rides on it), flags.html saves the
+   master list at /flags, and the desk's ticks live at /bookflags. Defining
+   and ticking are admin only, the owner's ruling of 26 Aug - the legacy
+   'staff' role is the admin under its old name - while every non-spa staff
+   login may read, because the FOH Sheet prints the pills to whoever is
+   serving. */
 canPatch('the sync carries the Mews rate name', SYNC, '/bookings/b-2/pms',
          { rate: 'Luxury Escapes AU' });
-canPatch('the desk ticks a booking flag', DESK, '/bookings/b-1/pms',
-         { luxEscapes: true, breakfast: false });
-canPatch('and a waiter at the desk may too', WAITER, '/bookings/b-1/pms',
-         { breakfast: true });
-cannotPatch('though the rest of the PMS record is still not the waiter\'s',
-            WAITER, '/bookings/b-1/pms', { villa: '9' });
-cannotPatch('a flag that is not a boolean is refused', DESK,
-            '/bookings/b-1/pms', { breakfast: 'yes' });
-cannotPatch('and a guest cannot tick one', GUEST, '/bookings/b-1/pms',
-            { breakfast: true });
+can('the admin saves the flag list', ADMIN, '/flags',
+    { VIP: { name: 'VIP', active: true, at: NOW },
+      'Travel agent': { name: 'Travel agent', active: false, at: NOW } });
+cannot('a manager may not', MANAGER, '/flags',
+       { VIP: { name: 'VIP', active: true } });
+cannot('nor a waiter', WAITER, '/flags', { VIP: { name: 'VIP' } });
+cannot('a flag with no name is refused', ADMIN, '/flags/x', { active: true });
+can('the desk ticks a booking\'s flags', DESK, '/bookflags/b-1',
+    { flags: ['VIP', 'Travel agent'], by: 'reception@x', at: NOW });
+cannot('a manager reads the pills but does not set them', MANAGER,
+       '/bookflags/b-1', { flags: ['VIP'], by: 'm', at: NOW });
+cannot('nor may a waiter tick one', WAITER, '/bookflags/b-1',
+       { flags: ['VIP'], by: 'w', at: NOW });
+cannot('a tick that is not a name is refused', ADMIN, '/bookflags/b-1',
+       { flags: [true], by: 'a', at: NOW });
+cannot('and so is a record carrying extra fields', ADMIN, '/bookflags/b-1',
+       { flags: ['VIP'], secret: 'x' });
+cannot('a guest cannot tick one', GUEST, '/bookflags/b-1', { flags: ['VIP'] });
+ck('the waiter carrying the sheet may read the ticks',
+   as(WAITER).read('/bookflags/b-1').allowed === true);
+ck('and the chef may too',
+   as(CHEF).read('/bookflags/b-1').allowed === true);
+ck('the flag list reaches the desk whoever is on it',
+   as(WAITER).read('/flags').allowed === true);
+ck('a guest holding a booking link reads no flags at all',
+   as(GUEST).read('/bookflags/b-1').allowed === false);
 
 /* cleaners.html patchRoom() */
 can('housekeeping marks a villa cleaned', HK, `/hk/${TODAY}/4`, { done: NOW });

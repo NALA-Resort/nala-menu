@@ -699,43 +699,40 @@ function vacantIsStale(m, known){
 }
 
 /* ── booking flags ─────────────────────────────────────────────
-   The two facts that used to arrive as free text in a booking note:
-   "Luxury Escapes" (the guest is booked through Luxury Escapes) and
-   "Breakfast included". Each is a tick at the desk and a pill on the
-   Service Sheet, and each can switch itself on from the Mews rate name
-   the Worker stores at /bookings/<id>/pms.rate.
+   Short facts pinned under a guest's name: VIP, Travel agent, Breakfast
+   included - whatever the admin defines on the Flags settings page
+   (flags.html, writing the /flags list, the dietaries shape). The desk
+   ticks them per booking, admin only, and the ticks live at
+   /bookflags/<booking id> as a plain list of names. The Service Sheet
+   prints each as a pill under the guest name.
 
-   One list, two readers (the desk and the sheet), one resolution rule: a
-   person's tick outranks the rate. The override lives beside the rate at
-   pms.<key>, and the desk writes it ONLY when it disagrees with what the
-   rate already says - null otherwise, which deletes the key. So a booking
-   nobody touched keeps listening to Mews, and a rate corrected in Mews is
-   not fought by a stale copy of the same answer.
+   One flag sets itself. The Worker carries the Mews rate name into
+   pms.rate, and a booking whose rate is Luxury Escapes wears that pill
+   with nobody ticking anything. Only that rate - the owner's ruling,
+   26 Aug: every other rate name stays off the paper. Matched on the
+   front of the string, case and spacing aside, because live rate names
+   usually carry suffixes ("Luxury Escapes AU") and none has been seen
+   from here yet - the companion field's standing caution. */
+var RATE_FLAG = { label: 'Luxury Escapes', match: /^\s*luxury\s*escapes/i };
 
-   The rate patterns are a guess until confirmed against a live Zap run,
-   the same standing caution as the companion field: no real rate name has
-   been seen from here. Widen them when one arrives; the tick covers the
-   gap either way. */
-var BOOKING_FLAGS = [
-  { key:'luxEscapes', label:'Luxury Escapes',     rate:/lux(?:ury)?\s*escapes?/i },
-  { key:'breakfast',  label:'Breakfast included', rate:/breakfast|\bb\s*&\s*b\b|\bbb\b/i }
-];
-
-/* What the rate alone would say, before anybody ticked anything. */
-function flagFromRate(pms, f){
-  return !!(pms && typeof pms.rate === 'string' && f.rate.test(pms.rate));
+function rateFlagLabel(pms){
+  return (pms && typeof pms.rate === 'string' && RATE_FLAG.match.test(pms.rate))
+    ? RATE_FLAG.label : null;
 }
 
-/* What the flag IS: the person's tick where one exists, the rate otherwise. */
-function bookingFlagOn(pms, f){
-  if (pms && typeof pms[f.key] === 'boolean') return pms[f.key];
-  return flagFromRate(pms, f);
-}
-
-/* The labels currently on, in BOOKING_FLAGS order, for display. */
-function bookingFlagLabels(pms){
-  return BOOKING_FLAGS.filter(function(f){ return bookingFlagOn(pms, f); })
-                      .map(function(f){ return f.label; });
+/* Every pill a booking wears: the ticked names in their stored order, the
+   rate's own last, duplicates folded case-blind so an admin who also made
+   a "Luxury Escapes" flag does not print it twice. */
+function bookingFlagLabels(pms, rec){
+  var out = [], seen = {};
+  (((rec || {}).flags) || []).forEach(function(t){
+    t = String(t == null ? '' : t).trim();
+    if (!t || seen[t.toLowerCase()]) return;
+    seen[t.toLowerCase()] = true; out.push(t);
+  });
+  var r = rateFlagLabel(pms);
+  if (r && !seen[r.toLowerCase()]) out.push(r);
+  return out;
 }
 
 /* one room, one record: staff override beats the guest's own answer,
@@ -1625,6 +1622,10 @@ var NAV_NEEDS = {
   'menu-print.html':   'resSheet',
   'past-menus.html':   'resBoard',
   'staff.html':        'manageStaff',
+  /* Admin only, like the two beside it: the flags an admin defines here are
+     ticked on the front desk sheet by admins alone, so offering the list to
+     anyone else is a door to nowhere. */
+  'flags.html':        'manageStaff',
   'pages.html':        'manageStaff'
 };
 

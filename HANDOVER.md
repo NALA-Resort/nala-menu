@@ -336,16 +336,19 @@ None of these can move without him.
 8. **Confirm the Mews companion field** against a live Zap run.
 9. **`TESTING.md`** is the checks only a human can run. **All of it unrun.**
 10. **Map the Mews rate name into the Zap, and paste the 26 Aug rules.** The
-    booking flags (Luxury Escapes, Breakfast included - a tick at the desk, a
-    pill on the Service Sheet) switch themselves on from the rate name the
-    Worker stores, but the Worker only stores what the Zap sends: map Rate
-    Name (any of `RateName`, `Rate Name`, `rate_name`, `RatePlanName`,
-    `Rate` works) into every reservation trigger. Until then the ticks work
-    and the automation quietly does not. The rate patterns in
-    `BOOKING_FLAGS` (`nala-shared.js`) are a guess pending a real rate name,
-    like the companion field above. And `rules.json` of the same date needs
-    its paste into the Firebase console: it validates the new fields and is
-    what lets a waiter's tick save.
+    booking flags (defined on Settings, Flags; ticked per booking at the
+    desk, admin only; printed under the guest's name on the FOH Sheet) work
+    today, but until the paste they sit under the catch-all rule, which lets
+    ANY staff login write them and validates nothing - `rules.json` gained
+    `/flags`, `/bookflags` and `pms.rate`, and the paste is what makes the
+    admin-only fence real. The Luxury Escapes pill also needs the Zap's
+    help: it rides on
+    the rate name the Worker stores, and the Worker only stores what the Zap
+    sends, so map Rate Name (any of `RateName`, `Rate Name`, `rate_name`,
+    `RatePlanName`, `Rate` works) into every reservation trigger. The match
+    in `RATE_FLAG` (`nala-shared.js`) takes any rate STARTING with "Luxury
+    Escapes", a guess pending a real payload - the companion field's
+    standing caution.
 
 ---
 

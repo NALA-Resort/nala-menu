@@ -393,14 +393,6 @@
           },
           "rate": {
             ".validate": "newData.isString() && newData.val().length <= 120"
-          },
-          "luxEscapes": {
-            ".write": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').exists() && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() != 'spa'",
-            ".validate": "newData.isBoolean()"
-          },
-          "breakfast": {
-            ".write": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').exists() && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() != 'spa'",
-            ".validate": "newData.isBoolean()"
           }
         },
         "prearrival": {
@@ -709,6 +701,45 @@
     "$other": {
       ".read": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() != 'spa'",
       ".write": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() != 'spa'"
+    },
+    "flags": {
+      ".read": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').exists() && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() != 'spa'",
+      ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')",
+      "$key": {
+        ".validate": "newData.hasChildren(['name'])",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+        },
+        "active": {
+          ".validate": "newData.isBoolean()"
+        },
+        "at": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "bookflags": {
+      "$id": {
+        ".read": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').exists() && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() != 'spa'",
+        ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')",
+        "flags": {
+          "$i": {
+            ".validate": "newData.isString() && newData.val().length <= 80"
+          }
+        },
+        "by": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "at": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     },
     "internal": {
       "$id": {

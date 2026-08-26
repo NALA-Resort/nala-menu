@@ -48,10 +48,11 @@ prearrival={"b1":{"companion":"Ana <Ruiz>"}}
 internal={"b1":{"note":"Owner's friend, do not charge for wine"},
           "b3":{"fromMews":"Complained about noise last stay"},
           "b9":{"note":""}}
-# The PMS record per booking, for the flag pills. Empty until that section
-# seeds it, so the layout tests above it keep drawing the sheet they always
-# drew.
+# The PMS record and the desk's ticked flags per booking, for the flag
+# pills. Empty until that section seeds them, so the layout tests above it
+# keep drawing the sheet they always drew.
 PMSREC={}
+BOOKFLAGSREC={}
 
 staff={"staff@x":{"name":"Admin","role":"admin"},
        "chef@x":{"name":"Chef","role":"chef"},
@@ -74,6 +75,9 @@ def fb(route,request):
     elif "/bookings/" in u and "/pms" in u:
         k=u.split("/bookings/")[1].split("/")[0]
         body=json.dumps(PMSREC[k]) if k in PMSREC else "null"
+    elif "/bookflags/" in u:
+        k=u.split("/bookflags/")[1].split(".json")[0]
+        body=json.dumps(BOOKFLAGSREC[k]) if k in BOOKFLAGSREC else "null"
     elif "/bookings/" in u and "/prearrival" in u:
         k=u.split("/bookings/")[1].split("/")[0]
         body=json.dumps(prearrival[k]) if k in prearrival else "null"
@@ -605,13 +609,15 @@ with sync_playwright() as p:
     internal["b3"] = {"fromMews": "Complained about noise last stay"}
 
     #  ── the booking flags on the sheet ──────────────────────
-    #  Luxury Escapes and Breakfast included, the two facts that used to be
-    #  typed into a note. A pill each in the comments stack, resolved the way
-    #  the desk resolves them: the desk's tick where one exists, the Mews rate
-    #  otherwise, through the same bookingFlagLabels both screens read.
+    #  Short facts pinned UNDER THE GUEST'S NAME, where the owner asked for
+    #  them: the names the desk ticked at /bookflags, and Luxury Escapes when
+    #  the Mews rate says so - that rate and no other. Resolved through the
+    #  same bookingFlagLabels the desk reads, so the paper and the screen
+    #  cannot disagree.
     PMSREC.update({"b1": {"rate": "Luxury Escapes AU"},
-                   "b3": {"breakfast": True},
-                   "b4": {"rate": "Flexible with Breakfast", "breakfast": False}})
+                   "b4": {"rate": "Flexible with Breakfast"}})
+    BOOKFLAGSREC.update({"b3": {"flags": ["VIP", "Breakfast included"],
+                                "by": "staff@x", "at": "t"}})
     q = as_role("staff@x")
     q.wait_for_timeout(1200)
     def pills(v):
@@ -619,14 +625,14 @@ with sync_playwright() as p:
             '.fkhere[data-villa="%s"] .fpill')].map(e=>e.textContent)""" % v)
     ck("a Luxury Escapes rate prints its pill with nobody having ticked anything",
        pills("1") == ["Luxury Escapes"])
-    ck("a desk tick prints without any rate behind it",
-       pills("3") == ["Breakfast included"])
-    ck("and a desk untick beats a rate that says breakfast",
-       pills("4") == [])
-    ck("the pills sit in the comment stack as their own ruled line",
+    ck("the desk's ticks print in their ticked order",
+       pills("3") == ["VIP", "Breakfast included"])
+    ck("any other rate prints nothing at all",
+       pills("4") == [] and "Flexible" not in q.locator("#rows").inner_text())
+    ck("the pills sit under the guest's name, not in the comments stack",
        q.evaluate("""()=>[...document.querySelectorAll('.fkhere .fpill')].length>0
            && [...document.querySelectorAll('.fkhere .fpill')]
-              .every(e=>e.closest('.crow.flags') && e.closest('.cbox'))"""))
+              .every(e=>e.closest('td.c-name') && !e.closest('.cbox'))"""))
     q.close()
 
     #  ── the night that found the row-count cap out ──────────

@@ -180,8 +180,8 @@
                 color:var(--mid); letter-spacing:.03em; }
   .note-box { font-style:italic; font-size:13px; color:var(--mid); text-align:center;
               line-height:1.6; padding:0 4px 14px; }
-  /* The rate the flags were read from, under the flag chips. Small and grey:
-     it is the evidence, not the answer, and the chips are the answer. */
+  /* The one flag that sets itself, said under the tickable ones so nobody
+     hunts for its chip: Luxury Escapes rides on the Mews rate. */
   .flag-src { font-family:var(--ui-font); font-size:9.5px; color:var(--mid);
               text-align:center; letter-spacing:.03em; margin:2px 0 4px; }
   /* What is missing, said in words. A button that silently does nothing is
@@ -207,7 +207,7 @@
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap" id="navWrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="flags.html">Flags</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
   </div>
 </div>
 
@@ -231,7 +231,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=38"></script>
+<script src="nala-shared.js?v=39"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -599,8 +599,10 @@ function summaryHTML(r){
 
   /* Only when one is on: an empty flags row is not a blank reception needs
      to fill, unlike the answers above, so it earns no line. */
-  var fl = bookingFlagLabels(r.pms);
-  if (fl.length) h += sumRow('Booking flags', fl.join(' \u00b7 '));
+  var fl = bookingFlagLabels(r.pms, r.bf);
+  /* Escaped: the names are typed by an admin on Flag Settings, and this
+     summary is otherwise built by concatenation - the staff-note lesson. */
+  if (fl.length) h += sumRow('Booking flags', esc(fl.join(' \u00b7 ')));
 
   h += '<div class="sum-btns">' +
          '<button data-act="edit" data-villa="' + r.villa + '">Edit</button>' +
@@ -703,8 +705,12 @@ function loadPrearrivals(rows){
       /* A number fixed at the desk outranks the Mews copy: Mews cannot be
          corrected from here and its next sync would revert any edit made to
          the stay. The same record the SMS pages and the Worker read. */
-      api('/phonefix/'+r.stay.id).catch(function(){ return null; })
-    ]).then(function(res){ r.pre = res[0]; r.pms = res[1]; r.fix = res[2]; });
+      api('/phonefix/'+r.stay.id).catch(function(){ return null; }),
+      /* The ticked booking flags. Read for every role because the summary
+         shows the pills to everyone; only ticking is admin's. */
+      api('/bookflags/'+r.stay.id).catch(function(){ return null; })
+    ]).then(function(res){ r.pre = res[0]; r.pms = res[1]; r.fix = res[2];
+                           r.bf = res[3]; });
   }));
 }
 
@@ -787,6 +793,23 @@ function load(){
             (d.name || k) !== DIET_OTHER) names.push(d.name || k);
       });
       if (names.length){ DIETARIES = names.sort(); render(); }
+    })
+    .catch(function(){});
+
+  /* The admin's flag list, from Flag Settings, in its stored order. Only the
+     active ones become chips; a name a booking carries that is no longer
+     here is still painted by the sheet, selected, so archiving a flag never
+     silently unticks it. A failed read leaves an empty list and the sheet
+     says where to define one. */
+  api('/flags')
+    .then(function(master){
+      if (!master) return;
+      var names = [];
+      Object.keys(master).forEach(function(k){
+        var d = master[k];
+        if (d && d.active) names.push(d.name || k);
+      });
+      FLAGLIST = names.sort();
     })
     .catch(function(){});
 
@@ -956,12 +979,18 @@ function openGuest(r){
       : '') +
 
     /* The booking flags: the facts that used to be typed into a note on
-       every such booking. A tick each, already on when the Mews rate says
-       so, and printed on the Service Sheet either way. */
-    '<div class="sheet-label">Booking flags</div>' +
-    '<div class="chips" id="fkChips"></div>' +
-    (r.pms && r.pms.rate
-      ? '<div class="flag-src">Mews rate: ' + esc(r.pms.rate) + '</div>' : '') +
+       every such booking. The list an admin defines on Flag Settings, a tick
+       each, admin only - ticking a flag is a statement about the booking's
+       standing, so it is fenced like the flag list itself. Everyone still
+       sees the result in the summary and on the printed sheet. The one
+       automatic flag is said in words, not offered as a chip: Luxury Escapes
+       rides on the Mews rate and a tick could not turn it off. */
+    (canFlags() ?
+      '<div class="sheet-label">Booking flags</div>' +
+      '<div class="chips" id="fkChips"></div>' +
+      (rateFlagLabel(r.pms)
+        ? '<div class="flag-src">Luxury Escapes - automatic, from the Mews rate</div>' : '')
+      : '') +
 
     /* The internal note. Management only, both to read and to write, and it
        lives at /internal rather than under the booking because /bookings is
@@ -1239,18 +1268,34 @@ function openGuest(r){
   document.getElementById('wYes').onclick = function(){ a.wellness = true;  paintWellness(); };
   document.getElementById('wNo').onclick  = function(){ a.wellness = false; paintWellness(); };
 
-  /* The chip shows what each flag IS: the rate's answer until somebody
-     overrides it. The toggle lives here and is only written on save, like
-     every other answer on this sheet, so Close still discards it. */
-  var flags = {};
-  BOOKING_FLAGS.forEach(function(f){ flags[f.key] = bookingFlagOn(r.pms, f); });
+  /* The flag chips: the admin's list from Flag Settings, plus any name this
+     booking already carries that the list no longer offers - painted anyway,
+     selected, so a flag retired in Settings is not silently dropped by the
+     next save. The purpose-chip lesson. Toggled here and only written on
+     save, like every other answer on this sheet, so Close still discards. */
+  var flags = ((r.bf && r.bf.flags) || []).slice();
   function paintFlags(){
-    var box = document.getElementById('fkChips'); box.innerHTML = '';
-    BOOKING_FLAGS.forEach(function(f){
+    var box = document.getElementById('fkChips');
+    if (!box) return;
+    box.innerHTML = '';
+    var offered = FLAGLIST.concat(flags.filter(function(t){
+      return FLAGLIST.indexOf(t) === -1; }));
+    if (!offered.length){
+      var d = document.createElement('div');
+      d.className = 'flag-src';
+      d.textContent = 'No flags defined yet. Add them under Settings, Flags.';
+      box.appendChild(d);
+      return;
+    }
+    offered.forEach(function(t){
       var b = document.createElement('button');
-      b.className = 'chip' + (flags[f.key] ? ' on' : '');
-      b.textContent = f.label;
-      b.onclick = function(){ flags[f.key] = !flags[f.key]; paintFlags(); };
+      b.className = 'chip' + (flags.indexOf(t) > -1 ? ' on' : '');
+      b.textContent = t;
+      b.onclick = function(){
+        var i = flags.indexOf(t);
+        if (i > -1) flags.splice(i, 1); else flags.push(t);
+        paintFlags();
+      };
       box.appendChild(b);
     });
   }
@@ -1333,8 +1378,9 @@ function openGuest(r){
     /* Handed to save() on the row rather than read from the sheet there,
        because save() also runs from the summary buttons with no sheet on
        screen. A leftover copy from an earlier save of this row is harmless:
-       its values match what was stored, so the diff below it is empty. */
-    r._flags = flags;
+       it matches what was stored, so the changed-test below skips it. Only
+       an admin's sheet carries the chips, so only an admin sets this. */
+    if (canFlags()) r._flags = flags;
     save(r, a, checkin);
   }
   document.getElementById('sConfirm').onclick = function(){ finish(false); };
@@ -1469,37 +1515,27 @@ function save(r, a, checkin){
      not take tonight's answers with it. */
   rememberDietary(r.stay.id, payload.diets, payload.dnote);
 
-  /* The booking flags, their own write to the PMS record and outside the
+  /* The booking flags, their own write to their own node and outside the
      both-or-neither pair: that pair is the guest's answers and the kitchen's
-     cell, and a flag refused must not roll tonight's answers back. Refused is
-     possible: the rules gate pms by role, so a login that may edit bookings
-     may still not carry a flag until the rules of 26 Aug are pasted. So the
-     failure is SAID rather than swallowed - a tick that silently failed
-     reads forever after as a fact recorded.
-
-     Only a disagreement with the rate is stored; agreement writes null,
-     which deletes any old override so the rate keeps speaking. Nothing at
-     all is written when nothing changed. */
+     cell, and a flag refused must not roll tonight's answers back. A PUT of
+     the whole record, because the ticks ARE the record and the desk is its
+     only writer. Skipped when nothing changed, so opening a sheet and
+     confirming does not stamp an edit nobody made; a failure is SAID rather
+     than swallowed, because a tick that silently failed reads forever after
+     as a fact recorded. */
   if (r._flags){
-    var fpay = {}, pmsBefore = r.pms;
-    BOOKING_FLAGS.forEach(function(f){
-      var want = (r._flags[f.key] === flagFromRate(r.pms, f)) ? null : r._flags[f.key];
-      var have = (r.pms && typeof r.pms[f.key] === 'boolean') ? r.pms[f.key] : null;
-      if (want !== have) fpay[f.key] = want;
-    });
-    if (Object.keys(fpay).length){
-      r.pms = Object.assign({}, r.pms || {});          /* optimistic */
-      BOOKING_FLAGS.forEach(function(f){
-        if (!(f.key in fpay)) return;
-        if (fpay[f.key] === null) delete r.pms[f.key];
-        else r.pms[f.key] = fpay[f.key];
-      });
-      fetch(DB + '/bookings/' + r.stay.id + '/pms.json', {
-        method: 'PATCH', headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify(fpay)
+    var was = JSON.stringify((r.bf && r.bf.flags) || []);
+    if (JSON.stringify(r._flags) !== was){
+      var bfBefore = r.bf;
+      r.bf = { flags: r._flags.slice(),
+               by: window.NALA_ME || '',
+               at: new Date().toISOString() };          /* optimistic */
+      fetch(DB + '/bookflags/' + r.stay.id + '.json', {
+        method: 'PUT', headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(r.bf)
       }).then(function(x){ if (!x.ok) throw new Error('flags'); })
         .catch(function(){
-          r.pms = pmsBefore;
+          r.bf = bfBefore;
           err('Could not save the booking flags. Everything else saved.');
         });
     }
@@ -1617,6 +1653,19 @@ function canInternal(){
   return window.NALA_ROLE === 'admin' || window.NALA_ROLE === 'manager' ||
          window.NALA_ROLE === 'staff';
 }
+
+/* Who may tick a booking flag. The owner's ruling, 26 Aug: admin only, a
+   narrower gate than the staff note's - a manager reads the pills but does
+   not set them. The legacy 'staff' role is the admin under its old name,
+   which is what normaliseRole records. Not can(), for canInternal's reason:
+   there is no permission for it and inventing one would put a row on the
+   Settings grid for a thing nobody asked to delegate. */
+function canFlags(){
+  return normaliseRole(window.NALA_ROLE) === 'admin';
+}
+
+/* The active flag names from Flag Settings, loaded per date change. */
+var FLAGLIST = [];
 
 window.NALA_ROLE = null;
 (function gate(){

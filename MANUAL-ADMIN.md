@@ -115,6 +115,15 @@ must genuinely be unable to do a thing, change their role.
 and set quiet hours. "Menu published" is on for you and nobody else: the chef
 already knows, they just published it.
 
+Beside Settings in the same menu group sits **Flags**: the short facts you can
+pin under a guest's name - VIP, Travel agent, Breakfast included, whatever you
+define there. You tick them per booking on the Front Desk sheet (only you: a
+flag is a statement about the booking's standing) and they print under the
+guest's name on the FOH Sheet, where the whole floor reads them. One flag is
+automatic and is not on the list: a booking whose Mews rate is Luxury Escapes
+wears that pill by itself. Archive a flag rather than expecting delete: a
+retired name a booking already carries stays ticked until somebody unticks it.
+
 ---
 
 ## Diagnostics: the screen to be careful with

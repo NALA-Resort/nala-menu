@@ -99,7 +99,7 @@ with sync_playwright() as p:
     #  one.
     CANON = ["front-desk.html", "tally.html", "invitations.html", "arrivals-sms.html", "cleaners.html", "spa.html", "publish.html",
              "list.html", "housekeeping.html", "registration.html", "menu-print.html", "past-menus.html",
-             "staff.html", "tag.html", "pages.html"]
+             "staff.html", "tag.html", "flags.html", "pages.html"]
     got = pg.evaluate("""()=>[...document.querySelectorAll('.navdrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     ck("the map's own hamburger lists every other page, in the one order",

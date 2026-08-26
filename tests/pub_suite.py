@@ -449,7 +449,7 @@ with sync_playwright() as p:
     #  print, what you set.
     CANON = ["front-desk.html", "tally.html", "invitations.html", "arrivals-sms.html", "cleaners.html", "spa.html", "publish.html",
              "list.html", "housekeeping.html", "registration.html", "menu-print.html", "past-menus.html",
-             "staff.html", "tag.html", "pages.html"]
+             "staff.html", "tag.html", "flags.html", "pages.html"]
     got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     print("   publish nav:", got)
@@ -737,7 +737,7 @@ with sync_playwright() as p:
     #  offers everything the admin's does except Settings General and Pages.
     ck("a manager is offered everything but General and Pages",
        seen["manager"] == [h for h in seen["admin"]
-                           if h not in ("staff.html", "pages.html")])
+                           if h not in ("staff.html", "flags.html", "pages.html")])
     ck("which the admin still keeps",
        "staff.html" in seen["admin"] and "pages.html" in seen["admin"])
     #  Every link left standing has to open. A link that bounces you back is a
@@ -750,7 +750,8 @@ with sync_playwright() as p:
              "spa.html":"spaBoard",
              "housekeeping.html":"cleansBoard", "registration.html":"editBookings",
              "menu-print.html":"resSheet", "past-menus.html":"resBoard",
-             "staff.html":"manageStaff", "pages.html":"manageStaff"}
+             "staff.html":"manageStaff", "flags.html":"manageStaff",
+             "pages.html":"manageStaff"}
     ck("every link in the menu has a permission behind it",
        all(h in NEEDS for r in seen for h in seen[r]))
     #  A heading with nothing under it promises something that is not there.

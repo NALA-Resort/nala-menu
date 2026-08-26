@@ -41,6 +41,7 @@ def short(d):
 RANGE_4 = short(0) + "-" + short(4)
 
 STAFF = {"staff@x": {"name": "Admin", "role": "admin"},
+         "manager@x": {"name": "Manager", "role": "manager"},
          "chef@x": {"name": "Chef", "role": "chef"},
          "housekeeping@x": {"name": "HK", "role": "housekeeping"}}
 
@@ -122,6 +123,15 @@ DIETS = {"gf":  {"name": "Gluten free",      "active": True,  "group": "common"}
          "chi": {"name": "Red pepper spice", "active": True,  "group": "menu"},
          "old": {"name": "Retired Entry",    "active": False, "group": "common"}}
 
+# The admin's flag list, as flags.html writes it, with one archived entry
+# that must never be offered as a chip; and the ticks per booking, as this
+# page writes them to /bookflags.
+FLAGS = {"VIP": {"name": "VIP", "active": True},
+         "Travel agent": {"name": "Travel agent", "active": True},
+         "Breakfast included": {"name": "Breakfast included", "active": True},
+         "Honeymoon": {"name": "Honeymoon", "active": False}}
+BOOKFLAGS = {}
+
 STATE = {"fail": False}
 
 def fb(route, request):
@@ -155,6 +165,10 @@ def fb(route, request):
     elif "/bookings/" in u and "/pms" in u:
         k = u.split("/bookings/")[1].split("/")[0]
         body = json.dumps(PMS[k]) if k in PMS else "null"
+    elif "/bookflags/" in u:
+        k = u.split("/bookflags/")[1].split(".json")[0]
+        body = json.dumps(BOOKFLAGS[k]) if k in BOOKFLAGS else "null"
+    elif "/flags" in u: body = json.dumps(FLAGS)
     route.fulfill(status=200, content_type="application/json", body=body)
 
 P = F = 0
@@ -1155,71 +1169,95 @@ with sync_playwright() as p:
     pg.close()
 
     # ── the booking flags ───────────────────────────────────────
-    #  The two facts that used to be typed into a note on every such booking:
-    #  Luxury Escapes and Breakfast included. A tick each on the sheet, on by
-    #  itself when the Mews rate the Worker stores says so, and the desk's
-    #  tick outranks the rate. Stored beside the rate at pms.<key>, and ONLY
-    #  when it disagrees with the rate: agreement stores nothing, so an
-    #  untouched booking keeps listening to Mews.
-    PMS["b4"] = {"rate": "Luxury Escapes AU"}
-    PMS["b9"] = {"rate": "Flexible with Breakfast"}
+    #  Short facts pinned under the guest's name: VIP, Travel agent, whatever
+    #  the admin defined on Flag Settings. Ticked here per booking, admin
+    #  only, stored at /bookflags. One flag sets itself: a Mews rate STARTING
+    #  with Luxury Escapes, that rate and no other - the owner's ruling.
+    PMS["b4"]["rate"] = "Luxury Escapes AU"
+    PMS["b9"]["rate"] = "Flexible with Breakfast"
+    BOOKFLAGS["b9"] = {"flags": ["VIP", "Old badge"], "by": "x", "at": "t"}
     pg = board()
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
-    ck("the summary names the flag the rate implies, before anybody ticks",
+    ck("a Luxury Escapes rate pins its pill before anybody ticks anything",
        "Luxury Escapes" in pg.locator(".sum").inner_text())
     pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
     pg.wait_for_timeout(700)
     def chip(label):
         return pg.evaluate("""()=>{const b=[...document.querySelectorAll('#fkChips .chip')]
             .find(x=>x.textContent==='%s'); return b?b.className:null;}""" % label)
-    ck("the sheet offers both flags as chips",
-       chip("Luxury Escapes") is not None and chip("Breakfast included") is not None)
-    ck("the rate has already ticked its own flag", chip("Luxury Escapes") == "chip on")
-    ck("and left the other alone", chip("Breakfast included") == "chip")
-    ck("the sheet shows the rate it read that from",
-       "Luxury Escapes AU" in pg.locator(".flag-src").inner_text())
-
-    #  Agreement with the rate is not an override, and a sheet opened and
-    #  confirmed must not stamp one: the rate has to keep speaking for the
-    #  bookings nobody has touched.
+    ck("the sheet offers the admin's list as chips, none ticked yet",
+       chip("VIP") == "chip" and chip("Travel agent") == "chip"
+       and chip("Breakfast included") == "chip")
+    ck("an archived flag is not offered", chip("Honeymoon") is None)
+    ck("and the automatic one is words, not a chip, since a tick could not turn it off",
+       chip("Luxury Escapes") is None
+       and "automatic" in pg.locator(".flag-src").inner_text())
+    #  Nothing ticked, so a confirm must not stamp a flag record on the
+    #  booking: an edit nobody made, the internal-note lesson.
     del WRITES[:]
     pg.evaluate("()=>document.getElementById('sConfirm').click()")
     pg.wait_for_timeout(800)
-    ck("confirming without touching the flags writes nothing to the PMS record",
-       not [x for x in WRITES if "/pms" in x["u"]])
+    ck("confirming without touching the flags writes no flag record",
+       not [x for x in WRITES if "/bookflags" in x["u"]])
     pg.close()
 
     pg = board()
     pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(400)
+    t = pg.locator(".sum").inner_text()
+    ck("a rate that is not Luxury Escapes pins nothing",
+       "Luxury Escapes" not in t and "Flexible" not in t)
+    ck("while the ticked names show, a retired one included",
+       "VIP" in t and "Old badge" in t)
     pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
     pg.wait_for_timeout(700)
-    ck("a breakfast rate ticks the breakfast flag",
-       chip("Breakfast included") == "chip on")
-    #  Both toggled: Luxury Escapes on against a rate that says nothing, the
-    #  rate's own breakfast off. Both disagreements, so both are stored.
-    for label in ("Luxury Escapes", "Breakfast included"):
+    ck("a stored tick arrives ticked", chip("VIP") == "chip on")
+    ck("and a stored name the list no longer offers is painted anyway, "
+       "selected, so a save cannot silently drop it",
+       chip("Old badge") == "chip on")
+    ck("no automatic line without the Luxury Escapes rate",
+       pg.locator(".flag-src").count() == 0)
+    #  Travel agent on, Old badge off: the save carries the whole new set.
+    for label in ("Travel agent", "Old badge"):
         pg.evaluate("""()=>[...document.querySelectorAll('#fkChips .chip')]
             .find(x=>x.textContent==='%s').click()""" % label)
         pg.wait_for_timeout(150)
     del WRITES[:]
     pg.evaluate("()=>document.getElementById('sConfirm').click()")
     pg.wait_for_timeout(800)
-    w = [json.loads(x["b"]) for x in WRITES if "/bookings/b9/pms" in x["u"]]
-    ck("a tick that disagrees with the rate is stored, and only as a disagreement",
-       len(w) == 1 and w[0] == {"luxEscapes": True, "breakfast": False})
+    w = [x for x in WRITES if "/bookflags/b9" in x["u"]]
+    ck("the ticks are saved to their own node, whole, with who and when",
+       len(w) == 1 and w[0]["m"] == "PUT"
+       and json.loads(w[0]["b"])["flags"] == ["VIP", "Travel agent"]
+       and json.loads(w[0]["b"])["by"] == "staff@x")
     #  Its own write, outside the both-or-neither pair: a flag refused by the
     #  rules must not roll tonight's answers back.
     ck("and it rides beside the guest's answers, not inside them",
        any("/prearrival" in x["u"] for x in WRITES)
        and not [x for x in WRITES if "/prearrival" in x["u"]
-                and "luxEscapes" in (x["b"] or "")])
-    #  The resolution order, read back: the tick outranks the rate both ways.
+                and "Travel agent" in (x["b"] or "")])
     pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(400)
     t = pg.locator(".sum").inner_text()
-    ck("the summary then shows the ticks, which outrank the rate",
-       "Luxury Escapes" in t and "Breakfast included" not in t)
+    ck("the summary then reads the new set back",
+       "Travel agent" in t and "Old badge" not in t)
     pg.close()
-    del PMS["b4"]; del PMS["b9"]
+
+    #  Admin only. A manager reads the pills but is offered no chips, and
+    #  their save must not carry a flag write at all.
+    pg = board("manager@x")
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(400)
+    ck("a manager still reads the pills on the summary",
+       "VIP" in pg.locator(".sum").inner_text())
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+    pg.wait_for_timeout(700)
+    ck("but is offered no flag chips",
+       pg.evaluate("()=>!document.getElementById('fkChips')"))
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(800)
+    ck("and their save carries no flag write",
+       not [x for x in WRITES if "/bookflags" in x["u"]])
+    pg.close()
+    del PMS["b4"]["rate"]; del PMS["b9"]["rate"]; BOOKFLAGS.clear()
 
     # ── the number beside the name, the SMS pages' display at the desk ──
     #  Asked for 25 Aug: the same three parts the Pre-arrival SMS rows carry,
