@@ -349,7 +349,9 @@
         <select class="txt" id="wTime" aria-label="Preferred time"></select>
         <div class="sublabel">How many massages?</div>
         <div class="chips" id="wQty"></div>
+        <div class="sublabel" id="wDurLab" style="display:none">First massage</div>
         <select class="txt" id="wDur" aria-label="Massage length"></select>
+        <div class="sublabel" id="wDur2Lab" style="display:none">Second massage</div>
         <select class="txt" id="wDur2" aria-label="Second massage length"
                 style="display:none"></select>
       </div>
@@ -741,12 +743,15 @@ function paintDurs(){
     WELL_DURS.forEach(function(d){
       var o = document.createElement('option');
       o.value = String(d.m);
-      o.textContent = (id === 'wDur2' ? 'Second massage: ' : '') + durText(d);
+      o.textContent = durText(d);
       sel.appendChild(o);
     });
     sel.value = String(want);
   });
-  el('wDur2').style.display = a.wellQty === 2 ? '' : 'none';
+  var two = a.wellQty === 2;
+  el('wDur2').style.display = two ? '' : 'none';
+  el('wDurLab').style.display = two ? '' : 'none';
+  el('wDur2Lab').style.display = two ? '' : 'none';
   var box = el('wQty'); box.innerHTML = '';
   [1, 2].forEach(function(n){
     var b = document.createElement('button');

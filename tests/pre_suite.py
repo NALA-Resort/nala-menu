@@ -374,6 +374,12 @@ with sync_playwright() as p:
     pg.wait_for_timeout(200)
     ck("asking for two demands two lengths",
        pg.evaluate("()=>getComputedStyle(document.getElementById('wDur2')).display") != "none")
+    ck("which massage is which reads as headings, not inside the options",
+       pg.evaluate("()=>getComputedStyle(document.getElementById('wDurLab')).display") != "none" and
+       pg.evaluate("()=>document.getElementById('wDurLab').textContent") == "First massage" and
+       pg.evaluate("()=>document.getElementById('wDur2Lab').textContent") == "Second massage" and
+       pg.evaluate("()=>[...document.querySelectorAll('#wDur2 option')].map(o=>o.textContent)")
+       == ["1 hour · $180", "1.5 hours · $250", "2 hours · $310"])
     pg.select_option("#wDur", "90")
     pg.select_option("#wDur2", "60")
     nxt(pg)
