@@ -84,9 +84,15 @@ with sync_playwright() as p:
                   btn:r.querySelector('.mtog').textContent}))""")
     ck("the stored list paints, active flags first",
        [r["name"] for r in rows] == ["Travel agent", "VIP", "Old badge"])
-    ck("an archived flag reads as archived and offers Restore",
-       rows[2]["off"] and rows[2]["btn"] == "Restore")
-    ck("an active one offers Archive", rows[0]["btn"] == "Archive")
+    ck("a hidden flag reads as hidden and offers Show",
+       rows[2]["off"] and rows[2]["btn"].startswith("Show"))
+    ck("an active one offers Hide, and no Delete: hide first, then delete",
+       rows[0]["btn"] == "Hide"
+       and pg.evaluate("""()=>[...document.querySelectorAll('.mrow')]
+           .filter(r=>!r.className.includes('off'))
+           .every(r=>!r.querySelector('.mdel'))"""))
+    ck("a hidden one offers Delete beside Show",
+       pg.evaluate("""()=>!!document.querySelector('.mrow.off .mdel')"""))
     ck("the automatic flag is named so nobody re-creates it",
        "Luxury Escapes" in pg.locator("#autorow").inner_text()
        and "automatic" in pg.locator("#autorow").inner_text().lower())
@@ -118,6 +124,24 @@ with sync_playwright() as p:
     pg.click("#addBtn"); pg.wait_for_timeout(200)
     ck("a blank name is not added",
        pg.evaluate("()=>document.querySelectorAll('.mrow').length") == before)
+
+    # ── delete, from hidden only, landing only on Save ──────────
+    #  A mis-tap costs a re-add, not a flag: nothing reaches the database
+    #  until Save, and the desk keeps painting a deleted name a booking
+    #  still carries, so no tick is silently dropped (fd_suite pins that).
+    pg.evaluate("""()=>[...document.querySelectorAll('.mrow.off')]
+        .find(r=>r.textContent.indexOf('Old badge')>-1)
+        .querySelector('.mdel').click()""")
+    pg.wait_for_timeout(200)
+    ck("Delete takes the row off the list",
+       not pg.evaluate("()=>[...document.querySelectorAll('.mname')]"
+                       ".some(e=>e.textContent==='Old badge')"))
+    del WRITES[:]
+    pg.click("#saveBtn"); pg.wait_for_timeout(500)
+    wrote = [x for x in WRITES if "/flags" in x["u"]]
+    ck("and Save writes the list without it, for good",
+       len(wrote) == 1 and "Old badge" not in (wrote[0]["b"] or "")
+       and "VIP" in wrote[0]["b"])
 
     # ── the automatic flag cannot be created by hand ────────────
     pg.fill("#newName", "luxury escapes")

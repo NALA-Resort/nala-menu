@@ -121,6 +121,11 @@
           font-size:9px; letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
           -webkit-tap-highlight-color:transparent; }
   .mrow.off .mtog { border-color:var(--ink); color:var(--ink); }
+  .mbtns { display:flex; gap:6px; }
+  /* Delete wears the failure colour because it is the one press here with no
+     way back after Save. Offered only on a hidden row: hide first, then
+     delete, so a mis-tap cannot destroy a dietary that is in use. */
+  .mtog.mdel { border-color:var(--red); color:var(--red); }
 
   .savebar { position:fixed; bottom:0; left:0; right:0; background:var(--cream);
              border-top:1px solid var(--rule); padding:12px 24px;
@@ -247,8 +252,11 @@
       var r=document.createElement('div'); r.className='mrow'+(d.active?'':' off');
       var nm=document.createElement('div'); nm.className='mname';
       nm.innerHTML=d.name+'<span class="g">'+(d.group==='menu'?'this menu':'common')+'</span>';
+      var bs=document.createElement('span'); bs.className='mbtns';
       var b=document.createElement('button'); b.className='mtog';
-      b.textContent=d.active?'Archive':'Restore';
+      /* The owner's word, 26 Aug: Hide, not Archive - the same rename as
+         Flag Settings, so the two Settings pages speak alike. */
+      b.textContent=d.active?'Hide':'Show';
       b.onclick=function(){
         d.active=!d.active;
         if (!d.active) Object.keys(TAGS).forEach(function(c){
@@ -256,7 +264,18 @@
         });
         markDirty(); paintMng(); paintCourses();
       };
-      r.appendChild(nm); r.appendChild(b); box.appendChild(r);
+      bs.appendChild(b);
+      /* Delete, only from hidden, lands only on Save - a mis-tap costs a
+         re-add, not a dietary. Hiding already pulled it off tonight's tags;
+         a guest record carrying the name keeps it as text, exactly as it
+         keeps a hidden one. */
+      if (!d.active){
+        var x=document.createElement('button'); x.className='mtog mdel';
+        x.textContent='Delete';
+        x.onclick=function(){ delete MASTER[k]; markDirty(); paintMng(); paintCourses(); };
+        bs.appendChild(x);
+      }
+      r.appendChild(nm); r.appendChild(bs); box.appendChild(r);
     });
   }
 

@@ -801,8 +801,8 @@ function load(){
 
   /* The admin's flag list, from Flag Settings, in its stored order. Only the
      active ones become chips; a name a booking carries that is no longer
-     here is still painted by the sheet, selected, so archiving a flag never
-     silently unticks it. A failed read leaves an empty list and the sheet
+     here is still painted by the sheet, selected, so a flag hidden or even
+     deleted in Settings never silently unticks a booking. A failed read leaves an empty list and the sheet
      says where to define one. */
   api('/flags')
     .then(function(master){
@@ -1309,8 +1309,8 @@ function openGuest(r){
 
   /* The flag chips: the admin's list from Flag Settings, plus any name this
      booking already carries that the list no longer offers - painted anyway,
-     selected, so a flag retired in Settings is not silently dropped by the
-     next save. The purpose-chip lesson. Toggled here and only written on
+     selected, so a flag hidden or deleted in Settings is not silently
+     dropped by the next save. The purpose-chip lesson. Toggled here and only written on
      save, like every other answer on this sheet, so Close still discards. */
   var flags = ((r.bf && r.bf.flags) || []).slice();
   function paintFlags(){

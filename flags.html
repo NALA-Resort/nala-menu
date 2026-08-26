@@ -79,11 +79,16 @@
           padding:9px 0; border-bottom:1px solid var(--rule); }
   .mname { font-size:14px; }
   .mrow.off .mname { color:var(--mid); font-style:italic; }
+  .mbtns { display:flex; gap:6px; }
   .mtog { border:1px solid var(--rule); background:transparent; color:var(--mid);
           padding:6px 12px; border-radius:16px; font-family:Helvetica,Arial,sans-serif;
           font-size:9px; letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
           -webkit-tap-highlight-color:transparent; }
   .mrow.off .mtog { border-color:var(--ink); color:var(--ink); }
+  /* Delete wears the failure colour because it is the one press here with no
+     way back after Save. Offered only on a hidden row: hide first, then
+     delete, so a mis-tap cannot destroy a flag that is in use. */
+  .mtog.mdel { border-color:var(--red); color:var(--red); }
 
   /* The one flag nobody manages from here, shown so nobody re-creates it. */
   .autorow { margin-top:12px; padding:9px 0; border-bottom:1px solid var(--rule);
@@ -126,7 +131,7 @@
   <div class="secthead">All flags</div>
   <div class="mng" id="mng"></div>
   <!-- Listed so nobody re-creates it by hand and prints it twice. It is not a
-       row in /flags: it rides on the Mews rate the sync stores, and archiving
+       row in /flags: it rides on the Mews rate the sync stores, and hiding
        it here could not stop the rate arriving. -->
   <div class="autorow" id="autorow" style="display:none">Luxury Escapes<span class="g">automatic - set by the Mews rate</span></div>
 </div>
@@ -172,7 +177,7 @@
 
   var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
   /* The owner's own examples, 26 Aug. Seeded only while /flags is empty,
-     saved only when somebody presses Save, and each can be archived: they
+     saved only when somebody presses Save, and each can be hidden: they
      are suggestions, not fixtures. Luxury Escapes is deliberately NOT here -
      it rides on the Mews rate and creating it by hand would print it twice. */
   var DEFAULTS = ['VIP', 'Travel agent', 'Breakfast included'];
@@ -200,13 +205,26 @@
       var r=document.createElement('div'); r.className='mrow'+(d.active?'':' off');
       var nm=document.createElement('div'); nm.className='mname';
       nm.textContent=d.name;
+      var bs=document.createElement('span'); bs.className='mbtns';
       var b=document.createElement('button'); b.className='mtog';
-      /* Archive, never delete: a flag retired here may still be ticked on a
-         booking, and the desk keeps painting a stored name it no longer
-         offers, so nothing a person recorded is silently dropped. */
-      b.textContent=d.active?'Archive':'Restore';
+      /* Hide keeps the flag: it comes off the desk's chips but a booking
+         already ticked keeps its pill, because the desk paints a stored name
+         it no longer offers. Nothing a person recorded is silently dropped.
+         The owner's word, 26 Aug: Hide, not Archive. */
+      b.textContent=d.active?'Hide':'Show';
       b.onclick=function(){ d.active=!d.active; markDirty(); paintMng(); };
-      r.appendChild(nm); r.appendChild(b); box.appendChild(r);
+      bs.appendChild(b);
+      /* Delete, only from hidden, lands only on Save - so a mis-tap costs a
+         re-add, not a flag. It removes the DEFINITION: a booking already
+         ticked still keeps its pill until somebody unticks it, same as a
+         hidden flag, for the same reason. */
+      if (!d.active){
+        var x=document.createElement('button'); x.className='mtog mdel';
+        x.textContent='Delete';
+        x.onclick=function(){ delete MASTER[k]; markDirty(); paintMng(); };
+        bs.appendChild(x);
+      }
+      r.appendChild(nm); r.appendChild(bs); box.appendChild(r);
     });
     document.getElementById('autorow').style.display = '';
   }

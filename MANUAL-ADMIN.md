@@ -121,8 +121,10 @@ define there. You tick them per booking on the Front Desk sheet (only you: a
 flag is a statement about the booking's standing) and they print under the
 guest's name on the FOH Sheet, where the whole floor reads them. One flag is
 automatic and is not on the list: a booking whose Mews rate is Luxury Escapes
-wears that pill by itself. Archive a flag rather than expecting delete: a
-retired name a booking already carries stays ticked until somebody unticks it.
+wears that pill by itself. Hide takes a flag off the desk's chips without
+unticking anyone; Delete, offered once a flag is hidden, removes it from the
+list for good. Either way a booking already ticked keeps its pill until
+somebody unticks it, so nothing a person recorded is silently dropped.
 
 ---
 

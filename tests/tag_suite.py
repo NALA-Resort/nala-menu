@@ -280,22 +280,47 @@ with sync_playwright() as p:
     ck("an empty name adds nothing", "show" not in (pg.get_attribute("#savebar", "class") or ""))
     pg.close()
 
-    # Archiving has to pull the dietary off the dishes as well, or the tag
-    # survives invisibly and the guest page keeps acting on it.
+    # Hiding has to pull the dietary off the dishes as well, or the tag
+    # survives invisibly and the guest page keeps acting on it. The button
+    # says Hide, not Archive - the owner's word, 26 Aug, same as Flag
+    # Settings, so the two Settings pages speak alike.
     pg = open_tag()
     row = pg.locator(".mrow").filter(has_text="Nut allergy")
+    ck("an active dietary offers Hide, and no Delete: hide first, then delete",
+       row.locator(".mtog").text_content() == "Hide"
+       and row.locator(".mdel").count() == 0)
     row.locator(".mtog").click(); pg.wait_for_timeout(150)
-    #  Archived means the guest is no longer offered it. The publish page
+    #  Hidden means the guest is no longer offered it. The publish page
     #  reads the same list and stops offering it as a tick for the same
     #  reason, which is checked there.
-    ck("archiving marks it off, without deleting it",
+    ck("hiding marks it off, without deleting it",
        "off" in (pg.evaluate("()=>[...document.querySelectorAll('.mrow')].find(r=>r.textContent.indexOf('Nut allergy')>-1).className") or ""))
     pg.click("#saveBtn"); pg.wait_for_timeout(400)
-    ck("and nothing is written to tonight's tags by archiving either",
+    ck("and nothing is written to tonight's tags by hiding either",
        not wrote("/menutags/"))
-    ck("but the dietary itself is kept, archived, not deleted",
+    ck("but the dietary itself is kept, hidden, not deleted",
        "Nut allergy" in json.loads(wrote("/dietaries")[0]["b"]) and
        json.loads(wrote("/dietaries")[0]["b"]).get("Nut allergy", {}).get("active") is False)
+
+    #  Delete, offered only once a dietary is hidden, lands only on Save: a
+    #  mis-tap costs a re-add, not a dietary. "Old thing" arrives hidden in
+    #  the fixture, so it is the one carrying the button.
+    old_row = pg.locator(".mrow").filter(has_text="Old thing")
+    ck("a hidden dietary offers Delete beside Show",
+       old_row.locator(".mtog").first.text_content() == "Show"
+       and old_row.locator(".mdel").count() == 1)
+    old_row.locator(".mdel").click(); pg.wait_for_timeout(150)
+    ck("Delete takes the row off the list",
+       pg.evaluate("()=>![...document.querySelectorAll('.mrow')]"
+                   ".some(r=>r.textContent.indexOf('Old thing')>-1)"))
+    del WRITES[:]
+    pg.click("#saveBtn"); pg.wait_for_timeout(400)
+    #  Anchored on Nut allergy, not Gluten free: the rename tests above have
+    #  already worked on the fixture by the time this runs.
+    ck("and Save writes the list without it, for good",
+       bool(wrote("/dietaries")) and
+       "Old thing" not in wrote("/dietaries")[0]["b"] and
+       "Nut allergy" in wrote("/dietaries")[0]["b"])
     pg.close()
 
     # ── the menu is no longer this page's business ────────────
