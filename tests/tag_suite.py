@@ -161,7 +161,7 @@ with sync_playwright() as p:
     #  reach publishing at all.
     CANON = ["front-desk.html", "tally.html", "invitations.html", "arrivals-sms.html", "cleaners.html", "spa.html", "publish.html",
              "list.html", "housekeeping.html", "registration.html", "menu-print.html", "past-menus.html",
-             "staff.html", "tag.html", "pages.html"]
+             "staff.html", "tag.html", "flags.html", "pages.html"]
     got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     ck("the menu is the one list, minus this page",

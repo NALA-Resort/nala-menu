@@ -22,7 +22,10 @@ os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
 socketserver.TCPServer.allow_reuse_address = True
-httpd = http.server.ThreadingHTTPServer(("", 8975), Q)
+httpd = http.server.ThreadingHTTPServer(("", 8976), Q)   # 8976, not 8975: pub_suite binds
+# 8975 and the two ran side by side for the first time when the flags
+# suite joined the schedule - "each owns its port" was untrue for exactly
+# this pair, and the collision surfaced as print NO RESULT on 26 Aug
 threading.Thread(target=httpd.serve_forever, daemon=True).start(); time.sleep(0.3)
 
 now = datetime.datetime.now().astimezone()
@@ -136,7 +139,7 @@ with sync_playwright() as p:
             route.fulfill(status=200, content_type="application/json", body="null")
         pg.route("**firebasedatabase.app/**", db)
         pg.route("**/menu.json*", menu_file)
-        pg.goto("http://localhost:8975/menu-print.html")
+        pg.goto("http://localhost:8976/menu-print.html")
         #  Waited for, not timed. The page reads the database first from 23 Aug
         #  and nala-shared.js loads at its foot, so the menu now arrives a beat
         #  later than a fixed 1200ms allowed for. A wait on the thing itself
@@ -338,7 +341,7 @@ signOut:function(){}};"""
         pg.route("**/menu.json*", lambda r: r.fulfill(
             status=200, content_type="application/json",
             body=json.dumps(STATE["menu"] or {})))
-        pg.goto("http://localhost:8975/menu-print.html")
+        pg.goto("http://localhost:8976/menu-print.html")
         pg.wait_for_timeout(1600)
         return pg
 
