@@ -49,7 +49,9 @@ def fb(route, request):
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
     body = "null"
-    if "/dietaries" in u: body = json.dumps(DIETS)
+    if "/spasettings" in u:
+        body = json.dumps({"price60": 180, "price90": 250, "price120": 310})
+    elif "/dietaries" in u: body = json.dumps(DIETS)
     elif "/prearrival" in u: body = json.dumps(STATE["pre"]) if STATE["pre"] else "null"
     elif "/pms" in u: body = json.dumps(STATE["pms"]) if STATE["pms"] else "null"
     route.fulfill(status=200, content_type="application/json", body=body)
@@ -369,6 +371,26 @@ with sync_playwright() as p:
        == [""] + [x["label"] for x in
                   __import__("json").load(open("tests/slots.json"))["slots"]])
     pg.select_option("#wTime", "2:00 pm")
+    # How many and how long, with the manager's price beside each length -
+    # the whole point is that the guest sees the cost before they ask.
+    ck("one massage is the resting answer and the second length stays hidden",
+       pg.evaluate("()=>document.querySelector('#wQty .chip.on').textContent") == "One" and
+       pg.evaluate("()=>getComputedStyle(document.getElementById('wDur2')).display") == "none")
+    ck("each length carries its price from the manager's settings",
+       pg.evaluate("()=>[...document.querySelectorAll('#wDur option')].map(o=>o.textContent)")
+       == ["1 hour · $180", "1.5 hours · $250", "2 hours · $310"])
+    pg.evaluate("()=>[...document.querySelectorAll('#wQty .chip')][1].click()")
+    pg.wait_for_timeout(200)
+    ck("asking for two demands two lengths",
+       pg.evaluate("()=>getComputedStyle(document.getElementById('wDur2')).display") != "none")
+    ck("which massage is which reads as headings, not inside the options",
+       pg.evaluate("()=>getComputedStyle(document.getElementById('wDurLab')).display") != "none" and
+       pg.evaluate("()=>document.getElementById('wDurLab').textContent") == "First massage" and
+       pg.evaluate("()=>document.getElementById('wDur2Lab').textContent") == "Second massage" and
+       pg.evaluate("()=>[...document.querySelectorAll('#wDur2 option')].map(o=>o.textContent)")
+       == ["1 hour · $180", "1.5 hours · $250", "2 hours · $310"])
+    pg.select_option("#wDur", "90")
+    pg.select_option("#wDur2", "60")
     nxt(pg)
     ck("and the last page is the optional one",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qElse")
@@ -394,6 +416,8 @@ with sync_playwright() as p:
            body["noDiets"] is True and body["diets"] == [])
         ck("purpose and approach", body["purpose"] and body["approach"] == "most")
         ck("the treatment day and time", body["wellDay"] and body["wellTime"] == "2:00 pm")
+        ck("how many and how long, as numbers the rules can bound",
+           body["wellQty"] == 2 and body["wellDur"] == 90 and body["wellDur2"] == 60)
         ck("and a timestamp for when the answers first existed", bool(body["at"]))
         #  The send writes the whole record again, not just the last page, so
         #  a page save lost to a bad connection costs the guest nothing.

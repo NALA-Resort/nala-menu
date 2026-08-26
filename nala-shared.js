@@ -1686,6 +1686,21 @@ function spaSlotLabel(t){
   var p = String(t).split(':'), h = +p[0];
   return (h % 12 || 12) + ':' + p[1] + ' ' + (h < 12 ? 'am' : 'pm');
 }
+/* The treatment lengths, on the same terms as the slots: one list here for
+   the staff pages, a forced copy on the guest form, both pinned to
+   tests/slots.json. label is what the guest reads, short is what a tile
+   wears, and the price key is what /spasettings stores against it.      */
+var SPA_DURS = [
+  { m: 60,  label: '1 hour',    short: '1 hr'   },
+  { m: 90,  label: '1.5 hours', short: '1.5 hr' },
+  { m: 120, label: '2 hours',   short: '2 hr'   }
+];
+function spaDur(m){
+  for (var i = 0; i < SPA_DURS.length; i++)
+    if (SPA_DURS[i].m === +m) return SPA_DURS[i];
+  return null;
+}
+
 /* The way back from what a guest or the desk stored: the label itself, a
    24 hour HH:MM, or a bare H:MM that only fits the afternoon (a guest
    writing 2:00 means 2pm; one writing 10:00 already matches the morning).
