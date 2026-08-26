@@ -198,6 +198,13 @@ with sync_playwright() as p:
     # answering one leaves the other standing.
     ck("two massages on the form are two asks on the board",
        pg.evaluate("()=>document.querySelectorAll('#board [data-booking=\"b15\"]').length") == 2)
+    ck("each of the pair says which it is; a lone massage says nothing",
+       pg.evaluate("()=>[...document.querySelectorAll("
+                   "'#board [data-booking=\"b15\"] .st')].map(e=>e.textContent)"
+                   ".map(t=>t.split(' \\u00b7 ')[0]).join('|')")
+       == "Massage 1 of 2|Massage 2 of 2" and
+       "Massage" not in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b4\"] .st').textContent"))
     ck("a tile wears its length",
        "1.5 hr" in pg.evaluate(
          "()=>document.querySelector('#board [data-booking=\"b4\"] .st').textContent") and
