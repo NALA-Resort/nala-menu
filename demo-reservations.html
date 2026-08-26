@@ -268,6 +268,11 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .row-unk td { background:#FCFCFB; }
 
   .sub { display:block; font-size:8px; color:#777; font-weight:normal; margin-top:2px; }
+  /* The second guest, set a step up from the externals' phone line. The
+     phone is reference; this is a person the waiter greets by name, so it
+     sits just under the primary's size rather than in the small print.
+     Owner, 26 Aug. */
+  .sub.cmp { font-size:9.5px; }
   .allergen { color:#A8321E; font-weight:bold; }
   /* Dietaries and comments share one column at their combined width, so a long
      dietary list lays out horizontally instead of stacking three deep in a
@@ -2397,6 +2402,21 @@ function spaSlotLabel(t){
   var p = String(t).split(':'), h = +p[0];
   return (h % 12 || 12) + ':' + p[1] + ' ' + (h < 12 ? 'am' : 'pm');
 }
+/* The treatment lengths, on the same terms as the slots: one list here for
+   the staff pages, a forced copy on the guest form, both pinned to
+   tests/slots.json. label is what the guest reads, short is what a tile
+   wears, and the price key is what /spasettings stores against it.      */
+var SPA_DURS = [
+  { m: 60,  label: '1 hour',    short: '1 hr'   },
+  { m: 90,  label: '1.5 hours', short: '1.5 hr' },
+  { m: 120, label: '2 hours',   short: '2 hr'   }
+];
+function spaDur(m){
+  for (var i = 0; i < SPA_DURS.length; i++)
+    if (SPA_DURS[i].m === +m) return SPA_DURS[i];
+  return null;
+}
+
 /* The way back from what a guest or the desk stored: the label itself, a
    24 hour HH:MM, or a bare H:MM that only fits the afternoon (a guest
    writing 2:00 means 2pm; one writing 10:00 already matches the morning).
@@ -3033,7 +3053,7 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
          the desk and the cell is otherwise built by concatenation. */
       var second = row.room
         ? companionOf(PREARRIVAL_BY_VILLA[String(row.room)], g) : '';
-      if (second) nameCell += '<span class="sub">'+escText(second)+'</span>';
+      if (second) nameCell += '<span class="sub cmp">'+escText(second)+'</span>';
 
       var dinner, cls = '';
       var hits = (row.status === 'in') ? menuConflicts(MENU, g.diets) : [];
