@@ -133,7 +133,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=38"></script>
+<script src="nala-shared.js?v=39"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -244,15 +244,16 @@ function lineOf(rec, id){
   var stay = bk ? ' · staying ' + stayRange(bk) : '';
   var ask = (rec.reqDay ? shortDay(rec.reqDay) : 'no day picked') +
             (rec.reqTime ? ' · ' + rec.reqTime : ' · no time given');
+  var len = spaDur(rec.dur) ? ' · ' + spaDur(rec.dur).short : '';
   if (rec.status === 'requested' || rec.virtual)
     return (rec.reqDay ? 'Asked for ' + ask
                        : 'Interested, no day picked' +
-                         (rec.reqTime ? ' · ' + rec.reqTime : '')) + stay;
+                         (rec.reqTime ? ' · ' + rec.reqTime : '')) + len + stay;
   if (rec.status === 'suggested')
-    return 'Suggested ' + shortDay(rec.day) + ' ' + slotLabel(rec.time) +
+    return 'Suggested ' + shortDay(rec.day) + ' ' + slotLabel(rec.time) + len +
            ' · asked for ' + ask;
   if (rec.status === 'booked')
-    return shortDay(rec.day) + ' ' + slotLabel(rec.time) +
+    return shortDay(rec.day) + ' ' + slotLabel(rec.time) + len +
            (asRequested(rec) ? ' · as requested'
                              : ' · moved from ' + (rec.reqDay ? shortDay(rec.reqDay) : 'no day') +
                                (rec.reqTime ? ', ' + rec.reqTime : '')) +
@@ -282,14 +283,20 @@ function items(){
   Object.keys(BOOKINGS).forEach(function(id){
     var p = BOOKINGS[id].pre;
     if (!p || p.wellness !== true) return;
-    var handled = Object.keys(SPA[id] || {}).some(function(tid){
+    /* The form says how many; each unanswered one is its own white tile
+       with its own length. Answering writes a prearrival-source record,
+       and the count of those is how many of the asks are spoken for. */
+    var want = p.wellQty === 2 ? 2 : 1;
+    var have = Object.keys(SPA[id] || {}).filter(function(tid){
       return (SPA[id][tid] || {}).source === 'prearrival';
-    });
-    if (handled) return;
-    out.push({ id: id, tid: 'ask', rec: {
-      virtual: true, status: 'requested',
-      reqDay: p.wellDay || '', reqTime: p.wellTime || ''
-    } });
+    }).length;
+    for (var i = have; i < want; i++)
+      out.push({ id: id, tid: 'ask' + i, rec: {
+        virtual: true, status: 'requested',
+        reqDay: p.wellDay || '', reqTime: p.wellTime || '',
+        dur: i === 0 ? (spaDur(p.wellDur) ? p.wellDur : 0)
+                     : (spaDur(p.wellDur2) ? p.wellDur2 : 0)
+      } });
   });
   return out;
 }
@@ -360,7 +367,8 @@ function card(it){
      2pm ask at the 10am default. */
   if (!SEL) SEL = {
     day: rec.day || (rec.reqDay && days.indexOf(rec.reqDay) > -1 ? rec.reqDay : days[0] || ''),
-    time: rec.time || spaSlotFromText(rec.reqTime) || '10:00'
+    time: rec.time || spaSlotFromText(rec.reqTime) || '10:00',
+    dur: spaDur(rec.dur) ? rec.dur : 60
   };
 
   var el = document.createElement('div');
@@ -411,6 +419,19 @@ function card(it){
   });
   sel.onchange = function(){ SEL.time = sel.value; paint(); };
   el.appendChild(sel);
+
+  var subL = document.createElement('div'); subL.className = 'sub';
+  subL.textContent = 'Length'; el.appendChild(subL);
+  var lens = document.createElement('div'); lens.className = 'chips';
+  SPA_DURS.forEach(function(x){
+    var c = document.createElement('button');
+    c.type = 'button';
+    c.className = 'chip' + (SEL.dur === x.m ? ' on' : '');
+    c.textContent = x.label;
+    c.onclick = function(){ SEL.dur = x.m; paint(); };
+    lens.appendChild(c);
+  });
+  el.appendChild(lens);
 
   var btns = document.createElement('div'); btns.className = 'btns';
   var when = shortDay(SEL.day) + ' ' + slotLabel(SEL.time);
@@ -526,7 +547,8 @@ function card(it){
    linger under the state it entered. */
 function save(it, status, opts){
   var rec = it.rec, id = it.id;
-  var tid = (it.tid === 'ask' || it.tid === 'new') ? 't' + Date.now() : it.tid;
+  var tid = (it.tid.indexOf('ask') === 0 || it.tid === 'new')
+    ? 't' + Date.now() : it.tid;
   var body = {
     status: status,
     name: nameOf(id, rec),
@@ -545,6 +567,8 @@ function save(it, status, opts){
   }
   var why = (opts.note !== undefined) ? opts.note : rec.note;
   if (status === 'declined' && why) body.note = why;
+  if (SEL && spaDur(SEL.dur)) body.dur = SEL.dur;
+  else if (spaDur(rec.dur)) body.dur = rec.dur;
   if (status === 'booked' && (opts.manual || rec.manual))
     body.manual = rec.manual || new Date().toISOString();
   if (status === 'declined' && (opts.told || rec.told))

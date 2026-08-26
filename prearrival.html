@@ -347,6 +347,11 @@
         <div class="sublabel">Which day would suit you best?</div>
         <div class="chips" id="wDays"></div>
         <select class="txt" id="wTime" aria-label="Preferred time"></select>
+        <div class="sublabel">How many massages?</div>
+        <div class="chips" id="wQty"></div>
+        <select class="txt" id="wDur" aria-label="Massage length"></select>
+        <select class="txt" id="wDur2" aria-label="Second massage length"
+                style="display:none"></select>
       </div>
     </div>
 
@@ -491,7 +496,7 @@ function purposeText(v){ return purposeList(v).join(PURPOSE_SEP); }
 var a = { eta:'', etaNote:'', dining:null, diets:[], noDiets:false, dietYes:false,
           dietNote:'', purpose:[], approach:'', wellness:null, wellDay:'',
           companion:'',
-          wellTime:'', note:'' };
+          wellTime:'', wellQty:1, wellDur:60, wellDur2:60, note:'' };
 
 function el(id){ return document.getElementById(id); }
 function dkey(d){
@@ -714,10 +719,59 @@ var WELL_TIMES = (function(){
   });
 })();
 
+/* The lengths, and what each costs. The list is a COPY of SPA_DURS in
+   nala-shared.js, forced like the times above it: staff code never reaches
+   a guest. Both pinned to tests/slots.json. Prices come from /spasettings,
+   the manager's numbers, public to read the way the menu is: a guest
+   deciding wants the cost in front of them. A price nobody has set shows
+   no number rather than $0, and the form works the same either way. */
+function spaDurOk(m){ return m === 60 || m === 90 || m === 120; }
+var WELL_DURS = [ { m:60, label:'1 hour' }, { m:90, label:'1.5 hours' },
+                  { m:120, label:'2 hours' } ];
+var SPA_PRICES = null;
+function durText(d){
+  var p = SPA_PRICES && SPA_PRICES['price' + d.m];
+  return d.label + (typeof p === 'number' && p > 0 ? ' \u00b7 $' + p : '');
+}
+function paintDurs(){
+  ['wDur', 'wDur2'].forEach(function(id, i){
+    var sel = el(id);
+    var want = i === 0 ? a.wellDur : a.wellDur2;
+    sel.innerHTML = '';
+    WELL_DURS.forEach(function(d){
+      var o = document.createElement('option');
+      o.value = String(d.m);
+      o.textContent = (id === 'wDur2' ? 'Second massage: ' : '') + durText(d);
+      sel.appendChild(o);
+    });
+    sel.value = String(want);
+  });
+  el('wDur2').style.display = a.wellQty === 2 ? '' : 'none';
+  var box = el('wQty'); box.innerHTML = '';
+  [1, 2].forEach(function(n){
+    var b = document.createElement('button');
+    b.className = 'chip' + (a.wellQty === n ? ' on' : '');
+    b.textContent = n === 1 ? 'One' : 'Two';
+    b.onclick = function(){ a.wellQty = n; paintDurs(); };
+    box.appendChild(b);
+  });
+}
+(function(){
+  /* The demo touches the database not at all - that is its whole warranty -
+     so it shows the lengths priceless, which is also what a live form does
+     until the manager sets numbers. */
+  if (DEMO) return;
+  fetch(DB + '/spasettings.json')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(p){ SPA_PRICES = p; paintDurs(); })
+    .catch(function(){});
+})();
+
 function paintWell(){
   el('wYes').className = 'opt' + (a.wellness === true  ? ' on' : '');
   el('wNo').className  = 'opt' + (a.wellness === false ? ' on' : '');
   el('wWrap').style.display = a.wellness === true ? '' : 'none';
+  paintDurs();
   var box = el('wDays'); box.innerHTML = '';
   stayDays().forEach(function(d){
     var b = document.createElement('button');
@@ -916,6 +970,8 @@ function collect(){
   a.etaNote  = el('etaNote').value.trim();
   a.dietNote = el('dietNote').value.trim();
   a.wellTime = el('wTime').value.trim();
+  a.wellDur = +el('wDur').value || 60;
+  a.wellDur2 = +el('wDur2').value || 60;
   a.companion = el('companion').value.trim();
   a.note     = el('note').value.trim();
 }
@@ -987,6 +1043,9 @@ function fullPayload(){
     wellness: a.wellness === null ? undefined : a.wellness,
     wellDay: a.wellness ? a.wellDay : (a.wellness === null ? undefined : ''),
     wellTime: a.wellness ? a.wellTime : (a.wellness === null ? undefined : ''),
+    wellQty: a.wellness ? a.wellQty : undefined,
+    wellDur: a.wellness ? a.wellDur : undefined,
+    wellDur2: (a.wellness && a.wellQty === 2) ? a.wellDur2 : undefined,
     note: a.note, companion: a.companion
   };
 }
@@ -1167,6 +1226,9 @@ function boot(){
     a.purpose = purposeList(p.purpose); a.approach = p.approach || '';
     a.wellness = (p.wellness === undefined) ? null : !!p.wellness;
     a.wellDay = p.wellDay || ''; a.wellTime = p.wellTime || '';
+    a.wellQty = p.wellQty === 2 ? 2 : 1;
+    a.wellDur = spaDurOk(p.wellDur) ? p.wellDur : 60;
+    a.wellDur2 = spaDurOk(p.wellDur2) ? p.wellDur2 : 60;
     if (a.wellTime && [].every.call(el('wTime').options,
         function(o){ return o.value !== a.wellTime; })){
       var lg = document.createElement('option');
