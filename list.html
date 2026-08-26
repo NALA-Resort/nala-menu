@@ -984,6 +984,15 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
         : (row.room ? '' : (phone || ''));
       var nameCell = name + (phone && !row.room ? '<span class="sub">'+phone+'</span>' : '');
 
+      /* The second guest, directly under the name they travel with, in the
+         same small grey line the externals use for a phone. Context, not a
+         second row: the sheet is read down by booking and the covers column
+         already counts them. Escaped, because it is typed by a guest or at
+         the desk and the cell is otherwise built by concatenation. */
+      var second = row.room
+        ? companionOf(PREARRIVAL_BY_VILLA[String(row.room)], g) : '';
+      if (second) nameCell += '<span class="sub">'+escText(second)+'</span>';
+
       var dinner, cls = '';
       var hits = (row.status === 'in') ? menuConflicts(MENU, g.diets) : [];
       if (row.status === 'in')       dinner = '<span class="yes">Yes</span>';

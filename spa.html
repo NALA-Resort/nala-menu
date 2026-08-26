@@ -58,6 +58,10 @@
   .card .mid { flex:1; min-width:0; }
   .card .nm { font-size:15px; }
   .card .st { font-size:11px; color:var(--mid); margin-top:2px; line-height:1.4; }
+  /* The second guest's line, under the name on tile and card alike. Always
+     the resting grey: it is who is coming, not a state, so it never takes
+     the band's colour the way .st does. */
+  .vrow .cmp, .card .cmp { font-size:11px; color:var(--mid); margin-top:1px; line-height:1.4; }
   .sub { font-size:11px; letter-spacing:.12em; text-transform:uppercase;
          color:var(--mid); margin:12px 0 6px; }
   .chips { display:flex; flex-wrap:wrap; gap:6px; }
@@ -191,6 +195,19 @@ function nameOf(id, rec){
   if (bk) return ((bk.first || '') + ' ' + (bk.last || '')).trim() || 'Guest';
   return (rec && rec.name) || 'Guest';
 }
+/* The small line under the name: the second guest, when anyone has named
+   one. companionOf in nala-shared.js holds the one precedence rule. */
+function withLine(id){
+  var bk = BOOKINGS[id];
+  var c = bk ? companionOf(bk.pre, bk) : '';
+  return c ? 'With ' + c : '';
+}
+/* Written with textContent by every caller, never into an HTML string: the
+   name is typed by a guest or at the desk. */
+function setCmp(el, id){
+  var cm = el.querySelector('.cmp'), w = withLine(id);
+  if (w) cm.textContent = w; else cm.remove();
+}
 function villaOf(id, day){
   var bk = BOOKINGS[id];
   if (!bk) return '';
@@ -238,7 +255,8 @@ function lineOf(rec, id){
     return shortDay(rec.day) + ' ' + slotLabel(rec.time) +
            (asRequested(rec) ? ' · as requested'
                              : ' · moved from ' + (rec.reqDay ? shortDay(rec.reqDay) : 'no day') +
-                               (rec.reqTime ? ', ' + rec.reqTime : ''));
+                               (rec.reqTime ? ', ' + rec.reqTime : '')) +
+           (rec.manual ? ' · approved at the desk' : '');
   if (rec.status === 'declined')
     return 'Declined' + (rec.note ? ' · ' + rec.note : '') +
            (rec.told ? ' · guest told' : ' · let the guest know');
@@ -286,9 +304,10 @@ function tile(it){
   el.dataset.tid = it.tid;
   el.dataset.status = rec.status;
   el.innerHTML = '<div class="v"></div>' +
-    '<div class="mid"><div class="nm"></div><div class="st"></div></div>';
+    '<div class="mid"><div class="nm"></div><div class="cmp"></div><div class="st"></div></div>';
   el.querySelector('.v').textContent = villaOf(it.id, dayOf(rec) || todayKey());
   el.querySelector('.nm').textContent = nameOf(it.id, rec);
+  setCmp(el, it.id);
   el.querySelector('.st').textContent = lineOf(rec, it.id);
   el.onclick = function(){
     OPEN = { id: it.id, tid: it.tid };
@@ -305,9 +324,10 @@ function greyTile(id, line, addable){
   el.dataset.booking = id;
   el.dataset.status = 'none';
   el.innerHTML = '<div class="v"></div>' +
-    '<div class="mid"><div class="nm"></div><div class="st"></div></div>';
+    '<div class="mid"><div class="nm"></div><div class="cmp"></div><div class="st"></div></div>';
   el.querySelector('.v').textContent = villaOf(id, todayKey()) || villaOf(id, dkey(new Date()));
   el.querySelector('.nm').textContent = nameOf(id, null);
+  setCmp(el, id);
   el.querySelector('.st').textContent = line;
   if (addable) el.onclick = function(){ OPEN = { id: id, tid: 'new' }; SEL = null; paint(); };
   else el.disabled = true;
@@ -350,9 +370,10 @@ function card(it){
   var head = document.createElement('div');
   head.className = 'head';
   head.innerHTML = '<div class="v"></div>' +
-    '<div class="mid"><div class="nm"></div><div class="st"></div></div>';
+    '<div class="mid"><div class="nm"></div><div class="cmp"></div><div class="st"></div></div>';
   head.querySelector('.v').textContent = villaOf(id, SEL.day || todayKey());
   head.querySelector('.nm').textContent = nameOf(id, rec);
+  setCmp(head, id);
   head.querySelector('.st').textContent = isNew
     ? 'A new treatment · staying ' + stayRange(BOOKINGS[id])
     : lineOf(rec, id);
@@ -477,11 +498,18 @@ function card(it){
       btn(changed ? 'Cancel' : 'Cancel booking', changed ? 'quiet' : 'solid',
           saveAs('declined'));
     } else {
-      /* requested: the masseuse's to answer, not the desk's. An edit to the
-         day or time re-asks with the new details. */
+      /* requested: normally the masseuse's to answer - but a verbal yes is
+         an answer too. Manually approve books the selection directly,
+         stamped as the desk's doing, for the time he agreed in person or
+         on the phone and was never going to tap himself. The ask path
+         stays for everything he has not agreed to. */
+      btn('Manually approve ' + when, 'solid',
+          saveAs('booked', { manual: true }));
       if (changed || rec.virtual)
-        btn('Ask for ' + when, 'solid', saveAs('requested', { req: true }));
-      hint = 'Waiting on the masseuse.';
+        btn('Ask for ' + when, 'quiet', saveAs('requested', { req: true }));
+      hint = 'Manually approve is only for a time the masseuse has already ' +
+             'agreed to out loud - it books without his tap and the tile ' +
+             'says the desk did it. Anything else waits on him.';
     }
   }
   el.appendChild(btns);
@@ -517,6 +545,8 @@ function save(it, status, opts){
   }
   var why = (opts.note !== undefined) ? opts.note : rec.note;
   if (status === 'declined' && why) body.note = why;
+  if (status === 'booked' && (opts.manual || rec.manual))
+    body.manual = rec.manual || new Date().toISOString();
   if (status === 'declined' && (opts.told || rec.told))
     body.told = rec.told || new Date().toISOString();
   var err = document.getElementById('errBar');
@@ -688,9 +718,13 @@ function load(){
         var bk = BOOKINGS[s.id];
         if (!bk){
           bk = BOOKINGS[s.id] = { id: s.id, first: s.first || '', last: s.last || '',
+                                  companion: s.companion || '',
                                   arrive: s.arrive, depart: s.depart,
                                   villaByDate: {}, pre: null };
         }
+        /* Nights synced before the Worker carried the companion lack it;
+           any later night that has it fills the gap. */
+        if (!bk.companion && s.companion) bk.companion = s.companion;
         bk.villaByDate[x.d] = v;
         if (!bk.villa) bk.villa = v;
       });

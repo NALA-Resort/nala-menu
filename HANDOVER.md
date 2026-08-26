@@ -364,14 +364,21 @@ four fields of the confirm step and the two save checks that stand aside under
 carries both states under `DIET_HIDDEN`. A standing dietary from pre-arrival
 still rides on the answer and still flags a clash to the kitchen either way.
 
-**Companions on the reservations sheet.** The sheet prints one name per villa
-and never printed the companion. The owner reported "only companion zero
-prints", which does not match anything in the sheet, so the fault is not
-established: either the sheet simply never had the field, or `companionName()`
-in the Worker picks the wrong one. It returns the first companion who is not the
-booker, deliberately. **Settle first whether a villa can hold more than one
-companion**, because the field is a single value everywhere and printing two
-means changing the shape of the record.
+**Companions on the reservations sheet.** Settled on 26 Aug, in the direction
+of showing the field: the fault was that the boards never had it. The Worker
+had written `companion` onto every night since 19 Aug and `mewsRecord` in
+`nala-shared.js` dropped it on read, so no surface could show a name the Zap
+delivered - which is what "only companion zero prints" was: the reservation's
+own guest printing, the companion never. The second guest now prints under
+the primary on the Reservations Sheet and in the small print on Reservations,
+Spa, the desk summary and the registration card - one reading, `companionOf`,
+prearrival first with the Mews copy behind it, the order the desk already
+used. Deliberately NOT on the dinner invitations or the pre-arrival SMS page:
+those address the booker. Still open, and still the owner's: **whether a villa
+can hold more than one companion.** The field stays a single value everywhere,
+and `companionName()` in the Worker still returns the first companion who is
+not the booker; printing two means changing the shape of the record. Item 8
+above (confirm the field against a live Zap run) also stands.
 
 **A party in two villas loses the higher one's dinner.** `dinnerElsewhere` drops
 a cell when the booking id appears under a different villa, which is right for a

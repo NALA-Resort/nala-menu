@@ -1070,8 +1070,13 @@ function render(){
         var dline = (od.diets && od.diets.length)
           ? '<div class="row-sub">' + dietHTML(od.diets) +
             (od.dnote ? ' \u00b7 ' + od.dnote : '') + '</div>' : '';
+        /* The awaiting stub carries the companion too: a villa that has not
+           answered tonight is still a named party, and this board is where
+           reception looks a booking up mid-service. */
+        var second = companionOf(PREARRIVAL_BY_VILLA[String(r.room)], kn);
         st.innerHTML = '<div><div class="row-name"><span class="rm">'+r.room+'</span>'+
           (kn.name ? '  '+kn.name : '')+'</div>'+
+          (second ? '<div class="row-sub">With '+esc(second)+'</div>' : '')+
           '<div class="row-sub">Awaiting reply</div>'+dline+'</div>';
         host.appendChild(st);
         return;
@@ -1094,6 +1099,12 @@ function render(){
     if (g.premenu) title += '<span class="tag">Pre-menu</span>';
 
     var sub = [];
+    /* The second guest, in the small print under the name. The board is
+       worked by name, and the person beside the booker is part of who the
+       table is. One shared reading - see companionOf in nala-shared.js. */
+    var second = r.room
+      ? companionOf(PREARRIVAL_BY_VILLA[String(r.room)], known) : '';
+    if (second) sub.push('With ' + esc(second));
     var dietLine = '';
     /* The person's dietaries, wherever they were typed. This block used to
        show tonight's answer only, on the old rule that a carried-over dietary

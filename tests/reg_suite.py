@@ -36,9 +36,12 @@ STAFF = {"staff@x": {"name":"Admin","role":"admin"},
          "housekeeping@x": {"name":"HK","role":"housekeeping"}}
 
 STAYS = {
+  # b4's Mews companion is the decoy the guest's typed name must beat; b9's
+  # is a name only Mews knows, which must still print rather than a blank rule.
   "4":  {"id":"b4","first":"Robyn","last":"Williams","arrive":today,"depart":plus(4),
-         "adults":2,"number":1159},
-  "9":  {"id":"b9","first":"Konstantinos","last":"Papadopoulos","arrive":today,"depart":plus(2),"adults":4},
+         "adults":2,"number":1159,"companion":"Wrong Name"},
+  "9":  {"id":"b9","first":"Konstantinos","last":"Papadopoulos","arrive":today,"depart":plus(2),"adults":4,
+         "companion":"Eleni Papadopoulou"},
   "2":  {"id":"b2","first":"James","last":"Fisher","arrive":today,"depart":plus(6),"adults":2},
   # in house, arrived two days ago. Must not get a card this morning.
   "3":  {"id":"b3","first":"Midstay","last":"Guest","arrive":plus(-2),"depart":plus(2),"adults":2},
@@ -47,6 +50,7 @@ STAYS = {
 
 PRE = {
   "b4": {"at":"2026-08-16T10:00:00Z","arriveSlot":"16","dining":True,"pax":2,
+         "companion":"Imogen Clarke",
          "diets":["Nut allergy"],"dnote":"the daughter, severe",
          "purpose":["A celebration"],"approach":"most","occasion":"anniversary",
          "wellness":True,"wellDay":plus(1),"wellTime":"late morning",
@@ -134,6 +138,17 @@ with sync_playwright() as p:
        "Before 2pm" in c9 and "flight lands 11am" in c9)
     ck("no allergies is printed as an answer, not left blank",
        "None to declare" in c9)
+
+    # ── the second guest ─────────────────────────────────────────
+    # .lbl is uppercased by CSS, so innerText comes back shouting.
+    ck("the second guest prints, named from the form",
+       "SECOND GUEST" in c4.upper() and "Imogen Clarke" in c4)
+    ck("and the name the guest typed outranks the Mews copy",
+       "Wrong Name" not in c4)
+    ck("a companion only Mews knows still prints, not a blank rule",
+       "Eleni Papadopoulou" in c9)
+    ck("a booking of two with nobody named keeps the rule to write on",
+       "SECOND GUEST" in card("2").upper())
 
     # A guest who sent nothing. This is the case the card exists for.
     #

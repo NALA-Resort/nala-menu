@@ -70,6 +70,7 @@ PRE = {
   # filled in from the guest's phone, not yet confirmed at the desk
   "b4":  {"at":"2026-08-16T10:00:00Z","dining":True,"pax":2,
           "diets":["Nut allergy"],"dnote":"the daughter, severe",
+          "companion":"Imogen Clarke",
           "arriveSlot":"16","arriveApproved":15,"purpose":["A celebration"],"approach":"most",
           "occasion":"anniversary","wellness":True,"wellDay":plus(1),"wellTime":"late morning",
           "note":"quiet villa please"},
@@ -104,8 +105,10 @@ TAGS = {"main": ["Nut allergy"]}
 DINNER = {}
 
 # The booking as Mews states it. Its villa is a single value, so it settles a
-# disagreement with /stays.
-PMS = {}
+# disagreement with /stays. b4's companion is the decoy the guest's own typed
+# name must beat; b9's is a name only Mews knows, which must still read back.
+PMS = {"b4": {"villa": "4", "companion": "Wrong Name"},
+       "b9": {"villa": "9", "companion": "Eleni Papadopoulou"}}
 
 WRITES = []
 FIXES = {}   # bookingId -> the /phonefix record, persisted across the stub
@@ -347,6 +350,11 @@ with sync_playwright() as p:
        ["Interested" in l and "late morning" in l for l in sumtxt.split("\n")].count(True) == 1)
     ck("dining approach, in words rather than 'most'",
        "Dining in most nights" in sumtxt)
+    # .sum-l is uppercased by CSS, so innerText comes back shouting.
+    ck("the second guest, under the name on the row above",
+       "SECOND GUEST" in sumtxt and "Imogen Clarke" in sumtxt)
+    ck("and the name the guest typed outranks the Mews copy",
+       "Wrong Name" not in sumtxt)
     ck("and three ways out: edit, confirm, or confirm and check in", pg.evaluate(
        "()=>[...document.querySelectorAll('.sum-btns button')].map(b=>b.dataset.act).join()")
        == "edit,confirm,checkin")
@@ -356,6 +364,13 @@ with sync_playwright() as p:
     ck("tapping the same row again closes it",
        (pg.locator('.arr[data-villa="9"]').click(), pg.wait_for_timeout(300),
         pg.evaluate("()=>document.querySelectorAll('.sum').length"))[2] == 0)
+
+    # A companion only Mews knows: nobody typed it here, and reception still
+    # has to greet both people.
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    ck("a companion only Mews knows reads back at the desk",
+       "Eleni Papadopoulou" in pg.locator(".sum").inner_text())
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
 
     # ── the sheet is edit, not create ───────────────────────────
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)

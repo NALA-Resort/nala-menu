@@ -568,6 +568,12 @@ cannotPatch('but not something the length of a paragraph', SYNC,
        { status:'declined', reqDay:'2026-09-11', reqTime:'afternoon',
          name:'Robyn Williams', note:'away until Monday', source:'prearrival',
          by:'Masseuse', at:NOW }).allowed);
+  ck('the desk books a verbal yes with the manual stamp',
+     as2('st@x').write('/spa/b-1001/t1',
+       Object.assign({}, T, {manual:NOW})).allowed);
+  ck('a manual stamp that is not a string is refused',
+     !as2('st@x').write('/spa/b-1001/t1',
+       Object.assign({}, T, {manual:true})).allowed);
   ck('and marks a declined guest as told',
      as2('ms@x').write('/spa/b-1001/t1',
        { status:'declined', reqDay:'2026-09-11', reqTime:'2:00 pm',

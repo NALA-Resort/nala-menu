@@ -551,6 +551,9 @@
           "told": {
             ".validate": "newData.isString() && newData.val().length <= 40"
           },
+          "manual": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
           "by": {
             ".validate": "newData.isString() && newData.val().length <= 120"
           },

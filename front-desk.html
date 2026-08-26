@@ -553,6 +553,12 @@ function sumRow(label, value, empty){
 function summaryHTML(r){
   var a = answersOf(r), h = '';
 
+  /* First, directly under the name on the row above, because it is part of
+     who is arriving rather than an answer they gave. Only when somebody has
+     named one: an empty line here would read as a question for the guest,
+     and the editor already asks it. */
+  if (a.companion) h += sumRow('Second guest', esc(a.companion));
+
   h += sumRow('Dinner', a.dining === null ? '' :
         (a.dining ? 'Dining \u00b7 ' + a.pax +
           (a.pax === 1 ? ' guest' : ' guests') : 'Not dining'));
@@ -890,8 +896,10 @@ function answersOf(r){
     noDiets:  haveCell ? !!c.noDiets : !!p.noDiets,
     dnote:    (haveCell ? c.dnote : p.dnote) || '',
     /* The desk shows what the guest typed, falling back to what Mews holds:
-       a name entered at booking is still the answer to the same question. */
-    companion: p.companion || (r.pms && r.pms.companion) || '',
+       a name entered at booking is still the answer to the same question.
+       That order now lives in companionOf, in nala-shared.js, because every
+       board reads it and two readings of one fact is how they disagree. */
+    companion: companionOf(p, r.pms),
     arriveSlot: p.arriveSlot || '',
     arriveNote: p.arriveNote || '',
     /* Reception's approved hour sits BESIDE the guest's slot, never in it:
@@ -937,10 +945,12 @@ function openGuest(r){
        form, and no way to correct one who rang ahead to say they were running
        late. Same slots, same words, so reception and guest are answering the
        same question. */
-    /* Who else is coming. Only for a booking of more than one, and the desk
+    /* Who else is coming. For a booking of more than one, and the desk
        always gets the field even when Mews knows the name, because reception
-       is the one who corrects it. */
-    (Number(r.stay.adults) >= 2
+       is the one who corrects it. Also whenever a name is already held: a
+       booking Mews says is one adult can still carry a companion, and a name
+       the desk cannot see is a name the desk cannot fix. */
+    (Number(r.stay.adults) >= 2 || a.companion
       ? '<div class="sheet-label">Guest travelling with them</div>' +
         '<input class="txt" id="fCompanion" type="text" placeholder="Their name" autocomplete="off">'
       : '') +
