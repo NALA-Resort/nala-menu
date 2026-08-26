@@ -1503,7 +1503,7 @@ with sync_playwright() as p:
     r.evaluate("()=>document.getElementById('oSave').click()")
     r.wait_for_timeout(500)
     wold = [json.loads(x["b"]) for x in WRITES[before:]
-            if "room-1" in x["u"] and x["b"]]
+            if re.search(r"/dinner/"+today+r"/1\.json", x["u"]) and x["b"]]
     ck("and the next save writes the new name back, migrating the record",
        bool(wold) and "Gluten" in wold[-1].get("diets", [])
        and "Gluten free" not in wold[-1].get("diets", []))
