@@ -1648,48 +1648,139 @@ function ensureNotifySettings(role){
 
 
 /* ── the staff menu ──────────────────────────────────────────────────────
-   Which board each link needs, in one place. This lived in five pages as
-   five copies, and by 18 Aug they disagreed: list.html was missing
-   front-desk, registration and pages, so it offered all three to roles that
-   cannot open them, and housekeeping.html and stats.html filtered nothing at
-   all and offered Settings to everybody.
+   ONE list. Every page carries an empty <div id="navDrop"> and buildNav
+   below writes the menu into it, so a link, a label or a group changes
+   here and nowhere else. Until 26 Aug the markup was pasted into every
+   page - the 28-edit story CLAUDE.md opens with - and adding a page meant
+   editing them all and missing one.
 
-   Offering a link that lands on "no access" is a door to nowhere. Worse, it
-   reads as a fault in the app rather than as a permission working.
+   The shape is the owner's, 26 Aug: the boards you work on as plain links,
+   then three collapsible submenus - Print, SMS, Settings - where the old
+   menu had every page flat under two headings. Seventeen rows was too many
+   to scan; nine is not. The SMS pages left the top level the same day.
 
-   A page needs no filter code of its own now: this runs itself once a role is
-   known, and again if the menu is built later. Sign out is never filtered.  */
-var NAV_NEEDS = {
-  'tally.html':        'resBoard',
-  'front-desk.html':   'editBookings',
-  'invitations.html':  'editBookings',
-  /* Missing from the day it shipped, found twice on 25 Aug - once when the
-     spa role arrived with a menu that should hold nothing and held this,
-     once from the SMS side - the same way publish.html and tag.html were
-     once missing: an unlisted link is shown to every role, and this one
-     bounces anyone without editBookings. Same permission as the page. */
-  'arrivals-sms.html': 'editBookings',
-  'list.html':         'resSheet',
-  /* Both were missing until 22 Aug, so every login saw them: a housekeeper's
-     menu offered to publish the dinner menu, and tapping it bounced her back
-     to her own board. An unlisted link is left alone by the filter on purpose,
-     which is right for a link nobody has thought about yet and wrong for two
-     that had simply been forgotten. */
-  'publish.html':      'publishMenu',
-  'tag.html':          'publishMenu',
-  'cleaners.html':     'cleansBoard',
-  'housekeeping.html': 'cleansBoard',
-  'spa.html':          'spaBoard',
-  'registration.html': 'editBookings',
-  'menu-print.html':   'resSheet',
-  'past-menus.html':   'resBoard',
-  'staff.html':        'manageStaff',
-  /* Admin only, like the two beside it: the flags an admin defines here are
-     ticked on the front desk sheet by admins alone, so offering the list to
-     anyone else is a door to nowhere. */
-  'flags.html':        'manageStaff',
-  'pages.html':        'manageStaff'
-};
+   `need` is the permission behind each link, the same keys can() answers.
+   A link with the wrong key here is offered to roles that cannot open it -
+   publish.html and tag.html shipped unlisted and a housekeeper's menu
+   offered to publish the dinner menu - and note the keys the suites once
+   guarded by name: the sheets need resSheet and cleansBoard, not the
+   resBoard/cleanBoard you would guess.
+
+   Each page omits its own link; buildNav reads location for that. Sign out
+   is built last, never filtered, and never inside a group: every login has
+   to be able to get out. tests/nav_canon.json is the suites' copy of this
+   shape - change the menu there too, or the suites will name the drift.  */
+var NAV = [
+  { href:'front-desk.html',   label:'Front Desk',   need:'editBookings' },
+  { href:'tally.html',        label:'Reservations', need:'resBoard'     },
+  { href:'cleaners.html',     label:'Cleans',       need:'cleansBoard'  },
+  { href:'spa.html',          label:'Spa',          need:'spaBoard'     },
+  { href:'publish.html',      label:'Publish Menu', need:'publishMenu'  },
+  { group:'Print', items:[
+      { href:'list.html',         label:'FOH Sheet',   need:'resSheet'     },
+      { href:'housekeeping.html', label:'Clean Sheet', need:'cleansBoard'  },
+      { href:'registration.html', label:'Arrivals',    need:'editBookings' },
+      { href:'menu-print.html',   label:'Menu',        need:'resSheet'     },
+      { href:'past-menus.html',   label:'Past Menus',  need:'resBoard'     } ] },
+  { group:'SMS', items:[
+      { href:'invitations.html',  label:'Invitations', need:'editBookings' },
+      /* "SMS" is the heading, so the row does not repeat it - the Print
+         group's "Menu" pattern. */
+      { href:'arrivals-sms.html', label:'Pre-arrival', need:'editBookings' } ] },
+  { group:'Settings', items:[
+      { href:'staff.html', label:'General', need:'manageStaff' },
+      { href:'tag.html',   label:'Dietary', need:'publishMenu' },
+      /* Admin only, like General and Pages: the flags an admin defines here
+         are ticked on the front desk sheet by admins alone. */
+      { href:'flags.html', label:'Flags',   need:'manageStaff' },
+      { href:'pages.html', label:'Pages',   need:'manageStaff' },
+      /* A switch, not a destination: wireNotify below owns it. No need key,
+         so the filter leaves it alone - a housekeeper subscribes to her own
+         alerts. */
+      { action:'navNotify', label:'Notifications' } ] }
+];
+
+/* Which permission opens each link, derived from NAV so the two cannot
+   disagree. Kept under its old name because the filter and the suites ask
+   this question by it. */
+var NAV_NEEDS = (function(){
+  var out = {};
+  NAV.forEach(function(e){
+    (e.items || [e]).forEach(function(i){ if (i.href) out[i.href] = i.need; });
+  });
+  return out;
+})();
+
+/* Writes the menu into #navDrop. Runs at load on every page that has one;
+   pages built without a menu (the printed sheets, the guest pages) simply
+   have no div and nothing happens. */
+var NAV_CHEV = '<svg class="navchev" viewBox="0 0 12 12" width="11" height="11" ' +
+  'aria-hidden="true"><path d="M2.5 4.5 L6 8 L9.5 4.5" fill="none" ' +
+  'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" ' +
+  'stroke-linejoin="round"/></svg>';
+
+function buildNav(){
+  var drop = document.getElementById('navDrop');
+  if (!drop || drop.getAttribute('data-built')) return;
+  drop.setAttribute('data-built', '1');
+  var here = location.pathname.split('/').pop() || 'index.html';
+  function makeLink(i){
+    var a = document.createElement('a');
+    if (i.action){ a.href = '#'; a.className = 'navaction'; a.id = i.action; }
+    else a.href = i.href;
+    a.textContent = i.label;
+    return a;
+  }
+  NAV.forEach(function(e){
+    if (!e.group){
+      if (e.href !== here) drop.appendChild(makeLink(e));
+      return;
+    }
+    var items = e.items.filter(function(i){ return i.action || i.href !== here; });
+    if (!items.length) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'navgroup';
+    var head = document.createElement('button');
+    head.type = 'button';
+    head.className = 'navgrp';
+    head.setAttribute('aria-expanded', 'false');
+    head.innerHTML = '<span>' + e.group + '</span>' + NAV_CHEV;
+    /* stopPropagation, because every page closes the menu on a document
+       click: opening a submenu must not be the tap that shuts the menu. */
+    head.onclick = function(ev){
+      ev.stopPropagation();
+      var open = wrap.className.indexOf('open') > -1;
+      wrap.className = open ? 'navgroup' : 'navgroup open';
+      head.setAttribute('aria-expanded', open ? 'false' : 'true');
+    };
+    var sub = document.createElement('div');
+    sub.className = 'navsub';
+    items.forEach(function(i){ sub.appendChild(makeLink(i)); });
+    wrap.appendChild(head);
+    wrap.appendChild(sub);
+    drop.appendChild(wrap);
+  });
+  /* Wired here, not in the pages: sixteen copies of this handler lived in
+     the pages until 26 Aug, in two flavours - only the Cleans board and
+     Settings remembered to unsubscribe push first. One copy now, the
+     careful flavour, for every page. */
+  var so = document.createElement('a');
+  so.href = '#'; so.className = 'signout'; so.id = 'navSignout';
+  so.textContent = 'Logout';
+  so.onclick = function(ev){
+    ev.preventDefault();
+    var u = window.NALA_USER || null;
+    try { u = firebase.auth().currentUser || u; } catch (ex){}
+    var go = function(){ if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+    /* Unsubscribe first, while the token is still valid enough to delete
+       the record. If it fails, sign out anyway: being stuck signed in
+       would be the worse outcome. */
+    if (u && typeof window.pushOff === 'function') window.pushOff(u, go);
+    else go();
+  };
+  drop.appendChild(so);
+}
+buildNav();
 
 function navFilterShared(role){
   var drop = document.getElementById('navDrop');
@@ -1829,25 +1920,20 @@ function navActionBadges(role){
   });
 }
 
-/* A heading with nothing under it. The menu is grouped now, and a role that
-   may open none of the printed sheets would otherwise get the word Print
-   sitting above a rule with nothing beneath it: a promise of something that
-   is not there, which reads as a page that failed to load rather than as a
-   thing this login cannot do. */
+/* A submenu with nothing in it. A role that may open none of the printed
+   sheets would otherwise get a Print submenu that opens onto nothing: a
+   promise of something that is not there, which reads as a page that failed
+   to load rather than as a thing this login cannot do. The whole group goes,
+   header and all. Notifications carries no permission, so Settings stands
+   for every login: a housekeeper subscribes to her own alerts. */
 function hideEmptyGroups(drop){
-  var kids = drop.children, i, j, any;
-  for (i = 0; i < kids.length; i++){
-    if (kids[i].className.indexOf('navgrp') < 0) continue;
-    any = false;
-    for (j = i + 1; j < kids.length; j++){
-      if (kids[j].className.indexOf('navgrp') > -1) break;
-      /* Sign out sits under the last heading with no heading of its own and
-         is never filtered, so counting it made the last group look occupied
-         however empty it was. */
-      if (kids[j].className.indexOf('signout') > -1) continue;
-      if (kids[j].tagName === 'A' && kids[j].style.display !== 'none'){ any = true; break; }
+  var groups = drop.querySelectorAll('.navgroup');
+  for (var i = 0; i < groups.length; i++){
+    var links = groups[i].querySelectorAll('a'), any = false;
+    for (var j = 0; j < links.length; j++){
+      if (links[j].style.display !== 'none'){ any = true; break; }
     }
-    kids[i].style.display = any ? '' : 'none';
+    groups[i].style.display = any ? '' : 'none';
   }
 }
 window.NALA_NAVFILTER = navFilterShared;

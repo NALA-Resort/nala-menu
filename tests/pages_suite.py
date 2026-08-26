@@ -97,9 +97,12 @@ with sync_playwright() as p:
     #  way to anywhere. Pages is in every OTHER page's hamburger, which is what
     #  was actually asked for, and that is checked from a page that is not this
     #  one.
-    CANON = ["front-desk.html", "tally.html", "invitations.html", "arrivals-sms.html", "cleaners.html", "spa.html", "publish.html",
-             "list.html", "housekeeping.html", "registration.html", "menu-print.html", "past-menus.html",
-             "staff.html", "tag.html", "flags.html", "pages.html"]
+    #  Read from tests/nav_canon.json, the one table of the menu's shape,
+    #  rather than restated here: four suites each holding the order is why
+    #  adding a page meant editing them all.
+    _nc = json.load(open("tests/nav_canon.json"))
+    CANON = [h for h, _t in _nc["top"]] + \
+            [h for _g, items in _nc["groups"] for h, _t in items]
     got = pg.evaluate("""()=>[...document.querySelectorAll('.navdrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     ck("the map's own hamburger lists every other page, in the one order",
@@ -145,7 +148,10 @@ with sync_playwright() as p:
         if f.startswith("demo-"):
             continue                      # snapshots, rebuilt from the real pages
         src = open(f, encoding='utf-8').read()
-        if "navFilter" not in src:
+        #  Guard on the exact string the parser below anchors to: a page that
+        #  merely MENTIONS navFilterShared in a comment is not an offender,
+        #  and the loose guard crashed on the first one that did.
+        if "function navFilter" not in src:
             continue
         #  The function itself, brace matched, rather than a window of
         #  characters after it: an 800 character window swept up the page's own

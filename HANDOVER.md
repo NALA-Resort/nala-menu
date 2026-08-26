@@ -234,12 +234,17 @@ welcome (`welcome.html`). All take `?b=<booking id>`.
 
 **Tools:** Diagnostics (`debug.html`), site map (`pages.html`).
 
-**The menu on every staff page is one list** in one order, minus the page you
-are on, grouped: the screens you work on, then Print, then Settings, then Sign
-out. `NAV_NEEDS` in `nala-shared.js` maps each link to the permission that opens
-it. **Add a page and add it there**, or it appears in everyone's menu. Six pages
-once kept private copies of that filter and hid whatever they did not
-recognise; `pages_suite` now fails if any page keeps one.
+**The menu on every staff page is generated** — `buildNav` in
+`nala-shared.js` draws it from the one `NAV` array, minus the page you are
+on: the boards as plain links, then the Print, SMS and Settings submenus,
+which fold open, then Logout. Redesigned 26 Aug to the owner's sketch —
+non-caps, standard font, submenus instead of dividers, the SMS pages off
+the top level. Each entry carries the permission that opens its page
+(`NAV_NEEDS` is derived from it). **Add a page and add it there**, and to
+`tests/nav_canon.json`, which is the shape the suites assert — or it has no
+link anywhere. Six pages once kept private copies of the role filter and
+hid whatever they did not recognise; `pages_suite` still fails if any page
+keeps one.
 
 ---
 

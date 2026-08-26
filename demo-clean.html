@@ -46,23 +46,34 @@ body.tier-app, body.tier-print { touch-action:manipulation; }
            -webkit-tap-highlight-color:transparent; }
 .navbtn span { display:block; width:16px; height:1.6px; background:var(--ctl-ink); }
 .navdrop { display:none; position:absolute; right:0; top:42px; background:var(--ctl-bg);
-           border:1px solid var(--ctl-bdr); border-radius:9px; min-width:132px;
+           border:1px solid var(--ctl-bdr); border-radius:9px; min-width:176px;
            box-shadow:0 4px 14px rgba(0,0,0,.09); padding:5px 0; }
 .navdrop.open { display:block; }
-.navdrop a { display:block; padding:12px 18px; font-size:10px; letter-spacing:.14em;
-             text-transform:uppercase; color:var(--ctl-ink); text-decoration:none;
-             white-space:nowrap; }
+/* Menu rows read as ordinary text - the owner's word, 26 Aug: no caps, no
+   tracking, the standard UI font at a size a thumb can hit. One padding and
+   line-height shared with .navgrp, so links and submenu headers sit as one
+   list. */
+.navdrop a { display:block; padding:10px 18px; font-size:14px; line-height:18px;
+             color:var(--ctl-ink); text-decoration:none; white-space:nowrap; }
 /* Signing out is an action, not a destination, so it sits below a rule rather
    than reading as one more page in the list. It is never filtered by role:
    every login has to be able to get out.                                  */
-/* Group headings in the menu. Light grey and small on purpose: they are
-   signposts and not choices, and a heading that looks tappable is a heading
-   somebody taps. The rule above each one does the separating; the word only
-   says what the separation is for. */
-.navgrp { padding:12px 18px 5px; font-size:8px; letter-spacing:.2em;
-          text-transform:uppercase; color:#B0B0A8; border-top:1px solid var(--ctl-bdr);
-          margin-top:5px; }
-.navdrop > .navgrp:first-child { border-top:0; margin-top:0; padding-top:6px; }
+/* Submenus instead of dividers, 26 Aug: seventeen rows under two grey
+   headings was too many to scan for one page. Print, SMS and Settings fold
+   instead. The header is a real button dressed as a row - it IS a choice
+   now, unlike the old signpost - and the chevron says so, pointing down
+   while there is more, rolling over once it is out. */
+.navgrp { display:flex; align-items:center; justify-content:space-between; gap:14px;
+          width:100%; padding:10px 18px; font-size:14px; line-height:18px;
+          font-family:inherit; text-align:left; color:var(--ctl-ink);
+          background:none; border:0; border-top:1px solid var(--ctl-bdr);
+          cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.navchev { flex:0 0 auto; color:var(--mid); transition:transform .15s ease; }
+.navgroup.open .navchev { transform:rotate(180deg); }
+.navsub { display:none; }
+.navgroup.open .navsub { display:block; }
+/* Indented under their header, so an open submenu still reads as one menu. */
+.navsub a { padding-left:32px; }
 .navdrop a.navaction { display:flex; align-items:center; justify-content:space-between;
                       gap:14px; color:var(--ctl-ink); }
 /* The mark carries the state, so it has to be legible at a glance and never
@@ -73,8 +84,7 @@ body.tier-app, body.tier-print { touch-action:manipulation; }
 .navmark.off { color:#B0B0A8; }
 /* Blocked and unavailable get words, because no mark can say "you cannot fix
    this from here". */
-.navnote { flex:0 0 auto; font-size:8px; letter-spacing:.1em; color:#B0B0A8;
-           text-transform:none; }
+.navnote { flex:0 0 auto; font-size:11px; color:#B0B0A8; }
 .navdrop a.signout { border-top:1px solid var(--ctl-bdr); margin-top:5px;
                      padding-top:13px; color:var(--mid); }
 /* ── the action icon ─────────────────────────────────────────
@@ -244,7 +254,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="demo-tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="demo-cleans.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="demo-reservations.html">FOH Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"></div>
   </div>
 </div>
 
@@ -365,9 +375,6 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
     });
   })();
 
-  var so=document.getElementById('navSignout');
-  if (so) so.onclick=function(e){ e.preventDefault();
-    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
 })();
 </script>
 <div class="stats">
@@ -1169,6 +1176,43 @@ function vacantIsStale(m, known){
             m.pmsUpdated !== known.pmsUpdated);
 }
 
+/* ── booking flags ─────────────────────────────────────────────
+   Short facts pinned under a guest's name: VIP, Travel agent, Breakfast
+   included - whatever the admin defines on the Flags settings page
+   (flags.html, writing the /flags list, the dietaries shape). The desk
+   ticks them per booking, admin only, and the ticks live at
+   /bookflags/<booking id> as a plain list of names. The Service Sheet
+   prints each as a pill under the guest name.
+
+   One flag sets itself. The Worker carries the Mews rate name into
+   pms.rate, and a booking whose rate is Luxury Escapes wears that pill
+   with nobody ticking anything. Only that rate - the owner's ruling,
+   26 Aug: every other rate name stays off the paper. Matched on the
+   front of the string, case and spacing aside, because live rate names
+   usually carry suffixes ("Luxury Escapes AU") and none has been seen
+   from here yet - the companion field's standing caution. */
+var RATE_FLAG = { label: 'Luxury Escapes', match: /^\s*luxury\s*escapes/i };
+
+function rateFlagLabel(pms){
+  return (pms && typeof pms.rate === 'string' && RATE_FLAG.match.test(pms.rate))
+    ? RATE_FLAG.label : null;
+}
+
+/* Every pill a booking wears: the ticked names in their stored order, the
+   rate's own last, duplicates folded case-blind so an admin who also made
+   a "Luxury Escapes" flag does not print it twice. */
+function bookingFlagLabels(pms, rec){
+  var out = [], seen = {};
+  (((rec || {}).flags) || []).forEach(function(t){
+    t = String(t == null ? '' : t).trim();
+    if (!t || seen[t.toLowerCase()]) return;
+    seen[t.toLowerCase()] = true; out.push(t);
+  });
+  var r = rateFlagLabel(pms);
+  if (r && !seen[r.toLowerCase()]) out.push(r);
+  return out;
+}
+
 /* one room, one record: staff override beats the guest's own answer,
    whoever opened the link fills the gaps.
 
@@ -1697,8 +1741,8 @@ function can(role, what){
    board, which they may not see, so their first screen was a refusal. A role
    that cannot see the page it arrived on is a routing problem, not an access
    one: send them to their own board instead of telling them off.        */
-var ROLE_HOME = { admin:'tally.html', manager:'tally.html', chef:'tally.html',
-                  waiter:'tally.html', housekeeping:'cleaners.html',
+var ROLE_HOME = { admin:'demo-tally.html', manager:'demo-tally.html', chef:'demo-tally.html',
+                  waiter:'demo-tally.html', housekeeping:'demo-cleans.html',
                   spa:'spa.html' };
 function homeFor(role){ return ROLE_HOME[normaliseRole(role)] || null; }
 
@@ -2020,44 +2064,139 @@ function ensureNotifySettings(role){
 
 
 /* ── the staff menu ──────────────────────────────────────────────────────
-   Which board each link needs, in one place. This lived in five pages as
-   five copies, and by 18 Aug they disagreed: list.html was missing
-   front-desk, registration and pages, so it offered all three to roles that
-   cannot open them, and housekeeping.html and stats.html filtered nothing at
-   all and offered Settings to everybody.
+   ONE list. Every page carries an empty <div id="navDrop"> and buildNav
+   below writes the menu into it, so a link, a label or a group changes
+   here and nowhere else. Until 26 Aug the markup was pasted into every
+   page - the 28-edit story CLAUDE.md opens with - and adding a page meant
+   editing them all and missing one.
 
-   Offering a link that lands on "no access" is a door to nowhere. Worse, it
-   reads as a fault in the app rather than as a permission working.
+   The shape is the owner's, 26 Aug: the boards you work on as plain links,
+   then three collapsible submenus - Print, SMS, Settings - where the old
+   menu had every page flat under two headings. Seventeen rows was too many
+   to scan; nine is not. The SMS pages left the top level the same day.
 
-   A page needs no filter code of its own now: this runs itself once a role is
-   known, and again if the menu is built later. Sign out is never filtered.  */
-var NAV_NEEDS = {
-  'tally.html':        'resBoard',
-  'front-desk.html':   'editBookings',
-  'invitations.html':  'editBookings',
-  /* Missing from the day it shipped, found twice on 25 Aug - once when the
-     spa role arrived with a menu that should hold nothing and held this,
-     once from the SMS side - the same way publish.html and tag.html were
-     once missing: an unlisted link is shown to every role, and this one
-     bounces anyone without editBookings. Same permission as the page. */
-  'arrivals-sms.html': 'editBookings',
-  'list.html':         'resSheet',
-  /* Both were missing until 22 Aug, so every login saw them: a housekeeper's
-     menu offered to publish the dinner menu, and tapping it bounced her back
-     to her own board. An unlisted link is left alone by the filter on purpose,
-     which is right for a link nobody has thought about yet and wrong for two
-     that had simply been forgotten. */
-  'publish.html':      'publishMenu',
-  'tag.html':          'publishMenu',
-  'cleaners.html':     'cleansBoard',
-  'housekeeping.html': 'cleansBoard',
-  'spa.html':          'spaBoard',
-  'registration.html': 'editBookings',
-  'menu-print.html':   'resSheet',
-  'past-menus.html':   'resBoard',
-  'staff.html':        'manageStaff',
-  'pages.html':        'manageStaff'
-};
+   `need` is the permission behind each link, the same keys can() answers.
+   A link with the wrong key here is offered to roles that cannot open it -
+   publish.html and tag.html shipped unlisted and a housekeeper's menu
+   offered to publish the dinner menu - and note the keys the suites once
+   guarded by name: the sheets need resSheet and cleansBoard, not the
+   resBoard/cleanBoard you would guess.
+
+   Each page omits its own link; buildNav reads location for that. Sign out
+   is built last, never filtered, and never inside a group: every login has
+   to be able to get out. tests/nav_canon.json is the suites' copy of this
+   shape - change the menu there too, or the suites will name the drift.  */
+var NAV = [
+  { href:'front-desk.html',   label:'Front Desk',   need:'editBookings' },
+  { href:'demo-tally.html',        label:'Reservations', need:'resBoard'     },
+  { href:'demo-cleans.html',     label:'Cleans',       need:'cleansBoard'  },
+  { href:'spa.html',          label:'Spa',          need:'spaBoard'     },
+  { href:'publish.html',      label:'Publish Menu', need:'publishMenu'  },
+  { group:'Print', items:[
+      { href:'demo-reservations.html',         label:'FOH Sheet',   need:'resSheet'     },
+      { href:'demo-clean.html', label:'Clean Sheet', need:'cleansBoard'  },
+      { href:'registration.html', label:'Arrivals',    need:'editBookings' },
+      { href:'menu-print.html',   label:'Menu',        need:'resSheet'     },
+      { href:'past-menus.html',   label:'Past Menus',  need:'resBoard'     } ] },
+  { group:'SMS', items:[
+      { href:'invitations.html',  label:'Invitations', need:'editBookings' },
+      /* "SMS" is the heading, so the row does not repeat it - the Print
+         group's "Menu" pattern. */
+      { href:'arrivals-sms.html', label:'Pre-arrival', need:'editBookings' } ] },
+  { group:'Settings', items:[
+      { href:'staff.html', label:'General', need:'manageStaff' },
+      { href:'tag.html',   label:'Dietary', need:'publishMenu' },
+      /* Admin only, like General and Pages: the flags an admin defines here
+         are ticked on the front desk sheet by admins alone. */
+      { href:'flags.html', label:'Flags',   need:'manageStaff' },
+      { href:'pages.html', label:'Pages',   need:'manageStaff' },
+      /* A switch, not a destination: wireNotify below owns it. No need key,
+         so the filter leaves it alone - a housekeeper subscribes to her own
+         alerts. */
+      { action:'navNotify', label:'Notifications' } ] }
+];
+
+/* Which permission opens each link, derived from NAV so the two cannot
+   disagree. Kept under its old name because the filter and the suites ask
+   this question by it. */
+var NAV_NEEDS = (function(){
+  var out = {};
+  NAV.forEach(function(e){
+    (e.items || [e]).forEach(function(i){ if (i.href) out[i.href] = i.need; });
+  });
+  return out;
+})();
+
+/* Writes the menu into #navDrop. Runs at load on every page that has one;
+   pages built without a menu (the printed sheets, the guest pages) simply
+   have no div and nothing happens. */
+var NAV_CHEV = '<svg class="navchev" viewBox="0 0 12 12" width="11" height="11" ' +
+  'aria-hidden="true"><path d="M2.5 4.5 L6 8 L9.5 4.5" fill="none" ' +
+  'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" ' +
+  'stroke-linejoin="round"/></svg>';
+
+function buildNav(){
+  var drop = document.getElementById('navDrop');
+  if (!drop || drop.getAttribute('data-built')) return;
+  drop.setAttribute('data-built', '1');
+  var here = location.pathname.split('/').pop() || 'index.html';
+  function makeLink(i){
+    var a = document.createElement('a');
+    if (i.action){ a.href = '#'; a.className = 'navaction'; a.id = i.action; }
+    else a.href = i.href;
+    a.textContent = i.label;
+    return a;
+  }
+  NAV.forEach(function(e){
+    if (!e.group){
+      if (e.href !== here) drop.appendChild(makeLink(e));
+      return;
+    }
+    var items = e.items.filter(function(i){ return i.action || i.href !== here; });
+    if (!items.length) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'navgroup';
+    var head = document.createElement('button');
+    head.type = 'button';
+    head.className = 'navgrp';
+    head.setAttribute('aria-expanded', 'false');
+    head.innerHTML = '<span>' + e.group + '</span>' + NAV_CHEV;
+    /* stopPropagation, because every page closes the menu on a document
+       click: opening a submenu must not be the tap that shuts the menu. */
+    head.onclick = function(ev){
+      ev.stopPropagation();
+      var open = wrap.className.indexOf('open') > -1;
+      wrap.className = open ? 'navgroup' : 'navgroup open';
+      head.setAttribute('aria-expanded', open ? 'false' : 'true');
+    };
+    var sub = document.createElement('div');
+    sub.className = 'navsub';
+    items.forEach(function(i){ sub.appendChild(makeLink(i)); });
+    wrap.appendChild(head);
+    wrap.appendChild(sub);
+    drop.appendChild(wrap);
+  });
+  /* Wired here, not in the pages: sixteen copies of this handler lived in
+     the pages until 26 Aug, in two flavours - only the Cleans board and
+     Settings remembered to unsubscribe push first. One copy now, the
+     careful flavour, for every page. */
+  var so = document.createElement('a');
+  so.href = '#'; so.className = 'signout'; so.id = 'navSignout';
+  so.textContent = 'Logout';
+  so.onclick = function(ev){
+    ev.preventDefault();
+    var u = window.NALA_USER || null;
+    try { u = firebase.auth().currentUser || u; } catch (ex){}
+    var go = function(){ if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+    /* Unsubscribe first, while the token is still valid enough to delete
+       the record. If it fails, sign out anyway: being stuck signed in
+       would be the worse outcome. */
+    if (u && typeof window.pushOff === 'function') window.pushOff(u, go);
+    else go();
+  };
+  drop.appendChild(so);
+}
+buildNav();
 
 function navFilterShared(role){
   var drop = document.getElementById('navDrop');
@@ -2197,25 +2336,20 @@ function navActionBadges(role){
   });
 }
 
-/* A heading with nothing under it. The menu is grouped now, and a role that
-   may open none of the printed sheets would otherwise get the word Print
-   sitting above a rule with nothing beneath it: a promise of something that
-   is not there, which reads as a page that failed to load rather than as a
-   thing this login cannot do. */
+/* A submenu with nothing in it. A role that may open none of the printed
+   sheets would otherwise get a Print submenu that opens onto nothing: a
+   promise of something that is not there, which reads as a page that failed
+   to load rather than as a thing this login cannot do. The whole group goes,
+   header and all. Notifications carries no permission, so Settings stands
+   for every login: a housekeeper subscribes to her own alerts. */
 function hideEmptyGroups(drop){
-  var kids = drop.children, i, j, any;
-  for (i = 0; i < kids.length; i++){
-    if (kids[i].className.indexOf('navgrp') < 0) continue;
-    any = false;
-    for (j = i + 1; j < kids.length; j++){
-      if (kids[j].className.indexOf('navgrp') > -1) break;
-      /* Sign out sits under the last heading with no heading of its own and
-         is never filtered, so counting it made the last group look occupied
-         however empty it was. */
-      if (kids[j].className.indexOf('signout') > -1) continue;
-      if (kids[j].tagName === 'A' && kids[j].style.display !== 'none'){ any = true; break; }
+  var groups = drop.querySelectorAll('.navgroup');
+  for (var i = 0; i < groups.length; i++){
+    var links = groups[i].querySelectorAll('a'), any = false;
+    for (var j = 0; j < links.length; j++){
+      if (links[j].style.display !== 'none'){ any = true; break; }
     }
-    kids[i].style.display = any ? '' : 'none';
+    groups[i].style.display = any ? '' : 'none';
   }
 }
 window.NALA_NAVFILTER = navFilterShared;

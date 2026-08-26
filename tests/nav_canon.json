@@ -1,0 +1,37 @@
+{
+  "_comment": [
+    "The staff menu, as buildNav in nala-shared.js draws it on every page:",
+    "the top links in order, then the collapsible submenus in order, then",
+    "Logout. Four suites used to hold their own copy of the menu order,",
+    "which is why adding a page meant editing them all. They read this",
+    "table now - the phone_cases.json pattern. Change the menu in NAV and",
+    "here, and whichever side was missed fails by name."
+  ],
+  "top": [
+    ["front-desk.html", "Front Desk"],
+    ["tally.html", "Reservations"],
+    ["cleaners.html", "Cleans"],
+    ["spa.html", "Spa"],
+    ["publish.html", "Publish Menu"]
+  ],
+  "groups": [
+    ["Print", [
+      ["list.html", "FOH Sheet"],
+      ["housekeeping.html", "Clean Sheet"],
+      ["registration.html", "Arrivals"],
+      ["menu-print.html", "Menu"],
+      ["past-menus.html", "Past Menus"]
+    ]],
+    ["SMS", [
+      ["invitations.html", "Invitations"],
+      ["arrivals-sms.html", "Pre-arrival"]
+    ]],
+    ["Settings", [
+      ["staff.html", "General"],
+      ["tag.html", "Dietary"],
+      ["flags.html", "Flags"],
+      ["pages.html", "Pages"]
+    ]]
+  ],
+  "signout": "Logout"
+}

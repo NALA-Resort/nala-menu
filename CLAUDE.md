@@ -45,28 +45,33 @@ If two files need the same fact, one of them owns it and the other reads it.
 
 Already done this way — follow these:
 
-- `nala-shared.js` → `NAV_NEEDS` — the permission behind each menu link.
-  A page missing from it is shown to everyone: until 22 Aug `publish.html`
-  and `tag.html` were absent, so a housekeeper's menu offered to publish the
-  dinner menu.
+- `nala-shared.js` → `NAV` — the staff menu: every page's hamburger is
+  generated from it by `buildNav`, and each entry carries the permission
+  behind its link (`NAV_NEEDS` is derived from it). An entry with the wrong
+  key is shown to everyone: until 22 Aug `publish.html` and `tag.html` were
+  unlisted, so a housekeeper's menu offered to publish the dinner menu.
+- `tests/nav_canon.json` — the menu's shape as the suites assert it. The
+  `phone_cases.json` pattern: `NAV` is what the app draws, this is what the
+  tests expect, and whichever side a change misses fails by name.
 - `tests/phone_cases.json` — the phone rule's cases, read by both suites.
 - `rules.json` — the database's permissions.
 
-**Never** restate the menu in a suite. Four suites currently hold their own
-copy of the menu order, which is why adding a page means editing them all. A
-suite with its own copy can pass while the app is wrong.
+**Never** restate the menu in a suite. Four suites held their own copy of
+the menu order until 26 Aug, which is why adding a page meant editing them
+all; they read `nav_canon.json` now. A suite with its own copy can pass
+while the app is wrong.
 
-### 2. Adding a page costs 14 edits today, and shouldn't
+### 2. Adding a page is one entry in `NAV`, plus the `?v=` bumps
 
-As things stand: the link is pasted into every page's `navdrop`, the
-permission goes in `NAV_NEEDS`, and four suites need the menu re-typed.
-That is the current reality — follow it, and do not skip the suites.
+The 28-edit story below is over: the menu markup left the pages on 26 Aug,
+when the hamburger was redesigned (submenus, non-caps) and generated in the
+same stroke. A new page is one entry in `NAV`, the same line in
+`tests/nav_canon.json`, and the `?v=` bumps — which are still hand-
+maintained, see below.
 
-It is also the largest known drag on feature work here. The fix is to
-generate the dropdown from one array instead of filtering pasted markup, so
-a page with no entry has no link. Not built. Worth doing next time someone
-is in `nala-shared.js` anyway — not as a standalone job, since it touches
-all fifteen pages of a live system.
+Two things the generator gets right that you would get wrong pasting: each
+page omits its own link, and the permission keys are `resSheet` and
+`cleansBoard` — not the `resBoard`/`cleanBoard` you would guess.
 
 ### 3. Duplication that cannot be avoided gets a shared table
 
@@ -137,10 +142,6 @@ can find the reasoning for.
 
 - **`?v=` across 14 pages.** Should be one number rewritten by a pre-publish
   script. Until then it is hand-maintained and easy to miss.
-- **The menu, in fifteen copies.** See rule 2. Two things a generator must
-  get right that pasted markup does by hand: each page omits its own link,
-  and the permission keys are `resSheet` and `cleansBoard` — not the
-  `resBoard`/`cleanBoard` you would guess.
 - **Destructive buttons predating the button law** (STYLEGUIDE.md). spa.html
   obeys it; every other page's cancels and deletes are still solid or quiet
   ink with no confirmation. Dress and confirm them when you next touch the

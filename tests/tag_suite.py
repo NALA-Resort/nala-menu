@@ -166,9 +166,12 @@ with sync_playwright() as p:
     #  agreeing: the older pages did agree with each other, and the two newest
     #  were in none of their lists, so from Reservations there was no way to
     #  reach publishing at all.
-    CANON = ["front-desk.html", "tally.html", "invitations.html", "arrivals-sms.html", "cleaners.html", "spa.html", "publish.html",
-             "list.html", "housekeeping.html", "registration.html", "menu-print.html", "past-menus.html",
-             "staff.html", "tag.html", "flags.html", "pages.html"]
+    #  Read from tests/nav_canon.json, the one table of the menu's shape,
+    #  rather than restated here: four suites each holding the order is why
+    #  adding a page meant editing them all.
+    _nc = json.load(open("tests/nav_canon.json"))
+    CANON = [h for h, _t in _nc["top"]] + \
+            [h for _g, items in _nc["groups"] for h, _t in items]
     got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     ck("the menu is the one list, minus this page",
@@ -186,11 +189,11 @@ with sync_playwright() as p:
     #  to open a board a chef cannot, and subscribing is per person per device.
     ck("notifications can be switched from here, not only from the Cleans board",
        pg.evaluate("()=>!!document.getElementById('navNotify')"))
-    ck("and it sits under Settings, with the things you set",
-       pg.evaluate("""()=>{const k=[...navDrop.children];
-          const g=k.findIndex(e=>e.className.indexOf('navgrp')>-1 &&
-                                 e.textContent==='Settings');
-          return k.indexOf(document.getElementById('navNotify')) > g;}"""))
+    ck("and it sits inside the Settings submenu, with the things you set",
+       pg.evaluate("""()=>{
+          const g=[...document.querySelectorAll('#navDrop .navgroup')]
+            .find(w=>w.querySelector('.navgrp span').textContent==='Settings');
+          return !!g && g.contains(document.getElementById('navNotify'));}"""))
     #  The word stays and a mark carries the state. "Notifications on" cannot
     #  be read: there is no telling whether it describes what is true or what
     #  tapping will do.

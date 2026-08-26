@@ -31,23 +31,34 @@ body.tier-app, body.tier-print { touch-action:manipulation; }
            -webkit-tap-highlight-color:transparent; }
 .navbtn span { display:block; width:16px; height:1.6px; background:var(--ctl-ink); }
 .navdrop { display:none; position:absolute; right:0; top:42px; background:var(--ctl-bg);
-           border:1px solid var(--ctl-bdr); border-radius:9px; min-width:132px;
+           border:1px solid var(--ctl-bdr); border-radius:9px; min-width:176px;
            box-shadow:0 4px 14px rgba(0,0,0,.09); padding:5px 0; }
 .navdrop.open { display:block; }
-.navdrop a { display:block; padding:12px 18px; font-size:10px; letter-spacing:.14em;
-             text-transform:uppercase; color:var(--ctl-ink); text-decoration:none;
-             white-space:nowrap; }
+/* Menu rows read as ordinary text - the owner's word, 26 Aug: no caps, no
+   tracking, the standard UI font at a size a thumb can hit. One padding and
+   line-height shared with .navgrp, so links and submenu headers sit as one
+   list. */
+.navdrop a { display:block; padding:10px 18px; font-size:14px; line-height:18px;
+             color:var(--ctl-ink); text-decoration:none; white-space:nowrap; }
 /* Signing out is an action, not a destination, so it sits below a rule rather
    than reading as one more page in the list. It is never filtered by role:
    every login has to be able to get out.                                  */
-/* Group headings in the menu. Light grey and small on purpose: they are
-   signposts and not choices, and a heading that looks tappable is a heading
-   somebody taps. The rule above each one does the separating; the word only
-   says what the separation is for. */
-.navgrp { padding:12px 18px 5px; font-size:8px; letter-spacing:.2em;
-          text-transform:uppercase; color:#B0B0A8; border-top:1px solid var(--ctl-bdr);
-          margin-top:5px; }
-.navdrop > .navgrp:first-child { border-top:0; margin-top:0; padding-top:6px; }
+/* Submenus instead of dividers, 26 Aug: seventeen rows under two grey
+   headings was too many to scan for one page. Print, SMS and Settings fold
+   instead. The header is a real button dressed as a row - it IS a choice
+   now, unlike the old signpost - and the chevron says so, pointing down
+   while there is more, rolling over once it is out. */
+.navgrp { display:flex; align-items:center; justify-content:space-between; gap:14px;
+          width:100%; padding:10px 18px; font-size:14px; line-height:18px;
+          font-family:inherit; text-align:left; color:var(--ctl-ink);
+          background:none; border:0; border-top:1px solid var(--ctl-bdr);
+          cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.navchev { flex:0 0 auto; color:var(--mid); transition:transform .15s ease; }
+.navgroup.open .navchev { transform:rotate(180deg); }
+.navsub { display:none; }
+.navgroup.open .navsub { display:block; }
+/* Indented under their header, so an open submenu still reads as one menu. */
+.navsub a { padding-left:32px; }
 .navdrop a.navaction { display:flex; align-items:center; justify-content:space-between;
                       gap:14px; color:var(--ctl-ink); }
 /* The mark carries the state, so it has to be legible at a glance and never
@@ -58,8 +69,7 @@ body.tier-app, body.tier-print { touch-action:manipulation; }
 .navmark.off { color:#B0B0A8; }
 /* Blocked and unavailable get words, because no mark can say "you cannot fix
    this from here". */
-.navnote { flex:0 0 auto; font-size:8px; letter-spacing:.1em; color:#B0B0A8;
-           text-transform:none; }
+.navnote { flex:0 0 auto; font-size:11px; color:#B0B0A8; }
 .navdrop a.signout { border-top:1px solid var(--ctl-bdr); margin-top:5px;
                      padding-top:13px; color:var(--mid); }
 /* ── the action icon ─────────────────────────────────────────

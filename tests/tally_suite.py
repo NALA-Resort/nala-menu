@@ -492,38 +492,77 @@ with sync_playwright() as p:
       return {b:Math.round(r.bottom),vh:window.innerHeight,doc:document.scrollingElement.scrollHeight};}""")
     print("   short page:", ft)
     ck("footer pinned to screen bottom on short page", abs(ft["b"]-ft["vh"])<=1)
-    nav=pg.evaluate("""()=>[...document.querySelectorAll('.navdrop a')].map(a=>({
+    #  The menu's shape lives in tests/nav_canon.json - one table the suites
+    #  share instead of four private copies of the order. This page's own
+    #  link is the one the canon has and the menu must not.
+    CANON = json.load(open("tests/nav_canon.json"))
+    flat = [(h, t) for h, t in CANON["top"] if h != "tally.html"]
+    for _g, items in CANON["groups"]:
+        flat += [(h, t) for h, t in items if h != "tally.html"]
+    #  Submenus fold, 26 Aug, so the rows can only be read - and measured -
+    #  once their groups are opened, the same way a person gets to them.
+    #  The drop itself is opened for the measurements - a closed menu's rows
+    #  all measure zero, which is how the old wrap check passed vacuously -
+    #  and closed again so it does not sit over the page for later clicks.
+    nav=pg.evaluate("""()=>{
+      navDrop.classList.add('open');
+      document.querySelectorAll('#navDrop .navgroup').forEach(g=>g.classList.add('open'));
+      const out=[...document.querySelectorAll('.navdrop a')].map(a=>({
       t:a.textContent,h:Math.round(a.getBoundingClientRect().height),
-      href:a.getAttribute('href').split('?')[0]}))""")
+      href:a.getAttribute('href').split('?')[0]}));
+      navDrop.classList.remove('open');
+      return out;}""")
     print("   nav items:", nav)
     dest=[i for i in nav if i["href"]!="#"]
     # Live board then its sheet, reservations before cleans. Front Desk
     # Arrival sits with reservations, after the board it feeds.
-    #  Grouped 22 Aug, to the owner's own sketch: the screens you work on, then
-    #  what you print, then what you set. Named as the staff name them rather
-    #  than as the files are named - the sheet everyone calls the FOH sheet was
-    #  labelled Reservations Sheet, and Registration is the arrivals print.
+    #  Grouped 22 Aug, to the owner's own sketch: the screens you work on,
+    #  then what you print, then what you set; SMS joined the folds 26 Aug.
+    #  Named as the staff name them rather than as the files are named.
     ck("menu labels and order",
-       [i["t"] for i in dest]==["Front Desk","Invitations","Pre-arrival SMS","Cleans","Spa","Publish Menu",
-                                "FOH Sheet","Clean Sheet","Arrivals","Menu","Past Menus",
-                                "General","Dietary","Flags","Pages"] and
-       [i["href"] for i in dest]==["front-desk.html","invitations.html","arrivals-sms.html","cleaners.html","spa.html","publish.html",
-                                   "list.html","housekeeping.html","registration.html","menu-print.html","past-menus.html",
-                                   "staff.html","tag.html","flags.html","pages.html"])
-    #  Headings, not choices. Light grey and small so a signpost is not mistaken
-    #  for a destination.
+       [i["t"] for i in dest] == [t for _h, t in flat] and
+       [i["href"] for i in dest] == [h for h, _t in flat])
+    #  Submenu headers, 26 Aug: no longer grey signposts but real buttons a
+    #  person opens, wearing the same dress as the rows and a chevron that
+    #  says which way they will go.
     grp = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop .navgrp')]
-        .map(e=>({t:e.textContent, tag:e.tagName,
-                  c:getComputedStyle(e).color,
+        .map(e=>({t:e.querySelector('span').textContent, tag:e.tagName,
+                  chev:!!e.querySelector('.navchev'),
+                  caps:getComputedStyle(e).textTransform,
                   rule:getComputedStyle(e).borderTopWidth}))""")
     print("   nav groups:", grp)
-    ck("the menu is divided under two headings", [g["t"] for g in grp] == ["Print", "Settings"])
-    ck("and they are not links", all(g["tag"] != "A" for g in grp))
-    ck("each sitting under a rule that does the dividing",
-       all(g["rule"] != "0px" for g in grp))
+    ck("the menu folds under the canon's submenus",
+       [g["t"] for g in grp] == [g for g, _i in CANON["groups"]])
+    ck("and the headers are buttons, not links",
+       all(g["tag"] == "BUTTON" for g in grp))
+    ck("each wearing a chevron and sitting under a rule",
+       all(g["chev"] and g["rule"] != "0px" for g in grp))
+    #  A closed submenu hides its rows; opening it is what shows them. Proved
+    #  by geometry with the menu itself open, not by the class name - and not
+    #  by the rows' computed display, which stays "block" while only their
+    #  .navsub container is hidden.
+    ck("a submenu closes back over its rows", pg.evaluate("""()=>{
+      navDrop.classList.add('open');
+      const g=document.querySelector('#navDrop .navgroup');
+      g.classList.remove('open');
+      const hid=[...g.querySelectorAll('.navsub a')]
+        .every(a=>a.getBoundingClientRect().height===0);
+      const back=[...g.querySelectorAll('.navsub a')];
+      g.classList.add('open');
+      const shown=back.every(a=>a.getBoundingClientRect().height>0);
+      navDrop.classList.remove('open');
+      return hid && shown;}"""))
+    #  Non-caps, standard font, the owner's word 26 Aug: menu rows read as
+    #  ordinary text, not tracked-out small caps.
+    dress = pg.evaluate("""()=>{const a=document.querySelector('#navDrop a');
+      const c=getComputedStyle(a);
+      return {caps:c.textTransform, size:parseFloat(c.fontSize)};}""")
+    ck("menu rows are not capitalised and are readable at arm's length",
+       dress["caps"] == "none" and dress["size"] >= 13 and
+       all(g["caps"] == "none" for g in grp))
     # signing out is an action, so it comes last, after the destinations
-    ck("sign out is the last item in the menu", nav[-1]["t"]=="Sign out")
-    ck("no menu label wraps to a second line", all(i["h"]<=38 for i in nav))
+    ck("logout is the last item in the menu", nav[-1]["t"]=="Logout")
+    ck("no menu label wraps to a second line", all(i["h"]<=44 for i in nav))
     rad=pg.evaluate("""()=>[...document.querySelectorAll('.foot .btn')].map(b=>{
       const c=getComputedStyle(b);
       return [c.borderTopLeftRadius,c.borderTopRightRadius,

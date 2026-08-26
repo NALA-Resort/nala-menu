@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala · Cleaners</title>
-<link rel="stylesheet" href="nala-ui.css?v=14">
+<link rel="stylesheet" href="nala-ui.css?v=15">
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
           --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
@@ -409,7 +409,7 @@
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="flags.html">Flags</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"></div>
   </div>
 </div>
 <script>
@@ -421,16 +421,6 @@
      so the only way to turn notifications on or off was to open a board a chef
      cannot. The push helpers were shared all along; only the wiring was not.
      It is wireNotify() in nala-shared.js now and runs on every page. */
-  var so=document.getElementById('navSignout');
-  if (so) so.onclick=function(e){ e.preventDefault();
-    var u = window.NALA_USER || null;
-    try { u = firebase.auth().currentUser || u; } catch (ex){}
-    var go = function(){ if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
-    /* Unsubscribe first, while the token is still valid enough to delete the
-       record. If it fails, sign out anyway: being stuck signed in would be
-       the worse outcome.                                                 */
-    if (u && typeof pushOff === 'function'){ pushOff(u, go); } else { go(); }
-  };
   /* One gate for the whole page. The role comes from the record at
      /staff/<emailkey>, never from the address - see ROLES.md. The nav menu
      and the job controls both need setJob; the marks need cleansMarks; a
@@ -561,7 +551,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=41"></script>
+<script src="nala-shared.js?v=42"></script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
 /* Browsed dates, same header as every other board: ‹ › Today, and the date

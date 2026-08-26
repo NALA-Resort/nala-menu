@@ -451,9 +451,12 @@ with sync_playwright() as p:
     #  publishing at all.
     #  Grouped 22 Aug to the owner's own sketch: what you work on, what you
     #  print, what you set.
-    CANON = ["front-desk.html", "tally.html", "invitations.html", "arrivals-sms.html", "cleaners.html", "spa.html", "publish.html",
-             "list.html", "housekeeping.html", "registration.html", "menu-print.html", "past-menus.html",
-             "staff.html", "tag.html", "flags.html", "pages.html"]
+    #  Read from tests/nav_canon.json, the one table of the menu's shape,
+    #  rather than restated here: four suites each holding the order is why
+    #  adding a page meant editing them all.
+    _nc = json.load(open("tests/nav_canon.json"))
+    CANON = [h for h, _t in _nc["top"]] + \
+            [h for _g, items in _nc["groups"] for h, _t in items]
     got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     print("   publish nav:", got)
@@ -778,11 +781,14 @@ with sync_playwright() as p:
     ck("every link in the menu has a permission behind it",
        all(h in NEEDS for r in seen for h in seen[r]))
     #  A heading with nothing under it promises something that is not there.
+    #  Judged on the .navgroup wrapper, which is what hideEmptyGroups hides:
+    #  the .navgrp header inside it keeps its own computed display and would
+    #  read as visible however hidden the group is.
     empty = pg.evaluate("""()=>{
       window.NALA_NAVFILTER('housekeeping');
-      return [...document.querySelectorAll('#navDrop .navgrp')]
+      return [...document.querySelectorAll('#navDrop .navgroup')]
         .filter(g=>getComputedStyle(g).display!=='none')
-        .map(g=>g.textContent);
+        .map(g=>g.querySelector('.navgrp span').textContent);
     }""")
     print("   headings a housekeeper sees:", empty)
     #  Settings now holds Notifications, which is not filtered by role: a
@@ -793,13 +799,11 @@ with sync_playwright() as p:
        empty == ["Print", "Settings"])
     ck("and the housekeeper's Settings holds the switch and nothing else",
        pg.evaluate("""()=>{ window.NALA_NAVFILTER('housekeeping');
-          const k=[...navDrop.children];
-          const g=k.findIndex(e=>e.textContent==='Settings' &&
-                                 e.className.indexOf('navgrp')>-1);
-          return k.slice(g+1).filter(e=>e.tagName==='A' &&
-                 e.className.indexOf('signout')<0 &&
-                 getComputedStyle(e).display!=='none')
-                 .map(e=>e.id); }""") == ["navNotify"])
+          const g=[...document.querySelectorAll('#navDrop .navgroup')]
+            .find(w=>w.querySelector('.navgrp span').textContent==='Settings');
+          return [...g.querySelectorAll('.navsub a')]
+                 .filter(a=>a.style.display!=='none')
+                 .map(a=>a.id); }""") == ["navNotify"])
     pg.evaluate("()=>window.NALA_NAVFILTER('admin')")
     pg.close()
 

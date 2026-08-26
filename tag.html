@@ -38,26 +38,33 @@
   .navbtn span { display:block; width:16px; height:1.6px; background:var(--ink); }
   .navdrop { display:none; position:absolute; right:0; top:42px;
              background:var(--cream); border:1px solid var(--rule);
-             border-radius:9px; min-width:150px; padding:5px 0;
+             border-radius:9px; min-width:176px; padding:5px 0;
              box-shadow:0 4px 14px rgba(0,0,0,.09); }
   .navdrop.open { display:block; }
-  .navdrop a { display:block; padding:12px 18px;
-               font-family:Helvetica,Arial,sans-serif; font-size:10px;
-               letter-spacing:.14em; text-transform:uppercase; color:var(--ink);
+  /* No caps, no tracking, a size a thumb can hit; submenus fold behind
+     their chevroned headers. nala-ui.css holds the ruling copy of this
+     dress - keep this one in step with it. */
+  .navdrop a { display:block; padding:10px 18px;
+               font-family:Helvetica,Arial,sans-serif; font-size:14px;
+               line-height:18px; color:var(--ink);
                text-decoration:none; white-space:nowrap; }
-  /* Signing out is an action, not a destination, and is never filtered by
-     role: every login has to be able to get out. */
-  .navgrp { padding:12px 18px 5px; font-size:8px; letter-spacing:.2em;
-            text-transform:uppercase; color:#B0B0A8;
-            border-top:1px solid var(--rule); margin-top:5px; }
-  .navdrop > .navgrp:first-child { border-top:0; margin-top:0; padding-top:6px; }
+  .navgrp { display:flex; align-items:center; justify-content:space-between;
+            gap:14px; width:100%; padding:10px 18px;
+            font-family:Helvetica,Arial,sans-serif; font-size:14px;
+            line-height:18px; text-align:left; color:var(--ink);
+            background:none; border:0; border-top:1px solid var(--rule);
+            cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .navchev { flex:0 0 auto; color:var(--mid); transition:transform .15s ease; }
+  .navgroup.open .navchev { transform:rotate(180deg); }
+  .navsub { display:none; }
+  .navgroup.open .navsub { display:block; }
+  .navsub a { padding-left:32px; }
   .navdrop a.navaction { display:flex; align-items:center;
                         justify-content:space-between; gap:14px; color:var(--ink); }
   .navmark { display:inline-flex; flex:0 0 auto; }
   .navmark.on  { color:#3F7A52; }
   .navmark.off { color:#B0B0A8; }
-  .navnote { flex:0 0 auto; font-size:8px; letter-spacing:.1em; color:#B0B0A8;
-             text-transform:none; }
+  .navnote { flex:0 0 auto; font-size:11px; color:#B0B0A8; }
   .navdrop a.signout { border-top:1px solid var(--rule); margin-top:5px;
                        padding-top:13px; color:var(--mid); }
 
@@ -149,7 +156,7 @@
        place to go back to from the dietary list, so it leads. -->
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="flags.html">Flags</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"></div>
   </div>
   </div>
   <div class="wordmark">Nala Resort</div>
@@ -177,7 +184,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=41"></script>
+<script src="nala-shared.js?v=42"></script>
 <script>
 /* Tagging a menu is the chef's job and the manager's. Until 18 Aug there was
    no gate at all, so a cleaner could archive the dietary list. Sent to their
@@ -388,9 +395,6 @@
   if (!b || !d) return;
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
-  var so=document.getElementById('navSignout');
-  if (so) so.onclick=function(e){ e.preventDefault();
-    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
 })();
 </script>
 </body>

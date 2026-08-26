@@ -530,15 +530,15 @@ with sync_playwright() as p:
     shot=pg.screenshot(full_page=True)
     open("/home/claude/nala/_p4_cleaners.png","wb").write(shot)
     pg.close()
-    # gate: the housekeeping login gets a menu, because Sign out lives in it
+    # gate: the housekeeping login gets a menu, because Logout lives in it
     pg=page("housekeeping@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1200)
     ck("housekeeping login: menu present, so there is a way to sign out",
        pg.evaluate("()=>getComputedStyle(navWrap).display")!="none")
     hknav=pg.evaluate("""()=>[].filter.call(document.querySelectorAll('#navDrop a'),
-        a=>getComputedStyle(a).display!=='none').map(a=>a.textContent.trim())""")
+        a=>a.style.display!=='none').map(a=>a.textContent.trim())""")
     ck("housekeeping is offered no board it would be refused, but can sign out",
-       "Sign out" in hknav and "Reservations" not in hknav and "Reservations Sheet" not in hknav)
+       "Logout" in hknav and "Reservations" not in hknav and "FOH Sheet" not in hknav)
     print("   housekeeping menu:", hknav)
     tile(pg,3).click(); pg.wait_for_timeout(300)
     hkSheet = pg.locator("#sheetBox").inner_text().lower()
@@ -999,6 +999,9 @@ with sync_playwright() as p:
     pg.route("**firebasedatabase.app/**",fb)
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
     pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    # the Clean Sheet lives inside the folded Print submenu now: open it the
+    # way a person does, by its header, before the link can be tapped
+    pg.locator("#navDrop button.navgrp", has_text="Print").click(); pg.wait_for_timeout(150)
     pg.locator("#navDrop a[href='housekeeping.html']").click(); pg.wait_for_timeout(250)
     went=pg.evaluate("()=>window.__went||null")
     print("   standalone nav:", went)
@@ -1026,6 +1029,9 @@ with sync_playwright() as p:
     pg.route("**firebasedatabase.app/**",fb)
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
     pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    # the Clean Sheet lives inside the folded Print submenu now: open it the
+    # way a person does, by its header, before the link can be tapped
+    pg.locator("#navDrop button.navgrp", has_text="Print").click(); pg.wait_for_timeout(150)
     pg.locator("#navDrop a[href='housekeeping.html']").click(); pg.wait_for_timeout(250)
     ck("display-mode standalone is honoured, not just Safari's flag",
        (pg.evaluate("()=>window.__went||''") or "").endswith("housekeeping.html"))
@@ -1041,6 +1047,9 @@ with sync_playwright() as p:
     pg.route("**firebasedatabase.app/**",fb)
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
     pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    # the Clean Sheet lives inside the folded Print submenu now: open it the
+    # way a person does, by its header, before the link can be tapped
+    pg.locator("#navDrop button.navgrp", has_text="Print").click(); pg.wait_for_timeout(150)
     pg.locator("#navDrop a[href='housekeeping.html']").click(); pg.wait_for_timeout(600)
     ck("ordinary tab: the browser navigates as normal, nothing intercepted",
        pg.url.endswith("housekeeping.html") and pg.evaluate("()=>window.__went||null") is None)
