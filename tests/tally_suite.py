@@ -888,8 +888,13 @@ with sync_playwright() as p:
          ["Nut allergy", "Severe, carries an epipen"]),
     ]
 
-    for label, stays, din, pre, expect in SNAP_CASES:
-        def snap_fb(route, request, _s=stays, _d=din, _p=pre):
+    # snap_stays, NOT stays: the loop variable used to shadow the module-level
+    # stays fixture, so every scenario after this loop that fell back to plain
+    # fb() asked stays[today] of a per-villa dict and crashed the route with a
+    # KeyError. Nothing tripped it for weeks because each later scenario
+    # happened to stub /stays/ itself - until one did not.
+    for label, snap_stays, din, pre, expect in SNAP_CASES:
+        def snap_fb(route, request, _s=snap_stays, _d=din, _p=pre):
             u = request.url
             if "/stays/" + today in u:
                 route.fulfill(status=200, content_type="application/json",
@@ -1483,21 +1488,25 @@ with sync_playwright() as p:
     r.route("**firebasedatabase.app/**", fb)
     r.route("**/menu.json*", file_menu)
     r.goto("http://localhost:8953/tally.html"); r.wait_for_timeout(1500)
-    row1 = r.locator("#listBookings").inner_text()
-    ck("an old-named stored dietary shows renamed on the row",
-       "Gluten" in row1 and "Gluten free" not in row1)
     tile(r,1).click(); r.wait_for_timeout(300)
+    sheet1 = r.locator("#sheet").inner_text()
+    ck("an old-named stored dietary shows renamed on the villa sheet",
+       "Gluten" in sheet1 and "Gluten free" not in sheet1)
+    r.evaluate("""()=>{const b=[...document.querySelectorAll('#sheet button')]
+      .find(x=>/edit details/i.test(x.textContent)); if(b)b.click();}""")
+    r.wait_for_timeout(400)
     ck("and lights the renamed chip in the editor, not nothing",
-       r.evaluate("""()=>{const c=[...document.querySelectorAll('.chip')]
+       r.evaluate("""()=>{const c=[...document.querySelectorAll('#dietChips .chip')]
          .find(b=>b.textContent.trim()==='Gluten');
          return !!c && c.className.indexOf('on')>-1;}"""))
     before = len(WRITES)
-    r.locator("#oIn").click(); r.wait_for_timeout(400)
-    wold = [x for x in WRITES[before:]
-            if re.search(r"/dinner/"+today+r"/1\.json", x["u"])]
+    r.evaluate("()=>document.getElementById('oSave').click()")
+    r.wait_for_timeout(500)
+    wold = [json.loads(x["b"]) for x in WRITES[before:]
+            if "room-1" in x["u"] and x["b"]]
     ck("and the next save writes the new name back, migrating the record",
-       bool(wold) and "Gluten" in json.loads(wold[-1]["b"])["diets"]
-       and "Gluten free" not in json.loads(wold[-1]["b"])["diets"])
+       bool(wold) and "Gluten" in wold[-1].get("diets", [])
+       and "Gluten free" not in wold[-1].get("diets", []))
     r.close()
     responses["0400000001"]["diets"] = ["Nut allergy"]
 
