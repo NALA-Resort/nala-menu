@@ -464,67 +464,29 @@ await post(RES);
 ck("a booking with no customer id at all is still written",
    STORE["/bookings/" + RES.MewsId + "/pms"].customerId === null);
 
-/* ── the Mews note, in the shape Zapier actually sends it ───── */
-/* Mews keeps notes as objects and Zapier flattens the array into one string
-   of "key: value" pairs. On 26 Aug that whole flattened object reached
-   /internal/<id>/fromMews and the Service Sheet printed nine lines of GUIDs
-   and timestamps in a staff row. The Worker lifts the text out now; these
-   pin both halves - the words survive, the metadata does not. */
-const NOTE_ID = "/internal/" + RES.MewsId;
+/* ── Mews notes are not imported ────────────────────────────── */
+/* Ruled by the owner, 26 Aug. Zapier sends the Mews note as its own
+   flattening of the note objects - GUIDs and timestamps around the words -
+   and one printed sheet carried nine lines of it in a staff row. The rule
+   is now simpler than any parser: whatever matters is typed at the desk on
+   the day, and the Worker imports nothing. These pin the nothing. */
 const DUMP = "createdUtc: 2026-07-07T06:28:44Z id: c20eda2e-4c43-4e57-b62b-b48008ac53aa " +
   "orderId: 203a773e-4fd0-4418-ad4d-b48000b8ac4f text: Hi, would prefer a view over " +
   "the beach rather than the pool, please. Many thanks, very much looking forward " +
   "to our stay :) type: General updatedUtc: 2026-07-07T06:28:44Z";
-const WORDS = "Hi, would prefer a view over the beach rather than the pool, " +
-  "please. Many thanks, very much looking forward to our stay :)";
+
+install();
+await post(Object.assign({}, RES, { Notes: DUMP }));
+ck("the flattened note object is written nowhere",
+   !Object.keys(STORE).some(k => k.startsWith("/internal")));
 
 install();
 await post(Object.assign({}, RES, { Notes: "Owner's friend, do not charge for wine" }));
-ck("a note typed by a person is stored word for word",
-   STORE[NOTE_ID].fromMews === "Owner's friend, do not charge for wine");
-
-/* A person may write "id:" once; only the object's keys in company mean a dump. */
-install();
-await post(Object.assign({}, RES, { Notes: "Paid deposit, invoice id: 4471" }));
-ck("one key-shaped word does not get a human note dissected",
-   STORE[NOTE_ID].fromMews === "Paid deposit, invoice id: 4471");
-
-install();
-await post(Object.assign({}, RES, { Notes: DUMP }));
-ck("the flattened note object gives up the receptionist's words",
-   STORE[NOTE_ID].fromMews === WORDS);
-ck("and none of the metadata around them",
-   !/createdUtc|orderId|General/.test(STORE[NOTE_ID].fromMews));
-
-/* Two notes flattened into one dump: both texts, neither's metadata. */
-install();
-await post(Object.assign({}, RES, { Notes: DUMP + " " + DUMP.replace(WORDS, "Late arrival, keep dinner warm") }));
-ck("several notes in one dump each keep their words",
-   STORE[NOTE_ID].fromMews === WORDS + " · Late arrival, keep dinner warm");
-
-/* A dump whose text is empty is metadata alone, which is not a note. */
-install();
-await post(Object.assign({}, RES, { Notes: DUMP.replace(WORDS, "") }));
-ck("a dump with nothing behind text: seeds nothing",
-   STORE[NOTE_ID] === undefined);
-
-/* The seed-once rule stands: a readable original survives every later event. */
-install();
-await post(Object.assign({}, RES, { Notes: "First words" }));
-await post(Object.assign({}, RES, { Notes: "Second words" }));
-ck("a readable original is never overwritten by a later event",
-   STORE[NOTE_ID].fromMews === "First words");
-
-/* The one exception: a dump stored before the fix existed repairs itself on
-   the next event for its booking. The manager's own rewrite lives in note,
-   not fromMews, and must come through untouched. */
-install();
-STORE[NOTE_ID] = { fromMews: DUMP, note: "the manager's rewrite" };
-await post(Object.assign({}, RES, { Notes: DUMP }));
-ck("a dump stored before the fix is repaired on the next event",
-   STORE[NOTE_ID].fromMews === WORDS);
-ck("and the manager's rewrite beside it is untouched",
-   STORE[NOTE_ID].note === "the manager's rewrite");
+ck("and so is a clean, human one: the desk is the only writer of notes",
+   !Object.keys(STORE).some(k => k.startsWith("/internal")));
+ck("so a reservation event writes only under pms and stays, notes included",
+   CALLS.filter(c => !c.startsWith("GET"))
+        .every(c => c.includes("/pms") || c.includes("/stays/")));
 
 /* ── the clock ──────────────────────────────────────────────── */
 /* Mews sends true UTC. Confirmed 18 Aug: 04:00Z is 2pm at the resort, which is
@@ -651,7 +613,19 @@ installSweep({
   "p5": { arriveApproved: 11 },
   "p8": { arriveApproved: 11 },
 });
+/* Rode along for the clear-out: villa 1 still holds a note imported before
+   the owner retired the import, beside a note the desk typed; villa 3 has
+   only the desk's. The same wake that sweeps arrivals retires the import. */
+STORE["/internal/p1"] = { fromMews: DUMP, note: "the desk's own words" };
+STORE["/internal/p3"] = { note: "typed at the desk" };
 await wake();
+ck("the wake clears the imported note for tonight's house",
+   STORE["/internal/p1"].fromMews === null);
+ck("and leaves the desk's notes alone",
+   STORE["/internal/p1"].note === "the desk's own words" &&
+   STORE["/internal/p3"].note === "typed at the desk");
+ck("a record with nothing imported is read, not written",
+   !CALLS.includes("PATCH /internal/p3"));
 const buzzed = PUSHES.map((p) => p.villa).sort();
 ck("the villas inside their red hour and unclaimed are announced, no others",
    buzzed.join() === "1,3,9");
@@ -680,6 +654,11 @@ PUSHES.length = 0;
 await wake();
 ck("a villa whose hour arrives later gets its one announcement then",
    PUSHES.length === 1 && PUSHES[0].villa === "2");
+
+/* Three wakes have now crossed the same frozen day. The clear-out is once
+   a day, in the manner of the token cache, not once per five-minute wake. */
+ck("the clear-out ran once across every wake of the day",
+   CALLS.filter(c => c === "PATCH /internal/p1").length === 1);
 
 globalThis.Date = RealDate;
 

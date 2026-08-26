@@ -254,47 +254,44 @@ function asCount(v, min, max) {
   return n;
 }
 
-/* The note as a person wrote it, dug out of what Zapier actually sends.
+/* ── the imported-note clear-out, run from the cron wake ─────────────────
+   Ruled by the owner, 26 Aug: Mews notes are NOT imported any more. What
+   Zapier sends under Notes is its own flattening of Mews' note objects -
+   GUIDs and timestamps around the words - and after one printed sheet
+   carried nine lines of that in a staff row, the ruling is simpler than
+   any parser: whatever matters about a guest is entered at the desk on the
+   day, into /internal/<id>/note, which this Worker never writes.
 
-   Mews keeps reservation notes as OBJECTS - createdUtc, id, orderId, text,
-   type, updatedUtc - and Zapier flattens the array into one string of
-   "key: value" pairs. What reached /internal for one booking, and printed
-   on the 26 Aug Service Sheet as nine lines of GUIDs and timestamps in a
-   staff row, was that whole flattened object: the words the receptionist
-   typed were six words among forty, hiding behind "text:".
+   This pass retires what earlier syncs had already imported. Once a day it
+   walks tonight's stays and deletes each booking's imported copy, so every
+   board and printed sheet is clean of them from the first wake of the day;
+   with the import gone, nothing ever refills them. The desk's own note
+   sits beside fromMews in the same record and is not touched.
 
-   So the text fields are lifted out and the metadata is dropped. Only when
-   the string is unmistakably that shape - a "text:" with at least two of
-   the object's other keys beside it - because a note typed by a person is
-   passed through untouched, and a person could conceivably write "id:" once.
-   Several notes flattened into one dump each give up their text, joined
-   with a middle dot like the sheet's own separators. A dump with nothing
-   behind "text:" returns null: metadata alone is not a note.
-
-   Known and accepted: a typed note INSIDE a dump that itself contains
-   " type: " or " id: " is cut at that key. The metadata keys are the only
-   anchors the flattening leaves behind. */
-const MEWS_NOTE_KEYS = "createdUtc|updatedUtc|orderId|type|id";
-function mewsNoteText(v) {
-  if (typeof v !== "string") return v;
-  /* Split on the keys rather than matching around them: a lazy capture
-     bounded by a lookahead reads a dump whose text is EMPTY as the next
-     key's value, because the engine grows the capture before it gives back
-     the whitespace. Splitting has no such choice to make. The parts array
-     alternates prose, key, value, key, value. */
-  const parts = v.split(
-    new RegExp("\\s*\\b(" + MEWS_NOTE_KEYS + "|text):\\s*", "g"));
-  const keys = new Set(), texts = [];
-  let sawText = false;
-  for (let i = 1; i < parts.length; i += 2) {
-    if (parts[i] === "text") {
-      sawText = true;
-      const t = (parts[i + 1] || "").trim();
-      if (t) texts.push(t);
-    } else keys.add(parts[i]);
+   Once per isolate-day rather than per five-minute wake, in the manner of
+   the token cache: the delete is idempotent, so a recycled isolate merely
+   re-checks, and a villa whose delete failed is caught by the next fresh
+   isolate or the next day, whichever comes first. */
+let NOTES_CLEARED_DAY = null;
+async function clearImportedNotes(env) {
+  const today = DATE_AT_RESORT.format(new Date());
+  if (NOTES_CLEARED_DAY === today) return [];
+  const stays = await db(env, "/stays/" + today, "GET") || {};
+  const cleared = [];
+  for (const v in stays) {
+    /* Tolerates the older index shape, where the value was the id alone. */
+    const id = stays[v] && typeof stays[v] === "object" ? stays[v].id : stays[v];
+    if (!id) continue;
+    try {
+      const had = await db(env, "/internal/" + id + "/fromMews", "GET");
+      if (typeof had === "string") {
+        await db(env, "/internal/" + id, "PATCH", { fromMews: null });
+        cleared.push(String(v));
+      }
+    } catch (e) { /* that villa waits for the next pass */ }
   }
-  if (!sawText || keys.size < 2) return v;
-  return texts.length ? texts.join(" · ") : null;
+  NOTES_CLEARED_DAY = today;
+  return cleared;
 }
 
 /* villa validates as a short string OR a number, so either is passed through
@@ -436,11 +433,11 @@ function readReservation(p) {
        booking where the companion happens to come first still works. That
        costs nothing and removes the only guess left in it. */
     companion:     companionName(p),
-    /* Whatever a receptionist typed into Mews. Read for the first time on
-       19 Aug: it was being discarded, so the two systems held different facts
-       about the same guest and neither showed the other's. */
-    mewsNote:      pick(p, ["Notes", "notes", "Note", "note",
-                            "GuestNotes", "guest_notes", "CustomerNotes"]),
+    /* The Mews note is deliberately NOT read. It was imported from 19 to
+       26 Aug and retired by the owner: Zapier sends it as its own flattening
+       of Mews' note objects, and the resort's rule is now that whatever
+       matters is typed at the desk on the day, into /internal/<id>/note.
+       The clear-out above retires what those seven days imported. */
     customerId:    pickGuid(p, ["CustomerId", "customer_id", "CustomerID",
                                 "AccountId", "customerId"]),
     adults:        pick(p, ["AdultCount", "adults"]),
@@ -672,34 +669,11 @@ export default {
            asked for. */
         updated: asText(r.updated, 40)
       };
-      /* The Mews note, once. Written to its own staff-only node, and only
-         when nothing is there: a manager's correction has to survive the next
-         event for that booking, and Mews sends the whole reservation every
-         time. So this seeds the record and never overwrites it - with one
-         exception below.
-
-         Kept in its own field, apart from the edited one, so the original is
-         still readable after somebody rewrites it. mewsNoteText first, so
-         what is stored as the original is the receptionist's words and never
-         Zapier's flattening of the note object around them. */
-      const seed = mewsNoteText(asText(r.mewsNote, 2000));
-      if (seed) {
-        let had = null;
-        try { had = await db(env, "/internal/" + r.id + "/fromMews", "GET"); }
-        catch (e) { had = null; }
-        /* The exception: what is already there is itself a stored dump,
-           seeded before mewsNoteText existed. Those are what the Service
-           Sheet printed on 26 Aug, and Mews resends the whole reservation on
-           every event, so each one repairs itself the next time its booking
-           so much as breathes. A manager's rewrite lives in /internal/<id>/
-           note and is not touched on either path; a fromMews a person could
-           actually read is never overwritten either. */
-        const stale = typeof had === "string" && mewsNoteText(had) !== had;
-        if (!had || stale) {
-          await db(env, "/internal/" + r.id, "PATCH",
-                   { fromMews: asText(seed, 2000) });
-        }
-      }
+      /* No Mews note import here. It lived in this spot from 19 to 26 Aug -
+         first the whole field, then only the text dug out of Zapier's
+         flattening - and the owner retired it the same day the second
+         version shipped: the desk types what matters, on the day, and
+         clearImportedNotes retires what those seven days left behind. */
 
       /* A returning guest should not be asked again. The dietary is kept
          against the Mews customer, which outlives any one booking, so a
@@ -782,6 +756,11 @@ export default {
     ctx.waitUntil(alertArrivals(env).catch(function (e) {
       /* A failed sweep must not look like a quiet one in the logs. */
       console.log("arriving sweep failed: " + e.message);
+    }));
+    ctx.waitUntil(clearImportedNotes(env).catch(function (e) {
+      /* Same rule; and the once-a-day flag is only set on success, so a
+         failed pass is retried on the next wake rather than tomorrow. */
+      console.log("note clear-out failed: " + e.message);
     }));
   }
 };
