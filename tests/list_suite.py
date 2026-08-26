@@ -36,8 +36,15 @@ menutags={"main":["Nut allergy"]}
 #  Villas the PMS knows about, which is where the booking ids come from. The
 #  internal note hangs off the reservation, not the night, so a sheet can only
 #  reach one through the id on the stay.
-STAYS={"1":{"id":"b1","name":"James"},"3":{"id":"b3","name":"Mark"},
+#  Villa 1 carries a Mews companion AND a pre-arrival one, because the typed
+#  name must win; villa 3 a Mews copy alone, because a name only the Zap
+#  delivered must still reach paper; villa 9 none, so a sheet without second
+#  guests stays exactly as it was. The angle brackets in Ana's name are the
+#  escaping check: the cell is built by concatenation.
+STAYS={"1":{"id":"b1","first":"James","companion":"Zoe Wrong"},
+       "3":{"id":"b3","first":"Mark","companion":"Aria Stone"},
        "4":{"id":"b4","name":"Lucy"},"9":{"id":"b9","name":"Priya"}}
+prearrival={"b1":{"companion":"Ana <Ruiz>"}}
 internal={"b1":{"note":"Owner's friend, do not charge for wine"},
           "b3":{"fromMews":"Complained about noise last stay"},
           "b9":{"note":""}}
@@ -60,6 +67,9 @@ def fb(route,request):
     elif "/internal/" in u:
         k=u.split("/internal/")[1].split(".json")[0]
         body=json.dumps(internal[k]) if k in internal else "null"
+    elif "/bookings/" in u and "/prearrival" in u:
+        k=u.split("/bookings/")[1].split("/")[0]
+        body=json.dumps(prearrival[k]) if k in prearrival else "null"
     route.fulfill(status=200,content_type="application/json",body=body)
 from playwright.sync_api import sync_playwright
 P=F=0
@@ -76,6 +86,25 @@ with sync_playwright() as p:
     pg.goto("http://localhost:8955/list.html"); pg.wait_for_timeout(1500)
 
     hd=pg.evaluate("()=>({k:'n/a',d:title.textContent,t:nTables.textContent,tb:tblBreak.textContent,tw:nTablesWord.textContent,c:nCovers.textContent})")
+
+    #  ── the second guest, under the name they travel with ──────────
+    cells=pg.evaluate("""()=>[...document.querySelectorAll('#rows tr')]
+      .filter(r=>r.querySelector('.c-room')&&r.querySelector('.c-name'))
+      .map(r=>({
+        room:r.querySelector('.c-room').textContent.trim(),
+        html:r.querySelector('.c-name').innerHTML,
+        sub:(r.querySelector('.c-name .sub')||{}).textContent||''}))""")
+    byroom={c["room"]:c for c in cells}
+    ck("the name the guest typed prints under the primary guest",
+       byroom["1"]["sub"] == "Ana <Ruiz>")
+    ck("and outranks the copy Mews sent for the same villa",
+       "Zoe Wrong" not in byroom["1"]["html"])
+    ck("a companion only Mews knows still reaches the paper",
+       byroom["3"]["sub"] == "Aria Stone")
+    ck("a villa with no second guest carries no line for one",
+       byroom["9"]["sub"] == "")
+    ck("and the typed name lands as text, not as markup",
+       "&lt;Ruiz&gt;" in byroom["1"]["html"])
     #  The kicker is gone, and so is the header it left behind. It named the
     #  document to whoever was already holding it, and the page has no room for
     #  two headers above a table that carries its own column headings.

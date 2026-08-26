@@ -143,7 +143,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=37"></script>
+<script src="nala-shared.js?v=38"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();
@@ -341,10 +341,14 @@ function cardHTML(r){
           (p.arriveNote ? ' \u00b7 ' + esc(p.arriveNote) : '')
         : '', { cls:'eta' });
 
-  /* A second adult gets their own line whenever Mews says there is one. Named
-     if the guest gave a name at pre-arrival, a rule to write on if not. It is
-     the first thing reception asks and there was nowhere to put the answer. */
-  if (Number(s.adults) > 1) h += row('Second guest', p.companion ? esc(p.companion) : '');
+  /* A second adult gets their own line whenever Mews says there is one, and
+     whenever anyone has already named one. Named if the guest gave a name at
+     pre-arrival or Mews sent one - companionOf holds that order for every
+     surface - a rule to write on if not. It is the first thing reception
+     asks and there was nowhere to put the answer. */
+  var second = companionOf(p, s);
+  if (Number(s.adults) > 1 || second)
+    h += row('Second guest', second ? esc(second) : '');
 
   h += row('Dinner tonight', p.dining === undefined ? ''
         : (p.dining ? 'Dining \u00b7 ' + (p.pax || '') +

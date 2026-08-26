@@ -66,11 +66,17 @@ for v, bid, first, last, a, dep in BOOKINGS:
         STAYS_BY_DATE.setdefault(plus(n), {})[v] = {
             "id": bid, "first": first, "last": last,
             "arrive": plus(a), "depart": plus(dep), "adults": 2}
+# Robyn Carter's second guest, as Mews sent it on every night of the stay.
+for _d in STAYS_BY_DATE.values():
+    if "3" in _d: _d["3"]["companion"] = "Dan Carter"
 
 PRE = {
+  # Kai Werner named his companion on the form; nothing from Mews for b4, so
+  # the board is showing the pre-arrival copy.
   "b9":  {"wellness": True,  "wellDay": today,   "wellTime": "afternoon"},
   "b12": {"wellness": True,  "wellDay": plus(-1),"wellTime": "morning"},
-  "b4":  {"wellness": True,  "wellDay": plus(3), "wellTime": "2:00 pm"},
+  "b4":  {"wellness": True,  "wellDay": plus(3), "wellTime": "2:00 pm",
+          "companion": "Lena Werner"},
   "b15": {"wellness": True,  "wellDay": "",      "wellTime": ""},
   "b2":  {"wellness": False},
 }
@@ -174,6 +180,16 @@ with sync_playwright() as p:
          "()=>document.querySelector('#board [data-booking=\"b7\"] .st').textContent"))
     ck("the villa number leads every tile",
        pg.evaluate("()=>document.querySelector('#board [data-booking=\"b3\"] .v').textContent") == "3")
+
+    # ── the second guest, in the small print under the name ────
+    ck("a tile carries the companion Mews sent",
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b3\"] .cmp')"
+                   "?.textContent") == "With Dan Carter")
+    ck("and the one the guest typed at pre-arrival",
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b4\"] .cmp')"
+                   "?.textContent") == "With Lena Werner")
+    ck("a booking with nobody named keeps its two-line tile",
+       pg.evaluate("()=>!document.querySelector('#board [data-booking=\"b9\"] .cmp')"))
 
     # The stats are the masseuse's whole queue, not today's slice: b9 today,
     # b4 in two days, b15 with no day picked - all waiting on him.

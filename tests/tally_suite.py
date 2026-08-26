@@ -29,7 +29,16 @@ roomguests={today:{"9":{"name":"Priya","departs":plus(3)},"4":{"name":"Lucy","de
 # so nothing on the board shifts and the only new fact is the party size, which
 # Mews knows and the app used to store and show nowhere.
 stays={today:{"9":{"id":"res-9","first":"Priya","last":"","arrive":plus(-1),
-                   "depart":plus(3),"adults":2,"updated":"2026-08-16T10:00:00Z"}}}
+                   "depart":plus(3),"adults":2,"updated":"2026-08-16T10:00:00Z"},
+              # Villa 4 and 6 carry the second guest as Mews sent it, so the
+              # board shows a name nobody at the resort typed: 4 on the
+              # awaiting stub, 6 on a dining row. Neither stay carries a
+              # first name, so Lucy and the unnamed manual entry render as
+              # they always did; only the companion rides in.
+              "4":{"id":"res-4","depart":plus(2),"companion":"Sam Okafor",
+                   "updated":"2026-08-16T10:00:00Z"},
+              "6":{"id":"res-6","depart":plus(2),"companion":"Noah Ellis",
+                   "updated":"2026-08-16T10:00:00Z"}}}
 # Villa 9 pressed the menu link tonight and has not answered. Until 19 Aug this
 # was inferred from the guest written roomguests record above, which stopped
 # being written on 17 Aug, so the fixture was asserting a signal the live app
@@ -161,6 +170,16 @@ with sync_playwright() as p:
     ck("group boxed in bookings", bl["grpbox"])
     ck("dietary conflict flagged", bl["conflict"])
     ck("external booking listed", bl["ext"])
+
+    # ── the second guest, in the small print under the name ────────
+    allrows=pg.evaluate("""()=>[...document.querySelectorAll('#listBookings .row')]
+      .map(e=>e.textContent.replace(/\\s+/g,' '))""")
+    ck("a dining row carries the companion Mews sent",
+       any(t.startswith("6") and "With Noah Ellis" in t for t in allrows))
+    ck("the awaiting stub carries it too: the villa has not answered but the party is named",
+       any("Lucy" in t and "Awaiting" in t and "With Sam Okafor" in t for t in allrows))
+    ck("and a villa nobody named a second guest for shows no With line",
+       all("With " not in t for t in allrows if t.startswith(("1 ","3 "))))
 
     # menu pill
     ck("menu published pill", "menu published" in pg.locator("#menuState").inner_text().lower())

@@ -544,6 +544,10 @@ function mewsRecord(stay){
   if (stay.depart)   out.departs = stay.depart;
   if (stay.arrive)   out.arrives = stay.arrive;
   if (stay.adults)   out.adults  = stay.adults;
+  /* The second guest, as Mews sent it. The Worker has written this onto
+     every night since 19 Aug and this reader dropped it, which is why no
+     board could ever show a companion the Zap delivered. */
+  if (stay.companion) out.companion = stay.companion;
   /* One party can hold several villas. Two reservations under one group are
      not two guests who happen to share a surname, and a board that treats them
      as strangers will seat them apart. */
@@ -553,6 +557,17 @@ function mewsRecord(stay){
      no use to anybody standing at a desk. */
   if (stay.number)   out.number  = stay.number;
   return out;
+}
+
+/* The second guest's name, one reading for every surface that shows it.
+   What a person typed - the guest at pre-arrival, or reception at the desk,
+   both landing in prearrival.companion - wins; the name Mews sent stands
+   behind it. The same order the desk's answersOf established, now read
+   through here by every page. One name, never a list: whether a villa can
+   hold more than one companion is an open decision in HANDOVER.md, and the
+   field is a single value everywhere until it is settled. */
+function companionOf(pre, rec){
+  return String((pre && pre.companion) || (rec && rec.companion) || '').trim();
 }
 
 /* Every OTHER villa the same party holds tonight. Empty for the ordinary case

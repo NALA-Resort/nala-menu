@@ -503,7 +503,7 @@ function stripTags(h){
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=37"></script>
+<script src="nala-shared.js?v=38"></script>
 <script>
 // date state + header wiring from nala-shared.js
 var nav = initDateNav();
@@ -927,6 +927,15 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
         ? g.name
         : (row.room ? '' : (phone || ''));
       var nameCell = name + (phone && !row.room ? '<span class="sub">'+phone+'</span>' : '');
+
+      /* The second guest, directly under the name they travel with, in the
+         same small grey line the externals use for a phone. Context, not a
+         second row: the sheet is read down by booking and the covers column
+         already counts them. Escaped, because it is typed by a guest or at
+         the desk and the cell is otherwise built by concatenation. */
+      var second = row.room
+        ? companionOf(PREARRIVAL_BY_VILLA[String(row.room)], g) : '';
+      if (second) nameCell += '<span class="sub">'+escText(second)+'</span>';
 
       var dinner, cls = '';
       var hits = (row.status === 'in') ? menuConflicts(MENU, g.diets) : [];
