@@ -10,7 +10,8 @@
 <title>Nala · Publish Menu</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E; }
+  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+          --amberb:#C29A55; --amberink:#8A6A2F; }
   /* The foot of the page has to clear the fixed bar, and the bar grew a second
      row when Remove arrived. At 90px the last row of dietary ticks sat under
      it and could not be read or pressed, which on this page means an allergy
@@ -130,6 +131,18 @@
           border-radius:20px; font-family:Helvetica,Arial,sans-serif; font-size:11px;
           color:var(--ink); cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .tick.on { background:var(--red); color:#fff; border-color:var(--red); }
+  /* The ring, asked for by the owner 27 Aug: a pill whose dietary somebody in
+     the house TONIGHT has declared. Red - the failure colour - when that guest
+     is confirmed for dinner: tick this pill on a dish and a real diner is
+     warned off it, skip it and they meet the dish in silence. Amber - the
+     attention colour - when the declarer is staying but has not confirmed
+     dinner: a conflict that might arrive at the pass. A ring rather than a
+     fill so the tick's own on state stays what it was, and an outer shadow
+     rather than a fatter border so nothing shifts when it appears. */
+  .tick.warnin  { border-color:var(--red); box-shadow:0 0 0 1px var(--red); }
+  .tick.warnstay{ border-color:var(--amberb); box-shadow:0 0 0 1px var(--amberb); }
+  .wkin  { color:var(--red); }
+  .wkstay{ color:var(--amberink); }
 
   .addrow { display:flex; gap:8px; margin-top:18px; }
   .addrow input { flex:1; min-width:0; padding:11px 12px; border:1px solid var(--rule);
@@ -225,6 +238,9 @@
   <div class="sectnote">Tick a dietary and a guest who declared it is warned.
     Nothing is checked until this is done, so it is part of publishing, not a
     job for afterwards.</div>
+  <!-- The key to the rings, present only while a ring is. A legend for marks
+       that are not on the page is furniture. -->
+  <div class="sectnote" id="warnKey" style="display:none"></div>
   <div class="tagblock" id="tagblock"></div>
 
   <!-- One-offs are made here because that is where the need appears: a dish
@@ -469,12 +485,16 @@
            '<div class="ticks">';
       names.forEach(function(n){
         var on = (TAGS[k] || []).indexOf(n) > -1;
-        h += '<button class="tick' + (on ? ' on' : '') + '" data-c="'+k+'" data-n="'+esc(n)+'">' +
+        var lvl = DIET_LEVELS[n.toLowerCase()];
+        h += '<button class="tick' + (on ? ' on' : '') +
+             (lvl === 'in' ? ' warnin' : lvl === 'stay' ? ' warnstay' : '') +
+             '" data-c="'+k+'" data-n="'+esc(n)+'">' +
              esc(n) + '</button>';
       });
       h += '</div></div>';
     });
     document.getElementById('tagblock').innerHTML = h;
+    paintWarnKey(names);
     [].forEach.call(document.querySelectorAll('#tagblock .tick'), function(b){
       /* An ARRAY of dietary names, per course, which is what tag.html has
          always written and what every reader expects: menuConflicts walks
@@ -492,6 +512,90 @@
         b.classList.toggle('on');
       };
     });
+  }
+
+  /* What the rings mean, said beside them, and only while one is on the page:
+     a legend for marks that are not there is furniture. Each half appears
+     only when its colour does. */
+  function paintWarnKey(names){
+    var key = document.getElementById('warnKey');
+    if (!key) return;
+    var anyIn = false, anyStay = false;
+    (names || []).forEach(function(n){
+      var lvl = DIET_LEVELS[n.toLowerCase()];
+      if (lvl === 'in') anyIn = true;
+      else if (lvl === 'stay') anyStay = true;
+    });
+    var bits = [];
+    if (anyIn) bits.push('<span class="wkin">A red ring</span>: a guest ' +
+      'confirmed for tonight’s dinner has declared it.');
+    if (anyStay) bits.push('<span class="wkstay">An amber ring</span>: a guest ' +
+      'staying tonight has declared it, but has not confirmed dinner.');
+    key.innerHTML = bits.join(' ');
+    key.style.display = bits.length ? '' : 'none';
+  }
+
+  /* Which dietaries are actually in the house tonight, for the rings above.
+
+     Asked for by the owner, 27 Aug: the chef reads this page holding a menu,
+     and the pills said nothing about the people it is about to be served to.
+     'in' is a guest confirmed for dinner whose current declared list carries
+     the dietary - the same list the Reservations board flags - and it wins
+     over 'stay', which is anybody staying tonight who has not confirmed
+     dinner, or a declaration from an earlier night of the stay ("do not cook
+     to these without asking", MANUAL-CHEF.md). A guest who declined dinner
+     rings nothing: not dining is a fact, not a conflict.
+
+     Built from the same reads and the same merge as the boards - roomRecord
+     over responses, manual, roomguests and stays - because a second opinion
+     about who is dining is how two screens disagree in front of the owner.
+     Read from the LIVE nodes even in a rehearsal, like the dietary list: the
+     house is real whatever the menu is. Advisory only: a failed read paints
+     no rings rather than wrong ones, and never blocks publishing - the lock
+     on the dietary list is about overwriting data, this is only about
+     reading the room. */
+  var DIET_LEVELS = {};          /* lowercased dietary name -> 'in' | 'stay' */
+
+  function loadDietLevels(){
+    var K = todayKey();
+    function quiet(path){
+      return fetch(DB + path + '.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .catch(function(){ return null; });
+    }
+    Promise.all([ quiet('/responses/' + K), quiet('/manual/' + K),
+                  fetchRoomGuests(K), fetchStays(K) ])
+      .then(function(res){
+        var responses = res[0] || {}, manual = res[1] || {};
+        var roomguests = overlayStays(resolveRoomGuests(res[2], K), res[3]);
+        var levels = {};
+        function markDiets(list, lvl){
+          fixDietList(list || []).forEach(function(d){
+            var k = d.toLowerCase();
+            if (lvl === 'in' || !levels[k]) levels[k] = lvl;
+          });
+        }
+        for (var n = 1; n <= ROOMS; n++){
+          var r = roomRecord(n, responses, manual, roomguests);
+          if (!r || r.status === 'out' || r.status === 'vacant') continue;
+          if (r.status === 'in'){ markDiets(r.diets, 'in'); markDiets(r.prevDiets, 'stay'); }
+          else { markDiets(r.diets, 'stay'); markDiets(r.prevDiets, 'stay'); }
+        }
+        /* Externals are not staying, so they are only ever a red: the record
+           exists because somebody answered, and the answer counted is dining. */
+        for (var k in responses){
+          var g = responses[k];
+          if (!g || g.room || manual['extcancel-' + k]) continue;
+          if (g.status === 'in') markDiets(g.diets, 'in');
+        }
+        for (var k2 in manual){
+          if (k2.indexOf('ext-') === 0 && manual[k2] && manual[k2].status === 'in')
+            markDiets(manual[k2].diets, 'in');
+        }
+        DIET_LEVELS = levels;
+        paintTags();
+      })
+      .catch(function(){ /* no rings rather than wrong ones */ });
   }
 
   /* Publish writes the menu and tonight's tags together, in that order, and
@@ -804,6 +908,8 @@
       loadPublished(!hadLink);
     })
     .catch(function(){ err('Could not load - refresh to try again.'); });
+
+  loadDietLevels();
 </script>
 
 <script>
