@@ -186,7 +186,7 @@ with sync_playwright() as p:
         conflict:r.className.includes('conflict'), bub:!!r.querySelector('.bub')};}""")
     print("   villa 3 no-allergies pill:", nd)
     ck("the answer shows as a pill in the dietline",
-       nd and nd["t"]=="No allergies to declare" and nd["ok"])
+       nd and nd["t"]=="No dietaries" and nd["ok"])
     ck("but flags nothing: not an allergen, no conflict, no bubble",
        nd and not nd["al"] and not nd["conflict"] and not nd["bub"])
 
