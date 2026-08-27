@@ -195,15 +195,35 @@ with sync_playwright() as p:
        "as requested" in pg.evaluate(
          "()=>document.querySelector('#board [data-booking=\"b3\"] .st').textContent"))
     ck("a suggestion shows both sides of the conversation",
-       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b12\"] .st').textContent")
-         .startswith("Suggested") and
-       "asked for" in pg.evaluate(
-         "()=>document.querySelector('#board [data-booking=\"b12\"] .st').textContent"))
+       "suggested instead of" in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b12\"] .st').textContent") and
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b12\"] .when').textContent") != "")
     ck("a decline tells the desk what to do about it",
        "let the guest know" in pg.evaluate(
          "()=>document.querySelector('#board [data-booking=\"b7\"] .st').textContent"))
     ck("the villa number leads every tile",
        pg.evaluate("()=>document.querySelector('#board [data-booking=\"b3\"] .v').textContent") == "3")
+
+    # ── the tile's anatomy, ruled 27 Aug ────────────────────────
+    # The when sits beside the name and says the month - a bare "Wed 2"
+    # past the month's edge is nobody's Wednesday. One kind of fact per
+    # line, and no line wraps; the card holds the whole story.
+    def nice(n):
+        d = now + datetime.timedelta(days=n)
+        day = d.day
+        suf = "th" if 11 <= day % 100 <= 13 else {1:"st",2:"nd",3:"rd"}.get(day % 10, "th")
+        return d.strftime("%a ") + str(day) + suf + d.strftime(" %b")
+    ck("the when sits beside the name and names the month",
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b3\"] .top .when').textContent")
+       == nice(0) + " · 11:00 am")
+    ck("and wears ink on every band, never the band's colour",
+       pg.evaluate("()=>['b3','b12','b7','b9'].every(id=>"
+                   "getComputedStyle(document.querySelector("
+                   "'#board [data-booking=\"'+id+'\"] .when')).color==='rgb(28, 28, 26)')"))
+    ck("no tile line wraps - each is one ellipsised row",
+       pg.evaluate("()=>['.st','.cmp','.when'].every(s=>{"
+                   "var e=document.querySelector('#board [data-booking=\"b3\"] '+s);"
+                   "return !e || getComputedStyle(e).whiteSpace==='nowrap';})"))
 
     # ── the second guest, in the small print under the name ────
     ck("a tile carries the companion Mews sent",
