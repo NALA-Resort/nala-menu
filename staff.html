@@ -155,7 +155,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=42"></script>
+<script src="nala-shared.js?v=43"></script>
 <script>
 var ROLES = ['admin','manager','chef','waiter','housekeeping'];
 /* The human roles, and the ones the notification matrix targets. manager is
@@ -163,13 +163,22 @@ var ROLES = ['admin','manager','chef','waiter','housekeeping'];
    buzzed like anybody else. sync is a machine account with no phone, so it
    is assignable and sortable but takes no part in notifications: giving it a
    column would ask who to buzz on a login that cannot receive a buzz. spa is
-   assignable too but stays out of the matrix: every event in it is cleans
-   and menus, none of which is the masseuse's business, and a sixth column
-   squeezes the grid at 320. */
+   assignable too but keeps out of the matrix even now that the spa events
+   exist: a sixth column squeezes the grid at 320, so his routing lives as a
+   stored spa key on each event (NOTIFY_DEFAULTS seeds it, saveNotify's
+   whole-node PUT carries it untouched) and his one control is his own
+   phone's Notifications toggle. */
 var ROLES_ASSIGN = ROLES.concat(['spa','sync']);
 var EVENTS = [['departed','Departed'],['available','Possibly available'],
               ['cleaned','Cleaned'],['serviced','Serviced'],
-              ['menu','Menu published']];
+              ['menu','Menu published'],
+              /* The spa five, 27 Aug. These columns tick the DESK side;
+                 the masseuse's copy of each is the stored spa key above. */
+              ['spaRequest','Massage requested'],
+              ['spaSuggested','Massage suggested'],
+              ['spaBooked','Massage booked'],
+              ['spaCancelled','Massage cancelled'],
+              ['spaStay','Stay changed under a massage']];
 var STAFF = {}, CFG = null;
 
 (function(){
@@ -480,6 +489,14 @@ function loadNotify(){
       NOTIFY = cfg || JSON.parse(JSON.stringify(NOTIFY_DEFAULTS));
       if (!NOTIFY.events) NOTIFY.events = JSON.parse(JSON.stringify(NOTIFY_DEFAULTS.events));
       if (!NOTIFY.hours)  NOTIFY.hours  = JSON.parse(JSON.stringify(NOTIFY_DEFAULTS.hours));
+      /* An event type added after this node was first written - the spa
+         five, 27 Aug - is filled in from its defaults before the grid
+         draws, or the first tick would PUT the node back without the
+         event's stored spa key and silence the masseuse for good. */
+      Object.keys(NOTIFY_DEFAULTS.events).forEach(function(ev){
+        if (!NOTIFY.events[ev])
+          NOTIFY.events[ev] = JSON.parse(JSON.stringify(NOTIFY_DEFAULTS.events[ev]));
+      });
       drawNotify();
     })
     .catch(function(){ document.getElementById('err').textContent =

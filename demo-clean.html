@@ -2040,7 +2040,22 @@ var NOTIFY_DEFAULTS = {
        in the database changes when a menu goes up. The board notices on its
        next load and fires this. Off for the chef, who already knows: they
        just published it. */
-    menu:      { housekeeping:false, admin:true, manager:true, waiter:false, chef:false }
+    menu:      { housekeeping:false, admin:true, manager:true, waiter:false, chef:false },
+    /* The spa loop's five, the owner's ask of 27 Aug: the earlier each side
+       hears, the earlier the guest gets an answer. The masseuse's spa key is
+       stored here but his column never renders in the Settings grid - a
+       sixth column squeezes it at 320, and his one control is his own
+       Notifications toggle - the push Worker reads the stored key all the
+       same. spaRequest fires from the desk's asks and from the mews-sync
+       sweep that announces a guest's form; spaSuggested is the masseuse's
+       counter-offer, off for him because he just made it; spaStay is the
+       Worker's alone - a Mews cancellation or date change under a live
+       treatment. */
+    spaRequest:   { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
+    spaSuggested: { spa:false, admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
+    spaBooked:    { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
+    spaCancelled: { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
+    spaStay:      { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false }
   }
 };
 
@@ -2051,13 +2066,26 @@ function ensureNotifySettings(role){
     .then(function(cfg){
       /* Only fill in what is missing. Overwriting would undo the manager's
          own choices every time a board loaded.                          */
-      if (cfg && cfg.events && cfg.hours) return;
-      var merged = {
-        on:     (cfg && typeof cfg.on === 'boolean') ? cfg.on : NOTIFY_DEFAULTS.on,
-        hours:  (cfg && cfg.hours) ? cfg.hours : NOTIFY_DEFAULTS.hours,
-        events: (cfg && cfg.events) ? cfg.events : NOTIFY_DEFAULTS.events
-      };
-      return fetch(DB + '/notify.json', { method:'PUT', body: JSON.stringify(merged) });
+      if (!(cfg && cfg.events && cfg.hours)){
+        var merged = {
+          on:     (cfg && typeof cfg.on === 'boolean') ? cfg.on : NOTIFY_DEFAULTS.on,
+          hours:  (cfg && cfg.hours) ? cfg.hours : NOTIFY_DEFAULTS.hours,
+          events: (cfg && cfg.events) ? cfg.events : NOTIFY_DEFAULTS.events
+        };
+        return fetch(DB + '/notify.json', { method:'PUT', body: JSON.stringify(merged) });
+      }
+      /* A settings node that already stood when an event type was added
+         later - the spa five, 27 Aug - holds no key for it, and a keyless
+         event buzzes nobody. Fill in ONLY the missing events, each with
+         its defaults, so a new queue starts announcing without a console
+         paste; an event already present is the manager's own ticks and is
+         never touched. */
+      var missing = {}, any = false;
+      Object.keys(NOTIFY_DEFAULTS.events).forEach(function(ev){
+        if (!cfg.events[ev]){ missing[ev] = NOTIFY_DEFAULTS.events[ev]; any = true; }
+      });
+      if (any) return fetch(DB + '/notify/events.json',
+        { method:'PATCH', body: JSON.stringify(missing) });
     })
     .catch(function(){});
 }

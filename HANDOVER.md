@@ -354,6 +354,31 @@ None of these can move without him.
     in `RATE_FLAG` (`nala-shared.js`) takes any rate STARTING with "Luxury
     Escapes", a guess pending a real payload - the companion field's
     standing caution.
+11. **Two pastes to make the spa notifications buzz, 27 Aug.** The site now
+    fires five spa events and the sync Worker sweeps for the guest-form asks,
+    but both halves end at Workers only the dashboard holds:
+    - **Paste `worker/mews-sync.js` into its Worker again.** It gained the
+      hourly sweep that announces a guest's form ask as `spaRequest` (marker
+      node `/spaalerts`, under the catch-all rule like `/invites` - no rules
+      paste), and the `spaStay` push when a Mews cancellation or date change
+      lands under a live treatment. Until the paste, only the taps staff make
+      on the Spa board buzz; a guest's own form ask stays silent until
+      somebody opens the board.
+    - **Teach `nala-push` the five events** (that Worker is not in this repo;
+      it routes an event to the roles whose `/notify/events/<event>/<role>`
+      is true, and the defaults - including the masseuse's stored `spa` keys,
+      which the Settings grid deliberately never draws - seed themselves the
+      next time an admin opens the Cleans board or Settings). Suggested
+      texts, each with `url: '/spa.html'` so the tap lands on the board:
+        `spaRequest`   "Villa {v} - new massage request"
+        `spaSuggested` "Villa {v} - masseuse suggested a time, put it to the guest"
+        `spaBooked`    "Villa {v} - massage booked"
+        `spaCancelled` "Villa {v} - massage declined or cancelled"
+        `spaStay`      "Villa {v} - stay cancelled or moved under a massage"
+      Until this paste the sends reach nala-push and are dropped as unknown
+      events; nothing breaks, nothing buzzes. The masseuse's phone also has
+      to subscribe once: his own hamburger menu, Settings, Notifications -
+      the toggle every login carries.
 
 ---
 
