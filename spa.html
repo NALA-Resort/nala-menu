@@ -87,6 +87,14 @@
   .cbtn.danger { border-color:var(--terra-b); color:var(--terra); flex:0 0 auto; padding:12px 14px; }
   .hint { font-size:11px; color:var(--mid); margin-top:8px; line-height:1.45; }
 
+  /* The desk's find-the-guest box. True white: an editable surface, the
+     colour law's one meaning for it. */
+  .addsearch { width:100%; font-size:15px; border:1px solid var(--rule);
+               border-radius:10px; padding:11px 13px; background:#fff;
+               font-family:inherit; color:var(--ink); margin-bottom:7px;
+               -webkit-appearance:none; appearance:none; }
+  .addsearch::placeholder { color:var(--mid); }
+
   /* The stats are buttons here and only here, so the dress is this page's to
      set: no border and no fill, exactly as the shared .stat draws, and the
      pressed one carries an amber rule under its number. */
@@ -174,6 +182,11 @@ var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
    further out still waits at the same cliff, 45 days before arrival. */
 var HORIZON = 45;
 
+/* The add list's resting window: who can be standing at the desk asking.
+   Anyone further out asked by email or phone, with a name attached, and
+   the search is how the desk reaches them. */
+var SOON = 7;
+
 /* Treatment hours: SPA_SLOTS in nala-shared.js, one list for every staff
    page, pinned with the guest form's copy to tests/slots.json. */
 var SLOTS = SPA_SLOTS;
@@ -196,6 +209,7 @@ var SPA = {};        /* id -> { tid -> record } */
 var OPEN = null;     /* { id, tid } of the one card open, tid 'new' for an add */
 var SEL = null;      /* { day, time } while a card is open */
 var FILTER = 'all'; /* the pressed stat; All is the resting state */
+var ADDQ = '';      /* the desk's find-the-guest text, kept across repaints */
 
 function nameOf(id, rec){
   var bk = BOOKINGS[id];
@@ -718,22 +732,40 @@ function paint(){
     band(board, 'Declined', of('declined', upcoming).sort(byDay).map(el));
     /* The masseuse sees the guests who want him and nobody else: a stay
        with no request is none of an outside contractor's business, the
-       owner ruled, 25 Aug. The desk keeps the band, because the desk is
-       who adds a treatment when a guest asks in person. */
+       owner ruled, 25 Aug. The desk keeps the add path, because the desk
+       is who adds a treatment when a guest asks - and since the board
+       reads the invite Worker's whole 45 days, finding the guest IS the
+       path. The old band simply listed every treatmentless stay in the
+       window, which at 45 days is a wall of grey nobody could read as
+       anything (the owner, 27 Aug). So the resting list is only who can
+       be standing at the desk - in a villa now or arriving within the
+       week - and the search reaches everyone else in the window, the
+       guests who ask by email, by name or by villa number. */
     if (normaliseRole(window.NALA_ROLE) !== 'spa'){
       var covered = {};
       list.forEach(function(it){ covered[it.id] = true; });
-      var none = Object.keys(BOOKINGS).filter(function(id){ return !covered[id]; })
+      var pool = Object.keys(BOOKINGS).filter(function(id){ return !covered[id]; })
         .sort(function(a, b){
           return akey(BOOKINGS[a].arrive).localeCompare(akey(BOOKINGS[b].arrive));
-        }).map(function(id){
-          /* An add in progress: the grey tile has no record behind it, so
-             the open card is built from nothing but the booking. */
-          if (OPEN && OPEN.id === id && OPEN.tid === 'new' && !cardDrawn){
-            cardDrawn = true;
-            return card({ id: id, tid: 'new',
-                          rec: { status: '', reqDay: '', reqTime: '' } });
-          }
+        });
+      if (pool.length){
+        var hAdd = document.createElement('div');
+        hAdd.className = 'grp';
+        hAdd.textContent = 'Add a treatment';
+        board.appendChild(hAdd);
+        var find = document.createElement('input');
+        find.type = 'text'; find.id = 'addFind'; find.className = 'addsearch';
+        find.placeholder = 'Find the guest · name or villa';
+        find.setAttribute('aria-label', 'Find the guest');
+        find.autocomplete = 'off';
+        find.value = ADDQ;
+        board.appendChild(find);
+        var tilesBox = document.createElement('div');
+        board.appendChild(tilesBox);
+        var soonEnd = (function(){
+          var d = new Date(); d.setDate(d.getDate() + SOON); return dkey(d);
+        })();
+        var addTile = function(id){
           var bk = BOOKINGS[id], p = bk.pre;
           var here = akey(bk.arrive) <= real;
           var line = (here ? 'In villa until ' + shortDay(akey(bk.depart))
@@ -743,8 +775,45 @@ function paint(){
             line = 'Said no thank you on the form · ' + line.charAt(0).toLowerCase() + line.slice(1);
           else line += ' · tap to add one';
           return greyTile(id, line, true);
-        });
-      band(board, 'No treatment · staying or arriving', none);
+        };
+        var addHint = function(t){
+          var e2 = document.createElement('div');
+          e2.className = 'hint'; e2.textContent = t;
+          tilesBox.appendChild(e2);
+        };
+        /* Typing refills only the tiles, never the board: a repaint would
+           take the keyboard's focus with it on every letter. */
+        var fillAdd = function(){
+          tilesBox.innerHTML = '';
+          /* An add in progress: the grey tile has no record behind it, so
+             the open card is built from nothing but the booking - and it
+             stays on screen whatever the search box says. */
+          var openNew = (OPEN && OPEN.tid === 'new' && BOOKINGS[OPEN.id])
+            ? OPEN.id : null;
+          if (openNew)
+            tilesBox.appendChild(card({ id: openNew, tid: 'new',
+                                        rec: { status: '', reqDay: '', reqTime: '' } }));
+          var q = ADDQ.trim().toLowerCase();
+          var rest = pool.filter(function(id){ return id !== openNew; });
+          var shown = rest.filter(function(id){
+            if (!q) return akey(BOOKINGS[id].arrive) <= soonEnd;
+            /* The villa answers only to its exact number: a typed 1 must
+               not drag in villas 12 and 15 the way a name fragment may. */
+            return nameOf(id, null).toLowerCase().indexOf(q) > -1 ||
+                   String(villaOf(id, todayKey()) || '') === q;
+          });
+          shown.forEach(function(id){ tilesBox.appendChild(addTile(id)); });
+          if (!q && rest.length > shown.length)
+            addHint((rest.length - shown.length) +
+                    ' more arrive later in the next ' + HORIZON +
+                    ' days. The search finds them by name or villa.');
+          if (q && !shown.length)
+            addHint('No guest by that name or villa without a treatment ' +
+                    'in the next ' + HORIZON + ' days.');
+        };
+        find.oninput = function(){ ADDQ = find.value; fillAdd(); };
+        fillAdd();
+      }
     }
     if (!board.children.length){
       var e = document.createElement('div');

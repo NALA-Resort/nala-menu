@@ -62,6 +62,10 @@ BOOKINGS = [
   # TODAY, not when the date navigation reaches the stay - found live,
   # 27 Aug, when the board's 21-day read hid exactly this guest
   ("11", "b30", "Nadia",  "Faraj",   30, 33),
+  # a later arrival with no request at all: the desk's search must reach
+  # her when she emails about a massage, weeks before she could stand at
+  # the desk
+  ("16", "b45", "Priya",  "Nair",    20, 23),
 ]
 
 STAYS_BY_DATE = {}
@@ -549,16 +553,56 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.querySelectorAll('#board .b-grey').length") == 0 and
        not pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b2\"]')") and
        not pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b6\"]')"))
+    ck("nor the desk's find-the-guest box",
+       not pg.evaluate("()=>!!document.querySelector('#addFind')"))
     pg.close()
 
-    # The desk keeps the whole horizon, no-treatment band included.
+    # The desk keeps the add path - one plainly-named header and a search,
+    # because at 45 days the old every-stay band was a wall of grey the
+    # owner could not read as anything, 27 Aug. Resting, it lists only who
+    # can be standing at the desk: in a villa now or arriving within the
+    # week. The search reaches everyone else in the window.
     pg = board("staff@x")
     got = bands(pg)
-    ck("the desk's board still ends with the no-treatment band",
-       got[-1] == "No treatment · staying or arriving · 2")
+    ck("the desk's board ends with the add path, plainly named",
+       got[-1] == "Add a treatment")
+    ck("resting, it lists the guests here or arriving this week",
+       pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b2\"]')") and
+       pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b6\"]')") and
+       not pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b45\"]')"))
+    ck("and says the search reaches the rest",
+       "1 more arrive later" in pg.evaluate(
+         "()=>(document.querySelector('#board .hint')||{textContent:''}).textContent"))
     ck("a guest who said no thank you is named as such, not offered around",
        "no thank you" in pg.evaluate(
          "()=>document.querySelector('#board [data-booking=\"b2\"] .st').textContent"))
+    # Finding the guest, the 27 Aug ask: a name fragment or the exact villa
+    # number surfaces a later arrival, and her tile is the same add path.
+    pg.fill("#addFind", "pri"); pg.wait_for_timeout(200)
+    ck("a name fragment finds the later arrival",
+       pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b45\"]')") and
+       not pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b6\"]')"))
+    pg.fill("#addFind", "6"); pg.wait_for_timeout(200)
+    ck("a villa number answers only to its exact self",
+       pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b6\"]')") and
+       not pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b45\"]')"))
+    pg.fill("#addFind", "16"); pg.wait_for_timeout(200)
+    ck("and the later villa to its own",
+       pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b45\"]')") and
+       not pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b6\"]')"))
+    pg.fill("#addFind", "zz"); pg.wait_for_timeout(200)
+    ck("no match says so rather than showing nothing",
+       "No guest by that" in pg.evaluate(
+         "()=>(document.querySelector('#board .hint')||{textContent:''}).textContent"))
+    pg.fill("#addFind", "priya"); pg.wait_for_timeout(200)
+    pg.locator('#board [data-booking="b45"]').click(); pg.wait_for_timeout(300)
+    del WRITES[:]
+    pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
+    w45 = [x for x in WRITES if "/spa/b45/" in x["u"]]
+    body45 = json.loads(w45[0]["b"]) if w45 else {}
+    ck("a found guest's add asks the masseuse like any other",
+       body45.get("status") == "requested" and body45.get("source") == "desk")
+    SPA = spa_seed()
     pg.close()
 
     # The desk's add asks the masseuse: the desk does not know his book.
