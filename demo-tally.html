@@ -3770,6 +3770,7 @@ function snapshotRows(g, known){
    hour for nothing. So the eye pays for itself, once, on the villa in hand. */
 var PRE_CACHE = {};
 var INT_CACHE = {};
+var SPA_CACHE = {};   /* /spa/<booking>: the wellness row's first source */
 
 function wireGuestPanel(g, known){
   var eye = document.getElementById('gdEye');
@@ -3955,20 +3956,56 @@ var APPROACH_WORDS = { most:'Most nights', few:'A few nights',
                        once:'Probably just once', unsure:'Not sure yet',
                        mix:'A mix of meals in and out', out:'Mostly eating out' };
 
-function preRows(pre){
-  if (!pre || typeof pre !== 'object') return [];
+/* The panel's short day: Thu 28, the styleguide's own shape. */
+function wellDayLabel(key){
+  var d = parseDepDate(key); if (!d) return String(key);
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' + d.getDate();
+}
+
+function preRows(pre, spa){
+  var p = (pre && typeof pre === 'object') ? pre : null;
   var rows = [];
-  if (pre.arriveSlot)
-    rows.push(['Arriving', ETA_WORDS[pre.arriveSlot] || String(pre.arriveSlot)]);
+  if (p && p.arriveSlot)
+    rows.push(['Arriving', ETA_WORDS[p.arriveSlot] || String(p.arriveSlot)]);
   /* No arrival note here by decision, 20 Aug: it dies at check-in and
      belongs to the arrivals views. This panel is the booking's notes. */
-  if (pre.purpose)    rows.push(['Here for', pre.purpose]);
-  if (pre.occasion)   rows.push(['Occasion', pre.occasion]);
-  if (pre.approach)
-    rows.push(['Dining', APPROACH_WORDS[pre.approach] || String(pre.approach)]);
-  if (pre.wellness)   rows.push(['Wellness', 'Interested'
-    + (pre.wellDay ? ', ' + pre.wellDay : '')
-    + (pre.wellTime ? ' ' + pre.wellTime : '')]);
+  if (p && p.purpose)    rows.push(['Here for', p.purpose]);
+  if (p && p.occasion)   rows.push(['Occasion', p.occasion]);
+  if (p && p.approach)
+    rows.push(['Dining', APPROACH_WORDS[p.approach] || String(p.approach)]);
+  /* Wellness is the Spa board's truth, not the form's - the front desk
+     sheet's rule of 27 Aug, kept here so the two views cannot disagree:
+     a record at /spa/<booking> outranks the form's Interested, which
+     stands in only while nobody has answered it. Spa rows render even
+     with no form at all: a desk-added massage belongs to the booking. */
+  var answered = false;
+  Object.keys(spa || {}).sort().forEach(function(tid){
+    var t = spa[tid];
+    if (!t || typeof t !== 'object' || !t.status) return;
+    if (t.source === 'prearrival') answered = true;
+    var two = t.qty === 2 ? 'Two massages \u00B7 ' : '';
+    var when = (t.day ? wellDayLabel(t.day) : '') +
+               (t.time ? ' \u00B7 ' + spaSlotLabel(t.time) : '');
+    if (t.status === 'booked')
+      rows.push(['Wellness', two + 'Booked \u00B7 ' + when +
+                 (t.manual ? ' \u00B7 approved at the desk' : '')]);
+    else if (t.status === 'suggested')
+      rows.push(['Wellness', two + 'Suggested ' + when + ' \u00B7 waiting on the guest']);
+    else if (t.status === 'requested')
+      rows.push(['Wellness', two + 'Asked' +
+                 (t.reqDay ? ' \u00B7 ' + wellDayLabel(t.reqDay) : '') +
+                 (t.reqTime ? ' \u00B7 ' + t.reqTime : '') +
+                 ' \u00B7 waiting on the masseuse']);
+    else if (t.status === 'declined')
+      rows.push(['Wellness', 'Declined' + (t.note ? ' \u00B7 ' + t.note : '') +
+                 (t.told ? ' \u00B7 guest told' : ' \u00B7 let the guest know')]);
+  });
+  if (p && p.wellness && !answered)
+    rows.push(['Wellness', 'Interested'
+      + (p.wellDay ? ', ' + wellDayLabel(p.wellDay) : '')
+      + (p.wellTime ? ' ' + p.wellTime : '')
+      + ' \u00B7 waiting on the masseuse']);
+  if (!p) return rows;
   if (pre.note)       rows.push(['Booking notes', '\u201C'+pre.note+'\u201D']);
   /* The dietaries themselves, not only the note about them. This panel showed
      the note and skipped the list, so an allergy on the reservation was
@@ -3991,7 +4028,7 @@ function loadPrearrival(known, panel, g){
     return;
   }
   var paint = panel._paint = function(){
-    var extra = preRows(PRE_CACHE[id]);
+    var extra = preRows(PRE_CACHE[id], SPA_CACHE[id]);
     /* The staff note is the whole team's, decided 20 Aug: every staff
        login reads it and writes it, because the chef holding the phone
        at service is exactly who it is for. The rules enforce the only
@@ -4026,10 +4063,14 @@ function loadPrearrival(known, panel, g){
     panel.innerHTML = body +
       '<button class="gd-close" id="gdClose" type="button">Close details</button>';
   }
-  if (PRE_CACHE[id] !== undefined && INT_CACHE[id] !== undefined){ paint(); return; }
+  if (PRE_CACHE[id] !== undefined && INT_CACHE[id] !== undefined &&
+      SPA_CACHE[id] !== undefined){ paint(); return; }
   panel.innerHTML = panelHTML(base.concat([['', 'Looking for the pre-arrival answers', true]]));
   var pPre = PRE_CACHE[id] !== undefined ? Promise.resolve()
     : api('/bookings/'+id+'/prearrival').then(function(pre){ PRE_CACHE[id] = pre || null; });
+  var pSpa = SPA_CACHE[id] !== undefined ? Promise.resolve()
+    : api('/spa/'+id).then(function(s){ SPA_CACHE[id] = s || null; })
+        .catch(function(){ SPA_CACHE[id] = null; });
   var pInt = INT_CACHE[id] !== undefined ? Promise.resolve()
     : api('/internal/'+id).then(function(rec){
         rec = rec || {};
@@ -4044,7 +4085,7 @@ function loadPrearrival(known, panel, g){
                           note: (rec.note === undefined || rec.note === null)
                                   ? (rec.fromMews || null) : rec.note };
       }).catch(function(){ INT_CACHE[id] = { ok: false }; });
-  Promise.all([pPre, pInt]).then(paint).catch(function(){
+  Promise.all([pPre, pInt, pSpa]).then(paint).catch(function(){
       /* A failed read is not an empty one, and saying "none" here would be a
          lie that reception would act on. */
       panel.innerHTML = panelHTML(base.concat(

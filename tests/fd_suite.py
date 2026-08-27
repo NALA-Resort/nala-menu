@@ -105,6 +105,10 @@ TAGS = {"main": ["Nut allergy"]}
 # Tonight's dinner cells, keyed by villa. Seeded per test.
 DINNER = {}
 
+# The treatments at /spa/<booking>, seeded per test: the Wellness row reads
+# these first and falls back to the form only while no record answers it.
+SPADB = {}
+
 # The booking as Mews states it. Its villa is a single value, so it settles a
 # disagreement with /stays. b4's companion is the decoy the guest's own typed
 # name must beat; b9's is a name only Mews knows, which must still read back.
@@ -168,6 +172,9 @@ def fb(route, request):
     elif "/bookflags/" in u:
         k = u.split("/bookflags/")[1].split(".json")[0]
         body = json.dumps(BOOKFLAGS[k]) if k in BOOKFLAGS else "null"
+    elif "/spa/" in u:
+        k = u.split("/spa/")[1].split(".json")[0]
+        body = json.dumps(SPADB[k]) if k in SPADB else "null"
     elif "/flags" in u: body = json.dumps(FLAGS)
     route.fulfill(status=200, content_type="application/json", body=body)
 
@@ -395,6 +402,43 @@ with sync_playwright() as p:
     ck("a companion only Mews knows reads back at the desk",
        "Eleni Papadopoulou" in pg.locator(".sum").inner_text())
     pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    pg.close()
+
+    # ── the wellness row is the Spa board's truth, not the form's ─
+    # Found 27 Aug: the masseuse books the massage and the desk still read
+    # "Interested", because the sheet never read /spa. A record born from
+    # the form replaces the Interested line; the form's ask stands in only
+    # while nobody has answered it - the spa board's own rule.
+    SPADB["b4"] = {"t1": {"status": "booked", "day": plus(1), "time": "14:00",
+                          "source": "prearrival", "at": "x"}}
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    sumtxt = pg.locator(".sum").inner_text()
+    ck("a booked massage reads Booked on the sheet, day and time attached",
+       "Booked" in sumtxt and "2:00 pm" in sumtxt)
+    ck("and the form's Interested line stands down, answered",
+       "Interested" not in sumtxt)
+    pg.close()
+    SPADB["b4"] = {"t1": {"status": "declined", "reqDay": plus(1),
+                          "reqTime": "late morning", "note": "nothing free",
+                          "source": "prearrival", "at": "x"}}
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    sumtxt = pg.locator(".sum").inner_text()
+    ck("a declined ask says so, why, and what the desk still owes the guest",
+       "Declined" in sumtxt and "nothing free" in sumtxt and
+       "let the guest know" in sumtxt and "Interested" not in sumtxt)
+    pg.close()
+    SPADB["b4"] = {"t1": {"status": "suggested", "day": plus(2), "time": "16:30",
+                          "source": "prearrival", "at": "x"}}
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    ck("a suggestion shows as waiting on the guest",
+       (lambda t: "Suggested" in t and "4:30 pm" in t and
+                  "waiting on the guest" in t)(pg.locator(".sum").inner_text()))
+    pg.close()
+    del SPADB["b4"]
+    pg = board()
 
     # ── the sheet is edit, not create ───────────────────────────
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)

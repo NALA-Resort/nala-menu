@@ -1187,6 +1187,74 @@ with sync_playwright() as p:
                and q.evaluate("()=>!document.getElementById('gdIntNote')"))
         q.close()
 
+    # ── the wellness row is the Spa board's truth, not the form's ───────
+    # The front desk sheet's rule of 27 Aug, kept here so the two views
+    # cannot disagree: a massage the masseuse has booked must not read
+    # "Interested" on the Reservations panel. The record at /spa/<booking>
+    # outranks the form, which stands in only while nobody has answered it.
+    WSPA = {"t1": {"status": "booked", "day": plus(1), "time": "14:00",
+                   "source": "prearrival", "at": "x"}}
+    def well_fb(route, request):
+        u = request.url
+        if request.method != "GET":
+            fb(route, request); return
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps({"4": {"id": BID, "first": "Ana",
+                            "last": "Diaz", "arrive": today, "depart": plus(2),
+                            "adults": 2, "number": "10262"}})); return
+        if "/prearrival" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps({"wellness": True, "wellDay": plus(1),
+                                           "wellTime": "late morning"})); return
+        if "/spa/" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(WSPA)); return
+        if "/internal/" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body="null"); return
+        if "/dinner/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body="{}"); return
+        fb(route, request)
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(
+        status=200, content_type="application/javascript", body=SDK))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", well_fb)
+    q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1700)
+    q.evaluate("()=>[...document.querySelectorAll('button')]"
+               ".find(b=>b.querySelector('.room-n')"
+               "&&b.querySelector('.room-n').textContent==='4').click()")
+    q.wait_for_timeout(500)
+    q.locator("#gdEye").click(); q.wait_for_timeout(1000)
+    welltext = q.evaluate("()=>gdPanel.textContent")
+    ck("a booked massage reads Booked on the panel, day and time attached",
+       "Booked" in welltext and "2:00 pm" in welltext)
+    ck("and the form's Interested stands down, answered",
+       "Interested" not in welltext)
+    WSPA = {"t1": {"status": "declined", "reqDay": plus(1), "note": "nothing free",
+                   "source": "prearrival", "at": "x"}}
+    q.close()
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(
+        status=200, content_type="application/javascript", body=SDK))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", well_fb)
+    q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1700)
+    q.evaluate("()=>[...document.querySelectorAll('button')]"
+               ".find(b=>b.querySelector('.room-n')"
+               "&&b.querySelector('.room-n').textContent==='4').click()")
+    q.wait_for_timeout(500)
+    q.locator("#gdEye").click(); q.wait_for_timeout(1000)
+    welltext = q.evaluate("()=>gdPanel.textContent")
+    ck("a declined ask says so and what the desk still owes the guest",
+       "Declined" in welltext and "nothing free" in welltext and
+       "let the guest know" in welltext and "Interested" not in welltext)
+    q.close()
+
     # ── the panel against the screen, not the sheet ─────────────────────
     # Reported twice on 20 Aug: the panel's allowance was measured from the
     # sheet's bottom, and the sheet's bottom is wherever that login's

@@ -618,12 +618,43 @@ function summaryHTML(r){
   if (a.approach)  h += sumRow('Dining', esc(APPROACH_LABEL[a.approach] || a.approach));
   if (a.occasion)  h += sumRow('Occasion', esc(a.occasion));
 
-  if (a.wellness !== null){
-    var w = a.wellness ? 'Interested' : 'Not interested';
-    if (a.wellness && a.wellDay)  w += ' \u00b7 ' + dayLabel(a.wellDay);
-    if (a.wellness && a.wellTime) w += ' \u00b7 ' + esc(a.wellTime);
-    h += sumRow('Wellness', w);
+  /* The live spa state, not the form's opening ask. Until 27 Aug this row
+     read only the prearrival answers, so nothing that happened on the Spa
+     board - a booking, a suggestion, a decline - ever reached the sheet,
+     and reception told a guest their booked massage was "Interested". The
+     records at /spa/<booking> are the current truth; the form's answer
+     stands in only while no record has been born from it, which is the
+     spa board's own rule for the same ask. */
+  var spa = r.spa || {}, spaLines = [], spaAnswered = false;
+  Object.keys(spa).sort().forEach(function(tid){
+    var t = spa[tid];
+    if (!t || typeof t !== 'object' || !t.status) return;
+    if (t.source === 'prearrival') spaAnswered = true;
+    var two = t.qty === 2 ? 'Two massages \u00b7 ' : '';
+    var when = (t.day ? dayLabel(t.day) : '') +
+               (t.time ? ' \u00b7 ' + spaSlotLabel(t.time) : '');
+    if (t.status === 'booked')
+      spaLines.push(two + 'Booked \u00b7 ' + when +
+                    (t.manual ? ' \u00b7 approved at the desk' : ''));
+    else if (t.status === 'suggested')
+      spaLines.push(two + 'Suggested ' + when + ' \u00b7 waiting on the guest');
+    else if (t.status === 'requested')
+      spaLines.push(two + 'Asked' +
+                    (t.reqDay ? ' \u00b7 ' + dayLabel(t.reqDay) : '') +
+                    (t.reqTime ? ' \u00b7 ' + esc(t.reqTime) : '') +
+                    ' \u00b7 waiting on the masseuse');
+    else if (t.status === 'declined')
+      spaLines.push('Declined' + (t.note ? ' \u00b7 ' + esc(t.note) : '') +
+                    (t.told ? ' \u00b7 guest told' : ' \u00b7 let the guest know'));
+  });
+  if (a.wellness === true && !spaAnswered){
+    var w = 'Interested';
+    if (a.wellDay)  w += ' \u00b7 ' + dayLabel(a.wellDay);
+    if (a.wellTime) w += ' \u00b7 ' + esc(a.wellTime);
+    spaLines.push(w + ' \u00b7 waiting on the masseuse');
   }
+  if (spaLines.length) h += sumRow('Wellness', spaLines.join('<br>'));
+  else if (a.wellness === false) h += sumRow('Wellness', 'Not interested');
   if (a.note) h += sumRow('Booking notes', esc(a.note));
 
   /* Only when one is on: an empty flags row is not a blank reception needs
@@ -737,9 +768,14 @@ function loadPrearrivals(rows){
       api('/phonefix/'+r.stay.id).catch(function(){ return null; }),
       /* The ticked booking flags. Read for every role because the summary
          shows the pills to everyone; only ticking is admin's. */
-      api('/bookflags/'+r.stay.id).catch(function(){ return null; })
+      api('/bookflags/'+r.stay.id).catch(function(){ return null; }),
+      /* The treatments at /spa/<booking>: what actually happened to the
+         guest's massage ask. Without this read the sheet could only ever
+         repeat the form - found 27 Aug, when a massage the masseuse had
+         booked still read "Interested" at the desk. */
+      api('/spa/'+r.stay.id).catch(function(){ return null; })
     ]).then(function(res){ r.pre = res[0]; r.pms = res[1]; r.fix = res[2];
-                           r.bf = res[3]; });
+                           r.bf = res[3]; r.spa = res[4]; });
   }));
 }
 
