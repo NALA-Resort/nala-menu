@@ -70,12 +70,51 @@ dress per job, and the dangerous ones both look it and ask first:
 | Ink outline (quiet) | Secondary and neutral - back, ask again, options | Never |
 | Terracotta outline - border `--terra-b`, ink `--terra`, no fill | Destroys or walks back something a guest holds or was told: cancel, decline, delete, remove, resend-over | **Always** |
 
-The dress itself lives in nala-ui.css (`.btn`, `.btn.solid`, and the print
-sheets' `.tier-print .btn`/`.btn.ghost`) since 27 Aug, when five pages
-turned out to be emitting `class="btn"` with no rule behind it and the
-pages that had pasted their own copies had drifted apart. A page defines
-only its own variants (`.arm`, `.warn`, `.active`) and the layout of the
-row the buttons sit in - never the dress again.
+The dress itself lives in nala-ui.css (`.btn`, `.btn.solid`, `.btn.terra`,
+and the print sheets' `.tier-print .btn`/`.btn.ghost`) since 27 Aug, when
+five pages turned out to be emitting `class="btn"` with no rule behind it
+and the pages that had pasted their own copies had drifted apart. A page
+defines only its own variants (`.arm`, `.warn`, `.active`) and the layout
+of the row the buttons sit in - never the dress again.
+
+**Free-standing buttons are 8px** (ruled 27 Aug), matching the nav and date
+controls. The footer row is the exception and keeps the corner law below:
+it sits hard against the bottom of the screen, so it squares off and only
+the two outer lower corners round. `tally_suite` asserts those four corners
+by computed value.
+
+## What a press says back
+
+Ruled by the owner, 27 Aug, after an audit (BUTTONS-AUDIT.md) found six
+surfaces writing to the database with nothing happening on screen: no
+press, no wait, no word when it landed. The board redrew, so the button
+never had to say anything - which on a slow connection leaves somebody
+holding a dead looking control, and a second tap wrote a second time.
+
+| State | Dress | When |
+|---|---|---|
+| Rest | solid wears `--ctl-soft`, a step off full ink | nothing to do |
+| Pressed | `:active` - quiet fills rule-grey, solid drops to full ink, terracotta tints | every button, not only saves |
+| Writing | `.saving`, disabled, the colour law's waiting grey, label "Saving" | the write is in the air |
+| Landed | `.saved`, the green pill green, label "Saved" | it reached the database |
+| Failed | button back to rest, `.savefail` red text beneath it | never a red fill: red is failure's, but a red tile reads as a state the record is in, and the record is simply unsaved |
+
+The resting solid is softened rather than black so the press has somewhere
+darker to go. Before this, pressed and idle were the same pixels.
+
+**Saved rests until there is more to save.** Not a timer: a label that
+times out goes back to saying Save about a record with nothing left to
+save, which is the same lie as saying nothing. `armSave(btn)` puts it back,
+and an edit is what calls it. A surface that closes itself after writing
+(the four boards wired on 27 Aug) holds the green 400ms first, so the
+answer is seen on the way out.
+
+One helper owns all of it: `saveFeedback(btn, write, opts)` in
+nala-shared.js, with `pressedButton()` naming the button that was pressed
+so a reference does not have to be threaded through forty call sites.
+Pages adopt it where they write; the five that had hand-written their own
+version (templates, flags, tag, publish, prearrival) move onto it as they
+are next touched.
 
 - A destructive button never wears solid ink, and never red: red is
   failure's alone (the colour law, CLAUDE.md).
