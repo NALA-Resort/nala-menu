@@ -860,7 +860,18 @@ with sync_playwright() as p:
     pg = board()
     pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
     pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
-    ck("a rejected save says so", "Could not save" in pg.locator("#errBar").inner_text())
+    # The words come from the shared saveFailWords now, not this page: a
+    # refusal is a PERMISSION and needs the manager, which is a different
+    # errand from a write that never arrived. The desk's throw carried the
+    # bare word "save" until 27 Aug, so neither could be told apart and a
+    # rules rejection read as "check the connection" - the wrong remedy.
+    ck("a rejected save says so", "not allowed"
+       in pg.locator("#errBar").inner_text().lower())
+    ck("and names the right errand, since a refusal is not a bad connection",
+       "manager" in pg.locator("#errBar").inner_text().lower()
+       and "connection" not in pg.locator("#errBar").inner_text().lower())
+    ck("with the reassurance the desk acts on",
+       "Nothing was changed" in pg.locator("#errBar").inner_text())
     ck("and the guest is put back rather than left looking confirmed",
        pg.evaluate("()=>document.querySelector('.arr[data-villa=\"9\"]').className")
        .find("is-done") == -1)
@@ -916,7 +927,7 @@ with sync_playwright() as p:
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(350)
     pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(700)
     ck("if either write is rejected the guest is put back, not left half done",
-       "Could not save" in pg.locator("#errBar").inner_text() and
+       "not allowed" in pg.locator("#errBar").inner_text().lower() and
        pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"]').className")
        .find("is-done") == -1)
     STATE["fail"] = False

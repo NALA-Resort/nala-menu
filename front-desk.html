@@ -1903,7 +1903,14 @@ function save(r, a, checkin, confirm){
   }
   return saveFeedback(pressedButton(), function(){
     return Promise.all(writes).then(function(res){
-      if (res.some(function(x){ return !x.ok; })) throw new Error('save');
+      /* The STATUS goes into the error, not the bare word 'save'. The
+         shared saveFailWords reads the message to tell a refusal - a
+         permission, which needs the manager - from a write that never
+         arrived, which needs another go; handed 'save' it could recognise
+         neither, so a rules rejection at this desk read as "check the
+         connection" and sent reception to the wrong remedy entirely. */
+      var bad = res.filter(function(x){ return !x.ok; })[0];
+      if (bad) throw new Error('save failed ' + bad.status);
     });
   }, {
     done:'Saved ✓', hold:400, then:closeSheet,
