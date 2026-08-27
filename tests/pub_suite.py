@@ -55,7 +55,14 @@ STAFF = {"chef@x": {"name": "Chef", "role": "chef"},
 
 STATE = {"master": MASTER, "tags": {}, "failMaster": False, "failTags": False,
          "failMenuSave": False, "failTagSave": False, "menu": None,
-         "mobile": "+61400000000"}
+         "mobile": "+61400000000",
+         # The house tonight, for the rings on the pills: /stays and /dinner
+         # keyed by villa, /bookings/<id>/prearrival keyed by booking id,
+         # /responses keyed by phone. failHouse fails the lot, because the
+         # rings are advisory and a failed read must paint none rather than
+         # wrong ones - or block publishing, which is not its business.
+         "stays": {}, "dinner": {}, "pre": {}, "responses": {},
+         "failHouse": False}
 WRITES = []
 
 def fb(route, request):
@@ -91,6 +98,22 @@ def fb(route, request):
                           body='{"error":"Permission denied"}'); return
         route.fulfill(status=200, content_type="application/json",
                       body=json.dumps(STATE["tags"])); return
+    if "/stays/" in u or "/dinner/" in u or "/responses/" in u \
+       or "/prearrival.json" in u:
+        if STATE["failHouse"]:
+            route.fulfill(status=401, content_type="application/json",
+                          body='{"error":"Permission denied"}'); return
+        if "/stays/" in u:
+            body = STATE["stays"]
+        elif "/dinner/" in u:
+            body = STATE["dinner"]
+        elif "/responses/" in u:
+            body = STATE["responses"]
+        else:
+            bid = u.split("/bookings/")[1].split("/")[0]
+            body = STATE["pre"].get(bid)
+        route.fulfill(status=200, content_type="application/json",
+                      body=json.dumps(body)); return
     route.fulfill(status=200, content_type="application/json", body="null")
 
 P = F = 0
@@ -720,6 +743,108 @@ with sync_playwright() as p:
                    x.className.indexOf('on')>-1)"""))
     STATE["tags"] = {}
     pg.close()
+
+    # ── the rings: who is in the house tonight ──────────────────
+    #  Asked for by the owner, 27 Aug. The chef ticks against a list that said
+    #  nothing about the people the menu is about to be served to. A pill now
+    #  wears a red ring when a guest CONFIRMED for tonight's dinner has
+    #  declared that dietary, and an amber ring when somebody staying tonight
+    #  has declared it without confirming dinner. Red is the failure colour
+    #  and amber the attention colour, per the colour law, and the suite
+    #  asserts the computed colour rather than the class name.
+    RED, AMBER = "rgb(168, 50, 30)", "rgb(194, 154, 85)"
+
+    def rings(pg, name, cls):
+        return pg.evaluate("""([name, cls])=>
+            [...document.querySelectorAll('#tagblock .tick')]
+            .filter(t=>t.getAttribute('data-n')===name &&
+                       t.className.split(' ').indexOf(cls)>-1).length""",
+            [name, cls])
+
+    def ring_colour(pg, name):
+        return pg.evaluate("""(name)=>{
+            const t=[...document.querySelectorAll('#tagblock .tick')]
+              .find(x=>x.getAttribute('data-n')===name);
+            return t ? getComputedStyle(t).borderTopColor : null;}""", name)
+
+    depart = (now + datetime.timedelta(days=2)).strftime("%Y-%m-%d")
+    STATE["stays"] = {"4": {"id": "b4", "first": "Ada", "last": "L",
+                            "depart": depart},
+                      "7": {"id": "b7", "first": "Grace", "last": "H",
+                            "depart": depart}}
+    STATE["dinner"] = {"4": {"status": "in", "by": "guest",
+                             "diets": ["Nut allergy"]}}
+    #  The old spelling on purpose: a declaration saved before the 26 Aug
+    #  renames must ring the renamed pill, or the oldest allergies - the ones
+    #  most worth ringing - are the ones that go quiet.
+    STATE["pre"] = {"b7": {"diets": ["Gluten free"]}}
+    pg = open_pub(LINK)
+    ck("a confirmed guest's dietary rings its pill red, on every course",
+       rings(pg, "Nut allergy", "warnin") == 4 and
+       ring_colour(pg, "Nut allergy") == RED)
+    ck("a staying, unconfirmed guest's rings amber",
+       rings(pg, "Gluten", "warnstay") == 4 and
+       ring_colour(pg, "Gluten") == AMBER)
+    ck("declared under its old name, onto the renamed pill",
+       rings(pg, "Gluten free", "warnstay") == 0)
+    ck("and neither ring wanders onto the other's pill",
+       rings(pg, "Nut allergy", "warnstay") == 0 and
+       rings(pg, "Gluten", "warnin") == 0)
+    ck("the key to the rings is beside them",
+       pg.evaluate("()=>getComputedStyle(warnKey).display") != "none" and
+       "red ring" in pg.inner_text("#warnKey").lower() and
+       "amber ring" in pg.inner_text("#warnKey").lower())
+    #  The ring is about who is in the house, not about the tick: ticking the
+    #  pill is the chef ANSWERING the warning, so it must not put the ring out.
+    pg.evaluate("""()=>{ var t=[...document.querySelectorAll('#tagblock .tick')]
+        .find(x=>x.getAttribute('data-c')==='main' &&
+                 x.getAttribute('data-n')==='Nut allergy'); t.click(); }""")
+    ck("ticking a ringed pill keeps the ring",
+       pg.evaluate("""()=>{ var t=[...document.querySelectorAll('#tagblock .tick')]
+          .find(x=>x.getAttribute('data-c')==='main' &&
+                   x.getAttribute('data-n')==='Nut allergy');
+          return t.className.split(' ').indexOf('on')>-1 &&
+                 t.className.split(' ').indexOf('warnin')>-1; }"""))
+    pg.close()
+
+    #  One dietary, two declarers: the confirmed guest outranks the pending
+    #  one, because red is the fact and amber only the possibility of it.
+    STATE["pre"] = {"b7": {"diets": ["Nut allergy"]}}
+    pg = open_pub(LINK)
+    ck("confirmed beats staying when both declare the same dietary",
+       rings(pg, "Nut allergy", "warnin") == 4 and
+       rings(pg, "Nut allergy", "warnstay") == 0)
+    ck("and the key explains only the colour on the page",
+       "amber ring" not in pg.inner_text("#warnKey").lower())
+    pg.close()
+
+    #  A guest who said no to dinner is a terracotta fact on the boards, not a
+    #  conflict here: nobody meets a dish they are not eating.
+    STATE["dinner"] = {"4": {"status": "out", "by": "guest",
+                             "diets": ["Nut allergy"]}}
+    STATE["pre"] = {}
+    pg = open_pub(LINK)
+    ck("a declined guest's dietary rings nothing",
+       rings(pg, "Nut allergy", "warnin") == 0 and
+       rings(pg, "Nut allergy", "warnstay") == 0)
+    ck("and with no ring on the page there is no key either",
+       pg.evaluate("()=>getComputedStyle(warnKey).display") == "none")
+    pg.close()
+
+    #  Advisory only. The rings read the room; they are not allowed to close
+    #  it: a failed read paints none rather than wrong ones, says nothing,
+    #  and publishing stands exactly as it did.
+    STATE["failHouse"] = True
+    STATE["dinner"] = {"4": {"status": "in", "diets": ["Nut allergy"]}}
+    pg = open_pub(LINK)
+    ck("the house failing to load paints no rings rather than wrong ones",
+       pg.evaluate("()=>document.querySelectorAll("
+                   "'#tagblock .warnin, #tagblock .warnstay').length") == 0)
+    ck("and does not lock publishing, which is not its business",
+       not pg.evaluate("()=>pubBtn.disabled"))
+    pg.close()
+    STATE["failHouse"] = False
+    STATE["stays"] = {}; STATE["dinner"] = {}; STATE["pre"] = {}
 
     # ── no link at all ──────────────────────────────────────────
     pg = open_pub("")
