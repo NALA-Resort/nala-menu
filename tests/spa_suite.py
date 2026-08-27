@@ -109,7 +109,12 @@ def spa_seed():
 SPA = spa_seed()
 
 WRITES = []
+PUSHES = []   # what the page told the push Worker, one dict per event
 STATE = {"fail": False}
+
+def push_route(route, request):
+    PUSHES.append(json.loads(request.post_data))
+    route.fulfill(status=200, content_type="text/plain", body="ok")
 
 def fb(route, request):
     u, m = request.url, request.method
@@ -152,6 +157,7 @@ with sync_playwright() as p:
         pg.add_init_script(SDK)
         pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
         pg.route("**firebasedatabase.app/**", fb)
+        pg.route("**nala-push**", push_route)
         pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.goto("http://localhost:8980/spa.html" + qs)
         pg.wait_for_timeout(1600)
@@ -300,10 +306,13 @@ with sync_playwright() as p:
     ck("cancelling asks first, and the dialog's Cancel costs nothing",
        not [x for x in WRITES if "/spa/b3/" in x["u"]])
     pg.once("dialog", lambda d: d.accept())
+    del PUSHES[:]
     pg.locator('.card .cbtn', has_text="Cancel booking").click(); pg.wait_for_timeout(900)
     w3c = [x for x in WRITES if "/spa/b3/" in x["u"]]
     ck("agreeing cancels it",
        len(w3c) == 1 and json.loads(w3c[0]["b"]).get("status") == "declined")
+    ck("and the cancellation buzzes as spaCancelled",
+       len(PUSHES) == 1 and PUSHES[0]["event"] == "spaCancelled")
     SPA = spa_seed()
     pg.close()
     pg = board()
@@ -380,7 +389,7 @@ with sync_playwright() as p:
     pg.locator('.card .chip').nth(1).click(); pg.wait_for_timeout(200)
 
     # ── the writes, which are the actual feature ────────────────
-    del WRITES[:]
+    del WRITES[:]; del PUSHES[:]
     pg.locator('.card .cbtn.solid').click()
     pg.wait_for_timeout(900)
     w = [x for x in WRITES if "/spa/b9/" in x["u"]]
@@ -392,6 +401,11 @@ with sync_playwright() as p:
        body.get("reqDay") == today and body.get("reqTime") == "afternoon")
     ck("born from the form, so the ask stops showing as pending",
        body.get("source") == "prearrival")
+    # The buzz, 27 Aug: the desk hears the counter-offer without watching
+    # a board. Signed, so the Worker can hold the masseuse's own phone.
+    ck("and the suggestion buzzes the desk as spaSuggested, villa attached",
+       len(PUSHES) == 1 and PUSHES[0]["event"] == "spaSuggested" and
+       PUSHES[0]["villa"] == "9" and PUSHES[0].get("idToken"))
     ck("and the board reflects it without a hand refresh",
        pg.evaluate("()=>nAsk.textContent") == "3")
     SPA = spa_seed()
@@ -399,20 +413,22 @@ with sync_playwright() as p:
     # Confirming on the asked-for day books it directly.
     pg = board()
     pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
-    del WRITES[:]
+    del WRITES[:]; del PUSHES[:]
     pg.locator('.card .cbtn.solid').click()   # Confirm, day untouched
     pg.wait_for_timeout(900)
     w = [x for x in WRITES if "/spa/b9/" in x["u"]]
     body = json.loads(w[0]["b"]) if w else {}
     ck("confirming as asked books it in one tap",
        body.get("status") == "booked" and body.get("day") == today)
+    ck("and the booking buzzes as spaBooked",
+       len(PUSHES) == 1 and PUSHES[0]["event"] == "spaBooked")
     SPA = spa_seed()
 
     # Declining asks why, once, and the reason rides on the record.
     pg = board()
     pg.on("dialog", lambda d: d.accept("away until Monday"))
     pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
-    del WRITES[:]
+    del WRITES[:]; del PUSHES[:]
     pg.locator('.card .cbtn', has_text="Decline").click()
     pg.wait_for_timeout(900)
     w = [x for x in WRITES if "/spa/b9/" in x["u"]]
@@ -421,6 +437,8 @@ with sync_playwright() as p:
        body.get("status") == "declined" and body.get("reqDay") == today)
     ck("and carries the reason the prompt collected",
        body.get("note") == "away until Monday" and not body.get("told"))
+    ck("and the decline buzzes as spaCancelled",
+       len(PUSHES) == 1 and PUSHES[0]["event"] == "spaCancelled")
     SPA = spa_seed()
     pg.close()
 
@@ -428,11 +446,12 @@ with sync_playwright() as p:
     pg = board()
     pg.on("dialog", lambda d: d.dismiss())
     pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
-    del WRITES[:]
+    del WRITES[:]; del PUSHES[:]
     pg.locator('.card .cbtn', has_text="Decline").click()
     pg.wait_for_timeout(600)
     ck("backing out of the prompt writes nothing",
        not [x for x in WRITES if "/spa/" in x["u"]])
+    ck("and buzzes nobody", not PUSHES)
     SPA = spa_seed()
 
     # ── the desk's half: approving a suggestion ─────────────────
@@ -460,13 +479,16 @@ with sync_playwright() as p:
     ck("a changed suggestion can only be asked again",
        pg.evaluate("()=>document.querySelector('.card .cbtn.solid').textContent")
          .startswith("Ask again"))
-    del WRITES[:]
+    del WRITES[:]; del PUSHES[:]
     pg.locator('.card .cbtn.solid').click()
     pg.wait_for_timeout(900)
     w = [x for x in WRITES if "/spa/b12/" in x["u"]]
     body = json.loads(w[0]["b"]) if w else {}
     ck("asking again writes requested with the new ask",
        body.get("status") == "requested" and body.get("reqDay") == plus(2))
+    ck("and the fresh ask buzzes the masseuse as spaRequest",
+       len(PUSHES) == 1 and PUSHES[0]["event"] == "spaRequest" and
+       PUSHES[0]["villa"] == "12")
     SPA = spa_seed()
 
     # ── the verbal yes: the desk books what he already agreed to ──
@@ -478,13 +500,15 @@ with sync_playwright() as p:
     ck("the desk's request card leads with Manually approve",
        pg.evaluate("()=>document.querySelector('.card .cbtn.solid').textContent")
          .startswith("Manually approve"))
-    del WRITES[:]
+    del WRITES[:]; del PUSHES[:]
     pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
     w = [x for x in WRITES if "/spa/b9/" in x["u"]]
     body = json.loads(w[0]["b"]) if w else {}
     ck("manually approving books the selection with the desk's stamp",
        body.get("status") == "booked" and body.get("manual") and
        body.get("day") == today and body.get("source") == "prearrival")
+    ck("and buzzes as spaBooked, so the masseuse hears of the verbal yes landing",
+       len(PUSHES) == 1 and PUSHES[0]["event"] == "spaBooked")
     ck("and the tile says the desk did it",
        "approved at the desk" in pg.evaluate(
          "()=>document.querySelector('#board [data-booking=\"b9\"] .st').textContent"))
@@ -508,13 +532,15 @@ with sync_playwright() as p:
     ck("the desk's declined card leads with Guest told",
        pg.evaluate("()=>document.querySelector('.card .cbtn.solid').textContent")
          == "Guest told")
-    del WRITES[:]
+    del WRITES[:]; del PUSHES[:]
     pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
     w = [x for x in WRITES if "/spa/b7/" in x["u"]]
     body = json.loads(w[0]["b"]) if w else {}
     ck("telling the guest stamps the record and keeps the reason",
        body.get("status") == "declined" and body.get("told") and
        body.get("note") == "nothing free")
+    # Bookkeeping, nobody's queue: the one save that must not buzz.
+    ck("the told stamp buzzes nobody", not PUSHES)
     ck("and the tile stops instructing",
        "guest told" in pg.evaluate(
          "()=>document.querySelector('#board [data-booking=\"b7\"] .st').textContent") and
@@ -611,13 +637,16 @@ with sync_playwright() as p:
     ck("the desk's add offers Ask the masseuse",
        "Ask the masseuse" in pg.evaluate(
          "()=>document.querySelector('.card .cbtn.solid').textContent"))
-    del WRITES[:]
+    del WRITES[:]; del PUSHES[:]
     pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
     w = [x for x in WRITES if "/spa/b6/" in x["u"]]
     body = json.loads(w[0]["b"]) if w else {}
     ck("and writes requested, with the desk's pick as the ask",
        body.get("status") == "requested" and body.get("source") == "desk" and
        body.get("reqDay") and body.get("reqTime"))
+    ck("and the add buzzes the masseuse as spaRequest with the villa",
+       len(PUSHES) == 1 and PUSHES[0]["event"] == "spaRequest" and
+       PUSHES[0]["villa"] == "6")
     SPA = spa_seed()
     pg.close()
 

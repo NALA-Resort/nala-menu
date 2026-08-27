@@ -1230,7 +1230,8 @@ with sync_playwright() as p:
     ck("a departure announces itself", "departed:8" in fired)
     ck("the defaults name every event the app can fire",
        sorted(pg.evaluate("()=>Object.keys(NOTIFY_DEFAULTS.events)"))
-         == ["available","cleaned","departed","menu","serviced"])
+         == ["available","cleaned","departed","menu","serviced",
+             "spaBooked","spaCancelled","spaRequest","spaStay","spaSuggested"])
     # A menu going up is the manager's business, not the cleaners'. The chef
     # published it, so telling the chef is telling them what they just did.
     ck("a published menu goes to the manager only",
@@ -1278,6 +1279,44 @@ with sync_playwright() as p:
     ck("departures stay with housekeeping and admin",
        pg.evaluate("""()=>NOTIFY_DEFAULTS.events.departed.waiter===false
                        && NOTIFY_DEFAULTS.events.departed.admin===true"""))
+    # The spa five, 27 Aug. The masseuse's routing is a stored spa key the
+    # Settings grid never draws; his counter-offer is off for him because
+    # he just made it, and spaStay is fired by the sync Worker alone.
+    ck("the spa events reach the masseuse and the desk, not the suggestion's author",
+       pg.evaluate("""()=>NOTIFY_DEFAULTS.events.spaRequest.spa===true
+                       && NOTIFY_DEFAULTS.events.spaRequest.admin===true
+                       && NOTIFY_DEFAULTS.events.spaSuggested.spa===false
+                       && NOTIFY_DEFAULTS.events.spaSuggested.admin===true
+                       && NOTIFY_DEFAULTS.events.spaStay.spa===true
+                       && NOTIFY_DEFAULTS.events.spaCancelled.housekeeping===false"""))
+    # A /notify node written before an event type existed holds no key for
+    # it, and a keyless event buzzes nobody. The seeding must fill in ONLY
+    # the missing events - the manager's own ticks are never touched.
+    ck("an event added after the settings were first written is seeded in, alone",
+       pg.evaluate("""()=>new Promise(res=>{
+         const f=window.fetch; let patched=null, putWhole=false;
+         window.fetch=function(u,o){
+           const url=''+u;
+           if (url.indexOf('/notify.json')>-1 && (!o || !o.method))
+             return Promise.resolve(new Response(JSON.stringify(
+               {on:true,hours:{from:'07:30',to:'18:00'},
+                events:{departed:{admin:true}}}),{status:200}));
+           if (url.indexOf('/notify.json')>-1 && o && o.method==='PUT'){
+             putWhole=true;
+             return Promise.resolve(new Response('{}',{status:200}));
+           }
+           if (url.indexOf('/notify/events.json')>-1 && o && o.method==='PATCH'){
+             patched=JSON.parse(o.body);
+             return Promise.resolve(new Response('{}',{status:200}));
+           }
+           return f.apply(this,arguments);
+         };
+         ensureNotifySettings('admin');
+         setTimeout(function(){ window.fetch=f;
+           res(!putWhole && !!patched && !patched.departed &&
+               !!patched.spaRequest && patched.spaRequest.spa===true &&
+               !!patched.spaStay); }, 400);
+       })"""))
     ck("only an admin writes the settings",
        pg.evaluate("()=>{let hit=0; const f=window.fetch; window.fetch=function(u,o){ if(o&&o.method==='PUT'&&(''+u).indexOf('/notify')>-1) hit++; return f.apply(this,arguments);}; ensureNotifySettings('waiter'); window.fetch=f; return hit===0;}"))
     pg.close()

@@ -202,6 +202,84 @@ async function alertArrivals(env) {
   return sent;
 }
 
+/* ── the spa ask sweep, run from the same cron wake ──────────────────────
+ *
+ * A guest's massage request is born in the browser: the pre-arrival form
+ * writes /bookings/<id>/prearrival and nothing server-side sees it happen,
+ * so no staff tap exists to hang a notification on - the same shape as the
+ * red hour above. The masseuse used to find these only by opening his
+ * board. This sweep announces each answered form once, as the spaRequest
+ * event, so his phone buzzes within the hour instead.
+ *
+ * Send once: the /spaalerts/<booking> marker is written before the send,
+ * the alertArrivals order, so a crash cannot buzz forever. The marker
+ * means ANNOUNCED, never checked: a booking whose form is still
+ * unanswered stays unmarked and is read again next sweep, or a guest
+ * answering on day three would never be announced at all. An ask already
+ * answered at the desk needs no announcement - the record born from the
+ * form says so - and is skipped without a read. /spaalerts is not named
+ * in rules.json, so it falls to the $other catch-all like /invites: no
+ * rules change.
+ *
+ * Hourly, gated by the sweptAt stamp rather than per wake: wakes can be
+ * minutes apart, the reads below cost about one per unanswered booking,
+ * and an ask lands days before its massage, so within-the-hour is prompt.
+ * 45 days of stays in ONE filtered read, keyed on the date - the
+ * send-invites bound, the furthest out a form can exist - rather than a
+ * read per day, which would spend the whole subrequest budget on nothing.
+ */
+const SPA_SWEEP_MS = 55 * 60 * 1000;
+const INVITE_WINDOW_DAYS = 45;
+
+async function announceSpaAsks(env) {
+  const seen = await db(env, "/spaalerts", "GET") || {};
+  if (seen.sweptAt && Date.now() - Date.parse(seen.sweptAt) < SPA_SWEEP_MS)
+    return [];
+  await db(env, "/spaalerts/sweptAt", "PUT", new Date().toISOString());
+  const today = DATE_AT_RESORT.format(new Date());
+  const end = DATE_AT_RESORT.format(
+    new Date(Date.now() + INVITE_WINDOW_DAYS * 24 * 60 * 60 * 1000));
+  const t = await idToken(env);
+  const r = await fetch(DB + "/stays.json?orderBy=" +
+    encodeURIComponent('"$key"') + "&startAt=" + encodeURIComponent('"' + today + '"') +
+    "&endAt=" + encodeURIComponent('"' + end + '"') + "&auth=" + t);
+  const stays = r.ok ? await r.json() : null;
+  const spa = await db(env, "/spa", "GET") || {};
+  /* First villa seen wins, the boards' own rule for a moved guest. The
+     window is re-filtered here because the mock database - and a Firebase
+     asked without an index - may hand back more dates than asked for. */
+  const byId = {};
+  for (const d of Object.keys(stays || {}).sort()) {
+    if (d < today || d > end) continue;
+    for (const v in stays[d]) {
+      const e = stays[d][v];
+      const id2 = (e && typeof e === "object") ? e.id : e;
+      if (id2 && !byId[id2]) byId[id2] = String(v);
+    }
+  }
+  const sent = [];
+  for (const id2 of Object.keys(byId)) {
+    if (seen[id2]) continue;
+    const answered = Object.keys(spa[id2] || {}).some((tid) =>
+      spa[id2][tid] && spa[id2][tid].source === "prearrival");
+    if (answered) continue;
+    let pre = null;
+    try { pre = await db(env, "/bookings/" + id2 + "/prearrival", "GET"); }
+    catch (e) { continue; }
+    if (!pre || pre.wellness !== true) continue;
+    await db(env, "/spaalerts/" + id2, "PUT", { at: new Date().toISOString() });
+    try {
+      await fetch(PUSH_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: await idToken(env),
+                               event: "spaRequest", villa: byId[id2] }) });
+    } catch (e) {}
+    sent.push(id2);
+  }
+  return sent;
+}
+
 /* Zapier field names vary with how the Zap is mapped, so each value is looked
    for under several plausible keys rather than one. Mapping in Zapier to any
    of these works; mapping to something else does not, which is why the list
@@ -693,6 +771,41 @@ export default {
         await db(env, "/stays/" + d + "/" + r.villa, "PUT", summary);
       }
 
+      /* A Mews change under a massage, the owner's ask of 27 Aug: the
+         booking a live treatment hangs on was cancelled, or its dates
+         moved out from under the day somebody chose. One read; declined
+         records are past caring. The spaStay event is fired once per
+         Mews event, no marker - a cancellation is one event, and a buzz
+         repeated by a Zapier retry collapses on the phone under its tag.
+         The departure DAY itself is bookable - a morning massage before
+         checkout, stayDays' own rule - so the stay runs arrival through
+         departure date inclusive. */
+      let spaTouched = false;
+      try {
+        const treatments = await db(env, "/spa/" + r.id, "GET");
+        for (const tid in (treatments || {})) {
+          const t2 = treatments[tid];
+          if (!t2 || typeof t2 !== "object") continue;
+          if (t2.status !== "requested" && t2.status !== "suggested" &&
+              t2.status !== "booked") continue;
+          if (cancelled) { spaTouched = true; break; }
+          const day = t2.day || t2.reqDay;
+          if (day && (day < dkey(r.arrive) || day > dkey(r.depart))) {
+            spaTouched = true; break;
+          }
+        }
+      } catch (e) {}
+      if (spaTouched) {
+        try {
+          await fetch(PUSH_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken: await idToken(env),
+                                   event: "spaStay",
+                                   villa: String(r.villa || "") }) });
+        } catch (e) {}
+      }
+
       return new Response(JSON.stringify({
         ok: true, id: r.id, villa: r.villa,
         state: cancelled ? "cancelled" : "confirmed",
@@ -746,6 +859,9 @@ export default {
     ctx.waitUntil(alertArrivals(env).catch(function (e) {
       /* A failed sweep must not look like a quiet one in the logs. */
       console.log("arriving sweep failed: " + e.message);
+    }));
+    ctx.waitUntil(announceSpaAsks(env).catch(function (e) {
+      console.log("spa ask sweep failed: " + e.message);
     }));
   }
 };
