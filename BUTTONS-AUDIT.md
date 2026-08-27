@@ -87,7 +87,41 @@ Radius across all of it: 0 · 5 · 6 · 7 · 8 · 10 · 16 to 20 (pills) · 50%.
 Fonts: the system token, hard-coded Helvetica (flags, tag, publish, stats),
 Raleway (index, menu-print), plus `inherit` leaking Georgia on app pages.
 
-## The proposal (rendered in mock-buttons.html)
+## What shipped, 27 Aug
+
+The foundation and the wiring of the silent boards, in one commit with every
+`?v=` bumped (shared.js 43 to 44, ui.css 16 to 17):
+
+- **nala-ui.css** - 8px radius, `--ctl-soft` (the softened resting solid),
+  `:active` on every `.btn`, `.btn.terra`, `.btn.saving`, `.btn.saved`,
+  `.savefail`. The footer row squares off again so the corner law stands;
+  `tally_suite` asserts those four corners by computed value and still does.
+- **nala-shared.js** - `saveFeedback(btn, write, opts)`, `armSave(btn)`,
+  `pressedButton()`. The last of those is why the page diffs are small: the
+  press already knows which button it was, so nothing had to be threaded
+  through forty call sites.
+- **Wired**: cleaners (`setField`, which every one of its ~40 writes goes
+  through), spa (`save`), front-desk (`save`), tally (`writeManual` and
+  `clearManual`, which its sheet's saves all route through), staff
+  (`savePerson`).
+
+Two behaviours changed deliberately, both on sheets that used to close
+before their write had left:
+
+- front-desk closed its sheet a tenth of a second after the tap. The board
+  still repaints immediately; the SHEET now waits for the write, so its Save
+  can say Saving and then Saved, and closes on the way out.
+- tally closed and repainted immediately. Both now wait, the record itself
+  having been updated the moment the button was pressed as before.
+
+Still to do, as each page is next opened: the dress convergence (four private
+`.btn` copies, `.opt`/`.pbtn`/`.cbtn`/`.savebtn`/`.pubbtn`), staff's Create
+and Remove and its permission ticks, index's guest confirm, and moving
+templates, flags and tag onto the shared helper - which is also where
+`armSave` gets its first caller, since all four boards wired above close
+their sheet rather than resting at Saved.
+
+## The proposal as approved (rendered in mock-buttons.html)
 
 The button law's three dresses stay as ruled. New, defined once:
 
