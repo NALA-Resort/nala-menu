@@ -194,6 +194,10 @@ with sync_playwright() as p:
     ck("the when sits beside the name and names the month",
        pg.evaluate("()=>document.querySelector('#board [data-booking=\"b3\"] .top .when').textContent")
        == nice(0) + " · 11:00 am")
+    ck("and wears ink on every band, never the band's colour",
+       pg.evaluate("()=>['b3','b12','b7','b9'].every(id=>"
+                   "getComputedStyle(document.querySelector("
+                   "'#board [data-booking=\"'+id+'\"] .when')).color==='rgb(28, 28, 26)')"))
     ck("no tile line wraps - each is one ellipsised row",
        pg.evaluate("()=>['.st','.cmp','.when'].every(s=>{"
                    "var e=document.querySelector('#board [data-booking=\"b3\"] '+s);"

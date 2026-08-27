@@ -41,15 +41,15 @@
      the whole story; ellipsis is honest about being a glance. */
   .vrow .top, .card .top { display:flex; align-items:baseline; gap:10px; }
   .vrow .nm { flex:1; min-width:0; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .vrow .when, .card .when { font-size:11px; color:var(--mid); white-space:nowrap; }
+  .vrow .when, .card .when { font-size:11px; color:var(--ink); white-space:nowrap; }
   .vrow .st { font-size:11px; color:var(--mid); margin-top:2px; line-height:1.4;
               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .vrow.b-done { background:var(--resgreen-t); border-color:var(--resgreen-b); }
-  .vrow.b-done .st, .vrow.b-done .when { color:var(--resgreen); }
+  .vrow.b-done .st { color:var(--resgreen); }
   .vrow.b-sugg { background:var(--amber); border-color:var(--amberb); }
-  .vrow.b-sugg .st, .vrow.b-sugg .when { color:var(--ambert); }
+  .vrow.b-sugg .st { color:var(--ambert); }
   .vrow.b-decl { background:var(--terra-t); border-color:var(--terra-b); }
-  .vrow.b-decl .st, .vrow.b-decl .when { color:var(--terra); }
+  .vrow.b-decl .st { color:var(--terra); }
   .vrow.b-grey { background:transparent; border-style:dashed; opacity:.62; }
 
   /* A tapped tile grows its controls in place rather than opening a second
@@ -57,9 +57,9 @@
   .card { border:1.2px solid var(--ink); border-radius:10px; background:#fff;
           padding:11px 13px; margin-bottom:7px; }
   .card.b-sugg { background:var(--amber); border-color:var(--amberb); }
-  .card.b-sugg .st, .card.b-sugg .when { color:var(--ambert); }
+  .card.b-sugg .st { color:var(--ambert); }
   .card.b-decl { background:var(--terra-t); border-color:var(--terra-b); }
-  .card.b-decl .st, .card.b-decl .when { color:var(--terra); }
+  .card.b-decl .st { color:var(--terra); }
   .card .head { display:flex; align-items:center; gap:12px; }
   .card .v { font-size:20px; min-width:30px; text-align:center; }
   .card .mid { flex:1; min-width:0; }
