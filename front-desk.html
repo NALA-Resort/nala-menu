@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Front Desk Arrival</title>
-<link rel="stylesheet" href="nala-ui.css?v=16">
+<link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
           --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
@@ -170,6 +170,12 @@
          cursor:pointer; border-radius:6px; }
   .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
+  /* A time sequence reads left to right, so its chips stand in one scrollable
+     rank rather than wrapping into a wall of rows: the order says what is off
+     screen. The rail scrolls itself; the sheet never scrolls sideways. */
+  .chips.rail { flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start;
+                -webkit-overflow-scrolling:touch; padding-bottom:6px; }
+  .chips.rail .chip { flex:0 0 auto; white-space:nowrap; }
   .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
           border-radius:20px; font-family:var(--ui-font); font-size:10px;
           color:var(--mid); cursor:pointer; }
@@ -234,7 +240,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=43"></script>
+<script src="nala-shared.js?v=44"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -1093,19 +1099,24 @@ function openGuest(r){
       : '') +
 
     '<div class="sheet-label">Arriving</div>' +
-    '<div class="chips" id="eChips"></div>' +
+    '<div class="chips rail" id="eChips"></div>' +
     '<div class="sheet-label" id="fEtaNoteLab" style="display:none">Arrival notes</div>' +
     '<input class="txt" id="fEtaNote" type="text" placeholder="Flight, ferry, anything to note" autocomplete="off" style="display:none">' +
 
-    /* The guest asks, reception decides. The early hours are deliberately
-       not on the guest's form: offering 11am there would read as an
-       invitation the resort then declines. Here they are reception's to
-       give, so an early hour on the cleans board is authoritative: a
-       person agreed to it. No guard against approving before the current
-       guest departs, considered and declined by the owner: the red tile
-       it causes is the prompt to chase the departure. */
-    '<div class="sheet-label">Approved arrival, set by reception</div>' +
-    '<div class="chips" id="apChips"></div>' +
+    /* The guest asks, reception decides - but only where the slot track
+       cannot already say it, the owner's ruling of 27 Aug. The early hours
+       are deliberately not on the guest's form: offering 11am there would
+       read as an invitation the resort then declines. Here they are
+       reception's to give, so an early hour on the cleans board is
+       authoritative: a person agreed to it. The hours behind "after 5pm"
+       are the other case the slots cannot express, pinned rather than
+       approved. Every hour in between IS a slot, so correcting it is
+       tapping the slot above, and this row stays hidden. No guard against
+       approving before the current guest departs, considered and declined
+       by the owner: the red tile it causes is the prompt to chase the
+       departure. */
+    '<div class="sheet-label" id="apLab" style="display:none"></div>' +
+    '<div class="chips rail" id="apChips" style="display:none"></div>' +
 
     '<div class="sheet-label">Dining on arrival night</div>' +
     '<div class="seg" id="diningSeg">' +
@@ -1296,7 +1307,9 @@ function openGuest(r){
   /* Tapping the chosen slot again clears it, because "we did ask and they did
      not know" is a real answer and there has to be a way back to it. */
   function paintEta(){
-    var box = document.getElementById('eChips'); box.innerHTML = '';
+    var box = document.getElementById('eChips');
+    var keep = box.scrollLeft;          /* a repaint must not jump the rail */
+    box.innerHTML = '';
     var wantsNote = false;
     ETA_SLOTS.forEach(function(sl){
       var b = document.createElement('button');
@@ -1309,6 +1322,7 @@ function openGuest(r){
       box.appendChild(b);
       if (a.arriveSlot === sl[0] && sl[3]) wantsNote = true;
     });
+    box.scrollLeft = keep;
     /* The note only appears for the two open ended slots, which is where the
        guest's form asks for it too: before 2pm and after 5pm are the ones that
        need a time attached to be worth anything. */
@@ -1317,17 +1331,51 @@ function openGuest(r){
     var lab = document.getElementById('fEtaNoteLab');
     if (lab) lab.style.display = wantsNote ? '' : 'none';
     if (!wantsNote) note.value = '';
+    /* The hours reception may set depend on the slot, so the row below
+       follows every slot change. Hoisted, so the first paint finds it. */
+    paintApproved();
   }
 
-  /* Every half hour reception may give, 11am to 11pm, whatever the guest
-     picked: a guest who chose Around 4pm and rang to say half three can be set
-     to 3:30pm. Halves, because the guest's own track offers them and the desk
-     cannot approve less than the form asks; 14.5 is already legal in the
-     rules. Tapping the chosen time again clears it, the same way back the
-     slot chips give, and clearing leaves the guest's own slot untouched. */
+  /* Only the hours the slot track cannot already say, the owner's ruling of
+     27 Aug. This row offered every half hour 11am to 11pm and was a wall of
+     twenty five chips with six real jobs: a guest who rang to move 4pm to
+     half three is corrected by tapping 3:30pm on the slots above, so the
+     mid-afternoon here was nineteen chips restating that row.
+
+       before2  the early hours only reception can grant: 11am to 1:30pm,
+                because 2pm is the standing promise and needs nobody's leave
+       after5   the actual hour behind an open-ended answer: 5:30pm to 11pm,
+                pinned for whoever waits at the desk
+       else     nothing, and the row hides entirely
+
+     A stored hour outside today's offer is still painted, selected - the
+     purpose-chip lesson: a record from the wide-open days, or an approval
+     whose slot has since changed, must never be silently dropped by the next
+     save. Halves throughout; 14.5 was already legal in the rules. Tapping
+     the chosen time again clears it, the same way back the slot chips give,
+     and clearing leaves the guest's own slot untouched. */
+  function approvedOffer(){
+    var out = [], h;
+    if (a.arriveSlot === 'before2') for (h = 11;   h <  14; h += 0.5) out.push(h);
+    if (a.arriveSlot === 'after5')  for (h = 17.5; h <= 23; h += 0.5) out.push(h);
+    if (typeof a.arriveApproved === 'number' && out.indexOf(a.arriveApproved) === -1)
+      out.push(a.arriveApproved);
+    return out.sort(function(x, y){ return x - y; });
+  }
   function paintApproved(){
-    var box = document.getElementById('apChips'); box.innerHTML = '';
-    for (var hr = 11; hr <= 23; hr += 0.5)(function(hr){
+    var box = document.getElementById('apChips');
+    var lab = document.getElementById('apLab');
+    var offer = approvedOffer();
+    box.style.display = offer.length ? '' : 'none';
+    lab.style.display = offer.length ? '' : 'none';
+    lab.textContent = a.arriveSlot === 'before2'
+                        ? 'Early arrival, approved by reception'
+                    : a.arriveSlot === 'after5'
+                        ? 'Arriving at, as the guest told us'
+                        : 'Approved arrival, kept from an earlier save';
+    var keep = box.scrollLeft;
+    box.innerHTML = '';
+    offer.forEach(function(hr){
       var b = document.createElement('button');
       var w = Math.floor(hr);
       b.className = 'chip' + (a.arriveApproved === hr ? ' on' : '');
@@ -1338,7 +1386,8 @@ function openGuest(r){
         paintApproved();
       };
       box.appendChild(b);
-    })(hr);
+    });
+    box.scrollLeft = keep;
   }
 
   function paintPurpose(){
@@ -1551,6 +1600,15 @@ function openGuest(r){
     if (which.indexOf('othernote') > -1 && note) note.focus();
   }
   showSheet();
+  /* Centre the chosen chip in each time rail, once the sheet is on screen:
+     while the backdrop is display:none every offset reads zero, so this
+     cannot run from the paint functions above. */
+  ['eChips', 'apChips'].forEach(function(id){
+    var box = document.getElementById(id);
+    var on = box && box.querySelector('.chip.on');
+    if (on) box.scrollLeft = Math.max(0,
+      on.offsetLeft - box.clientWidth / 2 + on.offsetWidth / 2);
+  });
 }
 
 /* Writes the guest's own node, whoever typed it. No record of who filled it
@@ -1687,7 +1745,16 @@ function save(r, a, checkin, confirm){
   if (a.dining !== null) r.cell = dinnerCell(r, a);
   else if (beforeCell) r.cell = null;
   OPEN = null;
-  render(); closeSheet();
+  /* The board still repaints at once - the desk reads it while the write is
+     still in the air, and that has never been the part anybody waited for.
+     What waits now is the SHEET: it holds until the write lands so its Save
+     can say Saving and then Saved, and it closes on the way out. Closing it
+     here, as this did until 27 Aug, took the only thing that could carry the
+     answer off the screen a tenth of a second after the tap.
+     The summary's own Confirm buttons live on the board, so this repaint
+     replaces them and they keep answering the way they always have - by the
+     row itself changing under the finger. */
+  render();
 
   /* Both writes or neither. A confirmation the chef never sees is worse than
      one that visibly failed, so the guest is put back if either half is
@@ -1764,12 +1831,21 @@ function save(r, a, checkin, confirm){
       method: 'DELETE'
     }));
   }
-  Promise.all(writes).then(function(res){
-    if (res.some(function(x){ return !x.ok; })) throw new Error('save');
-  }).catch(function(){
-    r.pre = before; r.cell = beforeCell;   /* put it back rather than lie */
-    render();
-    err('Could not save. Nothing was changed.');
+  return saveFeedback(pressedButton(), function(){
+    return Promise.all(writes).then(function(res){
+      if (res.some(function(x){ return !x.ok; })) throw new Error('save');
+    });
+  }, {
+    done:'Saved ✓', hold:400, then:closeSheet,
+    fail:function(msg){
+      if (!msg) return err('');          /* the clear, before the write */
+      r.pre = before; r.cell = beforeCell;   /* put it back rather than lie */
+      render();
+      /* The reassurance is the half of this the desk actually acts on: a
+         partial save would mean re-checking the record, and this was not
+         one. */
+      err(msg + ' Nothing was changed.');
+    }
   });
 }
 

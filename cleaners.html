@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala · Cleaners</title>
-<link rel="stylesheet" href="nala-ui.css?v=16">
+<link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
           --green:#E4EDE2; --greenb:#7E937A; --amberb:#C29A55;
@@ -542,7 +542,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=43"></script>
+<script src="nala-shared.js?v=44"></script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
 /* Browsed dates, same header as every other board: ‹ › Today, and the date
@@ -1035,11 +1035,17 @@ function patchRoom(n, obj){
     return r.json();
   });
 }
-function setField(n, obj, errEl){
+/* btn is the button to answer on, and defaults to whichever one was pressed -
+   every write on this page starts at a tap, and pressedButton() saves
+   threading a reference through forty call sites. Pass null to write with no
+   answer at all: the multi-select decision does that, because one press is
+   deciding several villas and the answer belongs on that press, once.    */
+function setField(n, obj, errEl, btn){
   var prev=JSON.parse(JSON.stringify(STATE.hk[n]||{}));
   STATE.hk[n]=Object.assign({},prev,obj);
   for (var k in obj){ if (obj[k]===null) delete STATE.hk[n][k]; }
   render();
+  return saveFeedback(btn === undefined ? pressedButton() : btn, function(){
   return patchRoom(n,obj).then(function(){
     /* Only after the write succeeds, and only for the two marks anyone asked
        to be told about. Setting a mark notifies; clearing or undoing one does
@@ -1058,13 +1064,16 @@ function setField(n, obj, errEl){
         else if (kind === 'svc')  notifyPush('serviced', n, window.NALA_USER);
       }
     } } catch (e){}
-    closeSheet();
-  })
-  .catch(function(e){
-    STATE.hk[n]=prev; render();
-    errEl.textContent = (e && e.message==='rejected')
-      ? 'The change was not allowed - tell the manager.'
-      : 'No connection - try again.';
+  });
+  }, {
+    /* The tick is what the sheet's own completion buttons already wear, so
+       the answer reads as the same word coming back.                     */
+    done:'Saved ✓',
+    /* Long enough for the green to be seen, then the sheet closes as it
+       always has. The board underneath is already showing the change - it
+       was written optimistically before the request left.               */
+    hold:400, then:closeSheet,
+    fail:function(msg){ STATE.hk[n]=prev; render(); errEl.textContent = msg; }
   });
 }
 
@@ -1105,8 +1114,19 @@ function setKind(k){
     /* several villas at once: apply to each, then leave select mode so the
        board returns to its normal state rather than a half-selected one */
     var ns = CUR.multi.slice();
-    Promise.all(ns.map(function(n){ return setField(n, { kind:k }, err); }))
-      .then(function(){ exitSelect(); });
+    /* One press, several villas, so the answer goes on that press once
+       rather than racing itself on the same button n times - the second
+       call would find it already saving and skip its write. Each villa
+       still rolls itself back and names its own failure in the error line;
+       this only says whether the decision as a whole took. It leaves
+       select mode on success alone: a decision that did not take should
+       not clear the selection that still needs deciding.               */
+    saveFeedback(pressedButton(), function(){
+      return Promise.all(ns.map(function(n){ return setField(n, { kind:k }, err, null); }))
+        .then(function(rs){
+          if (rs.some(function(r){ return r === null; })) throw new Error('partial');
+        });
+    }, { done:'Saved ✓', hold:400, then:exitSelect });
     return;
   }
   setField(CUR.n, { kind:k }, err);

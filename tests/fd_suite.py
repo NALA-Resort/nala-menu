@@ -641,43 +641,75 @@ with sync_playwright() as p:
        not [x for x in WRITES if x["m"] == "DELETE"])
     pg.close()
 
-    # ── reception's approved hour, beside the guest's slot ──────
-    # The guest asks, reception decides. The approved hour is its own field:
-    # setting it never touches the slot the guest chose, clearing it leaves
-    # that slot standing, and the desk offers every half hour 11am to 11pm
-    # whatever the guest answered: halves since 23 Aug, because the guest's
-    # own track offers them and the desk cannot approve less than the form
-    # asks. A guest who chose Around 4pm and rang to say half three can be
-    # set to 3:30pm.
+    # ── reception's hour, only where the slots cannot say it ────
+    # The owner's ruling of 27 Aug: the desk corrects a mid-afternoon time
+    # by tapping the guest's own slot row, so the approved row's twenty five
+    # chips were nineteen restatements and six real jobs. It now appears
+    # only for the two open-ended slots: the early hours behind "before
+    # 2pm", which only reception can grant, and the actual hour behind
+    # "after 5pm", pinned for whoever waits at the desk. Any other slot
+    # hides the row entirely. Setting an hour still never touches the slot
+    # the guest chose, and clearing it leaves that slot standing.
+    pg = board()
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    # b9 asked "before 2pm" and typed the note reception approves against.
+    ck("an early ask offers the six early half hours and nothing else",
+       pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
+                   ".map(b=>b.textContent).join()")
+       == "11am,11:30am,12pm,12:30pm,1pm,1:30pm")
+    ck("under a label that says what it is",
+       "Early arrival" in pg.evaluate("()=>apLab.textContent"))
+    ck("with the guest's own note on screen to approve against",
+       pg.evaluate("()=>fEtaNote.value") == "flight lands 11am")
+    pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
+                ".find(b=>b.textContent==='12pm').click()")
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(500)
+    w = [x for x in WRITES if "/bookings/b9/prearrival" in x["u"]]
+    ck("approving writes the hour as a number",
+       len(w) == 1 and json.loads(w[0]["b"]).get("arriveApproved") == 12)
+    if w:
+        ck("and the guest's slot goes with it, untouched",
+           json.loads(w[0]["b"])["arriveSlot"] == "before2")
+    pg.close()
+
+    # After 5pm is the other open end: the hour is pinned, not approved.
+    pg = board()
+    pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
+    ck("with no slot chosen there is no hour row at all",
+       pg.evaluate("()=>apChips.style.display==='none'"))
+    pg.evaluate("""()=>[...document.querySelectorAll('#eChips button')]
+        .find(b=>/After 5pm/.test(b.textContent)).click()""")
+    pg.wait_for_timeout(200)
+    ck("choosing After 5pm offers the evening half hours",
+       pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
+                   ".map(b=>b.textContent).join()")
+       == "5:30pm,6pm,6:30pm,7pm,7:30pm,8pm,8:30pm,9pm,9:30pm,10pm,10:30pm,11pm")
+    ck("worded as when they arrive, since nobody refuses a late guest",
+       "Arriving at" in pg.evaluate("()=>apLab.textContent"))
+    pg.evaluate("""()=>[...document.querySelectorAll('#eChips button')]
+        .find(b=>/Around 3pm/.test(b.textContent)).click()""")
+    pg.wait_for_timeout(200)
+    ck("an hour the slots can already say hides the row again",
+       pg.evaluate("()=>apChips.style.display==='none'"))
+    pg.close()
+
+    # A stored hour from the wide-open days, or one whose slot has since
+    # changed, is painted anyway, selected - the purpose-chip lesson - so
+    # the next save cannot silently drop a time somebody agreed to.
     pg = board()
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
     pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
-    ck("the desk offers twenty five half hours, 11am through 11pm",
+    ck("b4's stored 3pm survives as the one offered chip, selected",
        pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
-                   ".map(b=>b.textContent).join()")
-       == "11am,11:30am,12pm,12:30pm,1pm,1:30pm,2pm,2:30pm,3pm,3:30pm,"
-        + "4pm,4:30pm,5pm,5:30pm,6pm,6:30pm,7pm,7:30pm,8pm,8:30pm,"
-        + "9pm,9:30pm,10pm,10:30pm,11pm")
-    ck("the approved hour comes up selected from the record",
-       pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
-                   ".find(b=>b.className.indexOf('on')>-1).textContent") == "3pm")
+                   ".map(b=>b.textContent+':'+b.className).join()") == "3pm:chip on")
+    ck("and the label says it is kept, not offered",
+       "kept" in pg.evaluate("()=>apLab.textContent"))
     ck("with the guest's own slot still selected beside it",
        pg.evaluate("""()=>[...document.querySelectorAll('#eChips button')]
          .some(e=>/Around 4pm/.test(e.textContent) && e.className.indexOf('on')>-1)"""))
-    # Reception moves it to 1pm, an hour the guest's form never offers.
-    pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
-                ".find(b=>b.textContent==='1pm').click()")
-    del WRITES[:]
-    pg.locator("#sConfirm").click(); pg.wait_for_timeout(500)
-    w = [x for x in WRITES if "/bookings/b4/prearrival" in x["u"]]
-    ck("approving writes the hour as a number",
-       len(w) == 1 and json.loads(w[0]["b"]).get("arriveApproved") == 13)
-    if w:
-        ck("and the guest's slot goes with it, untouched",
-           json.loads(w[0]["b"])["arriveSlot"] == "16")
     # Tapping the chosen hour again is the way back, like the slot chips.
-    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
-    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
     pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
                 ".find(b=>b.className.indexOf('on')>-1).click()")
     del WRITES[:]
@@ -689,6 +721,25 @@ with sync_playwright() as p:
     if w:
         ck("and clearing leaves the guest's slot intact",
            json.loads(w[0]["b"])["arriveSlot"] == "16")
+    pg.close()
+
+    # ── the time rails scroll instead of wrapping ───────────────
+    # Nine slots was three rows of chips on a phone. A time sequence is the
+    # one control safe to scroll sideways: the order says what is off
+    # screen. The rail scrolls itself; the page must not.
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    ck("the slot chips stand in one scrollable rank",
+       pg.evaluate("()=>getComputedStyle(eChips).flexWrap") == "nowrap"
+       and pg.evaluate("()=>getComputedStyle(eChips).overflowX") == "auto")
+    ck("and the sheet still does not scroll sideways",
+       not pg.evaluate("()=>document.documentElement.scrollWidth>"
+                       "document.documentElement.clientWidth+1"))
+    ck("the rail opens with the guest's chosen slot in view",
+       pg.evaluate("""()=>{const on=eChips.querySelector('.chip.on');
+         const r=on.getBoundingClientRect(), b=eChips.getBoundingClientRect();
+         return r.left>=b.left-1 && r.right<=b.right+1;}"""))
     pg.close()
 
     # ── a guest with no form goes straight to the form ──────────

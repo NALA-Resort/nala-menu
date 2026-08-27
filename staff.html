@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Staff</title>
-<link rel="stylesheet" href="nala-ui.css?v=16">
+<link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
           --ui-font:-apple-system,Helvetica,Arial,sans-serif; }
@@ -155,7 +155,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=43"></script>
+<script src="nala-shared.js?v=44"></script>
 <script>
 var ROLES = ['admin','manager','chef','waiter','housekeeping'];
 /* The human roles, and the ones the notification matrix targets. manager is
@@ -321,14 +321,22 @@ function savePerson(key){
   var name = document.getElementById('pName').value.trim();
   var role = document.getElementById('pRole').value;
   var e = document.getElementById('sErr');
-  e.textContent = 'Saving...';
-  fetch(DB + '/staff/' + key + '.json', {
-    method:'PATCH', body: JSON.stringify({ name:name, role:role })
-  }).then(function(r){
-    if (!r.ok) throw new Error('rejected');
-    STAFF[key] = Object.assign({}, STAFF[key], { name:name, role:role });
-    drawPeople(); closeSheet();
-  }).catch(function(){ e.textContent = 'Could not save. Check the connection.'; });
+  /* The word used to go in the error line, which is the wrong mouth for it:
+     a status and a failure reading from the same place means neither can be
+     trusted at a glance. The button carries the status now and this line is
+     failures only.                                                       */
+  return saveFeedback(pressedButton(), function(){
+    return fetch(DB + '/staff/' + key + '.json', {
+      method:'PATCH', body: JSON.stringify({ name:name, role:role })
+    }).then(function(r){
+      if (!r.ok) throw new Error('rejected');
+      STAFF[key] = Object.assign({}, STAFF[key], { name:name, role:role });
+    });
+  }, {
+    done:'Saved ✓', hold:400,
+    then:function(){ drawPeople(); closeSheet(); },
+    fail:function(msg){ e.textContent = msg; }
+  });
 }
 
 function removeSheet(key){

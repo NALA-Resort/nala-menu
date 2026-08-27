@@ -2058,3 +2058,130 @@ window.NALA_WIRENOTIFY = wireNotify;
     clearInterval(t);
   }, 250);
 })();
+
+/* ── what a save says back ───────────────────────────────────
+   One save, one visible answer.
+
+   Before 27 Aug six surfaces - the desk, both tallies, spa, staff and the
+   guest's own confirm - wrote to the database with nothing happening on
+   screen: no press, no wait, no word when it landed. The writes are
+   optimistic and roll back on failure, which is good discipline and is
+   exactly why nobody noticed: the board redrew, so the button never had to
+   say anything. On a slow connection that leaves somebody holding a dead
+   looking control, and a second tap wrote a second time.
+
+   Five other pages had each hand written their own version of the answer -
+   templates, flags, tag, publish, prearrival, arrivals-sms - which is why
+   they had all drifted apart. This is that answer, once.
+
+       saveFeedback(btn, write, opts)
+
+   btn    the button that was pressed
+   write  a function returning a promise for the write
+   opts   busy  label while writing               default 'Saving'
+          done  label once it lands               default 'Saved'
+          hold  ms to hold Saved before then()    default 0
+          then  runs after a successful write - close the sheet, re-render
+          fail  an element to carry the red line, or a function(message)
+
+   Returns a promise that never rejects. The button and the fail line have
+   already said what happened; a caller that also had to catch would be a
+   second report of one event.
+
+   The button RESTS at Saved - the owner's ruling, 27 Aug - until armSave()
+   puts it back, which is what an edit does. Never a timer: a label that
+   times out goes back to saying Save about a record with nothing left to
+   save, which is the same lie as saying nothing at all.                */
+/* Which button was pressed. Threading a reference through every call site -
+   cleaners alone writes from about forty - is forty chances to miss one, and
+   a button added next month would be missed by construction. One capture
+   listener instead: the press already knows which button it was, so nothing
+   has to be remembered at the far end. Capture phase, because several of
+   these handlers redraw or close their surface and the event never bubbles
+   back up to here.                                                       */
+var SAVE_PRESSED = null;
+function pressedButton(){ return SAVE_PRESSED; }
+document.addEventListener('click', function(e){
+  var t = e.target;
+  SAVE_PRESSED = (t && t.closest) ? t.closest('button') : null;
+}, true);
+
+function saveFeedback(btn, write, opts){
+  opts = opts || {};
+  /* A caller with no button still gets the rollback and the red line: the
+     button is how this SAYS what happened, not how it knows.            */
+  if (btn){
+    if (btn.__saving) return Promise.resolve(null);    /* the second tap */
+    /* innerHTML rather than the label: several of these buttons carry a
+       tick or a count inside them, and textContent would restore the words
+       having eaten the markup.                                          */
+    if (btn.__rest === undefined) btn.__rest = btn.innerHTML;
+    btn.__saving = true;
+    btn.disabled = true;
+    btn.classList.remove('saved');
+    btn.classList.add('saving');
+    btn.textContent = opts.busy || 'Saving';
+  }
+  saveFailSay(opts.fail, '');
+  return Promise.resolve().then(write).then(function(v){
+    if (btn){
+      btn.__saving = false;
+      btn.classList.remove('saving');
+      btn.classList.add('saved');
+      btn.textContent = opts.done || 'Saved'; /* stays disabled: nothing to save */
+    }
+    if (opts.then){
+      /* The hold is the green being seen. With no button there is no green,
+         so there is nothing to wait for.                                */
+      if (opts.hold && btn) setTimeout(function(){ opts.then(v); }, opts.hold);
+      else opts.then(v);
+    }
+    return v;
+  }, function(e){
+    if (btn){
+      btn.__saving = false;
+      btn.classList.remove('saving');
+      btn.classList.remove('saved');
+      btn.disabled = false;
+      btn.innerHTML = btn.__rest;
+    }
+    saveFailSay(opts.fail, saveFailWords(e));
+    return null;
+  });
+}
+
+/* An edit means there is something to save again. Harmless on a button that
+   is not resting at Saved, so it can be called from anything that changes
+   the record.
+
+   Nothing calls this yet, and that is not an oversight. The four boards
+   wired on 27 Aug all close their sheet once the write lands, so none of
+   them rests at Saved. The surfaces that DO stay open - templates, flags,
+   tag - each still wear their own button dress, and the green belongs to
+   .btn; converting a page's dress is the per-page pass those are queued
+   for (BUTTONS-AUDIT.md), and this is the half of the ruling waiting for
+   them, so the first one across does not write it again.               */
+function armSave(btn){
+  if (!btn || btn.__saving) return;
+  if (!btn.classList.contains('saved')) return;
+  btn.classList.remove('saved');
+  btn.disabled = false;
+  if (btn.__rest !== undefined) btn.innerHTML = btn.__rest;
+}
+
+function saveFailSay(target, msg){
+  if (!target) return;
+  if (typeof target === 'function'){ target(msg); return; }
+  target.textContent = msg || '';
+  if (target.classList) target.classList.toggle('show', !!msg);
+}
+
+/* Two failures a person acts on differently: the database refused the write,
+   which is a permission and needs the manager, and the write never arrived,
+   which needs another go. Anything else is the second one.              */
+function saveFailWords(e){
+  var m = '' + (e && (e.message || e));
+  if (/rejected|denied|permission|401|403/i.test(m))
+    return 'The change was not allowed - tell the manager.';
+  return 'Not saved - check the connection and try again.';
+}
