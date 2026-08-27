@@ -45,6 +45,9 @@ signOut:function(){}};""" % (email, email)
 
 MASTER = {"Gluten free": {"name": "Gluten free", "active": True, "group": "common"},
           "Nut allergy": {"name": "Nut allergy", "active": True, "group": "common"},
+          #  A common dietary NOBODY in any test's house declares, so the
+          #  rings section can show a pressed pill keeping its grey border.
+          "Vegan":       {"name": "Vegan", "active": True, "group": "common"},
           "Chilli":      {"name": "Chilli", "active": True, "group": "menu"},
           "Old thing":   {"name": "Old thing", "active": False, "group": "common"}}
 
@@ -805,6 +808,35 @@ with sync_playwright() as p:
                    x.getAttribute('data-n')==='Nut allergy');
           return t.className.split(' ').indexOf('on')>-1 &&
                  t.className.split(' ').indexOf('warnin')>-1; }"""))
+    #  And keeps it LOUD. The owner's second ruling of 27 Aug, off his own
+    #  screenshot: pressed pills filled solid red, so a page with a few ticks
+    #  was a wall of red and the one ring that meant a confirmed allergy
+    #  disappeared into it. Red never fills a pill now - the press is a light
+    #  grey fill with the text left black, and the ring is the only red thing
+    #  on the pill.
+    ck("a pressed pill fills light grey with black text, never red",
+       pg.evaluate("""()=>{ var t=[...document.querySelectorAll('#tagblock .tick')]
+          .find(x=>x.getAttribute('data-c')==='main' &&
+                   x.getAttribute('data-n')==='Nut allergy');
+          var s = getComputedStyle(t);
+          return s.backgroundColor === 'rgb(224, 224, 218)' &&
+                 s.color === 'rgb(28, 28, 26)'; }"""))
+    ck("and pressing left the red ring exactly as it was",
+       pg.evaluate("""()=>{ var t=[...document.querySelectorAll('#tagblock .tick')]
+          .find(x=>x.getAttribute('data-c')==='main' &&
+                   x.getAttribute('data-n')==='Nut allergy');
+          return getComputedStyle(t).borderTopColor === 'rgb(168, 50, 30)'; }"""))
+    #  A pressed pill NOBODY in the house has declared keeps its grey border:
+    #  pressing changes the fill and only the fill, so grey stays grey and a
+    #  warning ring is never invented by a tap.
+    ck("a pressed pill with no guest behind it stays grey-bordered",
+       pg.evaluate("""()=>{ var t=[...document.querySelectorAll('#tagblock .tick')]
+          .find(x=>x.getAttribute('data-c')==='main' &&
+                   x.getAttribute('data-n')==='Vegan');
+          if (!t) return false; t.click();
+          var s = getComputedStyle(t);
+          return s.backgroundColor === 'rgb(224, 224, 218)' &&
+                 s.borderTopColor === 'rgb(201, 201, 194)'; }"""))
     pg.close()
 
     #  One dietary, two declarers: the confirmed guest outranks the pending

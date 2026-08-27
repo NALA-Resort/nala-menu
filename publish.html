@@ -130,7 +130,15 @@
   .tick { padding:8px 13px; border:1px solid #C9C9C2; background:transparent;
           border-radius:20px; font-family:Helvetica,Arial,sans-serif; font-size:11px;
           color:var(--ink); cursor:pointer; -webkit-tap-highlight-color:transparent; }
-  .tick.on { background:var(--red); color:#fff; border-color:var(--red); }
+  /* Red belongs to the ring alone - the owner's second ruling of 27 Aug,
+     replacing the first. A pressed pill filled solid red, so a page with a
+     few ticks on it was a wall of red and the one red RING that meant a
+     confirmed guest's allergy disappeared into it (his screenshot). Now the
+     press is a light grey fill with the text left black, and the border is
+     not touched by pressing at all: grey stays grey, and a red or amber
+     warning ring stays exactly as loud as it was. On this page red never
+     fills anything - it only ever surrounds. */
+  .tick.on { background:var(--rule); }
   /* The ring, asked for by the owner 27 Aug: a pill whose dietary somebody in
      the house TONIGHT has declared. Red - the failure colour - when that guest
      is confirmed for dinner: tick this pill on a dish and a real diner is
