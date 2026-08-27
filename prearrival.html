@@ -1173,6 +1173,19 @@ function boot(){
     banner.className = 'note-box';
     banner.style.cssText = 'margin:0 0 14px;text-align:center';
     banner.textContent = 'Demonstration only. Nothing here is saved.';
+    /* And said here: the dietary pills are this page's built-in eight, not the
+       chef's list. DEMO reads nothing - that is the warranty above, and the
+       suite watches the requests to hold it - so the master list at
+       /dietaries is never fetched and a dietary added in Dietary Settings
+       cannot show up on this form. Said on the landing rather than left to be
+       found at the dietary question, where eight familiar names look exactly
+       like a list that quietly failed to update. Ruled 27 Aug, after Celiac
+       was added, appeared at the front desk, and was looked for here. A real
+       guest's link does fetch the list; only the demo does not. */
+    var demoDiet = document.createElement('div');
+    demoDiet.className = 'sub';
+    demoDiet.textContent = 'The dietary pills are examples, not your live list.';
+    banner.appendChild(demoDiet);
     el('intro').insertBefore(banner, el('intro').firstChild);
     showStep(0);
     return;

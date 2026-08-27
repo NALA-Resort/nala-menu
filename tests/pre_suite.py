@@ -765,6 +765,15 @@ with sync_playwright() as p:
        "demonstration" in q.evaluate(
            "()=>{const n=document.querySelector('#intro .note-box');"
            "return n?n.textContent:'';}").lower())
+    # The demo reads nothing, asserted just below, so its dietary pills are the
+    # page's built-in eight and a dietary added in Settings cannot appear on
+    # them. That is only safe if the demo says so: the owner added Celiac on
+    # 27 Aug, saw it at the front desk, opened this form from the site map and
+    # reasonably read the eight as a list that had failed to update.
+    ck("and warns that its dietary pills are examples, not the live list",
+       "examples, not your live list" in q.evaluate(
+           "()=>{const n=document.querySelector('#intro .note-box');"
+           "return n?n.textContent:'';}"))
     ck("opening it touches the database not at all", not calls)
 
     q.evaluate("""()=>{
