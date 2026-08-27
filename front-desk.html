@@ -170,12 +170,29 @@
          cursor:pointer; border-radius:6px; }
   .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
-  /* A time sequence reads left to right, so its chips stand in one scrollable
-     rank rather than wrapping into a wall of rows: the order says what is off
-     screen. The rail scrolls itself; the sheet never scrolls sideways. */
-  .chips.rail { flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start;
-                -webkit-overflow-scrolling:touch; padding-bottom:6px; }
-  .chips.rail .chip { flex:0 0 auto; white-space:nowrap; }
+  /* One dress for every row of choices on the sheet, ruled by the owner
+     27 Aug once the two time rows proved it: the choices stand in a single
+     rank and the RANK scrolls, rather than wrapping into a block that pushes
+     the next question off the screen. A wrapped row costs vertical space,
+     which is the scarce dimension on a phone held at a desk; a rail costs
+     none and never changes height as the answers change.
+
+     Written against `.rail` alone rather than `.chips.rail`, because the
+     covers row is a `.pax-row` and wears the same dress: one rule, or the
+     two rows drift. The rail scrolls itself; the sheet never scrolls
+     sideways, which the suite asserts at all three widths. */
+  .rail { flex-wrap:nowrap; overflow-x:auto;
+          -webkit-overflow-scrolling:touch; padding-bottom:6px; }
+  /* Two declarations on purpose, not a leftover. A plain `center` centres a
+     row that fits - which is what the sheet's centred labels want - but when
+     the row overflows it centres the overflow too, and the chips off the
+     LEFT edge cannot be scrolled back to. `safe center` centres only while
+     it fits and falls back to the start once it does not; a browser that
+     does not know the keyword ignores the line and keeps flex-start, which
+     is the safe half of the same bargain. */
+  .rail { justify-content:flex-start; }
+  .rail { justify-content:safe center; }
+  .rail > * { flex:0 0 auto; white-space:nowrap; }
   .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
           border-radius:20px; font-family:var(--ui-font); font-size:10px;
           color:var(--mid); cursor:pointer; }
@@ -969,6 +986,48 @@ function showSheet(){ bd.className = 'backdrop show'; }
 function closeSheet(){ bd.className = 'backdrop'; }
 bd.onclick = function(e){ if (e.target === bd) closeSheet(); };
 
+/* One rebuild of one row of choices. Here rather than in each painter
+   because ten rows clear-and-refill the same way, and ten copies is how one
+   of them gets forgotten - along with the null guard the flag row needs,
+   being the only row a non-admin's sheet does not draw at all.
+
+   It deliberately does NOT save and restore scrollLeft, though a scrolled
+   rail jumping back to its start on every tap is exactly what you would
+   expect. Measured instead of assumed, 27 Aug: a rail scrolled to 120px
+   stays at 120px across a repaint with no help at all, because the clear
+   and the refill happen in ONE task and the browser never lays out the
+   empty row in between, so scrollLeft is never clamped. The guard was
+   written first, then deleted when breaking it changed nothing - a test
+   that cannot fail is worse than no test, and code that cannot be tested
+   is a belief. If a painter ever refills asynchronously this stops being
+   true, and that painter is where the fix belongs. */
+function repaintRow(id, fill){
+  var box = document.getElementById(id);
+  if (!box) return;
+  box.innerHTML = '';
+  fill(box);
+}
+
+/* Put the chosen chip of every rail in view, once the sheet is on screen.
+   Cannot run from the painters: while the backdrop is display:none every
+   offset and width reads zero. A rail nobody has answered stays at its
+   start, which is where its first choice is.
+
+   Takes a root because two rails - the covers and the spa days - live inside
+   blocks that are themselves hidden until the question above them is
+   answered yes, so they measure zero on open and are centred again at the
+   moment they appear. Rooted rather than global there, or revealing one
+   block would drag every other rail back from wherever reception had
+   scrolled it. */
+function centreRails(root){
+  Array.prototype.forEach.call((root || sheetEl).querySelectorAll('.rail'), function(box){
+    var on = box.querySelector('.on');
+    if (!on) return;
+    box.scrollLeft = Math.max(0,
+      on.offsetLeft - box.clientWidth / 2 + on.offsetWidth / 2);
+  });
+}
+
 /* One reading of what is stored, used by the summary, the edit sheet and the
    confirm button alike. Three readings would be three chances to disagree
    about the same guest. */
@@ -1083,7 +1142,7 @@ function openGuest(r){
        rides on the Mews rate and a tick could not turn it off. */
     (canFlags() ?
       '<div class="sheet-label">Booking flags</div>' +
-      '<div class="chips" id="fkChips"></div>' +
+      '<div class="chips rail" id="fkChips"></div>' +
       (rateFlagLabel(r.pms)
         ? '<div class="flag-src">Luxury Escapes - automatic, from the Mews rate</div>' : '')
       : '') +
@@ -1125,18 +1184,18 @@ function openGuest(r){
     '</div>' +
     '<div class="miss-note" id="sMiss"></div>' +
     '<div id="paxWrap"><div class="sheet-label">Guests at dinner</div>' +
-      '<div class="pax-row" id="paxRow"></div></div>' +
+      '<div class="pax-row rail" id="paxRow"></div></div>' +
 
     '<div class="sheet-label">Dietary requirements</div>' +
-    '<div class="chips" id="dChips"></div>' +
-    '<div class="chips" id="dNone"></div>' +
+    '<div class="chips rail" id="dChips"></div>' +
+    '<div class="chips rail" id="dNone"></div>' +
     '<input class="txt" id="fDnote" type="text" placeholder="Dietary notes" autocomplete="off">' +
 
     '<div class="sheet-label">Purpose of visit</div>' +
-    '<div class="chips" id="pChips"></div>' +
+    '<div class="chips rail" id="pChips"></div>' +
 
     '<div class="sheet-label">How they plan to dine</div>' +
-    '<div class="chips" id="aChips"></div>' +
+    '<div class="chips rail" id="aChips"></div>' +
 
     '<div class="sheet-label">Special occasion</div>' +
     '<input class="txt" id="fOcc" type="text" placeholder="Birthday, anniversary" autocomplete="off">' +
@@ -1148,9 +1207,9 @@ function openGuest(r){
     '</div>' +
     '<div id="wWrap">' +
       '<div class="sheet-label">Preferred day</div>' +
-      '<div class="chips" id="wDays"></div>' +
+      '<div class="chips rail" id="wDays"></div>' +
       '<select class="txt" id="fWtime" aria-label="Preferred time" style="margin-top:8px"></select>' +
-      '<div class="chips" id="fWqty" style="margin-top:8px"></div>' +
+      '<div class="chips rail" id="fWqty" style="margin-top:8px"></div>' +
       '<div class="sheet-label" id="fWdurLab" style="display:none">First massage</div>' +
       '<select class="txt" id="fWdur" aria-label="Massage length" style="margin-top:8px"></select>' +
       '<div class="sheet-label" id="fWdur2Lab" style="display:none">Second massage</div>' +
@@ -1213,13 +1272,14 @@ function openGuest(r){
     ['fWdur2', 'fWdurLab', 'fWdur2Lab'].forEach(function(id){
       document.getElementById(id).style.display = two ? '' : 'none';
     });
-    var qbox = document.getElementById('fWqty'); qbox.innerHTML = '';
-    [1, 2].forEach(function(n){
-      var b = document.createElement('button');
-      b.className = 'chip' + (a.wellQty === n ? ' on' : '');
-      b.textContent = n === 1 ? 'One massage' : 'Two massages';
-      b.onclick = function(){ a.wellQty = n; paintWellDurs(); };
-      qbox.appendChild(b);
+    repaintRow('fWqty', function(qbox){
+      [1, 2].forEach(function(n){
+        var b = document.createElement('button');
+        b.className = 'chip' + (a.wellQty === n ? ' on' : '');
+        b.textContent = n === 1 ? 'One massage' : 'Two massages';
+        b.onclick = function(){ a.wellQty = n; paintWellDurs(); };
+        qbox.appendChild(b);
+      });
     });
   }
   paintWellDurs();
@@ -1228,12 +1288,23 @@ function openGuest(r){
     document.getElementById('sDin').className = a.dining === true  ? 'on' : '';
     document.getElementById('sOut').className = a.dining === false ? 'on' : '';
     /* Covers only mean something if they are eating. */
-    document.getElementById('paxWrap').style.display = a.dining === true ? '' : 'none';
+    var pw = document.getElementById('paxWrap');
+    var was = pw.style.display;
+    pw.style.display = a.dining === true ? '' : 'none';
+    /* Just revealed: its rail could not measure itself until now. */
+    if (was === 'none' && pw.style.display === '') centreRails(pw);
   }
+  /* Toggled, never assigned. These three elements carry a dress declared in
+     the markup - `chips rail` on the dietary row - and rebuilding the whole
+     class from a literal here silently undressed it: the row wrapped again
+     the first time somebody answered a dietary, and only then. The miss mark
+     is a state laid ON the dress, so it is added and removed as one class
+     and the markup stays the one place a row's dress is decided. */
+  function setMiss(el, on){ if (el) el.classList.toggle('miss', !!on); }
   function clearMiss(){
-    document.getElementById('sMiss').className = 'miss-note';
-    document.getElementById('diningSeg').className = 'seg';
-    document.getElementById('dChips').className = 'chips';
+    document.getElementById('sMiss').classList.remove('show');
+    setMiss(document.getElementById('diningSeg'), false);
+    setMiss(document.getElementById('dChips'), false);
   }
   /* Tapping the chosen answer again clears it, the way back every chip on
      this sheet already gives. Ruled by the owner, 26 Aug: every answer must
@@ -1245,26 +1316,28 @@ function openGuest(r){
     a.dining = (a.dining === false) ? null : false; clearMiss(); paintDining(); };
 
   function paintPax(){
-    var box = document.getElementById('paxRow'); box.innerHTML = '';
-    for (var i=1;i<=8;i++)(function(v){
-      var b = document.createElement('button');
-      b.className = 'pax' + (pax===v ? ' on' : ''); b.textContent = v;
-      b.onclick = function(){ pax = v; paintPax(); };
-      box.appendChild(b);
-    })(i);
+    repaintRow('paxRow', function(box){
+      for (var i=1;i<=8;i++)(function(v){
+        var b = document.createElement('button');
+        b.className = 'pax' + (pax===v ? ' on' : ''); b.textContent = v;
+        b.onclick = function(){ pax = v; paintPax(); };
+        box.appendChild(b);
+      })(i);
+    });
   }
 
   function paintDiets(){
-    var box = document.getElementById('dChips'); box.innerHTML = '';
-    DIETARIES.forEach(function(d){
-      var b = document.createElement('button');
-      b.className = 'chip' + (a.diets.indexOf(d)>-1 ? ' on' : ''); b.textContent = d;
-      b.onclick = function(){
-        var i = a.diets.indexOf(d);
-        if (i>-1) a.diets.splice(i,1); else { a.diets.push(d); a.noDiets = false; }
-        clearMiss(); paintDiets(); paintNone();
-      };
-      box.appendChild(b);
+    repaintRow('dChips', function(box){
+      DIETARIES.forEach(function(d){
+        var b = document.createElement('button');
+        b.className = 'chip' + (a.diets.indexOf(d)>-1 ? ' on' : ''); b.textContent = d;
+        b.onclick = function(){
+          var i = a.diets.indexOf(d);
+          if (i>-1) a.diets.splice(i,1); else { a.diets.push(d); a.noDiets = false; }
+          clearMiss(); paintDiets(); paintNone();
+        };
+        box.appendChild(b);
+      });
     });
   }
   /* "None to declare" is a positive answer, not the absence of one. Without
@@ -1276,7 +1349,7 @@ function openGuest(r){
      write down, the other says the answer is only in the note. Choosing
      either clears the other. */
   function paintNone(){
-    var box = document.getElementById('dNone'); box.innerHTML = '';
+    repaintRow('dNone', function(box){
 
     var none = document.createElement('button');
     none.className = 'chip' + (a.noDiets ? ' on' : '');
@@ -1301,28 +1374,27 @@ function openGuest(r){
       if (hasOther()) { var f = document.getElementById('fDnote'); if (f) f.focus(); }
     };
     box.appendChild(other);
+    });
   }
   function hasOther(){ return a.diets.indexOf(DIET_OTHER) > -1; }
 
   /* Tapping the chosen slot again clears it, because "we did ask and they did
      not know" is a real answer and there has to be a way back to it. */
   function paintEta(){
-    var box = document.getElementById('eChips');
-    var keep = box.scrollLeft;          /* a repaint must not jump the rail */
-    box.innerHTML = '';
     var wantsNote = false;
-    ETA_SLOTS.forEach(function(sl){
-      var b = document.createElement('button');
-      b.className = 'chip' + (a.arriveSlot === sl[0] ? ' on' : '');
-      b.textContent = sl[1];
-      b.onclick = function(){
-        a.arriveSlot = (a.arriveSlot === sl[0]) ? '' : sl[0];
-        paintEta();
-      };
-      box.appendChild(b);
-      if (a.arriveSlot === sl[0] && sl[3]) wantsNote = true;
+    repaintRow('eChips', function(box){
+      ETA_SLOTS.forEach(function(sl){
+        var b = document.createElement('button');
+        b.className = 'chip' + (a.arriveSlot === sl[0] ? ' on' : '');
+        b.textContent = sl[1];
+        b.onclick = function(){
+          a.arriveSlot = (a.arriveSlot === sl[0]) ? '' : sl[0];
+          paintEta();
+        };
+        box.appendChild(b);
+        if (a.arriveSlot === sl[0] && sl[3]) wantsNote = true;
+      });
     });
-    box.scrollLeft = keep;
     /* The note only appears for the two open ended slots, which is where the
        guest's form asks for it too: before 2pm and after 5pm are the ones that
        need a time attached to be worth anything. */
@@ -1373,53 +1445,54 @@ function openGuest(r){
                     : a.arriveSlot === 'after5'
                         ? 'Arriving at, as the guest told us'
                         : 'Approved arrival, kept from an earlier save';
-    var keep = box.scrollLeft;
-    box.innerHTML = '';
-    offer.forEach(function(hr){
-      var b = document.createElement('button');
-      var w = Math.floor(hr);
-      b.className = 'chip' + (a.arriveApproved === hr ? ' on' : '');
-      b.textContent = (w > 12 ? w - 12 : w) + (hr % 1 ? ':30' : '') +
-                      (w < 12 ? 'am' : 'pm');
-      b.onclick = function(){
-        a.arriveApproved = (a.arriveApproved === hr) ? null : hr;
-        paintApproved();
-      };
-      box.appendChild(b);
+    repaintRow('apChips', function(box){
+      offer.forEach(function(hr){
+        var b = document.createElement('button');
+        var w = Math.floor(hr);
+        b.className = 'chip' + (a.arriveApproved === hr ? ' on' : '');
+        b.textContent = (w > 12 ? w - 12 : w) + (hr % 1 ? ':30' : '') +
+                        (w < 12 ? 'am' : 'pm');
+        b.onclick = function(){
+          a.arriveApproved = (a.arriveApproved === hr) ? null : hr;
+          paintApproved();
+        };
+        box.appendChild(b);
+      });
     });
-    box.scrollLeft = keep;
   }
 
   function paintPurpose(){
-    var box = document.getElementById('pChips'); box.innerHTML = '';
-    /* A record may hold a label from before the 23 Aug vocabulary. It is
-       painted anyway, selected: invisible would mean the next save from
-       here drops the guest's answer, which is the exact bug this suite's
-       fixture remembers. Tapping a current label replaces it. */
-    var offered = PURPOSE.concat(a.purpose.filter(function(t){
-      return PURPOSE.indexOf(t) === -1; }));
-    offered.forEach(function(t){
-      var b = document.createElement('button');
-      b.className = 'chip' + (a.purpose.indexOf(t)>-1 ? ' on' : ''); b.textContent = t;
-      b.onclick = function(){
-        /* One answer replaces another; tapping it again clears it, the way
-           back every desk chip gives. */
-        a.purpose = (a.purpose.indexOf(t) > -1) ? [] : [t];
-        paintPurpose();
-      };
-      box.appendChild(b);
+    repaintRow('pChips', function(box){
+      /* A record may hold a label from before the 23 Aug vocabulary. It is
+         painted anyway, selected: invisible would mean the next save from
+         here drops the guest's answer, which is the exact bug this suite's
+         fixture remembers. Tapping a current label replaces it. */
+      var offered = PURPOSE.concat(a.purpose.filter(function(t){
+        return PURPOSE.indexOf(t) === -1; }));
+      offered.forEach(function(t){
+        var b = document.createElement('button');
+        b.className = 'chip' + (a.purpose.indexOf(t)>-1 ? ' on' : ''); b.textContent = t;
+        b.onclick = function(){
+          /* One answer replaces another; tapping it again clears it, the way
+             back every desk chip gives. */
+          a.purpose = (a.purpose.indexOf(t) > -1) ? [] : [t];
+          paintPurpose();
+        };
+        box.appendChild(b);
+      });
     });
   }
   function paintApproach(){
-    var box = document.getElementById('aChips'); box.innerHTML = '';
-    var offered = APPROACH.slice();
-    if (a.approach && APPROACH_OLD[a.approach])
-      offered.push([a.approach, APPROACH_OLD[a.approach]]);
-    offered.forEach(function(pair){
-      var b = document.createElement('button');
-      b.className = 'chip' + (a.approach===pair[0] ? ' on' : ''); b.textContent = pair[1];
-      b.onclick = function(){ a.approach = (a.approach===pair[0] ? '' : pair[0]); paintApproach(); };
-      box.appendChild(b);
+    repaintRow('aChips', function(box){
+      var offered = APPROACH.slice();
+      if (a.approach && APPROACH_OLD[a.approach])
+        offered.push([a.approach, APPROACH_OLD[a.approach]]);
+      offered.forEach(function(pair){
+        var b = document.createElement('button');
+        b.className = 'chip' + (a.approach===pair[0] ? ' on' : ''); b.textContent = pair[1];
+        b.onclick = function(){ a.approach = (a.approach===pair[0] ? '' : pair[0]); paintApproach(); };
+        box.appendChild(b);
+      });
     });
   }
   /* Only the nights they are actually here. Offering a day outside the stay is
@@ -1439,14 +1512,19 @@ function openGuest(r){
     document.getElementById('wYes').className = a.wellness === true  ? 'on' : '';
     document.getElementById('wNo').className  = a.wellness === false ? 'on' : '';
     /* A day and a time only mean something once they have said yes. */
-    document.getElementById('wWrap').style.display = a.wellness === true ? '' : 'none';
-    var box = document.getElementById('wDays'); box.innerHTML = '';
-    stayDays().forEach(function(d){
-      var b = document.createElement('button');
-      b.className = 'chip' + (a.wellDay === d.key ? ' on' : ''); b.textContent = d.label;
-      b.onclick = function(){ a.wellDay = (a.wellDay === d.key ? '' : d.key); paintWellness(); };
-      box.appendChild(b);
+    var ww = document.getElementById('wWrap');
+    var wasHidden = ww.style.display === 'none';
+    ww.style.display = a.wellness === true ? '' : 'none';
+    repaintRow('wDays', function(box){
+      stayDays().forEach(function(d){
+        var b = document.createElement('button');
+        b.className = 'chip' + (a.wellDay === d.key ? ' on' : ''); b.textContent = d.label;
+        b.onclick = function(){ a.wellDay = (a.wellDay === d.key ? '' : d.key); paintWellness(); };
+        box.appendChild(b);
+      });
     });
+    /* Just revealed: its rails could not measure themselves until now. */
+    if (wasHidden && ww.style.display === '') centreRails(ww);
   }
   /* Same way back as the dining segment: tapping the chosen answer again
      un-asks the question. */
@@ -1462,28 +1540,27 @@ function openGuest(r){
      save, like every other answer on this sheet, so Close still discards. */
   var flags = ((r.bf && r.bf.flags) || []).slice();
   function paintFlags(){
-    var box = document.getElementById('fkChips');
-    if (!box) return;
-    box.innerHTML = '';
-    var offered = FLAGLIST.concat(flags.filter(function(t){
-      return FLAGLIST.indexOf(t) === -1; }));
-    if (!offered.length){
-      var d = document.createElement('div');
-      d.className = 'flag-src';
-      d.textContent = 'No flags defined yet. Add them under Settings, Flags.';
-      box.appendChild(d);
-      return;
-    }
-    offered.forEach(function(t){
-      var b = document.createElement('button');
-      b.className = 'chip' + (flags.indexOf(t) > -1 ? ' on' : '');
-      b.textContent = t;
-      b.onclick = function(){
-        var i = flags.indexOf(t);
-        if (i > -1) flags.splice(i, 1); else flags.push(t);
-        paintFlags();
-      };
-      box.appendChild(b);
+    repaintRow('fkChips', function(box){
+      var offered = FLAGLIST.concat(flags.filter(function(t){
+        return FLAGLIST.indexOf(t) === -1; }));
+      if (!offered.length){
+        var d = document.createElement('div');
+        d.className = 'flag-src';
+        d.textContent = 'No flags defined yet. Add them under Settings, Flags.';
+        box.appendChild(d);
+        return;
+      }
+      offered.forEach(function(t){
+        var b = document.createElement('button');
+        b.className = 'chip' + (flags.indexOf(t) > -1 ? ' on' : '');
+        b.textContent = t;
+        b.onclick = function(){
+          var i = flags.indexOf(t);
+          if (i > -1) flags.splice(i, 1); else flags.push(t);
+          paintFlags();
+        };
+        box.appendChild(b);
+      });
     });
   }
 
@@ -1583,32 +1660,25 @@ function openGuest(r){
   function flagMissing(which){
     var seg = document.getElementById('diningSeg');
     var chips = document.getElementById('dChips');
-    seg.className   = 'seg' + (which.indexOf('dining') > -1 ? ' miss' : '');
-    chips.className = 'chips' + (which.indexOf('dietary') > -1 ? ' miss' : '');
+    /* Toggled rather than rebuilt, for setMiss's reason above. */
+    setMiss(seg,   which.indexOf('dining') > -1);
+    setMiss(chips, which.indexOf('dietary') > -1);
     var note = document.getElementById('fDnote');
-    if (note) note.className = 'txt' + (which.indexOf('othernote') > -1 ? ' miss' : '');
+    setMiss(note,  which.indexOf('othernote') > -1);
     var el = document.getElementById('sMiss');
     el.textContent = which.length === 2
       ? 'Ask about dinner and dietaries before confirming.'
       : which[0] === 'dining' ? 'Ask whether they are dining tonight.'
       : which[0] === 'othernote' ? 'Write the allergy in the notes, or it reaches nobody.'
       : 'Ask about dietaries, even to rule them out.';
-    el.className = 'miss-note show';
+    el.classList.add('show');
     (which.indexOf('dining') > -1 ? seg
        : which.indexOf('othernote') > -1 ? (note || chips) : chips)
       .scrollIntoView({ block:'center', behavior:'smooth' });
     if (which.indexOf('othernote') > -1 && note) note.focus();
   }
   showSheet();
-  /* Centre the chosen chip in each time rail, once the sheet is on screen:
-     while the backdrop is display:none every offset reads zero, so this
-     cannot run from the paint functions above. */
-  ['eChips', 'apChips'].forEach(function(id){
-    var box = document.getElementById(id);
-    var on = box && box.querySelector('.chip.on');
-    if (on) box.scrollLeft = Math.max(0,
-      on.offsetLeft - box.clientWidth / 2 + on.offsetWidth / 2);
-  });
+  centreRails();
 }
 
 /* Writes the guest's own node, whoever typed it. No record of who filled it
