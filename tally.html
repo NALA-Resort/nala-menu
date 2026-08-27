@@ -12,11 +12,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
 <title>Nala · Tonight's Numbers</title>
-<link rel="stylesheet" href="nala-ui.css?v=15">
+<link rel="stylesheet" href="nala-ui.css?v=16">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-         --amber:#B07D2B;
+         /* the kitchen bubble's gold. Not --amber: that name is the colour
+            law's attention FILL (#F6EAD5) and this is an ink.            */
+         --gold:#B07D2B;
           /* state palette: dining green, declined terracotta, vacant slate */
           --green:#5E7D67;  --green-t:rgba(122,160,130,.26);  --green-b:rgba(122,160,130,.65);
           --terra:#9E6455;  --terra-t:rgba(184,106,90,.16);   --terra-b:rgba(184,106,90,.45);
@@ -208,7 +210,7 @@
          position:relative; }
   .bub::after { content:''; position:absolute; inset:-11px; }  /* 42px tap target */
   .bub svg { width:15px; height:15px; display:block; fill:var(--mid); }
-  .bub.kitchen svg { fill:var(--amber); }
+  .bub.kitchen svg { fill:var(--gold); }
   .bub.flag svg { fill:var(--red); }
   .pop-who { font-size:15px; margin-bottom:14px; padding-bottom:12px;
              border-bottom:1px solid var(--rule); }
@@ -221,12 +223,8 @@
   .actions.hidden { visibility:hidden; }
   .actions { margin-top:34px; gap:10px;
              padding:12px 0 calc(12px + env(safe-area-inset-bottom)); }
-  .actions .btn { flex:1 1 40%; text-align:center; white-space:nowrap; }
-  .btn { flex:1; text-align:center; padding:13px; border:1px solid var(--ink);
-         font-family:var(--ui-font); font-size:10px; letter-spacing:.15em;
-         text-transform:uppercase; color:var(--ink); text-decoration:none;
-         background:transparent; cursor:pointer; }
-  .btn.solid { background:var(--ink); color:var(--cream); }
+  /* .btn wears nala-ui.css's shared dress; the rows here only lay it out. */
+  .actions .btn { flex:1 1 40%; }
 
   /* sheet */
   .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35);

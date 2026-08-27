@@ -45,12 +45,17 @@
      their chevroned headers. nala-ui.css holds the ruling copy of this
      dress - keep this one in step with it. */
   .navdrop a { display:block; padding:10px 18px;
-               font-family:Helvetica,Arial,sans-serif; font-size:14px;
+               /* the ruling copy's --ui-font, written out: no tiered body here */
+               font-family:-apple-system, BlinkMacSystemFont, system-ui,
+                           'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+               font-size:14px;
                line-height:18px; color:var(--ink);
                text-decoration:none; white-space:nowrap; }
   .navgrp { display:flex; align-items:center; justify-content:space-between;
             gap:14px; width:100%; padding:10px 18px;
-            font-family:Helvetica,Arial,sans-serif; font-size:14px;
+            font-family:-apple-system, BlinkMacSystemFont, system-ui,
+                        'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-size:14px;
             line-height:18px; text-align:left; color:var(--ink);
             background:none; border:0; border-top:1px solid var(--rule);
             cursor:pointer; -webkit-tap-highlight-color:transparent; }
@@ -81,18 +86,8 @@
   .lede { text-align:center; font-style:italic; color:var(--mid); font-size:12px;
           margin-top:8px; line-height:1.5; }
 
-  .nomenu { display:none; text-align:center; font-style:italic; color:var(--mid);
-            margin-top:40px; line-height:1.7; }
-  .nomenu.show { display:block; }
-
-  .course { margin-top:26px; display:none; }
-  .course.show { display:block; }
-  .c-label { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
-             text-transform:uppercase; color:var(--mid); }
-  .c-dish { font-size:17px; margin-top:3px; }
-  .c-hint { font-family:Helvetica,Arial,sans-serif; font-size:9px; color:var(--mid);
-            margin-top:2px; letter-spacing:.05em; }
-  .ticks { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  /* The dish-card block (.course, .c-label, .ticks and kin) left when the
+     page stopped showing the menu's dishes; its rules left with it.       */
   .tick { padding:8px 13px; border:1px solid #C9C9C2; background:transparent;
           border-radius:20px; font-family:Helvetica,Arial,sans-serif; font-size:11px;
           color:var(--ink); cursor:pointer; -webkit-tap-highlight-color:transparent; }

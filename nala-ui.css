@@ -135,12 +135,35 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
           color:var(--mid); margin-top:6px; }
 .stat.warn .stat-n { color:var(--red); }
 
+/* ── the button dress ─────────────────────────────────────
+   One quiet dress and one solid, here rather than pasted per page: five
+   pages emitted class="btn" with no rule behind it and the no-access
+   Try again stood as a bare browser button (found 27 Aug), while the
+   pages that did paste the dress had drifted apart - 10px against 11px,
+   .15em against .14em, one all-corner radius against the footer corner
+   law. The dress lives here; layout (flex, width) stays with each page's
+   container rules, and a page's own variants (.arm, .warn, .active)
+   stay its own. Per the button law (STYLEGUIDE.md): .solid is THE
+   primary, at most one per surface.                                    */
+.btn { padding:13px; text-align:center; border:1px solid var(--ctl-ink);
+       background:transparent; color:var(--ctl-ink);
+       font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
+       text-transform:uppercase; cursor:pointer; white-space:nowrap;
+       text-decoration:none; -webkit-tap-highlight-color:transparent; }
+.btn.solid { background:var(--ctl-ink); color:var(--ctl-bg); }
+.btn:disabled { opacity:.35; cursor:default; }
+/* The print sheets' own pair, identical on all three until it lived here:
+   solid ink on white paper stock, a size down from the boards.          */
+.tier-print .btn { padding:10px 20px; background:#111; color:#fff; border:none;
+                   font-size:10px; letter-spacing:.15em; }
+.tier-print .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+
 /* ── access message ───────────────────────────────────────
    Stands in for a board the signed-in login may not see. Plain typography,
    never a bordered or filled box: that dress belongs to buttons alone, and
    a message wearing it reads as something to tap. One statement, not a
    fact stacked under a fact. The retry action IS a button, so it wears
-   the page's .btn.                                                       */
+   the .btn above.                                                        */
 .noaccess { display:none; font-family:var(--ui-font); font-size:15px;
             line-height:1.5; color:var(--ctl-ink); max-width:420px;
             margin:24px 0; }

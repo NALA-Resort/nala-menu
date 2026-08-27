@@ -8,16 +8,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
 <title>Nala &middot; Registration Cards</title>
-<link rel="stylesheet" href="nala-ui.css?v=15">
+<link rel="stylesheet" href="nala-ui.css?v=16">
 <style>
   @page { size: A4 portrait; margin: 12mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:var(--ui-font); color:#111; background:#fff; padding:16px 16px 0; }
 
-  .btn { padding:10px 20px; background:#111; color:#fff; border:none;
-         font-family:var(--ui-font); font-size:10px; letter-spacing:.15em;
-         text-transform:uppercase; cursor:pointer; }
-  .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+  /* .btn and .btn.ghost wear nala-ui.css's tier-print dress. */
 
   /* One card per arriving villa, one page each. A card that breaks across a
      page is a card somebody hands over half of. Sized so that even a card with
@@ -110,7 +107,7 @@
 
   @media print {
     body { padding:0; }
-    .daterow, .foot, .noaccess, .screen-only { display:none !important; }
+    .daterow, .foot, .noaccess { display:none !important; }
     .card { border:none; padding:0; }
     #cards { overflow-x:visible; }
   }

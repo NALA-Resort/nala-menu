@@ -150,12 +150,35 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
           color:var(--mid); margin-top:6px; }
 .stat.warn .stat-n { color:var(--red); }
 
+/* ── the button dress ─────────────────────────────────────
+   One quiet dress and one solid, here rather than pasted per page: five
+   pages emitted class="btn" with no rule behind it and the no-access
+   Try again stood as a bare browser button (found 27 Aug), while the
+   pages that did paste the dress had drifted apart - 10px against 11px,
+   .15em against .14em, one all-corner radius against the footer corner
+   law. The dress lives here; layout (flex, width) stays with each page's
+   container rules, and a page's own variants (.arm, .warn, .active)
+   stay its own. Per the button law (STYLEGUIDE.md): .solid is THE
+   primary, at most one per surface.                                    */
+.btn { padding:13px; text-align:center; border:1px solid var(--ctl-ink);
+       background:transparent; color:var(--ctl-ink);
+       font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
+       text-transform:uppercase; cursor:pointer; white-space:nowrap;
+       text-decoration:none; -webkit-tap-highlight-color:transparent; }
+.btn.solid { background:var(--ctl-ink); color:var(--ctl-bg); }
+.btn:disabled { opacity:.35; cursor:default; }
+/* The print sheets' own pair, identical on all three until it lived here:
+   solid ink on white paper stock, a size down from the boards.          */
+.tier-print .btn { padding:10px 20px; background:#111; color:#fff; border:none;
+                   font-size:10px; letter-spacing:.15em; }
+.tier-print .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+
 /* ── access message ───────────────────────────────────────
    Stands in for a board the signed-in login may not see. Plain typography,
    never a bordered or filled box: that dress belongs to buttons alone, and
    a message wearing it reads as something to tap. One statement, not a
    fact stacked under a fact. The retry action IS a button, so it wears
-   the page's .btn.                                                       */
+   the .btn above.                                                        */
 .noaccess { display:none; font-family:var(--ui-font); font-size:15px;
             line-height:1.5; color:var(--ctl-ink); max-width:420px;
             margin:24px 0; }
@@ -197,10 +220,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:var(--ui-font); color:#111; background:#fff; padding:16px 16px 0; }
 
-  .btn { padding:10px 20px; background:#111; color:#fff; border:none;
-         font-family:var(--ui-font); font-size:10px; letter-spacing:.15em;
-         text-transform:uppercase; cursor:pointer; }
-  .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+  /* .btn and .btn.ghost wear nala-ui.css's tier-print dress. */
   /* One line, one font, one size, one weight. The top of the sheet had the
      date in a bold letter-spaced face, the make-up at fifteen point, the table
      count at eight, and the covers at seventeen: four styles saying one
@@ -242,11 +262,9 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .c-room { width:5%;  text-align:center; }
   .c-din  { width:6%;  text-align:center; }
   .c-pax  { width:4%;  text-align:center; }
-  .c-diet { width:19%; }
   .c-dep  { width:11%; white-space:nowrap; }
   .c-dt   { width:5%;  text-align:center; }
   .c-bt   { width:5%;  text-align:center; }
-  .c-com  { width:29%; }
 
   .yes { color:#3F7A52; font-weight:bold; }
   .no  { color:#A8321E; }
@@ -289,7 +307,6 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      narrow column. The comment sits on a second line beneath the pills.     */
   .c-dc { width:48%; }
   .dwrap { display:flex; flex-wrap:wrap; gap:5px; align-items:baseline; }
-  .dcom { font-size:9px; color:#333; margin-top:3px; }
   .dpill { display:inline-block; font-family:var(--ui-font); font-size:8.5px;
            font-weight:bold; letter-spacing:.06em; text-transform:uppercase;
            padding:2px 7px; border-radius:9px;
@@ -307,7 +324,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      that are. Greyed, not dropped. */
   .row-out .dpill { background:#EFEFEC; color:#55554F; }
   .row-out .dpill-al { background:#9A9A92; color:#fff; }
-  .row-out .dcom, .row-out .dnote, .row-out .inote { color:#8A8A82; }
+  .row-out .dnote, .row-out .inote { color:#8A8A82; }
   /* No print-color-adjust here. It is an INHERITED property, so setting it on
      the cell handed it to every coloured thing inside a flagged row: the Yes,
      the No, the checkout date, the clash lines. Browsers honour exact colour
@@ -395,36 +412,9 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   tr.blank td { height:26px; }
 
 
-  /* Printed sheets repeat everything above the table on every page. A table
-     header group is the only thing browsers reliably repeat, so the block is
-     cloned into a thead row for paper and the on-screen original is hidden. */
-  /* ── the printed header, one line ───────────────────────────
-     Was three: a kicker naming the document, the date row, and the stats row.
-     The kicker told whoever was holding the sheet what the sheet was, which is
-     not a question anybody holding it has, and each block cost a line on a
-     document that was running to two pages. Date left where it has always
-     been, the make-up centred because it is the instruction to whoever sets
-     the room, covers right. Print only: the screen keeps its date buttons and
-     its larger stats, which are read at a desk and not at a pass. */
-  .phead { display:none; align-items:baseline; justify-content:space-between;
-           gap:16px; padding-bottom:6px; }
-  .phead .p-date { font-family:var(--ui-font); font-size:13px; font-weight:bold;
-                   letter-spacing:.1em; text-transform:uppercase; white-space:nowrap; }
-  .phead .p-mix { flex:1 1 auto; text-align:center; font-size:15px; line-height:1.1;
-                  white-space:nowrap; }
-  .phead .p-mix .sub { font-family:var(--ui-font); font-size:8px; letter-spacing:.14em;
-                       text-transform:uppercase; color:#55554F; margin-left:8px; }
-  .phead .p-cov { text-align:right; white-space:nowrap; }
-  .phead .p-cov .n { font-size:17px; font-weight:bold; }
-  .phead .p-cov .l { font-family:var(--ui-font); font-size:8px; letter-spacing:.14em;
-                     text-transform:uppercase; color:#55554F; margin-left:5px; }
-  /* The clone gets `printclone` on ITSELF, not on a wrapper, so a descendant
-     selector never matches it. It did not match from 22 Aug until this was
-     found, which is why the printed sheet came out with no date, no make-up
-     and no covers on it at all. Matched both ways now: by the class the clone
-     carries and by the slot it lives in. */
-  #printHead .phead, .phead.printclone { display:flex; }
-
+  /* The printed-header clone was retired: its selector list was emptied and
+     the suite pins that nothing is cloned into the table head any more. The
+     .phead dress, the thead slot and the clone script left with it.       */
   .syncwarn { font-size:11px; line-height:1.5; color:#A8321E; margin:10px 0 4px;
               max-width:60ch; }
 
@@ -435,24 +425,14 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      footer is for paper only, or both would show. */
   .printstamp { display:none; }
 
-  .printhead { display:none; }
-  .printhead > td { border:0; padding:0 0 6px; }
   @media print {
-    .printhead { display:table-row; }
-    .noprintblock { display:none !important; }
-    /* The screen's date buttons and its larger stat row are for a desk. On
-       paper the one-line header in the table head carries the same facts. */
-    /* The screen's date buttons and its larger stat row are for a desk. On
-       paper the one-line header in the table head carries the same facts, so
-       the originals are hidden and only the clone shows.
+    /* The screen's date buttons and its larger stat row are for a desk.
 
-       Written as two plain rules. The previous version used :not() with a
+       Written as plain rules. The previous version used :not() with a
        compound selector inside it, which older engines reject, and a rejected
        selector takes the WHOLE comma-separated rule down with it: the date row
        and the stats would print as well as being replaced. */
     .daterow, .stats { display:none !important; }
-    /* Nothing above the table but its own column headings. */
-    .phead, .printhead { display:none !important; }
     /* table-footer-group, not block: the group is what a browser repeats. */
     .printfoot { display:table-footer-group !important; }
     .pfoot { display:block !important; }
@@ -530,7 +510,6 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .pmeasure .printfoot { display:table-footer-group; }
   .pmeasure .pfoot { display:block; }
   .pmeasure .printstamp { display:block; }
-  .pmeasure .printhead { display:none; }
 </style>
 </head>
 <body class="tier-print">
@@ -690,7 +669,6 @@ function stripTags(h){
 <div class="scroller" id="sheetScroller">
   <table>
     <thead>
-      <tr class="printhead"><td colspan="7"><div id="printHead"></div></td></tr>
       <tr>
         <th class="c-name">Name</th>
         <th class="c-room">Villa</th>
@@ -3366,37 +3344,6 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
   });
 </script>
 
-<script>
-/* clone the above-table block into the printed header so every page carries it */
-(function(){
-  function fill(){
-    var slot = document.getElementById('printHead');
-    if (!slot) return;
-    slot.innerHTML = '';
-    [].forEach(function(sel){
-      var el = document.querySelector(sel);
-      if (!el) return;
-      var c = el.cloneNode(true);
-      c.classList.remove('noprintblock');
-      c.classList.add('printclone');
-      c.querySelectorAll('[id]').forEach(function(n){ n.removeAttribute('id'); });
-      var nav = c.querySelector('.navwrap'); if (nav) nav.parentNode.removeChild(nav);
-      slot.appendChild(c);
-    });
-  }
-  /* iOS Safari does not reliably fire beforeprint, so the clone is built as
-     soon as the sheet has data rather than waiting for a print event. It is
-     hidden on screen either way. Refilled on beforeprint where supported, in
-     case the sheet changed after load.                                     */
-  function fillWhenReady(n){
-    var rows = document.getElementById('rows');
-    if (rows && rows.children.length){ fill(); return; }
-    if (n > 0) setTimeout(function(){ fillWhenReady(n-1); }, 400);
-  }
-  fillWhenReady(15);
-  window.addEventListener('beforeprint', fill);
-})();
-</script>
 <!-- The PDF button was removed on 18 Aug. It drew its own document rather
      than printing the page, which kept the text sharp from a phone, but it
      rebuilt the sheet by hand and so carried less than the page it came from.

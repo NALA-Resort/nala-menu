@@ -70,6 +70,13 @@ dress per job, and the dangerous ones both look it and ask first:
 | Ink outline (quiet) | Secondary and neutral - back, ask again, options | Never |
 | Terracotta outline - border `--terra-b`, ink `--terra`, no fill | Destroys or walks back something a guest holds or was told: cancel, decline, delete, remove, resend-over | **Always** |
 
+The dress itself lives in nala-ui.css (`.btn`, `.btn.solid`, and the print
+sheets' `.tier-print .btn`/`.btn.ghost`) since 27 Aug, when five pages
+turned out to be emitting `class="btn"` with no rule behind it and the
+pages that had pasted their own copies had drifted apart. A page defines
+only its own variants (`.arm`, `.warn`, `.active`) and the layout of the
+row the buttons sit in - never the dress again.
+
 - A destructive button never wears solid ink, and never red: red is
   failure's alone (the colour law, CLAUDE.md).
 - The confirmation is a browser dialog that names the guest and the thing -

@@ -150,12 +150,35 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
           color:var(--mid); margin-top:6px; }
 .stat.warn .stat-n { color:var(--red); }
 
+/* ── the button dress ─────────────────────────────────────
+   One quiet dress and one solid, here rather than pasted per page: five
+   pages emitted class="btn" with no rule behind it and the no-access
+   Try again stood as a bare browser button (found 27 Aug), while the
+   pages that did paste the dress had drifted apart - 10px against 11px,
+   .15em against .14em, one all-corner radius against the footer corner
+   law. The dress lives here; layout (flex, width) stays with each page's
+   container rules, and a page's own variants (.arm, .warn, .active)
+   stay its own. Per the button law (STYLEGUIDE.md): .solid is THE
+   primary, at most one per surface.                                    */
+.btn { padding:13px; text-align:center; border:1px solid var(--ctl-ink);
+       background:transparent; color:var(--ctl-ink);
+       font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
+       text-transform:uppercase; cursor:pointer; white-space:nowrap;
+       text-decoration:none; -webkit-tap-highlight-color:transparent; }
+.btn.solid { background:var(--ctl-ink); color:var(--ctl-bg); }
+.btn:disabled { opacity:.35; cursor:default; }
+/* The print sheets' own pair, identical on all three until it lived here:
+   solid ink on white paper stock, a size down from the boards.          */
+.tier-print .btn { padding:10px 20px; background:#111; color:#fff; border:none;
+                   font-size:10px; letter-spacing:.15em; }
+.tier-print .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+
 /* ── access message ───────────────────────────────────────
    Stands in for a board the signed-in login may not see. Plain typography,
    never a bordered or filled box: that dress belongs to buttons alone, and
    a message wearing it reads as something to tap. One statement, not a
    fact stacked under a fact. The retry action IS a button, so it wears
-   the page's .btn.                                                       */
+   the .btn above.                                                        */
 .noaccess { display:none; font-family:var(--ui-font); font-size:15px;
             line-height:1.5; color:var(--ctl-ink); max-width:420px;
             margin:24px 0; }
@@ -172,7 +195,9 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-         --amber:#B07D2B;
+         /* the kitchen bubble's gold. Not --amber: that name is the colour
+            law's attention FILL (#F6EAD5) and this is an ink.            */
+         --gold:#B07D2B;
           /* state palette: dining green, declined terracotta, vacant slate */
           --green:#5E7D67;  --green-t:rgba(122,160,130,.26);  --green-b:rgba(122,160,130,.65);
           --terra:#9E6455;  --terra-t:rgba(184,106,90,.16);   --terra-b:rgba(184,106,90,.45);
@@ -364,7 +389,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
          position:relative; }
   .bub::after { content:''; position:absolute; inset:-11px; }  /* 42px tap target */
   .bub svg { width:15px; height:15px; display:block; fill:var(--mid); }
-  .bub.kitchen svg { fill:var(--amber); }
+  .bub.kitchen svg { fill:var(--gold); }
   .bub.flag svg { fill:var(--red); }
   .pop-who { font-size:15px; margin-bottom:14px; padding-bottom:12px;
              border-bottom:1px solid var(--rule); }
@@ -377,12 +402,8 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .actions.hidden { visibility:hidden; }
   .actions { margin-top:34px; gap:10px;
              padding:12px 0 calc(12px + env(safe-area-inset-bottom)); }
-  .actions .btn { flex:1 1 40%; text-align:center; white-space:nowrap; }
-  .btn { flex:1; text-align:center; padding:13px; border:1px solid var(--ink);
-         font-family:var(--ui-font); font-size:10px; letter-spacing:.15em;
-         text-transform:uppercase; color:var(--ink); text-decoration:none;
-         background:transparent; cursor:pointer; }
-  .btn.solid { background:var(--ink); color:var(--cream); }
+  /* .btn wears nala-ui.css's shared dress; the rows here only lay it out. */
+  .actions .btn { flex:1 1 40%; }
 
   /* sheet */
   .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35);

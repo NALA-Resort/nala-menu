@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Pre-arrival SMS</title>
-<link rel="stylesheet" href="nala-ui.css?v=15">
+<link rel="stylesheet" href="nala-ui.css?v=16">
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
           --green:#E4EDE2; --greenb:#7E937A;
@@ -98,13 +98,8 @@
   .msgmeta .warn { color:var(--red); }
   .linknote { font-size:11px; color:var(--mid); margin-top:4px; line-height:1.5; }
 
-  .btn { flex:1; text-align:center; padding:13px; border:1px solid var(--ink);
-         border-radius:8px; background:transparent; color:var(--ink);
-         font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
-         text-transform:uppercase; cursor:pointer; white-space:nowrap; }
+  /* .btn wears nala-ui.css's shared dress; only this page's variants live here. */
   #sendBtn { white-space:normal; line-height:1.4; }
-  .btn.solid { background:var(--ink); color:var(--cream); }
-  .btn:disabled { opacity:.35; cursor:default; }
   .btn.arm { background:var(--red); border-color:var(--red); color:#fff; }
 
   #errBar { font-size:13px; color:var(--red); margin:10px 0; line-height:1.45; }

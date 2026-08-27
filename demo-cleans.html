@@ -147,12 +147,35 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
           color:var(--mid); margin-top:6px; }
 .stat.warn .stat-n { color:var(--red); }
 
+/* ── the button dress ─────────────────────────────────────
+   One quiet dress and one solid, here rather than pasted per page: five
+   pages emitted class="btn" with no rule behind it and the no-access
+   Try again stood as a bare browser button (found 27 Aug), while the
+   pages that did paste the dress had drifted apart - 10px against 11px,
+   .15em against .14em, one all-corner radius against the footer corner
+   law. The dress lives here; layout (flex, width) stays with each page's
+   container rules, and a page's own variants (.arm, .warn, .active)
+   stay its own. Per the button law (STYLEGUIDE.md): .solid is THE
+   primary, at most one per surface.                                    */
+.btn { padding:13px; text-align:center; border:1px solid var(--ctl-ink);
+       background:transparent; color:var(--ctl-ink);
+       font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
+       text-transform:uppercase; cursor:pointer; white-space:nowrap;
+       text-decoration:none; -webkit-tap-highlight-color:transparent; }
+.btn.solid { background:var(--ctl-ink); color:var(--ctl-bg); }
+.btn:disabled { opacity:.35; cursor:default; }
+/* The print sheets' own pair, identical on all three until it lived here:
+   solid ink on white paper stock, a size down from the boards.          */
+.tier-print .btn { padding:10px 20px; background:#111; color:#fff; border:none;
+                   font-size:10px; letter-spacing:.15em; }
+.tier-print .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+
 /* ── access message ───────────────────────────────────────
    Stands in for a board the signed-in login may not see. Plain typography,
    never a bordered or filled box: that dress belongs to buttons alone, and
    a message wearing it reads as something to tap. One statement, not a
    fact stacked under a fact. The retry action IS a button, so it wears
-   the page's .btn.                                                       */
+   the .btn above.                                                        */
 .noaccess { display:none; font-family:var(--ui-font); font-size:15px;
             line-height:1.5; color:var(--ctl-ink); max-width:420px;
             margin:24px 0; }
@@ -168,7 +191,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 </style>
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-          --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
+          --green:#E4EDE2; --greenb:#7E937A; --amberb:#C29A55;
           /* The bars only. --amberb is a muted gold that sits behind text and
              reads as a browner blue-grey at 9px, which made a clean and a
              clean-plus-arrival hard to tell apart on a phone: the amber half
@@ -210,8 +233,6 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      small the tiles are told to be.                                     */
   body > .wrap { max-width:520px; margin:0 auto; flex:1 1 auto; min-height:0; }
 
-  .brand { font-family:var(--ui-font); font-size:10px; letter-spacing:.35em;
-           color:var(--mid); text-transform:uppercase; text-align:center; }
   h1 { font-size:19px; font-weight:bold; text-align:center; margin:8px 0 4px;
        font-family:var(--ui-font); letter-spacing:.02em; }
 
@@ -484,10 +505,6 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
             text-transform:uppercase; color:var(--mid); }
   .legend i { display:inline-block; width:11px; height:11px; border-radius:3px;
               border:1.2px solid var(--rule); vertical-align:-1px; margin-right:5px; }
-  .legend .lg { background:var(--green); border-color:var(--greenb); }
-  .legend .lb { background:var(--amber); border-color:var(--amberb); }
-  .legend .ld { background:var(--blue);  border-color:var(--blueb); }
-  .legend .lf { background:#F2F2EF; border-color:var(--rule); }
   /* The key draws the same bars at the same size and in the same colours. A
      key that is a separate drawing can disagree with the thing it explains;
      this one cannot, because it is the thing.
@@ -512,10 +529,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
                       border-color:var(--mid); }
 
   .bar { margin-top:22px; gap:10px; }
-  .btn { flex:1; padding:13px 0; text-align:center; font-family:var(--ui-font);
-         font-size:11px; letter-spacing:.14em; text-transform:uppercase; cursor:pointer;
-         border:1px solid var(--ink); background:transparent; color:var(--ink);
-         border-radius:2px; text-decoration:none; }
+  /* .btn wears nala-ui.css's shared dress; .foot .bar lays it out. */
 
   /* popup */
   .ov { position:fixed; inset:0; background:rgba(28,28,26,.45); display:none;
