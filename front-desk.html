@@ -942,6 +942,7 @@ function answersOf(r){
      cell. Two lists, one fact. */
   var c = r.cell || {};
   var haveCell = !!(c && c.status);
+  var diets = fixDietList((haveCell && c.diets) ? c.diets : (p.diets || []));
   return {
     /* true and false are the only answers; undefined AND null read as
        unanswered. Null appears in the local optimistic copy when a save
@@ -953,8 +954,20 @@ function answersOf(r){
                             ? !!p.dining : null),
     pax:      haveCell ? (c.pax || r.stay.adults || 2)
                        : (p.pax || r.stay.adults || 2),
-    diets:    fixDietList((haveCell && c.diets) ? c.diets : (p.diets || [])),
-    noDiets:  haveCell ? !!c.noDiets : !!p.noDiets,
+    diets:    diets,
+    /* "No allergies to declare" is a dietary answer like any other, and it
+       rides where the dietaries ride. The cell spells it `nodiet` - the
+       guest page named it first and rules.json validates that name - and
+       until 27 Aug this line asked the cell for a `noDiets` no cell has
+       ever carried, so the first save after a cell existed read the pill
+       back deselected and the next save wrote that deselection onto the
+       booking. Only a cell that actually holds the key may outrank the
+       booking, because a cell written before dinnerCell carried it says
+       nothing either way; and a chosen dietary contradicts it from either
+       node, so a non-empty list wins. */
+    noDiets:  diets.length ? false
+              : (haveCell && c.nodiet !== undefined) ? !!c.nodiet
+              : !!p.noDiets,
     dnote:    (haveCell ? c.dnote : p.dnote) || '',
     /* The desk shows what the guest typed, falling back to what Mews holds:
        a name entered at booking is still the answer to the same question.
@@ -1530,6 +1543,11 @@ function dinnerCell(r, a){
     at:        new Date().toISOString(),
     diets:     a.noDiets ? [] : a.diets,
     dnote:     a.noDiets ? '' : a.dnote,
+    /* The answer itself, under the name the cell already uses (the guest
+       page writes it, rules.json validates it). The cell outranks the
+       booking when the sheet reads back, so an answer the cell does not
+       carry is an answer the next open loses. */
+    nodiet:    !!a.noDiets,
     note:      a.note || ''
   };
   /* Only when the PMS knows about this villa, so an unstamped vacant is not

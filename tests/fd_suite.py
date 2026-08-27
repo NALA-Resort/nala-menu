@@ -1436,6 +1436,81 @@ with sync_playwright() as p:
     FIXES.clear()
     pg.close()
 
+    # ── the "no allergies" pill survives the cell it creates ────────────
+    #  Reported 27 Aug: confirm a guest, reopen the sheet after any change,
+    #  and "No allergies to declare" sat deselected - and the next save wrote
+    #  that deselection onto the booking as a fact nobody stated. The cell
+    #  the confirm had written outranks the booking on read-back, and the
+    #  desk neither wrote the answer into it nor asked for it by the cell's
+    #  name: the cell spells it `nodiet` (the guest page's coinage, already
+    #  in rules.json), and the desk was reading a `noDiets` no cell ever
+    #  carried. The answer is a dietary like any other and rides where the
+    #  dietaries ride.
+    del WRITES[:]
+    pg = board()
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=confirm]').click()")
+    pg.wait_for_timeout(700)
+    cw = [json.loads(x["b"]) for x in WRITES
+          if ("/dinner/" + today + "/9") in x["u"] and x["m"] == "PUT"]
+    ck("confirming writes the answer into the cell, under the cell's name",
+       len(cw) == 1 and cw[0].get("nodiet") is True)
+    pg.close()
+
+    #  The round trip: the same cell read back, seeded as the confirm wrote it.
+    DINNER["9"] = {"status": "out", "pax": 0, "room": "9", "by": "staff",
+                   "diets": [], "dnote": "", "nodiet": True,
+                   "at": "2026-08-17T14:00:00Z"}
+    pg = board()
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    ck("the summary still reads the answer back over the cell",
+       "No allergies to declare" in pg.locator(".sum").inner_text())
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+    pg.wait_for_timeout(600)
+    ck("and the pill opens selected, not deselected",
+       pg.evaluate("""()=>[...document.querySelectorAll('#dNone .chip')]
+         .find(b=>/^No allergies/.test(b.textContent)).className.indexOf('on')>-1"""))
+    #  A save that touches nothing must keep saying it, on both nodes.
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(700)
+    saved = [json.loads(x["b"]) for x in WRITES if "/bookings/b9/prearrival" in x["u"]]
+    ck("an untouched save keeps saying no allergies on the booking",
+       bool(saved) and all(d.get("noDiets") is True for d in saved))
+    cw = [json.loads(x["b"]) for x in WRITES
+          if ("/dinner/" + today + "/9") in x["u"] and x["m"] == "PUT"]
+    ck("and on the cell",
+       bool(cw) and all(d.get("nodiet") is True for d in cw))
+    pg.close()
+
+    #  A cell from before the fix carries no key at all, which says nothing
+    #  either way, so the booking's answer shows through rather than being
+    #  outranked by silence.
+    DINNER["9"] = {"status": "out", "pax": 0, "room": "9", "by": "staff",
+                   "at": "2026-08-17T14:00:00Z"}
+    pg = board()
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+    pg.wait_for_timeout(600)
+    ck("a cell that predates the answer does not outrank the booking",
+       pg.evaluate("""()=>[...document.querySelectorAll('#dNone .chip')]
+         .find(b=>/^No allergies/.test(b.textContent)).className.indexOf('on')>-1"""))
+    pg.close()
+
+    #  A dietary on the cell contradicts a stored "none": the list wins,
+    #  whichever node each came from, or the sheet opens claiming both.
+    DINNER["9"] = {"status": "in", "pax": 2, "room": "9", "by": "staff",
+                   "diets": ["Gluten free"], "at": "2026-08-17T14:00:00Z"}
+    pg = board()
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+    pg.wait_for_timeout(600)
+    ck("a dietary added on the kitchen's board beats the booking's old 'none'",
+       pg.evaluate("""()=>[...document.querySelectorAll('#dNone .chip')]
+         .find(b=>/^No allergies/.test(b.textContent)).className.indexOf('on')<0"""))
+    pg.close()
+    DINNER.clear()
+
     b.close()
 
 print("RESULT: %d passed, %d failed" % (P, F))

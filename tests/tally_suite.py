@@ -171,6 +171,25 @@ with sync_playwright() as p:
     ck("dietary conflict flagged", bl["conflict"])
     ck("external booking listed", bl["ext"])
 
+    # ── "no allergies to declare" is a dietary answer, shown like one ──
+    #  Ruled 27 Aug: it rides in the dietline as a pill like any other
+    #  dietary, in the green of a positive state - but it flags nothing:
+    #  no conflict, no red, and no comment bubble, because there is nothing
+    #  for the kitchen to act on, only the fact that we asked. Mark (villa 3)
+    #  confirmed with none to declare.
+    nd=pg.evaluate("""()=>{const r=[...document.querySelectorAll('#listBookings .row')]
+        .find(x=>/Mark/.test(x.textContent));
+      if(!r) return null;
+      const p=r.querySelector('.dpill');
+      return {t:p?p.textContent:'', ok:p?p.className.includes('dpill-ok'):false,
+        al:p?p.className.includes('dpill-al'):false,
+        conflict:r.className.includes('conflict'), bub:!!r.querySelector('.bub')};}""")
+    print("   villa 3 no-allergies pill:", nd)
+    ck("the answer shows as a pill in the dietline",
+       nd and nd["t"]=="No allergies to declare" and nd["ok"])
+    ck("but flags nothing: not an allergen, no conflict, no bubble",
+       nd and not nd["al"] and not nd["conflict"] and not nd["bub"])
+
     # ── the second guest, in the small print under the name ────────
     allrows=pg.evaluate("""()=>[...document.querySelectorAll('#listBookings .row')]
       .map(e=>e.textContent.replace(/\\s+/g,' '))""")
@@ -409,6 +428,12 @@ with sync_playwright() as p:
     b3=json.loads(w3[-1]["b"])
     ck("details save: override with phone+diets, pax kept", b3.get("override")==True and b3["phone"]=="0400 333 333" and "Vegan" in b3["diets"] and b3["pax"]==2 and b3["name"]=="Mark")
     ck("row shows new dietary", "VEGAN" in pg.locator("#listBookings").inner_text().upper())
+    #  Mark had confirmed "none to declare"; the chosen dietary contradicts
+    #  it, so the save must take the old answer back rather than leave the
+    #  cell claiming both - which read the desk's pill back on beside the
+    #  allergy it denies.
+    ck("and the chosen dietary clears the guest's 'none to declare'",
+       b3.get("nodiet") is False)
 
     pm=pg.evaluate("""()=>{const r=[...document.querySelectorAll('#listBookings .row')]
         .find(x=>/Mark/.test(x.textContent));
