@@ -6,7 +6,7 @@
 :root{--cream:#F9F7F4;--ink:#1C1C1A;--mid:#999990;--rule:#E0E0DA;--red:#A8321E;
  --green:#E4EDE2;--greenb:#7E937A;--greent:#5E7D67;
  --amber:#F6EAD5;--amberb:#C29A55;--ambert:#8A6A2F;
- --terra:#9E6455;--terra-b:rgba(184,106,90,.45)}
+ --terra:#9E6455;--terra-b:rgba(184,106,90,.45);--terra-t:rgba(184,106,90,.16)}
 body{background:var(--cream);font-family:-apple-system,BlinkMacSystemFont,system-ui,
  'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--ink);
  padding:14px 12px 40px;max-width:430px;margin:0 auto}
@@ -14,57 +14,64 @@ body{background:var(--cream);font-family:-apple-system,BlinkMacSystemFont,system
 /* the divider between the mock's screens, not part of the page */
 .mockcut{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#fff;
  background:var(--mid);border-radius:4px;padding:5px 10px;margin:34px 0 16px;text-align:center}
-.lede{font-size:13px;line-height:1.5;color:var(--ink);margin:8px 2px 4px}
-.note{font-size:11px;line-height:1.5;color:var(--mid);margin:6px 2px 0}
+.lede{font-size:13px;line-height:1.5;margin:8px 2px 4px}
+.note{font-size:11px;line-height:1.5;color:var(--mid);margin:8px 2px 0}
 .note b{color:var(--ink);font-weight:600}
 h1{font-size:15px;letter-spacing:.14em;text-transform:uppercase;margin:4px 2px 0}
 
-/* ── replicas of the dresses found in the wild, each copied from its page ── */
-.spec{display:flex;align-items:center;gap:12px;margin:12px 0}
-.spec .demo{flex:0 0 46%;display:flex;gap:6px}
-.spec .demo>*{flex:1}
-.spec .what{flex:1;font-size:10.5px;line-height:1.5;color:var(--mid)}
-.spec .what b{display:block;color:var(--ink);font-size:11px;letter-spacing:.06em;
- text-transform:uppercase;margin-bottom:1px}
+/* ── section 1: replicas, each copied from its page's own CSS ── */
+.spec{display:flex;align-items:center;gap:12px;margin:11px 0}
+.spec .demo{flex:0 0 47%}
+.spec .demo>*{width:100%}
+.spec .what{flex:1;font-size:10.5px;line-height:1.45;color:var(--mid)}
+.spec .what b{display:block;color:var(--ink);font-size:10.5px;letter-spacing:.05em;
+ text-transform:uppercase}
 
-/* 1 · the shared dress, nala-ui.css */
-.w-btn{padding:13px 6px;text-align:center;border:1px solid var(--ink);background:transparent;
- color:var(--ink);font-family:inherit;font-size:11px;letter-spacing:.14em;
- text-transform:uppercase;white-space:nowrap;cursor:pointer}
-.w-btn.solid{background:var(--ink);color:var(--cream)}
-/* 2 · the print sheets' pair */
-.w-print{padding:10px 14px;background:#111;color:#fff;border:none;font-size:10px;
- letter-spacing:.15em;text-transform:uppercase;font-family:inherit;cursor:pointer}
-.w-print.ghost{background:#fff;color:#111;border:1px solid #111}
-/* 3 · publish.html's own */
-.w-pub{width:100%;padding:15px;background:var(--ink);color:var(--cream);border:none;
- font-size:12px;letter-spacing:.2em;text-transform:uppercase;font-family:inherit;cursor:pointer}
-/* 4 · staff.html's own */
-.w-staff{display:block;width:100%;padding:13px 0;text-align:center;border:1px solid var(--ink);
- background:var(--ink);color:var(--cream);font-size:11px;letter-spacing:.14em;
- text-transform:uppercase;font-family:inherit;cursor:pointer}
-/* 5 · welcome.html, the guest brand */
-.w-guest{padding:13px 18px;background:#1C1C1A;color:#F5F1E8;border:none;font-size:12px;
- letter-spacing:.16em;text-transform:uppercase;font-family:Georgia,serif;cursor:pointer}
-/* 6 · a bare browser button, as five pages shipped before 27 Aug */
-.w-bare{font-family:inherit}
+.w-staff{display:block;padding:13px 0;text-align:center;border:1px solid var(--ink);
+ border-radius:8px;background:var(--ink);color:var(--cream);font-size:11px;
+ letter-spacing:.14em;text-transform:uppercase;font-family:inherit}
+.w-tally{padding:15px;border:1px solid var(--greent);background:var(--greent);color:#fff;
+ font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-family:inherit;text-align:center}
+.w-fd{padding:15px;border:1px solid var(--rule);border-radius:6px;background:transparent;
+ color:var(--mid);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+ font-family:inherit;text-align:center}
+.w-clean{padding:14px;border:1px solid var(--ink);border-radius:6px;background:var(--ink);
+ color:#fff;font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+ font-family:inherit;text-align:center}
+.w-spa{padding:12px 4px;border:1px solid var(--ink);background:var(--ink);color:var(--cream);
+ font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-family:inherit;text-align:center}
+.w-flags{padding:13px;min-height:44px;border:none;border-radius:8px;background:var(--ink);
+ color:var(--cream);font-family:Helvetica,Arial,sans-serif;font-size:11px;
+ letter-spacing:.15em;text-transform:uppercase;text-align:center}
+.w-pub{padding:14px;border:none;border-radius:8px;background:var(--ink);color:var(--cream);
+ font-family:Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:.15em;
+ text-transform:uppercase;text-align:center}
+.w-tmpl{padding:8px 18px;border:1px solid var(--ink);border-radius:8px;background:var(--ink);
+ color:var(--cream);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+ font-family:inherit;text-align:center}
+.w-index{padding:16px 8px;border:1px solid #8A5646;border-radius:10px;background:#8A5646;
+ color:#FFF6F1;font-family:'Raleway',Helvetica,Arial,sans-serif;font-size:12.5px;
+ font-weight:500;letter-spacing:.1em;text-transform:uppercase;text-align:center}
+.w-pre{padding:17px;border:none;border-radius:10px;background:var(--ink);color:var(--cream);
+ font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-family:inherit;text-align:center}
 
-/* ── the standard ─────────────────────────────────────────── */
-.btn{padding:13px 6px;text-align:center;border:1px solid var(--ink);border-radius:0;
+/* ── the standard ── */
+.btn{padding:13px 6px;text-align:center;border:1px solid var(--ink);
  background:transparent;color:var(--ink);font-family:inherit;font-size:11px;
  letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;cursor:pointer;
  -webkit-tap-highlight-color:transparent;
  transition:background .08s ease,color .08s ease,border-color .08s ease}
 .btn.solid{background:var(--ink);color:var(--cream)}
-.btn.terra{border-color:var(--terra-b);color:var(--terra);background:transparent}
+.btn.terra{border-color:var(--terra-b);color:var(--terra)}
+.btn.r8{border-radius:8px}
 /* NEW · the press: every button visibly takes the finger */
 .btn:active{background:var(--rule)}
 .btn.solid:active{background:#000;color:#fff}
-.btn.terra:active{background:rgba(184,106,90,.16)}
+.btn.terra:active{background:var(--terra-t)}
 /* NEW · saving: the wait, wearing the grey of "sent, waiting" */
 .btn.saving{background:rgba(28,28,26,.045);color:var(--mid);border-color:var(--rule);
  cursor:default;pointer-events:none}
-/* NEW · saved: the green of a thing done, then back to rest */
+/* NEW · saved: the green of a thing done */
 .btn.saved{background:var(--green);color:var(--greent);border-color:var(--greenb);
  cursor:default;pointer-events:none}
 /* NEW · failure: red text, never a red tile */
@@ -73,11 +80,11 @@ h1{font-size:15px;letter-spacing:.14em;text-transform:uppercase;margin:4px 2px 0
 
 .row3{display:flex;gap:8px;margin:12px 0 4px}
 .row3>*{flex:1}
-.staterow{display:flex;gap:6px;margin:10px 0 2px}
-.staterow>*{flex:1}
+.staterow{display:flex;gap:6px;margin:12px 0 2px}
+.staterow>*{flex:1;white-space:normal}
 .cap{display:flex;gap:6px;margin:4px 0 0}
-.cap span{flex:1;font-size:9px;letter-spacing:.1em;text-transform:uppercase;
- color:var(--mid);text-align:center}
+.cap span{flex:1;font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+ color:var(--mid);text-align:center;line-height:1.4}
 
 /* the live card the demo saves from */
 .card{border:1.2px solid var(--rule);border-radius:10px;background:#fff;
@@ -89,66 +96,155 @@ h1{font-size:15px;letter-spacing:.14em;text-transform:uppercase;margin:4px 2px 0
 .btns{display:flex;gap:8px}
 .btns .btn{flex:1}
 .btns .btn.quiet{flex:0 0 auto;padding:13px 14px;border-color:var(--rule);color:var(--mid)}
+ul{margin:8px 2px 0 18px;font-size:11px;line-height:1.55;color:var(--mid)}
+ul b{color:var(--ink)}
 </style></head><body>
 
 <h1>Button standard · mock</h1>
-<p class="lede">Every dress a button wears today, then the one set they would
-all wear, with the feedback a save has never had. Nothing here is live.</p>
+<p class="lede">What Save wears on every page today, and the one dress with
+real feedback they would all wear instead. Nothing here is live.</p>
 
-<div class="mockcut">1 · As found today</div>
-<p class="note">FILLED FROM AUDIT</p>
+<div class="mockcut">1 · One job, ten dresses · Save as found today</div>
+<div class="spec"><div class="demo"><div class="w-staff">Save</div></div>
+ <div class="what"><b>staff.html</b>re-declares .btn over the shared one it
+ loads: 8px radius, cream fill added back</div></div>
+<div class="spec"><div class="demo"><div class="w-tally">Save details</div></div>
+ <div class="what"><b>tally.html</b>solid green at rest. Under the colour law
+ green means done, so this claims saved before it is pressed</div></div>
+<div class="spec"><div class="demo"><div class="w-fd">Save</div></div>
+ <div class="what"><b>front-desk.html</b>the primary save wears the quiet
+ secondary dress, grey outline, grey text</div></div>
+<div class="spec"><div class="demo"><div class="w-clean">Mark as cleaned ✓</div></div>
+ <div class="what"><b>cleaners.html</b>.pbtn: 6px radius, 12px type, its own
+ tracking</div></div>
+<div class="spec"><div class="demo"><div class="w-spa">Book Thu 2:00</div></div>
+ <div class="what"><b>spa.html</b>.cbtn: square, near the shared dress but
+ declared again locally</div></div>
+<div class="spec"><div class="demo"><div class="w-flags">Save the list</div></div>
+ <div class="what"><b>flags.html · tag.html</b>.savebtn: borderless, 8px
+ radius, hard-coded Helvetica, pasted wholesale into both pages</div></div>
+<div class="spec"><div class="demo"><div class="w-pub">Publish</div></div>
+ <div class="what"><b>publish.html</b>.pubbtn: same idea as .savebtn, declared
+ a third time</div></div>
+<div class="spec"><div class="demo"><div class="w-tmpl">Save</div></div>
+ <div class="what"><b>templates.html</b>.save: smaller, 8px radius, and the
+ only save on the site with a full feedback lifecycle</div></div>
+<div class="spec"><div class="demo"><div class="w-index">Confirm</div></div>
+ <div class="what"><b>index.html</b>guest brand: Raleway, brown, 10px radius.
+ Stays its own on purpose, but adopts the states</div></div>
+<div class="spec"><div class="demo"><div class="w-pre">Send to Nala</div></div>
+ <div class="what"><b>prearrival.html</b>.send: 10px radius, its own padding
+ scale</div></div>
+<p class="note">Site-wide: 5 shared button rules in nala-ui.css plus about 46
+page-local ones, resolving to roughly <b>25 to 30 visually distinct
+dresses</b>. Radius runs 0 · 5 · 6 · 7 · 8 · 10 · 16 · 20px · 50%. Three
+fonts. Four pages carry a private copy of .btn itself.</p>
 
-<div class="mockcut">2 · Why every save looks black</div>
-<p class="note">FILLED FROM AUDIT</p>
+<div class="mockcut">2 · What a press gives back today</div>
+<ul>
+ <li><b>Nothing, on six surfaces.</b> Every save on front-desk, tally
+ (the sheet's Save details, Dining, Cancel booking and all six bulk
+ actions), cleaners (about 40 buttons), spa, staff's permission ticks and
+ index writes to Firebase with no disable, no label change, no colour, no
+ spinner. The shared .btn has no :active rule: pressed and idle are the
+ same pixels. A slow connection shows nothing, and a double tap writes
+ twice.</li>
+ <li><b>Already right, in five corners:</b> templates.html (Save · Saving · Saved,
+ resting label says the record is clean), arrivals-sms and invitations
+ (armed red confirm, live count, Sending), flags and tag (disable plus a
+ Saved chip), publish (Publishing, then a done panel), prearrival
+ (Sending). Each written locally, none shared.</li>
+ <li><b>Failure is the only feedback that exists broadly:</b> seven different
+ page-local error bars, one per page, error-only.</li>
+</ul>
 
-<div class="mockcut">3 · The standard: three dresses, one law</div>
+<div class="mockcut">3 · The standard · three dresses, one law</div>
 <div class="row3">
   <button class="btn solid">Save</button>
   <button class="btn">Back</button>
   <button class="btn terra">Cancel booking</button>
 </div>
-<div class="cap"><span>Primary · one per surface</span><span>Secondary</span><span>Destructive · confirms</span></div>
-<p class="note">The button law as ruled 26 Aug, unchanged. What is new is
-below: the states a press moves through.</p>
+<div class="cap"><span>Primary · one per surface</span><span>Secondary</span><span>Destructive · always confirms</span></div>
+<p class="note">The button law as ruled 26 Aug, unchanged: solid ink is THE
+primary. It reads black today because pages that predate the law dress
+secondaries and cancels in solid ink too, so nothing stands out. With one
+solid per surface, black is the answer to "what do I press here", and green
+is kept for the moment after - the colour law's word for done.</p>
+<div class="row3">
+  <button class="btn solid r8">Save</button>
+  <button class="btn r8">Back</button>
+  <button class="btn terra r8">Cancel booking</button>
+</div>
+<div class="cap"><span colspan="3">Option B · the same trio at 8px radius, matching the nav and date controls</span></div>
+<p class="note">One open choice: the shared dress is square today, but most
+of the pages that drifted chose 6 to 10px. <b>A</b> square (footer corner law
+stays as is) or <b>B</b> 8px on free-standing buttons, footer row keeps its
+corner law. Pick one; the mock shows both.</p>
 
-<div class="mockcut">4 · The save lifecycle · side by side</div>
+<div class="mockcut">4 · The save lifecycle · states side by side</div>
 <div class="staterow">
   <button class="btn solid">Save</button>
   <button class="btn solid" style="background:#000">Save</button>
   <button class="btn saving">Saving</button>
   <button class="btn saved">Saved ✓</button>
 </div>
-<div class="cap"><span>Rest</span><span>Pressed</span><span>Writing</span><span>~1.2s, then rest</span></div>
-<p class="note"><b>Green means done</b> - the colour law's own word. The tick
-holds long enough to be seen, then the button returns to rest so the surface
-never claims "saved" about an edit made after.</p>
-
+<div class="cap"><span>Rest</span><span>Pressed</span><span>Writing · disabled</span><span>Done · green</span></div>
+<p class="note"><b>Every button gets the press state.</b> Writes also get:
+disabled grey Saving while in flight (the colour law's "waiting" grey), then
+green Saved. On an editor that stays open, Saved holds until the next edit
+re-arms Save - templates.html already does exactly this. On a sheet that
+closes itself after writing (tally, cleaners, spa, front-desk), Saved shows
+for 400ms and then the sheet closes as it does now.</p>
 <div class="staterow">
-  <button class="btn solid">Save</button>
+  <button class="btn solid" style="flex:0 1 48%">Save</button>
 </div>
-<div class="savefail show">Not saved - check the connection and try again</div>
-<div class="cap"><span>Failure · red text under the button, never a red tile</span></div>
+<div class="savefail show" style="text-align:left">Not saved - check the connection and try again</div>
+<div class="cap"><span style="text-align:left">Failure · button returns to rest, red text beneath. Red is failure's alone and never fills a tile.</span></div>
 
 <div class="mockcut">5 · Try it</div>
 <div class="card">
   <label>Guest name</label>
-  <input value="Mark Whitfield" readonly>
+  <input id="tryname" value="Mark Whitfield">
   <div class="btns">
     <button class="btn quiet">Back</button>
     <button class="btn solid" id="try">Save</button>
   </div>
   <div class="savefail" id="tryfail">Not saved - check the connection and try again</div>
 </div>
-<p class="note">First press succeeds. Every third press fails, to show the
-red path. The write is faked at 600ms - a real Firebase write on resort
-wifi sits around there.</p>
+<p class="note">The editor pattern. Save it, then edit the name: Saved re-arms
+to Save. Every third press fails to show the red path. The write is faked at
+600ms, about what a Firebase write takes on the resort wifi.</p>
 
 <div class="mockcut">6 · What it costs</div>
-<p class="note">FILLED FROM AUDIT</p>
+<ul>
+ <li><b>nala-ui.css:</b> the :active press states, .saving and .saved, the
+ radius ruling. One commit, every page's ?v= bumped with it.</li>
+ <li><b>nala-shared.js:</b> one helper - saveFeedback(btn, promise) - that
+ disables, relabels, flashes green or reverts with the red line. The five
+ pages that already do this right adopt it instead of their own copies;
+ the six silent surfaces call it where they write.</li>
+ <li><b>Per page,</b> as each is next touched (the standing rule for the
+ destructive dress already): swap the local dress for the shared one, wire
+ the helper. staff, stats, menu-print, past-menus and welcome drop their
+ private .btn copies.</li>
+ <li><b>Guest pages keep the brand</b> - Raleway, the brown - and adopt only
+ the states.</li>
+</ul>
+
+<div class="mockcut">Open questions before any code</div>
+<ul>
+ <li>Radius: A square or B 8px, section 3.</li>
+ <li>tally's green Dining and terracotta Not dining choice buttons preview
+ the tile colour they set. Keep that (it is information), or move them to
+ the standard trio too?</li>
+ <li>The resting Saved label (templates pattern): editors only, or
+ everywhere a surface stays open after a write?</li>
+</ul>
 
 <script>
 (function(){
-  var b=document.getElementById('try'), f=document.getElementById('tryfail'), n=0;
+  var b=document.getElementById('try'), f=document.getElementById('tryfail'),
+      inp=document.getElementById('tryname'), n=0;
   b.addEventListener('click', function(){
     if(b.classList.contains('saving')||b.classList.contains('saved'))return;
     n++; f.classList.remove('show');
@@ -157,8 +253,10 @@ wifi sits around there.</p>
       b.classList.remove('saving');
       if(n%3===0){ b.textContent='Save'; f.classList.add('show'); return; }
       b.classList.add('saved'); b.textContent='Saved ✓';
-      setTimeout(function(){ b.classList.remove('saved'); b.textContent='Save'; },1200);
     },600);
+  });
+  inp.addEventListener('input', function(){
+    if(b.classList.contains('saved')){ b.classList.remove('saved'); b.textContent='Save'; }
   });
 })();
 </script>
