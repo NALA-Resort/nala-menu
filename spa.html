@@ -162,10 +162,17 @@ function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
 var nav = initDateNav();
 var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
 
-/* How far ahead the board reads. Pre-arrival requests arrive about a week
-   out, so three weeks covers every ask that can exist plus the stays the
-   desk would add one to. A knob can come later if it ever falls short. */
-var HORIZON = 21;
+/* How far ahead the board reads. 45 because the invite Worker refuses a
+   pre-arrival SMS for an arrival more than 45 days out
+   (worker/send-invites.js), so this window holds every ask a guest can
+   lodge. It was 21 - "requests arrive about a week out" - until 27 Aug,
+   when a form answer for a stay beyond three weeks proved invisible here:
+   load() also fetches the viewed day, so the ask surfaced only when the
+   date navigation reached its stay, which read as cards locked to their
+   date. spa_suite pins this number to the Worker's, so neither can move
+   without the other. An answer the desk types against a booking even
+   further out still waits at the same cliff, 45 days before arrival. */
+var HORIZON = 45;
 
 /* Treatment hours: SPA_SLOTS in nala-shared.js, one list for every staff
    page, pinned with the guest form's copy to tests/slots.json. */

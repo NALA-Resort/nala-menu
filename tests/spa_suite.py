@@ -58,6 +58,10 @@ BOOKINGS = [
   ("2",  "b2",  "Marco",  "Reyes",   -1, 1),
   # never answered the form at all
   ("6",  "b6",  "Harper", "Quinn",   0, 2),
+  # a stay a month out whose form is already answered: the ask must show
+  # TODAY, not when the date navigation reaches the stay - found live,
+  # 27 Aug, when the board's 21-day read hid exactly this guest
+  ("11", "b30", "Nadia",  "Faraj",   30, 33),
 ]
 
 STAYS_BY_DATE = {}
@@ -79,6 +83,7 @@ PRE = {
           "companion": "Lena Werner"},
   "b15": {"wellness": True,  "wellDay": "",      "wellTime": "", "wellQty": 2, "wellDur": 90, "wellDur2": 60},
   "b2":  {"wellness": False},
+  "b30": {"wellness": True,  "wellDay": plus(31), "wellTime": "morning"},
 }
 
 def spa_seed():
@@ -155,14 +160,21 @@ with sync_playwright() as p:
             .map(e=>e.textContent)""", sel)
     got = bands(pg)
     ck("All is pressed on arrival and holds every band",
-       got == ["To answer · 3", "Suggested · waiting on the guest · 1",
+       got == ["To answer · 4", "Suggested · waiting on the guest · 1",
                "Booked · 1", "Declined · 1"] and
        pg.evaluate("()=>document.querySelector('.stat[data-f=\"all\"]').className")
          == "stat on")
     ck("and its number counts every live tile it shows",
-       pg.evaluate("()=>nAll.textContent") == "6")
+       pg.evaluate("()=>nAll.textContent") == "7")
     ck("the request from the form appears with no /spa record behind it",
        pg.evaluate("()=>document.querySelector('#board [data-booking=\"b9\"]')"
+                   "?.dataset.status") == "requested")
+    # The regression itself: an answered form for a stay a month away is on
+    # TODAY'S resting board. Before 27 Aug the board read 21 days plus the
+    # viewed one, so this card existed only once the date navigation reached
+    # its stay - which from the desk read as "locked to its date".
+    ck("an ask for a stay a month out shows today, not on its date",
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b30\"]')"
                    "?.dataset.status") == "requested")
     ck("each state wears its colour",
        pg.evaluate("""()=>{
@@ -300,9 +312,10 @@ with sync_playwright() as p:
     pg = board()
 
     # The stats are the masseuse's whole queue, not today's slice: b9 today,
-    # b4 in two days, b15 with no day picked - all waiting on him.
+    # b4 in two days, b15 with no day picked, b30 a month out - all waiting
+    # on him.
     ck("To answer counts every open ask on the horizon",
-       pg.evaluate("()=>nAsk.textContent") == "3")
+       pg.evaluate("()=>nAsk.textContent") == "4")
     ck("Suggested counts what waits on the guest",
        pg.evaluate("()=>nSugg.textContent") == "1")
     ck("Booked today counts the day being looked at",
@@ -376,7 +389,7 @@ with sync_playwright() as p:
     ck("born from the form, so the ask stops showing as pending",
        body.get("source") == "prearrival")
     ck("and the board reflects it without a hand refresh",
-       pg.evaluate("()=>nAsk.textContent") == "2")
+       pg.evaluate("()=>nAsk.textContent") == "3")
     SPA = spa_seed()
 
     # Confirming on the asked-for day books it directly.
@@ -571,9 +584,10 @@ with sync_playwright() as p:
     pg = board()
     pg.locator('#statsRow .stat[data-f="requested"]').click(); pg.wait_for_timeout(200)
     ck("tapping To answer shows every open ask, future and day-less included",
-       bands(pg) == ["Every open ask · 3"] and
+       bands(pg) == ["Every open ask · 4"] and
        pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b4\"]')") and
-       pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b15\"]')"))
+       pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b15\"]')") and
+       pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b30\"]')"))
     ck("and the pressed number wears the amber mark",
        pg.evaluate("()=>document.querySelector('.stat[data-f=\"requested\"]').className")
          == "stat on")
@@ -680,6 +694,20 @@ with sync_playwright() as p:
         q.close()
 
     b.close()
+
+# ── the horizon is pinned to the invite Worker's window ─────────
+# The board reads HORIZON days of /stays; the Worker refuses a pre-arrival
+# SMS for an arrival more than N days out. HORIZON below N is the 27 Aug
+# bug by construction: a guest can answer a form whose stay the board never
+# reads, and the ask hides until the date navigation lands on it. The two
+# numbers live in files that cannot import each other (the normalisePhone
+# situation), so whichever side moves without the other fails here by name.
+horizon = int(re.search(r"var HORIZON = (\d+)", open("spa.html").read()).group(1))
+invite_window = int(re.search(
+    r"Date\.now\(\) \+ (\d+) \* 24 \* 60 \* 60 \* 1000",
+    open("worker/send-invites.js").read()).group(1))
+ck("the board reads at least as far ahead as an invite can be sent",
+   horizon >= invite_window)
 
 print("RESULT: %d passed, %d failed" % (P, F))
 httpd.shutdown()
