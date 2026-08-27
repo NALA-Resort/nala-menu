@@ -35,14 +35,21 @@
           font-family:inherit; color:inherit; cursor:pointer; }
   .vrow .v { font-size:20px; min-width:30px; text-align:center; }
   .vrow .mid { flex:1; min-width:0; }
-  .vrow .nm { font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .vrow .st { font-size:11px; color:var(--mid); margin-top:2px; line-height:1.4; }
+  /* The tile's anatomy, ruled 27 Aug: name with the when beside it, the
+     companion under, the service offering last - one kind of fact per
+     line, the same place on every tile, and no line wraps. The card holds
+     the whole story; ellipsis is honest about being a glance. */
+  .vrow .top, .card .top { display:flex; align-items:baseline; gap:10px; }
+  .vrow .nm { flex:1; min-width:0; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vrow .when, .card .when { font-size:11px; color:var(--mid); white-space:nowrap; }
+  .vrow .st { font-size:11px; color:var(--mid); margin-top:2px; line-height:1.4;
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .vrow.b-done { background:var(--resgreen-t); border-color:var(--resgreen-b); }
-  .vrow.b-done .st { color:var(--resgreen); }
+  .vrow.b-done .st, .vrow.b-done .when { color:var(--resgreen); }
   .vrow.b-sugg { background:var(--amber); border-color:var(--amberb); }
-  .vrow.b-sugg .st { color:var(--ambert); }
+  .vrow.b-sugg .st, .vrow.b-sugg .when { color:var(--ambert); }
   .vrow.b-decl { background:var(--terra-t); border-color:var(--terra-b); }
-  .vrow.b-decl .st { color:var(--terra); }
+  .vrow.b-decl .st, .vrow.b-decl .when { color:var(--terra); }
   .vrow.b-grey { background:transparent; border-style:dashed; opacity:.62; }
 
   /* A tapped tile grows its controls in place rather than opening a second
@@ -50,18 +57,21 @@
   .card { border:1.2px solid var(--ink); border-radius:10px; background:#fff;
           padding:11px 13px; margin-bottom:7px; }
   .card.b-sugg { background:var(--amber); border-color:var(--amberb); }
-  .card.b-sugg .st { color:var(--ambert); }
+  .card.b-sugg .st, .card.b-sugg .when { color:var(--ambert); }
   .card.b-decl { background:var(--terra-t); border-color:var(--terra-b); }
-  .card.b-decl .st { color:var(--terra); }
+  .card.b-decl .st, .card.b-decl .when { color:var(--terra); }
   .card .head { display:flex; align-items:center; gap:12px; }
   .card .v { font-size:20px; min-width:30px; text-align:center; }
   .card .mid { flex:1; min-width:0; }
-  .card .nm { font-size:15px; }
-  .card .st { font-size:11px; color:var(--mid); margin-top:2px; line-height:1.4; }
+  .card .nm { flex:1; min-width:0; font-size:15px; white-space:nowrap;
+              overflow:hidden; text-overflow:ellipsis; }
+  .card .st { font-size:11px; color:var(--mid); margin-top:2px; line-height:1.4;
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   /* The second guest's line, under the name on tile and card alike. Always
      the resting grey: it is who is coming, not a state, so it never takes
      the band's colour the way .st does. */
-  .vrow .cmp, .card .cmp { font-size:11px; color:var(--mid); margin-top:1px; line-height:1.4; }
+  .vrow .cmp, .card .cmp { font-size:11px; color:var(--mid); margin-top:1px; line-height:1.4;
+                           white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sub { font-size:11px; letter-spacing:.12em; text-transform:uppercase;
          color:var(--mid); margin:12px 0 6px; }
   .chips { display:flex; flex-wrap:wrap; gap:6px; }
@@ -180,10 +190,29 @@ function shortDay(key){
   var d = parseISO(key + 'T00:00:00'); if (!d) return key;
   return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' + d.getDate();
 }
-/* The styleguide's one-line stay range: Tue 11-Fri 14. */
+/* The styleguide's date: Wd Dth Mon. A bare "Wed 2" on a tile was the
+   owner's 27 Aug finding - past the month's edge nobody knows which
+   Wednesday that is. Chips keep shortDay: they live inside one stay. */
+var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function ordinal(n){
+  var t = n % 10, h = n % 100;
+  return n + (h >= 11 && h <= 13 ? 'th' : t === 1 ? 'st' : t === 2 ? 'nd' : t === 3 ? 'rd' : 'th');
+}
+function niceDay(key){
+  var d = parseISO(key + 'T00:00:00'); if (!d) return key;
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' +
+         ordinal(d.getDate()) + ' ' + MONTHS[d.getMonth()];
+}
+/* The one-line stay range, month said once when it is the same month and
+   twice when the stay crosses one: Sun 20th - Tue 22nd Aug. */
 function stayRange(bk){
   if (!bk || !bk.arrive) return '';
-  return shortDay(akey(bk.arrive)) + '-' + shortDay(akey(bk.depart));
+  var a = parseISO(akey(bk.arrive) + 'T00:00:00'),
+      z = parseISO(akey(bk.depart) + 'T00:00:00');
+  if (!a || !z) return '';
+  var an = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][a.getDay()] + ' ' + ordinal(a.getDate());
+  if (a.getMonth() !== z.getMonth()) an += ' ' + MONTHS[a.getMonth()];
+  return an + ' - ' + niceDay(akey(bk.depart));
 }
 
 /* ── state ───────────────────────────────────────────────────── */
@@ -242,36 +271,41 @@ function asRequested(rec){
   return !rec.reqDay || rec.day === rec.reqDay;
 }
 
-function lineOf(rec, id){
-  var bk = BOOKINGS[id];
-  var stay = bk ? ' · staying ' + stayRange(bk) : '';
-  var ask = (rec.reqDay ? shortDay(rec.reqDay) : 'no day picked') +
-            (rec.reqTime ? ' · ' + rec.reqTime : ' · no time given');
+/* The tile's anatomy, ruled 27 Aug: every line holds one kind of fact, in
+   the same place on every tile, and no line wraps - the card carries the
+   full story, the tile the glance. Beside the name, when: the treatment's
+   own day and time (booked and suggested), or the guest's ask. Under it,
+   who else. Last, the service offering and its state. */
+function whenOf(rec){
+  if (rec.status === 'booked' || rec.status === 'suggested')
+    return niceDay(rec.day) + ' · ' + slotLabel(rec.time);
+  if (rec.reqDay)
+    return niceDay(rec.reqDay) + (rec.reqTime ? ' · ' + rec.reqTime : '');
+  return rec.reqTime ? 'No day · ' + rec.reqTime : 'No day picked';
+}
+function serviceOf(rec, id){
   /* Both lengths on a pair, in order - '1.5 hr + 1 hr' - because the
      masseuse plans his day by time and length, and a hidden second length
      was the bug that forced the pair onto one tile. */
-  var len = spaDur(rec.dur) ? ' · ' + spaDur(rec.dur).short : '';
-  if (rec.qty === 2)
-    len = ' · ' + (spaDur(rec.dur) ? spaDur(rec.dur).short : '?') +
-          ' + ' + (spaDur(rec.dur2) ? spaDur(rec.dur2).short : '?');
-  var two = rec.qty === 2 ? 'Two massages · ' : '';
+  var what = rec.qty === 2
+    ? 'Two massages · ' + (spaDur(rec.dur) ? spaDur(rec.dur).short : '?') +
+      ' + ' + (spaDur(rec.dur2) ? spaDur(rec.dur2).short : '?')
+    : 'Massage' + (spaDur(rec.dur) ? ' · ' + spaDur(rec.dur).short : '');
+  var bk = BOOKINGS[id];
+  var ask = (rec.reqDay ? niceDay(rec.reqDay) : 'no day') +
+            (rec.reqTime ? ', ' + rec.reqTime : '');
   if (rec.status === 'requested' || rec.virtual)
-    return two + (rec.reqDay ? 'Asked for ' + ask
-                       : 'Interested, no day picked' +
-                         (rec.reqTime ? ' · ' + rec.reqTime : '')) + len + stay;
+    return what + (bk ? ' · staying ' + stayRange(bk) : '');
   if (rec.status === 'suggested')
-    return two + 'Suggested ' + shortDay(rec.day) + ' ' + slotLabel(rec.time) + len +
-           ' · asked for ' + ask;
+    return what + ' · suggested instead of ' + ask;
   if (rec.status === 'booked')
-    return two + shortDay(rec.day) + ' ' + slotLabel(rec.time) + len +
-           (asRequested(rec) ? ' · as requested'
-                             : ' · moved from ' + (rec.reqDay ? shortDay(rec.reqDay) : 'no day') +
-                               (rec.reqTime ? ', ' + rec.reqTime : '')) +
+    return what + (asRequested(rec) ? ' · as requested'
+                                    : ' · moved from ' + ask) +
            (rec.manual ? ' · approved at the desk' : '');
   if (rec.status === 'declined')
-    return 'Declined' + (rec.note ? ' · ' + rec.note : '') +
+    return what + ' · declined' + (rec.note ? ' · ' + rec.note : '') +
            (rec.told ? ' · guest told' : ' · let the guest know');
-  return '';
+  return what;
 }
 
 var BAND_CLASS = { suggested:' b-sugg', booked:' b-done', declined:' b-decl' };
@@ -323,11 +357,13 @@ function tile(it){
   el.dataset.tid = it.tid;
   el.dataset.status = rec.status;
   el.innerHTML = '<div class="v"></div>' +
-    '<div class="mid"><div class="nm"></div><div class="cmp"></div><div class="st"></div></div>';
+    '<div class="mid"><div class="top"><span class="nm"></span><span class="when"></span></div>' +
+    '<div class="cmp"></div><div class="st"></div></div>';
   el.querySelector('.v').textContent = villaOf(it.id, dayOf(rec) || todayKey());
   el.querySelector('.nm').textContent = nameOf(it.id, rec);
+  el.querySelector('.when').textContent = whenOf(rec);
   setCmp(el, it.id);
-  el.querySelector('.st').textContent = lineOf(rec, it.id);
+  el.querySelector('.st').textContent = serviceOf(rec, it.id);
   el.onclick = function(){
     OPEN = { id: it.id, tid: it.tid };
     SEL = null;
@@ -392,13 +428,15 @@ function card(it){
   var head = document.createElement('div');
   head.className = 'head';
   head.innerHTML = '<div class="v"></div>' +
-    '<div class="mid"><div class="nm"></div><div class="cmp"></div><div class="st"></div></div>';
+    '<div class="mid"><div class="top"><span class="nm"></span><span class="when"></span></div>' +
+    '<div class="cmp"></div><div class="st"></div></div>';
   head.querySelector('.v').textContent = villaOf(id, SEL.day || todayKey());
   head.querySelector('.nm').textContent = nameOf(id, rec);
+  head.querySelector('.when').textContent = isNew ? '' : whenOf(rec);
   setCmp(head, id);
   head.querySelector('.st').textContent = isNew
     ? 'A new treatment · staying ' + stayRange(BOOKINGS[id])
-    : lineOf(rec, id);
+    : serviceOf(rec, id);
   head.onclick = function(){ OPEN = null; SEL = null; paint(); };
   el.appendChild(head);
 
@@ -499,7 +537,7 @@ function card(it){
   function cancelWith(it2){
     return function(){
       if (!window.confirm('Cancel ' + nameOf(id, rec) + '\u2019s ' +
-                          shortDay(rec.day) + ' ' + slotLabel(rec.time) +
+                          niceDay(rec.day) + ' ' + slotLabel(rec.time) +
                           ' massage? The guest will need to be told.')) return;
       save(it2, 'declined', {});
     };
@@ -732,9 +770,9 @@ function paint(){
           }
           var bk = BOOKINGS[id], p = bk.pre;
           var here = akey(bk.arrive) <= real;
-          var line = (here ? 'In villa until ' + shortDay(akey(bk.depart))
-                           : 'Arrives ' + shortDay(akey(bk.arrive)) +
-                             ', until ' + shortDay(akey(bk.depart)));
+          var line = (here ? 'In villa until ' + niceDay(akey(bk.depart))
+                           : 'Arrives ' + niceDay(akey(bk.arrive)) +
+                             ', until ' + niceDay(akey(bk.depart)));
           if (p && p.wellness === false)
             line = 'Said no thank you on the form · ' + line.charAt(0).toLowerCase() + line.slice(1);
           else line += ' · tap to add one';
