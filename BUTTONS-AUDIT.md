@@ -91,12 +91,16 @@ Raleway (index, menu-print), plus `inherit` leaking Georgia on app pages.
 
 The button law's three dresses stay as ruled. New, defined once:
 
+- **8px radius** on free-standing buttons (ruled 27 Aug); the footer row
+  keeps its corner law. The resting solid wears **softened ink**, one new
+  token, so the press darkens to full ink with visible contrast.
 - **Press:** every `.btn` gets an `:active` state - quiet fills rule-grey,
-  solid deepens, terracotta tints.
+  solid drops to full ink, terracotta tints.
 - **Saving:** disabled, label "Saving", the waiting grey of the colour law.
 - **Saved:** the green pill green - done's colour, only ever after the
-  write. Editors that stay open rest at a disabled "Saved" until the next
-  edit re-arms (the templates pattern); sheets that close on success flash
+  write. Ruled 27 Aug: everywhere a surface stays open after a write,
+  Saved holds until there is more to save - the next edit re-arms it (the
+  templates pattern made site-wide); sheets that close on success flash
   it 400ms first.
 - **Failure:** the button returns to rest and a red line appears under it.
   Red text, never a red tile.
@@ -104,9 +108,10 @@ The button law's three dresses stay as ruled. New, defined once:
   the five hand-written copies and gives the six silent surfaces something
   to call.
 
-Open questions the mock puts to the owner: square or 8px radius; whether
-tally's colour-previewing choice buttons (green Dining, terracotta Not
-dining) keep their colours; how far the resting "Saved" label travels.
+The mock's open questions were ruled by the owner, 27 Aug: 8px radius;
+tally's colour-previewing choice pair (green Dining, terracotta Not
+dining) keeps its colours, rounded with everything else; the resting
+"Saved" label travels everywhere a surface stays open after a write.
 
 Rollout as pages are touched, per the standing rule for the destructive
 dress: the CSS and helper land in one commit with every `?v=` bumped, then

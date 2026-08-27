@@ -6,7 +6,9 @@
 :root{--cream:#F9F7F4;--ink:#1C1C1A;--mid:#999990;--rule:#E0E0DA;--red:#A8321E;
  --green:#E4EDE2;--greenb:#7E937A;--greent:#5E7D67;
  --amber:#F6EAD5;--amberb:#C29A55;--ambert:#8A6A2F;
- --terra:#9E6455;--terra-b:rgba(184,106,90,.45);--terra-t:rgba(184,106,90,.16)}
+ --terra:#9E6455;--terra-b:rgba(184,106,90,.45);--terra-t:rgba(184,106,90,.16);
+ /* the resting solid: softened ink, so the press has somewhere darker to go */
+ --inksoft:#454540}
 body{background:var(--cream);font-family:-apple-system,BlinkMacSystemFont,system-ui,
  'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--ink);
  padding:14px 12px 40px;max-width:430px;margin:0 auto}
@@ -55,19 +57,21 @@ h1{font-size:15px;letter-spacing:.14em;text-transform:uppercase;margin:4px 2px 0
 .w-pre{padding:17px;border:none;border-radius:10px;background:var(--ink);color:var(--cream);
  font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-family:inherit;text-align:center}
 
-/* ── the standard ── */
-.btn{padding:13px 6px;text-align:center;border:1px solid var(--ink);
+/* ── the standard · ruled 27 Aug: 8px radius, softened resting solid ── */
+.btn{padding:13px 6px;text-align:center;border:1px solid var(--ink);border-radius:8px;
  background:transparent;color:var(--ink);font-family:inherit;font-size:11px;
  letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;cursor:pointer;
  -webkit-tap-highlight-color:transparent;
  transition:background .08s ease,color .08s ease,border-color .08s ease}
-.btn.solid{background:var(--ink);color:var(--cream)}
+.btn.solid{background:var(--inksoft);border-color:var(--inksoft);color:var(--cream)}
 .btn.terra{border-color:var(--terra-b);color:var(--terra)}
-.btn.r8{border-radius:8px}
-/* NEW · the press: every button visibly takes the finger */
+/* NEW · the press: every button visibly takes the finger; solid drops to full ink */
 .btn:active{background:var(--rule)}
-.btn.solid:active{background:#000;color:#fff}
+.btn.solid:active{background:var(--ink);border-color:var(--ink);color:#fff}
 .btn.terra:active{background:var(--terra-t)}
+/* tally's choice buttons keep their tile-preview colours, rounded to match */
+.btn.din{background:var(--greent);border-color:var(--greent);color:#fff}
+.btn.out{background:var(--terra);border-color:var(--terra);color:#fff}
 /* NEW · saving: the wait, wearing the grey of "sent, waiting" */
 .btn.saving{background:rgba(28,28,26,.045);color:var(--mid);border-color:var(--rule);
  cursor:default;pointer-events:none}
@@ -158,43 +162,38 @@ fonts. Four pages carry a private copy of .btn itself.</p>
  page-local error bars, one per page, error-only.</li>
 </ul>
 
-<div class="mockcut">3 · The standard · three dresses, one law</div>
+<div class="mockcut">3 · The standard · three dresses, ruled 27 Aug</div>
 <div class="row3">
   <button class="btn solid">Save</button>
   <button class="btn">Back</button>
   <button class="btn terra">Cancel booking</button>
 </div>
 <div class="cap"><span>Primary · one per surface</span><span>Secondary</span><span>Destructive · always confirms</span></div>
-<p class="note">The button law as ruled 26 Aug, unchanged: solid ink is THE
-primary. It reads black today because pages that predate the law dress
-secondaries and cancels in solid ink too, so nothing stands out. With one
-solid per surface, black is the answer to "what do I press here", and green
-is kept for the moment after - the colour law's word for done.</p>
+<p class="note">The button law's trio, now at <b>8px radius</b> (ruled:
+option B), matching the nav and date controls; the footer row keeps its
+corner law. The resting primary wears <b>softened ink</b>, not black - ruled
+27 Aug, so the press has somewhere darker to go. One solid per surface stays
+the answer to "what do I press here"; green is kept for the moment after.</p>
 <div class="row3">
-  <button class="btn solid r8">Save</button>
-  <button class="btn r8">Back</button>
-  <button class="btn terra r8">Cancel booking</button>
+  <button class="btn din">Dining</button>
+  <button class="btn out">Not dining</button>
 </div>
-<div class="cap"><span colspan="3">Option B · the same trio at 8px radius, matching the nav and date controls</span></div>
-<p class="note">One open choice: the shared dress is square today, but most
-of the pages that drifted chose 6 to 10px. <b>A</b> square (footer corner law
-stays as is) or <b>B</b> 8px on free-standing buttons, footer row keeps its
-corner law. Pick one; the mock shows both.</p>
+<div class="cap"><span>tally's choice pair · kept, rounded</span><span>they preview the tile colour they set</span></div>
 
 <div class="mockcut">4 · The save lifecycle · states side by side</div>
 <div class="staterow">
   <button class="btn solid">Save</button>
-  <button class="btn solid" style="background:#000">Save</button>
+  <button class="btn solid" style="background:var(--ink);border-color:var(--ink)">Save</button>
   <button class="btn saving">Saving</button>
   <button class="btn saved">Saved ✓</button>
 </div>
-<div class="cap"><span>Rest</span><span>Pressed</span><span>Writing · disabled</span><span>Done · green</span></div>
+<div class="cap"><span>Rest · softened ink</span><span>Pressed · full ink</span><span>Writing · disabled</span><span>Done · green</span></div>
 <p class="note"><b>Every button gets the press state.</b> Writes also get:
 disabled grey Saving while in flight (the colour law's "waiting" grey), then
-green Saved. On an editor that stays open, Saved holds until the next edit
-re-arms Save - templates.html already does exactly this. On a sheet that
-closes itself after writing (tally, cleaners, spa, front-desk), Saved shows
-for 400ms and then the sheet closes as it does now.</p>
+green Saved. Ruled 27 Aug: wherever the surface stays open after a write,
+<b>Saved holds until there is more to save</b> - the next edit re-arms it to
+Save, the templates pattern made site-wide. A sheet that closes itself after
+writing (tally, cleaners, spa, front-desk) flashes Saved for 400ms first.</p>
 <div class="staterow">
   <button class="btn solid" style="flex:0 1 48%">Save</button>
 </div>
@@ -217,8 +216,9 @@ to Save. Every third press fails to show the red path. The write is faked at
 
 <div class="mockcut">6 · What it costs</div>
 <ul>
- <li><b>nala-ui.css:</b> the :active press states, .saving and .saved, the
- radius ruling. One commit, every page's ?v= bumped with it.</li>
+ <li><b>nala-ui.css:</b> the 8px radius, the softened-ink resting solid
+ (one new token), the :active press states, .saving and .saved. One commit,
+ every page's ?v= bumped with it.</li>
  <li><b>nala-shared.js:</b> one helper - saveFeedback(btn, promise) - that
  disables, relabels, flashes green or reverts with the red line. The five
  pages that already do this right adopt it instead of their own copies;
@@ -231,14 +231,16 @@ to Save. Every third press fails to show the red path. The write is faked at
  the states.</li>
 </ul>
 
-<div class="mockcut">Open questions before any code</div>
+<div class="mockcut">Ruled by the owner · 27 Aug</div>
 <ul>
- <li>Radius: A square or B 8px, section 3.</li>
- <li>tally's green Dining and terracotta Not dining choice buttons preview
- the tile colour they set. Keep that (it is information), or move them to
- the standard trio too?</li>
- <li>The resting Saved label (templates pattern): editors only, or
- everywhere a surface stays open after a write?</li>
+ <li><b>Radius: 8px</b> on free-standing buttons; the footer row keeps its
+ corner law.</li>
+ <li><b>tally's choice pair keeps its colours</b> - they preview the tile
+ colour they set - rounded to 8px with everything else.</li>
+ <li><b>Saved holds until there is more to save</b>, everywhere a surface
+ stays open after a write.</li>
+ <li><b>The resting solid is softened ink</b>, so the press darkens to full
+ ink with visible contrast.</li>
 </ul>
 
 <script>
