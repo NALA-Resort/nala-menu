@@ -740,6 +740,66 @@ with sync_playwright() as p:
        pg.evaluate("""()=>{const on=eChips.querySelector('.chip.on');
          const r=on.getBoundingClientRect(), b=eChips.getBoundingClientRect();
          return r.left>=b.left-1 && r.right<=b.right+1;}"""))
+    # The owner's ruling of 27 Aug, once the time rails proved themselves:
+    # every row of choices wears the same dress. A wrapped row costs vertical
+    # space, the scarce dimension on a phone held at a desk, and changes
+    # height as the answers change; a rail costs none and never moves.
+    # Named one by one rather than by counting `.rail`, so a row ADDED to the
+    # sheet without the dress fails here by name rather than passing a total.
+    for row in ("eChips", "apChips", "dChips", "dNone", "pChips", "aChips",
+                "wDays", "fWqty", "fkChips", "paxRow"):
+        ck("%s stands in one scrollable rank" % row,
+           pg.evaluate("()=>{const e=document.getElementById('%s');"
+                       "const s=getComputedStyle(e);"
+                       "return s.flexWrap==='nowrap'&&s.overflowX==='auto';}" % row))
+    # A rail whose row fits is still centred under its centred label; only
+    # one that overflows falls back to starting at the left, where it can
+    # actually be scrolled from.
+    ck("a row that fits stays centred under its label",
+       pg.evaluate("()=>getComputedStyle(dNone).justifyContent").endswith("center"))
+    pg.close()
+
+    # ── the dress is declared once, in the markup ───────────────
+    # clearMiss and flagMissing used to REBUILD the dietary row's class from
+    # a literal - className = 'chips' - which silently undressed the rail,
+    # and only after somebody answered a dietary, which is the worst kind of
+    # bug: invisible until the screen is in use. The miss mark is a state
+    # laid on the dress now, added and removed on its own.
+    pg = board()
+    pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
+    pg.locator("#sCheckin").click(); pg.wait_for_timeout(400)
+    ck("a missing answer still marks its row",
+       pg.evaluate("()=>dChips.className.indexOf('miss')>-1"))
+    ck("without undressing the rail underneath the mark",
+       pg.evaluate("()=>dChips.className.indexOf('rail')>-1"))
+    pg.evaluate("()=>[...document.querySelectorAll('#dNone .chip')][0].click()")
+    pg.wait_for_timeout(250)
+    ck("and answering clears the mark",
+       pg.evaluate("()=>dChips.className.indexOf('miss')<0"))
+    ck("with the rail still standing",
+       pg.evaluate("()=>getComputedStyle(dChips).flexWrap") == "nowrap")
+    pg.close()
+
+    # ── a rail keeps its place across a repaint ─────────────────
+    # Every row rebuilds itself on every tap, and a scrolled rail jumping
+    # back to its start would take the chip just pressed off the screen.
+    # It does not, with no help from the page: the clear and the refill run
+    # in ONE task, so the browser never lays out the empty row and never
+    # clamps scrollLeft. Asserted because it is the behaviour reception
+    # depends on, whoever provides it - the page held it with a save and
+    # restore first, and breaking that changed this line not at all, which
+    # is why the code went and the assertion stayed.
+    pg = board(w=320)
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    pg.evaluate("()=>{eChips.scrollLeft=120;}")
+    pg.wait_for_timeout(150)
+    moved = pg.evaluate("()=>eChips.scrollLeft")
+    pg.evaluate("""()=>[...document.querySelectorAll('#eChips button')]
+        .find(b=>/Around 5pm/.test(b.textContent)).click()""")
+    pg.wait_for_timeout(250)
+    ck("a tap repaints the rail where it stood, not back at its start",
+       moved > 0 and abs(pg.evaluate("()=>eChips.scrollLeft") - moved) < 2)
     pg.close()
 
     # ── a guest with no form goes straight to the form ──────────
@@ -800,7 +860,18 @@ with sync_playwright() as p:
     pg = board()
     pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
     pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
-    ck("a rejected save says so", "Could not save" in pg.locator("#errBar").inner_text())
+    # The words come from the shared saveFailWords now, not this page: a
+    # refusal is a PERMISSION and needs the manager, which is a different
+    # errand from a write that never arrived. The desk's throw carried the
+    # bare word "save" until 27 Aug, so neither could be told apart and a
+    # rules rejection read as "check the connection" - the wrong remedy.
+    ck("a rejected save says so", "not allowed"
+       in pg.locator("#errBar").inner_text().lower())
+    ck("and names the right errand, since a refusal is not a bad connection",
+       "manager" in pg.locator("#errBar").inner_text().lower()
+       and "connection" not in pg.locator("#errBar").inner_text().lower())
+    ck("with the reassurance the desk acts on",
+       "Nothing was changed" in pg.locator("#errBar").inner_text())
     ck("and the guest is put back rather than left looking confirmed",
        pg.evaluate("()=>document.querySelector('.arr[data-villa=\"9\"]').className")
        .find("is-done") == -1)
@@ -856,7 +927,7 @@ with sync_playwright() as p:
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(350)
     pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(700)
     ck("if either write is rejected the guest is put back, not left half done",
-       "Could not save" in pg.locator("#errBar").inner_text() and
+       "not allowed" in pg.locator("#errBar").inner_text().lower() and
        pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"]').className")
        .find("is-done") == -1)
     STATE["fail"] = False
