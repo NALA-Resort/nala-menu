@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Front Desk Arrival</title>
-<link rel="stylesheet" href="nala-ui.css?v=16">
+<link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
           --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
@@ -234,7 +234,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=43"></script>
+<script src="nala-shared.js?v=44"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -1687,7 +1687,16 @@ function save(r, a, checkin, confirm){
   if (a.dining !== null) r.cell = dinnerCell(r, a);
   else if (beforeCell) r.cell = null;
   OPEN = null;
-  render(); closeSheet();
+  /* The board still repaints at once - the desk reads it while the write is
+     still in the air, and that has never been the part anybody waited for.
+     What waits now is the SHEET: it holds until the write lands so its Save
+     can say Saving and then Saved, and it closes on the way out. Closing it
+     here, as this did until 27 Aug, took the only thing that could carry the
+     answer off the screen a tenth of a second after the tap.
+     The summary's own Confirm buttons live on the board, so this repaint
+     replaces them and they keep answering the way they always have - by the
+     row itself changing under the finger. */
+  render();
 
   /* Both writes or neither. A confirmation the chef never sees is worse than
      one that visibly failed, so the guest is put back if either half is
@@ -1764,12 +1773,21 @@ function save(r, a, checkin, confirm){
       method: 'DELETE'
     }));
   }
-  Promise.all(writes).then(function(res){
-    if (res.some(function(x){ return !x.ok; })) throw new Error('save');
-  }).catch(function(){
-    r.pre = before; r.cell = beforeCell;   /* put it back rather than lie */
-    render();
-    err('Could not save. Nothing was changed.');
+  return saveFeedback(pressedButton(), function(){
+    return Promise.all(writes).then(function(res){
+      if (res.some(function(x){ return !x.ok; })) throw new Error('save');
+    });
+  }, {
+    done:'Saved ✓', hold:400, then:closeSheet,
+    fail:function(msg){
+      if (!msg) return err('');          /* the clear, before the write */
+      r.pre = before; r.cell = beforeCell;   /* put it back rather than lie */
+      render();
+      /* The reassurance is the half of this the desk actually acts on: a
+         partial save would mean re-checking the record, and this was not
+         one. */
+      err(msg + ' Nothing was changed.');
+    }
   });
 }
 

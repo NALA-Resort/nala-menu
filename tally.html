@@ -12,7 +12,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
 <title>Nala · Tonight's Numbers</title>
-<link rel="stylesheet" href="nala-ui.css?v=16">
+<link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
@@ -543,7 +543,7 @@ body.readonly .comb-undo { display:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=43"></script>
+<script src="nala-shared.js?v=44"></script>
 <script>
 /* Not every allergy is on the list and the list cannot grow to hold them all,
    so Other means read the note. The same entry the front desk writes, because
@@ -1931,10 +1931,23 @@ function openRoom(n, st){
   }
   function paintPax(){ paxPicker(6, function(){return pax;}, function(v){pax=v;}); }
 
+  /* Closing and repainting waits for the write now, rather than happening a
+     tenth of a second after the tap with nothing said in between. The record
+     itself is still updated the moment the button is pressed - saveManual
+     does that before its request leaves, and rolls it back itself if the
+     request is refused - so only the repaint waits, and what fills the wait
+     is the button saying Saving and then Saved. */
+  function afterWrite(){ close(); render(); }
   function writeManual(rec){
-    saveManual('room-'+n, withExtras('room-'+n, rec)); close(); render();
+    return saveFeedback(pressedButton(), function(){
+      return saveManual('room-'+n, withExtras('room-'+n, rec));
+    }, { done:'Saved ✓', hold:400, then:afterWrite });
   }
-  function clearManual(){ saveManual('room-'+n); close(); render(); }
+  function clearManual(){
+    return saveFeedback(pressedButton(), function(){
+      return saveManual('room-'+n);
+    }, { done:'Saved ✓', hold:400, then:afterWrite });
+  }
 
   // ── staff cancelled a booking the guest had made ────────
   if (isOverride && guestAnswer && st.g.status === 'out') {

@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Spa</title>
-<link rel="stylesheet" href="nala-ui.css?v=16">
+<link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
   :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
           /* The colour law, CLAUDE.md: booked wears the Reservations green,
@@ -154,7 +154,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=43"></script>
+<script src="nala-shared.js?v=44"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -695,8 +695,12 @@ function save(it, status, opts){
   if (status === 'declined' && (opts.told || rec.told))
     body.told = rec.told || new Date().toISOString();
   var err = document.getElementById('errBar');
-  err.textContent = '';
-  fetch(DB + '/spa/' + id + '/' + tid + '.json', {
+  /* The card is redrawn out of existence by load() below, so the answer has
+     to be seen before that happens rather than after: the write says Saving,
+     lands green on the button that was pressed, and only then does the board
+     reload underneath it.                                                 */
+  return saveFeedback(pressedButton(), function(){
+  return fetch(DB + '/spa/' + id + '/' + tid + '.json', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   }).then(function(r){
@@ -716,10 +720,11 @@ function save(it, status, opts){
            : null;
     if (ev) notifyPush(ev, villaOf(id, (SEL && SEL.day) || dayOf(rec) || todayKey()),
                        window.NALA_USER);
-    OPEN = null; SEL = null;
-    return load();
-  }).catch(function(){
-    err.textContent = 'The treatment did not save. Try again.';
+  });
+  }, {
+    done:'Saved ✓', hold:400,
+    then:function(){ OPEN = null; SEL = null; load(); },
+    fail:function(msg){ err.textContent = msg; }
   });
 }
 
