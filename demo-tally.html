@@ -348,6 +348,10 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
            letter-spacing:.06em; text-transform:uppercase; padding:3px 8px;
            border-radius:11px; background:rgba(168,50,30,.12); color:var(--red); }
   .dpill-al { background:var(--red); color:#fff; }
+  /* "No allergies to declare" wears the same pill as any dietary, in the
+     green the colour law gives a positive state - never the red tints above,
+     which read as something for the kitchen to act on. */
+  .dpill-ok { background:var(--green-t); color:var(--green); }
   .row.conflict { border-left:3px solid var(--red); padding-left:10px;
                   background:rgba(168,50,30,.05); }
   /* Icon only, no box, in a fixed 20px slot that exists whether or not this
@@ -2919,7 +2923,7 @@ function showError(msg){
 function withExtras(key, rec){
   var prev = manual[key];
   if (prev){
-    ['name','phone','diets','note','dnote'].forEach(function(k){
+    ['name','phone','diets','note','dnote','nodiet'].forEach(function(k){
       if (rec[k] === undefined && prev[k] !== undefined) rec[k] = prev[k];
     });
   }
@@ -2960,6 +2964,11 @@ function persistDietary(villa, rec){
   var patch = {};
   if ('diets' in rec) patch.diets = rec.diets || [];
   if ('dnote' in rec) patch.dnote = rec.dnote || '';
+  /* The same answer under the booking's name for it. A dietary chosen here
+     contradicts a stored "none to declare", and left standing it read the
+     front desk's pill back on beside the allergy it denies. */
+  if ('nodiet' in rec) patch.noDiets = !!rec.nodiet;
+  else if (patch.diets && patch.diets.length) patch.noDiets = false;
   /* Quietly. A failure here must not undo the save that succeeded, and the
      cell already carries the answer for tonight either way. */
   api('/bookings/' + id + '/prearrival', 'PATCH', patch).catch(function(){});
@@ -3330,9 +3339,15 @@ function render(){
            a day forward, the villa turns into an awaiting stub, and the stub
            said nothing but the name. */
         var od = overlayReservationDiets({}, r.room);
+        var stubPre = PREARRIVAL_BY_VILLA[String(r.room)];
         var dline = (od.diets && od.diets.length)
           ? '<div class="row-sub">' + dietHTML(od.diets) +
-            (od.dnote ? ' \u00b7 ' + od.dnote : '') + '</div>' : '';
+            (od.dnote ? ' \u00b7 ' + od.dnote : '') + '</div>'
+          /* The declared "none" is as much the person's as an allergy is,
+             so the stub shows it the same way tonight's rows do. */
+          : (stubPre && stubPre.noDiets
+              ? '<div class="dietline"><span class="dpill dpill-ok">No allergies to declare</span></div>'
+              : '');
         /* The awaiting stub carries the companion too: a villa that has not
            answered tonight is still a named party, and this board is where
            reception looks a booking up mid-service. */
@@ -3385,7 +3400,13 @@ function render(){
         var label = al ? x.replace(/\s*allergy\s*/i,'') : x;
         return '<span class="dpill'+(al?' dpill-al':'')+'">'+label+'</span>';
       }).join('') + '</div>';
-    } else if (g.nodiet) { sub.push('No dietaries confirmed'); }
+    } else if (g.nodiet) {
+      /* A dietary answer, not the absence of one, so it rides in the
+         dietline like the rest. It feeds neither menuConflicts nor the
+         bubble: there is nothing for the kitchen to act on, only the fact
+         that we asked and the guest ruled it out. */
+      dietLine = '<div class="dietline"><span class="dpill dpill-ok">No allergies to declare</span></div>';
+    }
 
 
     var hits = menuConflicts(MENU, personDiets);
@@ -4097,6 +4118,12 @@ function editRoomDetails(n, st){
       return;
     }
     rec.diets = diets.slice();
+    /* The no-allergies answer survives a details edit, and yields to a
+       chosen dietary: the two contradict, and the chips as saved are the
+       statement of record. Dropped from the PUT entirely, it read back as
+       a deselected pill at the front desk - the same one-fact-two-nodes
+       bug the cell exists to end. */
+    rec.nodiet = diets.length ? false : !!g.nodiet;
     if (dn) rec.dnote = dn;
     else if (g.dnote) rec.dnote = g.dnote;   // the guest's own dietary note stays theirs
     saveManual('room-'+n, rec);
