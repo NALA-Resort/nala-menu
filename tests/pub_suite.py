@@ -805,6 +805,18 @@ with sync_playwright() as p:
                    x.getAttribute('data-n')==='Nut allergy');
           return t.className.split(' ').indexOf('on')>-1 &&
                  t.className.split(' ').indexOf('warnin')>-1; }"""))
+    #  And keeps it VISIBLE. The owner's ruling, 27 Aug: a pressed pill used to
+    #  fill with the same solid red as its border and ring, so the tick
+    #  swallowed the warning. The fill now sits a step behind - slightly
+    #  transparent - while the border stays full-strength, which is the whole
+    #  mechanism by which a border and a fill can be told apart.
+    ck("a pressed pill's fill sits behind its border, not level with it",
+       pg.evaluate("""()=>{ var t=[...document.querySelectorAll('#tagblock .tick')]
+          .find(x=>x.getAttribute('data-c')==='main' &&
+                   x.getAttribute('data-n')==='Nut allergy');
+          var s = getComputedStyle(t);
+          return s.backgroundColor === 'rgba(168, 50, 30, 0.85)' &&
+                 s.borderTopColor === 'rgb(168, 50, 30)'; }"""))
     pg.close()
 
     #  One dietary, two declarers: the confirmed guest outranks the pending
