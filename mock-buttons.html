@@ -1,0 +1,165 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mock · Button standard</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--cream:#F9F7F4;--ink:#1C1C1A;--mid:#999990;--rule:#E0E0DA;--red:#A8321E;
+ --green:#E4EDE2;--greenb:#7E937A;--greent:#5E7D67;
+ --amber:#F6EAD5;--amberb:#C29A55;--ambert:#8A6A2F;
+ --terra:#9E6455;--terra-b:rgba(184,106,90,.45)}
+body{background:var(--cream);font-family:-apple-system,BlinkMacSystemFont,system-ui,
+ 'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--ink);
+ padding:14px 12px 40px;max-width:430px;margin:0 auto}
+
+/* the divider between the mock's screens, not part of the page */
+.mockcut{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#fff;
+ background:var(--mid);border-radius:4px;padding:5px 10px;margin:34px 0 16px;text-align:center}
+.lede{font-size:13px;line-height:1.5;color:var(--ink);margin:8px 2px 4px}
+.note{font-size:11px;line-height:1.5;color:var(--mid);margin:6px 2px 0}
+.note b{color:var(--ink);font-weight:600}
+h1{font-size:15px;letter-spacing:.14em;text-transform:uppercase;margin:4px 2px 0}
+
+/* ── replicas of the dresses found in the wild, each copied from its page ── */
+.spec{display:flex;align-items:center;gap:12px;margin:12px 0}
+.spec .demo{flex:0 0 46%;display:flex;gap:6px}
+.spec .demo>*{flex:1}
+.spec .what{flex:1;font-size:10.5px;line-height:1.5;color:var(--mid)}
+.spec .what b{display:block;color:var(--ink);font-size:11px;letter-spacing:.06em;
+ text-transform:uppercase;margin-bottom:1px}
+
+/* 1 · the shared dress, nala-ui.css */
+.w-btn{padding:13px 6px;text-align:center;border:1px solid var(--ink);background:transparent;
+ color:var(--ink);font-family:inherit;font-size:11px;letter-spacing:.14em;
+ text-transform:uppercase;white-space:nowrap;cursor:pointer}
+.w-btn.solid{background:var(--ink);color:var(--cream)}
+/* 2 · the print sheets' pair */
+.w-print{padding:10px 14px;background:#111;color:#fff;border:none;font-size:10px;
+ letter-spacing:.15em;text-transform:uppercase;font-family:inherit;cursor:pointer}
+.w-print.ghost{background:#fff;color:#111;border:1px solid #111}
+/* 3 · publish.html's own */
+.w-pub{width:100%;padding:15px;background:var(--ink);color:var(--cream);border:none;
+ font-size:12px;letter-spacing:.2em;text-transform:uppercase;font-family:inherit;cursor:pointer}
+/* 4 · staff.html's own */
+.w-staff{display:block;width:100%;padding:13px 0;text-align:center;border:1px solid var(--ink);
+ background:var(--ink);color:var(--cream);font-size:11px;letter-spacing:.14em;
+ text-transform:uppercase;font-family:inherit;cursor:pointer}
+/* 5 · welcome.html, the guest brand */
+.w-guest{padding:13px 18px;background:#1C1C1A;color:#F5F1E8;border:none;font-size:12px;
+ letter-spacing:.16em;text-transform:uppercase;font-family:Georgia,serif;cursor:pointer}
+/* 6 · a bare browser button, as five pages shipped before 27 Aug */
+.w-bare{font-family:inherit}
+
+/* ── the standard ─────────────────────────────────────────── */
+.btn{padding:13px 6px;text-align:center;border:1px solid var(--ink);border-radius:0;
+ background:transparent;color:var(--ink);font-family:inherit;font-size:11px;
+ letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;cursor:pointer;
+ -webkit-tap-highlight-color:transparent;
+ transition:background .08s ease,color .08s ease,border-color .08s ease}
+.btn.solid{background:var(--ink);color:var(--cream)}
+.btn.terra{border-color:var(--terra-b);color:var(--terra);background:transparent}
+/* NEW · the press: every button visibly takes the finger */
+.btn:active{background:var(--rule)}
+.btn.solid:active{background:#000;color:#fff}
+.btn.terra:active{background:rgba(184,106,90,.16)}
+/* NEW · saving: the wait, wearing the grey of "sent, waiting" */
+.btn.saving{background:rgba(28,28,26,.045);color:var(--mid);border-color:var(--rule);
+ cursor:default;pointer-events:none}
+/* NEW · saved: the green of a thing done, then back to rest */
+.btn.saved{background:var(--green);color:var(--greent);border-color:var(--greenb);
+ cursor:default;pointer-events:none}
+/* NEW · failure: red text, never a red tile */
+.savefail{display:none;font-size:11px;color:var(--red);margin-top:8px;text-align:center}
+.savefail.show{display:block}
+
+.row3{display:flex;gap:8px;margin:12px 0 4px}
+.row3>*{flex:1}
+.staterow{display:flex;gap:6px;margin:10px 0 2px}
+.staterow>*{flex:1}
+.cap{display:flex;gap:6px;margin:4px 0 0}
+.cap span{flex:1;font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+ color:var(--mid);text-align:center}
+
+/* the live card the demo saves from */
+.card{border:1.2px solid var(--rule);border-radius:10px;background:#fff;
+ padding:12px;margin:12px 0}
+.card label{display:block;font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+ color:var(--mid);margin:2px 0 4px}
+.card input{width:100%;font-size:15px;border:1px solid var(--rule);border-radius:8px;
+ padding:10px 12px;background:#fff;font-family:inherit;margin-bottom:10px}
+.btns{display:flex;gap:8px}
+.btns .btn{flex:1}
+.btns .btn.quiet{flex:0 0 auto;padding:13px 14px;border-color:var(--rule);color:var(--mid)}
+</style></head><body>
+
+<h1>Button standard · mock</h1>
+<p class="lede">Every dress a button wears today, then the one set they would
+all wear, with the feedback a save has never had. Nothing here is live.</p>
+
+<div class="mockcut">1 · As found today</div>
+<p class="note">FILLED FROM AUDIT</p>
+
+<div class="mockcut">2 · Why every save looks black</div>
+<p class="note">FILLED FROM AUDIT</p>
+
+<div class="mockcut">3 · The standard: three dresses, one law</div>
+<div class="row3">
+  <button class="btn solid">Save</button>
+  <button class="btn">Back</button>
+  <button class="btn terra">Cancel booking</button>
+</div>
+<div class="cap"><span>Primary · one per surface</span><span>Secondary</span><span>Destructive · confirms</span></div>
+<p class="note">The button law as ruled 26 Aug, unchanged. What is new is
+below: the states a press moves through.</p>
+
+<div class="mockcut">4 · The save lifecycle · side by side</div>
+<div class="staterow">
+  <button class="btn solid">Save</button>
+  <button class="btn solid" style="background:#000">Save</button>
+  <button class="btn saving">Saving</button>
+  <button class="btn saved">Saved ✓</button>
+</div>
+<div class="cap"><span>Rest</span><span>Pressed</span><span>Writing</span><span>~1.2s, then rest</span></div>
+<p class="note"><b>Green means done</b> - the colour law's own word. The tick
+holds long enough to be seen, then the button returns to rest so the surface
+never claims "saved" about an edit made after.</p>
+
+<div class="staterow">
+  <button class="btn solid">Save</button>
+</div>
+<div class="savefail show">Not saved - check the connection and try again</div>
+<div class="cap"><span>Failure · red text under the button, never a red tile</span></div>
+
+<div class="mockcut">5 · Try it</div>
+<div class="card">
+  <label>Guest name</label>
+  <input value="Mark Whitfield" readonly>
+  <div class="btns">
+    <button class="btn quiet">Back</button>
+    <button class="btn solid" id="try">Save</button>
+  </div>
+  <div class="savefail" id="tryfail">Not saved - check the connection and try again</div>
+</div>
+<p class="note">First press succeeds. Every third press fails, to show the
+red path. The write is faked at 600ms - a real Firebase write on resort
+wifi sits around there.</p>
+
+<div class="mockcut">6 · What it costs</div>
+<p class="note">FILLED FROM AUDIT</p>
+
+<script>
+(function(){
+  var b=document.getElementById('try'), f=document.getElementById('tryfail'), n=0;
+  b.addEventListener('click', function(){
+    if(b.classList.contains('saving')||b.classList.contains('saved'))return;
+    n++; f.classList.remove('show');
+    b.classList.add('saving'); b.textContent='Saving';
+    setTimeout(function(){
+      b.classList.remove('saving');
+      if(n%3===0){ b.textContent='Save'; f.classList.add('show'); return; }
+      b.classList.add('saved'); b.textContent='Saved ✓';
+      setTimeout(function(){ b.classList.remove('saved'); b.textContent='Save'; },1200);
+    },600);
+  });
+})();
+</script>
+</body></html>
