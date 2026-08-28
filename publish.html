@@ -8,92 +8,46 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
 <title>Nala · Publish Menu</title>
+<link rel="stylesheet" href="nala-ui2.css?v=1">
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-          --amberb:#C29A55; --amberink:#8A6A2F; }
+  /* The save bar is pinned over the foot of the page, so the page has to
+     reserve room for it. Without this the last control on the list sits
+     under the bar and cannot be tapped, which pub_suite measures.     */
+  body.ui2 { padding-bottom:calc(170px + env(safe-area-inset-bottom)); }
+
+  /* The hand copy of the hamburger is gone. It was written out because
+     nala-ui.css is a layout system whose colours only exist on a tiered
+     body and this page carried none; nala-ui2.css needs no tier, so the
+     copy has nothing left to do. It was byte identical to tag.html's and
+     both had drifted from flags.html's, which is what "keep this one in
+     step with it" was worth as an instruction.                        */
+  .navrow { display:flex; margin-bottom:var(--s2); }
+
   /* The foot of the page has to clear the fixed bar, and the bar grew a second
      row when Remove arrived. At 90px the last row of dietary ticks sat under
      it and could not be read or pressed, which on this page means an allergy
      the chef could not tick. */
-  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
-         padding:28px 24px 170px; -webkit-tap-highlight-color:transparent; }
+  
   .wrap { max-width:520px; margin:0 auto; }
   /* The bar sits above the wordmark and pushes nothing: the hamburger is the
      only thing in it and it hangs to the right, as it does everywhere else. */
-  /* The hamburger, self contained.
-
-     It was pulled in from nala-ui.css, which turned out to be a whole layout
-     system and not a control sheet: it makes body a flex column, gives
-     body > .wrap flex rules, and takes its colours from --ctl-* tokens that
-     only exist on a body carrying tier-app or tier-print. Neither page carries
-     one, so every border and every bar of the icon resolved to nothing and the
-     button rendered invisible. The page was not missing a menu; it was drawing
-     one nobody could see.
-
-     Written out here instead, in this page's own colours. Two pages' worth of
-     duplication against importing a layout these pages were not built for. */
-  .navrow { display:flex; margin-bottom:10px; }
-  .navwrap { position:relative; margin-left:auto; z-index:500; }
-  .navbtn { width:42px; height:36px; border:1px solid var(--rule);
-            background:var(--cream); border-radius:8px; cursor:pointer;
-            display:flex; flex-direction:column; align-items:center;
-            justify-content:center; gap:4px; padding:0;
-            -webkit-tap-highlight-color:transparent; }
-  .navbtn span { display:block; width:16px; height:1.6px; background:var(--ink); }
-  .navdrop { display:none; position:absolute; right:0; top:42px;
-             background:var(--cream); border:1px solid var(--rule);
-             border-radius:9px; min-width:176px; padding:5px 0;
-             box-shadow:0 4px 14px rgba(0,0,0,.09); }
-  .navdrop.open { display:block; }
-  /* No caps, no tracking, a size a thumb can hit; submenus fold behind
-     their chevroned headers. nala-ui.css holds the ruling copy of this
-     dress - keep this one in step with it. */
-  .navdrop a { display:block; padding:10px 18px;
-               /* the ruling copy's --ui-font, written out: no tiered body here */
-               font-family:-apple-system, BlinkMacSystemFont, system-ui,
-                           'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-               font-size:14px;
-               line-height:18px; color:var(--ink);
-               text-decoration:none; white-space:nowrap; }
-  .navgrp { display:flex; align-items:center; justify-content:space-between;
-            gap:14px; width:100%; padding:10px 18px;
-            font-family:-apple-system, BlinkMacSystemFont, system-ui,
-                        'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            font-size:14px;
-            line-height:18px; text-align:left; color:var(--ink);
-            background:none; border:0; border-top:1px solid var(--rule);
-            cursor:pointer; -webkit-tap-highlight-color:transparent; }
-  .navchev { flex:0 0 auto; color:var(--mid); transition:transform .15s ease; }
-  .navgroup.open .navchev { transform:rotate(180deg); }
-  .navsub { display:none; }
-  .navgroup.open .navsub { display:block; }
-  .navsub a { padding-left:32px; }
-  .navdrop a.navaction { display:flex; align-items:center;
-                        justify-content:space-between; gap:14px; color:var(--ink); }
-  .navmark { display:inline-flex; flex:0 0 auto; }
-  .navmark.on  { color:#3F7A52; }
-  .navmark.off { color:#B0B0A8; }
-  .navnote { flex:0 0 auto; font-size:11px; color:#B0B0A8; }
-  .navdrop a.signout { border-top:1px solid var(--rule); margin-top:5px;
-                       padding-top:13px; color:var(--mid); }
+  
+  .navgroup.open
+  .navgroup.open
 
   .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
             background:#A8321E; color:#fff; padding:12px 18px;
-            font-family:Helvetica,Arial,sans-serif; font-size:11px; line-height:1.5;
+            font-family:var(--ui-font); font-size:var(--t2); line-height:1.5;
             transform:translateY(-100%); transition:transform .25s; }
   .errbar.show { transform:translateY(0); }
 
-  .wordmark { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.45em;
-              text-transform:uppercase; color:var(--mid); text-align:center; }
-  .pagename { font-family:Helvetica,Arial,sans-serif; font-size:13px; font-weight:bold;
-              letter-spacing:.1em; text-transform:uppercase; text-align:center; margin-top:6px; }
-  .lede { text-align:center; font-style:italic; color:var(--mid); font-size:12px;
+  .wordmark { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); text-align:center; }
+  .pagename { font-family:var(--ui-font); font-size:var(--t2); font-weight:bold; text-align:center; margin-top:6px; }
+  .lede { text-align:center; font-style:italic; color:var(--mid); font-size:var(--t2);
           margin-top:8px; line-height:1.5; }
 
   .course { margin-top:24px; }
-  .c-label { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
-             text-transform:uppercase; color:var(--mid); }
+  .c-label { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); }
   /* Editable on the page. The words came off a handwritten photo through an
      assistant's reading of it, so the one thing this page must do is let a
      misread word be fixed here, before it reaches a guest, rather than after. */
@@ -101,25 +55,23 @@
      and does not zoom back out, so the chef finishes the menu on a page he has
      to pinch and drag. The description was 14. */
   .c-name { width:100%; margin-top:4px; padding:10px 12px; border:1px solid var(--rule);
-            background:#fff; border-radius:8px; font-family:Georgia,serif;
-            font-size:17px; color:var(--ink); }
+            background:#fff; border-radius:8px; font-family:var(--ui-font);
+            font-size:var(--t3); color:var(--ink); }
   .c-desc { width:100%; margin-top:6px; padding:9px 12px; border:1px solid var(--rule);
-            background:#fff; border-radius:8px; font-family:Georgia,serif;
-            font-size:16px; color:var(--mid); }
+            background:#fff; border-radius:8px; font-family:var(--ui-font);
+            font-size:var(--t3); color:var(--mid); }
   .c-name:focus, .c-desc:focus { outline:none; border-color:var(--ink); }
 
   .seafood { display:flex; align-items:center; gap:8px; margin-top:8px; }
   .sfbtn { padding:7px 13px; border:1px solid #C9C9C2; background:transparent;
-           border-radius:20px; font-family:Helvetica,Arial,sans-serif; font-size:10px;
-           letter-spacing:.08em; text-transform:uppercase; color:var(--mid);
+           border-radius:20px; font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
            cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .sfbtn.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
-  .sfhint { font-family:Helvetica,Arial,sans-serif; font-size:9px; color:var(--mid); }
+  .sfhint { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); }
 
   .rule { border:none; border-top:1px solid var(--rule); margin-top:28px; }
-  .secthead { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
-              text-transform:uppercase; color:var(--mid); margin-top:28px; }
-  .sectnote { font-style:italic; color:var(--mid); font-size:12px; margin-top:8px;
+  .secthead { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); margin-top:28px; }
+  .sectnote { font-style:italic; color:var(--mid); font-size:var(--t2); margin-top:8px;
               line-height:1.6; }
 
   /* Tagging, on this page rather than behind a link. A published menu that is
@@ -129,11 +81,11 @@
      a separate trip is a trip that gets skipped on a busy night. */
   .tagblock { margin-top:20px; }
   .tagcourse { margin-top:18px; }
-  .t-dish { font-size:15px; }
+  .t-dish { font-size:var(--t3); }
   .t-dish .empty { color:var(--mid); font-style:italic; }
   .ticks { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
   .tick { padding:8px 13px; border:1px solid #C9C9C2; background:transparent;
-          border-radius:20px; font-family:Helvetica,Arial,sans-serif; font-size:11px;
+          border-radius:20px; font-family:var(--ui-font); font-size:var(--t2);
           color:var(--ink); cursor:pointer; -webkit-tap-highlight-color:transparent; }
   /* Red belongs to the ring alone - the owner's second ruling of 27 Aug,
      replacing the first. A pressed pill filled solid red, so a page with a
@@ -159,18 +111,17 @@
 
   .addrow { display:flex; gap:8px; margin-top:18px; }
   .addrow input { flex:1; min-width:0; padding:11px 12px; border:1px solid var(--rule);
-                  background:#fff; border-radius:8px; font-family:Georgia,serif;
-                  font-size:16px; color:var(--ink); }
+                  background:#fff; border-radius:8px; font-family:var(--ui-font);
+                  font-size:var(--t3); color:var(--ink); }
   .addrow input:focus { outline:none; border-color:var(--ink); }
   .addbtn { border:1px solid var(--ink); background:transparent; color:var(--ink);
             padding:11px 15px; border-radius:8px; white-space:nowrap;
-            font-family:Helvetica,Arial,sans-serif; font-size:10px;
-            letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
+            font-family:var(--ui-font); font-size:var(--t2); cursor:pointer;
             -webkit-tap-highlight-color:transparent; }
   /* Clear of the field above it. At 10px the line read as a caption belonging
      to the Add button rather than as a separate thought about the list. */
-  .dietlink { margin-top:16px; font-family:Helvetica,Arial,sans-serif;
-              font-size:10px; letter-spacing:.05em; line-height:1.6;
+  .dietlink { margin-top:16px; font-family:var(--ui-font);
+              font-size:var(--t2); line-height:1.6;
               color:var(--mid); }
   .dietlink a { color:var(--ink); }
 
@@ -178,53 +129,51 @@
          border-top:1px solid var(--rule); padding:12px 24px; }
   .bar .in { max-width:520px; margin:0 auto; display:flex; gap:10px; align-items:center; }
   .pubbtn { flex:1; padding:14px; min-height:46px; border:none; background:var(--ink);
-            color:var(--cream); border-radius:8px; font-family:Helvetica,Arial,sans-serif;
-            font-size:11px; letter-spacing:.15em; text-transform:uppercase;
+            color:var(--cream); border-radius:8px; font-family:var(--ui-font);
+            font-size:var(--t2);
             cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .pubbtn:disabled { opacity:.45; }
-  .stat { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.1em;
-          text-transform:uppercase; color:var(--mid); }
+  .stat { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); }
   .removerow { margin-top:8px; }
   /* Quiet, and not beside Publish in the same weight. It is the rarer action
      and the more destructive one, and a button that looks like the main one is
      a button somebody presses on the way past. */
   .rmbtn { flex:1; padding:11px; border:1px solid var(--rule); background:transparent;
-           color:var(--mid); border-radius:8px; font-family:Helvetica,Arial,sans-serif;
-           font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+           color:var(--mid); border-radius:8px; font-family:var(--ui-font);
+           font-size:var(--t2);
            cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .rmbtn.arm { border-color:var(--red); color:var(--red); }
 
   .demobar { display:none; background:var(--ink); color:var(--cream);
-             font-family:Helvetica,Arial,sans-serif; font-size:10px;
-             letter-spacing:.14em; text-transform:uppercase; text-align:center;
+             font-family:var(--ui-font); font-size:var(--t2); text-align:center;
              padding:9px 12px; border-radius:8px; margin-bottom:18px; }
   .demobar.show { display:block; }
   body.demo .pubbtn { background:#55554F; }
 
   .done { display:none; text-align:center; margin-top:40px; line-height:1.8; }
   .done.show { display:block; }
-  .done .big { font-size:20px; }
+  .done .big { font-size:var(--t4); }
   .done a { color:var(--ink); }
   /* A real target. It is the last thing the chef does before service and he is
      holding the phone he will send it from. */
   .notifylink { display:block; margin:4px auto 0; max-width:320px; padding:14px;
                 min-height:46px; box-sizing:border-box; border:1px solid var(--ink);
-                border-radius:8px; font-family:Helvetica,Arial,sans-serif;
-                font-size:11px; letter-spacing:.15em; text-transform:uppercase;
+                border-radius:8px; font-family:var(--ui-font);
+                font-size:var(--t2);
                 text-decoration:none; color:var(--ink);
                 -webkit-tap-highlight-color:transparent; }
-  .notifyhint { display:block; margin-top:10px; font-size:12px;
+  .notifyhint { display:block; margin-top:10px; font-size:var(--t2);
                 font-style:italic; color:var(--mid); }
   .doneacts { margin-top:26px; padding-top:20px; border-top:1px solid var(--rule); }
   .doneact { display:block; margin:0 auto; max-width:320px; padding:13px;
              min-height:44px; box-sizing:border-box; border:1px solid var(--rule);
-             border-radius:8px; font-family:Helvetica,Arial,sans-serif;
-             font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+             border-radius:8px; font-family:var(--ui-font);
+             font-size:var(--t2);
              color:var(--mid); text-decoration:none;
              -webkit-tap-highlight-color:transparent; }
 </style>
 </head>
-<body>
+<body class="ui2">
 <div class="errbar" id="err"></div>
 <div class="wrap" id="wrap">
   <!-- Loud on purpose. A rehearsal that looks like the real thing is worse

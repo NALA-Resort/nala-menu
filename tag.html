@@ -10,6 +10,11 @@
 <title>Nala · Menu Dietaries</title>
 <link rel="stylesheet" href="nala-ui2.css?v=1">
 <style>
+  /* The save bar is pinned over the foot of the page, so the page has to
+     reserve room for it. Without this the last control on the list sits
+     under the bar and cannot be tapped, which pub_suite measures.     */
+  body.ui2 { padding-bottom:calc(120px + env(safe-area-inset-bottom)); }
+
   /* This page's own shape and nothing else. Ground, ink, type, spacing, the
      buttons and the hamburger come from nala-ui2.css.
 

@@ -10,20 +10,15 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Staff</title>
+<link rel="stylesheet" href="nala-ui2.css?v=1">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-          --ui-font:-apple-system,Helvetica,Arial,sans-serif; }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
-         padding:calc(24px + env(safe-area-inset-top)) 18px 40px;
-         -webkit-tap-highlight-color:transparent; }
+  
   .wrap { max-width:520px; margin:0 auto; }
   .daterow { display:flex; align-items:center; gap:8px; margin-bottom:16px; }
-  .date { font-size:15px; font-weight:bold; letter-spacing:.02em; flex:1;
-          text-transform:uppercase; }
+  .date { font-size:var(--t3); font-weight:bold; flex:1; }
 
-  .sec { font-size:8px; letter-spacing:.16em; text-transform:uppercase;
+  .sec { font-size:var(--t1);
          color:var(--mid); margin:22px 0 8px; }
 
   /* A person is a line, not a card: plain typography is information, and a
@@ -32,20 +27,18 @@
             border-bottom:1px solid var(--rule); width:100%; background:none;
             border-left:0; border-right:0; border-top:0; text-align:left;
             font-family:var(--ui-font); color:var(--ink); }
-  .person .nm { font-size:15px; flex:1; }
-  .person .rl { font-size:11px; color:var(--mid); text-transform:uppercase;
-                letter-spacing:.1em; }
-  .person .cd { font-size:11px; color:var(--mid); font-variant-numeric:tabular-nums; }
+  .person .nm { font-size:var(--t3); flex:1; }
+  .person .rl { font-size:var(--t2); color:var(--mid); }
+  .person .cd { font-size:var(--t2); color:var(--mid); font-variant-numeric:tabular-nums; }
   /* The bin is the icon alone, no border and no fill: that dress belongs to
      buttons, and a row of bordered bins would read as five buttons.      */
   .binwrap { display:flex; align-items:baseline; }
-  .bin { background:none; border:0; padding:0 0 0 12px; font-size:15px;
+  .bin { background:none; border:0; padding:0 0 0 12px; font-size:var(--t3);
          color:var(--mid); line-height:1; }
   .bin:disabled { opacity:0; }        /* protected rows show nothing at all */
 
   .btn { display:block; width:100%; padding:13px 0; text-align:center;
-         font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
-         text-transform:uppercase; background:var(--cream); color:var(--ink);
+         font-family:var(--ui-font); font-size:var(--t2); background:var(--cream); color:var(--ink);
          border:1px solid var(--ink); border-radius:8px; margin-top:14px; }
   /* .btn.solid comes from nala-ui.css's shared dress. */
   .btn.warn  { border-color:var(--red); color:var(--red); }
@@ -55,16 +48,16 @@
             border-bottom:1px solid var(--rule); width:100%; background:none;
             border-left:0; border-right:0; border-top:0; text-align:left;
             font-family:var(--ui-font); color:var(--ink); }
-  .master .mnm { flex:1; font-size:15px; }
+  .master .mnm { flex:1; font-size:var(--t3); }
   /* Off greys the rest: the boxes still say what WOULD be sent, but nothing
      is going out and the page should not pretend otherwise.              */
   .dim { opacity:.4; }
 
   table { width:100%; border-collapse:collapse; }
-  th { font-size:8px; letter-spacing:.12em; text-transform:uppercase;
+  th { font-size:var(--t1);
        color:var(--mid); font-weight:normal; padding:0 0 8px; }
   th.who { text-align:center; }
-  td { font-size:15px; padding:11px 0; border-bottom:1px solid var(--rule); }
+  td { font-size:var(--t3); padding:11px 0; border-bottom:1px solid var(--rule); }
   td.who { text-align:center; }
   .tick { display:inline-block; width:20px; height:20px; border-radius:5px;
           border:1px solid var(--rule); background:none; position:relative;
@@ -74,15 +67,15 @@
                    height:10px; border:solid var(--cream); border-width:0 2px 2px 0;
                    transform:rotate(45deg); }
 
-  .hours { display:flex; gap:8px; align-items:center; font-size:15px;
+  .hours { display:flex; gap:8px; align-items:center; font-size:var(--t3);
            padding:11px 0; border-bottom:1px solid var(--rule); flex-wrap:wrap; }
-  .hours input { font-family:var(--ui-font); font-size:16px; width:74px;
+  .hours input { font-family:var(--ui-font); font-size:var(--t3); width:74px;
                  border:0; border-bottom:1px solid var(--rule); background:none;
                  color:var(--ink); text-align:center; padding:2px 0; }
-  .moved { font-size:8px; letter-spacing:.1em; text-transform:uppercase;
+  .moved { font-size:var(--t1);
            color:var(--mid); display:block; margin-top:3px; }
-  .note { font-size:11px; color:var(--mid); line-height:1.5; margin-top:10px; }
-  .err  { font-size:11px; color:var(--red); line-height:1.5; margin-top:10px; }
+  .note { font-size:var(--t2); color:var(--mid); line-height:1.5; margin-top:10px; }
+  .err  { font-size:var(--t2); color:var(--red); line-height:1.5; margin-top:10px; }
 
   /* the sheet, same shape as the boards use */
   .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35); display:none;
@@ -91,17 +84,16 @@
   .sheet { background:var(--cream); width:100%; max-width:520px; margin:0 auto;
            border-radius:14px 14px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom));
            max-height:88vh; overflow-y:auto; }
-  .sheet .st { font-size:15px; margin-bottom:4px; }
-  .sheet .sub { font-size:11px; color:var(--mid); margin-bottom:14px; }
-  .sheet label { display:block; font-size:8px; letter-spacing:.16em;
-                 text-transform:uppercase; color:var(--mid); margin:14px 0 5px; }
+  .sheet .st { font-size:var(--t3); margin-bottom:4px; }
+  .sheet .sub { font-size:var(--t2); color:var(--mid); margin-bottom:14px; }
+  .sheet label { display:block; font-size:var(--t1); color:var(--mid); margin:14px 0 5px; }
   .sheet input, .sheet select {
-      width:100%; font-family:var(--ui-font); font-size:16px; padding:11px;
+      width:100%; font-family:var(--ui-font); font-size:var(--t3); padding:11px;
       border:1px solid var(--rule); border-radius:8px; background:#fff;
       color:var(--ink); }
 </style>
 </head>
-<body class="tier-app">
+<body class="tier-app ui2">
 <div class="wrap">
 
   <div class="daterow">

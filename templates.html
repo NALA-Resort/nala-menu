@@ -2,72 +2,67 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; SMS Templates</title>
+<link rel="stylesheet" href="nala-ui2.css?v=1">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-          --green:#E4EDE2; --greenb:#7E937A; --tan:#C9C2B2; }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
-         padding:calc(24px + env(safe-area-inset-top)) 18px 60px;
-         -webkit-tap-highlight-color:transparent; }
+  
 
-  .intro { font-size:13px; color:var(--mid); line-height:1.5; margin:2px 0 6px; }
-  .seclabel { font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  .intro { font-size:var(--t2); color:var(--mid); line-height:1.5; margin:2px 0 6px; }
+  .seclabel { font-size:var(--t2);
               color:var(--mid); margin:24px 0 8px; }
 
   .card { background:#fff; border:1px solid var(--rule); border-radius:12px;
           padding:14px 14px 12px; margin-bottom:14px; }
   .lblrow { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
-  .lblrow input { flex:1; min-width:0; font-family:var(--ui-font); font-size:15px;
+  .lblrow input { flex:1; min-width:0; font-family:var(--ui-font); font-size:var(--t3);
                   font-weight:600; color:var(--ink); border:none;
                   border-bottom:1px solid var(--rule); border-radius:0;
                   padding:4px 2px; background:none; }
-  .del { flex:0 0 auto; font-family:var(--ui-font); font-size:11px; color:var(--mid);
+  .del { flex:0 0 auto; font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
          text-decoration:underline; background:none; border:none; cursor:pointer;
          padding:4px 0; }
   .del.arm { color:var(--red); font-weight:600; }
   .card textarea { width:100%; min-height:84px; font-family:var(--ui-font);
-                   font-size:15px; line-height:1.45; color:var(--ink);
+                   font-size:var(--t3); line-height:1.45; color:var(--ink);
                    border:1px solid var(--rule); border-radius:8px; padding:10px;
                    background:var(--cream); resize:vertical; }
   .meta { display:flex; justify-content:space-between; align-items:center;
           gap:12px; margin-top:8px; }
-  .count { font-size:12px; color:var(--mid); }
-  .save { font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
-          text-transform:uppercase; padding:8px 18px; border-radius:8px;
+  .count { font-size:var(--t2); color:var(--mid); }
+  .save { font-family:var(--ui-font); font-size:var(--t2); padding:8px 18px; border-radius:8px;
           border:1px solid var(--ink); background:var(--ink); color:var(--cream);
           cursor:pointer; }
   .save:disabled { background:none; color:var(--mid); border-color:var(--rule);
                    cursor:default; }
-  .warn { font-size:12px; color:var(--red); margin-top:6px; line-height:1.45; }
+  .warn { font-size:var(--t2); color:var(--red); margin-top:6px; line-height:1.45; }
 
   .add { display:block; width:100%; text-align:center; padding:13px;
-         font-family:var(--ui-font); font-size:13px; color:var(--mid);
+         font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
          background:none; border:1px dashed var(--tan); border-radius:12px;
          cursor:pointer; }
 
   .legend { background:#fff; border:1px solid var(--rule); border-radius:12px;
             padding:4px 14px; }
-  .legend table { width:100%; border-collapse:collapse; font-size:14px; }
+  .legend table { width:100%; border-collapse:collapse; font-size:var(--t3); }
   .legend td { padding:9px 0; vertical-align:top; line-height:1.45; }
   .legend tr + tr td { border-top:1px solid var(--rule); }
   .legend td:first-child { padding-right:12px; white-space:nowrap; }
   .legend .d { color:var(--mid); }
   .legend .soon { color:var(--mid); }
-  code { background:#EFEDE8; border-radius:4px; padding:1px 5px; font-size:13px;
-         font-family:ui-monospace,Menlo,Consolas,monospace; }
-  .note { font-size:13px; color:var(--mid); line-height:1.55; margin-top:22px;
+  code { background:#EFEDE8; border-radius:4px; padding:1px 5px; font-size:var(--t2);
+         font-family:var(--ui-font); }
+  .note { font-size:var(--t2); color:var(--mid); line-height:1.55; margin-top:22px;
           border-top:1px solid var(--rule); padding-top:14px; }
 </style>
 </head>
-<body class="tier-app">
+<body class="tier-app ui2">
 
 <div class="daterow">
   <div class="date" id="title">SMS Templates</div>

@@ -216,10 +216,17 @@ with sync_playwright() as p:
     ck("the when sits beside the name and names the month",
        pg.evaluate("()=>document.querySelector('#board [data-booking=\"b3\"] .top .when').textContent")
        == nice(0) + " · 11:00 am")
+    #  Was pinned to rgb(28, 28, 26), the old --ink. The ruling is that the
+    #  line wears INK and never the band's own colour, which is a statement
+    #  about tokens, so it is read from the token and survives a restyle.
     ck("and wears ink on every band, never the band's colour",
-       pg.evaluate("()=>['b3','b12','b7','b9'].every(id=>"
-                   "getComputedStyle(document.querySelector("
-                   "'#board [data-booking=\"'+id+'\"] .when')).color==='rgb(28, 28, 26)')"))
+       pg.evaluate("""()=>{const probe=v=>{const e=document.createElement('span');
+            e.style.color='var('+v+')';document.body.appendChild(e);
+            const c=getComputedStyle(e).color;e.remove();return c;};
+          const ink=probe('--ink');
+          return ['b3','b12','b7','b9'].every(id=>
+            getComputedStyle(document.querySelector(
+              '#board [data-booking="'+id+'"] .when')).color===ink);}"""))
     ck("no tile line wraps - each is one ellipsised row",
        pg.evaluate("()=>['.st','.cmp','.when'].every(s=>{"
                    "var e=document.querySelector('#board [data-booking=\"b3\"] '+s);"

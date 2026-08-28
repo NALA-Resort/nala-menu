@@ -6,21 +6,21 @@
 <link rel="manifest" href="manifest.json">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Nala · Diagnostics</title>
+<link rel="stylesheet" href="nala-ui2.css?v=1">
 <style>
-  body { font-family:-apple-system,Helvetica,Arial,sans-serif; background:#F9F7F4; color:#1C1C1A;
-         padding:10px 12px; font-size:11px; line-height:1.35; }
-  h2 { font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:#999;
+  body { font-size:var(--t2); line-height:1.35 }
+  h2 { font-size:var(--t1); color:#999;
        margin:9px 0 3px; font-weight:normal; }
   pre { background:#fff; border:1px solid #E0E0DA; padding:6px 7px; border-radius:2px;
-        font-size:9.5px; line-height:1.35; white-space:pre-wrap; word-break:break-all;
+        font-size:var(--t1); line-height:1.35; white-space:pre-wrap; word-break:break-all;
         max-height:150px; overflow:auto; margin:0; }
   .ok   { color:#3F7A52; font-weight:bold; }
   .bad  { color:#A8321E; font-weight:bold; }
   button { padding:7px 12px; background:#1C1C1A; color:#fff; border:none;
-           font-size:9px; letter-spacing:.1em; text-transform:uppercase; margin:0 0 4px; }
+           font-size:var(--t1); margin:0 0 4px; }
 </style>
 </head>
-<body>
+<body class="ui2">
 <div id="noAccess" style="display:none;padding:14px;background:#A8321E;color:#fff;
      font-size:12px;line-height:1.5"></div>
 <div id="tools">

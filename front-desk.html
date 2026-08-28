@@ -2,25 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Front Desk Arrival</title>
+<link rel="stylesheet" href="nala-ui2.css?v=1">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-          --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
-          /* The same two the boards already use to mean dining and not. */
-          --dine:#5E7D67; --nodine:#9E6455; }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
-         padding:calc(24px + env(safe-area-inset-top)) 18px 0;
-         -webkit-tap-highlight-color:transparent; }
+  
 
-  .seclabel { font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  .seclabel { font-size:var(--t2);
               color:var(--mid); margin:22px 0 8px; }
 
   /* One arrival. The whole row is the control surface, the same idea as the
@@ -29,33 +23,33 @@
   .arr { display:flex; align-items:center; gap:12px; width:100%;
          background:none; border:1px solid var(--rule); border-radius:8px;
          padding:11px 13px; margin-bottom:7px; text-align:left;
-         font-family:inherit; color:inherit; cursor:pointer; }
+         font-family:var(--ui-font); color:inherit; cursor:pointer; }
 
   /* The villa number is how reception finds the guest standing in front of
      them, so it carries tile weight. 20 on the type scale. */
-  .arr-v { font-size:20px; min-width:30px; text-align:center; }
+  .arr-v { font-size:var(--t4); min-width:30px; text-align:center; }
   .arr-mid { flex:1; min-width:0; }
-  .arr-n { font-size:15px; white-space:nowrap; overflow:hidden;
+  .arr-n { font-size:var(--t3); white-space:nowrap; overflow:hidden;
            text-overflow:ellipsis; }
   /* The number, its confidence mark and the pencil, as the Pre-arrival SMS
      page draws them and from the same builder. On its own line rather than
      beside the name: this row also carries the fork and the link icons, so
      the name line clips at phone width and a clipped pencil cannot be
      tapped. ok wears --dine, the same ink the SMS page's --resgreen is. */
-  .arr-p { font-size:11px; color:var(--mid); margin-top:2px; }
+  .arr-p { font-size:var(--t2); color:var(--mid); margin-top:2px; }
   .arr-p .ph { font-weight:normal; }
   .arr-p .conf { margin-left:4px; }
   .arr-p .conf.ok { color:var(--dine); }
   .arr-p .conf.un { color:var(--mid); }
-  .arr-p .pen { font-size:12px; color:var(--mid); margin-left:5px;
+  .arr-p .pen { font-size:var(--t2); color:var(--mid); margin-left:5px;
                 padding:2px 4px; cursor:pointer; }
   /* Stay dates as the styleguide sets them: Tue 11-Fri 14. No ordinal, month
      omitted, one line, because a wrapped range doubles the row height. */
-  .arr-s { font-size:11px; color:var(--mid); margin-top:2px; white-space:nowrap;
+  .arr-s { font-size:var(--t2); color:var(--mid); margin-top:2px; white-space:nowrap;
            overflow:hidden; text-overflow:ellipsis; }
   /* When they are getting here is what reception plans the afternoon around,
      so it does not read as quietly as the stay length beside it. */
-  .arr-s .eta { font-size:12.5px; font-weight:600; color:var(--ink); }
+  .arr-s .eta { font-size:var(--t2); font-weight:600; color:var(--ink); }
   /* The count reads in the row's own amber, so it is the same fact as the
      tint said louder rather than a second signal to decode. */
   .arr-s .ans { color:#8A6A2F; font-weight:600; }
@@ -73,15 +67,15 @@
   .stat-n.unsure { color:var(--mid); }
   /* Arrived is a fraction: the number alone says nothing without the total,
      and reception is watching one climb towards the other. */
-  .stat-n .of { font-size:16px; color:var(--mid); }
+  .stat-n .of { font-size:var(--t3); color:var(--mid); }
 
   /* The summary drops out of the row it belongs to, so it is inset and shares
      the row's left edge rather than floating as its own card. */
   .sum { border:1px solid var(--rule); border-top:none; border-radius:0 0 8px 8px;
          margin:-8px 0 7px; padding:12px 13px 13px; }
-  .sum-r { display:flex; gap:10px; font-size:13px; line-height:1.5;
+  .sum-r { display:flex; gap:10px; font-size:var(--t2); line-height:1.5;
            padding:3px 0; align-items:baseline; }
-  .sum-l { flex:0 0 88px; font-size:8px; letter-spacing:.2em; text-transform:uppercase;
+  .sum-l { flex:0 0 88px; font-size:var(--t1);
            color:var(--mid); padding-top:3px; }
   .sum-v { flex:1; min-width:0; }
   .sum-v.none { color:var(--mid); font-style:italic; }
@@ -89,8 +83,7 @@
   .sum-btns + .sum-btns { margin-top:7px; }
   .sum-btns button.wide { flex:1 1 100%; }
   .sum-btns button { flex:1; padding:12px 0; border:1px solid var(--rule);
-                     border-radius:6px; font-family:var(--ui-font); font-size:11px;
-                     letter-spacing:.14em; text-transform:uppercase; cursor:pointer;
+                     border-radius:6px; font-family:var(--ui-font); font-size:var(--t2); cursor:pointer;
                      background:transparent; color:var(--mid); }
   .sum-btns button.go { background:var(--green); border-color:var(--greenb);
                         color:var(--ink); }
@@ -143,9 +136,9 @@
                    border-left:3px solid rgba(194,154,85,.85); }
   .sum { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
 
-  .empty { font-size:15px; color:var(--mid); font-style:italic; padding:4px 0 2px; }
+  .empty { font-size:var(--t3); color:var(--mid); font-style:italic; padding:4px 0 2px; }
   .spacer { height:40px; }
-  #errBar { display:none; background:var(--red); color:#fff; font-size:13px;
+  #errBar { display:none; background:var(--red); color:#fff; font-size:var(--t2);
             padding:9px 12px; border-radius:6px; margin-top:12px; }
   #errBar.show { display:block; }
 
@@ -158,15 +151,12 @@
   .sheet { width:100%; max-width:520px; background:var(--cream);
            padding:26px 24px 34px; border-top:1px solid var(--rule);
            max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
-  .sheet h3 { font-family:var(--ui-font); font-size:11px; letter-spacing:.2em;
-              text-transform:uppercase; color:var(--mid); font-weight:normal;
+  .sheet h3 { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); font-weight:normal;
               text-align:center; margin-bottom:18px; }
-  .sheet-label { font-family:var(--ui-font); font-size:8px; letter-spacing:.25em;
-                 text-transform:uppercase; color:var(--mid); text-align:center;
+  .sheet-label { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); text-align:center;
                  margin:16px 0 8px; }
   .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid transparent;
-         border-radius:6px; font-family:var(--ui-font); font-size:11px;
-         letter-spacing:.14em; text-transform:uppercase; color:var(--ink);
+         border-radius:6px; font-family:var(--ui-font); font-size:var(--t2); color:var(--ink);
          cursor:pointer; }
   .opt.solid { background:var(--green); border-color:var(--greenb); }
   .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
@@ -178,12 +168,11 @@
   .opt.terra:active { background:var(--terra-t); }
   .opt:disabled { opacity:.4; cursor:default; }
   /* Why the primary is unavailable, said rather than left to be guessed at. */
-  .opt-why { font-family:var(--ui-font); font-size:11px; color:var(--mid);
+  .opt-why { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
              text-align:center; margin:-4px 0 10px; line-height:1.45; }
   .seg { display:flex; gap:6px; margin:2px 0 4px; }
   .seg button { flex:1; padding:11px 0; border:1px solid var(--rule); background:transparent;
-                font-family:var(--ui-font); font-size:10px; letter-spacing:.12em;
-                text-transform:uppercase; color:var(--mid); cursor:pointer; border-radius:6px; }
+                font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); cursor:pointer; border-radius:6px; }
   .seg button.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   /* An answer that WAS chosen and has just been taken off. The fill goes,
      the dark border stays, so a deselect made by accident is visible as a
@@ -200,7 +189,7 @@
   .seg button.was, .chip.was { border-color:var(--ink); color:var(--ink); }
   .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 4px; }
   .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
-         font-family:var(--ui-font); font-size:14px; color:var(--ink);
+         font-family:var(--ui-font); font-size:var(--t3); color:var(--ink);
          cursor:pointer; border-radius:6px; }
   .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
@@ -228,37 +217,37 @@
   .rail { justify-content:safe center; }
   .rail > * { flex:0 0 auto; white-space:nowrap; }
   .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
-          border-radius:20px; font-family:var(--ui-font); font-size:10px;
+          border-radius:20px; font-family:var(--ui-font); font-size:var(--t2);
           color:var(--mid); cursor:pointer; }
   .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   .txt { width:100%; padding:12px; margin-bottom:8px; border:1px solid var(--rule);
-         background:transparent; font-family:var(--ui-font); font-size:16px; color:var(--ink); }
+         background:transparent; font-family:var(--ui-font); font-size:var(--t3); color:var(--ink); }
   .txt::placeholder { color:var(--mid); font-style:italic; }
   .txt:focus { outline:none; border-color:var(--ink); }
-  .gd { text-align:center; margin:-4px 0 6px; font-size:13px; line-height:1.55; }
-  .gd .gd-sub { display:block; font-family:var(--ui-font); font-size:10.5px;
-                color:var(--mid); letter-spacing:.03em; }
-  .note-box { font-style:italic; font-size:13px; color:var(--mid); text-align:center;
+  .gd { text-align:center; margin:-4px 0 6px; font-size:var(--t2); line-height:1.55; }
+  .gd .gd-sub { display:block; font-family:var(--ui-font); font-size:var(--t2);
+                color:var(--mid); }
+  .note-box { font-style:italic; font-size:var(--t2); color:var(--mid); text-align:center;
               line-height:1.6; padding:0 4px 14px; }
   /* The one flag that sets itself, said under the tickable ones so nobody
      hunts for its chip: Luxury Escapes rides on the Mews rate. */
-  .flag-src { font-family:var(--ui-font); font-size:9.5px; color:var(--mid);
-              text-align:center; letter-spacing:.03em; margin:2px 0 4px; }
+  .flag-src { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
+              text-align:center; margin:2px 0 4px; }
   /* What is missing, said in words. A button that silently does nothing is
      the worst of both. */
-  .miss-note { display:none; font-size:12px; color:var(--red); text-align:center;
+  .miss-note { display:none; font-size:var(--t2); color:var(--red); text-align:center;
                padding:2px 4px 8px; }
   .miss-note.show { display:block; }
   /* The menu did not exist when the guest answered, so this is the first
      chance anyone has had to notice. */
-  .clash { display:block; color:var(--red); font-size:12px; margin-top:3px; }
+  .clash { display:block; color:var(--red); font-size:var(--t2); margin-top:3px; }
   .seg.miss button, .chips.miss .chip { border-color:var(--red); }
   /* The note is part of the answer when Other is chosen, so it can be the
      thing that is missing, and has to be able to say so. */
   .txt.miss { border-color:var(--red); }
 </style>
 </head>
-<body class="tier-app">
+<body class="tier-app ui2">
 
 <div class="daterow">
   <button class="dnav today" id="dToday">Today</button>

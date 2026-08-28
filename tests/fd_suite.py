@@ -389,9 +389,13 @@ with sync_playwright() as p:
        ["Interested" in l and "late morning" in l for l in sumtxt.split("\n")].count(True) == 1)
     ck("dining approach, in words rather than 'most'",
        "Dining in most nights" in sumtxt)
-    # .sum-l is uppercased by CSS, so innerText comes back shouting.
+    #  Was "SECOND GUEST": .sum-l used to be uppercased by CSS so innerText
+    #  came back shouting. The second dress sets labels in sentence case, so
+    #  the assertion no longer pins the casing - it was never the point, and
+    #  a test that fails when a label stops shouting is a test about CSS.
+    #  What matters is that the label and the name are both on the summary.
     ck("the second guest, under the name on the row above",
-       "SECOND GUEST" in sumtxt and "Imogen Clarke" in sumtxt)
+       "second guest" in sumtxt.lower() and "Imogen Clarke" in sumtxt)
     ck("and the name the guest typed outranks the Mews copy",
        "Wrong Name" not in sumtxt)
     #  Two ways out since 28 Aug. Confirm arriving sat between these: it

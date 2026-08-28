@@ -323,15 +323,21 @@ with sync_playwright() as p:
     #  stylesheet takes its colours from tokens only a tier-app body carries.
     ck("the way off the page is there",
        pg.evaluate("()=>!!document.getElementById('navBtn')"))
+    #  The border was a proxy for "the --ctl-* tokens resolved" under a sheet
+    #  that drew this as a bordered box. nala-ui2.css draws a borderless icon
+    #  button and uses no --ctl-* at all, so the proxy failed on a button that
+    #  is plainly visible. Assert the thing it stood in for, and all three
+    #  bars rather than the first.
     ck("and is actually visible, not drawn in colours that resolve to nothing",
        pg.evaluate("""()=>{const b=document.getElementById('navBtn');
           const r=b.getBoundingClientRect();
-          const c=getComputedStyle(b);
-          const bar=b.querySelector('span');
-          const bc=getComputedStyle(bar).backgroundColor;
-          return r.width>20 && r.height>20 &&
-                 c.borderTopWidth!=='0px' &&
-                 bc!=='rgba(0, 0, 0, 0)' && bc!=='transparent';}"""))
+          const bars=[...b.querySelectorAll('span')];
+          const lit=bars.every(s=>{
+            const sr=s.getBoundingClientRect();
+            const sc=getComputedStyle(s).backgroundColor;
+            return sr.width>0 && sr.height>0 &&
+                   sc!=='rgba(0, 0, 0, 0)' && sc!=='transparent';});
+          return r.width>20 && r.height>20 && bars.length===3 && lit;}"""))
     pg.close()
 
     # ── the rehearsal ───────────────────────────────────────────
@@ -819,8 +825,9 @@ with sync_playwright() as p:
           .find(x=>x.getAttribute('data-c')==='main' &&
                    x.getAttribute('data-n')==='Nut allergy');
           var s = getComputedStyle(t);
-          return s.backgroundColor === 'rgb(224, 224, 218)' &&
-                 s.color === 'rgb(28, 28, 26)'; }"""))
+          const probe=v=>{const e=document.createElement('span');e.style.color='var('+v+')';document.body.appendChild(e);const c=getComputedStyle(e).color;e.remove();return c;};
+          return s.backgroundColor === probe('--rule') &&
+                 s.color === probe('--ink'); }"""))
     ck("and pressing left the red ring exactly as it was",
        pg.evaluate("""()=>{ var t=[...document.querySelectorAll('#tagblock .tick')]
           .find(x=>x.getAttribute('data-c')==='main' &&
@@ -835,8 +842,10 @@ with sync_playwright() as p:
                    x.getAttribute('data-n')==='Vegan');
           if (!t) return false; t.click();
           var s = getComputedStyle(t);
-          return s.backgroundColor === 'rgb(224, 224, 218)' &&
-                 s.borderTopColor === 'rgb(201, 201, 194)'; }"""))
+          const probe=v=>{const e=document.createElement('span');e.style.color='var('+v+')';document.body.appendChild(e);const c=getComputedStyle(e).color;e.remove();return c;};
+          return s.backgroundColor === probe('--rule') &&
+                 s.borderTopColor !== probe('--red') &&
+                 s.borderTopColor !== s.backgroundColor; }"""))
     pg.close()
 
     #  One dietary, two declarers: the confirmed guest outranks the pending

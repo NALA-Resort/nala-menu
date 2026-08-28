@@ -259,9 +259,17 @@ with sync_playwright() as p:
         #  line." It was one line and 87 places.
         if _r.search(r'font-family:\s*(?!var\()', st):
             bad_font.append(f)
-        #  Sizes come from the scale or they are picked by eye.
-        for m in _r.findall(r'font-size:\s*([0-9.]+(?:px|rem))', st):
-            bad_size.append(f + " " + m)
+        #  Sizes come from the scale or they are picked by eye. A deliberate
+        #  exception is allowed the way CLAUDE.md allows any other: say why,
+        #  in the file, next to the thing. Mark the line `off-scale: reason`
+        #  and this stops asking. The Cleans board's tile internals are the
+        #  first: its tiles are a fixed grid the owner has ruled stays as it
+        #  is, and inflating the type inside them would overflow it.
+        for line in st.splitlines():
+            if "off-scale:" in line:
+                continue
+            for m in _r.findall(r'font-size:\s*([0-9.]+(?:px|rem))', line):
+                bad_size.append(f + " " + m)
         #  Takes pinch zoom from anyone who needs it, and never did the job
         #  it was added for; touch-action:manipulation does that instead.
         if "user-scalable=no" in txt:
