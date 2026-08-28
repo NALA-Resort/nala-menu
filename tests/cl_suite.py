@@ -34,17 +34,54 @@ bf24=(now-datetime.timedelta(minutes=24)).isoformat()   # red band
 hk={"7":{"done":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"},"2":{"bfast":bf},
     "11":{"kind":"clean"}, "17":{"kind":"pre"}, "13":{"kind":"pre","done":now.isoformat()}, "8":{"departed":True}, "12":{"departed":True},
     "14":{"bfast":bf2}, "6":{"bfast":bf16}, "9":{"bfast":bf24}}
+HK0=json.dumps(hk)                  # the starting board, for resetDb
+
+def resetDb():
+    """Hand the next scenario a clean board.
+
+    Writes are kept now (see remember), which is what a database does and
+    what stops the twenty second poll from wiping a save mid-assertion. It
+    also means one scenario's saves would otherwise be waiting for the
+    next: these sections each open a fresh page precisely BECAUSE they
+    want a fresh board, and villa 7 arriving already finished is a fixture
+    statement, not a leftover from whatever an earlier tap wrote."""
+    hk.clear(); hk.update(json.loads(HK0))
+
 staff={"staff@nalaresort,com,au":{"name":"Admin","role":"admin"},
        "housekeeping@nalaresort,com,au":{"name":"Housekeeping","role":"housekeeping"},
        "chef@nalaresort,com,au":{"name":"Chef","role":"chef"},
        "waiter@nalaresort,com,au":{"name":"Waiter","role":"waiter"},
        "482913@staff,nala":{"name":"NALA Sync","role":"sync"}}
 prevHk={"16":{"pushed":(now-datetime.timedelta(days=1)).isoformat()}}
+def remember(u, raw):
+    """Keep an accepted write, so the next read serves it back.
+
+    The board re-reads every twenty seconds whenever no sheet is open, and
+    this stub answered that read with the original fixture - so a poll
+    silently undid whatever had just been saved. A villa set to be cleaned
+    went back to a service a moment later, the control that only exists on
+    an overridden villa was then missing, and the run died on it several
+    assertions further along, with nothing pointing at the poll.
+
+    PATCH semantics, like the database: the fields given are merged in, and
+    a null deletes its key - which is exactly how setField clears one."""
+    hit = re.search(r"/hk/(\d{4}-\d{2}-\d{2})/(\d+)\.json", u)
+    if not hit or hit.group(1) != today: return
+    try: obj = json.loads(raw or "null")
+    except Exception: return
+    if obj is None: hk.pop(hit.group(2), None); return
+    cur = dict(hk.get(hit.group(2), {}))
+    for k, v in obj.items():
+        if v is None: cur.pop(k, None)
+        else: cur[k] = v
+    hk[hit.group(2)] = cur
+
 def fb(route,request):
     u=request.url; m=request.method
     if m=="PATCH":
         WRITES.append({"u":u,"b":request.post_data})
         if STATE["fail"]: route.fulfill(status=401,body="no"); return
+        remember(u, request.post_data)
         route.fulfill(status=200,content_type="application/json",body=request.post_data); return
     body="null"
     if "/staff" in u: body=json.dumps(staff)
@@ -57,6 +94,29 @@ def fb(route,request):
     route.fulfill(status=200,content_type="application/json",body=body)
 from playwright.sync_api import sync_playwright
 P=F=0
+def settle(pg, timeout=5000):
+    """Wait for a sheet that is saving to finish, close and repaint.
+
+    The button standard of 27 Aug made every save hold the sheet open: the
+    button says Saving, then Saved, holds the green a moment, and only then
+    closes and redraws the board behind it. A fixed 400ms wait landed inside
+    that hold - the button still read "Saved" and the overlay was still up -
+    so the next tap went at a tile through an open sheet, the change never
+    took, and the run died several assertions later on a control that was
+    never going to be there. Waiting on the overlay is waiting on the thing
+    the page actually does, so it cannot drift out of step with the hold.
+
+    Returns True if the sheet closed. False is not a failure: a refused save
+    keeps it open on purpose, and the caller then has to close it before
+    touching the board underneath."""
+    try:
+        pg.wait_for_selector("#ov:not(.show)", timeout=timeout)
+    except Exception:
+        return False
+    pg.wait_for_timeout(120)          # the repaint that follows the close
+    return True
+
+
 def ck(n,c):
     global P,F
     print(("PASS " if c else "FAIL ")+n); P,F=(P+1,F) if c else (P,F+1)
@@ -65,6 +125,7 @@ def tile(pg,n):
 with sync_playwright() as p:
     b=p.chromium.launch()
     def page(email):
+        resetDb()
         pg=b.new_page(viewport={"width":820,"height":1100},device_scale_factor=2)
         pg.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body=sdk(email)))
         pg.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body="/*n*/"))
@@ -260,7 +321,16 @@ with sync_playwright() as p:
     pg.wait_for_timeout(180)
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
                 ".find(x=>/^yes/i.test(x.textContent.trim())).click()")
-    pg.wait_for_timeout(400)
+    settle(pg)
+    # The save must SURVIVE. saveFeedback calls the fail handler once with an
+    # empty message to clear the error line before the write goes out, and
+    # this page's handler read that as a refusal and put the board back - so
+    # every successful save was rolled back on screen the instant it was
+    # made, though the write had gone and the database had it. The board
+    # only corrected itself on the next twenty second poll, and never while
+    # the sheet was open, because an open sheet stops the poll.
+    ck("a save that succeeded is not put back on the board",
+       pg.evaluate("()=>(STATE.hk['2']||{}).kind") == "clean")
     tile(pg,2).click(); pg.wait_for_timeout(220)
     st2 = pg.locator("#sheetBox").inner_text().lower()
     print("   villa 2 once switched to a clean:", st2.replace("\n"," | "))
@@ -273,12 +343,12 @@ with sync_playwright() as p:
     pg.wait_for_timeout(180)
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
                 ".find(x=>/^yes/i.test(x.textContent.trim())).click()")
-    pg.wait_for_timeout(400)
+    settle(pg)
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
     # mark room1 done
     tile(pg,1).click(); pg.wait_for_timeout(150)
     pg.locator(".pbtn.solid",has_text="Mark as").click(); pg.wait_for_timeout(150)
-    pg.locator(".pbtn.solid",has_text="Yes -").click(); pg.wait_for_timeout(300)
+    pg.locator(".pbtn.solid",has_text="Yes -").click(); settle(pg)
     w=[x for x in WRITES if re.search(r"/hk/"+today+r"/1\.json",x["u"])]
     ck("PATCH done for room1", len(w)==1 and "done" in json.loads(w[0]["b"]))
     ck("room1 tile green, done count 2, sheet closed",
@@ -336,7 +406,7 @@ with sync_playwright() as p:
        "yes - to be cleaned" in pg.locator("#sheetBox").inner_text().lower())
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
                 ".find(x=>/yes/i.test(x.textContent) && /clean/i.test(x.textContent)).click()")
-    pg.wait_for_timeout(300)
+    settle(pg)
     kw=[x for x in WRITES if "/hk/" in x["u"] and "/3.json" in x["u"]]
     print("   kind write:", kw[-1]["b"] if kw else None)
     ck("setting the job writes kind to that villa's hk record",
@@ -350,7 +420,7 @@ with sync_playwright() as p:
     pg.wait_for_timeout(180)
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
                 ".find(x=>/yes/i.test(x.textContent) && /clean/i.test(x.textContent)).click()")
-    pg.wait_for_timeout(350)
+    settle(pg)
     live = pg.evaluate("()=>{const t=[...document.querySelectorAll('.tile')]"
                        ".find(x=>x.querySelector('.rn').textContent==='6');"
                        "return t.innerText.toLowerCase().replace(/\\n/g,' | ');}")
@@ -363,7 +433,7 @@ with sync_playwright() as p:
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/mark as/i.test(x.textContent)).click()")
     pg.wait_for_timeout(180)
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/^yes/i.test(x.textContent.trim())).click()")
-    pg.wait_for_timeout(350)
+    settle(pg)
     fin = pg.evaluate("()=>{const t=[...document.querySelectorAll('.tile')]"
                       ".find(x=>x.querySelector('.rn').textContent==='6');"
                       "return t.innerText.toLowerCase().replace(/\\n/g,' | ');}")
@@ -417,7 +487,7 @@ with sync_playwright() as p:
     pg.wait_for_timeout(180)
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
                 ".find(x=>/^yes/i.test(x.textContent.trim())).click()")
-    pg.wait_for_timeout(500)
+    settle(pg)
     kinds=[x for x in WRITES if "/hk/" in x["u"] and "kind" in x["b"]]
     print("   multi writes:", [x["u"].split("/")[-1] for x in kinds])
     ck("one decision writes to every villa picked", len(kinds)==2)
@@ -503,7 +573,7 @@ with sync_playwright() as p:
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/^push$/i.test(x.textContent.trim())).click()")
     pg.wait_for_timeout(180)
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/yes - push/i.test(x.textContent)).click()")
-    pg.wait_for_timeout(400)
+    settle(pg)
     pw=[x for x in WRITES if "/12.json" in x["u"] and "pushed" in x["b"]]
     ck("pushing writes to that villa", len(pw)==1)
     t12=pg.evaluate("()=>{const t=[...document.querySelectorAll('.tile')]"
@@ -1080,6 +1150,7 @@ with sync_playwright() as p:
             ("iPhone landscape",        844, 390, True, 6),
             ("small phone landscape",   740, 360, True, 6),
             ("tiny phone landscape",    667, 320, True, 6)]:
+        resetDb()
         q=b.new_page(viewport={"width":w,"height":h})
         q.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
             content_type="application/javascript",body=sdk("staff@nalaresort.com.au")))

@@ -704,7 +704,13 @@ function save(it, status, opts){
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   }).then(function(r){
-    if (!r.ok) throw new Error();
+    /* The STATUS goes into the error, not a bare one. The shared
+       saveFailWords reads the message to tell a refusal - a permission,
+       which needs the manager - from a write that never arrived, which
+       needs another go; handed nothing at all it could recognise neither,
+       so a rules rejection here read as "check the connection" and sent
+       the masseuse to the wrong remedy entirely. */
+    if (!r.ok) throw new Error('spa save failed ' + r.status);
     /* The buzz, the owner's ask of 27 Aug: every save moves a treatment
        somewhere the other side acts on, so each fires its event and the
        push Worker routes it - the masseuse hears the desk's asks and

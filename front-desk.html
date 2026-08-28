@@ -100,11 +100,19 @@
   /* Whether they are eating, readable without opening anything. Only on rows
      that have a form: there is nothing to report about a guest who has not
      answered, and an icon there would be an answer we do not have. */
-  .fork { width:19px; height:19px; flex:0 0 19px; opacity:1; }
+  /* 28px, up from 19 on 28 Aug: the owner could not read it at a glance,
+     and it was competing with a 20px villa number while carrying the one
+     fact the row exists to show at speed - whether the kitchen is cooking
+     for this villa tonight. The row has the height for it already; nothing
+     else on the row moves. */
+  .fork { width:28px; height:28px; flex:0 0 28px; opacity:1; }
   .fork svg { width:100%; height:100%; display:block; }
   .fork.in  svg { fill:var(--dine); }
   .fork.out svg { fill:var(--nodine); }
-  .fork.un  svg { fill:var(--mid); opacity:.6; }
+  /* Grey stays the quietest of the three - unknown promises nothing, the
+     colour law - but .6 at this size was faint enough to be missed rather
+     than merely quiet. */
+  .fork.un  svg { fill:var(--mid); opacity:.75; }
 
   /* Opened the message and did not finish. Outlined rather than filled, so it
      reads as the absence of an answer rather than as one.

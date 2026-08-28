@@ -1073,7 +1073,25 @@ function setField(n, obj, errEl, btn){
        always has. The board underneath is already showing the change - it
        was written optimistically before the request left.               */
     hold:400, then:closeSheet,
-    fail:function(msg){ STATE.hk[n]=prev; render(); errEl.textContent = msg; }
+    /* An EMPTY message is not a failure. saveFeedback calls this once
+       before the write goes out, to clear whatever the last attempt left on
+       the error line, and this handler took it as a refusal and put the
+       board back - undoing the optimistic update on every single save. A
+       villa set to be cleaned reverted on screen the instant it was set,
+       though the write had gone and the database had it; the board only
+       corrected itself on the next twenty second poll, and never while the
+       sheet was open, because an open sheet stops the poll. The other three
+       pages wired to saveFeedback only write words in here, so the clear
+       costs them nothing and this was the one that did state. */
+    fail:function(msg){
+      /* errEl is guarded because setField is also called with no error
+         line at all - the notification paths hand it three arguments -
+         and the clear below runs on every save now, where the rollback
+         it replaced only ran on a refusal and so never met one. */
+      if (!msg){ if (errEl) errEl.textContent = ''; return; }
+      STATE.hk[n]=prev; render();
+      if (errEl) errEl.textContent = msg;
+    }
   });
 }
 
