@@ -478,12 +478,24 @@ function readReservation(p) {
                             "GuestNotes", "guest_notes", "CustomerNotes"]),
     customerId:    pickGuid(p, ["CustomerId", "customer_id", "CustomerID",
                                 "AccountId", "customerId"]),
-    /* The Mews rate, as words. The desk's booking flags (Luxury Escapes,
-       Breakfast included) switch themselves on from this string, matched in
-       BOOKING_FLAGS in nala-shared.js - matched THERE and not here, so the
-       rule lives once and this Worker stays a courier. Which key the Zap
-       maps it under has not been seen live, hence the spread; RateId is a
-       GUID and useless to a human, so only the name is kept. */
+    /* The Mews rate, as words. Exactly ONE flag rides on it: Luxury Escapes,
+       matched in RATE_FLAG in nala-shared.js - matched THERE and not here, so
+       the rule lives once and this Worker stays a courier. Every other flag
+       is created by an admin on Flag Settings and ticked by hand at the desk.
+       The owner's ruling, confirmed 28 Aug.
+
+       This comment used to name Breakfast included as automatic too, and
+       pointed at a BOOKING_FLAGS that has never existed in this codebase.
+       Nothing read it, so nothing broke; what it cost was a session spent
+       working out how a breakfast flag had "switched itself on" for a
+       Luxury Escapes booking. It had not. An admin had ticked it.
+
+       Matched on the rate's WORDS, not on a code. Nothing here reads a rate
+       code, and a payload that carried one in place of the name would drop
+       the pill silently - no error, just a booking that stops wearing it.
+       Which key the Zap maps it under has not been seen live, hence the
+       spread; RateId is a GUID and useless to a human, so only the name is
+       kept. */
     rate:          pick(p, ["RateName", "Rate Name", "rate_name", "rateName",
                             "RatePlanName", "Rate", "rate"]),
     adults:        pick(p, ["AdultCount", "adults"]),
