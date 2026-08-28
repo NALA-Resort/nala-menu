@@ -24,6 +24,27 @@ manual={
  "room-5":{"status":"vacant","pax":0,"room":"5","source":"manual"},
  "room-6":{"status":"in","pax":3,"room":"6","source":"manual"},
 }
+# The villa cells. The board moved them out of /manual and into /dinner, and
+# this stub's READ side was never told: /dinner came back null on every load,
+# so the board's twenty second poll - it re-reads whenever no sheet is open -
+# served an empty set back and silently undid every save the suite had just
+# made. A count asserted after a save then read whatever the run's wall clock
+# happened to allow. Kept here, written by remember() below.
+dinner={}
+
+def resetDb():
+    """Hand the next scenario a clean database.
+
+    Writes are kept now (see remember), which is what a database does and
+    what stops the board's poll from wiping a save mid-assertion. It also
+    means one scenario's saves would otherwise be waiting for the next one:
+    these sections each open a fresh page precisely BECAUSE they want a
+    fresh board, and villa 13 starting vacant is a fixture statement, not a
+    leftover from whatever the multi-select wrote forty assertions ago."""
+    manual.clear(); manual.update(json.loads(MANUAL0))
+    dinner.clear()
+
+MANUAL0=json.dumps(manual)          # the starting board, for resetDb
 roomguests={today:{"9":{"name":"Priya","departs":plus(3)},"4":{"name":"Lucy","departs":plus(2)}}}
 # Villa 9 as Mews has it. Same name and departure as the guest written record,
 # so nothing on the board shifts and the only new fact is the party size, which
@@ -53,18 +74,38 @@ staff={"staff@x":{"name":"Admin","role":"admin"},
        "waiter@x":{"name":"Waiter","role":"waiter"},
        "desk@x":{"name":"Desk","role":"staff"},
        "housekeeping@x":{"name":"Housekeeping","role":"housekeeping"}}
+def remember(m,u,raw):
+    """Keep an accepted write, so a later read serves it back.
+
+    A stub that takes a write and then answers the next read with the
+    original fixture is not a slow database, it is a lying one: the board
+    polls, the poll wipes what was just saved, and an assertion after a save
+    passes or fails on how long the run happened to take. Only today's node
+    is kept, which is all any of these tests read."""
+    hit=re.search(r"/(dinner|manual)/(\d{4}-\d{2}-\d{2})/([^/.]+)\.json",u)
+    if not hit or hit.group(2)!=today: return
+    store = dinner if hit.group(1)=="dinner" else manual
+    key = hit.group(3)
+    if m=="DELETE" or raw in (None,"","null"): store.pop(key,None)
+    else:
+        try: store[key]=json.loads(raw)
+        except Exception: pass
+
 def fb(route,request):
     u=request.url; m=request.method
     if m in ("PUT","DELETE","PATCH"):
         WRITES.append({"m":m,"u":u,"b":request.post_data})
         if STATE["fail"]:
             route.fulfill(status=401,content_type="application/json",body='{"error":"denied"}'); return
+        remember(m,u,request.post_data)
         route.fulfill(status=200,content_type="application/json",body=request.post_data or "null"); return
     body="null"
     if "/staff" in u: body=json.dumps(staff)
     elif "/responses/" in u: body=json.dumps(responses) if today in u else "{}"
     elif "/manual/" in u and today not in u: body="{}"
     elif "/manual/" in u: body=json.dumps(manual)
+    elif "/dinner/"+today in u: body=json.dumps(dinner)
+    elif "/dinner/" in u: body="null"
     elif "/stays/"+today in u: body=json.dumps(stays[today])
     elif "/stays/" in u: body="null"
     elif "/roomguests/"+today in u: body=json.dumps(roomguests[today])
@@ -90,6 +131,42 @@ from playwright.sync_api import sync_playwright
 def tile(pg,n):
     return pg.locator("#rooms .room").filter(has=pg.locator(".room-n",has_text=re.compile(r"^%d$"%n)))
 P=F=0
+def saveAndSettle(pg, sel, timeout=5000):
+    """Press a button that writes, and wait for the write to actually land.
+
+    The button standard of 27 Aug made the sheet wait for its write: the
+    button says Saving, then Saved, holds the green a moment, and only THEN
+    closes the sheet and repaints the board. A fixed sleep after the tap
+    therefore read the counters before the repaint had happened, which is
+    what "covers 13, and one villa still awaiting" started failing on - the
+    page was right and the wait was too short.
+
+    Waiting on the backdrop is waiting on the thing the page actually does,
+    so it cannot drift out of step with the hold the way a number does.
+
+    Returns True if the sheet closed, False if it is still open - which is
+    not a failure: a REFUSED save deliberately leaves the sheet up so the
+    tap can be tried again, and the caller then has to close it before
+    touching the board underneath. Clicking through a backdrop that was
+    still there is what hung this suite for thirty seconds and then killed
+    the whole run.
+    """
+    pg.locator(sel).click()
+    try:
+        pg.wait_for_selector("#backdrop:not(.show)", timeout=timeout)
+    except Exception:
+        return False
+    pg.wait_for_timeout(120)      # the repaint that follows the close
+    return True
+
+
+def closeIfOpen(pg):
+    """Shut the sheet if it is still up, so the next tap reaches the board."""
+    if pg.evaluate("()=>backdrop.className.indexOf('show')>-1"):
+        pg.evaluate("()=>{const b=document.getElementById('oClose'); if(b)b.click();}")
+        pg.wait_for_timeout(200)
+
+
 def ck(name,cond):
     global P,F
     print(("PASS " if cond else "FAIL ")+name); P,F=(P+1,F) if cond else (P,F+1)
@@ -291,7 +368,7 @@ with sync_playwright() as p:
     ck("and the covers picker is still the app's own default, not Mews'",
        pg.evaluate("()=>document.querySelector('#paxRow .pax.on').textContent")=="2")
     pg.locator(".pax", has_text="4").click()
-    pg.locator("#oIn").click(); pg.wait_for_timeout(300)
+    saveAndSettle(pg, "#oIn")
     # Writes go to the one dinner cell now, keyed by villa. /manual held the
     # same fact as /dinner and /bookings, which is how a dietary added here
     # became invisible at the front desk.
@@ -307,7 +384,7 @@ with sync_playwright() as p:
     # 6 rollback on failure
     STATE["fail"]=True
     tile(pg,10).click(); pg.wait_for_timeout(200)
-    pg.locator("#oIn").click(); pg.wait_for_timeout(400)
+    saveAndSettle(pg, "#oIn")
     err=pg.locator("#errBar").inner_text()
     s6=pg.evaluate("()=>({c:+nCovers.textContent,cls:[...document.querySelectorAll('#rooms .room')].find(b=>b.querySelector('.room-n').textContent==='10').className})")
     ck("failed write shows error banner", "Not saved" in err)
@@ -315,6 +392,14 @@ with sync_playwright() as p:
     # rather than to awaiting: that is what it was before the tap.
     ck("failed write rolled back to what the tile was before",
        "room vacant" in s6["cls"] and s6["c"]==13)
+    # A refused save leaves the sheet UP on purpose - so the tap can be tried
+    # again rather than the answer vanishing with the sheet - and only a
+    # successful one closes it. Correct, and also why the next line must not
+    # reach straight for the board: a click through a backdrop that was still
+    # there waited thirty seconds and then killed the whole run.
+    ck("and the sheet stays up, so the tap can be tried again",
+       pg.evaluate("()=>backdrop.className.indexOf('show')>-1"))
+    closeIfOpen(pg)
     STATE["fail"]=False
 
     # colours must resolve to real pixels, not classes
@@ -368,7 +453,7 @@ with sync_playwright() as p:
     pg.fill("#xName","Walk In"); pg.fill("#xPhone","0499 111 222")
     pg.locator(".pax", has_text="5").click()
     pg.locator(".chip", has_text="Vegan").click()
-    pg.locator("#oIn").click(); pg.wait_for_timeout(300)
+    saveAndSettle(pg, "#oIn")
     we=[x for x in WRITES if re.search(r"/manual/"+today+r"/ext-\d+", x["u"])]
     okx=len(we)==1 and json.loads(we[0]["b"])["pax"]==5 and "Vegan" in json.loads(we[0]["b"])["diets"]
     ck("external PUT pax5 vegan", okx)
@@ -382,7 +467,7 @@ with sync_playwright() as p:
     pg.fill("#xName","Chef Guest")
     pg.locator(".pax", has_text="3").click()
     pg.locator(".chip", has_text="Gluten").click()
-    pg.locator("#oIn").click(); pg.wait_for_timeout(300)
+    saveAndSettle(pg, "#oIn")
     wr=[x for x in WRITES if re.search(r"/dinner/"+today+r"/12\.json",x["u"]) and x["m"]=="PUT"]
     okr=len(wr)==1 and json.loads(wr[0]["b"])["name"]=="Chef Guest" and "Gluten" in json.loads(wr[0]["b"])["diets"] and json.loads(wr[0]["b"])["pax"]==3
     ck("room reservation PUT with name+diets", okr)
@@ -393,7 +478,7 @@ with sync_playwright() as p:
     sh12=pg.locator("#sheet").inner_text()
     ck("room sheet shows guest data", "Chef Guest" in sh12 and "Gluten" in sh12)
     pg.locator(".pax", has_text="4").click()
-    pg.locator("#oIn").click(); pg.wait_for_timeout(300)
+    saveAndSettle(pg, "#oIn")
     wr2=[x for x in WRITES if re.search(r"/dinner/"+today+r"/12\.json",x["u"])][-1]
     b12=json.loads(wr2["b"])
     ck("pax update kept name+diets", b12["pax"]==4 and b12.get("name")=="Chef Guest" and "Gluten" in b12.get("diets",[]))
@@ -423,7 +508,7 @@ with sync_playwright() as p:
     ck("details form prefilled with Mark", pg.evaluate("()=>xName.value")=="Mark")
     pg.fill("#xPhone","0400 333 333")
     pg.locator(".chip", has_text="Vegan").click()
-    pg.locator("#oSave").click(); pg.wait_for_timeout(300)
+    saveAndSettle(pg, "#oSave")
     w3=[x for x in WRITES if re.search(r"/dinner/"+today+r"/3\.json",x["u"])]
     b3=json.loads(w3[-1]["b"])
     ck("details save: override with phone+diets, pax kept", b3.get("override")==True and b3["phone"]=="0400 333 333" and "Vegan" in b3["diets"] and b3["pax"]==2 and b3["name"]=="Mark")
@@ -488,7 +573,7 @@ with sync_playwright() as p:
     row.locator(".edit").click(); pg.wait_for_timeout(200)
     ck("edit prefilled", pg.evaluate("()=>xName.value")=="Walk In")
     pg.fill("#xName","Walk In Party")
-    pg.locator("#oSave").click(); pg.wait_for_timeout(300)
+    saveAndSettle(pg, "#oSave")
     we2=[x for x in WRITES if re.search(r"/manual/"+today+r"/ext-\d+",x["u"])][-1]
     ck("external save-changes PUT", json.loads(we2["b"])["name"]=="Walk In Party")
     ck("row renamed", "Walk In Party" in pg.locator("#listBookings").inner_text())
@@ -497,7 +582,9 @@ with sync_playwright() as p:
     tile(pg,1).click(); pg.wait_for_timeout(200)
     ck("guest-confirmed sheet", "Confirmed by the guest" in pg.locator("#sheet").inner_text())
     pg.locator("#oCancel").click(); pg.wait_for_timeout(200)
-    pg.locator("#cYes").click(); pg.wait_for_timeout(300)
+    # The confirm writes through the same button standard as every other
+    # save, so the board behind it repaints only once the write has landed.
+    saveAndSettle(pg, "#cYes")
     wo=[x for x in WRITES if re.search(r"/dinner/[^\"]*/1\.json", x["u"]) and x["m"]=="PUT"]
     oko=len(wo)==1 and json.loads(wo[0]["b"])["override"]==True and json.loads(wo[0]["b"])["status"]=="out"
     ck("override cancel PUT", oko)
@@ -625,6 +712,7 @@ with sync_playwright() as p:
 
     # ---- roles on this board, per the ROLES.md matrix ----
     def as_role(email):
+        resetDb()
         q=b.new_page(viewport={"width":430,"height":930},device_scale_factor=2)
         q.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
             content_type="application/javascript",body=SDK.replace("staff@x",email)))
