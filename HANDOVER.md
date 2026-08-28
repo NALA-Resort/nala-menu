@@ -447,6 +447,34 @@ Also unsettled: how far back Statistics should look.
 **Dish groups** and **where the service hours should appear** were both raised
 and neither is designed.
 
+**Two Chrome console warnings on the staff pages, written but not published.**
+Answered 28 Aug on branch `claude/chrome-console-errors-ata057`; not merged, not
+live, and neither breaks anything today. First: Chrome now warns that
+`<meta name="apple-mobile-web-app-capable">` is deprecated and asks for
+`<meta name="mobile-web-app-capable" content="yes">` beside it. The branch adds
+it to the 16 staff pages carrying the apple one, and keeps the apple spelling,
+because iOS honours only that one for a home-screen app. This is the half worth
+landing eventually: when Chrome stops honouring the apple meta, the staff phones
+lose the standalone display. Second: `/favicon.ico` 404s on every page, because
+no page carries a `rel="icon"` and the browser falls back to asking the root.
+The branch adds a real `favicon.ico` at the repo root, downsampled from
+`nala-icon.png`, rather than a link line pasted into 32 pages - the same
+reasoning is now in `CLAUDE.md` beside the head block.
+
+Nothing else in that console was ours. `feature_collector.js`, the
+`Unchecked runtime.lastError` line and the "message channel closed" rejections
+all come from a browser extension; page JavaScript cannot reach `chrome.runtime`
+at all. The Firebase line - "the current domain is not authorized for OAuth
+operations" - is informational: `auth.js` signs in with
+`signInWithEmailAndPassword` only and opens no popup or redirect, so none of the
+four methods it names is ever called. Adding `menu.nalaresort.com` under
+Authentication -> Settings -> Authorized domains silences it; nothing needs it.
+
+Unverified either way: the deprecation warning could not be reproduced in a
+headless Chromium, before or after the fix, so the tag is known to be present
+but the warning is not known to stop. The favicon going 404 to 200 was checked
+directly.
+
 ---
 
 ## Known failing tests, none of them new
