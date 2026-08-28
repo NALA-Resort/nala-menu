@@ -575,6 +575,35 @@ with sync_playwright() as p:
          "()=>document.querySelector('.arr[data-villa=\"2\"]').className"))
     pg.close()
 
+    # ── the amber row says how far off it is ────────────────────
+    # Asked for by the owner 28 Aug: amber said work-to-do without saying
+    # how much, so a row one answer short looked exactly like one nobody
+    # had touched. The denominator is what THIS guest was asked - a one
+    # night stay is shown three of the six questions, and scoring them out
+    # of six would mark them down for questions never put to them.
+    pg = board()
+    def rowtext(v):
+        return pg.evaluate("v=>document.querySelector('.arr[data-villa=\"'+v+'\"] .arr-s')"
+                           ".textContent", str(v))
+    ck("a part answered row counts what is answered, out of what was asked",
+       "/" in rowtext(6) and "answered" in rowtext(6))
+    # The denominator is what THIS guest was asked. Put to the function
+    # directly with the two stay lengths, because the fixture's amber row is
+    # a multi night stay and a row assertion alone cannot tell a correct
+    # denominator from a hard coded six.
+    den = pg.evaluate("""(t)=>{
+      const long={arrive:t, depart:'2026-09-04'}, one={arrive:t, depart:'2026-08-29'};
+      const p={dining:true, noDiets:true};
+      return [answeredCount(p,long).of, answeredCount(p,one).of];}""", today)
+    print("   denominators [multi, one night]:", den)
+    ck("the denominator is the questions that guest was actually shown",
+       den[0] == 6 and den[1] == 3 and den[0] != den[1])
+    # Green has nothing left to count and grey has nothing counted yet, so on
+    # those the number would only repeat what the colour already says.
+    ck("a completed row carries no count", "answered" not in rowtext(4))
+    ck("nor does one nobody has touched", "answered" not in rowtext(2))
+    pg.close()
+
     # ── the way back to nobody-asked ────────────────────────────
     # Ruled by the owner, 26 Aug: every answer must be undoable. The chips
     # always toggled off; the two segments could only switch sides, so a
@@ -592,13 +621,21 @@ with sync_playwright() as p:
     ck("the answers arrive selected, as before",
        pg.evaluate("()=>sDin.className==='on'&&wYes.className==='on'"))
     pg.locator("#sDin").click(); pg.wait_for_timeout(150)
+    # Neither side is chosen any more - but the one the record held keeps a
+    # dark border, so an accidental deselect reads as a gap where an answer
+    # used to be rather than as a question nobody ever asked. The owner's
+    # ask of 28 Aug; it lasts as long as the sheet is open.
     ck("tapping the chosen dining answer again clears the segment",
-       pg.evaluate("()=>sDin.className===''&&sOut.className===''"))
+       pg.evaluate("()=>sDin.className!=='on'&&sOut.className!=='on'"))
+    ck("and the answer just taken off keeps its border, so the slip shows",
+       pg.evaluate("()=>sDin.className==='was'&&sOut.className===''"))
     ck("and the covers go with it, since they only mean something dining",
        pg.evaluate("()=>paxWrap.style.display==='none'"))
     pg.locator("#wYes").click(); pg.wait_for_timeout(150)
     ck("the wellness segment gives the same way back",
-       pg.evaluate("()=>wYes.className===''&&wNo.className===''"))
+       pg.evaluate("()=>wYes.className!=='on'&&wNo.className!=='on'"))
+    ck("marking what was taken off there too",
+       pg.evaluate("()=>wYes.className==='was'&&wNo.className===''"))
     ck("and the day and time fold away with it",
        pg.evaluate("()=>wWrap.style.display==='none'"))
     del WRITES[:]

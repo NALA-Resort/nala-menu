@@ -56,6 +56,9 @@
   /* When they are getting here is what reception plans the afternoon around,
      so it does not read as quietly as the stay length beside it. */
   .arr-s .eta { font-size:12.5px; font-weight:600; color:var(--ink); }
+  /* The count reads in the row's own amber, so it is the same fact as the
+     tint said louder rather than a second signal to decode. */
+  .arr-s .ans { color:#8A6A2F; font-weight:600; }
 
   /* Confirmed rows recede but stay legible: reception still has to find a
      guest who checked in an hour ago. */
@@ -174,6 +177,19 @@
                 font-family:var(--ui-font); font-size:10px; letter-spacing:.12em;
                 text-transform:uppercase; color:var(--mid); cursor:pointer; border-radius:6px; }
   .seg button.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  /* An answer that WAS chosen and has just been taken off. The fill goes,
+     the dark border stays, so a deselect made by accident is visible as a
+     gap where an answer used to be rather than as a blank nobody can tell
+     from never-asked. Asked for by the owner 28 Aug.
+
+     It lasts only as long as the sheet is open, which is deliberate and
+     is the smaller half of the fix: the desk's answers are written into
+     the guest's own fields, so once a deselect is SAVED the record no
+     longer holds what was there before and there is nothing left to draw.
+     Keeping it past a save means the desk's answers sitting beside the
+     guest's rather than in them - the arriveApproved shape - which is its
+     own change and was left for when it is wanted. */
+  .seg button.was, .chip.was { border-color:var(--ink); color:var(--ink); }
   .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 4px; }
   .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
          font-family:var(--ui-font); font-size:14px; color:var(--ink);
@@ -452,6 +468,24 @@ var FORM_QUESTIONS = [
     answered:function(p){ return p.wellness === true || p.wellness === false; } }
 ];
 
+/* How many of the questions this guest was SHOWN they have answered, as the
+   fraction reception reads off an amber row: "2/6 answered". Asked for by
+   the owner 28 Aug, because amber said work-to-do without saying how much,
+   and a row one answer short looked exactly like one nobody had touched.
+
+   Both halves come from FORM_QUESTIONS, so the count cannot drift from the
+   "still to ask" sentence built out of the same list - and the denominator
+   is what THIS guest was asked, never a constant: a one night stay is shown
+   three of the six, and scoring them out of six would mark them down for
+   questions nobody put to them. */
+function answeredCount(p, stay){
+  var one = oneNightStay(stay), rec = p || {};
+  var asked = FORM_QUESTIONS.filter(function(q){
+    return !(one && !q.askedOnOneNight); });
+  return { done: asked.filter(function(q){ return q.answered(rec); }).length,
+           of:   asked.length };
+}
+
 /* The questions this guest was shown and has not answered, in the form's own
    order. Empty means nothing is outstanding, which is a different sentence
    at the desk and the whole reason this exists: a guest who answered every
@@ -565,6 +599,13 @@ function rowHTML(r){
   var st = formState(r.pre, r.stay);
   var tint = st === 'completed' ? ' done-form'
            : st === 'incomplete' ? ' part-form' : ' todo-form';
+  /* On an amber row only. Green has nothing left to count and grey has
+     nothing counted yet, so on those it would be a number saying what the
+     colour already says. */
+  if (st === 'incomplete'){
+    var n = answeredCount(r.pre, r.stay);
+    bits.push('<span class="ans">' + n.done + '/' + n.of + ' answered</span>');
+  }
   return '<button class="arr'+tint+(isArrived(r.pre)?' is-done':'')+(open?' open':'')+
          '" data-villa="'+r.villa+'">'+
          '<div class="arr-v">'+r.villa+'</div>'+
@@ -1160,6 +1201,17 @@ function answersOf(r){
 function openGuest(r){
   var p = r.pre || {};
   var a = answersOf(r);
+  /* What the record held when this sheet was opened, frozen. Every painter
+     below compares against it to mark an answer that has just been taken
+     off - see the .was rule in the stylesheet. Copied, not referenced: `a`
+     is the live working set and is edited in place by every chip. */
+  var held = JSON.parse(JSON.stringify(a));
+  /* Was this the answer on screen when the sheet opened, and is it not the
+     answer now? One reading, so nine controls cannot disagree about it. */
+  function lost(now, before){
+    return before !== null && before !== undefined && before !== '' &&
+           now !== before;
+  }
 
   var pax = a.pax;
 
@@ -1358,8 +1410,10 @@ function openGuest(r){
   paintWellDurs();
 
   function paintDining(){
-    document.getElementById('sDin').className = a.dining === true  ? 'on' : '';
-    document.getElementById('sOut').className = a.dining === false ? 'on' : '';
+    document.getElementById('sDin').className = a.dining === true  ? 'on'
+      : (held.dining === true  && lost(a.dining, held.dining)  ? 'was' : '');
+    document.getElementById('sOut').className = a.dining === false ? 'on'
+      : (held.dining === false && lost(a.dining, held.dining)  ? 'was' : '');
     /* Covers only mean something if they are eating. */
     var pw = document.getElementById('paxWrap');
     var was = pw.style.display;
@@ -1410,7 +1464,8 @@ function openGuest(r){
     repaintRow('dChips', function(box){
       DIETARIES.forEach(function(d){
         var b = document.createElement('button');
-        b.className = 'chip' + (a.diets.indexOf(d)>-1 ? ' on' : ''); b.textContent = d;
+        b.className = 'chip' + (a.diets.indexOf(d)>-1 ? ' on'
+          : (held.diets.indexOf(d) > -1 ? ' was' : '')); b.textContent = d;
         b.onclick = function(){
           var i = a.diets.indexOf(d);
           if (i>-1) a.diets.splice(i,1); else { a.diets.push(d); a.noDiets = false; }
@@ -1465,7 +1520,8 @@ function openGuest(r){
     repaintRow('eChips', function(box){
       ETA_SLOTS.forEach(function(sl){
         var b = document.createElement('button');
-        b.className = 'chip' + (a.arriveSlot === sl[0] ? ' on' : '');
+        b.className = 'chip' + (a.arriveSlot === sl[0] ? ' on'
+          : (held.arriveSlot === sl[0] && lost(a.arriveSlot, held.arriveSlot) ? ' was' : ''));
         b.textContent = sl[1];
         b.onclick = function(){
           a.arriveSlot = (a.arriveSlot === sl[0]) ? '' : sl[0];
@@ -1551,7 +1607,8 @@ function openGuest(r){
         return PURPOSE.indexOf(t) === -1; }));
       offered.forEach(function(t){
         var b = document.createElement('button');
-        b.className = 'chip' + (a.purpose.indexOf(t)>-1 ? ' on' : ''); b.textContent = t;
+        b.className = 'chip' + (a.purpose.indexOf(t)>-1 ? ' on'
+          : (held.purpose.indexOf(t) > -1 ? ' was' : '')); b.textContent = t;
         b.onclick = function(){
           /* One answer replaces another; tapping it again clears it, the way
              back every desk chip gives. */
@@ -1569,7 +1626,9 @@ function openGuest(r){
         offered.push([a.approach, APPROACH_OLD[a.approach]]);
       offered.forEach(function(pair){
         var b = document.createElement('button');
-        b.className = 'chip' + (a.approach===pair[0] ? ' on' : ''); b.textContent = pair[1];
+        b.className = 'chip' + (a.approach===pair[0] ? ' on'
+          : (held.approach === pair[0] && lost(a.approach, held.approach) ? ' was' : ''));
+        b.textContent = pair[1];
         b.onclick = function(){ a.approach = (a.approach===pair[0] ? '' : pair[0]); paintApproach(); };
         box.appendChild(b);
       });
@@ -1589,8 +1648,10 @@ function openGuest(r){
     return out;
   }
   function paintWellness(){
-    document.getElementById('wYes').className = a.wellness === true  ? 'on' : '';
-    document.getElementById('wNo').className  = a.wellness === false ? 'on' : '';
+    document.getElementById('wYes').className = a.wellness === true  ? 'on'
+      : (held.wellness === true  && lost(a.wellness, held.wellness) ? 'was' : '');
+    document.getElementById('wNo').className  = a.wellness === false ? 'on'
+      : (held.wellness === false && lost(a.wellness, held.wellness) ? 'was' : '');
     /* A day and a time only mean something once they have said yes. */
     var ww = document.getElementById('wWrap');
     var wasHidden = ww.style.display === 'none';
@@ -1598,7 +1659,9 @@ function openGuest(r){
     repaintRow('wDays', function(box){
       stayDays().forEach(function(d){
         var b = document.createElement('button');
-        b.className = 'chip' + (a.wellDay === d.key ? ' on' : ''); b.textContent = d.label;
+        b.className = 'chip' + (a.wellDay === d.key ? ' on'
+          : (held.wellDay === d.key && lost(a.wellDay, held.wellDay) ? ' was' : ''));
+        b.textContent = d.label;
         b.onclick = function(){ a.wellDay = (a.wellDay === d.key ? '' : d.key); paintWellness(); };
         box.appendChild(b);
       });
