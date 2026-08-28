@@ -277,6 +277,14 @@ with sync_playwright() as p:
     def fork(v):
         return pg.evaluate("()=>{const e=document.querySelector('.arr[data-villa=\"%s\"] .fork');"
                            "return e?e.className:null;}" % v)
+    # Big enough to read at a glance. Asked for by the owner 28 Aug: at 19px
+    # it was smaller than the villa number beside it while carrying the one
+    # fact the row exists to show at speed. Asserted in rendered pixels, not
+    # a class, because the class cannot say how big the stylesheet drew it.
+    ck("the fork is big enough to read across a desk",
+       pg.evaluate("()=>{const e=document.querySelector('.arr .fork');"
+                   "const r=e.getBoundingClientRect();"
+                   "return Math.round(r.width);}") >= 26)
     ck("a guest opted in for dinner reads green", fork("4") == "fork in")
     ck("one who declined reads red", fork("9") == "fork out")
     ck("a confirmed guest carries it too", fork("7") == "fork in")

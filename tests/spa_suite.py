@@ -733,8 +733,16 @@ with sync_playwright() as p:
     pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
     STATE["fail"] = True
     pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
+    # The words come from the shared saveFailWords now, not this page. A
+    # refusal is a PERMISSION and needs the manager, which is a different
+    # errand from a write that never arrived; this page threw a bare Error
+    # until 28 Aug, so neither could be told apart and a rules rejection
+    # read as "check the connection" - the wrong remedy.
     ck("a refused save is reported in words",
-       "did not save" in pg.evaluate("()=>errBar.textContent"))
+       "not allowed" in pg.evaluate("()=>errBar.textContent").lower())
+    ck("and names the right errand, since a refusal is not a bad connection",
+       "manager" in pg.evaluate("()=>errBar.textContent").lower()
+       and "connection" not in pg.evaluate("()=>errBar.textContent").lower())
     STATE["fail"] = False
     pg.close()
 
