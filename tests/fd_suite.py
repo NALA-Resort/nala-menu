@@ -805,11 +805,45 @@ with sync_playwright() as p:
            pg.evaluate("()=>{const e=document.getElementById('%s');"
                        "const s=getComputedStyle(e);"
                        "return s.flexWrap==='nowrap'&&s.overflowX==='auto';}" % row))
-    # A rail whose row fits is still centred under its centred label; only
-    # one that overflows falls back to starting at the left, where it can
-    # actually be scrolled from.
-    ck("a row that fits stays centred under its label",
-       pg.evaluate("()=>getComputedStyle(dNone).justifyContent").endswith("center"))
+    # Was: "a row that fits stays centred under its centred label". The
+    # labels are not centred any more - the sheet got topic headings and a
+    # left edge on 29 Aug, because one ribbon of identical centred captions
+    # gave the eye nothing to run down. A centred row under a left aligned
+    # label is a row that has slipped, so the rails start at the left too.
+    # Starting left keeps the half of the old bargain that mattered: the
+    # first chip is always at the margin, so an overflowing row is only ever
+    # clipped on the right, where it can be scrolled from.
+    # The topics have to be tellable apart, which is what the owner asked
+    # for: a heading is heavier than a label, and the space above a heading
+    # is bigger than the space between a label and its own control. Before
+    # this the labels were all one size and the rhythm was 16 above, 8
+    # below, so a caption sat nearly as close to the answer above it as to
+    # the question it belonged to.
+    hier = pg.evaluate("""()=>{/* not .first: the top heading deliberately has no rule and
+          no space above it, since nothing precedes it to separate from. */
+       const g=document.querySelector('.sheet-group:not(.first)');
+       const l=document.querySelector('.sheet-label');
+       if(!g||!l) return null;
+       const gs=getComputedStyle(g), ls=getComputedStyle(l);
+       return {gSize:parseFloat(gs.fontSize), lSize:parseFloat(ls.fontSize),
+               gWeight:parseInt(gs.fontWeight), lWeight:parseInt(ls.fontWeight),
+               gTop:parseFloat(gs.marginTop)+parseFloat(gs.paddingTop),
+               lTop:parseFloat(ls.marginTop), lBottom:parseFloat(ls.marginBottom),
+               rule:gs.borderTopWidth};}""")
+    print("   form hierarchy:", hier)
+    ck("a topic heading outweighs a field label",
+       hier and hier["gSize"] > hier["lSize"] and hier["gWeight"] > hier["lWeight"])
+    ck("a topic is separated by more space than a label is",
+       hier and hier["gTop"] > hier["lTop"] and hier["rule"] != "0px")
+    ck("a label sits closer to its own control than to what came before",
+       hier and hier["lTop"] >= hier["lBottom"] * 2)
+
+    ck("a rail starts where its label starts",
+       pg.evaluate("""()=>{const r=document.getElementById('dNone');
+          const lab=[...document.querySelectorAll('.sheet-label,.sheet-group')]
+            .filter(e=>e.getBoundingClientRect().width>0).pop();
+          return getComputedStyle(r).justifyContent==='flex-start' &&
+                 getComputedStyle(lab).textAlign==='left';}"""))
     pg.close()
 
     # ── the dress is declared once, in the markup ───────────────

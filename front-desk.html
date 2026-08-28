@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Front Desk Arrival</title>
-<link rel="stylesheet" href="nala-ui2.css?v=2">
+<link rel="stylesheet" href="nala-ui2.css?v=3">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
   body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
@@ -154,8 +154,29 @@
            max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .sheet h3 { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); font-weight:normal;
               text-align:center; margin-bottom:18px; }
-  .sheet-label { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); text-align:center;
-                 margin:16px 0 8px; }
+  /* ── the form's shape ────────────────────────────────────────────────
+     Reported by the owner, 29 Aug: the sheet was one ribbon of identical
+     grey captions with nothing to say where a subject ended. Two problems.
+     The labels were centred, so the eye had no edge to run down while the
+     rows beneath them started at the left. And the rhythm was 16 above and
+     8 below, which is barely a ratio at all: a label sat almost as close to
+     the answer above it as to its own.
+
+     A topic heading now carries a hairline and real space, a field label
+     sits left with a 3:1 rhythm, and a label nested inside a topic steps
+     down again so the hierarchy reads at a glance.                     */
+  .sheet-group { font-family:var(--ui-font); font-size:var(--t3); font-weight:600;
+                 color:var(--ink); text-align:left;
+                 margin:var(--s6) 0 var(--s3); padding-top:var(--s4);
+                 border-top:1px solid var(--rule); }
+  .sheet-group.first { border-top:0; padding-top:0; margin-top:var(--s4); }
+  .sheet-label { font-family:var(--ui-font); font-size:var(--t2); font-weight:500;
+                 color:var(--mid); text-align:left;
+                 margin:var(--s5) 0 var(--s2); }
+  /* A heading is already the space; the label under it does not add more. */
+  .sheet-group + .sheet-label { margin-top:0; }
+  /* Nested under a topic that already has a heading. */
+  .sheet-label.sub { font-weight:400; margin-top:var(--s3); }
   .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid transparent;
          border-radius:6px; font-family:var(--ui-font); font-size:var(--t2); color:var(--ink);
          cursor:pointer; }
@@ -214,8 +235,12 @@
      it fits and falls back to the start once it does not; a browser that
      does not know the keyword ignores the line and keeps flex-start, which
      is the safe half of the same bargain. */
+  /* Left, to line up with the labels above them. This used to be
+     `safe center` so a row that fitted sat centred under a centred label;
+     with the labels left aligned that now reads as a row that has slipped.
+     Starting left also makes an overflow legible: the first chip is always
+     at the margin, so the clipped edge is only ever on the right.      */
   .rail { justify-content:flex-start; }
-  .rail { justify-content:safe center; }
   .rail > * { flex:0 0 auto; white-space:nowrap; }
   .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
           border-radius:20px; font-family:var(--ui-font); font-size:var(--t2);
@@ -1253,6 +1278,7 @@ function openGuest(r){
        automatic flag is said in words, not offered as a chip: Luxury Escapes
        rides on the Mews rate and a tick could not turn it off. */
     (canFlags() ?
+      '<div class="sheet-group first">This booking</div>' +
       '<div class="sheet-label">Booking flags</div>' +
       '<div class="chips rail" id="fkChips"></div>' +
       (rateFlagLabel(r.pms)
@@ -1269,6 +1295,7 @@ function openGuest(r){
       '<textarea class="txt" id="fInternal" rows="2" placeholder="For staff. The guest cannot see this."></textarea>'
       : '') +
 
+    '<div class="sheet-group">Arrival</div>' +
     '<div class="sheet-label">Arriving</div>' +
     '<div class="chips rail" id="eChips"></div>' +
     '<div class="sheet-label" id="fEtaNoteLab" style="display:none">Arrival notes</div>' +
@@ -1289,7 +1316,8 @@ function openGuest(r){
     '<div class="sheet-label" id="apLab" style="display:none"></div>' +
     '<div class="chips rail" id="apChips" style="display:none"></div>' +
 
-    '<div class="sheet-label">Dining on arrival night</div>' +
+    '<div class="sheet-group">Dinner on arrival night</div>' +
+    
     '<div class="seg" id="diningSeg">' +
       '<button id="sDin">Dining</button>' +
       '<button id="sOut">Not dining</button>' +
@@ -1298,11 +1326,13 @@ function openGuest(r){
     '<div id="paxWrap"><div class="sheet-label">Guests at dinner</div>' +
       '<div class="pax-row rail" id="paxRow"></div></div>' +
 
+    '<div class="sheet-group">Dietary</div>' +
     '<div class="sheet-label">Dietary requirements</div>' +
     '<div class="chips rail" id="dChips"></div>' +
     '<div class="chips rail" id="dNone"></div>' +
     '<input class="txt" id="fDnote" type="text" placeholder="Dietary notes" autocomplete="off">' +
 
+    '<div class="sheet-group">The stay</div>' +
     '<div class="sheet-label">Purpose of visit</div>' +
     '<div class="chips rail" id="pChips"></div>' +
 
@@ -1312,22 +1342,24 @@ function openGuest(r){
     '<div class="sheet-label">Special occasion</div>' +
     '<input class="txt" id="fOcc" type="text" placeholder="Birthday, anniversary" autocomplete="off">' +
 
-    '<div class="sheet-label">Wellness or massage</div>' +
+    '<div class="sheet-group">Wellness</div>' +
+    
     '<div class="seg">' +
       '<button id="wYes">Interested</button>' +
       '<button id="wNo">Not interested</button>' +
     '</div>' +
     '<div id="wWrap">' +
-      '<div class="sheet-label">Preferred day</div>' +
+      '<div class="sheet-label sub">Preferred day</div>' +
       '<div class="chips rail" id="wDays"></div>' +
       '<select class="txt" id="fWtime" aria-label="Preferred time" style="margin-top:8px"></select>' +
       '<div class="chips rail" id="fWqty" style="margin-top:8px"></div>' +
-      '<div class="sheet-label" id="fWdurLab" style="display:none">First massage</div>' +
+      '<div class="sheet-label sub" id="fWdurLab" style="display:none">First massage</div>' +
       '<select class="txt" id="fWdur" aria-label="Massage length" style="margin-top:8px"></select>' +
-      '<div class="sheet-label" id="fWdur2Lab" style="display:none">Second massage</div>' +
+      '<div class="sheet-label sub" id="fWdur2Lab" style="display:none">Second massage</div>' +
       '<select class="txt" id="fWdur2" aria-label="Second massage length" style="margin-top:8px;display:none"></select>' +
     '</div>' +
 
+    '<div class="sheet-group">Notes</div>' +
     '<div class="sheet-label">Booking notes</div>' +
     '<input class="txt" id="fNote" type="text" placeholder="Preferences, requests" autocomplete="off">' +
 
