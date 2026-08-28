@@ -1730,6 +1730,96 @@ with sync_playwright() as p:
     r.close()
     responses["0400000001"]["diets"] = ["Nut allergy"]
 
+    # ── the guest's own answer reaches the chef ────────────────────────
+    # The owner's ruling of 28 Aug. Their pre-arrival form asks about the
+    # first night and the answer has always sat on the reservation, but
+    # nothing carried it here: a guest who said on Tuesday they were dining
+    # showed as AWAITING, and on an arrival night nothing else would ever
+    # move it - the nightly dinner request is not sent to somebody who has
+    # not checked in - so the only thing that put them in front of the chef
+    # was a person at the desk re-typing an answer we already had.
+    #
+    # Read, never written: no second writer, no second node. The cell still
+    # wins outright the moment anyone sets one.
+    PRE_FORM = {
+      # arriving TODAY, said dining for three, and nobody has touched it
+      "bk-11": {"dining": True,  "pax": 3, "diets": ["Nut allergy"], "dnote": "severe"},
+      # arriving today and said NO, which the chef needs just as much
+      "bk-12": {"dining": False, "noDiets": True},
+      # answered the dinner question and abandoned the form - no `at` - which
+      # still counts, because an answer given is an answer
+      "bk-13": {"dining": True,  "pax": 2},
+      # mid-stay: the same answer, about a night that is not tonight
+      "bk-14": {"dining": True,  "pax": 4},
+      # answered, but staff have since set the cell, which outranks it
+      "bk-15": {"dining": True,  "pax": 5}
+    }
+    PRE_STAYS = {
+      "11": {"id":"bk-11","first":"Ada","last":"Ng","arrive":today,"depart":plus(2),"adults":3},
+      "12": {"id":"bk-12","first":"Bo","last":"Vale","arrive":today,"depart":plus(2),"adults":2},
+      "13": {"id":"bk-13","first":"Cy","last":"Doyle","arrive":today,"depart":plus(2),"adults":2},
+      "14": {"id":"bk-14","first":"Di","last":"Frost","arrive":plus(-2),"depart":plus(2),"adults":4},
+      "15": {"id":"bk-15","first":"Ed","last":"Hale","arrive":today,"depart":plus(2),"adults":5}
+    }
+    PRE_CELLS = {"15": {"status":"out","pax":0,"room":"15","by":"staff","at":"x"}}
+    def form_fb(route, request):
+        u = request.url
+        if request.method != "GET":
+            fb(route, request); return
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(PRE_STAYS)); return
+        if "/dinner/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(PRE_CELLS)); return
+        if "/bookings/" in u and "/prearrival" in u:
+            k = u.split("/bookings/")[1].split("/")[0]
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(PRE_FORM.get(k)) if k in PRE_FORM else "null"); return
+        if "/responses/" in u or "/manual/" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body="{}"); return
+        fb(route, request)
+    q = b.new_page(viewport={"width": 430, "height": 930})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(
+        status=200, content_type="application/javascript", body=SDK))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", form_fb)
+    q.route("**/menu.json*", lambda r,_: r.fulfill(status=200,
+        content_type="application/json", body=json.dumps(menu)))
+    q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1800)
+    def rcls(n):
+        return q.evaluate("n=>{const b=[...document.querySelectorAll('#rooms .room')]"
+                          ".find(x=>x.querySelector('.room-n')"
+                          "&&x.querySelector('.room-n').textContent===n);"
+                          "return b?b.className:null;}", str(n))
+    ck("a guest who said dining on their form reaches the chef's board",
+       " in" in (rcls(11) or ""))
+    ck("and is not left sitting as awaiting",
+       "await" not in (rcls(11) or ""))
+    ck("a guest who declined reaches it too, so nobody chases them",
+       " out" in (rcls(12) or ""))
+    ck("an abandoned form still counts, because an answer given is an answer",
+       " in" in (rcls(13) or ""))
+    # The form asks about the FIRST night only. PREARRIVAL_BY_VILLA holds a
+    # record for every occupied villa, so without the arrival gate one
+    # answer would speak for every night of the stay.
+    ck("but only on the night they arrive, never the rest of the stay",
+       "await" in (rcls(14) or ""))
+    # "The dinner cell is one cell" - HANDOVER. This adds no second writer,
+    # and falls away for good the moment anyone sets one.
+    ck("a staff cell outranks the form absolutely",
+       " out" in (rcls(15) or "") and " in" not in (rcls(15) or ""))
+    ck("the covers count the guests the form named, not a default",
+       q.evaluate("()=>+nCovers.textContent") == 3 + 2)
+    # As the renamed pill, not the stored words: the list drops "allergy"
+    # from the label, which is the 26 Aug rename and not this change's to
+    # argue with.
+    ck("and the dietary they gave rides along to the kitchen",
+       "Nut" in q.evaluate("()=>listBookings.textContent"))
+    q.close()
+
     b.close()
     open("/home/claude/nala/_p1_tally.png","wb").write(shot1)
 print("RESULT: %d passed, %d failed" % (P,F))

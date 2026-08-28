@@ -811,6 +811,49 @@ function roomStateRaw(n){
   }
   if (best) return best;
   if (m) return { src:'manual', key:mk, g:m };
+
+  /* Nobody has said anything about tonight - so read what the GUEST said,
+     on their own form, days ago.
+
+     Their pre-arrival form asks about the first night and the answer has
+     always sat on the reservation, but nothing ever carried it here. So a
+     guest who told us on Tuesday they were dining showed on this board as
+     awaiting, and on an arrival night nothing else would ever move it: the
+     nightly dinner request is not sent to somebody who has not checked in,
+     so the ONLY thing that put them in front of the chef was a person at
+     the desk re-typing an answer we already had. The owner's ruling, 28
+     Aug: there is no scenario where reception would decline to pass it on,
+     so it should not be theirs to pass on.
+
+     Read, never written. This adds no second writer and no second node -
+     the cell above still wins outright the moment anyone sets one, and this
+     falls away for good at that point, which is what keeps "the dinner cell
+     is one cell" true. It is the effectiveEta shape: the authoritative
+     answer, then the guest's own, then nothing.
+
+     Only on the night they ARRIVE. PREARRIVAL_BY_VILLA holds a record for
+     every occupied villa, and the form asks about the first night alone, so
+     without this gate one answer would speak for every night of the stay.
+
+     Any answer they gave, not only a form they finished. The guest page
+     saves each question as it is left, so an abandoned form still holds
+     real answers, and an answer given is a thing the kitchen should know -
+     the owner's ruling, 28 Aug. */
+  var pre = PREARRIVAL_BY_VILLA[String(n)];
+  var kn  = roomguests[String(n)] || {};
+  if (pre && (pre.dining === true || pre.dining === false) &&
+      kn.arrives && dkey(parseDepDate(kn.arrives)) === todayKey()){
+    return { src:'digital', key:mk, fromForm:true, g:{
+      status: pre.dining ? 'in' : 'out',
+      pax:    pre.dining ? (pre.pax || kn.adults || 2) : 0,
+      room:   String(n),
+      diets:  pre.diets || [],
+      nodiet: !!pre.noDiets,
+      dnote:  pre.dnote || '',
+      note:   pre.note || '',
+      by:     'guest'
+    } };
+  }
   return null;
 }
 

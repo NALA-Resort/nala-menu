@@ -195,6 +195,24 @@ can change it. `by` records who, `at` records when. This replaced two nodes
 holding the same fact, which is what let a dietary added on one screen be wiped
 by a save on another.
 
+**On an arrival night, with no cell, the boards read the guest's own form.**
+Their pre-arrival answers sit on the reservation and asked about the first
+night; nothing carried them onto the chef's board, so a guest who said on
+Tuesday they were dining showed as *awaiting* until somebody at the desk
+re-typed it - and nothing else ever would, since the nightly dinner request is
+not sent to a guest who has not checked in. The owner ruled on 28 Aug that
+there is no scenario where reception would decline to pass that on, so it is
+not theirs to pass on.
+
+This does **not** break the rule above, and the distinction is the whole point:
+it adds no second writer and no second node. The order is *cell, then the
+guest's form, then nothing* - the effectiveEta shape - and the form falls away
+for good the moment anyone sets a cell. It applies only on the night the guest
+arrives, because `PREARRIVAL_BY_VILLA` holds a record for every occupied villa
+and the form speaks for the first night alone. Any dining answer counts, not
+only a submitted form: the guest page saves each question as it is left, and an
+answer given is an answer.
+
 **The menu has one reader**, `fetchMenuAnywhere` in `nala-shared.js`. It reads
 the database first and falls back to the committed `menu.json`, refuses a file
 that is not for the day being asked about, and reports an unreadable menu
