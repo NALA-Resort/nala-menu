@@ -88,7 +88,13 @@ NIGHTS = {
   dplus(10): {"5": stay("pa-far", "Grace", "Ito", "+61 411 000 005", 10, 12)},
 }
 PRE_RECS = {
-  "pa-done": {"at": now.isoformat(), "openedAt": now.isoformat(), "dining": True},
+  #  A form a guest actually finished: the dietary question is required of
+  #  them, so a record without one was never a completed form. It carries one
+  #  since 28 Aug, when completed stopped meaning "has a stamp" and started
+  #  meaning "has the stamp AND the mandatory answers" - formState, shared
+  #  with the Front Desk so the two boards cannot disagree about it again.
+  "pa-done": {"at": now.isoformat(), "openedAt": now.isoformat(),
+              "dining": True, "noDiets": True},
   "pa-open": {"openedAt": now.isoformat(), "purpose": "Rest"},
 }
 PREINV = {
@@ -581,6 +587,31 @@ with sync_playwright() as p:
     ck("the counts strip says the same as the bands",
        [pg.evaluate("()=>%s.textContent" % i)
         for i in ("nSend","nWait","nOpen","nDone")] == ["1","1","1","1"])
+
+    #  A stamp WITH answers behind it but missing a mandatory one. The old
+    #  check in demanded dinner and dietary and never the massage, so it
+    #  could stamp a multi night booking complete with the treatment
+    #  question never asked. Completed now wants the mandatory answers still
+    #  standing, so such a record reads incomplete here from the moment this
+    #  ships - and the link is sendable again, which is the point.
+    PRE_RECS["pa-halfdone"] = {"at": now.isoformat(), "dining": True,
+                               "noDiets": True}
+    NIGHTS[dplus(1)]["15"] = stay("pa-halfdone", "Half", "Done",
+                                  "+61 411 000 015", 1, 4)
+    pg5 = apage()
+    hrow = pg5.locator('.vrow[data-booking="pa-halfdone"]')
+    ck("a stamp missing a mandatory answer is not a completed form",
+       "b-done" not in (hrow.get_attribute("class") or ""))
+    ck("and that guest can be chased again",  not hrow.is_disabled())
+    pg5.close()
+    #  Give it the treatment answer and it is complete, on four nights.
+    PRE_RECS["pa-halfdone"]["wellness"] = False
+    pg5 = apage()
+    hrow = pg5.locator('.vrow[data-booking="pa-halfdone"]')
+    ck("with every mandatory answer in, the same record reads completed",
+       "b-done" in (hrow.get_attribute("class") or ""))
+    pg5.close()
+    del PRE_RECS["pa-halfdone"]; del NIGHTS[dplus(1)]["15"]
 
     #  A stamp with nothing behind it. Seen live on villa 17, 28 Aug: the
     #  Front Desk's confirm wrote `at` onto a record holding no answers, so

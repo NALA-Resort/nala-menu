@@ -159,7 +159,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=45"></script>
+<script src="nala-shared.js?v=46"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -273,19 +273,12 @@ function nightsOf(stay){
   return n > 0 ? ' · ' + n + (n === 1 ? ' night' : ' nights') : '';
 }
 
-/* The same list the front desk holds: a value in any of these is a guest who
-   started the form, and "no" is an answer. */
-var GUEST_ANSWERS = ['arriveSlot','arriveNote','dining','diets','noDiets',
-                     'dnote','purpose','approach','wellness','wellDay',
-                     'wellTime','occasion','note','companion'];
-function answersIn(p){
-  return GUEST_ANSWERS.filter(function(k){
-    var v = p ? p[k] : undefined;
-    if (v === undefined || v === null || v === '') return false;
-    if (Array.isArray(v)) return v.length > 0;
-    return true;
-  }).length;
-}
+/* GUEST_ANSWERS and the counting moved to nala-shared.js on 28 Aug. This page
+   and the Front Desk each held a copy and they had already drifted: the desk
+   had learnt that a noDiets of false says nothing and this page had not, so a
+   guest whose dietary had been cleared counted as answered here and not
+   there. countGuestAnswers is the one reading now. */
+function answersIn(p){ return countGuestAnswers(p); }
 
 /* Five kinds, off the same cells the front desk reads: /bookings/<id>/
    prearrival is the form's own record and /previnvites/<id> is the send's.
@@ -293,18 +286,14 @@ function answersIn(p){
    done however the message got to them. */
 function stateOf(stay, pre, invite, fix){
   var when = 'arrives ' + shortDay(akey(stay.arrive));
-  /* An answer must stand beside the stamp. `at` says the answers exist, and a
-     record can hold it while holding none: the Front Desk stamps it at check
-     in, every answer can be taken back afterwards, and until 28 Aug the stamp
-     did not go with them. This page then read Form completed and the link
-     could never be sent to that guest again - villa 17, 28 Aug. A guest
-     cannot submit an empty form (the slot, dinner and dietary questions are
-     all required), so a stamp with nothing beside it was never theirs. The
-     desk's copy of this test is hasForm in front-desk.html, and both write
-     ends are fixed too; reading it this way also puts the records already
-     written back where they belong, which no repair pass could do without
-     somebody running it. */
-  if (pre && pre.at && answersIn(pre))
+  /* Completed means what the Front Desk means by it, because it is literally
+     the same function: formState in nala-shared.js, which wants the stamp, an
+     answer behind it, and the mandatory answers still standing. Two readings
+     of one state is how this page came to say Form completed about villa 17
+     while the desk showed it amber, holding nothing, with the link unsendable
+     from here. Reading it this way also puts the records already written back
+     where they belong, with nothing to run. */
+  if (formState(pre, stay) === 'completed')
     return { kind:'done', tickable:false, ticked:false,
              line:'Completed ' + timeOf(pre.at) + ' · ' + when };
   /* A number fixed at the desk outranks the Mews copy: Mews cannot be

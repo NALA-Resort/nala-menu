@@ -985,11 +985,16 @@ with sync_playwright() as p:
     w = [x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]
     ck("and checking in from the form arrives them too",
        len(w) == 1 and bool(json.loads(w[0]["b"]).get("checkedInAt")))
-    # Check in is where `at` gets stamped for a guest whose answers began at
-    # the desk: the required questions have just been enforced, so this is
-    # the first moment "the answers exist" is actually true.
-    ck("and stamps 'at', which a plain save never does",
-       len(w) == 1 and bool(json.loads(w[0]["b"]).get("at")))
+    # And touches the form's STATE not at all, the owner's model of 28 Aug.
+    # Check in used to stamp `at` here, having asked for two of the three
+    # mandatory answers - so a multi night guest could be marked completed
+    # with the treatment question never put to them, and the row then tinted
+    # amber beside its own completed stamp. Arriving is a fact about a
+    # person; finishing the questionnaire is its own control now.
+    ck("and does NOT call the form completed, which is not its job",
+       len(w) == 1 and "at" not in json.loads(w[0]["b"]))
+    ck("though it does record that reception went through the answers",
+       len(w) == 1 and bool(json.loads(w[0]["b"]).get("confirmedAt")))
     pg.close()
 
     # ── the bug found in testing on 17 Aug ──────────────────────
@@ -1184,37 +1189,86 @@ with sync_playwright() as p:
     pg.close()
     del PRE["b17"]
 
-    # ── the stamp goes back with the last answer ────────────────
-    # The write end of the same bug. Check in cannot stamp a blank sheet -
-    # dining and dietary are required there - so `at` always starts honest.
-    # What went wrong is that it outlived the answers: every answer can be
-    # taken back since 26 Aug, and nothing took the stamp with them.
+    # ── the state is its own control ────────────────────────────
+    # The owner's model of 28 Aug: three states, and editing and saving move
+    # between none of them. One button marks a form completed, the same
+    # button walks it back, and it is available only once the mandatory
+    # answers are in - dinner, dietary and massage, the ruling of 28 Aug.
+    #  Three nights, so the treatment question IS owed here. The block above
+    #  leaves villa 17 a one nighter, where it is not.
+    STAYS["17"]["depart"] = plus(3)
     pg = board()
     pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
-    pg.locator("#sOut").click()
+    ck("the mark button is offered, and refused until the answers are in",
+       pg.evaluate("()=>!!sMark") and pg.evaluate("()=>sMark.disabled"))
+    ck("and says which answers it is waiting on",
+       "dining" in pg.evaluate("()=>sMarkWhy.textContent"))
+    ck("it offers to complete, not to walk back, on a form nobody has marked",
+       pg.evaluate("()=>sMark.textContent") == "Mark as completed")
+    pg.locator("#sOut").click(); pg.wait_for_timeout(200)
     pg.evaluate("()=>[...document.querySelectorAll('#dNone .chip')][0].click()")
-    pg.wait_for_timeout(150)
-    del WRITES[:]
-    pg.locator("#sCheckin").click(); pg.wait_for_timeout(700)
-    w = [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]]
-    ck("checking in a guest whose answers began at the desk stamps the form",
-       len(w) == 1 and bool(json.loads(w[0]["b"]).get("at")))
-    #  And now take those answers back, which is the only way a record ever
-    #  reached the villa 17 shape.
-    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
-    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
-    pg.locator("#sOut").click(); pg.wait_for_timeout(150)
-    pg.evaluate("()=>[...document.querySelectorAll('#dNone .chip')][0].click()")
-    pg.wait_for_timeout(150)
+    pg.wait_for_timeout(200)
+    ck("two of the three is still not enough on a three night stay",
+       pg.evaluate("()=>sMark.disabled"))
+    ck("and the treatment question is what it is still waiting on",
+       "treatments" in pg.evaluate("()=>sMarkWhy.textContent"))
+    pg.locator("#wNo").click(); pg.wait_for_timeout(250)
+    ck("the last mandatory answer brings it alive under the finger",
+       not pg.evaluate("()=>sMark.disabled"))
+    ck("wearing the solid dress, since it is the primary act on this sheet",
+       "solid" in pg.evaluate("()=>sMark.className"))
+    #  A plain Save still decides nothing.
     del WRITES[:]
     pg.locator("#sConfirm").click(); pg.wait_for_timeout(700)
     w = [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]]
-    ck("un-answering the last answer clears the stamp with it",
+    ck("saving with every answer in still does not complete the form",
+       len(w) == 1 and "at" not in json.loads(w[0]["b"]))
+    ck("and the row is still amber, because nobody has marked it",
+       "part-form" in cls("17"))
+    #  The mark is what moves it.
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    del WRITES[:]
+    pg.locator("#sMark").click(); pg.wait_for_timeout(700)
+    w = [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]]
+    ck("marking it completed is what writes the state",
+       len(w) == 1 and bool(json.loads(w[0]["b"]).get("at")))
+    ck("and the row goes green", "done-form" in cls("17"))
+    pg.close()
+
+    # ── and the way back ────────────────────────────────────────
+    # The same button, walking it back. It wears terracotta and asks first,
+    # the button law: marking a form incomplete puts the guest back into To
+    # send on Pre-arrival SMS, where the link can be sent to them again.
+    PRE["b17"] = {"at": "2026-08-27T22:56:00Z", "arriveSlot": "15",
+                  "dining": False, "noDiets": True, "wellness": False}
+    pg = board()
+    ck("a completed form reads green", "done-form" in cls("17"))
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    ck("the button now offers the way back",
+       pg.evaluate("()=>sMark.textContent") == "Mark as incomplete")
+    ck("in terracotta, never solid, because it walks something back",
+       "terra" in pg.evaluate("()=>sMark.className")
+       and "solid" not in pg.evaluate("()=>sMark.className"))
+    #  Cancelling the question costs nothing.
+    pg.once("dialog", lambda d: d.dismiss())
+    del WRITES[:]
+    pg.locator("#sMark").click(); pg.wait_for_timeout(500)
+    ck("and cancelling its question writes nothing at all",
+       not [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]])
+    pg.once("dialog", lambda d: d.accept())
+    del WRITES[:]
+    pg.locator("#sMark").click(); pg.wait_for_timeout(700)
+    w = [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]]
+    ck("accepting it clears the state, and only the state",
        len(w) == 1 and "at" in json.loads(w[0]["b"])
        and json.loads(w[0]["b"])["at"] is None)
-    ck("and the row is grey again, which is the way back the desk had none of",
-       "todo-form" in cls("17"))
+    ck("the answers are left exactly where they were",
+       len(w) == 1 and json.loads(w[0]["b"]).get("dining") is False)
+    ck("and the row drops to amber, not to grey: the answers are still there",
+       "part-form" in cls("17"))
     pg.close()
+    del PRE["b17"]
 
     # ── a one night stay can reach green ────────────────────────
     # The guest form offers no treatment question on a one night stay, so
@@ -1222,6 +1276,7 @@ with sync_playwright() as p:
     # anyway: villas 16 and 17 on 28 Aug were one night each and could not
     # have tinted green however completely they answered. A question nobody
     # was asked cannot be held against them.
+    STAYS["17"]["depart"] = plus(1)     # a one nighter again, for this one
     PRE["b17"] = {"at": "2026-08-27T22:56:00Z", "arriveSlot": "15",
                   "dining": True, "pax": 2, "noDiets": True}
     STAYS["10"] = {"id": "b10", "first": "Long", "last": "Stayer",
@@ -1230,8 +1285,8 @@ with sync_playwright() as p:
     pg = board()
     ck("a one night guest who answered everything asked tints green",
        "done-form" in cls("17"))
-    ck("and the same answers over three nights stay amber, because the "
-       "treatment question WAS asked and is unanswered",
+    ck("and the same answers over three nights read incomplete, stamp and "
+       "all, because the treatment question WAS asked and is unanswered",
        "part-form" in cls("10"))
     #  One table, two readers: the guest form decides which questions a one
     #  night stay is shown, this board has to know the same rule, and neither
@@ -1240,7 +1295,7 @@ with sync_playwright() as p:
     cases = json.load(open("tests/onenight_cases.json"))["cases"]
     bad = []
     for nights, want, why in cases:
-        got = pg.evaluate("(d)=>oneNight({arrive:d.a, depart:d.b})",
+        got = pg.evaluate("(d)=>oneNightStay({arrive:d.a, depart:d.b})",
                           {"a": plus(0), "b": plus(nights)})
         if bool(got) != bool(want):
             bad.append("%d nights: wanted %s, got %s (%s)"

@@ -113,7 +113,7 @@ reads the same:
 | Cream row | transparent on `--cream:#F9F7F4`, border `--rule` | work to do (to send, unanswered) | — |
 | True white | `#fff` | an editable surface: inputs, the message box, editor cards | a status |
 | Light grey fill | `rgba(28,28,26,.045)`, border `--rule` | sent, waiting on the other side; unknown promises nothing | done |
-| Amber | `--amber:#F6EAD5`, border `--amberb:#C29A55`, ink `#8A6A2F` | attention, in progress, chase this (front desk's confirm queue, a form opened but unfinished) | failure |
+| Amber | `--amber:#F6EAD5`, border `--amberb:#C29A55`, ink `#8A6A2F` | attention, in progress, chase this (front desk's confirm queue, a pre-arrival form **incomplete** — see the three states below) | failure |
 | Green tile | `rgba(122,160,130,.26)` / `.65`, ink `#5E7D67` | done, confirmed (the Reservations dining tile) | — |
 | Green pill/tick | `--green:#E4EDE2`, `--greenb:#7E937A` | a positive state or a selection mark | — |
 | Terracotta tile | `rgba(184,106,90,.16)` / `.45`, ink `#9E6455` | a **negative answer** — not dining, declined. A fact a guest gave us | a failure |
@@ -123,6 +123,40 @@ reads the same:
 The Reservations green and terracotta tiles are a contract between boards:
 suites assert them by computed colour, not class name. Change them in one
 place and the suites will name every other.
+
+### The pre-arrival form has three states, and the colour IS the state
+
+Ruled by the owner, 28 Aug, superseding his own ruling of 26 Aug that the
+Front Desk row tint read *completeness of the answers*. That ruling left two
+systems describing one thing: a tint computed from the answers, and an `at`
+stamp written by something else. Nothing reconciled them, so villa 17 could
+read Form completed on Pre-arrival SMS and amber at the desk while holding
+nothing at all, and no screen offered a way out.
+
+| State | Row | Means |
+|---|---|---|
+| not started | grey, `todo-form` | nobody has answered anything |
+| incomplete | amber, `part-form` | somebody has, and it has not been marked complete |
+| completed | green, `done-form` | the guest pressed Send, or the desk marked it complete |
+
+Three things follow, and they are the whole model:
+
+- **Editing and saving change no state.** Reception adds what it hears across
+  the day; that is not a claim the form is finished.
+- **One control moves it**, the sheet's `Mark as completed`, available only
+  once the mandatory answers are in — **dinner, dietary and massage**, and
+  massage is not owed by a one night stay, whose guest form never asks it.
+  The same control walks it back, in terracotta, and asks first.
+- **Arriving is not finishing.** Check in and Confirm arriving record facts
+  about a person. They no longer touch the form's state, and welding all
+  three to one argument is exactly what put villa 17 beyond reach.
+
+`formState` in `nala-shared.js` is the only thing that says which state a
+booking is in, and both boards read it. Two readings of one state is how they
+came to disagree. `prearrival.html` cannot read it — it is a guest page and
+loads no staff code — so its half of the contract is
+`tests/form_questions.json` and `tests/onenight_cases.json`, which both
+suites answer to.
 
 Buttons have a law of their own — **the button law, STYLEGUIDE.md** (ruled
 26 Aug): one solid primary per surface, destructive actions wear terracotta

@@ -159,6 +159,16 @@
          cursor:pointer; }
   .opt.solid { background:var(--green); border-color:var(--greenb); }
   .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
+  /* The button law (STYLEGUIDE.md): a control that walks back something the
+     guest was told wears terracotta outline and asks first. Marking a form
+     incomplete puts the guest back into To send on Pre-arrival SMS, where
+     they can be messaged the link again, so it is that kind of button. */
+  .opt.terra { background:transparent; border-color:var(--terra-b); color:var(--terra); }
+  .opt.terra:active { background:var(--terra-t); }
+  .opt:disabled { opacity:.4; cursor:default; }
+  /* Why the primary is unavailable, said rather than left to be guessed at. */
+  .opt-why { font-family:var(--ui-font); font-size:11px; color:var(--mid);
+             text-align:center; margin:-4px 0 10px; line-height:1.45; }
   .seg { display:flex; gap:6px; margin:2px 0 4px; }
   .seg button { flex:1; padding:11px 0; border:1px solid var(--rule); background:transparent;
                 font-family:var(--ui-font); font-size:10px; letter-spacing:.12em;
@@ -257,7 +267,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=45"></script>
+<script src="nala-shared.js?v=46"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -396,91 +406,19 @@ function hasForm(p){ return !!(p && p.at && guestAnswered(p)); }
    which. Now a guest can answer three questions, put the phone down and never
    come back, and those three answers are real and worth having.
 
-   `at` is still written by the final send alone, so it remains the whole test
-   for a finished form. A record carrying answers WITHOUT it is a form still in
-   progress. The distinction matters at this desk more than anywhere: a partial
-   form is the one case where reception knows what to ask about, because the
-   guest has already given the rest.
-
-   Listed explicitly rather than testing the record for any key at all: the
-   page also writes openedAt and, since 21 Aug, reception's own arriveApproved,
-   and neither is the guest answering anything. A guest who opened the link and
-   read it has not started, and a time reception approved on the telephone is
-   the desk's answer, not the guest's. */
-var GUEST_ANSWERS = ['arriveSlot','arriveNote','dining','diets','noDiets',
-                     'dnote','purpose','approach','wellness','wellDay',
-                     'wellTime','occasion','note','companion'];
-
-/* Does this record hold a single answer somebody actually gave? The one
-   question underneath all three below, pulled out on 28 Aug because hasForm
-   now needs it too and a second reading of the same list is how two of them
-   would come to disagree. */
-function guestAnswered(p){
-  if (!p) return false;
-  return GUEST_ANSWERS.some(function(k){
-    var v = p[k];
-    if (v === undefined || v === null || v === '') return false;
-    if (Array.isArray(v)) return v.length > 0;
-    /* "No" is an answer - but only to a question with two sides. dining and
-       wellness have them; noDiets is a flag, where true declares "nothing to
-       declare" and false says nothing at all. Counting a false one made a
-       record whose dietary had just been taken back still read as started,
-       and left the `at` clear below unable to fire on the last answer. */
-    if (v === false) return k !== 'noDiets';
-    return true;
-  });
-}
+   GUEST_ANSWERS, guestAnswered, oneNightStay, mandatoryAnswered and formState
+   all moved to nala-shared.js on 28 Aug, when the owner replaced the two
+   overlapping systems with one three state model. Pre-arrival SMS reads the
+   same functions: two readings of one state is how the two boards came to
+   disagree about villa 17. */
 
 function startedForm(p){
   return !hasForm(p) && guestAnswered(p);
 }
 
-/* Any answer at all, wherever it came from - the guest's form or the desk.
-   startedForm deliberately stops at hasForm because it answers a different
-   question (is the guest mid-form); the tint needs "is there anything here",
-   for which a submitted form obviously counts. */
+/* Any answer at all, wherever it came from - the guest's form or the desk. */
 function anyAnswers(p){
   return guestAnswered(p);
-}
-
-/* Every question the desk has to settle holds an answer: dinner, dietary and
-   massage. These three, because they are the decisions this sheet exists to
-   record and the ones another board acts on; occasion and notes are free text
-   nobody is required to have.
-
-   Ruled by the owner, 26 Aug: the row tint reads completeness - grey nothing,
-   amber some, green all - rather than whether the guest's form was submitted.
-   Computed from the answers, not from `at`, so a record with the form-done
-   stamp and a hole in it (a rule in a form is not a guarantee from a
-   database) reads amber and gets asked, and a record completed entirely at
-   the desk earns its green without pretending to be a submitted form. */
-function fullAnswers(p, stay){
-  if (!p) return false;
-  var dinner  = p.dining === true || p.dining === false;
-  var dietary = !!p.noDiets ||
-                (Array.isArray(p.diets) ? p.diets.length > 0 : !!p.diets);
-  var massage = p.wellness === true || p.wellness === false;
-  /* A question nobody was asked cannot be held against them. The guest form
-     does not offer treatments on a one night stay - one afternoon is not a
-     window the therapists can use, the owner ruled - so `wellness` is never
-     written, and until 28 Aug that meant a one night guest who answered every
-     question they were shown still tinted amber, for ever, with nothing
-     reception could do about it. The desk may still answer it here, and does
-     when a one night guest asks; it is simply not owed. */
-  return dinner && dietary && (massage || oneNight(stay));
-}
-
-/* The same test the guest form applies before it hides the treatment page,
-   prearrival.html's `oneNight`. Duplicated rather than shared because that
-   page is a GUEST page and deliberately loads no staff code (nala-shared.js
-   never reaches a guest's browser), which is the exception CLAUDE.md rule 3
-   allows - so the two copies answer to one table, tests/onenight_cases.json,
-   read by both suites. Add a case there, not to a suite. */
-function oneNight(s){
-  if (!s) return false;
-  var a = parseDepDate(dkeyOf(s.arrive)), b = parseDepDate(dkeyOf(s.depart));
-  if (!a || !b) return false;
-  return Math.round((b - a) / 86400000) === 1;
 }
 
 /* What the guest was asked, and how to tell whether they answered it.
@@ -521,11 +459,24 @@ var FORM_QUESTIONS = [
    question and never pressed Send looks identical, in the record, to one who
    stopped halfway, and reception was told the same thing about both. */
 function missingAnswers(p, stay){
-  var one = oneNight(stay), rec = p || {};
+  var one = oneNightStay(stay), rec = p || {};
   return FORM_QUESTIONS.filter(function(q){
     if (one && !q.askedOnOneNight) return false;   /* never put to them */
     return !q.answered(rec);
   }).map(function(q){ return q.label; });
+}
+
+/* The sheet's working answers in the record's own shape, so the state helpers
+   can be asked about what is ON SCREEN rather than what is stored. That is
+   what lets the Mark as completed button come alive under the finger as the
+   last mandatory answer is tapped, with no save in between. */
+function sheetAnswers(a){
+  return {
+    arriveSlot: a.arriveSlot, arriveNote: a.arriveNote,
+    dining: a.dining, diets: a.diets, noDiets: a.noDiets, dnote: a.dnote,
+    purpose: purposeText(a.purpose), approach: a.approach,
+    wellness: a.wellness, note: a.note, companion: a.companion
+  };
 }
 
 /* A list a person would say out loud: a, b and c. */
@@ -606,9 +557,15 @@ function rowHTML(r){
   else if (r.stay.adults)
     bits.push(r.stay.adults + (Number(r.stay.adults)===1 ? ' adult' : ' adults'));
   var open = OPEN === r.villa;
-  /* Completeness, not form-submission: see fullAnswers. */
-  var tint = fullAnswers(r.pre, r.stay) ? ' done-form'
-           : anyAnswers(r.pre) ? ' part-form' : ' todo-form';
+  /* The state, not the answers. Ruled by the owner 28 Aug, superseding the
+     ruling of 26 Aug that the tint read completeness: a board that colours
+     one thing while the sheet's button decides another is two facts nobody
+     reconciled, which is what let villa 17 read green here and amber on
+     Pre-arrival SMS. Now grey, amber and green ARE not started, incomplete
+     and completed, and formState is the only thing that says which. */
+  var st = formState(r.pre, r.stay);
+  var tint = st === 'completed' ? ' done-form'
+           : st === 'incomplete' ? ' part-form' : ' todo-form';
   return '<button class="arr'+tint+(isArrived(r.pre)?' is-done':'')+(open?' open':'')+
          '" data-villa="'+r.villa+'">'+
          '<div class="arr-v">'+r.villa+'</div>'+
@@ -1328,7 +1285,18 @@ function openGuest(r){
        nowhere and "confirmed" saved decisions nobody had made. Saving
        writes what is on the sheet and decides nothing; confirming is the
        summary's button, and checking in is the one below. */
-    '<button class="opt solid" id="sCheckin" style="margin-top:18px">Confirm and check in</button>' +
+    /* The state button, the owner's model of 28 Aug: Save writes answers and
+       decides nothing, and THIS is the only control that moves a booking
+       between incomplete and completed. It takes the solid slot because it is
+       now the primary constructive action here; check in steps down to quiet,
+       since at most one surface may wear solid (the button law) and checking
+       a guest in is an arrival fact, not a decision about the form.
+
+       It is a toggle, so its dress changes with it: solid to complete,
+       terracotta outline to walk it back, and the walk-back confirms. */
+    '<button class="opt" id="sMark" style="margin-top:18px"></button>' +
+    '<div class="opt-why" id="sMarkWhy" style="display:none"></div>' +
+    '<button class="opt quiet" id="sCheckin">Confirm and check in</button>' +
     '<button class="opt quiet" id="sConfirm">Save</button>' +
     '<button class="opt quiet" id="sClose">Close</button>';
 
@@ -1705,7 +1673,7 @@ function openGuest(r){
   /* Both buttons read the sheet the same way. Save keeps what is on it and
      nothing more; Confirm and check in also stamps the record, because the
      guest is standing there agreeing to it. */
-  function finish(checkin){
+  function finish(checkin, mark){
     /* Read before checking, not after. The note is part of the answer when
        Other is chosen, and a check that runs before the field is read is
        checking the value from the last time the sheet was opened. */
@@ -1723,7 +1691,15 @@ function openGuest(r){
        Check in is different. The guest is standing there, it is the last
        moment anyone will ask, and a guest sent to their villa with no dining
        answer is a cover the kitchen never hears about. So the questions are
-       asked once, at the point they can still be answered. */
+       asked once, at the point they can still be answered.
+
+       This guard is NARROWER than mandatoryAnswered on purpose, and since
+       28 Aug that is harmless. It was not before: check in also stamped the
+       form complete, so a multi night guest could be marked completed with
+       the treatment question never asked, and the row then tinted amber
+       beside its own completed stamp. Check in no longer touches the state,
+       so the two tests can differ - this one is about what the kitchen needs
+       tonight, the other about whether the questionnaire is finished. */
     if (checkin){
       var missing = [];
       if (a.dining === null) missing.push('dining');
@@ -1752,12 +1728,66 @@ function openGuest(r){
        it matches what was stored, so the changed-test below skips it. Only
        an admin's sheet carries the chips, so only an admin sets this. */
     if (canFlags()) r._flags = flags;
+    /* Marking completed cannot outrun the answers, even if something calls
+       this past the disabled button. */
+    if (mark === 'completed' &&
+        !mandatoryAnswered(Object.assign({}, r.pre || {}, sheetAnswers(a)),
+                           r.stay)){
+      var m2 = [];
+      if (a.dining === null) m2.push('dining');
+      if (!a.noDiets && !a.diets.length) m2.push('dietary');
+      return flagMissing(m2.length ? m2 : ['dining']);
+    }
     /* Only check in confirms. Save is the third argument's false twice over:
-       it neither checks in nor stamps anything. */
-    save(r, a, checkin, checkin);
+       it neither checks in nor stamps anything. The fifth argument is the
+       state, and it is the ONLY thing that moves it. */
+    save(r, a, checkin, checkin, mark);
   }
   document.getElementById('sConfirm').onclick = function(){ finish(false); };
   document.getElementById('sCheckin').onclick = function(){ finish(true); };
+
+  /* The state control. Repainted from the sheet's own answers rather than the
+     stored record, so ticking the last mandatory answer makes it available
+     under the finger, without a save in between. */
+  function paintMark(){
+    var b = document.getElementById('sMark');
+    var why = document.getElementById('sMarkWhy');
+    if (!b) return;
+    /* What the record WOULD hold if this sheet were saved now. */
+    var asShown = Object.assign({}, r.pre || {}, sheetAnswers(a));
+    var done = formState(r.pre, r.stay) === 'completed';
+    var can  = mandatoryAnswered(asShown, r.stay);
+    b.textContent = done ? 'Mark as incomplete' : 'Mark as completed';
+    b.className = 'opt' + (done ? ' terra' : ' solid');
+    b.disabled = !done && !can;
+    if (b.disabled){
+      var miss = missingAnswers(asShown, r.stay).filter(function(l){
+        return l === 'whether they are dining' || l === 'dietaries' ||
+               l === 'treatments';
+      });
+      why.textContent = miss.length
+        ? 'Answer ' + andList(miss) + ' before this can be marked completed.'
+        : 'Some answers are still missing.';
+      why.style.display = '';
+    } else {
+      why.textContent = ''; why.style.display = 'none';
+    }
+  }
+  paintMark();
+  /* The answers are painted by six different functions and a chip row builds
+     its buttons fresh each time, so threading a paintMark into each is how
+     one of them comes to be missed. One listener on the sheet, after the
+     handler that was tapped has run, catches every one of them. */
+  sheetEl.addEventListener('click', function(){ setTimeout(paintMark, 0); });
+  document.getElementById('sMark').onclick = function(){
+    var done = formState(r.pre, r.stay) === 'completed';
+    /* The walk-back confirms, the button law. Marking complete does not:
+       a constructive button that needs a warning has the wrong label. */
+    if (done && !confirm('Mark ' + nameOf(r.stay) +
+        '\u2019s pre-arrival form incomplete? The link can be sent to them ' +
+        'again from Pre-arrival SMS.')) return;
+    finish(false, done ? 'incomplete' : 'completed');
+  };
 
   /* Name what is missing and put it on screen, rather than a button that does
      nothing when pressed. */
@@ -1832,7 +1862,7 @@ function dinnerCell(r, a){
    wellness:null for questions nobody had asked, the optimistic merge below
    read null as false, and a sheet opened and saved untouched came back with
    Not dining and Not interested selected - decisions nobody made. */
-function save(r, a, checkin, confirm){
+function save(r, a, checkin, confirm, mark){
   var payload = {
     diets: a.diets, dnote: a.dnote,
     arriveSlot: a.arriveSlot, arriveNote: a.arriveNote,
@@ -1896,6 +1926,14 @@ function save(r, a, checkin, confirm){
   if (stored.at && !guestAnswered(Object.assign({}, stored, payload)))
     payload.at = null;
 
+  /* The state, and the only thing that moves it. The owner's model of 28 Aug:
+     editing and saving decide nothing, one control marks a form completed,
+     the same control walks it back. `at` is where it lives - the guest's own
+     Send has always written that field, so a form the guest finished and one
+     the desk marked finished are the same fact, which is what they are. */
+  if (mark === 'completed') payload.at = new Date().toISOString();
+  else if (mark === 'incomplete') payload.at = null;
+
   if (confirm){
     payload.confirmedAt = new Date().toISOString();
     /* Checking in is a separate fact from confirming the answers, so it is a
@@ -1913,22 +1951,16 @@ function save(r, a, checkin, confirm){
        only record of it until that exists, and this undo will have to reverse
        that too rather than only the local field. */
     payload.checkedInAt = checkin ? payload.confirmedAt : null;
-    /* Only a confirmation may mark the answers as existing in full. A plain
-       Save stamping `at` was half the 26 Aug bug: one saved arrival slot and
-       the whole record read as a finished form on every screen that asks
-       hasForm.
+    /* And NOTHING here touches the form's state any more. Confirming that
+       reception has been through the answers, and checking a guest in, are
+       facts about people - they are not the questionnaire being finished,
+       and welding all three to one argument is what put villa 17 beyond
+       reach: the sheet's check in stamped it complete having asked for two
+       of the three mandatory answers, and the summary's Confirm arriving
+       re-stamped it having asked for none.
 
-       And only when there is an answer to say exists. The sheet's check in
-       asks for dining and dietary before it gets here, but the summary's two
-       buttons ask for nothing at all - they save what is on screen - so a
-       record already emptied by un-answering was simply re-stamped, and the
-       villa 17 shape of 28 Aug could not be got out of. Reception confirming
-       a guest with nothing recorded is acknowledging an arrival, not a form
-       being completed. The merged record is the one to ask, not the stored
-       one, because the answers being confirmed are in this payload. */
-    if (!hasForm(r.pre) &&
-        guestAnswered(Object.assign({}, r.pre || {}, payload)))
-      payload.at = payload.confirmedAt;
+       Marking completed is its own control now, gated on the answers, with
+       its own way back. The owner's ruling of 28 Aug. */
   }
 
   var before = r.pre, beforeCell = r.cell;
@@ -2080,8 +2112,12 @@ document.getElementById('board').addEventListener('click', function(e){
     if (what === 'edit') return openGuest(ra);
     /* Confirming from the summary saves exactly what is on screen. The guest
        just agreed to it out loud, so there is nothing to open and nothing to
-       retype. Check in does the same and moves them to Arrived. Both are
-       confirmations, unlike the sheet's Save, so both stamp the record. */
+       retype. Check in does the same and moves them to Arrived. Both stamp
+       confirmedAt - reception has been through it - and NEITHER touches the
+       form's state: they ask for no answers at all, and a button that
+       validates nothing must not be able to call a questionnaire finished.
+       That is what re-stamped villa 17 every time somebody tried to undo an
+       accidental check in. Marking completed lives on the sheet, gated. */
     return save(ra, answersOf(ra), what === 'checkin', true);
   }
 

@@ -650,6 +650,92 @@ function groupVillas(roomguests, villa){
   return out.sort(function(a,b){ return (+a) - (+b); });
 }
 
+/* ── the pre-arrival form's state ──────────────────────────────
+   Three states, the owner's ruling of 28 Aug:
+
+     not started   nobody has answered anything
+     incomplete    somebody has, and it has not been marked complete
+     completed     the guest pressed Send, or the desk marked it complete
+
+   It replaces two overlapping systems that could disagree. The Front Desk
+   row tint was computed from the answers; `at` was a stamp written by
+   something else entirely; and nothing reconciled them, so a booking could
+   read completed on one board and incomplete on the other while holding
+   nothing at all. Villa 17, 28 Aug.
+
+   Read here rather than in each board for the same reason. Two readings of
+   one state is how they came to disagree in the first place.
+
+   prearrival.html cannot read any of this: it is a GUEST page and loads no
+   staff code. Its half of the contract is tests/form_questions.json and
+   tests/onenight_cases.json, which both suites answer to. */
+
+/* The keys a guest can answer. Held here since 28 Aug: the Front Desk and
+   Pre-arrival SMS each had their own copy and they had ALREADY drifted - the
+   desk had learnt that a noDiets of false says nothing, and Pre-arrival SMS
+   had not, so the two counted a cleared dietary differently. */
+var GUEST_ANSWERS = ['arriveSlot','arriveNote','dining','diets','noDiets',
+                     'dnote','purpose','approach','wellness','wellDay',
+                     'wellTime','occasion','note','companion'];
+
+function countGuestAnswers(p){
+  if (!p) return 0;
+  return GUEST_ANSWERS.filter(function(k){
+    var v = p[k];
+    if (v === undefined || v === null || v === '') return false;
+    if (Array.isArray(v)) return v.length > 0;
+    /* "No" is an answer - but only to a question with two sides. dining and
+       wellness have them; noDiets is a flag, where true declares "nothing to
+       declare" and false says nothing at all. */
+    if (v === false) return k !== 'noDiets';
+    return true;
+  }).length;
+}
+function guestAnswered(p){ return countGuestAnswers(p) > 0; }
+
+/* How many nights, from whatever shape Mews sent the dates in. parseDepDate
+   builds a LOCAL date from the date part, so a full ISO timestamp and a bare
+   date count the same - which they must, since Mews sends both. */
+function stayNights(s){
+  var a = parseDepDate(s && s.arrive), b = parseDepDate(s && s.depart);
+  if (!a || !b) return null;
+  return Math.round((b - a) / 86400000);
+}
+function oneNightStay(s){ return stayNights(s) === 1; }
+
+/* What a booking must hold before it may be called complete: the three
+   decisions the desk settles and other boards act on. The owner's ruling of
+   28 Aug, asked and answered directly - purpose and dining approach are
+   deliberately NOT here, because no board acts on them and blocking a
+   completion over them would be blocking it over colour.
+
+   A one night stay is not owed the treatment answer. The guest form never
+   offers it - one afternoon is no window for the therapists, the owner ruled
+   25 Aug - so a question never put to them cannot be held against them. */
+function mandatoryAnswered(p, stay){
+  if (!p) return false;
+  var dinner  = p.dining === true || p.dining === false;
+  var dietary = !!p.noDiets ||
+                (Array.isArray(p.diets) ? p.diets.length > 0 : !!p.diets);
+  var massage = p.wellness === true || p.wellness === false;
+  return dinner && dietary && (massage || oneNightStay(stay));
+}
+
+/* Completed wants all three: the stamp, an answer behind it, and the
+   mandatory answers still standing. Any one of them missing and it is not
+   complete, whatever the record says it is.
+
+   Checked on every read rather than trusted from the stamp, which is what
+   makes this self healing. The old check in demanded dinner and dietary but
+   never the massage, so it could stamp a multi night booking complete with
+   the treatment question unasked - and that booking reads incomplete here
+   from the moment this ships, with nothing to run and nothing to repair. */
+function formState(p, stay){
+  if (p && p.at && guestAnswered(p) && mandatoryAnswered(p, stay))
+    return 'completed';
+  return guestAnswered(p) ? 'incomplete' : 'notstarted';
+}
+
 /* Every OTHER villa the same party holds, said in the words both boards use.
    Takes the row and the list it came from - each entry a {villa, stay} - so a
    caller pays nothing for it beyond rows it has already loaded.
