@@ -650,6 +650,29 @@ function groupVillas(roomguests, villa){
   return out.sort(function(a,b){ return (+a) - (+b); });
 }
 
+/* Every OTHER villa the same party holds, said in the words both boards use.
+   Takes the row and the list it came from - each entry a {villa, stay} - so a
+   caller pays nothing for it beyond rows it has already loaded.
+
+   groupVillas above answers the same question off a /roomguests map, which is
+   the shape the cleaning boards hold. This one is the arrivals shape. They are
+   two readers of one fact rather than two facts: whichever board asks, a party
+   holding two villas is two reservations under one groupId.
+
+   Plain text, with a real ampersand: the Front Desk builds its row by
+   concatenation and escapes this on the way in, Pre-arrival SMS sets it as
+   textContent. Returning markup would be wrong for one of them either way. */
+function groupMatesText(row, rows){
+  var g = row && row.stay && row.stay.groupId;
+  if (!g) return '';
+  var out = (rows || []).filter(function(x){
+    return x !== row && x.stay && x.stay.groupId === g;
+  }).map(function(x){ return String(x.villa); })
+    .sort(function(a, b){ return (+a) - (+b); });
+  if (!out.length) return '';
+  return 'with ' + (out.length === 1 ? 'villa ' : 'villas ') + out.join(' & ');
+}
+
 /* Two records describe the same person if the PMS and a guest written entry
    agree on a phone or a name. Phones are compared on their last nine digits
    because Mews stores +61400000000 and a GuestTouch link carries 0400000000,

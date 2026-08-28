@@ -159,7 +159,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=44"></script>
+<script src="nala-shared.js?v=45"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -293,7 +293,18 @@ function answersIn(p){
    done however the message got to them. */
 function stateOf(stay, pre, invite, fix){
   var when = 'arrives ' + shortDay(akey(stay.arrive));
-  if (pre && pre.at)
+  /* An answer must stand beside the stamp. `at` says the answers exist, and a
+     record can hold it while holding none: the Front Desk stamps it at check
+     in, every answer can be taken back afterwards, and until 28 Aug the stamp
+     did not go with them. This page then read Form completed and the link
+     could never be sent to that guest again - villa 17, 28 Aug. A guest
+     cannot submit an empty form (the slot, dinner and dietary questions are
+     all required), so a stamp with nothing beside it was never theirs. The
+     desk's copy of this test is hasForm in front-desk.html, and both write
+     ends are fixed too; reading it this way also puts the records already
+     written back where they belong, which no repair pass could do without
+     somebody running it. */
+  if (pre && pre.at && answersIn(pre))
     return { kind:'done', tickable:false, ticked:false,
              line:'Completed ' + timeOf(pre.at) + ' · ' + when };
   /* A number fixed at the desk outranks the Mews copy: Mews cannot be
@@ -386,6 +397,15 @@ function render(list){
     if (st.bad){ var s = document.createElement('span'); s.className = 'bad';
                  s.textContent = st.line; line.appendChild(s); }
     else line.textContent = st.line;
+    /* One party holding more than one villa, in the Front Desk's words from
+       the Front Desk's reader. Two bookings under one groupId are two rows
+       here and always will be - each villa has its own link and its own
+       answers - but until 28 Aug nothing said they were one party, so the
+       same handset could be sent two different forms by somebody who thought
+       they were texting two guests. Appended rather than built into the line
+       so a failure keeps its red on the failure alone. */
+    var mates = groupMatesText(it, list);
+    if (mates) line.appendChild(document.createTextNode(' \u00b7 ' + mates));
     b.onclick = function(){
       if (st.fixable){ fixNumber(it); return; }
       ROWS[it.id].ticked = !ROWS[it.id].ticked;

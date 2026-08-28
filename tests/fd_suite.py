@@ -1090,6 +1090,106 @@ with sync_playwright() as p:
        "Mews 1159" in pg.locator("#sheet").inner_text())
     pg.close()
 
+    # ── a stamp with nothing behind it ──────────────────────────
+    # Seen live on villa 17, 28 Aug. `at` says the answers exist, and the
+    # desk's confirm wrote it onto a record holding none: this board went
+    # amber (anyAnswers yes, fullAnswers no), Pre-arrival SMS read Form
+    # completed and would not send the link again, and nothing on either
+    # screen could put it back. A guest can never submit an empty form - the
+    # slot, dinner and dietary questions are all required - so a stamp
+    # standing alone was always the desk's and never a guest's. Both ends are
+    # fixed; this is the reading end, and it is what heals the records already
+    # written.
+    STAYS["17"] = {"id": "b17", "first": "Tim", "last": "Martin",
+                   "arrive": today, "depart": plus(1), "adults": 2,
+                   "phone": "+61 416 237 128"}
+    PRE["b17"] = {"at": "2026-08-27T22:56:00Z",
+                  "confirmedAt": "2026-08-27T22:56:00Z"}
+    pg = board()
+    def cls(v):
+        return pg.evaluate("()=>document.querySelector("
+                           "'.arr[data-villa=\"%s\"]').className" % v)
+    ck("a stamp with no answer behind it is not a finished form",
+       "done-form" not in cls("17"))
+    ck("nor a form somebody started: it reads as nobody asked",
+       "todo-form" in cls("17") and "part-form" not in cls("17"))
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(350)
+    ck("and it drops down no summary, because there is nothing to read back",
+       pg.evaluate("()=>document.querySelectorAll('.sum').length") == 0)
+    ck("it opens the form instead, which is the way back",
+       pg.evaluate("()=>backdrop.className.indexOf('show')>-1"))
+    pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
+    pg.close()
+    del PRE["b17"]
+
+    # ── the stamp goes back with the last answer ────────────────
+    # The write end of the same bug. Check in cannot stamp a blank sheet -
+    # dining and dietary are required there - so `at` always starts honest.
+    # What went wrong is that it outlived the answers: every answer can be
+    # taken back since 26 Aug, and nothing took the stamp with them.
+    pg = board()
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    pg.locator("#sOut").click()
+    pg.evaluate("()=>[...document.querySelectorAll('#dNone .chip')][0].click()")
+    pg.wait_for_timeout(150)
+    del WRITES[:]
+    pg.locator("#sCheckin").click(); pg.wait_for_timeout(700)
+    w = [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]]
+    ck("checking in a guest whose answers began at the desk stamps the form",
+       len(w) == 1 and bool(json.loads(w[0]["b"]).get("at")))
+    #  And now take those answers back, which is the only way a record ever
+    #  reached the villa 17 shape.
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    pg.locator("#sOut").click(); pg.wait_for_timeout(150)
+    pg.evaluate("()=>[...document.querySelectorAll('#dNone .chip')][0].click()")
+    pg.wait_for_timeout(150)
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(700)
+    w = [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]]
+    ck("un-answering the last answer clears the stamp with it",
+       len(w) == 1 and "at" in json.loads(w[0]["b"])
+       and json.loads(w[0]["b"])["at"] is None)
+    ck("and the row is grey again, which is the way back the desk had none of",
+       "todo-form" in cls("17"))
+    pg.close()
+
+    # ── a one night stay can reach green ────────────────────────
+    # The guest form offers no treatment question on a one night stay, so
+    # `wellness` is never written for one, and fullAnswers demanded it
+    # anyway: villas 16 and 17 on 28 Aug were one night each and could not
+    # have tinted green however completely they answered. A question nobody
+    # was asked cannot be held against them.
+    PRE["b17"] = {"at": "2026-08-27T22:56:00Z", "arriveSlot": "15",
+                  "dining": True, "pax": 2, "noDiets": True}
+    STAYS["10"] = {"id": "b10", "first": "Long", "last": "Stayer",
+                   "arrive": today, "depart": plus(3), "adults": 2}
+    PRE["b10"] = dict(PRE["b17"])
+    pg = board()
+    ck("a one night guest who answered everything asked tints green",
+       "done-form" in cls("17"))
+    ck("and the same answers over three nights stay amber, because the "
+       "treatment question WAS asked and is unanswered",
+       "part-form" in cls("10"))
+    #  One table, two readers: the guest form decides which questions a one
+    #  night stay is shown, this board has to know the same rule, and neither
+    #  can import from the other. tests/onenight_cases.json is what they both
+    #  answer to - add a case there, not here.
+    cases = json.load(open("tests/onenight_cases.json"))["cases"]
+    bad = []
+    for nights, want, why in cases:
+        got = pg.evaluate("(d)=>oneNight({arrive:d.a, depart:d.b})",
+                          {"a": plus(0), "b": plus(nights)})
+        if bool(got) != bool(want):
+            bad.append("%d nights: wanted %s, got %s (%s)"
+                       % (nights, want, got, why))
+    print("   one night cases the desk reads wrongly:", bad)
+    ck("the desk reads the one night rule exactly as the guest form does",
+       bad == [] and len(cases) >= 5)
+    pg.close()
+    del PRE["b17"]; del STAYS["17"]
+    del PRE["b10"]; del STAYS["10"]
+
     # ── one party, two villas ───────────────────────────────────
     # A family booking two villas is two reservations under one group. Two rows
     # is correct: two villas, two registration cards, two sets of answers. What

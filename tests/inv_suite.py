@@ -582,6 +582,50 @@ with sync_playwright() as p:
        [pg.evaluate("()=>%s.textContent" % i)
         for i in ("nSend","nWait","nOpen","nDone")] == ["1","1","1","1"])
 
+    #  A stamp with nothing behind it. Seen live on villa 17, 28 Aug: the
+    #  Front Desk's confirm wrote `at` onto a record holding no answers, so
+    #  this page read Form completed and the link could never be sent to that
+    #  guest again - and the desk had no way back either. A guest cannot
+    #  submit an empty form (the slot, dinner and dietary questions are all
+    #  required), so a stamp standing alone was always the desk's and never
+    #  theirs. The desk's copy of this test is hasForm in front-desk.html.
+    PRE_RECS["pa-phantom"] = {"at": now.isoformat(),
+                              "confirmedAt": now.isoformat()}
+    NIGHTS[dplus(1)]["16"] = stay("pa-phantom", "Tim", "Martin",
+                                  "+61 416 237 128", 1, 2)
+    pg3 = apage()
+    prow = pg3.locator('.vrow[data-booking="pa-phantom"]')
+    ck("a stamp with no answer behind it is not a completed form",
+       "b-done" not in (prow.get_attribute("class") or ""))
+    ck("and that guest can still be sent the link, which is the whole point",
+       not prow.is_disabled() and "Not asked" in prow.inner_text())
+    pg3.close()
+    del PRE_RECS["pa-phantom"]
+    del NIGHTS[dplus(1)]["16"]
+
+    #  One party, two villas. Two rows is correct - each villa has its own
+    #  link and its own answers - but until 28 Aug nothing here said they were
+    #  one party, so the same handset could be sent two different forms by
+    #  somebody who thought they were texting two guests. The words and the
+    #  reader are the Front Desk's, from nala-shared.js.
+    NIGHTS[dplus(1)]["16"] = stay("pa-grp-a", "Tim", "Martin",
+                                  "+61 416 237 128", 1, 2,
+                                  {"groupId": "grp-tim"})
+    NIGHTS[dplus(1)]["17"] = stay("pa-grp-b", "Tim", "Martin",
+                                  "+61 416 237 128", 1, 2,
+                                  {"groupId": "grp-tim"})
+    pg4 = apage()
+    ck("each villa of one party names the other",
+       "with villa 17" in
+       pg4.locator('.vrow[data-booking="pa-grp-a"]').inner_text()
+       and "with villa 16" in
+       pg4.locator('.vrow[data-booking="pa-grp-b"]').inner_text())
+    ck("a booking on its own says nothing about a party",
+       "with villa" not in
+       pg4.locator('.vrow[data-booking="pa-ready"]').inner_text())
+    pg4.close()
+    del NIGHTS[dplus(1)]["16"]; del NIGHTS[dplus(1)]["17"]
+
     #  Fixing the number: the tap opens a prompt, the save is the NORMALISED
     #  E.164 to /phonefix/<booking>, and on reload the guest is sendable.
     #  The 25 Aug case verbatim: an NZ mobile with its country code.

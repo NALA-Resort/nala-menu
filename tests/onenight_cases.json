@@ -1,0 +1,10 @@
+{
+  "_why": "One table, two readers. A one night stay is offered no treatment question - one afternoon is not a window the therapists can use, the owner ruled 25 Aug - so `wellness` is never written for one. prearrival.html decides that for the guest and front-desk.html has to know it, or a one night guest who answered everything they were shown tints amber for ever (seen live on villas 16 and 17, 28 Aug). The rule cannot be shared in code: prearrival.html is a GUEST page and loads no staff code, which is the exception CLAUDE.md rule 3 allows. So both copies answer to THIS file, read by pre_suite.py and fd_suite.py. A case added here fails whichever copy has not learned it.",
+  "cases": [
+    [1, true, "one night: arrive and depart a day apart"],
+    [2, false, "two nights is a stay to plan around"],
+    [3, false, "the ordinary booking"],
+    [7, false, "a week"],
+    [0, false, "a day guest, no night at all: not the one night case, and not asked to be"]
+  ]
+}

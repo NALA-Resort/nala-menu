@@ -724,6 +724,27 @@ with sync_playwright() as p:
            "wellness" not in w1[0]["b"])
     pg.close()
 
+    #  One table, two readers. Which stays are shown the treatment question
+    #  is decided here and has to be known at the Front Desk, or a one night
+    #  guest who answered everything they were asked tints amber for ever -
+    #  villas 16 and 17, 28 Aug. This page loads no staff code, so the rule
+    #  cannot be shared in code; tests/onenight_cases.json is what both
+    #  copies answer to. Add a case there, not here.
+    cases = json.load(open("tests/onenight_cases.json"))["cases"]
+    bad = []
+    for nights, want, why in cases:
+        q = guest(link="?b=res-guid-1&n=Robyn&s=Williams&a=" + plus(0)
+                       + "&d=" + plus(nights))
+        live = q.evaluate("()=>liveSteps().map(s=>s.id)")
+        q.close()
+        if ("qWell" not in live) != bool(want):
+            bad.append("%d nights: wanted one-night %s, treatment page %s (%s)"
+                       % (nights, want,
+                          "hidden" if "qWell" not in live else "shown", why))
+    print("   one night cases the guest form reads wrongly:", bad)
+    ck("the treatment question is hidden on exactly the stays the table names",
+       bad == [] and len(cases) >= 5)
+
     #  The day chips read the resolved dates, not the raw link: a link with
     #  no dates whose booking Mews knows still offers the days - the demo
     #  itself was dateless and offered none for a spell.

@@ -257,7 +257,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=44"></script>
+<script src="nala-shared.js?v=45"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -372,7 +372,24 @@ function nightsLabel(s){
    working through. */
 function isConfirmed(p){ return !!(p && p.confirmedAt); }
 function isArrived(p){ return !!(p && p.checkedInAt); }
-function hasForm(p){ return !!(p && p.at); }
+/* `at` ALONE is not a finished form. It says "the answers exist", and a
+   record can hold it while holding none: check in stamps it honestly, having
+   just required dining and dietary, but since 26 Aug every answer can be
+   taken back again and nothing took the stamp with them. The summary's own
+   Confirm arriving then re-stamps whatever is left, asking nothing.
+
+   What that left on villa 17, 28 Aug: a booking reading Form completed on
+   Pre-arrival SMS, so the link could never be sent again, and amber here,
+   because anyAnswers said yes and fullAnswers said no - with no way back from
+   either screen.
+
+   So the stamp must be accompanied by an answer to be believed. A guest can
+   never submit an empty form (the slot, the dinner and the dietary questions
+   are all required), so a stamp with nothing beside it was never a guest's.
+   Reading it this way heals the records already written as well as the ones
+   to come: no repair pass, no button to press. Both write ends are fixed too,
+   in save(). */
+function hasForm(p){ return !!(p && p.at && guestAnswered(p)); }
 
 /* Three states, not two, since the guest form began saving each page as it is
    left. Before that a record either existed or did not, and `at` alone said
@@ -394,15 +411,28 @@ var GUEST_ANSWERS = ['arriveSlot','arriveNote','dining','diets','noDiets',
                      'dnote','purpose','approach','wellness','wellDay',
                      'wellTime','occasion','note','companion'];
 
-function startedForm(p){
-  if (!p || hasForm(p)) return false;
+/* Does this record hold a single answer somebody actually gave? The one
+   question underneath all three below, pulled out on 28 Aug because hasForm
+   now needs it too and a second reading of the same list is how two of them
+   would come to disagree. */
+function guestAnswered(p){
+  if (!p) return false;
   return GUEST_ANSWERS.some(function(k){
     var v = p[k];
     if (v === undefined || v === null || v === '') return false;
     if (Array.isArray(v)) return v.length > 0;
-    if (v === false) return true;   /* "no" is an answer */
+    /* "No" is an answer - but only to a question with two sides. dining and
+       wellness have them; noDiets is a flag, where true declares "nothing to
+       declare" and false says nothing at all. Counting a false one made a
+       record whose dietary had just been taken back still read as started,
+       and left the `at` clear below unable to fire on the last answer. */
+    if (v === false) return k !== 'noDiets';
     return true;
   });
+}
+
+function startedForm(p){
+  return !hasForm(p) && guestAnswered(p);
 }
 
 /* Any answer at all, wherever it came from - the guest's form or the desk.
@@ -410,7 +440,7 @@ function startedForm(p){
    question (is the guest mid-form); the tint needs "is there anything here",
    for which a submitted form obviously counts. */
 function anyAnswers(p){
-  return hasForm(p) || startedForm(p);
+  return guestAnswered(p);
 }
 
 /* Every question the desk has to settle holds an answer: dinner, dietary and
@@ -424,13 +454,33 @@ function anyAnswers(p){
    stamp and a hole in it (a rule in a form is not a guarantee from a
    database) reads amber and gets asked, and a record completed entirely at
    the desk earns its green without pretending to be a submitted form. */
-function fullAnswers(p){
+function fullAnswers(p, stay){
   if (!p) return false;
   var dinner  = p.dining === true || p.dining === false;
   var dietary = !!p.noDiets ||
                 (Array.isArray(p.diets) ? p.diets.length > 0 : !!p.diets);
   var massage = p.wellness === true || p.wellness === false;
-  return dinner && dietary && massage;
+  /* A question nobody was asked cannot be held against them. The guest form
+     does not offer treatments on a one night stay - one afternoon is not a
+     window the therapists can use, the owner ruled - so `wellness` is never
+     written, and until 28 Aug that meant a one night guest who answered every
+     question they were shown still tinted amber, for ever, with nothing
+     reception could do about it. The desk may still answer it here, and does
+     when a one night guest asks; it is simply not owed. */
+  return dinner && dietary && (massage || oneNight(stay));
+}
+
+/* The same test the guest form applies before it hides the treatment page,
+   prearrival.html's `oneNight`. Duplicated rather than shared because that
+   page is a GUEST page and deliberately loads no staff code (nala-shared.js
+   never reaches a guest's browser), which is the exception CLAUDE.md rule 3
+   allows - so the two copies answer to one table, tests/onenight_cases.json,
+   read by both suites. Add a case there, not to a suite. */
+function oneNight(s){
+  if (!s) return false;
+  var a = parseDepDate(dkeyOf(s.arrive)), b = parseDepDate(dkeyOf(s.depart));
+  if (!a || !b) return false;
+  return Math.round((b - a) / 86400000) === 1;
 }
 
 /* No pills on this screen. Every state a pill carried is already said once,
@@ -470,17 +520,6 @@ function esc(t){
   });
 }
 
-/* The other villas the same party holds today. Built from the rows already
-   loaded, so it costs no extra request. */
-function groupMates(r){
-  var g = r.stay && r.stay.groupId;
-  if (!g) return [];
-  return ROWS.filter(function(x){
-    return x !== r && x.stay && x.stay.groupId === g;
-  }).map(function(x){ return x.villa; })
-    .sort(function(a,b){ return (+a) - (+b); });
-}
-
 function rowHTML(r){
   /* Before a guest arrives, when they are coming is the fact reception plans
      around, so it takes the second slot. Party size gives way to it rather
@@ -491,18 +530,19 @@ function rowHTML(r){
      summary, not squeezed into a row that already truncates. */
   /* One party holding more than one villa. Reception needs to know before
      they start, because the answers and the table are shared. */
-  var withVillas = groupMates(r);
+  /* The other villas the same party holds today, from nala-shared.js since
+     28 Aug: Pre-arrival SMS needed the same mark, and one wording read by
+     both is the only way the two boards can agree about a party. */
+  var withVillas = groupMatesText(r, ROWS);
   var bits = [nightsLabel(r.stay)];
-  if (withVillas.length)
-    bits.push('with ' + (withVillas.length === 1 ? 'villa ' : 'villas ') +
-              withVillas.join(' &amp; '));
+  if (withVillas) bits.push(esc(withVillas));
   var i = etaIndex(r.pre && r.pre.arriveSlot);
   if (i >= 0) bits.push('<span class="eta">' + ETA_SLOTS[i][2] + '</span>');
   else if (r.stay.adults)
     bits.push(r.stay.adults + (Number(r.stay.adults)===1 ? ' adult' : ' adults'));
   var open = OPEN === r.villa;
   /* Completeness, not form-submission: see fullAnswers. */
-  var tint = fullAnswers(r.pre) ? ' done-form'
+  var tint = fullAnswers(r.pre, r.stay) ? ' done-form'
            : anyAnswers(r.pre) ? ' part-form' : ' todo-form';
   return '<button class="arr'+tint+(isArrived(r.pre)?' is-done':'')+(open?' open':'')+
          '" data-villa="'+r.villa+'">'+
@@ -1780,6 +1820,18 @@ function save(r, a, checkin, confirm){
   if (a.noDiets || a.diets.length || (r.pre && r.pre.noDiets !== undefined))
     payload.noDiets = a.noDiets;
 
+  /* The stamp goes back with the last answer. `at` says the answers exist, so
+     a record whose answers have all been taken back must not keep it - and it
+     did: check in stamps `at` honestly (it refuses a blank sheet), but since
+     26 Aug every answer can be un-answered, and nothing took the stamp with
+     them. That is how villa 17 came to read Form completed on Pre-arrival SMS
+     while holding nothing at all, with no way back from either board, 28 Aug.
+     Null through the PATCH deletes the key, exactly as the answers above
+     clear. confirmedAt stays: reception did go through it, and that is a
+     separate fact from whether any answer survived. */
+  if (stored.at && !guestAnswered(Object.assign({}, stored, payload)))
+    payload.at = null;
+
   if (confirm){
     payload.confirmedAt = new Date().toISOString();
     /* Checking in is a separate fact from confirming the answers, so it is a
@@ -1800,8 +1852,19 @@ function save(r, a, checkin, confirm){
     /* Only a confirmation may mark the answers as existing in full. A plain
        Save stamping `at` was half the 26 Aug bug: one saved arrival slot and
        the whole record read as a finished form on every screen that asks
-       hasForm. */
-    if (!hasForm(r.pre)) payload.at = payload.confirmedAt;
+       hasForm.
+
+       And only when there is an answer to say exists. The sheet's check in
+       asks for dining and dietary before it gets here, but the summary's two
+       buttons ask for nothing at all - they save what is on screen - so a
+       record already emptied by un-answering was simply re-stamped, and the
+       villa 17 shape of 28 Aug could not be got out of. Reception confirming
+       a guest with nothing recorded is acknowledging an arrival, not a form
+       being completed. The merged record is the one to ask, not the stored
+       one, because the answers being confirmed are in this payload. */
+    if (!hasForm(r.pre) &&
+        guestAnswered(Object.assign({}, r.pre || {}, payload)))
+      payload.at = payload.confirmedAt;
   }
 
   var before = r.pre, beforeCell = r.cell;
