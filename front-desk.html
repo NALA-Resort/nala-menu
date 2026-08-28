@@ -140,7 +140,7 @@
   .empty { font-size:var(--t3); color:var(--mid); font-style:italic; padding:4px 0 2px; }
   .spacer { height:40px; }
   #errBar { display:none; background:var(--red); color:#fff; font-size:var(--t2);
-            padding:9px 12px; border-radius:6px; margin-top:12px; }
+            padding:9px 12px; border-radius:var(--r); margin-top:12px; }
   #errBar.show { display:block; }
 
   /* Sheet chrome and controls, matching tally.html exactly. Copied rather
@@ -174,7 +174,7 @@
   .seg { display:flex; gap:6px; margin:2px 0 4px; }
   .seg button { flex:1; padding:11px 0; border:1px solid var(--rule); background:transparent;
                 font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); cursor:pointer; border-radius:6px; }
-  .seg button.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .seg button.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
   /* An answer that WAS chosen and has just been taken off. The fill goes,
      the dark border stays, so a deselect made by accident is visible as a
      gap where an answer used to be rather than as a blank nobody can tell
@@ -191,8 +191,8 @@
   .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 4px; }
   .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
          font-family:var(--ui-font); font-size:var(--t3); color:var(--ink);
-         cursor:pointer; border-radius:6px; }
-  .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+         cursor:pointer; border-radius:var(--pill); }
+  .pax.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
   .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
   /* One dress for every row of choices on the sheet, ruled by the owner
      27 Aug once the two time rows proved it: the choices stand in a single
@@ -220,7 +220,7 @@
   .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
           border-radius:20px; font-family:var(--ui-font); font-size:var(--t2);
           color:var(--mid); cursor:pointer; }
-  .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .chip.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
   .txt { width:100%; padding:12px; margin-bottom:8px; border:1px solid var(--rule);
          background:transparent; font-family:var(--ui-font); font-size:var(--t3); color:var(--ink); }
   .txt::placeholder { color:var(--mid); font-style:italic; }

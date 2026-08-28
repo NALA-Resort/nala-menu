@@ -659,7 +659,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
     .tile .rn { font-size:17px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
     .tile .sub { font-size:8px !important; min-height:10px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
     .tile .who-badge { bottom:3px; right:3px; min-width:16px; height:16px;
-                       font-size:8px; border-radius:8px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+                       font-size:8px; border-radius:var(--r); }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
     .tile .task-icons { top:3px; left:3px; }
     .tile .task-icons svg { width:11px; height:11px; }
     .tile .eta { top:3px; right:3px; font-size:8px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
@@ -866,7 +866,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 
   .legend { margin-top:20px; display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
             font-family:var(--ui-font); font-size:9px;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */ color:var(--mid); }
-  .legend i { display:inline-block; width:11px; height:11px; border-radius:3px;
+  .legend i { display:inline-block; width:11px; height:11px; border-radius:var(--r);
               border:1.2px solid var(--rule); vertical-align:-1px; margin-right:5px; }
   /* The key draws the same bars at the same size and in the same colours. A
      key that is a separate drawing can disagree with the thing it explains;
@@ -880,7 +880,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
             border:1.2px solid var(--rule); border-radius:10px;
             background:transparent; font-size:7px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
   .legend span { display:flex; align-items:center; gap:5px; line-height:1.15; }
-  .legend .lgb { flex:0 0 auto; width:15px; height:6px; border-radius:3px;
+  .legend .lgb { flex:0 0 auto; width:15px; height:6px; border-radius:var(--r);
                  border:1.2px solid var(--bluebar); background:var(--bluebar);
                  vertical-align:0; margin:0; }
   .legend .lgb.svc { background:var(--greenbar); border-color:var(--greenbar); }
@@ -912,7 +912,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .headrow .st { margin-bottom:0; }
   .headrow { margin-bottom:16px; }
   .tasks { display:flex; gap:8px; flex:0 0 auto; }
-  .ttog { width:44px; height:44px; border-radius:8px; padding:0; cursor:pointer;
+  .ttog { width:44px; height:44px; border-radius:var(--r); padding:0; cursor:pointer;
           border:1.5px solid var(--rule); background:#fff; color:#C6C6BF;
           display:flex; align-items:center; justify-content:center;
           font-family:var(--ui-font); }

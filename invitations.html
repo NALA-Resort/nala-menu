@@ -21,7 +21,7 @@
               text-transform:none; color:var(--mid); text-decoration:underline; }
 
   /* Why this page refuses to send. A tinted pill is status, never tappable. */
-  .menupill { display:inline-block; padding:6px 12px; border-radius:99px;
+  .menupill { display:inline-block; padding:6px 12px; border-radius:var(--r);
               background:#EFE3E0; color:var(--red); font-size:var(--t2); }
   .menupill.ok { background:var(--green); color:var(--greenb); }
   .menuwhy { font-size:var(--t2); color:var(--mid); margin-top:6px; line-height:1.45; }
@@ -68,7 +68,7 @@
   /* The tick says what pressing Send will do to this villa. Adjacent steps of
      the type scale, so the mark reads with the row rather than over it. */
   .tick { flex:0 0 auto; width:24px; height:24px; border:1px solid var(--rule);
-          border-radius:6px; display:flex; align-items:center; justify-content:center;
+          border-radius:var(--pill); display:flex; align-items:center; justify-content:center;
           font-size:var(--t3); color:transparent; }
   .vrow.on { border-color:var(--greenb); }
   .vrow.on .tick { background:var(--green); border-color:var(--greenb); color:var(--ink); }
@@ -76,7 +76,7 @@
   /* The message. The box holds the words; the link is never in the box. */
   select, textarea { width:100%; font-family:var(--ui-font); font-size:var(--t3);
                      color:var(--ink); background:#fff; border:1px solid var(--rule);
-                     border-radius:8px; padding:11px 13px; }
+                     border-radius:var(--r); padding:11px 13px; }
   select { -webkit-appearance:none; appearance:none; }
   textarea { margin-top:8px; min-height:96px; resize:vertical; line-height:1.45; }
   .msgmeta { display:flex; justify-content:space-between; gap:12px;

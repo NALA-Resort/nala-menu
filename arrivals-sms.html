@@ -67,7 +67,7 @@
   .vrow .st { font-size:var(--t2); color:var(--mid); margin-top:2px; }
   .vrow .st .bad { color:var(--red); }
   .tick { flex:0 0 auto; width:24px; height:24px; border:1px solid var(--rule);
-          border-radius:6px; display:flex; align-items:center; justify-content:center;
+          border-radius:var(--pill); display:flex; align-items:center; justify-content:center;
           font-size:var(--t3); color:transparent; }
   .vrow.on { border-color:var(--greenb); }
   .vrow.on .tick { background:var(--green); border-color:var(--greenb); color:var(--ink); }
@@ -78,7 +78,7 @@
 
   select, textarea { width:100%; font-family:var(--ui-font); font-size:var(--t3);
                      color:var(--ink); background:#fff; border:1px solid var(--rule);
-                     border-radius:8px; padding:11px 13px; }
+                     border-radius:var(--r); padding:11px 13px; }
   select { -webkit-appearance:none; appearance:none; }
   textarea { margin-top:8px; min-height:96px; resize:vertical; line-height:1.45; }
   .msgmeta { display:flex; justify-content:space-between; gap:12px;

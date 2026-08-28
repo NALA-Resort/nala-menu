@@ -67,7 +67,7 @@
   .sfbtn { padding:7px 13px; border:1px solid #C9C9C2; background:transparent;
            border-radius:20px; font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
            cursor:pointer; -webkit-tap-highlight-color:transparent; }
-  .sfbtn.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .sfbtn.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
   .sfhint { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); }
 
   .rule { border:none; border-top:1px solid var(--rule); margin-top:28px; }
@@ -116,7 +116,7 @@
                   font-size:var(--t3); color:var(--ink); }
   .addrow input:focus { outline:none; border-color:var(--ink); }
   .addbtn { border:1px solid var(--ink); background:transparent; color:var(--ink);
-            padding:11px 15px; border-radius:8px; white-space:nowrap;
+            padding:11px 15px; border-radius:var(--r); white-space:nowrap;
             font-family:var(--ui-font); font-size:var(--t2); cursor:pointer;
             -webkit-tap-highlight-color:transparent; }
   /* Clear of the field above it. At 10px the line read as a caption belonging
@@ -147,7 +147,7 @@
 
   .demobar { display:none; background:var(--ink); color:var(--cream);
              font-family:var(--ui-font); font-size:var(--t2); text-align:center;
-             padding:9px 12px; border-radius:8px; margin-bottom:18px; }
+             padding:9px 12px; border-radius:var(--r); margin-bottom:18px; }
   .demobar.show { display:block; }
   body.demo .pubbtn { background:#55554F; }
 

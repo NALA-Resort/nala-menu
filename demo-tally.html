@@ -583,7 +583,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   /* Both states are pills. The published one renders as an <a> and the
      unpublished as a <span>, so this must match either - selecting only
      span left the published state unstyled but for its background.     */
-  .menustate > * { display:inline-block; border-radius:20px;
+  .menustate > * { display:inline-block; border-radius:var(--pill);
                    font-family:var(--ui-font); font-size:var(--t1);
                    /* The right padding used to be short by .16em to take back
                       the trailing space letter-spacing leaves inside the box.
@@ -599,14 +599,15 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 .sec { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); margin:26px 0 12px;
          display:flex; justify-content:space-between; align-items:baseline; }
   .sec a { color:var(--ink); text-decoration:none; border:1px solid var(--rule);
-           font-size:var(--t1); padding:6px 12px; border-radius:2px;
+           font-size:var(--t1); padding:6px 12px; border-radius:var(--r);
            background:transparent; }
   .sec a.active { background:var(--ink); color:var(--cream); border-color:var(--ink); }
 
   /* room grid */
   .rooms { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; }
   .room {
-    aspect-ratio:1; border:1px solid var(--rule); background:transparent;
+    aspect-ratio:1; border:1px solid var(--rule); border-radius:var(--r);
+    background:transparent;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     font-family:var(--ui-font); cursor:pointer; padding:0; position:relative;
   }
@@ -618,7 +619,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      next to a squeezed label is how a wrong button gets pressed. */
   .comb-note { display:flex; align-items:center; justify-content:space-between;
                gap:8px; flex-wrap:wrap;
-               border:1px solid var(--ink); border-radius:8px;
+               border:1px solid var(--ink); border-radius:var(--r);
                padding:9px 12px; margin:0 44px 12px;
                font-family:var(--ui-font); font-size:var(--t2); }
   .comb-undo { border:none; background:transparent; color:var(--red); cursor:pointer;
@@ -666,10 +667,10 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      everything inside. Layout width is identical grouped or not.          */
   .grpbox { position:relative; border:0; padding:0; margin:14px 0; }
   .grpbox::after { content:''; position:absolute; inset:-6px -9px;
-                   border:1.2px solid var(--ink); border-radius:10px; pointer-events:none; }
+                   border:1.2px solid var(--ink); border-radius:var(--r); pointer-events:none; }
   .tilegrp { display:grid; gap:6px; position:relative; }
   .tilegrp::after { content:''; position:absolute; inset:-3.5px;
-                    border:1.2px solid var(--ink); border-radius:9px; pointer-events:none; }
+                    border:1.2px solid var(--ink); border-radius:var(--r); pointer-events:none; }
   .grpbox .row:last-child { border-bottom:none; }
   .row.stubrow .row-name, .row.stubrow .row-sub { color:var(--mid); }
   .row.stubrow .row-sub { font-style:italic; }
@@ -710,7 +711,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .row-name .rm::after { content:' - '; font-weight:normal; color:var(--mid); }
   .row-name .tag { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
                    border:1px solid var(--rule); padding:2px 6px; margin-left:8px;
-                   border-radius:10px; vertical-align:middle; }
+                   border-radius:var(--r); vertical-align:middle; }
   .row-sub { font-style:italic; font-size:var(--t2); color:var(--mid); margin-top:8px; }
   .row-pax { font-family:var(--ui-font); font-size:var(--t2); white-space:nowrap; }
   /* The bubble sits BEFORE the pax count so the pax figures line up down the
@@ -730,7 +731,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .nm { white-space:nowrap; }
   .dietline { flex:0 0 100%; margin:8px 0 0; display:flex; flex-wrap:wrap; gap:5px; }
   .dpill { font-family:var(--ui-font); font-size:var(--t2); font-weight:bold; padding:3px 8px;
-           border-radius:11px; background:rgba(168,50,30,.12); color:var(--red); }
+           border-radius:var(--pill); background:rgba(168,50,30,.12); color:var(--red); }
   .dpill-al { background:var(--red); color:#fff; }
   /* The declared "none" wears the same pill as any dietary, in the green
      the colour law gives a positive state - never the red tints above,
@@ -788,19 +789,22 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
   .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
-          border-radius:20px; font-family:var(--ui-font); font-size:var(--t2);
+          border-radius:var(--pill); font-family:var(--ui-font); font-size:var(--t2);
           color:var(--mid); cursor:pointer; }
-  .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .chip.on { background:var(--accent); color:var(--accent-ink);
+           border-color:var(--accent); }
 
   .seg { display:flex; gap:6px; margin:2px 0 12px; }
   .seg button { flex:1; padding:11px 0; border:1px solid var(--rule); background:transparent;
-                font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); cursor:pointer; border-radius:6px; }
-  .seg button.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+                font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); cursor:pointer; border-radius:var(--r); }
+  .seg button.on { background:var(--accent); color:var(--accent-ink);
+                 border-color:var(--accent); }
   .rm-row { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:2px 0 14px; }
   .rmp { height:40px; border:1px solid var(--rule); background:transparent;
          font-family:var(--ui-font); font-size:var(--t2); color:var(--ink);
-         cursor:pointer; border-radius:6px; }
-  .rmp.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+         cursor:pointer; border-radius:var(--r); }
+  .rmp.on { background:var(--accent); color:var(--accent-ink);
+          border-color:var(--accent); }
   /* Reported 18 Aug from a real handset: the villa heading and the name were
      being squeezed against the menu button, because the sheet header did not
      know the button was there. The name line is given room to breathe and the
@@ -848,7 +852,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
               margin-top:8px; padding:12px 16px 4px; text-align:left;
               overflow-y:auto;
               background:var(--cream); border:1px solid var(--rule);
-              border-radius:12px;
+              border-radius:var(--r);
               box-shadow:0 10px 28px rgba(28,28,26,.14);
               opacity:0; visibility:hidden; transform:translateY(-6px);
               transition:opacity .18s ease, transform .18s ease,
@@ -864,14 +868,14 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .gd-int label { display:block; font-family:var(--ui-font); font-size:var(--t1);
                   color:var(--mid); margin:0 0 4px; }
   .gd-int textarea { width:100%; min-height:56px; padding:8px 10px;
-                     border:1px solid var(--rule); border-radius:6px;
+                     border:1px solid var(--rule); border-radius:var(--r);
                      background:var(--cream); color:var(--ink);
                      /* 16px is the floor for every input on a phone: iOS
                         zooms the whole page into any field set smaller. */
                      font-family:var(--ui-font); font-size:var(--t3); resize:vertical; }
   .gd-int .gd-int-save { display:block; width:100%; margin:6px 0 0;
                      padding:8px 0; border:1px solid var(--rule);
-                     border-radius:6px; background:none; cursor:pointer;
+                     border-radius:var(--r); background:none; cursor:pointer;
                      color:var(--mid); font-family:var(--ui-font);
                      font-size:var(--t1);
                      -webkit-tap-highlight-color:transparent; }

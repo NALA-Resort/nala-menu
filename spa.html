@@ -67,9 +67,9 @@
   .chip { font-size:var(--t2); padding:7px 11px; border:1px solid var(--rule);
           border-radius:16px; background:#fff; color:var(--ink);
           font-family:var(--ui-font); cursor:pointer; }
-  .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .chip.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
   .card select { width:100%; font-size:var(--t3); border:1px solid var(--rule);
-                 border-radius:8px; padding:10px 12px; background:#fff;
+                 border-radius:var(--r); padding:10px 12px; background:#fff;
                  font-family:var(--ui-font); margin-top:2px; color:var(--ink);
                  -webkit-appearance:none; appearance:none; }
   /* Three buttons can stand here and the labels carry a day and a time, so
@@ -89,7 +89,7 @@
   /* The desk's find-the-guest box. True white: an editable surface, the
      colour law's one meaning for it. */
   .addsearch { width:100%; font-size:var(--t3); border:1px solid var(--rule);
-               border-radius:10px; padding:11px 13px; background:#fff;
+               border-radius:var(--r); padding:11px 13px; background:#fff;
                font-family:var(--ui-font); color:var(--ink); margin-bottom:7px;
                -webkit-appearance:none; appearance:none; }
   .addsearch::placeholder { color:var(--mid); }
