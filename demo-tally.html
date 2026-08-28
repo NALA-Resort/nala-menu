@@ -304,10 +304,16 @@ body.ui2 .knob button.on, body.ui2 .sec a.active,
 body.ui2 .opt.on, body.ui2 .allbtn.on
                         { background:var(--sel-bg); color:var(--ink);
                           border-color:var(--sel-bdr); font-weight:500; }
-/* Reservations' three state segments and its select bar show what the
-   record will BECOME, in the colour law's own dining green, declined
-   terracotta and vacant slate. Grey would throw the meaning away to win
-   an argument about consistency.                                     */
+/* Reservations' state setters and its select bar show what the record
+   will BECOME, in the colour law's own dining green, declined terracotta
+   and vacant slate. Grey would throw the meaning away to win an argument
+   about consistency.
+
+   .opt.din is every button carrying id oIn, whatever its label. It writes
+   status:'in' on the Add reservation sheet exactly as it does on a villa
+   tile, so "Add" is green because adding a reservation IS marking them
+   dining. Ruled by the owner, 29 Aug, after a first split that went by
+   label and made the same write look like two different actions.     */
 body.ui2 .opt.din, body.ui2 .opt.out, body.ui2 .opt.vac,
 body.ui2 .selbtn.din, body.ui2 .selbtn.out, body.ui2 .selbtn.vac
                         { color:#fff; border:0; font-weight:500; }
@@ -5118,7 +5124,7 @@ document.getElementById('addExt').onclick = function(e){
     '<input class="txt" id="xDnote" type="text" placeholder="Dietary notes" autocomplete="off" style="margin-top:10px;display:none">'+
     '<div class="sheet-label">Dinner notes</div>'+
     '<input class="txt" id="xNote" type="text" placeholder="Dinner notes" autocomplete="off" style="margin-top:14px">'+
-    '<button class="opt solid" id="oIn" style="margin-top:8px">Add</button>'+
+    '<button class="opt din" id="oIn" style="margin-top:8px">Add</button>'+
     '<button class="opt quiet" id="oCancel">Cancel</button>';
   showSheet();
   revealAction();
