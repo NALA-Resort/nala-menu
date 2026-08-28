@@ -58,6 +58,50 @@ the real site - pending screenshots). Staff controls never appear here.
 - **Rectangle with border or solid fill = a button.** Nothing else may use
   that dress. Primary solid ink, secondary outlined.
 
+## The four roles, and there are only four
+
+Ruled by the owner, 29 Aug, off three screenshots in which the primary
+action was green on Reservations, black on Spa and absent on Front Desk,
+where Save, Close and Confirm were the same button three times. Selection
+was blue on six pages, ink on five and green on two, and a black circle
+sat beside a blue segment on the same sheet.
+
+| Role | Dress | Confirms? |
+|---|---|---|
+| **Primary** | solid accent, white text | never |
+| **Secondary** | quiet grey fill, ink text | never |
+| **Destructive** | terracotta outline, terracotta text | always |
+| **Selected** | grey fill, ink border | not an action |
+
+- **One primary per surface.** It is the thing that surface exists to do:
+  Save, Add, Send, Publish, Book. If pressing it feels like it needs a
+  warning, the label is wrong, not the dialog missing.
+- **Everything else that writes nothing is secondary.** Close, Back, Ask
+  again. A screen of identical bordered rectangles is a screen you have
+  to read.
+- **Destructive always asks**, and names the guest and the thing.
+- **Selected is grey, never black and never blue.** A pill saying "you
+  picked me" must not spend a colour that means something.
+
+A page may set the LAYOUT of the row its buttons sit in. It may not dress
+them again. The roles live in `nala-ui2.css` and the aliases for each
+page's own class names live beside them.
+
+**Two documented exceptions**, both because the colour is carrying meaning
+rather than saying "you picked me":
+
+- Reservations' three state segments and its select bar wear the colour
+  law's dining green, declined terracotta and vacant slate. They show what
+  the record will BECOME.
+- Publish's pressed pill takes the selection grey but its BORDER is left
+  alone: that border is the ring, and the ring is the only red thing on
+  the pill.
+
+Also ruled: `.tick` meant three different things - a checkbox on Staff, a
+hazard mark on Dietary, a ringed pill on Publish. One blanket dress
+overrode the ring and threw its meaning away. Each page says what its own
+tick does.
+
 ## The button law
 
 Ruled by the owner, 26 Aug, after a solid-black Cancel booking sat beside a

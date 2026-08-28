@@ -77,6 +77,20 @@ body.ui2{
   --accent-ink:#FFFFFF;
   --accent-soft:#E8F0FE;
 
+  /* ── what a SELECTED pill looks like ───────────────────────────────
+     Ruled by the owner, 29 Aug: a selected pill gives grey feedback,
+     not black and not blue. Before this it was blue on six pages, ink
+     on five and green on two, and a black circle sat beside a blue
+     segment on the same sheet.
+
+     Grey, and deliberately not the colour law's waiting grey, which is
+     a fifth of this and carries no border: this is a control saying
+     "you picked me", not a record saying "sent, waiting". The ink
+     border is what does the work - a dark edge reads as chosen at a
+     glance without spending a colour that means something.          */
+  --sel-bg:rgba(28,28,26,.10);
+  --sel-bdr:var(--ink);
+
   /* ── scales · pick from these, never by eye ────────────────────────
      Spacing is a 4px grid, which is what Material, Bootstrap and Apple
      all land on. The type scale is the styleguide's own 8/11/15/20/27
@@ -245,7 +259,55 @@ body.ui2 .btn{ display:inline-flex; align-items:center; justify-content:center;
                border:0; border-radius:var(--r); background:var(--card);
                color:var(--ink); font-family:var(--ui-font); font-size:var(--t3);
                font-weight:500; cursor:pointer; text-decoration:none; }
-body.ui2 .btn.solid{ background:var(--accent); color:var(--accent-ink); }
+/* ── the four roles, and there are only four ───────────────────────────
+   Ruled 29 Aug, after three screenshots in which the primary action was
+   green on Reservations, black on Spa and absent on Front Desk, where
+   Save, Close and Confirm were the same button three times.
+
+   PRIMARY      the one thing a surface is for. Solid accent. One per
+                surface. Never confirms: if it feels like it needs a
+                warning the label is wrong, not the dialog missing.
+   SECONDARY    everything else that writes nothing. Quiet grey fill.
+   DESTRUCTIVE  destroys or walks back something a guest holds.
+                Terracotta outline, and it always asks first.
+   SELECTED     a pill you picked. Grey fill, ink border. Not an action.
+
+   A page may set the LAYOUT of the row its buttons sit in. It may not
+   dress them again.                                                   */
+body.ui2 .btn.solid,
+body.ui2 .is-primary    { background:var(--accent); color:var(--accent-ink);
+                          border:0; font-weight:500; }
+body.ui2 .is-secondary  { background:var(--card); color:var(--ink); border:0; }
+body.ui2 .is-destructive{ background:transparent; color:var(--law-terra);
+                          border:1px solid var(--law-terra-b); }
+/* Each page's own name for "the primary action on this surface". They are
+   aliases, not new dresses: one fill, defined once above.              */
+body.ui2 .pubbtn, body.ui2 .savebtn, body.ui2 .addbtn,
+body.ui2 .cbtn.solid, body.ui2 .pbtn.solid,
+body.ui2 .sum-btns button.go, body.ui2 .selbtn.comb
+                        { background:var(--accent); color:var(--accent-ink);
+                          border:0; font-weight:500; }
+/* Armed to delete. It was solid red on two pages, and red is failure's
+   alone: a delete waiting for a second press is not a failure, it is a
+   destructive action mid-confirmation.                                */
+body.ui2 .btn.arm, body.ui2 .mtog.mdel, body.ui2 .rmbtn.arm,
+body.ui2 .del.arm       { background:transparent; color:var(--law-terra);
+                          border:1px solid var(--law-terra); font-weight:500; }
+/* Selected, everywhere: chips, segments, pickers, toggles, day pills. */
+body.ui2 .is-selected,
+body.ui2 .chip.on, body.ui2 .pax.on, body.ui2 .seg button.on,
+body.ui2 .rmp.on, body.ui2 .grp button.on, body.ui2 .sfbtn.on,
+body.ui2 .knob button.on, body.ui2 .sec a.active,
+body.ui2 .opt.on, body.ui2 .allbtn.on
+                        { background:var(--sel-bg); color:var(--ink);
+                          border-color:var(--sel-bdr); font-weight:500; }
+/* Reservations' three state segments and its select bar show what the
+   record will BECOME, in the colour law's own dining green, declined
+   terracotta and vacant slate. Grey would throw the meaning away to win
+   an argument about consistency.                                     */
+body.ui2 .opt.solid, body.ui2 .opt.out, body.ui2 .opt.vac,
+body.ui2 .selbtn.din, body.ui2 .selbtn.out, body.ui2 .selbtn.vac
+                        { color:#fff; border:0; font-weight:500; }
 body.ui2 .btn.ghost{ background:transparent; border:1px solid var(--rule);
                      color:var(--ink); }
 body.ui2 .btn.terra{ background:transparent; border:1px solid var(--law-terra-b);

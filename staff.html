@@ -63,9 +63,11 @@
   .tick { display:inline-block; width:20px; height:20px; border-radius:var(--pill);
           border:1px solid var(--rule); background:none; position:relative;
           vertical-align:middle; }
-  .tick.on { background:var(--ink); border-color:var(--ink); }
+  .tick.on { background:var(--sel-bg); border-color:var(--sel-bdr); }
+  /* The tick was white against an ink fill. Selected pills are grey now,
+     so a white check would be invisible: it draws in ink instead.     */
   .tick.on:after { content:''; position:absolute; left:6px; top:2px; width:5px;
-                   height:10px; border:solid var(--cream); border-width:0 2px 2px 0;
+                   height:10px; border:solid var(--ink); border-width:0 2px 2px 0;
                    transform:rotate(45deg); }
 
   .hours { display:flex; gap:8px; align-items:center; font-size:var(--t3);

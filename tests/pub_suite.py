@@ -826,7 +826,7 @@ with sync_playwright() as p:
                    x.getAttribute('data-n')==='Nut allergy');
           var s = getComputedStyle(t);
           const probe=v=>{const e=document.createElement('span');e.style.color='var('+v+')';document.body.appendChild(e);const c=getComputedStyle(e).color;e.remove();return c;};
-          return s.backgroundColor === probe('--rule') &&
+          return s.backgroundColor === probe('--sel-bg') &&
                  s.color === probe('--ink'); }"""))
     ck("and pressing left the red ring exactly as it was",
        pg.evaluate("""()=>{ var t=[...document.querySelectorAll('#tagblock .tick')]
@@ -843,7 +843,7 @@ with sync_playwright() as p:
           if (!t) return false; t.click();
           var s = getComputedStyle(t);
           const probe=v=>{const e=document.createElement('span');e.style.color='var('+v+')';document.body.appendChild(e);const c=getComputedStyle(e).color;e.remove();return c;};
-          return s.backgroundColor === probe('--rule') &&
+          return s.backgroundColor === probe('--sel-bg') &&
                  s.borderTopColor !== probe('--red') &&
                  s.borderTopColor !== s.backgroundColor; }"""))
     pg.close()
