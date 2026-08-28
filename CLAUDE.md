@@ -142,6 +142,13 @@ can find the reasoning for.
 
 - **`?v=` across 14 pages.** Should be one number rewritten by a pre-publish
   script. Until then it is hand-maintained and easy to miss.
+- **The PWA head block across 16 pages.** The `apple-mobile-web-app-*`
+  metas, the touch icon and the manifest link are pasted into every staff
+  page, so a change to any of them is 16 edits — that is why Chrome's
+  `apple-mobile-web-app-capable` deprecation had to be answered 16 times on
+  28 Aug. The site icon deliberately did *not* go that way: `favicon.ico`
+  sits at the repo root, where the browser looks for it by default, so no
+  page carries a `rel="icon"` line and a new page inherits it for free.
 - **Destructive buttons predating the button law** (STYLEGUIDE.md). spa.html
   obeys it; every other page's cancels and deletes are still solid or quiet
   ink with no confirmation. Dress and confirm them when you next touch the
