@@ -277,13 +277,16 @@ body.ui2 .btn{ display:inline-flex; align-items:center; justify-content:center;
 body.ui2 .btn.solid,
 body.ui2 .is-primary    { background:var(--accent); color:var(--accent-ink);
                           border:0; font-weight:500; }
-body.ui2 .is-secondary  { background:var(--card); color:var(--ink); border:0; }
+body.ui2 .is-secondary,
+body.ui2 .opt.quiet,
+body.ui2 .cbtn.quiet,
+body.ui2 .pbtn.ghost    { background:var(--card); color:var(--ink); border:0; }
 body.ui2 .is-destructive{ background:transparent; color:var(--law-terra);
                           border:1px solid var(--law-terra-b); }
 /* Each page's own name for "the primary action on this surface". They are
    aliases, not new dresses: one fill, defined once above.              */
 body.ui2 .pubbtn, body.ui2 .savebtn, body.ui2 .addbtn,
-body.ui2 .cbtn.solid, body.ui2 .pbtn.solid,
+body.ui2 .cbtn.solid, body.ui2 .pbtn.solid, body.ui2 .opt.solid,
 body.ui2 .sum-btns button.go, body.ui2 .selbtn.comb
                         { background:var(--accent); color:var(--accent-ink);
                           border:0; font-weight:500; }
@@ -305,7 +308,7 @@ body.ui2 .opt.on, body.ui2 .allbtn.on
    record will BECOME, in the colour law's own dining green, declined
    terracotta and vacant slate. Grey would throw the meaning away to win
    an argument about consistency.                                     */
-body.ui2 .opt.solid, body.ui2 .opt.out, body.ui2 .opt.vac,
+body.ui2 .opt.din, body.ui2 .opt.out, body.ui2 .opt.vac,
 body.ui2 .selbtn.din, body.ui2 .selbtn.out, body.ui2 .selbtn.vac
                         { color:#fff; border:0; font-weight:500; }
 body.ui2 .btn.ghost{ background:transparent; border:1px solid var(--rule);
@@ -737,6 +740,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .row.stubrow .row-name, .row.stubrow .row-sub { color:var(--mid); }
   .row.stubrow .row-sub { font-style:italic; }
   .selbtn { padding:13px 6px; border:1px solid transparent; color:#fff;
+            border-radius:var(--r); min-height:var(--tap);
             font-family:var(--ui-font); font-size:var(--t2); cursor:pointer; }
   .selbtn.vac  { background:var(--slate); }
   .selbtn.din  { background:var(--green); }
@@ -837,9 +841,11 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .sheet h3 { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); font-weight:normal;
               text-align:center; margin:0 44px 12px; }
   .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid transparent;
+         border-radius:var(--r); min-height:var(--tap);
          font-family:var(--ui-font); font-size:var(--t2); color:#fff; cursor:pointer; }
   /* matches the room tile palette */
-  .opt.solid { background:var(--green); border-color:var(--green); }   /* dining  - green */
+  /* The dining state, in the colour law's green, same as the tile. */
+  .opt.din   { background:var(--green); border-color:var(--green); }
   .opt.out   { background:var(--terra); border-color:var(--terra); }   /* not dining - red */
   .opt.vac   { background:var(--slate); border-color:var(--slate); }   /* vacant - slate */
   .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
@@ -5023,7 +5029,7 @@ function openRoom(n, st){
       shell(
         '<div class="note-box">The guest declined.</div>'+
         paxBlock()+
-        '<button class="opt solid" id="oIn">Dining after all</button>'+
+        '<button class="opt din" id="oIn">Dining after all</button>'+
         '<button class="opt quiet" id="oClose">Close</button>'
       );
       paintPax();
@@ -5047,7 +5053,7 @@ function openRoom(n, st){
         ' opened the link but not replied.</div>'
       : '')+
     paxBlock()+
-    '<button class="opt solid" id="oIn">Dining</button>'+
+    '<button class="opt din" id="oIn">Dining</button>'+
     (st && st.g.status==='in' ? '<button class="opt quiet" id="oDetails">Edit details</button>' : '')+
     '<button class="opt out" id="oOut">Not dining</button>'+
     '<button class="opt vac" id="oVac">Vacant tonight</button>'+

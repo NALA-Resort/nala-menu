@@ -12,7 +12,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
 <title>Nala · Tonight's Numbers</title>
-<link rel="stylesheet" href="nala-ui2.css?v=1">
+<link rel="stylesheet" href="nala-ui2.css?v=2">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
     /* This page's OWN colours. the board's own dining greens and slates, which mean different things from the shared ones */
@@ -129,6 +129,7 @@
   .row.stubrow .row-name, .row.stubrow .row-sub { color:var(--mid); }
   .row.stubrow .row-sub { font-style:italic; }
   .selbtn { padding:13px 6px; border:1px solid transparent; color:#fff;
+            border-radius:var(--r); min-height:var(--tap);
             font-family:var(--ui-font); font-size:var(--t2); cursor:pointer; }
   .selbtn.vac  { background:var(--slate); }
   .selbtn.din  { background:var(--green); }
@@ -229,9 +230,11 @@
   .sheet h3 { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); font-weight:normal;
               text-align:center; margin:0 44px 12px; }
   .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid transparent;
+         border-radius:var(--r); min-height:var(--tap);
          font-family:var(--ui-font); font-size:var(--t2); color:#fff; cursor:pointer; }
   /* matches the room tile palette */
-  .opt.solid { background:var(--green); border-color:var(--green); }   /* dining  - green */
+  /* The dining state, in the colour law's green, same as the tile. */
+  .opt.din   { background:var(--green); border-color:var(--green); }
   .opt.out   { background:var(--terra); border-color:var(--terra); }   /* not dining - red */
   .opt.vac   { background:var(--slate); border-color:var(--slate); }   /* vacant - slate */
   .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
@@ -2058,7 +2061,7 @@ function openRoom(n, st){
       shell(
         '<div class="note-box">The guest declined.</div>'+
         paxBlock()+
-        '<button class="opt solid" id="oIn">Dining after all</button>'+
+        '<button class="opt din" id="oIn">Dining after all</button>'+
         '<button class="opt quiet" id="oClose">Close</button>'
       );
       paintPax();
@@ -2082,7 +2085,7 @@ function openRoom(n, st){
         ' opened the link but not replied.</div>'
       : '')+
     paxBlock()+
-    '<button class="opt solid" id="oIn">Dining</button>'+
+    '<button class="opt din" id="oIn">Dining</button>'+
     (st && st.g.status==='in' ? '<button class="opt quiet" id="oDetails">Edit details</button>' : '')+
     '<button class="opt out" id="oOut">Not dining</button>'+
     '<button class="opt vac" id="oVac">Vacant tonight</button>'+

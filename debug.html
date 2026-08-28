@@ -6,7 +6,7 @@
 <link rel="manifest" href="manifest.json">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Nala · Diagnostics</title>
-<link rel="stylesheet" href="nala-ui2.css?v=1">
+<link rel="stylesheet" href="nala-ui2.css?v=2">
 <style>
   body { padding:10px 12px; }
   body { font-size:var(--t2); line-height:1.35 }
@@ -19,6 +19,18 @@
   .bad  { color:#A8321E; font-weight:bold; }
   button { padding:7px 12px; background:#1C1C1A; color:#fff; border:none;
            font-size:var(--t1); margin:0 0 4px; }
+
+  /* This page had bare <button> elements with no class, so nothing dressed
+     them and nothing said which ones destroy data. Four of them delete
+     records. They wear the destructive dress like every other delete in
+     the app; the rest are secondary.                                    */
+  button { min-height:var(--tap); padding:var(--s3) var(--s4);
+           border-radius:var(--r); border:0; background:var(--card);
+           color:var(--ink); font-family:var(--ui-font); font-size:var(--t3);
+           font-weight:500; cursor:pointer; }
+  button:disabled { opacity:.35; cursor:default; }
+  button.danger { background:transparent; color:var(--law-terra);
+                  border:1px solid var(--law-terra-b); }
 </style>
 </head>
 <body class="ui2">
@@ -41,7 +53,7 @@ manual, hk, stays, guests, combined, dinner and bookings. Leaves staff, notify,
 menutags, dietaries and the menu alone. Counts first, deletes only on the second
 button.</p>
 <button onclick="scanWipe()">Count what would go</button>
-<button id="wipeGo" onclick="doWipe()" disabled>Delete everything listed</button>
+<button id="wipeGo" class="danger" onclick="doWipe()" disabled>Delete everything listed</button>
 <pre id="wipe">not run</pre>
 
 <h2>Find and clear merge tag junk in /roomguests</h2>
@@ -49,7 +61,7 @@ button.</p>
 contains an unsubstituted <code>{{tag}}</code>. Shows them first. Nothing is
 deleted until you press the second button.</p>
 <button onclick="findJunk()">Find junk</button>
-<button id="junkDel" onclick="deleteJunk()" disabled>Delete listed</button>
+<button id="junkDel" class="danger" onclick="deleteJunk()" disabled>Delete listed</button>
 <pre id="junk">not run</pre>
 
 <h2>Find and clear orphan pre-arrival answers</h2>
@@ -61,7 +73,7 @@ two cases are listed, and both are ones Mews has settled: a booking Mews calls
 cancelled, and an id Mews has no record of at all. Age alone is never a
 reason.</p>
 <button onclick="findOrphans()">Find orphans</button>
-<button id="orphanDel" onclick="deleteOrphans()" disabled>Delete listed</button>
+<button id="orphanDel" class="danger" onclick="deleteOrphans()" disabled>Delete listed</button>
 <pre id="orphans">not run</pre>
 
 <h2>Find and clear a booking left in two villas</h2>
@@ -71,7 +83,7 @@ sends an event for that booking, so anything stranded before that fix existed
 sits there until it is removed by hand. It is what puts one guest in three
 villas at once.</p>
 <button onclick="findDupes()">Find duplicates</button>
-<button id="dupeDel" onclick="deleteDupes()" disabled>Delete listed</button>
+<button id="dupeDel" class="danger" onclick="deleteDupes()" disabled>Delete listed</button>
 <pre id="dupes">not run</pre>
 
 <h2>What the boards will show</h2>

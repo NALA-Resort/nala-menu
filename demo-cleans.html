@@ -274,13 +274,16 @@ body.ui2 .btn{ display:inline-flex; align-items:center; justify-content:center;
 body.ui2 .btn.solid,
 body.ui2 .is-primary    { background:var(--accent); color:var(--accent-ink);
                           border:0; font-weight:500; }
-body.ui2 .is-secondary  { background:var(--card); color:var(--ink); border:0; }
+body.ui2 .is-secondary,
+body.ui2 .opt.quiet,
+body.ui2 .cbtn.quiet,
+body.ui2 .pbtn.ghost    { background:var(--card); color:var(--ink); border:0; }
 body.ui2 .is-destructive{ background:transparent; color:var(--law-terra);
                           border:1px solid var(--law-terra-b); }
 /* Each page's own name for "the primary action on this surface". They are
    aliases, not new dresses: one fill, defined once above.              */
 body.ui2 .pubbtn, body.ui2 .savebtn, body.ui2 .addbtn,
-body.ui2 .cbtn.solid, body.ui2 .pbtn.solid,
+body.ui2 .cbtn.solid, body.ui2 .pbtn.solid, body.ui2 .opt.solid,
 body.ui2 .sum-btns button.go, body.ui2 .selbtn.comb
                         { background:var(--accent); color:var(--accent-ink);
                           border:0; font-weight:500; }
@@ -302,7 +305,7 @@ body.ui2 .opt.on, body.ui2 .allbtn.on
    record will BECOME, in the colour law's own dining green, declined
    terracotta and vacant slate. Grey would throw the meaning away to win
    an argument about consistency.                                     */
-body.ui2 .opt.solid, body.ui2 .opt.out, body.ui2 .opt.vac,
+body.ui2 .opt.din, body.ui2 .opt.out, body.ui2 .opt.vac,
 body.ui2 .selbtn.din, body.ui2 .selbtn.out, body.ui2 .selbtn.vac
                         { color:#fff; border:0; font-weight:500; }
 body.ui2 .btn.ghost{ background:transparent; border:1px solid var(--rule);

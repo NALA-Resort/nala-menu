@@ -413,7 +413,7 @@ with sync_playwright() as p:
       return {tile:bg(inTile)};}""")
     ck("dining tile tint resolves", col["tile"].startswith("rgba(122, 160, 130"))
     tile(pg,10).click(); pg.wait_for_timeout(200)
-    col2=pg.evaluate("""()=>({din:getComputedStyle(document.querySelector('.opt.solid')).backgroundColor,
+    col2=pg.evaluate("""()=>({din:getComputedStyle(document.querySelector('.opt.din')).backgroundColor,
       out:getComputedStyle(document.querySelector('.opt.out')).backgroundColor,
       vac:getComputedStyle(document.querySelector('.opt.vac')).backgroundColor})""")
     ck("sheet buttons green/terra/slate", col2["din"]=="rgb(94, 125, 103)" and col2["out"]=="rgb(158, 100, 85)" and col2["vac"]=="rgb(87, 87, 94)")

@@ -295,5 +295,44 @@ with sync_playwright() as p:
     if bad_zoom: print("   user-scalable=no:", bad_zoom)
 
 
+# ── every control has a shape ────────────────────────────────────────
+#  Reported by the owner off a screenshot, 29 Aug: the Reservations sheet's
+#  buttons were square while everything round them was rounded. The radius
+#  pass rewrote the values it found, and .opt and .selbtn declared none at
+#  all, so there was nothing to rewrite and nothing to notice. debug.html
+#  was worse - bare <button> elements with no class, so four buttons that
+#  delete records had no dress and nothing saying they were destructive.
+#
+#  A missing declaration is invisible to a grep, so this one reads the
+#  rendered page. The footer row is exempt by the corner law: it sits hard
+#  against the bottom of the screen and squares off on purpose.
+_dressed = [f for f in sorted(_g.glob("*.html"))
+            if not f.startswith(("demo-", "mock-"))
+            and _r.search(r'<body[^>]*class="[^"]*\bui2\b', open(f, encoding="utf-8").read())]
+_square = []
+with sync_playwright() as p2:
+    b2 = p2.chromium.launch()
+    for f in _dressed:
+        q = b2.new_page(viewport={"width": 390, "height": 844})
+        q.add_init_script(SDK)
+        q.add_init_script("window.__EMAIL='admin@nalaresort.com.au';")
+        q.goto("http://localhost:8966/" + f)
+        q.wait_for_timeout(700)
+        got = q.evaluate("""()=>{const out=[];
+          document.querySelectorAll('button,a.btn,input[type=button]').forEach(e=>{
+            const c=getComputedStyle(e), r=e.getBoundingClientRect();
+            if(r.width<8||r.height<8) return;
+            if(c.borderTopLeftRadius==='0px' && c.borderBottomRightRadius==='0px'
+               && !e.closest('.foot'))
+              out.push((e.className||e.tagName)+' "'+e.textContent.trim().slice(0,18)+'"');});
+          return [...new Set(out)];}""")
+        q.close()
+        if got:
+            _square.append(f + ": " + ", ".join(got[:3]))
+    b2.close()
+ck("every control has a shape, none left square", not _square)
+for x in _square:
+    print("   square:", x)
+
 print("RESULT: %d passed, %d failed" % (P, F))
 httpd.shutdown()
