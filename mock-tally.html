@@ -167,6 +167,27 @@ body{background:var(--ground);color:var(--ink);font-family:var(--ui);
 .dpill{font-size:var(--t-micro);font-weight:bold;letter-spacing:var(--lab-ls);
        text-transform:var(--lab-tf);padding:4px 9px;border-radius:var(--pill);
        background:rgba(168,50,30,.12);color:var(--red)}
+/* An allergy is louder than a preference: the kitchen has to not-serve a
+   thing rather than choose around it. Solid, as tally.html draws it today.
+   Worth a ruling: the colour law says red is failure's alone and never a
+   whole tile, and this is a hazard rather than a failure.              */
+.dpill.al{background:var(--red);color:#fff}
+/* "No dietaries" is a positive answer the guest gave, so it wears the
+   green a positive state gets, never a red tint the kitchen would read
+   as something to act on.                                             */
+.dpill.ok{background:var(--green-t);color:var(--green)}
+/* The picker. A chip is a choice, so selected wears the interaction
+   accent, not a state colour: what the guest cannot eat is decided by
+   the pills above, not by which chip is lit.                          */
+.dchips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:9px 13px;min-height:40px;display:inline-flex;align-items:center;
+      border:1px solid var(--rule);background:transparent;border-radius:var(--pill);
+      font-family:var(--ui);font-size:var(--t-micro);letter-spacing:var(--lab-ls);
+      text-transform:var(--lab-tf);color:var(--mid);cursor:pointer}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+/* Held from an earlier night and not yet confirmed for tonight: amber,
+   the colour law's "chase this", never green - nobody has said yes yet. */
+.chip.was{border-color:#C29A55;color:#8A6A2F;background:rgba(194,154,85,.11)}
 .row-pax{font-size:var(--t-name);white-space:nowrap}
 .bub{width:20px;height:20px;border:0;background:transparent;padding:0;cursor:pointer;
      color:var(--red);flex:0 0 auto}
@@ -361,12 +382,18 @@ function seed(){
   ROOMS[8]  = {state:'out', pax:0, name:'', note:'', diets:[], src:'staff'};
   ROOMS[13] = {state:'out', pax:0, name:'', note:'', diets:[], src:'guest'};
   ROOMS[6]  = {state:'in', pax:2, name:'Ronnie Myers', note:'With Ruth',
-               diets:['Dairy','Gluten'], src:'guest'};
-  ROOMS[9]  = {state:'in', pax:2, name:'Ryan Beagle', note:'', diets:[], src:'staff'};
+               diets:['Dairy','Gluten','Nut allergy'], src:'guest'};
+  ROOMS[9]  = {state:'in', pax:2, name:'Ryan Beagle', note:'', diets:[],
+               noDiets:true, src:'staff'};
   ROOMS[14] = {state:'in', pax:2, name:'Amanda Sinclair', note:'', diets:[], src:'guest'};
 }
 seed();
 
+var DIETARIES = ['Gluten','Dairy','Vegetarian','Vegan','Pescatarian',
+                 'Nut allergy','Shellfish allergy','Egg allergy'];
+/* Carried from an earlier night and not confirmed for tonight. The board
+   shows it amber so the desk chases it rather than assuming it.        */
+var HELD = {14:['Vegetarian']};
 var selMode = false, sel = {}, dayOffset = 0, openVilla = null, draft = null;
 
 /* ── date ──────────────────────────────────────────────────────────── */
@@ -425,8 +452,16 @@ function drawList(){
              '<div class="row-name"><span class="rm">'+v+'</span>'+
                (r.name||'Guest')+'</div>'+
              (r.note?'<div class="row-note">'+r.note+'</div>':'')+
-             (r.diets.length?'<div class="diets">'+r.diets.map(function(d){
-                return '<span class="dpill">'+d+'</span>'; }).join('')+'</div>':'')+
+             (r.diets.length || r.noDiets
+               ? '<div class="diets">'+
+                 (r.noDiets
+                   ? '<span class="dpill ok">No dietaries</span>'
+                   : r.diets.map(function(d){
+                       var al = /allergy/i.test(d);
+                       return '<span class="dpill'+(al?' al':'')+'">'+
+                              d.replace(/ allergy$/i,'')+'</span>';
+                     }).join(''))+
+                 '</div>' : '')+
            '</div>'+
            '<button class="bub'+(r.note?'':' nonote')+'" data-note="'+v+'" aria-label="Note">'+
              '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v12H8l-4 4z"/></svg>'+
@@ -475,6 +510,15 @@ function renderSheet(){
     '</div></div>'+
     '<div class="field"><label>Guest name</label>'+
       '<input id="fName" value="'+r.name.replace(/"/g,'&quot;')+'" placeholder="Name"></div>'+
+    (r.state==='in' ? '<div class="field"><label>Dietaries</label><div class="dchips">'+
+        DIETARIES.map(function(d){
+          var on = r.diets.indexOf(d)>-1;
+          var was = !on && (HELD[v]||[]).indexOf(d)>-1;
+          return '<button class="chip'+(on?' on':(was?' was':''))+'" data-diet="'+d+'">'+
+                 d+'</button>';
+        }).join('')+
+        '<button class="chip'+(r.noDiets?' on':'')+'" data-diet="__none">No dietaries</button>'+
+      '</div></div>' : '')+
     '<div class="field"><label>Note for the kitchen</label>'+
       '<input id="fNote" value="'+r.note.replace(/"/g,'&quot;')+'" placeholder="Optional"></div>'+
     '<div class="sheetbtns">'+
@@ -531,6 +575,19 @@ sheet.addEventListener('click', function(e){
     draft.state = t.dataset.set;
     if (draft.state==='in' && !draft.pax) draft.pax = 2;
     if (draft.state!=='in') draft.pax = 0;
+    renderSheet(); return;
+  }
+  if (t.dataset.diet){
+    stash();
+    var d = t.dataset.diet;
+    if (d === '__none'){
+      draft.noDiets = !draft.noDiets;
+      if (draft.noDiets) draft.diets = [];
+    } else {
+      var i = draft.diets.indexOf(d);
+      if (i > -1) draft.diets.splice(i,1);
+      else { draft.diets.push(d); draft.noDiets = false; }
+    }
     renderSheet(); return;
   }
   if (t.dataset.pax){
