@@ -1,0 +1,320 @@
+<!DOCTYPE html><html lang="en" data-dress="current"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>Mock &middot; House style</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────
+   MOCK ONLY. Not linked from NAV, not served to anyone, not published.
+   Flip the switch at the top to see the same screens in both dresses.
+
+   The whole proposal in one sentence: the CHROME follows convention
+   (sentence case, whitespace instead of boxes, white ground, one accent
+   for interaction), and the COLOUR LAW does not move. Every state tint
+   below is byte for byte the value the live boards use today, in both
+   dresses, on purpose. If the tiles look the same to you in both, that
+   is the demo working.                                              */
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+/* ── the colour law · SHARED, identical in both dresses ──────────────
+   Lifted from tally.html and front-desk.html. Meaning per colour, one
+   meaning only, exactly as ruled 25 Aug. A dress may not touch these. */
+:root{
+  --st-done:#5E7D67;   --st-done-t:rgba(122,160,130,.26); --st-done-b:rgba(122,160,130,.65);
+  --st-neg:#9E6455;    --st-neg-t:rgba(184,106,90,.16);   --st-neg-b:rgba(184,106,90,.45);
+  --st-attn:#8A6A2F;   --st-attn-t:rgba(194,154,85,.11);  --st-attn-b:rgba(194,154,85,.36);
+  --st-vac:#57575E;    --st-vac-t:rgba(87,87,94,.10);     --st-vac-b:rgba(87,87,94,.28);
+  --st-wait-t:rgba(28,28,26,.045);
+  --st-fail:#A8321E;
+  --ui:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+}
+
+/* ── DRESS A · what ships today ──────────────────────────────────────
+   Values sampled from the live pages, not invented for the comparison. */
+[data-dress="current"]{
+  --ground:#F9F7F4; --surface:#F9F7F4; --card:#F9F7F4;
+  --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA;
+  /* Interaction has no colour of its own today: selected is ink-filled,
+     which is the same channel the record's state is using.          */
+  --accent:#1C1C1A; --accent-ink:#F9F7F4; --accent-t:rgba(28,28,26,.045);
+  --label-tf:uppercase; --label-ls:.14em; --label-sz:10px; --label-w:400;
+  --btn-tf:uppercase;   --btn-ls:.14em;   --btn-sz:11px;
+  --r:8px; --r-card:8px; --pill:20px;
+  --t-title:15px; --t-body:15px; --t-sec:11px; --t-micro:8px;
+  --row-gap:7px; --row-bd:1px; --row-pad:11px 13px;
+  --divider:0;             /* rows are boxed, so no inset hairline */
+  --shadow:none;
+}
+
+/* ── DRESS B · the proposal ──────────────────────────────────────────
+   Three changes and nothing else: sentence case, separation by space
+   rather than a box, and white ground with one accent that means
+   "you can act here" and nothing else.                              */
+[data-dress="proposed"]{
+  --ground:#FFFFFF; --surface:#FFFFFF; --card:#F5F6F8;
+  --ink:#1B1B19; --mid:#5F5F58;            /* 4.9:1 on white · AA. #999990 was 2.7:1 */
+  --rule:#E6E6E1;
+  /* One accent, and it is the only hue not already carrying a state
+     meaning. Sage is "done", terracotta is "declined", amber is
+     "chase this", red is "failed". Blue was the only door left open,
+     which is the argument for it rather than a taste in blue.       */
+  --accent:#1A66C2; --accent-ink:#FFFFFF; --accent-t:#E8F0FE;
+  --label-tf:none; --label-ls:0; --label-sz:13px; --label-w:500;
+  --btn-tf:none;   --btn-ls:0;   --btn-sz:15px;
+  --r:12px; --r-card:14px; --pill:999px;
+  --t-title:17px; --t-body:16px; --t-sec:14px; --t-micro:12px;
+  --row-gap:0px; --row-bd:0px; --row-pad:14px 4px;
+  --divider:1;             /* inset hairline, starting at the text */
+  --shadow:0 1px 3px rgba(0,0,0,.10),0 4px 12px rgba(0,0,0,.05);
+}
+
+body{background:var(--ground);color:var(--ink);font-family:var(--ui);
+     max-width:430px;margin:0 auto;padding:0 0 60px;
+     -webkit-tap-highlight-color:transparent;
+     transition:background .18s ease,color .18s ease}
+
+/* ── the switch · part of the mock, not of the proposal ─────────── */
+.switch{position:sticky;top:0;z-index:99;background:var(--ground);
+        border-bottom:1px solid var(--rule);padding:10px 16px;
+        display:flex;align-items:center;gap:10px}
+.switch b{font-size:12px;font-weight:600;color:var(--mid);flex:1;letter-spacing:0;
+          text-transform:none}
+.seg{display:flex;border:1px solid var(--rule);border-radius:999px;overflow:hidden}
+.seg button{border:0;background:transparent;font-family:var(--ui);font-size:13px;
+            padding:7px 15px;color:var(--mid);cursor:pointer;min-height:36px}
+.seg button.on{background:var(--ink);color:var(--ground)}
+
+.screen{padding:18px 16px 6px}
+.cut{font-size:11px;color:var(--mid);letter-spacing:0;text-transform:none;
+     border-top:1px solid var(--rule);margin:26px 0 0;padding-top:18px}
+
+/* ── app bar ─────────────────────────────────────────────────────── */
+.bar{display:flex;align-items:center;gap:12px;padding:4px 16px 14px}
+.bar h1{font-size:var(--t-title);font-weight:600;letter-spacing:0;text-transform:none;flex:1}
+.icobtn{width:40px;height:40px;min-width:40px;border:var(--row-bd) solid var(--rule);
+        border-radius:var(--r);background:transparent;display:flex;align-items:center;
+        justify-content:center;cursor:pointer;color:var(--ink)}
+[data-dress="proposed"] .icobtn{border:0;border-radius:999px}
+[data-dress="proposed"] .icobtn:active{background:var(--accent-t)}
+
+/* ── section label · the single loudest difference between dresses ── */
+.seclabel{font-size:var(--label-sz);letter-spacing:var(--label-ls);
+          text-transform:var(--label-tf);font-weight:var(--label-w);
+          color:var(--mid);margin:20px 0 8px}
+
+/* ── list rows · boxed today, spaced in the proposal ─────────────── */
+.list{display:flex;flex-direction:column;gap:var(--row-gap)}
+.arr{position:relative;display:flex;align-items:center;gap:12px;width:100%;
+     background:transparent;border:var(--row-bd) solid var(--rule);border-radius:var(--r);
+     padding:var(--row-pad);text-align:left;font-family:inherit;color:inherit;cursor:pointer}
+/* The inset hairline the reference apps use: it starts at the text, not
+   at the screen edge, so the eye reads one list rather than N boxes. */
+.arr+.arr::before{content:'';position:absolute;left:46px;right:0;top:calc(var(--row-pad) * 0);
+                  height:1px;background:var(--rule);opacity:var(--divider);
+                  transform:translateY(-14px)}
+.arr-v{font-size:var(--t-body);min-width:30px;text-align:center;font-weight:600}
+.arr-mid{flex:1;min-width:0}
+.arr-n{font-size:var(--t-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arr-s{font-size:var(--t-micro);color:var(--mid);margin-top:2px;
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arr-s .eta{font-weight:600;color:var(--ink)}
+
+/* The three form states. Same tints in both dresses: this is the part
+   the proposal does not touch.                                       */
+.arr.done-form{background:var(--st-done-t);border-color:var(--st-done-b)}
+.arr.part-form{background:var(--st-attn-t);border-color:var(--st-attn-b)}
+.arr.todo-form{background:var(--st-wait-t);border-color:var(--rule)}
+/* Unboxed, a tint needs its own corner or it bleeds to the screen edge. */
+[data-dress="proposed"] .arr.done-form,
+[data-dress="proposed"] .arr.part-form,
+[data-dress="proposed"] .arr.todo-form{border-radius:var(--r);padding:14px 12px}
+[data-dress="proposed"] .arr.done-form::before,
+[data-dress="proposed"] .arr.part-form::before,
+[data-dress="proposed"] .arr.todo-form::before{opacity:0}
+
+/* ── villa tiles · the dinner board ──────────────────────────────── */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.room{aspect-ratio:1;border:1px solid var(--rule);border-radius:var(--r);
+      background:transparent;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;font-family:var(--ui);cursor:pointer}
+.room-n{font-size:var(--t-body)}
+.room-p{font-size:var(--t-micro);color:var(--mid);margin-top:3px}
+.room.in{background:var(--st-done-t);border-color:var(--st-done-b)}
+.room.out{background:var(--st-neg-t);border-color:var(--st-neg-b)}
+.room.vac{background:var(--st-vac-t);border-color:var(--st-vac-b);opacity:.62;
+          border-style:dashed}
+
+/* ── chips ───────────────────────────────────────────────────────── */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chip{padding:7px 14px;min-height:36px;display:inline-flex;align-items:center;
+      border:1px solid var(--rule);background:transparent;border-radius:var(--pill);
+      font-family:var(--ui);font-size:var(--t-sec);color:var(--mid);cursor:pointer}
+/* Selected is the accent, not ink: "chosen" stops competing with "state". */
+.chip.on{background:var(--accent-t);color:var(--accent);border-color:var(--accent)}
+[data-dress="current"] .chip.on{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+[data-dress="current"] .chip{font-size:10px}
+
+/* ── buttons · the button law, redressed but not rewritten ───────── */
+.btns{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.btn{padding:13px;min-height:48px;text-align:center;border:1px solid var(--ink);
+     border-radius:var(--r);background:transparent;color:var(--ink);font-family:var(--ui);
+     font-size:var(--btn-sz);letter-spacing:var(--btn-ls);text-transform:var(--btn-tf);
+     cursor:pointer;font-weight:500}
+.btn.solid{background:#454540;border-color:#454540;color:#fff}
+.btn.terra{border-color:var(--st-neg-b);color:var(--st-neg);background:transparent}
+.btn.saved{background:#E4EDE2;border-color:#7E937A;color:var(--st-done);cursor:default}
+[data-dress="proposed"] .btn{border:0}
+[data-dress="proposed"] .btn.solid{background:var(--accent);border:0;color:#fff}
+[data-dress="proposed"] .btn.quiet{background:var(--card);color:var(--ink)}
+[data-dress="proposed"] .btn.terra{border:1px solid var(--st-neg-b)}
+[data-dress="current"] .btn.quiet{border:1px solid var(--ink)}
+
+/* ── settings rows · whitespace only, as the Notifications screen ── */
+.trow{display:flex;align-items:center;gap:14px;padding:14px 0;
+      border-bottom:var(--row-bd) solid var(--rule)}
+.trow span{flex:1;font-size:var(--t-body)}
+.tog{width:50px;height:30px;border-radius:999px;background:var(--accent);position:relative;
+     flex:0 0 auto}
+.tog::after{content:'';position:absolute;top:3px;right:3px;width:24px;height:24px;
+            border-radius:50%;background:#fff}
+.tog.off{background:#C9C9C2}
+.tog.off::after{right:23px}
+
+/* ── info card ───────────────────────────────────────────────────── */
+.info{border-radius:var(--r-card);padding:16px;margin-top:12px;display:flex;gap:12px;
+      background:var(--accent-t);border:var(--row-bd) solid var(--rule)}
+[data-dress="proposed"] .info{border:0}
+.info b{display:block;font-size:var(--t-body);font-weight:600;margin-bottom:3px}
+.info p{font-size:var(--t-sec);color:var(--mid);line-height:1.45}
+.fail{font-size:var(--t-sec);color:var(--st-fail);margin-top:10px}
+
+/* ── empty state ─────────────────────────────────────────────────── */
+.empty{text-align:center;padding:34px 20px;color:var(--mid);font-size:var(--t-sec)}
+[data-dress="current"] .empty{font-style:italic;font-size:12px}
+.empty .big{display:block;font-size:var(--t-title);color:var(--ink);margin-bottom:6px;
+            font-style:normal}
+[data-dress="current"] .empty .big{display:none}
+
+/* ── stats ───────────────────────────────────────────────────────── */
+.stats{display:flex;justify-content:center;gap:36px;margin:16px 0 4px}
+.stat{text-align:center}
+.stat-n{display:block;font-size:27px;line-height:1}
+.stat-l{display:block;font-size:var(--label-sz);letter-spacing:var(--label-ls);
+        text-transform:var(--label-tf);color:var(--mid);margin-top:5px}
+
+/* Keyboard focus. Nothing in the live app has this today. */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+</style></head><body>
+
+<div class="switch">
+  <b>Dress</b>
+  <div class="seg">
+    <button id="bCur" class="on" onclick="setD('current')">Current</button>
+    <button id="bPro" onclick="setD('proposed')">Proposed</button>
+  </div>
+</div>
+
+<div class="screen">
+
+  <div class="bar">
+    <h1>Front desk</h1>
+    <button class="icobtn" aria-label="Menu">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span class="stat-n">6</span><span class="stat-l">Arriving</span></div>
+    <div class="stat"><span class="stat-n">3</span><span class="stat-l">To chase</span></div>
+    <div class="stat"><span class="stat-n">11</span><span class="stat-l">In house</span></div>
+  </div>
+
+  <div class="seclabel">Arriving today</div>
+  <div class="list">
+    <button class="arr done-form">
+      <span class="arr-v">4</span>
+      <span class="arr-mid"><span class="arr-n">Whitfield</span>
+        <span class="arr-s"><span class="eta">2:30 pm</span> &middot; Tue 26-Sat 30 &middot; 2 adults</span></span>
+    </button>
+    <button class="arr part-form">
+      <span class="arr-v">9</span>
+      <span class="arr-mid"><span class="arr-n">Okonkwo</span>
+        <span class="arr-s"><span class="eta">4:00 pm</span> &middot; Tue 26-Thu 28 &middot; 3 adults</span></span>
+    </button>
+    <button class="arr todo-form">
+      <span class="arr-v">14</span>
+      <span class="arr-mid"><span class="arr-n">Brennan-Cole</span>
+        <span class="arr-s"><span class="eta">Late</span> &middot; Tue 26-Sun 31 &middot; 2 adults 1 child</span></span>
+    </button>
+  </div>
+
+  <div class="seclabel">Filter</div>
+  <div class="chips">
+    <button class="chip on">All</button>
+    <button class="chip">Arriving</button>
+    <button class="chip">In house</button>
+    <button class="chip">Departing</button>
+  </div>
+
+  <div class="cut">Dinner board &middot; the colour law, untouched by the dress</div>
+
+  <div class="seclabel">Tonight</div>
+  <div class="grid">
+    <button class="room in"><span class="room-n">1</span><span class="room-p">2</span></button>
+    <button class="room in"><span class="room-n">2</span><span class="room-p">4</span></button>
+    <button class="room out"><span class="room-n">3</span><span class="room-p">Out</span></button>
+    <button class="room in"><span class="room-n">4</span><span class="room-p">2</span></button>
+    <button class="room vac"><span class="room-n">5</span><span class="room-p"></span></button>
+    <button class="room in"><span class="room-n">6</span><span class="room-p">3</span></button>
+    <button class="room out"><span class="room-n">7</span><span class="room-p">Out</span></button>
+    <button class="room vac"><span class="room-n">8</span><span class="room-p"></span></button>
+  </div>
+
+  <div class="cut">Controls</div>
+
+  <div class="btns">
+    <button class="btn solid">Save details</button>
+    <button class="btn quiet">Ask again</button>
+    <button class="btn terra">Cancel booking</button>
+    <button class="btn saved">Saved</button>
+  </div>
+  <div class="fail">Could not save. Check the signal and try again.</div>
+
+  <div class="cut">Settings rows</div>
+
+  <div class="seclabel">Notify me about</div>
+  <div class="trow"><span>New reservations</span><i class="tog"></i></div>
+  <div class="trow"><span>Cleans falling behind</span><i class="tog"></i></div>
+  <div class="trow"><span>Pre-arrival forms</span><i class="tog off"></i></div>
+
+  <div class="cut">Messages and empties</div>
+
+  <div class="info">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" style="flex:0 0 auto;margin-top:2px"><circle cx="12" cy="12" r="10"/>
+      <path d="M12 16v-4M12 8h.01"/></svg>
+    <div><b>Three forms still open</b>
+      <p>Villas 9, 14 and 16 have not been marked complete.</p></div>
+  </div>
+
+  <div class="empty">
+    <span class="big">Nothing to send</span>
+    Every invitation for tonight has gone out.
+  </div>
+
+</div>
+
+<script>
+function setD(d){
+  document.documentElement.setAttribute('data-dress', d);
+  bCur.classList.toggle('on', d === 'current');
+  bPro.classList.toggle('on', d === 'proposed');
+  try { localStorage.setItem('nala-mock-dress', d); } catch (e) {}
+}
+try {
+  var s = localStorage.getItem('nala-mock-dress');
+  if (s) setD(s);
+} catch (e) {}
+</script>
+</body></html>
