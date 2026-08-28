@@ -147,9 +147,18 @@ Three things follow, and they are the whole model:
   once the mandatory answers are in — **dinner, dietary and massage**, and
   massage is not owed by a one night stay, whose guest form never asks it.
   The same control walks it back, in terracotta, and asks first.
-- **Arriving is not finishing.** Check in and Confirm arriving record facts
-  about a person. They no longer touch the form's state, and welding all
-  three to one argument is exactly what put villa 17 beyond reach.
+- **Arriving is not finishing.** Check in is a *visual move of the tile* so
+  reception can see who is here. It touches the form's state not at all, and
+  it asks for nothing before it will move: a control that refuses is not a
+  visual move. It is a toggle, so the way back from an accidental press is to
+  press it again.
+
+There is no third button. `Confirm arriving` is gone, and so is `confirmedAt`:
+the field recorded that reception had been through the answers and **nothing
+in the app ever read it** — `isConfirmed` was defined and never called. Once
+the state moved to its own gated control, the only thing that button still did
+was un-arrive a guest, under a name that said the opposite. Values already in
+the database are left alone; nothing reads those either.
 
 `formState` in `nala-shared.js` is the only thing that says which state a
 booking is in, and both boards read it. Two readings of one state is how they

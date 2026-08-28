@@ -370,17 +370,16 @@ function nightsLabel(s){
   return n + (n === 1 ? ' night' : ' nights');
 }
 
-/* Three different facts, and they were two until 17 Aug.
+/* Two facts now, and they were three until 28 Aug.
 
-   hasForm     the guest sent the pre-arrival form
-   confirmedAt reception has been through the answers with them
+   formState   not started, incomplete or completed - nala-shared.js
    checkedInAt they have physically arrived and been checked in
 
-   Confirming and arriving are not the same event: reception can verify the
-   answers on the phone, or the day before, and the guest turns up hours later.
-   The sections track arriving, because that is what the receptionist is
-   working through. */
-function isConfirmed(p){ return !!(p && p.confirmedAt); }
+   confirmedAt was the third: reception has been through the answers with
+   them. Nothing ever read it - isConfirmed was defined and never called - and
+   once the owner put the form's state on its own gated control, the button
+   that wrote it had no job left either. Both are gone. The sections track
+   arriving, because that is what the receptionist is working through. */
 function isArrived(p){ return !!(p && p.checkedInAt); }
 /* `at` ALONE is not a finished form. It says "the answers exist", and a
    record can hold it while holding none: check in stamps it honestly, having
@@ -751,18 +750,20 @@ function summaryHTML(r){
 
   h += '<div class="sum-btns">' +
          '<button data-act="edit" data-villa="' + r.villa + '">Edit</button>' +
-         /* Always the same words, because it is now an action rather than a
-            state: on a guest who has been checked in by accident, pressing it
-            puts them back in Arriving. A label that changed to "Confirmed"
-            read as a finished thing and gave no hint there was a way back. */
-         '<button data-act="confirm" data-villa="' + r.villa + '">' +
-         'Confirm arriving' + '</button>' +
        '</div>' +
-       /* Its own row and full width: it is the one that ends the interaction,
-          and three buttons abreast do not fit a narrow phone. */
+       /* Its own row and full width: it is the one that ends the interaction.
+          Confirm arriving used to sit beside Edit. It is gone, 28 Aug: it
+          stamped the form complete and it cleared checkedInAt, and once the
+          owner moved the state onto its own gated control the only thing it
+          still did was un-arrive a guest - a button called Confirm arriving
+          whose one visible effect was to undo arriving. The undo it carried
+          was real and is kept, on this button, where it belongs: check in is
+          a toggle, so the way back from an accidental press is to press it
+          again. */
        '<div class="sum-btns">' +
          '<button class="go wide" data-act="checkin" data-villa="' + r.villa + '">' +
-         (isArrived(r.pre) ? 'Checked in' : 'Confirm &amp; check in') + '</button>' +
+         (isArrived(r.pre) ? 'Checked in &middot; tap to undo'
+                           : 'Confirm &amp; check in') + '</button>' +
        '</div>';
   return '<div class="sum">' + h + '</div>';
 }
@@ -1377,6 +1378,13 @@ function openGuest(r){
     document.getElementById('sMiss').classList.remove('show');
     setMiss(document.getElementById('diningSeg'), false);
     setMiss(document.getElementById('dChips'), false);
+    /* And the note. flagMissing marks it for the Other-with-no-note refusal
+       and nothing ever took the mark off again, so putting the answer right
+       left the field looking wrong until the sheet was closed and reopened.
+       It went unnoticed while check in refused for two other reasons as well;
+       since 28 Aug this is the only refusal left, so it is the one mark
+       anybody sees. */
+    setMiss(document.getElementById('fDnote'), false);
   }
   /* Tapping the chosen answer again clears it, the way back every chip on
      this sheet already gives. Ruled by the owner, 26 Aug: every answer must
@@ -1673,7 +1681,7 @@ function openGuest(r){
   /* Both buttons read the sheet the same way. Save keeps what is on it and
      nothing more; Confirm and check in also stamps the record, because the
      guest is standing there agreeing to it. */
-  function finish(checkin, mark){
+  function finish(arrived, mark){
     /* Read before checking, not after. The note is part of the answer when
        Other is chosen, and a check that runs before the field is read is
        checking the value from the last time the sheet was opened. */
@@ -1682,39 +1690,18 @@ function openGuest(r){
     var cf = document.getElementById('fCompanion');
     a.companion = cf ? cf.value.trim() : (a.companion || '');
 
-    /* The required answers are required at CHECK IN, not at every save.
-       Reception adds what they hear across the day: a dietary in the morning,
-       an arrival time when the guest rings at noon. Refusing to keep any of it
-       until all of it exists means it gets written on paper instead, which is
-       the thing this screen replaces.
+    /* Other with an empty note is not an incomplete answer, it is a wrong
+       one: it tells the kitchen there is something to know and never says
+       what. The only check that survives a save, because it is about an
+       answer being wrong rather than missing.
 
-       Check in is different. The guest is standing there, it is the last
-       moment anyone will ask, and a guest sent to their villa with no dining
-       answer is a cover the kitchen never hears about. So the questions are
-       asked once, at the point they can still be answered.
-
-       This guard is NARROWER than mandatoryAnswered on purpose, and since
-       28 Aug that is harmless. It was not before: check in also stamped the
-       form complete, so a multi night guest could be marked completed with
-       the treatment question never asked, and the row then tinted amber
-       beside its own completed stamp. Check in no longer touches the state,
-       so the two tests can differ - this one is about what the kitchen needs
-       tonight, the other about whether the questionnaire is finished. */
-    if (checkin){
-      var missing = [];
-      if (a.dining === null) missing.push('dining');
-      if (!a.noDiets && !a.diets.length) missing.push('dietary');
-      /* Other with an empty note tells the kitchen nothing at all, which is
-         worse than the answer nobody gave, because it looks like one. */
-      else if (hasOther() && !a.dnote) missing.push('othernote');
-      if (missing.length) return flagMissing(missing);
-    } else if (hasOther() && !a.dnote){
-      /* The one check that survives a partial save. Other means the answer is
-         in the note, so Other with an empty note is not an incomplete answer,
-         it is a wrong one: it tells the kitchen there is something to know and
-         never says what. */
-      return flagMissing(['othernote']);
-    }
+       Check in used to demand dining and dietary here. It does not any more:
+       the owner ruled 28 Aug that checking a guest in is a visual move of the
+       tile, and a control that refuses is not a visual move. What that guard
+       protected - a guest sent to their villa with the kitchen never hearing
+       about the cover - is now the row's own colour, amber until the mandatory
+       answers are in, and the gate on Mark as completed. */
+    if (hasOther() && !a.dnote) return flagMissing(['othernote']);
 
     a.pax      = pax;
     a.occasion = document.getElementById('fOcc').value.trim();
@@ -1741,10 +1728,15 @@ function openGuest(r){
     /* Only check in confirms. Save is the third argument's false twice over:
        it neither checks in nor stamps anything. The fifth argument is the
        state, and it is the ONLY thing that moves it. */
-    save(r, a, checkin, checkin, mark);
+    save(r, a, arrived, mark);
   }
-  document.getElementById('sConfirm').onclick = function(){ finish(false); };
-  document.getElementById('sCheckin').onclick = function(){ finish(true); };
+  document.getElementById('sConfirm').onclick = function(){ finish(null, null); };
+  /* The same toggle as the summary's, so the two surfaces cannot disagree
+     about what pressing it does. */
+  document.getElementById('sCheckin').textContent =
+    isArrived(r.pre) ? 'Checked in \u00b7 tap to undo' : 'Confirm and check in';
+  document.getElementById('sCheckin').onclick = function(){
+    finish(!isArrived(r.pre), null); };
 
   /* The state control. Repainted from the sheet's own answers rather than the
      stored record, so ticking the last mandatory answer makes it available
@@ -1786,7 +1778,7 @@ function openGuest(r){
     if (done && !confirm('Mark ' + nameOf(r.stay) +
         '\u2019s pre-arrival form incomplete? The link can be sent to them ' +
         'again from Pre-arrival SMS.')) return;
-    finish(false, done ? 'incomplete' : 'completed');
+    finish(null, done ? 'incomplete' : 'completed');
   };
 
   /* Name what is missing and put it on screen, rather than a button that does
@@ -1862,7 +1854,7 @@ function dinnerCell(r, a){
    wellness:null for questions nobody had asked, the optimistic merge below
    read null as false, and a sheet opened and saved untouched came back with
    Not dining and Not interested selected - decisions nobody made. */
-function save(r, a, checkin, confirm, mark){
+function save(r, a, arrived, mark){
   var payload = {
     diets: a.diets, dnote: a.dnote,
     arriveSlot: a.arriveSlot, arriveNote: a.arriveNote,
@@ -1921,8 +1913,7 @@ function save(r, a, checkin, confirm, mark){
      them. That is how villa 17 came to read Form completed on Pre-arrival SMS
      while holding nothing at all, with no way back from either board, 28 Aug.
      Null through the PATCH deletes the key, exactly as the answers above
-     clear. confirmedAt stays: reception did go through it, and that is a
-     separate fact from whether any answer survived. */
+     clear. */
   if (stored.at && !guestAnswered(Object.assign({}, stored, payload)))
     payload.at = null;
 
@@ -1934,34 +1925,27 @@ function save(r, a, checkin, confirm, mark){
   if (mark === 'completed') payload.at = new Date().toISOString();
   else if (mark === 'incomplete') payload.at = null;
 
-  if (confirm){
-    payload.confirmedAt = new Date().toISOString();
-    /* Checking in is a separate fact from confirming the answers, so it is a
-       separate field.
+  /* Arrived, and nothing else. The owner's ruling of 28 Aug: checking a guest
+     in is a visual move of the tile so reception can see who is here. It does
+     not decide anything about the form, and it asks for nothing before it
+     will move - a control that refuses is not a visual move.
 
-       It used to be set and never cleared, on the reasoning that a guest who
-       has arrived has arrived. What that missed is the accidental press: the
-       two buttons sit together, check in is the big one, and there was no way
-       back from it. So the summary's Confirm arriving CLEARS it, which is
-       what the name says. The sheet's Save touches neither: editing a
-       checked-in guest's dietary must not quietly un-arrive them.
+     It is a toggle, which is where the undo lives now that Confirm arriving
+     is gone: press it again and the guest goes back to Arriving. null means
+     this save is not about arriving at all, so editing a checked-in guest's
+     dietary cannot quietly un-arrive them.
 
-       FUTURE: this is where the Mews reservation moves to Checked in, through
-       the Connector API. Nothing writes back to Mews yet, so the app is the
-       only record of it until that exists, and this undo will have to reverse
-       that too rather than only the local field. */
-    payload.checkedInAt = checkin ? payload.confirmedAt : null;
-    /* And NOTHING here touches the form's state any more. Confirming that
-       reception has been through the answers, and checking a guest in, are
-       facts about people - they are not the questionnaire being finished,
-       and welding all three to one argument is what put villa 17 beyond
-       reach: the sheet's check in stamped it complete having asked for two
-       of the three mandatory answers, and the summary's Confirm arriving
-       re-stamped it having asked for none.
+     confirmedAt is no longer written by anything. It recorded that reception
+     had been through the answers, and in the whole app nothing ever read it -
+     isConfirmed was defined and never called. Values already in the database
+     are left where they are; nothing reads those either.
 
-       Marking completed is its own control now, gated on the answers, with
-       its own way back. The owner's ruling of 28 Aug. */
-  }
+     FUTURE: this is where the Mews reservation moves to Checked in, through
+     the Connector API. Nothing writes back to Mews yet, so the app is the
+     only record of it until that exists, and the undo will have to reverse
+     that too rather than only the local field. */
+  if (arrived === true) payload.checkedInAt = new Date().toISOString();
+  else if (arrived === false) payload.checkedInAt = null;
 
   var before = r.pre, beforeCell = r.cell;
   r.pre  = Object.assign({}, r.pre || {}, payload);  /* optimistic */
@@ -2110,15 +2094,8 @@ document.getElementById('board').addEventListener('click', function(e){
     if (!ra) return;
     var what = act.getAttribute('data-act');
     if (what === 'edit') return openGuest(ra);
-    /* Confirming from the summary saves exactly what is on screen. The guest
-       just agreed to it out loud, so there is nothing to open and nothing to
-       retype. Check in does the same and moves them to Arrived. Both stamp
-       confirmedAt - reception has been through it - and NEITHER touches the
-       form's state: they ask for no answers at all, and a button that
-       validates nothing must not be able to call a questionnaire finished.
-       That is what re-stamped villa 17 every time somebody tried to undo an
-       accidental check in. Marking completed lives on the sheet, gated. */
-    return save(ra, answersOf(ra), what === 'checkin', true);
+    /* Arrived, or not arrived. One fact, one button, and nothing else. */
+    return save(ra, answersOf(ra), !isArrived(ra.pre), null);
   }
 
   var btn = t.closest('.arr');
@@ -2127,8 +2104,12 @@ document.getElementById('board').addEventListener('click', function(e){
   if (!r) return;
 
   /* A guest who filled the form in gets it read back to them, and reception
-     confirms or edits from there. A guest with nothing to read back goes
-     straight to the form, because an empty summary says nothing. */
+     edits or checks in from there. A guest with nothing to read back goes
+     straight to the form, because an empty summary says nothing.
+
+     Deliberately still hasForm rather than the new formState: a booking that
+     is incomplete only because one mandatory answer is missing still has
+     answers worth reading back, and Mark as completed is one Edit away. */
   if (!hasForm(r.pre)) return openGuest(r);
   OPEN = (OPEN === r.villa) ? null : r.villa;
   render();
