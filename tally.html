@@ -12,24 +12,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
 <title>Nala · Tonight's Numbers</title>
+<link rel="stylesheet" href="nala-ui2.css?v=1">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+    /* This page's OWN colours. the board's own dining greens and slates, which mean different things from the shared ones */
+  :root {
          /* the kitchen bubble's gold. Not --amber: that name is the colour
             law's attention FILL (#F6EAD5) and this is an ink.            */
          --gold:#B07D2B;
           /* state palette: dining green, declined terracotta, vacant slate */
-          --green:#5E7D67;  --green-t:rgba(122,160,130,.26);  --green-b:rgba(122,160,130,.65);
-          --terra:#9E6455;  --terra-t:rgba(184,106,90,.16);   --terra-b:rgba(184,106,90,.45);
-          --slate:#57575E;  --slate-t:rgba(87,87,94,.10);     --slate-b:rgba(87,87,94,.28); }
-  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
-         padding:28px 24px 0; -webkit-tap-highlight-color:transparent; }
+          --green:#5E7D67;
+          --slate:#57575E;  --slate-t:rgba(87,87,94,.10);     --slate-b:rgba(87,87,94,.28)}
+  body { padding:28px 24px 0 }
   .wrap { max-width:520px; margin:0 auto; }
 
   .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
             background:#A8321E; color:#fff; padding:12px 18px;
-            font-family:var(--ui-font); font-size:11px; line-height:1.5;
+            font-family:var(--ui-font); font-size:var(--t2); line-height:1.5;
             transform:translateY(-100%); transition:transform .25s; }
   .errbar.show { transform:translateY(0); }
 
@@ -39,23 +38,22 @@
      unpublished as a <span>, so this must match either - selecting only
      span left the published state unstyled but for its background.     */
   .menustate > * { display:inline-block; border-radius:20px;
-                   font-family:var(--ui-font); font-size:9px;
-                   letter-spacing:.16em; text-transform:uppercase;
-                   /* letter-spacing leaves a trailing space after the last
-                      character, inside the box, which pushes the text off
-                      centre. Take it back off the right padding.        */
-                   padding:6px calc(14px - .16em) 6px 14px; }
+                   font-family:var(--ui-font); font-size:var(--t1);
+                   /* The right padding used to be short by .16em to take back
+                      the trailing space letter-spacing leaves inside the box.
+                      There is no letter-spacing now, so the compensation is
+                      what would push the text off centre.               */
+                   padding:6px 14px; }
   .menustate .yes { background:rgba(122,160,130,.22); color:#3F6B4C;
                     text-decoration:none; }
   .menustate .yes b { font-weight:normal; opacity:.75; }
   .menustate .no  { background:rgba(184,106,90,.18);  color:#8E4433; }
 
 
-.sec { font-family:var(--ui-font); font-size:8px; letter-spacing:.3em;
-         text-transform:uppercase; color:var(--mid); margin:26px 0 12px;
+.sec { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); margin:26px 0 12px;
          display:flex; justify-content:space-between; align-items:baseline; }
   .sec a { color:var(--ink); text-decoration:none; border:1px solid var(--rule);
-           font-size:9px; letter-spacing:.14em; padding:6px 12px; border-radius:2px;
+           font-size:var(--t1); padding:6px 12px; border-radius:2px;
            background:transparent; }
   .sec a.active { background:var(--ink); color:var(--cream); border-color:var(--ink); }
 
@@ -66,8 +64,8 @@
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     font-family:var(--ui-font); cursor:pointer; padding:0; position:relative;
   }
-  .room-n { font-size:13px; color:var(--ink); }
-  .room-p { font-size:8px; color:var(--mid); margin-top:2px; min-height:10px; }
+  .room-n { font-size:var(--t2); color:var(--ink); }
+  .room-p { font-size:var(--t1); color:var(--mid); margin-top:2px; min-height:10px; }
   /* Kept clear of the menu button on the right, which was cutting "Seat
      separately" in half on a real handset. Wraps rather than shrinks: the
      label and the action both have to stay readable, and a squeezed control
@@ -76,10 +74,9 @@
                gap:8px; flex-wrap:wrap;
                border:1px solid var(--ink); border-radius:8px;
                padding:9px 12px; margin:0 44px 12px;
-               font-family:var(--ui-font); font-size:11px; letter-spacing:.04em; }
+               font-family:var(--ui-font); font-size:var(--t2); }
   .comb-undo { border:none; background:transparent; color:var(--red); cursor:pointer;
-               font-family:var(--ui-font); font-size:10px; font-weight:bold;
-               letter-spacing:.1em; text-transform:uppercase; padding:4px 0;
+               font-family:var(--ui-font); font-size:var(--t2); font-weight:bold; padding:4px 0;
                -webkit-tap-highlight-color:transparent; }
   .room.in     { background:var(--green-t); border-color:var(--green-b); }
   .room.in .room-n { color:var(--ink); }
@@ -108,8 +105,7 @@
             transform:translateY(110%); transition:transform .22s; }
   .selbar.show { transform:translateY(0); }
   .selbar-inner { max-width:520px; margin:0 auto; }
-  .selcount { font-family:var(--ui-font); font-size:10px;
-              letter-spacing:.16em; text-transform:uppercase; color:var(--mid);
+  .selcount { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
               text-align:center; margin-bottom:10px; }
   .selactions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .selbtn.comb { border:1px solid var(--ink); color:var(--ink); background:transparent; }
@@ -117,7 +113,7 @@
   /* the make-up is a statement, not a label: sentence case and normal spacing
      so a full house still fits one line at 390pt (see STYLEGUIDE type scale) */
   .tablesline { text-align:center; margin-top:8px; font-family:var(--ui-font);
-                font-size:11.5px; letter-spacing:.02em; color:var(--ink);
+                font-size:var(--t2); color:var(--ink);
                 white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   /* The ring is drawn as an overlay, the same way the room-tile group does it,
      so grouping a booking no longer narrows its rows by 24px and compresses
@@ -132,16 +128,14 @@
   .row.stubrow .row-name, .row.stubrow .row-sub { color:var(--mid); }
   .row.stubrow .row-sub { font-style:italic; }
   .selbtn { padding:13px 6px; border:1px solid transparent; color:#fff;
-            font-family:var(--ui-font); font-size:11px;
-            letter-spacing:.1em; text-transform:uppercase; cursor:pointer; }
+            font-family:var(--ui-font); font-size:var(--t2); cursor:pointer; }
   .selbtn.vac  { background:var(--slate); }
   .selbtn.din  { background:var(--green); }
   .selbtn.out  { background:var(--terra); }
   .selbtn.quiet{ background:transparent; border-color:var(--rule); color:var(--mid); }
 
   .legend { display:flex; gap:14px; justify-content:center; margin-top:12px;
-            font-family:var(--ui-font); font-size:8px;
-            letter-spacing:.12em; text-transform:uppercase; color:var(--mid); }
+            font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); }
   .legend span { display:flex; align-items:center; gap:5px; }
   .sw { width:9px; height:9px; border:1px solid var(--rule); display:inline-block; }
   .sw.in { background:var(--green-t); border-color:var(--green-b); }
@@ -161,19 +155,18 @@
   .row { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center;
          column-gap:10px; row-gap:0; padding:9px 0; border-bottom:1px solid var(--rule); }
   .row-main { flex:1 1 auto; min-width:0; }
-  .row-name { font-size:14px; }
+  .row-name { font-size:var(--t3); }
   /* The villa number is the thing staff scan for, so it leads the line at a
      larger size in ink, then a dash, then the guest name. The word "villa"
      is dropped - every row is a villa, so repeating it says nothing.     */
-  .row-name .rm { font-family:var(--ui-font); font-size:15px;
-                  font-weight:bold; letter-spacing:0; color:var(--ink); }
+  .row-name .rm { font-family:var(--ui-font); font-size:var(--t3);
+                  font-weight:bold; color:var(--ink); }
   .row-name .rm::after { content:' - '; font-weight:normal; color:var(--mid); }
-  .row-name .tag { font-family:var(--ui-font); font-size:8px;
-                   letter-spacing:.18em; text-transform:uppercase; color:var(--mid);
+  .row-name .tag { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
                    border:1px solid var(--rule); padding:2px 6px; margin-left:8px;
                    border-radius:10px; vertical-align:middle; }
-  .row-sub { font-style:italic; font-size:11px; color:var(--mid); margin-top:8px; }
-  .row-pax { font-family:var(--ui-font); font-size:12px; white-space:nowrap; }
+  .row-sub { font-style:italic; font-size:var(--t2); color:var(--mid); margin-top:8px; }
+  .row-pax { font-family:var(--ui-font); font-size:var(--t2); white-space:nowrap; }
   /* The bubble sits BEFORE the pax count so the pax figures line up down the
      list whether or not a booking carries a note.                         */
   .row-right { display:flex; align-items:center; gap:6px; white-space:nowrap;
@@ -190,8 +183,7 @@
      pills take the whole row width, not just the half beside the pax count. */
   .nm { white-space:nowrap; }
   .dietline { flex:0 0 100%; margin:8px 0 0; display:flex; flex-wrap:wrap; gap:5px; }
-  .dpill { font-family:var(--ui-font); font-size:11px; font-weight:bold;
-           letter-spacing:.06em; text-transform:uppercase; padding:3px 8px;
+  .dpill { font-family:var(--ui-font); font-size:var(--t2); font-weight:bold; padding:3px 8px;
            border-radius:11px; background:rgba(168,50,30,.12); color:var(--red); }
   .dpill-al { background:var(--red); color:#fff; }
   /* The declared "none" wears the same pill as any dietary, in the green
@@ -212,13 +204,12 @@
   .bub svg { width:15px; height:15px; display:block; fill:var(--mid); }
   .bub.kitchen svg { fill:var(--gold); }
   .bub.flag svg { fill:var(--red); }
-  .pop-who { font-size:15px; margin-bottom:14px; padding-bottom:12px;
+  .pop-who { font-size:var(--t3); margin-bottom:14px; padding-bottom:12px;
              border-bottom:1px solid var(--rule); }
-  .pop-h { font-family:var(--ui-font); font-size:10px; letter-spacing:.18em;
-           text-transform:uppercase; color:var(--mid); margin-bottom:6px; }
+  .pop-h { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); margin-bottom:6px; }
   .pop-h.dh { color:var(--red); }
-  .pop-t { font-size:14px; line-height:1.45; margin-bottom:16px; }
-  .empty { font-style:italic; color:var(--mid); font-size:12px; padding:8px 0; }
+  .pop-t { font-size:var(--t3); line-height:1.45; margin-bottom:16px; }
+  .empty { font-style:italic; color:var(--mid); font-size:var(--t2); padding:8px 0; }
 
   .actions.hidden { visibility:hidden; }
   .actions { margin-top:34px; gap:10px;
@@ -234,12 +225,10 @@
            min-height:560px;
            padding:26px 24px 120px; border-top:1px solid var(--rule);
            max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
-  .sheet h3 { font-family:var(--ui-font); font-size:11px; letter-spacing:.2em;
-              text-transform:uppercase; color:var(--mid); font-weight:normal;
+  .sheet h3 { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); font-weight:normal;
               text-align:center; margin:0 44px 12px; }
   .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid transparent;
-         font-family:var(--ui-font); font-size:12px;
-         letter-spacing:.12em; text-transform:uppercase; color:#fff; cursor:pointer; }
+         font-family:var(--ui-font); font-size:var(--t2); color:#fff; cursor:pointer; }
   /* matches the room tile palette */
   .opt.solid { background:var(--green); border-color:var(--green); }   /* dining  - green */
   .opt.out   { background:var(--terra); border-color:var(--terra); }   /* not dining - red */
@@ -248,23 +237,22 @@
   .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 16px; }
   .pax-fact { font:600 20px/1 var(--ui-font); color:var(--ink); }
   .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
-         border-radius:50%; font-family:var(--ui-font); font-size:13px;
+         border-radius:50%; font-family:var(--ui-font); font-size:var(--t2);
          color:var(--ink); cursor:pointer; }
   .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
   .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
-          border-radius:20px; font-family:var(--ui-font); font-size:10px;
+          border-radius:20px; font-family:var(--ui-font); font-size:var(--t2);
           color:var(--mid); cursor:pointer; }
   .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
 
   .seg { display:flex; gap:6px; margin:2px 0 12px; }
   .seg button { flex:1; padding:11px 0; border:1px solid var(--rule); background:transparent;
-                font-family:var(--ui-font); font-size:10px; letter-spacing:.12em;
-                text-transform:uppercase; color:var(--mid); cursor:pointer; border-radius:6px; }
+                font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); cursor:pointer; border-radius:6px; }
   .seg button.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   .rm-row { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:2px 0 14px; }
   .rmp { height:40px; border:1px solid var(--rule); background:transparent;
-         font-family:var(--ui-font); font-size:12px; color:var(--ink);
+         font-family:var(--ui-font); font-size:var(--t2); color:var(--ink);
          cursor:pointer; border-radius:6px; }
   .rmp.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   /* Reported 18 Aug from a real handset: the villa heading and the name were
@@ -273,10 +261,10 @@
      panel below it is set a little tighter, so a full snapshot and the three
      service buttons still fit one screen without scrolling. */
   .gd { position:relative; text-align:center; margin:-4px 44px 12px;
-        font-size:13px; line-height:1.5; }
-  .gd .gd-sub { display:block; font-family:var(--ui-font); font-size:10.5px;
-                color:var(--mid); letter-spacing:.03em; }
-  .gd .gd-note { display:block; font-style:italic; font-size:12px; color:var(--mid); }
+        font-size:var(--t2); line-height:1.5; }
+  .gd .gd-sub { display:block; font-family:var(--ui-font); font-size:var(--t2);
+                color:var(--mid); }
+  .gd .gd-note { display:block; font-style:italic; font-size:var(--t2); color:var(--mid); }
 
   /* ── the guest snapshot ───────────────────────────────────────────────
      Everything the app holds about whoever is in the villa, behind one tap.
@@ -327,52 +315,47 @@
     .gd-panel.open { transition:none; }
   }
   .gd-int { margin:10px 0 2px; }
-  .gd-int label { display:block; font-family:var(--ui-font); font-size:8px;
-                  letter-spacing:.25em; text-transform:uppercase;
+  .gd-int label { display:block; font-family:var(--ui-font); font-size:var(--t1);
                   color:var(--mid); margin:0 0 4px; }
   .gd-int textarea { width:100%; min-height:56px; padding:8px 10px;
                      border:1px solid var(--rule); border-radius:6px;
                      background:var(--cream); color:var(--ink);
                      /* 16px is the floor for every input on a phone: iOS
                         zooms the whole page into any field set smaller. */
-                     font-family:inherit; font-size:16px; resize:vertical; }
+                     font-family:var(--ui-font); font-size:var(--t3); resize:vertical; }
   .gd-int .gd-int-save { display:block; width:100%; margin:6px 0 0;
                      padding:8px 0; border:1px solid var(--rule);
                      border-radius:6px; background:none; cursor:pointer;
                      color:var(--mid); font-family:var(--ui-font);
-                     font-size:9.5px; letter-spacing:.18em;
-                     text-transform:uppercase;
+                     font-size:var(--t1);
                      -webkit-tap-highlight-color:transparent; }
   .gd-int .gd-int-save:disabled { opacity:.45; cursor:default; }
   .gd-int-link { display:inline-block; margin:6px 0 2px; padding:2px 0;
                  border:0; background:none; cursor:pointer;
-                 color:var(--mid); font-family:inherit; font-size:14px;
+                 color:var(--mid); font-family:var(--ui-font); font-size:var(--t3);
                  text-decoration:underline; text-underline-offset:3px;
                  -webkit-tap-highlight-color:transparent; }
   .gd-int-link:active { color:var(--ink); }
   .gd-close { display:block; width:100%; margin:8px 0 0; padding:9px 0;
               border:0; border-top:1px solid var(--rule);
               background:none; cursor:pointer; color:var(--mid);
-              font-family:var(--ui-font); font-size:9.5px;
-              letter-spacing:.18em; text-transform:uppercase;
+              font-family:var(--ui-font); font-size:var(--t1);
               -webkit-tap-highlight-color:transparent; }
   .gd-close:active { color:var(--ink); }
-  .gd-row { display:flex; gap:9px; padding:2px 0; font-size:12px;
+  .gd-row { display:flex; gap:9px; padding:2px 0; font-size:var(--t2);
             line-height:1.45; }
-  .gd-k { flex:0 0 74px; font-family:var(--ui-font); font-size:9px;
-          letter-spacing:.14em; text-transform:uppercase; color:var(--mid);
+  .gd-k { flex:0 0 74px; font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
           padding-top:2px; }
   .gd-v { flex:1 1 auto; min-width:0; color:var(--ink); }
   .gd-v.quiet { color:var(--mid); font-style:italic; }
   .gd-tel { color:var(--ink); text-decoration:none;
             border-bottom:1px solid var(--rule); }
 
-  .note-box { font-style:italic; font-size:13px; color:var(--mid); text-align:center;
+  .note-box { font-style:italic; font-size:var(--t2); color:var(--mid); text-align:center;
               line-height:1.6; padding:0 4px 16px; }
-  .sheet-label { font-family:var(--ui-font); font-size:8px; letter-spacing:.25em;
-                 text-transform:uppercase; color:var(--mid); text-align:center; margin-bottom:8px; }
+  .sheet-label { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); text-align:center; margin-bottom:8px; }
   .txt { width:100%; padding:12px; margin-bottom:8px; border:1px solid var(--rule);
-         background:transparent; font-family:var(--ui-font); font-size:16px; color:var(--ink); }
+         background:transparent; font-family:var(--ui-font); font-size:var(--t3); color:var(--ink); }
   .txt::placeholder { color:var(--mid); font-style:italic; }
   .txt:focus { outline:none; border-color:var(--ink); }
 
@@ -388,7 +371,7 @@ body.readonly #oClear, body.readonly #oUncomb, body.readonly #cYes,
 body.readonly .comb-undo { display:none; }
 </style>
 </head>
-<body class="tier-app">
+<body class="tier-app ui2">
 
 <div class="errbar" id="errBar"></div>
 <div class="wrap">

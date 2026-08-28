@@ -282,10 +282,20 @@ with sync_playwright() as p:
        "mark as clean" not in us and "possibly available" not in us and "departed" not in us)
     ck("an unknown villa can be set to any of the three jobs",
        "to be cleaned" in us and "to be serviced" in us and "mark as empty" in us)
+    #  Was pinned to rgb(153,153,144), the old --mid. The ruling is that
+    #  unknown wears the QUIET grey and not an alarm colour, which is a
+    #  statement about the token, so it is read from the token.
     ck("unknown is grey, not an alarm",
-       "rgb(153, 153, 144)" in pg.evaluate(
-         "()=>{const c=[...document.querySelectorAll('.tile .chip.ver')][0];"
-         "return c? getComputedStyle(c).color+' '+getComputedStyle(c).borderColor : '';}"))
+       pg.evaluate("""()=>{const probe=v=>{const e=document.createElement('span');
+            e.style.color='var('+v+')';document.body.appendChild(e);
+            const c=getComputedStyle(e).color;e.remove();return c;};
+          const c=[...document.querySelectorAll('.tile .chip.ver')][0];
+          if(!c) return false;
+          const s=getComputedStyle(c), mid=probe('--mid');
+          /* .chip.ver sets border-color only and inherits its text colour,
+             so the grey is on the border. The original read both as one
+             string; this keeps that and just stops pinning the hex. */
+          return (s.color+' '+s.borderColor).indexOf(mid)>-1;}"""))
 
     # a vacant villa opens like any other, but offers no work to do
     pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.className.includes('vac')).click()")

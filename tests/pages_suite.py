@@ -230,8 +230,14 @@ with sync_playwright() as p:
     #  Not anchored to a line start: `:root { --a:x; --b:y; }` on one line
     #  is how every page declares these, and an anchored pattern reads only
     #  the first. `--x:` appears only in declarations, never in var(--x).
-    OWNED = set(_r.findall(r'(--[a-z0-9-]+)\s*:', open("nala-ui2.css",
-                encoding="utf-8").read()))
+    #  Comments are stripped before any of this. These files explain their
+    #  own tokens constantly - "Not --amber: that name is the colour law's
+    #  attention FILL" is prose, not a declaration - and a checker that reads
+    #  prose as code cries wolf until somebody turns it off.
+    def decomment(t):
+        return _r.sub(r'/\*.*?\*/', ' ', t, flags=_r.S)
+    OWNED = set(_r.findall(r'(--[a-z0-9-]+)\s*:',
+                decomment(open("nala-ui2.css", encoding="utf-8").read())))
     def style_of(txt):
         m = _r.search(r'<style>(.*?)</style>', txt, _r.S)
         return m.group(1) if m else ""
@@ -252,12 +258,12 @@ with sync_playwright() as p:
         #  A page that redefines a shared token silently wins over the sheet,
         #  because :root and body.ui2 are the same specificity and the page
         #  comes later. That is how --green came to mean two things.
-        for t in _r.findall(r'(--[a-z0-9-]+)\s*:', st):
+        for t in _r.findall(r'(--[a-z0-9-]+)\s*:', decomment(st)):
             if t in OWNED:
                 bad_tok.append(f + " " + t)
         #  "No page hardcodes a font stack. Changing the staff font is one
         #  line." It was one line and 87 places.
-        if _r.search(r'font-family:\s*(?!var\()', st):
+        if _r.search(r'font-family:\s*(?!var\()', decomment(st)):
             bad_font.append(f)
         #  Sizes come from the scale or they are picked by eye. A deliberate
         #  exception is allowed the way CLAUDE.md allows any other: say why,
@@ -268,7 +274,8 @@ with sync_playwright() as p:
         for line in st.splitlines():
             if "off-scale:" in line:
                 continue
-            for m in _r.findall(r'font-size:\s*([0-9.]+(?:px|rem))', line):
+            for m in _r.findall(r'font-size:\s*([0-9.]+(?:px|rem))',
+                                _r.sub(r'/\*.*?\*/', ' ', line)):
                 bad_size.append(f + " " + m)
         #  Takes pinch zoom from anyone who needs it, and never did the job
         #  it was added for; touch-action:manipulation does that instead.

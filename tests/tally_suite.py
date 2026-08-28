@@ -290,8 +290,12 @@ with sync_playwright() as p:
          box is NOT the ink. Check the right padding compensates for it. */
       return {fs:cs.fontSize, pad:cs.padding, tt:cs.textTransform,
               r:cs.borderRadius, h:Math.round(b.height),
+              /* letterSpacing reads "normal" when there is none, and
+                 parseFloat("normal") is NaN, which made this comparison
+                 false rather than true once the tracking came off. */
               inkOff:(parseFloat(cs.paddingLeft) -
-                      (parseFloat(cs.paddingRight)+parseFloat(cs.letterSpacing))).toFixed(2)};}""")
+                      (parseFloat(cs.paddingRight) +
+                       (parseFloat(cs.letterSpacing)||0))).toFixed(2)};}""")
     pubPill = pill()
     realPill = pg.evaluate("()=>document.querySelector('.menustate').innerHTML")
     pg.evaluate("""()=>{document.querySelector('.menustate').innerHTML =

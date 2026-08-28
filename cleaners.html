@@ -2,17 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala · Cleaners</title>
+<link rel="stylesheet" href="nala-ui2.css?v=1">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-          --green:#E4EDE2; --greenb:#7E937A; --amberb:#C29A55;
+    /* This page's OWN colours. the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+  :root {
+          --green:#E4EDE2;
           /* The bars only. --amberb is a muted gold that sits behind text and
              reads as a browner blue-grey at 9px, which made a clean and a
              clean-plus-arrival hard to tell apart on a phone: the amber half
@@ -37,11 +39,8 @@
              differ in strength and not in hue, which is the harder telling
              apart, and the one that fails first in daylight. */
           --bluebar:#2E74C0; --greenbar:#4E8F4A;
-          --blue:#E7E9EF; --blueb:#8A90A8; }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
-         padding:calc(24px + env(safe-area-inset-top)) 18px 0;
-         -webkit-tap-highlight-color:transparent; }
+          --blue:#E7E9EF; --blueb:#8A90A8}
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 0 }
   /* height, not min-height, and a shrinkable wrap: without these the column
      grows past the screen and the page scrolls, instead of the grid taking
      the space it has and scrolling inside itself.                       */
@@ -54,8 +53,8 @@
      small the tiles are told to be.                                     */
   body > .wrap { max-width:520px; margin:0 auto; flex:1 1 auto; min-height:0; }
 
-  h1 { font-size:19px; font-weight:bold; text-align:center; margin:8px 0 4px;
-       font-family:var(--ui-font); letter-spacing:.02em; }
+  h1 { font-size:19px; font-weight:bold; text-align:center; margin:8px 0 4px;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+       font-family:var(--ui-font); }
 
   /* The board takes whatever height the phone has left after the header,
      stats, legend and footer, and the rows share it. No fixed tile height,
@@ -89,9 +88,9 @@
   @media (orientation: portrait) and (max-height: 620px) {
     .grid { grid-auto-rows:minmax(46px, 1fr) !important; gap:7px !important; }
     .tile { padding:6px 6px 5px !important; gap:3px !important; }
-    .tile .rn { font-size:19px !important; }
-    .tile .sub { font-size:8.5px !important; min-height:10px !important; }
-    .legend { padding:4px 5px !important; font-size:6px !important; gap:1px !important; }
+    .tile .rn { font-size:19px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+    .tile .sub { font-size:8.5px !important; min-height:10px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+    .legend { padding:4px 5px !important; font-size:6px !important; gap:1px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
     .legend .lgb { width:12px; height:5px; }
   }
 
@@ -108,17 +107,17 @@
     .grid { grid-template-columns:repeat(6, 1fr) !important;
             grid-auto-rows:minmax(46px, 1fr) !important; gap:6px !important; }
     .stats { margin:1px 0 4px !important; gap:10px !important; }
-    .stat-n { font-size:13px !important; }
-    .stat-l { font-size:6.5px !important; }
+    .stat-n { font-size:13px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+    .stat-l { font-size:6.5px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
     .tile { padding:5px 5px 4px !important; gap:3px !important; }
-    .tile .rn { font-size:17px !important; }
-    .tile .sub { font-size:8px !important; min-height:10px !important; }
+    .tile .rn { font-size:17px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+    .tile .sub { font-size:8px !important; min-height:10px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
     .tile .who-badge { bottom:3px; right:3px; min-width:16px; height:16px;
-                       font-size:8px; border-radius:8px; }
+                       font-size:8px; border-radius:8px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
     .tile .task-icons { top:3px; left:3px; }
     .tile .task-icons svg { width:11px; height:11px; }
-    .tile .eta { top:3px; right:3px; font-size:8px; }
-    .legend { padding:3px 4px !important; font-size:5.5px !important;
+    .tile .eta { top:3px; right:3px; font-size:8px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+    .legend { padding:3px 4px !important; font-size:5.5px !important;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
               gap:1px !important; }
     .legend .lgb { width:11px; height:5px; }
   }
@@ -126,9 +125,9 @@
   @media (max-height: 720px) {
     body { padding-top:calc(12px + env(safe-area-inset-top)); }
     .stats { margin-bottom:6px !important; }
-    .stat-n { font-size:22px; }
+    .stat-n { font-size:22px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
     .grid { gap:8px !important; }
-    .legend { padding:4px 5px !important; font-size:6.5px !important; }
+    .legend { padding:4px 5px !important; font-size:6.5px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
   }
 
   /* Buttons are matched on the action in their onclick, so the sheet keeps
@@ -155,7 +154,7 @@
           padding:10px 8px 9px; text-align:center; cursor:pointer; color:var(--ink);
           font-family:var(--ui-font); position:relative; min-height:0;
           display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; }
-  .tile .rn { font-size:20px; font-weight:bold; }
+  .tile .rn { font-size:20px; font-weight:bold; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
   /* Clean is a solid ink pill, Service a faint outline: the two jobs must be
      tellable apart at arm's length, not by reading the word.               */
   /* No words. The job is a bar, read by colour and by pattern, and the words
@@ -215,11 +214,10 @@
                      min-width:20px; height:20px; padding:0 4px;
                      border-radius:10px; border:1.5px solid var(--ink);
                      background:var(--ink); color:var(--cream);
-                     font-family:var(--ui-font); font-size:9px; font-weight:bold;
-                     letter-spacing:.02em; display:flex; align-items:center;
+                     font-family:var(--ui-font); font-size:9px; font-weight:bold;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */ display:flex; align-items:center;
                      justify-content:center; box-sizing:border-box; }
   .tile .who-badge.mine { background:var(--cream); color:var(--ink); }
-  .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
+  .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
   .tile .sub b { color:var(--ink); }
   /* The clock on an available villa, and the only place on this board where
      colour is about time rather than about state. Green for the first ten
@@ -255,8 +253,7 @@
                      min-width:20px; height:20px; padding:0 4px;
                      border-radius:10px; border:1.5px solid var(--ink);
                      background:var(--ink); color:var(--cream);
-                     font-family:var(--ui-font); font-size:9px; font-weight:bold;
-                     letter-spacing:.02em; display:flex; align-items:center;
+                     font-family:var(--ui-font); font-size:9px; font-weight:bold;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */ display:flex; align-items:center;
                      justify-content:center; box-sizing:border-box; }
   .tile .who-badge.mine { background:var(--cream); color:var(--ink); }
   /* Strip and fresh linen: the two jobs a helper can do ahead of a clean.
@@ -275,12 +272,12 @@
      this is 9.5px bold and the muted gold disappears at that size (see the
      bar note above). */
   .tile .eta { position:absolute; top:5px; right:5px; font-family:var(--ui-font);
-               font-size:9.5px; font-weight:bold; letter-spacing:.02em;
+               font-size:9.5px; font-weight:bold;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
                color:#55554F; }
   .tile .eta.early { color:var(--amberbar); }
   .tile .eta.due { color:var(--red); }
   .tile.done .eta { opacity:.4; }
-  .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
+  .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
   .tile .sub b { color:var(--ink); }
   /* The clock on an available villa, and the only place on this board where
      colour is about time rather than about state. Green for the first ten
@@ -322,8 +319,7 @@
   .btn.active  { background:var(--ink); color:var(--cream); }
 
   .legend { margin-top:20px; display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
-            font-family:var(--ui-font); font-size:9px; letter-spacing:.1em;
-            text-transform:uppercase; color:var(--mid); }
+            font-family:var(--ui-font); font-size:9px;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */ color:var(--mid); }
   .legend i { display:inline-block; width:11px; height:11px; border-radius:3px;
               border:1.2px solid var(--rule); vertical-align:-1px; margin-right:5px; }
   /* The key draws the same bars at the same size and in the same colours. A
@@ -336,7 +332,7 @@
   .legend { display:flex !important; flex-direction:column; justify-content:center;
             gap:2px; margin:0 !important; padding:6px 7px; text-align:left;
             border:1.2px solid var(--rule); border-radius:10px;
-            background:transparent; font-size:7px; letter-spacing:.06em; }
+            background:transparent; font-size:7px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
   .legend span { display:flex; align-items:center; gap:5px; line-height:1.15; }
   .legend .lgb { flex:0 0 auto; width:15px; height:6px; border-radius:3px;
                  border:1.2px solid var(--bluebar); background:var(--bluebar);
@@ -358,8 +354,8 @@
   .ov.show { display:flex; }
   .sheet { background:var(--cream); width:100%; max-width:520px; border-radius:14px 14px 0 0;
            padding:22px 20px 30px; font-family:var(--ui-font); }
-  .sheet h2 { font-size:15px; letter-spacing:.04em; margin-bottom:2px; }
-  .sheet .st { font-size:10.5px; color:var(--mid); letter-spacing:.08em; text-transform:uppercase;
+  .sheet h2 { font-size:15px; margin-bottom:2px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+  .sheet .st { font-size:10.5px; color:var(--mid);  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
                margin-bottom:16px; }
   /* The strip and linen toggles sit beside the title, right aligned, above
      the buttons: they are state about the villa, not actions on the job, so
@@ -373,24 +369,21 @@
   .ttog { width:44px; height:44px; border-radius:8px; padding:0; cursor:pointer;
           border:1.5px solid var(--rule); background:#fff; color:#C6C6BF;
           display:flex; align-items:center; justify-content:center;
-          font-family:inherit; }
+          font-family:var(--ui-font); }
   .ttog svg { width:22px; height:22px; display:block; }
   .ttog.on { background:#55554F; border-color:#55554F; color:var(--cream); }
-  .pbtn { display:block; width:100%; padding:14px; margin-top:9px; font-size:12px;
-          letter-spacing:.1em; text-transform:uppercase; background:#fff; color:var(--ink);
-          border:1px solid var(--ink); border-radius:6px; cursor:pointer; font-family:inherit; }
+  .pbtn { display:block; width:100%; padding:14px; margin-top:9px; font-size:12px;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */ background:#fff; color:var(--ink);
+          border:1px solid var(--ink); border-radius:6px; cursor:pointer; font-family:var(--ui-font); }
   .pbtn.solid { background:var(--ink); color:#fff; }
-  .pdiv { font-family:var(--ui-font); font-size:9px; letter-spacing:.18em;
-          text-transform:uppercase; color:var(--mid); margin:14px 0 6px; }
+  .pdiv { font-family:var(--ui-font); font-size:9px;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */ color:var(--mid); margin:14px 0 6px; }
   .btick { width:15px; height:15px; margin-right:8px; vertical-align:-2px; display:inline-block; }
   .pbtn.ghost { border-color:var(--rule); color:var(--mid); }
   .pbtn.warn  { border-color:var(--red); color:var(--red); }
   .timerow { display:flex; gap:8px; margin-top:9px; }
   .timerow .pbtn { margin-top:0; padding:13px 0; }
-  .perr { color:var(--red); font-size:11px; margin-top:12px; min-height:14px; }
-</style>
+  .perr { color:var(--red); font-size:11px; margin-top:12px; min-height:14px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */</style>
 </head>
-<body class="tier-app">
+<body class="tier-app ui2">
 
 <div class="wrap">
     <div class="daterow">

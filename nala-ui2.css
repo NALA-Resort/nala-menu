@@ -87,7 +87,12 @@ body.ui2{
      seam, when the last page has joined and the names can be swept.   */
   --cream:var(--ground);
   --paper:var(--ground);
-  --green:var(--law-green);      --greent:var(--law-green);
+  /* --green and --greent are deliberately NOT aliased. --green is #E4EDE2,
+     a pale fill, on five pages and #5E7D67, a dark ink, on two. Claiming
+     one of those meanings in the shared sheet would repeat exactly the
+     fault this work exists to fix, and would turn the Cleans board's ready
+     tint into a dark green. The pages keep their own until the name is
+     split properly, which is the de-aliasing job still outstanding.    */
   --green-t:var(--law-green-t);  --green-b:var(--law-green-b);
   --greenb:var(--law-save-bdr);
   --resgreen:var(--law-green);   --resgreen-t:var(--law-green-t);
@@ -132,8 +137,11 @@ body.ui2 .dnav.today, body.ui2 h1, body.ui2 .date{
 /* ── page frame ──────────────────────────────────────────────────────
    Deliberately NOT a flex column. nala-ui.css makes body one, which is
    the rule that reflowed pages that only wanted a button.           */
-body.ui2{ padding:calc(var(--s5) + env(safe-area-inset-top)) var(--s4)
-                  calc(var(--s6) + env(safe-area-inset-bottom)); }
+/* Page padding is the PAGE's business and is not set here. It was, and at
+   body.ui2, which outranks every `body { padding-top: ... }` a page has
+   inside a media query: the Cleans board's landscape rule asks for 6px at
+   the top so seventeen tiles fit a 320px-tall screen, and a sheet-level
+   shorthand quietly held it at 24 and pushed the grid off the screen.  */
 body.ui2 h1{ font-size:var(--t4); font-weight:600; margin-bottom:var(--s1); }
 body.ui2 .lede{ font-size:var(--t2); color:var(--mid); line-height:1.55;
                 margin-bottom:var(--s2); max-width:58ch; }
@@ -148,11 +156,21 @@ body.ui2 .secnote{ font-size:var(--t2); color:var(--mid); line-height:1.5;
 body.ui2 .daterow{ display:flex; align-items:center; gap:var(--s2);
                    margin-bottom:var(--s4); }
 body.ui2 .date{ flex:1; font-size:var(--t4); font-weight:600; }
-body.ui2 .dnav{ width:40px; height:40px; display:inline-flex; align-items:center;
+/* 36px, not the 44px tap floor: the header law in STYLEGUIDE.md rules that
+   every control in this row is 36 and tally_suite measures it. The project's
+   own rule outranks the general one.                                      */
+body.ui2 .dnav{ width:36px; height:36px; display:inline-flex; align-items:center;
                 justify-content:center; border:0; background:var(--card);
                 border-radius:var(--pill); color:var(--ink); cursor:pointer;
                 font-family:var(--ui-font); font-size:var(--t3); }
 body.ui2 .dnav.today{ width:auto; padding:0 var(--s3); font-size:var(--t2); }
+/* The corner law: the footer row sits hard against the bottom of the screen,
+   so it squares off, and only the outer lower corners round. body.ui2 .btn
+   outranks .foot .btn in nala-ui.css, so the law has to be restated here or
+   the row grows four rounded corners and floats.                          */
+body.ui2 .foot .btn{ border-radius:0; }
+body.ui2 .foot .btn:first-child{ border-bottom-left-radius:var(--r); }
+body.ui2 .foot .btn:last-child { border-bottom-right-radius:var(--r); }
 body.ui2 .dnav:disabled{ opacity:.35; cursor:default; }
 body.ui2 .dnav:active{ background:var(--accent-soft); }
 
@@ -160,14 +178,14 @@ body.ui2 .dnav:active{ background:var(--accent-soft); }
    Written against real colours, not --ctl-*, so a page with no tier
    class still draws it. That was the whole reason for the copies.   */
 body.ui2 .navwrap{ position:relative; margin-left:auto; z-index:500; }
-body.ui2 .navbtn{ width:44px; height:40px; border:0; background:transparent;
+body.ui2 .navbtn{ width:42px; height:36px; border:0; background:transparent;
                   border-radius:var(--pill); display:flex; flex-direction:column;
                   align-items:center; justify-content:center; gap:4px;
                   cursor:pointer; -webkit-tap-highlight-color:transparent; }
 body.ui2 .navbtn:active{ background:var(--card); }
 body.ui2 .navbtn span{ display:block; width:17px; height:1.7px;
                        background:var(--ink); border-radius:2px; }
-body.ui2 .navdrop{ display:none; position:absolute; right:0; top:46px;
+body.ui2 .navdrop{ display:none; position:absolute; right:0; top:42px;
                    background:var(--ground); border:1px solid var(--rule);
                    border-radius:var(--r); min-width:200px; padding:var(--s1) 0;
                    box-shadow:0 2px 6px rgba(0,0,0,.06),0 10px 28px rgba(0,0,0,.10); }
