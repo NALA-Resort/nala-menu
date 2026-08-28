@@ -483,6 +483,71 @@ function oneNight(s){
   return Math.round((b - a) / 86400000) === 1;
 }
 
+/* What the guest was asked, and how to tell whether they answered it.
+   Mirrors prearrival.html's own required list (missingOn) and the pages it
+   hides on a one night stay, so the desk names exactly what that guest was
+   offered and never a question they never saw. The two copies answer to one
+   table, tests/form_questions.json, read by both suites - add a question
+   there, not here.
+
+   The reason this list is separate from GUEST_ANSWERS: that one asks "did
+   anybody put anything in this record", and it is deliberately wide, holding
+   free text and desk-only fields. This one is the questionnaire, and it has
+   to be exactly the questionnaire. `occasion` is why they cannot be the same
+   list - it was retired from the guest form on 23 Aug, folded into the notes
+   box, and is desk-only now; naming it as missing would send reception
+   chasing a question that no longer exists. */
+/* In the form's own step order, so reception asks them back in the order the
+   guest was walked through - and so the table can assert the order too. */
+var FORM_QUESTIONS = [
+  { key:'purpose',  label:'what kind of stay it is', askedOnOneNight:false,
+    answered:function(p){ return !!p.purpose; } },
+  { key:'arrival',  label:'their arrival time', askedOnOneNight:true,
+    answered:function(p){ return !!p.arriveSlot; } },
+  { key:'approach', label:'how often they plan to dine', askedOnOneNight:false,
+    answered:function(p){ return !!p.approach; } },
+  { key:'dining',   label:'whether they are dining', askedOnOneNight:true,
+    answered:function(p){ return p.dining === true || p.dining === false; } },
+  { key:'dietary',  label:'dietaries', askedOnOneNight:true,
+    answered:function(p){ return !!p.noDiets ||
+      (Array.isArray(p.diets) ? p.diets.length > 0 : !!p.diets); } },
+  { key:'wellness', label:'treatments', askedOnOneNight:false,
+    answered:function(p){ return p.wellness === true || p.wellness === false; } }
+];
+
+/* The questions this guest was shown and has not answered, in the form's own
+   order. Empty means nothing is outstanding, which is a different sentence
+   at the desk and the whole reason this exists: a guest who answered every
+   question and never pressed Send looks identical, in the record, to one who
+   stopped halfway, and reception was told the same thing about both. */
+function missingAnswers(p, stay){
+  var one = oneNight(stay), rec = p || {};
+  return FORM_QUESTIONS.filter(function(q){
+    if (one && !q.askedOnOneNight) return false;   /* never put to them */
+    return !q.answered(rec);
+  }).map(function(q){ return q.label; });
+}
+
+/* A list a person would say out loud: a, b and c. */
+function andList(xs){
+  if (xs.length <= 1) return xs[0] || '';
+  return xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
+}
+
+/* The note above a part-finished form. Until 28 Aug it said "anything still
+   blank is still unanswered" whatever the record held, so a form with every
+   question answered - the guest simply never pressed Send - told reception to
+   go looking for holes that were not there. Seen live, 28 Aug. */
+function startedNote(p, stay){
+  var miss = missingAnswers(p, stay);
+  if (!miss.length)
+    return 'They answered every question but never pressed Send, so the form '
+         + 'is not marked finished. Nothing is outstanding: read it back and '
+         + 'confirm.';
+  return 'They started the form and did not finish it. Still to ask: '
+       + andList(miss) + '. Their other answers are below.';
+}
+
 /* No pills on this screen. Every state a pill carried is already said once,
    and said better:
 
@@ -1154,8 +1219,7 @@ function openGuest(r){
     (etaLabel(p) ? '<div class="note-box">Told us they would arrive ' +
        esc(etaLabel(p).toLowerCase()) + '.</div>' : '') +
     (hasForm(p) ? '' : startedForm(p) ?
-      '<div class="note-box">They started the form and did not finish it. ' +
-        'Their answers are below. Anything still blank is still unanswered.</div>' :
+      '<div class="note-box">' + esc(startedNote(p, r.stay)) + '</div>' :
       '<div class="note-box">No pre-arrival form. Fill it in together.</div>') +
 
     /* The arrival time. The guest's form has always asked it and the desk

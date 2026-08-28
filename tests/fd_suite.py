@@ -1090,6 +1090,68 @@ with sync_playwright() as p:
        "Mews 1159" in pg.locator("#sheet").inner_text())
     pg.close()
 
+    # ── the desk says what is actually missing ──────────────────
+    # Seen live, 28 Aug: a guest answered every question and never pressed
+    # Send, so `at` was never written, and the desk told reception the form
+    # was unfinished and to look for blanks - of which there were none. The
+    # note names the outstanding questions now, and says so when there are
+    # none, because those are two different conversations to have with a
+    # guest. The labels come from tests/form_questions.json, which the guest
+    # form's own required list answers to as well.
+    QT = json.load(open("tests/form_questions.json"))
+    STAYS["17"] = {"id": "b17", "first": "Tim", "last": "Martin",
+                   "arrive": today, "depart": plus(3), "adults": 2,
+                   "phone": "+61 416 237 128"}
+    #  Every question but the treatment one, and no `at`: the shape of a
+    #  guest who walked the whole form and stopped before Send.
+    PRE["b17"] = {"openedAt": "2026-08-27T22:00:00Z", "arriveSlot": "15",
+                  "dining": True, "pax": 2, "noDiets": True,
+                  "purpose": "A celebration", "approach": "most"}
+    pg = board()
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    note = pg.locator("#sheet .note-box").last.inner_text()
+    print("   the note reads:", note)
+    wellness_label = [q["desk"] for q in QT["questions"]
+                      if q["key"] == "wellness"][0]
+    ck("the note names the one question still outstanding",
+       wellness_label in note)
+    ck("and names no question the guest has already answered",
+       not any(q["desk"] in note for q in QT["questions"]
+               if q["key"] != "wellness"))
+    pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
+    pg.close()
+    #  Nothing outstanding at all: the case that started this. The desk must
+    #  not send reception hunting for blanks that do not exist.
+    PRE["b17"]["wellness"] = False
+    pg = board()
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    note = pg.locator("#sheet .note-box").last.inner_text()
+    print("   with everything answered:", note)
+    ck("a form with every question answered says nothing is outstanding",
+       "never pressed Send" in note and "Nothing is outstanding" in note)
+    ck("and still says the form is not marked finished, because it is not",
+       "not marked finished" in note)
+    ck("naming no question at all, since none is missing",
+       not any(q["desk"] in note for q in QT["questions"]))
+    pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
+    pg.close()
+    #  A one night guest is never asked the long-stay three, so the desk must
+    #  never name them as missing - the retired-question trap in miniature.
+    STAYS["17"]["depart"] = plus(1)
+    PRE["b17"] = {"openedAt": "2026-08-27T22:00:00Z", "arriveSlot": "15"}
+    pg = board()
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    note = pg.locator("#sheet .note-box").last.inner_text()
+    print("   one night, dietary outstanding:", note)
+    ck("a one night stay is never asked to account for the long-stay three",
+       not any(q["desk"] in note for q in QT["questions"]
+               if not q["askedOnOneNight"]))
+    ck("but is still asked for the dietary it was offered",
+       [q["desk"] for q in QT["questions"] if q["key"] == "dietary"][0] in note)
+    pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
+    pg.close()
+    del PRE["b17"]; del STAYS["17"]
+
     # ── a stamp with nothing behind it ──────────────────────────
     # Seen live on villa 17, 28 Aug. `at` says the answers exist, and the
     # desk's confirm wrote it onto a record holding none: this board went

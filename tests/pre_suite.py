@@ -724,6 +724,49 @@ with sync_playwright() as p:
            "wellness" not in w1[0]["b"])
     pg.close()
 
+    #  One table, two readers. The Front Desk names the questions a guest has
+    #  not answered yet, so it has to hold exactly this form's required list -
+    #  no more (it would chase a question nobody was asked, which is what the
+    #  retired `occasion` field would have done) and no fewer. This side
+    #  asserts the form requires exactly the steps the table names.
+    Q = json.load(open("tests/form_questions.json"))
+    req = [q["step"] for q in Q["questions"]]
+    one = [q["step"] for q in Q["questions"] if q["askedOnOneNight"]]
+    pg = guest(link="?b=res-guid-1&n=Robyn&s=Williams&a=" + plus(0)
+                    + "&d=" + plus(3))
+    live = pg.evaluate("()=>liveSteps().map(s=>s.id)")
+    blocks = pg.evaluate("(ids)=>ids.map(i=>!!missingOn(i))", live)
+    required = [i for i, b in zip(live, blocks) if b]
+    print("   the form requires:", required, "the table says:", req)
+    #  Every one of them must actually BE a question this form asks. Filtering
+    #  the table down to the steps that exist would let a retired question sit
+    #  in it unnoticed, which is the exact drift the table is here to catch.
+    print("   table questions the form does not ask:",
+          [q for q in req if q not in live])
+    ck("every question the table names is one the form actually asks",
+       all(q in live for q in req))
+    ck("the form requires exactly the questions the table names, in its order",
+       required == req)
+    ck("and nothing the table calls optional holds a guest up",
+       all(s_ not in required for s_ in Q["_optional"]))
+    pg.close()
+    #  And on a one night stay, only the ones the table says are still asked.
+    pg = guest(link="?b=res-guid-1&n=Robyn&s=Williams&a=" + plus(0)
+                    + "&d=" + plus(1))
+    live1 = pg.evaluate("()=>liveSteps().map(s=>s.id)")
+    blocks1 = pg.evaluate("(ids)=>ids.map(i=>!!missingOn(i))", live1)
+    req1 = [i for i, b in zip(live1, blocks1) if b]
+    print("   short-list questions a one night form does not ask:",
+          [q for q in one if q not in live1])
+    ck("and every short-list question is one a one night form still asks",
+       all(q in live1 for q in one))
+    ck("a one night stay is required exactly the short list, no more",
+       req1 == one)
+    ck("and is never asked the ones the table says it is not",
+       not any(q["step"] in live1 for q in Q["questions"]
+               if not q["askedOnOneNight"]))
+    pg.close()
+
     #  One table, two readers. Which stays are shown the treatment question
     #  is decided here and has to be known at the Front Desk, or a one night
     #  guest who answered everything they were asked tints amber for ever -

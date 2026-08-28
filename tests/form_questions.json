@@ -1,0 +1,45 @@
+{
+  "_why": "One table, two readers. prearrival.html decides which questions a guest must answer (missingOn) and which pages it hides on a one night stay; front-desk.html has to name the ones still outstanding, and cannot import from a GUEST page - that page deliberately loads no staff code, the exception CLAUDE.md rule 3 allows. So both answer to this file: pre_suite.py asserts the guest form requires exactly these steps and no others, fd_suite.py asserts the desk names exactly these labels. A question added to the form, or retired from it, fails whichever side has not learned it. That is the point: `occasion` was retired from the guest form on 23 Aug and sat in the desk's GUEST_ANSWERS unnoticed for five days, which is the drift this table exists to catch. The order is the form's own step order, because the desk names them in it.",
+  "questions": [
+    {
+      "key": "purpose",
+      "step": "qPurpose",
+      "desk": "what kind of stay it is",
+      "askedOnOneNight": false
+    },
+    {
+      "key": "arrival",
+      "step": "qEta",
+      "desk": "their arrival time",
+      "askedOnOneNight": true
+    },
+    {
+      "key": "approach",
+      "step": "qApproach",
+      "desk": "how often they plan to dine",
+      "askedOnOneNight": false
+    },
+    {
+      "key": "dining",
+      "step": "qDine",
+      "desk": "whether they are dining",
+      "askedOnOneNight": true
+    },
+    {
+      "key": "dietary",
+      "step": "qDiet",
+      "desk": "dietaries",
+      "askedOnOneNight": true
+    },
+    {
+      "key": "wellness",
+      "step": "qWell",
+      "desk": "treatments",
+      "askedOnOneNight": false
+    }
+  ],
+  "_optional": [
+    "qCompanion",
+    "qElse"
+  ]
+}
