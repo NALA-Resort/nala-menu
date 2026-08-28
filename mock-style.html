@@ -42,7 +42,6 @@
   --r:8px; --r-card:8px; --pill:20px;
   --t-title:15px; --t-body:15px; --t-sec:11px; --t-micro:8px;
   --row-gap:7px; --row-bd:1px; --row-pad:11px 13px;
-  --divider:0;             /* rows are boxed, so no inset hairline */
   --shadow:none;
 }
 
@@ -63,8 +62,7 @@
   --btn-tf:none;   --btn-ls:0;   --btn-sz:15px;
   --r:12px; --r-card:14px; --pill:999px;
   --t-title:17px; --t-body:16px; --t-sec:14px; --t-micro:12px;
-  --row-gap:0px; --row-bd:0px; --row-pad:14px 4px;
-  --divider:1;             /* inset hairline, starting at the text */
+  --row-gap:8px; --row-bd:0px; --row-pad:14px 12px;
   --shadow:0 1px 3px rgba(0,0,0,.10),0 4px 12px rgba(0,0,0,.05);
 }
 
@@ -107,11 +105,6 @@ body{background:var(--ground);color:var(--ink);font-family:var(--ui);
 .arr{position:relative;display:flex;align-items:center;gap:12px;width:100%;
      background:transparent;border:var(--row-bd) solid var(--rule);border-radius:var(--r);
      padding:var(--row-pad);text-align:left;font-family:inherit;color:inherit;cursor:pointer}
-/* The inset hairline the reference apps use: it starts at the text, not
-   at the screen edge, so the eye reads one list rather than N boxes. */
-.arr+.arr::before{content:'';position:absolute;left:46px;right:0;top:calc(var(--row-pad) * 0);
-                  height:1px;background:var(--rule);opacity:var(--divider);
-                  transform:translateY(-14px)}
 .arr-v{font-size:var(--t-body);min-width:30px;text-align:center;font-weight:600}
 .arr-mid{flex:1;min-width:0}
 .arr-n{font-size:var(--t-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -128,17 +121,14 @@ body{background:var(--ground);color:var(--ink);font-family:var(--ui);
 [data-dress="proposed"] .arr.done-form,
 [data-dress="proposed"] .arr.part-form,
 [data-dress="proposed"] .arr.todo-form{border-radius:var(--r);padding:14px 12px}
-[data-dress="proposed"] .arr.done-form::before,
-[data-dress="proposed"] .arr.part-form::before,
-[data-dress="proposed"] .arr.todo-form::before{opacity:0}
 
 /* ── villa tiles · the dinner board ──────────────────────────────── */
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:10px}
 .room{aspect-ratio:1;border:1px solid var(--rule);border-radius:var(--r);
       background:transparent;display:flex;flex-direction:column;align-items:center;
       justify-content:center;font-family:var(--ui);cursor:pointer}
-.room-n{font-size:var(--t-body)}
-.room-p{font-size:var(--t-micro);color:var(--mid);margin-top:3px}
+.room-n{font-size:13px}
+.room-p{font-size:9px;color:var(--mid);margin-top:2px;min-height:11px}
 .room.in{background:var(--st-done-t);border-color:var(--st-done-b)}
 .room.out{background:var(--st-neg-t);border-color:var(--st-neg-b)}
 .room.vac{background:var(--st-vac-t);border-color:var(--st-vac-b);opacity:.62;
@@ -269,6 +259,15 @@ body{background:var(--ground);color:var(--ink);font-family:var(--ui);
     <button class="room in"><span class="room-n">6</span><span class="room-p">3</span></button>
     <button class="room out"><span class="room-n">7</span><span class="room-p">Out</span></button>
     <button class="room vac"><span class="room-n">8</span><span class="room-p"></span></button>
+    <button class="room in"><span class="room-n">9</span><span class="room-p">3</span></button>
+    <button class="room in"><span class="room-n">10</span><span class="room-p">2</span></button>
+    <button class="room in"><span class="room-n">11</span><span class="room-p">5</span></button>
+    <button class="room out"><span class="room-n">12</span><span class="room-p">Out</span></button>
+    <button class="room in"><span class="room-n">13</span><span class="room-p">2</span></button>
+    <button class="room in"><span class="room-n">14</span><span class="room-p">3</span></button>
+    <button class="room in"><span class="room-n">15</span><span class="room-p">2</span></button>
+    <button class="room vac"><span class="room-n">16</span><span class="room-p"></span></button>
+    <button class="room in"><span class="room-n">17</span><span class="room-p">4</span></button>
   </div>
 
   <div class="cut">Controls</div>
