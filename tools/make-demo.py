@@ -118,9 +118,15 @@ STUB = """
 
 def inline(html):
     css = open('nala-ui.css').read()
+    # The second dress, for pages that have joined it. Inlined the same way
+    # and in the same order the page links them, or a demo built from a
+    # converted page renders in the dress it left behind.
+    css2 = open('nala-ui2.css').read()
     shared = open('nala-shared.js').read()
     html = re.sub(r'<link rel="stylesheet" href="nala-ui\.css\?v=\d+">',
                   lambda m: '<style>\n' + css + '\n</style>', html)
+    html = re.sub(r'<link rel="stylesheet" href="nala-ui2\.css\?v=\d+">',
+                  lambda m: '<style>\n' + css2 + '\n</style>', html)
     html = re.sub(r'<script src="nala-shared\.js\?v=\d+"></script>',
                   lambda m: '<script>\n' + shared + '\n</script>', html)
     html = re.sub(r'<script src="https://www\.gstatic\.com/firebasejs/[^"]+"></script>\s*', '', html)

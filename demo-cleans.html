@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -10,11 +10,326 @@
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>DEMO · Nala · Cleaners</title>
 <style>
+/* NALA staff UI, second dress. See STYLEGUIDE.md and mock-style.html.
+
+   WHY THIS IS A SECOND FILE AND NOT AN EDIT TO nala-ui.css
+   --------------------------------------------------------
+   The dress changes shared tokens, and nala-ui.css is linked by thirteen
+   pages. Editing it restyles all of them in one publish, on a live system,
+   with no way to move one page at a time. So the new dress is opt in: a
+   page joins it by adding `ui2` to its body class and linking this file,
+   and every page that has not joined is untouched, byte for byte.
+
+   This file is a MIGRATION SEAM, not a permanent second stylesheet. When
+   the last page carries `ui2`, its contents move into nala-ui.css, the
+   class goes, and this file is deleted. Until then, two dresses is the
+   price of moving five pages instead of twenty two at once.
+
+   It is also SELF SUFFICIENT on purpose. nala-ui.css turned out to be a
+   layout system as well as a control sheet: it sets body to a flex column
+   and takes its colours from --ctl-* tokens that only exist on a body
+   carrying tier-app or tier-print, so a page that linked it for the
+   hamburger alone got a reflow, and a page without a tier class drew a
+   menu button nobody could see. That is why tag.html, flags.html and
+   publish.html each hand copied the nav instead. Nothing here needs a tier
+   class, so those copies can go.                                      */
+
+/* The reset every page already carries, identical in all twenty of them. */
+*{ margin:0; padding:0; box-sizing:border-box; }
+
+/* ── the colour law · values unchanged from nala-ui.css and the boards ──
+   A dress may say what a control looks like. It may not say what a colour
+   means. Every value below is the one the live boards use today.      */
+:root{
+  --law-green:#5E7D67;  --law-green-t:rgba(122,160,130,.26);
+  --law-green-b:rgba(122,160,130,.65);
+  --law-terra:#9E6455;  --law-terra-t:rgba(184,106,90,.16);
+  --law-terra-b:rgba(184,106,90,.45);
+  --law-amber:#F6EAD5;  --law-amber-b:#C29A55;  --law-amber-ink:#8A6A2F;
+  --law-red:#A8321E;
+  --law-wait:rgba(28,28,26,.045);
+  --law-save-bg:#E4EDE2; --law-save-bdr:#7E937A; --law-save-ink:#5E7D67;
+}
+
+body.ui2{
+  /* ── ground and ink ────────────────────────────────────────────────
+     White rather than cream: these are tools, and every tool the owner
+     pointed at (Drive, Earth, Zoom) sits on white with one accent.   */
+  --ground:#FFFFFF;
+  --card:#F5F6F8;          /* a quiet fill for secondary buttons and cards */
+  --ink:#1B1B19;
+  /* #999990 measured 2.69:1 on cream. WCAG AA wants 4.5:1 for text this
+     size, and this token carries most of the app's secondary text at
+     11px. #5F5F58 is 4.9:1 on white and keeps the warm grey.         */
+  --mid:#5F5F58;
+  --rule:#E6E6E1;
+
+  /* ── one accent, and it means one thing ────────────────────────────
+     "You can act here, or this is selected." Blue because it is the
+     only hue not already spoken for: sage is done, terracotta is
+     declined, amber is chase this, red is failed. An accent that
+     borrowed one of those would put interaction and state in the same
+     channel, which is what the boards already suffer from.          */
+  --accent:#1A66C2;
+  --accent-ink:#FFFFFF;
+  --accent-soft:#E8F0FE;
+
+  /* ── scales · pick from these, never by eye ────────────────────────
+     Spacing is a 4px grid, which is what Material, Bootstrap and Apple
+     all land on. The type scale is the styleguide's own 8/11/15/20/27
+     with the bottom two steps raised: 8px and 9px text is not density,
+     it is unreadable, and it is most of why the boards look busy.   */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+  --t1:12px; --t2:14px; --t3:16px; --t4:20px; --t5:27px;
+  --r:8px;            /* every control and card */
+  --pill:999px;       /* chips and status pills only */
+  --tap:44px;         /* Apple HIG minimum; Material says 48 */
+
+  --ui-font:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,
+            Helvetica,Arial,sans-serif;
+
+  /* ── aliases, transitional ─────────────────────────────────────────
+     A converted page keeps its own component rules, and those rules ask
+     for the token names the old sheet used. Rather than find-and-replace
+     hundreds of them and risk a typo per page, the old names are kept
+     here pointing at the new values. An undefined custom property does
+     not fall back, it computes to nothing: var(--cream) with no --cream
+     is a transparent background and var(--ink) is inherited text, which
+     is exactly how the hamburger came to be invisible. These go with the
+     seam, when the last page has joined and the names can be swept.   */
+  --cream:var(--ground);
+  --paper:var(--ground);
+  /* --green and --greent are deliberately NOT aliased. --green is #E4EDE2,
+     a pale fill, on five pages and #5E7D67, a dark ink, on two. Claiming
+     one of those meanings in the shared sheet would repeat exactly the
+     fault this work exists to fix, and would turn the Cleans board's ready
+     tint into a dark green. The pages keep their own until the name is
+     split properly, which is the de-aliasing job still outstanding.    */
+  --green-t:var(--law-green-t);  --green-b:var(--law-green-b);
+  --greenb:var(--law-save-bdr);
+  --resgreen:var(--law-green);   --resgreen-t:var(--law-green-t);
+  --resgreen-b:var(--law-green-b);
+  --terra:var(--law-terra);      --terra-t:var(--law-terra-t);
+  --terra-b:var(--law-terra-b);
+  --resterra:var(--law-terra);   --resterra-t:var(--law-terra-t);
+  --resterra-b:var(--law-terra-b);
+  --amber:var(--law-amber);      --amberb:var(--law-amber-b);
+  --ambert:var(--law-amber-ink); --amberink:var(--law-amber-ink);
+  --red:var(--law-red);
+  --save-bg:var(--law-save-bg);  --save-bdr:var(--law-save-bdr);
+  --save-ink:var(--law-save-ink);
+  --num-font:var(--ui-font);
+  /* nala-ui.css's tier tokens, so a page that links both sheets and still
+     has rules reaching for --ctl-* keeps drawing while it is converted. */
+  --ctl-bg:var(--ground); --ctl-bdr:var(--rule); --ctl-ink:var(--ink);
+  --ctl-soft:#454540;
+
+  background:var(--ground);
+  color:var(--ink);
+  font-family:var(--ui-font);
+  -webkit-tap-highlight-color:transparent;
+  /* Double tap to zoom is a hazard on a board of tap targets. This turns
+     that gesture off while LEAVING pinch zoom alone, which is why the
+     user-scalable=no meta comes off these pages: it took pinch zoom
+     from anyone who needs it and did not do this job.               */
+  touch-action:manipulation;
+}
+
+/* ── sentence case, everywhere ───────────────────────────────────────
+   The loudest single difference between this dress and the last. Not
+   one label in Drive, Earth or Zoom is uppercase or letterspaced; the
+   look dates to Material 1 and Bootstrap 3. Where a page still asks for
+   caps, this overrides it rather than requiring every rule be found. */
+body.ui2 .seclabel, body.ui2 .stat-l, body.ui2 .legend,
+body.ui2 .btn, body.ui2 .sec > span, body.ui2 .sec a,
+body.ui2 .dnav.today, body.ui2 h1, body.ui2 .date{
+  text-transform:none; letter-spacing:0;
+}
+
+/* ── page frame ──────────────────────────────────────────────────────
+   Deliberately NOT a flex column. nala-ui.css makes body one, which is
+   the rule that reflowed pages that only wanted a button.           */
+/* Page padding is the PAGE's business and is not set here. It was, and at
+   body.ui2, which outranks every `body { padding-top: ... }` a page has
+   inside a media query: the Cleans board's landscape rule asks for 6px at
+   the top so seventeen tiles fit a 320px-tall screen, and a sheet-level
+   shorthand quietly held it at 24 and pushed the grid off the screen.  */
+body.ui2 h1{ font-size:var(--t4); font-weight:600; margin-bottom:var(--s1); }
+body.ui2 .lede{ font-size:var(--t2); color:var(--mid); line-height:1.55;
+                margin-bottom:var(--s2); max-width:58ch; }
+body.ui2 .seclabel{ font-size:var(--t2); font-weight:500; color:var(--mid);
+                    margin:var(--s5) 0 var(--s2); }
+body.ui2 .secnote{ font-size:var(--t2); color:var(--mid); line-height:1.5;
+                   margin-bottom:var(--s3); max-width:58ch; }
+
+/* ── header row ──────────────────────────────────────────────────────
+   Same shape as today: one row, in flow, controls at 40px, menu right.
+   Floating corner menus stay banned.                                 */
+body.ui2 .daterow{ display:flex; align-items:center; gap:var(--s2);
+                   margin-bottom:var(--s4); }
+body.ui2 .date{ flex:1; font-size:var(--t4); font-weight:600; }
+/* 36px, not the 44px tap floor: the header law in STYLEGUIDE.md rules that
+   every control in this row is 36 and tally_suite measures it. The project's
+   own rule outranks the general one.                                      */
+body.ui2 .dnav{ width:36px; height:36px; display:inline-flex; align-items:center;
+                justify-content:center; border:0; background:var(--card);
+                border-radius:var(--pill); color:var(--ink); cursor:pointer;
+                font-family:var(--ui-font); font-size:var(--t3); }
+body.ui2 .dnav.today{ width:auto; padding:0 var(--s3); font-size:var(--t2); }
+/* The corner law: the footer row sits hard against the bottom of the screen,
+   so it squares off, and only the outer lower corners round. body.ui2 .btn
+   outranks .foot .btn in nala-ui.css, so the law has to be restated here or
+   the row grows four rounded corners and floats.                          */
+body.ui2 .foot .btn{ border-radius:0; }
+body.ui2 .foot .btn:first-child{ border-bottom-left-radius:var(--r); }
+body.ui2 .foot .btn:last-child { border-bottom-right-radius:var(--r); }
+body.ui2 .dnav:disabled{ opacity:.35; cursor:default; }
+body.ui2 .dnav:active{ background:var(--accent-soft); }
+
+/* ── the hamburger and its menu ──────────────────────────────────────
+   Written against real colours, not --ctl-*, so a page with no tier
+   class still draws it. That was the whole reason for the copies.   */
+body.ui2 .navwrap{ position:relative; margin-left:auto; z-index:500; }
+body.ui2 .navbtn{ width:42px; height:36px; border:0; background:transparent;
+                  border-radius:var(--pill); display:flex; flex-direction:column;
+                  align-items:center; justify-content:center; gap:4px;
+                  cursor:pointer; -webkit-tap-highlight-color:transparent; }
+body.ui2 .navbtn:active{ background:var(--card); }
+body.ui2 .navbtn span{ display:block; width:17px; height:1.7px;
+                       background:var(--ink); border-radius:2px; }
+body.ui2 .navdrop{ display:none; position:absolute; right:0; top:42px;
+                   background:var(--ground); border:1px solid var(--rule);
+                   border-radius:var(--r); min-width:200px; padding:var(--s1) 0;
+                   box-shadow:0 2px 6px rgba(0,0,0,.06),0 10px 28px rgba(0,0,0,.10); }
+body.ui2 .navdrop.open{ display:block; }
+body.ui2 .navdrop a{ display:block; padding:var(--s3) var(--s4);
+                     font-size:var(--t2); line-height:1.3; color:var(--ink);
+                     text-decoration:none; }
+body.ui2 .navdrop a:active{ background:var(--accent-soft); }
+body.ui2 .navgrp{ display:flex; align-items:center; justify-content:space-between;
+                  gap:var(--s4); width:100%; padding:var(--s3) var(--s4);
+                  font-size:var(--t2); line-height:1.3; font-family:inherit;
+                  text-align:left; color:var(--ink); background:none; border:0;
+                  border-top:1px solid var(--rule); cursor:pointer; }
+body.ui2 .navchev{ flex:0 0 auto; color:var(--mid); transition:transform .15s ease; }
+body.ui2 .navgroup.open .navchev{ transform:rotate(180deg); }
+body.ui2 .navsub{ display:none; }
+body.ui2 .navgroup.open .navsub{ display:block; }
+body.ui2 .navsub a{ padding-left:var(--s6); }
+body.ui2 .navdrop a.navaction,
+body.ui2 .navdrop a.hasact{ display:flex; align-items:center;
+                            justify-content:space-between; gap:var(--s4); }
+body.ui2 .navmark{ display:inline-flex; flex:0 0 auto; }
+body.ui2 .navmark.on{ color:#3F7A52; }
+body.ui2 .navmark.off{ color:#9A9A92; }
+body.ui2 .navnote{ flex:0 0 auto; font-size:var(--t1); color:var(--mid); }
+body.ui2 .navdrop a.signout{ border-top:1px solid var(--rule);
+                             margin-top:var(--s1); padding-top:var(--s3);
+                             color:var(--mid); }
+body.ui2 .navbadge{ flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
+                    border-radius:var(--pill); background:var(--accent);
+                    color:var(--accent-ink); font-size:var(--t1);
+                    display:inline-flex; align-items:center; justify-content:center; }
+
+/* ── buttons · the button law, redressed but not rewritten ───────────
+   One solid primary per surface; quiet is secondary; destructive wears
+   terracotta outline and always asks first. Only the dress changed:
+   the solid is the accent rather than ink, and quiet is a fill rather
+   than an outline, so a screen of secondary actions stops reading as a
+   screen of identical bordered rectangles.                          */
+body.ui2 .btn{ display:inline-flex; align-items:center; justify-content:center;
+               width:100%; padding:var(--s3) var(--s4); min-height:var(--tap);
+               border:0; border-radius:var(--r); background:var(--card);
+               color:var(--ink); font-family:var(--ui-font); font-size:var(--t3);
+               font-weight:500; cursor:pointer; text-decoration:none; }
+body.ui2 .btn.solid{ background:var(--accent); color:var(--accent-ink); }
+body.ui2 .btn.ghost{ background:transparent; border:1px solid var(--rule);
+                     color:var(--ink); }
+body.ui2 .btn.terra{ background:transparent; border:1px solid var(--law-terra-b);
+                     color:var(--law-terra); }
+body.ui2 .btn.warn { background:transparent; border:1px solid var(--law-terra-b);
+                     color:var(--law-terra); }
+body.ui2 .btn:disabled{ opacity:.35; cursor:default; }
+body.ui2 .btn:active{ filter:brightness(.94); }
+
+/* What a press says back. Grey while writing is the colour law's "sent,
+   waiting on the other side"; green is "done", and is worn only after
+   the write. Saved rests until there is more to save.               */
+body.ui2 .btn.saving, body.ui2 .btn.saved{ opacity:1; cursor:default; }
+body.ui2 .btn.saving{ background:var(--law-wait); color:var(--mid); }
+body.ui2 .btn.saved { background:var(--law-save-bg); color:var(--law-save-ink); }
+/* Failure is words, in red, under the button that failed. Never a red
+   fill: a red tile reads as a state the record is in, and the record is
+   simply unsaved.                                                    */
+body.ui2 .savefail{ display:none; font-size:var(--t2); line-height:1.45;
+                    color:var(--law-red); margin-top:var(--s2); }
+body.ui2 .savefail.show{ display:block; }
+
+/* ── rows and lists ──────────────────────────────────────────────────
+   Separated by an inset hairline rather than boxed. A tinted row keeps
+   its own corner, because a tint that runs to the screen edge stops
+   reading as one record.                                             */
+body.ui2 .rowlist > * + *{ border-top:1px solid var(--rule); }
+
+/* ── the access message ──────────────────────────────────────────────
+   Plain typography, never a bordered or filled box: that dress belongs
+   to buttons, and a message wearing it reads as something to tap.   */
+body.ui2 .noaccess{ display:none; font-size:var(--t3); line-height:1.5;
+                    color:var(--ink); max-width:52ch; margin:var(--s5) 0; }
+body.ui2 .noaccess.show{ display:block; }
+body.ui2 .noaccess .na-retry{ margin-top:var(--s4); display:block;
+                              width:max-content; }
+
+/* ── stats · plain type, never boxed ─────────────────────────────── */
+body.ui2 .stats{ display:flex; justify-content:center; gap:var(--s6);
+                 margin:var(--s4) 0 var(--s2); }
+body.ui2 .stat{ text-align:center; }
+body.ui2 .stat-n{ display:block; font-size:var(--t5); line-height:1;
+                  color:var(--ink); font-variant-numeric:tabular-nums; }
+body.ui2 .stat-l{ display:block; font-size:var(--t2); color:var(--mid);
+                  margin-top:var(--s1); }
+body.ui2 .stat.warn .stat-n{ color:var(--law-red); }
+
+/* ── inputs ──────────────────────────────────────────────────────────
+   16px minimum, always: anything smaller and iOS zooms the page on
+   focus and does not zoom back.                                      */
+body.ui2 input, body.ui2 select, body.ui2 textarea{
+  font-family:var(--ui-font); font-size:var(--t3); color:var(--ink);
+  background:#fff; border:1px solid var(--rule); border-radius:var(--r);
+  padding:var(--s3); width:100%; min-height:var(--tap); }
+body.ui2 input:focus, body.ui2 textarea:focus, body.ui2 select:focus{
+  outline:none; border-color:var(--accent); }
+
+/* ── keyboard focus ──────────────────────────────────────────────────
+   Nothing in the app has this today: zero pages use :focus-visible and
+   six declare outline:none. A keyboard or switch user currently has no
+   idea where they are.                                               */
+body.ui2 :focus-visible{ outline:2px solid var(--accent); outline-offset:2px;
+                         border-radius:var(--r); }
+
+@media (prefers-reduced-motion:reduce){
+  body.ui2 *{ transition:none !important; }
+}
+
+/* keep controls off paper */
+@media print{
+  body.ui2 .navwrap, body.ui2 .foot, body.ui2 .dnav{ display:none !important; }
+}
+
+</style>
+<style>
 /* NALA staff UI - shared controls. See STYLEGUIDE.md.
    Pages declare <body class="tier-app"> or <body class="tier-print">.  */
 
 :root {
   --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+  /* The destructive dress's colours (the button law, STYLEGUIDE.md) and the
+     green a save lands on. Named --save-* rather than --green-*: four pages
+     already define a --green of their own, two of them to different values,
+     and a page's :root wins over this file's. A token a page can silently
+     redefine is not a token, it is a coincidence.                        */
+  --terra:#9E6455; --terra-b:rgba(184,106,90,.45); --terra-t:rgba(184,106,90,.16);
+  --save-bg:#E4EDE2; --save-bdr:#7E937A; --save-ink:#5E7D67;
   /* Staff tools use the Apple system font: it is what every other app on the
      phone uses, its figures line up, and it is built for small sizes. The
      guest pages do NOT use these tokens - they carry the brand and set their
@@ -32,8 +347,13 @@
 body.tier-app, body.tier-print { touch-action:manipulation; }
 
 /* tier surfaces used by controls */
-.tier-app   { --ctl-bg:var(--cream); --ctl-bdr:var(--rule); --ctl-ink:var(--ink); }
-.tier-print { --ctl-bg:#fff;         --ctl-bdr:#ddd;        --ctl-ink:#111;      }
+/* --ctl-soft is the solid button's RESTING fill: a step off full ink, so the
+   press has somewhere darker to go. Ruled by the owner, 27 Aug - pressed and
+   idle were the same pixels before it.                                    */
+.tier-app   { --ctl-bg:var(--cream); --ctl-bdr:var(--rule); --ctl-ink:var(--ink);
+              --ctl-soft:#454540; }
+.tier-print { --ctl-bg:#fff;         --ctl-bdr:#ddd;        --ctl-ink:#111;
+              --ctl-soft:#3A3A38; }
 
 /* ── one header row: [Today] [<] date [>] ....... [menu] ── */
 .navwrap { position:relative; margin-left:auto; z-index:500; font-family:var(--ui-font); }
@@ -110,9 +430,11 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 .foot { position:sticky; bottom:0; z-index:40; display:flex; gap:8px; flex-wrap:wrap;
         background:var(--ctl-bg); border-top:1px solid var(--ctl-bdr); margin-top:18px;
         padding:10px 0 calc(10px + env(safe-area-inset-bottom)); }
-.foot .btn { flex:1; text-align:center; white-space:nowrap; }
-/* the row sits hard against the bottom of the screen: soften only the two
-   corners that land in the phone's own rounded corners                     */
+/* The corner law outranks the 8px the free-standing button took on 27 Aug:
+   this row sits hard against the bottom of the screen, so it squares off
+   again and softens only the two corners that land in the phone's own
+   rounded corners.                                                        */
+.foot .btn { flex:1; text-align:center; white-space:nowrap; border-radius:0; }
 .foot .btn:first-child { border-bottom-left-radius:8px; }
 .foot .btn:last-child  { border-bottom-right-radius:8px; }
 
@@ -158,17 +480,63 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
    stay its own. Per the button law (STYLEGUIDE.md): .solid is THE
    primary, at most one per surface.                                    */
 .btn { padding:13px; text-align:center; border:1px solid var(--ctl-ink);
+       border-radius:8px;
        background:transparent; color:var(--ctl-ink);
        font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
        text-transform:uppercase; cursor:pointer; white-space:nowrap;
-       text-decoration:none; -webkit-tap-highlight-color:transparent; }
-.btn.solid { background:var(--ctl-ink); color:var(--ctl-bg); }
+       text-decoration:none; -webkit-tap-highlight-color:transparent;
+       transition:background .08s ease, color .08s ease, border-color .08s ease; }
+.btn.solid { background:var(--ctl-soft); border-color:var(--ctl-soft);
+             color:var(--ctl-bg); }
+/* The destructive dress, per the button law: outline only, never a fill and
+   never red - red is failure's alone. It always confirms before writing. */
+.btn.terra { border-color:var(--terra-b); color:var(--terra); background:transparent; }
 .btn:disabled { opacity:.35; cursor:default; }
 /* The print sheets' own pair, identical on all three until it lived here:
-   solid ink on white paper stock, a size down from the boards.          */
-.tier-print .btn { padding:10px 20px; background:#111; color:#fff; border:none;
-                   font-size:10px; letter-spacing:.15em; }
+   solid ink on white paper stock, a size down from the boards. It sits
+   ABOVE the press and save states rather than below them: it matches on
+   the same specificity as .btn.saved, so read the other way round it won
+   and a print-tier save would have gone grey in the green's place.     */
+.tier-print .btn { padding:10px 20px; background:var(--ctl-soft); color:#fff;
+                   border:none; font-size:10px; letter-spacing:.15em; }
 .tier-print .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+
+/* ── the press ────────────────────────────────────────────
+   Every button answers the finger. Until 27 Aug none of them did: the only
+   pressed state in this file belonged to the date arrows, so on six boards
+   a tap and a miss looked identical and a slow write invited a second tap
+   that wrote twice.                                                      */
+.btn:active { background:var(--ctl-bdr); }
+.btn.solid:active { background:var(--ctl-ink); border-color:var(--ctl-ink); }
+.btn.terra:active { background:var(--terra-t); }
+/* The print sheets' Print button is dark with white text, so the boards'
+   pale press would erase its label. It darkens instead; only the outlined
+   Refresh beside it takes the pale one.                                 */
+.tier-print .btn:active { background:var(--ctl-ink); }
+.tier-print .btn.ghost:active { background:var(--ctl-bdr); }
+
+/* ── what a save says back ────────────────────────────────
+   Writing, then landed. The grey is the colour law's "sent, waiting on the
+   other side"; the green is its "done, confirmed", and it is worn only
+   AFTER the write - a button green at rest claims the record is clean
+   before anyone has pressed it. Both states are disabled, and both undo
+   the disabled dimming: a washed out answer is not an answer.
+
+   Ruled by the owner, 27 Aug: the button RESTS at Saved until there is
+   more to save. It is re-armed by armSave() on the next edit, never by a
+   timer - a label that times out goes back to saying "Save" about a
+   record with nothing left to save.                                     */
+.btn.saving, .btn.saved { opacity:1; cursor:default; }
+.btn.saving { background:rgba(28,28,26,.045); border-color:var(--ctl-bdr);
+              color:var(--mid); }
+.btn.saved  { background:var(--save-bg); border-color:var(--save-bdr);
+              color:var(--save-ink); }
+/* Failure is words, in red, under the button that failed - never a red
+   fill. Red is failure's colour but a whole red tile reads as a state the
+   record is in, and the record is simply unsaved.                       */
+.savefail { display:none; font-family:var(--ui-font); font-size:11px;
+            line-height:1.45; color:var(--red); margin-top:8px; }
+.savefail.show { display:block; }
 
 /* ── access message ───────────────────────────────────────
    Stands in for a board the signed-in login may not see. Plain typography,
@@ -190,8 +558,9 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 
 </style>
 <style>
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-          --green:#E4EDE2; --greenb:#7E937A; --amberb:#C29A55;
+    /* This page's OWN colours. the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+  :root {
+          --green:#E4EDE2;
           /* The bars only. --amberb is a muted gold that sits behind text and
              reads as a browner blue-grey at 9px, which made a clean and a
              clean-plus-arrival hard to tell apart on a phone: the amber half
@@ -216,11 +585,8 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
              differ in strength and not in hue, which is the harder telling
              apart, and the one that fails first in daylight. */
           --bluebar:#2E74C0; --greenbar:#4E8F4A;
-          --blue:#E7E9EF; --blueb:#8A90A8; }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
-         padding:calc(24px + env(safe-area-inset-top)) 18px 0;
-         -webkit-tap-highlight-color:transparent; }
+          --blue:#E7E9EF; --blueb:#8A90A8}
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 0 }
   /* height, not min-height, and a shrinkable wrap: without these the column
      grows past the screen and the page scrolls, instead of the grid taking
      the space it has and scrolling inside itself.                       */
@@ -233,8 +599,8 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      small the tiles are told to be.                                     */
   body > .wrap { max-width:520px; margin:0 auto; flex:1 1 auto; min-height:0; }
 
-  h1 { font-size:19px; font-weight:bold; text-align:center; margin:8px 0 4px;
-       font-family:var(--ui-font); letter-spacing:.02em; }
+  h1 { font-size:19px; font-weight:bold; text-align:center; margin:8px 0 4px;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+       font-family:var(--ui-font); }
 
   /* The board takes whatever height the phone has left after the header,
      stats, legend and footer, and the rows share it. No fixed tile height,
@@ -268,9 +634,9 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   @media (orientation: portrait) and (max-height: 620px) {
     .grid { grid-auto-rows:minmax(46px, 1fr) !important; gap:7px !important; }
     .tile { padding:6px 6px 5px !important; gap:3px !important; }
-    .tile .rn { font-size:19px !important; }
-    .tile .sub { font-size:8.5px !important; min-height:10px !important; }
-    .legend { padding:4px 5px !important; font-size:6px !important; gap:1px !important; }
+    .tile .rn { font-size:19px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+    .tile .sub { font-size:8.5px !important; min-height:10px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+    .legend { padding:4px 5px !important; font-size:6px !important; gap:1px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
     .legend .lgb { width:12px; height:5px; }
   }
 
@@ -287,17 +653,17 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
     .grid { grid-template-columns:repeat(6, 1fr) !important;
             grid-auto-rows:minmax(46px, 1fr) !important; gap:6px !important; }
     .stats { margin:1px 0 4px !important; gap:10px !important; }
-    .stat-n { font-size:13px !important; }
-    .stat-l { font-size:6.5px !important; }
+    .stat-n { font-size:13px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+    .stat-l { font-size:6.5px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
     .tile { padding:5px 5px 4px !important; gap:3px !important; }
-    .tile .rn { font-size:17px !important; }
-    .tile .sub { font-size:8px !important; min-height:10px !important; }
+    .tile .rn { font-size:17px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+    .tile .sub { font-size:8px !important; min-height:10px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
     .tile .who-badge { bottom:3px; right:3px; min-width:16px; height:16px;
-                       font-size:8px; border-radius:8px; }
+                       font-size:8px; border-radius:8px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
     .tile .task-icons { top:3px; left:3px; }
     .tile .task-icons svg { width:11px; height:11px; }
-    .tile .eta { top:3px; right:3px; font-size:8px; }
-    .legend { padding:3px 4px !important; font-size:5.5px !important;
+    .tile .eta { top:3px; right:3px; font-size:8px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+    .legend { padding:3px 4px !important; font-size:5.5px !important;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
               gap:1px !important; }
     .legend .lgb { width:11px; height:5px; }
   }
@@ -305,9 +671,9 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   @media (max-height: 720px) {
     body { padding-top:calc(12px + env(safe-area-inset-top)); }
     .stats { margin-bottom:6px !important; }
-    .stat-n { font-size:22px; }
+    .stat-n { font-size:22px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
     .grid { gap:8px !important; }
-    .legend { padding:4px 5px !important; font-size:6.5px !important; }
+    .legend { padding:4px 5px !important; font-size:6.5px !important; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
   }
 
   /* Buttons are matched on the action in their onclick, so the sheet keeps
@@ -334,7 +700,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
           padding:10px 8px 9px; text-align:center; cursor:pointer; color:var(--ink);
           font-family:var(--ui-font); position:relative; min-height:0;
           display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; }
-  .tile .rn { font-size:20px; font-weight:bold; }
+  .tile .rn { font-size:20px; font-weight:bold; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
   /* Clean is a solid ink pill, Service a faint outline: the two jobs must be
      tellable apart at arm's length, not by reading the word.               */
   /* No words. The job is a bar, read by colour and by pattern, and the words
@@ -394,11 +760,10 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
                      min-width:20px; height:20px; padding:0 4px;
                      border-radius:10px; border:1.5px solid var(--ink);
                      background:var(--ink); color:var(--cream);
-                     font-family:var(--ui-font); font-size:9px; font-weight:bold;
-                     letter-spacing:.02em; display:flex; align-items:center;
+                     font-family:var(--ui-font); font-size:9px; font-weight:bold;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */ display:flex; align-items:center;
                      justify-content:center; box-sizing:border-box; }
   .tile .who-badge.mine { background:var(--cream); color:var(--ink); }
-  .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
+  .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
   .tile .sub b { color:var(--ink); }
   /* The clock on an available villa, and the only place on this board where
      colour is about time rather than about state. Green for the first ten
@@ -434,8 +799,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
                      min-width:20px; height:20px; padding:0 4px;
                      border-radius:10px; border:1.5px solid var(--ink);
                      background:var(--ink); color:var(--cream);
-                     font-family:var(--ui-font); font-size:9px; font-weight:bold;
-                     letter-spacing:.02em; display:flex; align-items:center;
+                     font-family:var(--ui-font); font-size:9px; font-weight:bold;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */ display:flex; align-items:center;
                      justify-content:center; box-sizing:border-box; }
   .tile .who-badge.mine { background:var(--cream); color:var(--ink); }
   /* Strip and fresh linen: the two jobs a helper can do ahead of a clean.
@@ -454,12 +818,12 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
      this is 9.5px bold and the muted gold disappears at that size (see the
      bar note above). */
   .tile .eta { position:absolute; top:5px; right:5px; font-family:var(--ui-font);
-               font-size:9.5px; font-weight:bold; letter-spacing:.02em;
+               font-size:9.5px; font-weight:bold;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
                color:#55554F; }
   .tile .eta.early { color:var(--amberbar); }
   .tile .eta.due { color:var(--red); }
   .tile.done .eta { opacity:.4; }
-  .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; letter-spacing:.03em; }
+  .tile .sub { font-size:9.5px; color:var(--mid); min-height:12px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
   .tile .sub b { color:var(--ink); }
   /* The clock on an available villa, and the only place on this board where
      colour is about time rather than about state. Green for the first ten
@@ -501,8 +865,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .btn.active  { background:var(--ink); color:var(--cream); }
 
   .legend { margin-top:20px; display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
-            font-family:var(--ui-font); font-size:9px; letter-spacing:.1em;
-            text-transform:uppercase; color:var(--mid); }
+            font-family:var(--ui-font); font-size:9px;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */ color:var(--mid); }
   .legend i { display:inline-block; width:11px; height:11px; border-radius:3px;
               border:1.2px solid var(--rule); vertical-align:-1px; margin-right:5px; }
   /* The key draws the same bars at the same size and in the same colours. A
@@ -515,7 +878,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .legend { display:flex !important; flex-direction:column; justify-content:center;
             gap:2px; margin:0 !important; padding:6px 7px; text-align:left;
             border:1.2px solid var(--rule); border-radius:10px;
-            background:transparent; font-size:7px; letter-spacing:.06em; }
+            background:transparent; font-size:7px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
   .legend span { display:flex; align-items:center; gap:5px; line-height:1.15; }
   .legend .lgb { flex:0 0 auto; width:15px; height:6px; border-radius:3px;
                  border:1.2px solid var(--bluebar); background:var(--bluebar);
@@ -537,8 +900,8 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .ov.show { display:flex; }
   .sheet { background:var(--cream); width:100%; max-width:520px; border-radius:14px 14px 0 0;
            padding:22px 20px 30px; font-family:var(--ui-font); }
-  .sheet h2 { font-size:15px; letter-spacing:.04em; margin-bottom:2px; }
-  .sheet .st { font-size:10.5px; color:var(--mid); letter-spacing:.08em; text-transform:uppercase;
+  .sheet h2 { font-size:15px; margin-bottom:2px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+  .sheet .st { font-size:10.5px; color:var(--mid);  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
                margin-bottom:16px; }
   /* The strip and linen toggles sit beside the title, right aligned, above
      the buttons: they are state about the villa, not actions on the job, so
@@ -552,24 +915,21 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
   .ttog { width:44px; height:44px; border-radius:8px; padding:0; cursor:pointer;
           border:1.5px solid var(--rule); background:#fff; color:#C6C6BF;
           display:flex; align-items:center; justify-content:center;
-          font-family:inherit; }
+          font-family:var(--ui-font); }
   .ttog svg { width:22px; height:22px; display:block; }
   .ttog.on { background:#55554F; border-color:#55554F; color:var(--cream); }
-  .pbtn { display:block; width:100%; padding:14px; margin-top:9px; font-size:12px;
-          letter-spacing:.1em; text-transform:uppercase; background:#fff; color:var(--ink);
-          border:1px solid var(--ink); border-radius:6px; cursor:pointer; font-family:inherit; }
+  .pbtn { display:block; width:100%; padding:14px; margin-top:9px; font-size:12px;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */ background:#fff; color:var(--ink);
+          border:1px solid var(--ink); border-radius:6px; cursor:pointer; font-family:var(--ui-font); }
   .pbtn.solid { background:var(--ink); color:#fff; }
-  .pdiv { font-family:var(--ui-font); font-size:9px; letter-spacing:.18em;
-          text-transform:uppercase; color:var(--mid); margin:14px 0 6px; }
+  .pdiv { font-family:var(--ui-font); font-size:9px;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */ color:var(--mid); margin:14px 0 6px; }
   .btick { width:15px; height:15px; margin-right:8px; vertical-align:-2px; display:inline-block; }
   .pbtn.ghost { border-color:var(--rule); color:var(--mid); }
   .pbtn.warn  { border-color:var(--red); color:var(--red); }
   .timerow { display:flex; gap:8px; margin-top:9px; }
   .timerow .pbtn { margin-top:0; padding:13px 0; }
-  .perr { color:var(--red); font-size:11px; margin-top:12px; min-height:14px; }
-</style>
+  .perr { color:var(--red); font-size:11px; margin-top:12px; min-height:14px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */</style>
 </head>
-<body class="tier-app">
+<body class="tier-app ui2">
 
 <div class="wrap">
     <div class="daterow">
@@ -1431,6 +1791,115 @@ function groupVillas(roomguests, villa){
     if (r && r.groupId === me.groupId) out.push(String(v));
   }
   return out.sort(function(a,b){ return (+a) - (+b); });
+}
+
+/* ── the pre-arrival form's state ──────────────────────────────
+   Three states, the owner's ruling of 28 Aug:
+
+     not started   nobody has answered anything
+     incomplete    somebody has, and it has not been marked complete
+     completed     the guest pressed Send, or the desk marked it complete
+
+   It replaces two overlapping systems that could disagree. The Front Desk
+   row tint was computed from the answers; `at` was a stamp written by
+   something else entirely; and nothing reconciled them, so a booking could
+   read completed on one board and incomplete on the other while holding
+   nothing at all. Villa 17, 28 Aug.
+
+   Read here rather than in each board for the same reason. Two readings of
+   one state is how they came to disagree in the first place.
+
+   prearrival.html cannot read any of this: it is a GUEST page and loads no
+   staff code. Its half of the contract is tests/form_questions.json and
+   tests/onenight_cases.json, which both suites answer to. */
+
+/* The keys a guest can answer. Held here since 28 Aug: the Front Desk and
+   Pre-arrival SMS each had their own copy and they had ALREADY drifted - the
+   desk had learnt that a noDiets of false says nothing, and Pre-arrival SMS
+   had not, so the two counted a cleared dietary differently. */
+var GUEST_ANSWERS = ['arriveSlot','arriveNote','dining','diets','noDiets',
+                     'dnote','purpose','approach','wellness','wellDay',
+                     'wellTime','occasion','note','companion'];
+
+function countGuestAnswers(p){
+  if (!p) return 0;
+  return GUEST_ANSWERS.filter(function(k){
+    var v = p[k];
+    if (v === undefined || v === null || v === '') return false;
+    if (Array.isArray(v)) return v.length > 0;
+    /* "No" is an answer - but only to a question with two sides. dining and
+       wellness have them; noDiets is a flag, where true declares "nothing to
+       declare" and false says nothing at all. */
+    if (v === false) return k !== 'noDiets';
+    return true;
+  }).length;
+}
+function guestAnswered(p){ return countGuestAnswers(p) > 0; }
+
+/* How many nights, from whatever shape Mews sent the dates in. parseDepDate
+   builds a LOCAL date from the date part, so a full ISO timestamp and a bare
+   date count the same - which they must, since Mews sends both. */
+function stayNights(s){
+  var a = parseDepDate(s && s.arrive), b = parseDepDate(s && s.depart);
+  if (!a || !b) return null;
+  return Math.round((b - a) / 86400000);
+}
+function oneNightStay(s){ return stayNights(s) === 1; }
+
+/* What a booking must hold before it may be called complete: the three
+   decisions the desk settles and other boards act on. The owner's ruling of
+   28 Aug, asked and answered directly - purpose and dining approach are
+   deliberately NOT here, because no board acts on them and blocking a
+   completion over them would be blocking it over colour.
+
+   A one night stay is not owed the treatment answer. The guest form never
+   offers it - one afternoon is no window for the therapists, the owner ruled
+   25 Aug - so a question never put to them cannot be held against them. */
+function mandatoryAnswered(p, stay){
+  if (!p) return false;
+  var dinner  = p.dining === true || p.dining === false;
+  var dietary = !!p.noDiets ||
+                (Array.isArray(p.diets) ? p.diets.length > 0 : !!p.diets);
+  var massage = p.wellness === true || p.wellness === false;
+  return dinner && dietary && (massage || oneNightStay(stay));
+}
+
+/* Completed wants all three: the stamp, an answer behind it, and the
+   mandatory answers still standing. Any one of them missing and it is not
+   complete, whatever the record says it is.
+
+   Checked on every read rather than trusted from the stamp, which is what
+   makes this self healing. The old check in demanded dinner and dietary but
+   never the massage, so it could stamp a multi night booking complete with
+   the treatment question unasked - and that booking reads incomplete here
+   from the moment this ships, with nothing to run and nothing to repair. */
+function formState(p, stay){
+  if (p && p.at && guestAnswered(p) && mandatoryAnswered(p, stay))
+    return 'completed';
+  return guestAnswered(p) ? 'incomplete' : 'notstarted';
+}
+
+/* Every OTHER villa the same party holds, said in the words both boards use.
+   Takes the row and the list it came from - each entry a {villa, stay} - so a
+   caller pays nothing for it beyond rows it has already loaded.
+
+   groupVillas above answers the same question off a /roomguests map, which is
+   the shape the cleaning boards hold. This one is the arrivals shape. They are
+   two readers of one fact rather than two facts: whichever board asks, a party
+   holding two villas is two reservations under one groupId.
+
+   Plain text, with a real ampersand: the Front Desk builds its row by
+   concatenation and escapes this on the way in, Pre-arrival SMS sets it as
+   textContent. Returning markup would be wrong for one of them either way. */
+function groupMatesText(row, rows){
+  var g = row && row.stay && row.stay.groupId;
+  if (!g) return '';
+  var out = (rows || []).filter(function(x){
+    return x !== row && x.stay && x.stay.groupId === g;
+  }).map(function(x){ return String(x.villa); })
+    .sort(function(a, b){ return (+a) - (+b); });
+  if (!out.length) return '';
+  return 'with ' + (out.length === 1 ? 'villa ' : 'villas ') + out.join(' & ');
 }
 
 /* Two records describe the same person if the PMS and a guest written entry
@@ -2842,6 +3311,133 @@ window.NALA_WIRENOTIFY = wireNotify;
   }, 250);
 })();
 
+/* ── what a save says back ───────────────────────────────────
+   One save, one visible answer.
+
+   Before 27 Aug six surfaces - the desk, both tallies, spa, staff and the
+   guest's own confirm - wrote to the database with nothing happening on
+   screen: no press, no wait, no word when it landed. The writes are
+   optimistic and roll back on failure, which is good discipline and is
+   exactly why nobody noticed: the board redrew, so the button never had to
+   say anything. On a slow connection that leaves somebody holding a dead
+   looking control, and a second tap wrote a second time.
+
+   Five other pages had each hand written their own version of the answer -
+   templates, flags, tag, publish, prearrival, arrivals-sms - which is why
+   they had all drifted apart. This is that answer, once.
+
+       saveFeedback(btn, write, opts)
+
+   btn    the button that was pressed
+   write  a function returning a promise for the write
+   opts   busy  label while writing               default 'Saving'
+          done  label once it lands               default 'Saved'
+          hold  ms to hold Saved before then()    default 0
+          then  runs after a successful write - close the sheet, re-render
+          fail  an element to carry the red line, or a function(message)
+
+   Returns a promise that never rejects. The button and the fail line have
+   already said what happened; a caller that also had to catch would be a
+   second report of one event.
+
+   The button RESTS at Saved - the owner's ruling, 27 Aug - until armSave()
+   puts it back, which is what an edit does. Never a timer: a label that
+   times out goes back to saying Save about a record with nothing left to
+   save, which is the same lie as saying nothing at all.                */
+/* Which button was pressed. Threading a reference through every call site -
+   cleaners alone writes from about forty - is forty chances to miss one, and
+   a button added next month would be missed by construction. One capture
+   listener instead: the press already knows which button it was, so nothing
+   has to be remembered at the far end. Capture phase, because several of
+   these handlers redraw or close their surface and the event never bubbles
+   back up to here.                                                       */
+var SAVE_PRESSED = null;
+function pressedButton(){ return SAVE_PRESSED; }
+document.addEventListener('click', function(e){
+  var t = e.target;
+  SAVE_PRESSED = (t && t.closest) ? t.closest('button') : null;
+}, true);
+
+function saveFeedback(btn, write, opts){
+  opts = opts || {};
+  /* A caller with no button still gets the rollback and the red line: the
+     button is how this SAYS what happened, not how it knows.            */
+  if (btn){
+    if (btn.__saving) return Promise.resolve(null);    /* the second tap */
+    /* innerHTML rather than the label: several of these buttons carry a
+       tick or a count inside them, and textContent would restore the words
+       having eaten the markup.                                          */
+    if (btn.__rest === undefined) btn.__rest = btn.innerHTML;
+    btn.__saving = true;
+    btn.disabled = true;
+    btn.classList.remove('saved');
+    btn.classList.add('saving');
+    btn.textContent = opts.busy || 'Saving';
+  }
+  saveFailSay(opts.fail, '');
+  return Promise.resolve().then(write).then(function(v){
+    if (btn){
+      btn.__saving = false;
+      btn.classList.remove('saving');
+      btn.classList.add('saved');
+      btn.textContent = opts.done || 'Saved'; /* stays disabled: nothing to save */
+    }
+    if (opts.then){
+      /* The hold is the green being seen. With no button there is no green,
+         so there is nothing to wait for.                                */
+      if (opts.hold && btn) setTimeout(function(){ opts.then(v); }, opts.hold);
+      else opts.then(v);
+    }
+    return v;
+  }, function(e){
+    if (btn){
+      btn.__saving = false;
+      btn.classList.remove('saving');
+      btn.classList.remove('saved');
+      btn.disabled = false;
+      btn.innerHTML = btn.__rest;
+    }
+    saveFailSay(opts.fail, saveFailWords(e));
+    return null;
+  });
+}
+
+/* An edit means there is something to save again. Harmless on a button that
+   is not resting at Saved, so it can be called from anything that changes
+   the record.
+
+   Nothing calls this yet, and that is not an oversight. The four boards
+   wired on 27 Aug all close their sheet once the write lands, so none of
+   them rests at Saved. The surfaces that DO stay open - templates, flags,
+   tag - each still wear their own button dress, and the green belongs to
+   .btn; converting a page's dress is the per-page pass those are queued
+   for (BUTTONS-AUDIT.md), and this is the half of the ruling waiting for
+   them, so the first one across does not write it again.               */
+function armSave(btn){
+  if (!btn || btn.__saving) return;
+  if (!btn.classList.contains('saved')) return;
+  btn.classList.remove('saved');
+  btn.disabled = false;
+  if (btn.__rest !== undefined) btn.innerHTML = btn.__rest;
+}
+
+function saveFailSay(target, msg){
+  if (!target) return;
+  if (typeof target === 'function'){ target(msg); return; }
+  target.textContent = msg || '';
+  if (target.classList) target.classList.toggle('show', !!msg);
+}
+
+/* Two failures a person acts on differently: the database refused the write,
+   which is a permission and needs the manager, and the write never arrived,
+   which needs another go. Anything else is the second one.              */
+function saveFailWords(e){
+  var m = '' + (e && (e.message || e));
+  if (/rejected|denied|permission|401|403/i.test(m))
+    return 'The change was not allowed - tell the manager.';
+  return 'Not saved - check the connection and try again.';
+}
+
 </script>
 <script>
 // dates, look-back, room records, clean/service rules: nala-shared.js
@@ -3335,11 +3931,17 @@ function patchRoom(n, obj){
     return r.json();
   });
 }
-function setField(n, obj, errEl){
+/* btn is the button to answer on, and defaults to whichever one was pressed -
+   every write on this page starts at a tap, and pressedButton() saves
+   threading a reference through forty call sites. Pass null to write with no
+   answer at all: the multi-select decision does that, because one press is
+   deciding several villas and the answer belongs on that press, once.    */
+function setField(n, obj, errEl, btn){
   var prev=JSON.parse(JSON.stringify(STATE.hk[n]||{}));
   STATE.hk[n]=Object.assign({},prev,obj);
   for (var k in obj){ if (obj[k]===null) delete STATE.hk[n][k]; }
   render();
+  return saveFeedback(btn === undefined ? pressedButton() : btn, function(){
   return patchRoom(n,obj).then(function(){
     /* Only after the write succeeds, and only for the two marks anyone asked
        to be told about. Setting a mark notifies; clearing or undoing one does
@@ -3358,13 +3960,34 @@ function setField(n, obj, errEl){
         else if (kind === 'svc')  notifyPush('serviced', n, window.NALA_USER);
       }
     } } catch (e){}
-    closeSheet();
-  })
-  .catch(function(e){
-    STATE.hk[n]=prev; render();
-    errEl.textContent = (e && e.message==='rejected')
-      ? 'The change was not allowed - tell the manager.'
-      : 'No connection - try again.';
+  });
+  }, {
+    /* The tick is what the sheet's own completion buttons already wear, so
+       the answer reads as the same word coming back.                     */
+    done:'Saved ✓',
+    /* Long enough for the green to be seen, then the sheet closes as it
+       always has. The board underneath is already showing the change - it
+       was written optimistically before the request left.               */
+    hold:400, then:closeSheet,
+    /* An EMPTY message is not a failure. saveFeedback calls this once
+       before the write goes out, to clear whatever the last attempt left on
+       the error line, and this handler took it as a refusal and put the
+       board back - undoing the optimistic update on every single save. A
+       villa set to be cleaned reverted on screen the instant it was set,
+       though the write had gone and the database had it; the board only
+       corrected itself on the next twenty second poll, and never while the
+       sheet was open, because an open sheet stops the poll. The other three
+       pages wired to saveFeedback only write words in here, so the clear
+       costs them nothing and this was the one that did state. */
+    fail:function(msg){
+      /* errEl is guarded because setField is also called with no error
+         line at all - the notification paths hand it three arguments -
+         and the clear below runs on every save now, where the rollback
+         it replaced only ran on a refusal and so never met one. */
+      if (!msg){ if (errEl) errEl.textContent = ''; return; }
+      STATE.hk[n]=prev; render();
+      if (errEl) errEl.textContent = msg;
+    }
   });
 }
 
@@ -3405,8 +4028,19 @@ function setKind(k){
     /* several villas at once: apply to each, then leave select mode so the
        board returns to its normal state rather than a half-selected one */
     var ns = CUR.multi.slice();
-    Promise.all(ns.map(function(n){ return setField(n, { kind:k }, err); }))
-      .then(function(){ exitSelect(); });
+    /* One press, several villas, so the answer goes on that press once
+       rather than racing itself on the same button n times - the second
+       call would find it already saving and skip its write. Each villa
+       still rolls itself back and names its own failure in the error line;
+       this only says whether the decision as a whole took. It leaves
+       select mode on success alone: a decision that did not take should
+       not clear the selection that still needs deciding.               */
+    saveFeedback(pressedButton(), function(){
+      return Promise.all(ns.map(function(n){ return setField(n, { kind:k }, err, null); }))
+        .then(function(rs){
+          if (rs.some(function(r){ return r === null; })) throw new Error('partial');
+        });
+    }, { done:'Saved ✓', hold:400, then:exitSelect });
     return;
   }
   setField(CUR.n, { kind:k }, err);
