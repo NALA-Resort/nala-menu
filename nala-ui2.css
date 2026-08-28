@@ -1,0 +1,256 @@
+/* NALA staff UI, second dress. See STYLEGUIDE.md and mock-style.html.
+
+   WHY THIS IS A SECOND FILE AND NOT AN EDIT TO nala-ui.css
+   --------------------------------------------------------
+   The dress changes shared tokens, and nala-ui.css is linked by thirteen
+   pages. Editing it restyles all of them in one publish, on a live system,
+   with no way to move one page at a time. So the new dress is opt in: a
+   page joins it by adding `ui2` to its body class and linking this file,
+   and every page that has not joined is untouched, byte for byte.
+
+   This file is a MIGRATION SEAM, not a permanent second stylesheet. When
+   the last page carries `ui2`, its contents move into nala-ui.css, the
+   class goes, and this file is deleted. Until then, two dresses is the
+   price of moving five pages instead of twenty two at once.
+
+   It is also SELF SUFFICIENT on purpose. nala-ui.css turned out to be a
+   layout system as well as a control sheet: it sets body to a flex column
+   and takes its colours from --ctl-* tokens that only exist on a body
+   carrying tier-app or tier-print, so a page that linked it for the
+   hamburger alone got a reflow, and a page without a tier class drew a
+   menu button nobody could see. That is why tag.html, flags.html and
+   publish.html each hand copied the nav instead. Nothing here needs a tier
+   class, so those copies can go.                                      */
+
+/* The reset every page already carries, identical in all twenty of them. */
+*{ margin:0; padding:0; box-sizing:border-box; }
+
+/* ── the colour law · values unchanged from nala-ui.css and the boards ──
+   A dress may say what a control looks like. It may not say what a colour
+   means. Every value below is the one the live boards use today.      */
+:root{
+  --law-green:#5E7D67;  --law-green-t:rgba(122,160,130,.26);
+  --law-green-b:rgba(122,160,130,.65);
+  --law-terra:#9E6455;  --law-terra-t:rgba(184,106,90,.16);
+  --law-terra-b:rgba(184,106,90,.45);
+  --law-amber:#F6EAD5;  --law-amber-b:#C29A55;  --law-amber-ink:#8A6A2F;
+  --law-red:#A8321E;
+  --law-wait:rgba(28,28,26,.045);
+  --law-save-bg:#E4EDE2; --law-save-bdr:#7E937A; --law-save-ink:#5E7D67;
+}
+
+body.ui2{
+  /* ── ground and ink ────────────────────────────────────────────────
+     White rather than cream: these are tools, and every tool the owner
+     pointed at (Drive, Earth, Zoom) sits on white with one accent.   */
+  --ground:#FFFFFF;
+  --card:#F5F6F8;          /* a quiet fill for secondary buttons and cards */
+  --ink:#1B1B19;
+  /* #999990 measured 2.69:1 on cream. WCAG AA wants 4.5:1 for text this
+     size, and this token carries most of the app's secondary text at
+     11px. #5F5F58 is 4.9:1 on white and keeps the warm grey.         */
+  --mid:#5F5F58;
+  --rule:#E6E6E1;
+
+  /* ── one accent, and it means one thing ────────────────────────────
+     "You can act here, or this is selected." Blue because it is the
+     only hue not already spoken for: sage is done, terracotta is
+     declined, amber is chase this, red is failed. An accent that
+     borrowed one of those would put interaction and state in the same
+     channel, which is what the boards already suffer from.          */
+  --accent:#1A66C2;
+  --accent-ink:#FFFFFF;
+  --accent-soft:#E8F0FE;
+
+  /* ── scales · pick from these, never by eye ────────────────────────
+     Spacing is a 4px grid, which is what Material, Bootstrap and Apple
+     all land on. The type scale is the styleguide's own 8/11/15/20/27
+     with the bottom two steps raised: 8px and 9px text is not density,
+     it is unreadable, and it is most of why the boards look busy.   */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+  --t1:12px; --t2:14px; --t3:16px; --t4:20px; --t5:27px;
+  --r:8px;            /* every control and card */
+  --pill:999px;       /* chips and status pills only */
+  --tap:44px;         /* Apple HIG minimum; Material says 48 */
+
+  --ui-font:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,
+            Helvetica,Arial,sans-serif;
+
+  background:var(--ground);
+  color:var(--ink);
+  font-family:var(--ui-font);
+  -webkit-tap-highlight-color:transparent;
+  /* Double tap to zoom is a hazard on a board of tap targets. This turns
+     that gesture off while LEAVING pinch zoom alone, which is why the
+     user-scalable=no meta comes off these pages: it took pinch zoom
+     from anyone who needs it and did not do this job.               */
+  touch-action:manipulation;
+}
+
+/* ── sentence case, everywhere ───────────────────────────────────────
+   The loudest single difference between this dress and the last. Not
+   one label in Drive, Earth or Zoom is uppercase or letterspaced; the
+   look dates to Material 1 and Bootstrap 3. Where a page still asks for
+   caps, this overrides it rather than requiring every rule be found. */
+body.ui2 .seclabel, body.ui2 .stat-l, body.ui2 .legend,
+body.ui2 .btn, body.ui2 .sec > span, body.ui2 .sec a,
+body.ui2 .dnav.today, body.ui2 h1, body.ui2 .date{
+  text-transform:none; letter-spacing:0;
+}
+
+/* ── page frame ──────────────────────────────────────────────────────
+   Deliberately NOT a flex column. nala-ui.css makes body one, which is
+   the rule that reflowed pages that only wanted a button.           */
+body.ui2{ padding:calc(var(--s5) + env(safe-area-inset-top)) var(--s4)
+                  calc(var(--s6) + env(safe-area-inset-bottom)); }
+body.ui2 h1{ font-size:var(--t4); font-weight:600; margin-bottom:var(--s1); }
+body.ui2 .lede{ font-size:var(--t2); color:var(--mid); line-height:1.55;
+                margin-bottom:var(--s2); max-width:58ch; }
+body.ui2 .seclabel{ font-size:var(--t2); font-weight:500; color:var(--mid);
+                    margin:var(--s5) 0 var(--s2); }
+body.ui2 .secnote{ font-size:var(--t2); color:var(--mid); line-height:1.5;
+                   margin-bottom:var(--s3); max-width:58ch; }
+
+/* ── header row ──────────────────────────────────────────────────────
+   Same shape as today: one row, in flow, controls at 40px, menu right.
+   Floating corner menus stay banned.                                 */
+body.ui2 .daterow{ display:flex; align-items:center; gap:var(--s2);
+                   margin-bottom:var(--s4); }
+body.ui2 .date{ flex:1; font-size:var(--t4); font-weight:600; }
+body.ui2 .dnav{ width:40px; height:40px; display:inline-flex; align-items:center;
+                justify-content:center; border:0; background:var(--card);
+                border-radius:var(--pill); color:var(--ink); cursor:pointer;
+                font-family:var(--ui-font); font-size:var(--t3); }
+body.ui2 .dnav.today{ width:auto; padding:0 var(--s3); font-size:var(--t2); }
+body.ui2 .dnav:disabled{ opacity:.35; cursor:default; }
+body.ui2 .dnav:active{ background:var(--accent-soft); }
+
+/* ── the hamburger and its menu ──────────────────────────────────────
+   Written against real colours, not --ctl-*, so a page with no tier
+   class still draws it. That was the whole reason for the copies.   */
+body.ui2 .navwrap{ position:relative; margin-left:auto; z-index:500; }
+body.ui2 .navbtn{ width:44px; height:40px; border:0; background:transparent;
+                  border-radius:var(--pill); display:flex; flex-direction:column;
+                  align-items:center; justify-content:center; gap:4px;
+                  cursor:pointer; -webkit-tap-highlight-color:transparent; }
+body.ui2 .navbtn:active{ background:var(--card); }
+body.ui2 .navbtn span{ display:block; width:17px; height:1.7px;
+                       background:var(--nope); border-radius:2px; }
+body.ui2 .navdrop{ display:none; position:absolute; right:0; top:46px;
+                   background:var(--ground); border:1px solid var(--rule);
+                   border-radius:var(--r); min-width:200px; padding:var(--s1) 0;
+                   box-shadow:0 2px 6px rgba(0,0,0,.06),0 10px 28px rgba(0,0,0,.10); }
+body.ui2 .navdrop.open{ display:block; }
+body.ui2 .navdrop a{ display:block; padding:var(--s3) var(--s4);
+                     font-size:var(--t2); line-height:1.3; color:var(--ink);
+                     text-decoration:none; }
+body.ui2 .navdrop a:active{ background:var(--accent-soft); }
+body.ui2 .navgrp{ display:flex; align-items:center; justify-content:space-between;
+                  gap:var(--s4); width:100%; padding:var(--s3) var(--s4);
+                  font-size:var(--t2); line-height:1.3; font-family:inherit;
+                  text-align:left; color:var(--ink); background:none; border:0;
+                  border-top:1px solid var(--rule); cursor:pointer; }
+body.ui2 .navchev{ flex:0 0 auto; color:var(--mid); transition:transform .15s ease; }
+body.ui2 .navgroup.open .navchev{ transform:rotate(180deg); }
+body.ui2 .navsub{ display:none; }
+body.ui2 .navgroup.open .navsub{ display:block; }
+body.ui2 .navsub a{ padding-left:var(--s6); }
+body.ui2 .navdrop a.navaction,
+body.ui2 .navdrop a.hasact{ display:flex; align-items:center;
+                            justify-content:space-between; gap:var(--s4); }
+body.ui2 .navmark{ display:inline-flex; flex:0 0 auto; }
+body.ui2 .navmark.on{ color:#3F7A52; }
+body.ui2 .navmark.off{ color:#9A9A92; }
+body.ui2 .navnote{ flex:0 0 auto; font-size:var(--t1); color:var(--mid); }
+body.ui2 .navdrop a.signout{ border-top:1px solid var(--rule);
+                             margin-top:var(--s1); padding-top:var(--s3);
+                             color:var(--mid); }
+body.ui2 .navbadge{ flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
+                    border-radius:var(--pill); background:var(--accent);
+                    color:var(--accent-ink); font-size:var(--t1);
+                    display:inline-flex; align-items:center; justify-content:center; }
+
+/* ── buttons · the button law, redressed but not rewritten ───────────
+   One solid primary per surface; quiet is secondary; destructive wears
+   terracotta outline and always asks first. Only the dress changed:
+   the solid is the accent rather than ink, and quiet is a fill rather
+   than an outline, so a screen of secondary actions stops reading as a
+   screen of identical bordered rectangles.                          */
+body.ui2 .btn{ display:inline-flex; align-items:center; justify-content:center;
+               width:100%; padding:var(--s3) var(--s4); min-height:var(--tap);
+               border:0; border-radius:var(--r); background:var(--card);
+               color:var(--ink); font-family:var(--ui-font); font-size:var(--t3);
+               font-weight:500; cursor:pointer; text-decoration:none; }
+body.ui2 .btn.solid{ background:var(--accent); color:var(--accent-ink); }
+body.ui2 .btn.ghost{ background:transparent; border:1px solid var(--rule);
+                     color:var(--ink); }
+body.ui2 .btn.terra{ background:transparent; border:1px solid var(--law-terra-b);
+                     color:var(--law-terra); }
+body.ui2 .btn.warn { background:transparent; border:1px solid var(--law-terra-b);
+                     color:var(--law-terra); }
+body.ui2 .btn:disabled{ opacity:.35; cursor:default; }
+body.ui2 .btn:active{ filter:brightness(.94); }
+
+/* What a press says back. Grey while writing is the colour law's "sent,
+   waiting on the other side"; green is "done", and is worn only after
+   the write. Saved rests until there is more to save.               */
+body.ui2 .btn.saving, body.ui2 .btn.saved{ opacity:1; cursor:default; }
+body.ui2 .btn.saving{ background:var(--law-wait); color:var(--mid); }
+body.ui2 .btn.saved { background:var(--law-save-bg); color:var(--law-save-ink); }
+/* Failure is words, in red, under the button that failed. Never a red
+   fill: a red tile reads as a state the record is in, and the record is
+   simply unsaved.                                                    */
+body.ui2 .savefail{ display:none; font-size:var(--t2); line-height:1.45;
+                    color:var(--law-red); margin-top:var(--s2); }
+body.ui2 .savefail.show{ display:block; }
+
+/* ── rows and lists ──────────────────────────────────────────────────
+   Separated by an inset hairline rather than boxed. A tinted row keeps
+   its own corner, because a tint that runs to the screen edge stops
+   reading as one record.                                             */
+body.ui2 .rowlist > * + *{ border-top:1px solid var(--rule); }
+
+/* ── the access message ──────────────────────────────────────────────
+   Plain typography, never a bordered or filled box: that dress belongs
+   to buttons, and a message wearing it reads as something to tap.   */
+body.ui2 .noaccess{ display:none; font-size:var(--t3); line-height:1.5;
+                    color:var(--ink); max-width:52ch; margin:var(--s5) 0; }
+body.ui2 .noaccess.show{ display:block; }
+body.ui2 .noaccess .na-retry{ margin-top:var(--s4); display:block;
+                              width:max-content; }
+
+/* ── stats · plain type, never boxed ─────────────────────────────── */
+body.ui2 .stats{ display:flex; justify-content:center; gap:var(--s6);
+                 margin:var(--s4) 0 var(--s2); }
+body.ui2 .stat{ text-align:center; }
+body.ui2 .stat-n{ display:block; font-size:var(--t5); line-height:1;
+                  color:var(--ink); font-variant-numeric:tabular-nums; }
+body.ui2 .stat-l{ display:block; font-size:var(--t2); color:var(--mid);
+                  margin-top:var(--s1); }
+body.ui2 .stat.warn .stat-n{ color:var(--law-red); }
+
+/* ── inputs ──────────────────────────────────────────────────────────
+   16px minimum, always: anything smaller and iOS zooms the page on
+   focus and does not zoom back.                                      */
+body.ui2 input, body.ui2 select, body.ui2 textarea{
+  font-family:var(--ui-font); font-size:var(--t3); color:var(--ink);
+  background:#fff; border:1px solid var(--rule); border-radius:var(--r);
+  padding:var(--s3); width:100%; min-height:var(--tap); }
+body.ui2 input:focus, body.ui2 textarea:focus, body.ui2 select:focus{
+  outline:none; border-color:var(--accent); }
+
+/* ── keyboard focus ──────────────────────────────────────────────────
+   Nothing in the app has this today: zero pages use :focus-visible and
+   six declare outline:none. A keyboard or switch user currently has no
+   idea where they are.                                               */
+body.ui2 :focus-visible{ outline:2px solid var(--accent); outline-offset:2px;
+                         border-radius:var(--r); }
+
+@media (prefers-reduced-motion:reduce){
+  body.ui2 *{ transition:none !important; }
+}
+
+/* keep controls off paper */
+@media print{
+  body.ui2 .navwrap, body.ui2 .foot, body.ui2 .dnav{ display:none !important; }
+}

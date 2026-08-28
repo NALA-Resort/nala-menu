@@ -171,7 +171,11 @@ with sync_playwright() as p:
     ck("no page keeps its own copy of the menu filter", offenders == [])
 
     # ── the shared files carry one version, and it is current ───
-    #  The ?v= on the shared scripts is the whole caching story on this site,
+    #  The ?v= on the shared files is the whole caching story on this site,
+    #  and the STYLESHEETS were not in this check until 28 Aug: nala-ui.css
+    #  could be edited and published without a single bump, and every phone
+    #  would go on using the CSS it already had. A restyle is exactly the
+    #  change that hole swallows.
     #  and it had not been bumped in four changes: the sign-in persistence fix,
     #  the menu filter, the notifications switch. Browsers went on running the
     #  old copies, so fixes that were published and correct simply never
@@ -182,10 +186,12 @@ with sync_playwright() as p:
     for f in sorted(_g.glob("*.html")):
         if f.startswith("demo-"):
             continue
-        for m in _r.finditer(r'(nala-shared\.js|auth\.js)\?v=(\d+)', open(f, encoding='utf-8').read()):
+        for m in _r.finditer(
+                r'(nala-shared\.js|auth\.js|nala-ui\.css|nala-ui2\.css)\?v=(\d+)',
+                open(f, encoding='utf-8').read()):
             vers.setdefault(m.group(1), set()).add(m.group(2))
-    print("   shared script versions:", {k: sorted(v) for k, v in vers.items()})
-    ck("every page asks for the same version of each shared script",
+    print("   shared file versions:", {k: sorted(v) for k, v in vers.items()})
+    ck("every page asks for the same version of each shared file",
        all(len(v) == 1 for v in vers.values()))
 
     #  And the version has to move when the file does. A file changed since its
@@ -196,7 +202,7 @@ with sync_playwright() as p:
         touched = _sp.run(["git", "log", "-1", "--format=%H", "--", name],
                           capture_output=True, text=True).stdout.strip()
         bumped = _sp.run(["git", "log", "-1", "--format=%H", "-S",
-                          name + "?v=" + vv, "--", "tally.html"],
+                          name + "?v=" + vv],
                          capture_output=True, text=True).stdout.strip()
         if not touched or not bumped:
             continue
@@ -205,9 +211,74 @@ with sync_playwright() as p:
         if order.returncode == 0 and order.stdout.strip().isdigit() \
            and int(order.stdout.strip()) > 0:
             stale.append(name)
-    print("   shared scripts changed since their version was bumped:", stale)
-    ck("no shared script has changed since the version browsers ask for",
+    print("   shared files changed since their version was bumped:", stale)
+    ck("no shared file has changed since the version browsers ask for",
        stale == [])
+
+    # ── the house style, enforced rather than written down ───────────
+    #  Every rule below is one STYLEGUIDE.md already states in prose and
+    #  nothing checked. Measured on 28 Aug, before any of this: 64% of
+    #  font-size declarations were off the declared 8/11/15/20/27 scale,
+    #  --ink was redefined in 18 pages and --cream in 17 despite "defined
+    #  once in nala-ui.css", 87 font stacks were hardcoded against "no page
+    #  hardcodes a font stack", and --green meant a pale fill on five pages
+    #  and a dark ink on two. A rule nobody can fail is a rule that rots.
+    #
+    #  Scoped to pages carrying `ui2`, the second dress, because those are
+    #  the pages that have been converted. As a page joins the dress it
+    #  joins these checks, which is what makes the migration one way.
+    #  Not anchored to a line start: `:root { --a:x; --b:y; }` on one line
+    #  is how every page declares these, and an anchored pattern reads only
+    #  the first. `--x:` appears only in declarations, never in var(--x).
+    OWNED = set(_r.findall(r'(--[a-z0-9-]+)\s*:', open("nala-ui2.css",
+                encoding="utf-8").read()))
+    def style_of(txt):
+        m = _r.search(r'<style>(.*?)</style>', txt, _r.S)
+        return m.group(1) if m else ""
+
+    ui2, bad_link, bad_tok, bad_font, bad_size, bad_zoom = [], [], [], [], [], []
+    for f in sorted(_g.glob("*.html")):
+        if f.startswith(("demo-", "mock-")):
+            continue
+        txt = open(f, encoding="utf-8").read()
+        wears = _r.search(r'<body[^>]*class="[^"]*\bui2\b', txt) is not None
+        links = _r.search(r'<link[^>]+nala-ui2\.css', txt) is not None
+        if wears != links:
+            bad_link.append(f)
+        if not wears:
+            continue
+        ui2.append(f)
+        st = style_of(txt)
+        #  A page that redefines a shared token silently wins over the sheet,
+        #  because :root and body.ui2 are the same specificity and the page
+        #  comes later. That is how --green came to mean two things.
+        for t in _r.findall(r'(--[a-z0-9-]+)\s*:', st):
+            if t in OWNED:
+                bad_tok.append(f + " " + t)
+        #  "No page hardcodes a font stack. Changing the staff font is one
+        #  line." It was one line and 87 places.
+        if _r.search(r'font-family:\s*(?!var\()', st):
+            bad_font.append(f)
+        #  Sizes come from the scale or they are picked by eye.
+        for m in _r.findall(r'font-size:\s*([0-9.]+(?:px|rem))', st):
+            bad_size.append(f + " " + m)
+        #  Takes pinch zoom from anyone who needs it, and never did the job
+        #  it was added for; touch-action:manipulation does that instead.
+        if "user-scalable=no" in txt:
+            bad_zoom.append(f)
+
+    print("   pages wearing the second dress:", ui2)
+    ck("a page wears the dress and links its sheet, or neither", not bad_link)
+    if bad_link: print("   mismatched:", bad_link)
+    ck("no page redefines a token the shared sheet owns", not bad_tok)
+    if bad_tok: print("   redefined:", bad_tok)
+    ck("no page hardcodes a font stack", not bad_font)
+    if bad_font: print("   hardcoded:", bad_font)
+    ck("every font size comes from the scale, not by eye", not bad_size)
+    if bad_size: print("   off-scale:", sorted(set(bad_size)))
+    ck("no page takes pinch zoom away", not bad_zoom)
+    if bad_zoom: print("   user-scalable=no:", bad_zoom)
+
 
 print("RESULT: %d passed, %d failed" % (P, F))
 httpd.shutdown()

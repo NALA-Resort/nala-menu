@@ -8,122 +8,79 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
 <title>Nala · Booking Flags</title>
+<link rel="stylesheet" href="nala-ui2.css?v=1">
 <style>
-  /* tag.html's sheet, deliberately: the two pages are siblings under
-     Settings and should read as one family. The hamburger is written out
-     here for the same reason it is written out there - nala-ui.css is a
-     layout system whose tokens only exist on a tiered body, and this page
-     carries no tier. */
-  * { margin:0; padding:0; box-sizing:border-box; }
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E; }
-  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
-         padding:28px 24px 60px; -webkit-tap-highlight-color:transparent; }
-  .wrap { max-width:520px; margin:0 auto; }
-  .navrow { display:flex; margin-bottom:10px; }
-  .navwrap { position:relative; margin-left:auto; z-index:500; }
-  .navbtn { width:42px; height:36px; border:1px solid var(--rule);
-            background:var(--cream); border-radius:8px; cursor:pointer;
-            display:flex; flex-direction:column; align-items:center;
-            justify-content:center; gap:4px; padding:0;
-            -webkit-tap-highlight-color:transparent; }
-  .navbtn span { display:block; width:16px; height:1.6px; background:var(--ink); }
-  .navdrop { display:none; position:absolute; right:0; top:42px;
-             background:var(--cream); border:1px solid var(--rule);
-             border-radius:9px; min-width:176px; padding:5px 0;
-             box-shadow:0 4px 14px rgba(0,0,0,.09); }
-  .navdrop.open { display:block; }
-  /* No caps, no tracking, a size a thumb can hit; submenus fold behind
-     their chevroned headers. nala-ui.css holds the ruling copy of this
-     dress - keep this one in step with it. */
-  .navdrop a { display:block; padding:10px 18px;
-               /* the ruling copy's --ui-font, written out: no tiered body here */
-               font-family:-apple-system, BlinkMacSystemFont, system-ui,
-                           'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-               font-size:14px;
-               line-height:18px; color:var(--ink);
-               text-decoration:none; white-space:nowrap; }
-  .navgrp { display:flex; align-items:center; justify-content:space-between;
-            gap:14px; width:100%; padding:10px 18px;
-            font-family:-apple-system, BlinkMacSystemFont, system-ui,
-                        'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            font-size:14px;
-            line-height:18px; text-align:left; color:var(--ink);
-            background:none; border:0; border-top:1px solid var(--rule);
-            cursor:pointer; -webkit-tap-highlight-color:transparent; }
-  .navchev { flex:0 0 auto; color:var(--mid); transition:transform .15s ease; }
-  .navgroup.open .navchev { transform:rotate(180deg); }
-  .navsub { display:none; }
-  .navgroup.open .navsub { display:block; }
-  .navsub a { padding-left:32px; }
-  .navdrop a.navaction { display:flex; align-items:center;
-                        justify-content:space-between; gap:14px; color:var(--ink); }
-  .navmark { display:inline-flex; flex:0 0 auto; }
-  .navmark.on  { color:#3F7A52; }
-  .navmark.off { color:#B0B0A8; }
-  .navnote { flex:0 0 auto; font-size:11px; color:#B0B0A8; }
-  .navdrop a.signout { border-top:1px solid var(--rule); margin-top:5px;
-                       padding-top:13px; color:var(--mid); }
+  /* This page's own shape and nothing else. Ground, ink, type, spacing, the
+     buttons and the hamburger all come from nala-ui2.css.
 
+     The hand copy of the nav that used to live here is gone. It was written
+     out because nala-ui.css is a layout system whose colours only exist on a
+     tiered body, and this page carries no tier; nala-ui2.css needs none, so
+     the copy has nothing left to do. tag.html carried the same block byte
+     for byte and flags.html had already drifted from it, which is what a
+     "keep this in step by hand" comment is worth.                        */
+  .wrap { max-width:520px; margin:0 auto; }
+  .navrow { display:flex; margin-bottom:var(--s2); }
+
+  /* Failure is red, and it is the only thing that is. */
   .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
-            background:#A8321E; color:#fff; padding:12px 18px;
-            font-family:Helvetica,Arial,sans-serif; font-size:11px; line-height:1.5;
+            background:var(--law-red); color:#fff; padding:var(--s3) var(--s4);
+            font-size:var(--t2); line-height:1.5;
             transform:translateY(-100%); transition:transform .25s; }
   .errbar.show { transform:translateY(0); }
 
-  .wordmark { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.45em;
-              text-transform:uppercase; color:var(--mid); text-align:center; }
-  .pagename { font-family:Helvetica,Arial,sans-serif; font-size:13px; font-weight:bold;
-              letter-spacing:.1em; text-transform:uppercase; text-align:center; margin-top:6px; }
-  .lede { text-align:center; font-style:italic; color:var(--mid); font-size:12px;
-          margin-top:8px; line-height:1.5; }
+  .wordmark { font-size:var(--t1); color:var(--mid); text-align:center;
+              letter-spacing:.18em; text-transform:uppercase; }
+  .pagename { font-size:var(--t4); font-weight:600; text-align:center;
+              margin-top:var(--s1); }
+  .lede { text-align:center; color:var(--mid); font-size:var(--t2);
+          margin:var(--s2) auto 0; line-height:1.5; max-width:52ch; }
 
-  .secthead { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
-              text-transform:uppercase; color:var(--mid); margin-top:26px; }
-  .addrow { display:flex; gap:8px; margin-top:10px; }
-  .addrow input { flex:1; padding:11px; border:1px solid var(--rule); background:#fff;
-                  border-radius:8px; font-family:Georgia,serif; font-size:16px; color:var(--ink); }
-  .addbtn { margin-top:8px; width:100%; padding:11px; border:1px solid var(--ink);
-            background:transparent; border-radius:8px; font-family:Helvetica,Arial,sans-serif;
-            font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink);
-            cursor:pointer; -webkit-tap-highlight-color:transparent; }
-  .addbtn:active { background:var(--rule); }
+  .secthead { font-size:var(--t2); font-weight:500; color:var(--mid);
+              margin-top:var(--s5); }
 
-  .mng { margin-top:12px; }
+  .addrow { display:flex; gap:var(--s2); margin-top:var(--s3); }
+  .addrow input { flex:1; min-width:0; }
+  /* One solid primary per surface, and on this page it is Add. */
+  .addbtn { margin-top:var(--s2); }
+
+  .mng { margin-top:var(--s3); }
   .mrow { display:flex; align-items:center; justify-content:space-between;
-          padding:9px 0; border-bottom:1px solid var(--rule); }
-  .mname { font-size:14px; }
+          gap:var(--s3); padding:var(--s3) 0;
+          border-bottom:1px solid var(--rule); min-height:var(--tap); }
+  .mname { font-size:var(--t3); }
   .mrow.off .mname { color:var(--mid); font-style:italic; }
-  .mbtns { display:flex; gap:6px; }
+  .mbtns { display:flex; gap:var(--s2); flex:0 0 auto; }
+  /* A chip, so it wears the pill radius, and "shown" is a selected state so
+     it wears the interaction accent rather than ink.                     */
   .mtog { border:1px solid var(--rule); background:transparent; color:var(--mid);
-          padding:6px 12px; border-radius:16px; font-family:Helvetica,Arial,sans-serif;
-          font-size:9px; letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
+          padding:var(--s2) var(--s3); min-height:36px; border-radius:var(--pill);
+          font-family:var(--ui-font); font-size:var(--t2); cursor:pointer;
           -webkit-tap-highlight-color:transparent; }
-  .mrow.off .mtog { border-color:var(--ink); color:var(--ink); }
-  /* Delete wears the failure colour because it is the one press here with no
-     way back after Save. Offered only on a hidden row: hide first, then
-     delete, so a mis-tap cannot destroy a flag that is in use. */
-  .mtog.mdel { border-color:var(--red); color:var(--red); }
+  .mrow.off .mtog { border-color:var(--accent); color:var(--accent); }
+  /* Delete destroys something a booking may be using, so it wears the
+     destructive dress of the button law: terracotta outline, and it asks
+     first. Offered only on a hidden row, so hide comes before delete.
+     It was red, which the colour law reserves for failure alone.        */
+  .mtog.mdel { border-color:var(--law-terra-b); color:var(--law-terra); }
 
   /* The one flag nobody manages from here, shown so nobody re-creates it. */
-  .autorow { margin-top:12px; padding:9px 0; border-bottom:1px solid var(--rule);
-             font-size:14px; }
-  .autorow .g { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.15em;
-                text-transform:uppercase; color:var(--mid); margin-left:8px; }
+  .autorow { margin-top:var(--s3); padding:var(--s3) 0;
+             border-bottom:1px solid var(--rule); font-size:var(--t3); }
+  .autorow .g { font-size:var(--t2); color:var(--mid); margin-left:var(--s2); }
 
-  .savebar { position:fixed; bottom:0; left:0; right:0; background:var(--cream);
-             border-top:1px solid var(--rule); padding:12px 24px;
+  .savebar { position:fixed; bottom:0; left:0; right:0; background:var(--ground);
+             border-top:1px solid var(--rule);
+             padding:var(--s3) var(--s4) calc(var(--s3) + env(safe-area-inset-bottom));
              transform:translateY(110%); transition:transform .25s; }
   .savebar.show { transform:translateY(0); }
-  .savebar .in { max-width:520px; margin:0 auto; display:flex; gap:10px; align-items:center; }
-  .savebtn { flex:1; padding:13px; min-height:44px; border:none; background:var(--ink); color:var(--cream);
-             border-radius:8px; font-family:Helvetica,Arial,sans-serif; font-size:11px;
-             letter-spacing:.15em; text-transform:uppercase; cursor:pointer;
-             -webkit-tap-highlight-color:transparent; }
-  .saved { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.1em;
-           text-transform:uppercase; color:var(--mid); }
+  .savebar .in { max-width:520px; margin:0 auto; display:flex; gap:var(--s3);
+                 align-items:center; }
+  .savebtn { flex:1; }
+  .saved { font-size:var(--t2); color:var(--mid); flex:0 0 auto; }
 </style>
 </head>
-<body>
+<body class="ui2">
 <div class="errbar" id="err"></div>
 <div class="wrap">
   <div class="navrow">
@@ -140,7 +97,7 @@
 
   <div class="secthead">Add a flag</div>
   <div class="addrow"><input id="newName" placeholder="e.g. Travel agent" autocomplete="off"></div>
-  <button class="addbtn" id="addBtn">Add flag</button>
+  <button class="btn solid addbtn" id="addBtn">Add flag</button>
 
   <div class="secthead">All flags</div>
   <div class="mng" id="mng"></div>
@@ -151,7 +108,7 @@
 </div>
 
 <div class="savebar" id="savebar"><div class="in">
-  <button class="savebtn" id="saveBtn">Save the list</button>
+  <button class="btn solid savebtn" id="saveBtn">Save the list</button>
   <span class="saved" id="savedMsg"></span>
 </div></div>
 

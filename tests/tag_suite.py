@@ -153,14 +153,23 @@ with sync_playwright() as p:
     #  every bar of the icon resolved to nothing. Asserting presence alone
     #  passed the whole time, which is the same fault as reading the original
     #  element instead of the printed clone.
+    #  The border was the original proxy for "the tokens resolved": the old
+    #  sheet drew this button as a bordered box, so a missing --ctl-* showed
+    #  up as a zero width border. nala-ui2.css draws it as a borderless icon
+    #  button and uses no --ctl-* at all, so the proxy now fails on a button
+    #  that is perfectly visible. Replaced with the thing it was standing in
+    #  for, and made stricter while we are here: ALL THREE bars must have a
+    #  real size and a real colour, not just the first one.
     ck("and it is actually visible, not drawn in colours that resolve to nothing",
        pg.evaluate("""()=>{const b=document.getElementById('navBtn');
           const r=b.getBoundingClientRect();
-          const c=getComputedStyle(b);
-          const bc=getComputedStyle(b.querySelector('span')).backgroundColor;
-          return r.width>20 && r.height>20 &&
-                 c.borderTopWidth!=='0px' &&
-                 bc!=='rgba(0, 0, 0, 0)' && bc!=='transparent';}"""))
+          const bars=[...b.querySelectorAll('span')];
+          const lit=bars.every(s=>{
+            const sr=s.getBoundingClientRect();
+            const sc=getComputedStyle(s).backgroundColor;
+            return sr.width>0 && sr.height>0 &&
+                   sc!=='rgba(0, 0, 0, 0)' && sc!=='transparent';});
+          return r.width>20 && r.height>20 && bars.length===3 && lit;}"""))
     #  The same list as every other page, in the same order, minus this one.
     #  The owner reported pressing hamburgers everywhere and none of them
     #  agreeing: the older pages did agree with each other, and the two newest
