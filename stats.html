@@ -6,8 +6,17 @@
 <link rel="manifest" href="manifest.json">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Nala · Statistics</title>
-<link rel="stylesheet" href="nala-ui2.css?v=4">
+<link rel="stylesheet" href="nala-ui2.css?v=5">
 <style>
+  /* This page's OWN colours, restored 29 Aug. The first conversion
+     dropped each page's :root wholesale to remove the tokens the shared
+     sheet owns, and took these with them. An undefined custom property
+     does not fall back, it computes to nothing: fill:var(--dine) became
+     a black fork and color:var(--dine) a black stat, silently.
+     --green is not in the shared sheet on purpose - it is a pale fill on
+     five pages and a dark ink on two - so it lives here.               */
+  :root { --green:#5E7D67 }
+
   body { padding:28px 24px 60px; }
   
   .wrap { max-width:520px; margin:0 auto; }

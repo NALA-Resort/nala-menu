@@ -9,9 +9,18 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Pre-arrival SMS</title>
-<link rel="stylesheet" href="nala-ui2.css?v=4">
+<link rel="stylesheet" href="nala-ui2.css?v=5">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
+  /* This page's OWN colours, restored 29 Aug. The first conversion
+     dropped each page's :root wholesale to remove the tokens the shared
+     sheet owns, and took these with them. An undefined custom property
+     does not fall back, it computes to nothing: fill:var(--dine) became
+     a black fork and color:var(--dine) a black stat, silently.
+     --green is not in the shared sheet on purpose - it is a pale fill on
+     five pages and a dark ink on two - so it lives here.               */
+  :root { --green:#E4EDE2 }
+
   body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
   
 

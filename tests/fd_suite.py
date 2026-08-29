@@ -281,6 +281,28 @@ with sync_playwright() as p:
     # it was smaller than the villa number beside it while carrying the one
     # fact the row exists to show at speed. Asserted in rendered pixels, not
     # a class, because the class cannot say how big the stylesheet drew it.
+    #  And the right colour, read from the pixels rather than the class.
+    #  The class check above passed for a day while all three forks were
+    #  drawn BLACK: the conversion had dropped this page's --dine and
+    #  --nodine, and an undefined custom property does not fall back, it
+    #  computes to nothing. The classes were right the whole time. The
+    #  reasoning on the size assertion below - "the class cannot say how
+    #  big the stylesheet drew it" - is exactly as true of colour.
+    forkcol = pg.evaluate("""()=>{const probe=v=>{const e=document.createElement('span');
+        e.style.color='var('+v+')';document.body.appendChild(e);
+        const c=getComputedStyle(e).color;e.remove();return c;};
+      const f=c=>{const e=document.querySelector('.arr .fork.'+c+' svg');
+        return e?getComputedStyle(e).fill:null;};
+      return {in:f('in'), out:f('out'), un:f('un'),
+              dine:probe('--dine'), nodine:probe('--nodine'), mid:probe('--mid')};}""")
+    print("   fork colours:", forkcol)
+    ck("a fork for a guest who is dining wears the dining colour",
+       forkcol["in"] == forkcol["dine"])
+    ck("and one for a guest who is not wears the not-dining colour",
+       forkcol["out"] == forkcol["nodine"])
+    ck("and one nobody has answered for stays the quiet grey",
+       forkcol["un"] == forkcol["mid"])
+
     ck("the fork is big enough to read across a desk",
        pg.evaluate("()=>{const e=document.querySelector('.arr .fork');"
                    "const r=e.getBoundingClientRect();"
@@ -603,8 +625,15 @@ with sync_playwright() as p:
     # directly with the two stay lengths, because the fixture's amber row is
     # a multi night stay and a row assertion alone cannot tell a correct
     # denominator from a hard coded six.
+    #  Both departures are counted FROM today rather than written down. The
+    #  one night stay was the literal 2026-08-29, which was one night while
+    #  it was the 28th and became a zero night stay the moment the date
+    #  rolled over - the suite went red at midnight having tested nothing.
+    #  The same fault the tally suite was taken off the clock for.
     den = pg.evaluate("""(t)=>{
-      const long={arrive:t, depart:'2026-09-04'}, one={arrive:t, depart:'2026-08-29'};
+      const plus=n=>{const d=new Date(t+'T12:00:00');d.setDate(d.getDate()+n);
+        return d.toISOString().slice(0,10);};
+      const long={arrive:t, depart:plus(6)}, one={arrive:t, depart:plus(1)};
       const p={dining:true, noDiets:true};
       return [answeredCount(p,long).of, answeredCount(p,one).of];}""", today)
     print("   denominators [multi, one night]:", den)

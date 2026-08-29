@@ -9,9 +9,18 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Front Desk Arrival</title>
-<link rel="stylesheet" href="nala-ui2.css?v=4">
+<link rel="stylesheet" href="nala-ui2.css?v=5">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
+  /* This page's OWN colours, restored 29 Aug. The first conversion
+     dropped each page's :root wholesale to remove the tokens the shared
+     sheet owns, and took these with them. An undefined custom property
+     does not fall back, it computes to nothing: fill:var(--dine) became
+     a black fork and color:var(--dine) a black stat, silently.
+     --green is not in the shared sheet on purpose - it is a pale fill on
+     five pages and a dark ink on two - so it lives here.               */
+  :root { --dine:#5E7D67; --green:#E4EDE2; --nodine:#9E6455 }
+
   body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
   
 
@@ -690,9 +699,16 @@ function etaLabel(p){
   return p.arriveNote ? ETA_SLOTS[i][1] + ' \u00b7 ' + p.arriveNote : ETA_SLOTS[i][1];
 }
 
+/* The glyph is tall and narrow - 18.5 units of 24 high but only 11.3 wide -
+   so it sat almost against the top and bottom of its box while floating in
+   the middle horizontally, which reads as cropped. Reported by the owner,
+   29 Aug. Scaled to 86% about the centre so it has four units of air top and
+   bottom, the usual icon safe area, and the paths themselves are untouched. */
 var ICON_FORK = '<svg viewBox="0 0 24 24" stroke-width="0">' +
+  '<g transform="translate(12 12) scale(.86) translate(-12 -12)">' +
   '<path d="M6.2 2.5v6a2.4 2.4 0 001.6 2.3V21h1.6v-10.2A2.4 2.4 0 0011 8.5v-6H9.6v5.2H8.7V2.5H7.3v5.2h-.9V2.5H6.2z"/>' +
-  '<path d="M15.6 2.5c-1.5 0-2.5 1.9-2.5 5.1 0 2.4.7 3.9 1.8 4.3V21h1.6V2.5h-.9z"/></svg>';
+  '<path d="M15.6 2.5c-1.5 0-2.5 1.9-2.5 5.1 0 2.4.7 3.9 1.8 4.3V21h1.6V2.5h-.9z"/>' +
+  '</g></svg>';
 
 /* Every question on the pre-arrival form is mandatory, so a submitted form
    always carries a dining answer and "form done, dinner unanswered" cannot

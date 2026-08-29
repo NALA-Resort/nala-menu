@@ -295,6 +295,49 @@ with sync_playwright() as p:
     if bad_zoom: print("   user-scalable=no:", bad_zoom)
 
 
+# The pages wearing the second dress, used by both checks below.
+_dressed = [f for f in sorted(_g.glob("*.html"))
+            if not f.startswith(("demo-", "mock-"))
+            and _r.search(r'<body[^>]*class="[^"]*\bui2\b', open(f, encoding="utf-8").read())]
+
+# ── no page asks for a token nobody defines ──────────────────────────
+#  An undefined custom property is SILENT. It does not fall back and it
+#  does not warn: the declaration is thrown away and the property takes
+#  its inherited or initial value. fill:var(--dine) with no --dine is a
+#  black fork, not a missing one, and colour:var(--dine) is black text
+#  that looks deliberate.
+#
+#  This shipped. Converting the pages dropped each :root wholesale to
+#  remove the tokens the shared sheet owns, and took the pages' OWN
+#  tokens with them - front desk lost --dine and --nodine, so every fork
+#  and every stat on that board drew black for a day. The suite passed,
+#  because it asserted the class name and a class cannot say what colour
+#  the stylesheet drew.
+_undef = []
+with sync_playwright() as p4:
+    b4 = p4.chromium.launch()
+    for f in _dressed:
+        #  Comments stripped first. The restore commit explains itself with
+        #  "fill:var(--dine) became a black fork", and a checker that reads
+        #  prose as code reports the very token it is describing. Same fault
+        #  the ownership check had, made twice.
+        want = sorted(set(_r.findall(r'var\(\s*(--[a-z0-9-]+)',
+                          decomment(open(f, encoding="utf-8").read()))))
+        q = b4.new_page(viewport={"width": 390, "height": 844})
+        q.add_init_script(SDK)
+        q.add_init_script("window.__EMAIL='admin@nalaresort.com.au';")
+        q.goto("http://localhost:8966/" + f)
+        q.wait_for_timeout(600)
+        gone = q.evaluate("""(names)=>{const cs=getComputedStyle(document.body);
+            return names.filter(n=>cs.getPropertyValue(n).trim()==='');}""", want)
+        q.close()
+        if gone:
+            _undef.append(f + ": " + ", ".join(gone))
+    b4.close()
+ck("no page asks for a token nobody defines", not _undef)
+for x in _undef:
+    print("   undefined:", x)
+
 # ── every control has a shape ────────────────────────────────────────
 #  Reported by the owner off a screenshot, 29 Aug: the Reservations sheet's
 #  buttons were square while everything round them was rounded. The radius
@@ -306,9 +349,6 @@ with sync_playwright() as p:
 #  A missing declaration is invisible to a grep, so this one reads the
 #  rendered page. The footer row is exempt by the corner law: it sits hard
 #  against the bottom of the screen and squares off on purpose.
-_dressed = [f for f in sorted(_g.glob("*.html"))
-            if not f.startswith(("demo-", "mock-"))
-            and _r.search(r'<body[^>]*class="[^"]*\bui2\b', open(f, encoding="utf-8").read())]
 _square = []
 with sync_playwright() as p2:
     b2 = p2.chromium.launch()
