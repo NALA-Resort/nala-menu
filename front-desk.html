@@ -112,10 +112,8 @@
   .fork svg { width:100%; height:100%; display:block; }
   .fork.in  svg { fill:var(--dine); }
   .fork.out svg { fill:var(--nodine); }
-  /* Grey stays the quietest of the three - unknown promises nothing, the
-     colour law - but .6 at this size was faint enough to be missed rather
-     than merely quiet. */
-  .fork.un  svg { fill:var(--mid); opacity:.75; }
+  /* There is no .fork.un any more: an unanswered booking draws no fork.
+     See forkFor. */
 
   /* Opened the message and did not finish. Outlined rather than filled, so it
      reads as the absence of an answer rather than as one.
@@ -704,11 +702,21 @@ function etaLabel(p){
    the middle horizontally, which reads as cropped. Reported by the owner,
    29 Aug. Scaled to 86% about the centre so it has four units of air top and
    bottom, the usual icon safe area, and the paths themselves are untouched. */
-var ICON_FORK = '<svg viewBox="0 0 24 24" stroke-width="0">' +
-  '<g transform="translate(12 12) scale(.86) translate(-12 -12)">' +
-  '<path d="M6.2 2.5v6a2.4 2.4 0 001.6 2.3V21h1.6v-10.2A2.4 2.4 0 0011 8.5v-6H9.6v5.2H8.7V2.5H7.3v5.2h-.9V2.5H6.2z"/>' +
-  '<path d="M15.6 2.5c-1.5 0-2.5 1.9-2.5 5.1 0 2.4.7 3.9 1.8 4.3V21h1.6V2.5h-.9z"/>' +
-  '</g></svg>';
+/* Redrawn 29 Aug. The old path was malformed rather than badly framed,
+   which is why scaling it did nothing: its three tines should have been
+   1.4 units wide each, but the outline started 1.2 units too far right, so
+   the leftmost tine was 0.2 wide - a sliver against two full tines, which
+   reads exactly like an icon sliced off at the edge. Reported twice by the
+   owner before I looked at the geometry instead of the viewBox.
+   Even tines, a rounded bowl, and a blade on a straight spine. Content
+   sits x 4.8-19.4, y 3-21 in a 24 box, so it has air on every side. */
+var ICON_FORK = '<svg viewBox="0 0 24 24">' +
+  '<path d="M4.8 3h1.4v6H4.8z"/><path d="M7.3 3h1.4v6H7.3z"/>' +
+  '<path d="M9.8 3h1.4v6H9.8z"/>' +
+  '<path d="M4.8 8.4h6.4v.8a3.2 3.2 0 0 1-6.4 0z"/>' +
+  '<path d="M7.3 11.4h1.4V21H7.3z"/>' +
+  '<path d="M16.6 3c1.9 0 2.8 2.6 2.8 5.2 0 2.4-.9 4-2.8 4.8z"/>' +
+  '<path d="M16.6 11.8H18V21h-1.4z"/></svg>';
 
 /* Every question on the pre-arrival form is mandatory, so a submitted form
    always carries a dining answer and "form done, dinner unanswered" cannot
@@ -722,10 +730,16 @@ var ICON_FORK = '<svg viewBox="0 0 24 24" stroke-width="0">' +
 
    The undefined case is still handled rather than assumed away: a mandatory
    field is a rule in a form, not a guarantee from a database. */
+/* Only two states draw. Ruled by the owner, 29 Aug: a solid grey knife and
+   fork does not say "nobody has answered", it says something the reader has
+   to stop and decode, and an icon that means "no information" is worth less
+   than the space it takes. Dining is green, not dining is terracotta, and an
+   unanswered booking simply has no fork - which the row already says, in the
+   section it is filed under and in the count above.                      */
 function forkFor(p){
-  var cls = (p && p.dining === true) ? 'in'
-          : ((p && p.dining === false) ? 'out' : 'un');
-  return '<span class="fork ' + cls + '">' + ICON_FORK + '</span>';
+  if (!p || (p.dining !== true && p.dining !== false)) return '';
+  return '<span class="fork ' + (p.dining ? 'in' : 'out') + '">' +
+         ICON_FORK + '</span>';
 }
 
 function dayLabel(key){

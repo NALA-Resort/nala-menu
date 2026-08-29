@@ -294,14 +294,14 @@ with sync_playwright() as p:
       const f=c=>{const e=document.querySelector('.arr .fork.'+c+' svg');
         return e?getComputedStyle(e).fill:null;};
       return {in:f('in'), out:f('out'), un:f('un'),
-              dine:probe('--dine'), nodine:probe('--nodine'), mid:probe('--mid')};}""")
+              dine:probe('--dine'), nodine:probe('--nodine')};}""")
     print("   fork colours:", forkcol)
     ck("a fork for a guest who is dining wears the dining colour",
        forkcol["in"] == forkcol["dine"])
     ck("and one for a guest who is not wears the not-dining colour",
        forkcol["out"] == forkcol["nodine"])
-    ck("and one nobody has answered for stays the quiet grey",
-       forkcol["un"] == forkcol["mid"])
+    ck("and nobody has answered draws no fork to colour at all",
+       forkcol["un"] is None)
 
     ck("the fork is big enough to read across a desk",
        pg.evaluate("()=>{const e=document.querySelector('.arr .fork');"
@@ -316,9 +316,12 @@ with sync_playwright() as p:
     # Every question on the form is mandatory, so a submitted form always has a
     # dining answer and grey can only mean no form. No form is a tentative yes,
     # which the kitchen cooks for, so it earns an icon rather than a blank.
-    ck("a guest with no form still carries a fork, greyed", fork("2") == "fork un")
+    #  Was "still carries a fork, greyed". Ruled by the owner 29 Aug: a solid
+    #  grey knife and fork does not say "nobody has answered", it says
+    #  something the reader has to decode. Only dining and not dining draw.
+    ck("a guest with no form carries no fork at all", fork("2") is None)
     # Grey is a real answer: they filled the form in and left dinner open.
-    ck("and so does one who opened the link and stopped", fork("14") == "fork un")
+    ck("and neither does one who opened the link and stopped", fork("14") is None)
 
 
     # Opened the pre-arrival link and did not finish. A different message from
@@ -328,7 +331,7 @@ with sync_playwright() as p:
         return pg.evaluate("()=>!!document.querySelector('.arr[data-villa=\"%s\"] .seen')" % v)
     ck("a guest who opened the link and stopped shows it", seen("14"))
     ck("a guest who never opened it carries no link icon, only the grey fork",
-       not seen("2") and fork("2") == "fork un")
+       not seen("2") and fork("2") is None)
     ck("and one who submitted has nothing left to say", not seen("4"))
 
     # The tint reads completeness, the owner's ruling of 26 Aug: grey until
@@ -698,9 +701,11 @@ with sync_playwright() as p:
     ck("the summary reads the question as unanswered again",
        "Not answered" in sumtxt and "Not dining" not in sumtxt
        and "Not interested" not in sumtxt)
-    ck("the fork goes back to grey",
-       pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"] .fork')"
-                   ".className") == "fork un")
+    #  Was "goes back to grey". There is no grey fork now: clearing the
+    #  answer removes the icon, which is the same fact said by absence.
+    ck("the fork goes away again",
+       pg.evaluate("()=>{const e=document.querySelector("
+                   "'.arr[data-villa=\"4\"] .fork'); return e?e.className:null;}") is None)
     ck("and the row drops from green to part answered",
        "part-form" in pg.evaluate(
          "()=>document.querySelector('.arr[data-villa=\"4\"]').className"))
