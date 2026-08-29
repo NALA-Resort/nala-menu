@@ -407,13 +407,19 @@ None of these can move without him.
       events; nothing breaks, nothing buzzes. The masseuse's phone also has
       to subscribe once: his own hamburger menu, Settings, Notifications -
       the toggle every login carries.
-12. **Write the pre-arrival form's two notes, and paste the 29 Aug rules.**
-    Settings gained a Guest form tab: an About Nala note for the form's
-    welcome screen and a Dining note for above its first-night dinner
-    question, both his words, both at `/prearrivalinfo`, both invisible on
-    the form until written. A line that is only a photo's https address
-    draws as that photo (his own website's CDN is the intended source; a
-    rotted link removes itself rather than showing broken). The paste is what lets a guest READ them - a
+12. **Fill the Guest form tab, and paste the SECOND 29 Aug rules.** The
+    tab owns everything the pre-arrival form says in his words, at
+    `/prearrivalinfo`: a welcome image for the landing (an image only -
+    his ruling, after a day of owner text there), a dining image and text
+    that make a page of their own before the dinner question, and a Read
+    more replacement per page (empty keeps the built-in words, which the
+    tab shows as placeholders read from prearrival.html itself). Photo
+    lines in the dining text still draw as photos; rotted links remove
+    themselves. The node was RESHAPED the same day it first shipped, so
+    the rules paste that already happened covers only the retired
+    `resort`/`dining` fields - paste again. Those two retired fields stay
+    validated solely so a Settings tab open across the changeover cannot
+    have its save refused; drop them at the next touch of the node. The paste is what lets a guest READ them - a
     guest holds no login, and until `rules.json` (which gained the node,
     public read, management write, 4000 characters a note) is pasted into
     the console, the node sits under the catch-all rule, which refuses a

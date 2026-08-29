@@ -601,6 +601,44 @@
     "prearrivalinfo": {
       ".read": true,
       ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager')",
+      "welcomeImage": {
+        ".validate": "newData.isString() && newData.val().length <= 500 && (newData.val() == '' || newData.val().beginsWith('https://'))"
+      },
+      "diningImage": {
+        ".validate": "newData.isString() && newData.val().length <= 500 && (newData.val() == '' || newData.val().beginsWith('https://'))"
+      },
+      "diningText": {
+        ".validate": "newData.isString() && newData.val().length <= 4000"
+      },
+      "more": {
+        "companion": {
+          ".validate": "newData.isString() && newData.val().length <= 2000"
+        },
+        "purpose": {
+          ".validate": "newData.isString() && newData.val().length <= 2000"
+        },
+        "eta": {
+          ".validate": "newData.isString() && newData.val().length <= 2000"
+        },
+        "approach": {
+          ".validate": "newData.isString() && newData.val().length <= 2000"
+        },
+        "dine": {
+          ".validate": "newData.isString() && newData.val().length <= 2000"
+        },
+        "diet": {
+          ".validate": "newData.isString() && newData.val().length <= 2000"
+        },
+        "well": {
+          ".validate": "newData.isString() && newData.val().length <= 2000"
+        },
+        "else": {
+          ".validate": "newData.isString() && newData.val().length <= 2000"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
       "resort": {
         ".validate": "newData.isString() && newData.val().length <= 4000"
       },

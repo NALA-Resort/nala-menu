@@ -234,12 +234,12 @@
       <div class="greet" id="greet">Before you arrive</div>
       <div class="sub" id="sub"></div>
     </header>
-    <!-- The owner's welcome: what Nala is, written in Settings (Guest form)
-         and stored at /prearrivalinfo. Under the greeting and before Begin,
-         on every stay length, so the form informs as well as asks. Empty
-         when no text is set - or the read is refused - and the landing is
-         exactly what it was before the block existed. -->
-    <div id="resortInfo"></div>
+    <!-- The welcome image, from Settings (Guest form) at /prearrivalinfo.
+         An image and only an image: the landing carried owner text for a
+         day and he ruled it ugly (29 Aug) - the greeting and the photo say
+         it. Empty when none is set, or the read is refused, and the
+         landing is exactly what it was before. -->
+    <div id="welcomeImg"></div>
     <!-- No number: the count runs five to eight with the party and the
          stay, and a promise of eight to a guest asked five reads as an
          error somewhere, theirs or ours. -->
@@ -311,14 +311,20 @@
       <div class="opts" id="approachOpts"></div>
     </div>
 
+    <!-- the dining page: the owner's image and words about dinner at Nala,
+         a page of its own with the dinner question following it - ruled 29
+         Aug, replacing the note that sat stacked above the question. It
+         asks nothing and carries no Read more, because it IS the reading;
+         missingOn knows no such id, so it never blocks, and it owns no
+         fields, so leaving it writes nothing. Hidden until Settings gives
+         it an image or words, and the walk is what it always was. -->
+    <div class="q" id="qDining" style="display:none">
+      <div id="diningImg"></div>
+      <div id="diningText"></div>
+    </div>
+
     <!-- 2. dinner on the arrival night -->
     <div class="q" id="qDine">
-      <!-- The owner's dining note, the other half of /prearrivalinfo. Above
-           the question, on every stay length: how dinner here works is read
-           before the guest is asked to commit to it, the same rule that
-           keeps the seating time in dineHelp rather than behind Read more.
-           Empty when no text is set, and the page is what it always was. -->
-      <div id="diningInfo"></div>
       <div class="q-t">Will you be dining with us on your first night?</div>
       <div class="q-h" id="dineHelp">Dinner begins between 6:00 and 6:30pm.</div>
       <!-- The owner's words, 23 Aug, replacing the 18 Aug placeholder. -->
@@ -633,6 +639,9 @@ function paintGreeting(pms){
   /* Dates may have just changed hands, and the day chips are built from
      them: repaint, so a guest mid-form is offered the days Mews knows. */
   paintWell();
+  /* The one-night bending above rewrote qDine's built-in Read more; the
+     owner's replacement, if he wrote one, goes back on top. */
+  setMoreTexts();
   resyncSteps();
 }
 
@@ -842,6 +851,61 @@ function paintWell(){
    guest's phone says something is wrong with a form that is fine. An
    address inside a sentence stays text: only the whole line speaks. */
 function infoIsPhoto(line){ return /^https:\/\/\S+$/i.test(line); }
+function infoImg(url){
+  var im = document.createElement('img');
+  im.className = 'info-img';
+  im.alt = '';
+  im.loading = 'lazy';
+  im.onerror = function(){ im.remove(); };
+  im.src = url;
+  return im;
+}
+/* An image field into its host: one image or nothing, same self-removal
+   on a rotted address as a photo line. */
+function setInfoImg(id, url){
+  var host = el(id); host.innerHTML = '';
+  url = String(url || '').trim();
+  if (infoIsPhoto(url)) host.appendChild(infoImg(url));
+}
+
+/* The owner's Read more words, keyed by page, from Settings. A filled one
+   REPLACES the built-in copy; an empty one keeps it. Reapplied at the end
+   of paintGreeting, because that bends the built-in qDine copy to a one
+   night stay and must never bend the owner's own words. */
+var INFO_MORE = {};
+var MORE_MAP = { companion:'qCompanion', purpose:'qPurpose', eta:'qEta',
+                 approach:'qApproach', dine:'qDine', diet:'qDiet',
+                 well:'qWell', 'else':'qElse' };
+function setMoreTexts(){
+  Object.keys(MORE_MAP).forEach(function(k){
+    var text = (typeof INFO_MORE[k] === 'string') ? INFO_MORE[k].trim() : '';
+    if (!text) return;
+    var b = document.querySelector('#' + MORE_MAP[k] + ' .more-b');
+    if (b) b.textContent = text;
+  });
+}
+
+/* Everything /prearrivalinfo drives, applied in one stroke, real link and
+   demo alike: the welcome image onto the landing, the dining page's image
+   and words (the page joins the walk only when it has either), and the
+   Read more replacements. Returns whether anything was set, which is what
+   the demo banner line wants to know. resyncSteps is the companion
+   machinery: the count changes under a guest already walking. */
+function applyGuestInfo(info){
+  if (!info) return false;
+  INFO_MORE = (info.more && typeof info.more === 'object') ? info.more : {};
+  if (typeof info.welcomeImage === 'string') setInfoImg('welcomeImg', info.welcomeImage);
+  if (typeof info.diningImage === 'string') setInfoImg('diningImg', info.diningImage);
+  if (typeof info.diningText === 'string') fillInfo('diningText', info.diningText);
+  var hasDining = !!(String(info.diningImage || '').trim() ||
+                     String(info.diningText || '').trim());
+  el('qDining').style.display = hasDining ? '' : 'none';
+  setMoreTexts();
+  resyncSteps();
+  return !!(String(info.welcomeImage || '').trim() || hasDining ||
+            Object.keys(INFO_MORE).some(function(k){
+              return String(INFO_MORE[k] || '').trim(); }));
+}
 function fillInfo(id, text){
   var host = el(id); host.innerHTML = '';
   var run = [];
@@ -858,13 +922,7 @@ function fillInfo(id, text){
     line = line.trim();
     if (infoIsPhoto(line)){
       flushRun();
-      var im = document.createElement('img');
-      im.className = 'info-img';
-      im.alt = '';
-      im.loading = 'lazy';
-      im.onerror = function(){ im.remove(); };
-      im.src = line;
-      host.appendChild(im);
+      host.appendChild(infoImg(line));
       return;
     }
     /* A blank line ends a paragraph; anything else joins the current one. */
@@ -917,6 +975,7 @@ var STEPS = [
   { id:'qPurpose',   fields:['purpose'] },
   { id:'qEta',       fields:['arriveSlot','arriveNote'] },
   { id:'qApproach',  fields:['approach'] },
+  { id:'qDining',    fields:[] },
   { id:'qDine',      fields:['dining','pax'] },
   { id:'qDiet',      fields:['diets','noDiets','dnote'] },
   { id:'qWell',      fields:['wellness','wellDay','wellTime'] },
@@ -994,6 +1053,9 @@ function saveStep(idx){
   live[idx].fields.forEach(function(f){
     if (all[f] !== undefined) out[f] = all[f];
   });
+  /* The dining page owns no fields, so leaving it has nothing to say: an
+     empty PATCH is a write for nothing and shows up as one in any log. */
+  if (!Object.keys(out).length) return;
   /* No `at`. That is the finished stamp and this is not finished. */
   db('/bookings/' + G.id + '/prearrival', 'PATCH', out).catch(function(){});
 }
@@ -1259,23 +1321,20 @@ function boot(){
     demoDiet.className = 'sub';
     demoDiet.textContent = 'The dietary pills are examples, not your live list.';
     banner.appendChild(demoDiet);
-    /* The notes are the exception to the pills' rule: the demo shows them
-       live, because they are public and about nobody, and the demo is
-       exactly where the owner looks after writing them. Until they can be
-       read - not yet written, or the rules paste still pending - this line
-       says where they will come from, so their absence reads as unfinished
-       setup rather than a failed save (the pills' 27 Aug trap). */
+    /* The Guest form record is the exception to the pills' rule: the demo
+       shows it live, because it is public and about nobody, and the demo
+       is exactly where the owner looks after writing it. Until it can be
+       read - nothing saved yet, or the rules paste still pending - this
+       line says where it will come from, so its absence reads as
+       unfinished setup rather than a failed save (the pills' 27 Aug
+       trap). */
     var demoInfo = document.createElement('div');
     demoInfo.className = 'sub';
     demoInfo.textContent =
-      'The notes written in Settings will show here once saved.';
+      'What is written in Settings will show here once saved.';
     banner.appendChild(demoInfo);
     db('/prearrivalinfo').then(function(info){
-      if (!info) return;
-      if (typeof info.resort === 'string') fillInfo('resortInfo', info.resort);
-      if (typeof info.dining === 'string') fillInfo('diningInfo', info.dining);
-      if ((info.resort || '').trim() || (info.dining || '').trim())
-        demoInfo.remove();
+      if (applyGuestInfo(info)) demoInfo.remove();
     }).catch(function(){});
     /* The way back to the editor, closing the write-preview loop the
        Guest form tab's Preview link opens. Demo only, deliberately: this
@@ -1318,17 +1377,11 @@ function boot(){
     .then(function(pms){ if (pms) paintGreeting(pms); })
     .catch(function(){});
 
-  /* The owner's two notes, written from Settings (Guest form) at
-     /prearrivalinfo: what Nala is, onto the landing, and how dinner works,
-     onto the dinner question. With no text set - or a read the rules
-     refuse - both blocks stay empty and the form is exactly what it was
-     before they existed. No state and no steps change hands here, so
-     nothing has to resync. */
-  db('/prearrivalinfo').then(function(info){
-    if (!info) return;
-    if (typeof info.resort === 'string') fillInfo('resortInfo', info.resort);
-    if (typeof info.dining === 'string') fillInfo('diningInfo', info.dining);
-  }).catch(function(){});
+  /* Everything Settings (Guest form) drives, from /prearrivalinfo: the
+     welcome image, the dining page, the Read more replacements. With
+     nothing set - or a read the rules refuse - the form is exactly what
+     it was before any of it existed. */
+  db('/prearrivalinfo').then(applyGuestInfo).catch(function(){});
 
   /* The chef's master list, so the choices here match the ones the kitchen
      actually recognises. Inactive entries never reach a guest.

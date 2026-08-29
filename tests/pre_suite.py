@@ -169,9 +169,12 @@ with sync_playwright() as p:
     # them is shut. The constraint lives in there; the invitation stays on the
     # page. The details element became a plain button on 23 Aug, to the
     # approved mockup, but the rule it obeys did not change.
+    #  Every page except the dining one, which asks nothing and carries no
+    #  Read more because it IS the reading.
     ck("every page can explain why it is asking",
        pg.evaluate("()=>[...document.querySelectorAll('.q')]"
-                   ".every(q=>q.querySelector('.more')&&q.querySelector('.more-b'))"))
+                   ".every(q=>q.id==='qDining'||"
+                   "(q.querySelector('.more')&&q.querySelector('.more-b')))"))
     ck("and none of them is open to begin with",
        pg.evaluate("()=>!document.querySelector('.more-b.show')"))
     ck("the button says Read more while shut",
@@ -607,107 +610,108 @@ with sync_playwright() as p:
            word not in pg.locator("#" + qid + " .q-h").inner_text())
     pg.close()
 
-    # ── the owner's two notes, written from Settings ────────────
-    #  /prearrivalinfo, the Guest form tab's record: `resort` draws on the
-    #  landing under the greeting, `dining` above the first-night dinner
-    #  question, so the form informs as well as asks - in the owner's words
-    #  rather than shipped copy. The words are typed by staff and read in a
-    #  guest's browser, so they land as text, never markup. Nothing about
-    #  the walk changes hands: no step, no required answer, no write. The
-    #  editor's half of this contract is in spa_suite, which already drives
-    #  staff.html signed in.
-    STATE["info"] = {"resort": "Nala is seventeen villas on a hillside."
-                               "\n\nDays here are slow on purpose.",
-                     "dining": "Dinner is one menu, written each morning\n"
-                               "around what is best that day."}
+    # ── the guest form's own content, written from Settings ─────
+    #  /prearrivalinfo drives three things. The welcome image on the
+    #  landing - an image and ONLY an image, owner text there was ruled
+    #  ugly (29 Aug). The dining page - the owner's image and words on a
+    #  page of their own, with the dinner question following. And the Read
+    #  more replacements, where a filled entry replaces the built-in copy
+    #  and an empty one keeps it. Everything lands as text or an <img>,
+    #  never markup. The editor's half of this contract is in spa_suite,
+    #  which already drives staff.html signed in.
+    STATE["info"] = {
+        "welcomeImage": "https://photos.test/villa.jpg",
+        "diningImage": "https://photos.test/dinner.jpg",
+        "diningText": "Dinner is one menu, written each morning\n"
+                      "around what is best that day.\n\n"
+                      "It is served at your villa or by the pool.",
+        "more": {"dine": "The owner's own words about how dinner works."}}
     pg = guest(begin=False)
-    ck("the welcome note is on the landing, in the owner's words",
-       "seventeen villas" in pg.locator("#resortInfo").inner_text())
-    ck("as paragraphs, split on the blank line",
-       pg.evaluate("()=>document.querySelectorAll('#resortInfo .info-p').length") == 2)
-    ck("under the greeting and above Begin",
-       pg.evaluate("()=>greet.getBoundingClientRect().bottom"
-                   "<=resortInfo.getBoundingClientRect().top+1") and
-       pg.evaluate("()=>resortInfo.getBoundingClientRect().bottom"
-                   "<=begin.getBoundingClientRect().top+1"))
+    pg.wait_for_timeout(300)
+    ck("the welcome image is on the landing",
+       pg.evaluate("()=>{var i=welcomeImg.querySelector('img');"
+                   "return i?i.src:null;}") == "https://photos.test/villa.jpg")
+    ck("an image and only an image - no text rides along",
+       pg.evaluate("()=>welcomeImg.children.length") == 1 and
+       pg.evaluate("()=>welcomeImg.textContent.trim()") == "")
     pg.locator("#begin").click(); pg.wait_for_timeout(250)
-    jump(pg, "qDine")
-    ck("the dining note sits above the dinner question",
-       "one menu" in pg.locator("#diningInfo").inner_text() and
-       pg.evaluate("()=>diningInfo.getBoundingClientRect().bottom"
-                   "<=document.querySelector('#qDine .q-t')"
-                   ".getBoundingClientRect().top+1"))
-    ck("a single line break is soft wrap, not a new paragraph",
-       pg.evaluate("()=>document.querySelectorAll('#diningInfo .info-p').length") == 1)
-    ck("and the notes add no page to the walk",
-       pg.evaluate("()=>liveSteps().map(s=>s.id).join(',')") ==
-       "qPurpose,qEta,qApproach,qDine,qDiet,qWell,qElse")
+    live = pg.evaluate("()=>liveSteps().map(s=>s.id)")
+    ck("the dining page joins the walk, the dinner question following it",
+       "qDining" in live and
+       live.index("qDining") + 1 == live.index("qDine"))
+    jump(pg, "qDining")
+    ck("its image tops the page, the words beneath",
+       pg.evaluate("()=>{var i=diningImg.querySelector('img');"
+                   "return i?i.src:null;}") == "https://photos.test/dinner.jpg" and
+       pg.evaluate("()=>diningImg.getBoundingClientRect().bottom"
+                   "<=diningText.getBoundingClientRect().top+1"))
+    ck("as paragraphs, split on the blank line",
+       pg.evaluate("()=>document.querySelectorAll('#diningText .info-p').length") == 2)
     del WRITES[:]
     nxt(pg)
-    ck("a note blocks nothing: the unanswered question still speaks for itself",
-       pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine" and
-       "first night" in pg.locator("#err").inner_text())
+    ck("Next carries straight to the dinner question: the page asks nothing",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine")
     ck("and reading is not answering, so nothing was written",
        len(wrote("/prearrival")) == 0)
+    ck("the owner's Read more replaces the built-in words on the dinner page",
+       pg.evaluate("()=>document.querySelector('#qDine .more-b').textContent")
+       == "The owner's own words about how dinner works.")
+    ck("while a page he left empty keeps its built-in words",
+       "Reception is here until 5pm" in
+       pg.evaluate("()=>document.querySelector('#qEta .more-b').textContent"))
     pg.close()
 
-    #  A one night stay keeps its dinner question, so it keeps the note.
+    #  A one night stay keeps its dinner question, so it keeps the page.
+    #  And the one-night bending of qDine's built-in Read more must never
+    #  bend the owner's replacement, whichever order the fetches land in.
     pg = guest(link="?b=res-guid-1&n=Robyn&s=Williams&a=" + plus(0)
                     + "&d=" + plus(1))
-    jump(pg, "qDine")
-    ck("a one night guest reads the dining note too",
-       "one menu" in pg.locator("#diningInfo").inner_text())
+    ck("a one night guest still gets the dining page",
+       "qDining" in pg.evaluate("()=>liveSteps().map(s=>s.id)"))
+    ck("and the owner's Read more, not the one-night rewrite",
+       pg.evaluate("()=>document.querySelector('#qDine .more-b').textContent")
+       == "The owner's own words about how dinner works.")
     pg.close()
 
-    #  A line that is only a photo's https address becomes that photo, where
-    #  the line sits. The owner pastes addresses from the resort site's own
-    #  CDN, which rewrites them over time, so a dead one removes itself: the
-    #  note must read whole over a rotted link, and a broken-image glyph on
-    #  a guest's phone says something is wrong with a form that is fine. An
-    #  address inside a sentence stays text, and only https speaks.
+    #  The photo-line rule lives on in the dining text, and the guards
+    #  hold: a dead image removes itself (the CDN rewrites addresses, and
+    #  a broken-image glyph says something is wrong with a form that is
+    #  fine), an address inside a sentence stays text, only https speaks,
+    #  and a Read more replacement lands as text, never markup.
     STATE["info"] = {
-        "resort": "Seventeen villas on a hillside.\n\n"
-                  "https://photos.test/villa.jpg\n"
-                  "Days here are slow on purpose.\n\n"
-                  "Our photos live at https://photos.test/menu.jpg online.",
-        "dining": "One menu, written daily.\n"
-                  "https://photos.test/dead/food.jpg\n"
-                  "http://photos.test/notsecure.jpg"}
+        "welcomeImage": "https://photos.test/dead/gone.jpg",
+        "diningText": "One menu, written daily.\n"
+                      "https://photos.test/pool.jpg\n"
+                      "Photos live at https://photos.test/x.jpg online.\n"
+                      "http://photos.test/notsecure.jpg",
+        "more": {"dine": "<b>Bold</b> & <img src=x onerror=boom()>"}}
     pg = guest(begin=False)
-    pg.wait_for_timeout(400)
-    ck("a photo line draws as the photo, where the line sits",
-       pg.evaluate("()=>[...resortInfo.children].map(c=>c.tagName).join(',')")
-       == "DIV,IMG,DIV,DIV" and
-       pg.evaluate("()=>resortInfo.querySelector('img').src")
-       == "https://photos.test/villa.jpg")
-    ck("an address inside a sentence stays text",
-       "https://photos.test/menu.jpg" in pg.locator("#resortInfo").inner_text()
-       and pg.evaluate("()=>resortInfo.querySelectorAll('img').length") == 1)
-    pg.locator("#begin").click(); pg.wait_for_timeout(250)
-    jump(pg, "qDine")
     pg.wait_for_timeout(600)
-    ck("a photo whose address has rotted removes itself, leaving no broken glyph",
-       pg.evaluate("()=>diningInfo.querySelectorAll('img').length") == 0)
-    ck("while the note still reads whole",
-       "One menu" in pg.locator("#diningInfo").inner_text())
-    ck("and only https speaks: a plain http line stays text",
-       "http://photos.test/notsecure.jpg" in pg.locator("#diningInfo").inner_text())
-    pg.close()
-
-    STATE["info"] = {"resort": "<b>Bold</b> & <img src=x onerror=boom()>",
-                     "dining": ""}
-    pg = guest(begin=False)
-    ck("a note is text on the page, never markup",
-       pg.evaluate("()=>resortInfo.querySelector('b,img')") is None and
-       "<b>Bold</b>" in pg.locator("#resortInfo").inner_text())
-    ck("and an empty note draws nothing rather than an empty block",
-       pg.evaluate("()=>diningInfo.children.length") == 0)
+    ck("a welcome image whose address has rotted removes itself",
+       pg.evaluate("()=>welcomeImg.querySelectorAll('img').length") == 0)
+    pg.locator("#begin").click(); pg.wait_for_timeout(250)
+    jump(pg, "qDining")
+    ck("a photo line in the dining text draws as the photo",
+       pg.evaluate("()=>{var i=document.querySelector('#diningText img');"
+                   "return i?i.src:null;}") == "https://photos.test/pool.jpg")
+    ck("an address inside a sentence stays text, and http is not a photo",
+       "https://photos.test/x.jpg" in pg.locator("#diningText").inner_text() and
+       "http://photos.test/notsecure.jpg" in pg.locator("#diningText").inner_text()
+       and pg.evaluate("()=>document.querySelectorAll('#diningText img').length") == 1)
+    ck("a Read more replacement is text on the page, never markup",
+       pg.evaluate("()=>!document.querySelector("
+                   "'#qDine .more-b b, #qDine .more-b img')") and
+       "<b>Bold</b>" in pg.evaluate(
+           "()=>document.querySelector('#qDine .more-b').textContent"))
     pg.close()
 
     STATE["info"] = None
     pg = guest(begin=False)
     ck("with nothing set, the landing is exactly what it was",
-       pg.evaluate("()=>resortInfo.children.length") == 0)
+       pg.evaluate("()=>welcomeImg.children.length") == 0)
+    pg.locator("#begin").click(); pg.wait_for_timeout(200)
+    ck("and the walk has no dining page",
+       "qDining" not in pg.evaluate("()=>liveSteps().map(s=>s.id)"))
     pg.close()
 
     # ── widths ──────────────────────────────────────────────────
@@ -723,10 +727,10 @@ with sync_playwright() as p:
     pg = guest()
     #  Page kickers were added and scrapped within the hour on 23 Aug -
     #  clutter without a proper design pass. Only their spacing survives.
-    ck("the eight pages run who, why, when, the week, tonight, dietaries, "
+    ck("the pages run who, why, when, the week, dining, tonight, dietaries, "
        "treatments, anything else",
        pg.evaluate("()=>STEPS.map(s=>s.id).join(',')") ==
-       "qCompanion,qPurpose,qEta,qApproach,qDine,qDiet,qWell,qElse")
+       "qCompanion,qPurpose,qEta,qApproach,qDining,qDine,qDiet,qWell,qElse")
 
     #  The nine keys, in order, in all four files that hold a copy. A test
     #  that reads one copy proves nothing about the other three, and
@@ -966,8 +970,8 @@ with sync_playwright() as p:
     #  them. Here they cannot be read (this route answers null to
     #  everything), so the banner must say where they will come from -
     #  their absence has to read as unfinished setup, not a failed save.
-    ck("and, while the notes cannot be read, says where they will come from",
-       "notes written in Settings will show here" in q.evaluate(
+    ck("and, while the record cannot be read, says where it will come from",
+       "written in Settings will show here" in q.evaluate(
            "()=>{const n=document.querySelector('#intro .note-box');"
            "return n?n.textContent:'';}"))
     ck("opening it reads the public Settings notes and nothing else",
@@ -1009,22 +1013,28 @@ with sync_playwright() as p:
     q.on("request", lambda r: calls2.append((r.method, r.url))
          if "firebasedatabase.app" in r.url else None)
     def demo_fb(route, request):
-        body = (json.dumps({"resort": "Seventeen villas on a hillside.",
-                            "dining": "One menu, written daily."})
+        body = (json.dumps({"welcomeImage": "https://photos.test/villa.jpg",
+                            "diningText": "One menu, written daily.",
+                            "more": {"dine": "Owner words."}})
                 if "/prearrivalinfo" in request.url else "null")
         route.fulfill(status=200, content_type="application/json", body=body)
     q.route("**firebasedatabase.app/**", demo_fb)
+    q.route("**photos.test/**", photo_route)
     q.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
     q.goto("http://localhost:8967/prearrival.html?b=demo"); q.wait_for_timeout(1500)
-    ck("with the notes readable, the demo shows the owner's welcome note",
-       "Seventeen villas" in q.evaluate("()=>resortInfo.textContent"))
-    ck("and the dining note on its dinner page",
-       "One menu" in q.evaluate("()=>diningInfo.textContent"))
-    ck("and drops the line about where the notes will come from",
+    ck("with the record readable, the demo shows the welcome image",
+       q.evaluate("()=>welcomeImg.querySelectorAll('img').length") == 1)
+    ck("and gains the dining page",
+       "qDining" in q.evaluate("()=>liveSteps().map(s=>s.id)") and
+       "One menu" in q.evaluate("()=>diningText.textContent"))
+    ck("and the owner's Read more on the dinner page",
+       "Owner words." == q.evaluate(
+           "()=>document.querySelector('#qDine .more-b').textContent"))
+    ck("and drops the line about where it will come from",
        "will show here" not in q.evaluate(
            "()=>{const n=document.querySelector('#intro .note-box');"
            "return n?n.textContent:'';}"))
-    ck("still having read only the notes, and written nothing",
+    ck("still having read only the Guest form record, and written nothing",
        all(m == "GET" and "/prearrivalinfo" in u for m, u in calls2))
     q.close()
 

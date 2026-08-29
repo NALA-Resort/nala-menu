@@ -133,7 +133,10 @@ def fb(route, request):
     if "/spasettings" in u:
         body = json.dumps({"price60": 180, "price90": 250, "price120": 310})
     elif "/prearrivalinfo" in u:
-        body = json.dumps({"resort": "Old welcome", "dining": "Old dining"})
+        body = json.dumps({"welcomeImage": "https://photos.test/old.jpg",
+                           "diningImage": "",
+                           "diningText": "Old dining words",
+                           "more": {"dine": "Old dine more"}})
     elif "/staff" in u: body = json.dumps(STAFF)
     elif "/spa.json" in u: body = json.dumps(SPA)
     elif "/stays/" in u:
@@ -785,46 +788,63 @@ with sync_playwright() as p:
     ck("words are refused before they reach the database",
        "whole number" in q.evaluate("()=>spaErr.textContent"))
 
-    # ── the guest form's two notes, written from Settings ───────
-    #  /prearrivalinfo: `resort` on the pre-arrival form's welcome screen,
-    #  `dining` above its dinner question. Tested here beside the prices
+    # ── the guest form's content, written from Settings ─────────
+    #  /prearrivalinfo: the welcome image, the dining page's image and
+    #  text, and the Read more replacements. Tested here beside the prices
     #  because this suite already drives staff.html signed in; the guest
-    #  side of the same words is pre_suite's. One Save for both notes, not
+    #  side of the same record is pre_suite's. One Save for the lot, not
     #  save-on-blur: a half-written paragraph must not publish itself to
     #  guests because the phone rang.
     q.click('.tab[data-t="tGuest"]')
-    q.wait_for_timeout(200)
-    ck("Settings shows the two notes it holds",
-       q.evaluate("()=>giResort.value") == "Old welcome" and
-       q.evaluate("()=>giDining.value") == "Old dining")
+    q.wait_for_timeout(600)
+    ck("Settings shows what the record holds",
+       q.evaluate("()=>giWelcomeImg.value") == "https://photos.test/old.jpg" and
+       q.evaluate("()=>giDiningText.value") == "Old dining words" and
+       q.evaluate("()=>giMore_dine.value") == "Old dine more")
+    #  The built-in Read more words are the placeholders of the boxes that
+    #  replace them, read from prearrival.html itself so one file owns
+    #  them: an empty box must SHOW the words it would keep.
+    ck("an empty Read more box shows the built-in words it keeps",
+       "finalised" in q.evaluate("()=>giMore_dine.placeholder") and
+       "fill quickly" in q.evaluate("()=>giMore_well.placeholder"))
     del WRITES[:]
-    q.fill("#giDining", "Dinner is one menu, finalised each day.")
+    q.fill("#giDiningText", "Dinner is one menu, finalised each day.")
+    q.fill("#giMore_diet", "Owner diet words.")
     q.click("#giSave")
     q.wait_for_timeout(600)
     w5 = [x for x in WRITES if "/prearrivalinfo" in x["u"]]
     body5 = json.loads(w5[0]["b"]) if w5 else {}
-    ck("Save writes both notes in one PATCH, stamped by and at",
+    ck("Save writes the whole record in one PATCH, stamped by and at",
        bool(w5) and w5[0]["m"] == "PATCH" and
-       body5.get("dining") == "Dinner is one menu, finalised each day." and
-       body5.get("resort") == "Old welcome" and
+       body5.get("diningText") == "Dinner is one menu, finalised each day." and
+       body5.get("welcomeImage") == "https://photos.test/old.jpg" and
+       (body5.get("more") or {}).get("diet") == "Owner diet words." and
+       (body5.get("more") or {}).get("dine") == "Old dine more" and
        bool(body5.get("by")) and bool(body5.get("at")))
     ck("and the button rests at Saved, which is the truth",
        "Saved" in q.evaluate("()=>giSave.textContent") and
        q.evaluate("()=>giSave.disabled") is True)
-    q.fill("#giDining", "changed again")
+    q.fill("#giDiningText", "changed again")
     q.wait_for_timeout(150)
     ck("an edit arms Save again", q.evaluate("()=>giSave.disabled") is False)
     del WRITES[:]
-    q.fill("#giResort", "x" * 4001)
+    q.fill("#giWelcomeImg", "the pool one")
     q.click("#giSave")
     q.wait_for_timeout(300)
-    ck("a note past the database's ceiling is refused in words, with the count",
+    ck("an image link that is not an https address is refused in words",
+       "https" in q.evaluate("()=>giErr.textContent") and
+       not [x for x in WRITES if "/prearrivalinfo" in x["u"]])
+    q.fill("#giWelcomeImg", "https://photos.test/old.jpg")
+    q.fill("#giDiningText", "x" * 4001)
+    q.click("#giSave")
+    q.wait_for_timeout(300)
+    ck("a text past the database's ceiling is refused in words, with the count",
        "4000" in q.evaluate("()=>giErr.textContent") and
        not [x for x in WRITES if "/prearrivalinfo" in x["u"]])
     #  The write-preview loop: the tab links to the demo form, and leaving
     #  with unsaved edits asks first. The boxes are dirty right now (the
-    #  over-long fill above), and Playwright dismisses dialogs by default,
-    #  which is the Cancel branch: the page must stay put.
+    #  fills above), and Playwright dismisses dialogs by default, which is
+    #  the Cancel branch: the page must stay put.
     ck("the tab offers the demo form to preview on",
        q.evaluate("()=>{const a=document.getElementById('giDemo');"
                   "return a ? a.getAttribute('href') : null;}")

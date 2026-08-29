@@ -47,10 +47,13 @@
   .note { font-size:var(--t2); color:var(--mid); line-height:1.5; margin-top:10px; }
   /* True white, because they are editable surfaces (the colour law). Their
      own rule rather than a lean on the sheet's: these live in a panel. */
-  #giResort, #giDining { width:100%; min-height:130px; resize:vertical;
-            padding:11px; font-family:var(--ui-font); font-size:var(--t3);
-            line-height:1.5; border:1px solid var(--rule); border-radius:8px;
+  #tGuest textarea, #tGuest input { width:100%; padding:11px;
+            font-family:var(--ui-font); font-size:var(--t3); line-height:1.5;
+            border:1px solid var(--rule); border-radius:8px;
             background:#fff; color:var(--ink); }
+  #tGuest textarea { resize:vertical; }
+  .gi-lab { display:block; font-size:var(--t1); color:var(--mid);
+            margin:12px 0 5px; }
   .err  { font-size:var(--t2); color:var(--red); line-height:1.5; margin-top:10px; }
 
   /* the sheet, same shape as the boards use */
@@ -233,25 +236,29 @@
     </div>
 
     <div class="panel" id="tGuest" role="tabpanel">
-      <div class="seclabel">About Nala &middot; on the welcome screen</div>
-      <textarea id="giResort" rows="6"
-        placeholder="What Nala is. The guest reads it under the greeting, before they begin."></textarea>
-      <div class="seclabel">Dining at Nala &middot; on the dinner question</div>
-      <textarea id="giDining" rows="6"
-        placeholder="How dinner here works. The guest reads it just above &quot;Will you be dining with us on your first night?&quot;"></textarea>
+      <div class="seclabel">Welcome image &middot; on the welcome screen</div>
+      <input id="giWelcomeImg"
+        placeholder="https:// address of a photo from the website">
+      <div class="seclabel">Dining image &middot; tops the dining page</div>
+      <input id="giDiningImg"
+        placeholder="https:// address of a photo from the website">
+      <div class="seclabel">Dining text &middot; under its image</div>
+      <textarea id="giDiningText" rows="6"
+        placeholder="How dinner here works. A blank line starts a new paragraph."></textarea>
+      <div class="seclabel">Read more, page by page &middot; filled replaces
+        the built-in words, empty keeps them</div>
+      <div id="giMoreRows"></div>
       <button class="btn solid" id="giSave">Save</button>
       <a class="btn ghost" id="giDemo" href="prearrival.html?b=demo">Preview
         on the demo form</a>
-      <div class="note">Two notes on the guest's pre-arrival form, so it
-      explains the resort and the food as well as asking about them. The
-      first sits on the welcome screen, under the greeting. The second sits
-      above the first-night dinner question, read just before the guest
-      answers about dining and dietaries. A blank line starts a new
-      paragraph. A line that is only a photo's web address becomes that
-      photo, right where the line sits - paste a sized copy from the
-      website, not an original, and know that a link the website later
-      retires simply stops showing. Leave either note empty and the form
-      goes without it.</div>
+      <div class="note">The guest form's own content, all of it yours. The
+      welcome image sits under the greeting - an image and only an image,
+      by your ruling. The dining image and text make a page of their own,
+      read just before the dinner question. Each Read more box replaces the
+      explanation behind that page's Read more button; the grey text in an
+      empty box IS the built-in wording it would replace. Image links come
+      from the website's photos - a sized copy, not an original - and a
+      link the website later retires simply stops showing.</div>
       <div class="err" id="giErr"></div>
     </div>
   </div>
@@ -744,30 +751,71 @@ function loadSpaPrices(){
 });
 loadSpaPrices();
 
-/* ── the guest form's two notes ────────────────────────────────
+/* ── the guest form's own content ──────────────────────────────
    One record at /prearrivalinfo, public to read the way the spa prices
-   are: the pre-arrival form shows both notes to a guest, and a guest
-   holds no login. `resort` draws on that form's welcome screen, `dining`
-   above its first-night dinner question, and an empty note means no
-   block rather than an empty one.
+   are: the pre-arrival form shows all of this to a guest, and a guest
+   holds no login. `welcomeImage` draws on that form's welcome screen,
+   `diningImage` and `diningText` make its dining page, and `more.<key>`
+   replaces the words behind a page's Read more button when filled.
 
-   One Save for both rather than the prices' save-on-change: a paragraph
-   is written in sittings, and a half-finished thought must not publish
-   itself to guests because a field lost focus. The button rests at Saved
-   until an edit arms it again - the first caller of armSave, which was
-   written on 27 Aug waiting for exactly this shape of surface. */
+   One Save for the lot rather than the prices' save-on-change: a
+   paragraph is written in sittings, and a half-finished thought must not
+   publish itself to guests because a field lost focus. The button rests
+   at Saved until an edit arms it again (armSave). */
+var GI_MORE = [ ['companion', 'Who is coming'],
+                ['purpose',   'Kind of stay'],
+                ['eta',       'Arrival time'],
+                ['approach',  'How often they dine'],
+                ['dine',      'First-night dinner'],
+                ['diet',      'Dietaries'],
+                ['well',      'Massage'],
+                ['else',      'Anything else'] ];
+(function(){
+  var host = document.getElementById('giMoreRows');
+  GI_MORE.forEach(function(p){
+    var l = document.createElement('label');
+    l.className = 'gi-lab'; l.htmlFor = 'giMore_' + p[0]; l.textContent = p[1];
+    var t = document.createElement('textarea');
+    t.id = 'giMore_' + p[0]; t.rows = 2;
+    host.appendChild(l); host.appendChild(t);
+  });
+})();
+function giFields(){
+  return ['giWelcomeImg', 'giDiningImg', 'giDiningText']
+    .concat(GI_MORE.map(function(p){ return 'giMore_' + p[0]; }));
+}
 function loadGuestInfo(){
   fetch(DB + '/prearrivalinfo.json').then(function(r){ return r.ok ? r.json() : null; })
     .then(function(j){
-      document.getElementById('giResort').value = (j && j.resort) || '';
-      document.getElementById('giDining').value = (j && j.dining) || '';
+      j = j || {};
+      document.getElementById('giWelcomeImg').value = j.welcomeImage || '';
+      document.getElementById('giDiningImg').value  = j.diningImage || '';
+      document.getElementById('giDiningText').value = j.diningText || '';
+      var more = j.more || {};
+      GI_MORE.forEach(function(p){
+        document.getElementById('giMore_' + p[0]).value = more[p[0]] || '';
+      });
     }).catch(function(){});
 }
+/* The built-in Read more words, as the placeholders of the boxes that
+   replace them, read from the guest page itself: one file owns those
+   words, and a copy typed here is the drift CLAUDE.md rule 1 exists to
+   prevent. DOMParser parses without running a line of the page. The page
+   ids derive from the keys (dine -> qDine), so there is no second map. */
+fetch('prearrival.html').then(function(r){ return r.text(); }).then(function(html){
+  var doc = new DOMParser().parseFromString(html, 'text/html');
+  GI_MORE.forEach(function(p){
+    var qid = 'q' + p[0].charAt(0).toUpperCase() + p[0].slice(1);
+    var b = doc.querySelector('#' + qid + ' .more-b');
+    var f = document.getElementById('giMore_' + p[0]);
+    if (b && f) f.placeholder = b.textContent.replace(/\s+/g, ' ').trim();
+  });
+}).catch(function(){});
 /* Whether the boxes hold something the database does not. The Save button
    almost knows this, but its resting state on page load is enabled with
    nothing to save, so the flag is its own. */
 var GI_DIRTY = false;
-['giResort', 'giDining'].forEach(function(id){
+giFields().forEach(function(id){
   document.getElementById(id).oninput = function(){
     GI_DIRTY = true;
     armSave(document.getElementById('giSave'));
@@ -782,23 +830,42 @@ document.getElementById('giDemo').onclick = function(e){
     e.preventDefault();
 };
 document.getElementById('giSave').onclick = function(){
-  var resort = document.getElementById('giResort').value.trim();
-  var dining = document.getElementById('giDining').value.trim();
   var err = document.getElementById('giErr');
-  /* The database holds 4000 per note and would refuse the whole write;
-     refused here instead, in words, with the count, so the fix is a trim
-     and not a puzzle over "not allowed". */
-  if (resort.length > 4000 || dining.length > 4000){
-    err.textContent = 'Too long to save: ' +
-      Math.max(resort.length, dining.length) +
-      ' characters, and each note holds 4000.';
+  var wi = document.getElementById('giWelcomeImg').value.trim();
+  var di = document.getElementById('giDiningImg').value.trim();
+  var dt = document.getElementById('giDiningText').value.trim();
+  /* Refused here in words rather than as the database's "not allowed":
+     the ceilings and shapes below are the rules', said helpfully. */
+  var link = /^https:\/\/\S+$/;
+  if ((wi && !link.test(wi)) || (di && !link.test(di))){
+    err.textContent = 'An image link is one full https:// address and nothing else.';
+    return;
+  }
+  if (wi.length > 500 || di.length > 500){
+    err.textContent = 'That image link is longer than the 500 characters the database holds.';
+    return;
+  }
+  if (dt.length > 4000){
+    err.textContent = 'The dining text is ' + dt.length +
+      ' characters, and it holds 4000.';
+    return;
+  }
+  var more = {}, over = null;
+  GI_MORE.forEach(function(p){
+    var v = document.getElementById('giMore_' + p[0]).value.trim();
+    if (v.length > 2000 && !over) over = p[1];
+    more[p[0]] = v;
+  });
+  if (over){
+    err.textContent = 'The ' + over + ' text is over the 2000 characters a Read more holds.';
     return;
   }
   err.textContent = '';
   return saveFeedback(pressedButton(), function(){
     return fetch(DB + '/prearrivalinfo.json', {
       method:'PATCH', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ resort: resort, dining: dining,
+      body: JSON.stringify({ welcomeImage: wi, diningImage: di,
+        diningText: dt, more: more,
         by: (window.NALA_USER && NALA_USER.email) || '',
         at: new Date().toISOString() })
     }).then(function(r){ if (!r.ok) throw new Error('rejected'); });

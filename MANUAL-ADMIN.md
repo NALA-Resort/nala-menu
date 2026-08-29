@@ -119,19 +119,20 @@ already knows, they just published it.
 length on the pre-arrival form, so they see the cost before they ask. A price
 left empty shows no number rather than a zero.
 
-**Guest form.** The two notes the pre-arrival form shows in your words, so it
-explains the resort as well as asking questions: *About Nala* on the form's
-welcome screen, under the greeting, and *Dining at Nala* just above the
-first-night dinner question. A blank line starts a new paragraph. A line that
-is only a photo's web address becomes that photo, right where the line sits -
-take addresses from the website's own photos (a sized copy, not an original:
-a guest opens this on mobile data), and if the website later retires an
-address the photo quietly stops showing while the words read on. Leave either
-note empty and the form simply goes without it - nothing else about the form
-changes. Save publishes both notes to every link already sent, and the demo
-form previews them - Preview on the tab takes you there, Back to Settings on
-the demo returns you - so you can read them as a guest would without a real
-booking.
+**Guest form.** Everything the pre-arrival form says in your words. The
+*welcome image* sits on the form's welcome screen under the greeting - an
+image and only an image. The *dining image* and *dining text* make a page of
+their own, read just before the dinner question; a blank line starts a new
+paragraph, and a line that is only a photo's web address becomes that photo
+where the line sits. Each *Read more* box replaces the explanation behind
+that page's Read more button; the grey text in an empty box is the built-in
+wording it keeps. Image addresses come from the website's own photos (a
+sized copy, not an original: a guest opens this on mobile data), and an
+address the website later retires quietly stops showing while the words read
+on. Leave anything empty and the form keeps its built-in behaviour. Save
+publishes the lot to every link already sent, and the demo form previews it -
+Preview on the tab takes you there, Back to Settings on the demo returns
+you - so you can read it as a guest would without a real booking.
 
 Beside Settings in the same menu group sits **Flags**: the short facts you can
 pin under a guest's name - VIP, Travel agent, Breakfast included, whatever you
