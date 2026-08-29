@@ -821,6 +821,18 @@ with sync_playwright() as p:
     ck("a note past the database's ceiling is refused in words, with the count",
        "4000" in q.evaluate("()=>giErr.textContent") and
        not [x for x in WRITES if "/prearrivalinfo" in x["u"]])
+    #  The write-preview loop: the tab links to the demo form, and leaving
+    #  with unsaved edits asks first. The boxes are dirty right now (the
+    #  over-long fill above), and Playwright dismisses dialogs by default,
+    #  which is the Cancel branch: the page must stay put.
+    ck("the tab offers the demo form to preview on",
+       q.evaluate("()=>{const a=document.getElementById('giDemo');"
+                  "return a ? a.getAttribute('href') : null;}")
+       == "prearrival.html?b=demo")
+    q.click("#giDemo")
+    q.wait_for_timeout(500)
+    ck("leaving with unsaved edits asks first, and Cancel stays",
+       "staff.html" in q.url)
     q.close()
 
     # ── who may stand here ──────────────────────────────────────

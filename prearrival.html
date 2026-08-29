@@ -1277,6 +1277,17 @@ function boot(){
       if ((info.resort || '').trim() || (info.dining || '').trim())
         demoInfo.remove();
     }).catch(function(){});
+    /* The way back to the editor, closing the write-preview loop the
+       Guest form tab's Preview link opens. Demo only, deliberately: this
+       anchor exists nowhere a real guest can be, and the suite holds
+       that - a guest page must never offer a staff door. Settings still
+       gates itself, so the link leaks nothing even if typed by hand. */
+    var demoBack = document.createElement('a');
+    demoBack.className = 'sub';
+    demoBack.href = 'staff.html';
+    demoBack.style.cssText = 'display:block;margin-top:6px;color:var(--mid)';
+    demoBack.textContent = 'Back to Settings';
+    banner.appendChild(demoBack);
     el('intro').insertBefore(banner, el('intro').firstChild);
     showStep(0);
     return;

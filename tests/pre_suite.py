@@ -147,6 +147,11 @@ with sync_playwright() as p:
            opened[0]["m"] == "PATCH")
     ck("and it is the form, not a thank you",
        pg.evaluate("()=>done.className.indexOf('hide')>-1"))
+    #  The demo's Back to Settings link must exist nowhere a real guest can
+    #  be: a guest page offering a staff door reads as a mistake even
+    #  though Settings gates itself.
+    ck("a real guest link never offers a staff door",
+       pg.evaluate("()=>!document.querySelector('a[href*=\"staff\"]')"))
 
     # ── one question to a page ──────────────────────────────────
     ck("the guest is shown one question, not eight",
@@ -968,6 +973,12 @@ with sync_playwright() as p:
     ck("opening it reads the public Settings notes and nothing else",
        calls != [] and
        all(m == "GET" and "/prearrivalinfo" in u for m, u in calls))
+    #  The write-preview loop: Settings links here to preview, so the demo
+    #  carries the way back. Demo only - the real-link check above holds
+    #  the other half.
+    ck("and the demo banner offers the way back to Settings",
+       q.evaluate("()=>{const a=document.querySelector('#intro .note-box a');"
+                  "return a ? a.getAttribute('href') : null;}") == "staff.html")
 
     q.evaluate("""()=>{
       trail.value=2; trail.dispatchEvent(new Event('input'));

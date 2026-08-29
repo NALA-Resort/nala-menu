@@ -22,6 +22,9 @@
   .btn { display:block; width:100%; padding:13px 0; text-align:center;
          font-family:var(--ui-font); font-size:var(--t2); background:var(--cream); color:var(--ink);
          border:1px solid var(--ink); border-radius:8px; margin-top:14px; }
+  /* A link wearing the button dress is still a link by default: blue and
+     underlined, which reads as neither. */
+  a.btn { text-decoration:none; }
   /* .btn.solid comes from nala-ui.css's shared dress. */
   .btn.warn  { border-color:var(--red); color:var(--red); }
   .btn.ghost { border-color:var(--rule); color:var(--mid); }
@@ -237,6 +240,8 @@
       <textarea id="giDining" rows="6"
         placeholder="How dinner here works. The guest reads it just above &quot;Will you be dining with us on your first night?&quot;"></textarea>
       <button class="btn solid" id="giSave">Save</button>
+      <a class="btn ghost" id="giDemo" href="prearrival.html?b=demo">Preview
+        on the demo form</a>
       <div class="note">Two notes on the guest's pre-arrival form, so it
       explains the resort and the food as well as asking about them. The
       first sits on the welcome screen, under the greeting. The second sits
@@ -758,11 +763,24 @@ function loadGuestInfo(){
       document.getElementById('giDining').value = (j && j.dining) || '';
     }).catch(function(){});
 }
+/* Whether the boxes hold something the database does not. The Save button
+   almost knows this, but its resting state on page load is enabled with
+   nothing to save, so the flag is its own. */
+var GI_DIRTY = false;
 ['giResort', 'giDining'].forEach(function(id){
   document.getElementById(id).oninput = function(){
+    GI_DIRTY = true;
     armSave(document.getElementById('giSave'));
   };
 });
+/* The preview is one tap away from the editor, and the editor may hold an
+   unsaved paragraph: navigation would discard it silently, so it asks. The
+   demo carries the matching way back. */
+document.getElementById('giDemo').onclick = function(e){
+  if (GI_DIRTY &&
+      !confirm('There are unsaved changes here. Open the demo without saving them?'))
+    e.preventDefault();
+};
 document.getElementById('giSave').onclick = function(){
   var resort = document.getElementById('giResort').value.trim();
   var dining = document.getElementById('giDining').value.trim();
@@ -784,7 +802,8 @@ document.getElementById('giSave').onclick = function(){
         by: (window.NALA_USER && NALA_USER.email) || '',
         at: new Date().toISOString() })
     }).then(function(r){ if (!r.ok) throw new Error('rejected'); });
-  }, { done:'Saved ✓', fail:function(msg){ err.textContent = msg; } });
+  }, { done:'Saved ✓', then:function(){ GI_DIRTY = false; },
+       fail:function(msg){ err.textContent = msg; } });
 };
 loadGuestInfo();
 
