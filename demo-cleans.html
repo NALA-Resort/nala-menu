@@ -181,7 +181,12 @@ body.ui2 .secnote{ font-size:var(--t2); color:var(--mid); line-height:1.5;
    Floating corner menus stay banned.                                 */
 body.ui2 .daterow{ display:flex; align-items:center; gap:var(--s2);
                    margin-bottom:var(--s4); }
-body.ui2 .date{ flex:1; font-size:var(--t4); font-weight:600; }
+/* --t3, not --t4. At 20px "Sat 29th Aug" is 151px wide, and on a 320pt
+   screen that leaves too little for Today, the two arrows and the menu:
+   the hamburger was pushed 6px off the right edge. A date can never trim
+   - the trim rule says so - so it has to fit instead. 16px is still a
+   clear step up from the 13px it was before the dress.               */
+body.ui2 .date{ flex:1; font-size:var(--t3); font-weight:600; }
 /* 36px, not the 44px tap floor: the header law in STYLEGUIDE.md rules that
    every control in this row is 36 and tally_suite measures it. The project's
    own rule outranks the general one.                                      */
