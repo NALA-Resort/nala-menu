@@ -41,14 +41,18 @@ body.ui2 { padding:calc(20px + env(safe-area-inset-top)) 16px 60px; }
 .role { flex:0 0 auto; font-size:var(--t2); color:var(--mid);
         background:var(--card); border-radius:var(--pill);
         padding:3px var(--s2); }
-/* The bin was the emoji wastebasket, which iOS draws in its own colours -
-   a blue-grey picture in a palette that has a colour for destruction. An
-   svg in the destructive ink, and it keeps its 44px whatever it does. */
-.bin { flex:0 0 auto; width:var(--tap); height:var(--tap); border:0;
-       background:none; color:var(--law-terra); cursor:pointer;
-       display:inline-flex; align-items:center; justify-content:center; }
-.bin svg { width:19px; height:19px; }
-.bin:disabled { opacity:0; cursor:default; }   /* a protected row keeps the space */
+/* Not a bin. The emoji wastebasket was a one-off icon iOS draws in its own
+   colours, and the svg I replaced it with was a second one-off - an icon
+   that appears nowhere else in the app, which is the fault this work exists
+   to remove. The app already has a way to say this: a WORD in a terracotta
+   outline, the button law's destructive dress, as tag.html and flags.html
+   draw Delete and spa.html draws Cancel booking. This page's own
+   confirmation already says "Remove from staff".                       */
+.rm { flex:0 0 auto; min-height:36px; padding:var(--s2) var(--s3);
+      border:1px solid var(--law-terra-b); border-radius:var(--pill);
+      background:transparent; color:var(--law-terra); cursor:pointer;
+      font-family:var(--ui-font); font-size:var(--t2); }
+.rm:disabled { visibility:hidden; }   /* a protected row keeps the space */
 
 /* ── matrices ────────────────────────────────────────────────────────
    th had padding:0 0 8px - no horizontal padding at all - so with five
@@ -91,6 +95,33 @@ body.ui2 { padding:calc(20px + env(safe-area-inset-top)) 16px 60px; }
 .sw:after { content:''; position:absolute; top:3px; left:3px; width:24px;
             height:24px; border-radius:50%; background:#fff; transition:left .16s; }
 .sw.on:after { left:23px; }
+
+/* ── the notification list ───────────────────────────────────────────
+   One role at a time, not a grid. The matrix was five roles wide and only
+   fitted at 390pt because the labels dropped to 14px; a sixth role does
+   not fit at all, and there is no width left to take. Asked for by the
+   owner, 29 Aug: this has to have a way to grow.
+
+   Roles are chips, so another role is another chip and they wrap. Events
+   are rows, so another event is another row and the page gets longer,
+   which costs nothing. Neither axis is bounded by the screen any more.
+
+   What is lost is reading a whole column at once - "who hears about
+   Departed" - and that is the rarer question. The commoner one, "what
+   does housekeeping get told about", is what this answers directly.  */
+.chips { display:flex; flex-wrap:wrap; gap:var(--s2); margin-bottom:var(--s4); }
+/* The shared sheet defines .chip.on but no base .chip, so an unstyled chip
+   falls back to a browser button and reads as a little grey box. The base
+   belongs in nala-ui2.css when this lands; here for now.               */
+.chip { min-height:36px; padding:var(--s2) var(--s3); border-radius:var(--pill);
+        border:1px solid var(--rule); background:transparent; color:var(--mid);
+        font-family:var(--ui-font); font-size:var(--t2); cursor:pointer;
+        display:inline-flex; align-items:center; }
+.sec-h { font-size:var(--t3); font-weight:600; margin:var(--s4) 0 var(--s2); }
+.evrow { display:flex; align-items:center; gap:var(--s3); padding:var(--s3) 0;
+         border-bottom:1px solid var(--rule); min-height:var(--tap); }
+.evrow span { flex:1; font-size:var(--t3); }
+.count { font-size:var(--t2); color:var(--mid); margin-left:var(--s1); }
 
 .hours { display:flex; align-items:center; gap:var(--s3); margin:var(--s3) 0 var(--s5); }
 .hours input { width:auto; flex:1; text-align:center; }
@@ -137,16 +168,17 @@ body.ui2 { padding:calc(20px + env(safe-area-inset-top)) 16px 60px; }
       <button class="sw on" id="allOn" aria-label="All notifications"></button></div>
     <div class="seclabel">Send between</div>
     <div class="hours"><input value="07:30"><span>and</span><input value="18:00"></div>
-    <table class="matrix" id="notif"></table>
-    <div class="note">Tapping a box saves it straight away. Turning every box
-      off for a role is the same as turning notifications off for those people.</div>
+    <div class="seclabel">Who is being set up</div>
+    <div class="chips" id="rolePick"></div>
+    <div class="sec-h" id="whoHead"></div>
+    <div id="evList"></div>
+    <div class="note">Tapping a row saves it straight away. Turning every one
+      off for a role is the same as turning notifications off for those
+      people.</div>
   </div>
 
 </div>
 <script>
-var BIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"'+
-  ' stroke-linecap="round"><path d="M4 7h16M10 4h4M9 7v12M15 7v12M6 7l1 13h10l1-13"/></svg>';
-
 var PEOPLE = [
   ['Jess','admin','162116',false], ['Admin','admin','485211',false],
   ['Ben Davidson','admin','485248',true], ['Admin','admin','admin@nalaresort.com.au',false],
@@ -159,8 +191,8 @@ people.innerHTML = PEOPLE.map(function(p){
   return '<div class="person"><span class="mid"><span class="nm">'+p[0]+
     '</span><span class="sub">'+p[2]+'</span></span>'+
     '<span class="role">'+p[1]+'</span>'+
-    '<button class="bin"'+(p[3]?' disabled':'')+' aria-label="Remove '+p[0]+'">'+
-    BIN+'</button></div>';}).join('');
+    '<button class="rm"'+(p[3]?' disabled':'')+'>Remove</button></div>';
+  }).join('');
 
 function matrix(el, roles, rows, state){
   var h = '<thead><tr><th></th>'+roles.map(function(r){
@@ -180,12 +212,35 @@ matrix(perms, ['chef','waiter','housekeeping'],
    'Publish and tag the menu','See the Cleans board','Mark a clean done',
    'Change what a villa needs','See the Spa board'],
   [[1,0,0],[0,2,0],[1,0,0],[1,0,0],[0,1,1],[0,2,1],[0,0,0],[0,2,0]]);
-matrix(notif, ['admin','manager','chef','waiter','housekeeping'],
-  ['Departed','Possibly available','Cleaned','Serviced','Menu published',
-   'Massage requested','Massage suggested','Massage booked','Massage cancelled',
-   'Stay changed under a massage'],
-  [[1,0,1,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,1,0,0],
-   [1,1,0,1,0],[1,1,0,1,0],[1,1,0,1,0],[1,1,0,1,0],[1,1,0,0,0]]);
+var NROLES = ['admin','manager','chef','waiter','housekeeping'];
+var EVENTS = ['Departed','Possibly available','Cleaned','Serviced','Menu published',
+  'Massage requested','Massage suggested','Massage booked','Massage cancelled',
+  'Stay changed under a massage'];
+var ON = [[1,0,1,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,1,0,0],
+          [1,1,0,1,0],[1,1,0,1,0],[1,1,0,1,0],[1,1,0,1,0],[1,1,0,0,0]];
+var pick = 4;
+function label(r){ return r === 'housekeeping' ? 'Housekeeping' : r; }
+function drawNotif(){
+  rolePick.innerHTML = NROLES.map(function(r,j){
+    var n = EVENTS.filter(function(_,i){ return ON[i][j]; }).length;
+    return '<button class="chip'+(j===pick?' on':'')+'" data-r="'+j+'">'+
+           label(r)+'<span class="count">'+n+'</span></button>';
+  }).join('');
+  whoHead.textContent = 'What ' + label(NROLES[pick]) + ' is told about';
+  evList.innerHTML = EVENTS.map(function(e,i){
+    return '<div class="evrow"><span>'+e+'</span>'+
+      '<button class="sw'+(ON[i][pick]?' on':'')+'" data-e="'+i+'"></button></div>';
+  }).join('');
+}
+drawNotif();
+rolePick.addEventListener('click', function(e){
+  var c = e.target.closest('[data-r]'); if (!c) return;
+  pick = +c.dataset.r; drawNotif();
+});
+evList.addEventListener('click', function(e){
+  var t = e.target.closest('[data-e]'); if (!t) return;
+  ON[+t.dataset.e][pick] = ON[+t.dataset.e][pick] ? 0 : 1; drawNotif();
+});
 
 document.querySelectorAll('.tab').forEach(function(t){
   t.onclick = function(){
