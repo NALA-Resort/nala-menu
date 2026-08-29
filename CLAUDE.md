@@ -203,8 +203,16 @@ python3 tests/run.py <suite>       # the one suite you touched
 python3 tests/run.py               # once, before publishing only
 ```
 
-Known failures, pre-existing, not yours: `rules` ×2, `tally` ×1, `cleans` ×2.
-Anything else is a real break.
+Known failures, pre-existing, not yours: `rules` ×2, `tally` ×4,
+`sweep:tally` ×3, `cleans` ×2. Anything else is a real break.
+
+`tally` said ×1 until 29 Aug and the real number was four. The three it did
+not name are all `no sideways scroll at 320pt`, and `sweep:tally` fails the
+same way for admin, chef and waiter — one fault, seven names: tally.html
+overflows 320pt in the date row, at `div.navwrap` / `#navBtn`, which the
+sweep names for you. Counted here against a worktree of the commit before,
+because a stale number in this line costs somebody an hour proving they did
+not cause it. Real debt, and nobody's yet.
 
 ## Publishing
 
