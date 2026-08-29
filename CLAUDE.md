@@ -203,7 +203,15 @@ python3 tests/run.py <suite>       # the one suite you touched
 python3 tests/run.py               # once, before publishing only
 ```
 
-Known failures, pre-existing, not yours: `rules` ×2, `tally` ×1, `cleans` ×2.
+Known failures, pre-existing, not yours: `cleans` ×2, and `rules` ×2 where
+`rules` can run. `tally` ×1 was on this list and has not failed for some
+time; taken off 29 Aug, because a stale list of expected failures is how a
+real one gets waved through.
+
+Three suites report NO RESULT rather than failing in a container that lacks
+their tools, and that is not a break either: `rules` and `coercion` need
+node's firebase test module, `list` needs `pdftotext`.
+
 Anything else is a real break.
 
 ## Publishing

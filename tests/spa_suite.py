@@ -761,6 +761,11 @@ with sync_playwright() as p:
     q.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
     q.goto("http://localhost:8980/staff.html")
     q.wait_for_timeout(1600)
+    # The settings page became four tabs on 29 Aug and Prices is not the one it
+    # opens on. The values are read on load whatever tab is showing, but the
+    # field cannot be typed into while its panel is hidden.
+    q.click('.tab[data-t="tPrices"]')
+    q.wait_for_timeout(200)
     ck("Settings shows the prices it holds",
        q.evaluate("()=>sp60.value") == "180" and
        q.evaluate("()=>sp90.value") == "250")

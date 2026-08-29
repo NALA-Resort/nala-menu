@@ -1410,8 +1410,15 @@ with sync_playwright() as p:
        "protectedReason" in src and "485211" not in src)
     ck("you cannot remove yourself", "This is you." in src)
     ck("the last admin cannot be removed", "last admin cannot be removed" in src)
-    ck("the check runs again on confirm, not only where the bin was drawn",
+    # The bin on each row went on 29 Aug - it called removeSheet, which is
+    # what the person sheet's own "Remove from staff" calls, so it was a
+    # one-tap path to a permanent write. The check still has to run in more
+    # than one place: the sheet decides whether to offer the button, and the
+    # confirmation decides again before it writes.
+    ck("the check runs again on confirm, not only where the button was drawn",
        src.count("protectedReason(key)") >= 2)
+    ck("removing somebody is not offered on the row itself",
+       "class=\"bin\"" not in src and "removeSheet(k)" not in src)
 
     # sync is assignable, so the account can be made on this page instead of in
     # the Firebase console, but it has no phone and must not appear in the
@@ -1421,22 +1428,26 @@ with sync_playwright() as p:
     ck("the staff list sorts by the assignable order, so sync sorts last",
        src.count("ROLES_ASSIGN.indexOf") == 2)
     import re as _re
-    # Counted with a boundary: PERM_ROLES.map ends in the same nine characters
-    # and turned this into a false failure the day the permission grid landed.
-    ck("the notification matrix stays on the human roles",
-       len(_re.findall(r"(?<![A-Z_])ROLES\.map", src)) == 2 and "ROLES_ASSIGN" in src)
+    # Both lists became one component on 29 Aug: what used to be two grids,
+    # each with its own .map over its own roles, is now pickList called twice.
+    # These read the call sites rather than the loops.
+    ck("who may do what and who is told about what are one component, not two",
+       src.count("pickList(") == 3)   # the definition and its two callers
 
-    # The permission grid is drawn from the shared lists rather than from a
+    ck("the notification list stays on the human roles",
+       "roles: ROLES," in src and "ROLES_ASSIGN" in src)
+
+    # The permission list is drawn from the shared lists rather than from a
     # second copy kept here, so adding a capability in one place adds the row.
-    ck("the permission grid reads the shared lists",
-       "PERM_ACTIONS.map" in src and "PERM_ROLES.map" in src)
+    ck("the permission list reads the shared lists",
+       "roles: PERM_ROLES, items: PERM_ACTIONS" in src)
     ck("it saves the moment a box is tapped, like the one above it",
        "savePerms()" in src and "'/permissions.json'" in src)
     # Only the boxes moved away from the default are stored. Writing every
     # cell would freeze today's defaults into the database, and the next
     # capability added would arrive switched off for everybody.
     ck("only the changed boxes are stored, not a copy of every cell",
-       "grantedByDefault" in src and "PERMS[ac][r] = !now" in src)
+       "grantedByDefault" in src and "PERMS[ac[0]][r] = !now" in src)
     ck("a failed load says the app is running on its defaults",
        "running on its defaults" in src)
     ck("the matrix is loaded on the way in", "loadPerms();" in src)

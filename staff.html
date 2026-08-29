@@ -19,25 +19,6 @@
   .daterow { display:flex; align-items:center; gap:8px; margin-bottom:16px; }
   .date { font-size:var(--t3); font-weight:bold; flex:1; }
 
-  .sec { font-size:var(--t1);
-         color:var(--mid); margin:22px 0 8px; }
-
-  /* A person is a line, not a card: plain typography is information, and a
-     bordered box would read as something to press.                        */
-  .person { display:flex; align-items:baseline; gap:8px; padding:11px 0;
-            border-bottom:1px solid var(--rule); width:100%; background:none;
-            border-left:0; border-right:0; border-top:0; text-align:left;
-            font-family:var(--ui-font); color:var(--ink); }
-  .person .nm { font-size:var(--t3); flex:1; }
-  .person .rl { font-size:var(--t2); color:var(--mid); }
-  .person .cd { font-size:var(--t2); color:var(--mid); font-variant-numeric:tabular-nums; }
-  /* The bin is the icon alone, no border and no fill: that dress belongs to
-     buttons, and a row of bordered bins would read as five buttons.      */
-  .binwrap { display:flex; align-items:baseline; }
-  .bin { background:none; border:0; padding:0 0 0 12px; font-size:var(--t3);
-         color:var(--mid); line-height:1; }
-  .bin:disabled { opacity:0; }        /* protected rows show nothing at all */
-
   .btn { display:block; width:100%; padding:13px 0; text-align:center;
          font-family:var(--ui-font); font-size:var(--t2); background:var(--cream); color:var(--ink);
          border:1px solid var(--ink); border-radius:8px; margin-top:14px; }
@@ -45,38 +26,21 @@
   .btn.warn  { border-color:var(--red); color:var(--red); }
   .btn.ghost { border-color:var(--rule); color:var(--mid); }
 
-  .master { display:flex; align-items:center; padding:13px 0;
-            border-bottom:1px solid var(--rule); width:100%; background:none;
-            border-left:0; border-right:0; border-top:0; text-align:left;
-            font-family:var(--ui-font); color:var(--ink); }
-  .master .mnm { flex:1; font-size:var(--t3); }
-  /* Off greys the rest: the boxes still say what WOULD be sent, but nothing
-     is going out and the page should not pretend otherwise.              */
-  .dim { opacity:.4; }
-
-  table { width:100%; border-collapse:collapse; }
-  th { font-size:var(--t1);
-       color:var(--mid); font-weight:normal; padding:0 0 8px; }
-  th.who { text-align:center; }
-  td { font-size:var(--t3); padding:11px 0; border-bottom:1px solid var(--rule); }
-  td.who { text-align:center; }
-  .tick { display:inline-block; width:20px; height:20px; border-radius:var(--pill);
-          border:1px solid var(--rule); background:none; position:relative;
-          vertical-align:middle; }
-  .tick.on { background:var(--sel-bg); border-color:var(--sel-bdr); }
-  /* The tick was white against an ink fill. Selected pills are grey now,
-     so a white check would be invisible: it draws in ink instead.     */
-  .tick.on:after { content:''; position:absolute; left:6px; top:2px; width:5px;
-                   height:10px; border:solid var(--ink); border-width:0 2px 2px 0;
-                   transform:rotate(45deg); }
-
   .hours { display:flex; gap:8px; align-items:center; font-size:var(--t3);
            padding:11px 0; border-bottom:1px solid var(--rule); flex-wrap:wrap; }
-  .hours input { font-family:var(--ui-font); font-size:var(--t3); width:74px;
-                 border:0; border-bottom:1px solid var(--rule); background:none;
-                 color:var(--ink); text-align:center; padding:2px 0; }
-  .moved { font-size:var(--t1);
-           color:var(--mid); display:block; margin-top:3px; }
+  /* body.ui2 input is (0,1,2) and sets width:100%, which is right for a
+     form and wrong for a field holding four characters: "Send between
+     [    ] and [    ]" came out as three stacked lines, and each of the
+     three prices got a full width box for three digits. Only the width is
+     taken back, matched at (0,2,2); the box, the radius and the 44px tap
+     height are the shared dress and this page has no reason to differ.
+     An earlier version stripped all of it back to an underline, which put
+     the rule 20px below the number it belonged to.
+
+     If a second page wants a short field, promote this to nala-ui2.css as
+     a named class and pay the ?v= bump - do not copy it. */
+  body.ui2 .hours input, body.ui2 .money input {
+                 width:84px; text-align:center; padding:var(--s2); }
   .note { font-size:var(--t2); color:var(--mid); line-height:1.5; margin-top:10px; }
   .err  { font-size:var(--t2); color:var(--red); line-height:1.5; margin-top:10px; }
 
@@ -94,6 +58,99 @@
       width:100%; font-family:var(--ui-font); font-size:var(--t3); padding:11px;
       border:1px solid var(--rule); border-radius:8px; background:#fff;
       color:var(--ink); }
+
+  /* ── four jobs, four tabs ────────────────────────────────────────────
+     Ruled by the owner, 29 Aug. This page was four unrelated jobs stacked
+     into one long scroll: who the staff are, what each role may do, who
+     is buzzed about what, and what a massage costs. Tabs rather than four
+     pages, because the menu was given submenus on 26 Aug for having too
+     many rows, and one page keeps one URL and one manageStaff gate.   */
+  .tabs { display:flex; gap:2px; border-bottom:1px solid var(--rule);
+          margin:var(--s4) 0 var(--s5); overflow-x:auto; }
+  .tab { flex:1 0 auto; padding:var(--s3) var(--s2); min-height:var(--tap);
+         border:0; background:none; font-family:var(--ui-font);
+         font-size:var(--t2); font-weight:500; color:var(--mid); cursor:pointer;
+         border-bottom:2px solid transparent; margin-bottom:-1px;
+         white-space:nowrap; }
+  .tab.on { color:var(--accent); border-bottom-color:var(--accent); }
+  .panel { display:none } .panel.on { display:block }
+
+  /* ── a staff row ─────────────────────────────────────────────────────
+     The sign-in is a six digit code for most people and an email for two,
+     so a column for it could not line up and did not: two rows pushed the
+     role halfway across the screen. It stacks under the name, and the role
+     is a pill, so nothing has to align with anything.
+
+     No Remove on the row. It called removeSheet, and so does the person
+     sheet's "Remove from staff": the same confirmation and the same write,
+     reached one tap sooner. Removing somebody is rare and permanent and a
+     one-tap path to it on every row is a mis-tap waiting to happen. The
+     row opens the person; the removal lives with them.                 */
+  .person { display:flex; align-items:center; gap:var(--s3); width:100%;
+            padding:var(--s3) 0; border:0; border-bottom:1px solid var(--rule);
+            background:none; text-align:left; min-height:var(--tap);
+            font-family:var(--ui-font); color:inherit; cursor:pointer; }
+  .person:active { background:var(--accent-soft); }
+  .person .mid { flex:1; min-width:0; }
+  /* The trim rule, STYLEGUIDE.md: the name is the only field that may trim.
+     It was the sign-in that carried the ellipsis here, which is the rule
+     backwards - half a passcode still looks like a passcode, and half an
+     email address is a login nobody can type. The row can grow, so the
+     sign-in wraps instead and the name is what gives way. */
+  .person .nm { font-size:var(--t3); display:block; white-space:nowrap;
+                overflow:hidden; text-overflow:ellipsis; }
+  .person .sub { font-size:var(--t2); color:var(--mid); margin-top:2px;
+                 display:block; overflow-wrap:anywhere; }
+  .person .rl { flex:0 0 auto; font-size:var(--t2); color:var(--mid);
+                background:var(--card); border-radius:var(--pill);
+                padding:3px var(--s2); }
+
+  /* ── pick who, then read down ────────────────────────────────────────
+     Roles and Notifications were grids, five roles wide in the second
+     case, which only fitted at 390pt with the labels shrunk. A grid whose
+     columns are bounded by the screen cannot gain a column, and the owner
+     asked for a way to grow. Roles are chips and chips wrap; settings are
+     rows and rows only make the page longer.                          */
+  .chips { display:flex; flex-wrap:wrap; gap:var(--s2); margin-bottom:var(--s4); }
+  .chip { min-height:36px; padding:var(--s2) var(--s3); border-radius:var(--pill);
+          border:1px solid var(--rule); background:transparent; color:var(--mid);
+          font-family:var(--ui-font); font-size:var(--t2); cursor:pointer;
+          display:inline-flex; align-items:center; }
+  .count { font-size:var(--t2); color:var(--mid); margin-left:var(--s1); }
+  .sec-h { font-size:var(--t3); font-weight:600; margin:var(--s4) 0 var(--s2); }
+  .evrow { display:flex; align-items:center; gap:var(--s3); padding:var(--s3) 0;
+           border-bottom:1px solid var(--rule); min-height:var(--tap); }
+  .evrow > span { flex:1; font-size:var(--t3); }
+  /* Changed from how the app came. It was the word "changed" floating under
+     a neighbouring column, belonging to nothing the eye could attach it to. */
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--amberb);
+         flex:0 0 auto; display:inline-block; }
+  /* A price is a row like any other on this page: what it is on the left,
+     the control on the right. It was a sentence with a field buried in the
+     middle of it, which lined up with nothing above or below. */
+  .money { flex:0 0 auto; font-size:var(--t3); }
+
+  /* One setting is a switch; a grid cell was a checkbox and there are no
+     grids left here.
+
+     Blue when on, and this is not the selected pill the owner ruled grey on
+     29 Aug. That ruling was about pills and segments - controls where the
+     app has to say "you picked this one of several". A switch has no
+     siblings to be picked over: its colour IS the setting, the way it is in
+     every phone's own settings, and a grey-on switch beside a grey-off one
+     says nothing at a glance. The off track is a hex rather than a token
+     because no token is the right grey: --rule is a hairline and --card is
+     so pale the white knob would disappear into it. */
+  .sw { width:50px; height:30px; border-radius:var(--pill); background:#C9C9C2;
+        position:relative; flex:0 0 auto; border:0; cursor:pointer; padding:0; }
+  .sw.on { background:var(--accent); }
+  .sw:after { content:''; position:absolute; top:3px; left:3px; width:24px;
+              height:24px; border-radius:50%; background:#fff; transition:left .16s; }
+  .sw.on:after { left:23px; }
+  @media (prefers-reduced-motion:reduce){ .sw:after { transition:none } }
+  /* Off greys the rest: the rows still say what WOULD be sent, but nothing
+     is going out and the page should not pretend otherwise. */
+  .dim { opacity:.45; }
 </style>
 </head>
 <body class="tier-app ui2">
@@ -110,38 +167,60 @@
   <div class="noaccess" id="noAccess"></div>
 
   <div id="main">
-    <div class="sec">People</div>
-    <div id="people"></div>
-    <button class="btn" id="addBtn">Add someone</button>
-
-    <div class="sec">What each role may do</div>
-    <table id="perms"></table>
-    <div class="note">An admin always has everything, and a manager everything
-    but this page, so neither is a column here. A box you have changed from
-    how the app came is marked. Only "Change what a villa needs" is enforced
-    by the database as well as by the app: the others hide the button, which
-    is enough for an honest mistake and is not a lock.</div>
-    <div class="err" id="permErr"></div>
-
-    <div class="sec">Notifications</div>
-    <button class="master" id="master"><div class="mnm" id="masterNm">All notifications</div><i class="tick" id="masterTick"></i></button>
-    <div class="hours" id="hoursRow">Send between
-      <input id="hFrom" inputmode="numeric" placeholder="07:30">and
-      <input id="hTo" inputmode="numeric" placeholder="18:00">
+    <div class="tabs" role="tablist">
+      <button class="tab on" role="tab" aria-selected="true"  data-t="tStaff">Staff</button>
+      <button class="tab"    role="tab" aria-selected="false" data-t="tRoles">Roles</button>
+      <button class="tab"    role="tab" aria-selected="false" data-t="tNotify">Notifications</button>
+      <button class="tab"    role="tab" aria-selected="false" data-t="tPrices">Prices</button>
     </div>
-    <table id="grid"></table>
-    <div class="note">Tapping a box saves it straight away. Turning every box
-    off for a role is the same as turning notifications off for those people.</div>
-    <div class="err" id="err"></div>
 
-    <div class="sec">Spa prices</div>
-    <div class="hours">1 hour&nbsp;$<input id="sp60" inputmode="numeric" placeholder="0"></div>
-    <div class="hours">1.5 hours&nbsp;$<input id="sp90" inputmode="numeric" placeholder="0"></div>
-    <div class="hours">2 hours&nbsp;$<input id="sp120" inputmode="numeric" placeholder="0"></div>
-    <div class="note">Shown to the guest beside each length on the pre-arrival
-    form, so they see the cost before they ask. A price left empty shows no
-    number rather than a zero.</div>
-    <div class="err" id="spaErr"></div>
+    <div class="panel on" id="tStaff" role="tabpanel">
+      <div id="people"></div>
+      <button class="btn solid" id="addBtn" style="margin-top:var(--s4)">Add someone</button>
+    </div>
+
+    <div class="panel" id="tRoles" role="tabpanel">
+      <div class="seclabel">Who is being set up</div>
+      <div class="chips" id="permPick"></div>
+      <div class="sec-h" id="permHead"></div>
+      <div id="permList"></div>
+      <div class="note"><i class="dot"></i> marks a setting changed from how the
+      app came. An admin always has everything, and a manager everything but this
+      page, so neither is offered here. Only "Change what a villa needs" is
+      enforced by the database as well as by the app: the others hide the button,
+      which is enough for an honest mistake and is not a lock.</div>
+      <div class="err" id="permErr"></div>
+    </div>
+
+    <div class="panel" id="tNotify" role="tabpanel">
+      <div class="evrow"><span id="masterNm">All notifications</span>
+        <button class="sw" id="masterTick" role="switch" aria-checked="true" aria-label="All notifications"></button></div>
+      <div class="seclabel">Send between</div>
+      <div class="hours" id="hoursRow">
+        <input id="hFrom" inputmode="numeric" placeholder="07:30">and
+        <input id="hTo" inputmode="numeric" placeholder="18:00">
+      </div>
+      <div class="seclabel">Who is being set up</div>
+      <div class="chips" id="notifPick"></div>
+      <div class="sec-h" id="notifHead"></div>
+      <div id="notifList"></div>
+      <div class="note">Tapping a row saves it straight away. Turning every one
+      off for a role is the same as turning notifications off for those people.</div>
+      <div class="err" id="err"></div>
+    </div>
+
+    <div class="panel" id="tPrices" role="tabpanel">
+      <div class="evrow"><span>1 hour</span>
+        <span class="money">$<input id="sp60" inputmode="numeric" placeholder="0"></span></div>
+      <div class="evrow"><span>1.5 hours</span>
+        <span class="money">$<input id="sp90" inputmode="numeric" placeholder="0"></span></div>
+      <div class="evrow"><span>2 hours</span>
+        <span class="money">$<input id="sp120" inputmode="numeric" placeholder="0"></span></div>
+      <div class="note">Shown to the guest beside each length on the pre-arrival
+      form, so they see the cost before they ask. A price left empty shows no
+      number rather than a zero.</div>
+      <div class="err" id="spaErr"></div>
+    </div>
   </div>
 </div>
 
@@ -268,18 +347,14 @@ function drawPeople(){
   });
   keys.forEach(function(k){
     var r = STAFF[k] || {};
-    var row = document.createElement('div');
+    var row = document.createElement('button');
     row.className = 'person';
-    row.innerHTML = '<span class="nm"></span><span class="rl"></span>'+
-                    '<span class="binwrap"><span class="cd"></span>'+
-                    '<button class="bin" aria-label="Remove">&#128465;</button></span>';
-    row.querySelector('.nm').textContent = r.name || '(no name)';
-    row.querySelector('.rl').textContent = normaliseRole(r.role) || '';
-    row.querySelector('.cd').textContent = codeOf(k);
-    var why = protectedReason(k);
-    var bin = row.querySelector('.bin');
-    if (why){ bin.disabled = true; bin.title = why; }
-    else { bin.onclick = function(e){ e.stopPropagation(); removeSheet(k); }; }
+    row.type = 'button';
+    row.innerHTML = '<span class="mid"><span class="nm"></span>'+
+                    '<span class="sub"></span></span><span class="rl"></span>';
+    row.querySelector('.nm').textContent  = r.name || '(no name)';
+    row.querySelector('.sub').textContent = codeOf(k);
+    row.querySelector('.rl').textContent  = normaliseRole(r.role) || '';
     row.onclick = function(){ personSheet(k); };
     host.appendChild(row);
   });
@@ -420,9 +495,10 @@ function addPerson(){
 }
 
 /* ── what each role may do ─────────────────────────────────────
-   The same shape as the notification grid on purpose. A manager who has
-   learnt one has learnt both, and the difference between "who gets told" and
-   "who may do it" is carried by the heading rather than by a second idiom.
+   The same shape as the notification list, and since 29 Aug literally the
+   same code: a manager who has learnt one has learnt both, and the
+   difference between "who gets told" and "who may do it" is carried by the
+   heading rather than by a second idiom.
 
    PERMS holds only the boxes that have been changed away from the shipped
    default, not a full copy of the matrix. Storing every cell would freeze
@@ -437,39 +513,86 @@ function loadPerms(){
       'Could not load who may do what. The app is running on its defaults.'; });
 }
 
-function drawPerms(){
-  var head = '<tr><th></th>' + PERM_ROLES.map(function(r){
-    return '<th class="who">' + (r === 'housekeeping' ? 'House<br>keeping' : r) + '</th>';
-  }).join('') + '</tr>';
-  var rows = PERM_ACTIONS.map(function(ac){
-    return '<tr><td>' + ac[1] + '</td>' + PERM_ROLES.map(function(r){
-      var def = grantedByDefault(r, ac[0]);
-      var row = PERMS[ac[0]] || {};
-      var isOn = (typeof row[r] === 'boolean') ? row[r] : def;
-      /* Marked, not explained. A manager wants to know at a glance which of
-         these they have fiddled with, and the reason is their own memory. */
-      var moved = isOn !== def ? ' <span class="moved">changed</span>' : '';
-      return '<td class="who"><button class="tick' + (isOn ? ' on' : '') +
-             '" data-act="' + ac[0] + '" data-role="' + r + '" aria-label="' +
-             ac[1] + ' ' + r + '"></button>' + moved + '</td>';
-    }).join('') + '</tr>';
-  }).join('');
-  document.getElementById('perms').innerHTML = head + rows;
+/* ── pick who, then read down ────────────────────────────────────────
+   Written once and called twice, Roles and Notifications both. They were
+   two grids doing one job in two shapes, and five columns only fitted at
+   390pt with the labels shrunk; a grid bounded by the screen cannot gain
+   a column, and the owner asked for room to grow. A role is a chip and
+   chips wrap; a setting is a row and rows only make the page longer.
 
-  var ticks = document.querySelectorAll('#perms .tick');
-  for (var i=0;i<ticks.length;i++){
-    ticks[i].onclick = function(){
-      var ac = this.getAttribute('data-act'), r = this.getAttribute('data-role');
-      var def = grantedByDefault(r, ac);
-      var row = PERMS[ac] || {};
-      var now = (typeof row[r] === 'boolean') ? row[r] : def;
-      if (!PERMS[ac]) PERMS[ac] = {};
-      PERMS[ac][r] = !now;
-      setPermissions(PERMS);
-      drawPerms(); savePerms();
-    };
+   cfg reads and writes through callbacks rather than owning a copy of the
+   state: PERMS and NOTIFY are the truth, and a second copy here is how the
+   form state and the tint came to disagree.                            */
+function pickList(cfg){
+  var pick = cfg.pick || 0;
+  function draw(){
+    var sel = cfg.roles[pick];
+    cfg.chips.innerHTML = cfg.roles.map(function(r,j){
+      var n = cfg.items.filter(function(it){ return cfg.isOn(it, r); }).length;
+      return '<button class="chip' + (r === sel ? ' on' : '') + '" data-r="' + j +
+             '" aria-pressed="' + (r === sel) + '">' + r +
+             '<span class="count">' + n + '</span></button>';
+    }).join('');
+    cfg.head.textContent = 'What ' + sel + ' ' + cfg.verb;
+    cfg.list.innerHTML = cfg.items.map(function(it,i){
+      var on = cfg.isOn(it, sel);
+      /* Each switch carries its own id, and it is not decoration. The sweep
+         names a control by tag, id and label; a switch has no label, so
+         eight identical button.sw descriptors collapsed into one and only
+         the first was ever pressed - which in both lists happens to be one
+         that is already on, and the sweep excuses an on control as "already
+         chosen". A dead handler passed 113 assertions. Named, every switch
+         is pressed, and the off ones have to prove they do something.
+
+         role=switch rather than aria-pressed for the same reason it is
+         correct: a toggle is not a selection. The chips above ARE a
+         selection, and keep aria-pressed. */
+      return '<div class="evrow"><span>' + it[1] + '</span>' +
+        (cfg.moved && cfg.moved(it, sel)
+           ? '<i class="dot" title="changed from how the app came"></i>' : '') +
+        '<button class="sw' + (on ? ' on' : '') + '" id="' + cfg.pfx + it[0] +
+        '" data-e="' + i + '" role="switch" aria-checked="' + on +
+        '" aria-label="' + it[1] + ' ' + sel + '"></button></div>';
+    }).join('');
   }
+  cfg.chips.onclick = function(e){
+    var c = e.target.closest('[data-r]'); if (!c) return;
+    pick = +c.getAttribute('data-r'); draw();
+  };
+  cfg.list.onclick = function(e){
+    var t = e.target.closest('[data-e]'); if (!t) return;
+    cfg.toggle(cfg.items[+t.getAttribute('data-e')], cfg.roles[pick]);
+    draw();
+  };
+  draw();
+  return draw;
 }
+
+/* The dot marks a box moved away from the shipped default, in either
+   direction: a permission switched off is as much a change as one switched
+   on, and the old grid said "changed" under only the cell it belonged to,
+   floating free of anything the eye could attach it to.                */
+var drawPerms = pickList({
+  chips: document.getElementById('permPick'),
+  head:  document.getElementById('permHead'),
+  list:  document.getElementById('permList'),
+  roles: PERM_ROLES, items: PERM_ACTIONS, verb: 'may do', pfx: 'may-',
+  isOn: function(ac, r){
+    var row = PERMS[ac[0]] || {};
+    return (typeof row[r] === 'boolean') ? row[r] : grantedByDefault(r, ac[0]);
+  },
+  moved: function(ac, r){
+    var row = PERMS[ac[0]] || {};
+    return typeof row[r] === 'boolean' && row[r] !== grantedByDefault(r, ac[0]);
+  },
+  toggle: function(ac, r){
+    var row = PERMS[ac[0]] || {};
+    var now = (typeof row[r] === 'boolean') ? row[r] : grantedByDefault(r, ac[0]);
+    if (!PERMS[ac[0]]) PERMS[ac[0]] = {};
+    PERMS[ac[0]][r] = !now;
+    setPermissions(PERMS); savePerms();
+  }
+});
 
 function savePerms(){
   fetch(DB + '/permissions.json', { method:'PUT', body: JSON.stringify(PERMS) })
@@ -493,8 +616,8 @@ function loadNotify(){
       if (!NOTIFY.events) NOTIFY.events = JSON.parse(JSON.stringify(NOTIFY_DEFAULTS.events));
       if (!NOTIFY.hours)  NOTIFY.hours  = JSON.parse(JSON.stringify(NOTIFY_DEFAULTS.hours));
       /* An event type added after this node was first written - the spa
-         five, 27 Aug - is filled in from its defaults before the grid
-         draws, or the first tick would PUT the node back without the
+         five, 27 Aug - is filled in from its defaults before the list
+         draws, or the first switch would PUT the node back without the
          event's stored spa key and silence the masseuse for good. */
       Object.keys(NOTIFY_DEFAULTS.events).forEach(function(ev){
         if (!NOTIFY.events[ev])
@@ -506,40 +629,44 @@ function loadNotify(){
       'Could not load the notification settings.'; });
 }
 
+/* The rows and chips are the same component as Roles above; only the master,
+   the hours and the dimming belong to this tab. */
+var drawEvents = pickList({
+  chips: document.getElementById('notifPick'),
+  head:  document.getElementById('notifHead'),
+  list:  document.getElementById('notifList'),
+  roles: ROLES, items: EVENTS, verb: 'is told about', pfx: 'tell-',
+  /* Not admin, who is told about everything: ten switches all on is
+     the least informative screen this tab can open on. */
+  pick: ROLES.indexOf('housekeeping'),
+  /* Built before the fetch lands, so it draws once against nothing and
+     again when loadNotify has NOTIFY. */
+  isOn: function(ev, r){ return !!((((NOTIFY||{}).events || {})[ev[0]] || {})[r]); },
+  toggle: function(ev, r){
+    /* The load failed and said so; the switches are drawn from nothing and
+       must not write a node built out of that nothing. */
+    if (!NOTIFY) return;
+    if (!NOTIFY.events[ev[0]]) NOTIFY.events[ev[0]] = {};
+    NOTIFY.events[ev[0]][r] = !NOTIFY.events[ev[0]][r];
+    saveNotify();
+  }
+});
+
 function drawNotify(){
   var on = NOTIFY.on !== false;
   document.getElementById('masterNm').textContent = 'All notifications ' + (on ? 'on' : 'off');
-  document.getElementById('masterTick').className = 'tick' + (on ? ' on' : '');
-  document.getElementById('hoursRow').className = 'hours' + (on ? '' : ' dim');
-  document.getElementById('grid').className = on ? '' : 'dim';
+  document.getElementById('masterTick').className = 'sw' + (on ? ' on' : '');
+  document.getElementById('masterTick').setAttribute('aria-checked', on);
+  document.getElementById('hoursRow').className  = 'hours' + (on ? '' : ' dim');
+  document.getElementById('notifPick').className = 'chips' + (on ? '' : ' dim');
+  document.getElementById('notifHead').className = 'sec-h' + (on ? '' : ' dim');
+  document.getElementById('notifList').className = on ? '' : 'dim';
   document.getElementById('hFrom').value = NOTIFY.hours.from || '';
   document.getElementById('hTo').value   = NOTIFY.hours.to   || '';
-
-  var head = '<tr><th></th>' + ROLES.map(function(r){
-    return '<th class="who">' + (r === 'housekeeping' ? 'House<br>keeping' : r) + '</th>';
-  }).join('') + '</tr>';
-  var rows = EVENTS.map(function(ev){
-    return '<tr><td>' + ev[1] + '</td>' + ROLES.map(function(r){
-      var isOn = !!((NOTIFY.events[ev[0]]||{})[r]);
-      return '<td class="who"><button class="tick' + (isOn ? ' on' : '') +
-             '" data-ev="' + ev[0] + '" data-role="' + r + '" aria-label="' +
-             ev[1] + ' ' + r + '"></button></td>';
-    }).join('') + '</tr>';
-  }).join('');
-  document.getElementById('grid').innerHTML = head + rows;
-
-  var ticks = document.querySelectorAll('#grid .tick');
-  for (var i=0;i<ticks.length;i++){
-    ticks[i].onclick = function(){
-      var ev = this.getAttribute('data-ev'), r = this.getAttribute('data-role');
-      if (!NOTIFY.events[ev]) NOTIFY.events[ev] = {};
-      NOTIFY.events[ev][r] = !NOTIFY.events[ev][r];
-      drawNotify(); saveNotify();
-    };
-  }
+  drawEvents();
 }
 
-document.getElementById('master').onclick = function(){
+document.getElementById('masterTick').onclick = function(){
   if (!NOTIFY) return;
   NOTIFY.on = (NOTIFY.on === false);
   drawNotify(); saveNotify();
@@ -612,6 +739,22 @@ function saveNotify(){
         'That change was not saved. Check the connection.';
     });
 }
+
+/* ── the tabs ──────────────────────────────────────────────────────────
+   Four jobs, one page. The panels are all in the document from the start:
+   every one of them loads from its own node the moment the page opens, and
+   a tab that fetched on first press would leave the count on a chip wrong
+   until somebody looked at it. */
+document.querySelectorAll('.tab').forEach(function(t){
+  t.onclick = function(){
+    document.querySelectorAll('.tab').forEach(function(x){
+      x.classList.remove('on'); x.setAttribute('aria-selected','false');
+    });
+    document.querySelectorAll('.panel').forEach(function(x){ x.classList.remove('on'); });
+    t.classList.add('on'); t.setAttribute('aria-selected','true');
+    document.getElementById(t.getAttribute('data-t')).classList.add('on');
+  };
+});
 </script>
 </body>
 </html>

@@ -132,7 +132,12 @@ COVERS = {
     "spa.html":          ["spa", "sweep:spa"],
     "list.html":         ["list"],
     "housekeeping.html": ["housekeep"],
-    "staff.html":        ["auth", "sweep:staff"],
+    # cleans and spa are not obvious neighbours of the settings page and were
+    # missing until 29 Aug, when a restructure of it broke eight assertions
+    # in cl_suite and three in spa_suite that --changed never ran. cl_suite
+    # reads staff.html as source (what the permission list is drawn from,
+    # who can never be removed); spa_suite drives its price fields.
+    "staff.html":        ["auth", "sweep:staff", "cleans", "spa"],
     "registration.html": ["registr", "sweep:registration"],
     "pages.html":        ["pages", "sweep:pages"],
     "stats.html":        ["stats", "sweep:stats"],

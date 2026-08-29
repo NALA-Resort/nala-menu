@@ -244,6 +244,15 @@ reservation number staff read out).
 Cleans (`cleaners.html`), Publish Menu (`publish.html`), Settings
 (`staff.html`), Dietary Settings (`tag.html`), Statistics (`stats.html`).
 
+**Settings is four tabs**, 29 Aug: Staff, Roles, Notifications, Prices. It
+was one scroll doing four unrelated jobs, with a five-column grid that only
+fitted at 390pt and could never gain a sixth. Roles and Notifications are
+now the same component - `pickList`, written once and called twice: pick a
+role from the chips, read its settings down the page, one switch per row.
+Another role is another chip and chips wrap; another setting is another
+row. The bin on each staff row is gone, because it called the same
+`removeSheet` the person sheet's own "Remove from staff" calls.
+
 **Paper:** Reservations Sheet (`list.html`), Clean Sheet (`housekeeping.html`),
 Registration Cards (`registration.html`), Printable Menu (`menu-print.html`).
 
