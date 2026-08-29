@@ -1,4 +1,9 @@
-"""notifications.html, the per-person switch.
+"""notifications.html, the per-person switch - and the Settings grid that
+decides the routing it shows.
+
+Two pages, one story, so one suite: notifications.html tells a person what
+reaches their phone, and staff.html's grid is where the manager decides it.
+Letting those drift is the whole shape of this bug.
 
 The page exists because of a bug the owner reported on 29 Aug: the masseuse
 could not turn notifications on. The switch was a row inside the Settings
@@ -224,6 +229,93 @@ with sync_playwright() as p:
     ck("under the login's own key, commas not dots",
        bool(dels) and "/pushsubs/masseuse@x/" in dels[0]["u"])
     pg.close()
+
+    # ── the Settings grid, where the routing is decided ─────────
+    #  The masseuse had no column here until 29 Aug. His routing existed only
+    #  as a key NOTIFY_DEFAULTS seeded, which nothing displayed and nobody
+    #  could change - so the manager's only way to reach it was to tick a role
+    #  the masseuse does not hold, which buzzed every waiter instead. That is
+    #  exactly what the owner had to do.
+    def settings(w=390):
+        pg = b.new_page(viewport={"width": w, "height": 900})
+        pg.add_init_script(SDK)
+        pg.add_init_script("window.__EMAIL='staff@x';")
+        pg.route("**firebasedatabase.app/**", fb)
+        pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        pg.goto("http://localhost:8993/staff.html")
+        pg.wait_for_timeout(1200)
+        return pg
+
+    NOTIFY["events"] = {}
+    pg = settings()
+    cols = pg.evaluate("()=>[...document.querySelectorAll('#grid th.who')]"
+                       ".map(t=>t.textContent.trim())")
+    print("   notify columns:", cols)
+    ck("the masseuse has a column of his own now",
+       cols == ["admin", "manager", "chef", "waiter", "Housekeeping", "spa"])
+
+    #  The two grids are NOT the same list and must not become one. What an
+    #  outside contractor may OPEN is still a rules decision made in a commit,
+    #  and the rules refuse a spa row in /permissions at all. Buzzing his
+    #  phone is not opening him a board.
+    ck("but not in the permissions grid above it, which the rules refuse",
+       "spa" not in pg.evaluate("()=>[...document.querySelectorAll('#perms th.who')]"
+                                ".map(t=>t.textContent.trim())"))
+
+    SPACOL = ("()=>{const out={};"
+              "[...document.querySelectorAll('#grid tr')].slice(1).forEach(tr=>{"
+              "const t=tr.querySelectorAll('.tick');"
+              "out[tr.querySelector('td').textContent.trim()] ="
+              "t.length ? t[t.length-1].className.indexOf('on')>-1 : null;});"
+              "return out;}")
+    col = pg.evaluate(SPACOL)
+    print("   spa column:", col)
+    ck("it opens on the shipped defaults, his four massages ticked",
+       col["Massage requested"] and col["Massage booked"]
+       and col["Massage cancelled"] and col["Stay changed under a massage"])
+    ck("and the one he raises himself left off",
+       col["Massage suggested"] is False)
+    ck("and none of the board events, which are not his work",
+       not any(col[k] for k in ["Departed", "Possibly available", "Cleaned",
+                                "Serviced", "Menu published"]))
+
+    #  The write. No rules change was needed: /notify/events/$event/$role
+    #  validates a boolean and does not name the roles, unlike /permissions,
+    #  which lists three and would have refused a fourth.
+    del WRITES[:]
+    TICKSPA = ("()=>{const tr=[...document.querySelectorAll('#grid tr')]"
+               ".find(r=>r.querySelector('td') &&"
+               "r.querySelector('td').textContent.trim()==='Massage suggested');"
+               "const t=tr.querySelectorAll('.tick'); t[t.length-1].click();}")
+    pg.evaluate(TICKSPA)
+    pg.wait_for_timeout(500)
+    puts = [w for w in WRITES if w["m"] == "PUT" and "/notify" in w["u"]]
+    ck("ticking his cell saves it", len(puts) == 1)
+    ck("as the spa key on that event, which is what the Worker routes on",
+       bool(puts) and
+       json.loads(puts[0]["b"])["events"]["spaSuggested"]["spa"] is True)
+    #  The whole node goes back on every tick, so a save must carry the keys
+    #  it did not touch - his other four among them.
+    ck("and carries his other four out untouched",
+       bool(puts) and
+       json.loads(puts[0]["b"])["events"]["spaRequest"]["spa"] is True)
+    pg.close()
+
+    #  Six columns do not fit 320pt - five fill it exactly and the sixth
+    #  pushes the page to 325 - so the grid slides rather than the column
+    #  being dropped or every phone's ticks cramped for the smallest one.
+    for w in (320, 360, 390):
+        pg = settings(w)
+        m = pg.evaluate("()=>({sw:document.documentElement.scrollWidth,"
+                        "vw:document.documentElement.clientWidth,"
+                        "rail:!!document.querySelector('.rail')})")
+        ck("Settings does not scroll sideways at %dpt with six columns" % w,
+           m["sw"] <= m["vw"] + 1)
+        if w == 320:
+            ck("because the grid is on a rail, not because a column was cut",
+               m["rail"] and len(pg.evaluate(
+                   "()=>[...document.querySelectorAll('#grid th.who')]")) == 6)
+        pg.close()
 
     # ── the menu ────────────────────────────────────────────────
     pg = page("staff@x")

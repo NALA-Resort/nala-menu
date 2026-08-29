@@ -2921,11 +2921,6 @@ function announceMenu(){
   var t = setInterval(function(){ if (tick()) clearInterval(t); }, 1000);
 })();
 
-/* The notification settings, written by the app the first time an admin opens
-   a board and finds none. Typing this into the console by hand was slow and
-   easy to get wrong, and every new event type would mean doing it again.
-   Only an admin may write /notify, which the rules enforce, so this quietly
-   does nothing for everyone else.                                        */
 /* The event types and the words a person reads for them. ONE list, two
    readers since 29 Aug: the Settings grid draws a row per entry, and
    notifications.html tells each person which of these will reach their own
@@ -2947,6 +2942,11 @@ var NOTIFY_EVENTS = [
   ['spaStay',      'Stay changed under a massage']
 ];
 
+/* The notification settings, written by the app the first time an admin opens
+   a board and finds none. Typing this into the console by hand was slow and
+   easy to get wrong, and every new event type would mean doing it again.
+   Only an admin may write /notify, which the rules enforce, so this quietly
+   does nothing for everyone else.                                        */
 var NOTIFY_DEFAULTS = {
   on: true,
   hours: { from: '07:30', to: '18:00' },

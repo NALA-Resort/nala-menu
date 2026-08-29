@@ -55,6 +55,17 @@
   .dim { opacity:.4; }
 
   table { width:100%; border-collapse:collapse; }
+  /* Six roles do not fit 320pt: five fill it exactly and the sixth pushes the
+     page to 325, measured. The spa column is not worth dropping for that -
+     leaving it out is the bug this page caused - and shrinking the ticks to
+     fit would cramp every phone for the sake of the smallest. So the grid
+     slides at 320 and sits still from 360 up, the rail rule of 27 Aug.
+     min-width is the six tick columns plus a readable label, and a NUMBER
+     rather than max-content: max-content lets "Stay changed under a massage"
+     take its whole natural width and the grid goes to 477, which is a long
+     swipe to reach a column that was 20px away. */
+  .rail { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .rail > table { min-width:340px; }
   th { font-size:var(--t1);
        color:var(--mid); font-weight:normal; padding:0 0 8px; }
   th.who { text-align:center; }
@@ -129,7 +140,7 @@
       <input id="hFrom" inputmode="numeric" placeholder="07:30">and
       <input id="hTo" inputmode="numeric" placeholder="18:00">
     </div>
-    <table id="grid"></table>
+    <div class="rail"><table id="grid"></table></div>
     <div class="note">Tapping a box saves it straight away. Turning every box
     off for a role is the same as turning notifications off for those people.</div>
     <div class="err" id="err"></div>
@@ -152,19 +163,34 @@
 <script src="auth.js?v=12"></script>
 <script src="nala-shared.js?v=47"></script>
 <script>
-var ROLES = ['admin','manager','chef','waiter','housekeeping'];
+var ROLES = ['admin','manager','chef','waiter','housekeeping','spa'];
 /* The human roles, and the ones the notification matrix targets. manager is
    admin without manageStaff, so it cannot open this page but is assigned and
    buzzed like anybody else. sync is a machine account with no phone, so it
    is assignable and sortable but takes no part in notifications: giving it a
-   column would ask who to buzz on a login that cannot receive a buzz. spa is
-   assignable too but keeps out of the matrix even now that the spa events
-   exist: a sixth column squeezes the grid at 320, so his routing lives as a
-   stored spa key on each event (NOTIFY_DEFAULTS seeds it, saveNotify's
-   whole-node PUT carries it untouched) and his own control is the switch on
-   notifications.html, which also shows him which events reach his phone -
-   the answer this grid cannot give him because he has no column in it. */
-var ROLES_ASSIGN = ROLES.concat(['spa','sync']);
+   column would ask who to buzz on a login that cannot receive a buzz.
+
+   spa is a column here from 29 Aug, at the owner's request. It was left out
+   because a sixth column squeezes the grid at 320, which is true and was
+   measured both ways round: five columns fill 320 exactly and the sixth
+   pushes the page to 325. So the grid slides at that width instead of the
+   column being dropped - the rail rule of 27 Aug, where a row of choices
+   that will not fit scrolls rather than wrapping. It costs a swipe on a
+   320pt phone and nothing at 360 or above.
+
+   Leaving it out cost more. The masseuse's routing existed only as a stored
+   key NOTIFY_DEFAULTS seeded, which no screen displayed and nobody could
+   change, so the manager's only way to reach it was to tick a role the
+   masseuse does not hold - which buzzed every waiter instead, and is what
+   the owner had to do on 29 Aug. notifications.html shows a person what they
+   are routed; this is where it is decided.
+
+   Note this is the NOTIFICATION matrix, not the permissions one above it.
+   Widening what an outside contractor may OPEN is still a rules decision
+   made in a commit: PERM_ROLES has no spa column and the rules refuse a spa
+   row in /permissions at all. Buzzing his phone is not opening him a board,
+   and the two lists are deliberately not one. */
+var ROLES_ASSIGN = ROLES.concat(['sync']);
 /* The one list, in nala-shared.js, since notifications.html became its
    second reader on 29 Aug. The spa five are in it: these columns tick the
    DESK side, and the masseuse's copy of each is the stored spa key above. */

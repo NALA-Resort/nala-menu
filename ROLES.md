@@ -40,7 +40,15 @@ menu nodes. The dining and housekeeping boards, internal notes, phone
 corrections, SMS records, push endpoints and the settings catch-all all
 refuse it by role. It is deliberately absent from the permissions grid in
 Settings: widening an outside contractor's access is a rules decision, made
-in a commit, not a tick in a grid.
+in a commit, not a tick in a grid - and the rules enforce that, refusing a
+spa row under /permissions at all.
+
+It DOES have a column in the notifications grid, from 29 Aug, which is a
+different question and a much smaller one: who to buzz, not what to open.
+Leaving it out of that grid too meant his routing lived only in the shipped
+defaults, where no screen showed it and the manager could not change it -
+so turning his notifications on meant ticking waiter and buzzing all of
+them. The two grids are not the same list on purpose.
 
 | | Cleans board | Set a villa's job | Reservations board | Edit bookings | Reservations Sheet | Publish menu | Manage staff | Spa board |
 |---|---|---|---|---|---|---|---|---|

@@ -133,7 +133,7 @@ COVERS = {
     "spa.html":          ["spa", "sweep:spa"],
     "list.html":         ["list"],
     "housekeeping.html": ["housekeep"],
-    "staff.html":        ["auth", "sweep:staff"],
+    "staff.html":        ["auth", "notif", "sweep:staff"],
     "registration.html": ["registr", "sweep:registration"],
     "pages.html":        ["pages", "sweep:pages"],
     "stats.html":        ["stats", "sweep:stats"],

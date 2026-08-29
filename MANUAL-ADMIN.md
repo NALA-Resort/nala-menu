@@ -115,12 +115,23 @@ must genuinely be unable to do a thing, change their role.
 and set quiet hours. "Menu published" is on for you and nobody else: the chef
 already knows, they just published it.
 
+The masseuse has a column here from 29 Aug. He did not before, so his routing
+sat in the shipped defaults where nothing showed it and you could not change
+it - which is why turning his notifications on meant ticking **waiter** and
+buzzing every waiter in the resort. Six columns do not quite fit a 320pt
+phone, so the grid slides sideways there; on anything from 360 up it sits
+still.
+
 This grid decides who is routed what. It does not turn anybody's phone on:
 each person does that themselves on **Notifications**, its own page at the
 bottom of the hamburger, which also shows them which events reach their
-phone. That page is the only place the masseuse's routing is visible at all -
-the spa role has no column in this grid, deliberately, so his answer lives in
-the shipped defaults rather than here.
+phone. Read-only, that page - what a person is routed is your decision, made
+here.
+
+Note this is the notifications grid, not the permissions one above it. The
+spa role has no column *there*, and the database refuses to store one:
+buzzing an outside contractor's phone is not the same as opening him a board,
+and widening what he may open is a change to the rules, made deliberately.
 
 Beside Settings in the same menu group sits **Flags**: the short facts you can
 pin under a guest's name - VIP, Travel agent, Breakfast included, whatever you
