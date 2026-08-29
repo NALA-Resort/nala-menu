@@ -54,36 +54,11 @@ body.ui2 { padding:calc(20px + env(safe-area-inset-top)) 16px 60px; }
       font-family:var(--ui-font); font-size:var(--t2); }
 .rm:disabled { visibility:hidden; }   /* a protected row keeps the space */
 
-/* ── matrices ────────────────────────────────────────────────────────
-   th had padding:0 0 8px - no horizontal padding at all - so with five
-   role columns the headings abutted and read "adminmanagerchefwaiter".
-   Every column now has a width and the label column takes what is left. */
-.matrix { width:100%; border-collapse:collapse; }
-.matrix th { font-size:var(--t2); color:var(--mid); font-weight:500;
-             padding:0 var(--s1) var(--s2); vertical-align:bottom; }
-.matrix th.who { width:46px; text-align:center; line-height:1.2; }
- /* --t2, not --t3: in a matrix the label is the quiet half. At 16px
-    "Stay changed under a massage" took four lines and stood the row up
-    to 90px; at 14px with narrower columns it takes two.              */
-.matrix td { font-size:var(--t2); padding:var(--s3) var(--s1);
-             border-bottom:1px solid var(--rule); line-height:1.35; }
-.matrix td.who { width:46px; text-align:center; }
-.matrix tbody tr:last-child td { border-bottom:0; }
-
-/* A checkbox, because a matrix of switches is a wall of switches. */
-.tick { width:24px; height:24px; border-radius:6px; border:1.5px solid var(--rule);
-        background:none; position:relative; cursor:pointer; vertical-align:middle;
-        padding:0; }
-.tick.on { background:var(--accent); border-color:var(--accent); }
-.tick.on:after { content:''; position:absolute; left:8px; top:4px;
-                 width:5px; height:10px; border:solid #fff;
-                 border-width:0 2px 2px 0; transform:rotate(45deg); }
 /* Changed from the default. It was the word "changed" floating under a
-   neighbouring column, belonging to nothing. A dot on the cell it is
-   about, and the legend below says what it means once. */
-.tick.diff:before { content:''; position:absolute; top:-3px; right:-3px;
-                    width:7px; height:7px; border-radius:50%;
-                    background:var(--law-amber-b); }
+   neighbouring column, belonging to nothing. A dot on the row it is about,
+   and the legend below says once what a dot means. */
+.dot { width:7px; height:7px; border-radius:50%; background:var(--law-amber-b);
+       flex:0 0 auto; display:inline-block; }
 
 /* A single switch is a switch. A row of them is not. */
 .srow { display:flex; align-items:center; gap:var(--s3); padding:var(--s3) 0;
@@ -153,10 +128,13 @@ body.ui2 { padding:calc(20px + env(safe-area-inset-top)) 16px 60px; }
 
   <!-- ── Roles ── -->
   <div class="panel" id="r">
-    <table class="matrix" id="perms"></table>
-    <div class="legend"><span class="dot"></span> marks a box changed from how
-      the app came. An admin always has everything and a manager everything but
-      this page, so neither is a column.</div>
+    <div class="seclabel">Who is being set up</div>
+    <div class="chips" id="permPick"></div>
+    <div class="sec-h" id="permHead"></div>
+    <div id="permList"></div>
+    <div class="legend"><span class="dot"></span> marks a setting changed from
+      how the app came. An admin always has everything and a manager everything
+      but this page, so neither is offered here.</div>
     <div class="note">Only <b>Change what a villa needs</b> is enforced by the
       database as well as the app. The others hide the button, which is enough
       for an honest mistake and is not a lock.</div>
@@ -194,53 +172,58 @@ people.innerHTML = PEOPLE.map(function(p){
     '<button class="rm"'+(p[3]?' disabled':'')+'>Remove</button></div>';
   }).join('');
 
-function matrix(el, roles, rows, state){
-  var h = '<thead><tr><th></th>'+roles.map(function(r){
-      return '<th class="who">'+(r==='housekeeping'?'House<br>keeping':r)+'</th>';
-    }).join('')+'</tr></thead><tbody>';
-  rows.forEach(function(row,i){
-    h += '<tr><td>'+row+'</td>'+roles.map(function(r,j){
-      var s = state[i] && state[i][j];
-      return '<td class="who"><button class="tick'+(s===1||s===2?' on':'')+
-             (s===2?' diff':'')+'" aria-label="'+row+' '+r+'"></button></td>';
-    }).join('')+'</tr>';
+/* ── one list, two tabs ──────────────────────────────────────────────
+   Roles and Notifications are the same shape: pick who, then read what
+   they get, one row at a time. Written once and called twice rather than
+   built twice, so the two cannot drift the way five copies of a button
+   did. Both grow the same way too - a role is a chip and chips wrap, a
+   setting is a row and rows just make the page longer.               */
+function pickList(cfg){
+  function draw(){
+    cfg.chips.innerHTML = cfg.roles.map(function(r,j){
+      var n = cfg.state.filter(function(row){ return row[j]; }).length;
+      return '<button class="chip'+(j===cfg.pick?' on':'')+'" data-r="'+j+'">'+
+             cfg.label(r)+'<span class="count">'+n+'</span></button>';
+    }).join('');
+    cfg.head.textContent = 'What ' + cfg.label(cfg.roles[cfg.pick]) + ' ' + cfg.verb;
+    cfg.list.innerHTML = cfg.items.map(function(it,i){
+      var v = cfg.state[i][cfg.pick];
+      return '<div class="evrow"><span>'+it+'</span>'+
+        (v === 2 ? '<i class="dot" title="changed from the default"></i>' : '')+
+        '<button class="sw'+(v?' on':'')+'" data-e="'+i+'" aria-label="'+it+'"></button>'+
+        '</div>';
+    }).join('');
+  }
+  cfg.chips.addEventListener('click', function(e){
+    var c = e.target.closest('[data-r]'); if (!c) return;
+    cfg.pick = +c.dataset.r; draw();
   });
-  el.innerHTML = h+'</tbody>';
+  cfg.list.addEventListener('click', function(e){
+    var t = e.target.closest('[data-e]'); if (!t) return;
+    var i = +t.dataset.e;
+    cfg.state[i][cfg.pick] = cfg.state[i][cfg.pick] ? 0 : 1;
+    draw();
+  });
+  draw();
 }
-matrix(perms, ['chef','waiter','housekeeping'],
-  ['See Reservations','Edit a booking','See the Reservations Sheet',
-   'Publish and tag the menu','See the Cleans board','Mark a clean done',
-   'Change what a villa needs','See the Spa board'],
-  [[1,0,0],[0,2,0],[1,0,0],[1,0,0],[0,1,1],[0,2,1],[0,0,0],[0,2,0]]);
-var NROLES = ['admin','manager','chef','waiter','housekeeping'];
-var EVENTS = ['Departed','Possibly available','Cleaned','Serviced','Menu published',
-  'Massage requested','Massage suggested','Massage booked','Massage cancelled',
-  'Stay changed under a massage'];
-var ON = [[1,0,1,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,1,0,0],
-          [1,1,0,1,0],[1,1,0,1,0],[1,1,0,1,0],[1,1,0,1,0],[1,1,0,0,0]];
-var pick = 4;
-function label(r){ return r === 'housekeeping' ? 'Housekeeping' : r; }
-function drawNotif(){
-  rolePick.innerHTML = NROLES.map(function(r,j){
-    var n = EVENTS.filter(function(_,i){ return ON[i][j]; }).length;
-    return '<button class="chip'+(j===pick?' on':'')+'" data-r="'+j+'">'+
-           label(r)+'<span class="count">'+n+'</span></button>';
-  }).join('');
-  whoHead.textContent = 'What ' + label(NROLES[pick]) + ' is told about';
-  evList.innerHTML = EVENTS.map(function(e,i){
-    return '<div class="evrow"><span>'+e+'</span>'+
-      '<button class="sw'+(ON[i][pick]?' on':'')+'" data-e="'+i+'"></button></div>';
-  }).join('');
-}
-drawNotif();
-rolePick.addEventListener('click', function(e){
-  var c = e.target.closest('[data-r]'); if (!c) return;
-  pick = +c.dataset.r; drawNotif();
-});
-evList.addEventListener('click', function(e){
-  var t = e.target.closest('[data-e]'); if (!t) return;
-  ON[+t.dataset.e][pick] = ON[+t.dataset.e][pick] ? 0 : 1; drawNotif();
-});
+function roleLabel(r){ return r === 'housekeeping' ? 'Housekeeping' : r; }
+
+pickList({ chips:permPick, head:permHead, list:permList, pick:0,
+  verb:'may do', label:roleLabel,
+  roles:['chef','waiter','housekeeping'],
+  items:['See Reservations','Edit a booking','See the Reservations Sheet',
+         'Publish and tag the menu','See the Cleans board','Mark a clean done',
+         'Change what a villa needs','See the Spa board'],
+  state:[[1,0,0],[0,2,0],[1,0,0],[1,0,0],[0,1,1],[0,2,1],[0,0,0],[0,2,0]] });
+
+pickList({ chips:rolePick, head:whoHead, list:evList, pick:4,
+  verb:'is told about', label:roleLabel,
+  roles:['admin','manager','chef','waiter','housekeeping'],
+  items:['Departed','Possibly available','Cleaned','Serviced','Menu published',
+         'Massage requested','Massage suggested','Massage booked',
+         'Massage cancelled','Stay changed under a massage'],
+  state:[[1,0,1,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,1,0,0],
+         [1,1,0,1,0],[1,1,0,1,0],[1,1,0,1,0],[1,1,0,1,0],[1,1,0,0,0]] });
 
 document.querySelectorAll('.tab').forEach(function(t){
   t.onclick = function(){
