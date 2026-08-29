@@ -59,6 +59,12 @@
      and dressing them as a footnote would say skip them. */
   .info-p { font-size:0.95rem; line-height:1.7; margin-top:0.9rem; }
   .info-p:first-child { margin-top:0.55rem; }
+  /* A photo in a note. Block and full width, cornered like the cards. No
+     reserved height: a photo that fails to load is removed outright, and
+     space held for an absent image would be a hole in the page. */
+  .info-img { display:block; width:100%; border-radius:10px;
+              margin-top:0.9rem; }
+  .info-img:first-child { margin-top:0.55rem; }
   /* Page kickers lived here for an hour on 23 Aug and were scrapped as
      clutter without a proper design pass; their breathing room stays. */
   .q-t { margin-top:0.55rem; }
@@ -826,17 +832,45 @@ function paintWell(){
 /* The owner's words into an info block. textContent, never innerHTML: the
    text is typed by staff in Settings, but this is a guest's browser and
    markup has no business arriving through a database field. A blank line
-   starts a new paragraph; a single line break is soft wrap. */
+   starts a new paragraph; a single line break is soft wrap.
+
+   One exception, and it is an element, not markup: a line that is ONLY a
+   photo's https address becomes that photo, where the line sits. The owner
+   pastes addresses from the resort's own site, whose CDN rewrites them
+   from time to time, so a photo that fails to load removes itself - the
+   note must read whole over a rotted link, and a broken-image glyph on a
+   guest's phone says something is wrong with a form that is fine. An
+   address inside a sentence stays text: only the whole line speaks. */
+function infoIsPhoto(line){ return /^https:\/\/\S+$/i.test(line); }
 function fillInfo(id, text){
   var host = el(id); host.innerHTML = '';
-  String(text || '').split(/\n\s*\n/).forEach(function(par){
-    par = par.replace(/\s*\n\s*/g, ' ').trim();
+  var run = [];
+  function flushRun(){
+    var par = run.join(' ').trim();
+    run = [];
     if (!par) return;
     var d = document.createElement('div');
     d.className = 'info-p';
     d.textContent = par;
     host.appendChild(d);
+  }
+  String(text || '').split('\n').forEach(function(line){
+    line = line.trim();
+    if (infoIsPhoto(line)){
+      flushRun();
+      var im = document.createElement('img');
+      im.className = 'info-img';
+      im.alt = '';
+      im.loading = 'lazy';
+      im.onerror = function(){ im.remove(); };
+      im.src = line;
+      host.appendChild(im);
+      return;
+    }
+    /* A blank line ends a paragraph; anything else joins the current one. */
+    if (!line) flushRun(); else run.push(line);
   });
+  flushRun();
 }
 
 /* Yes opens a follow up on the same page and so stays put. No opens nothing

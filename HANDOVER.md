@@ -411,7 +411,9 @@ None of these can move without him.
     Settings gained a Guest form tab: an About Nala note for the form's
     welcome screen and a Dining note for above its first-night dinner
     question, both his words, both at `/prearrivalinfo`, both invisible on
-    the form until written. The paste is what lets a guest READ them - a
+    the form until written. A line that is only a photo's https address
+    draws as that photo (his own website's CDN is the intended source; a
+    rotted link removes itself rather than showing broken). The paste is what lets a guest READ them - a
     guest holds no login, and until `rules.json` (which gained the node,
     public read, management write, 4000 characters a note) is pasted into
     the console, the node sits under the catch-all rule, which refuses a

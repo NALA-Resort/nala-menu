@@ -122,7 +122,11 @@ left empty shows no number rather than a zero.
 **Guest form.** The two notes the pre-arrival form shows in your words, so it
 explains the resort as well as asking questions: *About Nala* on the form's
 welcome screen, under the greeting, and *Dining at Nala* just above the
-first-night dinner question. A blank line starts a new paragraph. Leave either
+first-night dinner question. A blank line starts a new paragraph. A line that
+is only a photo's web address becomes that photo, right where the line sits -
+take addresses from the website's own photos (a sized copy, not an original:
+a guest opens this on mobile data), and if the website later retires an
+address the photo quietly stops showing while the words read on. Leave either
 note empty and the form simply goes without it - nothing else about the form
 changes. Save publishes both notes to every link already sent.
 

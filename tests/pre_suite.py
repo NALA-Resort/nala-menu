@@ -18,7 +18,7 @@ down are the ones that are easy to get wrong and invisible when they are:
      PUT would wipe confirmedAt and un-confirm a guest at the desk.
 """
 import errortrap   # fails the run if any page throws
-import threading, http.server, socketserver, json, time, datetime, os
+import threading, http.server, socketserver, json, time, datetime, os, base64
 
 os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
@@ -57,6 +57,17 @@ def fb(route, request):
     elif "/prearrival" in u: body = json.dumps(STATE["pre"]) if STATE["pre"] else "null"
     elif "/pms" in u: body = json.dumps(STATE["pms"]) if STATE["pms"] else "null"
     route.fulfill(status=200, content_type="application/json", body=body)
+
+# photos.test stands in for the resort site's CDN, where the owner takes the
+# note photos from. Anything under /dead/ is a retired address and 404s,
+# which is exactly what a rotted CDN link does.
+PNG1 = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAA"
+    "DUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+def photo_route(route, request):
+    if "/dead/" in request.url:
+        route.fulfill(status=404, body=""); return
+    route.fulfill(status=200, content_type="image/png", body=PNG1)
 
 P = F = 0
 def ck(name, cond):
@@ -97,6 +108,7 @@ with sync_playwright() as p:
     def guest(link=LINK, w=390, begin=True):
         pg = b.new_page(viewport={"width": w, "height": 844})
         pg.route("**firebasedatabase.app/**", fb)
+        pg.route("**photos.test/**", photo_route)
         pg.route("**/fonts.googleapis.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.route("**/fonts.gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.goto("http://localhost:8967/prearrival.html" + link)
@@ -640,6 +652,41 @@ with sync_playwright() as p:
     jump(pg, "qDine")
     ck("a one night guest reads the dining note too",
        "one menu" in pg.locator("#diningInfo").inner_text())
+    pg.close()
+
+    #  A line that is only a photo's https address becomes that photo, where
+    #  the line sits. The owner pastes addresses from the resort site's own
+    #  CDN, which rewrites them over time, so a dead one removes itself: the
+    #  note must read whole over a rotted link, and a broken-image glyph on
+    #  a guest's phone says something is wrong with a form that is fine. An
+    #  address inside a sentence stays text, and only https speaks.
+    STATE["info"] = {
+        "resort": "Seventeen villas on a hillside.\n\n"
+                  "https://photos.test/villa.jpg\n"
+                  "Days here are slow on purpose.\n\n"
+                  "Our photos live at https://photos.test/menu.jpg online.",
+        "dining": "One menu, written daily.\n"
+                  "https://photos.test/dead/food.jpg\n"
+                  "http://photos.test/notsecure.jpg"}
+    pg = guest(begin=False)
+    pg.wait_for_timeout(400)
+    ck("a photo line draws as the photo, where the line sits",
+       pg.evaluate("()=>[...resortInfo.children].map(c=>c.tagName).join(',')")
+       == "DIV,IMG,DIV,DIV" and
+       pg.evaluate("()=>resortInfo.querySelector('img').src")
+       == "https://photos.test/villa.jpg")
+    ck("an address inside a sentence stays text",
+       "https://photos.test/menu.jpg" in pg.locator("#resortInfo").inner_text()
+       and pg.evaluate("()=>resortInfo.querySelectorAll('img').length") == 1)
+    pg.locator("#begin").click(); pg.wait_for_timeout(250)
+    jump(pg, "qDine")
+    pg.wait_for_timeout(600)
+    ck("a photo whose address has rotted removes itself, leaving no broken glyph",
+       pg.evaluate("()=>diningInfo.querySelectorAll('img').length") == 0)
+    ck("while the note still reads whole",
+       "One menu" in pg.locator("#diningInfo").inner_text())
+    ck("and only https speaks: a plain http line stays text",
+       "http://photos.test/notsecure.jpg" in pg.locator("#diningInfo").inner_text())
     pg.close()
 
     STATE["info"] = {"resort": "<b>Bold</b> & <img src=x onerror=boom()>",
