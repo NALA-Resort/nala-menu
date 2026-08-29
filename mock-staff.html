@@ -1,0 +1,201 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>Mock &middot; Settings</title>
+<link rel="stylesheet" href="nala-ui.css?v=17">
+<link rel="stylesheet" href="nala-ui2.css?v=6">
+<style>
+/* MOCK ONLY. Not linked from NAV, not published, no database behind it.
+   A restructure of staff.html, which is three unrelated jobs stacked into
+   one page you scroll for a long time: who the people are, what each role
+   may do, and who gets buzzed about what.                              */
+body.ui2 { padding:calc(20px + env(safe-area-inset-top)) 16px 60px; }
+.wrap { max-width:520px; margin:0 auto; }
+
+/* ── tabs ────────────────────────────────────────────────────────────
+   Three jobs, one page, one permission gate. The alternative was three
+   pages, which would put three more rows in a menu that was given
+   submenus on 26 Aug precisely because seventeen rows was too many. */
+.tabs { display:flex; gap:var(--s2); border-bottom:1px solid var(--rule);
+        margin:var(--s4) 0 var(--s5); }
+.tab { flex:1; padding:var(--s3) var(--s2) var(--s3); min-height:var(--tap);
+       border:0; background:none; font-family:var(--ui-font);
+       font-size:var(--t2); font-weight:500; color:var(--mid);
+       cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+.tab.on { color:var(--accent); border-bottom-color:var(--accent); }
+.panel { display:none } .panel.on { display:block }
+
+/* ── people ──────────────────────────────────────────────────────────
+   Two lines, not four columns. The sign-in - a six digit code for some,
+   an email for others - is a different SHAPE per person, so a column for
+   it cannot line up and did not: two rows on that page pushed the role
+   label halfway across the screen.                                    */
+.person { display:flex; align-items:center; gap:var(--s3);
+          padding:var(--s3) 0; border-bottom:1px solid var(--rule);
+          min-height:var(--tap); }
+.person .mid { flex:1; min-width:0; }
+.person .nm { font-size:var(--t3); display:block; }
+.person .sub { font-size:var(--t2); color:var(--mid); margin-top:2px;
+               display:block; white-space:nowrap; overflow:hidden;
+               text-overflow:ellipsis; }
+.role { flex:0 0 auto; font-size:var(--t2); color:var(--mid);
+        background:var(--card); border-radius:var(--pill);
+        padding:3px var(--s2); }
+/* The bin was the emoji wastebasket, which iOS draws in its own colours -
+   a blue-grey picture in a palette that has a colour for destruction. An
+   svg in the destructive ink, and it keeps its 44px whatever it does. */
+.bin { flex:0 0 auto; width:var(--tap); height:var(--tap); border:0;
+       background:none; color:var(--law-terra); cursor:pointer;
+       display:inline-flex; align-items:center; justify-content:center; }
+.bin svg { width:19px; height:19px; }
+.bin:disabled { opacity:0; cursor:default; }   /* a protected row keeps the space */
+
+/* ── matrices ────────────────────────────────────────────────────────
+   th had padding:0 0 8px - no horizontal padding at all - so with five
+   role columns the headings abutted and read "adminmanagerchefwaiter".
+   Every column now has a width and the label column takes what is left. */
+.matrix { width:100%; border-collapse:collapse; }
+.matrix th { font-size:var(--t2); color:var(--mid); font-weight:500;
+             padding:0 var(--s1) var(--s2); vertical-align:bottom; }
+.matrix th.who { width:46px; text-align:center; line-height:1.2; }
+ /* --t2, not --t3: in a matrix the label is the quiet half. At 16px
+    "Stay changed under a massage" took four lines and stood the row up
+    to 90px; at 14px with narrower columns it takes two.              */
+.matrix td { font-size:var(--t2); padding:var(--s3) var(--s1);
+             border-bottom:1px solid var(--rule); line-height:1.35; }
+.matrix td.who { width:46px; text-align:center; }
+.matrix tbody tr:last-child td { border-bottom:0; }
+
+/* A checkbox, because a matrix of switches is a wall of switches. */
+.tick { width:24px; height:24px; border-radius:6px; border:1.5px solid var(--rule);
+        background:none; position:relative; cursor:pointer; vertical-align:middle;
+        padding:0; }
+.tick.on { background:var(--accent); border-color:var(--accent); }
+.tick.on:after { content:''; position:absolute; left:8px; top:4px;
+                 width:5px; height:10px; border:solid #fff;
+                 border-width:0 2px 2px 0; transform:rotate(45deg); }
+/* Changed from the default. It was the word "changed" floating under a
+   neighbouring column, belonging to nothing. A dot on the cell it is
+   about, and the legend below says what it means once. */
+.tick.diff:before { content:''; position:absolute; top:-3px; right:-3px;
+                    width:7px; height:7px; border-radius:50%;
+                    background:var(--law-amber-b); }
+
+/* A single switch is a switch. A row of them is not. */
+.srow { display:flex; align-items:center; gap:var(--s3); padding:var(--s3) 0;
+        border-bottom:1px solid var(--rule); min-height:var(--tap); }
+.srow span { flex:1; font-size:var(--t3); }
+.sw { width:50px; height:30px; border-radius:999px; background:#C9C9C2;
+      position:relative; flex:0 0 auto; border:0; cursor:pointer; padding:0; }
+.sw.on { background:var(--accent); }
+.sw:after { content:''; position:absolute; top:3px; left:3px; width:24px;
+            height:24px; border-radius:50%; background:#fff; transition:left .16s; }
+.sw.on:after { left:23px; }
+
+.hours { display:flex; align-items:center; gap:var(--s3); margin:var(--s3) 0 var(--s5); }
+.hours input { width:auto; flex:1; text-align:center; }
+.hours span { color:var(--mid); font-size:var(--t2); flex:0 0 auto; }
+.legend { font-size:var(--t2); color:var(--mid); line-height:1.5;
+          margin-top:var(--s4); max-width:52ch; }
+.legend .dot { display:inline-block; width:7px; height:7px; border-radius:50%;
+               background:var(--law-amber-b); vertical-align:middle; margin:0 3px; }
+.note { font-size:var(--t2); color:var(--mid); line-height:1.5;
+        margin:var(--s4) 0 0; max-width:52ch; }
+</style></head><body class="tier-app ui2">
+<div class="wrap">
+
+  <div class="daterow"><div class="date">Settings</div>
+    <div class="navwrap"><button class="navbtn" aria-label="Menu">
+      <span></span><span></span><span></span></button></div></div>
+
+  <div class="tabs">
+    <button class="tab on" data-t="p">People</button>
+    <button class="tab" data-t="r">Roles</button>
+    <button class="tab" data-t="n">Notifications</button>
+  </div>
+
+  <!-- ── People ── -->
+  <div class="panel on" id="p">
+    <div id="people"></div>
+    <button class="btn solid" style="margin-top:var(--s4)">Add someone</button>
+  </div>
+
+  <!-- ── Roles ── -->
+  <div class="panel" id="r">
+    <table class="matrix" id="perms"></table>
+    <div class="legend"><span class="dot"></span> marks a box changed from how
+      the app came. An admin always has everything and a manager everything but
+      this page, so neither is a column.</div>
+    <div class="note">Only <b>Change what a villa needs</b> is enforced by the
+      database as well as the app. The others hide the button, which is enough
+      for an honest mistake and is not a lock.</div>
+  </div>
+
+  <!-- ── Notifications ── -->
+  <div class="panel" id="n">
+    <div class="srow"><span>All notifications on</span>
+      <button class="sw on" id="allOn" aria-label="All notifications"></button></div>
+    <div class="seclabel">Send between</div>
+    <div class="hours"><input value="07:30"><span>and</span><input value="18:00"></div>
+    <table class="matrix" id="notif"></table>
+    <div class="note">Tapping a box saves it straight away. Turning every box
+      off for a role is the same as turning notifications off for those people.</div>
+  </div>
+
+</div>
+<script>
+var BIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"'+
+  ' stroke-linecap="round"><path d="M4 7h16M10 4h4M9 7v12M15 7v12M6 7l1 13h10l1-13"/></svg>';
+
+var PEOPLE = [
+  ['Jess','admin','162116',false], ['Admin','admin','485211',false],
+  ['Ben Davidson','admin','485248',true], ['Admin','admin','admin@nalaresort.com.au',false],
+  ['Admin','admin','staff@nalaresort.com.au',false], ['Chef','chef','485222',false],
+  ['Heath','chef','800855',false], ['Waiter','waiter','485233',false],
+  ['Viktor Hlinka','waiter','990709',false], ['Janneke Bos','housekeeping','048323',false],
+  ['House Keeping','housekeeping','485244',false], ['Colin','spa','258425',false],
+  ['NALA Sync','sync','485288',false]];
+people.innerHTML = PEOPLE.map(function(p){
+  return '<div class="person"><span class="mid"><span class="nm">'+p[0]+
+    '</span><span class="sub">'+p[2]+'</span></span>'+
+    '<span class="role">'+p[1]+'</span>'+
+    '<button class="bin"'+(p[3]?' disabled':'')+' aria-label="Remove '+p[0]+'">'+
+    BIN+'</button></div>';}).join('');
+
+function matrix(el, roles, rows, state){
+  var h = '<thead><tr><th></th>'+roles.map(function(r){
+      return '<th class="who">'+(r==='housekeeping'?'House<br>keeping':r)+'</th>';
+    }).join('')+'</tr></thead><tbody>';
+  rows.forEach(function(row,i){
+    h += '<tr><td>'+row+'</td>'+roles.map(function(r,j){
+      var s = state[i] && state[i][j];
+      return '<td class="who"><button class="tick'+(s===1||s===2?' on':'')+
+             (s===2?' diff':'')+'" aria-label="'+row+' '+r+'"></button></td>';
+    }).join('')+'</tr>';
+  });
+  el.innerHTML = h+'</tbody>';
+}
+matrix(perms, ['chef','waiter','housekeeping'],
+  ['See Reservations','Edit a booking','See the Reservations Sheet',
+   'Publish and tag the menu','See the Cleans board','Mark a clean done',
+   'Change what a villa needs','See the Spa board'],
+  [[1,0,0],[0,2,0],[1,0,0],[1,0,0],[0,1,1],[0,2,1],[0,0,0],[0,2,0]]);
+matrix(notif, ['admin','manager','chef','waiter','housekeeping'],
+  ['Departed','Possibly available','Cleaned','Serviced','Menu published',
+   'Massage requested','Massage suggested','Massage booked','Massage cancelled',
+   'Stay changed under a massage'],
+  [[1,0,1,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,1,0,0],
+   [1,1,0,1,0],[1,1,0,1,0],[1,1,0,1,0],[1,1,0,1,0],[1,1,0,0,0]]);
+
+document.querySelectorAll('.tab').forEach(function(t){
+  t.onclick = function(){
+    document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on');});
+    document.querySelectorAll('.panel').forEach(function(x){x.classList.remove('on');});
+    t.classList.add('on'); document.getElementById(t.dataset.t).classList.add('on');
+  };
+});
+document.addEventListener('click', function(e){
+  var k = e.target.closest('.tick'); if (k) k.classList.toggle('on');
+  var s = e.target.closest('.sw');   if (s) s.classList.toggle('on');
+});
+</script></body></html>
