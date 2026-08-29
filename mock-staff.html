@@ -41,18 +41,16 @@ body.ui2 { padding:calc(20px + env(safe-area-inset-top)) 16px 60px; }
 .role { flex:0 0 auto; font-size:var(--t2); color:var(--mid);
         background:var(--card); border-radius:var(--pill);
         padding:3px var(--s2); }
-/* Not a bin. The emoji wastebasket was a one-off icon iOS draws in its own
-   colours, and the svg I replaced it with was a second one-off - an icon
-   that appears nowhere else in the app, which is the fault this work exists
-   to remove. The app already has a way to say this: a WORD in a terracotta
-   outline, the button law's destructive dress, as tag.html and flags.html
-   draw Delete and spa.html draws Cancel booking. This page's own
-   confirmation already says "Remove from staff".                       */
-.rm { flex:0 0 auto; min-height:36px; padding:var(--s2) var(--s3);
-      border:1px solid var(--law-terra-b); border-radius:var(--pill);
-      background:transparent; color:var(--law-terra); cursor:pointer;
-      font-family:var(--ui-font); font-size:var(--t2); }
-.rm:disabled { visibility:hidden; }   /* a protected row keeps the space */
+/* No Remove on the row. It went from an emoji bin to an svg bin to a word,
+   and the owner asked the question that ended it: what does it do that the
+   sheet's "Remove from staff" does not? Nothing. Both open the same
+   confirmation; the row control only skipped the person's own sheet on the
+   way. Removing somebody is rare and permanent, and a one-tap path to it on
+   every row is a mis-tap waiting to happen, so the row opens the person and
+   the removal lives with them.                                          */
+.person { cursor:pointer; text-align:left; width:100%; background:none;
+          border:0; border-bottom:1px solid var(--rule); }
+.person:active { background:var(--accent-soft); }
 
 /* Changed from the default. It was the word "changed" floating under a
    neighbouring column, belonging to nothing. A dot on the row it is about,
@@ -115,7 +113,7 @@ body.ui2 { padding:calc(20px + env(safe-area-inset-top)) 16px 60px; }
       <span></span><span></span><span></span></button></div></div>
 
   <div class="tabs">
-    <button class="tab on" data-t="p">People</button>
+    <button class="tab on" data-t="p">Staff</button>
     <button class="tab" data-t="r">Roles</button>
     <button class="tab" data-t="n">Notifications</button>
   </div>
@@ -166,10 +164,9 @@ var PEOPLE = [
   ['House Keeping','housekeeping','485244',false], ['Colin','spa','258425',false],
   ['NALA Sync','sync','485288',false]];
 people.innerHTML = PEOPLE.map(function(p){
-  return '<div class="person"><span class="mid"><span class="nm">'+p[0]+
+  return '<button class="person"><span class="mid"><span class="nm">'+p[0]+
     '</span><span class="sub">'+p[2]+'</span></span>'+
-    '<span class="role">'+p[1]+'</span>'+
-    '<button class="rm"'+(p[3]?' disabled':'')+'>Remove</button></div>';
+    '<span class="role">'+p[1]+'</span></button>';
   }).join('');
 
 /* ── one list, two tabs ──────────────────────────────────────────────
