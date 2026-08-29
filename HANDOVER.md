@@ -395,8 +395,11 @@ None of these can move without him.
         `spaStay`      "Villa {v} - stay cancelled or moved under a massage"
       Until this paste the sends reach nala-push and are dropped as unknown
       events; nothing breaks, nothing buzzes. The masseuse's phone also has
-      to subscribe once: his own hamburger menu, Settings, Notifications -
-      the toggle every login carries.
+      to subscribe once: his own hamburger menu, then Notifications - a page
+      of its own since 29 Aug, below the submenus, and every login carries
+      it. It was a row inside the Settings fold until he could not find it;
+      the page also tells him which events actually reach his phone, which
+      the Settings grid cannot, since the spa role has no column there.
 
 ---
 

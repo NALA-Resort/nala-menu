@@ -2,7 +2,8 @@
   "_comment": [
     "The staff menu, as buildNav in nala-shared.js draws it on every page:",
     "the top links in order, then the collapsible submenus in order, then",
-    "Logout. Four suites used to hold their own copy of the menu order,",
+    "the tail links that sit below them, then Logout. Four suites used to",
+    "hold their own copy of the menu order,",
     "which is why adding a page meant editing them all. They read this",
     "table now - the phone_cases.json pattern. Change the menu in NAV and",
     "here, and whichever side was missed fails by name."
@@ -32,6 +33,16 @@
       ["flags.html", "Flags"],
       ["pages.html", "Pages"]
     ]]
+  ],
+  "_tail": [
+    "Top level links drawn AFTER the submenus. Notifications moved out of the",
+    "Settings group and down here on 29 Aug: it is the only control a masseuse",
+    "or a housekeeper owns, and inside that group it sat alone behind a",
+    "collapsed heading named after the pages they may not open. It is also the",
+    "one link with no permission behind it - everybody may set their own."
+  ],
+  "tail": [
+    ["notifications.html", "Notifications"]
   ],
   "signout": "Logout"
 }

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nala Villas">
+<link rel="apple-touch-icon" href="nala-icon.png?v=1">
+<title>Nala &middot; Notifications</title>
+<link rel="stylesheet" href="nala-ui2.css?v=1">
+<link rel="stylesheet" href="nala-ui.css?v=17">
+<style>
+  /* The switch is the page, so it gets the room a switch inside a menu row
+     never had: one card that says what is true of THIS phone, and one button
+     under it that says what tapping will do. */
+  .card { border:1px solid var(--rule); border-radius:var(--r); padding:18px;
+          margin-top:14px; }
+  .state { display:flex; align-items:center; gap:9px;
+           font-family:var(--ui-font); font-size:var(--t4); line-height:1.3; }
+  .why { font-size:var(--t2); color:var(--mid); line-height:1.55; margin-top:9px; }
+  .card .btn { margin-top:15px; width:100%; }
+
+  /* Nothing to do here: no push on this browser at all. The colour law's
+     sunk grey - not red, which would call a phone without the feature a
+     failure. */
+  .card.sunk { opacity:.62; border-style:dashed; }
+
+  .list { margin-top:12px; }
+  .ev { display:flex; align-items:center; justify-content:space-between;
+        gap:12px; padding:11px 0; border-bottom:1px solid var(--rule); }
+  .ev:last-child { border-bottom:0; }
+  .ev .nm { font-size:var(--t3); line-height:1.35; }
+  .ev .yn { flex:0 0 auto; font-size:var(--t2); color:var(--mid); }
+  .ev.on .yn { color:var(--law-save-ink); }
+
+  .quiet { margin-top:14px; font-size:var(--t2); color:var(--mid); line-height:1.55; }
+  .err { margin-top:14px; font-size:var(--t2); color:var(--red); line-height:1.55; }
+</style>
+</head>
+<body class="tier-app ui2">
+<div class="wrap">
+
+  <div class="daterow">
+    <div class="date">Notifications</div>
+    <div class="navwrap" id="navWrap" style="display:none">
+      <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="navdrop" id="navDrop"></div>
+    </div>
+  </div>
+
+  <div class="noaccess" id="noAccess"></div>
+
+  <div id="main">
+    <div id="switch"></div>
+
+    <div class="sec" id="listSec">What you will be told about</div>
+    <div class="list" id="list"></div>
+    <div class="quiet" id="quiet"></div>
+    <div class="err" id="err"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="auth.js?v=12"></script>
+<script src="nala-shared.js?v=47"></script>
+<script>
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+})();
+
+var CFG = null;      /* /notify once read; null until then */
+
+/* The four states the browser can be in, and what each one owes the reader.
+   The old menu row could only afford a mark and three words; a page can say
+   what to actually do about it, which is the whole reason blocked and
+   unsupported were dead ends before. */
+var WORDS = {
+  on:  { head:'Notifications are on for this phone',
+         why:'This phone only. Turning them on again on another phone is a '
+           + 'separate switch, and signing out turns them off here.',
+         act:'Turn them off', cls:'btn ghost' },
+  off: { head:'Notifications are off for this phone',
+         why:'Nothing will reach this phone until you turn them on. Your '
+           + 'other phones are not affected.',
+         act:'Turn them on', cls:'btn solid' },
+  blocked: { head:'Blocked in this phone’s settings',
+         why:'This phone refused notifications for the site, so the app '
+           + 'cannot ask again. Open your phone’s Settings, find the '
+           + 'browser or the Nala icon, allow Notifications, then come back '
+           + 'and try again.',
+         act:'Try again', cls:'btn ghost' },
+  unsupported: { head:'Not available in this browser',
+         why:'Notifications need the app added to the Home Screen. Open the '
+           + 'share menu, choose Add to Home Screen, then open Nala from the '
+           + 'new icon and this page will offer the switch.',
+         act:null, cls:null }
+};
+
+function drawSwitch(state){
+  var w = WORDS[state] || WORDS.off;
+  var host = document.getElementById('switch');
+  var mark = state === 'on'  ? '<span class="navmark on">&#10003;</span>'
+           : state === 'off' ? '<span class="navmark off">&#10007;</span>' : '';
+  host.className = '';
+  host.innerHTML =
+    '<div class="card' + (state === 'unsupported' ? ' sunk' : '') + '" id="card">' +
+      '<div class="state">' + mark + '<span id="stateHead"></span></div>' +
+      '<div class="why" id="stateWhy"></div>' +
+      (w.act ? '<button class="' + w.cls + '" id="toggle"></button>' : '') +
+    '</div>';
+  host.querySelector('#stateHead').textContent = w.head;
+  host.querySelector('#stateWhy').textContent  = w.why;
+  var btn = host.querySelector('#toggle');
+  if (btn){ btn.textContent = w.act; btn.onclick = function(){ flip(state); }; }
+  host.setAttribute('data-state', state);
+  drawList(state);
+}
+
+/* Exposed for the suites, which cannot produce the four states in a headless
+   browser: it reports every one of them as blocked. */
+window.__paintNotify = drawSwitch;
+
+function flip(state){
+  var u = window.NALA_USER || null;
+  try { u = firebase.auth().currentUser || u; } catch (e){}
+  var btn = document.getElementById('toggle');
+  if (btn){ btn.disabled = true; btn.textContent = 'Working…'; }
+  var done = function(r){
+    drawSwitch(r);
+    var e = document.getElementById('err');
+    e.textContent = r === 'failed'
+      ? 'That did not save. Check the connection and try again.' : '';
+    if (r === 'failed') drawSwitch('off');
+  };
+  /* Blocked reruns the ask rather than toggling: the person has just been
+     told to go and allow it, and the only useful button is the one that
+     looks again. */
+  if (state === 'on') pushOff(u, done);
+  else pushOn(u, window.NALA_ROLE, done);
+}
+
+/* What this login will actually be buzzed about: the stored matrix if it has
+   an opinion, the shipped defaults if it does not. The same two-step can()
+   uses, and for the same reason - only boxes moved off the default are
+   stored, so an absent key is the default standing, not a no.            */
+function wants(ev){
+  var role = normaliseRole(window.NALA_ROLE);
+  var live = CFG && CFG.events && CFG.events[ev];
+  if (live && typeof live[role] === 'boolean') return live[role];
+  var def = NOTIFY_DEFAULTS.events[ev];
+  return !!(def && def[role]);
+}
+
+function drawList(state){
+  var host = document.getElementById('list');
+  var mine = NOTIFY_EVENTS.filter(function(e){ return wants(e[0]); });
+  host.innerHTML = '';
+  /* A role nothing is routed to is told so plainly. Silence with a switch
+     above it reads as a broken switch, which is the confusion this page was
+     built out of. */
+  if (!mine.length){
+    var d = document.createElement('div');
+    d.className = 'why';
+    d.textContent = 'Nothing is routed to your role yet, so turning these on '
+                  + 'would buzz you about nothing. Ask the manager to set it '
+                  + 'up under Settings.';
+    host.appendChild(d);
+  }
+  mine.forEach(function(e){
+    var row = document.createElement('div');
+    row.className = 'ev on';
+    row.innerHTML = '<span class="nm"></span><span class="yn">Yes</span>';
+    row.querySelector('.nm').textContent = e[1];
+    host.appendChild(row);
+  });
+
+  var q = document.getElementById('quiet');
+  var bits = [];
+  /* The master switch is the manager's and it beats every personal one, so
+     a phone that is on and silent has to be told why here rather than left
+     to wonder. */
+  if (CFG && CFG.on === false)
+    bits.push('The manager has turned all notifications off for everyone, so '
+            + 'nothing is being sent at the moment.');
+  if (CFG && CFG.hours && CFG.hours.from && CFG.hours.to)
+    bits.push('Sent between ' + CFG.hours.from + ' and ' + CFG.hours.to + '.');
+  if (state === 'on' && mine.length && !(CFG && CFG.on === false))
+    bits.push('Notifications are per person and per phone.');
+  q.textContent = bits.join(' ');
+}
+
+function load(){
+  /* A failed read is not an empty matrix: the defaults stand in, exactly as
+     they do for the pages, so a connection wobble does not tell somebody
+     they are subscribed to nothing. */
+  fetch(DB + '/notify.json?v=' + Date.now())
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .catch(function(){ return null; })
+    .then(function(cfg){
+      CFG = cfg || null;
+      if (typeof pushState === 'function') pushState(drawSwitch);
+      else drawSwitch('unsupported');
+    });
+}
+
+function showAccess(allowed, e){
+  var box = document.getElementById('noAccess');
+  var on = !allowed;
+  box.innerHTML = !on ? '' :
+    (e ? '<div>Could not check access. This is usually the connection, '
+       + 'not your login.</div>'
+       + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+       : 'This login has no access. See the manager.');
+  /* No homeFor redirect here. Every role with a record may open this page, so
+     the only way to land on the refusal is to have no record at all - and a
+     login with no record has no home to be sent to. */
+  box.className = 'noaccess' + (on ? ' show' : '');
+  document.getElementById('main').style.display = on ? 'none' : '';
+  if (!on) load();
+}
+
+window.NALA_ROLE = null;
+(function gate(){
+  if (!window.firebase || !firebase.auth || typeof loadStaff !== 'function')
+    return setTimeout(gate, 40);
+  var A; try { A = firebase.auth(); } catch(e){ return setTimeout(gate, 40); }
+  if (!A || !A.onAuthStateChanged) return setTimeout(gate, 40);
+  A.onAuthStateChanged(function(u){
+    if (!u) return;                  /* auth.js owns the signed-out state */
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      window.NALA_USER = u;
+      document.getElementById('navWrap').style.display = 'block';
+      if (window.NALA_NAVFILTER) NALA_NAVFILTER(role);
+      /* The one page with no permission behind it. Everybody who is staff at
+         all owns their own phone's alerts - the masseuse and the housekeeper
+         most of all, since this is the only control either of them has. A
+         record is still required: no record is no access, everywhere. */
+      showAccess(!!role, e);
+    });
+  });
+})();
+</script>
+</body>
+</html>

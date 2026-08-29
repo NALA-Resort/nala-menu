@@ -90,6 +90,7 @@ SUITES = [
     ("debug",      ["python3", "tests/debug_suite.py"],   400),
     ("print",      ["python3", "tests/print_suite.py"],   400),
     ("welcome",    ["python3", "tests/welcome_suite.py"], 300),
+    ("notif",      ["python3", "tests/notif_suite.py"],   300),
     ("demos",      ["python3", "tests/demo_suite.py"],    300),
 ]
 
@@ -106,7 +107,7 @@ SUITES = [
 # this was.
 SWEEP_PAGES = ["cleaners", "front-desk", "invitations", "arrivals-sms", "spa", "past-menus", "templates", "tally", "tag", "flags", "publish", "staff",
                "stats", "registration", "debug", "pages", "index",
-               "prearrival", "welcome"]
+               "prearrival", "welcome", "notifications"]
 SUITES += [("sweep:" + p, ["python3", "tests/sweep_suite.py", p], 600)
            for p in SWEEP_PAGES]
 
@@ -136,6 +137,7 @@ COVERS = {
     "registration.html": ["registr", "sweep:registration"],
     "pages.html":        ["pages", "sweep:pages"],
     "stats.html":        ["stats", "sweep:stats"],
+    "notifications.html": ["notif", "sweep:notifications"],
     "tag.html":          ["tag", "sweep:tag"],
     "flags.html":        ["flags", "sweep:flags"],
     "publish.html":      ["pub", "sweep:publish"],

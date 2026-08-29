@@ -102,7 +102,8 @@ with sync_playwright() as p:
     #  adding a page meant editing them all.
     _nc = json.load(open("tests/nav_canon.json"))
     CANON = [h for h, _t in _nc["top"]] + \
-            [h for _g, items in _nc["groups"] for h, _t in items]
+            [h for _g, items in _nc["groups"] for h, _t in items] + \
+            [h for h, _t in _nc["tail"]]
     got = pg.evaluate("""()=>[...document.querySelectorAll('.navdrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     ck("the map's own hamburger lists every other page, in the one order",

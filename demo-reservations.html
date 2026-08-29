@@ -2495,6 +2495,27 @@ function announceMenu(){
    easy to get wrong, and every new event type would mean doing it again.
    Only an admin may write /notify, which the rules enforce, so this quietly
    does nothing for everyone else.                                        */
+/* The event types and the words a person reads for them. ONE list, two
+   readers since 29 Aug: the Settings grid draws a row per entry, and
+   notifications.html tells each person which of these will reach their own
+   phone. staff.html held the only copy until the second reader arrived.
+
+   The keys must match NOTIFY_DEFAULTS.events below, and notif_suite asserts
+   that both ways round - an event with no row here is one nobody can see,
+   and a row with no defaults is one that buzzes nobody.                  */
+var NOTIFY_EVENTS = [
+  ['departed',     'Departed'],
+  ['available',    'Possibly available'],
+  ['cleaned',      'Cleaned'],
+  ['serviced',     'Serviced'],
+  ['menu',         'Menu published'],
+  ['spaRequest',   'Massage requested'],
+  ['spaSuggested', 'Massage suggested'],
+  ['spaBooked',    'Massage booked'],
+  ['spaCancelled', 'Massage cancelled'],
+  ['spaStay',      'Stay changed under a massage']
+];
+
 var NOTIFY_DEFAULTS = {
   on: true,
   hours: { from: '07:30', to: '18:00' },
@@ -2604,11 +2625,19 @@ var NAV = [
       /* Admin only, like General and Pages: the flags an admin defines here
          are ticked on the front desk sheet by admins alone. */
       { href:'flags.html', label:'Flags',   need:'manageStaff' },
-      { href:'pages.html', label:'Pages',   need:'manageStaff' },
-      /* A switch, not a destination: wireNotify below owns it. No need key,
-         so the filter leaves it alone - a housekeeper subscribes to her own
-         alerts. */
-      { action:'navNotify', label:'Notifications' } ] }
+      { href:'pages.html', label:'Pages',   need:'manageStaff' } ] },
+  /* Last, below the submenus, and a page of its own since 29 Aug. It was a
+     switch inside Settings, which is where an admin looks for it and nowhere
+     near where anybody else does: for a masseuse or a housekeeper every other
+     row in that group is hidden, so the only control they own sat alone
+     behind a collapsed heading named after the one thing they may not do.
+     The owner reported it 29 Aug - the masseuse could not find it at all and
+     could not turn notifications on.
+
+     No need key, deliberately: everybody subscribes to their own alerts, and
+     a login with one board still has a phone. NAV_NEEDS below must therefore
+     not record it - see the note there. */
+  { href:'notifications.html', label:'Notifications' }
 ];
 
 /* Which permission opens each link, derived from NAV so the two cannot
@@ -2617,7 +2646,13 @@ var NAV = [
 var NAV_NEEDS = (function(){
   var out = {};
   NAV.forEach(function(e){
-    (e.items || [e]).forEach(function(i){ if (i.href) out[i.href] = i.need; });
+    /* A link with no permission is left OUT rather than stored as undefined.
+       The filter asks `href in NAV_NEEDS` and only then calls can(), so an
+       undefined value here would be a question no role can answer true -
+       can(role, undefined) is false for admin too - and the row would be
+       hidden from everybody. Absent means "not mine to judge", which is the
+       behaviour Notifications wants. */
+    (e.items || [e]).forEach(function(i){ if (i.href && i.need) out[i.href] = i.need; });
   });
   return out;
 })();
@@ -2637,8 +2672,7 @@ function buildNav(){
   var here = location.pathname.split('/').pop() || 'index.html';
   function makeLink(i){
     var a = document.createElement('a');
-    if (i.action){ a.href = '#'; a.className = 'navaction'; a.id = i.action; }
-    else a.href = i.href;
+    a.href = i.href;
     a.textContent = i.label;
     return a;
   }
@@ -2647,7 +2681,7 @@ function buildNav(){
       if (e.href !== here) drop.appendChild(makeLink(e));
       return;
     }
-    var items = e.items.filter(function(i){ return i.action || i.href !== here; });
+    var items = e.items.filter(function(i){ return i.href !== here; });
     if (!items.length) return;
     var wrap = document.createElement('div');
     wrap.className = 'navgroup';
@@ -2849,86 +2883,6 @@ function hideEmptyGroups(drop){
 }
 window.NALA_NAVFILTER = navFilterShared;
 
-/* The Notifications entry, wired wherever it appears.
-
-   It lived on the Cleans board alone until 23 Aug, written into that page, so
-   the only way to turn notifications on or off was to go to a board a chef
-   cannot open. The push helpers were shared all along; only the wiring was
-   not. Nothing here is board specific.
-
-   It is a switch and not a destination, so it says what it will do rather than
-   what it is: Notifications on means they are on, and tapping turns them off.
-   A menu entry that reads the same in both states is a menu entry nobody
-   trusts. */
-function wireNotify(){
-  var nb = document.getElementById('navNotify');
-  if (!nb || nb.getAttribute('data-wired')) return;
-  nb.setAttribute('data-wired', '1');
-
-  /* The word stays put and a mark carries the state.
-
-     It used to read "Notifications on" and "Notifications off", which is
-     unreadable: there is no way to tell whether the words describe what is
-     true or what tapping will do. Half the menus in the world use each. A tick
-     or a cross beside a fixed word cannot be read as an instruction.
-
-     Blocked and unavailable are not the off state and must not wear its mark.
-     Off is a choice this person made and can undo here; blocked was decided in
-     the phone's own settings, and unavailable means the site is not on the
-     Home Screen and no tap here will change it. Both say so in words, because
-     a mark that means "you cannot fix this from here" does not exist. */
-  var TICK  = '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">' +
-              '<path d="M1 6.5 L4.5 10 L11 2" fill="none" stroke="currentColor" ' +
-              'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  var CROSS = '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">' +
-              '<path d="M2 2 L10 10 M10 2 L2 10" fill="none" stroke="currentColor" ' +
-              'stroke-width="1.8" stroke-linecap="round"/></svg>';
-
-  function paint(state){
-    var mark = state === 'on'  ? '<span class="navmark on">' + TICK + '</span>'
-             : state === 'off' ? '<span class="navmark off">' + CROSS + '</span>'
-             : '';
-    var word = state === 'blocked'     ? 'Blocked on this phone'
-             : state === 'unsupported' ? 'Add to Home Screen first'
-             : '';
-    nb.innerHTML = '<span class="navlabel">Notifications</span>' +
-                   (word ? '<span class="navnote">' + word + '</span>' : mark);
-    nb.setAttribute('data-state', state);
-  }
-
-  /* Exposed for the suites: the three states cannot otherwise be produced in
-     a headless browser, which reports every one of them as blocked. */
-  window.__paintNotify = paint;
-  if (typeof pushState === 'function') pushState(paint);
-
-  nb.onclick = function(e){
-    e.preventDefault(); e.stopPropagation();
-    if (typeof pushOn !== 'function') return;
-    var u = null;
-    try { u = firebase.auth().currentUser; } catch (ex){}
-    var st = nb.getAttribute('data-state');
-    if (st === 'unsupported'){
-      alert('Notifications need the app added to the Home Screen. Open the ' +
-            'share menu and choose Add to Home Screen, then try again.');
-      return;
-    }
-    if (st === 'blocked'){
-      alert('Notifications are blocked for this site. Turn them on in your ' +
-            'phone settings, then try again.');
-      return;
-    }
-    nb.innerHTML = '<span class="navlabel">Notifications</span>' +
-                   '<span class="navnote">working</span>';
-    if (st === 'on') pushOff(u, paint);
-    else pushOn(u, window.NALA_ROLE, function(r){
-      paint(r);
-      if (r === 'blocked') alert('Notifications were not allowed. You can turn them on in your phone settings.');
-      if (r === 'failed')  alert('Could not turn notifications on. Check the connection and try again.');
-    });
-  };
-}
-window.NALA_WIRENOTIFY = wireNotify;
-
 /* Pages that never filtered their own menu get it applied for them. Pages
    that call it themselves are unaffected: running twice is harmless. */
 (function(){
@@ -2937,7 +2891,6 @@ window.NALA_WIRENOTIFY = wireNotify;
     if (++tries > 60) { clearInterval(t); return; }
     if (!window.NALA_ROLE) return;
     navFilterShared(window.NALA_ROLE);
-    wireNotify();
     clearInterval(t);
   }, 250);
 })();

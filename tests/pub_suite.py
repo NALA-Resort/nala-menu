@@ -488,7 +488,8 @@ with sync_playwright() as p:
     #  adding a page meant editing them all.
     _nc = json.load(open("tests/nav_canon.json"))
     CANON = [h for h, _t in _nc["top"]] + \
-            [h for _g, items in _nc["groups"] for h, _t in items]
+            [h for _g, items in _nc["groups"] for h, _t in items] + \
+            [h for h, _t in _nc["tail"]]
     got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     print("   publish nav:", got)
@@ -944,8 +945,15 @@ with sync_playwright() as p:
              "menu-print.html":"resSheet", "past-menus.html":"resBoard",
              "staff.html":"manageStaff", "flags.html":"manageStaff",
              "pages.html":"manageStaff"}
-    ck("every link in the menu has a permission behind it",
-       all(h in NEEDS for r in seen for h in seen[r]))
+    #  Notifications is the one deliberate exception, 29 Aug: everybody sets
+    #  their own phone, so it carries no need key and the filter leaves it
+    #  alone. It must be the ONLY one - an ordinary page that slips out of
+    #  NAV_NEEDS is the publish.html story, offered to logins it refuses.
+    FREE = {"notifications.html"}
+    ck("every link in the menu has a permission behind it, bar the free one",
+       all(h in NEEDS or h in FREE for r in seen for h in seen[r]))
+    ck("and the free one reaches every role, which is the point of it",
+       all("notifications.html" in seen[r] for r in seen))
     #  A heading with nothing under it promises something that is not there.
     #  Judged on the .navgroup wrapper, which is what hideEmptyGroups hides:
     #  the .navgrp header inside it keeps its own computed display and would
@@ -957,19 +965,23 @@ with sync_playwright() as p:
         .map(g=>g.querySelector('.navgrp span').textContent);
     }""")
     print("   headings a housekeeper sees:", empty)
-    #  Settings now holds Notifications, which is not filtered by role: a
-    #  housekeeper subscribes to her own alerts. So the heading correctly
-    #  stands for her, and what proves the rule still works is that she is
-    #  offered the switch and none of the pages she cannot open.
+    #  Settings held Notifications until 29 Aug, which kept the heading
+    #  standing for a housekeeper on the strength of one unfiltered switch -
+    #  a group named after four pages she cannot open. The switch is its own
+    #  page now, below the submenus, so the heading falls the way the rule
+    #  always said it should and Print is all she has left.
     ck("a heading only stands when something under it does",
-       empty == ["Print", "Settings"])
-    ck("and the housekeeper's Settings holds the switch and nothing else",
+       empty == ["Print"])
+    ck("and the Settings heading is gone for her, not standing on the switch",
+       "Settings" not in empty)
+    #  One tap from the menu for the role that owns the fewest pages, and
+    #  demonstrably not inside any fold.
+    ck("but she still reaches Notifications, at the top level now",
        pg.evaluate("""()=>{ window.NALA_NAVFILTER('housekeeping');
-          const g=[...document.querySelectorAll('#navDrop .navgroup')]
-            .find(w=>w.querySelector('.navgrp span').textContent==='Settings');
-          return [...g.querySelectorAll('.navsub a')]
-                 .filter(a=>a.style.display!=='none')
-                 .map(a=>a.id); }""") == ["navNotify"])
+          const a=[...document.querySelectorAll('#navDrop > a')]
+            .find(x=>x.getAttribute('href')==='notifications.html');
+          return !!a && getComputedStyle(a).display!=='none'
+                 && !a.closest('.navgroup'); }"""))
     pg.evaluate("()=>window.NALA_NAVFILTER('admin')")
     pg.close()
 

@@ -615,6 +615,11 @@ with sync_playwright() as p:
     flat = [(h, t) for h, t in CANON["top"] if h != "tally.html"]
     for _g, items in CANON["groups"]:
         flat += [(h, t) for h, t in items if h != "tally.html"]
+    #  The tail sits below the submenus: Notifications, which left the
+    #  Settings group on 29 Aug because it is the only control a masseuse or
+    #  a housekeeper owns and it was hidden inside a heading of pages they
+    #  cannot open.
+    flat += [(h, t) for h, t in CANON["tail"] if h != "tally.html"]
     #  Submenus fold, 26 Aug, so the rows can only be read - and measured -
     #  once their groups are opened, the same way a person gets to them.
     #  The drop itself is opened for the measurements - a closed menu's rows

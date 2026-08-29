@@ -1270,11 +1270,15 @@ with sync_playwright() as p:
     pg=page("staff@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1400)
     pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
-    label=pg.evaluate("()=>navNotify.textContent")
-    print("   notify toggle in a plain tab:", label)
-    ck("the menu offers notifications", pg.evaluate("()=>!!document.getElementById('navNotify')"))
-    ck("with no push support it says unavailable, not nothing",
-       "unavailable" in label.lower() or "notifications" in label.lower())
+    #  The switch left the menu on 29 Aug for a page of its own - inside the
+    #  Settings fold it was unreachable for the roles that own nothing else.
+    #  What the menu owes it now is a link; the four states and the wording
+    #  are notif_suite's, which owns the page.
+    ck("the menu offers notifications",
+       pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
+          .some(a=>a.getAttribute('href')==='notifications.html')"""))
+    ck("as a link out, not the old in-menu switch",
+       pg.evaluate("()=>!document.getElementById('navNotify')"))
     ck("the VAPID key decodes to a P-256 point (65 bytes)",
        pg.evaluate("()=>b64ToU8(VAPID_PUBLIC).length")==65)
     ck("the worker address is set", pg.evaluate("()=>!!PUSH_URL && PUSH_URL.indexOf('http')===0"))

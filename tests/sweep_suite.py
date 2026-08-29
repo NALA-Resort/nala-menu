@@ -194,6 +194,7 @@ PAGES = [
     ("publish.html",      PUBLISH_QS),
     ("staff.html",        ""),
     ("stats.html",        ""),
+    ("notifications.html", ""),
     ("registration.html", ""),
     ("debug.html",        ""),
     ("pages.html",        ""),

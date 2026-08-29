@@ -115,6 +115,13 @@ must genuinely be unable to do a thing, change their role.
 and set quiet hours. "Menu published" is on for you and nobody else: the chef
 already knows, they just published it.
 
+This grid decides who is routed what. It does not turn anybody's phone on:
+each person does that themselves on **Notifications**, its own page at the
+bottom of the hamburger, which also shows them which events reach their
+phone. That page is the only place the masseuse's routing is visible at all -
+the spa role has no column in this grid, deliberately, so his answer lives in
+the shipped defaults rather than here.
+
 Beside Settings in the same menu group sits **Flags**: the short facts you can
 pin under a guest's name - VIP, Travel agent, Breakfast included, whatever you
 define there. You tick them per booking on the Front Desk sheet (only you: a
