@@ -946,7 +946,8 @@ with sync_playwright() as p:
        "demonstration" in q.evaluate(
            "()=>{const n=document.querySelector('#intro .note-box');"
            "return n?n.textContent:'';}").lower())
-    # The demo reads nothing, asserted just below, so its dietary pills are the
+    # The demo reads nothing about anybody, and of the public settings only
+    # the two notes (asserted just below), so its dietary pills are the
     # page's built-in eight and a dietary added in Settings cannot appear on
     # them. That is only safe if the demo says so: the owner added Celiac on
     # 27 Aug, saw it at the front desk, opened this form from the site map and
@@ -955,14 +956,18 @@ with sync_playwright() as p:
        "examples, not your live list" in q.evaluate(
            "()=>{const n=document.querySelector('#intro .note-box');"
            "return n?n.textContent:'';}"))
-    #  Same trap, same ruling: the demo reads nothing, so the two Settings
-    #  notes cannot appear on it, and an owner who has just written them
-    #  would read their absence as a failed save.
-    ck("and that the Settings notes are not shown on it",
-       "notes written in Settings are not shown" in q.evaluate(
+    #  The notes are the one exception to reads-nothing: they are public and
+    #  about nobody, and the demo is where the owner looks after writing
+    #  them. Here they cannot be read (this route answers null to
+    #  everything), so the banner must say where they will come from -
+    #  their absence has to read as unfinished setup, not a failed save.
+    ck("and, while the notes cannot be read, says where they will come from",
+       "notes written in Settings will show here" in q.evaluate(
            "()=>{const n=document.querySelector('#intro .note-box');"
            "return n?n.textContent:'';}"))
-    ck("opening it touches the database not at all", not calls)
+    ck("opening it reads the public Settings notes and nothing else",
+       calls != [] and
+       all(m == "GET" and "/prearrivalinfo" in u for m, u in calls))
 
     q.evaluate("""()=>{
       trail.value=2; trail.dispatchEvent(new Event('input'));
@@ -983,6 +988,33 @@ with sync_playwright() as p:
            "()=>document.getElementById('doneS').textContent").lower())
     ck("and writes nothing, which is the whole point",
        not [c for c in calls if c[0] in ("PATCH", "PUT", "POST")])
+    q.close()
+
+    #  And once the notes CAN be read, the demo previews them live - that is
+    #  what the one read is for - dropping the where-they-come-from line,
+    #  while the warranty holds: still that one node, still no writes.
+    calls2 = []
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.on("request", lambda r: calls2.append((r.method, r.url))
+         if "firebasedatabase.app" in r.url else None)
+    def demo_fb(route, request):
+        body = (json.dumps({"resort": "Seventeen villas on a hillside.",
+                            "dining": "One menu, written daily."})
+                if "/prearrivalinfo" in request.url else "null")
+        route.fulfill(status=200, content_type="application/json", body=body)
+    q.route("**firebasedatabase.app/**", demo_fb)
+    q.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    q.goto("http://localhost:8967/prearrival.html?b=demo"); q.wait_for_timeout(1500)
+    ck("with the notes readable, the demo shows the owner's welcome note",
+       "Seventeen villas" in q.evaluate("()=>resortInfo.textContent"))
+    ck("and the dining note on its dinner page",
+       "One menu" in q.evaluate("()=>diningInfo.textContent"))
+    ck("and drops the line about where the notes will come from",
+       "will show here" not in q.evaluate(
+           "()=>{const n=document.querySelector('#intro .note-box');"
+           "return n?n.textContent:'';}"))
+    ck("still having read only the notes, and written nothing",
+       all(m == "GET" and "/prearrivalinfo" in u for m, u in calls2))
     q.close()
 
     b.close()

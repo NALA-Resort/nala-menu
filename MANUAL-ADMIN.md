@@ -128,7 +128,9 @@ take addresses from the website's own photos (a sized copy, not an original:
 a guest opens this on mobile data), and if the website later retires an
 address the photo quietly stops showing while the words read on. Leave either
 note empty and the form simply goes without it - nothing else about the form
-changes. Save publishes both notes to every link already sent.
+changes. Save publishes both notes to every link already sent, and the site
+map's demo form previews them, so you can read them as a guest would without
+a real booking.
 
 Beside Settings in the same menu group sits **Flags**: the short facts you can
 pin under a guest's name - VIP, Travel agent, Breakfast included, whatever you

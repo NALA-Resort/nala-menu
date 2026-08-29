@@ -805,9 +805,9 @@ function paintDurs(){
   });
 }
 (function(){
-  /* The demo touches the database not at all - that is its whole warranty -
-     so it shows the lengths priceless, which is also what a live form does
-     until the manager sets numbers. */
+  /* The demo reads nothing about anybody, and of the public settings only
+     the two notes - so it shows the lengths priceless, which is also what
+     a live form does until the manager sets numbers. */
   if (DEMO) return;
   fetch(DB + '/spasettings.json')
     .then(function(r){ return r.ok ? r.json() : null; })
@@ -1222,10 +1222,14 @@ function boot(){
      that link opened the incomplete-link message, which meant the one form a
      guest sees was the one nobody could look at.
 
-     Nothing is written and nothing is read: DEMO short circuits every database
-     call below, so trying it cannot touch a booking or leave an openedAt on
-     somebody's record. Sending it is the same as sending any other link with
-     no id, which is to say it goes nowhere. */
+     Nothing is written, and nothing is read about anybody: DEMO short
+     circuits every database call below except one, the two Settings notes,
+     which are public and belong to no guest. So trying it cannot touch a
+     booking or leave an openedAt on somebody's record, and sending it is the
+     same as sending any other link with no id, which is to say it goes
+     nowhere. The one read was widened in on 29 Aug at the owner's ask: the
+     demo is the link he opens to see the form, and it is where he looked for
+     the notes he was about to write. */
   if (DEMO){
     /* &nights=1 walks the short-stay form; anything else, or nothing, is the
        usual three. Demo only - a real link's dates come from Mews. */
@@ -1242,8 +1246,9 @@ function boot(){
     banner.style.cssText = 'margin:0 0 14px;text-align:center';
     banner.textContent = 'Demonstration only. Nothing here is saved.';
     /* And said here: the dietary pills are this page's built-in eight, not the
-       chef's list. DEMO reads nothing - that is the warranty above, and the
-       suite watches the requests to hold it - so the master list at
+       chef's list. DEMO reads nothing about anybody - the warranty above,
+       held by the suite watching the requests, with the Settings notes its
+       one exception - so the master list at
        /dietaries is never fetched and a dietary added in Dietary Settings
        cannot show up on this form. Said on the landing rather than left to be
        found at the dietary question, where eight familiar names look exactly
@@ -1254,14 +1259,24 @@ function boot(){
     demoDiet.className = 'sub';
     demoDiet.textContent = 'The dietary pills are examples, not your live list.';
     banner.appendChild(demoDiet);
-    /* The same trap as the pills, same 27 Aug ruling: the demo reads
-       nothing, so the welcome and dining notes written in Settings (Guest
-       form) cannot appear here, and an owner who has just written them
-       would reasonably read their absence as the save having failed. */
+    /* The notes are the exception to the pills' rule: the demo shows them
+       live, because they are public and about nobody, and the demo is
+       exactly where the owner looks after writing them. Until they can be
+       read - not yet written, or the rules paste still pending - this line
+       says where they will come from, so their absence reads as unfinished
+       setup rather than a failed save (the pills' 27 Aug trap). */
     var demoInfo = document.createElement('div');
     demoInfo.className = 'sub';
-    demoInfo.textContent = 'The notes written in Settings are not shown here.';
+    demoInfo.textContent =
+      'The notes written in Settings will show here once saved.';
     banner.appendChild(demoInfo);
+    db('/prearrivalinfo').then(function(info){
+      if (!info) return;
+      if (typeof info.resort === 'string') fillInfo('resortInfo', info.resort);
+      if (typeof info.dining === 'string') fillInfo('diningInfo', info.dining);
+      if ((info.resort || '').trim() || (info.dining || '').trim())
+        demoInfo.remove();
+    }).catch(function(){});
     el('intro').insertBefore(banner, el('intro').firstChild);
     showStep(0);
     return;
