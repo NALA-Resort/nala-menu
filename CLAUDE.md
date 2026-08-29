@@ -117,12 +117,43 @@ reads the same:
 | Green tile | `rgba(122,160,130,.26)` / `.65`, ink `#5E7D67` | done, confirmed (the Reservations dining tile) | — |
 | Green pill/tick | `--green:#E4EDE2`, `--greenb:#7E937A` | a positive state or a selection mark | — |
 | Terracotta tile | `rgba(184,106,90,.16)` / `.45`, ink `#9E6455` | a **negative answer** — not dining, declined. A fact a guest gave us | a failure |
-| Red | `--red:#A8321E` | **failure only**: a send that failed, a delivery that failed, an error. Text and pills, never a whole tile | pending, unknown, "nothing yet" |
+| Red | `--red:#A8321E` | **failure only**, and the one exception below. A send that failed, a delivery that failed, an error. Text and pills, never a whole tile | pending, unknown, "nothing yet" |
 | Grey dashed, sunk | `opacity:.62`, dashed `--rule` | nothing to do here (vacant villa, unsendable number) | — |
 
 The Reservations green and terracotta tiles are a contract between boards:
 suites assert them by computed colour, not class name. Change them in one
 place and the suites will name every other.
+
+### Red's one exception: an allergy
+
+Ruled by the owner, 29 Aug, closing a question that had been re-opened
+twice. An allergy wears red — the solid `.dpill-al` on Reservations, the
+red words on the printed Reservations Sheet — and that is not a hole in the
+law, it is the law's edge.
+
+The rule red protects is that red must never mean *pending, unknown or
+nothing yet*. An allergy is none of those. It is the one fact on a kitchen
+screen that can hurt somebody, and the reader scanning for it is scanning
+for danger, which is the reading red already carries. Nothing else in the
+app competes for that: terracotta is a guest's negative answer, amber is
+chase this. Neither says "stop".
+
+So: **red may mean hazard, but only hazard about a person.** Not a busy
+state, not a rejected form, not a colour picked because a thing is
+important. If you are about to reach for red and the thing is not a failure
+or an allergy, it is the wrong colour.
+
+Two things this exception does NOT extend to, both settled already:
+
+- **Selection never wears red.** Publish's dietary pills filled solid red
+  until 27 Aug, when a page with a few on it became a wall of red and the
+  one red *ring* that meant a confirmed guest's allergy vanished into it.
+  Grey fill, red only as a ring. A hazard that has to compete with a
+  selection for the same colour loses.
+- **Dead CSS carrying a description of the app is not inert.** `tag.html`
+  held orphaned red `.tick` rules under a comment calling this an open
+  question, months after it was answered on the page that actually draws
+  them. Removed 29 Aug. Delete the rule and the story with it.
 
 ### The pre-arrival form has three states, and the colour IS the state
 
