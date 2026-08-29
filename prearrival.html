@@ -53,6 +53,12 @@
          margin-top:7px; }
 
   .q { padding:1.1rem 0 0.2rem; }
+  /* The owner's info blocks (the landing's welcome, the dinner question's
+     dining note). Reading matter rather than a hint, so they take the ink
+     at reading size, not the italic tan of a q-h: these words ARE content,
+     and dressing them as a footnote would say skip them. */
+  .info-p { font-size:0.95rem; line-height:1.7; margin-top:0.9rem; }
+  .info-p:first-child { margin-top:0.55rem; }
   /* Page kickers lived here for an hour on 23 Aug and were scrapped as
      clutter without a proper design pass; their breathing room stays. */
   .q-t { margin-top:0.55rem; }
@@ -222,6 +228,12 @@
       <div class="greet" id="greet">Before you arrive</div>
       <div class="sub" id="sub"></div>
     </header>
+    <!-- The owner's welcome: what Nala is, written in Settings (Guest form)
+         and stored at /prearrivalinfo. Under the greeting and before Begin,
+         on every stay length, so the form informs as well as asks. Empty
+         when no text is set - or the read is refused - and the landing is
+         exactly what it was before the block existed. -->
+    <div id="resortInfo"></div>
     <!-- No number: the count runs five to eight with the party and the
          stay, and a promise of eight to a guest asked five reads as an
          error somewhere, theirs or ours. -->
@@ -295,6 +307,12 @@
 
     <!-- 2. dinner on the arrival night -->
     <div class="q" id="qDine">
+      <!-- The owner's dining note, the other half of /prearrivalinfo. Above
+           the question, on every stay length: how dinner here works is read
+           before the guest is asked to commit to it, the same rule that
+           keeps the seating time in dineHelp rather than behind Read more.
+           Empty when no text is set, and the page is what it always was. -->
+      <div id="diningInfo"></div>
       <div class="q-t">Will you be dining with us on your first night?</div>
       <div class="q-h" id="dineHelp">Dinner begins between 6:00 and 6:30pm.</div>
       <!-- The owner's words, 23 Aug, replacing the 18 Aug placeholder. -->
@@ -805,6 +823,22 @@ function paintWell(){
   });
 }
 
+/* The owner's words into an info block. textContent, never innerHTML: the
+   text is typed by staff in Settings, but this is a guest's browser and
+   markup has no business arriving through a database field. A blank line
+   starts a new paragraph; a single line break is soft wrap. */
+function fillInfo(id, text){
+  var host = el(id); host.innerHTML = '';
+  String(text || '').split(/\n\s*\n/).forEach(function(par){
+    par = par.replace(/\s*\n\s*/g, ' ').trim();
+    if (!par) return;
+    var d = document.createElement('div');
+    d.className = 'info-p';
+    d.textContent = par;
+    host.appendChild(d);
+  });
+}
+
 /* Yes opens a follow up on the same page and so stays put. No opens nothing
    and carries on. */
 el('dNone').onclick = function(){
@@ -1186,6 +1220,14 @@ function boot(){
     demoDiet.className = 'sub';
     demoDiet.textContent = 'The dietary pills are examples, not your live list.';
     banner.appendChild(demoDiet);
+    /* The same trap as the pills, same 27 Aug ruling: the demo reads
+       nothing, so the welcome and dining notes written in Settings (Guest
+       form) cannot appear here, and an owner who has just written them
+       would reasonably read their absence as the save having failed. */
+    var demoInfo = document.createElement('div');
+    demoInfo.className = 'sub';
+    demoInfo.textContent = 'The notes written in Settings are not shown here.';
+    banner.appendChild(demoInfo);
     el('intro').insertBefore(banner, el('intro').firstChild);
     showStep(0);
     return;
@@ -1215,6 +1257,18 @@ function boot(){
   db('/bookings/' + G.id + '/pms')
     .then(function(pms){ if (pms) paintGreeting(pms); })
     .catch(function(){});
+
+  /* The owner's two notes, written from Settings (Guest form) at
+     /prearrivalinfo: what Nala is, onto the landing, and how dinner works,
+     onto the dinner question. With no text set - or a read the rules
+     refuse - both blocks stay empty and the form is exactly what it was
+     before they existed. No state and no steps change hands here, so
+     nothing has to resync. */
+  db('/prearrivalinfo').then(function(info){
+    if (!info) return;
+    if (typeof info.resort === 'string') fillInfo('resortInfo', info.resort);
+    if (typeof info.dining === 'string') fillInfo('diningInfo', info.dining);
+  }).catch(function(){});
 
   /* The chef's master list, so the choices here match the ones the kitchen
      actually recognises. Inactive entries never reach a guest.

@@ -598,6 +598,25 @@
         ".validate": false
       }
     },
+    "prearrivalinfo": {
+      ".read": true,
+      ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager')",
+      "resort": {
+        ".validate": "newData.isString() && newData.val().length <= 4000"
+      },
+      "dining": {
+        ".validate": "newData.isString() && newData.val().length <= 4000"
+      },
+      "by": {
+        ".validate": "newData.isString() && newData.val().length <= 120"
+      },
+      "at": {
+        ".validate": "newData.isString() && newData.val().length <= 40"
+      },
+      "$other": {
+        ".validate": false
+      }
+    },
     "phonefix": {
       ".read": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() != 'spa'",
       "$id": {

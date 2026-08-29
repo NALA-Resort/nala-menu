@@ -188,6 +188,7 @@ place, not a person.**
 | `/menutags/<date>` | date | which dietaries each course clashes with |
 | `/dietaries` | single node | the list a guest chooses from |
 | `/settings/managerMobile` | single node | for the Notify link; not in this repo |
+| `/prearrivalinfo` | single node | the pre-arrival form's two notes, written from Settings (Guest form) |
 
 **The dinner cell is one cell.** Whoever answers first sets it: the guest from
 their link, reception at the desk, or staff on the board. After that only staff
@@ -406,6 +407,18 @@ None of these can move without him.
       events; nothing breaks, nothing buzzes. The masseuse's phone also has
       to subscribe once: his own hamburger menu, Settings, Notifications -
       the toggle every login carries.
+12. **Write the pre-arrival form's two notes, and paste the 29 Aug rules.**
+    Settings gained a Guest form tab: an About Nala note for the form's
+    welcome screen and a Dining note for above its first-night dinner
+    question, both his words, both at `/prearrivalinfo`, both invisible on
+    the form until written. The paste is what lets a guest READ them - a
+    guest holds no login, and until `rules.json` (which gained the node,
+    public read, management write, 4000 characters a note) is pasted into
+    the console, the node sits under the catch-all rule, which refuses a
+    signed-out read. So the notes save from Settings but never reach a
+    guest: the feature fails quietly, it does not limp. Paste first, then
+    write. Item 7 above is the same page's older copy question and is the
+    natural moment to settle alongside the dining note.
 
 ---
 

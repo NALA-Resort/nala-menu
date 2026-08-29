@@ -88,7 +88,7 @@ colour means time rather than state:
 
 ## Settings
 
-Three things live here.
+Five tabs live here: Staff, Roles, Notifications, Prices, Guest form.
 
 **Logins.** Add a person, give them a role, and they get exactly the screens
 that role allows. Removing someone here removes their access immediately; the
@@ -114,6 +114,17 @@ must genuinely be unable to do a thing, change their role.
 **Notifications.** A grid of events against roles. Tick who gets told what,
 and set quiet hours. "Menu published" is on for you and nobody else: the chef
 already knows, they just published it.
+
+**Prices.** What a massage costs, per length. Shown to the guest beside each
+length on the pre-arrival form, so they see the cost before they ask. A price
+left empty shows no number rather than a zero.
+
+**Guest form.** The two notes the pre-arrival form shows in your words, so it
+explains the resort as well as asking questions: *About Nala* on the form's
+welcome screen, under the greeting, and *Dining at Nala* just above the
+first-night dinner question. A blank line starts a new paragraph. Leave either
+note empty and the form simply goes without it - nothing else about the form
+changes. Save publishes both notes to every link already sent.
 
 Beside Settings in the same menu group sits **Flags**: the short facts you can
 pin under a guest's name - VIP, Travel agent, Breakfast included, whatever you

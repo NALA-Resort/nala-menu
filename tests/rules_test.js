@@ -205,6 +205,27 @@ cannot('nor may a guest', GUEST, '/spasettings', { price60: 1 });
 cannotPatch('a price that is words is refused', ADMIN, '/spasettings', { price60: 'call us' });
 cannotPatch('and one past any massage ever sold', ADMIN, '/spasettings', { price60: 99999 });
 
+/* The pre-arrival form's two info notes: the owner's words about the resort
+   (its welcome screen) and about dining (its dinner question), written from
+   Settings (Guest form). Public to read for the same reason as the prices
+   above - the guest form runs signed out - and management's to write. */
+can('the manager writes the guest form\'s two notes', MANAGER, '/prearrivalinfo',
+    { resort: 'Nala is a small resort.', dining: 'Dinner is one menu, written daily.',
+      by: 'staff@nalaresort.com.au', at: NOW });
+ck('a guest signed out can read them, which is the whole point',
+   as(GUEST).read('/prearrivalinfo').allowed === true);
+cannot('but may not write them', GUEST, '/prearrivalinfo', { dining: 'free beer' });
+(function(){
+  var d2 = targaryen.database(RULES, { staff: { 'ms@x': { name: 'M', role: 'spa' } } });
+  ck('nor may the masseuse',
+     d2.as({ uid: 'ms@x', token: { email: 'ms@x' } })
+       .write('/prearrivalinfo', { dining: 'x' }).allowed === false);
+})();
+cannotPatch('a note past the ceiling is refused', ADMIN, '/prearrivalinfo',
+            { resort: new Array(4002).join('x') });
+cannotPatch('and so is a field the node does not know', ADMIN, '/prearrivalinfo',
+            { html: '<b>x</b>' });
+
 /* The arriving-soon marker. The Worker writes it before it sends, so a villa
    is announced once however many cron wakes cross its red hour. */
 can('the sync writes the arriving-soon marker', SYNC,

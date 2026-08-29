@@ -36,7 +36,7 @@ DIETS = {"gf":  {"name": "Gluten free", "active": True, "group": "common"},
          "chi": {"name": "Red pepper spice", "active": True, "group": "menu"},
          "old": {"name": "Retired Entry", "active": False}}
 
-STATE = {"pms": None, "pre": None, "fail": False}
+STATE = {"pms": None, "pre": None, "info": None, "fail": False}
 WRITES = []
 
 def fb(route, request):
@@ -52,6 +52,8 @@ def fb(route, request):
     if "/spasettings" in u:
         body = json.dumps({"price60": 180, "price90": 250, "price120": 310})
     elif "/dietaries" in u: body = json.dumps(DIETS)
+    elif "/prearrivalinfo" in u:
+        body = json.dumps(STATE["info"]) if STATE["info"] else "null"
     elif "/prearrival" in u: body = json.dumps(STATE["pre"]) if STATE["pre"] else "null"
     elif "/pms" in u: body = json.dumps(STATE["pms"]) if STATE["pms"] else "null"
     route.fulfill(status=200, content_type="application/json", body=body)
@@ -588,6 +590,74 @@ with sync_playwright() as p:
            word not in pg.locator("#" + qid + " .q-h").inner_text())
     pg.close()
 
+    # ── the owner's two notes, written from Settings ────────────
+    #  /prearrivalinfo, the Guest form tab's record: `resort` draws on the
+    #  landing under the greeting, `dining` above the first-night dinner
+    #  question, so the form informs as well as asks - in the owner's words
+    #  rather than shipped copy. The words are typed by staff and read in a
+    #  guest's browser, so they land as text, never markup. Nothing about
+    #  the walk changes hands: no step, no required answer, no write. The
+    #  editor's half of this contract is in spa_suite, which already drives
+    #  staff.html signed in.
+    STATE["info"] = {"resort": "Nala is seventeen villas on a hillside."
+                               "\n\nDays here are slow on purpose.",
+                     "dining": "Dinner is one menu, written each morning\n"
+                               "around what is best that day."}
+    pg = guest(begin=False)
+    ck("the welcome note is on the landing, in the owner's words",
+       "seventeen villas" in pg.locator("#resortInfo").inner_text())
+    ck("as paragraphs, split on the blank line",
+       pg.evaluate("()=>document.querySelectorAll('#resortInfo .info-p').length") == 2)
+    ck("under the greeting and above Begin",
+       pg.evaluate("()=>greet.getBoundingClientRect().bottom"
+                   "<=resortInfo.getBoundingClientRect().top+1") and
+       pg.evaluate("()=>resortInfo.getBoundingClientRect().bottom"
+                   "<=begin.getBoundingClientRect().top+1"))
+    pg.locator("#begin").click(); pg.wait_for_timeout(250)
+    jump(pg, "qDine")
+    ck("the dining note sits above the dinner question",
+       "one menu" in pg.locator("#diningInfo").inner_text() and
+       pg.evaluate("()=>diningInfo.getBoundingClientRect().bottom"
+                   "<=document.querySelector('#qDine .q-t')"
+                   ".getBoundingClientRect().top+1"))
+    ck("a single line break is soft wrap, not a new paragraph",
+       pg.evaluate("()=>document.querySelectorAll('#diningInfo .info-p').length") == 1)
+    ck("and the notes add no page to the walk",
+       pg.evaluate("()=>liveSteps().map(s=>s.id).join(',')") ==
+       "qPurpose,qEta,qApproach,qDine,qDiet,qWell,qElse")
+    del WRITES[:]
+    nxt(pg)
+    ck("a note blocks nothing: the unanswered question still speaks for itself",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine" and
+       "first night" in pg.locator("#err").inner_text())
+    ck("and reading is not answering, so nothing was written",
+       len(wrote("/prearrival")) == 0)
+    pg.close()
+
+    #  A one night stay keeps its dinner question, so it keeps the note.
+    pg = guest(link="?b=res-guid-1&n=Robyn&s=Williams&a=" + plus(0)
+                    + "&d=" + plus(1))
+    jump(pg, "qDine")
+    ck("a one night guest reads the dining note too",
+       "one menu" in pg.locator("#diningInfo").inner_text())
+    pg.close()
+
+    STATE["info"] = {"resort": "<b>Bold</b> & <img src=x onerror=boom()>",
+                     "dining": ""}
+    pg = guest(begin=False)
+    ck("a note is text on the page, never markup",
+       pg.evaluate("()=>resortInfo.querySelector('b,img')") is None and
+       "<b>Bold</b>" in pg.locator("#resortInfo").inner_text())
+    ck("and an empty note draws nothing rather than an empty block",
+       pg.evaluate("()=>diningInfo.children.length") == 0)
+    pg.close()
+
+    STATE["info"] = None
+    pg = guest(begin=False)
+    ck("with nothing set, the landing is exactly what it was",
+       pg.evaluate("()=>resortInfo.children.length") == 0)
+    pg.close()
+
     # ── widths ──────────────────────────────────────────────────
     for w in (390, 360, 320):
         pg = guest(w=w)
@@ -836,6 +906,13 @@ with sync_playwright() as p:
     # reasonably read the eight as a list that had failed to update.
     ck("and warns that its dietary pills are examples, not the live list",
        "examples, not your live list" in q.evaluate(
+           "()=>{const n=document.querySelector('#intro .note-box');"
+           "return n?n.textContent:'';}"))
+    #  Same trap, same ruling: the demo reads nothing, so the two Settings
+    #  notes cannot appear on it, and an owner who has just written them
+    #  would read their absence as a failed save.
+    ck("and that the Settings notes are not shown on it",
+       "notes written in Settings are not shown" in q.evaluate(
            "()=>{const n=document.querySelector('#intro .note-box');"
            "return n?n.textContent:'';}"))
     ck("opening it touches the database not at all", not calls)
