@@ -122,7 +122,8 @@ left empty shows no number rather than a zero.
 **Guest form.** Everything the pre-arrival form says in your words. The
 *welcome image* sits on the form's welcome screen under the greeting - an
 image and only an image. The *dining image* and *dining text* make a page of
-their own, read just before the dinner question; a blank line starts a new
+their own, straight after arrival time and in front of the dining
+questions; a blank line starts a new
 paragraph, and a line that is only a photo's web address becomes that photo
 where the line sits. Each *Read more* box replaces the explanation behind
 that page's Read more button; the grey text in an empty box is the built-in

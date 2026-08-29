@@ -311,6 +311,20 @@
       </div>
     </div>
 
+    <!-- the dining page: the owner's image and words about dinner at Nala,
+         a page of its own in front of ALL the dining questions - how often,
+         the first night, dietaries - so it sits straight after arrival
+         time (moved 30 Aug from just-before-the-dinner-question: how often
+         they'll dine is a dining question too). It asks nothing and
+         carries no Read more, because it IS the reading; missingOn knows
+         no such id, so it never blocks, and it owns no fields, so leaving
+         it writes nothing. Hidden until Settings gives it an image or
+         words, and the walk is what it always was. -->
+    <div class="q" id="qDining" style="display:none">
+      <div id="diningImg"></div>
+      <div id="diningText"></div>
+    </div>
+
     <!-- 5. how they like to travel -->
     <div class="q" id="qApproach">
       <div class="q-t">How often do you think you’ll dine with us?</div>
@@ -321,18 +335,6 @@
           helps the kitchen plan well, while still leaving you free to decide
           as your stay unfolds.</div>
       <div class="opts" id="approachOpts"></div>
-    </div>
-
-    <!-- the dining page: the owner's image and words about dinner at Nala,
-         a page of its own with the dinner question following it - ruled 29
-         Aug, replacing the note that sat stacked above the question. It
-         asks nothing and carries no Read more, because it IS the reading;
-         missingOn knows no such id, so it never blocks, and it owns no
-         fields, so leaving it writes nothing. Hidden until Settings gives
-         it an image or words, and the walk is what it always was. -->
-    <div class="q" id="qDining" style="display:none">
-      <div id="diningImg"></div>
-      <div id="diningText"></div>
     </div>
 
     <!-- 2. dinner on the arrival night -->
@@ -997,8 +999,8 @@ var STEPS = [
   { id:'qCompanion', fields:['companion'] },
   { id:'qPurpose',   fields:['purpose'] },
   { id:'qEta',       fields:['arriveSlot','arriveNote'] },
-  { id:'qApproach',  fields:['approach'] },
   { id:'qDining',    fields:[] },
+  { id:'qApproach',  fields:['approach'] },
   { id:'qDine',      fields:['dining','pax'] },
   { id:'qDiet',      fields:['diets','noDiets','dnote'] },
   { id:'qWell',      fields:['wellness','wellDay','wellTime'] },

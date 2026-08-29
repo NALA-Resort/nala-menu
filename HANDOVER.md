@@ -411,7 +411,7 @@ None of these can move without him.
     tab owns everything the pre-arrival form says in his words, at
     `/prearrivalinfo`: a welcome image for the landing (an image only -
     his ruling, after a day of owner text there), a dining image and text
-    that make a page of their own before the dinner question, and a Read
+    that make a page of their own in front of the dining questions, and a Read
     more replacement per page (empty keeps the built-in words, which the
     tab shows as placeholders read from prearrival.html itself). Photo
     lines in the dining text still draw as photos; rotted links remove

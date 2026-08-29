@@ -646,9 +646,11 @@ with sync_playwright() as p:
        == "cover|50% 0%|" + str(round(844 * 0.50)))
     pg.locator("#begin").click(); pg.wait_for_timeout(250)
     live = pg.evaluate("()=>liveSteps().map(s=>s.id)")
-    ck("the dining page joins the walk, the dinner question following it",
+    ck("the dining page joins the walk straight after arrival time, in "
+       "front of every dining question",
        "qDining" in live and
-       live.index("qDining") + 1 == live.index("qDine"))
+       live.index("qDining") == live.index("qEta") + 1 and
+       live.index("qDining") < live.index("qApproach"))
     jump(pg, "qDining")
     ck("its image tops the page, the words beneath",
        pg.evaluate("()=>{var i=diningImg.querySelector('img');"
@@ -664,8 +666,8 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.querySelectorAll('#diningText .info-p').length") == 2)
     del WRITES[:]
     nxt(pg)
-    ck("Next carries straight to the dinner question: the page asks nothing",
-       pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine")
+    ck("Next carries straight to the first dining question: the page asks nothing",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qApproach")
     ck("and reading is not answering, so nothing was written",
        len(wrote("/prearrival")) == 0)
     ck("the owner's Read more replaces the built-in words on the dinner page",
@@ -681,8 +683,10 @@ with sync_playwright() as p:
     #  bend the owner's replacement, whichever order the fetches land in.
     pg = guest(link="?b=res-guid-1&n=Robyn&s=Williams&a=" + plus(0)
                     + "&d=" + plus(1))
-    ck("a one night guest still gets the dining page",
-       "qDining" in pg.evaluate("()=>liveSteps().map(s=>s.id)"))
+    live1n = pg.evaluate("()=>liveSteps().map(s=>s.id)")
+    ck("a one night guest still gets the dining page, after arrival time",
+       "qDining" in live1n and
+       live1n.index("qDining") == live1n.index("qEta") + 1)
     ck("and the owner's Read more, not the one-night rewrite",
        pg.evaluate("()=>document.querySelector('#qDine .more-b').textContent")
        == "The owner's own words about how dinner works.")
@@ -748,10 +752,10 @@ with sync_playwright() as p:
     pg = guest()
     #  Page kickers were added and scrapped within the hour on 23 Aug -
     #  clutter without a proper design pass. Only their spacing survives.
-    ck("the pages run who, why, when, the week, dining, tonight, dietaries, "
+    ck("the pages run who, why, when, dining, the week, tonight, dietaries, "
        "treatments, anything else",
        pg.evaluate("()=>STEPS.map(s=>s.id).join(',')") ==
-       "qCompanion,qPurpose,qEta,qApproach,qDining,qDine,qDiet,qWell,qElse")
+       "qCompanion,qPurpose,qEta,qDining,qApproach,qDine,qDiet,qWell,qElse")
 
     #  The nine keys, in order, in all four files that hold a copy. A test
     #  that reads one copy proves nothing about the other three, and
