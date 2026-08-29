@@ -61,10 +61,22 @@
   .info-p:first-child { margin-top:0.55rem; }
   /* A photo in a note. Block and full width, cornered like the cards. No
      reserved height: a photo that fails to load is removed outright, and
-     space held for an absent image would be a hole in the page. */
+     space held for an absent image would be a hole in the page.
+
+     Banner by default: a phone photo is portrait, and at full width one
+     swallowed the landing whole (the owner's own, 30 Aug). Cover with a
+     height cap crops it to a centred band instead; the crop anchor and
+     the cap are his to move per image, from Settings, as the classes
+     below. Natural is the old uncropped behaviour, asked for by name. */
   .info-img { display:block; width:100%; border-radius:10px;
-              margin-top:0.9rem; }
+              margin-top:0.9rem; object-fit:cover;
+              object-position:50% 50%; max-height:38vh; }
   .info-img:first-child { margin-top:0.55rem; }
+  .info-img.crop-top    { object-position:50% 0%; }
+  .info-img.crop-bottom { object-position:50% 100%; }
+  .info-img.h-short   { max-height:28vh; }
+  .info-img.h-tall    { max-height:50vh; }
+  .info-img.h-natural { max-height:none; object-fit:fill; }
   /* Page kickers lived here for an hour on 23 Aug and were scrapped as
      clutter without a proper design pass; their breathing room stays. */
   .q-t { margin-top:0.55rem; }
@@ -861,11 +873,18 @@ function infoImg(url){
   return im;
 }
 /* An image field into its host: one image or nothing, same self-removal
-   on a rotted address as a photo line. */
-function setInfoImg(id, url){
+   on a rotted address as a photo line. Crop and height are the owner's
+   two per-image controls from Settings, worn as classes; anything
+   unrecognised falls back to the banner default rather than breaking. */
+function setInfoImg(id, url, crop, height){
   var host = el(id); host.innerHTML = '';
   url = String(url || '').trim();
-  if (infoIsPhoto(url)) host.appendChild(infoImg(url));
+  if (!infoIsPhoto(url)) return;
+  var im = infoImg(url);
+  if (crop === 'top' || crop === 'bottom') im.classList.add('crop-' + crop);
+  if (height === 'short' || height === 'tall' || height === 'natural')
+    im.classList.add('h-' + height);
+  host.appendChild(im);
 }
 
 /* The owner's Read more words, keyed by page, from Settings. A filled one
@@ -894,8 +913,12 @@ function setMoreTexts(){
 function applyGuestInfo(info){
   if (!info) return false;
   INFO_MORE = (info.more && typeof info.more === 'object') ? info.more : {};
-  if (typeof info.welcomeImage === 'string') setInfoImg('welcomeImg', info.welcomeImage);
-  if (typeof info.diningImage === 'string') setInfoImg('diningImg', info.diningImage);
+  if (typeof info.welcomeImage === 'string')
+    setInfoImg('welcomeImg', info.welcomeImage,
+               info.welcomeImageCrop, info.welcomeImageHeight);
+  if (typeof info.diningImage === 'string')
+    setInfoImg('diningImg', info.diningImage,
+               info.diningImageCrop, info.diningImageHeight);
   if (typeof info.diningText === 'string') fillInfo('diningText', info.diningText);
   var hasDining = !!(String(info.diningImage || '').trim() ||
                      String(info.diningText || '').trim());

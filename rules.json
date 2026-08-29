@@ -607,6 +607,18 @@
       "diningImage": {
         ".validate": "newData.isString() && newData.val().length <= 500 && (newData.val() == '' || newData.val().beginsWith('https://'))"
       },
+      "welcomeImageCrop": {
+        ".validate": "newData.isString() && newData.val().matches(/^(top|centre|bottom)$/)"
+      },
+      "welcomeImageHeight": {
+        ".validate": "newData.isString() && newData.val().matches(/^(short|banner|tall|natural)$/)"
+      },
+      "diningImageCrop": {
+        ".validate": "newData.isString() && newData.val().matches(/^(top|centre|bottom)$/)"
+      },
+      "diningImageHeight": {
+        ".validate": "newData.isString() && newData.val().matches(/^(short|banner|tall|natural)$/)"
+      },
       "diningText": {
         ".validate": "newData.isString() && newData.val().length <= 4000"
       },

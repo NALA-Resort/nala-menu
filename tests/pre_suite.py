@@ -621,6 +621,7 @@ with sync_playwright() as p:
     #  which already drives staff.html signed in.
     STATE["info"] = {
         "welcomeImage": "https://photos.test/villa.jpg",
+        "welcomeImageCrop": "top", "welcomeImageHeight": "tall",
         "diningImage": "https://photos.test/dinner.jpg",
         "diningText": "Dinner is one menu, written each morning\n"
                       "around what is best that day.\n\n"
@@ -634,6 +635,15 @@ with sync_playwright() as p:
     ck("an image and only an image - no text rides along",
        pg.evaluate("()=>welcomeImg.children.length") == 1 and
        pg.evaluate("()=>welcomeImg.textContent.trim()") == "")
+    #  A portrait photo at natural size swallowed the landing whole (the
+    #  owner's own, 30 Aug): an image is a cropped band, capped in height,
+    #  anchored where the owner said. Asserted by computed style, so a
+    #  class that stops resolving fails by name. Tall is half the screen.
+    ck("cropped as a band, anchored top, capped at the tall height",
+       pg.evaluate("()=>{var s=getComputedStyle(welcomeImg.querySelector('img'));"
+                   "return s.objectFit+'|'+s.objectPosition+'|'+"
+                   "Math.round(parseFloat(s.maxHeight));}")
+       == "cover|50% 0%|" + str(round(844 * 0.50)))
     pg.locator("#begin").click(); pg.wait_for_timeout(250)
     live = pg.evaluate("()=>liveSteps().map(s=>s.id)")
     ck("the dining page joins the walk, the dinner question following it",
@@ -645,6 +655,11 @@ with sync_playwright() as p:
                    "return i?i.src:null;}") == "https://photos.test/dinner.jpg" and
        pg.evaluate("()=>diningImg.getBoundingClientRect().bottom"
                    "<=diningText.getBoundingClientRect().top+1"))
+    ck("with nothing chosen, an image wears the centred banner default",
+       pg.evaluate("()=>{var s=getComputedStyle(diningImg.querySelector('img'));"
+                   "return s.objectFit+'|'+s.objectPosition+'|'+"
+                   "Math.round(parseFloat(s.maxHeight));}")
+       == "cover|50% 50%|" + str(round(844 * 0.38)))
     ck("as paragraphs, split on the blank line",
        pg.evaluate("()=>document.querySelectorAll('#diningText .info-p').length") == 2)
     del WRITES[:]
@@ -680,6 +695,8 @@ with sync_playwright() as p:
     #  and a Read more replacement lands as text, never markup.
     STATE["info"] = {
         "welcomeImage": "https://photos.test/dead/gone.jpg",
+        "diningImage": "https://photos.test/pool2.jpg",
+        "diningImageCrop": "bottom", "diningImageHeight": "natural",
         "diningText": "One menu, written daily.\n"
                       "https://photos.test/pool.jpg\n"
                       "Photos live at https://photos.test/x.jpg online.\n"
@@ -694,6 +711,10 @@ with sync_playwright() as p:
     ck("a photo line in the dining text draws as the photo",
        pg.evaluate("()=>{var i=document.querySelector('#diningText img');"
                    "return i?i.src:null;}") == "https://photos.test/pool.jpg")
+    ck("natural means the whole photo, uncropped, anchored where asked",
+       pg.evaluate("()=>{var s=getComputedStyle(diningImg.querySelector('img'));"
+                   "return s.maxHeight+'|'+s.objectPosition;}")
+       == "none|50% 100%")
     ck("an address inside a sentence stays text, and http is not a photo",
        "https://photos.test/x.jpg" in pg.locator("#diningText").inner_text() and
        "http://photos.test/notsecure.jpg" in pg.locator("#diningText").inner_text()

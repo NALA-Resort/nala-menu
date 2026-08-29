@@ -215,6 +215,8 @@ cannotPatch('and one past any massage ever sold', ADMIN, '/spasettings', { price
 can('the manager writes the guest form\'s content', MANAGER, '/prearrivalinfo',
     { welcomeImage: 'https://example.com/villa.jpg',
       diningImage: 'https://example.com/dinner.jpg',
+      welcomeImageCrop: 'top', welcomeImageHeight: 'tall',
+      diningImageCrop: 'centre', diningImageHeight: 'banner',
       diningText: 'Dinner is one menu, written daily.',
       more: { dine: 'The menu is finalised each day.', eta: 'Reception is here late.' },
       by: 'staff@nalaresort.com.au', at: NOW });
@@ -229,6 +231,10 @@ cannot('but may not write it', GUEST, '/prearrivalinfo', { diningText: 'free bee
 })();
 cannotPatch('an image link that is not https is refused', ADMIN, '/prearrivalinfo',
             { welcomeImage: 'http://example.com/villa.jpg' });
+cannotPatch('a crop nobody offers is refused', ADMIN, '/prearrivalinfo',
+            { welcomeImageCrop: 'left' });
+cannotPatch('and so is a height', ADMIN, '/prearrivalinfo',
+            { diningImageHeight: '900px' });
 cannotPatch('a text past the ceiling is refused', ADMIN, '/prearrivalinfo',
             { diningText: new Array(4002).join('x') });
 cannotPatch('a Read more for a page nobody knows is refused', ADMIN, '/prearrivalinfo',

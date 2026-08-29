@@ -134,6 +134,8 @@ def fb(route, request):
         body = json.dumps({"price60": 180, "price90": 250, "price120": 310})
     elif "/prearrivalinfo" in u:
         body = json.dumps({"welcomeImage": "https://photos.test/old.jpg",
+                           "welcomeImageCrop": "top",
+                           "welcomeImageHeight": "tall",
                            "diningImage": "",
                            "diningText": "Old dining words",
                            "more": {"dine": "Old dine more"}})
@@ -801,6 +803,11 @@ with sync_playwright() as p:
        q.evaluate("()=>giWelcomeImg.value") == "https://photos.test/old.jpg" and
        q.evaluate("()=>giDiningText.value") == "Old dining words" and
        q.evaluate("()=>giMore_dine.value") == "Old dine more")
+    ck("an image's crop and height load as stored, and default when unset",
+       q.evaluate("()=>giWelcomeCrop.value") == "top" and
+       q.evaluate("()=>giWelcomeHeight.value") == "tall" and
+       q.evaluate("()=>giDiningCrop.value") == "centre" and
+       q.evaluate("()=>giDiningHeight.value") == "banner")
     #  The built-in Read more words are the placeholders of the boxes that
     #  replace them, read from prearrival.html itself so one file owns
     #  them: an empty box must SHOW the words it would keep.
@@ -818,6 +825,10 @@ with sync_playwright() as p:
        bool(w5) and w5[0]["m"] == "PATCH" and
        body5.get("diningText") == "Dinner is one menu, finalised each day." and
        body5.get("welcomeImage") == "https://photos.test/old.jpg" and
+       body5.get("welcomeImageCrop") == "top" and
+       body5.get("welcomeImageHeight") == "tall" and
+       body5.get("diningImageCrop") == "centre" and
+       body5.get("diningImageHeight") == "banner" and
        (body5.get("more") or {}).get("diet") == "Owner diet words." and
        (body5.get("more") or {}).get("dine") == "Old dine more" and
        bool(body5.get("by")) and bool(body5.get("at")))

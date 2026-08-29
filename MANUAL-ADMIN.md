@@ -129,7 +129,10 @@ that page's Read more button; the grey text in an empty box is the built-in
 wording it keeps. Image addresses come from the website's own photos (a
 sized copy, not an original: a guest opens this on mobile data), and an
 address the website later retires quietly stops showing while the words read
-on. Leave anything empty and the form keeps its built-in behaviour. Save
+on. Each image carries a Crop and a Height: the photo shows as a band of the
+chosen height, cropped to the top, centre or bottom of the picture, and
+Natural shows the whole photo uncropped - which is how a portrait photo once
+swallowed the welcome screen. Leave anything empty and the form keeps its built-in behaviour. Save
 publishes the lot to every link already sent, and the demo form previews it -
 Preview on the tab takes you there, Back to Settings on the demo returns
 you - so you can read it as a guest would without a real booking.
