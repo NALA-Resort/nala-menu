@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Pre-arrival SMS</title>
-<link rel="stylesheet" href="nala-ui2.css?v=3">
+<link rel="stylesheet" href="nala-ui2.css?v=4">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
   body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
@@ -355,9 +355,11 @@ function render(list){
     b.disabled = !st.tickable && !st.fixable;
     b.setAttribute('aria-pressed', st.ticked ? 'true' : 'false');
     b.innerHTML = '<div class="v">' + it.villa + '</div>' +
-      '<div class="mid"><div class="nm"></div><div class="st"></div></div>' +
+      '<div class="mid"><div class="nm trimrow">'+
+        '<span class="trim"></span></div><div class="st"></div></div>' +
       '<div class="tick">✓</div>';
-    var nm = b.querySelector('.nm');
+    var nm   = b.querySelector('.nm .trim');   /* the name, trims */
+    var nmln = b.querySelector('.nm');         /* the line, never trims */
     nm.textContent = ((it.stay.first || '') + ' ' + (it.stay.last || '')).trim() || 'Guest';
     /* The number beside the name, grey and small, with the pencil that edits
        it. Every row carries both: a valid number can still be a WRONG one,
@@ -366,9 +368,9 @@ function render(list){
        pencil is left off a disabled row: a completed form needs no number
        and a dead pencil reads as a broken one. */
     var rawPh = String((it.fix && it.fix.phone) || it.stay.phone || '').trim();
-    nm.insertAdjacentHTML('beforeend',
+    nmln.insertAdjacentHTML('beforeend',
       phoneBadgeHTML(rawPh, !!(st.tickable || st.fixable)));
-    var pen = nm.querySelector('.pen');
+    var pen = nmln.querySelector('.pen');
     if (pen) pen.onclick = function(e){ e.stopPropagation(); fixNumber(it); };
     var line = b.querySelector('.st');
     if (st.bad){ var s = document.createElement('span'); s.className = 'bad';

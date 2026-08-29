@@ -339,6 +339,36 @@ body.ui2 .savefail{ display:none; font-size:var(--t2); line-height:1.45;
                     color:var(--law-red); margin-top:var(--s2); }
 body.ui2 .savefail.show{ display:block; }
 
+/* ── the trim rule: which field gives way when a row will not fit ─────
+   Ruled by the owner, 29 Aug, off a Pre-arrival SMS board where a long
+   name pushed the phone number, the confidence tick and the edit pencil
+   off the right edge. "Chloe Roveglia +61448925599 ." and "Amanda
+   Sinclair +614004519..." - the two things reception needed were the
+   ones that went.
+
+   THE NAME IS THE ONLY FIELD THAT TRIMS. It is the one that survives
+   being half shown: "Amanda Sincl..." on villa 14 is still Amanda on
+   villa 14. Nothing else in a row is like that.
+
+   A NUMBER NEVER TRIMS. Half a phone number is not a phone number, and
+   worse, it looks like one - somebody will read it out. Same for a time
+   or a date: they are right or they are useless.
+
+   A CONTROL NEVER TRIMS. A pencil clipped to a couple of pixels is not
+   a control, it is a thing that cannot be pressed and does not look
+   like it was meant to be.
+
+   The fault was structural rather than a width: the ellipsis sat on the
+   LINE, which held the name and everything after it, so it ate whichever
+   field happened to be last. The name needs to be its own box for the
+   ellipsis to have anything to bite.                                  */
+body.ui2 .trimrow      { display:flex; align-items:baseline; min-width:0; }
+body.ui2 .trimrow > .trim {
+  flex:1 1 auto; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* Everything else in the line keeps its full width and is never squeezed. */
+body.ui2 .trimrow > :not(.trim) { flex:0 0 auto; }
+
 /* ── rows and lists ──────────────────────────────────────────────────
    Separated by an inset hairline rather than boxed. A tinted row keeps
    its own corner, because a tint that runs to the screen edge stops

@@ -58,6 +58,47 @@ the real site - pending screenshots). Staff controls never appear here.
 - **Rectangle with border or solid fill = a button.** Nothing else may use
   that dress. Primary solid ink, secondary outlined.
 
+## The trim rule - which field gives way
+
+Ruled by the owner, 29 Aug, off a Pre-arrival SMS board where a long name
+pushed the phone number, the confidence mark and the edit pencil off the
+right edge: `Chloe Roveglia +61448925599 .` and `Amanda Sinclair
++614004519`. The two things reception needed were the two that went.
+
+**The name is the only field that may trim.** It is the only one that
+survives being half shown: `Amanda Sincl...` on villa 14 is still Amanda on
+villa 14.
+
+**A number never trims.** Half a phone number is not a phone number, and it
+is worse than nothing because it still LOOKS like one and somebody will
+read it out. The same goes for a time or a date: they are right or they are
+useless.
+
+**A control never trims.** A pencil clipped to two pixels cannot be pressed
+and does not look like it was meant to be.
+
+The fault was structural rather than a matter of width. The ellipsis sat on
+the LINE, which held the name and everything after it, so it ate whichever
+field happened to be last. The name has to be its own box for the ellipsis
+to have anything to bite:
+
+    <div class="nm trimrow">
+      <span class="trim">Amanda Sinclair</span>   <!-- flexes, ellipsises -->
+      <span class="ph">+61400451982</span>        <!-- fixed, never squeezed -->
+      <span class="conf ok">&#10003;</span>
+      <span class="pen">&#9998;</span>
+    </div>
+
+`.trimrow` and `.trim` live in nala-ui2.css. Everything inside a `.trimrow`
+that is not the `.trim` is `flex:0 0 auto` and keeps its full width.
+
+**A row that can grow may wrap instead of trimming.** Reservations' booking
+rows do: the row height is free there, so a long name takes a second line
+and nothing is lost. Front Desk stacks the phone under the name for the
+same reason, and its comment records why - the name line clipped at phone
+width and a clipped pencil could not be tapped. Trimming is for a row whose
+height is fixed.
+
 ## The four roles, and there are only four
 
 Ruled by the owner, 29 Aug, off three screenshots in which the primary

@@ -721,5 +721,47 @@ with sync_playwright() as p:
 
     b.close()
 
+# ── the trim rule ────────────────────────────────────────────────────
+#  Reported by the owner off a screenshot, 29 Aug: a long name pushed the
+#  phone number, the confidence mark and the edit pencil off the right
+#  edge. "Chloe Roveglia +61448925599 ." and "Amanda Sinclair +614004519"
+#  - the two things reception needed were the two that went.
+#
+#  The name is the only field that may trim, because it is the only one
+#  that survives being half shown. A phone number does not: half of one
+#  still LOOKS like a number and somebody will read it out. A control does
+#  not either - a pencil clipped to two pixels cannot be pressed.
+#
+#  Forced with a name longer than any real guest's, because the fault only
+#  shows when the row cannot fit and the real board usually can.
+_trim = """<button class="vrow"><div class="v">14</div><div class="mid">
+  <div class="nm trimrow"><span class="trim">Amanda Penelope Sinclair-Fotheringay-Wodehouse</span>
+  <span class="ph">+61400451982</span><span class="conf ok">&#10003;</span>
+  <span class="pen">&#9998;</span></div><div class="st">Sent</div></div>
+  <div class="tick">&#10003;</div></button>"""
+with sync_playwright() as p3:
+    b3 = p3.chromium.launch()
+    q = b3.new_page(viewport={"width": 390, "height": 500})
+    q.goto("http://localhost:8977/invitations.html")
+    q.wait_for_timeout(900)
+    got = q.evaluate("""(html)=>{const d=document.createElement('div');
+        d.style.maxWidth='390px'; d.innerHTML=html;
+        document.body.appendChild(d);
+        const row=d.querySelector('.vrow').getBoundingClientRect();
+        const t=d.querySelector('.trim');
+        const ph=d.querySelector('.ph'), pen=d.querySelector('.pen');
+        const r=e=>e.getBoundingClientRect();
+        const out={nameTrimmed:t.scrollWidth>t.clientWidth,
+                   phoneWhole:r(ph).right<=row.right+1 && r(ph).width>0,
+                   phoneText:ph.textContent,
+                   pencilWhole:r(pen).right<=row.right+1 && r(pen).width>0};
+        d.remove(); return out;}""", _trim)
+    q.close(); b3.close()
+print("   trim rule:", got)
+ck("a name too long for its row is the thing that trims", got["nameTrimmed"])
+ck("and the phone number survives whole", got["phoneWhole"] and got["phoneText"] == "+61400451982")
+ck("and the pencil is still there to press", got["pencilWhole"])
+
+
 print("RESULT: %d passed, %d failed" % (P, F))
 httpd.shutdown()
