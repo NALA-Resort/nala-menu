@@ -65,6 +65,23 @@
   .gi-hint { font-size:var(--t2); color:var(--mid); line-height:1.45;
              margin:5px 0 2px; }
   .gi-hint b { font-weight:600; color:var(--ink); }
+  /* One page to a fold: twenty four boxes laid flat is a tab nobody can
+     find Save on. The summary is the page's name and the whole tap
+     target, so it obeys the 44px rule without being a button. */
+  .gi-page { border-bottom:1px solid var(--rule); }
+  .gi-page > summary { list-style:none; cursor:pointer; min-height:var(--tap);
+             display:flex; align-items:center; gap:var(--s2);
+             font-size:var(--t3); padding:var(--s2) 0; }
+  .gi-page > summary::-webkit-details-marker { display:none; }
+  /* A chevron that turns: the fold has to say which way it goes, and a
+     unicode arrow is one character rather than an icon set. */
+  .gi-page > summary::before { content:'\203A'; color:var(--mid);
+             font-size:var(--t3); transition:transform .15s;
+             display:inline-block; width:12px; text-align:center; }
+  .gi-page[open] > summary::before { transform:rotate(90deg); }
+  .gi-page[open] { padding-bottom:var(--s3); }
+  @media (prefers-reduced-motion:reduce){
+    .gi-page > summary::before { transition:none } }
   .err  { font-size:var(--t2); color:var(--red); line-height:1.5; margin-top:10px; }
 
   /* the sheet, same shape as the boards use */
@@ -247,12 +264,13 @@
     </div>
 
     <div class="panel" id="tGuest" role="tabpanel">
-      <div class="seclabel">Welcome image &middot; under the greeting</div>
+      <div class="seclabel">Welcome screen</div>
+      <label class="gi-lab" for="giWelcomeImg">Image</label>
       <input id="giWelcomeImg"
         placeholder="https:// address of a photo from the website">
-      <div class="gi-hint">An image on its own, no words beside it. Paste a
-        sized copy from the website, not an original; an address the site
-        later retires simply stops showing.</div>
+      <div class="gi-hint">Paste a sized copy from the website, not an
+        original; an address the site later retires simply stops
+        showing.</div>
       <div class="gi-row">
         <span class="gi-opt"><label class="gi-lab" for="giWelcomeCrop">Crop</label>
           <select id="giWelcomeCrop"><option value="top">Top</option>
@@ -264,11 +282,16 @@
             <option value="tall">Tall</option>
             <option value="natural">Natural, no crop</option></select></span>
       </div>
-      <div class="seclabel">Dining image &middot; tops the dining page</div>
+      <label class="gi-lab" for="giIntro">Description</label>
+      <textarea id="giIntro" rows="3"
+        placeholder="Empty: the guest reads the original wording."></textarea>
+
+      <div class="seclabel">Dining page</div>
+      <div class="gi-hint">Read straight after arrival time, in front of the
+        dining questions.</div>
+      <label class="gi-lab" for="giDiningImg">Image</label>
       <input id="giDiningImg"
         placeholder="https:// address of a photo from the website">
-      <div class="gi-hint">The dining page is read straight after arrival
-        time, in front of the dining questions.</div>
       <div class="gi-row">
         <span class="gi-opt"><label class="gi-lab" for="giDiningCrop">Crop</label>
           <select id="giDiningCrop"><option value="top">Top</option>
@@ -280,17 +303,20 @@
             <option value="tall">Tall</option>
             <option value="natural">Natural, no crop</option></select></span>
       </div>
-      <div class="seclabel">Dining text &middot; under that image</div>
+      <label class="gi-lab" for="giDiningText">Description</label>
       <textarea id="giDiningText" rows="6"
         placeholder="How dinner here works."></textarea>
       <div class="gi-hint">Blank line for a new paragraph &middot;
         <b># </b>starts a heading &middot; <b>*asterisks*</b> turn bold
         &middot; a photo address alone on a line becomes that photo</div>
-      <div class="seclabel">Read more, page by page</div>
-      <div class="gi-hint">Each box holds what sits behind that page's Read
-        more button, as a guest reads it now. Change any of it, or empty a
-        box to put the original wording back.</div>
-      <div id="giMoreRows"></div>
+
+      <div class="seclabel">Question pages</div>
+      <div class="gi-hint">A heading, the description under it, and the words
+        behind Read more. Every box holds what a guest reads now: change it,
+        or empty a box to put the original wording back.</div>
+      <div class="gi-hint">A heading you write is used on every stay length,
+        so a one night guest reads it too.</div>
+      <div id="giPageRows"></div>
       <button class="btn solid" id="giSave">Save</button>
       <a class="btn ghost" id="giDemo" href="prearrival.html?b=demo">Preview
         on the demo form</a>
@@ -805,17 +831,36 @@ var GI_MORE = [ ['companion', 'Who is coming'],
                 ['diet',      'Dietaries'],
                 ['well',      'Massage'],
                 ['else',      'Anything else'] ];
+/* Three boxes to a page - heading, description, Read more - and eight
+   pages, so twenty four boxes beside the two standalone pages. Flat, that
+   is a tab nobody can find Save on, so each page folds into its own
+   summary and opens when it is wanted. */
+var GI_PARTS = [['Title', 'Heading'], ['Desc', 'Description'],
+                ['More', 'Read more']];
 (function(){
-  var host = document.getElementById('giMoreRows');
+  var host = document.getElementById('giPageRows');
   GI_MORE.forEach(function(p){
-    var l = document.createElement('label');
-    l.className = 'gi-lab'; l.htmlFor = 'giMore_' + p[0]; l.textContent = p[1];
-    var t = document.createElement('textarea');
-    t.id = 'giMore_' + p[0]; t.rows = 2;
-    /* Only ever seen when a box has been emptied, which is the way back
-       to the original wording. */
-    t.placeholder = 'Empty: the guest reads the original wording.';
-    host.appendChild(l); host.appendChild(t);
+    var d = document.createElement('details');
+    d.className = 'gi-page';
+    var sum = document.createElement('summary');
+    sum.textContent = p[1];
+    d.appendChild(sum);
+    GI_PARTS.forEach(function(part){
+      var id = 'gi' + part[0] + '_' + p[0];
+      var l = document.createElement('label');
+      l.className = 'gi-lab'; l.htmlFor = id; l.textContent = part[1];
+      var f = document.createElement(part[0] === 'Title' ? 'input' : 'textarea');
+      f.id = id;
+      if (part[0] !== 'Title') f.rows = 2;
+      /* Only ever seen when a box has been emptied, which is the way back
+         to the original wording. */
+      f.placeholder = 'Empty: the guest reads the original wording.';
+      d.appendChild(l); d.appendChild(f);
+    });
+    /* A box inside a shut fold measures zero, so it is sized when the fold
+       opens rather than while it is hidden. */
+    d.addEventListener('toggle', function(){ if (d.open) giFitAll(); });
+    host.appendChild(d);
   });
 })();
 
@@ -844,12 +889,18 @@ function giFit(t){
   t.style.height = Math.max(h + 2, 44) + 'px';
 }
 function giFitAll(){
-  giFit(document.getElementById('giDiningText'));
-  GI_MORE.forEach(function(p){ giFit(document.getElementById('giMore_' + p[0])); });
+  [].forEach.call(document.querySelectorAll('#tGuest textarea'), giFit);
+}
+function giPageFields(){
+  var out = [];
+  GI_MORE.forEach(function(p){
+    GI_PARTS.forEach(function(part){ out.push('gi' + part[0] + '_' + p[0]); });
+  });
+  return out;
 }
 function giFields(){
-  return ['giWelcomeImg', 'giDiningImg', 'giDiningText']
-    .concat(GI_MORE.map(function(p){ return 'giMore_' + p[0]; }));
+  return ['giWelcomeImg', 'giDiningImg', 'giDiningText', 'giIntro']
+    .concat(giPageFields());
 }
 function loadGuestInfo(){
   fetch(DB + '/prearrivalinfo.json').then(function(r){ return r.ok ? r.json() : null; })
@@ -862,8 +913,10 @@ function loadGuestInfo(){
       document.getElementById('giWelcomeHeight').value = j.welcomeImageHeight || 'banner';
       document.getElementById('giDiningCrop').value    = j.diningImageCrop || 'centre';
       document.getElementById('giDiningHeight').value  = j.diningImageHeight || 'banner';
-      GI_SAVED_MORE = j.more || {};
-      giSeedMore();
+      document.getElementById('giIntro').value = j.intro || '';
+      GI_SAVED = { more: j.more || {}, titles: j.titles || {},
+                   descs: j.descs || {} };
+      giSeedPages();
       giFitAll();
     }).catch(function(){});
 }
@@ -882,20 +935,27 @@ function loadGuestInfo(){
    remembers making - CLAUDE.md rule 1, in the one shape that survives
    seeding. It also gives the way back: clear a box, save, and the
    original returns. */
-var GI_SAVED_MORE = null, GI_BUILTIN_IN = false;
-function giBuiltin(key){
-  var t = document.getElementById('giMore_' + key);
+var GI_SAVED = null, GI_BUILTIN_IN = false;
+/* Which stored key each part of a page is written under. */
+var GI_PART_KEY = { Title: 'titles', Desc: 'descs', More: 'more' };
+function giBuiltin(id){
+  var t = document.getElementById(id);
   return (t && t.dataset.builtin) || '';
 }
-function giSeedMore(){
-  if (!GI_SAVED_MORE || !GI_BUILTIN_IN) return;
+function giSeedPages(){
+  if (!GI_SAVED || !GI_BUILTIN_IN) return;
   GI_MORE.forEach(function(p){
-    var t = document.getElementById('giMore_' + p[0]);
-    var own = GI_SAVED_MORE[p[0]];
-    /* Seeding is not an edit: the value is set directly, which fires no
-       input event, so Save stays at rest and GI_DIRTY stays false. */
-    t.value = (typeof own === 'string' && own.trim()) ? own : giBuiltin(p[0]);
+    GI_PARTS.forEach(function(part){
+      var id = 'gi' + part[0] + '_' + p[0];
+      var own = (GI_SAVED[GI_PART_KEY[part[0]]] || {})[p[0]];
+      /* Seeding is not an edit: the value is set directly, which fires no
+         input event, so Save stays at rest and GI_DIRTY stays false. */
+      document.getElementById(id).value =
+        (typeof own === 'string' && own.trim()) ? own : giBuiltin(id);
+    });
   });
+  if (!document.getElementById('giIntro').value.trim())
+    document.getElementById('giIntro').value = giBuiltin('giIntro');
   giFitAll();
 }
 /* The built-in Read more words, read from the guest page itself: one file
@@ -904,16 +964,22 @@ function giSeedMore(){
    box is compared against on save. DOMParser parses without running a
    line of the page. The page ids derive from the keys (dine -> qDine), so
    there is no second map. */
+var GI_PART_SEL = { Title: '.q-t', Desc: '.q-h', More: '.more-b' };
 fetch('prearrival.html').then(function(r){ return r.text(); }).then(function(html){
   var doc = new DOMParser().parseFromString(html, 'text/html');
   GI_MORE.forEach(function(p){
     var qid = 'q' + p[0].charAt(0).toUpperCase() + p[0].slice(1);
-    var b = doc.querySelector('#' + qid + ' .more-b');
-    var f = document.getElementById('giMore_' + p[0]);
-    if (b && f) f.dataset.builtin = b.textContent.replace(/\s+/g, ' ').trim();
+    GI_PARTS.forEach(function(part){
+      var b = doc.querySelector('#' + qid + ' ' + GI_PART_SEL[part[0]]);
+      var f = document.getElementById('gi' + part[0] + '_' + p[0]);
+      if (b && f) f.dataset.builtin = b.textContent.replace(/\s+/g, ' ').trim();
+    });
   });
+  var iw = doc.querySelector('.intro-why');
+  if (iw) document.getElementById('giIntro').dataset.builtin =
+    iw.textContent.replace(/\s+/g, ' ').trim();
   GI_BUILTIN_IN = true;
-  giSeedMore();
+  giSeedPages();
   giFitAll();
 }).catch(function(){});
 /* Whether the boxes hold something the database does not. The Save button
@@ -963,16 +1029,27 @@ document.getElementById('giSave').onclick = function(){
       ' characters, and it holds 4000.';
     return;
   }
-  var more = {}, over = null;
+  /* What each part holds, said in the same words the database refuses in. */
+  var GI_CAP = { Title: 200, Desc: 500, More: 2000 };
+  var pages = { titles: {}, descs: {}, more: {} }, over = null;
   GI_MORE.forEach(function(p){
-    var v = document.getElementById('giMore_' + p[0]).value.trim();
-    if (v.length > 2000 && !over) over = p[1];
-    /* Unchanged is stored as nothing, so the page keeps owning its own
-       words and an edit to them is never shadowed by a stale copy. */
-    more[p[0]] = (v === giBuiltin(p[0])) ? '' : v;
+    GI_PARTS.forEach(function(part){
+      var id = 'gi' + part[0] + '_' + p[0];
+      var v = document.getElementById(id).value.trim();
+      if (v.length > GI_CAP[part[0]] && !over)
+        over = p[1] + ' ' + part[1].toLowerCase() + ' is over the ' +
+               GI_CAP[part[0]] + ' characters it holds';
+      /* Unchanged is stored as nothing, so the page keeps owning its own
+         words and an edit to them is never shadowed by a stale copy. */
+      pages[GI_PART_KEY[part[0]]][p[0]] = (v === giBuiltin(id)) ? '' : v;
+    });
   });
+  var intro = document.getElementById('giIntro').value.trim();
+  if (intro.length > 1000 && !over)
+    over = 'The introduction is over the 1000 characters it holds';
+  if (intro === giBuiltin('giIntro')) intro = '';
   if (over){
-    err.textContent = 'The ' + over + ' text is over the 2000 characters a Read more holds.';
+    err.textContent = 'The ' + over + '.';
     return;
   }
   err.textContent = '';
@@ -980,7 +1057,8 @@ document.getElementById('giSave').onclick = function(){
     return fetch(DB + '/prearrivalinfo.json', {
       method:'PATCH', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ welcomeImage: wi, diningImage: di,
-        diningText: dt, more: more,
+        diningText: dt, intro: intro, more: pages.more,
+        titles: pages.titles, descs: pages.descs,
         welcomeImageCrop:   document.getElementById('giWelcomeCrop').value,
         welcomeImageHeight: document.getElementById('giWelcomeHeight').value,
         diningImageCrop:    document.getElementById('giDiningCrop').value,

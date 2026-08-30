@@ -622,33 +622,22 @@
       "diningText": {
         ".validate": "newData.isString() && newData.val().length <= 4000"
       },
+      "intro": {
+        ".validate": "newData.isString() && newData.val().length <= 1000"
+      },
+      "titles": {
+        "$page": {
+          ".validate": "$page.matches(/^(companion|purpose|eta|approach|dine|diet|well|else)$/) && newData.isString() && newData.val().length <= 200"
+        }
+      },
+      "descs": {
+        "$page": {
+          ".validate": "$page.matches(/^(companion|purpose|eta|approach|dine|diet|well|else)$/) && newData.isString() && newData.val().length <= 500"
+        }
+      },
       "more": {
-        "companion": {
-          ".validate": "newData.isString() && newData.val().length <= 2000"
-        },
-        "purpose": {
-          ".validate": "newData.isString() && newData.val().length <= 2000"
-        },
-        "eta": {
-          ".validate": "newData.isString() && newData.val().length <= 2000"
-        },
-        "approach": {
-          ".validate": "newData.isString() && newData.val().length <= 2000"
-        },
-        "dine": {
-          ".validate": "newData.isString() && newData.val().length <= 2000"
-        },
-        "diet": {
-          ".validate": "newData.isString() && newData.val().length <= 2000"
-        },
-        "well": {
-          ".validate": "newData.isString() && newData.val().length <= 2000"
-        },
-        "else": {
-          ".validate": "newData.isString() && newData.val().length <= 2000"
-        },
-        "$other": {
-          ".validate": false
+        "$page": {
+          ".validate": "$page.matches(/^(companion|purpose|eta|approach|dine|diet|well|else)$/) && newData.isString() && newData.val().length <= 2000"
         }
       },
       "resort": {

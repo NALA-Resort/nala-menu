@@ -412,8 +412,12 @@ None of these can move without him.
     `/prearrivalinfo`: a welcome image for the landing (an image only -
     his ruling, after a day of owner text there), a dining image and text
     that make a page of their own in front of the dining questions, and a Read
-    more replacement per page (empty keeps the built-in words, which the
-    tab shows as placeholders read from prearrival.html itself). Photo
+    heading, description and Read more per page, plus the landing's own
+    introduction line - every word a guest reads. Each box is SEEDED with
+    what the guest reads now, read from prearrival.html itself, and a box
+    left unchanged saves as empty so the page keeps owning its wording;
+    emptying a box is the way back. This also retires item 7 above the
+    moment he writes the dinner description. Photo
     lines in the dining text still draw as photos; rotted links remove
     themselves. The node was RESHAPED the same day it first shipped, so
     the rules paste that already happened covers only the retired

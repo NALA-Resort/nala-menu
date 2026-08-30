@@ -635,9 +635,18 @@ with sync_playwright() as p:
                       "Dinner is one menu, written each morning\n"
                       "around what is *best* that day.\n\n"
                       "It is served at your villa or by the pool.",
+        "intro": "The owner's own welcome line.",
+        "titles": {"dine": "Joining us for dinner?"},
+        "descs": {"dine": "We serve from *6pm*."},
         "more": {"dine": "The owner's *own words* about how dinner works."}}
     pg = guest(begin=False)
     pg.wait_for_timeout(300)
+    #  Every word of a page is his to write: its heading, the description
+    #  under it, the words behind Read more - and the introduction line on
+    #  the landing (30 Aug). What he leaves empty keeps the page's own
+    #  wording, so the two are asserted side by side.
+    ck("the introduction line is his where he has written one",
+       "own welcome line" in pg.locator(".intro-why").inner_text())
     ck("the welcome image is on the landing",
        pg.evaluate("()=>{var i=welcomeImg.querySelector('img');"
                    "return i?i.src:null;}") == "https://photos.test/villa.jpg")
@@ -697,9 +706,19 @@ with sync_playwright() as p:
     ck("the owner's Read more replaces the built-in words on the dinner page",
        pg.evaluate("()=>document.querySelector('#qDine .more-b').textContent")
        == "The owner's own words about how dinner works.")
+    ck("and so do his heading and his description",
+       pg.evaluate("()=>document.querySelector('#qDine .q-t').textContent")
+       == "Joining us for dinner?" and
+       pg.evaluate("()=>document.querySelector('#qDine .q-h').textContent")
+       == "We serve from 6pm.")
+    ck("a description takes the marks, a heading stays plain text",
+       pg.evaluate("()=>!!document.querySelector('#qDine .q-h strong')") and
+       pg.evaluate("()=>!document.querySelector('#qDine .q-t strong')"))
     ck("while a page he left empty keeps its built-in words",
        "Reception is here until 5pm" in
-       pg.evaluate("()=>document.querySelector('#qEta .more-b').textContent"))
+       pg.evaluate("()=>document.querySelector('#qEta .more-b').textContent") and
+       pg.evaluate("()=>document.querySelector('#qEta .q-t').textContent")
+       == "What time do you expect to arrive?")
     pg.close()
 
     #  A one night stay keeps its dinner question, so it keeps the page.
@@ -714,6 +733,12 @@ with sync_playwright() as p:
     ck("and the owner's Read more, not the one-night rewrite",
        pg.evaluate("()=>document.querySelector('#qDine .more-b').textContent")
        == "The owner's own words about how dinner works.")
+    #  A heading he writes is the heading on every stay length: the app's
+    #  one-night bending has nothing left to bend, which is the cost of
+    #  writing one and is said on the tab.
+    ck("and his heading too, in place of the one-night wording",
+       pg.evaluate("()=>document.querySelector('#qDine .q-t').textContent")
+       == "Joining us for dinner?")
     pg.close()
 
     #  The photo-line rule lives on in the dining text, and the guards
@@ -760,7 +785,9 @@ with sync_playwright() as p:
     STATE["info"] = None
     pg = guest(begin=False)
     ck("with nothing set, the landing is exactly what it was",
-       pg.evaluate("()=>welcomeImg.children.length") == 0)
+       pg.evaluate("()=>welcomeImg.children.length") == 0 and
+       "A few details before you arrive" in
+       pg.locator(".intro-why").inner_text())
     pg.locator("#begin").click(); pg.wait_for_timeout(200)
     ck("and the walk has no dining page",
        "qDining" not in pg.evaluate("()=>liveSteps().map(s=>s.id)"))

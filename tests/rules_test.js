@@ -218,6 +218,9 @@ can('the manager writes the guest form\'s content', MANAGER, '/prearrivalinfo',
       welcomeImageCrop: 'top', welcomeImageHeight: 'tall',
       diningImageCrop: 'centre', diningImageHeight: 'banner',
       diningText: 'Dinner is one menu, written daily.',
+      intro: 'A few details before you arrive.',
+      titles: { dine: 'Will you dine with us?' },
+      descs: { dine: 'Dinner begins between 6:00 and 6:30pm.' },
       more: { dine: 'The menu is finalised each day.', eta: 'Reception is here late.' },
       by: 'staff@nalaresort.com.au', at: NOW });
 ck('a guest signed out can read it, which is the whole point',
@@ -239,6 +242,16 @@ cannotPatch('a text past the ceiling is refused', ADMIN, '/prearrivalinfo',
             { diningText: new Array(4002).join('x') });
 cannotPatch('a Read more for a page nobody knows is refused', ADMIN, '/prearrivalinfo',
             { more: { hacked: 'x' } });
+cannotPatch('and so is a heading for one', ADMIN, '/prearrivalinfo',
+            { titles: { hacked: 'x' } });
+cannotPatch('and a description for one', ADMIN, '/prearrivalinfo',
+            { descs: { hacked: 'x' } });
+cannotPatch('a heading past its ceiling is refused', ADMIN, '/prearrivalinfo',
+            { titles: { dine: new Array(202).join('x') } });
+cannotPatch('and a description past its own', ADMIN, '/prearrivalinfo',
+            { descs: { dine: new Array(502).join('x') } });
+cannotPatch('and an introduction past its own', ADMIN, '/prearrivalinfo',
+            { intro: new Array(1002).join('x') });
 cannotPatch('and so is a field the node does not know', ADMIN, '/prearrivalinfo',
             { html: '<b>x</b>' });
 

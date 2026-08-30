@@ -121,17 +121,20 @@ left empty shows no number rather than a zero.
 
 **Guest form.** Everything the pre-arrival form says in your words. The
 *welcome image* sits on the form's welcome screen under the greeting - an
-image and only an image. The *dining image* and *dining text* make a page of
-their own, straight after arrival time and in front of the dining
-questions; a blank line starts a new
+image and only an image. The *description* beneath it is the line under the
+greeting. The *dining image* and *dining text* make a page of their own,
+straight after arrival time and in front of the dining questions; a blank line starts a new
 paragraph, a line starting with # makes a heading, words between
 asterisks turn *bold* (bold works in the Read more boxes too), and a line
 that is only a photo's web address becomes that photo where the line
-sits. Each *Read more* box holds the explanation behind that
-page's Read more button, as a guest reads it now - change a word or rewrite
-it, and empty the box to put the original wording back. A box you leave
-untouched keeps following the app's own wording rather than freezing a copy
-of it. Image addresses come from the website's own photos (a
+sits. Under *Question pages*, each of the eight folds open to
+the three things that page says: its **heading**, the **description** under
+it, and the words behind **Read more**. Every box holds what a guest reads
+now - change a word or rewrite it, and empty a box to put the original
+wording back. A box you leave untouched keeps following the app's own
+wording rather than freezing a copy of it. One thing to know: a heading you
+write is used on every stay length, so the app can no longer shorten it for
+a one night guest. Image addresses come from the website's own photos (a
 sized copy, not an original: a guest opens this on mobile data), and an
 address the website later retires quietly stops showing while the words read
 on. Each image carries a Crop and a Height: the photo shows as a band of the

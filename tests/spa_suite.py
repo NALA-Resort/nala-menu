@@ -138,6 +138,9 @@ def fb(route, request):
                            "welcomeImageHeight": "tall",
                            "diningImage": "",
                            "diningText": "Old dining words",
+                           "intro": "Old introduction",
+                           "titles": {"dine": "Old dine heading"},
+                           "descs": {"dine": "Old dine description"},
                            "more": {"dine": "Old dine more"}})
     elif "/staff" in u: body = json.dumps(STAFF)
     elif "/spa.json" in u: body = json.dumps(SPA)
@@ -799,10 +802,31 @@ with sync_playwright() as p:
     #  guests because the phone rang.
     q.click('.tab[data-t="tGuest"]')
     q.wait_for_timeout(600)
+    #  A page folds away until it is wanted: twenty four boxes laid flat is
+    #  a tab nobody can find Save on. Opened here because a box in a shut
+    #  fold cannot be measured or typed into.
+    ck("each question page is a fold of its own, shut until it is opened",
+       q.evaluate("()=>document.querySelectorAll('#tGuest details.gi-page').length") == 8 and
+       q.evaluate("()=>![...document.querySelectorAll('#tGuest details')].some(d=>d.open)"))
+    q.evaluate("()=>document.querySelectorAll('#tGuest details')"
+               ".forEach(d=>{d.open=true;})")
+    q.wait_for_timeout(400)
     ck("Settings shows what the record holds",
        q.evaluate("()=>giWelcomeImg.value") == "https://photos.test/old.jpg" and
        q.evaluate("()=>giDiningText.value") == "Old dining words" and
        q.evaluate("()=>giMore_dine.value") == "Old dine more")
+    #  All three parts of a page, and the two standalone pages' own words:
+    #  the owner asked (30 Aug) for every word a guest reads to be his.
+    ck("a page's heading, description and Read more are each a field",
+       q.evaluate("()=>giTitle_dine.value") == "Old dine heading" and
+       q.evaluate("()=>giDesc_dine.value") == "Old dine description" and
+       q.evaluate("()=>giMore_dine.value") == "Old dine more")
+    ck("and the introduction page has its own",
+       q.evaluate("()=>giIntro.value") == "Old introduction")
+    ck("a page he has not written to shows the app's own words, ready to edit",
+       "5pm" in q.evaluate("()=>giMore_eta.value") and
+       q.evaluate("()=>giTitle_eta.value") == "What time do you expect to arrive?" and
+       q.evaluate("()=>giDesc_eta.value") == "A rough time is fine.")
     ck("an image's crop and height load as stored, and default when unset",
        q.evaluate("()=>giWelcomeCrop.value") == "top" and
        q.evaluate("()=>giWelcomeHeight.value") == "tall" and
@@ -857,6 +881,12 @@ with sync_playwright() as p:
     q.wait_for_timeout(600)
     w5 = [x for x in WRITES if "/prearrivalinfo" in x["u"]]
     body5 = json.loads(w5[0]["b"]) if w5 else {}
+    ck("Save carries every part of every page, and the introduction",
+       (body5.get("titles") or {}).get("dine") == "Old dine heading" and
+       (body5.get("descs") or {}).get("dine") == "Old dine description" and
+       body5.get("intro") == "Old introduction" and
+       (body5.get("titles") or {}).get("eta") == "" and
+       (body5.get("descs") or {}).get("eta") == "")
     ck("Save writes the whole record in one PATCH, stamped by and at",
        bool(w5) and w5[0]["m"] == "PATCH" and
        body5.get("diningText") == "Dinner is one menu, finalised each day." and

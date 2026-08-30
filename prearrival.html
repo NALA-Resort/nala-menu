@@ -897,20 +897,52 @@ function setInfoImg(id, url, crop, height){
    REPLACES the built-in copy; an empty one keeps it. Reapplied at the end
    of paintGreeting, because that bends the built-in qDine copy to a one
    night stay and must never bend the owner's own words. */
-var INFO_MORE = {};
+/* Every word of a question page the owner may write for himself, from
+   Settings: its heading, the description under it, and the words behind
+   its Read more. Plus the introduction line on the landing. Anything he
+   has left empty keeps the page's own wording, so the three maps hold
+   only what he has actually written.
+
+   Reapplied at the end of paintGreeting, which bends some of the built-in
+   wording to a one night stay and to a solo guest: his words are the last
+   to land, or the fetch order would decide whose wording a guest reads.
+   The cost of writing a heading is that it is the heading on every stay
+   length - the bending has nothing left to bend - which is his to know
+   and is said on the tab. */
+var INFO_MORE = {}, INFO_TITLES = {}, INFO_DESCS = {}, INFO_INTRO = '';
 var MORE_MAP = { companion:'qCompanion', purpose:'qPurpose', eta:'qEta',
                  approach:'qApproach', dine:'qDine', diet:'qDiet',
                  well:'qWell', 'else':'qElse' };
+function ownText(map, k){
+  return (typeof map[k] === 'string') ? map[k].trim() : '';
+}
 function setMoreTexts(){
   Object.keys(MORE_MAP).forEach(function(k){
-    var text = (typeof INFO_MORE[k] === 'string') ? INFO_MORE[k].trim() : '';
-    if (!text) return;
-    var b = document.querySelector('#' + MORE_MAP[k] + ' .more-b');
-    /* Bold applies here too; headings do not - a Read more is one aside,
-       not a document. Line breaks collapse the way textContent rendered
-       them. */
-    if (b){ b.innerHTML = ''; fillMarked(b, text.replace(/\s*\n\s*/g, ' ')); }
+    var q = el(MORE_MAP[k]);
+    if (!q) return;
+    /* A heading is plain text: it is one line, and a mark inside it would
+       be a heading arguing with itself. The paragraphs take the marks. */
+    var title = ownText(INFO_TITLES, k);
+    if (title){
+      var h = q.querySelector('.q-t');
+      if (h) h.textContent = title;
+    }
+    var desc = ownText(INFO_DESCS, k);
+    if (desc){
+      var d = q.querySelector('.q-h');
+      if (d){ d.innerHTML = ''; fillMarked(d, desc.replace(/\s*\n\s*/g, ' ')); }
+    }
+    var text = ownText(INFO_MORE, k);
+    if (text){
+      var b = q.querySelector('.more-b');
+      /* Line breaks collapse the way textContent rendered them. */
+      if (b){ b.innerHTML = ''; fillMarked(b, text.replace(/\s*\n\s*/g, ' ')); }
+    }
   });
+  if (INFO_INTRO.trim()){
+    var iw = document.querySelector('.intro-why');
+    if (iw){ iw.innerHTML = ''; fillMarked(iw, INFO_INTRO.replace(/\s*\n\s*/g, ' ')); }
+  }
 }
 
 /* Everything /prearrivalinfo drives, applied in one stroke, real link and
@@ -921,7 +953,10 @@ function setMoreTexts(){
    machinery: the count changes under a guest already walking. */
 function applyGuestInfo(info){
   if (!info) return false;
-  INFO_MORE = (info.more && typeof info.more === 'object') ? info.more : {};
+  INFO_MORE   = (info.more   && typeof info.more   === 'object') ? info.more   : {};
+  INFO_TITLES = (info.titles && typeof info.titles === 'object') ? info.titles : {};
+  INFO_DESCS  = (info.descs  && typeof info.descs  === 'object') ? info.descs  : {};
+  INFO_INTRO  = (typeof info.intro === 'string') ? info.intro : '';
   if (typeof info.welcomeImage === 'string')
     setInfoImg('welcomeImg', info.welcomeImage,
                info.welcomeImageCrop, info.welcomeImageHeight);
@@ -935,8 +970,10 @@ function applyGuestInfo(info){
   setMoreTexts();
   resyncSteps();
   return !!(String(info.welcomeImage || '').trim() || hasDining ||
-            Object.keys(INFO_MORE).some(function(k){
-              return String(INFO_MORE[k] || '').trim(); }));
+            INFO_INTRO.trim() ||
+            [INFO_MORE, INFO_TITLES, INFO_DESCS].some(function(m){
+              return Object.keys(m).some(function(k){
+                return String(m[k] || '').trim(); }); }));
 }
 /* The one inline mark: words between asterisks turn bold - *like this* -
    asked for by the owner on 30 Aug once real copy met the flat paragraphs.
