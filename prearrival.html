@@ -1228,6 +1228,22 @@ function submitForm(){
     el('done').className = 'done';
     el('doneT').textContent = 'That is everything, thank you';
     el('doneS').textContent = 'Demonstration only. Nothing was saved.';
+    /* The way back to the editor, closing the write-preview loop the
+       Guest form tab's Preview link opens. On the thank-you screen
+       because it is the demo's last page - a link on the landing was
+       behind the walk the moment Begin was tapped. Demo only,
+       deliberately: this anchor exists nowhere a real guest can be, and
+       the suite holds that. Settings still gates itself, so the link
+       leaks nothing even if typed by hand. */
+    if (!el('demoBack')){
+      var demoBack = document.createElement('a');
+      demoBack.id = 'demoBack';
+      demoBack.className = 'again';
+      demoBack.style.cssText = 'display:inline-block;text-decoration:none';
+      demoBack.href = 'staff.html';
+      demoBack.textContent = 'Back to Settings';
+      el('done').appendChild(demoBack);
+    }
     return;
   }
   /* The dietary onto the person too. Its own copy of the helper, because this
@@ -1309,31 +1325,14 @@ function boot(){
                     arrive: dkey(new Date()),
                     depart: dkey(new Date(Date.now() + demoNights * 86400000)) });
     showIntro();
-    var banner = document.createElement('div');
-    banner.className = 'note-box';
-    banner.style.cssText = 'margin:0 0 14px;text-align:center';
-    banner.textContent = 'Demonstration only. Nothing here is saved.';
-    /* One line and the way back is the WHOLE banner, the owner's 30 Aug
-       ruling, striking two explainer lines as clutter: the pills-are-
-       examples warning (27 Aug, after Celiac was looked for here - that
-       trap is knowingly accepted back: the demo's dietary pills are still
-       the built-in eight, not the chef's list, and nothing on the page
-       says so any more) and the where-the-Settings-content-comes-from
-       line, which earned its keep only before the content existed. The
-       demo still previews the Guest form record live - its one read. */
+    /* No banner at all - the owner stripped the last of it on 30 Aug: the
+       demo shows exactly what a guest sees, banner history in the log
+       (the pills-are-examples line and its Celiac trap included, still
+       knowingly accepted back). The Guest form record still previews
+       live - the demo's one read - and the way back to Settings waits on
+       the thank-you screen, the demo's last page: a link on the landing
+       was unreachable the moment Begin was tapped. */
     db('/prearrivalinfo').then(applyGuestInfo).catch(function(){});
-    /* The way back to the editor, closing the write-preview loop the
-       Guest form tab's Preview link opens. Demo only, deliberately: this
-       anchor exists nowhere a real guest can be, and the suite holds
-       that - a guest page must never offer a staff door. Settings still
-       gates itself, so the link leaks nothing even if typed by hand. */
-    var demoBack = document.createElement('a');
-    demoBack.className = 'sub';
-    demoBack.href = 'staff.html';
-    demoBack.style.cssText = 'display:block;margin-top:6px;color:var(--mid)';
-    demoBack.textContent = 'Back to Settings';
-    banner.appendChild(demoBack);
-    el('intro').insertBefore(banner, el('intro').firstChild);
     showStep(0);
     return;
   }

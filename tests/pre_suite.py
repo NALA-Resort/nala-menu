@@ -984,28 +984,17 @@ with sync_playwright() as p:
        q.evaluate("()=>document.getElementById('form').className.indexOf('hide')<0"))
     ck("with a guest to greet",
        "Alex" in q.evaluate("()=>document.getElementById('greet').textContent"))
-    ck("and says plainly on the landing that it is a demonstration",
-       "demonstration" in q.evaluate(
-           "()=>{const n=document.querySelector('#intro .note-box');"
-           "return n?n.textContent:'';}").lower())
-    #  And no more than that: the banner once carried two explainer lines -
-    #  the pills-are-examples warning (27 Aug) and where the Settings
-    #  content would come from - and the owner struck both on 30 Aug as
-    #  clutter, knowingly taking the pills trap back. One line, one link.
-    ck("and the banner is that one line plus the way back, nothing more",
-       q.evaluate("()=>{const n=document.querySelector('#intro .note-box');"
-                  "return n && n.children.length === 1 && "
-                  "n.textContent.indexOf('examples') === -1 && "
-                  "n.textContent.indexOf('will show here') === -1;}"))
+    #  No banner at all since 30 Aug, the owner stripping the last line of
+    #  it: the demo landing is exactly what a guest sees. The way back to
+    #  Settings waits on the thank-you screen instead - the demo's last
+    #  page - because a landing link was behind the walk the moment Begin
+    #  was tapped.
+    ck("and the landing carries no banner and no staff door - a guest's own",
+       q.evaluate("()=>!document.querySelector('#intro .note-box')") and
+       q.evaluate("()=>!document.querySelector('a[href*=\"staff\"]')"))
     ck("opening it reads the public Settings notes and nothing else",
        calls != [] and
        all(m == "GET" and "/prearrivalinfo" in u for m, u in calls))
-    #  The write-preview loop: Settings links here to preview, so the demo
-    #  carries the way back. Demo only - the real-link check above holds
-    #  the other half.
-    ck("and the demo banner offers the way back to Settings",
-       q.evaluate("()=>{const a=document.querySelector('#intro .note-box a');"
-                  "return a ? a.getAttribute('href') : null;}") == "staff.html")
 
     q.evaluate("""()=>{
       trail.value=2; trail.dispatchEvent(new Event('input'));
@@ -1024,6 +1013,12 @@ with sync_playwright() as p:
     ck("while saying nothing was saved",
        "nothing was saved" in q.evaluate(
            "()=>document.getElementById('doneS').textContent").lower())
+    #  The write-preview loop: Settings links here to preview, and the way
+    #  back sits on this, the demo's last page. The real-link check above
+    #  holds the other half: no staff door anywhere a guest can be.
+    ck("and the thank-you screen offers the way back to Settings",
+       q.evaluate("()=>{const a=document.querySelector('#done a');"
+                  "return a ? a.getAttribute('href') : null;}") == "staff.html")
     ck("and writes nothing, which is the whole point",
        not [c for c in calls if c[0] in ("PATCH", "PUT", "POST")])
     q.close()
