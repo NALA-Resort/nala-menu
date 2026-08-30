@@ -814,6 +814,40 @@ with sync_playwright() as p:
     ck("an empty Read more box shows the built-in words it keeps",
        "finalised" in q.evaluate("()=>giMore_dine.placeholder") and
        "fill quickly" in q.evaluate("()=>giMore_well.placeholder"))
+    #  And shows them whole. Two rows cut the grey wording through the
+    #  middle of a line, half-height letters against the bottom border,
+    #  which reads as broken rather than as a hint (the owner, 30 Aug).
+    #  A placeholder does not count toward scrollHeight, so an empty box
+    #  is measured holding those same words.
+    ck("an empty box is as tall as the grey wording, cutting no line in half",
+       q.evaluate("""()=>['well','diet','eta'].every(k=>{
+           const t=document.getElementById('giMore_'+k);
+           if (t.value) return false;
+           t.value=t.placeholder;
+           const ok=t.scrollHeight<=t.clientHeight+2;
+           t.value='';
+           return ok;})"""))
+    #  And the same for what is typed: a box sized to its stored words
+    #  must grow rather than clip when more are added.
+    q.fill("#giMore_else", "A much longer replacement than the box was "
+                           "drawn for, long enough to wrap over several "
+                           "lines on a phone and prove the box grows with "
+                           "the words rather than cutting them off.")
+    q.wait_for_timeout(200)
+    ck("and a box grows to the words typed into it",
+       q.evaluate("""()=>{const t=document.getElementById('giMore_else');
+           return t.scrollHeight<=t.clientHeight+2;}"""))
+    #  The instructions live beside the fields they explain. They were one
+    #  paragraph below Save, past the eight boxes it described, and the
+    #  owner read it as a wall.
+    ck("the grammar is taught beside the boxes it applies to",
+       q.evaluate("""()=>{const h=[...document.querySelectorAll('#tGuest .gi-hint')]
+           .map(x=>x.textContent).join(' ').toLowerCase();
+           return h.indexOf('#')>-1 && h.indexOf('bold')>-1
+             && h.indexOf('paragraph')>-1;}"""))
+    ck("and no block of instructions runs longer than a hint",
+       q.evaluate("""()=>[...document.querySelectorAll('#tGuest .gi-hint, #tGuest .note')]
+           .every(x=>x.textContent.trim().length<=220)"""))
     del WRITES[:]
     q.fill("#giDiningText", "Dinner is one menu, finalised each day.")
     q.fill("#giMore_diet", "Owner diet words.")

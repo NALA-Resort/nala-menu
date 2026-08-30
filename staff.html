@@ -58,6 +58,13 @@
   .gi-opt { flex:1; min-width:0; }
   .gi-lab { display:block; font-size:var(--t1); color:var(--mid);
             margin:12px 0 5px; }
+  /* A hint belongs to the field above it, not to a paragraph at the end of
+     the tab: the whole tab's instructions once sat below Save, past the
+     eight boxes they explained, and the owner read them as a wall (30 Aug).
+     Tight to its field, and each one says one thing. */
+  .gi-hint { font-size:var(--t2); color:var(--mid); line-height:1.45;
+             margin:5px 0 2px; }
+  .gi-hint b { font-weight:600; color:var(--ink); }
   .err  { font-size:var(--t2); color:var(--red); line-height:1.5; margin-top:10px; }
 
   /* the sheet, same shape as the boards use */
@@ -240,9 +247,12 @@
     </div>
 
     <div class="panel" id="tGuest" role="tabpanel">
-      <div class="seclabel">Welcome image &middot; on the welcome screen</div>
+      <div class="seclabel">Welcome image &middot; under the greeting</div>
       <input id="giWelcomeImg"
         placeholder="https:// address of a photo from the website">
+      <div class="gi-hint">An image on its own, no words beside it. Paste a
+        sized copy from the website, not an original; an address the site
+        later retires simply stops showing.</div>
       <div class="gi-row">
         <span class="gi-opt"><label class="gi-lab" for="giWelcomeCrop">Crop</label>
           <select id="giWelcomeCrop"><option value="top">Top</option>
@@ -257,6 +267,8 @@
       <div class="seclabel">Dining image &middot; tops the dining page</div>
       <input id="giDiningImg"
         placeholder="https:// address of a photo from the website">
+      <div class="gi-hint">The dining page is read straight after arrival
+        time, in front of the dining questions.</div>
       <div class="gi-row">
         <span class="gi-opt"><label class="gi-lab" for="giDiningCrop">Crop</label>
           <select id="giDiningCrop"><option value="top">Top</option>
@@ -268,24 +280,20 @@
             <option value="tall">Tall</option>
             <option value="natural">Natural, no crop</option></select></span>
       </div>
-      <div class="seclabel">Dining text &middot; under its image</div>
+      <div class="seclabel">Dining text &middot; under that image</div>
       <textarea id="giDiningText" rows="6"
-        placeholder="How dinner here works. A blank line starts a new paragraph."></textarea>
-      <div class="seclabel">Read more, page by page &middot; filled replaces
-        the built-in words, empty keeps them</div>
+        placeholder="How dinner here works."></textarea>
+      <div class="gi-hint">Blank line for a new paragraph &middot;
+        <b># </b>starts a heading &middot; <b>*asterisks*</b> turn bold
+        &middot; a photo address alone on a line becomes that photo</div>
+      <div class="seclabel">Read more, page by page</div>
+      <div class="gi-hint">Each box replaces what sits behind that page's
+        Read more button. The grey words are what a guest reads while it is
+        empty.</div>
       <div id="giMoreRows"></div>
       <button class="btn solid" id="giSave">Save</button>
       <a class="btn ghost" id="giDemo" href="prearrival.html?b=demo">Preview
         on the demo form</a>
-      <div class="note">The guest form's own content, all of it yours. The
-      welcome image sits under the greeting - an image and only an image,
-      by your ruling. The dining image and text make a page of their own,
-      read straight after arrival time, in front of the dining questions. Two marks work in the text boxes: a line starting with # makes a
-      heading, and words between asterisks turn *bold*. Each Read more box replaces the
-      explanation behind that page's Read more button; the grey text in an
-      empty box IS the built-in wording it would replace. Image links come
-      from the website's photos - a sized copy, not an original - and a
-      link the website later retires simply stops showing.</div>
       <div class="err" id="giErr"></div>
     </div>
   </div>
@@ -807,6 +815,35 @@ var GI_MORE = [ ['companion', 'Who is coming'],
     host.appendChild(l); host.appendChild(t);
   });
 })();
+
+/* A box as tall as the words it is showing. Two rows cut the built-in
+   wording through the middle of a line - half-height letters against the
+   bottom border, which reads as broken rather than as a hint (the owner,
+   30 Aug). A placeholder does not count toward scrollHeight, so it is
+   measured in a hidden twin of the same width, font and padding. */
+function giFit(t){
+  if (!t || !t.clientWidth) return;          /* hidden tab: nothing to measure */
+  var cs = getComputedStyle(t);
+  var probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;'
+    + 'white-space:pre-wrap;overflow-wrap:break-word;';
+  probe.style.width      = t.clientWidth + 'px';
+  probe.style.fontFamily = cs.fontFamily;
+  probe.style.fontSize   = cs.fontSize;
+  probe.style.lineHeight = cs.lineHeight;
+  probe.style.padding    = cs.padding;
+  /* A trailing space so a text ending in a newline still measures its
+     last, empty line. */
+  probe.textContent = (t.value || t.placeholder || '') + ' ';
+  document.body.appendChild(probe);
+  var h = probe.offsetHeight;
+  probe.parentNode.removeChild(probe);
+  t.style.height = Math.max(h + 2, 44) + 'px';
+}
+function giFitAll(){
+  giFit(document.getElementById('giDiningText'));
+  GI_MORE.forEach(function(p){ giFit(document.getElementById('giMore_' + p[0])); });
+}
 function giFields(){
   return ['giWelcomeImg', 'giDiningImg', 'giDiningText']
     .concat(GI_MORE.map(function(p){ return 'giMore_' + p[0]; }));
@@ -826,6 +863,7 @@ function loadGuestInfo(){
       GI_MORE.forEach(function(p){
         document.getElementById('giMore_' + p[0]).value = more[p[0]] || '';
       });
+      giFitAll();
     }).catch(function(){});
 }
 /* The built-in Read more words, as the placeholders of the boxes that
@@ -841,6 +879,7 @@ fetch('prearrival.html').then(function(r){ return r.text(); }).then(function(htm
     var f = document.getElementById('giMore_' + p[0]);
     if (b && f) f.placeholder = b.textContent.replace(/\s+/g, ' ').trim();
   });
+  giFitAll();
 }).catch(function(){});
 /* Whether the boxes hold something the database does not. The Save button
    almost knows this, but its resting state on page load is enabled with
@@ -849,6 +888,7 @@ var GI_DIRTY = false;
 giFields().forEach(function(id){
   document.getElementById(id).oninput = function(){
     GI_DIRTY = true;
+    giFit(this);
     armSave(document.getElementById('giSave'));
   };
 });
@@ -958,6 +998,9 @@ document.querySelectorAll('.tab').forEach(function(t){
     document.querySelectorAll('.panel').forEach(function(x){ x.classList.remove('on'); });
     t.classList.add('on'); t.setAttribute('aria-selected','true');
     document.getElementById(t.getAttribute('data-t')).classList.add('on');
+    /* A box in a display:none panel measures zero, so the Guest form's
+       boxes are sized the moment its tab is opened rather than on load. */
+    if (t.getAttribute('data-t') === 'tGuest') giFitAll();
   };
 });
 </script>
