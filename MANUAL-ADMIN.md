@@ -124,8 +124,10 @@ left empty shows no number rather than a zero.
 image and only an image. The *dining image* and *dining text* make a page of
 their own, straight after arrival time and in front of the dining
 questions; a blank line starts a new
-paragraph, and a line that is only a photo's web address becomes that photo
-where the line sits. Each *Read more* box replaces the explanation behind
+paragraph, a line starting with # makes a heading, words between
+asterisks turn *bold* (bold works in the Read more boxes too), and a line
+that is only a photo's web address becomes that photo where the line
+sits. Each *Read more* box replaces the explanation behind
 that page's Read more button; the grey text in an empty box is the built-in
 wording it keeps. Image addresses come from the website's own photos (a
 sized copy, not an original: a guest opens this on mobile data), and an

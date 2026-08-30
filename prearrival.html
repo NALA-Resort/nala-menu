@@ -59,6 +59,12 @@
      and dressing them as a footnote would say skip them. */
   .info-p { font-size:0.95rem; line-height:1.7; margin-top:0.9rem; }
   .info-p:first-child { margin-top:0.55rem; }
+  /* The grammar's two marks. 600, not bold: 700 is not among the loaded
+     Raleway weights and would render synthesised. */
+  .info-h { font-size:1.05rem; line-height:1.4; font-weight:600;
+            margin-top:1.2rem; }
+  .info-h:first-child { margin-top:0.55rem; }
+  .info-p strong, .more-b strong { font-weight:600; }
   /* A photo in a note. Block and full width, cornered like the cards. No
      reserved height: a photo that fails to load is removed outright, and
      space held for an absent image would be a hole in the page.
@@ -900,7 +906,10 @@ function setMoreTexts(){
     var text = (typeof INFO_MORE[k] === 'string') ? INFO_MORE[k].trim() : '';
     if (!text) return;
     var b = document.querySelector('#' + MORE_MAP[k] + ' .more-b');
-    if (b) b.textContent = text;
+    /* Bold applies here too; headings do not - a Read more is one aside,
+       not a document. Line breaks collapse the way textContent rendered
+       them. */
+    if (b){ b.innerHTML = ''; fillMarked(b, text.replace(/\s*\n\s*/g, ' ')); }
   });
 }
 
@@ -929,6 +938,21 @@ function applyGuestInfo(info){
             Object.keys(INFO_MORE).some(function(k){
               return String(INFO_MORE[k] || '').trim(); }));
 }
+/* The one inline mark: words between asterisks turn bold - *like this* -
+   asked for by the owner on 30 Aug once real copy met the flat paragraphs.
+   Built as elements, never markup, like everything else here; an unpaired
+   asterisk stays a literal asterisk. */
+function fillMarked(node, text){
+  String(text).split(/\*([^*]{1,200}?)\*/).forEach(function(part, i){
+    if (!part) return;
+    if (i % 2){
+      var s = document.createElement('strong');
+      s.textContent = part;
+      node.appendChild(s);
+    } else node.appendChild(document.createTextNode(part));
+  });
+}
+
 function fillInfo(id, text){
   var host = el(id); host.innerHTML = '';
   var run = [];
@@ -938,7 +962,7 @@ function fillInfo(id, text){
     if (!par) return;
     var d = document.createElement('div');
     d.className = 'info-p';
-    d.textContent = par;
+    fillMarked(d, par);
     host.appendChild(d);
   }
   String(text || '').split('\n').forEach(function(line){
@@ -946,6 +970,17 @@ function fillInfo(id, text){
     if (infoIsPhoto(line)){
       flushRun();
       host.appendChild(infoImg(line));
+      return;
+    }
+    /* A line starting with # is a heading, the grammar's other mark. Its
+       text goes in plain - a heading is already the emphasis. */
+    var h = line.match(/^#\s+(.*)/);
+    if (h){
+      flushRun();
+      var d = document.createElement('div');
+      d.className = 'info-h';
+      d.textContent = h[1];
+      host.appendChild(d);
       return;
     }
     /* A blank line ends a paragraph; anything else joins the current one. */

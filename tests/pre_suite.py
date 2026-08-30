@@ -631,10 +631,11 @@ with sync_playwright() as p:
         "welcomeImage": "https://photos.test/villa.jpg",
         "welcomeImageCrop": "top", "welcomeImageHeight": "tall",
         "diningImage": "https://photos.test/dinner.jpg",
-        "diningText": "Dinner is one menu, written each morning\n"
-                      "around what is best that day.\n\n"
+        "diningText": "# Dining at Nala\n"
+                      "Dinner is one menu, written each morning\n"
+                      "around what is *best* that day.\n\n"
                       "It is served at your villa or by the pool.",
-        "more": {"dine": "The owner's own words about how dinner works."}}
+        "more": {"dine": "The owner's *own words* about how dinner works."}}
     pg = guest(begin=False)
     pg.wait_for_timeout(300)
     ck("the welcome image is on the landing",
@@ -672,6 +673,21 @@ with sync_playwright() as p:
        == "cover|50% 50%|" + str(round(844 * 0.38)))
     ck("as paragraphs, split on the blank line",
        pg.evaluate("()=>document.querySelectorAll('#diningText .info-p').length") == 2)
+    #  The grammar's two marks, asked for once real copy met flat
+    #  paragraphs (30 Aug): # opens a heading, asterisk pairs turn bold.
+    #  Both land as elements with the marks stripped - never markup.
+    ck("a # line is a heading, its mark stripped",
+       pg.evaluate("()=>{var h=document.querySelector('#diningText .info-h');"
+                   "return h?h.textContent:null;}") == "Dining at Nala" and
+       pg.evaluate("()=>getComputedStyle(document.querySelector"
+                   "('#diningText .info-h')).fontWeight") == "600")
+    ck("and asterisk pairs turn bold, the marks gone from the page",
+       pg.evaluate("()=>{var el2=document.querySelector('#diningText .info-p strong');"
+                   "return el2?el2.textContent:null;}") == "best" and
+       "*" not in pg.locator("#diningText").inner_text())
+    ck("bold works in a Read more replacement too",
+       pg.evaluate("()=>{var el2=document.querySelector('#qDine .more-b strong');"
+                   "return el2?el2.textContent:null;}") == "own words")
     del WRITES[:]
     nxt(pg)
     ck("Next carries straight to the first dining question: the page asks nothing",
@@ -712,7 +728,8 @@ with sync_playwright() as p:
         "diningText": "One menu, written daily.\n"
                       "https://photos.test/pool.jpg\n"
                       "Photos live at https://photos.test/x.jpg online.\n"
-                      "http://photos.test/notsecure.jpg",
+                      "http://photos.test/notsecure.jpg\n"
+                      "Doors at 6pm *sharp",
         "more": {"dine": "<b>Bold</b> & <img src=x onerror=boom()>"}}
     pg = guest(begin=False)
     pg.wait_for_timeout(600)
@@ -731,6 +748,8 @@ with sync_playwright() as p:
        "https://photos.test/x.jpg" in pg.locator("#diningText").inner_text() and
        "http://photos.test/notsecure.jpg" in pg.locator("#diningText").inner_text()
        and pg.evaluate("()=>document.querySelectorAll('#diningText img').length") == 1)
+    ck("an unpaired asterisk stays a literal asterisk",
+       "*sharp" in pg.locator("#diningText").inner_text())
     ck("a Read more replacement is text on the page, never markup",
        pg.evaluate("()=>!document.querySelector("
                    "'#qDine .more-b b, #qDine .more-b img')") and
