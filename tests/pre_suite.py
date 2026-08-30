@@ -265,7 +265,7 @@ with sync_playwright() as p:
 
     del WRITES[:]
     pg.evaluate("()=>[...document.querySelectorAll('#approachOpts .opt')][1].click()")
-    pg.wait_for_timeout(500)
+    nxt(pg)
     ck("going forward saves the page being left",
        len(wrote("/prearrival")) == 1)
     del WRITES[:]
@@ -286,17 +286,23 @@ with sync_playwright() as p:
        len(sent("/prearrival")) == 0)
     pg.close()
 
-    # ── an answer that opens a follow up stays put ──────────────
-    #  The rule the owner set: a guest must never say yes on one page and be
-    #  shown what yes costs on the next, because the only way back from that
-    #  is to return and change an answer they meant.
+    # ── no answer turns the page ────────────────────────────────
+    #  Auto progress went on 30 Aug, the owner's ruling: a clean answer
+    #  used to carry the guest onward by itself after a pause, which read
+    #  as the form rushing them and made a mis-tap cost a Back to undo.
+    #  Every answer now stays put - the ones that open a follow up on
+    #  their own page and the ones that open nothing alike - and Next is
+    #  the one way forward. The older rule stands underneath: what an
+    #  answer opens up lives on the page where it was given.
     pg = guest()
     jump(pg, "qDine")
     pg.locator("#dIn").click(); pg.wait_for_timeout(600)
-    #  Yes used to open the pax chips and had to stay; the chips went on
-    #  23 Aug (the count comes from Mews or nowhere), so yes now opens
-    #  nothing and advances like any clean answer.
-    ck("saying yes to dinner advances, since it no longer opens anything",
+    ck("answering dinner stays put, though it opens nothing",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine")
+    ck("with the choice showing as made",
+       pg.evaluate("()=>dIn.className.indexOf('on')>-1"))
+    nxt(pg)
+    ck("Next, not the answer, turns the page",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qDiet")
     jump(pg, "qWell")
     pg.locator("#wYes").click(); pg.wait_for_timeout(600)
@@ -338,7 +344,10 @@ with sync_playwright() as p:
     pg.wait_for_timeout(450)
     ck("choosing again keeps exactly one",
        pg.evaluate("()=>a.purpose.join()") == "Mostly relaxing at Nala")
-    ck("and a clean answer carries them onward, to arrival",
+    ck("and the page holds still until Next",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qPurpose")
+    nxt(pg)
+    ck("which carries them onward, to arrival",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta")
     nxt(pg)
     ck("which must be answered",
@@ -368,20 +377,19 @@ with sync_playwright() as p:
     ck("the week must be answered",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qApproach")
     pg.evaluate("()=>[...document.querySelectorAll('#approachOpts .opt')][0].click()")
-    pg.wait_for_timeout(500)
+    nxt(pg)
     ck("then the first night",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine")
     nxt(pg)
     ck("which must be answered too",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine")
-    pg.locator("#dIn").click(); pg.wait_for_timeout(400)
+    pg.locator("#dIn").click(); nxt(pg)
     ck("then allergies", pg.evaluate("()=>document.querySelector('.q.now').id") == "qDiet")
     nxt(pg)
     ck("which will not be skipped",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qDiet")
-    # "None" is a positive answer - it writes noDiets, same record as ever -
-    #  and opening nothing, it advances by itself like any clean answer.
-    pg.locator("#dNone").click(); pg.wait_for_timeout(450)
+    # "None" is a positive answer - it writes noDiets, same record as ever.
+    pg.locator("#dNone").click(); nxt(pg)
     ck("then treatments", pg.evaluate("()=>document.querySelector('.q.now').id") == "qWell")
     pg.locator("#wYes").click(); pg.wait_for_timeout(400)
     ck("saying yes offers only the days they are here",

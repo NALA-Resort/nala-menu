@@ -729,7 +729,6 @@ function paintPurpose(){
     b.onclick = function(){
       a.purpose = [t];                     /* one answer replaces another */
       clearMiss('qPurpose'); paintPurpose();
-      advanceIfClean(false);               /* it opens nothing */
     };
     box.appendChild(b);
   });
@@ -742,7 +741,6 @@ function paintApproach(){
     b.className = 'opt' + (a.approach === pair[0] ? ' on' : ''); b.textContent = pair[1];
     b.onclick = function(){
       a.approach = pair[0]; clearMiss('qApproach'); paintApproach();
-      advanceIfClean(false);
     };
     box.appendChild(b);
   });
@@ -956,28 +954,23 @@ function fillInfo(id, text){
   flushRun();
 }
 
-/* Yes opens a follow up on the same page and so stays put. No opens nothing
-   and carries on. */
+/* An answer never turns the page. Auto progress went on 30 Aug, the
+   owner's ruling: an option that opened nothing used to carry the guest
+   onward after a pause, which read as the form rushing them, and made a
+   mis-tap cost a Back to undo. Next is the one way forward, and it
+   already refuses an unanswered page. */
 el('dNone').onclick = function(){
   a.noDiets = true; a.dietYes = false; a.diets = [];
   clearMiss('qDiet'); paintDiets();
-  advanceIfClean(false);            /* a clean answer, it opens nothing */
 };
 el('dYes').onclick = function(){
   a.dietYes = true; a.noDiets = false;
   clearMiss('qDiet'); paintDiets();
-  advanceIfClean(true);             /* it opens the list, on this page */
 };
-el('dIn').onclick  = function(){ a.dining = true;  clearMiss('qDine'); paintDine();
-                                 /* Yes used to open the pax chips and had to
-                                    wait; it opens nothing now. */
-                                 advanceIfClean(false); };
-el('dOut').onclick = function(){ a.dining = false; clearMiss('qDine'); paintDine();
-                                 advanceIfClean(false); };
-el('wYes').onclick = function(){ a.wellness = true;  clearMiss('qWell'); paintWell();
-                                 advanceIfClean(true); };
-el('wNo').onclick  = function(){ a.wellness = false; clearMiss('qWell'); paintWell();
-                                 advanceIfClean(false); };
+el('dIn').onclick  = function(){ a.dining = true;  clearMiss('qDine'); paintDine(); };
+el('dOut').onclick = function(){ a.dining = false; clearMiss('qDine'); paintDine(); };
+el('wYes').onclick = function(){ a.wellness = true;  clearMiss('qWell'); paintWell(); };
+el('wNo').onclick  = function(){ a.wellness = false; clearMiss('qWell'); paintWell(); };
 
 function clearMiss(id){
   /* Keeps `now`: this is the page on screen, and stripping the class would
@@ -1103,18 +1096,6 @@ function goNext(){
 function goBack(){
   saveStep(CUR);
   showStep(CUR - 1);
-}
-
-/* A picked option that opens nothing carries the guest onward by itself. One
-   that opens a follow up does not, because the follow up is on this page and
-   moving would hide it. The pause is so the choice is seen to register: a
-   page that vanishes the instant it is touched reads as a mis-tap. */
-function advanceIfClean(opensMore){
-  if (opensMore) return;
-  setTimeout(function(){
-    var live = liveSteps();
-    if (!missingOn(live[CUR].id)) goNext();
-  }, 260);
 }
 
 el('back').onclick = goBack;
