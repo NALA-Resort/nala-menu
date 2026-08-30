@@ -866,6 +866,18 @@ with sync_playwright() as p:
     #  The instructions live beside the fields they explain. They were one
     #  paragraph below Save, past the eight boxes it described, and the
     #  owner read it as a wall.
+    #  The tab covers three surfaces a guest meets in order, and they read
+    #  as one long form unless each is announced (the owner, 30 Aug).
+    ck("the tab announces its three surfaces as headlines",
+       q.evaluate("""()=>{
+           const h=[...document.querySelectorAll('#tGuest .gi-sec')]
+             .map(x=>x.textContent.trim());
+           if (h.join('|')!=='Welcome screen|Dining page|Question pages')
+             return false;
+           const s=getComputedStyle(document.querySelector('#tGuest .gi-sec'));
+           const l=getComputedStyle(document.querySelector('#tGuest .gi-lab'));
+           return parseFloat(s.fontSize)>parseFloat(l.fontSize)
+             && Number(s.fontWeight)>=600;}"""))
     ck("the grammar is taught beside the boxes it applies to",
        q.evaluate("""()=>{const h=[...document.querySelectorAll('#tGuest .gi-hint')]
            .map(x=>x.textContent).join(' ').toLowerCase();

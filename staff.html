@@ -58,6 +58,15 @@
   .gi-opt { flex:1; min-width:0; }
   .gi-lab { display:block; font-size:var(--t1); color:var(--mid);
             margin:12px 0 5px; }
+  /* The tab covers three surfaces a guest meets in order - the welcome
+     screen, the dining page, then the questions - and they read as one
+     long form unless each is announced. A headline rather than another
+     quiet label: this is the one place on the tab where the eye should
+     stop. Ruled by the owner, 30 Aug. */
+  .gi-sec { font-size:var(--t4); font-weight:600; color:var(--ink);
+            margin:var(--s5) 0 var(--s2); padding-top:var(--s4);
+            border-top:1px solid var(--rule); }
+  #tGuest .gi-sec:first-child { margin-top:0; padding-top:0; border-top:0; }
   /* A hint belongs to the field above it, not to a paragraph at the end of
      the tab: the whole tab's instructions once sat below Save, past the
      eight boxes they explained, and the owner read them as a wall (30 Aug).
@@ -264,7 +273,7 @@
     </div>
 
     <div class="panel" id="tGuest" role="tabpanel">
-      <div class="seclabel">Welcome screen</div>
+      <div class="gi-sec">Welcome screen</div>
       <label class="gi-lab" for="giWelcomeImg">Image</label>
       <input id="giWelcomeImg"
         placeholder="https:// address of a photo from the website">
@@ -286,7 +295,7 @@
       <textarea id="giIntro" rows="3"
         placeholder="Empty: the guest reads the original wording."></textarea>
 
-      <div class="seclabel">Dining page</div>
+      <div class="gi-sec">Dining page</div>
       <div class="gi-hint">Read straight after arrival time, in front of the
         dining questions.</div>
       <label class="gi-lab" for="giDiningImg">Image</label>
@@ -310,7 +319,7 @@
         <b># </b>starts a heading &middot; <b>*asterisks*</b> turn bold
         &middot; a photo address alone on a line becomes that photo</div>
 
-      <div class="seclabel">Question pages</div>
+      <div class="gi-sec">Question pages</div>
       <div class="gi-hint">A heading, the description under it, and the words
         behind Read more. Every box holds what a guest reads now: change it,
         or empty a box to put the original wording back.</div>
