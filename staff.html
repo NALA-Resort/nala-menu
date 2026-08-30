@@ -287,9 +287,9 @@
         <b># </b>starts a heading &middot; <b>*asterisks*</b> turn bold
         &middot; a photo address alone on a line becomes that photo</div>
       <div class="seclabel">Read more, page by page</div>
-      <div class="gi-hint">Each box replaces what sits behind that page's
-        Read more button. The grey words are what a guest reads while it is
-        empty.</div>
+      <div class="gi-hint">Each box holds what sits behind that page's Read
+        more button, as a guest reads it now. Change any of it, or empty a
+        box to put the original wording back.</div>
       <div id="giMoreRows"></div>
       <button class="btn solid" id="giSave">Save</button>
       <a class="btn ghost" id="giDemo" href="prearrival.html?b=demo">Preview
@@ -812,6 +812,9 @@ var GI_MORE = [ ['companion', 'Who is coming'],
     l.className = 'gi-lab'; l.htmlFor = 'giMore_' + p[0]; l.textContent = p[1];
     var t = document.createElement('textarea');
     t.id = 'giMore_' + p[0]; t.rows = 2;
+    /* Only ever seen when a box has been emptied, which is the way back
+       to the original wording. */
+    t.placeholder = 'Empty: the guest reads the original wording.';
     host.appendChild(l); host.appendChild(t);
   });
 })();
@@ -859,26 +862,58 @@ function loadGuestInfo(){
       document.getElementById('giWelcomeHeight').value = j.welcomeImageHeight || 'banner';
       document.getElementById('giDiningCrop').value    = j.diningImageCrop || 'centre';
       document.getElementById('giDiningHeight').value  = j.diningImageHeight || 'banner';
-      var more = j.more || {};
-      GI_MORE.forEach(function(p){
-        document.getElementById('giMore_' + p[0]).value = more[p[0]] || '';
-      });
+      GI_SAVED_MORE = j.more || {};
+      giSeedMore();
       giFitAll();
     }).catch(function(){});
 }
-/* The built-in Read more words, as the placeholders of the boxes that
-   replace them, read from the guest page itself: one file owns those
-   words, and a copy typed here is the drift CLAUDE.md rule 1 exists to
-   prevent. DOMParser parses without running a line of the page. The page
-   ids derive from the keys (dine -> qDine), so there is no second map. */
+
+/* ── the Read more boxes hold real, editable words ──────────────
+   They showed the built-in wording as a grey placeholder, which reads as
+   a disabled field: the owner asked (30 Aug) for text he can edit rather
+   than retype. So each box is seeded with what a guest reads now - his
+   own words where he has written them, the built-in wording where he has
+   not - and both halves have to be in before it can be:  the record and
+   the built-ins arrive on two fetches, in either order.
+
+   A box left exactly as it came SAVES AS EMPTY. Storing the copy instead
+   would freeze today's built-in wording into the database, and a later
+   edit to prearrival.html would be silently overridden by a copy nobody
+   remembers making - CLAUDE.md rule 1, in the one shape that survives
+   seeding. It also gives the way back: clear a box, save, and the
+   original returns. */
+var GI_SAVED_MORE = null, GI_BUILTIN_IN = false;
+function giBuiltin(key){
+  var t = document.getElementById('giMore_' + key);
+  return (t && t.dataset.builtin) || '';
+}
+function giSeedMore(){
+  if (!GI_SAVED_MORE || !GI_BUILTIN_IN) return;
+  GI_MORE.forEach(function(p){
+    var t = document.getElementById('giMore_' + p[0]);
+    var own = GI_SAVED_MORE[p[0]];
+    /* Seeding is not an edit: the value is set directly, which fires no
+       input event, so Save stays at rest and GI_DIRTY stays false. */
+    t.value = (typeof own === 'string' && own.trim()) ? own : giBuiltin(p[0]);
+  });
+  giFitAll();
+}
+/* The built-in Read more words, read from the guest page itself: one file
+   owns those words, and a copy typed here is the drift CLAUDE.md rule 1
+   exists to prevent. They seed the boxes and they are what an untouched
+   box is compared against on save. DOMParser parses without running a
+   line of the page. The page ids derive from the keys (dine -> qDine), so
+   there is no second map. */
 fetch('prearrival.html').then(function(r){ return r.text(); }).then(function(html){
   var doc = new DOMParser().parseFromString(html, 'text/html');
   GI_MORE.forEach(function(p){
     var qid = 'q' + p[0].charAt(0).toUpperCase() + p[0].slice(1);
     var b = doc.querySelector('#' + qid + ' .more-b');
     var f = document.getElementById('giMore_' + p[0]);
-    if (b && f) f.placeholder = b.textContent.replace(/\s+/g, ' ').trim();
+    if (b && f) f.dataset.builtin = b.textContent.replace(/\s+/g, ' ').trim();
   });
+  GI_BUILTIN_IN = true;
+  giSeedMore();
   giFitAll();
 }).catch(function(){});
 /* Whether the boxes hold something the database does not. The Save button
@@ -932,7 +967,9 @@ document.getElementById('giSave').onclick = function(){
   GI_MORE.forEach(function(p){
     var v = document.getElementById('giMore_' + p[0]).value.trim();
     if (v.length > 2000 && !over) over = p[1];
-    more[p[0]] = v;
+    /* Unchanged is stored as nothing, so the page keeps owning its own
+       words and an edit to them is never shadowed by a stale copy. */
+    more[p[0]] = (v === giBuiltin(p[0])) ? '' : v;
   });
   if (over){
     err.textContent = 'The ' + over + ' text is over the 2000 characters a Read more holds.';

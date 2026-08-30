@@ -811,22 +811,24 @@ with sync_playwright() as p:
     #  The built-in Read more words are the placeholders of the boxes that
     #  replace them, read from prearrival.html itself so one file owns
     #  them: an empty box must SHOW the words it would keep.
-    ck("an empty Read more box shows the built-in words it keeps",
-       "finalised" in q.evaluate("()=>giMore_dine.placeholder") and
-       "fill quickly" in q.evaluate("()=>giMore_well.placeholder"))
+    #  The boxes hold real, editable words rather than a grey placeholder:
+    #  grey reads as a disabled field, and the owner asked (30 Aug) to
+    #  edit the wording rather than retype it. Where he has written his
+    #  own, that shows; where he has not, the page's own words do.
+    ck("a Read more box holds the wording a guest reads, ready to edit",
+       q.evaluate("()=>giMore_dine.value") == "Old dine more" and
+       "fill quickly" in q.evaluate("()=>giMore_well.value"))
+    ck("and the words come from the guest page, not a copy typed here",
+       "fill quickly" in q.evaluate("()=>giMore_well.dataset.builtin"))
     #  And shows them whole. Two rows cut the grey wording through the
     #  middle of a line, half-height letters against the bottom border,
     #  which reads as broken rather than as a hint (the owner, 30 Aug).
     #  A placeholder does not count toward scrollHeight, so an empty box
     #  is measured holding those same words.
-    ck("an empty box is as tall as the grey wording, cutting no line in half",
+    ck("a box is as tall as the wording it holds, cutting no line in half",
        q.evaluate("""()=>['well','diet','eta'].every(k=>{
            const t=document.getElementById('giMore_'+k);
-           if (t.value) return false;
-           t.value=t.placeholder;
-           const ok=t.scrollHeight<=t.clientHeight+2;
-           t.value='';
-           return ok;})"""))
+           return t.value && t.scrollHeight<=t.clientHeight+2;})"""))
     #  And the same for what is typed: a box sized to its stored words
     #  must grow rather than clip when more are added.
     q.fill("#giMore_else", "A much longer replacement than the box was "
@@ -866,6 +868,14 @@ with sync_playwright() as p:
        (body5.get("more") or {}).get("diet") == "Owner diet words." and
        (body5.get("more") or {}).get("dine") == "Old dine more" and
        bool(body5.get("by")) and bool(body5.get("at")))
+    #  A box still holding the page's own words stores NOTHING. Saving the
+    #  seeded copy would freeze today's wording into the database, and a
+    #  later edit to prearrival.html would be shadowed by a copy nobody
+    #  remembers making - which is also what makes emptying a box the way
+    #  back to the original.
+    ck("a box left as it came is stored as nothing, not as a copy",
+       (body5.get("more") or {}).get("well") == "" and
+       (body5.get("more") or {}).get("purpose") == "")
     ck("and the button rests at Saved, which is the truth",
        "Saved" in q.evaluate("()=>giSave.textContent") and
        q.evaluate("()=>giSave.disabled") is True)

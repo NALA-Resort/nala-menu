@@ -127,9 +127,11 @@ questions; a blank line starts a new
 paragraph, a line starting with # makes a heading, words between
 asterisks turn *bold* (bold works in the Read more boxes too), and a line
 that is only a photo's web address becomes that photo where the line
-sits. Each *Read more* box replaces the explanation behind
-that page's Read more button; the grey text in an empty box is the built-in
-wording it keeps. Image addresses come from the website's own photos (a
+sits. Each *Read more* box holds the explanation behind that
+page's Read more button, as a guest reads it now - change a word or rewrite
+it, and empty the box to put the original wording back. A box you leave
+untouched keeps following the app's own wording rather than freezing a copy
+of it. Image addresses come from the website's own photos (a
 sized copy, not an original: a guest opens this on mobile data), and an
 address the website later retires quietly stops showing while the words read
 on. Each image carries a Crop and a Height: the photo shows as a band of the
