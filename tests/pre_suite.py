@@ -988,25 +988,15 @@ with sync_playwright() as p:
        "demonstration" in q.evaluate(
            "()=>{const n=document.querySelector('#intro .note-box');"
            "return n?n.textContent:'';}").lower())
-    # The demo reads nothing about anybody, and of the public settings only
-    # the two notes (asserted just below), so its dietary pills are the
-    # page's built-in eight and a dietary added in Settings cannot appear on
-    # them. That is only safe if the demo says so: the owner added Celiac on
-    # 27 Aug, saw it at the front desk, opened this form from the site map and
-    # reasonably read the eight as a list that had failed to update.
-    ck("and warns that its dietary pills are examples, not the live list",
-       "examples, not your live list" in q.evaluate(
-           "()=>{const n=document.querySelector('#intro .note-box');"
-           "return n?n.textContent:'';}"))
-    #  The notes are the one exception to reads-nothing: they are public and
-    #  about nobody, and the demo is where the owner looks after writing
-    #  them. Here they cannot be read (this route answers null to
-    #  everything), so the banner must say where they will come from -
-    #  their absence has to read as unfinished setup, not a failed save.
-    ck("and, while the record cannot be read, says where it will come from",
-       "written in Settings will show here" in q.evaluate(
-           "()=>{const n=document.querySelector('#intro .note-box');"
-           "return n?n.textContent:'';}"))
+    #  And no more than that: the banner once carried two explainer lines -
+    #  the pills-are-examples warning (27 Aug) and where the Settings
+    #  content would come from - and the owner struck both on 30 Aug as
+    #  clutter, knowingly taking the pills trap back. One line, one link.
+    ck("and the banner is that one line plus the way back, nothing more",
+       q.evaluate("()=>{const n=document.querySelector('#intro .note-box');"
+                  "return n && n.children.length === 1 && "
+                  "n.textContent.indexOf('examples') === -1 && "
+                  "n.textContent.indexOf('will show here') === -1;}"))
     ck("opening it reads the public Settings notes and nothing else",
        calls != [] and
        all(m == "GET" and "/prearrivalinfo" in u for m, u in calls))
@@ -1039,8 +1029,8 @@ with sync_playwright() as p:
     q.close()
 
     #  And once the notes CAN be read, the demo previews them live - that is
-    #  what the one read is for - dropping the where-they-come-from line,
-    #  while the warranty holds: still that one node, still no writes.
+    #  what the one read is for - while the warranty holds: still that one
+    #  node, still no writes.
     calls2 = []
     q = b.new_page(viewport={"width": 390, "height": 900})
     q.on("request", lambda r: calls2.append((r.method, r.url))
@@ -1063,10 +1053,6 @@ with sync_playwright() as p:
     ck("and the owner's Read more on the dinner page",
        "Owner words." == q.evaluate(
            "()=>document.querySelector('#qDine .more-b').textContent"))
-    ck("and drops the line about where it will come from",
-       "will show here" not in q.evaluate(
-           "()=>{const n=document.querySelector('#intro .note-box');"
-           "return n?n.textContent:'';}"))
     ck("still having read only the Guest form record, and written nothing",
        all(m == "GET" and "/prearrivalinfo" in u for m, u in calls2))
     q.close()

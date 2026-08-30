@@ -1313,35 +1313,15 @@ function boot(){
     banner.className = 'note-box';
     banner.style.cssText = 'margin:0 0 14px;text-align:center';
     banner.textContent = 'Demonstration only. Nothing here is saved.';
-    /* And said here: the dietary pills are this page's built-in eight, not the
-       chef's list. DEMO reads nothing about anybody - the warranty above,
-       held by the suite watching the requests, with the Settings notes its
-       one exception - so the master list at
-       /dietaries is never fetched and a dietary added in Dietary Settings
-       cannot show up on this form. Said on the landing rather than left to be
-       found at the dietary question, where eight familiar names look exactly
-       like a list that quietly failed to update. Ruled 27 Aug, after Celiac
-       was added, appeared at the front desk, and was looked for here. A real
-       guest's link does fetch the list; only the demo does not. */
-    var demoDiet = document.createElement('div');
-    demoDiet.className = 'sub';
-    demoDiet.textContent = 'The dietary pills are examples, not your live list.';
-    banner.appendChild(demoDiet);
-    /* The Guest form record is the exception to the pills' rule: the demo
-       shows it live, because it is public and about nobody, and the demo
-       is exactly where the owner looks after writing it. Until it can be
-       read - nothing saved yet, or the rules paste still pending - this
-       line says where it will come from, so its absence reads as
-       unfinished setup rather than a failed save (the pills' 27 Aug
-       trap). */
-    var demoInfo = document.createElement('div');
-    demoInfo.className = 'sub';
-    demoInfo.textContent =
-      'What is written in Settings will show here once saved.';
-    banner.appendChild(demoInfo);
-    db('/prearrivalinfo').then(function(info){
-      if (applyGuestInfo(info)) demoInfo.remove();
-    }).catch(function(){});
+    /* One line and the way back is the WHOLE banner, the owner's 30 Aug
+       ruling, striking two explainer lines as clutter: the pills-are-
+       examples warning (27 Aug, after Celiac was looked for here - that
+       trap is knowingly accepted back: the demo's dietary pills are still
+       the built-in eight, not the chef's list, and nothing on the page
+       says so any more) and the where-the-Settings-content-comes-from
+       line, which earned its keep only before the content existed. The
+       demo still previews the Guest form record live - its one read. */
+    db('/prearrivalinfo').then(applyGuestInfo).catch(function(){});
     /* The way back to the editor, closing the write-preview loop the
        Guest form tab's Preview link opens. Demo only, deliberately: this
        anchor exists nowhere a real guest can be, and the suite holds
