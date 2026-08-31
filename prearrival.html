@@ -426,7 +426,7 @@
         </div>
         <div class="pair">
           <div class="pair-c">
-            <div class="sublabel" id="wDurLab" style="display:none">First massage</div>
+            <div class="sublabel" id="wDurLab">Duration</div>
             <select class="txt" id="wDur" aria-label="Massage length"></select>
           </div>
           <div class="pair-c" id="wDur2Wrap" style="display:none">
@@ -853,11 +853,12 @@ function paintDurs(){
     sel.value = String(want);
   });
   /* The second column, label and select together: showing the select
-     alone left its heading behind on the row. "First massage" appears
-     only when there is a second to tell it from. */
+     alone left its heading behind on the row. The first column's label
+     never hides - a control with no name above it is a control nobody
+     can read (the owner, 30 Aug), and Duration says what it is whether
+     or not a second massage is beside it. */
   var two = a.wellQty === 2;
   el('wDur2Wrap').style.display = two ? '' : 'none';
-  el('wDurLab').style.display = two ? '' : 'none';
   var box = el('wQty'); box.innerHTML = '';
   [1, 2].forEach(function(n){
     var b = document.createElement('button');

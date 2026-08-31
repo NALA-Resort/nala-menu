@@ -407,7 +407,7 @@ None of these can move without him.
       events; nothing breaks, nothing buzzes. The masseuse's phone also has
       to subscribe once: his own hamburger menu, Settings, Notifications -
       the toggle every login carries.
-12. **Fill the Guest form tab, and paste the SECOND 29 Aug rules.** The
+12. **Fill the Guest form tab, and paste the 31 Aug rules.** The
     tab owns everything the pre-arrival form says in his words, at
     `/prearrivalinfo`: a welcome image for the landing (an image only -
     his ruling, after a day of owner text there), a dining image and text
@@ -420,17 +420,34 @@ None of these can move without him.
     moment he writes the dinner description. Photo
     lines in the dining text still draw as photos; rotted links remove
     themselves. The node was RESHAPED the same day it first shipped, so
-    the rules paste that already happened covers only the retired
-    `resort`/`dining` fields - paste again. Those two retired fields stay
-    validated solely so a Settings tab open across the changeover cannot
-    have its save refused; drop them at the next touch of the node. The paste is what lets a guest READ them - a
-    guest holds no login, and until `rules.json` (which gained the node,
-    public read, management write, 4000 characters a note) is pasted into
-    the console, the node sits under the catch-all rule, which refuses a
-    signed-out read. So the notes save from Settings but never reach a
-    guest: the feature fails quietly, it does not limp. Paste first, then
-    write. Item 7 above is the same page's older copy question and is the
-    natural moment to settle alongside the dining note.
+    the paste that already happened knows only its first shape - paste
+    again. The paste is what lets a guest READ the node: a guest holds no
+    login, and until `rules.json` is in the console the node sits under
+    the catch-all rule, which refuses a signed-out read. So his words save
+    from Settings but never reach a guest - the feature fails quietly, it
+    does not limp. Paste first, then write. Item 7 above is the same
+    page's older copy question and is the natural moment to settle
+    alongside the dining note.
+
+    **The same paste carries the 31 Aug audit**, which is the more urgent
+    half of it. Removing somebody from Staff was supposed to be the
+    revoke - staff.html says so where it deletes the record, and
+    MANUAL-ADMIN.md promises it - and it was not true. Twenty-six rules
+    asked only whether the login was NOT the masseuse, or only that it was
+    a login at all, and a login with no staff record passes both: the role
+    of a record that does not exist is null, and null is not 'spa'. So a
+    person removed this morning kept the cleans board, the desk overrides,
+    the booking list with its names and numbers, the roster, and
+    everything under the catch-all, until somebody also deleted their
+    Firebase login - a separate job in a separate console that nobody does
+    in a hurry. Every one of those rules now asks that the record exists.
+    Two narrower holes went with it: a dietary record was world readable,
+    so anyone who could guess a Mews customer id could read what a guest
+    cannot eat, and any login at all could rewrite the record of menus
+    already sent out. Until this paste, deleting a staff record is a
+    display change and not a revoke; if somebody has left and the paste
+    has not happened, delete their Firebase login too, which is
+    Authentication in the Firebase console.
 
 ---
 

@@ -411,6 +411,12 @@ with sync_playwright() as p:
     #  A quantity of one leaves its column alone on the row, and it must
     #  not stretch to fill it: the length select was full width until a
     #  second appeared beside it.
+    #  A control with no name above it is a control nobody can read: the
+    #  first column's label used to appear only when a second massage
+    #  joined it, so on its own the select sat under nothing (30 Aug).
+    ck("the duration is named whether or not a second massage is beside it",
+       pg.evaluate("()=>!!document.getElementById('wDurLab').offsetParent") and
+       pg.evaluate("()=>document.getElementById('wDurLab').textContent") == "Duration")
     ck("a lone control keeps its half of the row rather than stretching",
        pg.evaluate("""()=>{
            const d=document.getElementById('wDur').getBoundingClientRect();
@@ -456,8 +462,7 @@ with sync_playwright() as p:
              return Math.abs(a.top-b.top)<2 && b.left>=a.right-1
                && a.width < page*0.6;});}"""))
     ck("which massage is which reads as headings, not inside the options",
-       pg.evaluate("()=>getComputedStyle(document.getElementById('wDurLab')).display") != "none" and
-       pg.evaluate("()=>document.getElementById('wDurLab').textContent") == "First massage" and
+       pg.evaluate("()=>document.getElementById('wDurLab').textContent") == "Duration" and
        pg.evaluate("()=>document.getElementById('wDur2Lab').textContent") == "Second massage" and
        pg.evaluate("()=>[...document.querySelectorAll('#wDur2 option')].map(o=>o.textContent)")
        == ["1 hour · $180", "1.5 hours · $250", "2 hours · $310"])

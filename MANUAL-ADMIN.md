@@ -93,7 +93,10 @@ Five tabs live here: Staff, Roles, Notifications, Prices, Guest form.
 **Logins.** Add a person, give them a role, and they get exactly the screens
 that role allows. Removing someone here removes their access immediately; the
 Firebase login itself still needs deleting separately, which frees the
-passcode for reuse.
+passcode for reuse. That immediately depends on the 31 Aug database rules
+being in the Firebase console. Until they are pasted, removing someone only
+takes the screens away and their phone can still reach the data behind them,
+so delete the Firebase login as well.
 
 **What each role may do.** A grid of jobs against the three roles below you.
 Every box starts where the app shipped it, and a box you change is marked
