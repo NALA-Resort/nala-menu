@@ -70,6 +70,12 @@
       "label": "5:00 pm"
     }
   ],
+  "anyDayComment": "The day chip that means the guest is easy about which day, ruled by the owner 31 Aug. It is an ANSWER, not silence: it must read differently from a guest who never reached the question, the same distinction wellness draws between absent and false. It lives ONLY in wellDay. It must never be written to a /spa record's reqDay, whose rule validates a date or empty and would refuse it - the spa board translates it to reqAny on the way in and books a real day on the way out.",
+  "anyDay": {
+    "v": "any",
+    "label": "Any day",
+    "askLabel": "any day"
+  },
   "durations": [
     {
       "m": 60,

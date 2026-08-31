@@ -143,7 +143,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=46"></script>
+<script src="nala-shared.js?v=47"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -286,6 +286,8 @@ function asRequested(rec){
 function whenOf(rec){
   if (rec.status === 'booked' || rec.status === 'suggested')
     return niceDay(rec.day) + ' · ' + slotLabel(rec.time);
+  if (rec.reqAny)
+    return SPA_ANY_DAY_LABEL + (rec.reqTime ? ' · ' + rec.reqTime : '');
   if (rec.reqDay)
     return niceDay(rec.reqDay) + (rec.reqTime ? ' · ' + rec.reqTime : '');
   return rec.reqTime ? 'No day · ' + rec.reqTime : 'No day picked';
@@ -299,7 +301,7 @@ function serviceOf(rec, id){
       ' + ' + (spaDur(rec.dur2) ? spaDur(rec.dur2).short : '?')
     : 'Massage' + (spaDur(rec.dur) ? ' · ' + spaDur(rec.dur).short : '');
   var bk = BOOKINGS[id];
-  var ask = (rec.reqDay ? niceDay(rec.reqDay) : 'no day') +
+  var ask = (rec.reqAny ? 'any day' : rec.reqDay ? niceDay(rec.reqDay) : 'no day') +
             (rec.reqTime ? ', ' + rec.reqTime : '');
   if (rec.status === 'requested' || rec.virtual)
     return what + (bk ? ' · staying ' + stayRange(bk) : '');
@@ -342,10 +344,20 @@ function items(){
     var have = Object.keys(SPA[id] || {}).some(function(tid){
       return (SPA[id][tid] || {}).source === 'prearrival';
     });
+    /* "Any day" never becomes a reqDay: that field's rule takes a date or
+       the empty string and would refuse it, so the masseuse would tap Book
+       and get an error. It rides as a flag on the virtual record instead,
+       which is read-only and never written - save() builds its body key by
+       key and never copies this. */
+    /* An empty day on a yes is a record written before the chip existed,
+       by a guest who said yes and named no day. That guest meant what this
+       chip now says, so it reads the same way here as it does on the form
+       and at the desk - three screens, one reading. */
+    var anyDay = isAnyDay(p.wellDay) || !p.wellDay;
     if (!have)
       out.push({ id: id, tid: 'ask0', rec: {
-        virtual: true, status: 'requested',
-        reqDay: p.wellDay || '', reqTime: p.wellTime || '',
+        virtual: true, status: 'requested', reqAny: anyDay,
+        reqDay: anyDay ? '' : (p.wellDay || ''), reqTime: p.wellTime || '',
         qty: p.wellQty === 2 ? 2 : 1,
         dur: spaDur(p.wellDur) ? p.wellDur : 0,
         dur2: p.wellQty === 2 && spaDur(p.wellDur2) ? p.wellDur2 : 0
@@ -513,7 +525,11 @@ function card(it){
 
   var btns = document.createElement('div'); btns.className = 'btns';
   var when = shortDay(SEL.day) + ' ' + slotLabel(SEL.time);
-  var matchesAsk = !!rec.reqDay && SEL.day === rec.reqDay;
+  /* A guest who said Any day has asked for every day of their stay, so any
+     day the masseuse picks IS the ask and he books it outright. Sending a
+     suggestion back to the desk to be put to a guest who already said they
+     did not mind is the round trip this chip exists to save. */
+  var matchesAsk = rec.reqAny ? !!SEL.day : (!!rec.reqDay && SEL.day === rec.reqDay);
   var changed = SEL.day !== rec.day || SEL.time !== rec.time;
   var hint = '';
 
@@ -567,7 +583,12 @@ function card(it){
       if (matchesAsk) btn('Confirm ' + when, 'solid', saveAs('booked'));
       btn('Suggest ' + when, matchesAsk ? 'quiet' : 'solid', saveAs('suggested'));
       btn('Decline', 'danger', declineWith(it));
-      hint = matchesAsk
+      hint = rec.reqAny
+        ? 'The guest said any day of their stay suits them, so pick one and ' +
+          'Confirm books it. Suggest is for a day outside the stay or a ' +
+          'change worth putting to them first. Decline is for a stay with ' +
+          'nothing free.'
+        : matchesAsk
         ? 'Confirm books it. Suggest offers this time as a change instead, ' +
           'amber until the front desk approves it with the guest. Decline ' +
           'is for a stay with nothing free.'

@@ -543,8 +543,14 @@ with sync_playwright() as p:
     ck("and the wellness answer", pg.evaluate("()=>wYes.className==='on'"))
     ck("a day and a time appear once they are interested",
        pg.evaluate("()=>wWrap.style.display!=='none'"))
-    ck("the days offered are only the nights they are here",
-       pg.evaluate("()=>document.querySelectorAll('#wDays .chip').length") == 5)
+    #  The desk must offer exactly what the guest was offered. A chip the
+    #  guest can pick and the desk cannot draw is villa 17 again: two
+    #  screens describing one booking and disagreeing about it.
+    ck("the days offered are Any day, then only the nights they are here",
+       pg.evaluate("()=>document.querySelectorAll('#wDays .chip').length") == 6)
+    ck("and Any day leads the row, the same as the guest saw it",
+       pg.evaluate("()=>document.querySelector('#wDays .chip').textContent")
+       == json.load(open("tests/slots.json"))["anyDay"]["label"])
     ck("covers are shown because they are dining",
        pg.evaluate("()=>paxWrap.style.display!=='none'"))
 

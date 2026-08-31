@@ -122,6 +122,14 @@ already knows, they just published it.
 length on the pre-arrival form, so they see the cost before they ask. A price
 left empty shows no number rather than a zero.
 
+The day a guest asks for is not compulsory, so the form offers **Any day**
+ahead of the nights of their stay, and that is what it rests on. A guest who
+does not mind leaves it alone and the request reaches the masseuse reading
+*Any day*, not reading as though they never answered. He then picks one of
+the nights they are actually here and Confirm books it outright, because a
+guest who said any day has already agreed to whichever he chooses. Reception
+sees and can change the same choice on the guest's sheet.
+
 **Guest form.** Everything the pre-arrival form says in your words. The
 *welcome image* sits on the form's welcome screen under the greeting - an
 image and only an image. The *description* beneath it is the line under the

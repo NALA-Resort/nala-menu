@@ -313,7 +313,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=46"></script>
+<script src="nala-shared.js?v=47"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -743,6 +743,7 @@ function forkFor(p){
 }
 
 function dayLabel(key){
+  if (isAnyDay(key)) return SPA_ANY_DAY_LABEL;
   var d = parseDepDate(key); if (!d) return key;
   var D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   return D[d.getDay()] + ' ' + d.getDate();
@@ -1243,7 +1244,9 @@ function answersOf(r){
     note:     (haveCell && c.note !== undefined) ? c.note : (p.note || ''),
     occasion: p.occasion || '',
     wellness: p.wellness === true || p.wellness === false ? !!p.wellness : null,
-    wellDay:  p.wellDay || '',
+    /* Same reading as the guest form: an empty day on a yes is a record
+       written before the Any day chip existed, and it meant Any day. */
+    wellDay:  p.wellDay || SPA_ANY_DAY,
     wellTime: p.wellTime || '',
     wellQty:  p.wellQty === 2 ? 2 : 1,
     wellDur:  spaDur(p.wellDur) ? p.wellDur : 60,
@@ -1716,13 +1719,20 @@ function openGuest(r){
     var ww = document.getElementById('wWrap');
     var wasHidden = ww.style.display === 'none';
     ww.style.display = a.wellness === true ? '' : 'none';
+    /* Any day leads the row here too, and for a harder reason than looks:
+       the desk and the guest form must offer the same answers or the desk
+       cannot see what the guest chose. A chip the guest can pick and the
+       desk cannot draw is villa 17 again - two screens describing one
+       booking and disagreeing. */
     repaintRow('wDays', function(box){
-      stayDays().forEach(function(d){
+      [{ key:SPA_ANY_DAY, label:SPA_ANY_DAY_LABEL }].concat(stayDays())
+        .forEach(function(d){
         var b = document.createElement('button');
         b.className = 'chip' + (a.wellDay === d.key ? ' on'
           : (held.wellDay === d.key && lost(a.wellDay, held.wellDay) ? ' was' : ''));
         b.textContent = d.label;
-        b.onclick = function(){ a.wellDay = (a.wellDay === d.key ? '' : d.key); paintWellness(); };
+        b.onclick = function(){
+          a.wellDay = (a.wellDay === d.key) ? SPA_ANY_DAY : d.key; paintWellness(); };
         box.appendChild(b);
       });
     });

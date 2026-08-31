@@ -52,7 +52,7 @@ BOOKINGS = [
   ("7",  "b7",  "James",  "Okafor",  -2, 2),
   # a future request, sitting on its own day rather than today's board
   ("4",  "b4",  "Kai",    "Werner",  2, 5),
-  # interested on the form but never picked a day
+  # interested on the form and easy about the day: Any day, ruled 31 Aug
   ("15", "b15", "Anna",   "Lindqvist", 5, 7),
   # said no thank you on the form
   ("2",  "b2",  "Marco",  "Reyes",   -1, 1),
@@ -85,7 +85,7 @@ PRE = {
   "b12": {"wellness": True,  "wellDay": plus(-1),"wellTime": "morning"},
   "b4":  {"wellness": True,  "wellDay": plus(3), "wellTime": "2:00 pm", "wellDur": 90,
           "companion": "Lena Werner"},
-  "b15": {"wellness": True,  "wellDay": "",      "wellTime": "", "wellQty": 2, "wellDur": 90, "wellDur2": 60},
+  "b15": {"wellness": True,  "wellDay": "any",   "wellTime": "", "wellQty": 2, "wellDur": 90, "wellDur2": 60},
   "b2":  {"wellness": False},
   "b30": {"wellness": True,  "wellDay": plus(31), "wellTime": "morning"},
 }
@@ -289,6 +289,65 @@ with sync_playwright() as p:
     ck("a lone massage never writes a second", "dur2" not in body2 and "qty" not in body2)
     SPA = spa_seed()
     pg.close()
+
+    # ── Any day, the owner's ruling of 31 Aug ───────────────────
+    # Before it, a guest who did not mind which day and a guest who never
+    # reached the question both stored an empty string, and the masseuse
+    # could not tell them apart. It is an answer now, and it reads as one
+    # on the tile, in the ask, and in what the buttons let him do.
+    pg = board()
+    any_day = json.load(open("tests/slots.json"))["anyDay"]
+    ck("the tile says the guest is easy about the day, not that they are silent",
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b15\"] .when')"
+                   ".textContent").startswith(any_day["label"]))
+    ck("and it never reads as nothing yet",
+       "No day" not in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b15\"] .when').textContent"))
+    ck("it still waits in To answer, where the masseuse looks",
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b15\"]')"
+                   ".dataset.status") == "requested")
+    pg.locator('#board [data-booking="b15"]').click(); pg.wait_for_timeout(300)
+    ck("the card offers him only the nights she is actually here",
+       pg.evaluate("()=>document.querySelectorAll('.card .chips')[0]"
+                   ".querySelectorAll('.chip').length") == 3)
+    #  The point of the whole change: any day of the stay IS the ask, so he
+    #  books it outright instead of sending a suggestion back to the desk to
+    #  be put to a guest who already said they did not mind.
+    ck("and any of them counts as the ask, so Confirm is offered",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
+                   ".map(b=>b.textContent).some(t=>t.indexOf('Confirm')===0)"))
+    ck("Confirm is the solid one, Suggest steps back to quiet",
+       pg.evaluate("()=>document.querySelector('.card .cbtn.solid').textContent")
+         .startswith("Confirm"))
+    ck("and the hint tells him why, in the guest's terms",
+       "any day" in pg.evaluate("()=>document.querySelector('.card .hint').textContent"))
+    del WRITES[:]
+    pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
+    wA = [x for x in WRITES if "/spa/b15/" in x["u"]]
+    bodyA = json.loads(wA[0]["b"]) if wA else {}
+    ck("booking it writes a real day, green not amber",
+       bodyA.get("status") == "booked" and
+       bool(re.match(r"^\d{4}-\d{2}-\d{2}$", str(bodyA.get("day", "")))))
+    #  reqDay's rule takes a date or the empty string. The sentinel reaching
+    #  it would be refused by the database, so the masseuse would tap Book
+    #  and get an error - the one way this feature could fail in his hand.
+    ck("and the sentinel never reaches reqDay, which would refuse it",
+       bodyA.get("reqDay", "") == "" and
+       any_day["v"] not in json.dumps(bodyA))
+    SPA = spa_seed()
+    pg.close()
+
+    #  A record written before the chip existed: an empty day on a yes. It
+    #  reads as Any day rather than as a fifth state nothing draws.
+    PRE["b15"] = {"wellness": True, "wellDay": "", "wellTime": ""}
+    pg = board()
+    ck("a form answered before the chip existed reads as Any day too",
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b15\"] .when')"
+                   ".textContent").startswith(any_day["label"]))
+    pg.close()
+    PRE["b15"] = {"wellness": True, "wellDay": "any", "wellTime": "",
+                  "wellQty": 2, "wellDur": 90, "wellDur2": 60}
+
     pg = board()
     pg.locator('#board [data-booking="b15"]').click(); pg.wait_for_timeout(300)
     ck("the pair's card offers a length for each, labelled 1st and 2nd",
@@ -362,7 +421,7 @@ with sync_playwright() as p:
     pg = board()
 
     # The stats are the masseuse's whole queue, not today's slice: b9 today,
-    # b4 in two days, b15 with no day picked, b30 a month out - all waiting
+    # b4 in two days, b15 easy about the day, b30 a month out - all waiting
     # on him.
     ck("To answer counts every open ask on the horizon",
        pg.evaluate("()=>nAsk.textContent") == "4")

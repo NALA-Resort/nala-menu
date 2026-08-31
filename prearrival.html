@@ -594,8 +594,19 @@ function purposeText(v){ return purposeList(v).join(PURPOSE_SEP); }
 /* dietYes is this page's memory of the Yes tap, so a guest who said Yes
    and has not picked yet is told to pick, not told to answer. It is never
    written: the record is still noDiets and the list, unchanged. */
+/* The forced copy of the staff pages' SPA_ANY_DAY, which this page cannot
+   import: a guest page loads no staff code. Both are pinned to
+   tests/slots.json, the phone_cases.json pattern - change it there and
+   whichever copy has not learned it fails by name. */
+var ANY_DAY = 'any', ANY_DAY_LABEL = 'Any day';
+
+/* wellDay rests on ANY_DAY, not on nothing, for the same reason wellTime
+   rests on "Any time" (ruled 30 Aug and again 31 Aug): the day is not
+   mandatory, so the resting state has to be an answer the masseuse can
+   read rather than a silence he has to guess at. A guest who is easy
+   about the day says so by leaving it alone. */
 var a = { eta:'', etaNote:'', dining:null, diets:[], noDiets:false, dietYes:false,
-          dietNote:'', purpose:[], approach:'', wellness:null, wellDay:'',
+          dietNote:'', purpose:[], approach:'', wellness:null, wellDay:ANY_DAY,
           companion:'',
           wellTime:'Any time', wellQty:1, wellDur:60, wellDur2:60, note:'' };
 
@@ -884,11 +895,20 @@ function paintWell(){
   el('wNo').className  = 'opt' + (a.wellness === false ? ' on' : '');
   el('wWrap').style.display = a.wellness === true ? '' : 'none';
   paintDurs();
+  /* Any day leads the row rather than closing it: it is the resting
+     selection, and a selected chip that sits last is a selected chip the
+     guest has to find at the end of a wrapped row. Mocked at 390, 360 and
+     320 before it was built - at 320 a four night stay pushes a trailing
+     chip onto an orphan line of its own. */
   var box = el('wDays'); box.innerHTML = '';
-  stayDays().forEach(function(d){
+  [{ key:ANY_DAY, label:ANY_DAY_LABEL }].concat(stayDays()).forEach(function(d){
     var b = document.createElement('button');
     b.className = 'chip' + (a.wellDay === d.key ? ' on' : ''); b.textContent = d.label;
-    b.onclick = function(){ a.wellDay = (a.wellDay === d.key ? '' : d.key); paintWell(); };
+    /* Tapping the chosen day again returns to Any day, never to nothing:
+       there is no way back to an unanswered day, because an unanswered day
+       is what this chip exists to abolish. */
+    b.onclick = function(){
+      a.wellDay = (a.wellDay === d.key) ? ANY_DAY : d.key; paintWell(); };
     box.appendChild(b);
   });
 }
@@ -1533,7 +1553,11 @@ function boot(){
     a.dietNote = p.dnote || '';
     a.purpose = purposeList(p.purpose); a.approach = p.approach || '';
     a.wellness = (p.wellness === undefined) ? null : !!p.wellness;
-    a.wellDay = p.wellDay || ''; a.wellTime = p.wellTime || 'Any time';
+    /* An empty wellDay is a record written before the Any day chip existed,
+       by a guest who said yes and picked no day. That guest meant the same
+       thing this chip now says, so it reads back as Any day rather than as
+       a fifth state nothing draws. */
+    a.wellDay = p.wellDay || ANY_DAY; a.wellTime = p.wellTime || 'Any time';
     a.wellQty = p.wellQty === 2 ? 2 : 1;
     a.wellDur = spaDurOk(p.wellDur) ? p.wellDur : 60;
     a.wellDur2 = spaDurOk(p.wellDur2) ? p.wellDur2 : 60;
