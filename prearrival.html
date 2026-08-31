@@ -600,13 +600,15 @@ function purposeText(v){ return purposeList(v).join(PURPOSE_SEP); }
    whichever copy has not learned it fails by name. */
 var ANY_DAY = 'any', ANY_DAY_LABEL = 'Any day';
 
-/* wellDay rests on ANY_DAY, not on nothing, for the same reason wellTime
-   rests on "Any time" (ruled 30 Aug and again 31 Aug): the day is not
-   mandatory, so the resting state has to be an answer the masseuse can
-   read rather than a silence he has to guess at. A guest who is easy
-   about the day says so by leaving it alone. */
+/* wellDay rests on NOTHING and the page will not move past it, ruled by the
+   owner 31 Aug, choosing the stronger of the two ways to kill the empty
+   day: not a default that stands in for an answer, but an answer the guest
+   has to give. A pre-selected Any day would have let somebody sail past
+   the question and still be recorded as having chosen - which is the fault
+   this was fixing, wearing better clothes. Compare wellTime, which rests on
+   "Any time" because it is NOT compulsory. */
 var a = { eta:'', etaNote:'', dining:null, diets:[], noDiets:false, dietYes:false,
-          dietNote:'', purpose:[], approach:'', wellness:null, wellDay:ANY_DAY,
+          dietNote:'', purpose:[], approach:'', wellness:null, wellDay:'',
           companion:'',
           wellTime:'Any time', wellQty:1, wellDur:60, wellDur2:60, note:'' };
 
@@ -895,20 +897,22 @@ function paintWell(){
   el('wNo').className  = 'opt' + (a.wellness === false ? ' on' : '');
   el('wWrap').style.display = a.wellness === true ? '' : 'none';
   paintDurs();
-  /* Any day leads the row rather than closing it: it is the resting
-     selection, and a selected chip that sits last is a selected chip the
-     guest has to find at the end of a wrapped row. Mocked at 390, 360 and
-     320 before it was built - at 320 a four night stay pushes a trailing
-     chip onto an orphan line of its own. */
+  /* Any day CLOSES the row, ruled by the owner 31 Aug: the days are the
+     question and it is the way out of it, so it reads last. Nothing is
+     pre-selected and the page will not move past an unanswered day, which
+     is what makes the position safe - at 320 a four night stay wraps it
+     onto a line of its own, and an unselected chip on that line is simply
+     the last option rather than a chosen answer sitting where nobody
+     looks. Mocked at 390, 360 and 320. */
   var box = el('wDays'); box.innerHTML = '';
-  [{ key:ANY_DAY, label:ANY_DAY_LABEL }].concat(stayDays()).forEach(function(d){
+  stayDays().concat([{ key:ANY_DAY, label:ANY_DAY_LABEL }]).forEach(function(d){
     var b = document.createElement('button');
     b.className = 'chip' + (a.wellDay === d.key ? ' on' : ''); b.textContent = d.label;
-    /* Tapping the chosen day again returns to Any day, never to nothing:
-       there is no way back to an unanswered day, because an unanswered day
-       is what this chip exists to abolish. */
+    /* Tapping the chosen chip again clears it, the same way back every
+       other chip row on this page offers. It leaves the page unanswered,
+       which the guard below then refuses to move past. */
     b.onclick = function(){
-      a.wellDay = (a.wellDay === d.key) ? ANY_DAY : d.key; paintWell(); };
+      a.wellDay = (a.wellDay === d.key) ? '' : d.key; paintWell(); };
     box.appendChild(b);
   });
 }
@@ -1303,8 +1307,17 @@ function missingOn(id){
     return a.purpose.length ? null : 'Please tell us what kind of stay you are planning.';
   if (id === 'qApproach')
     return a.approach ? null : 'Please tell us how often you think you\u2019ll dine.';
-  if (id === 'qWell')
-    return a.wellness === null ? 'Please answer about treatments.' : null;
+  if (id === 'qWell'){
+    if (a.wellness === null) return 'Please answer about treatments.';
+    /* The day is compulsory behind a yes, ruled 31 Aug. A yes with no day
+       reached the masseuse as a request he could not act on and had to
+       chase back through the desk. Any day is a real answer to this and
+       ends the page; what is refused is saying nothing. A no was never
+       asked the question and is never held to it. */
+    if (a.wellness === true && !a.wellDay)
+      return 'Please pick a day, or Any day if you do not mind.';
+    return null;
+  }
   return null;
 }
 
@@ -1553,11 +1566,11 @@ function boot(){
     a.dietNote = p.dnote || '';
     a.purpose = purposeList(p.purpose); a.approach = p.approach || '';
     a.wellness = (p.wellness === undefined) ? null : !!p.wellness;
-    /* An empty wellDay is a record written before the Any day chip existed,
-       by a guest who said yes and picked no day. That guest meant the same
-       thing this chip now says, so it reads back as Any day rather than as
-       a fifth state nothing draws. */
-    a.wellDay = p.wellDay || ANY_DAY; a.wellTime = p.wellTime || 'Any time';
+    /* An empty wellDay stays empty. A record written before the chip
+       existed did not answer this question, and reading it back as Any day
+       would put words in that guest's mouth - the page asks them instead,
+       which is what compulsory means. */
+    a.wellDay = p.wellDay || ''; a.wellTime = p.wellTime || 'Any time';
     a.wellQty = p.wellQty === 2 ? 2 : 1;
     a.wellDur = spaDurOk(p.wellDur) ? p.wellDur : 60;
     a.wellDur2 = spaDurOk(p.wellDur2) ? p.wellDur2 : 60;

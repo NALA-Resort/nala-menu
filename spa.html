@@ -349,11 +349,11 @@ function items(){
        and get an error. It rides as a flag on the virtual record instead,
        which is read-only and never written - save() builds its body key by
        key and never copies this. */
-    /* An empty day on a yes is a record written before the chip existed,
-       by a guest who said yes and named no day. That guest meant what this
-       chip now says, so it reads the same way here as it does on the form
-       and at the desk - three screens, one reading. */
-    var anyDay = isAnyDay(p.wellDay) || !p.wellDay;
+    /* Only the chip says Any day. An empty day is a record from before the
+       chip existed, or one the desk cleared, and it still reads "No day
+       picked" - saying Any day for it would put words in a guest's mouth
+       they never said. The guest form asks those guests again. */
+    var anyDay = isAnyDay(p.wellDay);
     if (!have)
       out.push({ id: id, tid: 'ask0', rec: {
         virtual: true, status: 'requested', reqAny: anyDay,

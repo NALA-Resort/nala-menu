@@ -122,13 +122,21 @@ already knows, they just published it.
 length on the pre-arrival form, so they see the cost before they ask. A price
 left empty shows no number rather than a zero.
 
-The day a guest asks for is not compulsory, so the form offers **Any day**
-ahead of the nights of their stay, and that is what it rests on. A guest who
-does not mind leaves it alone and the request reaches the masseuse reading
-*Any day*, not reading as though they never answered. He then picks one of
-the nights they are actually here and Confirm books it outright, because a
-guest who said any day has already agreed to whichever he chooses. Reception
-sees and can change the same choice on the guest's sheet.
+**The day is compulsory behind a yes.** The form offers the nights of their
+stay and then **Any day**, nothing is chosen for them, and the form will not
+move on until they pick one. A guest who does not mind picks Any day and the
+request reaches the masseuse reading *Any day* rather than reading as though
+they never answered. He then picks one of the nights they are actually here
+and **Confirm books it outright**, because a guest who said any day has
+already agreed to whichever he chooses; Suggest is still there for a day
+outside the stay. Reception sees and can change the same choice on the
+guest's sheet, and is not held to the form's rule, because the desk fills in
+what it hears across the day.
+
+Forms answered before this existed have no day on them. Those still read
+"No day picked" on the spa board, because saying Any day for them would put
+a word in a guest's mouth they never said; a guest who reopens their link is
+asked.
 
 **Guest form.** Everything the pre-arrival form says in your words. The
 *welcome image* sits on the form's welcome screen under the greeting - an

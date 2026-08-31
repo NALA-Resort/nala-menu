@@ -392,33 +392,48 @@ with sync_playwright() as p:
     pg.locator("#dNone").click(); nxt(pg)
     ck("then treatments", pg.evaluate("()=>document.querySelector('.q.now').id") == "qWell")
     pg.locator("#wYes").click(); pg.wait_for_timeout(400)
-    #  Any day, then only the nights they are here. It leads the row because
-    #  it is what the row rests on, and a selected chip at the end of a
-    #  wrapped row is a selected chip the guest has to hunt for.
+    #  The nights they are here, then Any day closing the row: it is the way
+    #  out of the question, so it reads after the question. Nothing is
+    #  pre-selected and the page will not move past an unanswered day - the
+    #  owner's ruling of 31 Aug, taking the stronger of the two ways to kill
+    #  the empty day. A default would have let a guest sail past and still be
+    #  recorded as having chosen, which is the fault this fixes.
     any_day = json.load(open("tests/slots.json"))["anyDay"]
-    ck("saying yes offers Any day, then only the days they are here",
+    ck("saying yes offers the days they are here, then Any day",
        pg.evaluate("()=>document.querySelectorAll('#wDays .chip').length") == 6)
-    ck("Any day leads the row and is what it rests on",
-       pg.evaluate("()=>document.querySelector('#wDays .chip').textContent")
-       == any_day["label"] and
-       pg.evaluate("()=>document.querySelector('#wDays .chip').className")
-       == "chip on")
-    ck("and a day left alone is sent as that answer, not as an empty one",
-       pg.evaluate("()=>{collect(); return fullPayload().wellDay;}") == any_day["v"])
+    ck("Any day closes the row rather than leading it",
+       pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')]"
+                   ".pop().textContent") == any_day["label"])
+    ck("and nothing is chosen for the guest",
+       pg.evaluate("()=>document.querySelectorAll('#wDays .chip.on').length") == 0)
     #  The guest form cannot import the staff copy, so the table is what
     #  keeps the two saying the same word.
     ck("the guest form's forced copy is the canonical one",
        pg.evaluate("()=>ANY_DAY") == any_day["v"] and
        pg.evaluate("()=>ANY_DAY_LABEL") == any_day["label"])
-    pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')][2].click()")
-    ck("picking a day takes the selection off Any day",
-       pg.evaluate("()=>{collect(); return fullPayload().wellDay;}") != any_day["v"])
-    #  There is no way back to an unanswered day, which is the whole point:
-    #  before this chip, an untapped day and a day the guest did not mind
-    #  were the same empty string and the masseuse could not tell them apart.
-    pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')][2].click()")
-    ck("and tapping it again returns to Any day, never to nothing",
+    #  Compulsory: a yes with no day is refused, and refused about the DAY,
+    #  not about treatments in general.
+    nxt(pg)
+    ck("a yes with no day will not move past the page",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qWell")
+    ck("and it says which answer is missing, in the guest's words",
+       "day" in pg.evaluate("()=>err.textContent"))
+    ck("and the day row is what it marks, not the yes and no",
+       pg.evaluate("()=>document.getElementById('qWell').className") == "q now miss")
+    #  Any day IS an answer to it and ends the page.
+    pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')].pop().click()")
+    ck("Any day answers it, and is sent as that word",
        pg.evaluate("()=>{collect(); return fullPayload().wellDay;}") == any_day["v"])
+    pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')].pop().click()")
+    ck("tapping it again clears it, the way every other chip row clears",
+       pg.evaluate("()=>{collect(); return fullPayload().wellDay;}") == "")
+    ck("and that leaves the page refusing to move again",
+       pg.evaluate("()=>missingOn('qWell')") is not None)
+    #  A no was never asked the question and is never held to it.
+    pg.locator("#wNo").click(); pg.wait_for_timeout(200)
+    ck("a no is never held to a day it was not asked for",
+       pg.evaluate("()=>missingOn('qWell')") is None)
+    pg.locator("#wYes").click(); pg.wait_for_timeout(300)
     pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')][1].click()")
     #  The resting choice is an answer, not a blank: the question is not
     #  mandatory, and left alone it used to reach the masseuse as an empty
@@ -1076,7 +1091,7 @@ with sync_playwright() as p:
     pg = guest(link="?b=res-guid-1&n=Robyn")
     jump(pg, "qWell")
     pg.locator("#wYes").click(); pg.wait_for_timeout(250)
-    ck("a dateless link still offers the days Mews knows, behind Any day",
+    ck("a dateless link still offers the days Mews knows, then Any day",
        pg.evaluate("()=>document.querySelectorAll('#wDays .chip').length") == 4)
     pg.close()
     STATE["pms"] = None

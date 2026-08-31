@@ -1244,9 +1244,7 @@ function answersOf(r){
     note:     (haveCell && c.note !== undefined) ? c.note : (p.note || ''),
     occasion: p.occasion || '',
     wellness: p.wellness === true || p.wellness === false ? !!p.wellness : null,
-    /* Same reading as the guest form: an empty day on a yes is a record
-       written before the Any day chip existed, and it meant Any day. */
-    wellDay:  p.wellDay || SPA_ANY_DAY,
+    wellDay:  p.wellDay || '',
     wellTime: p.wellTime || '',
     wellQty:  p.wellQty === 2 ? 2 : 1,
     wellDur:  spaDur(p.wellDur) ? p.wellDur : 60,
@@ -1719,20 +1717,22 @@ function openGuest(r){
     var ww = document.getElementById('wWrap');
     var wasHidden = ww.style.display === 'none';
     ww.style.display = a.wellness === true ? '' : 'none';
-    /* Any day leads the row here too, and for a harder reason than looks:
-       the desk and the guest form must offer the same answers or the desk
-       cannot see what the guest chose. A chip the guest can pick and the
-       desk cannot draw is villa 17 again - two screens describing one
-       booking and disagreeing. */
+    /* Any day closes the row here in the same order the guest saw it. The
+       desk must offer exactly what the form offered or it cannot show what
+       the guest chose: a chip the guest can pick and the desk cannot draw
+       is villa 17 again, two screens describing one booking and
+       disagreeing. The desk is NOT held to the form's compulsion - it
+       edits what it hears across the day, and half an answer is a normal
+       state here. */
     repaintRow('wDays', function(box){
-      [{ key:SPA_ANY_DAY, label:SPA_ANY_DAY_LABEL }].concat(stayDays())
+      stayDays().concat([{ key:SPA_ANY_DAY, label:SPA_ANY_DAY_LABEL }])
         .forEach(function(d){
         var b = document.createElement('button');
         b.className = 'chip' + (a.wellDay === d.key ? ' on'
           : (held.wellDay === d.key && lost(a.wellDay, held.wellDay) ? ' was' : ''));
         b.textContent = d.label;
         b.onclick = function(){
-          a.wellDay = (a.wellDay === d.key) ? SPA_ANY_DAY : d.key; paintWellness(); };
+          a.wellDay = (a.wellDay === d.key) ? '' : d.key; paintWellness(); };
         box.appendChild(b);
       });
     });

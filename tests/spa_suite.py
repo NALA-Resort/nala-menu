@@ -337,13 +337,15 @@ with sync_playwright() as p:
     SPA = spa_seed()
     pg.close()
 
-    #  A record written before the chip existed: an empty day on a yes. It
-    #  reads as Any day rather than as a fifth state nothing draws.
+    #  Only the chip says Any day. A record from before it existed, or one
+    #  the desk cleared, still reads as nothing picked: saying Any day for
+    #  it would put a word in a guest's mouth they never said. The guest
+    #  form asks those guests again, because the day is compulsory there now.
     PRE["b15"] = {"wellness": True, "wellDay": "", "wellTime": ""}
     pg = board()
-    ck("a form answered before the chip existed reads as Any day too",
+    ck("an empty day is still an empty day, never read as Any day",
        pg.evaluate("()=>document.querySelector('#board [data-booking=\"b15\"] .when')"
-                   ".textContent").startswith(any_day["label"]))
+                   ".textContent") == "No day picked")
     pg.close()
     PRE["b15"] = {"wellness": True, "wellDay": "any", "wellTime": "",
                   "wellQty": 2, "wellDur": 90, "wellDur2": 60}

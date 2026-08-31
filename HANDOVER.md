@@ -283,19 +283,31 @@ keeps one.
 passcode screen shipped with 30 passing tests and broke sign in on a real phone
 for two hours. Anything touching sign in, push or printing needs a device.
 
-**A resting state must be an answer, not a silence.** The pre-arrival form's
-optional controls rest on something the reader can act on: the massage time
-on "Any time" (30 Aug) and the massage day on "Any day" (31 Aug). Before
-each, a guest who did not mind and a guest who never reached the question
-wrote the same empty string, and the masseuse could not tell them apart. If
-you add an optional control, give it a resting value that says which it is.
-Two things this cost, both worth knowing before the next one: the sentinel
-`any` lives ONLY in `wellDay`, never in a `/spa` record's `reqDay`, whose
-rule takes a date or the empty string and would refuse it - the spa board
-translates it to an in-memory `reqAny` flag; and all three screens that
-draw the field (the form, the desk, the board) read an empty day on a yes
-as Any day, because a record written before the chip existed meant exactly
-that. One reading, three screens, which is the villa 17 lesson.
+**An empty answer is a bug, and there are two ways to kill it.** A control
+a guest can leave alone writes an empty string, and downstream that empty
+string is indistinguishable from a guest who never reached the question.
+The form now does both cures and the difference between them is the thing
+to learn:
+
+- **A resting answer**, for a control that stays optional. The massage
+  *time* rests on "Any time" (30 Aug) and sends that word.
+- **A compulsory answer**, for one that should not be skipped. The massage
+  *day* offers the nights of the stay and then "Any day", pre-selects
+  nothing, and refuses to move on (31 Aug). The owner chose this over a
+  pre-selected "Any day", and was right: a default records a guest as
+  having chosen something they never looked at, which is the same fault in
+  better clothes.
+
+Three things the day cost, worth knowing before the next one. The sentinel
+`any` lives ONLY in `wellDay` - never in a `/spa` record's `reqDay`, whose
+rule takes a date or the empty string and would refuse the write, so the
+masseuse would tap Book and get an error; the board translates it to an
+in-memory `reqAny` flag and writes a real date. An `any` ask counts as
+matching every night of the stay, so the masseuse gets Confirm rather than
+Suggest and no round trip through the desk. And an empty day still reads
+"No day picked" everywhere: only the chip says Any day, because a record
+written before the chip did not answer the question and must not be
+quoted as though it had.
 
 **Break the fix and watch the test fail.** Five times in three days to 23 Aug a
 new assertion was aimed next to the thing rather than at it and passed while the
