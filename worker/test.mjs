@@ -343,6 +343,46 @@ await post({ Id: "5f593a0c708cbb49e77f324e07bee616",
 ck("with both present the Mews id wins",
    !!STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/pms"]);
 
+/* ── Id2, the spelling the live Zap serialises ──────────────── */
+/* Seen live 1 Sep, 02:01: a new reservation's first event carried its GUID
+   under Id2 and nothing under Id or MewsId, so the first event of every new
+   booking 400'd and the booking waited for its next modification to exist.
+   Which Zap-editor choice produced that key name was never established; the
+   payload is the fact. Shape still rules: a non GUID under Id2 is refused
+   like anywhere else, and a real Id or MewsId outranks it when present. */
+install();
+const id2run = await post({ Id2: "dfcc2614-67b5-4cd4-8b58-b4b7001ac418",
+  FirstName: "James", StartUtc: "2026-09-10T04:00:00Z",
+  EndUtc: "2026-09-13T02:00:00Z", ResourceName: "3", State: "Confirmed" });
+ck("a GUID arriving under Id2 is accepted", id2run.status === 200);
+ck("and the booking is stored under that GUID",
+   !!STORE["/bookings/dfcc2614-67b5-4cd4-8b58-b4b7001ac418/pms"]);
+
+install();
+await post({ MewsId: "ff129c05-9902-4d9f-9bfd-b4a800a91f52",
+  Id2: "dfcc2614-67b5-4cd4-8b58-b4b7001ac418",
+  StartUtc: "2026-09-10T04:00:00Z", EndUtc: "2026-09-13T02:00:00Z",
+  ResourceName: "3", State: "Confirmed" });
+ck("MewsId outranks Id2 when both are GUIDs",
+   !!STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/pms"] &&
+   !STORE["/bookings/dfcc2614-67b5-4cd4-8b58-b4b7001ac418/pms"]);
+
+install();
+const id2zap = await post({ Id2: "5f593a0c708cbb49e77f324e07bee616",
+  StartUtc: "2026-09-10T04:00:00Z", EndUtc: "2026-09-13T02:00:00Z",
+  ResourceName: "3", State: "Confirmed" });
+ck("Zapier's event key under Id2 is refused like anywhere else",
+   id2zap.status === 400 && Object.keys(STORE).length === 0);
+
+/* The refusal for a payload with NO id names the keys that did arrive, so
+   the Zap history shows which mapping went missing instead of a bare no. */
+install();
+const noid = await post({ FirstName: "Nobody", ResourceName: "3" });
+ck("the no-id refusal lists the keys that were received",
+   noid.status === 400 &&
+   JSON.stringify((await noid.json()).receivedKeys) ===
+     JSON.stringify(["FirstName", "ResourceName"]));
+
 /* The same booking moving villa twice must stay ONE booking. */
 install();
 const RES_MOVE = { MewsId: "ff129c05-9902-4d9f-9bfd-b4a800a91f52",

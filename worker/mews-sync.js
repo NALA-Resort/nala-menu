@@ -419,9 +419,17 @@ function readReservation(p) {
        Zapier's key is 32 hex characters without, so the shape settles it.
 
        Keying on Zapier's key was the cause of one guest appearing in three
-       villas at once, and of a move never clearing the villa it left. */
+       villas at once, and of a move never clearing the villa it left.
+
+       Id2 joined the list 1 Sep, LAST so a real Id or MewsId outranks it.
+       The live Zap serialises a second id row under that key, and on a new
+       reservation's first event it was the only key carrying the GUID -
+       Mews Id does not exist until the first modification - so every new
+       booking 400'd once, invisibly, and waited for its next touch to
+       exist. Shape still rules: a non GUID under Id2 is refused below. */
     id:      pickGuid(p, ["MewsId", "Mews Id", "mews_id", "mewsId",
-                          "Id", "id", "ReservationId", "reservation_id", "bookingId"]),
+                          "Id", "id", "ReservationId", "reservation_id", "bookingId",
+                          "Id2", "Id 2"]),
     first:   pick(p, ["FirstName", "first_name", "firstName", "CustomerFirstName"]),
     last:    pick(p, ["LastName", "last_name", "lastName", "CustomerLastName"]),
     phone:   pick(p, ["Phone", "phone", "PhoneNumber", "phone_number", "CustomerPhone"]),
@@ -567,7 +575,13 @@ export default {
     catch (e) { return new Response("bad json", { status: 400 }); }
 
     const r = readReservation(payload);
-    if (!r.id) return new Response("no reservation id in payload", { status: 400 });
+    /* The keys that DID arrive, so the Zap history shows which mapping went
+       missing. Keys only, never values: values are guest data and this reply
+       lands in a dashboard other people read. */
+    if (!r.id) return new Response(JSON.stringify({
+      ok: false, error: "no reservation id in payload",
+      receivedKeys: Object.keys(payload || {}).slice(0, 32)
+    }), { status: 400, headers: { "Content-Type": "application/json" } });
     /* Refused rather than stored. A non GUID here means the Zap is mapping
        Zapier's own event key instead of the Mews reservation id, and storing it
        would create a fresh booking on every event, which is exactly the bug
