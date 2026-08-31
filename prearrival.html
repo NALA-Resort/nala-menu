@@ -137,6 +137,15 @@
 
   .sublabel { font-size:0.7rem; letter-spacing:.2em; text-transform:uppercase;
               color:var(--mid); margin:1rem 0 0.5rem; }
+  /* Two small controls to a row. A select holding four words does not
+     need the width of the page, and the second massage belongs beside
+     the first rather than under it (ruled 30 Aug). Wraps to one column
+     below 340pt, where half a screen cannot hold "1.5 hours - $250". */
+  .pair { display:flex; flex-wrap:wrap; gap:0 12px; }
+  .pair-c { flex:1 1 140px; min-width:0; }
+  .pair-c .txt, .pair-c select.txt { margin-top:0; }
+  .pair .chips { margin-top:0; }
+  @media (max-width:339px){ .pair-c { flex-basis:100%; } }
 
   .send { width:100%; padding:17px; margin-top:1.8rem; border-radius:10px;
           border:1px solid var(--ink); background:var(--ink); color:var(--cream);
@@ -396,14 +405,31 @@
       <div id="wWrap" style="display:none">
         <div class="sublabel">Which day would suit you best?</div>
         <div class="chips" id="wDays"></div>
-        <select class="txt" id="wTime" aria-label="Preferred time"></select>
-        <div class="sublabel">How many massages?</div>
-        <div class="chips" id="wQty"></div>
-        <div class="sublabel" id="wDurLab" style="display:none">First massage</div>
-        <select class="txt" id="wDur" aria-label="Massage length"></select>
-        <div class="sublabel" id="wDur2Lab" style="display:none">Second massage</div>
-        <select class="txt" id="wDur2" aria-label="Second massage length"
-                style="display:none"></select>
+        <!-- Two to a row, ruled 30 Aug: a select holding "2:00 pm" or
+             "1 hour" was taking a whole line for four words, and the
+             second massage sat under the first when it belongs beside
+             it. Each pair falls back to one column where the words
+             would not fit. -->
+        <div class="pair">
+          <div class="pair-c">
+            <div class="sublabel">Preferred time</div>
+            <select class="txt" id="wTime" aria-label="Preferred time"></select>
+          </div>
+          <div class="pair-c">
+            <div class="sublabel">How many massages?</div>
+            <div class="chips" id="wQty"></div>
+          </div>
+        </div>
+        <div class="pair">
+          <div class="pair-c">
+            <div class="sublabel" id="wDurLab" style="display:none">First massage</div>
+            <select class="txt" id="wDur" aria-label="Massage length"></select>
+          </div>
+          <div class="pair-c" id="wDur2Wrap" style="display:none">
+            <div class="sublabel" id="wDur2Lab">Second massage</div>
+            <select class="txt" id="wDur2" aria-label="Second massage length"></select>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -818,10 +844,12 @@ function paintDurs(){
     });
     sel.value = String(want);
   });
+  /* The second column, label and select together: showing the select
+     alone left its heading behind on the row. "First massage" appears
+     only when there is a second to tell it from. */
   var two = a.wellQty === 2;
-  el('wDur2').style.display = two ? '' : 'none';
+  el('wDur2Wrap').style.display = two ? '' : 'none';
   el('wDurLab').style.display = two ? '' : 'none';
-  el('wDur2Lab').style.display = two ? '' : 'none';
   var box = el('wQty'); box.innerHTML = '';
   [1, 2].forEach(function(n){
     var b = document.createElement('button');
@@ -1010,9 +1038,17 @@ function fillInfo(id, text){
       return;
     }
     /* A line starting with # is a heading, the grammar's other mark. Its
-       text goes in plain - a heading is already the emphasis. */
-    var h = line.match(/^#\s+(.*)/);
-    if (h){
+       text goes in plain - a heading is already the emphasis.
+
+       Forgiving about how it is typed, because the owner typed
+       "#Dining at NALA#" and got the hashes back on a guest's screen
+       (30 Aug): the space after the hash is optional, more than one hash
+       reads as one, and closing hashes are taken off the end, which is
+       how the mark is written in half the places anyone has met it. A
+       line of nothing but hashes is not a heading and falls through to
+       being text. */
+    var h = line.match(/^#+\s*(.*?)\s*#*$/);
+    if (h && h[1]){
       flushRun();
       var d = document.createElement('div');
       d.className = 'info-h';

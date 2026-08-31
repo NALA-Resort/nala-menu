@@ -405,14 +405,30 @@ with sync_playwright() as p:
     # the whole point is that the guest sees the cost before they ask.
     ck("one massage is the resting answer and the second length stays hidden",
        pg.evaluate("()=>document.querySelector('#wQty .chip.on').textContent") == "One" and
-       pg.evaluate("()=>getComputedStyle(document.getElementById('wDur2')).display") == "none")
+       pg.evaluate("()=>!document.getElementById('wDur2').offsetParent"))
     ck("each length carries its price from the manager's settings",
        pg.evaluate("()=>[...document.querySelectorAll('#wDur option')].map(o=>o.textContent)")
        == ["1 hour · $180", "1.5 hours · $250", "2 hours · $310"])
     pg.evaluate("()=>[...document.querySelectorAll('#wQty .chip')][1].click()")
     pg.wait_for_timeout(200)
     ck("asking for two demands two lengths",
-       pg.evaluate("()=>getComputedStyle(document.getElementById('wDur2')).display") != "none")
+       pg.evaluate("()=>!!document.getElementById('wDur2').offsetParent"))
+    #  Two small controls to a row, ruled 30 Aug: a select holding four
+    #  words was taking a whole line, and the second massage sat under the
+    #  first when it belongs beside it. Asserted by where they land, not by
+    #  class name, and only above the width where the words stop fitting.
+    ck("the small controls pair two to a row, the second beside the first",
+       pg.evaluate("""()=>{
+           const pairs=[...document.querySelectorAll('#wWrap .pair')];
+           if (pairs.length!==2) return false;
+           const page=document.querySelector('.page').clientWidth;
+           return pairs.every(p=>{
+             const c=[...p.children]
+               .filter(x=>getComputedStyle(x).display!=='none');
+             if (c.length!==2) return false;
+             const a=c[0].getBoundingClientRect(), b=c[1].getBoundingClientRect();
+             return Math.abs(a.top-b.top)<2 && b.left>=a.right-1
+               && a.width < page*0.6;});}"""))
     ck("which massage is which reads as headings, not inside the options",
        pg.evaluate("()=>getComputedStyle(document.getElementById('wDurLab')).display") != "none" and
        pg.evaluate("()=>document.getElementById('wDurLab').textContent") == "First massage" and
@@ -631,7 +647,7 @@ with sync_playwright() as p:
         "welcomeImage": "https://photos.test/villa.jpg",
         "welcomeImageCrop": "top", "welcomeImageHeight": "tall",
         "diningImage": "https://photos.test/dinner.jpg",
-        "diningText": "# Dining at Nala\n"
+        "diningText": "#Dining at Nala#\n"
                       "Dinner is one menu, written each morning\n"
                       "around what is *best* that day.\n\n"
                       "It is served at your villa or by the pool.",
@@ -685,7 +701,10 @@ with sync_playwright() as p:
     #  The grammar's two marks, asked for once real copy met flat
     #  paragraphs (30 Aug): # opens a heading, asterisk pairs turn bold.
     #  Both land as elements with the marks stripped - never markup.
-    ck("a # line is a heading, its mark stripped",
+    #  Written "#Dining at Nala#", which is how the owner typed it and how
+    #  half the world writes the mark: no space after the hash, closing
+    #  hashes on the end. It reached a guest with the hashes showing.
+    ck("a # line is a heading however the hashes are typed, marks stripped",
        pg.evaluate("()=>{var h=document.querySelector('#diningText .info-h');"
                    "return h?h.textContent:null;}") == "Dining at Nala" and
        pg.evaluate("()=>getComputedStyle(document.querySelector"
