@@ -3217,6 +3217,25 @@ function spaDur(m){
   return null;
 }
 
+/* "Any day", the chip a guest picks when the day does not matter to them
+   (ruled 31 Aug). It is an ANSWER and not silence, which is the whole
+   point of it: before this, a guest who was easy about the day and a
+   guest who never reached the question both stored an empty string, and
+   the masseuse could not tell one from the other. Absent and "any" are as
+   different here as absent and false are for wellness.
+
+   It lives ONLY in wellDay, the guest's own answer. It must NEVER be
+   written to a /spa record's reqDay: that rule validates a date or the
+   empty string and would refuse the write, so the masseuse would tap Book
+   and get an error. spa.html translates it to an in-memory reqAny flag on
+   the way in and books a real day on the way out.
+
+   Forced copy in prearrival.html, because a guest page loads no staff
+   code; both are pinned to tests/slots.json. */
+var SPA_ANY_DAY = 'any';
+var SPA_ANY_DAY_LABEL = 'Any day';
+function isAnyDay(v){ return String(v == null ? '' : v) === SPA_ANY_DAY; }
+
 /* The way back from what a guest or the desk stored: the label itself, a
    24 hour HH:MM, or a bare H:MM that only fits the afternoon (a guest
    writing 2:00 means 2pm; one writing 10:00 already matches the morning).
@@ -4723,6 +4742,7 @@ var APPROACH_WORDS = { most:'Most nights', few:'A few nights',
 
 /* The panel's short day: Thu 28, the styleguide's own shape. */
 function wellDayLabel(key){
+  if (isAnyDay(key)) return SPA_ANY_DAY_LABEL;
   var d = parseDepDate(key); if (!d) return String(key);
   return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' + d.getDate();
 }
