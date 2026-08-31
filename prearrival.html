@@ -142,7 +142,11 @@
      the first rather than under it (ruled 30 Aug). Wraps to one column
      below 340pt, where half a screen cannot hold "1.5 hours - $250". */
   .pair { display:flex; flex-wrap:wrap; gap:0 12px; }
-  .pair-c { flex:1 1 140px; min-width:0; }
+  /* Fixed at half rather than growing to fill: a lone column stretched to
+     the full width, so the massage length was full width until a second
+     one appeared beside it (the owner, 30 Aug). Half whether or not it
+     has a neighbour. */
+  .pair-c { flex:0 0 calc(50% - 6px); min-width:0; }
   .pair-c .txt, .pair-c select.txt { margin-top:0; }
   .pair .chips { margin-top:0; }
   @media (max-width:339px){ .pair-c { flex-basis:100%; } }
@@ -416,7 +420,7 @@
             <select class="txt" id="wTime" aria-label="Preferred time"></select>
           </div>
           <div class="pair-c">
-            <div class="sublabel">How many massages?</div>
+            <div class="sublabel">Quantity</div>
             <div class="chips" id="wQty"></div>
           </div>
         </div>
@@ -593,7 +597,7 @@ function purposeText(v){ return purposeList(v).join(PURPOSE_SEP); }
 var a = { eta:'', etaNote:'', dining:null, diets:[], noDiets:false, dietYes:false,
           dietNote:'', purpose:[], approach:'', wellness:null, wellDay:'',
           companion:'',
-          wellTime:'', wellQty:1, wellDur:60, wellDur2:60, note:'' };
+          wellTime:'Any time', wellQty:1, wellDur:60, wellDur2:60, note:'' };
 
 function el(id){ return document.getElementById(id); }
 function dkey(d){
@@ -808,7 +812,11 @@ var WELL_TIMES = (function(){
 (function(){
   var sel = el('wTime');
   var o = document.createElement('option');
-  o.value = ''; o.textContent = 'Preferred time';
+  /* The resting answer is an answer: the question is not mandatory, and
+     "Preferred time" left as it was reached the masseuse as an empty
+     string - a request with no time on it at all. It reads and saves as
+     Any time (the owner, 30 Aug). */
+  o.value = 'Any time'; o.textContent = 'Any time';
   sel.appendChild(o);
   WELL_TIMES.forEach(function(l){
     var x = document.createElement('option');
@@ -1524,7 +1532,7 @@ function boot(){
     a.dietNote = p.dnote || '';
     a.purpose = purposeList(p.purpose); a.approach = p.approach || '';
     a.wellness = (p.wellness === undefined) ? null : !!p.wellness;
-    a.wellDay = p.wellDay || ''; a.wellTime = p.wellTime || '';
+    a.wellDay = p.wellDay || ''; a.wellTime = p.wellTime || 'Any time';
     a.wellQty = p.wellQty === 2 ? 2 : 1;
     a.wellDur = spaDurOk(p.wellDur) ? p.wellDur : 60;
     a.wellDur2 = spaDurOk(p.wellDur2) ? p.wellDur2 : 60;

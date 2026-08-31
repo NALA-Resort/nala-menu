@@ -395,11 +395,37 @@ with sync_playwright() as p:
     ck("saying yes offers only the days they are here",
        pg.evaluate("()=>document.querySelectorAll('#wDays .chip').length") == 5)
     pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')][1].click()")
-    ck("the time is a slot list pinned to the canonical table, plus the empty choice",
+    #  The resting choice is an answer, not a blank: the question is not
+    #  mandatory, and left alone it used to reach the masseuse as an empty
+    #  string - a request with no time on it (the owner, 30 Aug).
+    ck("the time is a slot list pinned to the canonical table, after Any time",
        pg.evaluate("""()=>[...document.querySelectorAll('#wTime option')]
            .map(o=>o.value)""")
-       == [""] + [x["label"] for x in
+       == ["Any time"] + [x["label"] for x in
                   __import__("json").load(open("tests/slots.json"))["slots"]])
+    ck("and it is what the control rests on, in words a guest can read",
+       pg.evaluate("()=>wTime.value") == "Any time" and
+       pg.evaluate("()=>wTime.options[wTime.selectedIndex].textContent") == "Any time")
+    ck("and a time left alone is sent as that answer, not as an empty one",
+       pg.evaluate("()=>{collect(); return fullPayload().wellTime;}") == "Any time")
+    #  A quantity of one leaves its column alone on the row, and it must
+    #  not stretch to fill it: the length select was full width until a
+    #  second appeared beside it.
+    ck("a lone control keeps its half of the row rather than stretching",
+       pg.evaluate("""()=>{
+           const d=document.getElementById('wDur').getBoundingClientRect();
+           const page=document.querySelector('.page').clientWidth;
+           return d.width < page*0.6;}"""))
+    #  One word, so the label cannot wrap and shove its pills down a line
+    #  out of step with the control beside them.
+    ck("the quantity label is one word, and its pills hold the line",
+       pg.evaluate("""()=>{
+           const labs=[...document.querySelectorAll('#wWrap .pair .sublabel')]
+             .map(x=>x.textContent.trim());
+           if (labs.indexOf('Quantity')<0) return false;
+           const t=document.getElementById('wTime').getBoundingClientRect();
+           const q=document.getElementById('wQty').getBoundingClientRect();
+           return Math.abs(t.top-q.top)<4;}"""))
     pg.select_option("#wTime", "2:00 pm")
     # How many and how long, with the manager's price beside each length -
     # the whole point is that the guest sees the cost before they ask.
