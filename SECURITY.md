@@ -18,6 +18,13 @@ documentation and costs money. Stopping after job 3 is a good night's work.
 sync between one console and the next. Bookings stop arriving in that gap and
 do not backfill. Do not start one and get distracted.
 
+**Burned — rotate next: `ZAP_SECRET`.** A screenshot of a Zap run pasted into
+a chat on 31 Aug 2026 showed the Worker URL with the secret in the `?secret=`
+query string. Job 1c is the rotation. While in there, move the new value into
+the `x-nala-secret` header (job 1c step 12) and delete the `?secret=` part
+from the Zap's URL field: a secret in the URL is reproduced in every run log
+and screenshot, a header is not.
+
 **A note on the words on screen.** These consoles rename their buttons every
 few months. If something is not where I say, look for the same word nearby
 rather than striking out for a different screen, and tell me so I can correct
