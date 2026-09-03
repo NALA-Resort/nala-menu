@@ -536,13 +536,13 @@ with sync_playwright() as p:
        lotus_class("4") == "lotus sugg")
     ck("and it is neither the waiting grey nor the booked green",
        lotus_colour("4") not in (probe["mid"], probe["dine"]))
-    #  Amber alone says chase this. It does not say what the chase is.
-    ck("the row says in a word what the amber is asking for, without clipping",
-       "suggested" in pg.evaluate(
+    #  No word beside the amber. The owner removed it 1 Sep along with the
+    #  answered count, on one principle: the amber IS the message, and a
+    #  word restating it ate the line the ETA needs.
+    ck("the amber says it on its own, with no word restating the colour",
+       "suggested" not in pg.evaluate(
          "()=>document.querySelector('.arr[data-villa=\"4\"] .arr-s').textContent"))
-    #  A word the row cannot fit is a word reception never reads: this line
-    #  clipped to "massage..." at 390 before it was cut to one word.
-    ck("and the line actually fits it rather than clipping it away",
+    ck("and the stay line fits without clipping now that it is shorter",
        pg.evaluate("()=>{const e=document.querySelector"
                    "('.arr[data-villa=\"4\"] .arr-s');"
                    "return e.scrollWidth <= e.clientWidth + 1;}"))
@@ -719,42 +719,6 @@ with sync_playwright() as p:
     ck("and the row stays grey, because nothing was edited",
        "todo-form" in pg.evaluate(
          "()=>document.querySelector('.arr[data-villa=\"2\"]').className"))
-    pg.close()
-
-    # ── the amber row says how far off it is ────────────────────
-    # Asked for by the owner 28 Aug: amber said work-to-do without saying
-    # how much, so a row one answer short looked exactly like one nobody
-    # had touched. The denominator is what THIS guest was asked - a one
-    # night stay is shown three of the six questions, and scoring them out
-    # of six would mark them down for questions never put to them.
-    pg = board()
-    def rowtext(v):
-        return pg.evaluate("v=>document.querySelector('.arr[data-villa=\"'+v+'\"] .arr-s')"
-                           ".textContent", str(v))
-    ck("a part answered row counts what is answered, out of what was asked",
-       "/" in rowtext(6) and "answered" in rowtext(6))
-    # The denominator is what THIS guest was asked. Put to the function
-    # directly with the two stay lengths, because the fixture's amber row is
-    # a multi night stay and a row assertion alone cannot tell a correct
-    # denominator from a hard coded six.
-    #  Both departures are counted FROM today rather than written down. The
-    #  one night stay was the literal 2026-08-29, which was one night while
-    #  it was the 28th and became a zero night stay the moment the date
-    #  rolled over - the suite went red at midnight having tested nothing.
-    #  The same fault the tally suite was taken off the clock for.
-    den = pg.evaluate("""(t)=>{
-      const plus=n=>{const d=new Date(t+'T12:00:00');d.setDate(d.getDate()+n);
-        return d.toISOString().slice(0,10);};
-      const long={arrive:t, depart:plus(6)}, one={arrive:t, depart:plus(1)};
-      const p={dining:true, noDiets:true};
-      return [answeredCount(p,long).of, answeredCount(p,one).of];}""", today)
-    print("   denominators [multi, one night]:", den)
-    ck("the denominator is the questions that guest was actually shown",
-       den[0] == 6 and den[1] == 3 and den[0] != den[1])
-    # Green has nothing left to count and grey has nothing counted yet, so on
-    # those the number would only repeat what the colour already says.
-    ck("a completed row carries no count", "answered" not in rowtext(4))
-    ck("nor does one nobody has touched", "answered" not in rowtext(2))
     pg.close()
 
     # ── the way back to nobody-asked ────────────────────────────
