@@ -99,7 +99,11 @@
 
   /* The summary drops out of the row it belongs to, so it is inset and shares
      the row's left edge rather than floating as its own card. */
-  .sum { border:1px solid var(--rule); border-top:none; border-radius:0 0 8px 8px;
+  /* Green, always, and that is not a lost scope: a summary only opens on a
+     completed row (see the tap handler), so the only row it can hang off is
+     already green. Grey and amber open the form instead. */
+  .sum { border:1px solid rgba(122,160,130,.34); border-top:none;
+         border-radius:0 0 8px 8px; background:rgba(122,160,130,.11);
          margin:-8px 0 7px; padding:12px 13px 13px; }
   .sum-r { display:flex; gap:10px; font-size:var(--t2); line-height:1.5;
            padding:3px 0; align-items:baseline; }
@@ -190,7 +194,6 @@
      solid left edge to say somebody has met it halfway. */
   .arr.part-form { background:rgba(194,154,85,.11); border-color:rgba(194,154,85,.36);
                    border-left:3px solid rgba(194,154,85,.85); }
-  .sum { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
 
   .empty { font-size:var(--t3); color:var(--mid); font-style:italic; padding:4px 0 2px; }
   .spacer { height:40px; }
@@ -2279,14 +2282,17 @@ document.getElementById('board').addEventListener('click', function(e){
   var r = rowFor(btn.getAttribute('data-villa'));
   if (!r) return;
 
-  /* A guest who filled the form in gets it read back to them, and reception
-     edits or checks in from there. A guest with nothing to read back goes
-     straight to the form, because an empty summary says nothing.
+  /* Only a COMPLETED row reads its answers back. Grey and amber open the
+     form, because on those rows there is something to fill in and the tap
+     should land where the work is - the owner's ruling, 1 Sep, replacing the
+     older hasForm test that opened a summary on any row carrying any answer
+     at all. That summary was a half-filled page with an Edit button under
+     it, so every amber row cost reception two taps to reach the thing they
+     had opened it for.
 
-     Deliberately still hasForm rather than the new formState: a booking that
-     is incomplete only because one mandatory answer is missing still has
-     answers worth reading back, and Mark as completed is one Edit away. */
-  if (!hasForm(r.pre)) return openGuest(r);
+     This is also what makes the summary's green tint honest: it can now only
+     ever hang off a green row. */
+  if (formState(r.pre, r.stay) !== 'completed') return openGuest(r);
   OPEN = (OPEN === r.villa) ? null : r.villa;
   render();
 });
