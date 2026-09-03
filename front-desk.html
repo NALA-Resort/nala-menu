@@ -51,7 +51,11 @@
      deliberately: the villa number to its left is how reception finds the
      guest anyway, and both rows of a party carry it. */
   .arr-top { display:flex; align-items:baseline; gap:8px; }
-  .arr-top .arr-n { flex:1; min-width:0; }
+  /* flex:0 1 auto, NOT flex:1. With flex:1 the name grew to fill the row and
+     shoved the mark against the right edge, so it read as a right-aligned
+     column instead of a phrase following the name. Now the name is its own
+     width and only shrinks when the row runs out. */
+  .arr-top .arr-n { flex:0 1 auto; min-width:0; }
   .arr-with { flex:0 0 auto; font-size:var(--t2); color:var(--mid);
               white-space:nowrap; }
   .arr-n { font-size:var(--t3); white-space:nowrap; overflow:hidden;
