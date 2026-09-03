@@ -309,6 +309,14 @@ Suggest and no round trip through the desk. And an empty day still reads
 written before the chip did not answer the question and must not be
 quoted as though it had.
 
+**A colour is asserted in pixels, never in a class name.** The Front Desk
+fork's class check passed for a full day while all three forks drew BLACK:
+the ui2 conversion had dropped that page's `--dine`, and an undefined custom
+property does not fall back, it computes to nothing. The classes were right
+the whole time. The massage lotus added 31 Aug is asserted the same way,
+against `getComputedStyle`, and against a probe of what the token actually
+resolves to on that page.
+
 **Break the fix and watch the test fail.** Five times in three days to 23 Aug a
 new assertion was aimed next to the thing rather than at it and passed while the
 bug shipped: a variable instead of the screen, a substring instead of the shape,

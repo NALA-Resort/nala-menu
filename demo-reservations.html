@@ -1522,6 +1522,11 @@ function formState(p, stay){
    Plain text, with a real ampersand: the Front Desk builds its row by
    concatenation and escapes this on the way in, Pre-arrival SMS sets it as
    textContent. Returning markup would be wrong for one of them either way. */
+/* One wording, both boards. A short form was written on 31 Aug to buy back
+   the name's width on the Front Desk row and the owner ruled against it the
+   same day: the phrase is "with villa 15" wherever a party is named. Kept as
+   one function rather than two so the boards cannot drift into naming a
+   party differently, which is why this moved out of the pages on 28 Aug. */
 function groupMatesText(row, rows){
   var g = row && row.stay && row.stay.groupId;
   if (!g) return '';
@@ -1531,6 +1536,42 @@ function groupMatesText(row, rows){
     .sort(function(a, b){ return (+a) - (+b); });
   if (!out.length) return '';
   return 'with ' + (out.length === 1 ? 'villa ' : 'villas ') + out.join(' & ');
+}
+
+/* What the massage mark on a Front Desk row says, in one place because the
+   row's icon and the sheet's Wellness lines are the same fact and drifted
+   once already: until 27 Aug the sheet read only the form, so a massage the
+   masseuse had booked still said "Interested" at the desk.
+
+   Precedence is what the DESK owes, not what happened last. A suggestion
+   outranks everything because it is the only one of these the desk has to
+   act on: the masseuse has offered another time and somebody must put it to
+   the guest. Then booked, then an ask still waiting on the masseuse, and a
+   decline last, because a party with one massage booked and one declined is
+   a party with a massage.
+
+   No request and no records returns '' and the row draws no mark, the same
+   rule the fork follows: an icon for a question nobody asked is an answer we
+   do not have. A "no thank you" is not a request either - it is the absence
+   of one - so it draws nothing rather than borrowing the declined colour,
+   which belongs to a request the resort could not fill. */
+function massageState(spa, pre){
+  var seen = { suggested:false, booked:false, requested:false, declined:false },
+      fromForm = false;
+  Object.keys(spa || {}).forEach(function(tid){
+    var t = (spa || {})[tid];
+    if (!t || typeof t !== 'object' || !t.status) return;
+    if (t.source === 'prearrival') fromForm = true;
+    if (seen.hasOwnProperty(t.status)) seen[t.status] = true;
+  });
+  /* The form's ask stands in only while no record has been born from it,
+     which is the spa board's own rule for the same ask. */
+  if (pre && pre.wellness === true && !fromForm) seen.requested = true;
+  if (seen.suggested) return 'sugg';
+  if (seen.booked)    return 'done';
+  if (seen.requested) return 'wait';
+  if (seen.declined)  return 'decl';
+  return '';
 }
 
 /* Two records describe the same person if the PMS and a guest written entry

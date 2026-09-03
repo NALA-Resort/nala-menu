@@ -204,6 +204,43 @@ outline and always confirm before writing. Read it before adding any button.
 
 ---
 
+### 6. Match the ceremony to the change
+
+Rules 1 to 5 were written after a data model went wrong and after five tests
+passed against broken code. They are aimed at facts and at state. Applied at
+full weight to a label or a colour, they cost more than the change is worth.
+
+Written 31 Aug, after moving one text span and adding one icon took half an
+hour of the owner's time: eight serial runs of a 200 second suite, two rounds
+of mockups, and a multiple choice question about a wording he had already
+given. His words: "I have other apps being built at five times the speed of
+this one."
+
+The tier is set by **what the change can break**, not by how many lines it is.
+
+| Change | What it needs |
+|---|---|
+| The data model, permissions, the colour law, anything two screens read | All of rules 1 to 5. A shared table, a mockup, a mutation proof each. |
+| Layout, copy, an icon, a tint | Build it. One screenshot at 390. Tests for the behaviour, not for the pixels. One mutation proof for the batch, not one each. |
+| A typo, a comment, a `?v=` bump | Change it. |
+
+Three habits that make the difference, all learned the hard way:
+
+- **Tests run in the background.** Never make somebody watch a suite. Start
+  it, keep working, report once.
+- **Mutations go in one run.** Mutate, run, restore, repeat, inside a single
+  script. Five proofs is one job, not five.
+- **Make the call.** A mockup is for when the shape is genuinely open. When
+  the owner has already said what he wants, build that, and say afterwards
+  what it cost. He was overruled twice on 31 Aug and was right both times.
+
+And read the width rule as written, in STYLEGUIDE.md: **mock at 390, check
+at 360, do not break at 320.** Breaking means a sideways bleed or a control
+nobody can reach. A name clipping at 320 is not breaking. 320 is an iPhone
+SE 1st generation, from 2016; nothing sold since is narrower than 375.
+
+---
+
 ## When you break these rules
 
 Sometimes you should. Write down why, in the file, next to the thing. A

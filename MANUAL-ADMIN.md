@@ -138,6 +138,15 @@ Forms answered before this existed have no day on them. Those still read
 a word in a guest's mouth they never said; a guest who reopens their link is
 asked.
 
+**The lotus on a Front Desk row** says where that guest's massage has got to,
+without opening anything. Grey is waiting on the masseuse, green is booked,
+terracotta is declined, and amber means he has offered a different time and
+somebody here has to put it to the guest, which is why that one also spells
+out *suggested* beside the stay. A guest with no massage asked for draws no
+lotus at all, the same way an unanswered dinner draws no fork. If a party has
+two treatments in different states, the row shows the one you owe: a
+suggestion outranks a booking, because the booking needs nothing from you.
+
 **Guest form.** Everything the pre-arrival form says in your words. The
 *welcome image* sits on the form's welcome screen under the greeting - an
 image and only an image. The *description* beneath it is the line under the

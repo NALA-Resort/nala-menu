@@ -362,7 +362,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=47"></script>
+<script src="nala-shared.js?v=48"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -706,7 +706,7 @@ function rowHTML(r){
               every row, arrived included: reception is the one who hears the
               right number, and the fix outranks Mews wherever one is read. */
            '<div class="arr-p">'+phoneBadgeHTML(phoneOf(r), true)+'</div>'+
-         '</div>'+seenFor(r.pre)+forkFor(r.pre)+'</button>'+
+         '</div>'+seenFor(r.pre)+lotusFor(mst)+forkFor(r.pre)+'</button>'+
          (open ? summaryHTML(r) : '');
 }
 
