@@ -408,17 +408,16 @@ Worker gained a cron on 21 Aug. Now buildable.
 **Two finished Worker edits** are written and waiting on a deploy. The reasoning
 is in commit `25076ad`.
 
-**Mews notes are not imported any more.** Ruled by the owner, 26 Aug, after
+**The Mews note is imported clean.** Ruled by the owner, 26 Aug, after
 Zapier's flattening of the note objects printed nine lines of GUIDs and
-timestamps in a Service Sheet staff row. An extraction that dug the words out
-of the flattening was written, deployed and retired the same day in favour of
-the simpler rule: the desk types what matters, on the day, into
-/internal/<id>/note, and the Worker imports nothing. What the week of
-importing left behind was cleared by hand, once - a console pass over the
-future arrivals, no job left running. The intermediate extraction build is
-what is live in the dashboard until the current worker/mews-sync.js is
-deployed over it - it still imports, so deploy soon, and know that a paste
-of an OLDER file re-imports on every event.
+timestamps in a Service Sheet staff row. The note is still imported - the
+receptionist's words are wanted - but mewsNoteText strips Zapier's metadata
+before it is stored, so only the words reach /internal/<id>/fromMews. This
+build is live in the dashboard and is what worker/mews-sync.js now holds, so
+main and the deploy agree. Notes imported RAW before the fix (26 Aug and
+earlier) still show their dump until the booking's next Mews event repairs
+it, or a person clears it at the desk; a one-off console pass cleaned the
+imminent arrivals.
 
 **A logs upgrade**, named 21 Aug: the Worker writes nothing durable, so a sync
 that misbehaves leaves no trace to read afterwards.
