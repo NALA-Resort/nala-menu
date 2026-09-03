@@ -283,6 +283,34 @@ await post(Object.assign({}, RES, { ResourceName: "17" }));
 ck("seventeen itself is accepted, the boundary is inclusive",
    Object.keys(STORE).some(k => k.startsWith("/stays/") && k.endsWith("/17")));
 
+/* ── an unrecognised villa on a booking that had one ────────── */
+/* The name change of 3 Sep. A modification whose villa mapping was missing
+   or unrecognised fed the clear pass an empty list of nights to keep, so
+   every night the booking held was deleted, none rewritten, and the reply
+   was still ok - the room left every board with the only trace a field in
+   a Zap history nobody reads. Refused whole now, before anything writes. */
+install();
+await post(RES);
+const renamed = await post(Object.assign({}, RES,
+  { FirstName: "Sam", ResourceName: "Spa Suite" }));
+ck("a modification with an unrecognised villa is refused, not applied",
+   renamed.status === 400);
+ck("and the nights it would have erased are still there",
+   !!STORE["/stays/2026-09-10/3"] && !!STORE["/stays/2026-09-11/3"] &&
+   !!STORE["/stays/2026-09-12/3"]);
+ck("and the booking still reads as it did before the bad event",
+   STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/pms"].first === "Mark");
+ck("the refusal names both villas so the Zap history explains itself",
+   await renamed.json().then(j => j.received === "Spa Suite" && j.held === "3"));
+/* A cancellation is different: it clears the nights whatever the villa
+   field says, and refusing it would leave a cancelled guest on the board. */
+install();
+await post(RES);
+const bye = await post(Object.assign({}, RES,
+  { State: "Canceled", ResourceName: "Spa Suite" }));
+ck("a cancellation with a bad villa still clears the nights",
+   bye.status === 200 && STORE["/stays/2026-09-10/3"] === undefined);
+
 /* ── the PMS stamp on each night ────────────────────────────── */
 /* The app stamps a staff "vacant" with the version of the booking it was
    decided against. Without this in the summary there is nothing to compare to,

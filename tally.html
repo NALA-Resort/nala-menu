@@ -533,7 +533,7 @@ body.readonly .comb-undo { display:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=48"></script>
+<script src="nala-shared.js?v=49"></script>
 <script>
 /* Not every allergy is on the list and the list cannot grow to hold them all,
    so Other means read the note. The same entry the front desk writes, because
@@ -702,6 +702,16 @@ function saveManual(key, rec){
       /* Staff, because this board is staff only. That is what stops a guest
          overwriting it from their link afterwards. */
       body = Object.assign({}, rec, { by:'staff', at:new Date().toISOString() });
+      /* The booking the answer was given about. Guest writes and the desk
+         both stamp it; this board did not, so a cell made here could never
+         be told from the villa it sat in - when Mews moved or renamed the
+         booking, dinnerElsewhere had nothing to check and tonight's answer
+         and dietary note stayed with the ROOM, in front of whoever took it
+         next. A walk in with no booking still writes no id: Mews has no
+         opinion about them and the cell stays untouchable, as before. */
+      var kn0 = roomguests[String(villa)];
+      if (body.bookingId === undefined && kn0 && kn0.bookingId)
+        body.bookingId = kn0.bookingId;
       /* Staff overwriting a guest's own answer keeps that answer underneath.
          With two nodes the guest's record simply stayed where it was and the
          board merged them; with one cell there is nowhere else for it to be,

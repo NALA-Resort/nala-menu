@@ -385,6 +385,26 @@ with sync_playwright() as p:
     ck("covers 13, and one villa still awaiting after the save",
        s5["c"]==13 and s5["a"]==1)
 
+    # 5b the cell carries the booking it was made about
+    # Guest writes and the desk both stamp bookingId into the cell; this
+    # board did not, so a cell made here could never be told from the villa
+    # it sat in, and when Mews moved or renamed the booking, tonight's
+    # answer and its dietary note stayed with the ROOM in front of whoever
+    # took it next (3 Sep). Villa 9 has no booking in this fixture, so its
+    # write above is also the walk-in case: no id known, none invented.
+    ck("a cell for a villa with no booking writes no booking id",
+       "bookingId" not in json.loads(w[0]["b"]))
+    pg.evaluate("()=>{ roomguests['13']={name:'Keyed',bookingId:'bk-13'};"
+                "saveManual('room-13',{status:'in',pax:2,room:'13',source:'manual'}); }")
+    pg.wait_for_timeout(300)
+    wk=[x for x in WRITES if "/dinner/"+today+"/13" in x["u"] and x["m"]=="PUT"]
+    ck("a cell written for a Mews villa is stamped with its booking id",
+       len(wk)==1 and json.loads(wk[0]["b"]).get("bookingId")=="bk-13")
+    # Put the board back the way this test found it, or villa 13's two
+    # covers ride into every count below.
+    pg.evaluate("()=>{ saveManual('room-13'); delete roomguests['13']; }")
+    pg.wait_for_timeout(300)
+
     # 6 rollback on failure
     STATE["fail"]=True
     tile(pg,10).click(); pg.wait_for_timeout(200)
@@ -1694,6 +1714,24 @@ with sync_playwright() as p:
     # customerId is the only identifier that outlives a booking.
     ck("and the dietary reaches the person, so next year they are not asked again",
        any("/guests/" in p for p in paths))
+
+    # A half-given mirror must not blank the other half. The board's editors
+    # send a dnote only when one exists, and the mirror used to fill the gap
+    # with '', erasing the person's standing note on every note-less save.
+    # undefined means "not my field"; an empty string given on purpose still
+    # clears.
+    n0 = len(WROTE)
+    q.evaluate("()=>rememberDietary('b4', ['Nut allergy'], undefined)")
+    q.wait_for_timeout(400)
+    part = [json.loads(x[1]) for x in WROTE[n0:] if "/guests/" in x[0] and x[1]]
+    ck("a mirror given no note leaves the person's standing note alone",
+       bool(part) and all("dnote" not in p for p in part))
+    n1 = len(WROTE)
+    q.evaluate("()=>rememberDietary('b4', ['Nut allergy'], '')")
+    q.wait_for_timeout(400)
+    wiped = [json.loads(x[1]) for x in WROTE[n1:] if "/guests/" in x[0] and x[1]]
+    ck("and one given an empty note still clears it, cleared is an answer",
+       bool(wiped) and all(p.get("dnote") == "" for p in wiped))
     q.close()
 
     # ── answers saved under the pills' old names ────────────────────────

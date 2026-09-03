@@ -990,15 +990,35 @@ function dinnerRecord(cell){
    It does not move the answer, only drops it. Moving it would be guessing that
    a booking made for one villa still holds for another, and a villa change is
    usually a change of party size or plan. The guest is asked again, which is
-   what the empty villa on the board is telling reception to do. */
+   what the empty villa on the board is telling reception to do.
+
+   Two ways a cell goes stale, and they need different tests. The booking the
+   cell was made for now sits in ANOTHER villa: the moved guest, the original
+   case. Or THIS villa is now held by a DIFFERENT booking: the room changed
+   hands, and without this test the new arrival wore the previous guest's
+   dinner answer and dietary note - seen live 3 Sep, after a rename in Mews
+   orphaned the cell. A cell whose booking the PMS no longer knows AT ALL is
+   deliberately left standing: an empty roomguests can also mean a failed
+   read, and "A failed read is not an empty one" (HANDOVER.md).
+
+   The whole list is scanned rather than stopping at the first match, because
+   returning on the first one answered about the lowest numbered villa rather
+   than the one asked about - the parked "party in two villas loses the higher
+   one's dinner" bug, closed here. */
 function dinnerElsewhere(cells, villa, roomguests){
   var cell = cells && cells[String(villa)];
   if (!cell || !cell.bookingId) return false;
+  var here = (roomguests || {})[String(villa)];
+  if (here && here.bookingId && here.bookingId !== cell.bookingId) return true;
+  var elsewhere = false;
   for (var v in (roomguests || {})){
     var r = roomguests[v];
-    if (r && r.bookingId === cell.bookingId) return String(v) !== String(villa);
+    if (r && r.bookingId === cell.bookingId){
+      if (String(v) === String(villa)) return false;
+      elsewhere = true;
+    }
   }
-  return false;
+  return elsewhere;
 }
 
 /* Staff outrank a guest, always. A guest cannot overwrite a booking reception
@@ -1287,14 +1307,21 @@ function fetchMenuAnywhere(dayKey){
    and it is deliberately quiet for the same reason.                        */
 function rememberDietary(bookingId, diets, dnote){
   if (!bookingId) return Promise.resolve();
+  /* Only the halves the caller actually holds. The board's editors send a
+     dnote only when one exists, and a PATCH that filled the gap with '' was
+     erasing the person's standing note on every note-less save. An empty
+     string given ON PURPOSE still clears: undefined means "not my field",
+     '' means "cleared". */
+  var body = { updatedAt: new Date().toISOString() };
+  if (diets !== undefined) body.diets = diets || [];
+  if (dnote !== undefined) body.dnote = dnote || '';
   return fetch(DB + '/bookings/' + bookingId + '/pms/customerId.json')
     .then(function(r){ return r.json(); })
     .then(function(cid){
       if (!cid) return;   /* older bookings have none: nothing to key on */
       return fetch(DB + '/guests/' + cid + '.json', {
         method: 'PATCH', headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ diets: diets || [], dnote: dnote || '',
-                               updatedAt: new Date().toISOString() })
+        body: JSON.stringify(body)
       });
     })
     .catch(function(){});

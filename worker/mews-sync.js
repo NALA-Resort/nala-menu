@@ -615,6 +615,26 @@ export default {
 
       const cancelled = r.state.indexOf("cancel") > -1;
 
+      /* A later event with a bad villa must not erase what a good earlier one
+         wrote. An unrecognised villa on a NEW booking writes no nights and
+         says so, which is right: there is nothing to lose. The same value on
+         a MODIFICATION of a booking whose villa WAS recognised fed the
+         clear-by-looking pass below an empty "fresh" list, so every night the
+         reservation held was deleted, none rewritten, and the reply was still
+         ok: a name change with the villa unmapped removed the room from every
+         board with the only trace a field in a Zap history nobody reads.
+         Seen live 3 Sep. Refused whole instead - a 400 lands in the Zap
+         history as an error, nothing is written, and the mapping gets fixed
+         once, loudly, rather than destroying index entries quietly. */
+      if (!cancelled && !knownVilla(r.villa) && prev && knownVilla(prev.villa)) {
+        return new Response(JSON.stringify({
+          ok: false, error: "unrecognised villa on a booking that had one",
+          received: String(r.villa).slice(0, 40),
+          held: String(prev.villa),
+          hint: "map the space name into this trigger; nothing was changed"
+        }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+
       /* A cancellation for a booking we have never seen clears nothing, and
          until now said so nowhere: the reply was a cheerful ok and the guest
          stayed on the board.

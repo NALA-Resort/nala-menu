@@ -922,6 +922,49 @@ with sync_playwright() as p:
     ck("dinnerElsewhere says stale for the old villa", moved["stale"] is True)
     ck("and not for the new one", moved["here"] is False)
 
+    # ── the room that changed hands ─────────────────────────────
+    # The other way a cell goes stale: not the booking moving out, but a
+    # DIFFERENT booking moving in. A rename in Mews orphaned a cell on 3 Sep
+    # - its booking id no longer appeared under any villa, so the elsewhere
+    # test above never fired - and the next guest into the villa wore the
+    # previous guest's dinner answer and dietary note. A cell whose booking
+    # the PMS does not know AT ALL still stands, because an empty roomguests
+    # is also what a failed read looks like, and hiding every answer on a
+    # network blip is the worse trade.
+    handed = pg.evaluate("""()=>{
+      const rg = overlayStays({}, { '5': {id:'b2', first:'New', last:'Guest',
+                 arrive:'2026-08-18', depart:'2026-08-22'} });
+      const cells = { '5': { status:'in', pax:2, bookingId:'b1', by:'staff',
+                             dnote:'nut allergy' } };
+      return {
+        stale: dinnerElsewhere(cells, 5, rg),
+        rec:   roomRecord(5, {}, {}, rg, cells),
+        alone: dinnerElsewhere(cells, 5, {})
+      };
+    }""")
+    ck("a villa now held by a different booking drops the old cell",
+       handed["stale"] is True)
+    ck("so the new guest does not wear the old guest's dietary note",
+       not (handed["rec"] or {}).get("dnote"))
+    ck("but a cell whose booking the PMS knows nothing about stands, since "
+       "an empty read and a failed one look alike here",
+       handed["alone"] is False)
+
+    # ── the stale copy in a lower villa ─────────────────────────
+    # dinnerElsewhere returned on the FIRST id match, and integer-like keys
+    # iterate ascending, so a booking the PMS holds in villa 9 with a stale
+    # copy of itself under villa 5 was answered about villa 5 and the higher
+    # villa's dinner vanished. Parked in HANDOVER.md as "a party in two
+    # villas loses the higher one's dinner"; closed by scanning the lot.
+    lower = pg.evaluate("""()=>{
+      const rg = { '5': { bookingId:'b1', name:'Ben Davidson' },
+                   '9': { bookingId:'b1', name:'Ben Davidson' } };
+      const cells = { '9': { status:'in', pax:2, bookingId:'b1', by:'guest' } };
+      return dinnerElsewhere(cells, 9, rg);
+    }""")
+    ck("a booking the PMS holds in THIS villa keeps its cell despite a stale "
+       "copy under a lower number", lower is False)
+
 
     # ── one party across several villas ─────────────────────────
     party = pg.evaluate("""()=>{
