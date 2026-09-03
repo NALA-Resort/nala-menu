@@ -478,7 +478,109 @@ with sync_playwright() as p:
        (lambda t: "Suggested" in t and "4:30 pm" in t and
                   "waiting on the guest" in t)(pg.locator(".sum").inner_text()))
     pg.close()
+
+    # ── the massage mark on the row, 31 Aug ─────────────────────
+    # The same four states the sheet spells out above, readable without
+    # opening anything, from the same massageState so the mark and the words
+    # under it cannot disagree about one guest.
+    #
+    # Colour is read from the rendered pixels, never from the class. The fork
+    # beside it taught that: its class check passed for a day while all three
+    # forks drew BLACK, because the conversion had dropped this page's --dine
+    # and an undefined custom property does not fall back, it computes to
+    # nothing. A class cannot say what the stylesheet drew.
+    def lotus_colour(villa):
+        return pg.evaluate(
+          "()=>{const e=document.querySelector('.arr[data-villa=\"%s\"] .lotus svg');"
+          "return e?getComputedStyle(e).stroke:null;}" % villa)
+    def lotus_class(villa):
+        return pg.evaluate(
+          "()=>{const e=document.querySelector('.arr[data-villa=\"%s\"] .lotus');"
+          "return e?e.className:null;}" % villa)
+
+    SPADB["b4"] = {"t1": {"status": "booked", "day": plus(1), "time": "14:00",
+                          "source": "prearrival", "at": "x"}}
+    pg = board()
+    probe = pg.evaluate("""()=>{const p=v=>{const e=document.createElement('span');
+        e.style.color='var('+v+')';document.body.appendChild(e);
+        const c=getComputedStyle(e).color;e.remove();return c;};
+      return {dine:p('--dine'), nodine:p('--nodine'), mid:p('--mid')};}""")
+    ck("a booked massage wears the done colour, the same green as a dining fork",
+       lotus_class("4") == "lotus done" and lotus_colour("4") == probe["dine"])
+    #  Null-safe on purpose: written as a bare querySelector first, and when
+    #  the mark was removed wholesale to prove these assertions bite, this
+    #  one THREW instead of failing, which stopped the suite and hid the five
+    #  behind it. A test that explodes reports one fault where there are six.
+    ck("the mark is the fork's size, so the two read as a pair of facts",
+       (pg.evaluate("()=>{const e=document.querySelector('.arr .lotus');"
+                    "return e?Math.round(e.getBoundingClientRect().width):0;}") or 0) >= 26)
+    #  Red is failure and an allergy. A declined massage is neither: it is an
+    #  answer, and terracotta is the law's word for one. Ruled 31 Aug.
+    ck("and it is never the law's red, which belongs to failure and allergies",
+       lotus_colour("4") != pg.evaluate("""()=>{const e=document.createElement('span');
+         e.style.color='var(--red)';document.body.appendChild(e);
+         const c=getComputedStyle(e).color;e.remove();return c;}"""))
+    pg.close()
+
+    SPADB["b4"] = {"t1": {"status": "declined", "reqDay": plus(1),
+                          "source": "prearrival", "at": "x"}}
+    pg = board()
+    ck("a declined ask wears terracotta, the same ink the spa board gives it",
+       lotus_class("4") == "lotus decl" and lotus_colour("4") == probe["nodine"])
+    pg.close()
+
+    SPADB["b4"] = {"t1": {"status": "suggested", "day": plus(2), "time": "16:30",
+                          "source": "prearrival", "at": "x"}}
+    pg = board()
+    ck("a suggestion wears amber, because it is the one the desk must act on",
+       lotus_class("4") == "lotus sugg")
+    ck("and it is neither the waiting grey nor the booked green",
+       lotus_colour("4") not in (probe["mid"], probe["dine"]))
+    #  Amber alone says chase this. It does not say what the chase is.
+    ck("the row says in a word what the amber is asking for, without clipping",
+       "suggested" in pg.evaluate(
+         "()=>document.querySelector('.arr[data-villa=\"4\"] .arr-s').textContent"))
+    #  A word the row cannot fit is a word reception never reads: this line
+    #  clipped to "massage..." at 390 before it was cut to one word.
+    ck("and the line actually fits it rather than clipping it away",
+       pg.evaluate("()=>{const e=document.querySelector"
+                   "('.arr[data-villa=\"4\"] .arr-s');"
+                   "return e.scrollWidth <= e.clientWidth + 1;}"))
+    pg.close()
+
+    #  Precedence is what the desk OWES, not what happened last: a party with
+    #  one massage booked and one suggested still needs somebody to ring the
+    #  guest about the suggestion.
+    SPADB["b4"] = {"t1": {"status": "booked", "day": plus(1), "time": "14:00",
+                          "source": "prearrival", "at": "x"},
+                   "t2": {"status": "suggested", "day": plus(2), "time": "16:30",
+                          "source": "desk", "at": "x"}}
+    pg = board()
+    ck("a suggestion outranks a booking on the same guest, because it is owed",
+       lotus_class("4") == "lotus sugg")
+    pg.close()
     del SPADB["b4"]
+
+    pg = board()
+    #  b4's form says yes and nothing has answered it yet.
+    ck("a form asking with nothing answering it yet waits in grey",
+       lotus_class("4") == "lotus wait" and lotus_colour("4") == probe["mid"])
+    ck("a guest who never opened the form draws no mark",
+       lotus_class("2") is None)
+    ck("nor does one whose form never reached the massage question",
+       lotus_class("9") is None)
+    pg.close()
+    #  A no thank you is the absence of a request, not a declined one, so it
+    #  must not borrow the declined colour. Written first against villa 9,
+    #  which has no wellness key AT ALL - the assertion passed while the code
+    #  said the opposite, because it was aimed at "never asked" and named
+    #  "said no". A state needs a booking that is actually in it.
+    PRE["b12"]["wellness"] = False
+    pg = board()
+    ck("a no thank you draws no mark either, the way an unanswered dinner does",
+       lotus_class("12") is None)
+    pg.close()
+    del PRE["b12"]["wellness"]
     pg = board()
 
     # ── the sheet is edit, not create ───────────────────────────
@@ -1466,10 +1568,28 @@ with sync_playwright() as p:
        "6" in villas and "8" in villas)
     def line(v):
         return pg.evaluate("()=>document.querySelector('.arr[data-villa=\"%s\"] .arr-s').textContent" % v)
+    #  The mark moved off the stay line and up beside the name on 31 Aug, to
+    #  give the row back the width the massage mark spends. It keeps the full
+    #  phrase: a short "villa 8" was tried the same day and the owner ruled
+    #  against it.
+    def mark(v):
+        return pg.evaluate(
+          "()=>{var e=document.querySelector('.arr[data-villa=\"%s\"] .arr-with');"
+          "return e?e.textContent:''}" % v)
     ck("and each says which other villa the party holds",
-       "villa 8" in line("6") and "villa 6" in line("8"))
+       mark("6") == "with villa 8" and mark("8") == "with villa 6")
+    ck("the mark sits beside the name, not down on the stay line",
+       "villa 8" not in line("6"))
+    #  A half-written villa number is worse than none, so the mark never
+    #  takes the ellipsis - the name does.
+    ck("and the mark is never the thing that gets clipped",
+       pg.evaluate("()=>{const e=document.querySelector"
+                   "('.arr[data-villa=\"6\"] .arr-with');"
+                   "return e.scrollWidth <= e.clientWidth + 1;}"))
+    ck("and the name keeps an element of its own to be clipped in",
+       pg.evaluate("()=>!!document.querySelector('.arr[data-villa=\"6\"] .arr-top .arr-n')"))
     ck("a booking on its own says nothing about a party",
-       "with villa" not in line("4"))
+       mark("4") == "" and "villa" not in line("4"))
     pg.close()
 
     # Three villas reads as a list, not as three separate notes.
@@ -1477,8 +1597,17 @@ with sync_playwright() as p:
                    "depart":plus(2),"adults":2,"groupId":"grp-jane"}
     pg = board()
     ck("three villas in one party read as a list",
-       "villas 8 & 10" in pg.evaluate(
-         "()=>document.querySelector('.arr[data-villa=\"6\"] .arr-s').textContent"))
+       pg.evaluate("()=>document.querySelector('.arr[data-villa=\"6\"] .arr-with')"
+                   ".textContent") == "with villas 8 & 10")
+    #  The SMS page reads the very same function, so the two boards cannot
+    #  name a party differently.
+    #  groupMatesShort excludes the row itself by identity, so the row passed
+    #  in has to BE the one in the list. Written the other way first, and it
+    #  failed by naming the party's own villa back at it.
+    ck("and the phrase the SMS line uses is built from that same list",
+       pg.evaluate("()=>{var a={stay:{groupId:'g'},villa:'6'},"
+                   "b={stay:{groupId:'g'},villa:'8'};"
+                   "return groupMatesText(a,[a,b]);}") == "with villa 8")
     pg.close()
     for v in ("6", "8", "10"): del STAYS[v]
 

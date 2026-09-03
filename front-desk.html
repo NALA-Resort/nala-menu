@@ -39,6 +39,21 @@
      them, so it carries tile weight. 20 on the type scale. */
   .arr-v { font-size:var(--t4); min-width:30px; text-align:center; }
   .arr-mid { flex:1; min-width:0; }
+  /* The party mark moved up here from the stay line on 31 Aug, to give the
+     row back the width the massage mark now spends. It is flex:0 0 auto so
+     it never truncates - a half-written villa number is worse than none -
+     and the name takes the ellipsis instead.
+
+     It keeps the full "with villa 15", the owner's ruling the same day. The
+     short form was tried because at 320 the word "with" costs enough of the
+     name that Michel FAY reads "Mic...", and he ruled that the phrase has to
+     read as a phrase. So at 320 the name clips early on a party booking,
+     deliberately: the villa number to its left is how reception finds the
+     guest anyway, and both rows of a party carry it. */
+  .arr-top { display:flex; align-items:baseline; gap:8px; }
+  .arr-top .arr-n { flex:1; min-width:0; }
+  .arr-with { flex:0 0 auto; font-size:var(--t2); color:var(--mid);
+              white-space:nowrap; }
   .arr-n { font-size:var(--t3); white-space:nowrap; overflow:hidden;
            text-overflow:ellipsis; }
   /* The number, its confidence mark and the pencil, as the Pre-arrival SMS
@@ -114,6 +129,40 @@
   .fork.out svg { fill:var(--nodine); }
   /* There is no .fork.un any more: an unanswered booking draws no fork.
      See forkFor. */
+
+  /* The massage mark, 31 Aug. A lotus, from the owner's own reference, which
+     was a pair of hands cradling one. Both were drawn and mocked at 28px:
+     the hands reduce to a shape that reads as a tulip, and the two together
+     to a knot. The flower alone survives the size and holds the four state
+     colours cleanly, and the owner offered it as the alternative.
+
+     Stroked, not filled, which is how the reference is drawn and how .seen
+     beside it is already drawn. It sits at the fork's 28px so the two marks
+     read as a pair of facts about one guest rather than a big one and a
+     small one.
+
+     The colours are the law's, and the law is why none of them is red. Red
+     is failure and an allergy; a declined massage is neither, it is an
+     answer. Terracotta is the law's word for a negative answer, it is what
+     the spa board already draws for exactly this record, and it is what the
+     fork beside it already wears for "not dining". Ruled by the owner
+     31 Aug, choosing terracotta over red for that reason. */
+  .lotus { width:28px; height:28px; flex:0 0 28px; }
+  .lotus svg { width:100%; height:100%; display:block; fill:none;
+               stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+  /* Grey is the law's own --mid softened, the way .seen above already
+     softens it, rather than a new hex nobody else knows. Amber is the
+     literal this page's .ans already uses: an undefined custom property
+     computes to nothing here, the 29 Aug lesson at the top of this sheet. */
+  .lotus.wait { opacity:.55; }
+  .lotus.wait svg { stroke:var(--mid); }
+  .lotus.sugg svg { stroke:#8A6A2F; }
+  .lotus.done svg { stroke:var(--dine); }
+  .lotus.decl svg { stroke:var(--nodine); }
+  /* The word under it, in the same amber, because a colour on its own does
+     not say what the desk is being asked to do. Only on a suggestion: the
+     other three states are not the desk's move. */
+  .arr-s .sugg { color:#8A6A2F; font-weight:600; }
 
   /* Opened the message and did not finish. Outlined rather than filled, so it
      reads as the absence of an answer rather than as one.
@@ -614,7 +663,6 @@ function rowHTML(r){
      both is the only way the two boards can agree about a party. */
   var withVillas = groupMatesText(r, ROWS);
   var bits = [nightsLabel(r.stay)];
-  if (withVillas) bits.push(esc(withVillas));
   var i = etaIndex(r.pre && r.pre.arriveSlot);
   if (i >= 0) bits.push('<span class="eta">' + ETA_SLOTS[i][2] + '</span>');
   else if (r.stay.adults)
@@ -636,11 +684,22 @@ function rowHTML(r){
     var n = answeredCount(r.pre, r.stay);
     bits.push('<span class="ans">' + n.done + '/' + n.of + ' answered</span>');
   }
+  /* The one massage state that is the desk's move gets the word as well as
+     the colour: amber says "chase this" and this says what the chase is. */
+  var mst = massageState(r.spa, r.pre);
+  /* One word, not "massage suggested": the lotus beside it already says
+     which thing, and the pair together overran the line at 390 and clipped
+     to "massage...", which told reception nothing at all. */
+  if (mst === 'sugg')
+    bits.push('<span class="sugg">suggested</span>');
   return '<button class="arr'+tint+(isArrived(r.pre)?' is-done':'')+(open?' open':'')+
          '" data-villa="'+r.villa+'">'+
          '<div class="arr-v">'+r.villa+'</div>'+
          '<div class="arr-mid">'+
-           '<div class="arr-n">'+esc(nameOf(r.stay))+'</div>'+
+           '<div class="arr-top">'+
+             '<div class="arr-n">'+esc(nameOf(r.stay))+'</div>'+
+             (withVillas ? '<div class="arr-with">'+esc(withVillas)+'</div>' : '')+
+           '</div>'+
            '<div class="arr-s">'+bits.join(' \u00b7 ')+'</div>'+
            /* The number, its confidence mark and the pencil, exactly as the
               Pre-arrival SMS rows carry them and from the same builder. On
@@ -710,6 +769,16 @@ function etaLabel(p){
    owner before I looked at the geometry instead of the viewBox.
    Even tines, a rounded bowl, and a blade on a straight spine. Content
    sits x 4.8-19.4, y 3-21 in a 24 box, so it has air on every side. */
+/* The lotus: one centre petal and a mirrored pair, on the fork's own 24
+   grid. Stroked, so it carries its state in the stroke colour. */
+var ICON_LOTUS = '<svg viewBox="0 0 24 24">' +
+  '<path d="M12 3.4c2.5 2.9 3.7 5.5 3.7 7.8 0 2.4-1.2 4.5-3.7 6.2' +
+  '-2.5-1.7-3.7-3.8-3.7-6.2 0-2.3 1.2-4.9 3.7-7.8z"/>' +
+  '<path d="M11.4 17.5c-2.8.5-5.2-.2-7-2C2.5 13.6 1.9 11.2 2.2 8.6' +
+  'c2.6-.3 5 .3 6.8 2.1"/>' +
+  '<path d="M12.6 17.5c2.8.5 5.2-.2 7-2 1.9-1.9 2.5-4.3 2.2-6.9' +
+  'c-2.6-.3-5 .3-6.8 2.1"/></svg>';
+
 var ICON_FORK = '<svg viewBox="0 0 24 24">' +
   '<path d="M4.8 3h1.4v6H4.8z"/><path d="M7.3 3h1.4v6H7.3z"/>' +
   '<path d="M9.8 3h1.4v6H9.8z"/>' +
@@ -740,6 +809,14 @@ function forkFor(p){
   if (!p || (p.dining !== true && p.dining !== false)) return '';
   return '<span class="fork ' + (p.dining ? 'in' : 'out') + '">' +
          ICON_FORK + '</span>';
+}
+
+/* The state comes from massageState in nala-shared.js, which the sheet's
+   Wellness lines answer to as well, so the mark and the words under it
+   cannot say different things about one guest. */
+function lotusFor(state){
+  if (!state) return '';
+  return '<span class="lotus ' + state + '">' + ICON_LOTUS + '</span>';
 }
 
 function dayLabel(key){
