@@ -390,19 +390,19 @@ with sync_playwright() as p:
     # board did not, so a cell made here could never be told from the villa
     # it sat in, and when Mews moved or renamed the booking, tonight's
     # answer and its dietary note stayed with the ROOM in front of whoever
-    # took it next (3 Sep). Villa 9 has no booking in this fixture, so its
-    # write above is also the walk-in case: no id known, none invented.
-    ck("a cell for a villa with no booking writes no booking id",
-       "bookingId" not in json.loads(w[0]["b"]))
-    pg.evaluate("()=>{ roomguests['13']={name:'Keyed',bookingId:'bk-13'};"
-                "saveManual('room-13',{status:'in',pax:2,room:'13',source:'manual'}); }")
-    pg.wait_for_timeout(300)
-    wk=[x for x in WRITES if "/dinner/"+today+"/13" in x["u"] and x["m"]=="PUT"]
+    # took it next (3 Sep). Villa 9 holds res-9 in this fixture, so the
+    # staff save above is the stamped case; villa 10 holds nobody, so a
+    # save there is the walk-in: no id known, none invented.
     ck("a cell written for a Mews villa is stamped with its booking id",
-       len(wk)==1 and json.loads(wk[0]["b"]).get("bookingId")=="bk-13")
-    # Put the board back the way this test found it, or villa 13's two
+       json.loads(w[0]["b"]).get("bookingId")=="res-9")
+    pg.evaluate("()=>saveManual('room-10',{status:'in',pax:2,room:'10',source:'manual'})")
+    pg.wait_for_timeout(300)
+    wk=[x for x in WRITES if "/dinner/"+today+"/10" in x["u"] and x["m"]=="PUT"]
+    ck("a cell for a villa with no booking writes no booking id",
+       len(wk)==1 and "bookingId" not in json.loads(wk[0]["b"]))
+    # Put the board back the way this test found it, or villa 10's two
     # covers ride into every count below.
-    pg.evaluate("()=>{ saveManual('room-13'); delete roomguests['13']; }")
+    pg.evaluate("()=>saveManual('room-10')")
     pg.wait_for_timeout(300)
 
     # 6 rollback on failure
