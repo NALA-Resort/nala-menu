@@ -568,12 +568,12 @@ ck("an untouched form is not stamped: nobody has answered anything",
 STORE["/bookings/" + RES.MewsId + "/prearrival/at"] = "2026-09-01T09:00:00Z";
 await post(Object.assign({}, RES, { CustomerId: CID_B }));
 ck("the event that changes the customer stamps the answers with the OLD one",
-   STORE["/bookings/" + RES.MewsId + "/prearrival"].forCustomerId === CID_A);
+   (STORE["/bookings/" + RES.MewsId + "/prearrival"] || {}).forCustomerId === CID_A);
 ck("while the booking itself moves to the new customer",
    STORE["/bookings/" + RES.MewsId + "/pms"].customerId === CID_B);
 await post(Object.assign({}, RES, { CustomerId: CID_B }));
 ck("a standing stamp is never overwritten",
-   STORE["/bookings/" + RES.MewsId + "/prearrival"].forCustomerId === CID_A);
+   (STORE["/bookings/" + RES.MewsId + "/prearrival"] || {}).forCustomerId === CID_A);
 /* The guest-first case: the form is answered days before Mews sends the
    booking, so there is no prev to prefer and the incoming customer is the
    person the answers were given for. */
@@ -581,7 +581,7 @@ install();
 STORE["/bookings/" + RES.MewsId + "/prearrival/at"] = "2026-09-01T09:00:00Z";
 await post(Object.assign({}, RES, { CustomerId: CID_A }));
 ck("a form answered before Mews knew the booking is stamped on first sight",
-   STORE["/bookings/" + RES.MewsId + "/prearrival"].forCustomerId === CID_A);
+   (STORE["/bookings/" + RES.MewsId + "/prearrival"] || {}).forCustomerId === CID_A);
 
 /* ── the rate ───────────────────────────────────────────────── */
 /* The Mews rate name, as words. The desk's booking flags read it through
