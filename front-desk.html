@@ -81,7 +81,6 @@
   .arr-s .eta { font-size:var(--t2); font-weight:600; color:var(--ink); }
   /* The count reads in the row's own amber, so it is the same fact as the
      tint said louder rather than a second signal to decode. */
-  .arr-s .ans { color:#8A6A2F; font-weight:600; }
 
   /* Confirmed rows recede but stay legible: reception still has to find a
      guest who checked in an hour ago. */
@@ -100,7 +99,11 @@
 
   /* The summary drops out of the row it belongs to, so it is inset and shares
      the row's left edge rather than floating as its own card. */
-  .sum { border:1px solid var(--rule); border-top:none; border-radius:0 0 8px 8px;
+  /* Green, always, and that is not a lost scope: a summary only opens on a
+     completed row (see the tap handler), so the only row it can hang off is
+     already green. Grey and amber open the form instead. */
+  .sum { border:1px solid rgba(122,160,130,.34); border-top:none;
+         border-radius:0 0 8px 8px; background:rgba(122,160,130,.11);
          margin:-8px 0 7px; padding:12px 13px 13px; }
   .sum-r { display:flex; gap:10px; font-size:var(--t2); line-height:1.5;
            padding:3px 0; align-items:baseline; }
@@ -163,10 +166,6 @@
   .lotus.sugg svg { stroke:#8A6A2F; }
   .lotus.done svg { stroke:var(--dine); }
   .lotus.decl svg { stroke:var(--nodine); }
-  /* The word under it, in the same amber, because a colour on its own does
-     not say what the desk is being asked to do. Only on a suggestion: the
-     other three states are not the desk's move. */
-  .arr-s .sugg { color:#8A6A2F; font-weight:600; }
 
   /* Opened the message and did not finish. Outlined rather than filled, so it
      reads as the absence of an answer rather than as one.
@@ -195,7 +194,6 @@
      solid left edge to say somebody has met it halfway. */
   .arr.part-form { background:rgba(194,154,85,.11); border-color:rgba(194,154,85,.36);
                    border-left:3px solid rgba(194,154,85,.85); }
-  .sum { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
 
   .empty { font-size:var(--t3); color:var(--mid); font-style:italic; padding:4px 0 2px; }
   .spacer { height:40px; }
@@ -286,21 +284,13 @@
      covers row is a `.pax-row` and wears the same dress: one rule, or the
      two rows drift. The rail scrolls itself; the sheet never scrolls
      sideways, which the suite asserts at all three widths. */
-  .rail { flex-wrap:nowrap; overflow-x:auto;
+  /* Left, to line up with the labels above them. It used to be `safe
+     center`, so a row that fitted sat centred under a centred label; with
+     the labels left aligned that read as a row that had slipped. Starting
+     left also makes an overflow legible: the first chip is always at the
+     margin, so the clipped edge is only ever on the right. */
+  .rail { flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start;
           -webkit-overflow-scrolling:touch; padding-bottom:6px; }
-  /* Two declarations on purpose, not a leftover. A plain `center` centres a
-     row that fits - which is what the sheet's centred labels want - but when
-     the row overflows it centres the overflow too, and the chips off the
-     LEFT edge cannot be scrolled back to. `safe center` centres only while
-     it fits and falls back to the start once it does not; a browser that
-     does not know the keyword ignores the line and keeps flex-start, which
-     is the safe half of the same bargain. */
-  /* Left, to line up with the labels above them. This used to be
-     `safe center` so a row that fitted sat centred under a centred label;
-     with the labels left aligned that now reads as a row that has slipped.
-     Starting left also makes an overflow legible: the first chip is always
-     at the margin, so the clipped edge is only ever on the right.      */
-  .rail { justify-content:flex-start; }
   .rail > * { flex:0 0 auto; white-space:nowrap; }
   .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
           border-radius:20px; font-family:var(--ui-font); font-size:var(--t2);
@@ -551,24 +541,6 @@ var FORM_QUESTIONS = [
     answered:function(p){ return p.wellness === true || p.wellness === false; } }
 ];
 
-/* How many of the questions this guest was SHOWN they have answered, as the
-   fraction reception reads off an amber row: "2/6 answered". Asked for by
-   the owner 28 Aug, because amber said work-to-do without saying how much,
-   and a row one answer short looked exactly like one nobody had touched.
-
-   Both halves come from FORM_QUESTIONS, so the count cannot drift from the
-   "still to ask" sentence built out of the same list - and the denominator
-   is what THIS guest was asked, never a constant: a one night stay is shown
-   three of the six, and scoring them out of six would mark them down for
-   questions nobody put to them. */
-function answeredCount(p, stay){
-  var one = oneNightStay(stay), rec = p || {};
-  var asked = FORM_QUESTIONS.filter(function(q){
-    return !(one && !q.askedOnOneNight); });
-  return { done: asked.filter(function(q){ return q.answered(rec); }).length,
-           of:   asked.length };
-}
-
 /* The questions this guest was shown and has not answered, in the form's own
    order. Empty means nothing is outstanding, which is a different sentence
    at the desk and the whole reason this exists: a guest who answered every
@@ -681,21 +653,14 @@ function rowHTML(r){
   var st = formState(r.pre, r.stay);
   var tint = st === 'completed' ? ' done-form'
            : st === 'incomplete' ? ' part-form' : ' todo-form';
-  /* On an amber row only. Green has nothing left to count and grey has
-     nothing counted yet, so on those it would be a number saying what the
-     colour already says. */
-  if (st === 'incomplete'){
-    var n = answeredCount(r.pre, r.stay);
-    bits.push('<span class="ans">' + n.done + '/' + n.of + ' answered</span>');
-  }
-  /* The one massage state that is the desk's move gets the word as well as
-     the colour: amber says "chase this" and this says what the chase is. */
+  /* No count and no word beside the amber. Both were removed 1 Sep by the
+     owner, on one principle: the amber IS the message. A row tinted amber
+     already says the form is part answered, and an amber lotus already says
+     the masseuse has offered a time - a number and a word next to them were
+     restating the colour and eating the line, which then clipped the ETA
+     reception actually plans around. The detail is one tap away in the
+     summary, which is where it belongs. */
   var mst = massageState(r.spa, r.pre);
-  /* One word, not "massage suggested": the lotus beside it already says
-     which thing, and the pair together overran the line at 390 and clipped
-     to "massage...", which told reception nothing at all. */
-  if (mst === 'sugg')
-    bits.push('<span class="sugg">suggested</span>');
   return '<button class="arr'+tint+(isArrived(r.pre)?' is-done':'')+(open?' open':'')+
          '" data-villa="'+r.villa+'">'+
          '<div class="arr-v">'+r.villa+'</div>'+
@@ -2317,14 +2282,17 @@ document.getElementById('board').addEventListener('click', function(e){
   var r = rowFor(btn.getAttribute('data-villa'));
   if (!r) return;
 
-  /* A guest who filled the form in gets it read back to them, and reception
-     edits or checks in from there. A guest with nothing to read back goes
-     straight to the form, because an empty summary says nothing.
+  /* Only a COMPLETED row reads its answers back. Grey and amber open the
+     form, because on those rows there is something to fill in and the tap
+     should land where the work is - the owner's ruling, 1 Sep, replacing the
+     older hasForm test that opened a summary on any row carrying any answer
+     at all. That summary was a half-filled page with an Edit button under
+     it, so every amber row cost reception two taps to reach the thing they
+     had opened it for.
 
-     Deliberately still hasForm rather than the new formState: a booking that
-     is incomplete only because one mandatory answer is missing still has
-     answers worth reading back, and Mark as completed is one Edit away. */
-  if (!hasForm(r.pre)) return openGuest(r);
+     This is also what makes the summary's green tint honest: it can now only
+     ever hang off a green row. */
+  if (formState(r.pre, r.stay) !== 'completed') return openGuest(r);
   OPEN = (OPEN === r.villa) ? null : r.villa;
   render();
 });

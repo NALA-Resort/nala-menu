@@ -332,6 +332,44 @@ function asCount(v, min, max) {
   return n;
 }
 
+/* The note as a person wrote it, dug out of what Zapier actually sends.
+
+   Mews keeps reservation notes as OBJECTS - createdUtc, id, orderId, text,
+   type, updatedUtc - and Zapier flattens the array into one string of
+   "key: value" pairs. What reached /internal for one booking, and printed
+   on the 26 Aug Service Sheet as nine lines of GUIDs and timestamps in a
+   staff row, was that whole flattened object: the words the receptionist
+   typed were six words among forty, hiding behind "text:".
+
+   So the text fields are lifted out and the metadata is dropped. Only when
+   the string is unmistakably that shape - a "text:" with at least two of
+   the object's other keys beside it - because a note typed by a person is
+   passed through untouched, and a person could conceivably write "id:" once.
+   Several notes flattened into one dump each give up their text, joined
+   with a middle dot like the sheet's own separators. A dump with nothing
+   behind "text:" returns null: metadata alone is not a note. */
+const MEWS_NOTE_KEYS = "createdUtc|updatedUtc|orderId|type|id";
+function mewsNoteText(v) {
+  if (typeof v !== "string") return v;
+  /* Split on the keys rather than matching around them: a lazy capture
+     bounded by a lookahead reads a dump whose text is EMPTY as the next
+     key's value, because the engine grows the capture before it gives back
+     the whitespace. Splitting has no such choice to make. */
+  const parts = v.split(
+    new RegExp("\\s*\\b(" + MEWS_NOTE_KEYS + "|text):\\s*", "g"));
+  const keys = new Set(), texts = [];
+  let sawText = false;
+  for (let i = 1; i < parts.length; i += 2) {
+    if (parts[i] === "text") {
+      sawText = true;
+      const t = (parts[i + 1] || "").trim();
+      if (t) texts.push(t);
+    } else keys.add(parts[i]);
+  }
+  if (!sawText || keys.size < 2) return v;
+  return texts.length ? texts.join(" · ") : null;
+}
+
 /* villa validates as a short string OR a number, so either is passed through
    and anything else becomes null. */
 function asVilla(v) {
@@ -479,9 +517,9 @@ function readReservation(p) {
        booking where the companion happens to come first still works. That
        costs nothing and removes the only guess left in it. */
     companion:     companionName(p),
-    /* Whatever a receptionist typed into Mews. Read for the first time on
-       19 Aug: it was being discarded, so the two systems held different facts
-       about the same guest and neither showed the other's. */
+    /* Whatever a receptionist typed into Mews. The words only - Zapier sends
+       the note as its own flattening of Mews' note objects, and mewsNoteText
+       strips the metadata before it is stored. */
     mewsNote:      pick(p, ["Notes", "notes", "Note", "note",
                             "GuestNotes", "guest_notes", "CustomerNotes"]),
     customerId:    pickGuid(p, ["CustomerId", "customer_id", "CustomerID",
@@ -781,17 +819,24 @@ export default {
       /* The Mews note, once. Written to its own staff-only node, and only
          when nothing is there: a manager's correction has to survive the next
          event for that booking, and Mews sends the whole reservation every
-         time. So this seeds the record and never overwrites it.
-
-         Kept in its own field, apart from the edited one, so the original is
-         still readable after somebody rewrites it. */
-      if (r.mewsNote) {
+         time. So this seeds the record and never overwrites it - with one
+         exception below. mewsNoteText first, so what is stored is the
+         receptionist's words, never Zapier's flattening around them. */
+      const seed = mewsNoteText(asText(r.mewsNote, 2000));
+      if (seed) {
         let had = null;
         try { had = await db(env, "/internal/" + r.id + "/fromMews", "GET"); }
         catch (e) { had = null; }
-        if (!had) {
+        /* The exception: what is already there is itself a stored dump,
+           seeded before mewsNoteText existed. Mews resends the whole
+           reservation on every event, so each repairs itself the next time
+           its booking so much as breathes. A manager's rewrite lives in
+           /internal/<id>/note and is not touched on either path; a fromMews
+           a person could actually read is never overwritten either. */
+        const stale = typeof had === "string" && mewsNoteText(had) !== had;
+        if (!had || stale) {
           await db(env, "/internal/" + r.id, "PATCH",
-                   { fromMews: asText(r.mewsNote, 2000) });
+                   { fromMews: asText(seed, 2000) });
         }
       }
 

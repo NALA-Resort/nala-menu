@@ -75,7 +75,11 @@ PRE = {
           "arriveSlot":"16","arriveApproved":15,"purpose":["A celebration"],"approach":"most",
           "occasion":"anniversary","wellness":True,"wellDay":plus(1),"wellTime":"late morning",
           "note":"quiet villa please"},
+  # The suite's completed booking, and what the summary tests open. It needs
+  # all three mandatory answers or formState calls it incomplete - which,
+  # since 1 Sep, means a tap opens the form rather than the summary.
   "b9":  {"at":"2026-08-16T11:00:00Z","dining":False,"noDiets":True,
+          "wellness":False,
           "arriveSlot":"before2","arriveNote":"flight lands 11am"},
   # confirmed at the desk
   "b7":  {"at":"2026-08-15T10:00:00Z","confirmedAt":"2026-08-17T14:00:00Z",
@@ -437,6 +441,29 @@ with sync_playwright() as p:
        (pg.locator('.arr[data-villa="9"]').click(), pg.wait_for_timeout(300),
         pg.evaluate("()=>document.querySelectorAll('.sum').length"))[2] == 0)
 
+    #  ── which rows open a summary at all, 1 Sep ──────────────
+    #  Only a completed row reads its answers back. Grey and amber open the
+    #  form, because on those there is something to fill in and the tap should
+    #  land where the work is. Before this, any row with any answer on it
+    #  opened a half-filled summary with an Edit button under it, so every
+    #  amber row cost reception two taps to reach what they had opened it for.
+    #  Runs with nothing open: the assertion is that the tap opens the FORM,
+    #  which a summary left over from an earlier row would mask.
+    for v, why in (("12", "part answered"), ("2", "not started")):
+        pg.locator('.arr[data-villa="%s"]' % v).click(); pg.wait_for_timeout(500)
+        ck("a %s row opens the form instead, where the work is" % why,
+           pg.evaluate("()=>document.querySelectorAll('.sum').length") == 0 and
+           pg.evaluate("()=>backdrop.className.indexOf('show')>-1"))
+        pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(300)
+    #  Which is what makes the summary's green honest: the only row it can
+    #  hang off is already green.
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(400)
+    ck("so the summary's green can only ever sit under a green row",
+       "done-form" in pg.evaluate(
+         "()=>{const s=document.querySelector('.sum');"
+         "return s?s.previousElementSibling.className:'';}"))
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+
     # A companion only Mews knows: nobody typed it here, and reception still
     # has to greet both people.
     pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
@@ -536,13 +563,13 @@ with sync_playwright() as p:
        lotus_class("4") == "lotus sugg")
     ck("and it is neither the waiting grey nor the booked green",
        lotus_colour("4") not in (probe["mid"], probe["dine"]))
-    #  Amber alone says chase this. It does not say what the chase is.
-    ck("the row says in a word what the amber is asking for, without clipping",
-       "suggested" in pg.evaluate(
+    #  No word beside the amber. The owner removed it 1 Sep along with the
+    #  answered count, on one principle: the amber IS the message, and a
+    #  word restating it ate the line the ETA needs.
+    ck("the amber says it on its own, with no word restating the colour",
+       "suggested" not in pg.evaluate(
          "()=>document.querySelector('.arr[data-villa=\"4\"] .arr-s').textContent"))
-    #  A word the row cannot fit is a word reception never reads: this line
-    #  clipped to "massage..." at 390 before it was cut to one word.
-    ck("and the line actually fits it rather than clipping it away",
+    ck("and the stay line fits without clipping now that it is shorter",
        pg.evaluate("()=>{const e=document.querySelector"
                    "('.arr[data-villa=\"4\"] .arr-s');"
                    "return e.scrollWidth <= e.clientWidth + 1;}"))
@@ -567,8 +594,6 @@ with sync_playwright() as p:
        lotus_class("4") == "lotus wait" and lotus_colour("4") == probe["mid"])
     ck("a guest who never opened the form draws no mark",
        lotus_class("2") is None)
-    ck("nor does one whose form never reached the massage question",
-       lotus_class("9") is None)
     pg.close()
     #  A no thank you is the absence of a request, not a declined one, so it
     #  must not borrow the declined colour. Written first against villa 9,
@@ -721,42 +746,6 @@ with sync_playwright() as p:
          "()=>document.querySelector('.arr[data-villa=\"2\"]').className"))
     pg.close()
 
-    # ── the amber row says how far off it is ────────────────────
-    # Asked for by the owner 28 Aug: amber said work-to-do without saying
-    # how much, so a row one answer short looked exactly like one nobody
-    # had touched. The denominator is what THIS guest was asked - a one
-    # night stay is shown three of the six questions, and scoring them out
-    # of six would mark them down for questions never put to them.
-    pg = board()
-    def rowtext(v):
-        return pg.evaluate("v=>document.querySelector('.arr[data-villa=\"'+v+'\"] .arr-s')"
-                           ".textContent", str(v))
-    ck("a part answered row counts what is answered, out of what was asked",
-       "/" in rowtext(6) and "answered" in rowtext(6))
-    # The denominator is what THIS guest was asked. Put to the function
-    # directly with the two stay lengths, because the fixture's amber row is
-    # a multi night stay and a row assertion alone cannot tell a correct
-    # denominator from a hard coded six.
-    #  Both departures are counted FROM today rather than written down. The
-    #  one night stay was the literal 2026-08-29, which was one night while
-    #  it was the 28th and became a zero night stay the moment the date
-    #  rolled over - the suite went red at midnight having tested nothing.
-    #  The same fault the tally suite was taken off the clock for.
-    den = pg.evaluate("""(t)=>{
-      const plus=n=>{const d=new Date(t+'T12:00:00');d.setDate(d.getDate()+n);
-        return d.toISOString().slice(0,10);};
-      const long={arrive:t, depart:plus(6)}, one={arrive:t, depart:plus(1)};
-      const p={dining:true, noDiets:true};
-      return [answeredCount(p,long).of, answeredCount(p,one).of];}""", today)
-    print("   denominators [multi, one night]:", den)
-    ck("the denominator is the questions that guest was actually shown",
-       den[0] == 6 and den[1] == 3 and den[0] != den[1])
-    # Green has nothing left to count and grey has nothing counted yet, so on
-    # those the number would only repeat what the colour already says.
-    ck("a completed row carries no count", "answered" not in rowtext(4))
-    ck("nor does one nobody has touched", "answered" not in rowtext(2))
-    pg.close()
-
     # ── the way back to nobody-asked ────────────────────────────
     # Ruled by the owner, 26 Aug: every answer must be undoable. The chips
     # always toggled off; the two segments could only switch sides, so a
@@ -804,12 +793,6 @@ with sync_playwright() as p:
     ck("and the dinner cell is deleted, so the villa reads awaiting again",
        len([x for x in WRITES if x["m"] == "DELETE"
             and ("/dinner/" + today + "/4") in x["u"]]) == 1)
-    # What the boards then say: the summary reads unanswered, not a decision.
-    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
-    sumtxt = pg.locator(".sum").inner_text()
-    ck("the summary reads the question as unanswered again",
-       "Not answered" in sumtxt and "Not dining" not in sumtxt
-       and "Not interested" not in sumtxt)
     #  Was "goes back to grey". There is no grey fork now: clearing the
     #  answer removes the icon, which is the same fact said by absence.
     ck("the fork goes away again",
@@ -818,6 +801,13 @@ with sync_playwright() as p:
     ck("and the row drops from green to part answered",
        "part-form" in pg.evaluate(
          "()=>document.querySelector('.arr[data-villa=\"4\"]').className"))
+    #  And having dropped to amber it opens the FORM, not a summary - the
+    #  owner's ruling of 1 Sep. Reading a cleared answer back to a guest is
+    #  not what reception needs on a row with a hole in it; filling it is.
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    ck("and tapping it now opens the form rather than a summary",
+       pg.evaluate("()=>document.querySelectorAll('.sum').length") == 0 and
+       pg.evaluate("()=>!!document.getElementById('sDin')"))
     pg.close()
     DINNER.clear()
 
@@ -1745,8 +1735,12 @@ with sync_playwright() as p:
     # reasoning that a guest who has arrived has arrived, which is true of
     # guests and not of taps.
     ARRIVED = dict(PRE_FULL) if "PRE_FULL" in dir() else None
+    #  wellness answered, so formState calls this completed. Since 1 Sep only
+    #  a completed row opens its summary; an incomplete one opens the form and
+    #  there would be no .sum-btns to read.
     arrived_pre = {"at": now.isoformat(), "dining": True, "pax": 2,
                    "diets": ["Gluten free"], "noDiets": False,
+                   "wellness": False,
                    "confirmedAt": now.isoformat(),
                    "checkedInAt": now.isoformat()}
     def arrived_fb(route, request):
