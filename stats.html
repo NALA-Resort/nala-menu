@@ -6,55 +6,57 @@
 <link rel="manifest" href="manifest.json">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Nala · Statistics</title>
+<link rel="stylesheet" href="nala-ui2.css?v=6">
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA;
-          --green:#5E7D67; --red:#9E6455; }
-  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
-         padding:28px 24px 60px; }
+  /* This page's OWN colours, restored 29 Aug. The first conversion
+     dropped each page's :root wholesale to remove the tokens the shared
+     sheet owns, and took these with them. An undefined custom property
+     does not fall back, it computes to nothing: fill:var(--dine) became
+     a black fork and color:var(--dine) a black stat, silently.
+     --green is not in the shared sheet on purpose - it is a pale fill on
+     five pages and a dark ink on two - so it lives here.               */
+  :root { --green:#5E7D67 }
+
+  body { padding:28px 24px 60px; }
+  
   .wrap { max-width:520px; margin:0 auto; }
 
-  .wordmark { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.45em;
-              text-transform:uppercase; color:var(--mid); text-align:center; }
-  .title { text-align:center; font-family:Helvetica,Arial,sans-serif; font-size:13px;
-           font-weight:bold; letter-spacing:.1em; text-transform:uppercase; margin-top:6px; }
-  .range { text-align:center; font-style:italic; font-size:12px; color:var(--mid); margin-top:6px; }
+  .wordmark { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); text-align:center; }
+  .title { text-align:center; font-family:var(--ui-font); font-size:var(--t2);
+           font-weight:bold; margin-top:6px; }
+  .range { text-align:center; font-style:italic; font-size:var(--t2); color:var(--mid); margin-top:6px; }
 
-  .sec { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
-         text-transform:uppercase; color:var(--mid); margin:28px 0 12px; }
+  .sec { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); margin:28px 0 12px; }
 
   .stat { display:flex; align-items:baseline; gap:10px; padding:11px 0;
           border-bottom:1px solid var(--rule); }
-  .stat-name { flex:1; font-size:14px; }
-  .stat-sub { font-style:italic; font-size:11px; color:var(--mid); }
-  .stat-val { font-family:Helvetica,Arial,sans-serif; font-size:15px; white-space:nowrap; }
+  .stat-name { flex:1; font-size:var(--t3); }
+  .stat-sub { font-style:italic; font-size:var(--t2); color:var(--mid); }
+  .stat-val { font-family:var(--ui-font); font-size:var(--t3); white-space:nowrap; }
 
   .bar { height:5px; background:var(--rule); border-radius:3px; margin-top:6px; overflow:hidden; }
   .bar i { display:block; height:100%; background:var(--green); }
 
   .headline { text-align:center; padding:22px 0 6px; }
-  .headline .big { font-size:44px; line-height:1; }
-  .headline .cap { font-family:Helvetica,Arial,sans-serif; font-size:8px;
-                   letter-spacing:.25em; text-transform:uppercase; color:var(--mid); margin-top:8px; }
+  .headline .big { font-size:var(--t5); line-height:1; }
+  .headline .cap { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); margin-top:8px; }
 
   .seemenus { text-align:center; margin:22px 0 4px; }
-  .seemenus a { font-family:Helvetica,Arial,sans-serif; font-size:10px;
-                letter-spacing:.18em; text-transform:uppercase; color:var(--mid);
+  .seemenus a { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
                 text-decoration:none; border-bottom:1px solid var(--rule);
                 padding-bottom:3px; }
 
-  .note { font-style:italic; font-size:12px; color:var(--mid); line-height:1.6;
+  .note { font-style:italic; font-size:var(--t2); color:var(--mid); line-height:1.6;
           padding:10px 0; }
 
   .actions { margin-top:34px; display:flex; gap:10px; }
   .btn { flex:1; text-align:center; padding:13px; border:1px solid var(--ink);
-         font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.15em;
-         text-transform:uppercase; color:var(--ink); text-decoration:none;
+         font-family:var(--ui-font); font-size:var(--t2); color:var(--ink); text-decoration:none;
          background:transparent; cursor:pointer; }
-  .empty { font-style:italic; color:var(--mid); font-size:12px; padding:8px 0; }
+  .empty { font-style:italic; color:var(--mid); font-size:var(--t2); padding:8px 0; }
 </style>
 </head>
-<body>
+<body class="ui2">
 <div class="wrap">
   <div class="wordmark">Nala</div>
   <div class="title">Statistics</div>
@@ -86,7 +88,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=41"></script>
+<script src="nala-shared.js?v=48"></script>
 <script>
 /* Reading only, no writes, but it is the resort's numbers and there was no
    gate on it at all until 18 Aug. Same audience as the Reservations board. */

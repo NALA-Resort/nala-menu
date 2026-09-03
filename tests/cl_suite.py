@@ -34,17 +34,54 @@ bf24=(now-datetime.timedelta(minutes=24)).isoformat()   # red band
 hk={"7":{"done":now.strftime("%Y-%m-%dT%H:%M:%S")+".123456"},"2":{"bfast":bf},
     "11":{"kind":"clean"}, "17":{"kind":"pre"}, "13":{"kind":"pre","done":now.isoformat()}, "8":{"departed":True}, "12":{"departed":True},
     "14":{"bfast":bf2}, "6":{"bfast":bf16}, "9":{"bfast":bf24}}
+HK0=json.dumps(hk)                  # the starting board, for resetDb
+
+def resetDb():
+    """Hand the next scenario a clean board.
+
+    Writes are kept now (see remember), which is what a database does and
+    what stops the twenty second poll from wiping a save mid-assertion. It
+    also means one scenario's saves would otherwise be waiting for the
+    next: these sections each open a fresh page precisely BECAUSE they
+    want a fresh board, and villa 7 arriving already finished is a fixture
+    statement, not a leftover from whatever an earlier tap wrote."""
+    hk.clear(); hk.update(json.loads(HK0))
+
 staff={"staff@nalaresort,com,au":{"name":"Admin","role":"admin"},
        "housekeeping@nalaresort,com,au":{"name":"Housekeeping","role":"housekeeping"},
        "chef@nalaresort,com,au":{"name":"Chef","role":"chef"},
        "waiter@nalaresort,com,au":{"name":"Waiter","role":"waiter"},
        "482913@staff,nala":{"name":"NALA Sync","role":"sync"}}
 prevHk={"16":{"pushed":(now-datetime.timedelta(days=1)).isoformat()}}
+def remember(u, raw):
+    """Keep an accepted write, so the next read serves it back.
+
+    The board re-reads every twenty seconds whenever no sheet is open, and
+    this stub answered that read with the original fixture - so a poll
+    silently undid whatever had just been saved. A villa set to be cleaned
+    went back to a service a moment later, the control that only exists on
+    an overridden villa was then missing, and the run died on it several
+    assertions further along, with nothing pointing at the poll.
+
+    PATCH semantics, like the database: the fields given are merged in, and
+    a null deletes its key - which is exactly how setField clears one."""
+    hit = re.search(r"/hk/(\d{4}-\d{2}-\d{2})/(\d+)\.json", u)
+    if not hit or hit.group(1) != today: return
+    try: obj = json.loads(raw or "null")
+    except Exception: return
+    if obj is None: hk.pop(hit.group(2), None); return
+    cur = dict(hk.get(hit.group(2), {}))
+    for k, v in obj.items():
+        if v is None: cur.pop(k, None)
+        else: cur[k] = v
+    hk[hit.group(2)] = cur
+
 def fb(route,request):
     u=request.url; m=request.method
     if m=="PATCH":
         WRITES.append({"u":u,"b":request.post_data})
         if STATE["fail"]: route.fulfill(status=401,body="no"); return
+        remember(u, request.post_data)
         route.fulfill(status=200,content_type="application/json",body=request.post_data); return
     body="null"
     if "/staff" in u: body=json.dumps(staff)
@@ -57,6 +94,29 @@ def fb(route,request):
     route.fulfill(status=200,content_type="application/json",body=body)
 from playwright.sync_api import sync_playwright
 P=F=0
+def settle(pg, timeout=5000):
+    """Wait for a sheet that is saving to finish, close and repaint.
+
+    The button standard of 27 Aug made every save hold the sheet open: the
+    button says Saving, then Saved, holds the green a moment, and only then
+    closes and redraws the board behind it. A fixed 400ms wait landed inside
+    that hold - the button still read "Saved" and the overlay was still up -
+    so the next tap went at a tile through an open sheet, the change never
+    took, and the run died several assertions later on a control that was
+    never going to be there. Waiting on the overlay is waiting on the thing
+    the page actually does, so it cannot drift out of step with the hold.
+
+    Returns True if the sheet closed. False is not a failure: a refused save
+    keeps it open on purpose, and the caller then has to close it before
+    touching the board underneath."""
+    try:
+        pg.wait_for_selector("#ov:not(.show)", timeout=timeout)
+    except Exception:
+        return False
+    pg.wait_for_timeout(120)          # the repaint that follows the close
+    return True
+
+
 def ck(n,c):
     global P,F
     print(("PASS " if c else "FAIL ")+n); P,F=(P+1,F) if c else (P,F+1)
@@ -65,6 +125,7 @@ def tile(pg,n):
 with sync_playwright() as p:
     b=p.chromium.launch()
     def page(email):
+        resetDb()
         pg=b.new_page(viewport={"width":820,"height":1100},device_scale_factor=2)
         pg.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body=sdk(email)))
         pg.route("**/firebase-auth-compat.js",lambda r,_:r.fulfill(status=200,content_type="application/javascript",body="/*n*/"))
@@ -221,10 +282,20 @@ with sync_playwright() as p:
        "mark as clean" not in us and "possibly available" not in us and "departed" not in us)
     ck("an unknown villa can be set to any of the three jobs",
        "to be cleaned" in us and "to be serviced" in us and "mark as empty" in us)
+    #  Was pinned to rgb(153,153,144), the old --mid. The ruling is that
+    #  unknown wears the QUIET grey and not an alarm colour, which is a
+    #  statement about the token, so it is read from the token.
     ck("unknown is grey, not an alarm",
-       "rgb(153, 153, 144)" in pg.evaluate(
-         "()=>{const c=[...document.querySelectorAll('.tile .chip.ver')][0];"
-         "return c? getComputedStyle(c).color+' '+getComputedStyle(c).borderColor : '';}"))
+       pg.evaluate("""()=>{const probe=v=>{const e=document.createElement('span');
+            e.style.color='var('+v+')';document.body.appendChild(e);
+            const c=getComputedStyle(e).color;e.remove();return c;};
+          const c=[...document.querySelectorAll('.tile .chip.ver')][0];
+          if(!c) return false;
+          const s=getComputedStyle(c), mid=probe('--mid');
+          /* .chip.ver sets border-color only and inherits its text colour,
+             so the grey is on the border. The original read both as one
+             string; this keeps that and just stops pinning the hex. */
+          return (s.color+' '+s.borderColor).indexOf(mid)>-1;}"""))
 
     # a vacant villa opens like any other, but offers no work to do
     pg.evaluate("()=>[...document.querySelectorAll('#grid .tile')].find(b=>b.className.includes('vac')).click()")
@@ -260,7 +331,16 @@ with sync_playwright() as p:
     pg.wait_for_timeout(180)
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
                 ".find(x=>/^yes/i.test(x.textContent.trim())).click()")
-    pg.wait_for_timeout(400)
+    settle(pg)
+    # The save must SURVIVE. saveFeedback calls the fail handler once with an
+    # empty message to clear the error line before the write goes out, and
+    # this page's handler read that as a refusal and put the board back - so
+    # every successful save was rolled back on screen the instant it was
+    # made, though the write had gone and the database had it. The board
+    # only corrected itself on the next twenty second poll, and never while
+    # the sheet was open, because an open sheet stops the poll.
+    ck("a save that succeeded is not put back on the board",
+       pg.evaluate("()=>(STATE.hk['2']||{}).kind") == "clean")
     tile(pg,2).click(); pg.wait_for_timeout(220)
     st2 = pg.locator("#sheetBox").inner_text().lower()
     print("   villa 2 once switched to a clean:", st2.replace("\n"," | "))
@@ -273,12 +353,12 @@ with sync_playwright() as p:
     pg.wait_for_timeout(180)
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
                 ".find(x=>/^yes/i.test(x.textContent.trim())).click()")
-    pg.wait_for_timeout(400)
+    settle(pg)
     pg.evaluate("()=>closeSheet()"); pg.wait_for_timeout(120)
     # mark room1 done
     tile(pg,1).click(); pg.wait_for_timeout(150)
     pg.locator(".pbtn.solid",has_text="Mark as").click(); pg.wait_for_timeout(150)
-    pg.locator(".pbtn.solid",has_text="Yes -").click(); pg.wait_for_timeout(300)
+    pg.locator(".pbtn.solid",has_text="Yes -").click(); settle(pg)
     w=[x for x in WRITES if re.search(r"/hk/"+today+r"/1\.json",x["u"])]
     ck("PATCH done for room1", len(w)==1 and "done" in json.loads(w[0]["b"]))
     ck("room1 tile green, done count 2, sheet closed",
@@ -336,7 +416,7 @@ with sync_playwright() as p:
        "yes - to be cleaned" in pg.locator("#sheetBox").inner_text().lower())
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
                 ".find(x=>/yes/i.test(x.textContent) && /clean/i.test(x.textContent)).click()")
-    pg.wait_for_timeout(300)
+    settle(pg)
     kw=[x for x in WRITES if "/hk/" in x["u"] and "/3.json" in x["u"]]
     print("   kind write:", kw[-1]["b"] if kw else None)
     ck("setting the job writes kind to that villa's hk record",
@@ -350,7 +430,7 @@ with sync_playwright() as p:
     pg.wait_for_timeout(180)
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
                 ".find(x=>/yes/i.test(x.textContent) && /clean/i.test(x.textContent)).click()")
-    pg.wait_for_timeout(350)
+    settle(pg)
     live = pg.evaluate("()=>{const t=[...document.querySelectorAll('.tile')]"
                        ".find(x=>x.querySelector('.rn').textContent==='6');"
                        "return t.innerText.toLowerCase().replace(/\\n/g,' | ');}")
@@ -363,7 +443,7 @@ with sync_playwright() as p:
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/mark as/i.test(x.textContent)).click()")
     pg.wait_for_timeout(180)
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/^yes/i.test(x.textContent.trim())).click()")
-    pg.wait_for_timeout(350)
+    settle(pg)
     fin = pg.evaluate("()=>{const t=[...document.querySelectorAll('.tile')]"
                       ".find(x=>x.querySelector('.rn').textContent==='6');"
                       "return t.innerText.toLowerCase().replace(/\\n/g,' | ');}")
@@ -417,7 +497,7 @@ with sync_playwright() as p:
     pg.wait_for_timeout(180)
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')]"
                 ".find(x=>/^yes/i.test(x.textContent.trim())).click()")
-    pg.wait_for_timeout(500)
+    settle(pg)
     kinds=[x for x in WRITES if "/hk/" in x["u"] and "kind" in x["b"]]
     print("   multi writes:", [x["u"].split("/")[-1] for x in kinds])
     ck("one decision writes to every villa picked", len(kinds)==2)
@@ -503,7 +583,7 @@ with sync_playwright() as p:
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/^push$/i.test(x.textContent.trim())).click()")
     pg.wait_for_timeout(180)
     pg.evaluate("()=>[...document.querySelectorAll('#sheetBox .pbtn')].find(x=>/yes - push/i.test(x.textContent)).click()")
-    pg.wait_for_timeout(400)
+    settle(pg)
     pw=[x for x in WRITES if "/12.json" in x["u"] and "pushed" in x["b"]]
     ck("pushing writes to that villa", len(pw)==1)
     t12=pg.evaluate("()=>{const t=[...document.querySelectorAll('.tile')]"
@@ -530,15 +610,15 @@ with sync_playwright() as p:
     shot=pg.screenshot(full_page=True)
     open("/home/claude/nala/_p4_cleaners.png","wb").write(shot)
     pg.close()
-    # gate: the housekeeping login gets a menu, because Sign out lives in it
+    # gate: the housekeeping login gets a menu, because Logout lives in it
     pg=page("housekeeping@nalaresort.com.au")
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1200)
     ck("housekeeping login: menu present, so there is a way to sign out",
        pg.evaluate("()=>getComputedStyle(navWrap).display")!="none")
     hknav=pg.evaluate("""()=>[].filter.call(document.querySelectorAll('#navDrop a'),
-        a=>getComputedStyle(a).display!=='none').map(a=>a.textContent.trim())""")
+        a=>a.style.display!=='none').map(a=>a.textContent.trim())""")
     ck("housekeeping is offered no board it would be refused, but can sign out",
-       "Sign out" in hknav and "Reservations" not in hknav and "Reservations Sheet" not in hknav)
+       "Logout" in hknav and "Reservations" not in hknav and "FOH Sheet" not in hknav)
     print("   housekeeping menu:", hknav)
     tile(pg,3).click(); pg.wait_for_timeout(300)
     hkSheet = pg.locator("#sheetBox").inner_text().lower()
@@ -999,6 +1079,9 @@ with sync_playwright() as p:
     pg.route("**firebasedatabase.app/**",fb)
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
     pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    # the Clean Sheet lives inside the folded Print submenu now: open it the
+    # way a person does, by its header, before the link can be tapped
+    pg.locator("#navDrop button.navgrp", has_text="Print").click(); pg.wait_for_timeout(150)
     pg.locator("#navDrop a[href='housekeeping.html']").click(); pg.wait_for_timeout(250)
     went=pg.evaluate("()=>window.__went||null")
     print("   standalone nav:", went)
@@ -1026,6 +1109,9 @@ with sync_playwright() as p:
     pg.route("**firebasedatabase.app/**",fb)
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
     pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    # the Clean Sheet lives inside the folded Print submenu now: open it the
+    # way a person does, by its header, before the link can be tapped
+    pg.locator("#navDrop button.navgrp", has_text="Print").click(); pg.wait_for_timeout(150)
     pg.locator("#navDrop a[href='housekeeping.html']").click(); pg.wait_for_timeout(250)
     ck("display-mode standalone is honoured, not just Safari's flag",
        (pg.evaluate("()=>window.__went||''") or "").endswith("housekeeping.html"))
@@ -1041,6 +1127,9 @@ with sync_playwright() as p:
     pg.route("**firebasedatabase.app/**",fb)
     pg.goto("http://localhost:8957/cleaners.html"); pg.wait_for_timeout(1300)
     pg.locator("#navBtn").click(); pg.wait_for_timeout(150)
+    # the Clean Sheet lives inside the folded Print submenu now: open it the
+    # way a person does, by its header, before the link can be tapped
+    pg.locator("#navDrop button.navgrp", has_text="Print").click(); pg.wait_for_timeout(150)
     pg.locator("#navDrop a[href='housekeeping.html']").click(); pg.wait_for_timeout(600)
     ck("ordinary tab: the browser navigates as normal, nothing intercepted",
        pg.url.endswith("housekeeping.html") and pg.evaluate("()=>window.__went||null") is None)
@@ -1071,6 +1160,7 @@ with sync_playwright() as p:
             ("iPhone landscape",        844, 390, True, 6),
             ("small phone landscape",   740, 360, True, 6),
             ("tiny phone landscape",    667, 320, True, 6)]:
+        resetDb()
         q=b.new_page(viewport={"width":w,"height":h})
         q.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
             content_type="application/javascript",body=sdk("staff@nalaresort.com.au")))
@@ -1221,7 +1311,8 @@ with sync_playwright() as p:
     ck("a departure announces itself", "departed:8" in fired)
     ck("the defaults name every event the app can fire",
        sorted(pg.evaluate("()=>Object.keys(NOTIFY_DEFAULTS.events)"))
-         == ["available","cleaned","departed","menu","serviced"])
+         == ["available","cleaned","departed","menu","serviced",
+             "spaBooked","spaCancelled","spaRequest","spaStay","spaSuggested"])
     # A menu going up is the manager's business, not the cleaners'. The chef
     # published it, so telling the chef is telling them what they just did.
     ck("a published menu goes to the manager only",
@@ -1269,6 +1360,44 @@ with sync_playwright() as p:
     ck("departures stay with housekeeping and admin",
        pg.evaluate("""()=>NOTIFY_DEFAULTS.events.departed.waiter===false
                        && NOTIFY_DEFAULTS.events.departed.admin===true"""))
+    # The spa five, 27 Aug. The masseuse's routing is a stored spa key the
+    # Settings grid never draws; his counter-offer is off for him because
+    # he just made it, and spaStay is fired by the sync Worker alone.
+    ck("the spa events reach the masseuse and the desk, not the suggestion's author",
+       pg.evaluate("""()=>NOTIFY_DEFAULTS.events.spaRequest.spa===true
+                       && NOTIFY_DEFAULTS.events.spaRequest.admin===true
+                       && NOTIFY_DEFAULTS.events.spaSuggested.spa===false
+                       && NOTIFY_DEFAULTS.events.spaSuggested.admin===true
+                       && NOTIFY_DEFAULTS.events.spaStay.spa===true
+                       && NOTIFY_DEFAULTS.events.spaCancelled.housekeeping===false"""))
+    # A /notify node written before an event type existed holds no key for
+    # it, and a keyless event buzzes nobody. The seeding must fill in ONLY
+    # the missing events - the manager's own ticks are never touched.
+    ck("an event added after the settings were first written is seeded in, alone",
+       pg.evaluate("""()=>new Promise(res=>{
+         const f=window.fetch; let patched=null, putWhole=false;
+         window.fetch=function(u,o){
+           const url=''+u;
+           if (url.indexOf('/notify.json')>-1 && (!o || !o.method))
+             return Promise.resolve(new Response(JSON.stringify(
+               {on:true,hours:{from:'07:30',to:'18:00'},
+                events:{departed:{admin:true}}}),{status:200}));
+           if (url.indexOf('/notify.json')>-1 && o && o.method==='PUT'){
+             putWhole=true;
+             return Promise.resolve(new Response('{}',{status:200}));
+           }
+           if (url.indexOf('/notify/events.json')>-1 && o && o.method==='PATCH'){
+             patched=JSON.parse(o.body);
+             return Promise.resolve(new Response('{}',{status:200}));
+           }
+           return f.apply(this,arguments);
+         };
+         ensureNotifySettings('admin');
+         setTimeout(function(){ window.fetch=f;
+           res(!putWhole && !!patched && !patched.departed &&
+               !!patched.spaRequest && patched.spaRequest.spa===true &&
+               !!patched.spaStay); }, 400);
+       })"""))
     ck("only an admin writes the settings",
        pg.evaluate("()=>{let hit=0; const f=window.fetch; window.fetch=function(u,o){ if(o&&o.method==='PUT'&&(''+u).indexOf('/notify')>-1) hit++; return f.apply(this,arguments);}; ensureNotifySettings('waiter'); window.fetch=f; return hit===0;}"))
     pg.close()
@@ -1281,8 +1410,15 @@ with sync_playwright() as p:
        "protectedReason" in src and "485211" not in src)
     ck("you cannot remove yourself", "This is you." in src)
     ck("the last admin cannot be removed", "last admin cannot be removed" in src)
-    ck("the check runs again on confirm, not only where the bin was drawn",
+    # The bin on each row went on 29 Aug - it called removeSheet, which is
+    # what the person sheet's own "Remove from staff" calls, so it was a
+    # one-tap path to a permanent write. The check still has to run in more
+    # than one place: the sheet decides whether to offer the button, and the
+    # confirmation decides again before it writes.
+    ck("the check runs again on confirm, not only where the button was drawn",
        src.count("protectedReason(key)") >= 2)
+    ck("removing somebody is not offered on the row itself",
+       "class=\"bin\"" not in src and "removeSheet(k)" not in src)
 
     # sync is assignable, so the account can be made on this page instead of in
     # the Firebase console, but it has no phone and must not appear in the
@@ -1292,22 +1428,26 @@ with sync_playwright() as p:
     ck("the staff list sorts by the assignable order, so sync sorts last",
        src.count("ROLES_ASSIGN.indexOf") == 2)
     import re as _re
-    # Counted with a boundary: PERM_ROLES.map ends in the same nine characters
-    # and turned this into a false failure the day the permission grid landed.
-    ck("the notification matrix stays on the human roles",
-       len(_re.findall(r"(?<![A-Z_])ROLES\.map", src)) == 2 and "ROLES_ASSIGN" in src)
+    # Both lists became one component on 29 Aug: what used to be two grids,
+    # each with its own .map over its own roles, is now pickList called twice.
+    # These read the call sites rather than the loops.
+    ck("who may do what and who is told about what are one component, not two",
+       src.count("pickList(") == 3)   # the definition and its two callers
 
-    # The permission grid is drawn from the shared lists rather than from a
+    ck("the notification list stays on the human roles",
+       "roles: ROLES," in src and "ROLES_ASSIGN" in src)
+
+    # The permission list is drawn from the shared lists rather than from a
     # second copy kept here, so adding a capability in one place adds the row.
-    ck("the permission grid reads the shared lists",
-       "PERM_ACTIONS.map" in src and "PERM_ROLES.map" in src)
+    ck("the permission list reads the shared lists",
+       "roles: PERM_ROLES, items: PERM_ACTIONS" in src)
     ck("it saves the moment a box is tapped, like the one above it",
        "savePerms()" in src and "'/permissions.json'" in src)
     # Only the boxes moved away from the default are stored. Writing every
     # cell would freeze today's defaults into the database, and the next
     # capability added would arrive switched off for everybody.
     ck("only the changed boxes are stored, not a copy of every cell",
-       "grantedByDefault" in src and "PERMS[ac][r] = !now" in src)
+       "grantedByDefault" in src and "PERMS[ac[0]][r] = !now" in src)
     ck("a failed load says the app is running on its defaults",
        "running on its defaults" in src)
     ck("the matrix is loaded on the way in", "loadPerms();" in src)

@@ -353,6 +353,46 @@ await post({ Id: "5f593a0c708cbb49e77f324e07bee616",
 ck("with both present the Mews id wins",
    !!STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/pms"]);
 
+/* ── Id2, the spelling the live Zap serialises ──────────────── */
+/* Seen live 1 Sep, 02:01: a new reservation's first event carried its GUID
+   under Id2 and nothing under Id or MewsId, so the first event of every new
+   booking 400'd and the booking waited for its next modification to exist.
+   Which Zap-editor choice produced that key name was never established; the
+   payload is the fact. Shape still rules: a non GUID under Id2 is refused
+   like anywhere else, and a real Id or MewsId outranks it when present. */
+install();
+const id2run = await post({ Id2: "dfcc2614-67b5-4cd4-8b58-b4b7001ac418",
+  FirstName: "James", StartUtc: "2026-09-10T04:00:00Z",
+  EndUtc: "2026-09-13T02:00:00Z", ResourceName: "3", State: "Confirmed" });
+ck("a GUID arriving under Id2 is accepted", id2run.status === 200);
+ck("and the booking is stored under that GUID",
+   !!STORE["/bookings/dfcc2614-67b5-4cd4-8b58-b4b7001ac418/pms"]);
+
+install();
+await post({ MewsId: "ff129c05-9902-4d9f-9bfd-b4a800a91f52",
+  Id2: "dfcc2614-67b5-4cd4-8b58-b4b7001ac418",
+  StartUtc: "2026-09-10T04:00:00Z", EndUtc: "2026-09-13T02:00:00Z",
+  ResourceName: "3", State: "Confirmed" });
+ck("MewsId outranks Id2 when both are GUIDs",
+   !!STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/pms"] &&
+   !STORE["/bookings/dfcc2614-67b5-4cd4-8b58-b4b7001ac418/pms"]);
+
+install();
+const id2zap = await post({ Id2: "5f593a0c708cbb49e77f324e07bee616",
+  StartUtc: "2026-09-10T04:00:00Z", EndUtc: "2026-09-13T02:00:00Z",
+  ResourceName: "3", State: "Confirmed" });
+ck("Zapier's event key under Id2 is refused like anywhere else",
+   id2zap.status === 400 && Object.keys(STORE).length === 0);
+
+/* The refusal for a payload with NO id names the keys that did arrive, so
+   the Zap history shows which mapping went missing instead of a bare no. */
+install();
+const noid = await post({ FirstName: "Nobody", ResourceName: "3" });
+ck("the no-id refusal lists the keys that were received",
+   noid.status === 400 &&
+   JSON.stringify((await noid.json()).receivedKeys) ===
+     JSON.stringify(["FirstName", "ResourceName"]));
+
 /* The same booking moving villa twice must stay ONE booking. */
 install();
 const RES_MOVE = { MewsId: "ff129c05-9902-4d9f-9bfd-b4a800a91f52",
@@ -700,6 +740,108 @@ PUSHES.length = 0;
 await wake();
 ck("a villa whose hour arrives later gets its one announcement then",
    PUSHES.length === 1 && PUSHES[0].villa === "2");
+
+/* ── a Mews change under a massage ───────────────────────────────────────
+ * The spaStay event, the owner's ask of 27 Aug: somebody holds a live
+ * treatment and the stay it hangs on is cancelled, or its dates move out
+ * from under the chosen day. Declined records are past caring. */
+const BID = "ff129c05-9902-4d9f-9bfd-b4a800a91f52";
+
+installSweep({}, {}, {});
+await post(RES);
+STORE["/spa/" + BID] = { t1: { status: "booked", day: "2026-09-11",
+                               time: "10:00", at: "x", source: "prearrival" } };
+PUSHES.length = 0;
+await post(Object.assign({}, RES, { State: "Canceled" }));
+ck("a cancellation under a booked massage fires spaStay with the villa",
+   PUSHES.length === 1 && PUSHES[0].event === "spaStay" &&
+   PUSHES[0].villa === "3" && PUSHES[0].idToken === "T");
+
+installSweep({}, {}, {});
+await post(RES);
+STORE["/spa/" + BID] = { t1: { status: "declined", reqDay: "2026-09-11", at: "x" } };
+PUSHES.length = 0;
+await post(Object.assign({}, RES, { State: "Canceled" }));
+ck("a declined record is past caring: a cancellation over it stays quiet",
+   PUSHES.length === 0);
+
+installSweep({}, {}, {});
+await post(RES);
+STORE["/spa/" + BID] = { t1: { status: "booked", day: "2026-09-11",
+                               time: "10:00", at: "x" } };
+PUSHES.length = 0;
+await post(Object.assign({}, RES, { StartUtc: "2026-09-14T04:00:00Z",
+                                    EndUtc: "2026-09-17T02:00:00Z" }));
+ck("a date change stranding a booked day fires spaStay",
+   PUSHES.length === 1 && PUSHES[0].event === "spaStay");
+PUSHES.length = 0;
+await post(RES);
+ck("a change that still covers the day stays quiet", PUSHES.length === 0);
+/* The departure DAY itself is bookable - stayDays' own rule - so a
+ * massage on the checkout morning is inside the stay, not stranded. */
+STORE["/spa/" + BID] = { t1: { status: "booked", day: "2026-09-13",
+                               time: "10:00", at: "x" } };
+PUSHES.length = 0;
+await post(RES);
+ck("a massage on the departure morning is not stranded", PUSHES.length === 0);
+/* An open ask is judged on the day it asked about. */
+STORE["/spa/" + BID] = { t1: { status: "requested", reqDay: "2026-09-12", at: "x" } };
+PUSHES.length = 0;
+await post(Object.assign({}, RES, { EndUtc: "2026-09-11T02:00:00Z" }));
+ck("an ask now outside the shortened stay fires spaStay",
+   PUSHES.length === 1 && PUSHES[0].event === "spaStay");
+
+/* ── the spa ask sweep ───────────────────────────────────────────────────
+ * A guest's form answer is born in the browser and nothing staff-side sees
+ * it happen; the sweep announces each one once, as spaRequest. Every villa
+ * is marked done in /hk so the arriving sweep stays quiet and the pushes
+ * here are the spa sweep's alone. */
+installSweep({
+  "9":  { id: "s9",  arrive: TODAY, depart: "2026-09-12" },
+  "12": { id: "s12", arrive: TODAY, depart: "2026-09-12" },
+  "14": { id: "s14", arrive: TODAY, depart: "2026-09-12" },
+  "15": { id: "s15", arrive: TODAY, depart: "2026-09-12" },
+}, {
+  "9": { done: "x" }, "12": { done: "x" }, "14": { done: "x" }, "15": { done: "x" },
+}, {
+  "s9":  { wellness: true, wellDay: "2026-09-11", wellTime: "morning" },
+  "s12": { wellness: false },
+  "s14": { wellness: true },
+});
+/* s15 never answered the form; s14's ask was already answered at the desk. */
+STORE["/spa/s14"] = { t1: { status: "booked", day: TODAY, time: "10:00",
+                            at: "x", source: "prearrival" } };
+await wake();
+ck("the sweep announces the answered form once, as spaRequest, with the villa",
+   PUSHES.filter((p) => p.event === "spaRequest").length === 1 &&
+   PUSHES.some((p) => p.event === "spaRequest" && p.villa === "9" &&
+                      p.idToken === "T"));
+ck("a no thank you, a silent form and an answered ask are all quiet",
+   !PUSHES.some((p) => p.event === "spaRequest" &&
+                       (p.villa === "12" || p.villa === "14" || p.villa === "15")));
+ck("the marker means announced, is written before the send, and only then",
+   !!STORE["/spaalerts/s9"] && !STORE["/spaalerts/s12"] && !STORE["/spaalerts/s15"] &&
+   CALLS.indexOf("PUT /spaalerts/s9") > -1 &&
+   CALLS.indexOf("PUT /spaalerts/s9") < CALLS.indexOf("PUSH 9"));
+
+/* A guest answering later: quiet inside the hour, announced by the next
+ * sweep, once - and the marker still guards the ask announced before. */
+STORE["/bookings/s15/prearrival"] = { wellness: true };
+PUSHES.length = 0;
+await wake();
+ck("inside the hour the sweep rests: the gate, not the marker, quiets it",
+   PUSHES.length === 0);
+delete STORE["/spaalerts/sweptAt"];
+await wake();
+ck("a form answered later is announced by the next sweep, once",
+   PUSHES.filter((p) => p.event === "spaRequest").length === 1 &&
+   PUSHES[0].villa === "15");
+ck("and the marker still guards the already-announced ask",
+   !PUSHES.some((p) => p.villa === "9"));
+delete STORE["/spaalerts/sweptAt"];
+PUSHES.length = 0;
+await wake();
+ck("a sweep with nothing new announces nobody", PUSHES.length === 0);
 
 globalThis.Date = RealDate;
 

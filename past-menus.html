@@ -2,52 +2,49 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Past Menus</title>
-<link rel="stylesheet" href="nala-ui.css?v=14">
+<link rel="stylesheet" href="nala-ui2.css?v=6">
+<link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
-         padding:calc(24px + env(safe-area-inset-top)) 18px 40px;
-         -webkit-tap-highlight-color:transparent; }
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 40px; }
+  
 
   /* The menu of the night, set the way the guest saw it: the course label
      small and quiet, the dish in the serif the menu itself uses. A night is
      four lines, so it wants to read as a menu, not as a table of records. */
   .course { padding:16px 0; border-bottom:1px solid var(--rule); }
   .course:last-child { border-bottom:0; }
-  .clabel { font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  .clabel { font-size:var(--t2);
             color:var(--mid); }
-  .cname { font-family:Georgia, serif; font-size:19px; line-height:1.35; margin-top:5px; }
-  .cname.none { font-family:var(--ui-font); font-size:14px; color:var(--mid);
+  .cname { font-family:var(--ui-font); font-size:var(--t4); line-height:1.35; margin-top:5px; }
+  .cname.none { font-family:var(--ui-font); font-size:var(--t3); color:var(--mid);
                 font-style:italic; }
-  .cdesc { font-family:Georgia, serif; font-style:italic; font-size:14px;
+  .cdesc { font-family:var(--ui-font); font-style:italic; font-size:var(--t3);
            color:var(--mid); line-height:1.5; margin-top:5px; }
 
-  .pubat { font-size:11px; color:var(--mid); margin-top:18px; line-height:1.5; }
+  .pubat { font-size:var(--t2); color:var(--mid); margin-top:18px; line-height:1.5; }
 
   /* Nothing that night, which is a real answer and not a fault: the resort
      does not serve dinner every night, and a night with no menu should not
      look like a page that failed to load. */
   .empty { padding:40px 0; text-align:center; color:var(--mid); }
-  .empty .big { font-family:Georgia, serif; font-size:17px; }
-  .empty .sub { font-size:13px; margin-top:8px; line-height:1.5; }
+  .empty .big { font-family:var(--ui-font); font-size:var(--t3); }
+  .empty .sub { font-size:var(--t2); margin-top:8px; line-height:1.5; }
 
   .err { padding:34px 0; text-align:center; color:var(--mid);
-         font-size:13px; line-height:1.6; }
+         font-size:var(--t2); line-height:1.6; }
   .err .btn { margin-top:16px; display:inline-block; padding:11px 20px;
               border:1px solid var(--ink); border-radius:8px; color:var(--ink);
-              background:transparent; font-family:var(--ui-font); font-size:11px;
-              letter-spacing:.14em; text-transform:uppercase; cursor:pointer; }
+              background:transparent; font-family:var(--ui-font); font-size:var(--t2); cursor:pointer; }
 </style>
 </head>
-<body class="tier-app">
+<body class="tier-app ui2">
 
 <!-- The same date row as the sheets and the boards: Today, the arrows, and
      the label itself as the picker. initDateNav wires all four, so a page
@@ -59,7 +56,7 @@
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="tally.html">Reservations</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="flags.html">Flags</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"></div>
   </div>
 </div>
 
@@ -70,7 +67,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=41"></script>
+<script src="nala-shared.js?v=48"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -80,9 +77,6 @@ var NAV = initDateNav();
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
-  var so=document.getElementById('navSignout');
-  if (so) so.onclick=function(e){ e.preventDefault();
-    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
 })();
 
 var COURSES = [ ['bread','Bread'], ['entree','Entr\u00E9e'],

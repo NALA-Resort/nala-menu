@@ -205,6 +205,158 @@ cannot('nor may a guest', GUEST, '/spasettings', { price60: 1 });
 cannotPatch('a price that is words is refused', ADMIN, '/spasettings', { price60: 'call us' });
 cannotPatch('and one past any massage ever sold', ADMIN, '/spasettings', { price60: 99999 });
 
+/* Removing somebody from Staff IS the revoke. staff.html says so where it
+   deletes the record - "their next request fails even on a phone that is
+   still signed in" - and the manual promises it to the owner. It was not
+   true. Sixteen rules asked whether the login was NOT the masseuse, and a
+   login with no staff record at all passes that: role.val() of a record
+   that does not exist is null, and null != 'spa'. So a person removed
+   this morning kept the cleans board, the desk overrides and everything
+   under the catch-all until somebody deleted their Firebase login too,
+   which is a separate job nobody does in a hurry. Every one of those
+   rules now asks that the record exists first. */
+(function(){
+  var d2 = targaryen.database(RULES, {
+    staff: { 'staff@nalaresort,com,au': { name: 'Admin', role: 'admin' } } });
+  var gone = { uid: 'exstaff@nalaresort.com.au',
+               token: { email: 'exstaff@nalaresort.com.au' } };
+  ck('a removed login cannot read the cleans board',
+     d2.as(gone).read(`/hk/${TODAY}`).allowed === false);
+  ck('nor mark a villa done on it',
+     d2.as(gone).write(`/hk/${TODAY}/5`, { done: NOW }).allowed === false);
+  ck('nor read the desk overrides',
+     d2.as(gone).read(`/manual/${TODAY}`).allowed === false);
+  ck('nor reach the nodes riding on the catch-all',
+     d2.as(gone).write('/invites/x', { at: NOW }).allowed === false);
+  ck('while somebody still on the list is unaffected',
+     d2.as({ uid: 'staff@nalaresort.com.au',
+             token: { email: 'staff@nalaresort.com.au' } })
+       .read(`/hk/${TODAY}`).allowed === true);
+})();
+
+/* Ten more reads asked only for a login, not for a staff record, and the
+   same removed person kept them: the whole booking list with its names and
+   numbers, the roster of who works here, the spa's day. Signing in is not
+   the permission - being on the list is - so each of these asks for the
+   record too. The masseuse is deliberately NOT excluded here: he reads the
+   spa board, the guest list behind it and the roster, and always could. */
+(function(){
+  var d2 = targaryen.database(RULES, {
+    staff: { 'staff@nalaresort,com,au': { name: 'Admin', role: 'admin' },
+             'ms@x': { name: 'M', role: 'spa' } } });
+  var gone = { uid: 'exstaff@nalaresort.com.au',
+               token: { email: 'exstaff@nalaresort.com.au' } };
+  var here = { uid: 'staff@nalaresort.com.au',
+               token: { email: 'staff@nalaresort.com.au' } };
+  var spa  = { uid: 'ms@x', token: { email: 'ms@x' } };
+  [ ['the whole booking list', '/bookings'],
+    ['the arrivals by day', '/stays'],
+    ['the roster', '/staff'],
+    ['the spa day', '/spa'],
+    ['who gets told what', '/notify'],
+    ['what each role may do', '/permissions'],
+    ['the menus already sent out', '/menuhistory'],
+    ['the SMS wording', '/smstemplates'],
+    ['the pre-arrival SMS wording', '/presmstemplates'],
+    ['the dinner book', '/dinner']
+  ].forEach(function(t){
+    ck('a removed login cannot read ' + t[0],
+       d2.as(gone).read(t[1]).allowed === false);
+    ck('somebody on the list still reads ' + t[0],
+       d2.as(here).read(t[1]).allowed === true);
+  });
+  ck('and the masseuse keeps the board he works from',
+     d2.as(spa).read('/spa').allowed === true);
+  ck('a guest link still opens its own booking signed out',
+     d2.as(null).read('/bookings/b-1').allowed === true);
+  ck('and tonight is still readable to the villa that has it',
+     d2.as(null).read(`/dinner/${TODAY}`).allowed === true);
+})();
+
+/* The 30 Aug audit, three tightenings, each with the write it protects
+   checked still allowed above.
+
+   A dietary record is health-adjacent and no guest page ever reads one -
+   the guest form writes its mirror and never looks. It was world
+   readable: anyone who could guess a Mews customer id could read what a
+   guest cannot eat. Staff only now; the write stays open, because the
+   guest form runs signed out and that mirror is the whole point. */
+ck('a dietary mirror is staff reading only, not the world\'s',
+   as(GUEST).read('/guests/cust-1').allowed === false &&
+   as(ADMIN).read('/guests/cust-1').allowed === true);
+can('and the guest form still writes it, signed out', GUEST, '/guests/cust-1',
+    { diets: ['Gluten'], dnote: 'coeliac', updatedAt: NOW });
+
+/* Archiving the menu is the menu's own permission. Any login at all could
+   write the archive, the masseuse and the sync account included, which is
+   a wider door than the menu it archives. */
+cannot('the masseuse cannot write the menu archive', signedIn('ms@x'),
+       `/menuhistory/${TODAY}`, { bread: 'x' });
+(function(){
+  var d2 = targaryen.database(RULES, { staff: { 'ms@x': { name: 'M', role: 'spa' } } });
+  ck('nor can the spa role, which has no business in the kitchen',
+     d2.as({ uid: 'ms@x', token: { email: 'ms@x' } })
+       .write(`/menuhistory/${TODAY}`, { bread: 'x' }).allowed === false);
+})();
+
+/* The Guest form's first shape. Nothing has written resort or dining
+   since the reshape, and a field the app cannot write is a field that
+   only ever holds something stale. */
+cannotPatch('the retired resort field is refused', ADMIN, '/prearrivalinfo',
+            { resort: 'x' });
+cannotPatch('and the retired dining one', ADMIN, '/prearrivalinfo',
+            { dining: 'x' });
+
+/* The pre-arrival form's own content, written from Settings (Guest form):
+   the welcome image, the dining page's image and text, and the Read more
+   replacements. Public to read for the same reason as the prices above -
+   the guest form runs signed out - and management's to write. `resort`
+   and `dining` are the retired first shape, still validated only so a
+   Settings tab open across the changeover cannot have its save refused;
+   drop them at the next touch of this node. */
+can('the manager writes the guest form\'s content', MANAGER, '/prearrivalinfo',
+    { welcomeImage: 'https://example.com/villa.jpg',
+      diningImage: 'https://example.com/dinner.jpg',
+      welcomeImageCrop: 'top', welcomeImageHeight: 'tall',
+      diningImageCrop: 'centre', diningImageHeight: 'banner',
+      diningText: 'Dinner is one menu, written daily.',
+      intro: 'A few details before you arrive.',
+      titles: { dine: 'Will you dine with us?' },
+      descs: { dine: 'Dinner begins between 6:00 and 6:30pm.' },
+      more: { dine: 'The menu is finalised each day.', eta: 'Reception is here late.' },
+      by: 'staff@nalaresort.com.au', at: NOW });
+ck('a guest signed out can read it, which is the whole point',
+   as(GUEST).read('/prearrivalinfo').allowed === true);
+cannot('but may not write it', GUEST, '/prearrivalinfo', { diningText: 'free beer' });
+(function(){
+  var d2 = targaryen.database(RULES, { staff: { 'ms@x': { name: 'M', role: 'spa' } } });
+  ck('nor may the masseuse',
+     d2.as({ uid: 'ms@x', token: { email: 'ms@x' } })
+       .write('/prearrivalinfo', { diningText: 'x' }).allowed === false);
+})();
+cannotPatch('an image link that is not https is refused', ADMIN, '/prearrivalinfo',
+            { welcomeImage: 'http://example.com/villa.jpg' });
+cannotPatch('a crop nobody offers is refused', ADMIN, '/prearrivalinfo',
+            { welcomeImageCrop: 'left' });
+cannotPatch('and so is a height', ADMIN, '/prearrivalinfo',
+            { diningImageHeight: '900px' });
+cannotPatch('a text past the ceiling is refused', ADMIN, '/prearrivalinfo',
+            { diningText: new Array(4002).join('x') });
+cannotPatch('a Read more for a page nobody knows is refused', ADMIN, '/prearrivalinfo',
+            { more: { hacked: 'x' } });
+cannotPatch('and so is a heading for one', ADMIN, '/prearrivalinfo',
+            { titles: { hacked: 'x' } });
+cannotPatch('and a description for one', ADMIN, '/prearrivalinfo',
+            { descs: { hacked: 'x' } });
+cannotPatch('a heading past its ceiling is refused', ADMIN, '/prearrivalinfo',
+            { titles: { dine: new Array(202).join('x') } });
+cannotPatch('and a description past its own', ADMIN, '/prearrivalinfo',
+            { descs: { dine: new Array(502).join('x') } });
+cannotPatch('and an introduction past its own', ADMIN, '/prearrivalinfo',
+            { intro: new Array(1002).join('x') });
+cannotPatch('and so is a field the node does not know', ADMIN, '/prearrivalinfo',
+            { html: '<b>x</b>' });
+
 /* The arriving-soon marker. The Worker writes it before it sends, so a villa
    is announced once however many cron wakes cross its red hour. */
 can('the sync writes the arriving-soon marker', SYNC,
@@ -538,7 +690,15 @@ cannotPatch('but not something the length of a paragraph', SYNC,
   ck('a guest holding their link may record a dietary against themselves',
      as(null).update('/guests/' + CID,
        {diets:['Nut allergy'], dnote:'severe', updatedAt:'2026-08-19T00:00:00Z'}).allowed);
-  ck('and read back what we hold about them', as(null).read('/guests/' + CID).allowed);
+  /* Reversed by the 30 Aug audit, and it was a deliberate line before
+     that, so it is reversed deliberately: no guest page has ever read
+     this node - the form writes the mirror and never looks - while the
+     record says what a named person cannot eat, keyed by an id that
+     travels in links. Read is staff's; the write stays signed out,
+     because that mirror is the whole point of the node. The Worker
+     reads it too and signs in as the sync account, so it is unaffected. */
+  ck('but cannot read the node back: no guest page ever did',
+     as(null).read('/guests/' + CID).allowed === false);
   ck('staff may write one too',  as('st@x').update('/guests/' + CID, {diets:[]}).allowed);
   ck('a field nobody named is refused',
      !as('st@x').update('/guests/' + CID, {secret:'x'}).allowed);

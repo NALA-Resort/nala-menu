@@ -188,12 +188,31 @@ place, not a person.**
 | `/menutags/<date>` | date | which dietaries each course clashes with |
 | `/dietaries` | single node | the list a guest chooses from |
 | `/settings/managerMobile` | single node | for the Notify link; not in this repo |
+| `/prearrivalinfo` | single node | the pre-arrival form's two notes, written from Settings (Guest form) |
 
 **The dinner cell is one cell.** Whoever answers first sets it: the guest from
 their link, reception at the desk, or staff on the board. After that only staff
 can change it. `by` records who, `at` records when. This replaced two nodes
 holding the same fact, which is what let a dietary added on one screen be wiped
 by a save on another.
+
+**On an arrival night, with no cell, the boards read the guest's own form.**
+Their pre-arrival answers sit on the reservation and asked about the first
+night; nothing carried them onto the chef's board, so a guest who said on
+Tuesday they were dining showed as *awaiting* until somebody at the desk
+re-typed it - and nothing else ever would, since the nightly dinner request is
+not sent to a guest who has not checked in. The owner ruled on 28 Aug that
+there is no scenario where reception would decline to pass that on, so it is
+not theirs to pass on.
+
+This does **not** break the rule above, and the distinction is the whole point:
+it adds no second writer and no second node. The order is *cell, then the
+guest's form, then nothing* - the effectiveEta shape - and the form falls away
+for good the moment anyone sets a cell. It applies only on the night the guest
+arrives, because `PREARRIVAL_BY_VILLA` holds a record for every occupied villa
+and the form speaks for the first night alone. Any dining answer counts, not
+only a submitted form: the guest page saves each question as it is left, and an
+answer given is an answer.
 
 **The menu has one reader**, `fetchMenuAnywhere` in `nala-shared.js`. It reads
 the database first and falls back to the committed `menu.json`, refuses a file
@@ -226,6 +245,16 @@ reservation number staff read out).
 Cleans (`cleaners.html`), Publish Menu (`publish.html`), Settings
 (`staff.html`), Dietary Settings (`tag.html`), Statistics (`stats.html`).
 
+**Settings is five tabs**: Staff, Roles, Notifications, Prices, and Guest
+form (added 30 Aug, item 12 below). It
+was one scroll doing four unrelated jobs, with a five-column grid that only
+fitted at 390pt and could never gain a sixth. Roles and Notifications are
+now the same component - `pickList`, written once and called twice: pick a
+role from the chips, read its settings down the page, one switch per row.
+Another role is another chip and chips wrap; another setting is another
+row. The bin on each staff row is gone, because it called the same
+`removeSheet` the person sheet's own "Remove from staff" calls.
+
 **Paper:** Reservations Sheet (`list.html`), Clean Sheet (`housekeeping.html`),
 Registration Cards (`registration.html`), Printable Menu (`menu-print.html`).
 
@@ -234,12 +263,17 @@ welcome (`welcome.html`). All take `?b=<booking id>`.
 
 **Tools:** Diagnostics (`debug.html`), site map (`pages.html`).
 
-**The menu on every staff page is one list** in one order, minus the page you
-are on, grouped: the screens you work on, then Print, then Settings, then Sign
-out. `NAV_NEEDS` in `nala-shared.js` maps each link to the permission that opens
-it. **Add a page and add it there**, or it appears in everyone's menu. Six pages
-once kept private copies of that filter and hid whatever they did not
-recognise; `pages_suite` now fails if any page keeps one.
+**The menu on every staff page is generated** — `buildNav` in
+`nala-shared.js` draws it from the one `NAV` array, minus the page you are
+on: the boards as plain links, then the Print, SMS and Settings submenus,
+which fold open, then Logout. Redesigned 26 Aug to the owner's sketch —
+non-caps, standard font, submenus instead of dividers, the SMS pages off
+the top level. Each entry carries the permission that opens its page
+(`NAV_NEEDS` is derived from it). **Add a page and add it there**, and to
+`tests/nav_canon.json`, which is the shape the suites assert — or it has no
+link anywhere. Six pages once kept private copies of the role filter and
+hid whatever they did not recognise; `pages_suite` still fails if any page
+keeps one.
 
 ---
 
@@ -248,6 +282,40 @@ recognise; `pages_suite` now fails if any page keeps one.
 **A green suite is not proof.** The suites stub Firebase entirely. On 16 Aug the
 passcode screen shipped with 30 passing tests and broke sign in on a real phone
 for two hours. Anything touching sign in, push or printing needs a device.
+
+**An empty answer is a bug, and there are two ways to kill it.** A control
+a guest can leave alone writes an empty string, and downstream that empty
+string is indistinguishable from a guest who never reached the question.
+The form now does both cures and the difference between them is the thing
+to learn:
+
+- **A resting answer**, for a control that stays optional. The massage
+  *time* rests on "Any time" (30 Aug) and sends that word.
+- **A compulsory answer**, for one that should not be skipped. The massage
+  *day* offers the nights of the stay and then "Any day", pre-selects
+  nothing, and refuses to move on (31 Aug). The owner chose this over a
+  pre-selected "Any day", and was right: a default records a guest as
+  having chosen something they never looked at, which is the same fault in
+  better clothes.
+
+Three things the day cost, worth knowing before the next one. The sentinel
+`any` lives ONLY in `wellDay` - never in a `/spa` record's `reqDay`, whose
+rule takes a date or the empty string and would refuse the write, so the
+masseuse would tap Book and get an error; the board translates it to an
+in-memory `reqAny` flag and writes a real date. An `any` ask counts as
+matching every night of the stay, so the masseuse gets Confirm rather than
+Suggest and no round trip through the desk. And an empty day still reads
+"No day picked" everywhere: only the chip says Any day, because a record
+written before the chip did not answer the question and must not be
+quoted as though it had.
+
+**A colour is asserted in pixels, never in a class name.** The Front Desk
+fork's class check passed for a full day while all three forks drew BLACK:
+the ui2 conversion had dropped that page's `--dine`, and an undefined custom
+property does not fall back, it computes to nothing. The classes were right
+the whole time. The massage lotus added 31 Aug is asserted the same way,
+against `getComputedStyle`, and against a probe of what the token actually
+resolves to on that page.
 
 **Break the fix and watch the test fail.** Five times in three days to 23 Aug a
 new assertion was aimed next to the thing rather than at it and passed while the
@@ -349,6 +417,72 @@ None of these can move without him.
     in `RATE_FLAG` (`nala-shared.js`) takes any rate STARTING with "Luxury
     Escapes", a guess pending a real payload - the companion field's
     standing caution.
+11. **Two pastes to make the spa notifications buzz, 27 Aug.** The site now
+    fires five spa events and the sync Worker sweeps for the guest-form asks,
+    but both halves end at Workers only the dashboard holds:
+    - **Paste `worker/mews-sync.js` into its Worker again.** It gained the
+      hourly sweep that announces a guest's form ask as `spaRequest` (marker
+      node `/spaalerts`, under the catch-all rule like `/invites` - no rules
+      paste), and the `spaStay` push when a Mews cancellation or date change
+      lands under a live treatment. Until the paste, only the taps staff make
+      on the Spa board buzz; a guest's own form ask stays silent until
+      somebody opens the board.
+    - **Teach `nala-push` the five events** (that Worker is not in this repo;
+      it routes an event to the roles whose `/notify/events/<event>/<role>`
+      is true, and the defaults - including the masseuse's stored `spa` keys,
+      which the Settings grid deliberately never draws - seed themselves the
+      next time an admin opens the Cleans board or Settings). Suggested
+      texts, each with `url: '/spa.html'` so the tap lands on the board:
+        `spaRequest`   "Villa {v} - new massage request"
+        `spaSuggested` "Villa {v} - masseuse suggested a time, put it to the guest"
+        `spaBooked`    "Villa {v} - massage booked"
+        `spaCancelled` "Villa {v} - massage declined or cancelled"
+        `spaStay`      "Villa {v} - stay cancelled or moved under a massage"
+      Until this paste the sends reach nala-push and are dropped as unknown
+      events; nothing breaks, nothing buzzes. The masseuse's phone also has
+      to subscribe once: his own hamburger menu, Settings, Notifications -
+      the toggle every login carries.
+12. **Fill the Guest form tab, and paste the 31 Aug rules.** The
+    tab owns everything the pre-arrival form says in his words, at
+    `/prearrivalinfo`: a welcome image for the landing (an image only -
+    his ruling, after a day of owner text there), a dining image and text
+    that make a page of their own in front of the dining questions, and a Read
+    heading, description and Read more per page, plus the landing's own
+    introduction line - every word a guest reads. Each box is SEEDED with
+    what the guest reads now, read from prearrival.html itself, and a box
+    left unchanged saves as empty so the page keeps owning its wording;
+    emptying a box is the way back. This also retires item 7 above the
+    moment he writes the dinner description. Photo
+    lines in the dining text still draw as photos; rotted links remove
+    themselves. The node was RESHAPED the same day it first shipped, so
+    the paste that already happened knows only its first shape - paste
+    again. The paste is what lets a guest READ the node: a guest holds no
+    login, and until `rules.json` is in the console the node sits under
+    the catch-all rule, which refuses a signed-out read. So his words save
+    from Settings but never reach a guest - the feature fails quietly, it
+    does not limp. Paste first, then write. Item 7 above is the same
+    page's older copy question and is the natural moment to settle
+    alongside the dining note.
+
+    **The same paste carries the 31 Aug audit**, which is the more urgent
+    half of it. Removing somebody from Staff was supposed to be the
+    revoke - staff.html says so where it deletes the record, and
+    MANUAL-ADMIN.md promises it - and it was not true. Twenty-six rules
+    asked only whether the login was NOT the masseuse, or only that it was
+    a login at all, and a login with no staff record passes both: the role
+    of a record that does not exist is null, and null is not 'spa'. So a
+    person removed this morning kept the cleans board, the desk overrides,
+    the booking list with its names and numbers, the roster, and
+    everything under the catch-all, until somebody also deleted their
+    Firebase login - a separate job in a separate console that nobody does
+    in a hurry. Every one of those rules now asks that the record exists.
+    Two narrower holes went with it: a dietary record was world readable,
+    so anyone who could guess a Mews customer id could read what a guest
+    cannot eat, and any login at all could rewrite the record of menus
+    already sent out. Until this paste, deleting a staff record is a
+    display change and not a revoke; if somebody has left and the paste
+    has not happened, delete their Firebase login too, which is
+    Authentication in the Firebase console.
 
 ---
 

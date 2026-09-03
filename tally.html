@@ -12,22 +12,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
 <title>Nala · Tonight's Numbers</title>
-<link rel="stylesheet" href="nala-ui.css?v=14">
+<link rel="stylesheet" href="nala-ui2.css?v=6">
+<link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-         --amber:#B07D2B;
+    /* This page's OWN colours. the board's own dining greens and slates, which mean different things from the shared ones */
+  :root {
+         /* the kitchen bubble's gold. Not --amber: that name is the colour
+            law's attention FILL (#F6EAD5) and this is an ink.            */
+         --gold:#B07D2B;
           /* state palette: dining green, declined terracotta, vacant slate */
-          --green:#5E7D67;  --green-t:rgba(122,160,130,.26);  --green-b:rgba(122,160,130,.65);
-          --terra:#9E6455;  --terra-t:rgba(184,106,90,.16);   --terra-b:rgba(184,106,90,.45);
-          --slate:#57575E;  --slate-t:rgba(87,87,94,.10);     --slate-b:rgba(87,87,94,.28); }
-  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
-         padding:28px 24px 0; -webkit-tap-highlight-color:transparent; }
+          --green:#5E7D67;
+          --slate:#57575E;  --slate-t:rgba(87,87,94,.10);     --slate-b:rgba(87,87,94,.28)}
+  body { padding:28px 24px 0 }
   .wrap { max-width:520px; margin:0 auto; }
 
   .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
             background:#A8321E; color:#fff; padding:12px 18px;
-            font-family:var(--ui-font); font-size:11px; line-height:1.5;
+            font-family:var(--ui-font); font-size:var(--t2); line-height:1.5;
             transform:translateY(-100%); transition:transform .25s; }
   .errbar.show { transform:translateY(0); }
 
@@ -36,48 +37,47 @@
   /* Both states are pills. The published one renders as an <a> and the
      unpublished as a <span>, so this must match either - selecting only
      span left the published state unstyled but for its background.     */
-  .menustate > * { display:inline-block; border-radius:20px;
-                   font-family:var(--ui-font); font-size:9px;
-                   letter-spacing:.16em; text-transform:uppercase;
-                   /* letter-spacing leaves a trailing space after the last
-                      character, inside the box, which pushes the text off
-                      centre. Take it back off the right padding.        */
-                   padding:6px calc(14px - .16em) 6px 14px; }
+  .menustate > * { display:inline-block; border-radius:var(--pill);
+                   font-family:var(--ui-font); font-size:var(--t1);
+                   /* The right padding used to be short by .16em to take back
+                      the trailing space letter-spacing leaves inside the box.
+                      There is no letter-spacing now, so the compensation is
+                      what would push the text off centre.               */
+                   padding:6px 14px; }
   .menustate .yes { background:rgba(122,160,130,.22); color:#3F6B4C;
                     text-decoration:none; }
   .menustate .yes b { font-weight:normal; opacity:.75; }
   .menustate .no  { background:rgba(184,106,90,.18);  color:#8E4433; }
 
 
-.sec { font-family:var(--ui-font); font-size:8px; letter-spacing:.3em;
-         text-transform:uppercase; color:var(--mid); margin:26px 0 12px;
+.sec { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); margin:26px 0 12px;
          display:flex; justify-content:space-between; align-items:baseline; }
   .sec a { color:var(--ink); text-decoration:none; border:1px solid var(--rule);
-           font-size:9px; letter-spacing:.14em; padding:6px 12px; border-radius:2px;
+           font-size:var(--t1); padding:6px 12px; border-radius:var(--r);
            background:transparent; }
   .sec a.active { background:var(--ink); color:var(--cream); border-color:var(--ink); }
 
   /* room grid */
   .rooms { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; }
   .room {
-    aspect-ratio:1; border:1px solid var(--rule); background:transparent;
+    aspect-ratio:1; border:1px solid var(--rule); border-radius:var(--r);
+    background:transparent;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     font-family:var(--ui-font); cursor:pointer; padding:0; position:relative;
   }
-  .room-n { font-size:13px; color:var(--ink); }
-  .room-p { font-size:8px; color:var(--mid); margin-top:2px; min-height:10px; }
+  .room-n { font-size:var(--t2); color:var(--ink); }
+  .room-p { font-size:var(--t1); color:var(--mid); margin-top:2px; min-height:10px; }
   /* Kept clear of the menu button on the right, which was cutting "Seat
      separately" in half on a real handset. Wraps rather than shrinks: the
      label and the action both have to stay readable, and a squeezed control
      next to a squeezed label is how a wrong button gets pressed. */
   .comb-note { display:flex; align-items:center; justify-content:space-between;
                gap:8px; flex-wrap:wrap;
-               border:1px solid var(--ink); border-radius:8px;
+               border:1px solid var(--ink); border-radius:var(--r);
                padding:9px 12px; margin:0 44px 12px;
-               font-family:var(--ui-font); font-size:11px; letter-spacing:.04em; }
+               font-family:var(--ui-font); font-size:var(--t2); }
   .comb-undo { border:none; background:transparent; color:var(--red); cursor:pointer;
-               font-family:var(--ui-font); font-size:10px; font-weight:bold;
-               letter-spacing:.1em; text-transform:uppercase; padding:4px 0;
+               font-family:var(--ui-font); font-size:var(--t2); font-weight:bold; padding:4px 0;
                -webkit-tap-highlight-color:transparent; }
   .room.in     { background:var(--green-t); border-color:var(--green-b); }
   .room.in .room-n { color:var(--ink); }
@@ -106,8 +106,7 @@
             transform:translateY(110%); transition:transform .22s; }
   .selbar.show { transform:translateY(0); }
   .selbar-inner { max-width:520px; margin:0 auto; }
-  .selcount { font-family:var(--ui-font); font-size:10px;
-              letter-spacing:.16em; text-transform:uppercase; color:var(--mid);
+  .selcount { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
               text-align:center; margin-bottom:10px; }
   .selactions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .selbtn.comb { border:1px solid var(--ink); color:var(--ink); background:transparent; }
@@ -115,31 +114,30 @@
   /* the make-up is a statement, not a label: sentence case and normal spacing
      so a full house still fits one line at 390pt (see STYLEGUIDE type scale) */
   .tablesline { text-align:center; margin-top:8px; font-family:var(--ui-font);
-                font-size:11.5px; letter-spacing:.02em; color:var(--ink);
+                font-size:var(--t2); color:var(--ink);
                 white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   /* The ring is drawn as an overlay, the same way the room-tile group does it,
      so grouping a booking no longer narrows its rows by 24px and compresses
      everything inside. Layout width is identical grouped or not.          */
   .grpbox { position:relative; border:0; padding:0; margin:14px 0; }
   .grpbox::after { content:''; position:absolute; inset:-6px -9px;
-                   border:1.2px solid var(--ink); border-radius:10px; pointer-events:none; }
+                   border:1.2px solid var(--ink); border-radius:var(--r); pointer-events:none; }
   .tilegrp { display:grid; gap:6px; position:relative; }
   .tilegrp::after { content:''; position:absolute; inset:-3.5px;
-                    border:1.2px solid var(--ink); border-radius:9px; pointer-events:none; }
+                    border:1.2px solid var(--ink); border-radius:var(--r); pointer-events:none; }
   .grpbox .row:last-child { border-bottom:none; }
   .row.stubrow .row-name, .row.stubrow .row-sub { color:var(--mid); }
   .row.stubrow .row-sub { font-style:italic; }
   .selbtn { padding:13px 6px; border:1px solid transparent; color:#fff;
-            font-family:var(--ui-font); font-size:11px;
-            letter-spacing:.1em; text-transform:uppercase; cursor:pointer; }
+            border-radius:var(--r); min-height:var(--tap);
+            font-family:var(--ui-font); font-size:var(--t2); cursor:pointer; }
   .selbtn.vac  { background:var(--slate); }
   .selbtn.din  { background:var(--green); }
   .selbtn.out  { background:var(--terra); }
   .selbtn.quiet{ background:transparent; border-color:var(--rule); color:var(--mid); }
 
   .legend { display:flex; gap:14px; justify-content:center; margin-top:12px;
-            font-family:var(--ui-font); font-size:8px;
-            letter-spacing:.12em; text-transform:uppercase; color:var(--mid); }
+            font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); }
   .legend span { display:flex; align-items:center; gap:5px; }
   .sw { width:9px; height:9px; border:1px solid var(--rule); display:inline-block; }
   .sw.in { background:var(--green-t); border-color:var(--green-b); }
@@ -159,19 +157,18 @@
   .row { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center;
          column-gap:10px; row-gap:0; padding:9px 0; border-bottom:1px solid var(--rule); }
   .row-main { flex:1 1 auto; min-width:0; }
-  .row-name { font-size:14px; }
+  .row-name { font-size:var(--t3); }
   /* The villa number is the thing staff scan for, so it leads the line at a
      larger size in ink, then a dash, then the guest name. The word "villa"
      is dropped - every row is a villa, so repeating it says nothing.     */
-  .row-name .rm { font-family:var(--ui-font); font-size:15px;
-                  font-weight:bold; letter-spacing:0; color:var(--ink); }
+  .row-name .rm { font-family:var(--ui-font); font-size:var(--t3);
+                  font-weight:bold; color:var(--ink); }
   .row-name .rm::after { content:' - '; font-weight:normal; color:var(--mid); }
-  .row-name .tag { font-family:var(--ui-font); font-size:8px;
-                   letter-spacing:.18em; text-transform:uppercase; color:var(--mid);
+  .row-name .tag { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
                    border:1px solid var(--rule); padding:2px 6px; margin-left:8px;
-                   border-radius:10px; vertical-align:middle; }
-  .row-sub { font-style:italic; font-size:11px; color:var(--mid); margin-top:8px; }
-  .row-pax { font-family:var(--ui-font); font-size:12px; white-space:nowrap; }
+                   border-radius:var(--r); vertical-align:middle; }
+  .row-sub { font-style:italic; font-size:var(--t2); color:var(--mid); margin-top:8px; }
+  .row-pax { font-family:var(--ui-font); font-size:var(--t2); white-space:nowrap; }
   /* The bubble sits BEFORE the pax count so the pax figures line up down the
      list whether or not a booking carries a note.                         */
   .row-right { display:flex; align-items:center; gap:6px; white-space:nowrap;
@@ -188,10 +185,15 @@
      pills take the whole row width, not just the half beside the pax count. */
   .nm { white-space:nowrap; }
   .dietline { flex:0 0 100%; margin:8px 0 0; display:flex; flex-wrap:wrap; gap:5px; }
-  .dpill { font-family:var(--ui-font); font-size:11px; font-weight:bold;
-           letter-spacing:.06em; text-transform:uppercase; padding:3px 8px;
-           border-radius:11px; background:rgba(168,50,30,.12); color:var(--red); }
+  .dpill { font-family:var(--ui-font); font-size:var(--t2); font-weight:bold; padding:3px 8px;
+           border-radius:var(--pill); background:rgba(168,50,30,.12); color:var(--red); }
   .dpill-al { background:var(--red); color:#fff; }
+  /* The declared "none" wears the same pill as any dietary, in the green
+     the colour law gives a positive state - never the red tints above,
+     which read as something for the kitchen to act on. It says
+     "No dietaries", the FOH sheet's words for the same fact, because the
+     full sentence outgrew the row. */
+  .dpill-ok { background:var(--green-t); color:var(--green); }
   .row.conflict { border-left:3px solid var(--red); padding-left:10px;
                   background:rgba(168,50,30,.05); }
   /* Icon only, no box, in a fixed 20px slot that exists whether or not this
@@ -202,25 +204,20 @@
          position:relative; }
   .bub::after { content:''; position:absolute; inset:-11px; }  /* 42px tap target */
   .bub svg { width:15px; height:15px; display:block; fill:var(--mid); }
-  .bub.kitchen svg { fill:var(--amber); }
+  .bub.kitchen svg { fill:var(--gold); }
   .bub.flag svg { fill:var(--red); }
-  .pop-who { font-size:15px; margin-bottom:14px; padding-bottom:12px;
+  .pop-who { font-size:var(--t3); margin-bottom:14px; padding-bottom:12px;
              border-bottom:1px solid var(--rule); }
-  .pop-h { font-family:var(--ui-font); font-size:10px; letter-spacing:.18em;
-           text-transform:uppercase; color:var(--mid); margin-bottom:6px; }
+  .pop-h { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); margin-bottom:6px; }
   .pop-h.dh { color:var(--red); }
-  .pop-t { font-size:14px; line-height:1.45; margin-bottom:16px; }
-  .empty { font-style:italic; color:var(--mid); font-size:12px; padding:8px 0; }
+  .pop-t { font-size:var(--t3); line-height:1.45; margin-bottom:16px; }
+  .empty { font-style:italic; color:var(--mid); font-size:var(--t2); padding:8px 0; }
 
   .actions.hidden { visibility:hidden; }
   .actions { margin-top:34px; gap:10px;
              padding:12px 0 calc(12px + env(safe-area-inset-bottom)); }
-  .actions .btn { flex:1 1 40%; text-align:center; white-space:nowrap; }
-  .btn { flex:1; text-align:center; padding:13px; border:1px solid var(--ink);
-         font-family:var(--ui-font); font-size:10px; letter-spacing:.15em;
-         text-transform:uppercase; color:var(--ink); text-decoration:none;
-         background:transparent; cursor:pointer; }
-  .btn.solid { background:var(--ink); color:var(--cream); }
+  /* .btn wears nala-ui.css's shared dress; the rows here only lay it out. */
+  .actions .btn { flex:1 1 40%; }
 
   /* sheet */
   .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35);
@@ -230,49 +227,51 @@
            min-height:560px;
            padding:26px 24px 120px; border-top:1px solid var(--rule);
            max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
-  .sheet h3 { font-family:var(--ui-font); font-size:11px; letter-spacing:.2em;
-              text-transform:uppercase; color:var(--mid); font-weight:normal;
+  .sheet h3 { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); font-weight:normal;
               text-align:center; margin:0 44px 12px; }
   .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid transparent;
-         font-family:var(--ui-font); font-size:12px;
-         letter-spacing:.12em; text-transform:uppercase; color:#fff; cursor:pointer; }
+         border-radius:var(--r); min-height:var(--tap);
+         font-family:var(--ui-font); font-size:var(--t2); color:#fff; cursor:pointer; }
   /* matches the room tile palette */
-  .opt.solid { background:var(--green); border-color:var(--green); }   /* dining  - green */
+  /* The dining state, in the colour law's green, same as the tile. */
+  .opt.din   { background:var(--green); border-color:var(--green); }
   .opt.out   { background:var(--terra); border-color:var(--terra); }   /* not dining - red */
   .opt.vac   { background:var(--slate); border-color:var(--slate); }   /* vacant - slate */
   .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
   .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 16px; }
   .pax-fact { font:600 20px/1 var(--ui-font); color:var(--ink); }
   .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
-         border-radius:50%; font-family:var(--ui-font); font-size:13px;
+         border-radius:50%; font-family:var(--ui-font); font-size:var(--t2);
          color:var(--ink); cursor:pointer; }
   .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
   .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
-          border-radius:20px; font-family:var(--ui-font); font-size:10px;
+          border-radius:var(--pill); font-family:var(--ui-font); font-size:var(--t2);
           color:var(--mid); cursor:pointer; }
-  .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .chip.on { background:var(--accent); color:var(--accent-ink);
+           border-color:var(--accent); }
 
   .seg { display:flex; gap:6px; margin:2px 0 12px; }
   .seg button { flex:1; padding:11px 0; border:1px solid var(--rule); background:transparent;
-                font-family:var(--ui-font); font-size:10px; letter-spacing:.12em;
-                text-transform:uppercase; color:var(--mid); cursor:pointer; border-radius:6px; }
-  .seg button.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+                font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); cursor:pointer; border-radius:var(--r); }
+  .seg button.on { background:var(--accent); color:var(--accent-ink);
+                 border-color:var(--accent); }
   .rm-row { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:2px 0 14px; }
   .rmp { height:40px; border:1px solid var(--rule); background:transparent;
-         font-family:var(--ui-font); font-size:12px; color:var(--ink);
-         cursor:pointer; border-radius:6px; }
-  .rmp.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+         font-family:var(--ui-font); font-size:var(--t2); color:var(--ink);
+         cursor:pointer; border-radius:var(--r); }
+  .rmp.on { background:var(--accent); color:var(--accent-ink);
+          border-color:var(--accent); }
   /* Reported 18 Aug from a real handset: the villa heading and the name were
      being squeezed against the menu button, because the sheet header did not
      know the button was there. The name line is given room to breathe and the
      panel below it is set a little tighter, so a full snapshot and the three
      service buttons still fit one screen without scrolling. */
   .gd { position:relative; text-align:center; margin:-4px 44px 12px;
-        font-size:13px; line-height:1.5; }
-  .gd .gd-sub { display:block; font-family:var(--ui-font); font-size:10.5px;
-                color:var(--mid); letter-spacing:.03em; }
-  .gd .gd-note { display:block; font-style:italic; font-size:12px; color:var(--mid); }
+        font-size:var(--t2); line-height:1.5; }
+  .gd .gd-sub { display:block; font-family:var(--ui-font); font-size:var(--t2);
+                color:var(--mid); }
+  .gd .gd-note { display:block; font-style:italic; font-size:var(--t2); color:var(--mid); }
 
   /* ── the guest snapshot ───────────────────────────────────────────────
      Everything the app holds about whoever is in the villa, behind one tap.
@@ -310,7 +309,7 @@
               margin-top:8px; padding:12px 16px 4px; text-align:left;
               overflow-y:auto;
               background:var(--cream); border:1px solid var(--rule);
-              border-radius:12px;
+              border-radius:var(--r);
               box-shadow:0 10px 28px rgba(28,28,26,.14);
               opacity:0; visibility:hidden; transform:translateY(-6px);
               transition:opacity .18s ease, transform .18s ease,
@@ -323,52 +322,47 @@
     .gd-panel.open { transition:none; }
   }
   .gd-int { margin:10px 0 2px; }
-  .gd-int label { display:block; font-family:var(--ui-font); font-size:8px;
-                  letter-spacing:.25em; text-transform:uppercase;
+  .gd-int label { display:block; font-family:var(--ui-font); font-size:var(--t1);
                   color:var(--mid); margin:0 0 4px; }
   .gd-int textarea { width:100%; min-height:56px; padding:8px 10px;
-                     border:1px solid var(--rule); border-radius:6px;
+                     border:1px solid var(--rule); border-radius:var(--r);
                      background:var(--cream); color:var(--ink);
                      /* 16px is the floor for every input on a phone: iOS
                         zooms the whole page into any field set smaller. */
-                     font-family:inherit; font-size:16px; resize:vertical; }
+                     font-family:var(--ui-font); font-size:var(--t3); resize:vertical; }
   .gd-int .gd-int-save { display:block; width:100%; margin:6px 0 0;
                      padding:8px 0; border:1px solid var(--rule);
-                     border-radius:6px; background:none; cursor:pointer;
+                     border-radius:var(--r); background:none; cursor:pointer;
                      color:var(--mid); font-family:var(--ui-font);
-                     font-size:9.5px; letter-spacing:.18em;
-                     text-transform:uppercase;
+                     font-size:var(--t1);
                      -webkit-tap-highlight-color:transparent; }
   .gd-int .gd-int-save:disabled { opacity:.45; cursor:default; }
   .gd-int-link { display:inline-block; margin:6px 0 2px; padding:2px 0;
                  border:0; background:none; cursor:pointer;
-                 color:var(--mid); font-family:inherit; font-size:14px;
+                 color:var(--mid); font-family:var(--ui-font); font-size:var(--t3);
                  text-decoration:underline; text-underline-offset:3px;
                  -webkit-tap-highlight-color:transparent; }
   .gd-int-link:active { color:var(--ink); }
   .gd-close { display:block; width:100%; margin:8px 0 0; padding:9px 0;
               border:0; border-top:1px solid var(--rule);
               background:none; cursor:pointer; color:var(--mid);
-              font-family:var(--ui-font); font-size:9.5px;
-              letter-spacing:.18em; text-transform:uppercase;
+              font-family:var(--ui-font); font-size:var(--t1);
               -webkit-tap-highlight-color:transparent; }
   .gd-close:active { color:var(--ink); }
-  .gd-row { display:flex; gap:9px; padding:2px 0; font-size:12px;
+  .gd-row { display:flex; gap:9px; padding:2px 0; font-size:var(--t2);
             line-height:1.45; }
-  .gd-k { flex:0 0 74px; font-family:var(--ui-font); font-size:9px;
-          letter-spacing:.14em; text-transform:uppercase; color:var(--mid);
+  .gd-k { flex:0 0 74px; font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
           padding-top:2px; }
   .gd-v { flex:1 1 auto; min-width:0; color:var(--ink); }
   .gd-v.quiet { color:var(--mid); font-style:italic; }
   .gd-tel { color:var(--ink); text-decoration:none;
             border-bottom:1px solid var(--rule); }
 
-  .note-box { font-style:italic; font-size:13px; color:var(--mid); text-align:center;
+  .note-box { font-style:italic; font-size:var(--t2); color:var(--mid); text-align:center;
               line-height:1.6; padding:0 4px 16px; }
-  .sheet-label { font-family:var(--ui-font); font-size:8px; letter-spacing:.25em;
-                 text-transform:uppercase; color:var(--mid); text-align:center; margin-bottom:8px; }
+  .sheet-label { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); text-align:center; margin-bottom:8px; }
   .txt { width:100%; padding:12px; margin-bottom:8px; border:1px solid var(--rule);
-         background:transparent; font-family:var(--ui-font); font-size:16px; color:var(--ink); }
+         background:transparent; font-family:var(--ui-font); font-size:var(--t3); color:var(--ink); }
   .txt::placeholder { color:var(--mid); font-style:italic; }
   .txt:focus { outline:none; border-color:var(--ink); }
 
@@ -384,7 +378,7 @@ body.readonly #oClear, body.readonly #oUncomb, body.readonly #cYes,
 body.readonly .comb-undo { display:none; }
 </style>
 </head>
-<body class="tier-app">
+<body class="tier-app ui2">
 
 <div class="errbar" id="errBar"></div>
 <div class="wrap">
@@ -395,7 +389,7 @@ body.readonly .comb-undo { display:none; }
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="flags.html">Flags</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"></div>
   </div>
 </div>
 <script>
@@ -403,9 +397,6 @@ body.readonly .comb-undo { display:none; }
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
-  var so=document.getElementById('navSignout');
-  if (so) so.onclick=function(e){ e.preventDefault();
-    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
 
   /* Role gate, per the matrix in ROLES.md. Two different things here: a role
      that may not see this board at all, and a role that may read it but not
@@ -441,20 +432,9 @@ body.readonly .comb-undo { display:none; }
   })();
 
 
-  /* The menu lists only the boards this role may open: offering a link that
-     lands on "no access" is a door to nowhere. Cleans needs cleansBoard,
-     the sheets need their own permission.                              */
-  window.NALA_NAVFILTER = function(role){
-    var need = { 'tally.html':'resBoard', 'front-desk.html':'editBookings', 'list.html':'resSheet',
-                 'cleaners.html':'cleansBoard', 'housekeeping.html':'cleansBoard', 'registration.html':'editBookings',
-                 'staff.html':'manageStaff', 'pages.html':'manageStaff' };
-    var links = document.querySelectorAll('#navDrop a');
-    for (var i=0;i<links.length;i++){
-      if (links[i].className.indexOf('signout')>-1) continue;   /* never filtered */
-      var href = (links[i].getAttribute('href')||'').split('?')[0];
-      links[i].style.display = can(role, need[href]) ? '' : 'none';
-    }
-  };
+  /* The menu filter lives in nala-shared.js (navFilterShared), which
+     overwrites the page copy that used to sit here - a stale map missing
+     half the links, kept alive only until this page was next touched. */
 
   function showAccess(allowed, err){
     var box = document.getElementById('noAccess');
@@ -553,7 +533,7 @@ body.readonly .comb-undo { display:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=41"></script>
+<script src="nala-shared.js?v=48"></script>
 <script>
 /* Not every allergy is on the list and the list cannot grow to hold them all,
    so Other means read the note. The same entry the front desk writes, because
@@ -656,7 +636,7 @@ function showError(msg){
 function withExtras(key, rec){
   var prev = manual[key];
   if (prev){
-    ['name','phone','diets','note','dnote'].forEach(function(k){
+    ['name','phone','diets','note','dnote','nodiet'].forEach(function(k){
       if (rec[k] === undefined && prev[k] !== undefined) rec[k] = prev[k];
     });
   }
@@ -697,6 +677,11 @@ function persistDietary(villa, rec){
   var patch = {};
   if ('diets' in rec) patch.diets = rec.diets || [];
   if ('dnote' in rec) patch.dnote = rec.dnote || '';
+  /* The same answer under the booking's name for it. A dietary chosen here
+     contradicts a stored "none to declare", and left standing it read the
+     front desk's pill back on beside the allergy it denies. */
+  if ('nodiet' in rec) patch.noDiets = !!rec.nodiet;
+  else if (patch.diets && patch.diets.length) patch.noDiets = false;
   /* Quietly. A failure here must not undo the save that succeeded, and the
      cell already carries the answer for tonight either way. */
   api('/bookings/' + id + '/prearrival', 'PATCH', patch).catch(function(){});
@@ -816,6 +801,49 @@ function roomStateRaw(n){
   }
   if (best) return best;
   if (m) return { src:'manual', key:mk, g:m };
+
+  /* Nobody has said anything about tonight - so read what the GUEST said,
+     on their own form, days ago.
+
+     Their pre-arrival form asks about the first night and the answer has
+     always sat on the reservation, but nothing ever carried it here. So a
+     guest who told us on Tuesday they were dining showed on this board as
+     awaiting, and on an arrival night nothing else would ever move it: the
+     nightly dinner request is not sent to somebody who has not checked in,
+     so the ONLY thing that put them in front of the chef was a person at
+     the desk re-typing an answer we already had. The owner's ruling, 28
+     Aug: there is no scenario where reception would decline to pass it on,
+     so it should not be theirs to pass on.
+
+     Read, never written. This adds no second writer and no second node -
+     the cell above still wins outright the moment anyone sets one, and this
+     falls away for good at that point, which is what keeps "the dinner cell
+     is one cell" true. It is the effectiveEta shape: the authoritative
+     answer, then the guest's own, then nothing.
+
+     Only on the night they ARRIVE. PREARRIVAL_BY_VILLA holds a record for
+     every occupied villa, and the form asks about the first night alone, so
+     without this gate one answer would speak for every night of the stay.
+
+     Any answer they gave, not only a form they finished. The guest page
+     saves each question as it is left, so an abandoned form still holds
+     real answers, and an answer given is a thing the kitchen should know -
+     the owner's ruling, 28 Aug. */
+  var pre = PREARRIVAL_BY_VILLA[String(n)];
+  var kn  = roomguests[String(n)] || {};
+  if (pre && (pre.dining === true || pre.dining === false) &&
+      kn.arrives && dkey(parseDepDate(kn.arrives)) === todayKey()){
+    return { src:'digital', key:mk, fromForm:true, g:{
+      status: pre.dining ? 'in' : 'out',
+      pax:    pre.dining ? (pre.pax || kn.adults || 2) : 0,
+      room:   String(n),
+      diets:  pre.diets || [],
+      nodiet: !!pre.noDiets,
+      dnote:  pre.dnote || '',
+      note:   pre.note || '',
+      by:     'guest'
+    } };
+  }
   return null;
 }
 
@@ -1067,9 +1095,15 @@ function render(){
            a day forward, the villa turns into an awaiting stub, and the stub
            said nothing but the name. */
         var od = overlayReservationDiets({}, r.room);
+        var stubPre = PREARRIVAL_BY_VILLA[String(r.room)];
         var dline = (od.diets && od.diets.length)
           ? '<div class="row-sub">' + dietHTML(od.diets) +
-            (od.dnote ? ' \u00b7 ' + od.dnote : '') + '</div>' : '';
+            (od.dnote ? ' \u00b7 ' + od.dnote : '') + '</div>'
+          /* The declared "none" is as much the person's as an allergy is,
+             so the stub shows it the same way tonight's rows do. */
+          : (stubPre && stubPre.noDiets
+              ? '<div class="dietline"><span class="dpill dpill-ok">No dietaries</span></div>'
+              : '');
         /* The awaiting stub carries the companion too: a villa that has not
            answered tonight is still a named party, and this board is where
            reception looks a booking up mid-service. */
@@ -1122,7 +1156,13 @@ function render(){
         var label = al ? x.replace(/\s*allergy\s*/i,'') : x;
         return '<span class="dpill'+(al?' dpill-al':'')+'">'+label+'</span>';
       }).join('') + '</div>';
-    } else if (g.nodiet) { sub.push('No dietaries confirmed'); }
+    } else if (g.nodiet) {
+      /* A dietary answer, not the absence of one, so it rides in the
+         dietline like the rest. It feeds neither menuConflicts nor the
+         bubble: there is nothing for the kitchen to act on, only the fact
+         that we asked and the guest ruled it out. */
+      dietLine = '<div class="dietline"><span class="dpill dpill-ok">No dietaries</span></div>';
+    }
 
 
     var hits = menuConflicts(MENU, personDiets);
@@ -1486,6 +1526,7 @@ function snapshotRows(g, known){
    hour for nothing. So the eye pays for itself, once, on the villa in hand. */
 var PRE_CACHE = {};
 var INT_CACHE = {};
+var SPA_CACHE = {};   /* /spa/<booking>: the wellness row's first source */
 
 function wireGuestPanel(g, known){
   var eye = document.getElementById('gdEye');
@@ -1671,20 +1712,57 @@ var APPROACH_WORDS = { most:'Most nights', few:'A few nights',
                        once:'Probably just once', unsure:'Not sure yet',
                        mix:'A mix of meals in and out', out:'Mostly eating out' };
 
-function preRows(pre){
-  if (!pre || typeof pre !== 'object') return [];
+/* The panel's short day: Thu 28, the styleguide's own shape. */
+function wellDayLabel(key){
+  if (isAnyDay(key)) return SPA_ANY_DAY_LABEL;
+  var d = parseDepDate(key); if (!d) return String(key);
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' + d.getDate();
+}
+
+function preRows(pre, spa){
+  var p = (pre && typeof pre === 'object') ? pre : null;
   var rows = [];
-  if (pre.arriveSlot)
-    rows.push(['Arriving', ETA_WORDS[pre.arriveSlot] || String(pre.arriveSlot)]);
+  if (p && p.arriveSlot)
+    rows.push(['Arriving', ETA_WORDS[p.arriveSlot] || String(p.arriveSlot)]);
   /* No arrival note here by decision, 20 Aug: it dies at check-in and
      belongs to the arrivals views. This panel is the booking's notes. */
-  if (pre.purpose)    rows.push(['Here for', pre.purpose]);
-  if (pre.occasion)   rows.push(['Occasion', pre.occasion]);
-  if (pre.approach)
-    rows.push(['Dining', APPROACH_WORDS[pre.approach] || String(pre.approach)]);
-  if (pre.wellness)   rows.push(['Wellness', 'Interested'
-    + (pre.wellDay ? ', ' + pre.wellDay : '')
-    + (pre.wellTime ? ' ' + pre.wellTime : '')]);
+  if (p && p.purpose)    rows.push(['Here for', p.purpose]);
+  if (p && p.occasion)   rows.push(['Occasion', p.occasion]);
+  if (p && p.approach)
+    rows.push(['Dining', APPROACH_WORDS[p.approach] || String(p.approach)]);
+  /* Wellness is the Spa board's truth, not the form's - the front desk
+     sheet's rule of 27 Aug, kept here so the two views cannot disagree:
+     a record at /spa/<booking> outranks the form's Interested, which
+     stands in only while nobody has answered it. Spa rows render even
+     with no form at all: a desk-added massage belongs to the booking. */
+  var answered = false;
+  Object.keys(spa || {}).sort().forEach(function(tid){
+    var t = spa[tid];
+    if (!t || typeof t !== 'object' || !t.status) return;
+    if (t.source === 'prearrival') answered = true;
+    var two = t.qty === 2 ? 'Two massages \u00B7 ' : '';
+    var when = (t.day ? wellDayLabel(t.day) : '') +
+               (t.time ? ' \u00B7 ' + spaSlotLabel(t.time) : '');
+    if (t.status === 'booked')
+      rows.push(['Wellness', two + 'Booked \u00B7 ' + when +
+                 (t.manual ? ' \u00B7 approved at the desk' : '')]);
+    else if (t.status === 'suggested')
+      rows.push(['Wellness', two + 'Suggested ' + when + ' \u00B7 waiting on the guest']);
+    else if (t.status === 'requested')
+      rows.push(['Wellness', two + 'Asked' +
+                 (t.reqDay ? ' \u00B7 ' + wellDayLabel(t.reqDay) : '') +
+                 (t.reqTime ? ' \u00B7 ' + t.reqTime : '') +
+                 ' \u00B7 waiting on the masseuse']);
+    else if (t.status === 'declined')
+      rows.push(['Wellness', 'Declined' + (t.note ? ' \u00B7 ' + t.note : '') +
+                 (t.told ? ' \u00B7 guest told' : ' \u00B7 let the guest know')]);
+  });
+  if (p && p.wellness && !answered)
+    rows.push(['Wellness', 'Interested'
+      + (p.wellDay ? ', ' + wellDayLabel(p.wellDay) : '')
+      + (p.wellTime ? ' ' + p.wellTime : '')
+      + ' \u00B7 waiting on the masseuse']);
+  if (!p) return rows;
   if (pre.note)       rows.push(['Booking notes', '\u201C'+pre.note+'\u201D']);
   /* The dietaries themselves, not only the note about them. This panel showed
      the note and skipped the list, so an allergy on the reservation was
@@ -1707,7 +1785,7 @@ function loadPrearrival(known, panel, g){
     return;
   }
   var paint = panel._paint = function(){
-    var extra = preRows(PRE_CACHE[id]);
+    var extra = preRows(PRE_CACHE[id], SPA_CACHE[id]);
     /* The staff note is the whole team's, decided 20 Aug: every staff
        login reads it and writes it, because the chef holding the phone
        at service is exactly who it is for. The rules enforce the only
@@ -1742,10 +1820,14 @@ function loadPrearrival(known, panel, g){
     panel.innerHTML = body +
       '<button class="gd-close" id="gdClose" type="button">Close details</button>';
   }
-  if (PRE_CACHE[id] !== undefined && INT_CACHE[id] !== undefined){ paint(); return; }
+  if (PRE_CACHE[id] !== undefined && INT_CACHE[id] !== undefined &&
+      SPA_CACHE[id] !== undefined){ paint(); return; }
   panel.innerHTML = panelHTML(base.concat([['', 'Looking for the pre-arrival answers', true]]));
   var pPre = PRE_CACHE[id] !== undefined ? Promise.resolve()
     : api('/bookings/'+id+'/prearrival').then(function(pre){ PRE_CACHE[id] = pre || null; });
+  var pSpa = SPA_CACHE[id] !== undefined ? Promise.resolve()
+    : api('/spa/'+id).then(function(s){ SPA_CACHE[id] = s || null; })
+        .catch(function(){ SPA_CACHE[id] = null; });
   var pInt = INT_CACHE[id] !== undefined ? Promise.resolve()
     : api('/internal/'+id).then(function(rec){
         rec = rec || {};
@@ -1760,7 +1842,7 @@ function loadPrearrival(known, panel, g){
                           note: (rec.note === undefined || rec.note === null)
                                   ? (rec.fromMews || null) : rec.note };
       }).catch(function(){ INT_CACHE[id] = { ok: false }; });
-  Promise.all([pPre, pInt]).then(paint).catch(function(){
+  Promise.all([pPre, pInt, pSpa]).then(paint).catch(function(){
       /* A failed read is not an empty one, and saying "none" here would be a
          lie that reception would act on. */
       panel.innerHTML = panelHTML(base.concat(
@@ -1834,6 +1916,12 @@ function editRoomDetails(n, st){
       return;
     }
     rec.diets = diets.slice();
+    /* The no-allergies answer survives a details edit, and yields to a
+       chosen dietary: the two contradict, and the chips as saved are the
+       statement of record. Dropped from the PUT entirely, it read back as
+       a deselected pill at the front desk - the same one-fact-two-nodes
+       bug the cell exists to end. */
+    rec.nodiet = diets.length ? false : !!g.nodiet;
     if (dn) rec.dnote = dn;
     else if (g.dnote) rec.dnote = g.dnote;   // the guest's own dietary note stays theirs
     saveManual('room-'+n, rec);
@@ -1877,10 +1965,23 @@ function openRoom(n, st){
   }
   function paintPax(){ paxPicker(6, function(){return pax;}, function(v){pax=v;}); }
 
+  /* Closing and repainting waits for the write now, rather than happening a
+     tenth of a second after the tap with nothing said in between. The record
+     itself is still updated the moment the button is pressed - saveManual
+     does that before its request leaves, and rolls it back itself if the
+     request is refused - so only the repaint waits, and what fills the wait
+     is the button saying Saving and then Saved. */
+  function afterWrite(){ close(); render(); }
   function writeManual(rec){
-    saveManual('room-'+n, withExtras('room-'+n, rec)); close(); render();
+    return saveFeedback(pressedButton(), function(){
+      return saveManual('room-'+n, withExtras('room-'+n, rec));
+    }, { done:'Saved ✓', hold:400, then:afterWrite });
   }
-  function clearManual(){ saveManual('room-'+n); close(); render(); }
+  function clearManual(){
+    return saveFeedback(pressedButton(), function(){
+      return saveManual('room-'+n);
+    }, { done:'Saved ✓', hold:400, then:afterWrite });
+  }
 
   // ── staff cancelled a booking the guest had made ────────
   if (isOverride && guestAnswer && st.g.status === 'out') {
@@ -1961,7 +2062,7 @@ function openRoom(n, st){
       shell(
         '<div class="note-box">The guest declined.</div>'+
         paxBlock()+
-        '<button class="opt solid" id="oIn">Dining after all</button>'+
+        '<button class="opt din" id="oIn">Dining after all</button>'+
         '<button class="opt quiet" id="oClose">Close</button>'
       );
       paintPax();
@@ -1985,7 +2086,7 @@ function openRoom(n, st){
         ' opened the link but not replied.</div>'
       : '')+
     paxBlock()+
-    '<button class="opt solid" id="oIn">Dining</button>'+
+    '<button class="opt din" id="oIn">Dining</button>'+
     (st && st.g.status==='in' ? '<button class="opt quiet" id="oDetails">Edit details</button>' : '')+
     '<button class="opt out" id="oOut">Not dining</button>'+
     '<button class="opt vac" id="oVac">Vacant tonight</button>'+
@@ -2050,7 +2151,7 @@ document.getElementById('addExt').onclick = function(e){
     '<input class="txt" id="xDnote" type="text" placeholder="Dietary notes" autocomplete="off" style="margin-top:10px;display:none">'+
     '<div class="sheet-label">Dinner notes</div>'+
     '<input class="txt" id="xNote" type="text" placeholder="Dinner notes" autocomplete="off" style="margin-top:14px">'+
-    '<button class="opt solid" id="oIn" style="margin-top:8px">Add</button>'+
+    '<button class="opt din" id="oIn" style="margin-top:8px">Add</button>'+
     '<button class="opt quiet" id="oCancel">Cancel</button>';
   showSheet();
   revealAction();

@@ -2,25 +2,29 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Front Desk Arrival</title>
-<link rel="stylesheet" href="nala-ui.css?v=14">
+<link rel="stylesheet" href="nala-ui2.css?v=6">
+<link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-          --green:#E4EDE2; --greenb:#7E937A; --amber:#F6EAD5; --amberb:#C29A55;
-          /* The same two the boards already use to mean dining and not. */
-          --dine:#5E7D67; --nodine:#9E6455; }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
-         padding:calc(24px + env(safe-area-inset-top)) 18px 0;
-         -webkit-tap-highlight-color:transparent; }
+  /* This page's OWN colours, restored 29 Aug. The first conversion
+     dropped each page's :root wholesale to remove the tokens the shared
+     sheet owns, and took these with them. An undefined custom property
+     does not fall back, it computes to nothing: fill:var(--dine) became
+     a black fork and color:var(--dine) a black stat, silently.
+     --green is not in the shared sheet on purpose - it is a pale fill on
+     five pages and a dark ink on two - so it lives here.               */
+  :root { --dine:#5E7D67; --green:#E4EDE2; --nodine:#9E6455 }
 
-  .seclabel { font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
+  
+
+  .seclabel { font-size:var(--t2);
               color:var(--mid); margin:22px 0 8px; }
 
   /* One arrival. The whole row is the control surface, the same idea as the
@@ -29,33 +33,54 @@
   .arr { display:flex; align-items:center; gap:12px; width:100%;
          background:none; border:1px solid var(--rule); border-radius:8px;
          padding:11px 13px; margin-bottom:7px; text-align:left;
-         font-family:inherit; color:inherit; cursor:pointer; }
+         font-family:var(--ui-font); color:inherit; cursor:pointer; }
 
   /* The villa number is how reception finds the guest standing in front of
      them, so it carries tile weight. 20 on the type scale. */
-  .arr-v { font-size:20px; min-width:30px; text-align:center; }
+  .arr-v { font-size:var(--t4); min-width:30px; text-align:center; }
   .arr-mid { flex:1; min-width:0; }
-  .arr-n { font-size:15px; white-space:nowrap; overflow:hidden;
+  /* The party mark moved up here from the stay line on 31 Aug, to give the
+     row back the width the massage mark now spends. It is flex:0 0 auto so
+     it never truncates - a half-written villa number is worse than none -
+     and the name takes the ellipsis instead.
+
+     It keeps the full "with villa 15", the owner's ruling the same day. The
+     short form was tried because at 320 the word "with" costs enough of the
+     name that Michel FAY reads "Mic...", and he ruled that the phrase has to
+     read as a phrase. So at 320 the name clips early on a party booking,
+     deliberately: the villa number to its left is how reception finds the
+     guest anyway, and both rows of a party carry it. */
+  .arr-top { display:flex; align-items:baseline; gap:8px; }
+  /* flex:0 1 auto, NOT flex:1. With flex:1 the name grew to fill the row and
+     shoved the mark against the right edge, so it read as a right-aligned
+     column instead of a phrase following the name. Now the name is its own
+     width and only shrinks when the row runs out. */
+  .arr-top .arr-n { flex:0 1 auto; min-width:0; }
+  .arr-with { flex:0 0 auto; font-size:var(--t2); color:var(--mid);
+              white-space:nowrap; }
+  .arr-n { font-size:var(--t3); white-space:nowrap; overflow:hidden;
            text-overflow:ellipsis; }
   /* The number, its confidence mark and the pencil, as the Pre-arrival SMS
      page draws them and from the same builder. On its own line rather than
      beside the name: this row also carries the fork and the link icons, so
      the name line clips at phone width and a clipped pencil cannot be
      tapped. ok wears --dine, the same ink the SMS page's --resgreen is. */
-  .arr-p { font-size:11px; color:var(--mid); margin-top:2px; }
+  .arr-p { font-size:var(--t2); color:var(--mid); margin-top:2px; }
   .arr-p .ph { font-weight:normal; }
   .arr-p .conf { margin-left:4px; }
   .arr-p .conf.ok { color:var(--dine); }
   .arr-p .conf.un { color:var(--mid); }
-  .arr-p .pen { font-size:12px; color:var(--mid); margin-left:5px;
+  .arr-p .pen { font-size:var(--t2); color:var(--mid); margin-left:5px;
                 padding:2px 4px; cursor:pointer; }
   /* Stay dates as the styleguide sets them: Tue 11-Fri 14. No ordinal, month
      omitted, one line, because a wrapped range doubles the row height. */
-  .arr-s { font-size:11px; color:var(--mid); margin-top:2px; white-space:nowrap;
+  .arr-s { font-size:var(--t2); color:var(--mid); margin-top:2px; white-space:nowrap;
            overflow:hidden; text-overflow:ellipsis; }
   /* When they are getting here is what reception plans the afternoon around,
      so it does not read as quietly as the stay length beside it. */
-  .arr-s .eta { font-size:12.5px; font-weight:600; color:var(--ink); }
+  .arr-s .eta { font-size:var(--t2); font-weight:600; color:var(--ink); }
+  /* The count reads in the row's own amber, so it is the same fact as the
+     tint said louder rather than a second signal to decode. */
 
   /* Confirmed rows recede but stay legible: reception still has to find a
      guest who checked in an hour ago. */
@@ -70,15 +95,15 @@
   .stat-n.unsure { color:var(--mid); }
   /* Arrived is a fraction: the number alone says nothing without the total,
      and reception is watching one climb towards the other. */
-  .stat-n .of { font-size:16px; color:var(--mid); }
+  .stat-n .of { font-size:var(--t3); color:var(--mid); }
 
   /* The summary drops out of the row it belongs to, so it is inset and shares
      the row's left edge rather than floating as its own card. */
   .sum { border:1px solid var(--rule); border-top:none; border-radius:0 0 8px 8px;
          margin:-8px 0 7px; padding:12px 13px 13px; }
-  .sum-r { display:flex; gap:10px; font-size:13px; line-height:1.5;
+  .sum-r { display:flex; gap:10px; font-size:var(--t2); line-height:1.5;
            padding:3px 0; align-items:baseline; }
-  .sum-l { flex:0 0 88px; font-size:8px; letter-spacing:.2em; text-transform:uppercase;
+  .sum-l { flex:0 0 88px; font-size:var(--t1);
            color:var(--mid); padding-top:3px; }
   .sum-v { flex:1; min-width:0; }
   .sum-v.none { color:var(--mid); font-style:italic; }
@@ -86,8 +111,7 @@
   .sum-btns + .sum-btns { margin-top:7px; }
   .sum-btns button.wide { flex:1 1 100%; }
   .sum-btns button { flex:1; padding:12px 0; border:1px solid var(--rule);
-                     border-radius:6px; font-family:var(--ui-font); font-size:11px;
-                     letter-spacing:.14em; text-transform:uppercase; cursor:pointer;
+                     border-radius:6px; font-family:var(--ui-font); font-size:var(--t2); cursor:pointer;
                      background:transparent; color:var(--mid); }
   .sum-btns button.go { background:var(--green); border-color:var(--greenb);
                         color:var(--ink); }
@@ -97,11 +121,47 @@
   /* Whether they are eating, readable without opening anything. Only on rows
      that have a form: there is nothing to report about a guest who has not
      answered, and an icon there would be an answer we do not have. */
-  .fork { width:19px; height:19px; flex:0 0 19px; opacity:1; }
+  /* 28px, up from 19 on 28 Aug: the owner could not read it at a glance,
+     and it was competing with a 20px villa number while carrying the one
+     fact the row exists to show at speed - whether the kitchen is cooking
+     for this villa tonight. The row has the height for it already; nothing
+     else on the row moves. */
+  .fork { width:28px; height:28px; flex:0 0 28px; opacity:1; }
   .fork svg { width:100%; height:100%; display:block; }
   .fork.in  svg { fill:var(--dine); }
   .fork.out svg { fill:var(--nodine); }
-  .fork.un  svg { fill:var(--mid); opacity:.6; }
+  /* There is no .fork.un any more: an unanswered booking draws no fork.
+     See forkFor. */
+
+  /* The massage mark, 31 Aug. A lotus, from the owner's own reference, which
+     was a pair of hands cradling one. Both were drawn and mocked at 28px:
+     the hands reduce to a shape that reads as a tulip, and the two together
+     to a knot. The flower alone survives the size and holds the four state
+     colours cleanly, and the owner offered it as the alternative.
+
+     Stroked, not filled, which is how the reference is drawn and how .seen
+     beside it is already drawn. It sits at the fork's 28px so the two marks
+     read as a pair of facts about one guest rather than a big one and a
+     small one.
+
+     The colours are the law's, and the law is why none of them is red. Red
+     is failure and an allergy; a declined massage is neither, it is an
+     answer. Terracotta is the law's word for a negative answer, it is what
+     the spa board already draws for exactly this record, and it is what the
+     fork beside it already wears for "not dining". Ruled by the owner
+     31 Aug, choosing terracotta over red for that reason. */
+  .lotus { width:28px; height:28px; flex:0 0 28px; }
+  .lotus svg { width:100%; height:100%; display:block; fill:none;
+               stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+  /* Grey is the law's own --mid softened, the way .seen above already
+     softens it, rather than a new hex nobody else knows. Amber is the
+     literal this page's .ans already uses: an undefined custom property
+     computes to nothing here, the 29 Aug lesson at the top of this sheet. */
+  .lotus.wait { opacity:.55; }
+  .lotus.wait svg { stroke:var(--mid); }
+  .lotus.sugg svg { stroke:#8A6A2F; }
+  .lotus.done svg { stroke:var(--dine); }
+  .lotus.decl svg { stroke:var(--nodine); }
 
   /* Opened the message and did not finish. Outlined rather than filled, so it
      reads as the absence of an answer rather than as one.
@@ -116,23 +176,26 @@
   .seen { width:15px; height:15px; flex:0 0 15px; opacity:.55; }
   .seen svg { width:100%; height:100%; display:block; fill:none; stroke:var(--mid); }
 
-  /* The tint answers the thing reception scans for: is there something to read
-     back, or is this one we fill in together. Kept very light so the villa
-     number and the name still carry the row. */
+  /* The tint is how complete the answers are, ruled by the owner 26 Aug:
+     grey when nobody has answered anything, amber when some answers exist,
+     green only when every question the desk settles holds one. Grey is the
+     colour law's light grey fill - unknown promises nothing - because an
+     untouched guest is not work in progress, they are not started. It used
+     to be amber, which made a row nobody had touched read the same as one
+     half done. Kept very light so the villa number and the name still carry
+     the row. */
   .arr.done-form { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
-  .arr.todo-form { background:rgba(194,154,85,.11); border-color:rgba(194,154,85,.36); }
-  /* Started and not finished. The same amber as not-started, because it is
-     still a row reception has to do something about, with a solid left edge
-     to say the guest has met them halfway. A third colour would have made the
-     list a palette to decode rather than two things to work through. */
+  .arr.todo-form { background:rgba(28,28,26,.045); border-color:var(--rule); }
+  /* Started and not finished: amber, the colour law's in-progress, with a
+     solid left edge to say somebody has met it halfway. */
   .arr.part-form { background:rgba(194,154,85,.11); border-color:rgba(194,154,85,.36);
                    border-left:3px solid rgba(194,154,85,.85); }
   .sum { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
 
-  .empty { font-size:15px; color:var(--mid); font-style:italic; padding:4px 0 2px; }
+  .empty { font-size:var(--t3); color:var(--mid); font-style:italic; padding:4px 0 2px; }
   .spacer { height:40px; }
-  #errBar { display:none; background:var(--red); color:#fff; font-size:13px;
-            padding:9px 12px; border-radius:6px; margin-top:12px; }
+  #errBar { display:none; background:var(--red); color:#fff; font-size:var(--t2);
+            padding:9px 12px; border-radius:var(--r); margin-top:12px; }
   #errBar.show { display:block; }
 
   /* Sheet chrome and controls, matching tally.html exactly. Copied rather
@@ -144,61 +207,120 @@
   .sheet { width:100%; max-width:520px; background:var(--cream);
            padding:26px 24px 34px; border-top:1px solid var(--rule);
            max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
-  .sheet h3 { font-family:var(--ui-font); font-size:11px; letter-spacing:.2em;
-              text-transform:uppercase; color:var(--mid); font-weight:normal;
+  .sheet h3 { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); font-weight:normal;
               text-align:center; margin-bottom:18px; }
-  .sheet-label { font-family:var(--ui-font); font-size:8px; letter-spacing:.25em;
-                 text-transform:uppercase; color:var(--mid); text-align:center;
-                 margin:16px 0 8px; }
+  /* ── the form's shape ────────────────────────────────────────────────
+     Reported by the owner, 29 Aug: the sheet was one ribbon of identical
+     grey captions with nothing to say where a subject ended. Two problems.
+     The labels were centred, so the eye had no edge to run down while the
+     rows beneath them started at the left. And the rhythm was 16 above and
+     8 below, which is barely a ratio at all: a label sat almost as close to
+     the answer above it as to its own.
+
+     A topic heading now carries a hairline and real space, a field label
+     sits left with a 3:1 rhythm, and a label nested inside a topic steps
+     down again so the hierarchy reads at a glance.                     */
+  .sheet-group { font-family:var(--ui-font); font-size:var(--t3); font-weight:600;
+                 color:var(--ink); text-align:left;
+                 margin:var(--s6) 0 var(--s3); padding-top:var(--s4);
+                 border-top:1px solid var(--rule); }
+  .sheet-group.first { border-top:0; padding-top:0; margin-top:var(--s4); }
+  .sheet-label { font-family:var(--ui-font); font-size:var(--t2); font-weight:500;
+                 color:var(--mid); text-align:left;
+                 margin:var(--s5) 0 var(--s2); }
+  /* A heading is already the space; the label under it does not add more. */
+  .sheet-group + .sheet-label { margin-top:0; }
+  /* Nested under a topic that already has a heading. */
+  .sheet-label.sub { font-weight:400; margin-top:var(--s3); }
   .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid transparent;
-         border-radius:6px; font-family:var(--ui-font); font-size:11px;
-         letter-spacing:.14em; text-transform:uppercase; color:var(--ink);
+         border-radius:6px; font-family:var(--ui-font); font-size:var(--t2); color:var(--ink);
          cursor:pointer; }
   .opt.solid { background:var(--green); border-color:var(--greenb); }
   .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
+  /* The button law (STYLEGUIDE.md): a control that walks back something the
+     guest was told wears terracotta outline and asks first. Marking a form
+     incomplete puts the guest back into To send on Pre-arrival SMS, where
+     they can be messaged the link again, so it is that kind of button. */
+  .opt.terra { background:transparent; border-color:var(--terra-b); color:var(--terra); }
+  .opt.terra:active { background:var(--terra-t); }
+  .opt:disabled { opacity:.4; cursor:default; }
+  /* Why the primary is unavailable, said rather than left to be guessed at. */
+  .opt-why { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
+             text-align:center; margin:-4px 0 10px; line-height:1.45; }
   .seg { display:flex; gap:6px; margin:2px 0 4px; }
   .seg button { flex:1; padding:11px 0; border:1px solid var(--rule); background:transparent;
-                font-family:var(--ui-font); font-size:10px; letter-spacing:.12em;
-                text-transform:uppercase; color:var(--mid); cursor:pointer; border-radius:6px; }
-  .seg button.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+                font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); cursor:pointer; border-radius:6px; }
+  .seg button.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  /* An answer that WAS chosen and has just been taken off. The fill goes,
+     the dark border stays, so a deselect made by accident is visible as a
+     gap where an answer used to be rather than as a blank nobody can tell
+     from never-asked. Asked for by the owner 28 Aug.
+
+     It lasts only as long as the sheet is open, which is deliberate and
+     is the smaller half of the fix: the desk's answers are written into
+     the guest's own fields, so once a deselect is SAVED the record no
+     longer holds what was there before and there is nothing left to draw.
+     Keeping it past a save means the desk's answers sitting beside the
+     guest's rather than in them - the arriveApproved shape - which is its
+     own change and was left for when it is wanted. */
+  .seg button.was, .chip.was { border-color:var(--ink); color:var(--ink); }
   .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 4px; }
   .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
-         font-family:var(--ui-font); font-size:14px; color:var(--ink);
-         cursor:pointer; border-radius:6px; }
-  .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+         font-family:var(--ui-font); font-size:var(--t3); color:var(--ink);
+         cursor:pointer; border-radius:var(--pill); }
+  .pax.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
   .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
+  /* One dress for every row of choices on the sheet, ruled by the owner
+     27 Aug once the two time rows proved it: the choices stand in a single
+     rank and the RANK scrolls, rather than wrapping into a block that pushes
+     the next question off the screen. A wrapped row costs vertical space,
+     which is the scarce dimension on a phone held at a desk; a rail costs
+     none and never changes height as the answers change.
+
+     Written against `.rail` alone rather than `.chips.rail`, because the
+     covers row is a `.pax-row` and wears the same dress: one rule, or the
+     two rows drift. The rail scrolls itself; the sheet never scrolls
+     sideways, which the suite asserts at all three widths. */
+  /* Left, to line up with the labels above them. It used to be `safe
+     center`, so a row that fitted sat centred under a centred label; with
+     the labels left aligned that read as a row that had slipped. Starting
+     left also makes an overflow legible: the first chip is always at the
+     margin, so the clipped edge is only ever on the right. */
+  .rail { flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start;
+          -webkit-overflow-scrolling:touch; padding-bottom:6px; }
+  .rail > * { flex:0 0 auto; white-space:nowrap; }
   .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
-          border-radius:20px; font-family:var(--ui-font); font-size:10px;
+          border-radius:20px; font-family:var(--ui-font); font-size:var(--t2);
           color:var(--mid); cursor:pointer; }
-  .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .chip.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
   .txt { width:100%; padding:12px; margin-bottom:8px; border:1px solid var(--rule);
-         background:transparent; font-family:var(--ui-font); font-size:16px; color:var(--ink); }
+         background:transparent; font-family:var(--ui-font); font-size:var(--t3); color:var(--ink); }
   .txt::placeholder { color:var(--mid); font-style:italic; }
   .txt:focus { outline:none; border-color:var(--ink); }
-  .gd { text-align:center; margin:-4px 0 6px; font-size:13px; line-height:1.55; }
-  .gd .gd-sub { display:block; font-family:var(--ui-font); font-size:10.5px;
-                color:var(--mid); letter-spacing:.03em; }
-  .note-box { font-style:italic; font-size:13px; color:var(--mid); text-align:center;
+  .gd { text-align:center; margin:-4px 0 6px; font-size:var(--t2); line-height:1.55; }
+  .gd .gd-sub { display:block; font-family:var(--ui-font); font-size:var(--t2);
+                color:var(--mid); }
+  .note-box { font-style:italic; font-size:var(--t2); color:var(--mid); text-align:center;
               line-height:1.6; padding:0 4px 14px; }
   /* The one flag that sets itself, said under the tickable ones so nobody
      hunts for its chip: Luxury Escapes rides on the Mews rate. */
-  .flag-src { font-family:var(--ui-font); font-size:9.5px; color:var(--mid);
-              text-align:center; letter-spacing:.03em; margin:2px 0 4px; }
+  .flag-src { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
+              text-align:center; margin:2px 0 4px; }
   /* What is missing, said in words. A button that silently does nothing is
      the worst of both. */
-  .miss-note { display:none; font-size:12px; color:var(--red); text-align:center;
+  .miss-note { display:none; font-size:var(--t2); color:var(--red); text-align:center;
                padding:2px 4px 8px; }
   .miss-note.show { display:block; }
   /* The menu did not exist when the guest answered, so this is the first
      chance anyone has had to notice. */
-  .clash { display:block; color:var(--red); font-size:12px; margin-top:3px; }
+  .clash { display:block; color:var(--red); font-size:var(--t2); margin-top:3px; }
   .seg.miss button, .chips.miss .chip { border-color:var(--red); }
   /* The note is part of the answer when Other is chosen, so it can be the
      thing that is missing, and has to be able to say so. */
   .txt.miss { border-color:var(--red); }
 </style>
 </head>
-<body class="tier-app">
+<body class="tier-app ui2">
 
 <div class="daterow">
   <button class="dnav today" id="dToday">Today</button>
@@ -207,7 +329,7 @@
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap" id="navWrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="flags.html">Flags</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"></div>
   </div>
 </div>
 
@@ -231,7 +353,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=41"></script>
+<script src="nala-shared.js?v=48"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -241,9 +363,6 @@ var ROWS = [];               /* [{ villa, stay, pre }] for the viewed date */
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
-  var so=document.getElementById('navSignout');
-  if (so) so.onclick=function(e){ e.preventDefault();
-    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
 })();
 
 function api(path){
@@ -337,55 +456,138 @@ function nightsLabel(s){
   return n + (n === 1 ? ' night' : ' nights');
 }
 
-/* Three different facts, and they were two until 17 Aug.
+/* Two facts now, and they were three until 28 Aug.
 
-   hasForm     the guest sent the pre-arrival form
-   confirmedAt reception has been through the answers with them
+   formState   not started, incomplete or completed - nala-shared.js
    checkedInAt they have physically arrived and been checked in
 
-   Confirming and arriving are not the same event: reception can verify the
-   answers on the phone, or the day before, and the guest turns up hours later.
-   The sections track arriving, because that is what the receptionist is
-   working through. */
-function isConfirmed(p){ return !!(p && p.confirmedAt); }
+   confirmedAt was the third: reception has been through the answers with
+   them. Nothing ever read it - isConfirmed was defined and never called - and
+   once the owner put the form's state on its own gated control, the button
+   that wrote it had no job left either. Both are gone. The sections track
+   arriving, because that is what the receptionist is working through. */
 function isArrived(p){ return !!(p && p.checkedInAt); }
-function hasForm(p){ return !!(p && p.at); }
+/* `at` ALONE is not a finished form. It says "the answers exist", and a
+   record can hold it while holding none: check in stamps it honestly, having
+   just required dining and dietary, but since 26 Aug every answer can be
+   taken back again and nothing took the stamp with them. The summary's own
+   Confirm arriving then re-stamps whatever is left, asking nothing.
+
+   What that left on villa 17, 28 Aug: a booking reading Form completed on
+   Pre-arrival SMS, so the link could never be sent again, and amber here,
+   because anyAnswers said yes and fullAnswers said no - with no way back from
+   either screen.
+
+   So the stamp must be accompanied by an answer to be believed. A guest can
+   never submit an empty form (the slot, the dinner and the dietary questions
+   are all required), so a stamp with nothing beside it was never a guest's.
+   Reading it this way heals the records already written as well as the ones
+   to come: no repair pass, no button to press. Both write ends are fixed too,
+   in save(). */
+function hasForm(p){ return !!(p && p.at && guestAnswered(p)); }
 
 /* Three states, not two, since the guest form began saving each page as it is
    left. Before that a record either existed or did not, and `at` alone said
    which. Now a guest can answer three questions, put the phone down and never
    come back, and those three answers are real and worth having.
 
-   `at` is still written by the final send alone, so it remains the whole test
-   for a finished form. A record carrying answers WITHOUT it is a form still in
-   progress. The distinction matters at this desk more than anywhere: a partial
-   form is the one case where reception knows what to ask about, because the
-   guest has already given the rest.
-
-   Listed explicitly rather than testing the record for any key at all: the
-   page also writes openedAt and, since 21 Aug, reception's own arriveApproved,
-   and neither is the guest answering anything. A guest who opened the link and
-   read it has not started, and a time reception approved on the telephone is
-   the desk's answer, not the guest's. */
-var GUEST_ANSWERS = ['arriveSlot','arriveNote','dining','diets','noDiets',
-                     'dnote','purpose','approach','wellness','wellDay',
-                     'wellTime','occasion','note','companion'];
+   GUEST_ANSWERS, guestAnswered, oneNightStay, mandatoryAnswered and formState
+   all moved to nala-shared.js on 28 Aug, when the owner replaced the two
+   overlapping systems with one three state model. Pre-arrival SMS reads the
+   same functions: two readings of one state is how the two boards came to
+   disagree about villa 17. */
 
 function startedForm(p){
-  if (!p || hasForm(p)) return false;
-  return GUEST_ANSWERS.some(function(k){
-    var v = p[k];
-    if (v === undefined || v === null || v === '') return false;
-    if (Array.isArray(v)) return v.length > 0;
-    if (v === false) return true;   /* "no" is an answer */
-    return true;
-  });
+  return !hasForm(p) && guestAnswered(p);
+}
+
+/* Any answer at all, wherever it came from - the guest's form or the desk. */
+function anyAnswers(p){
+  return guestAnswered(p);
+}
+
+/* What the guest was asked, and how to tell whether they answered it.
+   Mirrors prearrival.html's own required list (missingOn) and the pages it
+   hides on a one night stay, so the desk names exactly what that guest was
+   offered and never a question they never saw. The two copies answer to one
+   table, tests/form_questions.json, read by both suites - add a question
+   there, not here.
+
+   The reason this list is separate from GUEST_ANSWERS: that one asks "did
+   anybody put anything in this record", and it is deliberately wide, holding
+   free text and desk-only fields. This one is the questionnaire, and it has
+   to be exactly the questionnaire. `occasion` is why they cannot be the same
+   list - it was retired from the guest form on 23 Aug, folded into the notes
+   box, and is desk-only now; naming it as missing would send reception
+   chasing a question that no longer exists. */
+/* In the form's own step order, so reception asks them back in the order the
+   guest was walked through - and so the table can assert the order too. */
+var FORM_QUESTIONS = [
+  { key:'purpose',  label:'what kind of stay it is', askedOnOneNight:false,
+    answered:function(p){ return !!p.purpose; } },
+  { key:'arrival',  label:'their arrival time', askedOnOneNight:true,
+    answered:function(p){ return !!p.arriveSlot; } },
+  { key:'approach', label:'how often they plan to dine', askedOnOneNight:false,
+    answered:function(p){ return !!p.approach; } },
+  { key:'dining',   label:'whether they are dining', askedOnOneNight:true,
+    answered:function(p){ return p.dining === true || p.dining === false; } },
+  { key:'dietary',  label:'dietaries', askedOnOneNight:true,
+    answered:function(p){ return !!p.noDiets ||
+      (Array.isArray(p.diets) ? p.diets.length > 0 : !!p.diets); } },
+  { key:'wellness', label:'treatments', askedOnOneNight:false,
+    answered:function(p){ return p.wellness === true || p.wellness === false; } }
+];
+
+/* The questions this guest was shown and has not answered, in the form's own
+   order. Empty means nothing is outstanding, which is a different sentence
+   at the desk and the whole reason this exists: a guest who answered every
+   question and never pressed Send looks identical, in the record, to one who
+   stopped halfway, and reception was told the same thing about both. */
+function missingAnswers(p, stay){
+  var one = oneNightStay(stay), rec = p || {};
+  return FORM_QUESTIONS.filter(function(q){
+    if (one && !q.askedOnOneNight) return false;   /* never put to them */
+    return !q.answered(rec);
+  }).map(function(q){ return q.label; });
+}
+
+/* The sheet's working answers in the record's own shape, so the state helpers
+   can be asked about what is ON SCREEN rather than what is stored. That is
+   what lets the Mark as completed button come alive under the finger as the
+   last mandatory answer is tapped, with no save in between. */
+function sheetAnswers(a){
+  return {
+    arriveSlot: a.arriveSlot, arriveNote: a.arriveNote,
+    dining: a.dining, diets: a.diets, noDiets: a.noDiets, dnote: a.dnote,
+    purpose: purposeText(a.purpose), approach: a.approach,
+    wellness: a.wellness, note: a.note, companion: a.companion
+  };
+}
+
+/* A list a person would say out loud: a, b and c. */
+function andList(xs){
+  if (xs.length <= 1) return xs[0] || '';
+  return xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
+}
+
+/* The note above a part-finished form. Until 28 Aug it said "anything still
+   blank is still unanswered" whatever the record held, so a form with every
+   question answered - the guest simply never pressed Send - told reception to
+   go looking for holes that were not there. Seen live, 28 Aug. */
+function startedNote(p, stay){
+  var miss = missingAnswers(p, stay);
+  if (!miss.length)
+    return 'They answered every question but never pressed Send, so the form '
+         + 'is not marked finished. Nothing is outstanding: read it back and '
+         + 'confirm.';
+  return 'They started the form and did not finish it. Still to ask: '
+       + andList(miss) + '. Their other answers are below.';
 }
 
 /* No pills on this screen. Every state a pill carried is already said once,
    and said better:
 
-     form done or not      the row tint, green or amber
+     how answered they are the row tint: green, amber or grey
      confirmed or not      which of the two sections the row is in
      dining or not         the fork icon, green, red or grey
      nothing came back     an amber row with no link icon
@@ -419,17 +621,6 @@ function esc(t){
   });
 }
 
-/* The other villas the same party holds today. Built from the rows already
-   loaded, so it costs no extra request. */
-function groupMates(r){
-  var g = r.stay && r.stay.groupId;
-  if (!g) return [];
-  return ROWS.filter(function(x){
-    return x !== r && x.stay && x.stay.groupId === g;
-  }).map(function(x){ return x.villa; })
-    .sort(function(a,b){ return (+a) - (+b); });
-}
-
 function rowHTML(r){
   /* Before a guest arrives, when they are coming is the fact reception plans
      around, so it takes the second slot. Party size gives way to it rather
@@ -440,30 +631,48 @@ function rowHTML(r){
      summary, not squeezed into a row that already truncates. */
   /* One party holding more than one villa. Reception needs to know before
      they start, because the answers and the table are shared. */
-  var withVillas = groupMates(r);
+  /* The other villas the same party holds today, from nala-shared.js since
+     28 Aug: Pre-arrival SMS needed the same mark, and one wording read by
+     both is the only way the two boards can agree about a party. */
+  var withVillas = groupMatesText(r, ROWS);
   var bits = [nightsLabel(r.stay)];
-  if (withVillas.length)
-    bits.push('with ' + (withVillas.length === 1 ? 'villa ' : 'villas ') +
-              withVillas.join(' &amp; '));
   var i = etaIndex(r.pre && r.pre.arriveSlot);
   if (i >= 0) bits.push('<span class="eta">' + ETA_SLOTS[i][2] + '</span>');
   else if (r.stay.adults)
     bits.push(r.stay.adults + (Number(r.stay.adults)===1 ? ' adult' : ' adults'));
   var open = OPEN === r.villa;
-  var tint = hasForm(r.pre) ? ' done-form'
-           : startedForm(r.pre) ? ' part-form' : ' todo-form';
+  /* The state, not the answers. Ruled by the owner 28 Aug, superseding the
+     ruling of 26 Aug that the tint read completeness: a board that colours
+     one thing while the sheet's button decides another is two facts nobody
+     reconciled, which is what let villa 17 read green here and amber on
+     Pre-arrival SMS. Now grey, amber and green ARE not started, incomplete
+     and completed, and formState is the only thing that says which. */
+  var st = formState(r.pre, r.stay);
+  var tint = st === 'completed' ? ' done-form'
+           : st === 'incomplete' ? ' part-form' : ' todo-form';
+  /* No count and no word beside the amber. Both were removed 1 Sep by the
+     owner, on one principle: the amber IS the message. A row tinted amber
+     already says the form is part answered, and an amber lotus already says
+     the masseuse has offered a time - a number and a word next to them were
+     restating the colour and eating the line, which then clipped the ETA
+     reception actually plans around. The detail is one tap away in the
+     summary, which is where it belongs. */
+  var mst = massageState(r.spa, r.pre);
   return '<button class="arr'+tint+(isArrived(r.pre)?' is-done':'')+(open?' open':'')+
          '" data-villa="'+r.villa+'">'+
          '<div class="arr-v">'+r.villa+'</div>'+
          '<div class="arr-mid">'+
-           '<div class="arr-n">'+esc(nameOf(r.stay))+'</div>'+
+           '<div class="arr-top">'+
+             '<div class="arr-n">'+esc(nameOf(r.stay))+'</div>'+
+             (withVillas ? '<div class="arr-with">'+esc(withVillas)+'</div>' : '')+
+           '</div>'+
            '<div class="arr-s">'+bits.join(' \u00b7 ')+'</div>'+
            /* The number, its confidence mark and the pencil, exactly as the
               Pre-arrival SMS rows carry them and from the same builder. On
               every row, arrived included: reception is the one who hears the
               right number, and the fix outranks Mews wherever one is read. */
            '<div class="arr-p">'+phoneBadgeHTML(phoneOf(r), true)+'</div>'+
-         '</div>'+seenFor(r.pre)+forkFor(r.pre)+'</button>'+
+         '</div>'+seenFor(r.pre)+lotusFor(mst)+forkFor(r.pre)+'</button>'+
          (open ? summaryHTML(r) : '');
 }
 
@@ -513,9 +722,36 @@ function etaLabel(p){
   return p.arriveNote ? ETA_SLOTS[i][1] + ' \u00b7 ' + p.arriveNote : ETA_SLOTS[i][1];
 }
 
-var ICON_FORK = '<svg viewBox="0 0 24 24" stroke-width="0">' +
-  '<path d="M6.2 2.5v6a2.4 2.4 0 001.6 2.3V21h1.6v-10.2A2.4 2.4 0 0011 8.5v-6H9.6v5.2H8.7V2.5H7.3v5.2h-.9V2.5H6.2z"/>' +
-  '<path d="M15.6 2.5c-1.5 0-2.5 1.9-2.5 5.1 0 2.4.7 3.9 1.8 4.3V21h1.6V2.5h-.9z"/></svg>';
+/* The glyph is tall and narrow - 18.5 units of 24 high but only 11.3 wide -
+   so it sat almost against the top and bottom of its box while floating in
+   the middle horizontally, which reads as cropped. Reported by the owner,
+   29 Aug. Scaled to 86% about the centre so it has four units of air top and
+   bottom, the usual icon safe area, and the paths themselves are untouched. */
+/* Redrawn 29 Aug. The old path was malformed rather than badly framed,
+   which is why scaling it did nothing: its three tines should have been
+   1.4 units wide each, but the outline started 1.2 units too far right, so
+   the leftmost tine was 0.2 wide - a sliver against two full tines, which
+   reads exactly like an icon sliced off at the edge. Reported twice by the
+   owner before I looked at the geometry instead of the viewBox.
+   Even tines, a rounded bowl, and a blade on a straight spine. Content
+   sits x 4.8-19.4, y 3-21 in a 24 box, so it has air on every side. */
+/* The lotus: one centre petal and a mirrored pair, on the fork's own 24
+   grid. Stroked, so it carries its state in the stroke colour. */
+var ICON_LOTUS = '<svg viewBox="0 0 24 24">' +
+  '<path d="M12 3.4c2.5 2.9 3.7 5.5 3.7 7.8 0 2.4-1.2 4.5-3.7 6.2' +
+  '-2.5-1.7-3.7-3.8-3.7-6.2 0-2.3 1.2-4.9 3.7-7.8z"/>' +
+  '<path d="M11.4 17.5c-2.8.5-5.2-.2-7-2C2.5 13.6 1.9 11.2 2.2 8.6' +
+  'c2.6-.3 5 .3 6.8 2.1"/>' +
+  '<path d="M12.6 17.5c2.8.5 5.2-.2 7-2 1.9-1.9 2.5-4.3 2.2-6.9' +
+  'c-2.6-.3-5 .3-6.8 2.1"/></svg>';
+
+var ICON_FORK = '<svg viewBox="0 0 24 24">' +
+  '<path d="M4.8 3h1.4v6H4.8z"/><path d="M7.3 3h1.4v6H7.3z"/>' +
+  '<path d="M9.8 3h1.4v6H9.8z"/>' +
+  '<path d="M4.8 8.4h6.4v.8a3.2 3.2 0 0 1-6.4 0z"/>' +
+  '<path d="M7.3 11.4h1.4V21H7.3z"/>' +
+  '<path d="M16.6 3c1.9 0 2.8 2.6 2.8 5.2 0 2.4-.9 4-2.8 4.8z"/>' +
+  '<path d="M16.6 11.8H18V21h-1.4z"/></svg>';
 
 /* Every question on the pre-arrival form is mandatory, so a submitted form
    always carries a dining answer and "form done, dinner unanswered" cannot
@@ -529,13 +765,28 @@ var ICON_FORK = '<svg viewBox="0 0 24 24" stroke-width="0">' +
 
    The undefined case is still handled rather than assumed away: a mandatory
    field is a rule in a form, not a guarantee from a database. */
+/* Only two states draw. Ruled by the owner, 29 Aug: a solid grey knife and
+   fork does not say "nobody has answered", it says something the reader has
+   to stop and decode, and an icon that means "no information" is worth less
+   than the space it takes. Dining is green, not dining is terracotta, and an
+   unanswered booking simply has no fork - which the row already says, in the
+   section it is filed under and in the count above.                      */
 function forkFor(p){
-  var cls = (p && p.dining === true) ? 'in'
-          : ((p && p.dining === false) ? 'out' : 'un');
-  return '<span class="fork ' + cls + '">' + ICON_FORK + '</span>';
+  if (!p || (p.dining !== true && p.dining !== false)) return '';
+  return '<span class="fork ' + (p.dining ? 'in' : 'out') + '">' +
+         ICON_FORK + '</span>';
+}
+
+/* The state comes from massageState in nala-shared.js, which the sheet's
+   Wellness lines answer to as well, so the mark and the words under it
+   cannot say different things about one guest. */
+function lotusFor(state){
+  if (!state) return '';
+  return '<span class="lotus ' + state + '">' + ICON_LOTUS + '</span>';
 }
 
 function dayLabel(key){
+  if (isAnyDay(key)) return SPA_ANY_DAY_LABEL;
   var d = parseDepDate(key); if (!d) return key;
   var D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   return D[d.getDay()] + ' ' + d.getDate();
@@ -589,12 +840,43 @@ function summaryHTML(r){
   if (a.approach)  h += sumRow('Dining', esc(APPROACH_LABEL[a.approach] || a.approach));
   if (a.occasion)  h += sumRow('Occasion', esc(a.occasion));
 
-  if (a.wellness !== null){
-    var w = a.wellness ? 'Interested' : 'Not interested';
-    if (a.wellness && a.wellDay)  w += ' \u00b7 ' + dayLabel(a.wellDay);
-    if (a.wellness && a.wellTime) w += ' \u00b7 ' + esc(a.wellTime);
-    h += sumRow('Wellness', w);
+  /* The live spa state, not the form's opening ask. Until 27 Aug this row
+     read only the prearrival answers, so nothing that happened on the Spa
+     board - a booking, a suggestion, a decline - ever reached the sheet,
+     and reception told a guest their booked massage was "Interested". The
+     records at /spa/<booking> are the current truth; the form's answer
+     stands in only while no record has been born from it, which is the
+     spa board's own rule for the same ask. */
+  var spa = r.spa || {}, spaLines = [], spaAnswered = false;
+  Object.keys(spa).sort().forEach(function(tid){
+    var t = spa[tid];
+    if (!t || typeof t !== 'object' || !t.status) return;
+    if (t.source === 'prearrival') spaAnswered = true;
+    var two = t.qty === 2 ? 'Two massages \u00b7 ' : '';
+    var when = (t.day ? dayLabel(t.day) : '') +
+               (t.time ? ' \u00b7 ' + spaSlotLabel(t.time) : '');
+    if (t.status === 'booked')
+      spaLines.push(two + 'Booked \u00b7 ' + when +
+                    (t.manual ? ' \u00b7 approved at the desk' : ''));
+    else if (t.status === 'suggested')
+      spaLines.push(two + 'Suggested ' + when + ' \u00b7 waiting on the guest');
+    else if (t.status === 'requested')
+      spaLines.push(two + 'Asked' +
+                    (t.reqDay ? ' \u00b7 ' + dayLabel(t.reqDay) : '') +
+                    (t.reqTime ? ' \u00b7 ' + esc(t.reqTime) : '') +
+                    ' \u00b7 waiting on the masseuse');
+    else if (t.status === 'declined')
+      spaLines.push('Declined' + (t.note ? ' \u00b7 ' + esc(t.note) : '') +
+                    (t.told ? ' \u00b7 guest told' : ' \u00b7 let the guest know'));
+  });
+  if (a.wellness === true && !spaAnswered){
+    var w = 'Interested';
+    if (a.wellDay)  w += ' \u00b7 ' + dayLabel(a.wellDay);
+    if (a.wellTime) w += ' \u00b7 ' + esc(a.wellTime);
+    spaLines.push(w + ' \u00b7 waiting on the masseuse');
   }
+  if (spaLines.length) h += sumRow('Wellness', spaLines.join('<br>'));
+  else if (a.wellness === false) h += sumRow('Wellness', 'Not interested');
   if (a.note) h += sumRow('Booking notes', esc(a.note));
 
   /* Only when one is on: an empty flags row is not a blank reception needs
@@ -606,18 +888,20 @@ function summaryHTML(r){
 
   h += '<div class="sum-btns">' +
          '<button data-act="edit" data-villa="' + r.villa + '">Edit</button>' +
-         /* Always the same words, because it is now an action rather than a
-            state: on a guest who has been checked in by accident, pressing it
-            puts them back in Arriving. A label that changed to "Confirmed"
-            read as a finished thing and gave no hint there was a way back. */
-         '<button data-act="confirm" data-villa="' + r.villa + '">' +
-         'Confirm arriving' + '</button>' +
        '</div>' +
-       /* Its own row and full width: it is the one that ends the interaction,
-          and three buttons abreast do not fit a narrow phone. */
+       /* Its own row and full width: it is the one that ends the interaction.
+          Confirm arriving used to sit beside Edit. It is gone, 28 Aug: it
+          stamped the form complete and it cleared checkedInAt, and once the
+          owner moved the state onto its own gated control the only thing it
+          still did was un-arrive a guest - a button called Confirm arriving
+          whose one visible effect was to undo arriving. The undo it carried
+          was real and is kept, on this button, where it belongs: check in is
+          a toggle, so the way back from an accidental press is to press it
+          again. */
        '<div class="sum-btns">' +
          '<button class="go wide" data-act="checkin" data-villa="' + r.villa + '">' +
-         (isArrived(r.pre) ? 'Checked in' : 'Confirm &amp; check in') + '</button>' +
+         (isArrived(r.pre) ? 'Checked in &middot; tap to undo'
+                           : 'Confirm &amp; check in') + '</button>' +
        '</div>';
   return '<div class="sum">' + h + '</div>';
 }
@@ -708,9 +992,14 @@ function loadPrearrivals(rows){
       api('/phonefix/'+r.stay.id).catch(function(){ return null; }),
       /* The ticked booking flags. Read for every role because the summary
          shows the pills to everyone; only ticking is admin's. */
-      api('/bookflags/'+r.stay.id).catch(function(){ return null; })
+      api('/bookflags/'+r.stay.id).catch(function(){ return null; }),
+      /* The treatments at /spa/<booking>: what actually happened to the
+         guest's massage ask. Without this read the sheet could only ever
+         repeat the form - found 27 Aug, when a massage the masseuse had
+         booked still read "Interested" at the desk. */
+      api('/spa/'+r.stay.id).catch(function(){ return null; })
     ]).then(function(res){ r.pre = res[0]; r.pms = res[1]; r.fix = res[2];
-                           r.bf = res[3]; });
+                           r.bf = res[3]; r.spa = res[4]; });
   }));
 }
 
@@ -898,6 +1187,48 @@ function showSheet(){ bd.className = 'backdrop show'; }
 function closeSheet(){ bd.className = 'backdrop'; }
 bd.onclick = function(e){ if (e.target === bd) closeSheet(); };
 
+/* One rebuild of one row of choices. Here rather than in each painter
+   because ten rows clear-and-refill the same way, and ten copies is how one
+   of them gets forgotten - along with the null guard the flag row needs,
+   being the only row a non-admin's sheet does not draw at all.
+
+   It deliberately does NOT save and restore scrollLeft, though a scrolled
+   rail jumping back to its start on every tap is exactly what you would
+   expect. Measured instead of assumed, 27 Aug: a rail scrolled to 120px
+   stays at 120px across a repaint with no help at all, because the clear
+   and the refill happen in ONE task and the browser never lays out the
+   empty row in between, so scrollLeft is never clamped. The guard was
+   written first, then deleted when breaking it changed nothing - a test
+   that cannot fail is worse than no test, and code that cannot be tested
+   is a belief. If a painter ever refills asynchronously this stops being
+   true, and that painter is where the fix belongs. */
+function repaintRow(id, fill){
+  var box = document.getElementById(id);
+  if (!box) return;
+  box.innerHTML = '';
+  fill(box);
+}
+
+/* Put the chosen chip of every rail in view, once the sheet is on screen.
+   Cannot run from the painters: while the backdrop is display:none every
+   offset and width reads zero. A rail nobody has answered stays at its
+   start, which is where its first choice is.
+
+   Takes a root because two rails - the covers and the spa days - live inside
+   blocks that are themselves hidden until the question above them is
+   answered yes, so they measure zero on open and are centred again at the
+   moment they appear. Rooted rather than global there, or revealing one
+   block would drag every other rail back from wherever reception had
+   scrolled it. */
+function centreRails(root){
+  Array.prototype.forEach.call((root || sheetEl).querySelectorAll('.rail'), function(box){
+    var on = box.querySelector('.on');
+    if (!on) return;
+    box.scrollLeft = Math.max(0,
+      on.offsetLeft - box.clientWidth / 2 + on.offsetWidth / 2);
+  });
+}
+
 /* One reading of what is stored, used by the summary, the edit sheet and the
    confirm button alike. Three readings would be three chances to disagree
    about the same guest. */
@@ -913,13 +1244,32 @@ function answersOf(r){
      cell. Two lists, one fact. */
   var c = r.cell || {};
   var haveCell = !!(c && c.status);
+  var diets = fixDietList((haveCell && c.diets) ? c.diets : (p.diets || []));
   return {
+    /* true and false are the only answers; undefined AND null read as
+       unanswered. Null appears in the local optimistic copy when a save
+       clears the question (the segments un-answer since 26 Aug), and
+       reading it as false is exactly the invented Not dining the Save
+       button was renamed over. */
     dining:   haveCell ? (c.status === 'in')
-                       : (p.dining === undefined ? null : !!p.dining),
+                       : (p.dining === true || p.dining === false
+                            ? !!p.dining : null),
     pax:      haveCell ? (c.pax || r.stay.adults || 2)
                        : (p.pax || r.stay.adults || 2),
-    diets:    fixDietList((haveCell && c.diets) ? c.diets : (p.diets || [])),
-    noDiets:  haveCell ? !!c.noDiets : !!p.noDiets,
+    diets:    diets,
+    /* "No allergies to declare" is a dietary answer like any other, and it
+       rides where the dietaries ride. The cell spells it `nodiet` - the
+       guest page named it first and rules.json validates that name - and
+       until 27 Aug this line asked the cell for a `noDiets` no cell has
+       ever carried, so the first save after a cell existed read the pill
+       back deselected and the next save wrote that deselection onto the
+       booking. Only a cell that actually holds the key may outrank the
+       booking, because a cell written before dinnerCell carried it says
+       nothing either way; and a chosen dietary contradicts it from either
+       node, so a non-empty list wins. */
+    noDiets:  diets.length ? false
+              : (haveCell && c.nodiet !== undefined) ? !!c.nodiet
+              : !!p.noDiets,
     dnote:    (haveCell ? c.dnote : p.dnote) || '',
     /* The desk shows what the guest typed, falling back to what Mews holds:
        a name entered at booking is still the answer to the same question.
@@ -936,7 +1286,7 @@ function answersOf(r){
     approach: p.approach || '',
     note:     (haveCell && c.note !== undefined) ? c.note : (p.note || ''),
     occasion: p.occasion || '',
-    wellness: p.wellness === undefined ? null : !!p.wellness,
+    wellness: p.wellness === true || p.wellness === false ? !!p.wellness : null,
     wellDay:  p.wellDay || '',
     wellTime: p.wellTime || '',
     wellQty:  p.wellQty === 2 ? 2 : 1,
@@ -948,6 +1298,17 @@ function answersOf(r){
 function openGuest(r){
   var p = r.pre || {};
   var a = answersOf(r);
+  /* What the record held when this sheet was opened, frozen. Every painter
+     below compares against it to mark an answer that has just been taken
+     off - see the .was rule in the stylesheet. Copied, not referenced: `a`
+     is the live working set and is edited in place by every chip. */
+  var held = JSON.parse(JSON.stringify(a));
+  /* Was this the answer on screen when the sheet opened, and is it not the
+     answer now? One reading, so nine controls cannot disagree about it. */
+  function lost(now, before){
+    return before !== null && before !== undefined && before !== '' &&
+           now !== before;
+  }
 
   var pax = a.pax;
 
@@ -965,8 +1326,7 @@ function openGuest(r){
     (etaLabel(p) ? '<div class="note-box">Told us they would arrive ' +
        esc(etaLabel(p).toLowerCase()) + '.</div>' : '') +
     (hasForm(p) ? '' : startedForm(p) ?
-      '<div class="note-box">They started the form and did not finish it. ' +
-        'Their answers are below. Anything still blank is still unanswered.</div>' :
+      '<div class="note-box">' + esc(startedNote(p, r.stay)) + '</div>' :
       '<div class="note-box">No pre-arrival form. Fill it in together.</div>') +
 
     /* The arrival time. The guest's form has always asked it and the desk
@@ -992,8 +1352,9 @@ function openGuest(r){
        automatic flag is said in words, not offered as a chip: Luxury Escapes
        rides on the Mews rate and a tick could not turn it off. */
     (canFlags() ?
+      '<div class="sheet-group first">This booking</div>' +
       '<div class="sheet-label">Booking flags</div>' +
-      '<div class="chips" id="fkChips"></div>' +
+      '<div class="chips rail" id="fkChips"></div>' +
       (rateFlagLabel(r.pms)
         ? '<div class="flag-src">Luxury Escapes - automatic, from the Mews rate</div>' : '')
       : '') +
@@ -1008,65 +1369,92 @@ function openGuest(r){
       '<textarea class="txt" id="fInternal" rows="2" placeholder="For staff. The guest cannot see this."></textarea>'
       : '') +
 
+    '<div class="sheet-group">Arrival</div>' +
     '<div class="sheet-label">Arriving</div>' +
-    '<div class="chips" id="eChips"></div>' +
+    '<div class="chips rail" id="eChips"></div>' +
     '<div class="sheet-label" id="fEtaNoteLab" style="display:none">Arrival notes</div>' +
     '<input class="txt" id="fEtaNote" type="text" placeholder="Flight, ferry, anything to note" autocomplete="off" style="display:none">' +
 
-    /* The guest asks, reception decides. The early hours are deliberately
-       not on the guest's form: offering 11am there would read as an
-       invitation the resort then declines. Here they are reception's to
-       give, so an early hour on the cleans board is authoritative: a
-       person agreed to it. No guard against approving before the current
-       guest departs, considered and declined by the owner: the red tile
-       it causes is the prompt to chase the departure. */
-    '<div class="sheet-label">Approved arrival, set by reception</div>' +
-    '<div class="chips" id="apChips"></div>' +
+    /* The guest asks, reception decides - but only where the slot track
+       cannot already say it, the owner's ruling of 27 Aug. The early hours
+       are deliberately not on the guest's form: offering 11am there would
+       read as an invitation the resort then declines. Here they are
+       reception's to give, so an early hour on the cleans board is
+       authoritative: a person agreed to it. The hours behind "after 5pm"
+       are the other case the slots cannot express, pinned rather than
+       approved. Every hour in between IS a slot, so correcting it is
+       tapping the slot above, and this row stays hidden. No guard against
+       approving before the current guest departs, considered and declined
+       by the owner: the red tile it causes is the prompt to chase the
+       departure. */
+    '<div class="sheet-label" id="apLab" style="display:none"></div>' +
+    '<div class="chips rail" id="apChips" style="display:none"></div>' +
 
-    '<div class="sheet-label">Dining on arrival night</div>' +
+    '<div class="sheet-group">Dinner on arrival night</div>' +
+    
     '<div class="seg" id="diningSeg">' +
       '<button id="sDin">Dining</button>' +
       '<button id="sOut">Not dining</button>' +
     '</div>' +
     '<div class="miss-note" id="sMiss"></div>' +
     '<div id="paxWrap"><div class="sheet-label">Guests at dinner</div>' +
-      '<div class="pax-row" id="paxRow"></div></div>' +
+      '<div class="pax-row rail" id="paxRow"></div></div>' +
 
+    '<div class="sheet-group">Dietary</div>' +
     '<div class="sheet-label">Dietary requirements</div>' +
-    '<div class="chips" id="dChips"></div>' +
-    '<div class="chips" id="dNone"></div>' +
+    '<div class="chips rail" id="dChips"></div>' +
+    '<div class="chips rail" id="dNone"></div>' +
     '<input class="txt" id="fDnote" type="text" placeholder="Dietary notes" autocomplete="off">' +
 
+    '<div class="sheet-group">The stay</div>' +
     '<div class="sheet-label">Purpose of visit</div>' +
-    '<div class="chips" id="pChips"></div>' +
+    '<div class="chips rail" id="pChips"></div>' +
 
     '<div class="sheet-label">How they plan to dine</div>' +
-    '<div class="chips" id="aChips"></div>' +
+    '<div class="chips rail" id="aChips"></div>' +
 
     '<div class="sheet-label">Special occasion</div>' +
     '<input class="txt" id="fOcc" type="text" placeholder="Birthday, anniversary" autocomplete="off">' +
 
-    '<div class="sheet-label">Wellness or massage</div>' +
+    '<div class="sheet-group">Wellness</div>' +
+    
     '<div class="seg">' +
       '<button id="wYes">Interested</button>' +
       '<button id="wNo">Not interested</button>' +
     '</div>' +
     '<div id="wWrap">' +
-      '<div class="sheet-label">Preferred day</div>' +
-      '<div class="chips" id="wDays"></div>' +
+      '<div class="sheet-label sub">Preferred day</div>' +
+      '<div class="chips rail" id="wDays"></div>' +
       '<select class="txt" id="fWtime" aria-label="Preferred time" style="margin-top:8px"></select>' +
-      '<div class="chips" id="fWqty" style="margin-top:8px"></div>' +
-      '<div class="sheet-label" id="fWdurLab" style="display:none">First massage</div>' +
+      '<div class="chips rail" id="fWqty" style="margin-top:8px"></div>' +
+      '<div class="sheet-label sub" id="fWdurLab" style="display:none">First massage</div>' +
       '<select class="txt" id="fWdur" aria-label="Massage length" style="margin-top:8px"></select>' +
-      '<div class="sheet-label" id="fWdur2Lab" style="display:none">Second massage</div>' +
+      '<div class="sheet-label sub" id="fWdur2Lab" style="display:none">Second massage</div>' +
       '<select class="txt" id="fWdur2" aria-label="Second massage length" style="margin-top:8px;display:none"></select>' +
     '</div>' +
 
+    '<div class="sheet-group">Notes</div>' +
     '<div class="sheet-label">Booking notes</div>' +
     '<input class="txt" id="fNote" type="text" placeholder="Preferences, requests" autocomplete="off">' +
 
-    '<button class="opt solid" id="sCheckin" style="margin-top:18px">Confirm and check in</button>' +
-    '<button class="opt quiet" id="sConfirm">Confirm arriving</button>' +
+    /* Save, not a second Confirm arriving. Renamed by the owner, 26 Aug,
+       after the old wording did what it said: a sheet opened, changed
+       nowhere and "confirmed" saved decisions nobody had made. Saving
+       writes what is on the sheet and decides nothing; confirming is the
+       summary's button, and checking in is the one below. */
+    /* The state button, the owner's model of 28 Aug: Save writes answers and
+       decides nothing, and THIS is the only control that moves a booking
+       between incomplete and completed. It takes the solid slot because it is
+       now the primary constructive action here; check in steps down to quiet,
+       since at most one surface may wear solid (the button law) and checking
+       a guest in is an arrival fact, not a decision about the form.
+
+       It is a toggle, so its dress changes with it: solid to complete,
+       terracotta outline to walk it back, and the walk-back confirms. */
+    '<button class="opt" id="sMark" style="margin-top:18px"></button>' +
+    '<div class="opt-why" id="sMarkWhy" style="display:none"></div>' +
+    '<button class="opt quiet" id="sCheckin">Confirm and check in</button>' +
+    '<button class="opt is-primary" id="sConfirm">Save</button>' +
     '<button class="opt quiet" id="sClose">Close</button>';
 
   document.getElementById('fDnote').value  = a.dnote;
@@ -1113,52 +1501,82 @@ function openGuest(r){
     ['fWdur2', 'fWdurLab', 'fWdur2Lab'].forEach(function(id){
       document.getElementById(id).style.display = two ? '' : 'none';
     });
-    var qbox = document.getElementById('fWqty'); qbox.innerHTML = '';
-    [1, 2].forEach(function(n){
-      var b = document.createElement('button');
-      b.className = 'chip' + (a.wellQty === n ? ' on' : '');
-      b.textContent = n === 1 ? 'One massage' : 'Two massages';
-      b.onclick = function(){ a.wellQty = n; paintWellDurs(); };
-      qbox.appendChild(b);
+    repaintRow('fWqty', function(qbox){
+      [1, 2].forEach(function(n){
+        var b = document.createElement('button');
+        b.className = 'chip' + (a.wellQty === n ? ' on' : '');
+        b.textContent = n === 1 ? 'One massage' : 'Two massages';
+        b.onclick = function(){ a.wellQty = n; paintWellDurs(); };
+        qbox.appendChild(b);
+      });
     });
   }
   paintWellDurs();
 
   function paintDining(){
-    document.getElementById('sDin').className = a.dining === true  ? 'on' : '';
-    document.getElementById('sOut').className = a.dining === false ? 'on' : '';
+    document.getElementById('sDin').className = a.dining === true  ? 'on'
+      : (held.dining === true  && lost(a.dining, held.dining)  ? 'was' : '');
+    document.getElementById('sOut').className = a.dining === false ? 'on'
+      : (held.dining === false && lost(a.dining, held.dining)  ? 'was' : '');
     /* Covers only mean something if they are eating. */
-    document.getElementById('paxWrap').style.display = a.dining === true ? '' : 'none';
+    var pw = document.getElementById('paxWrap');
+    var was = pw.style.display;
+    pw.style.display = a.dining === true ? '' : 'none';
+    /* Just revealed: its rail could not measure itself until now. */
+    if (was === 'none' && pw.style.display === '') centreRails(pw);
   }
+  /* Toggled, never assigned. These three elements carry a dress declared in
+     the markup - `chips rail` on the dietary row - and rebuilding the whole
+     class from a literal here silently undressed it: the row wrapped again
+     the first time somebody answered a dietary, and only then. The miss mark
+     is a state laid ON the dress, so it is added and removed as one class
+     and the markup stays the one place a row's dress is decided. */
+  function setMiss(el, on){ if (el) el.classList.toggle('miss', !!on); }
   function clearMiss(){
-    document.getElementById('sMiss').className = 'miss-note';
-    document.getElementById('diningSeg').className = 'seg';
-    document.getElementById('dChips').className = 'chips';
+    document.getElementById('sMiss').classList.remove('show');
+    setMiss(document.getElementById('diningSeg'), false);
+    setMiss(document.getElementById('dChips'), false);
+    /* And the note. flagMissing marks it for the Other-with-no-note refusal
+       and nothing ever took the mark off again, so putting the answer right
+       left the field looking wrong until the sheet was closed and reopened.
+       It went unnoticed while check in refused for two other reasons as well;
+       since 28 Aug this is the only refusal left, so it is the one mark
+       anybody sees. */
+    setMiss(document.getElementById('fDnote'), false);
   }
-  document.getElementById('sDin').onclick = function(){ a.dining = true;  clearMiss(); paintDining(); };
-  document.getElementById('sOut').onclick = function(){ a.dining = false; clearMiss(); paintDining(); };
+  /* Tapping the chosen answer again clears it, the way back every chip on
+     this sheet already gives. Ruled by the owner, 26 Aug: every answer must
+     be undoable, or a mis-tap can never be reverted to "nobody asked" - the
+     only honest state for a question without an answer. */
+  document.getElementById('sDin').onclick = function(){
+    a.dining = (a.dining === true)  ? null : true;  clearMiss(); paintDining(); };
+  document.getElementById('sOut').onclick = function(){
+    a.dining = (a.dining === false) ? null : false; clearMiss(); paintDining(); };
 
   function paintPax(){
-    var box = document.getElementById('paxRow'); box.innerHTML = '';
-    for (var i=1;i<=8;i++)(function(v){
-      var b = document.createElement('button');
-      b.className = 'pax' + (pax===v ? ' on' : ''); b.textContent = v;
-      b.onclick = function(){ pax = v; paintPax(); };
-      box.appendChild(b);
-    })(i);
+    repaintRow('paxRow', function(box){
+      for (var i=1;i<=8;i++)(function(v){
+        var b = document.createElement('button');
+        b.className = 'pax' + (pax===v ? ' on' : ''); b.textContent = v;
+        b.onclick = function(){ pax = v; paintPax(); };
+        box.appendChild(b);
+      })(i);
+    });
   }
 
   function paintDiets(){
-    var box = document.getElementById('dChips'); box.innerHTML = '';
-    DIETARIES.forEach(function(d){
-      var b = document.createElement('button');
-      b.className = 'chip' + (a.diets.indexOf(d)>-1 ? ' on' : ''); b.textContent = d;
-      b.onclick = function(){
-        var i = a.diets.indexOf(d);
-        if (i>-1) a.diets.splice(i,1); else { a.diets.push(d); a.noDiets = false; }
-        clearMiss(); paintDiets(); paintNone();
-      };
-      box.appendChild(b);
+    repaintRow('dChips', function(box){
+      DIETARIES.forEach(function(d){
+        var b = document.createElement('button');
+        b.className = 'chip' + (a.diets.indexOf(d)>-1 ? ' on'
+          : (held.diets.indexOf(d) > -1 ? ' was' : '')); b.textContent = d;
+        b.onclick = function(){
+          var i = a.diets.indexOf(d);
+          if (i>-1) a.diets.splice(i,1); else { a.diets.push(d); a.noDiets = false; }
+          clearMiss(); paintDiets(); paintNone();
+        };
+        box.appendChild(b);
+      });
     });
   }
   /* "None to declare" is a positive answer, not the absence of one. Without
@@ -1170,7 +1588,7 @@ function openGuest(r){
      write down, the other says the answer is only in the note. Choosing
      either clears the other. */
   function paintNone(){
-    var box = document.getElementById('dNone'); box.innerHTML = '';
+    repaintRow('dNone', function(box){
 
     var none = document.createElement('button');
     none.className = 'chip' + (a.noDiets ? ' on' : '');
@@ -1195,24 +1613,27 @@ function openGuest(r){
       if (hasOther()) { var f = document.getElementById('fDnote'); if (f) f.focus(); }
     };
     box.appendChild(other);
+    });
   }
   function hasOther(){ return a.diets.indexOf(DIET_OTHER) > -1; }
 
   /* Tapping the chosen slot again clears it, because "we did ask and they did
      not know" is a real answer and there has to be a way back to it. */
   function paintEta(){
-    var box = document.getElementById('eChips'); box.innerHTML = '';
     var wantsNote = false;
-    ETA_SLOTS.forEach(function(sl){
-      var b = document.createElement('button');
-      b.className = 'chip' + (a.arriveSlot === sl[0] ? ' on' : '');
-      b.textContent = sl[1];
-      b.onclick = function(){
-        a.arriveSlot = (a.arriveSlot === sl[0]) ? '' : sl[0];
-        paintEta();
-      };
-      box.appendChild(b);
-      if (a.arriveSlot === sl[0] && sl[3]) wantsNote = true;
+    repaintRow('eChips', function(box){
+      ETA_SLOTS.forEach(function(sl){
+        var b = document.createElement('button');
+        b.className = 'chip' + (a.arriveSlot === sl[0] ? ' on'
+          : (held.arriveSlot === sl[0] && lost(a.arriveSlot, held.arriveSlot) ? ' was' : ''));
+        b.textContent = sl[1];
+        b.onclick = function(){
+          a.arriveSlot = (a.arriveSlot === sl[0]) ? '' : sl[0];
+          paintEta();
+        };
+        box.appendChild(b);
+        if (a.arriveSlot === sl[0] && sl[3]) wantsNote = true;
+      });
     });
     /* The note only appears for the two open ended slots, which is where the
        guest's form asks for it too: before 2pm and after 5pm are the ones that
@@ -1222,60 +1643,99 @@ function openGuest(r){
     var lab = document.getElementById('fEtaNoteLab');
     if (lab) lab.style.display = wantsNote ? '' : 'none';
     if (!wantsNote) note.value = '';
+    /* The hours reception may set depend on the slot, so the row below
+       follows every slot change. Hoisted, so the first paint finds it. */
+    paintApproved();
   }
 
-  /* Every half hour reception may give, 11am to 11pm, whatever the guest
-     picked: a guest who chose Around 4pm and rang to say half three can be set
-     to 3:30pm. Halves, because the guest's own track offers them and the desk
-     cannot approve less than the form asks; 14.5 is already legal in the
-     rules. Tapping the chosen time again clears it, the same way back the
-     slot chips give, and clearing leaves the guest's own slot untouched. */
+  /* Only the hours the slot track cannot already say, the owner's ruling of
+     27 Aug. This row offered every half hour 11am to 11pm and was a wall of
+     twenty five chips with six real jobs: a guest who rang to move 4pm to
+     half three is corrected by tapping 3:30pm on the slots above, so the
+     mid-afternoon here was nineteen chips restating that row.
+
+       before2  the early hours only reception can grant: 11am to 1:30pm,
+                because 2pm is the standing promise and needs nobody's leave
+       after5   the actual hour behind an open-ended answer: 5:30pm to 11pm,
+                pinned for whoever waits at the desk
+       else     nothing, and the row hides entirely
+
+     A stored hour outside today's offer is still painted, selected - the
+     purpose-chip lesson: a record from the wide-open days, or an approval
+     whose slot has since changed, must never be silently dropped by the next
+     save. Halves throughout; 14.5 was already legal in the rules. Tapping
+     the chosen time again clears it, the same way back the slot chips give,
+     and clearing leaves the guest's own slot untouched. */
+  function approvedOffer(){
+    var out = [], h;
+    if (a.arriveSlot === 'before2') for (h = 11;   h <  14; h += 0.5) out.push(h);
+    if (a.arriveSlot === 'after5')  for (h = 17.5; h <= 23; h += 0.5) out.push(h);
+    if (typeof a.arriveApproved === 'number' && out.indexOf(a.arriveApproved) === -1)
+      out.push(a.arriveApproved);
+    return out.sort(function(x, y){ return x - y; });
+  }
   function paintApproved(){
-    var box = document.getElementById('apChips'); box.innerHTML = '';
-    for (var hr = 11; hr <= 23; hr += 0.5)(function(hr){
-      var b = document.createElement('button');
-      var w = Math.floor(hr);
-      b.className = 'chip' + (a.arriveApproved === hr ? ' on' : '');
-      b.textContent = (w > 12 ? w - 12 : w) + (hr % 1 ? ':30' : '') +
-                      (w < 12 ? 'am' : 'pm');
-      b.onclick = function(){
-        a.arriveApproved = (a.arriveApproved === hr) ? null : hr;
-        paintApproved();
-      };
-      box.appendChild(b);
-    })(hr);
+    var box = document.getElementById('apChips');
+    var lab = document.getElementById('apLab');
+    var offer = approvedOffer();
+    box.style.display = offer.length ? '' : 'none';
+    lab.style.display = offer.length ? '' : 'none';
+    lab.textContent = a.arriveSlot === 'before2'
+                        ? 'Early arrival, approved by reception'
+                    : a.arriveSlot === 'after5'
+                        ? 'Arriving at, as the guest told us'
+                        : 'Approved arrival, kept from an earlier save';
+    repaintRow('apChips', function(box){
+      offer.forEach(function(hr){
+        var b = document.createElement('button');
+        var w = Math.floor(hr);
+        b.className = 'chip' + (a.arriveApproved === hr ? ' on' : '');
+        b.textContent = (w > 12 ? w - 12 : w) + (hr % 1 ? ':30' : '') +
+                        (w < 12 ? 'am' : 'pm');
+        b.onclick = function(){
+          a.arriveApproved = (a.arriveApproved === hr) ? null : hr;
+          paintApproved();
+        };
+        box.appendChild(b);
+      });
+    });
   }
 
   function paintPurpose(){
-    var box = document.getElementById('pChips'); box.innerHTML = '';
-    /* A record may hold a label from before the 23 Aug vocabulary. It is
-       painted anyway, selected: invisible would mean the next save from
-       here drops the guest's answer, which is the exact bug this suite's
-       fixture remembers. Tapping a current label replaces it. */
-    var offered = PURPOSE.concat(a.purpose.filter(function(t){
-      return PURPOSE.indexOf(t) === -1; }));
-    offered.forEach(function(t){
-      var b = document.createElement('button');
-      b.className = 'chip' + (a.purpose.indexOf(t)>-1 ? ' on' : ''); b.textContent = t;
-      b.onclick = function(){
-        /* One answer replaces another; tapping it again clears it, the way
-           back every desk chip gives. */
-        a.purpose = (a.purpose.indexOf(t) > -1) ? [] : [t];
-        paintPurpose();
-      };
-      box.appendChild(b);
+    repaintRow('pChips', function(box){
+      /* A record may hold a label from before the 23 Aug vocabulary. It is
+         painted anyway, selected: invisible would mean the next save from
+         here drops the guest's answer, which is the exact bug this suite's
+         fixture remembers. Tapping a current label replaces it. */
+      var offered = PURPOSE.concat(a.purpose.filter(function(t){
+        return PURPOSE.indexOf(t) === -1; }));
+      offered.forEach(function(t){
+        var b = document.createElement('button');
+        b.className = 'chip' + (a.purpose.indexOf(t)>-1 ? ' on'
+          : (held.purpose.indexOf(t) > -1 ? ' was' : '')); b.textContent = t;
+        b.onclick = function(){
+          /* One answer replaces another; tapping it again clears it, the way
+             back every desk chip gives. */
+          a.purpose = (a.purpose.indexOf(t) > -1) ? [] : [t];
+          paintPurpose();
+        };
+        box.appendChild(b);
+      });
     });
   }
   function paintApproach(){
-    var box = document.getElementById('aChips'); box.innerHTML = '';
-    var offered = APPROACH.slice();
-    if (a.approach && APPROACH_OLD[a.approach])
-      offered.push([a.approach, APPROACH_OLD[a.approach]]);
-    offered.forEach(function(pair){
-      var b = document.createElement('button');
-      b.className = 'chip' + (a.approach===pair[0] ? ' on' : ''); b.textContent = pair[1];
-      b.onclick = function(){ a.approach = (a.approach===pair[0] ? '' : pair[0]); paintApproach(); };
-      box.appendChild(b);
+    repaintRow('aChips', function(box){
+      var offered = APPROACH.slice();
+      if (a.approach && APPROACH_OLD[a.approach])
+        offered.push([a.approach, APPROACH_OLD[a.approach]]);
+      offered.forEach(function(pair){
+        var b = document.createElement('button');
+        b.className = 'chip' + (a.approach===pair[0] ? ' on'
+          : (held.approach === pair[0] && lost(a.approach, held.approach) ? ' was' : ''));
+        b.textContent = pair[1];
+        b.onclick = function(){ a.approach = (a.approach===pair[0] ? '' : pair[0]); paintApproach(); };
+        box.appendChild(b);
+      });
     });
   }
   /* Only the nights they are actually here. Offering a day outside the stay is
@@ -1292,20 +1752,42 @@ function openGuest(r){
     return out;
   }
   function paintWellness(){
-    document.getElementById('wYes').className = a.wellness === true  ? 'on' : '';
-    document.getElementById('wNo').className  = a.wellness === false ? 'on' : '';
+    document.getElementById('wYes').className = a.wellness === true  ? 'on'
+      : (held.wellness === true  && lost(a.wellness, held.wellness) ? 'was' : '');
+    document.getElementById('wNo').className  = a.wellness === false ? 'on'
+      : (held.wellness === false && lost(a.wellness, held.wellness) ? 'was' : '');
     /* A day and a time only mean something once they have said yes. */
-    document.getElementById('wWrap').style.display = a.wellness === true ? '' : 'none';
-    var box = document.getElementById('wDays'); box.innerHTML = '';
-    stayDays().forEach(function(d){
-      var b = document.createElement('button');
-      b.className = 'chip' + (a.wellDay === d.key ? ' on' : ''); b.textContent = d.label;
-      b.onclick = function(){ a.wellDay = (a.wellDay === d.key ? '' : d.key); paintWellness(); };
-      box.appendChild(b);
+    var ww = document.getElementById('wWrap');
+    var wasHidden = ww.style.display === 'none';
+    ww.style.display = a.wellness === true ? '' : 'none';
+    /* Any day closes the row here in the same order the guest saw it. The
+       desk must offer exactly what the form offered or it cannot show what
+       the guest chose: a chip the guest can pick and the desk cannot draw
+       is villa 17 again, two screens describing one booking and
+       disagreeing. The desk is NOT held to the form's compulsion - it
+       edits what it hears across the day, and half an answer is a normal
+       state here. */
+    repaintRow('wDays', function(box){
+      stayDays().concat([{ key:SPA_ANY_DAY, label:SPA_ANY_DAY_LABEL }])
+        .forEach(function(d){
+        var b = document.createElement('button');
+        b.className = 'chip' + (a.wellDay === d.key ? ' on'
+          : (held.wellDay === d.key && lost(a.wellDay, held.wellDay) ? ' was' : ''));
+        b.textContent = d.label;
+        b.onclick = function(){
+          a.wellDay = (a.wellDay === d.key) ? '' : d.key; paintWellness(); };
+        box.appendChild(b);
+      });
     });
+    /* Just revealed: its rails could not measure themselves until now. */
+    if (wasHidden && ww.style.display === '') centreRails(ww);
   }
-  document.getElementById('wYes').onclick = function(){ a.wellness = true;  paintWellness(); };
-  document.getElementById('wNo').onclick  = function(){ a.wellness = false; paintWellness(); };
+  /* Same way back as the dining segment: tapping the chosen answer again
+     un-asks the question. */
+  document.getElementById('wYes').onclick = function(){
+    a.wellness = (a.wellness === true)  ? null : true;  paintWellness(); };
+  document.getElementById('wNo').onclick  = function(){
+    a.wellness = (a.wellness === false) ? null : false; paintWellness(); };
 
   /* The flag chips: the admin's list from Flag Settings, plus any name this
      booking already carries that the list no longer offers - painted anyway,
@@ -1314,28 +1796,27 @@ function openGuest(r){
      save, like every other answer on this sheet, so Close still discards. */
   var flags = ((r.bf && r.bf.flags) || []).slice();
   function paintFlags(){
-    var box = document.getElementById('fkChips');
-    if (!box) return;
-    box.innerHTML = '';
-    var offered = FLAGLIST.concat(flags.filter(function(t){
-      return FLAGLIST.indexOf(t) === -1; }));
-    if (!offered.length){
-      var d = document.createElement('div');
-      d.className = 'flag-src';
-      d.textContent = 'No flags defined yet. Add them under Settings, Flags.';
-      box.appendChild(d);
-      return;
-    }
-    offered.forEach(function(t){
-      var b = document.createElement('button');
-      b.className = 'chip' + (flags.indexOf(t) > -1 ? ' on' : '');
-      b.textContent = t;
-      b.onclick = function(){
-        var i = flags.indexOf(t);
-        if (i > -1) flags.splice(i, 1); else flags.push(t);
-        paintFlags();
-      };
-      box.appendChild(b);
+    repaintRow('fkChips', function(box){
+      var offered = FLAGLIST.concat(flags.filter(function(t){
+        return FLAGLIST.indexOf(t) === -1; }));
+      if (!offered.length){
+        var d = document.createElement('div');
+        d.className = 'flag-src';
+        d.textContent = 'No flags defined yet. Add them under Settings, Flags.';
+        box.appendChild(d);
+        return;
+      }
+      offered.forEach(function(t){
+        var b = document.createElement('button');
+        b.className = 'chip' + (flags.indexOf(t) > -1 ? ' on' : '');
+        b.textContent = t;
+        b.onclick = function(){
+          var i = flags.indexOf(t);
+          if (i > -1) flags.splice(i, 1); else flags.push(t);
+          paintFlags();
+        };
+        box.appendChild(b);
+      });
     });
   }
 
@@ -1373,9 +1854,10 @@ function openGuest(r){
   paintEta();   /* again, so the note shows if the slot they chose wants one */
 
   document.getElementById('sClose').onclick = closeSheet;
-  /* Both buttons run the same checks and the same save. The only difference is
-     whether the guest is standing there. */
-  function finish(checkin){
+  /* Both buttons read the sheet the same way. Save keeps what is on it and
+     nothing more; Confirm and check in also stamps the record, because the
+     guest is standing there agreeing to it. */
+  function finish(arrived, mark){
     /* Read before checking, not after. The note is part of the answer when
        Other is chosen, and a check that runs before the field is read is
        checking the value from the last time the sheet was opened. */
@@ -1384,31 +1866,18 @@ function openGuest(r){
     var cf = document.getElementById('fCompanion');
     a.companion = cf ? cf.value.trim() : (a.companion || '');
 
-    /* The required answers are required at CHECK IN, not at every save.
-       Reception adds what they hear across the day: a dietary in the morning,
-       an arrival time when the guest rings at noon. Refusing to keep any of it
-       until all of it exists means it gets written on paper instead, which is
-       the thing this screen replaces.
+    /* Other with an empty note is not an incomplete answer, it is a wrong
+       one: it tells the kitchen there is something to know and never says
+       what. The only check that survives a save, because it is about an
+       answer being wrong rather than missing.
 
-       Check in is different. The guest is standing there, it is the last
-       moment anyone will ask, and a guest sent to their villa with no dining
-       answer is a cover the kitchen never hears about. So the questions are
-       asked once, at the point they can still be answered. */
-    if (checkin){
-      var missing = [];
-      if (a.dining === null) missing.push('dining');
-      if (!a.noDiets && !a.diets.length) missing.push('dietary');
-      /* Other with an empty note tells the kitchen nothing at all, which is
-         worse than the answer nobody gave, because it looks like one. */
-      else if (hasOther() && !a.dnote) missing.push('othernote');
-      if (missing.length) return flagMissing(missing);
-    } else if (hasOther() && !a.dnote){
-      /* The one check that survives a partial save. Other means the answer is
-         in the note, so Other with an empty note is not an incomplete answer,
-         it is a wrong one: it tells the kitchen there is something to know and
-         never says what. */
-      return flagMissing(['othernote']);
-    }
+       Check in used to demand dining and dietary here. It does not any more:
+       the owner ruled 28 Aug that checking a guest in is a visual move of the
+       tile, and a control that refuses is not a visual move. What that guard
+       protected - a guest sent to their villa with the kitchen never hearing
+       about the cover - is now the row's own colour, amber until the mandatory
+       answers are in, and the gate on Mark as completed. */
+    if (hasOther() && !a.dnote) return flagMissing(['othernote']);
 
     a.pax      = pax;
     a.occasion = document.getElementById('fOcc').value.trim();
@@ -1422,33 +1891,96 @@ function openGuest(r){
        it matches what was stored, so the changed-test below skips it. Only
        an admin's sheet carries the chips, so only an admin sets this. */
     if (canFlags()) r._flags = flags;
-    save(r, a, checkin);
+    /* Marking completed cannot outrun the answers, even if something calls
+       this past the disabled button. */
+    if (mark === 'completed' &&
+        !mandatoryAnswered(Object.assign({}, r.pre || {}, sheetAnswers(a)),
+                           r.stay)){
+      var m2 = [];
+      if (a.dining === null) m2.push('dining');
+      if (!a.noDiets && !a.diets.length) m2.push('dietary');
+      return flagMissing(m2.length ? m2 : ['dining']);
+    }
+    /* Only check in confirms. Save is the third argument's false twice over:
+       it neither checks in nor stamps anything. The fifth argument is the
+       state, and it is the ONLY thing that moves it. */
+    save(r, a, arrived, mark);
   }
-  document.getElementById('sConfirm').onclick = function(){ finish(false); };
-  document.getElementById('sCheckin').onclick = function(){ finish(true); };
+  document.getElementById('sConfirm').onclick = function(){ finish(null, null); };
+  /* The same toggle as the summary's, so the two surfaces cannot disagree
+     about what pressing it does. */
+  document.getElementById('sCheckin').textContent =
+    isArrived(r.pre) ? 'Checked in \u00b7 tap to undo' : 'Confirm and check in';
+  document.getElementById('sCheckin').onclick = function(){
+    finish(!isArrived(r.pre), null); };
+
+  /* The state control. Repainted from the sheet's own answers rather than the
+     stored record, so ticking the last mandatory answer makes it available
+     under the finger, without a save in between. */
+  function paintMark(){
+    var b = document.getElementById('sMark');
+    var why = document.getElementById('sMarkWhy');
+    if (!b) return;
+    /* What the record WOULD hold if this sheet were saved now. */
+    var asShown = Object.assign({}, r.pre || {}, sheetAnswers(a));
+    var done = formState(r.pre, r.stay) === 'completed';
+    var can  = mandatoryAnswered(asShown, r.stay);
+    b.textContent = done ? 'Mark as incomplete' : 'Mark as completed';
+    b.className = 'opt' + (done ? ' terra' : ' solid');
+    b.disabled = !done && !can;
+    if (b.disabled){
+      var miss = missingAnswers(asShown, r.stay).filter(function(l){
+        return l === 'whether they are dining' || l === 'dietaries' ||
+               l === 'treatments';
+      });
+      why.textContent = miss.length
+        ? 'Answer ' + andList(miss) + ' before this can be marked completed.'
+        : 'Some answers are still missing.';
+      why.style.display = '';
+    } else {
+      why.textContent = ''; why.style.display = 'none';
+    }
+  }
+  paintMark();
+  /* The answers are painted by six different functions and a chip row builds
+     its buttons fresh each time, so threading a paintMark into each is how
+     one of them comes to be missed. One listener on the sheet, after the
+     handler that was tapped has run, catches every one of them. */
+  sheetEl.addEventListener('click', function(){ setTimeout(paintMark, 0); });
+  document.getElementById('sMark').onclick = function(){
+    var done = formState(r.pre, r.stay) === 'completed';
+    /* The walk-back confirms, the button law. Marking complete does not:
+       a constructive button that needs a warning has the wrong label. */
+    if (done && !confirm('Mark ' + nameOf(r.stay) +
+        '\u2019s pre-arrival form incomplete? The link can be sent to them ' +
+        'again from Pre-arrival SMS.')) return;
+    finish(null, done ? 'incomplete' : 'completed');
+  };
 
   /* Name what is missing and put it on screen, rather than a button that does
      nothing when pressed. */
   function flagMissing(which){
     var seg = document.getElementById('diningSeg');
     var chips = document.getElementById('dChips');
-    seg.className   = 'seg' + (which.indexOf('dining') > -1 ? ' miss' : '');
-    chips.className = 'chips' + (which.indexOf('dietary') > -1 ? ' miss' : '');
+    /* Toggled rather than rebuilt, for setMiss's reason above. */
+    setMiss(seg,   which.indexOf('dining') > -1);
+    setMiss(chips, which.indexOf('dietary') > -1);
     var note = document.getElementById('fDnote');
-    if (note) note.className = 'txt' + (which.indexOf('othernote') > -1 ? ' miss' : '');
+    setMiss(note,  which.indexOf('othernote') > -1);
     var el = document.getElementById('sMiss');
     el.textContent = which.length === 2
       ? 'Ask about dinner and dietaries before confirming.'
       : which[0] === 'dining' ? 'Ask whether they are dining tonight.'
       : which[0] === 'othernote' ? 'Write the allergy in the notes, or it reaches nobody.'
       : 'Ask about dietaries, even to rule them out.';
-    el.className = 'miss-note show';
+    el.classList.add('show');
     (which.indexOf('dining') > -1 ? seg
        : which.indexOf('othernote') > -1 ? (note || chips) : chips)
       .scrollIntoView({ block:'center', behavior:'smooth' });
     if (which.indexOf('othernote') > -1 && note) note.focus();
   }
   showSheet();
+  centreRails();
 }
 
 /* Writes the guest's own node, whoever typed it. No record of who filled it
@@ -1477,6 +2009,11 @@ function dinnerCell(r, a){
     at:        new Date().toISOString(),
     diets:     a.noDiets ? [] : a.diets,
     dnote:     a.noDiets ? '' : a.dnote,
+    /* The answer itself, under the name the cell already uses (the guest
+       page writes it, rules.json validates it). The cell outranks the
+       booking when the sheet reads back, so an answer the cell does not
+       carry is an answer the next open loses. */
+    nodiet:    !!a.noDiets,
     note:      a.note || ''
   };
   /* Only when the PMS knows about this villa, so an unstamped vacant is not
@@ -1486,49 +2023,127 @@ function dinnerCell(r, a){
   return rec;
 }
 
-function save(r, a, checkin){
+/* `confirm` is what separates the sheet's Save from the two confirming
+   buttons. Save writes the sheet as it stands and decides nothing; confirm
+   and check in also stamp the record. The split exists because of the bug of
+   26 Aug: the sheet's old Confirm arriving wrote dining:null and
+   wellness:null for questions nobody had asked, the optimistic merge below
+   read null as false, and a sheet opened and saved untouched came back with
+   Not dining and Not interested selected - decisions nobody made. */
+function save(r, a, arrived, mark){
   var payload = {
-    dining: a.dining, pax: a.dining ? a.pax : 0,
-    diets: a.diets, noDiets: a.noDiets, dnote: a.dnote,
+    diets: a.diets, dnote: a.dnote,
     arriveSlot: a.arriveSlot, arriveNote: a.arriveNote,
     /* null, not omission: a PATCH that leaves the key out cannot clear a
        previously approved hour, and null is how the clear reaches the
        database. */
     arriveApproved: (typeof a.arriveApproved === 'number' ? a.arriveApproved : null),
     purpose: purposeText(a.purpose), approach: a.approach,
-    occasion: a.occasion, wellness: a.wellness, companion: a.companion,
-    wellDay: a.wellness ? a.wellDay : '', wellTime: a.wellness ? a.wellTime : '',
-    wellQty: a.wellness ? a.wellQty : null,
-    wellDur: a.wellness ? a.wellDur : null,
-    wellDur2: (a.wellness && a.wellQty === 2) ? a.wellDur2 : null,
-    note: a.note,
-    confirmedAt: new Date().toISOString()
+    occasion: a.occasion, companion: a.companion,
+    note: a.note
   };
-  /* Checking in is a separate fact from confirming the answers, so it is a
-     separate field.
+  /* Only answers somebody actually gave. dining and wellness are null until
+     asked, and null is not an answer: written for a guest nobody asked, it
+     comes back through answersOf as false, which is how an untouched sheet
+     grew a Not dining and a Not interested nobody chose. Omitted, the PATCH
+     leaves the questions unanswered, which is what they are.
 
-     It used to be set and never cleared, on the reasoning that a guest who has
-     arrived has arrived. What that missed is the accidental press: the two
-     buttons sit together, check in is the big one, and there was no way back
-     from it. So Confirm arriving now CLEARS it, which is what the name says.
-     Confirming is a statement about tonight's answers and about where the
-     guest is, and both are true whichever way round they are pressed.
+     But null IS written when the record already holds an answer, because
+     since 26 Aug the segments un-answer: tapping the chosen side again is
+     the way back from a mis-tap, and an omitted key cannot clear a stored
+     true - the arriveApproved lesson. Null through a PATCH deletes the key,
+     which puts the question back to "nobody asked". */
+  var stored = r.pre || {};
+  if (a.dining !== null){
+    payload.dining = a.dining;
+    payload.pax = a.dining ? a.pax : 0;
+  } else if (stored.dining !== undefined && stored.dining !== null){
+    payload.dining = null;
+    payload.pax = null;
+  }
+  if (a.wellness !== null){
+    payload.wellness = a.wellness;
+    payload.wellDay = a.wellness ? a.wellDay : '';
+    payload.wellTime = a.wellness ? a.wellTime : '';
+    payload.wellQty = a.wellness ? a.wellQty : null;
+    payload.wellDur = a.wellness ? a.wellDur : null;
+    payload.wellDur2 = (a.wellness && a.wellQty === 2) ? a.wellDur2 : null;
+  } else if (stored.wellness !== undefined && stored.wellness !== null){
+    /* Un-answering takes the day, time and lengths with it: they only meant
+       something while the answer stood. */
+    payload.wellness = null;
+    payload.wellDay = null; payload.wellTime = null;
+    payload.wellQty = null; payload.wellDur = null; payload.wellDur2 = null;
+  }
+  /* noDiets true is an answer. noDiets false is only an answer when it is
+     clearing a stored true or standing beside chosen dietaries; written for
+     a guest nobody has asked, it stamps the question answered ("no" counts
+     in GUEST_ANSWERS, deliberately) and paints an untouched row as started. */
+  if (a.noDiets || a.diets.length || (r.pre && r.pre.noDiets !== undefined))
+    payload.noDiets = a.noDiets;
+
+  /* The stamp goes back with the last answer. `at` says the answers exist, so
+     a record whose answers have all been taken back must not keep it - and it
+     did: check in stamps `at` honestly (it refuses a blank sheet), but since
+     26 Aug every answer can be un-answered, and nothing took the stamp with
+     them. That is how villa 17 came to read Form completed on Pre-arrival SMS
+     while holding nothing at all, with no way back from either board, 28 Aug.
+     Null through the PATCH deletes the key, exactly as the answers above
+     clear. */
+  if (stored.at && !guestAnswered(Object.assign({}, stored, payload)))
+    payload.at = null;
+
+  /* The state, and the only thing that moves it. The owner's model of 28 Aug:
+     editing and saving decide nothing, one control marks a form completed,
+     the same control walks it back. `at` is where it lives - the guest's own
+     Send has always written that field, so a form the guest finished and one
+     the desk marked finished are the same fact, which is what they are. */
+  if (mark === 'completed') payload.at = new Date().toISOString();
+  else if (mark === 'incomplete') payload.at = null;
+
+  /* Arrived, and nothing else. The owner's ruling of 28 Aug: checking a guest
+     in is a visual move of the tile so reception can see who is here. It does
+     not decide anything about the form, and it asks for nothing before it
+     will move - a control that refuses is not a visual move.
+
+     It is a toggle, which is where the undo lives now that Confirm arriving
+     is gone: press it again and the guest goes back to Arriving. null means
+     this save is not about arriving at all, so editing a checked-in guest's
+     dietary cannot quietly un-arrive them.
+
+     confirmedAt is no longer written by anything. It recorded that reception
+     had been through the answers, and in the whole app nothing ever read it -
+     isConfirmed was defined and never called. Values already in the database
+     are left where they are; nothing reads those either.
 
      FUTURE: this is where the Mews reservation moves to Checked in, through
-     the Connector API. Nothing writes back to Mews yet, so the app is the only
-     record of it until that exists, and this undo will have to reverse that
-     too rather than only the local field. */
-  payload.checkedInAt = checkin ? payload.confirmedAt : null;
-  if (!hasForm(r.pre)) payload.at = payload.confirmedAt;
+     the Connector API. Nothing writes back to Mews yet, so the app is the
+     only record of it until that exists, and the undo will have to reverse
+     that too rather than only the local field. */
+  if (arrived === true) payload.checkedInAt = new Date().toISOString();
+  else if (arrived === false) payload.checkedInAt = null;
 
   var before = r.pre, beforeCell = r.cell;
   r.pre  = Object.assign({}, r.pre || {}, payload);  /* optimistic */
   /* Only when there is a dining answer to show. Building the cell first and
      putting it back after would paint the guest as not dining for the frame
-     between the two. */
+     between the two. Un-answering takes an existing cell WITH it: the cell
+     can only say in or out, there is no third value, so the only honest
+     board entry for "nobody knows any more" is no entry - the villa goes
+     back to awaiting, which is what reverting a mistake means. */
   if (a.dining !== null) r.cell = dinnerCell(r, a);
+  else if (beforeCell) r.cell = null;
   OPEN = null;
-  render(); closeSheet();
+  /* The board still repaints at once - the desk reads it while the write is
+     still in the air, and that has never been the part anybody waited for.
+     What waits now is the SHEET: it holds until the write lands so its Save
+     can say Saving and then Saved, and it closes on the way out. Closing it
+     here, as this did until 27 Aug, took the only thing that could carry the
+     answer off the screen a tenth of a second after the tap.
+     The summary's own Confirm buttons live on the board, so this repaint
+     replaces them and they keep answering the way they always have - by the
+     row itself changing under the finger. */
+  render();
 
   /* Both writes or neither. A confirmation the chef never sees is worse than
      one that visibly failed, so the guest is put back if either half is
@@ -1537,7 +2152,8 @@ function save(r, a, checkin){
      is no third value, so writing one for a guest nobody has asked yet would
      put them on the kitchen's board as not dining. That is a worse lie than
      silence: the board would show a decision nobody made. A partial save keeps
-     everything else and leaves the cell alone until somebody answers. */
+     everything else and leaves an unwritten cell unwritten; an un-answer of a
+     cell that exists deletes it, for the same reason read the other way. */
   /* The internal note is its own write, to its own node, and deliberately not
      part of the both-or-neither pair below. It is management's private record
      and the guest's answers are the service's: a failure to save one must not
@@ -1596,13 +2212,36 @@ function save(r, a, checkin){
       method: 'PUT', headers: { 'Content-Type':'application/json' },
       body: JSON.stringify(dinnerCell(r, a))
     }));
+  } else if (beforeCell){
+    /* The un-answer's other half. Inside the both-or-neither pair on
+       purpose: a booking cleared while the cell stands would leave the
+       kitchen acting on an answer the desk just took back. */
+    writes.push(fetch(DB + '/dinner/' + nav.todayKey() + '/' + r.villa + '.json', {
+      method: 'DELETE'
+    }));
   }
-  Promise.all(writes).then(function(res){
-    if (res.some(function(x){ return !x.ok; })) throw new Error('save');
-  }).catch(function(){
-    r.pre = before; r.cell = beforeCell;   /* put it back rather than lie */
-    render();
-    err('Could not save. Nothing was changed.');
+  return saveFeedback(pressedButton(), function(){
+    return Promise.all(writes).then(function(res){
+      /* The STATUS goes into the error, not the bare word 'save'. The
+         shared saveFailWords reads the message to tell a refusal - a
+         permission, which needs the manager - from a write that never
+         arrived, which needs another go; handed 'save' it could recognise
+         neither, so a rules rejection at this desk read as "check the
+         connection" and sent reception to the wrong remedy entirely. */
+      var bad = res.filter(function(x){ return !x.ok; })[0];
+      if (bad) throw new Error('save failed ' + bad.status);
+    });
+  }, {
+    done:'Saved ✓', hold:400, then:closeSheet,
+    fail:function(msg){
+      if (!msg) return err('');          /* the clear, before the write */
+      r.pre = before; r.cell = beforeCell;   /* put it back rather than lie */
+      render();
+      /* The reassurance is the half of this the desk actually acts on: a
+         partial save would mean re-checking the record, and this was not
+         one. */
+      err(msg + ' Nothing was changed.');
+    }
   });
 }
 
@@ -1631,10 +2270,8 @@ document.getElementById('board').addEventListener('click', function(e){
     if (!ra) return;
     var what = act.getAttribute('data-act');
     if (what === 'edit') return openGuest(ra);
-    /* Confirming from the summary saves exactly what is on screen. The guest
-       just agreed to it out loud, so there is nothing to open and nothing to
-       retype. Check in does the same and moves them to Arrived. */
-    return save(ra, answersOf(ra), what === 'checkin');
+    /* Arrived, or not arrived. One fact, one button, and nothing else. */
+    return save(ra, answersOf(ra), !isArrived(ra.pre), null);
   }
 
   var btn = t.closest('.arr');
@@ -1643,8 +2280,12 @@ document.getElementById('board').addEventListener('click', function(e){
   if (!r) return;
 
   /* A guest who filled the form in gets it read back to them, and reception
-     confirms or edits from there. A guest with nothing to read back goes
-     straight to the form, because an empty summary says nothing. */
+     edits or checks in from there. A guest with nothing to read back goes
+     straight to the form, because an empty summary says nothing.
+
+     Deliberately still hasForm rather than the new formState: a booking that
+     is incomplete only because one mandatory answer is missing still has
+     answers worth reading back, and Mark as completed is one Edit away. */
   if (!hasForm(r.pre)) return openGuest(r);
   OPEN = (OPEN === r.villa) ? null : r.villa;
   render();

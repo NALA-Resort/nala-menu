@@ -45,6 +45,9 @@ signOut:function(){}};""" % (email, email)
 
 MASTER = {"Gluten free": {"name": "Gluten free", "active": True, "group": "common"},
           "Nut allergy": {"name": "Nut allergy", "active": True, "group": "common"},
+          #  A common dietary NOBODY in any test's house declares, so the
+          #  rings section can show a pressed pill keeping its grey border.
+          "Vegan":       {"name": "Vegan", "active": True, "group": "common"},
           "Chilli":      {"name": "Chilli", "active": True, "group": "menu"},
           "Old thing":   {"name": "Old thing", "active": False, "group": "common"}}
 
@@ -55,7 +58,14 @@ STAFF = {"chef@x": {"name": "Chef", "role": "chef"},
 
 STATE = {"master": MASTER, "tags": {}, "failMaster": False, "failTags": False,
          "failMenuSave": False, "failTagSave": False, "menu": None,
-         "mobile": "+61400000000"}
+         "mobile": "+61400000000",
+         # The house tonight, for the rings on the pills: /stays and /dinner
+         # keyed by villa, /bookings/<id>/prearrival keyed by booking id,
+         # /responses keyed by phone. failHouse fails the lot, because the
+         # rings are advisory and a failed read must paint none rather than
+         # wrong ones - or block publishing, which is not its business.
+         "stays": {}, "dinner": {}, "pre": {}, "responses": {},
+         "failHouse": False}
 WRITES = []
 
 def fb(route, request):
@@ -91,6 +101,22 @@ def fb(route, request):
                           body='{"error":"Permission denied"}'); return
         route.fulfill(status=200, content_type="application/json",
                       body=json.dumps(STATE["tags"])); return
+    if "/stays/" in u or "/dinner/" in u or "/responses/" in u \
+       or "/prearrival.json" in u:
+        if STATE["failHouse"]:
+            route.fulfill(status=401, content_type="application/json",
+                          body='{"error":"Permission denied"}'); return
+        if "/stays/" in u:
+            body = STATE["stays"]
+        elif "/dinner/" in u:
+            body = STATE["dinner"]
+        elif "/responses/" in u:
+            body = STATE["responses"]
+        else:
+            bid = u.split("/bookings/")[1].split("/")[0]
+            body = STATE["pre"].get(bid)
+        route.fulfill(status=200, content_type="application/json",
+                      body=json.dumps(body)); return
     route.fulfill(status=200, content_type="application/json", body="null")
 
 P = F = 0
@@ -297,15 +323,21 @@ with sync_playwright() as p:
     #  stylesheet takes its colours from tokens only a tier-app body carries.
     ck("the way off the page is there",
        pg.evaluate("()=>!!document.getElementById('navBtn')"))
+    #  The border was a proxy for "the --ctl-* tokens resolved" under a sheet
+    #  that drew this as a bordered box. nala-ui2.css draws a borderless icon
+    #  button and uses no --ctl-* at all, so the proxy failed on a button that
+    #  is plainly visible. Assert the thing it stood in for, and all three
+    #  bars rather than the first.
     ck("and is actually visible, not drawn in colours that resolve to nothing",
        pg.evaluate("""()=>{const b=document.getElementById('navBtn');
           const r=b.getBoundingClientRect();
-          const c=getComputedStyle(b);
-          const bar=b.querySelector('span');
-          const bc=getComputedStyle(bar).backgroundColor;
-          return r.width>20 && r.height>20 &&
-                 c.borderTopWidth!=='0px' &&
-                 bc!=='rgba(0, 0, 0, 0)' && bc!=='transparent';}"""))
+          const bars=[...b.querySelectorAll('span')];
+          const lit=bars.every(s=>{
+            const sr=s.getBoundingClientRect();
+            const sc=getComputedStyle(s).backgroundColor;
+            return sr.width>0 && sr.height>0 &&
+                   sc!=='rgba(0, 0, 0, 0)' && sc!=='transparent';});
+          return r.width>20 && r.height>20 && bars.length===3 && lit;}"""))
     pg.close()
 
     # ── the rehearsal ───────────────────────────────────────────
@@ -451,9 +483,12 @@ with sync_playwright() as p:
     #  publishing at all.
     #  Grouped 22 Aug to the owner's own sketch: what you work on, what you
     #  print, what you set.
-    CANON = ["front-desk.html", "tally.html", "invitations.html", "arrivals-sms.html", "cleaners.html", "spa.html", "publish.html",
-             "list.html", "housekeeping.html", "registration.html", "menu-print.html", "past-menus.html",
-             "staff.html", "tag.html", "flags.html", "pages.html"]
+    #  Read from tests/nav_canon.json, the one table of the menu's shape,
+    #  rather than restated here: four suites each holding the order is why
+    #  adding a page meant editing them all.
+    _nc = json.load(open("tests/nav_canon.json"))
+    CANON = [h for h, _t in _nc["top"]] + \
+            [h for _g, items in _nc["groups"] for h, _t in items]
     got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     print("   publish nav:", got)
@@ -718,6 +753,140 @@ with sync_playwright() as p:
     STATE["tags"] = {}
     pg.close()
 
+    # ── the rings: who is in the house tonight ──────────────────
+    #  Asked for by the owner, 27 Aug. The chef ticks against a list that said
+    #  nothing about the people the menu is about to be served to. A pill now
+    #  wears a red ring when a guest CONFIRMED for tonight's dinner has
+    #  declared that dietary, and an amber ring when somebody staying tonight
+    #  has declared it without confirming dinner. Red is the failure colour
+    #  and amber the attention colour, per the colour law, and the suite
+    #  asserts the computed colour rather than the class name.
+    RED, AMBER = "rgb(168, 50, 30)", "rgb(194, 154, 85)"
+
+    def rings(pg, name, cls):
+        return pg.evaluate("""([name, cls])=>
+            [...document.querySelectorAll('#tagblock .tick')]
+            .filter(t=>t.getAttribute('data-n')===name &&
+                       t.className.split(' ').indexOf(cls)>-1).length""",
+            [name, cls])
+
+    def ring_colour(pg, name):
+        return pg.evaluate("""(name)=>{
+            const t=[...document.querySelectorAll('#tagblock .tick')]
+              .find(x=>x.getAttribute('data-n')===name);
+            return t ? getComputedStyle(t).borderTopColor : null;}""", name)
+
+    depart = (now + datetime.timedelta(days=2)).strftime("%Y-%m-%d")
+    STATE["stays"] = {"4": {"id": "b4", "first": "Ada", "last": "L",
+                            "depart": depart},
+                      "7": {"id": "b7", "first": "Grace", "last": "H",
+                            "depart": depart}}
+    STATE["dinner"] = {"4": {"status": "in", "by": "guest",
+                             "diets": ["Nut allergy"]}}
+    #  The old spelling on purpose: a declaration saved before the 26 Aug
+    #  renames must ring the renamed pill, or the oldest allergies - the ones
+    #  most worth ringing - are the ones that go quiet.
+    STATE["pre"] = {"b7": {"diets": ["Gluten free"]}}
+    pg = open_pub(LINK)
+    ck("a confirmed guest's dietary rings its pill red, on every course",
+       rings(pg, "Nut allergy", "warnin") == 4 and
+       ring_colour(pg, "Nut allergy") == RED)
+    ck("a staying, unconfirmed guest's rings amber",
+       rings(pg, "Gluten", "warnstay") == 4 and
+       ring_colour(pg, "Gluten") == AMBER)
+    ck("declared under its old name, onto the renamed pill",
+       rings(pg, "Gluten free", "warnstay") == 0)
+    ck("and neither ring wanders onto the other's pill",
+       rings(pg, "Nut allergy", "warnstay") == 0 and
+       rings(pg, "Gluten", "warnin") == 0)
+    ck("the key to the rings is beside them",
+       pg.evaluate("()=>getComputedStyle(warnKey).display") != "none" and
+       "red ring" in pg.inner_text("#warnKey").lower() and
+       "amber ring" in pg.inner_text("#warnKey").lower())
+    #  The ring is about who is in the house, not about the tick: ticking the
+    #  pill is the chef ANSWERING the warning, so it must not put the ring out.
+    pg.evaluate("""()=>{ var t=[...document.querySelectorAll('#tagblock .tick')]
+        .find(x=>x.getAttribute('data-c')==='main' &&
+                 x.getAttribute('data-n')==='Nut allergy'); t.click(); }""")
+    ck("ticking a ringed pill keeps the ring",
+       pg.evaluate("""()=>{ var t=[...document.querySelectorAll('#tagblock .tick')]
+          .find(x=>x.getAttribute('data-c')==='main' &&
+                   x.getAttribute('data-n')==='Nut allergy');
+          return t.className.split(' ').indexOf('on')>-1 &&
+                 t.className.split(' ').indexOf('warnin')>-1; }"""))
+    #  And keeps it LOUD. The owner's second ruling of 27 Aug, off his own
+    #  screenshot: pressed pills filled solid red, so a page with a few ticks
+    #  was a wall of red and the one ring that meant a confirmed allergy
+    #  disappeared into it. Red never fills a pill now - the press is a light
+    #  grey fill with the text left black, and the ring is the only red thing
+    #  on the pill.
+    ck("a pressed pill fills light grey with black text, never red",
+       pg.evaluate("""()=>{ var t=[...document.querySelectorAll('#tagblock .tick')]
+          .find(x=>x.getAttribute('data-c')==='main' &&
+                   x.getAttribute('data-n')==='Nut allergy');
+          var s = getComputedStyle(t);
+          const probe=v=>{const e=document.createElement('span');e.style.color='var('+v+')';document.body.appendChild(e);const c=getComputedStyle(e).color;e.remove();return c;};
+          return s.backgroundColor === probe('--sel-bg') &&
+                 s.color === probe('--ink'); }"""))
+    ck("and pressing left the red ring exactly as it was",
+       pg.evaluate("""()=>{ var t=[...document.querySelectorAll('#tagblock .tick')]
+          .find(x=>x.getAttribute('data-c')==='main' &&
+                   x.getAttribute('data-n')==='Nut allergy');
+          return getComputedStyle(t).borderTopColor === 'rgb(168, 50, 30)'; }"""))
+    #  A pressed pill NOBODY in the house has declared keeps its grey border:
+    #  pressing changes the fill and only the fill, so grey stays grey and a
+    #  warning ring is never invented by a tap.
+    ck("a pressed pill with no guest behind it stays grey-bordered",
+       pg.evaluate("""()=>{ var t=[...document.querySelectorAll('#tagblock .tick')]
+          .find(x=>x.getAttribute('data-c')==='main' &&
+                   x.getAttribute('data-n')==='Vegan');
+          if (!t) return false; t.click();
+          var s = getComputedStyle(t);
+          const probe=v=>{const e=document.createElement('span');e.style.color='var('+v+')';document.body.appendChild(e);const c=getComputedStyle(e).color;e.remove();return c;};
+          return s.backgroundColor === probe('--sel-bg') &&
+                 s.borderTopColor !== probe('--red') &&
+                 s.borderTopColor !== s.backgroundColor; }"""))
+    pg.close()
+
+    #  One dietary, two declarers: the confirmed guest outranks the pending
+    #  one, because red is the fact and amber only the possibility of it.
+    STATE["pre"] = {"b7": {"diets": ["Nut allergy"]}}
+    pg = open_pub(LINK)
+    ck("confirmed beats staying when both declare the same dietary",
+       rings(pg, "Nut allergy", "warnin") == 4 and
+       rings(pg, "Nut allergy", "warnstay") == 0)
+    ck("and the key explains only the colour on the page",
+       "amber ring" not in pg.inner_text("#warnKey").lower())
+    pg.close()
+
+    #  A guest who said no to dinner is a terracotta fact on the boards, not a
+    #  conflict here: nobody meets a dish they are not eating.
+    STATE["dinner"] = {"4": {"status": "out", "by": "guest",
+                             "diets": ["Nut allergy"]}}
+    STATE["pre"] = {}
+    pg = open_pub(LINK)
+    ck("a declined guest's dietary rings nothing",
+       rings(pg, "Nut allergy", "warnin") == 0 and
+       rings(pg, "Nut allergy", "warnstay") == 0)
+    ck("and with no ring on the page there is no key either",
+       pg.evaluate("()=>getComputedStyle(warnKey).display") == "none")
+    pg.close()
+
+    #  Advisory only. The rings read the room; they are not allowed to close
+    #  it: a failed read paints none rather than wrong ones, says nothing,
+    #  and publishing stands exactly as it did.
+    STATE["failHouse"] = True
+    STATE["dinner"] = {"4": {"status": "in", "diets": ["Nut allergy"]}}
+    pg = open_pub(LINK)
+    ck("the house failing to load paints no rings rather than wrong ones",
+       pg.evaluate("()=>document.querySelectorAll("
+                   "'#tagblock .warnin, #tagblock .warnstay').length") == 0)
+    ck("and does not lock publishing, which is not its business",
+       not pg.evaluate("()=>pubBtn.disabled"))
+    pg.close()
+    STATE["failHouse"] = False
+    STATE["stays"] = {}; STATE["dinner"] = {}; STATE["pre"] = {}
+
     # ── no link at all ──────────────────────────────────────────
     pg = open_pub("")
     ck("the page still works with no link, typed by hand",
@@ -778,11 +947,14 @@ with sync_playwright() as p:
     ck("every link in the menu has a permission behind it",
        all(h in NEEDS for r in seen for h in seen[r]))
     #  A heading with nothing under it promises something that is not there.
+    #  Judged on the .navgroup wrapper, which is what hideEmptyGroups hides:
+    #  the .navgrp header inside it keeps its own computed display and would
+    #  read as visible however hidden the group is.
     empty = pg.evaluate("""()=>{
       window.NALA_NAVFILTER('housekeeping');
-      return [...document.querySelectorAll('#navDrop .navgrp')]
+      return [...document.querySelectorAll('#navDrop .navgroup')]
         .filter(g=>getComputedStyle(g).display!=='none')
-        .map(g=>g.textContent);
+        .map(g=>g.querySelector('.navgrp span').textContent);
     }""")
     print("   headings a housekeeper sees:", empty)
     #  Settings now holds Notifications, which is not filtered by role: a
@@ -793,13 +965,11 @@ with sync_playwright() as p:
        empty == ["Print", "Settings"])
     ck("and the housekeeper's Settings holds the switch and nothing else",
        pg.evaluate("""()=>{ window.NALA_NAVFILTER('housekeeping');
-          const k=[...navDrop.children];
-          const g=k.findIndex(e=>e.textContent==='Settings' &&
-                                 e.className.indexOf('navgrp')>-1);
-          return k.slice(g+1).filter(e=>e.tagName==='A' &&
-                 e.className.indexOf('signout')<0 &&
-                 getComputedStyle(e).display!=='none')
-                 .map(e=>e.id); }""") == ["navNotify"])
+          const g=[...document.querySelectorAll('#navDrop .navgroup')]
+            .find(w=>w.querySelector('.navgrp span').textContent==='Settings');
+          return [...g.querySelectorAll('.navsub a')]
+                 .filter(a=>a.style.display!=='none')
+                 .map(a=>a.id); }""") == ["navNotify"])
     pg.evaluate("()=>window.NALA_NAVFILTER('admin')")
     pg.close()
 

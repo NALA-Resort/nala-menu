@@ -45,28 +45,33 @@ If two files need the same fact, one of them owns it and the other reads it.
 
 Already done this way — follow these:
 
-- `nala-shared.js` → `NAV_NEEDS` — the permission behind each menu link.
-  A page missing from it is shown to everyone: until 22 Aug `publish.html`
-  and `tag.html` were absent, so a housekeeper's menu offered to publish the
-  dinner menu.
+- `nala-shared.js` → `NAV` — the staff menu: every page's hamburger is
+  generated from it by `buildNav`, and each entry carries the permission
+  behind its link (`NAV_NEEDS` is derived from it). An entry with the wrong
+  key is shown to everyone: until 22 Aug `publish.html` and `tag.html` were
+  unlisted, so a housekeeper's menu offered to publish the dinner menu.
+- `tests/nav_canon.json` — the menu's shape as the suites assert it. The
+  `phone_cases.json` pattern: `NAV` is what the app draws, this is what the
+  tests expect, and whichever side a change misses fails by name.
 - `tests/phone_cases.json` — the phone rule's cases, read by both suites.
 - `rules.json` — the database's permissions.
 
-**Never** restate the menu in a suite. Four suites currently hold their own
-copy of the menu order, which is why adding a page means editing them all. A
-suite with its own copy can pass while the app is wrong.
+**Never** restate the menu in a suite. Four suites held their own copy of
+the menu order until 26 Aug, which is why adding a page meant editing them
+all; they read `nav_canon.json` now. A suite with its own copy can pass
+while the app is wrong.
 
-### 2. Adding a page costs 14 edits today, and shouldn't
+### 2. Adding a page is one entry in `NAV`, plus the `?v=` bumps
 
-As things stand: the link is pasted into every page's `navdrop`, the
-permission goes in `NAV_NEEDS`, and four suites need the menu re-typed.
-That is the current reality — follow it, and do not skip the suites.
+The 28-edit story below is over: the menu markup left the pages on 26 Aug,
+when the hamburger was redesigned (submenus, non-caps) and generated in the
+same stroke. A new page is one entry in `NAV`, the same line in
+`tests/nav_canon.json`, and the `?v=` bumps — which are still hand-
+maintained, see below.
 
-It is also the largest known drag on feature work here. The fix is to
-generate the dropdown from one array instead of filtering pasted markup, so
-a page with no entry has no link. Not built. Worth doing next time someone
-is in `nala-shared.js` anyway — not as a standalone job, since it touches
-all fifteen pages of a live system.
+Two things the generator gets right that you would get wrong pasting: each
+page omits its own link, and the permission keys are `resSheet` and
+`cleansBoard` — not the `resBoard`/`cleanBoard` you would guess.
 
 ### 3. Duplication that cannot be avoided gets a shared table
 
@@ -108,16 +113,131 @@ reads the same:
 | Cream row | transparent on `--cream:#F9F7F4`, border `--rule` | work to do (to send, unanswered) | — |
 | True white | `#fff` | an editable surface: inputs, the message box, editor cards | a status |
 | Light grey fill | `rgba(28,28,26,.045)`, border `--rule` | sent, waiting on the other side; unknown promises nothing | done |
-| Amber | `--amber:#F6EAD5`, border `--amberb:#C29A55`, ink `#8A6A2F` | attention, in progress, chase this (front desk's confirm queue, a form opened but unfinished) | failure |
+| Amber | `--amber:#F6EAD5`, border `--amberb:#C29A55`, ink `#8A6A2F` | attention, in progress, chase this (front desk's confirm queue, a pre-arrival form **incomplete** — see the three states below) | failure |
 | Green tile | `rgba(122,160,130,.26)` / `.65`, ink `#5E7D67` | done, confirmed (the Reservations dining tile) | — |
 | Green pill/tick | `--green:#E4EDE2`, `--greenb:#7E937A` | a positive state or a selection mark | — |
 | Terracotta tile | `rgba(184,106,90,.16)` / `.45`, ink `#9E6455` | a **negative answer** — not dining, declined. A fact a guest gave us | a failure |
-| Red | `--red:#A8321E` | **failure only**: a send that failed, a delivery that failed, an error. Text and pills, never a whole tile | pending, unknown, "nothing yet" |
+| Red | `--red:#A8321E` | **failure only**, and the one exception below. A send that failed, a delivery that failed, an error. Text and pills, never a whole tile | pending, unknown, "nothing yet" |
 | Grey dashed, sunk | `opacity:.62`, dashed `--rule` | nothing to do here (vacant villa, unsendable number) | — |
 
 The Reservations green and terracotta tiles are a contract between boards:
 suites assert them by computed colour, not class name. Change them in one
 place and the suites will name every other.
+
+### Red's one exception: an allergy
+
+Ruled by the owner, 29 Aug, closing a question that had been re-opened
+twice. An allergy wears red — the solid `.dpill-al` on Reservations, the
+red words on the printed Reservations Sheet — and that is not a hole in the
+law, it is the law's edge.
+
+The rule red protects is that red must never mean *pending, unknown or
+nothing yet*. An allergy is none of those. It is the one fact on a kitchen
+screen that can hurt somebody, and the reader scanning for it is scanning
+for danger, which is the reading red already carries. Nothing else in the
+app competes for that: terracotta is a guest's negative answer, amber is
+chase this. Neither says "stop".
+
+So: **red may mean hazard, but only hazard about a person.** Not a busy
+state, not a rejected form, not a colour picked because a thing is
+important. If you are about to reach for red and the thing is not a failure
+or an allergy, it is the wrong colour.
+
+Two things this exception does NOT extend to, both settled already:
+
+- **Selection never wears red.** Publish's dietary pills filled solid red
+  until 27 Aug, when a page with a few on it became a wall of red and the
+  one red *ring* that meant a confirmed guest's allergy vanished into it.
+  Grey fill, red only as a ring. A hazard that has to compete with a
+  selection for the same colour loses.
+- **Dead CSS carrying a description of the app is not inert.** `tag.html`
+  held orphaned red `.tick` rules under a comment calling this an open
+  question, months after it was answered on the page that actually draws
+  them. Removed 29 Aug. Delete the rule and the story with it.
+
+### The pre-arrival form has three states, and the colour IS the state
+
+Ruled by the owner, 28 Aug, superseding his own ruling of 26 Aug that the
+Front Desk row tint read *completeness of the answers*. That ruling left two
+systems describing one thing: a tint computed from the answers, and an `at`
+stamp written by something else. Nothing reconciled them, so villa 17 could
+read Form completed on Pre-arrival SMS and amber at the desk while holding
+nothing at all, and no screen offered a way out.
+
+| State | Row | Means |
+|---|---|---|
+| not started | grey, `todo-form` | nobody has answered anything |
+| incomplete | amber, `part-form` | somebody has, and it has not been marked complete |
+| completed | green, `done-form` | the guest pressed Send, or the desk marked it complete |
+
+Three things follow, and they are the whole model:
+
+- **Editing and saving change no state.** Reception adds what it hears across
+  the day; that is not a claim the form is finished.
+- **One control moves it**, the sheet's `Mark as completed`, available only
+  once the mandatory answers are in — **dinner, dietary and massage**, and
+  massage is not owed by a one night stay, whose guest form never asks it.
+  The same control walks it back, in terracotta, and asks first.
+- **Arriving is not finishing.** Check in is a *visual move of the tile* so
+  reception can see who is here. It touches the form's state not at all, and
+  it asks for nothing before it will move: a control that refuses is not a
+  visual move. It is a toggle, so the way back from an accidental press is to
+  press it again.
+
+There is no third button. `Confirm arriving` is gone, and so is `confirmedAt`:
+the field recorded that reception had been through the answers and **nothing
+in the app ever read it** — `isConfirmed` was defined and never called. Once
+the state moved to its own gated control, the only thing that button still did
+was un-arrive a guest, under a name that said the opposite. Values already in
+the database are left alone; nothing reads those either.
+
+`formState` in `nala-shared.js` is the only thing that says which state a
+booking is in, and both boards read it. Two readings of one state is how they
+came to disagree. `prearrival.html` cannot read it — it is a guest page and
+loads no staff code — so its half of the contract is
+`tests/form_questions.json` and `tests/onenight_cases.json`, which both
+suites answer to.
+
+Buttons have a law of their own — **the button law, STYLEGUIDE.md** (ruled
+26 Aug): one solid primary per surface, destructive actions wear terracotta
+outline and always confirm before writing. Read it before adding any button.
+
+---
+
+### 6. Match the ceremony to the change
+
+Rules 1 to 5 were written after a data model went wrong and after five tests
+passed against broken code. They are aimed at facts and at state. Applied at
+full weight to a label or a colour, they cost more than the change is worth.
+
+Written 31 Aug, after moving one text span and adding one icon took half an
+hour of the owner's time: eight serial runs of a 200 second suite, two rounds
+of mockups, and a multiple choice question about a wording he had already
+given. His words: "I have other apps being built at five times the speed of
+this one."
+
+The tier is set by **what the change can break**, not by how many lines it is.
+
+| Change | What it needs |
+|---|---|
+| The data model, permissions, the colour law, anything two screens read | All of rules 1 to 5. A shared table, a mockup, a mutation proof each. |
+| Layout, copy, an icon, a tint | Build it. One screenshot at 390. Tests for the behaviour, not for the pixels. One mutation proof for the batch, not one each. |
+| A typo, a comment, a `?v=` bump | Change it. |
+
+Three habits that make the difference, all learned the hard way:
+
+- **Tests run in the background.** Never make somebody watch a suite. Start
+  it, keep working, report once.
+- **Mutations go in one run.** Mutate, run, restore, repeat, inside a single
+  script. Five proofs is one job, not five.
+- **Make the call.** A mockup is for when the shape is genuinely open. When
+  the owner has already said what he wants, build that, and say afterwards
+  what it cost. He was overruled twice on 31 Aug and was right both times.
+
+And read the width rule as written, in STYLEGUIDE.md: **mock at 390, check
+at 360, do not break at 320.** Breaking means a sideways bleed or a control
+nobody can reach. A name clipping at 320 is not breaking. 320 is an iPhone
+SE 1st generation, from 2016; nothing sold since is narrower than 375.
 
 ---
 
@@ -133,10 +253,10 @@ can find the reasoning for.
 
 - **`?v=` across 14 pages.** Should be one number rewritten by a pre-publish
   script. Until then it is hand-maintained and easy to miss.
-- **The menu, in fifteen copies.** See rule 2. Two things a generator must
-  get right that pasted markup does by hand: each page omits its own link,
-  and the permission keys are `resSheet` and `cleansBoard` — not the
-  `resBoard`/`cleanBoard` you would guess.
+- **Destructive buttons predating the button law** (STYLEGUIDE.md). spa.html
+  obeys it; every other page's cancels and deletes are still solid or quiet
+  ink with no confirmation. Dress and confirm them when you next touch the
+  page.
 
 ---
 
@@ -151,7 +271,15 @@ python3 tests/run.py <suite>       # the one suite you touched
 python3 tests/run.py               # once, before publishing only
 ```
 
-Known failures, pre-existing, not yours: `rules` ×2, `tally` ×1, `cleans` ×2.
+Known failures, pre-existing, not yours: `cleans` ×2, and `rules` ×2 where
+`rules` can run. `tally` ×1 was on this list and has not failed for some
+time; taken off 29 Aug, because a stale list of expected failures is how a
+real one gets waved through.
+
+Three suites report NO RESULT rather than failing in a container that lacks
+their tools, and that is not a break either: `rules` and `coercion` need
+node's firebase test module, `list` needs `pdftotext`.
+
 Anything else is a real break.
 
 ## Publishing

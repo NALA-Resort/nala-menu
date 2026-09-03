@@ -97,9 +97,12 @@ with sync_playwright() as p:
     #  way to anywhere. Pages is in every OTHER page's hamburger, which is what
     #  was actually asked for, and that is checked from a page that is not this
     #  one.
-    CANON = ["front-desk.html", "tally.html", "invitations.html", "arrivals-sms.html", "cleaners.html", "spa.html", "publish.html",
-             "list.html", "housekeeping.html", "registration.html", "menu-print.html", "past-menus.html",
-             "staff.html", "tag.html", "flags.html", "pages.html"]
+    #  Read from tests/nav_canon.json, the one table of the menu's shape,
+    #  rather than restated here: four suites each holding the order is why
+    #  adding a page meant editing them all.
+    _nc = json.load(open("tests/nav_canon.json"))
+    CANON = [h for h, _t in _nc["top"]] + \
+            [h for _g, items in _nc["groups"] for h, _t in items]
     got = pg.evaluate("""()=>[...document.querySelectorAll('.navdrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     ck("the map's own hamburger lists every other page, in the one order",
@@ -145,7 +148,10 @@ with sync_playwright() as p:
         if f.startswith("demo-"):
             continue                      # snapshots, rebuilt from the real pages
         src = open(f, encoding='utf-8').read()
-        if "navFilter" not in src:
+        #  Guard on the exact string the parser below anchors to: a page that
+        #  merely MENTIONS navFilterShared in a comment is not an offender,
+        #  and the loose guard crashed on the first one that did.
+        if "function navFilter" not in src:
             continue
         #  The function itself, brace matched, rather than a window of
         #  characters after it: an 800 character window swept up the page's own
@@ -165,7 +171,11 @@ with sync_playwright() as p:
     ck("no page keeps its own copy of the menu filter", offenders == [])
 
     # ── the shared files carry one version, and it is current ───
-    #  The ?v= on the shared scripts is the whole caching story on this site,
+    #  The ?v= on the shared files is the whole caching story on this site,
+    #  and the STYLESHEETS were not in this check until 28 Aug: nala-ui.css
+    #  could be edited and published without a single bump, and every phone
+    #  would go on using the CSS it already had. A restyle is exactly the
+    #  change that hole swallows.
     #  and it had not been bumped in four changes: the sign-in persistence fix,
     #  the menu filter, the notifications switch. Browsers went on running the
     #  old copies, so fixes that were published and correct simply never
@@ -176,10 +186,12 @@ with sync_playwright() as p:
     for f in sorted(_g.glob("*.html")):
         if f.startswith("demo-"):
             continue
-        for m in _r.finditer(r'(nala-shared\.js|auth\.js)\?v=(\d+)', open(f, encoding='utf-8').read()):
+        for m in _r.finditer(
+                r'(nala-shared\.js|auth\.js|nala-ui\.css|nala-ui2\.css)\?v=(\d+)',
+                open(f, encoding='utf-8').read()):
             vers.setdefault(m.group(1), set()).add(m.group(2))
-    print("   shared script versions:", {k: sorted(v) for k, v in vers.items()})
-    ck("every page asks for the same version of each shared script",
+    print("   shared file versions:", {k: sorted(v) for k, v in vers.items()})
+    ck("every page asks for the same version of each shared file",
        all(len(v) == 1 for v in vers.values()))
 
     #  And the version has to move when the file does. A file changed since its
@@ -190,7 +202,7 @@ with sync_playwright() as p:
         touched = _sp.run(["git", "log", "-1", "--format=%H", "--", name],
                           capture_output=True, text=True).stdout.strip()
         bumped = _sp.run(["git", "log", "-1", "--format=%H", "-S",
-                          name + "?v=" + vv, "--", "tally.html"],
+                          name + "?v=" + vv],
                          capture_output=True, text=True).stdout.strip()
         if not touched or not bumped:
             continue
@@ -199,9 +211,168 @@ with sync_playwright() as p:
         if order.returncode == 0 and order.stdout.strip().isdigit() \
            and int(order.stdout.strip()) > 0:
             stale.append(name)
-    print("   shared scripts changed since their version was bumped:", stale)
-    ck("no shared script has changed since the version browsers ask for",
+    print("   shared files changed since their version was bumped:", stale)
+    ck("no shared file has changed since the version browsers ask for",
        stale == [])
+
+    # ── the house style, enforced rather than written down ───────────
+    #  Every rule below is one STYLEGUIDE.md already states in prose and
+    #  nothing checked. Measured on 28 Aug, before any of this: 64% of
+    #  font-size declarations were off the declared 8/11/15/20/27 scale,
+    #  --ink was redefined in 18 pages and --cream in 17 despite "defined
+    #  once in nala-ui.css", 87 font stacks were hardcoded against "no page
+    #  hardcodes a font stack", and --green meant a pale fill on five pages
+    #  and a dark ink on two. A rule nobody can fail is a rule that rots.
+    #
+    #  Scoped to pages carrying `ui2`, the second dress, because those are
+    #  the pages that have been converted. As a page joins the dress it
+    #  joins these checks, which is what makes the migration one way.
+    #  Not anchored to a line start: `:root { --a:x; --b:y; }` on one line
+    #  is how every page declares these, and an anchored pattern reads only
+    #  the first. `--x:` appears only in declarations, never in var(--x).
+    #  Comments are stripped before any of this. These files explain their
+    #  own tokens constantly - "Not --amber: that name is the colour law's
+    #  attention FILL" is prose, not a declaration - and a checker that reads
+    #  prose as code cries wolf until somebody turns it off.
+    def decomment(t):
+        return _r.sub(r'/\*.*?\*/', ' ', t, flags=_r.S)
+    OWNED = set(_r.findall(r'(--[a-z0-9-]+)\s*:',
+                decomment(open("nala-ui2.css", encoding="utf-8").read())))
+    def style_of(txt):
+        m = _r.search(r'<style>(.*?)</style>', txt, _r.S)
+        return m.group(1) if m else ""
+
+    ui2, bad_link, bad_tok, bad_font, bad_size, bad_zoom = [], [], [], [], [], []
+    for f in sorted(_g.glob("*.html")):
+        if f.startswith(("demo-", "mock-")):
+            continue
+        txt = open(f, encoding="utf-8").read()
+        wears = _r.search(r'<body[^>]*class="[^"]*\bui2\b', txt) is not None
+        links = _r.search(r'<link[^>]+nala-ui2\.css', txt) is not None
+        if wears != links:
+            bad_link.append(f)
+        if not wears:
+            continue
+        ui2.append(f)
+        st = style_of(txt)
+        #  A page that redefines a shared token silently wins over the sheet,
+        #  because :root and body.ui2 are the same specificity and the page
+        #  comes later. That is how --green came to mean two things.
+        for t in _r.findall(r'(--[a-z0-9-]+)\s*:', decomment(st)):
+            if t in OWNED:
+                bad_tok.append(f + " " + t)
+        #  "No page hardcodes a font stack. Changing the staff font is one
+        #  line." It was one line and 87 places.
+        if _r.search(r'font-family:\s*(?!var\()', decomment(st)):
+            bad_font.append(f)
+        #  Sizes come from the scale or they are picked by eye. A deliberate
+        #  exception is allowed the way CLAUDE.md allows any other: say why,
+        #  in the file, next to the thing. Mark the line `off-scale: reason`
+        #  and this stops asking. The Cleans board's tile internals are the
+        #  first: its tiles are a fixed grid the owner has ruled stays as it
+        #  is, and inflating the type inside them would overflow it.
+        for line in st.splitlines():
+            if "off-scale:" in line:
+                continue
+            for m in _r.findall(r'font-size:\s*([0-9.]+(?:px|rem))',
+                                _r.sub(r'/\*.*?\*/', ' ', line)):
+                bad_size.append(f + " " + m)
+        #  Takes pinch zoom from anyone who needs it, and never did the job
+        #  it was added for; touch-action:manipulation does that instead.
+        if "user-scalable=no" in txt:
+            bad_zoom.append(f)
+
+    print("   pages wearing the second dress:", ui2)
+    ck("a page wears the dress and links its sheet, or neither", not bad_link)
+    if bad_link: print("   mismatched:", bad_link)
+    ck("no page redefines a token the shared sheet owns", not bad_tok)
+    if bad_tok: print("   redefined:", bad_tok)
+    ck("no page hardcodes a font stack", not bad_font)
+    if bad_font: print("   hardcoded:", bad_font)
+    ck("every font size comes from the scale, not by eye", not bad_size)
+    if bad_size: print("   off-scale:", sorted(set(bad_size)))
+    ck("no page takes pinch zoom away", not bad_zoom)
+    if bad_zoom: print("   user-scalable=no:", bad_zoom)
+
+
+# The pages wearing the second dress, used by both checks below.
+_dressed = [f for f in sorted(_g.glob("*.html"))
+            if not f.startswith(("demo-", "mock-"))
+            and _r.search(r'<body[^>]*class="[^"]*\bui2\b', open(f, encoding="utf-8").read())]
+
+# ── no page asks for a token nobody defines ──────────────────────────
+#  An undefined custom property is SILENT. It does not fall back and it
+#  does not warn: the declaration is thrown away and the property takes
+#  its inherited or initial value. fill:var(--dine) with no --dine is a
+#  black fork, not a missing one, and colour:var(--dine) is black text
+#  that looks deliberate.
+#
+#  This shipped. Converting the pages dropped each :root wholesale to
+#  remove the tokens the shared sheet owns, and took the pages' OWN
+#  tokens with them - front desk lost --dine and --nodine, so every fork
+#  and every stat on that board drew black for a day. The suite passed,
+#  because it asserted the class name and a class cannot say what colour
+#  the stylesheet drew.
+_undef = []
+with sync_playwright() as p4:
+    b4 = p4.chromium.launch()
+    for f in _dressed:
+        #  Comments stripped first. The restore commit explains itself with
+        #  "fill:var(--dine) became a black fork", and a checker that reads
+        #  prose as code reports the very token it is describing. Same fault
+        #  the ownership check had, made twice.
+        want = sorted(set(_r.findall(r'var\(\s*(--[a-z0-9-]+)',
+                          decomment(open(f, encoding="utf-8").read()))))
+        q = b4.new_page(viewport={"width": 390, "height": 844})
+        q.add_init_script(SDK)
+        q.add_init_script("window.__EMAIL='admin@nalaresort.com.au';")
+        q.goto("http://localhost:8966/" + f)
+        q.wait_for_timeout(600)
+        gone = q.evaluate("""(names)=>{const cs=getComputedStyle(document.body);
+            return names.filter(n=>cs.getPropertyValue(n).trim()==='');}""", want)
+        q.close()
+        if gone:
+            _undef.append(f + ": " + ", ".join(gone))
+    b4.close()
+ck("no page asks for a token nobody defines", not _undef)
+for x in _undef:
+    print("   undefined:", x)
+
+# ── every control has a shape ────────────────────────────────────────
+#  Reported by the owner off a screenshot, 29 Aug: the Reservations sheet's
+#  buttons were square while everything round them was rounded. The radius
+#  pass rewrote the values it found, and .opt and .selbtn declared none at
+#  all, so there was nothing to rewrite and nothing to notice. debug.html
+#  was worse - bare <button> elements with no class, so four buttons that
+#  delete records had no dress and nothing saying they were destructive.
+#
+#  A missing declaration is invisible to a grep, so this one reads the
+#  rendered page. The footer row is exempt by the corner law: it sits hard
+#  against the bottom of the screen and squares off on purpose.
+_square = []
+with sync_playwright() as p2:
+    b2 = p2.chromium.launch()
+    for f in _dressed:
+        q = b2.new_page(viewport={"width": 390, "height": 844})
+        q.add_init_script(SDK)
+        q.add_init_script("window.__EMAIL='admin@nalaresort.com.au';")
+        q.goto("http://localhost:8966/" + f)
+        q.wait_for_timeout(700)
+        got = q.evaluate("""()=>{const out=[];
+          document.querySelectorAll('button,a.btn,input[type=button]').forEach(e=>{
+            const c=getComputedStyle(e), r=e.getBoundingClientRect();
+            if(r.width<8||r.height<8) return;
+            if(c.borderTopLeftRadius==='0px' && c.borderBottomRightRadius==='0px'
+               && !e.closest('.foot'))
+              out.push((e.className||e.tagName)+' "'+e.textContent.trim().slice(0,18)+'"');});
+          return [...new Set(out)];}""")
+        q.close()
+        if got:
+            _square.append(f + ": " + ", ".join(got[:3]))
+    b2.close()
+ck("every control has a shape, none left square", not _square)
+for x in _square:
+    print("   square:", x)
 
 print("RESULT: %d passed, %d failed" % (P, F))
 httpd.shutdown()

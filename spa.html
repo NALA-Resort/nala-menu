@@ -2,41 +2,37 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Spa</title>
-<link rel="stylesheet" href="nala-ui.css?v=14">
+<link rel="stylesheet" href="nala-ui2.css?v=6">
+<link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-          /* The colour law, CLAUDE.md: booked wears the Reservations green,
-             a suggestion wears amber (attention, chase this), and declined
-             wears terracotta - a negative answer, not a failure. Red never
-             fills a tile; it keeps to the error bar, where it means one. */
-          --resgreen:#5E7D67; --resgreen-t:rgba(122,160,130,.26);
-          --resgreen-b:rgba(122,160,130,.65);
-          --amber:#F6EAD5; --amberb:#C29A55; --ambert:#8A6A1E;
-          --terra:#9E6455; --terra-t:rgba(184,106,90,.16);
-          --terra-b:rgba(184,106,90,.45); }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
-         padding:calc(24px + env(safe-area-inset-top)) 18px 0;
-         -webkit-tap-highlight-color:transparent; }
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
+  
 
-  .grp { font-size:9px; letter-spacing:.16em; text-transform:uppercase;
+  .grp { font-size:var(--t1);
          color:var(--mid); margin:14px 2px 6px; }
 
   .vrow { display:flex; align-items:center; gap:12px; width:100%;
           background:#fff; border:1px solid var(--rule); border-radius:10px;
           padding:11px 13px; margin-bottom:7px; text-align:left;
-          font-family:inherit; color:inherit; cursor:pointer; }
-  .vrow .v { font-size:20px; min-width:30px; text-align:center; }
+          font-family:var(--ui-font); color:inherit; cursor:pointer; }
+  .vrow .v { font-size:var(--t4); min-width:30px; text-align:center; }
   .vrow .mid { flex:1; min-width:0; }
-  .vrow .nm { font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .vrow .st { font-size:11px; color:var(--mid); margin-top:2px; line-height:1.4; }
+  /* The tile's anatomy, ruled 27 Aug: name with the when beside it, the
+     companion under, the service offering last - one kind of fact per
+     line, the same place on every tile, and no line wraps. The card holds
+     the whole story; ellipsis is honest about being a glance. */
+  .vrow .top, .card .top { display:flex; align-items:baseline; gap:10px; }
+  .vrow .nm { flex:1; min-width:0; font-size:var(--t3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vrow .when, .card .when { font-size:var(--t2); color:var(--ink); white-space:nowrap; }
+  .vrow .st { font-size:var(--t2); color:var(--mid); margin-top:2px; line-height:1.4;
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .vrow.b-done { background:var(--resgreen-t); border-color:var(--resgreen-b); }
   .vrow.b-done .st { color:var(--resgreen); }
   .vrow.b-sugg { background:var(--amber); border-color:var(--amberb); }
@@ -54,50 +50,64 @@
   .card.b-decl { background:var(--terra-t); border-color:var(--terra-b); }
   .card.b-decl .st { color:var(--terra); }
   .card .head { display:flex; align-items:center; gap:12px; }
-  .card .v { font-size:20px; min-width:30px; text-align:center; }
+  .card .v { font-size:var(--t4); min-width:30px; text-align:center; }
   .card .mid { flex:1; min-width:0; }
-  .card .nm { font-size:15px; }
-  .card .st { font-size:11px; color:var(--mid); margin-top:2px; line-height:1.4; }
+  .card .nm { flex:1; min-width:0; font-size:var(--t3); white-space:nowrap;
+              overflow:hidden; text-overflow:ellipsis; }
+  .card .st { font-size:var(--t2); color:var(--mid); margin-top:2px; line-height:1.4;
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   /* The second guest's line, under the name on tile and card alike. Always
      the resting grey: it is who is coming, not a state, so it never takes
      the band's colour the way .st does. */
-  .vrow .cmp, .card .cmp { font-size:11px; color:var(--mid); margin-top:1px; line-height:1.4; }
-  .sub { font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+  .vrow .cmp, .card .cmp { font-size:var(--t2); color:var(--mid); margin-top:1px; line-height:1.4;
+                           white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sub { font-size:var(--t2);
          color:var(--mid); margin:12px 0 6px; }
   .chips { display:flex; flex-wrap:wrap; gap:6px; }
-  .chip { font-size:11px; padding:7px 11px; border:1px solid var(--rule);
+  .chip { font-size:var(--t2); padding:7px 11px; border:1px solid var(--rule);
           border-radius:16px; background:#fff; color:var(--ink);
-          font-family:inherit; cursor:pointer; }
-  .chip.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
-  .card select { width:100%; font-size:15px; border:1px solid var(--rule);
-                 border-radius:8px; padding:10px 12px; background:#fff;
-                 font-family:inherit; margin-top:2px; color:var(--ink);
+          font-family:var(--ui-font); cursor:pointer; }
+  .chip.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .card select { width:100%; font-size:var(--t3); border:1px solid var(--rule);
+                 border-radius:var(--r); padding:10px 12px; background:#fff;
+                 font-family:var(--ui-font); margin-top:2px; color:var(--ink);
                  -webkit-appearance:none; appearance:none; }
   /* Three buttons can stand here and the labels carry a day and a time, so
      the row wraps rather than pushing the page sideways at 320. */
   .btns { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
   .cbtn { flex:1 1 auto; min-width:0; text-align:center; padding:12px 4px; border:1px solid var(--ink);
-          border-radius:8px; background:none; color:var(--ink); font-family:inherit;
-          font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+          border-radius:8px; background:none; color:var(--ink); font-family:var(--ui-font);
+          font-size:var(--t2);
           white-space:nowrap; cursor:pointer; }
   .cbtn.solid { background:var(--ink); color:var(--cream); }
   .cbtn.quiet { border-color:var(--rule); color:var(--mid); flex:0 0 auto; padding:12px 14px; }
-  .hint { font-size:11px; color:var(--mid); margin-top:8px; line-height:1.45; }
+  /* The button law, STYLEGUIDE.md: destructive wears terracotta outline,
+     never solid ink and never red, and always confirms before writing. */
+  .cbtn.danger { border-color:var(--terra-b); color:var(--terra); flex:0 0 auto; padding:12px 14px; }
+  .hint { font-size:var(--t2); color:var(--mid); margin-top:8px; line-height:1.45; }
+
+  /* The desk's find-the-guest box. True white: an editable surface, the
+     colour law's one meaning for it. */
+  .addsearch { width:100%; font-size:var(--t3); border:1px solid var(--rule);
+               border-radius:var(--r); padding:11px 13px; background:#fff;
+               font-family:var(--ui-font); color:var(--ink); margin-bottom:7px;
+               -webkit-appearance:none; appearance:none; }
+  .addsearch::placeholder { color:var(--mid); }
 
   /* The stats are buttons here and only here, so the dress is this page's to
      set: no border and no fill, exactly as the shared .stat draws, and the
      pressed one carries an amber rule under its number. */
-  button.stat { background:none; border:0; font-family:inherit; color:inherit;
+  button.stat { background:none; border:0; font-family:var(--ui-font); color:inherit;
                 cursor:pointer; -webkit-tap-highlight-color:transparent; }
   button.stat .stat-n { border-bottom:2px solid transparent; }
   button.stat.on .stat-n { border-bottom-color:var(--amberb); }
 
-  #errBar { font-size:13px; color:var(--red); margin:10px 0; line-height:1.45; }
-  .empty { font-size:13px; color:var(--mid); margin:14px 2px; line-height:1.5; }
+  #errBar { font-size:var(--t2); color:var(--red); margin:10px 0; line-height:1.45; }
+  .empty { font-size:var(--t2); color:var(--mid); margin:14px 2px; line-height:1.5; }
   .spacer { height:80px; }
 </style>
 </head>
-<body class="tier-app">
+<body class="tier-app ui2">
 
 <div class="daterow">
   <button class="dnav today" id="dToday">Today</button>
@@ -106,7 +116,7 @@
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="flags.html">Flags</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"></div>
   </div>
 </div>
 
@@ -133,7 +143,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=41"></script>
+<script src="nala-shared.js?v=48"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -152,9 +162,6 @@ var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
-  var so=document.getElementById('navSignout');
-  if (so) so.onclick=function(e){ e.preventDefault();
-    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
 })();
 function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
 
@@ -162,10 +169,22 @@ function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
 var nav = initDateNav();
 var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
 
-/* How far ahead the board reads. Pre-arrival requests arrive about a week
-   out, so three weeks covers every ask that can exist plus the stays the
-   desk would add one to. A knob can come later if it ever falls short. */
-var HORIZON = 21;
+/* How far ahead the board reads. 45 because the invite Worker refuses a
+   pre-arrival SMS for an arrival more than 45 days out
+   (worker/send-invites.js), so this window holds every ask a guest can
+   lodge. It was 21 - "requests arrive about a week out" - until 27 Aug,
+   when a form answer for a stay beyond three weeks proved invisible here:
+   load() also fetches the viewed day, so the ask surfaced only when the
+   date navigation reached its stay, which read as cards locked to their
+   date. spa_suite pins this number to the Worker's, so neither can move
+   without the other. An answer the desk types against a booking even
+   further out still waits at the same cliff, 45 days before arrival. */
+var HORIZON = 45;
+
+/* The add list's resting window: who can be standing at the desk asking.
+   Anyone further out asked by email or phone, with a name attached, and
+   the search is how the desk reaches them. */
+var SOON = 7;
 
 /* Treatment hours: SPA_SLOTS in nala-shared.js, one list for every staff
    page, pinned with the guest form's copy to tests/slots.json. */
@@ -177,10 +196,29 @@ function shortDay(key){
   var d = parseISO(key + 'T00:00:00'); if (!d) return key;
   return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' + d.getDate();
 }
-/* The styleguide's one-line stay range: Tue 11-Fri 14. */
+/* The styleguide's date: Wd Dth Mon. A bare "Wed 2" on a tile was the
+   owner's 27 Aug finding - past the month's edge nobody knows which
+   Wednesday that is. Chips keep shortDay: they live inside one stay. */
+var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function ordinal(n){
+  var t = n % 10, h = n % 100;
+  return n + (h >= 11 && h <= 13 ? 'th' : t === 1 ? 'st' : t === 2 ? 'nd' : t === 3 ? 'rd' : 'th');
+}
+function niceDay(key){
+  var d = parseISO(key + 'T00:00:00'); if (!d) return key;
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' +
+         ordinal(d.getDate()) + ' ' + MONTHS[d.getMonth()];
+}
+/* The one-line stay range, month said once when it is the same month and
+   twice when the stay crosses one: Sun 20th - Tue 22nd Aug. */
 function stayRange(bk){
   if (!bk || !bk.arrive) return '';
-  return shortDay(akey(bk.arrive)) + '-' + shortDay(akey(bk.depart));
+  var a = parseISO(akey(bk.arrive) + 'T00:00:00'),
+      z = parseISO(akey(bk.depart) + 'T00:00:00');
+  if (!a || !z) return '';
+  var an = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][a.getDay()] + ' ' + ordinal(a.getDate());
+  if (a.getMonth() !== z.getMonth()) an += ' ' + MONTHS[a.getMonth()];
+  return an + ' - ' + niceDay(akey(bk.depart));
 }
 
 /* ── state ───────────────────────────────────────────────────── */
@@ -189,6 +227,7 @@ var SPA = {};        /* id -> { tid -> record } */
 var OPEN = null;     /* { id, tid } of the one card open, tid 'new' for an add */
 var SEL = null;      /* { day, time } while a card is open */
 var FILTER = 'all'; /* the pressed stat; All is the resting state */
+var ADDQ = '';      /* the desk's find-the-guest text, kept across repaints */
 
 function nameOf(id, rec){
   var bk = BOOKINGS[id];
@@ -239,36 +278,43 @@ function asRequested(rec){
   return !rec.reqDay || rec.day === rec.reqDay;
 }
 
-function lineOf(rec, id){
-  var bk = BOOKINGS[id];
-  var stay = bk ? ' · staying ' + stayRange(bk) : '';
-  var ask = (rec.reqDay ? shortDay(rec.reqDay) : 'no day picked') +
-            (rec.reqTime ? ' · ' + rec.reqTime : ' · no time given');
+/* The tile's anatomy, ruled 27 Aug: every line holds one kind of fact, in
+   the same place on every tile, and no line wraps - the card carries the
+   full story, the tile the glance. Beside the name, when: the treatment's
+   own day and time (booked and suggested), or the guest's ask. Under it,
+   who else. Last, the service offering and its state. */
+function whenOf(rec){
+  if (rec.status === 'booked' || rec.status === 'suggested')
+    return niceDay(rec.day) + ' · ' + slotLabel(rec.time);
+  if (rec.reqAny)
+    return SPA_ANY_DAY_LABEL + (rec.reqTime ? ' · ' + rec.reqTime : '');
+  if (rec.reqDay)
+    return niceDay(rec.reqDay) + (rec.reqTime ? ' · ' + rec.reqTime : '');
+  return rec.reqTime ? 'No day · ' + rec.reqTime : 'No day picked';
+}
+function serviceOf(rec, id){
   /* Both lengths on a pair, in order - '1.5 hr + 1 hr' - because the
      masseuse plans his day by time and length, and a hidden second length
      was the bug that forced the pair onto one tile. */
-  var len = spaDur(rec.dur) ? ' · ' + spaDur(rec.dur).short : '';
-  if (rec.qty === 2)
-    len = ' · ' + (spaDur(rec.dur) ? spaDur(rec.dur).short : '?') +
-          ' + ' + (spaDur(rec.dur2) ? spaDur(rec.dur2).short : '?');
-  var two = rec.qty === 2 ? 'Two massages · ' : '';
+  var what = rec.qty === 2
+    ? 'Two massages · ' + (spaDur(rec.dur) ? spaDur(rec.dur).short : '?') +
+      ' + ' + (spaDur(rec.dur2) ? spaDur(rec.dur2).short : '?')
+    : 'Massage' + (spaDur(rec.dur) ? ' · ' + spaDur(rec.dur).short : '');
+  var bk = BOOKINGS[id];
+  var ask = (rec.reqAny ? 'any day' : rec.reqDay ? niceDay(rec.reqDay) : 'no day') +
+            (rec.reqTime ? ', ' + rec.reqTime : '');
   if (rec.status === 'requested' || rec.virtual)
-    return two + (rec.reqDay ? 'Asked for ' + ask
-                       : 'Interested, no day picked' +
-                         (rec.reqTime ? ' · ' + rec.reqTime : '')) + len + stay;
+    return what + (bk ? ' · staying ' + stayRange(bk) : '');
   if (rec.status === 'suggested')
-    return two + 'Suggested ' + shortDay(rec.day) + ' ' + slotLabel(rec.time) + len +
-           ' · asked for ' + ask;
+    return what + ' · suggested instead of ' + ask;
   if (rec.status === 'booked')
-    return two + shortDay(rec.day) + ' ' + slotLabel(rec.time) + len +
-           (asRequested(rec) ? ' · as requested'
-                             : ' · moved from ' + (rec.reqDay ? shortDay(rec.reqDay) : 'no day') +
-                               (rec.reqTime ? ', ' + rec.reqTime : '')) +
+    return what + (asRequested(rec) ? ' · as requested'
+                                    : ' · moved from ' + ask) +
            (rec.manual ? ' · approved at the desk' : '');
   if (rec.status === 'declined')
-    return 'Declined' + (rec.note ? ' · ' + rec.note : '') +
+    return what + ' · declined' + (rec.note ? ' · ' + rec.note : '') +
            (rec.told ? ' · guest told' : ' · let the guest know');
-  return '';
+  return what;
 }
 
 var BAND_CLASS = { suggested:' b-sugg', booked:' b-done', declined:' b-decl' };
@@ -298,10 +344,20 @@ function items(){
     var have = Object.keys(SPA[id] || {}).some(function(tid){
       return (SPA[id][tid] || {}).source === 'prearrival';
     });
+    /* "Any day" never becomes a reqDay: that field's rule takes a date or
+       the empty string and would refuse it, so the masseuse would tap Book
+       and get an error. It rides as a flag on the virtual record instead,
+       which is read-only and never written - save() builds its body key by
+       key and never copies this. */
+    /* Only the chip says Any day. An empty day is a record from before the
+       chip existed, or one the desk cleared, and it still reads "No day
+       picked" - saying Any day for it would put words in a guest's mouth
+       they never said. The guest form asks those guests again. */
+    var anyDay = isAnyDay(p.wellDay);
     if (!have)
       out.push({ id: id, tid: 'ask0', rec: {
-        virtual: true, status: 'requested',
-        reqDay: p.wellDay || '', reqTime: p.wellTime || '',
+        virtual: true, status: 'requested', reqAny: anyDay,
+        reqDay: anyDay ? '' : (p.wellDay || ''), reqTime: p.wellTime || '',
         qty: p.wellQty === 2 ? 2 : 1,
         dur: spaDur(p.wellDur) ? p.wellDur : 0,
         dur2: p.wellQty === 2 && spaDur(p.wellDur2) ? p.wellDur2 : 0
@@ -320,11 +376,13 @@ function tile(it){
   el.dataset.tid = it.tid;
   el.dataset.status = rec.status;
   el.innerHTML = '<div class="v"></div>' +
-    '<div class="mid"><div class="nm"></div><div class="cmp"></div><div class="st"></div></div>';
+    '<div class="mid"><div class="top"><span class="nm"></span><span class="when"></span></div>' +
+    '<div class="cmp"></div><div class="st"></div></div>';
   el.querySelector('.v').textContent = villaOf(it.id, dayOf(rec) || todayKey());
   el.querySelector('.nm').textContent = nameOf(it.id, rec);
+  el.querySelector('.when').textContent = whenOf(rec);
   setCmp(el, it.id);
-  el.querySelector('.st').textContent = lineOf(rec, it.id);
+  el.querySelector('.st').textContent = serviceOf(rec, it.id);
   el.onclick = function(){
     OPEN = { id: it.id, tid: it.tid };
     SEL = null;
@@ -389,13 +447,15 @@ function card(it){
   var head = document.createElement('div');
   head.className = 'head';
   head.innerHTML = '<div class="v"></div>' +
-    '<div class="mid"><div class="nm"></div><div class="cmp"></div><div class="st"></div></div>';
+    '<div class="mid"><div class="top"><span class="nm"></span><span class="when"></span></div>' +
+    '<div class="cmp"></div><div class="st"></div></div>';
   head.querySelector('.v').textContent = villaOf(id, SEL.day || todayKey());
   head.querySelector('.nm').textContent = nameOf(id, rec);
+  head.querySelector('.when').textContent = isNew ? '' : whenOf(rec);
   setCmp(head, id);
   head.querySelector('.st').textContent = isNew
     ? 'A new treatment · staying ' + stayRange(BOOKINGS[id])
-    : lineOf(rec, id);
+    : serviceOf(rec, id);
   head.onclick = function(){ OPEN = null; SEL = null; paint(); };
   el.appendChild(head);
 
@@ -465,7 +525,11 @@ function card(it){
 
   var btns = document.createElement('div'); btns.className = 'btns';
   var when = shortDay(SEL.day) + ' ' + slotLabel(SEL.time);
-  var matchesAsk = !!rec.reqDay && SEL.day === rec.reqDay;
+  /* A guest who said Any day has asked for every day of their stay, so any
+     day the masseuse picks IS the ask and he books it outright. Sending a
+     suggestion back to the desk to be put to a guest who already said they
+     did not mind is the round trip this chip exists to save. */
+  var matchesAsk = rec.reqAny ? !!SEL.day : (!!rec.reqDay && SEL.day === rec.reqDay);
   var changed = SEL.day !== rec.day || SEL.time !== rec.time;
   var hint = '';
 
@@ -491,10 +555,20 @@ function card(it){
       save(it2, 'declined', { note: why.trim() });
     };
   }
+  /* The button law: cancelling a booking a guest holds asks first, naming
+     the guest and the thing, and the dialog's Cancel costs nothing. */
+  function cancelWith(it2){
+    return function(){
+      if (!window.confirm('Cancel ' + nameOf(id, rec) + '\u2019s ' +
+                          niceDay(rec.day) + ' ' + slotLabel(rec.time) +
+                          ' massage? The guest will need to be told.')) return;
+      save(it2, 'declined', {});
+    };
+  }
 
   if (!days.length){
     /* Nothing can be picked; only a decline still makes sense. */
-    if (!isNew) btn('Decline', 'quiet', declineWith(it));
+    if (!isNew) btn('Decline', 'danger', declineWith(it));
   } else if (masseuse){
     if (isNew){
       /* The masseuse adding one was asked in person and knows his own
@@ -502,15 +576,19 @@ function card(it){
       btn('Book ' + when, 'solid', saveAs('booked', { req: true }));
     } else if (rec.status === 'booked'){
       if (changed) btn('Suggest ' + when, 'solid', saveAs('suggested'));
-      btn(changed ? 'Cancel' : 'Cancel booking', changed ? 'quiet' : 'solid',
-          saveAs('declined'));
+      btn(changed ? 'Cancel' : 'Cancel booking', 'danger', cancelWith(it));
       if (changed) hint = 'A change to a booked treatment goes back through ' +
         'the front desk, so the guest hears before it moves.';
     } else {
       if (matchesAsk) btn('Confirm ' + when, 'solid', saveAs('booked'));
       btn('Suggest ' + when, matchesAsk ? 'quiet' : 'solid', saveAs('suggested'));
-      btn('Decline', 'quiet', declineWith(it));
-      hint = matchesAsk
+      btn('Decline', 'danger', declineWith(it));
+      hint = rec.reqAny
+        ? 'The guest said any day of their stay suits them, so pick one and ' +
+          'Confirm books it. Suggest is for a day outside the stay or a ' +
+          'change worth putting to them first. Decline is for a stay with ' +
+          'nothing free.'
+        : matchesAsk
         ? 'Confirm books it. Suggest offers this time as a change instead, ' +
           'amber until the front desk approves it with the guest. Decline ' +
           'is for a stay with nothing free.'
@@ -525,13 +603,13 @@ function card(it){
     } else if (rec.status === 'suggested'){
       if (rec.day === SEL.day && rec.time === SEL.time){
         btn('Approve ' + when, 'solid', saveAs('booked'));
-        btn('Decline', 'quiet', declineWith(it));
+        btn('Decline', 'danger', declineWith(it));
         hint = 'Approve once the guest has said yes - the booking turns ' +
                'green for everyone. The guest’s original ask stays on ' +
                'the record.';
       } else {
         btn('Ask again for ' + when, 'solid', saveAs('requested', { req: true }));
-        btn('Decline', 'quiet', declineWith(it));
+        btn('Decline', 'danger', declineWith(it));
         hint = 'A different day or time goes back to the masseuse as a ' +
                'fresh ask.';
       }
@@ -546,8 +624,7 @@ function card(it){
           saveAs('requested', { req: true }));
     } else if (rec.status === 'booked'){
       if (changed) btn('Ask again for ' + when, 'solid', saveAs('requested', { req: true }));
-      btn(changed ? 'Cancel' : 'Cancel booking', changed ? 'quiet' : 'solid',
-          saveAs('declined'));
+      btn(changed ? 'Cancel' : 'Cancel booking', 'danger', cancelWith(it));
     } else {
       /* requested: normally the masseuse's to answer - but a verbal yes is
          an answer too. Manually approve books the selection directly,
@@ -628,16 +705,42 @@ function save(it, status, opts){
   if (status === 'declined' && (opts.told || rec.told))
     body.told = rec.told || new Date().toISOString();
   var err = document.getElementById('errBar');
-  err.textContent = '';
-  fetch(DB + '/spa/' + id + '/' + tid + '.json', {
+  /* The card is redrawn out of existence by load() below, so the answer has
+     to be seen before that happens rather than after: the write says Saving,
+     lands green on the button that was pressed, and only then does the board
+     reload underneath it.                                                 */
+  return saveFeedback(pressedButton(), function(){
+  return fetch(DB + '/spa/' + id + '/' + tid + '.json', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   }).then(function(r){
-    if (!r.ok) throw new Error();
-    OPEN = null; SEL = null;
-    return load();
-  }).catch(function(){
-    err.textContent = 'The treatment did not save. Try again.';
+    /* The STATUS goes into the error, not a bare one. The shared
+       saveFailWords reads the message to tell a refusal - a permission,
+       which needs the manager - from a write that never arrived, which
+       needs another go; handed nothing at all it could recognise neither,
+       so a rules rejection here read as "check the connection" and sent
+       the masseuse to the wrong remedy entirely. */
+    if (!r.ok) throw new Error('spa save failed ' + r.status);
+    /* The buzz, the owner's ask of 27 Aug: every save moves a treatment
+       somewhere the other side acts on, so each fires its event and the
+       push Worker routes it - the masseuse hears the desk's asks and
+       cancellations, the desk hears his answers, and neither watches a
+       board to find out. The one exception is the told stamp on an
+       already-declined record: bookkeeping, nobody's queue. A guest's own
+       form ask has no tap here to fire from; the mews-sync sweep
+       announces those. */
+    var ev = status === 'requested' ? 'spaRequest'
+           : status === 'suggested' ? 'spaSuggested'
+           : status === 'booked'    ? 'spaBooked'
+           : (rec.status !== 'declined') ? 'spaCancelled'
+           : null;
+    if (ev) notifyPush(ev, villaOf(id, (SEL && SEL.day) || dayOf(rec) || todayKey()),
+                       window.NALA_USER);
+  });
+  }, {
+    done:'Saved ✓', hold:400,
+    then:function(){ OPEN = null; SEL = null; load(); },
+    fail:function(msg){ err.textContent = msg; }
   });
 }
 
@@ -703,33 +806,88 @@ function paint(){
     band(board, 'Declined', of('declined', upcoming).sort(byDay).map(el));
     /* The masseuse sees the guests who want him and nobody else: a stay
        with no request is none of an outside contractor's business, the
-       owner ruled, 25 Aug. The desk keeps the band, because the desk is
-       who adds a treatment when a guest asks in person. */
+       owner ruled, 25 Aug. The desk keeps the add path, because the desk
+       is who adds a treatment when a guest asks - and since the board
+       reads the invite Worker's whole 45 days, finding the guest IS the
+       path. The old band simply listed every treatmentless stay in the
+       window, which at 45 days is a wall of grey nobody could read as
+       anything (the owner, 27 Aug). So the resting list is only who can
+       be standing at the desk - in a villa now or arriving within the
+       week - and the search reaches everyone else in the window, the
+       guests who ask by email, by name or by villa number. */
     if (normaliseRole(window.NALA_ROLE) !== 'spa'){
       var covered = {};
       list.forEach(function(it){ covered[it.id] = true; });
-      var none = Object.keys(BOOKINGS).filter(function(id){ return !covered[id]; })
+      var pool = Object.keys(BOOKINGS).filter(function(id){ return !covered[id]; })
         .sort(function(a, b){
           return akey(BOOKINGS[a].arrive).localeCompare(akey(BOOKINGS[b].arrive));
-        }).map(function(id){
-          /* An add in progress: the grey tile has no record behind it, so
-             the open card is built from nothing but the booking. */
-          if (OPEN && OPEN.id === id && OPEN.tid === 'new' && !cardDrawn){
-            cardDrawn = true;
-            return card({ id: id, tid: 'new',
-                          rec: { status: '', reqDay: '', reqTime: '' } });
-          }
+        });
+      if (pool.length){
+        var hAdd = document.createElement('div');
+        hAdd.className = 'grp';
+        hAdd.textContent = 'Add a treatment';
+        board.appendChild(hAdd);
+        var find = document.createElement('input');
+        find.type = 'text'; find.id = 'addFind'; find.className = 'addsearch';
+        find.placeholder = 'Find the guest · name or villa';
+        find.setAttribute('aria-label', 'Find the guest');
+        find.autocomplete = 'off';
+        find.value = ADDQ;
+        board.appendChild(find);
+        var tilesBox = document.createElement('div');
+        board.appendChild(tilesBox);
+        var soonEnd = (function(){
+          var d = new Date(); d.setDate(d.getDate() + SOON); return dkey(d);
+        })();
+        var addTile = function(id){
           var bk = BOOKINGS[id], p = bk.pre;
           var here = akey(bk.arrive) <= real;
-          var line = (here ? 'In villa until ' + shortDay(akey(bk.depart))
-                           : 'Arrives ' + shortDay(akey(bk.arrive)) +
-                             ', until ' + shortDay(akey(bk.depart)));
+          var line = (here ? 'In villa until ' + niceDay(akey(bk.depart))
+                           : 'Arrives ' + niceDay(akey(bk.arrive)) +
+                             ', until ' + niceDay(akey(bk.depart)));
           if (p && p.wellness === false)
             line = 'Said no thank you on the form · ' + line.charAt(0).toLowerCase() + line.slice(1);
           else line += ' · tap to add one';
           return greyTile(id, line, true);
-        });
-      band(board, 'No treatment · staying or arriving', none);
+        };
+        var addHint = function(t){
+          var e2 = document.createElement('div');
+          e2.className = 'hint'; e2.textContent = t;
+          tilesBox.appendChild(e2);
+        };
+        /* Typing refills only the tiles, never the board: a repaint would
+           take the keyboard's focus with it on every letter. */
+        var fillAdd = function(){
+          tilesBox.innerHTML = '';
+          /* An add in progress: the grey tile has no record behind it, so
+             the open card is built from nothing but the booking - and it
+             stays on screen whatever the search box says. */
+          var openNew = (OPEN && OPEN.tid === 'new' && BOOKINGS[OPEN.id])
+            ? OPEN.id : null;
+          if (openNew)
+            tilesBox.appendChild(card({ id: openNew, tid: 'new',
+                                        rec: { status: '', reqDay: '', reqTime: '' } }));
+          var q = ADDQ.trim().toLowerCase();
+          var rest = pool.filter(function(id){ return id !== openNew; });
+          var shown = rest.filter(function(id){
+            if (!q) return akey(BOOKINGS[id].arrive) <= soonEnd;
+            /* The villa answers only to its exact number: a typed 1 must
+               not drag in villas 12 and 15 the way a name fragment may. */
+            return nameOf(id, null).toLowerCase().indexOf(q) > -1 ||
+                   String(villaOf(id, todayKey()) || '') === q;
+          });
+          shown.forEach(function(id){ tilesBox.appendChild(addTile(id)); });
+          if (!q && rest.length > shown.length)
+            addHint((rest.length - shown.length) +
+                    ' more arrive later in the next ' + HORIZON +
+                    ' days. The search finds them by name or villa.');
+          if (q && !shown.length)
+            addHint('No guest by that name or villa without a treatment ' +
+                    'in the next ' + HORIZON + ' days.');
+        };
+        find.oninput = function(){ ADDQ = find.value; fillAdd(); };
+        fillAdd();
+      }
     }
     if (!board.children.length){
       var e = document.createElement('div');

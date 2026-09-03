@@ -88,12 +88,15 @@ colour means time rather than state:
 
 ## Settings
 
-Three things live here.
+Five tabs live here: Staff, Roles, Notifications, Prices, Guest form.
 
 **Logins.** Add a person, give them a role, and they get exactly the screens
 that role allows. Removing someone here removes their access immediately; the
 Firebase login itself still needs deleting separately, which frees the
-passcode for reuse.
+passcode for reuse. That immediately depends on the 31 Aug database rules
+being in the Firebase console. Until they are pasted, removing someone only
+takes the screens away and their phone can still reach the data behind them,
+so delete the Firebase login as well.
 
 **What each role may do.** A grid of jobs against the three roles below you.
 Every box starts where the app shipped it, and a box you change is marked
@@ -114,6 +117,61 @@ must genuinely be unable to do a thing, change their role.
 **Notifications.** A grid of events against roles. Tick who gets told what,
 and set quiet hours. "Menu published" is on for you and nobody else: the chef
 already knows, they just published it.
+
+**Prices.** What a massage costs, per length. Shown to the guest beside each
+length on the pre-arrival form, so they see the cost before they ask. A price
+left empty shows no number rather than a zero.
+
+**The day is compulsory behind a yes.** The form offers the nights of their
+stay and then **Any day**, nothing is chosen for them, and the form will not
+move on until they pick one. A guest who does not mind picks Any day and the
+request reaches the masseuse reading *Any day* rather than reading as though
+they never answered. He then picks one of the nights they are actually here
+and **Confirm books it outright**, because a guest who said any day has
+already agreed to whichever he chooses; Suggest is still there for a day
+outside the stay. Reception sees and can change the same choice on the
+guest's sheet, and is not held to the form's rule, because the desk fills in
+what it hears across the day.
+
+Forms answered before this existed have no day on them. Those still read
+"No day picked" on the spa board, because saying Any day for them would put
+a word in a guest's mouth they never said; a guest who reopens their link is
+asked.
+
+**The lotus on a Front Desk row** says where that guest's massage has got to,
+without opening anything. Grey is waiting on the masseuse, green is booked,
+terracotta is declined, and amber means he has offered a different time and
+somebody here has to put it to the guest, which is why that one also spells
+out *suggested* beside the stay. A guest with no massage asked for draws no
+lotus at all, the same way an unanswered dinner draws no fork. If a party has
+two treatments in different states, the row shows the one you owe: a
+suggestion outranks a booking, because the booking needs nothing from you.
+
+**Guest form.** Everything the pre-arrival form says in your words. The
+*welcome image* sits on the form's welcome screen under the greeting - an
+image and only an image. The *description* beneath it is the line under the
+greeting. The *dining image* and *dining text* make a page of their own,
+straight after arrival time and in front of the dining questions; a blank line starts a new
+paragraph, a line starting with # makes a heading, words between
+asterisks turn *bold* (bold works in the Read more boxes too), and a line
+that is only a photo's web address becomes that photo where the line
+sits. Under *Question pages*, each of the eight folds open to
+the three things that page says: its **heading**, the **description** under
+it, and the words behind **Read more**. Every box holds what a guest reads
+now - change a word or rewrite it, and empty a box to put the original
+wording back. A box you leave untouched keeps following the app's own
+wording rather than freezing a copy of it. One thing to know: a heading you
+write is used on every stay length, so the app can no longer shorten it for
+a one night guest. Image addresses come from the website's own photos (a
+sized copy, not an original: a guest opens this on mobile data), and an
+address the website later retires quietly stops showing while the words read
+on. Each image carries a Crop and a Height: the photo shows as a band of the
+chosen height, cropped to the top, centre or bottom of the picture, and
+Natural shows the whole photo uncropped - which is how a portrait photo once
+swallowed the welcome screen. Leave anything empty and the form keeps its built-in behaviour. Save
+publishes the lot to every link already sent, and the demo form previews it -
+Preview on the tab takes you there, Back to Settings on the demo returns
+you - so you can read it as a guest would without a real booking.
 
 Beside Settings in the same menu group sits **Flags**: the short facts you can
 pin under a guest's name - VIP, Travel agent, Breakfast included, whatever you

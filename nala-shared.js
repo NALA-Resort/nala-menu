@@ -650,6 +650,156 @@ function groupVillas(roomguests, villa){
   return out.sort(function(a,b){ return (+a) - (+b); });
 }
 
+/* ── the pre-arrival form's state ──────────────────────────────
+   Three states, the owner's ruling of 28 Aug:
+
+     not started   nobody has answered anything
+     incomplete    somebody has, and it has not been marked complete
+     completed     the guest pressed Send, or the desk marked it complete
+
+   It replaces two overlapping systems that could disagree. The Front Desk
+   row tint was computed from the answers; `at` was a stamp written by
+   something else entirely; and nothing reconciled them, so a booking could
+   read completed on one board and incomplete on the other while holding
+   nothing at all. Villa 17, 28 Aug.
+
+   Read here rather than in each board for the same reason. Two readings of
+   one state is how they came to disagree in the first place.
+
+   prearrival.html cannot read any of this: it is a GUEST page and loads no
+   staff code. Its half of the contract is tests/form_questions.json and
+   tests/onenight_cases.json, which both suites answer to. */
+
+/* The keys a guest can answer. Held here since 28 Aug: the Front Desk and
+   Pre-arrival SMS each had their own copy and they had ALREADY drifted - the
+   desk had learnt that a noDiets of false says nothing, and Pre-arrival SMS
+   had not, so the two counted a cleared dietary differently. */
+var GUEST_ANSWERS = ['arriveSlot','arriveNote','dining','diets','noDiets',
+                     'dnote','purpose','approach','wellness','wellDay',
+                     'wellTime','occasion','note','companion'];
+
+function countGuestAnswers(p){
+  if (!p) return 0;
+  return GUEST_ANSWERS.filter(function(k){
+    var v = p[k];
+    if (v === undefined || v === null || v === '') return false;
+    if (Array.isArray(v)) return v.length > 0;
+    /* "No" is an answer - but only to a question with two sides. dining and
+       wellness have them; noDiets is a flag, where true declares "nothing to
+       declare" and false says nothing at all. */
+    if (v === false) return k !== 'noDiets';
+    return true;
+  }).length;
+}
+function guestAnswered(p){ return countGuestAnswers(p) > 0; }
+
+/* How many nights, from whatever shape Mews sent the dates in. parseDepDate
+   builds a LOCAL date from the date part, so a full ISO timestamp and a bare
+   date count the same - which they must, since Mews sends both. */
+function stayNights(s){
+  var a = parseDepDate(s && s.arrive), b = parseDepDate(s && s.depart);
+  if (!a || !b) return null;
+  return Math.round((b - a) / 86400000);
+}
+function oneNightStay(s){ return stayNights(s) === 1; }
+
+/* What a booking must hold before it may be called complete: the three
+   decisions the desk settles and other boards act on. The owner's ruling of
+   28 Aug, asked and answered directly - purpose and dining approach are
+   deliberately NOT here, because no board acts on them and blocking a
+   completion over them would be blocking it over colour.
+
+   A one night stay is not owed the treatment answer. The guest form never
+   offers it - one afternoon is no window for the therapists, the owner ruled
+   25 Aug - so a question never put to them cannot be held against them. */
+function mandatoryAnswered(p, stay){
+  if (!p) return false;
+  var dinner  = p.dining === true || p.dining === false;
+  var dietary = !!p.noDiets ||
+                (Array.isArray(p.diets) ? p.diets.length > 0 : !!p.diets);
+  var massage = p.wellness === true || p.wellness === false;
+  return dinner && dietary && (massage || oneNightStay(stay));
+}
+
+/* Completed wants all three: the stamp, an answer behind it, and the
+   mandatory answers still standing. Any one of them missing and it is not
+   complete, whatever the record says it is.
+
+   Checked on every read rather than trusted from the stamp, which is what
+   makes this self healing. The old check in demanded dinner and dietary but
+   never the massage, so it could stamp a multi night booking complete with
+   the treatment question unasked - and that booking reads incomplete here
+   from the moment this ships, with nothing to run and nothing to repair. */
+function formState(p, stay){
+  if (p && p.at && guestAnswered(p) && mandatoryAnswered(p, stay))
+    return 'completed';
+  return guestAnswered(p) ? 'incomplete' : 'notstarted';
+}
+
+/* Every OTHER villa the same party holds, said in the words both boards use.
+   Takes the row and the list it came from - each entry a {villa, stay} - so a
+   caller pays nothing for it beyond rows it has already loaded.
+
+   groupVillas above answers the same question off a /roomguests map, which is
+   the shape the cleaning boards hold. This one is the arrivals shape. They are
+   two readers of one fact rather than two facts: whichever board asks, a party
+   holding two villas is two reservations under one groupId.
+
+   Plain text, with a real ampersand: the Front Desk builds its row by
+   concatenation and escapes this on the way in, Pre-arrival SMS sets it as
+   textContent. Returning markup would be wrong for one of them either way. */
+/* One wording, both boards. A short form was written on 31 Aug to buy back
+   the name's width on the Front Desk row and the owner ruled against it the
+   same day: the phrase is "with villa 15" wherever a party is named. Kept as
+   one function rather than two so the boards cannot drift into naming a
+   party differently, which is why this moved out of the pages on 28 Aug. */
+function groupMatesText(row, rows){
+  var g = row && row.stay && row.stay.groupId;
+  if (!g) return '';
+  var out = (rows || []).filter(function(x){
+    return x !== row && x.stay && x.stay.groupId === g;
+  }).map(function(x){ return String(x.villa); })
+    .sort(function(a, b){ return (+a) - (+b); });
+  if (!out.length) return '';
+  return 'with ' + (out.length === 1 ? 'villa ' : 'villas ') + out.join(' & ');
+}
+
+/* What the massage mark on a Front Desk row says, in one place because the
+   row's icon and the sheet's Wellness lines are the same fact and drifted
+   once already: until 27 Aug the sheet read only the form, so a massage the
+   masseuse had booked still said "Interested" at the desk.
+
+   Precedence is what the DESK owes, not what happened last. A suggestion
+   outranks everything because it is the only one of these the desk has to
+   act on: the masseuse has offered another time and somebody must put it to
+   the guest. Then booked, then an ask still waiting on the masseuse, and a
+   decline last, because a party with one massage booked and one declined is
+   a party with a massage.
+
+   No request and no records returns '' and the row draws no mark, the same
+   rule the fork follows: an icon for a question nobody asked is an answer we
+   do not have. A "no thank you" is not a request either - it is the absence
+   of one - so it draws nothing rather than borrowing the declined colour,
+   which belongs to a request the resort could not fill. */
+function massageState(spa, pre){
+  var seen = { suggested:false, booked:false, requested:false, declined:false },
+      fromForm = false;
+  Object.keys(spa || {}).forEach(function(tid){
+    var t = (spa || {})[tid];
+    if (!t || typeof t !== 'object' || !t.status) return;
+    if (t.source === 'prearrival') fromForm = true;
+    if (seen.hasOwnProperty(t.status)) seen[t.status] = true;
+  });
+  /* The form's ask stands in only while no record has been born from it,
+     which is the spa board's own rule for the same ask. */
+  if (pre && pre.wellness === true && !fromForm) seen.requested = true;
+  if (seen.suggested) return 'sugg';
+  if (seen.booked)    return 'done';
+  if (seen.requested) return 'wait';
+  if (seen.declined)  return 'decl';
+  return '';
+}
+
 /* Two records describe the same person if the PMS and a guest written entry
    agree on a phone or a name. Phones are compared on their last nine digits
    because Mews stores +61400000000 and a GuestTouch link carries 0400000000,
@@ -1624,7 +1774,22 @@ var NOTIFY_DEFAULTS = {
        in the database changes when a menu goes up. The board notices on its
        next load and fires this. Off for the chef, who already knows: they
        just published it. */
-    menu:      { housekeeping:false, admin:true, manager:true, waiter:false, chef:false }
+    menu:      { housekeeping:false, admin:true, manager:true, waiter:false, chef:false },
+    /* The spa loop's five, the owner's ask of 27 Aug: the earlier each side
+       hears, the earlier the guest gets an answer. The masseuse's spa key is
+       stored here but his column never renders in the Settings grid - a
+       sixth column squeezes it at 320, and his one control is his own
+       Notifications toggle - the push Worker reads the stored key all the
+       same. spaRequest fires from the desk's asks and from the mews-sync
+       sweep that announces a guest's form; spaSuggested is the masseuse's
+       counter-offer, off for him because he just made it; spaStay is the
+       Worker's alone - a Mews cancellation or date change under a live
+       treatment. */
+    spaRequest:   { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
+    spaSuggested: { spa:false, admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
+    spaBooked:    { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
+    spaCancelled: { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
+    spaStay:      { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false }
   }
 };
 
@@ -1635,61 +1800,165 @@ function ensureNotifySettings(role){
     .then(function(cfg){
       /* Only fill in what is missing. Overwriting would undo the manager's
          own choices every time a board loaded.                          */
-      if (cfg && cfg.events && cfg.hours) return;
-      var merged = {
-        on:     (cfg && typeof cfg.on === 'boolean') ? cfg.on : NOTIFY_DEFAULTS.on,
-        hours:  (cfg && cfg.hours) ? cfg.hours : NOTIFY_DEFAULTS.hours,
-        events: (cfg && cfg.events) ? cfg.events : NOTIFY_DEFAULTS.events
-      };
-      return fetch(DB + '/notify.json', { method:'PUT', body: JSON.stringify(merged) });
+      if (!(cfg && cfg.events && cfg.hours)){
+        var merged = {
+          on:     (cfg && typeof cfg.on === 'boolean') ? cfg.on : NOTIFY_DEFAULTS.on,
+          hours:  (cfg && cfg.hours) ? cfg.hours : NOTIFY_DEFAULTS.hours,
+          events: (cfg && cfg.events) ? cfg.events : NOTIFY_DEFAULTS.events
+        };
+        return fetch(DB + '/notify.json', { method:'PUT', body: JSON.stringify(merged) });
+      }
+      /* A settings node that already stood when an event type was added
+         later - the spa five, 27 Aug - holds no key for it, and a keyless
+         event buzzes nobody. Fill in ONLY the missing events, each with
+         its defaults, so a new queue starts announcing without a console
+         paste; an event already present is the manager's own ticks and is
+         never touched. */
+      var missing = {}, any = false;
+      Object.keys(NOTIFY_DEFAULTS.events).forEach(function(ev){
+        if (!cfg.events[ev]){ missing[ev] = NOTIFY_DEFAULTS.events[ev]; any = true; }
+      });
+      if (any) return fetch(DB + '/notify/events.json',
+        { method:'PATCH', body: JSON.stringify(missing) });
     })
     .catch(function(){});
 }
 
 
 /* ── the staff menu ──────────────────────────────────────────────────────
-   Which board each link needs, in one place. This lived in five pages as
-   five copies, and by 18 Aug they disagreed: list.html was missing
-   front-desk, registration and pages, so it offered all three to roles that
-   cannot open them, and housekeeping.html and stats.html filtered nothing at
-   all and offered Settings to everybody.
+   ONE list. Every page carries an empty <div id="navDrop"> and buildNav
+   below writes the menu into it, so a link, a label or a group changes
+   here and nowhere else. Until 26 Aug the markup was pasted into every
+   page - the 28-edit story CLAUDE.md opens with - and adding a page meant
+   editing them all and missing one.
 
-   Offering a link that lands on "no access" is a door to nowhere. Worse, it
-   reads as a fault in the app rather than as a permission working.
+   The shape is the owner's, 26 Aug: the boards you work on as plain links,
+   then three collapsible submenus - Print, SMS, Settings - where the old
+   menu had every page flat under two headings. Seventeen rows was too many
+   to scan; nine is not. The SMS pages left the top level the same day.
 
-   A page needs no filter code of its own now: this runs itself once a role is
-   known, and again if the menu is built later. Sign out is never filtered.  */
-var NAV_NEEDS = {
-  'tally.html':        'resBoard',
-  'front-desk.html':   'editBookings',
-  'invitations.html':  'editBookings',
-  /* Missing from the day it shipped, found twice on 25 Aug - once when the
-     spa role arrived with a menu that should hold nothing and held this,
-     once from the SMS side - the same way publish.html and tag.html were
-     once missing: an unlisted link is shown to every role, and this one
-     bounces anyone without editBookings. Same permission as the page. */
-  'arrivals-sms.html': 'editBookings',
-  'list.html':         'resSheet',
-  /* Both were missing until 22 Aug, so every login saw them: a housekeeper's
-     menu offered to publish the dinner menu, and tapping it bounced her back
-     to her own board. An unlisted link is left alone by the filter on purpose,
-     which is right for a link nobody has thought about yet and wrong for two
-     that had simply been forgotten. */
-  'publish.html':      'publishMenu',
-  'tag.html':          'publishMenu',
-  'cleaners.html':     'cleansBoard',
-  'housekeeping.html': 'cleansBoard',
-  'spa.html':          'spaBoard',
-  'registration.html': 'editBookings',
-  'menu-print.html':   'resSheet',
-  'past-menus.html':   'resBoard',
-  'staff.html':        'manageStaff',
-  /* Admin only, like the two beside it: the flags an admin defines here are
-     ticked on the front desk sheet by admins alone, so offering the list to
-     anyone else is a door to nowhere. */
-  'flags.html':        'manageStaff',
-  'pages.html':        'manageStaff'
-};
+   `need` is the permission behind each link, the same keys can() answers.
+   A link with the wrong key here is offered to roles that cannot open it -
+   publish.html and tag.html shipped unlisted and a housekeeper's menu
+   offered to publish the dinner menu - and note the keys the suites once
+   guarded by name: the sheets need resSheet and cleansBoard, not the
+   resBoard/cleanBoard you would guess.
+
+   Each page omits its own link; buildNav reads location for that. Sign out
+   is built last, never filtered, and never inside a group: every login has
+   to be able to get out. tests/nav_canon.json is the suites' copy of this
+   shape - change the menu there too, or the suites will name the drift.  */
+var NAV = [
+  { href:'front-desk.html',   label:'Front Desk',   need:'editBookings' },
+  { href:'tally.html',        label:'Reservations', need:'resBoard'     },
+  { href:'cleaners.html',     label:'Cleans',       need:'cleansBoard'  },
+  { href:'spa.html',          label:'Spa',          need:'spaBoard'     },
+  { href:'publish.html',      label:'Publish Menu', need:'publishMenu'  },
+  { group:'Print', items:[
+      { href:'list.html',         label:'FOH Sheet',   need:'resSheet'     },
+      { href:'housekeeping.html', label:'Clean Sheet', need:'cleansBoard'  },
+      { href:'registration.html', label:'Arrivals',    need:'editBookings' },
+      { href:'menu-print.html',   label:'Menu',        need:'resSheet'     },
+      { href:'past-menus.html',   label:'Past Menus',  need:'resBoard'     } ] },
+  { group:'SMS', items:[
+      { href:'invitations.html',  label:'Invitations', need:'editBookings' },
+      /* "SMS" is the heading, so the row does not repeat it - the Print
+         group's "Menu" pattern. */
+      { href:'arrivals-sms.html', label:'Pre-arrival', need:'editBookings' } ] },
+  { group:'Settings', items:[
+      { href:'staff.html', label:'General', need:'manageStaff' },
+      { href:'tag.html',   label:'Dietary', need:'publishMenu' },
+      /* Admin only, like General and Pages: the flags an admin defines here
+         are ticked on the front desk sheet by admins alone. */
+      { href:'flags.html', label:'Flags',   need:'manageStaff' },
+      { href:'pages.html', label:'Pages',   need:'manageStaff' },
+      /* A switch, not a destination: wireNotify below owns it. No need key,
+         so the filter leaves it alone - a housekeeper subscribes to her own
+         alerts. */
+      { action:'navNotify', label:'Notifications' } ] }
+];
+
+/* Which permission opens each link, derived from NAV so the two cannot
+   disagree. Kept under its old name because the filter and the suites ask
+   this question by it. */
+var NAV_NEEDS = (function(){
+  var out = {};
+  NAV.forEach(function(e){
+    (e.items || [e]).forEach(function(i){ if (i.href) out[i.href] = i.need; });
+  });
+  return out;
+})();
+
+/* Writes the menu into #navDrop. Runs at load on every page that has one;
+   pages built without a menu (the printed sheets, the guest pages) simply
+   have no div and nothing happens. */
+var NAV_CHEV = '<svg class="navchev" viewBox="0 0 12 12" width="11" height="11" ' +
+  'aria-hidden="true"><path d="M2.5 4.5 L6 8 L9.5 4.5" fill="none" ' +
+  'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" ' +
+  'stroke-linejoin="round"/></svg>';
+
+function buildNav(){
+  var drop = document.getElementById('navDrop');
+  if (!drop || drop.getAttribute('data-built')) return;
+  drop.setAttribute('data-built', '1');
+  var here = location.pathname.split('/').pop() || 'index.html';
+  function makeLink(i){
+    var a = document.createElement('a');
+    if (i.action){ a.href = '#'; a.className = 'navaction'; a.id = i.action; }
+    else a.href = i.href;
+    a.textContent = i.label;
+    return a;
+  }
+  NAV.forEach(function(e){
+    if (!e.group){
+      if (e.href !== here) drop.appendChild(makeLink(e));
+      return;
+    }
+    var items = e.items.filter(function(i){ return i.action || i.href !== here; });
+    if (!items.length) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'navgroup';
+    var head = document.createElement('button');
+    head.type = 'button';
+    head.className = 'navgrp';
+    head.setAttribute('aria-expanded', 'false');
+    head.innerHTML = '<span>' + e.group + '</span>' + NAV_CHEV;
+    /* stopPropagation, because every page closes the menu on a document
+       click: opening a submenu must not be the tap that shuts the menu. */
+    head.onclick = function(ev){
+      ev.stopPropagation();
+      var open = wrap.className.indexOf('open') > -1;
+      wrap.className = open ? 'navgroup' : 'navgroup open';
+      head.setAttribute('aria-expanded', open ? 'false' : 'true');
+    };
+    var sub = document.createElement('div');
+    sub.className = 'navsub';
+    items.forEach(function(i){ sub.appendChild(makeLink(i)); });
+    wrap.appendChild(head);
+    wrap.appendChild(sub);
+    drop.appendChild(wrap);
+  });
+  /* Wired here, not in the pages: sixteen copies of this handler lived in
+     the pages until 26 Aug, in two flavours - only the Cleans board and
+     Settings remembered to unsubscribe push first. One copy now, the
+     careful flavour, for every page. */
+  var so = document.createElement('a');
+  so.href = '#'; so.className = 'signout'; so.id = 'navSignout';
+  so.textContent = 'Logout';
+  so.onclick = function(ev){
+    ev.preventDefault();
+    var u = window.NALA_USER || null;
+    try { u = firebase.auth().currentUser || u; } catch (ex){}
+    var go = function(){ if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
+    /* Unsubscribe first, while the token is still valid enough to delete
+       the record. If it fails, sign out anyway: being stuck signed in
+       would be the worse outcome. */
+    if (u && typeof window.pushOff === 'function') window.pushOff(u, go);
+    else go();
+  };
+  drop.appendChild(so);
+}
+buildNav();
 
 function navFilterShared(role){
   var drop = document.getElementById('navDrop');
@@ -1741,6 +2010,25 @@ function spaDur(m){
     if (SPA_DURS[i].m === +m) return SPA_DURS[i];
   return null;
 }
+
+/* "Any day", the chip a guest picks when the day does not matter to them
+   (ruled 31 Aug). It is an ANSWER and not silence, which is the whole
+   point of it: before this, a guest who was easy about the day and a
+   guest who never reached the question both stored an empty string, and
+   the masseuse could not tell one from the other. Absent and "any" are as
+   different here as absent and false are for wellness.
+
+   It lives ONLY in wellDay, the guest's own answer. It must NEVER be
+   written to a /spa record's reqDay: that rule validates a date or the
+   empty string and would refuse the write, so the masseuse would tap Book
+   and get an error. spa.html translates it to an in-memory reqAny flag on
+   the way in and books a real day on the way out.
+
+   Forced copy in prearrival.html, because a guest page loads no staff
+   code; both are pinned to tests/slots.json. */
+var SPA_ANY_DAY = 'any';
+var SPA_ANY_DAY_LABEL = 'Any day';
+function isAnyDay(v){ return String(v == null ? '' : v) === SPA_ANY_DAY; }
 
 /* The way back from what a guest or the desk stored: the label itself, a
    24 hour HH:MM, or a bare H:MM that only fits the afternoon (a guest
@@ -1829,25 +2117,20 @@ function navActionBadges(role){
   });
 }
 
-/* A heading with nothing under it. The menu is grouped now, and a role that
-   may open none of the printed sheets would otherwise get the word Print
-   sitting above a rule with nothing beneath it: a promise of something that
-   is not there, which reads as a page that failed to load rather than as a
-   thing this login cannot do. */
+/* A submenu with nothing in it. A role that may open none of the printed
+   sheets would otherwise get a Print submenu that opens onto nothing: a
+   promise of something that is not there, which reads as a page that failed
+   to load rather than as a thing this login cannot do. The whole group goes,
+   header and all. Notifications carries no permission, so Settings stands
+   for every login: a housekeeper subscribes to her own alerts. */
 function hideEmptyGroups(drop){
-  var kids = drop.children, i, j, any;
-  for (i = 0; i < kids.length; i++){
-    if (kids[i].className.indexOf('navgrp') < 0) continue;
-    any = false;
-    for (j = i + 1; j < kids.length; j++){
-      if (kids[j].className.indexOf('navgrp') > -1) break;
-      /* Sign out sits under the last heading with no heading of its own and
-         is never filtered, so counting it made the last group look occupied
-         however empty it was. */
-      if (kids[j].className.indexOf('signout') > -1) continue;
-      if (kids[j].tagName === 'A' && kids[j].style.display !== 'none'){ any = true; break; }
+  var groups = drop.querySelectorAll('.navgroup');
+  for (var i = 0; i < groups.length; i++){
+    var links = groups[i].querySelectorAll('a'), any = false;
+    for (var j = 0; j < links.length; j++){
+      if (links[j].style.display !== 'none'){ any = true; break; }
     }
-    kids[i].style.display = any ? '' : 'none';
+    groups[i].style.display = any ? '' : 'none';
   }
 }
 window.NALA_NAVFILTER = navFilterShared;
@@ -1944,3 +2227,130 @@ window.NALA_WIRENOTIFY = wireNotify;
     clearInterval(t);
   }, 250);
 })();
+
+/* ── what a save says back ───────────────────────────────────
+   One save, one visible answer.
+
+   Before 27 Aug six surfaces - the desk, both tallies, spa, staff and the
+   guest's own confirm - wrote to the database with nothing happening on
+   screen: no press, no wait, no word when it landed. The writes are
+   optimistic and roll back on failure, which is good discipline and is
+   exactly why nobody noticed: the board redrew, so the button never had to
+   say anything. On a slow connection that leaves somebody holding a dead
+   looking control, and a second tap wrote a second time.
+
+   Five other pages had each hand written their own version of the answer -
+   templates, flags, tag, publish, prearrival, arrivals-sms - which is why
+   they had all drifted apart. This is that answer, once.
+
+       saveFeedback(btn, write, opts)
+
+   btn    the button that was pressed
+   write  a function returning a promise for the write
+   opts   busy  label while writing               default 'Saving'
+          done  label once it lands               default 'Saved'
+          hold  ms to hold Saved before then()    default 0
+          then  runs after a successful write - close the sheet, re-render
+          fail  an element to carry the red line, or a function(message)
+
+   Returns a promise that never rejects. The button and the fail line have
+   already said what happened; a caller that also had to catch would be a
+   second report of one event.
+
+   The button RESTS at Saved - the owner's ruling, 27 Aug - until armSave()
+   puts it back, which is what an edit does. Never a timer: a label that
+   times out goes back to saying Save about a record with nothing left to
+   save, which is the same lie as saying nothing at all.                */
+/* Which button was pressed. Threading a reference through every call site -
+   cleaners alone writes from about forty - is forty chances to miss one, and
+   a button added next month would be missed by construction. One capture
+   listener instead: the press already knows which button it was, so nothing
+   has to be remembered at the far end. Capture phase, because several of
+   these handlers redraw or close their surface and the event never bubbles
+   back up to here.                                                       */
+var SAVE_PRESSED = null;
+function pressedButton(){ return SAVE_PRESSED; }
+document.addEventListener('click', function(e){
+  var t = e.target;
+  SAVE_PRESSED = (t && t.closest) ? t.closest('button') : null;
+}, true);
+
+function saveFeedback(btn, write, opts){
+  opts = opts || {};
+  /* A caller with no button still gets the rollback and the red line: the
+     button is how this SAYS what happened, not how it knows.            */
+  if (btn){
+    if (btn.__saving) return Promise.resolve(null);    /* the second tap */
+    /* innerHTML rather than the label: several of these buttons carry a
+       tick or a count inside them, and textContent would restore the words
+       having eaten the markup.                                          */
+    if (btn.__rest === undefined) btn.__rest = btn.innerHTML;
+    btn.__saving = true;
+    btn.disabled = true;
+    btn.classList.remove('saved');
+    btn.classList.add('saving');
+    btn.textContent = opts.busy || 'Saving';
+  }
+  saveFailSay(opts.fail, '');
+  return Promise.resolve().then(write).then(function(v){
+    if (btn){
+      btn.__saving = false;
+      btn.classList.remove('saving');
+      btn.classList.add('saved');
+      btn.textContent = opts.done || 'Saved'; /* stays disabled: nothing to save */
+    }
+    if (opts.then){
+      /* The hold is the green being seen. With no button there is no green,
+         so there is nothing to wait for.                                */
+      if (opts.hold && btn) setTimeout(function(){ opts.then(v); }, opts.hold);
+      else opts.then(v);
+    }
+    return v;
+  }, function(e){
+    if (btn){
+      btn.__saving = false;
+      btn.classList.remove('saving');
+      btn.classList.remove('saved');
+      btn.disabled = false;
+      btn.innerHTML = btn.__rest;
+    }
+    saveFailSay(opts.fail, saveFailWords(e));
+    return null;
+  });
+}
+
+/* An edit means there is something to save again. Harmless on a button that
+   is not resting at Saved, so it can be called from anything that changes
+   the record.
+
+   Nothing calls this yet, and that is not an oversight. The four boards
+   wired on 27 Aug all close their sheet once the write lands, so none of
+   them rests at Saved. The surfaces that DO stay open - templates, flags,
+   tag - each still wear their own button dress, and the green belongs to
+   .btn; converting a page's dress is the per-page pass those are queued
+   for (BUTTONS-AUDIT.md), and this is the half of the ruling waiting for
+   them, so the first one across does not write it again.               */
+function armSave(btn){
+  if (!btn || btn.__saving) return;
+  if (!btn.classList.contains('saved')) return;
+  btn.classList.remove('saved');
+  btn.disabled = false;
+  if (btn.__rest !== undefined) btn.innerHTML = btn.__rest;
+}
+
+function saveFailSay(target, msg){
+  if (!target) return;
+  if (typeof target === 'function'){ target(msg); return; }
+  target.textContent = msg || '';
+  if (target.classList) target.classList.toggle('show', !!msg);
+}
+
+/* Two failures a person acts on differently: the database refused the write,
+   which is a permission and needs the manager, and the write never arrived,
+   which needs another go. Anything else is the second one.              */
+function saveFailWords(e){
+  var m = '' + (e && (e.message || e));
+  if (/rejected|denied|permission|401|403/i.test(m))
+    return 'The change was not allowed - tell the manager.';
+  return 'Not saved - check the connection and try again.';
+}

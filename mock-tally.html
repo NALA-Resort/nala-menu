@@ -1,0 +1,666 @@
+<!DOCTYPE html><html lang="en" data-dress="current"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>Mock &middot; Reservations</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────
+   MOCK ONLY. Not linked from NAV, not published, no database behind it.
+   A working replica of tally.html in both dresses, so the house style can
+   be judged on the busiest board rather than on a sampler.
+
+   Same two dresses as mock-style.html, same rule: the CHROME changes and
+   the COLOUR LAW does not. Every tint here is the value tally.html uses.
+
+   State lives in ROOMS below and every control writes to it, so the
+   stats, the make-up line and the bookings list recompute exactly as the
+   real board does. Nothing leaves the page.                          */
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+/* ── the colour law · shared, identical in both dresses ───────────── */
+:root{
+  --green:#5E7D67;  --green-t:rgba(122,160,130,.26); --green-b:rgba(122,160,130,.65);
+  --terra:#9E6455;  --terra-t:rgba(184,106,90,.16);  --terra-b:rgba(184,106,90,.45);
+  --slate:#57575E;  --slate-t:rgba(87,87,94,.10);    --slate-b:rgba(87,87,94,.28);
+  --red:#A8321E;
+  --ui:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+}
+
+/* ── DRESS A · what ships today ───────────────────────────────────── */
+[data-dress="current"]{
+  --ground:#F9F7F4; --card:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA;
+  --accent:#1C1C1A; --accent-ink:#F9F7F4; --accent-t:rgba(28,28,26,.045);
+  --lab-tf:uppercase; --lab-ls:.14em; --lab-sz:9px; --lab-w:400;
+  --btn-tf:uppercase; --btn-ls:.14em; --btn-sz:11px;
+  --date-tf:uppercase; --date-ls:.1em; --date-sz:13px;
+  --r:0px; --r-tile:0px; --pill:20px; --r-btn:8px;
+  --t-name:14px; --t-rm:15px; --t-micro:8px; --t-tiles:11.5px;
+  --row-bd:1px; --list-gap:0px;
+}
+
+/* ── DRESS B · the proposal ───────────────────────────────────────── */
+[data-dress="proposed"]{
+  --ground:#FFFFFF; --card:#F5F6F8; --ink:#1B1B19; --mid:#5F5F58; --rule:#E6E6E1;
+  --accent:#1A66C2; --accent-ink:#FFFFFF; --accent-t:#E8F0FE;
+  --lab-tf:none; --lab-ls:0; --lab-sz:13px; --lab-w:500;
+  --btn-tf:none; --btn-ls:0; --btn-sz:15px;
+  --date-tf:none; --date-ls:0; --date-sz:17px;
+  --r:12px; --r-tile:10px; --pill:999px; --r-btn:12px;
+  --t-name:16px; --t-rm:16px; --t-micro:12px; --t-tiles:14px;
+  --row-bd:0px; --list-gap:2px;
+}
+
+body{background:var(--ground);color:var(--ink);font-family:var(--ui);
+     -webkit-tap-highlight-color:transparent;padding-bottom:90px}
+.wrap{max-width:520px;margin:0 auto;padding:14px 16px 0}
+
+/* ── the mock's own switch, not part of the proposal ──────────────── */
+.switch{position:sticky;top:0;z-index:99;background:var(--ground);
+        border-bottom:1px solid var(--rule);padding:10px 16px;display:flex;
+        align-items:center;gap:10px}
+.switch b{font-size:12px;font-weight:600;color:var(--mid);flex:1}
+.seg2{display:flex;border:1px solid var(--rule);border-radius:999px;overflow:hidden}
+.seg2 button{border:0;background:transparent;font-family:var(--ui);font-size:13px;
+             padding:7px 15px;color:var(--mid);cursor:pointer;min-height:36px}
+.seg2 button.on{background:var(--ink);color:var(--ground)}
+
+/* ── date row ─────────────────────────────────────────────────────── */
+.daterow{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.dnav{width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;
+      border:1px solid var(--rule);background:transparent;border-radius:var(--r-btn);
+      color:var(--ink);font-family:var(--ui);font-size:15px;cursor:pointer}
+.dnav.today{width:auto;padding:0 12px;font-size:var(--lab-sz);letter-spacing:var(--lab-ls);
+            text-transform:var(--lab-tf);font-weight:var(--lab-w)}
+.dnav:disabled{opacity:.35;cursor:default}
+.date{flex:1;text-align:center;font-size:var(--date-sz);font-weight:bold;
+      letter-spacing:var(--date-ls);text-transform:var(--date-tf)}
+[data-dress="proposed"] .dnav{border:0;background:var(--card);border-radius:999px}
+[data-dress="proposed"] .dnav:active{background:var(--accent-t)}
+.navwrap{position:relative}
+.navbtn{width:42px;height:36px;border:1px solid var(--rule);background:transparent;
+        border-radius:var(--r-btn);display:flex;flex-direction:column;align-items:center;
+        justify-content:center;gap:4px;cursor:pointer}
+[data-dress="proposed"] .navbtn{border:0;background:transparent}
+.navbtn span{display:block;width:16px;height:1.6px;background:var(--ink)}
+.navdrop{display:none;position:absolute;right:0;top:42px;background:var(--ground);
+         border:1px solid var(--rule);border-radius:9px;min-width:186px;
+         box-shadow:0 4px 14px rgba(0,0,0,.09);padding:5px 0;z-index:200}
+.navdrop.open{display:block}
+.navdrop a{display:block;padding:10px 18px;font-size:14px;color:var(--ink);
+           text-decoration:none}
+.navdrop a:active{background:var(--accent-t)}
+
+/* ── published pill ───────────────────────────────────────────────── */
+.menustate{text-align:center;margin-bottom:6px}
+.menustate>*{display:inline-block;border-radius:var(--pill);padding:6px 14px 6px 15px;
+             font-size:var(--lab-sz);letter-spacing:var(--lab-ls);
+             text-transform:var(--lab-tf);font-weight:var(--lab-w);
+             background:rgba(122,160,130,.22);color:#3F6B4C}
+
+/* ── stats ────────────────────────────────────────────────────────── */
+.stats{display:flex;justify-content:center;gap:36px;margin:14px 0 0}
+.stat{text-align:center}
+.stat-n{font-size:27px;line-height:1}
+.stat-l{font-size:var(--lab-sz);letter-spacing:var(--lab-ls);text-transform:var(--lab-tf);
+        font-weight:var(--lab-w);color:var(--mid);margin-top:5px}
+.tablesline{text-align:center;margin-top:8px;font-size:var(--t-tiles);
+            letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── section head ─────────────────────────────────────────────────── */
+.sec{display:flex;align-items:center;justify-content:space-between;margin:22px 0 8px}
+.sec>span{font-size:var(--lab-sz);letter-spacing:var(--lab-ls);
+          text-transform:var(--lab-tf);font-weight:var(--lab-w);color:var(--mid)}
+.sec a{color:var(--ink);text-decoration:none;border:1px solid var(--rule);
+       font-size:var(--lab-sz);letter-spacing:var(--lab-ls);text-transform:var(--lab-tf);
+       font-weight:var(--lab-w);padding:8px 13px;border-radius:var(--r);cursor:pointer;
+       min-height:36px;display:inline-flex;align-items:center}
+.sec a.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+[data-dress="proposed"] .sec a{border:0;background:var(--card);border-radius:999px;
+                               color:var(--accent)}
+[data-dress="proposed"] .sec a.active{background:var(--accent);color:#fff}
+
+/* ── the room grid · six across, seventeen villas, gutter unchanged ── */
+.rooms{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.room{aspect-ratio:1;border:1px solid var(--rule);background:transparent;
+      border-radius:var(--r-tile);display:flex;flex-direction:column;align-items:center;
+      justify-content:center;font-family:var(--ui);cursor:pointer;position:relative}
+.room-n{font-size:13px;color:var(--ink)}
+.room-p{font-size:9px;color:var(--mid);margin-top:2px;min-height:11px}
+.room.in{background:var(--green-t);border-color:var(--green-b)}
+.room.in .room-p{color:var(--green)}
+.room.out{background:var(--terra-t);border-color:var(--terra-b)}
+.room.out .room-n{opacity:.6;text-decoration:line-through}
+.room.vacant{border-color:var(--slate-b);background:var(--slate-t)}
+.room.vacant .room-n{color:var(--mid)}
+.room.await{border-style:dashed;border-color:var(--mid)}
+.room.sel{outline:2px solid var(--accent);outline-offset:-2px}
+.room.sel .room-n{font-weight:bold}
+.mark{position:absolute;top:4px;right:4px;width:10px;height:10px;opacity:.75}
+.mark svg{width:100%;height:100%;display:block}
+.mark.seen svg{fill:none;stroke:var(--mid)}
+.room.in .mark svg{fill:var(--green);stroke:var(--green)}
+.room.out .mark svg{fill:var(--terra);stroke:var(--terra)}
+
+/* ── legend ───────────────────────────────────────────────────────── */
+.legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:12px;
+        font-size:var(--t-micro);letter-spacing:var(--lab-ls);
+        text-transform:var(--lab-tf);color:var(--mid)}
+.legend span{display:flex;align-items:center;gap:5px}
+.sw{width:9px;height:9px;border:1px solid var(--rule);display:inline-block}
+.sw.in{background:var(--green-t);border-color:var(--green-b)}
+.sw.out{background:var(--terra-t);border-color:var(--terra-b)}
+.sw.await{border-style:dashed;border-color:var(--mid)}
+.sw.vacant{border-color:var(--slate-b);background:var(--slate-t)}
+.legend .ico{width:11px;height:11px;display:inline-flex;color:var(--mid)}
+
+/* ── booking rows ─────────────────────────────────────────────────── */
+.blist{display:flex;flex-direction:column;gap:var(--list-gap)}
+.row{display:flex;align-items:center;column-gap:10px;padding:11px 0;
+     border-bottom:var(--row-bd) solid var(--rule);position:relative}
+[data-dress="proposed"] .row{padding:12px;border-radius:var(--r)}
+.row-main{flex:1 1 auto;min-width:0}
+.row-name{font-size:var(--t-name)}
+.row-name .rm{font-size:var(--t-rm);font-weight:bold;color:var(--ink)}
+.row-name .rm::after{content:' - ';font-weight:normal;color:var(--mid)}
+.row-note{font-size:var(--t-micro);color:var(--mid);font-style:italic;margin-top:3px}
+.diets{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.dpill{font-size:var(--t-micro);font-weight:bold;letter-spacing:var(--lab-ls);
+       text-transform:var(--lab-tf);padding:4px 9px;border-radius:var(--pill);
+       background:rgba(168,50,30,.12);color:var(--red)}
+/* An allergy is louder than a preference: the kitchen has to not-serve a
+   thing rather than choose around it. Solid, as tally.html draws it today.
+   Worth a ruling: the colour law says red is failure's alone and never a
+   whole tile, and this is a hazard rather than a failure.              */
+.dpill.al{background:var(--red);color:#fff}
+/* "No dietaries" is a positive answer the guest gave, so it wears the
+   green a positive state gets, never a red tint the kitchen would read
+   as something to act on.                                             */
+.dpill.ok{background:var(--green-t);color:var(--green)}
+/* The picker. A chip is a choice, so selected wears the interaction
+   accent, not a state colour: what the guest cannot eat is decided by
+   the pills above, not by which chip is lit.                          */
+.dchips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:9px 13px;min-height:40px;display:inline-flex;align-items:center;
+      border:1px solid var(--rule);background:transparent;border-radius:var(--pill);
+      font-family:var(--ui);font-size:var(--t-micro);letter-spacing:var(--lab-ls);
+      text-transform:var(--lab-tf);color:var(--mid);cursor:pointer}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+/* Held from an earlier night and not yet confirmed for tonight: amber,
+   the colour law's "chase this", never green - nobody has said yes yet. */
+.chip.was{border-color:#C29A55;color:#8A6A2F;background:rgba(194,154,85,.11)}
+.row-pax{font-size:var(--t-name);white-space:nowrap}
+.bub{width:20px;height:20px;border:0;background:transparent;padding:0;cursor:pointer;
+     color:var(--red);flex:0 0 auto}
+.bub.nonote{visibility:hidden}
+.pen{border:0;background:transparent;color:var(--mid);cursor:pointer;padding:6px;
+     flex:0 0 auto;display:inline-flex;align-items:center}
+/* A booking the kitchen must act on. Terracotta bar and tint, the colour
+   law's "a fact a guest gave us", never red - red is failure's alone. */
+.row.diet{background:rgba(184,106,90,.10);border-left:3px solid var(--terra);
+          padding-left:10px}
+[data-dress="proposed"] .row.diet{border-left:3px solid var(--terra);
+                                  border-radius:var(--r);padding-left:12px}
+.empty{text-align:center;color:var(--mid);font-size:var(--t-name);padding:26px 0}
+
+/* ── footer ───────────────────────────────────────────────────────── */
+.foot{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;gap:8px;
+      background:var(--ground);border-top:1px solid var(--rule);
+      padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+      max-width:520px;margin:0 auto}
+.btn{flex:1;padding:13px;min-height:48px;text-align:center;border:1px solid var(--ink);
+     border-radius:var(--r-btn);background:transparent;color:var(--ink);font-family:var(--ui);
+     font-size:var(--btn-sz);letter-spacing:var(--btn-ls);text-transform:var(--btn-tf);
+     font-weight:500;cursor:pointer;text-decoration:none;display:flex;align-items:center;
+     justify-content:center}
+.btn.solid{background:#454540;border-color:#454540;color:#fff}
+.btn.terra{border-color:var(--terra-b);color:var(--terra);background:transparent}
+.btn.saved{background:#E4EDE2;border-color:#7E937A;color:var(--green);cursor:default}
+.btn.saving{background:rgba(28,28,26,.045);border-color:var(--rule);color:var(--mid);
+            cursor:default}
+[data-dress="proposed"] .btn{border:0;background:var(--card)}
+[data-dress="proposed"] .btn.solid{background:var(--accent);color:#fff}
+[data-dress="proposed"] .btn.terra{border:1px solid var(--terra-b);background:transparent}
+[data-dress="proposed"] .btn.saved{background:#E4EDE2}
+
+/* ── select bar ───────────────────────────────────────────────────── */
+.selbar{position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--ground);
+        border-top:1px solid var(--rule);padding:14px 16px calc(14px + env(safe-area-inset-bottom));
+        transform:translateY(115%);transition:transform .22s}
+.selbar.show{transform:translateY(0)}
+.selbar-inner{max-width:520px;margin:0 auto}
+.selcount{text-align:center;font-size:var(--lab-sz);letter-spacing:var(--lab-ls);
+          text-transform:var(--lab-tf);font-weight:var(--lab-w);color:var(--mid);
+          margin-bottom:10px}
+.selactions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.selbtn{padding:13px 6px;min-height:48px;border:1px solid transparent;color:#fff;
+        border-radius:var(--r-btn);font-family:var(--ui);font-size:var(--btn-sz);
+        letter-spacing:var(--btn-ls);text-transform:var(--btn-tf);cursor:pointer}
+.selbtn.din{background:var(--green);border-color:var(--green)}
+.selbtn.out{background:var(--terra);border-color:var(--terra)}
+.selbtn.vac{background:var(--slate);border-color:var(--slate)}
+.selbtn.quiet{background:transparent;color:var(--ink);border-color:var(--rule)}
+.selbtn.comb{background:transparent;color:var(--ink);border-color:var(--ink)}
+.selbtn:disabled{opacity:.35;cursor:default}
+
+/* ── sheet ────────────────────────────────────────────────────────── */
+.backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.34);z-index:80;
+          align-items:flex-end}
+.backdrop.show{display:flex}
+.sheet{background:var(--ground);width:100%;max-width:520px;margin:0 auto;
+       border-radius:16px 16px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));
+       max-height:88vh;overflow:auto}
+.sheet h2{font-size:var(--date-sz);letter-spacing:var(--date-ls);
+          text-transform:var(--date-tf);margin-bottom:4px}
+.sheet .who{font-size:var(--t-micro);color:var(--mid);margin-bottom:16px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:var(--lab-sz);letter-spacing:var(--lab-ls);
+             text-transform:var(--lab-tf);font-weight:var(--lab-w);color:var(--mid);
+             margin-bottom:7px}
+.field input{width:100%;padding:12px;font-size:16px;font-family:var(--ui);
+             border:1px solid var(--rule);border-radius:var(--r-btn);background:#fff;
+             color:var(--ink)}
+.seg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.opt{padding:13px 4px;min-height:48px;border:1px solid var(--rule);background:transparent;
+     border-radius:var(--r-btn);font-family:var(--ui);font-size:var(--btn-sz);
+     letter-spacing:var(--btn-ls);text-transform:var(--btn-tf);color:var(--mid);cursor:pointer}
+.opt.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.opt.on.din{background:var(--green);border-color:var(--green);color:#fff}
+.opt.on.out{background:var(--terra);border-color:var(--terra);color:#fff}
+.opt.on.vac{background:var(--slate);border-color:var(--slate);color:#fff}
+.paxrow{display:flex;align-items:center;gap:14px}
+.paxbtn{width:44px;height:44px;border:1px solid var(--rule);background:transparent;
+        border-radius:var(--r-btn);font-size:20px;color:var(--ink);cursor:pointer}
+.paxn{font-size:20px;min-width:34px;text-align:center}
+.sheetbtns{display:flex;flex-direction:column;gap:9px;margin-top:20px}
+.savefail{display:none;font-size:var(--t-micro);color:var(--red);margin-top:8px}
+.savefail.show{display:block}
+
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+
+<div class="switch">
+  <b>Dress</b>
+  <div class="seg2">
+    <button id="bCur" class="on" onclick="setD('current')">Current</button>
+    <button id="bPro" onclick="setD('proposed')">Proposed</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="daterow">
+    <button class="dnav today" id="dToday">Today</button>
+    <button class="dnav" id="dPrev">&#8249;</button>
+    <div class="date" id="date"></div>
+    <button class="dnav" id="dNext">&#8250;</button>
+    <div class="navwrap">
+      <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="navdrop" id="navDrop">
+        <a href="#">Front Desk Arrival</a>
+        <a href="#">Cleans</a>
+        <a href="#">Chef brief</a>
+        <a href="#">Pre-arrival SMS</a>
+        <a href="#">Spa</a>
+        <a href="#">Staff</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="menustate"><span class="yes" id="menuState">Menu published 9:51 am</span></div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-n" id="nCovers">0</div><div class="stat-l">Covers</div></div>
+    <div class="stat"><div class="stat-n" id="nOut">0</div><div class="stat-l">Villas out</div></div>
+    <div class="stat"><div class="stat-n" id="nAwait">0</div><div class="stat-l">Villas awaiting</div></div>
+  </div>
+  <div class="tablesline" id="tablesLine"></div>
+
+  <div class="sec">
+    <span>Villas</span>
+    <a id="selToggle">Select multiple</a>
+  </div>
+  <div class="rooms" id="rooms"></div>
+
+  <div class="legend">
+    <span><i class="sw in"></i>Dining</span>
+    <span><i class="sw out"></i>Not dining</span>
+    <span><i class="sw await"></i>Awaiting</span>
+    <span><i class="sw vacant"></i>Vacant</span>
+  </div>
+  <div class="legend">
+    <span><i class="ico" data-ico="guest"></i>Guest replied</span>
+    <span><i class="ico" data-ico="staff"></i>Added by staff</span>
+    <span><i class="ico" data-ico="seen"></i>Link opened</span>
+  </div>
+
+  <div class="sec">
+    <span>Bookings</span>
+    <a id="addExt">+ Add reservation</a>
+  </div>
+  <div class="blist" id="listBookings"></div>
+
+</div>
+
+<div class="foot">
+  <button class="btn" id="btnRefresh">Refresh</button>
+  <button class="btn" id="btnStats">Stats</button>
+</div>
+
+<div class="selbar" id="selBar"><div class="selbar-inner">
+  <div class="selcount" id="selCount"></div>
+  <div class="selactions">
+    <button class="selbtn vac"   id="sbVac">Vacant</button>
+    <button class="selbtn din"   id="sbDin">Dining</button>
+    <button class="selbtn out"   id="sbOut">Not dining</button>
+    <button class="selbtn quiet" id="sbClear">Clear rooms</button>
+    <button class="selbtn comb"  id="sbComb">Seat together</button>
+    <button class="selbtn quiet" id="sbDone">Close</button>
+  </div>
+</div></div>
+
+<div class="backdrop" id="backdrop"><div class="sheet" id="sheet"></div></div>
+
+<script>
+/* ── icons ─────────────────────────────────────────────────────────── */
+var ICO = {
+  guest:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/>'+
+        '<path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg>',
+  staff:'<svg viewBox="0 0 24 24"><path d="M3 21V7l7-4v18M10 21V9l8 4v8M13 12h1M13 15h1'+
+        'M13 18h1M6 8h1M6 11h1M6 14h1"/></svg>',
+  seen: '<svg viewBox="0 0 24 24" stroke-width="2"><path d="M10 13a5 5 0 0 0 7 0l3-3'+
+        'a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>'
+};
+
+/* ── state · the board, as the screenshot of 28 Aug shows it ───────── */
+var ROOMS = {};
+function seed(){
+  for (var v=1; v<=17; v++) ROOMS[v] = {state:'vacant', pax:0, name:'', note:'',
+                                        diets:[], src:null};
+  ROOMS[3]  = {state:'out', pax:0, name:'', note:'', diets:[], src:'guest'};
+  ROOMS[4]  = {state:'out', pax:0, name:'', note:'', diets:[], src:'guest'};
+  ROOMS[8]  = {state:'out', pax:0, name:'', note:'', diets:[], src:'staff'};
+  ROOMS[13] = {state:'out', pax:0, name:'', note:'', diets:[], src:'guest'};
+  ROOMS[6]  = {state:'in', pax:2, name:'Ronnie Myers', note:'With Ruth',
+               diets:['Dairy','Gluten','Nut allergy'], src:'guest'};
+  ROOMS[9]  = {state:'in', pax:2, name:'Ryan Beagle', note:'', diets:[],
+               noDiets:true, src:'staff'};
+  ROOMS[14] = {state:'in', pax:2, name:'Amanda Sinclair', note:'', diets:[], src:'guest'};
+}
+seed();
+
+var DIETARIES = ['Gluten','Dairy','Vegetarian','Vegan','Pescatarian',
+                 'Nut allergy','Shellfish allergy','Egg allergy'];
+/* Carried from an earlier night and not confirmed for tonight. The board
+   shows it amber so the desk chases it rather than assuming it.        */
+var HELD = {14:['Vegetarian']};
+var selMode = false, sel = {}, dayOffset = 0, openVilla = null, draft = null;
+
+/* ── date ──────────────────────────────────────────────────────────── */
+var DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+    MONS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function ord(n){ var s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+function drawDate(){
+  var d = new Date(2026,7,28); d.setDate(d.getDate()+dayOffset);
+  date.textContent = DAYS[d.getDay()]+' '+ord(d.getDate())+' '+MONS[d.getMonth()];
+  dToday.disabled = dayOffset === 0;
+}
+
+/* ── the board ─────────────────────────────────────────────────────── */
+function drawRooms(){
+  var h='';
+  for (var v=1; v<=17; v++){
+    var r = ROOMS[v], cls = 'room '+r.state + (sel[v] ? ' sel' : '');
+    var lab = r.state==='in' ? r.pax+'p' : '';
+    var mk  = r.src ? '<i class="mark '+(r.src==='seen'?'seen':'')+'">'+ICO[r.src]+'</i>' : '';
+    h += '<button class="'+cls+'" data-v="'+v+'">'+mk+
+         '<span class="room-n">'+v+'</span><span class="room-p">'+lab+'</span></button>';
+  }
+  rooms.innerHTML = h;
+}
+
+/* ── stats and the make-up line ────────────────────────────────────── */
+function drawStats(){
+  var covers=0, out=0, awa=0, parties=[];
+  for (var v=1; v<=17; v++){
+    var r=ROOMS[v];
+    if (r.state==='in'){ covers+=r.pax; parties.push(r.pax); }
+    if (r.state==='out') out++;
+    if (r.state==='await') awa++;
+  }
+  nCovers.textContent=covers; nOut.textContent=out; nAwait.textContent=awa;
+  /* Named the way the styleguide rules: "3 twos - 1 three", a wording that
+     can be said out loud and cannot be read backwards.                  */
+  var WORD={1:'ones',2:'twos',3:'threes',4:'fours',5:'fives',6:'sixes',7:'sevens',8:'eights'};
+  var tally={}; parties.forEach(function(p){ tally[p]=(tally[p]||0)+1; });
+  var bits=Object.keys(tally).sort(function(a,b){return a-b;}).map(function(k){
+    return tally[k]+' '+(tally[k]===1 ? WORD[k].replace(/e?s$/,'') : WORD[k]);
+  });
+  tablesLine.textContent = parties.length
+    ? bits.join(' · ')+' · '+parties.length+' table'+(parties.length===1?'':'s')
+    : 'No one dining yet';
+}
+
+/* ── bookings ──────────────────────────────────────────────────────── */
+function drawList(){
+  var h='', any=false;
+  for (var v=1; v<=17; v++){
+    var r=ROOMS[v]; if (r.state!=='in') continue; any=true;
+    var diet = r.diets.length ? ' diet' : '';
+    h += '<div class="row'+diet+'">'+
+           '<div class="row-main">'+
+             '<div class="row-name"><span class="rm">'+v+'</span>'+
+               (r.name||'Guest')+'</div>'+
+             (r.note?'<div class="row-note">'+r.note+'</div>':'')+
+             (r.diets.length || r.noDiets
+               ? '<div class="diets">'+
+                 (r.noDiets
+                   ? '<span class="dpill ok">No dietaries</span>'
+                   : r.diets.map(function(d){
+                       var al = /allergy/i.test(d);
+                       return '<span class="dpill'+(al?' al':'')+'">'+
+                              d.replace(/ allergy$/i,'')+'</span>';
+                     }).join(''))+
+                 '</div>' : '')+
+           '</div>'+
+           '<button class="bub'+(r.note?'':' nonote')+'" data-note="'+v+'" aria-label="Note">'+
+             '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v12H8l-4 4z"/></svg>'+
+           '</button>'+
+           '<span class="row-pax">'+r.pax+' pax</span>'+
+           '<button class="pen" data-edit="'+v+'" aria-label="Edit">'+
+             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '+
+             'width="15" height="15"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/></svg>'+
+           '</button>'+
+         '</div>';
+  }
+  listBookings.innerHTML = any ? h : '<div class="empty">No one dining tonight.</div>';
+}
+
+function draw(){ drawDate(); drawRooms(); drawStats(); drawList(); }
+
+/* ── the sheet ─────────────────────────────────────────────────────── */
+function openRoom(v){
+  openVilla = v;
+  /* The sheet edits a DRAFT, and Save commits it. Writing straight to the
+     board from the segment meant a change survived a Close that said it
+     would not, which is a control lying about what it did.            */
+  draft = JSON.parse(JSON.stringify(ROOMS[v]));
+  renderSheet();
+  backdrop.classList.add('show');
+}
+function stash(){
+  var n=document.getElementById('fName'), t=document.getElementById('fNote');
+  if (n) draft.name = n.value;
+  if (t) draft.note = t.value;
+}
+function renderSheet(){
+  var r = draft, v = openVilla;
+  sheet.innerHTML =
+    '<h2>Villa '+v+'</h2>'+
+    '<div class="who">'+(r.name ? r.name : 'No guest on this villa tonight')+'</div>'+
+    '<div class="field"><label>Tonight</label><div class="seg3">'+
+      '<button class="opt din'+(r.state==='in'?' on':'')+'" data-set="in">Dining</button>'+
+      '<button class="opt out'+(r.state==='out'?' on':'')+'" data-set="out">Not dining</button>'+
+      '<button class="opt vac'+(r.state==='vacant'?' on':'')+'" data-set="vacant">Vacant</button>'+
+    '</div></div>'+
+    '<div class="field"><label>Covers</label><div class="paxrow">'+
+      '<button class="paxbtn" data-pax="-1">&minus;</button>'+
+      '<span class="paxn" id="paxN">'+r.pax+'</span>'+
+      '<button class="paxbtn" data-pax="1">+</button>'+
+    '</div></div>'+
+    '<div class="field"><label>Guest name</label>'+
+      '<input id="fName" value="'+r.name.replace(/"/g,'&quot;')+'" placeholder="Name"></div>'+
+    (r.state==='in' ? '<div class="field"><label>Dietaries</label><div class="dchips">'+
+        DIETARIES.map(function(d){
+          var on = r.diets.indexOf(d)>-1;
+          var was = !on && (HELD[v]||[]).indexOf(d)>-1;
+          return '<button class="chip'+(on?' on':(was?' was':''))+'" data-diet="'+d+'">'+
+                 d+'</button>';
+        }).join('')+
+        '<button class="chip'+(r.noDiets?' on':'')+'" data-diet="__none">No dietaries</button>'+
+      '</div></div>' : '')+
+    '<div class="field"><label>Note for the kitchen</label>'+
+      '<input id="fNote" value="'+r.note.replace(/"/g,'&quot;')+'" placeholder="Optional"></div>'+
+    '<div class="sheetbtns">'+
+      '<button class="btn solid" id="sSave">Save</button>'+
+      (ROOMS[v].state==='in'
+        ? '<button class="btn terra" id="sCancel">Cancel booking</button>' : '')+
+      '<button class="btn" id="sClose">Close</button>'+
+    '</div><div class="savefail" id="sFail"></div>';
+}
+function closeSheet(){ backdrop.classList.remove('show'); openVilla=null; }
+
+/* ── selection ─────────────────────────────────────────────────────── */
+function setSelMode(on){
+  selMode = on; sel = {};
+  selToggle.classList.toggle('active', on);
+  selToggle.textContent = on ? 'Done' : 'Select multiple';
+  selBar.classList.toggle('show', on);
+  drawSelCount(); drawRooms();
+}
+function drawSelCount(){
+  var n = Object.keys(sel).length;
+  selCount.textContent = n ? n+' villa'+(n===1?'':'s')+' selected' : 'Tap villas to select';
+  sbComb.disabled = n < 2;
+}
+function applyToSel(state){
+  Object.keys(sel).forEach(function(v){
+    ROOMS[v].state = state;
+    if (state==='in' && !ROOMS[v].pax) ROOMS[v].pax = 2;
+    if (state!=='in') ROOMS[v].pax = 0;
+    if (state==='vacant'){ ROOMS[v].name=''; ROOMS[v].note=''; ROOMS[v].diets=[];
+                           ROOMS[v].src=null; }
+    else if (!ROOMS[v].src) ROOMS[v].src = 'staff';
+  });
+  sel = {}; drawSelCount(); draw();
+}
+
+/* ── wiring ────────────────────────────────────────────────────────── */
+rooms.addEventListener('click', function(e){
+  var b = e.target.closest('[data-v]'); if (!b) return;
+  var v = +b.dataset.v;
+  if (selMode){ sel[v] ? delete sel[v] : sel[v]=1; drawSelCount(); drawRooms(); }
+  else openRoom(v);
+});
+listBookings.addEventListener('click', function(e){
+  var ed = e.target.closest('[data-edit]'), nb = e.target.closest('[data-note]');
+  if (ed) openRoom(+ed.dataset.edit);
+  else if (nb) alert('Note on villa '+nb.dataset.note+':\n\n'+
+                     (ROOMS[+nb.dataset.note].note||'(none)'));
+});
+sheet.addEventListener('click', function(e){
+  var t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.set){
+    stash();
+    draft.state = t.dataset.set;
+    if (draft.state==='in' && !draft.pax) draft.pax = 2;
+    if (draft.state!=='in') draft.pax = 0;
+    renderSheet(); return;
+  }
+  if (t.dataset.diet){
+    stash();
+    var d = t.dataset.diet;
+    if (d === '__none'){
+      draft.noDiets = !draft.noDiets;
+      if (draft.noDiets) draft.diets = [];
+    } else {
+      var i = draft.diets.indexOf(d);
+      if (i > -1) draft.diets.splice(i,1);
+      else { draft.diets.push(d); draft.noDiets = false; }
+    }
+    renderSheet(); return;
+  }
+  if (t.dataset.pax){
+    draft.pax = Math.max(0, draft.pax + (+t.dataset.pax));
+    if (draft.pax > 0) draft.state = 'in';
+    stash(); renderSheet(); return;
+  }
+  if (t.id === 'sClose'){ closeSheet(); return; }   /* discards the draft */
+  if (t.id === 'sCancel'){
+    /* The button law: destructive wears terracotta outline and always asks
+       first, naming the guest and the thing.                            */
+    var r = ROOMS[openVilla];
+    if (!confirm('Cancel '+(r.name||'villa '+openVilla)+"'s dinner booking tonight?")) return;
+    r.state='out'; r.pax=0; r.diets=[]; closeSheet(); draw(); return;
+  }
+  if (t.id === 'sSave'){
+    stash();
+    draft.name = draft.name.trim(); draft.note = draft.note.trim();
+    if (draft.state==='vacant'){ draft.name=''; draft.note=''; draft.diets=[]; draft.src=null; }
+    else if (!draft.src) draft.src = 'staff';
+    ROOMS[openVilla] = draft;
+    /* What a press says back: Saving, then Saved. */
+    t.className = 'btn saving'; t.textContent = 'Saving'; t.disabled = true;
+    draw();
+    setTimeout(function(){
+      t.className = 'btn saved'; t.textContent = 'Saved';
+      setTimeout(closeSheet, 400);
+    }, 450);
+  }
+});
+backdrop.addEventListener('click', function(e){ if (e.target === backdrop) closeSheet(); });
+
+selToggle.onclick = function(){ setSelMode(!selMode); };
+sbDin.onclick   = function(){ applyToSel('in'); };
+sbOut.onclick   = function(){ applyToSel('out'); };
+sbVac.onclick   = function(){ applyToSel('vacant'); };
+sbClear.onclick = function(){ sel = {}; drawSelCount(); drawRooms(); };
+sbComb.onclick  = function(){
+  var n = Object.keys(sel).length;
+  alert('Seated together: '+n+' villas share one table.');
+  sel = {}; drawSelCount(); drawRooms();
+};
+sbDone.onclick  = function(){ setSelMode(false); };
+
+addExt.onclick = function(){
+  var free = []; for (var v=1; v<=17; v++) if (ROOMS[v].state!=='in') free.push(v);
+  if (!free.length){ alert('Every villa is already dining.'); return; }
+  openRoom(free[0]);
+};
+dPrev.onclick  = function(){ dayOffset--; draw(); };
+dNext.onclick  = function(){ dayOffset++; draw(); };
+dToday.onclick = function(){ dayOffset = 0; draw(); };
+navBtn.onclick = function(e){ e.stopPropagation(); navDrop.classList.toggle('open'); };
+document.addEventListener('click', function(){ navDrop.classList.remove('open'); });
+btnRefresh.onclick = function(){ seed(); sel={}; setSelMode(false); draw(); };
+btnStats.onclick   = function(){
+  alert('Covers tonight: '+nCovers.textContent+'\nVillas out: '+nOut.textContent+
+        '\n\n(The real button opens stats.html.)');
+};
+
+/* legend icons */
+document.querySelectorAll('[data-ico]').forEach(function(e){
+  e.innerHTML = ICO[e.dataset.ico];
+  e.querySelector('svg').setAttribute('style','width:100%;height:100%;fill:currentColor;stroke:currentColor');
+});
+
+function setD(d){
+  document.documentElement.setAttribute('data-dress', d);
+  bCur.classList.toggle('on', d==='current');
+  bPro.classList.toggle('on', d==='proposed');
+  try { localStorage.setItem('nala-mock-dress', d); } catch(e){}
+}
+try { var s = localStorage.getItem('nala-mock-dress'); if (s) setD(s); } catch(e){}
+draw();
+</script>
+</body></html>

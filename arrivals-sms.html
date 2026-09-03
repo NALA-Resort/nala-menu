@@ -2,33 +2,31 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Pre-arrival SMS</title>
-<link rel="stylesheet" href="nala-ui.css?v=14">
+<link rel="stylesheet" href="nala-ui2.css?v=6">
+<link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-          --green:#E4EDE2; --greenb:#7E937A;
-          /* The Reservations tiles' tints, the same contract as the
-             invitations board: the boards speak one language. */
-          --resgreen:#5E7D67; --resgreen-t:rgba(122,160,130,.26);
-          --resgreen-b:rgba(122,160,130,.65);
-          --resterra:#9E6455; --resterra-t:rgba(184,106,90,.16);
-          --resterra-b:rgba(184,106,90,.45);
-          /* The front desk's amber, verbatim: attention, in progress. */
-          --amber:#F6EAD5; --amberb:#C29A55; --amberink:#8A6A2F; }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
-         padding:calc(24px + env(safe-area-inset-top)) 18px 0;
-         -webkit-tap-highlight-color:transparent; }
+  /* This page's OWN colours, restored 29 Aug. The first conversion
+     dropped each page's :root wholesale to remove the tokens the shared
+     sheet owns, and took these with them. An undefined custom property
+     does not fall back, it computes to nothing: fill:var(--dine) became
+     a black fork and color:var(--dine) a black stat, silently.
+     --green is not in the shared sheet on purpose - it is a pale fill on
+     five pages and a dark ink on two - so it lives here.               */
+  :root { --green:#E4EDE2 }
 
-  .seclabel { font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
+  
+
+  .seclabel { font-size:var(--t2);
               color:var(--mid); margin:22px 0 8px; }
-  .seclink  { float:right; font-size:11px; letter-spacing:.05em;
+  .seclink  { float:right; font-size:var(--t2);
               text-transform:none; color:var(--mid); text-decoration:underline; }
 
   /* How far ahead the list looks. A knob, not a date browser: the page's
@@ -36,15 +34,14 @@
      a horizon, not a night. */
   .knob { display:flex; border:1px solid var(--rule); border-radius:8px;
           overflow:hidden; margin-bottom:12px; }
-  .knob button { flex:1; padding:9px 0; font-family:var(--ui-font); font-size:11px;
-                 letter-spacing:.1em; text-transform:uppercase; background:none;
+  .knob button { flex:1; padding:9px 0; font-family:var(--ui-font); font-size:var(--t2); background:none;
                  border:none; color:var(--mid); cursor:pointer; }
   .knob button.on { background:var(--ink); color:var(--cream); }
 
   .vrow { display:flex; align-items:center; gap:12px; width:100%;
           background:none; border:1px solid var(--rule); border-radius:8px;
           padding:11px 13px; margin-bottom:7px; text-align:left;
-          font-family:inherit; color:inherit; cursor:pointer; }
+          font-family:var(--ui-font); color:inherit; cursor:pointer; }
   .vrow:disabled { opacity:.45; cursor:default; }
   /* The five bands, in the site's colour law (CLAUDE.md): white to send,
      AMBER opened-but-not-finished - the front desk's attention colour, not
@@ -52,7 +49,7 @@
      and a guest mid-form is neither - grey waiting (unknown promises
      nothing), green form completed, and cannot-send sunk in the vacant
      voice. Red text is reserved for failures: sends and deliveries. */
-  .grp { font-size:9px; letter-spacing:.16em; text-transform:uppercase;
+  .grp { font-size:var(--t1);
          color:var(--mid); margin:14px 2px 6px; }
   .vrow.b-open { background:var(--amber); border-color:var(--amberb); }
   .vrow.b-open .st { color:var(--amberink); }
@@ -62,63 +59,58 @@
   .vrow.b-done .st { color:var(--resgreen); }
   .vrow.b-grey { background:transparent; border-style:dashed; opacity:.62; }
   .vrow.b-grey .tick { visibility:hidden; }
-  .vrow .v { font-size:20px; min-width:30px; text-align:center; }
+  .vrow .v { font-size:var(--t4); min-width:30px; text-align:center; }
   .vrow .mid { flex:1; min-width:0; }
-  .vrow .nm { font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .vrow .ph { font-size:11px; color:var(--mid); font-weight:normal; margin-left:7px; }
+  .vrow .nm { font-size:var(--t3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vrow .ph { font-size:var(--t2); color:var(--mid); font-weight:normal; margin-left:7px; }
   /* The confidence mark: a tick where the country's mobile ranges are
      published and this number sits in one, a question mark where nobody can
      tell a mobile from a landline (all of +1, for a start). */
-  .vrow .conf { font-size:11px; margin-left:4px; }
+  .vrow .conf { font-size:var(--t2); margin-left:4px; }
   .vrow .conf.ok { color:var(--resgreen); }
   .vrow .conf.un { color:var(--mid); }
   /* The edit pencil. Inside the row button, so its click must not fall
      through to the tick: the handler stops the event. */
-  .vrow .pen { font-size:12px; color:var(--mid); margin-left:5px;
+  .vrow .pen { font-size:var(--t2); color:var(--mid); margin-left:5px;
                padding:2px 4px; cursor:pointer; }
-  .vrow .st { font-size:11px; color:var(--mid); margin-top:2px; }
+  .vrow .st { font-size:var(--t2); color:var(--mid); margin-top:2px; }
   .vrow .st .bad { color:var(--red); }
   .tick { flex:0 0 auto; width:24px; height:24px; border:1px solid var(--rule);
-          border-radius:6px; display:flex; align-items:center; justify-content:center;
-          font-size:15px; color:transparent; }
+          border-radius:var(--pill); display:flex; align-items:center; justify-content:center;
+          font-size:var(--t3); color:transparent; }
   .vrow.on { border-color:var(--greenb); }
   .vrow.on .tick { background:var(--green); border-color:var(--greenb); color:var(--ink); }
   /* Select-all wears the row dress so its tick reads like the rows' ticks,
      dashed so it does not read as a guest. */
   .selall { border-style:dashed; margin:0 0 10px; }
-  .selall .nm { font-size:13px; }
+  .selall .nm { font-size:var(--t2); }
 
-  select, textarea { width:100%; font-family:var(--ui-font); font-size:15px;
+  select, textarea { width:100%; font-family:var(--ui-font); font-size:var(--t3);
                      color:var(--ink); background:#fff; border:1px solid var(--rule);
-                     border-radius:8px; padding:11px 13px; }
+                     border-radius:var(--r); padding:11px 13px; }
   select { -webkit-appearance:none; appearance:none; }
   textarea { margin-top:8px; min-height:96px; resize:vertical; line-height:1.45; }
   .msgmeta { display:flex; justify-content:space-between; gap:12px;
-             font-size:11px; color:var(--mid); margin-top:6px; }
+             font-size:var(--t2); color:var(--mid); margin-top:6px; }
   .msgmeta .warn { color:var(--red); }
-  .linknote { font-size:11px; color:var(--mid); margin-top:4px; line-height:1.5; }
+  .linknote { font-size:var(--t2); color:var(--mid); margin-top:4px; line-height:1.5; }
 
-  .btn { flex:1; text-align:center; padding:13px; border:1px solid var(--ink);
-         border-radius:8px; background:transparent; color:var(--ink);
-         font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
-         text-transform:uppercase; cursor:pointer; white-space:nowrap; }
+  /* .btn wears nala-ui.css's shared dress; only this page's variants live here. */
   #sendBtn { white-space:normal; line-height:1.4; }
-  .btn.solid { background:var(--ink); color:var(--cream); }
-  .btn:disabled { opacity:.35; cursor:default; }
   .btn.arm { background:var(--red); border-color:var(--red); color:#fff; }
 
-  #errBar { font-size:13px; color:var(--red); margin:10px 0; line-height:1.45; }
-  .empty { font-size:13px; color:var(--mid); margin:14px 2px; line-height:1.5; }
+  #errBar { font-size:var(--t2); color:var(--red); margin:10px 0; line-height:1.45; }
+  .empty { font-size:var(--t2); color:var(--mid); margin:14px 2px; line-height:1.5; }
   .spacer { height:12px; }
 </style>
 </head>
-<body class="tier-app">
+<body class="tier-app ui2">
 
 <div class="daterow">
   <div class="date" id="title">Pre-arrival SMS</div>
   <div class="navwrap" id="navWrap" style="display:none">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="flags.html">Flags</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"></div>
   </div>
 </div>
 
@@ -164,7 +156,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=41"></script>
+<script src="nala-shared.js?v=48"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -178,9 +170,6 @@ var INVITES_URL = 'https://nala-invites.ben-681.workers.dev';
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
-  var so=document.getElementById('navSignout');
-  if (so) so.onclick=function(e){ e.preventDefault();
-    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
 })();
 function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
 
@@ -281,19 +270,12 @@ function nightsOf(stay){
   return n > 0 ? ' · ' + n + (n === 1 ? ' night' : ' nights') : '';
 }
 
-/* The same list the front desk holds: a value in any of these is a guest who
-   started the form, and "no" is an answer. */
-var GUEST_ANSWERS = ['arriveSlot','arriveNote','dining','diets','noDiets',
-                     'dnote','purpose','approach','wellness','wellDay',
-                     'wellTime','occasion','note','companion'];
-function answersIn(p){
-  return GUEST_ANSWERS.filter(function(k){
-    var v = p ? p[k] : undefined;
-    if (v === undefined || v === null || v === '') return false;
-    if (Array.isArray(v)) return v.length > 0;
-    return true;
-  }).length;
-}
+/* GUEST_ANSWERS and the counting moved to nala-shared.js on 28 Aug. This page
+   and the Front Desk each held a copy and they had already drifted: the desk
+   had learnt that a noDiets of false says nothing and this page had not, so a
+   guest whose dietary had been cleared counted as answered here and not
+   there. countGuestAnswers is the one reading now. */
+function answersIn(p){ return countGuestAnswers(p); }
 
 /* Five kinds, off the same cells the front desk reads: /bookings/<id>/
    prearrival is the form's own record and /previnvites/<id> is the send's.
@@ -301,7 +283,14 @@ function answersIn(p){
    done however the message got to them. */
 function stateOf(stay, pre, invite, fix){
   var when = 'arrives ' + shortDay(akey(stay.arrive));
-  if (pre && pre.at)
+  /* Completed means what the Front Desk means by it, because it is literally
+     the same function: formState in nala-shared.js, which wants the stamp, an
+     answer behind it, and the mandatory answers still standing. Two readings
+     of one state is how this page came to say Form completed about villa 17
+     while the desk showed it amber, holding nothing, with the link unsendable
+     from here. Reading it this way also puts the records already written back
+     where they belong, with nothing to run. */
+  if (formState(pre, stay) === 'completed')
     return { kind:'done', tickable:false, ticked:false,
              line:'Completed ' + timeOf(pre.at) + ' · ' + when };
   /* A number fixed at the desk outranks the Mews copy: Mews cannot be
@@ -375,9 +364,11 @@ function render(list){
     b.disabled = !st.tickable && !st.fixable;
     b.setAttribute('aria-pressed', st.ticked ? 'true' : 'false');
     b.innerHTML = '<div class="v">' + it.villa + '</div>' +
-      '<div class="mid"><div class="nm"></div><div class="st"></div></div>' +
+      '<div class="mid"><div class="nm trimrow">'+
+        '<span class="trim"></span></div><div class="st"></div></div>' +
       '<div class="tick">✓</div>';
-    var nm = b.querySelector('.nm');
+    var nm   = b.querySelector('.nm .trim');   /* the name, trims */
+    var nmln = b.querySelector('.nm');         /* the line, never trims */
     nm.textContent = ((it.stay.first || '') + ' ' + (it.stay.last || '')).trim() || 'Guest';
     /* The number beside the name, grey and small, with the pencil that edits
        it. Every row carries both: a valid number can still be a WRONG one,
@@ -386,14 +377,23 @@ function render(list){
        pencil is left off a disabled row: a completed form needs no number
        and a dead pencil reads as a broken one. */
     var rawPh = String((it.fix && it.fix.phone) || it.stay.phone || '').trim();
-    nm.insertAdjacentHTML('beforeend',
+    nmln.insertAdjacentHTML('beforeend',
       phoneBadgeHTML(rawPh, !!(st.tickable || st.fixable)));
-    var pen = nm.querySelector('.pen');
+    var pen = nmln.querySelector('.pen');
     if (pen) pen.onclick = function(e){ e.stopPropagation(); fixNumber(it); };
     var line = b.querySelector('.st');
     if (st.bad){ var s = document.createElement('span'); s.className = 'bad';
                  s.textContent = st.line; line.appendChild(s); }
     else line.textContent = st.line;
+    /* One party holding more than one villa, in the Front Desk's words from
+       the Front Desk's reader. Two bookings under one groupId are two rows
+       here and always will be - each villa has its own link and its own
+       answers - but until 28 Aug nothing said they were one party, so the
+       same handset could be sent two different forms by somebody who thought
+       they were texting two guests. Appended rather than built into the line
+       so a failure keeps its red on the failure alone. */
+    var mates = groupMatesText(it, list);
+    if (mates) line.appendChild(document.createTextNode(' \u00b7 ' + mates));
     b.onclick = function(){
       if (st.fixable){ fixNumber(it); return; }
       ROWS[it.id].ticked = !ROWS[it.id].ticked;

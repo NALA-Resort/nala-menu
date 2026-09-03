@@ -153,22 +153,34 @@ with sync_playwright() as p:
     #  every bar of the icon resolved to nothing. Asserting presence alone
     #  passed the whole time, which is the same fault as reading the original
     #  element instead of the printed clone.
+    #  The border was the original proxy for "the tokens resolved": the old
+    #  sheet drew this button as a bordered box, so a missing --ctl-* showed
+    #  up as a zero width border. nala-ui2.css draws it as a borderless icon
+    #  button and uses no --ctl-* at all, so the proxy now fails on a button
+    #  that is perfectly visible. Replaced with the thing it was standing in
+    #  for, and made stricter while we are here: ALL THREE bars must have a
+    #  real size and a real colour, not just the first one.
     ck("and it is actually visible, not drawn in colours that resolve to nothing",
        pg.evaluate("""()=>{const b=document.getElementById('navBtn');
           const r=b.getBoundingClientRect();
-          const c=getComputedStyle(b);
-          const bc=getComputedStyle(b.querySelector('span')).backgroundColor;
-          return r.width>20 && r.height>20 &&
-                 c.borderTopWidth!=='0px' &&
-                 bc!=='rgba(0, 0, 0, 0)' && bc!=='transparent';}"""))
+          const bars=[...b.querySelectorAll('span')];
+          const lit=bars.every(s=>{
+            const sr=s.getBoundingClientRect();
+            const sc=getComputedStyle(s).backgroundColor;
+            return sr.width>0 && sr.height>0 &&
+                   sc!=='rgba(0, 0, 0, 0)' && sc!=='transparent';});
+          return r.width>20 && r.height>20 && bars.length===3 && lit;}"""))
     #  The same list as every other page, in the same order, minus this one.
     #  The owner reported pressing hamburgers everywhere and none of them
     #  agreeing: the older pages did agree with each other, and the two newest
     #  were in none of their lists, so from Reservations there was no way to
     #  reach publishing at all.
-    CANON = ["front-desk.html", "tally.html", "invitations.html", "arrivals-sms.html", "cleaners.html", "spa.html", "publish.html",
-             "list.html", "housekeeping.html", "registration.html", "menu-print.html", "past-menus.html",
-             "staff.html", "tag.html", "flags.html", "pages.html"]
+    #  Read from tests/nav_canon.json, the one table of the menu's shape,
+    #  rather than restated here: four suites each holding the order is why
+    #  adding a page meant editing them all.
+    _nc = json.load(open("tests/nav_canon.json"))
+    CANON = [h for h, _t in _nc["top"]] + \
+            [h for _g, items in _nc["groups"] for h, _t in items]
     got = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     ck("the menu is the one list, minus this page",
@@ -186,11 +198,11 @@ with sync_playwright() as p:
     #  to open a board a chef cannot, and subscribing is per person per device.
     ck("notifications can be switched from here, not only from the Cleans board",
        pg.evaluate("()=>!!document.getElementById('navNotify')"))
-    ck("and it sits under Settings, with the things you set",
-       pg.evaluate("""()=>{const k=[...navDrop.children];
-          const g=k.findIndex(e=>e.className.indexOf('navgrp')>-1 &&
-                                 e.textContent==='Settings');
-          return k.indexOf(document.getElementById('navNotify')) > g;}"""))
+    ck("and it sits inside the Settings submenu, with the things you set",
+       pg.evaluate("""()=>{
+          const g=[...document.querySelectorAll('#navDrop .navgroup')]
+            .find(w=>w.querySelector('.navgrp span').textContent==='Settings');
+          return !!g && g.contains(document.getElementById('navNotify'));}"""))
     #  The word stays and a mark carries the state. "Notifications on" cannot
     #  be read: there is no telling whether it describes what is true or what
     #  tapping will do.

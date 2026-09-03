@@ -88,7 +88,13 @@ NIGHTS = {
   dplus(10): {"5": stay("pa-far", "Grace", "Ito", "+61 411 000 005", 10, 12)},
 }
 PRE_RECS = {
-  "pa-done": {"at": now.isoformat(), "openedAt": now.isoformat(), "dining": True},
+  #  A form a guest actually finished: the dietary question is required of
+  #  them, so a record without one was never a completed form. It carries one
+  #  since 28 Aug, when completed stopped meaning "has a stamp" and started
+  #  meaning "has the stamp AND the mandatory answers" - formState, shared
+  #  with the Front Desk so the two boards cannot disagree about it again.
+  "pa-done": {"at": now.isoformat(), "openedAt": now.isoformat(),
+              "dining": True, "noDiets": True},
   "pa-open": {"openedAt": now.isoformat(), "purpose": "Rest"},
 }
 PREINV = {
@@ -582,6 +588,75 @@ with sync_playwright() as p:
        [pg.evaluate("()=>%s.textContent" % i)
         for i in ("nSend","nWait","nOpen","nDone")] == ["1","1","1","1"])
 
+    #  A stamp WITH answers behind it but missing a mandatory one. The old
+    #  check in demanded dinner and dietary and never the massage, so it
+    #  could stamp a multi night booking complete with the treatment
+    #  question never asked. Completed now wants the mandatory answers still
+    #  standing, so such a record reads incomplete here from the moment this
+    #  ships - and the link is sendable again, which is the point.
+    PRE_RECS["pa-halfdone"] = {"at": now.isoformat(), "dining": True,
+                               "noDiets": True}
+    NIGHTS[dplus(1)]["15"] = stay("pa-halfdone", "Half", "Done",
+                                  "+61 411 000 015", 1, 4)
+    pg5 = apage()
+    hrow = pg5.locator('.vrow[data-booking="pa-halfdone"]')
+    ck("a stamp missing a mandatory answer is not a completed form",
+       "b-done" not in (hrow.get_attribute("class") or ""))
+    ck("and that guest can be chased again",  not hrow.is_disabled())
+    pg5.close()
+    #  Give it the treatment answer and it is complete, on four nights.
+    PRE_RECS["pa-halfdone"]["wellness"] = False
+    pg5 = apage()
+    hrow = pg5.locator('.vrow[data-booking="pa-halfdone"]')
+    ck("with every mandatory answer in, the same record reads completed",
+       "b-done" in (hrow.get_attribute("class") or ""))
+    pg5.close()
+    del PRE_RECS["pa-halfdone"]; del NIGHTS[dplus(1)]["15"]
+
+    #  A stamp with nothing behind it. Seen live on villa 17, 28 Aug: the
+    #  Front Desk's confirm wrote `at` onto a record holding no answers, so
+    #  this page read Form completed and the link could never be sent to that
+    #  guest again - and the desk had no way back either. A guest cannot
+    #  submit an empty form (the slot, dinner and dietary questions are all
+    #  required), so a stamp standing alone was always the desk's and never
+    #  theirs. The desk's copy of this test is hasForm in front-desk.html.
+    PRE_RECS["pa-phantom"] = {"at": now.isoformat(),
+                              "confirmedAt": now.isoformat()}
+    NIGHTS[dplus(1)]["16"] = stay("pa-phantom", "Tim", "Martin",
+                                  "+61 416 237 128", 1, 2)
+    pg3 = apage()
+    prow = pg3.locator('.vrow[data-booking="pa-phantom"]')
+    ck("a stamp with no answer behind it is not a completed form",
+       "b-done" not in (prow.get_attribute("class") or ""))
+    ck("and that guest can still be sent the link, which is the whole point",
+       not prow.is_disabled() and "Not asked" in prow.inner_text())
+    pg3.close()
+    del PRE_RECS["pa-phantom"]
+    del NIGHTS[dplus(1)]["16"]
+
+    #  One party, two villas. Two rows is correct - each villa has its own
+    #  link and its own answers - but until 28 Aug nothing here said they were
+    #  one party, so the same handset could be sent two different forms by
+    #  somebody who thought they were texting two guests. The words and the
+    #  reader are the Front Desk's, from nala-shared.js.
+    NIGHTS[dplus(1)]["16"] = stay("pa-grp-a", "Tim", "Martin",
+                                  "+61 416 237 128", 1, 2,
+                                  {"groupId": "grp-tim"})
+    NIGHTS[dplus(1)]["17"] = stay("pa-grp-b", "Tim", "Martin",
+                                  "+61 416 237 128", 1, 2,
+                                  {"groupId": "grp-tim"})
+    pg4 = apage()
+    ck("each villa of one party names the other",
+       "with villa 17" in
+       pg4.locator('.vrow[data-booking="pa-grp-a"]').inner_text()
+       and "with villa 16" in
+       pg4.locator('.vrow[data-booking="pa-grp-b"]').inner_text())
+    ck("a booking on its own says nothing about a party",
+       "with villa" not in
+       pg4.locator('.vrow[data-booking="pa-ready"]').inner_text())
+    pg4.close()
+    del NIGHTS[dplus(1)]["16"]; del NIGHTS[dplus(1)]["17"]
+
     #  Fixing the number: the tap opens a prompt, the save is the NORMALISED
     #  E.164 to /phonefix/<booking>, and on reload the guest is sendable.
     #  The 25 Aug case verbatim: an NZ mobile with its country code.
@@ -645,6 +720,48 @@ with sync_playwright() as p:
     q.close()
 
     b.close()
+
+# ── the trim rule ────────────────────────────────────────────────────
+#  Reported by the owner off a screenshot, 29 Aug: a long name pushed the
+#  phone number, the confidence mark and the edit pencil off the right
+#  edge. "Chloe Roveglia +61448925599 ." and "Amanda Sinclair +614004519"
+#  - the two things reception needed were the two that went.
+#
+#  The name is the only field that may trim, because it is the only one
+#  that survives being half shown. A phone number does not: half of one
+#  still LOOKS like a number and somebody will read it out. A control does
+#  not either - a pencil clipped to two pixels cannot be pressed.
+#
+#  Forced with a name longer than any real guest's, because the fault only
+#  shows when the row cannot fit and the real board usually can.
+_trim = """<button class="vrow"><div class="v">14</div><div class="mid">
+  <div class="nm trimrow"><span class="trim">Amanda Penelope Sinclair-Fotheringay-Wodehouse</span>
+  <span class="ph">+61400451982</span><span class="conf ok">&#10003;</span>
+  <span class="pen">&#9998;</span></div><div class="st">Sent</div></div>
+  <div class="tick">&#10003;</div></button>"""
+with sync_playwright() as p3:
+    b3 = p3.chromium.launch()
+    q = b3.new_page(viewport={"width": 390, "height": 500})
+    q.goto("http://localhost:8977/invitations.html")
+    q.wait_for_timeout(900)
+    got = q.evaluate("""(html)=>{const d=document.createElement('div');
+        d.style.maxWidth='390px'; d.innerHTML=html;
+        document.body.appendChild(d);
+        const row=d.querySelector('.vrow').getBoundingClientRect();
+        const t=d.querySelector('.trim');
+        const ph=d.querySelector('.ph'), pen=d.querySelector('.pen');
+        const r=e=>e.getBoundingClientRect();
+        const out={nameTrimmed:t.scrollWidth>t.clientWidth,
+                   phoneWhole:r(ph).right<=row.right+1 && r(ph).width>0,
+                   phoneText:ph.textContent,
+                   pencilWhole:r(pen).right<=row.right+1 && r(pen).width>0};
+        d.remove(); return out;}""", _trim)
+    q.close(); b3.close()
+print("   trim rule:", got)
+ck("a name too long for its row is the thing that trims", got["nameTrimmed"])
+ck("and the phone number survives whole", got["phoneWhole"] and got["phoneText"] == "+61400451982")
+ck("and the pencil is still there to press", got["pencilWhole"])
+
 
 print("RESULT: %d passed, %d failed" % (P, F))
 httpd.shutdown()

@@ -53,6 +53,36 @@
          margin-top:7px; }
 
   .q { padding:1.1rem 0 0.2rem; }
+  /* The owner's info blocks (the landing's welcome, the dinner question's
+     dining note). Reading matter rather than a hint, so they take the ink
+     at reading size, not the italic tan of a q-h: these words ARE content,
+     and dressing them as a footnote would say skip them. */
+  .info-p { font-size:0.95rem; line-height:1.7; margin-top:0.9rem; }
+  .info-p:first-child { margin-top:0.55rem; }
+  /* The grammar's two marks. 600, not bold: 700 is not among the loaded
+     Raleway weights and would render synthesised. */
+  .info-h { font-size:1.05rem; line-height:1.4; font-weight:600;
+            margin-top:1.2rem; }
+  .info-h:first-child { margin-top:0.55rem; }
+  .info-p strong, .more-b strong { font-weight:600; }
+  /* A photo in a note. Block and full width, cornered like the cards. No
+     reserved height: a photo that fails to load is removed outright, and
+     space held for an absent image would be a hole in the page.
+
+     Banner by default: a phone photo is portrait, and at full width one
+     swallowed the landing whole (the owner's own, 30 Aug). Cover with a
+     height cap crops it to a centred band instead; the crop anchor and
+     the cap are his to move per image, from Settings, as the classes
+     below. Natural is the old uncropped behaviour, asked for by name. */
+  .info-img { display:block; width:100%; border-radius:10px;
+              margin-top:0.9rem; object-fit:cover;
+              object-position:50% 50%; max-height:38vh; }
+  .info-img:first-child { margin-top:0.55rem; }
+  .info-img.crop-top    { object-position:50% 0%; }
+  .info-img.crop-bottom { object-position:50% 100%; }
+  .info-img.h-short   { max-height:28vh; }
+  .info-img.h-tall    { max-height:50vh; }
+  .info-img.h-natural { max-height:none; object-fit:fill; }
   /* Page kickers lived here for an hour on 23 Aug and were scrapped as
      clutter without a proper design pass; their breathing room stays. */
   .q-t { margin-top:0.55rem; }
@@ -107,6 +137,19 @@
 
   .sublabel { font-size:0.7rem; letter-spacing:.2em; text-transform:uppercase;
               color:var(--mid); margin:1rem 0 0.5rem; }
+  /* Two small controls to a row. A select holding four words does not
+     need the width of the page, and the second massage belongs beside
+     the first rather than under it (ruled 30 Aug). Wraps to one column
+     below 340pt, where half a screen cannot hold "1.5 hours - $250". */
+  .pair { display:flex; flex-wrap:wrap; gap:0 12px; }
+  /* Fixed at half rather than growing to fill: a lone column stretched to
+     the full width, so the massage length was full width until a second
+     one appeared beside it (the owner, 30 Aug). Half whether or not it
+     has a neighbour. */
+  .pair-c { flex:0 0 calc(50% - 6px); min-width:0; }
+  .pair-c .txt, .pair-c select.txt { margin-top:0; }
+  .pair .chips { margin-top:0; }
+  @media (max-width:339px){ .pair-c { flex-basis:100%; } }
 
   .send { width:100%; padding:17px; margin-top:1.8rem; border-radius:10px;
           border:1px solid var(--ink); background:var(--ink); color:var(--cream);
@@ -222,6 +265,12 @@
       <div class="greet" id="greet">Before you arrive</div>
       <div class="sub" id="sub"></div>
     </header>
+    <!-- The welcome image, from Settings (Guest form) at /prearrivalinfo.
+         An image and only an image: the landing carried owner text for a
+         day and he ruled it ugly (29 Aug) - the greeting and the photo say
+         it. Empty when none is set, or the read is refused, and the
+         landing is exactly what it was before. -->
+    <div id="welcomeImg"></div>
     <!-- No number: the count runs five to eight with the party and the
          stay, and a promise of eight to a guest asked five reads as an
          error somewhere, theirs or ours. -->
@@ -279,6 +328,20 @@
         <textarea class="txt" id="etaNote" rows="2"
           placeholder="Roughly what time, so we can plan for you"></textarea>
       </div>
+    </div>
+
+    <!-- the dining page: the owner's image and words about dinner at Nala,
+         a page of its own in front of ALL the dining questions - how often,
+         the first night, dietaries - so it sits straight after arrival
+         time (moved 30 Aug from just-before-the-dinner-question: how often
+         they'll dine is a dining question too). It asks nothing and
+         carries no Read more, because it IS the reading; missingOn knows
+         no such id, so it never blocks, and it owns no fields, so leaving
+         it writes nothing. Hidden until Settings gives it an image or
+         words, and the walk is what it always was. -->
+    <div class="q" id="qDining" style="display:none">
+      <div id="diningImg"></div>
+      <div id="diningText"></div>
     </div>
 
     <!-- 5. how they like to travel -->
@@ -346,14 +409,31 @@
       <div id="wWrap" style="display:none">
         <div class="sublabel">Which day would suit you best?</div>
         <div class="chips" id="wDays"></div>
-        <select class="txt" id="wTime" aria-label="Preferred time"></select>
-        <div class="sublabel">How many massages?</div>
-        <div class="chips" id="wQty"></div>
-        <div class="sublabel" id="wDurLab" style="display:none">First massage</div>
-        <select class="txt" id="wDur" aria-label="Massage length"></select>
-        <div class="sublabel" id="wDur2Lab" style="display:none">Second massage</div>
-        <select class="txt" id="wDur2" aria-label="Second massage length"
-                style="display:none"></select>
+        <!-- Two to a row, ruled 30 Aug: a select holding "2:00 pm" or
+             "1 hour" was taking a whole line for four words, and the
+             second massage sat under the first when it belongs beside
+             it. Each pair falls back to one column where the words
+             would not fit. -->
+        <div class="pair">
+          <div class="pair-c">
+            <div class="sublabel">Preferred time</div>
+            <select class="txt" id="wTime" aria-label="Preferred time"></select>
+          </div>
+          <div class="pair-c">
+            <div class="sublabel">Quantity</div>
+            <div class="chips" id="wQty"></div>
+          </div>
+        </div>
+        <div class="pair">
+          <div class="pair-c">
+            <div class="sublabel" id="wDurLab">Duration</div>
+            <select class="txt" id="wDur" aria-label="Massage length"></select>
+          </div>
+          <div class="pair-c" id="wDur2Wrap" style="display:none">
+            <div class="sublabel" id="wDur2Lab">Second massage</div>
+            <select class="txt" id="wDur2" aria-label="Second massage length"></select>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -514,10 +594,23 @@ function purposeText(v){ return purposeList(v).join(PURPOSE_SEP); }
 /* dietYes is this page's memory of the Yes tap, so a guest who said Yes
    and has not picked yet is told to pick, not told to answer. It is never
    written: the record is still noDiets and the list, unchanged. */
+/* The forced copy of the staff pages' SPA_ANY_DAY, which this page cannot
+   import: a guest page loads no staff code. Both are pinned to
+   tests/slots.json, the phone_cases.json pattern - change it there and
+   whichever copy has not learned it fails by name. */
+var ANY_DAY = 'any', ANY_DAY_LABEL = 'Any day';
+
+/* wellDay rests on NOTHING and the page will not move past it, ruled by the
+   owner 31 Aug, choosing the stronger of the two ways to kill the empty
+   day: not a default that stands in for an answer, but an answer the guest
+   has to give. A pre-selected Any day would have let somebody sail past
+   the question and still be recorded as having chosen - which is the fault
+   this was fixing, wearing better clothes. Compare wellTime, which rests on
+   "Any time" because it is NOT compulsory. */
 var a = { eta:'', etaNote:'', dining:null, diets:[], noDiets:false, dietYes:false,
           dietNote:'', purpose:[], approach:'', wellness:null, wellDay:'',
           companion:'',
-          wellTime:'', wellQty:1, wellDur:60, wellDur2:60, note:'' };
+          wellTime:'Any time', wellQty:1, wellDur:60, wellDur2:60, note:'' };
 
 function el(id){ return document.getElementById(id); }
 function dkey(d){
@@ -609,6 +702,9 @@ function paintGreeting(pms){
   /* Dates may have just changed hands, and the day chips are built from
      them: repaint, so a guest mid-form is offered the days Mews knows. */
   paintWell();
+  /* The one-night bending above rewrote qDine's built-in Read more; the
+     owner's replacement, if he wrote one, goes back on top. */
+  setMoreTexts();
   resyncSteps();
 }
 
@@ -682,7 +778,6 @@ function paintPurpose(){
     b.onclick = function(){
       a.purpose = [t];                     /* one answer replaces another */
       clearMiss('qPurpose'); paintPurpose();
-      advanceIfClean(false);               /* it opens nothing */
     };
     box.appendChild(b);
   });
@@ -695,7 +790,6 @@ function paintApproach(){
     b.className = 'opt' + (a.approach === pair[0] ? ' on' : ''); b.textContent = pair[1];
     b.onclick = function(){
       a.approach = pair[0]; clearMiss('qApproach'); paintApproach();
-      advanceIfClean(false);
     };
     box.appendChild(b);
   });
@@ -731,7 +825,11 @@ var WELL_TIMES = (function(){
 (function(){
   var sel = el('wTime');
   var o = document.createElement('option');
-  o.value = ''; o.textContent = 'Preferred time';
+  /* The resting answer is an answer: the question is not mandatory, and
+     "Preferred time" left as it was reached the masseuse as an empty
+     string - a request with no time on it at all. It reads and saves as
+     Any time (the owner, 30 Aug). */
+  o.value = 'Any time'; o.textContent = 'Any time';
   sel.appendChild(o);
   WELL_TIMES.forEach(function(l){
     var x = document.createElement('option');
@@ -767,10 +865,13 @@ function paintDurs(){
     });
     sel.value = String(want);
   });
+  /* The second column, label and select together: showing the select
+     alone left its heading behind on the row. The first column's label
+     never hides - a control with no name above it is a control nobody
+     can read (the owner, 30 Aug), and Duration says what it is whether
+     or not a second massage is beside it. */
   var two = a.wellQty === 2;
-  el('wDur2').style.display = two ? '' : 'none';
-  el('wDurLab').style.display = two ? '' : 'none';
-  el('wDur2Lab').style.display = two ? '' : 'none';
+  el('wDur2Wrap').style.display = two ? '' : 'none';
   var box = el('wQty'); box.innerHTML = '';
   [1, 2].forEach(function(n){
     var b = document.createElement('button');
@@ -781,9 +882,9 @@ function paintDurs(){
   });
 }
 (function(){
-  /* The demo touches the database not at all - that is its whole warranty -
-     so it shows the lengths priceless, which is also what a live form does
-     until the manager sets numbers. */
+  /* The demo reads nothing about anybody, and of the public settings only
+     the two notes - so it shows the lengths priceless, which is also what
+     a live form does until the manager sets numbers. */
   if (DEMO) return;
   fetch(DB + '/spasettings.json')
     .then(function(r){ return r.ok ? r.json() : null; })
@@ -796,37 +897,221 @@ function paintWell(){
   el('wNo').className  = 'opt' + (a.wellness === false ? ' on' : '');
   el('wWrap').style.display = a.wellness === true ? '' : 'none';
   paintDurs();
+  /* Any day CLOSES the row, ruled by the owner 31 Aug: the days are the
+     question and it is the way out of it, so it reads last. Nothing is
+     pre-selected and the page will not move past an unanswered day, which
+     is what makes the position safe - at 320 a four night stay wraps it
+     onto a line of its own, and an unselected chip on that line is simply
+     the last option rather than a chosen answer sitting where nobody
+     looks. Mocked at 390, 360 and 320. */
   var box = el('wDays'); box.innerHTML = '';
-  stayDays().forEach(function(d){
+  stayDays().concat([{ key:ANY_DAY, label:ANY_DAY_LABEL }]).forEach(function(d){
     var b = document.createElement('button');
     b.className = 'chip' + (a.wellDay === d.key ? ' on' : ''); b.textContent = d.label;
-    b.onclick = function(){ a.wellDay = (a.wellDay === d.key ? '' : d.key); paintWell(); };
+    /* Tapping the chosen chip again clears it, the same way back every
+       other chip row on this page offers. It leaves the page unanswered,
+       which the guard below then refuses to move past. */
+    b.onclick = function(){
+      a.wellDay = (a.wellDay === d.key) ? '' : d.key; paintWell(); };
     box.appendChild(b);
   });
 }
 
-/* Yes opens a follow up on the same page and so stays put. No opens nothing
-   and carries on. */
+/* The owner's words into an info block. textContent, never innerHTML: the
+   text is typed by staff in Settings, but this is a guest's browser and
+   markup has no business arriving through a database field. A blank line
+   starts a new paragraph; a single line break is soft wrap.
+
+   One exception, and it is an element, not markup: a line that is ONLY a
+   photo's https address becomes that photo, where the line sits. The owner
+   pastes addresses from the resort's own site, whose CDN rewrites them
+   from time to time, so a photo that fails to load removes itself - the
+   note must read whole over a rotted link, and a broken-image glyph on a
+   guest's phone says something is wrong with a form that is fine. An
+   address inside a sentence stays text: only the whole line speaks. */
+function infoIsPhoto(line){ return /^https:\/\/\S+$/i.test(line); }
+function infoImg(url){
+  var im = document.createElement('img');
+  im.className = 'info-img';
+  im.alt = '';
+  im.loading = 'lazy';
+  im.onerror = function(){ im.remove(); };
+  im.src = url;
+  return im;
+}
+/* An image field into its host: one image or nothing, same self-removal
+   on a rotted address as a photo line. Crop and height are the owner's
+   two per-image controls from Settings, worn as classes; anything
+   unrecognised falls back to the banner default rather than breaking. */
+function setInfoImg(id, url, crop, height){
+  var host = el(id); host.innerHTML = '';
+  url = String(url || '').trim();
+  if (!infoIsPhoto(url)) return;
+  var im = infoImg(url);
+  if (crop === 'top' || crop === 'bottom') im.classList.add('crop-' + crop);
+  if (height === 'short' || height === 'tall' || height === 'natural')
+    im.classList.add('h-' + height);
+  host.appendChild(im);
+}
+
+/* The owner's Read more words, keyed by page, from Settings. A filled one
+   REPLACES the built-in copy; an empty one keeps it. Reapplied at the end
+   of paintGreeting, because that bends the built-in qDine copy to a one
+   night stay and must never bend the owner's own words. */
+/* Every word of a question page the owner may write for himself, from
+   Settings: its heading, the description under it, and the words behind
+   its Read more. Plus the introduction line on the landing. Anything he
+   has left empty keeps the page's own wording, so the three maps hold
+   only what he has actually written.
+
+   Reapplied at the end of paintGreeting, which bends some of the built-in
+   wording to a one night stay and to a solo guest: his words are the last
+   to land, or the fetch order would decide whose wording a guest reads.
+   The cost of writing a heading is that it is the heading on every stay
+   length - the bending has nothing left to bend - which is his to know
+   and is said on the tab. */
+var INFO_MORE = {}, INFO_TITLES = {}, INFO_DESCS = {}, INFO_INTRO = '';
+var MORE_MAP = { companion:'qCompanion', purpose:'qPurpose', eta:'qEta',
+                 approach:'qApproach', dine:'qDine', diet:'qDiet',
+                 well:'qWell', 'else':'qElse' };
+function ownText(map, k){
+  return (typeof map[k] === 'string') ? map[k].trim() : '';
+}
+function setMoreTexts(){
+  Object.keys(MORE_MAP).forEach(function(k){
+    var q = el(MORE_MAP[k]);
+    if (!q) return;
+    /* A heading is plain text: it is one line, and a mark inside it would
+       be a heading arguing with itself. The paragraphs take the marks. */
+    var title = ownText(INFO_TITLES, k);
+    if (title){
+      var h = q.querySelector('.q-t');
+      if (h) h.textContent = title;
+    }
+    var desc = ownText(INFO_DESCS, k);
+    if (desc){
+      var d = q.querySelector('.q-h');
+      if (d){ d.innerHTML = ''; fillMarked(d, desc.replace(/\s*\n\s*/g, ' ')); }
+    }
+    var text = ownText(INFO_MORE, k);
+    if (text){
+      var b = q.querySelector('.more-b');
+      /* Line breaks collapse the way textContent rendered them. */
+      if (b){ b.innerHTML = ''; fillMarked(b, text.replace(/\s*\n\s*/g, ' ')); }
+    }
+  });
+  if (INFO_INTRO.trim()){
+    var iw = document.querySelector('.intro-why');
+    if (iw){ iw.innerHTML = ''; fillMarked(iw, INFO_INTRO.replace(/\s*\n\s*/g, ' ')); }
+  }
+}
+
+/* Everything /prearrivalinfo drives, applied in one stroke, real link and
+   demo alike: the welcome image onto the landing, the dining page's image
+   and words (the page joins the walk only when it has either), and the
+   Read more replacements. Returns whether anything was set, which is what
+   the demo banner line wants to know. resyncSteps is the companion
+   machinery: the count changes under a guest already walking. */
+function applyGuestInfo(info){
+  if (!info) return false;
+  INFO_MORE   = (info.more   && typeof info.more   === 'object') ? info.more   : {};
+  INFO_TITLES = (info.titles && typeof info.titles === 'object') ? info.titles : {};
+  INFO_DESCS  = (info.descs  && typeof info.descs  === 'object') ? info.descs  : {};
+  INFO_INTRO  = (typeof info.intro === 'string') ? info.intro : '';
+  if (typeof info.welcomeImage === 'string')
+    setInfoImg('welcomeImg', info.welcomeImage,
+               info.welcomeImageCrop, info.welcomeImageHeight);
+  if (typeof info.diningImage === 'string')
+    setInfoImg('diningImg', info.diningImage,
+               info.diningImageCrop, info.diningImageHeight);
+  if (typeof info.diningText === 'string') fillInfo('diningText', info.diningText);
+  var hasDining = !!(String(info.diningImage || '').trim() ||
+                     String(info.diningText || '').trim());
+  el('qDining').style.display = hasDining ? '' : 'none';
+  setMoreTexts();
+  resyncSteps();
+  return !!(String(info.welcomeImage || '').trim() || hasDining ||
+            INFO_INTRO.trim() ||
+            [INFO_MORE, INFO_TITLES, INFO_DESCS].some(function(m){
+              return Object.keys(m).some(function(k){
+                return String(m[k] || '').trim(); }); }));
+}
+/* The one inline mark: words between asterisks turn bold - *like this* -
+   asked for by the owner on 30 Aug once real copy met the flat paragraphs.
+   Built as elements, never markup, like everything else here; an unpaired
+   asterisk stays a literal asterisk. */
+function fillMarked(node, text){
+  String(text).split(/\*([^*]{1,200}?)\*/).forEach(function(part, i){
+    if (!part) return;
+    if (i % 2){
+      var s = document.createElement('strong');
+      s.textContent = part;
+      node.appendChild(s);
+    } else node.appendChild(document.createTextNode(part));
+  });
+}
+
+function fillInfo(id, text){
+  var host = el(id); host.innerHTML = '';
+  var run = [];
+  function flushRun(){
+    var par = run.join(' ').trim();
+    run = [];
+    if (!par) return;
+    var d = document.createElement('div');
+    d.className = 'info-p';
+    fillMarked(d, par);
+    host.appendChild(d);
+  }
+  String(text || '').split('\n').forEach(function(line){
+    line = line.trim();
+    if (infoIsPhoto(line)){
+      flushRun();
+      host.appendChild(infoImg(line));
+      return;
+    }
+    /* A line starting with # is a heading, the grammar's other mark. Its
+       text goes in plain - a heading is already the emphasis.
+
+       Forgiving about how it is typed, because the owner typed
+       "#Dining at NALA#" and got the hashes back on a guest's screen
+       (30 Aug): the space after the hash is optional, more than one hash
+       reads as one, and closing hashes are taken off the end, which is
+       how the mark is written in half the places anyone has met it. A
+       line of nothing but hashes is not a heading and falls through to
+       being text. */
+    var h = line.match(/^#+\s*(.*?)\s*#*$/);
+    if (h && h[1]){
+      flushRun();
+      var d = document.createElement('div');
+      d.className = 'info-h';
+      d.textContent = h[1];
+      host.appendChild(d);
+      return;
+    }
+    /* A blank line ends a paragraph; anything else joins the current one. */
+    if (!line) flushRun(); else run.push(line);
+  });
+  flushRun();
+}
+
+/* An answer never turns the page. Auto progress went on 30 Aug, the
+   owner's ruling: an option that opened nothing used to carry the guest
+   onward after a pause, which read as the form rushing them, and made a
+   mis-tap cost a Back to undo. Next is the one way forward, and it
+   already refuses an unanswered page. */
 el('dNone').onclick = function(){
   a.noDiets = true; a.dietYes = false; a.diets = [];
   clearMiss('qDiet'); paintDiets();
-  advanceIfClean(false);            /* a clean answer, it opens nothing */
 };
 el('dYes').onclick = function(){
   a.dietYes = true; a.noDiets = false;
   clearMiss('qDiet'); paintDiets();
-  advanceIfClean(true);             /* it opens the list, on this page */
 };
-el('dIn').onclick  = function(){ a.dining = true;  clearMiss('qDine'); paintDine();
-                                 /* Yes used to open the pax chips and had to
-                                    wait; it opens nothing now. */
-                                 advanceIfClean(false); };
-el('dOut').onclick = function(){ a.dining = false; clearMiss('qDine'); paintDine();
-                                 advanceIfClean(false); };
-el('wYes').onclick = function(){ a.wellness = true;  clearMiss('qWell'); paintWell();
-                                 advanceIfClean(true); };
-el('wNo').onclick  = function(){ a.wellness = false; clearMiss('qWell'); paintWell();
-                                 advanceIfClean(false); };
+el('dIn').onclick  = function(){ a.dining = true;  clearMiss('qDine'); paintDine(); };
+el('dOut').onclick = function(){ a.dining = false; clearMiss('qDine'); paintDine(); };
+el('wYes').onclick = function(){ a.wellness = true;  clearMiss('qWell'); paintWell(); };
+el('wNo').onclick  = function(){ a.wellness = false; clearMiss('qWell'); paintWell(); };
 
 function clearMiss(id){
   /* Keeps `now`: this is the page on screen, and stripping the class would
@@ -848,6 +1133,7 @@ var STEPS = [
   { id:'qCompanion', fields:['companion'] },
   { id:'qPurpose',   fields:['purpose'] },
   { id:'qEta',       fields:['arriveSlot','arriveNote'] },
+  { id:'qDining',    fields:[] },
   { id:'qApproach',  fields:['approach'] },
   { id:'qDine',      fields:['dining','pax'] },
   { id:'qDiet',      fields:['diets','noDiets','dnote'] },
@@ -926,6 +1212,9 @@ function saveStep(idx){
   live[idx].fields.forEach(function(f){
     if (all[f] !== undefined) out[f] = all[f];
   });
+  /* The dining page owns no fields, so leaving it has nothing to say: an
+     empty PATCH is a write for nothing and shows up as one in any log. */
+  if (!Object.keys(out).length) return;
   /* No `at`. That is the finished stamp and this is not finished. */
   db('/bookings/' + G.id + '/prearrival', 'PATCH', out).catch(function(){});
 }
@@ -948,18 +1237,6 @@ function goNext(){
 function goBack(){
   saveStep(CUR);
   showStep(CUR - 1);
-}
-
-/* A picked option that opens nothing carries the guest onward by itself. One
-   that opens a follow up does not, because the follow up is on this page and
-   moving would hide it. The pause is so the choice is seen to register: a
-   page that vanishes the instant it is touched reads as a mis-tap. */
-function advanceIfClean(opensMore){
-  if (opensMore) return;
-  setTimeout(function(){
-    var live = liveSteps();
-    if (!missingOn(live[CUR].id)) goNext();
-  }, 260);
 }
 
 el('back').onclick = goBack;
@@ -1030,8 +1307,17 @@ function missingOn(id){
     return a.purpose.length ? null : 'Please tell us what kind of stay you are planning.';
   if (id === 'qApproach')
     return a.approach ? null : 'Please tell us how often you think you\u2019ll dine.';
-  if (id === 'qWell')
-    return a.wellness === null ? 'Please answer about treatments.' : null;
+  if (id === 'qWell'){
+    if (a.wellness === null) return 'Please answer about treatments.';
+    /* The day is compulsory behind a yes, ruled 31 Aug. A yes with no day
+       reached the masseuse as a request he could not act on and had to
+       chase back through the desk. Any day is a real answer to this and
+       ends the page; what is refused is saying nothing. A no was never
+       asked the question and is never held to it. */
+    if (a.wellness === true && !a.wellDay)
+      return 'Please pick a day, or Any day if you do not mind.';
+    return null;
+  }
   return null;
 }
 
@@ -1092,6 +1378,22 @@ function submitForm(){
     el('done').className = 'done';
     el('doneT').textContent = 'That is everything, thank you';
     el('doneS').textContent = 'Demonstration only. Nothing was saved.';
+    /* The way back to the editor, closing the write-preview loop the
+       Guest form tab's Preview link opens. On the thank-you screen
+       because it is the demo's last page - a link on the landing was
+       behind the walk the moment Begin was tapped. Demo only,
+       deliberately: this anchor exists nowhere a real guest can be, and
+       the suite holds that. Settings still gates itself, so the link
+       leaks nothing even if typed by hand. */
+    if (!el('demoBack')){
+      var demoBack = document.createElement('a');
+      demoBack.id = 'demoBack';
+      demoBack.className = 'again';
+      demoBack.style.cssText = 'display:inline-block;text-decoration:none';
+      demoBack.href = 'staff.html';
+      demoBack.textContent = 'Back to Settings';
+      el('done').appendChild(demoBack);
+    }
     return;
   }
   /* The dietary onto the person too. Its own copy of the helper, because this
@@ -1154,10 +1456,14 @@ function boot(){
      that link opened the incomplete-link message, which meant the one form a
      guest sees was the one nobody could look at.
 
-     Nothing is written and nothing is read: DEMO short circuits every database
-     call below, so trying it cannot touch a booking or leave an openedAt on
-     somebody's record. Sending it is the same as sending any other link with
-     no id, which is to say it goes nowhere. */
+     Nothing is written, and nothing is read about anybody: DEMO short
+     circuits every database call below except one, the two Settings notes,
+     which are public and belong to no guest. So trying it cannot touch a
+     booking or leave an openedAt on somebody's record, and sending it is the
+     same as sending any other link with no id, which is to say it goes
+     nowhere. The one read was widened in on 29 Aug at the owner's ask: the
+     demo is the link he opens to see the form, and it is where he looked for
+     the notes he was about to write. */
   if (DEMO){
     /* &nights=1 walks the short-stay form; anything else, or nothing, is the
        usual three. Demo only - a real link's dates come from Mews. */
@@ -1169,11 +1475,14 @@ function boot(){
                     arrive: dkey(new Date()),
                     depart: dkey(new Date(Date.now() + demoNights * 86400000)) });
     showIntro();
-    var banner = document.createElement('div');
-    banner.className = 'note-box';
-    banner.style.cssText = 'margin:0 0 14px;text-align:center';
-    banner.textContent = 'Demonstration only. Nothing here is saved.';
-    el('intro').insertBefore(banner, el('intro').firstChild);
+    /* No banner at all - the owner stripped the last of it on 30 Aug: the
+       demo shows exactly what a guest sees, banner history in the log
+       (the pills-are-examples line and its Celiac trap included, still
+       knowingly accepted back). The Guest form record still previews
+       live - the demo's one read - and the way back to Settings waits on
+       the thank-you screen, the demo's last page: a link on the landing
+       was unreachable the moment Begin was tapped. */
+    db('/prearrivalinfo').then(applyGuestInfo).catch(function(){});
     showStep(0);
     return;
   }
@@ -1202,6 +1511,12 @@ function boot(){
   db('/bookings/' + G.id + '/pms')
     .then(function(pms){ if (pms) paintGreeting(pms); })
     .catch(function(){});
+
+  /* Everything Settings (Guest form) drives, from /prearrivalinfo: the
+     welcome image, the dining page, the Read more replacements. With
+     nothing set - or a read the rules refuse - the form is exactly what
+     it was before any of it existed. */
+  db('/prearrivalinfo').then(applyGuestInfo).catch(function(){});
 
   /* The chef's master list, so the choices here match the ones the kitchen
      actually recognises. Inactive entries never reach a guest.
@@ -1251,7 +1566,11 @@ function boot(){
     a.dietNote = p.dnote || '';
     a.purpose = purposeList(p.purpose); a.approach = p.approach || '';
     a.wellness = (p.wellness === undefined) ? null : !!p.wellness;
-    a.wellDay = p.wellDay || ''; a.wellTime = p.wellTime || '';
+    /* An empty wellDay stays empty. A record written before the chip
+       existed did not answer this question, and reading it back as Any day
+       would put words in that guest's mouth - the page asks them instead,
+       which is what compulsory means. */
+    a.wellDay = p.wellDay || ''; a.wellTime = p.wellTime || 'Any time';
     a.wellQty = p.wellQty === 2 ? 2 : 1;
     a.wellDur = spaDurOk(p.wellDur) ? p.wellDur : 60;
     a.wellDur2 = spaDurOk(p.wellDur2) ? p.wellDur2 : 60;

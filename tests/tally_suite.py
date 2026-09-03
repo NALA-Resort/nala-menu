@@ -24,6 +24,27 @@ manual={
  "room-5":{"status":"vacant","pax":0,"room":"5","source":"manual"},
  "room-6":{"status":"in","pax":3,"room":"6","source":"manual"},
 }
+# The villa cells. The board moved them out of /manual and into /dinner, and
+# this stub's READ side was never told: /dinner came back null on every load,
+# so the board's twenty second poll - it re-reads whenever no sheet is open -
+# served an empty set back and silently undid every save the suite had just
+# made. A count asserted after a save then read whatever the run's wall clock
+# happened to allow. Kept here, written by remember() below.
+dinner={}
+
+def resetDb():
+    """Hand the next scenario a clean database.
+
+    Writes are kept now (see remember), which is what a database does and
+    what stops the board's poll from wiping a save mid-assertion. It also
+    means one scenario's saves would otherwise be waiting for the next one:
+    these sections each open a fresh page precisely BECAUSE they want a
+    fresh board, and villa 13 starting vacant is a fixture statement, not a
+    leftover from whatever the multi-select wrote forty assertions ago."""
+    manual.clear(); manual.update(json.loads(MANUAL0))
+    dinner.clear()
+
+MANUAL0=json.dumps(manual)          # the starting board, for resetDb
 roomguests={today:{"9":{"name":"Priya","departs":plus(3)},"4":{"name":"Lucy","departs":plus(2)}}}
 # Villa 9 as Mews has it. Same name and departure as the guest written record,
 # so nothing on the board shifts and the only new fact is the party size, which
@@ -53,18 +74,38 @@ staff={"staff@x":{"name":"Admin","role":"admin"},
        "waiter@x":{"name":"Waiter","role":"waiter"},
        "desk@x":{"name":"Desk","role":"staff"},
        "housekeeping@x":{"name":"Housekeeping","role":"housekeeping"}}
+def remember(m,u,raw):
+    """Keep an accepted write, so a later read serves it back.
+
+    A stub that takes a write and then answers the next read with the
+    original fixture is not a slow database, it is a lying one: the board
+    polls, the poll wipes what was just saved, and an assertion after a save
+    passes or fails on how long the run happened to take. Only today's node
+    is kept, which is all any of these tests read."""
+    hit=re.search(r"/(dinner|manual)/(\d{4}-\d{2}-\d{2})/([^/.]+)\.json",u)
+    if not hit or hit.group(2)!=today: return
+    store = dinner if hit.group(1)=="dinner" else manual
+    key = hit.group(3)
+    if m=="DELETE" or raw in (None,"","null"): store.pop(key,None)
+    else:
+        try: store[key]=json.loads(raw)
+        except Exception: pass
+
 def fb(route,request):
     u=request.url; m=request.method
     if m in ("PUT","DELETE","PATCH"):
         WRITES.append({"m":m,"u":u,"b":request.post_data})
         if STATE["fail"]:
             route.fulfill(status=401,content_type="application/json",body='{"error":"denied"}'); return
+        remember(m,u,request.post_data)
         route.fulfill(status=200,content_type="application/json",body=request.post_data or "null"); return
     body="null"
     if "/staff" in u: body=json.dumps(staff)
     elif "/responses/" in u: body=json.dumps(responses) if today in u else "{}"
     elif "/manual/" in u and today not in u: body="{}"
     elif "/manual/" in u: body=json.dumps(manual)
+    elif "/dinner/"+today in u: body=json.dumps(dinner)
+    elif "/dinner/" in u: body="null"
     elif "/stays/"+today in u: body=json.dumps(stays[today])
     elif "/stays/" in u: body="null"
     elif "/roomguests/"+today in u: body=json.dumps(roomguests[today])
@@ -90,6 +131,42 @@ from playwright.sync_api import sync_playwright
 def tile(pg,n):
     return pg.locator("#rooms .room").filter(has=pg.locator(".room-n",has_text=re.compile(r"^%d$"%n)))
 P=F=0
+def saveAndSettle(pg, sel, timeout=5000):
+    """Press a button that writes, and wait for the write to actually land.
+
+    The button standard of 27 Aug made the sheet wait for its write: the
+    button says Saving, then Saved, holds the green a moment, and only THEN
+    closes the sheet and repaints the board. A fixed sleep after the tap
+    therefore read the counters before the repaint had happened, which is
+    what "covers 13, and one villa still awaiting" started failing on - the
+    page was right and the wait was too short.
+
+    Waiting on the backdrop is waiting on the thing the page actually does,
+    so it cannot drift out of step with the hold the way a number does.
+
+    Returns True if the sheet closed, False if it is still open - which is
+    not a failure: a REFUSED save deliberately leaves the sheet up so the
+    tap can be tried again, and the caller then has to close it before
+    touching the board underneath. Clicking through a backdrop that was
+    still there is what hung this suite for thirty seconds and then killed
+    the whole run.
+    """
+    pg.locator(sel).click()
+    try:
+        pg.wait_for_selector("#backdrop:not(.show)", timeout=timeout)
+    except Exception:
+        return False
+    pg.wait_for_timeout(120)      # the repaint that follows the close
+    return True
+
+
+def closeIfOpen(pg):
+    """Shut the sheet if it is still up, so the next tap reaches the board."""
+    if pg.evaluate("()=>backdrop.className.indexOf('show')>-1"):
+        pg.evaluate("()=>{const b=document.getElementById('oClose'); if(b)b.click();}")
+        pg.wait_for_timeout(200)
+
+
 def ck(name,cond):
     global P,F
     print(("PASS " if cond else "FAIL ")+name); P,F=(P+1,F) if cond else (P,F+1)
@@ -171,6 +248,25 @@ with sync_playwright() as p:
     ck("dietary conflict flagged", bl["conflict"])
     ck("external booking listed", bl["ext"])
 
+    # ── "no allergies to declare" is a dietary answer, shown like one ──
+    #  Ruled 27 Aug: it rides in the dietline as a pill like any other
+    #  dietary, in the green of a positive state - but it flags nothing:
+    #  no conflict, no red, and no comment bubble, because there is nothing
+    #  for the kitchen to act on, only the fact that we asked. Mark (villa 3)
+    #  confirmed with none to declare.
+    nd=pg.evaluate("""()=>{const r=[...document.querySelectorAll('#listBookings .row')]
+        .find(x=>/Mark/.test(x.textContent));
+      if(!r) return null;
+      const p=r.querySelector('.dpill');
+      return {t:p?p.textContent:'', ok:p?p.className.includes('dpill-ok'):false,
+        al:p?p.className.includes('dpill-al'):false,
+        conflict:r.className.includes('conflict'), bub:!!r.querySelector('.bub')};}""")
+    print("   villa 3 no-allergies pill:", nd)
+    ck("the answer shows as a pill in the dietline",
+       nd and nd["t"]=="No dietaries" and nd["ok"])
+    ck("but flags nothing: not an allergen, no conflict, no bubble",
+       nd and not nd["al"] and not nd["conflict"] and not nd["bub"])
+
     # ── the second guest, in the small print under the name ────────
     allrows=pg.evaluate("""()=>[...document.querySelectorAll('#listBookings .row')]
       .map(e=>e.textContent.replace(/\\s+/g,' '))""")
@@ -194,8 +290,12 @@ with sync_playwright() as p:
          box is NOT the ink. Check the right padding compensates for it. */
       return {fs:cs.fontSize, pad:cs.padding, tt:cs.textTransform,
               r:cs.borderRadius, h:Math.round(b.height),
+              /* letterSpacing reads "normal" when there is none, and
+                 parseFloat("normal") is NaN, which made this comparison
+                 false rather than true once the tracking came off. */
               inkOff:(parseFloat(cs.paddingLeft) -
-                      (parseFloat(cs.paddingRight)+parseFloat(cs.letterSpacing))).toFixed(2)};}""")
+                      (parseFloat(cs.paddingRight) +
+                       (parseFloat(cs.letterSpacing)||0))).toFixed(2)};}""")
     pubPill = pill()
     realPill = pg.evaluate("()=>document.querySelector('.menustate').innerHTML")
     pg.evaluate("""()=>{document.querySelector('.menustate').innerHTML =
@@ -272,7 +372,7 @@ with sync_playwright() as p:
     ck("and the covers picker is still the app's own default, not Mews'",
        pg.evaluate("()=>document.querySelector('#paxRow .pax.on').textContent")=="2")
     pg.locator(".pax", has_text="4").click()
-    pg.locator("#oIn").click(); pg.wait_for_timeout(300)
+    saveAndSettle(pg, "#oIn")
     # Writes go to the one dinner cell now, keyed by villa. /manual held the
     # same fact as /dinner and /bookings, which is how a dietary added here
     # became invisible at the front desk.
@@ -288,7 +388,7 @@ with sync_playwright() as p:
     # 6 rollback on failure
     STATE["fail"]=True
     tile(pg,10).click(); pg.wait_for_timeout(200)
-    pg.locator("#oIn").click(); pg.wait_for_timeout(400)
+    saveAndSettle(pg, "#oIn")
     err=pg.locator("#errBar").inner_text()
     s6=pg.evaluate("()=>({c:+nCovers.textContent,cls:[...document.querySelectorAll('#rooms .room')].find(b=>b.querySelector('.room-n').textContent==='10').className})")
     ck("failed write shows error banner", "Not saved" in err)
@@ -296,6 +396,14 @@ with sync_playwright() as p:
     # rather than to awaiting: that is what it was before the tap.
     ck("failed write rolled back to what the tile was before",
        "room vacant" in s6["cls"] and s6["c"]==13)
+    # A refused save leaves the sheet UP on purpose - so the tap can be tried
+    # again rather than the answer vanishing with the sheet - and only a
+    # successful one closes it. Correct, and also why the next line must not
+    # reach straight for the board: a click through a backdrop that was still
+    # there waited thirty seconds and then killed the whole run.
+    ck("and the sheet stays up, so the tap can be tried again",
+       pg.evaluate("()=>backdrop.className.indexOf('show')>-1"))
+    closeIfOpen(pg)
     STATE["fail"]=False
 
     # colours must resolve to real pixels, not classes
@@ -305,7 +413,7 @@ with sync_playwright() as p:
       return {tile:bg(inTile)};}""")
     ck("dining tile tint resolves", col["tile"].startswith("rgba(122, 160, 130"))
     tile(pg,10).click(); pg.wait_for_timeout(200)
-    col2=pg.evaluate("""()=>({din:getComputedStyle(document.querySelector('.opt.solid')).backgroundColor,
+    col2=pg.evaluate("""()=>({din:getComputedStyle(document.querySelector('.opt.din')).backgroundColor,
       out:getComputedStyle(document.querySelector('.opt.out')).backgroundColor,
       vac:getComputedStyle(document.querySelector('.opt.vac')).backgroundColor})""")
     ck("sheet buttons green/terra/slate", col2["din"]=="rgb(94, 125, 103)" and col2["out"]=="rgb(158, 100, 85)" and col2["vac"]=="rgb(87, 87, 94)")
@@ -349,7 +457,7 @@ with sync_playwright() as p:
     pg.fill("#xName","Walk In"); pg.fill("#xPhone","0499 111 222")
     pg.locator(".pax", has_text="5").click()
     pg.locator(".chip", has_text="Vegan").click()
-    pg.locator("#oIn").click(); pg.wait_for_timeout(300)
+    saveAndSettle(pg, "#oIn")
     we=[x for x in WRITES if re.search(r"/manual/"+today+r"/ext-\d+", x["u"])]
     okx=len(we)==1 and json.loads(we[0]["b"])["pax"]==5 and "Vegan" in json.loads(we[0]["b"])["diets"]
     ck("external PUT pax5 vegan", okx)
@@ -363,7 +471,7 @@ with sync_playwright() as p:
     pg.fill("#xName","Chef Guest")
     pg.locator(".pax", has_text="3").click()
     pg.locator(".chip", has_text="Gluten").click()
-    pg.locator("#oIn").click(); pg.wait_for_timeout(300)
+    saveAndSettle(pg, "#oIn")
     wr=[x for x in WRITES if re.search(r"/dinner/"+today+r"/12\.json",x["u"]) and x["m"]=="PUT"]
     okr=len(wr)==1 and json.loads(wr[0]["b"])["name"]=="Chef Guest" and "Gluten" in json.loads(wr[0]["b"])["diets"] and json.loads(wr[0]["b"])["pax"]==3
     ck("room reservation PUT with name+diets", okr)
@@ -374,7 +482,7 @@ with sync_playwright() as p:
     sh12=pg.locator("#sheet").inner_text()
     ck("room sheet shows guest data", "Chef Guest" in sh12 and "Gluten" in sh12)
     pg.locator(".pax", has_text="4").click()
-    pg.locator("#oIn").click(); pg.wait_for_timeout(300)
+    saveAndSettle(pg, "#oIn")
     wr2=[x for x in WRITES if re.search(r"/dinner/"+today+r"/12\.json",x["u"])][-1]
     b12=json.loads(wr2["b"])
     ck("pax update kept name+diets", b12["pax"]==4 and b12.get("name")=="Chef Guest" and "Gluten" in b12.get("diets",[]))
@@ -404,11 +512,17 @@ with sync_playwright() as p:
     ck("details form prefilled with Mark", pg.evaluate("()=>xName.value")=="Mark")
     pg.fill("#xPhone","0400 333 333")
     pg.locator(".chip", has_text="Vegan").click()
-    pg.locator("#oSave").click(); pg.wait_for_timeout(300)
+    saveAndSettle(pg, "#oSave")
     w3=[x for x in WRITES if re.search(r"/dinner/"+today+r"/3\.json",x["u"])]
     b3=json.loads(w3[-1]["b"])
     ck("details save: override with phone+diets, pax kept", b3.get("override")==True and b3["phone"]=="0400 333 333" and "Vegan" in b3["diets"] and b3["pax"]==2 and b3["name"]=="Mark")
     ck("row shows new dietary", "VEGAN" in pg.locator("#listBookings").inner_text().upper())
+    #  Mark had confirmed "none to declare"; the chosen dietary contradicts
+    #  it, so the save must take the old answer back rather than leave the
+    #  cell claiming both - which read the desk's pill back on beside the
+    #  allergy it denies.
+    ck("and the chosen dietary clears the guest's 'none to declare'",
+       b3.get("nodiet") is False)
 
     pm=pg.evaluate("""()=>{const r=[...document.querySelectorAll('#listBookings .row')]
         .find(x=>/Mark/.test(x.textContent));
@@ -463,7 +577,7 @@ with sync_playwright() as p:
     row.locator(".edit").click(); pg.wait_for_timeout(200)
     ck("edit prefilled", pg.evaluate("()=>xName.value")=="Walk In")
     pg.fill("#xName","Walk In Party")
-    pg.locator("#oSave").click(); pg.wait_for_timeout(300)
+    saveAndSettle(pg, "#oSave")
     we2=[x for x in WRITES if re.search(r"/manual/"+today+r"/ext-\d+",x["u"])][-1]
     ck("external save-changes PUT", json.loads(we2["b"])["name"]=="Walk In Party")
     ck("row renamed", "Walk In Party" in pg.locator("#listBookings").inner_text())
@@ -472,7 +586,9 @@ with sync_playwright() as p:
     tile(pg,1).click(); pg.wait_for_timeout(200)
     ck("guest-confirmed sheet", "Confirmed by the guest" in pg.locator("#sheet").inner_text())
     pg.locator("#oCancel").click(); pg.wait_for_timeout(200)
-    pg.locator("#cYes").click(); pg.wait_for_timeout(300)
+    # The confirm writes through the same button standard as every other
+    # save, so the board behind it repaints only once the write has landed.
+    saveAndSettle(pg, "#cYes")
     wo=[x for x in WRITES if re.search(r"/dinner/[^\"]*/1\.json", x["u"]) and x["m"]=="PUT"]
     oko=len(wo)==1 and json.loads(wo[0]["b"])["override"]==True and json.loads(wo[0]["b"])["status"]=="out"
     ck("override cancel PUT", oko)
@@ -492,38 +608,77 @@ with sync_playwright() as p:
       return {b:Math.round(r.bottom),vh:window.innerHeight,doc:document.scrollingElement.scrollHeight};}""")
     print("   short page:", ft)
     ck("footer pinned to screen bottom on short page", abs(ft["b"]-ft["vh"])<=1)
-    nav=pg.evaluate("""()=>[...document.querySelectorAll('.navdrop a')].map(a=>({
+    #  The menu's shape lives in tests/nav_canon.json - one table the suites
+    #  share instead of four private copies of the order. This page's own
+    #  link is the one the canon has and the menu must not.
+    CANON = json.load(open("tests/nav_canon.json"))
+    flat = [(h, t) for h, t in CANON["top"] if h != "tally.html"]
+    for _g, items in CANON["groups"]:
+        flat += [(h, t) for h, t in items if h != "tally.html"]
+    #  Submenus fold, 26 Aug, so the rows can only be read - and measured -
+    #  once their groups are opened, the same way a person gets to them.
+    #  The drop itself is opened for the measurements - a closed menu's rows
+    #  all measure zero, which is how the old wrap check passed vacuously -
+    #  and closed again so it does not sit over the page for later clicks.
+    nav=pg.evaluate("""()=>{
+      navDrop.classList.add('open');
+      document.querySelectorAll('#navDrop .navgroup').forEach(g=>g.classList.add('open'));
+      const out=[...document.querySelectorAll('.navdrop a')].map(a=>({
       t:a.textContent,h:Math.round(a.getBoundingClientRect().height),
-      href:a.getAttribute('href').split('?')[0]}))""")
+      href:a.getAttribute('href').split('?')[0]}));
+      navDrop.classList.remove('open');
+      return out;}""")
     print("   nav items:", nav)
     dest=[i for i in nav if i["href"]!="#"]
     # Live board then its sheet, reservations before cleans. Front Desk
     # Arrival sits with reservations, after the board it feeds.
-    #  Grouped 22 Aug, to the owner's own sketch: the screens you work on, then
-    #  what you print, then what you set. Named as the staff name them rather
-    #  than as the files are named - the sheet everyone calls the FOH sheet was
-    #  labelled Reservations Sheet, and Registration is the arrivals print.
+    #  Grouped 22 Aug, to the owner's own sketch: the screens you work on,
+    #  then what you print, then what you set; SMS joined the folds 26 Aug.
+    #  Named as the staff name them rather than as the files are named.
     ck("menu labels and order",
-       [i["t"] for i in dest]==["Front Desk","Invitations","Pre-arrival SMS","Cleans","Spa","Publish Menu",
-                                "FOH Sheet","Clean Sheet","Arrivals","Menu","Past Menus",
-                                "General","Dietary","Flags","Pages"] and
-       [i["href"] for i in dest]==["front-desk.html","invitations.html","arrivals-sms.html","cleaners.html","spa.html","publish.html",
-                                   "list.html","housekeeping.html","registration.html","menu-print.html","past-menus.html",
-                                   "staff.html","tag.html","flags.html","pages.html"])
-    #  Headings, not choices. Light grey and small so a signpost is not mistaken
-    #  for a destination.
+       [i["t"] for i in dest] == [t for _h, t in flat] and
+       [i["href"] for i in dest] == [h for h, _t in flat])
+    #  Submenu headers, 26 Aug: no longer grey signposts but real buttons a
+    #  person opens, wearing the same dress as the rows and a chevron that
+    #  says which way they will go.
     grp = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop .navgrp')]
-        .map(e=>({t:e.textContent, tag:e.tagName,
-                  c:getComputedStyle(e).color,
+        .map(e=>({t:e.querySelector('span').textContent, tag:e.tagName,
+                  chev:!!e.querySelector('.navchev'),
+                  caps:getComputedStyle(e).textTransform,
                   rule:getComputedStyle(e).borderTopWidth}))""")
     print("   nav groups:", grp)
-    ck("the menu is divided under two headings", [g["t"] for g in grp] == ["Print", "Settings"])
-    ck("and they are not links", all(g["tag"] != "A" for g in grp))
-    ck("each sitting under a rule that does the dividing",
-       all(g["rule"] != "0px" for g in grp))
+    ck("the menu folds under the canon's submenus",
+       [g["t"] for g in grp] == [g for g, _i in CANON["groups"]])
+    ck("and the headers are buttons, not links",
+       all(g["tag"] == "BUTTON" for g in grp))
+    ck("each wearing a chevron and sitting under a rule",
+       all(g["chev"] and g["rule"] != "0px" for g in grp))
+    #  A closed submenu hides its rows; opening it is what shows them. Proved
+    #  by geometry with the menu itself open, not by the class name - and not
+    #  by the rows' computed display, which stays "block" while only their
+    #  .navsub container is hidden.
+    ck("a submenu closes back over its rows", pg.evaluate("""()=>{
+      navDrop.classList.add('open');
+      const g=document.querySelector('#navDrop .navgroup');
+      g.classList.remove('open');
+      const hid=[...g.querySelectorAll('.navsub a')]
+        .every(a=>a.getBoundingClientRect().height===0);
+      const back=[...g.querySelectorAll('.navsub a')];
+      g.classList.add('open');
+      const shown=back.every(a=>a.getBoundingClientRect().height>0);
+      navDrop.classList.remove('open');
+      return hid && shown;}"""))
+    #  Non-caps, standard font, the owner's word 26 Aug: menu rows read as
+    #  ordinary text, not tracked-out small caps.
+    dress = pg.evaluate("""()=>{const a=document.querySelector('#navDrop a');
+      const c=getComputedStyle(a);
+      return {caps:c.textTransform, size:parseFloat(c.fontSize)};}""")
+    ck("menu rows are not capitalised and are readable at arm's length",
+       dress["caps"] == "none" and dress["size"] >= 13 and
+       all(g["caps"] == "none" for g in grp))
     # signing out is an action, so it comes last, after the destinations
-    ck("sign out is the last item in the menu", nav[-1]["t"]=="Sign out")
-    ck("no menu label wraps to a second line", all(i["h"]<=38 for i in nav))
+    ck("logout is the last item in the menu", nav[-1]["t"]=="Logout")
+    ck("no menu label wraps to a second line", all(i["h"]<=44 for i in nav))
     rad=pg.evaluate("""()=>[...document.querySelectorAll('.foot .btn')].map(b=>{
       const c=getComputedStyle(b);
       return [c.borderTopLeftRadius,c.borderTopRightRadius,
@@ -561,6 +716,7 @@ with sync_playwright() as p:
 
     # ---- roles on this board, per the ROLES.md matrix ----
     def as_role(email):
+        resetDb()
         q=b.new_page(viewport={"width":430,"height":930},device_scale_factor=2)
         q.route("**/firebase-app-compat.js",lambda r,_:r.fulfill(status=200,
             content_type="application/javascript",body=SDK.replace("staff@x",email)))
@@ -1123,6 +1279,74 @@ with sync_playwright() as p:
                and q.evaluate("()=>!document.getElementById('gdIntNote')"))
         q.close()
 
+    # ── the wellness row is the Spa board's truth, not the form's ───────
+    # The front desk sheet's rule of 27 Aug, kept here so the two views
+    # cannot disagree: a massage the masseuse has booked must not read
+    # "Interested" on the Reservations panel. The record at /spa/<booking>
+    # outranks the form, which stands in only while nobody has answered it.
+    WSPA = {"t1": {"status": "booked", "day": plus(1), "time": "14:00",
+                   "source": "prearrival", "at": "x"}}
+    def well_fb(route, request):
+        u = request.url
+        if request.method != "GET":
+            fb(route, request); return
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps({"4": {"id": BID, "first": "Ana",
+                            "last": "Diaz", "arrive": today, "depart": plus(2),
+                            "adults": 2, "number": "10262"}})); return
+        if "/prearrival" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps({"wellness": True, "wellDay": plus(1),
+                                           "wellTime": "late morning"})); return
+        if "/spa/" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(WSPA)); return
+        if "/internal/" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body="null"); return
+        if "/dinner/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body="{}"); return
+        fb(route, request)
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(
+        status=200, content_type="application/javascript", body=SDK))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", well_fb)
+    q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1700)
+    q.evaluate("()=>[...document.querySelectorAll('button')]"
+               ".find(b=>b.querySelector('.room-n')"
+               "&&b.querySelector('.room-n').textContent==='4').click()")
+    q.wait_for_timeout(500)
+    q.locator("#gdEye").click(); q.wait_for_timeout(1000)
+    welltext = q.evaluate("()=>gdPanel.textContent")
+    ck("a booked massage reads Booked on the panel, day and time attached",
+       "Booked" in welltext and "2:00 pm" in welltext)
+    ck("and the form's Interested stands down, answered",
+       "Interested" not in welltext)
+    WSPA = {"t1": {"status": "declined", "reqDay": plus(1), "note": "nothing free",
+                   "source": "prearrival", "at": "x"}}
+    q.close()
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(
+        status=200, content_type="application/javascript", body=SDK))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", well_fb)
+    q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1700)
+    q.evaluate("()=>[...document.querySelectorAll('button')]"
+               ".find(b=>b.querySelector('.room-n')"
+               "&&b.querySelector('.room-n').textContent==='4').click()")
+    q.wait_for_timeout(500)
+    q.locator("#gdEye").click(); q.wait_for_timeout(1000)
+    welltext = q.evaluate("()=>gdPanel.textContent")
+    ck("a declined ask says so and what the desk still owes the guest",
+       "Declined" in welltext and "nothing free" in welltext and
+       "let the guest know" in welltext and "Interested" not in welltext)
+    q.close()
+
     # ── the panel against the screen, not the sheet ─────────────────────
     # Reported twice on 20 Aug: the panel's allowance was measured from the
     # sheet's bottom, and the sheet's bottom is wherever that login's
@@ -1509,6 +1733,96 @@ with sync_playwright() as p:
        and "Gluten free" not in wold[-1].get("diets", []))
     r.close()
     responses["0400000001"]["diets"] = ["Nut allergy"]
+
+    # ── the guest's own answer reaches the chef ────────────────────────
+    # The owner's ruling of 28 Aug. Their pre-arrival form asks about the
+    # first night and the answer has always sat on the reservation, but
+    # nothing carried it here: a guest who said on Tuesday they were dining
+    # showed as AWAITING, and on an arrival night nothing else would ever
+    # move it - the nightly dinner request is not sent to somebody who has
+    # not checked in - so the only thing that put them in front of the chef
+    # was a person at the desk re-typing an answer we already had.
+    #
+    # Read, never written: no second writer, no second node. The cell still
+    # wins outright the moment anyone sets one.
+    PRE_FORM = {
+      # arriving TODAY, said dining for three, and nobody has touched it
+      "bk-11": {"dining": True,  "pax": 3, "diets": ["Nut allergy"], "dnote": "severe"},
+      # arriving today and said NO, which the chef needs just as much
+      "bk-12": {"dining": False, "noDiets": True},
+      # answered the dinner question and abandoned the form - no `at` - which
+      # still counts, because an answer given is an answer
+      "bk-13": {"dining": True,  "pax": 2},
+      # mid-stay: the same answer, about a night that is not tonight
+      "bk-14": {"dining": True,  "pax": 4},
+      # answered, but staff have since set the cell, which outranks it
+      "bk-15": {"dining": True,  "pax": 5}
+    }
+    PRE_STAYS = {
+      "11": {"id":"bk-11","first":"Ada","last":"Ng","arrive":today,"depart":plus(2),"adults":3},
+      "12": {"id":"bk-12","first":"Bo","last":"Vale","arrive":today,"depart":plus(2),"adults":2},
+      "13": {"id":"bk-13","first":"Cy","last":"Doyle","arrive":today,"depart":plus(2),"adults":2},
+      "14": {"id":"bk-14","first":"Di","last":"Frost","arrive":plus(-2),"depart":plus(2),"adults":4},
+      "15": {"id":"bk-15","first":"Ed","last":"Hale","arrive":today,"depart":plus(2),"adults":5}
+    }
+    PRE_CELLS = {"15": {"status":"out","pax":0,"room":"15","by":"staff","at":"x"}}
+    def form_fb(route, request):
+        u = request.url
+        if request.method != "GET":
+            fb(route, request); return
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(PRE_STAYS)); return
+        if "/dinner/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(PRE_CELLS)); return
+        if "/bookings/" in u and "/prearrival" in u:
+            k = u.split("/bookings/")[1].split("/")[0]
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(PRE_FORM.get(k)) if k in PRE_FORM else "null"); return
+        if "/responses/" in u or "/manual/" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body="{}"); return
+        fb(route, request)
+    q = b.new_page(viewport={"width": 430, "height": 930})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(
+        status=200, content_type="application/javascript", body=SDK))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", form_fb)
+    q.route("**/menu.json*", lambda r,_: r.fulfill(status=200,
+        content_type="application/json", body=json.dumps(menu)))
+    q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1800)
+    def rcls(n):
+        return q.evaluate("n=>{const b=[...document.querySelectorAll('#rooms .room')]"
+                          ".find(x=>x.querySelector('.room-n')"
+                          "&&x.querySelector('.room-n').textContent===n);"
+                          "return b?b.className:null;}", str(n))
+    ck("a guest who said dining on their form reaches the chef's board",
+       " in" in (rcls(11) or ""))
+    ck("and is not left sitting as awaiting",
+       "await" not in (rcls(11) or ""))
+    ck("a guest who declined reaches it too, so nobody chases them",
+       " out" in (rcls(12) or ""))
+    ck("an abandoned form still counts, because an answer given is an answer",
+       " in" in (rcls(13) or ""))
+    # The form asks about the FIRST night only. PREARRIVAL_BY_VILLA holds a
+    # record for every occupied villa, so without the arrival gate one
+    # answer would speak for every night of the stay.
+    ck("but only on the night they arrive, never the rest of the stay",
+       "await" in (rcls(14) or ""))
+    # "The dinner cell is one cell" - HANDOVER. This adds no second writer,
+    # and falls away for good the moment anyone sets one.
+    ck("a staff cell outranks the form absolutely",
+       " out" in (rcls(15) or "") and " in" not in (rcls(15) or ""))
+    ck("the covers count the guests the form named, not a default",
+       q.evaluate("()=>+nCovers.textContent") == 3 + 2)
+    # As the renamed pill, not the stored words: the list drops "allergy"
+    # from the label, which is the 26 Aug rename and not this change's to
+    # argue with.
+    ck("and the dietary they gave rides along to the kitchen",
+       "Nut" in q.evaluate("()=>listBookings.textContent"))
+    q.close()
 
     b.close()
     open("/home/claude/nala/_p1_tally.png","wb").write(shot1)

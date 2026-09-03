@@ -57,6 +57,196 @@ the real site - pending screenshots). Staff controls never appear here.
 
 - **Rectangle with border or solid fill = a button.** Nothing else may use
   that dress. Primary solid ink, secondary outlined.
+
+## The trim rule - which field gives way
+
+Ruled by the owner, 29 Aug, off a Pre-arrival SMS board where a long name
+pushed the phone number, the confidence mark and the edit pencil off the
+right edge: `Chloe Roveglia +61448925599 .` and `Amanda Sinclair
++614004519`. The two things reception needed were the two that went.
+
+**The name is the only field that may trim.** It is the only one that
+survives being half shown: `Amanda Sincl...` on villa 14 is still Amanda on
+villa 14.
+
+**A number never trims.** Half a phone number is not a phone number, and it
+is worse than nothing because it still LOOKS like one and somebody will
+read it out. The same goes for a time or a date: they are right or they are
+useless.
+
+**A control never trims.** A pencil clipped to two pixels cannot be pressed
+and does not look like it was meant to be.
+
+The fault was structural rather than a matter of width. The ellipsis sat on
+the LINE, which held the name and everything after it, so it ate whichever
+field happened to be last. The name has to be its own box for the ellipsis
+to have anything to bite:
+
+    <div class="nm trimrow">
+      <span class="trim">Amanda Sinclair</span>   <!-- flexes, ellipsises -->
+      <span class="ph">+61400451982</span>        <!-- fixed, never squeezed -->
+      <span class="conf ok">&#10003;</span>
+      <span class="pen">&#9998;</span>
+    </div>
+
+`.trimrow` and `.trim` live in nala-ui2.css. Everything inside a `.trimrow`
+that is not the `.trim` is `flex:0 0 auto` and keeps its full width.
+
+**A row that can grow may wrap instead of trimming.** Reservations' booking
+rows do: the row height is free there, so a long name takes a second line
+and nothing is lost. Front Desk stacks the phone under the name for the
+same reason, and its comment records why - the name line clipped at phone
+width and a clipped pencil could not be tapped. Trimming is for a row whose
+height is fixed.
+
+## The four roles, and there are only four
+
+Ruled by the owner, 29 Aug, off three screenshots in which the primary
+action was green on Reservations, black on Spa and absent on Front Desk,
+where Save, Close and Confirm were the same button three times. Selection
+was blue on six pages, ink on five and green on two, and a black circle
+sat beside a blue segment on the same sheet.
+
+| Role | Dress | Confirms? |
+|---|---|---|
+| **Primary** | solid accent, white text | never |
+| **Secondary** | quiet grey fill, ink text | never |
+| **Destructive** | terracotta outline, terracotta text | always |
+| **Selected** | grey fill, ink border | not an action |
+
+- **One primary per surface.** It is the thing that surface exists to do:
+  Save, Add, Send, Publish, Book. If pressing it feels like it needs a
+  warning, the label is wrong, not the dialog missing.
+- **Everything else that writes nothing is secondary.** Close, Back, Ask
+  again. A screen of identical bordered rectangles is a screen you have
+  to read.
+- **Destructive always asks**, and names the guest and the thing.
+- **Selected is grey, never black and never blue.** A pill saying "you
+  picked me" must not spend a colour that means something.
+
+A page may set the LAYOUT of the row its buttons sit in. It may not dress
+them again. The roles live in `nala-ui2.css` and the aliases for each
+page's own class names live beside them.
+
+**Two documented exceptions**, both because the colour is carrying meaning
+rather than saying "you picked me":
+
+- Reservations' three state segments and its select bar wear the colour
+  law's dining green, declined terracotta and vacant slate. They show what
+  the record will BECOME.
+- Publish's pressed pill takes the selection grey but its BORDER is left
+  alone: that border is the ring, and the ring is the only red thing on
+  the pill.
+
+Also ruled: `.tick` meant three different things - a checkbox on Staff, a
+hazard mark on Dietary, a ringed pill on Publish. One blanket dress
+overrode the ring and threw its meaning away. Each page says what its own
+tick does. Staff has no tick any more; see switches below.
+
+### A fifth thing that is not a button: the switch
+
+A setting that is simply on or off is a switch, and it is blue when on.
+That does not break the grey-selection rule above, because a switch is not
+a selection: it has no siblings to be picked over, and its colour IS the
+value. Two greys side by side, one meaning on and one meaning off, is not
+readable at arm's length, and every phone's own settings say so.
+
+Written once, in staff.html's `pickList`, and used for both the permission
+rows and the notification rows. Rules:
+
+- **A switch saves on press.** No Save button, no confirm - it is one
+  reversible field, and the way back is to press it again.
+- **`role="switch"` and `aria-checked`, never `aria-pressed`.** Beyond
+  being correct, the sweep excuses an `aria-pressed="true"` control as
+  "already chosen, so does nothing", which is true of a selected pill and
+  false of a toggle.
+- **Give each one an id.** The sweep names a control by tag, id and label,
+  and a switch has no label. Eighteen switches sharing the descriptor
+  `button.sw` collapsed to one, and a dead handler passed the suite.
+
+### Tabs
+
+A page that does four unrelated jobs may split them across tabs rather than
+scroll: staff.html did, 29 Aug. Rules:
+
+- **One page, one URL, one permission gate.** Tabs are not four pages.
+- **Every panel loads on page load**, not on first press. A count on a tab
+  that only becomes true once somebody looks at it is worse than no count.
+- **The panels are `display:none`, so the control sweep cannot see them.**
+  It reaches them at depth two, by pressing the tab first - which works
+  only because the tab itself is a control. Do not hide a panel behind
+  anything the sweep does not press.
+
+## The button law
+
+Ruled by the owner, 26 Aug, after a solid-black Cancel booking sat beside a
+solid-black Save with neither a colour nor a question between them. One
+dress per job, and the dangerous ones both look it and ask first:
+
+| Dress | Job | Confirms before writing? |
+|---|---|---|
+| Solid ink | THE primary constructive action - book, save, send, approve. At most one per card or surface | Never - its undo is the cancel path |
+| Ink outline (quiet) | Secondary and neutral - back, ask again, options | Never |
+| Terracotta outline - border `--terra-b`, ink `--terra`, no fill | Destroys or walks back something a guest holds or was told: cancel, decline, delete, remove, resend-over | **Always** |
+
+The dress itself lives in nala-ui.css (`.btn`, `.btn.solid`, `.btn.terra`,
+and the print sheets' `.tier-print .btn`/`.btn.ghost`) since 27 Aug, when
+five pages turned out to be emitting `class="btn"` with no rule behind it
+and the pages that had pasted their own copies had drifted apart. A page
+defines only its own variants (`.arm`, `.warn`, `.active`) and the layout
+of the row the buttons sit in - never the dress again.
+
+**Free-standing buttons are 8px** (ruled 27 Aug), matching the nav and date
+controls. The footer row is the exception and keeps the corner law below:
+it sits hard against the bottom of the screen, so it squares off and only
+the two outer lower corners round. `tally_suite` asserts those four corners
+by computed value.
+
+## What a press says back
+
+Ruled by the owner, 27 Aug, after an audit (BUTTONS-AUDIT.md) found six
+surfaces writing to the database with nothing happening on screen: no
+press, no wait, no word when it landed. The board redrew, so the button
+never had to say anything - which on a slow connection leaves somebody
+holding a dead looking control, and a second tap wrote a second time.
+
+| State | Dress | When |
+|---|---|---|
+| Rest | solid wears `--ctl-soft`, a step off full ink | nothing to do |
+| Pressed | `:active` - quiet fills rule-grey, solid drops to full ink, terracotta tints | every button, not only saves |
+| Writing | `.saving`, disabled, the colour law's waiting grey, label "Saving" | the write is in the air |
+| Landed | `.saved`, the green pill green, label "Saved" | it reached the database |
+| Failed | button back to rest, `.savefail` red text beneath it | never a red fill: red is failure's, but a red tile reads as a state the record is in, and the record is simply unsaved |
+
+The resting solid is softened rather than black so the press has somewhere
+darker to go. Before this, pressed and idle were the same pixels.
+
+**Saved rests until there is more to save.** Not a timer: a label that
+times out goes back to saying Save about a record with nothing left to
+save, which is the same lie as saying nothing. `armSave(btn)` puts it back,
+and an edit is what calls it. A surface that closes itself after writing
+(the four boards wired on 27 Aug) holds the green 400ms first, so the
+answer is seen on the way out.
+
+One helper owns all of it: `saveFeedback(btn, write, opts)` in
+nala-shared.js, with `pressedButton()` naming the button that was pressed
+so a reference does not have to be threaded through forty call sites.
+Pages adopt it where they write; the five that had hand-written their own
+version (templates, flags, tag, publish, prearrival) move onto it as they
+are next touched.
+
+- A destructive button never wears solid ink, and never red: red is
+  failure's alone (the colour law, CLAUDE.md).
+- The confirmation is a browser dialog that names the guest and the thing -
+  "Cancel Robyn's Thu 27 2:00 pm massage?" - and cancelling the dialog costs
+  nothing. A prompt that collects a reason (the decline pattern) counts as
+  the confirmation: its Cancel aborts the act.
+- Constructive buttons never confirm. If tapping one feels like it needs a
+  warning, the label is wrong, not the dialog missing.
+
+Applied on spa.html. Every other page's destructive buttons predate the law:
+dress and confirm them when that page is next touched, not as a standalone
+sweep of a live system.
 - **Tinted rounded pill = status** (e.g. MENU NOT PUBLISHED). Never tappable.
 - **Plain typography = information.** Stats are a bare number over a small
   label (`.stats`/`.stat`), never boxed. Attention turns the number red,

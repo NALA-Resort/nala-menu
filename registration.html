@@ -8,16 +8,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
 <title>Nala &middot; Registration Cards</title>
-<link rel="stylesheet" href="nala-ui.css?v=14">
+<link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
   @page { size: A4 portrait; margin: 12mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:var(--ui-font); color:#111; background:#fff; padding:16px 16px 0; }
 
-  .btn { padding:10px 20px; background:#111; color:#fff; border:none;
-         font-family:var(--ui-font); font-size:10px; letter-spacing:.15em;
-         text-transform:uppercase; cursor:pointer; }
-  .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+  /* .btn and .btn.ghost wear nala-ui.css's tier-print dress. */
 
   /* One card per arriving villa, one page each. A card that breaks across a
      page is a card somebody hands over half of. Sized so that even a card with
@@ -110,7 +107,7 @@
 
   @media print {
     body { padding:0; }
-    .daterow, .foot, .noaccess, .screen-only { display:none !important; }
+    .daterow, .foot, .noaccess { display:none !important; }
     .card { border:none; padding:0; }
     #cards { overflow-x:visible; }
   }
@@ -127,7 +124,7 @@
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="navwrap" id="navWrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="flags.html">Flags</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"></div>
   </div>
 </div>
 
@@ -143,7 +140,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=41"></script>
+<script src="nala-shared.js?v=48"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();
@@ -153,9 +150,6 @@ var TAGS = null;
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
-  var so=document.getElementById('navSignout');
-  if (so) so.onclick=function(e){ e.preventDefault();
-    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
 })();
 
 function api(path){

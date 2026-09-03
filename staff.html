@@ -10,79 +10,88 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Staff</title>
-<link rel="stylesheet" href="nala-ui.css?v=14">
+<link rel="stylesheet" href="nala-ui2.css?v=6">
+<link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
-          --ui-font:-apple-system,Helvetica,Arial,sans-serif; }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
-         padding:calc(24px + env(safe-area-inset-top)) 18px 40px;
-         -webkit-tap-highlight-color:transparent; }
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 40px; }
+  
   .wrap { max-width:520px; margin:0 auto; }
   .daterow { display:flex; align-items:center; gap:8px; margin-bottom:16px; }
-  .date { font-size:15px; font-weight:bold; letter-spacing:.02em; flex:1;
-          text-transform:uppercase; }
-
-  .sec { font-size:8px; letter-spacing:.16em; text-transform:uppercase;
-         color:var(--mid); margin:22px 0 8px; }
-
-  /* A person is a line, not a card: plain typography is information, and a
-     bordered box would read as something to press.                        */
-  .person { display:flex; align-items:baseline; gap:8px; padding:11px 0;
-            border-bottom:1px solid var(--rule); width:100%; background:none;
-            border-left:0; border-right:0; border-top:0; text-align:left;
-            font-family:var(--ui-font); color:var(--ink); }
-  .person .nm { font-size:15px; flex:1; }
-  .person .rl { font-size:11px; color:var(--mid); text-transform:uppercase;
-                letter-spacing:.1em; }
-  .person .cd { font-size:11px; color:var(--mid); font-variant-numeric:tabular-nums; }
-  /* The bin is the icon alone, no border and no fill: that dress belongs to
-     buttons, and a row of bordered bins would read as five buttons.      */
-  .binwrap { display:flex; align-items:baseline; }
-  .bin { background:none; border:0; padding:0 0 0 12px; font-size:15px;
-         color:var(--mid); line-height:1; }
-  .bin:disabled { opacity:0; }        /* protected rows show nothing at all */
+  .date { font-size:var(--t3); font-weight:bold; flex:1; }
 
   .btn { display:block; width:100%; padding:13px 0; text-align:center;
-         font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
-         text-transform:uppercase; background:var(--cream); color:var(--ink);
+         font-family:var(--ui-font); font-size:var(--t2); background:var(--cream); color:var(--ink);
          border:1px solid var(--ink); border-radius:8px; margin-top:14px; }
-  .btn.solid { background:var(--ink); color:var(--cream); }
+  /* A link wearing the button dress is still a link by default: blue and
+     underlined, which reads as neither. */
+  a.btn { text-decoration:none; }
+  /* .btn.solid comes from nala-ui.css's shared dress. */
   .btn.warn  { border-color:var(--red); color:var(--red); }
   .btn.ghost { border-color:var(--rule); color:var(--mid); }
 
-  .master { display:flex; align-items:center; padding:13px 0;
-            border-bottom:1px solid var(--rule); width:100%; background:none;
-            border-left:0; border-right:0; border-top:0; text-align:left;
-            font-family:var(--ui-font); color:var(--ink); }
-  .master .mnm { flex:1; font-size:15px; }
-  /* Off greys the rest: the boxes still say what WOULD be sent, but nothing
-     is going out and the page should not pretend otherwise.              */
-  .dim { opacity:.4; }
-
-  table { width:100%; border-collapse:collapse; }
-  th { font-size:8px; letter-spacing:.12em; text-transform:uppercase;
-       color:var(--mid); font-weight:normal; padding:0 0 8px; }
-  th.who { text-align:center; }
-  td { font-size:15px; padding:11px 0; border-bottom:1px solid var(--rule); }
-  td.who { text-align:center; }
-  .tick { display:inline-block; width:20px; height:20px; border-radius:5px;
-          border:1px solid var(--rule); background:none; position:relative;
-          vertical-align:middle; }
-  .tick.on { background:var(--ink); border-color:var(--ink); }
-  .tick.on:after { content:''; position:absolute; left:6px; top:2px; width:5px;
-                   height:10px; border:solid var(--cream); border-width:0 2px 2px 0;
-                   transform:rotate(45deg); }
-
-  .hours { display:flex; gap:8px; align-items:center; font-size:15px;
+  .hours { display:flex; gap:8px; align-items:center; font-size:var(--t3);
            padding:11px 0; border-bottom:1px solid var(--rule); flex-wrap:wrap; }
-  .hours input { font-family:var(--ui-font); font-size:16px; width:74px;
-                 border:0; border-bottom:1px solid var(--rule); background:none;
-                 color:var(--ink); text-align:center; padding:2px 0; }
-  .moved { font-size:8px; letter-spacing:.1em; text-transform:uppercase;
-           color:var(--mid); display:block; margin-top:3px; }
-  .note { font-size:11px; color:var(--mid); line-height:1.5; margin-top:10px; }
-  .err  { font-size:11px; color:var(--red); line-height:1.5; margin-top:10px; }
+  /* body.ui2 input is (0,1,2) and sets width:100%, which is right for a
+     form and wrong for a field holding four characters: "Send between
+     [    ] and [    ]" came out as three stacked lines, and each of the
+     three prices got a full width box for three digits. Only the width is
+     taken back, matched at (0,2,2); the box, the radius and the 44px tap
+     height are the shared dress and this page has no reason to differ.
+     An earlier version stripped all of it back to an underline, which put
+     the rule 20px below the number it belonged to.
+
+     If a second page wants a short field, promote this to nala-ui2.css as
+     a named class and pay the ?v= bump - do not copy it. */
+  body.ui2 .hours input, body.ui2 .money input {
+                 width:84px; text-align:center; padding:var(--s2); }
+  .note { font-size:var(--t2); color:var(--mid); line-height:1.5; margin-top:10px; }
+  /* True white, because they are editable surfaces (the colour law). Their
+     own rule rather than a lean on the sheet's: these live in a panel. */
+  #tGuest textarea, #tGuest input, #tGuest select { width:100%; padding:11px;
+            font-family:var(--ui-font); font-size:var(--t3); line-height:1.5;
+            border:1px solid var(--rule); border-radius:8px;
+            background:#fff; color:var(--ink); }
+  #tGuest textarea { resize:vertical; }
+  /* Crop and height side by side under their image: two small choices,
+     one line, never a second screenful. */
+  .gi-row { display:flex; gap:10px; }
+  .gi-opt { flex:1; min-width:0; }
+  .gi-lab { display:block; font-size:var(--t1); color:var(--mid);
+            margin:12px 0 5px; }
+  /* The tab covers three surfaces a guest meets in order - the welcome
+     screen, the dining page, then the questions - and they read as one
+     long form unless each is announced. A headline rather than another
+     quiet label: this is the one place on the tab where the eye should
+     stop. Ruled by the owner, 30 Aug. */
+  .gi-sec { font-size:var(--t4); font-weight:600; color:var(--ink);
+            margin:var(--s5) 0 var(--s2); padding-top:var(--s4);
+            border-top:1px solid var(--rule); }
+  #tGuest .gi-sec:first-child { margin-top:0; padding-top:0; border-top:0; }
+  /* A hint belongs to the field above it, not to a paragraph at the end of
+     the tab: the whole tab's instructions once sat below Save, past the
+     eight boxes they explained, and the owner read them as a wall (30 Aug).
+     Tight to its field, and each one says one thing. */
+  .gi-hint { font-size:var(--t2); color:var(--mid); line-height:1.45;
+             margin:5px 0 2px; }
+  .gi-hint b { font-weight:600; color:var(--ink); }
+  /* One page to a fold: twenty four boxes laid flat is a tab nobody can
+     find Save on. The summary is the page's name and the whole tap
+     target, so it obeys the 44px rule without being a button. */
+  .gi-page { border-bottom:1px solid var(--rule); }
+  .gi-page > summary { list-style:none; cursor:pointer; min-height:var(--tap);
+             display:flex; align-items:center; gap:var(--s2);
+             font-size:var(--t3); padding:var(--s2) 0; }
+  .gi-page > summary::-webkit-details-marker { display:none; }
+  /* A chevron that turns: the fold has to say which way it goes, and a
+     unicode arrow is one character rather than an icon set. */
+  .gi-page > summary::before { content:'\203A'; color:var(--mid);
+             font-size:var(--t3); transition:transform .15s;
+             display:inline-block; width:12px; text-align:center; }
+  .gi-page[open] > summary::before { transform:rotate(90deg); }
+  .gi-page[open] { padding-bottom:var(--s3); }
+  @media (prefers-reduced-motion:reduce){
+    .gi-page > summary::before { transition:none } }
+  .err  { font-size:var(--t2); color:var(--red); line-height:1.5; margin-top:10px; }
 
   /* the sheet, same shape as the boards use */
   .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35); display:none;
@@ -91,62 +100,237 @@
   .sheet { background:var(--cream); width:100%; max-width:520px; margin:0 auto;
            border-radius:14px 14px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom));
            max-height:88vh; overflow-y:auto; }
-  .sheet .st { font-size:15px; margin-bottom:4px; }
-  .sheet .sub { font-size:11px; color:var(--mid); margin-bottom:14px; }
-  .sheet label { display:block; font-size:8px; letter-spacing:.16em;
-                 text-transform:uppercase; color:var(--mid); margin:14px 0 5px; }
+  .sheet .st { font-size:var(--t3); margin-bottom:4px; }
+  .sheet .sub { font-size:var(--t2); color:var(--mid); margin-bottom:14px; }
+  .sheet label { display:block; font-size:var(--t1); color:var(--mid); margin:14px 0 5px; }
   .sheet input, .sheet select {
-      width:100%; font-family:var(--ui-font); font-size:16px; padding:11px;
+      width:100%; font-family:var(--ui-font); font-size:var(--t3); padding:11px;
       border:1px solid var(--rule); border-radius:8px; background:#fff;
       color:var(--ink); }
+
+  /* ── four jobs, four tabs ────────────────────────────────────────────
+     Ruled by the owner, 29 Aug. This page was four unrelated jobs stacked
+     into one long scroll: who the staff are, what each role may do, who
+     is buzzed about what, and what a massage costs. Tabs rather than four
+     pages, because the menu was given submenus on 26 Aug for having too
+     many rows, and one page keeps one URL and one manageStaff gate.   */
+  .tabs { display:flex; gap:2px; border-bottom:1px solid var(--rule);
+          margin:var(--s4) 0 var(--s5); overflow-x:auto; }
+  .tab { flex:1 0 auto; padding:var(--s3) var(--s2); min-height:var(--tap);
+         border:0; background:none; font-family:var(--ui-font);
+         font-size:var(--t2); font-weight:500; color:var(--mid); cursor:pointer;
+         border-bottom:2px solid transparent; margin-bottom:-1px;
+         white-space:nowrap; }
+  .tab.on { color:var(--accent); border-bottom-color:var(--accent); }
+  .panel { display:none } .panel.on { display:block }
+
+  /* ── a staff row ─────────────────────────────────────────────────────
+     The sign-in is a six digit code for most people and an email for two,
+     so a column for it could not line up and did not: two rows pushed the
+     role halfway across the screen. It stacks under the name, and the role
+     is a pill, so nothing has to align with anything.
+
+     No Remove on the row. It called removeSheet, and so does the person
+     sheet's "Remove from staff": the same confirmation and the same write,
+     reached one tap sooner. Removing somebody is rare and permanent and a
+     one-tap path to it on every row is a mis-tap waiting to happen. The
+     row opens the person; the removal lives with them.                 */
+  .person { display:flex; align-items:center; gap:var(--s3); width:100%;
+            padding:var(--s3) 0; border:0; border-bottom:1px solid var(--rule);
+            background:none; text-align:left; min-height:var(--tap);
+            font-family:var(--ui-font); color:inherit; cursor:pointer; }
+  .person:active { background:var(--accent-soft); }
+  .person .mid { flex:1; min-width:0; }
+  /* The trim rule, STYLEGUIDE.md: the name is the only field that may trim.
+     It was the sign-in that carried the ellipsis here, which is the rule
+     backwards - half a passcode still looks like a passcode, and half an
+     email address is a login nobody can type. The row can grow, so the
+     sign-in wraps instead and the name is what gives way. */
+  .person .nm { font-size:var(--t3); display:block; white-space:nowrap;
+                overflow:hidden; text-overflow:ellipsis; }
+  .person .sub { font-size:var(--t2); color:var(--mid); margin-top:2px;
+                 display:block; overflow-wrap:anywhere; }
+  .person .rl { flex:0 0 auto; font-size:var(--t2); color:var(--mid);
+                background:var(--card); border-radius:var(--pill);
+                padding:3px var(--s2); }
+
+  /* ── pick who, then read down ────────────────────────────────────────
+     Roles and Notifications were grids, five roles wide in the second
+     case, which only fitted at 390pt with the labels shrunk. A grid whose
+     columns are bounded by the screen cannot gain a column, and the owner
+     asked for a way to grow. Roles are chips and chips wrap; settings are
+     rows and rows only make the page longer.                          */
+  .chips { display:flex; flex-wrap:wrap; gap:var(--s2); margin-bottom:var(--s4); }
+  .chip { min-height:36px; padding:var(--s2) var(--s3); border-radius:var(--pill);
+          border:1px solid var(--rule); background:transparent; color:var(--mid);
+          font-family:var(--ui-font); font-size:var(--t2); cursor:pointer;
+          display:inline-flex; align-items:center; }
+  .count { font-size:var(--t2); color:var(--mid); margin-left:var(--s1); }
+  .sec-h { font-size:var(--t3); font-weight:600; margin:var(--s4) 0 var(--s2); }
+  .evrow { display:flex; align-items:center; gap:var(--s3); padding:var(--s3) 0;
+           border-bottom:1px solid var(--rule); min-height:var(--tap); }
+  .evrow > span { flex:1; font-size:var(--t3); }
+  /* Changed from how the app came. It was the word "changed" floating under
+     a neighbouring column, belonging to nothing the eye could attach it to. */
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--amberb);
+         flex:0 0 auto; display:inline-block; }
+  /* A price is a row like any other on this page: what it is on the left,
+     the control on the right. It was a sentence with a field buried in the
+     middle of it, which lined up with nothing above or below. */
+  .money { flex:0 0 auto; font-size:var(--t3); }
+
+  /* One setting is a switch; a grid cell was a checkbox and there are no
+     grids left here.
+
+     Blue when on, and this is not the selected pill the owner ruled grey on
+     29 Aug. That ruling was about pills and segments - controls where the
+     app has to say "you picked this one of several". A switch has no
+     siblings to be picked over: its colour IS the setting, the way it is in
+     every phone's own settings, and a grey-on switch beside a grey-off one
+     says nothing at a glance. The off track is a hex rather than a token
+     because no token is the right grey: --rule is a hairline and --card is
+     so pale the white knob would disappear into it. */
+  .sw { width:50px; height:30px; border-radius:var(--pill); background:#C9C9C2;
+        position:relative; flex:0 0 auto; border:0; cursor:pointer; padding:0; }
+  .sw.on { background:var(--accent); }
+  .sw:after { content:''; position:absolute; top:3px; left:3px; width:24px;
+              height:24px; border-radius:50%; background:#fff; transition:left .16s; }
+  .sw.on:after { left:23px; }
+  @media (prefers-reduced-motion:reduce){ .sw:after { transition:none } }
+  /* Off greys the rest: the rows still say what WOULD be sent, but nothing
+     is going out and the page should not pretend otherwise. */
+  .dim { opacity:.45; }
 </style>
 </head>
-<body class="tier-app">
+<body class="tier-app ui2">
 <div class="wrap">
 
   <div class="daterow">
     <div class="date">Staff</div>
     <div class="navwrap">
       <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-      <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="tag.html">Dietary</a><a href="flags.html">Flags</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+      <div class="navdrop" id="navDrop"></div>
     </div>
   </div>
 
   <div class="noaccess" id="noAccess"></div>
 
   <div id="main">
-    <div class="sec">People</div>
-    <div id="people"></div>
-    <button class="btn" id="addBtn">Add someone</button>
-
-    <div class="sec">What each role may do</div>
-    <table id="perms"></table>
-    <div class="note">An admin always has everything, and a manager everything
-    but this page, so neither is a column here. A box you have changed from
-    how the app came is marked. Only "Change what a villa needs" is enforced
-    by the database as well as by the app: the others hide the button, which
-    is enough for an honest mistake and is not a lock.</div>
-    <div class="err" id="permErr"></div>
-
-    <div class="sec">Notifications</div>
-    <button class="master" id="master"><div class="mnm" id="masterNm">All notifications</div><i class="tick" id="masterTick"></i></button>
-    <div class="hours" id="hoursRow">Send between
-      <input id="hFrom" inputmode="numeric" placeholder="07:30">and
-      <input id="hTo" inputmode="numeric" placeholder="18:00">
+    <div class="tabs" role="tablist">
+      <button class="tab on" role="tab" aria-selected="true"  data-t="tStaff">Staff</button>
+      <button class="tab"    role="tab" aria-selected="false" data-t="tRoles">Roles</button>
+      <button class="tab"    role="tab" aria-selected="false" data-t="tNotify">Notifications</button>
+      <button class="tab"    role="tab" aria-selected="false" data-t="tPrices">Prices</button>
+      <button class="tab"    role="tab" aria-selected="false" data-t="tGuest">Guest form</button>
     </div>
-    <table id="grid"></table>
-    <div class="note">Tapping a box saves it straight away. Turning every box
-    off for a role is the same as turning notifications off for those people.</div>
-    <div class="err" id="err"></div>
 
-    <div class="sec">Spa prices</div>
-    <div class="hours">1 hour&nbsp;$<input id="sp60" inputmode="numeric" placeholder="0"></div>
-    <div class="hours">1.5 hours&nbsp;$<input id="sp90" inputmode="numeric" placeholder="0"></div>
-    <div class="hours">2 hours&nbsp;$<input id="sp120" inputmode="numeric" placeholder="0"></div>
-    <div class="note">Shown to the guest beside each length on the pre-arrival
-    form, so they see the cost before they ask. A price left empty shows no
-    number rather than a zero.</div>
-    <div class="err" id="spaErr"></div>
+    <div class="panel on" id="tStaff" role="tabpanel">
+      <div id="people"></div>
+      <button class="btn solid" id="addBtn" style="margin-top:var(--s4)">Add someone</button>
+    </div>
+
+    <div class="panel" id="tRoles" role="tabpanel">
+      <div class="seclabel">Who is being set up</div>
+      <div class="chips" id="permPick"></div>
+      <div class="sec-h" id="permHead"></div>
+      <div id="permList"></div>
+      <div class="note"><i class="dot"></i> marks a setting changed from how the
+      app came. An admin always has everything, and a manager everything but this
+      page, so neither is offered here. Only "Change what a villa needs" is
+      enforced by the database as well as by the app: the others hide the button,
+      which is enough for an honest mistake and is not a lock.</div>
+      <div class="err" id="permErr"></div>
+    </div>
+
+    <div class="panel" id="tNotify" role="tabpanel">
+      <div class="evrow"><span id="masterNm">All notifications</span>
+        <button class="sw" id="masterTick" role="switch" aria-checked="true" aria-label="All notifications"></button></div>
+      <div class="seclabel">Send between</div>
+      <div class="hours" id="hoursRow">
+        <input id="hFrom" inputmode="numeric" placeholder="07:30">and
+        <input id="hTo" inputmode="numeric" placeholder="18:00">
+      </div>
+      <div class="seclabel">Who is being set up</div>
+      <div class="chips" id="notifPick"></div>
+      <div class="sec-h" id="notifHead"></div>
+      <div id="notifList"></div>
+      <div class="note">Tapping a row saves it straight away. Turning every one
+      off for a role is the same as turning notifications off for those people.</div>
+      <div class="err" id="err"></div>
+    </div>
+
+    <div class="panel" id="tPrices" role="tabpanel">
+      <div class="evrow"><span>1 hour</span>
+        <span class="money">$<input id="sp60" inputmode="numeric" placeholder="0"></span></div>
+      <div class="evrow"><span>1.5 hours</span>
+        <span class="money">$<input id="sp90" inputmode="numeric" placeholder="0"></span></div>
+      <div class="evrow"><span>2 hours</span>
+        <span class="money">$<input id="sp120" inputmode="numeric" placeholder="0"></span></div>
+      <div class="note">Shown to the guest beside each length on the pre-arrival
+      form, so they see the cost before they ask. A price left empty shows no
+      number rather than a zero.</div>
+      <div class="err" id="spaErr"></div>
+    </div>
+
+    <div class="panel" id="tGuest" role="tabpanel">
+      <div class="gi-sec">Welcome screen</div>
+      <label class="gi-lab" for="giWelcomeImg">Image</label>
+      <input id="giWelcomeImg"
+        placeholder="https:// address of a photo from the website">
+      <div class="gi-hint">Paste a sized copy from the website, not an
+        original; an address the site later retires simply stops
+        showing.</div>
+      <div class="gi-row">
+        <span class="gi-opt"><label class="gi-lab" for="giWelcomeCrop">Crop</label>
+          <select id="giWelcomeCrop"><option value="top">Top</option>
+            <option value="centre" selected>Centre</option>
+            <option value="bottom">Bottom</option></select></span>
+        <span class="gi-opt"><label class="gi-lab" for="giWelcomeHeight">Height</label>
+          <select id="giWelcomeHeight"><option value="short">Short</option>
+            <option value="banner" selected>Banner</option>
+            <option value="tall">Tall</option>
+            <option value="natural">Natural, no crop</option></select></span>
+      </div>
+      <label class="gi-lab" for="giIntro">Description</label>
+      <textarea id="giIntro" rows="3"
+        placeholder="Empty: the guest reads the original wording."></textarea>
+
+      <div class="gi-sec">Dining page</div>
+      <div class="gi-hint">Read straight after arrival time, in front of the
+        dining questions.</div>
+      <label class="gi-lab" for="giDiningImg">Image</label>
+      <input id="giDiningImg"
+        placeholder="https:// address of a photo from the website">
+      <div class="gi-row">
+        <span class="gi-opt"><label class="gi-lab" for="giDiningCrop">Crop</label>
+          <select id="giDiningCrop"><option value="top">Top</option>
+            <option value="centre" selected>Centre</option>
+            <option value="bottom">Bottom</option></select></span>
+        <span class="gi-opt"><label class="gi-lab" for="giDiningHeight">Height</label>
+          <select id="giDiningHeight"><option value="short">Short</option>
+            <option value="banner" selected>Banner</option>
+            <option value="tall">Tall</option>
+            <option value="natural">Natural, no crop</option></select></span>
+      </div>
+      <label class="gi-lab" for="giDiningText">Description</label>
+      <textarea id="giDiningText" rows="6"
+        placeholder="How dinner here works."></textarea>
+      <div class="gi-hint">Blank line for a new paragraph &middot;
+        <b># </b>starts a heading &middot; <b>*asterisks*</b> turn bold
+        &middot; a photo address alone on a line becomes that photo</div>
+
+      <div class="gi-sec">Question pages</div>
+      <div class="gi-hint">A heading, the description under it, and the words
+        behind Read more. Every box holds what a guest reads now: change it,
+        or empty a box to put the original wording back.</div>
+      <div class="gi-hint">A heading you write is used on every stay length,
+        so a one night guest reads it too.</div>
+      <div id="giPageRows"></div>
+      <button class="btn solid" id="giSave">Save</button>
+      <a class="btn ghost" id="giDemo" href="prearrival.html?b=demo">Preview
+        on the demo form</a>
+      <div class="err" id="giErr"></div>
+    </div>
   </div>
 </div>
 
@@ -155,7 +339,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=41"></script>
+<script src="nala-shared.js?v=48"></script>
 <script>
 var ROLES = ['admin','manager','chef','waiter','housekeeping'];
 /* The human roles, and the ones the notification matrix targets. manager is
@@ -163,25 +347,28 @@ var ROLES = ['admin','manager','chef','waiter','housekeeping'];
    buzzed like anybody else. sync is a machine account with no phone, so it
    is assignable and sortable but takes no part in notifications: giving it a
    column would ask who to buzz on a login that cannot receive a buzz. spa is
-   assignable too but stays out of the matrix: every event in it is cleans
-   and menus, none of which is the masseuse's business, and a sixth column
-   squeezes the grid at 320. */
+   assignable too but keeps out of the matrix even now that the spa events
+   exist: a sixth column squeezes the grid at 320, so his routing lives as a
+   stored spa key on each event (NOTIFY_DEFAULTS seeds it, saveNotify's
+   whole-node PUT carries it untouched) and his one control is his own
+   phone's Notifications toggle. */
 var ROLES_ASSIGN = ROLES.concat(['spa','sync']);
 var EVENTS = [['departed','Departed'],['available','Possibly available'],
               ['cleaned','Cleaned'],['serviced','Serviced'],
-              ['menu','Menu published']];
+              ['menu','Menu published'],
+              /* The spa five, 27 Aug. These columns tick the DESK side;
+                 the masseuse's copy of each is the stored spa key above. */
+              ['spaRequest','Massage requested'],
+              ['spaSuggested','Massage suggested'],
+              ['spaBooked','Massage booked'],
+              ['spaCancelled','Massage cancelled'],
+              ['spaStay','Stay changed under a massage']];
 var STAFF = {}, CFG = null;
 
 (function(){
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
-  var so=document.getElementById('navSignout');
-  if (so) so.onclick=function(e){ e.preventDefault();
-    var u = window.NALA_USER || null;
-    var go = function(){ if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
-    if (u && typeof pushOff === 'function'){ pushOff(u, go); } else { go(); }
-  };
 })();
 
 /* This page changes who may do what, so it is admin only. Anyone else is sent
@@ -270,18 +457,14 @@ function drawPeople(){
   });
   keys.forEach(function(k){
     var r = STAFF[k] || {};
-    var row = document.createElement('div');
+    var row = document.createElement('button');
     row.className = 'person';
-    row.innerHTML = '<span class="nm"></span><span class="rl"></span>'+
-                    '<span class="binwrap"><span class="cd"></span>'+
-                    '<button class="bin" aria-label="Remove">&#128465;</button></span>';
-    row.querySelector('.nm').textContent = r.name || '(no name)';
-    row.querySelector('.rl').textContent = normaliseRole(r.role) || '';
-    row.querySelector('.cd').textContent = codeOf(k);
-    var why = protectedReason(k);
-    var bin = row.querySelector('.bin');
-    if (why){ bin.disabled = true; bin.title = why; }
-    else { bin.onclick = function(e){ e.stopPropagation(); removeSheet(k); }; }
+    row.type = 'button';
+    row.innerHTML = '<span class="mid"><span class="nm"></span>'+
+                    '<span class="sub"></span></span><span class="rl"></span>';
+    row.querySelector('.nm').textContent  = r.name || '(no name)';
+    row.querySelector('.sub').textContent = codeOf(k);
+    row.querySelector('.rl').textContent  = normaliseRole(r.role) || '';
     row.onclick = function(){ personSheet(k); };
     host.appendChild(row);
   });
@@ -318,14 +501,22 @@ function savePerson(key){
   var name = document.getElementById('pName').value.trim();
   var role = document.getElementById('pRole').value;
   var e = document.getElementById('sErr');
-  e.textContent = 'Saving...';
-  fetch(DB + '/staff/' + key + '.json', {
-    method:'PATCH', body: JSON.stringify({ name:name, role:role })
-  }).then(function(r){
-    if (!r.ok) throw new Error('rejected');
-    STAFF[key] = Object.assign({}, STAFF[key], { name:name, role:role });
-    drawPeople(); closeSheet();
-  }).catch(function(){ e.textContent = 'Could not save. Check the connection.'; });
+  /* The word used to go in the error line, which is the wrong mouth for it:
+     a status and a failure reading from the same place means neither can be
+     trusted at a glance. The button carries the status now and this line is
+     failures only.                                                       */
+  return saveFeedback(pressedButton(), function(){
+    return fetch(DB + '/staff/' + key + '.json', {
+      method:'PATCH', body: JSON.stringify({ name:name, role:role })
+    }).then(function(r){
+      if (!r.ok) throw new Error('rejected');
+      STAFF[key] = Object.assign({}, STAFF[key], { name:name, role:role });
+    });
+  }, {
+    done:'Saved ✓', hold:400,
+    then:function(){ drawPeople(); closeSheet(); },
+    fail:function(msg){ e.textContent = msg; }
+  });
 }
 
 function removeSheet(key){
@@ -414,9 +605,10 @@ function addPerson(){
 }
 
 /* ── what each role may do ─────────────────────────────────────
-   The same shape as the notification grid on purpose. A manager who has
-   learnt one has learnt both, and the difference between "who gets told" and
-   "who may do it" is carried by the heading rather than by a second idiom.
+   The same shape as the notification list, and since 29 Aug literally the
+   same code: a manager who has learnt one has learnt both, and the
+   difference between "who gets told" and "who may do it" is carried by the
+   heading rather than by a second idiom.
 
    PERMS holds only the boxes that have been changed away from the shipped
    default, not a full copy of the matrix. Storing every cell would freeze
@@ -431,39 +623,86 @@ function loadPerms(){
       'Could not load who may do what. The app is running on its defaults.'; });
 }
 
-function drawPerms(){
-  var head = '<tr><th></th>' + PERM_ROLES.map(function(r){
-    return '<th class="who">' + (r === 'housekeeping' ? 'House<br>keeping' : r) + '</th>';
-  }).join('') + '</tr>';
-  var rows = PERM_ACTIONS.map(function(ac){
-    return '<tr><td>' + ac[1] + '</td>' + PERM_ROLES.map(function(r){
-      var def = grantedByDefault(r, ac[0]);
-      var row = PERMS[ac[0]] || {};
-      var isOn = (typeof row[r] === 'boolean') ? row[r] : def;
-      /* Marked, not explained. A manager wants to know at a glance which of
-         these they have fiddled with, and the reason is their own memory. */
-      var moved = isOn !== def ? ' <span class="moved">changed</span>' : '';
-      return '<td class="who"><button class="tick' + (isOn ? ' on' : '') +
-             '" data-act="' + ac[0] + '" data-role="' + r + '" aria-label="' +
-             ac[1] + ' ' + r + '"></button>' + moved + '</td>';
-    }).join('') + '</tr>';
-  }).join('');
-  document.getElementById('perms').innerHTML = head + rows;
+/* ── pick who, then read down ────────────────────────────────────────
+   Written once and called twice, Roles and Notifications both. They were
+   two grids doing one job in two shapes, and five columns only fitted at
+   390pt with the labels shrunk; a grid bounded by the screen cannot gain
+   a column, and the owner asked for room to grow. A role is a chip and
+   chips wrap; a setting is a row and rows only make the page longer.
 
-  var ticks = document.querySelectorAll('#perms .tick');
-  for (var i=0;i<ticks.length;i++){
-    ticks[i].onclick = function(){
-      var ac = this.getAttribute('data-act'), r = this.getAttribute('data-role');
-      var def = grantedByDefault(r, ac);
-      var row = PERMS[ac] || {};
-      var now = (typeof row[r] === 'boolean') ? row[r] : def;
-      if (!PERMS[ac]) PERMS[ac] = {};
-      PERMS[ac][r] = !now;
-      setPermissions(PERMS);
-      drawPerms(); savePerms();
-    };
+   cfg reads and writes through callbacks rather than owning a copy of the
+   state: PERMS and NOTIFY are the truth, and a second copy here is how the
+   form state and the tint came to disagree.                            */
+function pickList(cfg){
+  var pick = cfg.pick || 0;
+  function draw(){
+    var sel = cfg.roles[pick];
+    cfg.chips.innerHTML = cfg.roles.map(function(r,j){
+      var n = cfg.items.filter(function(it){ return cfg.isOn(it, r); }).length;
+      return '<button class="chip' + (r === sel ? ' on' : '') + '" data-r="' + j +
+             '" aria-pressed="' + (r === sel) + '">' + r +
+             '<span class="count">' + n + '</span></button>';
+    }).join('');
+    cfg.head.textContent = 'What ' + sel + ' ' + cfg.verb;
+    cfg.list.innerHTML = cfg.items.map(function(it,i){
+      var on = cfg.isOn(it, sel);
+      /* Each switch carries its own id, and it is not decoration. The sweep
+         names a control by tag, id and label; a switch has no label, so
+         eight identical button.sw descriptors collapsed into one and only
+         the first was ever pressed - which in both lists happens to be one
+         that is already on, and the sweep excuses an on control as "already
+         chosen". A dead handler passed 113 assertions. Named, every switch
+         is pressed, and the off ones have to prove they do something.
+
+         role=switch rather than aria-pressed for the same reason it is
+         correct: a toggle is not a selection. The chips above ARE a
+         selection, and keep aria-pressed. */
+      return '<div class="evrow"><span>' + it[1] + '</span>' +
+        (cfg.moved && cfg.moved(it, sel)
+           ? '<i class="dot" title="changed from how the app came"></i>' : '') +
+        '<button class="sw' + (on ? ' on' : '') + '" id="' + cfg.pfx + it[0] +
+        '" data-e="' + i + '" role="switch" aria-checked="' + on +
+        '" aria-label="' + it[1] + ' ' + sel + '"></button></div>';
+    }).join('');
   }
+  cfg.chips.onclick = function(e){
+    var c = e.target.closest('[data-r]'); if (!c) return;
+    pick = +c.getAttribute('data-r'); draw();
+  };
+  cfg.list.onclick = function(e){
+    var t = e.target.closest('[data-e]'); if (!t) return;
+    cfg.toggle(cfg.items[+t.getAttribute('data-e')], cfg.roles[pick]);
+    draw();
+  };
+  draw();
+  return draw;
 }
+
+/* The dot marks a box moved away from the shipped default, in either
+   direction: a permission switched off is as much a change as one switched
+   on, and the old grid said "changed" under only the cell it belonged to,
+   floating free of anything the eye could attach it to.                */
+var drawPerms = pickList({
+  chips: document.getElementById('permPick'),
+  head:  document.getElementById('permHead'),
+  list:  document.getElementById('permList'),
+  roles: PERM_ROLES, items: PERM_ACTIONS, verb: 'may do', pfx: 'may-',
+  isOn: function(ac, r){
+    var row = PERMS[ac[0]] || {};
+    return (typeof row[r] === 'boolean') ? row[r] : grantedByDefault(r, ac[0]);
+  },
+  moved: function(ac, r){
+    var row = PERMS[ac[0]] || {};
+    return typeof row[r] === 'boolean' && row[r] !== grantedByDefault(r, ac[0]);
+  },
+  toggle: function(ac, r){
+    var row = PERMS[ac[0]] || {};
+    var now = (typeof row[r] === 'boolean') ? row[r] : grantedByDefault(r, ac[0]);
+    if (!PERMS[ac[0]]) PERMS[ac[0]] = {};
+    PERMS[ac[0]][r] = !now;
+    setPermissions(PERMS); savePerms();
+  }
+});
 
 function savePerms(){
   fetch(DB + '/permissions.json', { method:'PUT', body: JSON.stringify(PERMS) })
@@ -486,46 +725,58 @@ function loadNotify(){
       NOTIFY = cfg || JSON.parse(JSON.stringify(NOTIFY_DEFAULTS));
       if (!NOTIFY.events) NOTIFY.events = JSON.parse(JSON.stringify(NOTIFY_DEFAULTS.events));
       if (!NOTIFY.hours)  NOTIFY.hours  = JSON.parse(JSON.stringify(NOTIFY_DEFAULTS.hours));
+      /* An event type added after this node was first written - the spa
+         five, 27 Aug - is filled in from its defaults before the list
+         draws, or the first switch would PUT the node back without the
+         event's stored spa key and silence the masseuse for good. */
+      Object.keys(NOTIFY_DEFAULTS.events).forEach(function(ev){
+        if (!NOTIFY.events[ev])
+          NOTIFY.events[ev] = JSON.parse(JSON.stringify(NOTIFY_DEFAULTS.events[ev]));
+      });
       drawNotify();
     })
     .catch(function(){ document.getElementById('err').textContent =
       'Could not load the notification settings.'; });
 }
 
+/* The rows and chips are the same component as Roles above; only the master,
+   the hours and the dimming belong to this tab. */
+var drawEvents = pickList({
+  chips: document.getElementById('notifPick'),
+  head:  document.getElementById('notifHead'),
+  list:  document.getElementById('notifList'),
+  roles: ROLES, items: EVENTS, verb: 'is told about', pfx: 'tell-',
+  /* Not admin, who is told about everything: ten switches all on is
+     the least informative screen this tab can open on. */
+  pick: ROLES.indexOf('housekeeping'),
+  /* Built before the fetch lands, so it draws once against nothing and
+     again when loadNotify has NOTIFY. */
+  isOn: function(ev, r){ return !!((((NOTIFY||{}).events || {})[ev[0]] || {})[r]); },
+  toggle: function(ev, r){
+    /* The load failed and said so; the switches are drawn from nothing and
+       must not write a node built out of that nothing. */
+    if (!NOTIFY) return;
+    if (!NOTIFY.events[ev[0]]) NOTIFY.events[ev[0]] = {};
+    NOTIFY.events[ev[0]][r] = !NOTIFY.events[ev[0]][r];
+    saveNotify();
+  }
+});
+
 function drawNotify(){
   var on = NOTIFY.on !== false;
   document.getElementById('masterNm').textContent = 'All notifications ' + (on ? 'on' : 'off');
-  document.getElementById('masterTick').className = 'tick' + (on ? ' on' : '');
-  document.getElementById('hoursRow').className = 'hours' + (on ? '' : ' dim');
-  document.getElementById('grid').className = on ? '' : 'dim';
+  document.getElementById('masterTick').className = 'sw' + (on ? ' on' : '');
+  document.getElementById('masterTick').setAttribute('aria-checked', on);
+  document.getElementById('hoursRow').className  = 'hours' + (on ? '' : ' dim');
+  document.getElementById('notifPick').className = 'chips' + (on ? '' : ' dim');
+  document.getElementById('notifHead').className = 'sec-h' + (on ? '' : ' dim');
+  document.getElementById('notifList').className = on ? '' : 'dim';
   document.getElementById('hFrom').value = NOTIFY.hours.from || '';
   document.getElementById('hTo').value   = NOTIFY.hours.to   || '';
-
-  var head = '<tr><th></th>' + ROLES.map(function(r){
-    return '<th class="who">' + (r === 'housekeeping' ? 'House<br>keeping' : r) + '</th>';
-  }).join('') + '</tr>';
-  var rows = EVENTS.map(function(ev){
-    return '<tr><td>' + ev[1] + '</td>' + ROLES.map(function(r){
-      var isOn = !!((NOTIFY.events[ev[0]]||{})[r]);
-      return '<td class="who"><button class="tick' + (isOn ? ' on' : '') +
-             '" data-ev="' + ev[0] + '" data-role="' + r + '" aria-label="' +
-             ev[1] + ' ' + r + '"></button></td>';
-    }).join('') + '</tr>';
-  }).join('');
-  document.getElementById('grid').innerHTML = head + rows;
-
-  var ticks = document.querySelectorAll('#grid .tick');
-  for (var i=0;i<ticks.length;i++){
-    ticks[i].onclick = function(){
-      var ev = this.getAttribute('data-ev'), r = this.getAttribute('data-role');
-      if (!NOTIFY.events[ev]) NOTIFY.events[ev] = {};
-      NOTIFY.events[ev][r] = !NOTIFY.events[ev][r];
-      drawNotify(); saveNotify();
-    };
-  }
+  drawEvents();
 }
 
-document.getElementById('master').onclick = function(){
+document.getElementById('masterTick').onclick = function(){
   if (!NOTIFY) return;
   NOTIFY.on = (NOTIFY.on === false);
   drawNotify(); saveNotify();
@@ -570,6 +821,265 @@ function loadSpaPrices(){
 });
 loadSpaPrices();
 
+/* ── the guest form's own content ──────────────────────────────
+   One record at /prearrivalinfo, public to read the way the spa prices
+   are: the pre-arrival form shows all of this to a guest, and a guest
+   holds no login. `welcomeImage` draws on that form's welcome screen,
+   `diningImage` and `diningText` make its dining page, and `more.<key>`
+   replaces the words behind a page's Read more button when filled.
+
+   One Save for the lot rather than the prices' save-on-change: a
+   paragraph is written in sittings, and a half-finished thought must not
+   publish itself to guests because a field lost focus. The button rests
+   at Saved until an edit arms it again (armSave). */
+var GI_MORE = [ ['companion', 'Who is coming'],
+                ['purpose',   'Kind of stay'],
+                ['eta',       'Arrival time'],
+                ['approach',  'How often they dine'],
+                ['dine',      'First-night dinner'],
+                ['diet',      'Dietaries'],
+                ['well',      'Massage'],
+                ['else',      'Anything else'] ];
+/* Three boxes to a page - heading, description, Read more - and eight
+   pages, so twenty four boxes beside the two standalone pages. Flat, that
+   is a tab nobody can find Save on, so each page folds into its own
+   summary and opens when it is wanted. */
+var GI_PARTS = [['Title', 'Heading'], ['Desc', 'Description'],
+                ['More', 'Read more']];
+(function(){
+  var host = document.getElementById('giPageRows');
+  GI_MORE.forEach(function(p){
+    var d = document.createElement('details');
+    d.className = 'gi-page';
+    var sum = document.createElement('summary');
+    sum.textContent = p[1];
+    d.appendChild(sum);
+    GI_PARTS.forEach(function(part){
+      var id = 'gi' + part[0] + '_' + p[0];
+      var l = document.createElement('label');
+      l.className = 'gi-lab'; l.htmlFor = id; l.textContent = part[1];
+      var f = document.createElement(part[0] === 'Title' ? 'input' : 'textarea');
+      f.id = id;
+      if (part[0] !== 'Title') f.rows = 2;
+      /* Only ever seen when a box has been emptied, which is the way back
+         to the original wording. */
+      f.placeholder = 'Empty: the guest reads the original wording.';
+      d.appendChild(l); d.appendChild(f);
+    });
+    /* A box inside a shut fold measures zero, so it is sized when the fold
+       opens rather than while it is hidden. */
+    d.addEventListener('toggle', function(){ if (d.open) giFitAll(); });
+    host.appendChild(d);
+  });
+})();
+
+/* A box as tall as the words it is showing. Two rows cut the built-in
+   wording through the middle of a line - half-height letters against the
+   bottom border, which reads as broken rather than as a hint (the owner,
+   30 Aug). A placeholder does not count toward scrollHeight, so it is
+   measured in a hidden twin of the same width, font and padding. */
+function giFit(t){
+  if (!t || !t.clientWidth) return;          /* hidden tab: nothing to measure */
+  var cs = getComputedStyle(t);
+  var probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;'
+    + 'white-space:pre-wrap;overflow-wrap:break-word;';
+  probe.style.width      = t.clientWidth + 'px';
+  probe.style.fontFamily = cs.fontFamily;
+  probe.style.fontSize   = cs.fontSize;
+  probe.style.lineHeight = cs.lineHeight;
+  probe.style.padding    = cs.padding;
+  /* A trailing space so a text ending in a newline still measures its
+     last, empty line. */
+  probe.textContent = (t.value || t.placeholder || '') + ' ';
+  document.body.appendChild(probe);
+  var h = probe.offsetHeight;
+  probe.parentNode.removeChild(probe);
+  t.style.height = Math.max(h + 2, 44) + 'px';
+}
+function giFitAll(){
+  [].forEach.call(document.querySelectorAll('#tGuest textarea'), giFit);
+}
+function giPageFields(){
+  var out = [];
+  GI_MORE.forEach(function(p){
+    GI_PARTS.forEach(function(part){ out.push('gi' + part[0] + '_' + p[0]); });
+  });
+  return out;
+}
+function giFields(){
+  return ['giWelcomeImg', 'giDiningImg', 'giDiningText', 'giIntro']
+    .concat(giPageFields());
+}
+function loadGuestInfo(){
+  fetch(DB + '/prearrivalinfo.json').then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      j = j || {};
+      document.getElementById('giWelcomeImg').value = j.welcomeImage || '';
+      document.getElementById('giDiningImg').value  = j.diningImage || '';
+      document.getElementById('giDiningText').value = j.diningText || '';
+      document.getElementById('giWelcomeCrop').value   = j.welcomeImageCrop || 'centre';
+      document.getElementById('giWelcomeHeight').value = j.welcomeImageHeight || 'banner';
+      document.getElementById('giDiningCrop').value    = j.diningImageCrop || 'centre';
+      document.getElementById('giDiningHeight').value  = j.diningImageHeight || 'banner';
+      document.getElementById('giIntro').value = j.intro || '';
+      GI_SAVED = { more: j.more || {}, titles: j.titles || {},
+                   descs: j.descs || {} };
+      giSeedPages();
+      giFitAll();
+    }).catch(function(){});
+}
+
+/* ── the Read more boxes hold real, editable words ──────────────
+   They showed the built-in wording as a grey placeholder, which reads as
+   a disabled field: the owner asked (30 Aug) for text he can edit rather
+   than retype. So each box is seeded with what a guest reads now - his
+   own words where he has written them, the built-in wording where he has
+   not - and both halves have to be in before it can be:  the record and
+   the built-ins arrive on two fetches, in either order.
+
+   A box left exactly as it came SAVES AS EMPTY. Storing the copy instead
+   would freeze today's built-in wording into the database, and a later
+   edit to prearrival.html would be silently overridden by a copy nobody
+   remembers making - CLAUDE.md rule 1, in the one shape that survives
+   seeding. It also gives the way back: clear a box, save, and the
+   original returns. */
+var GI_SAVED = null, GI_BUILTIN_IN = false;
+/* Which stored key each part of a page is written under. */
+var GI_PART_KEY = { Title: 'titles', Desc: 'descs', More: 'more' };
+function giBuiltin(id){
+  var t = document.getElementById(id);
+  return (t && t.dataset.builtin) || '';
+}
+function giSeedPages(){
+  if (!GI_SAVED || !GI_BUILTIN_IN) return;
+  GI_MORE.forEach(function(p){
+    GI_PARTS.forEach(function(part){
+      var id = 'gi' + part[0] + '_' + p[0];
+      var own = (GI_SAVED[GI_PART_KEY[part[0]]] || {})[p[0]];
+      /* Seeding is not an edit: the value is set directly, which fires no
+         input event, so Save stays at rest and GI_DIRTY stays false. */
+      document.getElementById(id).value =
+        (typeof own === 'string' && own.trim()) ? own : giBuiltin(id);
+    });
+  });
+  if (!document.getElementById('giIntro').value.trim())
+    document.getElementById('giIntro').value = giBuiltin('giIntro');
+  giFitAll();
+}
+/* The built-in Read more words, read from the guest page itself: one file
+   owns those words, and a copy typed here is the drift CLAUDE.md rule 1
+   exists to prevent. They seed the boxes and they are what an untouched
+   box is compared against on save. DOMParser parses without running a
+   line of the page. The page ids derive from the keys (dine -> qDine), so
+   there is no second map. */
+var GI_PART_SEL = { Title: '.q-t', Desc: '.q-h', More: '.more-b' };
+fetch('prearrival.html').then(function(r){ return r.text(); }).then(function(html){
+  var doc = new DOMParser().parseFromString(html, 'text/html');
+  GI_MORE.forEach(function(p){
+    var qid = 'q' + p[0].charAt(0).toUpperCase() + p[0].slice(1);
+    GI_PARTS.forEach(function(part){
+      var b = doc.querySelector('#' + qid + ' ' + GI_PART_SEL[part[0]]);
+      var f = document.getElementById('gi' + part[0] + '_' + p[0]);
+      if (b && f) f.dataset.builtin = b.textContent.replace(/\s+/g, ' ').trim();
+    });
+  });
+  var iw = doc.querySelector('.intro-why');
+  if (iw) document.getElementById('giIntro').dataset.builtin =
+    iw.textContent.replace(/\s+/g, ' ').trim();
+  GI_BUILTIN_IN = true;
+  giSeedPages();
+  giFitAll();
+}).catch(function(){});
+/* Whether the boxes hold something the database does not. The Save button
+   almost knows this, but its resting state on page load is enabled with
+   nothing to save, so the flag is its own. */
+var GI_DIRTY = false;
+giFields().forEach(function(id){
+  document.getElementById(id).oninput = function(){
+    GI_DIRTY = true;
+    giFit(this);
+    armSave(document.getElementById('giSave'));
+  };
+});
+['giWelcomeCrop', 'giWelcomeHeight', 'giDiningCrop', 'giDiningHeight']
+  .forEach(function(id){
+    document.getElementById(id).onchange = function(){
+      GI_DIRTY = true;
+      armSave(document.getElementById('giSave'));
+    };
+  });
+/* The preview is one tap away from the editor, and the editor may hold an
+   unsaved paragraph: navigation would discard it silently, so it asks. The
+   demo carries the matching way back. */
+document.getElementById('giDemo').onclick = function(e){
+  if (GI_DIRTY &&
+      !confirm('There are unsaved changes here. Open the demo without saving them?'))
+    e.preventDefault();
+};
+document.getElementById('giSave').onclick = function(){
+  var err = document.getElementById('giErr');
+  var wi = document.getElementById('giWelcomeImg').value.trim();
+  var di = document.getElementById('giDiningImg').value.trim();
+  var dt = document.getElementById('giDiningText').value.trim();
+  /* Refused here in words rather than as the database's "not allowed":
+     the ceilings and shapes below are the rules', said helpfully. */
+  var link = /^https:\/\/\S+$/;
+  if ((wi && !link.test(wi)) || (di && !link.test(di))){
+    err.textContent = 'An image link is one full https:// address and nothing else.';
+    return;
+  }
+  if (wi.length > 500 || di.length > 500){
+    err.textContent = 'That image link is longer than the 500 characters the database holds.';
+    return;
+  }
+  if (dt.length > 4000){
+    err.textContent = 'The dining text is ' + dt.length +
+      ' characters, and it holds 4000.';
+    return;
+  }
+  /* What each part holds, said in the same words the database refuses in. */
+  var GI_CAP = { Title: 200, Desc: 500, More: 2000 };
+  var pages = { titles: {}, descs: {}, more: {} }, over = null;
+  GI_MORE.forEach(function(p){
+    GI_PARTS.forEach(function(part){
+      var id = 'gi' + part[0] + '_' + p[0];
+      var v = document.getElementById(id).value.trim();
+      if (v.length > GI_CAP[part[0]] && !over)
+        over = p[1] + ' ' + part[1].toLowerCase() + ' is over the ' +
+               GI_CAP[part[0]] + ' characters it holds';
+      /* Unchanged is stored as nothing, so the page keeps owning its own
+         words and an edit to them is never shadowed by a stale copy. */
+      pages[GI_PART_KEY[part[0]]][p[0]] = (v === giBuiltin(id)) ? '' : v;
+    });
+  });
+  var intro = document.getElementById('giIntro').value.trim();
+  if (intro.length > 1000 && !over)
+    over = 'The introduction is over the 1000 characters it holds';
+  if (intro === giBuiltin('giIntro')) intro = '';
+  if (over){
+    err.textContent = 'The ' + over + '.';
+    return;
+  }
+  err.textContent = '';
+  return saveFeedback(pressedButton(), function(){
+    return fetch(DB + '/prearrivalinfo.json', {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ welcomeImage: wi, diningImage: di,
+        diningText: dt, intro: intro, more: pages.more,
+        titles: pages.titles, descs: pages.descs,
+        welcomeImageCrop:   document.getElementById('giWelcomeCrop').value,
+        welcomeImageHeight: document.getElementById('giWelcomeHeight').value,
+        diningImageCrop:    document.getElementById('giDiningCrop').value,
+        diningImageHeight:  document.getElementById('giDiningHeight').value,
+        by: (window.NALA_USER && NALA_USER.email) || '',
+        at: new Date().toISOString() })
+    }).then(function(r){ if (!r.ok) throw new Error('rejected'); });
+  }, { done:'Saved ✓', then:function(){ GI_DIRTY = false; },
+       fail:function(msg){ err.textContent = msg; } });
+};
+loadGuestInfo();
+
 ['hFrom','hTo'].forEach(function(id){
   document.getElementById(id).onchange = function(){
     var v = this.value.trim();
@@ -598,6 +1108,25 @@ function saveNotify(){
         'That change was not saved. Check the connection.';
     });
 }
+
+/* ── the tabs ──────────────────────────────────────────────────────────
+   Four jobs, one page. The panels are all in the document from the start:
+   every one of them loads from its own node the moment the page opens, and
+   a tab that fetched on first press would leave the count on a chip wrong
+   until somebody looked at it. */
+document.querySelectorAll('.tab').forEach(function(t){
+  t.onclick = function(){
+    document.querySelectorAll('.tab').forEach(function(x){
+      x.classList.remove('on'); x.setAttribute('aria-selected','false');
+    });
+    document.querySelectorAll('.panel').forEach(function(x){ x.classList.remove('on'); });
+    t.classList.add('on'); t.setAttribute('aria-selected','true');
+    document.getElementById(t.getAttribute('data-t')).classList.add('on');
+    /* A box in a display:none panel measures zero, so the Guest form's
+       boxes are sized the moment its tab is opened rather than on load. */
+    if (t.getAttribute('data-t') === 'tGuest') giFitAll();
+  };
+});
 </script>
 </body>
 </html>

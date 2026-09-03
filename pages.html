@@ -2,54 +2,46 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Pages</title>
-<link rel="stylesheet" href="nala-ui.css?v=14">
+<link rel="stylesheet" href="nala-ui.css?v=17">
+<link rel="stylesheet" href="nala-ui2.css?v=6">
 <style>
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E; }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--cream); color:var(--ink); font-family:var(--ui-font);
-         padding:calc(24px + env(safe-area-inset-top)) 18px 0;
-         -webkit-tap-highlight-color:transparent; }
-
-  h1 { font-size:15px; font-weight:normal; margin-bottom:2px; }
-  .lede { font-size:12px; color:var(--mid); line-height:1.55; margin-bottom:4px; }
-
-  .seclabel { font-size:11px; letter-spacing:.14em; text-transform:uppercase;
-              color:var(--mid); margin:24px 0 4px; }
-  .secnote { font-size:11px; color:var(--mid); line-height:1.5; margin-bottom:9px; }
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
+  /* Ground, ink, type and spacing all come from nala-ui2.css. What is left
+     here is this page's own shape and nothing else, which is the point of
+     the dress: a page describes what only it has.                      */
 
   /* A row is a link, so it wears the link dress rather than the button dress:
      underlined name, no border, no fill. The affordance rules reserve a
      bordered rectangle for buttons, and seventeen bordered rectangles would
      read as seventeen things to press rather than a map. */
-  .p { display:block; padding:9px 0 10px; border-bottom:1px solid var(--rule);
-       text-decoration:none; color:inherit; }
+  .p { display:block; padding:var(--s3) 0; border-bottom:1px solid var(--rule);
+       text-decoration:none; color:inherit; min-height:var(--tap); }
   .p:last-child { border-bottom:none; }
-  .p-t { font-size:15px; text-decoration:underline; text-underline-offset:3px; }
-  .p-f { font-size:11px; color:var(--mid); margin-top:3px; }
-  .p-n { font-size:11px; color:var(--mid); margin-top:3px; font-style:italic; }
+  /* The name is the link, so it carries the accent and the underline.
+     Everything under it is supporting detail in --mid.               */
+  .p-t { font-size:var(--t3); color:var(--accent); text-decoration:underline;
+         text-underline-offset:3px; }
+  .p-f { font-size:var(--t2); color:var(--mid); margin-top:var(--s1); }
+  .p-n { font-size:var(--t2); color:var(--mid); margin-top:var(--s1);
+         font-style:italic; }
 
-  /* Not a link, because there is nothing to open. */
-  .p.todo .p-t { text-decoration:none; color:var(--mid); }
-  .p.todo .p-t::after { content:' \00b7 not built'; font-style:italic; }
-
-  .warn { color:var(--red); }
-  .spacer { height:40px; }
+  .spacer { height:var(--s6); }
 </style>
 </head>
-<body class="tier-app">
+<body class="tier-app ui2">
 
 <div class="daterow">
   <div class="date" id="title">Pages</div>
   <div class="navwrap" id="navWrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="tag.html">Dietary</a><a href="flags.html">Flags</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"></div>
   </div>
 </div>
 
@@ -197,6 +189,18 @@
     <div class="p-t">Pre-arrival SMS</div><div class="p-f">mock-arrivals-sms.html</div></a>
   <a class="p" href="mock-spa.html">
     <div class="p-t">Spa</div><div class="p-f">mock-spa.html</div></a>
+  <a class="p" href="mock-buttons.html">
+    <div class="p-t">Button standard</div><div class="p-f">mock-buttons.html</div></a>
+  <a class="p" href="mock-style.html">
+    <div class="p-t">House style</div><div class="p-f">mock-style.html</div>
+    <div class="p-n">The same screens in both dresses, with a switch. Nothing live.</div></a>
+  <a class="p" href="mock-tally.html">
+    <div class="p-t">Reservations, both dresses</div><div class="p-f">mock-tally.html</div>
+    <div class="p-n">A working replica of the board, on local state. Nothing live.</div></a>
+  <a class="p" href="mock-staff.html">
+    <div class="p-t">Settings, in tabs</div><div class="p-f">mock-staff.html</div>
+    <div class="p-n">Built on staff.html, 29 Aug, with a fourth tab for the spa
+    prices the mock did not know about. Kept as the brief. Nothing live.</div></a>
 
   <div class="spacer"></div>
 </div>
@@ -204,15 +208,12 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=41"></script>
+<script src="nala-shared.js?v=48"></script>
 <script>
 (function(){
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
-  var so=document.getElementById('navSignout');
-  if (so) so.onclick=function(e){ e.preventDefault();
-    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
 })();
 
 /* Only the boards this role may open. Sign out is never filtered. */

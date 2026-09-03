@@ -105,6 +105,10 @@ TAGS = {"main": ["Nut allergy"]}
 # Tonight's dinner cells, keyed by villa. Seeded per test.
 DINNER = {}
 
+# The treatments at /spa/<booking>, seeded per test: the Wellness row reads
+# these first and falls back to the form only while no record answers it.
+SPADB = {}
+
 # The booking as Mews states it. Its villa is a single value, so it settles a
 # disagreement with /stays. b4's companion is the decoy the guest's own typed
 # name must beat; b9's is a name only Mews knows, which must still read back.
@@ -168,6 +172,9 @@ def fb(route, request):
     elif "/bookflags/" in u:
         k = u.split("/bookflags/")[1].split(".json")[0]
         body = json.dumps(BOOKFLAGS[k]) if k in BOOKFLAGS else "null"
+    elif "/spa/" in u:
+        k = u.split("/spa/")[1].split(".json")[0]
+        body = json.dumps(SPADB[k]) if k in SPADB else "null"
     elif "/flags" in u: body = json.dumps(FLAGS)
     route.fulfill(status=200, content_type="application/json", body=body)
 
@@ -270,6 +277,36 @@ with sync_playwright() as p:
     def fork(v):
         return pg.evaluate("()=>{const e=document.querySelector('.arr[data-villa=\"%s\"] .fork');"
                            "return e?e.className:null;}" % v)
+    # Big enough to read at a glance. Asked for by the owner 28 Aug: at 19px
+    # it was smaller than the villa number beside it while carrying the one
+    # fact the row exists to show at speed. Asserted in rendered pixels, not
+    # a class, because the class cannot say how big the stylesheet drew it.
+    #  And the right colour, read from the pixels rather than the class.
+    #  The class check above passed for a day while all three forks were
+    #  drawn BLACK: the conversion had dropped this page's --dine and
+    #  --nodine, and an undefined custom property does not fall back, it
+    #  computes to nothing. The classes were right the whole time. The
+    #  reasoning on the size assertion below - "the class cannot say how
+    #  big the stylesheet drew it" - is exactly as true of colour.
+    forkcol = pg.evaluate("""()=>{const probe=v=>{const e=document.createElement('span');
+        e.style.color='var('+v+')';document.body.appendChild(e);
+        const c=getComputedStyle(e).color;e.remove();return c;};
+      const f=c=>{const e=document.querySelector('.arr .fork.'+c+' svg');
+        return e?getComputedStyle(e).fill:null;};
+      return {in:f('in'), out:f('out'), un:f('un'),
+              dine:probe('--dine'), nodine:probe('--nodine')};}""")
+    print("   fork colours:", forkcol)
+    ck("a fork for a guest who is dining wears the dining colour",
+       forkcol["in"] == forkcol["dine"])
+    ck("and one for a guest who is not wears the not-dining colour",
+       forkcol["out"] == forkcol["nodine"])
+    ck("and nobody has answered draws no fork to colour at all",
+       forkcol["un"] is None)
+
+    ck("the fork is big enough to read across a desk",
+       pg.evaluate("()=>{const e=document.querySelector('.arr .fork');"
+                   "const r=e.getBoundingClientRect();"
+                   "return Math.round(r.width);}") >= 26)
     ck("a guest opted in for dinner reads green", fork("4") == "fork in")
     ck("one who declined reads red", fork("9") == "fork out")
     ck("a confirmed guest carries it too", fork("7") == "fork in")
@@ -279,9 +316,12 @@ with sync_playwright() as p:
     # Every question on the form is mandatory, so a submitted form always has a
     # dining answer and grey can only mean no form. No form is a tentative yes,
     # which the kitchen cooks for, so it earns an icon rather than a blank.
-    ck("a guest with no form still carries a fork, greyed", fork("2") == "fork un")
+    #  Was "still carries a fork, greyed". Ruled by the owner 29 Aug: a solid
+    #  grey knife and fork does not say "nobody has answered", it says
+    #  something the reader has to decode. Only dining and not dining draw.
+    ck("a guest with no form carries no fork at all", fork("2") is None)
     # Grey is a real answer: they filled the form in and left dinner open.
-    ck("and so does one who opened the link and stopped", fork("14") == "fork un")
+    ck("and neither does one who opened the link and stopped", fork("14") is None)
 
 
     # Opened the pre-arrival link and did not finish. A different message from
@@ -291,15 +331,25 @@ with sync_playwright() as p:
         return pg.evaluate("()=>!!document.querySelector('.arr[data-villa=\"%s\"] .seen')" % v)
     ck("a guest who opened the link and stopped shows it", seen("14"))
     ck("a guest who never opened it carries no link icon, only the grey fork",
-       not seen("2") and fork("2") == "fork un")
+       not seen("2") and fork("2") is None)
     ck("and one who submitted has nothing left to say", not seen("4"))
 
-    # The tint answers the thing reception scans for.
+    # The tint reads completeness, the owner's ruling of 26 Aug: grey until
+    # somebody answers something, amber while only some answers exist, green
+    # only once dinner, dietary and massage all hold one. It used to read
+    # whether the form was submitted, which let one saved field paint a row
+    # green and an untouched row wear the same amber as one half done.
     def tint(v):
         return pg.evaluate("()=>document.querySelector('.arr[data-villa=\"%s\"]').className" % v)
-    ck("a completed form tints the row green", "done-form" in tint("4"))
-    ck("one still to do tints it amber", "todo-form" in tint("2"))
-    ck("opened but unfinished still counts as to do", "todo-form" in tint("14"))
+    ck("a guest with every answer tints the row green", "done-form" in tint("4"))
+    ck("one nobody has edited reads not-started", "todo-form" in tint("2"))
+    ck("opened but never answered is still not-started", "todo-form" in tint("14"))
+    # By computed colour, because the class alone cannot say what the
+    # stylesheet paints it: not-started is grey now, and must not come back
+    # amber, which would make an untouched row read as one half done.
+    ck("and not-started wears grey, not the part-done amber",
+       pg.evaluate("()=>getComputedStyle(document.querySelector('.arr[data-villa=\"2\"]')).backgroundColor")
+       != pg.evaluate("()=>getComputedStyle(document.querySelector('.arr[data-villa=\"6\"]')).backgroundColor"))
 
     # ── started and not finished ────────────────────────────────
     #  A third state, and only since the guest page began saving each page as
@@ -364,14 +414,22 @@ with sync_playwright() as p:
        ["Interested" in l and "late morning" in l for l in sumtxt.split("\n")].count(True) == 1)
     ck("dining approach, in words rather than 'most'",
        "Dining in most nights" in sumtxt)
-    # .sum-l is uppercased by CSS, so innerText comes back shouting.
+    #  Was "SECOND GUEST": .sum-l used to be uppercased by CSS so innerText
+    #  came back shouting. The second dress sets labels in sentence case, so
+    #  the assertion no longer pins the casing - it was never the point, and
+    #  a test that fails when a label stops shouting is a test about CSS.
+    #  What matters is that the label and the name are both on the summary.
     ck("the second guest, under the name on the row above",
-       "SECOND GUEST" in sumtxt and "Imogen Clarke" in sumtxt)
+       "second guest" in sumtxt.lower() and "Imogen Clarke" in sumtxt)
     ck("and the name the guest typed outranks the Mews copy",
        "Wrong Name" not in sumtxt)
-    ck("and three ways out: edit, confirm, or confirm and check in", pg.evaluate(
+    #  Two ways out since 28 Aug. Confirm arriving sat between these: it
+    #  stamped the form complete and cleared checkedInAt, and once the state
+    #  moved to its own gated control the only thing it still did was
+    #  un-arrive a guest, under a name that said the opposite.
+    ck("and two ways out: edit, or check in", pg.evaluate(
        "()=>[...document.querySelectorAll('.sum-btns button')].map(b=>b.dataset.act).join()")
-       == "edit,confirm,checkin")
+       == "edit,checkin")
     ck("only one summary is ever open",
        (pg.locator('.arr[data-villa="9"]').click(), pg.wait_for_timeout(300),
         pg.evaluate("()=>document.querySelectorAll('.sum').length"))[2] == 1)
@@ -385,6 +443,145 @@ with sync_playwright() as p:
     ck("a companion only Mews knows reads back at the desk",
        "Eleni Papadopoulou" in pg.locator(".sum").inner_text())
     pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    pg.close()
+
+    # ── the wellness row is the Spa board's truth, not the form's ─
+    # Found 27 Aug: the masseuse books the massage and the desk still read
+    # "Interested", because the sheet never read /spa. A record born from
+    # the form replaces the Interested line; the form's ask stands in only
+    # while nobody has answered it - the spa board's own rule.
+    SPADB["b4"] = {"t1": {"status": "booked", "day": plus(1), "time": "14:00",
+                          "source": "prearrival", "at": "x"}}
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    sumtxt = pg.locator(".sum").inner_text()
+    ck("a booked massage reads Booked on the sheet, day and time attached",
+       "Booked" in sumtxt and "2:00 pm" in sumtxt)
+    ck("and the form's Interested line stands down, answered",
+       "Interested" not in sumtxt)
+    pg.close()
+    SPADB["b4"] = {"t1": {"status": "declined", "reqDay": plus(1),
+                          "reqTime": "late morning", "note": "nothing free",
+                          "source": "prearrival", "at": "x"}}
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    sumtxt = pg.locator(".sum").inner_text()
+    ck("a declined ask says so, why, and what the desk still owes the guest",
+       "Declined" in sumtxt and "nothing free" in sumtxt and
+       "let the guest know" in sumtxt and "Interested" not in sumtxt)
+    pg.close()
+    SPADB["b4"] = {"t1": {"status": "suggested", "day": plus(2), "time": "16:30",
+                          "source": "prearrival", "at": "x"}}
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    ck("a suggestion shows as waiting on the guest",
+       (lambda t: "Suggested" in t and "4:30 pm" in t and
+                  "waiting on the guest" in t)(pg.locator(".sum").inner_text()))
+    pg.close()
+
+    # ── the massage mark on the row, 31 Aug ─────────────────────
+    # The same four states the sheet spells out above, readable without
+    # opening anything, from the same massageState so the mark and the words
+    # under it cannot disagree about one guest.
+    #
+    # Colour is read from the rendered pixels, never from the class. The fork
+    # beside it taught that: its class check passed for a day while all three
+    # forks drew BLACK, because the conversion had dropped this page's --dine
+    # and an undefined custom property does not fall back, it computes to
+    # nothing. A class cannot say what the stylesheet drew.
+    def lotus_colour(villa):
+        return pg.evaluate(
+          "()=>{const e=document.querySelector('.arr[data-villa=\"%s\"] .lotus svg');"
+          "return e?getComputedStyle(e).stroke:null;}" % villa)
+    def lotus_class(villa):
+        return pg.evaluate(
+          "()=>{const e=document.querySelector('.arr[data-villa=\"%s\"] .lotus');"
+          "return e?e.className:null;}" % villa)
+
+    SPADB["b4"] = {"t1": {"status": "booked", "day": plus(1), "time": "14:00",
+                          "source": "prearrival", "at": "x"}}
+    pg = board()
+    probe = pg.evaluate("""()=>{const p=v=>{const e=document.createElement('span');
+        e.style.color='var('+v+')';document.body.appendChild(e);
+        const c=getComputedStyle(e).color;e.remove();return c;};
+      return {dine:p('--dine'), nodine:p('--nodine'), mid:p('--mid')};}""")
+    ck("a booked massage wears the done colour, the same green as a dining fork",
+       lotus_class("4") == "lotus done" and lotus_colour("4") == probe["dine"])
+    #  Null-safe on purpose: written as a bare querySelector first, and when
+    #  the mark was removed wholesale to prove these assertions bite, this
+    #  one THREW instead of failing, which stopped the suite and hid the five
+    #  behind it. A test that explodes reports one fault where there are six.
+    ck("the mark is the fork's size, so the two read as a pair of facts",
+       (pg.evaluate("()=>{const e=document.querySelector('.arr .lotus');"
+                    "return e?Math.round(e.getBoundingClientRect().width):0;}") or 0) >= 26)
+    #  Red is failure and an allergy. A declined massage is neither: it is an
+    #  answer, and terracotta is the law's word for one. Ruled 31 Aug.
+    ck("and it is never the law's red, which belongs to failure and allergies",
+       lotus_colour("4") != pg.evaluate("""()=>{const e=document.createElement('span');
+         e.style.color='var(--red)';document.body.appendChild(e);
+         const c=getComputedStyle(e).color;e.remove();return c;}"""))
+    pg.close()
+
+    SPADB["b4"] = {"t1": {"status": "declined", "reqDay": plus(1),
+                          "source": "prearrival", "at": "x"}}
+    pg = board()
+    ck("a declined ask wears terracotta, the same ink the spa board gives it",
+       lotus_class("4") == "lotus decl" and lotus_colour("4") == probe["nodine"])
+    pg.close()
+
+    SPADB["b4"] = {"t1": {"status": "suggested", "day": plus(2), "time": "16:30",
+                          "source": "prearrival", "at": "x"}}
+    pg = board()
+    ck("a suggestion wears amber, because it is the one the desk must act on",
+       lotus_class("4") == "lotus sugg")
+    ck("and it is neither the waiting grey nor the booked green",
+       lotus_colour("4") not in (probe["mid"], probe["dine"]))
+    #  No word beside the amber. The owner removed it 1 Sep along with the
+    #  answered count, on one principle: the amber IS the message, and a
+    #  word restating it ate the line the ETA needs.
+    ck("the amber says it on its own, with no word restating the colour",
+       "suggested" not in pg.evaluate(
+         "()=>document.querySelector('.arr[data-villa=\"4\"] .arr-s').textContent"))
+    ck("and the stay line fits without clipping now that it is shorter",
+       pg.evaluate("()=>{const e=document.querySelector"
+                   "('.arr[data-villa=\"4\"] .arr-s');"
+                   "return e.scrollWidth <= e.clientWidth + 1;}"))
+    pg.close()
+
+    #  Precedence is what the desk OWES, not what happened last: a party with
+    #  one massage booked and one suggested still needs somebody to ring the
+    #  guest about the suggestion.
+    SPADB["b4"] = {"t1": {"status": "booked", "day": plus(1), "time": "14:00",
+                          "source": "prearrival", "at": "x"},
+                   "t2": {"status": "suggested", "day": plus(2), "time": "16:30",
+                          "source": "desk", "at": "x"}}
+    pg = board()
+    ck("a suggestion outranks a booking on the same guest, because it is owed",
+       lotus_class("4") == "lotus sugg")
+    pg.close()
+    del SPADB["b4"]
+
+    pg = board()
+    #  b4's form says yes and nothing has answered it yet.
+    ck("a form asking with nothing answering it yet waits in grey",
+       lotus_class("4") == "lotus wait" and lotus_colour("4") == probe["mid"])
+    ck("a guest who never opened the form draws no mark",
+       lotus_class("2") is None)
+    ck("nor does one whose form never reached the massage question",
+       lotus_class("9") is None)
+    pg.close()
+    #  A no thank you is the absence of a request, not a declined one, so it
+    #  must not borrow the declined colour. Written first against villa 9,
+    #  which has no wellness key AT ALL - the assertion passed while the code
+    #  said the opposite, because it was aimed at "never asked" and named
+    #  "said no". A state needs a booking that is actually in it.
+    PRE["b12"]["wellness"] = False
+    pg = board()
+    ck("a no thank you draws no mark either, the way an unanswered dinner does",
+       lotus_class("12") is None)
+    pg.close()
+    del PRE["b12"]["wellness"]
+    pg = board()
 
     # ── the sheet is edit, not create ───────────────────────────
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
@@ -448,71 +645,231 @@ with sync_playwright() as p:
     ck("and the wellness answer", pg.evaluate("()=>wYes.className==='on'"))
     ck("a day and a time appear once they are interested",
        pg.evaluate("()=>wWrap.style.display!=='none'"))
-    ck("the days offered are only the nights they are here",
-       pg.evaluate("()=>document.querySelectorAll('#wDays .chip').length") == 5)
+    #  The desk must offer exactly what the guest was offered. A chip the
+    #  guest can pick and the desk cannot draw is villa 17 again: two
+    #  screens describing one booking and disagreeing about it.
+    ck("the days offered are the nights they are here, then Any day",
+       pg.evaluate("()=>document.querySelectorAll('#wDays .chip').length") == 6)
+    ck("and Any day closes the row, in the order the guest saw it",
+       pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')]"
+                   ".pop().textContent")
+       == json.load(open("tests/slots.json"))["anyDay"]["label"])
     ck("covers are shown because they are dining",
        pg.evaluate("()=>paxWrap.style.display!=='none'"))
 
-    # ── confirming ──────────────────────────────────────────────
+    # ── saving from the sheet ───────────────────────────────────
+    # The sheet's quiet button is Save, not a second Confirm arriving.
+    # Renamed by the owner, 26 Aug, after the old wording did what it said: a
+    # sheet opened, changed nowhere and "confirmed" saved decisions nobody
+    # had made. Save keeps what is on the sheet and decides nothing;
+    # confirming belongs to the summary, where the guest has just agreed to
+    # the answers out loud.
+    ck("the sheet's quiet button says Save",
+       pg.evaluate("()=>sConfirm.textContent.trim()") == "Save")
     del WRITES[:]
     pg.locator("#sConfirm").click(); pg.wait_for_timeout(500)
     w = [x for x in WRITES if "/bookings/b4/prearrival" in x["u"]]
-    ck("confirming writes the guest's own node", len(w) == 1)
+    ck("saving writes the guest's own node", len(w) == 1)
     if w:
         body = json.loads(w[0]["b"])
         ck("as a PATCH, so a field this screen does not carry survives",
            w[0]["m"] == "PATCH")
-        ck("it is stamped confirmed", bool(body.get("confirmedAt")))
+        ck("a save is not a confirmation, so nothing is stamped confirmed",
+           "confirmedAt" not in body)
+        ck("nor moved: where the guest is is not the sheet's to change",
+           "checkedInAt" not in body)
         ck("the answers go with it", body["dining"] is True and body["pax"] == 2
            and body["diets"] == ["Nut allergy"])
-        ck("and 'at' is NOT overwritten, so it still means when the answers first existed",
+        ck("and 'at' is NOT written, so it still means when the answers first existed",
            "at" not in body)
     ck("the sheet closes", pg.evaluate("()=>backdrop.className.indexOf('show')<0"))
-    # Confirming alone does NOT move them: they have not arrived yet.
-    ck("confirming leaves them under Arriving, because they have not arrived",
+    # Saving does not move them: they have not arrived.
+    ck("saving leaves them under Arriving, because they have not arrived",
        pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"]').className")
        .find("is-done") == -1)
     ck("and the arrived count does not move either",
        pg.evaluate("()=>nArr.textContent") == "2/9")
     pg.close()
 
-    # ── reception's approved hour, beside the guest's slot ──────
-    # The guest asks, reception decides. The approved hour is its own field:
-    # setting it never touches the slot the guest chose, clearing it leaves
-    # that slot standing, and the desk offers every half hour 11am to 11pm
-    # whatever the guest answered: halves since 23 Aug, because the guest's
-    # own track offers them and the desk cannot approve less than the form
-    # asks. A guest who chose Around 4pm and rang to say half three can be
-    # set to 3:30pm.
+    # ── the bug of 26 Aug: a bare save invented answers ─────────
+    # Open a blank guest, change nothing, press the sheet's quiet button.
+    # The old save wrote dining:null and wellness:null for questions nobody
+    # had asked, the optimistic merge read null as false, and the reopened
+    # sheet showed Not dining and Not interested selected - decisions nobody
+    # made. It also stamped `at`, so the untouched row went green as a
+    # finished form.
+    pg = board()
+    pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(600)
+    w = [x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]
+    ck("a bare save answers no question nobody answered",
+       len(w) == 1 and not any(k in json.loads(w[0]["b"]) for k in
+       ("dining", "pax", "wellness", "wellQty", "wellDur", "noDiets")))
+    ck("and carries no stamp: not confirmed, not arrived, not a finished form",
+       len(w) == 1 and not any(k in json.loads(w[0]["b"]) for k in
+       ("confirmedAt", "checkedInAt", "at")))
+    ck("and writes no dinner cell, because nobody has asked them yet",
+       not [x for x in WRITES if "/dinner/" in x["u"]])
+    pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
+    ck("reopening the sheet offers every question still unanswered",
+       pg.evaluate("()=>sDin.className===''&&sOut.className===''"
+                   "&&wYes.className===''&&wNo.className===''"))
+    pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(300)
+    ck("and the row stays grey, because nothing was edited",
+       "todo-form" in pg.evaluate(
+         "()=>document.querySelector('.arr[data-villa=\"2\"]').className"))
+    pg.close()
+
+    # ── the way back to nobody-asked ────────────────────────────
+    # Ruled by the owner, 26 Aug: every answer must be undoable. The chips
+    # always toggled off; the two segments could only switch sides, so a
+    # mis-tapped Dining could become Not dining but never again unknown -
+    # and unknown is the only honest state for a question without an answer.
+    # Tapping the chosen side again now clears it, the save writes the clear
+    # (null through the PATCH deletes the key), and an existing dinner cell
+    # is deleted with it, because a cell has no third value and the villa
+    # must go back to awaiting.
+    DINNER["4"] = {"status": "in", "pax": 2, "by": "staff",
+                   "diets": ["Nut allergy"], "dnote": "the daughter"}
     pg = board()
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
     pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
-    ck("the desk offers twenty five half hours, 11am through 11pm",
+    ck("the answers arrive selected, as before",
+       pg.evaluate("()=>sDin.className==='on'&&wYes.className==='on'"))
+    pg.locator("#sDin").click(); pg.wait_for_timeout(150)
+    # Neither side is chosen any more - but the one the record held keeps a
+    # dark border, so an accidental deselect reads as a gap where an answer
+    # used to be rather than as a question nobody ever asked. The owner's
+    # ask of 28 Aug; it lasts as long as the sheet is open.
+    ck("tapping the chosen dining answer again clears the segment",
+       pg.evaluate("()=>sDin.className!=='on'&&sOut.className!=='on'"))
+    ck("and the answer just taken off keeps its border, so the slip shows",
+       pg.evaluate("()=>sDin.className==='was'&&sOut.className===''"))
+    ck("and the covers go with it, since they only mean something dining",
+       pg.evaluate("()=>paxWrap.style.display==='none'"))
+    pg.locator("#wYes").click(); pg.wait_for_timeout(150)
+    ck("the wellness segment gives the same way back",
+       pg.evaluate("()=>wYes.className!=='on'&&wNo.className!=='on'"))
+    ck("marking what was taken off there too",
+       pg.evaluate("()=>wYes.className==='was'&&wNo.className===''"))
+    ck("and the day and time fold away with it",
+       pg.evaluate("()=>wWrap.style.display==='none'"))
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(600)
+    w = [x for x in WRITES if "/bookings/b4/prearrival" in x["u"]]
+    ck("the save writes the clear as null, not omission, or nothing clears",
+       len(w) == 1 and "dining" in json.loads(w[0]["b"])
+       and json.loads(w[0]["b"])["dining"] is None
+       and json.loads(w[0]["b"])["pax"] is None)
+    ck("wellness clears the same way, taking day, time and lengths with it",
+       len(w) == 1 and all(json.loads(w[0]["b"]).get(k, "MISSING") is None
+       for k in ("wellness", "wellDay", "wellTime", "wellQty", "wellDur")))
+    ck("and the dinner cell is deleted, so the villa reads awaiting again",
+       len([x for x in WRITES if x["m"] == "DELETE"
+            and ("/dinner/" + today + "/4") in x["u"]]) == 1)
+    # What the boards then say: the summary reads unanswered, not a decision.
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    sumtxt = pg.locator(".sum").inner_text()
+    ck("the summary reads the question as unanswered again",
+       "Not answered" in sumtxt and "Not dining" not in sumtxt
+       and "Not interested" not in sumtxt)
+    #  Was "goes back to grey". There is no grey fork now: clearing the
+    #  answer removes the icon, which is the same fact said by absence.
+    ck("the fork goes away again",
+       pg.evaluate("()=>{const e=document.querySelector("
+                   "'.arr[data-villa=\"4\"] .fork'); return e?e.className:null;}") is None)
+    ck("and the row drops from green to part answered",
+       "part-form" in pg.evaluate(
+         "()=>document.querySelector('.arr[data-villa=\"4\"]').className"))
+    pg.close()
+    DINNER.clear()
+
+    # A record that never held the answer gets no null either: the clear is
+    # written only when there is something to clear, or every bare save
+    # would stamp deletions over keys that do not exist.
+    pg = board()
+    pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
+    pg.locator("#sDin").click(); pg.wait_for_timeout(150)
+    pg.locator("#sDin").click(); pg.wait_for_timeout(150)
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(600)
+    w = [x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]
+    ck("answering and un-answering before ever saving writes no dining at all",
+       len(w) == 1 and "dining" not in json.loads(w[0]["b"]))
+    ck("and deletes no cell, since none was ever written",
+       not [x for x in WRITES if x["m"] == "DELETE"])
+    pg.close()
+
+    # ── reception's hour, only where the slots cannot say it ────
+    # The owner's ruling of 27 Aug: the desk corrects a mid-afternoon time
+    # by tapping the guest's own slot row, so the approved row's twenty five
+    # chips were nineteen restatements and six real jobs. It now appears
+    # only for the two open-ended slots: the early hours behind "before
+    # 2pm", which only reception can grant, and the actual hour behind
+    # "after 5pm", pinned for whoever waits at the desk. Any other slot
+    # hides the row entirely. Setting an hour still never touches the slot
+    # the guest chose, and clearing it leaves that slot standing.
+    pg = board()
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    # b9 asked "before 2pm" and typed the note reception approves against.
+    ck("an early ask offers the six early half hours and nothing else",
        pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
                    ".map(b=>b.textContent).join()")
-       == "11am,11:30am,12pm,12:30pm,1pm,1:30pm,2pm,2:30pm,3pm,3:30pm,"
-        + "4pm,4:30pm,5pm,5:30pm,6pm,6:30pm,7pm,7:30pm,8pm,8:30pm,"
-        + "9pm,9:30pm,10pm,10:30pm,11pm")
-    ck("the approved hour comes up selected from the record",
+       == "11am,11:30am,12pm,12:30pm,1pm,1:30pm")
+    ck("under a label that says what it is",
+       "Early arrival" in pg.evaluate("()=>apLab.textContent"))
+    ck("with the guest's own note on screen to approve against",
+       pg.evaluate("()=>fEtaNote.value") == "flight lands 11am")
+    pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
+                ".find(b=>b.textContent==='12pm').click()")
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(500)
+    w = [x for x in WRITES if "/bookings/b9/prearrival" in x["u"]]
+    ck("approving writes the hour as a number",
+       len(w) == 1 and json.loads(w[0]["b"]).get("arriveApproved") == 12)
+    if w:
+        ck("and the guest's slot goes with it, untouched",
+           json.loads(w[0]["b"])["arriveSlot"] == "before2")
+    pg.close()
+
+    # After 5pm is the other open end: the hour is pinned, not approved.
+    pg = board()
+    pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
+    ck("with no slot chosen there is no hour row at all",
+       pg.evaluate("()=>apChips.style.display==='none'"))
+    pg.evaluate("""()=>[...document.querySelectorAll('#eChips button')]
+        .find(b=>/After 5pm/.test(b.textContent)).click()""")
+    pg.wait_for_timeout(200)
+    ck("choosing After 5pm offers the evening half hours",
        pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
-                   ".find(b=>b.className.indexOf('on')>-1).textContent") == "3pm")
+                   ".map(b=>b.textContent).join()")
+       == "5:30pm,6pm,6:30pm,7pm,7:30pm,8pm,8:30pm,9pm,9:30pm,10pm,10:30pm,11pm")
+    ck("worded as when they arrive, since nobody refuses a late guest",
+       "Arriving at" in pg.evaluate("()=>apLab.textContent"))
+    pg.evaluate("""()=>[...document.querySelectorAll('#eChips button')]
+        .find(b=>/Around 3pm/.test(b.textContent)).click()""")
+    pg.wait_for_timeout(200)
+    ck("an hour the slots can already say hides the row again",
+       pg.evaluate("()=>apChips.style.display==='none'"))
+    pg.close()
+
+    # A stored hour from the wide-open days, or one whose slot has since
+    # changed, is painted anyway, selected - the purpose-chip lesson - so
+    # the next save cannot silently drop a time somebody agreed to.
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    ck("b4's stored 3pm survives as the one offered chip, selected",
+       pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
+                   ".map(b=>b.textContent+':'+b.className).join()") == "3pm:chip on")
+    ck("and the label says it is kept, not offered",
+       "kept" in pg.evaluate("()=>apLab.textContent"))
     ck("with the guest's own slot still selected beside it",
        pg.evaluate("""()=>[...document.querySelectorAll('#eChips button')]
          .some(e=>/Around 4pm/.test(e.textContent) && e.className.indexOf('on')>-1)"""))
-    # Reception moves it to 1pm, an hour the guest's form never offers.
-    pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
-                ".find(b=>b.textContent==='1pm').click()")
-    del WRITES[:]
-    pg.locator("#sConfirm").click(); pg.wait_for_timeout(500)
-    w = [x for x in WRITES if "/bookings/b4/prearrival" in x["u"]]
-    ck("approving writes the hour as a number",
-       len(w) == 1 and json.loads(w[0]["b"]).get("arriveApproved") == 13)
-    if w:
-        ck("and the guest's slot goes with it, untouched",
-           json.loads(w[0]["b"])["arriveSlot"] == "16")
     # Tapping the chosen hour again is the way back, like the slot chips.
-    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
-    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
     pg.evaluate("()=>[...document.querySelectorAll('#apChips button')]"
                 ".find(b=>b.className.indexOf('on')>-1).click()")
     del WRITES[:]
@@ -524,6 +881,125 @@ with sync_playwright() as p:
     if w:
         ck("and clearing leaves the guest's slot intact",
            json.loads(w[0]["b"])["arriveSlot"] == "16")
+    pg.close()
+
+    # ── the time rails scroll instead of wrapping ───────────────
+    # Nine slots was three rows of chips on a phone. A time sequence is the
+    # one control safe to scroll sideways: the order says what is off
+    # screen. The rail scrolls itself; the page must not.
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    ck("the slot chips stand in one scrollable rank",
+       pg.evaluate("()=>getComputedStyle(eChips).flexWrap") == "nowrap"
+       and pg.evaluate("()=>getComputedStyle(eChips).overflowX") == "auto")
+    ck("and the sheet still does not scroll sideways",
+       not pg.evaluate("()=>document.documentElement.scrollWidth>"
+                       "document.documentElement.clientWidth+1"))
+    ck("the rail opens with the guest's chosen slot in view",
+       pg.evaluate("""()=>{const on=eChips.querySelector('.chip.on');
+         const r=on.getBoundingClientRect(), b=eChips.getBoundingClientRect();
+         return r.left>=b.left-1 && r.right<=b.right+1;}"""))
+    # The owner's ruling of 27 Aug, once the time rails proved themselves:
+    # every row of choices wears the same dress. A wrapped row costs vertical
+    # space, the scarce dimension on a phone held at a desk, and changes
+    # height as the answers change; a rail costs none and never moves.
+    # Named one by one rather than by counting `.rail`, so a row ADDED to the
+    # sheet without the dress fails here by name rather than passing a total.
+    for row in ("eChips", "apChips", "dChips", "dNone", "pChips", "aChips",
+                "wDays", "fWqty", "fkChips", "paxRow"):
+        ck("%s stands in one scrollable rank" % row,
+           pg.evaluate("()=>{const e=document.getElementById('%s');"
+                       "const s=getComputedStyle(e);"
+                       "return s.flexWrap==='nowrap'&&s.overflowX==='auto';}" % row))
+    # Was: "a row that fits stays centred under its centred label". The
+    # labels are not centred any more - the sheet got topic headings and a
+    # left edge on 29 Aug, because one ribbon of identical centred captions
+    # gave the eye nothing to run down. A centred row under a left aligned
+    # label is a row that has slipped, so the rails start at the left too.
+    # Starting left keeps the half of the old bargain that mattered: the
+    # first chip is always at the margin, so an overflowing row is only ever
+    # clipped on the right, where it can be scrolled from.
+    # The topics have to be tellable apart, which is what the owner asked
+    # for: a heading is heavier than a label, and the space above a heading
+    # is bigger than the space between a label and its own control. Before
+    # this the labels were all one size and the rhythm was 16 above, 8
+    # below, so a caption sat nearly as close to the answer above it as to
+    # the question it belonged to.
+    hier = pg.evaluate("""()=>{/* not .first: the top heading deliberately has no rule and
+          no space above it, since nothing precedes it to separate from. */
+       const g=document.querySelector('.sheet-group:not(.first)');
+       const l=document.querySelector('.sheet-label');
+       if(!g||!l) return null;
+       const gs=getComputedStyle(g), ls=getComputedStyle(l);
+       return {gSize:parseFloat(gs.fontSize), lSize:parseFloat(ls.fontSize),
+               gWeight:parseInt(gs.fontWeight), lWeight:parseInt(ls.fontWeight),
+               gTop:parseFloat(gs.marginTop)+parseFloat(gs.paddingTop),
+               lTop:parseFloat(ls.marginTop), lBottom:parseFloat(ls.marginBottom),
+               rule:gs.borderTopWidth};}""")
+    print("   form hierarchy:", hier)
+    ck("a topic heading outweighs a field label",
+       hier and hier["gSize"] > hier["lSize"] and hier["gWeight"] > hier["lWeight"])
+    ck("a topic is separated by more space than a label is",
+       hier and hier["gTop"] > hier["lTop"] and hier["rule"] != "0px")
+    ck("a label sits closer to its own control than to what came before",
+       hier and hier["lTop"] >= hier["lBottom"] * 2)
+
+    ck("a rail starts where its label starts",
+       pg.evaluate("""()=>{const r=document.getElementById('dNone');
+          const lab=[...document.querySelectorAll('.sheet-label,.sheet-group')]
+            .filter(e=>e.getBoundingClientRect().width>0).pop();
+          return getComputedStyle(r).justifyContent==='flex-start' &&
+                 getComputedStyle(lab).textAlign==='left';}"""))
+    pg.close()
+
+    # ── the dress is declared once, in the markup ───────────────
+    # clearMiss and flagMissing used to REBUILD the dietary row's class from
+    # a literal - className = 'chips' - which silently undressed the rail,
+    # and only after somebody answered a dietary, which is the worst kind of
+    # bug: invisible until the screen is in use. The miss mark is a state
+    # laid on the dress now, added and removed on its own.
+    #  Driven off the Other-with-no-note refusal since 28 Aug: check in no
+    #  longer demands anything, so it no longer marks anything either.
+    pg = board()
+    pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
+    pg.evaluate("""()=>{ var c=[...document.querySelectorAll('#dNone .chip')]
+        .find(x=>/^other$/i.test(x.textContent.trim())); if(c) c.click(); }""")
+    pg.wait_for_timeout(200)
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(400)
+    ck("a wrong answer still marks its row",
+       pg.evaluate("()=>fDnote.className.indexOf('miss')>-1"))
+    ck("without undressing the rail underneath the mark",
+       pg.evaluate("()=>dChips.className.indexOf('rail')>-1"))
+    pg.evaluate("""()=>{ var c=[...document.querySelectorAll('#dNone .chip')]
+        .find(x=>/^other$/i.test(x.textContent.trim())); if(c) c.click(); }""")
+    pg.wait_for_timeout(250)
+    ck("and taking the wrong answer back clears the mark",
+       pg.evaluate("()=>fDnote.className.indexOf('miss')<0"))
+    ck("with the rail still standing",
+       pg.evaluate("()=>getComputedStyle(dChips).flexWrap") == "nowrap")
+    pg.close()
+
+    # ── a rail keeps its place across a repaint ─────────────────
+    # Every row rebuilds itself on every tap, and a scrolled rail jumping
+    # back to its start would take the chip just pressed off the screen.
+    # It does not, with no help from the page: the clear and the refill run
+    # in ONE task, so the browser never lays out the empty row and never
+    # clamps scrollLeft. Asserted because it is the behaviour reception
+    # depends on, whoever provides it - the page held it with a save and
+    # restore first, and breaking that changed this line not at all, which
+    # is why the code went and the assertion stayed.
+    pg = board(w=320)
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(300)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    pg.evaluate("()=>{eChips.scrollLeft=120;}")
+    pg.wait_for_timeout(150)
+    moved = pg.evaluate("()=>eChips.scrollLeft")
+    pg.evaluate("""()=>[...document.querySelectorAll('#eChips button')]
+        .find(b=>/Around 5pm/.test(b.textContent)).click()""")
+    pg.wait_for_timeout(250)
+    ck("a tap repaints the rail where it stood, not back at its start",
+       moved > 0 and abs(pg.evaluate("()=>eChips.scrollLeft") - moved) < 2)
     pg.close()
 
     # ── a guest with no form goes straight to the form ──────────
@@ -553,34 +1029,52 @@ with sync_playwright() as p:
         ck("no allergies is recorded as an answer, not as an empty list",
            body["noDiets"] is True)
         ck("not dining is zero covers", body["dining"] is False and body["pax"] == 0)
-        ck("and 'at' IS set, because the answers did not exist before",
-           bool(body.get("at")))
+        # This used to stamp `at` on the reasoning that the answers did not
+        # exist before. But `at` is the whole test for a finished form, and a
+        # desk save can be one answer of six: check in stamps it instead,
+        # once everything required has actually been asked.
+        ck("and 'at' is NOT set by a save, so a part-answered guest never "
+           "reads as a finished form", "at" not in body)
     pg.close()
 
-    # ── confirming from the summary, without opening anything ───
+    # ── checking in from the summary, without opening anything ──
     pg = board()
     pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
     del WRITES[:]
-    pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(500)
+    pg.locator('.sum-btns button[data-act="checkin"]').click(); pg.wait_for_timeout(500)
     w = [x for x in WRITES if "/bookings/b9/prearrival" in x["u"]]
-    ck("confirm from the summary saves without opening the form", len(w) == 1)
+    ck("check in from the summary saves without opening the form", len(w) == 1)
     if w:
         body = json.loads(w[0]["b"])
         ck("it saves exactly what was read back, not a blank",
            body["dining"] is False and body["noDiets"] is True)
-        ck("stamped confirmed", bool(body.get("confirmedAt")))
+        ck("stamped arrived, and nothing else: checking in is a visual move "
+           "of the tile, not a decision about the form",
+           bool(body.get("checkedInAt")) and "at" not in body
+           and "confirmedAt" not in body)
     ck("and the summary closes behind it",
        pg.evaluate("()=>document.querySelectorAll('.sum').length") == 0)
-    ck("the guest is confirmed but still arriving", pg.evaluate(
-       "()=>document.querySelector('.arr[data-villa=\"9\"]').className").find("is-done") == -1)
+    ck("and the tile moves to Arrived, which is the whole job", pg.evaluate(
+       "()=>document.querySelector('.arr[data-villa=\"9\"]').className").find("is-done") > -1)
     pg.close()
 
     # ── a failed save must not look like success ────────────────
     STATE["fail"] = True
     pg = board()
     pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
-    pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
-    ck("a rejected save says so", "Could not save" in pg.locator("#errBar").inner_text())
+    pg.locator('.sum-btns button[data-act="checkin"]').click(); pg.wait_for_timeout(600)
+    # The words come from the shared saveFailWords now, not this page: a
+    # refusal is a PERMISSION and needs the manager, which is a different
+    # errand from a write that never arrived. The desk's throw carried the
+    # bare word "save" until 27 Aug, so neither could be told apart and a
+    # rules rejection read as "check the connection" - the wrong remedy.
+    ck("a rejected save says so", "not allowed"
+       in pg.locator("#errBar").inner_text().lower())
+    ck("and names the right errand, since a refusal is not a bad connection",
+       "manager" in pg.locator("#errBar").inner_text().lower()
+       and "connection" not in pg.locator("#errBar").inner_text().lower())
+    ck("with the reassurance the desk acts on",
+       "Nothing was changed" in pg.locator("#errBar").inner_text())
     ck("and the guest is put back rather than left looking confirmed",
        pg.evaluate("()=>document.querySelector('.arr[data-villa=\"9\"]').className")
        .find("is-done") == -1)
@@ -599,7 +1093,7 @@ with sync_playwright() as p:
     pg = board()
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(350)
     del WRITES[:]
-    pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
+    pg.locator('.sum-btns button[data-act="checkin"]').click(); pg.wait_for_timeout(600)
     man = [x for x in WRITES if "/dinner/" in x["u"] and x["u"].split("/dinner/")[1].startswith(today)]
     ck("confirming writes the one dinner cell", len(man) == 1)
     if man:
@@ -620,7 +1114,7 @@ with sync_playwright() as p:
     pg = board()
     pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(350)
     del WRITES[:]
-    pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
+    pg.locator('.sum-btns button[data-act="checkin"]').click(); pg.wait_for_timeout(600)
     man = [x for x in WRITES if "/dinner/" in x["u"] and "/9.json" in x["u"]]
     ck("a guest who declined is put on the board as not dining", len(man) == 1)
     if man:
@@ -634,9 +1128,9 @@ with sync_playwright() as p:
     STATE["fail"] = True
     pg = board()
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(350)
-    pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(700)
+    pg.locator('.sum-btns button[data-act="checkin"]').click(); pg.wait_for_timeout(700)
     ck("if either write is rejected the guest is put back, not left half done",
-       "Could not save" in pg.locator("#errBar").inner_text() and
+       "not allowed" in pg.locator("#errBar").inner_text().lower() and
        pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"]').className")
        .find("is-done") == -1)
     STATE["fail"] = False
@@ -655,7 +1149,10 @@ with sync_playwright() as p:
     ck("check in saves the answers like confirm does", len(w) == 1)
     if w:
         body = json.loads(w[0]["b"])
-        ck("stamped confirmed", bool(body.get("confirmedAt")))
+        ck("stamped arrived, and nothing else: checking in is a visual move "
+           "of the tile, not a decision about the form",
+           bool(body.get("checkedInAt")) and "at" not in body
+           and "confirmedAt" not in body)
         ck("and stamped arrived, which confirm alone does not",
            bool(body.get("checkedInAt")))
     ck("and moves them to Arrived on the spot",
@@ -666,16 +1163,16 @@ with sync_playwright() as p:
 
     # This used to assert the opposite: that confirming again kept a guest
     # arrived, on the reasoning that a guest who has arrived has arrived. True
-    # of guests, not of taps. The two buttons sit together, check in is the
-    # big one, and there was no way back from pressing it by mistake. Confirm
-    # arriving is that way back, which is what its name says.
+    # of guests, not of taps, and there was no way back from pressing it by
+    # mistake. The way back was Confirm arriving until 28 Aug; it is the check
+    # in button itself now, a toggle, which is where an undo belongs.
     PRE["b4"]["checkedInAt"] = "2026-08-17T15:00:00Z"
     pg = board()
     pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(350)
     del WRITES[:]
-    pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
+    pg.locator('.sum-btns button[data-act="checkin"]').click(); pg.wait_for_timeout(600)
     w = [x for x in WRITES if "/bookings/b4/prearrival" in x["u"]]
-    ck("confirming arriving puts an accidentally checked in guest back",
+    ck("pressing check in again puts an accidentally arrived guest back",
        len(w) == 1 and json.loads(w[0]["b"])["checkedInAt"] is None)
     pg.close()
     del PRE["b4"]["checkedInAt"]
@@ -694,6 +1191,16 @@ with sync_playwright() as p:
     w = [x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]
     ck("and checking in from the form arrives them too",
        len(w) == 1 and bool(json.loads(w[0]["b"]).get("checkedInAt")))
+    # And touches the form's STATE not at all, the owner's model of 28 Aug.
+    # Check in used to stamp `at` here, having asked for two of the three
+    # mandatory answers - so a multi night guest could be marked completed
+    # with the treatment question never put to them, and the row then tinted
+    # amber beside its own completed stamp. Arriving is a fact about a
+    # person; finishing the questionnaire is its own control now.
+    ck("and does NOT call the form completed, which is not its job",
+       len(w) == 1 and "at" not in json.loads(w[0]["b"]))
+    ck("nor writes confirmedAt, which nothing in the app ever read",
+       len(w) == 1 and "confirmedAt" not in json.loads(w[0]["b"]))
     pg.close()
 
     # ── the bug found in testing on 17 Aug ──────────────────────
@@ -709,7 +1216,7 @@ with sync_playwright() as p:
     ck("a dietary added on the board is visible at the desk",
        "Vegan" in pg.locator(".sum").inner_text())
     del WRITES[:]
-    pg.locator('.sum-btns button[data-act="confirm"]').click(); pg.wait_for_timeout(600)
+    pg.locator('.sum-btns button[data-act="checkin"]').click(); pg.wait_for_timeout(600)
     w = [x for x in WRITES if "/dinner/" in x["u"] and "/4.json" in x["u"]]
     ck("and saving again at the desk does not wipe it",
        len(w) == 1 and json.loads(w[0]["b"])["diets"] == ["Nut allergy", "Vegan"])
@@ -725,8 +1232,8 @@ with sync_playwright() as p:
     sumtxt = pg.locator(".sum").inner_text()
     ck("a dietary tonight's menu contains is flagged at the desk",
        "Nut allergy" in sumtxt and "main contains" in sumtxt)
-    ck("and it does not block confirming, since reception can resolve it",
-       pg.evaluate("()=>!!document.querySelector('.sum-btns button[data-act=\"confirm\"]')"))
+    ck("and it does not block the way out, since reception can resolve it",
+       pg.evaluate("()=>!!document.querySelector('.sum-btns button[data-act=\"checkin\"]')"))
     pg.close()
 
     # A guest who is not dining cannot clash with tonight's menu.
@@ -748,39 +1255,44 @@ with sync_playwright() as p:
     pg.close()
     TAGS.clear(); TAGS.update({"main": ["Nut allergy"]})
 
-    # ── checking in needs an answer ─────────────────────────────
-    # These used to be asked at every save, including Confirm arriving, which
-    # meant reception could not write down what they heard across the day: a
-    # dietary at nine, an arrival time at noon. The form kept none of it until
-    # all of it existed, so it went on paper instead.
+    # ── checking in asks for nothing ────────────────────────────
+    # It used to refuse without a dining and a dietary answer, and before
+    # that the same questions were asked at every save, which meant reception
+    # could not write down what they heard across the day and it went on
+    # paper instead.
     #
-    # They are asked at CHECK IN, the last moment anyone still can, where a
-    # guest sent to their villa with no dining answer is a cover the kitchen
-    # never hears about.
+    # The owner ruled 28 Aug that checking a guest in is a visual move of the
+    # tile so reception can see who is here. A control that refuses is not a
+    # visual move. What the guard protected - a guest sent to their villa with
+    # the kitchen never hearing about the cover - is the row's own colour now,
+    # amber until the mandatory answers are in, and the gate on Mark as
+    # completed, which is the control that actually claims the form is done.
     pg = board()
     pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
     del WRITES[:]
-    pg.locator("#sCheckin").click(); pg.wait_for_timeout(400)
-    ck("checking in a blank guest saves nothing",
-       len([x for x in WRITES if "/prearrival" in x["u"]]) == 0)
-    ck("and says what is missing rather than doing nothing",
-       "dinner and dietaries" in pg.locator("#sMiss").inner_text())
-    ck("marking the fields that need it",
-       pg.evaluate("()=>diningSeg.className.indexOf('miss')>-1") and
-       pg.evaluate("()=>dChips.className.indexOf('miss')>-1"))
-    pg.locator("#sOut").click(); pg.wait_for_timeout(200)
-    ck("answering one clears the warning", pg.evaluate(
-       "()=>sMiss.className.indexOf('show')<0"))
-    pg.locator("#sCheckin").click(); pg.wait_for_timeout(400)
-    ck("but the other is still required",
-       len([x for x in WRITES if "/prearrival" in x["u"]]) == 0 and
-       "dietaries" in pg.locator("#sMiss").inner_text())
-    # "None to declare" is a positive answer, so it satisfies the requirement
-    pg.evaluate("()=>[...document.querySelectorAll('#dNone .chip')][0].click()")
+    pg.locator("#sCheckin").click(); pg.wait_for_timeout(600)
+    w = [x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]
+    ck("checking in a guest nobody has asked anything is not refused",
+       len(w) == 1 and bool(json.loads(w[0]["b"]).get("checkedInAt")))
+    ck("and it does not pretend their form is finished",
+       len(w) == 1 and "at" not in json.loads(w[0]["b"]))
+    ck("nothing is flagged as missing, because nothing was demanded",
+       pg.evaluate("()=>sMiss.className.indexOf('show')<0"))
+    pg.close()
+
+    # The one check that survives, because it is about an answer being WRONG
+    # rather than missing: Other with an empty note tells the kitchen there is
+    # something to know and never says what.
+    pg = board()
+    pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
+    pg.evaluate("""()=>{ var c=[...document.querySelectorAll('#dNone .chip')]
+        .find(x=>/^other$/i.test(x.textContent.trim())); if(c) c.click(); }""")
     pg.wait_for_timeout(200)
-    pg.locator("#sCheckin").click(); pg.wait_for_timeout(500)
-    ck("no allergies to declare counts as having asked",
-       len([x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]) == 1)
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(500)
+    ck("Other with an empty note is refused, and said",
+       len([x for x in WRITES if "/prearrival" in x["u"]]) == 0 and
+       "allergy" in pg.locator("#sMiss").inner_text().lower())
     pg.close()
 
 
@@ -793,6 +1305,218 @@ with sync_playwright() as p:
     ck("the sheet shows the Mews reservation number",
        "Mews 1159" in pg.locator("#sheet").inner_text())
     pg.close()
+
+    # ── the desk says what is actually missing ──────────────────
+    # Seen live, 28 Aug: a guest answered every question and never pressed
+    # Send, so `at` was never written, and the desk told reception the form
+    # was unfinished and to look for blanks - of which there were none. The
+    # note names the outstanding questions now, and says so when there are
+    # none, because those are two different conversations to have with a
+    # guest. The labels come from tests/form_questions.json, which the guest
+    # form's own required list answers to as well.
+    QT = json.load(open("tests/form_questions.json"))
+    STAYS["17"] = {"id": "b17", "first": "Tim", "last": "Martin",
+                   "arrive": today, "depart": plus(3), "adults": 2,
+                   "phone": "+61 416 237 128"}
+    #  Every question but the treatment one, and no `at`: the shape of a
+    #  guest who walked the whole form and stopped before Send.
+    PRE["b17"] = {"openedAt": "2026-08-27T22:00:00Z", "arriveSlot": "15",
+                  "dining": True, "pax": 2, "noDiets": True,
+                  "purpose": "A celebration", "approach": "most"}
+    pg = board()
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    note = pg.locator("#sheet .note-box").last.inner_text()
+    print("   the note reads:", note)
+    wellness_label = [q["desk"] for q in QT["questions"]
+                      if q["key"] == "wellness"][0]
+    ck("the note names the one question still outstanding",
+       wellness_label in note)
+    ck("and names no question the guest has already answered",
+       not any(q["desk"] in note for q in QT["questions"]
+               if q["key"] != "wellness"))
+    pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
+    pg.close()
+    #  Nothing outstanding at all: the case that started this. The desk must
+    #  not send reception hunting for blanks that do not exist.
+    PRE["b17"]["wellness"] = False
+    pg = board()
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    note = pg.locator("#sheet .note-box").last.inner_text()
+    print("   with everything answered:", note)
+    ck("a form with every question answered says nothing is outstanding",
+       "never pressed Send" in note and "Nothing is outstanding" in note)
+    ck("and still says the form is not marked finished, because it is not",
+       "not marked finished" in note)
+    ck("naming no question at all, since none is missing",
+       not any(q["desk"] in note for q in QT["questions"]))
+    pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
+    pg.close()
+    #  A one night guest is never asked the long-stay three, so the desk must
+    #  never name them as missing - the retired-question trap in miniature.
+    STAYS["17"]["depart"] = plus(1)
+    PRE["b17"] = {"openedAt": "2026-08-27T22:00:00Z", "arriveSlot": "15"}
+    pg = board()
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    note = pg.locator("#sheet .note-box").last.inner_text()
+    print("   one night, dietary outstanding:", note)
+    ck("a one night stay is never asked to account for the long-stay three",
+       not any(q["desk"] in note for q in QT["questions"]
+               if not q["askedOnOneNight"]))
+    ck("but is still asked for the dietary it was offered",
+       [q["desk"] for q in QT["questions"] if q["key"] == "dietary"][0] in note)
+    pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
+    pg.close()
+    del PRE["b17"]; del STAYS["17"]
+
+    # ── a stamp with nothing behind it ──────────────────────────
+    # Seen live on villa 17, 28 Aug. `at` says the answers exist, and the
+    # desk's confirm wrote it onto a record holding none: this board went
+    # amber (anyAnswers yes, fullAnswers no), Pre-arrival SMS read Form
+    # completed and would not send the link again, and nothing on either
+    # screen could put it back. A guest can never submit an empty form - the
+    # slot, dinner and dietary questions are all required - so a stamp
+    # standing alone was always the desk's and never a guest's. Both ends are
+    # fixed; this is the reading end, and it is what heals the records already
+    # written.
+    STAYS["17"] = {"id": "b17", "first": "Tim", "last": "Martin",
+                   "arrive": today, "depart": plus(1), "adults": 2,
+                   "phone": "+61 416 237 128"}
+    PRE["b17"] = {"at": "2026-08-27T22:56:00Z",
+                  "confirmedAt": "2026-08-27T22:56:00Z"}
+    pg = board()
+    def cls(v):
+        return pg.evaluate("()=>document.querySelector("
+                           "'.arr[data-villa=\"%s\"]').className" % v)
+    ck("a stamp with no answer behind it is not a finished form",
+       "done-form" not in cls("17"))
+    ck("nor a form somebody started: it reads as nobody asked",
+       "todo-form" in cls("17") and "part-form" not in cls("17"))
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(350)
+    ck("and it drops down no summary, because there is nothing to read back",
+       pg.evaluate("()=>document.querySelectorAll('.sum').length") == 0)
+    ck("it opens the form instead, which is the way back",
+       pg.evaluate("()=>backdrop.className.indexOf('show')>-1"))
+    pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
+    pg.close()
+    del PRE["b17"]
+
+    # ── the state is its own control ────────────────────────────
+    # The owner's model of 28 Aug: three states, and editing and saving move
+    # between none of them. One button marks a form completed, the same
+    # button walks it back, and it is available only once the mandatory
+    # answers are in - dinner, dietary and massage, the ruling of 28 Aug.
+    #  Three nights, so the treatment question IS owed here. The block above
+    #  leaves villa 17 a one nighter, where it is not.
+    STAYS["17"]["depart"] = plus(3)
+    pg = board()
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    ck("the mark button is offered, and refused until the answers are in",
+       pg.evaluate("()=>!!sMark") and pg.evaluate("()=>sMark.disabled"))
+    ck("and says which answers it is waiting on",
+       "dining" in pg.evaluate("()=>sMarkWhy.textContent"))
+    ck("it offers to complete, not to walk back, on a form nobody has marked",
+       pg.evaluate("()=>sMark.textContent") == "Mark as completed")
+    pg.locator("#sOut").click(); pg.wait_for_timeout(200)
+    pg.evaluate("()=>[...document.querySelectorAll('#dNone .chip')][0].click()")
+    pg.wait_for_timeout(200)
+    ck("two of the three is still not enough on a three night stay",
+       pg.evaluate("()=>sMark.disabled"))
+    ck("and the treatment question is what it is still waiting on",
+       "treatments" in pg.evaluate("()=>sMarkWhy.textContent"))
+    pg.locator("#wNo").click(); pg.wait_for_timeout(250)
+    ck("the last mandatory answer brings it alive under the finger",
+       not pg.evaluate("()=>sMark.disabled"))
+    ck("wearing the solid dress, since it is the primary act on this sheet",
+       "solid" in pg.evaluate("()=>sMark.className"))
+    #  A plain Save still decides nothing.
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(700)
+    w = [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]]
+    ck("saving with every answer in still does not complete the form",
+       len(w) == 1 and "at" not in json.loads(w[0]["b"]))
+    ck("and the row is still amber, because nobody has marked it",
+       "part-form" in cls("17"))
+    #  The mark is what moves it.
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    del WRITES[:]
+    pg.locator("#sMark").click(); pg.wait_for_timeout(700)
+    w = [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]]
+    ck("marking it completed is what writes the state",
+       len(w) == 1 and bool(json.loads(w[0]["b"]).get("at")))
+    ck("and the row goes green", "done-form" in cls("17"))
+    pg.close()
+
+    # ── and the way back ────────────────────────────────────────
+    # The same button, walking it back. It wears terracotta and asks first,
+    # the button law: marking a form incomplete puts the guest back into To
+    # send on Pre-arrival SMS, where the link can be sent to them again.
+    PRE["b17"] = {"at": "2026-08-27T22:56:00Z", "arriveSlot": "15",
+                  "dining": False, "noDiets": True, "wellness": False}
+    pg = board()
+    ck("a completed form reads green", "done-form" in cls("17"))
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    ck("the button now offers the way back",
+       pg.evaluate("()=>sMark.textContent") == "Mark as incomplete")
+    ck("in terracotta, never solid, because it walks something back",
+       "terra" in pg.evaluate("()=>sMark.className")
+       and "solid" not in pg.evaluate("()=>sMark.className"))
+    #  Cancelling the question costs nothing.
+    pg.once("dialog", lambda d: d.dismiss())
+    del WRITES[:]
+    pg.locator("#sMark").click(); pg.wait_for_timeout(500)
+    ck("and cancelling its question writes nothing at all",
+       not [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]])
+    pg.once("dialog", lambda d: d.accept())
+    del WRITES[:]
+    pg.locator("#sMark").click(); pg.wait_for_timeout(700)
+    w = [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]]
+    ck("accepting it clears the state, and only the state",
+       len(w) == 1 and "at" in json.loads(w[0]["b"])
+       and json.loads(w[0]["b"])["at"] is None)
+    ck("the answers are left exactly where they were",
+       len(w) == 1 and json.loads(w[0]["b"]).get("dining") is False)
+    ck("and the row drops to amber, not to grey: the answers are still there",
+       "part-form" in cls("17"))
+    pg.close()
+    del PRE["b17"]
+
+    # ── a one night stay can reach green ────────────────────────
+    # The guest form offers no treatment question on a one night stay, so
+    # `wellness` is never written for one, and fullAnswers demanded it
+    # anyway: villas 16 and 17 on 28 Aug were one night each and could not
+    # have tinted green however completely they answered. A question nobody
+    # was asked cannot be held against them.
+    STAYS["17"]["depart"] = plus(1)     # a one nighter again, for this one
+    PRE["b17"] = {"at": "2026-08-27T22:56:00Z", "arriveSlot": "15",
+                  "dining": True, "pax": 2, "noDiets": True}
+    STAYS["10"] = {"id": "b10", "first": "Long", "last": "Stayer",
+                   "arrive": today, "depart": plus(3), "adults": 2}
+    PRE["b10"] = dict(PRE["b17"])
+    pg = board()
+    ck("a one night guest who answered everything asked tints green",
+       "done-form" in cls("17"))
+    ck("and the same answers over three nights read incomplete, stamp and "
+       "all, because the treatment question WAS asked and is unanswered",
+       "part-form" in cls("10"))
+    #  One table, two readers: the guest form decides which questions a one
+    #  night stay is shown, this board has to know the same rule, and neither
+    #  can import from the other. tests/onenight_cases.json is what they both
+    #  answer to - add a case there, not here.
+    cases = json.load(open("tests/onenight_cases.json"))["cases"]
+    bad = []
+    for nights, want, why in cases:
+        got = pg.evaluate("(d)=>oneNightStay({arrive:d.a, depart:d.b})",
+                          {"a": plus(0), "b": plus(nights)})
+        if bool(got) != bool(want):
+            bad.append("%d nights: wanted %s, got %s (%s)"
+                       % (nights, want, got, why))
+    print("   one night cases the desk reads wrongly:", bad)
+    ck("the desk reads the one night rule exactly as the guest form does",
+       bad == [] and len(cases) >= 5)
+    pg.close()
+    del PRE["b17"]; del STAYS["17"]
+    del PRE["b10"]; del STAYS["10"]
 
     # ── one party, two villas ───────────────────────────────────
     # A family booking two villas is two reservations under one group. Two rows
@@ -808,10 +1532,28 @@ with sync_playwright() as p:
        "6" in villas and "8" in villas)
     def line(v):
         return pg.evaluate("()=>document.querySelector('.arr[data-villa=\"%s\"] .arr-s').textContent" % v)
+    #  The mark moved off the stay line and up beside the name on 31 Aug, to
+    #  give the row back the width the massage mark spends. It keeps the full
+    #  phrase: a short "villa 8" was tried the same day and the owner ruled
+    #  against it.
+    def mark(v):
+        return pg.evaluate(
+          "()=>{var e=document.querySelector('.arr[data-villa=\"%s\"] .arr-with');"
+          "return e?e.textContent:''}" % v)
     ck("and each says which other villa the party holds",
-       "villa 8" in line("6") and "villa 6" in line("8"))
+       mark("6") == "with villa 8" and mark("8") == "with villa 6")
+    ck("the mark sits beside the name, not down on the stay line",
+       "villa 8" not in line("6"))
+    #  A half-written villa number is worse than none, so the mark never
+    #  takes the ellipsis - the name does.
+    ck("and the mark is never the thing that gets clipped",
+       pg.evaluate("()=>{const e=document.querySelector"
+                   "('.arr[data-villa=\"6\"] .arr-with');"
+                   "return e.scrollWidth <= e.clientWidth + 1;}"))
+    ck("and the name keeps an element of its own to be clipped in",
+       pg.evaluate("()=>!!document.querySelector('.arr[data-villa=\"6\"] .arr-top .arr-n')"))
     ck("a booking on its own says nothing about a party",
-       "with villa" not in line("4"))
+       mark("4") == "" and "villa" not in line("4"))
     pg.close()
 
     # Three villas reads as a list, not as three separate notes.
@@ -819,8 +1561,17 @@ with sync_playwright() as p:
                    "depart":plus(2),"adults":2,"groupId":"grp-jane"}
     pg = board()
     ck("three villas in one party read as a list",
-       "villas 8 & 10" in pg.evaluate(
-         "()=>document.querySelector('.arr[data-villa=\"6\"] .arr-s').textContent"))
+       pg.evaluate("()=>document.querySelector('.arr[data-villa=\"6\"] .arr-with')"
+                   ".textContent") == "with villas 8 & 10")
+    #  The SMS page reads the very same function, so the two boards cannot
+    #  name a party differently.
+    #  groupMatesShort excludes the row itself by identity, so the row passed
+    #  in has to BE the one in the list. Written the other way first, and it
+    #  failed by naming the party's own villa back at it.
+    ck("and the phrase the SMS line uses is built from that same list",
+       pg.evaluate("()=>{var a={stay:{groupId:'g'},villa:'6'},"
+                   "b={stay:{groupId:'g'},villa:'8'};"
+                   "return groupMatesText(a,[a,b]);}") == "with villa 8")
     pg.close()
     for v in ("6", "8", "10"): del STAYS[v]
 
@@ -987,23 +1738,24 @@ with sync_playwright() as p:
     labels = pg.evaluate("()=>[...document.querySelectorAll('.sum-btns button')]"
                          ".map(b=>b.dataset.act+':'+b.textContent.trim())")
     print("   summary buttons:", labels)
-    # Always the same words: it is an action, not a state. A label that
-    # changed to "Confirmed" read as finished and gave no hint of a way back.
-    ck("the button says where it puts them, not that they are done",
-       "confirm:Confirm arriving" in labels)
+    # The undo lives on the check in button itself since 28 Aug, and the
+    # label says so rather than leaving a pressed-by-mistake guest stuck.
+    ck("an arrived guest is offered the way back, in words",
+       any(l.startswith("checkin:") and "undo" in l.lower() for l in labels))
 
     del WRITES[:]
-    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=confirm]').click()")
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=checkin]').click()")
     pg.wait_for_timeout(900)
     sent = [json.loads(x["b"]) for x in WRITES if x["b"] and "/prearrival" in x["u"]]
-    ck("confirming arriving clears the check in",
+    ck("pressing it again clears the check in",
        bool(sent) and all("checkedInAt" in d and d["checkedInAt"] is None for d in sent))
     ck("and that guest goes back to the arriving list",
        pg.evaluate("(v)=>{const e=document.querySelector('.arr[data-villa=\"'+v+'\"]');"
                    "return !!e && e.className.indexOf('is-done')<0;}", villa))
-    # The answers are still confirmed: only where the guest is has changed.
-    ck("without throwing away the answers that were confirmed",
-       bool(sent) and all(d.get("confirmedAt") for d in sent))
+    # Only where the guest is has changed. The answers ride along untouched,
+    # and no state is claimed about the form either way.
+    ck("without touching the form's state",
+       bool(sent) and all("at" not in d for d in sent))
     pg.close()
 
     # ── adding what you hear, when you hear it ──────────────────────────
@@ -1041,7 +1793,9 @@ with sync_playwright() as p:
        not [x for x in WRITES if "/dinner/" in x["u"]])
     pg.close()
 
-    # Check in still insists, because it is the last moment to ask.
+    # Check in insists on nothing since 28 Aug: it is a visual move of the
+    # tile. It saves what is on the sheet and arrives them, and the form's
+    # state is left to the control that is actually gated on the answers.
     PRE.pop("b14", None)
     pg = board()
     pg.locator('.arr[data-villa="14"]').click(); pg.wait_for_timeout(600)
@@ -1051,14 +1805,22 @@ with sync_playwright() as p:
     del WRITES[:]
     pg.evaluate("()=>document.getElementById('sCheckin').click()")
     pg.wait_for_timeout(700)
-    ck("checking in with nothing answered saves nothing", not WRITES)
-    ck("and says what is still needed",
-       pg.evaluate("()=>document.getElementById('sMiss').textContent").strip() != "")
+    ck("checking in with nothing answered still arrives them",
+       len([x for x in WRITES if "/bookings/b14/prearrival" in x["u"]]) == 1)
+    ck("and claims nothing about the form",
+       all("at" not in json.loads(x["b"])
+           for x in WRITES if "/bookings/b14/prearrival" in x["u"]))
 
     # The one check that survives a partial save: Other means the answer is in
     # the note, so Other with an empty note is not an incomplete answer, it is
     # a wrong one. It tells the kitchen there is something to know and never
     # says what.
+    #  The sheet is reopened first: check in no longer refuses, so it saved
+    #  and closed behind itself just above.
+    pg.locator('.arr[data-villa="14"]').click(); pg.wait_for_timeout(600)
+    if pg.evaluate("()=>!!document.querySelector('.sum-btns [data-act=edit]')"):
+        pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+        pg.wait_for_timeout(600)
     pg.evaluate("""()=>[...document.querySelectorAll('#dNone button')]
         .find(b=>b.textContent.trim()==='Other').click()""")
     pg.wait_for_timeout(250)
@@ -1305,6 +2067,81 @@ with sync_playwright() as p:
        "+64274875277" in nrow("4").locator(".ph").text_content())
     FIXES.clear()
     pg.close()
+
+    # ── the "no allergies" pill survives the cell it creates ────────────
+    #  Reported 27 Aug: confirm a guest, reopen the sheet after any change,
+    #  and "No allergies to declare" sat deselected - and the next save wrote
+    #  that deselection onto the booking as a fact nobody stated. The cell
+    #  the confirm had written outranks the booking on read-back, and the
+    #  desk neither wrote the answer into it nor asked for it by the cell's
+    #  name: the cell spells it `nodiet` (the guest page's coinage, already
+    #  in rules.json), and the desk was reading a `noDiets` no cell ever
+    #  carried. The answer is a dietary like any other and rides where the
+    #  dietaries ride.
+    del WRITES[:]
+    pg = board()
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=checkin]').click()")
+    pg.wait_for_timeout(700)
+    cw = [json.loads(x["b"]) for x in WRITES
+          if ("/dinner/" + today + "/9") in x["u"] and x["m"] == "PUT"]
+    ck("saving from the summary writes the answer into the cell, under the cell's name",
+       len(cw) == 1 and cw[0].get("nodiet") is True)
+    pg.close()
+
+    #  The round trip: the same cell read back, seeded as the confirm wrote it.
+    DINNER["9"] = {"status": "out", "pax": 0, "room": "9", "by": "staff",
+                   "diets": [], "dnote": "", "nodiet": True,
+                   "at": "2026-08-17T14:00:00Z"}
+    pg = board()
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    ck("the summary still reads the answer back over the cell",
+       "No allergies to declare" in pg.locator(".sum").inner_text())
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+    pg.wait_for_timeout(600)
+    ck("and the pill opens selected, not deselected",
+       pg.evaluate("""()=>[...document.querySelectorAll('#dNone .chip')]
+         .find(b=>/^No allergies/.test(b.textContent)).className.indexOf('on')>-1"""))
+    #  A save that touches nothing must keep saying it, on both nodes.
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('sConfirm').click()")
+    pg.wait_for_timeout(700)
+    saved = [json.loads(x["b"]) for x in WRITES if "/bookings/b9/prearrival" in x["u"]]
+    ck("an untouched save keeps saying no allergies on the booking",
+       bool(saved) and all(d.get("noDiets") is True for d in saved))
+    cw = [json.loads(x["b"]) for x in WRITES
+          if ("/dinner/" + today + "/9") in x["u"] and x["m"] == "PUT"]
+    ck("and on the cell",
+       bool(cw) and all(d.get("nodiet") is True for d in cw))
+    pg.close()
+
+    #  A cell from before the fix carries no key at all, which says nothing
+    #  either way, so the booking's answer shows through rather than being
+    #  outranked by silence.
+    DINNER["9"] = {"status": "out", "pax": 0, "room": "9", "by": "staff",
+                   "at": "2026-08-17T14:00:00Z"}
+    pg = board()
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+    pg.wait_for_timeout(600)
+    ck("a cell that predates the answer does not outrank the booking",
+       pg.evaluate("""()=>[...document.querySelectorAll('#dNone .chip')]
+         .find(b=>/^No allergies/.test(b.textContent)).className.indexOf('on')>-1"""))
+    pg.close()
+
+    #  A dietary on the cell contradicts a stored "none": the list wins,
+    #  whichever node each came from, or the sheet opens claiming both.
+    DINNER["9"] = {"status": "in", "pax": 2, "room": "9", "by": "staff",
+                   "diets": ["Gluten free"], "at": "2026-08-17T14:00:00Z"}
+    pg = board()
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=edit]').click()")
+    pg.wait_for_timeout(600)
+    ck("a dietary added on the kitchen's board beats the booking's old 'none'",
+       pg.evaluate("""()=>[...document.querySelectorAll('#dNone .chip')]
+         .find(b=>/^No allergies/.test(b.textContent)).className.indexOf('on')<0"""))
+    pg.close()
+    DINNER.clear()
 
     b.close()
 

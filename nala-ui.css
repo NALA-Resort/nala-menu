@@ -3,6 +3,13 @@
 
 :root {
   --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+  /* The destructive dress's colours (the button law, STYLEGUIDE.md) and the
+     green a save lands on. Named --save-* rather than --green-*: four pages
+     already define a --green of their own, two of them to different values,
+     and a page's :root wins over this file's. A token a page can silently
+     redefine is not a token, it is a coincidence.                        */
+  --terra:#9E6455; --terra-b:rgba(184,106,90,.45); --terra-t:rgba(184,106,90,.16);
+  --save-bg:#E4EDE2; --save-bdr:#7E937A; --save-ink:#5E7D67;
   /* Staff tools use the Apple system font: it is what every other app on the
      phone uses, its figures line up, and it is built for small sizes. The
      guest pages do NOT use these tokens - they carry the brand and set their
@@ -20,8 +27,13 @@
 body.tier-app, body.tier-print { touch-action:manipulation; }
 
 /* tier surfaces used by controls */
-.tier-app   { --ctl-bg:var(--cream); --ctl-bdr:var(--rule); --ctl-ink:var(--ink); }
-.tier-print { --ctl-bg:#fff;         --ctl-bdr:#ddd;        --ctl-ink:#111;      }
+/* --ctl-soft is the solid button's RESTING fill: a step off full ink, so the
+   press has somewhere darker to go. Ruled by the owner, 27 Aug - pressed and
+   idle were the same pixels before it.                                    */
+.tier-app   { --ctl-bg:var(--cream); --ctl-bdr:var(--rule); --ctl-ink:var(--ink);
+              --ctl-soft:#454540; }
+.tier-print { --ctl-bg:#fff;         --ctl-bdr:#ddd;        --ctl-ink:#111;
+              --ctl-soft:#3A3A38; }
 
 /* ── one header row: [Today] [<] date [>] ....... [menu] ── */
 .navwrap { position:relative; margin-left:auto; z-index:500; font-family:var(--ui-font); }
@@ -31,23 +43,34 @@ body.tier-app, body.tier-print { touch-action:manipulation; }
            -webkit-tap-highlight-color:transparent; }
 .navbtn span { display:block; width:16px; height:1.6px; background:var(--ctl-ink); }
 .navdrop { display:none; position:absolute; right:0; top:42px; background:var(--ctl-bg);
-           border:1px solid var(--ctl-bdr); border-radius:9px; min-width:132px;
+           border:1px solid var(--ctl-bdr); border-radius:9px; min-width:176px;
            box-shadow:0 4px 14px rgba(0,0,0,.09); padding:5px 0; }
 .navdrop.open { display:block; }
-.navdrop a { display:block; padding:12px 18px; font-size:10px; letter-spacing:.14em;
-             text-transform:uppercase; color:var(--ctl-ink); text-decoration:none;
-             white-space:nowrap; }
+/* Menu rows read as ordinary text - the owner's word, 26 Aug: no caps, no
+   tracking, the standard UI font at a size a thumb can hit. One padding and
+   line-height shared with .navgrp, so links and submenu headers sit as one
+   list. */
+.navdrop a { display:block; padding:10px 18px; font-size:14px; line-height:18px;
+             color:var(--ctl-ink); text-decoration:none; white-space:nowrap; }
 /* Signing out is an action, not a destination, so it sits below a rule rather
    than reading as one more page in the list. It is never filtered by role:
    every login has to be able to get out.                                  */
-/* Group headings in the menu. Light grey and small on purpose: they are
-   signposts and not choices, and a heading that looks tappable is a heading
-   somebody taps. The rule above each one does the separating; the word only
-   says what the separation is for. */
-.navgrp { padding:12px 18px 5px; font-size:8px; letter-spacing:.2em;
-          text-transform:uppercase; color:#B0B0A8; border-top:1px solid var(--ctl-bdr);
-          margin-top:5px; }
-.navdrop > .navgrp:first-child { border-top:0; margin-top:0; padding-top:6px; }
+/* Submenus instead of dividers, 26 Aug: seventeen rows under two grey
+   headings was too many to scan for one page. Print, SMS and Settings fold
+   instead. The header is a real button dressed as a row - it IS a choice
+   now, unlike the old signpost - and the chevron says so, pointing down
+   while there is more, rolling over once it is out. */
+.navgrp { display:flex; align-items:center; justify-content:space-between; gap:14px;
+          width:100%; padding:10px 18px; font-size:14px; line-height:18px;
+          font-family:inherit; text-align:left; color:var(--ctl-ink);
+          background:none; border:0; border-top:1px solid var(--ctl-bdr);
+          cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.navchev { flex:0 0 auto; color:var(--mid); transition:transform .15s ease; }
+.navgroup.open .navchev { transform:rotate(180deg); }
+.navsub { display:none; }
+.navgroup.open .navsub { display:block; }
+/* Indented under their header, so an open submenu still reads as one menu. */
+.navsub a { padding-left:32px; }
 .navdrop a.navaction { display:flex; align-items:center; justify-content:space-between;
                       gap:14px; color:var(--ctl-ink); }
 /* The mark carries the state, so it has to be legible at a glance and never
@@ -58,8 +81,7 @@ body.tier-app, body.tier-print { touch-action:manipulation; }
 .navmark.off { color:#B0B0A8; }
 /* Blocked and unavailable get words, because no mark can say "you cannot fix
    this from here". */
-.navnote { flex:0 0 auto; font-size:8px; letter-spacing:.1em; color:#B0B0A8;
-           text-transform:none; }
+.navnote { flex:0 0 auto; font-size:11px; color:#B0B0A8; }
 .navdrop a.signout { border-top:1px solid var(--ctl-bdr); margin-top:5px;
                      padding-top:13px; color:var(--mid); }
 /* ── the action icon ─────────────────────────────────────────
@@ -88,9 +110,11 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 .foot { position:sticky; bottom:0; z-index:40; display:flex; gap:8px; flex-wrap:wrap;
         background:var(--ctl-bg); border-top:1px solid var(--ctl-bdr); margin-top:18px;
         padding:10px 0 calc(10px + env(safe-area-inset-bottom)); }
-.foot .btn { flex:1; text-align:center; white-space:nowrap; }
-/* the row sits hard against the bottom of the screen: soften only the two
-   corners that land in the phone's own rounded corners                     */
+/* The corner law outranks the 8px the free-standing button took on 27 Aug:
+   this row sits hard against the bottom of the screen, so it squares off
+   again and softens only the two corners that land in the phone's own
+   rounded corners.                                                        */
+.foot .btn { flex:1; text-align:center; white-space:nowrap; border-radius:0; }
 .foot .btn:first-child { border-bottom-left-radius:8px; }
 .foot .btn:last-child  { border-bottom-right-radius:8px; }
 
@@ -125,12 +149,81 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
           color:var(--mid); margin-top:6px; }
 .stat.warn .stat-n { color:var(--red); }
 
+/* ── the button dress ─────────────────────────────────────
+   One quiet dress and one solid, here rather than pasted per page: five
+   pages emitted class="btn" with no rule behind it and the no-access
+   Try again stood as a bare browser button (found 27 Aug), while the
+   pages that did paste the dress had drifted apart - 10px against 11px,
+   .15em against .14em, one all-corner radius against the footer corner
+   law. The dress lives here; layout (flex, width) stays with each page's
+   container rules, and a page's own variants (.arm, .warn, .active)
+   stay its own. Per the button law (STYLEGUIDE.md): .solid is THE
+   primary, at most one per surface.                                    */
+.btn { padding:13px; text-align:center; border:1px solid var(--ctl-ink);
+       border-radius:8px;
+       background:transparent; color:var(--ctl-ink);
+       font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
+       text-transform:uppercase; cursor:pointer; white-space:nowrap;
+       text-decoration:none; -webkit-tap-highlight-color:transparent;
+       transition:background .08s ease, color .08s ease, border-color .08s ease; }
+.btn.solid { background:var(--ctl-soft); border-color:var(--ctl-soft);
+             color:var(--ctl-bg); }
+/* The destructive dress, per the button law: outline only, never a fill and
+   never red - red is failure's alone. It always confirms before writing. */
+.btn.terra { border-color:var(--terra-b); color:var(--terra); background:transparent; }
+.btn:disabled { opacity:.35; cursor:default; }
+/* The print sheets' own pair, identical on all three until it lived here:
+   solid ink on white paper stock, a size down from the boards. It sits
+   ABOVE the press and save states rather than below them: it matches on
+   the same specificity as .btn.saved, so read the other way round it won
+   and a print-tier save would have gone grey in the green's place.     */
+.tier-print .btn { padding:10px 20px; background:var(--ctl-soft); color:#fff;
+                   border:none; font-size:10px; letter-spacing:.15em; }
+.tier-print .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+
+/* ── the press ────────────────────────────────────────────
+   Every button answers the finger. Until 27 Aug none of them did: the only
+   pressed state in this file belonged to the date arrows, so on six boards
+   a tap and a miss looked identical and a slow write invited a second tap
+   that wrote twice.                                                      */
+.btn:active { background:var(--ctl-bdr); }
+.btn.solid:active { background:var(--ctl-ink); border-color:var(--ctl-ink); }
+.btn.terra:active { background:var(--terra-t); }
+/* The print sheets' Print button is dark with white text, so the boards'
+   pale press would erase its label. It darkens instead; only the outlined
+   Refresh beside it takes the pale one.                                 */
+.tier-print .btn:active { background:var(--ctl-ink); }
+.tier-print .btn.ghost:active { background:var(--ctl-bdr); }
+
+/* ── what a save says back ────────────────────────────────
+   Writing, then landed. The grey is the colour law's "sent, waiting on the
+   other side"; the green is its "done, confirmed", and it is worn only
+   AFTER the write - a button green at rest claims the record is clean
+   before anyone has pressed it. Both states are disabled, and both undo
+   the disabled dimming: a washed out answer is not an answer.
+
+   Ruled by the owner, 27 Aug: the button RESTS at Saved until there is
+   more to save. It is re-armed by armSave() on the next edit, never by a
+   timer - a label that times out goes back to saying "Save" about a
+   record with nothing left to save.                                     */
+.btn.saving, .btn.saved { opacity:1; cursor:default; }
+.btn.saving { background:rgba(28,28,26,.045); border-color:var(--ctl-bdr);
+              color:var(--mid); }
+.btn.saved  { background:var(--save-bg); border-color:var(--save-bdr);
+              color:var(--save-ink); }
+/* Failure is words, in red, under the button that failed - never a red
+   fill. Red is failure's colour but a whole red tile reads as a state the
+   record is in, and the record is simply unsaved.                       */
+.savefail { display:none; font-family:var(--ui-font); font-size:11px;
+            line-height:1.45; color:var(--red); margin-top:8px; }
+.savefail.show { display:block; }
+
 /* ── access message ───────────────────────────────────────
    Stands in for a board the signed-in login may not see. Plain typography,
    never a bordered or filled box: that dress belongs to buttons alone, and
    a message wearing it reads as something to tap. One statement, not a
    fact stacked under a fact. The retry action IS a button, so it wears
-   the page's .btn.                                                       */
+   the .btn above.                                                        */
 .noaccess { display:none; font-family:var(--ui-font); font-size:15px;
             line-height:1.5; color:var(--ctl-ink); max-width:420px;
             margin:24px 0; }

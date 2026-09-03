@@ -18,7 +18,7 @@ down are the ones that are easy to get wrong and invisible when they are:
      PUT would wipe confirmedAt and un-confirm a guest at the desk.
 """
 import errortrap   # fails the run if any page throws
-import threading, http.server, socketserver, json, time, datetime, os
+import threading, http.server, socketserver, json, time, datetime, os, base64
 
 os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
@@ -36,7 +36,7 @@ DIETS = {"gf":  {"name": "Gluten free", "active": True, "group": "common"},
          "chi": {"name": "Red pepper spice", "active": True, "group": "menu"},
          "old": {"name": "Retired Entry", "active": False}}
 
-STATE = {"pms": None, "pre": None, "fail": False}
+STATE = {"pms": None, "pre": None, "info": None, "fail": False}
 WRITES = []
 
 def fb(route, request):
@@ -52,9 +52,22 @@ def fb(route, request):
     if "/spasettings" in u:
         body = json.dumps({"price60": 180, "price90": 250, "price120": 310})
     elif "/dietaries" in u: body = json.dumps(DIETS)
+    elif "/prearrivalinfo" in u:
+        body = json.dumps(STATE["info"]) if STATE["info"] else "null"
     elif "/prearrival" in u: body = json.dumps(STATE["pre"]) if STATE["pre"] else "null"
     elif "/pms" in u: body = json.dumps(STATE["pms"]) if STATE["pms"] else "null"
     route.fulfill(status=200, content_type="application/json", body=body)
+
+# photos.test stands in for the resort site's CDN, where the owner takes the
+# note photos from. Anything under /dead/ is a retired address and 404s,
+# which is exactly what a rotted CDN link does.
+PNG1 = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAA"
+    "DUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+def photo_route(route, request):
+    if "/dead/" in request.url:
+        route.fulfill(status=404, body=""); return
+    route.fulfill(status=200, content_type="image/png", body=PNG1)
 
 P = F = 0
 def ck(name, cond):
@@ -95,6 +108,7 @@ with sync_playwright() as p:
     def guest(link=LINK, w=390, begin=True):
         pg = b.new_page(viewport={"width": w, "height": 844})
         pg.route("**firebasedatabase.app/**", fb)
+        pg.route("**photos.test/**", photo_route)
         pg.route("**/fonts.googleapis.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.route("**/fonts.gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.goto("http://localhost:8967/prearrival.html" + link)
@@ -133,6 +147,11 @@ with sync_playwright() as p:
            opened[0]["m"] == "PATCH")
     ck("and it is the form, not a thank you",
        pg.evaluate("()=>done.className.indexOf('hide')>-1"))
+    #  The demo's Back to Settings link must exist nowhere a real guest can
+    #  be: a guest page offering a staff door reads as a mistake even
+    #  though Settings gates itself.
+    ck("a real guest link never offers a staff door",
+       pg.evaluate("()=>!document.querySelector('a[href*=\"staff\"]')"))
 
     # ── one question to a page ──────────────────────────────────
     ck("the guest is shown one question, not eight",
@@ -150,9 +169,12 @@ with sync_playwright() as p:
     # them is shut. The constraint lives in there; the invitation stays on the
     # page. The details element became a plain button on 23 Aug, to the
     # approved mockup, but the rule it obeys did not change.
+    #  Every page except the dining one, which asks nothing and carries no
+    #  Read more because it IS the reading.
     ck("every page can explain why it is asking",
        pg.evaluate("()=>[...document.querySelectorAll('.q')]"
-                   ".every(q=>q.querySelector('.more')&&q.querySelector('.more-b'))"))
+                   ".every(q=>q.id==='qDining'||"
+                   "(q.querySelector('.more')&&q.querySelector('.more-b')))"))
     ck("and none of them is open to begin with",
        pg.evaluate("()=>!document.querySelector('.more-b.show')"))
     ck("the button says Read more while shut",
@@ -243,7 +265,7 @@ with sync_playwright() as p:
 
     del WRITES[:]
     pg.evaluate("()=>[...document.querySelectorAll('#approachOpts .opt')][1].click()")
-    pg.wait_for_timeout(500)
+    nxt(pg)
     ck("going forward saves the page being left",
        len(wrote("/prearrival")) == 1)
     del WRITES[:]
@@ -264,17 +286,23 @@ with sync_playwright() as p:
        len(sent("/prearrival")) == 0)
     pg.close()
 
-    # ── an answer that opens a follow up stays put ──────────────
-    #  The rule the owner set: a guest must never say yes on one page and be
-    #  shown what yes costs on the next, because the only way back from that
-    #  is to return and change an answer they meant.
+    # ── no answer turns the page ────────────────────────────────
+    #  Auto progress went on 30 Aug, the owner's ruling: a clean answer
+    #  used to carry the guest onward by itself after a pause, which read
+    #  as the form rushing them and made a mis-tap cost a Back to undo.
+    #  Every answer now stays put - the ones that open a follow up on
+    #  their own page and the ones that open nothing alike - and Next is
+    #  the one way forward. The older rule stands underneath: what an
+    #  answer opens up lives on the page where it was given.
     pg = guest()
     jump(pg, "qDine")
     pg.locator("#dIn").click(); pg.wait_for_timeout(600)
-    #  Yes used to open the pax chips and had to stay; the chips went on
-    #  23 Aug (the count comes from Mews or nowhere), so yes now opens
-    #  nothing and advances like any clean answer.
-    ck("saying yes to dinner advances, since it no longer opens anything",
+    ck("answering dinner stays put, though it opens nothing",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine")
+    ck("with the choice showing as made",
+       pg.evaluate("()=>dIn.className.indexOf('on')>-1"))
+    nxt(pg)
+    ck("Next, not the answer, turns the page",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qDiet")
     jump(pg, "qWell")
     pg.locator("#wYes").click(); pg.wait_for_timeout(600)
@@ -316,7 +344,10 @@ with sync_playwright() as p:
     pg.wait_for_timeout(450)
     ck("choosing again keeps exactly one",
        pg.evaluate("()=>a.purpose.join()") == "Mostly relaxing at Nala")
-    ck("and a clean answer carries them onward, to arrival",
+    ck("and the page holds still until Next",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qPurpose")
+    nxt(pg)
+    ck("which carries them onward, to arrival",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qEta")
     nxt(pg)
     ck("which must be answered",
@@ -346,46 +377,132 @@ with sync_playwright() as p:
     ck("the week must be answered",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qApproach")
     pg.evaluate("()=>[...document.querySelectorAll('#approachOpts .opt')][0].click()")
-    pg.wait_for_timeout(500)
+    nxt(pg)
     ck("then the first night",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine")
     nxt(pg)
     ck("which must be answered too",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qDine")
-    pg.locator("#dIn").click(); pg.wait_for_timeout(400)
+    pg.locator("#dIn").click(); nxt(pg)
     ck("then allergies", pg.evaluate("()=>document.querySelector('.q.now').id") == "qDiet")
     nxt(pg)
     ck("which will not be skipped",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qDiet")
-    # "None" is a positive answer - it writes noDiets, same record as ever -
-    #  and opening nothing, it advances by itself like any clean answer.
-    pg.locator("#dNone").click(); pg.wait_for_timeout(450)
+    # "None" is a positive answer - it writes noDiets, same record as ever.
+    pg.locator("#dNone").click(); nxt(pg)
     ck("then treatments", pg.evaluate("()=>document.querySelector('.q.now').id") == "qWell")
     pg.locator("#wYes").click(); pg.wait_for_timeout(400)
-    ck("saying yes offers only the days they are here",
-       pg.evaluate("()=>document.querySelectorAll('#wDays .chip').length") == 5)
+    #  The nights they are here, then Any day closing the row: it is the way
+    #  out of the question, so it reads after the question. Nothing is
+    #  pre-selected and the page will not move past an unanswered day - the
+    #  owner's ruling of 31 Aug, taking the stronger of the two ways to kill
+    #  the empty day. A default would have let a guest sail past and still be
+    #  recorded as having chosen, which is the fault this fixes.
+    any_day = json.load(open("tests/slots.json"))["anyDay"]
+    ck("saying yes offers the days they are here, then Any day",
+       pg.evaluate("()=>document.querySelectorAll('#wDays .chip').length") == 6)
+    ck("Any day closes the row rather than leading it",
+       pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')]"
+                   ".pop().textContent") == any_day["label"])
+    ck("and nothing is chosen for the guest",
+       pg.evaluate("()=>document.querySelectorAll('#wDays .chip.on').length") == 0)
+    #  The guest form cannot import the staff copy, so the table is what
+    #  keeps the two saying the same word.
+    ck("the guest form's forced copy is the canonical one",
+       pg.evaluate("()=>ANY_DAY") == any_day["v"] and
+       pg.evaluate("()=>ANY_DAY_LABEL") == any_day["label"])
+    #  Compulsory: a yes with no day is refused, and refused about the DAY,
+    #  not about treatments in general.
+    nxt(pg)
+    ck("a yes with no day will not move past the page",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qWell")
+    ck("and it says which answer is missing, in the guest's words",
+       "day" in pg.evaluate("()=>err.textContent"))
+    ck("and the day row is what it marks, not the yes and no",
+       pg.evaluate("()=>document.getElementById('qWell').className") == "q now miss")
+    #  Any day IS an answer to it and ends the page.
+    pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')].pop().click()")
+    ck("Any day answers it, and is sent as that word",
+       pg.evaluate("()=>{collect(); return fullPayload().wellDay;}") == any_day["v"])
+    pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')].pop().click()")
+    ck("tapping it again clears it, the way every other chip row clears",
+       pg.evaluate("()=>{collect(); return fullPayload().wellDay;}") == "")
+    ck("and that leaves the page refusing to move again",
+       pg.evaluate("()=>missingOn('qWell')") is not None)
+    #  A no was never asked the question and is never held to it.
+    pg.locator("#wNo").click(); pg.wait_for_timeout(200)
+    ck("a no is never held to a day it was not asked for",
+       pg.evaluate("()=>missingOn('qWell')") is None)
+    pg.locator("#wYes").click(); pg.wait_for_timeout(300)
     pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')][1].click()")
-    ck("the time is a slot list pinned to the canonical table, plus the empty choice",
+    #  The resting choice is an answer, not a blank: the question is not
+    #  mandatory, and left alone it used to reach the masseuse as an empty
+    #  string - a request with no time on it (the owner, 30 Aug).
+    ck("the time is a slot list pinned to the canonical table, after Any time",
        pg.evaluate("""()=>[...document.querySelectorAll('#wTime option')]
            .map(o=>o.value)""")
-       == [""] + [x["label"] for x in
+       == ["Any time"] + [x["label"] for x in
                   __import__("json").load(open("tests/slots.json"))["slots"]])
+    ck("and it is what the control rests on, in words a guest can read",
+       pg.evaluate("()=>wTime.value") == "Any time" and
+       pg.evaluate("()=>wTime.options[wTime.selectedIndex].textContent") == "Any time")
+    ck("and a time left alone is sent as that answer, not as an empty one",
+       pg.evaluate("()=>{collect(); return fullPayload().wellTime;}") == "Any time")
+    #  A quantity of one leaves its column alone on the row, and it must
+    #  not stretch to fill it: the length select was full width until a
+    #  second appeared beside it.
+    #  A control with no name above it is a control nobody can read: the
+    #  first column's label used to appear only when a second massage
+    #  joined it, so on its own the select sat under nothing (30 Aug).
+    ck("the duration is named whether or not a second massage is beside it",
+       pg.evaluate("()=>!!document.getElementById('wDurLab').offsetParent") and
+       pg.evaluate("()=>document.getElementById('wDurLab').textContent") == "Duration")
+    ck("a lone control keeps its half of the row rather than stretching",
+       pg.evaluate("""()=>{
+           const d=document.getElementById('wDur').getBoundingClientRect();
+           const page=document.querySelector('.page').clientWidth;
+           return d.width < page*0.6;}"""))
+    #  One word, so the label cannot wrap and shove its pills down a line
+    #  out of step with the control beside them.
+    ck("the quantity label is one word, and its pills hold the line",
+       pg.evaluate("""()=>{
+           const labs=[...document.querySelectorAll('#wWrap .pair .sublabel')]
+             .map(x=>x.textContent.trim());
+           if (labs.indexOf('Quantity')<0) return false;
+           const t=document.getElementById('wTime').getBoundingClientRect();
+           const q=document.getElementById('wQty').getBoundingClientRect();
+           return Math.abs(t.top-q.top)<4;}"""))
     pg.select_option("#wTime", "2:00 pm")
     # How many and how long, with the manager's price beside each length -
     # the whole point is that the guest sees the cost before they ask.
     ck("one massage is the resting answer and the second length stays hidden",
        pg.evaluate("()=>document.querySelector('#wQty .chip.on').textContent") == "One" and
-       pg.evaluate("()=>getComputedStyle(document.getElementById('wDur2')).display") == "none")
+       pg.evaluate("()=>!document.getElementById('wDur2').offsetParent"))
     ck("each length carries its price from the manager's settings",
        pg.evaluate("()=>[...document.querySelectorAll('#wDur option')].map(o=>o.textContent)")
        == ["1 hour · $180", "1.5 hours · $250", "2 hours · $310"])
     pg.evaluate("()=>[...document.querySelectorAll('#wQty .chip')][1].click()")
     pg.wait_for_timeout(200)
     ck("asking for two demands two lengths",
-       pg.evaluate("()=>getComputedStyle(document.getElementById('wDur2')).display") != "none")
+       pg.evaluate("()=>!!document.getElementById('wDur2').offsetParent"))
+    #  Two small controls to a row, ruled 30 Aug: a select holding four
+    #  words was taking a whole line, and the second massage sat under the
+    #  first when it belongs beside it. Asserted by where they land, not by
+    #  class name, and only above the width where the words stop fitting.
+    ck("the small controls pair two to a row, the second beside the first",
+       pg.evaluate("""()=>{
+           const pairs=[...document.querySelectorAll('#wWrap .pair')];
+           if (pairs.length!==2) return false;
+           const page=document.querySelector('.page').clientWidth;
+           return pairs.every(p=>{
+             const c=[...p.children]
+               .filter(x=>getComputedStyle(x).display!=='none');
+             if (c.length!==2) return false;
+             const a=c[0].getBoundingClientRect(), b=c[1].getBoundingClientRect();
+             return Math.abs(a.top-b.top)<2 && b.left>=a.right-1
+               && a.width < page*0.6;});}"""))
     ck("which massage is which reads as headings, not inside the options",
-       pg.evaluate("()=>getComputedStyle(document.getElementById('wDurLab')).display") != "none" and
-       pg.evaluate("()=>document.getElementById('wDurLab').textContent") == "First massage" and
+       pg.evaluate("()=>document.getElementById('wDurLab').textContent") == "Duration" and
        pg.evaluate("()=>document.getElementById('wDur2Lab').textContent") == "Second massage" and
        pg.evaluate("()=>[...document.querySelectorAll('#wDur2 option')].map(o=>o.textContent)")
        == ["1 hour · $180", "1.5 hours · $250", "2 hours · $310"])
@@ -588,6 +705,184 @@ with sync_playwright() as p:
            word not in pg.locator("#" + qid + " .q-h").inner_text())
     pg.close()
 
+    # ── the guest form's own content, written from Settings ─────
+    #  /prearrivalinfo drives three things. The welcome image on the
+    #  landing - an image and ONLY an image, owner text there was ruled
+    #  ugly (29 Aug). The dining page - the owner's image and words on a
+    #  page of their own, with the dinner question following. And the Read
+    #  more replacements, where a filled entry replaces the built-in copy
+    #  and an empty one keeps it. Everything lands as text or an <img>,
+    #  never markup. The editor's half of this contract is in spa_suite,
+    #  which already drives staff.html signed in.
+    STATE["info"] = {
+        "welcomeImage": "https://photos.test/villa.jpg",
+        "welcomeImageCrop": "top", "welcomeImageHeight": "tall",
+        "diningImage": "https://photos.test/dinner.jpg",
+        "diningText": "#Dining at Nala#\n"
+                      "Dinner is one menu, written each morning\n"
+                      "around what is *best* that day.\n\n"
+                      "It is served at your villa or by the pool.",
+        "intro": "The owner's own welcome line.",
+        "titles": {"dine": "Joining us for dinner?"},
+        "descs": {"dine": "We serve from *6pm*."},
+        "more": {"dine": "The owner's *own words* about how dinner works."}}
+    pg = guest(begin=False)
+    pg.wait_for_timeout(300)
+    #  Every word of a page is his to write: its heading, the description
+    #  under it, the words behind Read more - and the introduction line on
+    #  the landing (30 Aug). What he leaves empty keeps the page's own
+    #  wording, so the two are asserted side by side.
+    ck("the introduction line is his where he has written one",
+       "own welcome line" in pg.locator(".intro-why").inner_text())
+    ck("the welcome image is on the landing",
+       pg.evaluate("()=>{var i=welcomeImg.querySelector('img');"
+                   "return i?i.src:null;}") == "https://photos.test/villa.jpg")
+    ck("an image and only an image - no text rides along",
+       pg.evaluate("()=>welcomeImg.children.length") == 1 and
+       pg.evaluate("()=>welcomeImg.textContent.trim()") == "")
+    #  A portrait photo at natural size swallowed the landing whole (the
+    #  owner's own, 30 Aug): an image is a cropped band, capped in height,
+    #  anchored where the owner said. Asserted by computed style, so a
+    #  class that stops resolving fails by name. Tall is half the screen.
+    ck("cropped as a band, anchored top, capped at the tall height",
+       pg.evaluate("()=>{var s=getComputedStyle(welcomeImg.querySelector('img'));"
+                   "return s.objectFit+'|'+s.objectPosition+'|'+"
+                   "Math.round(parseFloat(s.maxHeight));}")
+       == "cover|50% 0%|" + str(round(844 * 0.50)))
+    pg.locator("#begin").click(); pg.wait_for_timeout(250)
+    live = pg.evaluate("()=>liveSteps().map(s=>s.id)")
+    ck("the dining page joins the walk straight after arrival time, in "
+       "front of every dining question",
+       "qDining" in live and
+       live.index("qDining") == live.index("qEta") + 1 and
+       live.index("qDining") < live.index("qApproach"))
+    jump(pg, "qDining")
+    ck("its image tops the page, the words beneath",
+       pg.evaluate("()=>{var i=diningImg.querySelector('img');"
+                   "return i?i.src:null;}") == "https://photos.test/dinner.jpg" and
+       pg.evaluate("()=>diningImg.getBoundingClientRect().bottom"
+                   "<=diningText.getBoundingClientRect().top+1"))
+    ck("with nothing chosen, an image wears the centred banner default",
+       pg.evaluate("()=>{var s=getComputedStyle(diningImg.querySelector('img'));"
+                   "return s.objectFit+'|'+s.objectPosition+'|'+"
+                   "Math.round(parseFloat(s.maxHeight));}")
+       == "cover|50% 50%|" + str(round(844 * 0.38)))
+    ck("as paragraphs, split on the blank line",
+       pg.evaluate("()=>document.querySelectorAll('#diningText .info-p').length") == 2)
+    #  The grammar's two marks, asked for once real copy met flat
+    #  paragraphs (30 Aug): # opens a heading, asterisk pairs turn bold.
+    #  Both land as elements with the marks stripped - never markup.
+    #  Written "#Dining at Nala#", which is how the owner typed it and how
+    #  half the world writes the mark: no space after the hash, closing
+    #  hashes on the end. It reached a guest with the hashes showing.
+    ck("a # line is a heading however the hashes are typed, marks stripped",
+       pg.evaluate("()=>{var h=document.querySelector('#diningText .info-h');"
+                   "return h?h.textContent:null;}") == "Dining at Nala" and
+       pg.evaluate("()=>getComputedStyle(document.querySelector"
+                   "('#diningText .info-h')).fontWeight") == "600")
+    ck("and asterisk pairs turn bold, the marks gone from the page",
+       pg.evaluate("()=>{var el2=document.querySelector('#diningText .info-p strong');"
+                   "return el2?el2.textContent:null;}") == "best" and
+       "*" not in pg.locator("#diningText").inner_text())
+    ck("bold works in a Read more replacement too",
+       pg.evaluate("()=>{var el2=document.querySelector('#qDine .more-b strong');"
+                   "return el2?el2.textContent:null;}") == "own words")
+    del WRITES[:]
+    nxt(pg)
+    ck("Next carries straight to the first dining question: the page asks nothing",
+       pg.evaluate("()=>document.querySelector('.q.now').id") == "qApproach")
+    ck("and reading is not answering, so nothing was written",
+       len(wrote("/prearrival")) == 0)
+    ck("the owner's Read more replaces the built-in words on the dinner page",
+       pg.evaluate("()=>document.querySelector('#qDine .more-b').textContent")
+       == "The owner's own words about how dinner works.")
+    ck("and so do his heading and his description",
+       pg.evaluate("()=>document.querySelector('#qDine .q-t').textContent")
+       == "Joining us for dinner?" and
+       pg.evaluate("()=>document.querySelector('#qDine .q-h').textContent")
+       == "We serve from 6pm.")
+    ck("a description takes the marks, a heading stays plain text",
+       pg.evaluate("()=>!!document.querySelector('#qDine .q-h strong')") and
+       pg.evaluate("()=>!document.querySelector('#qDine .q-t strong')"))
+    ck("while a page he left empty keeps its built-in words",
+       "Reception is here until 5pm" in
+       pg.evaluate("()=>document.querySelector('#qEta .more-b').textContent") and
+       pg.evaluate("()=>document.querySelector('#qEta .q-t').textContent")
+       == "What time do you expect to arrive?")
+    pg.close()
+
+    #  A one night stay keeps its dinner question, so it keeps the page.
+    #  And the one-night bending of qDine's built-in Read more must never
+    #  bend the owner's replacement, whichever order the fetches land in.
+    pg = guest(link="?b=res-guid-1&n=Robyn&s=Williams&a=" + plus(0)
+                    + "&d=" + plus(1))
+    live1n = pg.evaluate("()=>liveSteps().map(s=>s.id)")
+    ck("a one night guest still gets the dining page, after arrival time",
+       "qDining" in live1n and
+       live1n.index("qDining") == live1n.index("qEta") + 1)
+    ck("and the owner's Read more, not the one-night rewrite",
+       pg.evaluate("()=>document.querySelector('#qDine .more-b').textContent")
+       == "The owner's own words about how dinner works.")
+    #  A heading he writes is the heading on every stay length: the app's
+    #  one-night bending has nothing left to bend, which is the cost of
+    #  writing one and is said on the tab.
+    ck("and his heading too, in place of the one-night wording",
+       pg.evaluate("()=>document.querySelector('#qDine .q-t').textContent")
+       == "Joining us for dinner?")
+    pg.close()
+
+    #  The photo-line rule lives on in the dining text, and the guards
+    #  hold: a dead image removes itself (the CDN rewrites addresses, and
+    #  a broken-image glyph says something is wrong with a form that is
+    #  fine), an address inside a sentence stays text, only https speaks,
+    #  and a Read more replacement lands as text, never markup.
+    STATE["info"] = {
+        "welcomeImage": "https://photos.test/dead/gone.jpg",
+        "diningImage": "https://photos.test/pool2.jpg",
+        "diningImageCrop": "bottom", "diningImageHeight": "natural",
+        "diningText": "One menu, written daily.\n"
+                      "https://photos.test/pool.jpg\n"
+                      "Photos live at https://photos.test/x.jpg online.\n"
+                      "http://photos.test/notsecure.jpg\n"
+                      "Doors at 6pm *sharp",
+        "more": {"dine": "<b>Bold</b> & <img src=x onerror=boom()>"}}
+    pg = guest(begin=False)
+    pg.wait_for_timeout(600)
+    ck("a welcome image whose address has rotted removes itself",
+       pg.evaluate("()=>welcomeImg.querySelectorAll('img').length") == 0)
+    pg.locator("#begin").click(); pg.wait_for_timeout(250)
+    jump(pg, "qDining")
+    ck("a photo line in the dining text draws as the photo",
+       pg.evaluate("()=>{var i=document.querySelector('#diningText img');"
+                   "return i?i.src:null;}") == "https://photos.test/pool.jpg")
+    ck("natural means the whole photo, uncropped, anchored where asked",
+       pg.evaluate("()=>{var s=getComputedStyle(diningImg.querySelector('img'));"
+                   "return s.maxHeight+'|'+s.objectPosition;}")
+       == "none|50% 100%")
+    ck("an address inside a sentence stays text, and http is not a photo",
+       "https://photos.test/x.jpg" in pg.locator("#diningText").inner_text() and
+       "http://photos.test/notsecure.jpg" in pg.locator("#diningText").inner_text()
+       and pg.evaluate("()=>document.querySelectorAll('#diningText img').length") == 1)
+    ck("an unpaired asterisk stays a literal asterisk",
+       "*sharp" in pg.locator("#diningText").inner_text())
+    ck("a Read more replacement is text on the page, never markup",
+       pg.evaluate("()=>!document.querySelector("
+                   "'#qDine .more-b b, #qDine .more-b img')") and
+       "<b>Bold</b>" in pg.evaluate(
+           "()=>document.querySelector('#qDine .more-b').textContent"))
+    pg.close()
+
+    STATE["info"] = None
+    pg = guest(begin=False)
+    ck("with nothing set, the landing is exactly what it was",
+       pg.evaluate("()=>welcomeImg.children.length") == 0 and
+       "A few details before you arrive" in
+       pg.locator(".intro-why").inner_text())
+    pg.locator("#begin").click(); pg.wait_for_timeout(200)
+    ck("and the walk has no dining page",
+       "qDining" not in pg.evaluate("()=>liveSteps().map(s=>s.id)"))
+    pg.close()
+
     # ── widths ──────────────────────────────────────────────────
     for w in (390, 360, 320):
         pg = guest(w=w)
@@ -601,10 +896,10 @@ with sync_playwright() as p:
     pg = guest()
     #  Page kickers were added and scrapped within the hour on 23 Aug -
     #  clutter without a proper design pass. Only their spacing survives.
-    ck("the eight pages run who, why, when, the week, tonight, dietaries, "
+    ck("the pages run who, why, when, dining, the week, tonight, dietaries, "
        "treatments, anything else",
        pg.evaluate("()=>STEPS.map(s=>s.id).join(',')") ==
-       "qCompanion,qPurpose,qEta,qApproach,qDine,qDiet,qWell,qElse")
+       "qCompanion,qPurpose,qEta,qDining,qApproach,qDine,qDiet,qWell,qElse")
 
     #  The nine keys, in order, in all four files that hold a copy. A test
     #  that reads one copy proves nothing about the other three, and
@@ -724,6 +1019,70 @@ with sync_playwright() as p:
            "wellness" not in w1[0]["b"])
     pg.close()
 
+    #  One table, two readers. The Front Desk names the questions a guest has
+    #  not answered yet, so it has to hold exactly this form's required list -
+    #  no more (it would chase a question nobody was asked, which is what the
+    #  retired `occasion` field would have done) and no fewer. This side
+    #  asserts the form requires exactly the steps the table names.
+    Q = json.load(open("tests/form_questions.json"))
+    req = [q["step"] for q in Q["questions"]]
+    one = [q["step"] for q in Q["questions"] if q["askedOnOneNight"]]
+    pg = guest(link="?b=res-guid-1&n=Robyn&s=Williams&a=" + plus(0)
+                    + "&d=" + plus(3))
+    live = pg.evaluate("()=>liveSteps().map(s=>s.id)")
+    blocks = pg.evaluate("(ids)=>ids.map(i=>!!missingOn(i))", live)
+    required = [i for i, b in zip(live, blocks) if b]
+    print("   the form requires:", required, "the table says:", req)
+    #  Every one of them must actually BE a question this form asks. Filtering
+    #  the table down to the steps that exist would let a retired question sit
+    #  in it unnoticed, which is the exact drift the table is here to catch.
+    print("   table questions the form does not ask:",
+          [q for q in req if q not in live])
+    ck("every question the table names is one the form actually asks",
+       all(q in live for q in req))
+    ck("the form requires exactly the questions the table names, in its order",
+       required == req)
+    ck("and nothing the table calls optional holds a guest up",
+       all(s_ not in required for s_ in Q["_optional"]))
+    pg.close()
+    #  And on a one night stay, only the ones the table says are still asked.
+    pg = guest(link="?b=res-guid-1&n=Robyn&s=Williams&a=" + plus(0)
+                    + "&d=" + plus(1))
+    live1 = pg.evaluate("()=>liveSteps().map(s=>s.id)")
+    blocks1 = pg.evaluate("(ids)=>ids.map(i=>!!missingOn(i))", live1)
+    req1 = [i for i, b in zip(live1, blocks1) if b]
+    print("   short-list questions a one night form does not ask:",
+          [q for q in one if q not in live1])
+    ck("and every short-list question is one a one night form still asks",
+       all(q in live1 for q in one))
+    ck("a one night stay is required exactly the short list, no more",
+       req1 == one)
+    ck("and is never asked the ones the table says it is not",
+       not any(q["step"] in live1 for q in Q["questions"]
+               if not q["askedOnOneNight"]))
+    pg.close()
+
+    #  One table, two readers. Which stays are shown the treatment question
+    #  is decided here and has to be known at the Front Desk, or a one night
+    #  guest who answered everything they were asked tints amber for ever -
+    #  villas 16 and 17, 28 Aug. This page loads no staff code, so the rule
+    #  cannot be shared in code; tests/onenight_cases.json is what both
+    #  copies answer to. Add a case there, not here.
+    cases = json.load(open("tests/onenight_cases.json"))["cases"]
+    bad = []
+    for nights, want, why in cases:
+        q = guest(link="?b=res-guid-1&n=Robyn&s=Williams&a=" + plus(0)
+                       + "&d=" + plus(nights))
+        live = q.evaluate("()=>liveSteps().map(s=>s.id)")
+        q.close()
+        if ("qWell" not in live) != bool(want):
+            bad.append("%d nights: wanted one-night %s, treatment page %s (%s)"
+                       % (nights, want,
+                          "hidden" if "qWell" not in live else "shown", why))
+    print("   one night cases the guest form reads wrongly:", bad)
+    ck("the treatment question is hidden on exactly the stays the table names",
+       bad == [] and len(cases) >= 5)
+
     #  The day chips read the resolved dates, not the raw link: a link with
     #  no dates whose booking Mews knows still offers the days - the demo
     #  itself was dateless and offered none for a spell.
@@ -732,8 +1091,8 @@ with sync_playwright() as p:
     pg = guest(link="?b=res-guid-1&n=Robyn")
     jump(pg, "qWell")
     pg.locator("#wYes").click(); pg.wait_for_timeout(250)
-    ck("a dateless link still offers the days Mews knows",
-       pg.evaluate("()=>document.querySelectorAll('#wDays .chip').length") == 3)
+    ck("a dateless link still offers the days Mews knows, then Any day",
+       pg.evaluate("()=>document.querySelectorAll('#wDays .chip').length") == 4)
     pg.close()
     STATE["pms"] = None
 
@@ -761,11 +1120,17 @@ with sync_playwright() as p:
        q.evaluate("()=>document.getElementById('form').className.indexOf('hide')<0"))
     ck("with a guest to greet",
        "Alex" in q.evaluate("()=>document.getElementById('greet').textContent"))
-    ck("and says plainly on the landing that it is a demonstration",
-       "demonstration" in q.evaluate(
-           "()=>{const n=document.querySelector('#intro .note-box');"
-           "return n?n.textContent:'';}").lower())
-    ck("opening it touches the database not at all", not calls)
+    #  No banner at all since 30 Aug, the owner stripping the last line of
+    #  it: the demo landing is exactly what a guest sees. The way back to
+    #  Settings waits on the thank-you screen instead - the demo's last
+    #  page - because a landing link was behind the walk the moment Begin
+    #  was tapped.
+    ck("and the landing carries no banner and no staff door - a guest's own",
+       q.evaluate("()=>!document.querySelector('#intro .note-box')") and
+       q.evaluate("()=>!document.querySelector('a[href*=\"staff\"]')"))
+    ck("opening it reads the public Settings notes and nothing else",
+       calls != [] and
+       all(m == "GET" and "/prearrivalinfo" in u for m, u in calls))
 
     q.evaluate("""()=>{
       trail.value=2; trail.dispatchEvent(new Event('input'));
@@ -784,8 +1149,43 @@ with sync_playwright() as p:
     ck("while saying nothing was saved",
        "nothing was saved" in q.evaluate(
            "()=>document.getElementById('doneS').textContent").lower())
+    #  The write-preview loop: Settings links here to preview, and the way
+    #  back sits on this, the demo's last page. The real-link check above
+    #  holds the other half: no staff door anywhere a guest can be.
+    ck("and the thank-you screen offers the way back to Settings",
+       q.evaluate("()=>{const a=document.querySelector('#done a');"
+                  "return a ? a.getAttribute('href') : null;}") == "staff.html")
     ck("and writes nothing, which is the whole point",
        not [c for c in calls if c[0] in ("PATCH", "PUT", "POST")])
+    q.close()
+
+    #  And once the notes CAN be read, the demo previews them live - that is
+    #  what the one read is for - while the warranty holds: still that one
+    #  node, still no writes.
+    calls2 = []
+    q = b.new_page(viewport={"width": 390, "height": 900})
+    q.on("request", lambda r: calls2.append((r.method, r.url))
+         if "firebasedatabase.app" in r.url else None)
+    def demo_fb(route, request):
+        body = (json.dumps({"welcomeImage": "https://photos.test/villa.jpg",
+                            "diningText": "One menu, written daily.",
+                            "more": {"dine": "Owner words."}})
+                if "/prearrivalinfo" in request.url else "null")
+        route.fulfill(status=200, content_type="application/json", body=body)
+    q.route("**firebasedatabase.app/**", demo_fb)
+    q.route("**photos.test/**", photo_route)
+    q.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    q.goto("http://localhost:8967/prearrival.html?b=demo"); q.wait_for_timeout(1500)
+    ck("with the record readable, the demo shows the welcome image",
+       q.evaluate("()=>welcomeImg.querySelectorAll('img').length") == 1)
+    ck("and gains the dining page",
+       "qDining" in q.evaluate("()=>liveSteps().map(s=>s.id)") and
+       "One menu" in q.evaluate("()=>diningText.textContent"))
+    ck("and the owner's Read more on the dinner page",
+       "Owner words." == q.evaluate(
+           "()=>document.querySelector('#qDine .more-b').textContent"))
+    ck("still having read only the Guest form record, and written nothing",
+       all(m == "GET" and "/prearrivalinfo" in u for m, u in calls2))
     q.close()
 
     b.close()

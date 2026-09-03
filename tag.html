@@ -8,139 +8,93 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
 <title>Nala · Menu Dietaries</title>
+<link rel="stylesheet" href="nala-ui2.css?v=6">
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  :root { --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E; }
-  body { background:var(--cream); color:var(--ink); font-family:Georgia,serif;
-         padding:28px 24px 60px; -webkit-tap-highlight-color:transparent; }
+  body { padding:28px 24px 60px; }
+  /* The save bar is pinned over the foot of the page, so the page has to
+     reserve room for it. Without this the last control on the list sits
+     under the bar and cannot be tapped, which pub_suite measures.     */
+  body.ui2 { padding-bottom:calc(120px + env(safe-area-inset-bottom)); }
+
+  /* This page's own shape and nothing else. Ground, ink, type, spacing, the
+     buttons and the hamburger come from nala-ui2.css.
+
+     The hand copy of the nav is gone. Its comment said nala-ui.css "holds
+     the ruling copy of this dress - keep this one in step with it", and it
+     had not been: publish.html and this page were identical, flags.html had
+     drifted from both. nala-ui2.css needs no tier class, which was the only
+     reason the copy existed.                                             */
   .wrap { max-width:520px; margin:0 auto; }
-  /* The bar sits above the wordmark and pushes nothing: the hamburger is the
-     only thing in it and it hangs to the right, as it does everywhere else. */
-  /* The hamburger, self contained.
-
-     It was pulled in from nala-ui.css, which turned out to be a whole layout
-     system and not a control sheet: it makes body a flex column, gives
-     body > .wrap flex rules, and takes its colours from --ctl-* tokens that
-     only exist on a body carrying tier-app or tier-print. Neither page carries
-     one, so every border and every bar of the icon resolved to nothing and the
-     button rendered invisible. The page was not missing a menu; it was drawing
-     one nobody could see.
-
-     Written out here instead, in this page's own colours. Two pages' worth of
-     duplication against importing a layout these pages were not built for. */
-  .navrow { display:flex; margin-bottom:10px; }
-  .navwrap { position:relative; margin-left:auto; z-index:500; }
-  .navbtn { width:42px; height:36px; border:1px solid var(--rule);
-            background:var(--cream); border-radius:8px; cursor:pointer;
-            display:flex; flex-direction:column; align-items:center;
-            justify-content:center; gap:4px; padding:0;
-            -webkit-tap-highlight-color:transparent; }
-  .navbtn span { display:block; width:16px; height:1.6px; background:var(--ink); }
-  .navdrop { display:none; position:absolute; right:0; top:42px;
-             background:var(--cream); border:1px solid var(--rule);
-             border-radius:9px; min-width:150px; padding:5px 0;
-             box-shadow:0 4px 14px rgba(0,0,0,.09); }
-  .navdrop.open { display:block; }
-  .navdrop a { display:block; padding:12px 18px;
-               font-family:Helvetica,Arial,sans-serif; font-size:10px;
-               letter-spacing:.14em; text-transform:uppercase; color:var(--ink);
-               text-decoration:none; white-space:nowrap; }
-  /* Signing out is an action, not a destination, and is never filtered by
-     role: every login has to be able to get out. */
-  .navgrp { padding:12px 18px 5px; font-size:8px; letter-spacing:.2em;
-            text-transform:uppercase; color:#B0B0A8;
-            border-top:1px solid var(--rule); margin-top:5px; }
-  .navdrop > .navgrp:first-child { border-top:0; margin-top:0; padding-top:6px; }
-  .navdrop a.navaction { display:flex; align-items:center;
-                        justify-content:space-between; gap:14px; color:var(--ink); }
-  .navmark { display:inline-flex; flex:0 0 auto; }
-  .navmark.on  { color:#3F7A52; }
-  .navmark.off { color:#B0B0A8; }
-  .navnote { flex:0 0 auto; font-size:8px; letter-spacing:.1em; color:#B0B0A8;
-             text-transform:none; }
-  .navdrop a.signout { border-top:1px solid var(--rule); margin-top:5px;
-                       padding-top:13px; color:var(--mid); }
+  .navrow { display:flex; margin-bottom:var(--s2); }
 
   .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
-            background:#A8321E; color:#fff; padding:12px 18px;
-            font-family:Helvetica,Arial,sans-serif; font-size:11px; line-height:1.5;
+            background:var(--law-red); color:#fff; padding:var(--s3) var(--s4);
+            font-size:var(--t2); line-height:1.5;
             transform:translateY(-100%); transition:transform .25s; }
   .errbar.show { transform:translateY(0); }
 
-  .wordmark { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.45em;
-              text-transform:uppercase; color:var(--mid); text-align:center; }
-  .pagename { font-family:Helvetica,Arial,sans-serif; font-size:13px; font-weight:bold;
-              letter-spacing:.1em; text-transform:uppercase; text-align:center; margin-top:6px; }
-  .lede { text-align:center; font-style:italic; color:var(--mid); font-size:12px;
-          margin-top:8px; line-height:1.5; }
+  .wordmark { font-size:var(--t1); color:var(--mid); text-align:center;
+              letter-spacing:.18em; text-transform:uppercase; }
+  .pagename { font-size:var(--t4); font-weight:600; text-align:center;
+              margin-top:var(--s1); }
+  .lede { text-align:center; color:var(--mid); font-size:var(--t2);
+          margin:var(--s2) auto 0; line-height:1.5; max-width:52ch; }
 
-  .nomenu { display:none; text-align:center; font-style:italic; color:var(--mid);
-            margin-top:40px; line-height:1.7; }
-  .nomenu.show { display:block; }
+  /* There is no .tick on this page and there has not been for some time -
+     the chef ticks which dietaries a dish does not suit on PUBLISH, and the
+     owner ruled that pill's dress on 27 Aug: grey fill, red only as a ring.
+     The rules removed 29 Aug were orphans, still solid red, above a comment
+     asking for a ruling that had already been made. Twice I read the comment
+     and reported the tag board as an open question on the colour law. Dead
+     CSS is not inert when it carries a description of the app with it. */
+  .rule { border:none; border-top:1px solid var(--rule); margin-top:var(--s5); }
 
-  .course { margin-top:26px; display:none; }
-  .course.show { display:block; }
-  .c-label { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
-             text-transform:uppercase; color:var(--mid); }
-  .c-dish { font-size:17px; margin-top:3px; }
-  .c-hint { font-family:Helvetica,Arial,sans-serif; font-size:9px; color:var(--mid);
-            margin-top:2px; letter-spacing:.05em; }
-  .ticks { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
-  .tick { padding:8px 13px; border:1px solid #C9C9C2; background:transparent;
-          border-radius:20px; font-family:Helvetica,Arial,sans-serif; font-size:11px;
-          color:var(--ink); cursor:pointer; -webkit-tap-highlight-color:transparent; }
-  .tick.on { background:var(--red); color:#fff; border-color:var(--red); }
-  .rule { border:none; border-top:1px solid var(--rule); margin-top:26px; }
-
-  .secthead { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.3em;
-              text-transform:uppercase; color:var(--mid); margin-top:26px; }
-  .addrow { display:flex; gap:8px; margin-top:10px; }
-  .addrow input { flex:1; padding:11px; border:1px solid var(--rule); background:#fff;
-                  border-radius:8px; font-family:Georgia,serif; font-size:16px; color:var(--ink); }
-  .grp { display:flex; gap:6px; margin-top:8px; }
-  .grp button { flex:1; padding:9px; border:1px solid #C9C9C2; background:transparent;
-                border-radius:8px; font-family:Helvetica,Arial,sans-serif; font-size:10px;
-                letter-spacing:.05em; color:var(--ink); cursor:pointer;
+  .secthead { font-size:var(--t2); font-weight:500; color:var(--mid);
+              margin-top:var(--s5); }
+  .addrow { display:flex; gap:var(--s2); margin-top:var(--s3); }
+  .addrow input { flex:1; min-width:0; }
+  /* Which list a new dietary joins. A segmented choice, so selected wears
+     the interaction accent rather than ink.                              */
+  .grp { display:flex; gap:var(--s2); margin-top:var(--s2); }
+  .grp button { flex:1; padding:var(--s3); min-height:var(--tap);
+                border:1px solid var(--rule); background:transparent;
+                border-radius:var(--r); font-family:var(--ui-font);
+                font-size:var(--t2); color:var(--ink); cursor:pointer;
                 -webkit-tap-highlight-color:transparent; }
-  .grp button.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
-  .addbtn { margin-top:8px; width:100%; padding:11px; border:1px solid var(--ink);
-            background:transparent; border-radius:8px; font-family:Helvetica,Arial,sans-serif;
-            font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink);
-            cursor:pointer; -webkit-tap-highlight-color:transparent; }
-  .addbtn:active { background:var(--rule); }
+  .grp button.on { background:var(--accent); color:var(--accent-ink);
+                   border-color:var(--accent); }
+  .addbtn { margin-top:var(--s2); }
 
-  .mng { margin-top:12px; }
+  .mng { margin-top:var(--s3); }
   .mrow { display:flex; align-items:center; justify-content:space-between;
-          padding:9px 0; border-bottom:1px solid var(--rule); }
-  .mname { font-size:14px; }
-  .mname .g { font-family:Helvetica,Arial,sans-serif; font-size:8px; letter-spacing:.15em;
-              text-transform:uppercase; color:var(--mid); margin-left:8px; }
+          gap:var(--s3); padding:var(--s3) 0;
+          border-bottom:1px solid var(--rule); min-height:var(--tap); }
+  .mname { font-size:var(--t3); }
+  .mname .g { font-size:var(--t2); color:var(--mid); margin-left:var(--s2); }
   .mrow.off .mname { color:var(--mid); font-style:italic; }
+  .mbtns { display:flex; gap:var(--s2); flex:0 0 auto; }
   .mtog { border:1px solid var(--rule); background:transparent; color:var(--mid);
-          padding:6px 12px; border-radius:16px; font-family:Helvetica,Arial,sans-serif;
-          font-size:9px; letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
+          padding:var(--s2) var(--s3); min-height:36px; border-radius:var(--pill);
+          font-family:var(--ui-font); font-size:var(--t2); cursor:pointer;
           -webkit-tap-highlight-color:transparent; }
-  .mrow.off .mtog { border-color:var(--ink); color:var(--ink); }
-  .mbtns { display:flex; gap:6px; }
-  /* Delete wears the failure colour because it is the one press here with no
-     way back after Save. Offered only on a hidden row: hide first, then
-     delete, so a mis-tap cannot destroy a dietary that is in use. */
-  .mtog.mdel { border-color:var(--red); color:var(--red); }
+  .mrow.off .mtog { border-color:var(--accent); color:var(--accent); }
+  /* Destroys something a booking may be using, so it wears the button law's
+     destructive dress and asks first. Offered only on a hidden row: hide
+     comes before delete. It was red, which is failure's colour.          */
+  .mtog.mdel { border-color:var(--law-terra-b); color:var(--law-terra); }
 
-  .savebar { position:fixed; bottom:0; left:0; right:0; background:var(--cream);
-             border-top:1px solid var(--rule); padding:12px 24px;
+  .savebar { position:fixed; bottom:0; left:0; right:0; background:var(--ground);
+             border-top:1px solid var(--rule);
+             padding:var(--s3) var(--s4) calc(var(--s3) + env(safe-area-inset-bottom));
              transform:translateY(110%); transition:transform .25s; }
   .savebar.show { transform:translateY(0); }
-  .savebar .in { max-width:520px; margin:0 auto; display:flex; gap:10px; align-items:center; }
-  .savebtn { flex:1; padding:13px; min-height:44px; border:none; background:var(--ink); color:var(--cream);
-             border-radius:8px; font-family:Helvetica,Arial,sans-serif; font-size:11px;
-             letter-spacing:.15em; text-transform:uppercase; cursor:pointer;
-             -webkit-tap-highlight-color:transparent; }
-  .saved { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.1em;
-           text-transform:uppercase; color:var(--mid); }
+  .savebar .in { max-width:520px; margin:0 auto; display:flex; gap:var(--s3);
+                 align-items:center; }
+  .savebtn { flex:1; }
+  .saved { font-size:var(--t2); color:var(--mid); flex:0 0 auto; }
 </style>
 </head>
-<body>
+<body class="ui2">
 <div class="errbar" id="err"></div>
 <div class="wrap">
   <div class="navrow">  <!-- Every other staff page has this and these two did not, so a chef who
@@ -149,7 +103,7 @@
        place to go back to from the dietary list, so it leads. -->
   <div class="navwrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
-    <div class="navdrop" id="navDrop"><a href="front-desk.html">Front Desk</a><a href="tally.html">Reservations</a><a href="invitations.html">Invitations</a><a href="arrivals-sms.html">Pre-arrival SMS</a><a href="cleaners.html">Cleans</a><a href="spa.html">Spa</a><a href="publish.html">Publish Menu</a><div class="navgrp">Print</div><a href="list.html">FOH Sheet</a><a href="housekeeping.html">Clean Sheet</a><a href="registration.html">Arrivals</a><a href="menu-print.html">Menu</a><a href="past-menus.html">Past Menus</a><div class="navgrp">Settings</div><a href="staff.html">General</a><a href="flags.html">Flags</a><a href="pages.html">Pages</a><a href="#" class="navaction" id="navNotify">Notifications</a><a href="#" class="signout" id="navSignout">Sign out</a></div>
+    <div class="navdrop" id="navDrop"></div>
   </div>
   </div>
   <div class="wordmark">Nala Resort</div>
@@ -163,21 +117,21 @@
     <button id="gCommon" class="on">Common - always listed</button>
     <button id="gMenu">This menu only</button>
   </div>
-  <button class="addbtn" id="addBtn">Add dietary</button>
+  <button class="btn solid addbtn" id="addBtn">Add dietary</button>
 
   <div class="secthead">All dietaries</div>
   <div class="mng" id="mng"></div>
 </div>
 
 <div class="savebar" id="savebar"><div class="in">
-  <button class="savebtn" id="saveBtn">Save the list</button>
+  <button class="btn solid savebtn" id="saveBtn">Save the list</button>
   <span class="saved" id="savedMsg"></span>
 </div></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=41"></script>
+<script src="nala-shared.js?v=48"></script>
 <script>
 /* Tagging a menu is the chef's job and the manager's. Until 18 Aug there was
    no gate at all, so a cleaner could archive the dietary list. Sent to their
@@ -388,9 +342,6 @@
   if (!b || !d) return;
   b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click',function(){ d.classList.remove('open'); });
-  var so=document.getElementById('navSignout');
-  if (so) so.onclick=function(e){ e.preventDefault();
-    if (window.NALA_SIGNOUT) NALA_SIGNOUT(); else location.reload(); };
 })();
 </script>
 </body>
