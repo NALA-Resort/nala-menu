@@ -130,6 +130,16 @@ canPatch('the guest pre-arrival form saves', GUEST, '/bookings/b-1/prearrival', 
 });
 canPatch('and stamps that the link was opened', GUEST, '/bookings/b-1/prearrival',
          { openedAt: NOW });
+/* Whose answers these are. The booking carries two people and they may
+   differ - pms.customerId is Mews's current customer, this is the person
+   the answers were given for. Written by the mirrors and the sync alike,
+   and the guest cannot sign in, so it rides the same open write as the
+   answers themselves. */
+canPatch('and the form can be stamped with whose answers it holds', GUEST,
+         '/bookings/b-1/prearrival', { forCustomerId: 'c-77aa' });
+cannot('but not with an id longer than a Mews GUID could be', GUEST,
+       '/bookings/b-1/prearrival',
+       { forCustomerId: new Array(70).join('x') });
 
 /* index.html markOpened(). The menu link is a different link from the
    pre-arrival form, and its mark is filed by night rather than on the guest,

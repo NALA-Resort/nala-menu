@@ -1304,7 +1304,18 @@ function fetchMenuAnywhere(dayKey){
    The booking keeps its copy and stays the working one: every screen reads it,
    tonight's service depends on it, and a guest record that failed to write
    must not take the evening's answers with it. This is a mirror, not a move,
-   and it is deliberately quiet for the same reason.                        */
+   and it is deliberately quiet for the same reason.
+
+   WHICH person: prearrival.forCustomerId first, the person the answers were
+   given for, and only then pms.customerId, the person Mews holds the booking
+   for now. The two differ the moment a receptionist re-attributes a
+   reservation in Mews, and the answers are personal - the owner's ruling of
+   3 Sep - so they must keep following the person who gave them rather than
+   whoever now owns the booking. When no stamp exists yet the mirror writes
+   one, because this is the moment an answer is being given and the booking's
+   current person is exactly who it is for; quiet, since until the rules
+   paste the field is refused and keying on pms.customerId is yesterday's
+   behaviour, not a failure. */
 function rememberDietary(bookingId, diets, dnote){
   if (!bookingId) return Promise.resolve();
   /* Only the halves the caller actually holds. The board's editors send a
@@ -1315,8 +1326,23 @@ function rememberDietary(bookingId, diets, dnote){
   var body = { updatedAt: new Date().toISOString() };
   if (diets !== undefined) body.diets = diets || [];
   if (dnote !== undefined) body.dnote = dnote || '';
-  return fetch(DB + '/bookings/' + bookingId + '/pms/customerId.json')
+  return fetch(DB + '/bookings/' + bookingId + '/prearrival/forCustomerId.json')
     .then(function(r){ return r.json(); })
+    .catch(function(){ return null; })
+    .then(function(stamped){
+      if (stamped) return stamped;
+      return fetch(DB + '/bookings/' + bookingId + '/pms/customerId.json')
+        .then(function(r){ return r.json(); })
+        .then(function(cid){
+          if (cid){
+            fetch(DB + '/bookings/' + bookingId + '/prearrival.json', {
+              method: 'PATCH', headers: { 'Content-Type':'application/json' },
+              body: JSON.stringify({ forCustomerId: cid })
+            }).catch(function(){});
+          }
+          return cid;
+        });
+    })
     .then(function(cid){
       if (!cid) return;   /* older bookings have none: nothing to key on */
       return fetch(DB + '/guests/' + cid + '.json', {

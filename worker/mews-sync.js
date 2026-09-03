@@ -704,11 +704,6 @@ export default {
         mewsState: asText(r.state, 30),
         bookingNumber: asNumberOrText(r.bookingNumber),
         groupId: asText(r.groupId, 64),
-        /* On the booking and not on the nights. A night is read by the boards
-           twenty times an hour and none of them care who the person is; the
-           write back to Mews happens once per booking and does. Copying it
-           into every night would be fourteen copies of a fact used nowhere. */
-        customerId: asText(r.customerId, 64),
         adults: asCount(r.adults, 0, 40), children: asCount(r.children, 0, 40),
         /* Explicit nulls, not omissions. A PATCH that simply stops sending a
            field leaves the old value sitting there, so every booking synced
@@ -733,6 +728,17 @@ export default {
          nested object coerces to null, and null here is a deletion. */
       const rateText = asText(r.rate, 120);
       if (rateText !== null) pmsPatch.rate = rateText;
+      /* The customer, the rate's treatment and stricter: only a real GUID is
+         stored, and an event without one leaves the stored customer standing
+         rather than nulling it away. On the booking and not on the nights - a
+         night is read by the boards twenty times an hour and none of them
+         care who the person is. Until 3 Sep this was written unconditionally,
+         so any trigger with CustomerId unmapped DELETED the person from the
+         booking, and with it every dietary's way home to /guests. GUID only,
+         because /guests is keyed on it: a Zapier event key stored here would
+         attach the person's allergies to a customer who does not exist. */
+      const cidText = asText(r.customerId, 64);
+      if (cidText !== null && isGuid(cidText)) pmsPatch.customerId = cidText;
       await db(env, "/bookings/" + r.id + "/pms", "PATCH", pmsPatch);
 
       /* The summary is duplicated into every night rather than stored once
@@ -797,19 +803,51 @@ export default {
          set the moment a guest or the desk touches the form, and seeding over
          that would replace what somebody just said with what they said last
          year. */
-      if (r.customerId && !cancelled) {
-        let started = null;
+      /* Whose form this is. The booking carries TWO person attachments and
+         they may differ, the owner's ruling of 3 Sep: pms.customerId is who
+         Mews says the booking is for NOW, and prearrival.forCustomerId is
+         who the ANSWERS were given for. The answers are personal - they were
+         answered by a person and follow that person - so when a receptionist
+         re-attributes a reservation in Mews, the new customer takes the
+         booking and the original stays on it, against the answers.
+
+         prev is deliberately preferred over the incoming id: on the very
+         event that changes the customer, the answers already on the form
+         were given under the OLD one, and stamping the new would re-home
+         them - the exact move this field exists to prevent. Stamped once,
+         backfill only; the mirrors stamp at answer time and this covers the
+         guest-first case, where the form is answered before pms exists. */
+      const heldCid = (prev && isGuid(prev.customerId)) ? prev.customerId
+                    : (isGuid(r.customerId) ? r.customerId : null);
+      let started = null;
+      if ((r.customerId || heldCid) && !cancelled) {
         try { started = await db(env, "/bookings/" + r.id + "/prearrival/at", "GET"); }
         catch (e) { started = null; }
-        if (!started) {
-          let known = null;
-          try { known = await db(env, "/guests/" + r.customerId, "GET"); }
-          catch (e) { known = null; }
-          if (known && (known.diets || known.dnote)) {
+      }
+      if (r.customerId && !cancelled && !started) {
+        let known = null;
+        try { known = await db(env, "/guests/" + r.customerId, "GET"); }
+        catch (e) { known = null; }
+        if (known && (known.diets || known.dnote)) {
+          await db(env, "/bookings/" + r.id + "/prearrival", "PATCH",
+                   { diets: Array.isArray(known.diets) ? known.diets : [],
+                     dnote: asText(known.dnote, 500) || "" });
+        }
+      }
+      if (heldCid && !cancelled && started) {
+        let stamped = null;
+        try { stamped = await db(env, "/bookings/" + r.id + "/prearrival/forCustomerId", "GET"); }
+        catch (e) { stamped = null; }
+        if (!stamped) {
+          /* Quiet on refusal: until the rules paste the field is unknown to
+             the database and the write bounces, and a 500 here would make
+             Zapier retry the whole event forever over an optional stamp.
+             Unstamped, the mirrors key on pms.customerId, which is exactly
+             the behaviour of 2 Sep - the feature limps, it does not fail. */
+          try {
             await db(env, "/bookings/" + r.id + "/prearrival", "PATCH",
-                     { diets: Array.isArray(known.diets) ? known.diets : [],
-                       dnote: asText(known.dnote, 500) || "" });
-          }
+                     { forCustomerId: heldCid });
+          } catch (e) {}
         }
       }
 

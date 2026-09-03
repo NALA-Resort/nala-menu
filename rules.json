@@ -468,6 +468,9 @@
           "companion": {
             ".validate": "newData.isString() && newData.val().length <= 120"
           },
+          "forCustomerId": {
+            ".validate": "newData.isString() && newData.val().length <= 64"
+          },
           "$other": {
             ".validate": false
           }

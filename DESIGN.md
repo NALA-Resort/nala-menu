@@ -335,6 +335,29 @@ reception to ask again.
 **The booking id is the only identifier for a guest. The date and the villa
 identify a night and a place, not a person.**
 
+### The booking carries two people, and they may differ
+
+Ruled by the owner, 3 Sep, after a rename in Mews re-homed a dietary. The
+pre-arrival questions are answered by a person, so the answers are personal
+and follow that person - and a receptionist changing who a reservation is
+for must not silently re-attribute what somebody else already said.
+
+- **`pms.customerId`** is who Mews says the booking is for NOW. The Worker
+  owns it, replaces it only with a real GUID, and never deletes it because a
+  trigger left the field unmapped - the rate's treatment, learned twice.
+- **`prearrival.forCustomerId`** is who the ANSWERS were given for. Stamped
+  when the answers first exist - by the mirrors at the moment of answering,
+  by the Worker as a backfill for forms answered before Mews knew the
+  booking - and left standing after that. When Mews re-attributes the
+  reservation, the new customer takes `pms` and the original stays here,
+  against the words they said.
+
+Everything that writes to `/guests/<customerId>` keys on the stamp first and
+falls back to `pms.customerId` only while no stamp exists. So a booking whose
+customer changes keeps serving tonight normally, and the dietary typed last
+week still lands on the person who declared it, not on whoever now holds the
+room.
+
 Which gives three kinds of record, and each answers a different question:
 
 **Per booking**, keyed by booking id, lasting the whole stay:

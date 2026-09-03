@@ -54,6 +54,10 @@ def fb(route, request):
     elif "/dietaries" in u: body = json.dumps(DIETS)
     elif "/prearrivalinfo" in u:
         body = json.dumps(STATE["info"]) if STATE["info"] else "null"
+    # Before the /prearrival branch, which this path also matches: the whole
+    # record standing in for one absent field reads as a truthy stamp.
+    elif "/prearrival/forCustomerId" in u:
+        body = json.dumps(STATE.get("stamp"))
     elif "/prearrival" in u: body = json.dumps(STATE["pre"]) if STATE["pre"] else "null"
     elif "/pms" in u: body = json.dumps(STATE["pms"]) if STATE["pms"] else "null"
     route.fulfill(status=200, content_type="application/json", body=body)
@@ -516,9 +520,22 @@ with sync_playwright() as p:
 
     # the two optional ones are genuinely optional
     del WRITES[:]
-    nxt(pg); pg.wait_for_timeout(400)
+    # Mews has caught up by send time, and its customer is who these answers
+    # are for: the send must stamp the form with that person and mirror the
+    # dietary to their /guests record - the owner's ruling of 3 Sep, answers
+    # are personal and follow the person who gave them.
+    STATE["pms"] = {"first": "Riley", "customerId": "cust-pre-1"}
+    nxt(pg); pg.wait_for_timeout(500)
+    # sent() keeps only the send itself, the write carrying `at`, so the
+    # stamp - its own small PATCH - is counted through wrote() instead.
     w = sent("/bookings/res-guid-1/prearrival")
     ck("with the six answered, it sends without the optional two", len(w) == 1)
+    ck("the answers are stamped with the person they were given for",
+       any((x["b"] or {}).get("forCustomerId") == "cust-pre-1"
+           for x in wrote("/bookings/res-guid-1/prearrival")))
+    ck("and the dietary answer reaches that person's record",
+       any("/guests/cust-pre-1" in x["u"] for x in WRITES))
+    STATE["pms"] = None
     if w:
         body = w[0]["b"]
         ck("as a PATCH, so a confirmation already made at the desk survives",

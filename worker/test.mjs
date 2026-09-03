@@ -42,7 +42,20 @@ function install() {
         kids = kids || {};
         kids[rest] = STORE[key];
       }
-      return new Response(JSON.stringify(kids), { status: 200 });
+      if (kids) return new Response(JSON.stringify(kids), { status: 200 });
+      /* And the reverse: a child of a stored object resolves too, as it
+         would in Firebase, where paths address one tree rather than flat
+         keys. Without this a read of /prearrival/forCustomerId after a
+         PATCH to /prearrival comes back null and the Worker re-stamps a
+         form the real database would have told it was already stamped. */
+      const cut = path.lastIndexOf("/");
+      const up = STORE[path.slice(0, cut)];
+      if (up && typeof up === "object") {
+        const leaf = up[path.slice(cut + 1)];
+        if (leaf !== undefined)
+          return new Response(JSON.stringify(leaf), { status: 200 });
+      }
+      return new Response(JSON.stringify(null), { status: 200 });
     }
     if (m === "DELETE") { delete STORE[path]; return new Response(null, { status: 204 }); }
     const body = JSON.parse(opt.body);
@@ -520,7 +533,55 @@ ck("a Zapier key in the customer field loses to the real GUID beside it",
 install();
 await post(RES);
 ck("a booking with no customer id at all is still written",
-   STORE["/bookings/" + RES.MewsId + "/pms"].customerId === null);
+   !!STORE["/bookings/" + RES.MewsId + "/pms"] &&
+   STORE["/bookings/" + RES.MewsId + "/pms"].customerId == null);
+
+/* The triggers carry the field unevenly, exactly like the rate, and losing
+   it costs more: /guests is keyed on it, so a modification with CustomerId
+   unmapped used to DELETE the person from the booking and with them every
+   dietary's way home. */
+install();
+await post(Object.assign({}, RES, {
+  CustomerId: "7c1e4a90-3b55-4a11-9d02-b4a800c12abc" }));
+await post(RES);
+ck("an event with no customer id leaves the stored one standing",
+   STORE["/bookings/" + RES.MewsId + "/pms"].customerId ===
+     "7c1e4a90-3b55-4a11-9d02-b4a800c12abc");
+await post(Object.assign({}, RES, { CustomerId: "be99712182a11b7e1c854af0ecdaf669" }));
+ck("and a lone Zapier key does not replace a real customer either",
+   STORE["/bookings/" + RES.MewsId + "/pms"].customerId ===
+     "7c1e4a90-3b55-4a11-9d02-b4a800c12abc");
+
+/* ── whose answers the form holds ───────────────────────────── */
+/* The booking carries two people and they may differ, the owner's ruling of
+   3 Sep: pms.customerId is who Mews says the booking is for NOW, and
+   prearrival.forCustomerId is who the ANSWERS were given for. The answers
+   are personal and follow their person, so on the very event that changes
+   the customer, the form is stamped with the OLD one - re-attributing a
+   reservation must not re-home what somebody else already said. */
+const CID_A = "7c1e4a90-3b55-4a11-9d02-b4a800c12abc";
+const CID_B = "9a2b7c31-88d4-4e0b-9c1f-2b6d5e7a1c04";
+install();
+await post(Object.assign({}, RES, { CustomerId: CID_A }));
+ck("an untouched form is not stamped: nobody has answered anything",
+   STORE["/bookings/" + RES.MewsId + "/prearrival"] === undefined);
+STORE["/bookings/" + RES.MewsId + "/prearrival/at"] = "2026-09-01T09:00:00Z";
+await post(Object.assign({}, RES, { CustomerId: CID_B }));
+ck("the event that changes the customer stamps the answers with the OLD one",
+   STORE["/bookings/" + RES.MewsId + "/prearrival"].forCustomerId === CID_A);
+ck("while the booking itself moves to the new customer",
+   STORE["/bookings/" + RES.MewsId + "/pms"].customerId === CID_B);
+await post(Object.assign({}, RES, { CustomerId: CID_B }));
+ck("a standing stamp is never overwritten",
+   STORE["/bookings/" + RES.MewsId + "/prearrival"].forCustomerId === CID_A);
+/* The guest-first case: the form is answered days before Mews sends the
+   booking, so there is no prev to prefer and the incoming customer is the
+   person the answers were given for. */
+install();
+STORE["/bookings/" + RES.MewsId + "/prearrival/at"] = "2026-09-01T09:00:00Z";
+await post(Object.assign({}, RES, { CustomerId: CID_A }));
+ck("a form answered before Mews knew the booking is stamped on first sight",
+   STORE["/bookings/" + RES.MewsId + "/prearrival"].forCustomerId === CID_A);
 
 /* ── the rate ───────────────────────────────────────────────── */
 /* The Mews rate name, as words. The desk's booking flags read it through

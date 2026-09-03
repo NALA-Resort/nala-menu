@@ -1591,6 +1591,7 @@ with sync_playwright() as p:
     # same guest and had no way to record one. A board that cannot show what
     # the desk recorded is a board that quietly loses it.
     WROTE = []
+    STAMP = {"v": None}   # /bookings/b4/prearrival/forCustomerId, settable mid-test
     def diet_fb(route, request):
         u = request.url
         if request.method in ("PUT", "PATCH"):
@@ -1598,6 +1599,10 @@ with sync_playwright() as p:
                           request.post_data))
             route.fulfill(status=200, content_type="application/json",
                           body=request.post_data or "{}"); return
+        # Before the customerId branch below, which this path also matches.
+        if "/prearrival/forCustomerId" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(STAMP["v"])); return
         if "/staff" in u:
             route.fulfill(status=200, content_type="application/json",
                 body=json.dumps({"staff@x": {"name": "A", "role": "admin"}})); return
@@ -1732,6 +1737,25 @@ with sync_playwright() as p:
     wiped = [json.loads(x[1]) for x in WROTE[n1:] if "/guests/" in x[0] and x[1]]
     ck("and one given an empty note still clears it, cleared is an answer",
        bool(wiped) and all(p.get("dnote") == "" for p in wiped))
+
+    # And WHOSE record it reaches: the form's own forCustomerId stamp wins
+    # over the booking's current customer - the owner's ruling of 3 Sep,
+    # answers are personal and follow the person who gave them, not whoever
+    # Mews attaches to the booking afterwards. An unstamped form is stamped
+    # by the mirror itself, because answering is the moment the booking's
+    # current person is exactly who the answers are for.
+    ck("an unstamped form was stamped at the moment of answering",
+       any("/bookings/b4/prearrival" in x[0] and x[1] and
+           json.loads(x[1]).get("forCustomerId") == "cust-9f2b"
+           for x in WROTE))
+    STAMP["v"] = "cust-original"
+    n2 = len(WROTE)
+    q.evaluate("()=>rememberDietary('b4', ['Nut allergy'], 'the daughter')")
+    q.wait_for_timeout(400)
+    stamped = [x for x in WROTE[n2:] if "/guests/" in x[0]]
+    ck("a stamped form mirrors to the person the answers were given for, "
+       "not the booking's current customer",
+       bool(stamped) and all("/guests/cust-original" in x[0] for x in stamped))
     q.close()
 
     # ── answers saved under the pills' old names ────────────────────────
