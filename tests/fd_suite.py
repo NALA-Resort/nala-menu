@@ -338,6 +338,30 @@ with sync_playwright() as p:
        not seen("2") and fork("2") is None)
     ck("and one who submitted has nothing left to say", not seen("4"))
 
+    # ── a dinner set on the Reservations board reaches this list ──────
+    # Found 4 Sep: the row's fork and the three counters read the raw form
+    # (r.pre.dining) while this same page's summary, edit sheet and check-in
+    # save all read answersOf - the desk's ONE merged reading, cell over
+    # form. So a dinner reception set on the Reservations board, which
+    # writes only the cell, left the row forkless here and counted Not
+    # sure: three readings of one guest, two of them right. The fork and
+    # the counters answer to answersOf now, like everything else.
+    DINNER["2"] = {"status": "in", "pax": 2, "by": "staff", "at": "x"}
+    DINNER["9"] = {"status": "in", "pax": 4, "by": "staff", "at": "x"}
+    pgc = board()
+    forkc = lambda v: pgc.evaluate(
+        "()=>{const e=document.querySelector('.arr[data-villa=\"%s\"] .fork');"
+        "return e?e.className:null;}" % v)
+    ck("a cell with no form behind it draws the fork",
+       forkc("2") == "fork in")
+    ck("the cell outranks the form on the row, exactly as it does in the sheet",
+       forkc("9") == "fork in")
+    ck("and the counters count the merged reading, not the raw form",
+       [pgc.evaluate("()=>%s.textContent" % i) for i in ("nIn", "nOut", "nUn")]
+       == ["4", "2", "3"])
+    pgc.close()
+    DINNER.clear()
+
     # The tint reads completeness, the owner's ruling of 26 Aug: grey until
     # somebody answers something, amber while only some answers exist, green
     # only once dinner, dietary and massage all hold one. It used to read

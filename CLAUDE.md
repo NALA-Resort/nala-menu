@@ -54,6 +54,11 @@ Already done this way — follow these:
   `phone_cases.json` pattern: `NAV` is what the app draws, this is what the
   tests expect, and whichever side a change misses fails by name.
 - `tests/phone_cases.json` — the phone rule's cases, read by both suites.
+- `tests/form_dinner_cases.json` — the guest's pre-arrival dinner answer as
+  every screen must read it (`formDinnerCell`, nala-shared.js). Added 4 Sep,
+  after the Reservations board, the SMS page and the front desk each read
+  their own subset of that one fact and told reception three different
+  things about the same villa.
 - `rules.json` — the database's permissions.
 
 **Never** restate the menu in a suite. Four suites held their own copy of

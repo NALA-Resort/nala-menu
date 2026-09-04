@@ -152,7 +152,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=50"></script>
+<script src="nala-shared.js?v=51"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -296,8 +296,24 @@ function stateOf(villa, stay, cell, invite, fix){
     var who = cell.by === 'guest'
       ? (cell.at ? 'answered ' + timeOf(cell.at) : 'answered')
       : 'set by reception';
-    return { kind:'answered', line: what + ' \u00B7 ' + who, tickable:true, ticked:false };
+    return { kind:'answered', in: cell.status === 'in',
+             line: what + ' \u00B7 ' + who, tickable:true, ticked:false };
   }
+  /* No cell - so read what the guest already said on their pre-arrival form,
+     through the same reader the Reservations board uses (formDinnerCell,
+     nala-shared.js: arrival night only, any answer given counts, the cell
+     above wins the moment anyone sets one). Until 4 Sep this page read the
+     cell alone, so an arriving guest who had answered days ago sat in To
+     send, PRE-TICKED, and Send would have re-asked a question we were
+     already cooking to. Unticked, like every answered row: sending anyway
+     is a deliberate second tap, not the default. */
+  var form = formDinnerCell(villa, PREARRIVAL_BY_VILLA[String(villa)], stay, TODAY);
+  if (form)
+    return { kind:'answered', in: form.status === 'in',
+             line: (form.status === 'in'
+                     ? 'Dining' + (form.pax ? ' \u00B7 ' + form.pax : '')
+                     : 'Not dining') + ' \u00B7 answered on the pre-arrival form',
+             tickable:true, ticked:false };
   if (invite && invite.status === 'sent'){
     /* "Sent" is only ClickSend accepting the message; the handset receipt
        is the real answer. A failed delivery is the sender's problem again,
@@ -329,11 +345,14 @@ var BANDS = [
   { kind:'answered', title:'Answered' },
   { kind:'nophone',  title:'Cannot send' }
 ];
-function bandClass(st, cell){
+/* The answered tint comes off the STATE, not off a second read of the cell:
+   a form answer has no cell, and re-deriving dining here from DINNER_CELLS
+   painted every form-answered diner terracotta. stateOf already decided
+   in/out once; this only dresses it. */
+function bandClass(st){
   if (st.kind === 'sent') return ' b-sent';
   if (st.kind === 'nophone') return ' b-grey';
-  if (st.kind === 'answered')
-    return (cell && cell.status === 'in') ? ' b-din' : ' b-out';
+  if (st.kind === 'answered') return st.in ? ' b-din' : ' b-out';
   return '';
 }
 
@@ -350,7 +369,7 @@ function render(stays, invites, fixes){
     ROWS[v] = { stay: stay, state: st, ticked: st.ticked };
     var b = document.createElement('button');
     b.type = 'button';
-    b.className = 'vrow' + (st.ticked ? ' on' : '') + bandClass(st, DINNER_CELLS[v]);
+    b.className = 'vrow' + (st.ticked ? ' on' : '') + bandClass(st);
     b.dataset.villa = v;
     b.dataset.state = st.kind;
     /* An unsendable row is not dead: tapping it fixes the number. */

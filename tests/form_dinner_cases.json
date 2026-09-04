@@ -1,0 +1,71 @@
+{
+  "comment": [
+    "The guest's pre-arrival dinner answer, as every screen must read it:",
+    "formDinnerCell in nala-shared.js, the one reader behind the Reservations",
+    "board, the SMS invitations page, the front desk and the printed sheet.",
+    "Found 4 Sep: each screen read its own subset of the fact and disagreed.",
+    "",
+    "The suites evaluate the function inside their own loaded page against",
+    "every case here - the phone_cases.json pattern. Add cases HERE, not to a",
+    "suite: a case added here fails every screen that has not learned it.",
+    "",
+    "rec.arriveOffset is days from the rendered night to the arrival: 0 is an",
+    "arrival that night, negative is mid-stay. arriveField says which spelling",
+    "the record uses - roomguests entries say `arrives`, raw /stays entries",
+    "say `arrive`, and the reader must honour both. expect is the returned",
+    "cell's telling fields, or null when the form must stay silent. What is",
+    "NOT here: a /dinner cell outranking all of this, which is each caller's",
+    "own precedence and asserted by each suite on its rendered page."
+  ],
+  "cases": [
+    { "name": "dining on the form, arriving tonight, party and dietaries carried",
+      "pre":  { "dining": true, "pax": 3, "diets": ["Nut allergy"], "dnote": "severe" },
+      "rec":  { "arriveOffset": 0, "arriveField": "arrives", "adults": 2 },
+      "expect": { "status": "in", "pax": 3, "by": "guest", "dnote": "severe" } },
+
+    { "name": "declined on the form, arriving tonight",
+      "pre":  { "dining": false, "noDiets": true },
+      "rec":  { "arriveOffset": 0, "arriveField": "arrives", "adults": 2 },
+      "expect": { "status": "out", "pax": 0, "by": "guest", "nodiet": true } },
+
+    { "name": "an abandoned form still counts - an answer given is an answer",
+      "pre":  { "dining": true, "pax": 2 },
+      "rec":  { "arriveOffset": 0, "arriveField": "arrives" },
+      "expect": { "status": "in", "pax": 2, "by": "guest" } },
+
+    { "name": "no pax named: the booking's party size stands in",
+      "pre":  { "dining": true },
+      "rec":  { "arriveOffset": 0, "arriveField": "arrives", "adults": 4 },
+      "expect": { "status": "in", "pax": 4, "by": "guest" } },
+
+    { "name": "mid-stay: the form asked about the first night, not this one",
+      "pre":  { "dining": true, "pax": 4 },
+      "rec":  { "arriveOffset": -2, "arriveField": "arrives", "adults": 4 },
+      "expect": null },
+
+    { "name": "arriving tomorrow: not tonight's answer either",
+      "pre":  { "dining": true, "pax": 2 },
+      "rec":  { "arriveOffset": 1, "arriveField": "arrives", "adults": 2 },
+      "expect": null },
+
+    { "name": "a form with no dinner answer says nothing",
+      "pre":  { "purpose": "Rest", "openedAt": "x" },
+      "rec":  { "arriveOffset": 0, "arriveField": "arrives" },
+      "expect": null },
+
+    { "name": "no form at all says nothing",
+      "pre":  null,
+      "rec":  { "arriveOffset": 0, "arriveField": "arrives" },
+      "expect": null },
+
+    { "name": "no arrival date on the record: no gate, so no answer",
+      "pre":  { "dining": true, "pax": 2 },
+      "rec":  {},
+      "expect": null },
+
+    { "name": "the raw /stays spelling `arrive` is honoured the same",
+      "pre":  { "dining": true, "pax": 1 },
+      "rec":  { "arriveOffset": 0, "arriveField": "arrive" },
+      "expect": { "status": "in", "pax": 1, "by": "guest" } }
+  ]
+}

@@ -704,6 +704,113 @@ with sync_playwright() as p:
        or not pg.locator("#sendBtn").is_visible())
     pg.close()
 
+    # ── the guest's own answer reaches the sender ──────────────
+    #  Found 4 Sep: this page read the /dinner cell alone, so an arriving
+    #  guest who had answered dinner on their pre-arrival form days ago sat
+    #  in To send, PRE-TICKED, and one press away from being re-asked a
+    #  question the kitchen was already cooking to. The reader is now
+    #  formDinnerCell in nala-shared.js - the Reservations board's own, the
+    #  28 Aug ruling - and the cell still outranks it absolutely.
+    F_STAYS = {
+      "4":  {"id": "fb4", "first": "Rosalie", "last": "Stibbard",
+             "phone": "+61 418 229 808", "arrive": today, "depart": dplus(2),
+             "adults": 2},
+      "6":  {"id": "fb6", "first": "Andrew", "last": "Sykes",
+             "phone": "+61 467 216 449", "arrive": today, "depart": dplus(2),
+             "adults": 2},
+      "9":  {"id": "fb9", "first": "Mid", "last": "Stay",
+             "phone": "+61 411 000 009", "arrive": dplus(-2),
+             "depart": dplus(1), "adults": 2},
+      "11": {"id": "fb11", "first": "Cell", "last": "Wins",
+             "phone": "+61 411 000 011", "arrive": today, "depart": dplus(1),
+             "adults": 2},
+    }
+    F_FORMS = {
+      "fb4":  {"dining": False, "noDiets": True},
+      "fb6":  {"dining": True, "pax": 2, "diets": ["Shellfish allergy"]},
+      "fb9":  {"dining": True, "pax": 2},
+      "fb11": {"dining": True, "pax": 2},
+    }
+    F_CELLS = {"11": {"status": "out", "pax": 0, "by": "staff",
+                      "at": now.isoformat()}}
+    def form_fb(route, request):
+        u = request.url
+        if request.method != "GET":
+            fb(route, request); return
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(F_STAYS)); return
+        if "/dinner/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(F_CELLS)); return
+        if "/invites/" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body="{}"); return
+        if "/bookings/" in u and "/prearrival" in u:
+            k = u.split("/bookings/")[1].split("/")[0]
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(F_FORMS[k]) if k in F_FORMS
+                               else "null"); return
+        fb(route, request)
+    pg = b.new_page(viewport={"width": 390, "height": 900})
+    pg.add_init_script(SDK)
+    pg.add_init_script("window.__EMAIL='staff@x';")
+    pg.route("**firebasedatabase.app/**", form_fb)
+    pg.route("**nala-invites.ben-681.workers.dev/**", wk)
+    pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    pg.goto("http://localhost:8977/invitations.html")
+    pg.wait_for_timeout(1600)
+    frow = lambda v: pg.locator('.vrow[data-villa="%s"]' % v)
+    ck("a guest who answered their pre-arrival form is Answered, not To send",
+       frow("6").get_attribute("data-state") == "answered"
+       and "Dining · 2 · answered on the pre-arrival form"
+           in frow("6").inner_text())
+    ck("and is not pre-ticked: re-asking is a deliberate tap, never the default",
+       "on" not in (frow("6").get_attribute("class") or ""))
+    ck("a form decline reads Not dining, so nobody chases them",
+       frow("4").get_attribute("data-state") == "answered"
+       and "Not dining · answered on the pre-arrival form"
+           in frow("4").inner_text())
+    #  By computed colour: the tints are the contract with the Reservations
+    #  board, and a form answer must wear them exactly as a cell does.
+    tintf = lambda v: pg.evaluate(
+        "s=>getComputedStyle(document.querySelector(s))",
+        '.vrow[data-villa="%s"]' % v)
+    ck("the form answers wear the Reservations tiles",
+       tintf("6")["backgroundColor"] == "rgba(122, 160, 130, 0.26)"
+       and tintf("4")["backgroundColor"] == "rgba(184, 106, 90, 0.16)")
+    ck("but only on the night they arrive: mid-stay is still To send, ticked",
+       frow("9").get_attribute("data-state") == "ready"
+       and "on" in (frow("9").get_attribute("class") or ""))
+    ck("a dinner cell outranks the form absolutely",
+       "Not dining · set by reception" in frow("11").inner_text())
+    ck("the counts say the same thing",
+       pg.inner_text("#nAns") == "3" and pg.inner_text("#nSend") == "1")
+
+    #  The one reader, against the one shared table - the phone_cases.json
+    #  pattern. Every screen that draws this fact answers to
+    #  tests/form_dinner_cases.json; add cases there, never here.
+    fcases = json.load(open("tests/form_dinner_cases.json"))["cases"]
+    def offdate(rec):
+        r = dict(rec)
+        off = r.pop("arriveOffset", None)
+        fld = r.pop("arriveField", None)
+        if off is not None:
+            r[fld] = dplus(off)
+        return r
+    got = pg.evaluate("""(a)=>a.cases.map(c=>{
+        const out = formDinnerCell('7', c.pre, c.rec, a.today);
+        if (out === null) return null;
+        const t = {}; Object.keys(c.expect).forEach(k=>t[k]=out[k]);
+        return t; })""",
+        {"cases": [{"pre": c["pre"], "rec": offdate(c["rec"]),
+                    "expect": c["expect"] or {}} for c in fcases],
+         "today": today})
+    wrongf = [fcases[i]["name"] for i in range(len(fcases))
+              if got[i] != fcases[i]["expect"]]
+    ck("the page answers every shared form-dinner case", wrongf == [], wrongf)
+    pg.close()
+
     # ── widths ─────────────────────────────────────────────────
     for w in (390, 360, 320):
         q = board(w=w)

@@ -356,7 +356,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=50"></script>
+<script src="nala-shared.js?v=51"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -675,7 +675,13 @@ function rowHTML(r){
               every row, arrived included: reception is the one who hears the
               right number, and the fix outranks Mews wherever one is read. */
            '<div class="arr-p">'+phoneBadgeHTML(phoneOf(r), true)+'</div>'+
-         '</div>'+seenFor(r.pre)+lotusFor(mst)+forkFor(r.pre)+'</button>'+
+         /* The fork reads answersOf, the desk's ONE merged reading (cell over
+            form), not the raw form: until 4 Sep it read r.pre alone, so a
+            dinner set on the Reservations board - which writes only the cell
+            - left this row forkless and counted Not sure, while this same
+            page's summary and its check-in save would both have used the
+            cell. Three readings of one guest, two of them right. */
+         '</div>'+seenFor(r.pre)+lotusFor(mst)+forkFor(answersOf(r))+'</button>'+
          (open ? summaryHTML(r) : '');
 }
 
@@ -923,7 +929,10 @@ function render(){
      the missing one. */
   var din = 0, out = 0, un = 0;
   ROWS.forEach(function(r){
-    var d = r.pre && r.pre.dining;
+    /* answersOf, not the raw form, for the same reason as the row's fork: a
+       cell set on the Reservations board must count here, or the two boards
+       give the kitchen two numbers for one night. */
+    var d = answersOf(r).dining;
     if (d === true) din++; else if (d === false) out++; else un++;
   });
   /* Not sure is a tentative yes, so the kitchen plans for din + un and only

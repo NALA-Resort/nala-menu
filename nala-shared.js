@@ -1027,6 +1027,49 @@ function dinnerLocked(cell){
   return !!(cell && cell.by === 'staff');
 }
 
+/* The answer the guest already gave for tonight, read from their pre-arrival
+   form. The owner's ruling of 28 Aug: the form asks about the first night,
+   reception never declines to pass an answer on, so it is not theirs to pass
+   on - any screen asking "has this villa answered dinner" reads it.
+
+   Read, NEVER written. This is not a second dinner cell and must never be
+   saved as one: it is a reading of /bookings/<id>/prearrival, and the real
+   cell at /dinner/<date>/<villa> still wins outright the moment anyone sets
+   one - every caller checks the cell first. Writing this shape to /dinner
+   would turn one fact into two copies, which is the disease this function
+   exists to cure (4 Sep: the SMS page and the front desk each read one store
+   and told reception different things about the same villa).
+
+   Only on the night they ARRIVE - dateKey is the night being rendered, and
+   the gate is the arrival date matching it, because the form asks about the
+   first night alone and one answer must not speak for a whole stay. rec is
+   whatever night record the caller holds: roomguests entries spell the
+   arrival `arrives`, raw /stays entries spell it `arrive`, and both are
+   honoured so no caller has to translate.
+
+   Any answer they gave counts, not only a finished form: the guest page
+   saves each question as it is left, so an abandoned form still holds real
+   answers, and an answer given is a thing the kitchen should know (the same
+   ruling). Returns the dinner-cell shape so callers render it exactly as
+   they render a cell, plus fromForm so nothing mistakes it for one. */
+function formDinnerCell(villa, pre, rec, dateKey){
+  if (!pre || (pre.dining !== true && pre.dining !== false)) return null;
+  var arr = rec && (rec.arrives || rec.arrive);
+  var d = arr ? parseDepDate(arr) : null;
+  if (!d || dkey(d) !== dateKey) return null;
+  return {
+    status: pre.dining ? 'in' : 'out',
+    pax:    pre.dining ? (pre.pax || rec.adults || 2) : 0,
+    room:   String(villa),
+    diets:  pre.diets || [],
+    nodiet: !!pre.noDiets,
+    dnote:  pre.dnote || '',
+    note:   pre.note || '',
+    by:     'guest',
+    fromForm: true
+  };
+}
+
 /* A note, a dietary and a dietary note are answers to one night's dinner
    invitation. Every node that holds them is partitioned by date except
    roomguests, which is deliberately carried forward for up to a fortnight so a
@@ -1054,11 +1097,20 @@ function withDineProvenance(out, tonight, known){
   return out;
 }
 
-function roomRecord(n, responses, manual, roomguests, dinner){
+/* dateKey is OPT-IN, and only the printed sheets pass it. With it, a record
+   that nothing else answers falls back to the guest's own pre-arrival form
+   answer for that night (formDinnerCell), so the paper the chef holds agrees
+   with the Reservations board about an arriving guest who answered days ago.
+   Without it nothing changes, which is deliberate: the other callers (Cleans,
+   Housekeeping, Publish, Debug) render nights other than the one
+   PREARRIVAL_BY_VILLA was last fetched for, and a fallback they did not ask
+   for is how a Monday answer would leak into a Tuesday board. A caller that
+   wants the form must say which night it is rendering. */
+function roomRecord(n, responses, manual, roomguests, dinner, dateKey){
   return overlayReservationDiets(
-    roomRecordCore(n, responses, manual, roomguests, dinner), n);
+    roomRecordCore(n, responses, manual, roomguests, dinner, dateKey), n);
 }
-function roomRecordCore(n, responses, manual, roomguests, dinner){
+function roomRecordCore(n, responses, manual, roomguests, dinner, dateKey){
   var mk = 'room-'+n, m = manual[mk];
   var known = roomguests[String(n)] || {};
   /* A staff vacant made against an older version of the booking was a decision
@@ -1100,6 +1152,16 @@ function roomRecordCore(n, responses, manual, roomguests, dinner){
     Object.assign({}, known, best, pms), best, known);
   if (m)    return withDineProvenance(
     Object.assign({}, known, m, pms, { room:String(n) }), m, known);
+  /* Nothing about tonight from anyone - so, for a caller that named the
+     night, the guest's own form answer, exactly as the Reservations board
+     reads it. Below every staff record on purpose: the cell, a response and
+     a manual entry all outrank it, so this decides nothing anybody has
+     already decided. */
+  if (dateKey){
+    var form = formDinnerCell(n, PREARRIVAL_BY_VILLA[String(n)], known, dateKey);
+    if (form) return withDineProvenance(
+      Object.assign({}, known, form, pms, { room:String(n) }), form, known);
+  }
   /* A booking with no name is still a booking. This used to require a name,
      so a villa Mews knows about but has sent no first or last name for
      returned nothing at all and showed on the Cleans board as unknown, with

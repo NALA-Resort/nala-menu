@@ -473,7 +473,7 @@ function stripTags(h){
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=50"></script>
+<script src="nala-shared.js?v=51"></script>
 <script>
 // date state + header wiring from nala-shared.js
 var nav = initDateNav();
@@ -828,7 +828,12 @@ Promise.all([ api('/responses/'+todayKey()), api('/manual/'+todayKey()), fetchRo
     var rows = [], covers = 0, roomsInHouse = 0, silent = 0;
 
     for (var n=1; n<=ROOMS; n++){
-      var r = roomRecord(n, responses, manual, roomguests);
+      /* The night's key rides along so roomRecord may fall back to the
+         guest's own pre-arrival form answer (formDinnerCell) when nothing
+         else has answered for tonight. Without it an arriving guest who said
+         "dining" days ago was on the Reservations board and OFF this paper,
+         which is the worst kind of wrong: the chef has no way to know. */
+      var r = roomRecord(n, responses, manual, roomguests, null, todayKey());
       var vacant = !!(r && r.status === 'vacant');
       /* Something is known about this villa tonight: a booking Mews sent, or
          an answer somebody gave at a desk. Either is a reason for a line. */
