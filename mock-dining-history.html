@@ -200,7 +200,9 @@ function paint(){
     row.className = 'vrow';
     row.innerHTML =
       '<span class="vdish">' + d[0] + ' <span class="d">· ' + d[1] + '</span></span>' +
-      '<span class="vwho">' + d[2].join(' · ') + '</span>';
+      (d[2].length
+        ? '<span class="vwho">' + d[2].join(' · ') + '</span>'
+        : '<span class="vwho none">0</span>');
     box.appendChild(row);
   });
 }
