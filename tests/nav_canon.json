@@ -9,6 +9,10 @@
   ],
   "top": [
     [
+      "dashboard.html",
+      "Dashboard"
+    ],
+    [
       "front-desk.html",
       "Front Desk"
     ],

@@ -71,6 +71,7 @@ SUITES = [
     ("sw",         ["node", "tests/sw_test.js"],          120),
     ("worker",     ["node", "worker/test.mjs"],           300),
     ("invworker",  ["node", "worker/invites-test.mjs"],   120),
+    ("dash",       ["python3", "tests/dash_suite.py"],    400),
     ("tally",      ["python3", "tests/tally_suite.py"],   600),
     ("cleans",     ["python3", "tests/cl_suite.py"],      900),
     ("frontdesk",  ["python3", "tests/fd_suite.py"],      600),
@@ -118,6 +119,7 @@ ON_REQUEST = {"demos"}
 # change to it can surface anywhere. Better to run the lot than to guess and
 # be wrong in the direction of not running something.
 COVERS = {
+    "dashboard.html":    ["dash", "sweep:dashboard"],
     "tally.html":        ["tally", "sweep:tally"],
     "cleaners.html":     ["cleans", "sweep:cleaners"],
     "front-desk.html":   ["frontdesk", "sweep:front-desk"],
