@@ -83,25 +83,18 @@ body { padding:28px 0 40px; display:block; }
 .seg button.on { background:var(--accent); color:var(--accent-ink);
  border-color:var(--accent); }
 
-/* One dish a row: the dish and its night, then only a verdict. The colour
-   law's green pill for a positive state - nobody in tonight has had it -
-   and amber for attention: look at these villas before you commit. Names
-   stay behind a tap so the list stays quiet. Never red: repetition is not
-   a failure and not a hazard. */
-.vrow { display:flex; align-items:center; gap:10px; padding:12px 0;
- border-bottom:1px solid var(--rule); cursor:pointer; width:100%;
- background:none; border-left:0; border-right:0; border-top:0; text-align:left;
- font-family:inherit; }
+/* One dish a row: the dish and its night on the left, and on the right
+   nothing but who in tonight ate it - the villa numbers, plainly. No
+   verdicts, no fills: the owner's ruling, 7 Sep. An empty right side
+   already says nobody has, and the chef draws his own conclusion. */
+.vrow { display:flex; align-items:baseline; gap:10px; padding:12px 0;
+ border-bottom:1px solid var(--rule); }
+.vrow:last-child { border-bottom:0; }
 .vdish { flex:1; font-family:var(--ui-font); font-size:var(--t2); color:var(--ink); }
 .vdish .d { color:var(--mid); font-size:var(--t1); }
-.vpill { font-family:var(--ui-font); font-size:var(--t1); padding:5px 11px;
- border-radius:var(--pill); white-space:nowrap; }
-.vpill.ok { background:#E4EDE2; border:1px solid #7E937A; color:var(--green); }
-.vpill.warn { background:#F6EAD5; border:1px solid #C29A55; color:#8A6A2F; }
-.vopen { font-family:var(--ui-font); font-size:var(--t2); color:#8A6A2F;
- background:#F6EAD5; border:1px solid #C29A55; border-radius:var(--r);
- padding:10px 12px; margin:8px 0 4px; line-height:1.5; }
-.vlist > div:last-of-type .vrow { border-bottom:0; }
+.vwho { font-family:var(--ui-font); font-size:var(--t2); color:var(--ink);
+ font-weight:bold; white-space:nowrap; }
+.vwho.none { color:var(--mid); font-weight:normal; }
 </style>
 </head>
 <body class="tier-app ui2">
@@ -147,7 +140,7 @@ body { padding:28px 0 40px; display:block; }
 </div>
 </div>
 
-<div class="mockcut">3 · Shape C with the course switch - tap around, it works</div>
+<div class="mockcut">3 · Who ate it, and nothing else - the course switch works</div>
 <div class="section">
 <div class="stats-pad">
   <div class="wordmark">Nala</div>
@@ -167,33 +160,35 @@ body { padding:28px 0 40px; display:block; }
   <div class="vlist" id="vList"></div>
 </div>
 <div class="mocknote">One course at a time, mains first because that is the
-question as asked. Green pill: nobody in tonight has had it - cook it. Amber:
-look first; tap the row and the villas open beneath it (the steak row starts
-open). A declined villa is not tonight's audience and is not counted. The
-3/5/7 switch sets how far back "had it" looks.</div>
+question as asked. The right side is only who in tonight ate it - villa
+numbers, nothing else. Empty means nobody has, and needs no announcement. A
+declined villa is not tonight's audience and is not counted. The 3/5/7
+switch sets how far back the look goes.</div>
 </div>
 
 </div>
 <script>
-/* The mock's own tiny brain: enough to feel the controls, no data behind it. */
+/* The mock's own tiny brain: enough to feel the course switch, no data
+   behind it. The right side holds the villa numbers of tonight's guests
+   who ate the dish, and nothing when nobody did. */
 var DISHES = {
   main: [
-    ['Char-grilled steak','Sat',['Villa 9 (Priya Sharma, dining tonight)','Villa 14 (The Larsens, awaiting)'],true],
-    ['Barramundi','Fri',['Villa 14 (The Larsens, awaiting)'],false],
-    ['Lamb shoulder','Wed',[],false],
-    ['Satay chicken','Thu',['Villa 9 (Priya Sharma, dining tonight)'],false]
+    ['Char-grilled steak','Sat',['9','14']],
+    ['Barramundi','Fri',['14']],
+    ['Lamb shoulder','Wed',[]],
+    ['Satay chicken','Thu',['9']]
   ],
   entree: [
-    ['Seared prawns','Sat',['Villa 9 (Priya Sharma, dining tonight)','Villa 14 (The Larsens, awaiting)'],false],
-    ['Kingfish crudo','Fri',['Villa 14 (The Larsens, awaiting)'],false],
-    ['Burrata','Wed',[],false],
-    ['Chicken skewers','Thu',['Villa 9 (Priya Sharma, dining tonight)'],false]
+    ['Seared prawns','Sat',['9','14']],
+    ['Kingfish crudo','Fri',['14']],
+    ['Burrata','Wed',[]],
+    ['Chicken skewers','Thu',['9']]
   ],
   dessert: [
-    ['Pavlova','Sat',['Villa 9 (Priya Sharma, dining tonight)','Villa 14 (The Larsens, awaiting)'],false],
-    ['Coconut tart','Fri',['Villa 14 (The Larsens, awaiting)'],false],
-    ['Tiramisu','Wed',[],false],
-    ['Mango sticky rice','Thu',['Villa 9 (Priya Sharma, dining tonight)'],false]
+    ['Pavlova','Sat',['9','14']],
+    ['Coconut tart','Fri',['14']],
+    ['Tiramisu','Wed',[]],
+    ['Mango sticky rice','Thu',['9']]
   ]
 };
 var COURSE = 'main';
@@ -202,22 +197,11 @@ function paint(){
   box.innerHTML = '';
   DISHES[COURSE].forEach(function(d){
     var row = document.createElement('div');
-    var pill = d[2].length
-      ? '<span class="vpill warn">' + d[2].length +
-        (d[2].length === 1 ? ' villa had it' : ' villas had it') + '</span>'
-      : '<span class="vpill ok">All clear</span>';
+    row.className = 'vrow';
     row.innerHTML =
-      '<button class="vrow"><span class="vdish">' + d[0] +
-      ' <span class="d">· ' + d[1] + '</span></span>' + pill + '</button>' +
-      (d[2].length
-        ? '<div class="vopen"' + (d[3] ? '' : ' hidden') + '>' + d[2].join(' and ') +
-          '. The other ' + (7 - d[2].length) + ' in tonight are clear.</div>'
-        : '');
+      '<span class="vdish">' + d[0] + ' <span class="d">· ' + d[1] + '</span></span>' +
+      '<span class="vwho">' + d[2].join(' · ') + '</span>';
     box.appendChild(row);
-    var open = row.querySelector('.vopen');
-    row.querySelector('.vrow').onclick = function(){
-      if (open) open.hidden = !open.hidden;
-    };
   });
 }
 document.getElementById('courseSeg').querySelectorAll('button').forEach(function(b){
