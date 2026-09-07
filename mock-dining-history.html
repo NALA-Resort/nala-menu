@@ -1,119 +1,113 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mock · Dining history</title>
+<link rel="stylesheet" href="nala-ui2.css?v=6">
+<link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
-/* Static mock, no data and no login - the shape of the dining history for
-   the owner to rule on before it is built. Three screens: the villa sheet
-   gaining the button, the history view itself, and a sketch of the
-   Statistics extension raised alongside it. Tokens copied from nala-ui2.css
-   so the colours shown are the colours the law would actually give it. */
-*{margin:0;padding:0;box-sizing:border-box}
-:root{--cream:#F9F7F4;--ink:#1B1B19;--mid:#5F5F58;--rule:#E6E6E1;--red:#A8321E;
- --green:#5E7D67;--green-t:rgba(122,160,130,.26);--green-b:rgba(122,160,130,.65);
- --terra:#9E6455;--terra-t:rgba(184,106,90,.16);--terra-b:rgba(184,106,90,.45);
- --slate:#57575E;
- --t1:12px;--t2:14px;--t3:16px;--r:8px;
- --ui:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
-body{background:var(--cream);color:var(--ink);font-family:var(--ui);
- max-width:430px;margin:0 auto;padding:14px 0 40px}
+/* Static mock on the REAL stylesheets - the owner's ask, 7 Sep, so what he
+   rules on is what the build will actually look like. Page CSS below is
+   copied from the pages that would carry each screen (tally.html's sheet
+   dress, stats.html's headings), plus the new pieces the feature adds.
+   Approved so far: the sheet button, the single-guest table showing only
+   nights dined, and shape C for the multi-room view - one verdict pill per
+   dish, names on tap - now with a course switch on top. */
+:root { --green:#5E7D67 }
+body { padding:28px 0 40px; display:block; }
+.wrap { max-width:520px; margin:0 auto; }
 
-.mockcut{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#fff;
- background:var(--mid);border-radius:4px;padding:5px 10px;margin:34px 12px 16px;text-align:center}
-.mocknote{font-size:11px;font-style:italic;color:var(--mid);line-height:1.5;
- margin:8px 16px 0;text-align:center}
+.mockcut { font-family:var(--ui-font); font-size:9px; letter-spacing:.2em;
+ text-transform:uppercase; color:#fff; background:var(--mid); border-radius:4px;
+ padding:5px 10px; margin:34px 16px 16px; text-align:center; }
+.mocknote { font-size:11px; font-style:italic; color:var(--mid); line-height:1.5;
+ margin:10px 20px 0; text-align:center; font-family:var(--ui-font); }
 
-/* ── the sheet, dressed as tally.html dresses it ── */
-.sheet{background:var(--cream);border-top:1px solid var(--rule);
- padding:26px 24px 28px;box-shadow:0 -8px 28px rgba(28,28,26,.10)}
-.sheet h3{font-size:var(--t2);color:var(--mid);font-weight:normal;
- text-align:center;margin:0 44px 12px}
-.gd{text-align:center;margin:-4px 44px 12px;font-size:var(--t2);line-height:1.5}
-.gd-name{border-bottom:1px dotted var(--mid);padding:0 1px}
-.note-box{font-style:italic;font-size:var(--t2);color:var(--mid);text-align:center;
- line-height:1.6;padding:0 4px 16px}
-.sheet-label{font-size:var(--t1);color:var(--mid);text-align:center;margin-bottom:8px}
-.pax-row{display:flex;gap:6px;justify-content:center;margin:4px 0 16px}
-.pax{width:42px;height:42px;border:1px solid var(--rule);background:transparent;
- border-radius:50%;font-size:var(--t2);color:var(--ink);
- display:flex;align-items:center;justify-content:center}
-.pax.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
-.opt{display:block;width:100%;padding:15px;margin-bottom:8px;border:1px solid transparent;
- border-radius:var(--r);font-size:var(--t2);color:#fff;text-align:center}
-.opt.solid{background:var(--ink);border-color:var(--ink)}
-.opt.out{background:var(--terra);border-color:var(--terra)}
-.opt.quiet{background:transparent;border-color:var(--rule);color:var(--mid)}
+/* ── the sheet, as tally.html dresses it ── */
+.sheet { background:var(--cream); border-top:1px solid var(--rule);
+ padding:26px 24px 28px; box-shadow:0 -8px 28px rgba(28,28,26,.10); }
+.sheet h3 { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
+ font-weight:normal; text-align:center; margin:0 44px 12px; }
+.gd { text-align:center; margin:-4px 44px 12px; font-size:var(--t2); line-height:1.5; }
+.gd-name { border-bottom:1px dotted var(--mid); padding:0 1px; }
+.note-box { font-style:italic; font-size:var(--t2); color:var(--mid);
+ text-align:center; line-height:1.6; padding:0 4px 16px; }
+.sheet-label { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
+ text-align:center; margin-bottom:8px; }
+.pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 16px; }
+.pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
+ border-radius:50%; font-family:var(--ui-font); font-size:var(--t2); color:var(--ink);
+ display:flex; align-items:center; justify-content:center; }
+.pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+.opt { display:block; width:100%; padding:15px; margin-bottom:8px;
+ border:1px solid transparent; border-radius:var(--r); min-height:var(--tap);
+ font-family:var(--ui-font); font-size:var(--t2); color:#fff; text-align:center;
+ background:none; cursor:pointer; }
+.opt.solid { background:var(--ink); border-color:var(--ink); }
+.opt.out { background:var(--terra); border-color:var(--terra); }
+.opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
+.opt.hist { border-color:var(--ink); color:var(--ink); }
 
-/* ── the history view: a table, one night a row, one course a column ── */
-.hist-sum{text-align:center;font-size:var(--t2);color:var(--mid);margin:0 0 10px}
-.hist-body{margin-bottom:14px}
-.htab{width:100%;border-collapse:collapse;text-align:left}
-.htab th{font-size:var(--t1);color:var(--mid);font-weight:normal;
- padding:0 4px 6px 0;border-bottom:1px solid var(--rule)}
-.htab td{font-size:var(--t1);line-height:1.35;vertical-align:top;
- padding:9px 4px 9px 0;border-bottom:1px solid var(--rule)}
-.htab tr:last-child td{border-bottom:0}
-.htab .hd{white-space:nowrap;color:var(--ink)}
-.htab .hd i{display:block;font-style:normal;font-size:var(--t1);margin-top:2px}
-.htab .hd i.in{color:var(--green)}
-.htab .hd i.out{color:var(--terra)}
-.htab .hd i.quiet{color:var(--mid);font-style:italic}
-/* a night they sat: the dishes in ink. A night they did not: still shown -
-   "steak was Friday, they were out" is an answer too - but quiet. */
-.htab tr.off td:not(.hd){color:var(--mid);font-style:italic}
-.htab td.none{color:var(--mid);font-style:italic}
+/* ── the single-guest history table (approved: dined nights only) ── */
+.hist-sum { text-align:center; font-family:var(--ui-font); font-size:var(--t2);
+ color:var(--mid); margin:0 0 10px; }
+.hist-body { margin-bottom:14px; }
+.htab { width:100%; border-collapse:collapse; text-align:left; }
+.htab th { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
+ font-weight:normal; padding:0 4px 6px 0; border-bottom:1px solid var(--rule); }
+.htab td { font-family:var(--ui-font); font-size:var(--t1); line-height:1.35;
+ vertical-align:top; padding:9px 4px 9px 0; border-bottom:1px solid var(--rule); }
+.htab tr:last-child td { border-bottom:0; }
+.htab .hd { white-space:nowrap; color:var(--ink); }
+.htab td.none { color:var(--mid); font-style:italic; }
 
-/* ── the statistics sketch ── */
-.stats{padding:10px 24px 6px}
-.wordmark{font-size:var(--t1);color:var(--mid);text-align:center}
-.title{text-align:center;font-size:var(--t2);font-weight:bold;margin-top:6px}
-.sec{font-size:var(--t1);color:var(--mid);margin:24px 0 10px;
- display:flex;justify-content:space-between;align-items:center}
-.chips{display:flex;gap:6px}
-.chip{font-size:var(--t1);padding:5px 11px;border:1px solid var(--rule);
- border-radius:999px;color:var(--mid);background:transparent}
-.chip.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
-/* three shapes for the multi-room question, for the owner to pick from */
-.lede{font-size:var(--t2);color:var(--mid);font-style:italic;line-height:1.5;
- text-align:center;margin:10px 0 0}
-/* A: the exceptions only - most guests are new most nights, so list the
-   few who are not and say how many are. */
-.bigline{text-align:center;padding:18px 0 4px}
-.bigline .n{font-size:34px;line-height:1}
-.bigline .cap{font-size:var(--t1);color:var(--mid);margin-top:6px}
-.rp{padding:12px 0;border-bottom:1px solid var(--rule)}
-.rp:last-child{border-bottom:0}
-.rp-name{font-size:var(--t3)}
-.rp-name .rm{font-weight:bold}
-.rp-name .rm::after{content:' - ';font-weight:normal;color:var(--mid)}
-.rp-t{font-size:var(--t1);margin-left:8px}
-.rp-t.in{color:var(--green)}
-.rp-t.quiet{color:var(--mid);font-style:italic}
-.rp-night{font-size:var(--t2);margin-top:5px;line-height:1.6}
-.rp-night .d{color:var(--mid);font-size:var(--t1);display:inline-block;min-width:44px}
-/* B: ask about one dish, get one answer */
-.chips2{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
-.chip2{font-size:var(--t2);padding:8px 13px;border:1px solid var(--rule);
- border-radius:999px;color:var(--mid);background:transparent}
-.chip2.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
-.ans{border:1px solid var(--amberb,#C29A55);background:#F6EAD5;color:#8A6A2F;
- border-radius:8px;padding:16px;text-align:center;margin-top:6px}
-.ans .a1{font-size:var(--t3)}
-.ans .a2{font-size:var(--t2);margin-top:6px;line-height:1.5}
-/* C: one verdict pill per dish, names behind a tap */
-.vrow{display:flex;align-items:center;gap:10px;padding:11px 0;
- border-bottom:1px solid var(--rule)}
-.vrow:last-child{border-bottom:0}
-.vdish{flex:1;font-size:var(--t2)}
-.vdish .d{color:var(--mid);font-size:var(--t1)}
-.vpill{font-size:var(--t1);padding:5px 11px;border-radius:999px;white-space:nowrap}
-.vpill.ok{background:#E4EDE2;border:1px solid #7E937A;color:var(--green)}
-.vpill.warn{background:#F6EAD5;border:1px solid #C29A55;color:#8A6A2F}
-.vopen{font-size:var(--t2);color:#8A6A2F;background:#F6EAD5;
- border:1px solid #C29A55;border-radius:8px;padding:10px 12px;margin:6px 0 4px;
- line-height:1.5}
-</style></head><body>
+/* ── shape C on Statistics: course switch, verdict pill a dish ── */
+.wordmark { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
+ text-align:center; }
+.title { text-align:center; font-family:var(--ui-font); font-size:var(--t2);
+ font-weight:bold; margin-top:6px; }
+.stats-pad { padding:0 24px; }
+.sec { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
+ margin:28px 0 12px; display:flex; justify-content:space-between;
+ align-items:center; gap:8px; }
+.chip { padding:5px 11px; border:1px solid var(--rule); background:transparent;
+ border-radius:var(--pill); font-family:var(--ui-font); font-size:var(--t1);
+ color:var(--mid); cursor:pointer; }
+.chip.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+.chips { display:flex; gap:6px; align-items:center; }
+.seg { display:flex; gap:6px; margin:2px 0 4px; }
+.seg button { flex:1; padding:11px 0; border:1px solid var(--rule);
+ background:transparent; font-family:var(--ui-font); font-size:var(--t2);
+ color:var(--mid); cursor:pointer; border-radius:var(--r); min-height:var(--tap); }
+.seg button.on { background:var(--accent); color:var(--accent-ink);
+ border-color:var(--accent); }
 
-<div class="mockcut" id="s1">1 · The villa sheet gains one quiet button</div>
+/* One dish a row: the dish and its night, then only a verdict. The colour
+   law's green pill for a positive state - nobody in tonight has had it -
+   and amber for attention: look at these villas before you commit. Names
+   stay behind a tap so the list stays quiet. Never red: repetition is not
+   a failure and not a hazard. */
+.vrow { display:flex; align-items:center; gap:10px; padding:12px 0;
+ border-bottom:1px solid var(--rule); cursor:pointer; width:100%;
+ background:none; border-left:0; border-right:0; border-top:0; text-align:left;
+ font-family:inherit; }
+.vdish { flex:1; font-family:var(--ui-font); font-size:var(--t2); color:var(--ink); }
+.vdish .d { color:var(--mid); font-size:var(--t1); }
+.vpill { font-family:var(--ui-font); font-size:var(--t1); padding:5px 11px;
+ border-radius:var(--pill); white-space:nowrap; }
+.vpill.ok { background:#E4EDE2; border:1px solid #7E937A; color:var(--green); }
+.vpill.warn { background:#F6EAD5; border:1px solid #C29A55; color:#8A6A2F; }
+.vopen { font-family:var(--ui-font); font-size:var(--t2); color:#8A6A2F;
+ background:#F6EAD5; border:1px solid #C29A55; border-radius:var(--r);
+ padding:10px 12px; margin:8px 0 4px; line-height:1.5; }
+.vlist > div:last-of-type .vrow { border-bottom:0; }
+</style>
+</head>
+<body class="tier-app ui2">
+<div class="wrap">
+
+<div class="mockcut">1 · Approved - the villa sheet's button</div>
 <div class="section">
 <div class="sheet">
   <h3>Villa 9</h3>
@@ -124,19 +118,15 @@ body{background:var(--cream);color:var(--ink);font-family:var(--ui);
     <span class="pax">1</span><span class="pax on">2</span><span class="pax">3</span>
     <span class="pax">4</span><span class="pax">5</span><span class="pax">6</span>
   </div>
-  <span class="opt solid">Update guests</span>
-  <span class="opt quiet">Edit details</span>
-  <span class="opt out">Cancel booking</span>
-  <span class="opt quiet" style="border-color:var(--ink);color:var(--ink)">Dining history</span>
-  <span class="opt quiet">Close</span>
+  <button class="opt solid">Update guests</button>
+  <button class="opt quiet">Edit details</button>
+  <button class="opt out">Cancel booking</button>
+  <button class="opt quiet hist">Dining history</button>
+  <button class="opt quiet">Close</button>
 </div>
-<div class="mocknote">Quiet dress per the button law - it only reads. Sits
-before Close, which stays the last thing on every sheet. Offered only when the
-stay has nights behind it, and it survives the read-only dress, so the chef
-sees it too. It appears on every state of the sheet the same way.</div>
 </div>
 
-<div class="mockcut" id="s2">2 · The history: only the nights they dined</div>
+<div class="mockcut">2 · Approved - only the nights they dined</div>
 <div class="section">
 <div class="sheet">
   <h3>Villa 9 · dining history</h3>
@@ -145,128 +135,119 @@ sees it too. It appears on every state of the sheet the same way.</div>
     <div class="hist-sum">Dined 3 of 5 nights so far</div>
     <table class="htab">
       <tr><th></th><th>Entrée</th><th>Main</th><th>Dessert</th></tr>
-      <tr>
-        <td class="hd">Sat 6</td>
-        <td>Seared prawns</td><td>Char-grilled steak</td><td>Pavlova</td>
-      </tr>
-      <tr>
-        <td class="hd">Thu 4</td>
-        <td>Chicken skewers</td><td>Satay chicken</td><td>Mango sticky rice</td>
-      </tr>
-      <tr>
-        <td class="hd">Tue 2</td>
-        <td class="none" colspan="3">Menu not recorded</td>
-      </tr>
+      <tr><td class="hd">Sat 6</td>
+        <td>Seared prawns</td><td>Char-grilled steak</td><td>Pavlova</td></tr>
+      <tr><td class="hd">Thu 4</td>
+        <td>Chicken skewers</td><td>Satay chicken</td><td>Mango sticky rice</td></tr>
+      <tr><td class="hd">Tue 2</td>
+        <td class="none" colspan="3">Menu not recorded</td></tr>
     </table>
   </div>
-  <span class="opt quiet">Back</span>
+  <button class="opt quiet">Back</button>
 </div>
-<div class="mocknote">Only the nights they sat: everything else is noise, and
-the summary line already says 3 of 5. Read down a column for everything they
-have eaten of that course. Dish names trim at the first comma - the dish, not
-the garnish. Long stays cap at the last 14 nights and say so.</div>
 </div>
 
-<div class="mockcut" id="s3">Idea A · Only the exceptions: who in tonight is NOT new</div>
+<div class="mockcut">3 · Shape C with the course switch - tap around, it works</div>
 <div class="section">
-<div class="stats">
+<div class="stats-pad">
   <div class="wordmark">Nala</div>
   <div class="title">Statistics</div>
-  <div class="sec"><span>Tonight's returning diners</span>
-    <span class="chips"><span class="chip">3</span><span class="chip on">5</span>
-    <span class="chip">7</span><span class="chip" style="border:0">days</span></span>
+  <div class="sec"><span>Already eaten by tonight's guests</span>
+    <span class="chips"><button class="chip" data-w="3">3</button>
+    <button class="chip on" data-w="5">5</button>
+    <button class="chip" data-w="7">7</button>
+    <span style="font-family:var(--ui-font)">days</span></span>
   </div>
-  <div class="bigline"><div class="n">5 of 7</div>
-    <div class="cap">villas in tonight have not dined in the last 5 days</div></div>
-  <div class="rp">
-    <div class="rp-name"><span class="rm">9</span>Priya Sharma
-      <span class="rp-t in">dining tonight</span></div>
-    <div class="rp-night"><span class="d">Sat 6</span>Seared prawns · Char-grilled steak · Pavlova</div>
-    <div class="rp-night"><span class="d">Thu 4</span>Chicken skewers · Satay chicken · Mango sticky rice</div>
+  <div class="seg" id="courseSeg">
+    <button data-c="entree">Entrée</button>
+    <button data-c="main" class="on">Main</button>
+    <button data-c="dessert">Dessert</button>
   </div>
-  <div class="rp">
-    <div class="rp-name"><span class="rm">14</span>The Larsens
-      <span class="rp-t quiet">awaiting</span></div>
-    <div class="rp-night"><span class="d">Fri 5</span>Kingfish crudo · Barramundi · Coconut tart</div>
-  </div>
+
+  <div class="vlist" id="vList"></div>
 </div>
-<div class="mocknote">Your own words were the design: "everyone in tonight is
-new except 1 person". So say that first, big, and then list only the
-exceptions - the two or three villas that HAVE dined this window, with what
-they sat for, night by night. Most nights this screen is a headline and a
-couple of rows. "Can I do steak?" = is steak in any row below.</div>
+<div class="mocknote">One course at a time, mains first because that is the
+question as asked. Green pill: nobody in tonight has had it - cook it. Amber:
+look first; tap the row and the villas open beneath it (the steak row starts
+open). A declined villa is not tonight's audience and is not counted. The
+3/5/7 switch sets how far back "had it" looks.</div>
 </div>
 
-<div class="mockcut" id="s4">Idea B · Ask about one dish, get one answer</div>
-<div class="section">
-<div class="stats">
-  <div class="wordmark">Nala</div>
-  <div class="title">Statistics</div>
-  <div class="sec"><span>Has anyone in tonight had&hellip;</span>
-    <span class="chips"><span class="chip">3</span><span class="chip on">5</span>
-    <span class="chip">7</span><span class="chip" style="border:0">days</span></span>
-  </div>
-  <div class="chips2">
-    <span class="chip2 on">Char-grilled steak</span>
-    <span class="chip2">Barramundi</span>
-    <span class="chip2">Lamb shoulder</span>
-    <span class="chip2">Satay chicken</span>
-    <span class="chip2">Seared prawns</span>
-    <span class="chip2">Pavlova</span>
-  </div>
-  <div class="ans">
-    <div class="a1">Villa 9 and Villa 14 have had it</div>
-    <div class="a2">Char-grilled steak, Saturday. The other 5 villas in
-    tonight are new to it.</div>
-  </div>
 </div>
-<div class="mocknote">One question at a time, which is how the chef actually
-asks it. The chips are every dish served in the window, all three courses
-mixed; tap one, read one answer. All clear comes back green ("Nobody in
-tonight has had it - cook it"), a hit comes back amber with the villas
-named. Nothing on screen but the question in hand.</div>
-</div>
-
-<div class="mockcut" id="s5">Idea C · A verdict pill per dish, names on tap</div>
-<div class="section">
-<div class="stats">
-  <div class="wordmark">Nala</div>
-  <div class="title">Statistics</div>
-  <div class="sec"><span>Served this window</span>
-    <span class="chips"><span class="chip">3</span><span class="chip on">5</span>
-    <span class="chip">7</span><span class="chip" style="border:0">days</span></span>
-  </div>
-  <div class="vrow"><div class="vdish">Char-grilled steak <span class="d">· Sat</span></div>
-    <span class="vpill warn">2 villas had it</span></div>
-  <div class="vopen">Villa 9 (Priya Sharma, dining tonight) and
-    Villa 14 (The Larsens, awaiting). The other 5 in tonight are clear.</div>
-  <div class="vrow"><div class="vdish">Barramundi <span class="d">· Fri</span></div>
-    <span class="vpill warn">1 villa had it</span></div>
-  <div class="vrow"><div class="vdish">Lamb shoulder <span class="d">· Wed</span></div>
-    <span class="vpill ok">All clear</span></div>
-  <div class="vrow"><div class="vdish">Satay chicken <span class="d">· Thu</span></div>
-    <span class="vpill warn">1 villa had it</span></div>
-  <div class="vrow"><div class="vdish">Seared prawns <span class="d">· Sat</span></div>
-    <span class="vpill ok">All clear</span></div>
-</div>
-<div class="mocknote">The whole window at a glance, but only as verdicts:
-green "All clear" means cook it, amber means look first. The villa numbers
-and names stay behind a tap on the row - the steak row is shown open. Amber
-is the law's "attention, check before you act"; the green pill its positive
-state. One list, all courses, newest first.</div>
-</div>
-
 <script>
-/* ?only=N renders one section for a clean screenshot; without it the whole
-   mock scrolls as one page. */
+/* The mock's own tiny brain: enough to feel the controls, no data behind it. */
+var DISHES = {
+  main: [
+    ['Char-grilled steak','Sat',['Villa 9 (Priya Sharma, dining tonight)','Villa 14 (The Larsens, awaiting)'],true],
+    ['Barramundi','Fri',['Villa 14 (The Larsens, awaiting)'],false],
+    ['Lamb shoulder','Wed',[],false],
+    ['Satay chicken','Thu',['Villa 9 (Priya Sharma, dining tonight)'],false]
+  ],
+  entree: [
+    ['Seared prawns','Sat',['Villa 9 (Priya Sharma, dining tonight)','Villa 14 (The Larsens, awaiting)'],false],
+    ['Kingfish crudo','Fri',['Villa 14 (The Larsens, awaiting)'],false],
+    ['Burrata','Wed',[],false],
+    ['Chicken skewers','Thu',['Villa 9 (Priya Sharma, dining tonight)'],false]
+  ],
+  dessert: [
+    ['Pavlova','Sat',['Villa 9 (Priya Sharma, dining tonight)','Villa 14 (The Larsens, awaiting)'],false],
+    ['Coconut tart','Fri',['Villa 14 (The Larsens, awaiting)'],false],
+    ['Tiramisu','Wed',[],false],
+    ['Mango sticky rice','Thu',['Villa 9 (Priya Sharma, dining tonight)'],false]
+  ]
+};
+var COURSE = 'main';
+function paint(){
+  var box = document.getElementById('vList');
+  box.innerHTML = '';
+  DISHES[COURSE].forEach(function(d){
+    var row = document.createElement('div');
+    var pill = d[2].length
+      ? '<span class="vpill warn">' + d[2].length +
+        (d[2].length === 1 ? ' villa had it' : ' villas had it') + '</span>'
+      : '<span class="vpill ok">All clear</span>';
+    row.innerHTML =
+      '<button class="vrow"><span class="vdish">' + d[0] +
+      ' <span class="d">· ' + d[1] + '</span></span>' + pill + '</button>' +
+      (d[2].length
+        ? '<div class="vopen"' + (d[3] ? '' : ' hidden') + '>' + d[2].join(' and ') +
+          '. The other ' + (7 - d[2].length) + ' in tonight are clear.</div>'
+        : '');
+    box.appendChild(row);
+    var open = row.querySelector('.vopen');
+    row.querySelector('.vrow').onclick = function(){
+      if (open) open.hidden = !open.hidden;
+    };
+  });
+}
+document.getElementById('courseSeg').querySelectorAll('button').forEach(function(b){
+  b.onclick = function(){
+    COURSE = b.getAttribute('data-c');
+    document.getElementById('courseSeg').querySelectorAll('button').forEach(function(x){
+      x.className = x === b ? 'on' : '';
+    });
+    paint();
+  };
+});
+document.querySelectorAll('.chip[data-w]').forEach(function(b){
+  b.onclick = function(){
+    document.querySelectorAll('.chip[data-w]').forEach(function(x){
+      x.classList.toggle('on', x === b);
+    });
+  };
+});
+paint();
+
+/* ?only=N renders one section for a clean screenshot; ?w=N pins the layout
+   width - the headless renderer lays out at 500 CSS px whatever the window
+   says. */
 (function(){
   var p = new URLSearchParams(location.search);
-  /* ?w=390 pins the layout width - the headless renderer used for the
-     screenshots lays out at 500 CSS px whatever the window says. */
   var w = p.get('w');
   if (w && /^\d+$/.test(w)){
-    document.body.style.maxWidth = w + 'px';
-    document.body.style.margin = '0';
+    var wr = document.querySelector('.wrap');
+    wr.style.maxWidth = w + 'px';
+    wr.style.margin = '0';
   }
   var q = p.get('only');
   if (!q) return;
@@ -276,4 +257,5 @@ state. One list, all courses, newest first.</div>
   secs.forEach(function(s,i){ if (String(i+1)!==q) s.style.display='none'; });
 })();
 </script>
-</body></html>
+</body>
+</html>
