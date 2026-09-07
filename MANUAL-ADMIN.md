@@ -122,6 +122,13 @@ already knows, they just published it.
 length on the pre-arrival form, so they see the cost before they ask. A price
 left empty shows no number rather than a zero.
 
+**The masseuse's mobile** lives on the same tab. On a request he has not
+answered, the Spa board offers you and the manager *Remind masseuse*: it
+opens a text with his number filled in, the guest's ask written out and a
+link that lands him on that card, and you press send - so it works whether
+or not he has notifications on. Guests never see the number, and with it
+left empty the text still opens for you to pick him from your own contacts.
+
 **The day is compulsory behind a yes.** The form offers the nights of their
 stay and then **Any day**, nothing is chosen for them, and the form will not
 move on until they pick one. A guest who does not mind picks Any day and the

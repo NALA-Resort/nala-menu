@@ -81,6 +81,9 @@
           white-space:nowrap; cursor:pointer; }
   .cbtn.solid { background:var(--ink); color:var(--cream); }
   .cbtn.quiet { border-color:var(--rule); color:var(--mid); flex:0 0 auto; padding:12px 14px; }
+  /* Remind masseuse is an sms: link wearing the button dress; a link is
+     blue and underlined by default, which reads as neither. */
+  a.cbtn { text-decoration:none; display:block; }
   /* The button law, STYLEGUIDE.md: destructive wears terracotta outline,
      never solid ink and never red, and always confirms before writing. */
   .cbtn.danger { border-color:var(--terra-b); color:var(--terra); flex:0 0 auto; padding:12px 14px; }
@@ -228,6 +231,23 @@ var OPEN = null;     /* { id, tid } of the one card open, tid 'new' for an add *
 var SEL = null;      /* { day, time } while a card is open */
 var FILTER = 'all'; /* the pressed stat; All is the resting state */
 var ADDQ = '';      /* the desk's find-the-guest text, kept across repaints */
+var SPACONTACT = null; /* /spacontact once loaded - the masseuse's mobile,
+                          set in Settings, Prices; read only by the logins
+                          that hold the Remind masseuse button */
+function masseusePhone(){
+  /* Judged again on the way out, not just on the way in: a number typed
+     straight into the console must still be sendable or the sms: link
+     would carry it to Messages as-is. */
+  return (SPACONTACT && normalisePhone(SPACONTACT.phone)) || '';
+}
+/* The SMS's link back: ?open=<booking> opens that guest's waiting card, so
+   the masseuse lands where the answer goes rather than on the whole board.
+   One shot - closing the card must not have it spring back on the reload
+   that follows every save. */
+var OPENQ = (function(){
+  var q = new URLSearchParams(location.search).get('open');
+  return (q && /^[A-Za-z0-9-]{1,64}$/.test(q)) ? q : '';
+})();
 
 function nameOf(id, rec){
   var bk = BOOKINGS[id];
@@ -524,6 +544,7 @@ function card(it){
   if (SEL.qty === 2) lenRow('2nd length', 'dur2');
 
   var btns = document.createElement('div'); btns.className = 'btns';
+  var remind = false;
   var when = shortDay(SEL.day) + ' ' + slotLabel(SEL.time);
   /* A guest who said Any day has asked for every day of their stay, so any
      day the masseuse picks IS the ask and he books it outright. Sending a
@@ -638,7 +659,33 @@ function card(it){
       hint = 'Manually approve is only for a time the masseuse has already ' +
              'agreed to out loud - it books without his tap and the tile ' +
              'says the desk did it. Anything else waits on him.';
+      /* The nudge, the owner's ask of 7 Sep: an ask he has not answered can
+         be chased. Admin and manager only - a waiter holding spaBoard works
+         the board, chasing the masseuse is management's. An SMS rather than
+         a push, his ruling of the same day: the masseuse can have
+         notifications off, and a reminder that only reaches a phone already
+         listening reminds nobody. The button opens Messages with the text
+         written - his number, the ask, a link that opens this card - and
+         the desk presses send, so the send is seen rather than trusted. */
+      if (role === 'admin' || role === 'manager'){
+        remind = true;
+        hint += ' Remind masseuse opens a text to him carrying this ask ' +
+                'and a link back to it; nothing here changes until he answers.';
+        if (!masseusePhone())
+          hint += ' His mobile is not stored yet - Settings, Prices holds ' +
+                  'it - so the text opens with the To box empty.';
+      }
     }
+  }
+  /* The text, written for him to act on from the lock screen: who, where,
+     what they asked, and a link that lands on this very card. "?&" before
+     body is the one form iPhone and Android both read. */
+  function remindHref(){
+    var msg = 'Nala: villa ' + (villaOf(id, dayOf(rec) || todayKey()) || '?') +
+              ', ' + nameOf(id, rec) + ' - massage request (' + whenOf(rec) +
+              ') is waiting on you. Answer it here: ' + location.origin +
+              '/spa.html?open=' + encodeURIComponent(id);
+    return 'sms:' + masseusePhone() + '?&body=' + encodeURIComponent(msg);
   }
   /* Editing the details is its own act. Confirm and Suggest carry the
      pills with them, but a booked treatment being resized, or the desk
@@ -657,6 +704,18 @@ function card(it){
     if (rec.status === 'booked') btns.insertBefore(sb, btns.firstChild);
   }
   el.appendChild(btns);
+  /* Its own row, under the primary: a nudge is not an answer, so it never
+     competes with the buttons that move the record. */
+  if (remind){
+    var rrow = document.createElement('div');
+    rrow.className = 'btns'; rrow.style.marginTop = '8px';
+    var rb = document.createElement('a');
+    rb.className = 'cbtn quiet';
+    rb.href = remindHref();
+    rb.textContent = 'Remind masseuse';
+    rrow.appendChild(rb);
+    el.appendChild(rrow);
+  }
   if (hint){
     var h = document.createElement('div');
     h.className = 'hint'; h.textContent = hint;
@@ -944,8 +1003,18 @@ function load(){
     })),
     fetch(DB + '/spa.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
-      .catch(function(){ return null; })
+      .catch(function(){ return null; }),
+    /* Only the two logins that draw the button read the number; the rules
+       hold everyone else to that, so asking would only collect a 401. */
+    (function(){
+      var r = normaliseRole(window.NALA_ROLE);
+      if (r !== 'admin' && r !== 'manager') return Promise.resolve(null);
+      return fetch(DB + '/spacontact.json?v=' + Date.now())
+        .then(function(r2){ return r2.ok ? r2.json() : null; })
+        .catch(function(){ return null; });
+    })()
   ]).then(function(res){
+    SPACONTACT = res[2];
     BOOKINGS = {};
     res[0].forEach(function(x){
       Object.keys(x.day).forEach(function(v){
@@ -976,7 +1045,15 @@ function load(){
         .catch(function(){ return null; })
         .then(function(p){ BOOKINGS[id].pre = p; });
     }));
-  }).then(paint);
+  }).then(function(){
+    if (OPENQ){
+      var hit = items().filter(function(x){
+        return x.id === OPENQ && x.rec.status === 'requested'; })[0];
+      if (hit) OPEN = { id: hit.id, tid: hit.tid };
+      OPENQ = '';
+    }
+    paint();
+  });
 }
 
 function showAccess(allowed, e){

@@ -601,6 +601,22 @@
         ".validate": false
       }
     },
+    "spacontact": {
+      ".read": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager')",
+      ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager')",
+      "phone": {
+        ".validate": "newData.isString() && (newData.val() == '' || newData.val().matches(/^\\+[1-9][0-9]{7,14}$/))"
+      },
+      "by": {
+        ".validate": "newData.isString() && newData.val().length <= 120"
+      },
+      "at": {
+        ".validate": "newData.isString() && newData.val().length <= 40"
+      },
+      "$other": {
+        ".validate": false
+      }
+    },
     "prearrivalinfo": {
       ".read": true,
       ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager')",
