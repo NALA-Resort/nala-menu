@@ -37,6 +37,8 @@ def short(d):
     return t.strftime("%a ") + str(t.day)
 
 STAFF = {"staff@x":    {"name": "Admin",    "role": "admin"},
+         "manager@x":  {"name": "Manager",  "role": "manager"},
+         "waiter@x":   {"name": "Waiter",   "role": "waiter"},
          "masseuse@x": {"name": "Masseuse", "role": "spa"},
          "chef@x":     {"name": "Chef",     "role": "chef"}}
 
@@ -125,6 +127,8 @@ PUSHES = []   # what the page told the push Worker, one dict per event
 STATE = {"fail": False}
 
 def push_route(route, request):
+    if STATE.get("pushfail"):
+        route.fulfill(status=500, content_type="text/plain", body="no"); return
     PUSHES.append(json.loads(request.post_data))
     route.fulfill(status=200, content_type="text/plain", body="ok")
 
@@ -636,6 +640,71 @@ with sync_playwright() as p:
     ck("no Manually approve exists on the masseuse's screen",
        pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
                    ".every(b=>!b.textContent.startsWith('Manually'))"))
+    ck("and no Remind masseuse either - nobody nudges himself",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
+                   ".every(b=>!b.textContent.startsWith('Remind'))"))
+    pg.close()
+
+    # ── the reminder: a nudge, not an answer ────────────────────
+    # Remind masseuse, the owner's ask of 7 Sep: an ask he has not answered
+    # can be re-buzzed from the desk's request card, admin and manager only.
+    # It fires spaRemind and touches the record not at all - a nudge that
+    # wrote anything would be a second way of moving the state.
+    pg = board("staff@x")
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    ck("the request card offers Remind masseuse in its own row, under the rest",
+       pg.evaluate("""()=>{var b=[...document.querySelectorAll('.card .cbtn')]
+           .find(x=>x.textContent==='Remind masseuse');
+         if(!b) return false;
+         var solid=document.querySelector('.card .cbtn.solid');
+         return !b.classList.contains('solid') &&
+           b.getBoundingClientRect().top>=solid.getBoundingClientRect().bottom;}"""))
+    ck("and the hint says what the nudge does and does not do",
+       "Remind masseuse" in pg.evaluate(
+         "()=>document.querySelector('.card .hint').textContent"))
+    del WRITES[:]; del PUSHES[:]
+    pg.locator('.card .cbtn', has_text="Remind masseuse").click()
+    pg.wait_for_timeout(600)
+    ck("the reminder buzzes as spaRemind, villa attached and signed",
+       len(PUSHES) == 1 and PUSHES[0]["event"] == "spaRemind" and
+       PUSHES[0]["villa"] == "9" and PUSHES[0].get("idToken"))
+    ck("and writes nothing anywhere", not WRITES)
+    ck("and the button itself says it went",
+       "Reminded" in pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
+                                 ".map(b=>b.textContent).join('|')"))
+    pg.close()
+
+    # A send that never left must not read as sent: the button springs back
+    # and the failure is said in words, or the desk stops chasing an ask the
+    # masseuse never heard about.
+    pg = board("staff@x")
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    STATE["pushfail"] = True
+    pg.locator('.card .cbtn', has_text="Remind masseuse").click()
+    pg.wait_for_timeout(600)
+    ck("a failed send is said, and never reads as sent",
+       "not sent" in pg.evaluate("()=>errBar.textContent") and
+       "Reminded" not in pg.evaluate(
+         "()=>[...document.querySelectorAll('.card .cbtn')]"
+         ".map(b=>b.textContent).join('|')"))
+    STATE["pushfail"] = False
+    pg.close()
+
+    # The manager holds it too; a waiter granted spaBoard works the board
+    # but does not chase the masseuse - that is management's errand.
+    pg = board("manager@x")
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    ck("the manager is offered the reminder",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
+                   ".some(b=>b.textContent==='Remind masseuse')"))
+    pg.close()
+    pg = board("waiter@x")
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    ck("a waiter on the desk's card is not",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
+                   ".every(b=>b.textContent!=='Remind masseuse')") and
+       pg.evaluate("()=>document.querySelector('.card .cbtn.solid').textContent")
+         .startswith("Manually approve"))
     pg.close()
 
     # ── the decline's other half: telling the guest ─────────────

@@ -1355,7 +1355,8 @@ with sync_playwright() as p:
     ck("the defaults name every event the app can fire",
        sorted(pg.evaluate("()=>Object.keys(NOTIFY_DEFAULTS.events)"))
          == ["available","cleaned","departed","menu","serviced",
-             "spaBooked","spaCancelled","spaRequest","spaStay","spaSuggested"])
+             "spaBooked","spaCancelled","spaRemind","spaRequest",
+             "spaStay","spaSuggested"])
     # A menu going up is the manager's business, not the cleaners'. The chef
     # published it, so telling the chef is telling them what they just did.
     ck("a published menu goes to the manager only",
@@ -1413,6 +1414,12 @@ with sync_playwright() as p:
                        && NOTIFY_DEFAULTS.events.spaSuggested.admin===true
                        && NOTIFY_DEFAULTS.events.spaStay.spa===true
                        && NOTIFY_DEFAULTS.events.spaCancelled.housekeeping===false"""))
+    # The desk's nudge, 7 Sep: the masseuse alone. The desk pressed the
+    # button, so buzzing admin or manager is telling them what they just did.
+    ck("the reminder goes to the masseuse and nobody who could have sent it",
+       pg.evaluate("""()=>NOTIFY_DEFAULTS.events.spaRemind.spa===true
+                       && NOTIFY_DEFAULTS.events.spaRemind.admin===false
+                       && NOTIFY_DEFAULTS.events.spaRemind.manager===false"""))
     # A /notify node written before an event type existed holds no key for
     # it, and a keyless event buzzes nobody. The seeding must fill in ONLY
     # the missing events - the manager's own ticks are never touched.

@@ -1763,17 +1763,28 @@ function pushOff(user, cb){
 
 /* Tell the worker something happened. Deliberately not awaited by whatever
    called it: a notification that fails must never cost someone their mark,
-   which is already saved by the time this runs.                          */
+   which is already saved by the time this runs.
+
+   It hands the request back all the same, for the one caller whose whole
+   action IS the buzz - the Spa board's Remind masseuse - which would
+   otherwise say "sent" over a send that never left. A caller that ignores
+   the return keeps the old fire-and-forget: the failure is swallowed here
+   so nobody inherits an unhandled rejection. Nothing to send returns null,
+   which such a caller must treat as a failure, not a success.           */
 function notifyPush(event, villa, user){
-  if (!PUSH_URL || !window.__idToken) return;
+  if (!PUSH_URL || !window.__idToken) return null;
   try {
-    fetch(PUSH_URL, {
+    var p = fetch(PUSH_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idToken: window.__idToken, event: event,
                              villa: villa, actor: emailKey(user && user.email) })
-    }).catch(function(){});
-  } catch (e){}
+    }).then(function(r){
+      if (!r.ok) throw new Error('push send failed ' + r.status);
+    });
+    p.catch(function(){});
+    return p;
+  } catch (e){ return null; }
 }
 
 /* ── announcing a published menu ───────────────────────────────
@@ -1904,7 +1915,11 @@ var NOTIFY_DEFAULTS = {
     spaSuggested: { spa:false, admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
     spaBooked:    { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
     spaCancelled: { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
-    spaStay:      { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false }
+    spaStay:      { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
+    /* The desk's nudge, 7 Sep: Remind masseuse on the Spa board re-buzzes
+       an ask he has not answered. His phone alone - the desk pressed the
+       button, so telling the desk is telling them what they just did.  */
+    spaRemind:    { spa:true,  admin:false, manager:false, housekeeping:false, waiter:false, chef:false }
   }
 };
 

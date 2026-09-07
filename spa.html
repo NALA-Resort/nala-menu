@@ -143,7 +143,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=52"></script>
+<script src="nala-shared.js?v=53"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -524,6 +524,7 @@ function card(it){
   if (SEL.qty === 2) lenRow('2nd length', 'dur2');
 
   var btns = document.createElement('div'); btns.className = 'btns';
+  var remind = false;
   var when = shortDay(SEL.day) + ' ' + slotLabel(SEL.time);
   /* A guest who said Any day has asked for every day of their stay, so any
      day the masseuse picks IS the ask and he books it outright. Sending a
@@ -638,7 +639,32 @@ function card(it){
       hint = 'Manually approve is only for a time the masseuse has already ' +
              'agreed to out loud - it books without his tap and the tile ' +
              'says the desk did it. Anything else waits on him.';
+      /* The nudge, the owner's ask of 7 Sep: an ask he has not answered can
+         be re-buzzed. Admin and manager only - a waiter holding spaBoard
+         works the board, chasing the masseuse is management's. */
+      if (role === 'admin' || role === 'manager'){
+        remind = true;
+        hint += ' Remind masseuse buzzes his phone again about this ask; ' +
+                'nothing on the record changes.';
+      }
     }
+  }
+  /* The reminder is a buzz and nothing else - no write, no state - so the
+     only honest feedback is the send itself, which is why notifyPush hands
+     its request back: "Reminded" over a send that never left would put the
+     desk off chasing a guest's ask that is in fact still silent. */
+  function remindNow(){
+    var err = document.getElementById('errBar');
+    saveFeedback(pressedButton(), function(){
+      var p = notifyPush('spaRemind', villaOf(id, dayOf(rec) || todayKey()),
+                         window.NALA_USER);
+      if (!p) throw new Error('push unavailable');
+      return p;
+    }, {
+      busy: 'Sending', done: 'Reminded ✓',
+      fail: function(msg){ err.textContent = msg ?
+        'The reminder was not sent - check the connection and try again.' : ''; }
+    });
   }
   /* Editing the details is its own act. Confirm and Suggest carry the
      pills with them, but a booked treatment being resized, or the desk
@@ -657,6 +683,18 @@ function card(it){
     if (rec.status === 'booked') btns.insertBefore(sb, btns.firstChild);
   }
   el.appendChild(btns);
+  /* Its own row, under the primary: a nudge is not an answer, so it never
+     competes with the buttons that move the record. */
+  if (remind){
+    var rrow = document.createElement('div');
+    rrow.className = 'btns'; rrow.style.marginTop = '8px';
+    var rb = document.createElement('button');
+    rb.type = 'button'; rb.className = 'cbtn quiet';
+    rb.textContent = 'Remind masseuse';
+    rb.onclick = remindNow;
+    rrow.appendChild(rb);
+    el.appendChild(rrow);
+  }
   if (hint){
     var h = document.createElement('div');
     h.className = 'hint'; h.textContent = hint;
