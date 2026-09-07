@@ -12,87 +12,159 @@
 <link rel="stylesheet" href="nala-ui2.css?v=6">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
-  /* This page's own layout only. The button dress is nala-ui.css (.btn,
-     .btn.solid, .btn.terra) per the button law - never redefined here. */
+  /* v9. The v8 design, redrawn on the app's own stylesheets rather than a
+     standalone one. v8 was approved against CSS that did not exist in the
+     app, so what shipped looked nothing like it: body.ui2 makes every .btn
+     full width and .btn.solid the accent primary, which turned three quiet
+     Print buttons into three blue bars.
 
-  /* The spine. A track down the left, filled from 08:00 to 18:00 by the
-     clock, with each card's dot sitting on it as a bead. The fill is the
-     day passing, not progress: progress is what the beads say. */
-  .spine { position:relative; padding-left:34px; margin-top:14px; }
-  .spine:before {                                   /* the empty track */
-    content:''; position:absolute; left:11px; top:6px; bottom:6px; width:4px;
-    background:var(--rule); border-radius:2px;
-  }
-  /* A real element rather than a second pseudo-element: the height is written
-     by render() and only an element can carry it inline. */
-  .fill { position:absolute; left:11px; top:6px; width:4px;
-          background:var(--amberb); border-radius:2px; }
-  /* Where the clock has actually reached. */
-  .pip { position:absolute; left:6px; width:14px; height:14px; border-radius:50%;
-         background:var(--ink); border:2px solid var(--ground); z-index:3; }
+     This page sets LAYOUT only. Not one button is dressed here. */
 
-  .node { position:relative; margin-bottom:18px; }
-  /* The bead. Sits on the track, coloured by the card's state. */
-  .node:before { content:''; position:absolute; left:-28px; top:12px;
-                 width:12px; height:12px; border-radius:50%; z-index:2;
-                 background:var(--ground); box-shadow:0 0 0 3px var(--ground),
-                 inset 0 0 0 3px var(--rule); }
-  .node.past:before  { box-shadow:0 0 0 3px var(--ground), inset 0 0 0 6px var(--greenb); }
-  .node.do:before    { box-shadow:0 0 0 3px var(--ground), inset 0 0 0 6px var(--amberb); }
-  .node.open:before  { box-shadow:0 0 0 3px var(--ground), inset 0 0 0 3px var(--amberb); }
-  /* Off the spine: no bead, no track behind it. */
-  .node.off { padding-left:0; }
-  .node.off:before { display:none; }
+  /* ── the spine ──────────────────────────────────────────────────
+     A track down the left, filled by the clock from 08:00 to 18:00, with
+     each card's dot sitting on it as a bead. The fill is the day passing,
+     not progress: progress is what the beads say. */
+  #board { padding-bottom:var(--s4); }
+  .spine { position:relative; padding-left:30px; margin:var(--s4) 0; }
+  .spine .track { position:absolute; left:9px; top:8px; bottom:8px; width:3px;
+                  background:var(--rule); border-radius:2px; }
+  /* Green, not amber: the filled run is the day already behind you, and
+     green is the law's done. Amber means chase this, which the beads and the
+     card edges use - a track in the same colour would have read as a
+     ten-hour instruction. */
+  .spine .fill  { position:absolute; left:0; top:0; width:3px;
+                  background:var(--law-green); border-radius:2px; }
+  /* Where the clock has reached. A downward triangle rather than a dot: the
+     beads on this track are states, which do not move, and the clock does.
+     A shape that points is the only thing on the spine saying which way the
+     day is going.
 
-  /* Card weight carries the "is there a job here right now" reading:
-     past recedes, do is loud, open is quiet, shut is plain. */
-  .card { border:1px solid var(--rule); border-radius:8px; padding:11px 12px;
-          background:transparent; }
-  .node.past .card { opacity:.5; }
-  .node.do   .card { background:#fff; border-color:var(--amberb); }
-  .node.open .card { border-left:3px solid var(--amberb); }
+     An SVG rather than CSS borders or a clipped square: a border triangle has
+     no corners to round, and a rotated square clipped to a point comes out
+     lopsided. A stroked polygon with round joins gives the softened points at
+     this size, which is small - the old pip's 13px, not bigger. */
+  .pip { position:absolute; left:4px; width:13px; height:12px; z-index:3;
+         line-height:0; }
+  .pip svg { display:block; overflow:visible; }
+  .pip polygon { fill:var(--law-green); stroke:var(--law-green);
+                 stroke-width:2.5; stroke-linejoin:round; }
 
-  .top { display:flex; align-items:baseline; justify-content:space-between;
-         gap:10px; }
-  /* A heading is a door. Rendered as a button only for a role that may walk
-     through it; everyone else reads the same words as plain text. */
-  .cn { font-family:var(--ui-font); font-size:var(--t3); font-weight:bold;
-        color:var(--ink); background:none; border:0; padding:0; text-align:left;
-        cursor:pointer; }
+  .node { position:relative; margin-bottom:var(--s5); }
+  .node .bead { position:absolute; left:-25px; top:14px; width:11px; height:11px;
+                border-radius:50%; background:var(--ground); z-index:2;
+                box-shadow:0 0 0 3px var(--ground), inset 0 0 0 3px var(--rule); }
+  .node.past .bead { box-shadow:0 0 0 3px var(--ground), inset 0 0 0 6px var(--law-green-b); }
+  .node.do   .bead { box-shadow:0 0 0 3px var(--ground), inset 0 0 0 6px var(--amberb); }
+  .node.open .bead { box-shadow:0 0 0 3px var(--ground), inset 0 0 0 3px var(--amberb); }
+
+  /* Card weight carries "is there a job here right now". Only the loud one
+     is a card at all; the rest sit on the page, so the eye lands on the job
+     rather than on six identical boxes. */
+  .card { background:var(--ground); border:1px solid var(--rule);
+          border-radius:var(--r); padding:calc(var(--s3) - 1px); }
+  .node.past .card { opacity:.55; }
+  .node.do   .card { border-color:var(--amberb); }
+  .node.open .card { border-left:3px solid var(--amberb); padding-left:var(--s3); }
+  .node.off  { padding-left:0; margin-top:var(--s6); }
+
+  .top { display:flex; align-items:baseline; justify-content:space-between; gap:var(--s3); }
+  /* A heading is a door. The chevron is what says so. Roles that may not
+     walk through read the same words with no chevron and no button. */
+  .cn { font-family:var(--ui-font); font-size:var(--t3); font-weight:600;
+        color:var(--ink); background:none; border:0; padding:0; cursor:pointer;
+        display:inline-flex; align-items:baseline; gap:6px; }
+  .cn .chev { color:var(--mid); font-size:var(--t2); }
   .cn.ask { color:var(--amberink); }
-  .lab { font-size:var(--t3); font-weight:bold; }
-  .tag { font-size:var(--t1); color:var(--mid); text-transform:uppercase;
-         letter-spacing:.08em; white-space:nowrap; }
-  .cs { font-size:var(--t2); color:var(--mid); margin-top:3px; }
+  .lab { font-size:var(--t3); font-weight:600; }
+  .cs  { font-size:var(--t2); color:var(--mid); margin-top:2px; }
 
-  .chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; }
-  .chip { font-size:var(--t1); font-weight:bold; min-width:24px; text-align:center;
-          padding:3px 6px; border-radius:10px; border:1px solid transparent; }
-  .chip.green { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65);
-                color:#5E7D67; }
-  .chip.amber { background:var(--amber); border-color:var(--amberb); color:var(--amberink); }
-  .chip.terra { background:rgba(184,106,90,.16); border-color:rgba(184,106,90,.45);
-                color:#9E6455; }
-  .chip.grey  { background:rgba(28,28,26,.045); border-color:var(--rule); color:var(--mid); }
+  /* ── chips ──────────────────────────────────────────────────────
+     One villa each, square-ish tiles rather than pills so a row of six
+     reads as a set of records and not as a row of buttons. Colours are
+     the law's, by token. */
+  .chips { display:flex; flex-wrap:wrap; gap:var(--s1); margin-top:var(--s2); }
+  .chip { font-size:var(--t2); min-width:34px; text-align:center;
+          padding:2px var(--s2); border-radius:6px; border:1px solid transparent; }
+  /* The law's green TILE, not a solid fill: a chip is a record saying what a
+     villa did, and a solid fill reads as a control you can press. All four
+     tones are tints for the same reason. */
+  .chip.green { background:var(--law-green-t); color:var(--law-green); border-color:var(--law-green-b); }
+  .chip.amber { background:var(--amber);       color:var(--amberink); border-color:var(--amberb); }
+  .chip.terra { background:var(--law-terra-t); color:var(--law-terra); border-color:var(--law-terra-b); }
+  .chip.grey  { background:rgba(28,28,26,.045); color:var(--mid); border-color:var(--rule); }
 
-  .acts { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:10px; }
-  .acts .btn { flex:0 0 auto; padding:9px 14px; }
-  /* Early is not forbidden, only unrecommended: a quiet print still prints. */
-  .acts .btn.quiet { background:transparent; border-color:var(--ctl-bdr); color:var(--mid); }
-  .qty { width:62px; padding:8px; border:1px solid var(--ctl-bdr); border-radius:8px;
-         font-family:var(--ui-font); font-size:var(--t2); background:#fff; color:var(--ink); }
+  /* ── the action row ─────────────────────────────────────────────
+     Layout only. width:auto undoes body.ui2's full-width default for a row
+     that holds three controls; the dress itself is untouched. */
+  .acts { display:flex; align-items:center; flex-wrap:wrap; gap:var(--s2);
+          margin-top:var(--s3); }
+  /* body.ui2 .btn sets width:100% for the full-width rows most surfaces use.
+     Undoing it needs the same specificity, not less - a plain .acts .btn
+     loses and every button goes full width, which is what shipped. This is
+     the row's LAYOUT; the dress is still the shared sheet's. */
+  body.ui2 .acts .btn { width:auto; flex:0 0 auto; padding:var(--s2) var(--s4);
+                        min-height:38px; font-size:var(--t2); }
+
+  /* body.ui2 input is width:100% for the full-width fields most forms use.
+     Same specificity trap as the buttons above. */
+  body.ui2 .acts .qty { width:64px; flex:0 0 auto; height:38px; padding:0 var(--s2);
+                        font-size:var(--t2); }
   .qlab { font-size:var(--t1); color:var(--mid); }
+  /* Marked done wears the selected dress from the shared sheet - grey fill,
+     ink border - because that is what it is: a state somebody set, not an
+     action waiting to be taken. */
+  /* Printed is a state somebody set, not an action waiting. Ghost's own
+     border, recoloured to the law's green - the only change, and the dress
+     is otherwise the sheet's. */
+  body.ui2 .acts .btn.done { border-color:var(--law-green-b); color:var(--law-green); }
 
-  .key { display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
-         margin:22px 0 8px; font-size:var(--t1); color:var(--mid); }
+  /* Header, copied from tally.html rather than approximated: same markup,
+     same class names, same rules. Two boards showing the same three numbers
+     in two hand-made headers is how they come to disagree about them. */
+  .tablesline { text-align:center; margin-top:8px; font-family:var(--ui-font);
+                font-size:var(--t2); color:var(--ink);
+                white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* The button is tally.html's Refresh, copied. Only its width is set here,
+     because body.ui2 .btn is full width for the footer rows it usually sits
+     in, and this one is a lone control under the counts. Everything polls
+     and nothing pushes, so a board left open goes quietly stale; this is the
+     one control that is always worth having in reach. */
+  body.ui2 .tablesline .btn { width:auto; padding:var(--s2) var(--s5);
+                              min-height:36px; font-size:var(--t2); }
+
+  /* Body padding is hand-set on every page rather than by the shared sheet.
+     Two variants exist: tally's 28px 24px 0, and the safe-area one on Spa,
+     Front Desk and Cleans. Taking the majority, because it is the one that
+     clears the notch. */
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
+
+  /* Copied from tally.html with the header: the board is capped and centred
+     the same way, or it runs the full width of a tablet while Reservations
+     does not. */
+  .wrap { max-width:520px; margin:0 auto; }
+  .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
+            background:#A8321E; color:#fff; padding:12px 18px;
+            font-family:var(--ui-font); font-size:var(--t2); line-height:1.5;
+            display:none; }
+
+  .key { display:flex; flex-wrap:wrap; gap:var(--s3); justify-content:center;
+         margin:var(--s5) 0 var(--s4); font-size:var(--t1); color:var(--mid); }
   .key span { display:flex; align-items:center; gap:5px; }
-  .sw { width:9px; height:9px; border-radius:2px; display:inline-block;
+  .sw { width:10px; height:10px; border-radius:3px; display:inline-block;
         border:1px solid var(--rule); }
+
+  .harness { margin:var(--s5) 0 var(--s6); padding-top:var(--s4);
+             border-top:1px solid var(--rule); font-size:var(--t1); color:var(--mid); }
+  body.ui2 .harness .btn { width:auto; padding:var(--s1) var(--s3);
+                           font-size:var(--t1); min-height:32px; }
+  .harness .row { display:flex; flex-wrap:wrap; gap:var(--s1); margin-top:var(--s2); }
 </style>
 </head>
 <body class="tier-app ui2">
 
-<div class="daterow">
+<div class="errbar" id="errBar"></div>
+<div class="wrap">
+  <div class="daterow">
   <button class="dnav today" id="dToday">Today</button>
   <button class="dnav" id="dPrev">&#8249;</button>
   <div class="date" id="title"></div>
@@ -105,7 +177,17 @@
 
 <div class="noaccess" id="noAccess"></div>
 
+<div class="stats" id="statsRow">
+  <div class="stat"><div class="stat-n" id="nForms">&ndash;</div><div class="stat-l">Forms</div></div>
+  <div class="stat"><div class="stat-n" id="nInv">&ndash;</div><div class="stat-l">Invitations</div></div>
+  <div class="stat"><div class="stat-n" id="nReps">&ndash;</div><div class="stat-l">Responses</div></div>
+</div>
+<div class="tablesline">
+  <button class="btn ghost" onclick="location.reload()">Refresh</button>
+</div>
+
 <div id="board"></div>
+</div><!-- /wrap -->
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -321,7 +403,8 @@ function items(t){
     note: !inv ? (ext ? ext + ' external booked, villas need the menu sent'
                       : 'needs the menu sent')
         : (allIn ? covers + ' dining, ' + no + ' villas not'
-                 : covers + ' dining so far, ' + out + ' villas still out') });
+                 : covers + ' dining so far, ' + out + ' villas still out'),
+    yes:yes, no:no, out:out });
 
   /* Recommended the moment every form is complete, not at a clock time. */
   L.push({ k:'sheets', lab:'Arrival sheets', owner:'paper', units:shUnits,
@@ -365,9 +448,7 @@ function items(t){
   L.forEach(function(d){
     d.acts = [];
     if (d.print && can(ROLE, NEED[d.k])) d.acts.push({ t:'Print', quiet:d.quiet });
-    /* Arrival sheets are never marked off: they stay printable all day, so
-       there is nothing to record and nothing to grey out. */
-    d.tickable = !!(d.print && d.print !== 'sheets' && can(ROLE, NEED[d.k]));
+    d.tickable = !!(d.print && can(ROLE, NEED[d.k]));
     d.ticked = !!(d.print && DATA.done[d.print]);
     d.door = can(ROLE, NEED[d.k]);
     d.navask = NAVASK === d.k;
@@ -397,28 +478,29 @@ function acts(d){
   var h = '<div class="acts">';
   d.acts.forEach(function(a){
     if (d.qty != null)
-      h += '<span class="qlab">Qty</span><input class="qty" type="number" ' +
-           'aria-label="How many to print" data-qty="' + d.k + '" value="' + d.qty +
+      h += '<span class="qlab">Qty</span>' +
+           '<input class="qty" type="number" aria-label="How many to print" ' +
+           'data-qty="' + d.k + '" value="' + d.qty +
            '" min="' + d.qmin + '" max="' + d.qmax + '">';
-    h += '<button class="btn solid' + (a.quiet ? ' quiet' : '') +
-         '" data-print="' + d.k + '">' + a.t + '</button>';
+    /* Print is what the card is for, so it wears the primary at every hour
+       rather than only at the recommended one: a control that changes dress
+       through the day makes the reader check which state it is in before
+       pressing it. Whether now is the moment is said by the note and by the
+       card's own weight, which is where state belongs. */
+    h += '<button class="btn solid" data-print="' + d.k + '">' + a.t + '</button>';
   });
   if (d.tickable){
-    /* Marking done asks both ways: it is a claim about paper that nobody
-       else can check. Walking it back wears terracotta, per the button law. */
+    /* Marking done asks both ways: it is a claim about paper that nobody else
+       can check. Walking it back wears terracotta, per the button law. */
     if (d.pending)
       h += '<button class="btn terra" data-mark="' + d.k + '">' +
            (d.ticked ? 'Confirm undo' : 'Confirm done') + '</button>';
+    else if (d.ticked)
+      h += '<button class="btn ghost done" data-mark="' + d.k + '">&#10003; Printed</button>';
     else
-      h += '<button class="btn" data-mark="' + d.k + '">' +
-           (d.ticked ? 'Undo' : 'Mark done') + '</button>';
+      h += '<button class="btn ghost" data-mark="' + d.k + '">Mark done</button>';
   }
   return h + '</div>';
-}
-
-function sw(bg, bd, label){
-  return '<span><i class="sw" style="background:' + bg + ';border-color:' + bd +
-         '"></i>' + label + '</span>';
 }
 
 function render(){
@@ -426,29 +508,47 @@ function render(){
   var t = nowMins(), L = items(t);
   var frac = Math.max(0, Math.min(100, (t - T0) / (T1 - T0) * 100));
 
-  var h = '<div class="spine">' +
-          '<div class="fill" style="height:' + frac.toFixed(1) + '%"></div>' +
-          '<div class="pip" style="top:calc(' + frac.toFixed(1) + '% - 1px)"></div>';
+  /* The header counts what is still OWED rather than what has come in. A
+     total says how the day went; a waiting list says what is left to chase,
+     which is the only thing anybody opens this board to find out. */
+  var reps  = L.filter(function(d){ return d.k === 'reps'; })[0],
+      forms = L.filter(function(d){ return d.k === 'forms'; })[0],
+      inv   = L.filter(function(d){ return d.k === 'inv'; })[0];
+  var formsLeft = forms.units.filter(function(u){ return u.tone !== 'green'; }).length;
+  /* Invitations go out in one send, so until they do every villa that will be
+     asked is still owed one. */
+  var invLeft = inv.state === 'done' ? 0 : reps.units.filter(function(u){
+    return String(u.id).indexOf('ext') !== 0; }).length;
+  document.getElementById('nForms').textContent = formsLeft;
+  document.getElementById('nInv').textContent   = invLeft;
+  document.getElementById('nReps').textContent  = reps.out != null ? reps.out : '-';
+
+  var h = '<div class="spine"><div class="track">' +
+          '<div class="fill" style="height:' + frac.toFixed(1) + '%"></div></div>' +
+          '<div class="pip" style="top:calc(8px + ' + frac.toFixed(1) + '% - 12px)">' +
+          '<svg viewBox="0 0 13 12" width="13" height="12">' +
+          '<polygon points="2.2,2.2 10.8,2.2 6.5,9.6"/></svg></div>';
 
   var closed = false;
   L.forEach(function(d){
     if (d.offSpine && !closed){ h += '</div>'; closed = true; }
     var head = d.door
       ? '<button class="cn' + (d.navask ? ' ask' : '') + '" data-nav="' + d.k + '">' +
-        (d.navask ? 'Open page' : esc(d.lab)) + '</button>'
+        (d.navask ? 'Open page' : esc(d.lab)) + '<i class="chev">&rsaquo;</i></button>'
       : '<span class="lab">' + esc(d.lab) + '</span>';
-    h += '<div class="node ' + d.pos + '"><div class="card">' +
-         '<div class="top">' + head + '<span class="tag">' + d.owner + '</span></div>' +
+    h += '<div class="node ' + d.pos + (d.offSpine ? ' off' : '') + '">' +
+         (d.offSpine ? '' : '<i class="bead"></i>') +
+         '<div class="card"><div class="top">' + head + '</div>' +
          '<div class="cs">' + esc(d.note) + '</div>' +
          chips(d) + acts(d) + '</div></div>';
   });
   if (!closed) h += '</div>';
 
   h += '<div class="key">' +
-       sw('rgba(122,160,130,.26)', 'rgba(122,160,130,.65)', 'done') +
-       sw('var(--amber)', 'var(--amberb)', 'part, or ready') +
-       sw('rgba(184,106,90,.16)', 'rgba(184,106,90,.45)', 'said no') +
-       sw('rgba(28,28,26,.045)', 'var(--rule)', 'nothing yet') + '</div>';
+       '<span><i class="sw" style="background:var(--law-green-t);border-color:var(--law-green-b)"></i>done</span>' +
+       '<span><i class="sw" style="background:var(--amber);border-color:var(--amberb)"></i>part, or ready</span>' +
+       '<span><i class="sw" style="background:var(--law-terra-t);border-color:var(--law-terra-b)"></i>said no</span>' +
+       '<span><i class="sw" style="background:rgba(28,28,26,.045)"></i>nothing yet</span></div>';
 
   document.getElementById('board').innerHTML = h;
   wire();

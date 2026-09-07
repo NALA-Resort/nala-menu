@@ -259,8 +259,10 @@ with sync_playwright() as p:
     # gone and asking it for its label throws instead of failing, which reads
     # as a crash rather than as the bug it is.
     stayed = "dashboard.html" in pg.url
+    # The heading carries a chevron to say it is a door, so read the label
+    # without it rather than asserting on the two together.
     label = pg.evaluate("()=>{var b=document.querySelector(\"[data-nav='reps']\");"
-                        "return b?b.textContent:'';}")
+                        "return b?b.textContent.replace('\\u203a','').trim():'';}")
     ck("the first tap on a heading asks rather than navigating",
        stayed and label == "Open page")
     pg.click("[data-nav='reps']")
@@ -313,12 +315,12 @@ with sync_playwright() as p:
        "foh" not in DAYBOARD)
     pg.close()
 
-    ck("arrival sheets carry no tick: they stay printable all day",
-       True if not any("/dayboard/" in w["u"] and w["u"].endswith("sheets.json")
-                       for w in WRITES) else False)
+    # The sheets carry a tick like the other two: the written decision said
+    # they would not, the mockup the owner signed off shows one, and the
+    # mockup won. A card that can be printed can be marked printed.
     pg = board()
-    ck("so the arrival sheets card offers no Mark done",
-       pg.evaluate("()=>!document.querySelector('[data-mark=\\\"sheets\\\"]')"))
+    ck("the arrival sheets card offers Mark done, same as the other print cards",
+       pg.evaluate("()=>!!document.querySelector(\'[data-mark=\"sheets\"]\')"))
 
     # ── arrivals are read from checkedInAt ──────────────────────
     arr = card(pg, "arr")
