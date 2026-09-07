@@ -1886,6 +1886,120 @@ with sync_playwright() as p:
        "Nut" in q.evaluate("()=>listBookings.textContent"))
     q.close()
 
+    # ── dining history: the stay's past nights on the villa sheet ───────
+    # /stays says which villa the BOOKING held each night, /dinner/<date>
+    # holds that villa's answer, /menuhistory what the kitchen served. The
+    # button reads all three on demand and never writes. Villa 9 arrived
+    # yesterday, so it has exactly one night behind it.
+    yday = plus(-1)
+    HIST = {
+        "stays":  {"9": {"id": "res-9", "first": "Priya", "arrive": yday,
+                         "depart": plus(3), "updated": "2026-08-16T10:00:00Z"}},
+        "dinner": {"9": {"status": "in", "pax": 2, "room": "9", "by": "guest",
+                         "bookingId": "res-9"}},
+        "menu":   {"entree": "Seared prawns, lime", "bread": "Sourdough",
+                   "main": "Char-grilled steak, red wine jus",
+                   "dessert": "Pavlova"},
+        "staysFail": False,
+    }
+    def hist_fb(route, request):
+        u = request.url
+        if "/stays/" + yday in u:
+            if HIST["staysFail"]:
+                route.fulfill(status=401, content_type="application/json",
+                              body='{"error":"denied"}'); return
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(HIST["stays"])); return
+        if "/dinner/" + yday in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(HIST["dinner"])); return
+        if "/menuhistory/" + yday in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(HIST["menu"])); return
+        fb(route, request)
+    def hist_page():
+        q = b.new_page(viewport={"width": 390, "height": 900})
+        q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(
+            status=200, content_type="application/javascript", body=SDK))
+        q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body="/*n*/"))
+        q.route("**firebasedatabase.app/**", hist_fb)
+        q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1700)
+        return q
+    def open_villa(q, n):
+        q.evaluate("(n)=>[...document.querySelectorAll('button')]"
+                   ".find(b=>b.querySelector('.room-n')"
+                   "&&b.querySelector('.room-n').textContent===String(n)).click()", n)
+        q.wait_for_timeout(500)
+
+    q = hist_page()
+    open_villa(q, 9)
+    ck("a booked stay with nights behind it offers Dining history",
+       q.evaluate("()=>!!document.getElementById('oHist')"))
+    ck("the history button sits before Close, never after it",
+       q.evaluate("()=>{const o=[...sheet.querySelectorAll('.opt')];"
+                  "return o.length>0 && o[o.length-1].id==='oClose';}"))
+    q.locator("#oHist").click(); q.wait_for_timeout(900)
+    hist = q.evaluate("()=>({t:histBody.textContent,"
+                      "cols:[...histBody.querySelectorAll('.htab th')]"
+                      ".map(e=>e.textContent)})")
+    ck("a one night history is summed honestly",
+       "Dined 1 of 1 night so far" in hist["t"])
+    ck("the three courses head the table",
+       hist["cols"][1:] == ["Entrée", "Main", "Dessert"])
+    ck("the dish is shown without its garnish",
+       "Char-grilled steak" in hist["t"] and "red wine" not in hist["t"]
+       and "Seared prawns" in hist["t"] and "lime" not in hist["t"]
+       and "Pavlova" in hist["t"])
+    q.locator("#oBack").click(); q.wait_for_timeout(400)
+    ck("Back returns to the villa sheet",
+       q.evaluate("()=>!!document.getElementById('oHist')"
+                  " && !document.getElementById('histBody')"))
+    closeIfOpen(q)
+    open_villa(q, 4)
+    ck("a booking with no arrival date offers no history",
+       not q.evaluate("()=>!!document.getElementById('oHist')"))
+    q.close()
+
+    # A cell stamped with a different booking id is a different party's
+    # answer - the guest who held the villa before this one - and must not
+    # become this guest's history: the night shows as not dined, not as
+    # somebody else's steak.
+    HIST["dinner"] = {"9": {"status": "in", "pax": 4, "room": "9",
+                            "bookingId": "res-other"}}
+    q = hist_page()
+    open_villa(q, 9)
+    q.locator("#oHist").click(); q.wait_for_timeout(900)
+    hist = q.evaluate("()=>histBody.textContent")
+    ck("another booking's cell is not this guest's history",
+       "Dined 0 of 1 night so far" in hist and "steak" not in hist)
+    q.close()
+
+    # A night they sat that the archive holds no menu for says so, rather
+    # than pretending a dish or dropping the night.
+    HIST["dinner"] = {"9": {"status": "in", "pax": 2, "room": "9",
+                            "bookingId": "res-9"}}
+    HIST["menu"] = None
+    q = hist_page()
+    open_villa(q, 9)
+    q.locator("#oHist").click(); q.wait_for_timeout(900)
+    hist = q.evaluate("()=>histBody.textContent")
+    ck("a dined night with no archived menu says so",
+       "Dined 1 of 1 night so far" in hist and "Menu not recorded" in hist)
+    q.close()
+
+    # A failed read is not an empty one - the standing caution. A refused
+    # /stays must not quietly count as a night not dined.
+    HIST["staysFail"] = True
+    q = hist_page()
+    open_villa(q, 9)
+    q.locator("#oHist").click(); q.wait_for_timeout(900)
+    hist = q.evaluate("()=>histBody.textContent")
+    ck("a refused read owns up rather than counting as not-dined",
+       "could not be read" in hist)
+    HIST["staysFail"] = False
+    q.close()
+
     b.close()
     open("/home/claude/nala/_p1_tally.png","wb").write(shot1)
 print("RESULT: %d passed, %d failed" % (P,F))

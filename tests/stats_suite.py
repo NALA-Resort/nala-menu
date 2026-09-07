@@ -21,7 +21,7 @@ That last one is the Clean Slate lesson in a second place: a page that cannot
 read its data must never render as a page whose data is empty.
 """
 import errortrap   # fails the run if any page throws
-import threading, http.server, socketserver, json, time, datetime, os
+import threading, http.server, socketserver, json, time, datetime, os, re
 
 os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
@@ -52,6 +52,19 @@ STATE = {"dinner": {}, "responses": {}, "menuhistory": {}, "fail": None}
 
 def fb(route, request):
     u = request.url
+    # /stays/<date>, read by the already-eaten section, one small node a
+    # night. Dated, unlike the three whole-node reads below.
+    m = re.search(r"/stays/(\d{4}-\d{2}-\d{2})", u)
+    if m:
+        d = m.group(1)
+        if STATE.get("failstays") == d:
+            route.fulfill(status=401, content_type="application/json",
+                          body='{"error":"Permission denied"}')
+            return
+        v = STATE.get("stays", {}).get(d)
+        route.fulfill(status=200, content_type="application/json",
+                      body=json.dumps(v) if v is not None else "null")
+        return
     for node in ("dinner", "responses", "menuhistory"):
         if "/" + node in u:
             if STATE["fail"] == node:
@@ -288,6 +301,78 @@ with sync_playwright() as p:
             ck("a vegetarian main is grouped as vegetarian",
                "Vegetarian" in [r["name"] for r in rows(q, "byProtein")])
         q.close()
+
+    # ── already eaten by tonight's guests, approved 7 Sep ─────
+    # The dish list follows the BOOKING through /stays: villa 2's guest sat
+    # in villa 7 last night, and the row must name them as tonight's 2. A
+    # declined villa is not tonight's audience; a cell stamped with a
+    # different booking id is a different party's answer; nobody reads 0.
+    STATE["responses"] = {}
+    STATE["dinner"] = {
+        dkey(0): {"3": cell("out", 0)},
+        dkey(1): {"1": cell(pax=2, bookingId="b1"), "7": cell(pax=2, bookingId="b2")},
+        dkey(3): {"1": cell(pax=2, bookingId="somebody-else")},
+        dkey(6): {"1": cell(pax=2, bookingId="b1")},
+    }
+    STATE["menuhistory"] = {
+        dkey(1): {"entree": "Seared prawns, lime",
+                  "main": "Char-grilled steak, red wine jus",
+                  "dessert": "Pavlova"},
+        dkey(2): {"main": "Lamb shoulder, gremolata"},
+        dkey(3): {"main": "Satay chicken"},
+        dkey(6): {"main": "Duck breast, cherry"},
+    }
+    STATE["stays"] = {
+        dkey(0): {"1": {"id": "b1"}, "2": {"id": "b2"}, "3": {"id": "b3"}},
+        dkey(1): {"1": {"id": "b1"}, "7": {"id": "b2"}},
+        dkey(2): {"1": {"id": "b1"}},
+        dkey(3): {"1": {"id": "b1"}},
+        dkey(6): {"1": {"id": "b1"}},
+    }
+    pg = open_stats()
+
+    def eatrows(q):
+        return q.evaluate(
+            "()=>[...document.querySelectorAll('#eatList .vrow')].map(e=>({"
+            "d:e.querySelector('.vdish').textContent,"
+            "w:e.querySelector('.vwho').textContent.trim()}))")
+    def eatrow(q, name):
+        hit = [r for r in eatrows(q) if name in r["d"]]
+        return hit[0] if hit else None
+
+    ck("the audience is tonight's villas that have not said no",
+       "2 villas in tonight" in pg.inner_text("#eatLede"))
+    steak = eatrow(pg, "Char-grilled steak")
+    ck("the dish is shown without its garnish",
+       bool(steak) and "red wine" not in steak["d"])
+    ck("a guest who moved villas is named as tonight's villa",
+       bool(steak) and steak["w"] == "1 · 2")
+    lamb = eatrow(pg, "Lamb shoulder")
+    ck("nobody reads 0, never blank", bool(lamb) and lamb["w"] == "0")
+    satay = eatrow(pg, "Satay chicken")
+    ck("another booking's cell is not tonight's guest's history",
+       bool(satay) and satay["w"] == "0")
+    ck("a night outside the window stays out", eatrow(pg, "Duck") is None)
+    pg.click('#eatWin .chip[data-w="7"]'); pg.wait_for_timeout(200)
+    ck("the 7 day chip widens the window", eatrow(pg, "Duck") is not None)
+    pg.click('#eatSeg button[data-c="dessert"]'); pg.wait_for_timeout(200)
+    ck("the course switch swaps the list to that course",
+       eatrow(pg, "Pavlova") is not None and eatrow(pg, "steak") is None)
+    ck("and the same guests are named for it",
+       eatrow(pg, "Pavlova")["w"] == "1 · 2")
+    pg.close()
+
+    # A failed read is not an empty one, in this section too: a /stays
+    # night that cannot be read answers ? rather than promising a 0.
+    STATE["failstays"] = dkey(1)
+    pg = open_stats()
+    steak = eatrow(pg, "Char-grilled steak")
+    ck("an unreadable night answers ?, never 0",
+       bool(steak) and steak["w"] == "?"
+       and "could not be read" in pg.inner_text("#eatList"))
+    STATE["failstays"] = None
+    pg.close()
+    STATE["stays"] = {}
 
     b.close()
 

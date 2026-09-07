@@ -28,6 +28,35 @@
 
   .sec { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); margin:28px 0 12px; }
 
+  /* ── already eaten by tonight's guests ────────────────────────────────
+     The chef's menu-planning question - "can I do steak tonight?" - asked
+     dish-first: one course at a time, one dish a row, and on the right
+     nothing but the villa numbers of tonight's guests whose booking sat
+     for it. No verdicts and no fills, the owner's ruling of 7 Sep; a 0 is
+     the whole answer when nobody has. Mocked in mock-dining-history.html.
+     The seg and chips wear the shared sheet's own selected dress. */
+  .eat-lede { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
+              font-style:italic; text-align:center; margin:6px 0 0; }
+  .sec.eat { display:flex; justify-content:space-between; align-items:center;
+             gap:8px; }
+  .chips { display:flex; gap:6px; align-items:center; }
+  .chip { padding:5px 11px; border:1px solid var(--rule); background:transparent;
+          border-radius:var(--pill); font-family:var(--ui-font); font-size:var(--t1);
+          color:var(--mid); cursor:pointer; }
+  .seg { display:flex; gap:6px; margin:2px 0 4px; }
+  .seg button { flex:1; padding:11px 0; border:1px solid var(--rule);
+                background:transparent; font-family:var(--ui-font);
+                font-size:var(--t2); color:var(--mid); cursor:pointer;
+                border-radius:var(--r); min-height:var(--tap); }
+  .vrow { display:flex; align-items:baseline; gap:10px; padding:12px 0;
+          border-bottom:1px solid var(--rule); }
+  .vrow:last-child { border-bottom:0; }
+  .vdish { flex:1; font-family:var(--ui-font); font-size:var(--t2); color:var(--ink); }
+  .vdish .d { color:var(--mid); font-size:var(--t1); }
+  .vwho { font-family:var(--ui-font); font-size:var(--t2); color:var(--ink);
+          font-weight:bold; text-align:right; max-width:58%; line-height:1.6; }
+  .vwho.none { color:var(--mid); font-weight:normal; }
+
   .stat { display:flex; align-items:baseline; gap:10px; padding:11px 0;
           border-bottom:1px solid var(--rule); }
   .stat-name { flex:1; font-size:var(--t3); }
@@ -70,6 +99,22 @@
   <!-- The question this page provokes: these are the aggregates, and the
        next thing anyone asks is what was actually on the menu that night. -->
   <div class="seemenus"><a href="past-menus.html">See the menu for any night &#8250;</a></div>
+
+  <div class="eat-lede" id="eatLede"></div>
+  <div class="sec eat" id="eatSec" style="display:none"><span>Already eaten by tonight's guests</span>
+    <span class="chips" id="eatWin">
+      <button class="chip" data-w="3">3</button>
+      <button class="chip on" data-w="5">5</button>
+      <button class="chip" data-w="7">7</button>
+      <span>days</span>
+    </span>
+  </div>
+  <div class="seg" id="eatSeg" style="display:none">
+    <button data-c="entree">Entrée</button>
+    <button data-c="main" class="on">Main</button>
+    <button data-c="dessert">Dessert</button>
+  </div>
+  <div id="eatList"></div>
 
   <div class="sec">Take-up by main course</div>
   <div id="byProtein"></div>
@@ -165,6 +210,167 @@ function failure(node, res){
   return (res && res.__failed !== undefined) ? (node + ' (HTTP ' + res.__failed + ')') : null;
 }
 
+/* ── already eaten by tonight's guests ───────────────────────────────
+   The chef's menu-planning question, dish-first: for each dish served in
+   the last 3/5/7 nights, which of tonight's villas already sat for it.
+   Approved from mock-dining-history.html, 7 Sep.
+
+   It follows the BOOKING through /stays, not the villa - a guest moved
+   mid-stay carries their nights with them - and a cell stamped with a
+   different booking id is a different party's answer, not theirs. The
+   audience is tonight's villas that have not said no: a declined or
+   vacant villa is not who the chef is cooking for. */
+function dishShort(v){
+  /* The dish, not the garnish: the chef writes "Lamb rump, smoked
+     eggplant", and the row wants the rump. groupOf below reads the whole
+     string, so the two readings cannot disagree about the night. */
+  return String(v == null ? '' : v).split(',')[0].trim();
+}
+
+function escText(v){
+  return String(v == null ? '' : v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function initEaten(dinnerAll, respAll, menus){
+  var WIN_MAX = 7;
+  var todayK = daysAgo(0);
+  var dates = [];                       /* yesterday first, newest to oldest */
+  for (var i = 1; i <= WIN_MAX; i++) dates.push(daysAgo(i));
+  Promise.all([readNode('/stays/' + todayK)].concat(dates.map(function(d){
+    return readNode('/stays/' + d);
+  }))).then(function(res){
+    var lede = document.getElementById('eatLede');
+    document.getElementById('eatSec').style.display = '';
+    document.getElementById('eatSeg').style.display = '';
+
+    /* A failed read is not an empty one. Tonight unreadable means the
+       audience is unknown, and the section says so instead of counting. */
+    if (res[0] && res[0].__failed !== undefined){
+      lede.textContent = 'Tonight’s villas could not be read';
+      document.getElementById('eatList').innerHTML =
+        '<div class="note">The database would not return tonight’s stays, ' +
+        'so there is nobody to check the dishes against.</div>';
+      return;
+    }
+    var staysToday = res[0] || {};
+    var anyFailed = false;
+    var staysBy = {};
+    dates.forEach(function(d, i){
+      var r = res[i + 1];
+      if (r && r.__failed !== undefined){ staysBy[d] = null; anyFailed = true; }
+      else staysBy[d] = r || {};
+    });
+
+    /* Tonight's audience. One answer a villa: the cell outranks the
+       retired node, the same reading the aggregates below use. */
+    var seen = {};
+    var day = dinnerAll[todayK] || {};
+    for (var v in day){
+      var c = day[v];
+      if (c && typeof c === 'object') seen[String(v)] = { st:c.status, cell:true, at:c.at };
+    }
+    var rday = respAll[todayK] || {};
+    for (var k in rday){
+      var g = rday[k];
+      if (!g || typeof g !== 'object') continue;
+      var rv = String(g.room || '');
+      if (!rv) continue;
+      if (seen[rv] && seen[rv].cell) continue;
+      if (seen[rv] && (seen[rv].at || '') > (g.at || '')) continue;
+      seen[rv] = { st:g.status, cell:false, at:g.at };
+    }
+    var audience = [];
+    for (var tv in staysToday){
+      var s = staysToday[tv];
+      if (!s || typeof s !== 'object' || !s.id) continue;
+      var st = seen[String(tv)];
+      if (st && (st.st === 'out' || st.st === 'vacant')) continue;
+      audience.push({ villa: String(tv), id: s.id });
+    }
+    lede.textContent = audience.length +
+      (audience.length === 1 ? ' villa' : ' villas') +
+      ' in tonight, confirmed or unanswered';
+
+    /* One record a night: the served courses and who of tonight sat. */
+    var nights = [];
+    dates.forEach(function(d, i){
+      var m = menus[d];
+      if (!m) return;
+      var courses = { entree: dishShort(m.entree), main: dishShort(m.main),
+                      dessert: dishShort(m.dessert) };
+      if (!courses.entree && !courses.main && !courses.dessert) return;
+      var stays = staysBy[d], who = [];
+      if (stays){
+        audience.forEach(function(a){
+          var villa = null;
+          for (var sv in stays){
+            if (stays[sv] && stays[sv].id === a.id){ villa = sv; break; }
+          }
+          if (!villa) return;
+          var cell = (dinnerAll[d] || {})[villa];
+          if (!cell || typeof cell !== 'object') return;
+          if (cell.bookingId && cell.bookingId !== a.id) return;
+          if (cell.status === 'in') who.push(a.villa);
+        });
+      }
+      var p = d.split('-');
+      nights.push({
+        age: i + 1, unknowable: !stays,
+        day: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+             [new Date(+p[0], +p[1]-1, +p[2]).getDay()],
+        menu: courses,
+        who: who.sort(function(a, b){ return a - b; })
+      });
+    });
+
+    var COURSE = 'main', WIN = 5;
+    function paintEaten(){
+      var el = document.getElementById('eatList');
+      if (!audience.length){
+        el.innerHTML = '<div class="note">Nobody is booked in tonight.</div>';
+        return;
+      }
+      var rows = nights.filter(function(n){ return n.age <= WIN && n.menu[COURSE]; });
+      if (!rows.length){
+        el.innerHTML = '<div class="empty">No menus recorded in this window</div>';
+        return;
+      }
+      el.innerHTML = rows.map(function(n){
+        var who = n.unknowable
+          ? '<span class="vwho none">?</span>'
+          : (n.who.length
+              ? '<span class="vwho">' + n.who.join(' · ') + '</span>'
+              : '<span class="vwho none">0</span>');
+        return '<div class="vrow"><span class="vdish">' + escText(n.menu[COURSE]) +
+               ' <span class="d">· ' + n.day + '</span></span>' + who + '</div>';
+      }).join('') + (anyFailed
+        ? '<div class="note">Some nights could not be read; a ? stands where ' +
+          'the answer is unknown.</div>'
+        : '');
+    }
+    document.getElementById('eatSeg').querySelectorAll('button').forEach(function(b){
+      b.onclick = function(){
+        COURSE = b.getAttribute('data-c');
+        document.getElementById('eatSeg').querySelectorAll('button').forEach(function(x){
+          x.classList.toggle('on', x === b);
+        });
+        paintEaten();
+      };
+    });
+    document.querySelectorAll('#eatWin .chip').forEach(function(b){
+      b.onclick = function(){
+        WIN = +b.getAttribute('data-w') || 5;
+        document.querySelectorAll('#eatWin .chip').forEach(function(x){
+          x.classList.toggle('on', x === b);
+        });
+        paintEaten();
+      };
+    });
+    paintEaten();
+  });
+}
+
 Promise.all([readNode('/dinner'), readNode('/responses'), readNode('/menuhistory')])
 .then(function(res){
   var failed = [failure('dinner', res[0]), failure('responses', res[1]),
@@ -180,6 +386,7 @@ Promise.all([readNode('/dinner'), readNode('/responses'), readNode('/menuhistory
   }
 
   var dinnerAll = res[0] || {}, respAll = res[1] || {}, menus = res[2] || {};
+  initEaten(dinnerAll, respAll, menus);
   var from = daysAgo(LOOKBACK - 1);
 
   /* Every date either node knows about, inside the window. The dates are
