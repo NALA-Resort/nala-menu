@@ -72,22 +72,45 @@ body{background:var(--cream);color:var(--ink);font-family:var(--ui);
 .chip{font-size:var(--t1);padding:5px 11px;border:1px solid var(--rule);
  border-radius:999px;color:var(--mid);background:transparent}
 .chip.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
-/* the chef's question, asked dish-first: for each dish served in the
-   window, which of tonight's villas already sat for it. An empty right
-   cell IS the answer - nobody in tonight has had it, cook it. */
+/* three shapes for the multi-room question, for the owner to pick from */
 .lede{font-size:var(--t2);color:var(--mid);font-style:italic;line-height:1.5;
  text-align:center;margin:10px 0 0}
-.dtab{width:100%;border-collapse:collapse;text-align:left;margin-bottom:4px}
-.dtab th{font-size:var(--t1);color:var(--mid);font-weight:normal;
- padding:0 0 6px;border-bottom:1px solid var(--rule)}
-.dtab th:last-child,.dtab td:last-child{text-align:right}
-.dtab td{font-size:var(--t2);line-height:1.4;vertical-align:top;
- padding:9px 0;border-bottom:1px solid var(--rule)}
-.dtab .dd{color:var(--mid);font-size:var(--t1);white-space:nowrap;
- padding-left:8px}
-.dtab .who{white-space:nowrap;padding-left:8px}
-.dtab .who b{font-weight:bold}
-.dtab .clear{color:var(--green)}
+/* A: the exceptions only - most guests are new most nights, so list the
+   few who are not and say how many are. */
+.bigline{text-align:center;padding:18px 0 4px}
+.bigline .n{font-size:34px;line-height:1}
+.bigline .cap{font-size:var(--t1);color:var(--mid);margin-top:6px}
+.rp{padding:12px 0;border-bottom:1px solid var(--rule)}
+.rp:last-child{border-bottom:0}
+.rp-name{font-size:var(--t3)}
+.rp-name .rm{font-weight:bold}
+.rp-name .rm::after{content:' - ';font-weight:normal;color:var(--mid)}
+.rp-t{font-size:var(--t1);margin-left:8px}
+.rp-t.in{color:var(--green)}
+.rp-t.quiet{color:var(--mid);font-style:italic}
+.rp-night{font-size:var(--t2);margin-top:5px;line-height:1.6}
+.rp-night .d{color:var(--mid);font-size:var(--t1);display:inline-block;min-width:44px}
+/* B: ask about one dish, get one answer */
+.chips2{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.chip2{font-size:var(--t2);padding:8px 13px;border:1px solid var(--rule);
+ border-radius:999px;color:var(--mid);background:transparent}
+.chip2.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.ans{border:1px solid var(--amberb,#C29A55);background:#F6EAD5;color:#8A6A2F;
+ border-radius:8px;padding:16px;text-align:center;margin-top:6px}
+.ans .a1{font-size:var(--t3)}
+.ans .a2{font-size:var(--t2);margin-top:6px;line-height:1.5}
+/* C: one verdict pill per dish, names behind a tap */
+.vrow{display:flex;align-items:center;gap:10px;padding:11px 0;
+ border-bottom:1px solid var(--rule)}
+.vrow:last-child{border-bottom:0}
+.vdish{flex:1;font-size:var(--t2)}
+.vdish .d{color:var(--mid);font-size:var(--t1)}
+.vpill{font-size:var(--t1);padding:5px 11px;border-radius:999px;white-space:nowrap}
+.vpill.ok{background:#E4EDE2;border:1px solid #7E937A;color:var(--green)}
+.vpill.warn{background:#F6EAD5;border:1px solid #C29A55;color:#8A6A2F}
+.vopen{font-size:var(--t2);color:#8A6A2F;background:#F6EAD5;
+ border:1px solid #C29A55;border-radius:8px;padding:10px 12px;margin:6px 0 4px;
+ line-height:1.5}
 </style></head><body>
 
 <div class="mockcut" id="s1">1 · The villa sheet gains one quiet button</div>
@@ -113,7 +136,7 @@ stay has nights behind it, and it survives the read-only dress, so the chef
 sees it too. It appears on every state of the sheet the same way.</div>
 </div>
 
-<div class="mockcut" id="s2">2 · The history: a table, one night a row, one course a column</div>
+<div class="mockcut" id="s2">2 · The history: only the nights they dined</div>
 <div class="section">
 <div class="sheet">
   <h3>Villa 9 · dining history</h3>
@@ -123,82 +146,114 @@ sees it too. It appears on every state of the sheet the same way.</div>
     <table class="htab">
       <tr><th></th><th>Entrée</th><th>Main</th><th>Dessert</th></tr>
       <tr>
-        <td class="hd">Sat 6<i class="in">Dined · 2</i></td>
+        <td class="hd">Sat 6</td>
         <td>Seared prawns</td><td>Char-grilled steak</td><td>Pavlova</td>
       </tr>
-      <tr class="off">
-        <td class="hd">Fri 5<i class="out">Out</i></td>
-        <td>Kingfish crudo</td><td>Barramundi</td><td>Coconut tart</td>
-      </tr>
       <tr>
-        <td class="hd">Thu 4<i class="in">Dined · 3</i></td>
+        <td class="hd">Thu 4</td>
         <td>Chicken skewers</td><td>Satay chicken</td><td>Mango sticky rice</td>
       </tr>
-      <tr class="off">
-        <td class="hd">Wed 3<i class="quiet">?</i></td>
-        <td>Burrata</td><td>Lamb shoulder</td><td>Tiramisu</td>
-      </tr>
       <tr>
-        <td class="hd">Tue 2<i class="in">Dined · 2</i></td>
+        <td class="hd">Tue 2</td>
         <td class="none" colspan="3">Menu not recorded</td>
       </tr>
     </table>
   </div>
   <span class="opt quiet">Back</span>
 </div>
-<div class="mocknote">Read down a column: everything they have eaten of that
-course. Green Dined, terracotta Out, ? where nobody answered - never red. A
-night they missed keeps its dishes, in quiet italic: "steak was Friday, they
-were out" is an answer too. Dish names trim at the first comma - the dish,
-not the garnish ("Char-grilled steak, red wine jus" becomes the steak). Long
-stays cap at the last 14 nights and say so.</div>
+<div class="mocknote">Only the nights they sat: everything else is noise, and
+the summary line already says 3 of 5. Read down a column for everything they
+have eaten of that course. Dish names trim at the first comma - the dish, not
+the garnish. Long stays cap at the last 14 nights and say so.</div>
 </div>
 
-<div class="mockcut" id="s3">3 · Sketch only - "can I do steak tonight?", asked dish-first</div>
+<div class="mockcut" id="s3">Idea A · Only the exceptions: who in tonight is NOT new</div>
 <div class="section">
 <div class="stats">
   <div class="wordmark">Nala</div>
   <div class="title">Statistics</div>
-  <div class="lede">7 villas in tonight, confirmed or unanswered</div>
-  <div class="sec"><span>Already eaten by tonight's guests</span>
+  <div class="sec"><span>Tonight's returning diners</span>
     <span class="chips"><span class="chip">3</span><span class="chip on">5</span>
     <span class="chip">7</span><span class="chip" style="border:0">days</span></span>
   </div>
-
-  <table class="dtab">
-    <tr><th>Main</th><th>Served</th><th>Who's had it</th></tr>
-    <tr><td>Char-grilled steak</td><td class="dd">Sat</td>
-        <td class="who"><b>9</b> · <b>14</b></td></tr>
-    <tr><td>Barramundi</td><td class="dd">Fri</td>
-        <td class="who"><b>14</b></td></tr>
-    <tr><td>Lamb shoulder</td><td class="dd">Wed</td>
-        <td class="who clear">nobody in tonight</td></tr>
-    <tr><td>Satay chicken</td><td class="dd">Thu</td>
-        <td class="who"><b>9</b></td></tr>
-  </table>
-
-  <table class="dtab">
-    <tr><th>Entrée</th><th>Served</th><th>Who's had it</th></tr>
-    <tr><td>Seared prawns</td><td class="dd">Sat</td>
-        <td class="who"><b>9</b> · <b>14</b></td></tr>
-    <tr><td>Kingfish crudo</td><td class="dd">Fri</td>
-        <td class="who"><b>14</b></td></tr>
-  </table>
-
-  <table class="dtab">
-    <tr><th>Dessert</th><th>Served</th><th>Who's had it</th></tr>
-    <tr><td>Pavlova</td><td class="dd">Sat</td>
-        <td class="who"><b>9</b> · <b>14</b></td></tr>
-    <tr><td>Coconut tart</td><td class="dd">Fri</td>
-        <td class="who"><b>14</b></td></tr>
-  </table>
+  <div class="bigline"><div class="n">5 of 7</div>
+    <div class="cap">villas in tonight have not dined in the last 5 days</div></div>
+  <div class="rp">
+    <div class="rp-name"><span class="rm">9</span>Priya Sharma
+      <span class="rp-t in">dining tonight</span></div>
+    <div class="rp-night"><span class="d">Sat 6</span>Seared prawns · Char-grilled steak · Pavlova</div>
+    <div class="rp-night"><span class="d">Thu 4</span>Chicken skewers · Satay chicken · Mango sticky rice</div>
+  </div>
+  <div class="rp">
+    <div class="rp-name"><span class="rm">14</span>The Larsens
+      <span class="rp-t quiet">awaiting</span></div>
+    <div class="rp-night"><span class="d">Fri 5</span>Kingfish crudo · Barramundi · Coconut tart</div>
+  </div>
 </div>
-<div class="mocknote">One row per dish served in the window, one table per
-course. The right column is the villa numbers of tonight's guests - confirmed
-or unanswered - whose booking sat for that dish. "Can I do steak?": villas 9
-and 14 have had it, the other five are clear. Green "nobody in tonight" is
-the all-clear. A declined villa is not the chef's audience and is left out.
-Not built - a sketch to settle the shape.</div>
+<div class="mocknote">Your own words were the design: "everyone in tonight is
+new except 1 person". So say that first, big, and then list only the
+exceptions - the two or three villas that HAVE dined this window, with what
+they sat for, night by night. Most nights this screen is a headline and a
+couple of rows. "Can I do steak?" = is steak in any row below.</div>
+</div>
+
+<div class="mockcut" id="s4">Idea B · Ask about one dish, get one answer</div>
+<div class="section">
+<div class="stats">
+  <div class="wordmark">Nala</div>
+  <div class="title">Statistics</div>
+  <div class="sec"><span>Has anyone in tonight had&hellip;</span>
+    <span class="chips"><span class="chip">3</span><span class="chip on">5</span>
+    <span class="chip">7</span><span class="chip" style="border:0">days</span></span>
+  </div>
+  <div class="chips2">
+    <span class="chip2 on">Char-grilled steak</span>
+    <span class="chip2">Barramundi</span>
+    <span class="chip2">Lamb shoulder</span>
+    <span class="chip2">Satay chicken</span>
+    <span class="chip2">Seared prawns</span>
+    <span class="chip2">Pavlova</span>
+  </div>
+  <div class="ans">
+    <div class="a1">Villa 9 and Villa 14 have had it</div>
+    <div class="a2">Char-grilled steak, Saturday. The other 5 villas in
+    tonight are new to it.</div>
+  </div>
+</div>
+<div class="mocknote">One question at a time, which is how the chef actually
+asks it. The chips are every dish served in the window, all three courses
+mixed; tap one, read one answer. All clear comes back green ("Nobody in
+tonight has had it - cook it"), a hit comes back amber with the villas
+named. Nothing on screen but the question in hand.</div>
+</div>
+
+<div class="mockcut" id="s5">Idea C · A verdict pill per dish, names on tap</div>
+<div class="section">
+<div class="stats">
+  <div class="wordmark">Nala</div>
+  <div class="title">Statistics</div>
+  <div class="sec"><span>Served this window</span>
+    <span class="chips"><span class="chip">3</span><span class="chip on">5</span>
+    <span class="chip">7</span><span class="chip" style="border:0">days</span></span>
+  </div>
+  <div class="vrow"><div class="vdish">Char-grilled steak <span class="d">· Sat</span></div>
+    <span class="vpill warn">2 villas had it</span></div>
+  <div class="vopen">Villa 9 (Priya Sharma, dining tonight) and
+    Villa 14 (The Larsens, awaiting). The other 5 in tonight are clear.</div>
+  <div class="vrow"><div class="vdish">Barramundi <span class="d">· Fri</span></div>
+    <span class="vpill warn">1 villa had it</span></div>
+  <div class="vrow"><div class="vdish">Lamb shoulder <span class="d">· Wed</span></div>
+    <span class="vpill ok">All clear</span></div>
+  <div class="vrow"><div class="vdish">Satay chicken <span class="d">· Thu</span></div>
+    <span class="vpill warn">1 villa had it</span></div>
+  <div class="vrow"><div class="vdish">Seared prawns <span class="d">· Sat</span></div>
+    <span class="vpill ok">All clear</span></div>
+</div>
+<div class="mocknote">The whole window at a glance, but only as verdicts:
+green "All clear" means cook it, amber means look first. The villa numbers
+and names stay behind a tap on the row - the steak row is shown open. Amber
+is the law's "attention, check before you act"; the green pill its positive
+state. One list, all courses, newest first.</div>
 </div>
 
 <script>
