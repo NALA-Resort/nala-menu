@@ -109,10 +109,12 @@ def spa_seed():
       "b12": {"t1": {"status": "suggested", "day": today, "time": "16:30", "dur": 60,
                      "reqDay": plus(-1), "reqTime": "morning",
                      "name": "Elena Petrov", "source": "prearrival",
+                     "staffNote": "Guest asked for the deck",
                      "by": "masseuse@x", "at": "2026-08-20T10:00:00Z"}},
       "b3":  {"t1": {"status": "booked", "day": today, "time": "11:00",
                      "reqDay": today, "reqTime": "late morning",
                      "name": "Robyn Carter", "source": "prearrival",
+                     "staffNote": "Firm pressure, please",
                      "by": "masseuse@x", "at": "2026-08-20T10:00:00Z"}},
       "b7":  {"t1": {"status": "declined",
                      "reqDay": today, "reqTime": "morning",
@@ -406,7 +408,83 @@ with sync_playwright() as p:
     body3 = json.loads(w3[0]["b"]) if w3 else {}
     ck("Save changes writes the new length and the booking stays booked",
        body3.get("status") == "booked" and body3.get("dur") == 120)
+    ck("and the staff note rides the edit untouched",
+       body3.get("staffNote") == "Firm pressure, please")
     SPA = spa_seed()
+    pg.close()
+
+    # ── the notes area, 7 Sep ───────────────────────────────────
+    # The accommodation booking's staff note, translated to a treatment:
+    # free text on the record itself, read and written by the desk and the
+    # masseuse alike, never a guest - /spa is staff-only by rule. It rides
+    # every save, saves alone and quietly, and an emptied box is the way
+    # back. staffNote, never note: note is the decline's reason.
+    pg = board()
+    pg.locator('#board [data-booking="b3"]').click(); pg.wait_for_timeout(300)
+    ck("the card shows the note the record holds",
+       pg.evaluate("()=>document.querySelector('.card textarea').value")
+       == "Firm pressure, please")
+    ck("and offers no Save note while it is untouched",
+       pg.evaluate("()=>{var b=[...document.querySelectorAll('.card .cbtn')]"
+                   ".find(x=>x.textContent==='Save note');"
+                   "return b && b.closest('.btns').style.display==='none';}"))
+    del WRITES[:]; del PUSHES[:]
+    pg.fill('.card textarea', "Bring the table to the deck")
+    pg.wait_for_timeout(200)
+    pg.locator('.card .cbtn', has_text="Save note").click(); pg.wait_for_timeout(900)
+    w3n = [x for x in WRITES if "/spa/b3/" in x["u"]]
+    body3n = json.loads(w3n[0]["b"]) if w3n else {}
+    ck("Save note writes the note and moves nothing",
+       len(w3n) == 1 and body3n.get("staffNote") == "Bring the table to the deck"
+       and body3n.get("status") == "booked" and body3n.get("day") == today
+       and body3n.get("time") == "11:00")
+    ck("and buzzes nobody - a note is bookkeeping, nobody's queue", not PUSHES)
+    SPA = spa_seed()
+    pg.close()
+
+    # A stray chip tap must not ride out on a note: moving a treatment goes
+    # through the buttons that tell the guest, never through Save note.
+    pg = board()
+    pg.locator('#board [data-booking="b3"]').click(); pg.wait_for_timeout(300)
+    pg.locator('.card .chip').nth(1).click(); pg.wait_for_timeout(200)
+    pg.fill('.card textarea', "Deck, not the spa room")
+    pg.wait_for_timeout(200)
+    del WRITES[:]
+    pg.locator('.card .cbtn', has_text="Save note").click(); pg.wait_for_timeout(900)
+    w3k = [x for x in WRITES if "/spa/b3/" in x["u"]]
+    body3k = json.loads(w3k[0]["b"]) if w3k else {}
+    ck("Save note keeps the record's own day whatever chip was tapped",
+       body3k.get("day") == today and body3k.get("staffNote") == "Deck, not the spa room")
+    SPA = spa_seed()
+    pg.close()
+
+    # Emptying the box and saving deletes the note: the way back.
+    pg = board()
+    pg.locator('#board [data-booking="b3"]').click(); pg.wait_for_timeout(300)
+    pg.fill('.card textarea', "")
+    pg.wait_for_timeout(200)
+    del WRITES[:]
+    pg.locator('.card .cbtn', has_text="Save note").click(); pg.wait_for_timeout(900)
+    w3e = [x for x in WRITES if "/spa/b3/" in x["u"]]
+    body3e = json.loads(w3e[0]["b"]) if w3e else {}
+    ck("an emptied note saves as nothing, not as an empty string",
+       len(w3e) == 1 and "staffNote" not in body3e)
+    SPA = spa_seed()
+    pg.close()
+
+    # An ask still virtual has no record to pin a note to.
+    pg = board()
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    ck("a virtual ask's card offers no notes area",
+       not pg.evaluate("()=>!!document.querySelector('.card textarea')"))
+    pg.close()
+
+    # The desk reads and writes the same line.
+    pg = board("staff@x")
+    pg.locator('#board [data-booking="b3"]').click(); pg.wait_for_timeout(300)
+    ck("the desk's card holds the same notes area",
+       pg.evaluate("()=>document.querySelector('.card textarea').value")
+       == "Firm pressure, please")
     pg.close()
 
     # ── the button law ──────────────────────────────────────────
@@ -590,6 +668,8 @@ with sync_playwright() as p:
        body.get("time") == "16:30")
     ck("and the guest's original ask survives the approval",
        body.get("reqDay") == plus(-1) and body.get("reqTime") == "morning")
+    ck("and so does the staff note",
+       body.get("staffNote") == "Guest asked for the deck")
     SPA = spa_seed()
 
     # The desk changing the day does NOT book: it goes back to the masseuse.
