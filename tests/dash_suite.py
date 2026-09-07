@@ -71,6 +71,10 @@ PRE = {
   "b7":  {"at": at(9, 30), "dining": True, "pax": 2, "noDiets": True,
           "wellness": False},
   "b11": {"dining": True},
+  # answered on the form, and no /dinner cell was ever written: the case the
+  # first real day turned up, where this board and Invitations disagreed.
+  "b14": {"at": at(9, 45), "dining": True, "pax": 2, "noDiets": True,
+          "wellness": False},
   "b5":  {"at": at(8), "dining": False, "noDiets": True, "wellness": False},
 }
 
@@ -87,9 +91,10 @@ MANUAL = {"ext-a": {"status": "in", "pax": 4},
           "ext-b": {"status": "out", "pax": 2}}   # a cancelled outside table
 
 MENU = {"published": at(10, 6), "main": {"name": "Snapper"}}
-INVITES = {"b3": {"status": "sent", "sentAt": at(10, 11)},
-           "b7": {"status": "sent", "sentAt": at(10, 14)},
-           "old": {"status": "sent", "sentAt": plus(-1) + "T10:00:00+00:00"}}
+# /invites/<date> is keyed by VILLA, not booking id. Villa 3 has been asked;
+# villa 7 answered on its pre-arrival form so was never owed one; villas 11
+# and 14 are still to ask.
+INVITES = {"3": {"status": "sent", "sentAt": at(10, 11)}}
 
 # The built-in roles always hold resBoard and resSheet together, so a suite
 # using only those cannot tell the two keys apart - and telling them apart is
@@ -127,7 +132,8 @@ def fb(route, request):
     elif "/dinner/" in u: body = "null"
     elif "/manual/" + today in u: body = json.dumps(MANUAL)
     elif "/manual/" in u: body = "null"
-    elif "/previnvites" in u: body = json.dumps(INVITES)
+    elif "/invites/" + today in u: body = json.dumps(INVITES)
+    elif "/invites/" in u: body = "null"
     elif "/menu" in u: body = json.dumps(MENU)
     elif "/bookings/" in u and "/prearrival" in u:
         k = u.split("/bookings/")[1].split("/")[0]
@@ -196,11 +202,11 @@ with sync_playwright() as p:
 
     # ── form state is formState's, not a second reading ─────────
     ck("a completed form is green, a part answered one amber, an empty one grey",
-       forms["chips"] == ["3:green", "7:green", "11:amber", "14:grey"])
+       forms["chips"] == ["3:green", "7:green", "11:amber", "14:green"])
     ck("and the arrival sheets mirror the form chips exactly",
        card(pg, "sheets")["chips"] == forms["chips"])
     ck("the note counts the three states",
-       card(pg, "forms")["note"] == "2 complete, 1 part, 1 nothing yet")
+       card(pg, "forms")["note"] == "3 complete, 1 part, 0 nothing yet")
 
     # ── replies, and the covers adding up ───────────────────────
     reps = card(pg, "reps")
@@ -210,23 +216,43 @@ with sync_playwright() as p:
        "11:grey" in reps["chips"])
     ck("a vacant villa was never asked, so it is not waiting on anybody",
        not any(c.startswith("2:") for c in reps["chips"]))
-    # 2 (villa 3) + 2 (villa 5, in house) + 4 outside = 8. The cancelled
-    # outside table does not count.
+    # 2 (villa 3) + 2 (villa 5, in house) + 2 (villa 14, from its form) + 4
+    # outside = 10. The cancelled outside table does not count.
     ck("outside diners are added to the covers and shown as their own chip",
        "ext 4:green" in reps["chips"])
     ck("covers count in-house yeses plus outside tables",
-       reps["note"].startswith("8 dining so far"))
+       reps["note"].startswith("10 dining so far"))
     ck("and a villa with no dinner state yet is still out, not forgotten",
-       reps["note"].endswith("2 villas still out"))
+       reps["note"].endswith("1 villas still out"))
+
+    # Villa 7 said yes on its pre-arrival form and has no /dinner cell. It is
+    # answered - Invitations shows it under Answered - and reading /dinner
+    # alone showed it grey here while that page showed it green. This is the
+    # bug the first real day found.
+    ck("a villa that answered on its pre-arrival form reads as answered here too",
+       "14:green" in reps["chips"])
+    inv = card(pg, "inv")
+    ck("and is not counted as still needing an invitation",
+       not any(c.startswith("14:") for c in inv["chips"]))
+    ck("a villa already sent one is not asked twice",
+       not any(c.startswith("3:") for c in inv["chips"]))
+    ck("the ones left to ask are named, not just counted",
+       inv["chips"] == ["11:grey"])
+    ck("and the note says how many are owed one",
+       inv["note"].startswith("1 to send"))
+    # The header counted this a second way and read five while the card
+    # underneath listed one.
+    ck("and the header agrees with the card, not its own arithmetic",
+       pg.evaluate("()=>document.getElementById('nInv').textContent") == "1")
 
     # ── the menu count ──────────────────────────────────────────
-    # 8 covers, plus villa 11's three adults and villa 14's two, is 13 menus,
-    # on ceil(13/2)+1 = 8 pages.
+    # 10 covers, plus villa 11's three unanswered adults, is 13 menus, on
+    # ceil(13/2)+1 = 8 pages.
     menus = card(pg, "menus")
     ck("an unanswered villa is still printed for, at the adults on the booking",
        menus["note"].startswith("13 menus on 8 pages"))
     ck("and the note says how many of those are still unanswered",
-       menus["note"].endswith("5 not answered yet"))
+       menus["note"].endswith("3 not answered yet"))
 
     # ── the doors, by the app's own permission keys ─────────────
     ck("staff may walk through every door on the board",

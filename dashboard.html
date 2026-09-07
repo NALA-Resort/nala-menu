@@ -277,7 +277,11 @@ function load(){
        this board and the two it summarises cannot disagree. */
     fetchStays(day),
     fetchMenuAnywhere(day).catch(function(){ return null; }),
-    fetch(DB + '/previnvites.json?v=' + Date.now())
+    /* /invites/<date>, keyed by villa - the node Invitations writes and
+       reads. /previnvites is the pre-arrival SMS log, keyed by booking id,
+       and reading that here meant this card was never looking at dinner
+       invitations at all. */
+    fetch(DB + '/invites/' + day + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; }),
     fetch(DB + '/manual/' + day + '.json?v=' + Date.now())
@@ -322,13 +326,12 @@ function items(t){
   var pub = pubAt != null;
 
   /* The earliest invitation stamped with this day. */
-  var invAt = null;
-  Object.keys(DATA.invites).forEach(function(id){
-    var r = DATA.invites[id];
+  var sentFor = DATA.invites, invAt = null;
+  Object.keys(sentFor).forEach(function(v){
+    var r = sentFor[v];
     if (!r || r.status !== 'sent' || !r.sentAt) return;
-    if (String(r.sentAt).slice(0,10) !== day) return;
     var m = stampMins(r.sentAt);
-    if (m != null && (invAt == null || m < invAt)) invAt = m;
+    if (m != null && (invAt == null || m > invAt)) invAt = m;
   });
   var inv = invAt != null;
 
@@ -342,9 +345,21 @@ function items(t){
     if (!s || typeof s !== 'object' || !s.id) return false;
     return !cells[v] || cells[v].status !== 'vacant';
   }).sort(function(a,b){ return (+a) - (+b); });
+
+  /* An answer given on the pre-arrival form IS an answer, and formDinnerCell
+     is the reader that says so - the same one Reservations and Invitations
+     use. Reading /dinner alone showed a villa grey here while Invitations had
+     it under Answered, because a guest who said yes on their form days ago
+     never gets a cell written. The cell wins the moment anyone sets one. */
+  function cellFor(v){
+    return cells[v] ||
+           formDinnerCell(v, PREARRIVAL_BY_VILLA[String(v)], stays[v], day) ||
+           {};
+  }
+
   var rUnits = [], yes = 0, no = 0, out = 0, dining = 0, unknownPax = 0;
   asked.forEach(function(v){
-    var c = cells[v] || {};
+    var c = cellFor(v);
     if (c.status === 'in'){
       yes++; dining += (+c.pax || 0); rUnits.push({ id:v, tone:'green' });
     } else if (c.status === 'out'){
@@ -405,9 +420,23 @@ function items(t){
     state: pub ? 'done' : 'moving',
     note: pub ? 'published ' + hhmm(pubAt) : 'not published yet' });
 
-  L.push({ k:'inv', lab:'Dinner invitations', owner:'desk', units:[],
-    state: inv ? 'done' : (pub ? 'ready' : 'waiting'),
-    note: inv ? 'sent ' + hhmm(invAt) : (pub ? 'ready to send' : 'needs the menu') });
+  /* Who still needs asking: a villa with no answer of any kind and no
+     invitation already out. A guest who answered on their pre-arrival form
+     is not owed one, which is why this counts rows rather than reporting
+     whether a send has happened at all. */
+  var toAsk = asked.filter(function(v){
+    var c = cellFor(v);
+    if (c.status === 'in' || c.status === 'out') return false;
+    var s = sentFor[String(v)];
+    return !(s && s.status === 'sent' && s.delivery !== 'failed');
+  });
+  L.push({ k:'inv', lab:'Dinner invitations', owner:'desk',
+    units: toAsk.map(function(v){ return { id:v, tone:'grey' }; }),
+    state: !toAsk.length && inv ? 'done' : (pub ? 'ready' : 'waiting'),
+    note: !toAsk.length
+            ? (inv ? 'all sent, last ' + hhmm(invAt) : 'nobody to ask')
+        : !pub ? toAsk.length + ' to send, needs the menu'
+        : toAsk.length + ' to send' });
 
   L.push({ k:'reps', lab:'Dinner replies', owner:'guests',
     units: rUnits.concat(ext ? [{ id:'ext ' + ext, tone:'green' }] : []),
@@ -527,10 +556,10 @@ function render(){
       forms = L.filter(function(d){ return d.k === 'forms'; })[0],
       inv   = L.filter(function(d){ return d.k === 'inv'; })[0];
   var formsLeft = forms.units.filter(function(u){ return u.tone !== 'green'; }).length;
-  /* Invitations go out in one send, so until they do every villa that will be
-     asked is still owed one. */
-  var invLeft = inv.state === 'done' ? 0 : reps.units.filter(function(u){
-    return String(u.id).indexOf('ext') !== 0; }).length;
+  /* The card already works out who is owed an invitation, villa by villa.
+     Counting it a second way here is how the header came to read five while
+     the card underneath listed one. */
+  var invLeft = inv.units.length;
   document.getElementById('nForms').textContent = formsLeft;
   document.getElementById('nInv').textContent   = invLeft;
   document.getElementById('nReps').textContent  = reps.out != null ? reps.out : '-';
