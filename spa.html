@@ -143,7 +143,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=51"></script>
+<script src="nala-shared.js?v=52"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -341,9 +341,9 @@ function items(){
        the owner ruled 26 Aug: the pair travels together - one day, one
        time, a length each - and the card shows both. Answering writes a
        prearrival-source record, which is the ask spoken for. */
-    var have = Object.keys(SPA[id] || {}).some(function(tid){
-      return (SPA[id][tid] || {}).source === 'prearrival';
-    });
+    /* The same test the hamburger badge applies, so a board showing an
+       ask and a badge counting it can never disagree: nala-shared.js. */
+    var have = spaAskSpokenFor(SPA[id]);
     /* "Any day" never becomes a reqDay: that field's rule takes a date or
        the empty string and would refuse it, so the masseuse would tap Book
        and get an error. It rides as a flag on the virtual record instead,

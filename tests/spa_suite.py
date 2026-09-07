@@ -90,6 +90,18 @@ PRE = {
   "b30": {"wellness": True,  "wellDay": plus(31), "wellTime": "morning"},
 }
 
+# The whole bookings node, as the badge reads it: pre-arrival answers and
+# the Mews record side by side under one id. Same seed as the board's, so
+# the two cannot drift apart and quietly agree about a guest who is only
+# in one of them.
+BOOKINGS_NODE = {}
+for v, bid, first, last, a, dep in BOOKINGS:
+    BOOKINGS_NODE[bid] = {"pms": {"first": first, "last": last, "villa": v,
+                                  "arrive": plus(a), "depart": plus(dep),
+                                  "state": "confirmed"}}
+    if bid in PRE:
+        BOOKINGS_NODE[bid]["prearrival"] = PRE[bid]
+
 def spa_seed():
     return {
       "b12": {"t1": {"status": "suggested", "day": today, "time": "16:30", "dur": 60,
@@ -147,6 +159,11 @@ def fb(route, request):
     elif "/stays/" in u:
         d = u.split("/stays/")[1].split(".json")[0]
         body = json.dumps(STAYS_BY_DATE.get(d)) if d in STAYS_BY_DATE else "null"
+    elif u.split("?")[0].endswith("/bookings.json"):
+        if STATE.get("bookfail"):
+            route.fulfill(status=401, content_type="application/json",
+                          body='{"error":"denied"}'); return
+        body = json.dumps({} if STATE.get("nobook") else BOOKINGS_NODE)
     elif "/bookings/" in u and "/prearrival" in u:
         k = u.split("/bookings/")[1].split("/")[0]
         body = json.dumps(PRE[k]) if k in PRE else "null"
@@ -776,13 +793,15 @@ with sync_playwright() as p:
     pg.close()
 
     # ── the action icon ─────────────────────────────────────────
-    # The amber count beside Spa in every other page's menu: suggestions
-    # waiting on the desk. Recomputed from /spa on each load, so it clears
-    # itself the moment the queue is empty and never needs unsetting.
-    def badge_on_pages():
+    # The amber count beside Spa in every other page's menu: what THIS
+    # login still owes, not every open item. Recomputed from /spa and
+    # /bookings on each load, so it clears itself the moment the work is
+    # done - there is deliberately no way to dismiss it by hand, because a
+    # badge cleared by hand says "done" when it means "seen".
+    def badge_on_pages(email="staff@x"):
         q = b.new_page(viewport={"width": 390, "height": 900})
         q.add_init_script(SDK)
-        q.add_init_script("window.__EMAIL=%s;" % json.dumps("staff@x"))
+        q.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
         q.route("**firebasedatabase.app/**", fb)
         q.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         q.goto("http://localhost:8980/pages.html")
@@ -794,17 +813,105 @@ with sync_playwright() as p:
           return b2 ? b2.textContent : null;}""")
         q.close()
         return v
-    # One suggestion to put to the guest, one decline the guest has not
-    # heard about: two things wait on the desk.
-    ck("the Spa entry counts both queues that wait on the desk",
-       badge_on_pages() == "2")
+    # Four guests have asked and heard nothing back - Sofia today, Kai on
+    # his own day, Anna easy about the day, Nadia a month out. The desk owes
+    # those four as well, because reception fields the guest's next question
+    # about them, plus its own two queues: Elena's suggested time to put to
+    # her, and James's decline he has not been told about.
+    ck("the desk is counted every open item it owes, asks included",
+       badge_on_pages() == "6")
     SPA = {k: v for k, v in spa_seed().items() if k != "b12"}
-    ck("a told decline stops counting",
-       badge_on_pages() == "1")
+    ck("a suggestion settled leaves the desk's count",
+       badge_on_pages() == "5")
     SPA["b7"]["t1"]["told"] = "2026-08-25T10:00:00Z"
-    ck("and no icon at all once nothing waits, rather than a zero",
+    ck("a told decline stops counting",
+       badge_on_pages() == "4")
+    # Nothing outstanding anywhere: no icon at all, rather than a zero.
+    STATE["nobook"] = True
+    ck("no icon once the desk owes nothing",
        badge_on_pages() is None)
+    STATE["nobook"] = False
+    # A refused read is not an empty node. Counting the half that answered
+    # would show a smaller number than the truth, which reads as "less to
+    # do" - the Clean Slate mistake wearing a badge. Both nodes or neither.
+    STATE["bookfail"] = True
+    ck("a refused bookings read shows no badge, not an undercount",
+       badge_on_pages() is None)
+    STATE["bookfail"] = False
     SPA = spa_seed()
+
+    # ── which count each login is given ───────────────────
+    # The masseuse holds one screen and nothing else, so she is always ON
+    # the Spa board, and the menu never links to the page you are standing
+    # on: she cannot see this badge at all. It is the desk's instrument,
+    # and her own channel is the push notification.
+    #
+    # The split is asserted here rather than assumed. If she is ever given
+    # a second screen, the day it happens is the wrong day to find out she
+    # was being shown reception's queue - and reception must never be
+    # handed her unanswered asks as though the answering were theirs.
+    pg = board()
+    def counted_as(role):
+        return pg.evaluate("""(r)=>new Promise(function(res){
+             var t=setTimeout(function(){res('never called');},4000);
+             NAV_ACTIONS[0].count(r,function(n){clearTimeout(t);res(n);});
+           })""", role)
+    ck("the spa role is given the asks nobody has answered",
+       counted_as("spa") == 4)
+    ck("the desk is given its own queues and those asks",
+       counted_as("admin") == 6)
+    ck("every other login holding spaBoard is the desk",
+       counted_as("waiter") == 6 and counted_as("manager") == 6)
+    pg.close()
+
+    # ── the rule itself, asked directly ────────────────────
+    # The board and the badge both call this. Put to it one state at a
+    # time, so a failure names the state rather than a number being wrong
+    # by one and leaving somebody to work out which guest it was.
+    pg = board()
+    def owed(spa, book, d=None):
+        return pg.evaluate("([s,b,x])=>spaOwedCounts(s,b,x)",
+                           [spa, book, d or today])
+    def ask(**kw):
+        p = {"wellness": True, "wellDay": today}; p.update(kw)
+        return {"bX": {"prearrival": p,
+                       "pms": {"depart": plus(3), "state": "confirmed"}}}
+    ck("a guest's unanswered ask is owed by both of them",
+       owed({}, ask()) == {"spa": 1, "desk": 1})
+    ck("Any day is owed the same, having no day to fall off",
+       owed({}, ask(wellDay="any")) == {"spa": 1, "desk": 1})
+    ck("an ask for a day gone by is owed by nobody",
+       owed({}, ask(wellDay=plus(-2))) == {"spa": 0, "desk": 0})
+    ck("an Any day ask stops once the guest has gone home",
+       owed({}, {"bX": {"prearrival": {"wellness": True, "wellDay": "any"},
+                        "pms": {"depart": plus(-1), "state": "confirmed"}}})
+       == {"spa": 0, "desk": 0})
+    ck("a cancelled booking's ask is owed by nobody",
+       owed({}, {"bX": {"prearrival": {"wellness": True, "wellDay": today},
+                        "pms": {"depart": plus(3), "state": "cancelled"}}})
+       == {"spa": 0, "desk": 0})
+    ck("an ask she has answered leaves her count entirely",
+       owed({"bX": {"t1": {"status": "booked", "day": today,
+                           "source": "prearrival"}}}, ask())
+       == {"spa": 0, "desk": 0})
+    ck("a suggested time is the desk's alone, never hers again",
+       owed({"bX": {"t1": {"status": "suggested", "day": today,
+                           "source": "prearrival"}}}, ask())
+       == {"spa": 0, "desk": 1})
+    ck("a decline the guest has not heard is the desk's alone",
+       owed({"bX": {"t1": {"status": "declined", "reqDay": today,
+                           "source": "prearrival"}}}, ask())
+       == {"spa": 0, "desk": 1})
+    ck("and once the guest is told it is owed by nobody",
+       owed({"bX": {"t1": {"status": "declined", "reqDay": today,
+                           "told": "2026-09-07T10:00:00Z",
+                           "source": "prearrival"}}}, ask())
+       == {"spa": 0, "desk": 0})
+    ck("a guest who said no thank you is nobody's work",
+       owed({}, {"bX": {"prearrival": {"wellness": False},
+                        "pms": {"depart": plus(3)}}})
+       == {"spa": 0, "desk": 0})
+    pg.close()
 
     # ── a write refused is said, not swallowed ──────────────────
     pg = board()

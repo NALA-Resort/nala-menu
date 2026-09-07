@@ -2145,6 +2145,97 @@ var SPA_ANY_DAY = 'any';
 var SPA_ANY_DAY_LABEL = 'Any day';
 function isAnyDay(v){ return String(v == null ? '' : v) === SPA_ANY_DAY; }
 
+/*  who still owes an action on a spa item
+    ------------------------------------------------------------------
+    The board and the hamburger badge must agree about this, so it is
+    decided here once and read in both places rather than written twice.
+
+    Two people can owe the same item. A guest's request needs the masseuse
+    to answer it AND the desk to know it was asked, the owner's ruling of
+    7 Sep: reception fields the guest's next question about it, and cannot
+    do that from a board they have no reason to open. Once she answers, the
+    item leaves her count and stays on the desk's until the guest is told.
+
+      requested   the guest asked, unanswered      masseuse and desk
+      suggested   a different time offered         desk, to put to the guest
+      declined    and the guest not yet told       desk, to tell the guest
+      booked, or a told decline                    nobody
+
+    Nothing here can be dismissed by hand. A cleared badge would mean "I
+    have seen this" while reading as "this is done", and it is the guest
+    who pays the difference when the two drift apart: the work clears it
+    or it stays. The owner asked for a clear button on 7 Sep and agreed
+    to this instead.
+
+    A day that has passed stops counting, because nobody can act on last
+    Tuesday. An Any day request has no day to age out and keeps asking
+    until it is answered - which is the point of it.                    */
+
+/*  An ask is spoken for once answering it has written a real record.
+    That is the source stamp, not the status: a decline is an answer. */
+function spaAskSpokenFor(recs){
+  var r = recs || {};
+  return Object.keys(r).some(function(tid){
+    return (r[tid] || {}).source === 'prearrival';
+  });
+}
+
+/*  The day an item is chasing. A suggestion chases the day offered; an
+    ask or a decline chases the day requested. Any day has none.        */
+function spaItemDay(rec){
+  if (!rec || rec.reqAny) return '';
+  return rec.status === 'suggested' ? (rec.day || '')
+                                    : (rec.reqDay || rec.day || '');
+}
+
+function spaOwedBy(rec, today){
+  var owed = { spa: false, desk: false };
+  if (!rec || !rec.status) return owed;
+  var d = spaItemDay(rec);
+  if (d && today && d < today) return owed;
+  if (rec.status === 'requested'){ owed.spa = true; owed.desk = true; }
+  else if (rec.status === 'suggested') owed.desk = true;
+  else if (rec.status === 'declined' && !rec.told) owed.desk = true;
+  return owed;
+}
+
+/*  Both counts from the two nodes they live in. The unanswered asks are
+    not in /spa at all - they are still only a line on a pre-arrival form
+    - so the bookings node is read as well, which is why this takes both.
+
+    A cancelled booking is not a request anybody can act on, and neither
+    is one whose guest has already left: an Any day ask would otherwise
+    sit in the masseuse's badge for good, a fortnight after the villa was
+    turned over.                                                        */
+function spaOwedCounts(spa, bookings, today){
+  var out = { spa: 0, desk: 0 };
+  spa = spa || {}; bookings = bookings || {};
+  function add(rec){
+    var o = spaOwedBy(rec, today);
+    if (o.spa) out.spa++;
+    if (o.desk) out.desk++;
+  }
+  Object.keys(spa).forEach(function(id){
+    var byId = spa[id] || {};
+    Object.keys(byId).forEach(function(tid){
+      var r = byId[tid];
+      if (r && typeof r === 'object' && r.status) add(r);
+    });
+  });
+  Object.keys(bookings).forEach(function(id){
+    var b = bookings[id] || {}, p = b.prearrival, pms = b.pms || {};
+    if (!p || typeof p !== 'object' || p.wellness !== true) return;
+    if (String(pms.state || '').toLowerCase() === 'cancelled') return;
+    var dep = String(pms.depart || '').slice(0, 10);
+    if (dep && today && dep < today) return;
+    if (spaAskSpokenFor(spa[id])) return;
+    var any = isAnyDay(p.wellDay);
+    add({ status: 'requested', reqAny: any,
+          reqDay: any ? '' : (p.wellDay || '') });
+  });
+  return out;
+}
+
 /* The way back from what a guest or the desk stored: the label itself, a
    24 hour HH:MM, or a bare H:MM that only fits the afternoon (a guest
    writing 2:00 means 2pm; one writing 10:00 already matches the morning).
@@ -2182,29 +2273,36 @@ function spaSlotFromText(s){
    other database read, and a failed count is no badge rather than an
    error: the menu must never break because a queue could not be asked. */
 var NAV_ACTIONS = [
-  { href: 'spa.html', need: 'spaBoard', count: function(cb){
+  { href: 'spa.html', need: 'spaBoard', count: function(role, cb){
       if (typeof DB === 'undefined') return;
-      fetch(DB + '/spa.json?v=' + Date.now())
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .then(function(spa){
-          /* Two queues wait on the desk: suggestions to put to the guest,
-             and declines the guest has not yet been told about - a told
-             decline carries its stamp and stops counting, 25 Aug. A stale
-             record whose day has passed stops chasing too: nobody can act
-             on last Tuesday. */
-          var today = dkey(new Date()), n = 0;
-          Object.keys(spa || {}).forEach(function(id){
-            Object.keys(spa[id] || {}).forEach(function(tid){
-              var r2 = spa[id][tid] || {};
-              var d = r2.status === 'suggested' ? r2.day
-                                                : (r2.reqDay || r2.day);
-              if (d && d < today) return;
-              if (r2.status === 'suggested') n++;
-              else if (r2.status === 'declined' && !r2.told) n++;
-            });
+      /* The badge shows what THIS login still owes, not every open item.
+         The masseuse seeing the desk's two queues, or the desk seeing hers,
+         is a badge that says "you have something to do" to somebody who
+         does not - and a badge that cries wolf is one nobody reads.
+
+         Who is who: the spa role is the masseuse, and every other login
+         holding spaBoard is the desk. spaOwedCounts decides the rest.
+
+         In practice the masseuse holds one screen and is always standing
+         on it, so this badge is the desk's instrument - her own channel is
+         the push notification. The split is wired and tested all the same:
+         the day she is given a second screen is the wrong day to discover
+         she has been shown reception's queue all along.
+
+         Both nodes or neither. A half read would quietly undercount, and
+         a badge that is wrong in the safe-looking direction is worse than
+         no badge: it says done when the answer is unknown. */
+      function node(path){
+        return fetch(DB + path + '.json?v=' + Date.now())
+          .then(function(r){
+            if (!r.ok) throw new Error(path + ' HTTP ' + r.status);
+            return r.json();
           });
-          cb(n);
-        }).catch(function(){});
+      }
+      Promise.all([node('/spa'), node('/bookings')]).then(function(res){
+        var c = spaOwedCounts(res[0], res[1], dkey(new Date()));
+        cb(role === 'spa' ? c.spa : c.desk);
+      }).catch(function(){});
   } }
 ];
 var NAV_BADGED = {};       /* one count per entry per page load */
@@ -2221,7 +2319,7 @@ function navActionBadges(role){
     }
     if (!link) return;               /* the entry's own page omits its link */
     NAV_BADGED[a.href] = true;
-    a.count(function(n){
+    a.count(role, function(n){
       if (!n) return;
       if (link.className.indexOf('hasact') < 0) link.className += ' hasact';
       var b = document.createElement('span');
