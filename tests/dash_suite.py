@@ -170,6 +170,20 @@ with sync_playwright() as p:
     ck("the date row shows the day, so the board says which day it is",
        pg.evaluate("()=>document.getElementById('title').textContent.trim()") != "")
 
+    # The menu is filled by buildNav in nala-shared.js, but opened by three
+    # lines every page carries its own copy of. This page shipped without
+    # them, so the hamburger drew and did nothing.
+    ck("the menu is built, with links in it",
+       pg.evaluate("()=>document.querySelectorAll('#navDrop a').length") > 3)
+    pg.click("#navBtn")
+    pg.wait_for_timeout(150)
+    ck("and the hamburger opens it",
+       pg.evaluate("()=>document.getElementById('navDrop').classList.contains('open')"))
+    pg.click("#board")
+    pg.wait_for_timeout(150)
+    ck("and a tap anywhere else shuts it again",
+       not pg.evaluate("()=>document.getElementById('navDrop').classList.contains('open')"))
+
     # ── who is an arrival ───────────────────────────────────────
     forms = card(pg, "forms")
     villas = [c.split(":")[0] for c in forms["chips"]]
