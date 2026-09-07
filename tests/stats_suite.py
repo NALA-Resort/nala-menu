@@ -36,13 +36,16 @@ def dkey(n):
 def weekday(n):
     return (now - datetime.timedelta(days=n)).strftime("%A")
 
-def sdk(email="staff@x"):
+def sdk(email="staff@x", delay=20):
+    # delay is when the login token lands, in ms - the auth wrapper only
+    # attaches it to reads made after that, which is the race the
+    # already-eaten section has to survive.
     return """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
 auth:function(){ if(!window.firebase.__i) throw new Error("no app"); return window.__A;}};
 window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:'%s',
-getIdToken:function(){return Promise.resolve('T');}});},20);},
-onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'%s'});},25);},
-signOut:function(){}};""" % (email, email)
+getIdToken:function(){return Promise.resolve('T');}});},%d);},
+onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'%s'});},%d);},
+signOut:function(){}};""" % (email, delay, email, delay + 5)
 SDK = sdk()
 
 STAFF = {"staff@x": {"name": "Admin", "role": "admin"},
@@ -57,6 +60,13 @@ def fb(route, request):
     m = re.search(r"/stays/(\d{4}-\d{2}-\d{2})", u)
     if m:
         d = m.group(1)
+        # The live rules refuse /stays to a read with no token. auth.js
+        # attaches one to every fetch once the login lands, so a request
+        # without it is a request that raced the login.
+        if STATE.get("needauth") and "auth=" not in u:
+            route.fulfill(status=401, content_type="application/json",
+                          body='{"error":"Permission denied"}')
+            return
         if STATE.get("failstays") == d:
             route.fulfill(status=401, content_type="application/json",
                           body='{"error":"Permission denied"}')
@@ -380,6 +390,25 @@ with sync_playwright() as p:
        bool(steak) and steak["w"] == "?"
        and "could not be read" in pg.inner_text("#eatList"))
     STATE["failstays"] = None
+    pg.close()
+
+    # ── a slow login must not read as an empty resort ─────────
+    # The rules refuse /stays without a token, and the token lands a beat
+    # after the page loads. auth.js queues every database fetch until
+    # sign-in settles and fires them with the token attached - this pins
+    # that contract from this page's side, with the token held back 1.5s
+    # and the stub refusing any naked /stays read.
+    STATE["needauth"] = True
+    pg = b.new_page(viewport={"width": 390, "height": 900})
+    pg.add_init_script(sdk(delay=1500))
+    pg.route("**firebasedatabase.app/**", fb)
+    pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    pg.goto("http://localhost:8972/stats.html")
+    pg.wait_for_timeout(3800)
+    steak = eatrow(pg, "Char-grilled steak")
+    ck("a login that lands late still gets the rows, never question marks",
+       bool(steak) and steak["w"] == "1 · 2")
+    STATE["needauth"] = False
     pg.close()
 
     # ── the tabs, 7 Sep: one job a screen ─────────────────────

@@ -262,6 +262,10 @@ function escText(v){
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+/* The /stays reads cannot race the login: auth.js queues every database
+   fetch until sign-in settles and then fires them with the token attached.
+   The suite pins that contract with a delayed token, because these are the
+   first reads on this page that the rules refuse without one. */
 function initEaten(dinnerAll, respAll, menus){
   var WIN_MAX = 7;
   var todayK = daysAgo(0);
