@@ -1,0 +1,195 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mock · Dining history</title>
+<style>
+/* Static mock, no data and no login - the shape of the dining history for
+   the owner to rule on before it is built. Three screens: the villa sheet
+   gaining the button, the history view itself, and a sketch of the
+   Statistics extension raised alongside it. Tokens copied from nala-ui2.css
+   so the colours shown are the colours the law would actually give it. */
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--cream:#F9F7F4;--ink:#1B1B19;--mid:#5F5F58;--rule:#E6E6E1;--red:#A8321E;
+ --green:#5E7D67;--green-t:rgba(122,160,130,.26);--green-b:rgba(122,160,130,.65);
+ --terra:#9E6455;--terra-t:rgba(184,106,90,.16);--terra-b:rgba(184,106,90,.45);
+ --slate:#57575E;
+ --t1:12px;--t2:14px;--t3:16px;--r:8px;
+ --ui:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+body{background:var(--cream);color:var(--ink);font-family:var(--ui);
+ max-width:430px;margin:0 auto;padding:14px 0 40px}
+
+.mockcut{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#fff;
+ background:var(--mid);border-radius:4px;padding:5px 10px;margin:34px 12px 16px;text-align:center}
+.mocknote{font-size:11px;font-style:italic;color:var(--mid);line-height:1.5;
+ margin:8px 16px 0;text-align:center}
+
+/* ── the sheet, dressed as tally.html dresses it ── */
+.sheet{background:var(--cream);border-top:1px solid var(--rule);
+ padding:26px 24px 28px;box-shadow:0 -8px 28px rgba(28,28,26,.10)}
+.sheet h3{font-size:var(--t2);color:var(--mid);font-weight:normal;
+ text-align:center;margin:0 44px 12px}
+.gd{text-align:center;margin:-4px 44px 12px;font-size:var(--t2);line-height:1.5}
+.gd-name{border-bottom:1px dotted var(--mid);padding:0 1px}
+.note-box{font-style:italic;font-size:var(--t2);color:var(--mid);text-align:center;
+ line-height:1.6;padding:0 4px 16px}
+.sheet-label{font-size:var(--t1);color:var(--mid);text-align:center;margin-bottom:8px}
+.pax-row{display:flex;gap:6px;justify-content:center;margin:4px 0 16px}
+.pax{width:42px;height:42px;border:1px solid var(--rule);background:transparent;
+ border-radius:50%;font-size:var(--t2);color:var(--ink);
+ display:flex;align-items:center;justify-content:center}
+.pax.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.opt{display:block;width:100%;padding:15px;margin-bottom:8px;border:1px solid transparent;
+ border-radius:var(--r);font-size:var(--t2);color:#fff;text-align:center}
+.opt.solid{background:var(--ink);border-color:var(--ink)}
+.opt.out{background:var(--terra);border-color:var(--terra)}
+.opt.quiet{background:transparent;border-color:var(--rule);color:var(--mid)}
+
+/* ── the history view ── */
+.hist-sum{text-align:center;font-size:var(--t2);color:var(--mid);margin:0 0 6px}
+.hist-row{display:flex;gap:10px;padding:10px 0;text-align:left;
+ border-bottom:1px solid var(--rule)}
+.hist-row:last-child{border-bottom:0}
+.hist-d{flex:0 0 96px;font-size:var(--t1);color:var(--mid);padding-top:2px}
+.hist-main{flex:1 1 auto;min-width:0}
+.hist-st{font-size:var(--t2)}
+.hist-st.in{color:var(--green)}
+.hist-st.out{color:var(--terra)}
+.hist-st.quiet{color:var(--mid);font-style:italic}
+.hist-dish{font-size:var(--t2);margin-top:3px}
+.hist-dish.quiet{color:var(--mid);font-style:italic}
+.hist-body{margin-bottom:14px}
+
+/* ── the statistics sketch ── */
+.stats{padding:10px 24px 6px}
+.wordmark{font-size:var(--t1);color:var(--mid);text-align:center}
+.title{text-align:center;font-size:var(--t2);font-weight:bold;margin-top:6px}
+.sec{font-size:var(--t1);color:var(--mid);margin:24px 0 10px;
+ display:flex;justify-content:space-between;align-items:center}
+.chips{display:flex;gap:6px}
+.chip{font-size:var(--t1);padding:5px 11px;border:1px solid var(--rule);
+ border-radius:999px;color:var(--mid);background:transparent}
+.chip.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.g-row{padding:10px 0;border-bottom:1px solid var(--rule)}
+.g-name{font-size:var(--t3)}
+.g-name .rm{font-weight:bold}
+.g-name .rm::after{content:' - ';font-weight:normal;color:var(--mid)}
+.g-tonight{font-size:var(--t1);margin-left:8px}
+.g-tonight.in{color:var(--green)}
+.g-tonight.quiet{color:var(--mid);font-style:italic}
+.g-meals{font-size:var(--t2);color:var(--ink);margin-top:5px;line-height:1.7}
+.g-meals .d{color:var(--mid);font-size:var(--t1)}
+.g-meals .none{color:var(--mid);font-style:italic}
+.g-meals .skip{color:var(--terra)}
+</style></head><body>
+
+<div class="mockcut" id="s1">1 · The villa sheet gains one quiet button</div>
+<div class="section">
+<div class="sheet">
+  <h3>Villa 9</h3>
+  <div class="gd"><span class="gd-name">Priya Sharma · 0400 123 456</span></div>
+  <div class="note-box">Confirmed by the guest - Priya Sharma.</div>
+  <div class="sheet-label">Guests</div>
+  <div class="pax-row">
+    <span class="pax">1</span><span class="pax on">2</span><span class="pax">3</span>
+    <span class="pax">4</span><span class="pax">5</span><span class="pax">6</span>
+  </div>
+  <span class="opt solid">Update guests</span>
+  <span class="opt quiet">Edit details</span>
+  <span class="opt out">Cancel booking</span>
+  <span class="opt quiet" style="border-color:var(--ink);color:var(--ink)">Dining history</span>
+  <span class="opt quiet">Close</span>
+</div>
+<div class="mocknote">Quiet dress per the button law - it only reads. Sits
+before Close, which stays the last thing on every sheet. Offered only when the
+stay has nights behind it, and it survives the read-only dress, so the chef
+sees it too. It appears on every state of the sheet the same way.</div>
+</div>
+
+<div class="mockcut" id="s2">2 · The history: one row per past night of the stay</div>
+<div class="section">
+<div class="sheet">
+  <h3>Villa 9 · dining history</h3>
+  <div class="gd">Priya Sharma</div>
+  <div class="hist-body">
+    <div class="hist-sum">Dined 3 of 5 nights so far</div>
+    <div class="hist-row"><div class="hist-d">Sat 6th Sep</div>
+      <div class="hist-main"><div class="hist-st in">Dined · 2 guests</div>
+      <div class="hist-dish">Char-grilled steak, red wine jus</div></div></div>
+    <div class="hist-row"><div class="hist-d">Fri 5th Sep</div>
+      <div class="hist-main"><div class="hist-st out">Did not dine</div>
+      <div class="hist-dish">Barramundi, lemon myrtle butter</div></div></div>
+    <div class="hist-row"><div class="hist-d">Thu 4th Sep</div>
+      <div class="hist-main"><div class="hist-st in">Dined · 3 guests · Villa 7</div>
+      <div class="hist-dish">Satay chicken</div></div></div>
+    <div class="hist-row"><div class="hist-d">Wed 3rd Sep</div>
+      <div class="hist-main"><div class="hist-st quiet">No answer recorded</div>
+      <div class="hist-dish">Slow-cooked lamb shoulder</div></div></div>
+    <div class="hist-row"><div class="hist-d">Tue 2nd Sep</div>
+      <div class="hist-main"><div class="hist-st in">Dined · 2 guests</div>
+      <div class="hist-dish quiet">Menu not recorded</div></div></div>
+  </div>
+  <span class="opt quiet">Back</span>
+</div>
+<div class="mocknote">Colours per the law: green ink for a night dined,
+terracotta for a declined one - a fact the guest gave us - quiet italic where
+nothing answered. Never red. The main is shown for every night, dined or not:
+"I did steak Thursday, was he in?" needs the dish either way. "· Villa 7"
+appears only when the booking sat in a different villa that night. Long stays
+cap at the last 14 nights and say so.</div>
+</div>
+
+<div class="mockcut" id="s3">3 · Sketch only - the Statistics extension you raised</div>
+<div class="section">
+<div class="stats">
+  <div class="wordmark">Nala</div>
+  <div class="title">Statistics</div>
+  <div class="sec"><span>Tonight's guests · what they've eaten</span>
+    <span class="chips"><span class="chip">3</span><span class="chip on">5</span>
+    <span class="chip">7</span><span class="chip" style="border:0">days</span></span>
+  </div>
+  <div class="g-row">
+    <div class="g-name"><span class="rm">9</span>Priya Sharma
+      <span class="g-tonight in">dining tonight</span></div>
+    <div class="g-meals">Steak <span class="d">Sat</span> ·
+      Satay chicken <span class="d">Thu</span> ·
+      <span class="skip">out Fri</span></div>
+  </div>
+  <div class="g-row">
+    <div class="g-name"><span class="rm">12</span>Tom & Alice Nguyen
+      <span class="g-tonight in">dining tonight</span></div>
+    <div class="g-meals"><span class="none">First night - nothing yet</span></div>
+  </div>
+  <div class="g-row">
+    <div class="g-name"><span class="rm">14</span>The Larsens
+      <span class="g-tonight quiet">awaiting</span></div>
+    <div class="g-meals">Barramundi <span class="d">Fri</span> ·
+      Lamb shoulder <span class="d">Wed</span></div>
+  </div>
+</div>
+<div class="mocknote">Only villas confirmed yes or still unanswered for
+tonight - a declined villa is not the chef's audience. Each line is the mains
+that guest's booking actually sat for, newest first, inside the chosen
+window. Not built - this screen exists to answer your "thoughts?" with a
+shape instead of a paragraph.</div>
+</div>
+
+<script>
+/* ?only=N renders one section for a clean screenshot; without it the whole
+   mock scrolls as one page. */
+(function(){
+  var p = new URLSearchParams(location.search);
+  /* ?w=390 pins the layout width - the headless renderer used for the
+     screenshots lays out at 500 CSS px whatever the window says. */
+  var w = p.get('w');
+  if (w && /^\d+$/.test(w)){
+    document.body.style.maxWidth = w + 'px';
+    document.body.style.margin = '0';
+  }
+  var q = p.get('only');
+  if (!q) return;
+  var cuts = document.querySelectorAll('.mockcut'),
+      secs = document.querySelectorAll('.section');
+  cuts.forEach(function(c,i){ if (String(i+1)!==q) c.style.display='none'; });
+  secs.forEach(function(s,i){ if (String(i+1)!==q) s.style.display='none'; });
+})();
+</script>
+</body></html>
