@@ -322,7 +322,17 @@ function items(t){
   var fpart = fUnits.filter(function(u){ return u.tone === 'amber'; }).length;
   var N = arriving.length;
 
-  var pubAt = DATA.menu && DATA.menu.published ? stampMins(DATA.menu.published) : null;
+  /* Published means published FOR THIS DAY, and filled in. fetchMenuAnywhere
+     returns the live /menu node without checking which day it belongs to -
+     only its menu.json fallback does - so an older menu's stamp read as
+     tonight's, and the card announced a publish time for a night nothing had
+     been published for. Both guards are Reservations' own, in menuCheck. */
+  var m = DATA.menu || {};
+  var filled = ['bread','entree','main','dessert'].every(function(k){
+    return m[k] && m[k].name && String(m[k].name).trim() !== '';
+  });
+  var fresh = m.published ? String(m.published).slice(0,10) === day : false;
+  var pubAt = (filled && fresh) ? stampMins(m.published) : null;
   var pub = pubAt != null;
 
   /* The earliest invitation stamped with this day. */

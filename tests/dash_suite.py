@@ -90,7 +90,19 @@ DINNER = {
 MANUAL = {"ext-a": {"status": "in", "pax": 4},
           "ext-b": {"status": "out", "pax": 2}}   # a cancelled outside table
 
-MENU = {"published": at(10, 6), "main": {"name": "Snapper"}}
+MENU = {"published": at(10, 6), "bread": {"name": "Sourdough"},
+        "entree": {"name": "Kingfish"}, "main": {"name": "Snapper"},
+        "dessert": {"name": "Pavlova"}}
+# The live /menu node holds whatever was published last, whatever night it
+# was for. Reading it without a date check is how a card announced a publish
+# time for a night nothing had been published for.
+STALE_MENU = {"published": plus(-1) + "T08:14:00+10:00",
+              "bread": {"name": "Old"}, "entree": {"name": "Old"},
+              "main": {"name": "Old"}, "dessert": {"name": "Old"}}
+HALF_MENU = {"published": at(8, 14), "bread": {"name": "Sourdough"},
+             "entree": {"name": ""}, "main": {"name": ""},
+             "dessert": {"name": ""}}
+MENU_NOW = {"m": MENU}
 # /invites/<date> is keyed by VILLA, not booking id. Villa 3 has been asked;
 # villa 7 answered on its pre-arrival form so was never owed one; villas 11
 # and 14 are still to ask.
@@ -134,7 +146,7 @@ def fb(route, request):
     elif "/manual/" in u: body = "null"
     elif "/invites/" + today in u: body = json.dumps(INVITES)
     elif "/invites/" in u: body = "null"
-    elif "/menu" in u: body = json.dumps(MENU)
+    elif "/menu" in u: body = json.dumps(MENU_NOW["m"])
     elif "/bookings/" in u and "/prearrival" in u:
         k = u.split("/bookings/")[1].split("/")[0]
         body = json.dumps(PRE[k]) if k in PRE else "null"
@@ -253,6 +265,19 @@ with sync_playwright() as p:
        menus["note"].startswith("13 menus on 8 pages"))
     ck("and the note says how many of those are still unanswered",
        menus["note"].endswith("3 not answered yet"))
+
+    # ── the menu, and only tonight's ────────────────────────────
+    MENU_NOW["m"] = STALE_MENU
+    st = board()
+    ck("last night's menu is not tonight's, however recently it was published",
+       card(st, "menu")["note"] == "not published yet")
+    st.close()
+    MENU_NOW["m"] = HALF_MENU
+    hf = board()
+    ck("and a menu with empty courses is not published either",
+       card(hf, "menu")["note"] == "not published yet")
+    hf.close()
+    MENU_NOW["m"] = MENU
 
     # ── the doors, by the app's own permission keys ─────────────
     ck("staff may walk through every door on the board",
