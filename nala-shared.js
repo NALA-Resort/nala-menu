@@ -1964,6 +1964,10 @@ function ensureNotifySettings(role){
    to be able to get out. tests/nav_canon.json is the suites' copy of this
    shape - change the menu there too, or the suites will name the drift.  */
 var NAV = [
+  /* First, because it is the page that says where the day is up to and hands
+     off to all the others. It needs only resBoard: every card's own door is
+     gated separately by the permission its page already answers to. */
+  { href:'dashboard.html',    label:'Dashboard',    need:'resBoard'     },
   { href:'front-desk.html',   label:'Front Desk',   need:'editBookings' },
   { href:'tally.html',        label:'Reservations', need:'resBoard'     },
   { href:'cleaners.html',     label:'Cleans',       need:'cleansBoard'  },

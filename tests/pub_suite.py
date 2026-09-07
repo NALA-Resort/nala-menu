@@ -934,7 +934,8 @@ with sync_playwright() as p:
        "staff.html" in seen["admin"] and "pages.html" in seen["admin"])
     #  Every link left standing has to open. A link that bounces you back is a
     #  door to nowhere, which is worse than no link.
-    NEEDS = {"tally.html":"resBoard", "front-desk.html":"editBookings",
+    NEEDS = {"dashboard.html":"resBoard",
+             "tally.html":"resBoard", "front-desk.html":"editBookings",
              "invitations.html":"editBookings",
              "arrivals-sms.html":"editBookings",
              "list.html":"resSheet", "publish.html":"publishMenu",
