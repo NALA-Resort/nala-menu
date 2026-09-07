@@ -567,6 +567,9 @@
           "manual": {
             ".validate": "newData.isString() && newData.val().length <= 40"
           },
+          "staffNote": {
+            ".validate": "newData.isString() && newData.val().length <= 500"
+          },
           "by": {
             ".validate": "newData.isString() && newData.val().length <= 120"
           },

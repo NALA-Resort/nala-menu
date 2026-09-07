@@ -72,6 +72,12 @@
                  border-radius:var(--r); padding:10px 12px; background:#fff;
                  font-family:var(--ui-font); margin-top:2px; color:var(--ink);
                  -webkit-appearance:none; appearance:none; }
+  /* The notes box, the same dress as the select above it. True white: an
+     editable surface, the colour law's one meaning for it. */
+  .card textarea { width:100%; font-size:var(--t3); border:1px solid var(--rule);
+                   border-radius:var(--r); padding:10px 12px; background:#fff;
+                   font-family:var(--ui-font); margin-top:2px; color:var(--ink);
+                   line-height:1.45; resize:vertical; }
   /* Three buttons can stand here and the labels carry a day and a time, so
      the row wraps rather than pushing the page sideways at 320. */
   .btns { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
@@ -703,6 +709,47 @@ function card(it){
                  saveAs(rec.status || 'requested'));
     if (rec.status === 'booked') btns.insertBefore(sb, btns.firstChild);
   }
+  /* The notes area, the owner's ask of 7 Sep: the accommodation booking's
+     staff note, translated to a treatment. Free text about this massage -
+     pressure, access, who was told what - on the record itself, so the desk
+     and the masseuse read the same line, and never a guest: /spa is
+     staff-only by rule. It rides every save, so answering an ask keeps it;
+     Save note writes it alone and quietly - a note is bookkeeping, nobody's
+     queue, so it must not buzz (the told stamp's precedent). Only a real
+     record holds one: an ask still virtual has nothing to pin it to. */
+  if (!isNew && !rec.virtual){
+    var subN = document.createElement('div'); subN.className = 'sub';
+    subN.textContent = 'Notes'; el.appendChild(subN);
+    var ta = document.createElement('textarea');
+    ta.rows = 2;
+    ta.placeholder = 'For staff and the masseuse. The guest cannot see this.';
+    ta.setAttribute('aria-label', 'Notes');
+    ta.value = (typeof SEL.notes === 'string') ? SEL.notes : (rec.staffNote || '');
+    el.appendChild(ta);
+    var nrow = document.createElement('div'); nrow.className = 'btns';
+    nrow.style.marginTop = '8px';
+    var nb = document.createElement('button');
+    nb.type = 'button'; nb.className = 'cbtn quiet'; nb.textContent = 'Save note';
+    nb.onclick = function(){
+      /* Day and time stay out of it, the Save changes rule: moving a
+         treatment goes through the buttons above, where the guest hears
+         about it - a stray chip tap must not ride out on a note. */
+      if (rec.day){ SEL.day = rec.day; SEL.time = rec.time; }
+      save(it, rec.status || 'requested', { quiet: true });
+    };
+    nrow.appendChild(nb);
+    el.appendChild(nrow);
+    var noteDiffers = function(){
+      return ta.value.trim() !== (rec.staffNote || '').trim();
+    };
+    nrow.style.display = noteDiffers() ? 'flex' : 'none';
+    /* Typing repaints nothing - a repaint takes the keyboard's focus, the
+       find-the-guest lesson - so the button reveals itself imperatively. */
+    ta.oninput = function(){
+      SEL.notes = ta.value;
+      nrow.style.display = noteDiffers() ? 'flex' : 'none';
+    };
+  }
   el.appendChild(btns);
   /* Its own row, under the primary: a nudge is not an answer, so it never
      competes with the buttons that move the record. */
@@ -763,6 +810,13 @@ function save(it, status, opts){
     body.manual = rec.manual || new Date().toISOString();
   if (status === 'declined' && (opts.told || rec.told))
     body.told = rec.told || new Date().toISOString();
+  /* The staff note survives whatever happens to the record: a PUT that
+     dropped it would eat the note on every answer. An emptied box saves
+     as nothing, which is the way back. staffNote, not note - note is the
+     decline's reason and the two must never blur. */
+  var nv = (SEL && typeof SEL.notes === 'string') ? SEL.notes.trim()
+                                                  : (rec.staffNote || '');
+  if (nv) body.staffNote = nv;
   var err = document.getElementById('errBar');
   /* The card is redrawn out of existence by load() below, so the answer has
      to be seen before that happens rather than after: the write says Saving,
@@ -793,8 +847,9 @@ function save(it, status, opts){
            : status === 'booked'    ? 'spaBooked'
            : (rec.status !== 'declined') ? 'spaCancelled'
            : null;
-    if (ev) notifyPush(ev, villaOf(id, (SEL && SEL.day) || dayOf(rec) || todayKey()),
-                       window.NALA_USER);
+    if (ev && !opts.quiet)
+      notifyPush(ev, villaOf(id, (SEL && SEL.day) || dayOf(rec) || todayKey()),
+                 window.NALA_USER);
   });
   }, {
     done:'Saved ✓', hold:400,
