@@ -1367,9 +1367,13 @@ with sync_playwright() as p:
     # a board open. It used to be announced from inside the Reservations board
     # only, so on a quiet afternoon the chef published and nobody was told.
     # It now lives in nala-shared.js and any signed in page announces it.
+    # Pinned to the function, not the node name, since 7 Sep: the dining
+    # history made tally.html a READER of /menuhistory again, and a reader
+    # is not the regression this guards. The regression is the board
+    # growing its own copy of the announcement.
     ck("the announcement lives in the shared file, not in one board",
        "function announceMenu" in open("/home/claude/nala/nala-shared.js").read()
-       and "menuhistory" not in open("/home/claude/nala/tally.html").read())
+       and "function announceMenu" not in open("/home/claude/nala/tally.html").read())
     ck("it runs itself once a page is signed in",
        pg.evaluate("()=>typeof announceMenu==='function'"))
     # The guest pages load the same file. The token is what keeps them out,
