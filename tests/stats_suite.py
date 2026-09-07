@@ -96,13 +96,22 @@ from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b = p.chromium.launch()
 
-    def open_stats(w=390, email="staff@x"):
+    def open_stats(w=390, email="staff@x", tab="stats"):
+        """The page opens on the planning tab, so the aggregate assertions
+        below click across to Statistics first. Pass tab="eaten" to stay
+        on the landing view."""
         pg = b.new_page(viewport={"width": w, "height": 900})
         pg.add_init_script(sdk(email))
         pg.route("**firebasedatabase.app/**", fb)
         pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         pg.goto("http://localhost:8972/stats.html")
         pg.wait_for_timeout(1100)
+        if tab != "eaten":
+            pg.evaluate(
+                "t=>{const s=document.getElementById('viewSeg');"
+                "if(!s)return;const b=[...s.querySelectorAll('button')]"
+                ".find(x=>x.getAttribute('data-v')===t);if(b)b.click();}", tab)
+            pg.wait_for_timeout(150)
         return pg
 
     def rows(pg, section):
@@ -329,7 +338,7 @@ with sync_playwright() as p:
         dkey(3): {"1": {"id": "b1"}},
         dkey(6): {"1": {"id": "b1"}},
     }
-    pg = open_stats()
+    pg = open_stats(tab="eaten")
 
     def eatrows(q):
         return q.evaluate(
@@ -365,13 +374,37 @@ with sync_playwright() as p:
     # A failed read is not an empty one, in this section too: a /stays
     # night that cannot be read answers ? rather than promising a 0.
     STATE["failstays"] = dkey(1)
-    pg = open_stats()
+    pg = open_stats(tab="eaten")
     steak = eatrow(pg, "Char-grilled steak")
     ck("an unreadable night answers ?, never 0",
        bool(steak) and steak["w"] == "?"
        and "could not be read" in pg.inner_text("#eatList"))
     STATE["failstays"] = None
     pg.close()
+
+    # ── the tabs, 7 Sep: one job a screen ─────────────────────
+    # The already-eaten list made the page one long scroll, so it paginates:
+    # the planning view lands first (it already sat on top), Statistics is
+    # one tap across, and neither leaks into the other's screen.
+    def visible(q, id_):
+        return q.evaluate(
+            "id=>{const e=document.getElementById(id);"
+            "return !!e && e.getBoundingClientRect().height>0;}", id_)
+    pg = open_stats(tab="eaten")
+    ck("the page opens on Already eaten",
+       visible(pg, "eatList") and not visible(pg, "hCovers"))
+    ck("no sideways scroll on the landing tab", not pg.evaluate(
+        "()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
+    pg.evaluate("()=>[...viewSeg.querySelectorAll('button')]"
+                ".find(b=>b.getAttribute('data-v')==='stats').click()")
+    pg.wait_for_timeout(120)
+    ck("the Statistics tab swaps the whole view",
+       visible(pg, "hCovers") and not visible(pg, "eatList"))
+    pg.close()
+    q = open_stats(w=320, tab="eaten")
+    ck("and the landing tab holds at 320", not q.evaluate(
+        "()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
+    q.close()
     STATE["stays"] = {}
 
     b.close()

@@ -44,6 +44,7 @@
           border-radius:var(--pill); font-family:var(--ui-font); font-size:var(--t1);
           color:var(--mid); cursor:pointer; }
   .seg { display:flex; gap:6px; margin:2px 0 4px; }
+  #viewSeg { margin:16px 0 18px; }
   .seg button { flex:1; padding:11px 0; border:1px solid var(--rule);
                 background:transparent; font-family:var(--ui-font);
                 font-size:var(--t2); color:var(--mid); cursor:pointer;
@@ -89,41 +90,54 @@
 <div class="wrap">
   <div class="wordmark">Nala</div>
   <div class="title">Statistics</div>
-  <div class="range" id="range">Loading…</div>
 
-  <div class="headline">
-    <div class="big" id="hCovers">–</div>
-    <div class="cap">Average covers a night</div>
+  <!-- Two tabs, 7 Sep: the already-eaten list made the page one long
+       scroll, so each job gets a screen of its own. The planning tab
+       leads because the new section already sat on top. -->
+  <div class="seg" id="viewSeg">
+    <button data-v="eaten" class="on">Already eaten</button>
+    <button data-v="stats">Statistics</button>
   </div>
 
-  <!-- The question this page provokes: these are the aggregates, and the
-       next thing anyone asks is what was actually on the menu that night. -->
-  <div class="seemenus"><a href="past-menus.html">See the menu for any night &#8250;</a></div>
-
-  <div class="eat-lede" id="eatLede"></div>
-  <div class="sec eat" id="eatSec" style="display:none"><span>Already eaten by tonight's guests</span>
-    <span class="chips" id="eatWin">
-      <button class="chip" data-w="3">3</button>
-      <button class="chip on" data-w="5">5</button>
-      <button class="chip" data-w="7">7</button>
-      <span>days</span>
-    </span>
+  <div id="tabEaten">
+    <div class="eat-lede" id="eatLede"></div>
+    <div class="sec eat" id="eatSec" style="display:none"><span>Already eaten by tonight's guests</span>
+      <span class="chips" id="eatWin">
+        <button class="chip" data-w="3">3</button>
+        <button class="chip on" data-w="5">5</button>
+        <button class="chip" data-w="7">7</button>
+        <span>days</span>
+      </span>
+    </div>
+    <div class="seg" id="eatSeg" style="display:none">
+      <button data-c="entree">Entrée</button>
+      <button data-c="main" class="on">Main</button>
+      <button data-c="dessert">Dessert</button>
+    </div>
+    <div id="eatList"></div>
   </div>
-  <div class="seg" id="eatSeg" style="display:none">
-    <button data-c="entree">Entrée</button>
-    <button data-c="main" class="on">Main</button>
-    <button data-c="dessert">Dessert</button>
+
+  <div id="tabStats" hidden>
+    <div class="range" id="range">Loading…</div>
+
+    <div class="headline">
+      <div class="big" id="hCovers">–</div>
+      <div class="cap">Average covers a night</div>
+    </div>
+
+    <!-- The question this page provokes: these are the aggregates, and the
+         next thing anyone asks is what was actually on the menu that night. -->
+    <div class="seemenus"><a href="past-menus.html">See the menu for any night &#8250;</a></div>
+
+    <div class="sec">Take-up by main course</div>
+    <div id="byProtein"></div>
+
+    <div class="sec">Busiest nights</div>
+    <div id="byDay"></div>
+
+    <div class="sec">Dietary requirements</div>
+    <div id="byDiet"></div>
   </div>
-  <div id="eatList"></div>
-
-  <div class="sec">Take-up by main course</div>
-  <div id="byProtein"></div>
-
-  <div class="sec">Busiest nights</div>
-  <div id="byDay"></div>
-
-  <div class="sec">Dietary requirements</div>
-  <div id="byDiet"></div>
 
   <div class="actions">
     <a class="btn" href="tally.html">Back</a>
@@ -158,6 +172,22 @@
 
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var LOOKBACK = 120;   // days
+
+/* The two tabs. Plain visibility, no state kept: the page always opens on
+   the planning tab, which is where the section it paginates already sat. */
+(function wireTabs(){
+  var seg = document.getElementById('viewSeg');
+  seg.querySelectorAll('button').forEach(function(b){
+    b.onclick = function(){
+      seg.querySelectorAll('button').forEach(function(x){
+        x.classList.toggle('on', x === b);
+      });
+      var v = b.getAttribute('data-v');
+      document.getElementById('tabEaten').hidden = v !== 'eaten';
+      document.getElementById('tabStats').hidden = v !== 'stats';
+    };
+  });
+})();
 
 function dkey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function daysAgo(n){ var d = new Date(); d.setDate(d.getDate()-n); return dkey(d); }
@@ -382,6 +412,11 @@ Promise.all([readNode('/dinner'), readNode('/responses'), readNode('/menuhistory
       '. Nothing here is a count of zero: these numbers could not be read at ' +
       'all. Sign in as staff, and if that does not fix it paste the current ' +
       'rules.json into the Firebase console and press Publish.</div>';
+    /* The planning tab is the landing view, so it owns up too rather than
+       sitting empty as though nothing was ever served. */
+    document.getElementById('eatList').innerHTML =
+      '<div class="note">The history could not be read - see the ' +
+      'Statistics tab for what was refused.</div>';
     return;
   }
 
