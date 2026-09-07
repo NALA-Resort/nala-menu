@@ -93,8 +93,10 @@ body { padding:28px 0 40px; display:block; }
 .vdish { flex:1; font-family:var(--ui-font); font-size:var(--t2); color:var(--ink); }
 .vdish .d { color:var(--mid); font-size:var(--t1); }
 .vwho { font-family:var(--ui-font); font-size:var(--t2); color:var(--ink);
- font-weight:bold; white-space:nowrap; }
+ font-weight:bold; text-align:right; max-width:58%; line-height:1.6; }
 .vwho.none { color:var(--mid); font-weight:normal; }
+.vlede { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
+ font-style:italic; text-align:center; margin:10px 0 0; }
 </style>
 </head>
 <body class="tier-app ui2">
@@ -145,6 +147,7 @@ body { padding:28px 0 40px; display:block; }
 <div class="stats-pad">
   <div class="wordmark">Nala</div>
   <div class="title">Statistics</div>
+  <div class="vlede">14 villas in tonight, confirmed or unanswered</div>
   <div class="sec"><span>Already eaten by tonight's guests</span>
     <span class="chips"><button class="chip" data-w="3">3</button>
     <button class="chip on" data-w="5">5</button>
@@ -171,24 +174,27 @@ switch sets how far back the look goes.</div>
 /* The mock's own tiny brain: enough to feel the course switch, no data
    behind it. The right side holds the villa numbers of tonight's guests
    who ate the dish, and nothing when nobody did. */
+/* A busy week on purpose: 14 villas in tonight, and last night's sitting
+   was full, so the newest rows carry the longest lists - the shape has to
+   hold when the answer is "most of them". */
 var DISHES = {
   main: [
-    ['Char-grilled steak','Sat',['9','14']],
-    ['Barramundi','Fri',['14']],
+    ['Char-grilled steak','Sat',['2','3','5','7','9','11','12','14','16']],
+    ['Barramundi','Fri',['5','9','14','16']],
     ['Lamb shoulder','Wed',[]],
-    ['Satay chicken','Thu',['9']]
+    ['Satay chicken','Thu',['2','9','11']]
   ],
   entree: [
-    ['Seared prawns','Sat',['9','14']],
-    ['Kingfish crudo','Fri',['14']],
+    ['Seared prawns','Sat',['2','3','5','7','9','11','12','14','16']],
+    ['Kingfish crudo','Fri',['5','9','14','16']],
     ['Burrata','Wed',[]],
-    ['Chicken skewers','Thu',['9']]
+    ['Chicken skewers','Thu',['2','9','11']]
   ],
   dessert: [
-    ['Pavlova','Sat',['9','14']],
-    ['Coconut tart','Fri',['14']],
+    ['Pavlova','Sat',['2','3','5','7','9','11','12','14','16']],
+    ['Coconut tart','Fri',['5','9','14','16']],
     ['Tiramisu','Wed',[]],
-    ['Mango sticky rice','Thu',['9']]
+    ['Mango sticky rice','Thu',['2','9','11']]
   ]
 };
 var COURSE = 'main';
