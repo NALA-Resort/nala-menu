@@ -8,30 +8,91 @@
     "here, and whichever side was missed fails by name."
   ],
   "top": [
-    ["front-desk.html", "Front Desk"],
-    ["tally.html", "Reservations"],
-    ["cleaners.html", "Cleans"],
-    ["spa.html", "Spa"],
-    ["publish.html", "Publish Menu"]
+    [
+      "dashboard.html",
+      "Dashboard"
+    ],
+    [
+      "front-desk.html",
+      "Front Desk"
+    ],
+    [
+      "tally.html",
+      "Reservations"
+    ],
+    [
+      "cleaners.html",
+      "Cleans"
+    ],
+    [
+      "spa.html",
+      "Spa"
+    ],
+    [
+      "publish.html",
+      "Publish Menu"
+    ]
   ],
   "groups": [
-    ["Print", [
-      ["list.html", "FOH Sheet"],
-      ["housekeeping.html", "Clean Sheet"],
-      ["registration.html", "Arrivals"],
-      ["menu-print.html", "Menu"],
-      ["past-menus.html", "Past Menus"]
-    ]],
-    ["SMS", [
-      ["invitations.html", "Invitations"],
-      ["arrivals-sms.html", "Pre-arrival"]
-    ]],
-    ["Settings", [
-      ["staff.html", "General"],
-      ["tag.html", "Dietary"],
-      ["flags.html", "Flags"],
-      ["pages.html", "Pages"]
-    ]]
+    [
+      "Print",
+      [
+        [
+          "list.html",
+          "FOH Sheet"
+        ],
+        [
+          "housekeeping.html",
+          "Clean Sheet"
+        ],
+        [
+          "registration.html",
+          "Arrivals"
+        ],
+        [
+          "menu-print.html",
+          "Menu"
+        ],
+        [
+          "past-menus.html",
+          "Past Menus"
+        ]
+      ]
+    ],
+    [
+      "SMS",
+      [
+        [
+          "invitations.html",
+          "Invitations"
+        ],
+        [
+          "arrivals-sms.html",
+          "Pre-arrival"
+        ]
+      ]
+    ],
+    [
+      "Settings",
+      [
+        [
+          "staff.html",
+          "General"
+        ],
+        [
+          "tag.html",
+          "Dietary"
+        ],
+        [
+          "flags.html",
+          "Flags"
+        ],
+        [
+          "pages.html",
+          "Pages"
+        ]
+      ]
+    ]
   ],
   "signout": "Logout"
 }
