@@ -427,7 +427,7 @@ None of these can move without him.
       lands under a live treatment. Until the paste, only the taps staff make
       on the Spa board buzz; a guest's own form ask stays silent until
       somebody opens the board.
-    - **Teach `nala-push` the six events** (that Worker is not in this repo;
+    - **Teach `nala-push` the five events** (that Worker is not in this repo;
       it routes an event to the roles whose `/notify/events/<event>/<role>`
       is true, and the defaults - including the masseuse's stored `spa` keys,
       which the Settings grid deliberately never draws - seed themselves the
@@ -438,11 +438,6 @@ None of these can move without him.
         `spaBooked`    "Villa {v} - massage booked"
         `spaCancelled` "Villa {v} - massage declined or cancelled"
         `spaStay`      "Villa {v} - stay cancelled or moved under a massage"
-        `spaRemind`    "Villa {v} - massage request still waiting on you"
-      (`spaRemind` joined on 7 Sep: the Spa board's Remind masseuse button,
-      admin and manager only, re-buzzes an unanswered ask. It routes to the
-      masseuse alone - the stored `spa` key - and the desk keys default off,
-      because the desk pressed the button.)
       Until this paste the sends reach nala-push and are dropped as unknown
       events; nothing breaks, nothing buzzes. The masseuse's phone also has
       to subscribe once: his own hamburger menu, Settings, Notifications -

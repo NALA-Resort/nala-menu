@@ -127,8 +127,6 @@ PUSHES = []   # what the page told the push Worker, one dict per event
 STATE = {"fail": False}
 
 def push_route(route, request):
-    if STATE.get("pushfail"):
-        route.fulfill(status=500, content_type="text/plain", body="no"); return
     PUSHES.append(json.loads(request.post_data))
     route.fulfill(status=200, content_type="text/plain", body="ok")
 
@@ -146,7 +144,10 @@ def fb(route, request):
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
     body = "null"
-    if "/spasettings" in u:
+    if "/spacontact" in u:
+        body = "null" if STATE.get("nophone") else json.dumps(
+            {"phone": "+61468012345"})
+    elif "/spasettings" in u:
         body = json.dumps({"price60": 180, "price90": 250, "price120": 310})
     elif "/prearrivalinfo" in u:
         body = json.dumps({"welcomeImage": "https://photos.test/old.jpg",
@@ -645,64 +646,73 @@ with sync_playwright() as p:
                    ".every(b=>!b.textContent.startsWith('Remind'))"))
     pg.close()
 
-    # ── the reminder: a nudge, not an answer ────────────────────
-    # Remind masseuse, the owner's ask of 7 Sep: an ask he has not answered
-    # can be re-buzzed from the desk's request card, admin and manager only.
-    # It fires spaRemind and touches the record not at all - a nudge that
-    # wrote anything would be a second way of moving the state.
+    # ── the reminder: a text, not a push ────────────────────────
+    # Remind masseuse, the owner's ask of 7 Sep: an ask the masseuse has not
+    # answered can be chased, by admin and manager only. An SMS rather than
+    # a push - his ruling of the same day - because the masseuse can have
+    # notifications off, and a reminder that only reaches a phone already
+    # listening reminds nobody. The button is an sms: link that opens
+    # Messages prefilled: the stored number, the ask, and a link back that
+    # opens this very card. It touches the record not at all.
+    from urllib.parse import unquote
+    def remind_href(page):
+        return page.evaluate("""()=>{var a=[...document.querySelectorAll('.card a.cbtn')]
+            .find(x=>x.textContent==='Remind masseuse');
+          return a ? a.getAttribute('href') : null;}""")
     pg = board("staff@x")
     pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
-    ck("the request card offers Remind masseuse in its own row, under the rest",
-       pg.evaluate("""()=>{var b=[...document.querySelectorAll('.card .cbtn')]
+    href = remind_href(pg)
+    body_txt = unquote((href or "").split("?&body=")[-1])
+    ck("Remind masseuse is an sms: link to the stored mobile",
+       bool(href) and href.startswith("sms:+61468012345?&body="))
+    ck("the text carries the villa, the guest and the ask as the guest asked it",
+       "villa 9" in body_txt and "Sofia Marino" in body_txt and
+       "afternoon" in body_txt)
+    ck("and a link back that opens this very card",
+       "spa.html?open=b9" in body_txt)
+    ck("it stands in its own quiet row, under the buttons that move the record",
+       pg.evaluate("""()=>{var a=[...document.querySelectorAll('.card a.cbtn')]
            .find(x=>x.textContent==='Remind masseuse');
-         if(!b) return false;
          var solid=document.querySelector('.card .cbtn.solid');
-         return !b.classList.contains('solid') &&
-           b.getBoundingClientRect().top>=solid.getBoundingClientRect().bottom;}"""))
+         return !a.classList.contains('solid') &&
+           a.getBoundingClientRect().top>=solid.getBoundingClientRect().bottom;}"""))
     ck("and the hint says what the nudge does and does not do",
        "Remind masseuse" in pg.evaluate(
          "()=>document.querySelector('.card .hint').textContent"))
-    del WRITES[:]; del PUSHES[:]
-    pg.locator('.card .cbtn', has_text="Remind masseuse").click()
-    pg.wait_for_timeout(600)
-    ck("the reminder buzzes as spaRemind, villa attached and signed",
-       len(PUSHES) == 1 and PUSHES[0]["event"] == "spaRemind" and
-       PUSHES[0]["villa"] == "9" and PUSHES[0].get("idToken"))
-    ck("and writes nothing anywhere", not WRITES)
-    ck("and the button itself says it went",
-       "Reminded" in pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
-                                 ".map(b=>b.textContent).join('|')"))
     pg.close()
 
-    # A send that never left must not read as sent: the button springs back
-    # and the failure is said in words, or the desk stops chasing an ask the
-    # masseuse never heard about.
+    # No stored number is not no button: the text still opens, To box empty,
+    # and the hint says where the number lives.
+    STATE["nophone"] = True
     pg = board("staff@x")
     pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
-    STATE["pushfail"] = True
-    pg.locator('.card .cbtn', has_text="Remind masseuse").click()
-    pg.wait_for_timeout(600)
-    ck("a failed send is said, and never reads as sent",
-       "not sent" in pg.evaluate("()=>errBar.textContent") and
-       "Reminded" not in pg.evaluate(
-         "()=>[...document.querySelectorAll('.card .cbtn')]"
-         ".map(b=>b.textContent).join('|')"))
-    STATE["pushfail"] = False
+    href0 = remind_href(pg)
+    ck("with no stored mobile the text opens with the To box empty",
+       bool(href0) and href0.startswith("sms:?&body="))
+    ck("and the hint points at Settings",
+       "Settings" in pg.evaluate(
+         "()=>document.querySelector('.card .hint').textContent"))
+    pg.close()
+    STATE["nophone"] = False
+
+    # The SMS's link back: ?open lands the masseuse on the waiting card
+    # itself, not the whole board. One shot, so closing it stays closed.
+    pg = board(qs="?open=b9")
+    ck("the text's link opens the guest's waiting card on arrival",
+       pg.evaluate("()=>{var c=document.querySelector('.card');"
+                   "return c && c.dataset.booking;}") == "b9")
     pg.close()
 
-    # The manager holds it too; a waiter granted spaBoard works the board
-    # but does not chase the masseuse - that is management's errand.
+    # The manager holds the reminder too; a waiter granted spaBoard works
+    # the board but does not chase the masseuse - that is management's.
     pg = board("manager@x")
     pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
-    ck("the manager is offered the reminder",
-       pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
-                   ".some(b=>b.textContent==='Remind masseuse')"))
+    ck("the manager is offered the reminder", bool(remind_href(pg)))
     pg.close()
     pg = board("waiter@x")
     pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
     ck("a waiter on the desk's card is not",
-       pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
-                   ".every(b=>b.textContent!=='Remind masseuse')") and
+       remind_href(pg) is None and
        pg.evaluate("()=>document.querySelector('.card .cbtn.solid').textContent")
          .startswith("Manually approve"))
     pg.close()
@@ -1029,6 +1039,29 @@ with sync_playwright() as p:
     q.wait_for_timeout(300)
     ck("words are refused before they reach the database",
        "whole number" in q.evaluate("()=>spaErr.textContent"))
+
+    # ── the masseuse's mobile, under the prices ─────────────────
+    # Stored at /spacontact, staff-only, and never at /spasettings, which is
+    # public for the guest form's prices: a contractor's personal mobile is
+    # nobody's to browse. Judged by the one phone rule the app has.
+    ck("Settings shows the stored masseuse mobile",
+       q.evaluate("()=>spPhone.value") == "+61468012345")
+    del WRITES[:]
+    q.fill("#spPhone", "0468 067 233")
+    q.evaluate("()=>{spPhone.dispatchEvent(new Event('change'))}")
+    q.wait_for_timeout(600)
+    wp = [x for x in WRITES if "/spacontact" in x["u"]]
+    bodyp = json.loads(wp[0]["b"]) if wp else {}
+    ck("a typed mobile is normalised by the one phone rule, saved and shown",
+       bool(wp) and wp[0]["m"] == "PATCH" and
+       bodyp.get("phone") == "+61468067233" and
+       q.evaluate("()=>spPhone.value") == "+61468067233")
+    q.fill("#spPhone", "03 9331 1234")
+    q.evaluate("()=>{spPhone.dispatchEvent(new Event('change'))}")
+    q.wait_for_timeout(300)
+    ck("a landline is refused in words before it reaches the database",
+       "texted" in q.evaluate("()=>spaErr.textContent") and
+       len([x for x in WRITES if "/spacontact" in x["u"]]) == 1)
 
     # ── the guest form's content, written from Settings ─────────
     #  /prearrivalinfo: the welcome image, the dining page's image and

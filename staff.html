@@ -44,6 +44,8 @@
      a named class and pay the ?v= bump - do not copy it. */
   body.ui2 .hours input, body.ui2 .money input {
                  width:84px; text-align:center; padding:var(--s2); }
+  /* A mobile is longer than a price; same dress, its own width. */
+  body.ui2 .money.phone input { width:170px; text-align:left; }
   .note { font-size:var(--t2); color:var(--mid); line-height:1.5; margin-top:10px; }
   /* True white, because they are editable surfaces (the colour law). Their
      own rule rather than a lean on the sheet's: these live in a panel. */
@@ -269,6 +271,12 @@
       <div class="note">Shown to the guest beside each length on the pre-arrival
       form, so they see the cost before they ask. A price left empty shows no
       number rather than a zero.</div>
+      <div class="evrow"><span>Masseuse mobile</span>
+        <span class="money phone"><input id="spPhone" inputmode="tel"
+          placeholder="04&hellip;" aria-label="Masseuse mobile"></span></div>
+      <div class="note">Fills in the To box when the Spa board&rsquo;s Remind
+      masseuse opens a text. Guests never see it. Left empty, the text still
+      opens and the desk picks him from their own contacts.</div>
       <div class="err" id="spaErr"></div>
     </div>
 
@@ -339,7 +347,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=53"></script>
+<script src="nala-shared.js?v=52"></script>
 <script>
 var ROLES = ['admin','manager','chef','waiter','housekeeping'];
 /* The human roles, and the ones the notification matrix targets. manager is
@@ -357,11 +365,7 @@ var EVENTS = [['departed','Departed'],['available','Possibly available'],
               ['cleaned','Cleaned'],['serviced','Serviced'],
               ['menu','Menu published'],
               /* The spa five, 27 Aug. These columns tick the DESK side;
-                 the masseuse's copy of each is the stored spa key above.
-                 spaRemind (7 Sep) is deliberately not listed: its only
-                 recipient is the masseuse, whose column never draws, so a
-                 row here would be switches that switch nobody. loadNotify
-                 seeds it from NOTIFY_DEFAULTS like any stored spa key. */
+                 the masseuse's copy of each is the stored spa key above. */
               ['spaRequest','Massage requested'],
               ['spaSuggested','Massage suggested'],
               ['spaBooked','Massage booked'],
@@ -824,6 +828,44 @@ function loadSpaPrices(){
   };
 });
 loadSpaPrices();
+
+/* ── the masseuse's mobile ─────────────────────────────────────
+   One number at /spacontact, and NOT at /spasettings beside the prices:
+   that node is public to read for the guest form, and a contractor's
+   personal mobile is nobody's to browse. /spacontact is staff-only. The
+   Spa board's Remind masseuse reads it to open a prefilled text - the
+   owner's ruling of 7 Sep, an SMS rather than a push, because the masseuse
+   can have notifications off. Judged by the one phone rule the app has,
+   normalisePhone, so the same numbers are refused here as everywhere. */
+function loadSpaContact(){
+  fetch(DB + '/spacontact.json').then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(c){
+      document.getElementById('spPhone').value = (c && c.phone) || '';
+    }).catch(function(){});
+}
+document.getElementById('spPhone').onchange = function(){
+  var raw = this.value.trim();
+  var err = document.getElementById('spaErr');
+  var num = raw === '' ? '' : normalisePhone(raw);
+  if (num === null){
+    err.textContent = 'A mobile as 04... or with its +country code. ' +
+                      'A landline cannot be texted.';
+    return;
+  }
+  err.textContent = '';
+  this.value = num;
+  fetch(DB + '/spacontact.json', {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone: num,
+                           by: (window.NALA_USER && NALA_USER.email) || '',
+                           at: new Date().toISOString() })
+  }).then(function(r){
+    if (!r.ok) throw new Error();
+  }).catch(function(){
+    err.textContent = 'The number did not save. Try again.';
+  });
+};
+loadSpaContact();
 
 /* ── the guest form's own content ──────────────────────────────
    One record at /prearrivalinfo, public to read the way the spa prices
