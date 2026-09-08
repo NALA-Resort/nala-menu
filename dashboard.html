@@ -472,13 +472,19 @@ function items(t){
     yes:yes, no:no, out:out });
 
   /* Recommended the moment every form is complete, not at a clock time. */
+  /* Ticked is done, the same as the other two print cards. This card was
+     given a tick to match the mockup and kept a state that could only be
+     ready or waiting, so marking it printed changed the button and left the
+     card shouting - the one job still to do, according to a card that had
+     just been told it was finished. */
   L.push({ k:'sheets', lab:'Arrival sheets', owner:'paper', units:shUnits,
-    state: N && shFull === N ? 'ready' : 'waiting',
-    note: !N ? 'no arrivals today'
+    state: DATA.done.sheets ? 'done' : (N && shFull === N ? 'ready' : 'waiting'),
+    note: DATA.done.sheets ? printedNote('sheets')
+        : !N ? 'no arrivals today'
         : shFull === N ? 'all ' + N + ' forms complete, ready to print'
         : shFull + ' of ' + N + ' forms complete',
     qty: QTY.sheets != null ? QTY.sheets : (N || 1), qmin:1, qmax:(N || 1) + 4,
-    print:'sheets', quiet: !N || shFull < N });
+    print:'sheets', quiet: !!DATA.done.sheets || !N || shFull < N });
 
   L.push({ k:'foh', lab:'FOH sheet', owner:'paper', units:[],
     state: DATA.done.foh ? 'done' : (firm ? 'ready' : 'waiting'),

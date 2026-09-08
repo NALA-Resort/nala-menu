@@ -449,6 +449,24 @@ with sync_playwright() as p:
        "Ana" in card(pg, "foh")["note"])
     ck("a ticked card recedes rather than shouting",
        card(pg, "foh")["pos"] == "past")
+    pg.close()
+
+    # Arrival sheets was given a tick to match the mockup and kept a state
+    # that could only be ready or waiting, so it could be marked printed and
+    # go on shouting.
+    pg = board()
+    pg.click("[data-mark='sheets']"); pg.wait_for_timeout(150)
+    pg.click("[data-mark='sheets']"); pg.wait_for_timeout(500)
+    pg.close()
+    pg = board()
+    ck("the arrival sheets card recedes when ticked, like the other two",
+       card(pg, "sheets")["pos"] == "past")
+    ck("and says it was printed, and by whom",
+       card(pg, "sheets")["note"].startswith("printed")
+       and "Ana" in card(pg, "sheets")["note"])
+    pg.close()
+    DAYBOARD.pop("sheets", None)
+    pg = board()
     pg.click("[data-mark='foh']")
     pg.wait_for_timeout(150)
     pg.click("[data-mark='foh']")
