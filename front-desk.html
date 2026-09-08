@@ -410,24 +410,25 @@
          justify-content:center; font-family:var(--ui-font); font-size:16px; }
 .cslot.filled { background:var(--law-green-t); border-color:var(--law-green-b); }
 .cslot.filled::after { content:'\2713'; color:var(--law-green); }
-.cslot.now { border-color:var(--amberb); background:var(--amber);
-             animation:cardtap 1.7s ease-in-out infinite; }
+.cslot.now { border-color:var(--amberb); background:var(--amber); }
 .cslot.fail { border-color:var(--law-red); }
 .cslot.fail::after { content:'\2715'; color:var(--law-red); }
-/* The card that wants holding performs the gesture - ruled by the owner,
-   8 Sep, replacing a glow that said look-here without saying do-this: a
-   reader pad sits under the active villa's hand of cards, and the amber
-   card dips to tap it, holds a beat, lifts. The written cards stand
-   still; only the one the encoder wants moves. */
-.crun.now .cslots { position:relative; padding-bottom:16px; }
-.crun.now .cslots::after { content:''; position:absolute; left:0; bottom:0;
-             width:100%; max-width:220px; height:5px; border-radius:3px;
-             background:var(--amberb); opacity:.4; }
-@keyframes cardtap {
-  0%, 58%, 100% { transform:translateY(0); }
-  26%, 40%      { transform:translateY(9px); }
+/* The active villa asks with a drawing, not a sentence - ruled by the
+   owner, 8 Sep evening, with TTHotel's own issue-card dialog as the
+   reference: a hand holding a card, waves saying hold-it-near, and
+   barely a word. It is the one animated thing on the screen; the slots
+   stand still and carry the count. */
+.cardask { margin:16px auto 2px; width:150px; color:var(--ink); }
+.cardask svg { display:block; width:100%; height:auto; }
+.cardask .wave { stroke:var(--amberink); opacity:0;
+                 animation:cardwave 1.8s ease-out infinite; }
+.cardask .wave.w2 { animation-delay:.3s; }
+@keyframes cardwave {
+  0% { opacity:0; } 25% { opacity:.9; } 70%, 100% { opacity:0; }
 }
-@media (prefers-reduced-motion: reduce) { .cslot.now { animation:none; } }
+@media (prefers-reduced-motion: reduce) {
+  .cardask .wave { animation:none; opacity:.55; }
+}
 /* the active villa reads from across the desk; its slots grow with it */
 .crun.now .crun-v { font-size:52px; line-height:1; }
 .crun.now .crun-v small { display:block; margin-left:0; margin-top:6px; }
@@ -1272,16 +1273,29 @@ function crunHTML(r, active){
   var cls = 'crun' + (active ? ' now' : '') +
             (cc.k === 'done' ? ' is-done' : '') +
             (cc.k === 'failed' ? ' is-failed' : '');
-  var line = cc.k === 'writing' && active
-      ? 'Hold a card to the reader · ' + esc(cc.label)
+  /* the active writing villa asks with the drawing below, not words */
+  var line = cc.k === 'writing' && active ? ''
       : cc.k === 'queued' ? 'Queued'
       : esc(cc.label);
   var h = '<div class="' + cls + '"><div class="crun-v">Villa ' + r.villa +
           '<small>' + esc(nameOf(r.stay)) + '</small></div>' +
           cslotsHTML(j, cc, active) +
-          '<div class="crun-s card-' + cc.k + '">' + line +
-          (cc.k === 'failed' && j && j.note ? ' · ' + esc(String(j.note)) : '') +
-          '</div>';
+          (cc.k === 'writing' && active ? '<div class="cardask"><svg viewBox="0 0 140 96" fill="none" ' +
+      'stroke="currentColor" stroke-width="2.6" stroke-linecap="round" ' +
+      'stroke-linejoin="round" aria-label="Hold a card to the reader">' +
+      '<rect x="57" y="10" width="33" height="46" rx="5" transform="rotate(16 73 33)"/>' +
+      '<path d="M58 50c-4 7-3 14 2 19 6 6 15 6 21 1l7-6"/>' +
+      '<path d="M63 57c2-3 5-4 8-2M69 63c2-3 5-4 8-2"/>' +
+      '<path class="wave w1" d="M40 30c-4 6-4 14 0 20"/>' +
+      '<path class="wave w2" d="M30 24c-7 9-7 23 0 32"/>' +
+      '<path class="wave w1" d="M106 30c4 6 4 14 0 20"/>' +
+      '<path class="wave w2" d="M116 24c7 9 7 23 0 32"/>' +
+      '</svg></div>' : '') +
+          (line || (cc.k === 'failed' && j && j.note)
+            ? '<div class="crun-s card-' + cc.k + '">' + line +
+              (cc.k === 'failed' && j && j.note ? ' · ' + esc(String(j.note)) : '') +
+              '</div>'
+            : '');
   if (cc.k === 'done')
     h += '<div class="crun-env">Envelope villa ' + r.villa + '’s cards</div>';
   if (cc.k === 'queued' || cc.k === 'failed')

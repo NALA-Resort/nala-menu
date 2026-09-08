@@ -2257,8 +2257,12 @@ with sync_playwright() as p:
     CARDJOBS["9"].update({"state": "done", "written": 2})
     CARDJOBS["4"].update({"state": "writing", "written": 1})
     pg.wait_for_timeout(2000)
-    ck("the helper's progress lands in the table's words",
-       "writing card 2 of 2" in pg.inner_text("#cardBody"))
+    #  The active villa asks with the drawing, not a sentence - the
+    #  owner's ruling, TTHotel's own dialog as reference. The words live
+    #  on in the drop and the sheet, where small words belong.
+    ck("the active villa asks with the drawing, not a sentence",
+       pg.evaluate("()=>!!document.querySelector('.crun.now .cardask svg')")
+       and "Hold a card to the reader" not in pg.inner_text("#cardBody"))
     #  And in shapes: the slots are the same job drawn for arm's length -
     #  one per card wanted, filled once written, amber on the one under
     #  the encoder, and the batch bar is written-over-wanted.
