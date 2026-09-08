@@ -2247,6 +2247,17 @@ with sync_playwright() as p:
     pg.wait_for_timeout(2000)
     ck("the helper's progress lands in the table's words",
        "writing card 2 of 2" in pg.inner_text("#cardBody"))
+    #  And in shapes: the slots are the same job drawn for arm's length -
+    #  one per card wanted, filled once written, amber on the one under
+    #  the encoder, and the batch bar is written-over-wanted.
+    ck("one slot per card, one filled, the next amber",
+       pg.evaluate("""()=>{var a=document.querySelector('.crun.now');
+         return a.querySelectorAll('.cslot').length===2
+             && a.querySelectorAll('.cslot.filled').length===1
+             && a.querySelectorAll('.cslot.now').length===1;}"""))
+    ck("the batch bar reads written over wanted",
+       pg.evaluate("""()=>{var i=document.querySelector('.cprog i');
+         return i && i.style.width !== '' && i.style.width !== '0%';}"""))
     CARDJOBS["4"].update({"state": "done", "written": 2})
     pg.wait_for_timeout(2000)
     body = pg.inner_text("#cardBody")
@@ -2257,6 +2268,8 @@ with sync_playwright() as p:
     ck("a failure is red ink with the helper's own note",
        "write failed" in pg.inner_text("#cardBody")
        and "106" in pg.inner_text("#cardBody"))
+    ck("and marks the slot it stopped on, in red ink not a red tile",
+       pg.evaluate("()=>!!document.querySelector('.crun.is-failed .cslot.fail')"))
 
     #  Cancel confirms before it deletes - the button law's two-tap.
     del WRITES[:]
