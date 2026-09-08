@@ -54,7 +54,17 @@ Already done this way — follow these:
   `phone_cases.json` pattern: `NAV` is what the app draws, this is what the
   tests expect, and whichever side a change misses fails by name.
 - `tests/phone_cases.json` — the phone rule's cases, read by both suites.
+- `tests/form_dinner_cases.json` — the guest's pre-arrival dinner answer as
+  every screen must read it (`formDinnerCell`, nala-shared.js). Added 4 Sep,
+  after the Reservations board, the SMS page and the front desk each read
+  their own subset of that one fact and told reception three different
+  things about the same villa.
 - `rules.json` — the database's permissions.
+- `tests/dashboard_sources.json` — every value on the Dashboard and the
+  thing that owns it. Added 8 Sep with rule 7, after that page worked four
+  facts out for itself and disagreed with Reservations and Invitations
+  about all four. `dash_suite` asserts the page calls each reader named
+  there, and that the patterns under `banned` appear nowhere in it.
 
 **Never** restate the menu in a suite. Four suites held their own copy of
 the menu order until 26 Aug, which is why adding a page meant editing them
@@ -117,12 +127,43 @@ reads the same:
 | Green tile | `rgba(122,160,130,.26)` / `.65`, ink `#5E7D67` | done, confirmed (the Reservations dining tile) | — |
 | Green pill/tick | `--green:#E4EDE2`, `--greenb:#7E937A` | a positive state or a selection mark | — |
 | Terracotta tile | `rgba(184,106,90,.16)` / `.45`, ink `#9E6455` | a **negative answer** — not dining, declined. A fact a guest gave us | a failure |
-| Red | `--red:#A8321E` | **failure only**: a send that failed, a delivery that failed, an error. Text and pills, never a whole tile | pending, unknown, "nothing yet" |
+| Red | `--red:#A8321E` | **failure only**, and the one exception below. A send that failed, a delivery that failed, an error. Text and pills, never a whole tile | pending, unknown, "nothing yet" |
 | Grey dashed, sunk | `opacity:.62`, dashed `--rule` | nothing to do here (vacant villa, unsendable number) | — |
 
 The Reservations green and terracotta tiles are a contract between boards:
 suites assert them by computed colour, not class name. Change them in one
 place and the suites will name every other.
+
+### Red's one exception: an allergy
+
+Ruled by the owner, 29 Aug, closing a question that had been re-opened
+twice. An allergy wears red — the solid `.dpill-al` on Reservations, the
+red words on the printed Reservations Sheet — and that is not a hole in the
+law, it is the law's edge.
+
+The rule red protects is that red must never mean *pending, unknown or
+nothing yet*. An allergy is none of those. It is the one fact on a kitchen
+screen that can hurt somebody, and the reader scanning for it is scanning
+for danger, which is the reading red already carries. Nothing else in the
+app competes for that: terracotta is a guest's negative answer, amber is
+chase this. Neither says "stop".
+
+So: **red may mean hazard, but only hazard about a person.** Not a busy
+state, not a rejected form, not a colour picked because a thing is
+important. If you are about to reach for red and the thing is not a failure
+or an allergy, it is the wrong colour.
+
+Two things this exception does NOT extend to, both settled already:
+
+- **Selection never wears red.** Publish's dietary pills filled solid red
+  until 27 Aug, when a page with a few on it became a wall of red and the
+  one red *ring* that meant a confirmed guest's allergy vanished into it.
+  Grey fill, red only as a ring. A hazard that has to compete with a
+  selection for the same colour loses.
+- **Dead CSS carrying a description of the app is not inert.** `tag.html`
+  held orphaned red `.tick` rules under a comment calling this an open
+  question, months after it was answered on the page that actually draws
+  them. Removed 29 Aug. Delete the rule and the story with it.
 
 ### The pre-arrival form has three states, and the colour IS the state
 
@@ -173,6 +214,91 @@ outline and always confirm before writing. Read it before adding any button.
 
 ---
 
+### 6. Match the ceremony to the change
+
+Rules 1 to 5 were written after a data model went wrong and after five tests
+passed against broken code. They are aimed at facts and at state. Applied at
+full weight to a label or a colour, they cost more than the change is worth.
+
+Written 31 Aug, after moving one text span and adding one icon took half an
+hour of the owner's time: eight serial runs of a 200 second suite, two rounds
+of mockups, and a multiple choice question about a wording he had already
+given. His words: "I have other apps being built at five times the speed of
+this one."
+
+The tier is set by **what the change can break**, not by how many lines it is.
+
+| Change | What it needs |
+|---|---|
+| The data model, permissions, the colour law, anything two screens read | All of rules 1 to 5. A shared table, a mockup, a mutation proof each. |
+| Layout, copy, an icon, a tint | Build it. One screenshot at 390. Tests for the behaviour, not for the pixels. One mutation proof for the batch, not one each. |
+| A typo, a comment, a `?v=` bump | Change it. |
+
+Three habits that make the difference, all learned the hard way:
+
+- **Tests run in the background.** Never make somebody watch a suite. Start
+  it, keep working, report once.
+- **Mutations go in one run.** Mutate, run, restore, repeat, inside a single
+  script. Five proofs is one job, not five.
+- **Make the call.** A mockup is for when the shape is genuinely open. When
+  the owner has already said what he wants, build that, and say afterwards
+  what it cost. He was overruled twice on 31 Aug and was right both times.
+
+And read the width rule as written, in STYLEGUIDE.md: **mock at 390, check
+at 360, do not break at 320.** Breaking means a sideways bleed or a control
+nobody can reach. A name clipping at 320 is not breaking. 320 is an iPhone
+SE 1st generation, from 2016; nothing sold since is narrower than 375.
+
+---
+
+### 7. A page that reads is not a page that works things out
+
+Ruled by the owner, 8 Sep, after the Dashboard's first two days live.
+
+Some pages own facts: Reservations owns the diner count, Invitations owns
+who is still owed one, Publish owns tonight's menu. Others only gather what
+those pages already know and lay it on one screen. The Dashboard is the
+second kind, and every fault it has shipped came from forgetting that.
+
+**If a summary page is the first place a fact gets worked out, that is the
+bug.** Not a smell to tidy up later. The bug, and it will present as two
+screens telling reception different things about the same villa.
+
+Four in two days, all one shape:
+
+| It showed | Because it | The owner it ignored |
+|---|---|---|
+| replies grey that Invitations had answered | read `/dinner` alone | `formDinnerCell` |
+| "ready to send", never to whom | read `/previnvites`, the wrong node | `/invites/<date>` |
+| a publish time for a night with no menu | read the live node, no date check | `menuCheck` |
+| a published menu as not published | sliced an ISO stamp | `dkey(parseISO(...))` |
+
+The last is the one to remember, because it was introduced BY the fix for
+the third and was worse than the bug it replaced. Copying the shape of an
+existing guard while hand-rolling its inside is not copying it. A stamp is
+UTC and a day is local; the resort's entire working day is before 10am UTC,
+so every morning would have read the wrong date.
+
+So, before adding a value to a summary page:
+
+1. Name the page or shared function that owns it. If you cannot, you are
+   about to originate a fact — stop and find the owner, or accept that this
+   page now owns it and say so in writing.
+2. Call that reader. Do not reproduce what it does, however few lines it
+   looks like. `formDinnerCell` is eleven lines and reading `/dinner`
+   instead cost two days.
+3. Add it to `tests/dashboard_sources.json`, which names every value on the
+   Dashboard and its owner. The suite asserts the page actually calls them.
+
+The Dashboard owns exactly one fact: the print ticks at `/dayboard/<date>`,
+because the app cannot see paper and only a person saying so counts.
+
+Date comparisons anywhere: `dkey(parseISO(s))` for a timestamp,
+`parseDepDate(s)` for a booking's arrive/depart. Never a string slice, never
+`new Date(s)` straight into a comparison. And run date suites in more than
+one zone — `TZ=Australia/Brisbane` alongside the default. A date test that
+only runs in UTC is blind to this whole class of bug.
+
 ## When you break these rules
 
 Sometimes you should. Write down why, in the file, next to the thing. A
@@ -203,7 +329,15 @@ python3 tests/run.py <suite>       # the one suite you touched
 python3 tests/run.py               # once, before publishing only
 ```
 
-Known failures, pre-existing, not yours: `rules` ×2, `tally` ×1, `cleans` ×2.
+Known failures, pre-existing, not yours: `cleans` ×2, and `rules` ×2 where
+`rules` can run. `tally` ×1 was on this list and has not failed for some
+time; taken off 29 Aug, because a stale list of expected failures is how a
+real one gets waved through.
+
+Three suites report NO RESULT rather than failing in a container that lacks
+their tools, and that is not a break either: `rules` and `coercion` need
+node's firebase test module, `list` needs `pdftotext`.
+
 Anything else is a real break.
 
 ## Publishing

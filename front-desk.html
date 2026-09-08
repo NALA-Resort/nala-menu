@@ -39,6 +39,25 @@
      them, so it carries tile weight. 20 on the type scale. */
   .arr-v { font-size:var(--t4); min-width:30px; text-align:center; }
   .arr-mid { flex:1; min-width:0; }
+  /* The party mark moved up here from the stay line on 31 Aug, to give the
+     row back the width the massage mark now spends. It is flex:0 0 auto so
+     it never truncates - a half-written villa number is worse than none -
+     and the name takes the ellipsis instead.
+
+     It keeps the full "with villa 15", the owner's ruling the same day. The
+     short form was tried because at 320 the word "with" costs enough of the
+     name that Michel FAY reads "Mic...", and he ruled that the phrase has to
+     read as a phrase. So at 320 the name clips early on a party booking,
+     deliberately: the villa number to its left is how reception finds the
+     guest anyway, and both rows of a party carry it. */
+  .arr-top { display:flex; align-items:baseline; gap:8px; }
+  /* flex:0 1 auto, NOT flex:1. With flex:1 the name grew to fill the row and
+     shoved the mark against the right edge, so it read as a right-aligned
+     column instead of a phrase following the name. Now the name is its own
+     width and only shrinks when the row runs out. */
+  .arr-top .arr-n { flex:0 1 auto; min-width:0; }
+  .arr-with { flex:0 0 auto; font-size:var(--t2); color:var(--mid);
+              white-space:nowrap; }
   .arr-n { font-size:var(--t3); white-space:nowrap; overflow:hidden;
            text-overflow:ellipsis; }
   /* The number, its confidence mark and the pencil, as the Pre-arrival SMS
@@ -62,7 +81,6 @@
   .arr-s .eta { font-size:var(--t2); font-weight:600; color:var(--ink); }
   /* The count reads in the row's own amber, so it is the same fact as the
      tint said louder rather than a second signal to decode. */
-  .arr-s .ans { color:#8A6A2F; font-weight:600; }
 
   /* Confirmed rows recede but stay legible: reception still has to find a
      guest who checked in an hour ago. */
@@ -81,7 +99,11 @@
 
   /* The summary drops out of the row it belongs to, so it is inset and shares
      the row's left edge rather than floating as its own card. */
-  .sum { border:1px solid var(--rule); border-top:none; border-radius:0 0 8px 8px;
+  /* Green, always, and that is not a lost scope: a summary only opens on a
+     completed row (see the tap handler), so the only row it can hang off is
+     already green. Grey and amber open the form instead. */
+  .sum { border:1px solid rgba(122,160,130,.34); border-top:none;
+         border-radius:0 0 8px 8px; background:rgba(122,160,130,.11);
          margin:-8px 0 7px; padding:12px 13px 13px; }
   .sum-r { display:flex; gap:10px; font-size:var(--t2); line-height:1.5;
            padding:3px 0; align-items:baseline; }
@@ -115,6 +137,36 @@
   /* There is no .fork.un any more: an unanswered booking draws no fork.
      See forkFor. */
 
+  /* The massage mark, 31 Aug. A lotus, from the owner's own reference, which
+     was a pair of hands cradling one. Both were drawn and mocked at 28px:
+     the hands reduce to a shape that reads as a tulip, and the two together
+     to a knot. The flower alone survives the size and holds the four state
+     colours cleanly, and the owner offered it as the alternative.
+
+     Stroked, not filled, which is how the reference is drawn and how .seen
+     beside it is already drawn. It sits at the fork's 28px so the two marks
+     read as a pair of facts about one guest rather than a big one and a
+     small one.
+
+     The colours are the law's, and the law is why none of them is red. Red
+     is failure and an allergy; a declined massage is neither, it is an
+     answer. Terracotta is the law's word for a negative answer, it is what
+     the spa board already draws for exactly this record, and it is what the
+     fork beside it already wears for "not dining". Ruled by the owner
+     31 Aug, choosing terracotta over red for that reason. */
+  .lotus { width:28px; height:28px; flex:0 0 28px; }
+  .lotus svg { width:100%; height:100%; display:block; fill:none;
+               stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+  /* Grey is the law's own --mid softened, the way .seen above already
+     softens it, rather than a new hex nobody else knows. Amber is the
+     literal this page's .ans already uses: an undefined custom property
+     computes to nothing here, the 29 Aug lesson at the top of this sheet. */
+  .lotus.wait { opacity:.55; }
+  .lotus.wait svg { stroke:var(--mid); }
+  .lotus.sugg svg { stroke:#8A6A2F; }
+  .lotus.done svg { stroke:var(--dine); }
+  .lotus.decl svg { stroke:var(--nodine); }
+
   /* Opened the message and did not finish. Outlined rather than filled, so it
      reads as the absence of an answer rather than as one.
 
@@ -142,7 +194,6 @@
      solid left edge to say somebody has met it halfway. */
   .arr.part-form { background:rgba(194,154,85,.11); border-color:rgba(194,154,85,.36);
                    border-left:3px solid rgba(194,154,85,.85); }
-  .sum { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
 
   .empty { font-size:var(--t3); color:var(--mid); font-style:italic; padding:4px 0 2px; }
   .spacer { height:40px; }
@@ -233,21 +284,13 @@
      covers row is a `.pax-row` and wears the same dress: one rule, or the
      two rows drift. The rail scrolls itself; the sheet never scrolls
      sideways, which the suite asserts at all three widths. */
-  .rail { flex-wrap:nowrap; overflow-x:auto;
+  /* Left, to line up with the labels above them. It used to be `safe
+     center`, so a row that fitted sat centred under a centred label; with
+     the labels left aligned that read as a row that had slipped. Starting
+     left also makes an overflow legible: the first chip is always at the
+     margin, so the clipped edge is only ever on the right. */
+  .rail { flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start;
           -webkit-overflow-scrolling:touch; padding-bottom:6px; }
-  /* Two declarations on purpose, not a leftover. A plain `center` centres a
-     row that fits - which is what the sheet's centred labels want - but when
-     the row overflows it centres the overflow too, and the chips off the
-     LEFT edge cannot be scrolled back to. `safe center` centres only while
-     it fits and falls back to the start once it does not; a browser that
-     does not know the keyword ignores the line and keeps flex-start, which
-     is the safe half of the same bargain. */
-  /* Left, to line up with the labels above them. This used to be
-     `safe center` so a row that fitted sat centred under a centred label;
-     with the labels left aligned that now reads as a row that has slipped.
-     Starting left also makes an overflow legible: the first chip is always
-     at the margin, so the clipped edge is only ever on the right.      */
-  .rail { justify-content:flex-start; }
   .rail > * { flex:0 0 auto; white-space:nowrap; }
   .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
           border-radius:20px; font-family:var(--ui-font); font-size:var(--t2);
@@ -313,7 +356,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=46"></script>
+<script src="nala-shared.js?v=55"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -498,24 +541,6 @@ var FORM_QUESTIONS = [
     answered:function(p){ return p.wellness === true || p.wellness === false; } }
 ];
 
-/* How many of the questions this guest was SHOWN they have answered, as the
-   fraction reception reads off an amber row: "2/6 answered". Asked for by
-   the owner 28 Aug, because amber said work-to-do without saying how much,
-   and a row one answer short looked exactly like one nobody had touched.
-
-   Both halves come from FORM_QUESTIONS, so the count cannot drift from the
-   "still to ask" sentence built out of the same list - and the denominator
-   is what THIS guest was asked, never a constant: a one night stay is shown
-   three of the six, and scoring them out of six would mark them down for
-   questions nobody put to them. */
-function answeredCount(p, stay){
-  var one = oneNightStay(stay), rec = p || {};
-  var asked = FORM_QUESTIONS.filter(function(q){
-    return !(one && !q.askedOnOneNight); });
-  return { done: asked.filter(function(q){ return q.answered(rec); }).length,
-           of:   asked.length };
-}
-
 /* The questions this guest was shown and has not answered, in the form's own
    order. Empty means nothing is outstanding, which is a different sentence
    at the desk and the whole reason this exists: a guest who answered every
@@ -614,7 +639,6 @@ function rowHTML(r){
      both is the only way the two boards can agree about a party. */
   var withVillas = groupMatesText(r, ROWS);
   var bits = [nightsLabel(r.stay)];
-  if (withVillas) bits.push(esc(withVillas));
   var i = etaIndex(r.pre && r.pre.arriveSlot);
   if (i >= 0) bits.push('<span class="eta">' + ETA_SLOTS[i][2] + '</span>');
   else if (r.stay.adults)
@@ -629,25 +653,35 @@ function rowHTML(r){
   var st = formState(r.pre, r.stay);
   var tint = st === 'completed' ? ' done-form'
            : st === 'incomplete' ? ' part-form' : ' todo-form';
-  /* On an amber row only. Green has nothing left to count and grey has
-     nothing counted yet, so on those it would be a number saying what the
-     colour already says. */
-  if (st === 'incomplete'){
-    var n = answeredCount(r.pre, r.stay);
-    bits.push('<span class="ans">' + n.done + '/' + n.of + ' answered</span>');
-  }
+  /* No count and no word beside the amber. Both were removed 1 Sep by the
+     owner, on one principle: the amber IS the message. A row tinted amber
+     already says the form is part answered, and an amber lotus already says
+     the masseuse has offered a time - a number and a word next to them were
+     restating the colour and eating the line, which then clipped the ETA
+     reception actually plans around. The detail is one tap away in the
+     summary, which is where it belongs. */
+  var mst = massageState(r.spa, r.pre);
   return '<button class="arr'+tint+(isArrived(r.pre)?' is-done':'')+(open?' open':'')+
          '" data-villa="'+r.villa+'">'+
          '<div class="arr-v">'+r.villa+'</div>'+
          '<div class="arr-mid">'+
-           '<div class="arr-n">'+esc(nameOf(r.stay))+'</div>'+
+           '<div class="arr-top">'+
+             '<div class="arr-n">'+esc(nameOf(r.stay))+'</div>'+
+             (withVillas ? '<div class="arr-with">'+esc(withVillas)+'</div>' : '')+
+           '</div>'+
            '<div class="arr-s">'+bits.join(' \u00b7 ')+'</div>'+
            /* The number, its confidence mark and the pencil, exactly as the
               Pre-arrival SMS rows carry them and from the same builder. On
               every row, arrived included: reception is the one who hears the
               right number, and the fix outranks Mews wherever one is read. */
            '<div class="arr-p">'+phoneBadgeHTML(phoneOf(r), true)+'</div>'+
-         '</div>'+seenFor(r.pre)+forkFor(r.pre)+'</button>'+
+         /* The fork reads answersOf, the desk's ONE merged reading (cell over
+            form), not the raw form: until 4 Sep it read r.pre alone, so a
+            dinner set on the Reservations board - which writes only the cell
+            - left this row forkless and counted Not sure, while this same
+            page's summary and its check-in save would both have used the
+            cell. Three readings of one guest, two of them right. */
+         '</div>'+seenFor(r.pre)+lotusFor(mst)+forkFor(answersOf(r))+'</button>'+
          (open ? summaryHTML(r) : '');
 }
 
@@ -710,6 +744,16 @@ function etaLabel(p){
    owner before I looked at the geometry instead of the viewBox.
    Even tines, a rounded bowl, and a blade on a straight spine. Content
    sits x 4.8-19.4, y 3-21 in a 24 box, so it has air on every side. */
+/* The lotus: one centre petal and a mirrored pair, on the fork's own 24
+   grid. Stroked, so it carries its state in the stroke colour. */
+var ICON_LOTUS = '<svg viewBox="0 0 24 24">' +
+  '<path d="M12 3.4c2.5 2.9 3.7 5.5 3.7 7.8 0 2.4-1.2 4.5-3.7 6.2' +
+  '-2.5-1.7-3.7-3.8-3.7-6.2 0-2.3 1.2-4.9 3.7-7.8z"/>' +
+  '<path d="M11.4 17.5c-2.8.5-5.2-.2-7-2C2.5 13.6 1.9 11.2 2.2 8.6' +
+  'c2.6-.3 5 .3 6.8 2.1"/>' +
+  '<path d="M12.6 17.5c2.8.5 5.2-.2 7-2 1.9-1.9 2.5-4.3 2.2-6.9' +
+  'c-2.6-.3-5 .3-6.8 2.1"/></svg>';
+
 var ICON_FORK = '<svg viewBox="0 0 24 24">' +
   '<path d="M4.8 3h1.4v6H4.8z"/><path d="M7.3 3h1.4v6H7.3z"/>' +
   '<path d="M9.8 3h1.4v6H9.8z"/>' +
@@ -742,7 +786,16 @@ function forkFor(p){
          ICON_FORK + '</span>';
 }
 
+/* The state comes from massageState in nala-shared.js, which the sheet's
+   Wellness lines answer to as well, so the mark and the words under it
+   cannot say different things about one guest. */
+function lotusFor(state){
+  if (!state) return '';
+  return '<span class="lotus ' + state + '">' + ICON_LOTUS + '</span>';
+}
+
 function dayLabel(key){
+  if (isAnyDay(key)) return SPA_ANY_DAY_LABEL;
   var d = parseDepDate(key); if (!d) return key;
   var D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   return D[d.getDay()] + ' ' + d.getDate();
@@ -876,7 +929,10 @@ function render(){
      the missing one. */
   var din = 0, out = 0, un = 0;
   ROWS.forEach(function(r){
-    var d = r.pre && r.pre.dining;
+    /* answersOf, not the raw form, for the same reason as the row's fork: a
+       cell set on the Reservations board must count here, or the two boards
+       give the kitchen two numbers for one night. */
+    var d = answersOf(r).dining;
     if (d === true) din++; else if (d === false) out++; else un++;
   });
   /* Not sure is a tentative yes, so the kitchen plans for din + un and only
@@ -1716,13 +1772,22 @@ function openGuest(r){
     var ww = document.getElementById('wWrap');
     var wasHidden = ww.style.display === 'none';
     ww.style.display = a.wellness === true ? '' : 'none';
+    /* Any day closes the row here in the same order the guest saw it. The
+       desk must offer exactly what the form offered or it cannot show what
+       the guest chose: a chip the guest can pick and the desk cannot draw
+       is villa 17 again, two screens describing one booking and
+       disagreeing. The desk is NOT held to the form's compulsion - it
+       edits what it hears across the day, and half an answer is a normal
+       state here. */
     repaintRow('wDays', function(box){
-      stayDays().forEach(function(d){
+      stayDays().concat([{ key:SPA_ANY_DAY, label:SPA_ANY_DAY_LABEL }])
+        .forEach(function(d){
         var b = document.createElement('button');
         b.className = 'chip' + (a.wellDay === d.key ? ' on'
           : (held.wellDay === d.key && lost(a.wellDay, held.wellDay) ? ' was' : ''));
         b.textContent = d.label;
-        b.onclick = function(){ a.wellDay = (a.wellDay === d.key ? '' : d.key); paintWellness(); };
+        b.onclick = function(){
+          a.wellDay = (a.wellDay === d.key) ? '' : d.key; paintWellness(); };
         box.appendChild(b);
       });
     });
@@ -2226,14 +2291,17 @@ document.getElementById('board').addEventListener('click', function(e){
   var r = rowFor(btn.getAttribute('data-villa'));
   if (!r) return;
 
-  /* A guest who filled the form in gets it read back to them, and reception
-     edits or checks in from there. A guest with nothing to read back goes
-     straight to the form, because an empty summary says nothing.
+  /* Only a COMPLETED row reads its answers back. Grey and amber open the
+     form, because on those rows there is something to fill in and the tap
+     should land where the work is - the owner's ruling, 1 Sep, replacing the
+     older hasForm test that opened a summary on any row carrying any answer
+     at all. That summary was a half-filled page with an Edit button under
+     it, so every amber row cost reception two taps to reach the thing they
+     had opened it for.
 
-     Deliberately still hasForm rather than the new formState: a booking that
-     is incomplete only because one mandatory answer is missing still has
-     answers worth reading back, and Mark as completed is one Edit away. */
-  if (!hasForm(r.pre)) return openGuest(r);
+     This is also what makes the summary's green tint honest: it can now only
+     ever hang off a green row. */
+  if (formState(r.pre, r.stay) !== 'completed') return openGuest(r);
   OPEN = (OPEN === r.villa) ? null : r.villa;
   render();
 });

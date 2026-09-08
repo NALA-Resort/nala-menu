@@ -42,7 +42,20 @@ function install() {
         kids = kids || {};
         kids[rest] = STORE[key];
       }
-      return new Response(JSON.stringify(kids), { status: 200 });
+      if (kids) return new Response(JSON.stringify(kids), { status: 200 });
+      /* And the other direction: Firebase serves a child of a stored object,
+         so a read of /internal/<id>/fromMews after a PATCH of /internal/<id>
+         must find the field inside the parent - and a read of
+         /prearrival/forCustomerId after a PATCH of /prearrival likewise.
+         Without this the seed-once and stamp-once guards read null forever
+         and every event looks like a first seed. Both sessions wrote this
+         same fix on 3 Sep; this is the merge of the two. */
+      var slash = path.lastIndexOf("/");
+      var parent = STORE[path.slice(0, slash)], leaf = path.slice(slash + 1);
+      if (parent && typeof parent === "object" && leaf in parent) {
+        return new Response(JSON.stringify(parent[leaf]), { status: 200 });
+      }
+      return new Response("null", { status: 200 });
     }
     if (m === "DELETE") { delete STORE[path]; return new Response(null, { status: 204 }); }
     const body = JSON.parse(opt.body);
@@ -283,6 +296,34 @@ await post(Object.assign({}, RES, { ResourceName: "17" }));
 ck("seventeen itself is accepted, the boundary is inclusive",
    Object.keys(STORE).some(k => k.startsWith("/stays/") && k.endsWith("/17")));
 
+/* ── an unrecognised villa on a booking that had one ────────── */
+/* The name change of 3 Sep. A modification whose villa mapping was missing
+   or unrecognised fed the clear pass an empty list of nights to keep, so
+   every night the booking held was deleted, none rewritten, and the reply
+   was still ok - the room left every board with the only trace a field in
+   a Zap history nobody reads. Refused whole now, before anything writes. */
+install();
+await post(RES);
+const renamed = await post(Object.assign({}, RES,
+  { FirstName: "Sam", ResourceName: "Spa Suite" }));
+ck("a modification with an unrecognised villa is refused, not applied",
+   renamed.status === 400);
+ck("and the nights it would have erased are still there",
+   !!STORE["/stays/2026-09-10/3"] && !!STORE["/stays/2026-09-11/3"] &&
+   !!STORE["/stays/2026-09-12/3"]);
+ck("and the booking still reads as it did before the bad event",
+   STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/pms"].first === "Mark");
+ck("the refusal names both villas so the Zap history explains itself",
+   await renamed.json().then(j => j.received === "Spa Suite" && j.held === "3"));
+/* A cancellation is different: it clears the nights whatever the villa
+   field says, and refusing it would leave a cancelled guest on the board. */
+install();
+await post(RES);
+const bye = await post(Object.assign({}, RES,
+  { State: "Canceled", ResourceName: "Spa Suite" }));
+ck("a cancellation with a bad villa still clears the nights",
+   bye.status === 200 && STORE["/stays/2026-09-10/3"] === undefined);
+
 /* ── the PMS stamp on each night ────────────────────────────── */
 /* The app stamps a staff "vacant" with the version of the booking it was
    decided against. Without this in the summary there is nothing to compare to,
@@ -342,6 +383,46 @@ await post({ Id: "5f593a0c708cbb49e77f324e07bee616",
   ResourceName: "3", State: "Confirmed" });
 ck("with both present the Mews id wins",
    !!STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/pms"]);
+
+/* ── Id2, the spelling the live Zap serialises ──────────────── */
+/* Seen live 1 Sep, 02:01: a new reservation's first event carried its GUID
+   under Id2 and nothing under Id or MewsId, so the first event of every new
+   booking 400'd and the booking waited for its next modification to exist.
+   Which Zap-editor choice produced that key name was never established; the
+   payload is the fact. Shape still rules: a non GUID under Id2 is refused
+   like anywhere else, and a real Id or MewsId outranks it when present. */
+install();
+const id2run = await post({ Id2: "dfcc2614-67b5-4cd4-8b58-b4b7001ac418",
+  FirstName: "James", StartUtc: "2026-09-10T04:00:00Z",
+  EndUtc: "2026-09-13T02:00:00Z", ResourceName: "3", State: "Confirmed" });
+ck("a GUID arriving under Id2 is accepted", id2run.status === 200);
+ck("and the booking is stored under that GUID",
+   !!STORE["/bookings/dfcc2614-67b5-4cd4-8b58-b4b7001ac418/pms"]);
+
+install();
+await post({ MewsId: "ff129c05-9902-4d9f-9bfd-b4a800a91f52",
+  Id2: "dfcc2614-67b5-4cd4-8b58-b4b7001ac418",
+  StartUtc: "2026-09-10T04:00:00Z", EndUtc: "2026-09-13T02:00:00Z",
+  ResourceName: "3", State: "Confirmed" });
+ck("MewsId outranks Id2 when both are GUIDs",
+   !!STORE["/bookings/ff129c05-9902-4d9f-9bfd-b4a800a91f52/pms"] &&
+   !STORE["/bookings/dfcc2614-67b5-4cd4-8b58-b4b7001ac418/pms"]);
+
+install();
+const id2zap = await post({ Id2: "5f593a0c708cbb49e77f324e07bee616",
+  StartUtc: "2026-09-10T04:00:00Z", EndUtc: "2026-09-13T02:00:00Z",
+  ResourceName: "3", State: "Confirmed" });
+ck("Zapier's event key under Id2 is refused like anywhere else",
+   id2zap.status === 400 && Object.keys(STORE).length === 0);
+
+/* The refusal for a payload with NO id names the keys that did arrive, so
+   the Zap history shows which mapping went missing instead of a bare no. */
+install();
+const noid = await post({ FirstName: "Nobody", ResourceName: "3" });
+ck("the no-id refusal lists the keys that were received",
+   noid.status === 400 &&
+   JSON.stringify((await noid.json()).receivedKeys) ===
+     JSON.stringify(["FirstName", "ResourceName"]));
 
 /* The same booking moving villa twice must stay ONE booking. */
 install();
@@ -452,7 +533,55 @@ ck("a Zapier key in the customer field loses to the real GUID beside it",
 install();
 await post(RES);
 ck("a booking with no customer id at all is still written",
-   STORE["/bookings/" + RES.MewsId + "/pms"].customerId === null);
+   !!STORE["/bookings/" + RES.MewsId + "/pms"] &&
+   STORE["/bookings/" + RES.MewsId + "/pms"].customerId == null);
+
+/* The triggers carry the field unevenly, exactly like the rate, and losing
+   it costs more: /guests is keyed on it, so a modification with CustomerId
+   unmapped used to DELETE the person from the booking and with them every
+   dietary's way home. */
+install();
+await post(Object.assign({}, RES, {
+  CustomerId: "7c1e4a90-3b55-4a11-9d02-b4a800c12abc" }));
+await post(RES);
+ck("an event with no customer id leaves the stored one standing",
+   STORE["/bookings/" + RES.MewsId + "/pms"].customerId ===
+     "7c1e4a90-3b55-4a11-9d02-b4a800c12abc");
+await post(Object.assign({}, RES, { CustomerId: "be99712182a11b7e1c854af0ecdaf669" }));
+ck("and a lone Zapier key does not replace a real customer either",
+   STORE["/bookings/" + RES.MewsId + "/pms"].customerId ===
+     "7c1e4a90-3b55-4a11-9d02-b4a800c12abc");
+
+/* ── whose answers the form holds ───────────────────────────── */
+/* The booking carries two people and they may differ, the owner's ruling of
+   3 Sep: pms.customerId is who Mews says the booking is for NOW, and
+   prearrival.forCustomerId is who the ANSWERS were given for. The answers
+   are personal and follow their person, so on the very event that changes
+   the customer, the form is stamped with the OLD one - re-attributing a
+   reservation must not re-home what somebody else already said. */
+const CID_A = "7c1e4a90-3b55-4a11-9d02-b4a800c12abc";
+const CID_B = "9a2b7c31-88d4-4e0b-9c1f-2b6d5e7a1c04";
+install();
+await post(Object.assign({}, RES, { CustomerId: CID_A }));
+ck("an untouched form is not stamped: nobody has answered anything",
+   STORE["/bookings/" + RES.MewsId + "/prearrival"] === undefined);
+STORE["/bookings/" + RES.MewsId + "/prearrival/at"] = "2026-09-01T09:00:00Z";
+await post(Object.assign({}, RES, { CustomerId: CID_B }));
+ck("the event that changes the customer stamps the answers with the OLD one",
+   (STORE["/bookings/" + RES.MewsId + "/prearrival"] || {}).forCustomerId === CID_A);
+ck("while the booking itself moves to the new customer",
+   STORE["/bookings/" + RES.MewsId + "/pms"].customerId === CID_B);
+await post(Object.assign({}, RES, { CustomerId: CID_B }));
+ck("a standing stamp is never overwritten",
+   (STORE["/bookings/" + RES.MewsId + "/prearrival"] || {}).forCustomerId === CID_A);
+/* The guest-first case: the form is answered days before Mews sends the
+   booking, so there is no prev to prefer and the incoming customer is the
+   person the answers were given for. */
+install();
+STORE["/bookings/" + RES.MewsId + "/prearrival/at"] = "2026-09-01T09:00:00Z";
+await post(Object.assign({}, RES, { CustomerId: CID_A }));
+ck("a form answered before Mews knew the booking is stamped on first sight",
+   (STORE["/bookings/" + RES.MewsId + "/prearrival"] || {}).forCustomerId === CID_A);
 
 /* ── the rate ───────────────────────────────────────────────── */
 /* The Mews rate name, as words. The desk's booking flags read it through
@@ -479,6 +608,62 @@ ck("an event with no rate leaves the stored one standing",
 await post(Object.assign({}, RES, { Rate: { Id: "r-1", Name: "nested" } }));
 ck("and a rate mapped as a nested object does not wipe it either",
    STORE["/bookings/" + RES.MewsId + "/pms"].rate === "Luxury Escapes AU - BB");
+
+/* ── the Mews note, in the shape Zapier actually sends it ───── */
+/* Mews keeps notes as objects and Zapier flattens the array into one string
+   of "key: value" pairs. On 26 Aug that whole flattened object reached
+   /internal/<id>/fromMews and the Service Sheet printed nine lines of GUIDs
+   and timestamps in a staff row. The Worker lifts the text out now; these
+   pin both halves - the words survive, the metadata does not. */
+const NOTE_ID = "/internal/" + RES.MewsId;
+const DUMP = "createdUtc: 2026-07-07T06:28:44Z id: c20eda2e-4c43-4e57-b62b-b48008ac53aa " +
+  "orderId: 203a773e-4fd0-4418-ad4d-b48000b8ac4f text: Hi, would prefer a view over " +
+  "the beach rather than the pool, please. Many thanks, very much looking forward " +
+  "to our stay :) type: General updatedUtc: 2026-07-07T06:28:44Z";
+const WORDS = "Hi, would prefer a view over the beach rather than the pool, " +
+  "please. Many thanks, very much looking forward to our stay :)";
+
+install();
+await post(Object.assign({}, RES, { Notes: "Owner's friend, do not charge for wine" }));
+ck("a note typed by a person is stored word for word",
+   STORE[NOTE_ID].fromMews === "Owner's friend, do not charge for wine");
+
+/* A person may write "id:" once; only the object's keys in company mean a dump. */
+install();
+await post(Object.assign({}, RES, { Notes: "Paid deposit, invoice id: 4471" }));
+ck("one key-shaped word does not get a human note dissected",
+   STORE[NOTE_ID].fromMews === "Paid deposit, invoice id: 4471");
+
+install();
+await post(Object.assign({}, RES, { Notes: DUMP }));
+ck("the flattened note object gives up the receptionist's words",
+   STORE[NOTE_ID].fromMews === WORDS);
+ck("and none of the metadata around them",
+   !/createdUtc|orderId|General/.test(STORE[NOTE_ID].fromMews));
+
+/* A dump whose text is empty is metadata alone, which is not a note. */
+install();
+await post(Object.assign({}, RES, { Notes: DUMP.replace(WORDS, "") }));
+ck("a dump with nothing behind text: seeds nothing",
+   STORE[NOTE_ID] === undefined);
+
+/* The seed-once rule stands: a readable original survives every later event. */
+install();
+await post(Object.assign({}, RES, { Notes: "First words" }));
+await post(Object.assign({}, RES, { Notes: "Second words" }));
+ck("a readable original is never overwritten by a later event",
+   STORE[NOTE_ID].fromMews === "First words");
+
+/* The one exception: a dump stored before the fix existed repairs itself on
+   the next event for its booking. The manager's own rewrite in note is
+   untouched. */
+install();
+STORE[NOTE_ID] = { fromMews: DUMP, note: "the manager's rewrite" };
+await post(Object.assign({}, RES, { Notes: DUMP }));
+ck("a dump stored before the fix is repaired on the next event",
+   STORE[NOTE_ID].fromMews === WORDS);
+ck("and the manager's rewrite beside it is untouched",
+   STORE[NOTE_ID].note === "the manager's rewrite");
 
 /* ── the clock ──────────────────────────────────────────────── */
 /* Mews sends true UTC. Confirmed 18 Aug: 04:00Z is 2pm at the resort, which is

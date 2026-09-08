@@ -922,6 +922,49 @@ with sync_playwright() as p:
     ck("dinnerElsewhere says stale for the old villa", moved["stale"] is True)
     ck("and not for the new one", moved["here"] is False)
 
+    # ── the room that changed hands ─────────────────────────────
+    # The other way a cell goes stale: not the booking moving out, but a
+    # DIFFERENT booking moving in. A rename in Mews orphaned a cell on 3 Sep
+    # - its booking id no longer appeared under any villa, so the elsewhere
+    # test above never fired - and the next guest into the villa wore the
+    # previous guest's dinner answer and dietary note. A cell whose booking
+    # the PMS does not know AT ALL still stands, because an empty roomguests
+    # is also what a failed read looks like, and hiding every answer on a
+    # network blip is the worse trade.
+    handed = pg.evaluate("""()=>{
+      const rg = overlayStays({}, { '5': {id:'b2', first:'New', last:'Guest',
+                 arrive:'2026-08-18', depart:'2026-08-22'} });
+      const cells = { '5': { status:'in', pax:2, bookingId:'b1', by:'staff',
+                             dnote:'nut allergy' } };
+      return {
+        stale: dinnerElsewhere(cells, 5, rg),
+        rec:   roomRecord(5, {}, {}, rg, cells),
+        alone: dinnerElsewhere(cells, 5, {})
+      };
+    }""")
+    ck("a villa now held by a different booking drops the old cell",
+       handed["stale"] is True)
+    ck("so the new guest does not wear the old guest's dietary note",
+       not (handed["rec"] or {}).get("dnote"))
+    ck("but a cell whose booking the PMS knows nothing about stands, since "
+       "an empty read and a failed one look alike here",
+       handed["alone"] is False)
+
+    # ── the stale copy in a lower villa ─────────────────────────
+    # dinnerElsewhere returned on the FIRST id match, and integer-like keys
+    # iterate ascending, so a booking the PMS holds in villa 9 with a stale
+    # copy of itself under villa 5 was answered about villa 5 and the higher
+    # villa's dinner vanished. Parked in HANDOVER.md as "a party in two
+    # villas loses the higher one's dinner"; closed by scanning the lot.
+    lower = pg.evaluate("""()=>{
+      const rg = { '5': { bookingId:'b1', name:'Ben Davidson' },
+                   '9': { bookingId:'b1', name:'Ben Davidson' } };
+      const cells = { '9': { status:'in', pax:2, bookingId:'b1', by:'guest' } };
+      return dinnerElsewhere(cells, 9, rg);
+    }""")
+    ck("a booking the PMS holds in THIS villa keeps its cell despite a stale "
+       "copy under a lower number", lower is False)
+
 
     # ── one party across several villas ─────────────────────────
     party = pg.evaluate("""()=>{
@@ -1324,9 +1367,13 @@ with sync_playwright() as p:
     # a board open. It used to be announced from inside the Reservations board
     # only, so on a quiet afternoon the chef published and nobody was told.
     # It now lives in nala-shared.js and any signed in page announces it.
+    # Pinned to the function, not the node name, since 7 Sep: the dining
+    # history made tally.html a READER of /menuhistory again, and a reader
+    # is not the regression this guards. The regression is the board
+    # growing its own copy of the announcement.
     ck("the announcement lives in the shared file, not in one board",
        "function announceMenu" in open("/home/claude/nala/nala-shared.js").read()
-       and "menuhistory" not in open("/home/claude/nala/tally.html").read())
+       and "function announceMenu" not in open("/home/claude/nala/tally.html").read())
     ck("it runs itself once a page is signed in",
        pg.evaluate("()=>typeof announceMenu==='function'"))
     # The guest pages load the same file. The token is what keeps them out,
@@ -1410,8 +1457,15 @@ with sync_playwright() as p:
        "protectedReason" in src and "485211" not in src)
     ck("you cannot remove yourself", "This is you." in src)
     ck("the last admin cannot be removed", "last admin cannot be removed" in src)
-    ck("the check runs again on confirm, not only where the bin was drawn",
+    # The bin on each row went on 29 Aug - it called removeSheet, which is
+    # what the person sheet's own "Remove from staff" calls, so it was a
+    # one-tap path to a permanent write. The check still has to run in more
+    # than one place: the sheet decides whether to offer the button, and the
+    # confirmation decides again before it writes.
+    ck("the check runs again on confirm, not only where the button was drawn",
        src.count("protectedReason(key)") >= 2)
+    ck("removing somebody is not offered on the row itself",
+       "class=\"bin\"" not in src and "removeSheet(k)" not in src)
 
     # sync is assignable, so the account can be made on this page instead of in
     # the Firebase console, but it has no phone and must not appear in the
@@ -1421,22 +1475,26 @@ with sync_playwright() as p:
     ck("the staff list sorts by the assignable order, so sync sorts last",
        src.count("ROLES_ASSIGN.indexOf") == 2)
     import re as _re
-    # Counted with a boundary: PERM_ROLES.map ends in the same nine characters
-    # and turned this into a false failure the day the permission grid landed.
-    ck("the notification matrix stays on the human roles",
-       len(_re.findall(r"(?<![A-Z_])ROLES\.map", src)) == 2 and "ROLES_ASSIGN" in src)
+    # Both lists became one component on 29 Aug: what used to be two grids,
+    # each with its own .map over its own roles, is now pickList called twice.
+    # These read the call sites rather than the loops.
+    ck("who may do what and who is told about what are one component, not two",
+       src.count("pickList(") == 3)   # the definition and its two callers
 
-    # The permission grid is drawn from the shared lists rather than from a
+    ck("the notification list stays on the human roles",
+       "roles: ROLES," in src and "ROLES_ASSIGN" in src)
+
+    # The permission list is drawn from the shared lists rather than from a
     # second copy kept here, so adding a capability in one place adds the row.
-    ck("the permission grid reads the shared lists",
-       "PERM_ACTIONS.map" in src and "PERM_ROLES.map" in src)
+    ck("the permission list reads the shared lists",
+       "roles: PERM_ROLES, items: PERM_ACTIONS" in src)
     ck("it saves the moment a box is tapped, like the one above it",
        "savePerms()" in src and "'/permissions.json'" in src)
     # Only the boxes moved away from the default are stored. Writing every
     # cell would freeze today's defaults into the database, and the next
     # capability added would arrive switched off for everybody.
     ck("only the changed boxes are stored, not a copy of every cell",
-       "grantedByDefault" in src and "PERMS[ac][r] = !now" in src)
+       "grantedByDefault" in src and "PERMS[ac[0]][r] = !now" in src)
     ck("a failed load says the app is running on its defaults",
        "running on its defaults" in src)
     ck("the matrix is loaded on the way in", "loadPerms();" in src)

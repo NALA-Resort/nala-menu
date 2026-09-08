@@ -332,6 +332,44 @@ function asCount(v, min, max) {
   return n;
 }
 
+/* The note as a person wrote it, dug out of what Zapier actually sends.
+
+   Mews keeps reservation notes as OBJECTS - createdUtc, id, orderId, text,
+   type, updatedUtc - and Zapier flattens the array into one string of
+   "key: value" pairs. What reached /internal for one booking, and printed
+   on the 26 Aug Service Sheet as nine lines of GUIDs and timestamps in a
+   staff row, was that whole flattened object: the words the receptionist
+   typed were six words among forty, hiding behind "text:".
+
+   So the text fields are lifted out and the metadata is dropped. Only when
+   the string is unmistakably that shape - a "text:" with at least two of
+   the object's other keys beside it - because a note typed by a person is
+   passed through untouched, and a person could conceivably write "id:" once.
+   Several notes flattened into one dump each give up their text, joined
+   with a middle dot like the sheet's own separators. A dump with nothing
+   behind "text:" returns null: metadata alone is not a note. */
+const MEWS_NOTE_KEYS = "createdUtc|updatedUtc|orderId|type|id";
+function mewsNoteText(v) {
+  if (typeof v !== "string") return v;
+  /* Split on the keys rather than matching around them: a lazy capture
+     bounded by a lookahead reads a dump whose text is EMPTY as the next
+     key's value, because the engine grows the capture before it gives back
+     the whitespace. Splitting has no such choice to make. */
+  const parts = v.split(
+    new RegExp("\\s*\\b(" + MEWS_NOTE_KEYS + "|text):\\s*", "g"));
+  const keys = new Set(), texts = [];
+  let sawText = false;
+  for (let i = 1; i < parts.length; i += 2) {
+    if (parts[i] === "text") {
+      sawText = true;
+      const t = (parts[i + 1] || "").trim();
+      if (t) texts.push(t);
+    } else keys.add(parts[i]);
+  }
+  if (!sawText || keys.size < 2) return v;
+  return texts.length ? texts.join(" · ") : null;
+}
+
 /* villa validates as a short string OR a number, so either is passed through
    and anything else becomes null. */
 function asVilla(v) {
@@ -419,9 +457,17 @@ function readReservation(p) {
        Zapier's key is 32 hex characters without, so the shape settles it.
 
        Keying on Zapier's key was the cause of one guest appearing in three
-       villas at once, and of a move never clearing the villa it left. */
+       villas at once, and of a move never clearing the villa it left.
+
+       Id2 joined the list 1 Sep, LAST so a real Id or MewsId outranks it.
+       The live Zap serialises a second id row under that key, and on a new
+       reservation's first event it was the only key carrying the GUID -
+       Mews Id does not exist until the first modification - so every new
+       booking 400'd once, invisibly, and waited for its next touch to
+       exist. Shape still rules: a non GUID under Id2 is refused below. */
     id:      pickGuid(p, ["MewsId", "Mews Id", "mews_id", "mewsId",
-                          "Id", "id", "ReservationId", "reservation_id", "bookingId"]),
+                          "Id", "id", "ReservationId", "reservation_id", "bookingId",
+                          "Id2", "Id 2"]),
     first:   pick(p, ["FirstName", "first_name", "firstName", "CustomerFirstName"]),
     last:    pick(p, ["LastName", "last_name", "lastName", "CustomerLastName"]),
     phone:   pick(p, ["Phone", "phone", "PhoneNumber", "phone_number", "CustomerPhone"]),
@@ -471,9 +517,9 @@ function readReservation(p) {
        booking where the companion happens to come first still works. That
        costs nothing and removes the only guess left in it. */
     companion:     companionName(p),
-    /* Whatever a receptionist typed into Mews. Read for the first time on
-       19 Aug: it was being discarded, so the two systems held different facts
-       about the same guest and neither showed the other's. */
+    /* Whatever a receptionist typed into Mews. The words only - Zapier sends
+       the note as its own flattening of Mews' note objects, and mewsNoteText
+       strips the metadata before it is stored. */
     mewsNote:      pick(p, ["Notes", "notes", "Note", "note",
                             "GuestNotes", "guest_notes", "CustomerNotes"]),
     customerId:    pickGuid(p, ["CustomerId", "customer_id", "CustomerID",
@@ -567,7 +613,13 @@ export default {
     catch (e) { return new Response("bad json", { status: 400 }); }
 
     const r = readReservation(payload);
-    if (!r.id) return new Response("no reservation id in payload", { status: 400 });
+    /* The keys that DID arrive, so the Zap history shows which mapping went
+       missing. Keys only, never values: values are guest data and this reply
+       lands in a dashboard other people read. */
+    if (!r.id) return new Response(JSON.stringify({
+      ok: false, error: "no reservation id in payload",
+      receivedKeys: Object.keys(payload || {}).slice(0, 32)
+    }), { status: 400, headers: { "Content-Type": "application/json" } });
     /* Refused rather than stored. A non GUID here means the Zap is mapping
        Zapier's own event key instead of the Mews reservation id, and storing it
        would create a fresh booking on every event, which is exactly the bug
@@ -600,6 +652,26 @@ export default {
       const stale = prev ? nights(prev.arrive, prev.depart) : [];
 
       const cancelled = r.state.indexOf("cancel") > -1;
+
+      /* A later event with a bad villa must not erase what a good earlier one
+         wrote. An unrecognised villa on a NEW booking writes no nights and
+         says so, which is right: there is nothing to lose. The same value on
+         a MODIFICATION of a booking whose villa WAS recognised fed the
+         clear-by-looking pass below an empty "fresh" list, so every night the
+         reservation held was deleted, none rewritten, and the reply was still
+         ok: a name change with the villa unmapped removed the room from every
+         board with the only trace a field in a Zap history nobody reads.
+         Seen live 3 Sep. Refused whole instead - a 400 lands in the Zap
+         history as an error, nothing is written, and the mapping gets fixed
+         once, loudly, rather than destroying index entries quietly. */
+      if (!cancelled && !knownVilla(r.villa) && prev && knownVilla(prev.villa)) {
+        return new Response(JSON.stringify({
+          ok: false, error: "unrecognised villa on a booking that had one",
+          received: String(r.villa).slice(0, 40),
+          held: String(prev.villa),
+          hint: "map the space name into this trigger; nothing was changed"
+        }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
 
       /* A cancellation for a booking we have never seen clears nothing, and
          until now said so nowhere: the reply was a cheerful ok and the guest
@@ -670,11 +742,6 @@ export default {
         mewsState: asText(r.state, 30),
         bookingNumber: asNumberOrText(r.bookingNumber),
         groupId: asText(r.groupId, 64),
-        /* On the booking and not on the nights. A night is read by the boards
-           twenty times an hour and none of them care who the person is; the
-           write back to Mews happens once per booking and does. Copying it
-           into every night would be fourteen copies of a fact used nowhere. */
-        customerId: asText(r.customerId, 64),
         adults: asCount(r.adults, 0, 40), children: asCount(r.children, 0, 40),
         /* Explicit nulls, not omissions. A PATCH that simply stops sending a
            field leaves the old value sitting there, so every booking synced
@@ -699,6 +766,17 @@ export default {
          nested object coerces to null, and null here is a deletion. */
       const rateText = asText(r.rate, 120);
       if (rateText !== null) pmsPatch.rate = rateText;
+      /* The customer, the rate's treatment and stricter: only a real GUID is
+         stored, and an event without one leaves the stored customer standing
+         rather than nulling it away. On the booking and not on the nights - a
+         night is read by the boards twenty times an hour and none of them
+         care who the person is. Until 3 Sep this was written unconditionally,
+         so any trigger with CustomerId unmapped DELETED the person from the
+         booking, and with it every dietary's way home to /guests. GUID only,
+         because /guests is keyed on it: a Zapier event key stored here would
+         attach the person's allergies to a customer who does not exist. */
+      const cidText = asText(r.customerId, 64);
+      if (cidText !== null && isGuid(cidText)) pmsPatch.customerId = cidText;
       await db(env, "/bookings/" + r.id + "/pms", "PATCH", pmsPatch);
 
       /* The summary is duplicated into every night rather than stored once
@@ -741,17 +819,24 @@ export default {
       /* The Mews note, once. Written to its own staff-only node, and only
          when nothing is there: a manager's correction has to survive the next
          event for that booking, and Mews sends the whole reservation every
-         time. So this seeds the record and never overwrites it.
-
-         Kept in its own field, apart from the edited one, so the original is
-         still readable after somebody rewrites it. */
-      if (r.mewsNote) {
+         time. So this seeds the record and never overwrites it - with one
+         exception below. mewsNoteText first, so what is stored is the
+         receptionist's words, never Zapier's flattening around them. */
+      const seed = mewsNoteText(asText(r.mewsNote, 2000));
+      if (seed) {
         let had = null;
         try { had = await db(env, "/internal/" + r.id + "/fromMews", "GET"); }
         catch (e) { had = null; }
-        if (!had) {
+        /* The exception: what is already there is itself a stored dump,
+           seeded before mewsNoteText existed. Mews resends the whole
+           reservation on every event, so each repairs itself the next time
+           its booking so much as breathes. A manager's rewrite lives in
+           /internal/<id>/note and is not touched on either path; a fromMews
+           a person could actually read is never overwritten either. */
+        const stale = typeof had === "string" && mewsNoteText(had) !== had;
+        if (!had || stale) {
           await db(env, "/internal/" + r.id, "PATCH",
-                   { fromMews: asText(r.mewsNote, 2000) });
+                   { fromMews: asText(seed, 2000) });
         }
       }
 
@@ -763,19 +848,51 @@ export default {
          set the moment a guest or the desk touches the form, and seeding over
          that would replace what somebody just said with what they said last
          year. */
-      if (r.customerId && !cancelled) {
-        let started = null;
+      /* Whose form this is. The booking carries TWO person attachments and
+         they may differ, the owner's ruling of 3 Sep: pms.customerId is who
+         Mews says the booking is for NOW, and prearrival.forCustomerId is
+         who the ANSWERS were given for. The answers are personal - they were
+         answered by a person and follow that person - so when a receptionist
+         re-attributes a reservation in Mews, the new customer takes the
+         booking and the original stays on it, against the answers.
+
+         prev is deliberately preferred over the incoming id: on the very
+         event that changes the customer, the answers already on the form
+         were given under the OLD one, and stamping the new would re-home
+         them - the exact move this field exists to prevent. Stamped once,
+         backfill only; the mirrors stamp at answer time and this covers the
+         guest-first case, where the form is answered before pms exists. */
+      const heldCid = (prev && isGuid(prev.customerId)) ? prev.customerId
+                    : (isGuid(r.customerId) ? r.customerId : null);
+      let started = null;
+      if ((r.customerId || heldCid) && !cancelled) {
         try { started = await db(env, "/bookings/" + r.id + "/prearrival/at", "GET"); }
         catch (e) { started = null; }
-        if (!started) {
-          let known = null;
-          try { known = await db(env, "/guests/" + r.customerId, "GET"); }
-          catch (e) { known = null; }
-          if (known && (known.diets || known.dnote)) {
+      }
+      if (r.customerId && !cancelled && !started) {
+        let known = null;
+        try { known = await db(env, "/guests/" + r.customerId, "GET"); }
+        catch (e) { known = null; }
+        if (known && (known.diets || known.dnote)) {
+          await db(env, "/bookings/" + r.id + "/prearrival", "PATCH",
+                   { diets: Array.isArray(known.diets) ? known.diets : [],
+                     dnote: asText(known.dnote, 500) || "" });
+        }
+      }
+      if (heldCid && !cancelled && started) {
+        let stamped = null;
+        try { stamped = await db(env, "/bookings/" + r.id + "/prearrival/forCustomerId", "GET"); }
+        catch (e) { stamped = null; }
+        if (!stamped) {
+          /* Quiet on refusal: until the rules paste the field is unknown to
+             the database and the write bounces, and a 500 here would make
+             Zapier retry the whole event forever over an optional stamp.
+             Unstamped, the mirrors key on pms.customerId, which is exactly
+             the behaviour of 2 Sep - the feature limps, it does not fail. */
+          try {
             await db(env, "/bookings/" + r.id + "/prearrival", "PATCH",
-                     { diets: Array.isArray(known.diets) ? known.diets : [],
-                       dnote: asText(known.dnote, 500) || "" });
-          }
+                     { forCustomerId: heldCid });
+          } catch (e) {}
         }
       }
 

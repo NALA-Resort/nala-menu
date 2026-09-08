@@ -1,0 +1,95 @@
+{
+  "_comment": [
+    "Every value the Dashboard shows, and the thing that OWNS it. CLAUDE.md",
+    "rule 7: the Dashboard gathers, it does not work things out. If a fact is",
+    "first computed on that page, that is the bug, and it presents as two",
+    "screens telling reception different things about the same villa.",
+    "",
+    "The nav_canon.json pattern. This table is what the page must read; the",
+    "suite asserts the page actually calls each reader, and that the patterns",
+    "under `banned` appear nowhere in it. Whichever side a change misses",
+    "fails by name.",
+    "",
+    "Adding a value to the Dashboard means adding a row here first. If you",
+    "cannot name an owner, you are about to originate a fact on a page whose",
+    "job is to gather them."
+  ],
+
+  "reads": [
+    { "value": "pre-arrival form state, and the arrival-sheet chips that mirror it",
+      "owner": "formState",
+      "kind": "function",
+      "note": "Front Desk's three states. Never recompute from `at` or the answers." },
+
+    { "value": "a guest's dinner answer when no /dinner cell was ever written",
+      "owner": "formDinnerCell",
+      "kind": "function",
+      "note": "Arrival night only, cell wins the moment anyone sets one. Reading /dinner alone showed villa 4 grey here while Invitations had it answered, 8 Sep." },
+
+    { "value": "stays, dinner cells and each villa's pre-arrival, for the day",
+      "owner": "fetchStays",
+      "kind": "function",
+      "note": "One reader, so this board and the two it summarises cannot disagree." },
+
+    { "value": "whether a guest has physically arrived",
+      "owner": "isArrived",
+      "kind": "function",
+      "note": "Front Desk stamps checkedInAt. Deliberately duplicated one line on this page; see the comment there." },
+
+    { "value": "tonight's menu",
+      "owner": "fetchMenuAnywhere",
+      "kind": "function",
+      "note": "Returns the LIVE node without a date guard - only its menu.json fallback checks. The date and filled-courses guards are menuCheck's, in tally.html." },
+
+    { "value": "diners with no villa, both shapes",
+      "owner": "externalDiners",
+      "kind": "function",
+      "note": "Digital replies under /responses with no room, and staff-added ext- keys under /manual. Reading /manual alone lost every externally booked table that came in through a link." },
+
+    { "value": "how many people a dining row is",
+      "owner": "dinerPax",
+      "kind": "function",
+      "note": "One head unless the record says otherwise. Counting a pax-less dining row as nought undercounts the kitchen." },
+
+    { "value": "where a villa stands on tonight's invitation",
+      "owner": "stateOf",
+      "kind": "function",
+      "note": "Invitations' own reader. kind 'ready' is still to ask, and a FAILED send is 'ready' - the reconstruction this replaced counted it as sent." },
+
+    { "value": "which villas are still owed a dinner invitation",
+      "owner": "/invites/",
+      "kind": "path",
+      "note": "Keyed by VILLA, written and read by invitations.html. /previnvites is the pre-arrival SMS log, keyed by booking id, and is a different thing entirely." },
+
+    { "value": "a booking's arrival date",
+      "owner": "parseDepDate",
+      "kind": "function",
+      "note": "Builds a LOCAL date from an ISO day, and handles the dd/mm/yyyy the PMS also writes." },
+
+    { "value": "whether a timestamp falls on the day being viewed",
+      "owner": "parseISO",
+      "kind": "function",
+      "note": "With dkey. A stamp is UTC and a day is local: 9:58am on the 8th in Australia is 2026-09-07T23:58Z." },
+
+    { "value": "a staff member's name against a print tick",
+      "owner": "fullNameFor",
+      "kind": "function",
+      "note": "The tick stores the staff key, so a rename follows it. shortTagFor is the upper-case chip form and shouts inside a sentence." },
+
+    { "value": "which cards a role may open",
+      "owner": "can",
+      "kind": "function",
+      "note": "The app's own keys: resSheet and cleansBoard, not the resBoard/cleanBoard you would guess." }
+  ],
+
+  "owns": [
+    { "value": "print ticks",
+      "path": "/dayboard/<date>",
+      "why": "The app cannot see paper, so nothing else can know this. The only fact this page originates." }
+  ],
+
+  "banned": [
+    { "pattern": "slice(0,10)",
+      "why": "Slicing an ISO stamp compares a UTC date against a local day. It read a published menu as not published on 8 Sep, and would have done so every morning before 10am." }
+  ]
+}

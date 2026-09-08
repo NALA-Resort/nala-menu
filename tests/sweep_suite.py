@@ -179,6 +179,7 @@ PUBLISH_QS = ("?b=Tomato%20focaccia%20-%20whipped%20ricotta"
               "&d=Mandarin%20cheesecake&sf=e")
 
 PAGES = [
+    ("dashboard.html",    ""),
     ("cleaners.html",     ""),
     ("front-desk.html",   ""),
     ("invitations.html",  ""),

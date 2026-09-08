@@ -141,7 +141,41 @@ rather than saying "you picked me":
 Also ruled: `.tick` meant three different things - a checkbox on Staff, a
 hazard mark on Dietary, a ringed pill on Publish. One blanket dress
 overrode the ring and threw its meaning away. Each page says what its own
-tick does.
+tick does. Staff has no tick any more; see switches below.
+
+### A fifth thing that is not a button: the switch
+
+A setting that is simply on or off is a switch, and it is blue when on.
+That does not break the grey-selection rule above, because a switch is not
+a selection: it has no siblings to be picked over, and its colour IS the
+value. Two greys side by side, one meaning on and one meaning off, is not
+readable at arm's length, and every phone's own settings say so.
+
+Written once, in staff.html's `pickList`, and used for both the permission
+rows and the notification rows. Rules:
+
+- **A switch saves on press.** No Save button, no confirm - it is one
+  reversible field, and the way back is to press it again.
+- **`role="switch"` and `aria-checked`, never `aria-pressed`.** Beyond
+  being correct, the sweep excuses an `aria-pressed="true"` control as
+  "already chosen, so does nothing", which is true of a selected pill and
+  false of a toggle.
+- **Give each one an id.** The sweep names a control by tag, id and label,
+  and a switch has no label. Eighteen switches sharing the descriptor
+  `button.sw` collapsed to one, and a dead handler passed the suite.
+
+### Tabs
+
+A page that does four unrelated jobs may split them across tabs rather than
+scroll: staff.html did, 29 Aug. Rules:
+
+- **One page, one URL, one permission gate.** Tabs are not four pages.
+- **Every panel loads on page load**, not on first press. A count on a tab
+  that only becomes true once somebody looks at it is worse than no count.
+- **The panels are `display:none`, so the control sweep cannot see them.**
+  It reaches them at depth two, by pressing the tab first - which works
+  only because the tab itself is a control. Do not hide a panel behind
+  anything the sweep does not press.
 
 ## The button law
 

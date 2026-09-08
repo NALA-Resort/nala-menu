@@ -852,6 +852,52 @@ with sync_playwright() as p:
             print("      got %r" % got)
         q.close()
 
+    # ── the guest's own form answer reaches the paper ───────────────────
+    # A guest arriving tonight who answered dinner on their pre-arrival form
+    # was on the Reservations board (the 28 Aug ruling) and OFF this sheet,
+    # because roomRecord never read the form - the worst kind of wrong: the
+    # chef has no way to know. The sheet now hands roomRecord the night it is
+    # printing and the fallback is formDinnerCell in nala-shared.js, held to
+    # tests/form_dinner_cases.json. Villa 13 is the counter-case: the same
+    # answer mid-stay says nothing, because the form asked about the first
+    # night alone.
+    FORM_STAYS = dict(STAYS)
+    FORM_STAYS["12"] = {"id": "b12f", "first": "Form", "last": "Diner",
+                        "arrive": today, "depart": plus(2), "adults": 2}
+    FORM_STAYS["13"] = {"id": "b13f", "first": "Mid", "last": "Stay",
+                        "arrive": plus(-1), "depart": plus(2), "adults": 2}
+    FORM_PRE = {"b12f": {"dining": True, "pax": 2, "diets": ["Gluten free"]},
+                "b13f": {"dining": True, "pax": 4}}
+    def formsheet_fb(route, request):
+        u = request.url
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(FORM_STAYS)); return
+        if "/bookings/" in u and "/prearrival" in u:
+            k = u.split("/bookings/")[1].split("/")[0]
+            if k in FORM_PRE:
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps(FORM_PRE[k])); return
+        fb(route, request)
+    q = b.new_page(viewport={"width": 900, "height": 1100})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body=SDK))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", formsheet_fb)
+    q.route("**/menu.json*", lambda r,_: r.fulfill(status=200,
+        content_type="application/json", body=json.dumps(menu)))
+    q.goto("http://localhost:8955/list.html"); q.wait_for_timeout(1500)
+    sheet = {r["villa"]: r for r in q.evaluate("()=>SHEET")}
+    ck("an arriving guest who answered dining on their form is on the paper",
+       sheet.get("12", {}).get("dinner") == "Yes"
+       and sheet.get("12", {}).get("pax") == "2")
+    ck("and the dietary they gave prints with them",
+       sheet.get("12", {}).get("diets") == ["Gluten free"])
+    ck("but only on the night they arrive: mid-stay still prints unanswered",
+       sheet.get("13", {}).get("dinner") == "-")
+    q.close()
+
     b.close()
 print("RESULT: %d passed, %d failed" % (P,F))
 httpd.shutdown()

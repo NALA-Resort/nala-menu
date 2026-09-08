@@ -153,7 +153,12 @@ def saveAndSettle(pg, sel, timeout=5000):
     """
     pg.locator(sel).click()
     try:
-        pg.wait_for_selector("#backdrop:not(.show)", timeout=timeout)
+        # state="attached", because a closed backdrop is display:none and the
+        # default wait is for VISIBLE - a state a closed sheet can never reach.
+        # Until 8 Sep this wait timed out on every call, so the helper ate its
+        # five seconds and returned False whatever the sheet did, and nothing
+        # noticed because no caller read the answer. The move tests do.
+        pg.wait_for_selector("#backdrop:not(.show)", state="attached", timeout=timeout)
     except Exception:
         return False
     pg.wait_for_timeout(120)      # the repaint that follows the close
@@ -385,6 +390,26 @@ with sync_playwright() as p:
     ck("covers 13, and one villa still awaiting after the save",
        s5["c"]==13 and s5["a"]==1)
 
+    # 5b the cell carries the booking it was made about
+    # Guest writes and the desk both stamp bookingId into the cell; this
+    # board did not, so a cell made here could never be told from the villa
+    # it sat in, and when Mews moved or renamed the booking, tonight's
+    # answer and its dietary note stayed with the ROOM in front of whoever
+    # took it next (3 Sep). Villa 9 holds res-9 in this fixture, so the
+    # staff save above is the stamped case; villa 10 holds nobody, so a
+    # save there is the walk-in: no id known, none invented.
+    ck("a cell written for a Mews villa is stamped with its booking id",
+       json.loads(w[0]["b"]).get("bookingId")=="res-9")
+    pg.evaluate("()=>saveManual('room-10',{status:'in',pax:2,room:'10',source:'manual'})")
+    pg.wait_for_timeout(300)
+    wk=[x for x in WRITES if "/dinner/"+today+"/10" in x["u"] and x["m"]=="PUT"]
+    ck("a cell for a villa with no booking writes no booking id",
+       len(wk)==1 and "bookingId" not in json.loads(wk[0]["b"]))
+    # Put the board back the way this test found it, or villa 10's two
+    # covers ride into every count below.
+    pg.evaluate("()=>saveManual('room-10')")
+    pg.wait_for_timeout(300)
+
     # 6 rollback on failure
     STATE["fail"]=True
     tile(pg,10).click(); pg.wait_for_timeout(200)
@@ -581,6 +606,58 @@ with sync_playwright() as p:
     we2=[x for x in WRITES if re.search(r"/manual/"+today+r"/ext-\d+",x["u"])][-1]
     ck("external save-changes PUT", json.loads(we2["b"])["name"]=="Walk In Party")
     ck("row renamed", "Walk In Party" in pg.locator("#listBookings").inner_text())
+
+    # manual external move: the Night row moves the reservation to another
+    # night. Until this control the only way to change the date was Cancel
+    # booking and retype it on the other day's board.
+    before=pg.evaluate("()=>+nCovers.textContent")
+    row=pg.locator("#listBookings .row", has_text="Walk In Party")
+    row.locator(".edit").click(); pg.wait_for_timeout(200)
+    nt=pg.evaluate("()=>({lab:xNightLabel.textContent,val:document.querySelector('#xNight input').value,btn:oSave.textContent})")
+    print("   night field:",nt)
+    ck("night shows the viewed night, button says Save changes",
+       nt["val"]==today
+       and nt["lab"]==pg.evaluate("()=>dateLabel(parseDepDate('%s'))"%today)
+       and nt["btn"]=="Save changes")
+    # eight guest pills outgrow a narrow phone and flex shrinks width alone,
+    # which turned every circle into an egg. Squeezed, a circle stays one.
+    pg.set_viewport_size({"width":360,"height":930}); pg.wait_for_timeout(100)
+    sq=pg.evaluate("()=>[...document.querySelectorAll('#paxRow .pax')].map(e=>{const r=e.getBoundingClientRect();return Math.abs(r.width-r.height)<0.6;})")
+    ck("squeezed guest pills stay round", len(sq)==8 and all(sq))
+    pg.set_viewport_size({"width":430,"height":930}); pg.wait_for_timeout(100)
+    ck("and the night field carries no label of its own",
+       "Night" not in pg.locator("#sheet").inner_text())
+    pg.evaluate("d=>{const p=document.querySelector('#xNight input');p.value=d;p.dispatchEvent(new Event('change'));}", plus(1))
+    moveLab=pg.evaluate("()=>dateLabel(parseDepDate('%s'))"%plus(1))
+    ck("button now says Move to the chosen night",
+       pg.locator("#oSave").inner_text()=="Move to "+moveLab)
+
+    # a refused move leaves the reservation standing where it was: the new
+    # night is written BEFORE this one is deleted, so a failure part-way
+    # can strand a duplicate but never lose the booking
+    STATE["fail"]=True
+    i0=len(WRITES)
+    stillOpen = not saveAndSettle(pg, "#oSave")
+    STATE["fail"]=False
+    mv=[x for x in WRITES[i0:] if "/manual/" in x["u"]]
+    ck("refused move: one PUT to the new night, no DELETE of this one",
+       stillOpen and len(mv)==1 and mv[0]["m"]=="PUT"
+       and "/manual/"+plus(1)+"/" in mv[0]["u"])
+    ck("and the row is still on the board",
+       "Walk In Party" in pg.locator("#listBookings").inner_text())
+
+    # now it goes through
+    i1=len(WRITES)
+    ck("move settles and the sheet closes", saveAndSettle(pg, "#oSave"))
+    mv2=[x for x in WRITES[i1:] if "/manual/" in x["u"]]
+    okm=(len(mv2)==2 and mv2[0]["m"]=="PUT" and "/manual/"+plus(1)+"/" in mv2[0]["u"]
+         and mv2[1]["m"]=="DELETE" and "/manual/"+today+"/" in mv2[1]["u"]
+         and json.loads(mv2[0]["b"])["name"]=="Walk In Party"
+         and json.loads(mv2[0]["b"])["pax"]==5)
+    ck("move: PUT the new night first, then DELETE this one, details carried", okm)
+    ck("row gone from this board, covers drop by its pax",
+       "Walk In Party" not in pg.locator("#listBookings").inner_text()
+       and pg.evaluate("()=>+nCovers.textContent")==before-5)
 
     # 9 override cancel of guest booking (room 1)
     tile(pg,1).click(); pg.wait_for_timeout(200)
@@ -1571,6 +1648,7 @@ with sync_playwright() as p:
     # same guest and had no way to record one. A board that cannot show what
     # the desk recorded is a board that quietly loses it.
     WROTE = []
+    STAMP = {"v": None}   # /bookings/b4/prearrival/forCustomerId, settable mid-test
     def diet_fb(route, request):
         u = request.url
         if request.method in ("PUT", "PATCH"):
@@ -1578,6 +1656,10 @@ with sync_playwright() as p:
                           request.post_data))
             route.fulfill(status=200, content_type="application/json",
                           body=request.post_data or "{}"); return
+        # Before the customerId branch below, which this path also matches.
+        if "/prearrival/forCustomerId" in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(STAMP["v"])); return
         if "/staff" in u:
             route.fulfill(status=200, content_type="application/json",
                 body=json.dumps({"staff@x": {"name": "A", "role": "admin"}})); return
@@ -1694,6 +1776,43 @@ with sync_playwright() as p:
     # customerId is the only identifier that outlives a booking.
     ck("and the dietary reaches the person, so next year they are not asked again",
        any("/guests/" in p for p in paths))
+
+    # A half-given mirror must not blank the other half. The board's editors
+    # send a dnote only when one exists, and the mirror used to fill the gap
+    # with '', erasing the person's standing note on every note-less save.
+    # undefined means "not my field"; an empty string given on purpose still
+    # clears.
+    n0 = len(WROTE)
+    q.evaluate("()=>rememberDietary('b4', ['Nut allergy'], undefined)")
+    q.wait_for_timeout(400)
+    part = [json.loads(x[1]) for x in WROTE[n0:] if "/guests/" in x[0] and x[1]]
+    ck("a mirror given no note leaves the person's standing note alone",
+       bool(part) and all("dnote" not in p for p in part))
+    n1 = len(WROTE)
+    q.evaluate("()=>rememberDietary('b4', ['Nut allergy'], '')")
+    q.wait_for_timeout(400)
+    wiped = [json.loads(x[1]) for x in WROTE[n1:] if "/guests/" in x[0] and x[1]]
+    ck("and one given an empty note still clears it, cleared is an answer",
+       bool(wiped) and all(p.get("dnote") == "" for p in wiped))
+
+    # And WHOSE record it reaches: the form's own forCustomerId stamp wins
+    # over the booking's current customer - the owner's ruling of 3 Sep,
+    # answers are personal and follow the person who gave them, not whoever
+    # Mews attaches to the booking afterwards. An unstamped form is stamped
+    # by the mirror itself, because answering is the moment the booking's
+    # current person is exactly who the answers are for.
+    ck("an unstamped form was stamped at the moment of answering",
+       any("/bookings/b4/prearrival" in x[0] and x[1] and
+           json.loads(x[1]).get("forCustomerId") == "cust-9f2b"
+           for x in WROTE))
+    STAMP["v"] = "cust-original"
+    n2 = len(WROTE)
+    q.evaluate("()=>rememberDietary('b4', ['Nut allergy'], 'the daughter')")
+    q.wait_for_timeout(400)
+    stamped = [x for x in WROTE[n2:] if "/guests/" in x[0]]
+    ck("a stamped form mirrors to the person the answers were given for, "
+       "not the booking's current customer",
+       bool(stamped) and all("/guests/cust-original" in x[0] for x in stamped))
     q.close()
 
     # ── answers saved under the pills' old names ────────────────────────
@@ -1822,6 +1941,120 @@ with sync_playwright() as p:
     # argue with.
     ck("and the dietary they gave rides along to the kitchen",
        "Nut" in q.evaluate("()=>listBookings.textContent"))
+    q.close()
+
+    # ── dining history: the stay's past nights on the villa sheet ───────
+    # /stays says which villa the BOOKING held each night, /dinner/<date>
+    # holds that villa's answer, /menuhistory what the kitchen served. The
+    # button reads all three on demand and never writes. Villa 9 arrived
+    # yesterday, so it has exactly one night behind it.
+    yday = plus(-1)
+    HIST = {
+        "stays":  {"9": {"id": "res-9", "first": "Priya", "arrive": yday,
+                         "depart": plus(3), "updated": "2026-08-16T10:00:00Z"}},
+        "dinner": {"9": {"status": "in", "pax": 2, "room": "9", "by": "guest",
+                         "bookingId": "res-9"}},
+        "menu":   {"entree": "Seared prawns, lime", "bread": "Sourdough",
+                   "main": "Char-grilled steak, red wine jus",
+                   "dessert": "Pavlova"},
+        "staysFail": False,
+    }
+    def hist_fb(route, request):
+        u = request.url
+        if "/stays/" + yday in u:
+            if HIST["staysFail"]:
+                route.fulfill(status=401, content_type="application/json",
+                              body='{"error":"denied"}'); return
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(HIST["stays"])); return
+        if "/dinner/" + yday in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(HIST["dinner"])); return
+        if "/menuhistory/" + yday in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(HIST["menu"])); return
+        fb(route, request)
+    def hist_page():
+        q = b.new_page(viewport={"width": 390, "height": 900})
+        q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(
+            status=200, content_type="application/javascript", body=SDK))
+        q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body="/*n*/"))
+        q.route("**firebasedatabase.app/**", hist_fb)
+        q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1700)
+        return q
+    def open_villa(q, n):
+        q.evaluate("(n)=>[...document.querySelectorAll('button')]"
+                   ".find(b=>b.querySelector('.room-n')"
+                   "&&b.querySelector('.room-n').textContent===String(n)).click()", n)
+        q.wait_for_timeout(500)
+
+    q = hist_page()
+    open_villa(q, 9)
+    ck("a booked stay with nights behind it offers Dining history",
+       q.evaluate("()=>!!document.getElementById('oHist')"))
+    ck("the history button sits before Close, never after it",
+       q.evaluate("()=>{const o=[...sheet.querySelectorAll('.opt')];"
+                  "return o.length>0 && o[o.length-1].id==='oClose';}"))
+    q.locator("#oHist").click(); q.wait_for_timeout(900)
+    hist = q.evaluate("()=>({t:histBody.textContent,"
+                      "cols:[...histBody.querySelectorAll('.htab th')]"
+                      ".map(e=>e.textContent)})")
+    ck("a one night history is summed honestly",
+       "Dined 1 of 1 night so far" in hist["t"])
+    ck("the three courses head the table",
+       hist["cols"][1:] == ["Entrée", "Main", "Dessert"])
+    ck("the dish is shown without its garnish",
+       "Char-grilled steak" in hist["t"] and "red wine" not in hist["t"]
+       and "Seared prawns" in hist["t"] and "lime" not in hist["t"]
+       and "Pavlova" in hist["t"])
+    q.locator("#oBack").click(); q.wait_for_timeout(400)
+    ck("Back returns to the villa sheet",
+       q.evaluate("()=>!!document.getElementById('oHist')"
+                  " && !document.getElementById('histBody')"))
+    closeIfOpen(q)
+    open_villa(q, 4)
+    ck("a booking with no arrival date offers no history",
+       not q.evaluate("()=>!!document.getElementById('oHist')"))
+    q.close()
+
+    # A cell stamped with a different booking id is a different party's
+    # answer - the guest who held the villa before this one - and must not
+    # become this guest's history: the night shows as not dined, not as
+    # somebody else's steak.
+    HIST["dinner"] = {"9": {"status": "in", "pax": 4, "room": "9",
+                            "bookingId": "res-other"}}
+    q = hist_page()
+    open_villa(q, 9)
+    q.locator("#oHist").click(); q.wait_for_timeout(900)
+    hist = q.evaluate("()=>histBody.textContent")
+    ck("another booking's cell is not this guest's history",
+       "Dined 0 of 1 night so far" in hist and "steak" not in hist)
+    q.close()
+
+    # A night they sat that the archive holds no menu for says so, rather
+    # than pretending a dish or dropping the night.
+    HIST["dinner"] = {"9": {"status": "in", "pax": 2, "room": "9",
+                            "bookingId": "res-9"}}
+    HIST["menu"] = None
+    q = hist_page()
+    open_villa(q, 9)
+    q.locator("#oHist").click(); q.wait_for_timeout(900)
+    hist = q.evaluate("()=>histBody.textContent")
+    ck("a dined night with no archived menu says so",
+       "Dined 1 of 1 night so far" in hist and "Menu not recorded" in hist)
+    q.close()
+
+    # A failed read is not an empty one - the standing caution. A refused
+    # /stays must not quietly count as a night not dined.
+    HIST["staysFail"] = True
+    q = hist_page()
+    open_villa(q, 9)
+    q.locator("#oHist").click(); q.wait_for_timeout(900)
+    hist = q.evaluate("()=>histBody.textContent")
+    ck("a refused read owns up rather than counting as not-dined",
+       "could not be read" in hist)
+    HIST["staysFail"] = False
     q.close()
 
     b.close()

@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nala Villas">
+<link rel="apple-touch-icon" href="nala-icon.png?v=1">
+<title>Nala &middot; Dashboard</title>
+<link rel="stylesheet" href="nala-ui2.css?v=6">
+<link rel="stylesheet" href="nala-ui.css?v=17">
+<style>
+  /* v9. The v8 design, redrawn on the app's own stylesheets rather than a
+     standalone one. v8 was approved against CSS that did not exist in the
+     app, so what shipped looked nothing like it: body.ui2 makes every .btn
+     full width and .btn.solid the accent primary, which turned three quiet
+     Print buttons into three blue bars.
+
+     This page sets LAYOUT only. Not one button is dressed here. */
+
+  /* ── the spine ──────────────────────────────────────────────────
+     A track down the left, filled by the clock from 08:00 to 18:00, with
+     each card's dot sitting on it as a bead. The fill is the day passing,
+     not progress: progress is what the beads say. */
+  #board { padding-bottom:var(--s4); }
+  .spine { position:relative; padding-left:30px; margin:var(--s4) 0; }
+  .spine .track { position:absolute; left:9px; top:8px; bottom:8px; width:3px;
+                  background:var(--rule); border-radius:2px; }
+  /* Green, not amber: the filled run is the day already behind you, and
+     green is the law's done. Amber means chase this, which the beads and the
+     card edges use - a track in the same colour would have read as a
+     ten-hour instruction. */
+  .spine .fill  { position:absolute; left:0; top:0; width:3px;
+                  background:var(--law-green); border-radius:2px; }
+  /* Where the clock has reached. A downward triangle rather than a dot: the
+     beads on this track are states, which do not move, and the clock does.
+     A shape that points is the only thing on the spine saying which way the
+     day is going.
+
+     An SVG rather than CSS borders or a clipped square: a border triangle has
+     no corners to round, and a rotated square clipped to a point comes out
+     lopsided. A stroked polygon with round joins gives the softened points at
+     this size, which is small - the old pip's 13px, not bigger. */
+  .pip { position:absolute; left:4px; width:13px; height:12px; z-index:3;
+         line-height:0; }
+  .pip svg { display:block; overflow:visible; }
+  .pip polygon { fill:var(--law-green); stroke:var(--law-green);
+                 stroke-width:2.5; stroke-linejoin:round; }
+
+  .node { position:relative; margin-bottom:var(--s5); }
+  .node .bead { position:absolute; left:-25px; top:14px; width:11px; height:11px;
+                border-radius:50%; background:var(--ground); z-index:2;
+                box-shadow:0 0 0 3px var(--ground), inset 0 0 0 3px var(--rule); }
+  .node.past .bead { box-shadow:0 0 0 3px var(--ground), inset 0 0 0 6px var(--law-green-b); }
+  .node.do   .bead { box-shadow:0 0 0 3px var(--ground), inset 0 0 0 6px var(--amberb); }
+  .node.open .bead { box-shadow:0 0 0 3px var(--ground), inset 0 0 0 3px var(--amberb); }
+
+  /* Card weight carries "is there a job here right now". Only the loud one
+     is a card at all; the rest sit on the page, so the eye lands on the job
+     rather than on six identical boxes. */
+  .card { background:var(--ground); border:1px solid var(--rule);
+          border-radius:var(--r); padding:calc(var(--s3) - 1px); }
+  .node.past .card { opacity:.55; }
+  .node.do   .card { border-color:var(--amberb); }
+  .node.open .card { border-left:3px solid var(--amberb); padding-left:var(--s3); }
+  .node.off  { padding-left:0; margin-top:var(--s6); }
+
+  .top { display:flex; align-items:baseline; justify-content:space-between; gap:var(--s3); }
+  /* A heading is a door. The chevron is what says so. Roles that may not
+     walk through read the same words with no chevron and no button. */
+  .cn { font-family:var(--ui-font); font-size:var(--t3); font-weight:600;
+        color:var(--ink); background:none; border:0; padding:0; cursor:pointer;
+        display:inline-flex; align-items:baseline; gap:6px; }
+  .cn .chev { color:var(--mid); font-size:var(--t2); }
+  .cn.ask { color:var(--amberink); }
+  .lab { font-size:var(--t3); font-weight:600; }
+  .cs  { font-size:var(--t2); color:var(--mid); margin-top:2px; }
+
+  /* ── chips ──────────────────────────────────────────────────────
+     One villa each, square-ish tiles rather than pills so a row of six
+     reads as a set of records and not as a row of buttons. Colours are
+     the law's, by token. */
+  .chips { display:flex; flex-wrap:wrap; gap:var(--s1); margin-top:var(--s2); }
+  .chip { font-size:var(--t2); min-width:34px; text-align:center;
+          padding:2px var(--s2); border-radius:6px; border:1px solid transparent; }
+  /* The law's green TILE, not a solid fill: a chip is a record saying what a
+     villa did, and a solid fill reads as a control you can press. All four
+     tones are tints for the same reason. */
+  .chip.green { background:var(--law-green-t); color:var(--law-green); border-color:var(--law-green-b); }
+  .chip.amber { background:var(--amber);       color:var(--amberink); border-color:var(--amberb); }
+  .chip.terra { background:var(--law-terra-t); color:var(--law-terra); border-color:var(--law-terra-b); }
+  .chip.grey  { background:rgba(28,28,26,.045); color:var(--mid); border-color:var(--rule); }
+
+  /* ── the action row ─────────────────────────────────────────────
+     Layout only. width:auto undoes body.ui2's full-width default for a row
+     that holds three controls; the dress itself is untouched. */
+  .acts { display:flex; align-items:center; flex-wrap:wrap; gap:var(--s2);
+          margin-top:var(--s3); }
+  /* body.ui2 .btn sets width:100% for the full-width rows most surfaces use.
+     Undoing it needs the same specificity, not less - a plain .acts .btn
+     loses and every button goes full width, which is what shipped. This is
+     the row's LAYOUT; the dress is still the shared sheet's. */
+  body.ui2 .acts .btn { width:auto; flex:0 0 auto; padding:var(--s2) var(--s4);
+                        min-height:38px; font-size:var(--t2); }
+
+  /* body.ui2 input is width:100% for the full-width fields most forms use.
+     Same specificity trap as the buttons above. */
+  body.ui2 .acts .qty { width:64px; flex:0 0 auto; height:38px; padding:0 var(--s2);
+                        font-size:var(--t2); }
+  .qlab { font-size:var(--t1); color:var(--mid); }
+  /* Marked done wears the selected dress from the shared sheet - grey fill,
+     ink border - because that is what it is: a state somebody set, not an
+     action waiting to be taken. */
+  /* Printed is a state somebody set, not an action waiting. Ghost's own
+     border, recoloured to the law's green - the only change, and the dress
+     is otherwise the sheet's. */
+  body.ui2 .acts .btn.done { border-color:var(--law-green-b); color:var(--law-green); }
+
+  /* Header, copied from tally.html rather than approximated: same markup,
+     same class names, same rules. Two boards showing the same three numbers
+     in two hand-made headers is how they come to disagree about them. */
+  .tablesline { text-align:center; margin-top:8px; font-family:var(--ui-font);
+                font-size:var(--t2); color:var(--ink);
+                white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* The button is tally.html's Refresh, copied. Only its width is set here,
+     because body.ui2 .btn is full width for the footer rows it usually sits
+     in, and this one is a lone control under the counts. Everything polls
+     and nothing pushes, so a board left open goes quietly stale; this is the
+     one control that is always worth having in reach. */
+  body.ui2 .tablesline .btn { width:auto; padding:var(--s2) var(--s5);
+                              min-height:36px; font-size:var(--t2); }
+
+  /* Body padding is hand-set on every page rather than by the shared sheet.
+     Two variants exist: tally's 28px 24px 0, and the safe-area one on Spa,
+     Front Desk and Cleans. Taking the majority, because it is the one that
+     clears the notch. */
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
+
+  /* Copied from tally.html with the header: the board is capped and centred
+     the same way, or it runs the full width of a tablet while Reservations
+     does not. */
+  .wrap { max-width:520px; margin:0 auto; }
+  .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
+            background:#A8321E; color:#fff; padding:12px 18px;
+            font-family:var(--ui-font); font-size:var(--t2); line-height:1.5;
+            display:none; }
+
+  .key { display:flex; flex-wrap:wrap; gap:var(--s3); justify-content:center;
+         margin:var(--s5) 0 var(--s4); font-size:var(--t1); color:var(--mid); }
+  .key span { display:flex; align-items:center; gap:5px; }
+  .sw { width:10px; height:10px; border-radius:3px; display:inline-block;
+        border:1px solid var(--rule); }
+
+  .harness { margin:var(--s5) 0 var(--s6); padding-top:var(--s4);
+             border-top:1px solid var(--rule); font-size:var(--t1); color:var(--mid); }
+  body.ui2 .harness .btn { width:auto; padding:var(--s1) var(--s3);
+                           font-size:var(--t1); min-height:32px; }
+  .harness .row { display:flex; flex-wrap:wrap; gap:var(--s1); margin-top:var(--s2); }
+</style>
+</head>
+<body class="tier-app ui2">
+
+<div class="errbar" id="errBar"></div>
+<div class="wrap">
+  <div class="daterow">
+  <button class="dnav today" id="dToday">Today</button>
+  <button class="dnav" id="dPrev">&#8249;</button>
+  <div class="date" id="title"></div>
+  <button class="dnav" id="dNext">&#8250;</button>
+  <div class="navwrap" id="navWrap" style="display:none">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"></div>
+  </div>
+</div>
+
+<div class="noaccess" id="noAccess"></div>
+
+<div class="stats" id="statsRow">
+  <div class="stat"><div class="stat-n" id="nForms">&ndash;</div><div class="stat-l">Forms</div></div>
+  <div class="stat"><div class="stat-n" id="nInv">&ndash;</div><div class="stat-l">Invitations</div></div>
+  <div class="stat"><div class="stat-n" id="nReps">&ndash;</div><div class="stat-l">Responses</div></div>
+</div>
+<div class="tablesline">
+  <button class="btn ghost" onclick="location.reload()">Refresh</button>
+</div>
+
+<div id="board"></div>
+</div><!-- /wrap -->
+
+<script>
+/* The hamburger toggle. buildNav() in nala-shared.js fills the menu, but
+   nothing opens it: every page carries its own three lines of toggle, and
+   this page shipped without them. Copied from tally.html, where it is
+   identical to the copy on the other twenty pages. */
+(function(){
+  var b = document.getElementById('navBtn'), d = document.getElementById('navDrop');
+  b.onclick = function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click', function(){ d.classList.remove('open'); });
+})();
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="auth.js?v=12"></script>
+<script src="nala-shared.js?v=55"></script>
+<script>
+/* The day's flow on one screen: what has happened, what is ready, and what
+   is still owed. Every fact here is read from the screen that owns it. The
+   board holds no state of its own except the print ticks, which nothing
+   else can know because the app cannot see the paper.
+
+     pre-arrival form state   formState()          Front Desk
+     menu published           fetchMenuAnywhere()  Publish
+     invitations sent         /previnvites         Invitations
+     replies, covers          fetchStays()         Reservations
+     external diners          /manual ext- keys    Reservations
+     arrived                  isArrived()          Front Desk
+     print ticks              /dayboard            here, and only here
+
+   The window is 08:00 to 18:00, the working day the flow sits inside. The
+   spine's fill is the clock, not progress. Arrivals hangs below the spine
+   rather than on it: an arrival is not a step in the flow, it is what the
+   flow was for. */
+
+function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
+
+/* Front Desk owns arriving: it is the screen that stamps checkedInAt, and its
+   own isArrived is the original. This is a deliberate second copy of one line
+   rather than a move into nala-shared.js, which every page loads and which
+   would turn adding this page into an everything-runs change. Consolidate the
+   two when something else needs it and a full run is already being paid for.
+   If the stamp's meaning ever changes, it changes in both. */
+function isArrived(p){ return !!(p && p.checkedInAt); }
+
+var nav = initDateNav();
+var T0 = 480, T1 = 1080;
+/* When the diner count stops being worth waiting on. Half one: late enough
+   that stragglers have replied, early enough that the kitchen can still act
+   on the number. */
+var GIVEUP = 810;
+
+var DATA = null, LOADED = false, ROLE = null, WHO = '';
+var QTY = { sheets:null, foh:null, menus:null };   /* null = take the suggestion */
+var NAVASK = null, NTIMER = null;                  /* heading waiting to confirm */
+var PENDING = null, PTIMER = null;                 /* tick waiting to confirm */
+
+/* Where each card hands off, and the permission behind that door. The keys
+   are the app's own: resSheet and cleansBoard, not the resBoard/cleanBoard
+   you would guess - CLAUDE.md rule 2. */
+var HREF = { forms:'arrivals-sms.html', menu:'publish.html', inv:'invitations.html',
+             reps:'tally.html', sheets:'registration.html', foh:'list.html',
+             menus:'menu-print.html', arr:'front-desk.html' };
+var NEED = { forms:'editBookings', menu:'publishMenu', inv:'editBookings',
+             reps:'resBoard', sheets:'editBookings', foh:'resSheet',
+             menus:'resSheet', arr:'editBookings' };
+
+function mins(d){ return d.getHours()*60 + d.getMinutes(); }
+function hhmm(m){ var h=Math.floor(m/60), x=m%60;
+  return (h<10?'0':'')+h+':'+(x<10?'0':'')+x; }
+function stampMins(iso){
+  if (!iso) return null;
+  var d = new Date(iso);
+  return isNaN(d.getTime()) ? null : mins(d);
+}
+/* The clock, or the end of the day when browsing a past date: a page showing
+   Tuesday must not draw Tuesday half finished because it is 10am today. */
+function nowMins(){ return nav.isToday() ? mins(new Date()) : T1; }
+
+/* ── reading ─────────────────────────────────────────────────── */
+
+function load(){
+  var day = nav.todayKey();
+  return Promise.all([
+    /* One reader for stays, dinner cells and each villa's pre-arrival, so
+       this board and the two it summarises cannot disagree. */
+    fetchStays(day),
+    fetchMenuAnywhere(day).catch(function(){ return null; }),
+    /* /invites/<date>, keyed by villa - the node Invitations writes and
+       reads. /previnvites is the pre-arrival SMS log, keyed by booking id,
+       and reading that here meant this card was never looking at dinner
+       invitations at all. */
+    fetch(DB + '/invites/' + day + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
+    fetch(DB + '/manual/' + day + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
+    /* Digital externals live here, keyed by phone with no room on them.
+       Reading /manual alone counted the staff-added shape only. */
+    fetch(DB + '/responses/' + day + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
+    fetch(DB + '/dayboard/' + day + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; })
+  ]).then(function(res){
+    DATA = { stays:res[0] || {}, menu:res[1], invites:res[2] || {},
+             manual:res[3] || {}, responses:res[4] || {}, done:res[5] || {} };
+    LOADED = true;
+    render();
+  });
+}
+
+/* ── the day, as facts ───────────────────────────────────────── */
+
+function items(t){
+  var stays = DATA.stays, day = nav.todayKey();
+  /* An arrival is a stay whose FIRST night is the viewed date. /stays holds
+     one row per night, so without this filter every in-house guest counts as
+     an arrival for the whole of their stay. */
+  var arriving = Object.keys(stays).filter(function(v){
+    var s = stays[v];
+    /* parseDepDate, not a slice: it builds a LOCAL date from an ISO day and
+       handles the dd/mm/yyyy the PMS also writes. */
+    if (!s || typeof s !== 'object' || !s.arrive) return false;
+    var a = parseDepDate(s.arrive);
+    return !!a && dkey(a) === day;
+  }).sort(function(a,b){ return (+a) - (+b); });
+
+  /* formState is the only thing that says which state a booking is in, and
+     every board reads it. completed=green, incomplete=amber, else grey. */
+  function toneFor(v){
+    var st = formState(PREARRIVAL_BY_VILLA[String(v)], stays[v]);
+    return st === 'completed' ? 'green' : st === 'incomplete' ? 'amber' : 'grey';
+  }
+  var fUnits = arriving.map(function(v){ return { id:v, tone:toneFor(v) }; });
+  var fdone = fUnits.filter(function(u){ return u.tone === 'green'; }).length;
+  var fpart = fUnits.filter(function(u){ return u.tone === 'amber'; }).length;
+  var N = arriving.length;
+
+  /* Published means published FOR THIS DAY, and filled in. fetchMenuAnywhere
+     returns the live /menu node without checking which day it belongs to -
+     only its menu.json fallback does - so an older menu's stamp read as
+     tonight's, and the card announced a publish time for a night nothing had
+     been published for. Both guards are Reservations' own, in menuCheck. */
+  var m = DATA.menu || {};
+  var filled = ['bread','entree','main','dessert'].every(function(k){
+    return m[k] && m[k].name && String(m[k].name).trim() !== '';
+  });
+  /* parseISO then dkey, never a string slice: a stamp is written in UTC and
+     the day is local, so 9:58am on the 8th in Australia is 2026-09-07T23:58Z
+     and slicing its first ten characters compares the wrong date. That is how
+     a published menu read as not published. dkey(parseISO(...)) is what
+     Reservations uses in menuCheck. */
+  var pubD = m.published ? parseISO(m.published) : null;
+  var fresh = pubD ? dkey(pubD) === day : false;
+  var pubAt = (filled && fresh) ? stampMins(m.published) : null;
+  var pub = pubAt != null;
+
+  /* The earliest invitation stamped with this day. */
+  var sentFor = DATA.invites, invAt = null;
+  Object.keys(sentFor).forEach(function(v){
+    var r = sentFor[v];
+    if (!r || r.status !== 'sent' || !r.sentAt) return;
+    var m = stampMins(r.sentAt);
+    if (m != null && (invAt == null || m > invAt)) invAt = m;
+  });
+  var inv = invAt != null;
+
+  /* Replies. Reservations' own reading: only a villa with somebody in it is
+     awaiting an answer, and a villa with no dinner state yet is awaiting one.
+     Counting empty villas as outstanding read seventeen on a quiet night and
+     nobody could act on the figure. */
+  var cells = DINNER_CELLS || {};
+  var asked = Object.keys(stays).filter(function(v){
+    var s = stays[v];
+    if (!s || typeof s !== 'object' || !s.id) return false;
+    return !cells[v] || cells[v].status !== 'vacant';
+  }).sort(function(a,b){ return (+a) - (+b); });
+
+  /* An answer given on the pre-arrival form IS an answer, and formDinnerCell
+     is the reader that says so - the same one Reservations and Invitations
+     use. Reading /dinner alone showed a villa grey here while Invitations had
+     it under Answered, because a guest who said yes on their form days ago
+     never gets a cell written. The cell wins the moment anyone sets one. */
+  function cellFor(v){
+    /* `cell && cell.status` is stateOf's test, and it has to be the same one:
+       a cell written with an empty status is not an answer, and treating it
+       as one hid the guest's own form answer underneath it. */
+    return (cells[v] && cells[v].status ? cells[v] : null) ||
+           formDinnerCell(v, PREARRIVAL_BY_VILLA[String(v)], stays[v], day) ||
+           {};
+  }
+
+  var rUnits = [], yes = 0, no = 0, out = 0, dining = 0, unknownPax = 0;
+  asked.forEach(function(v){
+    var c = cellFor(v);
+    if (c.status === 'in'){
+      yes++; dining += dinerPax(c); rUnits.push({ id:v, tone:'green' });
+    } else if (c.status === 'out'){
+      no++; rUnits.push({ id:v, tone:'terra' });
+    } else {
+      out++;
+      unknownPax += (+c.pax) || (stays[v] && +stays[v].adults) || 2;
+      rUnits.push({ id:v, tone:'grey' });
+    }
+  });
+
+  /* Diners with no villa. Set on Reservations, read only here, shown so the
+     covers add up. externalDiners is that board's own reading: both shapes,
+     digital and staff-added, and dinerPax counts a dining row with no pax as
+     one person rather than none. */
+  var ext = 0;
+  externalDiners(DATA.responses, DATA.manual).forEach(function(e){
+    ext += dinerPax(e.g);
+  });
+
+  var covers = dining + ext;
+  /* What to print for: everyone who said yes, plus everyone who has not
+     answered. A decline is the only thing that takes a menu off the pile. */
+  var expect = covers + unknownPax;
+  /* Two A5 to an A4, and one spare page. */
+  var pages = Math.ceil(expect / 2) + 1;
+  var allIn = inv && out === 0;
+  var firm = allIn || t >= GIVEUP;
+
+  /* An arrival sheet is exactly as ready as that villa's form, so it shows
+     the same colours. Nothing to tick: the sheets stay printable all day. */
+  var shUnits = arriving.map(function(v){ return { id:v, tone:toneFor(v) }; });
+  var shFull = shUnits.filter(function(u){ return u.tone === 'green'; }).length;
+
+  var ad = arriving.filter(function(v){
+    return isArrived(PREARRIVAL_BY_VILLA[String(v)]);
+  }).length;
+
+  function tickOf(k){ return DATA.done[k] || null; }
+  function printedNote(k){
+    /* fullNameFor, not shortTagFor: the tag form is upper case for a compact
+       chip and shouts inside a sentence. */
+    var d = tickOf(k), who = d.who ? fullNameFor(d.who) : '';
+    return 'printed ' + hhmm(d.t) + (who ? ' by ' + who : '');
+  }
+
+  var L = [];
+
+  L.push({ k:'forms', lab:'Pre-arrival forms', owner:'desk', units:fUnits,
+    state: N && fdone === N ? 'done' : 'ready',
+    note: !N ? 'no arrivals today'
+        : fdone === N ? 'all ' + N + ' complete'
+        : fdone + ' complete, ' + fpart + ' part, ' + (N - fdone - fpart) + ' nothing yet' });
+
+  L.push({ k:'menu', lab:'Tonight\u2019s menu', owner:'chef', units:[],
+    state: pub ? 'done' : 'moving',
+    note: pub ? 'published ' + hhmm(pubAt) : 'not published yet' });
+
+  /* Who still needs asking. stateOf is Invitations' own reader and the only
+     thing that says where a villa stands: kind 'ready' is still to ask. This
+     was reconstructed here until 8 Sep, and the reconstruction counted a
+     FAILED send as sent - so a villa whose SMS never landed showed as
+     invited, and nobody would have found out until a guest was not asked. */
+  var toAsk = asked.filter(function(v){
+    return stateOf(v, stays[v], cells[v], sentFor[String(v)],
+                   null, day).kind === 'ready';
+  });
+  L.push({ k:'inv', lab:'Dinner invitations', owner:'desk',
+    units: toAsk.map(function(v){ return { id:v, tone:'grey' }; }),
+    state: !toAsk.length && inv ? 'done' : (pub ? 'ready' : 'waiting'),
+    note: !toAsk.length
+            ? (inv ? 'all sent, last ' + hhmm(invAt) : 'nobody to ask')
+        : !pub ? toAsk.length + ' to send, needs the menu'
+        : toAsk.length + ' to send' });
+
+  L.push({ k:'reps', lab:'Dinner replies', owner:'guests',
+    units: rUnits.concat(ext ? [{ id:'ext ' + ext, tone:'green' }] : []),
+    state: !inv ? 'waiting' : (allIn ? 'done' : 'moving'),
+    note: !inv ? (ext ? ext + ' external booked, villas need the menu sent'
+                      : 'needs the menu sent')
+        : (allIn ? covers + ' dining, ' + no + ' villas not'
+                 : covers + ' dining so far, ' + out + ' villas still out'),
+    yes:yes, no:no, out:out });
+
+  /* Recommended the moment every form is complete, not at a clock time. */
+  L.push({ k:'sheets', lab:'Arrival sheets', owner:'paper', units:shUnits,
+    state: N && shFull === N ? 'ready' : 'waiting',
+    note: !N ? 'no arrivals today'
+        : shFull === N ? 'all ' + N + ' forms complete, ready to print'
+        : shFull + ' of ' + N + ' forms complete',
+    qty: QTY.sheets != null ? QTY.sheets : (N || 1), qmin:1, qmax:(N || 1) + 4,
+    print:'sheets', quiet: !N || shFull < N });
+
+  L.push({ k:'foh', lab:'FOH sheet', owner:'paper', units:[],
+    state: DATA.done.foh ? 'done' : (firm ? 'ready' : 'waiting'),
+    note: DATA.done.foh ? printedNote('foh')
+        : !inv ? 'needs the diner count'
+        : firm ? covers + ' dining' : 'best after the count firms',
+    qty: QTY.foh != null ? QTY.foh : 2, qmin:1, qmax:8,
+    print:'foh', quiet:!firm });
+
+  L.push({ k:'menus', lab:'Menus', owner:'paper', units:[],
+    state: DATA.done.menus ? 'done' : (firm ? 'ready' : 'waiting'),
+    note: DATA.done.menus ? printedNote('menus')
+        : expect + ' menus on ' + pages + ' pages' +
+          (unknownPax ? ', ' + unknownPax + ' not answered yet' : ''),
+    qty: QTY.menus != null ? QTY.menus : pages, qmin:1, qmax:pages + 8,
+    print:'menus', quiet:!firm });
+
+  /* Arrivals: what the flow was for, not a step in it. Off the spine, and
+     read from checkedInAt rather than any scheduled time. */
+  L.push({ k:'arr', lab:'Arrivals', owner:'guests', offSpine:true, units:
+    arriving.map(function(v){
+      return { id:v, tone: isArrived(PREARRIVAL_BY_VILLA[String(v)]) ? 'green' : 'grey' };
+    }),
+    state:'shut',
+    note: !N ? 'none today'
+        : ad === N ? 'all ' + N + ' in' : ad + ' in, ' + (N - ad) + ' to come' });
+
+  /* A card is loud only if there is a job on it AND now is a sensible moment
+     to do it. Being where the day has reached is not a job: guests replying
+     is not something anybody at the desk can act on, so it must not look
+     like an instruction. */
+  L.forEach(function(d){
+    d.acts = [];
+    if (d.print && can(ROLE, NEED[d.k])) d.acts.push({ t:'Print', quiet:d.quiet });
+    d.tickable = !!(d.print && can(ROLE, NEED[d.k]));
+    d.ticked = !!(d.print && DATA.done[d.print]);
+    d.door = can(ROLE, NEED[d.k]);
+    d.navask = NAVASK === d.k;
+    d.pending = PENDING === d.k;
+    var live = d.acts.filter(function(a){ return !a.quiet; }).length;
+    d.pos = d.offSpine ? 'off'
+          : d.state === 'done' ? 'past'
+          : live ? 'do'
+          : d.acts.length ? 'open' : 'shut';
+  });
+  return L;
+}
+
+/* ── drawing ─────────────────────────────────────────────────── */
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+function chips(d){
+  if (!d.units || !d.units.length) return '';
+  return '<div class="chips">' + d.units.map(function(u){
+    return '<span class="chip ' + u.tone + '">' + esc(u.id) + '</span>';
+  }).join('') + '</div>';
+}
+
+function acts(d){
+  if (!d.acts.length && !d.tickable) return '';
+  var h = '<div class="acts">';
+  d.acts.forEach(function(a){
+    if (d.qty != null)
+      h += '<span class="qlab">Qty</span>' +
+           '<input class="qty" type="number" aria-label="How many to print" ' +
+           'data-qty="' + d.k + '" value="' + d.qty +
+           '" min="' + d.qmin + '" max="' + d.qmax + '">';
+    /* Print is what the card is for, so it wears the primary at every hour
+       rather than only at the recommended one: a control that changes dress
+       through the day makes the reader check which state it is in before
+       pressing it. Whether now is the moment is said by the note and by the
+       card's own weight, which is where state belongs. */
+    h += '<button class="btn solid" data-print="' + d.k + '">' + a.t + '</button>';
+  });
+  if (d.tickable){
+    /* Marking done asks both ways: it is a claim about paper that nobody else
+       can check. Walking it back wears terracotta, per the button law. */
+    if (d.pending)
+      h += '<button class="btn terra" data-mark="' + d.k + '">' +
+           (d.ticked ? 'Confirm undo' : 'Confirm done') + '</button>';
+    else if (d.ticked)
+      h += '<button class="btn ghost done" data-mark="' + d.k + '">&#10003; Printed</button>';
+    else
+      h += '<button class="btn ghost" data-mark="' + d.k + '">Mark done</button>';
+  }
+  return h + '</div>';
+}
+
+function render(){
+  if (!LOADED) return;
+  var t = nowMins(), L = items(t);
+  var frac = Math.max(0, Math.min(100, (t - T0) / (T1 - T0) * 100));
+
+  /* The header counts what is still OWED rather than what has come in. A
+     total says how the day went; a waiting list says what is left to chase,
+     which is the only thing anybody opens this board to find out. */
+  var reps  = L.filter(function(d){ return d.k === 'reps'; })[0],
+      forms = L.filter(function(d){ return d.k === 'forms'; })[0],
+      inv   = L.filter(function(d){ return d.k === 'inv'; })[0];
+  var formsLeft = forms.units.filter(function(u){ return u.tone !== 'green'; }).length;
+  /* The card already works out who is owed an invitation, villa by villa.
+     Counting it a second way here is how the header came to read five while
+     the card underneath listed one. */
+  var invLeft = inv.units.length;
+  document.getElementById('nForms').textContent = formsLeft;
+  document.getElementById('nInv').textContent   = invLeft;
+  document.getElementById('nReps').textContent  = reps.out != null ? reps.out : '-';
+
+  var h = '<div class="spine"><div class="track">' +
+          '<div class="fill" style="height:' + frac.toFixed(1) + '%"></div></div>' +
+          '<div class="pip" style="top:calc(8px + ' + frac.toFixed(1) + '% - 12px)">' +
+          '<svg viewBox="0 0 13 12" width="13" height="12">' +
+          '<polygon points="2.2,2.2 10.8,2.2 6.5,9.6"/></svg></div>';
+
+  var closed = false;
+  L.forEach(function(d){
+    if (d.offSpine && !closed){ h += '</div>'; closed = true; }
+    var head = d.door
+      ? '<button class="cn' + (d.navask ? ' ask' : '') + '" data-nav="' + d.k + '">' +
+        (d.navask ? 'Open page' : esc(d.lab)) + '<i class="chev">&rsaquo;</i></button>'
+      : '<span class="lab">' + esc(d.lab) + '</span>';
+    h += '<div class="node ' + d.pos + (d.offSpine ? ' off' : '') + '">' +
+         (d.offSpine ? '' : '<i class="bead"></i>') +
+         '<div class="card"><div class="top">' + head + '</div>' +
+         '<div class="cs">' + esc(d.note) + '</div>' +
+         chips(d) + acts(d) + '</div></div>';
+  });
+  if (!closed) h += '</div>';
+
+  h += '<div class="key">' +
+       '<span><i class="sw" style="background:var(--law-green-t);border-color:var(--law-green-b)"></i>done</span>' +
+       '<span><i class="sw" style="background:var(--amber);border-color:var(--amberb)"></i>part, or ready</span>' +
+       '<span><i class="sw" style="background:var(--law-terra-t);border-color:var(--law-terra-b)"></i>said no</span>' +
+       '<span><i class="sw" style="background:rgba(28,28,26,.045)"></i>nothing yet</span></div>';
+
+  document.getElementById('board').innerHTML = h;
+  wire();
+}
+
+/* ── pressing ────────────────────────────────────────────────── */
+
+function wire(){
+  var b = document.getElementById('board'), i;
+  var navs = b.querySelectorAll('[data-nav]');
+  for (i = 0; i < navs.length; i++)
+    navs[i].onclick = (function(el){ return function(){ askNav(el.getAttribute('data-nav')); }; })(navs[i]);
+  var qs = b.querySelectorAll('[data-qty]');
+  for (i = 0; i < qs.length; i++)
+    qs[i].onchange = (function(el){ return function(){
+      var v = parseInt(el.value, 10);
+      if (!isNaN(v)) QTY[el.getAttribute('data-qty')] = v;
+    }; })(qs[i]);
+  var ps = b.querySelectorAll('[data-print]');
+  for (i = 0; i < ps.length; i++)
+    ps[i].onclick = (function(el){ return function(){ goPrint(el.getAttribute('data-print')); }; })(ps[i]);
+  var ms = b.querySelectorAll('[data-mark]');
+  for (i = 0; i < ms.length; i++)
+    ms[i].onclick = (function(el){ return function(){ askMark(el.getAttribute('data-mark'), el); }; })(ms[i]);
+}
+
+/* A heading is a door, and a door opened by accident loses the page you were
+   reading. The first tap asks, the second walks through, and the question
+   gives up after four seconds so a stray tap does not leave the board armed. */
+function askNav(k){
+  if (NTIMER){ clearTimeout(NTIMER); NTIMER = null; }
+  if (NAVASK === k){ NAVASK = null; return go(HREF[k], null); }
+  NAVASK = k; render();
+  NTIMER = setTimeout(function(){ NAVASK = null; render(); }, 4000);
+}
+
+function go(href, qty){
+  var q = new URLSearchParams();
+  if (!nav.isToday()) q.set('date', nav.todayKey());
+  if (qty != null) q.set('qty', qty);
+  location.href = href + (q.toString() ? '?' + q.toString() : '');
+}
+
+/* Print carries the day and the quantity to the sheet, and does NOT tick the
+   card: that would only prove somebody pressed a button. */
+function goPrint(k){
+  var d = items(nowMins()).filter(function(x){ return x.k === k; })[0];
+  go(HREF[k], d && d.qty != null ? d.qty : null);
+}
+
+function askMark(k, btn){
+  if (PTIMER){ clearTimeout(PTIMER); PTIMER = null; }
+  if (PENDING !== k){
+    PENDING = k; render();
+    PTIMER = setTimeout(function(){ PENDING = null; render(); }, 4000);
+    return;
+  }
+  PENDING = null;
+  var on = !DATA.done[k], rec = { t:nowMins(), who:WHO };
+  saveFeedback(btn, function(){
+    return fetch(DB + '/dayboard/' + nav.todayKey() + '/' + k + '.json', {
+      method:'PUT', headers:{ 'Content-Type':'application/json' },
+      body: on ? JSON.stringify(rec) : 'null'
+    }).then(function(r){
+      if (!r.ok) throw new Error('http ' + r.status);
+      if (on) DATA.done[k] = rec; else delete DATA.done[k];
+    });
+  }, { then:render });
+}
+
+/* ── access ──────────────────────────────────────────────────── */
+
+function showAccess(allowed, e){
+  var box = document.getElementById('noAccess');
+  var on = !allowed;
+  box.innerHTML = !on ? '' :
+    (e ? '<div>Could not check access. This is usually the connection, '
+       + 'not your login.</div>'
+       + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+       : 'This login has no access to the Dashboard. See the manager.');
+  if (on && !e){
+    var home = homeFor(window.NALA_ROLE);
+    if (home && home !== location.pathname.split('/').pop()){
+      location.replace(home); return;
+    }
+  }
+  box.className = 'noaccess' + (on ? ' show' : '');
+  var el = document.getElementById('board');
+  if (el) el.style.display = on ? 'none' : '';
+  if (!on) load().catch(function(){});
+}
+
+window.NALA_ROLE = null;
+(function gate(){
+  if (!window.firebase || !firebase.auth || typeof loadStaff !== 'function')
+    return setTimeout(gate, 40);
+  var A; try { A = firebase.auth(); } catch(e){ return setTimeout(gate, 40); }
+  if (!A || !A.onAuthStateChanged) return setTimeout(gate, 40);
+  A.onAuthStateChanged(function(u){
+    if (!u) return;                 /* auth.js owns the signed-out state */
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role; window.NALA_USER = u;
+      ROLE = role;
+      /* Stored as the staff key, not the name: a key follows a rename and a
+         copied name does not. shortTagFor reads it back. */
+      WHO = emailKey(u.email || '');
+      document.getElementById('navWrap').style.display = 'block';
+      navFilter(role);
+      /* The board is a reading of the Reservations day, so it opens to
+         whoever may read that day. Each card's own door is gated separately,
+         by the permission the page behind it already answers to. */
+      showAccess(can(role, 'resBoard'), e);
+    });
+  });
+})();
+
+/* The spine is a clock, so it has to move on its own. A minute is enough:
+   nothing here turns on a second. A pending confirm redraws itself, so the
+   board never redraws under somebody's hand. */
+setInterval(function(){ if (LOADED) render(); }, 60000);
+
+/* Coming back to the app is when a stale board is most obvious, and when the
+   poll has been asleep. */
+document.addEventListener('visibilitychange', function(){
+  if (!document.hidden && LOADED) load().catch(function(){});
+});
+</script>
+</body>
+</html>

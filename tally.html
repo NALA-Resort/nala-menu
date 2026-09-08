@@ -242,7 +242,11 @@
   .pax-fact { font:600 20px/1 var(--ui-font); color:var(--ink); }
   .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
          border-radius:50%; font-family:var(--ui-font); font-size:var(--t2);
-         color:var(--ink); cursor:pointer; }
+         color:var(--ink); cursor:pointer; padding:0; }
+  /* Eight of these plus gaps outgrow a phone narrower than ~430, and flex
+     shrinks WIDTH alone, so a circle became an egg on any narrower phone.
+     Height follows the shrunken width instead. The owner, 8 Sep: round. */
+  @supports (aspect-ratio:1){ .pax { height:auto; aspect-ratio:1; } }
   .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
   .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
@@ -358,6 +362,28 @@
   .gd-tel { color:var(--ink); text-decoration:none;
             border-bottom:1px solid var(--rule); }
 
+  /* ── dining history ──────────────────────────────────────────────────
+     Only the nights the stay actually sat, one a row, one course a column:
+     read down a column for everything they have eaten of that course. The
+     owner's rulings, 7 Sep: a missed night is noise - the summary line
+     carries the count - and no colour says anything here, because nothing
+     here is a state. Mocked in mock-dining-history.html. */
+  .hist-body { margin-bottom:14px; }
+  .hist-sum { text-align:center; font-family:var(--ui-font); font-size:var(--t2);
+              color:var(--mid); margin:0 0 10px; }
+  .htab { width:100%; border-collapse:collapse; text-align:left; }
+  .htab th { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
+             font-weight:normal; padding:0 4px 6px 0;
+             border-bottom:1px solid var(--rule); }
+  .htab td { font-family:var(--ui-font); font-size:var(--t1); line-height:1.35;
+             vertical-align:top; padding:9px 4px 9px 0;
+             border-bottom:1px solid var(--rule); }
+  .htab tr:last-child td { border-bottom:0; }
+  .htab .hd { white-space:nowrap; color:var(--ink); }
+  .htab td.none { color:var(--mid); font-style:italic; }
+  .hist-note { text-align:center; font-family:var(--ui-font); font-size:var(--t1);
+               color:var(--mid); margin:10px 0 4px; }
+
   .note-box { font-style:italic; font-size:var(--t2); color:var(--mid); text-align:center;
               line-height:1.6; padding:0 4px 16px; }
   .sheet-label { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); text-align:center; margin-bottom:8px; }
@@ -365,6 +391,10 @@
          background:transparent; font-family:var(--ui-font); font-size:var(--t3); color:var(--ink); }
   .txt::placeholder { color:var(--mid); font-style:italic; }
   .txt:focus { outline:none; border-color:var(--ink); }
+  /* The Night field on a manual reservation's edit sheet: dressed as the
+     other fields, with an invisible native date input on top - the same
+     pattern as the header's date (initDateNav, nala-shared.js). */
+  .nightfield { position:relative; cursor:pointer; }
 
 /* A read-only role opens the sheet to READ it - the phone, the dietaries and
    the comment all live in there and the chef needs them. What goes is every
@@ -533,7 +563,7 @@ body.readonly .comb-undo { display:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=46"></script>
+<script src="nala-shared.js?v=55"></script>
 <script>
 /* Not every allergy is on the list and the list cannot grow to hold them all,
    so Other means read the note. The same entry the front desk writes, because
@@ -702,6 +732,16 @@ function saveManual(key, rec){
       /* Staff, because this board is staff only. That is what stops a guest
          overwriting it from their link afterwards. */
       body = Object.assign({}, rec, { by:'staff', at:new Date().toISOString() });
+      /* The booking the answer was given about. Guest writes and the desk
+         both stamp it; this board did not, so a cell made here could never
+         be told from the villa it sat in - when Mews moved or renamed the
+         booking, dinnerElsewhere had nothing to check and tonight's answer
+         and dietary note stayed with the ROOM, in front of whoever took it
+         next. A walk in with no booking still writes no id: Mews has no
+         opinion about them and the cell stays untouchable, as before. */
+      var kn0 = roomguests[String(villa)];
+      if (body.bookingId === undefined && kn0 && kn0.bookingId)
+        body.bookingId = kn0.bookingId;
       /* Staff overwriting a guest's own answer keeps that answer underneath.
          With two nodes the guest's record simply stayed where it was and the
          board merged them; with one cell there is nowhere else for it to be,
@@ -803,47 +843,15 @@ function roomStateRaw(n){
   if (m) return { src:'manual', key:mk, g:m };
 
   /* Nobody has said anything about tonight - so read what the GUEST said,
-     on their own form, days ago.
-
-     Their pre-arrival form asks about the first night and the answer has
-     always sat on the reservation, but nothing ever carried it here. So a
-     guest who told us on Tuesday they were dining showed on this board as
-     awaiting, and on an arrival night nothing else would ever move it: the
-     nightly dinner request is not sent to somebody who has not checked in,
-     so the ONLY thing that put them in front of the chef was a person at
-     the desk re-typing an answer we already had. The owner's ruling, 28
-     Aug: there is no scenario where reception would decline to pass it on,
-     so it should not be theirs to pass on.
-
-     Read, never written. This adds no second writer and no second node -
-     the cell above still wins outright the moment anyone sets one, and this
-     falls away for good at that point, which is what keeps "the dinner cell
-     is one cell" true. It is the effectiveEta shape: the authoritative
-     answer, then the guest's own, then nothing.
-
-     Only on the night they ARRIVE. PREARRIVAL_BY_VILLA holds a record for
-     every occupied villa, and the form asks about the first night alone, so
-     without this gate one answer would speak for every night of the stay.
-
-     Any answer they gave, not only a form they finished. The guest page
-     saves each question as it is left, so an abandoned form still holds
-     real answers, and an answer given is a thing the kitchen should know -
-     the owner's ruling, 28 Aug. */
-  var pre = PREARRIVAL_BY_VILLA[String(n)];
-  var kn  = roomguests[String(n)] || {};
-  if (pre && (pre.dining === true || pre.dining === false) &&
-      kn.arrives && dkey(parseDepDate(kn.arrives)) === todayKey()){
-    return { src:'digital', key:mk, fromForm:true, g:{
-      status: pre.dining ? 'in' : 'out',
-      pax:    pre.dining ? (pre.pax || kn.adults || 2) : 0,
-      room:   String(n),
-      diets:  pre.diets || [],
-      nodiet: !!pre.noDiets,
-      dnote:  pre.dnote || '',
-      note:   pre.note || '',
-      by:     'guest'
-    } };
-  }
+     on their own form, days ago. The rule and the gate (the 28 Aug ruling:
+     any answer given, arrival night only, the cell above wins outright the
+     moment anyone sets one) lived inline here until 4 Sep, when the SMS
+     page and the front desk turned out to be reading their own subsets of
+     the same fact and disagreeing with this board. One reader now, in
+     nala-shared.js, and every screen answers to it. */
+  var form = formDinnerCell(n, PREARRIVAL_BY_VILLA[String(n)],
+                            roomguests[String(n)] || {}, todayKey());
+  if (form) return { src:'digital', key:mk, fromForm:true, g: form };
   return null;
 }
 
@@ -1020,22 +1028,16 @@ function render(){
   }
 
   /* An external diner has no villa, so there is no carried forward record to
-     confuse theirs with. Everything they have said is tonight's. */
-  for (var k in responses){
-    var g = responses[k];
-    if (!g.room && g.status==='in' && !cancelledExt[k] && !manual['extcancel-'+k])
-      rows.push({ g:withDineProvenance(Object.assign({}, g), g, null),
-                  room:null, src:'digital', key:k });
-  }
-  for (var k in manual){
-    if (k.indexOf('ext-')!==0) continue;
-    if (manual[k].status!=='in') continue;
-    rows.push({ g:withDineProvenance(Object.assign({}, manual[k]), manual[k], null),
-                room:null, src:'manual', key:k });
-  }
+     confuse theirs with. Everything they have said is tonight's. The reading
+     moved to nala-shared.js on 8 Sep so the Dashboard could share it rather
+     than keep its own half of it. */
+  externalDiners(responses, manual, cancelledExt).forEach(function(e){
+    rows.push({ g:withDineProvenance(Object.assign({}, e.g), e.g, null),
+                room:null, src:e.src, key:e.key });
+  });
 
   var covers=0, notDining=0, awaiting=0;
-  rows.forEach(function(r){ covers += (r.g.pax||1); });
+  rows.forEach(function(r){ covers += dinerPax(r.g); });
   for (var n2=1; n2<=ROOMS; n2++){
     var s = roomState(n2);
     /* Only a villa with somebody in it is awaiting an answer. An empty villa
@@ -1714,6 +1716,7 @@ var APPROACH_WORDS = { most:'Most nights', few:'A few nights',
 
 /* The panel's short day: Thu 28, the styleguide's own shape. */
 function wellDayLabel(key){
+  if (isAnyDay(key)) return SPA_ANY_DAY_LABEL;
   var d = parseDepDate(key); if (!d) return String(key);
   return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' + d.getDate();
 }
@@ -1930,6 +1933,142 @@ function editRoomDetails(n, st){
   document.getElementById('oBack').onclick = function(){ openRoom(n, st); };
 }
 
+/* ── dining history ─────────────────────────────────────────
+   What this stay has eaten so far: the nights it sat, one a row, and the
+   three courses the kitchen served, from /menuhistory - the archive Past
+   Menus reads. For the chef planning tonight: "I did steak two nights
+   ago, was this guest in that night?"
+
+   It follows the BOOKING through /stays, not the villa: a guest moved
+   mid-stay carries their nights with them, and a cell stamped with a
+   different booking id is a different party's answer, not theirs. Reads
+   only, on demand, so it costs nothing until somebody asks. */
+var HIST_CACHE = {};   /* per booking per viewed date, for the session */
+var HIST_MAX = 14;     /* the fortnight the roomguests look-back already uses */
+
+function histNights(known){
+  var a = known && known.arrives ? parseDepDate(known.arrives) : null;
+  if (!a) return [];
+  var from = dkey(a), nights = [];
+  var d = new Date(VIEW); d.setDate(d.getDate() - 1);
+  while (nights.length < HIST_MAX && dkey(d) >= from){
+    nights.push(dkey(d));
+    d.setDate(d.getDate() - 1);
+  }
+  return nights;
+}
+
+/* A failed read is not an empty one - the standing caution. A refusal or a
+   dropped connection comes back marked, so a night that could not be read
+   says so rather than reporting that the guest never dined. */
+function histGet(path){
+  return fetch(DB + path + '.json?v=' + Date.now())
+    .then(function(r){
+      if (!r.ok) return { ok:false };
+      return r.json().then(function(d){ return { ok:true, data:d }; });
+    })
+    .catch(function(){ return { ok:false }; });
+}
+
+/* The dish, not the garnish: the chef writes "Lamb rump, smoked eggplant"
+   and the table has three columns of 90px, so everything from the first
+   comma stays in the kitchen. The same reading Statistics leans on. */
+function dishShort(v){
+  return String(v == null ? '' : v).split(',')[0].trim();
+}
+
+function histNight(date, id){
+  return Promise.all([
+    histGet('/stays/' + date),
+    histGet('/dinner/' + date),
+    histGet('/menuhistory/' + date)
+  ]).then(function(r){
+    var row = { date: date };
+    if (!r[0].ok || !r[1].ok){ row.failed = true; return row; }
+    var stays = r[0].data || {};
+    var villa = null;
+    for (var v in stays){
+      if (stays[v] && stays[v].id === id){ villa = v; break; }
+    }
+    if (!villa) return row;   /* stays holds no villa for this booking that night */
+    var cell = (r[1].data || {})[villa];
+    /* Somebody else's answer must not become this guest's history. */
+    if (cell && cell.bookingId && cell.bookingId !== id) cell = null;
+    if (!cell || cell.status !== 'in') return row;
+    row.dined = true;
+    var m = (r[2].ok && r[2].data) || null;
+    if (m && ['entree','main','dessert'].some(function(k){ return dishShort(m[k]); }))
+      row.menu = { entree: dishShort(m.entree), main: dishShort(m.main),
+                   dessert: dishShort(m.dessert) };
+    else if (!r[2].ok) row.menuFailed = true;
+    return row;
+  });
+}
+
+/* Only the nights they sat - the owner's ruling, 7 Sep: a missed night is
+   noise on a busy page, and the summary line already carries the count. */
+function histRowsHTML(rows){
+  var dined = rows.filter(function(r){ return r.dined; });
+  var failed = rows.filter(function(r){ return r.failed; }).length;
+  var h = '<div class="hist-sum">Dined ' + dined.length + ' of ' + rows.length +
+          (rows.length === 1 ? ' night so far' : ' nights so far') + '</div>';
+  if (dined.length){
+    h += '<table class="htab">' +
+         '<tr><th></th><th>Entrée</th><th>Main</th><th>Dessert</th></tr>' +
+         dined.map(function(row){
+           var d = parseDepDate(row.date);
+           var day = d
+             ? ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' + d.getDate()
+             : row.date;
+           var cells = row.menu
+             ? ['entree','main','dessert'].map(function(k){
+                 return '<td>' + esc(row.menu[k]) + '</td>';
+               }).join('')
+             : '<td class="none" colspan="3">' +
+               (row.menuFailed ? 'Menu could not be read' : 'Menu not recorded') +
+               '</td>';
+           return '<tr><td class="hd">' + esc(day) + '</td>' + cells + '</tr>';
+         }).join('') +
+         '</table>';
+  }
+  /* A failed read is not a night not dined, and must never count as one. */
+  if (failed)
+    h += '<div class="hist-note">' + failed +
+         (failed === 1 ? ' night' : ' nights') + ' could not be read</div>';
+  return h;
+}
+
+function showHistory(n, st){
+  var known = roomguests[String(n)] || {};
+  var id = known.bookingId;
+  var nights = histNights(known);
+  var key = id + '|' + todayKey();
+  sheet.innerHTML =
+    '<h3>Villa ' + n + ' · dining history</h3>' +
+    (known.name ? '<div class="gd">' + esc(known.name) + '</div>' : '') +
+    '<div id="histBody" data-hist="' + esc(key) + '">' +
+    '<div class="note-box">Looking up the stay’s nights…</div></div>' +
+    '<button class="opt quiet" id="oBack">Back</button>';
+  showSheet();
+  document.getElementById('oBack').onclick = function(){ openRoom(n, st); };
+
+  function paint(rows){
+    /* Only onto the sheet these reads were asked for: the panel may have
+       moved on to another villa while they were in the air. */
+    var body = document.getElementById('histBody');
+    if (!body || body.getAttribute('data-hist') !== key) return;
+    var a = parseDepDate(known.arrives);
+    var capped = rows.length === HIST_MAX && a &&
+                 dkey(a) < rows[rows.length - 1].date;
+    body.innerHTML = histRowsHTML(rows) +
+      (capped ? '<div class="hist-note">Showing the last ' + HIST_MAX +
+                ' nights</div>' : '');
+  }
+  if (HIST_CACHE[key]){ paint(HIST_CACHE[key]); return; }
+  Promise.all(nights.map(function(dt){ return histNight(dt, id); }))
+    .then(function(rows){ HIST_CACHE[key] = rows; paint(rows); });
+}
+
 function openRoom(n, st){
   var pax = (st && st.g.pax) || 2;
   var guestAnswer = st && (st.src==='digital' ? st.g : st.guest);
@@ -1947,6 +2086,21 @@ function openRoom(n, st){
       guestDataHTML(st && st.g, knownName, roomguests[String(n)]) + inner;
     SNAP_VILLA = n;
     wireGuestPanel(st && st.g, roomguests[String(n)]);
+    /* Dining history reads and never writes, so the readonly dress leaves it
+       standing - the chef is exactly who it is for. Offered only when a
+       booked stay has nights behind it: a control that opens an empty list
+       teaches people not to press it. Before Close, never after: the way
+       out stays the last thing on every sheet. */
+    var kn = roomguests[String(n)] || {};
+    if (kn.bookingId && histNights(kn).length){
+      var cb = document.getElementById('oClose');
+      if (cb){
+        cb.insertAdjacentHTML('beforebegin',
+          '<button class="opt quiet" id="oHist">Dining history</button>');
+        document.getElementById('oHist').onclick =
+          function(){ showHistory(n, st); };
+      }
+    }
     showSheet();
     revealAction();
     var u = document.getElementById('oUncomb');
@@ -2236,10 +2390,16 @@ function editExt(key, g){
   var diets = fixDietList(g.diets);
 
   if (isManual){
+    /* The night this reservation is FOR, editable. A manual reservation
+       lives at /manual/<date>, so moving it to another night is a write
+       there and a delete here - until this control the only way was Cancel
+       booking and retype it on the other day's board. */
+    var night = todayKey();
     sheet.innerHTML =
       '<h3>'+(g.name || 'Reservation')+'</h3>'+
       '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
       '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
+      '<div class="txt nightfield" id="xNight"><span id="xNightLabel"></span></div>'+
       '<div class="sheet-label" style="margin-top:14px">Guests</div>'+
       '<div class="pax-row" id="paxRow"></div>'+
       '<div class="sheet-label">Dietary requirements</div>'+
@@ -2257,6 +2417,35 @@ function editExt(key, g){
     document.getElementById('xPhone').value = g.phone || '';
     document.getElementById('xNote').value  = g.note  || '';
     document.getElementById('xDnote').value = g.dnote || '';
+    /* The label and the primary button say the same thing: on this night it
+       is Save changes, on another it is Move to that night, so what the
+       press will do is never a surprise. dkey in, dkey out - the input's
+       value IS the database key, no Date parsing on the compare (rule 7). */
+    function paintNight(){
+      document.getElementById('xNightLabel').textContent =
+        dateLabel(parseDepDate(night));
+      var b = document.getElementById('oSave');
+      b.textContent = night === todayKey()
+        ? 'Save changes' : 'Move to ' + dateLabel(parseDepDate(night));
+      b.__rest = b.innerHTML;   /* a failed save restores the current label */
+    }
+    (function wireNight(){
+      var box  = document.getElementById('xNight');
+      var pick = document.createElement('input');
+      pick.type = 'date';
+      pick.value = night;
+      pick.setAttribute('aria-label', 'Night of the reservation');
+      pick.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;'+
+        'opacity:0;border:0;padding:0;margin:0;cursor:pointer;'+
+        '-webkit-appearance:none;appearance:none;background:transparent;';
+      pick.onchange = function(){
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(pick.value)) return;
+        night = pick.value;
+        paintNight();
+      };
+      box.appendChild(pick);
+    })();
+    paintNight();
     function syncDnote(){
       var el=document.getElementById('xDnote');
       el.style.display = (diets.length || el.value) ? '' : 'none';
@@ -2293,8 +2482,26 @@ function editExt(key, g){
       rec.diets = diets.slice();
       if (dn) rec.dnote = dn; else delete rec.dnote;
       rec.pax   = pax;
-      saveManual(key, rec);
-      close(); render();
+      if (night === todayKey()){
+        saveFeedback(pressedButton(), function(){
+          return saveManual(key, rec);
+        }, { done:'Saved ✓', hold:400, then:function(){ close(); render(); } });
+        return;
+      }
+      /* A move lands on the new night BEFORE it leaves this one, so a
+         failure part-way leaves the reservation standing where it was,
+         never gone. Both writes succeed or the record is put back - the
+         front desk's rule for its own pair of writes. */
+      saveFeedback(pressedButton(), function(){
+        return api('/manual/'+night+'/'+key, 'PUT', rec).then(function(){
+          return saveManual(key).catch(function(err){
+            /* this night's copy refused to go: take the new one back out,
+               or the same table is booked on two nights */
+            api('/manual/'+night+'/'+key, 'DELETE').catch(function(){});
+            throw err;
+          });
+        });
+      }, { done:'Moved ✓', hold:400, then:function(){ close(); render(); } });
     };
   } else {
     sheet.innerHTML =

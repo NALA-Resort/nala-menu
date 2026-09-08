@@ -37,6 +37,8 @@ def short(d):
     return t.strftime("%a ") + str(t.day)
 
 STAFF = {"staff@x":    {"name": "Admin",    "role": "admin"},
+         "manager@x":  {"name": "Manager",  "role": "manager"},
+         "waiter@x":   {"name": "Waiter",   "role": "waiter"},
          "masseuse@x": {"name": "Masseuse", "role": "spa"},
          "chef@x":     {"name": "Chef",     "role": "chef"}}
 
@@ -52,7 +54,7 @@ BOOKINGS = [
   ("7",  "b7",  "James",  "Okafor",  -2, 2),
   # a future request, sitting on its own day rather than today's board
   ("4",  "b4",  "Kai",    "Werner",  2, 5),
-  # interested on the form but never picked a day
+  # interested on the form and easy about the day: Any day, ruled 31 Aug
   ("15", "b15", "Anna",   "Lindqvist", 5, 7),
   # said no thank you on the form
   ("2",  "b2",  "Marco",  "Reyes",   -1, 1),
@@ -85,20 +87,34 @@ PRE = {
   "b12": {"wellness": True,  "wellDay": plus(-1),"wellTime": "morning"},
   "b4":  {"wellness": True,  "wellDay": plus(3), "wellTime": "2:00 pm", "wellDur": 90,
           "companion": "Lena Werner"},
-  "b15": {"wellness": True,  "wellDay": "",      "wellTime": "", "wellQty": 2, "wellDur": 90, "wellDur2": 60},
+  "b15": {"wellness": True,  "wellDay": "any",   "wellTime": "", "wellQty": 2, "wellDur": 90, "wellDur2": 60},
   "b2":  {"wellness": False},
   "b30": {"wellness": True,  "wellDay": plus(31), "wellTime": "morning"},
 }
+
+# The whole bookings node, as the badge reads it: pre-arrival answers and
+# the Mews record side by side under one id. Same seed as the board's, so
+# the two cannot drift apart and quietly agree about a guest who is only
+# in one of them.
+BOOKINGS_NODE = {}
+for v, bid, first, last, a, dep in BOOKINGS:
+    BOOKINGS_NODE[bid] = {"pms": {"first": first, "last": last, "villa": v,
+                                  "arrive": plus(a), "depart": plus(dep),
+                                  "state": "confirmed"}}
+    if bid in PRE:
+        BOOKINGS_NODE[bid]["prearrival"] = PRE[bid]
 
 def spa_seed():
     return {
       "b12": {"t1": {"status": "suggested", "day": today, "time": "16:30", "dur": 60,
                      "reqDay": plus(-1), "reqTime": "morning",
                      "name": "Elena Petrov", "source": "prearrival",
+                     "staffNote": "Guest asked for the deck",
                      "by": "masseuse@x", "at": "2026-08-20T10:00:00Z"}},
       "b3":  {"t1": {"status": "booked", "day": today, "time": "11:00",
                      "reqDay": today, "reqTime": "late morning",
                      "name": "Robyn Carter", "source": "prearrival",
+                     "staffNote": "Firm pressure, please",
                      "by": "masseuse@x", "at": "2026-08-20T10:00:00Z"}},
       "b7":  {"t1": {"status": "declined",
                      "reqDay": today, "reqTime": "morning",
@@ -130,13 +146,31 @@ def fb(route, request):
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
     body = "null"
-    if "/spasettings" in u:
+    if "/spacontact" in u:
+        body = "null" if STATE.get("nophone") else json.dumps(
+            {"phone": "+61468012345"})
+    elif "/spasettings" in u:
         body = json.dumps({"price60": 180, "price90": 250, "price120": 310})
+    elif "/prearrivalinfo" in u:
+        body = json.dumps({"welcomeImage": "https://photos.test/old.jpg",
+                           "welcomeImageCrop": "top",
+                           "welcomeImageHeight": "tall",
+                           "diningImage": "",
+                           "diningText": "Old dining words",
+                           "intro": "Old introduction",
+                           "titles": {"dine": "Old dine heading"},
+                           "descs": {"dine": "Old dine description"},
+                           "more": {"dine": "Old dine more"}})
     elif "/staff" in u: body = json.dumps(STAFF)
     elif "/spa.json" in u: body = json.dumps(SPA)
     elif "/stays/" in u:
         d = u.split("/stays/")[1].split(".json")[0]
         body = json.dumps(STAYS_BY_DATE.get(d)) if d in STAYS_BY_DATE else "null"
+    elif u.split("?")[0].endswith("/bookings.json"):
+        if STATE.get("bookfail"):
+            route.fulfill(status=401, content_type="application/json",
+                          body='{"error":"denied"}'); return
+        body = json.dumps({} if STATE.get("nobook") else BOOKINGS_NODE)
     elif "/bookings/" in u and "/prearrival" in u:
         k = u.split("/bookings/")[1].split("/")[0]
         body = json.dumps(PRE[k]) if k in PRE else "null"
@@ -279,6 +313,67 @@ with sync_playwright() as p:
     ck("a lone massage never writes a second", "dur2" not in body2 and "qty" not in body2)
     SPA = spa_seed()
     pg.close()
+
+    # ── Any day, the owner's ruling of 31 Aug ───────────────────
+    # Before it, a guest who did not mind which day and a guest who never
+    # reached the question both stored an empty string, and the masseuse
+    # could not tell them apart. It is an answer now, and it reads as one
+    # on the tile, in the ask, and in what the buttons let him do.
+    pg = board()
+    any_day = json.load(open("tests/slots.json"))["anyDay"]
+    ck("the tile says the guest is easy about the day, not that they are silent",
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b15\"] .when')"
+                   ".textContent").startswith(any_day["label"]))
+    ck("and it never reads as nothing yet",
+       "No day" not in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b15\"] .when').textContent"))
+    ck("it still waits in To answer, where the masseuse looks",
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b15\"]')"
+                   ".dataset.status") == "requested")
+    pg.locator('#board [data-booking="b15"]').click(); pg.wait_for_timeout(300)
+    ck("the card offers him only the nights she is actually here",
+       pg.evaluate("()=>document.querySelectorAll('.card .chips')[0]"
+                   ".querySelectorAll('.chip').length") == 3)
+    #  The point of the whole change: any day of the stay IS the ask, so he
+    #  books it outright instead of sending a suggestion back to the desk to
+    #  be put to a guest who already said they did not mind.
+    ck("and any of them counts as the ask, so Confirm is offered",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
+                   ".map(b=>b.textContent).some(t=>t.indexOf('Confirm')===0)"))
+    ck("Confirm is the solid one, Suggest steps back to quiet",
+       pg.evaluate("()=>document.querySelector('.card .cbtn.solid').textContent")
+         .startswith("Confirm"))
+    ck("and the hint tells him why, in the guest's terms",
+       "any day" in pg.evaluate("()=>document.querySelector('.card .hint').textContent"))
+    del WRITES[:]
+    pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
+    wA = [x for x in WRITES if "/spa/b15/" in x["u"]]
+    bodyA = json.loads(wA[0]["b"]) if wA else {}
+    ck("booking it writes a real day, green not amber",
+       bodyA.get("status") == "booked" and
+       bool(re.match(r"^\d{4}-\d{2}-\d{2}$", str(bodyA.get("day", "")))))
+    #  reqDay's rule takes a date or the empty string. The sentinel reaching
+    #  it would be refused by the database, so the masseuse would tap Book
+    #  and get an error - the one way this feature could fail in his hand.
+    ck("and the sentinel never reaches reqDay, which would refuse it",
+       bodyA.get("reqDay", "") == "" and
+       any_day["v"] not in json.dumps(bodyA))
+    SPA = spa_seed()
+    pg.close()
+
+    #  Only the chip says Any day. A record from before it existed, or one
+    #  the desk cleared, still reads as nothing picked: saying Any day for
+    #  it would put a word in a guest's mouth they never said. The guest
+    #  form asks those guests again, because the day is compulsory there now.
+    PRE["b15"] = {"wellness": True, "wellDay": "", "wellTime": ""}
+    pg = board()
+    ck("an empty day is still an empty day, never read as Any day",
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b15\"] .when')"
+                   ".textContent") == "No day picked")
+    pg.close()
+    PRE["b15"] = {"wellness": True, "wellDay": "any", "wellTime": "",
+                  "wellQty": 2, "wellDur": 90, "wellDur2": 60}
+
     pg = board()
     pg.locator('#board [data-booking="b15"]').click(); pg.wait_for_timeout(300)
     ck("the pair's card offers a length for each, labelled 1st and 2nd",
@@ -313,7 +408,83 @@ with sync_playwright() as p:
     body3 = json.loads(w3[0]["b"]) if w3 else {}
     ck("Save changes writes the new length and the booking stays booked",
        body3.get("status") == "booked" and body3.get("dur") == 120)
+    ck("and the staff note rides the edit untouched",
+       body3.get("staffNote") == "Firm pressure, please")
     SPA = spa_seed()
+    pg.close()
+
+    # ── the notes area, 7 Sep ───────────────────────────────────
+    # The accommodation booking's staff note, translated to a treatment:
+    # free text on the record itself, read and written by the desk and the
+    # masseuse alike, never a guest - /spa is staff-only by rule. It rides
+    # every save, saves alone and quietly, and an emptied box is the way
+    # back. staffNote, never note: note is the decline's reason.
+    pg = board()
+    pg.locator('#board [data-booking="b3"]').click(); pg.wait_for_timeout(300)
+    ck("the card shows the note the record holds",
+       pg.evaluate("()=>document.querySelector('.card textarea').value")
+       == "Firm pressure, please")
+    ck("and offers no Save note while it is untouched",
+       pg.evaluate("()=>{var b=[...document.querySelectorAll('.card .cbtn')]"
+                   ".find(x=>x.textContent==='Save note');"
+                   "return b && b.closest('.btns').style.display==='none';}"))
+    del WRITES[:]; del PUSHES[:]
+    pg.fill('.card textarea', "Bring the table to the deck")
+    pg.wait_for_timeout(200)
+    pg.locator('.card .cbtn', has_text="Save note").click(); pg.wait_for_timeout(900)
+    w3n = [x for x in WRITES if "/spa/b3/" in x["u"]]
+    body3n = json.loads(w3n[0]["b"]) if w3n else {}
+    ck("Save note writes the note and moves nothing",
+       len(w3n) == 1 and body3n.get("staffNote") == "Bring the table to the deck"
+       and body3n.get("status") == "booked" and body3n.get("day") == today
+       and body3n.get("time") == "11:00")
+    ck("and buzzes nobody - a note is bookkeeping, nobody's queue", not PUSHES)
+    SPA = spa_seed()
+    pg.close()
+
+    # A stray chip tap must not ride out on a note: moving a treatment goes
+    # through the buttons that tell the guest, never through Save note.
+    pg = board()
+    pg.locator('#board [data-booking="b3"]').click(); pg.wait_for_timeout(300)
+    pg.locator('.card .chip').nth(1).click(); pg.wait_for_timeout(200)
+    pg.fill('.card textarea', "Deck, not the spa room")
+    pg.wait_for_timeout(200)
+    del WRITES[:]
+    pg.locator('.card .cbtn', has_text="Save note").click(); pg.wait_for_timeout(900)
+    w3k = [x for x in WRITES if "/spa/b3/" in x["u"]]
+    body3k = json.loads(w3k[0]["b"]) if w3k else {}
+    ck("Save note keeps the record's own day whatever chip was tapped",
+       body3k.get("day") == today and body3k.get("staffNote") == "Deck, not the spa room")
+    SPA = spa_seed()
+    pg.close()
+
+    # Emptying the box and saving deletes the note: the way back.
+    pg = board()
+    pg.locator('#board [data-booking="b3"]').click(); pg.wait_for_timeout(300)
+    pg.fill('.card textarea', "")
+    pg.wait_for_timeout(200)
+    del WRITES[:]
+    pg.locator('.card .cbtn', has_text="Save note").click(); pg.wait_for_timeout(900)
+    w3e = [x for x in WRITES if "/spa/b3/" in x["u"]]
+    body3e = json.loads(w3e[0]["b"]) if w3e else {}
+    ck("an emptied note saves as nothing, not as an empty string",
+       len(w3e) == 1 and "staffNote" not in body3e)
+    SPA = spa_seed()
+    pg.close()
+
+    # An ask still virtual has no record to pin a note to.
+    pg = board()
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    ck("a virtual ask's card offers no notes area",
+       not pg.evaluate("()=>!!document.querySelector('.card textarea')"))
+    pg.close()
+
+    # The desk reads and writes the same line.
+    pg = board("staff@x")
+    pg.locator('#board [data-booking="b3"]').click(); pg.wait_for_timeout(300)
+    ck("the desk's card holds the same notes area",
+       pg.evaluate("()=>document.querySelector('.card textarea').value")
+       == "Firm pressure, please")
     pg.close()
 
     # ── the button law ──────────────────────────────────────────
@@ -352,7 +523,7 @@ with sync_playwright() as p:
     pg = board()
 
     # The stats are the masseuse's whole queue, not today's slice: b9 today,
-    # b4 in two days, b15 with no day picked, b30 a month out - all waiting
+    # b4 in two days, b15 easy about the day, b30 a month out - all waiting
     # on him.
     ck("To answer counts every open ask on the horizon",
        pg.evaluate("()=>nAsk.textContent") == "4")
@@ -497,6 +668,8 @@ with sync_playwright() as p:
        body.get("time") == "16:30")
     ck("and the guest's original ask survives the approval",
        body.get("reqDay") == plus(-1) and body.get("reqTime") == "morning")
+    ck("and so does the staff note",
+       body.get("staffNote") == "Guest asked for the deck")
     SPA = spa_seed()
 
     # The desk changing the day does NOT book: it goes back to the masseuse.
@@ -548,6 +721,80 @@ with sync_playwright() as p:
     ck("no Manually approve exists on the masseuse's screen",
        pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
                    ".every(b=>!b.textContent.startsWith('Manually'))"))
+    ck("and no Remind masseuse either - nobody nudges himself",
+       pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
+                   ".every(b=>!b.textContent.startsWith('Remind'))"))
+    pg.close()
+
+    # ── the reminder: a text, not a push ────────────────────────
+    # Remind masseuse, the owner's ask of 7 Sep: an ask the masseuse has not
+    # answered can be chased, by admin and manager only. An SMS rather than
+    # a push - his ruling of the same day - because the masseuse can have
+    # notifications off, and a reminder that only reaches a phone already
+    # listening reminds nobody. The button is an sms: link that opens
+    # Messages prefilled: the stored number, the ask, and a link back that
+    # opens this very card. It touches the record not at all.
+    from urllib.parse import unquote
+    def remind_href(page):
+        return page.evaluate("""()=>{var a=[...document.querySelectorAll('.card a.cbtn')]
+            .find(x=>x.textContent==='Remind masseuse');
+          return a ? a.getAttribute('href') : null;}""")
+    pg = board("staff@x")
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    href = remind_href(pg)
+    body_txt = unquote((href or "").split("?&body=")[-1])
+    ck("Remind masseuse is an sms: link to the stored mobile",
+       bool(href) and href.startswith("sms:+61468012345?&body="))
+    ck("the text carries the villa, the guest and the ask as the guest asked it",
+       "villa 9" in body_txt and "Sofia Marino" in body_txt and
+       "afternoon" in body_txt)
+    ck("and a link back that opens this very card",
+       "spa.html?open=b9" in body_txt)
+    ck("it stands in its own quiet row, under the buttons that move the record",
+       pg.evaluate("""()=>{var a=[...document.querySelectorAll('.card a.cbtn')]
+           .find(x=>x.textContent==='Remind masseuse');
+         var solid=document.querySelector('.card .cbtn.solid');
+         return !a.classList.contains('solid') &&
+           a.getBoundingClientRect().top>=solid.getBoundingClientRect().bottom;}"""))
+    ck("and the hint says what the nudge does and does not do",
+       "Remind masseuse" in pg.evaluate(
+         "()=>document.querySelector('.card .hint').textContent"))
+    pg.close()
+
+    # No stored number is not no button: the text still opens, To box empty,
+    # and the hint says where the number lives.
+    STATE["nophone"] = True
+    pg = board("staff@x")
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    href0 = remind_href(pg)
+    ck("with no stored mobile the text opens with the To box empty",
+       bool(href0) and href0.startswith("sms:?&body="))
+    ck("and the hint points at Settings",
+       "Settings" in pg.evaluate(
+         "()=>document.querySelector('.card .hint').textContent"))
+    pg.close()
+    STATE["nophone"] = False
+
+    # The SMS's link back: ?open lands the masseuse on the waiting card
+    # itself, not the whole board. One shot, so closing it stays closed.
+    pg = board(qs="?open=b9")
+    ck("the text's link opens the guest's waiting card on arrival",
+       pg.evaluate("()=>{var c=document.querySelector('.card');"
+                   "return c && c.dataset.booking;}") == "b9")
+    pg.close()
+
+    # The manager holds the reminder too; a waiter granted spaBoard works
+    # the board but does not chase the masseuse - that is management's.
+    pg = board("manager@x")
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    ck("the manager is offered the reminder", bool(remind_href(pg)))
+    pg.close()
+    pg = board("waiter@x")
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    ck("a waiter on the desk's card is not",
+       remind_href(pg) is None and
+       pg.evaluate("()=>document.querySelector('.card .cbtn.solid').textContent")
+         .startswith("Manually approve"))
     pg.close()
 
     # ── the decline's other half: telling the guest ─────────────
@@ -705,13 +952,15 @@ with sync_playwright() as p:
     pg.close()
 
     # ── the action icon ─────────────────────────────────────────
-    # The amber count beside Spa in every other page's menu: suggestions
-    # waiting on the desk. Recomputed from /spa on each load, so it clears
-    # itself the moment the queue is empty and never needs unsetting.
-    def badge_on_pages():
+    # The amber count beside Spa in every other page's menu: what THIS
+    # login still owes, not every open item. Recomputed from /spa and
+    # /bookings on each load, so it clears itself the moment the work is
+    # done - there is deliberately no way to dismiss it by hand, because a
+    # badge cleared by hand says "done" when it means "seen".
+    def badge_on_pages(email="staff@x"):
         q = b.new_page(viewport={"width": 390, "height": 900})
         q.add_init_script(SDK)
-        q.add_init_script("window.__EMAIL=%s;" % json.dumps("staff@x"))
+        q.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
         q.route("**firebasedatabase.app/**", fb)
         q.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         q.goto("http://localhost:8980/pages.html")
@@ -723,17 +972,105 @@ with sync_playwright() as p:
           return b2 ? b2.textContent : null;}""")
         q.close()
         return v
-    # One suggestion to put to the guest, one decline the guest has not
-    # heard about: two things wait on the desk.
-    ck("the Spa entry counts both queues that wait on the desk",
-       badge_on_pages() == "2")
+    # Four guests have asked and heard nothing back - Sofia today, Kai on
+    # his own day, Anna easy about the day, Nadia a month out. The desk owes
+    # those four as well, because reception fields the guest's next question
+    # about them, plus its own two queues: Elena's suggested time to put to
+    # her, and James's decline he has not been told about.
+    ck("the desk is counted every open item it owes, asks included",
+       badge_on_pages() == "6")
     SPA = {k: v for k, v in spa_seed().items() if k != "b12"}
-    ck("a told decline stops counting",
-       badge_on_pages() == "1")
+    ck("a suggestion settled leaves the desk's count",
+       badge_on_pages() == "5")
     SPA["b7"]["t1"]["told"] = "2026-08-25T10:00:00Z"
-    ck("and no icon at all once nothing waits, rather than a zero",
+    ck("a told decline stops counting",
+       badge_on_pages() == "4")
+    # Nothing outstanding anywhere: no icon at all, rather than a zero.
+    STATE["nobook"] = True
+    ck("no icon once the desk owes nothing",
        badge_on_pages() is None)
+    STATE["nobook"] = False
+    # A refused read is not an empty node. Counting the half that answered
+    # would show a smaller number than the truth, which reads as "less to
+    # do" - the Clean Slate mistake wearing a badge. Both nodes or neither.
+    STATE["bookfail"] = True
+    ck("a refused bookings read shows no badge, not an undercount",
+       badge_on_pages() is None)
+    STATE["bookfail"] = False
     SPA = spa_seed()
+
+    # ── which count each login is given ───────────────────
+    # The masseuse holds one screen and nothing else, so she is always ON
+    # the Spa board, and the menu never links to the page you are standing
+    # on: she cannot see this badge at all. It is the desk's instrument,
+    # and her own channel is the push notification.
+    #
+    # The split is asserted here rather than assumed. If she is ever given
+    # a second screen, the day it happens is the wrong day to find out she
+    # was being shown reception's queue - and reception must never be
+    # handed her unanswered asks as though the answering were theirs.
+    pg = board()
+    def counted_as(role):
+        return pg.evaluate("""(r)=>new Promise(function(res){
+             var t=setTimeout(function(){res('never called');},4000);
+             NAV_ACTIONS[0].count(r,function(n){clearTimeout(t);res(n);});
+           })""", role)
+    ck("the spa role is given the asks nobody has answered",
+       counted_as("spa") == 4)
+    ck("the desk is given its own queues and those asks",
+       counted_as("admin") == 6)
+    ck("every other login holding spaBoard is the desk",
+       counted_as("waiter") == 6 and counted_as("manager") == 6)
+    pg.close()
+
+    # ── the rule itself, asked directly ────────────────────
+    # The board and the badge both call this. Put to it one state at a
+    # time, so a failure names the state rather than a number being wrong
+    # by one and leaving somebody to work out which guest it was.
+    pg = board()
+    def owed(spa, book, d=None):
+        return pg.evaluate("([s,b,x])=>spaOwedCounts(s,b,x)",
+                           [spa, book, d or today])
+    def ask(**kw):
+        p = {"wellness": True, "wellDay": today}; p.update(kw)
+        return {"bX": {"prearrival": p,
+                       "pms": {"depart": plus(3), "state": "confirmed"}}}
+    ck("a guest's unanswered ask is owed by both of them",
+       owed({}, ask()) == {"spa": 1, "desk": 1})
+    ck("Any day is owed the same, having no day to fall off",
+       owed({}, ask(wellDay="any")) == {"spa": 1, "desk": 1})
+    ck("an ask for a day gone by is owed by nobody",
+       owed({}, ask(wellDay=plus(-2))) == {"spa": 0, "desk": 0})
+    ck("an Any day ask stops once the guest has gone home",
+       owed({}, {"bX": {"prearrival": {"wellness": True, "wellDay": "any"},
+                        "pms": {"depart": plus(-1), "state": "confirmed"}}})
+       == {"spa": 0, "desk": 0})
+    ck("a cancelled booking's ask is owed by nobody",
+       owed({}, {"bX": {"prearrival": {"wellness": True, "wellDay": today},
+                        "pms": {"depart": plus(3), "state": "cancelled"}}})
+       == {"spa": 0, "desk": 0})
+    ck("an ask she has answered leaves her count entirely",
+       owed({"bX": {"t1": {"status": "booked", "day": today,
+                           "source": "prearrival"}}}, ask())
+       == {"spa": 0, "desk": 0})
+    ck("a suggested time is the desk's alone, never hers again",
+       owed({"bX": {"t1": {"status": "suggested", "day": today,
+                           "source": "prearrival"}}}, ask())
+       == {"spa": 0, "desk": 1})
+    ck("a decline the guest has not heard is the desk's alone",
+       owed({"bX": {"t1": {"status": "declined", "reqDay": today,
+                           "source": "prearrival"}}}, ask())
+       == {"spa": 0, "desk": 1})
+    ck("and once the guest is told it is owed by nobody",
+       owed({"bX": {"t1": {"status": "declined", "reqDay": today,
+                           "told": "2026-09-07T10:00:00Z",
+                           "source": "prearrival"}}}, ask())
+       == {"spa": 0, "desk": 0})
+    ck("a guest who said no thank you is nobody's work",
+       owed({}, {"bX": {"prearrival": {"wellness": False},
+                        "pms": {"depart": plus(3)}}})
+       == {"spa": 0, "desk": 0})
+    pg.close()
 
     # ── a write refused is said, not swallowed ──────────────────
     pg = board()
@@ -761,6 +1098,11 @@ with sync_playwright() as p:
     q.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
     q.goto("http://localhost:8980/staff.html")
     q.wait_for_timeout(1600)
+    # The settings page became four tabs on 29 Aug and Prices is not the one it
+    # opens on. The values are read on load whatever tab is showing, but the
+    # field cannot be typed into while its panel is hidden.
+    q.click('.tab[data-t="tPrices"]')
+    q.wait_for_timeout(200)
     ck("Settings shows the prices it holds",
        q.evaluate("()=>sp60.value") == "180" and
        q.evaluate("()=>sp90.value") == "250")
@@ -777,6 +1119,187 @@ with sync_playwright() as p:
     q.wait_for_timeout(300)
     ck("words are refused before they reach the database",
        "whole number" in q.evaluate("()=>spaErr.textContent"))
+
+    # ── the masseuse's mobile, under the prices ─────────────────
+    # Stored at /spacontact, staff-only, and never at /spasettings, which is
+    # public for the guest form's prices: a contractor's personal mobile is
+    # nobody's to browse. Judged by the one phone rule the app has.
+    ck("Settings shows the stored masseuse mobile",
+       q.evaluate("()=>spPhone.value") == "+61468012345")
+    del WRITES[:]
+    q.fill("#spPhone", "0468 067 233")
+    q.evaluate("()=>{spPhone.dispatchEvent(new Event('change'))}")
+    q.wait_for_timeout(600)
+    wp = [x for x in WRITES if "/spacontact" in x["u"]]
+    bodyp = json.loads(wp[0]["b"]) if wp else {}
+    ck("a typed mobile is normalised by the one phone rule, saved and shown",
+       bool(wp) and wp[0]["m"] == "PATCH" and
+       bodyp.get("phone") == "+61468067233" and
+       q.evaluate("()=>spPhone.value") == "+61468067233")
+    q.fill("#spPhone", "03 9331 1234")
+    q.evaluate("()=>{spPhone.dispatchEvent(new Event('change'))}")
+    q.wait_for_timeout(300)
+    ck("a landline is refused in words before it reaches the database",
+       "texted" in q.evaluate("()=>spaErr.textContent") and
+       len([x for x in WRITES if "/spacontact" in x["u"]]) == 1)
+
+    # ── the guest form's content, written from Settings ─────────
+    #  /prearrivalinfo: the welcome image, the dining page's image and
+    #  text, and the Read more replacements. Tested here beside the prices
+    #  because this suite already drives staff.html signed in; the guest
+    #  side of the same record is pre_suite's. One Save for the lot, not
+    #  save-on-blur: a half-written paragraph must not publish itself to
+    #  guests because the phone rang.
+    q.click('.tab[data-t="tGuest"]')
+    q.wait_for_timeout(600)
+    #  A page folds away until it is wanted: twenty four boxes laid flat is
+    #  a tab nobody can find Save on. Opened here because a box in a shut
+    #  fold cannot be measured or typed into.
+    ck("each question page is a fold of its own, shut until it is opened",
+       q.evaluate("()=>document.querySelectorAll('#tGuest details.gi-page').length") == 8 and
+       q.evaluate("()=>![...document.querySelectorAll('#tGuest details')].some(d=>d.open)"))
+    q.evaluate("()=>document.querySelectorAll('#tGuest details')"
+               ".forEach(d=>{d.open=true;})")
+    q.wait_for_timeout(400)
+    ck("Settings shows what the record holds",
+       q.evaluate("()=>giWelcomeImg.value") == "https://photos.test/old.jpg" and
+       q.evaluate("()=>giDiningText.value") == "Old dining words" and
+       q.evaluate("()=>giMore_dine.value") == "Old dine more")
+    #  All three parts of a page, and the two standalone pages' own words:
+    #  the owner asked (30 Aug) for every word a guest reads to be his.
+    ck("a page's heading, description and Read more are each a field",
+       q.evaluate("()=>giTitle_dine.value") == "Old dine heading" and
+       q.evaluate("()=>giDesc_dine.value") == "Old dine description" and
+       q.evaluate("()=>giMore_dine.value") == "Old dine more")
+    ck("and the introduction page has its own",
+       q.evaluate("()=>giIntro.value") == "Old introduction")
+    ck("a page he has not written to shows the app's own words, ready to edit",
+       "5pm" in q.evaluate("()=>giMore_eta.value") and
+       q.evaluate("()=>giTitle_eta.value") == "What time do you expect to arrive?" and
+       q.evaluate("()=>giDesc_eta.value") == "A rough time is fine.")
+    ck("an image's crop and height load as stored, and default when unset",
+       q.evaluate("()=>giWelcomeCrop.value") == "top" and
+       q.evaluate("()=>giWelcomeHeight.value") == "tall" and
+       q.evaluate("()=>giDiningCrop.value") == "centre" and
+       q.evaluate("()=>giDiningHeight.value") == "banner")
+    #  The built-in Read more words are the placeholders of the boxes that
+    #  replace them, read from prearrival.html itself so one file owns
+    #  them: an empty box must SHOW the words it would keep.
+    #  The boxes hold real, editable words rather than a grey placeholder:
+    #  grey reads as a disabled field, and the owner asked (30 Aug) to
+    #  edit the wording rather than retype it. Where he has written his
+    #  own, that shows; where he has not, the page's own words do.
+    ck("a Read more box holds the wording a guest reads, ready to edit",
+       q.evaluate("()=>giMore_dine.value") == "Old dine more" and
+       "fill quickly" in q.evaluate("()=>giMore_well.value"))
+    ck("and the words come from the guest page, not a copy typed here",
+       "fill quickly" in q.evaluate("()=>giMore_well.dataset.builtin"))
+    #  And shows them whole. Two rows cut the grey wording through the
+    #  middle of a line, half-height letters against the bottom border,
+    #  which reads as broken rather than as a hint (the owner, 30 Aug).
+    #  A placeholder does not count toward scrollHeight, so an empty box
+    #  is measured holding those same words.
+    ck("a box is as tall as the wording it holds, cutting no line in half",
+       q.evaluate("""()=>['well','diet','eta'].every(k=>{
+           const t=document.getElementById('giMore_'+k);
+           return t.value && t.scrollHeight<=t.clientHeight+2;})"""))
+    #  And the same for what is typed: a box sized to its stored words
+    #  must grow rather than clip when more are added.
+    q.fill("#giMore_else", "A much longer replacement than the box was "
+                           "drawn for, long enough to wrap over several "
+                           "lines on a phone and prove the box grows with "
+                           "the words rather than cutting them off.")
+    q.wait_for_timeout(200)
+    ck("and a box grows to the words typed into it",
+       q.evaluate("""()=>{const t=document.getElementById('giMore_else');
+           return t.scrollHeight<=t.clientHeight+2;}"""))
+    #  The instructions live beside the fields they explain. They were one
+    #  paragraph below Save, past the eight boxes it described, and the
+    #  owner read it as a wall.
+    #  The tab covers three surfaces a guest meets in order, and they read
+    #  as one long form unless each is announced (the owner, 30 Aug).
+    ck("the tab announces its three surfaces as headlines",
+       q.evaluate("""()=>{
+           const h=[...document.querySelectorAll('#tGuest .gi-sec')]
+             .map(x=>x.textContent.trim());
+           if (h.join('|')!=='Welcome screen|Dining page|Question pages')
+             return false;
+           const s=getComputedStyle(document.querySelector('#tGuest .gi-sec'));
+           const l=getComputedStyle(document.querySelector('#tGuest .gi-lab'));
+           return parseFloat(s.fontSize)>parseFloat(l.fontSize)
+             && Number(s.fontWeight)>=600;}"""))
+    ck("the grammar is taught beside the boxes it applies to",
+       q.evaluate("""()=>{const h=[...document.querySelectorAll('#tGuest .gi-hint')]
+           .map(x=>x.textContent).join(' ').toLowerCase();
+           return h.indexOf('#')>-1 && h.indexOf('bold')>-1
+             && h.indexOf('paragraph')>-1;}"""))
+    ck("and no block of instructions runs longer than a hint",
+       q.evaluate("""()=>[...document.querySelectorAll('#tGuest .gi-hint, #tGuest .note')]
+           .every(x=>x.textContent.trim().length<=220)"""))
+    del WRITES[:]
+    q.fill("#giDiningText", "Dinner is one menu, finalised each day.")
+    q.fill("#giMore_diet", "Owner diet words.")
+    q.click("#giSave")
+    q.wait_for_timeout(600)
+    w5 = [x for x in WRITES if "/prearrivalinfo" in x["u"]]
+    body5 = json.loads(w5[0]["b"]) if w5 else {}
+    ck("Save carries every part of every page, and the introduction",
+       (body5.get("titles") or {}).get("dine") == "Old dine heading" and
+       (body5.get("descs") or {}).get("dine") == "Old dine description" and
+       body5.get("intro") == "Old introduction" and
+       (body5.get("titles") or {}).get("eta") == "" and
+       (body5.get("descs") or {}).get("eta") == "")
+    ck("Save writes the whole record in one PATCH, stamped by and at",
+       bool(w5) and w5[0]["m"] == "PATCH" and
+       body5.get("diningText") == "Dinner is one menu, finalised each day." and
+       body5.get("welcomeImage") == "https://photos.test/old.jpg" and
+       body5.get("welcomeImageCrop") == "top" and
+       body5.get("welcomeImageHeight") == "tall" and
+       body5.get("diningImageCrop") == "centre" and
+       body5.get("diningImageHeight") == "banner" and
+       (body5.get("more") or {}).get("diet") == "Owner diet words." and
+       (body5.get("more") or {}).get("dine") == "Old dine more" and
+       bool(body5.get("by")) and bool(body5.get("at")))
+    #  A box still holding the page's own words stores NOTHING. Saving the
+    #  seeded copy would freeze today's wording into the database, and a
+    #  later edit to prearrival.html would be shadowed by a copy nobody
+    #  remembers making - which is also what makes emptying a box the way
+    #  back to the original.
+    ck("a box left as it came is stored as nothing, not as a copy",
+       (body5.get("more") or {}).get("well") == "" and
+       (body5.get("more") or {}).get("purpose") == "")
+    ck("and the button rests at Saved, which is the truth",
+       "Saved" in q.evaluate("()=>giSave.textContent") and
+       q.evaluate("()=>giSave.disabled") is True)
+    q.fill("#giDiningText", "changed again")
+    q.wait_for_timeout(150)
+    ck("an edit arms Save again", q.evaluate("()=>giSave.disabled") is False)
+    del WRITES[:]
+    q.fill("#giWelcomeImg", "the pool one")
+    q.click("#giSave")
+    q.wait_for_timeout(300)
+    ck("an image link that is not an https address is refused in words",
+       "https" in q.evaluate("()=>giErr.textContent") and
+       not [x for x in WRITES if "/prearrivalinfo" in x["u"]])
+    q.fill("#giWelcomeImg", "https://photos.test/old.jpg")
+    q.fill("#giDiningText", "x" * 4001)
+    q.click("#giSave")
+    q.wait_for_timeout(300)
+    ck("a text past the database's ceiling is refused in words, with the count",
+       "4000" in q.evaluate("()=>giErr.textContent") and
+       not [x for x in WRITES if "/prearrivalinfo" in x["u"]])
+    #  The write-preview loop: the tab links to the demo form, and leaving
+    #  with unsaved edits asks first. The boxes are dirty right now (the
+    #  fills above), and Playwright dismisses dialogs by default, which is
+    #  the Cancel branch: the page must stay put.
+    ck("the tab offers the demo form to preview on",
+       q.evaluate("()=>{const a=document.getElementById('giDemo');"
+                  "return a ? a.getAttribute('href') : null;}")
+       == "prearrival.html?b=demo")
+    q.click("#giDemo")
+    q.wait_for_timeout(500)
+    ck("leaving with unsaved edits asks first, and Cancel stays",
+       "staff.html" in q.url)
     q.close()
 
     # ── who may stand here ──────────────────────────────────────

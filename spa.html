@@ -72,6 +72,12 @@
                  border-radius:var(--r); padding:10px 12px; background:#fff;
                  font-family:var(--ui-font); margin-top:2px; color:var(--ink);
                  -webkit-appearance:none; appearance:none; }
+  /* The notes box, the same dress as the select above it. True white: an
+     editable surface, the colour law's one meaning for it. */
+  .card textarea { width:100%; font-size:var(--t3); border:1px solid var(--rule);
+                   border-radius:var(--r); padding:10px 12px; background:#fff;
+                   font-family:var(--ui-font); margin-top:2px; color:var(--ink);
+                   line-height:1.45; resize:vertical; }
   /* Three buttons can stand here and the labels carry a day and a time, so
      the row wraps rather than pushing the page sideways at 320. */
   .btns { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
@@ -81,6 +87,9 @@
           white-space:nowrap; cursor:pointer; }
   .cbtn.solid { background:var(--ink); color:var(--cream); }
   .cbtn.quiet { border-color:var(--rule); color:var(--mid); flex:0 0 auto; padding:12px 14px; }
+  /* Remind masseuse is an sms: link wearing the button dress; a link is
+     blue and underlined by default, which reads as neither. */
+  a.cbtn { text-decoration:none; display:block; }
   /* The button law, STYLEGUIDE.md: destructive wears terracotta outline,
      never solid ink and never red, and always confirms before writing. */
   .cbtn.danger { border-color:var(--terra-b); color:var(--terra); flex:0 0 auto; padding:12px 14px; }
@@ -143,7 +152,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=46"></script>
+<script src="nala-shared.js?v=55"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -228,6 +237,23 @@ var OPEN = null;     /* { id, tid } of the one card open, tid 'new' for an add *
 var SEL = null;      /* { day, time } while a card is open */
 var FILTER = 'all'; /* the pressed stat; All is the resting state */
 var ADDQ = '';      /* the desk's find-the-guest text, kept across repaints */
+var SPACONTACT = null; /* /spacontact once loaded - the masseuse's mobile,
+                          set in Settings, Prices; read only by the logins
+                          that hold the Remind masseuse button */
+function masseusePhone(){
+  /* Judged again on the way out, not just on the way in: a number typed
+     straight into the console must still be sendable or the sms: link
+     would carry it to Messages as-is. */
+  return (SPACONTACT && normalisePhone(SPACONTACT.phone)) || '';
+}
+/* The SMS's link back: ?open=<booking> opens that guest's waiting card, so
+   the masseuse lands where the answer goes rather than on the whole board.
+   One shot - closing the card must not have it spring back on the reload
+   that follows every save. */
+var OPENQ = (function(){
+  var q = new URLSearchParams(location.search).get('open');
+  return (q && /^[A-Za-z0-9-]{1,64}$/.test(q)) ? q : '';
+})();
 
 function nameOf(id, rec){
   var bk = BOOKINGS[id];
@@ -286,6 +312,8 @@ function asRequested(rec){
 function whenOf(rec){
   if (rec.status === 'booked' || rec.status === 'suggested')
     return niceDay(rec.day) + ' · ' + slotLabel(rec.time);
+  if (rec.reqAny)
+    return SPA_ANY_DAY_LABEL + (rec.reqTime ? ' · ' + rec.reqTime : '');
   if (rec.reqDay)
     return niceDay(rec.reqDay) + (rec.reqTime ? ' · ' + rec.reqTime : '');
   return rec.reqTime ? 'No day · ' + rec.reqTime : 'No day picked';
@@ -299,7 +327,7 @@ function serviceOf(rec, id){
       ' + ' + (spaDur(rec.dur2) ? spaDur(rec.dur2).short : '?')
     : 'Massage' + (spaDur(rec.dur) ? ' · ' + spaDur(rec.dur).short : '');
   var bk = BOOKINGS[id];
-  var ask = (rec.reqDay ? niceDay(rec.reqDay) : 'no day') +
+  var ask = (rec.reqAny ? 'any day' : rec.reqDay ? niceDay(rec.reqDay) : 'no day') +
             (rec.reqTime ? ', ' + rec.reqTime : '');
   if (rec.status === 'requested' || rec.virtual)
     return what + (bk ? ' · staying ' + stayRange(bk) : '');
@@ -339,13 +367,23 @@ function items(){
        the owner ruled 26 Aug: the pair travels together - one day, one
        time, a length each - and the card shows both. Answering writes a
        prearrival-source record, which is the ask spoken for. */
-    var have = Object.keys(SPA[id] || {}).some(function(tid){
-      return (SPA[id][tid] || {}).source === 'prearrival';
-    });
+    /* The same test the hamburger badge applies, so a board showing an
+       ask and a badge counting it can never disagree: nala-shared.js. */
+    var have = spaAskSpokenFor(SPA[id]);
+    /* "Any day" never becomes a reqDay: that field's rule takes a date or
+       the empty string and would refuse it, so the masseuse would tap Book
+       and get an error. It rides as a flag on the virtual record instead,
+       which is read-only and never written - save() builds its body key by
+       key and never copies this. */
+    /* Only the chip says Any day. An empty day is a record from before the
+       chip existed, or one the desk cleared, and it still reads "No day
+       picked" - saying Any day for it would put words in a guest's mouth
+       they never said. The guest form asks those guests again. */
+    var anyDay = isAnyDay(p.wellDay);
     if (!have)
       out.push({ id: id, tid: 'ask0', rec: {
-        virtual: true, status: 'requested',
-        reqDay: p.wellDay || '', reqTime: p.wellTime || '',
+        virtual: true, status: 'requested', reqAny: anyDay,
+        reqDay: anyDay ? '' : (p.wellDay || ''), reqTime: p.wellTime || '',
         qty: p.wellQty === 2 ? 2 : 1,
         dur: spaDur(p.wellDur) ? p.wellDur : 0,
         dur2: p.wellQty === 2 && spaDur(p.wellDur2) ? p.wellDur2 : 0
@@ -512,8 +550,13 @@ function card(it){
   if (SEL.qty === 2) lenRow('2nd length', 'dur2');
 
   var btns = document.createElement('div'); btns.className = 'btns';
+  var remind = false;
   var when = shortDay(SEL.day) + ' ' + slotLabel(SEL.time);
-  var matchesAsk = !!rec.reqDay && SEL.day === rec.reqDay;
+  /* A guest who said Any day has asked for every day of their stay, so any
+     day the masseuse picks IS the ask and he books it outright. Sending a
+     suggestion back to the desk to be put to a guest who already said they
+     did not mind is the round trip this chip exists to save. */
+  var matchesAsk = rec.reqAny ? !!SEL.day : (!!rec.reqDay && SEL.day === rec.reqDay);
   var changed = SEL.day !== rec.day || SEL.time !== rec.time;
   var hint = '';
 
@@ -567,7 +610,12 @@ function card(it){
       if (matchesAsk) btn('Confirm ' + when, 'solid', saveAs('booked'));
       btn('Suggest ' + when, matchesAsk ? 'quiet' : 'solid', saveAs('suggested'));
       btn('Decline', 'danger', declineWith(it));
-      hint = matchesAsk
+      hint = rec.reqAny
+        ? 'The guest said any day of their stay suits them, so pick one and ' +
+          'Confirm books it. Suggest is for a day outside the stay or a ' +
+          'change worth putting to them first. Decline is for a stay with ' +
+          'nothing free.'
+        : matchesAsk
         ? 'Confirm books it. Suggest offers this time as a change instead, ' +
           'amber until the front desk approves it with the guest. Decline ' +
           'is for a stay with nothing free.'
@@ -617,7 +665,33 @@ function card(it){
       hint = 'Manually approve is only for a time the masseuse has already ' +
              'agreed to out loud - it books without his tap and the tile ' +
              'says the desk did it. Anything else waits on him.';
+      /* The nudge, the owner's ask of 7 Sep: an ask he has not answered can
+         be chased. Admin and manager only - a waiter holding spaBoard works
+         the board, chasing the masseuse is management's. An SMS rather than
+         a push, his ruling of the same day: the masseuse can have
+         notifications off, and a reminder that only reaches a phone already
+         listening reminds nobody. The button opens Messages with the text
+         written - his number, the ask, a link that opens this card - and
+         the desk presses send, so the send is seen rather than trusted. */
+      if (role === 'admin' || role === 'manager'){
+        remind = true;
+        hint += ' Remind masseuse opens a text to him carrying this ask ' +
+                'and a link back to it; nothing here changes until he answers.';
+        if (!masseusePhone())
+          hint += ' His mobile is not stored yet - Settings, Prices holds ' +
+                  'it - so the text opens with the To box empty.';
+      }
     }
+  }
+  /* The text, written for him to act on from the lock screen: who, where,
+     what they asked, and a link that lands on this very card. "?&" before
+     body is the one form iPhone and Android both read. */
+  function remindHref(){
+    var msg = 'Nala: villa ' + (villaOf(id, dayOf(rec) || todayKey()) || '?') +
+              ', ' + nameOf(id, rec) + ' - massage request (' + whenOf(rec) +
+              ') is waiting on you. Answer it here: ' + location.origin +
+              '/spa.html?open=' + encodeURIComponent(id);
+    return 'sms:' + masseusePhone() + '?&body=' + encodeURIComponent(msg);
   }
   /* Editing the details is its own act. Confirm and Suggest carry the
      pills with them, but a booked treatment being resized, or the desk
@@ -635,7 +709,60 @@ function card(it){
                  saveAs(rec.status || 'requested'));
     if (rec.status === 'booked') btns.insertBefore(sb, btns.firstChild);
   }
+  /* The notes area, the owner's ask of 7 Sep: the accommodation booking's
+     staff note, translated to a treatment. Free text about this massage -
+     pressure, access, who was told what - on the record itself, so the desk
+     and the masseuse read the same line, and never a guest: /spa is
+     staff-only by rule. It rides every save, so answering an ask keeps it;
+     Save note writes it alone and quietly - a note is bookkeeping, nobody's
+     queue, so it must not buzz (the told stamp's precedent). Only a real
+     record holds one: an ask still virtual has nothing to pin it to. */
+  if (!isNew && !rec.virtual){
+    var subN = document.createElement('div'); subN.className = 'sub';
+    subN.textContent = 'Notes'; el.appendChild(subN);
+    var ta = document.createElement('textarea');
+    ta.rows = 2;
+    ta.placeholder = 'For staff and the masseuse. The guest cannot see this.';
+    ta.setAttribute('aria-label', 'Notes');
+    ta.value = (typeof SEL.notes === 'string') ? SEL.notes : (rec.staffNote || '');
+    el.appendChild(ta);
+    var nrow = document.createElement('div'); nrow.className = 'btns';
+    nrow.style.marginTop = '8px';
+    var nb = document.createElement('button');
+    nb.type = 'button'; nb.className = 'cbtn quiet'; nb.textContent = 'Save note';
+    nb.onclick = function(){
+      /* Day and time stay out of it, the Save changes rule: moving a
+         treatment goes through the buttons above, where the guest hears
+         about it - a stray chip tap must not ride out on a note. */
+      if (rec.day){ SEL.day = rec.day; SEL.time = rec.time; }
+      save(it, rec.status || 'requested', { quiet: true });
+    };
+    nrow.appendChild(nb);
+    el.appendChild(nrow);
+    var noteDiffers = function(){
+      return ta.value.trim() !== (rec.staffNote || '').trim();
+    };
+    nrow.style.display = noteDiffers() ? 'flex' : 'none';
+    /* Typing repaints nothing - a repaint takes the keyboard's focus, the
+       find-the-guest lesson - so the button reveals itself imperatively. */
+    ta.oninput = function(){
+      SEL.notes = ta.value;
+      nrow.style.display = noteDiffers() ? 'flex' : 'none';
+    };
+  }
   el.appendChild(btns);
+  /* Its own row, under the primary: a nudge is not an answer, so it never
+     competes with the buttons that move the record. */
+  if (remind){
+    var rrow = document.createElement('div');
+    rrow.className = 'btns'; rrow.style.marginTop = '8px';
+    var rb = document.createElement('a');
+    rb.className = 'cbtn quiet';
+    rb.href = remindHref();
+    rb.textContent = 'Remind masseuse';
+    rrow.appendChild(rb);
+    el.appendChild(rrow);
+  }
   if (hint){
     var h = document.createElement('div');
     h.className = 'hint'; h.textContent = hint;
@@ -683,6 +810,13 @@ function save(it, status, opts){
     body.manual = rec.manual || new Date().toISOString();
   if (status === 'declined' && (opts.told || rec.told))
     body.told = rec.told || new Date().toISOString();
+  /* The staff note survives whatever happens to the record: a PUT that
+     dropped it would eat the note on every answer. An emptied box saves
+     as nothing, which is the way back. staffNote, not note - note is the
+     decline's reason and the two must never blur. */
+  var nv = (SEL && typeof SEL.notes === 'string') ? SEL.notes.trim()
+                                                  : (rec.staffNote || '');
+  if (nv) body.staffNote = nv;
   var err = document.getElementById('errBar');
   /* The card is redrawn out of existence by load() below, so the answer has
      to be seen before that happens rather than after: the write says Saving,
@@ -713,8 +847,9 @@ function save(it, status, opts){
            : status === 'booked'    ? 'spaBooked'
            : (rec.status !== 'declined') ? 'spaCancelled'
            : null;
-    if (ev) notifyPush(ev, villaOf(id, (SEL && SEL.day) || dayOf(rec) || todayKey()),
-                       window.NALA_USER);
+    if (ev && !opts.quiet)
+      notifyPush(ev, villaOf(id, (SEL && SEL.day) || dayOf(rec) || todayKey()),
+                 window.NALA_USER);
   });
   }, {
     done:'Saved ✓', hold:400,
@@ -923,8 +1058,18 @@ function load(){
     })),
     fetch(DB + '/spa.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
-      .catch(function(){ return null; })
+      .catch(function(){ return null; }),
+    /* Only the two logins that draw the button read the number; the rules
+       hold everyone else to that, so asking would only collect a 401. */
+    (function(){
+      var r = normaliseRole(window.NALA_ROLE);
+      if (r !== 'admin' && r !== 'manager') return Promise.resolve(null);
+      return fetch(DB + '/spacontact.json?v=' + Date.now())
+        .then(function(r2){ return r2.ok ? r2.json() : null; })
+        .catch(function(){ return null; });
+    })()
   ]).then(function(res){
+    SPACONTACT = res[2];
     BOOKINGS = {};
     res[0].forEach(function(x){
       Object.keys(x.day).forEach(function(v){
@@ -955,7 +1100,15 @@ function load(){
         .catch(function(){ return null; })
         .then(function(p){ BOOKINGS[id].pre = p; });
     }));
-  }).then(paint);
+  }).then(function(){
+    if (OPENQ){
+      var hit = items().filter(function(x){
+        return x.id === OPENQ && x.rec.status === 'requested'; })[0];
+      if (hit) OPEN = { id: hit.id, tid: hit.tid };
+      OPENQ = '';
+    }
+    paint();
+  });
 }
 
 function showAccess(allowed, e){
