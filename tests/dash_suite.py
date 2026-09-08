@@ -90,6 +90,14 @@ DINNER = {
 MANUAL = {"ext-a": {"status": "in", "pax": 4},
           "ext-b": {"status": "out", "pax": 2}}   # a cancelled outside table
 
+# Externals arrive two ways. This is the digital one: a reply with no room on
+# it, keyed by phone, living under /responses - a node this page did not read
+# at all until 8 Sep, so every table booked through a link was invisible here
+# while Reservations counted it.
+RESPONSES = {"+61400000001": {"status": "in", "pax": 3},
+             "+61400000002": {"status": "out", "pax": 2},
+             "+61400000003": {"status": "in", "room": "3", "pax": 2}}
+
 # The stamp a real publish writes: UTC, which in Australia falls on the
 # PREVIOUS calendar day for anything before 10am. Slicing its first ten
 # characters compares the wrong date, which is how a published menu read as
@@ -152,6 +160,8 @@ def fb(route, request):
     elif "/dinner/" + today in u: body = json.dumps(DINNER)
     elif "/dinner/" in u: body = "null"
     elif "/manual/" + today in u: body = json.dumps(MANUAL)
+    elif "/responses/" + today in u: body = json.dumps(RESPONSES)
+    elif "/responses/" in u: body = "null"
     elif "/manual/" in u: body = "null"
     elif "/invites/" + today in u: body = json.dumps(INVITES)
     elif "/invites/" in u: body = "null"
@@ -260,10 +270,14 @@ with sync_playwright() as p:
        not any(c.startswith("2:") for c in reps["chips"]))
     # 2 (villa 3) + 2 (villa 5, in house) + 2 (villa 14, from its form) + 4
     # outside = 10. The cancelled outside table does not count.
+    # 4 staff-added + 3 digital = 7. The declined digital one does not count,
+    # and the one WITH a room is a villa reply, not an external.
     ck("outside diners are added to the covers and shown as their own chip",
-       "ext 4:green" in reps["chips"])
+       "ext 7:green" in reps["chips"])
+    ck("a table booked through a link counts the same as one added by staff",
+       "ext 7:green" in reps["chips"])
     ck("covers count in-house yeses plus outside tables",
-       reps["note"].startswith("10 dining so far"))
+       reps["note"].startswith("13 dining so far"))
     ck("and a villa with no dinner state yet is still out, not forgotten",
        reps["note"].endswith("1 villas still out"))
 
@@ -292,7 +306,7 @@ with sync_playwright() as p:
     # ceil(13/2)+1 = 8 pages.
     menus = card(pg, "menus")
     ck("an unanswered villa is still printed for, at the adults on the booking",
-       menus["note"].startswith("13 menus on 8 pages"))
+       menus["note"].startswith("16 menus on 9 pages"))
     ck("and the note says how many of those are still unanswered",
        menus["note"].endswith("3 not answered yet"))
 

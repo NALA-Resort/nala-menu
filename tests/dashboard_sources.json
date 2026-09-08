@@ -41,6 +41,16 @@
       "kind": "function",
       "note": "Returns the LIVE node without a date guard - only its menu.json fallback checks. The date and filled-courses guards are menuCheck's, in tally.html." },
 
+    { "value": "diners with no villa, both shapes",
+      "owner": "externalDiners",
+      "kind": "function",
+      "note": "Digital replies under /responses with no room, and staff-added ext- keys under /manual. Reading /manual alone lost every externally booked table that came in through a link." },
+
+    { "value": "how many people a dining row is",
+      "owner": "dinerPax",
+      "kind": "function",
+      "note": "One head unless the record says otherwise. Counting a pax-less dining row as nought undercounts the kitchen." },
+
     { "value": "which villas are still owed a dinner invitation",
       "owner": "/invites/",
       "kind": "path",

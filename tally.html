@@ -559,7 +559,7 @@ body.readonly .comb-undo { display:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=53"></script>
+<script src="nala-shared.js?v=54"></script>
 <script>
 /* Not every allergy is on the list and the list cannot grow to hold them all,
    so Other means read the note. The same entry the front desk writes, because
@@ -1024,22 +1024,16 @@ function render(){
   }
 
   /* An external diner has no villa, so there is no carried forward record to
-     confuse theirs with. Everything they have said is tonight's. */
-  for (var k in responses){
-    var g = responses[k];
-    if (!g.room && g.status==='in' && !cancelledExt[k] && !manual['extcancel-'+k])
-      rows.push({ g:withDineProvenance(Object.assign({}, g), g, null),
-                  room:null, src:'digital', key:k });
-  }
-  for (var k in manual){
-    if (k.indexOf('ext-')!==0) continue;
-    if (manual[k].status!=='in') continue;
-    rows.push({ g:withDineProvenance(Object.assign({}, manual[k]), manual[k], null),
-                room:null, src:'manual', key:k });
-  }
+     confuse theirs with. Everything they have said is tonight's. The reading
+     moved to nala-shared.js on 8 Sep so the Dashboard could share it rather
+     than keep its own half of it. */
+  externalDiners(responses, manual, cancelledExt).forEach(function(e){
+    rows.push({ g:withDineProvenance(Object.assign({}, e.g), e.g, null),
+                room:null, src:e.src, key:e.key });
+  });
 
   var covers=0, notDining=0, awaiting=0;
-  rows.forEach(function(r){ covers += (r.g.pax||1); });
+  rows.forEach(function(r){ covers += dinerPax(r.g); });
   for (var n2=1; n2<=ROOMS; n2++){
     var s = roomState(n2);
     /* Only a villa with somebody in it is awaiting an answer. An empty villa

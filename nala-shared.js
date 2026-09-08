@@ -1052,6 +1052,36 @@ function dinnerLocked(cell){
    answers, and an answer given is a thing the kitchen should know (the same
    ruling). Returns the dinner-cell shape so callers render it exactly as
    they render a cell, plus fromForm so nothing mistakes it for one. */
+/* A diner with no villa. Two shapes, because they arrive two ways: a digital
+   reply under /responses with no room on it, and a staff-added ext- key under
+   /manual. Both are tonight's by definition - an external has no carried
+   forward record to confuse theirs with.
+
+   Lived in tally.html's render until 8 Sep, where the Dashboard could not
+   reach it, so that page counted the manual shape only and quietly lost every
+   externally booked table that came in through a link. `skip` is the
+   optimistic cancel set the Reservations board holds while a delete is in
+   flight; nothing else has one. */
+function externalDiners(responses, manual, skip){
+  var out = [], k;
+  responses = responses || {}; manual = manual || {}; skip = skip || {};
+  for (k in responses){
+    var g = responses[k];
+    if (g && !g.room && g.status === 'in' && !skip[k] && !manual['extcancel-' + k])
+      out.push({ key:k, src:'digital', g:g });
+  }
+  for (k in manual){
+    if (k.indexOf('ext-') !== 0) continue;
+    if (manual[k].status !== 'in') continue;
+    out.push({ key:k, src:'manual', g:manual[k] });
+  }
+  return out;
+}
+
+/* One head unless the record says otherwise. A dining row with no pax is a
+   person who has said yes, so it counts as one, not as nought. */
+function dinerPax(g){ return (g && +g.pax) || 1; }
+
 function formDinnerCell(villa, pre, rec, dateKey){
   if (!pre || (pre.dining !== true && pre.dining !== false)) return null;
   var arr = rec && (rec.arrives || rec.arrive);
