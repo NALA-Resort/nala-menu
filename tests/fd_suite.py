@@ -2239,10 +2239,20 @@ with sync_playwright() as p:
        pg.evaluate("(d)=>cardExpiry(d)", STAYS["4"]["depart"]) == j4["expiry"])
     ck("the run opens as a viewport on the queue",
        pg.evaluate("()=>!document.getElementById('cardOv').hidden"))
-    ck("a queued villa says it is waiting for the encoder",
-       "waiting for the encoder" in pg.inner_text("#cardBody"))
+    #  "Queued", one word - the owner trimmed the sentence 8 Sep; the
+    #  slots say the rest, and the offline banner owns the PC question.
+    ck("a queued villa says Queued, one word",
+       "Queued" in pg.inner_text("#cardBody")
+       and "waiting for the encoder" not in pg.inner_text("#cardBody"))
 
-    #  The helper moves a job; the poll repaints without a reload.
+    #  The helper moves a job; the poll repaints without a reload. The
+    #  OTHER queued villas are marked done first, because a queue that ages
+    #  past ten seconds now deletes itself - the verdict gets its own test
+    #  below, and these progression checks must live inside the law.
+    for _v, _j in list(CARDJOBS.items()):
+        if _j["state"] == "queued" and _v not in ("4", "9"):
+            _j.update({"state": "done", "written": _j["qty"]})
+    CARDJOBS["9"].update({"state": "done", "written": 2})
     CARDJOBS["4"].update({"state": "writing", "written": 1})
     pg.wait_for_timeout(2000)
     ck("the helper's progress lands in the table's words",
@@ -2263,7 +2273,7 @@ with sync_playwright() as p:
     body = pg.inner_text("#cardBody")
     ck("a landed villa reads issued and asks for the envelope",
        "2 cards issued" in body and "Envelope villa 4" in body)
-    CARDJOBS["9"].update({"state": "failed", "note": "code 106: not this hotel's card"})
+    CARDJOBS["9"].update({"state": "failed", "written": 0, "note": "code 106: not this hotel's card"})
     pg.wait_for_timeout(2000)
     ck("a failure is red ink with the helper's own note",
        "write failed" in pg.inner_text("#cardBody")
@@ -2272,6 +2282,9 @@ with sync_playwright() as p:
        pg.evaluate("()=>!!document.querySelector('.crun.is-failed .cslot.fail')"))
 
     #  Cancel confirms before it deletes - the button law's two-tap.
+    CARDJOBS["2"] = {"qty": 2, "expiry": 1789000000, "state": "queued",
+                     "written": 0, "by": "x", "at": int(time.time() * 1000)}
+    pg.wait_for_timeout(1800)
     del WRITES[:]
     pg.evaluate("()=>document.querySelector('[data-cardcancel=\"2\"]').click()")
     pg.wait_for_timeout(150)
@@ -2302,6 +2315,47 @@ with sync_playwright() as p:
             if "/cardjobs/%s/9" % today in x["u"] and x["m"] == "PUT"]
     ck("and issues the stepped quantity", puts and puts[0]["qty"] == 3)
     pg.close()
+
+    #  The queue must never lie in wait - the owner's ruling, 8 Sep. Ten
+    #  seconds unclaimed on the open run screen: the queued jobs are
+    #  deleted and the notice is terse and final; a job the helper already
+    #  finished is left alone.
+    del WRITES[:]; CARDJOBS.clear()
+    now_ms = int(time.time() * 1000)
+    CARDJOBS.update({
+        "4": {"qty": 2, "expiry": 1789000000, "state": "queued", "written": 0,
+              "by": "x", "at": now_ms - 12000},
+        "9": {"qty": 2, "expiry": 1789000000, "state": "done", "written": 2,
+              "by": "x", "at": now_ms - 12000},
+    })
+    pg = board()
+    pg.evaluate("()=>cardsOpen(null)")
+    pg.wait_for_timeout(2200)
+    body = pg.inner_text("#cardBody")
+    ck("an unclaimed queue is judged offline, tersely",
+       "Encoder offline" in body and "try again" in body
+       and "Nothing is lost" not in body)
+    ck("and the queued job is deleted, not left in wait",
+       [x for x in WRITES if x["m"] == "DELETE" and "/cardjobs/%s/4" % today in x["u"]]
+       and "4" not in CARDJOBS)
+    ck("while the villa already written keeps its cards",
+       "9" in CARDJOBS and "2 cards issued" in body)
+    ck("the verdict outlives the queue it deleted",
+       (pg.wait_for_timeout(1800),
+        "Encoder offline" in pg.inner_text("#cardBody"))[1])
+    pg.close()
+
+    #  And the two-minute sweep catches a queue left behind with no run
+    #  screen open at all - a closed overlay or a dropped connection.
+    del WRITES[:]; CARDJOBS.clear()
+    CARDJOBS["7"] = {"qty": 2, "expiry": 1789000000, "state": "queued",
+                     "written": 0, "by": "x", "at": now_ms - 3 * 60 * 1000}
+    pg = board()
+    pg.wait_for_timeout(600)
+    ck("a stale queue is swept on page load, overlay or none",
+       [x for x in WRITES if x["m"] == "DELETE" and "/cardjobs/%s/7" % today in x["u"]])
+    pg.close()
+    CARDJOBS.clear()
 
     b.close()
 

@@ -1155,10 +1155,10 @@ var VILLAS = [
   {villa:'9',  name:'Elena Marsh',     stay:'2 nights · 2 adults', dining:'Dining · 2 guests'},
   {villa:'14', name:'Claire Laurent',  stay:'1 night · 1 adult',  dining:'Not dining'}
 ];
-var CARDS, OPEN, CARD_VILLA, FAILNEXT, HELPER_T;
+var CARDS, OPEN, CARD_VILLA, FAILNEXT, HELPER_T, OFFLINE, OV_T;
 
 function resetAll(){
-  CARDS = {}; OPEN = null; CARD_VILLA = null; FAILNEXT = false;
+  CARDS = {}; OPEN = null; CARD_VILLA = null; FAILNEXT = false; OFFLINE = false;
   document.getElementById('cardOv').hidden = true;
   render();
 }
@@ -1228,6 +1228,7 @@ function putJob(v, qty){
                        written: 0, by: 'you', at: Date.now() };
 }
 function encodeAll(){
+  OFFLINE = false;
   VILLAS.forEach(function(r){
     var j = jobFor(r.villa);
     if (j && (j.state === 'queued' || j.state === 'writing' || j.state === 'done')) return;
@@ -1239,11 +1240,14 @@ function encodeAll(){
 /* ── the run screen ───────────────────────────────────────────────── */
 function openOv(villa){
   CARD_VILLA = villa;
+  OFFLINE = false;
   document.getElementById('cardOv').hidden = false;
   paintOv();
+  if (!OV_T) OV_T = setInterval(paintOv, 1500);   /* the real page's poll */
 }
 function closeOv(){
   document.getElementById('cardOv').hidden = true;
+  if (OV_T){ clearInterval(OV_T); OV_T = null; }
   render();
 }
 function cslotsHTML(j, cc, active){
@@ -1263,7 +1267,7 @@ function crunHTML(r, active){
             (cc.k === 'done' ? ' is-done' : '') + (cc.k === 'failed' ? ' is-failed' : '');
   var line = cc.k === 'writing' && active
       ? 'Hold a card to the reader · ' + cc.label
-      : cc.k === 'queued' ? 'Queued · waiting for the encoder' : cc.label;
+      : cc.k === 'queued' ? 'Queued' : cc.label;
   var h = '<div class="' + cls + '" data-crun="' + r.villa + '">' +
           '<div class="crun-v">Villa ' + r.villa + '<small>' + r.name + '</small></div>' +
           cslotsHTML(j, cc, active) +
@@ -1277,6 +1281,8 @@ function crunHTML(r, active){
     h += '<div class="sum-btns"><button class="terra" data-cardcancel="' + r.villa + '">Cancel</button></div>';
   return h + '</div>';
 }
+var OFFLINE_HTML = '<div class="cardhold"><b>Encoder offline.</b> ' +
+  'Nothing was written \u00b7 try again when the desk PC is on.</div>';
 function paintOv(){
   if (document.getElementById('cardOv').hidden) return;
   var body = document.getElementById('cardBody');
@@ -1302,27 +1308,32 @@ function paintOv(){
   document.getElementById('cardTitle').textContent = 'Key cards · Tue 8th Sep';
   var withJobs = VILLAS.filter(function(r){ return jobFor(r.villa); });
   if (!withJobs.length){
-    body.innerHTML = '<div class="cardov-in"><div class="crun"><div class="crun-s">' +
-      'Nothing queued. Encode all keys is in the key menu.</div></div></div>';
+    body.innerHTML = '<div class="cardov-in">' + (OFFLINE ? OFFLINE_HTML
+      : '<div class="crun"><div class="crun-s">Nothing queued. ' +
+        'Encode all keys is in the key menu.</div></div>') + '</div>';
     return;
   }
   var total = 0, doneC = 0;
   withJobs.forEach(function(r){ var j = jobFor(r.villa);
     if (j.state === 'cancelled') return;
     total += +j.qty || 0; doneC += Math.min(+j.written || 0, +j.qty || 0); });
-  var seen = false, wait = false;
+  var seen = false, oldest = 0;
   var h = total ? '<div class="cprog"><i style="width:' +
           Math.round(doneC / total * 100) + '%"></i></div>' : '';
   withJobs.forEach(function(r){
-    var cc = cardCell(jobFor(r.villa));
+    var j = jobFor(r.villa), cc = cardCell(j);
     var active = !seen && (cc.k === 'queued' || cc.k === 'writing' || cc.k === 'failed');
     if (active) seen = true;
-    if (cc.k === 'queued' && !document.getElementById('helperOn').checked) wait = true;
+    if (cc.k === 'queued' && j.at) oldest = Math.max(oldest, Date.now() - j.at);
     h += crunHTML(r, active);
   });
-  if (wait) h = '<div class="cardhold"><b>Waiting for the desk PC.</b> The jobs are ' +
-    'saved and start the moment the encoder helper is running there. Nothing is ' +
-    'lost by waiting.</div>' + h;
+  /* ten seconds unclaimed = the attempt failed: delete the queue, say so */
+  if (oldest > 10000){
+    OFFLINE = true;
+    withJobs.forEach(function(r){ var j = jobFor(r.villa);
+      if (j && j.state === 'queued') delete CARDS[String(r.villa)]; });
+  }
+  if (OFFLINE) h = OFFLINE_HTML + h;
   body.innerHTML = '<div class="cardov-in">' + h +
     '<button class="simfail" data-simfail>simulate a failed write</button></div>';
 }
