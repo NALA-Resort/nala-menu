@@ -1337,8 +1337,11 @@ function paintOv(){
     if (cc.k === 'queued' && j.at) oldest = Math.max(oldest, Date.now() - j.at);
     h += crunHTML(r, active);
   });
-  /* ten seconds unclaimed = the attempt failed: delete the queue, say so */
-  if (oldest > 10000){
+  /* ten seconds unclaimed = the attempt failed - but a queue behind a
+     working encoder is never stale: no verdict while anything writes */
+  var alive = withJobs.some(function(r){ var j = jobFor(r.villa);
+    return j && j.state === 'writing'; });
+  if (!alive && oldest > 10000){
     OFFLINE = true;
     withJobs.forEach(function(r){ var j = jobFor(r.villa);
       if (j && j.state === 'queued') delete CARDS[String(r.villa)]; });

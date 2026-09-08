@@ -1136,11 +1136,35 @@ function loadCards(){
    seconds; this sweep is the belt and braces at two minutes, for a queue
    left behind by a closed overlay or a dropped connection. */
 var CARD_OFFLINE_MS = 10000, CARD_STALE_MS = 2 * 60 * 1000;
+var CARD_DEAD_MS = 3 * 60 * 1000;   /* a write untouched this long is a dead PC */
 var CARD_OFFLINE = false;   /* the run screen's verdict, until reopened */
+
+/* A queue behind a working encoder is never stale - learned from the mock,
+   8 Sep, when the verdict fired mid-batch because the receptionist was
+   pacing the cards and the villas behind the live one aged past ten
+   seconds. Writing counts as alive only while its stamp is fresh: the
+   helper refreshes at on the claim and on every card, so a PC that died
+   mid-write stops counting, gets named in red, and frees the sweep. */
+function cardsAlive(){
+  var now = Date.now();
+  return Object.keys(CARDS).some(function(v){
+    var j = CARDS[v];
+    return j && j.state === 'writing' && j.at && now - j.at < CARD_DEAD_MS;
+  });
+}
 function cardsSweep(){
+  var now = Date.now(), alive = cardsAlive();
   Object.keys(CARDS).forEach(function(v){
     var j = CARDS[v];
-    if (j && j.state === 'queued' && j.at && Date.now() - j.at > CARD_STALE_MS)
+    if (!j) return;
+    if (j.state === 'writing' && j.at && now - j.at > CARD_DEAD_MS){
+      j.state = 'failed'; j.note = 'the desk PC stopped mid-write';
+      fetch(DB + '/cardjobs/' + nav.todayKey() + '/' + v + '.json', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: 'failed', note: j.note })
+      }).catch(function(){});
+    }
+    if (!alive && j.state === 'queued' && j.at && now - j.at > CARD_STALE_MS)
       cancelJob(v);
   });
 }
@@ -1346,7 +1370,7 @@ function cardRender(){
      queued - the owner's ruling - so the encoder can never start demanding
      cards later with nobody at the desk. Villas already written or being
      written are the helper's and are left alone. */
-  if (oldestWait > CARD_OFFLINE_MS){
+  if (!cardsAlive() && oldestWait > CARD_OFFLINE_MS){
     CARD_OFFLINE = true;
     withJobs.forEach(function(r){
       var j = jobFor(r.villa);

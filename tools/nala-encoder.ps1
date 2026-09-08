@@ -169,13 +169,16 @@ while ($true) {
         break   # leave the job queued; the board shows the amber wait
       }
       Log "villa ${villa}: $($job.qty) cards, expiry $([DateTimeOffset]::FromUnixTimeSeconds($job.expiry).LocalDateTime)"
-      Fb-Patch "/cardjobs/$day/$villa" @{ state="writing"; written=0 }
+      # at refreshed on the claim and on every card: the boards read a
+      # fresh stamp on a writing job as "the encoder is alive", and a
+      # stale one as a PC that died mid-write (front-desk.html, cardsAlive)
+      Fb-Patch "/cardjobs/$day/$villa" @{ state="writing"; written=0; at=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
       $failed = $null
       for ($i = 1; $i -le [int]$job.qty; $i++) {
         Log "  hold card $i of $($job.qty) to the reader"
         $failed = Write-One $villa $lock.Value ([uint32]$job.expiry)
         if ($failed) { break }
-        Fb-Patch "/cardjobs/$day/$villa" @{ written=$i }
+        Fb-Patch "/cardjobs/$day/$villa" @{ written=$i; at=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
         Log "  card $i written"
         if ($i -lt [int]$job.qty) { Start-Sleep -Milliseconds 800 }   # lift-off gap
       }

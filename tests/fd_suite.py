@@ -161,6 +161,8 @@ def fb(route, request):
             v = u.split("/cardjobs/")[1].split("/")[1].split(".json")[0]
             if m == "DELETE": CARDJOBS.pop(v, None)
             elif m == "PUT": CARDJOBS[v] = json.loads(request.post_data)
+            elif m == "PATCH" and v in CARDJOBS:
+                CARDJOBS[v].update(json.loads(request.post_data))
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
     body = "null"
@@ -2343,6 +2345,38 @@ with sync_playwright() as p:
     ck("the verdict outlives the queue it deleted",
        (pg.wait_for_timeout(1800),
         "Encoder offline" in pg.inner_text("#cardBody"))[1])
+    pg.close()
+
+    #  ...but a queue behind a WORKING encoder is never stale. Found on the
+    #  mock, 8 Sep: the verdict fired mid-batch because the receptionist was
+    #  pacing cards and the villas behind the live one aged past ten
+    #  seconds. The same aged queue with a fresh write in flight draws no
+    #  verdict and loses nothing.
+    del WRITES[:]; CARDJOBS.clear()
+    now_ms = int(time.time() * 1000)
+    CARDJOBS.update({
+        "4": {"qty": 2, "expiry": 1789000000, "state": "queued", "written": 0,
+              "by": "x", "at": now_ms - 15000},
+        "9": {"qty": 2, "expiry": 1789000000, "state": "writing", "written": 1,
+              "by": "x", "at": now_ms},
+    })
+    pg = board()
+    pg.evaluate("()=>cardsOpen(null)")
+    pg.wait_for_timeout(2200)
+    ck("no verdict while a write is in flight, however old the queue",
+       "Encoder offline" not in pg.inner_text("#cardBody")
+       and "4" in CARDJOBS
+       and not [x for x in WRITES if x["m"] == "DELETE"])
+    #  And a write whose stamp went stale IS a dead PC: named in red, and
+    #  the queue behind it is free to be swept.
+    CARDJOBS["9"]["at"] = now_ms - 4 * 60 * 1000
+    CARDJOBS["4"]["at"] = now_ms - 3 * 60 * 1000
+    pg.wait_for_timeout(2200)
+    ck("a write untouched for minutes is named a dead PC, in words",
+       [x for x in WRITES if x["m"] == "PATCH" and "/cardjobs/%s/9" % today in x["u"]
+        and "stopped mid-write" in x["b"]])
+    ck("and the queue behind the corpse is swept after all",
+       [x for x in WRITES if x["m"] == "DELETE" and "/cardjobs/%s/4" % today in x["u"]])
     pg.close()
 
     #  And the two-minute sweep catches a queue left behind with no run
