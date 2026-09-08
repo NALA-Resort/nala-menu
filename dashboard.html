@@ -204,7 +204,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=53"></script>
+<script src="nala-shared.js?v=54"></script>
 <script>
 /* The day's flow on one screen: what has happened, what is ready, and what
    is still owed. Every fact here is read from the screen that owns it. The
@@ -287,12 +287,17 @@ function load(){
     fetch(DB + '/manual/' + day + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; }),
+    /* Digital externals live here, keyed by phone with no room on them.
+       Reading /manual alone counted the staff-added shape only. */
+    fetch(DB + '/responses/' + day + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
     fetch(DB + '/dayboard/' + day + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; })
   ]).then(function(res){
     DATA = { stays:res[0] || {}, menu:res[1], invites:res[2] || {},
-             manual:res[3] || {}, done:res[4] || {} };
+             manual:res[3] || {}, responses:res[4] || {}, done:res[5] || {} };
     LOADED = true;
     render();
   });
@@ -380,7 +385,7 @@ function items(t){
   asked.forEach(function(v){
     var c = cellFor(v);
     if (c.status === 'in'){
-      yes++; dining += (+c.pax || 0); rUnits.push({ id:v, tone:'green' });
+      yes++; dining += dinerPax(c); rUnits.push({ id:v, tone:'green' });
     } else if (c.status === 'out'){
       no++; rUnits.push({ id:v, tone:'terra' });
     } else {
@@ -391,14 +396,12 @@ function items(t){
   });
 
   /* Diners with no villa. Set on Reservations, read only here, shown so the
-     covers add up. */
+     covers add up. externalDiners is that board's own reading: both shapes,
+     digital and staff-added, and dinerPax counts a dining row with no pax as
+     one person rather than none. */
   var ext = 0;
-  Object.keys(DATA.manual).forEach(function(k){
-    if (k.indexOf('ext-') !== 0) return;
-    var m = DATA.manual[k];
-    if (!m || m.status !== 'in') return;
-    if (DATA.manual['extcancel-' + k.slice(4)]) return;
-    ext += (+m.pax || 0);
+  externalDiners(DATA.responses, DATA.manual).forEach(function(e){
+    ext += dinerPax(e.g);
   });
 
   var covers = dining + ext;
