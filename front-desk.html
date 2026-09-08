@@ -321,6 +321,84 @@
   /* The note is part of the answer when Other is chosen, so it can be the
      thing that is missing, and has to be able to say so. */
   .txt.miss { border-color:var(--red); }
+
+/* ── key cards ─────────────────────────────────────────────────────
+   The key sits in the date row beside the hamburger and wears its dress.
+   Its drop offers the day's encode-all and each villa singly; the card
+   states inside it and on the sheet are cardCell's k, coloured by the
+   law: queued cream, writing amber, done green, failed red, cancelled
+   and none grey. */
+.keywrap { position:relative; }
+/* The key costs the date row 42px it did not have at 320, and the row must
+   never bleed (STYLEGUIDE's width rule). Below 340 the title gives the
+   ground: min-width 0 lets flex shrink it, and a clipped "Tue 8th Sep" is
+   the allowed cost - clipping is not breaking, sideways scroll is. Scoped,
+   because at 390 the same rule was clipping a date that had the room. */
+@media (max-width: 340px) {
+  .daterow .date { min-width:0; overflow:hidden; text-overflow:ellipsis;
+                   white-space:nowrap; }
+}
+.keybtn { width:42px; height:36px; border:0; background:transparent;
+          border-radius:var(--r); color:var(--ink); cursor:pointer;
+          display:flex; align-items:center; justify-content:center; }
+.keybtn:active { background:var(--card); }
+.keybtn svg { width:19px; height:19px; }
+.keydrop { position:absolute; right:0; top:42px; background:var(--ground);
+           border:1px solid var(--rule); border-radius:var(--r);
+           min-width:250px; display:none; z-index:60; overflow:hidden;
+           box-shadow:0 8px 24px rgba(28,28,26,.14); }
+.keydrop.open { display:block; }
+.keydrop button { display:flex; width:100%; align-items:baseline; gap:8px;
+                  text-align:left; padding:12px 14px; background:none;
+                  border:none; border-bottom:1px solid var(--rule);
+                  font-family:var(--ui-font); font-size:var(--t2);
+                  color:var(--ink); cursor:pointer; }
+.keydrop button:last-child { border-bottom:none; }
+.keydrop .kd-all { font-weight:600; }
+.keydrop .kd-state { margin-left:auto; font-size:var(--t1); color:var(--mid);
+                     white-space:nowrap; flex:0 0 auto; }
+.keydrop .kd-state.card-done { color:var(--law-green); }
+.keydrop .kd-state.card-failed { color:var(--law-red); }
+.keydrop .kd-state.card-writing { color:var(--amberink); }
+
+/* the run viewport */
+/* Above the hamburger's 500: the run replaces the page while it is open,
+   and a menu button floating over it read as part of the run. */
+.cardov { position:fixed; inset:0; background:var(--ground); z-index:600;
+          overflow-y:auto; padding:calc(14px + env(safe-area-inset-top)) 18px 40px; }
+.cardov-head { max-width:520px; margin:0 auto; display:flex;
+               align-items:baseline; justify-content:space-between; }
+.cardov-title { font-family:var(--ui-font); font-size:var(--t3); font-weight:600; }
+.cardov-x { background:none; border:none; font-size:24px; line-height:1;
+            color:var(--mid); padding:4px 8px; cursor:pointer; }
+.cardov-in { max-width:520px; margin:0 auto; }
+.crun { border:1px solid var(--rule); border-radius:var(--r);
+        padding:14px; margin-top:12px; font-family:var(--ui-font); }
+.crun.now { border-color:var(--amberb); }
+.crun.is-done { opacity:.62; }
+.crun.is-failed { border-color:var(--law-red); }
+.crun-v { font-size:26px; font-weight:600; }
+.crun-v small { font-size:var(--t2); font-weight:400; color:var(--mid); margin-left:8px; }
+.crun-s { font-size:var(--t2); color:var(--mid); margin-top:4px; }
+.crun-s.card-failed { color:var(--law-red); }
+.crun-s.card-done { color:var(--law-green); }
+.crun-env { font-size:var(--t2); color:var(--law-green); margin-top:6px; }
+.cardhold { background:var(--amber); border:1px solid var(--amberb);
+            border-radius:var(--r); color:var(--amberink); padding:14px;
+            margin-top:12px; font-family:var(--ui-font); font-size:var(--t2);
+            line-height:1.5; }
+/* qty, on the villa panel: the stepper the spa page's controls follow */
+.cqty { display:inline-flex; align-items:center; border:1px solid var(--rule);
+        border-radius:var(--r); margin-left:10px; vertical-align:middle; }
+.cqty button { width:38px; height:38px; background:none; border:none;
+               font-size:18px; color:var(--ink); cursor:pointer; }
+.cqty span { width:26px; text-align:center; font-size:var(--t3); }
+/* the run's cancel wears terracotta and confirms - the button law */
+.sum-btns button.terra { border-color:var(--terra-b); color:var(--terra);
+                         background:transparent; }
+.cardlab.card-done { color:var(--law-green); }
+.cardlab.card-failed { color:var(--law-red); }
+.cardlab.card-writing { color:var(--amberink); }
 </style>
 </head>
 <body class="tier-app ui2">
@@ -330,10 +408,29 @@
   <button class="dnav" id="dPrev">&#8249;</button>
   <div class="date" id="title"></div>
   <button class="dnav" id="dNext">&#8250;</button>
+  <div class="keywrap" id="keyWrap">
+    <button class="keybtn" id="keyBtn" aria-label="Key cards">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round"><circle cx="7.5" cy="12" r="3.5"/>
+        <path d="M11 12h9.5M17 12v3.5M20.5 12v2.5"/></svg>
+    </button>
+    <div class="keydrop" id="keyDrop"></div>
+  </div>
   <div class="navwrap" id="navWrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
     <div class="navdrop" id="navDrop"></div>
   </div>
+</div>
+
+<!-- The card run: a viewport onto /cardjobs, never a controller. The helper
+     on the desk PC paces the writing; this shows where it stands, and its
+     only writes are queuing a job and cancelling one. -->
+<div class="cardov" id="cardOv" hidden>
+  <div class="cardov-head">
+    <div class="cardov-title" id="cardTitle">Key cards</div>
+    <button class="cardov-x" id="cardX" aria-label="Close">&times;</button>
+  </div>
+  <div id="cardBody"></div>
 </div>
 
 <div class="noaccess" id="noAccess"></div>
@@ -356,7 +453,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=55"></script>
+<script src="nala-shared.js?v=56"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -895,8 +992,17 @@ function summaryHTML(r){
      summary is otherwise built by concatenation - the staff-note lesson. */
   if (fl.length) h += sumRow('Booking flags', esc(fl.join(' \u00b7 ')));
 
+  /* Where the villa's key cards stand, in cardCell's words - the one
+     reader both boards use - and only once there is something to say: a
+     villa nobody has carded shows the button below, not an empty line. */
+  var ccj = jobFor(r.villa), ccs = cardCell(ccj);
+  if (ccs.k !== 'none')
+    h += sumRow('Key cards', '<span class="cardlab card-' + ccs.k + '">' +
+                esc(ccs.label) + '</span>');
+
   h += '<div class="sum-btns">' +
          '<button data-act="edit" data-villa="' + r.villa + '">Edit</button>' +
+         '<button data-act="cards" data-villa="' + r.villa + '">Key cards</button>' +
        '</div>' +
        /* Its own row and full width: it is the one that ends the interaction.
           Confirm arriving used to sit beside Edit. It is gone, 28 Aug: it
@@ -957,6 +1063,225 @@ function render(){
   }
   document.getElementById('board').innerHTML = h;
 }
+
+/* ── key cards ─────────────────────────────────────────────────────
+   The queue is /cardjobs/<date>/<villa> and the helper on the desk PC is
+   the only thing that moves a job forward; this page queues, cancels and
+   watches. Where a villa stands is always cardCell's answer - one reader,
+   both boards, tests/card_cases.json - and the overlay below is a viewport
+   onto the queue, deliberately not a controller: closing it changes
+   nothing, because the cards are being written by a machine that cannot
+   see this screen. */
+var CARDS = {};          /* /cardjobs for the viewed date */
+var CARD_TIMER = null;   /* the poll, alive only while the overlay is open */
+var CARD_VILLA = null;   /* one villa's panel, or null for the day's run */
+
+function loadCards(){
+  return api('/cardjobs/' + nav.todayKey())
+    .then(function(j){ CARDS = j || {}; cardsPaint(); })
+    .catch(function(){});
+}
+
+function jobFor(villa){ return CARDS[String(villa)] || null; }
+
+/* Queue one villa. The expiry is the booking's own depart day at
+   CARD_CHECKOUT_HOUR, built by cardExpiry; a booking whose depart Mews
+   never sent cannot be carded and says so, rather than minting a card
+   that never dies. */
+function putJob(r, qty){
+  var exp = cardExpiry(r.stay && r.stay.depart);
+  if (!exp){ err('Villa ' + r.villa + ' has no departure date, so no card can be cut.'); return null; }
+  var job = { qty: qty, expiry: exp, state: 'queued', written: 0,
+              by: window.NALA_ME || '', at: Date.now() };
+  return fetch(DB + '/cardjobs/' + nav.todayKey() + '/' + r.villa + '.json', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(job)
+  }).then(function(res){ if (!res.ok) throw new Error(res.status);
+                         CARDS[String(r.villa)] = job; });
+}
+
+function cancelJob(villa){
+  return fetch(DB + '/cardjobs/' + nav.todayKey() + '/' + villa + '.json',
+               { method: 'DELETE' })
+    .then(function(){ delete CARDS[String(villa)]; cardsPaint(); });
+}
+
+/* Encode all: a job for every arriving villa not already queued, writing
+   or done. A failed one is queued again - the desk pressing the big button
+   IS the retry - and a cancelled one comes back too, because pressing
+   encode-all after cancelling is a change of mind, not an accident. */
+function cardsEncodeAll(){
+  var made = [];
+  ROWS.forEach(function(r){
+    var j = jobFor(r.villa);
+    if (j && (j.state === 'queued' || j.state === 'writing' || j.state === 'done')) return;
+    var p = putJob(r, (j && j.qty) || 2);
+    if (p) made.push(p);
+  });
+  Promise.all(made).catch(function(){
+    err('Some card jobs did not save. This is usually the connection.');
+  }).then(function(){ cardsOpen(null); });
+}
+
+/* ── the drop ── */
+function cardsDrawDrop(){
+  var d = document.getElementById('keyDrop');
+  if (!ROWS.length){
+    d.innerHTML = '<button disabled style="color:var(--mid)">No arrivals on this date</button>';
+    return;
+  }
+  var h = '<button class="kd-all" data-key="all">Encode all keys' +
+          '<span class="kd-state">' + ROWS.length +
+          (ROWS.length === 1 ? ' villa' : ' villas') + '</span></button>';
+  ROWS.forEach(function(r){
+    var cc = cardCell(jobFor(r.villa));
+    h += '<button data-key="' + r.villa + '">Villa ' + r.villa +
+         ' · ' + esc(nameOf(r.stay)) +
+         '<span class="kd-state card-' + cc.k + '">' +
+         (cc.k === 'none' ? '' : esc(cc.label)) + '</span></button>';
+  });
+  d.innerHTML = h;
+}
+
+/* ── the overlay ── */
+function cardsOpen(villa){
+  CARD_VILLA = villa;
+  document.getElementById('cardOv').hidden = false;
+  cardRender();
+  loadCards();
+  if (!CARD_TIMER) CARD_TIMER = setInterval(loadCards, 1500);
+}
+function cardsClose(){
+  document.getElementById('cardOv').hidden = true;
+  if (CARD_TIMER){ clearInterval(CARD_TIMER); CARD_TIMER = null; }
+  render();
+}
+function cardsPaint(){
+  if (!document.getElementById('cardOv').hidden) cardRender();
+  if (document.getElementById('keyDrop').classList.contains('open')) cardsDrawDrop();
+}
+
+/* One villa's block in the run: the state in cardCell's words, the envelope
+   line the moment it lands, red only when the encoder truly failed. */
+function crunHTML(r, active){
+  var j = jobFor(r.villa), cc = cardCell(j);
+  var cls = 'crun' + (active ? ' now' : '') +
+            (cc.k === 'done' ? ' is-done' : '') +
+            (cc.k === 'failed' ? ' is-failed' : '');
+  var line = cc.k === 'writing' && active
+      ? 'Hold a card to the reader · ' + esc(cc.label)
+      : cc.k === 'queued' ? 'Queued · waiting for the encoder'
+      : esc(cc.label);
+  var h = '<div class="' + cls + '"><div class="crun-v">Villa ' + r.villa +
+          '<small>' + esc(nameOf(r.stay)) + '</small></div>' +
+          '<div class="crun-s card-' + cc.k + '">' + line +
+          (cc.k === 'failed' && j && j.note ? ' · ' + esc(String(j.note)) : '') +
+          '</div>';
+  if (cc.k === 'done')
+    h += '<div class="crun-env">Envelope villa ' + r.villa + '’s cards</div>';
+  if (cc.k === 'queued' || cc.k === 'failed')
+    h += '<div class="sum-btns"><button class="terra" data-cardcancel="' +
+         r.villa + '">Cancel</button></div>';
+  return h + '</div>';
+}
+
+function cardRender(){
+  var body = document.getElementById('cardBody');
+  var one = CARD_VILLA != null ? rowFor(CARD_VILLA) : null;
+
+  /* One villa: the qty question, then its live block. */
+  if (one){
+    document.getElementById('cardTitle').textContent =
+      'Key cards · villa ' + one.villa;
+    var j = jobFor(one.villa);
+    if (!j || j.state === 'cancelled'){
+      var q = +(body.getAttribute('data-qty') || 2);
+      body.innerHTML = '<div class="cardov-in"><div class="crun">' +
+        '<div class="crun-v">Villa ' + one.villa + '<small>' +
+        esc(nameOf(one.stay)) + '</small></div>' +
+        '<div class="crun-s">How many cards?' +
+        '<span class="cqty"><button data-cardq="-1">&minus;</button><span>' + q +
+        '</span><button data-cardq="1">+</button></span></div>' +
+        '<div class="sum-btns"><button class="go wide" data-cardissue="' +
+        one.villa + '">Issue ' + q + (q === 1 ? ' card' : ' cards') +
+        '</button></div></div></div>';
+      return;
+    }
+    body.innerHTML = '<div class="cardov-in">' + crunHTML(one, true) + '</div>';
+    return;
+  }
+
+  /* The day: every villa with a job, villa order, the first unfinished one
+     active. The desk PC being silent is said in amber, not left as a
+     mystery: a job nobody has claimed inside ten seconds means the helper
+     is not running, and that is a fact worth a sentence. */
+  document.getElementById('cardTitle').textContent = 'Key cards · ' +
+    dateLabel(parseISO(nav.todayKey()));
+  var withJobs = ROWS.filter(function(r){ return jobFor(r.villa); });
+  if (!withJobs.length){
+    body.innerHTML = '<div class="cardov-in"><div class="crun">' +
+      '<div class="crun-s">Nothing queued. Encode all keys is in the key menu.' +
+      '</div></div></div>';
+    return;
+  }
+  var activeSeen = false, h = '', oldestWait = 0;
+  withJobs.forEach(function(r){
+    var j = jobFor(r.villa), cc = cardCell(j);
+    var active = !activeSeen && (cc.k === 'queued' || cc.k === 'writing' || cc.k === 'failed');
+    if (active) activeSeen = true;
+    if (cc.k === 'queued' && j.at) oldestWait = Math.max(oldestWait, Date.now() - j.at);
+    h += crunHTML(r, active);
+  });
+  if (oldestWait > 10000)
+    h = '<div class="cardhold"><b>Waiting for the desk PC.</b> The jobs are ' +
+        'saved and start the moment the encoder helper is running there. ' +
+        'Nothing is lost by waiting.</div>' + h;
+  body.innerHTML = '<div class="cardov-in">' + h + '</div>';
+}
+
+/* the wiring: the key toggles its drop, the drop picks, the overlay acts */
+(function(){
+  var b = document.getElementById('keyBtn'), d = document.getElementById('keyDrop');
+  b.onclick = function(e){ e.stopPropagation();
+    if (!d.classList.contains('open')) cardsDrawDrop();
+    d.classList.toggle('open'); };
+  document.addEventListener('click', function(){ d.classList.remove('open'); });
+  d.addEventListener('click', function(e){
+    var t = e.target.closest('[data-key]');
+    if (!t) return;
+    var k = t.getAttribute('data-key');
+    if (k === 'all') cardsEncodeAll(); else cardsOpen(k);
+  });
+  document.getElementById('cardX').onclick = cardsClose;
+  document.getElementById('cardBody').addEventListener('click', function(e){
+    var q = e.target.closest('[data-cardq]');
+    if (q){
+      var body = document.getElementById('cardBody');
+      var now = +(body.getAttribute('data-qty') || 2) + (+q.getAttribute('data-cardq'));
+      body.setAttribute('data-qty', Math.min(6, Math.max(1, now)));
+      cardRender(); return;
+    }
+    var iss = e.target.closest('[data-cardissue]');
+    if (iss){
+      var r = rowFor(iss.getAttribute('data-cardissue'));
+      var body2 = document.getElementById('cardBody');
+      var p = r && putJob(r, +(body2.getAttribute('data-qty') || 2));
+      if (p) p.then(cardRender).catch(function(){
+        err('The card job did not save. This is usually the connection.');
+      });
+      return;
+    }
+    var c = e.target.closest('[data-cardcancel]');
+    if (c){
+      /* Destructive, so it confirms - the button law. Two taps on the same
+         button, the Mark-as-completed pattern, rather than a dialog. */
+      if (c.getAttribute('data-armed')){ cancelJob(c.getAttribute('data-cardcancel')); return; }
+      c.setAttribute('data-armed', '1'); c.textContent = 'Confirm cancel';
+      setTimeout(function(){ if (c.isConnected){ c.removeAttribute('data-armed');
+        c.textContent = 'Cancel'; } }, 4000);
+    }
+  });
+})();
 
 /* Which of a guest's dietaries tonight's menu actually contains.
 
@@ -1065,6 +1390,11 @@ function loadDinner(key, rows){
 function load(){
   var key = nav.todayKey();
   err('');
+  /* The day's card jobs move with the date like everything else here. A
+     failed read leaves an empty map: the drop then offers to encode, and
+     the write is what the rules actually protect. */
+  CARDS = {};
+  loadCards();
   /* The tags belong to the night being viewed, so they move with the date. A
      failure here must not take the arrivals down with it: an unflagged allergy
      is bad, and a blank screen is worse. */
@@ -2282,6 +2612,7 @@ document.getElementById('board').addEventListener('click', function(e){
     if (!ra) return;
     var what = act.getAttribute('data-act');
     if (what === 'edit') return openGuest(ra);
+    if (what === 'cards') return cardsOpen(ra.villa);
     /* Arrived, or not arrived. One fact, one button, and nothing else. */
     return save(ra, answersOf(ra), !isArrived(ra.pre), null);
   }

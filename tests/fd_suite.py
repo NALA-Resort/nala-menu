@@ -121,6 +121,7 @@ PMS = {"b4": {"villa": "4", "companion": "Wrong Name"},
 
 WRITES = []
 FIXES = {}   # bookingId -> the /phonefix record, persisted across the stub
+CARDJOBS = {}  # villa -> its /cardjobs job, persisted so the poll sees writes
 #  The chef's list, which is the one the kitchen recognises. "Sesame allergy"
 #  is one he added; it must reach the desk or a guest with it can only be
 #  recorded as a typed note. "Red pepper spice" is marked this-menu-only and
@@ -153,6 +154,13 @@ def fb(route, request):
         if m == "PUT" and "/phonefix/" in u:
             FIXES[u.split("/phonefix/")[1].split(".json")[0]] = \
                 json.loads(request.post_data)
+        #  /cardjobs persists too: the run overlay polls the queue, so a job
+        #  the page just queued has to come back on the next read or the
+        #  overlay reads as the write having vanished.
+        if "/cardjobs/" in u:
+            v = u.split("/cardjobs/")[1].split("/")[1].split(".json")[0]
+            if m == "DELETE": CARDJOBS.pop(v, None)
+            elif m == "PUT": CARDJOBS[v] = json.loads(request.post_data)
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
     body = "null"
@@ -179,6 +187,8 @@ def fb(route, request):
     elif "/spa/" in u:
         k = u.split("/spa/")[1].split(".json")[0]
         body = json.dumps(SPADB[k]) if k in SPADB else "null"
+    elif "/cardjobs/" + today in u: body = json.dumps(CARDJOBS)
+    elif "/cardjobs/" in u: body = "null"
     elif "/flags" in u: body = json.dumps(FLAGS)
     route.fulfill(status=200, content_type="application/json", body=body)
 
@@ -455,9 +465,12 @@ with sync_playwright() as p:
     #  stamped the form complete and cleared checkedInAt, and once the state
     #  moved to its own gated control the only thing it still did was
     #  un-arrive a guest, under a name that said the opposite.
-    ck("and two ways out: edit, or check in", pg.evaluate(
+    #  Key cards joined 8 Sep, on the owner's flow for the TTHotel encoder:
+    #  click the arriving guest, press issue. Still one primary - check in
+    #  keeps the wide solid, per the button law.
+    ck("and three ways out: edit, key cards, or check in", pg.evaluate(
        "()=>[...document.querySelectorAll('.sum-btns button')].map(b=>b.dataset.act).join()")
-       == "edit,checkin")
+       == "edit,cards,checkin")
     ck("only one summary is ever open",
        (pg.locator('.arr[data-villa="9"]').click(), pg.wait_for_timeout(300),
         pg.evaluate("()=>document.querySelectorAll('.sum').length"))[2] == 1)
@@ -2196,6 +2209,86 @@ with sync_playwright() as p:
          .find(b=>/^No allergies/.test(b.textContent)).className.indexOf('on')<0"""))
     pg.close()
     DINNER.clear()
+
+    # ── key cards ──────────────────────────────────────────────
+    #  The queue is data, the helper is a machine, and this page is a
+    #  viewport plus two writes. Every state word asserted here comes from
+    #  cardCell via tests/card_cases.json - the suite deliberately quotes
+    #  the table's own labels, so a paraphrase on the page fails by name.
+    del WRITES[:]; CARDJOBS.clear()
+    pg = board()
+    ck("the key sits in the date row",
+       pg.evaluate("()=>!!document.getElementById('keyBtn')"))
+    pg.click("#keyBtn"); pg.wait_for_timeout(200)
+    droptxt = pg.inner_text("#keyDrop")
+    ck("its drop offers the day's run and each villa",
+       "Encode all keys" in droptxt and "Villa 4" in droptxt and "Villa 14" in droptxt)
+
+    pg.evaluate("()=>document.querySelector('#keyDrop [data-key=all]').click()")
+    pg.wait_for_timeout(700)
+    puts = [x for x in WRITES if "/cardjobs/" in x["u"] and x["m"] == "PUT"]
+    nrows = pg.evaluate("()=>ROWS.length")
+    ck("encode all queues one job per arriving villa", len(puts) == nrows and nrows > 5)
+    j4 = [json.loads(x["b"]) for x in puts if "/cardjobs/%s/4" % today in x["u"]][0]
+    ck("a job carries the agreed default of 2, queued, none written",
+       j4["qty"] == 2 and j4["state"] == "queued" and j4["written"] == 0)
+    #  The expiry through the page's own cardExpiry, not a re-derivation
+    #  here: the suite asserts the page USED the one reader, and the cards
+    #  suite already holds that reader to 11:00 on the depart day.
+    ck("and its expiry is cardExpiry of that villa's depart",
+       pg.evaluate("(d)=>cardExpiry(d)", STAYS["4"]["depart"]) == j4["expiry"])
+    ck("the run opens as a viewport on the queue",
+       pg.evaluate("()=>!document.getElementById('cardOv').hidden"))
+    ck("a queued villa says it is waiting for the encoder",
+       "waiting for the encoder" in pg.inner_text("#cardBody"))
+
+    #  The helper moves a job; the poll repaints without a reload.
+    CARDJOBS["4"].update({"state": "writing", "written": 1})
+    pg.wait_for_timeout(2000)
+    ck("the helper's progress lands in the table's words",
+       "writing card 2 of 2" in pg.inner_text("#cardBody"))
+    CARDJOBS["4"].update({"state": "done", "written": 2})
+    pg.wait_for_timeout(2000)
+    body = pg.inner_text("#cardBody")
+    ck("a landed villa reads issued and asks for the envelope",
+       "2 cards issued" in body and "Envelope villa 4" in body)
+    CARDJOBS["9"].update({"state": "failed", "note": "code 106: not this hotel's card"})
+    pg.wait_for_timeout(2000)
+    ck("a failure is red ink with the helper's own note",
+       "write failed" in pg.inner_text("#cardBody")
+       and "106" in pg.inner_text("#cardBody"))
+
+    #  Cancel confirms before it deletes - the button law's two-tap.
+    del WRITES[:]
+    pg.evaluate("()=>document.querySelector('[data-cardcancel=\"2\"]').click()")
+    pg.wait_for_timeout(150)
+    ck("cancel asks first",
+       "Confirm" in pg.evaluate("()=>document.querySelector('[data-cardcancel=\"2\"]').textContent")
+       and not [x for x in WRITES if x["m"] == "DELETE"])
+    pg.evaluate("()=>document.querySelector('[data-cardcancel=\"2\"]').click()")
+    pg.wait_for_timeout(400)
+    ck("and deletes on the second tap",
+       [x for x in WRITES if x["m"] == "DELETE" and "/cardjobs/%s/2" % today in x["u"]])
+
+    #  The sheet: the completed row's summary carries the state and the
+    #  third button, and the villa panel asks qty before it writes.
+    pg.evaluate("()=>{document.getElementById('cardX').click();}")
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
+    ck("the sheet shows where the villa's cards stand",
+       "write failed" in pg.locator(".sum").inner_text())
+    del WRITES[:]; CARDJOBS.clear()
+    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=cards]').click()")
+    pg.wait_for_timeout(1800)   # past the next poll, which must not repaint the question away
+    ck("the villa panel asks how many",
+       "How many cards" in pg.inner_text("#cardBody"))
+    pg.evaluate("()=>document.querySelector('[data-cardq=\"1\"]').click()")
+    pg.wait_for_timeout(150)
+    pg.evaluate("()=>document.querySelector('[data-cardissue]').click()")
+    pg.wait_for_timeout(400)
+    puts = [json.loads(x["b"]) for x in WRITES
+            if "/cardjobs/%s/9" % today in x["u"] and x["m"] == "PUT"]
+    ck("and issues the stepped quantity", puts and puts[0]["qty"] == 3)
+    pg.close()
 
     b.close()
 
