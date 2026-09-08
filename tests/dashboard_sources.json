@@ -51,6 +51,11 @@
       "kind": "function",
       "note": "One head unless the record says otherwise. Counting a pax-less dining row as nought undercounts the kitchen." },
 
+    { "value": "where a villa stands on tonight's invitation",
+      "owner": "stateOf",
+      "kind": "function",
+      "note": "Invitations' own reader. kind 'ready' is still to ask, and a FAILED send is 'ready' - the reconstruction this replaced counted it as sent." },
+
     { "value": "which villas are still owed a dinner invitation",
       "owner": "/invites/",
       "kind": "path",

@@ -204,7 +204,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=54"></script>
+<script src="nala-shared.js?v=55"></script>
 <script>
 /* The day's flow on one screen: what has happened, what is ready, and what
    is still owed. Every fact here is read from the screen that owns it. The
@@ -376,7 +376,10 @@ function items(t){
      it under Answered, because a guest who said yes on their form days ago
      never gets a cell written. The cell wins the moment anyone sets one. */
   function cellFor(v){
-    return cells[v] ||
+    /* `cell && cell.status` is stateOf's test, and it has to be the same one:
+       a cell written with an empty status is not an answer, and treating it
+       as one hid the guest's own form answer underneath it. */
+    return (cells[v] && cells[v].status ? cells[v] : null) ||
            formDinnerCell(v, PREARRIVAL_BY_VILLA[String(v)], stays[v], day) ||
            {};
   }
@@ -442,15 +445,14 @@ function items(t){
     state: pub ? 'done' : 'moving',
     note: pub ? 'published ' + hhmm(pubAt) : 'not published yet' });
 
-  /* Who still needs asking: a villa with no answer of any kind and no
-     invitation already out. A guest who answered on their pre-arrival form
-     is not owed one, which is why this counts rows rather than reporting
-     whether a send has happened at all. */
+  /* Who still needs asking. stateOf is Invitations' own reader and the only
+     thing that says where a villa stands: kind 'ready' is still to ask. This
+     was reconstructed here until 8 Sep, and the reconstruction counted a
+     FAILED send as sent - so a villa whose SMS never landed showed as
+     invited, and nobody would have found out until a guest was not asked. */
   var toAsk = asked.filter(function(v){
-    var c = cellFor(v);
-    if (c.status === 'in' || c.status === 'out') return false;
-    var s = sentFor[String(v)];
-    return !(s && s.status === 'sent' && s.delivery !== 'failed');
+    return stateOf(v, stays[v], cells[v], sentFor[String(v)],
+                   null, day).kind === 'ready';
   });
   L.push({ k:'inv', lab:'Dinner invitations', owner:'desk',
     units: toAsk.map(function(v){ return { id:v, tone:'grey' }; }),

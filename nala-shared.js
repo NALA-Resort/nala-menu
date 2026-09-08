@@ -2601,3 +2601,80 @@ function saveFailWords(e){
     return 'The change was not allowed - tell the manager.';
   return 'Not saved - check the connection and try again.';
 }
+
+/* Where one villa stands on tonight's dinner invitation, and the ONE reader
+   that says so. Lived in invitations.html until 8 Sep, where the Dashboard
+   could not reach it, so that board reconstructed the answer and got it
+   wrong in a way nobody would have seen until a guest was not asked: a
+   FAILED send climbs back into 'ready' here, and the reconstruction counted
+   it as sent.
+
+   kind is the fact; line is how that page says it. A caller that only wants
+   to know who is still owed an invitation reads kind === 'ready'.
+
+     nophone   no usable mobile on the booking, so nothing can be sent
+     answered  they have already said, by cell or on their pre-arrival form
+     sent      accepted by the carrier, and not since failed delivery
+     ready     still to ask, INCLUDING a send that failed
+
+   dateKey is a parameter rather than the page's TODAY: a guard that depends
+   on a global the caller may not have is not a guard. */
+function timeOf(iso){
+  var d = parseISO(iso); if (!d) return '';
+  var h = d.getHours(), m = String(d.getMinutes()).padStart(2, '0');
+  return (h % 12 || 12) + ':' + m + (h < 12 ? 'am' : 'pm');
+}
+
+function stateOf(villa, stay, cell, invite, fix, dateKey){
+  /* A number fixed at the desk (/phonefix/<booking>) outranks the Mews copy:
+     Mews cannot be written from here and its next sync would revert any edit
+     made to the stay. The Worker reads the same record before sending. */
+  var raw = String((fix && fix.phone) || (stay && stay.phone) || '').trim();
+  if (!raw) return { kind:'nophone', line:'No phone number on the booking \u00B7 tap to add one',
+                     tickable:false, fixable:true, ticked:false };
+  if (!normalisePhone(raw))
+    return { kind:'nophone', line:'Not a mobile number \u00B7 ' + raw + ' \u00B7 tap to fix',
+             tickable:false, fixable:true, ticked:false };
+  if (cell && cell.status){
+    var what = cell.status === 'in'
+      ? 'Dining' + (cell.pax ? ' \u00B7 ' + cell.pax : '') : 'Not dining';
+    var who = cell.by === 'guest'
+      ? (cell.at ? 'answered ' + timeOf(cell.at) : 'answered')
+      : 'set by reception';
+    return { kind:'answered', in: cell.status === 'in',
+             line: what + ' \u00B7 ' + who, tickable:true, ticked:false };
+  }
+  /* No cell - so read what the guest already said on their pre-arrival form,
+     through the same reader the Reservations board uses (formDinnerCell,
+     nala-shared.js: arrival night only, any answer given counts, the cell
+     above wins the moment anyone sets one). Until 4 Sep this page read the
+     cell alone, so an arriving guest who had answered days ago sat in To
+     send, PRE-TICKED, and Send would have re-asked a question we were
+     already cooking to. Unticked, like every answered row: sending anyway
+     is a deliberate second tap, not the default. */
+  var form = formDinnerCell(villa, PREARRIVAL_BY_VILLA[String(villa)], stay, dateKey);
+  if (form)
+    return { kind:'answered', in: form.status === 'in',
+             line: (form.status === 'in'
+                     ? 'Dining' + (form.pax ? ' \u00B7 ' + form.pax : '')
+                     : 'Not dining') + ' \u00B7 answered on the pre-arrival form',
+             tickable:true, ticked:false };
+  if (invite && invite.status === 'sent'){
+    /* "Sent" is only ClickSend accepting the message; the handset receipt
+       is the real answer. A failed delivery is the sender's problem again,
+       so it climbs back into To send with the carrier's words. */
+    if (invite.delivery === 'failed')
+      return { kind:'ready', bad:true, tickable:true, ticked:false,
+               line:'Not delivered' +
+                    (invite.deliveryText ? ' \u00b7 ' + invite.deliveryText : '') };
+    return { kind:'sent', tickable:true, ticked:false,
+             line:'Sent ' + timeOf(invite.sentAt) +
+                  (invite.delivery === 'delivered' ? ' \u00b7 delivered'
+                   : invite.providerId ? ' \u00b7 delivery unconfirmed' : '') };
+  }
+  if (invite && invite.status === 'failed')
+    return { kind:'ready', line:'Send failed ' + timeOf(invite.sentAt) +
+             (invite.error ? ' \u00B7 ' + invite.error : ''), bad:true,
+             tickable:true, ticked:true };
+  return { kind:'ready', line:'Not asked, not answered', tickable:true, ticked:true };
+}
