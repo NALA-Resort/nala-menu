@@ -167,6 +167,27 @@ def ck(name, cond):
     print(("PASS " if cond else "FAIL ") + name)
     P, F = (P + 1, F) if cond else (P, F + 1)
 
+# ── rule 7: the page gathers, it does not work things out ──────────
+# CLAUDE.md rule 7. Every value on this page belongs to something else, and
+# dashboard_sources.json names the owner. Prose did not stop four bugs of
+# this shape in two days, so it gets a runner: the page must call each
+# reader, and must not contain the patterns that caused them.
+SRC = json.load(open("/home/claude/nala/tests/dashboard_sources.json"))
+PAGE = open("/home/claude/nala/dashboard.html").read()
+
+for r in SRC["reads"]:
+    needle = r["owner"] + "(" if r["kind"] == "function" else r["owner"]
+    ck("the page reads %s through %s, rather than working it out"
+       % (r["value"][:44], r["owner"]), needle in PAGE)
+
+for b in SRC["banned"]:
+    ck("the page does not use %s" % b["pattern"], b["pattern"] not in PAGE)
+
+# The one fact it does own has to be written somewhere, or the ticks have
+# nowhere to live.
+ck("and the one fact it owns is written where the manifest says",
+   SRC["owns"][0]["path"].replace("<date>", "") in PAGE.replace("' + nav.todayKey() + '", ""))
+
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b = p.chromium.launch()

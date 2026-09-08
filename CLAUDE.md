@@ -60,6 +60,11 @@ Already done this way — follow these:
   their own subset of that one fact and told reception three different
   things about the same villa.
 - `rules.json` — the database's permissions.
+- `tests/dashboard_sources.json` — every value on the Dashboard and the
+  thing that owns it. Added 8 Sep with rule 7, after that page worked four
+  facts out for itself and disagreed with Reservations and Invitations
+  about all four. `dash_suite` asserts the page calls each reader named
+  there, and that the patterns under `banned` appear nowhere in it.
 
 **Never** restate the menu in a suite. Four suites held their own copy of
 the menu order until 26 Aug, which is why adding a page meant editing them
@@ -245,6 +250,54 @@ nobody can reach. A name clipping at 320 is not breaking. 320 is an iPhone
 SE 1st generation, from 2016; nothing sold since is narrower than 375.
 
 ---
+
+### 7. A page that reads is not a page that works things out
+
+Ruled by the owner, 8 Sep, after the Dashboard's first two days live.
+
+Some pages own facts: Reservations owns the diner count, Invitations owns
+who is still owed one, Publish owns tonight's menu. Others only gather what
+those pages already know and lay it on one screen. The Dashboard is the
+second kind, and every fault it has shipped came from forgetting that.
+
+**If a summary page is the first place a fact gets worked out, that is the
+bug.** Not a smell to tidy up later. The bug, and it will present as two
+screens telling reception different things about the same villa.
+
+Four in two days, all one shape:
+
+| It showed | Because it | The owner it ignored |
+|---|---|---|
+| replies grey that Invitations had answered | read `/dinner` alone | `formDinnerCell` |
+| "ready to send", never to whom | read `/previnvites`, the wrong node | `/invites/<date>` |
+| a publish time for a night with no menu | read the live node, no date check | `menuCheck` |
+| a published menu as not published | sliced an ISO stamp | `dkey(parseISO(...))` |
+
+The last is the one to remember, because it was introduced BY the fix for
+the third and was worse than the bug it replaced. Copying the shape of an
+existing guard while hand-rolling its inside is not copying it. A stamp is
+UTC and a day is local; the resort's entire working day is before 10am UTC,
+so every morning would have read the wrong date.
+
+So, before adding a value to a summary page:
+
+1. Name the page or shared function that owns it. If you cannot, you are
+   about to originate a fact — stop and find the owner, or accept that this
+   page now owns it and say so in writing.
+2. Call that reader. Do not reproduce what it does, however few lines it
+   looks like. `formDinnerCell` is eleven lines and reading `/dinner`
+   instead cost two days.
+3. Add it to `tests/dashboard_sources.json`, which names every value on the
+   Dashboard and its owner. The suite asserts the page actually calls them.
+
+The Dashboard owns exactly one fact: the print ticks at `/dayboard/<date>`,
+because the app cannot see paper and only a person saying so counts.
+
+Date comparisons anywhere: `dkey(parseISO(s))` for a timestamp,
+`parseDepDate(s)` for a booking's arrive/depart. Never a string slice, never
+`new Date(s)` straight into a comparison. And run date suites in more than
+one zone — `TZ=Australia/Brisbane` alongside the default. A date test that
+only runs in UTC is blind to this whole class of bug.
 
 ## When you break these rules
 
