@@ -217,6 +217,13 @@
   .pop-t { font-size:var(--t3); line-height:1.45; margin-bottom:16px; }
   .empty { font-style:italic; color:var(--mid); font-size:var(--t2); padding:8px 0; }
 
+  /* Static, overriding the shared sticky (nala-ui.css). The board scrolls
+     most nights now, and a sticky footer rode over the bookings, slicing
+     whichever row reached the bottom of the screen - the owner's
+     screenshot, 8 Sep. At the end of the flow it sits after the last
+     booking on a long board, and the flex column in nala-ui.css still
+     pins it to the screen's bottom edge on a short one. */
+  .foot.actions { position:static; }
   .actions.hidden { visibility:hidden; }
   .actions { margin-top:34px; gap:10px;
              padding:12px 0 calc(12px + env(safe-area-inset-bottom)); }

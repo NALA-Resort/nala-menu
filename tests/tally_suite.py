@@ -674,6 +674,22 @@ with sync_playwright() as p:
     b12p=json.loads(w12p["b"])
     ck("a pax change keeps the time", b12p["pax"]==5 and b12p.get("time")=="18:15")
 
+    # the footer sits after the bookings, never over them: sticky, it rode
+    # the bottom of the screen and sliced whichever row reached it - the
+    # owner's screenshot, 8 Sep. Short boards stay pinned to the screen
+    # bottom (asserted off-today below); long ones put it after the list.
+    # Measured from the TOP of the page, where a sticky footer floats into
+    # the viewport over the rows - measured at the page's end it rests in
+    # its natural place and sticky and static are indistinguishable, which
+    # is how the first draft of this test passed against the bug.
+    ft=pg.evaluate("""()=>{scrollTo(0,0);
+      const r=document.querySelector('.foot').getBoundingClientRect();
+      return {footTop:Math.round(r.top), vh:innerHeight,
+              scrolls:document.scrollingElement.scrollHeight>innerHeight};}""")
+    print("   footer vs list:", ft)
+    ck("a board taller than the screen keeps the footer below the fold, not floating on it",
+       ft["scrolls"] and ft["footTop"]>=ft["vh"])
+
     # manual external move: the Night row moves the reservation to another
     # night. Until this control the only way to change the date was Cancel
     # booking and retype it on the other day's board.
