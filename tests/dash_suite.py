@@ -276,10 +276,32 @@ with sync_playwright() as p:
        "ext 7:green" in reps["chips"])
     ck("a table booked through a link counts the same as one added by staff",
        "ext 7:green" in reps["chips"])
+    # The note said "needs the menu sent" on a day where nobody needed asking,
+    # because it asked whether a send had happened rather than what was still
+    # owed. A villa that has answered is not waiting on a menu.
+    NO_ASK = {v: dict(DINNER.get(v, {}), status="in", pax=2)
+              for v in ("3", "7", "11", "14", "5")}
+    # And nothing was ever sent, because nobody needed asking - which is the
+    # day this actually happened on.
+    saved, savedInv = dict(DINNER), dict(INVITES)
+    DINNER.clear(); DINNER.update(NO_ASK)
+    INVITES.clear()
+    na = board()
+    r2 = card(na, "reps")
+    ck("with every villa answered the replies card is done, not waiting",
+       r2["pos"] == "past")
+    ck("and it does not ask for a menu nobody is waiting on",
+       "menu" not in r2["note"])
+    ck("it says what was answered instead",
+       "dining" in r2["note"] and "to answer" not in r2["note"])
+    na.close()
+    DINNER.clear(); DINNER.update(saved)
+    INVITES.clear(); INVITES.update(savedInv)
+
     ck("covers count in-house yeses plus outside tables",
        reps["note"].startswith("13 dining so far"))
     ck("and a villa with no dinner state yet is still out, not forgotten",
-       reps["note"].endswith("1 villas still out"))
+       reps["note"].endswith("1 still to answer"))
 
     # Villa 7 said yes on its pre-arrival form and has no /dinner cell. It is
     # answered - Invitations shows it under Answered - and reading /dinner
