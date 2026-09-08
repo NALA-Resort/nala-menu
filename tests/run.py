@@ -71,6 +71,7 @@ SUITES = [
     ("sw",         ["node", "tests/sw_test.js"],          120),
     ("worker",     ["node", "worker/test.mjs"],           300),
     ("invworker",  ["node", "worker/invites-test.mjs"],   120),
+    ("cardworker", ["node", "worker/cards-test.mjs"],     120),
     ("cards",      ["python3", "tests/cards_suite.py"],   300),
     ("dash",       ["python3", "tests/dash_suite.py"],    400),
     ("tally",      ["python3", "tests/tally_suite.py"],   600),
@@ -171,7 +172,7 @@ def changed_suites():
     for f in out:
         if f in EVERYTHING or f.startswith("worker/"):
             if f.startswith("worker/"):
-                picked.add("worker"); picked.add("coercion")
+                picked.add("worker"); picked.add("coercion"); picked.add("cardworker")
                 why.append("%s -> worker" % f)
             else:
                 why.append("%s is shared, so everything runs" % f)

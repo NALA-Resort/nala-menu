@@ -24,6 +24,12 @@
  * what protect the data, not the key.
  */
 
+/* The key-card relays (/cardauth, /cardlocks) live in cards.js with their
+   own secrets, documented there. They answer before anything below runs,
+   so this file's story - Zapier posts a reservation, two nodes move - is
+   unchanged for every other request. */
+import { handleCardRoute } from "./cards.js";
+
 const DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
 /* The sign in costs a round trip, so the token is held for the life of the
@@ -585,6 +591,8 @@ function knownVilla(v) {
 
 export default {
   async fetch(request, env) {
+    const card = await handleCardRoute(request, env);
+    if (card) return card;
     if (request.method !== "POST") return new Response("POST only", { status: 405 });
 
     /* The shared secret may arrive as a header or as a query parameter,
