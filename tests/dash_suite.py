@@ -49,14 +49,14 @@ STAFF = {"staff@x":        {"name": "Ana",  "role": "staff"},
 
 # Four arriving today, one mid-stay who must never count as an arrival.
 STAYS = {
-  "3":  {"id": "b3",  "first": "Ada",   "last": "Lovelace", "arrive": today,
+  "3":  {"id": "b3",  "first": "Ada",   "last": "Lovelace", "phone": "+61400000011", "arrive": today,
          "depart": plus(3), "adults": 2},
-  "7":  {"id": "b7",  "first": "Mark",  "last": "Whitfield", "arrive": today,
+  "7":  {"id": "b7",  "first": "Mark",  "last": "Whitfield", "phone": "+61400000012", "arrive": today,
          "depart": plus(2), "adults": 2},
-  "11": {"id": "b11", "first": "Priya", "last": "Raghunathan", "arrive": today,
+  "11": {"id": "b11", "first": "Priya", "last": "Raghunathan", "phone": "+61400000013", "arrive": today,
          "depart": plus(4), "adults": 3},
   # a full ISO stamp is still arriving today, same as a bare date
-  "14": {"id": "b14", "first": "Ann",   "last": "Brown",
+  "14": {"id": "b14", "first": "Ann",   "last": "Brown", "phone": "+61400000014",
          "arrive": today + "T04:00:00Z", "depart": plus(1), "adults": 2},
   # arrived two days ago: in house tonight, NOT an arrival
   "5":  {"id": "b5",  "first": "Mid",   "last": "Stay", "arrive": plus(-2),
@@ -70,7 +70,7 @@ PRE = {
           "wellness": False, "checkedInAt": at(10, 30)},
   "b7":  {"at": at(9, 30), "dining": True, "pax": 2, "noDiets": True,
           "wellness": False},
-  "b11": {"dining": True},
+  "b11": {"wellness": False},
   # answered on the form, and no /dinner cell was ever written: the case the
   # first real day turned up, where this board and Invitations disagreed.
   "b14": {"at": at(9, 45), "dining": True, "pax": 2, "noDiets": True,
@@ -298,6 +298,32 @@ with sync_playwright() as p:
        inv["note"].startswith("1 to send"))
     # The header counted this a second way and read five while the card
     # underneath listed one.
+    # A send the carrier accepted and the handset never got is not a send.
+    # Invitations climbs it back into To send; the reconstruction this
+    # replaced counted it as sent, so the villa read as invited and nobody
+    # would have known until a guest was not asked.
+    INVITES["11"] = {"status": "sent", "sentAt": at(10, 20),
+                     "delivery": "failed", "deliveryText": "Unreachable"}
+    fp = board()
+    ck("a failed delivery is still to send, not sent",
+       [c.split(":")[0] for c in card(fp, "inv")["chips"]] == ["11"])
+    fp.close()
+    INVITES["11"] = {"status": "sent", "sentAt": at(10, 20)}
+    dp = board()
+    ck("and a send with no failure on it is not asked again",
+       not card(dp, "inv")["chips"])
+    dp.close()
+    del INVITES["11"]
+
+    # A booking with no usable mobile cannot be sent anything, so it is not
+    # waiting on a send: Invitations calls it Unsendable.
+    STAYS["11"].pop("phone")
+    np = board()
+    ck("a villa with no mobile is not counted as one to send",
+       not card(np, "inv")["chips"])
+    np.close()
+    STAYS["11"]["phone"] = "+61400000013"
+
     ck("and the header agrees with the card, not its own arithmetic",
        pg.evaluate("()=>document.getElementById('nInv').textContent") == "1")
 
