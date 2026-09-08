@@ -242,7 +242,11 @@
   .pax-fact { font:600 20px/1 var(--ui-font); color:var(--ink); }
   .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
          border-radius:50%; font-family:var(--ui-font); font-size:var(--t2);
-         color:var(--ink); cursor:pointer; }
+         color:var(--ink); cursor:pointer; padding:0; }
+  /* Eight of these plus gaps outgrow a phone narrower than ~430, and flex
+     shrinks WIDTH alone, so a circle became an egg on any narrower phone.
+     Height follows the shrunken width instead. The owner, 8 Sep: round. */
+  @supports (aspect-ratio:1){ .pax { height:auto; aspect-ratio:1; } }
   .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
   .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
   .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
@@ -2395,7 +2399,6 @@ function editExt(key, g){
       '<h3>'+(g.name || 'Reservation')+'</h3>'+
       '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
       '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
-      '<div class="sheet-label" style="margin-top:14px">Night</div>'+
       '<div class="txt nightfield" id="xNight"><span id="xNightLabel"></span></div>'+
       '<div class="sheet-label" style="margin-top:14px">Guests</div>'+
       '<div class="pax-row" id="paxRow"></div>'+

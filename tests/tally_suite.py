@@ -619,6 +619,14 @@ with sync_playwright() as p:
        nt["val"]==today
        and nt["lab"]==pg.evaluate("()=>dateLabel(parseDepDate('%s'))"%today)
        and nt["btn"]=="Save changes")
+    # eight guest pills outgrow a narrow phone and flex shrinks width alone,
+    # which turned every circle into an egg. Squeezed, a circle stays one.
+    pg.set_viewport_size({"width":360,"height":930}); pg.wait_for_timeout(100)
+    sq=pg.evaluate("()=>[...document.querySelectorAll('#paxRow .pax')].map(e=>{const r=e.getBoundingClientRect();return Math.abs(r.width-r.height)<0.6;})")
+    ck("squeezed guest pills stay round", len(sq)==8 and all(sq))
+    pg.set_viewport_size({"width":430,"height":930}); pg.wait_for_timeout(100)
+    ck("and the night field carries no label of its own",
+       "Night" not in pg.locator("#sheet").inner_text())
     pg.evaluate("d=>{const p=document.querySelector('#xNight input');p.value=d;p.dispatchEvent(new Event('change'));}", plus(1))
     moveLab=pg.evaluate("()=>dateLabel(parseDepDate('%s'))"%plus(1))
     ck("button now says Move to the chosen night",
