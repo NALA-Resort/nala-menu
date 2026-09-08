@@ -71,6 +71,7 @@ SUITES = [
     ("sw",         ["node", "tests/sw_test.js"],          120),
     ("worker",     ["node", "worker/test.mjs"],           300),
     ("invworker",  ["node", "worker/invites-test.mjs"],   120),
+    ("cards",      ["python3", "tests/cards_suite.py"],   300),
     ("dash",       ["python3", "tests/dash_suite.py"],    400),
     ("tally",      ["python3", "tests/tally_suite.py"],   600),
     ("cleans",     ["python3", "tests/cl_suite.py"],      900),

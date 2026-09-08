@@ -39,8 +39,15 @@ const SEED = {
     'chef@nalaresort,com,au':         { name: 'Chef', role: 'chef' },
     'waiter@nalaresort,com,au':       { name: 'Waiter', role: 'waiter' },
     'housekeeping@nalaresort,com,au': { name: 'HK', role: 'housekeeping' },
-    '482913@staff,nala':              { name: 'NALA Sync', role: 'sync' }
+    '482913@staff,nala':              { name: 'NALA Sync', role: 'sync' },
+    /* The desk PC's card-encoder helper. A machine account like sync's:
+       it moves a card job's state and touches nothing else. */
+    '731046@staff,nala':              { name: 'NALA Encoder', role: 'encoder' }
   },
+  cardjobs: { [TODAY]: {
+    '9': { qty: 2, expiry: 1789000000, state: 'queued', written: 0,
+           by: 'reception@nalaresort.com.au', at: 1 }
+  } },
   dinner: { [TODAY]: {
     '2': { status: 'in', pax: 2, room: '2', by: 'staff', at: NOW },
     '3': { status: 'in', pax: 2, room: '3', by: 'guest', at: NOW }
@@ -60,6 +67,7 @@ const CHEF   = signedIn('chef@nalaresort.com.au');
 const HK     = signedIn('housekeeping@nalaresort.com.au');
 const WAITER = signedIn('waiter@nalaresort.com.au');
 const SYNC   = signedIn('482913@staff.nala');
+const ENCODER = signedIn('731046@staff.nala');
 const GUEST  = null;
 
 let P = 0, F = 0;
@@ -858,6 +866,41 @@ cannotPatch('but not something the length of a paragraph', SYNC,
      as2('st@x').read('/manual/2026-09-11').allowed &&
      as2('st@x').read('/settings').allowed);
   ck('and housekeeping still has its board', as2('hk@x').read('/hk/2026-09-11').allowed);
+})();
+
+/* ── /cardjobs: the key-card queue ─────────────────────────────────
+   The desk writes a villa's job, the encoder helper on the desk PC moves
+   its state, and nothing a guest holds can reach it. Every body below is
+   the one the Front Desk or the helper actually sends. */
+(function () {
+  const job = { qty: 2, expiry: 1789000000, state: 'queued', written: 0,
+                by: 'reception@nalaresort.com.au', at: 1 };
+  can('the desk queues a villa\'s cards',            DESK,   `/cardjobs/${TODAY}/10`, job);
+  can('an admin can too',                            ADMIN,  `/cardjobs/${TODAY}/10`, job);
+  can('the desk cancels a job by deleting it',       DESK,   `/cardjobs/${TODAY}/9`, null);
+  can('the encoder helper claims a queued job',      ENCODER, `/cardjobs/${TODAY}/9`,
+      { qty: 2, expiry: 1789000000, state: 'writing', written: 0,
+        by: 'reception@nalaresort.com.au', at: 1 });
+  can('and lands it, with a count and a note',       ENCODER, `/cardjobs/${TODAY}/9`,
+      { qty: 2, expiry: 1789000000, state: 'done', written: 2,
+        by: 'reception@nalaresort.com.au', at: 1, note: 'ok' });
+  cannot('the chef holds no card jobs',              CHEF,   `/cardjobs/${TODAY}/10`, job);
+  cannot('housekeeping neither',                     HK,     `/cardjobs/${TODAY}/10`, job);
+  cannot('nor a guest, signed out',                  GUEST,  `/cardjobs/${TODAY}/10`, job);
+  cannot('nor the Mews sync, whose job this is not', SYNC,   `/cardjobs/${TODAY}/10`, job);
+  cannot('zero cards is not a job',                  DESK,   `/cardjobs/${TODAY}/10`,
+         Object.assign({}, job, { qty: 0 }));
+  cannot('seven cards is a typo',                    DESK,   `/cardjobs/${TODAY}/10`,
+         Object.assign({}, job, { qty: 7 }));
+  cannot('a state the boards do not know is refused', DESK,  `/cardjobs/${TODAY}/10`,
+         Object.assign({}, job, { state: 'encoding' }));
+  cannot('a field the model does not know is refused', DESK, `/cardjobs/${TODAY}/10`,
+         Object.assign({}, job, { mac: '501D9E6FB37F' }));
+  cannot('a villa key that is not a villa number',   DESK,   `/cardjobs/${TODAY}/spare`, job);
+  cannot('a date key that is not a date',            DESK,   '/cardjobs/tomorrow/10', job);
+  ck('any staff role reads the queue',   as(DESK).read(`/cardjobs/${TODAY}`).allowed &&
+                                         as(ENCODER).read(`/cardjobs/${TODAY}`).allowed);
+  ck('a guest reads none of it',         !as(GUEST).read(`/cardjobs/${TODAY}`).allowed);
 })();
 
 console.log('RESULT: %d passed, %d failed', P, F);

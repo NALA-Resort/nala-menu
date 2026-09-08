@@ -895,6 +895,40 @@
         }
       }
     },
+    "cardjobs": {
+      ".read": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').exists() && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() != 'spa'",
+      "$date": {
+        ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
+        "$villa": {
+          ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'encoder')",
+          ".validate": "$villa.matches(/^[0-9]{1,2}$/) && newData.hasChildren(['qty','expiry','state','by','at'])",
+          "qty": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 6"
+          },
+          "expiry": {
+            ".validate": "newData.isNumber() && newData.val() > 0"
+          },
+          "state": {
+            ".validate": "newData.isString() && (newData.val() == 'queued' || newData.val() == 'writing' || newData.val() == 'done' || newData.val() == 'failed' || newData.val() == 'cancelled')"
+          },
+          "written": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 6"
+          },
+          "by": {
+            ".validate": "newData.isString() && newData.val().length <= 120"
+          },
+          "at": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          },
+          "note": {
+            ".validate": "newData.isString() && newData.val().length <= 300"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
     "menu": {
       ".read": true,
       ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'chef' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager' || root.child('permissions').child('publishMenu').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",

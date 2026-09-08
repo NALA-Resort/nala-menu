@@ -736,6 +736,52 @@ function formState(p, stay){
   return guestAnswered(p) ? 'incomplete' : 'notstarted';
 }
 
+/* ── key cards ───────────────────────────────────────────────────────
+   A card job is one villa's cards for one day: /cardjobs/<date>/<villa>
+   holds { qty, expiry, state, written, by, at, note }. The Front Desk
+   writes it, the encoder helper on the desk PC moves state through
+   queued -> writing -> done (or failed), and both the Front Desk and
+   the Dashboard read where it stands THROUGH cardCell below - the
+   formDinnerCell lesson, applied before the drift rather than after.
+   The shared table is tests/card_cases.json; add cases there. */
+
+/* When a key card stops opening the door on departure day. One number,
+   because the moment a guest's card dies is a fact two systems state:
+   the desk quotes it and every card carries it. Written into the card
+   as an epoch by cardExpiry, which builds it in the DEVICE's zone -
+   staff devices live at the resort, the same assumption every board
+   already makes when it says "today". */
+var CARD_CHECKOUT_HOUR = 11;
+
+function cardExpiry(dep){
+  var d = parseDepDate(dep);
+  if (!d) return null;
+  return Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate(),
+                             CARD_CHECKOUT_HOUR, 0, 0).getTime() / 1000);
+}
+
+/* Where a villa's cards stand, in the words and colours both boards use.
+   k is one of none|queued|writing|done|failed|cancelled and doubles as
+   the style hook. Colour law: queued is cream (work to do), writing is
+   amber (in progress), done is green, failed is red - a write that did
+   not happen, a true failure - and cancelled is grey, nothing to do
+   here. An unknown state reads as queued rather than done: the safe
+   wrong answer is the one that makes somebody look. */
+function cardCell(job){
+  if (!job || !job.state || job.state === 'cancelled')
+    return { k: job ? 'cancelled' : 'none',
+             label: job ? 'cancelled' : 'no cards yet' };
+  var n = +job.written || 0, q = +job.qty || 0;
+  if (job.state === 'done')
+    return { k:'done', label: n + (n === 1 ? ' card issued' : ' cards issued') };
+  if (job.state === 'failed')
+    return { k:'failed', label:'write failed' };
+  if (job.state === 'writing')
+    return { k:'writing', label:'writing card ' + Math.min(n + 1, q || n + 1) +
+                                (q ? ' of ' + q : '') };
+  return { k:'queued', label:'to encode' };
+}
+
 /* Every OTHER villa the same party holds, said in the words both boards use.
    Takes the row and the list it came from - each entry a {villa, stay} - so a
    caller pays nothing for it beyond rows it has already loaded.
