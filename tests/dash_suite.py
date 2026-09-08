@@ -90,6 +90,15 @@ DINNER = {
 MANUAL = {"ext-a": {"status": "in", "pax": 4},
           "ext-b": {"status": "out", "pax": 2}}   # a cancelled outside table
 
+# The stamp a real publish writes: UTC, which in Australia falls on the
+# PREVIOUS calendar day for anything before 10am. Slicing its first ten
+# characters compares the wrong date, which is how a published menu read as
+# not published on the second real day.
+def utc_at(h, m=0):
+    import datetime as _dt
+    local = now.replace(hour=h, minute=m, second=0, microsecond=0)
+    return local.astimezone(_dt.timezone.utc).isoformat().replace("+00:00", "Z")
+
 MENU = {"published": at(10, 6), "bread": {"name": "Sourdough"},
         "entree": {"name": "Kingfish"}, "main": {"name": "Snapper"},
         "dessert": {"name": "Pavlova"}}
@@ -272,6 +281,13 @@ with sync_playwright() as p:
     ck("last night's menu is not tonight's, however recently it was published",
        card(st, "menu")["note"] == "not published yet")
     st.close()
+    MENU_NOW["m"] = dict(MENU, published=utc_at(9, 58))
+    tz = board()
+    ck("a menu published this morning reads as published, whatever zone the "
+       "stamp is written in",
+       tz.evaluate("()=>items(nowMins()).filter(d=>d.k=='menu')[0].note")
+       .startswith("published"))
+    tz.close()
     MENU_NOW["m"] = HALF_MENU
     hf = board()
     ck("and a menu with empty courses is not published either",

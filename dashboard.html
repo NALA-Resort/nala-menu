@@ -307,8 +307,11 @@ function items(t){
      an arrival for the whole of their stay. */
   var arriving = Object.keys(stays).filter(function(v){
     var s = stays[v];
-    return s && typeof s === 'object' && s.arrive &&
-           String(s.arrive).slice(0,10) === day;
+    /* parseDepDate, not a slice: it builds a LOCAL date from an ISO day and
+       handles the dd/mm/yyyy the PMS also writes. */
+    if (!s || typeof s !== 'object' || !s.arrive) return false;
+    var a = parseDepDate(s.arrive);
+    return !!a && dkey(a) === day;
   }).sort(function(a,b){ return (+a) - (+b); });
 
   /* formState is the only thing that says which state a booking is in, and
@@ -331,7 +334,13 @@ function items(t){
   var filled = ['bread','entree','main','dessert'].every(function(k){
     return m[k] && m[k].name && String(m[k].name).trim() !== '';
   });
-  var fresh = m.published ? String(m.published).slice(0,10) === day : false;
+  /* parseISO then dkey, never a string slice: a stamp is written in UTC and
+     the day is local, so 9:58am on the 8th in Australia is 2026-09-07T23:58Z
+     and slicing its first ten characters compares the wrong date. That is how
+     a published menu read as not published. dkey(parseISO(...)) is what
+     Reservations uses in menuCheck. */
+  var pubD = m.published ? parseISO(m.published) : null;
+  var fresh = pubD ? dkey(pubD) === day : false;
   var pubAt = (filled && fresh) ? stampMins(m.published) : null;
   var pub = pubAt != null;
 
