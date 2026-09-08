@@ -299,7 +299,7 @@
           ".validate": "newData.isString() && newData.val().length <= 120"
         },
         "role": {
-          ".validate": "newData.isString() && (newData.val() == 'admin' || newData.val() == 'manager' || newData.val() == 'staff' || newData.val() == 'chef' || newData.val() == 'waiter' || newData.val() == 'housekeeping' || newData.val() == 'sync' || newData.val() == 'spa')"
+          ".validate": "newData.isString() && (newData.val() == 'admin' || newData.val() == 'manager' || newData.val() == 'staff' || newData.val() == 'chef' || newData.val() == 'waiter' || newData.val() == 'housekeeping' || newData.val() == 'sync' || newData.val() == 'spa' || newData.val() == 'encoder')"
         },
         "$other": {
           ".validate": false

@@ -875,6 +875,11 @@ cannotPatch('but not something the length of a paragraph', SYNC,
 (function () {
   const job = { qty: 2, expiry: 1789000000, state: 'queued', written: 0,
                 by: 'reception@nalaresort.com.au', at: 1 };
+  //  Found by reading the paste-file end to end: cardjobs knew the encoder
+  //  role while the staff whitelist did not, so the account could never be
+  //  GIVEN the role. The whitelist case guards the pair staying in step.
+  can('an admin can set a staff role to encoder',    ADMIN,  '/staff/731046@staff,nala',
+      { name: 'NALA Encoder', role: 'encoder' });
   can('the desk queues a villa\'s cards',            DESK,   `/cardjobs/${TODAY}/10`, job);
   can('an admin can too',                            ADMIN,  `/cardjobs/${TODAY}/10`, job);
   can('the desk cancels a job by deleting it',       DESK,   `/cardjobs/${TODAY}/9`, null);
