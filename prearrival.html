@@ -32,8 +32,17 @@
                font-family:'Raleway',Helvetica,Arial,sans-serif; color:var(--ink); }
   body { display:flex; justify-content:center;
          -webkit-tap-highlight-color:transparent; }
+  /* --vph is written by fitShell() from window.innerHeight and re-written
+     once Safari's toolbars settle. dvh alone is not enough: opened from a
+     text message, Safari resolves it while its chrome is still animating,
+     the document ends up taller than the window, the window scrolls to the
+     bottom of that difference and never clamps back - so the question and
+     its hint sit above the top of the screen and a band of cream sits under
+     the buttons. Reloading from the address bar hid it because by then the
+     chrome had settled. vh and dvh stay as the fallbacks for a first paint
+     before the script runs and for anywhere the property never lands. */
   .page { width:100%; max-width:34rem; padding:0 1.4rem;
-          height:100vh; height:100dvh;
+          height:100vh; height:100dvh; height:var(--vph,100dvh);
           display:flex; flex-direction:column; min-height:0; }
   .scrollarea { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
                 min-height:0; }
@@ -474,6 +483,40 @@
 </div>
 
 <script>
+/* ── shell height ────────────────────────────────────────────
+   The frame owns the viewport, so its height has to be the height of the
+   window and not a unit the browser guessed early. innerHeight, not
+   visualViewport.height: on iOS the keyboard shrinks the visual viewport but
+   leaves innerHeight alone, and a shell that shrank under the keyboard would
+   throw the last question's textarea off its own page.
+
+   The scroll clamp is the other half. If a stale measurement has already let
+   the window scroll, resizing the shell removes the overflow but iOS does not
+   always put the offset back, which leaves the top of the question cut off.
+   It is skipped while a field has focus, because there the scroll belongs to
+   iOS bringing the field above the keyboard and taking it away would fight
+   the guest for it. */
+function fitShell(){
+  var h = window.innerHeight;
+  if (h) document.documentElement.style.setProperty('--vph', h + 'px');
+  var a = document.activeElement;
+  var typing = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName || '');
+  if (!typing && window.pageYOffset) window.scrollTo(0, 0);
+}
+fitShell();
+/* The settle is animated and fires no single reliable event, so the height is
+   taken again across it rather than once at a moment that might be too early.
+   Each call is idempotent - it writes the same pixel value once the window has
+   stopped moving. */
+if (window.requestAnimationFrame) requestAnimationFrame(fitShell);
+[60, 150, 350, 700, 1200].forEach(function(ms){ setTimeout(fitShell, ms); });
+window.addEventListener('resize', fitShell);
+window.addEventListener('orientationchange', function(){ setTimeout(fitShell, 250); });
+window.addEventListener('load', fitShell);
+/* Coming back from another tab or a swipe-back: the page is restored from the
+   cache with whatever offset it was left at. */
+window.addEventListener('pageshow', fitShell);
+
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
 /* The link carries the booking id and, for display only, the guest's name and
