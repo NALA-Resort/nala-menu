@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mock &middot; Front desk key cards, as built</title>
+<style>
+/* nala-ui2.css, inlined so this mock stands alone */
+/* NALA staff UI, second dress. See STYLEGUIDE.md and mock-style.html.
+
+   WHY THIS IS A SECOND FILE AND NOT AN EDIT TO nala-ui.css
+   --------------------------------------------------------
+   The dress changes shared tokens, and nala-ui.css is linked by thirteen
+   pages. Editing it restyles all of them in one publish, on a live system,
+   with no way to move one page at a time. So the new dress is opt in: a
+   page joins it by adding `ui2` to its body class and linking this file,
+   and every page that has not joined is untouched, byte for byte.
+
+   This file is a MIGRATION SEAM, not a permanent second stylesheet. When
+   the last page carries `ui2`, its contents move into nala-ui.css, the
+   class goes, and this file is deleted. Until then, two dresses is the
+   price of moving five pages instead of twenty two at once.
+
+   It is also SELF SUFFICIENT on purpose. nala-ui.css turned out to be a
+   layout system as well as a control sheet: it sets body to a flex column
+   and takes its colours from --ctl-* tokens that only exist on a body
+   carrying tier-app or tier-print, so a page that linked it for the
+   hamburger alone got a reflow, and a page without a tier class drew a
+   menu button nobody could see. That is why tag.html, flags.html and
+   publish.html each hand copied the nav instead. Nothing here needs a tier
+   class, so those copies can go.                                      */
+
+/* The reset every page already carries, identical in all twenty of them. */
+*{ margin:0; padding:0; box-sizing:border-box; }
+
+/* ── the colour law · values unchanged from nala-ui.css and the boards ──
+   A dress may say what a control looks like. It may not say what a colour
+   means. Every value below is the one the live boards use today.      */
+:root{
+  --law-green:#5E7D67;  --law-green-t:rgba(122,160,130,.26);
+  --law-green-b:rgba(122,160,130,.65);
+  --law-terra:#9E6455;  --law-terra-t:rgba(184,106,90,.16);
+  --law-terra-b:rgba(184,106,90,.45);
+  --law-amber:#F6EAD5;  --law-amber-b:#C29A55;  --law-amber-ink:#8A6A2F;
+  --law-red:#A8321E;
+  --law-wait:rgba(28,28,26,.045);
+  --law-save-bg:#E4EDE2; --law-save-bdr:#7E937A; --law-save-ink:#5E7D67;
+}
+
+body.ui2{
+  /* ── ground and ink ────────────────────────────────────────────────
+     White rather than cream: these are tools, and every tool the owner
+     pointed at (Drive, Earth, Zoom) sits on white with one accent.   */
+  --ground:#FFFFFF;
+  --card:#F5F6F8;          /* a quiet fill for secondary buttons and cards */
+  --ink:#1B1B19;
+  /* #999990 measured 2.69:1 on cream. WCAG AA wants 4.5:1 for text this
+     size, and this token carries most of the app's secondary text at
+     11px. #5F5F58 is 4.9:1 on white and keeps the warm grey.         */
+  --mid:#5F5F58;
+  --rule:#E6E6E1;
+
+  /* ── one accent, and it means one thing ────────────────────────────
+     "You can act here, or this is selected." Blue because it is the
+     only hue not already spoken for: sage is done, terracotta is
+     declined, amber is chase this, red is failed. An accent that
+     borrowed one of those would put interaction and state in the same
+     channel, which is what the boards already suffer from.          */
+  --accent:#1A66C2;
+  --accent-ink:#FFFFFF;
+  --accent-soft:#E8F0FE;
+
+  /* ── what a SELECTED pill looks like ───────────────────────────────
+     Ruled by the owner, 29 Aug: a selected pill gives grey feedback,
+     not black and not blue. Before this it was blue on six pages, ink
+     on five and green on two, and a black circle sat beside a blue
+     segment on the same sheet.
+
+     Grey, and deliberately not the colour law's waiting grey, which is
+     a fifth of this and carries no border: this is a control saying
+     "you picked me", not a record saying "sent, waiting". The ink
+     border is what does the work - a dark edge reads as chosen at a
+     glance without spending a colour that means something.          */
+  --sel-bg:rgba(28,28,26,.10);
+  --sel-bdr:var(--ink);
+
+  /* ── scales · pick from these, never by eye ────────────────────────
+     Spacing is a 4px grid, which is what Material, Bootstrap and Apple
+     all land on. The type scale is the styleguide's own 8/11/15/20/27
+     with the bottom two steps raised: 8px and 9px text is not density,
+     it is unreadable, and it is most of why the boards look busy.   */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+  --t1:12px; --t2:14px; --t3:16px; --t4:20px; --t5:27px;
+  --r:8px;            /* every control and card */
+  --pill:999px;       /* chips and status pills only */
+  --tap:44px;         /* Apple HIG minimum; Material says 48 */
+
+  --ui-font:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,
+            Helvetica,Arial,sans-serif;
+
+  /* ── aliases, transitional ─────────────────────────────────────────
+     A converted page keeps its own component rules, and those rules ask
+     for the token names the old sheet used. Rather than find-and-replace
+     hundreds of them and risk a typo per page, the old names are kept
+     here pointing at the new values. An undefined custom property does
+     not fall back, it computes to nothing: var(--cream) with no --cream
+     is a transparent background and var(--ink) is inherited text, which
+     is exactly how the hamburger came to be invisible. These go with the
+     seam, when the last page has joined and the names can be swept.   */
+  --cream:var(--ground);
+  --paper:var(--ground);
+  /* --green and --greent are deliberately NOT aliased. --green is #E4EDE2,
+     a pale fill, on five pages and #5E7D67, a dark ink, on two. Claiming
+     one of those meanings in the shared sheet would repeat exactly the
+     fault this work exists to fix, and would turn the Cleans board's ready
+     tint into a dark green. The pages keep their own until the name is
+     split properly, which is the de-aliasing job still outstanding.    */
+  --green-t:var(--law-green-t);  --green-b:var(--law-green-b);
+  --greenb:var(--law-save-bdr);
+  --resgreen:var(--law-green);   --resgreen-t:var(--law-green-t);
+  --resgreen-b:var(--law-green-b);
+  --terra:var(--law-terra);      --terra-t:var(--law-terra-t);
+  --terra-b:var(--law-terra-b);
+  --resterra:var(--law-terra);   --resterra-t:var(--law-terra-t);
+  --resterra-b:var(--law-terra-b);
+  --amber:var(--law-amber);      --amberb:var(--law-amber-b);
+  --ambert:var(--law-amber-ink); --amberink:var(--law-amber-ink);
+  --red:var(--law-red);
+  --save-bg:var(--law-save-bg);  --save-bdr:var(--law-save-bdr);
+  --save-ink:var(--law-save-ink);
+  --num-font:var(--ui-font);
+  /* nala-ui.css's tier tokens, so a page that links both sheets and still
+     has rules reaching for --ctl-* keeps drawing while it is converted. */
+  --ctl-bg:var(--ground); --ctl-bdr:var(--rule); --ctl-ink:var(--ink);
+  --ctl-soft:#454540;
+
+  background:var(--ground);
+  color:var(--ink);
+  font-family:var(--ui-font);
+  -webkit-tap-highlight-color:transparent;
+  /* Double tap to zoom is a hazard on a board of tap targets. This turns
+     that gesture off while LEAVING pinch zoom alone, which is why the
+     user-scalable=no meta comes off these pages: it took pinch zoom
+     from anyone who needs it and did not do this job.               */
+  touch-action:manipulation;
+}
+
+/* ── sentence case, everywhere ───────────────────────────────────────
+   The loudest single difference between this dress and the last. Not
+   one label in Drive, Earth or Zoom is uppercase or letterspaced; the
+   look dates to Material 1 and Bootstrap 3. Where a page still asks for
+   caps, this overrides it rather than requiring every rule be found. */
+body.ui2 .seclabel, body.ui2 .stat-l, body.ui2 .legend,
+body.ui2 .btn, body.ui2 .sec > span, body.ui2 .sec a,
+body.ui2 .dnav.today, body.ui2 h1, body.ui2 .date{
+  text-transform:none; letter-spacing:0;
+}
+
+/* ── page frame ──────────────────────────────────────────────────────
+   Deliberately NOT a flex column. nala-ui.css makes body one, which is
+   the rule that reflowed pages that only wanted a button.           */
+/* Page padding is the PAGE's business and is not set here. It was, and at
+   body.ui2, which outranks every `body { padding-top: ... }` a page has
+   inside a media query: the Cleans board's landscape rule asks for 6px at
+   the top so seventeen tiles fit a 320px-tall screen, and a sheet-level
+   shorthand quietly held it at 24 and pushed the grid off the screen.  */
+body.ui2 h1{ font-size:var(--t4); font-weight:600; margin-bottom:var(--s1); }
+body.ui2 .lede{ font-size:var(--t2); color:var(--mid); line-height:1.55;
+                margin-bottom:var(--s2); max-width:58ch; }
+body.ui2 .seclabel{ font-size:var(--t2); font-weight:500; color:var(--mid);
+                    margin:var(--s5) 0 var(--s2); }
+body.ui2 .secnote{ font-size:var(--t2); color:var(--mid); line-height:1.5;
+                   margin-bottom:var(--s3); max-width:58ch; }
+
+/* ── header row ──────────────────────────────────────────────────────
+   Same shape as today: one row, in flow, controls at 40px, menu right.
+   Floating corner menus stay banned.                                 */
+body.ui2 .daterow{ display:flex; align-items:center; gap:var(--s2);
+                   margin-bottom:var(--s4); }
+/* --t3, not --t4. At 20px "Sat 29th Aug" is 151px wide, and on a 320pt
+   screen that leaves too little for Today, the two arrows and the menu:
+   the hamburger was pushed 6px off the right edge. A date can never trim
+   - the trim rule says so - so it has to fit instead. 16px is still a
+   clear step up from the 13px it was before the dress.               */
+body.ui2 .date{ flex:1; font-size:var(--t3); font-weight:600; }
+/* 36px, not the 44px tap floor: the header law in STYLEGUIDE.md rules that
+   every control in this row is 36 and tally_suite measures it. The project's
+   own rule outranks the general one.                                      */
+body.ui2 .dnav{ width:36px; height:36px; display:inline-flex; align-items:center;
+                justify-content:center; border:0; background:var(--card);
+                border-radius:var(--pill); color:var(--ink); cursor:pointer;
+                font-family:var(--ui-font); font-size:var(--t3); }
+body.ui2 .dnav.today{ width:auto; padding:0 var(--s3); font-size:var(--t2); }
+/* The corner law: the footer row sits hard against the bottom of the screen,
+   so it squares off, and only the outer lower corners round. body.ui2 .btn
+   outranks .foot .btn in nala-ui.css, so the law has to be restated here or
+   the row grows four rounded corners and floats.                          */
+body.ui2 .foot .btn{ border-radius:0; }
+body.ui2 .foot .btn:first-child{ border-bottom-left-radius:var(--r); }
+body.ui2 .foot .btn:last-child { border-bottom-right-radius:var(--r); }
+body.ui2 .dnav:disabled{ opacity:.35; cursor:default; }
+body.ui2 .dnav:active{ background:var(--accent-soft); }
+
+/* ── the hamburger and its menu ──────────────────────────────────────
+   Written against real colours, not --ctl-*, so a page with no tier
+   class still draws it. That was the whole reason for the copies.   */
+body.ui2 .navwrap{ position:relative; margin-left:auto; z-index:500; }
+body.ui2 .navbtn{ width:42px; height:36px; border:0; background:transparent;
+                  border-radius:var(--pill); display:flex; flex-direction:column;
+                  align-items:center; justify-content:center; gap:4px;
+                  cursor:pointer; -webkit-tap-highlight-color:transparent; }
+body.ui2 .navbtn:active{ background:var(--card); }
+body.ui2 .navbtn span{ display:block; width:17px; height:1.7px;
+                       background:var(--ink); border-radius:2px; }
+body.ui2 .navdrop{ display:none; position:absolute; right:0; top:42px;
+                   background:var(--ground); border:1px solid var(--rule);
+                   border-radius:var(--r); min-width:200px; padding:var(--s1) 0;
+                   box-shadow:0 2px 6px rgba(0,0,0,.06),0 10px 28px rgba(0,0,0,.10); }
+body.ui2 .navdrop.open{ display:block; }
+body.ui2 .navdrop a{ display:block; padding:var(--s3) var(--s4);
+                     font-size:var(--t2); line-height:1.3; color:var(--ink);
+                     text-decoration:none; }
+body.ui2 .navdrop a:active{ background:var(--accent-soft); }
+body.ui2 .navgrp{ display:flex; align-items:center; justify-content:space-between;
+                  gap:var(--s4); width:100%; padding:var(--s3) var(--s4);
+                  font-size:var(--t2); line-height:1.3; font-family:inherit;
+                  text-align:left; color:var(--ink); background:none; border:0;
+                  border-top:1px solid var(--rule); cursor:pointer; }
+body.ui2 .navchev{ flex:0 0 auto; color:var(--mid); transition:transform .15s ease; }
+body.ui2 .navgroup.open .navchev{ transform:rotate(180deg); }
+body.ui2 .navsub{ display:none; }
+body.ui2 .navgroup.open .navsub{ display:block; }
+body.ui2 .navsub a{ padding-left:var(--s6); }
+body.ui2 .navdrop a.navaction,
+body.ui2 .navdrop a.hasact{ display:flex; align-items:center;
+                            justify-content:space-between; gap:var(--s4); }
+body.ui2 .navmark{ display:inline-flex; flex:0 0 auto; }
+body.ui2 .navmark.on{ color:#3F7A52; }
+body.ui2 .navmark.off{ color:#9A9A92; }
+body.ui2 .navnote{ flex:0 0 auto; font-size:var(--t1); color:var(--mid); }
+body.ui2 .navdrop a.signout{ border-top:1px solid var(--rule);
+                             margin-top:var(--s1); padding-top:var(--s3);
+                             color:var(--mid); }
+body.ui2 .navbadge{ flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
+                    border-radius:var(--pill); background:var(--accent);
+                    color:var(--accent-ink); font-size:var(--t1);
+                    display:inline-flex; align-items:center; justify-content:center; }
+
+/* ── buttons · the button law, redressed but not rewritten ───────────
+   One solid primary per surface; quiet is secondary; destructive wears
+   terracotta outline and always asks first. Only the dress changed:
+   the solid is the accent rather than ink, and quiet is a fill rather
+   than an outline, so a screen of secondary actions stops reading as a
+   screen of identical bordered rectangles.                          */
+body.ui2 .btn{ display:inline-flex; align-items:center; justify-content:center;
+               width:100%; padding:var(--s3) var(--s4); min-height:var(--tap);
+               border:0; border-radius:var(--r); background:var(--card);
+               color:var(--ink); font-family:var(--ui-font); font-size:var(--t3);
+               font-weight:500; cursor:pointer; text-decoration:none; }
+/* ── the four roles, and there are only four ───────────────────────────
+   Ruled 29 Aug, after three screenshots in which the primary action was
+   green on Reservations, black on Spa and absent on Front Desk, where
+   Save, Close and Confirm were the same button three times.
+
+   PRIMARY      the one thing a surface is for. Solid accent. One per
+                surface. Never confirms: if it feels like it needs a
+                warning the label is wrong, not the dialog missing.
+   SECONDARY    everything else that writes nothing. Quiet grey fill.
+   DESTRUCTIVE  destroys or walks back something a guest holds.
+                Terracotta outline, and it always asks first.
+   SELECTED     a pill you picked. Grey fill, ink border. Not an action.
+
+   A page may set the LAYOUT of the row its buttons sit in. It may not
+   dress them again.                                                   */
+body.ui2 .btn.solid,
+body.ui2 .is-primary    { background:var(--accent); color:var(--accent-ink);
+                          border:0; font-weight:500; }
+body.ui2 .is-secondary,
+body.ui2 .opt.quiet,
+body.ui2 .cbtn.quiet,
+body.ui2 .pbtn.ghost    { background:var(--card); color:var(--ink); border:0; }
+body.ui2 .is-destructive{ background:transparent; color:var(--law-terra);
+                          border:1px solid var(--law-terra-b); }
+/* Each page's own name for "the primary action on this surface". They are
+   aliases, not new dresses: one fill, defined once above.              */
+body.ui2 .pubbtn, body.ui2 .savebtn, body.ui2 .addbtn,
+body.ui2 .cbtn.solid, body.ui2 .pbtn.solid, body.ui2 .opt.solid,
+body.ui2 .sum-btns button.go, body.ui2 .selbtn.comb
+                        { background:var(--accent); color:var(--accent-ink);
+                          border:0; font-weight:500; }
+/* Armed to delete. It was solid red on two pages, and red is failure's
+   alone: a delete waiting for a second press is not a failure, it is a
+   destructive action mid-confirmation.                                */
+body.ui2 .btn.arm, body.ui2 .mtog.mdel, body.ui2 .rmbtn.arm,
+body.ui2 .del.arm       { background:transparent; color:var(--law-terra);
+                          border:1px solid var(--law-terra); font-weight:500; }
+/* Selected, everywhere: chips, segments, pickers, toggles, day pills. */
+body.ui2 .is-selected,
+body.ui2 .chip.on, body.ui2 .pax.on, body.ui2 .seg button.on,
+body.ui2 .rmp.on, body.ui2 .grp button.on, body.ui2 .sfbtn.on,
+body.ui2 .knob button.on, body.ui2 .sec a.active,
+body.ui2 .opt.on, body.ui2 .allbtn.on
+                        { background:var(--sel-bg); color:var(--ink);
+                          border-color:var(--sel-bdr); font-weight:500; }
+/* Reservations' state setters and its select bar show what the record
+   will BECOME, in the colour law's own dining green, declined terracotta
+   and vacant slate. Grey would throw the meaning away to win an argument
+   about consistency.
+
+   .opt.din is every button carrying id oIn, whatever its label. It writes
+   status:'in' on the Add reservation sheet exactly as it does on a villa
+   tile, so "Add" is green because adding a reservation IS marking them
+   dining. Ruled by the owner, 29 Aug, after a first split that went by
+   label and made the same write look like two different actions.     */
+body.ui2 .opt.din, body.ui2 .opt.out, body.ui2 .opt.vac,
+body.ui2 .selbtn.din, body.ui2 .selbtn.out, body.ui2 .selbtn.vac
+                        { color:#fff; border:0; font-weight:500; }
+body.ui2 .btn.ghost{ background:transparent; border:1px solid var(--rule);
+                     color:var(--ink); }
+body.ui2 .btn.terra{ background:transparent; border:1px solid var(--law-terra-b);
+                     color:var(--law-terra); }
+body.ui2 .btn.warn { background:transparent; border:1px solid var(--law-terra-b);
+                     color:var(--law-terra); }
+body.ui2 .btn:disabled{ opacity:.35; cursor:default; }
+body.ui2 .btn:active{ filter:brightness(.94); }
+
+/* What a press says back. Grey while writing is the colour law's "sent,
+   waiting on the other side"; green is "done", and is worn only after
+   the write. Saved rests until there is more to save.               */
+body.ui2 .btn.saving, body.ui2 .btn.saved{ opacity:1; cursor:default; }
+body.ui2 .btn.saving{ background:var(--law-wait); color:var(--mid); }
+body.ui2 .btn.saved { background:var(--law-save-bg); color:var(--law-save-ink); }
+/* Failure is words, in red, under the button that failed. Never a red
+   fill: a red tile reads as a state the record is in, and the record is
+   simply unsaved.                                                    */
+body.ui2 .savefail{ display:none; font-size:var(--t2); line-height:1.45;
+                    color:var(--law-red); margin-top:var(--s2); }
+body.ui2 .savefail.show{ display:block; }
+
+/* ── the trim rule: which field gives way when a row will not fit ─────
+   Ruled by the owner, 29 Aug, off a Pre-arrival SMS board where a long
+   name pushed the phone number, the confidence tick and the edit pencil
+   off the right edge. "Chloe Roveglia +61448925599 ." and "Amanda
+   Sinclair +614004519..." - the two things reception needed were the
+   ones that went.
+
+   THE NAME IS THE ONLY FIELD THAT TRIMS. It is the one that survives
+   being half shown: "Amanda Sincl..." on villa 14 is still Amanda on
+   villa 14. Nothing else in a row is like that.
+
+   A NUMBER NEVER TRIMS. Half a phone number is not a phone number, and
+   worse, it looks like one - somebody will read it out. Same for a time
+   or a date: they are right or they are useless.
+
+   A CONTROL NEVER TRIMS. A pencil clipped to a couple of pixels is not
+   a control, it is a thing that cannot be pressed and does not look
+   like it was meant to be.
+
+   The fault was structural rather than a width: the ellipsis sat on the
+   LINE, which held the name and everything after it, so it ate whichever
+   field happened to be last. The name needs to be its own box for the
+   ellipsis to have anything to bite.                                  */
+body.ui2 .trimrow      { display:flex; align-items:baseline; min-width:0; }
+body.ui2 .trimrow > .trim {
+  flex:1 1 auto; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* Everything else in the line keeps its full width and is never squeezed. */
+body.ui2 .trimrow > :not(.trim) { flex:0 0 auto; }
+
+/* ── rows and lists ──────────────────────────────────────────────────
+   Separated by an inset hairline rather than boxed. A tinted row keeps
+   its own corner, because a tint that runs to the screen edge stops
+   reading as one record.                                             */
+body.ui2 .rowlist > * + *{ border-top:1px solid var(--rule); }
+
+/* ── the access message ──────────────────────────────────────────────
+   Plain typography, never a bordered or filled box: that dress belongs
+   to buttons, and a message wearing it reads as something to tap.   */
+body.ui2 .noaccess{ display:none; font-size:var(--t3); line-height:1.5;
+                    color:var(--ink); max-width:52ch; margin:var(--s5) 0; }
+body.ui2 .noaccess.show{ display:block; }
+body.ui2 .noaccess .na-retry{ margin-top:var(--s4); display:block;
+                              width:max-content; }
+
+/* ── stats · plain type, never boxed ─────────────────────────────── */
+body.ui2 .stats{ display:flex; justify-content:center; gap:var(--s6);
+                 margin:var(--s4) 0 var(--s2); }
+body.ui2 .stat{ text-align:center; }
+body.ui2 .stat-n{ display:block; font-size:var(--t5); line-height:1;
+                  color:var(--ink); font-variant-numeric:tabular-nums; }
+body.ui2 .stat-l{ display:block; font-size:var(--t2); color:var(--mid);
+                  margin-top:var(--s1); }
+body.ui2 .stat.warn .stat-n{ color:var(--law-red); }
+
+/* ── inputs ──────────────────────────────────────────────────────────
+   16px minimum, always: anything smaller and iOS zooms the page on
+   focus and does not zoom back.                                      */
+body.ui2 input, body.ui2 select, body.ui2 textarea{
+  font-family:var(--ui-font); font-size:var(--t3); color:var(--ink);
+  background:#fff; border:1px solid var(--rule); border-radius:var(--r);
+  padding:var(--s3); width:100%; min-height:var(--tap); }
+body.ui2 input:focus, body.ui2 textarea:focus, body.ui2 select:focus{
+  outline:none; border-color:var(--accent); }
+
+/* ── keyboard focus ──────────────────────────────────────────────────
+   Nothing in the app has this today: zero pages use :focus-visible and
+   six declare outline:none. A keyboard or switch user currently has no
+   idea where they are.                                               */
+body.ui2 :focus-visible{ outline:2px solid var(--accent); outline-offset:2px;
+                         border-radius:var(--r); }
+
+@media (prefers-reduced-motion:reduce){
+  body.ui2 *{ transition:none !important; }
+}
+
+/* keep controls off paper */
+@media print{
+  body.ui2 .navwrap, body.ui2 .foot, body.ui2 .dnav{ display:none !important; }
+}
+
+/* nala-ui.css, inlined so this mock stands alone */
+/* NALA staff UI - shared controls. See STYLEGUIDE.md.
+   Pages declare <body class="tier-app"> or <body class="tier-print">.  */
+
+:root {
+  --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA; --red:#A8321E;
+  /* The destructive dress's colours (the button law, STYLEGUIDE.md) and the
+     green a save lands on. Named --save-* rather than --green-*: four pages
+     already define a --green of their own, two of them to different values,
+     and a page's :root wins over this file's. A token a page can silently
+     redefine is not a token, it is a coincidence.                        */
+  --terra:#9E6455; --terra-b:rgba(184,106,90,.45); --terra-t:rgba(184,106,90,.16);
+  --save-bg:#E4EDE2; --save-bdr:#7E937A; --save-ink:#5E7D67;
+  /* Staff tools use the Apple system font: it is what every other app on the
+     phone uses, its figures line up, and it is built for small sizes. The
+     guest pages do NOT use these tokens - they carry the brand and set their
+     own font, so this can change without touching them.                  */
+  --ui-font:-apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto,
+            Helvetica, Arial, sans-serif;
+  --num-font:var(--ui-font);
+}
+
+/* Double tap to zoom is a hazard on a board of tap targets: a quick second
+   tap on a villa tile zooms the page instead of doing the thing. This turns
+   that gesture off while LEAVING pinch zoom alone, so nobody who needs to
+   magnify the page loses it. The old user-scalable=no meta does not do this;
+   iOS ignores it on purpose.                                             */
+body.tier-app, body.tier-print { touch-action:manipulation; }
+
+/* tier surfaces used by controls */
+/* --ctl-soft is the solid button's RESTING fill: a step off full ink, so the
+   press has somewhere darker to go. Ruled by the owner, 27 Aug - pressed and
+   idle were the same pixels before it.                                    */
+.tier-app   { --ctl-bg:var(--cream); --ctl-bdr:var(--rule); --ctl-ink:var(--ink);
+              --ctl-soft:#454540; }
+.tier-print { --ctl-bg:#fff;         --ctl-bdr:#ddd;        --ctl-ink:#111;
+              --ctl-soft:#3A3A38; }
+
+/* ── one header row: [Today] [<] date [>] ....... [menu] ── */
+.navwrap { position:relative; margin-left:auto; z-index:500; font-family:var(--ui-font); }
+.navbtn  { border:1px solid var(--ctl-bdr); background:var(--ctl-bg);
+           border-radius:8px; cursor:pointer; display:flex; flex-direction:column;
+           align-items:center; justify-content:center; gap:4px; padding:0;
+           -webkit-tap-highlight-color:transparent; }
+.navbtn span { display:block; width:16px; height:1.6px; background:var(--ctl-ink); }
+.navdrop { display:none; position:absolute; right:0; top:42px; background:var(--ctl-bg);
+           border:1px solid var(--ctl-bdr); border-radius:9px; min-width:176px;
+           box-shadow:0 4px 14px rgba(0,0,0,.09); padding:5px 0; }
+.navdrop.open { display:block; }
+/* Menu rows read as ordinary text - the owner's word, 26 Aug: no caps, no
+   tracking, the standard UI font at a size a thumb can hit. One padding and
+   line-height shared with .navgrp, so links and submenu headers sit as one
+   list. */
+.navdrop a { display:block; padding:10px 18px; font-size:14px; line-height:18px;
+             color:var(--ctl-ink); text-decoration:none; white-space:nowrap; }
+/* Signing out is an action, not a destination, so it sits below a rule rather
+   than reading as one more page in the list. It is never filtered by role:
+   every login has to be able to get out.                                  */
+/* Submenus instead of dividers, 26 Aug: seventeen rows under two grey
+   headings was too many to scan for one page. Print, SMS and Settings fold
+   instead. The header is a real button dressed as a row - it IS a choice
+   now, unlike the old signpost - and the chevron says so, pointing down
+   while there is more, rolling over once it is out. */
+.navgrp { display:flex; align-items:center; justify-content:space-between; gap:14px;
+          width:100%; padding:10px 18px; font-size:14px; line-height:18px;
+          font-family:inherit; text-align:left; color:var(--ctl-ink);
+          background:none; border:0; border-top:1px solid var(--ctl-bdr);
+          cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.navchev { flex:0 0 auto; color:var(--mid); transition:transform .15s ease; }
+.navgroup.open .navchev { transform:rotate(180deg); }
+.navsub { display:none; }
+.navgroup.open .navsub { display:block; }
+/* Indented under their header, so an open submenu still reads as one menu. */
+.navsub a { padding-left:32px; }
+.navdrop a.navaction { display:flex; align-items:center; justify-content:space-between;
+                      gap:14px; color:var(--ctl-ink); }
+/* The mark carries the state, so it has to be legible at a glance and never
+   read as another thing to press. Green for on, grey for off: off is a choice
+   somebody made, not a fault, and a red cross would say otherwise. */
+.navmark { display:inline-flex; flex:0 0 auto; }
+.navmark.on  { color:#3F7A52; }
+.navmark.off { color:#B0B0A8; }
+/* Blocked and unavailable get words, because no mark can say "you cannot fix
+   this from here". */
+.navnote { flex:0 0 auto; font-size:11px; color:#B0B0A8; }
+.navdrop a.signout { border-top:1px solid var(--ctl-bdr); margin-top:5px;
+                     padding-top:13px; color:var(--mid); }
+/* ── the action icon ─────────────────────────────────────────
+   A number beside a menu entry meaning: something in there waits on you.
+   Amber, the colour law's word for "attention, chase this", and it stays
+   until the queue it counts is empty, because it is recomputed from the
+   queue itself on every load and never stored. First carried by Spa for
+   suggestions awaiting the desk; any entry may carry one. */
+.navdrop a.hasact { display:flex; align-items:center; justify-content:space-between;
+                    gap:14px; }
+/* Solid gold rather than the pastel tint: the first live look, 25 Aug,
+   found the tinted version invisible at arm's length, and a count nobody
+   sees is a queue nobody clears. Still the amber family - attention, not
+   failure. */
+.navbadge { flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
+            border-radius:10px; background:#C29A55; color:#FFFDF8;
+            font-size:11px; letter-spacing:0; font-weight:600;
+            display:inline-flex; align-items:center; justify-content:center; }
+
+/* ── floating footer ──────────────────────────────────────
+   sticky pins it while scrolling long pages; the flex column
+   below pins it to the screen bottom on short pages too      */
+body { min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
+body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
+.wrap > .foot, body > .foot { margin-top:auto; }
+.foot { position:sticky; bottom:0; z-index:40; display:flex; gap:8px; flex-wrap:wrap;
+        background:var(--ctl-bg); border-top:1px solid var(--ctl-bdr); margin-top:18px;
+        padding:10px 0 calc(10px + env(safe-area-inset-bottom)); }
+/* The corner law outranks the 8px the free-standing button took on 27 Aug:
+   this row sits hard against the bottom of the screen, so it squares off
+   again and softens only the two corners that land in the phone's own
+   rounded corners.                                                        */
+.foot .btn { flex:1; text-align:center; white-space:nowrap; border-radius:0; }
+.foot .btn:first-child { border-bottom-left-radius:8px; }
+.foot .btn:last-child  { border-bottom-right-radius:8px; }
+
+/* ── standard header: kicker, then one date row ─────── */
+.daterow { display:flex; align-items:center; gap:8px;
+           margin-bottom:12px; font-family:var(--ui-font); }
+.daterow .date { font-size:13px; font-weight:bold; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--ctl-ink); white-space:nowrap;
+                 padding:0 2px; }
+.dnav { width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center;
+        background:var(--ctl-bg); border:1px solid var(--ctl-bdr); border-radius:7px;
+        font-size:16px; line-height:1; color:var(--ctl-ink); cursor:pointer; padding:0;
+        -webkit-tap-highlight-color:transparent; }
+.dnav:active { background:var(--ctl-bdr); }
+.dnav.today { width:auto; padding:0 12px; font-size:9.5px; letter-spacing:.13em;
+              text-transform:uppercase; }
+.dnav.today:disabled { opacity:.35; cursor:default; }
+.navbtn { width:42px; height:36px; }
+/* page name on paper only - the screen row replaces it */
+.printkick { display:none; }
+@media print { .printkick { display:block; text-align:center; font-family:var(--ui-font);
+  font-size:10px; letter-spacing:.34em; text-transform:uppercase; color:#666;
+  margin-bottom:8px; } }
+
+/* ── information is plain typography, never boxed ───── */
+.stats { display:flex; justify-content:center; gap:36px; margin:16px 0 6px;
+         font-family:var(--ui-font); }
+.stat { text-align:center; }
+.stat-n { display:block; font-size:27px; line-height:1; color:var(--ctl-ink);
+          font-family:var(--num-font); }
+.stat-l { display:block; font-size:8px; letter-spacing:.2em; text-transform:uppercase;
+          color:var(--mid); margin-top:6px; }
+.stat.warn .stat-n { color:var(--red); }
+
+/* ── the button dress ─────────────────────────────────────
+   One quiet dress and one solid, here rather than pasted per page: five
+   pages emitted class="btn" with no rule behind it and the no-access
+   Try again stood as a bare browser button (found 27 Aug), while the
+   pages that did paste the dress had drifted apart - 10px against 11px,
+   .15em against .14em, one all-corner radius against the footer corner
+   law. The dress lives here; layout (flex, width) stays with each page's
+   container rules, and a page's own variants (.arm, .warn, .active)
+   stay its own. Per the button law (STYLEGUIDE.md): .solid is THE
+   primary, at most one per surface.                                    */
+.btn { padding:13px; text-align:center; border:1px solid var(--ctl-ink);
+       border-radius:8px;
+       background:transparent; color:var(--ctl-ink);
+       font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
+       text-transform:uppercase; cursor:pointer; white-space:nowrap;
+       text-decoration:none; -webkit-tap-highlight-color:transparent;
+       transition:background .08s ease, color .08s ease, border-color .08s ease; }
+.btn.solid { background:var(--ctl-soft); border-color:var(--ctl-soft);
+             color:var(--ctl-bg); }
+/* The destructive dress, per the button law: outline only, never a fill and
+   never red - red is failure's alone. It always confirms before writing. */
+.btn.terra { border-color:var(--terra-b); color:var(--terra); background:transparent; }
+.btn:disabled { opacity:.35; cursor:default; }
+/* The print sheets' own pair, identical on all three until it lived here:
+   solid ink on white paper stock, a size down from the boards. It sits
+   ABOVE the press and save states rather than below them: it matches on
+   the same specificity as .btn.saved, so read the other way round it won
+   and a print-tier save would have gone grey in the green's place.     */
+.tier-print .btn { padding:10px 20px; background:var(--ctl-soft); color:#fff;
+                   border:none; font-size:10px; letter-spacing:.15em; }
+.tier-print .btn.ghost { background:#fff; color:#111; border:1px solid #111; }
+
+/* ── the press ────────────────────────────────────────────
+   Every button answers the finger. Until 27 Aug none of them did: the only
+   pressed state in this file belonged to the date arrows, so on six boards
+   a tap and a miss looked identical and a slow write invited a second tap
+   that wrote twice.                                                      */
+.btn:active { background:var(--ctl-bdr); }
+.btn.solid:active { background:var(--ctl-ink); border-color:var(--ctl-ink); }
+.btn.terra:active { background:var(--terra-t); }
+/* The print sheets' Print button is dark with white text, so the boards'
+   pale press would erase its label. It darkens instead; only the outlined
+   Refresh beside it takes the pale one.                                 */
+.tier-print .btn:active { background:var(--ctl-ink); }
+.tier-print .btn.ghost:active { background:var(--ctl-bdr); }
+
+/* ── what a save says back ────────────────────────────────
+   Writing, then landed. The grey is the colour law's "sent, waiting on the
+   other side"; the green is its "done, confirmed", and it is worn only
+   AFTER the write - a button green at rest claims the record is clean
+   before anyone has pressed it. Both states are disabled, and both undo
+   the disabled dimming: a washed out answer is not an answer.
+
+   Ruled by the owner, 27 Aug: the button RESTS at Saved until there is
+   more to save. It is re-armed by armSave() on the next edit, never by a
+   timer - a label that times out goes back to saying "Save" about a
+   record with nothing left to save.                                     */
+.btn.saving, .btn.saved { opacity:1; cursor:default; }
+.btn.saving { background:rgba(28,28,26,.045); border-color:var(--ctl-bdr);
+              color:var(--mid); }
+.btn.saved  { background:var(--save-bg); border-color:var(--save-bdr);
+              color:var(--save-ink); }
+/* Failure is words, in red, under the button that failed - never a red
+   fill. Red is failure's colour but a whole red tile reads as a state the
+   record is in, and the record is simply unsaved.                       */
+.savefail { display:none; font-family:var(--ui-font); font-size:11px;
+            line-height:1.45; color:var(--red); margin-top:8px; }
+.savefail.show { display:block; }
+
+/* ── access message ───────────────────────────────────────
+   Stands in for a board the signed-in login may not see. Plain typography,
+   never a bordered or filled box: that dress belongs to buttons alone, and
+   a message wearing it reads as something to tap. One statement, not a
+   fact stacked under a fact. The retry action IS a button, so it wears
+   the .btn above.                                                        */
+.noaccess { display:none; font-family:var(--ui-font); font-size:15px;
+            line-height:1.5; color:var(--ctl-ink); max-width:420px;
+            margin:24px 0; }
+.noaccess.show { display:block; }
+.noaccess .na-retry { margin-top:16px; display:block; width:max-content; }
+
+/* keep controls off paper */
+@media print {
+  .navwrap, .foot, .dnav { display:none !important; }
+  body { display:block; min-height:0; }   /* flex column off paper */
+}
+
+/* front-desk.html's own page style, verbatim - rows, sheet, key, run */
+
+  /* This page's OWN colours, restored 29 Aug. The first conversion
+     dropped each page's :root wholesale to remove the tokens the shared
+     sheet owns, and took these with them. An undefined custom property
+     does not fall back, it computes to nothing: fill:var(--dine) became
+     a black fork and color:var(--dine) a black stat, silently.
+     --green is not in the shared sheet on purpose - it is a pale fill on
+     five pages and a dark ink on two - so it lives here.               */
+  :root { --dine:#5E7D67; --green:#E4EDE2; --nodine:#9E6455 }
+
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
+  
+
+  .seclabel { font-size:var(--t2);
+              color:var(--mid); margin:22px 0 8px; }
+
+  /* One arrival. The whole row is the control surface, the same idea as the
+     villa tile grid, which is the documented exception to "a bordered
+     rectangle is a button". */
+  .arr { display:flex; align-items:center; gap:12px; width:100%;
+         background:none; border:1px solid var(--rule); border-radius:8px;
+         padding:11px 13px; margin-bottom:7px; text-align:left;
+         font-family:var(--ui-font); color:inherit; cursor:pointer; }
+
+  /* The villa number is how reception finds the guest standing in front of
+     them, so it carries tile weight. 20 on the type scale. */
+  .arr-v { font-size:var(--t4); min-width:30px; text-align:center; }
+  .arr-mid { flex:1; min-width:0; }
+  /* The party mark moved up here from the stay line on 31 Aug, to give the
+     row back the width the massage mark now spends. It is flex:0 0 auto so
+     it never truncates - a half-written villa number is worse than none -
+     and the name takes the ellipsis instead.
+
+     It keeps the full "with villa 15", the owner's ruling the same day. The
+     short form was tried because at 320 the word "with" costs enough of the
+     name that Michel FAY reads "Mic...", and he ruled that the phrase has to
+     read as a phrase. So at 320 the name clips early on a party booking,
+     deliberately: the villa number to its left is how reception finds the
+     guest anyway, and both rows of a party carry it. */
+  .arr-top { display:flex; align-items:baseline; gap:8px; }
+  /* flex:0 1 auto, NOT flex:1. With flex:1 the name grew to fill the row and
+     shoved the mark against the right edge, so it read as a right-aligned
+     column instead of a phrase following the name. Now the name is its own
+     width and only shrinks when the row runs out. */
+  .arr-top .arr-n { flex:0 1 auto; min-width:0; }
+  .arr-with { flex:0 0 auto; font-size:var(--t2); color:var(--mid);
+              white-space:nowrap; }
+  .arr-n { font-size:var(--t3); white-space:nowrap; overflow:hidden;
+           text-overflow:ellipsis; }
+  /* The number, its confidence mark and the pencil, as the Pre-arrival SMS
+     page draws them and from the same builder. On its own line rather than
+     beside the name: this row also carries the fork and the link icons, so
+     the name line clips at phone width and a clipped pencil cannot be
+     tapped. ok wears --dine, the same ink the SMS page's --resgreen is. */
+  .arr-p { font-size:var(--t2); color:var(--mid); margin-top:2px; }
+  .arr-p .ph { font-weight:normal; }
+  .arr-p .conf { margin-left:4px; }
+  .arr-p .conf.ok { color:var(--dine); }
+  .arr-p .conf.un { color:var(--mid); }
+  .arr-p .pen { font-size:var(--t2); color:var(--mid); margin-left:5px;
+                padding:2px 4px; cursor:pointer; }
+  /* Stay dates as the styleguide sets them: Tue 11-Fri 14. No ordinal, month
+     omitted, one line, because a wrapped range doubles the row height. */
+  .arr-s { font-size:var(--t2); color:var(--mid); margin-top:2px; white-space:nowrap;
+           overflow:hidden; text-overflow:ellipsis; }
+  /* When they are getting here is what reception plans the afternoon around,
+     so it does not read as quietly as the stay length beside it. */
+  .arr-s .eta { font-size:var(--t2); font-weight:600; color:var(--ink); }
+  /* The count reads in the row's own amber, so it is the same fact as the
+     tint said louder rather than a second signal to decode. */
+
+  /* Confirmed rows recede but stay legible: reception still has to find a
+     guest who checked in an hour ago. */
+  .arr.is-done { opacity:.68; }
+
+  /* Four stats rather than two, so they sit closer than the shared default. */
+  .stats { gap:22px; }
+  /* The same three colours the fork icons use, so the number and the row it
+     counts are read as one thing. */
+  .stat-n.dine   { color:var(--dine); }
+  .stat-n.nodine { color:var(--nodine); }
+  .stat-n.unsure { color:var(--mid); }
+  /* Arrived is a fraction: the number alone says nothing without the total,
+     and reception is watching one climb towards the other. */
+  .stat-n .of { font-size:var(--t3); color:var(--mid); }
+
+  /* The summary drops out of the row it belongs to, so it is inset and shares
+     the row's left edge rather than floating as its own card. */
+  /* Green, always, and that is not a lost scope: a summary only opens on a
+     completed row (see the tap handler), so the only row it can hang off is
+     already green. Grey and amber open the form instead. */
+  .sum { border:1px solid rgba(122,160,130,.34); border-top:none;
+         border-radius:0 0 8px 8px; background:rgba(122,160,130,.11);
+         margin:-8px 0 7px; padding:12px 13px 13px; }
+  .sum-r { display:flex; gap:10px; font-size:var(--t2); line-height:1.5;
+           padding:3px 0; align-items:baseline; }
+  .sum-l { flex:0 0 88px; font-size:var(--t1);
+           color:var(--mid); padding-top:3px; }
+  .sum-v { flex:1; min-width:0; }
+  .sum-v.none { color:var(--mid); font-style:italic; }
+  .sum-btns { display:flex; gap:7px; margin-top:12px; }
+  .sum-btns + .sum-btns { margin-top:7px; }
+  .sum-btns button.wide { flex:1 1 100%; }
+  .sum-btns button { flex:1; padding:12px 0; border:1px solid var(--rule);
+                     border-radius:6px; font-family:var(--ui-font); font-size:var(--t2); cursor:pointer;
+                     background:transparent; color:var(--mid); }
+  .sum-btns button.go { background:var(--green); border-color:var(--greenb);
+                        color:var(--ink); }
+  /* The row a summary is hanging from keeps its top corners only. */
+  .arr.open { border-radius:8px 8px 0 0; margin-bottom:8px; }
+
+  /* Whether they are eating, readable without opening anything. Only on rows
+     that have a form: there is nothing to report about a guest who has not
+     answered, and an icon there would be an answer we do not have. */
+  /* 28px, up from 19 on 28 Aug: the owner could not read it at a glance,
+     and it was competing with a 20px villa number while carrying the one
+     fact the row exists to show at speed - whether the kitchen is cooking
+     for this villa tonight. The row has the height for it already; nothing
+     else on the row moves. */
+  .fork { width:28px; height:28px; flex:0 0 28px; opacity:1; }
+  .fork svg { width:100%; height:100%; display:block; }
+  .fork.in  svg { fill:var(--dine); }
+  .fork.out svg { fill:var(--nodine); }
+  /* There is no .fork.un any more: an unanswered booking draws no fork.
+     See forkFor. */
+
+  /* The massage mark, 31 Aug. A lotus, from the owner's own reference, which
+     was a pair of hands cradling one. Both were drawn and mocked at 28px:
+     the hands reduce to a shape that reads as a tulip, and the two together
+     to a knot. The flower alone survives the size and holds the four state
+     colours cleanly, and the owner offered it as the alternative.
+
+     Stroked, not filled, which is how the reference is drawn and how .seen
+     beside it is already drawn. It sits at the fork's 28px so the two marks
+     read as a pair of facts about one guest rather than a big one and a
+     small one.
+
+     The colours are the law's, and the law is why none of them is red. Red
+     is failure and an allergy; a declined massage is neither, it is an
+     answer. Terracotta is the law's word for a negative answer, it is what
+     the spa board already draws for exactly this record, and it is what the
+     fork beside it already wears for "not dining". Ruled by the owner
+     31 Aug, choosing terracotta over red for that reason. */
+  .lotus { width:28px; height:28px; flex:0 0 28px; }
+  .lotus svg { width:100%; height:100%; display:block; fill:none;
+               stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+  /* Grey is the law's own --mid softened, the way .seen above already
+     softens it, rather than a new hex nobody else knows. Amber is the
+     literal this page's .ans already uses: an undefined custom property
+     computes to nothing here, the 29 Aug lesson at the top of this sheet. */
+  .lotus.wait { opacity:.55; }
+  .lotus.wait svg { stroke:var(--mid); }
+  .lotus.sugg svg { stroke:#8A6A2F; }
+  .lotus.done svg { stroke:var(--dine); }
+  .lotus.decl svg { stroke:var(--nodine); }
+
+  /* Opened the message and did not finish. Outlined rather than filled, so it
+     reads as the absence of an answer rather than as one.
+
+     Same icon as the Reservations board, deliberately. It means the same thing
+     in both places: this guest received what we sent and has not replied. The
+     two boards track DIFFERENT messages, the nightly dinner invite there and
+     the pre-arrival link here, so an icon on one says nothing about the other.
+     Any future message asking a guest for something follows the same rule, and
+     the question each time is which screen the answer lands on, because that
+     is the screen the icon belongs on. */
+  .seen { width:15px; height:15px; flex:0 0 15px; opacity:.55; }
+  .seen svg { width:100%; height:100%; display:block; fill:none; stroke:var(--mid); }
+
+  /* The tint is how complete the answers are, ruled by the owner 26 Aug:
+     grey when nobody has answered anything, amber when some answers exist,
+     green only when every question the desk settles holds one. Grey is the
+     colour law's light grey fill - unknown promises nothing - because an
+     untouched guest is not work in progress, they are not started. It used
+     to be amber, which made a row nobody had touched read the same as one
+     half done. Kept very light so the villa number and the name still carry
+     the row. */
+  .arr.done-form { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
+  .arr.todo-form { background:rgba(28,28,26,.045); border-color:var(--rule); }
+  /* Started and not finished: amber, the colour law's in-progress, with a
+     solid left edge to say somebody has met it halfway. */
+  .arr.part-form { background:rgba(194,154,85,.11); border-color:rgba(194,154,85,.36);
+                   border-left:3px solid rgba(194,154,85,.85); }
+
+  .empty { font-size:var(--t3); color:var(--mid); font-style:italic; padding:4px 0 2px; }
+  .spacer { height:40px; }
+  #errBar { display:none; background:var(--red); color:#fff; font-size:var(--t2);
+            padding:9px 12px; border-radius:var(--r); margin-top:12px; }
+  #errBar.show { display:block; }
+
+  /* Sheet chrome and controls, matching tally.html exactly. Copied rather
+     than reinvented: two screens with their own idea of a chip is how the
+     app starts looking like two apps. */
+  .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35);
+              display:none; align-items:flex-end; justify-content:center; z-index:10; }
+  .backdrop.show { display:flex; }
+  .sheet { width:100%; max-width:520px; background:var(--cream);
+           padding:26px 24px 34px; border-top:1px solid var(--rule);
+           max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .sheet h3 { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); font-weight:normal;
+              text-align:center; margin-bottom:18px; }
+  /* ── the form's shape ────────────────────────────────────────────────
+     Reported by the owner, 29 Aug: the sheet was one ribbon of identical
+     grey captions with nothing to say where a subject ended. Two problems.
+     The labels were centred, so the eye had no edge to run down while the
+     rows beneath them started at the left. And the rhythm was 16 above and
+     8 below, which is barely a ratio at all: a label sat almost as close to
+     the answer above it as to its own.
+
+     A topic heading now carries a hairline and real space, a field label
+     sits left with a 3:1 rhythm, and a label nested inside a topic steps
+     down again so the hierarchy reads at a glance.                     */
+  .sheet-group { font-family:var(--ui-font); font-size:var(--t3); font-weight:600;
+                 color:var(--ink); text-align:left;
+                 margin:var(--s6) 0 var(--s3); padding-top:var(--s4);
+                 border-top:1px solid var(--rule); }
+  .sheet-group.first { border-top:0; padding-top:0; margin-top:var(--s4); }
+  .sheet-label { font-family:var(--ui-font); font-size:var(--t2); font-weight:500;
+                 color:var(--mid); text-align:left;
+                 margin:var(--s5) 0 var(--s2); }
+  /* A heading is already the space; the label under it does not add more. */
+  .sheet-group + .sheet-label { margin-top:0; }
+  /* Nested under a topic that already has a heading. */
+  .sheet-label.sub { font-weight:400; margin-top:var(--s3); }
+  .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid transparent;
+         border-radius:6px; font-family:var(--ui-font); font-size:var(--t2); color:var(--ink);
+         cursor:pointer; }
+  .opt.solid { background:var(--green); border-color:var(--greenb); }
+  .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
+  /* The button law (STYLEGUIDE.md): a control that walks back something the
+     guest was told wears terracotta outline and asks first. Marking a form
+     incomplete puts the guest back into To send on Pre-arrival SMS, where
+     they can be messaged the link again, so it is that kind of button. */
+  .opt.terra { background:transparent; border-color:var(--terra-b); color:var(--terra); }
+  .opt.terra:active { background:var(--terra-t); }
+  .opt:disabled { opacity:.4; cursor:default; }
+  /* Why the primary is unavailable, said rather than left to be guessed at. */
+  .opt-why { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
+             text-align:center; margin:-4px 0 10px; line-height:1.45; }
+  .seg { display:flex; gap:6px; margin:2px 0 4px; }
+  .seg button { flex:1; padding:11px 0; border:1px solid var(--rule); background:transparent;
+                font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); cursor:pointer; border-radius:6px; }
+  .seg button.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  /* An answer that WAS chosen and has just been taken off. The fill goes,
+     the dark border stays, so a deselect made by accident is visible as a
+     gap where an answer used to be rather than as a blank nobody can tell
+     from never-asked. Asked for by the owner 28 Aug.
+
+     It lasts only as long as the sheet is open, which is deliberate and
+     is the smaller half of the fix: the desk's answers are written into
+     the guest's own fields, so once a deselect is SAVED the record no
+     longer holds what was there before and there is nothing left to draw.
+     Keeping it past a save means the desk's answers sitting beside the
+     guest's rather than in them - the arriveApproved shape - which is its
+     own change and was left for when it is wanted. */
+  .seg button.was, .chip.was { border-color:var(--ink); color:var(--ink); }
+  .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 4px; }
+  .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
+         font-family:var(--ui-font); font-size:var(--t3); color:var(--ink);
+         cursor:pointer; border-radius:var(--pill); }
+  .pax.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
+  /* One dress for every row of choices on the sheet, ruled by the owner
+     27 Aug once the two time rows proved it: the choices stand in a single
+     rank and the RANK scrolls, rather than wrapping into a block that pushes
+     the next question off the screen. A wrapped row costs vertical space,
+     which is the scarce dimension on a phone held at a desk; a rail costs
+     none and never changes height as the answers change.
+
+     Written against `.rail` alone rather than `.chips.rail`, because the
+     covers row is a `.pax-row` and wears the same dress: one rule, or the
+     two rows drift. The rail scrolls itself; the sheet never scrolls
+     sideways, which the suite asserts at all three widths. */
+  /* Left, to line up with the labels above them. It used to be `safe
+     center`, so a row that fitted sat centred under a centred label; with
+     the labels left aligned that read as a row that had slipped. Starting
+     left also makes an overflow legible: the first chip is always at the
+     margin, so the clipped edge is only ever on the right. */
+  .rail { flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start;
+          -webkit-overflow-scrolling:touch; padding-bottom:6px; }
+  .rail > * { flex:0 0 auto; white-space:nowrap; }
+  .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
+          border-radius:20px; font-family:var(--ui-font); font-size:var(--t2);
+          color:var(--mid); cursor:pointer; }
+  .chip.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .txt { width:100%; padding:12px; margin-bottom:8px; border:1px solid var(--rule);
+         background:transparent; font-family:var(--ui-font); font-size:var(--t3); color:var(--ink); }
+  .txt::placeholder { color:var(--mid); font-style:italic; }
+  .txt:focus { outline:none; border-color:var(--ink); }
+  .gd { text-align:center; margin:-4px 0 6px; font-size:var(--t2); line-height:1.55; }
+  .gd .gd-sub { display:block; font-family:var(--ui-font); font-size:var(--t2);
+                color:var(--mid); }
+  .note-box { font-style:italic; font-size:var(--t2); color:var(--mid); text-align:center;
+              line-height:1.6; padding:0 4px 14px; }
+  /* The one flag that sets itself, said under the tickable ones so nobody
+     hunts for its chip: Luxury Escapes rides on the Mews rate. */
+  .flag-src { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
+              text-align:center; margin:2px 0 4px; }
+  /* What is missing, said in words. A button that silently does nothing is
+     the worst of both. */
+  .miss-note { display:none; font-size:var(--t2); color:var(--red); text-align:center;
+               padding:2px 4px 8px; }
+  .miss-note.show { display:block; }
+  /* The menu did not exist when the guest answered, so this is the first
+     chance anyone has had to notice. */
+  .clash { display:block; color:var(--red); font-size:var(--t2); margin-top:3px; }
+  .seg.miss button, .chips.miss .chip { border-color:var(--red); }
+  /* The note is part of the answer when Other is chosen, so it can be the
+     thing that is missing, and has to be able to say so. */
+  .txt.miss { border-color:var(--red); }
+
+/* ── key cards ─────────────────────────────────────────────────────
+   The key sits in the date row beside the hamburger and wears its dress.
+   Its drop offers the day's encode-all and each villa singly; the card
+   states inside it and on the sheet are cardCell's k, coloured by the
+   law: queued cream, writing amber, done green, failed red, cancelled
+   and none grey. */
+.keywrap { position:relative; }
+/* The key costs the date row 42px it did not have at 320, and the row must
+   never bleed (STYLEGUIDE's width rule). Below 340 the title gives the
+   ground: min-width 0 lets flex shrink it, and a clipped "Tue 8th Sep" is
+   the allowed cost - clipping is not breaking, sideways scroll is. Scoped,
+   because at 390 the same rule was clipping a date that had the room. */
+@media (max-width: 340px) {
+  .daterow .date { min-width:0; overflow:hidden; text-overflow:ellipsis;
+                   white-space:nowrap; }
+}
+.keybtn { width:42px; height:36px; border:0; background:transparent;
+          border-radius:var(--r); color:var(--ink); cursor:pointer;
+          display:flex; align-items:center; justify-content:center; }
+.keybtn:active { background:var(--card); }
+.keybtn svg { width:19px; height:19px; }
+.keydrop { position:absolute; right:0; top:42px; background:var(--ground);
+           border:1px solid var(--rule); border-radius:var(--r);
+           min-width:250px; display:none; z-index:60; overflow:hidden;
+           box-shadow:0 8px 24px rgba(28,28,26,.14); }
+.keydrop.open { display:block; }
+.keydrop button { display:flex; width:100%; align-items:baseline; gap:8px;
+                  text-align:left; padding:12px 14px; background:none;
+                  border:none; border-bottom:1px solid var(--rule);
+                  font-family:var(--ui-font); font-size:var(--t2);
+                  color:var(--ink); cursor:pointer; }
+.keydrop button:last-child { border-bottom:none; }
+.keydrop .kd-all { font-weight:600; }
+.keydrop .kd-state { margin-left:auto; font-size:var(--t1); color:var(--mid);
+                     white-space:nowrap; flex:0 0 auto; }
+.keydrop .kd-state.card-done { color:var(--law-green); }
+.keydrop .kd-state.card-failed { color:var(--law-red); }
+.keydrop .kd-state.card-writing { color:var(--amberink); }
+
+/* the run viewport */
+/* Above the hamburger's 500: the run replaces the page while it is open,
+   and a menu button floating over it read as part of the run. */
+.cardov { position:fixed; inset:0; background:var(--ground); z-index:600;
+          overflow-y:auto; padding:calc(14px + env(safe-area-inset-top)) 18px 40px; }
+.cardov-head { max-width:520px; margin:0 auto; display:flex;
+               align-items:baseline; justify-content:space-between; }
+.cardov-title { font-family:var(--ui-font); font-size:var(--t3); font-weight:600; }
+.cardov-x { background:none; border:none; font-size:24px; line-height:1;
+            color:var(--mid); padding:4px 8px; cursor:pointer; }
+.cardov-in { max-width:520px; margin:0 auto; }
+.crun { border:1px solid var(--rule); border-radius:var(--r);
+        padding:14px; margin-top:12px; font-family:var(--ui-font); }
+.crun.now { border-color:var(--amberb); }
+.crun.is-done { opacity:.62; }
+.crun.is-failed { border-color:var(--law-red); }
+.crun-v { font-size:26px; font-weight:600; }
+.crun-v small { font-size:var(--t2); font-weight:400; color:var(--mid); margin-left:8px; }
+.crun-s { font-size:var(--t2); color:var(--mid); margin-top:4px; }
+.crun-s.card-failed { color:var(--law-red); }
+.crun-s.card-done { color:var(--law-green); }
+.crun-env { font-size:var(--t2); color:var(--law-green); margin-top:6px; }
+.cardhold { background:var(--amber); border:1px solid var(--amberb);
+            border-radius:var(--r); color:var(--amberink); padding:14px;
+            margin-top:12px; font-family:var(--ui-font); font-size:var(--t2);
+            line-height:1.5; }
+/* qty, on the villa panel: the stepper the spa page's controls follow */
+.cqty { display:inline-flex; align-items:center; border:1px solid var(--rule);
+        border-radius:var(--r); margin-left:10px; vertical-align:middle; }
+.cqty button { width:38px; height:38px; background:none; border:none;
+               font-size:18px; color:var(--ink); cursor:pointer; }
+.cqty span { width:26px; text-align:center; font-size:var(--t3); }
+/* the run's cancel wears terracotta and confirms - the button law */
+.sum-btns button.terra { border-color:var(--terra-b); color:var(--terra);
+                         background:transparent; }
+.cardlab.card-done { color:var(--law-green); }
+.cardlab.card-failed { color:var(--law-red); }
+.cardlab.card-writing { color:var(--amberink); }
+
+/* ─────────────────────────────────────────────────────────────────────
+   MOCK ONLY. Not linked from NAV, not published, no database behind it.
+
+   The BUILT front-desk card flow, pressable: the key in the date row,
+   its drop, the guest sheet's Key cards line and button, the quantity
+   panel, and the run screen - all wearing front-desk.html's own styles,
+   inlined verbatim so this file stands alone.
+
+   A pretend helper lives in this page: a queued job starts writing by
+   itself a moment later, and TAPPING THE AMBER VILLA on the run screen
+   is holding a card to the E3 - one tap, one card written. The switch
+   up top plays the desk PC being on or off, and the small link under
+   the run simulates a write failing. None of those three exist on the
+   real page; everything else is the real design. */
+
+.mockbar{position:sticky;top:0;z-index:900;background:var(--ground);
+  border-bottom:1px solid var(--rule);margin:calc(-24px - env(safe-area-inset-top)) -18px 14px;
+  padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  font-family:var(--ui-font)}
+.mockbar b{font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.mockbar label{font-size:12px;color:var(--mid);display:flex;align-items:center;gap:6px}
+body.ui2 .mockbar input[type=checkbox]{width:16px;height:16px;min-height:0;margin:0;accent-color:var(--ink)}
+body.ui2 .mockbar .btn{width:auto;padding:5px 12px;min-height:30px;font-size:11px}
+.simfail{display:block;margin:18px auto 0;font-size:11px;color:var(--mid);
+  background:none;border:none;text-decoration:underline;cursor:pointer;font-family:var(--ui-font)}
+.crun.now{cursor:pointer}
+/* the run sits under the mock's own bar, so its header must clear it */
+.cardov{padding-top:calc(64px + env(safe-area-inset-top)) !important;z-index:800 !important}
+.tapnote{font-size:var(--t1);color:var(--amberink);margin-top:6px;font-family:var(--ui-font)}
+\n</style>
+</head>
+<body class="tier-app ui2">
+
+<div class="mockbar">
+  <b>Mock &middot; front desk, as built</b>
+  <label><input type="checkbox" id="helperOn" checked> desk PC helper running</label>
+  <label style="margin-left:auto"><button class="btn ghost" onclick="resetAll()">reset</button></label>
+</div>
+
+<div class="daterow">
+  <button class="dnav today">Today</button>
+  <button class="dnav">&#8249;</button>
+  <div class="date">Tue 8th Sep</div>
+  <button class="dnav">&#8250;</button>
+  <div class="keywrap" id="keyWrap">
+    <button class="keybtn" id="keyBtn" aria-label="Key cards">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round"><circle cx="7.5" cy="12" r="3.5"/>
+        <path d="M11 12h9.5M17 12v3.5M20.5 12v2.5"/></svg>
+    </button>
+    <div class="keydrop" id="keyDrop"></div>
+  </div>
+  <div class="navwrap"><button class="navbtn" style="opacity:.4" aria-label="Menu (not mocked)">
+    <span></span><span></span><span></span></button></div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-n">0<span class="of">/3</span></div><div class="stat-l">Arrived</div></div>
+  <div class="stat"><div class="stat-n dine">4</div><div class="stat-l">Dining</div></div>
+  <div class="stat"><div class="stat-n nodine">2</div><div class="stat-l">Not dining</div></div>
+  <div class="stat"><div class="stat-n unsure">0</div><div class="stat-l">Not sure</div></div>
+</div>
+
+<div id="board"></div>
+<div class="spacer"></div>
+
+<div class="cardov" id="cardOv" hidden>
+  <div class="cardov-head">
+    <div class="cardov-title" id="cardTitle">Key cards</div>
+    <button class="cardov-x" id="cardX" aria-label="Close">&times;</button>
+  </div>
+  <div id="cardBody"></div>
+</div>
+
+<script>
+/* Three arrivals, all with completed forms so every row opens its sheet. */
+var VILLAS = [
+  {villa:'3',  name:'Mark Whitfield',  stay:'3 nights · 2 adults', dining:'Dining · 2 guests'},
+  {villa:'9',  name:'Elena Marsh',     stay:'2 nights · 2 adults', dining:'Dining · 2 guests'},
+  {villa:'14', name:'Claire Laurent',  stay:'1 night · 1 adult',  dining:'Not dining'}
+];
+var CARDS, OPEN, CARD_VILLA, FAILNEXT, HELPER_T;
+
+function resetAll(){
+  CARDS = {}; OPEN = null; CARD_VILLA = null; FAILNEXT = false;
+  document.getElementById('cardOv').hidden = true;
+  render();
+}
+function jobFor(v){ return CARDS[String(v)] || null; }
+function rowOf(v){ return VILLAS.filter(function(x){ return x.villa === String(v); })[0]; }
+
+/* cardCell, verbatim from nala-shared.js - the one reader. */
+function cardCell(job){
+  if (!job || !job.state || job.state === 'cancelled')
+    return { k: job ? 'cancelled' : 'none', label: job ? 'cancelled' : 'no cards yet' };
+  var n = +job.written || 0, q = +job.qty || 0;
+  if (job.state === 'done')
+    return { k:'done', label: n + (n === 1 ? ' card issued' : ' cards issued') };
+  if (job.state === 'failed') return { k:'failed', label:'write failed' };
+  if (job.state === 'writing')
+    return { k:'writing', label:'writing card ' + Math.min(n + 1, q || n + 1) +
+                                (q ? ' of ' + q : '') };
+  return { k:'queued', label:'to encode' };
+}
+
+/* ── the board: rows in front-desk.html's own markup ─────────────── */
+function render(){
+  var h = '<div class="seclabel">Arriving</div>';
+  VILLAS.forEach(function(r){
+    var open = OPEN === r.villa;
+    h += '<button class="arr done-form' + (open ? ' open' : '') +
+         '" data-villa="' + r.villa + '">' +
+         '<div class="arr-v">' + r.villa + '</div>' +
+         '<div class="arr-mid"><div class="arr-top">' +
+         '<div class="arr-n">' + r.name + '</div></div>' +
+         '<div class="arr-s">' + r.stay + '</div></div>' +
+         '</button>' + (open ? sumHTML(r) : '');
+  });
+  document.getElementById('board').innerHTML = h;
+}
+function sumHTML(r){
+  var cc = cardCell(jobFor(r.villa));
+  var h = '<div class="sum">' +
+    '<div class="srow"><div class="slab">Dinner</div><div class="sval">' + r.dining + '</div></div>' +
+    '<div class="srow"><div class="slab">Dietary</div><div class="sval">No allergies to declare</div></div>';
+  if (cc.k !== 'none')
+    h += '<div class="srow"><div class="slab">Key cards</div><div class="sval">' +
+         '<span class="cardlab card-' + cc.k + '">' + cc.label + '</span></div></div>';
+  h += '<div class="sum-btns">' +
+       '<button data-act="edit" data-villa="' + r.villa + '">Edit</button>' +
+       '<button data-act="cards" data-villa="' + r.villa + '">Key cards</button></div>' +
+       '<div class="sum-btns"><button class="go wide">Confirm &amp; check in</button></div></div>';
+  return h;
+}
+
+/* ── the drop ─────────────────────────────────────────────────────── */
+function drawDrop(){
+  var h = '<button class="kd-all" data-key="all">Encode all keys' +
+          '<span class="kd-state">' + VILLAS.length + ' villas</span></button>';
+  VILLAS.forEach(function(r){
+    var cc = cardCell(jobFor(r.villa));
+    h += '<button data-key="' + r.villa + '">Villa ' + r.villa + ' · ' + r.name +
+         '<span class="kd-state card-' + cc.k + '">' +
+         (cc.k === 'none' ? '' : cc.label) + '</span></button>';
+  });
+  document.getElementById('keyDrop').innerHTML = h;
+}
+
+/* ── queue writes, exactly the real page's shapes ─────────────────── */
+function putJob(v, qty){
+  CARDS[String(v)] = { qty: qty, expiry: 1789000000, state: 'queued',
+                       written: 0, by: 'you', at: Date.now() };
+}
+function encodeAll(){
+  VILLAS.forEach(function(r){
+    var j = jobFor(r.villa);
+    if (j && (j.state === 'queued' || j.state === 'writing' || j.state === 'done')) return;
+    putJob(r.villa, (j && j.qty) || 2);
+  });
+  openOv(null);
+}
+
+/* ── the run screen ───────────────────────────────────────────────── */
+function openOv(villa){
+  CARD_VILLA = villa;
+  document.getElementById('cardOv').hidden = false;
+  paintOv();
+}
+function closeOv(){
+  document.getElementById('cardOv').hidden = true;
+  render();
+}
+function crunHTML(r, active){
+  var j = jobFor(r.villa), cc = cardCell(j);
+  var cls = 'crun' + (active ? ' now' : '') +
+            (cc.k === 'done' ? ' is-done' : '') + (cc.k === 'failed' ? ' is-failed' : '');
+  var line = cc.k === 'writing' && active
+      ? 'Hold a card to the reader · ' + cc.label
+      : cc.k === 'queued' ? 'Queued · waiting for the encoder' : cc.label;
+  var h = '<div class="' + cls + '" data-crun="' + r.villa + '">' +
+          '<div class="crun-v">Villa ' + r.villa + '<small>' + r.name + '</small></div>' +
+          '<div class="crun-s card-' + cc.k + '">' + line +
+          (cc.k === 'failed' && j && j.note ? ' · ' + j.note : '') + '</div>';
+  if (cc.k === 'writing' && active)
+    h += '<div class="tapnote">(mock: tap this villa = hold a card to the reader)</div>';
+  if (cc.k === 'done')
+    h += '<div class="crun-env">Envelope villa ' + r.villa + '’s cards</div>';
+  if (cc.k === 'queued' || cc.k === 'failed')
+    h += '<div class="sum-btns"><button class="terra" data-cardcancel="' + r.villa + '">Cancel</button></div>';
+  return h + '</div>';
+}
+function paintOv(){
+  if (document.getElementById('cardOv').hidden) return;
+  var body = document.getElementById('cardBody');
+  var one = CARD_VILLA != null ? rowOf(CARD_VILLA) : null;
+  if (one){
+    document.getElementById('cardTitle').textContent = 'Key cards · villa ' + one.villa;
+    var j = jobFor(one.villa);
+    if (!j || j.state === 'cancelled'){
+      var q = +(body.getAttribute('data-qty') || 2);
+      body.innerHTML = '<div class="cardov-in"><div class="crun">' +
+        '<div class="crun-v">Villa ' + one.villa + '<small>' + one.name + '</small></div>' +
+        '<div class="crun-s">How many cards?' +
+        '<span class="cqty"><button data-cardq="-1">&minus;</button><span>' + q +
+        '</span><button data-cardq="1">+</button></span></div>' +
+        '<div class="sum-btns"><button class="go wide" data-cardissue="' + one.villa +
+        '">Issue ' + q + (q === 1 ? ' card' : ' cards') + '</button></div></div></div>';
+      return;
+    }
+    body.innerHTML = '<div class="cardov-in">' + crunHTML(one, true) +
+      '<button class="simfail" data-simfail>simulate a failed write</button></div>';
+    return;
+  }
+  document.getElementById('cardTitle').textContent = 'Key cards · Tue 8th Sep';
+  var withJobs = VILLAS.filter(function(r){ return jobFor(r.villa); });
+  if (!withJobs.length){
+    body.innerHTML = '<div class="cardov-in"><div class="crun"><div class="crun-s">' +
+      'Nothing queued. Encode all keys is in the key menu.</div></div></div>';
+    return;
+  }
+  var seen = false, h = '', wait = false;
+  withJobs.forEach(function(r){
+    var cc = cardCell(jobFor(r.villa));
+    var active = !seen && (cc.k === 'queued' || cc.k === 'writing' || cc.k === 'failed');
+    if (active) seen = true;
+    if (cc.k === 'queued' && !document.getElementById('helperOn').checked) wait = true;
+    h += crunHTML(r, active);
+  });
+  if (wait) h = '<div class="cardhold"><b>Waiting for the desk PC.</b> The jobs are ' +
+    'saved and start the moment the encoder helper is running there. Nothing is ' +
+    'lost by waiting.</div>' + h;
+  body.innerHTML = '<div class="cardov-in">' + h +
+    '<button class="simfail" data-simfail>simulate a failed write</button></div>';
+}
+
+/* ── the pretend helper: claims queued jobs while the switch is on ── */
+HELPER_T = setInterval(function(){
+  if (!document.getElementById('helperOn').checked) return;
+  var going = VILLAS.some(function(r){ var j = jobFor(r.villa);
+    return j && j.state === 'writing'; });
+  if (going) return;
+  for (var i = 0; i < VILLAS.length; i++){
+    var j = jobFor(VILLAS[i].villa);
+    if (j && j.state === 'queued'){ j.state = 'writing'; paintOv(); drawDrop(); return; }
+  }
+}, 1200);
+
+/* a tap on the amber villa is a card held to the reader */
+function tapCard(v){
+  var j = jobFor(v);
+  if (!j || j.state !== 'writing') return;
+  if (FAILNEXT){
+    FAILNEXT = false; j.state = 'failed';
+    j.note = 'card belongs to another hotel or was never initialised';
+    paintOv(); if (OPEN) render(); return;
+  }
+  j.written++;
+  if (j.written >= j.qty) j.state = 'done';
+  paintOv(); drawDrop(); if (OPEN) render();
+}
+
+/* ── wiring ───────────────────────────────────────────────────────── */
+(function(){
+  var b = document.getElementById('keyBtn'), d = document.getElementById('keyDrop');
+  b.onclick = function(e){ e.stopPropagation(); drawDrop(); d.classList.toggle('open'); };
+  document.addEventListener('click', function(){ d.classList.remove('open'); });
+  d.addEventListener('click', function(e){
+    var t = e.target.closest('[data-key]'); if (!t) return;
+    var k = t.getAttribute('data-key');
+    if (k === 'all') encodeAll(); else openOv(k);
+  });
+  document.getElementById('cardX').onclick = closeOv;
+  document.getElementById('board').addEventListener('click', function(e){
+    var act = e.target.closest('[data-act]');
+    if (act){
+      if (act.getAttribute('data-act') === 'cards') return openOv(act.getAttribute('data-villa'));
+      return;   /* Edit and check-in are not this mock's story */
+    }
+    var btn = e.target.closest('.arr'); if (!btn) return;
+    var v = btn.getAttribute('data-villa');
+    OPEN = (OPEN === v) ? null : v; render();
+  });
+  document.getElementById('cardBody').addEventListener('click', function(e){
+    var q = e.target.closest('[data-cardq]');
+    if (q){ var body = document.getElementById('cardBody');
+      var now = +(body.getAttribute('data-qty') || 2) + (+q.getAttribute('data-cardq'));
+      body.setAttribute('data-qty', Math.min(6, Math.max(1, now))); paintOv(); return; }
+    var iss = e.target.closest('[data-cardissue]');
+    if (iss){ var b2 = document.getElementById('cardBody');
+      putJob(iss.getAttribute('data-cardissue'), +(b2.getAttribute('data-qty') || 2));
+      paintOv(); return; }
+    var c = e.target.closest('[data-cardcancel]');
+    if (c){
+      if (c.getAttribute('data-armed')){ delete CARDS[c.getAttribute('data-cardcancel')];
+        paintOv(); drawDrop(); return; }
+      c.setAttribute('data-armed', '1'); c.textContent = 'Confirm cancel';
+      setTimeout(function(){ if (c.isConnected){ c.removeAttribute('data-armed');
+        c.textContent = 'Cancel'; } }, 4000);
+      return;
+    }
+    if (e.target.closest('[data-simfail]')){
+      FAILNEXT = true; e.target.textContent = 'next write will fail'; return; }
+    var cr = e.target.closest('.crun.now');
+    if (cr) tapCard(cr.getAttribute('data-crun'));
+  });
+})();
+
+resetAll();
+</script>
+</body></html>
