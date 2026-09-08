@@ -156,8 +156,17 @@
      onto a second line of their own beneath.                              */
   .row { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center;
          column-gap:10px; row-gap:0; padding:9px 0; border-bottom:1px solid var(--rule); }
-  .row-main { flex:1 1 auto; min-width:0; }
-  .row-name { font-size:var(--t3); }
+  /* Basis 0, not auto: at auto a long name line is measured at full content
+     width first, which shoved the pax column onto a second line the moment
+     a companion joined the name. At 0 the name takes what the pax leaves
+     and the ellipsis below does the chopping. */
+  .row-main { flex:1 1 0; min-width:0; }
+  /* One line, chopped with an ellipsis when it outgrows the row. Ruled by
+     the owner, 8 Sep, putting the companion on the name line: losing the
+     second guest's surname beats a second line per booking. */
+  .row-name { font-size:var(--t3); white-space:nowrap;
+              overflow:hidden; text-overflow:ellipsis; }
+  .row-name .amp { color:var(--mid); font-weight:normal; }
   /* The villa number is the thing staff scan for, so it leads the line at a
      larger size in ink, then a dash, then the guest name. The word "villa"
      is dropped - every row is a villa, so repeating it says nothing.     */
@@ -1109,8 +1118,8 @@ function render(){
            reception looks a booking up mid-service. */
         var second = companionOf(PREARRIVAL_BY_VILLA[String(r.room)], kn);
         st.innerHTML = '<div><div class="row-name"><span class="rm">'+r.room+'</span>'+
-          (kn.name ? '  '+kn.name : '')+'</div>'+
-          (second ? '<div class="row-sub">With '+esc(second)+'</div>' : '')+
+          (kn.name ? '  '+kn.name : '')+
+          (second ? ' <span class="amp">&amp;</span> '+esc(second) : '')+'</div>'+
           '<div class="row-sub">Awaiting reply</div>'+dline+'</div>';
         host.appendChild(st);
         return;
@@ -1130,15 +1139,17 @@ function render(){
       title = (g.name || g.phone || 'Guest') + '<span class="tag">External</span>';
     }
 
+    /* The second guest, on the name line behind an ampersand. The board is
+       worked by name, and the person beside the booker is part of who the
+       table is - one shared reading, companionOf in nala-shared.js. It was
+       a "With ..." line of its own until 8 Sep; the owner ruled it onto the
+       one line, chopped when long (the .row-name ellipsis). */
+    var second = r.room
+      ? companionOf(PREARRIVAL_BY_VILLA[String(r.room)], known) : '';
+    if (second) title += ' <span class="amp">&amp;</span> ' + esc(second);
     if (g.premenu) title += '<span class="tag">Pre-menu</span>';
 
     var sub = [];
-    /* The second guest, in the small print under the name. The board is
-       worked by name, and the person beside the booker is part of who the
-       table is. One shared reading - see companionOf in nala-shared.js. */
-    var second = r.room
-      ? companionOf(PREARRIVAL_BY_VILLA[String(r.room)], known) : '';
-    if (second) sub.push('With ' + esc(second));
     var dietLine = '';
     /* The person's dietaries, wherever they were typed. This block used to
        show tonight's answer only, on the old rule that a carried-over dietary

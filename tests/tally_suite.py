@@ -272,15 +272,39 @@ with sync_playwright() as p:
     ck("but flags nothing: not an allergen, no conflict, no bubble",
        nd and not nd["al"] and not nd["conflict"] and not nd["bub"])
 
-    # ── the second guest, in the small print under the name ────────
+    # ── the second guest, on the name line behind an ampersand ─────
+    # Ruled by the owner, 8 Sep: "& Sam Okafor", one line per booking, and
+    # a name too long for the row is chopped with an ellipsis rather than
+    # given a second line.
     allrows=pg.evaluate("""()=>[...document.querySelectorAll('#listBookings .row')]
       .map(e=>e.textContent.replace(/\\s+/g,' '))""")
-    ck("a dining row carries the companion Mews sent",
-       any(t.startswith("6") and "With Noah Ellis" in t for t in allrows))
+    ck("a dining row carries the companion Mews sent, behind an ampersand",
+       any(t.startswith("6") and "& Noah Ellis" in t for t in allrows))
     ck("the awaiting stub carries it too: the villa has not answered but the party is named",
-       any("Lucy" in t and "Awaiting" in t and "With Sam Okafor" in t for t in allrows))
-    ck("and a villa nobody named a second guest for shows no With line",
-       all("With " not in t for t in allrows if t.startswith(("1 ","3 "))))
+       any("Lucy" in t and "Awaiting" in t and "& Sam Okafor" in t for t in allrows))
+    ck("and a villa nobody named a second guest for shows no ampersand",
+       all("&" not in t for t in allrows if t.startswith(("1 ","3 "))))
+    amp=pg.evaluate("""()=>{
+      const r=[...document.querySelectorAll('#listBookings .row')]
+        .find(x=>/Noah Ellis/.test(x.textContent));
+      if(!r) return null;
+      const n=r.querySelector('.row-name'); const cs=getComputedStyle(n);
+      const one=Math.round(n.getBoundingClientRect().height)<=22;
+      /* the longest party the resort will see: the pax column must hold its
+         line and the name take the chop, not the other way round */
+      const keep=n.innerHTML;
+      n.innerHTML='Konstantinos Papadopoulos <span class="amp">&amp;</span> Alexandra Papadopoulou';
+      const rt=r.querySelector('.row-right').getBoundingClientRect();
+      const held=Math.abs(rt.top-n.getBoundingClientRect().top)<14
+                 && document.scrollingElement.scrollWidth<=innerWidth;
+      n.innerHTML=keep;
+      return {one, held, chop:cs.textOverflow==='ellipsis'&&cs.overflow==='hidden',
+              sub:!/With /.test(r.textContent)};}""")
+    print("   companion line:", amp)
+    ck("one line, chopped not wrapped, and no With line left behind",
+       amp and amp["one"] and amp["chop"] and amp["sub"])
+    ck("the longest party chops the name and never drops the pax column",
+       amp and amp["held"])
 
     # menu pill
     ck("menu published pill", "menu published" in pg.locator("#menuState").inner_text().lower())
