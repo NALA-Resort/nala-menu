@@ -597,22 +597,65 @@ with sync_playwright() as p:
     ck("digital room sheet shows name+phone+diets+note", "James" in sh1 and "0400 000 001" in sh1 and "Nut allergy" in sh1 and "Window seat" in sh1)
     pg.locator("#oClose").click(); pg.wait_for_timeout(150)
 
-    # manual external edit: prefilled, save changes
+    # manual external edit: the ROW is the button now - the pencil went on
+    # 8 Sep and gave its width back to the name
+    ck("no pencil icons on the board", pg.evaluate("()=>document.querySelectorAll('#listBookings .edit').length")==0)
     row=pg.locator("#listBookings .row", has_text="Walk In")
-    row.locator(".edit").click(); pg.wait_for_timeout(200)
-    ck("edit prefilled", pg.evaluate("()=>xName.value")=="Walk In")
+    row.click(); pg.wait_for_timeout(200)
+    ck("row tap opens the edit, prefilled", pg.evaluate("()=>xName.value")=="Walk In")
     pg.fill("#xName","Walk In Party")
     saveAndSettle(pg, "#oSave")
     we2=[x for x in WRITES if re.search(r"/manual/"+today+r"/ext-\d+",x["u"])][-1]
     ck("external save-changes PUT", json.loads(we2["b"])["name"]=="Walk In Party")
     ck("row renamed", "Walk In Party" in pg.locator("#listBookings").inner_text())
 
+    # the dinner time: the sheet's wheel holds exactly the seatings that
+    # exist - No time, then 5pm to 8pm by the quarter hour - and the chosen
+    # one follows the booking onto the row
+    pg.locator("#listBookings .row", has_text="Walk In Party").click(); pg.wait_for_timeout(200)
+    opts=pg.evaluate("()=>[...document.querySelectorAll('#xTime select option')].map(o=>o.value)")
+    print("   time options:", opts[:3], "...", opts[-1])
+    ok15=all(int(opts[i][:2])*60+int(opts[i][3:])==17*60+(i-1)*15 for i in range(1,len(opts)))
+    ck("time wheel: No time plus 5pm-8pm by the quarter hour",
+       len(opts)==14 and opts[0]=="" and opts[1]=="17:00" and opts[-1]=="20:00" and ok15)
+    ck("and reads as unset", pg.locator("#xTimeLabel").inner_text()=="Time")
+    pg.evaluate("()=>{const s=document.querySelector('#xTime select');s.value='17:30';s.dispatchEvent(new Event('change'));}")
+    ck("chosen, the field says 5:30 pm", pg.locator("#xTimeLabel").inner_text()=="5:30 pm")
+    saveAndSettle(pg, "#oSave")
+    wt=[x for x in WRITES if re.search(r"/manual/"+today+r"/ext-\d+",x["u"]) and x["m"]=="PUT"][-1]
+    ck("saved with time 17:30", json.loads(wt["b"]).get("time")=="17:30")
+    ck("row reads 5:30 · 5 pax",
+       "5:30 · 5 pax" in pg.locator("#listBookings .row", has_text="Walk In Party").inner_text())
+    ck("an untimed row still reads pax alone",
+       pg.evaluate("()=>[...document.querySelectorAll('#listBookings .row')]"
+                   ".find(r=>r.innerText.includes('Outside Guest'))"
+                   ".querySelector('.row-pax').textContent")=="2 pax")
+
+    # a villa booking carries a time too, and the quick writes - a pax
+    # change, a bulk Dining - must not shed it: withExtras owns that
+    tile(pg,12).click(); pg.wait_for_timeout(200)
+    pg.locator("#oDetails").click(); pg.wait_for_timeout(200)
+    pg.evaluate("()=>{const s=document.querySelector('#xTime select');s.value='18:15';s.dispatchEvent(new Event('change'));}")
+    saveAndSettle(pg, "#oSave")
+    w12t=[x for x in WRITES if re.search(r"/dinner/"+today+r"/12\.json",x["u"]) and x["m"]=="PUT"][-1]
+    ck("villa details save carries time 18:15", json.loads(w12t["b"]).get("time")=="18:15")
+    ck("villa row reads 6:15",
+       "6:15" in pg.evaluate("()=>[...document.querySelectorAll('#listBookings .row')]"
+                             ".find(r=>r.innerText.includes('Chef Guest'))"
+                             ".querySelector('.row-pax').textContent"))
+    tile(pg,12).click(); pg.wait_for_timeout(200)
+    pg.locator(".pax", has_text=re.compile(r"^5$")).click()
+    saveAndSettle(pg, "#oIn")
+    w12p=[x for x in WRITES if re.search(r"/dinner/"+today+r"/12\.json",x["u"]) and x["m"]=="PUT"][-1]
+    b12p=json.loads(w12p["b"])
+    ck("a pax change keeps the time", b12p["pax"]==5 and b12p.get("time")=="18:15")
+
     # manual external move: the Night row moves the reservation to another
     # night. Until this control the only way to change the date was Cancel
     # booking and retype it on the other day's board.
     before=pg.evaluate("()=>+nCovers.textContent")
     row=pg.locator("#listBookings .row", has_text="Walk In Party")
-    row.locator(".edit").click(); pg.wait_for_timeout(200)
+    row.click(); pg.wait_for_timeout(200)
     nt=pg.evaluate("()=>({lab:xNightLabel.textContent,val:document.querySelector('#xNight input').value,btn:oSave.textContent})")
     print("   night field:",nt)
     ck("night shows the viewed night, button says Save changes",

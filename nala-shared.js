@@ -45,6 +45,28 @@ function dateLabel(d){
   return days[d.getDay()]+' '+ord(d.getDate())+' '+mo[d.getMonth()];
 }
 
+/* ── the dinner time ───────────────────────────────────────────
+   The bookable seatings, 5pm to 8pm every quarter hour, and the ONE reading
+   of a stored time. A booking stores 24h "17:30" (or no field at all - every
+   booking made before 8 Sep has none, and no time is a valid answer); every
+   screen renders it through dinnerTimeLabel, so the board and the printed
+   sheet cannot disagree about what half past five looks like. */
+var DINNER_TIMES = (function(){
+  var out = [];
+  for (var m = 17*60; m <= 20*60; m += 15)
+    out.push(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'));
+  return out;
+})();
+/* "17:30" -> "5:30"; anything else -> "", so a missing or garbage time reads
+   as no time rather than as text on a kitchen sheet. The pm is left to the
+   caller: the sheet's picker says "5:30 pm", the row and the printed sheet
+   say "5:30" - every seating is an evening. */
+function dinnerTimeLabel(t){
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t || '')) return '';
+  var h = +t.slice(0,2);
+  return (((h + 11) % 12) + 1) + ':' + t.slice(3);
+}
+
 /* ── the standard header's date row ────────────────────────────
    Wires ‹ › Today and writes the one date format into #date/#title.
    Tolerates missing arrows (hc tally shows the date alone).

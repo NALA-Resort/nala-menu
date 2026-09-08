@@ -23,7 +23,7 @@ responses={
 }
 manual={
  "room-5":{"status":"vacant","pax":0,"room":"5","source":"manual"},
- "ext-777":{"status":"in","pax":3,"name":"Alfie","phone":"0455 555 555","source":"manual"},
+ "ext-777":{"status":"in","pax":3,"name":"Alfie","phone":"0455 555 555","source":"manual","time":"17:30"},
  "extcancel-0400000091":{"status":"out","override":True,"source":"manual"},
 }
 roomguests={"4":{"name":"Lucy","departs":plus(2)},"9":{"name":"Priya","departs":plus(3)}}
@@ -127,6 +127,25 @@ with sync_playwright() as p:
     ck("the second guest is set larger than the externals' phone line",
        sizes["cmp"] is not None and sizes["phone"] is not None
        and sizes["cmp"] > sizes["phone"])
+    #  ── the dinner time rides the Dinner column ─────────────
+    #  A booked time IS the yes, so it takes the Yes's place in the same
+    #  green rather than costing the sheet a column; an untimed booking
+    #  still reads Yes. The PDF draws from SHEET, so its copy is asserted
+    #  from the same source rather than re-parsed out of the paper.
+    din=pg.evaluate("""()=>[...document.querySelectorAll('#rows tr')]
+      .filter(r=>r.querySelector('.c-din')&&r.querySelector('.c-name'))
+      .map(r=>({name:r.querySelector('.c-name').textContent,
+                din:r.querySelector('.c-din').textContent.trim(),
+                yes:!!r.querySelector('.c-din .yes')}))""")
+    alfie=[d for d in din if 'Alfie' in d['name']]
+    james=[d for d in din if 'James' in d['name']]
+    ck("a timed booking prints its time in the Dinner column, in the Yes green",
+       len(alfie)==1 and alfie[0]['din']=='5:30' and alfie[0]['yes'])
+    ck("an untimed booking still prints Yes",
+       len(james)==1 and james[0]['din']=='Yes' and james[0]['yes'])
+    ck("and the PDF's copy carries the same time",
+       pg.evaluate("()=>SHEET.filter(r=>r.name=='Alfie')[0].dinner")=='5:30')
+
     #  The kicker is gone, and so is the header it left behind. It named the
     #  document to whoever was already holding it, and the page has no room for
     #  two headers above a table that carries its own column headings.
