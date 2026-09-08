@@ -153,7 +153,12 @@ def saveAndSettle(pg, sel, timeout=5000):
     """
     pg.locator(sel).click()
     try:
-        pg.wait_for_selector("#backdrop:not(.show)", timeout=timeout)
+        # state="attached", because a closed backdrop is display:none and the
+        # default wait is for VISIBLE - a state a closed sheet can never reach.
+        # Until 8 Sep this wait timed out on every call, so the helper ate its
+        # five seconds and returned False whatever the sheet did, and nothing
+        # noticed because no caller read the answer. The move tests do.
+        pg.wait_for_selector("#backdrop:not(.show)", state="attached", timeout=timeout)
     except Exception:
         return False
     pg.wait_for_timeout(120)      # the repaint that follows the close
@@ -601,6 +606,50 @@ with sync_playwright() as p:
     we2=[x for x in WRITES if re.search(r"/manual/"+today+r"/ext-\d+",x["u"])][-1]
     ck("external save-changes PUT", json.loads(we2["b"])["name"]=="Walk In Party")
     ck("row renamed", "Walk In Party" in pg.locator("#listBookings").inner_text())
+
+    # manual external move: the Night row moves the reservation to another
+    # night. Until this control the only way to change the date was Cancel
+    # booking and retype it on the other day's board.
+    before=pg.evaluate("()=>+nCovers.textContent")
+    row=pg.locator("#listBookings .row", has_text="Walk In Party")
+    row.locator(".edit").click(); pg.wait_for_timeout(200)
+    nt=pg.evaluate("()=>({lab:xNightLabel.textContent,val:document.querySelector('#xNight input').value,btn:oSave.textContent})")
+    print("   night field:",nt)
+    ck("night shows the viewed night, button says Save changes",
+       nt["val"]==today
+       and nt["lab"]==pg.evaluate("()=>dateLabel(parseDepDate('%s'))"%today)
+       and nt["btn"]=="Save changes")
+    pg.evaluate("d=>{const p=document.querySelector('#xNight input');p.value=d;p.dispatchEvent(new Event('change'));}", plus(1))
+    moveLab=pg.evaluate("()=>dateLabel(parseDepDate('%s'))"%plus(1))
+    ck("button now says Move to the chosen night",
+       pg.locator("#oSave").inner_text()=="Move to "+moveLab)
+
+    # a refused move leaves the reservation standing where it was: the new
+    # night is written BEFORE this one is deleted, so a failure part-way
+    # can strand a duplicate but never lose the booking
+    STATE["fail"]=True
+    i0=len(WRITES)
+    stillOpen = not saveAndSettle(pg, "#oSave")
+    STATE["fail"]=False
+    mv=[x for x in WRITES[i0:] if "/manual/" in x["u"]]
+    ck("refused move: one PUT to the new night, no DELETE of this one",
+       stillOpen and len(mv)==1 and mv[0]["m"]=="PUT"
+       and "/manual/"+plus(1)+"/" in mv[0]["u"])
+    ck("and the row is still on the board",
+       "Walk In Party" in pg.locator("#listBookings").inner_text())
+
+    # now it goes through
+    i1=len(WRITES)
+    ck("move settles and the sheet closes", saveAndSettle(pg, "#oSave"))
+    mv2=[x for x in WRITES[i1:] if "/manual/" in x["u"]]
+    okm=(len(mv2)==2 and mv2[0]["m"]=="PUT" and "/manual/"+plus(1)+"/" in mv2[0]["u"]
+         and mv2[1]["m"]=="DELETE" and "/manual/"+today+"/" in mv2[1]["u"]
+         and json.loads(mv2[0]["b"])["name"]=="Walk In Party"
+         and json.loads(mv2[0]["b"])["pax"]==5)
+    ck("move: PUT the new night first, then DELETE this one, details carried", okm)
+    ck("row gone from this board, covers drop by its pax",
+       "Walk In Party" not in pg.locator("#listBookings").inner_text()
+       and pg.evaluate("()=>+nCovers.textContent")==before-5)
 
     # 9 override cancel of guest booking (room 1)
     tile(pg,1).click(); pg.wait_for_timeout(200)

@@ -387,6 +387,10 @@
          background:transparent; font-family:var(--ui-font); font-size:var(--t3); color:var(--ink); }
   .txt::placeholder { color:var(--mid); font-style:italic; }
   .txt:focus { outline:none; border-color:var(--ink); }
+  /* The Night field on a manual reservation's edit sheet: dressed as the
+     other fields, with an invisible native date input on top - the same
+     pattern as the header's date (initDateNav, nala-shared.js). */
+  .nightfield { position:relative; cursor:pointer; }
 
 /* A read-only role opens the sheet to READ it - the phone, the dietaries and
    the comment all live in there and the chef needs them. What goes is every
@@ -2388,10 +2392,17 @@ function editExt(key, g){
   var diets = fixDietList(g.diets);
 
   if (isManual){
+    /* The night this reservation is FOR, editable. A manual reservation
+       lives at /manual/<date>, so moving it to another night is a write
+       there and a delete here - until this control the only way was Cancel
+       booking and retype it on the other day's board. */
+    var night = todayKey();
     sheet.innerHTML =
       '<h3>'+(g.name || 'Reservation')+'</h3>'+
       '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
       '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
+      '<div class="sheet-label" style="margin-top:14px">Night</div>'+
+      '<div class="txt nightfield" id="xNight"><span id="xNightLabel"></span></div>'+
       '<div class="sheet-label" style="margin-top:14px">Guests</div>'+
       '<div class="pax-row" id="paxRow"></div>'+
       '<div class="sheet-label">Dietary requirements</div>'+
@@ -2409,6 +2420,35 @@ function editExt(key, g){
     document.getElementById('xPhone').value = g.phone || '';
     document.getElementById('xNote').value  = g.note  || '';
     document.getElementById('xDnote').value = g.dnote || '';
+    /* The label and the primary button say the same thing: on this night it
+       is Save changes, on another it is Move to that night, so what the
+       press will do is never a surprise. dkey in, dkey out - the input's
+       value IS the database key, no Date parsing on the compare (rule 7). */
+    function paintNight(){
+      document.getElementById('xNightLabel').textContent =
+        dateLabel(parseDepDate(night));
+      var b = document.getElementById('oSave');
+      b.textContent = night === todayKey()
+        ? 'Save changes' : 'Move to ' + dateLabel(parseDepDate(night));
+      b.__rest = b.innerHTML;   /* a failed save restores the current label */
+    }
+    (function wireNight(){
+      var box  = document.getElementById('xNight');
+      var pick = document.createElement('input');
+      pick.type = 'date';
+      pick.value = night;
+      pick.setAttribute('aria-label', 'Night of the reservation');
+      pick.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;'+
+        'opacity:0;border:0;padding:0;margin:0;cursor:pointer;'+
+        '-webkit-appearance:none;appearance:none;background:transparent;';
+      pick.onchange = function(){
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(pick.value)) return;
+        night = pick.value;
+        paintNight();
+      };
+      box.appendChild(pick);
+    })();
+    paintNight();
     function syncDnote(){
       var el=document.getElementById('xDnote');
       el.style.display = (diets.length || el.value) ? '' : 'none';
@@ -2445,8 +2485,26 @@ function editExt(key, g){
       rec.diets = diets.slice();
       if (dn) rec.dnote = dn; else delete rec.dnote;
       rec.pax   = pax;
-      saveManual(key, rec);
-      close(); render();
+      if (night === todayKey()){
+        saveFeedback(pressedButton(), function(){
+          return saveManual(key, rec);
+        }, { done:'Saved ✓', hold:400, then:function(){ close(); render(); } });
+        return;
+      }
+      /* A move lands on the new night BEFORE it leaves this one, so a
+         failure part-way leaves the reservation standing where it was,
+         never gone. Both writes succeed or the record is put back - the
+         front desk's rule for its own pair of writes. */
+      saveFeedback(pressedButton(), function(){
+        return api('/manual/'+night+'/'+key, 'PUT', rec).then(function(){
+          return saveManual(key).catch(function(err){
+            /* this night's copy refused to go: take the new one back out,
+               or the same table is booked on two nights */
+            api('/manual/'+night+'/'+key, 'DELETE').catch(function(){});
+            throw err;
+          });
+        });
+      }, { done:'Moved ✓', hold:400, then:function(){ close(); render(); } });
     };
   } else {
     sheet.innerHTML =
