@@ -204,7 +204,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=55"></script>
+<script src="nala-shared.js?v=56"></script>
 <script>
 /* The day's flow on one screen: what has happened, what is ready, and what
    is still owed. Every fact here is read from the screen that owns it. The
@@ -251,10 +251,11 @@ var PENDING = null, PTIMER = null;                 /* tick waiting to confirm */
    you would guess - CLAUDE.md rule 2. */
 var HREF = { forms:'arrivals-sms.html', menu:'publish.html', inv:'invitations.html',
              reps:'tally.html', sheets:'registration.html', foh:'list.html',
-             menus:'menu-print.html', arr:'front-desk.html' };
+             menus:'menu-print.html', arr:'front-desk.html',
+             cards:'front-desk.html' };
 var NEED = { forms:'editBookings', menu:'publishMenu', inv:'editBookings',
              reps:'resBoard', sheets:'editBookings', foh:'resSheet',
-             menus:'resSheet', arr:'editBookings' };
+             menus:'resSheet', arr:'editBookings', cards:'editBookings' };
 
 function mins(d){ return d.getHours()*60 + d.getMinutes(); }
 function hhmm(m){ var h=Math.floor(m/60), x=m%60;
@@ -294,10 +295,16 @@ function load(){
       .catch(function(){ return null; }),
     fetch(DB + '/dayboard/' + day + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
+    /* The key-card queue, read whole and judged per villa by cardCell -
+       never by this page's own idea of a state. */
+    fetch(DB + '/cardjobs/' + day + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; })
   ]).then(function(res){
     DATA = { stays:res[0] || {}, menu:res[1], invites:res[2] || {},
-             manual:res[3] || {}, responses:res[4] || {}, done:res[5] || {} };
+             manual:res[3] || {}, responses:res[4] || {}, done:res[5] || {},
+             cards:res[6] || {} };
     LOADED = true;
     render();
   });
@@ -479,6 +486,33 @@ function items(t){
         : shFull + ' of ' + N + ' forms complete',
     qty: QTY.sheets != null ? QTY.sheets : (N || 1), qmin:1, qmax:(N || 1) + 4,
     print:'sheets', quiet: !N || shFull < N });
+
+  /* Key cards: each arriving villa judged by cardCell, the one reader both
+     boards use (tests/card_cases.json), never this page's own idea of a
+     state. The card is a DOOR to Front Desk, whose key menu owns the run
+     and the encoder: the Dashboard gathers, rule 7, and an Encode button
+     here would be this page originating an action it cannot watch. Chips
+     wear the law's tints; red stays ink in the note, never a tile. */
+  var cDone = 0, cFail = 0, cGoing = 0, cCards = 0;
+  var cUnits = arriving.map(function(v){
+    var j = (DATA.cards || {})[String(v)] || null, cc = cardCell(j);
+    if (cc.k === 'done'){ cDone++; cCards += (j && +j.written) || 0; }
+    else if (cc.k === 'failed') cFail++;
+    else if (cc.k === 'writing' || cc.k === 'queued') cGoing++;
+    return { id:v, tone: cc.k === 'done' ? 'green'
+                 : cc.k === 'writing' || cc.k === 'failed' ? 'amber' : 'grey' };
+  });
+  L.push({ k:'cards', lab:'Key cards', owner:'desk', units:cUnits,
+    state: !N ? 'waiting' : cDone === N ? 'done'
+         : (cGoing || cFail) ? 'moving' : 'ready',
+    note: !N ? 'no arrivals today'
+        : cFail ? 'write failed on villa ' +
+            arriving.filter(function(v){
+              return cardCell((DATA.cards || {})[String(v)] || null).k === 'failed';
+            }).join(' & ') + ' - open Front Desk'
+        : cDone === N ? cCards + ' cards encoded'
+        : cGoing ? cDone + ' of ' + N + ' villas carded, encoder going'
+        : 'none encoded yet - the key menu on Front Desk' });
 
   L.push({ k:'foh', lab:'FOH sheet', owner:'paper', units:[],
     state: DATA.done.foh ? 'done' : (firm ? 'ready' : 'waiting'),

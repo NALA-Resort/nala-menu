@@ -31,6 +31,11 @@
       "kind": "function",
       "note": "One reader, so this board and the two it summarises cannot disagree." },
 
+    { "value": "where each arriving villa's key cards stand",
+      "owner": "cardCell",
+      "kind": "function",
+      "note": "The one reader, held to tests/card_cases.json. The card is a door to Front Desk, whose key menu owns the run; an Encode button here would be this page originating an action it cannot watch." },
+
     { "value": "whether a guest has physically arrived",
       "owner": "isArrived",
       "kind": "function",

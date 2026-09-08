@@ -133,6 +133,7 @@ PERMS = {}
 
 STATE = {"fail": False}
 DAYBOARD = {}
+CARDJOBS = {}   # villa -> its /cardjobs job for today
 WRITES = []
 
 def fb(route, request):
@@ -155,6 +156,8 @@ def fb(route, request):
     elif "/permissions" in u: body = json.dumps(PERMS)
     elif "/dayboard/" + today in u: body = json.dumps(DAYBOARD)
     elif "/dayboard/" in u: body = "null"
+    elif "/cardjobs/" + today in u: body = json.dumps(CARDJOBS)
+    elif "/cardjobs/" in u: body = "null"
     elif "/stays/" + today in u: body = json.dumps(STAYS)
     elif "/stays/" in u: body = "null"
     elif "/dinner/" + today in u: body = json.dumps(DINNER)
@@ -223,8 +226,9 @@ with sync_playwright() as p:
 
     # ── the page draws at all ───────────────────────────────────
     pg = board()
+    #  Nine since 8 Sep: Key cards joined the spine beside Arrival sheets.
     ck("the board renders its cards",
-       pg.evaluate("()=>document.querySelectorAll('.node').length") == 8)
+       pg.evaluate("()=>document.querySelectorAll('.node').length") == 9)
     ck("the date row shows the day, so the board says which day it is",
        pg.evaluate("()=>document.getElementById('title').textContent.trim()") != "")
 
@@ -486,6 +490,47 @@ with sync_playwright() as p:
        "menus" not in DAYBOARD)
     pg.close()
     STATE["fail"] = False
+
+    # ── key cards ───────────────────────────────────────────────
+    #  The card reads /cardjobs through cardCell and is a DOOR to Front
+    #  Desk, which owns the run: an Encode button here would be this page
+    #  originating an action it cannot watch, rule 7's whole lesson.
+    pg = board()
+    kc = card(pg, "cards")
+    ck("key cards sit on the spine as a door to Front Desk",
+       kc["door"] and kc["pos"] != "off"
+       and pg.evaluate("()=>HREF.cards") == "front-desk.html")
+    ck("with nothing queued it says so and every villa chip is grey",
+       "none encoded" in kc["note"]
+       and sorted(kc["chips"]) == ["11:grey", "14:grey", "3:grey", "7:grey"])
+    pg.close()
+
+    CARDJOBS.update({
+        "3":  {"qty": 2, "expiry": 1789000000, "state": "done",    "written": 2, "by": "x", "at": 1},
+        "7":  {"qty": 2, "expiry": 1789000000, "state": "writing", "written": 1, "by": "x", "at": 1},
+        "11": {"qty": 2, "expiry": 1789000000, "state": "failed",  "written": 0, "by": "x", "at": 1},
+    })
+    pg = board()
+    kc = card(pg, "cards")
+    ck("a failure outranks the count and names the villa",
+       "write failed on villa 11" in kc["note"] and "Front Desk" in kc["note"])
+    ck("done wears green, going wears amber, untouched stays grey",
+       sorted(kc["chips"]) == ["11:amber", "14:grey", "3:green", "7:amber"])
+    pg.close()
+
+    CARDJOBS.clear()
+    CARDJOBS.update({
+        "3":  {"qty": 2, "expiry": 1789000000, "state": "done", "written": 2, "by": "x", "at": 1},
+        "7":  {"qty": 2, "expiry": 1789000000, "state": "done", "written": 2, "by": "x", "at": 1},
+        "11": {"qty": 3, "expiry": 1789000000, "state": "done", "written": 3, "by": "x", "at": 1},
+        "14": {"qty": 2, "expiry": 1789000000, "state": "done", "written": 2, "by": "x", "at": 1},
+    })
+    pg = board()
+    kc = card(pg, "cards")
+    ck("all four villas carded reads done, with the card count",
+       kc["pos"] == "past" and "9 cards encoded" in kc["note"])
+    pg.close()
+    CARDJOBS.clear()
 
     # ── width ───────────────────────────────────────────────────
     for w in (390, 360, 320):
