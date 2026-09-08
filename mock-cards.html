@@ -1,0 +1,339 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>Mock &middot; Issue cards</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────
+   MOCK ONLY. Not linked from NAV, not published, no database behind it.
+
+   The key-card flow for the TTHotel encoder, clickable end to end so the
+   pacing can be judged before the Windows helper exists: the batch run
+   ("Issue all cards for today"), the per-villa run, the envelope beat
+   between villas, skip/redo, and every state the colour law owes it —
+   amber while the desk PC is unreached, red only when a write fails.
+
+   The encoder is a pantomime: the grey pad below the prompt stands in
+   for it, and tapping the pad is holding a card to the reader. The
+   "helper" switch at the top plays the desk PC being on or off.
+
+   Nothing here talks to anything. Tints are the values the boards use. */
+
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --cream:#F9F7F4; --ink:#1C1C1A; --mid:#999990; --rule:#E0E0DA;
+  --green:#5E7D67;  --green-t:rgba(122,160,130,.26); --green-b:rgba(122,160,130,.65);
+  --terra:#9E6455;  --terra-t:rgba(184,106,90,.16);  --terra-b:rgba(184,106,90,.45);
+  --amber:#F6EAD5;  --amberb:#C29A55; --amberink:#8A6A2F;
+  --red:#A8321E;
+  --grey-t:rgba(28,28,26,.045);
+  --ui:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+}
+body{background:var(--cream);color:var(--ink);font-family:var(--ui);
+     -webkit-tap-highlight-color:transparent;padding-bottom:60px}
+.wrap{max-width:520px;margin:0 auto;padding:14px 16px 0}
+
+/* ── the mock's own controls, not part of the proposal ────────────── */
+/* Above the overlays: the bar is the puppeteer's panel, and the amber
+   demo needs its switch reachable mid-run. */
+.mockbar{position:sticky;top:0;z-index:300;background:var(--cream);
+  border-bottom:1px solid var(--rule);padding:10px 16px;display:flex;
+  align-items:center;gap:14px;flex-wrap:wrap}
+.mockbar b{font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.mockbar label{font-size:12px;color:var(--mid);display:flex;align-items:center;gap:6px}
+
+h1{font-size:13px;letter-spacing:.1em;text-transform:uppercase;margin:18px 0 4px}
+.sub{font-size:12px;color:var(--mid);margin-bottom:14px}
+
+/* ── labels, buttons, per the button law ──────────────────────────── */
+.lab{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid)}
+button{font-family:var(--ui);cursor:pointer}
+.btn{display:block;width:100%;padding:13px;border-radius:8px;border:1px solid var(--ink);
+  background:var(--ink);color:var(--cream);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase}
+.btn[disabled]{opacity:.4;cursor:default}
+.btn-quiet{display:inline-block;padding:8px 14px;border-radius:8px;
+  border:1px solid var(--rule);background:transparent;color:var(--ink);
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.btn-terra{display:inline-block;padding:8px 14px;border-radius:8px;
+  border:1px solid var(--terra-b);background:transparent;color:var(--terra);
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+
+/* ── the day list ─────────────────────────────────────────────────── */
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;
+  border-bottom:1px solid var(--rule)}
+.row .no{font-size:15px;width:34px;font-variant-numeric:tabular-nums}
+.row .who{flex:1;font-size:14px}
+.row .who small{display:block;font-size:11px;color:var(--mid)}
+.pill{font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  padding:3px 10px;border-radius:20px;border:1px solid var(--rule);color:var(--mid)}
+.pill.done{background:#E4EDE2;border-color:#7E937A;color:var(--green)}
+.pill.part{background:var(--amber);border-color:var(--amberb);color:var(--amberink)}
+.pill.skip{background:var(--terra-t);border-color:var(--terra-b);color:var(--terra)}
+.pill.fail{color:var(--red);border-color:var(--red)}
+
+/* ── overlays: pre-flight, run, summary ───────────────────────────── */
+.ov{position:fixed;inset:0;background:var(--cream);z-index:200;overflow-y:auto;
+  display:none}
+.ov.open{display:block}
+.ov .wrap{padding-top:64px}   /* clears the mockbar riding above */
+.ovhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+.ovhead h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase}
+.x{background:none;border:none;font-size:22px;line-height:1;color:var(--mid);padding:4px 8px}
+
+.pf-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--rule)}
+.pf-row.off{opacity:.45}
+.pf-row .no{font-size:15px;width:30px}
+.pf-row .who{flex:1;font-size:13px;color:var(--ink)}
+.qty{display:flex;align-items:center;gap:0;border:1px solid var(--rule);border-radius:8px}
+.qty button{width:34px;height:34px;background:none;border:none;font-size:17px;color:var(--ink)}
+.qty span{width:22px;text-align:center;font-size:14px;font-variant-numeric:tabular-nums}
+.tick{width:34px;height:34px;border-radius:8px;border:1px solid var(--rule);
+  background:none;font-size:15px;color:var(--green)}
+
+/* ── the run screen ───────────────────────────────────────────────── */
+.stage{text-align:center;padding-top:8vh}
+.stage .lab{display:block;margin-bottom:10px}
+.villa-big{font-size:64px;font-weight:600;letter-spacing:.02em;line-height:1;
+  font-variant-numeric:tabular-nums}
+.villa-big small{display:block;font-size:14px;font-weight:400;color:var(--mid);
+  letter-spacing:.06em;margin-top:6px}
+.cardcount{font-size:15px;margin:22px 0 6px}
+.prompt{font-size:13px;color:var(--mid);margin-bottom:26px}
+.prompt.err{color:var(--red)}
+
+.pad{width:200px;height:130px;margin:0 auto;border:1px dashed var(--mid);
+  border-radius:14px;background:var(--grey-t);display:flex;align-items:center;
+  justify-content:center;flex-direction:column;gap:6px;color:var(--mid);
+  font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;
+  user-select:none;-webkit-user-select:none}
+.pad.busy{border-style:solid;border-color:var(--amberb);background:var(--amber);color:var(--amberink)}
+.pad.ok{border-style:solid;border-color:var(--green-b);background:var(--green-t);color:var(--green)}
+.pad.err{border-style:solid;border-color:var(--red);color:var(--red)}
+.pad .big{font-size:26px;letter-spacing:0}
+
+.runfoot{display:flex;justify-content:center;gap:10px;margin-top:30px;flex-wrap:wrap}
+.simfail{margin-top:26px;font-size:11px;color:var(--mid);background:none;border:none;
+  text-decoration:underline}
+
+/* the envelope beat */
+.beat{max-width:320px;margin:0 auto}
+.beat .env{font-size:44px;margin:14px 0}
+.beat p{font-size:15px;line-height:1.5;margin-bottom:26px}
+
+/* amber hold while the desk PC is unreached */
+.hold{max-width:320px;margin:0 auto;background:var(--amber);
+  border:1px solid var(--amberb);border-radius:10px;padding:18px;color:var(--amberink);
+  font-size:13px;line-height:1.5}
+
+/* summary */
+.sumline{display:flex;align-items:center;gap:12px;padding:10px 0;
+  border-bottom:1px solid var(--rule);font-size:13px}
+.sumline .no{width:30px;font-size:15px}
+.sumline .r{margin-left:auto}
+.progress{font-size:11px;color:var(--mid);letter-spacing:.1em;text-transform:uppercase;
+  margin-bottom:22px}
+</style></head><body>
+
+<div class="mockbar">
+  <b>Mock &middot; issue cards</b>
+  <label><input type="checkbox" id="helperOn" checked> desk PC helper running</label>
+  <label style="margin-left:auto"><button class="btn-quiet" style="padding:5px 10px" onclick="resetAll()">reset</button></label>
+</div>
+
+<div class="wrap">
+  <h1>Front desk &middot; arriving today</h1>
+  <div class="sub">Tue 8 Sep &middot; the sheet each row opens is not mocked here &mdash; only the card flow is.</div>
+
+  <div id="dayList"></div>
+
+  <div style="margin-top:18px">
+    <button class="btn" id="batchBtn" onclick="openPreflight()">Issue all cards for today</button>
+  </div>
+</div>
+
+<!-- ── pre-flight ──────────────────────────────────────────────────── -->
+<div class="ov" id="pf">
+  <div class="wrap">
+    <div class="ovhead"><h2>Issue all cards for today</h2>
+      <button class="x" onclick="closeOv('pf')">&times;</button></div>
+    <div class="sub">Untick a villa to leave it out. Cards run in villa order.</div>
+    <div id="pfList"></div>
+    <div style="margin-top:18px">
+      <button class="btn" id="pfStart" onclick="startRun()">Start &mdash; <span id="pfTotal"></span> cards</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── the run ─────────────────────────────────────────────────────── -->
+<div class="ov" id="run">
+  <div class="wrap">
+    <div class="ovhead"><h2 id="runTitle">Issuing cards</h2>
+      <button class="x" onclick="abandonRun()">&times;</button></div>
+    <div class="progress" id="runProg"></div>
+    <div id="runBody"></div>
+  </div>
+</div>
+
+<script>
+/* State: the day's arrivals. qty is what pre-flight chose; done counts
+   written cards; state: todo | done | skip | fail. */
+const VILLAS = [
+  {no:3,  name:"Whitfield", stay:"3 nights"},
+  {no:9,  name:"Marsh",     stay:"2 nights"},
+  {no:10, name:"Okafor",    stay:"5 nights"},
+  {no:14, name:"Laurent",   stay:"1 night"},
+  {no:17, name:"Nguyen",    stay:"4 nights"},
+];
+let day, queue, qi, card, failNext, singleMode;
+
+function resetAll(){
+  day = VILLAS.map(v => ({...v, qty:2, inc:true, done:0, state:"todo"}));
+  queue=[]; qi=0; card=0; failNext=false; singleMode=false;
+  closeOv('pf'); closeOv('run'); drawDay();
+}
+
+/* ── the day list ─────────────────────────────────────────────────── */
+function drawDay(){
+  const el = document.getElementById('dayList');
+  el.innerHTML = day.map((v,i)=>{
+    let pill = '<span class="pill">no cards yet</span>';
+    if (v.state==="done") pill = `<span class="pill done">${v.done} cards issued</span>`;
+    if (v.state==="skip") pill = '<span class="pill skip">skipped</span>';
+    if (v.state==="fail") pill = '<span class="pill fail">write failed</span>';
+    return `<div class="row">
+      <div class="no">${v.no}</div>
+      <div class="who">${v.name}<small>${v.stay}</small></div>
+      ${pill}
+      <button class="btn-quiet" onclick="single(${i})">issue</button>
+    </div>`;
+  }).join('');
+}
+
+/* ── pre-flight ───────────────────────────────────────────────────── */
+function openPreflight(){ drawPf(); document.getElementById('pf').classList.add('open'); }
+function drawPf(){
+  const el = document.getElementById('pfList');
+  el.innerHTML = day.map((v,i)=>`
+    <div class="pf-row ${v.inc?'':'off'}">
+      <button class="tick" onclick="day[${i}].inc=!day[${i}].inc;drawPf()">${v.inc?'&#10003;':''}</button>
+      <div class="no">${v.no}</div>
+      <div class="who">${v.name} &middot; ${v.stay}</div>
+      <div class="qty">
+        <button onclick="bump(${i},-1)">&minus;</button><span>${v.qty}</span>
+        <button onclick="bump(${i},1)">+</button>
+      </div>
+    </div>`).join('');
+  const total = day.filter(v=>v.inc).reduce((s,v)=>s+v.qty,0);
+  document.getElementById('pfTotal').textContent = total;
+  document.getElementById('pfStart').disabled = total===0;
+}
+function bump(i,d){ day[i].qty = Math.min(6, Math.max(1, day[i].qty+d)); drawPf(); }
+
+/* ── running ──────────────────────────────────────────────────────── */
+function single(i){
+  day[i].done=0; day[i].state="todo";
+  queue=[i]; qi=0; card=1; singleMode=true;
+  closeOv('pf'); document.getElementById('run').classList.add('open'); step();
+}
+function startRun(){
+  queue = day.map((v,i)=>v.inc?i:-1).filter(i=>i>=0);
+  queue.forEach(i=>{ day[i].done=0; day[i].state="todo"; });
+  qi=0; card=1; singleMode=false;
+  closeOv('pf'); document.getElementById('run').classList.add('open'); step();
+}
+function abandonRun(){ closeOv('run'); drawDay(); }
+function prog(){
+  const doneCards = queue.slice(0,qi).reduce((s,i)=>s+day[i].done,0);
+  const total = queue.reduce((s,i)=>s+day[i].qty,0);
+  document.getElementById('runProg').textContent =
+    singleMode ? '' : `villa ${qi+1} of ${queue.length} · ${doneCards} of ${total} cards written`;
+}
+
+function step(){
+  prog();
+  const body = document.getElementById('runBody');
+  if (qi >= queue.length) return summary();
+  const v = day[queue[qi]];
+
+  if (!document.getElementById('helperOn').checked){
+    body.innerHTML = `<div class="stage"><div class="hold">
+      <b>Waiting for the desk PC.</b><br>
+      The card job is saved and will start the moment the helper on the
+      front-desk computer is running. Nothing is lost by waiting.
+      <div style="margin-top:14px"><button class="btn-quiet" onclick="step()">try again</button></div>
+    </div></div>`;
+    return;
+  }
+
+  body.innerHTML = `<div class="stage">
+    <span class="lab">hold a card to the reader for</span>
+    <div class="villa-big">VILLA ${v.no}<small>${v.name} &middot; departs after ${v.stay}</small></div>
+    <div class="cardcount">card ${card} of ${v.qty}</div>
+    <div class="prompt" id="prompt">The reader is waiting. Tap the pad to pretend a card was held to it.</div>
+    <div class="pad" id="pad" onclick="writeCard()"><span class="big">&#9634;</span><span>tap = hold card here</span></div>
+    <div class="runfoot">
+      ${card>1?'<button class="btn-quiet" onclick="redo()">redo last card</button>':''}
+      <button class="btn-terra" onclick="skipVilla()">skip villa ${v.no}</button>
+    </div>
+    <button class="simfail" onclick="failNext=true;this.textContent='next write will fail'">simulate a failed write</button>
+  </div>`;
+}
+
+function writeCard(){
+  const pad = document.getElementById('pad'), pr = document.getElementById('prompt');
+  pad.className='pad busy'; pad.innerHTML='<span class="big">&#8942;</span><span>writing&hellip;</span>';
+  pad.onclick=null;
+  setTimeout(()=>{
+    const v = day[queue[qi]];
+    if (failNext){
+      failNext=false;
+      pad.className='pad err'; pad.innerHTML='<span class="big">&#10007;</span><span>write failed</span>';
+      pr.className='prompt err';
+      pr.textContent='The encoder could not write this card. Try the same card again, try another card, or skip the villa.';
+      pad.onclick=writeCard;
+      return;
+    }
+    pad.className='pad ok'; pad.innerHTML='<span class="big">&#10003;</span><span>card '+card+' written</span>';
+    v.done++;
+    setTimeout(()=>{
+      if (card < v.qty){ card++; step(); }
+      else { v.state="done"; envelope(v); }
+    }, 650);
+  }, 900);
+}
+
+function redo(){ const v=day[queue[qi]]; if(v.done>0){v.done--;} card=Math.max(1,card-1); step(); }
+function skipVilla(){ const v=day[queue[qi]]; v.state = v.done>0 ? "done" : "skip"; next(); }
+function envelope(v){
+  if (singleMode) return summary();
+  document.getElementById('runBody').innerHTML = `<div class="stage"><div class="beat">
+    <span class="lab">before the next villa</span>
+    <div class="env">&#9993;</div>
+    <p><b>Put villa ${v.no}&rsquo;s ${v.done} cards in the envelope now.</b><br>
+       The next prompt is a different villa.</p>
+    <button class="btn" onclick="next()">done &mdash; next villa</button>
+  </div></div>`;
+}
+function next(){ qi++; card=1; step(); }
+
+function summary(){
+  drawDay();
+  const rows = queue.map(i=>{ const v=day[i];
+    const r = v.state==="skip" ? '<span class="pill skip">skipped</span>'
+            : `<span class="pill done">${v.done} written</span>`;
+    return `<div class="sumline"><div class="no">${v.no}</div>${v.name}<div class="r">${r}</div></div>`;
+  }).join('');
+  const cards = queue.reduce((s,i)=>s+day[i].done,0);
+  document.getElementById('runBody').innerHTML = `
+    <div style="max-width:360px;margin:0 auto;padding-top:4vh">
+      <span class="lab">finished</span>
+      <div style="font-size:22px;margin:8px 0 18px">${cards} cards written</div>
+      ${rows}
+      <div style="margin-top:22px"><button class="btn" onclick="abandonRun()">back to the desk</button></div>
+    </div>`;
+}
+
+function closeOv(id){ document.getElementById(id).classList.remove('open'); }
+resetAll();
+</script>
+</body></html>
