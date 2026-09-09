@@ -999,7 +999,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 .keydrop button { display:flex; width:100%; align-items:baseline; gap:var(--s4);
                   justify-content:space-between; text-align:left;
                   padding:var(--s3) var(--s4); background:none; border:0;
-                  font-family:inherit; font-size:var(--t2); line-height:1.3;
+                  font-family:var(--ui-font); font-size:var(--t2); line-height:1.3;
                   color:var(--ink); cursor:pointer; }
 .keydrop button:active { background:var(--accent-soft); }
 /* The batch action stands last, behind the seam the signout row already
@@ -1021,7 +1021,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 .cardov-head { max-width:520px; margin:0 auto; display:flex;
                align-items:baseline; justify-content:space-between; }
 .cardov-title { font-family:var(--ui-font); font-size:var(--t3); font-weight:600; }
-.cardov-x { background:none; border:none; font-size:24px; line-height:1;
+.cardov-x { background:none; border:none; font-size:var(--t5); line-height:1;
             color:var(--mid); padding:4px 8px; cursor:pointer; }
 .cardov-in { max-width:520px; margin:0 auto; }
 .crun { border:1px solid var(--rule); border-radius:var(--r);
@@ -1029,7 +1029,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 .crun.now { border-color:var(--amberb); }
 .crun.is-done { opacity:.62; }
 .crun.is-failed { border-color:var(--law-red); }
-.crun-v { font-size:26px; font-weight:600; }
+.crun-v { font-size:26px; font-weight:600; } /* off-scale: read from across the desk, the owner's ruling 8 Sep */
 .crun-v small { font-size:var(--t2); font-weight:400; color:var(--mid); margin-left:8px; }
 .crun-s { font-size:var(--t2); color:var(--mid); margin-top:4px; }
 .crun-s.card-failed { color:var(--law-red); }
@@ -1044,7 +1044,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 .cqty { display:inline-flex; align-items:center; border:1px solid var(--rule);
         border-radius:var(--r); margin-left:10px; vertical-align:middle; }
 .cqty button { width:38px; height:38px; background:none; border:none;
-               font-size:18px; color:var(--ink); cursor:pointer; }
+               font-size:var(--t4); color:var(--ink); cursor:pointer; }
 .cqty span { width:26px; text-align:center; font-size:var(--t3); }
 /* the run's cancel wears terracotta and confirms - the button law */
 .sum-btns button.terra { border-color:var(--terra-b); color:var(--terra);
@@ -1085,10 +1085,10 @@ body.ui2 .mocktools .btn{ width:auto; padding:5px 12px; min-height:28px; font-si
 .cslot { width:26px; height:38px; border-radius:5px; border:2px solid var(--rule);
          background:transparent; position:relative; flex:0 0 auto;
          display:flex; align-items:center; justify-content:center;
-         font-style:normal; font-family:var(--ui-font); font-size:15px;
+         font-style:normal; font-family:var(--ui-font); font-size:var(--t3);
          color:var(--mid); }
 .cslot::after { position:absolute; inset:0; display:flex; align-items:center;
-         justify-content:center; font-family:var(--ui-font); font-size:16px; }
+         justify-content:center; font-family:var(--ui-font); font-size:var(--t3); }
 .cslot.filled { background:var(--law-green-t); border-color:var(--law-green-b); }
 .cslot.filled::after { content:'\2713'; color:var(--law-green); }
 .cslot.now { border-color:var(--amberb); background:var(--amber);
@@ -1111,10 +1111,10 @@ body.ui2 .mocktools .btn{ width:auto; padding:5px 12px; min-height:28px; font-si
 @media (prefers-reduced-motion: reduce) {
   .cardask .wave { animation:none; opacity:.55; }
 }
-.crun.now .crun-v { font-size:52px; line-height:1; }
+.crun.now .crun-v { font-size:52px; line-height:1; } /* off-scale: same ruling */
 .crun.now .crun-v small { display:block; margin-left:0; margin-top:6px; }
-.crun.now .cslot { width:40px; height:58px; border-radius:7px; font-size:22px; }
-.crun.now .cslot::after { font-size:24px; }
+.crun.now .cslot { width:40px; height:58px; border-radius:7px; font-size:22px; } /* off-scale: same ruling */
+.crun.now .cslot::after { font-size:24px; } /* off-scale: same ruling */
 .cprog { max-width:520px; margin:0 auto 4px; height:5px; border-radius:3px;
          background:var(--rule); overflow:hidden; }
 .cprog i { display:block; height:100%; background:var(--law-green);
