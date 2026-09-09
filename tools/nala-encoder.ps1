@@ -42,8 +42,11 @@ Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
 public static class CE {
-  [DllImport("CardEncoder.dll", CharSet=CharSet.Unicode)]
+  [DllImport("CardEncoder.dll", CharSet=CharSet.Ansi)]
   public static extern int CE_ConnectComm(string portName);
+  // Ansi, not Unicode: proven on the real E3 at the desk, 9 Sep - the
+  // Unicode marshal made every port read as garbage ("no encoder
+  // answering" on all 20); Ansi "COM3" connected with rc 0.
   [DllImport("CardEncoder.dll")]
   public static extern int CE_DisconnectComm();
   [DllImport("CardEncoder.dll", CharSet=CharSet.Ansi)]
