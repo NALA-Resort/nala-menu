@@ -191,7 +191,13 @@ while ($true) {
       }
     }
   } catch {
-    Log "trouble: $($_.Exception.Message)"
+    # The Worker's refusals carry their reason in the response body - the
+    # relay 502s with "getInfo refused: ..." and friends - and the bare
+    # exception says only "Bad Gateway". Learned at the first live run,
+    # 9 Sep: twenty identical 502 lines and not one said why.
+    $m = $_.Exception.Message
+    if ($_.ErrorDetails -and $_.ErrorDetails.Message) { $m += " - " + $_.ErrorDetails.Message }
+    Log "trouble: $m"
     $script:Port = $null   # a wedged port reconnects on the next pass
     try { $null = [CE]::CE_DisconnectComm() } catch {}
   }
