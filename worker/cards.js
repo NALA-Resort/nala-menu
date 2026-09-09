@@ -136,7 +136,10 @@ let TOKEN = null, TOKEN_AT = 0;
 export async function ttAccessToken(env) {
   if (TOKEN && Date.now() - TOKEN_AT < 50 * 60 * 1000) return TOKEN;
   const pw = (env.TT_PASSWORD || "").trim();
-  const hashed = /^[0-9a-f]{32}$/.test(pw) ? pw : md5(pw);
+  /* Either case: TTLock's own pages show md5s in both, and an uppercase
+     one taken for plain text would be hashed a second time - the exact
+     "oauth refused" the first live run nearly hit, 9 Sep. */
+  const hashed = /^[0-9a-fA-F]{32}$/.test(pw) ? pw.toLowerCase() : md5(pw);
   const body = new URLSearchParams({
     client_id: (env.TT_CLIENT_ID || "").trim(),
     client_secret: (env.TT_CLIENT_SECRET || "").trim(),

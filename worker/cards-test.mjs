@@ -102,6 +102,14 @@ install();
   ck("a pre-hashed password is sent as it is, not hashed twice",
      oauth && String(oauth.body).includes(md5("pw")));
 }
+install();
+{
+  const pre = Object.assign({}, env, { TT_PASSWORD: md5("pw").toUpperCase() });
+  await handleCardRoute(req("/cardlocks", "helper-shh"), pre);
+  const oauth = CALLS.find(c => c.u.includes("oauth2/token"));
+  ck("an UPPERCASE pre-hash is recognised and lowered, not hashed twice",
+     oauth && String(oauth.body).includes(md5("pw")));
+}
 
 /* ── the rest of the Worker is untouched ─────────────────────── */
 install();
