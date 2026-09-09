@@ -293,13 +293,8 @@ function stayDays(id){
   return out;
 }
 
-/* Which day a record belongs to on the board. A booked or suggested
-   treatment sits on its own day; a request and a decline sit on the day the
-   guest asked about, because that is when somebody will look for them. */
-function dayOf(rec){
-  if (rec.status === 'booked' || rec.status === 'suggested') return rec.day || '';
-  return rec.reqDay || rec.day || '';
-}
+/* dayOf moved to nala-shared.js, 8 Sep: the Dashboard needs the same
+   reading for its spa reminder. */
 function asRequested(rec){
   /* True of the time as well as the day. Until 9 Sep only the day was
      compared, so a 4pm ask booked at 1pm wore "as requested" - which is

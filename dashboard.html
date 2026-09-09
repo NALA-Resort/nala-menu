@@ -252,10 +252,11 @@ var PENDING = null, PTIMER = null;                 /* tick waiting to confirm */
 var HREF = { forms:'arrivals-sms.html', menu:'publish.html', inv:'invitations.html',
              reps:'tally.html', sheets:'registration.html', foh:'list.html',
              menus:'menu-print.html', arr:'front-desk.html',
-             cards:'front-desk.html' };
+             cards:'front-desk.html', spa:'spa.html' };
 var NEED = { forms:'editBookings', menu:'publishMenu', inv:'editBookings',
              reps:'resBoard', sheets:'editBookings', foh:'resSheet',
-             menus:'resSheet', arr:'editBookings', cards:'editBookings' };
+             menus:'resSheet', arr:'editBookings', cards:'editBookings',
+             spa:'spaBoard' };
 
 function mins(d){ return d.getHours()*60 + d.getMinutes(); }
 function hhmm(m){ var h=Math.floor(m/60), x=m%60;
@@ -293,6 +294,9 @@ function load(){
     fetch(DB + '/responses/' + day + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; }),
+    fetch(DB + '/spa.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
     fetch(DB + '/dayboard/' + day + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; }),
@@ -303,8 +307,8 @@ function load(){
       .catch(function(){ return null; })
   ]).then(function(res){
     DATA = { stays:res[0] || {}, menu:res[1], invites:res[2] || {},
-             manual:res[3] || {}, responses:res[4] || {}, done:res[5] || {},
-             cards:res[6] || {} };
+             manual:res[3] || {}, responses:res[4] || {}, spa:res[5] || {},
+             done:res[6] || {}, cards:res[7] || {} };
     LOADED = true;
     render();
   });
@@ -437,10 +441,50 @@ function items(t){
     /* fullNameFor, not shortTagFor: the tag form is upper case for a compact
        chip and shouts inside a sentence. */
     var d = tickOf(k), who = d.who ? fullNameFor(d.who) : '';
-    return 'printed ' + hhmm(d.t) + (who ? ' by ' + who : '');
+    /* The spa card is a reminder, not paper: it was done, not printed. */
+    return (k === 'spa' ? 'done ' : 'printed ') + hhmm(d.t) +
+           (who ? ' by ' + who : '');
   }
 
   var L = [];
+
+  /* Spa. First on the board, above the flow: it is a reminder rather than a
+     step, and it is the one thing here with a fixed hour the desk has to work
+     around. Nothing else on this page is time-bound, so it goes where the eye
+     lands first rather than buried under the print cards.
+
+     A reminder and nothing else: the desk cannot do anything to a
+     treatment from here, so the card has no action beyond its door and a
+     tick. It is booked treatments only - a request or a suggestion is not
+     something anybody is expecting a guest to turn up for. dayOf is spa.html's
+     own reading of which day a record sits on. */
+  var spa = [];
+  Object.keys(DATA.spa).forEach(function(id){
+    var t = DATA.spa[id];
+    if (!t || typeof t !== 'object') return;
+    Object.keys(t).forEach(function(tid){
+      var r = t[tid];
+      if (!r || r.status !== 'booked') return;
+      if (dayOf(r) !== day) return;
+      spa.push(r);
+    });
+  });
+  spa.sort(function(a,b){ return String(a.time||'').localeCompare(String(b.time||'')); });
+
+  if (spa.length){
+    var when = spa.map(function(r){
+      return spaSlotLabel(r.time) + (r.qty === 2 ? ' (2)' : '');
+    }).join(', ');
+    L.push({ k:'spa', lab: spa.length === 1 ? 'Spa booking' : 'Spa bookings',
+      owner:'spa',
+      units: spa.map(function(r){
+        return { id: spaSlotLabel(r.time), tone: DATA.done.spa ? 'green' : 'grey' };
+      }),
+      state: DATA.done.spa ? 'done' : 'shut',
+      note: DATA.done.spa ? printedNote('spa')
+          : when + (spa.length === 1 ? '' : ''),
+      tick:true });
+  }
 
   L.push({ k:'forms', lab:'Pre-arrival forms', owner:'desk', units:fUnits,
     state: N && fdone === N ? 'done' : 'ready',
@@ -565,8 +609,8 @@ function items(t){
   L.forEach(function(d){
     d.acts = [];
     if (d.print && can(ROLE, NEED[d.k])) d.acts.push({ t:'Print', quiet:d.quiet });
-    d.tickable = !!(d.print && can(ROLE, NEED[d.k]));
-    d.ticked = !!(d.print && DATA.done[d.print]);
+    d.tickable = !!((d.print || d.tick) && can(ROLE, NEED[d.k]));
+    d.ticked = !!DATA.done[d.print || d.k];
     d.door = can(ROLE, NEED[d.k]);
     d.navask = NAVASK === d.k;
     d.pending = PENDING === d.k;
@@ -613,7 +657,8 @@ function acts(d){
       h += '<button class="btn terra" data-mark="' + d.k + '">' +
            (d.ticked ? 'Confirm undo' : 'Confirm done') + '</button>';
     else if (d.ticked)
-      h += '<button class="btn ghost done" data-mark="' + d.k + '">&#10003; Printed</button>';
+      h += '<button class="btn ghost done" data-mark="' + d.k + '">&#10003; ' +
+           (d.print ? 'Printed' : 'Done') + '</button>';
     else
       h += '<button class="btn ghost" data-mark="' + d.k + '">Mark done</button>';
   }
