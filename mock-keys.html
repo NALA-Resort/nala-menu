@@ -1126,60 +1126,53 @@ body.ui2 .mocktools .btn{ width:auto; padding:5px 12px; min-height:28px; font-si
 .cardov{z-index:800 !important}
 .tapnote{font-size:var(--t1);color:var(--amberink);margin-top:6px;font-family:var(--ui-font)}
 
-/* ---------------------------------------------------------------------
-   MOCK ONLY - the Keys page, card management from the receptionist's
-   chair. Not linked from NAV, not published, no database behind it.
 
-   The shape, in her order of duties:
-   1. Returns today - departing villas and the cards they took; tick
-      them back in. A returned card is tomorrow's blank.
-   2. Cards out - the register: every living card, by villa, one truth
-      pill each. Tap a villa for its cards.
-   3. Lost cards - in the villa's sheet: TAP THE MISSING CARDS (she
-      knows which are gone because the guest hands back the rest), then
-      Cancel. The flow is honest about the physics: the encoder writes
-      a cancel card and SOMEBODY WALKS IT TO THE DOOR - only the lock
-      flashing kills a lost card, and the screen says so.
 
-   Colour law: cream row = cards still to collect; green = back / valid
-   / a pick mark; amber = due back today, chase; terracotta = lost or
-   cancelled, a fact not a failure; grey dashed = expired, stock only.
-   Red nowhere, unless a write fails. */
 
-.seccount { font-size:var(--t1); color:var(--mid); font-weight:400; margin-left:8px; }
-.krow { display:flex; align-items:center; gap:12px; width:100%; text-align:left;
-        background:transparent; border:0; border-bottom:1px solid var(--rule);
-        padding:12px 2px; font-family:var(--ui-font); color:var(--ink); }
-button.krow { cursor:pointer; }
-.krow .kv { font-size:var(--t4); font-weight:600; min-width:34px; }
-.krow .kn { flex:1 1 auto; min-width:0; }
-.krow .kn b { display:block; font-weight:500; font-size:var(--t2); }
-.krow .kn span { font-size:var(--t1); color:var(--mid); }
-.kpill { flex:0 0 auto; font-size:var(--t1); border-radius:var(--pill);
-         padding:4px 10px; white-space:nowrap; font-family:var(--ui-font); }
-.kpill.ok   { background:var(--green); border:1px solid var(--greenb); }
-.kpill.due  { background:var(--amber); border:1px solid var(--amberb); color:var(--amberink); }
-.kpill.lost { background:rgba(184,106,90,.16); border:1px solid var(--terra-b); color:var(--terra); }
-.krow.collected { opacity:.62; }
-body.ui2 .kcollect { width:auto; min-height:38px; padding:8px 14px; flex:0 0 auto; }
+button
+
+
+
+
+
+
+
+
+
+
 .kfold { margin:10px 0 30px; font-family:var(--ui-font); font-size:var(--t1);
          color:var(--mid); }
 .kfold summary { cursor:pointer; opacity:.75; }
 .kfold div { padding:8px 2px; opacity:.75; }
+/* four segments with counts must fit 320: t1, and no minimum width */
+#tabs button { min-width:0; font-size:var(--t1); padding:11px 2px; }
+/* body is a flex column (the app's own base), so this page's wrapper is
+   a flex item and must be allowed to shrink to the viewport */
+#body { min-width:0; width:100%; }
 
 
-/* tabs keep the register short - the selection wears the green mark */
-.ktabs { display:flex; gap:8px; margin:0 0 18px; flex-wrap:wrap; }
-.ktab { border:1px solid var(--rule); background:transparent; border-radius:var(--pill);
-        padding:7px 14px; font-family:var(--ui-font); font-size:var(--t1);
-        color:var(--mid); cursor:pointer; }
-.ktab.on { background:var(--green); border-color:var(--greenb); color:var(--ink); }
-.ksheet { border:1px solid var(--rule); border-radius:var(--r); padding:14px;
-          margin:10px 0; font-family:var(--ui-font); }
-.ksheet .srow-note { font-size:var(--t1); color:var(--mid); }
-.ksheet .sum-btns { margin-top:12px; }
-.ksheet .sum-btns button.terra { border-color:var(--terra-b); color:var(--terra);
-          background:transparent; }
+
+
+
+
+
+
+
+
+
+/* MOCK ONLY - the Keys page in Front Desk's own bones: .seg tabs, .arr
+   tiles, the .sum sheet, the run overlay. The page's sole own dress is
+   .kst: three words in the law's inks, in the row's right-hand slot
+   where Front Desk carries its forks. And .kfold for the expired count. */
+.kst { flex:0 0 auto; text-align:right; font-size:var(--t1);
+       font-family:var(--ui-font); line-height:1.5; }
+.kst .g { color:var(--law-green); }
+.kst .a { color:var(--amberink); }
+.kst .t { color:var(--terra); }
+.kfold { margin:14px 2px 30px; font-family:var(--ui-font); font-size:var(--t1);
+         color:var(--mid); }
+.kfold summary { cursor:pointer; opacity:.75; }
+.kfold div { padding:8px 2px; opacity:.75; }
 </style>
 </head>
 <body class="tier-app ui2">
@@ -1192,12 +1185,12 @@ body.ui2 .kcollect { width:auto; min-height:38px; padding:8px 14px; flex:0 0 aut
 </div>
 
 <div id="body" style="max-width:520px;margin:0 auto">
-  <div class="sum-btns" style="margin:6px 0 20px">
+  <div class="sum-btns" style="margin:6px 0 16px">
     <button class="go wide" id="cancelBtn">Cancel cards</button>
   </div>
 
-  <div class="ktabs" id="tabs"></div>
-  <div id="register"></div>
+  <div class="seg" id="tabs"></div>
+  <div id="list" style="margin-top:10px"></div>
   <details class="kfold" id="expFold"><summary id="expSum"></summary>
     <div>Dead cards from past stays, still in guests' pockets. They open
       nothing; this is a count of missing blanks, not a risk.</div></details>
@@ -1218,24 +1211,33 @@ body.ui2 .kcollect { width:auto; min-height:38px; padding:8px 14px; flex:0 0 aut
 <script>
 document.title = 'Mock · Keys';
 
-/* The card lifecycle, whole:
-     written -> ACTIVE -> dies at 13:00 on depart day -> expired (stock)
-     ACTIVE -> marked lost at the desk -> LOST, a floating security
-       reminder for its remaining validity -> expires with the rest
+/* Front Desk's bones, nothing invented: .seg is the app's segmented
+   control, rows are .arr tiles, the tap-open sheet is .sum, buttons
+   obey the button law, and the overlay is the card run's own. The
+   page adds only .kst - three words in the law's inks.
+
+   The card lifecycle, whole:
+     written -> ACTIVE -> dies 13:00 on depart day -> expired (stock)
+     ACTIVE -> marked lost -> LOST, floating reminder until expiry
      LOST -> Found (undo) -> ACTIVE
-     any card in hand -> Cancel cards at the reader -> wiped, a blank
-   Marking lost is the villa sheet's one job; it is reversible, so it
-   asks nothing. Cancel is the top button; the encoder reads the card
-   and the card names its own room. */
+     any card in hand -> Cancel at the reader -> read, named, wiped
+   Identity is the reader's, never a guess: serials are on file from
+   write time, so a cancel kills exactly the card on the pad and the
+   lost one shows itself by never touching the reader. */
 
 var K, TAB, OPEN, DONE, SESSION;
 function resetAll(){
   K = [
-    { villa:3,  name:'James Fisher',    dep:true,  out:2, lost:0, until:'today, 13:00' },
-    { villa:14, name:'Ann Brown',       dep:true,  out:1, lost:0, until:'today, 13:00' },
-    { villa:4,  name:'Robyn Williams',  dep:false, out:2, lost:0, until:'Sat 13th Sep, 13:00' },
-    { villa:6,  name:'Karen and Mike Mount', dep:false, out:3, lost:0, until:'Fri 11th Sep, 13:00' },
-    { villa:9,  name:'Konstantinos Papadopoulos', dep:false, out:3, lost:1, until:'Thu 11th Sep, 13:00' }
+    { villa:3,  name:'James Fisher',    dep:true,  out:2, lost:0,
+      until:'today, 13:00',       serials:'&middot;&middot;12E0 &middot;&middot;5B77' },
+    { villa:14, name:'Ann Brown',       dep:true,  out:1, lost:0,
+      until:'today, 13:00',       serials:'&middot;&middot;A4C2' },
+    { villa:4,  name:'Robyn Williams',  dep:false, out:2, lost:0,
+      until:'Sat 13th Sep, 13:00', serials:'&middot;&middot;7D19 &middot;&middot;E80F' },
+    { villa:6,  name:'Karen and Mike Mount', dep:false, out:3, lost:0,
+      until:'Fri 11th Sep, 13:00', serials:'&middot;&middot;90BB &middot;&middot;31FA &middot;&middot;C6D4' },
+    { villa:9,  name:'Konstantinos Papadopoulos', dep:false, out:3, lost:1,
+      until:'Thu 11th Sep, 13:00', serials:'&middot;&middot;4F2B &middot;&middot;9A11 &middot;&middot;03BE' }
   ];
   TAB = 'all'; OPEN = null; DONE = []; SESSION = null;
   document.getElementById('cancelOv').hidden = true;
@@ -1246,10 +1248,10 @@ function active(r){ return r.out - r.lost; }
 function cardsWord(n){ return n + (n === 1 ? ' card' : ' cards'); }
 
 var TABS = [
-  { k:'all',  label:'All cards', has:function(r){ return r.out > 0; } },
-  { k:'ok',   label:'Active',    has:function(r){ return active(r) > 0; } },
-  { k:'lost', label:'Lost',      has:function(r){ return r.lost > 0; } },
-  { k:'due',  label:'Due today', has:function(r){ return r.dep && r.out > 0; } }
+  { k:'all',  label:'All',   has:function(r){ return r.out > 0; } },
+  { k:'ok',   label:'Active', has:function(r){ return active(r) > 0; } },
+  { k:'lost', label:'Lost',  has:function(r){ return r.lost > 0; } },
+  { k:'due',  label:'Due',   has:function(r){ return r.dep && r.out > 0; } }
 ];
 
 function render(){
@@ -1258,55 +1260,59 @@ function render(){
     var n = 0;
     K.forEach(function(r){ if (tb.has(r)) n += tb.k === 'lost' ? r.lost
                                              : tb.k === 'ok' ? active(r) : r.out; });
-    t += '<button class="ktab' + (TAB === tb.k ? ' on' : '') + '" data-tab="' + tb.k +
-         '">' + tb.label + (n ? ' · ' + n : '') + '</button>';
+    t += '<button' + (TAB === tb.k ? ' class="on"' : '') + ' data-tab="' + tb.k +
+         '">' + tb.label + (n ? ' &middot; ' + n : '') + '</button>';
   });
   document.getElementById('tabs').innerHTML = t;
 
   var g = '';
   K.forEach(function(r){
     if (!TABS.filter(function(tb){ return tb.k === TAB; })[0].has(r)) return;
-    var pills = '';
-    if (r.lost) pills += '<span class="kpill lost">' + r.lost + ' lost</span>';
-    pills += r.dep ? '<span class="kpill due">dies today 13:00</span>'
-                   : '<span class="kpill ok">valid</span>';
+    var open = OPEN === r.villa;
+    var st = '';
+    if (r.lost) st += '<div class="t">' + r.lost + ' lost</div>';
+    st += r.dep ? '<div class="a">dies 13:00</div>' : '<div class="g">valid</div>';
     var line = TAB === 'lost'
-      ? cardsWord(r.lost) + ' floating &middot; dies ' + r.until
+      ? cardsWord(r.lost) + ' floating &middot; <span class="eta">dies ' + r.until + '</span>'
       : cardsWord(active(r)) + (r.lost ? ' + ' + r.lost + ' lost' : '') +
-        ' &middot; valid to ' + r.until;
-    g += '<button class="krow" data-villa="' + r.villa + '">' +
-      '<div class="kv">' + r.villa + '</div>' +
-      '<div class="kn"><b>' + r.name + '</b><span>' + line + '</span></div>' +
-      pills + '</button>';
-    if (OPEN === r.villa) g += sheetHTML(r);
+        ' &middot; <span class="eta">to ' + r.until + '</span>';
+    g += '<button class="arr todo-form' + (open ? ' open' : '') +
+      '" data-villa="' + r.villa + '">' +
+      '<div class="arr-v">' + r.villa + '</div>' +
+      '<div class="arr-mid"><div class="arr-top">' +
+      '<div class="arr-n">' + r.name + '</div></div>' +
+      '<div class="arr-s">' + line + '</div></div>' +
+      '<div class="kst">' + st + '</div></button>';
+    if (open) g += sheetHTML(r);
   });
-  if (!g) g = '<div class="krow" style="opacity:.62;border-style:dashed">' +
-    '<div class="kn"><span>Nothing here</span></div></div>';
-  document.getElementById('register').innerHTML = g;
+  if (!g) g = '<div class="arr todo-form" style="opacity:.62;border-style:dashed">' +
+    '<div class="arr-mid"><div class="arr-s">Nothing here</div></div></div>';
+  document.getElementById('list').innerHTML = g;
 
   document.getElementById('expFold').style.display = TAB === 'all' ? '' : 'none';
   document.getElementById('expSum').textContent =
     'Expired, still out · 4 cards from past stays';
 }
 
-/* the villa sheet: the card facts and the one duty that lives here -
-   marking a card lost. Reversible, so it asks nothing; Found undoes. */
+/* the villa sheet: card facts, and the one duty that lives here -
+   marking a card lost. Reversible, Found undoes, so it asks nothing. */
 function sheetHTML(r){
-  var s = '<div class="ksheet">' +
-    '<div class="srow-note">' + cardsWord(active(r)) + ' with the guest' +
-    (r.lost ? ' &middot; ' + cardsWord(r.lost) + ' lost, floating until ' + r.until : '') +
-    '</div><div class="srow-note">Numbers on file: &middot;&middot;4F2B &middot;&middot;9A11' +
-    (r.lost ? ' &middot; the lost one shows itself by never touching the reader' : '') +
-    '</div><div class="sum-btns">';
+  var s = '<div class="sum">' +
+    '<div class="sum-r"><div class="sum-l">Cards</div><div class="sum-v">' +
+    cardsWord(active(r)) + ' with the guest</div></div>';
+  if (r.lost)
+    s += '<div class="sum-r"><div class="sum-l">Lost</div><div class="sum-v">' +
+      cardsWord(r.lost) + ' &middot; floating until ' + r.until +
+      ' &middot; still opens the door. Found and handed back? Cancel it at the reader.</div></div>';
+  s += '<div class="sum-r"><div class="sum-l">Numbers</div><div class="sum-v">' +
+    r.serials + (r.lost
+      ? ' &middot; the lost one shows itself by never touching the reader' : '') +
+    '</div></div><div class="sum-btns">';
   if (active(r) > 0)
     s += '<button class="terra" data-losev="' + r.villa + '">Mark a card lost</button>';
   if (r.lost > 0)
     s += '<button data-foundv="' + r.villa + '">Found</button>';
-  s += '</div>';
-  if (r.lost > 0)
-    s += '<div class="srow-note">A lost card still opens the door until ' +
-         r.until + '. Found and handed back? Cancel it at the reader.</div>';
-  return s + '</div>';
+  return s + '</div></div>';
 }
 
 function ovRender(){
@@ -1332,14 +1338,10 @@ function ovRender(){
 }
 
 /* the pretend reader: each held card comes back as somebody's */
-/* Identity comes from the reader, never from a guess: every card's
-   serial is recorded at write time, and the pad names the exact card it
-   holds. A cancel can only ever kill the card ON the pad - the lost
-   count stands apart and cannot be touched by it. */
 var FAKE = [
   { v: 9, label: 'Villa 9 &middot; card &middot;&middot;9A11 &middot; was valid to Thu 11th Sep &middot; cancelled' },
-  { v: 6, label: 'Villa 6 &middot; card &middot;&middot;77C4 &middot; was valid to Fri 11th Sep &middot; cancelled' },
-  { v: 0, label: 'Expired card &middot;&middot;03BE, May stay &middot; wiped &middot; a blank again' }
+  { v: 6, label: 'Villa 6 &middot; card &middot;&middot;31FA &middot; was valid to Fri 11th Sep &middot; cancelled' },
+  { v: 0, label: 'Expired card &middot;&middot;D200, May stay &middot; wiped &middot; a blank again' }
 ];
 
 document.addEventListener('click', function(e){
