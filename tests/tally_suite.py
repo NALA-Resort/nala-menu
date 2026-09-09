@@ -207,9 +207,9 @@ with sync_playwright() as p:
     ck("room4 booked but never opened carries no mark", t["r"]["4"]["mark"]=="")
     ck("rooms 3+4 ringed as a group", t["grp"] and t["grpRooms"]==["3","4"])
 
-    # 2 stats + tables
+    # 2 stats
     s2=pg.evaluate("""()=>({c:+nCovers.textContent,o:+nOut.textContent,a:+nAwait.textContent,
-        warn:tileAwait.className,tl:tablesLine.textContent})""")
+        warn:tileAwait.className})""")
     ck("covers 9", s2["c"]==9)
     ck("rooms out 1", s2["o"]==1)
     # Awaiting means somebody is in the villa and has not answered. An empty
@@ -224,21 +224,13 @@ with sync_playwright() as p:
        "await" in t["r"]["9"]["cls"])
     ck("a guest written record with no reply is awaiting too",
        "await" in t["r"]["4"]["cls"])
-    ck("tables line named not multiplied",
-       "3 twos" in s2["tl"] and "1 three" in s2["tl"] and "×" not in s2["tl"]
-       and "4 tables" in s2["tl"])
+    # The make-up line ("3 twos · 1 three · 4 tables") left the board on
+    # 9 Sep at the owner's ask; the kitchen never used it and its row was
+    # vertical space. The grouping data it summed still drives the table
+    # rings, which the group assertions above cover.
+    ck("the tables make-up line is gone",
+       pg.evaluate("()=>document.getElementById('tablesLine')===null"))
 
-    wrap=pg.evaluate("""()=>{const t=document.getElementById('tablesLine');
-      const prev=t.textContent;
-      t.textContent='11 twos \u00b7 2 threes \u00b7 1 four \u00b7 1 five \u00b7 15 tables';
-      const r=document.createRange(); r.selectNodeContents(t);
-      const lines=new Set([...r.getClientRects()].map(b=>Math.round(b.top))).size;
-      const over=t.scrollWidth>t.clientWidth;
-      t.textContent=prev;
-      return {lines:lines, over:over};}""")
-    print("   busiest make-up:", wrap)
-    ck("make-up line stays on one line at 390pt, even a full house",
-       wrap["lines"]==1 and not wrap["over"])
     # 3 bookings list
     bl=pg.evaluate("""()=>{
       const rows=[...document.querySelectorAll('#listBookings .row')];

@@ -118,11 +118,6 @@
   .selactions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .selbtn.comb { border:1px solid var(--ink); color:var(--ink); background:transparent; }
   .selbtn.comb:disabled { opacity:.35; }
-  /* the make-up is a statement, not a label: sentence case and normal spacing
-     so a full house still fits one line at 390pt (see STYLEGUIDE type scale) */
-  .tablesline { text-align:center; margin-top:8px; font-family:var(--ui-font);
-                font-size:var(--t2); color:var(--ink);
-                white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   /* The ring is drawn as an overlay, the same way the room-tile group does it,
      so grouping a booking no longer narrows its rows by 24px and compresses
      everything inside. Layout width is identical grouped or not.          */
@@ -491,7 +486,7 @@ body.readonly .comb-undo { display:none; }
       }
     }
     box.className = 'noaccess' + (on ? ' show' : '');
-    ['menuState','statsRow','tablesLine','roomsSec','rooms','listSec',
+    ['menuState','statsRow','roomsSec','rooms','listSec',
      'listBookings','footActions'].forEach(function(id){
       var el = document.getElementById(id);
       if (el) el.style.display = on ? 'none' : '';
@@ -516,7 +511,6 @@ body.readonly .comb-undo { display:none; }
     <div class="stat"><div class="stat-n" id="nOut">–</div><div class="stat-l">Villas out</div></div>
     <div class="stat" id="tileAwait"><div class="stat-n" id="nAwait">–</div><div class="stat-l">Villas awaiting</div></div>
   </div>
-  <div class="tablesline" id="tablesLine"></div>
 
   <div class="sec" id="roomsSec">
     <div class="menustate" id="menuState"></div>
@@ -1207,24 +1201,10 @@ function render(){
     return row;
   }
 
-  // tables: each combined group is one table; everyone else is their own
-  var tblPax = {};   // unit key -> summed pax
-  rows.forEach(function(r){
-    var unit = r.room ? (groupOf(r.room) || 'room-'+r.room) : 'ext-'+r.key;
-    tblPax[unit] = (tblPax[unit]||0) + (r.g.pax||1);
-  });
-  var sizes = {};
-  for (var u in tblPax) sizes[tblPax[u]] = (sizes[tblPax[u]]||0) + 1;
-  var tblCount = Object.keys(tblPax).length;
-  var parts = Object.keys(sizes).map(Number).sort(function(a,b){return a-b;})
-    .map(function(sz){ var n=sizes[sz];
-      var W=['','one','two','three','four','five','six','seven','eight','nine','ten'];
-      var w=W[sz]||sz; return n+' '+w+(n>1?'s':''); });
-  var tl = document.getElementById('tablesLine');
-  tl.textContent = parts.length
-    ? parts.join(' \u00b7 ') + ' \u00b7 ' + tblCount + (tblCount === 1 ? ' table' : ' tables')
-    : '';
-
+  /* The make-up line ("3 twos \u00b7 1 three \u00b7 4 tables") was summed here until
+     9 Sep, when the owner had it removed with the pill's move: the kitchen
+     never used it and its row was vertical space. The combined groups it
+     counted still draw the table rings.                                  */
   document.getElementById('nCovers').textContent = covers;
   document.getElementById('nOut').textContent    = notDining;
   document.getElementById('nAwait').textContent  = awaiting;
