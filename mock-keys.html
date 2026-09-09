@@ -1167,22 +1167,6 @@ body.ui2 .kcollect { width:auto; min-height:38px; padding:8px 14px; flex:0 0 aut
 .kfold summary { cursor:pointer; opacity:.75; }
 .kfold div { padding:8px 2px; opacity:.75; }
 
-/* the villa's cards: the numbered slot the desk already knows, grown
-   into a button. A pick wears the selection green; lost and cancelled
-   wear the terracotta of a negative fact. */
-.kslots { display:flex; gap:10px; margin:14px 0 6px; flex-wrap:wrap; }
-.kslot { width:44px; height:64px; border-radius:7px; border:2px solid var(--rule);
-         background:transparent; font-family:var(--ui-font); font-size:var(--t4);
-         color:var(--mid); cursor:pointer; position:relative; }
-.kslot.picked { border-color:var(--greenb); }
-.kslot.picked::after { content:'\2713'; position:absolute; top:-8px; right:-8px;
-        width:20px; height:20px; border-radius:50%; background:var(--green);
-        border:1px solid var(--greenb); font-size:12px; line-height:19px; }
-.kslot.lost, .kslot.cancelled { background:rgba(184,106,90,.16);
-        border-color:var(--terra-b); color:var(--terra); cursor:default; }
-.ksheet { border:1px solid var(--rule); border-radius:var(--r); padding:14px;
-          margin:10px 0; font-family:var(--ui-font); }
-.ksheet .srow-note { font-size:var(--t1); color:var(--mid); margin-top:10px; }
 </style>
 </head>
 <body class="tier-app ui2">
@@ -1195,14 +1179,17 @@ body.ui2 .kcollect { width:auto; min-height:38px; padding:8px 14px; flex:0 0 aut
 </div>
 
 <div id="body" style="max-width:520px;margin:0 auto">
+  <div class="sum-btns" style="margin:6px 0 26px">
+    <button class="go wide" id="cancelBtn">Cancel cards</button>
+  </div>
+
   <div class="seclabel">Returns today<span class="seccount" id="retCount"></span></div>
   <div class="secnote">Departing villas and the cards they took. A card handed
     back is tomorrow's blank.</div>
   <div id="returns"></div>
 
   <div class="seclabel" style="margin-top:30px">Cards out</div>
-  <div class="secnote">Every card this desk has cut that still opens a door.
-    Tap a villa for its cards, or to cancel lost ones.</div>
+  <div class="secnote">Every card this desk has cut that still opens a door.</div>
   <div id="register"></div>
   <details class="kfold"><summary id="expSum"></summary>
     <div>Dead cards from past stays, still in guests' pockets. They open
@@ -1211,7 +1198,7 @@ body.ui2 .kcollect { width:auto; min-height:38px; padding:8px 14px; flex:0 0 aut
 
 <div class="cardov" id="cancelOv" hidden>
   <div class="cardov-head">
-    <div class="cardov-title" id="ovTitle"></div>
+    <div class="cardov-title">Cancel cards</div>
     <button class="cardov-x" id="ovX">&#215;</button>
   </div>
   <div id="ovBody"></div>
@@ -1224,27 +1211,33 @@ body.ui2 .kcollect { width:auto; min-height:38px; padding:8px 14px; flex:0 0 aut
 <script>
 document.title = 'Mock · Keys';
 
-var K, PICKED, OPEN, STEP;
+/* The cancel duty is one button and a reader, because the encoder can
+   READ a card exactly as it writes one - the card names its own villa.
+   Hold cards one after another; each is identified and wiped on the
+   pad; Stop ends the run. One card, a handful, or a checkout stack,
+   with nothing to pick and no counting first. */
+
+var K, DONE, SESSION;
 function resetAll(){
   K = [
     { villa:3,  name:'James Fisher',    dep:true, collected:false,
-      cards:[{st:'ok'},{st:'ok'}], until:'today, 13:00' },
+      cards:2, until:'today, 13:00' },
     { villa:14, name:'Ann Brown',       dep:true, collected:false,
-      cards:[{st:'ok'}], until:'today, 13:00' },
-    { villa:4,  name:'Robyn Williams',  dep:false,
-      cards:[{st:'ok'},{st:'ok'}], until:'Sat 13th Sep, 13:00' },
-    { villa:6,  name:'Karen and Mike Mount', dep:false,
-      cards:[{st:'ok'},{st:'ok'},{st:'ok'}], until:'Fri 11th Sep, 13:00' },
-    { villa:9,  name:'Konstantinos Papadopoulos', dep:false,
-      cards:[{st:'ok'},{st:'lost'},{st:'ok'}], until:'Thu 11th Sep, 13:00' }
+      cards:1, until:'today, 13:00' },
+    { villa:4,  name:'Robyn Williams',  dep:false, cards:2, lost:0,
+      until:'Sat 13th Sep, 13:00' },
+    { villa:6,  name:'Karen and Mike Mount', dep:false, cards:3, lost:0,
+      until:'Fri 11th Sep, 13:00' },
+    { villa:9,  name:'Konstantinos Papadopoulos', dep:false, cards:2, lost:1,
+      until:'Thu 11th Sep, 13:00' }
   ];
-  PICKED = []; OPEN = null; STEP = null;
+  /* what the pretend reader will find, in order, when cards are held */
+  SESSION = null;
+  DONE = [];
   document.getElementById('cancelOv').hidden = true;
   render();
 }
 
-function living(r){ return r.cards.filter(function(c){ return c.st === 'ok'; }).length; }
-function lost(r){ return r.cards.filter(function(c){ return c.st !== 'ok'; }).length; }
 function cardsWord(n){ return n + (n === 1 ? ' card' : ' cards'); }
 
 function render(){
@@ -1252,89 +1245,71 @@ function render(){
      visual move, so the way back from a mispress is to press it again. */
   var deps = K.filter(function(r){ return r.dep; });
   var back = 0, owed = 0;
-  deps.forEach(function(r){ owed += living(r); if (r.collected) back += living(r); });
+  deps.forEach(function(r){ owed += r.cards; if (r.collected) back += r.cards; });
   document.getElementById('retCount').textContent =
     deps.length ? back + ' of ' + cardsWord(owed) + ' back' : '';
   var h = '';
   deps.forEach(function(r){
     h += '<div class="krow' + (r.collected ? ' collected' : '') + '">' +
       '<div class="kv">' + r.villa + '</div>' +
-      '<div class="kn"><b>' + r.name + '</b><span>' + cardsWord(living(r)) +
+      '<div class="kn"><b>' + r.name + '</b><span>' + cardsWord(r.cards) +
       ' out &middot; die 13:00</span></div>' +
       (r.collected
         ? '<span class="kpill ok">back</span><button class="btn kcollect" data-ret="' + r.villa + '">Undo</button>'
-        : '<button class="btn go kcollect" data-ret="' + r.villa + '">Collected</button>') +
+        : '<button class="btn kcollect" data-ret="' + r.villa + '">Collected</button>') +
       '</div>';
   });
-  if (!deps.length) h = '<div class="krow" style="opacity:.62;border-style:dashed">' +
-    '<div class="kn"><span>No departures today</span></div></div>';
   document.getElementById('returns').innerHTML = h;
 
-  /* the register */
+  /* the register: one row per villa, status told in pills - valid,
+     due back on departure day, lost. Expired folds away below. */
   var g = '';
   K.forEach(function(r){
+    if (!r.cards && !r.lost) return;
     var pills = r.dep
       ? '<span class="kpill due">due back 13:00</span>'
       : '<span class="kpill ok">valid</span>';
-    if (lost(r)) pills = '<span class="kpill lost">' + lost(r) + ' lost</span>' + pills;
-    g += '<button class="krow" data-villa="' + r.villa + '">' +
+    if (r.lost) pills = '<span class="kpill lost">' + r.lost + ' lost</span>' + pills;
+    g += '<div class="krow">' +
       '<div class="kv">' + r.villa + '</div>' +
-      '<div class="kn"><b>' + r.name + '</b><span>' + cardsWord(living(r)) +
-      ' &middot; valid to ' + r.until + '</span></div>' + pills + '</button>';
-    if (OPEN === r.villa) g += sheetHTML(r);
+      '<div class="kn"><b>' + r.name + '</b><span>' + cardsWord(r.cards) +
+      ' &middot; valid to ' + r.until + '</span></div>' + pills + '</div>';
   });
   document.getElementById('register').innerHTML = g;
   document.getElementById('expSum').textContent =
     'Expired, still out · 4 cards from past stays';
 }
 
-function sheetHTML(r){
-  var s = '<div class="ksheet"><div class="kslots">';
-  r.cards.forEach(function(c, i){
-    var cls = 'kslot' + (c.st === 'ok' ? (PICKED.indexOf(i) >= 0 ? ' picked' : '')
-                                       : ' ' + c.st);
-    s += '<button class="' + cls + '" data-slot="' + i + '">' +
-         (c.st === 'ok' ? i + 1 : '✕') + '</button>';
+/* the cancel run: the ask drawing, the count, and the growing list of
+   what each held card turned out to be */
+function ovRender(){
+  var b = '<div class="cardov-in"><div class="crun now">' +
+    '<div class="crun-v">' + DONE.length +
+    '<small>' + (DONE.length === 1 ? 'card cancelled' : 'cards cancelled') + '</small></div>' +
+    '<div class="cardask"><svg viewBox="0 0 140 96" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Hold a card to the reader">' +
+    '<rect x="57" y="10" width="33" height="46" rx="5" transform="rotate(16 73 33)"/>' +
+    '<path d="M58 50c-4 7-3 14 2 19 6 6 15 6 21 1l7-6"/>' +
+    '<path d="M63 57c2-3 5-4 8-2M69 63c2-3 5-4 8-2"/>' +
+    '<path class="wave w1" d="M40 30c-4 6-4 14 0 20"/><path class="wave w2" d="M30 24c-7 9-7 23 0 32"/>' +
+    '<path class="wave w1" d="M106 30c4 6 4 14 0 20"/><path class="wave w2" d="M116 24c7 9 7 23 0 32"/>' +
+    '</svg></div>' +
+    '<div class="crun-s">Hold a card to the reader</div>' +
+    '<div class="crun-valid">It is read, named and wiped on the spot</div></div>';
+  DONE.forEach(function(d){
+    b += '<div class="crun is-done"><div class="crun-s card-done">' + d + '</div></div>';
   });
-  s += '</div><div class="srow-note">' +
-    (PICKED.length
-      ? cardsWord(PICKED.length) + ' picked to cancel'
-      : lost(r) ? 'Terracotta is already cancelled. Tap missing cards to cancel more'
-                : 'Tap the cards that are missing') + '</div>';
-  if (PICKED.length)
-    s += '<div class="sum-btns"><button class="terra" data-cancelgo="' + r.villa +
-         '">Cancel ' + cardsWord(PICKED.length) + '</button></div>';
-  return s + '</div>';
-}
-
-/* the cancel run: write the cancel card, then WALK IT TO THE DOOR - the
-   screen owes the truth that only the lock flashing finishes the job */
-function ovRender(r){
-  document.getElementById('ovTitle').textContent = 'Cancel cards · villa ' + r.villa;
-  var b;
-  if (STEP === 'write'){
-    b = '<div class="cardov-in"><div class="crun now">' +
-      '<div class="crun-v">Villa ' + r.villa + '<small>cancel ' +
-      cardsWord(PICKED.length) + '</small></div>' +
-      '<div class="cardask"><svg viewBox="0 0 140 96" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Hold a spare card to the reader">' +
-      '<rect x="57" y="10" width="33" height="46" rx="5" transform="rotate(16 73 33)"/>' +
-      '<path d="M58 50c-4 7-3 14 2 19 6 6 15 6 21 1l7-6"/>' +
-      '<path d="M63 57c2-3 5-4 8-2M69 63c2-3 5-4 8-2"/>' +
-      '<path class="wave w1" d="M40 30c-4 6-4 14 0 20"/><path class="wave w2" d="M30 24c-7 9-7 23 0 32"/>' +
-      '<path class="wave w1" d="M106 30c4 6 4 14 0 20"/><path class="wave w2" d="M116 24c7 9 7 23 0 32"/>' +
-      '</svg></div>' +
-      '<div class="crun-s">Hold a spare card to the reader</div>' +
-      '<div class="crun-valid">It becomes the cancel card</div></div>' +
-      '<div class="tapnote">(mock: tap the villa = hold a card)</div></div>';
-  } else {
-    b = '<div class="cardov-in"><div class="cardhold"><b>Take this card to villa ' +
-      r.villa + '.</b> Hold it to the lock until it flashes · the flash is ' +
-      'what kills the lost ' + cardsWord(PICKED.length) + '</div>' +
-      '<div class="sum-btns"><button class="go wide" data-flashed="' + r.villa +
-      '">The lock flashed</button></div></div>';
-  }
+  b += '<div class="sum-btns" style="margin-top:16px">' +
+       '<button class="go wide" id="ovStop">Stop</button></div>' +
+       '<div class="tapnote">(mock: tap the big card = hold a card to the reader)</div></div>';
   document.getElementById('ovBody').innerHTML = b;
 }
+
+/* the pretend reader: each held card comes back as somebody's */
+var FAKE = [
+  { v: 9, label: 'Villa 9 &middot; was valid to Thu 11th Sep &middot; cancelled' },
+  { v: 6, label: 'Villa 6 &middot; was valid to Fri 11th Sep &middot; cancelled' },
+  { v: 0, label: 'Expired card, May stay &middot; wiped &middot; a blank again' }
+];
 
 document.addEventListener('click', function(e){
   var t;
@@ -1342,46 +1317,24 @@ document.addEventListener('click', function(e){
     var r0 = K.filter(function(x){ return x.villa == t.getAttribute('data-ret'); })[0];
     r0.collected = !r0.collected; render(); return;
   }
-  if ((t = e.target.closest('[data-slot]'))){
-    var i = +t.getAttribute('data-slot');
-    var r1 = K.filter(function(x){ return x.villa == OPEN; })[0];
-    if (r1.cards[i].st !== 'ok') return;
-    var at = PICKED.indexOf(i);
-    if (at >= 0) PICKED.splice(at, 1); else PICKED.push(i);
-    render(); return;
-  }
-  if ((t = e.target.closest('[data-cancelgo]'))){
-    /* destructive, so it confirms - the button law's two taps */
-    if (!t.getAttribute('data-armed')){
-      t.setAttribute('data-armed', '1'); t.textContent = 'Confirm cancel';
-      setTimeout(function(){ if (t.isConnected){ t.removeAttribute('data-armed');
-        render(); } }, 4000);
-      return;
-    }
-    STEP = 'write';
+  if (e.target.closest('#cancelBtn')){
+    SESSION = 0; DONE = [];
     document.getElementById('cancelOv').hidden = false;
-    ovRender(K.filter(function(x){ return x.villa == OPEN; })[0]); return;
+    ovRender(); return;
   }
-  if ((t = e.target.closest('.crun.now')) && STEP === 'write'){
-    STEP = 'door';
-    ovRender(K.filter(function(x){ return x.villa == OPEN; })[0]); return;
-  }
-  if ((t = e.target.closest('[data-flashed]'))){
-    var r3 = K.filter(function(x){ return x.villa == OPEN; })[0];
-    PICKED.forEach(function(i){ r3.cards[i].st = 'cancelled'; });
-    PICKED = []; STEP = null;
+  if (e.target.closest('#ovStop') || e.target.closest('#ovX')){
+    SESSION = null;
     document.getElementById('cancelOv').hidden = true;
     render(); return;
   }
-  if ((t = e.target.closest('[data-villa]'))){
-    var v = +t.getAttribute('data-villa');
-    OPEN = OPEN === v ? null : v; PICKED = [];
-    render(); return;
+  if (e.target.closest('.crun.now') && SESSION !== null){
+    var f = FAKE[Math.min(SESSION, FAKE.length - 1)]; SESSION++;
+    DONE.unshift(f.label);
+    var r1 = K.filter(function(x){ return x.villa === f.v; })[0];
+    if (r1 && r1.cards > 0) r1.cards--;
+    ovRender(); return;
   }
 });
-document.getElementById('ovX').onclick = function(){
-  STEP = null; document.getElementById('cancelOv').hidden = true;
-};
 resetAll();
 </script>
 </body></html>
