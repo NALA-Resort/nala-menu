@@ -66,6 +66,24 @@ A blank card must be initialised to the hotel once before it can be written
 TTHotel issued them. New stock: initialise in the TTHotel client for now; an
 init pass in the helper is a small follow-up if the desk wants it.
 
+## The Keys page's half (added 9 Sep)
+
+The helper also serves keys.html:
+
+- **Serials on record.** Every card's number (CE_GetCardNo) is appended to
+  the job's `nos` as it is written, so a held card can always be named.
+- **The cancel session.** Keys' Cancel cards button writes `/cancelrun`
+  `state:on`; the helper heartbeats `seen`, and every card held to the E3
+  is read, matched against the serials on record, wiped (CE_ClearCard),
+  reported under `/cancelrun/done`, and counted `back` on its job. Stop
+  (or the page's offline verdict) sets `state:off`. Write jobs wait while
+  a session runs: one encoder, one duty at a time.
+- **Released when idle.** The COM port is held only while writing or
+  cancelling, so TTLock's own program can use the E3 whenever the helper
+  is quiet - no window juggling, no second encoder.
+- **Issue more cards** continues from `written`: cards already in the
+  guest's hands are never recut.
+
 ## When something goes wrong
 
 - **Row holds amber "waiting for the desk PC"** — the helper is not

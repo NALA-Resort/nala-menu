@@ -906,6 +906,37 @@ cannotPatch('but not something the length of a paragraph', SYNC,
   ck('any staff role reads the queue',   as(DESK).read(`/cardjobs/${TODAY}`).allowed &&
                                          as(ENCODER).read(`/cardjobs/${TODAY}`).allowed);
   ck('a guest reads none of it',         !as(GUEST).read(`/cardjobs/${TODAY}`).allowed);
+
+  //  The Keys page's fields, added 9 Sep: the guest's name rides the job,
+  //  the helper writes each card's serial as it cuts it, and lost/back are
+  //  the register's counts. Same doors as the rest of the job.
+  can('a job carries the guest name and serials',    ENCODER, `/cardjobs/${TODAY}/9`,
+      Object.assign({}, job, { state: 'done', written: 2,
+        guest: 'Karen and Mike Mount', nos: 'AB12CD34,EF56AB78' }));
+  can('the desk marks a card lost, and back again',  DESK,   `/cardjobs/${TODAY}/9`,
+      Object.assign({}, job, { state: 'done', written: 2, lost: 1, back: 1 }));
+  cannot('seven lost cards is a typo',               DESK,   `/cardjobs/${TODAY}/9`,
+      Object.assign({}, job, { state: 'done', written: 2, lost: 7 }));
+})();
+
+/* ── /cancelrun: the reader session ────────────────────────────────
+   One node, not a queue: the desk switches it on, the helper heartbeats
+   seen and reports each card it wipes, the desk switches it off. */
+(function () {
+  can('the desk starts a cancel session',   DESK,    '/cancelrun',
+      { state: 'on', by: 'reception@nalaresort.com.au', at: 1 });
+  can('the helper heartbeats it',           ENCODER, '/cancelrun/seen', 2);
+  can('and reports a wiped card',           ENCODER, '/cancelrun/done/1',
+      { villa: '9', no: 'AB12CD34', at: 3 });
+  can('the desk stops it',                  DESK,    '/cancelrun/state', 'off');
+  cannot('a state the pair do not speak',   DESK,    '/cancelrun/state', 'paused');
+  cannot('housekeeping holds no sessions',  HK,      '/cancelrun',
+      { state: 'on', by: 'x', at: 1 });
+  cannot('nor a guest',                     GUEST,   '/cancelrun/state', 'off');
+  cannot('a field the model does not know', ENCODER, '/cancelrun/done/1',
+      { villa: '9', mac: '501D9E6FB37F', at: 3 });
+  ck('staff read the session',  as(DESK).read('/cancelrun').allowed);
+  ck('a guest reads none',      !as(GUEST).read('/cancelrun').allowed);
 })();
 
 console.log('RESULT: %d passed, %d failed', P, F);

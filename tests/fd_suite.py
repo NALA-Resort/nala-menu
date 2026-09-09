@@ -2357,17 +2357,22 @@ with sync_playwright() as p:
     del WRITES[:]
     pg.evaluate("()=>document.querySelector('[data-cardagain]').click()")
     pg.wait_for_timeout(150)
-    ck("which re-asks the quantity and writes nothing by itself",
-       "How many cards" in pg.inner_text("#cardBody") and not WRITES)
+    ck("which asks for MORE cards and writes nothing by itself",
+       "How many more cards" in pg.inner_text("#cardBody") and not WRITES)
     pg.wait_for_timeout(1800)   # the poll must not repaint the question away
     ck("and the question survives the poll",
-       "How many cards" in pg.inner_text("#cardBody"))
+       "How many more cards" in pg.inner_text("#cardBody"))
     pg.evaluate("()=>document.querySelector('[data-cardissue]').click()")
     pg.wait_for_timeout(400)
-    reput = [json.loads(x["b"]) for x in WRITES
-             if "/cardjobs/%s/9" % today in x["u"] and x["m"] == "PUT"]
-    ck("and Issue queues a fresh job over the done one",
-       reput and reput[0]["state"] == "queued")
+    #  The record GROWS - qty rises by the asked amount, written stands
+    #  untouched (the cards in the guest's hands), state re-queues. A PUT
+    #  here would zero written and recut every card - the 9 Sep bug.
+    ext = [json.loads(x["b"]) for x in WRITES
+           if "/cardjobs/%s/9" % today in x["u"] and x["m"] == "PATCH"]
+    ck("and Issue grows the done job, never replaces it",
+       ext and ext[0]["state"] == "queued" and ext[0]["qty"] == 6
+       and "written" not in ext[0]
+       and not [x for x in WRITES if x["m"] == "PUT" and "/cardjobs/" in x["u"]])
     pg.close()
 
     #  The queue must never lie in wait - the owner's ruling, 8 Sep. Ten

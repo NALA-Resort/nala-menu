@@ -804,6 +804,24 @@ function cardCell(job){
   return { k:'queued', label:'to encode' };
 }
 
+/* Where a villa's CARDS stand once written - the Keys register's one
+   reader, as cardCell is the writing's. Counts never lie downward:
+   back and lost are clamped inside written, active is what remains in
+   the guest's hand. state is live / today (expires before the next
+   midnight, the 12h clock takes over on screen) / dead. Its cases live
+   in tests/cardlife_cases.json - add there, not in a suite. */
+function cardLife(job, now){
+  if (!job || job.state === 'cancelled') return null;
+  var written = Math.min(+job.written || 0, +job.qty || 0);
+  var back = Math.max(0, Math.min(+job.back || 0, written));
+  var lost = Math.max(0, Math.min(+job.lost || 0, written - back));
+  var exp = (+job.expiry || 0) * 1000;
+  var state = !exp || exp <= now ? 'dead'
+            : dkey(new Date(exp)) === dkey(new Date(now)) ? 'today' : 'live';
+  return { written: written, back: back, lost: lost,
+           active: written - back - lost, state: state, expiry: exp };
+}
+
 /* Every OTHER villa the same party holds, said in the words both boards use.
    Takes the row and the list it came from - each entry a {villa, stay} - so a
    caller pays nothing for it beyond rows it has already loaded.
@@ -2067,6 +2085,8 @@ var NAV = [
      gated separately by the permission its page already answers to. */
   { href:'dashboard.html',    label:'Dashboard',    need:'resBoard'     },
   { href:'front-desk.html',   label:'Front Desk',   need:'editBookings' },
+  /* The desk's other duty, so the desk's own gate. */
+  { href:'keys.html',         label:'Keys',         need:'editBookings' },
   { href:'tally.html',        label:'Reservations', need:'resBoard'     },
   { href:'cleaners.html',     label:'Cleans',       need:'cleansBoard'  },
   { href:'spa.html',          label:'Spa',          need:'spaBoard'     },

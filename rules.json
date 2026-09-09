@@ -923,10 +923,61 @@
           "note": {
             ".validate": "newData.isString() && newData.val().length <= 300"
           },
+          "guest": {
+            ".validate": "newData.isString() && newData.val().length <= 80"
+          },
+          "nos": {
+            ".validate": "newData.isString() && newData.val().length <= 240"
+          },
+          "lost": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 6"
+          },
+          "back": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 6"
+          },
           "$other": {
             ".validate": false
           }
         }
+      }
+    },
+    "cancelrun": {
+      ".read": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').exists() && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() != 'spa'",
+      ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'encoder')",
+      "state": {
+        ".validate": "newData.isString() && (newData.val() == 'on' || newData.val() == 'off')"
+      },
+      "by": {
+        ".validate": "newData.isString() && newData.val().length <= 120"
+      },
+      "at": {
+        ".validate": "newData.isNumber() && newData.val() >= 0"
+      },
+      "seen": {
+        ".validate": "newData.isNumber() && newData.val() >= 0"
+      },
+      "done": {
+        "$n": {
+          ".validate": "$n.matches(/^[0-9]{1,3}$/)",
+          "villa": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "no": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "note": {
+            ".validate": "newData.isString() && newData.val().length <= 120"
+          },
+          "at": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      },
+      "$other": {
+        ".validate": false
       }
     },
     "menu": {

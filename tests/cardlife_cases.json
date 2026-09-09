@@ -1,0 +1,43 @@
+{
+  "_comment": [
+    "cardLife's cases - the Keys register's reader, as card_cases.json is",
+    "cardCell's. The suite builds 'now' as a fixed LOCAL noon and turns",
+    "expiryDay (days from that day, at 13:00 local) into job.expiry, so",
+    "today/live/dead hold in any timezone the runner picks. want is a",
+    "subset: only the named fields are asserted. null want = null answer."
+  ],
+  "cases": [
+    { "why": "no job is no cards",
+      "job": null, "want": null },
+    { "why": "a cancelled job reads as nothing, like cardCell",
+      "job": { "state": "cancelled", "qty": 2, "written": 2 },
+      "expiryDay": 2, "want": null },
+    { "why": "a plain pair with days to live",
+      "job": { "qty": 2, "written": 2, "state": "done" }, "expiryDay": 2,
+      "want": { "written": 2, "back": 0, "lost": 0, "active": 2, "state": "live" } },
+    { "why": "the last day reads today, whatever the hour",
+      "job": { "qty": 2, "written": 2, "state": "done" }, "expiryDay": 0,
+      "want": { "active": 2, "state": "today" } },
+    { "why": "yesterday's cards are dead",
+      "job": { "qty": 3, "written": 3, "state": "done" }, "expiryDay": -1,
+      "want": { "active": 3, "state": "dead" } },
+    { "why": "a lost card stays written, leaves active",
+      "job": { "qty": 3, "written": 3, "lost": 1, "state": "done" }, "expiryDay": 2,
+      "want": { "written": 3, "lost": 1, "active": 2, "state": "live" } },
+    { "why": "a card wiped at the reader is back, not active",
+      "job": { "qty": 3, "written": 3, "back": 1, "state": "done" }, "expiryDay": 2,
+      "want": { "back": 1, "active": 2 } },
+    { "why": "back and lost clamp inside written, never negative counts",
+      "job": { "qty": 2, "written": 2, "back": 9, "lost": 9, "state": "done" },
+      "expiryDay": 2, "want": { "back": 2, "lost": 0, "active": 0 } },
+    { "why": "written clamps to qty, the run screen's own rule",
+      "job": { "qty": 2, "written": 5, "state": "done" }, "expiryDay": 2,
+      "want": { "written": 2, "active": 2 } },
+    { "why": "mid-write, only written cards are out",
+      "job": { "qty": 3, "written": 1, "state": "writing" }, "expiryDay": 2,
+      "want": { "written": 1, "active": 1 } },
+    { "why": "no expiry reads dead, never eternal",
+      "job": { "qty": 2, "written": 2, "state": "done" },
+      "want": { "state": "dead" } }
+  ]
+}

@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nala Villas">
+<link rel="apple-touch-icon" href="nala-icon.png?v=1">
+<title>Nala &middot; Keys</title>
+<link rel="stylesheet" href="nala-ui2.css?v=6">
+<link rel="stylesheet" href="nala-ui.css?v=17">
+<style>
+/* Keys - the card register. Built 9 Sep from the approved mock
+   (mock-keys.html), whose shape this page keeps: keys_suite compares the
+   two files and fails on drift.
+
+   THE DRESS IS FRONT DESK'S, COPIED: the block below is front-desk.html's
+   own page style, because the owner ruled the two pages wear one design
+   and the app has no shared home for that dress yet. Change it in BOTH
+   files or extract it to nala-ui2.css when either next moves. */
+/* front-desk.html's own page style, verbatim - rows, sheet, key, run */
+
+  /* This page's OWN colours, restored 29 Aug. The first conversion
+     dropped each page's :root wholesale to remove the tokens the shared
+     sheet owns, and took these with them. An undefined custom property
+     does not fall back, it computes to nothing: fill:var(--dine) became
+     a black fork and color:var(--dine) a black stat, silently.
+     --green is not in the shared sheet on purpose - it is a pale fill on
+     five pages and a dark ink on two - so it lives here.               */
+  :root { --dine:#5E7D67; --green:#E4EDE2; --nodine:#9E6455 }
+
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
+  
+
+  .seclabel { font-size:var(--t2);
+              color:var(--mid); margin:22px 0 8px; }
+
+  /* One arrival. The whole row is the control surface, the same idea as the
+     villa tile grid, which is the documented exception to "a bordered
+     rectangle is a button". */
+  .arr { display:flex; align-items:center; gap:12px; width:100%;
+         background:none; border:1px solid var(--rule); border-radius:8px;
+         padding:11px 13px; margin-bottom:7px; text-align:left;
+         font-family:var(--ui-font); color:inherit; cursor:pointer; }
+
+  /* The villa number is how reception finds the guest standing in front of
+     them, so it carries tile weight. 20 on the type scale. */
+  .arr-v { font-size:var(--t4); min-width:30px; text-align:center; }
+  .arr-mid { flex:1; min-width:0; }
+  /* The party mark moved up here from the stay line on 31 Aug, to give the
+     row back the width the massage mark now spends. It is flex:0 0 auto so
+     it never truncates - a half-written villa number is worse than none -
+     and the name takes the ellipsis instead.
+
+     It keeps the full "with villa 15", the owner's ruling the same day. The
+     short form was tried because at 320 the word "with" costs enough of the
+     name that Michel FAY reads "Mic...", and he ruled that the phrase has to
+     read as a phrase. So at 320 the name clips early on a party booking,
+     deliberately: the villa number to its left is how reception finds the
+     guest anyway, and both rows of a party carry it. */
+  .arr-top { display:flex; align-items:baseline; gap:8px; }
+  /* flex:0 1 auto, NOT flex:1. With flex:1 the name grew to fill the row and
+     shoved the mark against the right edge, so it read as a right-aligned
+     column instead of a phrase following the name. Now the name is its own
+     width and only shrinks when the row runs out. */
+  .arr-top .arr-n { flex:0 1 auto; min-width:0; }
+  .arr-with { flex:0 0 auto; font-size:var(--t2); color:var(--mid);
+              white-space:nowrap; }
+  .arr-n { font-size:var(--t3); white-space:nowrap; overflow:hidden;
+           text-overflow:ellipsis; }
+  /* The number, its confidence mark and the pencil, as the Pre-arrival SMS
+     page draws them and from the same builder. On its own line rather than
+     beside the name: this row also carries the fork and the link icons, so
+     the name line clips at phone width and a clipped pencil cannot be
+     tapped. ok wears --dine, the same ink the SMS page's --resgreen is. */
+  .arr-p { font-size:var(--t2); color:var(--mid); margin-top:2px; }
+  .arr-p .ph { font-weight:normal; }
+  .arr-p .conf { margin-left:4px; }
+  .arr-p .conf.ok { color:var(--dine); }
+  .arr-p .conf.un { color:var(--mid); }
+  .arr-p .pen { font-size:var(--t2); color:var(--mid); margin-left:5px;
+                padding:2px 4px; cursor:pointer; }
+  /* Stay dates as the styleguide sets them: Tue 11-Fri 14. No ordinal, month
+     omitted, one line, because a wrapped range doubles the row height. */
+  .arr-s { font-size:var(--t2); color:var(--mid); margin-top:2px; white-space:nowrap;
+           overflow:hidden; text-overflow:ellipsis; }
+  /* When they are getting here is what reception plans the afternoon around,
+     so it does not read as quietly as the stay length beside it. */
+  .arr-s .eta { font-size:var(--t2); font-weight:600; color:var(--ink); }
+  /* The count reads in the row's own amber, so it is the same fact as the
+     tint said louder rather than a second signal to decode. */
+
+  /* Confirmed rows recede but stay legible: reception still has to find a
+     guest who checked in an hour ago. */
+  .arr.is-done { opacity:.68; }
+
+  /* Four stats rather than two, so they sit closer than the shared default. */
+  .stats { gap:22px; }
+  /* The same three colours the fork icons use, so the number and the row it
+     counts are read as one thing. */
+  .stat-n.dine   { color:var(--dine); }
+  .stat-n.nodine { color:var(--nodine); }
+  .stat-n.unsure { color:var(--mid); }
+  /* Arrived is a fraction: the number alone says nothing without the total,
+     and reception is watching one climb towards the other. */
+  .stat-n .of { font-size:var(--t3); color:var(--mid); }
+
+  /* The summary drops out of the row it belongs to, so it is inset and shares
+     the row's left edge rather than floating as its own card. */
+  /* Green, always, and that is not a lost scope: a summary only opens on a
+     completed row (see the tap handler), so the only row it can hang off is
+     already green. Grey and amber open the form instead. */
+  .sum { border:1px solid rgba(122,160,130,.34); border-top:none;
+         border-radius:0 0 8px 8px; background:rgba(122,160,130,.11);
+         margin:-8px 0 7px; padding:12px 13px 13px; }
+  .sum-r { display:flex; gap:10px; font-size:var(--t2); line-height:1.5;
+           padding:3px 0; align-items:baseline; }
+  .sum-l { flex:0 0 88px; font-size:var(--t1);
+           color:var(--mid); padding-top:3px; }
+  .sum-v { flex:1; min-width:0; }
+  .sum-v.none { color:var(--mid); font-style:italic; }
+  .sum-btns { display:flex; gap:7px; margin-top:12px; }
+  .sum-btns + .sum-btns { margin-top:7px; }
+  .sum-btns button.wide { flex:1 1 100%; }
+  .sum-btns button { flex:1; padding:12px 0; border:1px solid var(--rule);
+                     border-radius:6px; font-family:var(--ui-font); font-size:var(--t2); cursor:pointer;
+                     background:transparent; color:var(--mid); }
+  .sum-btns button.go { background:var(--green); border-color:var(--greenb);
+                        color:var(--ink); }
+  /* The row a summary is hanging from keeps its top corners only. */
+  .arr.open { border-radius:8px 8px 0 0; margin-bottom:8px; }
+
+  /* Whether they are eating, readable without opening anything. Only on rows
+     that have a form: there is nothing to report about a guest who has not
+     answered, and an icon there would be an answer we do not have. */
+  /* 28px, up from 19 on 28 Aug: the owner could not read it at a glance,
+     and it was competing with a 20px villa number while carrying the one
+     fact the row exists to show at speed - whether the kitchen is cooking
+     for this villa tonight. The row has the height for it already; nothing
+     else on the row moves. */
+  .fork { width:28px; height:28px; flex:0 0 28px; opacity:1; }
+  .fork svg { width:100%; height:100%; display:block; }
+  .fork.in  svg { fill:var(--dine); }
+  .fork.out svg { fill:var(--nodine); }
+  /* There is no .fork.un any more: an unanswered booking draws no fork.
+     See forkFor. */
+
+  /* The massage mark, 31 Aug. A lotus, from the owner's own reference, which
+     was a pair of hands cradling one. Both were drawn and mocked at 28px:
+     the hands reduce to a shape that reads as a tulip, and the two together
+     to a knot. The flower alone survives the size and holds the four state
+     colours cleanly, and the owner offered it as the alternative.
+
+     Stroked, not filled, which is how the reference is drawn and how .seen
+     beside it is already drawn. It sits at the fork's 28px so the two marks
+     read as a pair of facts about one guest rather than a big one and a
+     small one.
+
+     The colours are the law's, and the law is why none of them is red. Red
+     is failure and an allergy; a declined massage is neither, it is an
+     answer. Terracotta is the law's word for a negative answer, it is what
+     the spa board already draws for exactly this record, and it is what the
+     fork beside it already wears for "not dining". Ruled by the owner
+     31 Aug, choosing terracotta over red for that reason. */
+  .lotus { width:28px; height:28px; flex:0 0 28px; }
+  .lotus svg { width:100%; height:100%; display:block; fill:none;
+               stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+  /* Grey is the law's own --mid softened, the way .seen above already
+     softens it, rather than a new hex nobody else knows. Amber is the
+     literal this page's .ans already uses: an undefined custom property
+     computes to nothing here, the 29 Aug lesson at the top of this sheet. */
+  .lotus.wait { opacity:.55; }
+  .lotus.wait svg { stroke:var(--mid); }
+  .lotus.sugg svg { stroke:#8A6A2F; }
+  .lotus.done svg { stroke:var(--dine); }
+  .lotus.decl svg { stroke:var(--nodine); }
+
+  /* Opened the message and did not finish. Outlined rather than filled, so it
+     reads as the absence of an answer rather than as one.
+
+     Same icon as the Reservations board, deliberately. It means the same thing
+     in both places: this guest received what we sent and has not replied. The
+     two boards track DIFFERENT messages, the nightly dinner invite there and
+     the pre-arrival link here, so an icon on one says nothing about the other.
+     Any future message asking a guest for something follows the same rule, and
+     the question each time is which screen the answer lands on, because that
+     is the screen the icon belongs on. */
+  .seen { width:15px; height:15px; flex:0 0 15px; opacity:.55; }
+  .seen svg { width:100%; height:100%; display:block; fill:none; stroke:var(--mid); }
+
+  /* The tint is how complete the answers are, ruled by the owner 26 Aug:
+     grey when nobody has answered anything, amber when some answers exist,
+     green only when every question the desk settles holds one. Grey is the
+     colour law's light grey fill - unknown promises nothing - because an
+     untouched guest is not work in progress, they are not started. It used
+     to be amber, which made a row nobody had touched read the same as one
+     half done. Kept very light so the villa number and the name still carry
+     the row. */
+  .arr.done-form { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
+  .arr.todo-form { background:rgba(28,28,26,.045); border-color:var(--rule); }
+  /* Started and not finished: amber, the colour law's in-progress, with a
+     solid left edge to say somebody has met it halfway. */
+  .arr.part-form { background:rgba(194,154,85,.11); border-color:rgba(194,154,85,.36);
+                   border-left:3px solid rgba(194,154,85,.85); }
+
+  .empty { font-size:var(--t3); color:var(--mid); font-style:italic; padding:4px 0 2px; }
+  .spacer { height:40px; }
+  #errBar { display:none; background:var(--red); color:#fff; font-size:var(--t2);
+            padding:9px 12px; border-radius:var(--r); margin-top:12px; }
+  #errBar.show { display:block; }
+
+  /* Sheet chrome and controls, matching tally.html exactly. Copied rather
+     than reinvented: two screens with their own idea of a chip is how the
+     app starts looking like two apps. */
+  .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35);
+              display:none; align-items:flex-end; justify-content:center; z-index:10; }
+  .backdrop.show { display:flex; }
+  .sheet { width:100%; max-width:520px; background:var(--cream);
+           padding:26px 24px 34px; border-top:1px solid var(--rule);
+           max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .sheet h3 { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); font-weight:normal;
+              text-align:center; margin-bottom:18px; }
+  /* ── the form's shape ────────────────────────────────────────────────
+     Reported by the owner, 29 Aug: the sheet was one ribbon of identical
+     grey captions with nothing to say where a subject ended. Two problems.
+     The labels were centred, so the eye had no edge to run down while the
+     rows beneath them started at the left. And the rhythm was 16 above and
+     8 below, which is barely a ratio at all: a label sat almost as close to
+     the answer above it as to its own.
+
+     A topic heading now carries a hairline and real space, a field label
+     sits left with a 3:1 rhythm, and a label nested inside a topic steps
+     down again so the hierarchy reads at a glance.                     */
+  .sheet-group { font-family:var(--ui-font); font-size:var(--t3); font-weight:600;
+                 color:var(--ink); text-align:left;
+                 margin:var(--s6) 0 var(--s3); padding-top:var(--s4);
+                 border-top:1px solid var(--rule); }
+  .sheet-group.first { border-top:0; padding-top:0; margin-top:var(--s4); }
+  .sheet-label { font-family:var(--ui-font); font-size:var(--t2); font-weight:500;
+                 color:var(--mid); text-align:left;
+                 margin:var(--s5) 0 var(--s2); }
+  /* A heading is already the space; the label under it does not add more. */
+  .sheet-group + .sheet-label { margin-top:0; }
+  /* Nested under a topic that already has a heading. */
+  .sheet-label.sub { font-weight:400; margin-top:var(--s3); }
+  .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid transparent;
+         border-radius:6px; font-family:var(--ui-font); font-size:var(--t2); color:var(--ink);
+         cursor:pointer; }
+  .opt.solid { background:var(--green); border-color:var(--greenb); }
+  .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
+  /* The button law (STYLEGUIDE.md): a control that walks back something the
+     guest was told wears terracotta outline and asks first. Marking a form
+     incomplete puts the guest back into To send on Pre-arrival SMS, where
+     they can be messaged the link again, so it is that kind of button. */
+  .opt.terra { background:transparent; border-color:var(--terra-b); color:var(--terra); }
+  .opt.terra:active { background:var(--terra-t); }
+  .opt:disabled { opacity:.4; cursor:default; }
+  /* Why the primary is unavailable, said rather than left to be guessed at. */
+  .opt-why { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
+             text-align:center; margin:-4px 0 10px; line-height:1.45; }
+  .seg { display:flex; gap:6px; margin:2px 0 4px; }
+  .seg button { flex:1; padding:11px 0; border:1px solid var(--rule); background:transparent;
+                font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); cursor:pointer; border-radius:6px; }
+  .seg button.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  /* An answer that WAS chosen and has just been taken off. The fill goes,
+     the dark border stays, so a deselect made by accident is visible as a
+     gap where an answer used to be rather than as a blank nobody can tell
+     from never-asked. Asked for by the owner 28 Aug.
+
+     It lasts only as long as the sheet is open, which is deliberate and
+     is the smaller half of the fix: the desk's answers are written into
+     the guest's own fields, so once a deselect is SAVED the record no
+     longer holds what was there before and there is nothing left to draw.
+     Keeping it past a save means the desk's answers sitting beside the
+     guest's rather than in them - the arriveApproved shape - which is its
+     own change and was left for when it is wanted. */
+  .seg button.was, .chip.was { border-color:var(--ink); color:var(--ink); }
+  .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 4px; }
+  .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
+         font-family:var(--ui-font); font-size:var(--t3); color:var(--ink);
+         cursor:pointer; border-radius:var(--pill); }
+  .pax.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
+  /* One dress for every row of choices on the sheet, ruled by the owner
+     27 Aug once the two time rows proved it: the choices stand in a single
+     rank and the RANK scrolls, rather than wrapping into a block that pushes
+     the next question off the screen. A wrapped row costs vertical space,
+     which is the scarce dimension on a phone held at a desk; a rail costs
+     none and never changes height as the answers change.
+
+     Written against `.rail` alone rather than `.chips.rail`, because the
+     covers row is a `.pax-row` and wears the same dress: one rule, or the
+     two rows drift. The rail scrolls itself; the sheet never scrolls
+     sideways, which the suite asserts at all three widths. */
+  /* Left, to line up with the labels above them. It used to be `safe
+     center`, so a row that fitted sat centred under a centred label; with
+     the labels left aligned that read as a row that had slipped. Starting
+     left also makes an overflow legible: the first chip is always at the
+     margin, so the clipped edge is only ever on the right. */
+  .rail { flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start;
+          -webkit-overflow-scrolling:touch; padding-bottom:6px; }
+  .rail > * { flex:0 0 auto; white-space:nowrap; }
+  .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
+          border-radius:20px; font-family:var(--ui-font); font-size:var(--t2);
+          color:var(--mid); cursor:pointer; }
+  .chip.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .txt { width:100%; padding:12px; margin-bottom:8px; border:1px solid var(--rule);
+         background:transparent; font-family:var(--ui-font); font-size:var(--t3); color:var(--ink); }
+  .txt::placeholder { color:var(--mid); font-style:italic; }
+  .txt:focus { outline:none; border-color:var(--ink); }
+  .gd { text-align:center; margin:-4px 0 6px; font-size:var(--t2); line-height:1.55; }
+  .gd .gd-sub { display:block; font-family:var(--ui-font); font-size:var(--t2);
+                color:var(--mid); }
+  .note-box { font-style:italic; font-size:var(--t2); color:var(--mid); text-align:center;
+              line-height:1.6; padding:0 4px 14px; }
+  /* The one flag that sets itself, said under the tickable ones so nobody
+     hunts for its chip: Luxury Escapes rides on the Mews rate. */
+  .flag-src { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
+              text-align:center; margin:2px 0 4px; }
+  /* What is missing, said in words. A button that silently does nothing is
+     the worst of both. */
+  .miss-note { display:none; font-size:var(--t2); color:var(--red); text-align:center;
+               padding:2px 4px 8px; }
+  .miss-note.show { display:block; }
+  /* The menu did not exist when the guest answered, so this is the first
+     chance anyone has had to notice. */
+  .clash { display:block; color:var(--red); font-size:var(--t2); margin-top:3px; }
+  .seg.miss button, .chips.miss .chip { border-color:var(--red); }
+  /* The note is part of the answer when Other is chosen, so it can be the
+     thing that is missing, and has to be able to say so. */
+  .txt.miss { border-color:var(--red); }
+
+/* ── key cards ─────────────────────────────────────────────────────
+   The key sits in the date row beside the hamburger and wears its dress.
+   Its drop offers the day's encode-all and each villa singly; the card
+   states inside it and on the sheet are cardCell's k, coloured by the
+   law: queued cream, writing amber, done green, failed red, cancelled
+   and none grey. */
+.keywrap { position:relative; }
+/* The key costs the date row 42px it did not have at 320, and the row must
+   never bleed (STYLEGUIDE's width rule). Below 340 the title gives the
+   ground: min-width 0 lets flex shrink it, and a clipped "Tue 8th Sep" is
+   the allowed cost - clipping is not breaking, sideways scroll is. Scoped,
+   because at 390 the same rule was clipping a date that had the room. */
+@media (max-width: 340px) {
+  .daterow .date { min-width:0; overflow:hidden; text-overflow:ellipsis;
+                   white-space:nowrap; }
+}
+.keybtn { width:42px; height:36px; border:0; background:transparent;
+          border-radius:var(--r); color:var(--ink); cursor:pointer;
+          display:flex; align-items:center; justify-content:center; }
+.keybtn:active { background:var(--card); }
+.keybtn svg { width:19px; height:19px; }
+.keydrop { display:none; position:absolute; right:0; top:42px;
+           background:var(--ground); border:1px solid var(--rule);
+           border-radius:var(--r); min-width:230px; padding:var(--s1) 0;
+           box-shadow:0 2px 6px rgba(0,0,0,.06),0 10px 28px rgba(0,0,0,.10);
+           z-index:60; }
+.keydrop.open { display:block; }
+.keydrop button { display:flex; width:100%; align-items:baseline; gap:var(--s4);
+                  justify-content:space-between; text-align:left;
+                  padding:var(--s3) var(--s4); background:none; border:0;
+                  font-family:var(--ui-font); font-size:var(--t2); line-height:1.3;
+                  color:var(--ink); cursor:pointer; }
+.keydrop button:active { background:var(--accent-soft); }
+/* The batch action stands last, behind the seam the signout row already
+   owns, its count in a navbadge - ruled by the owner, 9 Sep, when a bold
+   first row read as the menu's title rather than a thing to press. */
+.keydrop .kd-all { border-top:1px solid var(--rule); margin-top:var(--s1);
+                   align-items:center; }
+.keydrop .kd-state { flex:0 0 auto; font-size:var(--t1); color:var(--mid);
+                     white-space:nowrap; }
+.keydrop .kd-state.card-done { color:var(--law-green); }
+.keydrop .kd-state.card-failed { color:var(--law-red); }
+.keydrop .kd-state.card-writing { color:var(--amberink); }
+
+/* the run viewport */
+/* Above the hamburger's 500: the run replaces the page while it is open,
+   and a menu button floating over it read as part of the run. */
+.cardov { position:fixed; inset:0; background:var(--ground); z-index:600;
+          overflow-y:auto; padding:calc(14px + env(safe-area-inset-top)) 18px 40px; }
+.cardov-head { max-width:520px; margin:0 auto; display:flex;
+               align-items:baseline; justify-content:space-between; }
+.cardov-title { font-family:var(--ui-font); font-size:var(--t3); font-weight:600; }
+.cardov-x { background:none; border:none; font-size:var(--t5); line-height:1;
+            color:var(--mid); padding:4px 8px; cursor:pointer; }
+.cardov-in { max-width:520px; margin:0 auto; }
+.crun { border:1px solid var(--rule); border-radius:var(--r);
+        padding:14px; margin-top:12px; font-family:var(--ui-font); }
+.crun.now { border-color:var(--amberb); }
+.crun.is-done { opacity:.62; }
+.crun.is-failed { border-color:var(--law-red); }
+.crun-v { font-size:26px; font-weight:600; } /* off-scale: read from across the desk, the owner's ruling 8 Sep */
+.crun-v small { font-size:var(--t2); font-weight:400; color:var(--mid); margin-left:8px; }
+.crun-s { font-size:var(--t2); color:var(--mid); margin-top:4px; }
+.crun-s.card-failed { color:var(--law-red); }
+.crun-s.card-done { color:var(--law-green); }
+.crun-valid { font-size:var(--t1); color:var(--mid); margin-top:6px; }
+.crun-env { font-size:var(--t2); color:var(--law-green); margin-top:6px; }
+.cardhold { background:var(--amber); border:1px solid var(--amberb);
+            border-radius:var(--r); color:var(--amberink); padding:14px;
+            margin-top:12px; font-family:var(--ui-font); font-size:var(--t2);
+            line-height:1.5; }
+/* qty, on the villa panel: the stepper the spa page's controls follow */
+.cqty { display:inline-flex; align-items:center; border:1px solid var(--rule);
+        border-radius:var(--r); margin-left:10px; vertical-align:middle; }
+.cqty button { width:38px; height:38px; background:none; border:none;
+               font-size:var(--t4); color:var(--ink); cursor:pointer; }
+.cqty span { width:26px; text-align:center; font-size:var(--t3); }
+/* the run's cancel wears terracotta and confirms - the button law */
+.sum-btns button.terra { border-color:var(--terra-b); color:var(--terra);
+                         background:transparent; }
+.cardlab.card-done { color:var(--law-green); }
+.cardlab.card-failed { color:var(--law-red); }
+.cardlab.card-writing { color:var(--amberink); }
+
+/* card slots + batch bar, mirrored from front-desk.html 8 Sep */
+.cslots { display:flex; gap:8px; margin-top:10px; align-items:center; }
+/* Each waiting slot carries its card's number - the owner, 9 Sep: the
+   amber slot must say WHICH card is being programmed. A written card
+   trades its number for the tick; the number told the future, the tick
+   tells the past. */
+.cslot { width:26px; height:38px; border-radius:5px; border:2px solid var(--rule);
+         background:transparent; position:relative; flex:0 0 auto;
+         display:flex; align-items:center; justify-content:center;
+         font-style:normal; font-family:var(--ui-font); font-size:var(--t3);
+         color:var(--mid); }
+.cslot::after { position:absolute; inset:0; display:flex; align-items:center;
+         justify-content:center; font-family:var(--ui-font); font-size:var(--t3); }
+.cslot.filled { background:var(--law-green-t); border-color:var(--law-green-b); }
+.cslot.filled::after { content:'\2713'; color:var(--law-green); }
+.cslot.now { border-color:var(--amberb); background:var(--amber);
+             color:var(--amberink); font-weight:600; }
+.cslot.fail { border-color:var(--law-red); }
+.cslot.fail::after { content:'\2715'; color:var(--law-red); }
+/* The active villa asks with a drawing, not a sentence - ruled by the
+   owner, 8 Sep evening, with TTHotel's own issue-card dialog as the
+   reference: a hand holding a card, waves saying hold-it-near, and
+   barely a word. It is the one animated thing on the screen; the slots
+   stand still and carry the count. */
+.cardask { margin:16px auto 2px; width:150px; color:var(--ink); }
+.cardask svg { display:block; width:100%; height:auto; }
+.cardask .wave { stroke:var(--amberink); opacity:0;
+                 animation:cardwave 1.8s ease-out infinite; }
+.cardask .wave.w2 { animation-delay:.3s; }
+@keyframes cardwave {
+  0% { opacity:0; } 25% { opacity:.9; } 70%, 100% { opacity:0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cardask .wave { animation:none; opacity:.55; }
+}
+.crun.now .crun-v { font-size:52px; line-height:1; } /* off-scale: same ruling */
+.crun.now .crun-v small { display:block; margin-left:0; margin-top:6px; }
+.crun.now .cslot { width:40px; height:58px; border-radius:7px; font-size:22px; } /* off-scale: same ruling */
+.crun.now .cslot::after { font-size:24px; } /* off-scale: same ruling */
+.cprog { max-width:520px; margin:0 auto 4px; height:5px; border-radius:3px;
+         background:var(--rule); overflow:hidden; }
+.cprog i { display:block; height:100%; background:var(--law-green);
+           border-radius:3px; transition:width .3s ease; }
+/* the run sits under the mock's own bar, so its header must clear it */
+
+button
+
+.kst { flex:0 0 auto; text-align:right; font-size:var(--t1);
+       font-family:var(--ui-font); line-height:1.5; }
+.kst .g { color:var(--law-green); }
+.kst .a { color:var(--amberink); }
+.kst .t { color:var(--terra); }
+/* four segments with counts must fit 320: t1, and no minimum width */
+#tabs button { min-width:0; font-size:var(--t1); padding:11px 2px; }
+/* body is a flex column (the app's own base), so this page's wrapper is
+   a flex item and must be allowed to shrink to the viewport */
+#body { min-width:0; width:100%; }
+</style>
+</head>
+<body class="tier-app ui2">
+
+<div class="daterow">
+  <button class="btn go" id="cancelBtn"
+    style="width:auto;min-height:36px;padding:7px 14px;margin-right:auto;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)">Cancel cards</button>
+  <div class="navwrap" id="navWrap">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"></div>
+  </div>
+</div>
+
+<div class="noaccess" id="noAccess"></div>
+
+<div id="body" style="max-width:520px;margin:0 auto">
+  <div class="seg" id="tabs" style="margin-top:6px"></div>
+  <div class="secnote" id="tallyLine" style="margin-top:12px" hidden></div>
+  <div id="list" style="margin-top:10px"></div>
+</div>
+<div id="errBar"></div>
+
+<div class="cardov" id="cancelOv" hidden>
+  <div class="cardov-head">
+    <div class="cardov-title">Cancel cards</div>
+    <button class="cardov-x" id="ovX">&#215;</button>
+  </div>
+  <div id="ovBody"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="auth.js?v=12"></script>
+<script src="nala-shared.js?v=61"></script>
+<script>
+/* Keys: the card register, built from the approved mock (mock-keys.html)
+   and holding its exact shape - the suite compares the two files and
+   fails if they drift. The page READS: every fact here is owned
+   elsewhere. /cardjobs owns the cards (front-desk writes them, the
+   helper moves them, cardLife in nala-shared is the one reader of where
+   they stand). This page OWNS two small things: the lost/found marks it
+   writes onto a job, and the /cancelrun session it switches on and off.
+   The Tally is arithmetic over dead jobs, not a stored fact. */
+
+var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+var JOBS = {};              /* the whole /cardjobs tree, as read */
+var TAB = 'all', OPEN = null;
+var LOAD_T = null;
+
+(function(){
+  var b = document.getElementById('navBtn'), d = document.getElementById('navDrop');
+  b.onclick = function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click', function(){ d.classList.remove('open'); });
+})();
+
+function api(path){
+  return fetch(DB + path + '.json?v=' + Date.now())
+    .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); });
+}
+function err(msg){
+  var e = document.getElementById('errBar');
+  e.textContent = msg || '';
+  e.className = msg ? 'show' : '';
+}
+function esc(s){
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+}
+
+function load(){
+  loadAll();
+  if (!LOAD_T) LOAD_T = setInterval(loadAll, 5000);
+}
+function loadAll(){
+  return api('/cardjobs')
+    .then(function(j){ JOBS = j || {}; render(); })
+    .catch(function(){});
+}
+
+/* The mock's wording law: day only, and the 12h clock once it is today. */
+function h12(ms){
+  var d = new Date(ms), h = d.getHours(), m = d.getMinutes();
+  var ap = h < 12 ? 'am' : 'pm'; h = h % 12 || 12;
+  return h + (m ? ':' + String(m).padStart(2, '0') : '') + ap;
+}
+function tillLabel(L){
+  if (L.state === 'today') return h12(L.expiry);
+  var d = new Date(L.expiry);
+  var days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return days[d.getDay()] + ' ' + ord(d.getDate());
+}
+
+/* One pass over the tree: the living register (latest job per villa -
+   an expiring morning job loses the row to the fresh stay's) and the
+   Tally, which is only arithmetic over the dead. */
+function buildReg(now){
+  var reg = {}, tally = { rows: [], issued: 0, back: 0 };
+  Object.keys(JOBS).forEach(function(day){
+    var villas = JOBS[day] || {};
+    Object.keys(villas).forEach(function(v){
+      var job = villas[v], L = cardLife(job, now);
+      if (!L || !L.written) return;
+      if (L.state === 'dead'){
+        tally.issued += L.written; tally.back += L.back;
+        var un = L.written - L.back;
+        if (un > 0) tally.rows.push({ villa: v, guest: job.guest || '',
+                                      n: un, exp: L.expiry });
+        return;
+      }
+      if (L.written - L.back <= 0) return;   /* all wiped: nothing out */
+      var cur = reg[v];
+      if (!cur || L.expiry > cur.L.expiry)
+        reg[v] = { day: day, villa: v, job: job, L: L };
+    });
+  });
+  tally.rows.sort(function(a, b){ return b.exp - a.exp; });
+  return { reg: reg, tally: tally };
+}
+
+function cardsWord(n){ return n + (n === 1 ? ' card' : ' cards'); }
+
+var TABS = [
+  { k: 'all',   label: 'All' },
+  { k: 'ok',    label: 'Active' },
+  { k: 'lost',  label: 'Lost' },
+  { k: 'tally', label: 'Tally' }
+];
+
+function render(){
+  var now = Date.now();
+  var built = buildReg(now);
+  var rows = Object.keys(built.reg).sort(function(a, b){ return (+a) - (+b); })
+    .map(function(v){ return built.reg[v]; });
+
+  function tabCount(k){
+    if (k === 'tally') return built.tally.rows.reduce(function(a, r){ return a + r.n; }, 0);
+    var n = 0;
+    rows.forEach(function(r){
+      n += k === 'lost' ? r.L.lost : k === 'ok' ? r.L.active : r.L.active + r.L.lost;
+    });
+    return n;
+  }
+
+  var t = '';
+  TABS.forEach(function(tb){
+    var n = tabCount(tb.k);
+    t += '<button' + (TAB === tb.k ? ' class="on"' : '') + ' data-tab="' + tb.k +
+         '">' + tb.label + (n ? ' &middot; ' + n : '') + '</button>';
+  });
+  document.getElementById('tabs').innerHTML = t;
+
+  var line = document.getElementById('tallyLine');
+  var g = '';
+  if (TAB === 'tally'){
+    var gone = tabCount('tally');
+    line.hidden = false;
+    line.textContent = gone
+      ? gone + ' cards never came back · ' +
+        (built.tally.issued
+          ? Math.round(built.tally.back / built.tally.issued * 100) + '% returned'
+          : '')
+      : 'Every card so far has come back';
+    built.tally.rows.forEach(function(r){
+      var d = new Date(r.exp);
+      g += '<div class="arr todo-form" style="opacity:.62;border-style:dashed">' +
+        '<div class="arr-v">' + esc(r.villa) + '</div>' +
+        '<div class="arr-mid"><div class="arr-top">' +
+        '<div class="arr-n">' + esc(r.guest) + '</div></div>' +
+        '<div class="arr-s">' + cardsWord(r.n) + ' &middot; departed <span class="eta">' +
+        dateLabel(d) + '</span></div></div></div>';
+    });
+  } else {
+    line.hidden = true;
+    rows.forEach(function(r){
+      var L = r.L;
+      if (TAB === 'lost' && !L.lost) return;
+      if (TAB === 'ok' && !L.active) return;
+      var open = OPEN === r.villa;
+      var st = '';
+      if (L.lost) st += '<div class="t">' + L.lost + ' lost</div>';
+      st += L.state === 'today' ? '<div class="a">expires ' + h12(L.expiry) + '</div>'
+                                : '<div class="g">valid</div>';
+      var text = TAB === 'lost'
+        ? cardsWord(L.lost) + ' floating &middot; <span class="eta">expires ' + tillLabel(L) + '</span>'
+        : cardsWord(L.active) + (L.lost ? ' + ' + L.lost + ' lost' : '') +
+          ' &middot; <span class="eta">till ' + tillLabel(L) + '</span>';
+      g += '<button class="arr ' + (L.state === 'today' ? 'part-form' : 'done-form') +
+        (open ? ' open' : '') + '" data-villa="' + esc(r.villa) + '">' +
+        '<div class="arr-v">' + esc(r.villa) + '</div>' +
+        '<div class="arr-mid"><div class="arr-top">' +
+        '<div class="arr-n">' + esc(r.job.guest || '') + '</div></div>' +
+        '<div class="arr-s">' + text + '</div></div>' +
+        '<div class="kst">' + st + '</div></button>';
+      if (open) g += sheetHTML(r);
+    });
+  }
+  if (!g) g = '<div class="arr todo-form" style="opacity:.62;border-style:dashed">' +
+    '<div class="arr-mid"><div class="arr-s">Nothing here</div></div></div>';
+  document.getElementById('list').innerHTML = g;
+}
+
+function sheetHTML(r){
+  var L = r.L;
+  var s = '<div class="sum">' +
+    '<div class="sum-r"><div class="sum-l">Cards</div><div class="sum-v">' +
+    cardsWord(L.active) + ' with the guest</div></div>';
+  if (L.lost)
+    s += '<div class="sum-r"><div class="sum-l">Lost</div><div class="sum-v">' +
+      cardsWord(L.lost) + ' &middot; floating till ' + tillLabel(L) + '</div></div>';
+  s += '<div class="sum-btns">';
+  if (L.active > 0)
+    s += '<button class="terra" data-losev="' + esc(r.villa) + '">Mark a card lost</button>';
+  if (L.lost > 0)
+    s += '<button data-foundv="' + esc(r.villa) + '">Found</button>';
+  return s + '</div></div>';
+}
+
+/* the lost/found marks: this page's own writes, PATCHed onto the job */
+function markLost(villa, delta){
+  var now = Date.now(), built = buildReg(now), r = built.reg[villa];
+  if (!r) return;
+  var lost = Math.max(0, Math.min(r.L.written - r.L.back, r.L.lost + delta));
+  if (lost === r.L.lost) return;
+  fetch(DB + '/cardjobs/' + r.day + '/' + villa + '.json', {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lost: lost })
+  }).then(function(res){
+    if (!res.ok) throw new Error(res.status);
+    JOBS[r.day][villa].lost = lost; render();
+  }).catch(function(){
+    err('The mark did not save. This is usually the connection.');
+  });
+}
+
+/* ── the cancel session ─────────────────────────────────────────────
+   The desk switches /cancelrun on; the helper heartbeats seen and
+   reports each wiped card under done. Silence for ten seconds after
+   the switch means the desk PC is not listening, and the session is
+   switched back off with the queue law's own verdict. */
+var CN_T = null, CN_START = 0, CN_OFFLINE = false;
+
+function cancelOpen(){
+  CN_START = Date.now(); CN_OFFLINE = false;
+  fetch(DB + '/cancelrun.json', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ state: 'on', by: window.NALA_ME || '', at: CN_START })
+  }).then(function(res){ if (!res.ok) throw new Error(res.status); })
+    .catch(function(){ err('The session did not start. This is usually the connection.'); });
+  document.getElementById('cancelOv').hidden = false;
+  ovRender(null);
+  if (!CN_T) CN_T = setInterval(cancelPoll, 1000);
+}
+function cancelStop(){
+  fetch(DB + '/cancelrun.json', {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ state: 'off' })
+  }).catch(function(){});
+  if (CN_T){ clearInterval(CN_T); CN_T = null; }
+  document.getElementById('cancelOv').hidden = true;
+  loadAll();   /* wiped cards changed the register's counts */
+}
+function cancelPoll(){
+  api('/cancelrun').then(function(cr){
+    if (document.getElementById('cancelOv').hidden) return;
+    if (cr && cr.state === 'on' && !CN_OFFLINE &&
+        (!cr.seen || cr.seen < CN_START) && Date.now() - CN_START > 10000){
+      /* nobody listening: the verdict, and the switch back off */
+      CN_OFFLINE = true;
+      fetch(DB + '/cancelrun.json', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: 'off' })
+      }).catch(function(){});
+    }
+    ovRender(cr);
+  }).catch(function(){});
+}
+
+function ovRender(cr){
+  var body = document.getElementById('ovBody');
+  if (CN_OFFLINE){
+    body.innerHTML = '<div class="cardov-in">' +
+      '<div class="cardhold"><b>Encoder offline.</b> Nothing was wiped ' +
+      '· try again when the desk PC is on.</div></div>';
+    return;
+  }
+  var done = [];
+  if (cr && cr.done)
+    Object.keys(cr.done).sort(function(a, b){ return (+b) - (+a); })
+      .forEach(function(k){ done.push(cr.done[k]); });
+  var wiped = done.filter(function(d){ return !d.note; }).length;
+  var b = '<div class="cardov-in"><div class="crun now">' +
+    '<div class="crun-v">' + wiped +
+    '<small>' + (wiped === 1 ? 'card cancelled' : 'cards cancelled') + '</small></div>' +
+    '<div class="cardask"><svg viewBox="0 0 140 96" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Present a card">' +
+    '<rect x="57" y="10" width="33" height="46" rx="5" transform="rotate(16 73 33)"/>' +
+    '<path d="M58 50c-4 7-3 14 2 19 6 6 15 6 21 1l7-6"/>' +
+    '<path d="M63 57c2-3 5-4 8-2M69 63c2-3 5-4 8-2"/>' +
+    '<path class="wave w1" d="M40 30c-4 6-4 14 0 20"/><path class="wave w2" d="M30 24c-7 9-7 23 0 32"/>' +
+    '<path class="wave w1" d="M106 30c4 6 4 14 0 20"/><path class="wave w2" d="M116 24c7 9 7 23 0 32"/>' +
+    '</svg></div>' +
+    '<div class="crun-s">Present a card</div></div>';
+  done.forEach(function(d){
+    var label = d.note
+      ? 'Card ' + esc(d.no || '') + ' · ' + esc(d.note)
+      : d.villa && d.villa !== '?'
+        ? 'Villa ' + esc(d.villa) + ' · cancelled'
+        : 'Not on record · wiped · a blank again';
+    b += '<div class="crun is-done"><div class="crun-s card-done">' + label + '</div></div>';
+  });
+  b += '<div class="sum-btns" style="margin-top:16px">' +
+       '<button class="go wide" id="ovStop">Stop</button></div></div>';
+  body.innerHTML = b;
+}
+
+document.addEventListener('click', function(e){
+  var t;
+  if ((t = e.target.closest('[data-tab]'))){
+    TAB = t.getAttribute('data-tab'); OPEN = null; render(); return;
+  }
+  if ((t = e.target.closest('[data-losev]'))){
+    markLost(t.getAttribute('data-losev'), 1); return;
+  }
+  if ((t = e.target.closest('[data-foundv]'))){
+    markLost(t.getAttribute('data-foundv'), -1); return;
+  }
+  if (e.target.closest('#cancelBtn')){ cancelOpen(); return; }
+  if (e.target.closest('#ovStop')){ cancelStop(); return; }
+  if ((t = e.target.closest('[data-villa]'))){
+    var v = t.getAttribute('data-villa');
+    OPEN = OPEN === v ? null : v;
+    render(); return;
+  }
+});
+document.getElementById('ovX').onclick = cancelStop;
+
+function navFilter(role){
+  if (window.NALA_NAVFILTER) window.NALA_NAVFILTER(role);
+}
+function showAccess(allowed, e){
+  var box = document.getElementById('noAccess');
+  var on = !allowed;
+  box.innerHTML = !on ? '' :
+    (e ? '<div>Could not check access. This is usually the connection, '
+       + 'not your login.</div>'
+       + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+       : 'This login has no access to Keys. See the manager.');
+  if (on && !e){
+    var home = homeFor(window.NALA_ROLE);
+    if (home && home !== location.pathname.split('/').pop()){
+      location.replace(home); return;
+    }
+  }
+  box.className = 'noaccess' + (on ? ' show' : '');
+  var el = document.getElementById('body');
+  if (el) el.style.display = on ? 'none' : '';
+  if (!on) load();
+}
+
+(function gate(){
+  if (!window.firebase || !firebase.auth || typeof loadStaff !== 'function')
+    return setTimeout(gate, 40);
+  var A; try { A = firebase.auth(); } catch(e){ return setTimeout(gate, 40); }
+  if (!A || !A.onAuthStateChanged) return setTimeout(gate, 40);
+  A.onAuthStateChanged(function(u){
+    if (!u) return;                 /* auth.js owns the signed-out state */
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      window.NALA_USER = u;
+      window.NALA_ME   = staffKeyOf(u);
+      document.getElementById('navWrap').style.display = 'block';
+      navFilter(role);
+      showAccess(can(role, 'editBookings'), e);
+    });
+  });
+})();
+</script>
+</body>
+</html>

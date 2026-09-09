@@ -513,7 +513,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=60"></script>
+<script src="nala-shared.js?v=61"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -1197,6 +1197,7 @@ function putJob(r, qty){
   var exp = cardExpiry(r.stay && r.stay.depart);
   if (!exp){ err('Villa ' + r.villa + ' has no departure date, so no card can be cut.'); return null; }
   var job = { qty: qty, expiry: exp, state: 'queued', written: 0,
+              guest: nameOf(r.stay).slice(0, 80),
               by: window.NALA_ME || '', at: Date.now() };
   return fetch(DB + '/cardjobs/' + nav.todayKey() + '/' + r.villa + '.json', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -1375,15 +1376,17 @@ function cardRender(){
     var j = jobFor(one.villa);
     if (!j || j.state === 'cancelled' || CARD_ASK == one.villa){
       var q = +(body.getAttribute('data-qty') || 2);
+      /* a living job means these are ADDED cards, and the words say so */
+      var more = j && j.state !== 'cancelled';
       body.innerHTML = '<div class="cardov-in"><div class="crun">' +
         '<div class="crun-v">Villa ' + one.villa + '<small>' +
         esc(nameOf(one.stay)) + '</small></div>' +
-        '<div class="crun-s">How many cards?' +
+        '<div class="crun-s">How many ' + (more ? 'more cards' : 'cards') + '?' +
         '<span class="cqty"><button data-cardq="-1">&minus;</button><span>' + q +
         '</span><button data-cardq="1">+</button></span></div>' +
         cardValidHTML(cardExpiry(one.stay.depart)) +
         '<div class="sum-btns"><button class="go wide" data-cardissue="' +
-        one.villa + '">Issue ' + q + (q === 1 ? ' card' : ' cards') +
+        one.villa + '">Issue ' + q + (more ? ' more' : q === 1 ? ' card' : ' cards') +
         '</button></div></div></div>';
       return;
     }
@@ -1490,7 +1493,12 @@ function cardRender(){
     if (iss){
       var r = rowFor(iss.getAttribute('data-cardissue'));
       var body2 = document.getElementById('cardBody');
-      var p = r && putJob(r, +(body2.getAttribute('data-qty') || 2));
+      var n2 = +(body2.getAttribute('data-qty') || 2);
+      /* a villa with a living job GROWS it; only a blank or cancelled
+         slate gets a fresh one - the record is never replaced (9 Sep) */
+      var j2 = r && jobFor(r.villa);
+      var p = r && (j2 && j2.state !== 'cancelled'
+                    ? extendJob(r, n2) : putJob(r, n2));
       CARD_ASK = null;
       if (p) p.then(cardRender).catch(function(){
         err('The card job did not save. This is usually the connection.');

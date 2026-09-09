@@ -73,6 +73,7 @@ SUITES = [
     ("invworker",  ["node", "worker/invites-test.mjs"],   120),
     ("cardworker", ["node", "worker/cards-test.mjs"],     120),
     ("cards",      ["python3", "tests/cards_suite.py"],   300),
+    ("keys",       ["python3", "tests/keys_suite.py"],    400),
     ("dash",       ["python3", "tests/dash_suite.py"],    400),
     ("tally",      ["python3", "tests/tally_suite.py"],   600),
     ("cleans",     ["python3", "tests/cl_suite.py"],      900),
@@ -107,7 +108,7 @@ SUITES = [
 # page load and still reloads the page for each of the three widths when it
 # could resize the viewport. Fixing those is the next job and worth more than
 # this was.
-SWEEP_PAGES = ["cleaners", "front-desk", "invitations", "arrivals-sms", "spa", "past-menus", "templates", "tally", "tag", "flags", "publish", "staff",
+SWEEP_PAGES = ["keys", "cleaners", "front-desk", "invitations", "arrivals-sms", "spa", "past-menus", "templates", "tally", "tag", "flags", "publish", "staff",
                "stats", "registration", "debug", "pages", "index",
                "prearrival", "welcome"]
 SUITES += [("sweep:" + p, ["python3", "tests/sweep_suite.py", p], 600)
@@ -124,7 +125,8 @@ COVERS = {
     "dashboard.html":    ["dash", "sweep:dashboard"],
     "tally.html":        ["tally", "sweep:tally"],
     "cleaners.html":     ["cleans", "sweep:cleaners"],
-    "front-desk.html":   ["frontdesk", "sweep:front-desk"],
+    "front-desk.html":   ["frontdesk", "sweep:front-desk", "keys"],
+    "keys.html":         ["keys", "sweep:keys", "pages"],
     "invitations.html":  ["invites", "sweep:invitations"],
     "past-menus.html":   ["sweep:past-menus"],
     "arrivals-sms.html": ["invites", "sweep:arrivals-sms"],

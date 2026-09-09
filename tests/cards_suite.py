@@ -50,6 +50,29 @@ with sync_playwright() as p:
       })""", cases)
     ck("cardCell answers every shared case", wrong == [], wrong)
 
+    # ── the Keys register's reader, against its own table ──────────
+    #  now is a fixed LOCAL noon and expiryDay becomes 13:00 local that
+    #  many days on, so today/live/dead hold in any TZ (CLAUDE.md rule 7).
+    cases2 = json.load(open("tests/cardlife_cases.json"))["cases"]
+    wrong2 = pg.evaluate("""(cases)=>{
+        var now = new Date(2026, 8, 15, 12, 0, 0).getTime();
+        return cases.filter(function(c){
+          var job = c.job ? Object.assign({}, c.job) : c.job;
+          if (job && c.expiryDay !== undefined)
+            job.expiry = new Date(2026, 8, 15 + c.expiryDay, 13, 0, 0).getTime() / 1000;
+          var got = cardLife(job, now);
+          if (c.want === null) return got !== null;
+          if (!got) return true;
+          return Object.keys(c.want).some(function(k){ return got[k] !== c.want[k]; });
+        }).map(function(c){
+          var job = c.job ? Object.assign({}, c.job) : c.job;
+          if (job && c.expiryDay !== undefined)
+            job.expiry = new Date(2026, 8, 15 + c.expiryDay, 13, 0, 0).getTime() / 1000;
+          return (c.why || '?') + ': got ' + JSON.stringify(cardLife(job, now));
+        });
+      }""", cases2)
+    ck("cardLife answers every shared case", wrong2 == [], wrong2)
+
     # ── the expiry ─────────────────────────────────────────────────
     #  Relative, not absolute: whatever zone this runs in, the epoch it
     #  makes must read back as CHECKOUT o'clock on the depart day in that

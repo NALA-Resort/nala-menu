@@ -1140,11 +1140,6 @@ button
 
 
 
-/* four segments with counts must fit 320: t1, and no minimum width */
-#tabs button { min-width:0; font-size:var(--t1); padding:11px 2px; }
-/* body is a flex column (the app's own base), so this page's wrapper is
-   a flex item and must be allowed to shrink to the viewport */
-#body { min-width:0; width:100%; }
 
 
 
@@ -1158,10 +1153,18 @@ button
 
 /* MOCK ONLY - the Keys page in Front Desk's own bones: .seg tabs, .arr
    tiles, the .sum sheet, the run overlay. The page's sole own dress is
-   .kst: three words in the law's inks, in the row's right-hand slot
-   where Front Desk carries its forks. And .kst .g { color:var(--law-green); }
+   .kst - three words in the law's inks, in the row's right-hand slot
+   where Front Desk carries its forks. */
+.kst { flex:0 0 auto; text-align:right; font-size:var(--t1);
+       font-family:var(--ui-font); line-height:1.5; }
+.kst .g { color:var(--law-green); }
 .kst .a { color:var(--amberink); }
 .kst .t { color:var(--terra); }
+/* four segments with counts must fit 320: t1, and no minimum width */
+#tabs button { min-width:0; font-size:var(--t1); padding:11px 2px; }
+/* body is a flex column (the app's own base), so this page's wrapper is
+   a flex item and must be allowed to shrink to the viewport */
+#body { min-width:0; width:100%; }
 </style>
 </head>
 <body class="tier-app ui2">
