@@ -545,14 +545,11 @@ with sync_playwright() as p:
        "9:00 am" not in str(sp["chips"]))
     ck("nor is one only requested, which nobody is expecting a guest for",
        len(sp["chips"]) == 2)
-    # A pair has two lengths and the second one has to be visible: hiding it
-    # is the bug that forced the pair onto one tile on the Spa board.
-    ck("the note says what is booked, with BOTH lengths of a pair",
-       "Two massages" in sp["note"] and "+" in sp["note"])
-    ck("and a single says its one length",
-       "Massage" in sp["note"])
-    ck("the time is said once, on the chip, not twice",
-       "11:00" not in sp["note"])
+    # Villa and time is the whole card (owner, 9 Sep): what a booking IS -
+    # lengths, pairs - lives on the Spa board behind its door, so nothing
+    # is said twice and nothing describes a massage here.
+    ck("the note is empty until the tick fills it - no offerings, no times",
+       sp["note"] == "")
     # body.ui2 .btn is width:100%, and a page rule at lower specificity loses
     # silently. It has caught this page twice.
     ck("and the tick does not stretch the width of the card",

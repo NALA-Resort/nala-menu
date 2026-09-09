@@ -36,11 +36,6 @@
       "kind": "function",
       "note": "spa.html's own reading, moved to nala-shared 8 Sep so this reminder and that board cannot disagree about a day." },
 
-    { "value": "what a spa booking is, in words",
-      "owner": "spaOffering",
-      "kind": "function",
-      "note": "Both lengths of a pair - a hidden second length is the bug that forced a pair onto one tile on the Spa board." },
-
     { "value": "the room number on a spa chip",
       "owner": "fetchStays",
       "kind": "function",

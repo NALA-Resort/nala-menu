@@ -495,10 +495,10 @@ function items(t){
   });
 
   if (spa.length){
-    /* The chips carry who and when, so the note carries what: quantity and
-       BOTH lengths, in spa.html's own words. Saying the time twice told the
-       desk nothing it could not already see, and a hidden second length is
-       the bug that forced a pair onto one tile on that board. */
+    /* The chips carry who and when, and that is the whole card: villa and
+       time, nothing else (owner, 9 Sep). What each booking IS - lengths,
+       pairs - lives on the Spa board behind the door, so the note is empty
+       until the tick fills it with done-when-and-by-whom. */
     L.push({ k:'spa', lab: spa.length === 1 ? 'Spa booking' : 'Spa bookings',
       owner:'spa',
       units: spa.map(function(x){
@@ -506,8 +506,7 @@ function items(t){
                  tone: DATA.done.spa ? 'green' : 'grey' };
       }),
       state: DATA.done.spa ? 'done' : 'shut',
-      note: DATA.done.spa ? printedNote('spa')
-          : spa.map(function(x){ return spaOffering(x.r); }).join(', '),
+      note: DATA.done.spa ? printedNote('spa') : '',
       tick:true });
   }
 
@@ -744,7 +743,7 @@ function render(){
     h += '<div class="node ' + d.pos + (d.offSpine ? ' off' : '') + '">' +
          (d.offSpine ? '' : '<i class="bead"></i>') +
          '<div class="card"><div class="top">' + head + '</div>' +
-         '<div class="cs">' + esc(d.note) + '</div>' +
+         (d.note ? '<div class="cs">' + esc(d.note) + '</div>' : '') +
          chips(d) + (d.tickable && !d.acts.length ? '' : acts(d)) + '</div></div>';
   });
   if (!closed) h += '</div>';
