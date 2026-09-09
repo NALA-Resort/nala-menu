@@ -1166,19 +1166,14 @@ button
 </head>
 <body class="tier-app ui2">
 <div class="daterow">
-  <button class="dnav today">Today</button>
-  <button class="dnav">&#8249;</button>
+  <button class="dnav today" id="cancelBtn"
+    style="background:var(--accent);color:var(--accent-ink);border:0">Cancel cards</button>
   <div class="date">Keys</div>
-  <button class="dnav">&#8250;</button>
   <div class="navwrap"><button class="navbtn" aria-label="Menu"><span></span><span></span><span></span></button></div>
 </div>
 
 <div id="body" style="max-width:520px;margin:0 auto">
-  <div class="sum-btns" style="margin:6px 0 16px">
-    <button class="go wide" id="cancelBtn">Cancel cards</button>
-  </div>
-
-  <div class="seg" id="tabs"></div>
+  <div class="seg" id="tabs" style="margin-top:6px"></div>
   <div class="secnote" id="tallyLine" style="margin-top:12px" hidden></div>
   <div id="list" style="margin-top:10px"></div>
 </div>
@@ -1206,12 +1201,13 @@ document.title = 'Mock · Keys';
 
 var K, TALLY, TAB, OPEN, DONE, SESSION;
 function resetAll(){
+  /* validity worn short: day only, and the 12h clock once it is today */
   K = [
-    { villa:3,  name:'James Fisher',    dep:true,  out:2, lost:0, until:'today, 13:00' },
-    { villa:14, name:'Ann Brown',       dep:true,  out:1, lost:0, until:'today, 13:00' },
-    { villa:4,  name:'Robyn Williams',  dep:false, out:2, lost:0, until:'Sat 13th Sep, 13:00' },
-    { villa:6,  name:'Karen and Mike Mount', dep:false, out:3, lost:0, until:'Fri 11th Sep, 13:00' },
-    { villa:9,  name:'Konstantinos Papadopoulos', dep:false, out:3, lost:1, until:'Thu 11th Sep, 13:00' }
+    { villa:3,  name:'James Fisher',    dep:true,  out:2, lost:0, till:'1pm' },
+    { villa:14, name:'Ann Brown',       dep:true,  out:1, lost:0, till:'1pm' },
+    { villa:4,  name:'Robyn Williams',  dep:false, out:2, lost:0, till:'Sat 13th' },
+    { villa:6,  name:'Karen and Mike Mount', dep:false, out:3, lost:0, till:'Fri 11th' },
+    { villa:9,  name:'Konstantinos Papadopoulos', dep:false, out:3, lost:1, till:'Thu 11th' }
   ];
   TALLY = { issued: 25, back: 21, rows: [
     { villa:2,  name:'Sarah Mitchell',      dep:'Mon 7th Sep', n:1 },
@@ -1273,11 +1269,11 @@ function render(){
       var open = OPEN === r.villa;
       var st = '';
       if (r.lost) st += '<div class="t">' + r.lost + ' lost</div>';
-      st += r.dep ? '<div class="a">dies 13:00</div>' : '<div class="g">valid</div>';
+      st += r.dep ? '<div class="a">expires 1pm</div>' : '<div class="g">valid</div>';
       var text = TAB === 'lost'
-        ? cardsWord(r.lost) + ' floating &middot; <span class="eta">dies ' + r.until + '</span>'
+        ? cardsWord(r.lost) + ' floating &middot; <span class="eta">expires ' + r.till + '</span>'
         : cardsWord(active(r)) + (r.lost ? ' + ' + r.lost + ' lost' : '') +
-          ' &middot; <span class="eta">to ' + r.until + '</span>';
+          ' &middot; <span class="eta">till ' + r.till + '</span>';
       g += '<button class="arr ' + (r.dep ? 'part-form' : 'done-form') +
         (open ? ' open' : '') + '" data-villa="' + r.villa + '">' +
         '<div class="arr-v">' + r.villa + '</div>' +
@@ -1299,7 +1295,7 @@ function sheetHTML(r){
     cardsWord(active(r)) + ' with the guest</div></div>';
   if (r.lost)
     s += '<div class="sum-r"><div class="sum-l">Lost</div><div class="sum-v">' +
-      cardsWord(r.lost) + ' &middot; floating until ' + r.until + '</div></div>';
+      cardsWord(r.lost) + ' &middot; floating till ' + r.till + '</div></div>';
   s += '<div class="sum-btns">';
   if (active(r) > 0)
     s += '<button class="terra" data-losev="' + r.villa + '">Mark a card lost</button>';
@@ -1331,8 +1327,8 @@ function ovRender(){
 
 /* the pretend reader: each held card comes back as somebody's */
 var FAKE = [
-  { v: 9, label: 'Villa 9 &middot; was valid to Thu 11th Sep &middot; cancelled' },
-  { v: 6, label: 'Villa 6 &middot; was valid to Fri 11th Sep &middot; cancelled' },
+  { v: 9, label: 'Villa 9 &middot; was valid till Thu 11th &middot; cancelled' },
+  { v: 6, label: 'Villa 6 &middot; was valid till Fri 11th &middot; cancelled' },
   { v: 0, label: 'Expired card, May stay &middot; a blank again' }
 ];
 
