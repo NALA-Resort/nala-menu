@@ -137,7 +137,7 @@ SPA = {"b3": {"t1": {"status": "booked", "day": today, "time": "11:00",
                      "dur": 60, "qty": 1, "name": "Ada Lovelace"}},
        "b7": {"t2": {"status": "requested", "reqDay": today, "reqTime": "any"},
               "t3": {"status": "booked", "day": today, "time": "14:30",
-                     "dur": 90, "qty": 2, "name": "Mark Whitfield"}},
+                     "dur": 90, "dur2": 60, "qty": 2, "name": "Mark Whitfield"}},
        "b11": {"t4": {"status": "booked", "day": plus(1), "time": "09:00",
                       "dur": 60, "qty": 1}}}
 
@@ -530,6 +530,23 @@ with sync_playwright() as p:
        "9:00 am" not in str(sp["chips"]))
     ck("nor is one only requested, which nobody is expecting a guest for",
        len(sp["chips"]) == 2)
+    # A pair has two lengths and the second one has to be visible: hiding it
+    # is the bug that forced the pair onto one tile on the Spa board.
+    ck("the note says what is booked, with BOTH lengths of a pair",
+       "Two massages" in sp["note"] and "+" in sp["note"])
+    ck("and a single says its one length",
+       "Massage" in sp["note"])
+    ck("the time is said once, on the chip, not twice",
+       "11:00" not in sp["note"])
+    # body.ui2 .btn is width:100%, and a page rule at lower specificity loses
+    # silently. It has caught this page twice.
+    ck("and the tick does not stretch the width of the card",
+       pg.evaluate("()=>{var b=document.querySelector('.chips [data-mark]');"
+                   "return b && b.getBoundingClientRect().width < 200;}"))
+    ck("and the tick shares the chip row rather than opening its own",
+       pg.evaluate("()=>!!document.querySelector('.chips.withtick "
+                   "[data-mark=\"spa\"]')"))
+
     ck("it carries no action beyond its door, because the desk cannot do "
        "anything to a treatment from here",
        not pg.evaluate("()=>!!document.querySelector('[data-print=\"spa\"]')"))

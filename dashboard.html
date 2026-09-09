@@ -83,6 +83,7 @@
      reads as a set of records and not as a row of buttons. Colours are
      the law's, by token. */
   .chips { display:flex; flex-wrap:wrap; gap:var(--s1); margin-top:var(--s2); }
+  .chips.withtick { align-items:center; gap:var(--s2); margin-top:var(--s3); }
   .chip { font-size:var(--t2); min-width:34px; text-align:center;
           padding:2px var(--s2); border-radius:6px; border:1px solid transparent; }
   /* The law's green TILE, not a solid fill: a chip is a record saying what a
@@ -102,8 +103,13 @@
      Undoing it needs the same specificity, not less - a plain .acts .btn
      loses and every button goes full width, which is what shipped. This is
      the row's LAYOUT; the dress is still the shared sheet's. */
-  body.ui2 .acts .btn { width:auto; flex:0 0 auto; padding:var(--s2) var(--s4);
-                        min-height:38px; font-size:var(--t2); }
+  /* body.ui2 .btn sets width:100% for the full-width rows most surfaces use.
+     Undoing it needs the same specificity, not less - a plain .acts .btn
+     loses and every button goes full width, which is what shipped once and
+     then again when the tick moved onto the chip row. Both rows, one rule. */
+  body.ui2 .acts .btn,
+  body.ui2 .chips .btn { width:auto; flex:0 0 auto; padding:var(--s2) var(--s4);
+                         min-height:38px; font-size:var(--t2); }
 
   /* body.ui2 input is width:100% for the full-width fields most forms use.
      Same specificity trap as the buttons above. */
@@ -472,9 +478,10 @@ function items(t){
   spa.sort(function(a,b){ return String(a.time||'').localeCompare(String(b.time||'')); });
 
   if (spa.length){
-    var when = spa.map(function(r){
-      return spaSlotLabel(r.time) + (r.qty === 2 ? ' (2)' : '');
-    }).join(', ');
+    /* The chips carry when, so the note carries what: quantity and BOTH
+       lengths, in spa.html's own words. Saying the time twice told the desk
+       nothing it could not already see, and a hidden second length is the
+       bug that forced a pair onto one tile on that board. */
     L.push({ k:'spa', lab: spa.length === 1 ? 'Spa booking' : 'Spa bookings',
       owner:'spa',
       units: spa.map(function(r){
@@ -482,7 +489,7 @@ function items(t){
       }),
       state: DATA.done.spa ? 'done' : 'shut',
       note: DATA.done.spa ? printedNote('spa')
-          : when + (spa.length === 1 ? '' : ''),
+          : spa.map(spaOffering).join(', '),
       tick:true });
   }
 
@@ -628,10 +635,28 @@ function items(t){
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
 
 function chips(d){
-  if (!d.units || !d.units.length) return '';
-  return '<div class="chips">' + d.units.map(function(u){
-    return '<span class="chip ' + u.tone + '">' + esc(u.id) + '</span>';
-  }).join('') + '</div>';
+  /* A card whose only control is the tick puts it on the chip row: one
+     button does not earn a row of its own, and the other cards all keep
+     their controls on one line. */
+  var lone = d.tickable && !d.acts.length;
+  if (!d.units || !d.units.length) return lone ? acts(d) : '';
+  return '<div class="chips' + (lone ? ' withtick' : '') + '">' +
+    d.units.map(function(u){
+      return '<span class="chip ' + u.tone + '">' + esc(u.id) + '</span>';
+    }).join('') + (lone ? tickBtn(d) : '') + '</div>';
+}
+
+function tickBtn(d){
+  if (!d.tickable) return '';
+  /* Marking done asks both ways: it is a claim nobody else can check.
+     Walking it back wears terracotta, per the button law. */
+  if (d.pending)
+    return '<button class="btn terra" data-mark="' + d.k + '">' +
+           (d.ticked ? 'Confirm undo' : 'Confirm done') + '</button>';
+  if (d.ticked)
+    return '<button class="btn ghost done" data-mark="' + d.k + '">&#10003; ' +
+           (d.print ? 'Printed' : 'Done') + '</button>';
+  return '<button class="btn ghost" data-mark="' + d.k + '">Mark done</button>';
 }
 
 function acts(d){
@@ -650,18 +675,7 @@ function acts(d){
        card's own weight, which is where state belongs. */
     h += '<button class="btn solid" data-print="' + d.k + '">' + a.t + '</button>';
   });
-  if (d.tickable){
-    /* Marking done asks both ways: it is a claim about paper that nobody else
-       can check. Walking it back wears terracotta, per the button law. */
-    if (d.pending)
-      h += '<button class="btn terra" data-mark="' + d.k + '">' +
-           (d.ticked ? 'Confirm undo' : 'Confirm done') + '</button>';
-    else if (d.ticked)
-      h += '<button class="btn ghost done" data-mark="' + d.k + '">&#10003; ' +
-           (d.print ? 'Printed' : 'Done') + '</button>';
-    else
-      h += '<button class="btn ghost" data-mark="' + d.k + '">Mark done</button>';
-  }
+  h += tickBtn(d);
   return h + '</div>';
 }
 
@@ -702,7 +716,7 @@ function render(){
          (d.offSpine ? '' : '<i class="bead"></i>') +
          '<div class="card"><div class="top">' + head + '</div>' +
          '<div class="cs">' + esc(d.note) + '</div>' +
-         chips(d) + acts(d) + '</div></div>';
+         chips(d) + (d.tickable && !d.acts.length ? '' : acts(d)) + '</div></div>';
   });
   if (!closed) h += '</div>';
 

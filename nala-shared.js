@@ -2222,6 +2222,19 @@ var SPA_DURS = [
   { m: 90,  label: '1.5 hours', short: '1.5 hr' },
   { m: 120, label: '2 hours',   short: '2 hr'   }
 ];
+/* What is booked, in words. Both lengths on a pair, in order - "1.5 hr +
+   1 hr" - because the masseuse plans his day by time and length, and a
+   hidden second length was the bug that forced the pair onto one tile.
+
+   Lifted out of spa.html's serviceOf on 9 Sep so the Dashboard's reminder
+   says the same thing the Spa board does. */
+function spaOffering(rec){
+  return rec.qty === 2
+    ? 'Two massages \u00B7 ' + (spaDur(rec.dur) ? spaDur(rec.dur).short : '?') +
+      ' + ' + (spaDur(rec.dur2) ? spaDur(rec.dur2).short : '?')
+    : 'Massage' + (spaDur(rec.dur) ? ' \u00B7 ' + spaDur(rec.dur).short : '');
+}
+
 function spaDur(m){
   for (var i = 0; i < SPA_DURS.length; i++)
     if (SPA_DURS[i].m === +m) return SPA_DURS[i];

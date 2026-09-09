@@ -323,10 +323,7 @@ function serviceOf(rec, id){
   /* Both lengths on a pair, in order - '1.5 hr + 1 hr' - because the
      masseuse plans his day by time and length, and a hidden second length
      was the bug that forced the pair onto one tile. */
-  var what = rec.qty === 2
-    ? 'Two massages · ' + (spaDur(rec.dur) ? spaDur(rec.dur).short : '?') +
-      ' + ' + (spaDur(rec.dur2) ? spaDur(rec.dur2).short : '?')
-    : 'Massage' + (spaDur(rec.dur) ? ' · ' + spaDur(rec.dur).short : '');
+  var what = spaOffering(rec);
   var bk = BOOKINGS[id];
   var ask = (rec.reqAny ? 'any day' : rec.reqDay ? niceDay(rec.reqDay) : 'no day') +
             (rec.reqTime ? ', ' + rec.reqTime : '');
