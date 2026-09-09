@@ -174,11 +174,6 @@
   .row-right { display:flex; align-items:center; gap:6px; white-space:nowrap;
                margin-left:auto; justify-content:flex-end; }
   .bub-slot { width:20px; flex:0 0 20px; }
-  .edit { display:flex; align-items:center; justify-content:center;
-          width:40px; height:40px; margin:-10px -10px -10px 0;
-          opacity:.45; cursor:pointer; }
-  .edit svg { width:14px; height:14px; display:block; fill:var(--mid); }
-  .edit:active { opacity:.9; }
   .alrg { color:var(--red); font-style:normal; }
   /* An allergy is a solid red pill with the word "allergy" dropped, since the
      fill already says it. A preference is a tinted pill at full label. The
@@ -391,10 +386,15 @@
          background:transparent; font-family:var(--ui-font); font-size:var(--t3); color:var(--ink); }
   .txt::placeholder { color:var(--mid); font-style:italic; }
   .txt:focus { outline:none; border-color:var(--ink); }
-  /* The Night field on a manual reservation's edit sheet: dressed as the
-     other fields, with an invisible native date input on top - the same
-     pattern as the header's date (initDateNav, nala-shared.js). */
+  /* The Night and Time fields on a booking's sheet: dressed as the other
+     fields, with an invisible native picker on top - the same pattern as
+     the header's date (initDateNav, nala-shared.js). They share a line,
+     because two when-facts cost one field's height that way. */
   .nightfield { position:relative; cursor:pointer; }
+  .nightfield .unset { color:var(--mid); font-style:italic; }
+  .whenrow { display:flex; gap:8px; }
+  .whenrow #xNight { flex:1.4 1 0; }
+  .whenrow #xTime  { flex:1 1 0; }
 
 /* A read-only role opens the sheet to READ it - the phone, the dietaries and
    the comment all live in there and the chef needs them. What goes is every
@@ -563,7 +563,7 @@ body.readonly .comb-undo { display:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=55"></script>
+<script src="nala-shared.js?v=58"></script>
 <script>
 /* Not every allergy is on the list and the list cannot grow to hold them all,
    so Other means read the note. The same entry the front desk writes, because
@@ -611,8 +611,6 @@ var ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-
                 '<path d="M9.5 14.5l5-5"/>'+
                 '<path d="M12.8 7.2l1.6-1.6a3.6 3.6 0 015.1 5.1l-1.6 1.6"/>'+
                 '<path d="M11.2 16.8l-1.6 1.6a3.6 3.6 0 01-5.1-5.1l1.6-1.6"/></svg>';
-var ICON_EDIT = '<svg viewBox="0 0 24 24"><path d="M3 17.2V21h3.8L17.9 9.9l-3.8-3.8L3 17.2z"/>'+
-                '<path d="M20.7 7.1c.4-.4.4-1 0-1.4l-2.4-2.4c-.4-.4-1-.4-1.4 0l-1.8 1.8 3.8 3.8 1.8-1.8z"/></svg>';
 var ICON_GUEST_X = '<svg viewBox="0 0 24 24" stroke-width="0"><circle cx="12" cy="7.5" r="4"/>'+
                    '<path d="M12 13.5c-4.2 0-7.5 2.9-7.5 6.5h15c0-3.6-3.3-6.5-7.5-6.5z"/>'+
                    '<line x1="2" y1="22" x2="22" y2="2" stroke-width="2.6" stroke-linecap="round"/></svg>';
@@ -666,7 +664,7 @@ function showError(msg){
 function withExtras(key, rec){
   var prev = manual[key];
   if (prev){
-    ['name','phone','diets','note','dnote','nodiet'].forEach(function(k){
+    ['name','phone','diets','note','dnote','nodiet','time'].forEach(function(k){
       if (rec[k] === undefined && prev[k] !== undefined) rec[k] = prev[k];
     });
   }
@@ -1184,15 +1182,19 @@ function render(){
                               : bubState==='amber' ? ' kitchen' : ' info')+'">'+
           ICON_BUBBLE+'</button>'
         : '<span class="bub-slot"></span>')+
-      '<span class="row-pax">'+(g.pax||1)+' pax</span>'+
-      '<span class="edit">'+ICON_EDIT+'</span></div>'+ dietLine;
+      '<span class="row-pax">'+
+        (dinnerTimeLabel(g.time) ? dinnerTimeLabel(g.time)+' · ' : '')+
+        (g.pax||1)+' pax</span></div>'+ dietLine;
     var bub = row.querySelector('.bub');
     if (bub) bub.onclick = (function(tt, gg, hh, bn){
       return function(ev){ ev.stopPropagation(); openNotes(tt, gg, hh, bn); };
     })(title, g, hits, bookNote);
-    row.querySelector('.edit').onclick = (function(rr){
-      return function(ev){
-        ev.stopPropagation();
+    /* The whole row opens the booking - the pencil went on 8 Sep, giving
+       its width back to the name. The notes bubble above stops the tap
+       reaching here, so it stays its own control. */
+    row.style.cursor = 'pointer';
+    row.onclick = (function(rr){
+      return function(){
         if (rr.room) openRoom(rr.room, roomState(rr.room));
         else editExt(rr.key, rr.g);
       };
@@ -1865,6 +1867,7 @@ function editRoomDetails(n, st){
     '<h3>Villa '+n+' \u00b7 details</h3>'+
     '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
     '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
+    TIME_FIELD_HTML+
     '<div class="sheet-label">Dietary requirements</div>'+
     '<div class="chips" id="dietChips"></div>'+
     '<div class="sheet-label" id="xDnoteLab" style="display:none">Dietary notes</div>'+
@@ -1878,6 +1881,7 @@ function editRoomDetails(n, st){
   document.getElementById('xName').value  = g.name  || known.name || '';
   document.getElementById('xPhone').value = g.phone || '';
   document.getElementById('xNote').value  = g.note  || '';
+  var timeOf = wireTimeField(g.time);
   /* The dietary note belongs to the person and rides with the dietaries to
      the reservation. Comments stays a note about tonight. Before this, an
      Other dietary FORCED its explanation into Comments, so the one text that
@@ -1918,6 +1922,10 @@ function editRoomDetails(n, st){
       return;
     }
     rec.diets = diets.slice();
+    /* null rather than absent when cleared: withExtras refills a field the
+       write does not mention, which is right for the quick Dining buttons
+       and would silently restore a time this edit deliberately removed. */
+    rec.time = timeOf() || null;
     /* The no-allergies answer survives a details edit, and yields to a
        chosen dietary: the two contradict, and the chips as saved are the
        statement of record. Dropped from the PUT entirely, it read back as
@@ -2296,6 +2304,7 @@ document.getElementById('addExt').onclick = function(e){
     '<div class="rm-row" id="rmRow" style="display:none"></div>'+
     '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
     '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
+    TIME_FIELD_HTML+
     '<div class="sheet-label" style="margin-top:14px">Guests</div>'+
     '<div class="pax-row" id="paxRow"></div>'+
     '<div class="sheet-label">Dietary requirements</div>'+
@@ -2308,6 +2317,7 @@ document.getElementById('addExt').onclick = function(e){
     '<button class="opt quiet" id="oCancel">Cancel</button>';
   showSheet();
   revealAction();
+  var timeOf = wireTimeField('');
 
   var segE=document.getElementById('segExt'), segR=document.getElementById('segRoom');
   var rmRow=document.getElementById('rmRow');
@@ -2366,6 +2376,7 @@ document.getElementById('addExt').onclick = function(e){
       var id='ext-'+Date.now();
       var rec={ status:'in', pax:pax, name:nm, phone:ph, note:nt, diets:diets, source:'manual' };
       if (dn) rec.dnote=dn;
+      if (timeOf()) rec.time=timeOf();
       saveManual(id, rec);
     } else {
       var rec2={ status:'in', pax:pax, room:String(dest), source:'manual' };
@@ -2375,6 +2386,7 @@ document.getElementById('addExt').onclick = function(e){
       if (ph) rec2.phone=ph;
       if (nt) rec2.note=nt;
       if (dn) rec2.dnote=dn;
+      if (timeOf()) rec2.time=timeOf();
       if (diets.length) rec2.diets=diets.slice();
       saveManual('room-'+dest, rec2);
       persistDietary(dest, rec2);
@@ -2383,6 +2395,44 @@ document.getElementById('addExt').onclick = function(e){
   };
   document.getElementById('oCancel').onclick=close;
 };
+
+/* The Time field: a .txt-dressed div with an invisible native <select> on
+   top, so the phone's own wheel does the picking and can only pick a seating
+   that exists - DINNER_TIMES (nala-shared.js), 5pm to 8pm by the quarter
+   hour, or no time at all. Every sheet that writes a booking calls this on
+   its #xTime; returns a getter for the choice ('' = no time). */
+var TIME_FIELD_HTML = '<div class="txt nightfield" id="xTime">'+
+                      '<span id="xTimeLabel"></span></div>';
+function wireTimeField(initial){
+  var box = document.getElementById('xTime');
+  var lab = document.getElementById('xTimeLabel');
+  var val = (DINNER_TIMES.indexOf(initial) > -1) ? initial : '';
+  var sel = document.createElement('select');
+  var o0 = document.createElement('option');
+  o0.value = ''; o0.textContent = 'No time';
+  sel.appendChild(o0);
+  DINNER_TIMES.forEach(function(t){
+    var o = document.createElement('option');
+    o.value = t; o.textContent = dinnerTimeLabel(t) + ' pm';
+    sel.appendChild(o);
+  });
+  sel.value = val;
+  sel.setAttribute('aria-label', 'Time of the reservation');
+  sel.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;'+
+    'opacity:0;border:0;padding:0;margin:0;cursor:pointer;'+
+    '-webkit-appearance:none;appearance:none;background:transparent;';
+  function paint(){
+    lab.textContent = val ? dinnerTimeLabel(val) + ' pm' : 'Time';
+    lab.className = val ? '' : 'unset';
+  }
+  sel.onchange = function(){
+    val = (DINNER_TIMES.indexOf(sel.value) > -1) ? sel.value : '';
+    paint();
+  };
+  box.appendChild(sel);
+  paint();
+  return function(){ return val; };
+}
 
 function editExt(key, g){
   var pax = g.pax || 2;
@@ -2399,7 +2449,10 @@ function editExt(key, g){
       '<h3>'+(g.name || 'Reservation')+'</h3>'+
       '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
       '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
-      '<div class="txt nightfield" id="xNight"><span id="xNightLabel"></span></div>'+
+      '<div class="whenrow">'+
+        '<div class="txt nightfield" id="xNight"><span id="xNightLabel"></span></div>'+
+        TIME_FIELD_HTML+
+      '</div>'+
       '<div class="sheet-label" style="margin-top:14px">Guests</div>'+
       '<div class="pax-row" id="paxRow"></div>'+
       '<div class="sheet-label">Dietary requirements</div>'+
@@ -2446,6 +2499,7 @@ function editExt(key, g){
       box.appendChild(pick);
     })();
     paintNight();
+    var timeOf = wireTimeField(g.time);
     function syncDnote(){
       var el=document.getElementById('xDnote');
       el.style.display = (diets.length || el.value) ? '' : 'none';
@@ -2482,6 +2536,7 @@ function editExt(key, g){
       rec.diets = diets.slice();
       if (dn) rec.dnote = dn; else delete rec.dnote;
       rec.pax   = pax;
+      if (timeOf()) rec.time = timeOf(); else delete rec.time;
       if (night === todayKey()){
         saveFeedback(pressedButton(), function(){
           return saveManual(key, rec);

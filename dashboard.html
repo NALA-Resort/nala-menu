@@ -204,7 +204,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=56"></script>
+<script src="nala-shared.js?v=58"></script>
 <script>
 /* The day's flow on one screen: what has happened, what is ready, and what
    is still owed. Every fact here is read from the screen that owns it. The
@@ -469,23 +469,41 @@ function items(t){
         : !pub ? toAsk.length + ' to send, needs the menu'
         : toAsk.length + ' to send' });
 
+  /* What is still owed, not whether a send has happened. The old note asked
+     `has anything gone out today` and said "needs the menu sent" on a day
+     where nobody needed asking - both villas had booked on their pre-arrival
+     forms - while the card above it correctly said "nobody to ask". A villa
+     that has answered is not waiting on a menu.
+
+     So: nobody outstanding is DONE, whatever route the answers came by. The
+     menu is only worth mentioning while there is somebody left to ask AND
+     it is the menu holding the asking up. */
+  var waiting = out > 0;
+  var heldByMenu = waiting && toAsk.length > 0 && !pub;
   L.push({ k:'reps', lab:'Dinner replies', owner:'guests',
     units: rUnits.concat(ext ? [{ id:'ext ' + ext, tone:'green' }] : []),
-    state: !inv ? 'waiting' : (allIn ? 'done' : 'moving'),
-    note: !inv ? (ext ? ext + ' external booked, villas need the menu sent'
-                      : 'needs the menu sent')
-        : (allIn ? covers + ' dining, ' + no + ' villas not'
-                 : covers + ' dining so far, ' + out + ' villas still out'),
+    state: waiting ? 'moving' : 'done',
+    note: !asked.length ? (ext ? ext + ' outside, no villas in tonight'
+                               : 'nobody in tonight')
+        : !waiting ? covers + ' dining, ' + no + ' not'
+        : heldByMenu ? covers + ' dining, ' + out + ' to ask once the menu is out'
+        : covers + ' dining so far, ' + out + ' still to answer',
     yes:yes, no:no, out:out });
 
   /* Recommended the moment every form is complete, not at a clock time. */
+  /* Ticked is done, the same as the other two print cards. This card was
+     given a tick to match the mockup and kept a state that could only be
+     ready or waiting, so marking it printed changed the button and left the
+     card shouting - the one job still to do, according to a card that had
+     just been told it was finished. */
   L.push({ k:'sheets', lab:'Arrival sheets', owner:'paper', units:shUnits,
-    state: N && shFull === N ? 'ready' : 'waiting',
-    note: !N ? 'no arrivals today'
+    state: DATA.done.sheets ? 'done' : (N && shFull === N ? 'ready' : 'waiting'),
+    note: DATA.done.sheets ? printedNote('sheets')
+        : !N ? 'no arrivals today'
         : shFull === N ? 'all ' + N + ' forms complete, ready to print'
         : shFull + ' of ' + N + ' forms complete',
     qty: QTY.sheets != null ? QTY.sheets : (N || 1), qmin:1, qmax:(N || 1) + 4,
-    print:'sheets', quiet: !N || shFull < N });
+    print:'sheets', quiet: !!DATA.done.sheets || !N || shFull < N });
 
   /* Key cards: each arriving villa judged by cardCell, the one reader both
      boards use (tests/card_cases.json), never this page's own idea of a
