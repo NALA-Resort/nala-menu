@@ -167,6 +167,8 @@ def fb(route, request):
     elif "/permissions" in u: body = json.dumps(PERMS)
     elif "/dayboard/" + today in u: body = json.dumps(DAYBOARD)
     elif "/dayboard/" in u: body = "null"
+    elif "/cardjobs.json" in u:
+        body = json.dumps({today: CARDJOBS}) if CARDJOBS else "null"
     elif "/cardjobs/" + today in u: body = json.dumps(CARDJOBS)
     elif "/cardjobs/" in u: body = "null"
     elif "/stays/" + today in u: body = json.dumps(STAYS)
@@ -597,14 +599,15 @@ with sync_playwright() as p:
     STATE["fail"] = False
 
     # ── key cards ───────────────────────────────────────────────
-    #  The card reads /cardjobs through cardCell and is a DOOR to Front
-    #  Desk, which owns the run: an Encode button here would be this page
+    #  The card reads /cardjobs through cardCell (the day) and cardLife
+    #  (the floating lost, across dates) and is a DOOR to Keys, which owns
+    #  issuing and the register: an Encode button here would be this page
     #  originating an action it cannot watch, rule 7's whole lesson.
     pg = board()
     kc = card(pg, "cards")
-    ck("key cards sit on the spine as a door to Front Desk",
+    ck("key cards sit on the spine as a door to Keys",
        kc["door"] and kc["pos"] != "off"
-       and pg.evaluate("()=>HREF.cards") == "front-desk.html")
+       and pg.evaluate("()=>HREF.cards") == "keys.html")
     ck("with nothing queued it says so and every villa chip is grey",
        "none encoded" in kc["note"]
        and sorted(kc["chips"]) == ["11:grey", "14:grey", "3:grey", "7:grey"])
@@ -618,7 +621,7 @@ with sync_playwright() as p:
     pg = board()
     kc = card(pg, "cards")
     ck("a failure outranks the count and names the villa",
-       "write failed on villa 11" in kc["note"] and "Front Desk" in kc["note"])
+       "write failed on villa 11" in kc["note"] and "Keys" in kc["note"])
     ck("done wears green, going wears amber, untouched stays grey",
        sorted(kc["chips"]) == ["11:amber", "14:grey", "3:green", "7:amber"])
     pg.close()
@@ -634,6 +637,18 @@ with sync_playwright() as p:
     kc = card(pg, "cards")
     ck("all four villas carded reads done, with the card count",
        kc["pos"] == "past" and "9 cards encoded" in kc["note"])
+    pg.close()
+
+    #  A lost card floats across dates until expiry, and the note carries
+    #  it whatever the day's issuing looks like - cardLife's count, the
+    #  owner named in dashboard_sources.json.
+    import time as _t
+    CARDJOBS["3"]["lost"] = 1
+    CARDJOBS["3"]["expiry"] = int(_t.time()) + 2 * 86400
+    pg = board()
+    kc = card(pg, "cards")
+    ck("a floating lost card rides the note, pointing at Keys",
+       "1 lost, floating - see Keys" in kc["note"])
     pg.close()
     CARDJOBS.clear()
 

@@ -36,7 +36,10 @@ fd   = open("front-desk.html", encoding="utf-8").read()
 
 FRAGMENTS = [
     # the header the owner shaped by hand: no heading, the button leads
-    '>Cancel cards</button>',
+    '>Cancel keys</button>',
+    '>Issue keys</button>',
+    '<div class="keydrop" id="issueDrop"></div>',
+    'All arrivals',
     'margin-right:auto',
     # the segmented control and its shrink-to-320 law
     '<div class="seg" id="tabs"',
@@ -97,6 +100,17 @@ def late_today():
 
 STAFF = {"staff@x": {"name": "Admin", "role": "admin"}}
 
+#  Tonight's villa map, the same node Front Desk reads: two arrivals and
+#  one villa already in house, for the Issue keys drop.
+STAYS2 = {
+  "2":  {"id": "s2", "first": "Michelle", "last": "Edmondson",
+         "arrive": day(0), "depart": day(2), "adults": 2},
+  "12": {"id": "s12", "first": "Jeroen", "last": "Hamers",
+         "arrive": day(0), "depart": day(3), "adults": 2},
+  "4":  {"id": "s4", "first": "Robyn", "last": "Williams",
+         "arrive": day(-2), "depart": day(4), "adults": 2},
+}
+
 def jobs():
     return {
       day(-1): {
@@ -137,15 +151,27 @@ def fb(route, request):
             body = json.loads(request.post_data)
             if m == "PUT": CANCELRUN.clear(); CANCELRUN.update(body)
             else: CANCELRUN.update(body)
-        if "/cardjobs/" in u and m == "PATCH":
+        if "/cardjobs/" in u:
             parts = u.split("/cardjobs/")[1].split(".json")[0].split("/")
-            if len(parts) == 2 and parts[0] in CARDJOBS and parts[1] in CARDJOBS[parts[0]]:
-                CARDJOBS[parts[0]][parts[1]].update(json.loads(request.post_data))
+            if len(parts) == 2:
+                d, v = parts
+                if m == "PUT":
+                    CARDJOBS.setdefault(d, {})[v] = json.loads(request.post_data)
+                elif m == "PATCH" and d in CARDJOBS and v in CARDJOBS[d]:
+                    CARDJOBS[d][v].update(json.loads(request.post_data))
+                elif m == "DELETE" and d in CARDJOBS:
+                    CARDJOBS[d].pop(v, None)
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
     body = "null"
     if "/cancelrun" in u: body = json.dumps(CANCELRUN) if CANCELRUN else "null"
+    elif "/cardjobs/" in u:
+        d = u.split("/cardjobs/")[1].split(".json")[0]
+        body = json.dumps(CARDJOBS.get(d)) if d in CARDJOBS else "null"
     elif "/cardjobs" in u: body = json.dumps(CARDJOBS)
+    elif "/stays/" in u:
+        d = u.split("/stays/")[1].split(".json")[0]
+        body = json.dumps(STAYS2) if d == day(0) else "null"
     elif "/staff" in u: body = json.dumps(STAFF)
     route.fulfill(status=200, content_type="application/json", body=body)
 
@@ -244,6 +270,44 @@ with sync_playwright() as p:
        [w for w in WRITES if w["m"] == "PATCH" and "/cancelrun" in w["u"]
         and json.loads(w["b"]).get("state") == "off"]
        and pg.evaluate("()=>document.getElementById('cancelOv').hidden"))
+
+    #  Issue keys: Front Desk's own flow, from this page - the shared
+    #  nala-cards runtime, fed everyone in house with arrivals leading,
+    #  and All arrivals at the foot behind the seam.
+    pg.evaluate("()=>document.getElementById('issueBtn').click()")
+    pg.wait_for_timeout(300)
+    drop = pg.evaluate("""()=>[...document.querySelectorAll('#issueDrop button')]
+        .map(b=>b.textContent)""")
+    ck("the issue drop leads with the arrivals, in-house behind",
+       len(drop) == 4 and "Villa 2" in drop[0] and "Villa 12" in drop[1]
+       and "Villa 4" in drop[2])
+    ck("All arrivals stands last, its count in a badge",
+       pg.evaluate("""()=>{var b=[...document.querySelectorAll('#issueDrop button')];
+         var a=b[b.length-1];
+         return a.getAttribute('data-key')==='all'
+             && a.querySelector('.navbadge').textContent==='2';}"""))
+    del WRITES[:]
+    pg.evaluate("()=>document.querySelector('#issueDrop [data-key=\"2\"]').click()")
+    pg.wait_for_timeout(400)
+    ck("a villa opens the run's own quantity question",
+       not pg.evaluate("()=>document.getElementById('cardOv').hidden")
+       and "How many cards" in pg.inner_text("#cardBody"))
+    pg.evaluate("()=>document.querySelector('[data-cardissue]').click()")
+    pg.wait_for_timeout(400)
+    iss = [json.loads(w["b"]) for w in WRITES
+           if w["m"] == "PUT" and "/cardjobs/%s/2" % day(0) in w["u"]]
+    ck("and Issue queues the job with the guest's name aboard",
+       iss and iss[0]["qty"] == 2 and iss[0]["state"] == "queued"
+       and iss[0]["guest"] == "Michelle Edmondson")
+    pg.evaluate("()=>document.getElementById('cardX').click()")
+    del WRITES[:]
+    pg.evaluate("()=>document.getElementById('issueBtn').click()")
+    pg.wait_for_timeout(200)
+    pg.evaluate("()=>document.querySelector('#issueDrop [data-key=all]').click()")
+    pg.wait_for_timeout(500)
+    puts = [w for w in WRITES if w["m"] == "PUT" and "/cardjobs/" in w["u"]]
+    ck("All arrivals queues the arrivals and nobody else",
+       len(puts) == 1 and "/cardjobs/%s/12" % day(0) in puts[0]["u"])
     pg.close()
 
     #  a session nobody answers dies with the queue law's own verdict

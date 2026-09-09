@@ -2388,7 +2388,7 @@ with sync_playwright() as p:
               "by": "x", "at": now_ms - 12000},
     })
     pg = board()
-    pg.evaluate("()=>cardsOpen(null)")
+    pg.evaluate("()=>NalaCards.open(null)")
     pg.wait_for_timeout(2200)
     body = pg.inner_text("#cardBody")
     ck("an unclaimed queue is judged offline, tersely",
@@ -2418,7 +2418,7 @@ with sync_playwright() as p:
               "by": "x", "at": now_ms},
     })
     pg = board()
-    pg.evaluate("()=>cardsOpen(null)")
+    pg.evaluate("()=>NalaCards.open(null)")
     pg.wait_for_timeout(2200)
     ck("no verdict while a write is in flight, however old the queue",
        "Encoder offline" not in pg.inner_text("#cardBody")

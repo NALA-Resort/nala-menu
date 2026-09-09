@@ -34,7 +34,12 @@
     { "value": "where each arriving villa's key cards stand",
       "owner": "cardCell",
       "kind": "function",
-      "note": "The one reader, held to tests/card_cases.json. The card is a door to Front Desk, whose key menu owns the run; an Encode button here would be this page originating an action it cannot watch." },
+      "note": "The one reader, held to tests/card_cases.json. The card is a door to Keys, which owns issuing and the register; an Encode button here would be this page originating an action it cannot watch." },
+
+    { "value": "how many lost cards float, across every date",
+      "owner": "cardLife",
+      "kind": "function",
+      "note": "The register's reader, held to tests/cardlife_cases.json. A lost card is an attention fact until its expiry retires it, so the note carries it whatever the day's issuing looks like." },
 
     { "value": "whether a guest has physically arrived",
       "owner": "isArrived",

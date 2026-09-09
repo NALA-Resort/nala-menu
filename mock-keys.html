@@ -1169,8 +1169,13 @@ button
 </head>
 <body class="tier-app ui2">
 <div class="daterow">
-  <button class="btn go" id="cancelBtn"
-    style="width:auto;min-height:36px;padding:7px 14px;margin-right:auto;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)">Cancel cards</button>
+  <div class="keywrap" id="issueWrap">
+    <button class="btn go" id="issueBtn"
+      style="width:auto;min-height:36px;padding:7px 14px;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)">Issue keys</button>
+    <div class="keydrop" id="issueDrop"></div>
+  </div>
+  <button class="btn" id="cancelBtn"
+    style="width:auto;min-height:36px;padding:7px 14px;margin-right:auto;background:transparent;color:var(--terra);border-color:var(--terra-b)">Cancel keys</button>
   <div class="navwrap"><button class="navbtn" aria-label="Menu"><span></span><span></span><span></span></button></div>
 </div>
 
@@ -1180,9 +1185,17 @@ button
   <div id="list" style="margin-top:10px"></div>
 </div>
 
+<div class="cardov" id="cardOv" hidden>
+  <div class="cardov-head">
+    <div class="cardov-title" id="cardTitle"></div>
+    <button class="cardov-x" id="cardX">&#215;</button>
+  </div>
+  <div id="cardBody"></div>
+</div>
+
 <div class="cardov" id="cancelOv" hidden>
   <div class="cardov-head">
-    <div class="cardov-title">Cancel cards</div>
+    <div class="cardov-title">Cancel keys</div>
     <button class="cardov-x" id="ovX">&#215;</button>
   </div>
   <div id="ovBody"></div>
@@ -1201,7 +1214,7 @@ document.title = 'Mock · Keys';
    at the top, the history below, greyed because nothing is to be done
    about a dead card but count it. */
 
-var K, TALLY, TAB, OPEN, DONE, SESSION;
+var K, TALLY, ARRIVING, TAB, OPEN, DONE, SESSION;
 function resetAll(){
   /* validity worn short: day only, and the 12h clock once it is today */
   K = [
@@ -1216,7 +1229,12 @@ function resetAll(){
     { villa:11, name:'Priya Raghunathan',   dep:'Sat 5th Sep', n:2 },
     { villa:7,  name:'Mark Whitfield',      dep:'Tue 1st Sep', n:1 }
   ]};
+  ARRIVING = [
+    { villa:2,  name:'Michelle Edmondson' },
+    { villa:12, name:'Jeroen Hamers' }
+  ];
   TAB = 'all'; OPEN = null; DONE = []; SESSION = null;
+  document.getElementById('cardOv').hidden = true;
   document.getElementById('cancelOv').hidden = true;
   render();
 }
@@ -1348,6 +1366,42 @@ document.addEventListener('click', function(e){
     var rf = K.filter(function(x){ return x.villa == t.getAttribute('data-foundv'); })[0];
     if (rf.lost > 0) rf.lost--;
     render(); return;
+  }
+  if (e.target.closest('#issueBtn')){
+    var dd = document.getElementById('issueDrop');
+    if (!dd.classList.contains('open')){
+      var ih = '';
+      ARRIVING.forEach(function(r){
+        ih += '<button data-issue="' + r.villa + '">Villa ' + r.villa +
+              ' &middot; ' + r.name + '<span class="kd-state">arriving</span></button>';
+      });
+      K.forEach(function(r){
+        ih += '<button data-issue="' + r.villa + '">Villa ' + r.villa +
+              ' &middot; ' + r.name + '<span class="kd-state card-done">' +
+              active(r) + ' issued</span></button>';
+      });
+      ih += '<button class="kd-all" data-issue="all">All arrivals' +
+            '<span class="navbadge">' + ARRIVING.length + '</span></button>';
+      dd.innerHTML = ih;
+    }
+    dd.classList.toggle('open'); return;
+  }
+  if ((t = e.target.closest('[data-issue]'))){
+    document.getElementById('issueDrop').classList.remove('open');
+    var iv = t.getAttribute('data-issue');
+    document.getElementById('cardTitle').textContent =
+      iv === 'all' ? 'Key cards' : 'Key cards · villa ' + iv;
+    document.getElementById('cardBody').innerHTML =
+      '<div class="cardov-in"><div class="crun">' +
+      '<div class="crun-s">' + (iv === 'all'
+        ? cardsWord(ARRIVING.length * 2) + ' queued for ' + ARRIVING.length +
+          ' villas · the run screen takes over here, exactly as on Front Desk'
+        : 'How many cards? · then the run screen, exactly as on Front Desk') +
+      '</div></div></div>';
+    document.getElementById('cardOv').hidden = false; return;
+  }
+  if (e.target.closest('#cardX')){
+    document.getElementById('cardOv').hidden = true; return;
   }
   if (e.target.closest('#cancelBtn')){
     SESSION = 0; DONE = [];

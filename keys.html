@@ -478,8 +478,13 @@ button
 <body class="tier-app ui2">
 
 <div class="daterow">
-  <button class="btn go" id="cancelBtn"
-    style="width:auto;min-height:36px;padding:7px 14px;margin-right:auto;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)">Cancel cards</button>
+  <div class="keywrap" id="issueWrap">
+    <button class="btn go" id="issueBtn"
+      style="width:auto;min-height:36px;padding:7px 14px;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)">Issue keys</button>
+    <div class="keydrop" id="issueDrop"></div>
+  </div>
+  <button class="btn" id="cancelBtn"
+    style="width:auto;min-height:36px;padding:7px 14px;margin-right:auto;background:transparent;color:var(--terra);border-color:var(--terra-b)">Cancel keys</button>
   <div class="navwrap" id="navWrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
     <div class="navdrop" id="navDrop"></div>
@@ -495,9 +500,17 @@ button
 </div>
 <div id="errBar"></div>
 
+<div class="cardov" id="cardOv" hidden>
+  <div class="cardov-head">
+    <div class="cardov-title" id="cardTitle"></div>
+    <button class="cardov-x" id="cardX">&#215;</button>
+  </div>
+  <div id="cardBody"></div>
+</div>
+
 <div class="cardov" id="cancelOv" hidden>
   <div class="cardov-head">
-    <div class="cardov-title">Cancel cards</div>
+    <div class="cardov-title">Cancel keys</div>
     <button class="cardov-x" id="ovX">&#215;</button>
   </div>
   <div id="ovBody"></div>
@@ -507,6 +520,7 @@ button
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
 <script src="nala-shared.js?v=61"></script>
+<script src="nala-cards.js?v=1"></script>
 <script>
 /* Keys: the card register, built from the approved mock (mock-keys.html)
    and holding its exact shape - the suite compares the two files and
@@ -543,8 +557,53 @@ function esc(s){
 
 function load(){
   loadAll();
+  loadStays();
+  NalaCards.load();      /* the issue drop's state words read its store */
   if (!LOAD_T) LOAD_T = setInterval(loadAll, 5000);
 }
+
+/* Who a key can be issued to: everyone in house tonight, arrivals first.
+   /stays/<today> is the night's villa map, the same node Front Desk
+   reads; the two small helpers are that page's own, copied because this
+   page must not drag its whole booking logic over for two lines. */
+var STAYS = {};
+function dkeyOf(v){
+  var m = String(v || '').match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : null;
+}
+function nameOf(st){
+  return (((st.first || '') + ' ' + (st.last || '')).trim()) || 'Guest';
+}
+function loadStays(){
+  return api('/stays/' + dkey(new Date()))
+    .then(function(j){ STAYS = j || {}; })
+    .catch(function(){});
+}
+function issueRows(){
+  var t = dkey(new Date()), rows = [];
+  Object.keys(STAYS).forEach(function(v){
+    var st = STAYS[v];
+    if (!st || typeof st !== 'object') return;   /* the bare-id old shape */
+    rows.push({ villa: v, name: nameOf(st), stay: st,
+                arriving: dkeyOf(st.arrive) === t });
+  });
+  rows.sort(function(a, b){
+    return (b.arriving - a.arriving) || ((+a.villa) - (+b.villa));
+  });
+  return rows;
+}
+
+NalaCards.init({
+  db: DB, err: err,
+  dayKey: function(){ return dkey(new Date()); },
+  rows: issueRows,
+  bulkRows: function(){ return issueRows().filter(function(r){ return r.arriving; }); },
+  bulkLabel: 'All arrivals',
+  emptyLabel: 'Nobody in house tonight',
+  menuHint: 'Issue keys is above.',
+  btn: document.getElementById('issueBtn'),
+  drop: document.getElementById('issueDrop')
+});
 function loadAll(){
   return api('/cardjobs')
     .then(function(j){ JOBS = j || {}; render(); })

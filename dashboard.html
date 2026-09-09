@@ -258,7 +258,7 @@ var PENDING = null, PTIMER = null;                 /* tick waiting to confirm */
 var HREF = { forms:'arrivals-sms.html', menu:'publish.html', inv:'invitations.html',
              reps:'tally.html', sheets:'registration.html', foh:'list.html',
              menus:'menu-print.html', arr:'front-desk.html',
-             cards:'front-desk.html', spa:'spa.html' };
+             cards:'keys.html', spa:'spa.html' };
 var NEED = { forms:'editBookings', menu:'publishMenu', inv:'editBookings',
              reps:'resBoard', sheets:'editBookings', foh:'resSheet',
              menus:'resSheet', arr:'editBookings', cards:'editBookings',
@@ -306,15 +306,18 @@ function load(){
     fetch(DB + '/dayboard/' + day + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; }),
-    /* The key-card queue, read whole and judged per villa by cardCell -
-       never by this page's own idea of a state. */
-    fetch(DB + '/cardjobs/' + day + '.json?v=' + Date.now())
+    /* The key-card tree, read whole: the day's slice is judged per villa
+       by cardCell, and the living register by cardLife - the two readers,
+       never this page's own idea of a state. Whole because a lost card
+       floats across dates until its expiry (Keys, 9 Sep). */
+    fetch(DB + '/cardjobs.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; })
   ]).then(function(res){
     DATA = { stays:res[0] || {}, menu:res[1], invites:res[2] || {},
              manual:res[3] || {}, responses:res[4] || {}, spa:res[5] || {},
-             done:res[6] || {}, cards:res[7] || {} };
+             done:res[6] || {},
+             cards:(res[7] || {})[day] || {}, cardsAll:res[7] || {} };
     LOADED = true;
     render();
   });
@@ -563,6 +566,15 @@ function items(t){
      here would be this page originating an action it cannot watch. Chips
      wear the law's tints; red stays ink in the note, never a tile. */
   var cDone = 0, cFail = 0, cGoing = 0, cCards = 0;
+  /* the floating lost cards, wherever their date: cardLife's count, and
+     an attention fact whatever the day's issuing looks like */
+  var cLost = 0, nowMs = Date.now();
+  Object.keys(DATA.cardsAll || {}).forEach(function(d){
+    Object.keys(DATA.cardsAll[d] || {}).forEach(function(v){
+      var L = cardLife(DATA.cardsAll[d][v], nowMs);
+      if (L && L.state !== 'dead') cLost += L.lost;
+    });
+  });
   var cUnits = arriving.map(function(v){
     var j = (DATA.cards || {})[String(v)] || null, cc = cardCell(j);
     if (cc.k === 'done'){ cDone++; cCards += (j && +j.written) || 0; }
@@ -574,14 +586,15 @@ function items(t){
   L.push({ k:'cards', lab:'Key cards', owner:'desk', units:cUnits,
     state: !N ? 'waiting' : cDone === N ? 'done'
          : (cGoing || cFail) ? 'moving' : 'ready',
-    note: !N ? 'no arrivals today'
+    note: (!N ? 'no arrivals today'
         : cFail ? 'write failed on villa ' +
             arriving.filter(function(v){
               return cardCell((DATA.cards || {})[String(v)] || null).k === 'failed';
-            }).join(' & ') + ' - open Front Desk'
+            }).join(' & ') + ' - open Keys'
         : cDone === N ? cCards + ' cards encoded'
         : cGoing ? cDone + ' of ' + N + ' villas carded, encoder going'
-        : 'none encoded yet - the key menu on Front Desk' });
+        : 'none encoded yet - Issue keys on the Keys page')
+        + (cLost ? ' · ' + cLost + ' lost, floating - see Keys' : '') });
 
   L.push({ k:'foh', lab:'FOH sheet', owner:'paper', units:[],
     state: DATA.done.foh ? 'done' : (firm ? 'ready' : 'waiting'),
