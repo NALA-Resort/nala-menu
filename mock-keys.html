@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Mock &middot; Front desk key cards, as built</title>
+<title>Mock &middot; Keys, card management</title>
 <style>
 /* nala-ui2.css, inlined so this mock stands alone */
 /* NALA staff UI, second dress. See STYLEGUIDE.md and mock-style.html.
@@ -1125,364 +1125,263 @@ body.ui2 .mocktools .btn{ width:auto; padding:5px 12px; min-height:28px; font-si
 /* the run sits under the mock's own bar, so its header must clear it */
 .cardov{z-index:800 !important}
 .tapnote{font-size:var(--t1);color:var(--amberink);margin-top:6px;font-family:var(--ui-font)}
+
+/* ---------------------------------------------------------------------
+   MOCK ONLY - the Keys page, card management from the receptionist's
+   chair. Not linked from NAV, not published, no database behind it.
+
+   The shape, in her order of duties:
+   1. Returns today - departing villas and the cards they took; tick
+      them back in. A returned card is tomorrow's blank.
+   2. Cards out - the register: every living card, by villa, one truth
+      pill each. Tap a villa for its cards.
+   3. Lost cards - in the villa's sheet: TAP THE MISSING CARDS (she
+      knows which are gone because the guest hands back the rest), then
+      Cancel. The flow is honest about the physics: the encoder writes
+      a cancel card and SOMEBODY WALKS IT TO THE DOOR - only the lock
+      flashing kills a lost card, and the screen says so.
+
+   Colour law: cream row = cards still to collect; green = back / valid
+   / a pick mark; amber = due back today, chase; terracotta = lost or
+   cancelled, a fact not a failure; grey dashed = expired, stock only.
+   Red nowhere, unless a write fails. */
+
+.seccount { font-size:var(--t1); color:var(--mid); font-weight:400; margin-left:8px; }
+.krow { display:flex; align-items:center; gap:12px; width:100%; text-align:left;
+        background:transparent; border:0; border-bottom:1px solid var(--rule);
+        padding:12px 2px; font-family:var(--ui-font); color:var(--ink); }
+button.krow { cursor:pointer; }
+.krow .kv { font-size:var(--t4); font-weight:600; min-width:34px; }
+.krow .kn { flex:1 1 auto; min-width:0; }
+.krow .kn b { display:block; font-weight:500; font-size:var(--t2); }
+.krow .kn span { font-size:var(--t1); color:var(--mid); }
+.kpill { flex:0 0 auto; font-size:var(--t1); border-radius:var(--pill);
+         padding:4px 10px; white-space:nowrap; font-family:var(--ui-font); }
+.kpill.ok   { background:var(--green); border:1px solid var(--greenb); }
+.kpill.due  { background:var(--amber); border:1px solid var(--amberb); color:var(--amberink); }
+.kpill.lost { background:rgba(184,106,90,.16); border:1px solid var(--terra-b); color:var(--terra); }
+.krow.collected { opacity:.62; }
+body.ui2 .kcollect { width:auto; min-height:38px; padding:8px 14px; flex:0 0 auto; }
+.kfold { margin:10px 0 30px; font-family:var(--ui-font); font-size:var(--t1);
+         color:var(--mid); }
+.kfold summary { cursor:pointer; opacity:.75; }
+.kfold div { padding:8px 2px; opacity:.75; }
+
+/* the villa's cards: the numbered slot the desk already knows, grown
+   into a button. A pick wears the selection green; lost and cancelled
+   wear the terracotta of a negative fact. */
+.kslots { display:flex; gap:10px; margin:14px 0 6px; flex-wrap:wrap; }
+.kslot { width:44px; height:64px; border-radius:7px; border:2px solid var(--rule);
+         background:transparent; font-family:var(--ui-font); font-size:var(--t4);
+         color:var(--mid); cursor:pointer; position:relative; }
+.kslot.picked { border-color:var(--greenb); }
+.kslot.picked::after { content:'\2713'; position:absolute; top:-8px; right:-8px;
+        width:20px; height:20px; border-radius:50%; background:var(--green);
+        border:1px solid var(--greenb); font-size:12px; line-height:19px; }
+.kslot.lost, .kslot.cancelled { background:rgba(184,106,90,.16);
+        border-color:var(--terra-b); color:var(--terra); cursor:default; }
+.ksheet { border:1px solid var(--rule); border-radius:var(--r); padding:14px;
+          margin:10px 0; font-family:var(--ui-font); }
+.ksheet .srow-note { font-size:var(--t1); color:var(--mid); margin-top:10px; }
 </style>
 </head>
 <body class="tier-app ui2">
-
-
 <div class="daterow">
   <button class="dnav today">Today</button>
   <button class="dnav">&#8249;</button>
-  <div class="date">Tue 8th Sep</div>
+  <div class="date">Keys</div>
   <button class="dnav">&#8250;</button>
-  <div class="keywrap" id="keyWrap">
-    <button class="keybtn" id="keyBtn" aria-label="Key cards">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-           stroke-linecap="round"><circle cx="7.5" cy="12" r="3.5"/>
-        <path d="M11 12h9.5M17 12v3.5M20.5 12v2.5"/></svg>
-    </button>
-    <div class="keydrop" id="keyDrop"></div>
+  <div class="navwrap"><button class="navbtn" aria-label="Menu"><span></span><span></span><span></span></button></div>
+</div>
+
+<div id="body" style="max-width:520px;margin:0 auto">
+  <div class="seclabel">Returns today<span class="seccount" id="retCount"></span></div>
+  <div class="secnote">Departing villas and the cards they took. A card handed
+    back is tomorrow's blank.</div>
+  <div id="returns"></div>
+
+  <div class="seclabel" style="margin-top:30px">Cards out</div>
+  <div class="secnote">Every card this desk has cut that still opens a door.
+    Tap a villa for its cards, or to cancel lost ones.</div>
+  <div id="register"></div>
+  <details class="kfold"><summary id="expSum"></summary>
+    <div>Dead cards from past stays, still in guests' pockets. They open
+      nothing; this is a count of missing blanks, not a risk.</div></details>
+</div>
+
+<div class="cardov" id="cancelOv" hidden>
+  <div class="cardov-head">
+    <div class="cardov-title" id="ovTitle"></div>
+    <button class="cardov-x" id="ovX">&#215;</button>
   </div>
-  <div class="navwrap"><button class="navbtn" style="opacity:.4" aria-label="Menu (not mocked)">
-    <span></span><span></span><span></span></button></div>
+  <div id="ovBody"></div>
 </div>
 
-<div class="stats">
-  <div class="stat"><div class="stat-n">0<span class="of">/3</span></div><div class="stat-l">Arrived</div></div>
-  <div class="stat"><div class="stat-n dine">4</div><div class="stat-l">Dining</div></div>
-  <div class="stat"><div class="stat-n nodine">2</div><div class="stat-l">Not dining</div></div>
-  <div class="stat"><div class="stat-n unsure">0</div><div class="stat-l">Not sure</div></div>
-</div>
-
-<div id="board"></div>
-<div class="spacer"></div>
-
-<details class="mocktools">
-  <summary>mock controls (not part of the app)</summary>
-  <label><input type="checkbox" id="helperOn" checked> desk PC helper running
-    &mdash; untick BEFORE Encode all to see the offline verdict</label>
-  <label><button class="btn ghost" onclick="resetAll()">reset the mock</button></label>
+<details class="mocktools"><summary>mock controls (not part of the app)</summary>
+  <button class="btn" onclick="resetAll()">reset the mock</button>
 </details>
 
-<div class="cardov" id="cardOv" hidden>
-  <div class="cardov-head">
-    <div class="cardov-title" id="cardTitle">Key cards</div>
-    <button class="cardov-x" id="cardX" aria-label="Close">&times;</button>
-  </div>
-  <div id="cardBody"></div>
-</div>
-
 <script>
-/* Three arrivals, all with completed forms so every row opens its sheet. */
-var VILLAS = [
-  {villa:'3',  name:'Mark Whitfield',  stay:'3 nights · 2 adults', dining:'Dining · 2 guests'},
-  {villa:'9',  name:'Elena Marsh',     stay:'2 nights · 2 adults', dining:'Dining · 2 guests'},
-  {villa:'14', name:'Claire Laurent',  stay:'1 night · 1 adult',  dining:'Not dining'}
-];
-var CARDS, OPEN, CARD_VILLA, CARD_ASK, FAILNEXT, HELPER_T, OFFLINE, OV_T;
+document.title = 'Mock · Keys';
 
+var K, PICKED, OPEN, STEP;
 function resetAll(){
-  CARDS = {}; OPEN = null; CARD_VILLA = null; CARD_ASK = null; FAILNEXT = false; OFFLINE = false;
-  document.getElementById('cardOv').hidden = true;
+  K = [
+    { villa:3,  name:'James Fisher',    dep:true, collected:false,
+      cards:[{st:'ok'},{st:'ok'}], until:'today, 13:00' },
+    { villa:14, name:'Ann Brown',       dep:true, collected:false,
+      cards:[{st:'ok'}], until:'today, 13:00' },
+    { villa:4,  name:'Robyn Williams',  dep:false,
+      cards:[{st:'ok'},{st:'ok'}], until:'Sat 13th Sep, 13:00' },
+    { villa:6,  name:'Karen and Mike Mount', dep:false,
+      cards:[{st:'ok'},{st:'ok'},{st:'ok'}], until:'Fri 11th Sep, 13:00' },
+    { villa:9,  name:'Konstantinos Papadopoulos', dep:false,
+      cards:[{st:'ok'},{st:'lost'},{st:'ok'}], until:'Thu 11th Sep, 13:00' }
+  ];
+  PICKED = []; OPEN = null; STEP = null;
+  document.getElementById('cancelOv').hidden = true;
   render();
 }
-function jobFor(v){ return CARDS[String(v)] || null; }
-function rowOf(v){ return VILLAS.filter(function(x){ return x.villa === String(v); })[0]; }
 
-/* cardCell, verbatim from nala-shared.js - the one reader. */
-function cardCell(job){
-  if (!job || !job.state || job.state === 'cancelled')
-    return { k: job ? 'cancelled' : 'none', label: job ? 'cancelled' : 'no cards yet' };
-  var n = +job.written || 0, q = +job.qty || 0;
-  if (job.state === 'done')
-    return { k:'done', label: n + (n === 1 ? ' card issued' : ' cards issued') };
-  if (job.state === 'failed') return { k:'failed', label:'write failed' };
-  if (job.state === 'writing')
-    return { k:'writing', label:'writing card ' + Math.min(n + 1, q || n + 1) +
-                                (q ? ' of ' + q : '') };
-  return { k:'queued', label:'to encode' };
-}
+function living(r){ return r.cards.filter(function(c){ return c.st === 'ok'; }).length; }
+function lost(r){ return r.cards.filter(function(c){ return c.st !== 'ok'; }).length; }
+function cardsWord(n){ return n + (n === 1 ? ' card' : ' cards'); }
 
-/* ── the board: rows in front-desk.html's own markup ─────────────── */
 function render(){
-  var h = '<div class="seclabel">Arriving</div>';
-  VILLAS.forEach(function(r){
-    var open = OPEN === r.villa;
-    h += '<button class="arr done-form' + (open ? ' open' : '') +
-         '" data-villa="' + r.villa + '">' +
-         '<div class="arr-v">' + r.villa + '</div>' +
-         '<div class="arr-mid"><div class="arr-top">' +
-         '<div class="arr-n">' + r.name + '</div></div>' +
-         '<div class="arr-s">' + r.stay + '</div></div>' +
-         '</button>' + (open ? sumHTML(r) : '');
-  });
-  document.getElementById('board').innerHTML = h;
-}
-function sumHTML(r){
-  var cc = cardCell(jobFor(r.villa));
-  var h = '<div class="sum">' +
-    '<div class="srow"><div class="slab">Dinner</div><div class="sval">' + r.dining + '</div></div>' +
-    '<div class="srow"><div class="slab">Dietary</div><div class="sval">No allergies to declare</div></div>';
-  if (cc.k !== 'none')
-    h += '<div class="srow"><div class="slab">Key cards</div><div class="sval">' +
-         '<span class="cardlab card-' + cc.k + '">' + cc.label + '</span></div></div>';
-  h += '<div class="sum-btns">' +
-       '<button data-act="edit" data-villa="' + r.villa + '">Edit</button>' +
-       '<button data-act="cards" data-villa="' + r.villa + '">Key cards</button></div>' +
-       '<div class="sum-btns"><button class="go wide">Confirm &amp; check in</button></div></div>';
-  return h;
-}
-
-/* ── the drop ─────────────────────────────────────────────────────── */
-function drawDrop(){
+  /* returns: the morning list. Collect is a toggle, like check-in - a
+     visual move, so the way back from a mispress is to press it again. */
+  var deps = K.filter(function(r){ return r.dep; });
+  var back = 0, owed = 0;
+  deps.forEach(function(r){ owed += living(r); if (r.collected) back += living(r); });
+  document.getElementById('retCount').textContent =
+    deps.length ? back + ' of ' + cardsWord(owed) + ' back' : '';
   var h = '';
-  VILLAS.forEach(function(r){
-    var cc = cardCell(jobFor(r.villa));
-    h += '<button data-key="' + r.villa + '">Villa ' + r.villa + ' · ' + r.name +
-         '<span class="kd-state card-' + cc.k + '">' +
-         (cc.k === 'none' ? '' : cc.label) + '</span></button>';
+  deps.forEach(function(r){
+    h += '<div class="krow' + (r.collected ? ' collected' : '') + '">' +
+      '<div class="kv">' + r.villa + '</div>' +
+      '<div class="kn"><b>' + r.name + '</b><span>' + cardsWord(living(r)) +
+      ' out &middot; die 13:00</span></div>' +
+      (r.collected
+        ? '<span class="kpill ok">back</span><button class="btn kcollect" data-ret="' + r.villa + '">Undo</button>'
+        : '<button class="btn go kcollect" data-ret="' + r.villa + '">Collected</button>') +
+      '</div>';
   });
-  h += '<button class="kd-all" data-key="all">Encode all keys' +
-       '<span class="navbadge">' + VILLAS.length + '</span></button>';
-  document.getElementById('keyDrop').innerHTML = h;
+  if (!deps.length) h = '<div class="krow" style="opacity:.62;border-style:dashed">' +
+    '<div class="kn"><span>No departures today</span></div></div>';
+  document.getElementById('returns').innerHTML = h;
+
+  /* the register */
+  var g = '';
+  K.forEach(function(r){
+    var pills = r.dep
+      ? '<span class="kpill due">due back 13:00</span>'
+      : '<span class="kpill ok">valid</span>';
+    if (lost(r)) pills = '<span class="kpill lost">' + lost(r) + ' lost</span>' + pills;
+    g += '<button class="krow" data-villa="' + r.villa + '">' +
+      '<div class="kv">' + r.villa + '</div>' +
+      '<div class="kn"><b>' + r.name + '</b><span>' + cardsWord(living(r)) +
+      ' &middot; valid to ' + r.until + '</span></div>' + pills + '</button>';
+    if (OPEN === r.villa) g += sheetHTML(r);
+  });
+  document.getElementById('register').innerHTML = g;
+  document.getElementById('expSum').textContent =
+    'Expired, still out · 4 cards from past stays';
 }
 
-/* ── queue writes, exactly the real page's shapes ─────────────────── */
-/* the mock's stand-in for cardExpiry: checkout at 1pm, two mornings on */
-var MOCK_EXPIRY = (function(){
-  var d = new Date(Date.now() + 2 * 86400000);
-  d.setHours(13, 0, 0, 0);
-  return Math.floor(d.getTime() / 1000);
-})();
-function putJob(v, qty){
-  CARDS[String(v)] = { qty: qty, expiry: MOCK_EXPIRY, state: 'queued',
-                       written: 0, by: 'you', at: Date.now() };
-}
-function encodeAll(){
-  OFFLINE = false;
-  VILLAS.forEach(function(r){
-    var j = jobFor(r.villa);
-    if (j && (j.state === 'queued' || j.state === 'writing' || j.state === 'done')) return;
-    putJob(r.villa, (j && j.qty) || 2);
+function sheetHTML(r){
+  var s = '<div class="ksheet"><div class="kslots">';
+  r.cards.forEach(function(c, i){
+    var cls = 'kslot' + (c.st === 'ok' ? (PICKED.indexOf(i) >= 0 ? ' picked' : '')
+                                       : ' ' + c.st);
+    s += '<button class="' + cls + '" data-slot="' + i + '">' +
+         (c.st === 'ok' ? i + 1 : '✕') + '</button>';
   });
-  openOv(null);
+  s += '</div><div class="srow-note">' +
+    (PICKED.length
+      ? cardsWord(PICKED.length) + ' picked to cancel'
+      : lost(r) ? 'Terracotta is already cancelled. Tap missing cards to cancel more'
+                : 'Tap the cards that are missing') + '</div>';
+  if (PICKED.length)
+    s += '<div class="sum-btns"><button class="terra" data-cancelgo="' + r.villa +
+         '">Cancel ' + cardsWord(PICKED.length) + '</button></div>';
+  return s + '</div>';
 }
 
-/* ── the run screen ───────────────────────────────────────────────── */
-function openOv(villa){
-  CARD_VILLA = villa;
-  CARD_ASK = null;
-  OFFLINE = false;
-  document.getElementById('cardOv').hidden = false;
-  paintOv();
-  if (!OV_T) OV_T = setInterval(paintOv, 1500);   /* the real page's poll */
-}
-function closeOv(){
-  document.getElementById('cardOv').hidden = true;
-  if (OV_T){ clearInterval(OV_T); OV_T = null; }
-  render();
-}
-function cslotsHTML(j, cc, active){
-  var q = (j && +j.qty) || 0, n = Math.min((j && +j.written) || 0, q), h = '';
-  for (var i = 0; i < q; i++){
-    var st = i < n ? 'filled'
-       : i === n && cc.k === 'writing' && active ? 'now'
-       : i === n && cc.k === 'failed' ? 'fail' : '';
-    h += '<i class="cslot' + (st ? ' ' + st : '') + '">' +
-         (st === 'filled' || st === 'fail' ? '' : i + 1) + '</i>';
-  }
-  return q ? '<div class="cslots">' + h + '</div>' : '';
-}
-/* front-desk.html's cardValidHTML, from-date taken as today (the mock has
-   no date row); dateLabel inlined from nala-shared, a guest page cannot */
-function dateLabel(d){
-  var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  var mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var n = d.getDate(), s = n % 10 == 1 && n != 11 ? 'st'
-    : n % 10 == 2 && n != 12 ? 'nd' : n % 10 == 3 && n != 13 ? 'rd' : 'th';
-  return days[d.getDay()] + ' ' + n + s + ' ' + mo[d.getMonth()];
-}
-function cardValidHTML(expiry){
-  if (!expiry) return '';
-  var ex = new Date(expiry * 1000);
-  return '<div class="crun-valid">Valid ' +
-         dateLabel(new Date()) + ' – ' + dateLabel(ex) +
-         ', ' + String(ex.getHours()).padStart(2, '0') + ':' +
-         String(ex.getMinutes()).padStart(2, '0') + '</div>';
-}
-function crunHTML(r, active){
-  var j = jobFor(r.villa), cc = cardCell(j);
-  var cls = 'crun' + (active ? ' now' : '') +
-            (cc.k === 'done' ? ' is-done' : '') + (cc.k === 'failed' ? ' is-failed' : '');
-  var line = cc.k === 'writing' && active ? ''
-      : cc.k === 'queued' ? 'Queued' : cc.label;
-  var h = '<div class="' + cls + '" data-crun="' + r.villa + '">' +
-          '<div class="crun-v">Villa ' + r.villa + '<small>' + r.name + '</small></div>' +
-          cslotsHTML(j, cc, active) +
-          (cc.k === 'writing' && active ? '<div class="cardask"><svg viewBox="0 0 140 96" fill="none" ' +
-      'stroke="currentColor" stroke-width="2.6" stroke-linecap="round" ' +
-      'stroke-linejoin="round" aria-label="Hold a card to the reader">' +
+/* the cancel run: write the cancel card, then WALK IT TO THE DOOR - the
+   screen owes the truth that only the lock flashing finishes the job */
+function ovRender(r){
+  document.getElementById('ovTitle').textContent = 'Cancel cards · villa ' + r.villa;
+  var b;
+  if (STEP === 'write'){
+    b = '<div class="cardov-in"><div class="crun now">' +
+      '<div class="crun-v">Villa ' + r.villa + '<small>cancel ' +
+      cardsWord(PICKED.length) + '</small></div>' +
+      '<div class="cardask"><svg viewBox="0 0 140 96" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Hold a spare card to the reader">' +
       '<rect x="57" y="10" width="33" height="46" rx="5" transform="rotate(16 73 33)"/>' +
       '<path d="M58 50c-4 7-3 14 2 19 6 6 15 6 21 1l7-6"/>' +
       '<path d="M63 57c2-3 5-4 8-2M69 63c2-3 5-4 8-2"/>' +
-      '<path class="wave w1" d="M40 30c-4 6-4 14 0 20"/>' +
-      '<path class="wave w2" d="M30 24c-7 9-7 23 0 32"/>' +
-      '<path class="wave w1" d="M106 30c4 6 4 14 0 20"/>' +
-      '<path class="wave w2" d="M116 24c7 9 7 23 0 32"/>' +
-      '</svg></div>' : '') +
-          (line || (cc.k === 'failed' && j && j.note)
-            ? '<div class="crun-s card-' + cc.k + '">' + line +
-              (cc.k === 'failed' && j && j.note ? ' · ' + j.note : '') + '</div>'
-            : '') +
-          (cc.k !== 'cancelled' ? cardValidHTML(j && j.expiry) : '');
-  if (cc.k === 'writing' && active)
-    h += '<div class="tapnote">(mock: tap this villa = hold a card to the reader)</div>';
-  if (cc.k === 'done')
-    h += '<div class="crun-env">Envelope villa ' + r.villa + '’s cards</div>';
-  if (cc.k === 'queued' || cc.k === 'failed')
-    h += '<div class="sum-btns"><button class="terra" data-cardcancel="' + r.villa + '">Cancel</button></div>';
-  return h + '</div>';
+      '<path class="wave w1" d="M40 30c-4 6-4 14 0 20"/><path class="wave w2" d="M30 24c-7 9-7 23 0 32"/>' +
+      '<path class="wave w1" d="M106 30c4 6 4 14 0 20"/><path class="wave w2" d="M116 24c7 9 7 23 0 32"/>' +
+      '</svg></div>' +
+      '<div class="crun-s">Hold a spare card to the reader</div>' +
+      '<div class="crun-valid">It becomes the cancel card</div></div>' +
+      '<div class="tapnote">(mock: tap the villa = hold a card)</div></div>';
+  } else {
+    b = '<div class="cardov-in"><div class="cardhold"><b>Take this card to villa ' +
+      r.villa + '.</b> Hold it to the lock until it flashes · the flash is ' +
+      'what kills the lost ' + cardsWord(PICKED.length) + '</div>' +
+      '<div class="sum-btns"><button class="go wide" data-flashed="' + r.villa +
+      '">The lock flashed</button></div></div>';
+  }
+  document.getElementById('ovBody').innerHTML = b;
 }
-var OFFLINE_HTML = '<div class="cardhold"><b>Encoder offline.</b> ' +
-  'Nothing was written \u00b7 try again when the desk PC is on.</div>';
-function paintOv(){
-  if (document.getElementById('cardOv').hidden) return;
-  var body = document.getElementById('cardBody');
-  var one = CARD_VILLA != null ? rowOf(CARD_VILLA) : null;
-  if (one){
-    document.getElementById('cardTitle').textContent = 'Key cards · villa ' + one.villa;
-    var j = jobFor(one.villa);
-    if (!j || j.state === 'cancelled' || CARD_ASK == one.villa){
-      var q = +(body.getAttribute('data-qty') || 2);
-      body.innerHTML = '<div class="cardov-in"><div class="crun">' +
-        '<div class="crun-v">Villa ' + one.villa + '<small>' + one.name + '</small></div>' +
-        '<div class="crun-s">How many cards?' +
-        '<span class="cqty"><button data-cardq="-1">&minus;</button><span>' + q +
-        '</span><button data-cardq="1">+</button></span></div>' +
-        cardValidHTML(MOCK_EXPIRY) +
-        '<div class="sum-btns"><button class="go wide" data-cardissue="' + one.villa +
-        '">Issue ' + q + (q === 1 ? ' card' : ' cards') + '</button></div></div></div>';
+
+document.addEventListener('click', function(e){
+  var t;
+  if ((t = e.target.closest('[data-ret]'))){
+    var r0 = K.filter(function(x){ return x.villa == t.getAttribute('data-ret'); })[0];
+    r0.collected = !r0.collected; render(); return;
+  }
+  if ((t = e.target.closest('[data-slot]'))){
+    var i = +t.getAttribute('data-slot');
+    var r1 = K.filter(function(x){ return x.villa == OPEN; })[0];
+    if (r1.cards[i].st !== 'ok') return;
+    var at = PICKED.indexOf(i);
+    if (at >= 0) PICKED.splice(at, 1); else PICKED.push(i);
+    render(); return;
+  }
+  if ((t = e.target.closest('[data-cancelgo]'))){
+    /* destructive, so it confirms - the button law's two taps */
+    if (!t.getAttribute('data-armed')){
+      t.setAttribute('data-armed', '1'); t.textContent = 'Confirm cancel';
+      setTimeout(function(){ if (t.isConnected){ t.removeAttribute('data-armed');
+        render(); } }, 4000);
       return;
     }
-    body.innerHTML = '<div class="cardov-in">' + crunHTML(one, true) +
-      (cardCell(j).k === 'done'
-        ? '<div class="sum-btns"><button data-cardagain="' + one.villa +
-          '">Issue more cards</button></div>'
-        : '') +
-      '<button class="simfail" data-simfail>simulate a failed write</button></div>';
-    return;
+    STEP = 'write';
+    document.getElementById('cancelOv').hidden = false;
+    ovRender(K.filter(function(x){ return x.villa == OPEN; })[0]); return;
   }
-  document.getElementById('cardTitle').textContent = 'Key cards · Tue 8th Sep';
-  var withJobs = VILLAS.filter(function(r){ return jobFor(r.villa); });
-  if (!withJobs.length){
-    body.innerHTML = '<div class="cardov-in">' + (OFFLINE ? OFFLINE_HTML
-      : '<div class="crun"><div class="crun-s">Nothing queued. ' +
-        'Encode all keys is in the key menu.</div></div>') + '</div>';
-    return;
+  if ((t = e.target.closest('.crun.now')) && STEP === 'write'){
+    STEP = 'door';
+    ovRender(K.filter(function(x){ return x.villa == OPEN; })[0]); return;
   }
-  var total = 0, doneC = 0;
-  withJobs.forEach(function(r){ var j = jobFor(r.villa);
-    if (j.state === 'cancelled') return;
-    total += +j.qty || 0; doneC += Math.min(+j.written || 0, +j.qty || 0); });
-  var seen = false, oldest = 0;
-  var h = total ? '<div class="cprog"><i style="width:' +
-          Math.round(doneC / total * 100) + '%"></i></div>' : '';
-  withJobs.forEach(function(r){
-    var j = jobFor(r.villa), cc = cardCell(j);
-    var active = !seen && (cc.k === 'queued' || cc.k === 'writing' || cc.k === 'failed');
-    if (active) seen = true;
-    if (cc.k === 'queued' && j.at) oldest = Math.max(oldest, Date.now() - j.at);
-    h += crunHTML(r, active);
-  });
-  /* ten seconds unclaimed = the attempt failed - but a queue behind a
-     working encoder is never stale: no verdict while anything writes */
-  var alive = withJobs.some(function(r){ var j = jobFor(r.villa);
-    return j && j.state === 'writing'; });
-  if (!alive && oldest > 10000){
-    OFFLINE = true;
-    withJobs.forEach(function(r){ var j = jobFor(r.villa);
-      if (j && j.state === 'queued') delete CARDS[String(r.villa)]; });
+  if ((t = e.target.closest('[data-flashed]'))){
+    var r3 = K.filter(function(x){ return x.villa == OPEN; })[0];
+    PICKED.forEach(function(i){ r3.cards[i].st = 'cancelled'; });
+    PICKED = []; STEP = null;
+    document.getElementById('cancelOv').hidden = true;
+    render(); return;
   }
-  if (OFFLINE) h = OFFLINE_HTML + h;
-  body.innerHTML = '<div class="cardov-in">' + h +
-    '<button class="simfail" data-simfail>simulate a failed write</button></div>';
-}
-
-/* ── the pretend helper: claims queued jobs while the switch is on ── */
-HELPER_T = setInterval(function(){
-  if (!document.getElementById('helperOn').checked) return;
-  var going = VILLAS.some(function(r){ var j = jobFor(r.villa);
-    return j && j.state === 'writing'; });
-  if (going) return;
-  for (var i = 0; i < VILLAS.length; i++){
-    var j = jobFor(VILLAS[i].villa);
-    if (j && j.state === 'queued'){ j.state = 'writing'; paintOv(); drawDrop(); return; }
+  if ((t = e.target.closest('[data-villa]'))){
+    var v = +t.getAttribute('data-villa');
+    OPEN = OPEN === v ? null : v; PICKED = [];
+    render(); return;
   }
-}, 1200);
-
-/* a tap on the amber villa is a card held to the reader */
-function tapCard(v){
-  var j = jobFor(v);
-  if (!j || j.state !== 'writing') return;
-  if (FAILNEXT){
-    FAILNEXT = false; j.state = 'failed';
-    j.note = 'card belongs to another hotel or was never initialised';
-    paintOv(); if (OPEN) render(); return;
-  }
-  j.written++;
-  if (j.written >= j.qty) j.state = 'done';
-  paintOv(); drawDrop(); if (OPEN) render();
-}
-
-/* ── wiring ───────────────────────────────────────────────────────── */
-(function(){
-  var b = document.getElementById('keyBtn'), d = document.getElementById('keyDrop');
-  b.onclick = function(e){ e.stopPropagation(); drawDrop(); d.classList.toggle('open'); };
-  document.addEventListener('click', function(){ d.classList.remove('open'); });
-  d.addEventListener('click', function(e){
-    var t = e.target.closest('[data-key]'); if (!t) return;
-    var k = t.getAttribute('data-key');
-    if (k === 'all') encodeAll(); else openOv(k);
-  });
-  document.getElementById('cardX').onclick = closeOv;
-  document.getElementById('board').addEventListener('click', function(e){
-    var act = e.target.closest('[data-act]');
-    if (act){
-      if (act.getAttribute('data-act') === 'cards') return openOv(act.getAttribute('data-villa'));
-      return;   /* Edit and check-in are not this mock's story */
-    }
-    var btn = e.target.closest('.arr'); if (!btn) return;
-    var v = btn.getAttribute('data-villa');
-    OPEN = (OPEN === v) ? null : v; render();
-  });
-  document.getElementById('cardBody').addEventListener('click', function(e){
-    var q = e.target.closest('[data-cardq]');
-    if (q){ var body = document.getElementById('cardBody');
-      var now = +(body.getAttribute('data-qty') || 2) + (+q.getAttribute('data-cardq'));
-      body.setAttribute('data-qty', Math.min(6, Math.max(1, now))); paintOv(); return; }
-    var iss = e.target.closest('[data-cardissue]');
-    if (iss){ var b2 = document.getElementById('cardBody');
-      putJob(iss.getAttribute('data-cardissue'), +(b2.getAttribute('data-qty') || 2));
-      CARD_ASK = null;
-      paintOv(); return; }
-    var ag = e.target.closest('[data-cardagain]');
-    if (ag){ CARD_ASK = ag.getAttribute('data-cardagain'); paintOv(); return; }
-    var c = e.target.closest('[data-cardcancel]');
-    if (c){
-      if (c.getAttribute('data-armed')){ delete CARDS[c.getAttribute('data-cardcancel')];
-        paintOv(); drawDrop(); return; }
-      c.setAttribute('data-armed', '1'); c.textContent = 'Confirm cancel';
-      setTimeout(function(){ if (c.isConnected){ c.removeAttribute('data-armed');
-        c.textContent = 'Cancel'; } }, 4000);
-      return;
-    }
-    if (e.target.closest('[data-simfail]')){
-      FAILNEXT = true; e.target.textContent = 'next write will fail'; return; }
-    var cr = e.target.closest('.crun.now');
-    if (cr) tapCard(cr.getAttribute('data-crun'));
-  });
-})();
-
+});
+document.getElementById('ovX').onclick = function(){
+  STEP = null; document.getElementById('cancelOv').hidden = true;
+};
 resetAll();
 </script>
 </body></html>
