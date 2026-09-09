@@ -1295,6 +1295,8 @@ function sheetHTML(r){
   var s = '<div class="ksheet">' +
     '<div class="srow-note">' + cardsWord(active(r)) + ' with the guest' +
     (r.lost ? ' &middot; ' + cardsWord(r.lost) + ' lost, floating until ' + r.until : '') +
+    '</div><div class="srow-note">Numbers on file: &middot;&middot;4F2B &middot;&middot;9A11' +
+    (r.lost ? ' &middot; the lost one shows itself by never touching the reader' : '') +
     '</div><div class="sum-btns">';
   if (active(r) > 0)
     s += '<button class="terra" data-losev="' + r.villa + '">Mark a card lost</button>';
@@ -1330,10 +1332,14 @@ function ovRender(){
 }
 
 /* the pretend reader: each held card comes back as somebody's */
+/* Identity comes from the reader, never from a guess: every card's
+   serial is recorded at write time, and the pad names the exact card it
+   holds. A cancel can only ever kill the card ON the pad - the lost
+   count stands apart and cannot be touched by it. */
 var FAKE = [
-  { v: 9, label: 'Villa 9 &middot; was valid to Thu 11th Sep &middot; cancelled' },
-  { v: 6, label: 'Villa 6 &middot; was valid to Fri 11th Sep &middot; cancelled' },
-  { v: 0, label: 'Expired card, May stay &middot; wiped &middot; a blank again' }
+  { v: 9, label: 'Villa 9 &middot; card &middot;&middot;9A11 &middot; was valid to Thu 11th Sep &middot; cancelled' },
+  { v: 6, label: 'Villa 6 &middot; card &middot;&middot;77C4 &middot; was valid to Fri 11th Sep &middot; cancelled' },
+  { v: 0, label: 'Expired card &middot;&middot;03BE, May stay &middot; wiped &middot; a blank again' }
 ];
 
 document.addEventListener('click', function(e){
