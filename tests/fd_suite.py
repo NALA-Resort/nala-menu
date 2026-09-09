@@ -2225,6 +2225,14 @@ with sync_playwright() as p:
     droptxt = pg.inner_text("#keyDrop")
     ck("its drop offers the day's run and each villa",
        "Encode all keys" in droptxt and "Villa 4" in droptxt and "Villa 14" in droptxt)
+    #  The batch action reads as an option, not the menu's title - the
+    #  owner, 9 Sep: last row, behind the seam, its count in a badge.
+    ck("Encode all keys stands last as an action, its count in a badge",
+       pg.evaluate("""()=>{var b=[...document.querySelectorAll('#keyDrop button')];
+         var a=b[b.length-1];
+         return a.getAttribute('data-key')==='all'
+             && !!a.querySelector('.navbadge')
+             && a.querySelector('.navbadge').textContent===String(ROWS.length);}"""))
 
     pg.evaluate("()=>document.querySelector('#keyDrop [data-key=all]').click()")
     pg.wait_for_timeout(700)
@@ -2271,6 +2279,21 @@ with sync_playwright() as p:
          return a.querySelectorAll('.cslot').length===2
              && a.querySelectorAll('.cslot.filled').length===1
              && a.querySelectorAll('.cslot.now').length===1;}"""))
+    #  The amber slot names WHICH card is being programmed - the owner,
+    #  9 Sep. A written slot's tick replaced its number.
+    ck("the amber slot carries the card's number, a written one its tick",
+       pg.evaluate("""()=>{var a=document.querySelector('.crun.now');
+         return a.querySelector('.cslot.now').textContent.trim()==='2'
+             && a.querySelector('.cslot.filled').textContent.trim()==='';}"""))
+    #  And the block says what the card will do, off the job's own expiry
+    #  through the page's own dateLabel - never a re-derivation here.
+    ck("the run shows valid from and to, read off the job's expiry",
+       pg.evaluate("""(e)=>{var t=document.getElementById('cardBody')
+           .innerText.toLowerCase();
+         var ex=new Date(e*1000);
+         return t.indexOf('valid')>=0
+             && t.indexOf(dateLabel(ex).toLowerCase())>=0
+             && t.indexOf('11:00')>=0;}""", j4["expiry"]))
     ck("the batch bar reads written over wanted",
        pg.evaluate("""()=>{var i=document.querySelector('.cprog i');
          return i && i.style.width !== '' && i.style.width !== '0%';}"""))
@@ -2313,6 +2336,9 @@ with sync_playwright() as p:
     pg.wait_for_timeout(1800)   # past the next poll, which must not repaint the question away
     ck("the villa panel asks how many",
        "How many cards" in pg.inner_text("#cardBody"))
+    ck("and says what the cards will be valid for, before Issue is pressed",
+       "valid" in pg.inner_text("#cardBody").lower()
+       and "11:00" in pg.inner_text("#cardBody"))
     pg.evaluate("()=>document.querySelector('[data-cardq=\"1\"]').click()")
     pg.wait_for_timeout(150)
     pg.evaluate("()=>document.querySelector('[data-cardissue]').click()")

@@ -1002,7 +1002,11 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
                   font-family:inherit; font-size:var(--t2); line-height:1.3;
                   color:var(--ink); cursor:pointer; }
 .keydrop button:active { background:var(--accent-soft); }
-.keydrop .kd-all { font-weight:600; }
+/* The batch action stands last, behind the seam the signout row already
+   owns, its count in a navbadge - ruled by the owner, 9 Sep, when a bold
+   first row read as the menu's title rather than a thing to press. */
+.keydrop .kd-all { border-top:1px solid var(--rule); margin-top:var(--s1);
+                   align-items:center; }
 .keydrop .kd-state { flex:0 0 auto; font-size:var(--t1); color:var(--mid);
                      white-space:nowrap; }
 .keydrop .kd-state.card-done { color:var(--law-green); }
@@ -1030,6 +1034,7 @@ body > .wrap { flex:1 0 auto; display:flex; flex-direction:column; width:100%; }
 .crun-s { font-size:var(--t2); color:var(--mid); margin-top:4px; }
 .crun-s.card-failed { color:var(--law-red); }
 .crun-s.card-done { color:var(--law-green); }
+.crun-valid { font-size:var(--t1); color:var(--mid); margin-top:6px; }
 .crun-env { font-size:var(--t2); color:var(--law-green); margin-top:6px; }
 .cardhold { background:var(--amber); border:1px solid var(--amberb);
             border-radius:var(--r); color:var(--amberink); padding:14px;
@@ -1073,13 +1078,21 @@ body.ui2 .mocktools .btn{ width:auto; padding:5px 12px; min-height:28px; font-si
 
 /* card slots + batch bar, mirrored from front-desk.html 8 Sep */
 .cslots { display:flex; gap:8px; margin-top:10px; align-items:center; }
+/* Each waiting slot carries its card's number - the owner, 9 Sep: the
+   amber slot must say WHICH card is being programmed. A written card
+   trades its number for the tick; the number told the future, the tick
+   tells the past. */
 .cslot { width:26px; height:38px; border-radius:5px; border:2px solid var(--rule);
-         background:transparent; position:relative; flex:0 0 auto; }
+         background:transparent; position:relative; flex:0 0 auto;
+         display:flex; align-items:center; justify-content:center;
+         font-style:normal; font-family:var(--ui-font); font-size:15px;
+         color:var(--mid); }
 .cslot::after { position:absolute; inset:0; display:flex; align-items:center;
          justify-content:center; font-family:var(--ui-font); font-size:16px; }
 .cslot.filled { background:var(--law-green-t); border-color:var(--law-green-b); }
 .cslot.filled::after { content:'\2713'; color:var(--law-green); }
-.cslot.now { border-color:var(--amberb); background:var(--amber); }
+.cslot.now { border-color:var(--amberb); background:var(--amber);
+             color:var(--amberink); font-weight:600; }
 .cslot.fail { border-color:var(--law-red); }
 .cslot.fail::after { content:'\2715'; color:var(--law-red); }
 /* The active villa asks with a drawing, not a sentence - ruled by the
@@ -1100,7 +1113,7 @@ body.ui2 .mocktools .btn{ width:auto; padding:5px 12px; min-height:28px; font-si
 }
 .crun.now .crun-v { font-size:52px; line-height:1; }
 .crun.now .crun-v small { display:block; margin-left:0; margin-top:6px; }
-.crun.now .cslot { width:40px; height:58px; border-radius:7px; }
+.crun.now .cslot { width:40px; height:58px; border-radius:7px; font-size:22px; }
 .crun.now .cslot::after { font-size:24px; }
 .cprog { max-width:520px; margin:0 auto 4px; height:5px; border-radius:3px;
          background:var(--rule); overflow:hidden; }
@@ -1222,20 +1235,27 @@ function sumHTML(r){
 
 /* ── the drop ─────────────────────────────────────────────────────── */
 function drawDrop(){
-  var h = '<button class="kd-all" data-key="all">Encode all keys' +
-          '<span class="kd-state">' + VILLAS.length + ' villas</span></button>';
+  var h = '';
   VILLAS.forEach(function(r){
     var cc = cardCell(jobFor(r.villa));
     h += '<button data-key="' + r.villa + '">Villa ' + r.villa + ' · ' + r.name +
          '<span class="kd-state card-' + cc.k + '">' +
          (cc.k === 'none' ? '' : cc.label) + '</span></button>';
   });
+  h += '<button class="kd-all" data-key="all">Encode all keys' +
+       '<span class="navbadge">' + VILLAS.length + '</span></button>';
   document.getElementById('keyDrop').innerHTML = h;
 }
 
 /* ── queue writes, exactly the real page's shapes ─────────────────── */
+/* the mock's stand-in for cardExpiry: checkout at 11:00, two mornings on */
+var MOCK_EXPIRY = (function(){
+  var d = new Date(Date.now() + 2 * 86400000);
+  d.setHours(11, 0, 0, 0);
+  return Math.floor(d.getTime() / 1000);
+})();
 function putJob(v, qty){
-  CARDS[String(v)] = { qty: qty, expiry: 1789000000, state: 'queued',
+  CARDS[String(v)] = { qty: qty, expiry: MOCK_EXPIRY, state: 'queued',
                        written: 0, by: 'you', at: Date.now() };
 }
 function encodeAll(){
@@ -1264,13 +1284,30 @@ function closeOv(){
 function cslotsHTML(j, cc, active){
   var q = (j && +j.qty) || 0, n = Math.min((j && +j.written) || 0, q), h = '';
   for (var i = 0; i < q; i++){
-    var cls = 'cslot' +
-      (i < n ? ' filled'
-       : i === n && cc.k === 'writing' && active ? ' now'
-       : i === n && cc.k === 'failed' ? ' fail' : '');
-    h += '<i class="' + cls + '"></i>';
+    var st = i < n ? 'filled'
+       : i === n && cc.k === 'writing' && active ? 'now'
+       : i === n && cc.k === 'failed' ? 'fail' : '';
+    h += '<i class="cslot' + (st ? ' ' + st : '') + '">' +
+         (st === 'filled' || st === 'fail' ? '' : i + 1) + '</i>';
   }
   return q ? '<div class="cslots">' + h + '</div>' : '';
+}
+/* front-desk.html's cardValidHTML, from-date taken as today (the mock has
+   no date row); dateLabel inlined from nala-shared, a guest page cannot */
+function dateLabel(d){
+  var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var n = d.getDate(), s = n % 10 == 1 && n != 11 ? 'st'
+    : n % 10 == 2 && n != 12 ? 'nd' : n % 10 == 3 && n != 13 ? 'rd' : 'th';
+  return days[d.getDay()] + ' ' + n + s + ' ' + mo[d.getMonth()];
+}
+function cardValidHTML(expiry){
+  if (!expiry) return '';
+  var ex = new Date(expiry * 1000);
+  return '<div class="crun-valid">Valid ' +
+         dateLabel(new Date()) + ' – ' + dateLabel(ex) +
+         ', ' + String(ex.getHours()).padStart(2, '0') + ':' +
+         String(ex.getMinutes()).padStart(2, '0') + '</div>';
 }
 function crunHTML(r, active){
   var j = jobFor(r.villa), cc = cardCell(j);
@@ -1295,7 +1332,8 @@ function crunHTML(r, active){
           (line || (cc.k === 'failed' && j && j.note)
             ? '<div class="crun-s card-' + cc.k + '">' + line +
               (cc.k === 'failed' && j && j.note ? ' · ' + j.note : '') + '</div>'
-            : '');
+            : '') +
+          (cc.k !== 'cancelled' ? cardValidHTML(j && j.expiry) : '');
   if (cc.k === 'writing' && active)
     h += '<div class="tapnote">(mock: tap this villa = hold a card to the reader)</div>';
   if (cc.k === 'done')
@@ -1320,6 +1358,7 @@ function paintOv(){
         '<div class="crun-s">How many cards?' +
         '<span class="cqty"><button data-cardq="-1">&minus;</button><span>' + q +
         '</span><button data-cardq="1">+</button></span></div>' +
+        cardValidHTML(MOCK_EXPIRY) +
         '<div class="sum-btns"><button class="go wide" data-cardissue="' + one.villa +
         '">Issue ' + q + (q === 1 ? ' card' : ' cards') + '</button></div></div></div>';
       return;

@@ -358,7 +358,11 @@
                   font-family:inherit; font-size:var(--t2); line-height:1.3;
                   color:var(--ink); cursor:pointer; }
 .keydrop button:active { background:var(--accent-soft); }
-.keydrop .kd-all { font-weight:600; }
+/* The batch action stands last, behind the seam the signout row already
+   owns, its count in a navbadge - ruled by the owner, 9 Sep, when a bold
+   first row read as the menu's title rather than a thing to press. */
+.keydrop .kd-all { border-top:1px solid var(--rule); margin-top:var(--s1);
+                   align-items:center; }
 .keydrop .kd-state { flex:0 0 auto; font-size:var(--t1); color:var(--mid);
                      white-space:nowrap; }
 .keydrop .kd-state.card-done { color:var(--law-green); }
@@ -386,6 +390,7 @@
 .crun-s { font-size:var(--t2); color:var(--mid); margin-top:4px; }
 .crun-s.card-failed { color:var(--law-red); }
 .crun-s.card-done { color:var(--law-green); }
+.crun-valid { font-size:var(--t1); color:var(--mid); margin-top:6px; }
 .crun-env { font-size:var(--t2); color:var(--law-green); margin-top:6px; }
 .cardhold { background:var(--amber); border:1px solid var(--amberb);
             border-radius:var(--r); color:var(--amberink); padding:14px;
@@ -404,13 +409,21 @@
    this moment, cream outline is still to come, and a failure is red INK
    on the slot, never a red tile. */
 .cslots { display:flex; gap:8px; margin-top:10px; align-items:center; }
+/* Each waiting slot carries its card's number - the owner, 9 Sep: the
+   amber slot must say WHICH card is being programmed. A written card
+   trades its number for the tick; the number told the future, the tick
+   tells the past. */
 .cslot { width:26px; height:38px; border-radius:5px; border:2px solid var(--rule);
-         background:transparent; position:relative; flex:0 0 auto; }
+         background:transparent; position:relative; flex:0 0 auto;
+         display:flex; align-items:center; justify-content:center;
+         font-style:normal; font-family:var(--ui-font); font-size:15px;
+         color:var(--mid); }
 .cslot::after { position:absolute; inset:0; display:flex; align-items:center;
          justify-content:center; font-family:var(--ui-font); font-size:16px; }
 .cslot.filled { background:var(--law-green-t); border-color:var(--law-green-b); }
 .cslot.filled::after { content:'\2713'; color:var(--law-green); }
-.cslot.now { border-color:var(--amberb); background:var(--amber); }
+.cslot.now { border-color:var(--amberb); background:var(--amber);
+             color:var(--amberink); font-weight:600; }
 .cslot.fail { border-color:var(--law-red); }
 .cslot.fail::after { content:'\2715'; color:var(--law-red); }
 /* The active villa asks with a drawing, not a sentence - ruled by the
@@ -432,7 +445,7 @@
 /* the active villa reads from across the desk; its slots grow with it */
 .crun.now .crun-v { font-size:52px; line-height:1; }
 .crun.now .crun-v small { display:block; margin-left:0; margin-top:6px; }
-.crun.now .cslot { width:40px; height:58px; border-radius:7px; }
+.crun.now .cslot { width:40px; height:58px; border-radius:7px; font-size:22px; }
 .crun.now .cslot::after { font-size:24px; }
 /* the batch's one bar: green is the run already behind you, the spine's
    own reading of that colour */
@@ -1219,9 +1232,7 @@ function cardsDrawDrop(){
     d.innerHTML = '<button disabled style="color:var(--mid)">No arrivals on this date</button>';
     return;
   }
-  var h = '<button class="kd-all" data-key="all">Encode all keys' +
-          '<span class="kd-state">' + ROWS.length +
-          (ROWS.length === 1 ? ' villa' : ' villas') + '</span></button>';
+  var h = '';
   ROWS.forEach(function(r){
     var cc = cardCell(jobFor(r.villa));
     h += '<button data-key="' + r.villa + '">Villa ' + r.villa +
@@ -1229,6 +1240,8 @@ function cardsDrawDrop(){
          '<span class="kd-state card-' + cc.k + '">' +
          (cc.k === 'none' ? '' : esc(cc.label)) + '</span></button>';
   });
+  h += '<button class="kd-all" data-key="all">Encode all keys' +
+       '<span class="navbadge">' + ROWS.length + '</span></button>';
   d.innerHTML = h;
 }
 
@@ -1257,13 +1270,27 @@ function cardsPaint(){
 function cslotsHTML(j, cc, active){
   var q = (j && +j.qty) || 0, n = Math.min((j && +j.written) || 0, q), h = '';
   for (var i = 0; i < q; i++){
-    var cls = 'cslot' +
-      (i < n ? ' filled'
-       : i === n && cc.k === 'writing' && active ? ' now'
-       : i === n && cc.k === 'failed' ? ' fail' : '');
-    h += '<i class="' + cls + '"></i>';
+    var st = i < n ? 'filled'
+       : i === n && cc.k === 'writing' && active ? 'now'
+       : i === n && cc.k === 'failed' ? 'fail' : '';
+    h += '<i class="cslot' + (st ? ' ' + st : '') + '">' +
+         (st === 'filled' || st === 'fail' ? '' : i + 1) + '</i>';
   }
   return q ? '<div class="cslots">' + h + '</div>' : '';
+}
+
+/* What the card will do, from the job's own expiry - the owner, 9 Sep,
+   with TTHotel's Validity column as the reference. From is the day on
+   the screen (a card lives from the moment it is written); to is read
+   off the expiry stamp, hour included, so this line can never disagree
+   with what the encoder was told. */
+function cardValidHTML(expiry){
+  if (!expiry) return '';
+  var ex = new Date(expiry * 1000);
+  return '<div class="crun-valid">Valid ' +
+         dateLabel(parseISO(nav.todayKey())) + ' – ' + dateLabel(ex) +
+         ', ' + String(ex.getHours()).padStart(2, '0') + ':' +
+         String(ex.getMinutes()).padStart(2, '0') + '</div>';
 }
 
 /* One villa's block in the run: the state in cardCell's words, the envelope
@@ -1295,7 +1322,8 @@ function crunHTML(r, active){
             ? '<div class="crun-s card-' + cc.k + '">' + line +
               (cc.k === 'failed' && j && j.note ? ' · ' + esc(String(j.note)) : '') +
               '</div>'
-            : '');
+            : '') +
+          (cc.k !== 'cancelled' ? cardValidHTML(j && j.expiry) : '');
   if (cc.k === 'done')
     h += '<div class="crun-env">Envelope villa ' + r.villa + '’s cards</div>';
   if (cc.k === 'queued' || cc.k === 'failed')
@@ -1321,6 +1349,7 @@ function cardRender(){
         '<div class="crun-s">How many cards?' +
         '<span class="cqty"><button data-cardq="-1">&minus;</button><span>' + q +
         '</span><button data-cardq="1">+</button></span></div>' +
+        cardValidHTML(cardExpiry(one.stay.depart)) +
         '<div class="sum-btns"><button class="go wide" data-cardissue="' +
         one.villa + '">Issue ' + q + (q === 1 ? ' card' : ' cards') +
         '</button></div></div></div>';
