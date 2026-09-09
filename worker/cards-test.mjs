@@ -26,8 +26,11 @@ function install(overrides = {}) {
         return new Response(JSON.stringify({ errcode: 10003, errmsg: "invalid client" }));
       return new Response(JSON.stringify({ hotelInfo: "HOTELINFO-1" }));
     }
-    if (u.includes("/oauth2/token"))
+    if (u.includes("/oauth2/token")) {
+      if (overrides.oauthWants && !String(opt.body).includes("password=" + overrides.oauthWants))
+        return new Response(JSON.stringify({ errmsg: "invalid account or invalid password" }));
       return new Response(JSON.stringify({ access_token: "AT-1" }));
+    }
     if (u.includes("/v3/lock/listByHotel"))
       return new Response(JSON.stringify({ list: [
         { doorName: "9",  lockMac: "0E:95:1D:80:D3:EF", lockId: 27034828, buildingNo: 1, floorNo: 1 },
@@ -109,6 +112,19 @@ install();
   const oauth = CALLS.find(c => c.u.includes("oauth2/token"));
   ck("an UPPERCASE pre-hash is recognised and lowered, not hashed twice",
      oauth && String(oauth.body).includes(md5("pw")));
+}
+/* TTHotel's Integration page hands out PLAIN passwords that look like
+   md5s - found at the first live run, 9 Sep. The relay must not commit
+   to one reading of a hex password: as-is first, hashed on refusal. */
+install({ oauthWants: md5("2fac7bd2e23a2fac7bd2e23a2fac7bd2") });
+{
+  const hexplain = Object.assign({}, env,
+    { TT_PASSWORD: "2fac7bd2e23a2fac7bd2e23a2fac7bd2" });
+  const r = await handleCardRoute(req("/cardlocks", "helper-shh"), hexplain);
+  const oauths = CALLS.filter(c => c.u.includes("oauth2/token"));
+  ck("a hex password that is really plain text still gets a token",
+     r.status === 200 && oauths.length === 2 &&
+     String(oauths[1].body).includes(md5("2fac7bd2e23a2fac7bd2e23a2fac7bd2")));
 }
 
 /* ── the rest of the Worker is untouched ─────────────────────── */

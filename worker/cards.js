@@ -136,27 +136,34 @@ let TOKEN = null, TOKEN_AT = 0;
 export async function ttAccessToken(env) {
   if (TOKEN && Date.now() - TOKEN_AT < 50 * 60 * 1000) return TOKEN;
   const pw = (env.TT_PASSWORD || "").trim();
-  /* Either case: TTLock's own pages show md5s in both, and an uppercase
-     one taken for plain text would be hashed a second time - the exact
-     "oauth refused" the first live run nearly hit, 9 Sep. */
-  const hashed = /^[0-9a-fA-F]{32}$/.test(pw) ? pw.toLowerCase() : md5(pw);
-  const body = new URLSearchParams({
-    client_id: (env.TT_CLIENT_ID || "").trim(),
-    client_secret: (env.TT_CLIENT_SECRET || "").trim(),
-    username: (env.TT_ACCOUNT || "").trim(),
-    password: hashed,
-    grant_type: "password"
-  });
-  const r = await fetch(base(env) + "/oauth2/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString()
-  });
-  const j = await r.json().catch(() => ({}));
-  const t = j.access_token || j.accessToken;
-  if (!t) throw new Error("oauth refused: " + (j.errmsg || j.error || r.status));
-  TOKEN = t; TOKEN_AT = Date.now();
-  return TOKEN;
+  /* A 32-hex TT_PASSWORD is ambiguous, and guessing wrong cost the first
+     live run (9 Sep): TTHotel's Integration page hands out plain passwords
+     that LOOK like md5s, in either case. So a hex password is tried as a
+     pre-hash first and, on refusal, once more hashed; whichever opens is
+     cached for the token's lifetime like any other. One extra oauth call,
+     once an hour, only for hex passwords - not worth a config switch. */
+  const tries = /^[0-9a-fA-F]{32}$/.test(pw)
+    ? [pw.toLowerCase(), md5(pw)] : [md5(pw)];
+  let refusal = null;
+  for (const hashed of tries) {
+    const body = new URLSearchParams({
+      client_id: (env.TT_CLIENT_ID || "").trim(),
+      client_secret: (env.TT_CLIENT_SECRET || "").trim(),
+      username: (env.TT_ACCOUNT || "").trim(),
+      password: hashed,
+      grant_type: "password"
+    });
+    const r = await fetch(base(env) + "/oauth2/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString()
+    });
+    const j = await r.json().catch(() => ({}));
+    const t = j.access_token || j.accessToken;
+    if (t) { TOKEN = t; TOKEN_AT = Date.now(); return TOKEN; }
+    refusal = j.errmsg || j.error || r.status;
+  }
+  throw new Error("oauth refused: " + refusal);
 }
 
 /* The villa -> lock table, straight from the cloud that owns it. Nothing
