@@ -1167,6 +1167,19 @@ body.ui2 .kcollect { width:auto; min-height:38px; padding:8px 14px; flex:0 0 aut
 .kfold summary { cursor:pointer; opacity:.75; }
 .kfold div { padding:8px 2px; opacity:.75; }
 
+
+/* tabs keep the register short - the selection wears the green mark */
+.ktabs { display:flex; gap:8px; margin:0 0 18px; flex-wrap:wrap; }
+.ktab { border:1px solid var(--rule); background:transparent; border-radius:var(--pill);
+        padding:7px 14px; font-family:var(--ui-font); font-size:var(--t1);
+        color:var(--mid); cursor:pointer; }
+.ktab.on { background:var(--green); border-color:var(--greenb); color:var(--ink); }
+.ksheet { border:1px solid var(--rule); border-radius:var(--r); padding:14px;
+          margin:10px 0; font-family:var(--ui-font); }
+.ksheet .srow-note { font-size:var(--t1); color:var(--mid); }
+.ksheet .sum-btns { margin-top:12px; }
+.ksheet .sum-btns button.terra { border-color:var(--terra-b); color:var(--terra);
+          background:transparent; }
 </style>
 </head>
 <body class="tier-app ui2">
@@ -1179,19 +1192,13 @@ body.ui2 .kcollect { width:auto; min-height:38px; padding:8px 14px; flex:0 0 aut
 </div>
 
 <div id="body" style="max-width:520px;margin:0 auto">
-  <div class="sum-btns" style="margin:6px 0 26px">
+  <div class="sum-btns" style="margin:6px 0 20px">
     <button class="go wide" id="cancelBtn">Cancel cards</button>
   </div>
 
-  <div class="seclabel">Returns today<span class="seccount" id="retCount"></span></div>
-  <div class="secnote">Departing villas and the cards they took. A card handed
-    back is tomorrow's blank.</div>
-  <div id="returns"></div>
-
-  <div class="seclabel" style="margin-top:30px">Cards out</div>
-  <div class="secnote">Every card this desk has cut that still opens a door.</div>
+  <div class="ktabs" id="tabs"></div>
   <div id="register"></div>
-  <details class="kfold"><summary id="expSum"></summary>
+  <details class="kfold" id="expFold"><summary id="expSum"></summary>
     <div>Dead cards from past stays, still in guests' pockets. They open
       nothing; this is a count of missing blanks, not a risk.</div></details>
 </div>
@@ -1211,77 +1218,95 @@ body.ui2 .kcollect { width:auto; min-height:38px; padding:8px 14px; flex:0 0 aut
 <script>
 document.title = 'Mock · Keys';
 
-/* The cancel duty is one button and a reader, because the encoder can
-   READ a card exactly as it writes one - the card names its own villa.
-   Hold cards one after another; each is identified and wiped on the
-   pad; Stop ends the run. One card, a handful, or a checkout stack,
-   with nothing to pick and no counting first. */
+/* The card lifecycle, whole:
+     written -> ACTIVE -> dies at 13:00 on depart day -> expired (stock)
+     ACTIVE -> marked lost at the desk -> LOST, a floating security
+       reminder for its remaining validity -> expires with the rest
+     LOST -> Found (undo) -> ACTIVE
+     any card in hand -> Cancel cards at the reader -> wiped, a blank
+   Marking lost is the villa sheet's one job; it is reversible, so it
+   asks nothing. Cancel is the top button; the encoder reads the card
+   and the card names its own room. */
 
-var K, DONE, SESSION;
+var K, TAB, OPEN, DONE, SESSION;
 function resetAll(){
   K = [
-    { villa:3,  name:'James Fisher',    dep:true, collected:false,
-      cards:2, until:'today, 13:00' },
-    { villa:14, name:'Ann Brown',       dep:true, collected:false,
-      cards:1, until:'today, 13:00' },
-    { villa:4,  name:'Robyn Williams',  dep:false, cards:2, lost:0,
-      until:'Sat 13th Sep, 13:00' },
-    { villa:6,  name:'Karen and Mike Mount', dep:false, cards:3, lost:0,
-      until:'Fri 11th Sep, 13:00' },
-    { villa:9,  name:'Konstantinos Papadopoulos', dep:false, cards:2, lost:1,
-      until:'Thu 11th Sep, 13:00' }
+    { villa:3,  name:'James Fisher',    dep:true,  out:2, lost:0, until:'today, 13:00' },
+    { villa:14, name:'Ann Brown',       dep:true,  out:1, lost:0, until:'today, 13:00' },
+    { villa:4,  name:'Robyn Williams',  dep:false, out:2, lost:0, until:'Sat 13th Sep, 13:00' },
+    { villa:6,  name:'Karen and Mike Mount', dep:false, out:3, lost:0, until:'Fri 11th Sep, 13:00' },
+    { villa:9,  name:'Konstantinos Papadopoulos', dep:false, out:3, lost:1, until:'Thu 11th Sep, 13:00' }
   ];
-  /* what the pretend reader will find, in order, when cards are held */
-  SESSION = null;
-  DONE = [];
+  TAB = 'all'; OPEN = null; DONE = []; SESSION = null;
   document.getElementById('cancelOv').hidden = true;
   render();
 }
 
+function active(r){ return r.out - r.lost; }
 function cardsWord(n){ return n + (n === 1 ? ' card' : ' cards'); }
 
-function render(){
-  /* returns: the morning list. Collect is a toggle, like check-in - a
-     visual move, so the way back from a mispress is to press it again. */
-  var deps = K.filter(function(r){ return r.dep; });
-  var back = 0, owed = 0;
-  deps.forEach(function(r){ owed += r.cards; if (r.collected) back += r.cards; });
-  document.getElementById('retCount').textContent =
-    deps.length ? back + ' of ' + cardsWord(owed) + ' back' : '';
-  var h = '';
-  deps.forEach(function(r){
-    h += '<div class="krow' + (r.collected ? ' collected' : '') + '">' +
-      '<div class="kv">' + r.villa + '</div>' +
-      '<div class="kn"><b>' + r.name + '</b><span>' + cardsWord(r.cards) +
-      ' out &middot; die 13:00</span></div>' +
-      (r.collected
-        ? '<span class="kpill ok">back</span><button class="btn kcollect" data-ret="' + r.villa + '">Undo</button>'
-        : '<button class="btn kcollect" data-ret="' + r.villa + '">Collected</button>') +
-      '</div>';
-  });
-  document.getElementById('returns').innerHTML = h;
+var TABS = [
+  { k:'all',  label:'All cards', has:function(r){ return r.out > 0; } },
+  { k:'ok',   label:'Active',    has:function(r){ return active(r) > 0; } },
+  { k:'lost', label:'Lost',      has:function(r){ return r.lost > 0; } },
+  { k:'due',  label:'Due today', has:function(r){ return r.dep && r.out > 0; } }
+];
 
-  /* the register: one row per villa, status told in pills - valid,
-     due back on departure day, lost. Expired folds away below. */
+function render(){
+  var t = '';
+  TABS.forEach(function(tb){
+    var n = 0;
+    K.forEach(function(r){ if (tb.has(r)) n += tb.k === 'lost' ? r.lost
+                                             : tb.k === 'ok' ? active(r) : r.out; });
+    t += '<button class="ktab' + (TAB === tb.k ? ' on' : '') + '" data-tab="' + tb.k +
+         '">' + tb.label + (n ? ' · ' + n : '') + '</button>';
+  });
+  document.getElementById('tabs').innerHTML = t;
+
   var g = '';
   K.forEach(function(r){
-    if (!r.cards && !r.lost) return;
-    var pills = r.dep
-      ? '<span class="kpill due">due back 13:00</span>'
-      : '<span class="kpill ok">valid</span>';
-    if (r.lost) pills = '<span class="kpill lost">' + r.lost + ' lost</span>' + pills;
-    g += '<div class="krow">' +
+    if (!TABS.filter(function(tb){ return tb.k === TAB; })[0].has(r)) return;
+    var pills = '';
+    if (r.lost) pills += '<span class="kpill lost">' + r.lost + ' lost</span>';
+    pills += r.dep ? '<span class="kpill due">dies today 13:00</span>'
+                   : '<span class="kpill ok">valid</span>';
+    var line = TAB === 'lost'
+      ? cardsWord(r.lost) + ' floating &middot; dies ' + r.until
+      : cardsWord(active(r)) + (r.lost ? ' + ' + r.lost + ' lost' : '') +
+        ' &middot; valid to ' + r.until;
+    g += '<button class="krow" data-villa="' + r.villa + '">' +
       '<div class="kv">' + r.villa + '</div>' +
-      '<div class="kn"><b>' + r.name + '</b><span>' + cardsWord(r.cards) +
-      ' &middot; valid to ' + r.until + '</span></div>' + pills + '</div>';
+      '<div class="kn"><b>' + r.name + '</b><span>' + line + '</span></div>' +
+      pills + '</button>';
+    if (OPEN === r.villa) g += sheetHTML(r);
   });
+  if (!g) g = '<div class="krow" style="opacity:.62;border-style:dashed">' +
+    '<div class="kn"><span>Nothing here</span></div></div>';
   document.getElementById('register').innerHTML = g;
+
+  document.getElementById('expFold').style.display = TAB === 'all' ? '' : 'none';
   document.getElementById('expSum').textContent =
     'Expired, still out · 4 cards from past stays';
 }
 
-/* the cancel run: the ask drawing, the count, and the growing list of
-   what each held card turned out to be */
+/* the villa sheet: the card facts and the one duty that lives here -
+   marking a card lost. Reversible, so it asks nothing; Found undoes. */
+function sheetHTML(r){
+  var s = '<div class="ksheet">' +
+    '<div class="srow-note">' + cardsWord(active(r)) + ' with the guest' +
+    (r.lost ? ' &middot; ' + cardsWord(r.lost) + ' lost, floating until ' + r.until : '') +
+    '</div><div class="sum-btns">';
+  if (active(r) > 0)
+    s += '<button class="terra" data-losev="' + r.villa + '">Mark a card lost</button>';
+  if (r.lost > 0)
+    s += '<button data-foundv="' + r.villa + '">Found</button>';
+  s += '</div>';
+  if (r.lost > 0)
+    s += '<div class="srow-note">A lost card still opens the door until ' +
+         r.until + '. Found and handed back? Cancel it at the reader.</div>';
+  return s + '</div>';
+}
+
 function ovRender(){
   var b = '<div class="cardov-in"><div class="crun now">' +
     '<div class="crun-v">' + DONE.length +
@@ -1313,9 +1338,18 @@ var FAKE = [
 
 document.addEventListener('click', function(e){
   var t;
-  if ((t = e.target.closest('[data-ret]'))){
-    var r0 = K.filter(function(x){ return x.villa == t.getAttribute('data-ret'); })[0];
-    r0.collected = !r0.collected; render(); return;
+  if ((t = e.target.closest('[data-tab]'))){
+    TAB = t.getAttribute('data-tab'); OPEN = null; render(); return;
+  }
+  if ((t = e.target.closest('[data-losev]'))){
+    var r0 = K.filter(function(x){ return x.villa == t.getAttribute('data-losev'); })[0];
+    if (active(r0) > 0) r0.lost++;
+    render(); return;
+  }
+  if ((t = e.target.closest('[data-foundv]'))){
+    var rf = K.filter(function(x){ return x.villa == t.getAttribute('data-foundv'); })[0];
+    if (rf.lost > 0) rf.lost--;
+    render(); return;
   }
   if (e.target.closest('#cancelBtn')){
     SESSION = 0; DONE = [];
@@ -1331,8 +1365,13 @@ document.addEventListener('click', function(e){
     var f = FAKE[Math.min(SESSION, FAKE.length - 1)]; SESSION++;
     DONE.unshift(f.label);
     var r1 = K.filter(function(x){ return x.villa === f.v; })[0];
-    if (r1 && r1.cards > 0) r1.cards--;
+    if (r1 && active(r1) > 0) r1.out--;
     ovRender(); return;
+  }
+  if ((t = e.target.closest('[data-villa]'))){
+    var v = +t.getAttribute('data-villa');
+    OPEN = OPEN === v ? null : v;
+    render(); return;
   }
 });
 resetAll();
