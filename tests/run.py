@@ -305,6 +305,15 @@ def main():
                 print("nothing modified that any suite covers")
                 return 0
     if a.names:
+        # A name that matches nothing must fail loudly. Found 9 Sep: "fd"
+        # matched no suite, the run reported "0 assertions, 0 failed", and
+        # a commit gate read that as green. Silence here is a verdict.
+        missed = [n for n in a.names
+                  if not any(n.lower() in s[0] for s in SUITES)]
+        if missed:
+            print("no suite matches: %s (the names live in SUITES, tests/run.py)"
+                  % ", ".join(missed))
+            return 2
         picked = [s for s in picked if any(n.lower() in s[0] for n in a.names)]
     if not a.demos and not a.names:
         picked = [s for s in picked if s[0] not in ON_REQUEST]
