@@ -1135,6 +1135,10 @@ function render(){
 var CARDS = {};          /* /cardjobs for the viewed date */
 var CARD_TIMER = null;   /* the poll, alive only while the overlay is open */
 var CARD_VILLA = null;   /* one villa's panel, or null for the day's run */
+var CARD_ASK = null;     /* villa whose done record the desk wants to re-open:
+                            the qty question shows again, and nothing is
+                            written until Issue is pressed - a lost card must
+                            not cost the record just for asking (9 Sep) */
 
 function loadCards(){
   return api('/cardjobs/' + nav.todayKey())
@@ -1248,6 +1252,7 @@ function cardsDrawDrop(){
 /* ── the overlay ── */
 function cardsOpen(villa){
   CARD_VILLA = villa;
+  CARD_ASK = null;
   CARD_OFFLINE = false;
   document.getElementById('cardOv').hidden = false;
   cardRender();
@@ -1341,7 +1346,7 @@ function cardRender(){
     document.getElementById('cardTitle').textContent =
       'Key cards · villa ' + one.villa;
     var j = jobFor(one.villa);
-    if (!j || j.state === 'cancelled'){
+    if (!j || j.state === 'cancelled' || CARD_ASK == one.villa){
       var q = +(body.getAttribute('data-qty') || 2);
       body.innerHTML = '<div class="cardov-in"><div class="crun">' +
         '<div class="crun-v">Villa ' + one.villa + '<small>' +
@@ -1355,7 +1360,14 @@ function cardRender(){
         '</button></div></div></div>';
       return;
     }
-    body.innerHTML = '<div class="cardov-in">' + crunHTML(one, true) + '</div>';
+    /* A finished villa is not a closed one: a guest loses a card, a second
+       arrives late. The button re-opens the question only - the done record
+       stands until Issue actually writes a new job over it. */
+    body.innerHTML = '<div class="cardov-in">' + crunHTML(one, true) +
+      (cardCell(j).k === 'done'
+        ? '<div class="sum-btns"><button data-cardagain="' + one.villa +
+          '">Issue more cards</button></div>'
+        : '') + '</div>';
     return;
   }
 
@@ -1452,10 +1464,16 @@ function cardRender(){
       var r = rowFor(iss.getAttribute('data-cardissue'));
       var body2 = document.getElementById('cardBody');
       var p = r && putJob(r, +(body2.getAttribute('data-qty') || 2));
+      CARD_ASK = null;
       if (p) p.then(cardRender).catch(function(){
         err('The card job did not save. This is usually the connection.');
       });
       return;
+    }
+    var ag = e.target.closest('[data-cardagain]');
+    if (ag){
+      CARD_ASK = ag.getAttribute('data-cardagain');
+      cardRender(); return;
     }
     var c = e.target.closest('[data-cardcancel]');
     if (c){

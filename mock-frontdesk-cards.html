@@ -1179,10 +1179,10 @@ var VILLAS = [
   {villa:'9',  name:'Elena Marsh',     stay:'2 nights · 2 adults', dining:'Dining · 2 guests'},
   {villa:'14', name:'Claire Laurent',  stay:'1 night · 1 adult',  dining:'Not dining'}
 ];
-var CARDS, OPEN, CARD_VILLA, FAILNEXT, HELPER_T, OFFLINE, OV_T;
+var CARDS, OPEN, CARD_VILLA, CARD_ASK, FAILNEXT, HELPER_T, OFFLINE, OV_T;
 
 function resetAll(){
-  CARDS = {}; OPEN = null; CARD_VILLA = null; FAILNEXT = false; OFFLINE = false;
+  CARDS = {}; OPEN = null; CARD_VILLA = null; CARD_ASK = null; FAILNEXT = false; OFFLINE = false;
   document.getElementById('cardOv').hidden = true;
   render();
 }
@@ -1271,6 +1271,7 @@ function encodeAll(){
 /* ── the run screen ───────────────────────────────────────────────── */
 function openOv(villa){
   CARD_VILLA = villa;
+  CARD_ASK = null;
   OFFLINE = false;
   document.getElementById('cardOv').hidden = false;
   paintOv();
@@ -1351,7 +1352,7 @@ function paintOv(){
   if (one){
     document.getElementById('cardTitle').textContent = 'Key cards · villa ' + one.villa;
     var j = jobFor(one.villa);
-    if (!j || j.state === 'cancelled'){
+    if (!j || j.state === 'cancelled' || CARD_ASK == one.villa){
       var q = +(body.getAttribute('data-qty') || 2);
       body.innerHTML = '<div class="cardov-in"><div class="crun">' +
         '<div class="crun-v">Villa ' + one.villa + '<small>' + one.name + '</small></div>' +
@@ -1364,6 +1365,10 @@ function paintOv(){
       return;
     }
     body.innerHTML = '<div class="cardov-in">' + crunHTML(one, true) +
+      (cardCell(j).k === 'done'
+        ? '<div class="sum-btns"><button data-cardagain="' + one.villa +
+          '">Issue more cards</button></div>'
+        : '') +
       '<button class="simfail" data-simfail>simulate a failed write</button></div>';
     return;
   }
@@ -1458,7 +1463,10 @@ function tapCard(v){
     var iss = e.target.closest('[data-cardissue]');
     if (iss){ var b2 = document.getElementById('cardBody');
       putJob(iss.getAttribute('data-cardissue'), +(b2.getAttribute('data-qty') || 2));
+      CARD_ASK = null;
       paintOv(); return; }
+    var ag = e.target.closest('[data-cardagain]');
+    if (ag){ CARD_ASK = ag.getAttribute('data-cardagain'); paintOv(); return; }
     var c = e.target.closest('[data-cardcancel]');
     if (c){
       if (c.getAttribute('data-armed')){ delete CARDS[c.getAttribute('data-cardcancel')];

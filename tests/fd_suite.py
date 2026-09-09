@@ -2346,6 +2346,28 @@ with sync_playwright() as p:
     puts = [json.loads(x["b"]) for x in WRITES
             if "/cardjobs/%s/9" % today in x["u"] and x["m"] == "PUT"]
     ck("and issues the stepped quantity", puts and puts[0]["qty"] == 3)
+
+    #  Done is not closed - the owner, 9 Sep, the first live evening: a
+    #  lost card must be replaceable. The button re-opens the question
+    #  only; the done record stands until Issue writes over it.
+    CARDJOBS["9"].update({"state": "done", "written": 3})
+    pg.wait_for_timeout(1800)
+    ck("a done villa offers Issue more cards",
+       "Issue more cards" in pg.inner_text("#cardBody"))
+    del WRITES[:]
+    pg.evaluate("()=>document.querySelector('[data-cardagain]').click()")
+    pg.wait_for_timeout(150)
+    ck("which re-asks the quantity and writes nothing by itself",
+       "How many cards" in pg.inner_text("#cardBody") and not WRITES)
+    pg.wait_for_timeout(1800)   # the poll must not repaint the question away
+    ck("and the question survives the poll",
+       "How many cards" in pg.inner_text("#cardBody"))
+    pg.evaluate("()=>document.querySelector('[data-cardissue]').click()")
+    pg.wait_for_timeout(400)
+    reput = [json.loads(x["b"]) for x in WRITES
+             if "/cardjobs/%s/9" % today in x["u"] and x["m"] == "PUT"]
+    ck("and Issue queues a fresh job over the done one",
+       reput and reput[0]["state"] == "queued")
     pg.close()
 
     #  The queue must never lie in wait - the owner's ruling, 8 Sep. Ten
