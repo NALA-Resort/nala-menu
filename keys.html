@@ -765,14 +765,14 @@ function ovRender(cr){
   var b = '<div class="cardov-in"><div class="crun now">' +
     '<div class="crun-v">' + wiped +
     '<small>' + (wiped === 1 ? 'card cancelled' : 'cards cancelled') + '</small></div>' +
-    '<div class="cardask"><svg viewBox="0 0 140 96" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Present a card">' +
+    '<div class="cardask"><svg viewBox="0 0 140 96" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Hold a card to the reader">' +
     '<rect x="57" y="10" width="33" height="46" rx="5" transform="rotate(16 73 33)"/>' +
     '<path d="M58 50c-4 7-3 14 2 19 6 6 15 6 21 1l7-6"/>' +
     '<path d="M63 57c2-3 5-4 8-2M69 63c2-3 5-4 8-2"/>' +
     '<path class="wave w1" d="M40 30c-4 6-4 14 0 20"/><path class="wave w2" d="M30 24c-7 9-7 23 0 32"/>' +
     '<path class="wave w1" d="M106 30c4 6 4 14 0 20"/><path class="wave w2" d="M116 24c7 9 7 23 0 32"/>' +
     '</svg></div>' +
-    '<div class="crun-s">Present a card</div></div>';
+    '<div class="crun-s">Hold a card to the reader</div></div>';
   done.forEach(function(d){
     var label = d.note
       ? 'Card ' + esc(d.no || '') + ' · ' + esc(d.note)
