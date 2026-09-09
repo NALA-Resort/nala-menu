@@ -39,6 +39,8 @@ FRAGMENTS = [
     '>Cancel keys</button>',
     '>Issue keys</button>',
     '<div class="keydrop" id="issueDrop"></div>',
+    '#issueWrap .keydrop { left:0; right:auto; max-width:calc(100vw - 24px); }',
+    'border:1px solid var(--terra-b)',
     'All arrivals',
     'margin-right:auto',
     # the segmented control and its shrink-to-320 law

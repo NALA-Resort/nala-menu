@@ -473,6 +473,10 @@ button
 /* body is a flex column (the app's own base), so this page's wrapper is
    a flex item and must be allowed to shrink to the viewport */
 #body { min-width:0; width:100%; }
+/* the issue drop hangs from a LEFT-side button, so it anchors left -
+   front-desk's right:0 was that page's right-side key icon talking */
+#issueWrap .keydrop { left:0; right:auto; max-width:calc(100vw - 24px); }
+
 </style>
 </head>
 <body class="tier-app ui2">
@@ -484,7 +488,7 @@ button
     <div class="keydrop" id="issueDrop"></div>
   </div>
   <button class="btn" id="cancelBtn"
-    style="width:auto;min-height:36px;padding:7px 14px;margin-right:auto;background:transparent;color:var(--terra);border-color:var(--terra-b)">Cancel keys</button>
+    style="width:auto;min-height:36px;padding:7px 14px;margin-right:auto;background:transparent;color:var(--terra);border:1px solid var(--terra-b)">Cancel keys</button>
   <div class="navwrap" id="navWrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
     <div class="navdrop" id="navDrop"></div>
