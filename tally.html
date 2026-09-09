@@ -33,25 +33,32 @@
   .errbar.show { transform:translateY(0); }
 
 
-.menustate { text-align:center; margin-top:12px; }
-  /* Both states are pills. The published one renders as an <a> and the
-     unpublished as a <span>, so this must match either - selecting only
-     span left the published state unstyled but for its background.     */
-  .menustate > * { display:inline-block; border-radius:var(--pill);
+/* The pill sits in the Villas section row where the "Villas" label was
+     (owner, 9 Sep: a whole centred row above the numbers was vertical
+     space spent on one word of status). It wears the section-row button's
+     clothes - the same size, padding and --r radius as Select multiple
+     and +Add reservation - but keeps its status colours: fill and ink
+     stay the pill's own, and the border is the matching state border.
+     Both states must match one selector: the published pill has rendered
+     as an <a> before, and selecting only span left it unstyled.        */
+  .menustate > * { display:inline-block; border-radius:var(--r);
                    font-family:var(--ui-font); font-size:var(--t1);
-                   /* The right padding used to be short by .16em to take back
-                      the trailing space letter-spacing leaves inside the box.
-                      There is no letter-spacing now, so the compensation is
-                      what would push the text off centre.               */
-                   padding:6px 14px; }
+                   border:1px solid transparent;
+                   /* Symmetric on purpose: the suite asserts the text
+                      sits centred in the pill.                          */
+                   padding:6px 12px; }
   .menustate .yes { background:rgba(122,160,130,.22); color:#3F6B4C;
-                    text-decoration:none; }
+                    border-color:var(--green-b); text-decoration:none; }
   .menustate .yes b { font-weight:normal; opacity:.75; }
-  .menustate .no  { background:rgba(184,106,90,.18);  color:#8E4433; }
+  .menustate .no  { background:rgba(184,106,90,.18);  color:#8E4433;
+                    border-color:var(--terra-b); }
 
 
 .sec { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); margin:26px 0 12px;
-         display:flex; justify-content:space-between; align-items:baseline; }
+         display:flex; justify-content:space-between; align-items:center;
+         /* the not-published-for-this-date pill and Select multiple do not
+            both fit one row below 390; wrap beats a sideways bleed */
+         gap:8px; flex-wrap:wrap; }
   .sec a { color:var(--ink); text-decoration:none; border:1px solid var(--rule);
            font-size:var(--t1); padding:6px 12px; border-radius:var(--r);
            background:transparent; }
@@ -502,8 +509,6 @@ body.readonly .comb-undo { display:none; }
   }
 })();
 </script>
-  <div class="menustate" id="menuState"></div>
-
   <div class="noaccess" id="noAccess"></div>
 
   <div class="stats" id="statsRow">
@@ -514,7 +519,7 @@ body.readonly .comb-undo { display:none; }
   <div class="tablesline" id="tablesLine"></div>
 
   <div class="sec" id="roomsSec">
-    <span>Villas</span>
+    <div class="menustate" id="menuState"></div>
     <a href="#" id="selToggle">Select multiple</a>
   </div>
   <div class="rooms" id="rooms"></div>
