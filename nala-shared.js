@@ -2616,9 +2616,17 @@ function saveFailSay(target, msg){
 
 /* Two failures a person acts on differently: the database refused the write,
    which is a permission and needs the manager, and the write never arrived,
-   which needs another go. Anything else is the second one.              */
+   which needs another go. Anything else is the second one.
+
+   Except an error that already speaks the person's language. A page's own
+   pre-write check (the Spa board's sanity read, 9 Sep) refuses with a line
+   naming what actually stands and what to do about it; flattening that to
+   "check the connection" sends them to the wrong remedy, which is the exact
+   mistake this function exists to prevent. Such an error carries said:true
+   and its message rides through untouched.                              */
 function saveFailWords(e){
   var m = '' + (e && (e.message || e));
+  if (e && e.said) return m;
   if (/rejected|denied|permission|401|403/i.test(m))
     return 'The change was not allowed - tell the manager.';
   return 'Not saved - check the connection and try again.';

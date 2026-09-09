@@ -152,7 +152,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=56"></script>
+<script src="nala-shared.js?v=57"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -301,7 +301,13 @@ function dayOf(rec){
   return rec.reqDay || rec.day || '';
 }
 function asRequested(rec){
-  return !rec.reqDay || rec.day === rec.reqDay;
+  /* True of the time as well as the day. Until 9 Sep only the day was
+     compared, so a 4pm ask booked at 1pm wore "as requested" - which is
+     how a moved booking read as fine at a glance. The ask's time can be
+     free text ("afternoon"); only one that names a slot can disagree. */
+  if (rec.reqDay && rec.day !== rec.reqDay) return false;
+  var t = spaSlotFromText(rec.reqTime);
+  return !(t && rec.time && t !== rec.time);
 }
 
 /* The tile's anatomy, ruled 27 Aug: every line holds one kind of fact, in
@@ -771,6 +777,58 @@ function card(it){
   return el;
 }
 
+/* ── the sanity read ─────────────────────────────────────────
+   Seen live 9 Sep: one guest, three records - a decline still standing and
+   the same two-massage treatment booked twice at the same hour. Every
+   screen is a snapshot from its own last load and nothing pushes changes
+   to the others, so after a decline and a phoned-in change of plan, the
+   desk and the masseuse each answered the ask their stale board still
+   showed. A virtual ask mints a fresh record id on every answer, which is
+   how one request became three records.
+
+   So every save re-reads the guest's records first and refuses, writing
+   NOTHING, when the world has moved since the board drew:
+
+     - an ask already answered on another screen is not answered again
+       (each answer minting a fresh id is where the duplicates came from);
+     - a record that changed since this board drew it is not overwritten
+       blind (the `at` stamp is the generation mark);
+     - a day and time the guest already holds is not booked twice.
+
+   The refusal reloads the board on the spot, so the screen that was
+   behind catches up and the person sees what actually stands before
+   going again. Client-side only, and knowingly so: the database rules
+   cannot iterate a guest's sibling records, and the one second between
+   read and write is a far smaller window than the stale board this
+   closes, which could be hours wide.                                  */
+function saveRefusal(cur, it, tid, rec, body){
+  var minted = it.tid.indexOf('ask') === 0 || it.tid === 'new';
+  if (it.tid.indexOf('ask') === 0 && spaAskSpokenFor(cur))
+    return 'Already answered on another screen - nothing was written. ' +
+           'The board has caught up below; check it before going again.';
+  if (!minted){
+    var held = cur[it.tid];
+    if (!held || typeof held !== 'object' || held.status !== rec.status ||
+        String(held.at || '') !== String(rec.at || ''))
+      return 'This changed on another screen since the board loaded - ' +
+             'nothing was written. The board has caught up below; check ' +
+             'it and go again if the change still applies.';
+  }
+  if (body.day && body.time){
+    for (var t2 in cur){
+      var r2 = cur[t2];
+      if (t2 === tid || !r2 || typeof r2 !== 'object') continue;
+      if ((r2.status === 'booked' || r2.status === 'suggested') &&
+          r2.day === body.day && r2.time === body.time)
+        return nameOf(it.id, rec) + ' already holds a massage at ' +
+               niceDay(body.day) + ' ' + slotLabel(body.time) +
+               ' - nothing was written. Cancel that one first if this ' +
+               'is meant to replace it.';
+    }
+  }
+  return '';
+}
+
 /* One write, the whole record. PUT rather than PATCH so a record can never
    hold two generations at once: the fields of the state it left do not
    linger under the state it entered. */
@@ -823,9 +881,28 @@ function save(it, status, opts){
      lands green on the button that was pressed, and only then does the board
      reload underneath it.                                                 */
   return saveFeedback(pressedButton(), function(){
-  return fetch(DB + '/spa/' + id + '/' + tid + '.json', {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+  /* The sanity read, above: what stands at /spa for this guest right now,
+     not what this board loaded. One guest's few records - cheap - and the
+     only thing between two stale screens and three records of one ask.
+     A read that cannot be made is its own failure, worded by status like
+     the write's below: writing blind because the check was unreachable
+     would be the bug this exists to close. */
+  return fetch(DB + '/spa/' + id + '.json?v=' + Date.now()).then(function(r){
+    if (!r.ok) throw new Error('spa read failed ' + r.status);
+    return r.json();
+  }).then(function(cur){
+    cur = (cur && typeof cur === 'object') ? cur : {};
+    var no = saveRefusal(cur, it, tid, rec, body);
+    if (no){
+      /* The refused screen is the stale one, so it catches up on the
+         spot: the red line says what happened, the board what stands. */
+      OPEN = null; SEL = null; load();
+      var e2 = new Error(no); e2.said = true; throw e2;
+    }
+    return fetch(DB + '/spa/' + id + '/' + tid + '.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
   }).then(function(r){
     /* The STATUS goes into the error, not a bare one. The shared
        saveFailWords reads the message to tell a refusal - a permission,

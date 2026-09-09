@@ -163,6 +163,10 @@ def fb(route, request):
                            "more": {"dine": "Old dine more"}})
     elif "/staff" in u: body = json.dumps(STAFF)
     elif "/spa.json" in u: body = json.dumps(SPA)
+    elif re.search(r"/spa/[^/]+\.json", u):
+        # the sanity read before every save: one guest's records, fresh
+        k = re.search(r"/spa/([^/.]+)\.json", u).group(1)
+        body = json.dumps(SPA[k]) if k in SPA else "null"
     elif "/stays/" in u:
         d = u.split("/stays/")[1].split(".json")[0]
         body = json.dumps(STAYS_BY_DATE.get(d)) if d in STAYS_BY_DATE else "null"
@@ -1088,6 +1092,93 @@ with sync_playwright() as p:
        "manager" in pg.evaluate("()=>errBar.textContent").lower()
        and "connection" not in pg.evaluate("()=>errBar.textContent").lower())
     STATE["fail"] = False
+    pg.close()
+
+    # ── the sanity read: a stale board cannot double-write ──────
+    # Seen live 9 Sep: one guest, three records - a decline still standing
+    # and the same treatment booked twice at the same hour. Two screens,
+    # each a snapshot, each answered the ask its own board still showed,
+    # and every answer to a virtual ask mints a fresh record id, so nothing
+    # collided and everything landed. Every save now re-reads the guest's
+    # records first and refuses - writing nothing - when the world has
+    # moved, and the refusal reloads the board so the stale screen catches
+    # up. Three refusals, one per way the world can have moved.
+
+    # 1. An ask answered on another screen is not answered again.
+    pg = board()
+    pg.locator('#board [data-booking="b9"]').click(); pg.wait_for_timeout(300)
+    # another screen declines the same ask while this card is open
+    SPA["b9"] = {"tX": {"status": "declined", "reqDay": today,
+                        "reqTime": "afternoon", "name": "Sofia Marino",
+                        "source": "prearrival", "by": "masseuse@x",
+                        "at": "2026-09-09T01:00:00Z"}}
+    del WRITES[:]; del PUSHES[:]
+    pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
+    ck("an ask answered elsewhere is refused, nothing written",
+       not [x for x in WRITES if "/spa/" in x["u"]])
+    ck("and refused in its own words, not the connection's or the manager's",
+       "another screen" in pg.evaluate("()=>errBar.textContent") and
+       "connection" not in pg.evaluate("()=>errBar.textContent") and
+       "manager" not in pg.evaluate("()=>errBar.textContent"))
+    ck("and the stale board catches up on the spot",
+       pg.evaluate("()=>document.querySelector('#board [data-booking=\"b9\"]')"
+                   "?.dataset.status") == "declined")
+    ck("and buzzes nobody about a write that never happened", not PUSHES)
+    SPA = spa_seed()
+    pg.close()
+
+    # 2. A record that changed since the board drew is not overwritten
+    #    blind: the desk approves a suggestion the masseuse has meanwhile
+    #    rewritten, and the tap must see the new one before it books.
+    pg = board("staff@x")
+    pg.locator('#board [data-booking="b12"]').click(); pg.wait_for_timeout(300)
+    SPA["b12"]["t1"]["time"] = "15:00"
+    SPA["b12"]["t1"]["at"] = "2026-09-09T01:00:00Z"
+    del WRITES[:]
+    pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)  # Approve
+    ck("a record that changed under the open card is refused, nothing written",
+       not [x for x in WRITES if "/spa/" in x["u"]])
+    ck("and the words say it changed and the board has caught up",
+       "changed on another screen" in pg.evaluate("()=>errBar.textContent"))
+    SPA = spa_seed()
+    pg.close()
+
+    # 3. An hour the guest already holds is not booked twice. The desk's
+    #    own record does not speak for the form's ask - a stay can hold two
+    #    treatments - so both stand on the board; booking the ask onto the
+    #    hour the guest already has is the one combination that must refuse.
+    SPA["b9"] = {"tD": {"status": "booked", "day": today, "time": "10:00",
+                        "name": "Sofia Marino", "source": "desk",
+                        "by": "staff@x", "at": "2026-09-09T01:00:00Z"}}
+    pg = board()
+    pg.locator('#board [data-booking="b9"][data-status="requested"]').click()
+    pg.wait_for_timeout(300)
+    del WRITES[:]
+    pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)  # Confirm 10am
+    ck("an hour the guest already holds cannot be booked twice",
+       not [x for x in WRITES if "/spa/" in x["u"]])
+    ck("and the refusal names the guest and the hour held",
+       "already holds" in pg.evaluate("()=>errBar.textContent") and
+       "10:00 am" in pg.evaluate("()=>errBar.textContent"))
+    SPA = spa_seed()
+    pg.close()
+
+    # ── "as requested" is true of the hour as well as the day ───
+    # Until 9 Sep only the day was compared, so a 4pm ask booked at 1pm
+    # wore "as requested" - which is how a moved booking read as fine at a
+    # glance. Free text that names no slot cannot disagree and stands.
+    SPA["b3"]["t1"]["reqTime"] = "4:00 pm"
+    SPA["b3"]["t1"]["time"] = "13:00"
+    pg = board()
+    ck("a booking at an hour the guest did not ask for says moved from",
+       "moved from" in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b3\"] .st').textContent"))
+    SPA = spa_seed()
+    pg.close()
+    pg = board()
+    ck("an ask in free text still reads as requested at any bookable hour",
+       "as requested" in pg.evaluate(
+         "()=>document.querySelector('#board [data-booking=\"b3\"] .st').textContent"))
     pg.close()
 
     # ── the manager's spa prices, set from Settings ─────────────
