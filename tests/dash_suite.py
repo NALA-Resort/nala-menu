@@ -131,6 +131,16 @@ INVITES = {"3": {"status": "sent", "sentAt": at(10, 11)}}
 # housekeeping may read the day, and may still not print the sheets.
 PERMS = {}
 
+# Booked treatments only. A request or a suggestion is not something anybody
+# is expecting a guest to turn up for, so it is not a reminder.
+SPA = {"b3": {"t1": {"status": "booked", "day": today, "time": "11:00",
+                     "dur": 60, "qty": 1, "name": "Ada Lovelace"}},
+       "b7": {"t2": {"status": "requested", "reqDay": today, "reqTime": "any"},
+              "t3": {"status": "booked", "day": today, "time": "14:30",
+                     "dur": 90, "qty": 2, "name": "Mark Whitfield"}},
+       "b11": {"t4": {"status": "booked", "day": plus(1), "time": "09:00",
+                      "dur": 60, "qty": 1}}}
+
 STATE = {"fail": False}
 DAYBOARD = {}
 CARDJOBS = {}   # villa -> its /cardjobs job for today
@@ -153,6 +163,7 @@ def fb(route, request):
                       body=request.post_data or "null"); return
     body = "null"
     if "/staff" in u: body = json.dumps(STAFF)
+    elif "/spa.json" in u or u.rstrip("/").endswith("/spa"): body = json.dumps(SPA)
     elif "/permissions" in u: body = json.dumps(PERMS)
     elif "/dayboard/" + today in u: body = json.dumps(DAYBOARD)
     elif "/dayboard/" in u: body = "null"
@@ -507,6 +518,43 @@ with sync_playwright() as p:
     pg = board()
     ck("the arrival sheets card offers Mark done, same as the other print cards",
        pg.evaluate("()=>!!document.querySelector(\'[data-mark=\"sheets\"]\')"))
+
+    # ── the spa reminder ────────────────────────────────────────
+    pg = board()
+    ck("the spa reminder is first on the board, above the flow",
+       [c["k"] for c in cards(pg)][0] == "spa")
+    sp = card(pg, "spa")
+    ck("today's booked treatments are on the board, in time order",
+       sp["chips"] == ["11:00 am:grey", "2:30 pm:grey"])
+    ck("a treatment booked for another day is not",
+       "9:00 am" not in str(sp["chips"]))
+    ck("nor is one only requested, which nobody is expecting a guest for",
+       len(sp["chips"]) == 2)
+    ck("it carries no action beyond its door, because the desk cannot do "
+       "anything to a treatment from here",
+       not pg.evaluate("()=>!!document.querySelector('[data-print=\"spa\"]')"))
+    ck("and it opens the Spa board",
+       pg.evaluate("()=>HREF.spa") == "spa.html")
+    pg.click("[data-mark='spa']"); pg.wait_for_timeout(150)
+    pg.click("[data-mark='spa']"); pg.wait_for_timeout(500)
+    ck("it can be marked done, and says done rather than printed",
+       "spa" in DAYBOARD)
+    pg.close()
+    pg = board()
+    ck("a done reminder recedes and says when",
+       card(pg, "spa")["pos"] == "past"
+       and card(pg, "spa")["note"].startswith("done "))
+    pg.close()
+    DAYBOARD.pop("spa", None)
+
+    SAVED_SPA = dict(SPA)
+    SPA.clear()
+    ns = board()
+    ck("and on a day with no treatments the card is not there at all",
+       not [c for c in cards(ns) if c["k"] == "spa"])
+    ns.close()
+    SPA.clear(); SPA.update(SAVED_SPA)
+    pg = board()
 
     # ── arrivals are read from checkedInAt ──────────────────────
     arr = card(pg, "arr")

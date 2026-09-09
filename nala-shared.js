@@ -2754,3 +2754,14 @@ function stateOf(villa, stay, cell, invite, fix, dateKey){
              tickable:true, ticked:true };
   return { kind:'ready', line:'Not asked, not answered', tickable:true, ticked:true };
 }
+
+/* Which day a spa record belongs to on the board. Moved out of spa.html
+   on 8 Sep so the Dashboard could reuse it rather than rebuild it.
+
+   Which day a record belongs to on the board. A booked or suggested
+   treatment sits on its own day; a request and a decline sit on the day the
+   guest asked about, because that is when somebody will look for them. */
+function dayOf(rec){
+  if (rec.status === 'booked' || rec.status === 'suggested') return rec.day || '';
+  return rec.reqDay || rec.day || '';
+}
