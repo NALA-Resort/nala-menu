@@ -367,13 +367,23 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.getElementById('nInv').textContent") == "1")
 
     # ── the menu count ──────────────────────────────────────────
-    # 10 covers, plus villa 11's three unanswered adults, is 13 menus, on
-    # ceil(13/2)+1 = 8 pages.
+    # 16 to print for. A menu is shared between two diners and two menus
+    # print to a sheet, so a page covers four: ceil(16/4) = 4 pages
+    # (owner, 9 Sep - the old count was a menu each, plus a spare).
     menus = card(pg, "menus")
     ck("an unanswered villa is still printed for, at the adults on the booking",
-       menus["note"].startswith("16 menus on 9 pages"))
+       menus["note"].startswith("4 pages for 16 diners"))
     ck("and the note says how many of those are still unanswered",
        menus["note"].endswith("3 not answered yet"))
+
+    # 16 divides by four, so the line above cannot tell ceil from floor.
+    # This one can: a part page is a whole page.
+    MANUAL["ext-a"]["pax"] = 5
+    rp = board()
+    ck("a part page rounds UP: 17 diners is 5 pages, not 4",
+       card(rp, "menus")["note"].startswith("5 pages for 17 diners"))
+    rp.close()
+    MANUAL["ext-a"]["pax"] = 4
 
     # ── the menu, and only tonight's ────────────────────────────
     MENU_NOW["m"] = STALE_MENU
@@ -526,8 +536,11 @@ with sync_playwright() as p:
     ck("the spa reminder is first on the board, above the flow",
        [c["k"] for c in cards(pg)][0] == "spa")
     sp = card(pg, "spa")
-    ck("today's booked treatments are on the board, in time order",
-       sp["chips"] == ["11:00 am:grey", "2:30 pm:grey"])
+    # b3 is villa 3's stay tonight and b7 villa 7's: the chip leads with the
+    # room, joined from the stay row that carries the booking id.
+    ck("today's booked treatments are on the board, in time order, each "
+       "with its villa",
+       sp["chips"] == ["3 \u00b7 11:00 am:grey", "7 \u00b7 2:30 pm:grey"])
     ck("a treatment booked for another day is not",
        "9:00 am" not in str(sp["chips"]))
     ck("nor is one only requested, which nobody is expecting a guest for",

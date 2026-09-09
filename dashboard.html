@@ -431,8 +431,11 @@ function items(t){
   /* What to print for: everyone who said yes, plus everyone who has not
      answered. A decline is the only thing that takes a menu off the pile. */
   var expect = covers + unknownPax;
-  /* Two A5 to an A4, and one spare page. */
-  var pages = Math.ceil(expect / 2) + 1;
+  /* A menu is shared between two diners, and two menus print to a sheet,
+     so one page covers four (owner, 9 Sep - the old count was a menu each,
+     plus a spare). Round up: half a page is a page. Never nought, so the
+     qty control always holds a printable number. */
+  var pages = Math.max(1, Math.ceil(expect / 4));
   var allIn = inv && out === 0;
   var firm = allIn || t >= GIVEUP;
 
@@ -468,6 +471,15 @@ function items(t){
      something anybody is expecting a guest to turn up for. dayOf is spa.html's
      own reading of which day a record sits on. */
   var spa = [];
+  /* The chip's room number. A spa record keys by BOOKING id and carries no
+     villa; tonight's stay row (fetchStays, above) carries that id, so the
+     villa is the row holding it - a join of two owned facts, not a new one.
+     A booked guest with no row tonight keeps a bare time chip. */
+  var spaVilla = {};
+  Object.keys(stays).forEach(function(v){
+    var s = stays[v];
+    if (s && typeof s === 'object' && s.id) spaVilla[String(s.id)] = v;
+  });
   Object.keys(DATA.spa).forEach(function(id){
     var t = DATA.spa[id];
     if (!t || typeof t !== 'object') return;
@@ -475,24 +487,27 @@ function items(t){
       var r = t[tid];
       if (!r || r.status !== 'booked') return;
       if (dayOf(r) !== day) return;
-      spa.push(r);
+      spa.push({ r: r, villa: spaVilla[String(id)] || '' });
     });
   });
-  spa.sort(function(a,b){ return String(a.time||'').localeCompare(String(b.time||'')); });
+  spa.sort(function(a,b){
+    return String(a.r.time||'').localeCompare(String(b.r.time||''));
+  });
 
   if (spa.length){
-    /* The chips carry when, so the note carries what: quantity and BOTH
-       lengths, in spa.html's own words. Saying the time twice told the desk
-       nothing it could not already see, and a hidden second length is the
-       bug that forced a pair onto one tile on that board. */
+    /* The chips carry who and when, so the note carries what: quantity and
+       BOTH lengths, in spa.html's own words. Saying the time twice told the
+       desk nothing it could not already see, and a hidden second length is
+       the bug that forced a pair onto one tile on that board. */
     L.push({ k:'spa', lab: spa.length === 1 ? 'Spa booking' : 'Spa bookings',
       owner:'spa',
-      units: spa.map(function(r){
-        return { id: spaSlotLabel(r.time), tone: DATA.done.spa ? 'green' : 'grey' };
+      units: spa.map(function(x){
+        return { id: (x.villa ? x.villa + ' · ' : '') + spaSlotLabel(x.r.time),
+                 tone: DATA.done.spa ? 'green' : 'grey' };
       }),
       state: DATA.done.spa ? 'done' : 'shut',
       note: DATA.done.spa ? printedNote('spa')
-          : spa.map(spaOffering).join(', '),
+          : spa.map(function(x){ return spaOffering(x.r); }).join(', '),
       tick:true });
   }
 
@@ -607,7 +622,8 @@ function items(t){
   L.push({ k:'menus', lab:'Menus', owner:'paper', units:[],
     state: DATA.done.menus ? 'done' : (firm ? 'ready' : 'waiting'),
     note: DATA.done.menus ? printedNote('menus')
-        : expect + ' menus on ' + pages + ' pages' +
+        : pages + (pages === 1 ? ' page for ' : ' pages for ') +
+          expect + (expect === 1 ? ' diner' : ' diners') +
           (unknownPax ? ', ' + unknownPax + ' not answered yet' : ''),
     qty: QTY.menus != null ? QTY.menus : pages, qmin:1, qmax:pages + 8,
     print:'menus', quiet:!firm });
