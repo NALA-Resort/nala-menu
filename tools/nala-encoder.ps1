@@ -151,17 +151,22 @@ while ($true) {
   try {
     $day = Today
     $jobs = Fb-Get "/cardjobs/$day"
+    # Objects, not nested arrays: PowerShell's pipeline unwraps a single
+    # nested pair into its two halves, so the first one-villa day read the
+    # villa name as the job and wrote zero cards. Found live, 9 Sep.
     $queued = @()
     if ($jobs) {
       foreach ($p in $jobs.PSObject.Properties) {
-        if ($p.Value.state -eq "queued") { $queued += ,@($p.Name, $p.Value) }
+        if ($p.Value.state -eq "queued") {
+          $queued += [pscustomobject]@{ villa = $p.Name; job = $p.Value }
+        }
       }
     }
     # villa order, the batch promise the run screen makes
-    $queued = $queued | Sort-Object { [int]$_[0] }
+    $queued = @($queued | Sort-Object { [int]$_.villa })
 
     foreach ($q in $queued) {
-      $villa = $q[0]; $job = $q[1]
+      $villa = $q.villa; $job = $q.job
       $lock = (Locks).PSObject.Properties[$villa]
       if (-not $lock) {
         Fb-Patch "/cardjobs/$day/$villa" @{ state="failed"; note="no lock named $villa in TTHotel" }
