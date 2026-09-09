@@ -182,6 +182,7 @@ PAGES = [
     ("dashboard.html",    ""),
     ("cleaners.html",     ""),
     ("front-desk.html",   ""),
+    ("keys.html",         ""),
     ("invitations.html",  ""),
     ("past-menus.html",   ""),
     ("templates.html",    ""),
