@@ -1248,10 +1248,10 @@ function drawDrop(){
 }
 
 /* ── queue writes, exactly the real page's shapes ─────────────────── */
-/* the mock's stand-in for cardExpiry: checkout at 11:00, two mornings on */
+/* the mock's stand-in for cardExpiry: checkout at 1pm, two mornings on */
 var MOCK_EXPIRY = (function(){
   var d = new Date(Date.now() + 2 * 86400000);
-  d.setHours(11, 0, 0, 0);
+  d.setHours(13, 0, 0, 0);
   return Math.floor(d.getTime() / 1000);
 })();
 function putJob(v, qty){

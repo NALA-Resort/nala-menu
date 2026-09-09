@@ -8,7 +8,7 @@ pre-arrival form got its shared reader after the boards had already drifted
 and this feature gets it first.
 
 Also here: cardExpiry, which turns a booking's depart date into the epoch
-second the card dies. Checked relatively - 11:00 on the depart day in the
+second the card dies. Checked relatively - CARD_CHECKOUT_HOUR on the depart day in the
 machine's own zone - so the assertion holds in any TZ the runner picks,
 which is what a date test owes (CLAUDE.md rule 7).
 """
@@ -65,10 +65,13 @@ with sync_playwright() as p:
       }""")
     ck("a card dies at checkout hour on the depart day",
        exp["h"] == exp["hour"] and exp["m"] == 0 and exp["day"] == "2026-09-14", exp)
-    ck("checkout hour is the agreed 11", exp["hour"] == 11, exp)
+    #  Pinned on both sides on purpose: moving the hour must edit this
+    #  line too, so it is never moved by accident. 11 until 9 Sep, when
+    #  the owner ruled 1pm on seeing the first live card.
+    ck("checkout hour is the agreed 1pm", exp["hour"] == 13, exp)
     ck("a Mews-shaped timestamp gives the same day as its date part",
        pg.evaluate("()=>cardExpiry('2026-09-14T04:00:00Z') === cardExpiry('2026-09-14')")
-       or pg.evaluate("()=>new Date(cardExpiry('2026-09-14T04:00:00Z')*1000).getHours()") == 11)
+       or pg.evaluate("()=>new Date(cardExpiry('2026-09-14T04:00:00Z')*1000).getHours()") == 13)
     ck("no depart date, no expiry, rather than an invented one",
        pg.evaluate("()=>cardExpiry(null) === null && cardExpiry('') === null"))
 

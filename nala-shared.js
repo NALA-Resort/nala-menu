@@ -773,7 +773,7 @@ function formState(p, stay){
    as an epoch by cardExpiry, which builds it in the DEVICE's zone -
    staff devices live at the resort, the same assumption every board
    already makes when it says "today". */
-var CARD_CHECKOUT_HOUR = 11;
+var CARD_CHECKOUT_HOUR = 13;   /* 1pm, the owner, 9 Sep - was 11 */
 
 function cardExpiry(dep){
   var d = parseDepDate(dep);

@@ -2293,7 +2293,7 @@ with sync_playwright() as p:
          var ex=new Date(e*1000);
          return t.indexOf('valid')>=0
              && t.indexOf(dateLabel(ex).toLowerCase())>=0
-             && t.indexOf('11:00')>=0;}""", j4["expiry"]))
+             && t.indexOf('13:00')>=0;}""", j4["expiry"]))
     ck("the batch bar reads written over wanted",
        pg.evaluate("""()=>{var i=document.querySelector('.cprog i');
          return i && i.style.width !== '' && i.style.width !== '0%';}"""))
@@ -2338,7 +2338,7 @@ with sync_playwright() as p:
        "How many cards" in pg.inner_text("#cardBody"))
     ck("and says what the cards will be valid for, before Issue is pressed",
        "valid" in pg.inner_text("#cardBody").lower()
-       and "11:00" in pg.inner_text("#cardBody"))
+       and "13:00" in pg.inner_text("#cardBody"))
     pg.evaluate("()=>document.querySelector('[data-cardq=\"1\"]').click()")
     pg.wait_for_timeout(150)
     pg.evaluate("()=>document.querySelector('[data-cardissue]').click()")

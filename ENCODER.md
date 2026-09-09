@@ -14,7 +14,7 @@ The feature spans four places; each owns one thing:
 The flow at the desk: the key in the Front Desk date row → Encode all keys
 (or one villa from its sheet, with a quantity) → hold each card to the E3 as
 the run screen asks → envelope each villa's cards as it goes green. A card
-dies at 11:00 on the guest's departure day (`CARD_CHECKOUT_HOUR`,
+dies at 1pm on the guest's departure day (`CARD_CHECKOUT_HOUR`,
 nala-shared.js — one number, change it there or nowhere).
 
 ## Setting it up, once
