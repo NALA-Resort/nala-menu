@@ -31,6 +31,13 @@ $ENC_PASS    = "000000"                     # its six digits
 $COM_PORT    = ""                           # "COM3" if known; empty scans COM1..COM20
 $ALLOW_LOCKOUT = $false   # a guest card does not open a double-locked door
 # ────────────────────────────────────────────────────────────────────
+# The desk's filled-in values live better in nala-config.ps1 beside this
+# file: the same lines as above, once. If it exists it wins, so a fresh
+# download of this file needs no editing - added 9 Sep, after the desk
+# re-copied five values for the third time in one afternoon.
+if (Test-Path (Join-Path $PSScriptRoot "nala-config.ps1")) {
+  . (Join-Path $PSScriptRoot "nala-config.ps1")
+}
 
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
@@ -58,8 +65,22 @@ public static class CE {
                                         string mac, uint timestamp, bool allowLockOut);
   [DllImport("CardEncoder.dll")]
   public static extern int CE_Beep(int voiceLen, int interval, int voiceCount);
+  [DllImport("CardEncoder.dll")]
+  public static extern int CE_GetCardNo(out IntPtr cardNumber);
 }
 "@
+
+# The number of whatever card sits on the pad, or null for an empty pad
+# (or an encoder that would not say - callers treat unknown as empty).
+function Get-CardNo {
+  $p = [IntPtr]::Zero
+  try {
+    if ([CE]::CE_GetCardNo([ref]$p) -eq 0 -and $p -ne [IntPtr]::Zero) {
+      return [Runtime.InteropServices.Marshal]::PtrToStringAnsi($p)
+    }
+  } catch {}
+  return $null
+}
 
 # The manual's error table, so a code lands at the desk as a sentence.
 $CE_ERR = @{
@@ -181,14 +202,26 @@ while ($true) {
       # fresh stamp on a writing job as "the encoder is alive", and a
       # stale one as a PC that died mid-write (front-desk.html, cardsAlive)
       Fb-Patch "/cardjobs/$day/$villa" @{ state="writing"; written=0; at=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
-      $failed = $null
+      $failed = $null; $lastNo = $null
       for ($i = 1; $i -le [int]$job.qty; $i++) {
+        # TTHotel's own dialog waits for the last card to LEAVE before it
+        # asks for the next, and it is right: 800ms after a beep the same
+        # card is still on the pad, and the first live batch (9 Sep) wrote
+        # card 1 twice and called it two cards. Wait until the pad stops
+        # showing the card just written; a swap to a fresh card also ends
+        # the wait, because the number changes.
+        if ($i -gt 1) {
+          if ($lastNo) {
+            Log "  lift card $($i-1) off the reader"
+            while ((Get-CardNo) -eq $lastNo) { Start-Sleep -Milliseconds 700 }
+          } else { Start-Sleep -Milliseconds 2500 }   # encoder would not say: give a human beat
+        }
         Log "  hold card $i of $($job.qty) to the reader"
         $failed = Write-One $villa $lock.Value ([uint32]$job.expiry)
         if ($failed) { break }
+        $lastNo = Get-CardNo
         Fb-Patch "/cardjobs/$day/$villa" @{ written=$i; at=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
-        Log "  card $i written"
-        if ($i -lt [int]$job.qty) { Start-Sleep -Milliseconds 800 }   # lift-off gap
+        Log "  card $i written - lift it off"
       }
       if ($failed) {
         Log "  FAILED: $failed"
