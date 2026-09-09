@@ -1,0 +1,144 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<!-- ══════════════════════════════════════════════════════════════════
+   MOCK ONLY. Not linked from NAV, not published, no database behind it.
+
+   The menu-published pill moves off its own centred row (12px margin +
+   ~31px pill = a whole row of vertical space) and becomes the left half
+   of the Villas section row, replacing the "Villas" label. It wears the
+   +Add reservation button's clothes - same font size, same 6px 12px
+   padding, same 8px radius, same 1px border - but keeps its status
+   colours: green fill for published, terracotta fill for not.
+   Metrics copied from tally.html / nala-ui2.css: --t1:12px --r:8px.
+   ══════════════════════════════════════════════════════════════════ -->
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--cream:#F9F7F4;--ink:#1C1C1A;--mid:#999990;--rule:#E0E0DA;
+ --green:#5E7D67;--green-t:rgba(122,160,130,.26);--green-b:rgba(122,160,130,.65);
+ --terra:#9E6455;--terra-t:rgba(184,106,90,.16);--terra-b:rgba(184,106,90,.45);
+ --slate-t:rgba(87,87,94,.10);--slate-b:rgba(87,87,94,.28);
+ --t1:12px;--t2:14px;--r:8px;--pill:999px;
+ --ui-font:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+body{background:#ECEAE5;font-family:var(--ui-font);color:var(--ink);padding:20px 10px}
+h1{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);
+   text-align:center;margin:0 0 16px}
+.cap{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);
+     max-width:390px;margin:22px auto 8px}
+.frame{width:390px;max-width:100%;margin:0 auto;background:var(--cream);
+       border:1px solid var(--rule);border-radius:12px;padding:20px 24px 24px}
+
+/* ── shared board furniture, copied from tally.html ── */
+.stats{display:flex;justify-content:center;gap:34px;margin:18px 0 4px;text-align:center}
+.stat-n{font-size:27px}.stat-l{font-size:var(--t1);color:var(--mid);margin-top:2px}
+.sec{font-size:var(--t1);color:var(--mid);margin:26px 0 12px;
+     display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.sec a{color:var(--ink);text-decoration:none;border:1px solid var(--rule);
+       font-size:var(--t1);padding:6px 12px;border-radius:var(--r);background:transparent}
+.rooms{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.room{aspect-ratio:1;border:1px solid var(--rule);border-radius:var(--r);
+      display:flex;align-items:center;justify-content:center;font-size:var(--t2)}
+.room.await{border-style:dashed;border-color:var(--mid)}
+.room.vacant{background:var(--slate-t);border-color:var(--slate-b);color:var(--mid)}
+
+/* ── BEFORE: the pill on its own centred row ── */
+.menustate-old{text-align:center;margin-top:12px}
+.menustate-old>*{display:inline-block;border-radius:var(--pill);
+                 font-size:var(--t1);padding:6px 14px}
+.menustate-old .no{background:rgba(184,106,90,.18);color:#8E4433}
+
+/* ── AFTER: the pill IS the Villas row's title, dressed as the button ── */
+.menustate>*{display:inline-block;border-radius:var(--r);
+             font-size:var(--t1);padding:6px 12px;
+             border:1px solid transparent;text-decoration:none}
+.menustate .yes{background:rgba(122,160,130,.22);color:#3F6B4C;border-color:var(--green-b)}
+.menustate .no {background:rgba(184,106,90,.18); color:#8E4433;border-color:var(--terra-b)}
+
+/* ── the tables make-up takes the Bookings title's seat the same way ── */
+.sec .makeup{color:var(--ink)}
+.bkrow{display:flex;justify-content:space-between;font-size:var(--t2);
+       padding:10px 0;border-bottom:1px solid var(--rule)}
+.bkrow .mid{color:var(--mid)}
+</style></head><body>
+<h1>Reservations &middot; menu pill</h1>
+
+<div class="cap">Now &middot; its own row above the numbers</div>
+<div class="frame">
+  <div class="menustate-old"><span class="no">Menu not published</span></div>
+  <div class="stats">
+    <div class="stat"><div class="stat-n">0</div><div class="stat-l">Covers</div></div>
+    <div class="stat"><div class="stat-n">0</div><div class="stat-l">Villas out</div></div>
+    <div class="stat"><div class="stat-n" style="color:#A8321E">2</div><div class="stat-l">Villas awaiting</div></div>
+  </div>
+  <div class="sec"><span>Villas</span><a href="#">Select multiple</a></div>
+  <div class="rooms">
+    <div class="room">1</div><div class="room">2</div><div class="room">3</div>
+    <div class="room await">4</div><div class="room">5</div><div class="room await">6</div>
+  </div>
+</div>
+
+<div class="cap">Proposed &middot; the pill takes the Villas title's seat</div>
+<div class="frame">
+  <div class="stats" style="margin-top:0">
+    <div class="stat"><div class="stat-n">0</div><div class="stat-l">Covers</div></div>
+    <div class="stat"><div class="stat-n">0</div><div class="stat-l">Villas out</div></div>
+    <div class="stat"><div class="stat-n" style="color:#A8321E">2</div><div class="stat-l">Villas awaiting</div></div>
+  </div>
+  <div class="sec">
+    <div class="menustate"><span class="no">Menu not published</span></div>
+    <a href="#">Select multiple</a>
+  </div>
+  <div class="rooms">
+    <div class="room">1</div><div class="room">2</div><div class="room">3</div>
+    <div class="room await">4</div><div class="room">5</div><div class="room await">6</div>
+  </div>
+</div>
+
+<div class="cap">Proposed &middot; published state, same seat</div>
+<div class="frame">
+  <div class="stats" style="margin-top:0">
+    <div class="stat"><div class="stat-n">14</div><div class="stat-l">Covers</div></div>
+    <div class="stat"><div class="stat-n">2</div><div class="stat-l">Villas out</div></div>
+    <div class="stat"><div class="stat-n">0</div><div class="stat-l">Villas awaiting</div></div>
+  </div>
+  <div class="sec">
+    <div class="menustate"><span class="yes">Menu published 4:12 pm</span></div>
+    <a href="#">Select multiple</a>
+  </div>
+  <div class="rooms">
+    <div class="room">1</div><div class="room">2</div><div class="room">3</div>
+    <div class="room vacant">4</div><div class="room">5</div><div class="room">6</div>
+  </div>
+</div>
+
+<div class="cap">Proposed &middot; the make-up takes the Bookings title's seat too</div>
+<div class="frame">
+  <div class="sec" style="margin-top:0">
+    <span class="makeup">2 twos &middot; 2 tables</span>
+    <a href="#">+ Add reservation</a>
+  </div>
+  <div class="bkrow"><span><b>4</b> &ndash;</span><span>2 pax</span></div>
+  <div class="bkrow"><span><b>11</b> &ndash;</span><span>2 pax</span></div>
+</div>
+
+<div class="cap">Proposed &middot; and back to "Bookings" when there is nothing to say</div>
+<div class="frame">
+  <div class="sec" style="margin-top:0">
+    <span>Bookings</span>
+    <a href="#">+ Add reservation</a>
+  </div>
+  <div class="bkrow" style="border:none"><span class="mid" style="font-style:italic">No bookings yet</span></div>
+</div>
+
+<div class="cap">Worst width &middot; the long "for this date" text wraps below, never bleeds</div>
+<div class="frame">
+  <div class="sec" style="margin-top:0">
+    <div class="menustate"><span class="no">Menu not published for this date</span></div>
+    <a href="#">Select multiple</a>
+  </div>
+  <div class="rooms">
+    <div class="room">1</div><div class="room">2</div><div class="room">3</div>
+    <div class="room await">4</div><div class="room">5</div><div class="room await">6</div>
+  </div>
+</div>
+
+</body></html>
