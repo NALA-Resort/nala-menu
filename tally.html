@@ -63,6 +63,9 @@
            font-size:var(--t1); padding:6px 12px; border-radius:var(--r);
            background:transparent; }
   .sec a.active { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  /* the make-up is a statement, not a label: it reads in ink while the
+     seat it borrowed stays --mid when it falls back to "Bookings" */
+  .sec .makeup { color:var(--ink); }
 
   /* room grid */
   .rooms { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; }
@@ -530,7 +533,7 @@ body.readonly .comb-undo { display:none; }
   </div>
 
   <div class="sec" id="listSec">
-    <span>Bookings</span>
+    <span id="tablesLine">Bookings</span>
     <a href="#" id="addExt">+ Add reservation</a>
   </div>
   <div id="listBookings"></div>
@@ -1201,10 +1204,35 @@ function render(){
     return row;
   }
 
-  /* The make-up line ("3 twos \u00b7 1 three \u00b7 4 tables") was summed here until
-     9 Sep, when the owner had it removed with the pill's move: the kitchen
-     never used it and its row was vertical space. The combined groups it
-     counted still draw the table rings.                                  */
+  // tables: each combined group is one table; everyone else is their own
+  var tblPax = {};   // unit key -> summed pax
+  rows.forEach(function(r){
+    var unit = r.room ? (groupOf(r.room) || 'room-'+r.room) : 'ext-'+r.key;
+    tblPax[unit] = (tblPax[unit]||0) + (r.g.pax||1);
+  });
+  var sizes = {};
+  for (var u in tblPax) sizes[tblPax[u]] = (sizes[tblPax[u]]||0) + 1;
+  var tblCount = Object.keys(tblPax).length;
+  var parts = Object.keys(sizes).map(Number).sort(function(a,b){return a-b;})
+    .map(function(sz){ var n=sizes[sz];
+      var W=['','one','two','three','four','five','six','seven','eight','nine','ten'];
+      var w=W[sz]||sz; return n+' '+w+(n>1?'s':''); });
+  /* The make-up sits in the Bookings section row where the "Bookings"
+     label was (owner, 9 Sep, the same stroke that seated the menu pill
+     in the Villas row): a statement in the title's seat, so its old row
+     under the numbers is vertical space returned. With no tables to
+     describe there is no statement, and the seat goes back to being the
+     "Bookings" label rather than an unlabelled row.                    */
+  var tl = document.getElementById('tablesLine');
+  if (parts.length){
+    tl.textContent = parts.join(' \u00b7 ') + ' \u00b7 ' + tblCount
+                   + (tblCount === 1 ? ' table' : ' tables');
+    tl.classList.add('makeup');
+  } else {
+    tl.textContent = 'Bookings';
+    tl.classList.remove('makeup');
+  }
+
   document.getElementById('nCovers').textContent = covers;
   document.getElementById('nOut').textContent    = notDining;
   document.getElementById('nAwait').textContent  = awaiting;

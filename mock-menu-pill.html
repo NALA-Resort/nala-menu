@@ -52,6 +52,12 @@ h1{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid)
              border:1px solid transparent;text-decoration:none}
 .menustate .yes{background:rgba(122,160,130,.22);color:#3F6B4C;border-color:var(--green-b)}
 .menustate .no {background:rgba(184,106,90,.18); color:#8E4433;border-color:var(--terra-b)}
+
+/* ── the tables make-up takes the Bookings title's seat the same way ── */
+.sec .makeup{color:var(--ink)}
+.bkrow{display:flex;justify-content:space-between;font-size:var(--t2);
+       padding:10px 0;border-bottom:1px solid var(--rule)}
+.bkrow .mid{color:var(--mid)}
 </style></head><body>
 <h1>Reservations &middot; menu pill</h1>
 
@@ -102,6 +108,25 @@ h1{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid)
     <div class="room">1</div><div class="room">2</div><div class="room">3</div>
     <div class="room vacant">4</div><div class="room">5</div><div class="room">6</div>
   </div>
+</div>
+
+<div class="cap">Proposed &middot; the make-up takes the Bookings title's seat too</div>
+<div class="frame">
+  <div class="sec" style="margin-top:0">
+    <span class="makeup">2 twos &middot; 2 tables</span>
+    <a href="#">+ Add reservation</a>
+  </div>
+  <div class="bkrow"><span><b>4</b> &ndash;</span><span>2 pax</span></div>
+  <div class="bkrow"><span><b>11</b> &ndash;</span><span>2 pax</span></div>
+</div>
+
+<div class="cap">Proposed &middot; and back to "Bookings" when there is nothing to say</div>
+<div class="frame">
+  <div class="sec" style="margin-top:0">
+    <span>Bookings</span>
+    <a href="#">+ Add reservation</a>
+  </div>
+  <div class="bkrow" style="border:none"><span class="mid" style="font-style:italic">No bookings yet</span></div>
 </div>
 
 <div class="cap">Worst width &middot; the long "for this date" text wraps below, never bleeds</div>

@@ -224,12 +224,18 @@ with sync_playwright() as p:
        "await" in t["r"]["9"]["cls"])
     ck("a guest written record with no reply is awaiting too",
        "await" in t["r"]["4"]["cls"])
-    # The make-up line ("3 twos · 1 three · 4 tables") left the board on
-    # 9 Sep at the owner's ask; the kitchen never used it and its row was
-    # vertical space. The grouping data it summed still drives the table
-    # rings, which the group assertions above cover.
-    ck("the tables make-up line is gone",
-       pg.evaluate("()=>document.getElementById('tablesLine')===null"))
+    # The make-up line left its own row on 9 Sep at the owner's ask and now
+    # sits in the Bookings section row, in the title's seat - the same move
+    # the menu pill made into the Villas row. With no tables it reads
+    # "Bookings" again, so the row is never unlabelled.
+    tl=pg.evaluate("""()=>{const t=document.getElementById('tablesLine');
+      return {txt:t.textContent, inSec:t.parentElement.id,
+              makeup:t.classList.contains('makeup')};}""")
+    ck("make-up sits in the Bookings section row",
+       tl["inSec"]=="listSec" and tl["makeup"])
+    ck("tables line named not multiplied",
+       "3 twos" in tl["txt"] and "1 three" in tl["txt"] and "×" not in tl["txt"]
+       and "4 tables" in tl["txt"])
 
     # 3 bookings list
     bl=pg.evaluate("""()=>{
