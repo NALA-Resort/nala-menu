@@ -538,5 +538,8 @@ with sync_playwright() as p:
     b.close()
 
 httpd.shutdown()
-print("\n%d passed, %d failed" % (P, F))
+# RESULT:, the shape run.py greps for. Without the prefix this suite scored
+# NO RESULT on every pooled run - 81 green assertions nobody could see, and
+# a real break here would have been waved through the same way.
+print("\nRESULT: %d passed, %d failed" % (P, F))
 raise SystemExit(1 if F else 0)
