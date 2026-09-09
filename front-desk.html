@@ -1205,7 +1205,34 @@ function putJob(r, qty){
                          CARDS[String(r.villa)] = job; });
 }
 
+/* More cards for a villa that already has some. The record GROWS - qty
+   rises, written stands, the helper continues from written - because a
+   re-issue that replaced the record read one extra card as the whole
+   day's count (the owner, 9 Sep, live). PATCH, never PUT: written is
+   the cards in the guest's hands and no button may zero it. */
+function extendJob(r, more){
+  var j = jobFor(r.villa);
+  var patch = { qty: Math.min(6, (+j.qty || 0) + more), state: 'queued',
+                by: window.NALA_ME || '', at: Date.now() };
+  return fetch(DB + '/cardjobs/' + nav.todayKey() + '/' + r.villa + '.json', {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch)
+  }).then(function(res){ if (!res.ok) throw new Error(res.status);
+                         Object.assign(j, patch); });
+}
+
+/* Cancelling forgets the attempt, never the cards: a job that already
+   wrote some walks back to done at that count; only a job that wrote
+   nothing is deleted. */
 function cancelJob(villa){
+  var j = jobFor(villa);
+  if (j && +j.written > 0){
+    var back = { state: 'done', qty: +j.written, at: Date.now() };
+    return fetch(DB + '/cardjobs/' + nav.todayKey() + '/' + villa + '.json', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(back)
+    }).then(function(){ Object.assign(j, back); cardsPaint(); });
+  }
   return fetch(DB + '/cardjobs/' + nav.todayKey() + '/' + villa + '.json',
                { method: 'DELETE' })
     .then(function(){ delete CARDS[String(villa)]; cardsPaint(); });
