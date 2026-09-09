@@ -935,6 +935,7 @@ with sync_playwright() as p:
     #  Every link left standing has to open. A link that bounces you back is a
     #  door to nowhere, which is worse than no link.
     NEEDS = {"dashboard.html":"resBoard",
+             "keys.html":"editBookings",
              "tally.html":"resBoard", "front-desk.html":"editBookings",
              "invitations.html":"editBookings",
              "arrivals-sms.html":"editBookings",
