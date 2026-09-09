@@ -239,7 +239,7 @@ with sync_playwright() as p:
     pg = board()
     #  Nine since 8 Sep: Key cards joined the spine beside Arrival sheets.
     ck("the board renders its cards",
-       pg.evaluate("()=>document.querySelectorAll('.node').length") == 9)
+       pg.evaluate("()=>document.querySelectorAll('.node').length") == 10)
     ck("the date row shows the day, so the board says which day it is",
        pg.evaluate("()=>document.getElementById('title').textContent.trim()") != "")
 
