@@ -426,6 +426,8 @@
              color:var(--amberink); font-weight:600; }
 .cslot.fail { border-color:var(--law-red); }
 .cslot.fail::after { content:'\2715'; color:var(--law-red); }
+/* wiped or lost: no longer a key, sunk in the law's nothing-to-do-here */
+.cslot.gone { border-style:dashed; opacity:.62; }
 /* The active villa asks with a drawing, not a sentence - ruled by the
    owner, 8 Sep evening, with TTHotel's own issue-card dialog as the
    reference: a hand holding a card, waves saying hold-it-near, and
@@ -514,7 +516,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
 <script src="nala-shared.js?v=62"></script>
-<script src="nala-cards.js?v=1"></script>
+<script src="nala-cards.js?v=2"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */

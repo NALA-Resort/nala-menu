@@ -2302,6 +2302,23 @@ with sync_playwright() as p:
     body = pg.inner_text("#cardBody")
     ck("a landed villa reads issued and asks for the envelope",
        "2 cards issued" in body and "Envelope villa 4" in body)
+
+    #  Villa 4, 10 Sep: after a cancel session wiped two of three, the sheet
+    #  still showed three ticks and "3 cards issued" while the Keys register
+    #  said "1 card with the guest". Words and ticks both count through
+    #  cardLife now: issued only while whole truth, wiped slots sunk.
+    CARDJOBS["4"].update({"qty": 3, "written": 3, "back": 2})
+    pg.wait_for_timeout(2000)
+    body = pg.inner_text("#cardBody")
+    ck("a wiped card leaves the words - what the guest holds, not what was cut",
+       "1 card with the guest" in body and "3 cards issued" not in body)
+    ck("and leaves the ticks: one filled, two sunk",
+       pg.evaluate("""()=>{var s=document.querySelectorAll('.crun.is-done .cslot');
+         var f=document.querySelectorAll('.crun.is-done .cslot.filled');
+         var g=document.querySelectorAll('.crun.is-done .cslot.gone');
+         return s.length===3 && f.length===1 && g.length===2;}"""))
+    CARDJOBS["4"].update({"qty": 2, "written": 2})
+    del CARDJOBS["4"]["back"]
     CARDJOBS["9"].update({"state": "failed", "written": 0, "note": "code 106: not this hotel's card"})
     pg.wait_for_timeout(2000)
     ck("a failure is red ink with the helper's own note",

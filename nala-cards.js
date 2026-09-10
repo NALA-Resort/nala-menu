@@ -208,8 +208,13 @@ function cardsPaint(){
    and a failure marks the slot it stopped on in red ink. */
 function cslotsHTML(j, cc, active){
   var q = (j && +j.qty) || 0, n = Math.min((j && +j.written) || 0, q), h = '';
+  /* A wiped or lost card is nobody's key any more: its slot sinks (the
+     law's nothing-to-do-here) so the ticks always agree with the caption
+     - both count through cardLife, found on villa 4's sheet, 10 Sep. */
+  var L = j ? cardLife(j, 0) : null, gone = L ? L.back + L.lost : 0;
   for (var i = 0; i < q; i++){
-    var st = i < n ? 'filled'
+    var st = i < n - gone ? 'filled'
+       : i < n ? 'gone'
        : i === n && cc.k === 'writing' && active ? 'now'
        : i === n && cc.k === 'failed' ? 'fail' : '';
     h += '<i class="cslot' + (st ? ' ' + st : '') + '">' +
