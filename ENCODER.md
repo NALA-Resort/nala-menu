@@ -42,14 +42,28 @@ Firebase console as usual. Until this is done the feature fails politely:
 every queue attempt is refused and the page says the job did not save.
 
 **4. The desk PC.** Copy `tools/nala-encoder.ps1` into the encoder kit's
-`dll\64` folder (the one holding `CardEncoder.dll`), fill in the CONFIG
-block at the top — Worker URL, `HELPER_KEY`, the encoder account, the COM
-port if known — and run:
+`dll\64` folder (the one holding `CardEncoder.dll`). The settings — Worker
+URL, `HELPER_KEY`, the encoder account, the COM port — live in
+`nala-config.ps1` beside it, so a fresh download of the helper needs no
+editing (since 9 Sep; before that a CONFIG block at the top was hand-
+filled on every update, and re-filling it is what every stale-helper bug
+came down to). Run:
 
     powershell -ExecutionPolicy Bypass -File nala-encoder.ps1
 
-It narrates one line per action and Ctrl+C stops it. Once trusted, Task
-Scheduler → run at log on, hidden, is the set-and-forget shape.
+It narrates one line per action and Ctrl+C stops it.
+
+**Start it with the PC** (asked by the owner, 10 Sep: the window IS the
+system - closed, jobs queue and nothing writes). Win+R, `shell:startup`,
+Enter; in the folder that opens, New > Shortcut, location:
+
+    powershell -ExecutionPolicy Bypass -WindowStyle Minimized -File "C:\...\dll\64\nala-encoder.ps1"
+
+with the real path. It then starts minimized at every log on. Two edges:
+it starts at LOG ON, not power-on - a PC sitting at the password screen
+overnight runs no helper until the morning log in; and a crashed script
+stays down until the next log on, visible as jobs stuck at queued. If
+that ever recurs, the upgrade is a Task Scheduler job that restarts it.
 
 ## What the desk PC holds, and why that is fine
 
