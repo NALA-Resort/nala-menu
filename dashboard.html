@@ -210,7 +210,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=63"></script>
+<script src="nala-shared.js?v=64"></script>
 <script>
 /* The day's flow on one screen: what has happened, what is ready, and what
    is still owed. Every fact here is read from the screen that owns it. The
@@ -340,9 +340,14 @@ function items(t){
   }).sort(function(a,b){ return (+a) - (+b); });
 
   /* formState is the only thing that says which state a booking is in, and
-     every board reads it. completed=green, incomplete=amber, else grey. */
+     every board reads it. completed=green, incomplete=amber, else grey.
+     The /spa slice rides along because since 10 Sep the massage answer can
+     live there as an outcome (massageAnswered) - the same DATA.spa the spa
+     reminder above already reads, so this page still works nothing out. */
   function toneFor(v){
-    var st = formState(PREARRIVAL_BY_VILLA[String(v)], stays[v]);
+    var s = stays[v] || {};
+    var st = formState(PREARRIVAL_BY_VILLA[String(v)], s,
+                       DATA.spa[String(s.id)] || null);
     return st === 'completed' ? 'green' : st === 'incomplete' ? 'amber' : 'grey';
   }
   var fUnits = arriving.map(function(v){ return { id:v, tone:toneFor(v) }; });

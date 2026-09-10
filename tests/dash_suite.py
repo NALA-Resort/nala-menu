@@ -276,6 +276,19 @@ with sync_playwright() as p:
        card(pg, "sheets")["chips"] == forms["chips"])
     ck("the note counts the three states",
        card(pg, "forms")["note"] == "3 complete, 1 part, 0 nothing yet")
+    #  The massage answer can live at /spa as an outcome since 10 Sep
+    #  (massageAnswered, nala-shared.js): a stamped form holding dinner and
+    #  dietary, with the massage booked on the Spa board rather than
+    #  answered on the form, is complete. The desk reads it that way, so
+    #  the chips here must say the same - b11 already holds a booked
+    #  treatment in the SPA fixture above.
+    savedPre = dict(PRE["b11"])
+    PRE["b11"] = {"at": at(9, 50), "dining": True, "pax": 2, "noDiets": True}
+    ng = board()
+    ck("a massage booked on the Spa board completes the form chip too",
+       "11:green" in card(ng, "forms")["chips"])
+    ng.close()
+    PRE["b11"] = savedPre
 
     # ── replies, and the covers adding up ───────────────────────
     reps = card(pg, "reps")

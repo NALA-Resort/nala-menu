@@ -541,6 +541,28 @@ function dateLabel(d){
   return days[d.getDay()]+' '+ord(d.getDate())+' '+mo[d.getMonth()];
 }
 
+/* ── the dinner time ───────────────────────────────────────────
+   The bookable seatings, 5pm to 8pm every quarter hour, and the ONE reading
+   of a stored time. A booking stores 24h "17:30" (or no field at all - every
+   booking made before 8 Sep has none, and no time is a valid answer); every
+   screen renders it through dinnerTimeLabel, so the board and the printed
+   sheet cannot disagree about what half past five looks like. */
+var DINNER_TIMES = (function(){
+  var out = [];
+  for (var m = 17*60; m <= 20*60; m += 15)
+    out.push(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'));
+  return out;
+})();
+/* "17:30" -> "5:30"; anything else -> "", so a missing or garbage time reads
+   as no time rather than as text on a kitchen sheet. The pm is left to the
+   caller: the sheet's picker says "5:30 pm", the row and the printed sheet
+   say "5:30" - every seating is an evening. */
+function dinnerTimeLabel(t){
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t || '')) return '';
+  var h = +t.slice(0,2);
+  return (((h + 11) % 12) + 1) + ':' + t.slice(3);
+}
+
 /* ── the standard header's date row ────────────────────────────
    Wires ‹ › Today and writes the one date format into #date/#title.
    Tolerates missing arrows (hc tally shows the date alone).
@@ -1208,13 +1230,38 @@ function oneNightStay(s){ return stayNights(s) === 1; }
    A one night stay is not owed the treatment answer. The guest form never
    offers it - one afternoon is no window for the therapists, the owner ruled
    25 Aug - so a question never put to them cannot be held against them. */
-function mandatoryAnswered(p, stay){
+/* Whether the massage question holds an answer, from BOTH places one can
+   live. The form's own yes/no is the guest's opening ask; a record at
+   /spa/<booking> is what became of it, and the 27 Aug rule the sheet's
+   Wellness lines and the row's lotus already follow - the live spa state
+   outranks the form, whose answer stands in only while no record has been
+   born from it - holds for the STATE as well. Before 10 Sep it did not:
+   a booking whose massage the masseuse had already booked could still
+   read "treatments unanswered" at the desk and sit amber for good,
+   because the ask had been keyed straight onto the Spa board (or the
+   form's answer walked back at the desk after the booking), so no
+   wellness boolean existed here while the outcome hung one node away.
+
+   ANY status-bearing record answers it: booked and declined are
+   outcomes, suggested and requested are the ask in hand - exactly the
+   set the sheet prints and the lotus draws. A malformed entry says
+   nothing, as it does to those two readers. */
+function massageAnswered(p, spa){
+  if (p && (p.wellness === true || p.wellness === false)) return true;
+  var r = spa || {};
+  return Object.keys(r).some(function(tid){
+    var t = r[tid];
+    return !!(t && typeof t === 'object' && t.status);
+  });
+}
+
+function mandatoryAnswered(p, stay, spa){
   if (!p) return false;
   var dinner  = p.dining === true || p.dining === false;
   var dietary = !!p.noDiets ||
                 (Array.isArray(p.diets) ? p.diets.length > 0 : !!p.diets);
-  var massage = p.wellness === true || p.wellness === false;
-  return dinner && dietary && (massage || oneNightStay(stay));
+  return dinner && dietary &&
+         (massageAnswered(p, spa) || oneNightStay(stay));
 }
 
 /* Completed wants all three: the stamp, an answer behind it, and the
@@ -1226,10 +1273,93 @@ function mandatoryAnswered(p, stay){
    never the massage, so it could stamp a multi night booking complete with
    the treatment question unasked - and that booking reads incomplete here
    from the moment this ships, with nothing to run and nothing to repair. */
-function formState(p, stay){
-  if (p && p.at && guestAnswered(p) && mandatoryAnswered(p, stay))
+/* spa is the booking's /spa/<id> node, so the massage answer can be read
+   from the outcome as well as the ask - see massageAnswered above. It
+   fills only the massage slot of the mandatory three: records at /spa
+   alone never make a form look started, and completed still wants the
+   stamp. Every reader passes it - the Front Desk holds it per row, the
+   Dashboard and Pre-arrival SMS read the node whole - because a reader
+   without it is a second, stricter reading of one state, which is how
+   two boards came to disagree about villa 17. */
+function formState(p, stay, spa){
+  if (p && p.at && guestAnswered(p) && mandatoryAnswered(p, stay, spa))
     return 'completed';
   return guestAnswered(p) ? 'incomplete' : 'notstarted';
+}
+
+/* ── key cards ───────────────────────────────────────────────────────
+   A card job is one villa's cards for one day: /cardjobs/<date>/<villa>
+   holds { qty, expiry, state, written, by, at, note }. The Front Desk
+   writes it, the encoder helper on the desk PC moves state through
+   queued -> writing -> done (or failed), and both the Front Desk and
+   the Dashboard read where it stands THROUGH cardCell below - the
+   formDinnerCell lesson, applied before the drift rather than after.
+   The shared table is tests/card_cases.json; add cases there. */
+
+/* When a key card stops opening the door on departure day. One number,
+   because the moment a guest's card dies is a fact two systems state:
+   the desk quotes it and every card carries it. Written into the card
+   as an epoch by cardExpiry, which builds it in the DEVICE's zone -
+   staff devices live at the resort, the same assumption every board
+   already makes when it says "today". */
+var CARD_CHECKOUT_HOUR = 13;   /* 1pm, the owner, 9 Sep - was 11 */
+
+function cardExpiry(dep){
+  var d = parseDepDate(dep);
+  if (!d) return null;
+  return Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate(),
+                             CARD_CHECKOUT_HOUR, 0, 0).getTime() / 1000);
+}
+
+/* Where a villa's cards stand, in the words and colours both boards use.
+   k is one of none|queued|writing|done|failed|cancelled and doubles as
+   the style hook. Colour law: queued is cream (work to do), writing is
+   amber (in progress), done is green, failed is red - a write that did
+   not happen, a true failure - and cancelled is grey, nothing to do
+   here. An unknown state reads as queued rather than done: the safe
+   wrong answer is the one that makes somebody look. */
+function cardCell(job){
+  if (!job || !job.state || job.state === 'cancelled')
+    return { k: job ? 'cancelled' : 'none',
+             label: job ? 'cancelled' : 'no cards yet' };
+  var n = +job.written || 0, q = +job.qty || 0;
+  if (job.state === 'done'){
+    /* Counts through cardLife, the register's reader, so this word and the
+       register can never disagree - they did on 10 Sep, "3 cards issued"
+       in the issue drop over "1 card with the guest" on the sheet, after
+       a cancel session wiped two. Issued is the word only while it is the
+       whole truth; once a wipe or a loss has happened, the count that
+       matters at the desk is what the guest still holds. */
+    var L = cardLife(job, 0);
+    if (L.back || L.lost)
+      return { k:'done', label: !L.active ? 'no cards out'
+             : L.active + (L.active === 1 ? ' card' : ' cards') + ' with the guest' };
+    return { k:'done', label: L.written + (L.written === 1 ? ' card issued' : ' cards issued') };
+  }
+  if (job.state === 'failed')
+    return { k:'failed', label:'write failed' };
+  if (job.state === 'writing')
+    return { k:'writing', label:'writing card ' + Math.min(n + 1, q || n + 1) +
+                                (q ? ' of ' + q : '') };
+  return { k:'queued', label:'to encode' };
+}
+
+/* Where a villa's CARDS stand once written - the Keys register's one
+   reader, as cardCell is the writing's. Counts never lie downward:
+   back and lost are clamped inside written, active is what remains in
+   the guest's hand. state is live / today (expires before the next
+   midnight, the 12h clock takes over on screen) / dead. Its cases live
+   in tests/cardlife_cases.json - add there, not in a suite. */
+function cardLife(job, now){
+  if (!job || job.state === 'cancelled') return null;
+  var written = Math.min(+job.written || 0, +job.qty || 0);
+  var back = Math.max(0, Math.min(+job.back || 0, written));
+  var lost = Math.max(0, Math.min(+job.lost || 0, written - back));
+  var exp = (+job.expiry || 0) * 1000;
+  var state = !exp || exp <= now ? 'dead'
+            : dkey(new Date(exp)) === dkey(new Date(now)) ? 'today' : 'live';
+  return { written: written, back: back, lost: lost,
+           active: written - back - lost, state: state, expiry: exp };
 }
 
 /* Every OTHER villa the same party holds, said in the words both boards use.
@@ -1486,21 +1616,114 @@ function dinnerRecord(cell){
    It does not move the answer, only drops it. Moving it would be guessing that
    a booking made for one villa still holds for another, and a villa change is
    usually a change of party size or plan. The guest is asked again, which is
-   what the empty villa on the board is telling reception to do. */
+   what the empty villa on the board is telling reception to do.
+
+   Two ways a cell goes stale, and they need different tests. The booking the
+   cell was made for now sits in ANOTHER villa: the moved guest, the original
+   case. Or THIS villa is now held by a DIFFERENT booking: the room changed
+   hands, and without this test the new arrival wore the previous guest's
+   dinner answer and dietary note - seen live 3 Sep, after a rename in Mews
+   orphaned the cell. A cell whose booking the PMS no longer knows AT ALL is
+   deliberately left standing: an empty roomguests can also mean a failed
+   read, and "A failed read is not an empty one" (HANDOVER.md).
+
+   The whole list is scanned rather than stopping at the first match, because
+   returning on the first one answered about the lowest numbered villa rather
+   than the one asked about - the parked "party in two villas loses the higher
+   one's dinner" bug, closed here. */
 function dinnerElsewhere(cells, villa, roomguests){
   var cell = cells && cells[String(villa)];
   if (!cell || !cell.bookingId) return false;
+  var here = (roomguests || {})[String(villa)];
+  if (here && here.bookingId && here.bookingId !== cell.bookingId) return true;
+  var elsewhere = false;
   for (var v in (roomguests || {})){
     var r = roomguests[v];
-    if (r && r.bookingId === cell.bookingId) return String(v) !== String(villa);
+    if (r && r.bookingId === cell.bookingId){
+      if (String(v) === String(villa)) return false;
+      elsewhere = true;
+    }
   }
-  return false;
+  return elsewhere;
 }
 
 /* Staff outrank a guest, always. A guest cannot overwrite a booking reception
    made, and this is the only precedence left in the app. */
 function dinnerLocked(cell){
   return !!(cell && cell.by === 'staff');
+}
+
+/* The answer the guest already gave for tonight, read from their pre-arrival
+   form. The owner's ruling of 28 Aug: the form asks about the first night,
+   reception never declines to pass an answer on, so it is not theirs to pass
+   on - any screen asking "has this villa answered dinner" reads it.
+
+   Read, NEVER written. This is not a second dinner cell and must never be
+   saved as one: it is a reading of /bookings/<id>/prearrival, and the real
+   cell at /dinner/<date>/<villa> still wins outright the moment anyone sets
+   one - every caller checks the cell first. Writing this shape to /dinner
+   would turn one fact into two copies, which is the disease this function
+   exists to cure (4 Sep: the SMS page and the front desk each read one store
+   and told reception different things about the same villa).
+
+   Only on the night they ARRIVE - dateKey is the night being rendered, and
+   the gate is the arrival date matching it, because the form asks about the
+   first night alone and one answer must not speak for a whole stay. rec is
+   whatever night record the caller holds: roomguests entries spell the
+   arrival `arrives`, raw /stays entries spell it `arrive`, and both are
+   honoured so no caller has to translate.
+
+   Any answer they gave counts, not only a finished form: the guest page
+   saves each question as it is left, so an abandoned form still holds real
+   answers, and an answer given is a thing the kitchen should know (the same
+   ruling). Returns the dinner-cell shape so callers render it exactly as
+   they render a cell, plus fromForm so nothing mistakes it for one. */
+/* A diner with no villa. Two shapes, because they arrive two ways: a digital
+   reply under /responses with no room on it, and a staff-added ext- key under
+   /manual. Both are tonight's by definition - an external has no carried
+   forward record to confuse theirs with.
+
+   Lived in tally.html's render until 8 Sep, where the Dashboard could not
+   reach it, so that page counted the manual shape only and quietly lost every
+   externally booked table that came in through a link. `skip` is the
+   optimistic cancel set the Reservations board holds while a delete is in
+   flight; nothing else has one. */
+function externalDiners(responses, manual, skip){
+  var out = [], k;
+  responses = responses || {}; manual = manual || {}; skip = skip || {};
+  for (k in responses){
+    var g = responses[k];
+    if (g && !g.room && g.status === 'in' && !skip[k] && !manual['extcancel-' + k])
+      out.push({ key:k, src:'digital', g:g });
+  }
+  for (k in manual){
+    if (k.indexOf('ext-') !== 0) continue;
+    if (manual[k].status !== 'in') continue;
+    out.push({ key:k, src:'manual', g:manual[k] });
+  }
+  return out;
+}
+
+/* One head unless the record says otherwise. A dining row with no pax is a
+   person who has said yes, so it counts as one, not as nought. */
+function dinerPax(g){ return (g && +g.pax) || 1; }
+
+function formDinnerCell(villa, pre, rec, dateKey){
+  if (!pre || (pre.dining !== true && pre.dining !== false)) return null;
+  var arr = rec && (rec.arrives || rec.arrive);
+  var d = arr ? parseDepDate(arr) : null;
+  if (!d || dkey(d) !== dateKey) return null;
+  return {
+    status: pre.dining ? 'in' : 'out',
+    pax:    pre.dining ? (pre.pax || rec.adults || 2) : 0,
+    room:   String(villa),
+    diets:  pre.diets || [],
+    nodiet: !!pre.noDiets,
+    dnote:  pre.dnote || '',
+    note:   pre.note || '',
+    by:     'guest',
+    fromForm: true
+  };
 }
 
 /* A note, a dietary and a dietary note are answers to one night's dinner
@@ -1530,11 +1753,20 @@ function withDineProvenance(out, tonight, known){
   return out;
 }
 
-function roomRecord(n, responses, manual, roomguests, dinner){
+/* dateKey is OPT-IN, and only the printed sheets pass it. With it, a record
+   that nothing else answers falls back to the guest's own pre-arrival form
+   answer for that night (formDinnerCell), so the paper the chef holds agrees
+   with the Reservations board about an arriving guest who answered days ago.
+   Without it nothing changes, which is deliberate: the other callers (Cleans,
+   Housekeeping, Publish, Debug) render nights other than the one
+   PREARRIVAL_BY_VILLA was last fetched for, and a fallback they did not ask
+   for is how a Monday answer would leak into a Tuesday board. A caller that
+   wants the form must say which night it is rendering. */
+function roomRecord(n, responses, manual, roomguests, dinner, dateKey){
   return overlayReservationDiets(
-    roomRecordCore(n, responses, manual, roomguests, dinner), n);
+    roomRecordCore(n, responses, manual, roomguests, dinner, dateKey), n);
 }
-function roomRecordCore(n, responses, manual, roomguests, dinner){
+function roomRecordCore(n, responses, manual, roomguests, dinner, dateKey){
   var mk = 'room-'+n, m = manual[mk];
   var known = roomguests[String(n)] || {};
   /* A staff vacant made against an older version of the booking was a decision
@@ -1576,6 +1808,16 @@ function roomRecordCore(n, responses, manual, roomguests, dinner){
     Object.assign({}, known, best, pms), best, known);
   if (m)    return withDineProvenance(
     Object.assign({}, known, m, pms, { room:String(n) }), m, known);
+  /* Nothing about tonight from anyone - so, for a caller that named the
+     night, the guest's own form answer, exactly as the Reservations board
+     reads it. Below every staff record on purpose: the cell, a response and
+     a manual entry all outrank it, so this decides nothing anybody has
+     already decided. */
+  if (dateKey){
+    var form = formDinnerCell(n, PREARRIVAL_BY_VILLA[String(n)], known, dateKey);
+    if (form) return withDineProvenance(
+      Object.assign({}, known, form, pms, { room:String(n) }), form, known);
+  }
   /* A booking with no name is still a booking. This used to require a name,
      so a villa Mews knows about but has sent no first or last name for
      returned nothing at all and showed on the Cleans board as unknown, with
@@ -1780,17 +2022,50 @@ function fetchMenuAnywhere(dayKey){
    The booking keeps its copy and stays the working one: every screen reads it,
    tonight's service depends on it, and a guest record that failed to write
    must not take the evening's answers with it. This is a mirror, not a move,
-   and it is deliberately quiet for the same reason.                        */
+   and it is deliberately quiet for the same reason.
+
+   WHICH person: prearrival.forCustomerId first, the person the answers were
+   given for, and only then pms.customerId, the person Mews holds the booking
+   for now. The two differ the moment a receptionist re-attributes a
+   reservation in Mews, and the answers are personal - the owner's ruling of
+   3 Sep - so they must keep following the person who gave them rather than
+   whoever now owns the booking. When no stamp exists yet the mirror writes
+   one, because this is the moment an answer is being given and the booking's
+   current person is exactly who it is for; quiet, since until the rules
+   paste the field is refused and keying on pms.customerId is yesterday's
+   behaviour, not a failure. */
 function rememberDietary(bookingId, diets, dnote){
   if (!bookingId) return Promise.resolve();
-  return fetch(DB + '/bookings/' + bookingId + '/pms/customerId.json')
+  /* Only the halves the caller actually holds. The board's editors send a
+     dnote only when one exists, and a PATCH that filled the gap with '' was
+     erasing the person's standing note on every note-less save. An empty
+     string given ON PURPOSE still clears: undefined means "not my field",
+     '' means "cleared". */
+  var body = { updatedAt: new Date().toISOString() };
+  if (diets !== undefined) body.diets = diets || [];
+  if (dnote !== undefined) body.dnote = dnote || '';
+  return fetch(DB + '/bookings/' + bookingId + '/prearrival/forCustomerId.json')
     .then(function(r){ return r.json(); })
+    .catch(function(){ return null; })
+    .then(function(stamped){
+      if (stamped) return stamped;
+      return fetch(DB + '/bookings/' + bookingId + '/pms/customerId.json')
+        .then(function(r){ return r.json(); })
+        .then(function(cid){
+          if (cid){
+            fetch(DB + '/bookings/' + bookingId + '/prearrival.json', {
+              method: 'PATCH', headers: { 'Content-Type':'application/json' },
+              body: JSON.stringify({ forCustomerId: cid })
+            }).catch(function(){});
+          }
+          return cid;
+        });
+    })
     .then(function(cid){
       if (!cid) return;   /* older bookings have none: nothing to key on */
       return fetch(DB + '/guests/' + cid + '.json', {
         method: 'PATCH', headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ diets: diets || [], dnote: dnote || '',
-                               updatedAt: new Date().toISOString() })
+        body: JSON.stringify(body)
       });
     })
     .catch(function(){});
@@ -2345,7 +2620,13 @@ function ensureNotifySettings(role){
    to be able to get out. tests/nav_canon.json is the suites' copy of this
    shape - change the menu there too, or the suites will name the drift.  */
 var NAV = [
+  /* First, because it is the page that says where the day is up to and hands
+     off to all the others. It needs only resBoard: every card's own door is
+     gated separately by the permission its page already answers to. */
+  { href:'dashboard.html',    label:'Dashboard',    need:'resBoard'     },
   { href:'front-desk.html',   label:'Front Desk',   need:'editBookings' },
+  /* The desk's other duty, so the desk's own gate. */
+  { href:'keys.html',         label:'Keys',         need:'editBookings' },
   { href:'demo-tally.html',        label:'Reservations', need:'resBoard'     },
   { href:'demo-cleans.html',     label:'Cleans',       need:'cleansBoard'  },
   { href:'spa.html',          label:'Spa',          need:'spaBoard'     },
@@ -2501,6 +2782,19 @@ var SPA_DURS = [
   { m: 90,  label: '1.5 hours', short: '1.5 hr' },
   { m: 120, label: '2 hours',   short: '2 hr'   }
 ];
+/* What is booked, in words. Both lengths on a pair, in order - "1.5 hr +
+   1 hr" - because the masseuse plans his day by time and length, and a
+   hidden second length was the bug that forced the pair onto one tile.
+
+   Lifted out of spa.html's serviceOf on 9 Sep so the Dashboard's reminder
+   says the same thing the Spa board does. */
+function spaOffering(rec){
+  return rec.qty === 2
+    ? 'Two massages \u00B7 ' + (spaDur(rec.dur) ? spaDur(rec.dur).short : '?') +
+      ' + ' + (spaDur(rec.dur2) ? spaDur(rec.dur2).short : '?')
+    : 'Massage' + (spaDur(rec.dur) ? ' \u00B7 ' + spaDur(rec.dur).short : '');
+}
+
 function spaDur(m){
   for (var i = 0; i < SPA_DURS.length; i++)
     if (SPA_DURS[i].m === +m) return SPA_DURS[i];
@@ -2525,6 +2819,97 @@ function spaDur(m){
 var SPA_ANY_DAY = 'any';
 var SPA_ANY_DAY_LABEL = 'Any day';
 function isAnyDay(v){ return String(v == null ? '' : v) === SPA_ANY_DAY; }
+
+/*  who still owes an action on a spa item
+    ------------------------------------------------------------------
+    The board and the hamburger badge must agree about this, so it is
+    decided here once and read in both places rather than written twice.
+
+    Two people can owe the same item. A guest's request needs the masseuse
+    to answer it AND the desk to know it was asked, the owner's ruling of
+    7 Sep: reception fields the guest's next question about it, and cannot
+    do that from a board they have no reason to open. Once she answers, the
+    item leaves her count and stays on the desk's until the guest is told.
+
+      requested   the guest asked, unanswered      masseuse and desk
+      suggested   a different time offered         desk, to put to the guest
+      declined    and the guest not yet told       desk, to tell the guest
+      booked, or a told decline                    nobody
+
+    Nothing here can be dismissed by hand. A cleared badge would mean "I
+    have seen this" while reading as "this is done", and it is the guest
+    who pays the difference when the two drift apart: the work clears it
+    or it stays. The owner asked for a clear button on 7 Sep and agreed
+    to this instead.
+
+    A day that has passed stops counting, because nobody can act on last
+    Tuesday. An Any day request has no day to age out and keeps asking
+    until it is answered - which is the point of it.                    */
+
+/*  An ask is spoken for once answering it has written a real record.
+    That is the source stamp, not the status: a decline is an answer. */
+function spaAskSpokenFor(recs){
+  var r = recs || {};
+  return Object.keys(r).some(function(tid){
+    return (r[tid] || {}).source === 'prearrival';
+  });
+}
+
+/*  The day an item is chasing. A suggestion chases the day offered; an
+    ask or a decline chases the day requested. Any day has none.        */
+function spaItemDay(rec){
+  if (!rec || rec.reqAny) return '';
+  return rec.status === 'suggested' ? (rec.day || '')
+                                    : (rec.reqDay || rec.day || '');
+}
+
+function spaOwedBy(rec, today){
+  var owed = { spa: false, desk: false };
+  if (!rec || !rec.status) return owed;
+  var d = spaItemDay(rec);
+  if (d && today && d < today) return owed;
+  if (rec.status === 'requested'){ owed.spa = true; owed.desk = true; }
+  else if (rec.status === 'suggested') owed.desk = true;
+  else if (rec.status === 'declined' && !rec.told) owed.desk = true;
+  return owed;
+}
+
+/*  Both counts from the two nodes they live in. The unanswered asks are
+    not in /spa at all - they are still only a line on a pre-arrival form
+    - so the bookings node is read as well, which is why this takes both.
+
+    A cancelled booking is not a request anybody can act on, and neither
+    is one whose guest has already left: an Any day ask would otherwise
+    sit in the masseuse's badge for good, a fortnight after the villa was
+    turned over.                                                        */
+function spaOwedCounts(spa, bookings, today){
+  var out = { spa: 0, desk: 0 };
+  spa = spa || {}; bookings = bookings || {};
+  function add(rec){
+    var o = spaOwedBy(rec, today);
+    if (o.spa) out.spa++;
+    if (o.desk) out.desk++;
+  }
+  Object.keys(spa).forEach(function(id){
+    var byId = spa[id] || {};
+    Object.keys(byId).forEach(function(tid){
+      var r = byId[tid];
+      if (r && typeof r === 'object' && r.status) add(r);
+    });
+  });
+  Object.keys(bookings).forEach(function(id){
+    var b = bookings[id] || {}, p = b.prearrival, pms = b.pms || {};
+    if (!p || typeof p !== 'object' || p.wellness !== true) return;
+    if (String(pms.state || '').toLowerCase() === 'cancelled') return;
+    var dep = String(pms.depart || '').slice(0, 10);
+    if (dep && today && dep < today) return;
+    if (spaAskSpokenFor(spa[id])) return;
+    var any = isAnyDay(p.wellDay);
+    add({ status: 'requested', reqAny: any,
+          reqDay: any ? '' : (p.wellDay || '') });
+  });
+  return out;
+}
 
 /* The way back from what a guest or the desk stored: the label itself, a
    24 hour HH:MM, or a bare H:MM that only fits the afternoon (a guest
@@ -2563,29 +2948,36 @@ function spaSlotFromText(s){
    other database read, and a failed count is no badge rather than an
    error: the menu must never break because a queue could not be asked. */
 var NAV_ACTIONS = [
-  { href: 'spa.html', need: 'spaBoard', count: function(cb){
+  { href: 'spa.html', need: 'spaBoard', count: function(role, cb){
       if (typeof DB === 'undefined') return;
-      fetch(DB + '/spa.json?v=' + Date.now())
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .then(function(spa){
-          /* Two queues wait on the desk: suggestions to put to the guest,
-             and declines the guest has not yet been told about - a told
-             decline carries its stamp and stops counting, 25 Aug. A stale
-             record whose day has passed stops chasing too: nobody can act
-             on last Tuesday. */
-          var today = dkey(new Date()), n = 0;
-          Object.keys(spa || {}).forEach(function(id){
-            Object.keys(spa[id] || {}).forEach(function(tid){
-              var r2 = spa[id][tid] || {};
-              var d = r2.status === 'suggested' ? r2.day
-                                                : (r2.reqDay || r2.day);
-              if (d && d < today) return;
-              if (r2.status === 'suggested') n++;
-              else if (r2.status === 'declined' && !r2.told) n++;
-            });
+      /* The badge shows what THIS login still owes, not every open item.
+         The masseuse seeing the desk's two queues, or the desk seeing hers,
+         is a badge that says "you have something to do" to somebody who
+         does not - and a badge that cries wolf is one nobody reads.
+
+         Who is who: the spa role is the masseuse, and every other login
+         holding spaBoard is the desk. spaOwedCounts decides the rest.
+
+         In practice the masseuse holds one screen and is always standing
+         on it, so this badge is the desk's instrument - her own channel is
+         the push notification. The split is wired and tested all the same:
+         the day she is given a second screen is the wrong day to discover
+         she has been shown reception's queue all along.
+
+         Both nodes or neither. A half read would quietly undercount, and
+         a badge that is wrong in the safe-looking direction is worse than
+         no badge: it says done when the answer is unknown. */
+      function node(path){
+        return fetch(DB + path + '.json?v=' + Date.now())
+          .then(function(r){
+            if (!r.ok) throw new Error(path + ' HTTP ' + r.status);
+            return r.json();
           });
-          cb(n);
-        }).catch(function(){});
+      }
+      Promise.all([node('/spa'), node('/bookings')]).then(function(res){
+        var c = spaOwedCounts(res[0], res[1], dkey(new Date()));
+        cb(role === 'spa' ? c.spa : c.desk);
+      }).catch(function(){});
   } }
 ];
 var NAV_BADGED = {};       /* one count per entry per page load */
@@ -2602,7 +2994,7 @@ function navActionBadges(role){
     }
     if (!link) return;               /* the entry's own page omits its link */
     NAV_BADGED[a.href] = true;
-    a.count(function(n){
+    a.count(role, function(n){
       if (!n) return;
       if (link.className.indexOf('hasact') < 0) link.className += ' hasact';
       var b = document.createElement('span');
@@ -2843,12 +3235,108 @@ function saveFailSay(target, msg){
 
 /* Two failures a person acts on differently: the database refused the write,
    which is a permission and needs the manager, and the write never arrived,
-   which needs another go. Anything else is the second one.              */
+   which needs another go. Anything else is the second one.
+
+   Except an error that already speaks the person's language. A page's own
+   pre-write check (the Spa board's sanity read, 9 Sep) refuses with a line
+   naming what actually stands and what to do about it; flattening that to
+   "check the connection" sends them to the wrong remedy, which is the exact
+   mistake this function exists to prevent. Such an error carries said:true
+   and its message rides through untouched.                              */
 function saveFailWords(e){
   var m = '' + (e && (e.message || e));
+  if (e && e.said) return m;
   if (/rejected|denied|permission|401|403/i.test(m))
     return 'The change was not allowed - tell the manager.';
   return 'Not saved - check the connection and try again.';
+}
+
+/* Where one villa stands on tonight's dinner invitation, and the ONE reader
+   that says so. Lived in invitations.html until 8 Sep, where the Dashboard
+   could not reach it, so that board reconstructed the answer and got it
+   wrong in a way nobody would have seen until a guest was not asked: a
+   FAILED send climbs back into 'ready' here, and the reconstruction counted
+   it as sent.
+
+   kind is the fact; line is how that page says it. A caller that only wants
+   to know who is still owed an invitation reads kind === 'ready'.
+
+     nophone   no usable mobile on the booking, so nothing can be sent
+     answered  they have already said, by cell or on their pre-arrival form
+     sent      accepted by the carrier, and not since failed delivery
+     ready     still to ask, INCLUDING a send that failed
+
+   dateKey is a parameter rather than the page's TODAY: a guard that depends
+   on a global the caller may not have is not a guard. */
+function timeOf(iso){
+  var d = parseISO(iso); if (!d) return '';
+  var h = d.getHours(), m = String(d.getMinutes()).padStart(2, '0');
+  return (h % 12 || 12) + ':' + m + (h < 12 ? 'am' : 'pm');
+}
+
+function stateOf(villa, stay, cell, invite, fix, dateKey){
+  /* A number fixed at the desk (/phonefix/<booking>) outranks the Mews copy:
+     Mews cannot be written from here and its next sync would revert any edit
+     made to the stay. The Worker reads the same record before sending. */
+  var raw = String((fix && fix.phone) || (stay && stay.phone) || '').trim();
+  if (!raw) return { kind:'nophone', line:'No phone number on the booking \u00B7 tap to add one',
+                     tickable:false, fixable:true, ticked:false };
+  if (!normalisePhone(raw))
+    return { kind:'nophone', line:'Not a mobile number \u00B7 ' + raw + ' \u00B7 tap to fix',
+             tickable:false, fixable:true, ticked:false };
+  if (cell && cell.status){
+    var what = cell.status === 'in'
+      ? 'Dining' + (cell.pax ? ' \u00B7 ' + cell.pax : '') : 'Not dining';
+    var who = cell.by === 'guest'
+      ? (cell.at ? 'answered ' + timeOf(cell.at) : 'answered')
+      : 'set by reception';
+    return { kind:'answered', in: cell.status === 'in',
+             line: what + ' \u00B7 ' + who, tickable:true, ticked:false };
+  }
+  /* No cell - so read what the guest already said on their pre-arrival form,
+     through the same reader the Reservations board uses (formDinnerCell,
+     nala-shared.js: arrival night only, any answer given counts, the cell
+     above wins the moment anyone sets one). Until 4 Sep this page read the
+     cell alone, so an arriving guest who had answered days ago sat in To
+     send, PRE-TICKED, and Send would have re-asked a question we were
+     already cooking to. Unticked, like every answered row: sending anyway
+     is a deliberate second tap, not the default. */
+  var form = formDinnerCell(villa, PREARRIVAL_BY_VILLA[String(villa)], stay, dateKey);
+  if (form)
+    return { kind:'answered', in: form.status === 'in',
+             line: (form.status === 'in'
+                     ? 'Dining' + (form.pax ? ' \u00B7 ' + form.pax : '')
+                     : 'Not dining') + ' \u00B7 answered on the pre-arrival form',
+             tickable:true, ticked:false };
+  if (invite && invite.status === 'sent'){
+    /* "Sent" is only ClickSend accepting the message; the handset receipt
+       is the real answer. A failed delivery is the sender's problem again,
+       so it climbs back into To send with the carrier's words. */
+    if (invite.delivery === 'failed')
+      return { kind:'ready', bad:true, tickable:true, ticked:false,
+               line:'Not delivered' +
+                    (invite.deliveryText ? ' \u00b7 ' + invite.deliveryText : '') };
+    return { kind:'sent', tickable:true, ticked:false,
+             line:'Sent ' + timeOf(invite.sentAt) +
+                  (invite.delivery === 'delivered' ? ' \u00b7 delivered'
+                   : invite.providerId ? ' \u00b7 delivery unconfirmed' : '') };
+  }
+  if (invite && invite.status === 'failed')
+    return { kind:'ready', line:'Send failed ' + timeOf(invite.sentAt) +
+             (invite.error ? ' \u00B7 ' + invite.error : ''), bad:true,
+             tickable:true, ticked:true };
+  return { kind:'ready', line:'Not asked, not answered', tickable:true, ticked:true };
+}
+
+/* Which day a spa record belongs to on the board. Moved out of spa.html
+   on 8 Sep so the Dashboard could reuse it rather than rebuild it.
+
+   Which day a record belongs to on the board. A booked or suggested
+   treatment sits on its own day; a request and a decline sit on the day the
+   guest asked about, because that is when somebody will look for them. */
+function dayOf(rec){
+  if (rec.status === 'booked' || rec.status === 'suggested') return rec.day || '';
+  return rec.reqDay || rec.day || '';
 }
 
 </script>

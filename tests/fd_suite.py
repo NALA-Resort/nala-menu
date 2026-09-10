@@ -545,6 +545,45 @@ with sync_playwright() as p:
                   "waiting on the guest" in t)(pg.locator(".sum").inner_text()))
     pg.close()
 
+    # ── the STATE reads the outcome too, 10 Sep ─────────────────
+    # The owner's report: a massage the masseuse had approved, and the row
+    # amber with treatments named as still to ask. The ask had been keyed
+    # straight onto the Spa board (or the form's answer walked back at the
+    # desk after the booking), so no wellness boolean existed on the form
+    # while the outcome hung at /spa. massageAnswered in nala-shared.js
+    # reads both places, and the tint, the Mark gate and the still-to-ask
+    # note all answer to it.
+    well_held = {k: PRE["b4"].pop(k) for k in
+                 ("wellness", "wellDay", "wellTime") if k in PRE["b4"]}
+    SPADB["b4"] = {"t1": {"status": "booked", "day": plus(1), "time": "14:00",
+                          "source": "prearrival", "at": "x"}}
+    pg = board()
+    ck("a booked massage answers the treatments question: the row tints green",
+       "done-form" in tint("4"))
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    ck("and the summary the green row opens shows the outcome it answered with",
+       "Booked" in pg.locator(".sum").inner_text())
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    ck("the sheet's state button offers the walk-back, not a demand for treatments",
+       pg.evaluate("()=>sMark.textContent") == "Mark as incomplete")
+    pg.close()
+    # The same guest without the stamp: honestly amber still - a record at
+    # /spa alone must not finish a form - but the note above the answers
+    # must not send reception chasing the question the Spa board answered.
+    at_held = PRE["b4"].pop("at")
+    pg = board()
+    ck("without the stamp the row is honestly amber still",
+       "part-form" in tint("4"))
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    ck("the still-to-ask note does not name treatments",
+       "treatments" not in pg.locator("#sheet").inner_text())
+    ck("and Mark as completed is available, the outcome standing in",
+       pg.evaluate("()=>!sMark.disabled"))
+    pg.close()
+    PRE["b4"]["at"] = at_held
+    PRE["b4"].update(well_held)
+    del SPADB["b4"]
+
     # ── the massage mark on the row, 31 Aug ─────────────────────
     # The same four states the sheet spells out above, readable without
     # opening anything, from the same massageState so the mark and the words
