@@ -2313,10 +2313,13 @@ with sync_playwright() as p:
     ck("a wiped card leaves the words - what the guest holds, not what was cut",
        "1 card with the guest" in body and "3 cards issued" not in body)
     ck("and leaves the ticks: one filled, two sunk",
-       pg.evaluate("""()=>{var s=document.querySelectorAll('.crun.is-done .cslot');
-         var f=document.querySelectorAll('.crun.is-done .cslot.filled');
-         var g=document.querySelectorAll('.crun.is-done .cslot.gone');
-         return s.length===3 && f.length===1 && g.length===2;}"""))
+       pg.evaluate("""()=>{var b=[...document.querySelectorAll('.crun')]
+           .find(x=>(x.querySelector('.crun-v')||{}).textContent
+                     .trim().startsWith('Villa 4'));
+         if (!b) return false;
+         return b.querySelectorAll('.cslot').length===3
+             && b.querySelectorAll('.cslot.filled').length===1
+             && b.querySelectorAll('.cslot.gone').length===2;}"""))
     CARDJOBS["4"].update({"qty": 2, "written": 2})
     del CARDJOBS["4"]["back"]
     CARDJOBS["9"].update({"state": "failed", "written": 0, "note": "code 106: not this hotel's card"})
