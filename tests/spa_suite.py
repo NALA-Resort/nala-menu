@@ -104,6 +104,25 @@ for v, bid, first, last, a, dep in BOOKINGS:
     if bid in PRE:
         BOOKINGS_NODE[bid]["prearrival"] = PRE[bid]
 
+# A guest who ticked wellness and is staying well outside the window this
+# board loads from /stays. The hamburger counted their ask; the board had no
+# card for it, so the badge could not be cleared from the screen it belongs
+# to - only by waiting six weeks for them to arrive.
+BOOKINGS_NODE["bFAR"] = {
+    "pms": {"first": "Farrah", "last": "Ahead", "villa": "12",
+            "arrive": plus(40), "depart": plus(43), "state": "confirmed"},
+    "prearrival": {"wellness": True, "wellDay": plus(41), "wellQty": 1,
+                   "wellDur": 60}}
+# And two the badge deliberately ignores, so the board must ignore them too.
+BOOKINGS_NODE["bCANX"] = {
+    "pms": {"first": "Cass", "last": "Cancelled", "villa": "13",
+            "arrive": plus(30), "depart": plus(32), "state": "Cancelled"},
+    "prearrival": {"wellness": True}}
+BOOKINGS_NODE["bGONE"] = {
+    "pms": {"first": "Long", "last": "Gone", "villa": "14",
+            "arrive": plus(-40), "depart": plus(-38), "state": "confirmed"},
+    "prearrival": {"wellness": True}}
+
 def spa_seed():
     return {
       "b12": {"t1": {"status": "suggested", "day": today, "time": "16:30", "dur": 60,
@@ -208,12 +227,24 @@ with sync_playwright() as p:
             .map(e=>e.textContent)""", sel)
     got = bands(pg)
     ck("All is pressed on arrival and holds every band",
-       got == ["To answer · 4", "Suggested · waiting on the guest · 1",
+       got == ["To answer · 5", "Suggested · waiting on the guest · 1",
                "Booked · 1", "Declined · 1"] and
        pg.evaluate("()=>document.querySelector('.stat[data-f=\"all\"]').className")
          == "stat on")
     ck("and its number counts every live tile it shows",
-       pg.evaluate("()=>nAll.textContent") == "7")
+       pg.evaluate("()=>nAll.textContent") == "8")
+    # The badge counts every wellness ask on /bookings; this board built its
+    # list from a WINDOW of /stays. A guest outside that window was counted
+    # and had no card, so the number could only be cleared by waiting for
+    # them to arrive.
+    txt = pg.evaluate("()=>document.getElementById('board').textContent")
+    ck("a guest outside the /stays window still gets a card for their ask",
+       "Farrah" in txt or "Ahead" in txt)
+    ck("but a cancelled booking does not, matching the badge's own guard",
+       "Cancelled" not in txt and "Cass" not in txt)
+    ck("nor one whose guest has already left",
+       "Long Gone" not in txt and "Gone" not in txt)
+
     ck("the request from the form appears with no /spa record behind it",
        pg.evaluate("()=>document.querySelector('#board [data-booking=\"b9\"]')"
                    "?.dataset.status") == "requested")
@@ -527,10 +558,11 @@ with sync_playwright() as p:
     pg = board()
 
     # The stats are the masseuse's whole queue, not today's slice: b9 today,
-    # b4 in two days, b15 easy about the day, b30 a month out - all waiting
-    # on him.
+    # b4 in two days, b15 easy about the day, b30 a month out, and bFAR six
+    # weeks out and outside the /stays window this board loads - all waiting
+    # on him, and the hamburger has always counted all five.
     ck("To answer counts every open ask on the horizon",
-       pg.evaluate("()=>nAsk.textContent") == "4")
+       pg.evaluate("()=>nAsk.textContent") == "5")
     ck("Suggested counts what waits on the guest",
        pg.evaluate("()=>nSugg.textContent") == "1")
     ck("Booked today counts the day being looked at",
@@ -609,7 +641,7 @@ with sync_playwright() as p:
        len(PUSHES) == 1 and PUSHES[0]["event"] == "spaSuggested" and
        PUSHES[0]["villa"] == "9" and PUSHES[0].get("idToken"))
     ck("and the board reflects it without a hand refresh",
-       pg.evaluate("()=>nAsk.textContent") == "3")
+       pg.evaluate("()=>nAsk.textContent") == "4")
     SPA = spa_seed()
 
     # Confirming on the asked-for day books it directly.
@@ -935,7 +967,7 @@ with sync_playwright() as p:
     pg = board()
     pg.locator('#statsRow .stat[data-f="requested"]').click(); pg.wait_for_timeout(200)
     ck("tapping To answer shows every open ask, future and day-less included",
-       bands(pg) == ["Every open ask · 4"] and
+       bands(pg) == ["Every open ask · 5"] and
        pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b4\"]')") and
        pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b15\"]')") and
        pg.evaluate("()=>!!document.querySelector('#board [data-booking=\"b30\"]')"))
@@ -981,14 +1013,17 @@ with sync_playwright() as p:
     # those four as well, because reception fields the guest's next question
     # about them, plus its own two queues: Elena's suggested time to put to
     # her, and James's decline he has not been told about.
+    # bFAR is the fifth ask: six weeks out, outside this board's /stays
+    # window, and counted here all along - it is the reason the board now
+    # reads /bookings too, so every badge has a card behind it.
     ck("the desk is counted every open item it owes, asks included",
-       badge_on_pages() == "6")
+       badge_on_pages() == "7")
     SPA = {k: v for k, v in spa_seed().items() if k != "b12"}
     ck("a suggestion settled leaves the desk's count",
-       badge_on_pages() == "5")
+       badge_on_pages() == "6")
     SPA["b7"]["t1"]["told"] = "2026-08-25T10:00:00Z"
     ck("a told decline stops counting",
-       badge_on_pages() == "4")
+       badge_on_pages() == "5")
     # Nothing outstanding anywhere: no icon at all, rather than a zero.
     STATE["nobook"] = True
     ck("no icon once the desk owes nothing",
@@ -1020,11 +1055,11 @@ with sync_playwright() as p:
              NAV_ACTIONS[0].count(r,function(n){clearTimeout(t);res(n);});
            })""", role)
     ck("the spa role is given the asks nobody has answered",
-       counted_as("spa") == 4)
+       counted_as("spa") == 5)
     ck("the desk is given its own queues and those asks",
-       counted_as("admin") == 6)
+       counted_as("admin") == 7)
     ck("every other login holding spaBoard is the desk",
-       counted_as("waiter") == 6 and counted_as("manager") == 6)
+       counted_as("waiter") == 7 and counted_as("manager") == 7)
     pg.close()
 
     # ── the rule itself, asked directly ────────────────────
