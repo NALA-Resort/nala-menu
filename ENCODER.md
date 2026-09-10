@@ -113,7 +113,14 @@ The helper also serves keys.html:
 The queue, both boards, the Worker relays and the rules are suite-covered
 (`cards`, `cardworker`, `frontdesk`, `dash`, `rules`). The helper and the
 E3 cannot be exercised from the sandbox (HANDOVER.md: no egress, no
-Windows, no encoder): `nala-encoder.ps1` ships reviewed but unrun, and its
-first run at the desk is its test. TTLock's live field names for
+Windows, no encoder), so each helper path's first run at the desk is its
+test — and by 10 Sep every path has had it: writing (first card 8 Sep),
+the full issue run with lift-off waits and serial recording, and the
+cancel session reading, naming and wiping a real card (10 Sep, after its
+first run found two faults the sandbox could not: the Win32 working
+directory the 9 Sep rewrite dropped, and a CE_ClearCard call whose
+declaration was never written). Still unseen live, both designed in:
+a re-issue GROWING a villa's count, and TTLock's own program sharing
+the encoder while the helper is idle. TTLock's live field names for
 `/cardlocks` are read tolerantly and confirmed on first live call —
 worker/cards.js marks the spot.
