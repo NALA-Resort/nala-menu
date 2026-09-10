@@ -367,20 +367,22 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.getElementById('nInv').textContent") == "1")
 
     # ── the menu count ──────────────────────────────────────────
-    # 16 to print for. A menu is shared between two diners and two menus
-    # print to a sheet, so a page covers four: ceil(16/4) = 4 pages
-    # (owner, 9 Sep - the old count was a menu each, plus a spare).
+    # 16 to print for. A menu is shared between two diners, two menus print
+    # to a sheet, and reception keeps a menu of its own at the desk (owner,
+    # 9-10 Sep): a part page rounds up and its slack is the spare, a whole
+    # number takes an extra page. floor(16/4)+1 = 5.
     menus = card(pg, "menus")
-    ck("an unanswered villa is still printed for, at the adults on the booking",
-       menus["note"].startswith("4 pages for 16 diners"))
+    ck("an unanswered villa is still printed for, and a whole 16 takes the "
+       "extra page for reception's menu",
+       menus["note"].startswith("5 pages for 16 diners"))
     ck("and the note says how many of those are still unanswered",
        menus["note"].endswith("3 not answered yet"))
 
-    # 16 divides by four, so the line above cannot tell ceil from floor.
-    # This one can: a part page is a whole page.
+    # A part page already leaves slack, so it must NOT take a second spare:
+    # 17 is 5 pages, the same 5 - not 6.
     MANUAL["ext-a"]["pax"] = 5
     rp = board()
-    ck("a part page rounds UP: 17 diners is 5 pages, not 4",
+    ck("a part page's round-up IS the spare: 17 diners is 5 pages, not 6",
        card(rp, "menus")["note"].startswith("5 pages for 17 diners"))
     rp.close()
     MANUAL["ext-a"]["pax"] = 4

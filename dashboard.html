@@ -432,10 +432,11 @@ function items(t){
      answered. A decline is the only thing that takes a menu off the pile. */
   var expect = covers + unknownPax;
   /* A menu is shared between two diners, and two menus print to a sheet,
-     so one page covers four (owner, 9 Sep - the old count was a menu each,
-     plus a spare). Round up: half a page is a page. Never nought, so the
-     qty control always holds a printable number. */
-  var pages = Math.max(1, Math.ceil(expect / 4));
+     so one page covers four - and reception keeps a menu of its own at the
+     desk (owner, 9-10 Sep). A part page rounds up and its slack is the
+     spare; a whole number has no slack, so it takes an extra page. Both
+     cases are floor + 1, and nought diners still prints reception's one. */
+  var pages = Math.floor(expect / 4) + 1;
   var allIn = inv && out === 0;
   var firm = allIn || t >= GIVEUP;
 
