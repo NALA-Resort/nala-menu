@@ -72,6 +72,8 @@ public static class CE {
   public static extern int CE_Beep(int voiceLen, int interval, int voiceCount);
   [DllImport("CardEncoder.dll")]
   public static extern int CE_GetCardNo(out IntPtr cardNumber);
+  [DllImport("CardEncoder.dll", CharSet=CharSet.Ansi)]
+  public static extern int CE_ClearCard(string hotelInfo);
 }
 "@
 
