@@ -41,6 +41,11 @@ if (Test-Path (Join-Path $PSScriptRoot "nala-config.ps1")) {
 
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
+# Set-Location moves POWERSHELL's location only; the Win32 working
+# directory, which is what LoadLibrary probes for CardEncoder.dll, needs
+# setting separately. Learned at the desk 8 Sep, lost in the 9 Sep
+# rewrite, relearned from "Unable to load DLL" on 10 Sep.
+[Environment]::CurrentDirectory = $PSScriptRoot
 
 # The DLL's doors, exactly as the manual states them (Card Encoder User
 # Manual v1.6.1). 64-bit process against dll\64: on x64 there is only one
