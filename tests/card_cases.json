@@ -8,49 +8,162 @@
       "why": "no job written for the villa today"
     },
     {
-      "job": { "qty": 2, "expiry": 1789000000, "state": "queued", "written": 0, "by": "reception", "at": 1 },
+      "job": {
+        "qty": 2,
+        "expiry": 1789000000,
+        "state": "queued",
+        "written": 0,
+        "by": "reception",
+        "at": 1
+      },
       "k": "queued",
       "label": "to encode",
       "why": "the desk pressed Issue, the helper has not picked it up"
     },
     {
-      "job": { "qty": 2, "expiry": 1789000000, "state": "writing", "written": 0, "by": "reception", "at": 1 },
+      "job": {
+        "qty": 2,
+        "expiry": 1789000000,
+        "state": "writing",
+        "written": 0,
+        "by": "reception",
+        "at": 1
+      },
       "k": "writing",
       "label": "writing card 1 of 2",
       "why": "the helper is on the first card"
     },
     {
-      "job": { "qty": 2, "expiry": 1789000000, "state": "writing", "written": 1, "by": "reception", "at": 1 },
+      "job": {
+        "qty": 2,
+        "expiry": 1789000000,
+        "state": "writing",
+        "written": 1,
+        "by": "reception",
+        "at": 1
+      },
       "k": "writing",
       "label": "writing card 2 of 2",
       "why": "one written, one to go - written counts FINISHED cards"
     },
     {
-      "job": { "qty": 2, "expiry": 1789000000, "state": "done", "written": 2, "by": "reception", "at": 1 },
+      "job": {
+        "qty": 2,
+        "expiry": 1789000000,
+        "state": "done",
+        "written": 2,
+        "by": "reception",
+        "at": 1
+      },
       "k": "done",
       "label": "2 cards issued",
       "why": "the everyday finish"
     },
     {
-      "job": { "qty": 1, "expiry": 1789000000, "state": "done", "written": 1, "by": "reception", "at": 1 },
+      "job": {
+        "qty": 1,
+        "expiry": 1789000000,
+        "state": "done",
+        "written": 1,
+        "by": "reception",
+        "at": 1
+      },
       "k": "done",
       "label": "1 card issued",
       "why": "singular, because the row is read aloud at the desk"
     },
     {
-      "job": { "qty": 2, "expiry": 1789000000, "state": "failed", "written": 1, "by": "reception", "at": 1, "note": "106" },
+      "job": {
+        "qty": 3,
+        "expiry": 1789000000,
+        "state": "done",
+        "written": 3,
+        "back": 2,
+        "by": "reception",
+        "at": 1
+      },
+      "k": "done",
+      "label": "1 card with the guest",
+      "why": "villa 4, 10 Sep: three cut, two wiped in a cancel session - the drop said 3 issued while the register said 1 with the guest. Once a wipe has happened, issued is no longer the whole truth"
+    },
+    {
+      "job": {
+        "qty": 2,
+        "expiry": 1789000000,
+        "state": "done",
+        "written": 2,
+        "back": 2,
+        "by": "reception",
+        "at": 1
+      },
+      "k": "done",
+      "label": "no cards out",
+      "why": "everything cut has been wiped: nothing in a guest's hand"
+    },
+    {
+      "job": {
+        "qty": 2,
+        "expiry": 1789000000,
+        "state": "done",
+        "written": 2,
+        "lost": 1,
+        "by": "reception",
+        "at": 1
+      },
+      "k": "done",
+      "label": "1 card with the guest",
+      "why": "a lost card is not with the guest either"
+    },
+    {
+      "job": {
+        "qty": 2,
+        "expiry": 1789000000,
+        "state": "done",
+        "written": 3,
+        "back": 1,
+        "by": "reception",
+        "at": 1
+      },
+      "k": "done",
+      "label": "1 card with the guest",
+      "why": "written above qty is clamped by cardLife before the subtraction, the same as the register"
+    },
+    {
+      "job": {
+        "qty": 2,
+        "expiry": 1789000000,
+        "state": "failed",
+        "written": 1,
+        "by": "reception",
+        "at": 1,
+        "note": "106"
+      },
       "k": "failed",
       "label": "write failed",
       "why": "red is failure only, and this is one"
     },
     {
-      "job": { "qty": 2, "expiry": 1789000000, "state": "cancelled", "written": 0, "by": "reception", "at": 1 },
+      "job": {
+        "qty": 2,
+        "expiry": 1789000000,
+        "state": "cancelled",
+        "written": 0,
+        "by": "reception",
+        "at": 1
+      },
       "k": "cancelled",
       "label": "cancelled",
       "why": "walked back on purpose - grey, not red, nothing to do here"
     },
     {
-      "job": { "qty": 2, "expiry": 1789000000, "state": "somethingnew", "written": 0, "by": "reception", "at": 1 },
+      "job": {
+        "qty": 2,
+        "expiry": 1789000000,
+        "state": "somethingnew",
+        "written": 0,
+        "by": "reception",
+        "at": 1
+      },
       "k": "queued",
       "label": "to encode",
       "why": "an unknown state reads as work to do, never as done: the safe wrong answer is the one that makes somebody look"

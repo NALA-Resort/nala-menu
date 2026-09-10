@@ -794,8 +794,19 @@ function cardCell(job){
     return { k: job ? 'cancelled' : 'none',
              label: job ? 'cancelled' : 'no cards yet' };
   var n = +job.written || 0, q = +job.qty || 0;
-  if (job.state === 'done')
-    return { k:'done', label: n + (n === 1 ? ' card issued' : ' cards issued') };
+  if (job.state === 'done'){
+    /* Counts through cardLife, the register's reader, so this word and the
+       register can never disagree - they did on 10 Sep, "3 cards issued"
+       in the issue drop over "1 card with the guest" on the sheet, after
+       a cancel session wiped two. Issued is the word only while it is the
+       whole truth; once a wipe or a loss has happened, the count that
+       matters at the desk is what the guest still holds. */
+    var L = cardLife(job, 0);
+    if (L.back || L.lost)
+      return { k:'done', label: !L.active ? 'no cards out'
+             : L.active + (L.active === 1 ? ' card' : ' cards') + ' with the guest' };
+    return { k:'done', label: L.written + (L.written === 1 ? ' card issued' : ' cards issued') };
+  }
   if (job.state === 'failed')
     return { k:'failed', label:'write failed' };
   if (job.state === 'writing')
