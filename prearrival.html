@@ -238,10 +238,14 @@
      and Next leftward into its place. 1fr auto 1fr, not thirds - the middle
      takes only what "2 of 9" needs and the buttons split the rest equally,
      because a third of 360pt cannot hold "Send to Nala" on one line. */
+  /* Stretch, not center: Back and Send carry different padding and type,
+     and centered they stood 46px against 51px in one row. The row is the
+     primary's height and Back fills it. */
   .nav { display:grid; grid-template-columns:1fr auto 1fr;
-         align-items:center; gap:12px; margin-top:1.8rem; }
-  .prog { grid-column:2; text-align:center; font-size:1.9rem;
-          letter-spacing:.06em; color:var(--mid); white-space:nowrap; }
+         align-items:stretch; gap:12px; margin-top:1.8rem; }
+  .prog { grid-column:2; align-self:center; text-align:center;
+          font-size:1.9rem; letter-spacing:.06em; color:var(--mid);
+          white-space:nowrap; }
   .back { grid-column:1; background:var(--paper); border:1px solid var(--rule);
           color:var(--mid); padding:15px 18px; border-radius:10px;
           font-family:inherit; font-size:0.75rem; letter-spacing:.12em;
