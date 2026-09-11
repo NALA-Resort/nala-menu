@@ -296,7 +296,9 @@ function crunHTML(r, active){
               '</div>'
             : '') +
           (cc.k !== 'cancelled' ? cardValidHTML(j && j.expiry) : '');
-  if (cc.k === 'done')
+  /* an envelope needs cards to go in it */
+  if (cc.k === 'done' && (function(){ var Le = cardLife(j, 0);
+      return Le && Le.active > 0; })())
     h += '<div class="crun-env">Envelope villa ' + r.villa + '’s cards</div>';
   if (cc.k === 'queued' || cc.k === 'failed')
     h += '<div class="sum-btns"><button class="terra" data-cardcancel="' +
@@ -355,8 +357,18 @@ function cardRender(){
      first, and the run screen must agree with it about whose card is on
      the pad. Found by the slot suite, 8 Sep: the sheet sorts by ETA, so
      the highlighted villa could differ from the one being written. */
-  var withJobs = cfg.rows().filter(function(r){ return jobFor(r.villa); })
-    .sort(function(a, b){ return (+a.villa) - (+b.villa); });
+  /* The run is the day's WORK, not the day's history: a done record
+     whose every card has since been wiped has nothing happening and
+     nothing to hand over, so it does not stand here with ghost slots
+     asking for an envelope (owner, 11 Sep). The register and the Tally
+     hold what happened. */
+  var withJobs = cfg.rows().filter(function(r){
+    var j = jobFor(r.villa);
+    if (!j) return false;
+    if (j.state !== 'done') return true;
+    var L = cardLife(j, 0);
+    return !!(L && L.active > 0);
+  }).sort(function(a, b){ return (+a.villa) - (+b.villa); });
   /* The verdict outlives the queue it deleted: once the encoder is judged
      offline the notice holds until the run is reopened, or the jobs that
      were just removed would take their explanation with them. */

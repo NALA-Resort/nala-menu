@@ -2461,6 +2461,23 @@ with sync_playwright() as p:
     ck("a re-issue counts the cards that EXIST, never the abandoned ask",
        ext2 and ext2[0]["qty"] == 5)
 
+    #  The run is the day's work, not its history (owner, 11 Sep): a done
+    #  record whose cards were all wiped has nothing happening and nothing
+    #  to hand over, so it leaves the run - and an envelope line needs
+    #  cards to go in it.
+    #  done, not the queued the extend just made: the run rightly keeps
+    #  every queued villa, wiped or not - the fold to done is the verdict
+    #  or the helper's, and here the fixture states it.
+    CARDJOBS["9"].update({"state": "done", "qty": 3, "back": 3})
+    pg.wait_for_timeout(1800)
+    pg.evaluate("()=>NalaCards.open(null)")
+    pg.wait_for_timeout(300)
+    ck("a fully wiped villa leaves the day's run",
+       "Villa 9" not in pg.inner_text("#cardBody")
+       and "Envelope villa 9" not in pg.inner_text("#cardBody"))
+    del CARDJOBS["9"]["back"]
+    pg.wait_for_timeout(1800)
+
     #  Picking a guest from the key menu ALWAYS lands on the quantity
     #  question (owner, 11 Sep) - a status sheet in front of the ask read
     #  as no choice at all. Villa 9 is done at this point, so the ask
