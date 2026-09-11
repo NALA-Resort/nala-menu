@@ -718,57 +718,72 @@ function render(){
     });
   } else {
     line.hidden = true;
-    rows.forEach(function(r){
-      var L = r.L;
-      if (TAB === 'lost' && !L.lost) return;
-      if (TAB === 'ok' && !L.active) return;
-      var open = OPEN === r.villa;
-      var st = '';
-      if (L.lost) st += '<div class="t">' + L.lost + ' lost</div>';
-      st += L.state === 'today' ? '<div class="a">expires ' + h12(L.expiry) + '</div>'
-                                : '<div class="g">valid</div>';
-      var text = TAB === 'lost'
-        ? cardsWord(L.lost) + ' floating &middot; <span class="eta">expires ' + tillLabel(L) + '</span>'
-        : cardsWord(L.active) + (L.lost ? ' + ' + L.lost + ' lost' : '') +
-          ' &middot; <span class="eta">till ' + tillLabel(L) + '</span>';
-      g += '<button class="arr ' + (L.state === 'today' ? 'part-form' : 'done-form') +
-        (open ? ' open' : '') + '" data-villa="' + esc(r.villa) + '">' +
+    /* A ROW PER CARD, the owner's model of 11 Sep: eight active cards
+       is eight rows, two wearing each villa's number. A lost card is its
+       own row, anonymous by design - twin cards cannot be told apart
+       until one touches the reader. Active rows first, then the lost,
+       as the approved mock lays them. */
+    function rowHTML(r, key, open, sub, kst, dress){
+      return '<button class="arr ' + dress + (open ? ' open' : '') +
+        '" data-villa="' + esc(r.villa) + '" data-open="' + key + '">' +
         '<div class="arr-v">' + esc(r.villa) + '</div>' +
         '<div class="arr-mid"><div class="arr-top">' +
         '<div class="arr-n">' + esc(r.job.guest || '') + '</div></div>' +
-        '<div class="arr-s">' + text + '</div></div>' +
-        '<div class="kst">' + st + '</div></button>';
-      if (open) g += sheetHTML(r);
-    });
+        '<div class="arr-s">' + sub + '</div></div>' +
+        '<div class="kst">' + kst + '</div></button>';
+    }
+    if (TAB !== 'lost')
+      rows.forEach(function(r){
+        var L = r.L;
+        for (var i = 0; i < Math.min(1, L.active); i++){
+          var key = r.villa + ':a' + i, open = OPEN === key;
+          g += rowHTML(r, key, open,
+            'a card &middot; <span class="eta">till ' + tillLabel(L) + '</span>',
+            L.state === 'today' ? '<div class="a">expires ' + h12(L.expiry) + '</div>'
+                                : '<div class="g">valid</div>',
+            L.state === 'today' ? 'part-form' : 'done-form');
+          if (open) g += sheetHTML(r, 'active');
+        }
+      });
+    if (TAB !== 'ok')
+      rows.forEach(function(r){
+        var L = r.L;
+        for (var k = 0; k < L.lost; k++){
+          var key = r.villa + ':l' + k, open = OPEN === key;
+          g += rowHTML(r, key, open,
+            'one of villa ' + esc(r.villa) + '\u2019s &middot; ' +
+            '<span class="eta">floating till ' + tillLabel(L) + '</span>',
+            '<div class="t">lost</div>', 'done-form');
+          if (open) g += sheetHTML(r, 'lost');
+        }
+      });
   }
   if (!g) g = '<div class="arr todo-form" style="opacity:.62;border-style:dashed">' +
     '<div class="arr-mid"><div class="arr-s">Nothing here</div></div></div>';
   document.getElementById('list').innerHTML = g;
 }
 
-function sheetHTML(r){
+function sheetHTML(r, kind){
+  /* one CARD's sheet: tap a row, act on that card alone (owner, 11 Sep).
+     A lost row offers Found; an active row offers Mark lost, and Remove -
+     the by-hand count correction for the rare card the machine cannot
+     count: snapped, cut up at the desk, or wiped but unreadable. Remove
+     asks first; the cards are twins, so which row was tapped carries no
+     meaning and none is claimed. */
   var L = r.L;
   var s = '<div class="sum">' +
-    '<div class="sum-r"><div class="sum-l">Cards</div><div class="sum-v">' +
-    cardsWord(L.active) + ' with the guest</div></div>';
-  if (L.lost)
-    s += '<div class="sum-r"><div class="sum-l">Lost</div><div class="sum-v">' +
-      cardsWord(L.lost) + ' &middot; floating till ' + tillLabel(L) + '</div></div>';
-  s += '<div class="sum-btns">';
-  if (L.active > 0)
-    s += '<button class="terra" data-losev="' + esc(r.villa) + '">Mark a card lost</button>';
-  if (L.lost > 0)
+    '<div class="sum-r"><div class="sum-l">Card</div><div class="sum-v">' +
+    'villa ' + esc(r.villa) + ' &middot; ' +
+    (kind === 'lost' ? 'floating till ' : 'till ') + tillLabel(L) +
+    '</div></div><div class="sum-btns">';
+  if (kind === 'lost')
     s += '<button data-foundv="' + esc(r.villa) + '">Found</button>';
-  /* the register's door out when reality and the record drift: a wipe
-     the encoder could not name, a card cut up at the desk. Same count
-     the cancel session writes, moved by a person, two-tap first
-     (owner, 11 Sep: a phantom card sat against a bill with only
-     Mark-lost for company). */
-  if (L.active > 0)
-    s += '<button' + (BACK_ASK === r.villa ? ' class="terra"' : '') +
+  else
+    s += '<button class="terra" data-losev="' + esc(r.villa) + '">Mark lost</button>' +
+         '<button' + (BACK_ASK === r.villa ? ' class="terra"' : '') +
          ' data-backv="' + esc(r.villa) + '">' +
          (BACK_ASK === r.villa ? 'Confirm \u00b7 one card off the count'
-                               : 'A card came back') + '</button>';
+                               : 'Remove') + '</button>';
   return s + '</div></div>';
 }
 
@@ -908,9 +923,9 @@ document.addEventListener('click', function(e){
   }
   if (e.target.closest('#cancelBtn')){ cancelOpen(); return; }
   if (e.target.closest('#ovStop')){ cancelStop(); return; }
-  if ((t = e.target.closest('[data-villa]'))){
-    var v = t.getAttribute('data-villa');
-    OPEN = OPEN === v ? null : v;
+  if ((t = e.target.closest('[data-open]'))){
+    var k = t.getAttribute('data-open');
+    OPEN = OPEN === k ? null : k;
     render(); return;
   }
 });

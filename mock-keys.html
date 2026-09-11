@@ -1289,46 +1289,55 @@ function render(){
     });
   } else {
     line.hidden = true;
-    K.forEach(function(r){
-      if (TAB === 'lost' && !r.lost) return;
-      if (TAB === 'ok' && !active(r)) return;
-      var open = OPEN === r.villa;
-      var st = '';
-      if (r.lost) st += '<div class="t">' + r.lost + ' lost</div>';
-      st += r.dep ? '<div class="a">expires 1pm</div>' : '<div class="g">valid</div>';
-      var text = TAB === 'lost'
-        ? cardsWord(r.lost) + ' floating &middot; <span class="eta">expires ' + r.till + '</span>'
-        : cardsWord(active(r)) + (r.lost ? ' + ' + r.lost + ' lost' : '') +
-          ' &middot; <span class="eta">till ' + r.till + '</span>';
-      g += '<button class="arr ' + (r.dep ? 'part-form' : 'done-form') +
-        (open ? ' open' : '') + '" data-villa="' + r.villa + '">' +
+    /* a row per CARD, the 11 Sep model - active rows then the lost */
+    function rowHTML(r, key, open, sub, kst, dress){
+      return '<button class="arr ' + dress + (open ? ' open' : '') +
+        '" data-villa="' + r.villa + '" data-open="' + key + '">' +
         '<div class="arr-v">' + r.villa + '</div>' +
         '<div class="arr-mid"><div class="arr-top">' +
         '<div class="arr-n">' + r.name + '</div></div>' +
-        '<div class="arr-s">' + text + '</div></div>' +
-        '<div class="kst">' + st + '</div></button>';
-      if (open) g += sheetHTML(r);
-    });
+        '<div class="arr-s">' + sub + '</div></div>' +
+        '<div class="kst">' + kst + '</div></button>';
+    }
+    if (TAB !== 'lost')
+      K.forEach(function(r){
+        for (var i = 0; i < active(r); i++){
+          var key = r.villa + ':a' + i, open = OPEN === key;
+          g += rowHTML(r, key, open,
+            'a card &middot; <span class="eta">till ' + r.till + '</span>',
+            r.dep ? '<div class="a">expires 1pm</div>' : '<div class="g">valid</div>',
+            r.dep ? 'part-form' : 'done-form');
+          if (open) g += sheetHTML(r, 'active');
+        }
+      });
+    if (TAB !== 'ok')
+      K.forEach(function(r){
+        for (var k = 0; k < r.lost; k++){
+          var key = r.villa + ':l' + k, open = OPEN === key;
+          g += rowHTML(r, key, open,
+            'one of villa ' + r.villa + '\u2019s &middot; ' +
+            '<span class="eta">floating till ' + r.till + '</span>',
+            '<div class="t">lost</div>', 'done-form');
+          if (open) g += sheetHTML(r, 'lost');
+        }
+      });
   }
   if (!g) g = '<div class="arr todo-form" style="opacity:.62;border-style:dashed">' +
     '<div class="arr-mid"><div class="arr-s">Nothing here</div></div></div>';
   document.getElementById('list').innerHTML = g;
 }
 
-function sheetHTML(r){
+function sheetHTML(r, kind){
   var s = '<div class="sum">' +
-    '<div class="sum-r"><div class="sum-l">Cards</div><div class="sum-v">' +
-    cardsWord(active(r)) + ' with the guest</div></div>';
-  if (r.lost)
-    s += '<div class="sum-r"><div class="sum-l">Lost</div><div class="sum-v">' +
-      cardsWord(r.lost) + ' &middot; floating till ' + r.till + '</div></div>';
-  s += '<div class="sum-btns">';
-  if (active(r) > 0)
-    s += '<button class="terra" data-losev="' + r.villa + '">Mark a card lost</button>';
-  if (r.lost > 0)
+    '<div class="sum-r"><div class="sum-l">Card</div><div class="sum-v">' +
+    'villa ' + r.villa + ' &middot; ' +
+    (kind === 'lost' ? 'floating till ' : 'till ') + r.till +
+    '</div></div><div class="sum-btns">';
+  if (kind === 'lost')
     s += '<button data-foundv="' + r.villa + '">Found</button>';
-  if (active(r) > 0)
-    s += '<button data-backv="' + r.villa + '">A card came back</button>';
+  else
+    s += '<button class="terra" data-losev="' + r.villa + '">Mark lost</button>' +
+         '<button data-backv="' + r.villa + '">Remove</button>';
   return s + '</div></div>';
 }
 
@@ -1428,9 +1437,9 @@ document.addEventListener('click', function(e){
     if (r1 && active(r1) > 0) r1.out--;
     ovRender(); return;
   }
-  if ((t = e.target.closest('[data-villa]'))){
-    var v = +t.getAttribute('data-villa');
-    OPEN = OPEN === v ? null : v;
+  if ((t = e.target.closest('[data-open]'))){
+    var k = t.getAttribute('data-open');
+    OPEN = OPEN === k ? null : k;
     render(); return;
   }
 });

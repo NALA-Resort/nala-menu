@@ -53,15 +53,15 @@ FRAGMENTS = [
     '.kst .g { color:var(--law-green); }',
     '.kst .t { color:var(--terra); }',
     # the wording laws: till, expires, floating
-    "' &middot; <span class=\"eta\">till '",
-    "' floating &middot; <span class=\"eta\">expires '",
     "cards never came back",
     "' &middot; departed <span class=\"eta\">'",
     # the sheet and its two buttons
-    '<div class="sum-l">Cards</div>',
-    '>Mark a card lost</button>',
-    'A card came back',
+    '>Mark lost</button>',
+    'Remove',   # the two-tap build splits the closing tag in keys.html
     '>Found</button>',
+    "'a card &middot; <span class=\"eta\">till '",
+    "one of villa ",
+    '<div class="sum-l">Card</div>',
     # the cancel session: the ask drawing and the words
     'Hold a card to the reader',
     '<rect x="57" y="10" width="33" height="46" rx="5" transform="rotate(16 73 33)"/>',
@@ -210,25 +210,33 @@ with sync_playwright() as p:
          return r && r.className.indexOf('done-form')>=0
              && r.innerText.indexOf('till ')>=0
              && r.innerText.indexOf(mon)<0;}""", mon))
-    ck("a lost card rides its row: 2 cards + 1 lost",
-       "2 cards + 1 lost" in pg.evaluate(
-           "()=>document.querySelector('.arr[data-villa=\"9\"]').innerText"))
-    ck("a wiped card left the count: villa 6 shows 2",
-       "2 cards" in pg.evaluate(
-           "()=>document.querySelector('.arr[data-villa=\"6\"]').innerText"))
+    #  A ROW PER CARD (the owner's model, 11 Sep): villa 9 holds two
+    #  active rows and one anonymous lost row; villa 6's wiped card is
+    #  simply a row that is not there.
+    ck("a card is a row: villa 9 shows two active and one lost",
+       pg.evaluate("""()=>{var r=[...document.querySelectorAll('.arr[data-villa="9"]')];
+         return r.length===3
+             && r.filter(x=>x.innerText.indexOf('a card')>=0).length===2
+             && r.filter(x=>x.innerText.indexOf('one of villa 9')>=0
+                          && x.innerText.indexOf('floating till')>=0).length===1;}"""))
+    ck("a wiped card left the count: villa 6 shows two rows, not three",
+       pg.evaluate("()=>document.querySelectorAll('.arr[data-villa=\"6\"]').length") == 2)
 
-    #  the sheet: facts and the two buttons, writes asserted to the byte
-    pg.evaluate("()=>document.querySelector('.arr[data-villa=\"9\"]').click()")
+    #  one card's sheet: tap a row, act on that card alone
+    pg.evaluate("()=>document.querySelector('[data-open=\"9:a0\"]').click()")
     pg.wait_for_timeout(200)
     sheet = pg.inner_text("#list")
-    ck("the sheet says the facts, tersely",
-       "2 cards with the guest" in sheet and "floating till" in sheet)
+    ck("the sheet says the one card's facts, tersely",
+       "villa 9 · till" in sheet and "Mark lost" in sheet and "Remove" in sheet)
     del WRITES[:]
     pg.evaluate("()=>document.querySelector('[data-losev=\"9\"]').click()")
     pg.wait_for_timeout(300)
     lost_w = [w for w in WRITES if w["m"] == "PATCH" and "/cardjobs/" in w["u"]]
-    ck("Mark a card lost PATCHes the job's lost count",
+    ck("Mark lost PATCHes the job's lost count",
        lost_w and json.loads(lost_w[0]["b"]) == {"lost": 2})
+    #  Found lives on a LOST row's sheet
+    pg.evaluate("()=>document.querySelector('[data-open=\"9:l0\"]').click()")
+    pg.wait_for_timeout(200)
     pg.evaluate("()=>document.querySelector('[data-foundv=\"9\"]').click()")
     pg.wait_for_timeout(300)
     ck("Found walks it back",
@@ -237,10 +245,12 @@ with sync_playwright() as p:
     #  The register's own correction door (owner, 11 Sep): a card the
     #  reader could not name at its wipe, or one cut up at the desk. Same
     #  count the cancel session writes, moved by a person, two-tap first.
+    pg.evaluate("()=>document.querySelector('[data-open=\"9:a0\"]').click()")
+    pg.wait_for_timeout(200)
     del WRITES[:]
     pg.evaluate("()=>document.querySelector('[data-backv=\"9\"]').click()")
     pg.wait_for_timeout(200)
-    ck("A card came back asks before it counts",
+    ck("Remove asks before it counts",
        not [w for w in WRITES if "/cardjobs/" in w["u"]]
        and "one card off the count" in pg.inner_text("#list"))
     pg.evaluate("()=>document.querySelector('[data-backv=\"9\"]').click()")
@@ -248,8 +258,9 @@ with sync_playwright() as p:
     back_w = [w for w in WRITES if w["m"] == "PATCH" and "/cardjobs/" in w["u"]]
     ck("and the confirm PATCHes back, the cancel session's own count",
        back_w and json.loads(back_w[0]["b"]) == {"back": 1})
-    ck("the sheet then holds one card fewer",
-       "1 card with the guest" in pg.inner_text("#list"))
+    ck("the register then holds one active row fewer for villa 9",
+       pg.evaluate("""()=>[...document.querySelectorAll('.arr[data-villa="9"]')]
+           .filter(x=>x.innerText.indexOf('a card')>=0).length""") == 1)
 
     #  tabs filter; the Tally is arithmetic over the dead, never stored
     pg.evaluate("()=>document.querySelector('[data-tab=\"lost\"]').click()")
