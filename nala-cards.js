@@ -303,7 +303,7 @@ function crunHTML(r, active){
       '</svg></div>' : '') +
           (cc.k === 'writing' && active
             ? '<div class="sum-btns"><button class="terra" data-cardskip="' +
-              r.villa + '">Skip \u00b7 enough cards</button></div>'
+              r.villa + '">Skip this card</button></div>'
             : '') +
           (line || (cc.k === 'failed' && j && j.note)
             ? '<div class="crun-s card-' + cc.k + '">' + line +
