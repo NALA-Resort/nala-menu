@@ -61,6 +61,7 @@ function loadCards(){
    left behind by a closed overlay or a dropped connection. */
 var CARD_OFFLINE_MS = 10000, CARD_STALE_MS = 2 * 60 * 1000;
 var CARD_DEAD_MS = 3 * 60 * 1000;   /* a write untouched this long is a dead PC */
+var CARD_FAIL_HOLD_MS = 10 * 60 * 1000;  /* how long a failure stays a failure */
 var CARD_OFFLINE = false;   /* the run screen's verdict, until reopened */
 
 /* A queue behind a working encoder is never stale - learned from the mock,
@@ -89,6 +90,14 @@ function cardsSweep(){
       }).catch(function(){});
     }
     if (!alive && j.state === 'queued' && j.at && now - j.at > CARD_STALE_MS)
+      cancelJob(v);
+    /* A failure is a fact about a MOMENT, not about a villa (owner,
+       11 Sep: "only important at the time of failure"). Red while
+       somebody is standing at the encoder; once the moment is well past,
+       the record folds back to the cards that exist, and the drop stops
+       teaching history. cancelJob is that fold: done at written, or
+       gone if nothing was. */
+    if (j.state === 'failed' && j.at && now - j.at > CARD_FAIL_HOLD_MS)
       cancelJob(v);
   });
 }
@@ -119,7 +128,11 @@ function putJob(r, qty){
    the cards in the guest's hands and no button may zero it. */
 function extendJob(r, more){
   var j = jobFor(r.villa);
-  var patch = { qty: Math.min(6, (+j.qty || 0) + more), state: 'queued',
+  /* written + more, never old qty + more: qty is an ASK and an abandoned
+     ask (a failed run) must not ride along - it is how a two-card villa
+     came to carry a phantom third (owner, 10-11 Sep). The cards that
+     exist plus the cards wanted now is the whole truth. */
+  var patch = { qty: Math.min(6, (+j.written || 0) + more), state: 'queued',
                 by: window.NALA_ME || '', at: Date.now() };
   return fetch(cfg.db + '/cardjobs/' + day() + '/' + r.villa + '.json', {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -186,7 +199,14 @@ function cardsDrawDrop(){
 /* ── the overlay ── */
 function cardsOpen(villa){
   CARD_VILLA = villa;
-  CARD_ASK = null;
+  /* Picking a guest to issue to ALWAYS lands on the quantity question
+     (owner, 11 Sep: it looked gated on pre-arrival; it was gated on
+     whether a record existed, and a status sheet in front of the ask
+     read as no choice at all). The render guard below is the one judge
+     of the exception - a job the encoder is on right now shows its run,
+     because asking mid-write would be a lie - so a stale cache here
+     corrects itself on the next poll. */
+  CARD_ASK = villa != null ? villa : null;
   CARD_OFFLINE = false;
   document.getElementById('cardOv').hidden = false;
   cardRender();
@@ -245,7 +265,15 @@ function crunHTML(r, active){
             (cc.k === 'done' ? ' is-done' : '') +
             (cc.k === 'failed' ? ' is-failed' : '');
   /* the active writing villa asks with the drawing below, not words */
+  /* The active QUEUED villa pulses while the helper claims it - about
+     five seconds of silence at the desk read as "is this working?"
+     (owner, 11 Sep). Movement only until a signal that cannot lie: the
+     claim happens after the encoder answered, so the hand drawing IS
+     "reader found", and the ten-second verdict owns the other ending.
+     Other queued villas keep the owner's one word of 8 Sep. */
   var line = cc.k === 'writing' && active ? ''
+      : cc.k === 'queued' && active
+        ? '<span class="cwake"><i></i><i></i><i></i></span>Waking up\u2026'
       : cc.k === 'queued' ? 'Queued'
       : esc(cc.label);
   var h = '<div class="' + cls + '"><div class="crun-v">Villa ' + r.villa +
@@ -285,10 +313,14 @@ function cardRender(){
     document.getElementById('cardTitle').textContent =
       'Key cards · villa ' + one.villa;
     var j = jobFor(one.villa);
+    /* the poll can reveal the encoder is ON this villa: the question
+       yields to the run - asking for a quantity mid-write is a lie */
+    if (CARD_ASK == one.villa && j &&
+        (j.state === 'queued' || j.state === 'writing')) CARD_ASK = null;
     if (!j || j.state === 'cancelled' || CARD_ASK == one.villa){
       var q = +(body.getAttribute('data-qty') || 2);
       /* a living job means these are ADDED cards, and the words say so */
-      var more = j && j.state !== 'cancelled';
+      var more = j && j.state !== 'cancelled' && +j.written > 0;
       body.innerHTML = '<div class="cardov-in"><div class="crun">' +
         '<div class="crun-v">Villa ' + one.villa + '<small>' +
         esc(one.name) + '</small></div>' +
@@ -305,9 +337,10 @@ function cardRender(){
        arrives late. The button re-opens the question only - the done record
        stands until Issue actually writes a new job over it. */
     body.innerHTML = '<div class="cardov-in">' + crunHTML(one, true) +
-      (cardCell(j).k === 'done'
+      (cardCell(j).k === 'done' || cardCell(j).k === 'failed'
         ? '<div class="sum-btns"><button data-cardagain="' + one.villa +
-          '">Issue more cards</button></div>'
+          '">Issue ' + (+j.written > 0 ? 'more cards' : 'cards') +
+          '</button></div>'
         : '') + '</div>';
     return;
   }
@@ -328,7 +361,8 @@ function cardRender(){
      offline the notice holds until the run is reopened, or the jobs that
      were just removed would take their explanation with them. */
   var offlineHTML = '<div class="cardhold"><b>Encoder offline.</b> ' +
-    'Nothing was written \u00b7 try again when the desk PC is on.</div>';
+    'Nothing was written \u00b7 open Nala card helper from the desk ' +
+    'PC\u2019s taskbar, then try again.</div>';
   if (!withJobs.length){
     body.innerHTML = '<div class="cardov-in">' + (CARD_OFFLINE ? offlineHTML
       : '<div class="crun"><div class="crun-s">Nothing queued. ' +

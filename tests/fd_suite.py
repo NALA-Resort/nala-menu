@@ -2346,6 +2346,16 @@ with sync_playwright() as p:
     ck("a queued villa says Queued, one word",
        "Queued" in pg.inner_text("#cardBody")
        and "waiting for the encoder" not in pg.inner_text("#cardBody"))
+    #  The one exception, ruled 11 Sep: the villa the helper goes to NEXT
+    #  pulses and says it is waking, because five silent seconds at the
+    #  desk read as "is this working?". One pulse only - the claim comes
+    #  after the encoder answered, so the hand drawing is "reader found"
+    #  and the ten-second verdict owns the other ending.
+    ck("the active queued villa pulses, alone, and says it is waking",
+       pg.evaluate("""()=>{var c=[...document.querySelectorAll('.crun')];
+         var w=c.filter(x=>x.querySelector('.cwake'));
+         return w.length===1
+             && w[0].innerText.indexOf('Waking up')>=0;}"""))
 
     #  The helper moves a job; the poll repaints without a reload. The
     #  OTHER queued villas are marked done first, because a queue that ages
@@ -2481,10 +2491,42 @@ with sync_playwright() as p:
     #  here would zero written and recut every card - the 9 Sep bug.
     ext = [json.loads(x["b"]) for x in WRITES
            if "/cardjobs/%s/9" % today in x["u"] and x["m"] == "PATCH"]
+    #  3 written, 3 asked (the stepped q persists on the panel): 6 either
+    #  way here - the abandoned-ask case that tells the laws apart is next.
     ck("and Issue grows the done job, never replaces it",
        ext and ext[0]["state"] == "queued" and ext[0]["qty"] == 6
        and "written" not in ext[0]
        and not [x for x in WRITES if x["m"] == "PUT" and "/cardjobs/" in x["u"]])
+
+    #  written + more, never old qty + more: an abandoned ask must not
+    #  ride along (the phantom third card, 10-11 Sep). A record carrying
+    #  qty 6 with only 2 written re-asks for 3: the old law would mint
+    #  min(6, 6+3)=6, the truth is 2+3=5.
+    CARDJOBS["9"].update({"qty": 6, "written": 2, "state": "done"})
+    pg.wait_for_timeout(1800)
+    del WRITES[:]
+    pg.evaluate("()=>document.querySelector('[data-cardagain]').click()")
+    pg.wait_for_timeout(200)
+    pg.evaluate("()=>document.querySelector('[data-cardissue]').click()")
+    pg.wait_for_timeout(400)
+    ext2 = [json.loads(x["b"]) for x in WRITES
+            if "/cardjobs/%s/9" % today in x["u"] and x["m"] == "PATCH"]
+    ck("a re-issue counts the cards that EXIST, never the abandoned ask",
+       ext2 and ext2[0]["qty"] == 5)
+
+    #  Picking a guest from the key menu ALWAYS lands on the quantity
+    #  question (owner, 11 Sep) - a status sheet in front of the ask read
+    #  as no choice at all. Villa 9 is done at this point, so the ask
+    #  says MORE; only a villa the encoder is on shows its run instead.
+    pg.evaluate("()=>{document.getElementById('cardX').click();}")
+    CARDJOBS["9"].update({"qty": 5, "written": 5, "state": "done"})
+    pg.evaluate("()=>NalaCards.load()")
+    pg.wait_for_timeout(400)
+    pg.click("#keyBtn"); pg.wait_for_timeout(200)
+    pg.evaluate("()=>document.querySelector('#keyDrop [data-key=\"9\"]').click()")
+    pg.wait_for_timeout(300)
+    ck("picking a carded villa from the drop asks how many, immediately",
+       "How many more cards" in pg.inner_text("#cardBody"))
     pg.close()
 
     #  The queue must never lie in wait - the owner's ruling, 8 Sep. Ten
@@ -2506,6 +2548,10 @@ with sync_playwright() as p:
     ck("an unclaimed queue is judged offline, tersely",
        "Encoder offline" in body and "try again" in body
        and "Nothing is lost" not in body)
+    #  The verdict names the way back, not just the fact (owner, 11 Sep):
+    #  the fix is the taskbar's Nala card helper, so the sentence says so.
+    ck("and it points at the helper on the taskbar",
+       "Nala card helper" in body and "taskbar" in body)
     ck("and the queued job is deleted, not left in wait",
        [x for x in WRITES if x["m"] == "DELETE" and "/cardjobs/%s/4" % today in x["u"]]
        and "4" not in CARDJOBS)
