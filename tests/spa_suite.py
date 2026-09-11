@@ -1529,6 +1529,37 @@ with sync_playwright() as p:
        q.evaluate("()=>giMore_dine.value") == "V2 dine words.")
     STATE["giV2"] = False
 
+    #  The Guest form tab at phone widths, which nothing here checked.
+    #  A tick dropped into this tab wears the app's TEXT BOX dress unless
+    #  it says otherwise at ID weight: two blanket rules hand every input
+    #  width:100%, padding and min-height:var(--tap) - #tGuest input here
+    #  and body.ui2 input in nala-ui2.css. The whole-photo tick did not,
+    #  so it rendered as a full width 44px pill that threw its own label
+    #  off the right of the screen and set the page scrolling sideways,
+    #  live on the owner's phone (11 Sep). Chromium shrinks a flex item to
+    #  fit and hid it there, which is why the size is asserted too: it is
+    #  the half that fails on every engine. Every other checkbox in the
+    #  app already carried this guard.
+    for w7 in (390, 360, 320):
+        g = b.new_page(viewport={"width": w7, "height": 900})
+        g.add_init_script(SDK)
+        g.add_init_script("window.__EMAIL=%s;" % json.dumps("staff@x"))
+        g.route("**firebasedatabase.app/**", fb)
+        g.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        g.goto("http://localhost:8980/staff.html")
+        g.wait_for_timeout(1600)
+        g.click('.tab[data-t="tGuest"]')
+        g.wait_for_timeout(300)
+        ck("the Guest form tab does not scroll sideways at %dpt" % w7,
+           not g.evaluate("()=>document.documentElement.scrollWidth>"
+                          "document.documentElement.clientWidth+1"))
+        ck("and a tick on it is a tick, not a text box, at %dpt" % w7,
+           g.evaluate("""()=>[...document.querySelectorAll(
+               '#tGuest input[type=checkbox]')].every(c=>{
+                 var r=c.getBoundingClientRect();
+                 return r.width<=24 && r.height<=24;})"""))
+        g.close()
+
     #  The write-preview loop: the tab links to the demo form, and leaving
     #  with unsaved edits asks first. The boxes are dirty right now (the
     #  fill below re-arms them; the successful save above rested Save), and
