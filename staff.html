@@ -328,9 +328,9 @@
         &middot; a photo address alone on a line becomes that photo</div>
 
       <div class="gi-sec">Question pages</div>
-      <div class="gi-hint">A heading, the description under it, and the words
-        behind Read more. Every box holds what a guest reads now: change it,
-        or empty a box to put the original wording back.</div>
+      <div class="gi-hint">A heading, the description under it, and the
+        words behind Read more. An emptied box is left off the guest page
+        &mdash; an emptied Read more loses its button.</div>
       <div class="gi-hint">A heading you write is used on every stay length,
         so a one night guest reads it too.</div>
       <div id="giPageRows"></div>
@@ -910,9 +910,9 @@ var GI_PARTS = [['Title', 'Heading'], ['Desc', 'Description'],
       var f = document.createElement(part[0] === 'Title' ? 'input' : 'textarea');
       f.id = id;
       if (part[0] !== 'Title') f.rows = 2;
-      /* Only ever seen when a box has been emptied, which is the way back
-         to the original wording. */
-      f.placeholder = 'Empty: the guest reads the original wording.';
+      /* Only ever seen when a box has been emptied, which since 11 Sep
+         means the guest page leaves that part out entirely. */
+      f.placeholder = 'Empty: the guest page leaves this out.';
       d.appendChild(l); d.appendChild(f);
     });
     /* A box inside a shut fold measures zero, so it is sized when the fold
@@ -972,8 +972,14 @@ function loadGuestInfo(){
       document.getElementById('giDiningCrop').value    = j.diningImageCrop || 'centre';
       document.getElementById('giDiningHeight').value  = j.diningImageHeight || 'banner';
       document.getElementById('giIntro').value = j.intro || '';
+      /* v2: the record was saved under the 11 Sep ruling - an absent key
+         is a part the owner emptied, and it must SEED empty rather than
+         resurrect the built-in wording he removed. */
       GI_SAVED = { more: j.more || {}, titles: j.titles || {},
-                   descs: j.descs || {} };
+                   descs: j.descs || {},
+                   v2: Number(j.copyV) >= 2,
+                   introGone: Number(j.copyV) >= 2
+                              && typeof j.intro !== 'string' };
       giSeedPages();
       giFitAll();
     }).catch(function(){});
@@ -1007,12 +1013,17 @@ function giSeedPages(){
       var id = 'gi' + part[0] + '_' + p[0];
       var own = (GI_SAVED[GI_PART_KEY[part[0]]] || {})[p[0]];
       /* Seeding is not an edit: the value is set directly, which fires no
-         input event, so Save stays at rest and GI_DIRTY stays false. */
+         input event, so Save stays at rest and GI_DIRTY stays false.
+         In a v2 record an absent key is a part the owner emptied, and it
+         seeds empty; '' is an untouched part and seeds the built-in
+         wording, ready to edit, exactly as before. */
       document.getElementById(id).value =
-        (typeof own === 'string' && own.trim()) ? own : giBuiltin(id);
+        (typeof own === 'string' && own.trim()) ? own
+        : (GI_SAVED.v2 && typeof own !== 'string') ? ''
+        : giBuiltin(id);
     });
   });
-  if (!document.getElementById('giIntro').value.trim())
+  if (!document.getElementById('giIntro').value.trim() && !GI_SAVED.introGone)
     document.getElementById('giIntro').value = giBuiltin('giIntro');
   giFitAll();
 }
@@ -1089,7 +1100,15 @@ document.getElementById('giSave').onclick = function(){
   }
   /* What each part holds, said in the same words the database refuses in. */
   var GI_CAP = { Title: 200, Desc: 500, More: 2000 };
-  var pages = { titles: {}, descs: {}, more: {} }, over = null;
+  /* Two readings of the same boxes. `pages` is the record as the 11 Sep
+     ruling stores it - blank means blank: an emptied box is LEFT OUT of
+     its map, and the guest page draws nothing for that part. Unchanged is
+     still stored as '', so the page keeps owning its own words and an
+     edit to them is never shadowed by a stale copy. `legacy` is the old
+     shape (emptied and unchanged both ''), kept only for the fallback
+     below until the rules learn copyV. */
+  var pages  = { titles: {}, descs: {}, more: {} };
+  var legacy = { titles: {}, descs: {}, more: {} }, over = null;
   GI_MORE.forEach(function(p){
     GI_PARTS.forEach(function(part){
       var id = 'gi' + part[0] + '_' + p[0];
@@ -1097,33 +1116,53 @@ document.getElementById('giSave').onclick = function(){
       if (v.length > GI_CAP[part[0]] && !over)
         over = p[1] + ' ' + part[1].toLowerCase() + ' is over the ' +
                GI_CAP[part[0]] + ' characters it holds';
-      /* Unchanged is stored as nothing, so the page keeps owning its own
-         words and an edit to them is never shadowed by a stale copy. */
-      pages[GI_PART_KEY[part[0]]][p[0]] = (v === giBuiltin(id)) ? '' : v;
+      var t = (v === giBuiltin(id)) ? '' : v;
+      legacy[GI_PART_KEY[part[0]]][p[0]] = t;
+      if (v !== '') pages[GI_PART_KEY[part[0]]][p[0]] = t;
     });
   });
   var intro = document.getElementById('giIntro').value.trim();
   if (intro.length > 1000 && !over)
     over = 'The introduction is over the 1000 characters it holds';
-  if (intro === giBuiltin('giIntro')) intro = '';
+  /* null deletes the key: an emptied introduction is absent, which is how
+     the guest page knows to draw no introduction line at all. */
+  var legacyIntro = (intro === giBuiltin('giIntro')) ? '' : intro;
+  var introOut = (intro === '') ? null : legacyIntro;
   if (over){
     err.textContent = 'The ' + over + '.';
     return;
   }
   err.textContent = '';
+  var common = { welcomeImage: wi, diningImage: di, diningText: dt,
+    welcomeImageCrop:   document.getElementById('giWelcomeCrop').value,
+    welcomeImageHeight: document.getElementById('giWelcomeHeight').value,
+    diningImageCrop:    document.getElementById('giDiningCrop').value,
+    diningImageHeight:  document.getElementById('giDiningHeight').value,
+    by: (window.NALA_USER && NALA_USER.email) || '',
+    at: new Date().toISOString() };
+  function giBody(extra){
+    var out = {};
+    Object.keys(common).forEach(function(k){ out[k] = common[k]; });
+    Object.keys(extra).forEach(function(k){ out[k] = extra[k]; });
+    return JSON.stringify(out);
+  }
   return saveFeedback(pressedButton(), function(){
     return fetch(DB + '/prearrivalinfo.json', {
       method:'PATCH', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ welcomeImage: wi, diningImage: di,
-        diningText: dt, intro: intro, more: pages.more,
-        titles: pages.titles, descs: pages.descs,
-        welcomeImageCrop:   document.getElementById('giWelcomeCrop').value,
-        welcomeImageHeight: document.getElementById('giWelcomeHeight').value,
-        diningImageCrop:    document.getElementById('giDiningCrop').value,
-        diningImageHeight:  document.getElementById('giDiningHeight').value,
-        by: (window.NALA_USER && NALA_USER.email) || '',
-        at: new Date().toISOString() })
-    }).then(function(r){ if (!r.ok) throw new Error('rejected'); });
+      body: giBody({ copyV: 2, intro: introOut, more: pages.more,
+                     titles: pages.titles, descs: pages.descs })
+    }).then(function(r){
+      if (r.ok) return;
+      /* The rules may not know copyV yet: the paste is the owner's to do.
+         Until then Save falls back to the old shape and old meaning - an
+         emptied box puts the original wording back - rather than failing,
+         so the tab limps instead of breaking. */
+      return fetch(DB + '/prearrivalinfo.json', {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: giBody({ intro: legacyIntro, more: legacy.more,
+                       titles: legacy.titles, descs: legacy.descs })
+      }).then(function(r2){ if (!r2.ok) throw new Error('rejected'); });
+    });
   }, { done:'Saved ✓', then:function(){ GI_DIRTY = false; },
        fail:function(msg){ err.textContent = msg; } });
 };

@@ -374,6 +374,14 @@ cannotPatch('and an introduction past its own', ADMIN, '/prearrivalinfo',
             { intro: new Array(1002).join('x') });
 cannotPatch('and so is a field the node does not know', ADMIN, '/prearrivalinfo',
             { html: '<b>x</b>' });
+/* copyV 2 marks a record saved under the 11 Sep ruling (blank means
+   blank): its Save leaves emptied parts out of the maps, and both readers
+   change their reading of an absent key on seeing it. */
+canPatch('the blank-means-blank stamp is a number the node knows', ADMIN,
+         '/prearrivalinfo', { copyV: 2 });
+cannotPatch('and only as the version it names', ADMIN, '/prearrivalinfo',
+            { copyV: 1 });
+cannotPatch('never as words', ADMIN, '/prearrivalinfo', { copyV: '2' });
 
 /* The arriving-soon marker. The Worker writes it before it sends, so a villa
    is announced once however many cron wakes cross its red hour. */

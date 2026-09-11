@@ -158,6 +158,12 @@ def fb(route, request):
         if STATE["fail"]:
             route.fulfill(status=401, content_type="application/json",
                           body='{"error":"denied"}'); return
+        #  Rules that predate the copyV stamp refuse any write carrying it:
+        #  the shape of the console before the owner's paste.
+        if (m == "PATCH" and "/prearrivalinfo" in u and STATE.get("oldrules")
+                and '"copyV"' in (request.post_data or "")):
+            route.fulfill(status=400, content_type="application/json",
+                          body='{"error":"validation"}'); return
         # the page reloads after a save; fold the write in so it shows
         mm = re.search(r"/spa/([^/]+)/([^/.]+)\.json", u)
         if mm:
@@ -171,15 +177,23 @@ def fb(route, request):
     elif "/spasettings" in u:
         body = json.dumps({"price60": 180, "price90": 250, "price120": 310})
     elif "/prearrivalinfo" in u:
-        body = json.dumps({"welcomeImage": "https://photos.test/old.jpg",
-                           "welcomeImageCrop": "top",
-                           "welcomeImageHeight": "tall",
-                           "diningImage": "",
-                           "diningText": "Old dining words",
-                           "intro": "Old introduction",
-                           "titles": {"dine": "Old dine heading"},
-                           "descs": {"dine": "Old dine description"},
-                           "more": {"dine": "Old dine more"}})
+        if STATE.get("giV2"):
+            #  A record saved under the 11 Sep ruling: absent keys are
+            #  parts the owner emptied, '' is untouched.
+            body = json.dumps({"copyV": 2, "intro": "",
+                               "titles": {}, "descs": {},
+                               "more": {"dine": "V2 dine words.",
+                                        "eta": ""}})
+        else:
+            body = json.dumps({"welcomeImage": "https://photos.test/old.jpg",
+                               "welcomeImageCrop": "top",
+                               "welcomeImageHeight": "tall",
+                               "diningImage": "",
+                               "diningText": "Old dining words",
+                               "intro": "Old introduction",
+                               "titles": {"dine": "Old dine heading"},
+                               "descs": {"dine": "Old dine description"},
+                               "more": {"dine": "Old dine more"}})
     elif "/staff" in u: body = json.dumps(STAFF)
     elif "/spa.json" in u: body = json.dumps(SPA)
     elif re.search(r"/spa/[^/]+\.json", u):
@@ -1392,6 +1406,9 @@ with sync_playwright() as p:
     del WRITES[:]
     q.fill("#giDiningText", "Dinner is one menu, finalised each day.")
     q.fill("#giMore_diet", "Owner diet words.")
+    #  Emptied on purpose: blank means blank (the owner, 11 Sep), and an
+    #  emptied part must leave the record entirely.
+    q.fill("#giMore_companion", "")
     q.click("#giSave")
     q.wait_for_timeout(600)
     w5 = [x for x in WRITES if "/prearrivalinfo" in x["u"]]
@@ -1416,11 +1433,15 @@ with sync_playwright() as p:
     #  A box still holding the page's own words stores NOTHING. Saving the
     #  seeded copy would freeze today's wording into the database, and a
     #  later edit to prearrival.html would be shadowed by a copy nobody
-    #  remembers making - which is also what makes emptying a box the way
-    #  back to the original.
+    #  remembers making. An EMPTIED box is different since 11 Sep: it
+    #  leaves the record entirely, which the guest page reads as "draw
+    #  nothing" - blank means blank, not "put the original back".
     ck("a box left as it came is stored as nothing, not as a copy",
        (body5.get("more") or {}).get("well") == "" and
        (body5.get("more") or {}).get("purpose") == "")
+    ck("an emptied box leaves the record, and the save says blank is blank",
+       "companion" not in (body5.get("more") or {}) and
+       body5.get("copyV") == 2)
     ck("and the button rests at Saved, which is the truth",
        "Saved" in q.evaluate("()=>giSave.textContent") and
        q.evaluate("()=>giSave.disabled") is True)
@@ -1441,10 +1462,43 @@ with sync_playwright() as p:
     ck("a text past the database's ceiling is refused in words, with the count",
        "4000" in q.evaluate("()=>giErr.textContent") and
        not [x for x in WRITES if "/prearrivalinfo" in x["u"]])
+    #  Until the owner pastes the new rules, the console refuses any write
+    #  carrying copyV. Save must not fail on that: it falls back to the old
+    #  shape - and the old meaning, an emptied box keeps the original - so
+    #  the tab limps instead of breaking.
+    q.fill("#giDiningText", "Dinner, briefly.")
+    STATE["oldrules"] = True
+    del WRITES[:]
+    q.click("#giSave")
+    q.wait_for_timeout(800)
+    w6 = [x for x in WRITES if "/prearrivalinfo" in x["u"]]
+    ck("old rules refuse the stamp and Save limps on the old shape",
+       len(w6) == 2 and '"copyV"' in (w6[0]["b"] or "") and
+       '"copyV"' not in (w6[1]["b"] or "") and
+       "Saved" in q.evaluate("()=>giSave.textContent"))
+    STATE["oldrules"] = False
+    #  A v2 record seeds what it means: his words as his words, '' as the
+    #  built-in wording ready to edit, and an absent key as the blank he
+    #  chose - never the original it would resurrect.
+    STATE["giV2"] = True
+    q.evaluate("()=>loadGuestInfo()")
+    q.wait_for_timeout(600)
+    ck("a v2 record seeds an emptied part as empty, not the original",
+       q.evaluate("()=>giMore_purpose.value") == "" and
+       q.evaluate("()=>giTitle_purpose.value") == "")
+    ck("while '' still seeds the built-in wording, ready to edit",
+       "5pm" in q.evaluate("()=>giMore_eta.value"))
+    ck("and his words seed as his words",
+       q.evaluate("()=>giMore_dine.value") == "V2 dine words.")
+    STATE["giV2"] = False
+
     #  The write-preview loop: the tab links to the demo form, and leaving
     #  with unsaved edits asks first. The boxes are dirty right now (the
-    #  fills above), and Playwright dismisses dialogs by default, which is
-    #  the Cancel branch: the page must stay put.
+    #  fill below re-arms them; the successful save above rested Save), and
+    #  Playwright dismisses dialogs by default, which is the Cancel branch:
+    #  the page must stay put.
+    q.fill("#giDiningText", "dirty again for the dialog below")
+    q.wait_for_timeout(150)
     ck("the tab offers the demo form to preview on",
        q.evaluate("()=>{const a=document.getElementById('giDemo');"
                   "return a ? a.getAttribute('href') : null;}")

@@ -858,6 +858,58 @@ with sync_playwright() as p:
        == "Joining us for dinner?")
     pg.close()
 
+    #  Blank means blank (the owner, 11 Sep). A record stamped copyV 2 was
+    #  saved leaving every emptied part OUT of its map, and an absent key
+    #  reads as "draw nothing": a page whose Read more he emptied has no
+    #  Read more button at all. '' still means untouched - the page keeps
+    #  its own wording - so a record's silence about a page he never
+    #  touched costs nothing, and the one-night bending stays alive.
+    STATE["info"] = {"copyV": 2, "intro": "",
+                     "titles": {"eta": "", "dine": "Joining us?"},
+                     "descs":  {"eta": ""},
+                     "more":   {"eta": "", "dine": "His dinner words."}}
+    pg = guest()
+    ck("an emptied Read more has no button and no body",
+       pg.evaluate("()=>getComputedStyle(document.querySelector"
+                   "('#qPurpose .more')).display") == "none" and
+       pg.evaluate("()=>getComputedStyle(document.querySelector"
+                   "('#qPurpose .more-b')).display") == "none")
+    ck("an emptied heading and description draw nothing",
+       pg.evaluate("()=>getComputedStyle(document.querySelector"
+                   "('#qPurpose .q-t')).display") == "none" and
+       pg.evaluate("()=>getComputedStyle(document.querySelector"
+                   "('#qPurpose .q-h')).display") == "none")
+    ck("an untouched part keeps the page's own words, button and all",
+       pg.evaluate("()=>getComputedStyle(document.querySelector"
+                   "('#qEta .more')).display") != "none" and
+       "Reception is here until 5pm" in
+       pg.evaluate("()=>document.querySelector('#qEta .more-b').textContent")
+       and pg.evaluate("()=>document.querySelector('#qEta .q-t').textContent")
+       == "What time do you expect to arrive?")
+    ck("and a written one still shows his words",
+       pg.evaluate("()=>document.querySelector('#qDine .q-t').textContent")
+       == "Joining us?")
+    pg.close()
+    #  The introduction line obeys the same ruling: absent from a copyV 2
+    #  record means he emptied it, and the landing draws none.
+    del STATE["info"]["intro"]
+    pg = guest(begin=False)
+    ck("an emptied introduction leaves the landing without one",
+       pg.evaluate("()=>getComputedStyle(document.querySelector"
+                   "('.intro-why')).display") == "none")
+    pg.close()
+    #  A record from before copyV cannot mean blank: there an absent key
+    #  was never a decision, only a page nobody had written to, and it
+    #  keeps the page's own wording exactly as it always has.
+    STATE["info"] = {"more": {"dine": "Old style words."}}
+    pg = guest()
+    ck("a pre-copyV record's silence still keeps the built-in words",
+       pg.evaluate("()=>getComputedStyle(document.querySelector"
+                   "('#qPurpose .more')).display") != "none" and
+       pg.evaluate("()=>getComputedStyle(document.querySelector"
+                   "('#qPurpose .q-t')).display") != "none")
+    pg.close()
+
     #  The photo-line rule lives on in the dining text, and the guards
     #  hold: a dead image removes itself (the CDN rewrites addresses, and
     #  a broken-image glyph says something is wrong with a form that is
