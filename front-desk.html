@@ -428,6 +428,14 @@
 .cslot.fail::after { content:'\2715'; color:var(--law-red); }
 /* wiped or lost: no longer a key, sunk in the law's nothing-to-do-here */
 .cslot.gone { border-style:dashed; opacity:.62; }
+/* the wake pulse: amber is in-progress; still dots when motion is off */
+.cwake { display:inline-flex; gap:4px; margin-right:8px; align-items:center; }
+.cwake i { width:6px; height:6px; border-radius:50%; background:var(--amberb);
+           animation:cwake 1s infinite ease-in-out; }
+.cwake i:nth-child(2) { animation-delay:.18s; }
+.cwake i:nth-child(3) { animation-delay:.36s; }
+@keyframes cwake { 0%,100% { opacity:.25; } 40% { opacity:1; } }
+@media (prefers-reduced-motion: reduce) { .cwake i { animation:none; opacity:.7; } }
 /* The active villa asks with a drawing, not a sentence - ruled by the
    owner, 8 Sep evening, with TTHotel's own issue-card dialog as the
    reference: a hand holding a card, waves saying hold-it-near, and
@@ -516,7 +524,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
 <script src="nala-shared.js?v=64"></script>
-<script src="nala-cards.js?v=2"></script>
+<script src="nala-cards.js?v=3"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */

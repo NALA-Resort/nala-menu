@@ -2293,6 +2293,16 @@ with sync_playwright() as p:
     ck("a queued villa says Queued, one word",
        "Queued" in pg.inner_text("#cardBody")
        and "waiting for the encoder" not in pg.inner_text("#cardBody"))
+    #  The one exception, ruled 11 Sep: the villa the helper goes to NEXT
+    #  pulses and says it is waking, because five silent seconds at the
+    #  desk read as "is this working?". One pulse only - the claim comes
+    #  after the encoder answered, so the hand drawing is "reader found"
+    #  and the ten-second verdict owns the other ending.
+    ck("the active queued villa pulses, alone, and says it is waking",
+       pg.evaluate("""()=>{var c=[...document.querySelectorAll('.crun')];
+         var w=c.filter(x=>x.querySelector('.cwake'));
+         return w.length===1
+             && w[0].innerText.indexOf('Waking the encoder')>=0;}"""))
 
     #  The helper moves a job; the poll repaints without a reload. The
     #  OTHER queued villas are marked done first, because a queue that ages

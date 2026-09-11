@@ -245,7 +245,15 @@ function crunHTML(r, active){
             (cc.k === 'done' ? ' is-done' : '') +
             (cc.k === 'failed' ? ' is-failed' : '');
   /* the active writing villa asks with the drawing below, not words */
+  /* The active QUEUED villa pulses while the helper claims it - about
+     five seconds of silence at the desk read as "is this working?"
+     (owner, 11 Sep). Movement only until a signal that cannot lie: the
+     claim happens after the encoder answered, so the hand drawing IS
+     "reader found", and the ten-second verdict owns the other ending.
+     Other queued villas keep the owner's one word of 8 Sep. */
   var line = cc.k === 'writing' && active ? ''
+      : cc.k === 'queued' && active
+        ? '<span class="cwake"><i></i><i></i><i></i></span>Waking the encoder\u2026'
       : cc.k === 'queued' ? 'Queued'
       : esc(cc.label);
   var h = '<div class="' + cls + '"><div class="crun-v">Villa ' + r.villa +
