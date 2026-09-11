@@ -2438,22 +2438,24 @@ with sync_playwright() as p:
     #  here would zero written and recut every card - the 9 Sep bug.
     ext = [json.loads(x["b"]) for x in WRITES
            if "/cardjobs/%s/9" % today in x["u"] and x["m"] == "PATCH"]
-    #  3 written, 3 asked (the stepped q persists on the panel): 6 either
-    #  way here - the abandoned-ask case that tells the laws apart is next.
+    #  3 written, and the question starts FRESH at 2 on every ask (11 Sep:
+    #  a five left over from another villa's ask is nobody's answer).
     ck("and Issue grows the done job, never replaces it",
-       ext and ext[0]["state"] == "queued" and ext[0]["qty"] == 6
+       ext and ext[0]["state"] == "queued" and ext[0]["qty"] == 5
        and "written" not in ext[0]
        and not [x for x in WRITES if x["m"] == "PUT" and "/cardjobs/" in x["u"]])
 
     #  written + more, never old qty + more: an abandoned ask must not
     #  ride along (the phantom third card, 10-11 Sep). A record carrying
-    #  qty 6 with only 2 written re-asks for 3: the old law would mint
-    #  min(6, 6+3)=6, the truth is 2+3=5.
+    #  qty 6 with only 2 written re-asks for 3 (one step up from the
+    #  fresh 2): the old law would mint 6+3=9, the truth is 2+3=5.
     CARDJOBS["9"].update({"qty": 6, "written": 2, "state": "done"})
     pg.wait_for_timeout(1800)
     del WRITES[:]
     pg.evaluate("()=>document.querySelector('[data-cardagain]').click()")
     pg.wait_for_timeout(200)
+    pg.evaluate("()=>document.querySelector('[data-cardq=\"1\"]').click()")
+    pg.wait_for_timeout(150)
     pg.evaluate("()=>document.querySelector('[data-cardissue]').click()")
     pg.wait_for_timeout(400)
     ext2 = [json.loads(x["b"]) for x in WRITES
