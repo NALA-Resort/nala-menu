@@ -45,9 +45,8 @@
      counters forever, so it could quote a rate. The table cannot - a
      cancelled card's row is GONE, which is the model working, not a
      loss. The Tally line now says only what the rows say: how many
-     cards never came back. If the owner wants the rate back it needs
-     its own little counter, owned and named - said here so it is a
-     decision and not an accident.
+     cards never came back. RULED by the owner, 11 Sep: remove the
+     rate; the line says only what the rows say.
 
    What this changes at each surface, all visible on this page:
    - Issuing: the helper appends a row PER CARD as it cuts it, so the
@@ -58,7 +57,9 @@
      act - its row goes, flag and all. An EXPIRED card held to the
      reader comes off the Tally the same way - the first store made
      that impossible (dead jobs were out of reach). A card no row
-     matches is wiped anyway and reported as a blank again.
+     matches - foreign plastic, or one already cancelled - is wiped
+     anyway and says only "Unknown card": both are normal desk
+     business, not errors (the owner, 11 Sep).
    - Lost: cards are twins in the hand - which physical card is lost is
      unknowable until one touches the reader - so Mark lost flags A row
      of that villa's, and the row reads "one of villa 9's". The serial
@@ -458,9 +459,9 @@ function render(){
   var g = '';
   if (TAB === 'tally'){
     line.hidden = false;
-    /* No "% returned": the rate needed the dead store's lifetime
-       counters, and a cancelled card's row is gone. The rows say only
-       this. */
+    /* No "% returned", ruled by the owner 11 Sep: the rate needed the
+       dead store's lifetime counters, and a cancelled card's row is
+       gone. The rows say only this. */
     line.textContent = tly.length
       ? tly.length + ' cards never came back'
       : 'Every card so far has come back';
@@ -687,7 +688,10 @@ function cnHold(){
   ];
   var c = (seq[Math.min(SEQ, 3)] || seq[3])(); SEQ++;
   if (!c){
-    CN.done.unshift('Not on record · wiped · a blank again');
+    /* Foreign plastic and an already-cancelled card look the same to the
+       register - no record - and wiping either is NORMAL, not an error
+       (the owner, 11 Sep): if it's unknown, just say unknown. */
+    CN.done.unshift('Unknown card · wiped');
   } else {
     var st = stateOf(c, now);
     CARDS = CARDS.filter(function(x){ return x.id !== c.id; });
@@ -720,7 +724,7 @@ function cnRender(){
        '<button class="go wide" id="ovStop">Stop</button></div>' +
        '<div class="tapnote">(mock: tap the big card = hold a card to the ' +
        'reader · it plays a valid card, the lost one, one off the ' +
-       'Tally, then a blank)</div></div>';
+       'Tally, then an unknown card)</div></div>';
   document.getElementById('ovBody').innerHTML = b;
 }
 

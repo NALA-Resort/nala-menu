@@ -334,6 +334,14 @@ list the helper writes as it wipes each card.
    Tally is rows past their expiry still present. `cardCell` and `cardLife` in
    `nala-shared.js` are the tally-era readers and do not survive the rebuild.
 4. **No migration needed.** The live records are two days of test data.
+5. **The Dashboard reads the same table** (ruled 11 Sep), through the one
+   shared reader that replaces `cardCell`, with its entry in
+   `tests/dashboard_sources.json` - rule 7, applied before the drift.
+6. **Front Desk steps back** (ruled 11 Sep): its key is merely a shortcut
+   that cuts all arrival keys - the same run the Keys page owns - and
+   nothing else. The per-villa encode menu, the card states in its drop
+   and the guest sheet's Key cards line all go: there is no reason for
+   keys information on Front Desk's forms. Cards are the Keys page's.
 
 ### The serial
 
@@ -349,14 +357,24 @@ Either answer serves the model: a card that was cut has a recorded number, and
 a card held to the reader reports the same number. The open question is only
 whether blank or foreign plastic can be named. **The desk test that settles
 it:** start a cancel session and hold a brand-new, never-written card to the
-reader. A number means the serial belongs to the plastic.
+reader. A number means the serial belongs to the plastic - and that answer is
+worth having (11 Sep): a plastic-bound serial means a card being RE-CUT can
+shed its old row automatically instead of leaving a ghost behind a skipped
+cancel, and a card whose written data is corrupt or unreadable can still be
+named and its row removed at the reader rather than by a hand Remove.
 
 ### Wording, all ruled by the owner
 
 `Skip this card`, `Mark lost`, `Found`, `Remove`, `Waking up...`; `All
 arrivals` asks no quantity and cuts a card per guest on the booking; `till Sat
 13th` with no month and no time; `expires`, never `dies`; 12-hour clock on the
-last day; no serial numbers on screen.
+last day; no serial numbers on screen. And from 11 Sep: no `% returned` on
+the Tally - the rate needed the dead store's lifetime counters and is
+removed, the line says only how many cards never came back; the cancel
+session names each entry as it is wiped, which is fine and intuitive;
+wiping foreign plastic or an already-cancelled card is NORMAL desk
+business, never an error, and a card no row matches says only
+`Unknown card · wiped`.
 
 ---
 
