@@ -308,7 +308,7 @@ Card expiry is the departure day at **1pm**, ruled by the owner 10 Sep.
 | a card is written | a row appears |
 | a card is cancelled (wiped at the encoder) | its row is removed |
 | a card is reported lost | a flag on its row; the row stays, the card is still out there |
-| a card expires with its row still there | that is the Tally - it never came back |
+| a card expires with its row still there | it shows as **Expired** - it never came back. (The working name was "the Tally"; the owner renamed it 11 Sep, because expired is what they are) |
 
 **Screens count rows.** "2 cards with the guest" is two rows. The register is
 the rows. Nothing subtracts and nothing infers.
@@ -330,9 +330,10 @@ list the helper writes as it wipes each card.
    stored in the same row as the cards.
 2. **The helper writes a row per card** as it cuts it; the cancel session
    removes the row it wiped. `rules.json` needs the new node.
-3. **The screens count.** Seats are the held rows, the register lists rows, the
-   Tally is rows past their expiry still present. `cardCell` and `cardLife` in
-   `nala-shared.js` are the tally-era readers and do not survive the rebuild.
+3. **The screens count.** Seats are the held rows, the register lists rows,
+   Expired is rows past their expiry still present. `cardCell` and `cardLife`
+   in `nala-shared.js` are the tally-era readers and do not survive the
+   rebuild.
 4. **No migration needed.** The live records are two days of test data.
 5. **The Dashboard reads the same table** (ruled 11 Sep), through the one
    shared reader that replaces `cardCell`, with its entry in
@@ -346,35 +347,33 @@ list the helper writes as it wipes each card.
 ### The serial
 
 The encoder reports a card number (`CE_GetCardNo`), recorded at cut time; the
-cancel session matches a held card against it. The cards are MIFARE S50, which
-carry a factory UID readable before any authentication. Whether this DLL call
-returns that UID or a number decoded from what was written is **not
-established** - the vendor manual
-(`euopen.ttlock.com/commons/dll/Card Encoder DLL User Manual- Eng.docx`) is
-blocked by the sandbox's network policy and needs a human to open it.
+cancel session matches a held card against it. **Settled by the owner,
+11 Sep: the number belongs to the plastic.** He knows it from TTHotel's own
+software, where writing over an active card removes the old card from the
+register - behaviour only possible when the identity rides on the plastic,
+not on what was written. No desk test needed.
 
-Either answer serves the model: a card that was cut has a recorded number, and
-a card held to the reader reports the same number. The open question is only
-whether blank or foreign plastic can be named. **The desk test that settles
-it:** start a cancel session and hold a brand-new, never-written card to the
-reader. A number means the serial belongs to the plastic - and that answer is
-worth having (11 Sep): a plastic-bound serial means a card being RE-CUT can
-shed its old row automatically instead of leaving a ghost behind a skipped
-cancel, and a card whose written data is corrupt or unreadable can still be
-named and its row removed at the reader rather than by a hand Remove.
+The helper therefore mirrors TTHotel exactly: cutting onto plastic that
+still has a row removes that row in the same act (a re-cut can never leave
+a ghost behind a skipped cancel), and a card whose written data is corrupt
+or unreadable can still be named at the reader and its row removed there,
+rather than by a hand Remove.
 
 ### Wording, all ruled by the owner
 
 `Skip this card`, `Mark lost`, `Found`, `Remove`, `Waking up...`; `All
 arrivals` asks no quantity and cuts a card per guest on the booking; `till Sat
 13th` with no month and no time; `expires`, never `dies`; 12-hour clock on the
-last day; no serial numbers on screen. And from 11 Sep: no `% returned` on
-the Tally - the rate needed the dead store's lifetime counters and is
-removed, the line says only how many cards never came back; the cancel
-session names each entry as it is wiped, which is fine and intuitive;
-wiping foreign plastic or an already-cancelled card is NORMAL desk
-business, never an error, and a card no row matches says only
-`Unknown card · wiped`.
+last day; no serial numbers on screen. And from 11 Sep: the screen word is
+`Expired`, never `Tally` - expired is what they are; no `% returned` there -
+the rate needed the dead store's lifetime counters and is removed, the line
+says only how many cards never came back; the cancel session names each
+entry as it is wiped, which is fine and intuitive, and every announcement
+keeps ONE shape - the entry, then the action: `Villa 9 · cancelled`,
+`Unknown card · cancelled` - never a narrative variant per state (no
+"was lost", no "off the tally"); wiping foreign plastic or an
+already-cancelled card is NORMAL desk business, never an error - if it's
+unknown, just say unknown.
 
 ---
 

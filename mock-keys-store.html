@@ -24,7 +24,7 @@
        a card is written    ->  a row appears (the helper, as it cuts)
        a card is cancelled  ->  its row is removed (matched by serial)
        a card is lost       ->  a flag on its row; the row stays
-       expiry passes, row still there  ->  that IS the Tally
+       expiry passes, row still there  ->  it shows as Expired
 
    Screens COUNT ROWS. Nothing subtracts, nothing infers, nothing keeps
    a second copy of the fact. The panel at the foot of this mock is the
@@ -44,9 +44,10 @@
    - The Tally's lifetime "% returned": the old store kept issued/back
      counters forever, so it could quote a rate. The table cannot - a
      cancelled card's row is GONE, which is the model working, not a
-     loss. The Tally line now says only what the rows say: how many
-     cards never came back. RULED by the owner, 11 Sep: remove the
-     rate; the line says only what the rows say.
+     loss. RULED by the owner, 11 Sep: remove the rate; the Expired
+     line says only what the rows say - how many never came back.
+     Also ruled 11 Sep: the screen word is Expired, not Tally,
+     because that is what they are.
 
    What this changes at each surface, all visible on this page:
    - Issuing: the helper appends a row PER CARD as it cuts it, so the
@@ -55,11 +56,13 @@
    - Cancelling: the reader names the held card by serial, the row is
      removed. A lost card held to the reader is found and wiped in one
      act - its row goes, flag and all. An EXPIRED card held to the
-     reader comes off the Tally the same way - the first store made
+     reader comes off Expired the same way - the first store made
      that impossible (dead jobs were out of reach). A card no row
      matches - foreign plastic, or one already cancelled - is wiped
-     anyway and says only "Unknown card": both are normal desk
-     business, not errors (the owner, 11 Sep).
+     anyway: both are normal desk business, not errors. Every entry
+     is announced in ONE shape, the entry then the action - Villa 9
+     cancelled, Unknown card cancelled - never a narrative variant
+     per state (the owner, 11 Sep).
    - Lost: cards are twins in the hand - which physical card is lost is
      unknowable until one touches the reader - so Mark lost flags A row
      of that villa's, and the row reads "one of villa 9's". The serial
@@ -327,7 +330,7 @@ body { min-height:100vh; min-height:100dvh;
     <h2>What the database holds</h2>
     <div class="why">One line here is one card in the world. Cut a card and
       a line appears, wipe one and its line goes, Mark lost flags it, and a
-      line still here past its expiry is the Tally. The screens above are
+      line still here past its expiry is Expired. The screens above are
       these lines, counted - nothing else. (Each record also keeps the card
       number the encoder reported, which is how the reader names a held
       card; it stays off every screen.)</div>
@@ -395,7 +398,7 @@ function resetAll(){
   seed(4,  'Robyn Williams',             at1pm(2), 2);
   seed(6,  'Karen and Mike Mount',       at1pm(1), 3);
   seed(9,  'Konstantinos Papadopoulos',  at1pm(1), 3, true);  /* one loose */
-  /* the Tally: rows past their 1pm, still in the table */
+  /* Expired: rows past their 1pm, still in the table */
   seed(2,  'Sarah Mitchell',             at1pm(-4), 1);
   seed(11, 'Priya Raghunathan',          at1pm(-6), 2);
   seed(7,  'Mark Whitfield',             at1pm(-10), 1);
@@ -420,7 +423,7 @@ function resetAll(){
 
 /* ── counting rows - the whole of the screens' cleverness ─────────── */
 function stateOf(c, now){
-  if (c.expiry < now) return 'tally';
+  if (c.expiry < now) return 'expired';
   return c.lost ? 'lost' : 'active';
 }
 function rowsIn(state, now){
@@ -429,7 +432,7 @@ function rowsIn(state, now){
 }
 function heldBy(villa, now){          /* "John has 2 active cards" */
   return CARDS.filter(function(c){
-    return c.villa === villa && stateOf(c, now) !== 'tally';
+    return c.villa === villa && stateOf(c, now) !== 'expired';
   }).length;
 }
 function cardsWord(n){ return n + (n === 1 ? ' card' : ' cards'); }
@@ -438,17 +441,17 @@ var TABS = [
   { k:'all',   label:'All' },
   { k:'ok',    label:'Active' },
   { k:'lost',  label:'Lost' },
-  { k:'tally', label:'Tally' }
+  { k:'expired', label:'Expired' }
 ];
 
 function render(){
   var now = Date.now();
   var act = rowsIn('active', now), lost = rowsIn('lost', now),
-      tly = rowsIn('tally', now);
+      tly = rowsIn('expired', now);
 
   var t = '';
   TABS.forEach(function(tb){
-    var n = tb.k === 'tally' ? tly.length : tb.k === 'lost' ? lost.length
+    var n = tb.k === 'expired' ? tly.length : tb.k === 'lost' ? lost.length
           : tb.k === 'ok' ? act.length : act.length + lost.length;
     t += '<button' + (TAB === tb.k ? ' class="on"' : '') + ' data-tab="' + tb.k +
          '">' + tb.label + (n ? ' &middot; ' + n : '') + '</button>';
@@ -457,7 +460,7 @@ function render(){
 
   var line = document.getElementById('tallyLine');
   var g = '';
-  if (TAB === 'tally'){
+  if (TAB === 'expired'){
     line.hidden = false;
     /* No "% returned", ruled by the owner 11 Sep: the rate needed the
        dead store's lifetime counters, and a cancelled card's row is
@@ -545,7 +548,7 @@ function storeRender(now){
       'A card for villa <b>' + c.villa + '</b> (' + c.guest + ') &middot; ' +
       (c.expiry < now
         ? '<span class="expflag">expired ' + dayLabel(c.expiry) +
-          ', never came back &middot; the Tally</span>'
+          ', never came back</span>'
         : 'till ' + dayLabel(c.expiry) + ', 1pm') +
       (c.lost ? ' &middot; <span class="lostflag">marked lost</span>' : '') +
       '</div>';
@@ -678,12 +681,12 @@ function cnOpen(){
 function cnHold(){
   var now = Date.now();
   /* the pretend reader: a valid card, then villa 9's lost one, then a
-     card off the Tally, then plastic no row matches */
+     expired card, then plastic no row matches */
   var seq = [
     function(){ return rowsIn('active', now).filter(function(c){
                   return !isToday(c.expiry); })[0]; },
     function(){ return rowsIn('lost', now)[0]; },
-    function(){ return rowsIn('tally', now)[0]; },
+    function(){ return rowsIn('expired', now)[0]; },
     function(){ return null; }
   ];
   var c = (seq[Math.min(SEQ, 3)] || seq[3])(); SEQ++;
@@ -691,15 +694,12 @@ function cnHold(){
     /* Foreign plastic and an already-cancelled card look the same to the
        register - no record - and wiping either is NORMAL, not an error
        (the owner, 11 Sep): if it's unknown, just say unknown. */
-    CN.done.unshift('Unknown card · wiped');
+    CN.done.unshift('Unknown card · cancelled');
   } else {
-    var st = stateOf(c, now);
+    /* one notification shape, the owner 11 Sep: the entry, then the
+       action - never a narrative variant per state */
     CARDS = CARDS.filter(function(x){ return x.id !== c.id; });
-    CN.done.unshift(
-      st === 'tally' ? 'Villa ' + c.villa + ' · expired ' +
-                       dayLabel(c.expiry) + ' · off the tally'
-    : st === 'lost'  ? 'Villa ' + c.villa + ' · was lost · cancelled'
-    : 'Villa ' + c.villa + ' · cancelled');
+    CN.done.unshift('Villa ' + c.villa + ' · cancelled');
   }
   cnRender(); render();
 }
@@ -723,8 +723,8 @@ function cnRender(){
   b += '<div class="sum-btns" style="margin-top:16px">' +
        '<button class="go wide" id="ovStop">Stop</button></div>' +
        '<div class="tapnote">(mock: tap the big card = hold a card to the ' +
-       'reader · it plays a valid card, the lost one, one off the ' +
-       'Tally, then an unknown card)</div></div>';
+       'reader · it plays a valid card, the lost one, an expired ' +
+       'one, then an unknown card)</div></div>';
   document.getElementById('ovBody').innerHTML = b;
 }
 
