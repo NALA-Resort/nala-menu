@@ -174,6 +174,30 @@ function Write-One([string]$villa, $lock, [uint32]$expiry){
 
 function Today { (Get-Date).ToString("yyyy-MM-dd") }
 
+# Firebase turns a node whose keys are NUMBERS into a list when the keys
+# sit dense enough: villas 4-and-6 come back as a map, villas 1-2-3 come
+# back as an array with a null in seat 0, and /cancelrun/done (keyed
+# 0,1,2...) comes back as an array almost always. Every keyed read goes
+# through this, so both shapes read the same. Found live 11 Sep: the
+# queue scan read the ARRAY's own properties and tried to sort villa
+# "SyncRoot".
+function Node-Pairs($node){
+  $out = @()
+  if ($null -eq $node) { return ,$out }
+  if ($node -is [System.Array]) {
+    for ($i = 0; $i -lt $node.Length; $i++) {
+      if ($null -ne $node[$i]) {
+        $out += [pscustomobject]@{ Name = [string]$i; Value = $node[$i] }
+      }
+    }
+  } else {
+    foreach ($p in $node.PSObject.Properties) {
+      $out += [pscustomobject]@{ Name = $p.Name; Value = $p.Value }
+    }
+  }
+  ,$out
+}
+
 Log "NALA encoder helper - watching /cardjobs. Ctrl+C stops it."
 while ($true) {
   try {
@@ -184,7 +208,7 @@ while ($true) {
     # villa name as the job and wrote zero cards. Found live, 9 Sep.
     $queued = @()
     if ($jobs) {
-      foreach ($p in $jobs.PSObject.Properties) {
+      foreach ($p in (Node-Pairs $jobs)) {
         if ($p.Value.state -eq "queued") {
           $queued += [pscustomobject]@{ villa = $p.Name; job = $p.Value }
         }
@@ -262,7 +286,7 @@ while ($true) {
         Log "cancel session on - hold cards to the reader"
         $all = Fb-Get "/cardjobs"          # the serials on record, once
         $n = 0
-        if ($cr.done) { $n = @($cr.done.PSObject.Properties).Count }
+        if ($cr.done) { $n = @(Node-Pairs $cr.done).Count }
         $wiped = @{}; $bumped = @{}
         while ($true) {
           Fb-Patch "/cancelrun" @{ seen=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
@@ -274,8 +298,8 @@ while ($true) {
             # was written down the moment the card was cut
             $villa = "?"; $hit = $null
             if ($all) {
-              foreach ($d in $all.PSObject.Properties) {
-                foreach ($v in $d.Value.PSObject.Properties) {
+              foreach ($d in (Node-Pairs $all)) {
+                foreach ($v in (Node-Pairs $d.Value)) {
                   if ($v.Value.nos -and ("," + $v.Value.nos + ",").Contains("," + $no + ",")) {
                     $villa = $v.Name
                     $hit = @{ day = $d.Name; villa = $v.Name; job = $v.Value }
