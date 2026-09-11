@@ -903,7 +903,7 @@
           ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'encoder')",
           ".validate": "$villa.matches(/^[0-9]{1,2}$/) && newData.hasChildren(['qty','expiry','state','by','at'])",
           "qty": {
-            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 6"
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99"
           },
           "expiry": {
             ".validate": "newData.isNumber() && newData.val() > 0"
@@ -912,7 +912,7 @@
             ".validate": "newData.isString() && (newData.val() == 'queued' || newData.val() == 'writing' || newData.val() == 'done' || newData.val() == 'failed' || newData.val() == 'cancelled')"
           },
           "written": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 6"
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99"
           },
           "by": {
             ".validate": "newData.isString() && newData.val().length <= 120"
@@ -930,10 +930,10 @@
             ".validate": "newData.isString() && newData.val().length <= 240"
           },
           "lost": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 6"
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99"
           },
           "back": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 6"
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99"
           },
           "$other": {
             ".validate": false

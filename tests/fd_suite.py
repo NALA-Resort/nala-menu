@@ -2491,6 +2491,26 @@ with sync_playwright() as p:
     pg.wait_for_timeout(300)
     ck("picking a carded villa from the drop asks how many, immediately",
        "How many more cards" in pg.inner_text("#cardBody"))
+
+    #  Every villa block on the day's run is a door to its own ask
+    #  (owner, 11 Sep: "why are you showing Wayne and not able to issue
+    #  cards to him?"). Buttons inside a block keep their own jobs.
+    pg.evaluate("()=>{document.getElementById('cardX').click();}")
+    pg.wait_for_timeout(200)
+    pg.evaluate("()=>NalaCards.open(null)")
+    pg.wait_for_timeout(400)
+    pg.evaluate("()=>document.querySelector('[data-cardopen=\"9\"]').click()")
+    pg.wait_for_timeout(300)
+    ck("tapping a villa on the run lands on its quantity question",
+       "How many more cards" in pg.inner_text("#cardBody"))
+
+    #  99, not the invented 6: "if I feel like issuing 1000 cards to a
+    #  room I can - it just goes to the tally" (owner, 11 Sep).
+    for _ in range(9):
+        pg.evaluate("()=>document.querySelector('[data-cardq=\"1\"]').click()")
+        pg.wait_for_timeout(60)
+    ck("the quantity climbs past the old six-card cap",
+       "Issue 11 more" in pg.inner_text("#cardBody"))
     pg.close()
 
     #  The queue must never lie in wait - the owner's ruling, 8 Sep. Ten

@@ -132,7 +132,7 @@ function extendJob(r, more){
      ask (a failed run) must not ride along - it is how a two-card villa
      came to carry a phantom third (owner, 10-11 Sep). The cards that
      exist plus the cards wanted now is the whole truth. */
-  var patch = { qty: Math.min(6, (+j.written || 0) + more), state: 'queued',
+  var patch = { qty: Math.min(99, (+j.written || 0) + more), state: 'queued',
                 by: window.NALA_ME || '', at: Date.now() };
   return fetch(cfg.db + '/cardjobs/' + day() + '/' + r.villa + '.json', {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -276,7 +276,11 @@ function crunHTML(r, active){
         ? '<span class="cwake"><i></i><i></i><i></i></span>Waking up\u2026'
       : cc.k === 'queued' ? 'Queued'
       : esc(cc.label);
-  var h = '<div class="' + cls + '"><div class="crun-v">Villa ' + r.villa +
+  /* the whole block is a door: seeing a guest on the run and not being
+     able to issue to them is the complaint of 11 Sep ("why are you
+     showing Wayne and not able to issue cards to him?") */
+  var h = '<div class="' + cls + '" data-cardopen="' + r.villa + '">' +
+          '<div class="crun-v">Villa ' + r.villa +
           '<small>' + esc(r.name) + '</small></div>' +
           cslotsHTML(j, cc, active) +
           (cc.k === 'writing' && active ? '<div class="cardask"><svg viewBox="0 0 140 96" fill="none" ' +
@@ -443,7 +447,10 @@ function wire(){
     if (q){
       var body = document.getElementById('cardBody');
       var now = +(body.getAttribute('data-qty') || 2) + (+q.getAttribute('data-cardq'));
-      body.setAttribute('data-qty', Math.min(6, Math.max(1, now)));
+      /* 99, not the invented 6: "if I feel like issuing 1000 cards to a
+         room I can - it just goes to the tally" (owner, 11 Sep). The
+         rules' own sanity bound is the only ceiling. */
+      body.setAttribute('data-qty', Math.min(99, Math.max(1, now)));
       cardRender(); return;
     }
     var iss = e.target.closest('[data-cardissue]');
@@ -466,6 +473,10 @@ function wire(){
     if (ag){
       CARD_ASK = ag.getAttribute('data-cardagain');
       cardRender(); return;
+    }
+    var opn = e.target.closest('[data-cardopen]');
+    if (opn && CARD_VILLA == null && !e.target.closest('button')){
+      cardsOpen(opn.getAttribute('data-cardopen')); return;
     }
     var c = e.target.closest('[data-cardcancel]');
     if (c){
