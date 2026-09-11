@@ -78,7 +78,9 @@ var RUN_OFFLINE_MS = 10000;
 function runStart(entries, title){
   var queue = {}, bad = [];
   entries.forEach(function(en){
-    var exp = cardExpiry(en.stay && en.stay.depart);
+    /* the ask's own till-when outranks the stay: a no-guest room and a
+       cut past the stay's 1pm carry an expiry a person chose */
+    var exp = en.expiry || cardExpiry(en.stay && en.stay.depart);
     if (!exp){ bad.push(en.villa); return; }
     queue[String(en.villa)] = { guest: String(en.name || '').slice(0, 80),
                                 qty: en.qty, cut: 0, expiry: exp };
@@ -245,35 +247,94 @@ function runSkip(villa){
   runRender();
 }
 
-/* ── the ask ────────────────────────────────────────────────────────
+/* ── the ask ────────────────────────────────────────────────────────────────
    Picking a guest ALWAYS lands on the quantity question (owner,
    11 Sep); issuing more later is simply another run - the rows the
    guest already holds stand as filled seats, nothing continues from a
-   written count. */
-function askOpen(villa){
-  var r = rowOf(villa);
-  if (!r) return;
-  RUN = null;
-  var body = document.getElementById('cardBody');
-  body.setAttribute('data-qty', 2);
-  document.getElementById('cardTitle').textContent =
-    'Key cards · villa ' + r.villa;
-  document.getElementById('cardOv').hidden = false;
-  askRender(r);
+   written count.
+
+   When the expiry is NOT a settled fact - a room with no guest, or a
+   cut after the stay's own 1pm has passed - the sheet also asks till
+   when, as a date and a time (the owner, 11 Sep: ask, never assume),
+   defaulting to the next 1pm. And a villa can be reached by NUMBER,
+   the drop's own last row before the batch action: the pad covers the
+   rooms no guest map lists (the owner, 11 Sep). */
+var ASK = null;   /* { villa, name, stay, vacant } while the sheet is open */
+
+function next1pm(){
+  var d = new Date();
+  if (d.getHours() >= CARD_CHECKOUT_HOUR) d.setDate(d.getDate() + 1);
+  return { date: dkey(d),
+           time: String(CARD_CHECKOUT_HOUR).padStart(2, '0') + ':00' };
 }
-function askRender(r){
+function askOpen(villa){
+  RUN = null;
+  if (villa == null){
+    ASK = null;   /* the pad asks first */
+  } else {
+    var r = rowOf(villa);
+    ASK = r ? { villa: String(r.villa), name: r.name, stay: r.stay }
+            : { villa: String(villa), name: 'No guest', vacant: true };
+  }
+  document.getElementById('cardTitle').textContent =
+    ASK ? 'Key cards · villa ' + ASK.villa : 'Key cards';
+  document.getElementById('cardBody').setAttribute('data-qty', 2);
+  document.getElementById('cardOv').hidden = false;
+  askRender();
+}
+/* settled: the stay's 1pm, still ahead. Anything else is a question. */
+function askNeedsWhen(){
+  if (!ASK || ASK.vacant) return true;
+  var exp = cardExpiry(ASK.stay && ASK.stay.depart);
+  return !exp || exp * 1000 <= Date.now();
+}
+function askExpiry(){
+  if (!askNeedsWhen()) return cardExpiry(ASK.stay && ASK.stay.depart);
+  var d = document.getElementById('askDate');
+  var t = document.getElementById('askTime');
+  if (!d || !d.value) return null;
+  var p = d.value.split('-'), q = ((t && t.value) || '13:00').split(':');
+  var ms = new Date(+p[0], +p[1] - 1, +p[2], +q[0], +q[1] || 0).getTime();
+  return isNaN(ms) ? null : Math.floor(ms / 1000);
+}
+function askExpiryDefault(def){
+  var p = def.date.split('-'), q = def.time.split(':');
+  return Math.floor(new Date(+p[0], +p[1] - 1, +p[2], +q[0], +q[1]).getTime() / 1000);
+}
+function askRender(){
   var body = document.getElementById('cardBody');
+  if (!ASK){
+    /* the number pad: seventeen villas, one tap - no list, no keyboard */
+    var h = '<div class="cardov-in"><div class="crun">' +
+      '<div class="crun-s" style="margin-bottom:8px">Which villa?</div>' +
+      '<div class="pax-row" style="flex-wrap:wrap">';
+    for (var n = 1; n <= ROOMS; n++)
+      h += '<button class="pax" data-cardvilla="' + n + '">' + n + '</button>';
+    body.innerHTML = h + '</div></div></div>';
+    return;
+  }
   var q = +(body.getAttribute('data-qty') || 2);
-  var held = heldFor(r.villa);
+  var held = heldFor(ASK.villa);
+  var when = askNeedsWhen(), def = next1pm();
   body.innerHTML = '<div class="cardov-in"><div class="crun">' +
-    '<div class="crun-v">Villa ' + esc(r.villa) + '<small>' +
-    esc(r.name) + '</small></div>' +
+    '<div class="crun-v">Villa ' + esc(ASK.villa) + '<small>' +
+    esc(ASK.name) + '</small></div>' +
     '<div class="crun-s">How many ' + (held ? 'more cards' : 'cards') + '?' +
     '<span class="cqty"><button data-cardq="-1">&minus;</button><span>' + q +
     '</span><button data-cardq="1">+</button></span></div>' +
-    cardValidHTML(cardExpiry(r.stay && r.stay.depart)) +
+    (when
+      ? '<div class="crun-s" style="margin-top:10px">Till when?</div>' +
+        '<div style="display:flex;gap:8px;margin-top:6px">' +
+        '<input type="date" id="askDate" value="' + def.date + '">' +
+        '<input type="time" id="askTime" value="' + def.time + '"></div>' +
+        '<div class="crun-s card-failed" id="askWhy" hidden></div>'
+      : '') +
+    '<span id="askValid">' +
+    cardValidHTML(when ? askExpiryDefault(def)
+                       : cardExpiry(ASK.stay && ASK.stay.depart)) +
+    '</span>' +
     '<div class="sum-btns"><button class="go wide" data-cardissue="' +
-    esc(r.villa) + '">Issue ' + q +
+    esc(ASK.villa) + '">Issue ' + q +
     (held ? ' more' : q === 1 ? ' card' : ' cards') +
     '</button></div></div></div>';
 }
@@ -293,19 +354,20 @@ function bulk(){
 function cardsDrawDrop(){
   var d = cfg.drop;
   if (!d) return;
-  if (!cfg.rows().length){
-    d.innerHTML = '<button disabled style="color:var(--mid)">' + cfg.emptyLabel + '</button>';
-    return;
-  }
   var h = '';
+  if (!cfg.rows().length)
+    h += '<button disabled style="color:var(--mid)">' + cfg.emptyLabel + '</button>';
   cfg.rows().forEach(function(r){
     var n = heldFor(r.villa);
-    var state = r.arriving && !n ? '<span class="kd-state">arriving</span>'
-      : n ? '<span class="kd-state card-done">' + n + ' held</span>'
+    var state = n ? '<span class="kd-state card-done">' + n + ' held</span>'
+      : r.leaving ? '<span class="kd-state">departs 1pm</span>'
+      : r.arriving ? '<span class="kd-state">arriving</span>'
       : '<span class="kd-state">no cards</span>';
     h += '<button data-key="' + esc(r.villa) + '">Villa ' + esc(r.villa) +
          ' · ' + esc(r.name) + state + '</button>';
   });
+  /* the door to a room no guest map lists - a number, not a list */
+  h += '<button data-key="pad">Villa by number</button>';
   h += '<button class="kd-all" data-key="all">' + esc(cfg.bulkLabel) + '' +
        '<span class="navbadge">' + cfg.bulkRows().length + '</span></button>';
   d.innerHTML = h;
@@ -328,34 +390,59 @@ function wire(){
       var t = e.target.closest('[data-key]');
       if (!t) return;
       var k = t.getAttribute('data-key');
-      if (k === 'all') bulk(); else askOpen(k);
+      if (k === 'all') bulk();
+      else if (k === 'pad') askOpen(null);
+      else askOpen(k);
     });
   } else if (b){
     b.onclick = function(e){ e.stopPropagation(); bulk(); };
   }
   document.getElementById('cardX').onclick = runStop;
   document.getElementById('cardBody').addEventListener('click', function(e){
+    var pv = e.target.closest('[data-cardvilla]');
+    if (pv){ askOpen(pv.getAttribute('data-cardvilla')); return; }
     var q = e.target.closest('[data-cardq]');
     if (q){
       var body = document.getElementById('cardBody');
       var now = +(body.getAttribute('data-qty') || 2) + (+q.getAttribute('data-cardq'));
       /* 99, the rules' own sanity bound and nothing tighter (11 Sep) */
+      /* the till-when inputs survive the redraw: read before, restore after */
+      var dEl = document.getElementById('askDate'), tEl = document.getElementById('askTime');
+      var dv = dEl && dEl.value, tv = tEl && tEl.value;
       body.setAttribute('data-qty', Math.min(99, Math.max(1, now)));
-      var open = body.querySelector('[data-cardissue]');
-      if (open){ var r = rowOf(open.getAttribute('data-cardissue')); if (r) askRender(r); }
+      if (ASK) askRender();
+      if (dv && document.getElementById('askDate')) document.getElementById('askDate').value = dv;
+      if (tv && document.getElementById('askTime')) document.getElementById('askTime').value = tv;
       return;
     }
     var iss = e.target.closest('[data-cardissue]');
-    if (iss){
-      var r2 = rowOf(iss.getAttribute('data-cardissue'));
+    if (iss && ASK){
       var n2 = +(document.getElementById('cardBody').getAttribute('data-qty') || 2);
-      if (r2) runStart([{ villa: r2.villa, name: r2.name, stay: r2.stay, qty: n2 }],
-                       'Key cards · villa ' + r2.villa);
+      var exp = askExpiry();
+      var why = document.getElementById('askWhy');
+      if (askNeedsWhen()){
+        /* asked, so answered: no date is no card, and a time already
+           gone would mint a card born dead */
+        if (!exp){ if (why){ why.textContent = 'Pick a day.'; why.hidden = false; } return; }
+        if (exp * 1000 <= Date.now()){
+          if (why){ why.textContent = 'That time has already passed.'; why.hidden = false; }
+          return;
+        }
+      }
+      runStart([{ villa: ASK.villa, name: ASK.name, stay: ASK.stay,
+                  qty: n2, expiry: exp }],
+               'Key cards · villa ' + ASK.villa);
       return;
     }
     var sk = e.target.closest('[data-cardskip]');
     if (sk){ runSkip(sk.getAttribute('data-cardskip')); return; }
     if (e.target.closest('#runDone')){ runStop(); return; }
+  });
+  /* the chosen till-when reflects in the Valid line the moment it lands */
+  document.getElementById('cardBody').addEventListener('change', function(e){
+    if (e.target.id !== 'askDate' && e.target.id !== 'askTime') return;
+    var v = document.getElementById('askValid'), exp = askExpiry();
+    if (v) v.innerHTML = exp ? cardValidHTML(exp) : '';
   });
 }
 

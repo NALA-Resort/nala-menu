@@ -42,6 +42,7 @@ FRAGMENTS = [
     '<div class="keydrop" id="issueDrop"></div>',
     'border:1px solid var(--terra-b)',
     'All arrivals',
+    'Villa by number',
     'margin-right:auto',
     # the segmented control
     '<div class="seg" id="tabs"',
@@ -117,6 +118,15 @@ STAYS2 = {
   "4":  {"id": "s4", "first": "Robyn", "last": "Williams",
          "arrive": day(-2), "depart": day(4), "adults": 2},
 }
+#  LAST night's map: Ann Brown departs today, so she is gone from
+#  tonight's - but she stands at the desk till 1pm and the drop must
+#  still offer her (the owner, 11 Sep).
+STAYS_PREV2 = {
+  "14": {"id": "s14", "first": "Ann", "last": "Brown",
+         "arrive": day(-3), "depart": day(0), "adults": 1},
+  "4":  {"id": "s4", "first": "Robyn", "last": "Williams",
+         "arrive": day(-2), "depart": day(4), "adults": 2},
+}
 
 #  The card table: one row per card in the world, keyed by serial.
 #  Villa 6's third card was wiped, so its row is simply not here.
@@ -181,7 +191,8 @@ def fb(route, request):
     elif "/cards" in u: body = json.dumps(CARDS)
     elif "/stays/" in u:
         d = u.split("/stays/")[1].split(".json")[0]
-        body = json.dumps(STAYS2) if d == day(0) else "null"
+        body = json.dumps(STAYS2) if d == day(0) \
+             else json.dumps(STAYS_PREV2) if d == day(-1) else "null"
     elif "/staff" in u: body = json.dumps(STAFF)
     route.fulfill(status=200, content_type="application/json", body=body)
 
@@ -336,16 +347,63 @@ with sync_playwright() as p:
     pg.wait_for_timeout(300)
     drop = pg.evaluate("""()=>[...document.querySelectorAll('#issueDrop button')]
         .map(b=>b.textContent)""")
-    ck("the issue drop leads with the arrivals, in-house behind",
-       len(drop) == 4 and "Villa 2" in drop[0] and "Villa 12" in drop[1]
-       and "Villa 4" in drop[2])
+    ck("the drop: arrivals, then departing today, then in house, then the pad",
+       len(drop) == 6 and "Villa 2" in drop[0] and "Villa 12" in drop[1]
+       and "Villa 14" in drop[2] and "Ann Brown" in drop[2]
+       and "Villa 4" in drop[3] and "Villa by number" in drop[4])
     ck("a villa's held count reads from the table",
-       "2 held" in drop[2] and "arriving" in drop[0])
+       "2 held" in drop[3] and "arriving" in drop[0] and "1 held" in drop[2])
     ck("All arrivals stands last, its count in a badge",
        pg.evaluate("""()=>{var b=[...document.querySelectorAll('#issueDrop button')];
          var a=b[b.length-1];
          return a.getAttribute('data-key')==='all'
              && a.querySelector('.navbadge').textContent==='2';}"""))
+
+    #  the pad: a room with no guest, reached by number. Its expiry is
+    #  not a settled fact, so the sheet asks till when - a date and a
+    #  time, defaulting to the next 1pm - and Issue carries the answer.
+    pg.evaluate("()=>document.querySelector('#issueDrop [data-key=\"pad\"]').click()")
+    pg.wait_for_timeout(300)
+    ck("the pad asks which villa, seventeen one-tap numbers",
+       "Which villa" in pg.inner_text("#cardBody")
+       and pg.evaluate("()=>document.querySelectorAll('[data-cardvilla]').length") == 17)
+    pg.evaluate("()=>document.querySelector('[data-cardvilla=\"7\"]').click()")
+    pg.wait_for_timeout(300)
+    body7 = pg.inner_text("#cardBody")
+    if now.hour >= 13:
+        exp_def = (now + datetime.timedelta(days=1)).replace(
+            hour=13, minute=0, second=0, microsecond=0)
+    else:
+        exp_def = now.replace(hour=13, minute=0, second=0, microsecond=0)
+    ck("a no-guest villa asks till when, defaulting to the next 1pm",
+       "No guest" in body7 and "Till when?" in body7
+       and pg.evaluate("()=>document.getElementById('askDate').value")
+           == exp_def.strftime("%Y-%m-%d")
+       and pg.evaluate("()=>document.getElementById('askTime').value") == "13:00")
+    del WRITES[:]
+    CUTRUN.clear()
+    pg.evaluate("()=>document.querySelector('[data-cardissue]').click()")
+    pg.wait_for_timeout(400)
+    pads = [json.loads(w["b"]) for w in WRITES
+            if w["m"] == "PUT" and "/cutrun" in w["u"]]
+    ck("Issue carries the chosen expiry, and No guest is the name",
+       pads and pads[0]["queue"]["7"]["guest"] == "No guest"
+       and pads[0]["queue"]["7"]["expiry"] == int(exp_def.timestamp()))
+    pg.evaluate("()=>document.getElementById('cardX').click()")
+    pg.wait_for_timeout(300)
+
+    #  a departing-today guest: settled at today's 1pm while that is
+    #  still ahead; once it has passed, the sheet asks instead - a card
+    #  born dead is never cut silently (the owner, 11 Sep).
+    pg.evaluate("()=>document.getElementById('issueBtn').click()")
+    pg.wait_for_timeout(200)
+    pg.evaluate("()=>document.querySelector('#issueDrop [data-key=\"14\"]').click()")
+    pg.wait_for_timeout(300)
+    asks_when = pg.evaluate("()=>!!document.getElementById('askDate')")
+    ck("a leaving guest's sheet asks till-when exactly when 1pm has passed",
+       asks_when == (now.hour >= 13))
+    pg.evaluate("()=>document.getElementById('cardX').click()")
+    pg.wait_for_timeout(200)
     del WRITES[:]
     pg.evaluate("()=>document.querySelector('#issueDrop [data-key=\"2\"]').click()")
     pg.wait_for_timeout(400)

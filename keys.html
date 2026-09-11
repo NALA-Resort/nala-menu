@@ -531,7 +531,7 @@ button
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
 <script src="nala-shared.js?v=65"></script>
-<script src="nala-cards.js?v=9"></script>
+<script src="nala-cards.js?v=10"></script>
 <script>
 /* Keys: the card register, built from the approved mock
    (mock-keys-store.html) and holding its shape - the suite compares
@@ -575,11 +575,17 @@ function load(){
   if (!LOAD_T) LOAD_T = setInterval(loadAll, 5000);
 }
 
-/* Who a key can be issued to: everyone in house tonight, arrivals first.
-   /stays/<today> is the night's villa map, the same node Front Desk
-   reads; the two small helpers are that page's own, copied because this
-   page must not drag its whole booking logic over for two lines. */
-var STAYS = {};
+/* Who a key can be issued to: arrivals first, then guests DEPARTING
+   today - they left tonight's map at midnight but stand at the desk
+   till 1pm, still able to lose a card (the owner, 11 Sep: the drop
+   could not see them) - then everyone else in house. /stays/<date> is
+   the night's villa map, the same node Front Desk reads: tonight's
+   holds the arrivals and stayovers, LAST night's holds today's
+   departures. The two small helpers are that page's own, copied
+   because this page must not drag its whole booking logic over. A room
+   with no guest is reached by the drop's Villa by number pad, not
+   listed here. */
+var STAYS = {}, STAYS_PREV = {};
 function dkeyOf(v){
   var m = String(v || '').match(/^(\d{4}-\d{2}-\d{2})/);
   return m ? m[1] : null;
@@ -588,20 +594,34 @@ function nameOf(st){
   return (((st.first || '') + ' ' + (st.last || '')).trim()) || 'Guest';
 }
 function loadStays(){
-  return api('/stays/' + dkey(new Date()))
-    .then(function(j){ STAYS = j || {}; })
-    .catch(function(){});
+  var t = new Date();
+  var y = new Date(t.getFullYear(), t.getMonth(), t.getDate() - 1);
+  return Promise.all([
+    api('/stays/' + dkey(t))
+      .then(function(j){ STAYS = j || {}; }).catch(function(){}),
+    api('/stays/' + dkey(y))
+      .then(function(j){ STAYS_PREV = j || {}; }).catch(function(){})
+  ]);
 }
 function issueRows(){
-  var t = dkey(new Date()), rows = [];
+  var t = dkey(new Date()), rows = [], seen = {};
   Object.keys(STAYS).forEach(function(v){
     var st = STAYS[v];
     if (!st || typeof st !== 'object') return;   /* the bare-id old shape */
+    seen[v] = 1;
     rows.push({ villa: v, name: nameOf(st), stay: st,
                 arriving: dkeyOf(st.arrive) === t });
   });
+  Object.keys(STAYS_PREV).forEach(function(v){
+    var st = STAYS_PREV[v];
+    if (!st || typeof st !== 'object' || seen[v]) return;
+    if (dkeyOf(st.depart) !== t) return;
+    rows.push({ villa: v, name: nameOf(st), stay: st, leaving: true });
+  });
   rows.sort(function(a, b){
-    return (b.arriving - a.arriving) || ((+a.villa) - (+b.villa));
+    var ra = a.arriving ? 0 : a.leaving ? 1 : 2;
+    var rb = b.arriving ? 0 : b.leaving ? 1 : 2;
+    return (ra - rb) || ((+a.villa) - (+b.villa));
   });
   return rows;
 }

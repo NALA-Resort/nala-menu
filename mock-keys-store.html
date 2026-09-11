@@ -576,6 +576,9 @@ function issueDropHTML(){
           (n ? '<span class="kd-state card-done">' + n + ' held</span>'
              : '<span class="kd-state">no cards</span>') + '</button>';
   });
+  /* the door to a room no guest map lists - a number, not a list
+     (ruled 11 Sep, with departing-today guests listed above) */
+  ih += '<button data-issue="pad">Villa by number</button>';
   ih += '<button class="kd-all" data-issue="all">All arrivals' +
         '<span class="navbadge">' + ARRIVING.length + '</span></button>';
   return ih;
@@ -764,6 +767,18 @@ document.addEventListener('click', function(e){
   if ((t = e.target.closest('[data-issue]'))){
     document.getElementById('issueDrop').classList.remove('open');
     var iv = t.getAttribute('data-issue');
+    if (iv === 'pad'){
+      /* the pad: the run asks which villa, then quantity, then - a room
+         with no guest having no 1pm to lean on - till when, as a date
+         and a time defaulting to the next 1pm (ruled 11 Sep) */
+      document.getElementById('cardTitle').textContent = 'Key cards';
+      document.getElementById('cardBody').innerHTML =
+        '<div class="cardov-in"><div class="crun">' +
+        '<div class="crun-s">Which villa? \u00b7 then How many cards? ' +
+        'and Till when? (a date and a time, defaulting to the next 1pm) ' +
+        '\u00b7 exactly as on the built page</div></div></div>';
+      document.getElementById('cardOv').hidden = false; return;
+    }
     if (iv === 'all'){
       /* All arrivals asks no quantity: a card per guest on the booking */
       runStart(ARRIVING.map(function(r){
