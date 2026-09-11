@@ -1,0 +1,21 @@
+{
+  "what": "How tall a photo on the guest form may stand, for every shape the value can arrive in. One table, two readers: imgHeightVh in prearrival.html draws the guest's photo from it, giHeightVal in staff.html seeds the Settings slider from it. Neither file can import the other - a guest page loads no staff code - so this is the CLAUDE.md rule 3 table both copies answer to, the phone_cases.json pattern.",
+  "means": "stored is what /prearrivalinfo holds; vh is the percent of screen height the photo may fill; null vh is `natural`, which is not a height at all but the whole photo, uncropped, with no cap.",
+  "why": "The four named steps became a slider on 11 Sep: they could not be adjusted and the smallest still stood at 28% of the screen. The names stay readable for good, because every record written before the slider holds one.",
+  "cases": [
+    { "stored": "short",   "vh": 28, "note": "the old named steps keep their heights for ever" },
+    { "stored": "banner",  "vh": 38 },
+    { "stored": "tall",    "vh": 50 },
+    { "stored": "natural", "vh": null, "note": "not a height: the whole photo, uncropped" },
+    { "stored": 10,        "vh": 10, "note": "the slider's floor" },
+    { "stored": 22,        "vh": 22 },
+    { "stored": 38,        "vh": 38, "note": "the slider's rest, which is what banner always was" },
+    { "stored": 60,        "vh": 60, "note": "the slider's ceiling" },
+    { "stored": 24.4,      "vh": 24, "note": "rounded: a max-height is whole percents" },
+    { "stored": 4,         "vh": 10, "note": "below the floor clamps up rather than vanishing the photo" },
+    { "stored": 95,        "vh": 60, "note": "above the ceiling clamps down: no photo owns the screen" },
+    { "stored": "45",      "vh": 45, "note": "a number that arrived as text still reads as the number" },
+    { "stored": "",        "vh": 38, "note": "nothing chosen wears the banner default" },
+    { "stored": "enormous","vh": 38, "note": "a word nobody offers falls back rather than breaking" }
+  ]
+}

@@ -60,6 +60,18 @@
   .gi-opt { flex:1; min-width:0; }
   .gi-lab { display:block; font-size:var(--t1); color:var(--mid);
             margin:12px 0 5px; }
+  /* The height slider. A number the owner drags rather than four named
+     steps (11 Sep): the steps could not be adjusted, and the smallest
+     still stood at 28% of a guest's screen. The reading sits in the
+     label, so the value is never a bare handle on a rail. */
+  #tGuest input[type=range] { width:100%; margin:0; accent-color:var(--ink); }
+  #tGuest input[type=range][disabled] { opacity:.45; }
+  .gi-hval { color:var(--ink); }
+  /* Its own line under the slider, and a real tap target: a checkbox at
+     label size is a 13px square on a phone. */
+  .gi-nat { display:flex; align-items:center; gap:7px; min-height:44px;
+            font-size:var(--t1); color:var(--mid); cursor:pointer; }
+  .gi-nat input { width:18px; height:18px; accent-color:var(--ink); }
   /* The tab covers three surfaces a guest meets in order - the welcome
      screen, the dining page, then the questions - and they read as one
      long form unless each is announced. A headline rather than another
@@ -293,12 +305,13 @@
           <select id="giWelcomeCrop"><option value="top">Top</option>
             <option value="centre" selected>Centre</option>
             <option value="bottom">Bottom</option></select></span>
-        <span class="gi-opt"><label class="gi-lab" for="giWelcomeHeight">Height</label>
-          <select id="giWelcomeHeight"><option value="short">Short</option>
-            <option value="banner" selected>Banner</option>
-            <option value="tall">Tall</option>
-            <option value="natural">Natural, no crop</option></select></span>
+        <span class="gi-opt"><label class="gi-lab" for="giWelcomeHeight">Height
+            <span class="gi-hval" id="giWelcomeHeightVal">38%</span></label>
+          <input type="range" id="giWelcomeHeight" min="10" max="60" step="1"
+                 value="38"></span>
       </div>
+      <label class="gi-nat"><input type="checkbox" id="giWelcomeNatural">
+        Show the whole photo, uncropped</label>
       <label class="gi-lab" for="giIntro">Description</label>
       <textarea id="giIntro" rows="3"
         placeholder="Empty: the guest reads the original wording."></textarea>
@@ -314,12 +327,13 @@
           <select id="giDiningCrop"><option value="top">Top</option>
             <option value="centre" selected>Centre</option>
             <option value="bottom">Bottom</option></select></span>
-        <span class="gi-opt"><label class="gi-lab" for="giDiningHeight">Height</label>
-          <select id="giDiningHeight"><option value="short">Short</option>
-            <option value="banner" selected>Banner</option>
-            <option value="tall">Tall</option>
-            <option value="natural">Natural, no crop</option></select></span>
+        <span class="gi-opt"><label class="gi-lab" for="giDiningHeight">Height
+            <span class="gi-hval" id="giDiningHeightVal">38%</span></label>
+          <input type="range" id="giDiningHeight" min="10" max="60" step="1"
+                 value="38"></span>
       </div>
+      <label class="gi-nat"><input type="checkbox" id="giDiningNatural">
+        Show the whole photo, uncropped</label>
       <label class="gi-lab" for="giDiningText">Description</label>
       <textarea id="giDiningText" rows="6"
         placeholder="How dinner here works."></textarea>
@@ -960,6 +974,51 @@ function giFields(){
   return ['giWelcomeImg', 'giDiningImg', 'giDiningText', 'giIntro']
     .concat(giPageFields());
 }
+/* How tall a photo may stand. The twin of imgHeightVh in prearrival.html,
+   duplicated for the reason normalisePhone is: a guest page loads no staff
+   code and this page cannot import from a guest page. CLAUDE.md rule 3 -
+   both copies answer to tests/img_height_cases.json, so a case added there
+   fails whichever has not learned it. null is `natural`, which is not a
+   height but the whole photo, uncropped. */
+var GI_H_NAMES = { short:28, banner:38, tall:50 };
+var GI_H_MIN = 10, GI_H_MAX = 60, GI_H_DEF = 38;
+function giHeightVal(v){
+  if (v === 'natural') return null;
+  if (typeof v === 'string' && /^\d+(\.\d+)?$/.test(v.trim())) v = Number(v);
+  if (typeof v === 'number' && isFinite(v))
+    return Math.min(GI_H_MAX, Math.max(GI_H_MIN, Math.round(v)));
+  if (typeof v === 'string' && GI_H_NAMES[v]) return GI_H_NAMES[v];
+  return GI_H_DEF;
+}
+/* The nearest named step to a number, for the one write that cannot carry
+   one: the pre-paste fallback below, where the console still refuses
+   anything but the four names. Coarse on purpose - it is the old model,
+   and it is what limping looks like. */
+function giHeightName(n){
+  if (n === null) return 'natural';
+  return (n <= 33) ? 'short' : (n <= 44) ? 'banner' : 'tall';
+}
+var GI_IMGS = [['giWelcomeHeight', 'giWelcomeNatural', 'giWelcomeHeightVal'],
+               ['giDiningHeight',  'giDiningNatural',  'giDiningHeightVal']];
+/* The reading belongs beside the handle: a rail with no number on it is a
+   control the owner has to guess at, and the guess is what the four named
+   steps already cost him. Natural has no percent to show, so it says so. */
+function giPaintHeight(row){
+  var s = document.getElementById(row[0]), n = document.getElementById(row[1]);
+  s.disabled = n.checked;
+  document.getElementById(row[2]).textContent =
+    n.checked ? 'whole photo' : s.value + '%';
+}
+function giSetHeight(row, stored){
+  var v = giHeightVal(stored);
+  document.getElementById(row[1]).checked = (v === null);
+  document.getElementById(row[0]).value = (v === null) ? GI_H_DEF : v;
+  giPaintHeight(row);
+}
+function giHeightOut(row){
+  return document.getElementById(row[1]).checked
+    ? 'natural' : Number(document.getElementById(row[0]).value);
+}
 function loadGuestInfo(){
   fetch(DB + '/prearrivalinfo.json').then(function(r){ return r.ok ? r.json() : null; })
     .then(function(j){
@@ -968,9 +1027,9 @@ function loadGuestInfo(){
       document.getElementById('giDiningImg').value  = j.diningImage || '';
       document.getElementById('giDiningText').value = j.diningText || '';
       document.getElementById('giWelcomeCrop').value   = j.welcomeImageCrop || 'centre';
-      document.getElementById('giWelcomeHeight').value = j.welcomeImageHeight || 'banner';
       document.getElementById('giDiningCrop').value    = j.diningImageCrop || 'centre';
-      document.getElementById('giDiningHeight').value  = j.diningImageHeight || 'banner';
+      giSetHeight(GI_IMGS[0], j.welcomeImageHeight);
+      giSetHeight(GI_IMGS[1], j.diningImageHeight);
       document.getElementById('giIntro').value = j.intro || '';
       /* v2: the record was saved under the 11 Sep ruling - an absent key
          is a part the owner emptied, and it must SEED empty rather than
@@ -1062,13 +1121,23 @@ giFields().forEach(function(id){
     armSave(document.getElementById('giSave'));
   };
 });
-['giWelcomeCrop', 'giWelcomeHeight', 'giDiningCrop', 'giDiningHeight']
-  .forEach(function(id){
+['giWelcomeCrop', 'giDiningCrop'].forEach(function(id){
     document.getElementById(id).onchange = function(){
       GI_DIRTY = true;
       armSave(document.getElementById('giSave'));
     };
   });
+/* A slider reports on input, not on change: change waits for the handle to
+   be let go, and a reading that lags the drag is a reading nobody trusts. */
+GI_IMGS.forEach(function(row){
+  function touched(){
+    giPaintHeight(row);
+    GI_DIRTY = true;
+    armSave(document.getElementById('giSave'));
+  }
+  document.getElementById(row[0]).oninput  = touched;
+  document.getElementById(row[1]).onchange = touched;
+});
 /* The preview is one tap away from the editor, and the editor may hold an
    unsaved paragraph: navigation would discard it silently, so it asks. The
    demo carries the matching way back. */
@@ -1133,11 +1202,10 @@ document.getElementById('giSave').onclick = function(){
     return;
   }
   err.textContent = '';
+  var wh = giHeightOut(GI_IMGS[0]), dh = giHeightOut(GI_IMGS[1]);
   var common = { welcomeImage: wi, diningImage: di, diningText: dt,
     welcomeImageCrop:   document.getElementById('giWelcomeCrop').value,
-    welcomeImageHeight: document.getElementById('giWelcomeHeight').value,
     diningImageCrop:    document.getElementById('giDiningCrop').value,
-    diningImageHeight:  document.getElementById('giDiningHeight').value,
     by: (window.NALA_USER && NALA_USER.email) || '',
     at: new Date().toISOString() };
   function giBody(extra){
@@ -1150,17 +1218,21 @@ document.getElementById('giSave').onclick = function(){
     return fetch(DB + '/prearrivalinfo.json', {
       method:'PATCH', headers:{'Content-Type':'application/json'},
       body: giBody({ copyV: 2, intro: introOut, more: pages.more,
-                     titles: pages.titles, descs: pages.descs })
+                     titles: pages.titles, descs: pages.descs,
+                     welcomeImageHeight: wh, diningImageHeight: dh })
     }).then(function(r){
       if (r.ok) return;
-      /* The rules may not know copyV yet: the paste is the owner's to do.
-         Until then Save falls back to the old shape and old meaning - an
-         emptied box puts the original wording back - rather than failing,
-         so the tab limps instead of breaking. */
+      /* The rules may not know copyV or a numeric height yet: the paste is
+         the owner's to do. Until then Save falls back to the old shape and
+         the old meanings - an emptied box puts the original wording back,
+         and a height snaps to the nearest named step - rather than
+         failing, so the tab limps instead of breaking. */
       return fetch(DB + '/prearrivalinfo.json', {
         method:'PATCH', headers:{'Content-Type':'application/json'},
         body: giBody({ intro: legacyIntro, more: legacy.more,
-                       titles: legacy.titles, descs: legacy.descs })
+                       titles: legacy.titles, descs: legacy.descs,
+                       welcomeImageHeight: giHeightName(wh === 'natural' ? null : wh),
+                       diningImageHeight:  giHeightName(dh === 'natural' ? null : dh) })
       }).then(function(r2){ if (!r2.ok) throw new Error('rejected'); });
     });
   }, { done:'Saved ✓', then:function(){ GI_DIRTY = false; },

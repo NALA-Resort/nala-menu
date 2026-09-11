@@ -89,9 +89,21 @@
   .info-img:first-child { margin-top:0.55rem; }
   .info-img.crop-top    { object-position:50% 0%; }
   .info-img.crop-bottom { object-position:50% 100%; }
-  .info-img.h-short   { max-height:28vh; }
-  .info-img.h-tall    { max-height:50vh; }
-  .info-img.h-natural { max-height:none; object-fit:fill; }
+  /* A controlled photo - the welcome one, the dining one - is given a real
+     height by setInfoImg, not the cap above.
+
+     The cap was the whole bug (the owner, 11 Sep: "they don't change the
+     outcome"). max-height only ever SHRINKS a photo already taller than
+     it, and a landscape photo at full width is about 220 to 260 tall on a
+     phone - under every one of the four steps the tab offered. So Short,
+     Banner and Tall rendered identically on his own photo, and Crop had
+     no overflow to anchor, which made both controls look broken because
+     for that photo they were. A height is a band the photo fills and is
+     cropped to, so every value on the slider moves it.
+
+     The cap stays for a photo pasted into a description, which has no
+     controls of its own and must not be forced into a band. */
+  .info-img.h-natural { height:auto; max-height:none; object-fit:fill; }
   /* Page kickers lived here for an hour on 23 Aug and were scrapped as
      clutter without a proper design pass; their breathing room stays. */
   .q-t { margin-top:0.55rem; }
@@ -1002,18 +1014,44 @@ function infoImg(url){
   im.src = url;
   return im;
 }
+/* How tall a photo may stand, read from what Settings stored. Since
+   11 Sep that is a NUMBER - percent of the screen, the slider's own
+   value - because the four named steps could not be adjusted and their
+   floor was still a third of the screen (the owner, 11 Sep). The three
+   sized names stay readable for good: they are what every record written
+   before that slider holds, and re-typing them as numbers in the database
+   would be a migration this needs no part of. `natural` is not a height
+   at all - it is "the whole photo, uncropped" - so it reads as null and
+   wears the class that carries it.
+
+   Its twin lives in staff.html (giHeightVal), because a Worker-shaped
+   rule applies: a guest page loads no staff code and staff.html cannot
+   import from a guest page. CLAUDE.md rule 3 - the two copies answer to
+   tests/img_height_cases.json, and a case added there fails whichever
+   copy has not learned it. */
+var IMG_H_NAMES = { short:28, banner:38, tall:50 };
+var IMG_H_MIN = 10, IMG_H_MAX = 60, IMG_H_DEF = 38;
+function imgHeightVh(v){
+  if (v === 'natural') return null;
+  if (typeof v === 'string' && /^\d+(\.\d+)?$/.test(v.trim())) v = Number(v);
+  if (typeof v === 'number' && isFinite(v))
+    return Math.min(IMG_H_MAX, Math.max(IMG_H_MIN, Math.round(v)));
+  if (typeof v === 'string' && IMG_H_NAMES[v]) return IMG_H_NAMES[v];
+  return IMG_H_DEF;
+}
 /* An image field into its host: one image or nothing, same self-removal
    on a rotted address as a photo line. Crop and height are the owner's
-   two per-image controls from Settings, worn as classes; anything
-   unrecognised falls back to the banner default rather than breaking. */
+   two per-image controls from Settings; anything unrecognised falls back
+   to the banner default rather than breaking. */
 function setInfoImg(id, url, crop, height){
   var host = el(id); host.innerHTML = '';
   url = String(url || '').trim();
   if (!infoIsPhoto(url)) return;
   var im = infoImg(url);
   if (crop === 'top' || crop === 'bottom') im.classList.add('crop-' + crop);
-  if (height === 'short' || height === 'tall' || height === 'natural')
-    im.classList.add('h-' + height);
+  var vh = imgHeightVh(height);
+  if (vh === null) im.classList.add('h-natural');
+  else { im.style.height = vh + 'vh'; im.style.maxHeight = 'none'; }
   host.appendChild(im);
 }
 

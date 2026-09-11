@@ -1344,11 +1344,41 @@ with sync_playwright() as p:
        "5pm" in q.evaluate("()=>giMore_eta.value") and
        q.evaluate("()=>giTitle_eta.value") == "What time do you expect to arrive?" and
        q.evaluate("()=>giDesc_eta.value") == "A rough time is fine.")
+    #  Height is a slider since 11 Sep, so a stored name seeds the number
+    #  it always meant and an unset one rests at the banner default. The
+    #  four names could not be adjusted, and on a landscape photo - which
+    #  at full width is shorter than every cap they set - all four drew
+    #  the same picture, so the control read as broken.
     ck("an image's crop and height load as stored, and default when unset",
        q.evaluate("()=>giWelcomeCrop.value") == "top" and
-       q.evaluate("()=>giWelcomeHeight.value") == "tall" and
+       q.evaluate("()=>giWelcomeHeight.value") == "50" and
        q.evaluate("()=>giDiningCrop.value") == "centre" and
-       q.evaluate("()=>giDiningHeight.value") == "banner")
+       q.evaluate("()=>giDiningHeight.value") == "38")
+    ck("and the number is beside the handle, not left to be guessed at",
+       q.evaluate("()=>giWelcomeHeightVal.textContent") == "50%" and
+       q.evaluate("()=>giDiningHeightVal.textContent") == "38%")
+    #  Every shape a stored height can arrive in, from the table this
+    #  page's giHeightVal and the guest page's imgHeightVh both answer to.
+    #  Neither can import the other, so the table is what keeps them
+    #  saying the same thing - CLAUDE.md rule 3.
+    HCASES = json.load(open("tests/img_height_cases.json"))["cases"]
+    for c in HCASES:
+        got = q.evaluate("(v)=>giHeightVal(v)", c["stored"])
+        ck("Settings reads a stored %r as %r" % (c["stored"], c["vh"]),
+           got == c["vh"])
+    #  Natural is not a height, so the slider has nothing to say: it stands
+    #  down and the reading says what is actually happening.
+    q.evaluate("()=>{giWelcomeNatural.checked=true;"
+               "giWelcomeNatural.dispatchEvent(new Event('change'));}")
+    q.wait_for_timeout(200)
+    ck("the whole-photo tick stands the slider down and says so",
+       q.evaluate("()=>giWelcomeHeight.disabled") is True and
+       q.evaluate("()=>giWelcomeHeightVal.textContent") == "whole photo")
+    q.evaluate("()=>{giWelcomeNatural.checked=false;"
+               "giWelcomeNatural.dispatchEvent(new Event('change'));}")
+    q.wait_for_timeout(200)
+    ck("and unticking hands it back",
+       q.evaluate("()=>giWelcomeHeight.disabled") is False)
     #  The built-in Read more words are the placeholders of the boxes that
     #  replace them, read from prearrival.html itself so one file owns
     #  them: an empty box must SHOW the words it would keep.
@@ -1424,9 +1454,9 @@ with sync_playwright() as p:
        body5.get("diningText") == "Dinner is one menu, finalised each day." and
        body5.get("welcomeImage") == "https://photos.test/old.jpg" and
        body5.get("welcomeImageCrop") == "top" and
-       body5.get("welcomeImageHeight") == "tall" and
+       body5.get("welcomeImageHeight") == 50 and
        body5.get("diningImageCrop") == "centre" and
-       body5.get("diningImageHeight") == "banner" and
+       body5.get("diningImageHeight") == 38 and
        (body5.get("more") or {}).get("diet") == "Owner diet words." and
        (body5.get("more") or {}).get("dine") == "Old dine more" and
        bool(body5.get("by")) and bool(body5.get("at")))
@@ -1476,6 +1506,13 @@ with sync_playwright() as p:
        len(w6) == 2 and '"copyV"' in (w6[0]["b"] or "") and
        '"copyV"' not in (w6[1]["b"] or "") and
        "Saved" in q.evaluate("()=>giSave.textContent"))
+    #  A height the old rules cannot hold either: the fallback snaps it to
+    #  the nearest named step rather than losing the save. Coarse, because
+    #  it IS the old model - which is what limping looks like.
+    ck("and a height snaps to the nearest name the old rules know",
+       json.loads(w6[0]["b"]).get("welcomeImageHeight") == 50 and
+       json.loads(w6[1]["b"]).get("welcomeImageHeight") == "tall" and
+       json.loads(w6[1]["b"]).get("diningImageHeight") == "banner")
     STATE["oldrules"] = False
     #  A v2 record seeds what it means: his words as his words, '' as the
     #  built-in wording ready to edit, and an absent key as the blank he

@@ -771,10 +771,17 @@ with sync_playwright() as p:
     #  owner's own, 30 Aug): an image is a cropped band, capped in height,
     #  anchored where the owner said. Asserted by computed style, so a
     #  class that stops resolving fails by name. Tall is half the screen.
-    ck("cropped as a band, anchored top, capped at the tall height",
-       pg.evaluate("()=>{var s=getComputedStyle(welcomeImg.querySelector('img'));"
+    #  Asserted as the height the photo ACTUALLY STANDS, not as the cap it
+    #  is given. The cap was the bug: max-height only shrinks a photo
+    #  already taller than it, so on a landscape photo - which at full
+    #  width is shorter than every step the tab offered - all four steps
+    #  rendered the same and the owner reported both controls doing
+    #  nothing (11 Sep). A test that asserts the cap passes against that.
+    ck("cropped as a band, anchored top, standing at the tall height",
+       pg.evaluate("()=>{var i=welcomeImg.querySelector('img');"
+                   "var s=getComputedStyle(i);"
                    "return s.objectFit+'|'+s.objectPosition+'|'+"
-                   "Math.round(parseFloat(s.maxHeight));}")
+                   "Math.round(i.getBoundingClientRect().height);}")
        == "cover|50% 0%|" + str(round(844 * 0.50)))
     pg.locator("#begin").click(); pg.wait_for_timeout(250)
     live = pg.evaluate("()=>liveSteps().map(s=>s.id)")
@@ -790,9 +797,10 @@ with sync_playwright() as p:
        pg.evaluate("()=>diningImg.getBoundingClientRect().bottom"
                    "<=diningText.getBoundingClientRect().top+1"))
     ck("with nothing chosen, an image wears the centred banner default",
-       pg.evaluate("()=>{var s=getComputedStyle(diningImg.querySelector('img'));"
+       pg.evaluate("()=>{var i=diningImg.querySelector('img');"
+                   "var s=getComputedStyle(i);"
                    "return s.objectFit+'|'+s.objectPosition+'|'+"
-                   "Math.round(parseFloat(s.maxHeight));}")
+                   "Math.round(i.getBoundingClientRect().height);}")
        == "cover|50% 50%|" + str(round(844 * 0.38)))
     ck("as paragraphs, split on the blank line",
        pg.evaluate("()=>document.querySelectorAll('#diningText .info-p').length") == 2)
@@ -938,6 +946,13 @@ with sync_playwright() as p:
        pg.evaluate("()=>{var s=getComputedStyle(diningImg.querySelector('img'));"
                    "return s.maxHeight+'|'+s.objectPosition;}")
        == "none|50% 100%")
+    #  A photo pasted into a description has no controls of its own, so it
+    #  keeps the cap it always had rather than being forced into a band.
+    ck("a photo line in a description is capped, never banded",
+       pg.evaluate("()=>{var s=getComputedStyle("
+                   "document.querySelector('#diningText img'));"
+                   "return s.height!=='' && Math.round(parseFloat(s.maxHeight));}")
+       == round(844 * 0.38))
     ck("an address inside a sentence stays text, and http is not a photo",
        "https://photos.test/x.jpg" in pg.locator("#diningText").inner_text() and
        "http://photos.test/notsecure.jpg" in pg.locator("#diningText").inner_text()
@@ -950,6 +965,35 @@ with sync_playwright() as p:
        "<b>Bold</b>" in pg.evaluate(
            "()=>document.querySelector('#qDine .more-b').textContent"))
     pg.close()
+
+    #  Every shape a stored height can arrive in, from the table both
+    #  readers answer to: this page's imgHeightVh and Settings' giHeightVal
+    #  (staff.html), which cannot import each other. A case added there
+    #  fails whichever copy has not learned it - the phone_cases.json
+    #  pattern, CLAUDE.md rule 3. Asserted as the height the photo STANDS,
+    #  because a cap is what looked like working and was not: on a
+    #  landscape photo every one of the four old steps rendered the same.
+    HCASES = json.load(open("tests/img_height_cases.json"))["cases"]
+    for c in HCASES:
+        STATE["info"] = {"diningImage": "https://photos.test/dinner.jpg",
+                         "diningImageHeight": c["stored"]}
+        pg = guest()
+        jump(pg, "qDining")
+        if c["vh"] is None:
+            #  natural is not a height: the whole photo, uncropped.
+            ck("a photo stored as %r is the whole photo" % (c["stored"],),
+               pg.evaluate("()=>{var s=getComputedStyle("
+                           "diningImg.querySelector('img'));"
+                           "return s.maxHeight+'|'+s.objectFit;}")
+               == "none|fill")
+        else:
+            ck("a photo stored as %r stands at %d%% of the screen"
+               % (c["stored"], c["vh"]),
+               pg.evaluate("()=>{var i=diningImg.querySelector('img');"
+                           "return i?Math.round("
+                           "i.getBoundingClientRect().height):null;}")
+               == round(844 * c["vh"] / 100))
+        pg.close()
 
     STATE["info"] = None
     pg = guest(begin=False)

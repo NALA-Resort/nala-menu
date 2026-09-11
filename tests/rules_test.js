@@ -358,6 +358,18 @@ cannotPatch('a crop nobody offers is refused', ADMIN, '/prearrivalinfo',
             { welcomeImageCrop: 'left' });
 cannotPatch('and so is a height', ADMIN, '/prearrivalinfo',
             { diningImageHeight: '900px' });
+/* A height is the slider's number since 11 Sep - percent of the guest's
+   screen - and the four names stay legal because every record written
+   before it holds one. The bounds are the slider's own: nothing may set a
+   photo to a sliver or hand it the whole screen. */
+canPatch('a height is the slider\'s number', ADMIN, '/prearrivalinfo',
+         { diningImageHeight: 22, welcomeImageHeight: 60 });
+cannotPatch('below the slider\'s floor is refused', ADMIN, '/prearrivalinfo',
+            { diningImageHeight: 9 });
+cannotPatch('and above its ceiling', ADMIN, '/prearrivalinfo',
+            { welcomeImageHeight: 61 });
+cannotPatch('a number written as words is not a height', ADMIN,
+            '/prearrivalinfo', { diningImageHeight: '22' });
 cannotPatch('a text past the ceiling is refused', ADMIN, '/prearrivalinfo',
             { diningText: new Array(4002).join('x') });
 cannotPatch('a Read more for a page nobody knows is refused', ADMIN, '/prearrivalinfo',
