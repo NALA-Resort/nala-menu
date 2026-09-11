@@ -122,6 +122,15 @@ BOOKINGS_NODE["bGONE"] = {
     "pms": {"first": "Long", "last": "Gone", "villa": "14",
             "arrive": plus(-40), "depart": plus(-38), "state": "confirmed"},
     "prearrival": {"wellness": True}}
+#  An ORPHAN: pre-arrival answers with no pms beside them, which is a
+#  booking Mews has no record of (Diagnostics' own words). Found live by
+#  the owner, 11 Sep: it has no name, no dates and no night that can be
+#  booked, so it reached the masseuse as a nameless "No day, Any time"
+#  card whose only control was Decline - and each decline wrote a record
+#  that then sat on the board for good.
+BOOKINGS_NODE["bORPHAN"] = {
+    "prearrival": {"wellness": True, "wellTime": "Any time",
+                   "at": "2026-09-01T02:00:00Z"}}
 
 def spa_seed():
     return {
@@ -160,7 +169,9 @@ def fb(route, request):
                           body='{"error":"denied"}'); return
         # the page reloads after a save; fold the write in so it shows
         mm = re.search(r"/spa/([^/]+)/([^/.]+)\.json", u)
-        if mm:
+        if mm and m == "DELETE":
+            SPA.get(mm.group(1), {}).pop(mm.group(2), None)
+        elif mm:
             SPA.setdefault(mm.group(1), {})[mm.group(2)] = json.loads(request.post_data)
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
@@ -244,6 +255,17 @@ with sync_playwright() as p:
        "Cancelled" not in txt and "Cass" not in txt)
     ck("nor one whose guest has already left",
        "Long Gone" not in txt and "Gone" not in txt)
+    #  ── the orphan ask, 11 Sep ──────────────────────────────────
+    #  The guard the sweep lacked. The two it had - cancelled, departed -
+    #  both read pms, so a booking with NO pms fell through both and
+    #  became an ask nobody could answer: no name, no dates, no night to
+    #  book. One reader owns all four guards now (spaFormAskLive), so the
+    #  board, the badge and Diagnostics cannot disagree about them again.
+    ck("a wellness ask whose booking Mews has no record of is on no board",
+       not pg.evaluate("()=>!!document.querySelector("
+                       "'#board [data-booking=\"bORPHAN\"]')"))
+    ck("and the To answer count does not carry it either",
+       pg.evaluate("()=>nAsk.textContent") == "5")
 
     ck("the request from the form appears with no /spa record behind it",
        pg.evaluate("()=>document.querySelector('#board [data-booking=\"b9\"]')"
@@ -967,6 +989,50 @@ with sync_playwright() as p:
        and "/spa/b3/t1." not in (w3[0]["u"] if w3 else ""))
     SPA = spa_seed()
     pg.close()
+
+    # ── removing a treatment with no booking behind it, 11 Sep ──
+    #  What the orphan hole left on the board before the guard closed it:
+    #  a record written against a booking Mews has no record of. Declining
+    #  was the only control such a card ever offered, so the declines piled
+    #  up and nothing could clear them - the four the owner was looking at.
+    #  A cancel would be the wrong word for it: there is no guest to tell.
+    SPA["bORPHAN"] = {"t9": {"status": "declined", "name": "Guest",
+                             "source": "desk", "at": "x"}}
+    pg = board("staff@x")
+    pg.locator('#board [data-booking="bORPHAN"]').click(); pg.wait_for_timeout(300)
+    cardtxt = pg.evaluate("()=>document.querySelector('.card').textContent")
+    ck("the card says why nothing on it can be acted on",
+       "Mews has no record of this booking" in cardtxt)
+    ck("and points at the page that clears the answers behind it",
+       "Diagnostics" in cardtxt)
+    btns = pg.evaluate("()=>[...document.querySelectorAll('.card .cbtn')]"
+                       ".map(b=>b.textContent)")
+    ck("the desk is offered one control, and it is the removal",
+       btns == ["Remove this record"])
+    del WRITES[:]
+    pg.on("dialog", lambda d: d.accept())
+    pg.locator('.card .cbtn.danger').click(); pg.wait_for_timeout(900)
+    gone = [x for x in WRITES if x["m"] == "DELETE"
+            and "/spa/bORPHAN/t9.json" in x["u"]]
+    ck("removing deletes that one record and nothing else",
+       len(gone) == 1 and len(WRITES) == 1)
+    ck("and the board comes back without it",
+       not pg.evaluate("()=>!!document.querySelector("
+                       "'#board [data-booking=\"bORPHAN\"]')"))
+    pg.close()
+
+    #  The masseuse does not clear the desk's data faults, and a delete is
+    #  not a treatment decision. He sees why, and no button.
+    SPA["bORPHAN"] = {"t9": {"status": "declined", "name": "Guest",
+                             "source": "desk", "at": "x"}}
+    pg = board()
+    pg.locator('#board [data-booking="bORPHAN"]').click(); pg.wait_for_timeout(300)
+    ck("the masseuse is told the same thing and offered no control",
+       "Mews has no record of this booking" in
+       pg.evaluate("()=>document.querySelector('.card').textContent") and
+       pg.evaluate("()=>document.querySelectorAll('.card .cbtn').length") == 0)
+    pg.close()
+    SPA = spa_seed()
 
     # The desk's add asks the masseuse: the desk does not know his book.
     pg = board("staff@x")

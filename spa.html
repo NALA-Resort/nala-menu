@@ -152,7 +152,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=64"></script>
+<script src="nala-shared.js?v=65"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -233,6 +233,9 @@ function stayRange(bk){
 /* ── state ───────────────────────────────────────────────────── */
 var BOOKINGS = {};   /* id -> { id, first, last, arrive, depart, villaByDate, pre } */
 var SPA = {};        /* id -> { tid -> record } */
+/* Bookings Mews has no record of, among the ids holding treatments. Filled
+   by load() and only when the /bookings read actually landed - see there. */
+var MEWSLESS = {};
 var OPEN = null;     /* { id, tid } of the one card open, tid 'new' for an add */
 var SEL = null;      /* { day, time } while a card is open */
 var FILTER = 'all'; /* the pressed stat; All is the resting state */
@@ -483,69 +486,78 @@ function card(it){
   head.onclick = function(){ OPEN = null; SEL = null; paint(); };
   el.appendChild(head);
 
-  var subD = document.createElement('div'); subD.className = 'sub';
-  subD.textContent = 'Day'; el.appendChild(subD);
-  var chips = document.createElement('div'); chips.className = 'chips';
-  days.forEach(function(dk2){
-    var c = document.createElement('button');
-    c.type = 'button';
-    c.className = 'chip' + (SEL.day === dk2 ? ' on' : '');
-    c.textContent = shortDay(dk2);
-    c.onclick = function(){ SEL.day = dk2; paint(); };
-    chips.appendChild(c);
-  });
-  if (!days.length){
-    var noDays = document.createElement('div');
-    noDays.className = 'hint';
-    noDays.textContent = 'No nights of this stay are still to come.';
-    chips.appendChild(noDays);
-  }
-  el.appendChild(chips);
+  /* A record whose booking Mews has no record of. Every picker below asks
+     the reader to choose a day, a time and a length for a stay that does
+     not exist, and the note box offers to write to somebody about it, so
+     the card carries none of them: the state it is in, why it cannot be
+     acted on, and the way to remove it. */
+  var dead = !!MEWSLESS[id] && !isNew;
 
-  var subT = document.createElement('div'); subT.className = 'sub';
-  subT.textContent = 'Time'; el.appendChild(subT);
-  var sel = document.createElement('select');
-  sel.setAttribute('aria-label', 'Time');
-  SLOTS.forEach(function(t){
-    var o = document.createElement('option');
-    o.value = t; o.textContent = slotLabel(t);
-    if (t === SEL.time) o.selected = true;
-    sel.appendChild(o);
-  });
-  sel.onchange = function(){ SEL.time = sel.value; paint(); };
-  el.appendChild(sel);
-
-  /* How many, then a length for each - the pair edited whole from this
-     card, by the desk and the masseuse alike, the owner's ruling of
-     26 Aug after two tiles hid the second massage's length. */
-  var subQ = document.createElement('div'); subQ.className = 'sub';
-  subQ.textContent = 'Massages'; el.appendChild(subQ);
-  var qrow = document.createElement('div'); qrow.className = 'chips';
-  [1, 2].forEach(function(n){
-    var c = document.createElement('button');
-    c.type = 'button';
-    c.className = 'chip' + (SEL.qty === n ? ' on' : '');
-    c.textContent = n === 1 ? 'One' : 'Two';
-    c.onclick = function(){ SEL.qty = n; paint(); };
-    qrow.appendChild(c);
-  });
-  el.appendChild(qrow);
-  function lenRow(label, key){
-    var subL = document.createElement('div'); subL.className = 'sub';
-    subL.textContent = label; el.appendChild(subL);
-    var lens = document.createElement('div'); lens.className = 'chips';
-    SPA_DURS.forEach(function(x){
+  if (!dead){
+    var subD = document.createElement('div'); subD.className = 'sub';
+    subD.textContent = 'Day'; el.appendChild(subD);
+    var chips = document.createElement('div'); chips.className = 'chips';
+    days.forEach(function(dk2){
       var c = document.createElement('button');
       c.type = 'button';
-      c.className = 'chip' + (SEL[key] === x.m ? ' on' : '');
-      c.textContent = x.label;
-      c.onclick = function(){ SEL[key] = x.m; paint(); };
-      lens.appendChild(c);
+      c.className = 'chip' + (SEL.day === dk2 ? ' on' : '');
+      c.textContent = shortDay(dk2);
+      c.onclick = function(){ SEL.day = dk2; paint(); };
+      chips.appendChild(c);
     });
-    el.appendChild(lens);
+    if (!days.length){
+      var noDays = document.createElement('div');
+      noDays.className = 'hint';
+      noDays.textContent = 'No nights of this stay are still to come.';
+      chips.appendChild(noDays);
+    }
+    el.appendChild(chips);
+
+    var subT = document.createElement('div'); subT.className = 'sub';
+    subT.textContent = 'Time'; el.appendChild(subT);
+    var sel = document.createElement('select');
+    sel.setAttribute('aria-label', 'Time');
+    SLOTS.forEach(function(t){
+      var o = document.createElement('option');
+      o.value = t; o.textContent = slotLabel(t);
+      if (t === SEL.time) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.onchange = function(){ SEL.time = sel.value; paint(); };
+    el.appendChild(sel);
+
+    /* How many, then a length for each - the pair edited whole from this
+       card, by the desk and the masseuse alike, the owner's ruling of
+       26 Aug after two tiles hid the second massage's length. */
+    var subQ = document.createElement('div'); subQ.className = 'sub';
+    subQ.textContent = 'Massages'; el.appendChild(subQ);
+    var qrow = document.createElement('div'); qrow.className = 'chips';
+    [1, 2].forEach(function(n){
+      var c = document.createElement('button');
+      c.type = 'button';
+      c.className = 'chip' + (SEL.qty === n ? ' on' : '');
+      c.textContent = n === 1 ? 'One' : 'Two';
+      c.onclick = function(){ SEL.qty = n; paint(); };
+      qrow.appendChild(c);
+    });
+    el.appendChild(qrow);
+    function lenRow(label, key){
+      var subL = document.createElement('div'); subL.className = 'sub';
+      subL.textContent = label; el.appendChild(subL);
+      var lens = document.createElement('div'); lens.className = 'chips';
+      SPA_DURS.forEach(function(x){
+        var c = document.createElement('button');
+        c.type = 'button';
+        c.className = 'chip' + (SEL[key] === x.m ? ' on' : '');
+        c.textContent = x.label;
+        c.onclick = function(){ SEL[key] = x.m; paint(); };
+        lens.appendChild(c);
+      });
+      el.appendChild(lens);
+    }
+    lenRow(SEL.qty === 2 ? '1st length' : 'Length', 'dur');
+    if (SEL.qty === 2) lenRow('2nd length', 'dur2');
   }
-  lenRow(SEL.qty === 2 ? '1st length' : 'Length', 'dur');
-  if (SEL.qty === 2) lenRow('2nd length', 'dur2');
 
   var btns = document.createElement('div'); btns.className = 'btns';
   var remind = false;
@@ -591,7 +603,29 @@ function card(it){
     };
   }
 
-  if (!days.length){
+  /* The button law: destructive, so it asks first and names what goes. */
+  function removeWith(it2){
+    return function(){
+      if (!window.confirm('Remove this treatment? Mews has no record of the ' +
+          'booking behind it, so nothing here can be booked. This cannot be ' +
+          'undone.')) return;
+      removeRecord(it2);
+    };
+  }
+
+  if (dead){
+    /* Mews has no record of the booking this hangs off, so every other
+       control here is a promise to somebody the app cannot name. Declining
+       was the only thing the card used to offer such a record, which is how
+       four of them came to sit on the board for good. */
+    if (!masseuse) btn('Remove this record', 'danger', removeWith(it));
+    hint = 'Mews has no record of this booking, so nothing can be booked ' +
+           'or promised against it. ' + (masseuse
+      ? 'The front desk clears these.'
+      : 'Removing deletes this treatment only. The answers behind it are ' +
+        'cleared in Diagnostics, under Find and clear orphan pre-arrival ' +
+        'answers.');
+  } else if (!days.length){
     /* Nothing can be picked; only a decline still makes sense. */
     if (!isNew) btn('Decline', 'danger', declineWith(it));
   } else if (masseuse){
@@ -715,7 +749,7 @@ function card(it){
      Save note writes it alone and quietly - a note is bookkeeping, nobody's
      queue, so it must not buzz (the told stamp's precedent). Only a real
      record holds one: an ask still virtual has nothing to pin it to. */
-  if (!isNew && !rec.virtual){
+  if (!isNew && !rec.virtual && !dead){
     var subN = document.createElement('div'); subN.className = 'sub';
     subN.textContent = 'Notes'; el.appendChild(subN);
     var ta = document.createElement('textarea');
@@ -922,6 +956,31 @@ function save(it, status, opts){
   });
   }, {
     done:'Saved ✓', hold:400,
+    then:function(){ OPEN = null; SEL = null; load(); },
+    fail:function(msg){ err.textContent = msg; }
+  });
+}
+
+/* Removing a treatment whose booking Mews has no record of. Not a cancel:
+   a cancel tells a guest their massage is off, and there is no guest here -
+   the booking behind this record does not exist, so the record is a leaving
+   of the orphan-ask hole (spaFormAskLive, nala-shared.js) rather than
+   anything anybody agreed to. DELETE, because there is no state left worth
+   keeping: a declined record for a booking that is not real is exactly the
+   thing that could never be cleared.
+
+   The desk's, not the masseuse's. It is a data repair, and the page that
+   owns the answers behind it - Diagnostics, Find and clear orphan
+   pre-arrival answers - is the desk's too. */
+function removeRecord(it){
+  var err = document.getElementById('errBar');
+  return saveFeedback(pressedButton(), function(){
+    return fetch(DB + '/spa/' + it.id + '/' + it.tid + '.json',
+                 { method: 'DELETE' }).then(function(r){
+      if (!r.ok) throw new Error('spa delete failed ' + r.status);
+    });
+  }, {
+    busy:'Removing', done:'Removed ✓', hold:400,
     then:function(){ OPEN = null; SEL = null; load(); },
     fail:function(msg){ err.textContent = msg; }
   });
@@ -1191,9 +1250,15 @@ function load(){
        their ask all the same. A badge nobody can clear from the screen it
        belongs to is worse than no badge, and waiting for the guest to arrive
        is not an answer to a question they asked weeks ago. */
+    /* {ok, all} rather than the node alone: Firebase answers an EMPTY node
+       with null and a refused one with 401, and the delete offer below must
+       be able to tell those apart. */
     fetch(DB + '/bookings.json?v=' + Date.now())
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .catch(function(){ return null; })
+      .then(function(r){
+        if (!r.ok) return { ok:false, all:{} };
+        return r.json().then(function(j){ return { ok:true, all: j || {} }; });
+      })
+      .catch(function(){ return { ok:false, all:{} }; })
   ]).then(function(res){
     SPACONTACT = res[2];
     BOOKINGS = {};
@@ -1223,20 +1288,36 @@ function load(){
     /* Anyone the window missed who is still owed an answer. The guards are
        the badge's own, in spaOwedCounts: a cancelled booking is not a request
        anybody can act on, and neither is one whose guest has already left. */
-    var all = res[3] || {}, todayK = todayKey();
+    var bread = res[3] || { ok:false, all:{} };
+    var all = bread.all, todayK = todayKey();
     Object.keys(all).forEach(function(id){
       if (BOOKINGS[id]) return;
-      var b = all[id] || {}, p = b.prearrival, pms = b.pms || {};
-      if (!p || typeof p !== 'object' || p.wellness !== true) return;
-      if (String(pms.state || '').toLowerCase() === 'cancelled') return;
-      var dep = String(pms.depart || '').slice(0, 10);
-      if (dep && dep < todayK) return;
-      if (spaAskSpokenFor(SPA[id])) return;
+      if (!spaFormAskLive(all[id], SPA[id], todayK)) return;
+      var pms = all[id].pms;
       BOOKINGS[id] = { id:id, first:pms.first || '', last:pms.last || '',
                        companion:'', arrive:pms.arrive, depart:pms.depart,
                        villaByDate:{}, villa:pms.villa ? String(pms.villa) : '',
-                       pre:p, offWindow:true };
+                       pre:all[id].prearrival, offWindow:true };
     });
+
+    /* Which of the treatments on this board hang off a booking Mews has no
+       record of. They are the orphan asks' leavings: before the guard above
+       existed, a nameless ask reached the masseuse and the only control the
+       card offered him was Decline, so declining it wrote a record that
+       nothing could ever clear - four of them by 11 Sep. The desk can remove
+       one from its card now, and the guard means no more are born.
+
+       ONLY when the read actually landed. A refused or failed read is not an
+       empty node, and treating one as proof that Mews knows nothing about
+       anybody would offer to delete the whole board - Diagnostics' own
+       lesson, written above findOrphans. */
+    MEWSLESS = {};
+    if (bread.ok){
+      Object.keys(SPA).forEach(function(id){
+        var b = all[id];
+        if (!b || !b.pms || typeof b.pms !== 'object') MEWSLESS[id] = true;
+      });
+    }
 
     /* Those carry their pre already, from the node they came out of. */
     return Promise.all(Object.keys(BOOKINGS).filter(function(id){

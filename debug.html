@@ -114,7 +114,7 @@ villas at once.</p>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 </div>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=64"></script>
+<script src="nala-shared.js?v=65"></script>
 <script>
 /* This page deletes live data. Until 18 Aug it had no role gate at all, so any
    login that could sign in could open it and run Clean Slate: a cleaner, a
@@ -219,13 +219,14 @@ function spaBadgeWorking(){
       });
     });
 
+    /* The badge's own reader, not a fourth copy of its guards: this section
+       exists to print the badge's working, and working that is arrived at
+       separately is not the badge's. It held its own copy until 11 Sep and
+       the copy was already a guard behind. */
     Object.keys(bk).forEach(function(id){
       var b = bk[id] || {}, p = b.prearrival, pms = b.pms || {};
-      if (!p || typeof p !== 'object' || p.wellness !== true) return;
-      if (String(pms.state || '').toLowerCase() === 'cancelled') return;
+      if (!spaFormAskLive(b, spa[id], today)) return;
       var dep = String(pms.depart || '').slice(0, 10);
-      if (dep && dep < today) return;
-      if (spaAskSpokenFor(spa[id])) return;
       lines.push('  ' + who(id) + '  [' + id + ']' +
         '\n      a wellness ask on the pre-arrival form, no treatment answering it' +
         '\n      arrives ' + (String(pms.arrive || '').slice(0, 10) || '?') +
@@ -236,9 +237,26 @@ function spaBadgeWorking(){
           : 'NO - not in today\u2019s /stays, so that board cannot show it'));
     });
 
+    /* Why an ask is missing from the list above matters as much as what is
+       on it. An orphan's answers are real and its ask is not actionable, so
+       neither board shows it - and a page that simply went quiet about it
+       would send the next person hunting the bug the owner hunted on
+       11 Sep. Named here, and cleared by the tool at the top of this page. */
+    var orphanAsks = Object.keys(bk).filter(function(id){
+      var b = bk[id] || {}, p = b.prearrival;
+      return p && typeof p === 'object' && p.wellness === true &&
+             (!b.pms || typeof b.pms !== 'object');
+    });
+    var tail = orphanAsks.length
+      ? '\n\nnot counted, and on no board: ' + orphanAsks.length +
+        ' wellness ask(s) whose booking Mews has no record of\n  ' +
+        orphanAsks.join('\n  ') +
+        '\n  Clear the answers with Find orphans, at the top of this page.'
+      : '';
     show('spabadge', 200,
       'desk badge ' + totals.desk + ', masseuse badge ' + totals.spa +
-      '\n\n' + (lines.length ? lines.join('\n\n') : '  nothing outstanding'));
+      '\n\n' + (lines.length ? lines.join('\n\n') : '  nothing outstanding') +
+      tail);
   }).catch(function(e){ show('spabadge', 0, String(e)); });
 }
 spaBadgeWorking();

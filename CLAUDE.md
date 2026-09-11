@@ -201,6 +201,18 @@ Three things follow, and they are the whole model:
   live state and one door to the Spa board. Additional massages for a
   guest already on the board are added through the board's search, whose
   tile names what they already hold.
+- **An ask with no booking behind it is not an ask** (11 Sep). A
+  `/bookings/<id>` holding `prearrival` answers with no `pms` beside them
+  is an ORPHAN — Diagnostics has called it that, in those words, since it
+  was built. `spaFormAskLive` (nala-shared.js) owns all five guards on a
+  form ask — no ask, no pms, cancelled, departed, spoken for — and the
+  badge, the Spa board's `/bookings` sweep and Diagnostics' badge working
+  all call it. They held three copies until 11 Sep and the newest lacked
+  the pms guard, so an orphan reached the masseuse as a nameless "No day ·
+  Any time" card whose only control was Decline, and each decline wrote a
+  record nothing could clear. A treatment on such a booking now carries no
+  pickers and no note box, only the desk's `Remove this record`; the
+  answers behind it are Diagnostics' to clear, never a board's to guess at.
 - **Arriving is not finishing.** Check in is a *visual move of the tile* so
   reception can see who is here. It touches the form's state not at all, and
   it asks for nothing before it will move: a control that refuses is not a

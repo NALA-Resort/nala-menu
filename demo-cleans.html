@@ -3635,6 +3635,49 @@ function spaOwedBy(rec, today){
     is one whose guest has already left: an Any day ask would otherwise
     sit in the masseuse's badge for good, a fortnight after the villa was
     turned over.                                                        */
+/*  A booking's own pre-arrival ask, when it is one somebody can still act
+    on. ONE reader since 11 Sep: the hamburger badge, the Spa board's sweep
+    of /bookings and Diagnostics each carried their own copy of these
+    guards. That is the 10 Sep lesson one turn further on - then it was one
+    reader with two different sets of data behind it, here it was one set
+    of data with three readers, and a guard the newest of them lacked.
+
+    The guards, in order, and what each is protecting:
+
+      no ask            wellness is not true: there is nothing to answer
+      NO PMS NODE       Mews has no record of this id
+      cancelled         a cancelled booking is not a request anybody owes
+      departed          nobody can act on last Tuesday
+      spoken for        a record has been born from this ask already
+
+    The second is the new one, and it is what the owner found on 11 Sep.
+    A /bookings node holding prearrival answers with no pms beside them is
+    an ORPHAN - Diagnostics has called it exactly that, in those words,
+    since it was built ("Mews has no record of this id"). It has no name,
+    no dates and no night that can be booked, so it reached the masseuse as
+    a nameless "No day, Any time" card he could only decline - and
+    declining wrote a record that then sat on his board for good. An ask
+    nobody can act on is not an ask. The answers behind it are real and
+    are Diagnostics' to clear, with the guest's other answers, not this
+    board's to guess at.
+
+    The departure test goes through parseDepDate rather than slicing the
+    stamp: Mews sends a bare date on some mappings and a full UTC timestamp
+    on others, and a slice compares a UTC day against a local one, which is
+    rule 7's whole class of bug.                                          */
+function spaFormAskLive(b, spaRecs, today){
+  var p = b && b.prearrival, pms = b && b.pms;
+  if (!p || typeof p !== 'object' || p.wellness !== true) return null;
+  if (!pms || typeof pms !== 'object') return null;
+  if (String(pms.state || '').toLowerCase() === 'cancelled') return null;
+  var dep = parseDepDate(pms.depart);
+  if (dep && today && dkey(dep) < today) return null;
+  if (spaAskSpokenFor(spaRecs)) return null;
+  var any = isAnyDay(p.wellDay);
+  return { status: 'requested', reqAny: any,
+           reqDay: any ? '' : (p.wellDay || '') };
+}
+
 function spaOwedCounts(spa, bookings, today){
   var out = { spa: 0, desk: 0 };
   spa = spa || {}; bookings = bookings || {};
@@ -3651,15 +3694,8 @@ function spaOwedCounts(spa, bookings, today){
     });
   });
   Object.keys(bookings).forEach(function(id){
-    var b = bookings[id] || {}, p = b.prearrival, pms = b.pms || {};
-    if (!p || typeof p !== 'object' || p.wellness !== true) return;
-    if (String(pms.state || '').toLowerCase() === 'cancelled') return;
-    var dep = String(pms.depart || '').slice(0, 10);
-    if (dep && today && dep < today) return;
-    if (spaAskSpokenFor(spa[id])) return;
-    var any = isAnyDay(p.wellDay);
-    add({ status: 'requested', reqAny: any,
-          reqDay: any ? '' : (p.wellDay || '') });
+    var ask = spaFormAskLive(bookings[id], spa[id], today);
+    if (ask) add(ask);
   });
   return out;
 }
