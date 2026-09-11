@@ -253,7 +253,7 @@ function crunHTML(r, active){
      Other queued villas keep the owner's one word of 8 Sep. */
   var line = cc.k === 'writing' && active ? ''
       : cc.k === 'queued' && active
-        ? '<span class="cwake"><i></i><i></i><i></i></span>Waking the encoder\u2026'
+        ? '<span class="cwake"><i></i><i></i><i></i></span>Waking up\u2026'
       : cc.k === 'queued' ? 'Queued'
       : esc(cc.label);
   var h = '<div class="' + cls + '"><div class="crun-v">Villa ' + r.villa +
@@ -336,7 +336,8 @@ function cardRender(){
      offline the notice holds until the run is reopened, or the jobs that
      were just removed would take their explanation with them. */
   var offlineHTML = '<div class="cardhold"><b>Encoder offline.</b> ' +
-    'Nothing was written \u00b7 try again when the desk PC is on.</div>';
+    'Nothing was written \u00b7 open Nala card helper from the desk ' +
+    'PC\u2019s taskbar, then try again.</div>';
   if (!withJobs.length){
     body.innerHTML = '<div class="cardov-in">' + (CARD_OFFLINE ? offlineHTML
       : '<div class="crun"><div class="crun-s">Nothing queued. ' +

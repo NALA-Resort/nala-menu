@@ -534,7 +534,7 @@ button
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
 <script src="nala-shared.js?v=64"></script>
-<script src="nala-cards.js?v=3"></script>
+<script src="nala-cards.js?v=4"></script>
 <script>
 /* Keys: the card register, built from the approved mock (mock-keys.html)
    and holding its exact shape - the suite compares the two files and
@@ -853,7 +853,8 @@ function ovRender(cr){
   if (CN_OFFLINE){
     body.innerHTML = '<div class="cardov-in">' +
       '<div class="cardhold"><b>Encoder offline.</b> Nothing was wiped ' +
-      '· try again when the desk PC is on.</div></div>';
+      '· open Nala card helper from the desk PC\u2019s taskbar, then ' +
+      'try again.</div></div>';
     return;
   }
   var done = [];

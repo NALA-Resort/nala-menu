@@ -2302,7 +2302,7 @@ with sync_playwright() as p:
        pg.evaluate("""()=>{var c=[...document.querySelectorAll('.crun')];
          var w=c.filter(x=>x.querySelector('.cwake'));
          return w.length===1
-             && w[0].innerText.indexOf('Waking the encoder')>=0;}"""))
+             && w[0].innerText.indexOf('Waking up')>=0;}"""))
 
     #  The helper moves a job; the poll repaints without a reload. The
     #  OTHER queued villas are marked done first, because a queue that ages
@@ -2463,6 +2463,10 @@ with sync_playwright() as p:
     ck("an unclaimed queue is judged offline, tersely",
        "Encoder offline" in body and "try again" in body
        and "Nothing is lost" not in body)
+    #  The verdict names the way back, not just the fact (owner, 11 Sep):
+    #  the fix is the taskbar's Nala card helper, so the sentence says so.
+    ck("and it points at the helper on the taskbar",
+       "Nala card helper" in body and "taskbar" in body)
     ck("and the queued job is deleted, not left in wait",
        [x for x in WRITES if x["m"] == "DELETE" and "/cardjobs/%s/4" % today in x["u"]]
        and "4" not in CARDJOBS)
