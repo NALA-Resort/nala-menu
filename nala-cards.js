@@ -208,6 +208,9 @@ function cardsOpen(villa){
      corrects itself on the next poll. */
   CARD_ASK = villa != null ? villa : null;
   CARD_OFFLINE = false;
+  /* the question starts fresh: a quantity left over from another villa's
+     ask is nobody's answer */
+  document.getElementById('cardBody').setAttribute('data-qty', 2);
   document.getElementById('cardOv').hidden = false;
   cardRender();
   loadCards();
@@ -472,6 +475,7 @@ function wire(){
     var ag = e.target.closest('[data-cardagain]');
     if (ag){
       CARD_ASK = ag.getAttribute('data-cardagain');
+      document.getElementById('cardBody').setAttribute('data-qty', 2);
       cardRender(); return;
     }
     var opn = e.target.closest('[data-cardopen]');
