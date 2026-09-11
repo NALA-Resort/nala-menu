@@ -941,6 +941,33 @@ with sync_playwright() as p:
     SPA = spa_seed()
     pg.close()
 
+    # ── a guest already on the board answers to the search, 11 Sep ──
+    # A party can want a second massage, and until now the search reached
+    # only bookings with nothing. Search-only - resting, their records ARE
+    # the board above - and marked with what they already hold, so an add
+    # is knowingly an ADDITIONAL massage rather than the same one keyed
+    # twice, which is how the double-decline happened.
+    pg = board("staff@x")
+    ck("resting, a booked guest is not offered a second grey tile",
+       not pg.evaluate("()=>!!document.querySelector("
+                       "'#board .b-grey[data-booking=\"b3\"]')"))
+    pg.fill("#addFind", "robyn"); pg.wait_for_timeout(200)
+    tile3 = pg.evaluate("()=>{const e=document.querySelector("
+                        "'#board .b-grey[data-booking=\"b3\"]');"
+                        "return e ? e.textContent : '';}")
+    ck("searched by name she appears, marked with the booking she holds",
+       "Booked" in tile3 and "add another" in tile3)
+    pg.locator('#board .b-grey[data-booking="b3"]').click(); pg.wait_for_timeout(300)
+    del WRITES[:]
+    pg.locator('.card .cbtn.solid').click(); pg.wait_for_timeout(900)
+    w3 = [x for x in WRITES if "/spa/b3/" in x["u"]]
+    body3 = json.loads(w3[0]["b"]) if w3 else {}
+    ck("her add asks the masseuse like any other, as a second record",
+       body3.get("status") == "requested" and body3.get("source") == "desk"
+       and "/spa/b3/t1." not in (w3[0]["u"] if w3 else ""))
+    SPA = spa_seed()
+    pg.close()
+
     # The desk's add asks the masseuse: the desk does not know his book.
     pg = board("staff@x")
     pg.locator('#board [data-booking="b6"]').click(); pg.wait_for_timeout(300)

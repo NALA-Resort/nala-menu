@@ -584,6 +584,59 @@ with sync_playwright() as p:
     PRE["b4"].update(well_held)
     del SPADB["b4"]
 
+    # ── the Wellness section stands down to the board, 11 Sep ───
+    # The rule that the form's answer stands in only while no record has
+    # been born from it reached display on 27 Aug and state on 10 Sep;
+    # this is the same rule reaching EDITING. A segment still editable
+    # past that point could only repeat the board or contradict it, and a
+    # re-tapped Interested resurrected an ask the masseuse had already
+    # answered. The section becomes the summary's own lines plus one door.
+    SPADB["b4"] = {"t1": {"status": "booked", "day": plus(1), "time": "14:00",
+                          "source": "prearrival", "at": "x"}}
+    pg = board()
+    pg.locator('.arr[data-villa="4"]').click(); pg.wait_for_timeout(400)
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    ck("with a record at /spa the Interested segment is gone",
+       not pg.evaluate("()=>!!document.getElementById('wYes')"))
+    ck("in its place the live state, in the summary's own words",
+       "Booked" in pg.evaluate("()=>wLive.textContent"))
+    ck("and one quiet door to the board that owns the massage",
+       pg.evaluate("()=>wManage.textContent") == "Manage on the Spa board")
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(600)
+    w = [x for x in WRITES if "/bookings/b4/prearrival" in x["u"]]
+    ck("a save with the section stood down leaves the guest's ask intact",
+       len(w) == 1 and json.loads(w[0]["b"]).get("wellness") is True
+       and json.loads(w[0]["b"]).get("wellDay") == plus(1))
+    pg.close()
+    del SPADB["b4"]
+
+    # ── the intake gate: an Interested cannot save without a day ─
+    # The guest form has refused a yes with no day since 31 Aug; the desk
+    # could still mint one - the "No day" ask the masseuse can only chase
+    # or decline. Same shape as Other-with-no-note: an answer that looks
+    # answered and tells the reader nothing to act on.
+    pg = board()
+    pg.locator('.arr[data-villa="2"]').click(); pg.wait_for_timeout(400)
+    pg.locator("#wYes").click(); pg.wait_for_timeout(150)
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(400)
+    ck("Interested with no day is refused, in words, beside the controls",
+       "day" in pg.evaluate("()=>wMiss.textContent") and
+       not [x for x in WRITES if "/bookings/b2/" in x["u"]])
+    pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')]"
+                ".find(b=>b.textContent==='Any day').click()")
+    pg.wait_for_timeout(150)
+    ck("picking a day clears the refusal",
+       pg.evaluate("()=>wMiss.textContent") == "")
+    del WRITES[:]
+    pg.locator("#sConfirm").click(); pg.wait_for_timeout(600)
+    w = [x for x in WRITES if "/bookings/b2/prearrival" in x["u"]]
+    ck("and the save then writes the ask whole: yes, and Any day",
+       len(w) == 1 and json.loads(w[0]["b"]).get("wellness") is True
+       and json.loads(w[0]["b"]).get("wellDay") == "any")
+    pg.close()
+
     # ── the massage mark on the row, 31 Aug ─────────────────────
     # The same four states the sheet spells out above, readable without
     # opening anything, from the same massageState so the mark and the words

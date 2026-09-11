@@ -1001,11 +1001,24 @@ function paint(){
     if (normaliseRole(window.NALA_ROLE) !== 'spa'){
       var covered = {};
       list.forEach(function(it){ covered[it.id] = true; });
+      var byArrive = function(a, b){
+        return akey(BOOKINGS[a].arrive).localeCompare(akey(BOOKINGS[b].arrive));
+      };
       var pool = Object.keys(BOOKINGS).filter(function(id){ return !covered[id]; })
-        .sort(function(a, b){
-          return akey(BOOKINGS[a].arrive).localeCompare(akey(BOOKINGS[b].arrive));
-        });
-      if (pool.length){
+        .sort(byArrive);
+      /* Guests already on the board, reachable through the SEARCH alone
+         (the owner, 11 Sep): a party can want a second massage, and until
+         now the only bookings the search could find were ones with
+         nothing. Search-only, never the resting list - their records ARE
+         the board above, and a second tile at rest is the wall of grey
+         of 27 Aug again. The tile names what they already hold, so an
+         add here is knowingly an ADDITIONAL massage rather than the same
+         one keyed twice - the double-decline accident, closed with words
+         (the same-day-and-time refusal in saveRefusal stays the hard
+         stop behind them). */
+      var heldPool = Object.keys(BOOKINGS).filter(function(id){ return covered[id]; })
+        .sort(byArrive);
+      if (pool.length || heldPool.length){
         var hAdd = document.createElement('div');
         hAdd.className = 'grp';
         hAdd.textContent = 'Add a treatment';
@@ -1033,6 +1046,32 @@ function paint(){
           else line += ' · tap to add one';
           return greyTile(id, line, true);
         };
+        /* A found guest who is already on the board: their tile says what
+           stands, in the board's own order of what matters - a suggestion
+           owed, then a booking held, an ask waiting, a decline - so the
+           add is made knowing it is a second massage. */
+        var heldTile = function(id){
+          var recs = SPA[id] || {}, best = null;
+          var rank = { suggested: 0, booked: 1, requested: 2, declined: 3 };
+          Object.keys(recs).forEach(function(tid){
+            var t = recs[tid];
+            if (!t || typeof t !== 'object' || !(t.status in rank)) return;
+            if (!best || rank[t.status] < rank[best.status]) best = t;
+          });
+          var line;
+          if (!best)
+            /* Covered only by the form's own ask, no record yet. */
+            line = 'Asked on the form · waiting on the masseuse';
+          else {
+            var d = (best.status === 'booked' || best.status === 'suggested')
+              ? (best.day || '') : (best.reqDay || '');
+            line = { suggested:'Suggested', booked:'Booked',
+                     requested:'Asked', declined:'Declined' }[best.status] +
+                   (d ? ' ' + niceDay(d) : '') +
+                   (best.time ? ' · ' + slotLabel(best.time) : '');
+          }
+          return greyTile(id, line + ' · tap to add another', true);
+        };
         var addHint = function(t){
           var e2 = document.createElement('div');
           e2.className = 'hint'; e2.textContent = t;
@@ -1051,21 +1090,30 @@ function paint(){
             tilesBox.appendChild(card({ id: openNew, tid: 'new',
                                         rec: { status: '', reqDay: '', reqTime: '' } }));
           var q = ADDQ.trim().toLowerCase();
+          /* The villa answers only to its exact number: a typed 1 must
+             not drag in villas 12 and 15 the way a name fragment may. */
+          var hits = function(id){
+            return nameOf(id, null).toLowerCase().indexOf(q) > -1 ||
+                   String(villaOf(id, todayKey()) || '') === q;
+          };
           var rest = pool.filter(function(id){ return id !== openNew; });
           var shown = rest.filter(function(id){
             if (!q) return akey(BOOKINGS[id].arrive) <= soonEnd;
-            /* The villa answers only to its exact number: a typed 1 must
-               not drag in villas 12 and 15 the way a name fragment may. */
-            return nameOf(id, null).toLowerCase().indexOf(q) > -1 ||
-                   String(villaOf(id, todayKey()) || '') === q;
+            return hits(id);
           });
           shown.forEach(function(id){ tilesBox.appendChild(addTile(id)); });
+          /* The already-on-the-board guests answer to a typed search only,
+             after the treatmentless ones, each marked with what they hold. */
+          var held = !q ? [] : heldPool.filter(function(id){
+            return id !== openNew && hits(id);
+          });
+          held.forEach(function(id){ tilesBox.appendChild(heldTile(id)); });
           if (!q && rest.length > shown.length)
             addHint((rest.length - shown.length) +
                     ' more arrive later in the next ' + HORIZON +
                     ' days. The search finds them by name or villa.');
-          if (q && !shown.length)
-            addHint('No guest by that name or villa without a treatment ' +
+          if (q && !shown.length && !held.length)
+            addHint('No guest by that name or villa ' +
                     'in the next ' + HORIZON + ' days.');
         };
         find.oninput = function(){ ADDQ = find.value; fillAdd(); };
@@ -1201,8 +1249,12 @@ function load(){
     }));
   }).then(function(){
     if (OPENQ){
-      var hit = items().filter(function(x){
-        return x.id === OPENQ && x.rec.status === 'requested'; })[0];
+      /* The waiting ask first - the SMS link's target - else whatever the
+         booking holds, so the desk's Manage button (11 Sep) lands on the
+         guest's card in any state rather than on the whole board. */
+      var mine = items().filter(function(x){ return x.id === OPENQ; });
+      var hit = mine.filter(function(x){
+        return x.rec.status === 'requested'; })[0] || mine[0];
       if (hit) OPEN = { id: hit.id, tid: hit.tid };
       OPENQ = '';
     }

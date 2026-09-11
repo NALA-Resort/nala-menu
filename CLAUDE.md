@@ -194,7 +194,13 @@ Three things follow, and they are the whole model:
   keyed straight onto the Spa board sat amber for good with "treatments"
   named missing while the outcome hung one node away. `massageAnswered`
   (nala-shared.js) is the one reading; `formState` takes the spa node and
-  all three of its readers pass it.
+  all three of its readers pass it. The same rule reached **editing** on
+  11 Sep: the sheet's Wellness section is the desk's intake only while no
+  `/spa` record exists — and an Interested cannot save without a day or
+  Any day, the guest form's own 31 Aug rule — then stands down to the
+  live state and one door to the Spa board. Additional massages for a
+  guest already on the board are added through the board's search, whose
+  tile names what they already hold.
 - **Arriving is not finishing.** Check in is a *visual move of the tile* so
   reception can see who is here. It touches the form's state not at all, and
   it asks for nothing before it will move: a control that refuses is not a

@@ -982,6 +982,41 @@ function sumRow(label, value, empty){
          (value || empty || 'Not answered') + '</div></div>';
 }
 
+/* The live spa state, in sentences. Until 27 Aug the summary read only the
+   prearrival answers, so nothing that happened on the Spa board - a booking,
+   a suggestion, a decline - ever reached the sheet, and reception told a
+   guest their booked massage was "Interested". The records at /spa/<booking>
+   are the current truth; the form's answer stands in only while no record
+   has been born from it, which is the spa board's own rule for the same ask.
+   One builder since 11 Sep, because the edit sheet's Wellness section now
+   stands down to these same lines - two renderings of one guest's massages
+   is how the summary and the sheet would come to disagree. */
+function spaStateLines(spa){
+  var lines = [], answered = false;
+  Object.keys(spa || {}).sort().forEach(function(tid){
+    var t = (spa || {})[tid];
+    if (!t || typeof t !== 'object' || !t.status) return;
+    if (t.source === 'prearrival') answered = true;
+    var two = t.qty === 2 ? 'Two massages · ' : '';
+    var when = (t.day ? dayLabel(t.day) : '') +
+               (t.time ? ' · ' + spaSlotLabel(t.time) : '');
+    if (t.status === 'booked')
+      lines.push(two + 'Booked · ' + when +
+                 (t.manual ? ' · approved at the desk' : ''));
+    else if (t.status === 'suggested')
+      lines.push(two + 'Suggested ' + when + ' · waiting on the guest');
+    else if (t.status === 'requested')
+      lines.push(two + 'Asked' +
+                 (t.reqDay ? ' · ' + dayLabel(t.reqDay) : '') +
+                 (t.reqTime ? ' · ' + esc(t.reqTime) : '') +
+                 ' · waiting on the masseuse');
+    else if (t.status === 'declined')
+      lines.push('Declined' + (t.note ? ' · ' + esc(t.note) : '') +
+                 (t.told ? ' · guest told' : ' · let the guest know'));
+  });
+  return { lines: lines, answered: answered };
+}
+
 function summaryHTML(r){
   var a = answersOf(r), h = '';
 
@@ -1021,35 +1056,11 @@ function summaryHTML(r){
   if (a.approach)  h += sumRow('Dining', esc(APPROACH_LABEL[a.approach] || a.approach));
   if (a.occasion)  h += sumRow('Occasion', esc(a.occasion));
 
-  /* The live spa state, not the form's opening ask. Until 27 Aug this row
-     read only the prearrival answers, so nothing that happened on the Spa
-     board - a booking, a suggestion, a decline - ever reached the sheet,
-     and reception told a guest their booked massage was "Interested". The
-     records at /spa/<booking> are the current truth; the form's answer
-     stands in only while no record has been born from it, which is the
-     spa board's own rule for the same ask. */
-  var spa = r.spa || {}, spaLines = [], spaAnswered = false;
-  Object.keys(spa).sort().forEach(function(tid){
-    var t = spa[tid];
-    if (!t || typeof t !== 'object' || !t.status) return;
-    if (t.source === 'prearrival') spaAnswered = true;
-    var two = t.qty === 2 ? 'Two massages \u00b7 ' : '';
-    var when = (t.day ? dayLabel(t.day) : '') +
-               (t.time ? ' \u00b7 ' + spaSlotLabel(t.time) : '');
-    if (t.status === 'booked')
-      spaLines.push(two + 'Booked \u00b7 ' + when +
-                    (t.manual ? ' \u00b7 approved at the desk' : ''));
-    else if (t.status === 'suggested')
-      spaLines.push(two + 'Suggested ' + when + ' \u00b7 waiting on the guest');
-    else if (t.status === 'requested')
-      spaLines.push(two + 'Asked' +
-                    (t.reqDay ? ' \u00b7 ' + dayLabel(t.reqDay) : '') +
-                    (t.reqTime ? ' \u00b7 ' + esc(t.reqTime) : '') +
-                    ' \u00b7 waiting on the masseuse');
-    else if (t.status === 'declined')
-      spaLines.push('Declined' + (t.note ? ' \u00b7 ' + esc(t.note) : '') +
-                    (t.told ? ' \u00b7 guest told' : ' \u00b7 let the guest know'));
-  });
+  /* The live spa state, not the form's opening ask - spaStateLines below,
+     one builder for this summary and the edit sheet's stood-down section:
+     two surfaces describing one guest's massages must be one reading. */
+  var spaState = spaStateLines(r.spa);
+  var spaLines = spaState.lines.slice(), spaAnswered = spaState.answered;
   if (a.wellness === true && !spaAnswered){
     var w = 'Interested';
     if (a.wellDay)  w += ' \u00b7 ' + dayLabel(a.wellDay);
@@ -1517,6 +1528,16 @@ function answersOf(r){
 function openGuest(r){
   var p = r.pre || {};
   var a = answersOf(r);
+  /* Once ANY record exists at /spa, the Wellness section stands down: the
+     rule that the form's answer stands in only while no record has been
+     born from it reached display on 27 Aug and state on 10 Sep, and this
+     is the same rule reaching EDITING (the owner, 11 Sep). A segment still
+     editable past that point could only repeat the board or contradict it,
+     and a re-tapped "Interested" resurrected an ask the masseuse had
+     already answered. The section shows the live state in the summary's
+     own words and one door to the board that owns it. */
+  var spaLive = spaStateLines(r.spa);
+  var spaHeld = spaLive.lines.length > 0;
   /* What the record held when this sheet was opened, frozen. Every painter
      below compares against it to mark an answer that has just been taken
      off - see the .was rule in the stylesheet. Copied, not referenced: `a`
@@ -1636,21 +1657,27 @@ function openGuest(r){
     '<input class="txt" id="fOcc" type="text" placeholder="Birthday, anniversary" autocomplete="off">' +
 
     '<div class="sheet-group">Wellness</div>' +
-    
-    '<div class="seg">' +
-      '<button id="wYes">Interested</button>' +
-      '<button id="wNo">Not interested</button>' +
-    '</div>' +
-    '<div id="wWrap">' +
-      '<div class="sheet-label sub">Preferred day</div>' +
-      '<div class="chips rail" id="wDays"></div>' +
-      '<select class="txt" id="fWtime" aria-label="Preferred time" style="margin-top:8px"></select>' +
-      '<div class="chips rail" id="fWqty" style="margin-top:8px"></div>' +
-      '<div class="sheet-label sub" id="fWdurLab" style="display:none">First massage</div>' +
-      '<select class="txt" id="fWdur" aria-label="Massage length" style="margin-top:8px"></select>' +
-      '<div class="sheet-label sub" id="fWdur2Lab" style="display:none">Second massage</div>' +
-      '<select class="txt" id="fWdur2" aria-label="Second massage length" style="margin-top:8px;display:none"></select>' +
-    '</div>' +
+    (spaHeld
+      /* Stood down: the live state and the door. No editable control, so
+         nothing here can mint or resurrect an ask - additional massages
+         are added on the board, through its search. */
+      ? '<div class="note-box" id="wLive">' + spaLive.lines.join('<br>') + '</div>' +
+        '<button class="opt quiet" id="wManage" type="button">Manage on the Spa board</button>'
+      : '<div class="seg">' +
+        '<button id="wYes">Interested</button>' +
+        '<button id="wNo">Not interested</button>' +
+      '</div>' +
+      '<div class="miss-note" id="wMiss"></div>' +
+      '<div id="wWrap">' +
+        '<div class="sheet-label sub">Preferred day</div>' +
+        '<div class="chips rail" id="wDays"></div>' +
+        '<select class="txt" id="fWtime" aria-label="Preferred time" style="margin-top:8px"></select>' +
+        '<div class="chips rail" id="fWqty" style="margin-top:8px"></div>' +
+        '<div class="sheet-label sub" id="fWdurLab" style="display:none">First massage</div>' +
+        '<select class="txt" id="fWdur" aria-label="Massage length" style="margin-top:8px"></select>' +
+        '<div class="sheet-label sub" id="fWdur2Lab" style="display:none">Second massage</div>' +
+        '<select class="txt" id="fWdur2" aria-label="Second massage length" style="margin-top:8px;display:none"></select>' +
+      '</div>') +
 
     '<div class="sheet-group">Notes</div>' +
     '<div class="sheet-label">Booking notes</div>' +
@@ -1686,6 +1713,7 @@ function openGuest(r){
      reopening a card never silently wipes what the guest said. */
   (function(){
     var sel = document.getElementById('fWtime');
+    if (!sel) return;   /* stood down: the board holds the massage now */
     var o = document.createElement('option');
     o.value = ''; o.textContent = 'Preferred time';
     sel.appendChild(o);
@@ -1705,6 +1733,7 @@ function openGuest(r){
   /* How many and how long, the same terms the guest form offers, from the
      one shared list. */
   function paintWellDurs(){
+    if (!document.getElementById('fWdur')) return;   /* stood down */
     ['fWdur', 'fWdur2'].forEach(function(id, i){
       var d = document.getElementById(id);
       d.innerHTML = '';
@@ -1971,6 +2000,7 @@ function openGuest(r){
     return out;
   }
   function paintWellness(){
+    if (!document.getElementById('wYes')) return;   /* stood down */
     document.getElementById('wYes').className = a.wellness === true  ? 'on'
       : (held.wellness === true  && lost(a.wellness, held.wellness) ? 'was' : '');
     document.getElementById('wNo').className  = a.wellness === false ? 'on'
@@ -1983,9 +2013,15 @@ function openGuest(r){
        desk must offer exactly what the form offered or it cannot show what
        the guest chose: a chip the guest can pick and the desk cannot draw
        is villa 17 again, two screens describing one booking and
-       disagreeing. The desk is NOT held to the form's compulsion - it
-       edits what it hears across the day, and half an answer is a normal
-       state here. */
+       disagreeing. The desk is not held to the form's compulsion on most
+       half answers - it edits what it hears across the day - but since
+       11 Sep an Interested cannot SAVE without a day or Any day, the
+       guest form's own 31 Aug rule: a yes with no day is not a half
+       answer resting here, it is a live ask on the masseuse's board that
+       he cannot act on (the "No day · Any time" orphan he had to
+       decline just to clear). The gate is in finish(), beside the
+       Other-with-no-note refusal, which is the same shape: an answer
+       that looks answered and tells the reader nothing. */
     repaintRow('wDays', function(box){
       stayDays().concat([{ key:SPA_ANY_DAY, label:SPA_ANY_DAY_LABEL }])
         .forEach(function(d){
@@ -1994,7 +2030,8 @@ function openGuest(r){
           : (held.wellDay === d.key && lost(a.wellDay, held.wellDay) ? ' was' : ''));
         b.textContent = d.label;
         b.onclick = function(){
-          a.wellDay = (a.wellDay === d.key) ? '' : d.key; paintWellness(); };
+          a.wellDay = (a.wellDay === d.key) ? '' : d.key;
+          clearWellMiss(); paintWellness(); };
         box.appendChild(b);
       });
     });
@@ -2003,10 +2040,27 @@ function openGuest(r){
   }
   /* Same way back as the dining segment: tapping the chosen answer again
      un-asks the question. */
-  document.getElementById('wYes').onclick = function(){
-    a.wellness = (a.wellness === true)  ? null : true;  paintWellness(); };
-  document.getElementById('wNo').onclick  = function(){
-    a.wellness = (a.wellness === false) ? null : false; paintWellness(); };
+  if (document.getElementById('wYes')){
+    document.getElementById('wYes').onclick = function(){
+      a.wellness = (a.wellness === true)  ? null : true;
+      clearWellMiss(); paintWellness(); };
+    document.getElementById('wNo').onclick  = function(){
+      a.wellness = (a.wellness === false) ? null : false;
+      clearWellMiss(); paintWellness(); };
+  }
+  /* The refused-save message beside the controls it is about, cleared the
+     moment either the answer or the day changes. */
+  function clearWellMiss(){
+    var m = document.getElementById('wMiss');
+    if (m){ m.textContent = ''; m.classList.remove('show'); }
+  }
+  /* The stood-down section's one door. The roles that hold the desk all
+     hold spaBoard, but the gate is the permission's, not this page's. */
+  if (document.getElementById('wManage')){
+    document.getElementById('wManage').onclick = function(){
+      location.href = 'spa.html?open=' + encodeURIComponent(r.stay.id || '');
+    };
+  }
 
   /* The flag chips: the admin's list from Flag Settings, plus any name this
      booking already carries that the list no longer offers - painted anyway,
@@ -2098,12 +2152,32 @@ function openGuest(r){
        answers are in, and the gate on Mark as completed. */
     if (hasOther() && !a.dnote) return flagMissing(['othernote']);
 
+    /* Interested with no day is the same wrong shape: it looks answered
+       and reaches the masseuse as an ask he cannot act on - the guest
+       form has refused it since 31 Aug, and since 11 Sep the desk does
+       too. Only while the section is live: stood down, there is nothing
+       here to refuse. */
+    if (!spaHeld && a.wellness === true && !a.wellDay){
+      var wm = document.getElementById('wMiss');
+      if (wm){
+        wm.textContent = 'Pick the day they asked for, or Any day if any suits.';
+        wm.classList.add('show');
+        wm.scrollIntoView({ block:'center', behavior:'smooth' });
+      }
+      return;
+    }
+
     a.pax      = pax;
     a.occasion = document.getElementById('fOcc').value.trim();
     a.note     = document.getElementById('fNote').value.trim();
-    a.wellTime = document.getElementById('fWtime').value.trim();
-    a.wellDur = +document.getElementById('fWdur').value || 60;
-    a.wellDur2 = +document.getElementById('fWdur2').value || 60;
+    /* Stood down, these controls do not exist and the stored values ride
+       through save() untouched. */
+    var wt = document.getElementById('fWtime');
+    if (wt){
+      a.wellTime = wt.value.trim();
+      a.wellDur = +document.getElementById('fWdur').value || 60;
+      a.wellDur2 = +document.getElementById('fWdur2').value || 60;
+    }
     /* Handed to save() on the row rather than read from the sheet there,
        because save() also runs from the summary buttons with no sheet on
        screen. A leftover copy from an earlier save of this row is harmless:
