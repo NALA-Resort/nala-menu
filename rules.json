@@ -662,6 +662,9 @@
           ".validate": "$page.matches(/^(companion|purpose|eta|approach|dine|diet|well|else)$/) && newData.isString() && newData.val().length <= 2000"
         }
       },
+      "copyV": {
+        ".validate": "newData.isNumber() && newData.val() == 2"
+      },
       "by": {
         ".validate": "newData.isString() && newData.val().length <= 120"
       },

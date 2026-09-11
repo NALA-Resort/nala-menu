@@ -232,33 +232,53 @@
              letter-spacing:.1em; text-transform:uppercase; color:var(--mid); }
   .needs.req .needs-l { color:var(--warn); }
 
-  .nav { display:flex; align-items:center; gap:12px; margin-top:1.8rem; }
-  .prog { font-size:0.7rem; letter-spacing:.16em; text-transform:uppercase;
-          color:var(--mid); white-space:nowrap; }
-  .back { background:var(--paper); border:1px solid var(--rule); color:var(--mid);
-          padding:15px 18px; border-radius:10px; font-family:inherit;
-          font-size:0.75rem; letter-spacing:.12em; text-transform:uppercase;
-          cursor:pointer; }
+  /* The count sits between the buttons, its own row's height given back to
+     the page (the owner, 11 Sep). A grid, not flex: each of the three lives
+     in a named column, so the first page hiding Back cannot slide the count
+     and Next leftward into its place. 1fr auto 1fr, not thirds - the middle
+     takes only what "2 of 9" needs and the buttons split the rest equally,
+     because a third of 360pt cannot hold "Send to Nala" on one line. */
+  /* Stretch, not center: Back and Send carry different padding and type,
+     and centered they stood 46px against 51px in one row. The row is the
+     primary's height and Back fills it. */
+  .nav { display:grid; grid-template-columns:1fr auto 1fr;
+         align-items:stretch; gap:12px; margin-top:1.8rem; }
+  .prog { grid-column:2; align-self:center; text-align:center;
+          font-size:1.1rem; letter-spacing:.06em; color:var(--mid);
+          white-space:nowrap; }
+  .back { grid-column:1; background:var(--paper); border:1px solid var(--rule);
+          color:var(--mid); padding:15px 18px; border-radius:10px;
+          font-family:inherit; font-size:0.75rem; letter-spacing:.12em;
+          text-transform:uppercase; cursor:pointer; }
   .back.hide { display:none; }
   /* The send button's own rule sets a top margin for the old one-page form.
-     Inside the nav row it would push itself off the line. */
-  .nav .send { margin-top:0; flex:1; }
+     Inside the nav row it would push itself off the line. Nowrap and slim
+     side padding, because the last page says "Send to Nala" and a primary
+     that folds onto two lines is not a primary; the fr tracks' auto minimum
+     hands it the width from Back's column on the one width that needs it. */
+  .nav .send { grid-column:3; margin-top:0; white-space:nowrap;
+               padding-left:6px; padding-right:6px; }
 
   #form.hide, #done.hide { display:none; }
 
   /* Safari brings its own toolbar under this, so the constant is small and
      the env() carries the home-screen case where there is no toolbar. */
   .foot { flex:0 0 auto; background:var(--cream);
-          border-top:1px solid var(--rule);
           padding:8px 0 max(8px, env(safe-area-inset-bottom)); }
-  .foot .prog { text-align:center; margin:0 0 6px; }
   .foot .nav { margin:0; padding:0 4px; }
-  /* Above the buttons, its line ALWAYS occupying: display:none reserved
-     nothing, so the foot grew on error and covered the page. Hidden by
-     visibility instead, the space is paid for up front and an error changes
-     no height anywhere. */
-  .foot .err { display:block; visibility:hidden; min-height:1.35rem;
-               margin:0 4px 6px; }
+  /* Above the buttons, but overlaid on the page rather than reserved in
+     the foot: the reserved line was a permanent blank band between the
+     content and the buttons once the divider and the count's own line
+     went (the owner, 11 Sep). Hidden by visibility and absolutely
+     positioned, an error still changes no height anywhere and the
+     buttons still hold perfectly still - it paints over the bottom of
+     the content for the moment it is on screen, on its own cream so it
+     reads. display:none is still wrong here for the original reason:
+     nothing may move when it appears. */
+  .foot { position:relative; }
+  .foot .err { display:block; visibility:hidden; position:absolute;
+               left:0; right:0; bottom:100%; margin:0; padding:4px 4px 6px;
+               background:var(--cream); }
   .foot .err.show { visibility:visible; }
 </style>
 </head>
@@ -473,10 +493,10 @@
   </div><!-- /scrollarea -->
 
   <div class="foot" id="foot">
-    <div class="prog" id="prog"></div>
     <div class="err" id="err"></div>
     <div class="nav">
       <button class="back hide" id="back">Back</button>
+      <div class="prog" id="prog"></div>
       <button class="send" id="send">Next</button>
     </div>
   </div>
@@ -997,15 +1017,12 @@ function setInfoImg(id, url, crop, height){
   host.appendChild(im);
 }
 
-/* The owner's Read more words, keyed by page, from Settings. A filled one
-   REPLACES the built-in copy; an empty one keeps it. Reapplied at the end
-   of paintGreeting, because that bends the built-in qDine copy to a one
-   night stay and must never bend the owner's own words. */
 /* Every word of a question page the owner may write for himself, from
    Settings: its heading, the description under it, and the words behind
-   its Read more. Plus the introduction line on the landing. Anything he
-   has left empty keeps the page's own wording, so the three maps hold
-   only what he has actually written.
+   its Read more. Plus the introduction line on the landing. A part he
+   has written shows his words; one he has left as it came keeps the
+   page's own wording; one he has EMPTIED is not drawn at all (the owner,
+   11 Sep) - partText below says which is which.
 
    Reapplied at the end of paintGreeting, which bends some of the built-in
    wording to a one night stay and to a solo guest: his words are the last
@@ -1014,11 +1031,25 @@ function setInfoImg(id, url, crop, height){
    length - the bending has nothing left to bend - which is his to know
    and is said on the tab. */
 var INFO_MORE = {}, INFO_TITLES = {}, INFO_DESCS = {}, INFO_INTRO = '';
+var INFO_V2 = false;
 var MORE_MAP = { companion:'qCompanion', purpose:'qPurpose', eta:'qEta',
                  approach:'qApproach', dine:'qDine', diet:'qDiet',
                  well:'qWell', 'else':'qElse' };
-function ownText(map, k){
-  return (typeof map[k] === 'string') ? map[k].trim() : '';
+/* What the record says about one part of one page. Three answers since the
+   owner's ruling of 11 Sep - a blank box in Settings means blank, not "put
+   the original back":
+     his words   - the part shows them,
+     ''          - untouched: the part keeps the page's own wording,
+     null        - he emptied the box: the part is drawn NOT AT ALL, which
+                   for a Read more means no button.
+   Only a record stamped copyV 2 can say null (its Save leaves emptied keys
+   out of the map). In an older record a missing key was never a decision,
+   so there it still reads as untouched. */
+function partText(map, k){
+  var v = map[k];
+  if (typeof v === 'string' && v.trim()) return v.trim();
+  if (INFO_V2 && typeof v !== 'string') return null;
+  return '';
 }
 function setMoreTexts(){
   Object.keys(MORE_MAP).forEach(function(k){
@@ -1026,26 +1057,34 @@ function setMoreTexts(){
     if (!q) return;
     /* A heading is plain text: it is one line, and a mark inside it would
        be a heading arguing with itself. The paragraphs take the marks. */
-    var title = ownText(INFO_TITLES, k);
-    if (title){
-      var h = q.querySelector('.q-t');
-      if (h) h.textContent = title;
+    var title = partText(INFO_TITLES, k);
+    var h = q.querySelector('.q-t');
+    if (h){
+      h.style.display = (title === null) ? 'none' : '';
+      if (title) h.textContent = title;
     }
-    var desc = ownText(INFO_DESCS, k);
-    if (desc){
-      var d = q.querySelector('.q-h');
-      if (d){ d.innerHTML = ''; fillMarked(d, desc.replace(/\s*\n\s*/g, ' ')); }
+    var desc = partText(INFO_DESCS, k);
+    var d = q.querySelector('.q-h');
+    if (d){
+      d.style.display = (desc === null) ? 'none' : '';
+      if (desc){ d.innerHTML = ''; fillMarked(d, desc.replace(/\s*\n\s*/g, ' ')); }
     }
-    var text = ownText(INFO_MORE, k);
-    if (text){
-      var b = q.querySelector('.more-b');
+    var text = partText(INFO_MORE, k);
+    var mb = q.querySelector('.more'), b = q.querySelector('.more-b');
+    if (mb) mb.style.display = (text === null) ? 'none' : '';
+    if (b){
+      if (text === null) b.classList.remove('show');
+      b.style.display = (text === null) ? 'none' : '';
       /* Line breaks collapse the way textContent rendered them. */
-      if (b){ b.innerHTML = ''; fillMarked(b, text.replace(/\s*\n\s*/g, ' ')); }
+      if (text){ b.innerHTML = ''; fillMarked(b, text.replace(/\s*\n\s*/g, ' ')); }
     }
   });
-  if (INFO_INTRO.trim()){
-    var iw = document.querySelector('.intro-why');
-    if (iw){ iw.innerHTML = ''; fillMarked(iw, INFO_INTRO.replace(/\s*\n\s*/g, ' ')); }
+  var iw = document.querySelector('.intro-why');
+  if (iw){
+    iw.style.display = (INFO_INTRO === null) ? 'none' : '';
+    if (INFO_INTRO && INFO_INTRO.trim()){
+      iw.innerHTML = ''; fillMarked(iw, INFO_INTRO.replace(/\s*\n\s*/g, ' '));
+    }
   }
 }
 
@@ -1057,10 +1096,14 @@ function setMoreTexts(){
    machinery: the count changes under a guest already walking. */
 function applyGuestInfo(info){
   if (!info) return false;
+  INFO_V2     = Number(info.copyV) >= 2;
   INFO_MORE   = (info.more   && typeof info.more   === 'object') ? info.more   : {};
   INFO_TITLES = (info.titles && typeof info.titles === 'object') ? info.titles : {};
   INFO_DESCS  = (info.descs  && typeof info.descs  === 'object') ? info.descs  : {};
-  INFO_INTRO  = (typeof info.intro === 'string') ? info.intro : '';
+  /* null: the owner emptied the introduction and the landing draws none.
+     Only a copyV 2 record can mean that - see partText. */
+  INFO_INTRO  = (typeof info.intro === 'string') ? info.intro
+                                                 : (INFO_V2 ? null : '');
   if (typeof info.welcomeImage === 'string')
     setInfoImg('welcomeImg', info.welcomeImage,
                info.welcomeImageCrop, info.welcomeImageHeight);
@@ -1074,7 +1117,7 @@ function applyGuestInfo(info){
   setMoreTexts();
   resyncSteps();
   return !!(String(info.welcomeImage || '').trim() || hasDining ||
-            INFO_INTRO.trim() ||
+            String(INFO_INTRO || '').trim() ||
             [INFO_MORE, INFO_TITLES, INFO_DESCS].some(function(m){
               return Object.keys(m).some(function(k){
                 return String(m[k] || '').trim(); }); }));
@@ -1206,7 +1249,7 @@ function showStep(i){
   el(live[CUR].id).classList.add('now');
   el('back').className = 'back' + (CUR === 0 ? ' hide' : '');
   el('send').textContent = (CUR === live.length - 1) ? 'Send to Nala' : 'Next';
-  el('prog').textContent = (CUR + 1) + ' of ' + live.length;
+  el('prog').textContent = (CUR + 1) + '/' + live.length;
   el('err').className = 'err';
   /* Closed on every page, every time: the invitation is on the page and the
      limit is one tap behind it. An open one would put it straight back. */
