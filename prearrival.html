@@ -266,12 +266,19 @@
   .foot { flex:0 0 auto; background:var(--cream);
           padding:8px 0 max(8px, env(safe-area-inset-bottom)); }
   .foot .nav { margin:0; padding:0 4px; }
-  /* Above the buttons, its line ALWAYS occupying: display:none reserved
-     nothing, so the foot grew on error and covered the page. Hidden by
-     visibility instead, the space is paid for up front and an error changes
-     no height anywhere. */
-  .foot .err { display:block; visibility:hidden; min-height:1.35rem;
-               margin:0 4px 6px; }
+  /* Above the buttons, but overlaid on the page rather than reserved in
+     the foot: the reserved line was a permanent blank band between the
+     content and the buttons once the divider and the count's own line
+     went (the owner, 11 Sep). Hidden by visibility and absolutely
+     positioned, an error still changes no height anywhere and the
+     buttons still hold perfectly still - it paints over the bottom of
+     the content for the moment it is on screen, on its own cream so it
+     reads. display:none is still wrong here for the original reason:
+     nothing may move when it appears. */
+  .foot { position:relative; }
+  .foot .err { display:block; visibility:hidden; position:absolute;
+               left:0; right:0; bottom:100%; margin:0; padding:4px 4px 6px;
+               background:var(--cream); }
   .foot .err.show { visibility:visible; }
 </style>
 </head>
