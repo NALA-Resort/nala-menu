@@ -201,11 +201,14 @@ with sync_playwright() as p:
 
     pg = board()
     tabs = pg.inner_text("#tabs")
-    #  Rows counted, nothing worked out: 8 live rows (one flagged), 3 past
-    #  their 1pm. Expired, never Tally - the owner's word, 11 Sep.
-    ck("the tabs count the rows: All 8, Active 7, Lost 1, Expired 3",
-       "All · 8" in tabs and "Active · 7" in tabs
-       and "Lost · 1" in tabs and "Expired · 3" in tabs)
+    #  Rows counted, nothing worked out: 7 in hand, 1 flagged, 3 past
+    #  their 1pm. Three tabs and no All (ruled 11 Sep): In use, Lost,
+    #  Expired - a lost card becomes Expired at its 1pm, so Lost is
+    #  almost always empty.
+    ck("three tabs and no All: In use 7, Lost 1, Expired 3",
+       "In use · 7" in tabs and "Lost · 1" in tabs
+       and "Expired · 3" in tabs and "All" not in tabs
+       and pg.evaluate("()=>document.querySelectorAll('#tabs button').length") == 3)
     ck("a last-day card wears amber and the 12h clock",
        pg.evaluate("""()=>{var r=document.querySelector('.arr[data-villa="14"]');
          return r && r.className.indexOf('part-form')>=0
@@ -217,14 +220,12 @@ with sync_playwright() as p:
          return r && r.className.indexOf('done-form')>=0
              && r.innerText.indexOf('till ')>=0
              && r.innerText.indexOf(mon)<0;}""", mon))
-    #  A ROW PER CARD: villa 9 holds two active rows and one lost row,
-    #  anonymous on screen; villa 6's wiped card is simply not there.
-    ck("a card is a row: villa 9 shows two active and one lost",
+    #  A ROW PER CARD: villa 9 holds two rows in hand here; its lost one
+    #  lives on the Lost tab, anonymous on screen.
+    ck("a card is a row: villa 9 shows two in use, the lost one elsewhere",
        pg.evaluate("""()=>{var r=[...document.querySelectorAll('.arr[data-villa="9"]')];
-         return r.length===3
-             && r.filter(x=>x.innerText.indexOf('a card')>=0).length===2
-             && r.filter(x=>x.innerText.indexOf('one of villa 9')>=0
-                          && x.innerText.indexOf('floating till')>=0).length===1;}"""))
+         return r.length===2
+             && r.every(x=>x.innerText.indexOf('a card')>=0);}"""))
     ck("a wiped card left the register: villa 6 shows two rows, not three",
        pg.evaluate("()=>document.querySelectorAll('.arr[data-villa=\"6\"]').length") == 2)
     #  the wording law: the serial lives in the row, never on the screen
@@ -244,7 +245,15 @@ with sync_playwright() as p:
     lost_w = [w for w in WRITES if w["m"] == "PATCH" and "/cards/909001" in w["u"]]
     ck("Mark lost flags THAT row, byte for byte",
        lost_w and json.loads(lost_w[0]["b"]) == {"lost": True})
-    #  Found lives on the same row's sheet, still open, now a lost row
+    #  the flagged row leaves In use for the Lost tab; Found lives there
+    pg.evaluate("()=>document.querySelector('[data-tab=\"lost\"]').click()")
+    pg.wait_for_timeout(200)
+    ck("the lost card reads anonymous, floating",
+       pg.evaluate("""()=>{var r=[...document.querySelectorAll('.arr[data-villa="9"]')];
+         return r.length===2 && r.every(x=>x.innerText.indexOf('one of villa 9')>=0
+             && x.innerText.indexOf('floating till')>=0);}"""))
+    pg.evaluate("()=>document.querySelector('[data-open=\"909001\"]').click()")
+    pg.wait_for_timeout(200)
     pg.evaluate("()=>document.querySelector('[data-found=\"909001\"]').click()")
     pg.wait_for_timeout(300)
     found_w = [w for w in WRITES if w["m"] == "PATCH" and "/cards/909001" in w["u"]]
@@ -253,7 +262,11 @@ with sync_playwright() as p:
 
     #  Remove: the by-hand door for plastic the machine can never see
     #  again. It asks first, then DELETES the row - the same act a wipe
-    #  performs, moved by a person. The sheet is still open on the row.
+    #  performs, moved by a person. The found card is back In use.
+    pg.evaluate("()=>document.querySelector('[data-tab=\"ok\"]').click()")
+    pg.wait_for_timeout(200)
+    pg.evaluate("()=>document.querySelector('[data-open=\"909001\"]').click()")
+    pg.wait_for_timeout(200)
     del WRITES[:]
     pg.evaluate("()=>document.querySelector('[data-remove=\"909001\"]').click()")
     pg.wait_for_timeout(200)

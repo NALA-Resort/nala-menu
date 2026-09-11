@@ -546,7 +546,7 @@ button
 
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var CARDS = [];             /* cardRows(/cards), as read */
-var TAB = 'all', OPEN = null, REMOVE_ASK = null;
+var TAB = 'ok', OPEN = null, REMOVE_ASK = null;
 var LOAD_T = null;
 
 (function(){
@@ -640,9 +640,11 @@ function tillLabel(c, now){
 
 function cardsWord(n){ return n + (n === 1 ? ' card' : ' cards'); }
 
+/* Three tabs and no All, ruled by the owner 11 Sep: In use, Lost,
+   Expired. A lost card becomes Expired at its 1pm - cardState's own
+   precedence - so Lost is almost always empty, which is the point. */
 var TABS = [
-  { k: 'all',     label: 'All' },
-  { k: 'ok',      label: 'Active' },
+  { k: 'ok',      label: 'In use' },
   { k: 'lost',    label: 'Lost' },
   { k: 'expired', label: 'Expired' }
 ];
@@ -662,7 +664,7 @@ function render(){
   var t = '';
   TABS.forEach(function(tb){
     var n = tb.k === 'expired' ? exp.length : tb.k === 'lost' ? lost.length
-          : tb.k === 'ok' ? act.length : act.length + lost.length;
+          : act.length;
     t += '<button' + (TAB === tb.k ? ' class="on"' : '') + ' data-tab="' + tb.k +
          '">' + tb.label + (n ? ' &middot; ' + n : '') + '</button>';
   });

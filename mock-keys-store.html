@@ -415,7 +415,7 @@ function resetAll(){
     { villa:2,  guest:'Michelle Edmondson', pax:2, dep:3 },
     { villa:12, guest:'Jeroen Hamers',      pax:3, dep:4 }
   ];
-  TAB = 'all'; OPEN = null; REMOVE_ASK = null; RUN = null; CN = null; SEQ = 0;
+  TAB = 'ok'; OPEN = null; REMOVE_ASK = null; RUN = null; CN = null; SEQ = 0;
   document.getElementById('cardOv').hidden = true;
   document.getElementById('cancelOv').hidden = true;
   render();
@@ -437,9 +437,11 @@ function heldBy(villa, now){          /* "John has 2 active cards" */
 }
 function cardsWord(n){ return n + (n === 1 ? ' card' : ' cards'); }
 
+/* Three tabs and no All, ruled by the owner 11 Sep: In use, Lost,
+   Expired. A lost card becomes Expired at its 1pm, so Lost is almost
+   always empty - which is the point. */
 var TABS = [
-  { k:'all',   label:'All' },
-  { k:'ok',    label:'Active' },
+  { k:'ok',    label:'In use' },
   { k:'lost',  label:'Lost' },
   { k:'expired', label:'Expired' }
 ];
@@ -452,7 +454,7 @@ function render(){
   var t = '';
   TABS.forEach(function(tb){
     var n = tb.k === 'expired' ? tly.length : tb.k === 'lost' ? lost.length
-          : tb.k === 'ok' ? act.length : act.length + lost.length;
+          : act.length;
     t += '<button' + (TAB === tb.k ? ' class="on"' : '') + ' data-tab="' + tb.k +
          '">' + tb.label + (n ? ' &middot; ' + n : '') + '</button>';
   });
