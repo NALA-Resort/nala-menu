@@ -2438,10 +2438,42 @@ with sync_playwright() as p:
     #  here would zero written and recut every card - the 9 Sep bug.
     ext = [json.loads(x["b"]) for x in WRITES
            if "/cardjobs/%s/9" % today in x["u"] and x["m"] == "PATCH"]
+    #  3 written, 3 asked (the stepped q persists on the panel): 6 either
+    #  way here - the abandoned-ask case that tells the laws apart is next.
     ck("and Issue grows the done job, never replaces it",
        ext and ext[0]["state"] == "queued" and ext[0]["qty"] == 6
        and "written" not in ext[0]
        and not [x for x in WRITES if x["m"] == "PUT" and "/cardjobs/" in x["u"]])
+
+    #  written + more, never old qty + more: an abandoned ask must not
+    #  ride along (the phantom third card, 10-11 Sep). A record carrying
+    #  qty 6 with only 2 written re-asks for 3: the old law would mint
+    #  min(6, 6+3)=6, the truth is 2+3=5.
+    CARDJOBS["9"].update({"qty": 6, "written": 2, "state": "done"})
+    pg.wait_for_timeout(1800)
+    del WRITES[:]
+    pg.evaluate("()=>document.querySelector('[data-cardagain]').click()")
+    pg.wait_for_timeout(200)
+    pg.evaluate("()=>document.querySelector('[data-cardissue]').click()")
+    pg.wait_for_timeout(400)
+    ext2 = [json.loads(x["b"]) for x in WRITES
+            if "/cardjobs/%s/9" % today in x["u"] and x["m"] == "PATCH"]
+    ck("a re-issue counts the cards that EXIST, never the abandoned ask",
+       ext2 and ext2[0]["qty"] == 5)
+
+    #  Picking a guest from the key menu ALWAYS lands on the quantity
+    #  question (owner, 11 Sep) - a status sheet in front of the ask read
+    #  as no choice at all. Villa 9 is done at this point, so the ask
+    #  says MORE; only a villa the encoder is on shows its run instead.
+    pg.evaluate("()=>{document.getElementById('cardX').click();}")
+    CARDJOBS["9"].update({"qty": 5, "written": 5, "state": "done"})
+    pg.evaluate("()=>NalaCards.load()")
+    pg.wait_for_timeout(400)
+    pg.click("#keyBtn"); pg.wait_for_timeout(200)
+    pg.evaluate("()=>document.querySelector('#keyDrop [data-key=\"9\"]').click()")
+    pg.wait_for_timeout(300)
+    ck("picking a carded villa from the drop asks how many, immediately",
+       "How many more cards" in pg.inner_text("#cardBody"))
     pg.close()
 
     #  The queue must never lie in wait - the owner's ruling, 8 Sep. Ten
