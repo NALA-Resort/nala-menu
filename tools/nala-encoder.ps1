@@ -254,6 +254,29 @@ while ($true) {
           } else { Start-Sleep -Milliseconds 2500 }   # encoder would not say: give a human beat
         }
         Log "  hold card $i of $($job.qty) to the reader"
+        # Wait for a card by POLLING the pad, not inside CE_WriteCard's own
+        # blocking wait: while the pad is empty the desk may press Skip
+        # (the ask shrinks below $i) or Cancel (the job folds or goes),
+        # and both deserve an answer in seconds, not at a timeout. The
+        # heartbeat keeps the boards reading the wait as alive.
+        $skipped = $false; $beat = 0
+        while (-not (Get-CardNo)) {
+          Start-Sleep -Milliseconds 700
+          $beat++
+          if ($beat % 4 -eq 0) {
+            $j2 = $null
+            try { $j2 = Fb-Get "/cardjobs/$day/$villa" } catch {}
+            if (-not $j2 -or $j2.state -ne "writing" -or [int]$j2.qty -lt $i) {
+              $skipped = $true
+              Log "  villa ${villa}: the desk skipped the rest at card $($i-1)"
+              break
+            }
+          }
+          if ($beat % 14 -eq 0) {
+            try { Fb-Patch "/cardjobs/$day/$villa" @{ at=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() } } catch {}
+          }
+        }
+        if ($skipped) { break }
         $failed = Write-One $villa $lock.Value ([uint32]$job.expiry)
         if ($failed) { break }
         $lastNo = Get-CardNo
@@ -264,7 +287,11 @@ while ($true) {
         Fb-Patch "/cardjobs/$day/$villa" @{ written=$i; nos=$nos.Substring(0, [Math]::Min(240, $nos.Length)); at=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
         Log "  card $i written - lift it off"
       }
-      if ($failed) {
+      if ($skipped) {
+        # the page already folded the record (done at written, or gone);
+        # nothing to write, and saying done over a deleted job would
+        # resurrect it as a husk
+      } elseif ($failed) {
         Log "  FAILED: $failed"
         Fb-Patch "/cardjobs/$day/$villa" @{ state="failed"; note=$failed }
       } else {

@@ -2281,6 +2281,12 @@ with sync_playwright() as p:
     j4 = [json.loads(x["b"]) for x in puts if "/cardjobs/%s/4" % today in x["u"]][0]
     ck("a job carries the agreed default of 2, queued, none written",
        j4["qty"] == 2 and j4["state"] == "queued" and j4["written"] == 0)
+    #  The bulk row asks no quantity: a card per GUEST on the booking
+    #  (owner, 11 Sep). Konstantinos brings four, Ann is alone.
+    j9b = [json.loads(x["b"]) for x in puts if "/cardjobs/%s/9" % today in x["u"]][0]
+    j14b = [json.loads(x["b"]) for x in puts if "/cardjobs/%s/14" % today in x["u"]][0]
+    ck("Encode all issues a card per guest, not a flat two",
+       j9b["qty"] == 4 and j14b["qty"] == 1)
     #  The expiry through the page's own cardExpiry, not a re-derivation
     #  here: the suite asserts the page USED the one reader, and the cards
     #  suite already holds that reader to 11:00 on the depart day.
@@ -2298,6 +2304,24 @@ with sync_playwright() as p:
     #  desk read as "is this working?". One pulse only - the claim comes
     #  after the encoder answered, so the hand drawing is "reader found"
     #  and the ten-second verdict owns the other ending.
+    #  Skip, ruled 11 Sep: a room that only needs one of its two cards.
+    #  The button rides the active writing block; a tap folds the job at
+    #  the cards already cut, and the helper moves on.
+    CARDJOBS["4"].update({"state": "writing", "written": 1,
+                          "at": int(time.time() * 1000)})
+    pg.wait_for_timeout(2000)
+    ck("the active writing villa offers Skip",
+       pg.evaluate("()=>!!document.querySelector('[data-cardskip=\"4\"]')"))
+    del WRITES[:]
+    pg.evaluate("()=>document.querySelector('[data-cardskip=\"4\"]').click()")
+    pg.wait_for_timeout(400)
+    skw = [json.loads(x["b"]) for x in WRITES
+           if "/cardjobs/%s/4" % today in x["u"] and x["m"] == "PATCH"]
+    ck("Skip folds the villa at the cards already cut",
+       skw and skw[0]["state"] == "done" and skw[0]["qty"] == 1)
+    CARDJOBS["4"].update({"state": "queued", "written": 0, "qty": 2})
+    pg.wait_for_timeout(1800)
+
     ck("the active queued villa pulses, alone, and says it is waking",
        pg.evaluate("""()=>{var c=[...document.querySelectorAll('.crun')];
          var w=c.filter(x=>x.querySelector('.cwake'));

@@ -168,7 +168,11 @@ function cardsEncodeAll(){
   cfg.bulkRows().forEach(function(r){
     var j = jobFor(r.villa);
     if (j && (j.state === 'queued' || j.state === 'writing' || j.state === 'done')) return;
-    var p = putJob(r, (j && j.qty) || 2);
+    /* the bulk row asks no quantity: a card per GUEST on the booking
+       (owner, 11 Sep), and the odd villa out is corrected by its own
+       ask afterwards */
+    var p = putJob(r, Math.max(1, Math.min(99,
+              (r.stay && +r.stay.adults) || 2)));
     if (p) made.push(p);
   });
   Promise.all(made).catch(function(){
@@ -297,6 +301,10 @@ function crunHTML(r, active){
       '<path class="wave w1" d="M106 30c4 6 4 14 0 20"/>' +
       '<path class="wave w2" d="M116 24c7 9 7 23 0 32"/>' +
       '</svg></div>' : '') +
+          (cc.k === 'writing' && active
+            ? '<div class="sum-btns"><button class="terra" data-cardskip="' +
+              r.villa + '">Skip \u00b7 enough cards</button></div>'
+            : '') +
           (line || (cc.k === 'failed' && j && j.note)
             ? '<div class="crun-s card-' + cc.k + '">' + line +
               (cc.k === 'failed' && j && j.note ? ' · ' + esc(String(j.note)) : '') +
@@ -477,6 +485,14 @@ function wire(){
       CARD_ASK = ag.getAttribute('data-cardagain');
       document.getElementById('cardBody').setAttribute('data-qty', 2);
       cardRender(); return;
+    }
+    var sk = e.target.closest('[data-cardskip]');
+    if (sk){
+      /* the villa closes at the cards already cut (a room that only
+         needs one of its two, owner 11 Sep); the helper notices the
+         shrunk ask between cards and moves on */
+      cancelJob(sk.getAttribute('data-cardskip'));
+      return;
     }
     var opn = e.target.closest('[data-cardopen]');
     if (opn && CARD_VILLA == null && !e.target.closest('button')){
