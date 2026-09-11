@@ -298,16 +298,6 @@ body { min-height:100vh; min-height:100dvh;
   <div class="secnote" id="tallyLine" style="margin-top:12px" hidden></div>
   <div id="list" style="margin-top:10px"></div>
 
-  <div class="store">
-    <h2>What the database holds &middot; mock only</h2>
-    <div class="why">The store, made visible: one line here is one card in
-      the world. Cut a card and a line appears, wipe one and its line goes,
-      Mark lost flags it, and a line still here past its expiry is the
-      Tally. The screens above are these lines, counted - nothing else.
-      (Each record also keeps the card number the encoder reported, which
-      is how the reader names a held card; it stays off every screen.)</div>
-    <div id="storeRows"></div>
-  </div>
 </div>
 
 <div class="cardov" id="cardOv" hidden>
@@ -328,6 +318,20 @@ body { min-height:100vh; min-height:100dvh;
 
 <details class="mocktools"><summary>mock controls (not part of the app)</summary>
   <button class="btn" onclick="resetAll()">reset the mock</button>
+  <!-- The store, made visible - NOT a screen and not proposed as one:
+       it sits folded behind this disclosure precisely so the page above
+       shows only the approved Keys design. Open it to watch the record
+       each press adds, removes or flags. -->
+  <div class="store" style="margin-top:18px;padding-top:0;border-top:0">
+    <h2>What the database holds</h2>
+    <div class="why">One line here is one card in the world. Cut a card and
+      a line appears, wipe one and its line goes, Mark lost flags it, and a
+      line still here past its expiry is the Tally. The screens above are
+      these lines, counted - nothing else. (Each record also keeps the card
+      number the encoder reported, which is how the reader names a held
+      card; it stays off every screen.)</div>
+    <div id="storeRows"></div>
+  </div>
 </details>
 
 <script>
