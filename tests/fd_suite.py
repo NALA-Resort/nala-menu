@@ -2383,8 +2383,14 @@ with sync_playwright() as p:
     CARDJOBS["4"].update({"qty": 3, "written": 3, "back": 2})
     pg.wait_for_timeout(2000)
     body = pg.inner_text("#cardBody")
+    #  scoped to villa 4's block: villa 11 honestly says "3 cards issued"
+    #  now that Encode-all cuts a card per guest (three of them there)
     ck("a wiped card leaves the words - what the guest holds, not what was cut",
-       "1 card with the guest" in body and "3 cards issued" not in body)
+       pg.evaluate("""()=>{var b=[...document.querySelectorAll('.crun')]
+           .find(x=>(x.querySelector('.crun-v')||{}).textContent
+                     .trim().startsWith('Villa 4'));
+         return b && b.innerText.indexOf('1 card with the guest')>=0
+             && b.innerText.indexOf('3 cards issued')<0;}"""))
     ck("and leaves the ticks: one filled, two sunk",
        pg.evaluate("""()=>{var b=[...document.querySelectorAll('.crun')]
            .find(x=>(x.querySelector('.crun-v')||{}).textContent

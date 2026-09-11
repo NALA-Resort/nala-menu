@@ -735,7 +735,7 @@ function render(){
     if (TAB !== 'lost')
       rows.forEach(function(r){
         var L = r.L;
-        for (var i = 0; i < Math.min(1, L.active); i++){
+        for (var i = 0; i < L.active; i++){
           var key = r.villa + ':a' + i, open = OPEN === key;
           g += rowHTML(r, key, open,
             'a card &middot; <span class="eta">till ' + tillLabel(L) + '</span>',
