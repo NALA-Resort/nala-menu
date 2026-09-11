@@ -435,8 +435,6 @@
              color:var(--amberink); font-weight:600; }
 .cslot.fail { border-color:var(--law-red); }
 .cslot.fail::after { content:'\2715'; color:var(--law-red); }
-/* wiped or lost: no longer a key, sunk in the law's nothing-to-do-here */
-.cslot.gone { border-style:dashed; opacity:.62; }
 /* the wake pulse: amber is in-progress; still dots when motion is off */
 .cwake { display:inline-flex; gap:4px; margin-right:8px; align-items:center; }
 .cwake i { width:6px; height:6px; border-radius:50%; background:var(--amberb);
@@ -534,7 +532,7 @@ button
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
 <script src="nala-shared.js?v=64"></script>
-<script src="nala-cards.js?v=7"></script>
+<script src="nala-cards.js?v=8"></script>
 <script>
 /* Keys: the card register, built from the approved mock (mock-keys.html)
    and holding its exact shape - the suite compares the two files and

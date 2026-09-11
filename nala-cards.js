@@ -234,20 +234,24 @@ function cardsPaint(){
    written, the amber one is under the encoder now, an outline is to come,
    and a failure marks the slot it stopped on in red ink. */
 function cslotsHTML(j, cc, active){
-  var q = (j && +j.qty) || 0, n = Math.min((j && +j.written) || 0, q), h = '';
-  /* A wiped or lost card is nobody's key any more: its slot sinks (the
-     law's nothing-to-do-here) so the ticks always agree with the caption
-     - both count through cardLife, found on villa 4's sheet, 10 Sep. */
-  var L = j ? cardLife(j, 0) : null, gone = L ? L.back + L.lost : 0;
-  for (var i = 0; i < q; i++){
-    var st = i < n - gone ? 'filled'
-       : i < n ? 'gone'
-       : i === n && cc.k === 'writing' && active ? 'now'
-       : i === n && cc.k === 'failed' ? 'fail' : '';
+  /* Seats show the cards the guest HOLDS NOW plus the ones about to be
+     cut, numbered from 1 - never the lifetime ledger. Three ghost seats
+     in front of a fresh "card 4" read as the app inventing cards
+     (owner, 11 Sep: "you just keep adding more"); the wiped past is the
+     Tally's story, nobody's seats. */
+  var L = j ? cardLife(j, 0) : null;
+  if (!L) return '';
+  var held = L.active;
+  var todo = Math.max(0, ((+j.qty) || 0) - L.written);
+  var total = held + todo, h = '';
+  for (var i = 0; i < total; i++){
+    var st = i < held ? 'filled'
+       : i === held && cc.k === 'writing' && active ? 'now'
+       : i === held && cc.k === 'failed' ? 'fail' : '';
     h += '<i class="cslot' + (st ? ' ' + st : '') + '">' +
          (st === 'filled' || st === 'fail' ? '' : i + 1) + '</i>';
   }
-  return q ? '<div class="cslots">' + h + '</div>' : '';
+  return total ? '<div class="cslots">' + h + '</div>' : '';
 }
 
 /* What the card will do, from the job's own expiry - the owner, 9 Sep,
