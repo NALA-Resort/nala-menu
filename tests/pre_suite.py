@@ -314,6 +314,39 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qWell")
     ck("and the days are on that same page",
        pg.evaluate("()=>wWrap.style.display!=='none'"))
+    #  ── a half answer is not saved by walking backwards, 11 Sep ──
+    #  The day behind a yes has been compulsory since 31 Aug, but only
+    #  Next enforced it: goBack saves the page it is leaving without
+    #  asking whether the page is answered, so Interested-then-Back wrote
+    #  wellness true with an empty day and the stored "Any time" default.
+    #  That is the nameless "No day, Any time" ask the owner found sitting
+    #  in the masseuse's To answer on 11 Sep, unbookable and only
+    #  declinable. A half answer is now treated as not answered: the PATCH
+    #  carries none of the six keys and leaves what is stored alone.
+    del WRITES[:]
+    pg.locator("#back").click(); pg.wait_for_timeout(450)
+    back_keys = set()
+    for w in wrote("/prearrival"):
+        back_keys |= set((w["b"] or {}).keys())
+    ck("Interested with no day yet is not written by a Back tap",
+       not (back_keys & {"wellness", "wellDay", "wellTime",
+                         "wellQty", "wellDur", "wellDur2"}))
+    #  And the guest loses nothing: the tap is still on screen, and once
+    #  the day is picked the whole ask saves as it always did.
+    jump(pg, "qWell")
+    ck("the answer is still on screen, so nothing was taken from them",
+       pg.evaluate("()=>wYes.className.indexOf('on')>-1"))
+    pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')]"
+                ".find(b=>b.textContent==='Any day').click()")
+    pg.wait_for_timeout(200)
+    del WRITES[:]
+    pg.locator("#back").click(); pg.wait_for_timeout(450)
+    saved = {}
+    for w in wrote("/prearrival"):
+        saved.update(w["b"] or {})
+    ck("and with a day picked the ask saves on the way back as before",
+       saved.get("wellness") is True and saved.get("wellDay") == "any")
+
     jump(pg, "qEta")
     drag(pg, 8)                                    # the After 5pm end
     pg.wait_for_timeout(450)
@@ -429,8 +462,18 @@ with sync_playwright() as p:
     ck("Any day answers it, and is sent as that word",
        pg.evaluate("()=>{collect(); return fullPayload().wellDay;}") == any_day["v"])
     pg.evaluate("()=>[...document.querySelectorAll('#wDays .chip')].pop().click()")
+    #  Cleared is read off the working answers now, not off the payload:
+    #  since 11 Sep a yes with no day is carried by the payload as NOT
+    #  ANSWERED - all six keys absent - so that a Back tap cannot write
+    #  half an ask onto the masseuse's board. Both facts asserted, because
+    #  the chip clearing and the payload holding nothing are two different
+    #  things and this line used to prove the first through the second.
     ck("tapping it again clears it, the way every other chip row clears",
-       pg.evaluate("()=>{collect(); return fullPayload().wellDay;}") == "")
+       pg.evaluate("()=>{collect(); return a.wellDay;}") == "")
+    ck("and a yes with no day is carried as no answer at all, not an empty one",
+       pg.evaluate("()=>{collect(); var p=fullPayload();"
+                   "return ['wellness','wellDay','wellTime','wellQty',"
+                   "'wellDur','wellDur2'].every(k=>p[k]===undefined);}"))
     ck("and that leaves the page refusing to move again",
        pg.evaluate("()=>missingOn('qWell')") is not None)
     #  A no was never asked the question and is never held to it.

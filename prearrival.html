@@ -1383,6 +1383,23 @@ el('send').onclick = goNext;
    in here: it is added by the send alone, and it is the whole difference
    between a form in progress and a form finished. */
 function fullPayload(){
+  /* A yes with no day is not an answer, it is half of one, and this form
+     has refused it since 31 Aug - a treatment ask the masseuse cannot act
+     on reaches him as work he can only chase back through the desk.
+     goNext holds that line; going BACK never did, because goBack saves the
+     page it is leaving without asking whether the page is answered. So
+     tapping Interested and then Back wrote wellness true with an empty day
+     and the stored "Any time" default, which is the nameless "No day, Any
+     time" ask the owner found on the Spa board on 11 Sep.
+
+     Held here rather than in goBack, because this is the one shape both
+     the page saves and the final send are built from: a field cannot then
+     be written one way halfway through and another way at the end. A half
+     answer is treated as exactly what it is - not answered yet - so the
+     PATCH carries none of the six keys and leaves whatever is stored
+     alone, which is what makes a mis-tap cost nothing. The send cannot
+     reach this state: missingOn refuses the page first. */
+  var well = (a.wellness === true && !a.wellDay) ? null : a.wellness;
   return {
     arriveSlot: a.eta, arriveNote: a.etaNote,
     dining: a.dining,
@@ -1393,12 +1410,12 @@ function fullPayload(){
     purpose: purposeText(a.purpose), approach: a.approach,
     /* undefined when the page never asked (a one night stay): absent and
        false are different answers, and only one of them was given. */
-    wellness: a.wellness === null ? undefined : a.wellness,
-    wellDay: a.wellness ? a.wellDay : (a.wellness === null ? undefined : ''),
-    wellTime: a.wellness ? a.wellTime : (a.wellness === null ? undefined : ''),
-    wellQty: a.wellness ? a.wellQty : undefined,
-    wellDur: a.wellness ? a.wellDur : undefined,
-    wellDur2: (a.wellness && a.wellQty === 2) ? a.wellDur2 : undefined,
+    wellness: well === null ? undefined : well,
+    wellDay: well ? a.wellDay : (well === null ? undefined : ''),
+    wellTime: well ? a.wellTime : (well === null ? undefined : ''),
+    wellQty: well ? a.wellQty : undefined,
+    wellDur: well ? a.wellDur : undefined,
+    wellDur2: (well && a.wellQty === 2) ? a.wellDur2 : undefined,
     note: a.note, companion: a.companion
   };
 }

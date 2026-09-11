@@ -213,6 +213,11 @@ Three things follow, and they are the whole model:
   record nothing could clear. A treatment on such a booking now carries no
   pickers and no note box, only the desk's `Remove this record`; the
   answers behind it are Diagnostics' to clear, never a board's to guess at.
+  And the half ask that fed it is closed at the source: the guest form's
+  `fullPayload` carries a yes with no day as NOT ANSWERED — all six
+  wellness keys absent — because `goBack` saves the page it is leaving
+  without asking whether that page is answered, so Interested-then-Back
+  wrote a dayless ask that only `goNext` had ever refused.
 - **Arriving is not finishing.** Check in is a *visual move of the tile* so
   reception can see who is here. It touches the form's state not at all, and
   it asks for nothing before it will move: a control that refuses is not a
