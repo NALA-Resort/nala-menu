@@ -1,16 +1,17 @@
-"""The key-card state, before either board draws it.
+"""The card readers, before any board draws them.
 
-cardCell in nala-shared.js is the one thing that says where a villa's key
-cards stand - the Front Desk and the Dashboard both read it, and the Windows
-helper's words are held to the same table by its own test. This suite pins
-that reader to tests/card_cases.json BEFORE the boards exist, because the
-pre-arrival form got its shared reader after the boards had already drifted
-and this feature gets it first.
+cardState in nala-shared.js is the one thing that says where a card
+stands - the Keys register, the issue run's seats and the Dashboard all
+count through it - and cardRows is the one walk over the /cards tree.
+This suite pins both to tests/cardstate_cases.json, the shared table:
+a case added there fails whichever reader has not learned it. The
+pre-arrival form got its shared reader after the boards had already
+drifted; the cards got theirs first, and the rebuild keeps it so.
 
-Also here: cardExpiry, which turns a booking's depart date into the epoch
-second the card dies. Checked relatively - CARD_CHECKOUT_HOUR on the depart day in the
-machine's own zone - so the assertion holds in any TZ the runner picks,
-which is what a date test owes (CLAUDE.md rule 7).
+Also here: cardExpiry, which turns a booking's depart date into the
+epoch second the card dies. Checked relatively - CARD_CHECKOUT_HOUR on
+the depart day in the machine's own zone - so the assertion holds in
+any TZ the runner picks, which is what a date test owes (rule 7).
 """
 import errortrap   # fails the run if any page throws
 import threading, http.server, socketserver, json, time, os
@@ -39,39 +40,65 @@ with sync_playwright() as p:
     pg.add_script_tag(url="http://localhost:8990/nala-shared.js")
     pg.wait_for_timeout(300)
 
-    # ── the reader, against the one shared table ───────────────────
-    cases = json.load(open("tests/card_cases.json"))["cases"]
-    wrong = pg.evaluate("""(cases)=>cases.filter(c=>{
-        var got = cardCell(c.job);
-        return got.k !== c.k || got.label !== c.label;
-      }).map(c=>{
-        var got = cardCell(c.job);
-        return (c.why||'?')+': got '+got.k+'/'+got.label+', wanted '+c.k+'/'+c.label;
-      })""", cases)
-    ck("cardCell answers every shared case", wrong == [], wrong)
-
-    # ── the Keys register's reader, against its own table ──────────
-    #  now is a fixed LOCAL noon and expiryDay becomes 13:00 local that
-    #  many days on, so today/live/dead hold in any TZ (CLAUDE.md rule 7).
-    cases2 = json.load(open("tests/cardlife_cases.json"))["cases"]
-    wrong2 = pg.evaluate("""(cases)=>{
+    # ── the one judge, against the one shared table ────────────────
+    #  now is a fixed LOCAL noon; "expires" becomes an epoch relative to
+    #  it - past two days back, today at 23:00 (after noon, before the
+    #  next midnight), future two days on at 13:00, now exactly noon,
+    #  none no field at all - so every case holds in any TZ (rule 7).
+    cases = json.load(open("tests/cardstate_cases.json"))["cases"]
+    wrong = pg.evaluate("""(cases)=>{
         var now = new Date(2026, 8, 15, 12, 0, 0).getTime();
+        function expOf(k){
+          if (k === 'none') return 0;
+          if (k === 'now') return now / 1000;
+          if (k === 'past') return new Date(2026, 8, 13, 13, 0, 0).getTime() / 1000;
+          if (k === 'today') return new Date(2026, 8, 15, 23, 0, 0).getTime() / 1000;
+          return new Date(2026, 8, 17, 13, 0, 0).getTime() / 1000;
+        }
         return cases.filter(function(c){
-          var job = c.job ? Object.assign({}, c.job) : c.job;
-          if (job && c.expiryDay !== undefined)
-            job.expiry = new Date(2026, 8, 15 + c.expiryDay, 13, 0, 0).getTime() / 1000;
-          var got = cardLife(job, now);
-          if (c.want === null) return got !== null;
-          if (!got) return true;
-          return Object.keys(c.want).some(function(k){ return got[k] !== c.want[k]; });
+          var row = { villa: '9', expiry: expOf(c.expires), lost: c.lost };
+          return cardState(row, now) !== c.state;
         }).map(function(c){
-          var job = c.job ? Object.assign({}, c.job) : c.job;
-          if (job && c.expiryDay !== undefined)
-            job.expiry = new Date(2026, 8, 15 + c.expiryDay, 13, 0, 0).getTime() / 1000;
-          return (c.why || '?') + ': got ' + JSON.stringify(cardLife(job, now));
+          var row = { villa: '9', expiry: expOf(c.expires), lost: c.lost };
+          return (c.why || '?') + ': got ' + cardState(row, now) +
+                 ', wanted ' + c.state;
         });
-      }""", cases2)
-    ck("cardLife answers every shared case", wrong2 == [], wrong2)
+      }""", cases)
+    ck("cardState answers every shared case", wrong == [], wrong)
+
+    # ── the walk over the tree ─────────────────────────────────────
+    got = pg.evaluate("""()=>{
+        var rows = cardRows({
+          '900001': { villa: '9', guest: 'K', cut: 5, expiry: 100 },
+          '900002': { villa: '4', guest: 'R', cut: 9, expiry: 100 },
+          '900003': { villa: '9', guest: 'K', cut: 1, expiry: 100, lost: true },
+          'junk':   'not a row'
+        });
+        return rows.map(function(r){ return r.villa + ':' + r.no; });
+      }""")
+    ck("cardRows walks villa order then cut order, junk skipped",
+       got == ["4:900002", "9:900003", "9:900001"], got)
+
+    # ── what a villa holds ─────────────────────────────────────────
+    held = pg.evaluate("""()=>{
+        var now = new Date(2026, 8, 15, 12, 0, 0).getTime();
+        var live = new Date(2026, 8, 17, 13, 0, 0).getTime() / 1000;
+        var dead = new Date(2026, 8, 13, 13, 0, 0).getTime() / 1000;
+        var rows = cardRows({
+          '1': { villa: '9', cut: 1, expiry: live },
+          '2': { villa: '9', cut: 2, expiry: live, lost: true },
+          '3': { villa: '9', cut: 3, expiry: dead },
+          '4': { villa: '6', cut: 4, expiry: live }
+        });
+        return { nine: cardsHeld(rows, '9', now).length,
+                 nineInHand: cardsHeld(rows, '9', now)
+                   .filter(function(r){ return !r.lost; }).length,
+                 six: cardsHeld(rows, 6, now).length };
+      }""")
+    ck("cardsHeld counts the villa's unexpired rows, lost included",
+       held["nine"] == 2 and held["six"] == 1, held)
+    ck("minus the lost one is what the guest has in hand",
+       held["nineInHand"] == 1, held)
 
     # ── the expiry ─────────────────────────────────────────────────
     #  Relative, not absolute: whatever zone this runs in, the epoch it
@@ -98,13 +125,12 @@ with sync_playwright() as p:
     ck("no depart date, no expiry, rather than an invented one",
        pg.evaluate("()=>cardExpiry(null) === null && cardExpiry('') === null"))
 
-    # ── the words are the table's, not merely similar ──────────────
-    #  The label for a finished pair is quoted at the desk and printed
-    #  nowhere, so the suite holds the exact words: a paraphrase in one
-    #  reader is how two boards describe one villa differently.
-    ck("done wears the law's green key and failed the red one, by k",
-       pg.evaluate("""()=>cardCell({state:'done',qty:2,written:2}).k==='done'
-                     && cardCell({state:'failed',qty:2,written:0}).k==='failed'"""))
+    # ── the tally-era readers are gone, not merely unused ──────────
+    #  cardCell and cardLife were the counters' readers; a survivor is a
+    #  second way to answer the one question, which is the disease the
+    #  rebuild exists to cure.
+    ck("cardCell and cardLife do not survive the rebuild",
+       pg.evaluate("()=>typeof cardCell === 'undefined' && typeof cardLife === 'undefined'"))
 
     b.close()
 

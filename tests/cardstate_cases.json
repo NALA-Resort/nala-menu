@@ -1,0 +1,13 @@
+{
+  "_why": "One table, one judge. cardState in nala-shared.js is the only thing that says where a card stands - the Keys register, the issue run's seats and the Dashboard all count through it, and the helper's cancel session answers to the same store. Cases are written relative to now because the states ARE relative to now: 'expires' says where the card's 1pm falls against the moment of asking. A case added here fails whichever reader has not learned it. Precedence: expired > lost > today > live.",
+  "cases": [
+    { "expires": "past",   "lost": false, "state": "expired", "why": "its 1pm has gone and the row is still here - the Expired list" },
+    { "expires": "past",   "lost": true,  "state": "expired", "why": "expiry outranks the flag: a dead card is not floating" },
+    { "expires": "now",    "lost": false, "state": "expired", "why": "the boundary itself is expired, not a last second of valid" },
+    { "expires": "today",  "lost": false, "state": "today",   "why": "dies before the next midnight - amber, and the 12h clock on screen" },
+    { "expires": "today",  "lost": true,  "state": "lost",    "why": "the flag outranks the clock: floating is the fact that matters" },
+    { "expires": "future", "lost": false, "state": "live",    "why": "a plain valid card" },
+    { "expires": "future", "lost": true,  "state": "lost",    "why": "flagged and still valid: one of the villa's is loose" },
+    { "expires": "none",   "lost": false, "state": "expired", "why": "a row with no expiry cannot claim validity - the safe wrong answer" }
+  ]
+}

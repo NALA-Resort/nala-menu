@@ -41,15 +41,15 @@
       "kind": "function",
       "note": "A spa record keys by BOOKING id and carries no villa; tonight's stay row carries that id, so the villa is the row holding it. A join of two owned facts, not a new one." },
 
-    { "value": "where each arriving villa's key cards stand",
-      "owner": "cardCell",
+    { "value": "which cards each arriving villa holds",
+      "owner": "cardsHeld",
       "kind": "function",
-      "note": "The one reader, held to tests/card_cases.json. The card is a door to Keys, which owns issuing and the register; an Encode button here would be this page originating an action it cannot watch." },
+      "note": "The card table counted, never worked out: a villa is carded when it holds rows (the model, 11 Sep). Held to tests/cardstate_cases.json with cardState. The card is a door to Keys, which owns issuing and the register; an Encode button here would be this page originating an action it cannot watch." },
 
     { "value": "how many lost cards float, across every date",
-      "owner": "cardLife",
+      "owner": "cardState",
       "kind": "function",
-      "note": "The register's reader, held to tests/cardlife_cases.json. A lost card is an attention fact until its expiry retires it, so the note carries it whatever the day's issuing looks like." },
+      "note": "The one judge of a row, held to tests/cardstate_cases.json. A lost card is an attention fact until its expiry retires it, so the note carries it whatever the day's cutting looks like." },
 
     { "value": "whether a guest has physically arrived",
       "owner": "isArrived",

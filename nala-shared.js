@@ -792,13 +792,15 @@ function formState(p, stay, spa){
 }
 
 /* ── key cards ───────────────────────────────────────────────────────
-   A card job is one villa's cards for one day: /cardjobs/<date>/<villa>
-   holds { qty, expiry, state, written, by, at, note }. The Front Desk
-   writes it, the encoder helper on the desk PC moves state through
-   queued -> writing -> done (or failed), and both the Front Desk and
-   the Dashboard read where it stands THROUGH cardCell below - the
-   formDinnerCell lesson, applied before the drift rather than after.
-   The shared table is tests/card_cases.json; add cases there. */
+   One table, /cards/<no>, one row per card that exists in the world,
+   keyed by the number the encoder reports - the serial belongs to the
+   plastic (TTHotel's own behaviour; the owner, 11 Sep). A row is
+   { villa, guest, cut, expiry, lost?, by? }. The helper appends a row
+   as it cuts a card and removes the row it wipes; the desk flags lost
+   and removes by hand. SCREENS COUNT ROWS - the model of 11 Sep - and
+   they count through the readers below, held to
+   tests/cardstate_cases.json. A request to cut cards lives at /cutrun
+   for the minutes the run takes and is never stored with the cards. */
 
 /* When a key card stops opening the door on departure day. One number,
    because the moment a guest's card dies is a fact two systems state:
@@ -815,55 +817,44 @@ function cardExpiry(dep){
                              CARD_CHECKOUT_HOUR, 0, 0).getTime() / 1000);
 }
 
-/* Where a villa's cards stand, in the words and colours both boards use.
-   k is one of none|queued|writing|done|failed|cancelled and doubles as
-   the style hook. Colour law: queued is cream (work to do), writing is
-   amber (in progress), done is green, failed is red - a write that did
-   not happen, a true failure - and cancelled is grey, nothing to do
-   here. An unknown state reads as queued rather than done: the safe
-   wrong answer is the one that makes somebody look. */
-function cardCell(job){
-  if (!job || !job.state || job.state === 'cancelled')
-    return { k: job ? 'cancelled' : 'none',
-             label: job ? 'cancelled' : 'no cards yet' };
-  var n = +job.written || 0, q = +job.qty || 0;
-  if (job.state === 'done'){
-    /* Counts through cardLife, the register's reader, so this word and the
-       register can never disagree - they did on 10 Sep, "3 cards issued"
-       in the issue drop over "1 card with the guest" on the sheet, after
-       a cancel session wiped two. Issued is the word only while it is the
-       whole truth; once a wipe or a loss has happened, the count that
-       matters at the desk is what the guest still holds. */
-    var L = cardLife(job, 0);
-    if (L.back || L.lost)
-      return { k:'done', label: !L.active ? 'no cards out'
-             : L.active + (L.active === 1 ? ' card' : ' cards') + ' with the guest' };
-    return { k:'done', label: L.written + (L.written === 1 ? ' card issued' : ' cards issued') };
-  }
-  if (job.state === 'failed')
-    return { k:'failed', label:'write failed' };
-  if (job.state === 'writing')
-    return { k:'writing', label:'writing card ' + Math.min(n + 1, q || n + 1) +
-                                (q ? ' of ' + q : '') };
-  return { k:'queued', label:'to encode' };
+/* Where ONE card stands - the only judge, all screens. Precedence is
+   expired > lost > today > live, because each earlier answer makes the
+   later ones moot: an expired card is the Expired list whether or not
+   it was lost first, and a lost card's expiry day is not the guest's
+   problem. today (expires before the next midnight) is when the 12h
+   clock takes over on screen. Cases live in
+   tests/cardstate_cases.json - add there, not in a suite. */
+function cardState(row, now){
+  var exp = (+((row && row.expiry) || 0)) * 1000;
+  if (!exp || exp <= now) return 'expired';
+  if (row.lost) return 'lost';
+  return dkey(new Date(exp)) === dkey(new Date(now)) ? 'today' : 'live';
 }
 
-/* Where a villa's CARDS stand once written - the Keys register's one
-   reader, as cardCell is the writing's. Counts never lie downward:
-   back and lost are clamped inside written, active is what remains in
-   the guest's hand. state is live / today (expires before the next
-   midnight, the 12h clock takes over on screen) / dead. Its cases live
-   in tests/cardlife_cases.json - add there, not in a suite. */
-function cardLife(job, now){
-  if (!job || job.state === 'cancelled') return null;
-  var written = Math.min(+job.written || 0, +job.qty || 0);
-  var back = Math.max(0, Math.min(+job.back || 0, written));
-  var lost = Math.max(0, Math.min(+job.lost || 0, written - back));
-  var exp = (+job.expiry || 0) * 1000;
-  var state = !exp || exp <= now ? 'dead'
-            : dkey(new Date(exp)) === dkey(new Date(now)) ? 'today' : 'live';
-  return { written: written, back: back, lost: lost,
-           active: written - back - lost, state: state, expiry: exp };
+/* The /cards tree as a list, villa order then cut order, junk skipped.
+   Every screen walks THIS list rather than the raw tree, so the sort
+   and the shape cannot drift between boards. The serial is carried as
+   `no` for writes and lookups and never rendered - the wording law. */
+function cardRows(tree){
+  var out = [];
+  Object.keys(tree || {}).forEach(function(no){
+    var r = tree[no];
+    if (!r || typeof r !== 'object') return;
+    out.push({ no: String(no), villa: String(r.villa == null ? '' : r.villa),
+               guest: r.guest || '', cut: +r.cut || 0,
+               expiry: +r.expiry || 0, lost: !!r.lost, by: r.by || '' });
+  });
+  out.sort(function(a, b){ return ((+a.villa) - (+b.villa)) || (a.cut - b.cut); });
+  return out;
+}
+
+/* The rows a villa holds now: everything of theirs not yet expired.
+   A lost card is still held against the villa - it is out there opening
+   the door - which is why the count the issue drop quotes includes it. */
+function cardsHeld(rows, villa, now){
+  return (rows || []).filter(function(r){
+    return String(r.villa) === String(villa) && cardState(r, now) !== 'expired';
+  });
 }
 
 /* Every OTHER villa the same party holds, said in the words both boards use.

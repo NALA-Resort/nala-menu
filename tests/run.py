@@ -159,6 +159,9 @@ COVERS = {
     # a change to it surfaces only in what a push puts on screen, which is
     # exactly what sw_test.js asserts.
     "sw.js":             ["sw"],
+    # The shared card runtime: both its pages, and the reader suite that
+    # pins the store it writes.
+    "nala-cards.js":     ["keys", "sweep:keys", "frontdesk", "cards"],
 }
 EVERYTHING = ["nala-shared.js", "auth.js"]
 

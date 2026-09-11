@@ -1,15 +1,21 @@
 # NALA key-card helper. Runs on the front-desk PC, next to CardEncoder.dll.
 #
-# What it is: the machine half of /cardjobs. The Front Desk page queues a
-# villa's cards; this watches the queue, drives the E3 encoder through
-# TTLock's own CardEncoder.dll, and writes back state, written and note -
-# the states the boards read through cardCell (tests/card_cases.json):
-# queued -> writing -> done, or failed.
+# What it is: the machine half of the card table. /cards holds ONE ROW PER
+# CARD in the world, keyed by the number the encoder reports (the serial
+# belongs to the plastic - TTHotel's own behaviour; the owner, 11 Sep).
+# This helper is the only thing that moves plastic, and each move is one
+# thing done to the table:
+#   a card cut      -> a row written at /cards/<no> (a re-cut lands on the
+#                      same key, so the old row is shed in the same act)
+#   a card wiped    -> its row deleted
+# The REQUEST to cut is /cutrun - a short-lived queue the desk switches
+# on, this works through, and that ends when the cutting ends. It is
+# never stored with the cards. /cancelrun is the wipe session, as before.
 #
 # What it holds: ONE key for the Worker's card relays, and the encoder
-# staff account for Firebase - a role that can touch /cardjobs and nothing
-# else (rules.json). The TTLock secrets live in the Cloudflare dashboard;
-# this PC never sees them. hotelInfo arrives minted and dies in minutes.
+# staff account for Firebase - a role confined by rules.json. The TTLock
+# secrets live in the Cloudflare dashboard; this PC never sees them.
+# hotelInfo arrives minted and dies in minutes.
 #
 # Install (see ENCODER.md for the long form):
 #   1. Put this file in the kit's dll\64 folder, beside CardEncoder.dll.
@@ -122,6 +128,14 @@ function Fb-Patch([string]$path, $obj){
   Invoke-RestMethod -Method Patch -ContentType "application/json" `
     -Uri "$FB_DB$path.json?auth=$(Fb-Token)" -Body ($obj | ConvertTo-Json) | Out-Null
 }
+function Fb-Put([string]$path, $obj){
+  Invoke-RestMethod -Method Put -ContentType "application/json" `
+    -Uri "$FB_DB$path.json?auth=$(Fb-Token)" -Body ($obj | ConvertTo-Json) | Out-Null
+}
+function Fb-Delete([string]$path){
+  Invoke-RestMethod -Method Delete `
+    -Uri "$FB_DB$path.json?auth=$(Fb-Token)" | Out-Null
+}
 
 # ── the Worker's relays: hotelInfo dies in minutes, locks change never ──
 $script:HotelInfo = $null; $script:HotelAt = Get-Date 0
@@ -198,159 +212,158 @@ function Node-Pairs($node){
   ,$out
 }
 
-Log "NALA encoder helper - watching /cardjobs. Ctrl+C stops it."
+Log "NALA encoder helper - watching the card table. Ctrl+C stops it."
 while ($true) {
   try {
-    $day = Today
-    $jobs = Fb-Get "/cardjobs/$day"
-    # Objects, not nested arrays: PowerShell's pipeline unwraps a single
-    # nested pair into its two halves, so the first one-villa day read the
-    # villa name as the job and wrote zero cards. Found live, 9 Sep.
-    $queued = @()
-    if ($jobs) {
-      foreach ($p in (Node-Pairs $jobs)) {
-        if ($p.Value.state -eq "queued") {
-          $queued += [pscustomobject]@{ villa = $p.Name; job = $p.Value }
-        }
-      }
-    }
-    # villa order, the batch promise the run screen makes
-    $queued = @($queued | Sort-Object { [int]$_.villa })
+    $busy = $false
 
-    foreach ($q in $queued) {
-      $villa = $q.villa; $job = $q.job
-      $lock = (Locks).PSObject.Properties[$villa]
-      if (-not $lock) {
-        Fb-Patch "/cardjobs/$day/$villa" @{ state="failed"; note="no lock named $villa in TTHotel" }
-        continue
+    # ── the cut run: the desk's short-lived request ──────────────────
+    # /cutrun { state, by, at, seen, queue: {villa:{guest,qty,cut,expiry,note?}} }
+    # Work it in villa order - the batch promise the run screen makes -
+    # and for EVERY card cut, write its row at /cards/<no> in the same
+    # breath. The row is the lasting record; the run is not.
+    $run = Fb-Get "/cutrun"
+    if ($run -and $run.state -eq "on") {
+      $busy = $true
+      Fb-Patch "/cutrun" @{ seen=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
+      $todo = @()
+      foreach ($p in (Node-Pairs $run.queue)) {
+        if (-not $p.Value.note -and [int]$p.Value.cut -lt [int]$p.Value.qty) {
+          $todo += [pscustomobject]@{ villa = $p.Name; q = $p.Value }
+        }
       }
-      if (-not (Connect-Encoder)) {
+      $todo = @($todo | Sort-Object { [int]$_.villa })
+      if (-not $todo) {
+        # the queue is finished: say so once, and the run screen shows
+        # its envelope summary. done, not off, so the desk can tell a
+        # finished run from one it stopped.
+        Fb-Patch "/cutrun" @{ state="done" }
+        Log "cut run finished"
+      } elseif (-not (Connect-Encoder)) {
         Log "no encoder answering - is the E3 plugged in?"
-        break   # leave the job queued; the board shows the amber wait
-      }
-      # Continue from written, never from 1: an extended job (Issue more
-      # cards) carries the cards already in the guest's hands, and a
-      # restart from 1 would cut them all again - the 9 Sep count bug's
-      # other half. written is therefore NOT reset on the claim.
-      $start = [int]$job.written
-      $nos = if ($job.nos) { [string]$job.nos } else { "" }
-      Log "villa ${villa}: cards $($start + 1) to $($job.qty), expiry $([DateTimeOffset]::FromUnixTimeSeconds($job.expiry).LocalDateTime)"
-      # at refreshed on the claim and on every card: the boards read a
-      # fresh stamp on a writing job as "the encoder is alive", and a
-      # stale one as a PC that died mid-write (front-desk.html, cardsAlive)
-      Fb-Patch "/cardjobs/$day/$villa" @{ state="writing"; at=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
-      $failed = $null; $lastNo = $null
-      for ($i = $start + 1; $i -le [int]$job.qty; $i++) {
-        # TTHotel's own dialog waits for the last card to LEAVE before it
-        # asks for the next, and it is right: 800ms after a beep the same
-        # card is still on the pad, and the first live batch (9 Sep) wrote
-        # card 1 twice and called it two cards. Wait until the pad stops
-        # showing the card just written; a swap to a fresh card also ends
-        # the wait, because the number changes.
-        if ($i -gt 1) {
-          if ($lastNo) {
-            Log "  lift card $($i-1) off the reader"
-            while ((Get-CardNo) -eq $lastNo) { Start-Sleep -Milliseconds 700 }
-          } else { Start-Sleep -Milliseconds 2500 }   # encoder would not say: give a human beat
-        }
-        Log "  hold card $i of $($job.qty) to the reader"
-        # Wait for a card by POLLING the pad, not inside CE_WriteCard's own
-        # blocking wait: while the pad is empty the desk may press Skip
-        # (the ask shrinks below $i) or Cancel (the job folds or goes),
-        # and both deserve an answer in seconds, not at a timeout. The
-        # heartbeat keeps the boards reading the wait as alive.
-        $skipped = $false; $beat = 0
-        while (-not (Get-CardNo)) {
-          Start-Sleep -Milliseconds 700
-          $beat++
-          if ($beat % 4 -eq 0) {
-            $j2 = $null
-            try { $j2 = Fb-Get "/cardjobs/$day/$villa" } catch {}
-            if (-not $j2 -or $j2.state -ne "writing" -or [int]$j2.qty -lt $i) {
-              $skipped = $true
-              Log "  villa ${villa}: the desk skipped the rest at card $($i-1)"
-              break
-            }
-          }
-          if ($beat % 14 -eq 0) {
-            try { Fb-Patch "/cardjobs/$day/$villa" @{ at=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() } } catch {}
-          }
-        }
-        if ($skipped) { break }
-        $failed = Write-One $villa $lock.Value ([uint32]$job.expiry)
-        if ($failed) { break }
-        $lastNo = Get-CardNo
-        # each card's serial goes on the record: the Keys page's cancel
-        # session identifies a held card by these, never by a guess
-        if ($lastNo) { $nos = if ($nos) { "$nos,$lastNo" } else { $lastNo } }
-        else { Log "  (this card kept its number to itself - a cancel wipe cannot count it; the sheet's 'A card came back' is the door)" }
-        Fb-Patch "/cardjobs/$day/$villa" @{ written=$i; nos=$nos.Substring(0, [Math]::Min(240, $nos.Length)); at=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
-        Log "  card $i written - lift it off"
-      }
-      if ($skipped) {
-        # the page already folded the record (done at written, or gone);
-        # nothing to write, and saying done over a deleted job would
-        # resurrect it as a husk
-      } elseif ($failed) {
-        Log "  FAILED: $failed"
-        Fb-Patch "/cardjobs/$day/$villa" @{ state="failed"; note=$failed }
+        # the run screen's ten-second verdict owns this ending
       } else {
-        Fb-Patch "/cardjobs/$day/$villa" @{ state="done" }
-        Log "  villa $villa done - envelope its cards"
+        $stopped = $false
+        foreach ($t in $todo) {
+          $villa = $t.villa; $q = $t.q
+          $lock = (Locks).PSObject.Properties[$villa]
+          if (-not $lock) {
+            Fb-Patch "/cutrun/queue/$villa" @{ note="no lock named $villa in TTHotel" }
+            continue
+          }
+          Log "villa ${villa}: cards $([int]$q.cut + 1) to $($q.qty), expiry $([DateTimeOffset]::FromUnixTimeSeconds($q.expiry).LocalDateTime)"
+          $failed = $null; $lastNo = $null
+          for ($i = [int]$q.cut + 1; $i -le [int]$q.qty; $i++) {
+            # TTHotel's own dialog waits for the last card to LEAVE before
+            # it asks for the next, and it is right: 800ms after a beep the
+            # same card is still on the pad, and the first live batch
+            # (9 Sep) wrote card 1 twice and called it two cards.
+            if ($i -gt 1 -or $lastNo) {
+              if ($lastNo) {
+                Log "  lift card off the reader"
+                while ((Get-CardNo) -eq $lastNo) { Start-Sleep -Milliseconds 700 }
+              } elseif ($i -gt 1) { Start-Sleep -Milliseconds 2500 }
+            }
+            Log "  hold card $i of $($q.qty) to the reader"
+            # Wait for a card by POLLING the pad, not inside CE_WriteCard's
+            # own blocking wait: while the pad is empty the desk may press
+            # Skip (the villa's qty shrinks below $i) or Stop (state off),
+            # and both deserve an answer in seconds. The heartbeat keeps
+            # the run screen reading the wait as alive.
+            $beat = 0
+            while (-not (Get-CardNo)) {
+              Start-Sleep -Milliseconds 700
+              $beat++
+              if ($beat % 4 -eq 0) {
+                $r2 = $null
+                try { $r2 = Fb-Get "/cutrun" } catch {}
+                $q2 = $null
+                if ($r2 -and $r2.queue) { $q2 = $r2.queue.PSObject.Properties[$villa] }
+                if (-not $r2 -or $r2.state -ne "on" -or -not $q2 -or [int]$q2.Value.qty -lt $i) {
+                  $stopped = $true
+                  Log "  villa ${villa}: the desk skipped or stopped at card $($i-1)"
+                  break
+                }
+              }
+              if ($beat % 4 -eq 2) {
+                try { Fb-Patch "/cutrun" @{ seen=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() } } catch {}
+              }
+            }
+            if ($stopped) { break }
+            $failed = Write-One $villa $lock.Value ([uint32]$q.expiry)
+            if ($failed) { break }
+            $no = Get-CardNo
+            # THE MODEL, at the moment it matters: the cut card is a row,
+            # written now, keyed by its own number - so a RE-CUT lands on
+            # the same key and sheds the old row in the same act, exactly
+            # as TTHotel's own register behaves. A card that kept its
+            # number to itself still exists, so it still gets a row, under
+            # a u-key only the Keys page's Remove can retire.
+            $key = if ($no) { [string]$no } else { "u$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())" }
+            $old = $null
+            if ($no) { try { $old = Fb-Get "/cards/$key" } catch {} }
+            Fb-Put "/cards/$key" @{ villa=[string]$villa; guest=[string]$q.guest;
+              cut=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds();
+              expiry=[long]$q.expiry; by=[string]$run.by }
+            if ($old -and ([string]$old.villa) -ne ([string]$villa)) {
+              Log "  (this plastic was villa $($old.villa)'s - its old row shed with the re-cut)"
+            }
+            $lastNo = $no
+            Fb-Patch "/cutrun/queue/$villa" @{ cut=$i }
+            Fb-Patch "/cutrun" @{ seen=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
+            Log "  card $i written - lift it off"
+          }
+          if ($stopped) { break }
+          if ($failed) {
+            Log "  FAILED: $failed"
+            Fb-Patch "/cutrun/queue/$villa" @{ note=$failed }
+          } else {
+            Log "  villa $villa done - envelope its cards"
+          }
+        }
       }
     }
 
     # ── the cancel session: the Keys page's reader-side duty ─────────
     # The desk switches /cancelrun on; every card then held to the E3 is
-    # read, named from the serials on record, wiped (CE_ClearCard), and
-    # reported. The desk's Stop - or the page's own offline verdict -
-    # switches it off. Queued write jobs wait their turn: one encoder,
-    # one duty at a time.
+    # read, named by ITS OWN ROW at /cards/<no> - a direct read, never a
+    # scan - wiped (CE_ClearCard), and its row deleted: the wipe and the
+    # removal are one act. A card with no row (foreign plastic, or one
+    # already cancelled) is wiped all the same and reported villa "?" -
+    # the page says only "Unknown card", both normal desk business
+    # (ruled 11 Sep). The desk's Stop - or the page's offline verdict -
+    # switches it off. One encoder, one duty at a time.
     $cr = Fb-Get "/cancelrun"
     if ($cr -and $cr.state -eq "on") {
+      $busy = $true
       if (-not (Connect-Encoder)) {
         Log "cancel session waiting - no encoder answering"
       } else {
         Log "cancel session on - hold cards to the reader"
-        $all = Fb-Get "/cardjobs"          # the serials on record, once
         $n = 0
         if ($cr.done) { $n = @(Node-Pairs $cr.done).Count }
-        $wiped = @{}; $bumped = @{}
+        $wiped = @{}
         while ($true) {
           Fb-Patch "/cancelrun" @{ seen=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
           $cr = Fb-Get "/cancelrun"
           if (-not $cr -or $cr.state -ne "on") { Log "cancel session off"; break }
           $no = Get-CardNo
           if ($no -and -not $wiped.ContainsKey($no)) {
-            # name the card from the record - never a guess: the serial
-            # was written down the moment the card was cut
-            $villa = "?"; $hit = $null
-            if ($all) {
-              foreach ($d in (Node-Pairs $all)) {
-                foreach ($v in (Node-Pairs $d.Value)) {
-                  if ($v.Value.nos -and ("," + $v.Value.nos + ",").Contains("," + $no + ",")) {
-                    $villa = $v.Name
-                    $hit = @{ day = $d.Name; villa = $v.Name; job = $v.Value }
-                  }
-                }
-              }
-            }
+            $villa = "?"; $row = $null
+            try { $row = Fb-Get "/cards/$no" } catch {}
+            if ($row) { $villa = [string]$row.villa }
             $rc = [CE]::CE_ClearCard((Hotel-Info))
             $wiped[$no] = 1
             if ($rc -eq 0) {
               $null = [CE]::CE_Beep(80, 60, 1)
-              if ($hit) {
-                $key = "$($hit.day)/$($hit.villa)"
-                $prev = 0; if ($bumped.ContainsKey($key)) { $prev = $bumped[$key] }
-                $bumped[$key] = $prev + 1
-                Fb-Patch "/cardjobs/$key" @{ back = ([int]$hit.job.back + $bumped[$key]) }
-              }
+              if ($row) { Fb-Delete "/cards/$no" }
               Fb-Patch "/cancelrun/done/$n" @{ villa=$villa; no=$no; at=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
               $n++
               Log "  wiped $no - villa $villa"
             } elseif ($rc -ne 102) {
               # a card that will not wipe (another hotel's, unreadable)
-              # is still reported, so the desk sees what it held
+              # is still reported, so the desk sees what it held; its
+              # row, if any, STAYS - the card was not wiped
               Fb-Patch "/cancelrun/done/$n" @{ villa=$villa; no=$no; note="would not wipe: $(CE-Msg $rc)"; at=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
               $n++
               Log "  $no refused a wipe: $(CE-Msg $rc)"
@@ -362,10 +375,10 @@ while ($true) {
     }
 
     # ── one encoder, shared politely ─────────────────────────────────
-    # Held only while writing or cancelling; released the moment the
-    # queue is empty, so TTLock's own program can use the E3 without
+    # Held only while a run or a session needs it; released the moment
+    # both are quiet, so TTLock's own program can use the E3 without
     # anyone touching this window (the owner, 9 Sep).
-    if ($script:Port -and -not $queued) {
+    if ($script:Port -and -not $busy) {
       try { $null = [CE]::CE_DisconnectComm() } catch {}
       $script:Port = $null
       Log "encoder released - idle"

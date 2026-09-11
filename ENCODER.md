@@ -5,17 +5,21 @@ The feature spans four places; each owns one thing:
 
 | Piece | Where it runs | Owns |
 |---|---|---|
-| the queue, `/cardjobs/<date>/<villa>` | Firebase | the fact: which villas' cards are wanted, and where each stands |
-| the key menu and run screen | front-desk.html | queuing, cancelling, watching. `cardCell` (nala-shared.js) is the only reader of a job's state, held to `tests/card_cases.json` |
-| the Key cards step | dashboard.html | a door to Front Desk. It gathers, rule 7 |
-| `tools/nala-encoder.ps1` | the front-desk PC | the encoder. The only thing that moves a job past `queued` |
+| the card table, `/cards/<no>` | Firebase | the fact: one row per card in the world, keyed by the card's own number. The register IS these rows |
+| the cut request, `/cutrun` | Firebase | which villas' cards are wanted right now - short-lived, ends when the cutting ends, never stored with the cards |
+| the Keys page and its run screen | keys.html + nala-cards.js | issuing, the register, lost/found/remove, the cancel session. `cardRows`/`cardState` (nala-shared.js) are the only readers, held to `tests/cardstate_cases.json` |
+| the key in the date row | front-desk.html | ONE shortcut: cut all arrival keys. Nothing else - no drop, no card facts on its forms (ruled 11 Sep) |
+| the Key cards step | dashboard.html | a door to Keys. It counts the table's rows, rule 7 |
+| `tools/nala-encoder.ps1` | the front-desk PC | the encoder. The only thing that moves plastic - and each move is one thing done to the table |
 | `/cardauth`, `/cardlocks` | the mews-sync Worker (`worker/cards.js`) | the TTLock secrets, which never reach the desk PC |
 
-The flow at the desk: the key in the Front Desk date row → Encode all keys
-(or one villa from its sheet, with a quantity) → hold each card to the E3 as
-the run screen asks → envelope each villa's cards as it goes green. A card
-dies at 1pm on the guest's departure day (`CARD_CHECKOUT_HOUR`,
-nala-shared.js — one number, change it there or nowhere).
+The flow at the desk: Issue keys on the Keys page (or the Front Desk key for
+all arrivals) → hold each card to the E3 as the run screen asks → a ROW
+APPEARS at `/cards/<no>` as each one is cut → envelope as it goes green. A
+card dies at 1pm on the guest's departure day (`CARD_CHECKOUT_HOUR`,
+nala-shared.js — one number, change it there or nowhere). Because the row
+is keyed by the plastic's own number, a re-cut card sheds its old row in
+the same act — TTHotel's own register behaviour, mirrored.
 
 ## Setting it up, once
 
@@ -33,13 +37,14 @@ exactly these names (worker/cards.js documents each):
 
 **2. Firebase — the encoder account.** Create a staff account the way the
 sync account was made (HANDOVER.md job 3): six digits `@staff.nala`, and its
-role set to `encoder` — the role `rules.json` lets touch `/cardjobs` and
-nothing else. staff.html's role picker may not list `encoder`; setting the
-role value directly in the console is fine, the rules read the string.
+role set to `encoder` — the role `rules.json` confines to the card nodes.
+staff.html's role picker may not list `encoder`; setting the role value
+directly in the console is fine, the rules read the string.
 
-**3. The rules.** `rules.json` gained `/cardjobs`; paste the file into the
-Firebase console as usual. Until this is done the feature fails politely:
-every queue attempt is refused and the page says the job did not save.
+**3. The rules.** `rules.json` holds `/cards` and `/cutrun` (11 Sep,
+replacing the retired `/cardjobs`); paste the file into the Firebase
+console as usual. Until this is done the writes sit under the catch-all
+rule — loose but working — and validate nothing.
 
 **4. The desk PC.** Copy `tools/nala-encoder.ps1` into the encoder kit's
 `dll\64` folder (the one holding `CardEncoder.dll`). The settings — Worker
@@ -69,7 +74,7 @@ that ever recurs, the upgrade is a Task Scheduler job that restarts it.
 
 The PC keeps two credentials: `HELPER_KEY`, which opens only the Worker's
 two read-only relays, and the encoder account, which the rules confine to
-`/cardjobs`. The TTLock secrets stay in the Cloudflare dashboard;
+the card nodes. The TTLock secrets stay in the Cloudflare dashboard;
 `hotelInfo`, the credential every card write needs, arrives minted and
 expires in about ten minutes. A stolen desk PC carries nothing durable.
 
@@ -80,28 +85,38 @@ A blank card must be initialised to the hotel once before it can be written
 TTHotel issued them. New stock: initialise in the TTHotel client for now; an
 init pass in the helper is a small follow-up if the desk wants it.
 
-## The Keys page's half (added 9 Sep)
+## The helper's two duties (rebuilt 11 Sep on the card table)
 
-The helper also serves keys.html:
-
-- **Serials on record.** Every card's number (CE_GetCardNo) is appended to
-  the job's `nos` as it is written, so a held card can always be named.
-- **The cancel session.** Keys' Cancel cards button writes `/cancelrun`
-  `state:on`; the helper heartbeats `seen`, and every card held to the E3
-  is read, matched against the serials on record, wiped (CE_ClearCard),
-  reported under `/cancelrun/done`, and counted `back` on its job. Stop
-  (or the page's offline verdict) sets `state:off`. Write jobs wait while
-  a session runs: one encoder, one duty at a time.
-- **Released when idle.** The COM port is held only while writing or
-  cancelling, so TTLock's own program can use the E3 whenever the helper
-  is quiet - no window juggling, no second encoder.
-- **Issue more cards** continues from `written`: cards already in the
-  guest's hands are never recut.
+- **The cut run.** The desk writes `/cutrun` `state:on` with a queue -
+  one entry per villa: guest, qty, cut, expiry. The helper heartbeats
+  `seen`, works the queue in villa order, and for every card cut writes
+  a ROW at `/cards/<no>` in the same breath (villa, guest, cut-at,
+  expiry, by), bumps `queue/<villa>/cut`, and sets `state:done` when the
+  queue is finished. Skip shrinks a villa's qty to its cut; Stop or a
+  closed run sets `state:off` and the helper stands down mid-wait. A
+  card whose number the encoder will not report still gets a row, under
+  a `u`-prefixed key only the Keys page's Remove can retire.
+- **The cancel session.** Keys' Cancel keys button writes `/cancelrun`
+  `state:on`; the helper heartbeats `seen`, and every card held to the
+  E3 is read, named by its own row at `/cards/<no>` - a direct read,
+  never a scan - wiped (CE_ClearCard), and its ROW DELETED: the wipe
+  and the removal are one act. A card with no row (foreign plastic, or
+  one already cancelled) is wiped all the same and reported villa `?`;
+  the page says "Unknown card", normal desk business. Stop (or the
+  page's offline verdict) sets `state:off`. One encoder, one duty at a
+  time.
+- **Released when idle.** The COM port is held only while a run or a
+  session needs it, so TTLock's own program can use the E3 whenever the
+  helper is quiet - no window juggling, no second encoder.
+- **Issue more cards** is simply another run: the rows the guest already
+  holds stand as filled seats on the run screen, and nothing continues
+  from a written count - there is no written count.
 
 ## When something goes wrong
 
-- **Row holds amber "waiting for the desk PC"** — the helper is not
-  running, or the PC is off. Jobs keep; start the helper.
+- **The run holds "Waking up..." then reports the encoder offline** —
+  the helper is not running, or the PC is off. The request dies with the
+  verdict (a queue never lies in wait); start the helper, press again.
 - **Red "write failed" with a note** — the helper's own words, from the
   manual's error table. 106 means a foreign or uninitialised card; "re-plug
   the USB" means exactly that.
@@ -110,17 +125,16 @@ The helper also serves keys.html:
 
 ## Verified, and not
 
-The queue, both boards, the Worker relays and the rules are suite-covered
-(`cards`, `cardworker`, `frontdesk`, `dash`, `rules`). The helper and the
-E3 cannot be exercised from the sandbox (HANDOVER.md: no egress, no
-Windows, no encoder), so each helper path's first run at the desk is its
-test — and by 10 Sep every path has had it: writing (first card 8 Sep),
-the full issue run with lift-off waits and serial recording, and the
-cancel session reading, naming and wiping a real card (10 Sep, after its
-first run found two faults the sandbox could not: the Win32 working
-directory the 9 Sep rewrite dropped, and a CE_ClearCard call whose
-declaration was never written). Still unseen live, both designed in:
-a re-issue GROWING a villa's count, and TTLock's own program sharing
-the encoder while the helper is idle. TTLock's live field names for
-`/cardlocks` are read tolerantly and confirmed on first live call —
-worker/cards.js marks the spot.
+The store, the pages, the Worker relays and the rules are suite-covered
+(`cards`, `cardworker`, `keys`, `frontdesk`, `dash`, `rules`). The helper
+and the E3 cannot be exercised from the sandbox (HANDOVER.md: no egress,
+no Windows, no encoder), so each helper path's first run at the desk is
+its test. The old tally-era helper had every path proven live by 10 Sep
+(writing, lift-off waits, serial recording, the cancel session wiping a
+real card); the 11 Sep rebuild reuses those proven encoder mechanics
+verbatim but ITS OWN paths - the /cutrun watch, the row writes, the
+row-keyed cancel, the re-cut shed - are live-unproven until their first
+desk run. Watch the helper's own narration on that run; it says one line
+per action. TTLock's live field names for `/cardlocks` are read
+tolerantly and confirmed on first live call — worker/cards.js marks the
+spot.

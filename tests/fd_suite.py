@@ -121,7 +121,8 @@ PMS = {"b4": {"villa": "4", "companion": "Wrong Name"},
 
 WRITES = []
 FIXES = {}   # bookingId -> the /phonefix record, persisted across the stub
-CARDJOBS = {}  # villa -> its /cardjobs job, persisted so the poll sees writes
+CUTRUN = {}  # the cut run, persisted so the run overlay's poll sees writes
+CARDS = {}   # the card table, read whole by the shared runtime
 #  The chef's list, which is the one the kitchen recognises. "Sesame allergy"
 #  is one he added; it must reach the desk or a guest with it can only be
 #  recorded as a typed note. "Red pepper spice" is marked this-menu-only and
@@ -154,15 +155,16 @@ def fb(route, request):
         if m == "PUT" and "/phonefix/" in u:
             FIXES[u.split("/phonefix/")[1].split(".json")[0]] = \
                 json.loads(request.post_data)
-        #  /cardjobs persists too: the run overlay polls the queue, so a job
-        #  the page just queued has to come back on the next read or the
+        #  /cutrun persists too: the run overlay polls it, so the run the
+        #  page just switched on has to come back on the next read or the
         #  overlay reads as the write having vanished.
-        if "/cardjobs/" in u:
-            v = u.split("/cardjobs/")[1].split("/")[1].split(".json")[0]
-            if m == "DELETE": CARDJOBS.pop(v, None)
-            elif m == "PUT": CARDJOBS[v] = json.loads(request.post_data)
-            elif m == "PATCH" and v in CARDJOBS:
-                CARDJOBS[v].update(json.loads(request.post_data))
+        if "/cutrun" in u:
+            cbody = json.loads(request.post_data)
+            if "/cutrun/queue/" in u:
+                v = u.split("/cutrun/queue/")[1].split(".json")[0]
+                CUTRUN.setdefault("queue", {}).setdefault(v, {}).update(cbody)
+            elif m == "PUT": CUTRUN.clear(); CUTRUN.update(cbody)
+            else: CUTRUN.update(cbody)
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
     body = "null"
@@ -189,8 +191,8 @@ def fb(route, request):
     elif "/spa/" in u:
         k = u.split("/spa/")[1].split(".json")[0]
         body = json.dumps(SPADB[k]) if k in SPADB else "null"
-    elif "/cardjobs/" + today in u: body = json.dumps(CARDJOBS)
-    elif "/cardjobs/" in u: body = "null"
+    elif "/cutrun" in u: body = json.dumps(CUTRUN) if CUTRUN else "null"
+    elif "/cards" in u: body = json.dumps(CARDS) if CARDS else "null"
     elif "/flags" in u: body = json.dumps(FLAGS)
     route.fulfill(status=200, content_type="application/json", body=body)
 
@@ -466,13 +468,13 @@ with sync_playwright() as p:
     #  Two ways out since 28 Aug. Confirm arriving sat between these: it
     #  stamped the form complete and cleared checkedInAt, and once the state
     #  moved to its own gated control the only thing it still did was
-    #  un-arrive a guest, under a name that said the opposite.
-    #  Key cards joined 8 Sep, on the owner's flow for the TTHotel encoder:
-    #  click the arriving guest, press issue. Still one primary - check in
-    #  keeps the wide solid, per the button law.
-    ck("and three ways out: edit, key cards, or check in", pg.evaluate(
+    #  un-arrive a guest, under a name that said the opposite. Key cards
+    #  sat here 8-11 Sep and left with the ruling that keys information
+    #  has no reason to be on this page's forms: cards are the Keys
+    #  page's. Still one primary - check in keeps the wide solid.
+    ck("and two ways out: edit, or check in", pg.evaluate(
        "()=>[...document.querySelectorAll('.sum-btns button')].map(b=>b.dataset.act).join()")
-       == "edit,cards,checkin")
+       == "edit,checkin")
     ck("only one summary is ever open",
        (pg.locator('.arr[data-villa="9"]').click(), pg.wait_for_timeout(300),
         pg.evaluate("()=>document.querySelectorAll('.sum').length"))[2] == 1)
@@ -2304,378 +2306,49 @@ with sync_playwright() as p:
     pg.close()
     DINNER.clear()
 
-    # ── key cards ──────────────────────────────────────────────
-    #  The queue is data, the helper is a machine, and this page is a
-    #  viewport plus two writes. Every state word asserted here comes from
-    #  cardCell via tests/card_cases.json - the suite deliberately quotes
-    #  the table's own labels, so a paraphrase on the page fails by name.
-    del WRITES[:]; CARDJOBS.clear()
+    # ── key cards: one shortcut, and nothing on the forms ─────────
+    #  Ruled 11 Sep: this page's key is MERELY cut-all-arrival-keys -
+    #  it switches on the same /cutrun the Keys page owns, one entry
+    #  per arriving villa, a card per guest, no quantity asked - and
+    #  keys information appears nowhere on this page's forms. The
+    #  register, the drop, the per-villa flow all live on Keys now.
+    del WRITES[:]; CUTRUN.clear()
     pg = board()
     ck("the key sits in the date row",
        pg.evaluate("()=>!!document.getElementById('keyBtn')"))
-    pg.click("#keyBtn"); pg.wait_for_timeout(200)
-    droptxt = pg.inner_text("#keyDrop")
-    ck("its drop offers the day's run and each villa",
-       "Encode all keys" in droptxt and "Villa 4" in droptxt and "Villa 14" in droptxt)
-    #  The batch action reads as an option, not the menu's title - the
-    #  owner, 9 Sep: last row, behind the seam, its count in a badge.
-    ck("Encode all keys stands last as an action, its count in a badge",
-       pg.evaluate("""()=>{var b=[...document.querySelectorAll('#keyDrop button')];
-         var a=b[b.length-1];
-         return a.getAttribute('data-key')==='all'
-             && !!a.querySelector('.navbadge')
-             && a.querySelector('.navbadge').textContent===String(ROWS.length);}"""))
-
-    pg.evaluate("()=>document.querySelector('#keyDrop [data-key=all]').click()")
-    pg.wait_for_timeout(700)
-    puts = [x for x in WRITES if "/cardjobs/" in x["u"] and x["m"] == "PUT"]
-    nrows = pg.evaluate("()=>ROWS.length")
-    ck("encode all queues one job per arriving villa", len(puts) == nrows and nrows > 5)
-    j4 = [json.loads(x["b"]) for x in puts if "/cardjobs/%s/4" % today in x["u"]][0]
-    ck("a job carries the agreed default of 2, queued, none written",
-       j4["qty"] == 2 and j4["state"] == "queued" and j4["written"] == 0)
-    #  The bulk row asks no quantity: a card per GUEST on the booking
-    #  (owner, 11 Sep). Konstantinos brings four, Ann is alone.
-    j9b = [json.loads(x["b"]) for x in puts if "/cardjobs/%s/9" % today in x["u"]][0]
-    j14b = [json.loads(x["b"]) for x in puts if "/cardjobs/%s/14" % today in x["u"]][0]
-    ck("Encode all issues a card per guest, not a flat two",
-       j9b["qty"] == 4 and j14b["qty"] == 1)
-    #  The expiry through the page's own cardExpiry, not a re-derivation
-    #  here: the suite asserts the page USED the one reader, and the cards
-    #  suite already holds that reader to 11:00 on the depart day.
-    ck("and its expiry is cardExpiry of that villa's depart",
-       pg.evaluate("(d)=>cardExpiry(d)", STAYS["4"]["depart"]) == j4["expiry"])
-    ck("the run opens as a viewport on the queue",
-       pg.evaluate("()=>!document.getElementById('cardOv').hidden"))
-    #  "Queued", one word - the owner trimmed the sentence 8 Sep; the
-    #  slots say the rest, and the offline banner owns the PC question.
-    ck("a queued villa says Queued, one word",
-       "Queued" in pg.inner_text("#cardBody")
-       and "waiting for the encoder" not in pg.inner_text("#cardBody"))
-    #  The one exception, ruled 11 Sep: the villa the helper goes to NEXT
-    #  pulses and says it is waking, because five silent seconds at the
-    #  desk read as "is this working?". One pulse only - the claim comes
-    #  after the encoder answered, so the hand drawing is "reader found"
-    #  and the ten-second verdict owns the other ending.
-    #  Skip, ruled 11 Sep: a room that only needs one of its two cards.
-    #  The button rides the active writing block; a tap folds the job at
-    #  the cards already cut, and the helper moves on.
-    CARDJOBS["4"].update({"state": "writing", "written": 1,
-                          "at": int(time.time() * 1000)})
-    pg.wait_for_timeout(2000)
-    ck("the active writing villa offers Skip",
-       pg.evaluate("()=>!!document.querySelector('[data-cardskip=\"4\"]')"))
+    ck("and carries no drop - it is a shortcut, not a menu",
+       pg.evaluate("()=>!document.getElementById('keyDrop')"))
+    pg.click("#keyBtn"); pg.wait_for_timeout(500)
+    runs = [json.loads(x["b"]) for x in WRITES
+            if x["m"] == "PUT" and "/cutrun" in x["u"]]
+    #  computed from the fixture as it stands NOW: earlier tests edit
+    #  STAYS, and the bare-id old shape ("5") is not a row at all
+    arrivals = [v for v, st in STAYS.items() if isinstance(st, dict)
+                and str(st.get("arrive", "")).startswith(today)]
+    ck("pressing it switches the cut run on for every arrival",
+       bool(runs) and runs[0]["state"] == "on"
+       and sorted(runs[0]["queue"].keys()) == sorted(arrivals))
+    ck("a card per guest on each booking, no quantity asked",
+       bool(runs) and runs[0]["queue"]["9"]["qty"] == 4
+       and runs[0]["queue"]["14"]["qty"] == 1
+       and runs[0]["queue"]["11"]["qty"] == 3)
+    ck("and the run screen opens on it, waking the helper",
+       not pg.evaluate("()=>document.getElementById('cardOv').hidden")
+       and "Waking up" in pg.inner_text("#cardBody"))
     del WRITES[:]
-    pg.evaluate("()=>document.querySelector('[data-cardskip=\"4\"]').click()")
-    pg.wait_for_timeout(400)
-    skw = [json.loads(x["b"]) for x in WRITES
-           if "/cardjobs/%s/4" % today in x["u"] and x["m"] == "PATCH"]
-    ck("Skip folds the villa at the cards already cut",
-       skw and skw[0]["state"] == "done" and skw[0]["qty"] == 1)
-    CARDJOBS["4"].update({"state": "queued", "written": 0, "qty": 2})
-    pg.wait_for_timeout(1800)
-
-    ck("the active queued villa pulses, alone, and says it is waking",
-       pg.evaluate("""()=>{var c=[...document.querySelectorAll('.crun')];
-         var w=c.filter(x=>x.querySelector('.cwake'));
-         return w.length===1
-             && w[0].innerText.indexOf('Waking up')>=0;}"""))
-
-    #  The helper moves a job; the poll repaints without a reload. The
-    #  OTHER queued villas are marked done first, because a queue that ages
-    #  past ten seconds now deletes itself - the verdict gets its own test
-    #  below, and these progression checks must live inside the law.
-    for _v, _j in list(CARDJOBS.items()):
-        if _j["state"] == "queued" and _v not in ("4", "9"):
-            _j.update({"state": "done", "written": _j["qty"]})
-    CARDJOBS["9"].update({"state": "done", "written": 2})
-    CARDJOBS["4"].update({"state": "writing", "written": 1})
-    pg.wait_for_timeout(2000)
-    #  The active villa asks with the drawing, not a sentence - the
-    #  owner's ruling, TTHotel's own dialog as reference. The words live
-    #  on in the drop and the sheet, where small words belong.
-    ck("the active villa asks with the drawing, not a sentence",
-       pg.evaluate("()=>!!document.querySelector('.crun.now .cardask svg')")
-       and "Hold a card to the reader" not in pg.inner_text("#cardBody"))
-    #  And in shapes: the slots are the same job drawn for arm's length -
-    #  one per card wanted, filled once written, amber on the one under
-    #  the encoder, and the batch bar is written-over-wanted.
-    ck("one slot per card, one filled, the next amber",
-       pg.evaluate("""()=>{var a=document.querySelector('.crun.now');
-         return a.querySelectorAll('.cslot').length===2
-             && a.querySelectorAll('.cslot.filled').length===1
-             && a.querySelectorAll('.cslot.now').length===1;}"""))
-    #  The amber slot names WHICH card is being programmed - the owner,
-    #  9 Sep. A written slot's tick replaced its number.
-    ck("the amber slot carries the card's number, a written one its tick",
-       pg.evaluate("""()=>{var a=document.querySelector('.crun.now');
-         return a.querySelector('.cslot.now').textContent.trim()==='2'
-             && a.querySelector('.cslot.filled').textContent.trim()==='';}"""))
-    #  And the block says what the card will do, off the job's own expiry
-    #  through the page's own dateLabel - never a re-derivation here.
-    ck("the run shows valid from and to, read off the job's expiry",
-       pg.evaluate("""(e)=>{var t=document.getElementById('cardBody')
-           .innerText.toLowerCase();
-         var ex=new Date(e*1000);
-         return t.indexOf('valid')>=0
-             && t.indexOf(dateLabel(ex).toLowerCase())>=0
-             && t.indexOf('13:00')>=0;}""", j4["expiry"]))
-    ck("the batch bar reads written over wanted",
-       pg.evaluate("""()=>{var i=document.querySelector('.cprog i');
-         return i && i.style.width !== '' && i.style.width !== '0%';}"""))
-    CARDJOBS["4"].update({"state": "done", "written": 2})
-    pg.wait_for_timeout(2000)
-    body = pg.inner_text("#cardBody")
-    ck("a landed villa reads issued and asks for the envelope",
-       "2 cards issued" in body and "Envelope villa 4" in body)
-
-    #  Villa 4, 10 Sep: after a cancel session wiped two of three, the sheet
-    #  still showed three ticks and "3 cards issued" while the Keys register
-    #  said "1 card with the guest". Words and ticks both count through
-    #  cardLife now: issued only while whole truth, wiped slots sunk.
-    CARDJOBS["4"].update({"qty": 3, "written": 3, "back": 2})
-    pg.wait_for_timeout(2000)
-    body = pg.inner_text("#cardBody")
-    #  scoped to villa 4's block: villa 11 honestly says "3 cards issued"
-    #  now that Encode-all cuts a card per guest (three of them there)
-    ck("a wiped card leaves the words - what the guest holds, not what was cut",
-       pg.evaluate("""()=>{var b=[...document.querySelectorAll('.crun')]
-           .find(x=>(x.querySelector('.crun-v')||{}).textContent
-                     .trim().startsWith('Villa 4'));
-         return b && b.innerText.indexOf('1 card with the guest')>=0
-             && b.innerText.indexOf('3 cards issued')<0;}"""))
-    #  Seats show the PRESENT holding, never the lifetime ledger (owner,
-    #  11 Sep: three ghosts before a fresh "4" read as inventing cards).
-    ck("and the seats show the one card held - the wiped two have no seats",
-       pg.evaluate("""()=>{var b=[...document.querySelectorAll('.crun')]
-           .find(x=>(x.querySelector('.crun-v')||{}).textContent
-                     .trim().startsWith('Villa 4'));
-         if (!b) return false;
-         return b.querySelectorAll('.cslot').length===1
-             && b.querySelectorAll('.cslot.filled').length===1
-             && b.querySelectorAll('.cslot.gone').length===0;}"""))
-    CARDJOBS["4"].update({"qty": 2, "written": 2})
-    del CARDJOBS["4"]["back"]
-    CARDJOBS["9"].update({"state": "failed", "written": 0, "note": "code 106: not this hotel's card"})
-    pg.wait_for_timeout(2000)
-    ck("a failure is red ink with the helper's own note",
-       "write failed" in pg.inner_text("#cardBody")
-       and "106" in pg.inner_text("#cardBody"))
-    ck("and marks the slot it stopped on, in red ink not a red tile",
-       pg.evaluate("()=>!!document.querySelector('.crun.is-failed .cslot.fail')"))
-
-    #  Cancel confirms before it deletes - the button law's two-tap.
-    CARDJOBS["2"] = {"qty": 2, "expiry": 1789000000, "state": "queued",
-                     "written": 0, "by": "x", "at": int(time.time() * 1000)}
-    pg.wait_for_timeout(1800)
-    del WRITES[:]
-    pg.evaluate("()=>document.querySelector('[data-cardcancel=\"2\"]').click()")
-    pg.wait_for_timeout(150)
-    ck("cancel asks first",
-       "Confirm" in pg.evaluate("()=>document.querySelector('[data-cardcancel=\"2\"]').textContent")
-       and not [x for x in WRITES if x["m"] == "DELETE"])
-    pg.evaluate("()=>document.querySelector('[data-cardcancel=\"2\"]').click()")
-    pg.wait_for_timeout(400)
-    ck("and deletes on the second tap",
-       [x for x in WRITES if x["m"] == "DELETE" and "/cardjobs/%s/2" % today in x["u"]])
-
-    #  The sheet: the completed row's summary carries the state and the
-    #  third button, and the villa panel asks qty before it writes.
-    pg.evaluate("()=>{document.getElementById('cardX').click();}")
-    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
-    ck("the sheet shows where the villa's cards stand",
-       "write failed" in pg.locator(".sum").inner_text())
-    del WRITES[:]; CARDJOBS.clear()
-    pg.evaluate("()=>document.querySelector('.sum-btns [data-act=cards]').click()")
-    pg.wait_for_timeout(1800)   # past the next poll, which must not repaint the question away
-    ck("the villa panel asks how many",
-       "How many cards" in pg.inner_text("#cardBody"))
-    ck("and says what the cards will be valid for, before Issue is pressed",
-       "valid" in pg.inner_text("#cardBody").lower()
-       and "13:00" in pg.inner_text("#cardBody"))
-    pg.evaluate("()=>document.querySelector('[data-cardq=\"1\"]').click()")
-    pg.wait_for_timeout(150)
-    pg.evaluate("()=>document.querySelector('[data-cardissue]').click()")
-    pg.wait_for_timeout(400)
-    puts = [json.loads(x["b"]) for x in WRITES
-            if "/cardjobs/%s/9" % today in x["u"] and x["m"] == "PUT"]
-    ck("and issues the stepped quantity", puts and puts[0]["qty"] == 3)
-
-    #  Done is not closed - the owner, 9 Sep, the first live evening: a
-    #  lost card must be replaceable. The button re-opens the question
-    #  only; the done record stands until Issue writes over it.
-    CARDJOBS["9"].update({"state": "done", "written": 3})
-    pg.wait_for_timeout(1800)
-    ck("a done villa offers Issue more cards",
-       "Issue more cards" in pg.inner_text("#cardBody"))
-    del WRITES[:]
-    pg.evaluate("()=>document.querySelector('[data-cardagain]').click()")
-    pg.wait_for_timeout(150)
-    ck("which asks for MORE cards and writes nothing by itself",
-       "How many more cards" in pg.inner_text("#cardBody") and not WRITES)
-    pg.wait_for_timeout(1800)   # the poll must not repaint the question away
-    ck("and the question survives the poll",
-       "How many more cards" in pg.inner_text("#cardBody"))
-    pg.evaluate("()=>document.querySelector('[data-cardissue]').click()")
-    pg.wait_for_timeout(400)
-    #  The record GROWS - qty rises by the asked amount, written stands
-    #  untouched (the cards in the guest's hands), state re-queues. A PUT
-    #  here would zero written and recut every card - the 9 Sep bug.
-    ext = [json.loads(x["b"]) for x in WRITES
-           if "/cardjobs/%s/9" % today in x["u"] and x["m"] == "PATCH"]
-    #  3 written, and the question starts FRESH at 2 on every ask (11 Sep:
-    #  a five left over from another villa's ask is nobody's answer).
-    ck("and Issue grows the done job, never replaces it",
-       ext and ext[0]["state"] == "queued" and ext[0]["qty"] == 5
-       and "written" not in ext[0]
-       and not [x for x in WRITES if x["m"] == "PUT" and "/cardjobs/" in x["u"]])
-
-    #  written + more, never old qty + more: an abandoned ask must not
-    #  ride along (the phantom third card, 10-11 Sep). A record carrying
-    #  qty 6 with only 2 written re-asks for 3 (one step up from the
-    #  fresh 2): the old law would mint 6+3=9, the truth is 2+3=5.
-    CARDJOBS["9"].update({"qty": 6, "written": 2, "state": "done"})
-    pg.wait_for_timeout(1800)
-    del WRITES[:]
-    pg.evaluate("()=>document.querySelector('[data-cardagain]').click()")
-    pg.wait_for_timeout(200)
-    pg.evaluate("()=>document.querySelector('[data-cardq=\"1\"]').click()")
-    pg.wait_for_timeout(150)
-    pg.evaluate("()=>document.querySelector('[data-cardissue]').click()")
-    pg.wait_for_timeout(400)
-    ext2 = [json.loads(x["b"]) for x in WRITES
-            if "/cardjobs/%s/9" % today in x["u"] and x["m"] == "PATCH"]
-    ck("a re-issue counts the cards that EXIST, never the abandoned ask",
-       ext2 and ext2[0]["qty"] == 5)
-
-    #  The run is the day's work, not its history (owner, 11 Sep): a done
-    #  record whose cards were all wiped has nothing happening and nothing
-    #  to hand over, so it leaves the run - and an envelope line needs
-    #  cards to go in it.
-    #  done, not the queued the extend just made: the run rightly keeps
-    #  every queued villa, wiped or not - the fold to done is the verdict
-    #  or the helper's, and here the fixture states it.
-    CARDJOBS["9"].update({"state": "done", "qty": 3, "back": 3})
-    pg.wait_for_timeout(1800)
-    pg.evaluate("()=>NalaCards.open(null)")
+    pg.evaluate("()=>document.getElementById('cardX').click()")
     pg.wait_for_timeout(300)
-    ck("a fully wiped villa leaves the day's run",
-       "Villa 9" not in pg.inner_text("#cardBody")
-       and "Envelope villa 9" not in pg.inner_text("#cardBody"))
-    del CARDJOBS["9"]["back"]
-    pg.wait_for_timeout(1800)
-
-    #  Picking a guest from the key menu ALWAYS lands on the quantity
-    #  question (owner, 11 Sep) - a status sheet in front of the ask read
-    #  as no choice at all. Villa 9 is done at this point, so the ask
-    #  says MORE; only a villa the encoder is on shows its run instead.
-    pg.evaluate("()=>{document.getElementById('cardX').click();}")
-    CARDJOBS["9"].update({"qty": 5, "written": 5, "state": "done"})
-    pg.evaluate("()=>NalaCards.load()")
-    pg.wait_for_timeout(400)
-    pg.click("#keyBtn"); pg.wait_for_timeout(200)
-    pg.evaluate("()=>document.querySelector('#keyDrop [data-key=\"9\"]').click()")
+    ck("closing the run ends the request - it never lies in wait",
+       [x for x in WRITES if x["m"] == "PATCH" and "/cutrun.json" in x["u"]
+        and json.loads(x["b"]).get("state") == "off"])
+    #  the sheet carries no card facts and no card door
+    pg.evaluate("()=>document.querySelector('.arr[data-villa=\"9\"]').click()")
     pg.wait_for_timeout(300)
-    ck("picking a carded villa from the drop asks how many, immediately",
-       "How many more cards" in pg.inner_text("#cardBody"))
-
-    #  Every villa block on the day's run is a door to its own ask
-    #  (owner, 11 Sep: "why are you showing Wayne and not able to issue
-    #  cards to him?"). Buttons inside a block keep their own jobs.
-    pg.evaluate("()=>{document.getElementById('cardX').click();}")
-    pg.wait_for_timeout(200)
-    pg.evaluate("()=>NalaCards.open(null)")
-    pg.wait_for_timeout(400)
-    pg.evaluate("()=>document.querySelector('[data-cardopen=\"9\"]').click()")
-    pg.wait_for_timeout(300)
-    ck("tapping a villa on the run lands on its quantity question",
-       "How many more cards" in pg.inner_text("#cardBody"))
-
-    #  99, not the invented 6: "if I feel like issuing 1000 cards to a
-    #  room I can - it just goes to the tally" (owner, 11 Sep).
-    for _ in range(9):
-        pg.evaluate("()=>document.querySelector('[data-cardq=\"1\"]').click()")
-        pg.wait_for_timeout(60)
-    ck("the quantity climbs past the old six-card cap",
-       "Issue 11 more" in pg.inner_text("#cardBody"))
+    sumtxt2 = pg.inner_text(".sum") if pg.locator(".sum").count() else ""
+    ck("no keys information on the sheet", "Key cards" not in sumtxt2
+       and "card" not in sumtxt2.lower())
     pg.close()
-
-    #  The queue must never lie in wait - the owner's ruling, 8 Sep. Ten
-    #  seconds unclaimed on the open run screen: the queued jobs are
-    #  deleted and the notice is terse and final; a job the helper already
-    #  finished is left alone.
-    del WRITES[:]; CARDJOBS.clear()
-    now_ms = int(time.time() * 1000)
-    CARDJOBS.update({
-        "4": {"qty": 2, "expiry": 1789000000, "state": "queued", "written": 0,
-              "by": "x", "at": now_ms - 12000},
-        "9": {"qty": 2, "expiry": 1789000000, "state": "done", "written": 2,
-              "by": "x", "at": now_ms - 12000},
-    })
-    pg = board()
-    pg.evaluate("()=>NalaCards.open(null)")
-    pg.wait_for_timeout(2200)
-    body = pg.inner_text("#cardBody")
-    ck("an unclaimed queue is judged offline, tersely",
-       "Encoder offline" in body and "try again" in body
-       and "Nothing is lost" not in body)
-    #  The verdict names the way back, not just the fact (owner, 11 Sep):
-    #  the fix is the taskbar's Nala card helper, so the sentence says so.
-    ck("and it points at the helper on the taskbar",
-       "Nala card helper" in body and "taskbar" in body)
-    ck("and the queued job is deleted, not left in wait",
-       [x for x in WRITES if x["m"] == "DELETE" and "/cardjobs/%s/4" % today in x["u"]]
-       and "4" not in CARDJOBS)
-    ck("while the villa already written keeps its cards",
-       "9" in CARDJOBS and "2 cards issued" in body)
-    ck("the verdict outlives the queue it deleted",
-       (pg.wait_for_timeout(1800),
-        "Encoder offline" in pg.inner_text("#cardBody"))[1])
-    pg.close()
-
-    #  ...but a queue behind a WORKING encoder is never stale. Found on the
-    #  mock, 8 Sep: the verdict fired mid-batch because the receptionist was
-    #  pacing cards and the villas behind the live one aged past ten
-    #  seconds. The same aged queue with a fresh write in flight draws no
-    #  verdict and loses nothing.
-    del WRITES[:]; CARDJOBS.clear()
-    now_ms = int(time.time() * 1000)
-    CARDJOBS.update({
-        "4": {"qty": 2, "expiry": 1789000000, "state": "queued", "written": 0,
-              "by": "x", "at": now_ms - 15000},
-        "9": {"qty": 2, "expiry": 1789000000, "state": "writing", "written": 1,
-              "by": "x", "at": now_ms},
-    })
-    pg = board()
-    pg.evaluate("()=>NalaCards.open(null)")
-    pg.wait_for_timeout(2200)
-    ck("no verdict while a write is in flight, however old the queue",
-       "Encoder offline" not in pg.inner_text("#cardBody")
-       and "4" in CARDJOBS
-       and not [x for x in WRITES if x["m"] == "DELETE"])
-    #  And a write whose stamp went stale IS a dead PC: named in red, and
-    #  the queue behind it is free to be swept.
-    CARDJOBS["9"]["at"] = now_ms - 4 * 60 * 1000
-    CARDJOBS["4"]["at"] = now_ms - 3 * 60 * 1000
-    pg.wait_for_timeout(2200)
-    ck("a write untouched for minutes is named a dead PC, in words",
-       [x for x in WRITES if x["m"] == "PATCH" and "/cardjobs/%s/9" % today in x["u"]
-        and "stopped mid-write" in x["b"]])
-    ck("and the queue behind the corpse is swept after all",
-       [x for x in WRITES if x["m"] == "DELETE" and "/cardjobs/%s/4" % today in x["u"]])
-    pg.close()
-
-    #  And the two-minute sweep catches a queue left behind with no run
-    #  screen open at all - a closed overlay or a dropped connection.
-    del WRITES[:]; CARDJOBS.clear()
-    CARDJOBS["7"] = {"qty": 2, "expiry": 1789000000, "state": "queued",
-                     "written": 0, "by": "x", "at": now_ms - 3 * 60 * 1000}
-    pg = board()
-    pg.wait_for_timeout(600)
-    ck("a stale queue is swept on page load, overlay or none",
-       [x for x in WRITES if x["m"] == "DELETE" and "/cardjobs/%s/7" % today in x["u"]])
-    pg.close()
-    CARDJOBS.clear()
+    CUTRUN.clear()
 
     b.close()
 

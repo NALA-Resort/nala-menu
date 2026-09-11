@@ -323,11 +323,9 @@
   .txt.miss { border-color:var(--red); }
 
 /* ── key cards ─────────────────────────────────────────────────────
-   The key sits in the date row beside the hamburger and wears its dress.
-   Its drop offers the day's encode-all and each villa singly; the card
-   states inside it and on the sheet are cardCell's k, coloured by the
-   law: queued cream, writing amber, done green, failed red, cancelled
-   and none grey. */
+   The key sits in the date row beside the hamburger and wears its
+   dress. It is merely the cut-all-arrival-keys shortcut (ruled
+   11 Sep): pressing it starts the same run the Keys page owns. */
 .keywrap { position:relative; }
 /* The key costs the date row 42px it did not have at 320, and the row must
    never bleed (STYLEGUIDE's width rule). Below 340 the title gives the
@@ -343,31 +341,10 @@
           display:flex; align-items:center; justify-content:center; }
 .keybtn:active { background:var(--card); }
 .keybtn svg { width:19px; height:19px; }
-/* The drop wears the hamburger's own dress, verbatim from
-   nala-ui2's .navdrop rather than a hand-made cousin - ruled by
-   the owner, 8 Sep, when the cousin read as plugged in. */
-.keydrop { display:none; position:absolute; right:0; top:42px;
-           background:var(--ground); border:1px solid var(--rule);
-           border-radius:var(--r); min-width:230px; padding:var(--s1) 0;
-           box-shadow:0 2px 6px rgba(0,0,0,.06),0 10px 28px rgba(0,0,0,.10);
-           z-index:60; }
-.keydrop.open { display:block; }
-.keydrop button { display:flex; width:100%; align-items:baseline; gap:var(--s4);
-                  justify-content:space-between; text-align:left;
-                  padding:var(--s3) var(--s4); background:none; border:0;
-                  font-family:var(--ui-font); font-size:var(--t2); line-height:1.3;
-                  color:var(--ink); cursor:pointer; }
-.keydrop button:active { background:var(--accent-soft); }
-/* The batch action stands last, behind the seam the signout row already
-   owns, its count in a navbadge - ruled by the owner, 9 Sep, when a bold
-   first row read as the menu's title rather than a thing to press. */
-.keydrop .kd-all { border-top:1px solid var(--rule); margin-top:var(--s1);
-                   align-items:center; }
-.keydrop .kd-state { flex:0 0 auto; font-size:var(--t1); color:var(--mid);
-                     white-space:nowrap; }
-.keydrop .kd-state.card-done { color:var(--law-green); }
-.keydrop .kd-state.card-failed { color:var(--law-red); }
-.keydrop .kd-state.card-writing { color:var(--amberink); }
+/* The key's drop went 11 Sep with the ruling that this page's key is
+   MERELY the cut-all-arrival-keys shortcut: the per-villa menu and its
+   state words belong to the Keys page now. The .keydrop dress went with
+   it - the dead-CSS law. */
 
 /* the run viewport */
 /* Above the hamburger's 500: the run replaces the page while it is open,
@@ -464,9 +441,8 @@
 /* the run's cancel wears terracotta and confirms - the button law */
 .sum-btns button.terra { border-color:var(--terra-b); color:var(--terra);
                          background:transparent; }
-.cardlab.card-done { color:var(--law-green); }
-.cardlab.card-failed { color:var(--law-red); }
-.cardlab.card-writing { color:var(--amberink); }
+/* .cardlab went with the sheet's Key cards line, 11 Sep - the dead-CSS
+   law: a rule describing a removed thing is not inert. */
 </style>
 </head>
 <body class="tier-app ui2">
@@ -477,12 +453,11 @@
   <div class="date" id="title"></div>
   <button class="dnav" id="dNext">&#8250;</button>
   <div class="keywrap" id="keyWrap">
-    <button class="keybtn" id="keyBtn" aria-label="Key cards">
+    <button class="keybtn" id="keyBtn" aria-label="Cut all arrival keys">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
            stroke-linecap="round"><circle cx="7.5" cy="12" r="3.5"/>
         <path d="M11 12h9.5M17 12v3.5M20.5 12v2.5"/></svg>
     </button>
-    <div class="keydrop" id="keyDrop"></div>
   </div>
   <div class="navwrap" id="navWrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
@@ -490,7 +465,7 @@
   </div>
 </div>
 
-<!-- The card run: a viewport onto /cardjobs, never a controller. The helper
+<!-- The card run: a viewport onto /cutrun, the short-lived cut request. The helper
      on the desk PC paces the writing; this shows where it stands, and its
      only writes are queuing a job and cancelling one. -->
 <div class="cardov" id="cardOv" hidden>
@@ -521,8 +496,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=64"></script>
-<script src="nala-cards.js?v=8"></script>
+<script src="nala-shared.js?v=65"></script>
+<script src="nala-cards.js?v=9"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
@@ -1076,17 +1051,12 @@ function summaryHTML(r){
      summary is otherwise built by concatenation - the staff-note lesson. */
   if (fl.length) h += sumRow('Booking flags', esc(fl.join(' \u00b7 ')));
 
-  /* Where the villa's key cards stand, in cardCell's words - the one
-     reader both boards use - and only once there is something to say: a
-     villa nobody has carded shows the button below, not an empty line. */
-  var ccj = jobFor(r.villa), ccs = cardCell(ccj);
-  if (ccs.k !== 'none')
-    h += sumRow('Key cards', '<span class="cardlab card-' + ccs.k + '">' +
-                esc(ccs.label) + '</span>');
-
+  /* No key-card line and no Key cards button here, ruled 11 Sep: there
+     is no reason for keys information on Front Desk's forms. Cards are
+     the Keys page's; this page's whole card surface is the key in the
+     date row, which is merely the cut-all-arrival-keys shortcut. */
   h += '<div class="sum-btns">' +
          '<button data-act="edit" data-villa="' + r.villa + '">Edit</button>' +
-         '<button data-act="cards" data-villa="' + r.villa + '">Key cards</button>' +
        '</div>' +
        /* Its own row and full width: it is the one that ends the interaction.
           Confirm arriving used to sit beside Edit. It is gone, 28 Aug: it
@@ -1149,24 +1119,22 @@ function render(){
 }
 
 /* ── key cards ─────────────────────────────────────────────────────
-   The whole issuing flow - queue, drop, run viewport, the queue law -
-   lives in nala-cards.js since 9 Sep, shared with keys.html: one flow,
-   two pages, or the boards would learn to disagree (rule 1). This page
-   hands it its arrivals and its wordings and keeps the sheet's reads. */
+   The issuing flow lives in nala-cards.js, shared with keys.html: one
+   flow, two pages, or the boards would learn to disagree (rule 1).
+   This page's whole share of it is ONE shortcut, ruled 11 Sep: the key
+   in the date row cuts all arrival keys - the same run the Keys page
+   owns - and nothing else. No drop, no per-villa states, no card facts
+   on the sheets: cards are the Keys page's. */
 NalaCards.init({
   db: DB, err: err,
-  dayKey: function(){ return nav.todayKey(); },
   rows: function(){ return ROWS.map(function(r){
     return { villa: r.villa, name: nameOf(r.stay), stay: r.stay }; }); },
   bulkRows: function(){ return ROWS.map(function(r){
     return { villa: r.villa, name: nameOf(r.stay), stay: r.stay }; }); },
-  bulkLabel: 'Encode all keys',
+  bulkLabel: 'All arrivals',
   emptyLabel: 'No arrivals on this date',
-  menuHint: 'Encode all keys is in the key menu.',
-  btn: document.getElementById('keyBtn'),
-  drop: document.getElementById('keyDrop')
+  btn: document.getElementById('keyBtn')
 });
-function jobFor(villa){ return NalaCards.jobFor(villa); }
 function loadCards(){ return NalaCards.load(); }
 
 /* Which of a guest's dietaries tonight's menu actually contains.
@@ -1276,9 +1244,9 @@ function loadDinner(key, rows){
 function load(){
   var key = nav.todayKey();
   err('');
-  /* The day's card jobs move with the date like everything else here. A
-     failed read leaves an empty map: the drop then offers to encode, and
-     the write is what the rules actually protect. */
+  /* The card table reloads with the date like everything else here. A
+     failed read leaves an empty list: the key still cuts, and the
+     write is what the rules actually protect. */
   NalaCards.clear();
   loadCards();
   /* The tags belong to the night being viewed, so they move with the date. A
@@ -2561,7 +2529,6 @@ document.getElementById('board').addEventListener('click', function(e){
     if (!ra) return;
     var what = act.getAttribute('data-act');
     if (what === 'edit') return openGuest(ra);
-    if (what === 'cards') return NalaCards.open(ra.villa);
     /* Arrived, or not arrived. One fact, one button, and nothing else. */
     return save(ra, answersOf(ra), !isArrived(ra.pre), null);
   }
