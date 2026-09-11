@@ -260,6 +260,7 @@ while ($true) {
         # each card's serial goes on the record: the Keys page's cancel
         # session identifies a held card by these, never by a guess
         if ($lastNo) { $nos = if ($nos) { "$nos,$lastNo" } else { $lastNo } }
+        else { Log "  (this card kept its number to itself - a cancel wipe cannot count it; the sheet's 'A card came back' is the door)" }
         Fb-Patch "/cardjobs/$day/$villa" @{ written=$i; nos=$nos.Substring(0, [Math]::Min(240, $nos.Length)); at=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
         Log "  card $i written - lift it off"
       }

@@ -60,6 +60,7 @@ FRAGMENTS = [
     # the sheet and its two buttons
     '<div class="sum-l">Cards</div>',
     '>Mark a card lost</button>',
+    'A card came back',
     '>Found</button>',
     # the cancel session: the ask drawing and the words
     'Hold a card to the reader',
@@ -232,6 +233,23 @@ with sync_playwright() as p:
     pg.wait_for_timeout(300)
     ck("Found walks it back",
        json.loads(WRITES[-1]["b"]) == {"lost": 1})
+
+    #  The register's own correction door (owner, 11 Sep): a card the
+    #  reader could not name at its wipe, or one cut up at the desk. Same
+    #  count the cancel session writes, moved by a person, two-tap first.
+    del WRITES[:]
+    pg.evaluate("()=>document.querySelector('[data-backv=\"9\"]').click()")
+    pg.wait_for_timeout(200)
+    ck("A card came back asks before it counts",
+       not [w for w in WRITES if "/cardjobs/" in w["u"]]
+       and "one card off the count" in pg.inner_text("#list"))
+    pg.evaluate("()=>document.querySelector('[data-backv=\"9\"]').click()")
+    pg.wait_for_timeout(300)
+    back_w = [w for w in WRITES if w["m"] == "PATCH" and "/cardjobs/" in w["u"]]
+    ck("and the confirm PATCHes back, the cancel session's own count",
+       back_w and json.loads(back_w[0]["b"]) == {"back": 1})
+    ck("the sheet then holds one card fewer",
+       "1 card with the guest" in pg.inner_text("#list"))
 
     #  tabs filter; the Tally is arithmetic over the dead, never stored
     pg.evaluate("()=>document.querySelector('[data-tab=\"lost\"]').click()")

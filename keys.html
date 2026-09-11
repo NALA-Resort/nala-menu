@@ -539,7 +539,7 @@ button
 
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var JOBS = {};              /* the whole /cardjobs tree, as read */
-var TAB = 'all', OPEN = null;
+var TAB = 'all', OPEN = null, BACK_ASK = null;
 var LOAD_T = null;
 
 (function(){
@@ -751,7 +751,33 @@ function sheetHTML(r){
     s += '<button class="terra" data-losev="' + esc(r.villa) + '">Mark a card lost</button>';
   if (L.lost > 0)
     s += '<button data-foundv="' + esc(r.villa) + '">Found</button>';
+  /* the register's door out when reality and the record drift: a wipe
+     the encoder could not name, a card cut up at the desk. Same count
+     the cancel session writes, moved by a person, two-tap first
+     (owner, 11 Sep: a phantom card sat against a bill with only
+     Mark-lost for company). */
+  if (L.active > 0)
+    s += '<button' + (BACK_ASK === r.villa ? ' class="terra"' : '') +
+         ' data-backv="' + esc(r.villa) + '">' +
+         (BACK_ASK === r.villa ? 'Confirm \u00b7 one card off the count'
+                               : 'A card came back') + '</button>';
   return s + '</div></div>';
+}
+
+function markBack(villa){
+  var now = Date.now(), built = buildReg(now), r = built.reg[villa];
+  if (!r) return;
+  var back = Math.min(r.L.written - r.L.lost, r.L.back + 1);
+  if (back === r.L.back) return;
+  fetch(DB + '/cardjobs/' + r.day + '/' + villa + '.json', {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ back: back })
+  }).then(function(res){
+    if (!res.ok) throw new Error(res.status);
+    JOBS[r.day][villa].back = back; render();
+  }).catch(function(){
+    err('The mark did not save. This is usually the connection.');
+  });
 }
 
 /* the lost/found marks: this page's own writes, PATCHed onto the job */
@@ -853,6 +879,9 @@ function ovRender(cr){
 
 document.addEventListener('click', function(e){
   var t;
+  /* an unconfirmed A-card-came-back dies on ANY other tap: a confirm
+     label that survives a detour is a write waiting to be misread */
+  var wasAsk = BACK_ASK; BACK_ASK = null;
   if ((t = e.target.closest('[data-tab]'))){
     TAB = t.getAttribute('data-tab'); OPEN = null; render(); return;
   }
@@ -861,6 +890,12 @@ document.addEventListener('click', function(e){
   }
   if ((t = e.target.closest('[data-foundv]'))){
     markLost(t.getAttribute('data-foundv'), -1); return;
+  }
+  if ((t = e.target.closest('[data-backv]'))){
+    var bv = t.getAttribute('data-backv');
+    if (wasAsk === bv){ markBack(bv); }
+    else { BACK_ASK = bv; render(); }
+    return;
   }
   if (e.target.closest('#cancelBtn')){ cancelOpen(); return; }
   if (e.target.closest('#ovStop')){ cancelStop(); return; }

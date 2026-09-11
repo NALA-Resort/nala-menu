@@ -1327,6 +1327,8 @@ function sheetHTML(r){
     s += '<button class="terra" data-losev="' + r.villa + '">Mark a card lost</button>';
   if (r.lost > 0)
     s += '<button data-foundv="' + r.villa + '">Found</button>';
+  if (active(r) > 0)
+    s += '<button data-backv="' + r.villa + '">A card came back</button>';
   return s + '</div></div>';
 }
 
