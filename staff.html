@@ -69,9 +69,22 @@
   .gi-hval { color:var(--ink); }
   /* Its own line under the slider, and a real tap target: a checkbox at
      label size is a 13px square on a phone. */
-  .gi-nat { display:flex; align-items:center; gap:7px; min-height:44px;
+  .gi-nat { display:flex; align-items:center; gap:9px; min-height:44px;
             font-size:var(--t1); color:var(--mid); cursor:pointer; }
-  .gi-nat input { width:18px; height:18px; accent-color:var(--ink); }
+  /* Answering TWO rules that dress every input in the app as a full width
+     text box: #tGuest input above, and body.ui2 input in nala-ui2.css,
+     which also hands it min-height:var(--tap). A class rule lost to both,
+     so the tick wore width:100%, 11px of padding, an 8px radius and a 44px
+     floor: it rendered as a full width pill that threw its own label off
+     the right of the screen and set the whole page scrolling sideways -
+     live, on the owner's phone, 11 Sep. Chromium shrank it to fit and hid
+     it; iOS does not shrink a form control. Every one of those has to be
+     answered by name, min-height included, because a tick is not a text
+     box and nothing in this app had said so before. */
+  #tGuest .gi-nat input[type=checkbox] { flex:0 0 18px; width:18px;
+            height:18px; min-height:0; align-self:center; padding:0;
+            border-radius:4px; accent-color:var(--ink); }
+  .gi-nat span { flex:1; min-width:0; }
   /* The tab covers three surfaces a guest meets in order - the welcome
      screen, the dining page, then the questions - and they read as one
      long form unless each is announced. A headline rather than another
@@ -311,7 +324,7 @@
                  value="38"></span>
       </div>
       <label class="gi-nat"><input type="checkbox" id="giWelcomeNatural">
-        Show the whole photo, uncropped</label>
+        <span>Show the whole photo, uncropped</span></label>
       <label class="gi-lab" for="giIntro">Description</label>
       <textarea id="giIntro" rows="3"
         placeholder="Empty: the guest reads the original wording."></textarea>
@@ -333,7 +346,7 @@
                  value="38"></span>
       </div>
       <label class="gi-nat"><input type="checkbox" id="giDiningNatural">
-        Show the whole photo, uncropped</label>
+        <span>Show the whole photo, uncropped</span></label>
       <label class="gi-lab" for="giDiningText">Description</label>
       <textarea id="giDiningText" rows="6"
         placeholder="How dinner here works."></textarea>
