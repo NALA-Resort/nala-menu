@@ -67,6 +67,11 @@ os.chdir(ROOT)
 # a hang is caught inside a coffee rather than inside a morning.
 SUITES = [
     ("rules",      ["node", "tests/rules_test.js"],       120),
+    # Pure python, so it runs where the node firebase module is absent:
+    # the console's own regex law over every .matches() pattern. Added
+    # 11 Sep, after that gap put a red banner in front of the owner
+    # mid-paste.
+    ("ruleslint",  ["python3", "tests/ruleslint_suite.py"], 60),
     ("coercion",   ["node", "tests/coercion_test.js"],    120),
     ("sw",         ["node", "tests/sw_test.js"],          120),
     ("worker",     ["node", "worker/test.mjs"],           300),
@@ -153,7 +158,7 @@ COVERS = {
     "debug.html":        ["debug", "sweep:debug"],
     "menu-print.html":   ["print"],
     "welcome.html":      ["welcome", "sweep:welcome"],
-    "rules.json":        ["rules", "coercion"],
+    "rules.json":        ["rules", "ruleslint", "coercion"],
     # Out of EVERYTHING now that a suite owns it: sw.js deliberately has no
     # fetch handler and no caching, so the pages cannot see its internals and
     # a change to it surfaces only in what a push puts on screen, which is
