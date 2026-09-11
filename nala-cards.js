@@ -1,524 +1,369 @@
-/* The card-issuing runtime, shared. Front Desk and Keys both offer the
-   same duty - queue a villa's cards, watch the helper write them, obey
-   the queue law - and two copies of that flow is how boards learn to
-   disagree (CLAUDE.md rule 1). Moved here from front-desk.html, 9 Sep,
-   the night Keys gained its Issue button; front-desk's suite held the
-   behaviour still while it moved.
+/* The card-issuing runtime, shared. The Keys page owns issuing; Front
+   Desk keeps exactly one shortcut - its key IS "cut all arrival keys"
+   (the owner, 11 Sep) - and both go through here: one flow, two pages,
+   or the boards would learn to disagree (CLAUDE.md rule 1).
+
+   Rebuilt 11 Sep on the owner's model. The lasting record is the card
+   table, /cards/<no>, one row per card in the world; THE REQUEST to cut
+   is /cutrun, a short-lived thing that ends when the cutting ends and
+   is never stored with the cards:
+
+     { state: on|off|done, by, at, seen,
+       queue: { <villa>: { guest, qty, cut, expiry, note? } } }
+
+   The desk switches it on with the villas wanted. The helper on the
+   desk PC heartbeats `seen`, works the queue in villa order, appends a
+   ROW PER CARD to /cards as each one is cut, bumps queue/<villa>/cut,
+   and sets state done when the queue is finished. Skip shrinks a
+   villa's qty to its cut; Stop (or closing the run) switches state off
+   and the helper stands down; ten silent seconds without a heartbeat
+   is the queue law's own verdict - the run dies rather than lying in
+   wait for an encoder with nobody at the desk (ruled 8 Sep).
 
    A page calls NalaCards.init(cfg) once, with:
-     db        the database URL
-     err       its error line
-     dayKey()  the date its queue lives under
-     rows()    the villas it may issue to: [{ villa, name, stay }]
-     bulkRows() the subset its bulk row queues
+     db         the database URL
+     err        its error line
+     rows()     the villas it may issue to: [{ villa, name, stay, arriving? }]
+     bulkRows() the subset its bulk action cuts for
      bulkLabel, emptyLabel, menuHint   its drop's three wordings
-     btn, drop  the elements the drop hangs from
-   The page's sheet reads NalaCards.jobFor; its loaders call .load();
-   date changes call .clear(). Everything else lives in here. */
+     btn, drop  the elements the drop hangs from. A page with no drop
+                (Front Desk) wires its own button to NalaCards.bulk().
+   Loaders call .load(); date changes call .clear(). */
 (function(){
 var cfg = null;
 
 function esc(s){
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 }
-function day(){ return cfg.dayKey(); }
 function nfetch(path){
   return fetch(cfg.db + path + '.json?v=' + Date.now())
     .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); });
+}
+function nwrite(path, obj, method){
+  return fetch(cfg.db + path + '.json', {
+    method: method || 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(obj)
+  }).then(function(r){ if (!r.ok) throw new Error(r.status); });
 }
 function rowOf(villa){
   return cfg.rows().filter(function(r){ return String(r.villa) === String(villa); })[0] || null;
 }
 
-/* ── key cards ─────────────────────────────────────────────────────
-   The queue is /cardjobs/<date>/<villa> and the helper on the desk PC is
-   the only thing that moves a job forward; this page queues, cancels and
-   watches. Where a villa stands is always cardCell's answer - one reader,
-   both boards, tests/card_cases.json - and the overlay below is a viewport
-   onto the queue, deliberately not a controller: closing it changes
-   nothing, because the cards are being written by a machine that cannot
-   see this screen. */
-var CARDS = {};          /* /cardjobs for the viewed date */
-var CARD_TIMER = null;   /* the poll, alive only while the overlay is open */
-var CARD_VILLA = null;   /* one villa's panel, or null for the day's run */
-var CARD_ASK = null;     /* villa whose done record the desk wants to re-open:
-                            the qty question shows again, and nothing is
-                            written until Issue is pressed - a lost card must
-                            not cost the record just for asking (9 Sep) */
-
-function loadCards(){
-  return nfetch('/cardjobs/' + day())
-    .then(function(j){ CARDS = j || {}; cardsSweep(); cardsPaint(); })
+/* the card table, for the drop's held counts and the run's seats -
+   always through the shared readers, never this file's own idea */
+var TABLE = [];          /* cardRows(/cards), as read */
+function loadTable(){
+  return nfetch('/cards')
+    .then(function(j){ TABLE = cardRows(j); cardsPaint(); })
     .catch(function(){});
 }
-
-/* A queue must never lie in wait. Ruled by the owner, 8 Sep: cards are
-   written with a person standing at the encoder, seconds after the press.
-   A queued job nobody claimed is an attempt that failed, so it is deleted
-   rather than left to make the encoder demand cards at some later moment
-   with nobody at the desk. The run screen gives its verdict at ten
-   seconds; this sweep is the belt and braces at two minutes, for a queue
-   left behind by a closed overlay or a dropped connection. */
-var CARD_OFFLINE_MS = 10000, CARD_STALE_MS = 2 * 60 * 1000;
-var CARD_DEAD_MS = 3 * 60 * 1000;   /* a write untouched this long is a dead PC */
-var CARD_FAIL_HOLD_MS = 10 * 60 * 1000;  /* how long a failure stays a failure */
-var CARD_OFFLINE = false;   /* the run screen's verdict, until reopened */
-
-/* A queue behind a working encoder is never stale - learned from the mock,
-   8 Sep, when the verdict fired mid-batch because the receptionist was
-   pacing the cards and the villas behind the live one aged past ten
-   seconds. Writing counts as alive only while its stamp is fresh: the
-   helper refreshes at on the claim and on every card, so a PC that died
-   mid-write stops counting, gets named in red, and frees the sweep. */
-function cardsAlive(){
-  var now = Date.now();
-  return Object.keys(CARDS).some(function(v){
-    var j = CARDS[v];
-    return j && j.state === 'writing' && j.at && now - j.at < CARD_DEAD_MS;
-  });
+/* what the guest holds in hand: their live rows minus the lost one -
+   a lost card is still out there, but it is not in anybody's hand */
+function heldFor(villa){
+  return cardsHeld(TABLE, villa, Date.now()).filter(function(r){
+    return !r.lost; }).length;
 }
-function cardsSweep(){
-  var now = Date.now(), alive = cardsAlive();
-  Object.keys(CARDS).forEach(function(v){
-    var j = CARDS[v];
-    if (!j) return;
-    if (j.state === 'writing' && j.at && now - j.at > CARD_DEAD_MS){
-      j.state = 'failed'; j.note = 'the desk PC stopped mid-write';
-      fetch(cfg.db + '/cardjobs/' + day() + '/' + v + '.json', {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state: 'failed', note: j.note })
-      }).catch(function(){});
+
+/* ── the run ────────────────────────────────────────────────────────
+   RUN is this page's viewport onto /cutrun while the overlay is open.
+   The queue itself lives in the database; closing the overlay stops
+   the run (state off), exactly as the cancel session's Stop does -
+   a request that ends when the asking ends. */
+var RUN = null;          /* { at } while the overlay is open */
+var RUN_T = null;
+var RUN_OFFLINE = false;
+var CR = null;           /* /cutrun as last read */
+var RUN_OFFLINE_MS = 10000;
+
+function runStart(entries, title){
+  var queue = {}, bad = [];
+  entries.forEach(function(en){
+    var exp = cardExpiry(en.stay && en.stay.depart);
+    if (!exp){ bad.push(en.villa); return; }
+    queue[String(en.villa)] = { guest: String(en.name || '').slice(0, 80),
+                                qty: en.qty, cut: 0, expiry: exp };
+  });
+  if (bad.length)
+    cfg.err('Villa ' + bad.join(' & ') + ' has no departure date, so no card can be cut.');
+  if (!Object.keys(queue).length) return;
+  RUN = { at: Date.now(), title: title };
+  RUN_OFFLINE = false; CR = null;
+  nwrite('/cutrun', { state: 'on', by: window.NALA_ME || '', at: RUN.at,
+                      queue: queue }, 'PUT')
+    .catch(function(){
+      cfg.err('The run did not start. This is usually the connection.');
+    });
+  document.getElementById('cardTitle').textContent = title;
+  document.getElementById('cardOv').hidden = false;
+  runRender();
+  if (!RUN_T) RUN_T = setInterval(runPoll, 1000);
+}
+function runStop(){
+  if (RUN) nwrite('/cutrun', { state: 'off' }).catch(function(){});
+  if (RUN_T){ clearInterval(RUN_T); RUN_T = null; }
+  RUN = null;
+  document.getElementById('cardOv').hidden = true;
+  loadTable();     /* cut cards changed every count */
+  if (typeof render === 'function') render();
+}
+function runPoll(){
+  if (!RUN) return;
+  Promise.all([nfetch('/cutrun'), loadTable()]).then(function(res){
+    if (!RUN) return;
+    CR = res[0];
+    /* nobody listening: the verdict, and the switch back off */
+    if (CR && CR.state === 'on' && !RUN_OFFLINE &&
+        (!CR.seen || CR.seen < RUN.at) && Date.now() - RUN.at > RUN_OFFLINE_MS){
+      RUN_OFFLINE = true;
+      nwrite('/cutrun', { state: 'off' }).catch(function(){});
     }
-    if (!alive && j.state === 'queued' && j.at && now - j.at > CARD_STALE_MS)
-      cancelJob(v);
-    /* A failure is a fact about a MOMENT, not about a villa (owner,
-       11 Sep: "only important at the time of failure"). Red while
-       somebody is standing at the encoder; once the moment is well past,
-       the record folds back to the cards that exist, and the drop stops
-       teaching history. cancelJob is that fold: done at written, or
-       gone if nothing was. */
-    if (j.state === 'failed' && j.at && now - j.at > CARD_FAIL_HOLD_MS)
-      cancelJob(v);
-  });
+    runRender();
+  }).catch(function(){});
 }
 
-function jobFor(villa){ return CARDS[String(villa)] || null; }
-
-/* Queue one villa. The expiry is the booking's own depart day at
-   CARD_CHECKOUT_HOUR, built by cardExpiry; a booking whose depart Mews
-   never sent cannot be carded and says so, rather than minting a card
-   that never dies. */
-function putJob(r, qty){
-  var exp = cardExpiry(r.stay && r.stay.depart);
-  if (!exp){ cfg.err('Villa ' + r.villa + ' has no departure date, so no card can be cut.'); return null; }
-  var job = { qty: qty, expiry: exp, state: 'queued', written: 0,
-              guest: r.name.slice(0, 80),
-              by: window.NALA_ME || '', at: Date.now() };
-  return fetch(cfg.db + '/cardjobs/' + day() + '/' + r.villa + '.json', {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(job)
-  }).then(function(res){ if (!res.ok) throw new Error(res.status);
-                         CARDS[String(r.villa)] = job; });
-}
-
-/* More cards for a villa that already has some. The record GROWS - qty
-   rises, written stands, the helper continues from written - because a
-   re-issue that replaced the record read one extra card as the whole
-   day's count (the owner, 9 Sep, live). PATCH, never PUT: written is
-   the cards in the guest's hands and no button may zero it. */
-function extendJob(r, more){
-  var j = jobFor(r.villa);
-  /* written + more, never old qty + more: qty is an ASK and an abandoned
-     ask (a failed run) must not ride along - it is how a two-card villa
-     came to carry a phantom third (owner, 10-11 Sep). The cards that
-     exist plus the cards wanted now is the whole truth. */
-  var patch = { qty: Math.min(99, (+j.written || 0) + more), state: 'queued',
-                by: window.NALA_ME || '', at: Date.now() };
-  return fetch(cfg.db + '/cardjobs/' + day() + '/' + r.villa + '.json', {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(patch)
-  }).then(function(res){ if (!res.ok) throw new Error(res.status);
-                         Object.assign(j, patch); });
-}
-
-/* Cancelling forgets the attempt, never the cards: a job that already
-   wrote some walks back to done at that count; only a job that wrote
-   nothing is deleted. */
-function cancelJob(villa){
-  var j = jobFor(villa);
-  if (j && +j.written > 0){
-    var back = { state: 'done', qty: +j.written, at: Date.now() };
-    return fetch(cfg.db + '/cardjobs/' + day() + '/' + villa + '.json', {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(back)
-    }).then(function(){ Object.assign(j, back); cardsPaint(); });
+/* One shape per card: the guest's cards in hand stand filled, the ones
+   still to cut are numbered from 1, the amber one is under the encoder
+   now. Never the lifetime ledger - the wiped past is the register's
+   story (owner, 11 Sep). */
+function cslotsHTML(villa, q, active, writing){
+  var held = heldFor(villa);
+  var todo = Math.max(0, (+q.qty || 0) - (+q.cut || 0));
+  var h = '';
+  for (var i = 0; i < held; i++) h += '<i class="cslot filled"></i>';
+  for (var j = 0; j < todo; j++){
+    var now = active && writing && j === 0;
+    h += '<i class="cslot' + (now ? ' now' : '') + '">' + (j + 1) + '</i>';
   }
-  return fetch(cfg.db + '/cardjobs/' + day() + '/' + villa + '.json',
-               { method: 'DELETE' })
-    .then(function(){ delete CARDS[String(villa)]; cardsPaint(); });
+  return (held + todo) ? '<div class="cslots">' + h + '</div>' : '';
 }
 
-/* Encode all: a job for every arriving villa not already queued, writing
-   or done. A failed one is queued again - the desk pressing the big button
-   IS the retry - and a cancelled one comes back too, because pressing
-   encode-all after cancelling is a change of mind, not an accident. */
-function cardsEncodeAll(){
-  CARD_OFFLINE = false;
-  var made = [];
-  cfg.bulkRows().forEach(function(r){
-    var j = jobFor(r.villa);
-    if (j && (j.state === 'queued' || j.state === 'writing' || j.state === 'done')) return;
-    /* the bulk row asks no quantity: a card per GUEST on the booking
-       (owner, 11 Sep), and the odd villa out is corrected by its own
-       ask afterwards */
-    var p = putJob(r, Math.max(1, Math.min(99,
-              (r.stay && +r.stay.adults) || 2)));
-    if (p) made.push(p);
+/* What the card will do, from the queue's own expiry - the owner,
+   9 Sep, with TTHotel's Validity column as the reference. */
+function cardValidHTML(expiry){
+  if (!expiry) return '';
+  var ex = new Date(expiry * 1000);
+  return '<div class="crun-valid">Valid ' +
+         dateLabel(new Date()) + ' – ' + dateLabel(ex) +
+         ', ' + String(ex.getHours()).padStart(2, '0') + ':' +
+         String(ex.getMinutes()).padStart(2, '0') + '</div>';
+}
+
+var CARD_ASK_SVG = '<div class="cardask"><svg viewBox="0 0 140 96" fill="none" ' +
+  'stroke="currentColor" stroke-width="2.6" stroke-linecap="round" ' +
+  'stroke-linejoin="round" aria-label="Hold a card to the reader">' +
+  '<rect x="57" y="10" width="33" height="46" rx="5" transform="rotate(16 73 33)"/>' +
+  '<path d="M58 50c-4 7-3 14 2 19 6 6 15 6 21 1l7-6"/>' +
+  '<path d="M63 57c2-3 5-4 8-2M69 63c2-3 5-4 8-2"/>' +
+  '<path class="wave w1" d="M40 30c-4 6-4 14 0 20"/>' +
+  '<path class="wave w2" d="M30 24c-7 9-7 23 0 32"/>' +
+  '<path class="wave w1" d="M106 30c4 6 4 14 0 20"/>' +
+  '<path class="wave w2" d="M116 24c7 9 7 23 0 32"/>' +
+  '</svg></div>';
+
+function queuePairs(){
+  var q = (CR && CR.queue) || {};
+  return Object.keys(q).sort(function(a, b){ return (+a) - (+b); })
+    .map(function(v){ return { villa: v, q: q[v] }; });
+}
+
+function runRender(){
+  if (!RUN) return;
+  var body = document.getElementById('cardBody');
+  if (RUN_OFFLINE){
+    body.innerHTML = '<div class="cardov-in">' +
+      '<div class="cardhold"><b>Encoder offline.</b> Nothing was written ' +
+      '· open Nala card helper from the desk PC’s taskbar, then ' +
+      'try again.</div></div>';
+    return;
+  }
+  var pairs = queuePairs();
+  if (!pairs.length){
+    body.innerHTML = '<div class="cardov-in"><div class="crun">' +
+      '<div class="crun-s">Waking up…</div></div></div>';
+    return;
+  }
+  var awake = CR && CR.seen && CR.seen >= RUN.at;
+  var over = CR && CR.state !== 'on';
+  /* the active villa is the first unfinished, unfailed one - the
+     helper's own order, so the highlight and the encoder agree about
+     whose card is on the pad */
+  var activeVilla = null;
+  pairs.forEach(function(p){
+    if (activeVilla || p.q.note) return;
+    if ((+p.q.cut || 0) < (+p.q.qty || 0)) activeVilla = p.villa;
   });
-  Promise.all(made).catch(function(){
-    cfg.err('Some card jobs did not save. This is usually the connection.');
-  }).then(function(){ cardsOpen(null); });
+  var total = 0, cut = 0;
+  pairs.forEach(function(p){ total += +p.q.qty || 0; cut += Math.min(+p.q.cut || 0, +p.q.qty || 0); });
+  var h = total ? '<div class="cprog"><i style="width:' +
+          Math.round(cut / total * 100) + '%"></i></div>' : '';
+  if (over || !activeVilla)
+    h += '<div class="crun"><div class="crun-s card-done">' +
+         cut + (cut === 1 ? ' card cut' : ' cards cut') +
+         ' · envelope and hand over</div></div>';
+  pairs.forEach(function(p){
+    var q = p.q, r = rowOf(p.villa);
+    var name = q.guest || (r && r.name) || '';
+    var done = (+q.cut || 0) >= (+q.qty || 0);
+    var active = !over && p.villa === activeVilla;
+    var writing = active && awake;
+    var cls = 'crun' + (active ? ' now' : '') + (done ? ' is-done' : '') +
+              (q.note ? ' is-failed' : '');
+    h += '<div class="' + cls + '">' +
+      '<div class="crun-v">Villa ' + esc(p.villa) +
+      '<small>' + esc(name) + '</small></div>' +
+      (writing ? CARD_ASK_SVG +
+        '<div class="crun-s">Hold a card to the reader</div>' : '') +
+      cslotsHTML(p.villa, q, active, writing) +
+      (active && !awake
+        ? '<div class="crun-s"><span class="cwake"><i></i><i></i><i></i></span>Waking up…</div>'
+        : '') +
+      (q.note ? '<div class="crun-s card-failed">write failed · ' +
+                esc(String(q.note)) + '</div>' : '') +
+      (done && heldFor(p.villa) > 0
+        ? '<div class="crun-env">Envelope villa ' + esc(p.villa) + '’s cards</div>' : '') +
+      cardValidHTML(q.expiry) +
+      (writing
+        ? '<div class="sum-btns"><button class="terra" data-cardskip="' +
+          esc(p.villa) + '">Skip this card</button></div>'
+        : '') +
+      '</div>';
+  });
+  if (over || !activeVilla)
+    h += '<div class="sum-btns" style="margin-top:16px">' +
+         '<button class="go wide" id="runDone">Done</button></div>';
+  body.innerHTML = '<div class="cardov-in">' + h + '</div>';
+}
+
+/* Skip this card: the villa closes at the cards already cut. The ask
+   shrinks to the cut count and the helper's own poll moves it on -
+   never a delete, because the cards that exist are rows already. */
+function runSkip(villa){
+  var q = (CR && CR.queue && CR.queue[villa]) || null;
+  if (!q) return;
+  nwrite('/cutrun/queue/' + villa, { qty: +q.cut || 0 }).catch(function(){});
+  q.qty = +q.cut || 0;
+  runRender();
+}
+
+/* ── the ask ────────────────────────────────────────────────────────
+   Picking a guest ALWAYS lands on the quantity question (owner,
+   11 Sep); issuing more later is simply another run - the rows the
+   guest already holds stand as filled seats, nothing continues from a
+   written count. */
+function askOpen(villa){
+  var r = rowOf(villa);
+  if (!r) return;
+  RUN = null;
+  var body = document.getElementById('cardBody');
+  body.setAttribute('data-qty', 2);
+  document.getElementById('cardTitle').textContent =
+    'Key cards · villa ' + r.villa;
+  document.getElementById('cardOv').hidden = false;
+  askRender(r);
+}
+function askRender(r){
+  var body = document.getElementById('cardBody');
+  var q = +(body.getAttribute('data-qty') || 2);
+  var held = heldFor(r.villa);
+  body.innerHTML = '<div class="cardov-in"><div class="crun">' +
+    '<div class="crun-v">Villa ' + esc(r.villa) + '<small>' +
+    esc(r.name) + '</small></div>' +
+    '<div class="crun-s">How many ' + (held ? 'more cards' : 'cards') + '?' +
+    '<span class="cqty"><button data-cardq="-1">&minus;</button><span>' + q +
+    '</span><button data-cardq="1">+</button></span></div>' +
+    cardValidHTML(cardExpiry(r.stay && r.stay.depart)) +
+    '<div class="sum-btns"><button class="go wide" data-cardissue="' +
+    esc(r.villa) + '">Issue ' + q +
+    (held ? ' more' : q === 1 ? ' card' : ' cards') +
+    '</button></div></div></div>';
+}
+
+/* the bulk action: no quantity asked - a card per guest on the booking
+   (the owner, 11 Sep), the odd villa out corrected by its own ask */
+function bulk(){
+  var entries = cfg.bulkRows().map(function(r){
+    return { villa: r.villa, name: r.name, stay: r.stay,
+             qty: Math.max(1, Math.min(99, (r.stay && +r.stay.adults) || 2)) };
+  });
+  if (!entries.length){ cfg.err(cfg.emptyLabel); return; }
+  runStart(entries, 'Key cards · ' + cfg.bulkLabel.toLowerCase());
 }
 
 /* ── the drop ── */
 function cardsDrawDrop(){
   var d = cfg.drop;
+  if (!d) return;
   if (!cfg.rows().length){
     d.innerHTML = '<button disabled style="color:var(--mid)">' + cfg.emptyLabel + '</button>';
     return;
   }
   var h = '';
   cfg.rows().forEach(function(r){
-    var cc = cardCell(jobFor(r.villa));
-    h += '<button data-key="' + r.villa + '">Villa ' + r.villa +
-         ' · ' + esc(r.name) +
-         '<span class="kd-state card-' + cc.k + '">' +
-         (cc.k === 'none' ? '' : esc(cc.label)) + '</span></button>';
+    var n = heldFor(r.villa);
+    var state = r.arriving && !n ? '<span class="kd-state">arriving</span>'
+      : n ? '<span class="kd-state card-done">' + n + ' held</span>'
+      : '<span class="kd-state">no cards</span>';
+    h += '<button data-key="' + esc(r.villa) + '">Villa ' + esc(r.villa) +
+         ' · ' + esc(r.name) + state + '</button>';
   });
   h += '<button class="kd-all" data-key="all">' + esc(cfg.bulkLabel) + '' +
        '<span class="navbadge">' + cfg.bulkRows().length + '</span></button>';
   d.innerHTML = h;
 }
-
-/* ── the overlay ── */
-function cardsOpen(villa){
-  CARD_VILLA = villa;
-  /* Picking a guest to issue to ALWAYS lands on the quantity question
-     (owner, 11 Sep: it looked gated on pre-arrival; it was gated on
-     whether a record existed, and a status sheet in front of the ask
-     read as no choice at all). The render guard below is the one judge
-     of the exception - a job the encoder is on right now shows its run,
-     because asking mid-write would be a lie - so a stale cache here
-     corrects itself on the next poll. */
-  CARD_ASK = villa != null ? villa : null;
-  CARD_OFFLINE = false;
-  /* the question starts fresh: a quantity left over from another villa's
-     ask is nobody's answer */
-  document.getElementById('cardBody').setAttribute('data-qty', 2);
-  document.getElementById('cardOv').hidden = false;
-  cardRender();
-  loadCards();
-  if (!CARD_TIMER) CARD_TIMER = setInterval(loadCards, 1500);
-}
-function cardsClose(){
-  document.getElementById('cardOv').hidden = true;
-  if (CARD_TIMER){ clearInterval(CARD_TIMER); CARD_TIMER = null; }
-  render();
-}
 function cardsPaint(){
-  if (!document.getElementById('cardOv').hidden) cardRender();
-  if (cfg.drop.classList.contains('open')) cardsDrawDrop();
+  if (RUN && !document.getElementById('cardOv').hidden) runRender();
+  if (cfg.drop && cfg.drop.classList.contains('open')) cardsDrawDrop();
 }
 
-/* One shape per card, from the same job the words come from: filled means
-   written, the amber one is under the encoder now, an outline is to come,
-   and a failure marks the slot it stopped on in red ink. */
-function cslotsHTML(j, cc, active){
-  /* Seats show the cards the guest HOLDS NOW plus the ones about to be
-     cut, numbered from 1 - never the lifetime ledger. Three ghost seats
-     in front of a fresh "card 4" read as the app inventing cards
-     (owner, 11 Sep: "you just keep adding more"); the wiped past is the
-     Tally's story, nobody's seats. */
-  var L = j ? cardLife(j, 0) : null;
-  if (!L) return '';
-  var held = L.active;
-  var todo = Math.max(0, ((+j.qty) || 0) - L.written);
-  var total = held + todo, h = '';
-  for (var i = 0; i < total; i++){
-    var st = i < held ? 'filled'
-       : i === held && cc.k === 'writing' && active ? 'now'
-       : i === held && cc.k === 'failed' ? 'fail' : '';
-    h += '<i class="cslot' + (st ? ' ' + st : '') + '">' +
-         (st === 'filled' || st === 'fail' ? '' : i + 1) + '</i>';
-  }
-  return total ? '<div class="cslots">' + h + '</div>' : '';
-}
-
-/* What the card will do, from the job's own expiry - the owner, 9 Sep,
-   with TTHotel's Validity column as the reference. From is the day on
-   the screen (a card lives from the moment it is written); to is read
-   off the expiry stamp, hour included, so this line can never disagree
-   with what the encoder was told. */
-function cardValidHTML(expiry){
-  if (!expiry) return '';
-  var ex = new Date(expiry * 1000);
-  return '<div class="crun-valid">Valid ' +
-         dateLabel(parseISO(day())) + ' – ' + dateLabel(ex) +
-         ', ' + String(ex.getHours()).padStart(2, '0') + ':' +
-         String(ex.getMinutes()).padStart(2, '0') + '</div>';
-}
-
-/* One villa's block in the run: the state in cardCell's words, the envelope
-   line the moment it lands, red only when the encoder truly failed. */
-function crunHTML(r, active){
-  var j = jobFor(r.villa), cc = cardCell(j);
-  var cls = 'crun' + (active ? ' now' : '') +
-            (cc.k === 'done' ? ' is-done' : '') +
-            (cc.k === 'failed' ? ' is-failed' : '');
-  /* the active writing villa asks with the drawing below, not words */
-  /* The active QUEUED villa pulses while the helper claims it - about
-     five seconds of silence at the desk read as "is this working?"
-     (owner, 11 Sep). Movement only until a signal that cannot lie: the
-     claim happens after the encoder answered, so the hand drawing IS
-     "reader found", and the ten-second verdict owns the other ending.
-     Other queued villas keep the owner's one word of 8 Sep. */
-  var line = cc.k === 'writing' && active ? ''
-      : cc.k === 'queued' && active
-        ? '<span class="cwake"><i></i><i></i><i></i></span>Waking up\u2026'
-      : cc.k === 'queued' ? 'Queued'
-      : esc(cc.label);
-  /* the whole block is a door: seeing a guest on the run and not being
-     able to issue to them is the complaint of 11 Sep ("why are you
-     showing Wayne and not able to issue cards to him?") */
-  var h = '<div class="' + cls + '" data-cardopen="' + r.villa + '">' +
-          '<div class="crun-v">Villa ' + r.villa +
-          '<small>' + esc(r.name) + '</small></div>' +
-          cslotsHTML(j, cc, active) +
-          (cc.k === 'writing' && active ? '<div class="cardask"><svg viewBox="0 0 140 96" fill="none" ' +
-      'stroke="currentColor" stroke-width="2.6" stroke-linecap="round" ' +
-      'stroke-linejoin="round" aria-label="Hold a card to the reader">' +
-      '<rect x="57" y="10" width="33" height="46" rx="5" transform="rotate(16 73 33)"/>' +
-      '<path d="M58 50c-4 7-3 14 2 19 6 6 15 6 21 1l7-6"/>' +
-      '<path d="M63 57c2-3 5-4 8-2M69 63c2-3 5-4 8-2"/>' +
-      '<path class="wave w1" d="M40 30c-4 6-4 14 0 20"/>' +
-      '<path class="wave w2" d="M30 24c-7 9-7 23 0 32"/>' +
-      '<path class="wave w1" d="M106 30c4 6 4 14 0 20"/>' +
-      '<path class="wave w2" d="M116 24c7 9 7 23 0 32"/>' +
-      '</svg></div>' : '') +
-          (cc.k === 'writing' && active
-            ? '<div class="sum-btns"><button class="terra" data-cardskip="' +
-              r.villa + '">Skip this card</button></div>'
-            : '') +
-          (line || (cc.k === 'failed' && j && j.note)
-            ? '<div class="crun-s card-' + cc.k + '">' + line +
-              (cc.k === 'failed' && j && j.note ? ' · ' + esc(String(j.note)) : '') +
-              '</div>'
-            : '') +
-          (cc.k !== 'cancelled' ? cardValidHTML(j && j.expiry) : '');
-  /* an envelope needs cards to go in it */
-  if (cc.k === 'done' && (function(){ var Le = cardLife(j, 0);
-      return Le && Le.active > 0; })())
-    h += '<div class="crun-env">Envelope villa ' + r.villa + '’s cards</div>';
-  if (cc.k === 'queued' || cc.k === 'failed')
-    h += '<div class="sum-btns"><button class="terra" data-cardcancel="' +
-         r.villa + '">Cancel</button></div>';
-  return h + '</div>';
-}
-
-function cardRender(){
-  var body = document.getElementById('cardBody');
-  var one = CARD_VILLA != null ? rowOf(CARD_VILLA) : null;
-
-  /* One villa: the qty question, then its live block. */
-  if (one){
-    document.getElementById('cardTitle').textContent =
-      'Key cards · villa ' + one.villa;
-    var j = jobFor(one.villa);
-    /* the poll can reveal the encoder is ON this villa: the question
-       yields to the run - asking for a quantity mid-write is a lie */
-    if (CARD_ASK == one.villa && j &&
-        (j.state === 'queued' || j.state === 'writing')) CARD_ASK = null;
-    if (!j || j.state === 'cancelled' || CARD_ASK == one.villa){
-      var q = +(body.getAttribute('data-qty') || 2);
-      /* a living job means these are ADDED cards, and the words say so */
-      var more = j && j.state !== 'cancelled' && +j.written > 0;
-      body.innerHTML = '<div class="cardov-in"><div class="crun">' +
-        '<div class="crun-v">Villa ' + one.villa + '<small>' +
-        esc(one.name) + '</small></div>' +
-        '<div class="crun-s">How many ' + (more ? 'more cards' : 'cards') + '?' +
-        '<span class="cqty"><button data-cardq="-1">&minus;</button><span>' + q +
-        '</span><button data-cardq="1">+</button></span></div>' +
-        cardValidHTML(cardExpiry(one.stay.depart)) +
-        '<div class="sum-btns"><button class="go wide" data-cardissue="' +
-        one.villa + '">Issue ' + q + (more ? ' more' : q === 1 ? ' card' : ' cards') +
-        '</button></div></div></div>';
-      return;
-    }
-    /* A finished villa is not a closed one: a guest loses a card, a second
-       arrives late. The button re-opens the question only - the done record
-       stands until Issue actually writes a new job over it. */
-    body.innerHTML = '<div class="cardov-in">' + crunHTML(one, true) +
-      (cardCell(j).k === 'done' || cardCell(j).k === 'failed'
-        ? '<div class="sum-btns"><button data-cardagain="' + one.villa +
-          '">Issue ' + (+j.written > 0 ? 'more cards' : 'cards') +
-          '</button></div>'
-        : '') + '</div>';
-    return;
-  }
-
-  /* The day: every villa with a job, villa order, the first unfinished one
-     active. The desk PC being silent is said in amber, not left as a
-     mystery: a job nobody has claimed inside ten seconds means the helper
-     is not running, and that is a fact worth a sentence. */
-  document.getElementById('cardTitle').textContent = 'Key cards · ' +
-    dateLabel(parseISO(day()));
-  /* Villa order, not the sheet's sort: the helper writes lowest villa
-     first, and the run screen must agree with it about whose card is on
-     the pad. Found by the slot suite, 8 Sep: the sheet sorts by ETA, so
-     the highlighted villa could differ from the one being written. */
-  /* The run is the day's WORK, not the day's history: a done record
-     whose every card has since been wiped has nothing happening and
-     nothing to hand over, so it does not stand here with ghost slots
-     asking for an envelope (owner, 11 Sep). The register and the Tally
-     hold what happened. */
-  var withJobs = cfg.rows().filter(function(r){
-    var j = jobFor(r.villa);
-    if (!j) return false;
-    if (j.state !== 'done') return true;
-    var L = cardLife(j, 0);
-    return !!(L && L.active > 0);
-  }).sort(function(a, b){ return (+a.villa) - (+b.villa); });
-  /* The verdict outlives the queue it deleted: once the encoder is judged
-     offline the notice holds until the run is reopened, or the jobs that
-     were just removed would take their explanation with them. */
-  var offlineHTML = '<div class="cardhold"><b>Encoder offline.</b> ' +
-    'Nothing was written \u00b7 open Nala card helper from the desk ' +
-    'PC\u2019s taskbar, then try again.</div>';
-  if (!withJobs.length){
-    body.innerHTML = '<div class="cardov-in">' + (CARD_OFFLINE ? offlineHTML
-      : '<div class="crun"><div class="crun-s">Nothing queued. ' +
-        esc(cfg.menuHint) + '</div></div>') + '</div>';
-    return;
-  }
-  /* the batch's one bar: cards written over cards wanted, cancelled jobs
-     excluded because they are no longer wanted */
-  var total = 0, doneCards = 0;
-  withJobs.forEach(function(r){
-    var j = jobFor(r.villa);
-    if (j.state === 'cancelled') return;
-    total += +j.qty || 0;
-    doneCards += Math.min(+j.written || 0, +j.qty || 0);
-  });
-  /* The active villa is the one the encoder is ON, whatever its position:
-     a writing job anywhere outranks the first queued one. Only when
-     nothing is writing does the highlight fall to the next queued or
-     failed villa, which is where the helper will go. */
-  var writingNow = withJobs.filter(function(r){
-    return cardCell(jobFor(r.villa)).k === 'writing';
-  })[0];
-  var activeSeen = false, oldestWait = 0;
-  var h = total ? '<div class="cprog"><i style="width:' +
-          Math.round(doneCards / total * 100) + '%"></i></div>' : '';
-  withJobs.forEach(function(r){
-    var j = jobFor(r.villa), cc = cardCell(j);
-    var active = writingNow ? r === writingNow
-      : !activeSeen && (cc.k === 'queued' || cc.k === 'failed');
-    if (active) activeSeen = true;
-    if (cc.k === 'queued' && j.at) oldestWait = Math.max(oldestWait, Date.now() - j.at);
-    h += crunHTML(r, active);
-  });
-  /* Ten seconds unclaimed and the attempt has failed: delete what is still
-     queued - the owner's ruling - so the encoder can never start demanding
-     cards later with nobody at the desk. Villas already written or being
-     written are the helper's and are left alone. */
-  if (!cardsAlive() && oldestWait > CARD_OFFLINE_MS){
-    CARD_OFFLINE = true;
-    withJobs.forEach(function(r){
-      var j = jobFor(r.villa);
-      if (j && j.state === 'queued') cancelJob(r.villa);
-    });
-  }
-  if (CARD_OFFLINE)
-    h = offlineHTML + h;
-  body.innerHTML = '<div class="cardov-in">' + h + '</div>';
-}
-
-/* the wiring: the key toggles its drop, the drop picks, the overlay acts */
+/* the wiring: the button toggles its drop (or is the bulk action),
+   the drop picks, the overlay acts */
 function wire(){
   var b = cfg.btn, d = cfg.drop;
-  b.onclick = function(e){ e.stopPropagation();
-    if (!d.classList.contains('open')) cardsDrawDrop();
-    d.classList.toggle('open'); };
-  document.addEventListener('click', function(){ d.classList.remove('open'); });
-  d.addEventListener('click', function(e){
-    var t = e.target.closest('[data-key]');
-    if (!t) return;
-    var k = t.getAttribute('data-key');
-    if (k === 'all') cardsEncodeAll(); else cardsOpen(k);
-  });
-  document.getElementById('cardX').onclick = cardsClose;
+  if (b && d){
+    b.onclick = function(e){ e.stopPropagation();
+      if (!d.classList.contains('open')) cardsDrawDrop();
+      d.classList.toggle('open'); };
+    document.addEventListener('click', function(){ d.classList.remove('open'); });
+    d.addEventListener('click', function(e){
+      var t = e.target.closest('[data-key]');
+      if (!t) return;
+      var k = t.getAttribute('data-key');
+      if (k === 'all') bulk(); else askOpen(k);
+    });
+  } else if (b){
+    b.onclick = function(e){ e.stopPropagation(); bulk(); };
+  }
+  document.getElementById('cardX').onclick = runStop;
   document.getElementById('cardBody').addEventListener('click', function(e){
     var q = e.target.closest('[data-cardq]');
     if (q){
       var body = document.getElementById('cardBody');
       var now = +(body.getAttribute('data-qty') || 2) + (+q.getAttribute('data-cardq'));
-      /* 99, not the invented 6: "if I feel like issuing 1000 cards to a
-         room I can - it just goes to the tally" (owner, 11 Sep). The
-         rules' own sanity bound is the only ceiling. */
+      /* 99, the rules' own sanity bound and nothing tighter (11 Sep) */
       body.setAttribute('data-qty', Math.min(99, Math.max(1, now)));
-      cardRender(); return;
+      var open = body.querySelector('[data-cardissue]');
+      if (open){ var r = rowOf(open.getAttribute('data-cardissue')); if (r) askRender(r); }
+      return;
     }
     var iss = e.target.closest('[data-cardissue]');
     if (iss){
-      var r = rowOf(iss.getAttribute('data-cardissue'));
-      var body2 = document.getElementById('cardBody');
-      var n2 = +(body2.getAttribute('data-qty') || 2);
-      /* a villa with a living job GROWS it; only a blank or cancelled
-         slate gets a fresh one - the record is never replaced (9 Sep) */
-      var j2 = r && jobFor(r.villa);
-      var p = r && (j2 && j2.state !== 'cancelled'
-                    ? extendJob(r, n2) : putJob(r, n2));
-      CARD_ASK = null;
-      if (p) p.then(cardRender).catch(function(){
-        cfg.err('The card job did not save. This is usually the connection.');
-      });
+      var r2 = rowOf(iss.getAttribute('data-cardissue'));
+      var n2 = +(document.getElementById('cardBody').getAttribute('data-qty') || 2);
+      if (r2) runStart([{ villa: r2.villa, name: r2.name, stay: r2.stay, qty: n2 }],
+                       'Key cards · villa ' + r2.villa);
       return;
-    }
-    var ag = e.target.closest('[data-cardagain]');
-    if (ag){
-      CARD_ASK = ag.getAttribute('data-cardagain');
-      document.getElementById('cardBody').setAttribute('data-qty', 2);
-      cardRender(); return;
     }
     var sk = e.target.closest('[data-cardskip]');
-    if (sk){
-      /* the villa closes at the cards already cut (a room that only
-         needs one of its two, owner 11 Sep); the helper notices the
-         shrunk ask between cards and moves on */
-      cancelJob(sk.getAttribute('data-cardskip'));
-      return;
-    }
-    var opn = e.target.closest('[data-cardopen]');
-    if (opn && CARD_VILLA == null && !e.target.closest('button')){
-      cardsOpen(opn.getAttribute('data-cardopen')); return;
-    }
-    var c = e.target.closest('[data-cardcancel]');
-    if (c){
-      /* Destructive, so it confirms - the button law. Two taps on the same
-         button, the Mark-as-completed pattern, rather than a dialog. */
-      if (c.getAttribute('data-armed')){ cancelJob(c.getAttribute('data-cardcancel')); return; }
-      c.setAttribute('data-armed', '1'); c.textContent = 'Confirm cancel';
-      setTimeout(function(){ if (c.isConnected){ c.removeAttribute('data-armed');
-        c.textContent = 'Cancel'; } }, 4000);
-    }
+    if (sk){ runSkip(sk.getAttribute('data-cardskip')); return; }
+    if (e.target.closest('#runDone')){ runStop(); return; }
   });
 }
 
 window.NalaCards = {
   init: function(c){ cfg = c; wire(); },
-  load: loadCards,
-  open: cardsOpen,
-  jobFor: jobFor,
-  clear: function(){ CARDS = {}; }
+  load: loadTable,
+  bulk: bulk,
+  open: askOpen,
+  clear: function(){ TABLE = []; }
 };
 })();

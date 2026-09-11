@@ -12,9 +12,9 @@
 <link rel="stylesheet" href="nala-ui2.css?v=6">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
-/* Keys - the card register. Built 9 Sep from the approved mock
-   (mock-keys.html), whose shape this page keeps: keys_suite compares the
-   two files and fails on drift.
+/* Keys - the card register. Built 9 Sep from the approved mock, rebuilt
+   11 Sep on the card table against mock-keys-store.html, whose shape
+   this page keeps: keys_suite compares the two files and fails on drift.
 
    THE DRESS IS FRONT DESK'S, COPIED: the block below is front-desk.html's
    own page style, because the owner ruled the two pages wear one design
@@ -333,11 +333,10 @@
   .txt.miss { border-color:var(--red); }
 
 /* ── key cards ─────────────────────────────────────────────────────
-   The key sits in the date row beside the hamburger and wears its dress.
-   Its drop offers the day's encode-all and each villa singly; the card
-   states inside it and on the sheet are cardCell's k, coloured by the
-   law: queued cream, writing amber, done green, failed red, cancelled
-   and none grey. */
+   The issue button sits in the date row and wears its dress. Its drop
+   offers each villa in house (held counts from the card table, through
+   cardsHeld) and All arrivals last; the run states are coloured by the
+   law: waiting amber, done green, a refused write red. */
 .keywrap { position:relative; }
 /* The key costs the date row 42px it did not have at 320, and the row must
    never bleed (STYLEGUIDE's width rule). Below 340 the title gives the
@@ -531,21 +530,23 @@ button
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=64"></script>
-<script src="nala-cards.js?v=8"></script>
+<script src="nala-shared.js?v=65"></script>
+<script src="nala-cards.js?v=9"></script>
 <script>
-/* Keys: the card register, built from the approved mock (mock-keys.html)
-   and holding its exact shape - the suite compares the two files and
-   fails if they drift. The page READS: every fact here is owned
-   elsewhere. /cardjobs owns the cards (front-desk writes them, the
-   helper moves them, cardLife in nala-shared is the one reader of where
-   they stand). This page OWNS two small things: the lost/found marks it
-   writes onto a job, and the /cancelrun session it switches on and off.
-   The Tally is arithmetic over dead jobs, not a stored fact. */
+/* Keys: the card register, built from the approved mock
+   (mock-keys-store.html) and holding its shape - the suite compares
+   the two files and fails if they drift. The page READS: /cards owns
+   the cards, one row per card in the world - the helper writes a row
+   as it cuts and removes the row it wipes - and cardRows/cardState in
+   nala-shared are the only readers of where one stands. This page OWNS
+   three small things: the lost flag it sets and clears on a row, the
+   by-hand Remove of a row, and the /cancelrun session it switches on
+   and off. Expired is rows past their 1pm still present - counted,
+   never stored (the owner's model, 11 Sep). */
 
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
-var JOBS = {};              /* the whole /cardjobs tree, as read */
-var TAB = 'all', OPEN = null, BACK_ASK = null;
+var CARDS = [];             /* cardRows(/cards), as read */
+var TAB = 'all', OPEN = null, REMOVE_ASK = null;
 var LOAD_T = null;
 
 (function(){
@@ -607,18 +608,16 @@ function issueRows(){
 
 NalaCards.init({
   db: DB, err: err,
-  dayKey: function(){ return dkey(new Date()); },
   rows: issueRows,
   bulkRows: function(){ return issueRows().filter(function(r){ return r.arriving; }); },
   bulkLabel: 'All arrivals',
   emptyLabel: 'Nobody in house tonight',
-  menuHint: 'Issue keys is above.',
   btn: document.getElementById('issueBtn'),
   drop: document.getElementById('issueDrop')
 });
 function loadAll(){
-  return api('/cardjobs')
-    .then(function(j){ JOBS = j || {}; render(); })
+  return api('/cards')
+    .then(function(j){ CARDS = cardRows(j); render(); })
     .catch(function(){});
 }
 
@@ -628,67 +627,42 @@ function h12(ms){
   var ap = h < 12 ? 'am' : 'pm'; h = h % 12 || 12;
   return h + (m ? ':' + String(m).padStart(2, '0') : '') + ap;
 }
-function tillLabel(L){
-  if (L.state === 'today') return h12(L.expiry);
-  var d = new Date(L.expiry);
+function dayShort(ms){
+  var d = new Date(ms);
   var days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   return days[d.getDay()] + ' ' + ord(d.getDate());
 }
-
-/* One pass over the tree: the living register (latest job per villa -
-   an expiring morning job loses the row to the fresh stay's) and the
-   Tally, which is only arithmetic over the dead. */
-function buildReg(now){
-  var reg = {}, tally = { rows: [], issued: 0, back: 0 };
-  Object.keys(JOBS).forEach(function(day){
-    var villas = JOBS[day] || {};
-    Object.keys(villas).forEach(function(v){
-      var job = villas[v], L = cardLife(job, now);
-      if (!L || !L.written) return;
-      if (L.state === 'dead'){
-        tally.issued += L.written; tally.back += L.back;
-        var un = L.written - L.back;
-        if (un > 0) tally.rows.push({ villa: v, guest: job.guest || '',
-                                      n: un, exp: L.expiry });
-        return;
-      }
-      if (L.written - L.back <= 0) return;   /* all wiped: nothing out */
-      var cur = reg[v];
-      if (!cur || L.expiry > cur.L.expiry)
-        reg[v] = { day: day, villa: v, job: job, L: L };
-    });
-  });
-  tally.rows.sort(function(a, b){ return b.exp - a.exp; });
-  return { reg: reg, tally: tally };
+/* till Sat 13th, no month and no time; the 12h clock on the last day */
+function tillLabel(c, now){
+  var exp = c.expiry * 1000;
+  return dkey(new Date(exp)) === dkey(new Date(now)) ? h12(exp) : dayShort(exp);
 }
 
 function cardsWord(n){ return n + (n === 1 ? ' card' : ' cards'); }
 
 var TABS = [
-  { k: 'all',   label: 'All' },
-  { k: 'ok',    label: 'Active' },
-  { k: 'lost',  label: 'Lost' },
-  { k: 'tally', label: 'Tally' }
+  { k: 'all',     label: 'All' },
+  { k: 'ok',      label: 'Active' },
+  { k: 'lost',    label: 'Lost' },
+  { k: 'expired', label: 'Expired' }
 ];
 
 function render(){
   var now = Date.now();
-  var built = buildReg(now);
-  var rows = Object.keys(built.reg).sort(function(a, b){ return (+a) - (+b); })
-    .map(function(v){ return built.reg[v]; });
-
-  function tabCount(k){
-    if (k === 'tally') return built.tally.rows.reduce(function(a, r){ return a + r.n; }, 0);
-    var n = 0;
-    rows.forEach(function(r){
-      n += k === 'lost' ? r.L.lost : k === 'ok' ? r.L.active : r.L.active + r.L.lost;
-    });
-    return n;
-  }
+  /* a row on screen IS a row in the table: render is a walk over
+     cardRows through cardState, never a loop over a count */
+  var act = [], lost = [], exp = [];
+  CARDS.forEach(function(c){
+    var s = cardState(c, now);
+    if (s === 'expired') exp.push(c);
+    else if (s === 'lost') lost.push(c);
+    else act.push(c);
+  });
 
   var t = '';
   TABS.forEach(function(tb){
-    var n = tabCount(tb.k);
+    var n = tb.k === 'expired' ? exp.length : tb.k === 'lost' ? lost.length
+          : tb.k === 'ok' ? act.length : act.length + lost.length;
     t += '<button' + (TAB === tb.k ? ' class="on"' : '') + ' data-tab="' + tb.k +
          '">' + tb.label + (n ? ' &middot; ' + n : '') + '</button>';
   });
@@ -696,64 +670,57 @@ function render(){
 
   var line = document.getElementById('tallyLine');
   var g = '';
-  if (TAB === 'tally'){
-    var gone = tabCount('tally');
+  if (TAB === 'expired'){
     line.hidden = false;
-    line.textContent = gone
-      ? gone + ' cards never came back · ' +
-        (built.tally.issued
-          ? Math.round(built.tally.back / built.tally.issued * 100) + '% returned'
-          : '')
+    /* No returned-rate line (ruled 11 Sep): it needed the dead store's
+       lifetime counters, and a cancelled card's row is gone. */
+    line.textContent = exp.length
+      ? exp.length + ' cards never came back'
       : 'Every card so far has come back';
-    built.tally.rows.forEach(function(r){
-      var d = new Date(r.exp);
-      g += '<div class="arr todo-form" style="opacity:.62;border-style:dashed">' +
-        '<div class="arr-v">' + esc(r.villa) + '</div>' +
-        '<div class="arr-mid"><div class="arr-top">' +
-        '<div class="arr-n">' + esc(r.guest) + '</div></div>' +
-        '<div class="arr-s">' + cardsWord(r.n) + ' &middot; departed <span class="eta">' +
-        dateLabel(d) + '</span></div></div></div>';
-    });
+    exp.sort(function(a, b){ return b.expiry - a.expiry; })
+      .forEach(function(c){
+        g += '<div class="arr todo-form" style="opacity:.62;border-style:dashed">' +
+          '<div class="arr-v">' + esc(c.villa) + '</div>' +
+          '<div class="arr-mid"><div class="arr-top">' +
+          '<div class="arr-n">' + esc(c.guest) + '</div></div>' +
+          '<div class="arr-s">a card &middot; departed <span class="eta">' +
+          dayShort(c.expiry * 1000) + '</span>' +
+          (c.lost ? ' &middot; was lost' : '') + '</div></div></div>';
+      });
   } else {
     line.hidden = true;
     /* A ROW PER CARD, the owner's model of 11 Sep: eight active cards
-       is eight rows, two wearing each villa's number. A lost card is its
-       own row, anonymous by design - twin cards cannot be told apart
-       until one touches the reader. Active rows first, then the lost,
-       as the approved mock lays them. */
-    function rowHTML(r, key, open, sub, kst, dress){
+       is eight rows, two wearing each villa's number. A lost row stays
+       anonymous on screen - twin cards cannot be told apart until one
+       touches the reader - but it is a real row all the same. Active
+       rows first, then the lost, as the approved mock lays them. */
+    function rowHTML(c, open, sub, kst, dress){
       return '<button class="arr ' + dress + (open ? ' open' : '') +
-        '" data-villa="' + esc(r.villa) + '" data-open="' + key + '">' +
-        '<div class="arr-v">' + esc(r.villa) + '</div>' +
+        '" data-villa="' + esc(c.villa) + '" data-open="' + esc(c.no) + '">' +
+        '<div class="arr-v">' + esc(c.villa) + '</div>' +
         '<div class="arr-mid"><div class="arr-top">' +
-        '<div class="arr-n">' + esc(r.job.guest || '') + '</div></div>' +
+        '<div class="arr-n">' + esc(c.guest) + '</div></div>' +
         '<div class="arr-s">' + sub + '</div></div>' +
         '<div class="kst">' + kst + '</div></button>';
     }
     if (TAB !== 'lost')
-      rows.forEach(function(r){
-        var L = r.L;
-        for (var i = 0; i < L.active; i++){
-          var key = r.villa + ':a' + i, open = OPEN === key;
-          g += rowHTML(r, key, open,
-            'a card &middot; <span class="eta">till ' + tillLabel(L) + '</span>',
-            L.state === 'today' ? '<div class="a">expires ' + h12(L.expiry) + '</div>'
-                                : '<div class="g">valid</div>',
-            L.state === 'today' ? 'part-form' : 'done-form');
-          if (open) g += sheetHTML(r, 'active');
-        }
+      act.forEach(function(c){
+        var open = OPEN === c.no, today = cardState(c, now) === 'today';
+        g += rowHTML(c, open,
+          'a card &middot; <span class="eta">till ' + tillLabel(c, now) + '</span>',
+          today ? '<div class="a">expires ' + h12(c.expiry * 1000) + '</div>'
+                : '<div class="g">valid</div>',
+          today ? 'part-form' : 'done-form');
+        if (open) g += sheetHTML(c, 'active', now);
       });
     if (TAB !== 'ok')
-      rows.forEach(function(r){
-        var L = r.L;
-        for (var k = 0; k < L.lost; k++){
-          var key = r.villa + ':l' + k, open = OPEN === key;
-          g += rowHTML(r, key, open,
-            'one of villa ' + esc(r.villa) + '\u2019s &middot; ' +
-            '<span class="eta">floating till ' + tillLabel(L) + '</span>',
-            '<div class="t">lost</div>', 'done-form');
-          if (open) g += sheetHTML(r, 'lost');
-        }
+      lost.forEach(function(c){
+        var open = OPEN === c.no;
+        g += rowHTML(c, open,
+          'one of villa ' + esc(c.villa) + '\u2019s &middot; ' +
+          '<span class="eta">floating till ' + tillLabel(c, now) + '</span>',
+          '<div class="t">lost</div>', 'done-form');
+        if (open) g += sheetHTML(c, 'lost', now);
       });
   }
   if (!g) g = '<div class="arr todo-form" style="opacity:.62;border-style:dashed">' +
@@ -761,61 +728,51 @@ function render(){
   document.getElementById('list').innerHTML = g;
 }
 
-function sheetHTML(r, kind){
-  /* one CARD's sheet: tap a row, act on that card alone (owner, 11 Sep).
-     A lost row offers Found; an active row offers Mark lost, and Remove -
-     the by-hand count correction for the rare card the machine cannot
-     count: snapped, cut up at the desk, or wiped but unreadable. Remove
-     asks first; the cards are twins, so which row was tapped carries no
-     meaning and none is claimed. */
-  var L = r.L;
+function sheetHTML(c, kind, now){
+  /* one CARD's sheet: tap a row, act on that row alone (owner, 11 Sep).
+     A lost row offers Found; an active row offers Mark lost, and
+     Remove - the by-hand door for a card the machine can never see
+     again: snapped, cut up at the desk. Remove asks first. */
   var s = '<div class="sum">' +
     '<div class="sum-r"><div class="sum-l">Card</div><div class="sum-v">' +
-    'villa ' + esc(r.villa) + ' &middot; ' +
-    (kind === 'lost' ? 'floating till ' : 'till ') + tillLabel(L) +
+    'villa ' + esc(c.villa) + ' &middot; ' +
+    (kind === 'lost' ? 'floating till ' : 'till ') + tillLabel(c, now) +
     '</div></div><div class="sum-btns">';
   if (kind === 'lost')
-    s += '<button data-foundv="' + esc(r.villa) + '">Found</button>';
+    s += '<button data-found="' + esc(c.no) + '">Found</button>';
   else
-    s += '<button class="terra" data-losev="' + esc(r.villa) + '">Mark lost</button>' +
-         '<button' + (BACK_ASK === r.villa ? ' class="terra"' : '') +
-         ' data-backv="' + esc(r.villa) + '">' +
-         (BACK_ASK === r.villa ? 'Confirm \u00b7 one card off the count'
-                               : 'Remove') + '</button>';
+    s += '<button class="terra" data-lose="' + esc(c.no) + '">Mark lost</button>' +
+         '<button' + (REMOVE_ASK === c.no ? ' class="terra"' : '') +
+         ' data-remove="' + esc(c.no) + '">' +
+         (REMOVE_ASK === c.no ? 'Confirm \u00b7 card off the register'
+                              : 'Remove') + '</button>';
   return s + '</div></div>';
 }
 
-function markBack(villa){
-  var now = Date.now(), built = buildReg(now), r = built.reg[villa];
-  if (!r) return;
-  var back = Math.min(r.L.written - r.L.lost, r.L.back + 1);
-  if (back === r.L.back) return;
-  fetch(DB + '/cardjobs/' + r.day + '/' + villa + '.json', {
+/* the lost flag: this page's own write, onto the one row */
+function setLost(no, val){
+  fetch(DB + '/cards/' + encodeURIComponent(no) + '.json', {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ back: back })
+    body: JSON.stringify({ lost: val })
   }).then(function(res){
     if (!res.ok) throw new Error(res.status);
-    JOBS[r.day][villa].back = back; render();
+    CARDS.forEach(function(c){ if (c.no === no) c.lost = val; });
+    render();
   }).catch(function(){
     err('The mark did not save. This is usually the connection.');
   });
 }
 
-/* the lost/found marks: this page's own writes, PATCHed onto the job */
-function markLost(villa, delta){
-  var now = Date.now(), built = buildReg(now), r = built.reg[villa];
-  if (!r) return;
-  var lost = Math.max(0, Math.min(r.L.written - r.L.back, r.L.lost + delta));
-  if (lost === r.L.lost) return;
-  fetch(DB + '/cardjobs/' + r.day + '/' + villa + '.json', {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ lost: lost })
-  }).then(function(res){
-    if (!res.ok) throw new Error(res.status);
-    JOBS[r.day][villa].lost = lost; render();
-  }).catch(function(){
-    err('The mark did not save. This is usually the connection.');
-  });
+/* the by-hand correction: the row is deleted, exactly as a wipe would */
+function removeRow(no){
+  fetch(DB + '/cards/' + encodeURIComponent(no) + '.json', { method: 'DELETE' })
+    .then(function(res){
+      if (!res.ok) throw new Error(res.status);
+      CARDS = CARDS.filter(function(c){ return c.no !== no; });
+      OPEN = null; render();
+    }).catch(function(){
+      err('The card did not come off. This is usually the connection.');
+    });
 }
 
 /* ── the cancel session ─────────────────────────────────────────────
@@ -887,12 +844,19 @@ function ovRender(cr){
     '</svg></div>' +
     '<div class="crun-s">Hold a card to the reader</div></div>';
   done.forEach(function(d){
+    /* One notification shape, ruled 11 Sep: the entry, then the action -
+       "Villa 9 · cancelled", "Unknown card · cancelled" - never a
+       narrative variant per state. Wiping foreign plastic or an
+       already-cancelled card is normal desk business; a card that
+       REFUSED its wipe is the one true failure here, so it alone gets
+       words, in red, per the colour law. */
+    var who = d.villa && d.villa !== '?' ? 'Villa ' + esc(d.villa)
+                                         : 'Unknown card';
     var label = d.note
-      ? 'Card ' + esc(d.no || '') + ' · ' + esc(d.note)
-      : d.villa && d.villa !== '?'
-        ? 'Villa ' + esc(d.villa) + ' · cancelled'
-        : 'Not on record · wiped · a blank again';
-    b += '<div class="crun is-done"><div class="crun-s card-done">' + label + '</div></div>';
+      ? who + ' · would not wipe · ' + esc(d.note)
+      : who + ' · cancelled';
+    b += '<div class="crun is-done"><div class="crun-s ' +
+         (d.note ? 'card-failed' : 'card-done') + '">' + label + '</div></div>';
   });
   b += '<div class="sum-btns" style="margin-top:16px">' +
        '<button class="go wide" id="ovStop">Stop</button></div></div>';
@@ -901,22 +865,22 @@ function ovRender(cr){
 
 document.addEventListener('click', function(e){
   var t;
-  /* an unconfirmed A-card-came-back dies on ANY other tap: a confirm
-     label that survives a detour is a write waiting to be misread */
-  var wasAsk = BACK_ASK; BACK_ASK = null;
+  /* an unconfirmed Remove dies on ANY other tap: a confirm label that
+     survives a detour is a write waiting to be misread */
+  var wasAsk = REMOVE_ASK; REMOVE_ASK = null;
   if ((t = e.target.closest('[data-tab]'))){
     TAB = t.getAttribute('data-tab'); OPEN = null; render(); return;
   }
-  if ((t = e.target.closest('[data-losev]'))){
-    markLost(t.getAttribute('data-losev'), 1); return;
+  if ((t = e.target.closest('[data-lose]'))){
+    setLost(t.getAttribute('data-lose'), true); return;
   }
-  if ((t = e.target.closest('[data-foundv]'))){
-    markLost(t.getAttribute('data-foundv'), -1); return;
+  if ((t = e.target.closest('[data-found]'))){
+    setLost(t.getAttribute('data-found'), false); return;
   }
-  if ((t = e.target.closest('[data-backv]'))){
-    var bv = t.getAttribute('data-backv');
-    if (wasAsk === bv){ markBack(bv); }
-    else { BACK_ASK = bv; render(); }
+  if ((t = e.target.closest('[data-remove]'))){
+    var no = t.getAttribute('data-remove');
+    if (wasAsk === no){ removeRow(no); }
+    else { REMOVE_ASK = no; render(); }
     return;
   }
   if (e.target.closest('#cancelBtn')){ cancelOpen(); return; }

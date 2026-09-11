@@ -278,8 +278,9 @@ keeps one.
 ---
 ## Key cards
 
-Built 8-11 Sep. Working against real hardware. The store does not match the
-agreed model; the rebuild below is owed.
+Built 8-11 Sep against real hardware; REBUILT 11 Sep on the owner's model
+- the mock (mock-keys-store.html), his approval, then the store below. The
+rebuilt helper's own paths await their first desk run (ENCODER.md).
 
 ### The physical system
 
@@ -313,36 +314,37 @@ Card expiry is the departure day at **1pm**, ruled by the owner 10 Sep.
 **Screens count rows.** "2 cards with the guest" is two rows. The register is
 the rows. Nothing subtracts and nothing infers.
 
-### What the store is now
+### What the store is (rebuilt 11 Sep, to the model)
 
-`/cardjobs/<date>/<villa>` is a tally, not a table of cards:
-`{qty, written, back, lost, nos, guest, state, by, at, note}`. `qty` is what was
-asked for, `written` what exists, `back` how many were wiped, `lost` how many
-are loose. A request and a record share one row, and the screens do arithmetic
-over them. `/cancelrun` carries a cancel session: `state`, `seen`, and a `done`
-list the helper writes as it wipes each card.
+**`/cards/<no>`** - one row per card in the world, keyed by the card's
+own number: `{villa, guest, cut, expiry, lost?, by}`. The helper writes
+a row as it cuts a card and deletes the row it wipes; the Keys page
+flags `lost` and offers the by-hand Remove. Because the key is the
+plastic's own number, a re-cut sheds the old row in the same act -
+TTHotel's own register behaviour. A card whose number the encoder would
+not report gets a `u`-prefixed key, retired only by Remove.
 
-### The rebuild
+**`/cutrun`** - the short-lived cut request: `{state on|off|done, by,
+at, seen, queue: {villa: {guest, qty, cut, expiry, note?}}}`. The desk
+switches it on, the helper works it in villa order and says done; Skip
+shrinks a villa's qty to its cut, Stop or a closed run switches it off,
+and ten silent seconds without a heartbeat is the queue law's verdict.
+It is never stored with the cards. **`/cancelrun`** is unchanged in
+shape; each wipe's `done` entry carries the villa its row named, or `?`
+for plastic with no row.
 
-1. **A table of cards.** One row per card written: villa, guest, cut-at,
-   expiry, the serial the encoder reported, a lost flag. A request to cut N
-   cards is a separate short-lived thing that ends when the cutting ends, never
-   stored in the same row as the cards.
-2. **The helper writes a row per card** as it cuts it; the cancel session
-   removes the row it wiped. `rules.json` needs the new node.
-3. **The screens count.** Seats are the held rows, the register lists rows,
-   Expired is rows past their expiry still present. `cardCell` and `cardLife`
-   in `nala-shared.js` are the tally-era readers and do not survive the
-   rebuild.
-4. **No migration needed.** The live records are two days of test data.
-5. **The Dashboard reads the same table** (ruled 11 Sep), through the one
-   shared reader that replaces `cardCell`, with its entry in
-   `tests/dashboard_sources.json` - rule 7, applied before the drift.
-6. **Front Desk steps back** (ruled 11 Sep): its key is merely a shortcut
-   that cuts all arrival keys - the same run the Keys page owns - and
-   nothing else. The per-villa encode menu, the card states in its drop
-   and the guest sheet's Key cards line all go: there is no reason for
-   keys information on Front Desk's forms. Cards are the Keys page's.
+**The screens count rows**, through the two readers in nala-shared.js -
+`cardRows` (the walk) and `cardState` (the judge: expired > lost >
+today > live), held to `tests/cardstate_cases.json` with `cardsHeld`
+for what a villa holds. `cardCell` and `cardLife`, the tally-era
+readers, are gone, with `tests/card_cases.json` and
+`tests/cardlife_cases.json`. The Dashboard counts the same rows
+(`tests/dashboard_sources.json` names the owners); Front Desk's key is
+merely the cut-all-arrival-keys shortcut and its forms carry no keys
+information; keys.html holds the register, the Expired list and both
+sessions, to mock-keys-store.html's shape (`keys_suite` compares them).
+No migration: the tally-era `/cardjobs` data was two days of test
+records and nothing reads the node now.
 
 ### The serial
 
@@ -475,12 +477,16 @@ fix. `tests/run.py` reports how many have drifted.
 
 None of these can move without him.
 
-1. **The key-card rules paste.** `rules.json` moved on 11 Sep: the per-villa
-   card ceiling is 99, not 6. Until the file is pasted into Firebase console ->
-   Realtime Database -> Rules -> Publish, the database refuses more than six
-   cards per villa, and the page reports that refusal as a connection error.
-   Copy from
+1. **The key-card rules paste.** `rules.json` moved again on 11 Sep: the
+   card table (`/cards`) and the cut run (`/cutrun`) replaced `/cardjobs`.
+   Until the file is pasted into Firebase console -> Realtime Database ->
+   Rules -> Publish, the new nodes sit under the catch-all rule - the
+   feature WORKS, but any staff login can write them and nothing is
+   validated. Copy from
    `raw.githubusercontent.com/NALA-Resort/nala-menu/main/rules.json`.
+   The desk PC also needs the rebuilt helper: re-download
+   `tools/nala-encoder.ps1` into the kit's `dll\64` folder (its settings
+   live in `nala-config.ps1` beside it, so nothing needs re-typing).
 2. **Work through `SECURITY.md`.** Four jobs, about forty five minutes, all in a
    browser. Rotate the credentials (including two GitHub tokens that have been
    pasted into chat), delete the leftover Firebase logins, lock the Firebase key

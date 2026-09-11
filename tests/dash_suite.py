@@ -143,7 +143,8 @@ SPA = {"b3": {"t1": {"status": "booked", "day": today, "time": "11:00",
 
 STATE = {"fail": False}
 DAYBOARD = {}
-CARDJOBS = {}   # villa -> its /cardjobs job for today
+CARDS = {}    # the card table: serial -> row
+CUTRUN = {}   # the cut run, when one is on
 WRITES = []
 
 def fb(route, request):
@@ -167,10 +168,8 @@ def fb(route, request):
     elif "/permissions" in u: body = json.dumps(PERMS)
     elif "/dayboard/" + today in u: body = json.dumps(DAYBOARD)
     elif "/dayboard/" in u: body = "null"
-    elif "/cardjobs.json" in u:
-        body = json.dumps({today: CARDJOBS}) if CARDJOBS else "null"
-    elif "/cardjobs/" + today in u: body = json.dumps(CARDJOBS)
-    elif "/cardjobs/" in u: body = "null"
+    elif "/cards.json" in u: body = json.dumps(CARDS) if CARDS else "null"
+    elif "/cutrun" in u: body = json.dumps(CUTRUN) if CUTRUN else "null"
     elif "/stays/" + today in u: body = json.dumps(STAYS)
     elif "/stays/" in u: body = "null"
     elif "/dinner/" + today in u: body = json.dumps(DINNER)
@@ -624,58 +623,65 @@ with sync_playwright() as p:
     STATE["fail"] = False
 
     # ── key cards ───────────────────────────────────────────────
-    #  The card reads /cardjobs through cardCell (the day) and cardLife
-    #  (the floating lost, across dates) and is a DOOR to Keys, which owns
-    #  issuing and the register: an Encode button here would be this page
-    #  originating an action it cannot watch, rule 7's whole lesson.
+    #  The card counts the table through cardsHeld and cardState (the
+    #  shared readers, tests/cardstate_cases.json) and is a DOOR to
+    #  Keys, which owns cutting and the register: an Encode button here
+    #  would be this page originating an action it cannot watch, rule
+    #  7's whole lesson. A villa is carded when it HOLDS rows - counted,
+    #  never worked out (the model, 11 Sep).
+    import time as _t
+    live = int(_t.time()) + 2 * 86400
     pg = board()
     kc = card(pg, "cards")
     ck("key cards sit on the spine as a door to Keys",
        kc["door"] and kc["pos"] != "off"
        and pg.evaluate("()=>HREF.cards") == "keys.html")
-    ck("with nothing queued it says so and every villa chip is grey",
-       "none encoded" in kc["note"]
+    ck("with no rows it says so and every villa chip is grey",
+       "none cut" in kc["note"]
        and sorted(kc["chips"]) == ["11:grey", "14:grey", "3:grey", "7:grey"])
     pg.close()
 
-    CARDJOBS.update({
-        "3":  {"qty": 2, "expiry": 1789000000, "state": "done",    "written": 2, "by": "x", "at": 1},
-        "7":  {"qty": 2, "expiry": 1789000000, "state": "writing", "written": 1, "by": "x", "at": 1},
-        "11": {"qty": 2, "expiry": 1789000000, "state": "failed",  "written": 0, "by": "x", "at": 1},
+    #  a run on, one villa already holding, one failed in the queue
+    CARDS.update({
+        "903001": {"villa": "3", "guest": "G", "cut": 1, "expiry": live},
+        "903002": {"villa": "3", "guest": "G", "cut": 2, "expiry": live},
     })
+    CUTRUN.update({"state": "on", "queue": {
+        "7":  {"guest": "G", "qty": 2, "cut": 1, "expiry": live},
+        "11": {"guest": "G", "qty": 2, "cut": 0, "expiry": live,
+               "note": "card write refused: not an IC card"},
+    }})
     pg = board()
     kc = card(pg, "cards")
     ck("a failure outranks the count and names the villa",
        "write failed on villa 11" in kc["note"] and "Keys" in kc["note"])
-    ck("done wears green, going wears amber, untouched stays grey",
+    ck("held wears green, the run's villas amber, untouched stays grey",
        sorted(kc["chips"]) == ["11:amber", "14:grey", "3:green", "7:amber"])
     pg.close()
+    CUTRUN.clear()
 
-    CARDJOBS.clear()
-    CARDJOBS.update({
-        "3":  {"qty": 2, "expiry": 1789000000, "state": "done", "written": 2, "by": "x", "at": 1},
-        "7":  {"qty": 2, "expiry": 1789000000, "state": "done", "written": 2, "by": "x", "at": 1},
-        "11": {"qty": 3, "expiry": 1789000000, "state": "done", "written": 3, "by": "x", "at": 1},
-        "14": {"qty": 2, "expiry": 1789000000, "state": "done", "written": 2, "by": "x", "at": 1},
-    })
+    #  every arrival holding rows: done, and the rows ARE the count
+    CARDS.clear()
+    for no, v in [("903001","3"),("903002","3"),("907001","7"),("907002","7"),
+                  ("911001","11"),("911002","11"),("911003","11"),
+                  ("914001","14"),("914002","14")]:
+        CARDS[no] = {"villa": v, "guest": "G", "cut": 1, "expiry": live}
     pg = board()
     kc = card(pg, "cards")
-    ck("all four villas carded reads done, with the card count",
-       kc["pos"] == "past" and "9 cards encoded" in kc["note"])
+    ck("all four villas carded reads done, with the row count",
+       kc["pos"] == "past" and "9 cards cut" in kc["note"])
     pg.close()
 
     #  A lost card floats across dates until expiry, and the note carries
-    #  it whatever the day's issuing looks like - cardLife's count, the
+    #  it whatever the day's cutting looks like - cardState's word, the
     #  owner named in dashboard_sources.json.
-    import time as _t
-    CARDJOBS["3"]["lost"] = 1
-    CARDJOBS["3"]["expiry"] = int(_t.time()) + 2 * 86400
+    CARDS["903001"]["lost"] = True
     pg = board()
     kc = card(pg, "cards")
     ck("a floating lost card rides the note, pointing at Keys",
        "1 lost, floating - see Keys" in kc["note"])
     pg.close()
-    CARDJOBS.clear()
+    CARDS.clear()
 
     # ── width ───────────────────────────────────────────────────
     for w in (390, 360, 320):

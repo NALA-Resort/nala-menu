@@ -210,7 +210,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=64"></script>
+<script src="nala-shared.js?v=65"></script>
 <script>
 /* The day's flow on one screen: what has happened, what is ready, and what
    is still owed. Every fact here is read from the screen that owns it. The
@@ -306,18 +306,22 @@ function load(){
     fetch(DB + '/dayboard/' + day + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; }),
-    /* The key-card tree, read whole: the day's slice is judged per villa
-       by cardCell, and the living register by cardLife - the two readers,
-       never this page's own idea of a state. Whole because a lost card
-       floats across dates until its expiry (Keys, 9 Sep). */
-    fetch(DB + '/cardjobs.json?v=' + Date.now())
+    /* The card table, read whole and walked through cardRows/cardState/
+       cardsHeld - the shared readers, never this page's own idea of a
+       state. Whole because a lost card floats across dates until its
+       expiry retires it (Keys, 11 Sep). */
+    fetch(DB + '/cards.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
+    /* the cut run, so "encoder going" is the run's own word */
+    fetch(DB + '/cutrun.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; })
   ]).then(function(res){
     DATA = { stays:res[0] || {}, menu:res[1], invites:res[2] || {},
              manual:res[3] || {}, responses:res[4] || {}, spa:res[5] || {},
              done:res[6] || {},
-             cards:(res[7] || {})[day] || {}, cardsAll:res[7] || {} };
+             cards:cardRows(res[7]), cutrun:res[8] || null };
     LOADED = true;
     render();
   });
@@ -579,41 +583,42 @@ function items(t){
     qty: QTY.sheets != null ? QTY.sheets : (N || 1), qmin:1, qmax:(N || 1) + 4,
     print:'sheets', quiet: !!DATA.done.sheets || !N || shFull < N });
 
-  /* Key cards: each arriving villa judged by cardCell, the one reader both
-     boards use (tests/card_cases.json), never this page's own idea of a
-     state. The card is a DOOR to Front Desk, whose key menu owns the run
-     and the encoder: the Dashboard gathers, rule 7, and an Encode button
-     here would be this page originating an action it cannot watch. Chips
-     wear the law's tints; red stays ink in the note, never a tile. */
-  var cDone = 0, cFail = 0, cGoing = 0, cCards = 0;
-  /* the floating lost cards, wherever their date: cardLife's count, and
-     an attention fact whatever the day's issuing looks like */
-  var cLost = 0, nowMs = Date.now();
-  Object.keys(DATA.cardsAll || {}).forEach(function(d){
-    Object.keys(DATA.cardsAll[d] || {}).forEach(function(v){
-      var L = cardLife(DATA.cardsAll[d][v], nowMs);
-      if (L && L.state !== 'dead') cLost += L.lost;
-    });
-  });
+  /* Key cards: the card table counted through cardState and cardsHeld,
+     the shared readers (tests/cardstate_cases.json), never this page's
+     own idea of a state. A villa is carded when it HOLDS rows - the
+     register is the rows, nothing subtracts (the model, 11 Sep). The
+     card is a DOOR to Keys, which owns issuing and the register: the
+     Dashboard gathers, rule 7, and an Encode button here would be this
+     page originating an action it cannot watch. Chips wear the law's
+     tints; red stays ink in the note, never a tile. */
+  var cDone = 0, cCards = 0, nowMs = Date.now();
+  /* the floating lost cards, wherever their date: an attention fact
+     whatever the day's cutting looks like */
+  var cLost = (DATA.cards || []).filter(function(r){
+    return cardState(r, nowMs) === 'lost'; }).length;
+  var cRun = DATA.cutrun, cGoing = !!(cRun && cRun.state === 'on');
+  var cFailV = cRun && cRun.queue ? Object.keys(cRun.queue).filter(function(v){
+    return cRun.queue[v] && cRun.queue[v].note; }) : [];
   var cUnits = arriving.map(function(v){
-    var j = (DATA.cards || {})[String(v)] || null, cc = cardCell(j);
-    if (cc.k === 'done'){ cDone++; cCards += (j && +j.written) || 0; }
-    else if (cc.k === 'failed') cFail++;
-    else if (cc.k === 'writing' || cc.k === 'queued') cGoing++;
-    return { id:v, tone: cc.k === 'done' ? 'green'
-                 : cc.k === 'writing' || cc.k === 'failed' ? 'amber' : 'grey' };
+    var held = cardsHeld(DATA.cards, v, nowMs).filter(function(r){
+      return !r.lost; }).length;
+    if (held){ cDone++; cCards += held; }
+    /* amber is the RUN's villas - unfinished or failed - not a blanket
+       tint while the encoder is going: a villa nobody asked for is not
+       being chased */
+    var q = cRun && cRun.queue && cRun.queue[String(v)];
+    var inRun = !!(cGoing && q && ((+q.cut || 0) < (+q.qty || 0) || q.note));
+    return { id:v, tone: held ? 'green' : inRun ? 'amber' : 'grey' };
   });
   L.push({ k:'cards', lab:'Key cards', owner:'desk', units:cUnits,
     state: !N ? 'waiting' : cDone === N ? 'done'
-         : (cGoing || cFail) ? 'moving' : 'ready',
+         : (cGoing || cFailV.length) ? 'moving' : 'ready',
     note: (!N ? 'no arrivals today'
-        : cFail ? 'write failed on villa ' +
-            arriving.filter(function(v){
-              return cardCell((DATA.cards || {})[String(v)] || null).k === 'failed';
-            }).join(' & ') + ' - open Keys'
-        : cDone === N ? cCards + ' cards encoded'
+        : cFailV.length ? 'write failed on villa ' + cFailV.join(' & ') +
+            ' - open Keys'
+        : cDone === N ? cCards + ' cards cut'
         : cGoing ? cDone + ' of ' + N + ' villas carded, encoder going'
-        : 'none encoded yet - Issue keys on the Keys page')
+        : 'none cut yet - Issue keys on the Keys page')
         + (cLost ? ' · ' + cLost + ' lost, floating - see Keys' : '') });
 
   L.push({ k:'foh', lab:'FOH sheet', owner:'paper', units:[],
