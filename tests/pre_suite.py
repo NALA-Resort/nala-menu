@@ -162,8 +162,18 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.querySelectorAll('.q.now').length") == 1)
     ck("and it is the first one, which since 23 Aug is what brings them",
        pg.evaluate("()=>document.querySelector('.q.now').id") == "qPurpose")
+    #  In the nav row between the buttons since 11 Sep, its own line's height
+    #  given back to the page. Rendered and beside Next, not just present:
+    #  inner_text alone reads a display:none count happily.
     ck("with a count, so the form has a visible end",
-       pg.locator("#prog").inner_text().strip() != "")
+       pg.locator("#prog").inner_text().strip() != "" and
+       pg.evaluate("()=>{var p=document.getElementById('prog'),"
+                   "s=document.getElementById('send'),"
+                   "r=p.getBoundingClientRect(),q=s.getBoundingClientRect();"
+                   "return !!p.offsetParent && r.width>0"
+                   " && p.parentElement===s.parentElement"
+                   " && r.right<=q.left"
+                   " && r.top<q.bottom && r.bottom>q.top;}"))
     ck("there is no Back on the first page",
        "hide" in pg.evaluate("()=>back.className"))
     ck("the button reads Next, not Send, until the last page",

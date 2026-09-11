@@ -232,17 +232,29 @@
              letter-spacing:.1em; text-transform:uppercase; color:var(--mid); }
   .needs.req .needs-l { color:var(--warn); }
 
-  .nav { display:flex; align-items:center; gap:12px; margin-top:1.8rem; }
-  .prog { font-size:0.7rem; letter-spacing:.16em; text-transform:uppercase;
+  /* The count sits between the buttons, its own row's height given back to
+     the page (the owner, 11 Sep). A grid, not flex: each of the three lives
+     in a named column, so the first page hiding Back cannot slide the count
+     and Next leftward into its place. 1fr auto 1fr, not thirds - the middle
+     takes only what "2 of 9" needs and the buttons split the rest equally,
+     because a third of 360pt cannot hold "Send to Nala" on one line. */
+  .nav { display:grid; grid-template-columns:1fr auto 1fr;
+         align-items:center; gap:12px; margin-top:1.8rem; }
+  .prog { grid-column:2; text-align:center; font-size:0.7rem;
+          letter-spacing:.16em; text-transform:uppercase;
           color:var(--mid); white-space:nowrap; }
-  .back { background:var(--paper); border:1px solid var(--rule); color:var(--mid);
-          padding:15px 18px; border-radius:10px; font-family:inherit;
-          font-size:0.75rem; letter-spacing:.12em; text-transform:uppercase;
-          cursor:pointer; }
+  .back { grid-column:1; background:var(--paper); border:1px solid var(--rule);
+          color:var(--mid); padding:15px 18px; border-radius:10px;
+          font-family:inherit; font-size:0.75rem; letter-spacing:.12em;
+          text-transform:uppercase; cursor:pointer; }
   .back.hide { display:none; }
   /* The send button's own rule sets a top margin for the old one-page form.
-     Inside the nav row it would push itself off the line. */
-  .nav .send { margin-top:0; flex:1; }
+     Inside the nav row it would push itself off the line. Nowrap and slim
+     side padding, because the last page says "Send to Nala" and a primary
+     that folds onto two lines is not a primary; the fr tracks' auto minimum
+     hands it the width from Back's column on the one width that needs it. */
+  .nav .send { grid-column:3; margin-top:0; white-space:nowrap;
+               padding-left:6px; padding-right:6px; }
 
   #form.hide, #done.hide { display:none; }
 
@@ -251,7 +263,6 @@
   .foot { flex:0 0 auto; background:var(--cream);
           border-top:1px solid var(--rule);
           padding:8px 0 max(8px, env(safe-area-inset-bottom)); }
-  .foot .prog { text-align:center; margin:0 0 6px; }
   .foot .nav { margin:0; padding:0 4px; }
   /* Above the buttons, its line ALWAYS occupying: display:none reserved
      nothing, so the foot grew on error and covered the page. Hidden by
@@ -473,10 +484,10 @@
   </div><!-- /scrollarea -->
 
   <div class="foot" id="foot">
-    <div class="prog" id="prog"></div>
     <div class="err" id="err"></div>
     <div class="nav">
       <button class="back hide" id="back">Back</button>
+      <div class="prog" id="prog"></div>
       <button class="send" id="send">Next</button>
     </div>
   </div>
