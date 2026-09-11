@@ -240,9 +240,8 @@
      because a third of 360pt cannot hold "Send to Nala" on one line. */
   .nav { display:grid; grid-template-columns:1fr auto 1fr;
          align-items:center; gap:12px; margin-top:1.8rem; }
-  .prog { grid-column:2; text-align:center; font-size:0.7rem;
-          letter-spacing:.16em; text-transform:uppercase;
-          color:var(--mid); white-space:nowrap; }
+  .prog { grid-column:2; text-align:center; font-size:1.9rem;
+          letter-spacing:.06em; color:var(--mid); white-space:nowrap; }
   .back { grid-column:1; background:var(--paper); border:1px solid var(--rule);
           color:var(--mid); padding:15px 18px; border-radius:10px;
           font-family:inherit; font-size:0.75rem; letter-spacing:.12em;
@@ -261,7 +260,6 @@
   /* Safari brings its own toolbar under this, so the constant is small and
      the env() carries the home-screen case where there is no toolbar. */
   .foot { flex:0 0 auto; background:var(--cream);
-          border-top:1px solid var(--rule);
           padding:8px 0 max(8px, env(safe-area-inset-bottom)); }
   .foot .nav { margin:0; padding:0 4px; }
   /* Above the buttons, its line ALWAYS occupying: display:none reserved
@@ -1217,7 +1215,7 @@ function showStep(i){
   el(live[CUR].id).classList.add('now');
   el('back').className = 'back' + (CUR === 0 ? ' hide' : '');
   el('send').textContent = (CUR === live.length - 1) ? 'Send to Nala' : 'Next';
-  el('prog').textContent = (CUR + 1) + ' of ' + live.length;
+  el('prog').textContent = (CUR + 1) + '/' + live.length;
   el('err').className = 'err';
   /* Closed on every page, every time: the invitation is on the page and the
      limit is one tap behind it. An open one would put it straight back. */

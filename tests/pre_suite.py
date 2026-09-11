@@ -1029,7 +1029,7 @@ with sync_playwright() as p:
     ck("but still about tonight and dietaries",
        all(q in live for q in ("qDine", "qDiet")))
     ck("and the count says four, not eight",
-       pg.locator("#prog").inner_text().strip().lower().endswith("of 4"))
+       pg.locator("#prog").inner_text().strip().endswith("/4"))
     #  The answered walk must still send: approach and purpose were never
     #  asked, so an empty either cannot hold the form hostage.
     pg.evaluate("""()=>{
