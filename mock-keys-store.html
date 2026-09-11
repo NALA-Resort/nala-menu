@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mock &middot; Keys, the card table</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────
+   MOCK ONLY. Not linked from NAV, not published, no database behind it.
+
+   THE REBUILT KEY-CARD STORE, pressable - built to prove the model the
+   owner ruled 11 Sep (HANDOVER.md, "Key cards") before any code moves:
+
+   > Writing and cancelling cards is nearly a matter of doing what is
+   > asked. Nothing else. Records are kept in the table and removed from
+   > the table.
+
+   ONE TABLE, /cards/<id>, one row per card the encoder has written:
+
+       { villa, guest, cut, expiry, no, lost }
+
+   and the four events, each of which is ONE thing happening to it:
+
+       a card is written    ->  a row appears (the helper, as it cuts)
+       a card is cancelled  ->  its row is removed (matched by serial)
+       a card is lost       ->  a flag on its row; the row stays
+       expiry passes, row still there  ->  it shows as Expired
+
+   Screens COUNT ROWS. Nothing subtracts, nothing infers, nothing keeps
+   a second copy of the fact. The panel at the foot of this mock is the
+   table itself, watched live: press anything above and watch which rows
+   the press adds, removes or flags - that correspondence is the model,
+   and it is the thing this mock exists to prove.
+
+   What dies in the rebuild, and why this page holds no trace of them:
+   - /cardjobs/<date>/<villa> as a store: {qty,written,back,lost,nos}
+     was a per-villa tally, and every screen did arithmetic over it.
+     A request to cut N cards becomes a short-lived thing (the run) that
+     ENDS when the cutting ends - it never shares a row with the cards.
+   - cardLife and cardCell's counting half (nala-shared.js): they were
+     the readers of that arithmetic. Counting rows needs no reader that
+     clamps back and lost inside written - the clamps existed because
+     three counters about one fact can disagree, and rows cannot.
+   - The Tally's lifetime "% returned": the old store kept issued/back
+     counters forever, so it could quote a rate. The table cannot - a
+     cancelled card's row is GONE, which is the model working, not a
+     loss. RULED by the owner, 11 Sep: remove the rate; the Expired
+     line says only what the rows say - how many never came back.
+     Also ruled 11 Sep: the screen word is Expired, not Tally,
+     because that is what they are.
+
+   What this changes at each surface, all visible on this page:
+   - Issuing: the helper appends a row PER CARD as it cuts it, so the
+     register (and the table panel) grows card by card, live. "Issue
+     more" is just more rows - nothing continues from a written count.
+   - Cancelling: the reader names the held card by serial, the row is
+     removed. A lost card held to the reader is found and wiped in one
+     act - its row goes, flag and all. An EXPIRED card held to the
+     reader comes off Expired the same way - the first store made
+     that impossible (dead jobs were out of reach). A card no row
+     matches - foreign plastic, or one already cancelled - is wiped
+     anyway: both are normal desk business, not errors. Every entry
+     is announced in ONE shape, the entry then the action - Villa 9
+     cancelled, Unknown card cancelled - never a narrative variant
+     per state (the owner, 11 Sep).
+   - Lost: cards are twins in the hand - which physical card is lost is
+     unknowable until one touches the reader - so Mark lost flags A row
+     of that villa's, and the row reads "one of villa 9's". The serial
+     stays off the screen (the wording law) but lives in the row, so
+     the moment the loose card surfaces the reader names it exactly.
+   - Remove stays: the by-hand correction for a card the machine cannot
+     count (snapped, cut up at the desk). It deletes the row, wears
+     terracotta and asks first - the button law.
+
+   The pretend helper: a run's amber card is the E3 - TAP IT to hold a
+   card to the reader, in issuing and in cancelling both. None of the
+   mock controls exist on the real page; everything else is the design.
+   ───────────────────────────────────────────────────────────────────── */
+
+*{ margin:0; padding:0; box-sizing:border-box; }
+
+/* the colour law - values as the live boards use them */
+:root{
+  --law-green:#5E7D67;  --law-green-t:rgba(122,160,130,.26);
+  --law-green-b:rgba(122,160,130,.65);
+  --law-terra:#9E6455;  --law-terra-t:rgba(184,106,90,.16);
+  --law-terra-b:rgba(184,106,90,.45);
+  --law-amber:#F6EAD5;  --law-amber-b:#C29A55;  --law-amber-ink:#8A6A2F;
+  --law-red:#A8321E;
+  --dine:#5E7D67; --green:#E4EDE2; --greenb:#7E937A; --nodine:#9E6455;
+}
+body.ui2{
+  --ground:#FFFFFF; --card:#F5F6F8; --ink:#1B1B19; --mid:#5F5F58;
+  --rule:#E6E6E1;
+  --accent:#1A66C2; --accent-ink:#FFFFFF; --accent-soft:#E8F0FE;
+  --sel-bg:rgba(28,28,26,.10); --sel-bdr:var(--ink);
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+  --t1:12px; --t2:14px; --t3:16px; --t4:20px; --t5:27px;
+  --r:8px; --pill:999px; --tap:44px;
+  --ui-font:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,
+            Helvetica,Arial,sans-serif;
+  --cream:var(--ground);
+  --terra:var(--law-terra); --terra-b:var(--law-terra-b);
+  --terra-t:var(--law-terra-t);
+  --amber:var(--law-amber); --amberb:var(--law-amber-b);
+  --amberink:var(--law-amber-ink); --red:var(--law-red);
+  background:var(--ground); color:var(--ink); font-family:var(--ui-font);
+  -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+}
+body { min-height:100vh; min-height:100dvh;
+       padding:calc(24px + env(safe-area-inset-top)) 18px 40px; }
+
+/* header row, as keys.html wears it */
+.daterow { display:flex; align-items:center; gap:var(--s2);
+           margin-bottom:var(--s4); }
+.btn { display:inline-flex; align-items:center; justify-content:center;
+       padding:var(--s3) var(--s4); border:0; border-radius:var(--r);
+       background:var(--card); color:var(--ink); font-family:var(--ui-font);
+       font-size:var(--t3); font-weight:500; cursor:pointer; }
+.btn:active { filter:brightness(.94); }
+.navwrap { position:relative; margin-left:auto; }
+.navbtn { width:42px; height:36px; border:0; background:transparent;
+          border-radius:var(--pill); display:flex; flex-direction:column;
+          align-items:center; justify-content:center; gap:4px; cursor:pointer; }
+.navbtn span { display:block; width:17px; height:1.7px;
+               background:var(--ink); border-radius:2px; }
+
+/* the issue drop, keys.html's */
+.keywrap { position:relative; }
+.keydrop { display:none; position:absolute; left:0; top:42px;
+           background:var(--ground); border:1px solid var(--rule);
+           border-radius:var(--r); min-width:230px; max-width:calc(100vw - 24px);
+           padding:var(--s1) 0; z-index:60;
+           box-shadow:0 2px 6px rgba(0,0,0,.06),0 10px 28px rgba(0,0,0,.10); }
+.keydrop.open { display:block; }
+.keydrop button { display:flex; width:100%; align-items:baseline; gap:var(--s4);
+                  justify-content:space-between; text-align:left;
+                  padding:var(--s3) var(--s4); background:none; border:0;
+                  font-family:var(--ui-font); font-size:var(--t2);
+                  line-height:1.3; color:var(--ink); cursor:pointer; }
+.keydrop button:active { background:var(--accent-soft); }
+.keydrop .kd-all { border-top:1px solid var(--rule); margin-top:var(--s1);
+                   align-items:center; }
+.keydrop .kd-state { flex:0 0 auto; font-size:var(--t1); color:var(--mid);
+                     white-space:nowrap; }
+.keydrop .kd-state.card-done { color:var(--law-green); }
+.navbadge { flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
+            border-radius:var(--pill); background:var(--accent);
+            color:var(--accent-ink); font-size:var(--t1); font-weight:600;
+            display:inline-flex; align-items:center; justify-content:center; }
+
+/* tabs: the seg, four counts fitting 320 */
+.seg { display:flex; gap:6px; }
+.seg button { flex:1; min-width:0; padding:11px 2px; border:1px solid var(--rule);
+              background:transparent; font-family:var(--ui-font);
+              font-size:var(--t1); color:var(--mid); cursor:pointer;
+              border-radius:6px; }
+.seg button.on { background:var(--sel-bg); color:var(--ink);
+                 border-color:var(--sel-bdr); font-weight:500; }
+.secnote { font-size:var(--t2); color:var(--mid); line-height:1.5; }
+
+/* one CARD's row - Front Desk's .arr bones, as keys.html wears them */
+.arr { display:flex; align-items:center; gap:12px; width:100%;
+       background:none; border:1px solid var(--rule); border-radius:8px;
+       padding:11px 13px; margin-bottom:7px; text-align:left;
+       font-family:var(--ui-font); color:inherit; cursor:pointer; }
+.arr-v { font-size:var(--t4); min-width:30px; text-align:center; }
+.arr-mid { flex:1; min-width:0; }
+.arr-top { display:flex; align-items:baseline; gap:8px; }
+.arr-n { flex:0 1 auto; min-width:0; font-size:var(--t3); white-space:nowrap;
+         overflow:hidden; text-overflow:ellipsis; }
+.arr-s { font-size:var(--t2); color:var(--mid); margin-top:2px;
+         white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.arr-s .eta { font-weight:600; color:var(--ink); }
+.arr.done-form { background:rgba(122,160,130,.11);
+                 border-color:rgba(122,160,130,.34); }
+.arr.todo-form { background:rgba(28,28,26,.045); border-color:var(--rule); }
+.arr.part-form { background:rgba(194,154,85,.11);
+                 border-color:rgba(194,154,85,.36);
+                 border-left:3px solid rgba(194,154,85,.85); }
+.arr.open { border-radius:8px 8px 0 0; margin-bottom:8px; }
+.kst { flex:0 0 auto; text-align:right; font-size:var(--t1); line-height:1.5; }
+.kst .g { color:var(--law-green); }
+.kst .a { color:var(--amberink); }
+.kst .t { color:var(--terra); }
+
+/* the row's sheet */
+.sum { border:1px solid rgba(122,160,130,.34); border-top:none;
+       border-radius:0 0 8px 8px; background:rgba(122,160,130,.11);
+       margin:-8px 0 7px; padding:12px 13px 13px; }
+.sum-r { display:flex; gap:10px; font-size:var(--t2); line-height:1.5;
+         padding:3px 0; align-items:baseline; }
+.sum-l { flex:0 0 88px; font-size:var(--t1); color:var(--mid); padding-top:3px; }
+.sum-v { flex:1; min-width:0; }
+.sum-btns { display:flex; gap:7px; margin-top:12px; }
+.sum-btns button { flex:1; padding:12px 0; border:1px solid var(--rule);
+                   border-radius:6px; font-family:var(--ui-font);
+                   font-size:var(--t2); cursor:pointer;
+                   background:transparent; color:var(--mid); }
+.sum-btns button.go { background:var(--accent); color:var(--accent-ink);
+                      border:0; font-weight:500; }
+.sum-btns button.wide { flex:1 1 100%; }
+.sum-btns button.terra { border-color:var(--terra-b); color:var(--terra);
+                         background:transparent; }
+
+/* the run viewport, keys.html's */
+.cardov { position:fixed; inset:0; background:var(--ground); z-index:800;
+          overflow-y:auto;
+          padding:calc(14px + env(safe-area-inset-top)) 18px 40px; }
+.cardov-head { max-width:520px; margin:0 auto; display:flex;
+               align-items:baseline; justify-content:space-between; }
+.cardov-title { font-size:var(--t3); font-weight:600; }
+.cardov-x { background:none; border:none; font-size:var(--t5); line-height:1;
+            color:var(--mid); padding:4px 8px; cursor:pointer; }
+.cardov-in { max-width:520px; margin:0 auto; }
+.crun { border:1px solid var(--rule); border-radius:var(--r);
+        padding:14px; margin-top:12px; }
+.crun.now { border-color:var(--amberb); cursor:pointer; }
+.crun.is-done { opacity:.62; }
+.crun-v { font-size:26px; font-weight:600; }
+.crun-v small { font-size:var(--t2); font-weight:400; color:var(--mid);
+                margin-left:8px; }
+.crun-s { font-size:var(--t2); color:var(--mid); margin-top:4px; }
+.crun-s.card-done { color:var(--law-green); }
+.crun-valid { font-size:var(--t1); color:var(--mid); margin-top:6px; }
+.crun.now .crun-v { font-size:52px; line-height:1; }
+.crun.now .crun-v small { display:block; margin-left:0; margin-top:6px; }
+.cardhold { background:var(--amber); border:1px solid var(--amberb);
+            border-radius:var(--r); color:var(--amberink); padding:14px;
+            margin-top:12px; font-size:var(--t2); line-height:1.5; }
+.cslots { display:flex; gap:8px; margin-top:10px; align-items:center; }
+.cslot { width:26px; height:38px; border-radius:5px; border:2px solid var(--rule);
+         background:transparent; position:relative; flex:0 0 auto;
+         display:flex; align-items:center; justify-content:center;
+         font-size:var(--t3); color:var(--mid); }
+.cslot::after { position:absolute; inset:0; display:flex; align-items:center;
+                justify-content:center; font-size:var(--t3); }
+.cslot.filled { background:var(--law-green-t); border-color:var(--law-green-b); }
+.cslot.filled::after { content:'\2713'; color:var(--law-green); }
+.cslot.now { border-color:var(--amberb); background:var(--amber);
+             color:var(--amberink); font-weight:600; }
+.crun.now .cslot { width:40px; height:58px; border-radius:7px; font-size:22px; }
+.crun.now .cslot::after { font-size:24px; }
+.cardask { margin:16px auto 2px; width:150px; color:var(--ink); }
+.cardask svg { display:block; width:100%; height:auto; }
+.cardask .wave { stroke:var(--amberink); opacity:0;
+                 animation:cardwave 1.8s ease-out infinite; }
+.cardask .wave.w2 { animation-delay:.3s; }
+@keyframes cardwave { 0%{opacity:0;} 25%{opacity:.9;} 70%,100%{opacity:0;} }
+@media (prefers-reduced-motion: reduce){ .cardask .wave{animation:none;opacity:.55;} }
+.skiplink { display:block; margin:14px auto 0; font-size:var(--t2);
+            color:var(--mid); background:none; border:none; cursor:pointer;
+            text-decoration:underline; font-family:var(--ui-font); }
+/* qty stepper, the spa page's */
+.cqty { display:inline-flex; align-items:center; border:1px solid var(--rule);
+        border-radius:var(--r); margin-left:10px; vertical-align:middle; }
+.cqty button { width:38px; height:38px; background:none; border:none;
+               font-size:var(--t4); color:var(--ink); cursor:pointer; }
+.cqty span { width:26px; text-align:center; font-size:var(--t3); }
+.tapnote { font-size:var(--t1); color:var(--amberink); margin-top:6px; }
+
+/* ── THE TABLE, WATCHED - mock only ─────────────────────────────────
+   The store itself, one line per row of /cards, so every press above
+   can be checked against the one thing it is supposed to do to the
+   table. Serials show here because this panel IS the database; the
+   screens above keep them off, per the wording law. Not part of the
+   app: the real page has no such panel and never would. */
+.store { margin:44px 0 0; padding-top:14px; border-top:1px dashed var(--rule); }
+.store h2 { font-size:var(--t1); font-weight:600; color:var(--mid);
+            letter-spacing:.06em; text-transform:uppercase; margin-bottom:2px; }
+.store .why { font-size:var(--t1); color:var(--mid); line-height:1.5;
+              margin-bottom:10px; max-width:58ch; }
+.strow { padding:6px 8px; font-size:var(--t1); color:var(--mid);
+         line-height:1.5; border-radius:4px; }
+.strow b { color:var(--ink); font-weight:600; }
+.strow .lostflag { color:var(--terra); font-weight:600; }
+.strow .expflag { color:var(--amberink); }
+.strow.fresh { background:var(--law-green-t); }
+.stcount { font-size:var(--t1); color:var(--mid); padding:8px 8px 0; }
+
+.mocktools { margin:28px 0 0; opacity:.62; font-size:12px; color:var(--mid); }
+.mocktools summary { cursor:pointer; }
+.mocktools .btn { width:auto; padding:5px 12px; min-height:28px;
+                  font-size:11px; margin-top:10px; }
+</style>
+</head>
+<body class="tier-app ui2">
+
+<div class="daterow">
+  <div class="keywrap" id="issueWrap">
+    <button class="btn" id="issueBtn"
+      style="min-height:36px;padding:7px 14px;background:var(--accent);color:var(--accent-ink)">Issue keys</button>
+    <div class="keydrop" id="issueDrop"></div>
+  </div>
+  <button class="btn" id="cancelBtn"
+    style="min-height:36px;padding:7px 14px;margin-right:auto;background:transparent;color:var(--terra);border:1px solid var(--terra-b)">Cancel keys</button>
+  <div class="navwrap"><button class="navbtn" aria-label="Menu"><span></span><span></span><span></span></button></div>
+</div>
+
+<div id="body" style="max-width:520px;margin:0 auto;min-width:0;width:100%">
+  <div class="seg" id="tabs" style="margin-top:6px"></div>
+  <div class="secnote" id="tallyLine" style="margin-top:12px" hidden></div>
+  <div id="list" style="margin-top:10px"></div>
+
+</div>
+
+<div class="cardov" id="cardOv" hidden>
+  <div class="cardov-head">
+    <div class="cardov-title" id="cardTitle"></div>
+    <button class="cardov-x" id="cardX">&#215;</button>
+  </div>
+  <div id="cardBody"></div>
+</div>
+
+<div class="cardov" id="cancelOv" hidden>
+  <div class="cardov-head">
+    <div class="cardov-title">Cancel keys</div>
+    <button class="cardov-x" id="ovX">&#215;</button>
+  </div>
+  <div id="ovBody"></div>
+</div>
+
+<details class="mocktools"><summary>mock controls (not part of the app)</summary>
+  <button class="btn" onclick="resetAll()">reset the mock</button>
+  <!-- The store, made visible - NOT a screen and not proposed as one:
+       it sits folded behind this disclosure precisely so the page above
+       shows only the approved Keys design. Open it to watch the record
+       each press adds, removes or flags. -->
+  <div class="store" style="margin-top:18px;padding-top:0;border-top:0">
+    <h2>What the database holds</h2>
+    <div class="why">One line here is one card in the world. Cut a card and
+      a line appears, wipe one and its line goes, Mark lost flags it, and a
+      line still here past its expiry is Expired. The screens above are
+      these lines, counted - nothing else. (Each record also keeps the card
+      number the encoder reported, which is how the reader names a held
+      card; it stays off every screen.)</div>
+    <div id="storeRows"></div>
+  </div>
+</details>
+
+<script>
+/* ── the table ──────────────────────────────────────────────────────
+   CARDS is /cards: one object per card in the world. Everything below
+   reads it, counts it, appends to it or removes from it - there is no
+   other card state anywhere in this file, which is the proof. */
+var CARDS, STAYS, ARRIVING, TAB, OPEN, REMOVE_ASK, RUN, CN, SEQ, FRESH;
+
+var DAY = 864e5;
+function ord(n){
+  var s = ['th','st','nd','rd'], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+function at1pm(daysFromNow){
+  var d = new Date(); d.setDate(d.getDate() + daysFromNow);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 13).getTime();
+}
+function dayLabel(ms){
+  var d = new Date(ms);
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' +
+         ord(d.getDate());
+}
+function h12(ms){
+  var d = new Date(ms), h = d.getHours(), m = d.getMinutes();
+  var ap = h < 12 ? 'am' : 'pm'; h = h % 12 || 12;
+  return h + (m ? ':' + String(m).padStart(2, '0') : '') + ap;
+}
+function isToday(ms){
+  var d = new Date(ms), n = new Date();
+  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth()
+      && d.getDate() === n.getDate();
+}
+/* till Sat 13th, no month and no time; the 12h clock on the last day */
+function tillLabel(c){ return isToday(c.expiry) ? h12(c.expiry) : dayLabel(c.expiry); }
+
+/* one card = one row. The mock mints ids and serials; live, the id is a
+   push key and the serial is what CE_GetCardNo reported at cut time. */
+var NEXT = 1;
+function mintCard(villa, guest, expiry){
+  return { id: 'c' + (NEXT++),
+           no: String(600000 + Math.floor(Math.random() * 400000)),
+           villa: villa, guest: guest, cut: Date.now(), expiry: expiry,
+           lost: false };
+}
+
+function resetAll(){
+  NEXT = 1; FRESH = {};
+  CARDS = [];
+  function seed(villa, guest, expiry, n, lostOne){
+    for (var i = 0; i < n; i++){
+      var c = mintCard(villa, guest, expiry);
+      if (lostOne && i === 0) c.lost = true;
+      CARDS.push(c);
+    }
+  }
+  /* in house tonight */
+  seed(3,  'James Fisher',               at1pm(0), 2);        /* departs today */
+  seed(14, 'Ann Brown',                  at1pm(0), 1);        /* departs today */
+  seed(4,  'Robyn Williams',             at1pm(2), 2);
+  seed(6,  'Karen and Mike Mount',       at1pm(1), 3);
+  seed(9,  'Konstantinos Papadopoulos',  at1pm(1), 3, true);  /* one loose */
+  /* Expired: rows past their 1pm, still in the table */
+  seed(2,  'Sarah Mitchell',             at1pm(-4), 1);
+  seed(11, 'Priya Raghunathan',          at1pm(-6), 2);
+  seed(7,  'Mark Whitfield',             at1pm(-10), 1);
+
+  STAYS = [
+    { villa:3,  guest:'James Fisher',              dep:0 },
+    { villa:14, guest:'Ann Brown',                 dep:0 },
+    { villa:4,  guest:'Robyn Williams',            dep:2 },
+    { villa:6,  guest:'Karen and Mike Mount',      dep:1 },
+    { villa:9,  guest:'Konstantinos Papadopoulos', dep:1 }
+  ];
+  /* All arrivals asks no quantity: a card per guest on the booking */
+  ARRIVING = [
+    { villa:2,  guest:'Michelle Edmondson', pax:2, dep:3 },
+    { villa:12, guest:'Jeroen Hamers',      pax:3, dep:4 }
+  ];
+  TAB = 'all'; OPEN = null; REMOVE_ASK = null; RUN = null; CN = null; SEQ = 0;
+  document.getElementById('cardOv').hidden = true;
+  document.getElementById('cancelOv').hidden = true;
+  render();
+}
+
+/* ── counting rows - the whole of the screens' cleverness ─────────── */
+function stateOf(c, now){
+  if (c.expiry < now) return 'expired';
+  return c.lost ? 'lost' : 'active';
+}
+function rowsIn(state, now){
+  return CARDS.filter(function(c){ return stateOf(c, now) === state; })
+    .sort(function(a, b){ return (a.villa - b.villa) || (a.cut - b.cut); });
+}
+function heldBy(villa, now){          /* "John has 2 active cards" */
+  return CARDS.filter(function(c){
+    return c.villa === villa && stateOf(c, now) !== 'expired';
+  }).length;
+}
+function cardsWord(n){ return n + (n === 1 ? ' card' : ' cards'); }
+
+var TABS = [
+  { k:'all',   label:'All' },
+  { k:'ok',    label:'Active' },
+  { k:'lost',  label:'Lost' },
+  { k:'expired', label:'Expired' }
+];
+
+function render(){
+  var now = Date.now();
+  var act = rowsIn('active', now), lost = rowsIn('lost', now),
+      tly = rowsIn('expired', now);
+
+  var t = '';
+  TABS.forEach(function(tb){
+    var n = tb.k === 'expired' ? tly.length : tb.k === 'lost' ? lost.length
+          : tb.k === 'ok' ? act.length : act.length + lost.length;
+    t += '<button' + (TAB === tb.k ? ' class="on"' : '') + ' data-tab="' + tb.k +
+         '">' + tb.label + (n ? ' &middot; ' + n : '') + '</button>';
+  });
+  document.getElementById('tabs').innerHTML = t;
+
+  var line = document.getElementById('tallyLine');
+  var g = '';
+  if (TAB === 'expired'){
+    line.hidden = false;
+    /* No "% returned", ruled by the owner 11 Sep: the rate needed the
+       dead store's lifetime counters, and a cancelled card's row is
+       gone. The rows say only this. */
+    line.textContent = tly.length
+      ? tly.length + ' cards never came back'
+      : 'Every card so far has come back';
+    tly.sort(function(a, b){ return b.expiry - a.expiry; })
+      .forEach(function(c){
+        g += '<div class="arr todo-form" style="opacity:.62;border-style:dashed">' +
+          '<div class="arr-v">' + c.villa + '</div>' +
+          '<div class="arr-mid"><div class="arr-top">' +
+          '<div class="arr-n">' + c.guest + '</div></div>' +
+          '<div class="arr-s">a card &middot; departed <span class="eta">' +
+          dayLabel(c.expiry) + '</span>' +
+          (c.lost ? ' &middot; was lost' : '') + '</div></div></div>';
+      });
+  } else {
+    line.hidden = true;
+    /* a row on screen IS a row in the table - render is a walk, not
+       a loop over a count */
+    function rowHTML(c, open, sub, kst, dress){
+      return '<button class="arr ' + dress + (open ? ' open' : '') +
+        '" data-open="' + c.id + '">' +
+        '<div class="arr-v">' + c.villa + '</div>' +
+        '<div class="arr-mid"><div class="arr-top">' +
+        '<div class="arr-n">' + c.guest + '</div></div>' +
+        '<div class="arr-s">' + sub + '</div></div>' +
+        '<div class="kst">' + kst + '</div></button>';
+    }
+    if (TAB !== 'lost')
+      act.forEach(function(c){
+        var open = OPEN === c.id;
+        g += rowHTML(c, open,
+          'a card &middot; <span class="eta">till ' + tillLabel(c) + '</span>',
+          isToday(c.expiry) ? '<div class="a">expires ' + h12(c.expiry) + '</div>'
+                            : '<div class="g">valid</div>',
+          isToday(c.expiry) ? 'part-form' : 'done-form');
+        if (open) g += sheetHTML(c, 'active');
+      });
+    if (TAB !== 'ok')
+      lost.forEach(function(c){
+        var open = OPEN === c.id;
+        g += rowHTML(c, open,
+          'one of villa ' + c.villa + '’s &middot; ' +
+          '<span class="eta">floating till ' + tillLabel(c) + '</span>',
+          '<div class="t">lost</div>', 'done-form');
+        if (open) g += sheetHTML(c, 'lost');
+      });
+  }
+  if (!g) g = '<div class="arr todo-form" style="opacity:.62;border-style:dashed">' +
+    '<div class="arr-mid"><div class="arr-s">Nothing here</div></div></div>';
+  document.getElementById('list').innerHTML = g;
+
+  storeRender(now);
+}
+
+function sheetHTML(c, kind){
+  /* Cards are twins in the hand, so the row stays anonymous on screen;
+     the flag and the remove act on THIS row all the same, because a
+     row is a card and the table needs exactly one flagged. */
+  var s = '<div class="sum">' +
+    '<div class="sum-r"><div class="sum-l">Card</div><div class="sum-v">' +
+    'villa ' + c.villa + ' &middot; ' +
+    (kind === 'lost' ? 'floating till ' : 'till ') + tillLabel(c) +
+    '</div></div><div class="sum-btns">';
+  if (kind === 'lost')
+    s += '<button data-found="' + c.id + '">Found</button>';
+  else
+    s += '<button class="terra" data-lose="' + c.id + '">Mark lost</button>' +
+         '<button' + (REMOVE_ASK === c.id ? ' class="terra"' : '') +
+         ' data-remove="' + c.id + '">' +
+         (REMOVE_ASK === c.id ? 'Confirm · card off the register'
+                              : 'Remove') + '</button>';
+  return s + '</div></div>';
+}
+
+/* ── the table panel ──────────────────────────────────────────────── */
+function storeRender(now){
+  /* plain sentences, one per card - the owner read the first draft's
+     id/serial columns as jargon, and the panel exists to be READ */
+  var h = '';
+  CARDS.forEach(function(c){
+    h += '<div class="strow' + (FRESH[c.id] ? ' fresh' : '') + '">' +
+      'A card for villa <b>' + c.villa + '</b> (' + c.guest + ') &middot; ' +
+      (c.expiry < now
+        ? '<span class="expflag">expired ' + dayLabel(c.expiry) +
+          ', never came back</span>'
+        : 'till ' + dayLabel(c.expiry) + ', 1pm') +
+      (c.lost ? ' &middot; <span class="lostflag">marked lost</span>' : '') +
+      '</div>';
+  });
+  h += '<div class="stcount">' + CARDS.length +
+       (CARDS.length === 1 ? ' card' : ' cards') +
+       ' on record &middot; the register above is this list, counted</div>';
+  document.getElementById('storeRows').innerHTML = h;
+  FRESH = {};
+}
+
+/* ── issuing: the run appends a row per card as it cuts ───────────── */
+function issueDropHTML(){
+  var now = Date.now(), ih = '';
+  ARRIVING.forEach(function(r){
+    ih += '<button data-issue="' + r.villa + '">Villa ' + r.villa +
+          ' &middot; ' + r.guest + '<span class="kd-state">arriving</span></button>';
+  });
+  STAYS.forEach(function(r){
+    var n = heldBy(r.villa, now);
+    ih += '<button data-issue="' + r.villa + '">Villa ' + r.villa +
+          ' &middot; ' + r.guest +
+          (n ? '<span class="kd-state card-done">' + n + ' held</span>'
+             : '<span class="kd-state">no cards</span>') + '</button>';
+  });
+  ih += '<button class="kd-all" data-issue="all">All arrivals' +
+        '<span class="navbadge">' + ARRIVING.length + '</span></button>';
+  return ih;
+}
+function stayFor(villa){
+  return STAYS.concat(ARRIVING).filter(function(r){
+    return r.villa === villa; })[0];
+}
+
+/* RUN = the short-lived request: villas queued, a qty each, gone when
+   the overlay closes. It is never written into a card's row - the rows
+   it leaves behind are the only lasting thing. */
+function qtyOpen(villa){
+  var st = stayFor(villa);
+  RUN = { ask: true, villa: villa, qty: 1 };
+  document.getElementById('cardTitle').textContent = 'Key cards · villa ' + villa;
+  document.getElementById('cardBody').innerHTML =
+    '<div class="cardov-in"><div class="crun">' +
+    '<div class="crun-s">How many cards for ' + st.guest + '?' +
+    '<span class="cqty">' +
+    '<button data-q="-1">−</button><span id="qtyN">1</span>' +
+    '<button data-q="1">+</button></span></div>' +
+    '<div class="sum-btns" style="margin-top:14px">' +
+    '<button class="go wide" id="qtyGo">Cut 1 card</button></div>' +
+    '</div></div>';
+  document.getElementById('cardOv').hidden = false;
+}
+function runStart(queue, title){
+  RUN = { queue: queue, i: 0, done: 0, waking: true };
+  document.getElementById('cardTitle').textContent = title;
+  document.getElementById('cardOv').hidden = false;
+  runRender();
+  /* the pretend desk PC coming to the phone: Waking up... then the ask */
+  setTimeout(function(){
+    if (RUN && RUN.waking){ RUN.waking = false; runRender(); } }, 1200);
+}
+function runRender(){
+  var b = '<div class="cardov-in">';
+  if (!RUN){ return; }
+  if (RUN.waking){
+    b += '<div class="cardhold"><b>Waking up...</b> the encoder is being ' +
+         'told what to cut.</div>';
+    RUN.queue.forEach(function(q){ b += runCard(q, false); });
+  } else if (RUN.i >= RUN.queue.length){
+    b += '<div class="crun"><div class="crun-s card-done">' +
+         cardsWord(RUN.done) + ' cut · envelope and hand over</div></div>';
+    RUN.queue.forEach(function(q){ b += runCard(q, false); });
+    b += '<div class="sum-btns" style="margin-top:16px">' +
+         '<button class="go wide" id="runClose">Done</button></div>';
+  } else {
+    RUN.queue.forEach(function(q, qi){ b += runCard(q, qi === RUN.i); });
+    b += '<div class="tapnote">(mock: tap the amber villa = hold a card ' +
+         'to the reader)</div>';
+  }
+  b += '</div>';
+  document.getElementById('cardBody').innerHTML = b;
+}
+function runCard(q, now){
+  var slots = '';
+  for (var i = 0; i < q.qty; i++)
+    slots += '<i class="cslot' + (i < q.cut ? ' filled'
+           : (now && i === q.cut) ? ' now' : '') + '">' +
+           (i >= q.cut ? i + 1 : '') + '</i>';
+  var h = '<div class="crun' + (now ? ' now" data-hold="1' :
+          (q.cut >= q.qty ? ' is-done' : '')) + '">' +
+    '<div class="crun-v">' + q.villa + '<small>' + q.guest + '</small></div>';
+  if (now)
+    h += '<div class="cardask"><svg viewBox="0 0 140 96" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Hold a card to the reader">' +
+      '<rect x="57" y="10" width="33" height="46" rx="5" transform="rotate(16 73 33)"/>' +
+      '<path d="M58 50c-4 7-3 14 2 19 6 6 15 6 21 1l7-6"/>' +
+      '<path d="M63 57c2-3 5-4 8-2M69 63c2-3 5-4 8-2"/>' +
+      '<path class="wave w1" d="M40 30c-4 6-4 14 0 20"/><path class="wave w2" d="M30 24c-7 9-7 23 0 32"/>' +
+      '<path class="wave w1" d="M106 30c4 6 4 14 0 20"/><path class="wave w2" d="M116 24c7 9 7 23 0 32"/>' +
+      '</svg></div><div class="crun-s">Hold a card to the reader</div>';
+  h += '<div class="cslots">' + slots + '</div>' +
+       '<div class="crun-valid">till ' + dayLabel(q.expiry) +
+       ' · expires 1pm</div>';
+  if (now) h += '<button class="skiplink" data-skip="1">Skip this card</button>';
+  return h + '</div>';
+}
+function runHold(){
+  var q = RUN.queue[RUN.i];
+  /* THE MODEL, at the moment it matters: the cut card is a row,
+     appended now, serial and all - not a counter bumped */
+  var c = mintCard(q.villa, q.guest, q.expiry);
+  CARDS.push(c); FRESH[c.id] = true;
+  q.cut++; RUN.done++;
+  if (q.cut >= q.qty) RUN.i++;
+  runRender(); render();
+}
+function runSkip(){
+  /* a skipped card leaves NO row: nothing was written to plastic */
+  var q = RUN.queue[RUN.i];
+  q.qty--;
+  if (q.cut >= q.qty) RUN.i++;
+  runRender();
+}
+
+/* ── cancelling: the reader names the row, the row is removed ─────── */
+function cnOpen(){
+  CN = { done: [] }; SEQ = 0;
+  document.getElementById('cancelOv').hidden = false;
+  cnRender();
+}
+function cnHold(){
+  var now = Date.now();
+  /* the pretend reader: a valid card, then villa 9's lost one, then a
+     expired card, then plastic no row matches */
+  var seq = [
+    function(){ return rowsIn('active', now).filter(function(c){
+                  return !isToday(c.expiry); })[0]; },
+    function(){ return rowsIn('lost', now)[0]; },
+    function(){ return rowsIn('expired', now)[0]; },
+    function(){ return null; }
+  ];
+  var c = (seq[Math.min(SEQ, 3)] || seq[3])(); SEQ++;
+  if (!c){
+    /* Foreign plastic and an already-cancelled card look the same to the
+       register - no record - and wiping either is NORMAL, not an error
+       (the owner, 11 Sep): if it's unknown, just say unknown. */
+    CN.done.unshift('Unknown card · cancelled');
+  } else {
+    /* one notification shape, the owner 11 Sep: the entry, then the
+       action - never a narrative variant per state */
+    CARDS = CARDS.filter(function(x){ return x.id !== c.id; });
+    CN.done.unshift('Villa ' + c.villa + ' · cancelled');
+  }
+  cnRender(); render();
+}
+function cnRender(){
+  var b = '<div class="cardov-in"><div class="crun now" data-cnhold="1">' +
+    '<div class="crun-v">' + CN.done.length +
+    '<small>' + (CN.done.length === 1 ? 'card cancelled' : 'cards cancelled') +
+    '</small></div>' +
+    '<div class="cardask"><svg viewBox="0 0 140 96" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Hold a card to the reader">' +
+    '<rect x="57" y="10" width="33" height="46" rx="5" transform="rotate(16 73 33)"/>' +
+    '<path d="M58 50c-4 7-3 14 2 19 6 6 15 6 21 1l7-6"/>' +
+    '<path d="M63 57c2-3 5-4 8-2M69 63c2-3 5-4 8-2"/>' +
+    '<path class="wave w1" d="M40 30c-4 6-4 14 0 20"/><path class="wave w2" d="M30 24c-7 9-7 23 0 32"/>' +
+    '<path class="wave w1" d="M106 30c4 6 4 14 0 20"/><path class="wave w2" d="M116 24c7 9 7 23 0 32"/>' +
+    '</svg></div>' +
+    '<div class="crun-s">Hold a card to the reader</div></div>';
+  CN.done.forEach(function(d){
+    b += '<div class="crun is-done"><div class="crun-s card-done">' + d +
+         '</div></div>';
+  });
+  b += '<div class="sum-btns" style="margin-top:16px">' +
+       '<button class="go wide" id="ovStop">Stop</button></div>' +
+       '<div class="tapnote">(mock: tap the big card = hold a card to the ' +
+       'reader · it plays a valid card, the lost one, an expired ' +
+       'one, then an unknown card)</div></div>';
+  document.getElementById('ovBody').innerHTML = b;
+}
+
+/* ── taps ─────────────────────────────────────────────────────────── */
+document.addEventListener('click', function(e){
+  var t;
+  /* an unconfirmed Remove dies on ANY other tap */
+  var wasAsk = REMOVE_ASK; REMOVE_ASK = null;
+  if ((t = e.target.closest('[data-tab]'))){
+    TAB = t.getAttribute('data-tab'); OPEN = null; render(); return;
+  }
+  if ((t = e.target.closest('[data-lose]'))){
+    CARDS.forEach(function(c){
+      if (c.id === t.getAttribute('data-lose')) c.lost = true; });
+    render(); return;
+  }
+  if ((t = e.target.closest('[data-found]'))){
+    CARDS.forEach(function(c){
+      if (c.id === t.getAttribute('data-found')) c.lost = false; });
+    render(); return;
+  }
+  if ((t = e.target.closest('[data-remove]'))){
+    var id = t.getAttribute('data-remove');
+    if (wasAsk === id){
+      CARDS = CARDS.filter(function(c){ return c.id !== id; });
+      OPEN = null;
+    } else REMOVE_ASK = id;
+    render(); return;
+  }
+  if (e.target.closest('#issueBtn')){
+    var dd = document.getElementById('issueDrop');
+    if (!dd.classList.contains('open')) dd.innerHTML = issueDropHTML();
+    dd.classList.toggle('open'); return;
+  }
+  if ((t = e.target.closest('[data-issue]'))){
+    document.getElementById('issueDrop').classList.remove('open');
+    var iv = t.getAttribute('data-issue');
+    if (iv === 'all'){
+      /* All arrivals asks no quantity: a card per guest on the booking */
+      runStart(ARRIVING.map(function(r){
+        return { villa: r.villa, guest: r.guest, qty: r.pax, cut: 0,
+                 expiry: at1pm(r.dep) };
+      }), 'Key cards · all arrivals');
+    } else qtyOpen(+iv);
+    return;
+  }
+  if ((t = e.target.closest('[data-q]')) && RUN && RUN.ask){
+    RUN.qty = Math.max(1, Math.min(9, RUN.qty + (+t.getAttribute('data-q'))));
+    document.getElementById('qtyN').textContent = RUN.qty;
+    document.getElementById('qtyGo').textContent = 'Cut ' + cardsWord(RUN.qty);
+    return;
+  }
+  if (e.target.closest('#qtyGo') && RUN && RUN.ask){
+    var st = stayFor(RUN.villa);
+    runStart([{ villa: RUN.villa, guest: st.guest, qty: RUN.qty, cut: 0,
+                expiry: at1pm(st.dep) }],
+             'Key cards · villa ' + RUN.villa);
+    return;
+  }
+  /* skip first: the link lives INSIDE the amber card, which carries the
+     hold surface - checked the other way round, a skip cuts a card */
+  if (e.target.closest('[data-skip]') && RUN && !RUN.waking){ runSkip(); return; }
+  if (e.target.closest('[data-hold]') && RUN && !RUN.waking){ runHold(); return; }
+  if (e.target.closest('#runClose') || e.target.closest('#cardX')){
+    RUN = null; document.getElementById('cardOv').hidden = true;
+    render(); return;
+  }
+  if (e.target.closest('#cancelBtn')){ cnOpen(); return; }
+  if (e.target.closest('[data-cnhold]')){ cnHold(); return; }
+  if (e.target.closest('#ovStop') || e.target.closest('#ovX')){
+    CN = null; document.getElementById('cancelOv').hidden = true;
+    render(); return;
+  }
+  if ((t = e.target.closest('[data-open]'))){
+    var k = t.getAttribute('data-open');
+    OPEN = OPEN === k ? null : k;
+    render(); return;
+  }
+});
+resetAll();
+</script>
+</body></html>

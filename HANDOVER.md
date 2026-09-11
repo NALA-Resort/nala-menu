@@ -276,6 +276,106 @@ hid whatever they did not recognise; `pages_suite` still fails if any page
 keeps one.
 
 ---
+## Key cards
+
+Built 8-11 Sep. Working against real hardware. The store does not match the
+agreed model; the rebuild below is owed.
+
+### The physical system
+
+TTHotel/TTLock locks, one per villa. Cards are written at the front desk on a
+Sciener **E3 encoder** (COM3, Silicon Labs CP210x) through TTLock's own
+`CardEncoder.dll`. A browser cannot reach USB, so a PowerShell helper -
+`tools/nala-encoder.ps1` - runs on the desk PC, watches the database and drives
+the encoder. `ENCODER.md` is the long form: install, the taskbar shortcut, the
+error table, what each live run has proven.
+
+The Worker (`worker/cards.js`) holds the TTLock credentials and relays the two
+things the helper needs: `hotelInfo`, a ten-minute credential every write
+requires, and the lock table. The desk PC never holds a TTLock secret.
+
+Card expiry is the departure day at **1pm**, ruled by the owner 10 Sep.
+
+### The model, ruled by the owner 11 Sep
+
+> Writing and cancelling cards is nearly a matter of doing what is asked.
+> Nothing else. Records are kept in the table and removed from the table.
+> That's it. The only clever things would be using data in the table to
+> indicate facts like John has 2 active cards.
+
+| Event | The table |
+|---|---|
+| a card is written | a row appears |
+| a card is cancelled (wiped at the encoder) | its row is removed |
+| a card is reported lost | a flag on its row; the row stays, the card is still out there |
+| a card expires with its row still there | it shows as **Expired** - it never came back. (The working name was "the Tally"; the owner renamed it 11 Sep, because expired is what they are) |
+
+**Screens count rows.** "2 cards with the guest" is two rows. The register is
+the rows. Nothing subtracts and nothing infers.
+
+### What the store is now
+
+`/cardjobs/<date>/<villa>` is a tally, not a table of cards:
+`{qty, written, back, lost, nos, guest, state, by, at, note}`. `qty` is what was
+asked for, `written` what exists, `back` how many were wiped, `lost` how many
+are loose. A request and a record share one row, and the screens do arithmetic
+over them. `/cancelrun` carries a cancel session: `state`, `seen`, and a `done`
+list the helper writes as it wipes each card.
+
+### The rebuild
+
+1. **A table of cards.** One row per card written: villa, guest, cut-at,
+   expiry, the serial the encoder reported, a lost flag. A request to cut N
+   cards is a separate short-lived thing that ends when the cutting ends, never
+   stored in the same row as the cards.
+2. **The helper writes a row per card** as it cuts it; the cancel session
+   removes the row it wiped. `rules.json` needs the new node.
+3. **The screens count.** Seats are the held rows, the register lists rows,
+   Expired is rows past their expiry still present. `cardCell` and `cardLife`
+   in `nala-shared.js` are the tally-era readers and do not survive the
+   rebuild.
+4. **No migration needed.** The live records are two days of test data.
+5. **The Dashboard reads the same table** (ruled 11 Sep), through the one
+   shared reader that replaces `cardCell`, with its entry in
+   `tests/dashboard_sources.json` - rule 7, applied before the drift.
+6. **Front Desk steps back** (ruled 11 Sep): its key is merely a shortcut
+   that cuts all arrival keys - the same run the Keys page owns - and
+   nothing else. The per-villa encode menu, the card states in its drop
+   and the guest sheet's Key cards line all go: there is no reason for
+   keys information on Front Desk's forms. Cards are the Keys page's.
+
+### The serial
+
+The encoder reports a card number (`CE_GetCardNo`), recorded at cut time; the
+cancel session matches a held card against it. **Settled by the owner,
+11 Sep: the number belongs to the plastic.** He knows it from TTHotel's own
+software, where writing over an active card removes the old card from the
+register - behaviour only possible when the identity rides on the plastic,
+not on what was written. No desk test needed.
+
+The helper therefore mirrors TTHotel exactly: cutting onto plastic that
+still has a row removes that row in the same act (a re-cut can never leave
+a ghost behind a skipped cancel), and a card whose written data is corrupt
+or unreadable can still be named at the reader and its row removed there,
+rather than by a hand Remove.
+
+### Wording, all ruled by the owner
+
+`Skip this card`, `Mark lost`, `Found`, `Remove`, `Waking up...`; `All
+arrivals` asks no quantity and cuts a card per guest on the booking; `till Sat
+13th` with no month and no time; `expires`, never `dies`; 12-hour clock on the
+last day; no serial numbers on screen. And from 11 Sep: the screen word is
+`Expired`, never `Tally` - expired is what they are; no `% returned` there -
+the rate needed the dead store's lifetime counters and is removed, the line
+says only how many cards never came back; the cancel session names each
+entry as it is wiped, which is fine and intuitive, and every announcement
+keeps ONE shape - the entry, then the action: `Villa 9 · cancelled`,
+`Unknown card · cancelled` - never a narrative variant per state (no
+"was lost", no "off the tally"); wiping foreign plastic or an
+already-cancelled card is NORMAL desk business, never an error - if it's
+unknown, just say unknown.
+
+---
 
 ## Standing cautions
 
@@ -375,34 +475,40 @@ fix. `tests/run.py` reports how many have drifted.
 
 None of these can move without him.
 
-1. **Work through `SECURITY.md`.** Four jobs, about forty five minutes, all in a
+1. **The key-card rules paste.** `rules.json` moved on 11 Sep: the per-villa
+   card ceiling is 99, not 6. Until the file is pasted into Firebase console ->
+   Realtime Database -> Rules -> Publish, the database refuses more than six
+   cards per villa, and the page reports that refusal as a connection error.
+   Copy from
+   `raw.githubusercontent.com/NALA-Resort/nala-menu/main/rules.json`.
+2. **Work through `SECURITY.md`.** Four jobs, about forty five minutes, all in a
    browser. Rotate the credentials (including two GitHub tokens that have been
    pasted into chat), delete the leftover Firebase logins, lock the Firebase key
    to the site, make the repository private.
-2. **Decide the guest page's dietaries: gone for good, or back, and how.** The
+3. **Decide the guest page's dietaries: gone for good, or back, and how.** The
    whole of it, including how to do either, is the first entry under Parked
    decisions below. It is listed here only so the question is visible when he
    asks what is outstanding.
-3. **Set `/settings/managerMobile`** in the Firebase console, as a plain string
+4. **Set `/settings/managerMobile`** in the Firebase console, as a plain string
    like `+61400000000`. The publish page reads the Notify management link from
    there. Until it is set the line reads as it did before, with no error.
-4. **Delete `menu.json` from the repo.** It holds the menu of 22 Aug and nothing
+5. **Delete `menu.json` from the repo.** It holds the menu of 22 Aug and nothing
    rewrites it now that publishing is in the database. Harmless since 23 Aug,
    because the reader refuses a file that is not for the day being asked about,
    but it is dead weight that only ever misleads.
-5. **Cancellations have never been seen to fire.** The Zap does not trigger.
+6. **Cancellations have never been seen to fire.** The Zap does not trigger.
    Until it does, a cancelled booking stays on the board. The Worker handles it
    and is tested; the feed is the only problem.
-6. **GuestTouch links** need `?b={{bookingId}}&r={{roomnumber}}`. This failed
+7. **GuestTouch links** need `?b={{bookingId}}&r={{roomnumber}}`. This failed
    for real on 22 Aug: the invitations went out with `{{bookingId}}` unmerged,
    so every confirmation was refused while the guest was thanked. The guest page
    now says when an answer did not save, and `r` is the villa fallback. Bare
    digits: `Room 12` is treated as absent rather than cleaned into a guess.
-7. **The pre-arrival dining description is placeholder copy.** Standing in and
+8. **The pre-arrival dining description is placeholder copy.** Standing in and
    live. Only the 6:00 to 6:30 seating is a real fact; the rest is invented and
    should be his. `prearrival.html`, id `dineHelp`.
-8. **Confirm the Mews companion field** against a live Zap run.
-9. **`TESTING.md`** is the checks only a human can run. **All of it unrun.**
+9. **Confirm the Mews companion field** against a live Zap run.
+10. **`TESTING.md`** is the checks only a human can run. **All of it unrun.**
 10. **Map the Mews rate name into the Zap, and paste the 26 Aug rules.** The
     booking flags (defined on Settings, Flags; ticked per booking at the
     desk, admin only; printed under the guest's name on the FOH Sheet) work

@@ -2444,14 +2444,16 @@ with sync_playwright() as p:
                      .trim().startsWith('Villa 4'));
          return b && b.innerText.indexOf('1 card with the guest')>=0
              && b.innerText.indexOf('3 cards issued')<0;}"""))
-    ck("and leaves the ticks: one filled, two sunk",
+    #  Seats show the PRESENT holding, never the lifetime ledger (owner,
+    #  11 Sep: three ghosts before a fresh "4" read as inventing cards).
+    ck("and the seats show the one card held - the wiped two have no seats",
        pg.evaluate("""()=>{var b=[...document.querySelectorAll('.crun')]
            .find(x=>(x.querySelector('.crun-v')||{}).textContent
                      .trim().startsWith('Villa 4'));
          if (!b) return false;
-         return b.querySelectorAll('.cslot').length===3
+         return b.querySelectorAll('.cslot').length===1
              && b.querySelectorAll('.cslot.filled').length===1
-             && b.querySelectorAll('.cslot.gone').length===2;}"""))
+             && b.querySelectorAll('.cslot.gone').length===0;}"""))
     CARDJOBS["4"].update({"qty": 2, "written": 2})
     del CARDJOBS["4"]["back"]
     CARDJOBS["9"].update({"state": "failed", "written": 0, "note": "code 106: not this hotel's card"})
