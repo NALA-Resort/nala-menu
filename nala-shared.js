@@ -734,13 +734,38 @@ function oneNightStay(s){ return stayNights(s) === 1; }
    A one night stay is not owed the treatment answer. The guest form never
    offers it - one afternoon is no window for the therapists, the owner ruled
    25 Aug - so a question never put to them cannot be held against them. */
-function mandatoryAnswered(p, stay){
+/* Whether the massage question holds an answer, from BOTH places one can
+   live. The form's own yes/no is the guest's opening ask; a record at
+   /spa/<booking> is what became of it, and the 27 Aug rule the sheet's
+   Wellness lines and the row's lotus already follow - the live spa state
+   outranks the form, whose answer stands in only while no record has been
+   born from it - holds for the STATE as well. Before 10 Sep it did not:
+   a booking whose massage the masseuse had already booked could still
+   read "treatments unanswered" at the desk and sit amber for good,
+   because the ask had been keyed straight onto the Spa board (or the
+   form's answer walked back at the desk after the booking), so no
+   wellness boolean existed here while the outcome hung one node away.
+
+   ANY status-bearing record answers it: booked and declined are
+   outcomes, suggested and requested are the ask in hand - exactly the
+   set the sheet prints and the lotus draws. A malformed entry says
+   nothing, as it does to those two readers. */
+function massageAnswered(p, spa){
+  if (p && (p.wellness === true || p.wellness === false)) return true;
+  var r = spa || {};
+  return Object.keys(r).some(function(tid){
+    var t = r[tid];
+    return !!(t && typeof t === 'object' && t.status);
+  });
+}
+
+function mandatoryAnswered(p, stay, spa){
   if (!p) return false;
   var dinner  = p.dining === true || p.dining === false;
   var dietary = !!p.noDiets ||
                 (Array.isArray(p.diets) ? p.diets.length > 0 : !!p.diets);
-  var massage = p.wellness === true || p.wellness === false;
-  return dinner && dietary && (massage || oneNightStay(stay));
+  return dinner && dietary &&
+         (massageAnswered(p, spa) || oneNightStay(stay));
 }
 
 /* Completed wants all three: the stamp, an answer behind it, and the
@@ -752,8 +777,16 @@ function mandatoryAnswered(p, stay){
    never the massage, so it could stamp a multi night booking complete with
    the treatment question unasked - and that booking reads incomplete here
    from the moment this ships, with nothing to run and nothing to repair. */
-function formState(p, stay){
-  if (p && p.at && guestAnswered(p) && mandatoryAnswered(p, stay))
+/* spa is the booking's /spa/<id> node, so the massage answer can be read
+   from the outcome as well as the ask - see massageAnswered above. It
+   fills only the massage slot of the mandatory three: records at /spa
+   alone never make a form look started, and completed still wants the
+   stamp. Every reader passes it - the Front Desk holds it per row, the
+   Dashboard and Pre-arrival SMS read the node whole - because a reader
+   without it is a second, stricter reading of one state, which is how
+   two boards came to disagree about villa 17. */
+function formState(p, stay, spa){
+  if (p && p.at && guestAnswered(p) && mandatoryAnswered(p, stay, spa))
     return 'completed';
   return guestAnswered(p) ? 'incomplete' : 'notstarted';
 }

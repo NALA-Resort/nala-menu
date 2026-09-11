@@ -109,6 +109,11 @@ WORKER = {"reply": None}   # per-villa results the stub answers with
 
 FIXES = {}   # bookingId -> the /phonefix record, persisted across the stub
 
+#  The /spa node, whole, as arrivals-sms reads it since 10 Sep: a record
+#  born on the Spa board answers the massage question (massageAnswered,
+#  nala-shared.js), so the page reads the node the way the Dashboard does.
+SPA_ALL = {}
+
 def fb(route, request):
     u, m = request.url, request.method
     if m in ("PUT", "PATCH", "DELETE", "POST"):
@@ -137,6 +142,7 @@ def fb(route, request):
         body = json.dumps(FIXES[bid]) if bid in FIXES else "null"
     elif "/phonefix" in u:
         body = json.dumps(FIXES) if FIXES else "null"
+    elif "/spa.json" in u: body = json.dumps(SPA_ALL)
     elif "/presmstemplates" in u: body = "null"
     elif "/smstemplates" in u:
         body = json.dumps(STATE["templates"]) if STATE.get("templates") else "null"
@@ -611,6 +617,22 @@ with sync_playwright() as p:
     ck("with every mandatory answer in, the same record reads completed",
        "b-done" in (hrow.get_attribute("class") or ""))
     pg5.close()
+    #  Or let the Spa board answer it. The owner's report of 10 Sep: a
+    #  massage the masseuse had already approved, and the form still amber
+    #  with treatments named missing - the ask had been keyed straight onto
+    #  the board, so no wellness boolean existed on the form while the
+    #  outcome hung at /spa. massageAnswered (nala-shared.js) reads both
+    #  places, so a record born there answers the question here as well.
+    del PRE_RECS["pa-halfdone"]["wellness"]
+    SPA_ALL["pa-halfdone"] = {"t1": {"status": "booked", "day": dplus(2),
+                                     "time": "14:00", "source": "desk",
+                                     "at": "x"}}
+    pg5 = apage()
+    hrow = pg5.locator('.vrow[data-booking="pa-halfdone"]')
+    ck("a massage the Spa board holds answers the treatment question here too",
+       "b-done" in (hrow.get_attribute("class") or ""))
+    pg5.close()
+    del SPA_ALL["pa-halfdone"]
     del PRE_RECS["pa-halfdone"]; del NIGHTS[dplus(1)]["15"]
 
     #  A stamp with nothing behind it. Seen live on villa 17, 28 Aug: the

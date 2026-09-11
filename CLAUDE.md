@@ -187,7 +187,14 @@ Three things follow, and they are the whole model:
 - **One control moves it**, the sheet's `Mark as completed`, available only
   once the mandatory answers are in — **dinner, dietary and massage**, and
   massage is not owed by a one night stay, whose guest form never asks it.
-  The same control walks it back, in terracotta, and asks first.
+  The same control walks it back, in terracotta, and asks first. The massage
+  answer can live in TWO places since 10 Sep: the form's own yes/no, or a
+  record at `/spa/<booking>` — a massage the masseuse has booked is not a
+  question the desk still owes, and before this a booking whose ask was
+  keyed straight onto the Spa board sat amber for good with "treatments"
+  named missing while the outcome hung one node away. `massageAnswered`
+  (nala-shared.js) is the one reading; `formState` takes the spa node and
+  all three of its readers pass it.
 - **Arriving is not finishing.** Check in is a *visual move of the tile* so
   reception can see who is here. It touches the form's state not at all, and
   it asks for nothing before it will move: a control that refuses is not a

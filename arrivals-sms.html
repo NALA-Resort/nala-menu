@@ -156,7 +156,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=62"></script>
+<script src="nala-shared.js?v=64"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -281,7 +281,7 @@ function answersIn(p){ return countGuestAnswers(p); }
    prearrival is the form's own record and /previnvites/<id> is the send's.
    The form's stamps outrank the send's - a guest who finished the form is
    done however the message got to them. */
-function stateOf(stay, pre, invite, fix){
+function stateOf(stay, pre, invite, fix, spa){
   var when = 'arrives ' + shortDay(akey(stay.arrive));
   /* Completed means what the Front Desk means by it, because it is literally
      the same function: formState in nala-shared.js, which wants the stamp, an
@@ -289,8 +289,12 @@ function stateOf(stay, pre, invite, fix){
      of one state is how this page came to say Form completed about villa 17
      while the desk showed it amber, holding nothing, with the link unsendable
      from here. Reading it this way also puts the records already written back
-     where they belong, with nothing to run. */
-  if (formState(pre, stay) === 'completed')
+     where they belong, with nothing to run.
+
+     spa is the booking's /spa node, because since 10 Sep the massage
+     answer can live there as an outcome (massageAnswered) - the desk
+     passes it, so this page must too or the two boards drift again. */
+  if (formState(pre, stay, spa) === 'completed')
     return { kind:'done', tickable:false, ticked:false,
              line:'Completed ' + timeOf(pre.at) + ' · ' + when };
   /* A number fixed at the desk outranks the Mews copy: Mews cannot be
@@ -352,7 +356,7 @@ function render(list){
   ROWS = {};
   var rows = { ready:[], open:[], sent:[], done:[], nophone:[] };
   list.forEach(function(it){
-    var st = stateOf(it.stay, it.pre, it.invite, it.fix);
+    var st = stateOf(it.stay, it.pre, it.invite, it.fix, it.spa);
     ROWS[it.id] = { stay: it.stay, state: st, ticked: st.ticked };
     var b = document.createElement('button');
     b.type = 'button';
@@ -553,8 +557,17 @@ function load(){
         .catch(function(){ return null; })
         .then(function(day){ return { d: d, day: day || {} }; });
     })),
-    loadTemplates()
+    loadTemplates(),
+    /* The treatments, whole, the read the Dashboard already makes: since
+       10 Sep the massage answer can live at /spa as an outcome
+       (massageAnswered, nala-shared.js), and formState wants it. Read
+       once rather than per booking - seventeen villas' records fit in
+       one response, spa.html's own reasoning for the same node. */
+    fetch(DB + '/spa.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; })
   ]).then(function(res){
+    var spaAll = res[2] || {};
     var found = [];
     var seen = {};
     res[0].forEach(function(x){
@@ -580,6 +593,7 @@ function load(){
           .catch(function(){ return null; })
       ]).then(function(rec){
         it.pre = rec[0]; it.invite = rec[1]; it.fix = rec[2];
+        it.spa = spaAll[it.id] || null;
         return it;
       });
     }));

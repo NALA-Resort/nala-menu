@@ -107,11 +107,14 @@ villas at once.</p>
 <h2>Read /manual/&lt;today&gt;</h2>
 <pre id="man">loading…</pre>
 
+<h2>Why the Spa badge says what it says</h2>
+<pre id="spabadge">loading…</pre>
+
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 </div>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=62"></script>
+<script src="nala-shared.js?v=64"></script>
 <script>
 /* This page deletes live data. Until 18 Aug it had no role gate at all, so any
    login that could sign in could open it and run Clean Slate: a cleaner, a
@@ -167,6 +170,78 @@ function read(path, id){
     .then(function(r){ return r.text().then(function(t){ show(id, r.status, t); }); })
     .catch(function(e){ show(id, 0, String(e)); });
 }
+
+/* The hamburger's Spa badge, shown line by line. It counts what a login
+   still OWES, and the Spa board renders what it can reach - and those are
+   not the same set. The badge reads /bookings whole, every booking ever;
+   the board builds its list from a window of /stays, so a guest outside
+   that window is counted here and has no card there. A number nobody can
+   clear from the screen it belongs to is the shape of that gap, and this
+   is how to find which booking it is.
+
+   Read only: the same shared functions the badge itself calls, on the same
+   two nodes, printing the reason for each. If this list disagrees with the
+   badge, the badge changed and this did not. */
+function spaBadgeWorking(){
+  var today = dkey(new Date());
+  Promise.all([
+    fetch(DB + '/spa.json?v=' + Date.now()).then(function(r){
+      if (!r.ok) throw new Error('/spa HTTP ' + r.status); return r.json(); }),
+    fetch(DB + '/bookings.json?v=' + Date.now()).then(function(r){
+      if (!r.ok) throw new Error('/bookings HTTP ' + r.status); return r.json(); }),
+    fetch(DB + '/stays/' + today + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; })
+  ]).then(function(res){
+    var spa = res[0] || {}, bk = res[1] || {}, stays = res[2] || {};
+    var here = {};
+    Object.keys(stays).forEach(function(v){
+      var s = stays[v]; if (s && s.id) here[s.id] = v;
+    });
+    function who(id){
+      var b = bk[id] || {}, p = b.pms || {};
+      return ((p.first || '') + ' ' + (p.last || '')).trim() || id;
+    }
+    var lines = [], totals = spaOwedCounts(spa, bk, today);
+
+    Object.keys(spa).forEach(function(id){
+      var byId = spa[id] || {};
+      Object.keys(byId).forEach(function(tid){
+        var r = byId[tid];
+        if (!r || typeof r !== 'object' || !r.status) return;
+        var o = spaOwedBy(r, today);
+        if (!o.spa && !o.desk) return;
+        lines.push('  ' + who(id) + '  [' + id + '/' + tid + ']' +
+          '\n      status ' + r.status +
+          (r.status === 'declined' ? ', told=' + (r.told ? r.told : 'NO') : '') +
+          ', day ' + (spaItemDay(r) || '(any)') +
+          '\n      owed by: ' + [o.spa && 'masseuse', o.desk && 'desk']
+            .filter(Boolean).join(' and '));
+      });
+    });
+
+    Object.keys(bk).forEach(function(id){
+      var b = bk[id] || {}, p = b.prearrival, pms = b.pms || {};
+      if (!p || typeof p !== 'object' || p.wellness !== true) return;
+      if (String(pms.state || '').toLowerCase() === 'cancelled') return;
+      var dep = String(pms.depart || '').slice(0, 10);
+      if (dep && dep < today) return;
+      if (spaAskSpokenFor(spa[id])) return;
+      lines.push('  ' + who(id) + '  [' + id + ']' +
+        '\n      a wellness ask on the pre-arrival form, no treatment answering it' +
+        '\n      arrives ' + (String(pms.arrive || '').slice(0, 10) || '?') +
+        ', departs ' + (dep || 'NO DEPART DATE') +
+        '\n      owed by: masseuse and desk' +
+        '\n      on the Spa board? ' + (here[id]
+          ? 'yes, villa ' + here[id]
+          : 'NO - not in today\u2019s /stays, so that board cannot show it'));
+    });
+
+    show('spabadge', 200,
+      'desk badge ' + totals.desk + ', masseuse badge ' + totals.spa +
+      '\n\n' + (lines.length ? lines.join('\n\n') : '  nothing outstanding'));
+  }).catch(function(e){ show('spabadge', 0, String(e)); });
+}
+spaBadgeWorking();
 
 var TM = dkey(new Date(Date.now() + 86400000));
 read('/stays/'+T,  'stayT');

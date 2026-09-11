@@ -515,7 +515,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=62"></script>
+<script src="nala-shared.js?v=64"></script>
 <script src="nala-cards.js?v=2"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -697,8 +697,12 @@ var FORM_QUESTIONS = [
   { key:'dietary',  label:'dietaries', askedOnOneNight:true,
     answered:function(p){ return !!p.noDiets ||
       (Array.isArray(p.diets) ? p.diets.length > 0 : !!p.diets); } },
+  /* Answered by the form OR by a record at /spa - massageAnswered,
+     nala-shared.js. A massage the masseuse has booked is not a question
+     reception still needs to ask, and naming it as missing sent them
+     chasing an answer the Spa board already held (10 Sep). */
   { key:'wellness', label:'treatments', askedOnOneNight:false,
-    answered:function(p){ return p.wellness === true || p.wellness === false; } }
+    answered:function(p, spa){ return massageAnswered(p, spa); } }
 ];
 
 /* The questions this guest was shown and has not answered, in the form's own
@@ -706,11 +710,11 @@ var FORM_QUESTIONS = [
    at the desk and the whole reason this exists: a guest who answered every
    question and never pressed Send looks identical, in the record, to one who
    stopped halfway, and reception was told the same thing about both. */
-function missingAnswers(p, stay){
+function missingAnswers(p, stay, spa){
   var one = oneNightStay(stay), rec = p || {};
   return FORM_QUESTIONS.filter(function(q){
     if (one && !q.askedOnOneNight) return false;   /* never put to them */
-    return !q.answered(rec);
+    return !q.answered(rec, spa);
   }).map(function(q){ return q.label; });
 }
 
@@ -737,8 +741,8 @@ function andList(xs){
    blank is still unanswered" whatever the record held, so a form with every
    question answered - the guest simply never pressed Send - told reception to
    go looking for holes that were not there. Seen live, 28 Aug. */
-function startedNote(p, stay){
-  var miss = missingAnswers(p, stay);
+function startedNote(p, stay, spa){
+  var miss = missingAnswers(p, stay, spa);
   if (!miss.length)
     return 'They answered every question but never pressed Send, so the form '
          + 'is not marked finished. Nothing is outstanding: read it back and '
@@ -810,7 +814,7 @@ function rowHTML(r){
      reconciled, which is what let villa 17 read green here and amber on
      Pre-arrival SMS. Now grey, amber and green ARE not started, incomplete
      and completed, and formState is the only thing that says which. */
-  var st = formState(r.pre, r.stay);
+  var st = formState(r.pre, r.stay, r.spa);
   var tint = st === 'completed' ? ' done-form'
            : st === 'incomplete' ? ' part-form' : ' todo-form';
   /* No count and no word beside the amber. Both were removed 1 Sep by the
@@ -1533,7 +1537,7 @@ function openGuest(r){
     (etaLabel(p) ? '<div class="note-box">Told us they would arrive ' +
        esc(etaLabel(p).toLowerCase()) + '.</div>' : '') +
     (hasForm(p) ? '' : startedForm(p) ?
-      '<div class="note-box">' + esc(startedNote(p, r.stay)) + '</div>' :
+      '<div class="note-box">' + esc(startedNote(p, r.stay, r.spa)) + '</div>' :
       '<div class="note-box">No pre-arrival form. Fill it in together.</div>') +
 
     /* The arrival time. The guest's form has always asked it and the desk
@@ -2102,7 +2106,7 @@ function openGuest(r){
        this past the disabled button. */
     if (mark === 'completed' &&
         !mandatoryAnswered(Object.assign({}, r.pre || {}, sheetAnswers(a)),
-                           r.stay)){
+                           r.stay, r.spa)){
       var m2 = [];
       if (a.dining === null) m2.push('dining');
       if (!a.noDiets && !a.diets.length) m2.push('dietary');
@@ -2130,13 +2134,13 @@ function openGuest(r){
     if (!b) return;
     /* What the record WOULD hold if this sheet were saved now. */
     var asShown = Object.assign({}, r.pre || {}, sheetAnswers(a));
-    var done = formState(r.pre, r.stay) === 'completed';
-    var can  = mandatoryAnswered(asShown, r.stay);
+    var done = formState(r.pre, r.stay, r.spa) === 'completed';
+    var can  = mandatoryAnswered(asShown, r.stay, r.spa);
     b.textContent = done ? 'Mark as incomplete' : 'Mark as completed';
     b.className = 'opt' + (done ? ' terra' : ' solid');
     b.disabled = !done && !can;
     if (b.disabled){
-      var miss = missingAnswers(asShown, r.stay).filter(function(l){
+      var miss = missingAnswers(asShown, r.stay, r.spa).filter(function(l){
         return l === 'whether they are dining' || l === 'dietaries' ||
                l === 'treatments';
       });
@@ -2155,7 +2159,7 @@ function openGuest(r){
      handler that was tapped has run, catches every one of them. */
   sheetEl.addEventListener('click', function(){ setTimeout(paintMark, 0); });
   document.getElementById('sMark').onclick = function(){
-    var done = formState(r.pre, r.stay) === 'completed';
+    var done = formState(r.pre, r.stay, r.spa) === 'completed';
     /* The walk-back confirms, the button law. Marking complete does not:
        a constructive button that needs a warning has the wrong label. */
     if (done && !confirm('Mark ' + nameOf(r.stay) +
@@ -2497,7 +2501,7 @@ document.getElementById('board').addEventListener('click', function(e){
 
      This is also what makes the summary's green tint honest: it can now only
      ever hang off a green row. */
-  if (formState(r.pre, r.stay) !== 'completed') return openGuest(r);
+  if (formState(r.pre, r.stay, r.spa) !== 'completed') return openGuest(r);
   OPEN = (OPEN === r.villa) ? null : r.villa;
   render();
 });

@@ -152,7 +152,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=62"></script>
+<script src="nala-shared.js?v=64"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -1136,7 +1136,16 @@ function load(){
       return fetch(DB + '/spacontact.json?v=' + Date.now())
         .then(function(r2){ return r2.ok ? r2.json() : null; })
         .catch(function(){ return null; });
-    })()
+    })(),
+    /* The whole node, because the badge counts from it. This board built its
+       list from a WINDOW of /stays, so a guest who ticked wellness and is not
+       staying inside that window had no card - while the hamburger counted
+       their ask all the same. A badge nobody can clear from the screen it
+       belongs to is worse than no badge, and waiting for the guest to arrive
+       is not an answer to a question they asked weeks ago. */
+    fetch(DB + '/bookings.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; })
   ]).then(function(res){
     SPACONTACT = res[2];
     BOOKINGS = {};
@@ -1163,7 +1172,28 @@ function load(){
     Object.keys(spa).forEach(function(id){
       if (spa[id] && typeof spa[id] === 'object') SPA[id] = spa[id];
     });
-    return Promise.all(Object.keys(BOOKINGS).map(function(id){
+    /* Anyone the window missed who is still owed an answer. The guards are
+       the badge's own, in spaOwedCounts: a cancelled booking is not a request
+       anybody can act on, and neither is one whose guest has already left. */
+    var all = res[3] || {}, todayK = todayKey();
+    Object.keys(all).forEach(function(id){
+      if (BOOKINGS[id]) return;
+      var b = all[id] || {}, p = b.prearrival, pms = b.pms || {};
+      if (!p || typeof p !== 'object' || p.wellness !== true) return;
+      if (String(pms.state || '').toLowerCase() === 'cancelled') return;
+      var dep = String(pms.depart || '').slice(0, 10);
+      if (dep && dep < todayK) return;
+      if (spaAskSpokenFor(SPA[id])) return;
+      BOOKINGS[id] = { id:id, first:pms.first || '', last:pms.last || '',
+                       companion:'', arrive:pms.arrive, depart:pms.depart,
+                       villaByDate:{}, villa:pms.villa ? String(pms.villa) : '',
+                       pre:p, offWindow:true };
+    });
+
+    /* Those carry their pre already, from the node they came out of. */
+    return Promise.all(Object.keys(BOOKINGS).filter(function(id){
+      return !BOOKINGS[id].offWindow;
+    }).map(function(id){
       return fetch(DB + '/bookings/' + id + '/prearrival.json?v=' + Date.now())
         .then(function(r){ return r.ok ? r.json() : null; })
         .catch(function(){ return null; })
