@@ -266,15 +266,13 @@ body { min-height:100vh; min-height:100dvh;
             letter-spacing:.06em; text-transform:uppercase; margin-bottom:2px; }
 .store .why { font-size:var(--t1); color:var(--mid); line-height:1.5;
               margin-bottom:10px; max-width:58ch; }
-.strow { display:flex; gap:10px; align-items:baseline; padding:5px 8px;
-         font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-         font-size:11px; color:var(--mid); border-radius:4px; }
+.strow { padding:6px 8px; font-size:var(--t1); color:var(--mid);
+         line-height:1.5; border-radius:4px; }
 .strow b { color:var(--ink); font-weight:600; }
 .strow .lostflag { color:var(--terra); font-weight:600; }
 .strow .expflag { color:var(--amberink); }
 .strow.fresh { background:var(--law-green-t); }
-.stcount { font-size:11px; color:var(--mid); padding:6px 8px 0;
-           font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+.stcount { font-size:var(--t1); color:var(--mid); padding:8px 8px 0; }
 
 .mocktools { margin:28px 0 0; opacity:.62; font-size:12px; color:var(--mid); }
 .mocktools summary { cursor:pointer; }
@@ -301,11 +299,13 @@ body { min-height:100vh; min-height:100dvh;
   <div id="list" style="margin-top:10px"></div>
 
   <div class="store">
-    <h2>The table &middot; /cards &middot; mock only</h2>
-    <div class="why">The store, made visible. One row per card the encoder
-      has written: cut a card and a row appears, wipe one and its row goes,
-      Mark lost flags it, and a row still here past its expiry is the Tally.
-      The screens above are counts of these rows and nothing else.</div>
+    <h2>What the database holds &middot; mock only</h2>
+    <div class="why">The store, made visible: one line here is one card in
+      the world. Cut a card and a line appears, wipe one and its line goes,
+      Mark lost flags it, and a line still here past its expiry is the
+      Tally. The screens above are these lines, counted - nothing else.
+      (Each record also keeps the card number the encoder reported, which
+      is how the reader names a held card; it stays off every screen.)</div>
     <div id="storeRows"></div>
   </div>
 </div>
@@ -532,20 +532,22 @@ function sheetHTML(c, kind){
 
 /* ── the table panel ──────────────────────────────────────────────── */
 function storeRender(now){
+  /* plain sentences, one per card - the owner read the first draft's
+     id/serial columns as jargon, and the panel exists to be READ */
   var h = '';
   CARDS.forEach(function(c){
     h += '<div class="strow' + (FRESH[c.id] ? ' fresh' : '') + '">' +
-      '<span>' + c.id + '</span><span>no:' + c.no + '</span>' +
-      '<span>villa <b>' + c.villa + '</b></span>' +
-      '<span>' + c.guest.split(' ')[0] + '</span>' +
-      '<span>expiry ' + dayLabel(c.expiry) + ' 1pm' +
-      (c.expiry < now ? ' <span class="expflag">&larr; past: the Tally</span>' : '') +
-      '</span>' +
-      (c.lost ? '<span class="lostflag">lost</span>' : '') +
+      'A card for villa <b>' + c.villa + '</b> (' + c.guest + ') &middot; ' +
+      (c.expiry < now
+        ? '<span class="expflag">expired ' + dayLabel(c.expiry) +
+          ', never came back &middot; the Tally</span>'
+        : 'till ' + dayLabel(c.expiry) + ', 1pm') +
+      (c.lost ? ' &middot; <span class="lostflag">marked lost</span>' : '') +
       '</div>';
   });
-  h += '<div class="stcount">' + CARDS.length + ' rows &middot; the register ' +
-       'above is these rows, counted</div>';
+  h += '<div class="stcount">' + CARDS.length +
+       (CARDS.length === 1 ? ' card' : ' cards') +
+       ' on record &middot; the register above is this list, counted</div>';
   document.getElementById('storeRows').innerHTML = h;
   FRESH = {};
 }
