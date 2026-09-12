@@ -53,9 +53,9 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
  align-items:center;justify-content:center;font-size:15px;color:var(--ink);
  background:rgba(255,255,255,.92);border-right:1.2px solid var(--rule)}
 /* a stay: white card, rule border, the boards' booking-row dress. It is a
-   record, not a status, so it takes no status colour. Starts and ends at
-   midday: departure morning and arrival afternoon share the changeover day,
-   which is how a back-to-back turnover reads as two bars meeting mid-cell. */
+   record, not a status, so it takes no status colour. The owner set the
+   clock times the edges sit at: a stay starts at 10am on its arrival day
+   and finishes at 2pm on its departure day (ARRIVE_H / DEPART_H below). */
 .bar{position:absolute;top:6px;height:30px;display:flex;align-items:center;
  background:#fff;border:1.2px solid #C9C9C1;border-radius:8px;padding:0 9px;z-index:2}
 /* the name sticks inside its bar, so a stay whose start has scrolled off
@@ -125,6 +125,10 @@ var DAY = 64, ROW = 42, VCOL = 34;          // px: day width, row height, villa 
                                             // 64px days: five clear of the villa column at 390
 var TODAY = '2026-09-12';
 var FROM = -3, DAYS = 17;                    // window: 3 days back, 17 shown
+/* where a bar's edges sit inside a day, ruled by the owner 12 Sep:
+   a stay starts at 10am on its arrival day and finishes at 2pm on its
+   departure day. As fractions of a day so DAY stays the only width. */
+var ARRIVE_H = 10/24, DEPART_H = 14/24;
 
 var WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 var MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -150,16 +154,15 @@ for (var i=0;i<DAYS;i++){
   var we = dt.getDay()===0 || dt.getDay()===6;
   cols += '<div class="col'+(we?' wkend':'')+'" style="left:'+(VCOL+i*DAY)+'px;width:'+DAY+'px"></div>';
 }
-/* today's line sits at midday: the morning belongs to departures,
-   the afternoon to arrivals, same as the bars themselves */
+/* today's line sits at midday, between the 10am starts and 2pm finishes */
 var nowX = VCOL + (off(TODAY)+.5)*DAY;
 for (var v=1;v<=ROOMS;v++){
   h += '<div class="vrow" style="height:'+ROW+'px">'+cols+
        '<div class="nowline" style="left:'+nowX+'px"></div>';
   STAYS.filter(function(s){return s.v===v}).forEach(function(s){
-    /* midday to midday: arrive at .5 into the arrival day, leave at .5
-       into the departure day. Clamp to the window and mark a cut end. */
-    var x1 = (off(s.a)+.5)*DAY, x2 = (off(s.d)+.5)*DAY;
+    /* 10am into the arrival day to 2pm into the departure day.
+       Clamp to the window and mark a cut end. */
+    var x1 = (off(s.a)+ARRIVE_H)*DAY, x2 = (off(s.d)+DEPART_H)*DAY;
     var cutL = x1 < 0, cutR = x2 > DAYS*DAY;
     x1 = Math.max(x1, 0); x2 = Math.min(x2, DAYS*DAY);
     if (x2 <= 0 || x1 >= DAYS*DAY) return;
