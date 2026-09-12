@@ -354,11 +354,21 @@ and no setting above changes them.
 - **`/bookings/<id>` is readable by anyone holding a booking id.** Deliberate:
   it is how a guest opens a pre-arrival link without signing in. It is why the
   sync stopped storing reception's notes about a guest, and why nothing else
-  private may go on that node.
+  private may go on that node. It is also why the booking id itself must never
+  ride on a world-readable node - a leaked id is the key to this record, and to
+  an unauthenticated write of its pre-arrival answers.
 - **`/dinner/<date>` is readable outright**, because the guest menu page reads
-  it before anybody has signed in.
+  it before anybody has signed in. It carries the ANSWER only - dining or not,
+  covers, dietaries - never identity. A guest's name and phone are not written
+  to it, and the booking id rides as a one-way fingerprint (`bookingKey`, which
+  correlates but opens nothing), enforced by rules.json refusing name, phone or
+  a raw bookingId on the cell. A hand-typed walk-in's name and phone live on
+  the staff-only `/manual` node instead. Before this (fixed 12 Sep) the cell
+  carried the raw booking id and a walk-in's name and phone, so the whole
+  name+phone+dietary combination, and the key to the full booking, sat on a
+  node the whole internet could read.
 
-All three are written up in `DESIGN.md`.
+The first two are written up in `DESIGN.md`.
 
 ---
 

@@ -188,6 +188,16 @@ with sync_playwright() as p:
     pg.route("**/menu.json*", file_menu)
     pg.goto("http://localhost:8953/tally.html"); pg.wait_for_timeout(1500)
 
+    # the booking fingerprint, against the shared table. This is nala-shared.js's
+    # copy, which the boards use to correlate a cell to its booking; index_suite
+    # checks the forced guest-page copy. The two MUST agree on every vector.
+    BK = json.load(open("tests/bookingkey_cases.json"))["cases"]
+    bkwrong = pg.evaluate(
+        "(cases)=>cases.filter(c=>bookingKey(c[0])!==c[1])"
+        ".map(c=>c[0]+' -> '+bookingKey(c[0])+', wanted '+c[1])",
+        [[c[0], c[1]] for c in BK])
+    ck("nala-shared's booking fingerprint matches every shared case: %s" % bkwrong, bkwrong == [])
+
     # 1 tiles
     t=pg.evaluate("""()=>{
       const r={},tiles=document.querySelectorAll('#rooms .room');
@@ -388,21 +398,25 @@ with sync_playwright() as p:
     ck("covers 13, and one villa still awaiting after the save",
        s5["c"]==13 and s5["a"]==1)
 
-    # 5b the cell carries the booking it was made about
-    # Guest writes and the desk both stamp bookingId into the cell; this
+    # 5b the cell carries the booking it was made about - as a FINGERPRINT
+    # Guest writes and the desk both stamp the booking into the cell; this
     # board did not, so a cell made here could never be told from the villa
     # it sat in, and when Mews moved or renamed the booking, tonight's
     # answer and its dietary note stayed with the ROOM in front of whoever
-    # took it next (3 Sep). Villa 9 holds res-9 in this fixture, so the
-    # staff save above is the stamped case; villa 10 holds nobody, so a
-    # save there is the walk-in: no id known, none invented.
-    ck("a cell written for a Mews villa is stamped with its booking id",
-       json.loads(w[0]["b"]).get("bookingId")=="res-9")
+    # took it next (3 Sep). It rides as bookingKey now, never the raw id: the
+    # cell is world-readable and a raw id there is the key to /bookings. Villa
+    # 9 holds res-9 in this fixture, so the staff save above is the stamped
+    # case; villa 10 holds nobody, so a save there is the walk-in: no booking,
+    # no fingerprint.
+    ck("a cell for a Mews villa is stamped with its booking fingerprint, not the raw id",
+       json.loads(w[0]["b"]).get("bkey")=="jvokysvg89"
+       and "bookingId" not in json.loads(w[0]["b"]))
     pg.evaluate("()=>saveManual('room-10',{status:'in',pax:2,room:'10',source:'manual'})")
     pg.wait_for_timeout(300)
     wk=[x for x in WRITES if "/dinner/"+today+"/10" in x["u"] and x["m"]=="PUT"]
-    ck("a cell for a villa with no booking writes no booking id",
-       len(wk)==1 and "bookingId" not in json.loads(wk[0]["b"]))
+    ck("a cell for a villa with no booking writes no id and no fingerprint",
+       len(wk)==1 and "bookingId" not in json.loads(wk[0]["b"])
+       and "bkey" not in json.loads(wk[0]["b"]))
     # Put the board back the way this test found it, or villa 10's two
     # covers ride into every count below.
     pg.evaluate("()=>saveManual('room-10')")
@@ -496,8 +510,15 @@ with sync_playwright() as p:
     pg.locator(".chip", has_text="Gluten").click()
     saveAndSettle(pg, "#oIn")
     wr=[x for x in WRITES if re.search(r"/dinner/"+today+r"/12\.json",x["u"]) and x["m"]=="PUT"]
-    okr=len(wr)==1 and json.loads(wr[0]["b"])["name"]=="Chef Guest" and "Gluten" in json.loads(wr[0]["b"])["diets"] and json.loads(wr[0]["b"])["pax"]==3
-    ck("room reservation PUT with name+diets", okr)
+    cellb=json.loads(wr[0]["b"]) if wr else {}
+    # The answer goes on the public cell; the walk-in's name does NOT - it is
+    # lifted to the staff-only /manual node. The whole point of the fix.
+    okr=len(wr)==1 and "Gluten" in cellb.get("diets",[]) and cellb.get("pax")==3 \
+        and not any(k in cellb for k in ("name","phone","bookingId"))
+    ck("room reservation PUT carries the answer but no identity on the public cell", okr)
+    wm12=[x for x in WRITES if re.search(r"/manual/"+today+r"/room-12\.json",x["u"]) and x["m"]=="PUT"]
+    ck("the walk-in's name is written to the staff-only /manual node instead",
+       len(wm12)>=1 and json.loads(wm12[-1]["b"]).get("name")=="Chef Guest")
     ck("room 12 tile dining, row shows name", "in" in pg.evaluate("()=>[...document.querySelectorAll('#rooms .room')].find(b=>b.querySelector('.room-n').textContent==='12').className") and "Chef Guest" in pg.locator("#listBookings").inner_text())
 
     # room edit shows guest data; pax update preserves details
@@ -508,7 +529,10 @@ with sync_playwright() as p:
     saveAndSettle(pg, "#oIn")
     wr2=[x for x in WRITES if re.search(r"/dinner/"+today+r"/12\.json",x["u"])][-1]
     b12=json.loads(wr2["b"])
-    ck("pax update kept name+diets", b12["pax"]==4 and b12.get("name")=="Chef Guest" and "Gluten" in b12.get("diets",[]))
+    ck("pax update keeps diets on the cell and identity off it",
+       b12["pax"]==4 and "Gluten" in b12.get("diets",[]) and "name" not in b12)
+    ck("the row still shows the name after the pax update",
+       "Chef Guest" in pg.locator("#listBookings").inner_text())
 
     # order independence: bulk Dining then Seat together must not touch the reservation
     pg.locator("#selToggle").click()
@@ -516,7 +540,10 @@ with sync_playwright() as p:
     pg.locator("#sbDin").click(); pg.wait_for_timeout(300)
     wb=[x for x in WRITES if re.search(r"/dinner/"+today+r"/12\.json",x["u"])][-1]
     bb=json.loads(wb["b"])
-    ck("bulk Dining kept name, diets and pax 4", bb.get("name")=="Chef Guest" and "Gluten" in bb.get("diets",[]) and bb["pax"]==4)
+    ck("bulk Dining keeps diets and pax 4, and no identity on the cell",
+       "Gluten" in bb.get("diets",[]) and bb["pax"]==4 and "name" not in bb)
+    ck("the row still shows the name after bulk Dining",
+       "Chef Guest" in pg.locator("#listBookings").inner_text())
     pg.locator("#selToggle").click()
     tile(pg,12).click(); tile(pg,13).click(); pg.wait_for_timeout(150)
     _st=pg.evaluate("()=>({btn:sbComb.textContent,sel:Object.keys(window.selected||{}),comb:JSON.stringify(window.combined),mode:window.selectMode})")
@@ -538,7 +565,12 @@ with sync_playwright() as p:
     saveAndSettle(pg, "#oSave")
     w3=[x for x in WRITES if re.search(r"/dinner/"+today+r"/3\.json",x["u"])]
     b3=json.loads(w3[-1]["b"])
-    ck("details save: override with phone+diets, pax kept", b3.get("override")==True and b3["phone"]=="0400 333 333" and "Vegan" in b3["diets"] and b3["pax"]==2 and b3["name"]=="Mark")
+    ck("details save: override + diets + pax on the cell, no identity on it",
+       b3.get("override")==True and "Vegan" in b3["diets"] and b3["pax"]==2
+       and not any(k in b3 for k in ("name","phone","bookingId")))
+    wm3=[x for x in WRITES if re.search(r"/manual/"+today+r"/room-3\.json",x["u"]) and x["m"]=="PUT"]
+    ck("the phone the desk typed goes to the staff-only /manual node",
+       len(wm3)>=1 and json.loads(wm3[-1]["b"]).get("phone")=="0400 333 333")
     ck("row shows new dietary", "VEGAN" in pg.locator("#listBookings").inner_text().upper())
     #  Mark had confirmed "none to declare"; the chosen dietary contradicts
     #  it, so the save must take the old answer back rather than leave the

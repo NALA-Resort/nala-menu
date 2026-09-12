@@ -1,0 +1,23 @@
+{
+  "_comment": [
+    "The booking fingerprint written onto the world-readable /dinner cell in",
+    "place of the raw Mews booking id. bookingKey() lives in nala-shared.js",
+    "(the boards) and is force-copied into index.html (the guest page loads no",
+    "staff code). Both copies MUST produce these exact values: a guest's cell",
+    "and the board that reads it correlate by comparing fingerprints, so a",
+    "drift between the two copies would silently break every guest answer's",
+    "link to its booking. inv_suite's phone_cases pattern: add a vector here,",
+    "never to one copy, and whichever copy has not learned it fails by name.",
+    "Vectors are Mews GUIDs (isGuid enforces 8-4-4-4-12 hex) plus the empty",
+    "case; expected values were generated once and are pinned - a change to",
+    "them means the hash moved and every stored bkey would need re-deriving."
+  ],
+  "cases": [
+    ["1c1e6b3a-9f2d-4a77-b8c4-2e5f0a1b7d9e", "6ggrlmqe6s"],
+    ["00000000-0000-0000-0000-000000000000", "1rxtm8ujccw"],
+    ["ffffffff-ffff-ffff-ffff-ffffffffffff", "2g83ypf2pgc"],
+    ["a3f9c2d1-4b6e-4c8a-9f10-7d2e5b8c1a34", "1uue14n18ez"],
+    ["deadbeef-dead-beef-dead-beefdeadbeef", "10hsopojvo1"],
+    ["", ""]
+  ]
+}

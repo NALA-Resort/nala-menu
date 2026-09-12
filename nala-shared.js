@@ -1099,6 +1099,118 @@ function bookingFlagLabels(pms, rec){
    Villa keyed, not booking keyed, because a board reads one night in one
    request and a booking-keyed node would cost one request per villa. The
    booking id rides along inside so the record still knows whose it is.     */
+/* ── booking fingerprint ───────────────────────────────────────
+   The dinner cell at /dinner/<date> is world-readable with no login, because
+   a guest opens their menu page before signing in and reads their own villa's
+   answer there. That is deliberate and documented (SECURITY.md, DESIGN.md).
+
+   What was NOT meant to ride on that public node is the raw Mews booking id.
+   A booking id opens /bookings/<id> - also world-readable - which returns the
+   guest's first name, surname, phone and dates, and accepts an unauthenticated
+   write to their pre-arrival answers. So a booking id written onto the cell
+   handed any passer-by the key to the whole guest record. The cell only ever
+   needed the id to CORRELATE - "is this cell's answer still about the booking
+   that is in this villa tonight" (dinnerElsewhere, the history views, the
+   guest page's own staleness check). It never needed the id itself.
+
+   bookingKey is that correlation token: a one-way fingerprint of the id. The
+   boards hold the real id from /stays (staff-only) and fingerprint it to
+   compare; the public cell carries only the fingerprint, which opens nothing.
+
+   Why a plain hash is safe here, and not home-rolled crypto theatre: a Mews id
+   is a 122-bit random GUID (isGuid in the Worker enforces it). To turn a
+   fingerprint back into the id that opens /bookings you need the EXACT
+   preimage out of 2^122 candidates - the hash strength is beside the point,
+   the input space is the wall. The fingerprint also encodes nothing about the
+   person: it is derived solely from the random id, so it is an opaque per-
+   booking tag and nothing more. cyrb53 (public domain) gives a short, stable,
+   synchronous value; async crypto.subtle would only complicate the cell-build
+   path for no security gain.
+
+   COPIED into index.html, which is a guest page and loads no staff code (the
+   normalisePhone / DIET_RENAMES pattern). Both copies are asserted against
+   tests/bookingkey_cases.json - the two MUST agree exactly, or a guest's cell
+   and the board that reads it would compute different tokens and never
+   correlate. Change a vector in the table, never in one copy. */
+function bookingKey(id){
+  var s = String(id == null ? '' : id);
+  if (!s) return '';
+  var h1 = 0xdeadbeef, h2 = 0x41c6ce57, ch;
+  for (var i = 0; i < s.length; i++){
+    ch = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+
+/* The correlation token a cell carries, tolerant of both shapes while the
+   database is being cleaned: the new bkey if present, otherwise the
+   fingerprint of a legacy raw bookingId still sitting on an un-scrubbed cell.
+   Returns '' when the cell has neither - a walk-in or external diner Mews has
+   no opinion about, left untouched exactly as before. */
+function cellBookingKey(cell){
+  if (!cell || typeof cell !== 'object') return '';
+  if (cell.bkey) return String(cell.bkey);
+  if (cell.bookingId) return bookingKey(cell.bookingId);
+  return '';
+}
+
+/* The one definition of what may sit on the world-readable dinner cell.
+   Three things are never allowed on it, at the top level OR inside a
+   preserved guest answer, because the cell is served to anyone with no login:
+
+     - bookingId : the key to /bookings (surname, phone, dates, and an
+                   unauthenticated write to the guest's pre-arrival answers).
+                   Converted to its one-way fingerprint, which correlates but
+                   opens nothing.
+     - name, phone : the guest's identity. These are dropped here; a caller
+                   that still needs them (a hand-typed walk-in) relocates them
+                   to a staff-only node ITSELF before calling this - this
+                   function only guarantees the public cell is clean.
+
+   Called by the Reservations writer (which merges arbitrary shapes and a
+   carried-over guest answer, so it is where a stray field would slip through)
+   and by the one-time cleanup script that scrubs cells already in the
+   database. rules.json refuses on write anything this would have removed, so
+   the rule is the backstop and this is the shape. The guest page and the
+   front desk build their cells clean by construction and lean on the rule. */
+function sanitiseDinnerCell(cell){
+  if (!cell || typeof cell !== 'object') return cell;
+  var out = {}, k;
+  for (k in cell){
+    if (k === 'name' || k === 'phone' || k === 'bookingId' ||
+        k === 'bkey' || k === 'guest') continue;
+    out[k] = cell[k];
+  }
+  var bk = cell.bkey || (cell.bookingId ? bookingKey(cell.bookingId) : '');
+  if (bk) out.bkey = bk;
+  if (cell.guest && typeof cell.guest === 'object')
+    out.guest = sanitiseDinnerCell(cell.guest);
+  return out;
+}
+
+/* A hand-typed walk-in's identity lives on the staff-only /manual node now,
+   not on the world-readable cell. This lifts JUST name and phone from that
+   record to overlay onto the merged reading, so the walk-in's name still shows
+   on the board and the sheet. Only those two fields, never diets or status:
+   the answer is the cell's alone, so the walk-in's dietary keeps its one home
+   and the "three nodes held diets" bug cannot come back through this door. A
+   Mews guest carries no such record - their name comes from /stays (pmsFields,
+   which is reapplied above this so it always wins for a real booking). */
+function identityOf(rec){
+  var out = {};
+  if (rec && typeof rec === 'object'){
+    if (rec.name  !== undefined) out.name  = rec.name;
+    if (rec.phone !== undefined) out.phone = rec.phone;
+  }
+  return out;
+}
+
 function dinnerRecord(cell){
   if (!cell || typeof cell !== 'object') return null;
   return cell;
@@ -1135,13 +1247,19 @@ function dinnerRecord(cell){
    one's dinner" bug, closed here. */
 function dinnerElsewhere(cells, villa, roomguests){
   var cell = cells && cells[String(villa)];
-  if (!cell || !cell.bookingId) return false;
+  /* Correlation is by fingerprint now: the cell carries bkey, roomguests carry
+     the real Mews id, and cellBookingKey/bookingKey bring them to the same
+     token (and still read a legacy raw bookingId on an un-scrubbed cell). A
+     cell Mews has no opinion about - a walk-in - carries no token and is left
+     standing, exactly as before. */
+  var ck = cellBookingKey(cell);
+  if (!ck) return false;
   var here = (roomguests || {})[String(villa)];
-  if (here && here.bookingId && here.bookingId !== cell.bookingId) return true;
+  if (here && here.bookingId && bookingKey(here.bookingId) !== ck) return true;
   var elsewhere = false;
   for (var v in (roomguests || {})){
     var r = roomguests[v];
-    if (r && r.bookingId === cell.bookingId){
+    if (r && r.bookingId && bookingKey(r.bookingId) === ck){
       if (String(v) === String(villa)) return false;
       elsewhere = true;
     }
@@ -1288,8 +1406,13 @@ function roomRecordCore(n, responses, manual, roomguests, dinner, dateKey){
     ? null
     : dinnerRecord(cells && cells[String(n)]);
   if (cell && !vacantIsStale(cell, known))
+    /* identityOf(manual[mk]) sits between known and cell: it supplies a
+       hand-typed walk-in's name and phone (which no longer ride on the public
+       cell), while a Mews guest's name still comes from known and is reapplied
+       last by pmsFields. Only name/phone - the diet stays the cell's. */
     return withDineProvenance(
-      Object.assign({}, known, cell, pmsFields(known), { room:String(n) }),
+      Object.assign({}, known, identityOf(manual[mk]), cell,
+                    pmsFields(known), { room:String(n) }),
       cell, known);
 
   var best = null;
@@ -1637,8 +1760,10 @@ function histNight(date, id){
     }
     if (!villa) return row;   /* stays holds no villa for this booking that night */
     var cell = (r[1].data || {})[villa];
-    /* Somebody else's answer must not become this guest's history. */
-    if (cell && cell.bookingId && cell.bookingId !== id) cell = null;
+    /* Somebody else's answer must not become this guest's history. Compared by
+       fingerprint: the cell carries bkey (or a legacy raw id), this stay holds
+       the real id. */
+    if (cell && cellBookingKey(cell) && cellBookingKey(cell) !== bookingKey(id)) cell = null;
     if (!cell || cell.status !== 'in') return row;
     row.dined = true;
     var m = (r[2].ok && r[2].data) || null;

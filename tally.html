@@ -565,7 +565,7 @@ body.readonly .comb-undo { display:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=66"></script>
+<script src="nala-shared.js?v=67"></script>
 <script>
 /* Not every allergy is on the list and the list cannot grow to hold them all,
    so Other means read the note. The same entry the front desk writes, because
@@ -746,11 +746,13 @@ function saveManual(key, rec){
          be told from the villa it sat in - when Mews moved or renamed the
          booking, dinnerElsewhere had nothing to check and tonight's answer
          and dietary note stayed with the ROOM, in front of whoever took it
-         next. A walk in with no booking still writes no id: Mews has no
-         opinion about them and the cell stays untouchable, as before. */
+         next. It rides as a FINGERPRINT now (bookingKey), never the raw id:
+         this cell is world-readable and a raw id here is the key to /bookings.
+         The fingerprint correlates and opens nothing. A walk in with no
+         booking still gets none: Mews has no opinion about them. */
       var kn0 = roomguests[String(villa)];
-      if (body.bookingId === undefined && kn0 && kn0.bookingId)
-        body.bookingId = kn0.bookingId;
+      var gid = body.bookingId || (kn0 && kn0.bookingId);   // real id, staff side only
+      if (gid) body.bkey = bookingKey(gid);
       /* Staff overwriting a guest's own answer keeps that answer underneath.
          With two nodes the guest's record simply stayed where it was and the
          board merged them; with one cell there is nowhere else for it to be,
@@ -765,13 +767,21 @@ function saveManual(key, rec){
            cell, or the fact that the guest booked at all is lost the first
            time staff touch the villa. Harmless once nothing writes there:
            no response, no guest. */
-        var had = roomState(+villa);
+        var had2 = roomState(+villa);
         /* roomState already sees the optimistic staff record set above, so it
            reports the override branch rather than the guest one. The guest's
            own answer is what it puts under `guest`. */
-        var gst = had && (had.guest || (had.src === 'digital' ? had.g : null));
+        var gst = had2 && (had2.guest || (had2.src === 'digital' ? had2.g : null));
         if (gst) body.guest = gst;
       }
+      /* Identity never sits on the world-readable cell. Lift a hand-typed
+         walk-in's name and phone off it (they go to the staff-only /manual
+         node below, after the answer lands), then scrub the cell - and any
+         carried guest answer - of name, phone and the raw booking id.
+         sanitiseDinnerCell is the one owner of the cell's public shape. */
+      var idName  = (typeof body.name  === 'string') ? body.name.trim()  : '';
+      var idPhone = (typeof body.phone === 'string') ? body.phone.trim() : '';
+      body = sanitiseDinnerCell(body);
       dinner[villa] = body;
     } else {
       delete dinner[villa];
@@ -788,6 +798,23 @@ function saveManual(key, rec){
     if (villa){ if (prev) dinner[villa] = prev; else delete dinner[villa]; }
     render();
   });
+  /* A hand-typed walk-in's name and phone live on the staff-only /manual node,
+     never on the world-readable cell. Written after the answer lands, best
+     effort: the cell carries the answer either way, so a name that fails to
+     persist is retyped, never a dietary lost. Only identity goes here - the
+     diet stays the cell's alone, so the "three nodes held diets" bug cannot
+     return. A Mews guest's name is not written: the boards read it from
+     /stays. */
+  if (villa){
+    var idPath = '/manual/'+todayKey()+'/room-'+villa;
+    req.then(function(){
+      if (rec === undefined) api(idPath, 'DELETE').catch(function(){});
+      else if (idName || idPhone)
+        api(idPath, 'PUT', { name:idName, phone:idPhone }).catch(function(){});
+      else if (had && prev && (prev.name || prev.phone))
+        api(idPath, 'DELETE').catch(function(){});
+    }, function(){});
+  }
   return req;
 }
 
@@ -827,8 +854,11 @@ function roomStateRaw(n){
              /* The guest's own answer, kept under the staff one so nothing
                 they told us is lost: their pre-menu acknowledgement and their
                 "no dietaries" confirmation both live there and are never
-                re-entered by staff. */
-             g: cell.guest ? Object.assign({}, cell.guest, cell) : cell,
+                re-entered by staff. identityOf(m) beneath it all supplies a
+                hand-typed walk-in's name and phone, which live on the staff-
+                only /manual node now and not on the public cell. */
+             g: Object.assign({}, identityOf(m),
+                    cell.guest ? Object.assign({}, cell.guest, cell) : cell),
              override: !!cell.override,
              guest: cell.guest || null };
 

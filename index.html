@@ -593,6 +593,33 @@
     return out;
   }
 
+  /* A one-way fingerprint of this booking's id, written onto tonight's cell in
+     place of the raw id. The cell is world-readable and a raw booking id there
+     is the key to /bookings (surname, phone, dates, and an unauthenticated
+     write to the pre-arrival answers), so only the fingerprint goes on it - it
+     opens nothing, and the boards correlate by fingerprinting their own copy
+     of the id from /stays. The full reasoning lives on bookingKey in
+     nala-shared.js; this is the forced guest-page copy (staff code never
+     reaches here), and BOTH copies are asserted against
+     tests/bookingkey_cases.json - they must agree exactly or a guest's cell
+     and the board reading it would never correlate. Change a vector in the
+     table, never in one copy. */
+  function bookingKey(id){
+    var s = String(id == null ? '' : id);
+    if (!s) return '';
+    var h1 = 0xdeadbeef, h2 = 0x41c6ce57, ch;
+    for (var i = 0; i < s.length; i++){
+      ch = s.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+    h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+    h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+  }
+
   function todayKey(){
     var d=new Date();
     return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -901,7 +928,10 @@
     if (!clash) state.dnote = '';   // diet was untoggled after typing
     /* No name, phone or dates. Those are Mews' and the boards read them from
        /stays; a copy written here would be a second version of a fact this
-       page does not own. */
+       page does not own. And the fingerprint of the booking id, never the id
+       itself: this cell is world-readable, and a raw id here is the key to
+       /bookings. bkey opens nothing and still lets the boards correlate the
+       answer to its booking. See bookingKey. */
     var payload = {
       status: status,
       pax: status==='in' ? state.pax : 0,
@@ -911,7 +941,7 @@
       note: status==='in' ? state.note : '',
       dnote: status==='in' ? state.dnote : '',
       diets: state.diets,
-      room: G.room, bookingId: G.id,
+      room: G.room, bkey: bookingKey(G.id),
       by: 'guest',
       at: new Date().toISOString()
     };

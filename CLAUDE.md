@@ -92,6 +92,15 @@ That is allowed **only** with a shared table both copies are tested against —
 here, `tests/phone_cases.json`. Add cases to the table, not to the suites.
 A case added there fails whichever copy has not learned it.
 
+`bookingKey` is the same shape: it lives in `nala-shared.js` for the boards and
+is force-copied into `index.html`, which is a guest page and loads no staff
+code. It fingerprints a booking id so the world-readable `/dinner` cell can
+correlate a guest's answer to its booking without carrying the raw id (the key
+to `/bookings`). The two copies MUST agree exactly — a guest's cell and the
+board reading it would otherwise compute different tokens and never correlate —
+so `tests/bookingkey_cases.json` pins the vectors and both suites check their
+own copy. Change a vector there, never in one copy.
+
 ### 4. Long runs do not belong in front of a human
 
 The sweep suite is combinatorial — every control × every role × every page —

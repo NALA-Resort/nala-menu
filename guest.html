@@ -181,7 +181,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=66"></script>
+<script src="nala-shared.js?v=67"></script>
 <script>
 /* The guest profile: everything the app knows about one booking, on one
    screen, reached from a calendar bar. URL: guest.html?b=<bookingId> - the
@@ -424,7 +424,9 @@ function render(bk, night, spa, cardsTree, bookflags, guestRec, anchorKey, cid){
   /* the night's answer: the cell wins the moment anyone writes one, the
      form's answer stands in on the arrival night - the boards' merge */
   var cell = (typeof DINNER_CELLS === 'object' && DINNER_CELLS[villa]) || null;
-  if (cell && cell.bookingId && cell.bookingId !== B) cell = null;
+  /* By fingerprint: the cell carries bkey (or a legacy raw id), B is this
+     booking's real id. Someone else's answer must not become this guest's. */
+  if (cell && cellBookingKey(cell) && cellBookingKey(cell) !== bookingKey(B)) cell = null;
   var merged = (cell && cell.status) ? cell :
                formDinnerCell(villa, pre, { arrives: pms.arrive, adults: pms.adults }, anchorKey);
   var nightName = anchorKey === dkey(new Date()) ? 'Tonight' : shortDay(anchorKey);

@@ -147,7 +147,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=66"></script>
+<script src="nala-shared.js?v=67"></script>
 <script>
 /* Reading only, no writes, but it is the resort's numbers and there was no
    gate on it at all until 18 Aug. Same audience as the Reservations board. */
@@ -340,7 +340,9 @@ function initEaten(dinnerAll, respAll, menus){
           if (!villa) return;
           var cell = (dinnerAll[d] || {})[villa];
           if (!cell || typeof cell !== 'object') return;
-          if (cell.bookingId && cell.bookingId !== a.id) return;
+          /* By fingerprint: the cell carries bkey (or a legacy raw id), the
+             stay holds the real id. */
+          if (cellBookingKey(cell) && cellBookingKey(cell) !== bookingKey(a.id)) return;
           if (cell.status === 'in') who.push(a.villa);
         });
       }

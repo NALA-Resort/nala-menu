@@ -70,20 +70,34 @@
           "source": {
             ".validate": "newData.isString() && newData.val().length <= 20"
           },
+          "bkey": {
+            ".validate": "newData.isString() && newData.val().length <= 32"
+          },
           "bookingId": {
-            ".validate": "newData.isString() && newData.val().length <= 64"
+            ".validate": false
           },
           "name": {
-            ".validate": "newData.isString() && newData.val().length <= 120"
+            ".validate": false
           },
           "phone": {
-            ".validate": "newData.isString() && newData.val().length <= 40"
+            ".validate": false
           },
           "note": {
             ".validate": "newData.isString() && newData.val().length <= 500"
           },
           "dnote": {
             ".validate": "newData.isString() && newData.val().length <= 500"
+          },
+          "guest": {
+            "bookingId": {
+              ".validate": false
+            },
+            "name": {
+              ".validate": false
+            },
+            "phone": {
+              ".validate": false
+            }
           },
           "at": {
             ".validate": "newData.isString() && newData.val().length <= 40"

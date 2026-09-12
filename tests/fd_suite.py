@@ -1260,8 +1260,8 @@ with sync_playwright() as p:
         ck("as dining, with the covers", rec["status"] == "in" and rec["pax"] == 2)
         ck("carrying the dietaries the kitchen acts on",
            rec["diets"] == ["Nut allergy"] and "daughter" in rec["dnote"])
-        ck("and the booking it belongs to, so the record knows whose it is",
-           rec["bookingId"] == "b4")
+        ck("and the booking's FINGERPRINT, so the record knows whose it is without the raw id",
+           rec["bkey"] == "bjaousn2ad" and "bookingId" not in rec)
         # This is what stops a guest overwriting it from their link afterwards.
         ck("stamped as set by staff", rec["by"] == "staff")
         ck("written to the night they arrive, keyed by villa",

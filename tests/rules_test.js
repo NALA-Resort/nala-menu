@@ -91,36 +91,56 @@ function cannotPatch(name, user, at, value) { ck(name, allowed(user, 'update', a
 
 console.log('--- every write the app makes is still allowed ---');
 
-/* front-desk.html dinnerCell(), the fullest cell anything writes */
+/* front-desk.html dinnerCell(), the fullest cell anything writes. The booking
+   rides as its fingerprint (bkey) now, never the raw id: the cell is
+   world-readable and a raw id is the key to /bookings. */
 can('Front Desk writes a full dinner cell', DESK, `/dinner/${TODAY}/5`, {
-  status: 'in', pax: 4, room: '5', bookingId: 'b-1', by: 'staff', at: NOW,
+  status: 'in', pax: 4, room: '5', bkey: 'bk-1', by: 'staff', at: NOW,
   diets: ['Gluten free', 'Nut allergy'], dnote: 'coeliac, not a preference',
   note: 'anniversary', pmsUpdated: NOW
 });
 can('and one with no dietaries at all', DESK, `/dinner/${TODAY}/6`, {
-  status: 'out', pax: 0, room: '6', bookingId: 'b-1', by: 'staff', at: NOW,
+  status: 'out', pax: 0, room: '6', bkey: 'bk-1', by: 'staff', at: NOW,
   diets: [], dnote: '', note: ''
 });
 
-/* tally.html writeManual() and its variants */
+/* tally.html saveManual() and its variants. A hand-typed walk-in's name and
+   phone go to the staff-only /manual node, never onto this cell - so the cell
+   the board writes for a villa carries the answer and the fingerprint only. */
 can('Reservations marks a villa vacant', DESK, `/dinner/${TODAY}/7`,
     { status: 'vacant', pax: 0, room: '7', source: 'manual' });
 can('Reservations seats a walk-in with an override', DESK, `/dinner/${TODAY}/8`,
     { status: 'in', pax: 2, room: '8', override: true, source: 'manual' });
-can('Reservations writes an external diner with a name and note', DESK, `/dinner/${TODAY}/9`,
-    { status: 'in', pax: 2, name: 'Ben Davidson', phone: '0400000000',
-      note: 'friend of the owner', diets: ['Vegan'], source: 'manual' });
+can('Reservations writes a walk-in cell - the answer, no identity on it', DESK, `/dinner/${TODAY}/9`,
+    { status: 'in', pax: 2, note: 'friend of the owner', diets: ['Vegan'],
+      source: 'manual' });
+
+/* The whole point of the fix: the world-readable cell refuses identity. A name,
+   a phone, or the raw booking id on it is rejected - top level or hidden inside
+   a preserved guest answer - while the fingerprint is fine. sanitiseDinnerCell
+   keeps them off in the app; this is the database refusing them regardless. */
+cannot('a name on the public dinner cell is refused', DESK, `/dinner/${TODAY}/14`,
+    { status: 'in', pax: 2, room: '14', name: 'Ben Davidson', by: 'staff', at: NOW });
+cannot('a phone on the public dinner cell is refused', DESK, `/dinner/${TODAY}/14`,
+    { status: 'in', pax: 2, room: '14', phone: '0400000000', by: 'staff', at: NOW });
+cannot('the raw booking id on the public dinner cell is refused', DESK, `/dinner/${TODAY}/14`,
+    { status: 'in', pax: 2, room: '14', bookingId: 'b-1', by: 'staff', at: NOW });
+cannot('identity hidden inside the guest sub-object is refused', DESK, `/dinner/${TODAY}/14`,
+    { status: 'in', pax: 2, room: '14', by: 'staff', at: NOW,
+      guest: { status: 'in', pax: 2, name: 'Ben Davidson' } });
+can('but the booking fingerprint is fine', DESK, `/dinner/${TODAY}/14`,
+    { status: 'in', pax: 2, room: '14', bkey: 'bjaousn2ad', by: 'staff', at: NOW });
 
 /* index.html, the guest answering their own dinner, signed in to nothing */
 /* index.html, the whole cell as the guest page sends it, flags and all */
 can('a guest answers dinner in an empty villa', GUEST, `/dinner/${TODAY}/10`,
     { status: 'in', pax: 2, flag: true, premenu: false, nodiet: false,
       note: 'we may be a little late', dnote: 'coeliac',
-      diets: ['Gluten free'], room: '10', bookingId: 'b-1',
+      diets: ['Gluten free'], room: '10', bkey: 'bk-1',
       by: 'guest', at: NOW });
 can('and declines without leaving anything behind', GUEST, `/dinner/${TODAY}/12`,
     { status: 'out', pax: 0, flag: false, premenu: false, nodiet: false,
-      note: '', dnote: '', diets: [], room: '12', bookingId: 'b-1',
+      note: '', dnote: '', diets: [], room: '12', bkey: 'bk-1',
       by: 'guest', at: NOW });
 can('a guest overwrites their own earlier answer', GUEST, `/dinner/${TODAY}/3`,
     { status: 'out', pax: 0, room: '3', by: 'guest', at: NOW });

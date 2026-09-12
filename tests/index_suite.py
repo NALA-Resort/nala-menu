@@ -184,10 +184,12 @@ with sync_playwright() as p:
         ck("not dining is zero covers", body["status"] == "out" and body["pax"] == 0)
         ck("stamped as set by the guest, which is what lets staff override it",
            body["by"] == "guest")
-        ck("carrying the booking it belongs to", body["bookingId"] == "res-guid-1")
-        # The point of the rewrite: this page does not own these facts.
-        ck("and none of Mews' facts are copied into it",
-           not any(k in body for k in ("name","phone","arrives","departs","first","last")))
+        ck("carrying the booking's FINGERPRINT, never the raw id that opens /bookings",
+           body["bkey"] == "yw6eokgimd" and "bookingId" not in body)
+        # The point of the rewrite: this page does not own these facts, and the
+        # cell is world-readable so the raw booking id must never sit on it.
+        ck("and none of Mews' facts, nor the raw id, are copied into it",
+           not any(k in body for k in ("name","phone","arrives","departs","first","last","bookingId")))
     pg.close()
 
     # ── accepting, with a dietary the menu contains ─────────────
@@ -409,6 +411,17 @@ with sync_playwright() as p:
     RENAMES = json.load(open("tests/diet_renames.json"))
     ck("the page's rename table matches tests/diet_renames.json",
        pg.evaluate("()=>DIET_RENAMES") == RENAMES)
+    # The booking fingerprint, same shared-table pattern. This forced guest-page
+    # copy and the nala-shared.js copy the boards use MUST agree on every
+    # vector, or a guest's cell and the board reading it compute different
+    # tokens and never correlate. tally_suite checks the staff copy.
+    BK = json.load(open("tests/bookingkey_cases.json"))["cases"]
+    bkwrong = pg.evaluate(
+        "(cases)=>cases.filter(c=>bookingKey(c[0])!==c[1])"
+        ".map(c=>c[0]+' -> '+bookingKey(c[0])+', wanted '+c[1])",
+        [[c[0], c[1]] for c in BK])
+    ck("the page's copy of the booking fingerprint matches every shared case: %s" % bkwrong,
+       bkwrong == [])
     pg.close()
     STATE["pre"] = None
 
