@@ -72,6 +72,23 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
 .bar.cutL{border-top-left-radius:0;border-bottom-left-radius:0;border-left-style:dashed}
 .bar.cutR{border-top-right-radius:0;border-bottom-right-radius:0;border-right-style:dashed}
 
+/* ── compress ─────────────────────────────────────────────────────────
+   One toggle, for the glance-reader (the gardeners' ask, 12 Sep): every
+   villa on one screen, no vertical scroll. Rows drop from 42px to 24,
+   bars to 16 - readable, deliberately too small to be tap targets, so
+   the compressed board is for LOOKING, not opening profiles. The
+   pressed button wears the Selected dress: grey fill, ink border. */
+.cmpr{display:none}
+.cmprow{display:flex;justify-content:flex-end;margin:0 0 8px;max-width:430px}
+.cmpbtn{display:flex;align-items:center;font-size:11px;letter-spacing:.1em;
+ text-transform:uppercase;color:var(--mid);cursor:pointer}
+#cmp:checked ~ .cmprow .cmpbtn{background:rgba(28,28,26,.045);
+ border-color:var(--ink);color:var(--ink)}
+#cmp:checked ~ .chartwrap .vrow{height:24px !important}
+#cmp:checked ~ .chartwrap .bar{top:4px;height:16px;padding:0 6px;border-radius:6px}
+#cmp:checked ~ .chartwrap .bar .n{font-size:10px}
+#cmp:checked ~ .chartwrap .vnum{font-size:11px}
+
 .hint{font-size:11px;color:var(--mid);margin-top:8px;line-height:1.45;max-width:430px}
 
 /* the divider between the mock's notes, not part of the page */
@@ -79,6 +96,8 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
  background:var(--mid);border-radius:4px;padding:5px 10px;margin:34px 0 16px;text-align:center;
  max-width:430px}
 </style></head><body>
+
+<input type="checkbox" id="cmp" class="cmpr">
 
 <div class="daterow">
   <button class="dnav today">Today</button>
@@ -94,6 +113,10 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
   <div class="stat"><b>1</b><span>Departing</span></div>
 </div>
 
+<!-- Compress sits above the board, not in the daterow: the header row
+     holds five controls at 390 and a sixth wrapped the date. -->
+<div class="cmprow"><label class="dnav cmpbtn" for="cmp">Compress</label></div>
+
 <!-- The board below is the one-off render of the generator this file used to
      carry (see git history): villas 1-17, a 17-day window opening on Fri 11 Sep
      with today Sat 12, bars from 2pm on the arrival day to 10am on the
@@ -104,7 +127,9 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
 
 <div class="hint">Slide the board sideways for more days. The fill is the
 pre-arrival form: green completed, amber underway, grey not started.
-Today is the dark line; a dashed end runs past the edge of the board.</div>
+Today is the dark line; a dashed end runs past the edge of the board.
+Compress fits all 17 villas on one screen for a quick occupancy glance;
+compressed bars are for looking, not tapping.</div>
 
 <div class="mockcut">Mock only &middot; sample bookings &middot; worst cases:
 long name v5, same-day turnover v8, stay off both edges v12</div>
