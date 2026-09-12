@@ -74,8 +74,8 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
 
 /* ── compress ─────────────────────────────────────────────────────────
    One toggle, for the glance-reader (the gardeners' ask, 12 Sep): every
-   villa on one screen, no vertical scroll. Rows drop from 42px to 24,
-   bars to 16 - readable, deliberately too small to be tap targets, so
+   villa on one screen, no vertical scroll. Rows split the screen height
+   evenly - legible, still below honest tap-target size, so
    the compressed board is for LOOKING, not opening profiles. The
    pressed button wears the Selected dress: grey fill, ink border. */
 .cmpr{display:none}
@@ -86,10 +86,14 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
  cursor:pointer}
 #cmp:checked ~ .stats .cmpbtn{background:rgba(28,28,26,.045);
  border-color:var(--ink);color:var(--ink)}
-#cmp:checked ~ .chartwrap .vrow{height:24px !important}
-#cmp:checked ~ .chartwrap .bar{top:4px;height:16px;padding:0 6px;border-radius:6px}
-#cmp:checked ~ .chartwrap .bar .n{font-size:10px}
-#cmp:checked ~ .chartwrap .vnum{font-size:11px}
+/* rows share whatever height the screen has under the headers (204px of
+   chrome above them), so the compressed board FILLS the page instead of
+   huddling at a fixed 24px - resized 12 Sep once the notes under the
+   board were gone and the space was real. min-height guards tiny screens. */
+#cmp:checked ~ .chartwrap .vrow{height:calc((100vh - 204px)/17) !important;min-height:22px}
+#cmp:checked ~ .chartwrap .bar{top:3px;height:calc(100% - 7px);padding:0 7px;border-radius:6px}
+#cmp:checked ~ .chartwrap .bar .n{font-size:11px}
+#cmp:checked ~ .chartwrap .vnum{font-size:13px}
 
 
 </style></head><body>
