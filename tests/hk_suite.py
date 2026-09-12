@@ -50,6 +50,7 @@ def fb(route,request):
         route.fulfill(status=500,body="err"); return
     if "/responses/" in u: body=json.dumps(responses)
     elif "/manual/" in u: body=json.dumps(manual)
+    elif "/roomguests.json" in u and "orderBy" in u: body=json.dumps({today: roomguests})
     elif "/roomguests/"+today in u: body=json.dumps(roomguests)
     elif "/roomguests/" in u: body="null"
     elif "/hk/" in u: body=json.dumps(hk)

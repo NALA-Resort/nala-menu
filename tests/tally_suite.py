@@ -108,8 +108,9 @@ def fb(route,request):
     elif "/dinner/" in u: body="null"
     elif "/stays/"+today in u: body=json.dumps(stays[today])
     elif "/stays/" in u: body="null"
+    elif "/roomguests.json" in u and "orderBy" in u: body=json.dumps(roomguests)
     elif "/roomguests/"+today in u: body=json.dumps(roomguests[today])
-    elif "/roomguests/" in u: body="null"
+    elif "/roomguests" in u: body="null"
     elif "/opened/"+today in u: body=json.dumps(opened[today])
     elif "/opened/" in u: body="null"
     elif "/combined/" in u: body=json.dumps(combined)
@@ -844,7 +845,7 @@ with sync_playwright() as p:
     print("   one poll:", poll, "requests")
     ck("the board can reload itself", pg.evaluate("()=>typeof load==='function'"))
     ck("a poll skips the fortnight of roomguests (%d requests)" % poll,
-       poll>0 and not any("/roomguests/" in u for u in hits))
+       poll>0 and not any("/roomguests" in u for u in hits))
     ck("it stands down mid multi-select",
        pg.evaluate("()=>{selectMode=true; const b=busy(); selectMode=false; return b;}"))
     ck("and runs when nothing is in progress", pg.evaluate("()=>!busy()"))
@@ -1608,7 +1609,7 @@ with sync_playwright() as p:
         u = request.url
         if "/stays/" in u or "/dinner/" in u or "/responses/" in u or "/manual/" in u:
             route.fulfill(status=200, content_type="application/json", body="null"); return
-        if "/roomguests/" in u:
+        if "/roomguests" in u:
             route.fulfill(status=200, content_type="application/json", body="null"); return
         fb(route, request)
     q = b.new_page(viewport={"width": 390, "height": 900})

@@ -158,27 +158,33 @@ function fetchRoomGuests(endKey, days, force){
   }
   var parts = endKey.split('-');
   var end = new Date(+parts[0], +parts[1]-1, +parts[2]);
-  var jobs = [], keys = [];
-  for (var i = days - 1; i >= 0; i--) {
-    var d = new Date(end); d.setDate(d.getDate() - i);
-    var k = dkey(d);
-    keys.push(k);
-    jobs.push(
-      fetch(DB + '/roomguests/' + k + '.json?v=' + Date.now())
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .catch(function(){ return null; })
-    );
-  }
-  return Promise.all(jobs).then(function(res){
-    var all = {};
-    res.forEach(function(day, i){ if (day) all[keys[i]] = day; });
-    /* Only cache a complete answer. A partial fetch cached for five minutes
-       would show a villa as empty because one day failed to load.       */
-    if (res.every(function(day, i){ return day !== null || true; })){
+  var start = new Date(end); start.setDate(start.getDate() - (days - 1));
+  var startKey = dkey(start);
+  /* ONE range query over the fortnight, not fourteen single-date reads. Every
+     staff login may read the /roomguests parent (rules.json), and the keys are
+     dates, so ordering by key and bounding [startKey, endKey] returns exactly
+     the days wanted in a single round trip. The day-by-day version predated
+     that parent read rule and cost fourteen requests for the same answer -
+     most of a board's whole request budget, paid on every fresh page load,
+     which is what made opening a board from the menu slow. */
+  var q = DB + '/roomguests.json?orderBy=' + encodeURIComponent('"$key"') +
+          '&startAt=' + encodeURIComponent('"' + startKey + '"') +
+          '&endAt='   + encodeURIComponent('"' + endKey   + '"') +
+          '&v=' + Date.now();
+  return fetch(q)
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+    .then(function(all){
+      all = all || {};                 /* a genuinely empty fortnight is {} */
       RG_CACHE = all; RG_AT = Date.now(); RG_KEY = endKey + ':' + days;
-    }
-    return all;
-  });
+      return all;
+    })
+    .catch(function(){
+      /* A failed read must not be cached as an empty fortnight, nor blank the
+         boards: hand back the last good cache for this range if there is one,
+         else an empty object the merge treats as "nothing to add" - "a failed
+         read is not an empty one" (HANDOVER.md). */
+      return (RG_CACHE && RG_KEY === endKey + ':' + days) ? RG_CACHE : {};
+    });
 }
 
 function clearRoomGuestCache(){ RG_CACHE = null; RG_AT = 0; }

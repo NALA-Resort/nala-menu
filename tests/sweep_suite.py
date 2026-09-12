@@ -152,6 +152,7 @@ def fb(route, request):
     body = "null"
     if "/staff" in u: body = json.dumps(STAFF)
     elif "/permissions" in u: body = "null"
+    elif "/roomguests.json" in u and "orderBy" in u: body = json.dumps({today: ROOMGUESTS})
     elif "/roomguests/" + today in u: body = json.dumps(ROOMGUESTS)
     elif "/hk/" + today in u: body = json.dumps(HK)
     elif "/bookings/" + BOOKING + "/pms" in u: body = json.dumps(BOOKINGS[BOOKING]["pms"])

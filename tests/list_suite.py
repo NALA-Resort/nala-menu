@@ -63,6 +63,7 @@ def fb(route,request):
     if "/staff" in u: body=json.dumps(staff)
     elif "/responses/" in u: body=json.dumps(responses)
     elif "/manual/" in u: body=json.dumps(manual)
+    elif "/roomguests.json" in u and "orderBy" in u: body=json.dumps({today: roomguests})
     elif "/roomguests/"+today in u: body=json.dumps(roomguests)
     elif "/roomguests/" in u: body="null"
     elif "/combined/" in u: body=json.dumps(combined)
@@ -525,7 +526,7 @@ with sync_playwright() as p:
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps(pre7)); return
         if "/responses/" in u or "/manual/" in u or "/dinner/" in u \
-           or "/combined/" in u or "/roomguests/" in u:
+           or "/combined/" in u or "/roomguests" in u:
             route.fulfill(status=200, content_type="application/json",
                           body="null"); return
         fb(route, request)
@@ -695,9 +696,11 @@ with sync_playwright() as p:
         if "/responses/" in u:
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps(heavy_resp)); return
-        if "/roomguests/" + today in u:
+        if "/roomguests" in u and today in u:
+            # date-keyed for the one range query, the day alone for a single read
+            body = {today: heavy_guests} if "orderBy" in u else heavy_guests
             route.fulfill(status=200, content_type="application/json",
-                          body=json.dumps(heavy_guests)); return
+                          body=json.dumps(body)); return
         if "/stays/" + today in u:
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps(heavy_stays)); return
@@ -841,10 +844,13 @@ with sync_playwright() as p:
     for pax, expect in WORD_CASES:
         def word_fb(route, request, _p=pax):
             u = request.url
-            if "/roomguests/" in u and today in u:
+            if "/roomguests" in u and today in u:
+                day = {str(i): {"name": "G%d" % i, "departs": today} for i in _p}
+                # one range query returns the fortnight date-keyed; a single-date
+                # read returns just the day
+                body = {today: day} if "orderBy" in u else day
                 route.fulfill(status=200, content_type="application/json",
-                    body=json.dumps({str(i): {"name": "G%d" % i, "departs": today}
-                                     for i in _p})); return
+                              body=json.dumps(body)); return
             if "/responses/" in u:
                 route.fulfill(status=200, content_type="application/json",
                     body=json.dumps({"room-%d" % i: {"status": "in", "pax": _p[i],

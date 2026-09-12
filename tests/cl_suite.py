@@ -87,6 +87,7 @@ def fb(route,request):
     if "/staff" in u: body=json.dumps(staff)
     elif "/responses/" in u: body=json.dumps(responses)
     elif "/manual/" in u: body=json.dumps(manual)
+    elif "/roomguests.json" in u and "orderBy" in u: body=json.dumps({today: roomguests})
     elif "/roomguests/"+today in u: body=json.dumps(roomguests)
     elif "/roomguests/" in u: body="null"
     elif "/hk/"+today in u: body=json.dumps(hk)
@@ -1281,15 +1282,20 @@ with sync_playwright() as p:
     pg.evaluate("()=>load()"); pg.wait_for_timeout(700)
     poll=len(hits)
     print("   requests: first load %d, one poll %d" % (first, poll))
-    ck("a poll costs far less than a full load (%d vs %d)" % (poll, first), poll <= first/3)
+    #  The poll is cheaper than a full load: it skips the fortnight of
+    #  roomguests (cached) and the one-time sign-in reads. The margin narrowed
+    #  once the fortnight became a single range query rather than fourteen
+    #  reads - the cache now saves one request a poll, not fourteen - but the
+    #  poll still skips it, which is what this asserts.
+    ck("a poll is cheaper than a full load (%d vs %d)" % (poll, first), poll < first)
     ck("a poll refetches none of the fortnight of roomguests",
-       not any("/roomguests/" in u for u in hits))
+       not any("/roomguests" in u for u in hits))
     #  The walk back for the last night with records is answered once per
     #  page. It reads days BEFORE the viewed one, the carry stamps itself into
     #  the viewed day and never writes back, and changing the date is a page
     #  reload, so the answer cannot move while this page is open. Uncached it
-    #  cost a request every twenty seconds on a good day and fourteen of them
-    #  on a board nobody had opened in a fortnight.
+    #  cost a request every twenty seconds on a good day; it is one range query
+    #  now, held for a few minutes, rather than fourteen single-date reads.
     days = [u for u in hits if re.search(r"/hk/\d{4}-\d{2}-\d{2}\.json", u)]
     ck("a poll reads one day of housekeeping, not two (%d)" % len(days),
        len(days) == 1)
@@ -1298,7 +1304,7 @@ with sync_playwright() as p:
     hits.clear()
     pg.evaluate("()=>load(true)"); pg.wait_for_timeout(900)
     ck("a full load does refetch them, so bookings are never stale",
-       any("/roomguests/" in u for u in hits))
+       any("/roomguests" in u for u in hits))
 
     # with a villa sheet open the board must hold still
     tile(pg,3).click(); pg.wait_for_timeout(300)
@@ -1560,7 +1566,7 @@ with sync_playwright() as p:
         if "/stays/" + today in u:
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps(stays_tonight)); return
-        if "/roomguests/" in u or "/responses/" in u or "/manual/" in u \
+        if "/roomguests" in u or "/responses/" in u or "/manual/" in u \
            or "/hk/" in u or "/dinner/" in u:
             route.fulfill(status=200, content_type="application/json",
                           body="null"); return
@@ -1632,7 +1638,7 @@ with sync_playwright() as p:
         if "/hk/" + today in u:
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps(claim_hk)); return
-        if "/roomguests/" in u or "/responses/" in u or "/manual/" in u \
+        if "/roomguests" in u or "/responses/" in u or "/manual/" in u \
            or "/hk/" in u or "/dinner/" in u:
             route.fulfill(status=200, content_type="application/json", body="null"); return
         fb(route, request)
@@ -1800,7 +1806,7 @@ with sync_playwright() as p:
             if "/hk/" + today in u:
                 route.fulfill(status=200, content_type="application/json",
                               body=json.dumps(done_hk)); return
-            if "/roomguests/" in u or "/responses/" in u or "/manual/" in u \
+            if "/roomguests" in u or "/responses/" in u or "/manual/" in u \
                or "/hk/" in u or "/dinner/" in u:
                 route.fulfill(status=200, content_type="application/json",
                               body="null"); return
@@ -1904,7 +1910,7 @@ with sync_playwright() as p:
         if "/hk/" + today in u:
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps(arr_hk)); return
-        if "/roomguests/" in u or "/responses/" in u or "/manual/" in u \
+        if "/roomguests" in u or "/responses/" in u or "/manual/" in u \
            or "/hk/" in u or "/dinner/" in u:
             route.fulfill(status=200, content_type="application/json", body="null"); return
         fb(route, request)
@@ -2016,7 +2022,7 @@ with sync_playwright() as p:
         if "/hk/" + today in u:
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps(eta_hk)); return
-        if "/roomguests/" in u or "/responses/" in u or "/manual/" in u \
+        if "/roomguests" in u or "/responses/" in u or "/manual/" in u \
            or "/hk/" in u or "/dinner/" in u:
             route.fulfill(status=200, content_type="application/json",
                           body="null"); return
