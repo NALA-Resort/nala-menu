@@ -47,12 +47,26 @@ console as usual. Until this is done the writes sit under the catch-all
 rule — loose but working — and validate nothing.
 
 **4. The desk PC.** Copy `tools/nala-encoder.ps1` into the encoder kit's
-`dll\64` folder (the one holding `CardEncoder.dll`). The settings — Worker
-URL, `HELPER_KEY`, the encoder account, the COM port — live in
-`nala-config.ps1` beside it, so a fresh download of the helper needs no
-editing (since 9 Sep; before that a CONFIG block at the top was hand-
-filled on every update, and re-filling it is what every stale-helper bug
-came down to). Run:
+`dll\64` folder (the one holding `CardEncoder.dll`). Download it from
+MAIN and nowhere else:
+
+    https://raw.githubusercontent.com/NALA-Resort/nala-menu/main/tools/nala-encoder.ps1
+
+**Never from a branch.** The old branch
+`claude/web-app-tt-hotel-lock-vko6td` still carries the pre-rebuild
+tally helper: its copy watches `/cardjobs`, a node nothing writes any
+more, so it LOOKS like it is working while every run on the phone dies
+with the encoder-offline verdict — which is exactly how the desk lost a
+morning on 12 Sep. Nothing merges to main from that branch either. The
+downloaded file is the right one if its first logged line says
+`watching the card table`; `watching /cardjobs` is the old helper,
+wherever it came from.
+
+The settings — Worker URL, `HELPER_KEY`, the encoder account, the COM
+port — live in `nala-config.ps1` beside it, so a fresh download of the
+helper needs no editing (since 9 Sep; before that a CONFIG block at the
+top was hand-filled on every update, and re-filling it is what every
+stale-helper bug came down to). Run:
 
     powershell -ExecutionPolicy Bypass -File nala-encoder.ps1
 

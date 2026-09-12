@@ -434,6 +434,13 @@ with sync_playwright() as p:
     pg.wait_for_timeout(1600)
     ck("a cut card is a row: the seat fills from the table",
        pg.evaluate("()=>document.querySelectorAll('#cardBody .cslot.filled').length") == 1)
+    #  Numbers CONTINUE across the row: the tick is card 1, so the amber
+    #  seat is card 2 - a second run restarting at 1 calls the villa's
+    #  second card its first (the owner's bug report, 12 Sep).
+    ck("seat numbers continue after the cards in hand",
+       pg.evaluate("""()=>{var s=[...document.querySelectorAll('#cardBody .cslot')]
+         .map(e=>e.textContent.trim());
+         return s.length===2 && s[0]==='' && s[1]==='2';}"""))
     del WRITES[:]
     pg.evaluate("()=>document.querySelector('[data-cardskip]').click()")
     pg.wait_for_timeout(300)
