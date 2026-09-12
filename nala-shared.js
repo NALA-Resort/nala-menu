@@ -2024,17 +2024,23 @@ function setStaffRecords(map){
    into a locked door.                                                    */
 function loadStaff(cb){
   var recs = null, err = null;
-  fetch(DB + '/staff.json')
+  /* Both reads are authorized per token, so they run TOGETHER rather than one
+     after the other: one Singapore round trip on every page load instead of
+     two waited back to back. The failure paths stay asymmetric on purpose -
+     the reason this was two awaited reads is not the reason they were serial.
+     A staff.json failure is the one the pages hear about, because the records
+     decide whether somebody is staff at all; a permissions.json failure is
+     swallowed and the shipped defaults stand, so an override list that does
+     not answer never turns a small outage into a locked door. */
+  var pStaff = fetch(DB + '/staff.json')
     .then(function(r){ return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
     .then(function(j){ recs = setStaffRecords(j); })
-    .catch(function(e){ STAFF_RECORDS = null; err = e; })
-    .then(function(){
-      return fetch(DB + '/permissions.json')
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .then(function(j){ setPermissions(j); })
-        .catch(function(){ setPermissions(null); });
-    })
-    .then(function(){ cb(recs, err); });
+    .catch(function(e){ STAFF_RECORDS = null; err = e; });
+  var pPerms = fetch(DB + '/permissions.json')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){ setPermissions(j); })
+    .catch(function(){ setPermissions(null); });
+  Promise.all([pStaff, pPerms]).then(function(){ cb(recs, err); });
 }
 
 /* ── staying inside the home screen app ────────────────────────
