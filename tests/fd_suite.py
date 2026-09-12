@@ -2352,22 +2352,26 @@ with sync_playwright() as p:
 
 
     # ── the Guest Profile's door: ?open=<booking> lands on that guest ──
+    #  Self-primed: two thousand assertions of fixture mutation sit above
+    #  this block, so the booking it opens is restored first.
+    STAYS["8"] = {"id": "b8", "first": "Tomas", "last": "Lind",
+                  "arrive": today, "depart": plus(2), "adults": 2}
     pg = b.new_page(viewport={"width": 390, "height": 900})
     pg.add_init_script(SDK)
     pg.add_init_script("window.__EMAIL='staff@x';")
     pg.route("**firebasedatabase.app/**", fb)
     pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
     pg.goto("http://localhost:8964/front-desk.html?open=b8")
-    pg.wait_for_timeout(2000)
+    pg.wait_for_timeout(2400)
     #  the row's own tap dispatch decides which face opens - the form for
     #  an unfinished row, the expanded summary for a completed one - so
     #  the door proves itself by landing on the GUEST either way
     landed = pg.evaluate("""()=>{
       const sh = document.getElementById('sheet');
-      if (sh && /Lind/.test(sh.textContent) &&
+      if (sh && /Villa 8/.test(sh.textContent) &&
           document.querySelector('.backdrop.show')) return 'form';
       const open = document.querySelector('.arr.open');
-      return open && /Lind/.test(open.textContent) ? 'summary' : '';
+      return open && open.dataset.villa === '8' ? 'summary' : '';
     }""")
     ck("the profile's door lands on the guest, not the day board", landed != "")
     pg.close()
