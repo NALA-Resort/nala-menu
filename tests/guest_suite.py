@@ -217,6 +217,13 @@ with sync_playwright() as p:
        "standing promise" in text(pg, "#pStay"))
     pg.close()
 
+    # ── the page frame ──────────────────────────────────────────
+    pg = profile()
+    ck("the page frame holds the header off the screen top",
+       pg.evaluate("()=>document.querySelector('.daterow')"
+                   ".getBoundingClientRect().top") >= 20)
+    pg.close()
+
     # ── access ──────────────────────────────────────────────────
     pg = profile(email="housekeeping@x")
     ck("housekeeping is routed home, not told off",

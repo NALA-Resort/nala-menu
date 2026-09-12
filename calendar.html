@@ -15,6 +15,15 @@
   /* Built from mock-calendar.html, approved 12 Sep. This page sets LAYOUT
      only; controls take their dress from the shared sheets. */
 
+  /* Body padding is hand-set on every page rather than by the shared
+     sheet (nala-ui2's page-frame note). Missing here on first publish,
+     which put the header at the screen's absolute top, under the phone's
+     own status bar - the owner's 12 Sep screenshot. Dashboard's pattern,
+     safe-area aware. */
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px
+                 calc(10px + env(safe-area-inset-bottom)); }
+  .wrap { max-width:520px; margin:0 auto; }
+
   /* ── the chart ──────────────────────────────────────────────────────
      One scroll container. The villa column is sticky inside it, so the
      numbers stay put while the days slide under them. Everything else is
@@ -78,7 +87,14 @@
      size, and the owner ruled it easily tappable, so bars open profiles
      from here like anywhere else - it is the full board, only denser.
      EXPAND: one toggle grows rows to the full 42px booking-row height
-     for a roomier read. Its pressed state wears the Selected dress. */
+     for a roomier read. Its pressed state wears the Selected dress.
+
+     The row height is MEASURED, not guessed: fitRows() below reads where
+     the grid actually starts and divides what is left of the screen by
+     17. The first publish hard-coded the chrome at 204px, which was true
+     of the test viewport and false of a real phone - safe areas and the
+     real header pushed villa 17 off the screen. The calc() here is only
+     the pre-measurement fallback. */
   .cmpr { display:none; }
   /* rides the stats row (a row of its own cost a board row of height) */
   .cmpbtn { display:flex; align-items:center; align-self:center; flex:0 0 auto;
@@ -87,7 +103,7 @@
     text-transform:uppercase; color:var(--mid); cursor:pointer; padding:0 12px; }
   #cmp:checked ~ .wrap .cmpbtn { background:rgba(28,28,26,.045);
     border-color:var(--ink); color:var(--ink); }
-  .vrow { height:calc((100vh - 204px)/17); min-height:22px; }
+  .vrow { height:var(--rowh, calc((100vh - 204px)/17)); min-height:22px; }
   .bar { top:3px; height:calc(100% - 7px); padding:0 7px; border-radius:6px; }
   .bar .n { font-size:11px; } /* off-scale: fits the fitted board's 15px bars */
   .vnum { font-size:13px; } /* off-scale: between the two board sizes' bar text */
@@ -315,7 +331,26 @@ function render(bookings, spa, failedDays){
     : '';
   /* open with the window's first day hard against the villa column */
   document.getElementById('wrap').scrollLeft = 0;
+  fitRows();
 }
+
+/* All 17 villas on one screen, from what the screen actually has: the
+   space under the grid's real top edge, shared evenly. Re-measured on
+   rotate and resize. min-height in the CSS guards the smallest phones. */
+function fitRows(){
+  var grid = document.querySelector('.grid');
+  if (!grid) return;
+  var gr = grid.getBoundingClientRect();
+  var top = gr.top + window.scrollY;
+  /* everything below the grid - borders, the board note, the body's own
+     bottom padding - measured rather than assumed, like the top */
+  var below = document.documentElement.scrollHeight - (gr.bottom + window.scrollY);
+  var avail = window.innerHeight - top - below;
+  document.documentElement.style.setProperty('--rowh',
+    Math.max(22, Math.floor(avail / ROOMS_N * 10) / 10) + 'px');
+}
+window.addEventListener('resize', fitRows);
+window.addEventListener('orientationchange', fitRows);
 
 function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
 

@@ -15,7 +15,11 @@
   /* Built from mock-guest.html, approved 12 Sep. This page sets LAYOUT
      only; controls take their dress from the shared sheets. */
 
-  .wrap { max-width:430px; }
+  /* Body padding is hand-set on every page rather than by the shared
+     sheet - missing on first publish, same as the calendar's. */
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px
+                 calc(24px + env(safe-area-inset-bottom)); }
+  .wrap { max-width:430px; margin:0 auto; }
 
   /* identity: the booking as the merge knows it. The name is its own box
      (the trim rule); the phone never trims. */

@@ -159,6 +159,22 @@ with sync_playwright() as p:
     ck("the default board fits every villa on one screen, no page scroll",
        pg.evaluate("()=>document.documentElement.scrollHeight - "
                    "document.documentElement.clientHeight") <= 0)
+    #  The first publish put the header at the screen's absolute top - the
+    #  page frame every board hand-sets was missing (the owner's 12 Sep
+    #  screenshot). The daterow must start below the page's own padding.
+    ck("the page frame holds the header off the screen top",
+       pg.evaluate("()=>document.querySelector('.daterow')"
+                   ".getBoundingClientRect().top") >= 20)
+    pg.close()
+
+    #  The fit is MEASURED, not a hard-coded chrome guess: on a taller
+    #  phone with a taller header the rows must still end inside the
+    #  screen. 430x932 is the large iPhone the guess failed on.
+    pg = board(w=430, h=932)
+    ck("the fitted board ends inside a large phone's screen too",
+       pg.evaluate("()=>document.documentElement.scrollHeight - "
+                   "document.documentElement.clientHeight") <= 0
+       and len(bars(pg)) == 4)
     pg.close()
 
     # ── the board is broad, the detail behind it is not ─────────
