@@ -54,9 +54,12 @@ BK = {
                        "approach": "most", "arriveSlot": "1530",
                        "note": "Anniversary on the Sunday.", "wellness": True,
                        "checkedInAt": now.isoformat(), "forCustomerId": "c77"}},
+ # deliberately NO Mews number: the sync has not numbered every booking,
+ # and the profile must say so rather than show the GUID (the owner's
+ # live find, 12 Sep)
  "b17": {"pms": {"first": "Kim", "last": "Vlahov", "phone": "+61 419 774 902",
                  "arrive": plus(3), "depart": plus(7), "adults": 2,
-                 "number": "RES-48412", "villa": "17"}}
+                 "villa": "17"}}
 }
 PRE_BY_ID = {k: v.get("prearrival") for k, v in BK.items()}
 NIGHT = {"8": {"id": "b8", "first": "Lynette", "last": "Bunker",
@@ -231,6 +234,9 @@ with sync_playwright() as p:
        "send the link" in text(pg, "#pStay"))
     ck("the arrival row names the 2pm standing promise",
        "standing promise" in text(pg, "#pStay"))
+    ck("a booking the sync has not numbered never shows its GUID",
+       "b17" not in text(pg, "#pGuest")
+       and "No Mews number" in text(pg, "#pGuest"))
     pg.close()
 
     # ── the page frame ──────────────────────────────────────────

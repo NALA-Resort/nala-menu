@@ -353,8 +353,12 @@ function render(bk, night, spa, cardsTree, bookflags, guestRec, anchorKey, cid){
     : openRow('Contact', 'No phone on the booking');
   if (companion)
     g += '<div class="row"><div class="q">Companion</div><div class="a">' + esc(companion) + '</div></div>';
-  g += '<div class="row"><div class="q">Reservation</div><div class="a">' +
-       esc(pms.number || B) + '</div>' +
+  /* The human-readable Mews number only - the GUID is the app's own key
+     and "no use to anybody standing at a desk" (mewsRecord's words). A
+     booking the sync has not numbered says so rather than showing it. */
+  g += '<div class="row' + (pms.number ? '' : ' open') + '">' +
+       '<div class="q">Reservation</div><div class="a">' +
+       (pms.number ? esc(pms.number) : 'No Mews number on the booking') + '</div>' +
        (mates ? '<div class="n">Party also holds ' + esc(mates.replace(/^with /, '')) + ' this stay.</div>' : '') +
        '</div>';
   /* the standing dietary at /guests/<customerId> lives on the DINING tab -
