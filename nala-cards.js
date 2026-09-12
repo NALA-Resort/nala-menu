@@ -124,9 +124,11 @@ function runPoll(){
 }
 
 /* One shape per card: the guest's cards in hand stand filled, the ones
-   still to cut are numbered from 1, the amber one is under the encoder
-   now. Never the lifetime ledger - the wiped past is the register's
-   story (owner, 11 Sep). */
+   still to cut are numbered CONTINUING after them - a tick then "2",
+   never a tick then "1", which called the villa's second card its
+   first (the owner's bug report, 12 Sep). The amber one is under the
+   encoder now. Never the lifetime ledger - the wiped past is the
+   register's story (owner, 11 Sep). */
 function cslotsHTML(villa, q, active, writing){
   var held = heldFor(villa);
   var todo = Math.max(0, (+q.qty || 0) - (+q.cut || 0));
@@ -134,7 +136,7 @@ function cslotsHTML(villa, q, active, writing){
   for (var i = 0; i < held; i++) h += '<i class="cslot filled"></i>';
   for (var j = 0; j < todo; j++){
     var now = active && writing && j === 0;
-    h += '<i class="cslot' + (now ? ' now' : '') + '">' + (j + 1) + '</i>';
+    h += '<i class="cslot' + (now ? ' now' : '') + '">' + (held + j + 1) + '</i>';
   }
   return (held + todo) ? '<div class="cslots">' + h + '</div>' : '';
 }
