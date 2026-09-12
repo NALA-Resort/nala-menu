@@ -20,12 +20,12 @@
   /* identity: the booking as the merge knows it. The name is its own box
      (the trim rule); the phone never trims. */
   .who { margin:2px 2px 14px; }
-  .who .vn { font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
+  .who .vn { font-family:var(--ui-font); font-size:var(--t1); letter-spacing:.14em;
     text-transform:uppercase; color:var(--mid); }
-  .who .nm { font-family:var(--ui-font); font-size:20px; font-weight:600; margin-top:2px;
+  .who .nm { font-family:var(--ui-font); font-size:var(--t4); font-weight:600; margin-top:2px;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .who .sub { font-family:var(--ui-font); font-size:15px; margin-top:4px; }
-  .who .meta { font-family:var(--ui-font); font-size:11px; color:var(--mid);
+  .who .sub { font-family:var(--ui-font); font-size:var(--t3); margin-top:4px; }
+  .who .meta { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
     margin-top:6px; line-height:1.6; }
 
   /* ── tabs ───────────────────────────────────────────────────────────
@@ -47,7 +47,7 @@
      Selection is the grey wash on a plain tab; on a tinted tab the fill
      is spoken for, so selection moves to an ink border there. */
   .tabs { display:flex; gap:6px; margin-bottom:10px; }
-  .tab { flex:1; text-align:center; font-family:var(--ui-font); font-size:11px;
+  .tab { flex:1; text-align:center; font-family:var(--ui-font); font-size:var(--t1);
     letter-spacing:.1em; text-transform:uppercase; border:1.5px solid var(--rule);
     border-radius:8px; background:none; color:var(--mid); padding:10px 2px;
     cursor:pointer; }
@@ -65,15 +65,15 @@
 
   /* rows inside a panel: an answer is white, an open question is a cream
      row - the colour law's "work to do" */
-  .grp { font-family:var(--ui-font); font-size:9px; letter-spacing:.16em;
+  .grp { font-family:var(--ui-font); font-size:9px; /* off-scale: micro-caption, the shared sheet's stat-l size */ letter-spacing:.16em;
     text-transform:uppercase; color:var(--mid); margin:14px 2px 6px; }
   .row { border:1.2px solid var(--rule); border-radius:10px; background:#fff;
     padding:10px 12px; margin-bottom:7px; font-family:var(--ui-font); }
-  .row .q { font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--mid); }
-  .row .a { font-size:15px; margin-top:3px; line-height:1.4; }
-  .row .n { font-size:11px; color:var(--mid); margin-top:3px; line-height:1.45; }
+  .row .q { font-size:9px; /* off-scale: micro-caption, the shared sheet's stat-l size */ letter-spacing:.14em; text-transform:uppercase; color:var(--mid); }
+  .row .a { font-size:var(--t3); margin-top:3px; line-height:1.4; }
+  .row .n { font-size:var(--t1); color:var(--mid); margin-top:3px; line-height:1.45; }
   .row.open { background:transparent; }
-  .row.open .a { color:var(--mid); font-size:12px; }
+  .row.open .a { color:var(--mid); font-size:var(--t1); }
   .row.yes    { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
   .row.yes .a { color:#5E7D67; }
   .row.no     { background:rgba(184,106,90,.16); border-color:rgba(184,106,90,.45); }
@@ -85,13 +85,13 @@
 
   /* dietaries: an allergy is the solid red pill - the law's one exception */
   .dpills { display:flex; flex-wrap:wrap; gap:6px; margin-top:5px; }
-  .dp { font-family:var(--ui-font); font-size:11px; border-radius:14px; padding:5px 10px; }
+  .dp { font-family:var(--ui-font); font-size:var(--t1); border-radius:14px; padding:5px 10px; }
   .dp.al   { background:var(--red); color:#fff; }
   .dp.pref { background:rgba(168,50,30,.08); border:1px solid rgba(168,50,30,.4); color:var(--red); }
   .dp.flag { background:rgba(28,28,26,.045); border:1px solid var(--rule); color:var(--ink); }
   .dp.ok   { background:#E4EDE2; border:1px solid #7E937A; color:#5E7D67; }
 
-  .statepill { display:inline-block; font-family:var(--ui-font); font-size:11px;
+  .statepill { display:inline-block; font-family:var(--ui-font); font-size:var(--t1);
     letter-spacing:.12em; text-transform:uppercase; border-radius:16px;
     padding:7px 12px; margin-bottom:8px; }
   .statepill.done { background:#E4EDE2; border:1px solid #7E937A; color:#5E7D67; }
@@ -101,35 +101,35 @@
   .statepill.quiet { background:transparent; border:1px solid var(--rule); color:var(--mid); }
 
   /* the dining history table, the shared reader's own dress (tally's) */
-  .hist-sum { text-align:center; font-family:var(--ui-font); font-size:11px;
+  .hist-sum { text-align:center; font-family:var(--ui-font); font-size:var(--t1);
     color:var(--mid); margin:10px 0 8px; }
   .htab { width:100%; border-collapse:collapse; text-align:left; background:#fff;
     border:1.2px solid var(--rule); font-family:var(--ui-font); }
-  .htab th { font-size:9px; letter-spacing:.1em; text-transform:uppercase;
+  .htab th { font-size:9px; /* off-scale: micro-caption, the shared sheet's stat-l size */ letter-spacing:.1em; text-transform:uppercase;
     color:var(--mid); font-weight:normal; padding:8px 8px 6px;
     border-bottom:1px solid var(--rule); }
-  .htab td { font-size:11px; line-height:1.35; vertical-align:top; padding:8px;
+  .htab td { font-size:var(--t1); line-height:1.35; vertical-align:top; padding:8px;
     border-bottom:1px solid var(--rule); }
   .htab tr:last-child td { border-bottom:0; }
   .htab .hd { white-space:nowrap; color:var(--mid); }
-  .hist-note { text-align:center; font-family:var(--ui-font); font-size:11px;
+  .hist-note { text-align:center; font-family:var(--ui-font); font-size:var(--t1);
     color:var(--mid); margin-top:6px; }
 
   /* doors: quiet rows, they navigate and never write - no solid primary
      lives on a page that only reads */
   .door { display:flex; align-items:center; gap:8px; border:1px solid var(--rule);
     border-radius:8px; background:none; width:100%; text-align:left; padding:12px;
-    margin-bottom:7px; font-family:var(--ui-font); font-size:15px; color:var(--ink);
+    margin-bottom:7px; font-family:var(--ui-font); font-size:var(--t3); color:var(--ink);
     text-decoration:none; }
-  .door small { font-size:11px; color:var(--mid); margin-left:auto; white-space:nowrap; }
-  .door .ch { color:var(--mid); font-size:15px; margin-left:8px; }
+  .door small { font-size:var(--t1); color:var(--mid); margin-left:auto; white-space:nowrap; }
+  .door .ch { color:var(--mid); font-size:var(--t3); margin-left:8px; }
 
   .back { height:36px; border:1px solid var(--rule); border-radius:8px; background:none;
-    color:var(--ink); font-family:var(--ui-font); font-size:15px; padding:0 12px;
+    color:var(--ink); font-family:var(--ui-font); font-size:var(--t3); padding:0 12px;
     white-space:nowrap; text-decoration:none; display:flex; align-items:center; }
-  .hv { font-family:var(--ui-font); font-size:15px; font-weight:600; }
+  .hv { font-family:var(--ui-font); font-size:var(--t3); font-weight:600; }
 
-  .pagenote { font-family:var(--ui-font); font-size:11px; color:var(--mid);
+  .pagenote { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
     margin:8px 2px; line-height:1.5; }
 </style>
 </head>
@@ -300,10 +300,13 @@ function load(){
 function render(bk, night, spa, cardsTree, bookflags, guestRec, anchorKey, cid){
   var pms = bk.pms || {}, pre = bk.prearrival || null;
   var villa = pms.villa != null ? String(pms.villa) : '';
-  var rows = [];
+  var rows = [], selfRow = null;
   for (var v in night){
-    if (night[v] && night[v].id === B) villa = String(v);
-    rows.push({ villa: String(v), stay: night[v] });
+    var r = { villa: String(v), stay: night[v] };
+    rows.push(r);
+    /* groupMatesText excludes SELF by identity, so the row passed in must
+       be the one in the list, not a lookalike built from pms */
+    if (night[v] && night[v].id === B){ villa = String(v); selfRow = r; }
   }
   var known = { arrives: pms.arrive, departs: pms.depart, adults: pms.adults };
   var name = [pms.first, pms.last].filter(Boolean).join(' ').trim();
@@ -311,7 +314,7 @@ function render(bk, night, spa, cardsTree, bookflags, guestRec, anchorKey, cid){
   var st = formState(pre, { arrive: pms.arrive, depart: pms.depart }, spa);
   var mst = massageState(spa, pre);
   var companion = companionOf(pre, pms);
-  var mates = groupMatesText({ villa: villa, stay: { groupId: pms.groupId } }, rows);
+  var mates = selfRow ? groupMatesText(selfRow, rows) : '';
   /* the person's dietaries: the reservation's list, the night as fallback -
      the NOTES-AUDIT model, same as the boards */
   var diets = (pre && pre.diets && pre.diets.length) ? pre.diets : [];
@@ -400,7 +403,7 @@ function render(bk, night, spa, cardsTree, bookflags, guestRec, anchorKey, cid){
   /* ── DINING: dietaries once, here only; the night's answer; the nights eaten ── */
   var d = '<div class="row"><div class="q">Dietaries</div>' +
           (dietPillsHTML(diets, nodiet) ||
-           '<div class="a" style="color:var(--mid);font-size:12px">Not answered</div>') +
+           '<div class="a" style="color:var(--mid);font-size:var(--t1)">Not answered</div>') +
           (dnote ? '<div class="n">&ldquo;' + esc(dnote) + '&rdquo;</div>' : '') +
           (guestRec ? '<div class="n">Kept on the guest &middot; follows them to their next stay.</div>' : '') +
           '</div>';

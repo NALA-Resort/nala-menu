@@ -941,6 +941,7 @@ with sync_playwright() as p:
              "arrivals-sms.html":"editBookings",
              "list.html":"resSheet", "publish.html":"publishMenu",
              "tag.html":"publishMenu", "cleaners.html":"cleansBoard",
+             "calendar.html":"cleansBoard",
              "spa.html":"spaBoard",
              "housekeeping.html":"cleansBoard", "registration.html":"editBookings",
              "menu-print.html":"resSheet", "past-menus.html":"resBoard",

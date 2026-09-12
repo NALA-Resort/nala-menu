@@ -24,13 +24,14 @@
   .chartwrap { border:1.2px solid var(--rule); border-radius:10px; background:#fff;
     overflow-x:auto; -webkit-overflow-scrolling:touch; }
   .chart { position:relative; }
-  .monthrow { font-family:var(--ui-font); font-size:9px; letter-spacing:.16em;
+  .monthrow { font-family:var(--ui-font); font-size:9px; /* off-scale: micro-caption, the shared sheet's stat-l size */ letter-spacing:.16em;
     text-transform:uppercase; color:var(--mid); padding:8px 0 0; }
   /* the month rides the scroll; the window is one month, so one label */
   .month { position:sticky; left:40px; display:inline-block; white-space:nowrap; }
   .dayhead { position:relative; height:26px; border-bottom:1.2px solid var(--rule); }
   .dh { position:absolute; top:0; height:100%; display:flex; align-items:center;
-    justify-content:center; font-family:var(--ui-font); font-size:11px;
+    justify-content:center; font-family:var(--ui-font);
+    font-size:11px; /* off-scale: the board is a fixed-density grid, the approved mock's sizes; --t1 overflows a compressed row */
     color:var(--mid); white-space:nowrap; }
   .dh b { font-weight:600; color:var(--ink); margin-left:4px; }
   .dh.today { color:var(--ink); font-weight:600; }
@@ -82,25 +83,25 @@
   /* rides the stats row (a row of its own cost a board row of height) */
   .cmpbtn { display:flex; align-items:center; align-self:center; flex:0 0 auto;
     height:36px; border:1px solid var(--rule); border-radius:8px;
-    font-family:var(--ui-font); font-size:11px; letter-spacing:.1em;
+    font-family:var(--ui-font); font-size:var(--t1); letter-spacing:.1em;
     text-transform:uppercase; color:var(--mid); cursor:pointer; padding:0 12px; }
   #cmp:checked ~ .wrap .cmpbtn { background:rgba(28,28,26,.045);
     border-color:var(--ink); color:var(--ink); }
   .vrow { height:calc((100vh - 204px)/17); min-height:22px; }
   .bar { top:3px; height:calc(100% - 7px); padding:0 7px; border-radius:6px; }
-  .bar .n { font-size:11px; }
-  .vnum { font-size:13px; }
+  .bar .n { font-size:11px; } /* off-scale: fits the fitted board's 15px bars */
+  .vnum { font-size:13px; } /* off-scale: between the two board sizes' bar text */
   #cmp:checked ~ .wrap .vrow { height:42px; }
   #cmp:checked ~ .wrap .bar { top:6px; height:30px; padding:0 9px; border-radius:8px; }
-  #cmp:checked ~ .wrap .bar .n { font-size:12px; }
-  #cmp:checked ~ .wrap .vnum { font-size:15px; }
+  #cmp:checked ~ .wrap .bar .n { font-size:var(--t1); }
+  #cmp:checked ~ .wrap .vnum { font-size:var(--t3); }
 
   .stats .cmpbtn { margin-left:auto; }
   /* fluid, not breakpointed: at 320 the Expand control wraps under the
      stats rather than bleeding - a control never trims */
   .stats { flex-wrap:wrap; }
   /* a board that could not be read says so; it never shows as empty */
-  .boardnote { font-family:var(--ui-font); font-size:11px; color:var(--mid);
+  .boardnote { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
     margin:8px 2px; }
 </style>
 </head>
