@@ -210,7 +210,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=65"></script>
+<script src="nala-shared.js?v=66"></script>
 <script>
 /* The day's flow on one screen: what has happened, what is ready, and what
    is still owed. Every fact here is read from the screen that owns it. The
@@ -232,13 +232,10 @@
 
 function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
 
-/* Front Desk owns arriving: it is the screen that stamps checkedInAt, and its
-   own isArrived is the original. This is a deliberate second copy of one line
-   rather than a move into nala-shared.js, which every page loads and which
-   would turn adding this page into an everything-runs change. Consolidate the
-   two when something else needs it and a full run is already being paid for.
-   If the stamp's meaning ever changes, it changes in both. */
-function isArrived(p){ return !!(p && p.checkedInAt); }
+/* isArrived moved to nala-shared.js on 12 Sep, when the Guest Profile
+   became its third reader - the consolidation the comment here had
+   scheduled for exactly that moment. Front Desk still owns the stamp. */
+
 
 var nav = initDateNav();
 var T0 = 480, T1 = 1080;

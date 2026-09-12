@@ -496,7 +496,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=65"></script>
+<script src="nala-shared.js?v=66"></script>
 <script src="nala-cards.js?v=10"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -610,7 +610,7 @@ function nightsLabel(s){
    once the owner put the form's state on its own gated control, the button
    that wrote it had no job left either. Both are gone. The sections track
    arriving, because that is what the receptionist is working through. */
-function isArrived(p){ return !!(p && p.checkedInAt); }
+/* isArrived reads from nala-shared.js since 12 Sep; this page still owns writing the stamp. */
 /* `at` ALONE is not a finished form. It says "the answers exist", and a
    record can hold it while holding none: check in stamps it honestly, having
    just required dining and dietary, but since 26 Aug every answer can be

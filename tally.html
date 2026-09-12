@@ -565,7 +565,7 @@ body.readonly .comb-undo { display:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=65"></script>
+<script src="nala-shared.js?v=66"></script>
 <script>
 /* Not every allergy is on the list and the list cannot grow to hold them all,
    so Other means read the note. The same entry the front desk writes, because
@@ -1955,114 +1955,16 @@ function editRoomDetails(n, st){
 }
 
 /* ── dining history ─────────────────────────────────────────
-   What this stay has eaten so far: the nights it sat, one a row, and the
-   three courses the kitchen served, from /menuhistory - the archive Past
-   Menus reads. For the chef planning tonight: "I did steak two nights
-   ago, was this guest in that night?"
-
-   It follows the BOOKING through /stays, not the villa: a guest moved
-   mid-stay carries their nights with them, and a cell stamped with a
-   different booking id is a different party's answer, not theirs. Reads
-   only, on demand, so it costs nothing until somebody asks. */
+   The readers (histNights, histNight, histRowsHTML) moved to
+   nala-shared.js on 12 Sep, when the Guest Profile became their second
+   reader - the rule 3 moment. This page keeps only its own session
+   cache and passes its own VIEW: the shared copies own the shape. */
 var HIST_CACHE = {};   /* per booking per viewed date, for the session */
-var HIST_MAX = 14;     /* the fortnight the roomguests look-back already uses */
-
-function histNights(known){
-  var a = known && known.arrives ? parseDepDate(known.arrives) : null;
-  if (!a) return [];
-  var from = dkey(a), nights = [];
-  var d = new Date(VIEW); d.setDate(d.getDate() - 1);
-  while (nights.length < HIST_MAX && dkey(d) >= from){
-    nights.push(dkey(d));
-    d.setDate(d.getDate() - 1);
-  }
-  return nights;
-}
-
-/* A failed read is not an empty one - the standing caution. A refusal or a
-   dropped connection comes back marked, so a night that could not be read
-   says so rather than reporting that the guest never dined. */
-function histGet(path){
-  return fetch(DB + path + '.json?v=' + Date.now())
-    .then(function(r){
-      if (!r.ok) return { ok:false };
-      return r.json().then(function(d){ return { ok:true, data:d }; });
-    })
-    .catch(function(){ return { ok:false }; });
-}
-
-/* The dish, not the garnish: the chef writes "Lamb rump, smoked eggplant"
-   and the table has three columns of 90px, so everything from the first
-   comma stays in the kitchen. The same reading Statistics leans on. */
-function dishShort(v){
-  return String(v == null ? '' : v).split(',')[0].trim();
-}
-
-function histNight(date, id){
-  return Promise.all([
-    histGet('/stays/' + date),
-    histGet('/dinner/' + date),
-    histGet('/menuhistory/' + date)
-  ]).then(function(r){
-    var row = { date: date };
-    if (!r[0].ok || !r[1].ok){ row.failed = true; return row; }
-    var stays = r[0].data || {};
-    var villa = null;
-    for (var v in stays){
-      if (stays[v] && stays[v].id === id){ villa = v; break; }
-    }
-    if (!villa) return row;   /* stays holds no villa for this booking that night */
-    var cell = (r[1].data || {})[villa];
-    /* Somebody else's answer must not become this guest's history. */
-    if (cell && cell.bookingId && cell.bookingId !== id) cell = null;
-    if (!cell || cell.status !== 'in') return row;
-    row.dined = true;
-    var m = (r[2].ok && r[2].data) || null;
-    if (m && ['entree','main','dessert'].some(function(k){ return dishShort(m[k]); }))
-      row.menu = { entree: dishShort(m.entree), main: dishShort(m.main),
-                   dessert: dishShort(m.dessert) };
-    else if (!r[2].ok) row.menuFailed = true;
-    return row;
-  });
-}
-
-/* Only the nights they sat - the owner's ruling, 7 Sep: a missed night is
-   noise on a busy page, and the summary line already carries the count. */
-function histRowsHTML(rows){
-  var dined = rows.filter(function(r){ return r.dined; });
-  var failed = rows.filter(function(r){ return r.failed; }).length;
-  var h = '<div class="hist-sum">Dined ' + dined.length + ' of ' + rows.length +
-          (rows.length === 1 ? ' night so far' : ' nights so far') + '</div>';
-  if (dined.length){
-    h += '<table class="htab">' +
-         '<tr><th></th><th>Entrée</th><th>Main</th><th>Dessert</th></tr>' +
-         dined.map(function(row){
-           var d = parseDepDate(row.date);
-           var day = d
-             ? ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' + d.getDate()
-             : row.date;
-           var cells = row.menu
-             ? ['entree','main','dessert'].map(function(k){
-                 return '<td>' + esc(row.menu[k]) + '</td>';
-               }).join('')
-             : '<td class="none" colspan="3">' +
-               (row.menuFailed ? 'Menu could not be read' : 'Menu not recorded') +
-               '</td>';
-           return '<tr><td class="hd">' + esc(day) + '</td>' + cells + '</tr>';
-         }).join('') +
-         '</table>';
-  }
-  /* A failed read is not a night not dined, and must never count as one. */
-  if (failed)
-    h += '<div class="hist-note">' + failed +
-         (failed === 1 ? ' night' : ' nights') + ' could not be read</div>';
-  return h;
-}
 
 function showHistory(n, st){
   var known = roomguests[String(n)] || {};
   var id = known.bookingId;
-  var nights = histNights(known);
+  var nights = histNights(known, VIEW);
   var key = id + '|' + todayKey();
   sheet.innerHTML =
     '<h3>Villa ' + n + ' · dining history</h3>' +
@@ -2113,7 +2015,7 @@ function openRoom(n, st){
        teaches people not to press it. Before Close, never after: the way
        out stays the last thing on every sheet. */
     var kn = roomguests[String(n)] || {};
-    if (kn.bookingId && histNights(kn).length){
+    if (kn.bookingId && histNights(kn, VIEW).length){
       var cb = document.getElementById('oClose');
       if (cb){
         cb.insertAdjacentHTML('beforebegin',

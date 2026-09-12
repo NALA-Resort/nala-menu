@@ -785,6 +785,13 @@ function mandatoryAnswered(p, stay, spa){
    Dashboard and Pre-arrival SMS read the node whole - because a reader
    without it is a second, stricter reading of one state, which is how
    two boards came to disagree about villa 17. */
+/* Arrived: Front Desk's checkedInAt stamp, read one way. Front Desk is the
+   screen that writes it; dashboard.html and front-desk.html each carried
+   this line until 12 Sep, when the Guest Profile became a third reader -
+   the consolidation the dashboard's own comment scheduled for exactly
+   this moment. */
+function isArrived(p){ return !!(p && p.checkedInAt); }
+
 function formState(p, stay, spa){
   if (p && p.at && guestAnswered(p) && mandatoryAnswered(p, stay, spa))
     return 'completed';
@@ -1566,6 +1573,121 @@ function rememberDietary(bookingId, diets, dnote){
     .catch(function(){});
 }
 
+
+/* ── dining history ───────────────────────────────────────────
+   What a stay has eaten so far: the nights it sat, one a row, and the
+   three courses the kitchen served, from /menuhistory - the archive Past
+   Menus reads. For the chef planning tonight: "I did steak two nights
+   ago, was this guest in that night?"
+
+   It follows the BOOKING through /stays, not the villa: a guest moved
+   mid-stay carries their nights with them, and a cell stamped with a
+   different booking id is a different party's answer, not theirs. Reads
+   only, on demand, so it costs nothing until somebody asks.
+
+   Lived in tally.html until 12 Sep, when the Guest Profile became its
+   second reader - the rule 3 moment, so the copy moved here whole. The
+   viewed date arrives as a parameter because the two readers hold their
+   own idea of "today". */
+var HIST_MAX = 14;     /* the fortnight the roomguests look-back already uses */
+
+function histNights(known, view){
+  var a = known && known.arrives ? parseDepDate(known.arrives) : null;
+  if (!a) return [];
+  var from = dkey(a), nights = [];
+  var d = new Date(view); d.setDate(d.getDate() - 1);
+  while (nights.length < HIST_MAX && dkey(d) >= from){
+    nights.push(dkey(d));
+    d.setDate(d.getDate() - 1);
+  }
+  return nights;
+}
+
+/* A failed read is not an empty one - the standing caution. A refusal or a
+   dropped connection comes back marked, so a night that could not be read
+   says so rather than reporting that the guest never dined. */
+function histGet(path){
+  return fetch(DB + path + '.json?v=' + Date.now())
+    .then(function(r){
+      if (!r.ok) return { ok:false };
+      return r.json().then(function(d){ return { ok:true, data:d }; });
+    })
+    .catch(function(){ return { ok:false }; });
+}
+
+/* The dish, not the garnish: the chef writes "Lamb rump, smoked eggplant"
+   and the table has three columns of 90px, so everything from the first
+   comma stays in the kitchen. The same reading Statistics leans on. */
+function dishShort(v){
+  return String(v == null ? '' : v).split(',')[0].trim();
+}
+
+function histNight(date, id){
+  return Promise.all([
+    histGet('/stays/' + date),
+    histGet('/dinner/' + date),
+    histGet('/menuhistory/' + date)
+  ]).then(function(r){
+    var row = { date: date };
+    if (!r[0].ok || !r[1].ok){ row.failed = true; return row; }
+    var stays = r[0].data || {};
+    var villa = null;
+    for (var v in stays){
+      if (stays[v] && stays[v].id === id){ villa = v; break; }
+    }
+    if (!villa) return row;   /* stays holds no villa for this booking that night */
+    var cell = (r[1].data || {})[villa];
+    /* Somebody else's answer must not become this guest's history. */
+    if (cell && cell.bookingId && cell.bookingId !== id) cell = null;
+    if (!cell || cell.status !== 'in') return row;
+    row.dined = true;
+    var m = (r[2].ok && r[2].data) || null;
+    if (m && ['entree','main','dessert'].some(function(k){ return dishShort(m[k]); }))
+      row.menu = { entree: dishShort(m.entree), main: dishShort(m.main),
+                   dessert: dishShort(m.dessert) };
+    else if (!r[2].ok) row.menuFailed = true;
+    return row;
+  });
+}
+
+/* Its own escaper rather than a page's: both reading pages define esc, but
+   each page's own, and a shared function must not depend on whichever copy
+   the page happened to write. */
+function histEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+/* Only the nights they sat - the owner's ruling, 7 Sep: a missed night is
+   noise on a busy page, and the summary line already carries the count. */
+function histRowsHTML(rows){
+  var dined = rows.filter(function(r){ return r.dined; });
+  var failed = rows.filter(function(r){ return r.failed; }).length;
+  var h = '<div class="hist-sum">Dined ' + dined.length + ' of ' + rows.length +
+          (rows.length === 1 ? ' night so far' : ' nights so far') + '</div>';
+  if (dined.length){
+    h += '<table class="htab">' +
+         '<tr><th></th><th>Entr\u00e9e</th><th>Main</th><th>Dessert</th></tr>' +
+         dined.map(function(row){
+           var d = parseDepDate(row.date);
+           var day = d
+             ? ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' + d.getDate()
+             : row.date;
+           var cells = row.menu
+             ? ['entree','main','dessert'].map(function(k){
+                 return '<td>' + histEsc(row.menu[k]) + '</td>';
+               }).join('')
+             : '<td class="none" colspan="3">' +
+               (row.menuFailed ? 'Menu could not be read' : 'Menu not recorded') +
+               '</td>';
+           return '<tr><td class="hd">' + histEsc(day) + '</td>' + cells + '</tr>';
+         }).join('') +
+         '</table>';
+  }
+  /* A failed read is not a night not dined, and must never count as one. */
+  if (failed)
+    h += '<div class="hist-note">' + failed +
+         (failed === 1 ? ' night' : ' nights') + ' could not be read</div>';
+  return h;
+}
+
 /* ── the purpose field ────────────────────────────────────────────────
    "Here for" is a multi select in both forms, so the pages hold it as a list.
    The database validates it as a single string, and one field of the wrong
@@ -2119,6 +2241,12 @@ var NAV = [
      off to all the others. It needs only resBoard: every card's own door is
      gated separately by the permission its page already answers to. */
   { href:'dashboard.html',    label:'Dashboard',    need:'resBoard'     },
+  /* The whole house on one screen. cleansBoard, not resBoard, so the
+     grounds and housekeeping logins can see who is in and for how long -
+     the page's whole point (the owner, 12 Sep). A bar only OPENS a guest
+     profile for a login that also holds resBoard: the board is broad, the
+     detail behind it is not. */
+  { href:'calendar.html',     label:'Calendar',     need:'cleansBoard'  },
   { href:'front-desk.html',   label:'Front Desk',   need:'editBookings' },
   /* The desk's other duty, so the desk's own gate. */
   { href:'keys.html',         label:'Keys',         need:'editBookings' },
