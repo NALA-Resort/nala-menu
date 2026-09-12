@@ -96,6 +96,9 @@
   #cmp:checked ~ .wrap .vnum { font-size:15px; }
 
   .stats .cmpbtn { margin-left:auto; }
+  /* fluid, not breakpointed: at 320 the Expand control wraps under the
+     stats rather than bleeding - a control never trims */
+  .stats { flex-wrap:wrap; }
   /* a board that could not be read says so; it never shows as empty */
   .boardnote { font-family:var(--ui-font); font-size:11px; color:var(--mid);
     margin:8px 2px; }
