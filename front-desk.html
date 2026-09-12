@@ -481,14 +481,14 @@
 
 <div class="noaccess" id="noAccess"></div>
 
-<div class="stats" id="statsRow">
+<div class="stats" id="statsRow" style="display:none">
   <div class="stat" id="tileLeft"><div class="stat-n" id="nArr">&ndash;</div><div class="stat-l">Arrived</div></div>
   <div class="stat"><div class="stat-n dine" id="nIn">&ndash;</div><div class="stat-l">Dining</div></div>
   <div class="stat"><div class="stat-n nodine" id="nOut">&ndash;</div><div class="stat-l">Not dining</div></div>
   <div class="stat"><div class="stat-n unsure" id="nUn">&ndash;</div><div class="stat-l">Not sure</div></div>
 </div>
 
-<div id="board"></div>
+<div id="board" style="display:none"></div>
 <div id="errBar"></div>
 <div class="spacer"></div>
 
@@ -2609,11 +2609,13 @@ function showAccess(allowed, e){
     }
   }
   box.className = 'noaccess' + (on ? ' show' : '');
+  /* Reveal only. The data is already being fetched (load fires as soon as
+     there is a user, below); this decides whether it is shown. Hidden until
+     then, so an under-permissioned login about to be redirected sees nothing. */
   ['statsRow','board'].forEach(function(id){
     var el = document.getElementById(id);
     if (el) el.style.display = on ? 'none' : '';
   });
-  if (!on) load();
 }
 
 /* Who may see an internal note. Not can(), because there is no permission for
@@ -2649,6 +2651,12 @@ window.NALA_ROLE = null;
   if (!A || !A.onAuthStateChanged) return setTimeout(gate, 40);
   A.onAuthStateChanged(function(u){
     if (!u) return;                 /* auth.js owns the signed-out state */
+    /* Start the arrivals data fetch the moment there is a user, not after the
+       role check returns. auth.js holds these reads until the token settles,
+       so they go out alongside loadStaff's rather than after it; the board
+       stays hidden until showAccess reveals it. Safe to fire early because
+       load() reads no role. */
+    load();
     loadStaff(function(recs, e){
       var role = roleOf(u);
       window.NALA_ROLE = role;
