@@ -152,17 +152,6 @@ with sync_playwright() as p:
        pg.eval_on_selector("#date", "e=>e.textContent.trim()") != "")
     ck("the menu is built, with links in it",
        pg.evaluate("()=>document.querySelectorAll('#navDrop a').length") > 3)
-    # ── Expand grows the rows, and the way back is the same press ──
-    h0 = pg.eval_on_selector(".vrow", "e=>e.getBoundingClientRect().height")
-    pg.click("#expandBtn")
-    pg.wait_for_timeout(120)
-    h1 = pg.eval_on_selector(".vrow", "e=>e.getBoundingClientRect().height")
-    ck("Expand grows the rows to the full booking-row height",
-       abs(h1 - 42) < 1 and h1 > h0)
-    pg.click("#expandBtn")
-    pg.wait_for_timeout(120)
-    ck("and pressing it again comes back",
-       abs(pg.eval_on_selector(".vrow", "e=>e.getBoundingClientRect().height") - h0) < 1)
     ck("the default board fits every villa on one screen, no page scroll",
        pg.evaluate("()=>document.documentElement.scrollHeight - "
                    "document.documentElement.clientHeight") <= 0)

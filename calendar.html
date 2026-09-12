@@ -79,43 +79,16 @@
   .bar.cutR { border-top-right-radius:0 !important; border-bottom-right-radius:0 !important;
     border-right-style:dashed; }
 
-  /* ── the two board sizes ────────────────────────────────────────────
-     DEFAULT: the whole house on one screen, no vertical scroll - rows
-     split the viewport height under the headers (204px of chrome)
-     evenly, about 38px on a current phone, min-height guarding small
-     ones. Ruled the default 12 Sep: this size turned out to be the
-     size, and the owner ruled it easily tappable, so bars open profiles
-     from here like anywhere else - it is the full board, only denser.
-     EXPAND: one toggle grows rows to the full 42px booking-row height
-     for a roomier read. Its pressed state wears the Selected dress.
-
-     The row height is MEASURED, not guessed: fitRows() below reads where
-     the grid actually starts and divides what is left of the screen by
-     17. The first publish hard-coded the chrome at 204px, which was true
-     of the test viewport and false of a real phone - safe areas and the
-     real header pushed villa 17 off the screen. The calc() here is only
-     the pre-measurement fallback. */
-  .cmpr { display:none; }
-  /* rides the stats row (a row of its own cost a board row of height) */
-  .cmpbtn { display:flex; align-items:center; align-self:center; flex:0 0 auto;
-    height:36px; border:1px solid var(--rule); border-radius:8px;
-    font-family:var(--ui-font); font-size:var(--t1); letter-spacing:.1em;
-    text-transform:uppercase; color:var(--mid); cursor:pointer; padding:0 12px; }
-  #cmp:checked ~ .wrap .cmpbtn { background:rgba(28,28,26,.045);
-    border-color:var(--ink); color:var(--ink); }
+  /* ── the board's one size ───────────────────────────────────────────
+     The whole house on one screen, no vertical scroll: fitRows() below
+     measures where the grid starts and what sits below it, and divides
+     what the screen actually has by 17, re-measuring on rotate and
+     resize; the calc is only the pre-measurement fallback. */
   .vrow { height:var(--rowh, calc((100vh - 204px)/17)); min-height:22px; }
   .bar { top:3px; height:calc(100% - 7px); padding:0 7px; border-radius:6px; }
   .bar .n { font-size:11px; } /* off-scale: fits the fitted board's 15px bars */
-  .vnum { font-size:13px; } /* off-scale: between the two board sizes' bar text */
-  #cmp:checked ~ .wrap .vrow { height:42px; }
-  #cmp:checked ~ .wrap .bar { top:6px; height:30px; padding:0 9px; border-radius:8px; }
-  #cmp:checked ~ .wrap .bar .n { font-size:var(--t1); }
-  #cmp:checked ~ .wrap .vnum { font-size:var(--t3); }
+  .vnum { font-size:13px; } /* off-scale: a step above the bar text */
 
-  .stats .cmpbtn { margin-left:auto; }
-  /* fluid, not breakpointed: at 320 the Expand control wraps under the
-     stats rather than bleeding - a control never trims */
-  .stats { flex-wrap:wrap; }
   /* a board that could not be read says so; it never shows as empty */
   .boardnote { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
     margin:8px 2px; }
@@ -124,8 +97,6 @@
 <body class="tier-app ui2">
 
 <div class="errbar" id="errBar"></div>
-
-<input type="checkbox" id="cmp" class="cmpr">
 
 <div class="wrap">
   <div class="daterow">
@@ -145,7 +116,6 @@
     <div class="stat"><div class="stat-n" id="nIn">&ndash;</div><div class="stat-l">In house</div></div>
     <div class="stat"><div class="stat-n" id="nArr">&ndash;</div><div class="stat-l">Arriving</div></div>
     <div class="stat"><div class="stat-n" id="nDep">&ndash;</div><div class="stat-l">Departing</div></div>
-    <label class="cmpbtn" for="cmp" id="expandBtn">Expand</label>
   </div>
 
   <div class="chartwrap" id="wrap"><div class="chart" id="chart"></div></div>
