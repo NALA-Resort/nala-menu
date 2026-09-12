@@ -79,10 +79,12 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
    the compressed board is for LOOKING, not opening profiles. The
    pressed button wears the Selected dress: grey fill, ink border. */
 .cmpr{display:none}
-.cmprow{display:flex;justify-content:flex-end;margin:0 0 8px;max-width:430px}
-.cmpbtn{display:flex;align-items:center;font-size:11px;letter-spacing:.1em;
- text-transform:uppercase;color:var(--mid);cursor:pointer}
-#cmp:checked ~ .cmprow .cmpbtn{background:rgba(28,28,26,.045);
+/* rides the stats row (the owner, 12 Sep - a row of its own cost a board
+   row of height); the stats flex 1 each, the button keeps its own width */
+.cmpbtn{display:flex;align-items:center;align-self:center;flex:0 0 auto;
+ font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);
+ cursor:pointer}
+#cmp:checked ~ .stats .cmpbtn{background:rgba(28,28,26,.045);
  border-color:var(--ink);color:var(--ink)}
 #cmp:checked ~ .chartwrap .vrow{height:24px !important}
 #cmp:checked ~ .chartwrap .bar{top:4px;height:16px;padding:0 6px;border-radius:6px}
@@ -111,11 +113,24 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
   <div class="stat"><b>8</b><span>In house</span></div>
   <div class="stat"><b>4</b><span>Arriving</span></div>
   <div class="stat"><b>1</b><span>Departing</span></div>
+  <label class="dnav cmpbtn" for="cmp">Compress</label>
 </div>
 
-<!-- Compress sits above the board, not in the daterow: the header row
-     holds five controls at 390 and a sixth wrapped the date. -->
-<div class="cmprow"><label class="dnav cmpbtn" for="cmp">Compress</label></div>
+<!-- WHY THE BOARD HOLDS ABOUT A MONTH AND NO MORE. Three reasons, priced
+     for the live build:
+     1. Reads. The live page pays one /stays/<date> read per day column
+        (the same per-night shape every board reads). A month is ~30 reads
+        on open - fine. A season is hundreds, on a page people open for a
+        glance.
+     2. Fingers. At 64px a day, a month is ~2,000px of sideways scroll -
+        about the limit at which swiping stays quicker than the date
+        picker. Further than that, scrolling is the wrong tool.
+     3. Need. The board answers "who is in, and who is coming"; a booking
+        two months out changes nothing anybody does today. The ‹ ›
+        arrows and Select date page the window for the rare look further,
+        the same way every other board walks dates.
+     The mock bakes 17 days of that window.
+-->
 
 <!-- The board below is the one-off render of the generator this file used to
      carry (see git history): villas 1-17, a 17-day window opening on Fri 11 Sep
