@@ -20,28 +20,49 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
  background:none;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px}
 .navbtn span{display:block;width:14px;height:1.6px;background:var(--ink)}
 
-/* identity: the booking as Mews and the merge know it. The name is its own
-   box (the trim rule); the phone never trims. */
-.who{margin:2px 2px 14px}
+/* identity: the booking as the merge knows it. Name is its own box (trim rule). */
+.who{margin:2px 2px 12px}
 .vn{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid)}
 .nm{font-size:20px;font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sub{font-size:15px;color:var(--ink);margin-top:4px}
+.sub{font-size:15px;margin-top:4px}
 .meta{font-size:11px;color:var(--mid);margin-top:6px;line-height:1.6}
-
-/* the form-state pill: the three states, and the colour IS the state */
-.state{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
- border-radius:16px;padding:7px 12px;margin:0 2px 6px}
+.pillrow{display:flex;flex-wrap:wrap;gap:6px;margin:10px 2px 12px}
+.state{font-size:11px;letter-spacing:.12em;text-transform:uppercase;border-radius:16px;padding:7px 12px}
 .state.done{background:var(--green);border:1px solid var(--greenb);color:var(--greent)}
 .state.part{background:var(--amber);border:1px solid var(--amberb);color:var(--ambert)}
 .state.todo{background:transparent;border:1px dashed var(--rule);color:var(--mid);opacity:.8}
-/* what the desk still owes, in the desk's own words (form_questions.json) */
-.owe{font-size:11px;color:var(--ambert);margin:0 2px 8px;line-height:1.5}
-.src{font-size:11px;color:var(--mid);margin:0 2px 8px;line-height:1.5}
+.state.quiet{background:transparent;border:1px solid var(--rule);color:var(--mid)}
 
-/* answers: one row per form question, in the form's own step order. A row
-   holding an answer is white; a question still open is a cream row, the
-   colour law's "work to do". */
-.grp{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--mid);margin:16px 2px 6px}
+/* the basics: the four facts worth seeing before any tab is opened.
+   Each wears its owner's contract colour; the allergy is the red one. */
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:16px}
+.fact{border:1.2px solid var(--rule);border-radius:10px;background:#fff;padding:9px 11px}
+.fact .q{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid)}
+.fact .a{font-size:15px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fact .s{font-size:11px;color:var(--mid);margin-top:1px}
+.fact.yes{background:var(--green-tile);border-color:var(--green-tileb)}
+.fact.yes .a{color:var(--greent)}
+/* the allergy stays a white tile: red is text and pills, never a whole
+   tile - the law's own words. The solid red PILL is the hazard mark. */
+.fact .pills{margin-top:4px}
+
+/* tabs: one page, one URL - the staff.html pattern, drawn here with the
+   :checked trick so the mock needs no script. Selected is grey with an ink
+   border, the Selected role, never a colour that means something. */
+.tabr{display:none}
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tab{flex:1;text-align:center;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+ border:1px solid var(--rule);border-radius:8px;background:none;color:var(--mid);
+ padding:10px 2px;cursor:pointer}
+#tStay:checked ~ .tabs .lStay, #tDine:checked ~ .tabs .lDine,
+#tSpa:checked  ~ .tabs .lSpa,  #tGuest:checked ~ .tabs .lGuest{
+ background:rgba(28,28,26,.045);border-color:var(--ink);color:var(--ink)}
+.panel{display:none}
+#tStay:checked ~ .pStay, #tDine:checked ~ .pDine,
+#tSpa:checked  ~ .pSpa,  #tGuest:checked ~ .pGuest{display:block}
+
+/* rows inside a panel */
+.grp{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--mid);margin:14px 2px 6px}
 .row{border:1.2px solid var(--rule);border-radius:10px;background:#fff;
  padding:10px 12px;margin-bottom:7px}
 .row .q{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid)}
@@ -49,40 +70,44 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
 .row .n{font-size:11px;color:var(--mid);margin-top:3px;line-height:1.45}
 .row.open{background:transparent}
 .row.open .a{color:var(--mid);font-size:12px}
-/* dining: the guest's answer, the Reservations tiles' contract colours */
 .row.yes{background:var(--green-tile);border-color:var(--green-tileb)}
 .row.yes .a{color:var(--greent)}
-.row.no{background:var(--terra);border-color:var(--terrab)}
-.row.no .a{color:var(--terrat)}
-/* massage: green once the Spa board holds it booked */
 .row.booked{background:var(--green-tile);border-color:var(--green-tileb)}
 .row.booked .a{color:var(--greent)}
-/* dietaries: an allergy is solid red, the law's one exception - hazard
-   about a person. A preference is the tinted pill at full label. */
+.row.sugg{background:var(--amber);border-color:var(--amberb)}
+.row.sugg .a{color:var(--ambert)}
 .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
 .dp{font-size:11px;border-radius:14px;padding:5px 10px}
 .dp.al{background:var(--red);color:#fff}
 .dp.pref{background:rgba(168,50,30,.08);border:1px solid rgba(168,50,30,.4);color:var(--red)}
+.dp.flag{background:rgba(28,28,26,.045);border:1px solid var(--rule);color:var(--ink)}
 
-/* doors: quiet outlined rows, the nav's dress - they navigate, they never
-   write, so no solid primary lives on this page. Editing an answer is the
-   Front Desk sheet's job; this page only reads. */
-.doors{margin-top:16px}
+/* the dining history table, tally.html's own dress: nights sat, courses
+   served, dish before the first comma */
+.hsum{text-align:center;font-size:11px;color:var(--mid);margin:10px 0 8px}
+.htab{width:100%;border-collapse:collapse;text-align:left;background:#fff;
+ border:1.2px solid var(--rule);border-radius:10px}
+.htab th{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);
+ font-weight:normal;padding:8px 8px 6px;border-bottom:1px solid var(--rule)}
+.htab td{font-size:11px;line-height:1.35;vertical-align:top;padding:8px;border-bottom:1px solid var(--rule)}
+.htab tr:last-child td{border-bottom:0}
+.htab .hd{white-space:nowrap;color:var(--mid)}
+
+/* doors: quiet rows, they navigate and never write - no primary on a reader */
 .door{display:flex;align-items:center;gap:8px;border:1px solid var(--rule);border-radius:8px;
  background:none;width:100%;text-align:left;padding:12px;margin-bottom:7px;
  font-family:inherit;font-size:15px;color:var(--ink)}
 .door small{font-size:11px;color:var(--mid);margin-left:auto;white-space:nowrap}
 .door .ch{color:var(--mid);font-size:15px;margin-left:8px}
-.door small+.ch{margin-left:8px}
 
-/* the divider between the mock's screens, not part of the page */
 .mockcut{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#fff;
  background:var(--mid);border-radius:4px;padding:5px 10px;margin:34px 0 16px;text-align:center}
+.mocknote{font-size:11px;font-style:italic;color:var(--mid);line-height:1.5;margin:8px 2px;text-align:center}
 </style></head><body>
 
-<!-- ══ SCREEN 1 · form completed ══
-     Every value below already has an owner; this page originates nothing
-     (rule 7). The owner is named beside each block. -->
+<!-- ══ Mid-stay, Mon 14: the page after two nights of gathering ══
+     Every value names its owner in a comment. The one fact with NO owner
+     yet is the past-stay count, flagged where it appears. -->
 
 <div class="hdr">
   <button class="back">&#8249; Calendar</button>
@@ -91,134 +116,116 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
 </div>
 
 <div class="who">
-  <div class="vn">Villa 8 &middot; Sat 12-Tue 15 &middot; 3 nights</div> <!-- stay dates + stayNights -->
+  <div class="vn">Villa 8 &middot; Sat 12-Tue 15 &middot; 3 nights &middot; night 3</div> <!-- stayNights -->
   <div class="nm">Lynette Bunker</div>
-  <div class="sub">with Peter Bunker</div>              <!-- companionOf -->
-  <div class="meta">+61 400 512 887 &middot; 2 adults<br>
-   Mews RES-48213 &middot; with villa 9</div>           <!-- rec.number · groupMatesText -->
+  <div class="sub">with Peter Bunker</div>                    <!-- companionOf -->
+  <div class="meta">Checked in Sat &middot; 2 adults &middot; with villa 9</div> <!-- arrived · groupMatesText -->
 </div>
 
-<span class="state done">Form completed</span>          <!-- formState -->
+<div class="pillrow">
+  <span class="state done">Form completed</span>              <!-- formState -->
+  <span class="state quiet">Returning guest</span>            <!-- /guests/<customerId> exists, see reply -->
+</div>
 
-<div class="grp">Pre-arrival answers</div>
+<!-- the basics: what must be seen before any tab is touched -->
+<div class="facts">
+  <div class="fact"><div class="q">Allergy</div>              <!-- diets: never buried in a tab -->
+    <div class="pills"><span class="dp al">shellfish</span></div>
+    <div class="s">carries an EpiPen</div></div>
+  <div class="fact yes"><div class="q">Tonight</div>          <!-- /dinner via formDinnerCell's contract -->
+    <div class="a">Dining &middot; 2</div><div class="s">table confirmed</div></div>
+  <div class="fact"><div class="q">Next massage</div>         <!-- massageState, /spa -->
+    <div class="a">Booked</div><div class="s">today 2:00pm &middot; 60 min</div></div>
+  <div class="fact"><div class="q">Key cards</div>            <!-- cardsHeld · cardExpiry -->
+    <div class="a">2 held</div><div class="s">expire Tue 1pm</div></div>
+</div>
 
-<div class="row"><div class="q">Kind of stay</div>      <!-- purpose -->
-  <div class="a">A mix of relaxing and exploring</div></div>
+<!-- ══ the tabs ══ -->
+<input class="tabr" type="radio" name="tab" id="tStay" checked>
+<input class="tabr" type="radio" name="tab" id="tDine">
+<input class="tabr" type="radio" name="tab" id="tSpa">
+<input class="tabr" type="radio" name="tab" id="tGuest">
 
-<div class="row"><div class="q">Arrival</div>           <!-- effectiveEta -->
-  <div class="a">3:30pm</div>
-  <div class="n">&ldquo;Coming across on the 3pm barge.&rdquo;</div></div> <!-- arriveNote -->
+<div class="tabs">
+  <label class="tab lStay"  for="tStay">Stay</label>
+  <label class="tab lDine"  for="tDine">Dining</label>
+  <label class="tab lSpa"   for="tSpa">Spa</label>
+  <label class="tab lGuest" for="tGuest">Guest</label>
+</div>
 
-<div class="row"><div class="q">Dining approach</div>   <!-- approach -->
-  <div class="a">Most nights</div></div>
-
-<div class="row yes"><div class="q">Dinner</div>        <!-- formDinnerCell -->
-  <div class="a">Dining</div></div>
-
-<div class="row"><div class="q">Dietaries</div>
-  <div class="pills">
-    <span class="dp al">shellfish</span>                <!-- allergy: solid red -->
-    <span class="dp pref">no pork preference</span>
-  </div>
-  <div class="n">&ldquo;The shellfish one is serious - carries an EpiPen.&rdquo;</div></div> <!-- dnote -->
-
-<div class="row booked"><div class="q">Massage</div>    <!-- massageState, /spa/<booking> -->
-  <div class="a">Booked &middot; Sun 13 &middot; 2:00pm &middot; 60 min</div></div>
-
-<div class="row"><div class="q">Anything else</div>     <!-- note -->
-  <div class="a">Wedding anniversary on the Sunday.</div></div>
-
-<div class="doors">
+<!-- ── STAY: this booking's plan, the pre-arrival answers ── -->
+<div class="panel pStay">
+  <div class="row"><div class="q">Kind of stay</div>          <!-- purpose -->
+    <div class="a">A mix of relaxing and exploring</div></div>
+  <div class="row"><div class="q">Arrival</div>               <!-- effectiveEta · arriveNote -->
+    <div class="a">Arrived Sat, 3:30pm slot</div>
+    <div class="n">&ldquo;Coming across on the 3pm barge.&rdquo;</div></div>
+  <div class="row"><div class="q">Dining approach</div>       <!-- approach -->
+    <div class="a">Most nights</div></div>
+  <div class="row"><div class="q">Anything else</div>         <!-- note -->
+    <div class="a">Wedding anniversary on the Sunday.</div></div>
+  <div class="row"><div class="q">Flags</div>                 <!-- /bookflags, Settings > Flags -->
+    <div class="pills"><span class="dp flag">Anniversary</span><span class="dp flag">Own boat</span></div></div>
   <div class="grp">Open in</div>
   <button class="door">Front Desk <small>edit answers</small><span class="ch">&#8250;</span></button>
-  <button class="door">Spa <small>Sun 13 booking</small><span class="ch">&#8250;</span></button>
-  <button class="door">Reservations <small>tonight&rsquo;s board</small><span class="ch">&#8250;</span></button>
-  <button class="door">Keys <small>2 cards &middot; expire Tue 1pm</small><span class="ch">&#8250;</span></button> <!-- cardsHeld · cardExpiry -->
 </div>
 
-<!-- ══ SCREEN 2 · form incomplete ══ -->
-<div class="mockcut">Same page &middot; form started, not marked complete</div>
+<!-- ── DINING: tonight, the dietaries, and what they have eaten ── -->
+<div class="panel pDine">
+  <div class="row yes"><div class="q">Tonight &middot; Mon 14</div>
+    <div class="a">Dining &middot; 2 &middot; confirmed 9:41am</div></div> <!-- /dinner · Invitations -->
+  <div class="row"><div class="q">Dietaries</div>
+    <div class="pills">
+      <span class="dp al">shellfish</span>
+      <span class="dp pref">no pork preference</span>
+    </div>
+    <div class="n">&ldquo;The shellfish one is serious - carries an EpiPen.&rdquo;</div></div> <!-- dnote -->
 
-<div class="hdr">
-  <button class="back">&#8249; Calendar</button>
-  <div class="hv">Villa 4</div>
-  <button class="navbtn"><span></span><span></span><span></span></button>
-</div>
-
-<div class="who">
-  <div class="vn">Villa 4 &middot; Sun 13-Tue 15 &middot; 2 nights</div>
-  <div class="nm">Melissa Mueller</div>
-  <div class="meta">+61 411 208 663 &middot; 2 adults<br>Mews RES-48377</div>
-</div>
-
-<span class="state part">Form incomplete</span>
-<!-- what the desk still owes, worded from form_questions.json -->
-<div class="owe">Still to answer: their arrival time, dietaries, treatments.</div>
-
-<div class="grp">Pre-arrival answers</div>
-
-<div class="row"><div class="q">Kind of stay</div>
-  <div class="a">Mostly relaxing at Nala</div></div>
-
-<div class="row open"><div class="q">Arrival</div>
-  <div class="a">Not answered &middot; planning assumes 2pm, the standing promise</div></div> <!-- effectiveEta's silent default -->
-
-<div class="row open"><div class="q">Dining approach</div>
-  <div class="a">Not answered</div></div>
-
-<div class="row yes"><div class="q">Dinner</div>
-  <div class="a">Dining</div></div>
-
-<div class="row open"><div class="q">Dietaries</div>
-  <div class="a">Not answered</div></div>
-
-<div class="row open"><div class="q">Massage</div>
-  <div class="a">Not answered</div></div>
-
-<div class="doors">
+  <!-- the live dining-history reading from Reservations: nights they SAT,
+       and the courses the kitchen served (/stays + /dinner + /menuhistory,
+       following the booking id, dish cut at the first comma) -->
+  <div class="hsum">Dined 2 of 2 nights so far</div>
+  <table class="htab">
+    <tr><th></th><th>Entr&eacute;e</th><th>Main</th><th>Dessert</th></tr>
+    <tr><td class="hd">Sat 12</td><td>Kingfish crudo</td><td>Lamb rump</td><td>Coconut pavlova</td></tr>
+    <tr><td class="hd">Sun 13</td><td>Burrata</td><td>Reef fish curry</td><td>Dark chocolate tart</td></tr>
+  </table>
   <div class="grp">Open in</div>
-  <button class="door">Front Desk <small>add what you hear</small><span class="ch">&#8250;</span></button>
-  <button class="door">Pre-arrival SMS <small>chase the form</small><span class="ch">&#8250;</span></button>
   <button class="door">Reservations <small>tonight&rsquo;s board</small><span class="ch">&#8250;</span></button>
+  <button class="door">Invitations <small>tonight&rsquo;s SMS</small><span class="ch">&#8250;</span></button>
 </div>
 
-<!-- ══ SCREEN 3 · form not started ══ -->
-<div class="mockcut">Same page &middot; nothing answered yet</div>
-
-<div class="hdr">
-  <button class="back">&#8249; Calendar</button>
-  <div class="hv">Villa 17</div>
-  <button class="navbtn"><span></span><span></span><span></span></button>
-</div>
-
-<div class="who">
-  <div class="vn">Villa 17 &middot; Tue 15-Sat 19 &middot; 4 nights</div>
-  <div class="nm">Kim Vlahov</div>
-  <div class="meta">+61 419 774 902 &middot; 2 adults<br>Mews RES-48412</div>
-</div>
-
-<span class="state todo">Form not started</span>
-<!-- isMewsOnly: knowing who is booked is not the same as them having replied -->
-<div class="src">Synced from Mews. The pre-arrival link has not been opened.</div>
-
-<div class="grp">Pre-arrival answers</div>
-
-<div class="row open"><div class="q">Kind of stay</div><div class="a">Not answered</div></div>
-<div class="row open"><div class="q">Arrival</div>
-  <div class="a">Not answered &middot; planning assumes 2pm, the standing promise</div></div>
-<div class="row open"><div class="q">Dining approach</div><div class="a">Not answered</div></div>
-<div class="row open"><div class="q">Dinner</div><div class="a">Not answered</div></div>
-<div class="row open"><div class="q">Dietaries</div><div class="a">Not answered</div></div>
-<div class="row open"><div class="q">Massage</div><div class="a">Not answered</div></div>
-
-<div class="doors">
+<!-- ── SPA: every treatment this stay holds, the board's states ── -->
+<div class="panel pSpa">
+  <div class="row booked"><div class="q">Massage</div>
+    <div class="a">Booked &middot; today 2:00pm &middot; 60 min &middot; 2 guests</div></div> <!-- /spa/<booking> -->
+  <div class="row sugg"><div class="q">Second massage</div>
+    <div class="a">Suggested &middot; Tue 10:00am</div>
+    <div class="n">The masseuse has offered a time; the guest has not been asked yet.</div></div>
   <div class="grp">Open in</div>
-  <button class="door">Pre-arrival SMS <small>send the link</small><span class="ch">&#8250;</span></button>
-  <button class="door">Front Desk <small>add what you hear</small><span class="ch">&#8250;</span></button>
+  <button class="door">Spa <small>this booking</small><span class="ch">&#8250;</span></button>
 </div>
 
-<div class="mockcut">Mock only &middot; sample data &middot; this page reads,
-it never works a fact out: formState, formDinnerCell, effectiveEta,
-massageState, companionOf, groupMatesText, cardsHeld own every value shown</div>
+<!-- ── GUEST: the person, not the booking - what survives the stay ── -->
+<div class="panel pGuest">
+  <div class="row"><div class="q">Contact</div>
+    <div class="a">+61 400 512 887</div></div>               <!-- rec.phone: never trims -->
+  <div class="row"><div class="q">Companion</div>            <!-- companionOf -->
+    <div class="a">Peter Bunker</div></div>
+  <div class="row"><div class="q">Reservation</div>          <!-- rec.number · groupMatesText -->
+    <div class="a">Mews RES-48213</div>
+    <div class="n">Party also holds villa 9 this stay.</div></div>
+  <div class="row"><div class="q">Dietary on file</div>      <!-- /guests/<customerId>: outlives the booking -->
+    <div class="pills"><span class="dp al">shellfish</span><span class="dp pref">no pork preference</span></div>
+    <div class="n">Kept on the guest, not the booking &middot; follows them to their next stay.</div></div>
+  <div class="row open"><div class="q">Past stays</div>
+    <div class="a">Not recorded yet &middot; the one fact on this page with no owner, see note</div></div>
+  <div class="mocknote">Past stays would need /guests/&lt;customerId&gt; to carry a
+   stay index - the only new fact this whole page asks for.</div>
+</div>
+
+<div class="mockcut">Mock only &middot; sample data &middot; tabs work with no
+script &middot; before the form: the Stay tab's rows go cream and the pill
+walks the 3 states, as ruled 28 Aug</div>
 
 </body></html>
