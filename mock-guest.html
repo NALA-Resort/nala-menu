@@ -40,8 +40,13 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
      amber             the pre-arrival form is started but incomplete -
                        the Stay tab wears the form's own state
 
-   Selection is the FILL (grey wash, ink text), never the border, so
-   picking a tab cannot repaint what the border is saying. */
+   The STAY tab's FILL is the pre-arrival form's state, the same tints
+   the calendar bars and Front Desk rows wear (the owner, 12 Sep):
+   green completed, amber incomplete, none not started - so the glance
+   matches across all three screens.
+
+   Selection is the grey wash on a plain tab; on a tinted tab the fill
+   is spoken for, so selection moves to an ink border there. */
 .tabr{display:none}
 .tabs{display:flex;gap:6px;margin-bottom:10px}
 .tab{flex:1;text-align:center;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
@@ -51,6 +56,12 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
 .tab.red{border-color:var(--red)}
 .tab.green{border-color:var(--greenb)}
 .tab.amber{border-color:var(--amberb)}
+.tab.fdone{background:var(--green-tile);border-color:var(--green-tileb);color:var(--greent)}
+.tab.fpart{background:var(--amber);border-color:var(--amberb);color:var(--ambert)}
+#aStay:checked ~ .tabs .lStay.fdone, #bStay:checked ~ .tabs .lStay.fdone{
+ background:var(--green-tile);color:var(--greent);border-color:var(--ink)}
+#aStay:checked ~ .tabs .lStay.fpart, #bStay:checked ~ .tabs .lStay.fpart{
+ background:var(--amber);color:var(--ambert);border-color:var(--ink)}
 .panel{display:none}
 
 /* screen 1's wiring */
@@ -139,7 +150,7 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
 
 <div class="tabs">
   <label class="tab has   lGuest" for="aGuest">Guest</label>
-  <label class="tab has   lStay"  for="aStay">Stay</label>
+  <label class="tab fdone lStay"  for="aStay">Stay</label>
   <label class="tab red   lDine"  for="aDine">Dining</label>
   <label class="tab green lSpa"   for="aSpa">Spa</label>
 </div>

@@ -105,6 +105,11 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
 
 <input type="checkbox" id="cmp" class="cmpr">
 
+<!-- The build adds this page to the hamburger: one NAV entry
+     { href:'calendar.html', label:'Calendar', need:<?> } plus the same
+     line in tests/nav_canon.json (CLAUDE.md rule 2). The need key is an
+     open decision: resBoard shows it to everyone the boards trust, but
+     the gardeners' login may hold only cleansBoard - decide at build. -->
 <div class="daterow">
   <button class="dnav today">Today</button>
   <button class="dnav">&#8249;</button>
