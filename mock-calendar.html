@@ -72,28 +72,33 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
 .bar.cutL{border-top-left-radius:0;border-bottom-left-radius:0;border-left-style:dashed}
 .bar.cutR{border-top-right-radius:0;border-bottom-right-radius:0;border-right-style:dashed}
 
-/* ── compress ─────────────────────────────────────────────────────────
-   One toggle, for the glance-reader (the gardeners' ask, 12 Sep): every
-   villa on one screen, no vertical scroll. Rows split the screen height
-   evenly - legible, still below honest tap-target size, so
-   the compressed board is for LOOKING, not opening profiles. The
-   pressed button wears the Selected dress: grey fill, ink border. */
+/* ── the two board sizes ──────────────────────────────────────────────
+   DEFAULT: the whole house on one screen, no vertical scroll - rows
+   split the viewport height under the headers (204px of chrome) evenly,
+   about 38px on a current phone, min-height guarding small ones. Ruled
+   the default 12 Sep: this size turned out to be the size, and the
+   owner ruled it easily tappable on a phone - so stays open profiles
+   from here like anywhere else; it is the full board, only denser.
+   EXPAND: one toggle grows rows to the full 42px booking-row height
+   for a roomier read. Its pressed state wears the Selected dress:
+   grey fill, ink border.
+   The !important overrides the 42px the baked rows carry inline. */
 .cmpr{display:none}
-/* rides the stats row (the owner, 12 Sep - a row of its own cost a board
-   row of height); the stats flex 1 each, the button keeps its own width */
+/* rides the stats row (a row of its own cost a board row of height);
+   the stats flex 1 each, the button keeps its own width */
 .cmpbtn{display:flex;align-items:center;align-self:center;flex:0 0 auto;
  font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);
  cursor:pointer}
 #cmp:checked ~ .stats .cmpbtn{background:rgba(28,28,26,.045);
  border-color:var(--ink);color:var(--ink)}
-/* rows share whatever height the screen has under the headers (204px of
-   chrome above them), so the compressed board FILLS the page instead of
-   huddling at a fixed 24px - resized 12 Sep once the notes under the
-   board were gone and the space was real. min-height guards tiny screens. */
-#cmp:checked ~ .chartwrap .vrow{height:calc((100vh - 204px)/17) !important;min-height:22px}
-#cmp:checked ~ .chartwrap .bar{top:3px;height:calc(100% - 7px);padding:0 7px;border-radius:6px}
-#cmp:checked ~ .chartwrap .bar .n{font-size:11px}
-#cmp:checked ~ .chartwrap .vnum{font-size:13px}
+.chartwrap .vrow{height:calc((100vh - 204px)/17) !important;min-height:22px}
+.chartwrap .bar{top:3px;height:calc(100% - 7px);padding:0 7px;border-radius:6px}
+.chartwrap .bar .n{font-size:11px}
+.chartwrap .vnum{font-size:13px}
+#cmp:checked ~ .chartwrap .vrow{height:42px !important}
+#cmp:checked ~ .chartwrap .bar{top:6px;height:30px;padding:0 9px;border-radius:8px}
+#cmp:checked ~ .chartwrap .bar .n{font-size:12px}
+#cmp:checked ~ .chartwrap .vnum{font-size:15px}
 
 
 </style></head><body>
@@ -112,7 +117,7 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
   <div class="stat"><b>8</b><span>In house</span></div>
   <div class="stat"><b>4</b><span>Arriving</span></div>
   <div class="stat"><b>1</b><span>Departing</span></div>
-  <label class="dnav cmpbtn" for="cmp">Compress</label>
+  <label class="dnav cmpbtn" for="cmp">Expand</label>
 </div>
 
 <!-- WHY THE BOARD HOLDS ABOUT A MONTH AND NO MORE. Three reasons, priced
