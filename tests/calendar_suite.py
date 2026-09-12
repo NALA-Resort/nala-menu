@@ -58,7 +58,10 @@ def put(v, id, f, l, a, d):
 put(8, "b1", "Adam", "Christison", plus(-1), plus(2))
 put(8, "b2", "Kim", "Vlahov", plus(2), plus(5))
 put(4, "b3", "Melissa", "Mueller", plus(1), plus(3))
-put(12, "b4", "Katelyn", "Tree", plus(-9), plus(40))
+put(12, "b4", "Katelyn", "Tree", plus(-40), plus(40))
+# fully inside the month BEHIND: the owner's 12 Sep rule - the board
+# reaches a month back so near history is a swipe, not a date jump
+put(5, "b5", "Carlo", "Sacco", plus(-21), plus(-18))
 PRE = {"b1": {"at": now.isoformat(), "dining": True, "noDiets": True, "wellness": False},
        "b3": {"dining": True}}
 SPA = {}
@@ -123,7 +126,11 @@ with sync_playwright() as p:
     pg = board()
     bl = {x["name"]: x for x in bars(pg)}
     ck("every booking in the window draws exactly one bar",
-       len(bars(pg)) == 4 and "Christison, Adam" in bl and "Vlahov, Kim" in bl)
+       len(bars(pg)) == 5 and "Christison, Adam" in bl and "Vlahov, Kim" in bl)
+    ck("the window reaches a month back: a stay three weeks ago is on "
+       "the board to swipe to", "Sacco, Carlo" in bl)
+    ck("and the board opens on the viewed day, not on the month behind",
+       pg.eval_on_selector("#wrap", "e=>e.scrollLeft") == 29 * 64)
     ck("a completed form's bar is the dining green, by computed colour",
        bl["Christison, Adam"]["fill"] == "rgba(122, 160, 130, 0.26)")
     ck("a part-answered form's bar is amber",
@@ -174,13 +181,13 @@ with sync_playwright() as p:
     ck("the fitted board ends inside a large phone's screen too",
        pg.evaluate("()=>document.documentElement.scrollHeight - "
                    "document.documentElement.clientHeight") <= 0
-       and len(bars(pg)) == 4)
+       and len(bars(pg)) == 5)
     pg.close()
 
     # ── the board is broad, the detail behind it is not ─────────
     pg = board(email="housekeeping@x")
     ck("housekeeping sees the board - it is who the board is for",
-       pg.url.endswith("calendar.html") and len(bars(pg)) == 4)
+       pg.url.endswith("calendar.html") and len(bars(pg)) == 5)
     ck("but its bars are not doors: no resBoard, no profile",
        all(x["tag"] == "DIV" and not x["href"] for x in bars(pg)))
     pg.close()

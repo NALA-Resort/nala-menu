@@ -174,12 +174,13 @@
      the massage half of that     /spa/<booking>, via formState's spa argument
      the viewed day               initDateNav()        the standard daterow
 
-   WHY THE BOARD HOLDS ABOUT A MONTH AND NO MORE. Three reasons:
-   1. Reads. One /stays/<date> read per day column - a month is ~31 reads
-      on open, fine for a glance page; a season is hundreds.
-   2. Fingers. At 64px a day, a month is ~2,000px of sideways scroll -
-      about the limit where swiping beats the date picker. The picker and
-      the arrows page the window for the rare look further.
+   WHY THE BOARD HOLDS A MONTH EACH WAY AND NO MORE. Three reasons:
+   1. Reads. One /stays/<date> read per day column - two months is ~61
+      reads on open, fine for a glance page; a season is hundreds.
+   2. Fingers. At 64px a day, a month each way is ~2,000px of swipe in
+      either direction - about the limit where swiping beats the date
+      picker. The picker and the arrows exist for the long jump only,
+      the owner's rule of 12 Sep: everything near is a swipe.
    3. Need. The board answers "who is in, and who is coming"; a booking
       two months out changes nothing anybody does today. */
 
@@ -190,7 +191,9 @@ var VIEW = nav.VIEW;
 
 var ROOMS_N = (typeof ROOMS === 'number' ? ROOMS : 17);
 var DAY = 64, VCOL = 34;      /* px: day width, villa column - the mock's numbers */
-var FROM = -1, DAYS = 31;     /* window: yesterday at the left edge, a month shown */
+var FROM = -30, DAYS = 61;    /* a month back, a month forward - the owner's rule,
+                                 12 Sep: swiping covers everything near, so the date
+                                 controls keep only the long jump */
 /* where a bar's edges sit inside a day, ruled by the owner 12 Sep:
    check-in 2pm on the arrival day, checkout 10am on the departure day,
    so a same-day turnover shows the four-hour changeover gap. */
@@ -329,8 +332,9 @@ function render(bookings, spa, failedDays){
   document.getElementById('boardNote').textContent = failedDays
     ? failedDays + (failedDays === 1 ? ' day' : ' days') + ' could not be read'
     : '';
-  /* open with the window's first day hard against the villa column */
-  document.getElementById('wrap').scrollLeft = 0;
+  /* open on the viewed day with yesterday against the villa column -
+     the month behind is there to swipe to, not to land on */
+  document.getElementById('wrap').scrollLeft = (0 - FROM - 1) * DAY;
   fitRows();
 }
 
