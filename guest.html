@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nala Villas">
+<link rel="apple-touch-icon" href="nala-icon.png?v=1">
+<title>Nala &middot; Guest</title>
+<link rel="stylesheet" href="nala-ui2.css?v=6">
+<link rel="stylesheet" href="nala-ui.css?v=17">
+<style>
+  /* Built from mock-guest.html, approved 12 Sep. This page sets LAYOUT
+     only; controls take their dress from the shared sheets. */
+
+  .wrap { max-width:430px; }
+
+  /* identity: the booking as the merge knows it. The name is its own box
+     (the trim rule); the phone never trims. */
+  .who { margin:2px 2px 14px; }
+  .who .vn { font-family:var(--ui-font); font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--mid); }
+  .who .nm { font-family:var(--ui-font); font-size:20px; font-weight:600; margin-top:2px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .who .sub { font-family:var(--ui-font); font-size:15px; margin-top:4px; }
+  .who .meta { font-family:var(--ui-font); font-size:11px; color:var(--mid);
+    margin-top:6px; line-height:1.6; }
+
+  /* ── tabs ───────────────────────────────────────────────────────────
+     The BORDER says whether the tab holds anything, so the whole record
+     is read at a glance without opening a thing:
+
+       light rule grey   nothing in there yet
+       solid ink         data within
+       red               a dietary ALLERGY within - the law's one
+                         exception, hazard about a person; a preference
+                         alone is data, so ink
+       green             a spa treatment booked
+       amber             a spa suggestion awaiting the desk
+
+     The STAY tab's FILL is the pre-arrival form's state, the same tints
+     the calendar bars and Front Desk rows wear (the owner, 12 Sep):
+     green completed, amber incomplete, none not started.
+
+     Selection is the grey wash on a plain tab; on a tinted tab the fill
+     is spoken for, so selection moves to an ink border there. */
+  .tabs { display:flex; gap:6px; margin-bottom:10px; }
+  .tab { flex:1; text-align:center; font-family:var(--ui-font); font-size:11px;
+    letter-spacing:.1em; text-transform:uppercase; border:1.5px solid var(--rule);
+    border-radius:8px; background:none; color:var(--mid); padding:10px 2px;
+    cursor:pointer; }
+  .tab.has   { border-color:var(--ink); }
+  .tab.red   { border-color:var(--red); }
+  .tab.green { border-color:#7E937A; }
+  .tab.amber { border-color:#C29A55; }
+  .tab.fdone { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); color:#5E7D67; }
+  .tab.fpart { background:#F6EAD5; border-color:#C29A55; color:#8A6A2F; }
+  .tab.sel        { background:rgba(28,28,26,.045); color:var(--ink); }
+  .tab.sel.fdone  { background:rgba(122,160,130,.26); color:#5E7D67; border-color:var(--ink); }
+  .tab.sel.fpart  { background:#F6EAD5; color:#8A6A2F; border-color:var(--ink); }
+  .panel { display:none; }
+  .panel.sel { display:block; }
+
+  /* rows inside a panel: an answer is white, an open question is a cream
+     row - the colour law's "work to do" */
+  .grp { font-family:var(--ui-font); font-size:9px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--mid); margin:14px 2px 6px; }
+  .row { border:1.2px solid var(--rule); border-radius:10px; background:#fff;
+    padding:10px 12px; margin-bottom:7px; font-family:var(--ui-font); }
+  .row .q { font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--mid); }
+  .row .a { font-size:15px; margin-top:3px; line-height:1.4; }
+  .row .n { font-size:11px; color:var(--mid); margin-top:3px; line-height:1.45; }
+  .row.open { background:transparent; }
+  .row.open .a { color:var(--mid); font-size:12px; }
+  .row.yes    { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
+  .row.yes .a { color:#5E7D67; }
+  .row.no     { background:rgba(184,106,90,.16); border-color:rgba(184,106,90,.45); }
+  .row.no .a  { color:#9E6455; }
+  .row.booked    { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
+  .row.booked .a { color:#5E7D67; }
+  .row.sugg    { background:#F6EAD5; border-color:#C29A55; }
+  .row.sugg .a { color:#8A6A2F; }
+
+  /* dietaries: an allergy is the solid red pill - the law's one exception */
+  .dpills { display:flex; flex-wrap:wrap; gap:6px; margin-top:5px; }
+  .dp { font-family:var(--ui-font); font-size:11px; border-radius:14px; padding:5px 10px; }
+  .dp.al   { background:var(--red); color:#fff; }
+  .dp.pref { background:rgba(168,50,30,.08); border:1px solid rgba(168,50,30,.4); color:var(--red); }
+  .dp.flag { background:rgba(28,28,26,.045); border:1px solid var(--rule); color:var(--ink); }
+  .dp.ok   { background:#E4EDE2; border:1px solid #7E937A; color:#5E7D67; }
+
+  .statepill { display:inline-block; font-family:var(--ui-font); font-size:11px;
+    letter-spacing:.12em; text-transform:uppercase; border-radius:16px;
+    padding:7px 12px; margin-bottom:8px; }
+  .statepill.done { background:#E4EDE2; border:1px solid #7E937A; color:#5E7D67; }
+  .statepill.part { background:#F6EAD5; border:1px solid #C29A55; color:#8A6A2F; }
+  .statepill.todo { background:transparent; border:1px dashed var(--rule);
+    color:var(--mid); opacity:.8; }
+  .statepill.quiet { background:transparent; border:1px solid var(--rule); color:var(--mid); }
+
+  /* the dining history table, the shared reader's own dress (tally's) */
+  .hist-sum { text-align:center; font-family:var(--ui-font); font-size:11px;
+    color:var(--mid); margin:10px 0 8px; }
+  .htab { width:100%; border-collapse:collapse; text-align:left; background:#fff;
+    border:1.2px solid var(--rule); font-family:var(--ui-font); }
+  .htab th { font-size:9px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--mid); font-weight:normal; padding:8px 8px 6px;
+    border-bottom:1px solid var(--rule); }
+  .htab td { font-size:11px; line-height:1.35; vertical-align:top; padding:8px;
+    border-bottom:1px solid var(--rule); }
+  .htab tr:last-child td { border-bottom:0; }
+  .htab .hd { white-space:nowrap; color:var(--mid); }
+  .hist-note { text-align:center; font-family:var(--ui-font); font-size:11px;
+    color:var(--mid); margin-top:6px; }
+
+  /* doors: quiet rows, they navigate and never write - no solid primary
+     lives on a page that only reads */
+  .door { display:flex; align-items:center; gap:8px; border:1px solid var(--rule);
+    border-radius:8px; background:none; width:100%; text-align:left; padding:12px;
+    margin-bottom:7px; font-family:var(--ui-font); font-size:15px; color:var(--ink);
+    text-decoration:none; }
+  .door small { font-size:11px; color:var(--mid); margin-left:auto; white-space:nowrap; }
+  .door .ch { color:var(--mid); font-size:15px; margin-left:8px; }
+
+  .back { height:36px; border:1px solid var(--rule); border-radius:8px; background:none;
+    color:var(--ink); font-family:var(--ui-font); font-size:15px; padding:0 12px;
+    white-space:nowrap; text-decoration:none; display:flex; align-items:center; }
+  .hv { font-family:var(--ui-font); font-size:15px; font-weight:600; }
+
+  .pagenote { font-family:var(--ui-font); font-size:11px; color:var(--mid);
+    margin:8px 2px; line-height:1.5; }
+</style>
+</head>
+<body class="tier-app ui2">
+
+<div class="errbar" id="errBar"></div>
+<div class="wrap">
+  <div class="daterow">
+    <a class="back" href="calendar.html">&#8249; Calendar</a>
+    <div class="hv" id="hVilla"></div>
+    <div class="navwrap" id="navWrap" style="display:none">
+      <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+      <div class="navdrop" id="navDrop"></div>
+    </div>
+  </div>
+
+  <div class="noaccess" id="noAccess"></div>
+
+  <div id="profile" style="display:none">
+    <div class="who" id="who"></div>
+
+    <div class="tabs" id="tabs">
+      <button class="tab" id="tGuest" aria-controls="pGuest">Guest</button>
+      <button class="tab" id="tStay"  aria-controls="pStay">Stay</button>
+      <button class="tab" id="tDine"  aria-controls="pDine">Dining</button>
+      <button class="tab" id="tSpa"   aria-controls="pSpa">Spa</button>
+    </div>
+
+    <div class="panel" id="pGuest"></div>
+    <div class="panel" id="pStay"></div>
+    <div class="panel" id="pDine"></div>
+    <div class="panel" id="pSpa"></div>
+  </div>
+  <div class="pagenote" id="pageNote"></div>
+</div><!-- /wrap -->
+
+<script>
+(function(){
+  var b = document.getElementById('navBtn'), d = document.getElementById('navDrop');
+  b.onclick = function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click', function(){ d.classList.remove('open'); });
+})();
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="auth.js?v=12"></script>
+<script src="nala-shared.js?v=66"></script>
+<script>
+/* The guest profile: everything the app knows about one booking, on one
+   screen, reached from a calendar bar. URL: guest.html?b=<bookingId> - the
+   Mews booking GUID the app already keys everything on. The customerId is
+   DERIVED from the booking (prearrival.forCustomerId first, then
+   pms.customerId - the 3 Sep rule), never taken from the URL: a returning
+   guest has several bookings and only the booking says which stay this is.
+
+   A reader in the rule-7 sense: it works out nothing. Every value's owner,
+   as tests/guest_sources.json also names them:
+
+     form state, the Stay tab's fill     formState()
+     the dinner answer with no cell      formDinnerCell()
+     tonight's stays, cells, prearrival  fetchStays()
+     arrival hour                        effectiveEta()
+     checked in                          isArrived()
+     the massage mark                    massageState()
+     the second guest                    companionOf()
+     the party's other villas            groupMatesText()
+     key cards held and their state      cardRows(), cardsHeld(), cardState()
+     nights eaten and the menus served   histNights(), histNight(), histRowsHTML()
+     dietaries, tidied                   fixDietList()
+     dates                               parseDepDate(), dkey() - never a slice */
+
+function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+var B = new URLSearchParams(location.search).get('b') || '';
+var ROLE = null;
+
+/* "14:00" -> "2:00pm", for the spa lines. Display only. */
+function clock12(t){
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t || '')) return String(t || '');
+  var h = +t.slice(0, 2);
+  return (((h + 11) % 12) + 1) + ':' + t.slice(3) + (h < 12 ? 'am' : 'pm');
+}
+/* "Sat 12", the styleguide's short day - from a date key, never a slice */
+function shortDay(s){
+  var d = parseDepDate(s);
+  if (!d) return String(s || '');
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' + d.getDate();
+}
+
+function getJ(path){
+  return fetch(DB + path + '.json?v=' + Date.now())
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .catch(function(){ return null; });
+}
+
+/* the doors, each gated by the permission the page BEHIND it answers to -
+   the Dashboard's own rule, through NAV_NEEDS so a guessed key cannot
+   creep in */
+function door(href, label, small){
+  if (!can(ROLE, NAV_NEEDS[href])) return '';
+  return '<a class="door" href="' + href + '">' + esc(label) +
+         (small ? '<small>' + esc(small) + '</small>' : '') +
+         '<span class="ch">&#8250;</span></a>';
+}
+
+function dietPillsHTML(diets, nodiet){
+  var list = fixDietList(diets || []);
+  if (!list.length)
+    return nodiet ? '<div class="dpills"><span class="dp ok">No dietaries</span></div>' : '';
+  return '<div class="dpills">' + list.map(function(x){
+    var al = ALLERGENS.indexOf(x) > -1 || /allerg/i.test(x);
+    var label = al ? x.replace(/\s*allergy\s*/i, '') : x;
+    return '<span class="dp' + (al ? ' al' : ' pref') + '">' + esc(label) + '</span>';
+  }).join('') + '</div>';
+}
+function hasAllergy(diets){
+  return fixDietList(diets || []).some(function(x){
+    return ALLERGENS.indexOf(x) > -1 || /allerg/i.test(x);
+  });
+}
+
+function openRow(q, a){
+  return '<div class="row open"><div class="q">' + q + '</div>' +
+         '<div class="a">' + a + '</div></div>';
+}
+
+/* ── the load ─────────────────────────────────────────────────── */
+function load(){
+  if (!B){
+    document.getElementById('pageNote').textContent =
+      'No booking in the address. Open a stay from the Calendar.';
+    return Promise.resolve();
+  }
+  return getJ('/bookings/' + B).then(function(bk){
+    if (!bk || (!bk.pms && !bk.prearrival)){
+      document.getElementById('pageNote').textContent =
+        'This booking could not be read. This is usually the connection.';
+      return;
+    }
+    var pms = bk.pms || {}, pre = bk.prearrival || null;
+    var a = parseDepDate(pms.arrive), dep = parseDepDate(pms.depart);
+    /* the night this profile reads day-scoped facts for: tonight while the
+       stay is running, else its first night */
+    var anchor = new Date();
+    if (a && anchor < a) anchor = a;
+    if (dep){
+      var lastNight = new Date(dep); lastNight.setDate(lastNight.getDate() - 1);
+      if (anchor > lastNight) anchor = lastNight;
+    }
+    var anchorKey = dkey(anchor);
+    var cid = (pre && pre.forCustomerId) || pms.customerId || null;
+
+    return Promise.all([
+      fetchStays(anchorKey),          /* stays + dinner cells + prearrival, one reader */
+      getJ('/spa/' + B),
+      getJ('/cards'),
+      getJ('/bookflags/' + B),
+      cid ? getJ('/guests/' + cid) : Promise.resolve(null)
+    ]).then(function(res){
+      render(bk, res[0] || {}, res[1] || {}, res[2], res[3] || {}, res[4],
+             anchorKey, cid);
+    });
+  });
+}
+
+/* ── the drawing ──────────────────────────────────────────────── */
+function render(bk, night, spa, cardsTree, bookflags, guestRec, anchorKey, cid){
+  var pms = bk.pms || {}, pre = bk.prearrival || null;
+  var villa = pms.villa != null ? String(pms.villa) : '';
+  var rows = [];
+  for (var v in night){
+    if (night[v] && night[v].id === B) villa = String(v);
+    rows.push({ villa: String(v), stay: night[v] });
+  }
+  var known = { arrives: pms.arrive, departs: pms.depart, adults: pms.adults };
+  var name = [pms.first, pms.last].filter(Boolean).join(' ').trim();
+  var nights = stayNights({ arrive: pms.arrive, depart: pms.depart });
+  var st = formState(pre, { arrive: pms.arrive, depart: pms.depart }, spa);
+  var mst = massageState(spa, pre);
+  var companion = companionOf(pre, pms);
+  var mates = groupMatesText({ villa: villa, stay: { groupId: pms.groupId } }, rows);
+  /* the person's dietaries: the reservation's list, the night as fallback -
+     the NOTES-AUDIT model, same as the boards */
+  var diets = (pre && pre.diets && pre.diets.length) ? pre.diets : [];
+  var dnote = (pre && pre.dnote) || '';
+  var nodiet = !!(pre && pre.noDiets);
+
+  document.getElementById('hVilla').textContent = villa ? 'Villa ' + villa : 'Guest';
+
+  /* identity */
+  var stayLine = (pms.arrive && pms.depart)
+    ? shortDay(pms.arrive) + '-' + shortDay(pms.depart) +
+      (nights ? ' &middot; ' + nights + (nights === 1 ? ' night' : ' nights') : '')
+    : '';
+  var meta = [];
+  if (pre && isArrived(pre)) meta.push('Checked in');
+  if (pms.adults) meta.push(pms.adults + ' adults');
+  if (mates) meta.push(esc(mates));
+  document.getElementById('who').innerHTML =
+    '<div class="vn">' + (villa ? 'Villa ' + villa + ' &middot; ' : '') + stayLine + '</div>' +
+    '<div class="nm">' + esc(name || 'Unnamed booking') + '</div>' +
+    (companion ? '<div class="sub">with ' + esc(companion) + '</div>' : '') +
+    (meta.length ? '<div class="meta">' + meta.join(' &middot; ') + '</div>' : '');
+
+  /* ── GUEST: the person, what survives the stay ── */
+  var g = '';
+  if (guestRec) g += '<span class="statepill quiet">Returning guest record</span>';
+  g += pms.phone
+    ? '<div class="row"><div class="q">Contact</div><div class="a">' + esc(pms.phone) + '</div></div>'
+    : openRow('Contact', 'No phone on the booking');
+  if (companion)
+    g += '<div class="row"><div class="q">Companion</div><div class="a">' + esc(companion) + '</div></div>';
+  g += '<div class="row"><div class="q">Reservation</div><div class="a">' +
+       esc(pms.number || B) + '</div>' +
+       (mates ? '<div class="n">Party also holds ' + esc(mates.replace(/^with /, '')) + ' this stay.</div>' : '') +
+       '</div>';
+  /* the standing dietary at /guests/<customerId> lives on the DINING tab -
+     one fact, one place; here only the fact that a record follows them */
+  g += openRow('Past stays', 'Not recorded yet');
+  document.getElementById('pGuest').innerHTML = g;
+
+  /* ── STAY: this booking's plan ── */
+  var s = '<span class="statepill ' +
+          (st === 'completed' ? 'done">Form completed' :
+           st === 'incomplete' ? 'part">Form incomplete' :
+           'todo">Form not started') + '</span>';
+  s += (pre && pre.purpose)
+    ? '<div class="row"><div class="q">Kind of stay</div><div class="a">' +
+      esc(purposeText(pre.purpose)) + '</div></div>'
+    : openRow('Kind of stay', 'Not answered');
+  var eta = villa ? effectiveEta(villa) : { disp: '' };
+  var etaBits = [];
+  if (pre && isArrived(pre)) etaBits.push('Arrived');
+  if (eta.disp) etaBits.push(eta.disp === '<2pm' ? 'before 2pm' :
+                             eta.disp === '>5pm' ? 'after 5pm' : eta.disp + ' slot');
+  s += etaBits.length
+    ? '<div class="row"><div class="q">Arrival</div><div class="a">' + esc(etaBits.join(', ')) + '</div>' +
+      (pre && pre.arriveNote ? '<div class="n">&ldquo;' + esc(pre.arriveNote) + '&rdquo;</div>' : '') +
+      '</div>'
+    : openRow('Arrival', 'Not answered &middot; planning assumes 2pm, the standing promise');
+  if (pre && pre.note)
+    s += '<div class="row"><div class="q">Anything else</div><div class="a">' + esc(pre.note) + '</div></div>';
+  var flagNames = Object.keys(bookflags || {}).filter(function(k){ return bookflags[k]; });
+  if (flagNames.length)
+    s += '<div class="row"><div class="q">Flags</div><div class="dpills">' +
+         flagNames.map(function(f){ return '<span class="dp flag">' + esc(f) + '</span>'; }).join('') +
+         '</div></div>';
+  var held = cardsTree ? cardsHeld(cardRows(cardsTree), villa, Date.now()) : [];
+  if (held.length){
+    var soonest = held.map(function(r){ return r.expiry; }).filter(Boolean).sort()[0];
+    var expLabel = '';
+    if (soonest){
+      var hh = CARD_CHECKOUT_HOUR;   /* the one number both systems state */
+      expLabel = ' &middot; expire ' + esc(shortDay(dkey(new Date(soonest * 1000)))) + ' ' +
+                 ((hh > 12 ? hh - 12 : hh) + (hh < 12 ? 'am' : 'pm'));
+    }
+    s += '<div class="row"><div class="q">Key cards</div><div class="a">' + held.length +
+         ' held' + expLabel + '</div></div>';
+  }
+  s += '<div class="grp">Open in</div>' +
+       door('front-desk.html', 'Front Desk', st === 'completed' ? 'edit answers' : 'add what you hear') +
+       (st !== 'completed' ? door('arrivals-sms.html', 'Pre-arrival',
+          st === 'notstarted' ? 'send the link' : 'chase the form') : '') +
+       door('keys.html', 'Keys', 'this villa’s cards');
+  document.getElementById('pStay').innerHTML = s;
+
+  /* ── DINING: dietaries once, here only; the night's answer; the nights eaten ── */
+  var d = '<div class="row"><div class="q">Dietaries</div>' +
+          (dietPillsHTML(diets, nodiet) ||
+           '<div class="a" style="color:var(--mid);font-size:12px">Not answered</div>') +
+          (dnote ? '<div class="n">&ldquo;' + esc(dnote) + '&rdquo;</div>' : '') +
+          (guestRec ? '<div class="n">Kept on the guest &middot; follows them to their next stay.</div>' : '') +
+          '</div>';
+  /* the night's answer: the cell wins the moment anyone writes one, the
+     form's answer stands in on the arrival night - the boards' merge */
+  var cell = (typeof DINNER_CELLS === 'object' && DINNER_CELLS[villa]) || null;
+  if (cell && cell.bookingId && cell.bookingId !== B) cell = null;
+  var merged = (cell && cell.status) ? cell :
+               formDinnerCell(villa, pre, { arrives: pms.arrive, adults: pms.adults }, anchorKey);
+  var nightName = anchorKey === dkey(new Date()) ? 'Tonight' : shortDay(anchorKey);
+  if (merged && merged.status === 'in')
+    d += '<div class="row yes"><div class="q">' + nightName + '</div><div class="a">Dining &middot; ' +
+         dinerPax(merged) + '</div></div>';
+  else if (merged && merged.status === 'out')
+    d += '<div class="row no"><div class="q">' + nightName + '</div><div class="a">Not dining</div></div>';
+  else
+    d += openRow(nightName, 'Not answered');
+  if (pre && pre.approach)
+    d += '<div class="row"><div class="q">Dining approach</div><div class="a">' +
+         esc(APPROACH_LABEL[pre.approach] || pre.approach) + '</div></div>';
+  d += '<div id="histBody"></div>';
+  d += '<div class="grp">Open in</div>' +
+       door('tally.html', 'Reservations', 'the night’s board') +
+       door('invitations.html', 'Invitations', 'the night’s SMS');
+  document.getElementById('pDine').innerHTML = d;
+
+  /* the dining history, the shared reader - only once a stay has nights */
+  var histNightsList = histNights(known, new Date());
+  if (histNightsList.length){
+    document.getElementById('histBody').innerHTML =
+      '<div class="hist-sum">Looking up the stay’s nights…</div>';
+    Promise.all(histNightsList.map(function(dt){ return histNight(dt, B); }))
+      .then(function(hrows){
+        var el = document.getElementById('histBody');
+        if (el) el.innerHTML = histRowsHTML(hrows);
+        paintTabs(st, mst, diets, hrows);
+      });
+  }
+
+  /* ── SPA: every treatment this stay holds, the board's states ── */
+  var sp = '', anySpa = false;
+  Object.keys(spa || {}).forEach(function(tid){
+    var t = spa[tid];
+    if (!t || typeof t !== 'object' || !t.status) return;
+    anySpa = true;
+    var bits = [], cls = '', label = t.status.charAt(0).toUpperCase() + t.status.slice(1);
+    if (t.status === 'booked'){ cls = 'booked'; }
+    if (t.status === 'suggested'){ cls = 'sugg'; }
+    if (t.day) bits.push(shortDay(t.day));
+    if (t.time) bits.push(clock12(t.time));
+    if (!t.day && t.reqDay) bits.push(shortDay(t.reqDay));
+    if (!t.time && t.reqTime) bits.push(esc(t.reqTime));
+    if (t.dur) bits.push(t.dur + ' min');
+    if (t.qty > 1) bits.push(t.qty + ' guests');
+    sp += '<div class="row ' + cls + '"><div class="q">Massage</div><div class="a">' +
+          label + (bits.length ? ' &middot; ' + bits.join(' &middot; ') : '') + '</div>' +
+          (t.status === 'suggested'
+            ? '<div class="n">The masseuse has offered a time; the guest has not been asked yet.</div>' : '') +
+          '</div>';
+  });
+  if (!anySpa){
+    sp = (pre && pre.wellness === true)
+      ? '<div class="row"><div class="q">Massage</div><div class="a">Interested' +
+        ((pre.wellDay || pre.wellTime)
+          ? ' &middot; ' + esc([pre.wellDay, pre.wellTime].filter(Boolean).join(' ')) : '') +
+        '</div><div class="n">Asked on the form; nothing on the Spa board yet.</div></div>'
+      : (pre && pre.wellness === false)
+        ? '<div class="row"><div class="q">Massage</div><div class="a">No thank you</div></div>'
+        : openRow('Massage', 'Not asked yet');
+  }
+  sp += '<div class="grp">Open in</div>' + door('spa.html', 'Spa', 'this booking');
+  document.getElementById('pSpa').innerHTML = sp;
+
+  paintTabs(st, mst, diets, null);
+  document.getElementById('profile').style.display = '';
+}
+
+/* ── the tab borders and fills, the approved vocabulary ── */
+function paintTabs(st, mst, diets, hrows){
+  var tG = document.getElementById('tGuest'), tS = document.getElementById('tStay'),
+      tD = document.getElementById('tDine'), tSp = document.getElementById('tSpa');
+  tG.classList.add('has');    /* a booking always knows who it is for */
+  tS.classList.remove('fdone', 'fpart');
+  if (st === 'completed') tS.classList.add('fdone');
+  else if (st === 'incomplete') tS.classList.add('fpart');
+  var dined = hrows && hrows.some(function(r){ return r.dined; });
+  tD.classList.remove('red', 'has');
+  if (hasAllergy(diets)) tD.classList.add('red');
+  else if ((diets && diets.length) || dined) tD.classList.add('has');
+  tSp.classList.remove('green', 'amber', 'has');
+  if (mst === 'done') tSp.classList.add('green');
+  else if (mst === 'sugg') tSp.classList.add('amber');
+  else if (mst) tSp.classList.add('has');
+}
+
+/* ── tabs: one page, one URL, panels all built on load (the tab law) ── */
+(function wireTabs(){
+  var ids = ['Guest', 'Stay', 'Dine', 'Spa'];
+  function pick(which){
+    ids.forEach(function(k){
+      document.getElementById('t' + k).classList.toggle('sel', k === which);
+      document.getElementById('p' + k).classList.toggle('sel', k === which);
+    });
+  }
+  ids.forEach(function(k){
+    document.getElementById('t' + k).onclick = function(){ pick(k); };
+  });
+  pick('Guest');
+})();
+
+function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
+
+/* ── access ──────────────────────────────────────────────────── */
+function showAccess(allowed, e){
+  var box = document.getElementById('noAccess');
+  var on = !allowed;
+  box.innerHTML = !on ? '' :
+    (e ? '<div>Could not check access. This is usually the connection, '
+       + 'not your login.</div>'
+       + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+       : 'This login has no access to the Guest Profile. See the manager.');
+  if (on && !e){
+    var home = homeFor(window.NALA_ROLE);
+    if (home && home !== location.pathname.split('/').pop()){
+      location.replace(home); return;
+    }
+  }
+  box.className = 'noaccess' + (on ? ' show' : '');
+  if (!on) load().catch(function(){});
+}
+
+window.NALA_ROLE = null;
+(function gate(){
+  if (!window.firebase || !firebase.auth || typeof loadStaff !== 'function')
+    return setTimeout(gate, 40);
+  var A; try { A = firebase.auth(); } catch(e){ return setTimeout(gate, 40); }
+  if (!A || !A.onAuthStateChanged) return setTimeout(gate, 40);
+  A.onAuthStateChanged(function(u){
+    if (!u) return;                 /* auth.js owns the signed-out state */
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role; window.NALA_USER = u;
+      ROLE = role;
+      document.getElementById('navWrap').style.display = 'block';
+      navFilter(role);
+      /* The profile answers to resBoard, the same audience as the boards
+         it gathers from. The Calendar's bars only link here for logins
+         holding that key, so a refused landing is the rare hand-typed URL. */
+      showAccess(can(role, 'resBoard'), e);
+    });
+  });
+})();
+</script>
+</body>
+</html>

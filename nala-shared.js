@@ -1688,6 +1688,15 @@ function histRowsHTML(rows){
   return h;
 }
 
+/* What each dining-approach key says to staff. The desk's own wording for
+   the three keys it defined, plus the 23 Aug rewrite's frequency keys -
+   records hold both generations, so every reader must speak both. Lived in
+   front-desk.html until 12 Sep, when the Guest Profile became a second
+   reader. */
+var APPROACH_LABEL = { most:'Dining in most nights', mix:'A mix of in and out',
+                       out:'Mostly eating out', few:'A few nights',
+                       once:'Probably just once', unsure:'Not sure yet' };
+
 /* ── the purpose field ────────────────────────────────────────────────
    "Here for" is a multi select in both forms, so the pages hold it as a list.
    The database validates it as a single string, and one field of the wrong
