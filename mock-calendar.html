@@ -1,0 +1,177 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mock · Calendar</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--cream:#F9F7F4;--ink:#1C1C1A;--mid:#999990;--rule:#E0E0DA;--red:#A8321E}
+body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--ink);
+ padding:14px 12px 24px}
+
+/* header: the standard daterow, Today ‹ date › menu - inert in this mock */
+.daterow{display:flex;align-items:center;gap:8px;margin-bottom:12px;max-width:430px}
+.dnav{height:36px;border:1px solid var(--rule);border-radius:8px;background:none;
+ color:var(--ink);font-family:inherit;font-size:15px;padding:0 12px}
+.dnav.today{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid)}
+.date{font-size:15px;font-weight:600}
+.navbtn{margin-left:auto;width:36px;height:36px;border:1px solid var(--rule);border-radius:8px;
+ background:none;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px}
+.navbtn span{display:block;width:14px;height:1.6px;background:var(--ink)}
+
+.stats{display:flex;gap:8px;margin:0 0 10px;max-width:430px}
+.stat{flex:1;text-align:center;padding:8px 0}
+.stat b{display:block;font-size:20px;font-weight:600}
+.stat span{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mid)}
+
+/* ── the chart ──────────────────────────────────────────────────────────
+   One scroll container. The villa column is sticky inside it, so the
+   numbers stay put while the days slide under them. Everything else is
+   absolutely positioned off two constants: DAY (a day's width) and ROW
+   (a villa row's height). At 390pt wide, 64px days show five clear of
+   the villa column, which is the floor the owner set.                   */
+.chartwrap{border:1.2px solid var(--rule);border-radius:10px;background:#fff;
+ overflow-x:auto;-webkit-overflow-scrolling:touch}
+.chart{position:relative}
+.monthrow{font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+ color:var(--mid);padding:8px 0 0}
+/* the month rides the scroll; the window is one month, so one label */
+.month{position:sticky;left:40px;display:inline-block;white-space:nowrap}
+.dayhead{position:relative;height:26px;border-bottom:1.2px solid var(--rule)}
+.dh{position:absolute;top:0;height:100%;display:flex;align-items:center;justify-content:center;
+ font-size:11px;color:var(--mid);white-space:nowrap}
+.dh b{font-weight:600;color:var(--ink);margin-left:4px}
+.dh.today{color:var(--ink);font-weight:600}
+.grid{position:relative}
+/* day columns: hairline left edge each; weekends take the faintest wash */
+.col{position:absolute;top:0;bottom:0;border-left:1px solid rgba(28,28,26,.05)}
+.col.wkend{background:rgba(28,28,26,.02)}
+/* today: a hairline down the whole board, ink not red - red is failure's */
+.nowline{position:absolute;top:0;bottom:0;width:1.6px;background:rgba(28,28,26,.45);z-index:3}
+.vrow{position:relative;border-bottom:1px solid rgba(28,28,26,.06)}
+.vrow:last-child{border-bottom:0}
+/* the villa number, riding the left edge of the scroll */
+.vnum{position:sticky;left:0;z-index:4;width:34px;height:100%;display:flex;
+ align-items:center;justify-content:center;font-size:15px;color:var(--ink);
+ background:rgba(255,255,255,.92);border-right:1.2px solid var(--rule)}
+/* a stay: white card, rule border, the boards' booking-row dress. It is a
+   record, not a status, so it takes no status colour. Starts and ends at
+   midday: departure morning and arrival afternoon share the changeover day,
+   which is how a back-to-back turnover reads as two bars meeting mid-cell. */
+.bar{position:absolute;top:6px;height:30px;display:flex;align-items:center;
+ background:#fff;border:1.2px solid #C9C9C1;border-radius:8px;padding:0 9px;z-index:2}
+/* the name sticks inside its bar, so a stay whose start has scrolled off
+   the left edge still says who it is - v12's three-week stay otherwise
+   reads as an anonymous bar for most of the board */
+.bar .n{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ position:sticky;left:40px}
+/* a stay running off either edge of the loaded window squares that end off:
+   the booking continues, the board just stops */
+.bar.cutL{border-top-left-radius:0;border-bottom-left-radius:0;border-left-style:dashed}
+.bar.cutR{border-top-right-radius:0;border-bottom-right-radius:0;border-right-style:dashed}
+
+.hint{font-size:11px;color:var(--mid);margin-top:8px;line-height:1.45;max-width:430px}
+
+/* the divider between the mock's notes, not part of the page */
+.mockcut{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#fff;
+ background:var(--mid);border-radius:4px;padding:5px 10px;margin:34px 0 16px;text-align:center;
+ max-width:430px}
+</style></head><body>
+
+<div class="daterow">
+  <button class="dnav today">Today</button>
+  <button class="dnav">&#8249;</button>
+  <div class="date">Sat 12th Sep</div>
+  <button class="dnav">&#8250;</button>
+  <button class="navbtn"><span></span><span></span><span></span></button>
+</div>
+
+<div class="stats">
+  <div class="stat"><b>8</b><span>In house</span></div>
+  <div class="stat"><b>4</b><span>Arriving</span></div>
+  <div class="stat"><b>1</b><span>Departing</span></div>
+</div>
+
+<div class="chartwrap" id="wrap"><div class="chart" id="chart"></div></div>
+
+<div class="hint">Slide the board sideways for more days. Today is the dark
+line; a dashed end means the stay runs past the edge of the board.</div>
+
+<div class="mockcut">Mock only &middot; sample bookings &middot; worst cases:
+long name v5, same-day turnover v8, stay off both edges v12</div>
+
+<script>
+/* Sample bookings, the shape /stays already holds: villa, name, arrive,
+   depart. The real page would read the same records the boards read, and
+   own no fact of its own - it is a summary page in the rule-7 sense.     */
+var STAYS = [
+ {v:1,  n:'Whitfield, Mark',        a:'2026-09-10', d:'2026-09-14'},
+ {v:2,  n:'Sadewasser, Laura',      a:'2026-09-12', d:'2026-09-16'},
+ {v:3,  n:'Sacco, Carlo',           a:'2026-09-09', d:'2026-09-13'},
+ {v:4,  n:'Mueller, Melissa',       a:'2026-09-13', d:'2026-09-15'},
+ {v:4,  n:'Boulter, Emily',         a:'2026-09-17', d:'2026-09-20'},
+ {v:5,  n:'Van Der Westhuizen, Annaliese', a:'2026-09-11', d:'2026-09-18'},
+ {v:7,  n:'Pollock, Krystal',       a:'2026-09-12', d:'2026-09-14'},
+ {v:8,  n:'Christison, Adam',       a:'2026-09-08', d:'2026-09-12'},
+ {v:8,  n:'Bunker, Lynette',        a:'2026-09-12', d:'2026-09-15'},
+ {v:10, n:'Mckinnon, Cameron',      a:'2026-09-14', d:'2026-09-19'},
+ {v:12, n:'Tree, Katelyn',          a:'2026-09-05', d:'2026-09-26'},
+ {v:14, n:'Walker, Kelly',          a:'2026-09-13', d:'2026-09-16'},
+ {v:15, n:'Beatts, Glen',           a:'2026-09-16', d:'2026-09-18'},
+ {v:16, n:'Gibson, Chris',          a:'2026-09-12', d:'2026-09-17'},
+ {v:17, n:'Vlahov, Kim',            a:'2026-09-15', d:'2026-09-19'}
+];
+
+var ROOMS = 17;
+var DAY = 64, ROW = 42, VCOL = 34;          // px: day width, row height, villa column
+                                            // 64px days: five clear of the villa column at 390
+var TODAY = '2026-09-12';
+var FROM = -3, DAYS = 17;                    // window: 3 days back, 17 shown
+
+var WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function midday(iso){var p=iso.split('-');return new Date(+p[0],+p[1]-1,+p[2],12)}
+/* a booking's day, as an offset from the window's first day */
+function off(iso){return Math.round((midday(iso)-midday(TODAY))/864e5)-FROM}
+
+var W = VCOL + DAYS*DAY;
+var d0 = midday(TODAY); d0.setDate(d0.getDate()+FROM);
+var h = '<div class="monthrow" style="width:'+W+'px;height:22px">'+
+        '<span class="month">'+MO[d0.getMonth()]+' '+d0.getFullYear()+'</span>'+
+        '</div><div class="dayhead" style="width:'+W+'px">';
+for (var i=0;i<DAYS;i++){
+  var dt = new Date(d0); dt.setDate(d0.getDate()+i);
+  var today = (off(TODAY)===i);
+  h += '<div class="dh'+(today?' today':'')+'" style="left:'+(VCOL+i*DAY)+'px;width:'+DAY+'px">'+
+       WD[dt.getDay()]+'<b>'+dt.getDate()+'</b></div>';
+}
+h += '</div><div class="grid" style="width:'+W+'px">';
+var cols = '';
+for (var i=0;i<DAYS;i++){
+  var dt = new Date(d0); dt.setDate(d0.getDate()+i);
+  var we = dt.getDay()===0 || dt.getDay()===6;
+  cols += '<div class="col'+(we?' wkend':'')+'" style="left:'+(VCOL+i*DAY)+'px;width:'+DAY+'px"></div>';
+}
+/* today's line sits at midday: the morning belongs to departures,
+   the afternoon to arrivals, same as the bars themselves */
+var nowX = VCOL + (off(TODAY)+.5)*DAY;
+for (var v=1;v<=ROOMS;v++){
+  h += '<div class="vrow" style="height:'+ROW+'px">'+cols+
+       '<div class="nowline" style="left:'+nowX+'px"></div>';
+  STAYS.filter(function(s){return s.v===v}).forEach(function(s){
+    /* midday to midday: arrive at .5 into the arrival day, leave at .5
+       into the departure day. Clamp to the window and mark a cut end. */
+    var x1 = (off(s.a)+.5)*DAY, x2 = (off(s.d)+.5)*DAY;
+    var cutL = x1 < 0, cutR = x2 > DAYS*DAY;
+    x1 = Math.max(x1, 0); x2 = Math.min(x2, DAYS*DAY);
+    if (x2 <= 0 || x1 >= DAYS*DAY) return;
+    h += '<div class="bar'+(cutL?' cutL':'')+(cutR?' cutR':'')+
+         '" style="left:'+(VCOL+x1)+'px;width:'+(x2-x1-(cutL||cutR?0:2))+'px">'+
+         '<span class="n">'+s.n+'</span></div>';
+  });
+  h += '<div class="vnum">'+v+'</div></div>';
+}
+h += '</div>';
+document.getElementById('chart').innerHTML = h;
+/* open with yesterday at the left edge, so today reads in context */
+document.getElementById('wrap').scrollLeft = (off(TODAY)-1)*DAY;
+</script>
+</body></html>
