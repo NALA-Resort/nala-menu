@@ -1,0 +1,96 @@
+{
+  "_comment": [
+    "Every value the Guest Profile shows, and the thing that OWNS it.",
+    "CLAUDE.md rule 7: the profile gathers, it does not work things out.",
+    "The dashboard_sources.json pattern: guest_suite asserts the page",
+    "actually calls each reader, and that the patterns under `banned`",
+    "appear nowhere in it. Whichever side a change misses fails by name.",
+    "",
+    "The page owns NOTHING. The one fact the mock flagged as unowned -",
+    "a past-stay count - is deliberately shown as 'Not recorded yet'",
+    "until the owner rules on recording it; when he does, its owner is",
+    "decided here first."
+  ],
+
+  "reads": [
+    { "value": "the pre-arrival form's state, and the Stay tab's fill",
+      "owner": "formState",
+      "kind": "function",
+      "note": "Front Desk's three states. Never recompute from `at` or the answers." },
+
+    { "value": "the night's dinner answer when no /dinner cell was written",
+      "owner": "formDinnerCell",
+      "kind": "function",
+      "note": "The cell wins the moment anyone writes one; the form stands in on the arrival night only." },
+
+    { "value": "the night's stays, dinner cells and prearrival records",
+      "owner": "fetchStays",
+      "kind": "function",
+      "note": "One reader, so this page and the boards cannot disagree about the night." },
+
+    { "value": "the arrival hour",
+      "owner": "effectiveEta",
+      "kind": "function",
+      "note": "Reception's approved hour, the guest's slot, or the 2pm standing promise." },
+
+    { "value": "checked in",
+      "owner": "isArrived",
+      "kind": "function",
+      "note": "Front Desk owns the stamp; this page only reads it." },
+
+    { "value": "the massage mark and the Spa tab's colour",
+      "owner": "massageState",
+      "kind": "function",
+      "note": "A suggestion outranks a booking - it is the one the desk must act on." },
+
+    { "value": "the second guest's name",
+      "owner": "companionOf",
+      "kind": "function",
+      "note": "What a person typed wins; the name Mews sent stands behind it." },
+
+    { "value": "the party's other villas",
+      "owner": "groupMatesText",
+      "kind": "function",
+      "note": "One wording, every board: 'with villa 15'." },
+
+    { "value": "key cards held and when they die",
+      "owner": "cardsHeld",
+      "kind": "function",
+      "note": "The card table counted through cardRows, never worked out; the hour is CARD_CHECKOUT_HOUR." },
+
+    { "value": "the nights eaten and the courses served",
+      "owner": "histNight",
+      "kind": "function",
+      "note": "Follows the BOOKING through /stays; another booking's night is not this guest's history." },
+
+    { "value": "the dietary list, tidied",
+      "owner": "fixDietList",
+      "kind": "function",
+      "note": "The reservation's list is the person's list." },
+
+    { "value": "the dining-approach wording",
+      "owner": "APPROACH_LABEL",
+      "kind": "table",
+      "note": "front-desk's wording, shared 12 Sep; speaks both key generations." },
+
+    { "value": "how many nights the stay is",
+      "owner": "stayNights",
+      "kind": "function",
+      "note": "parseDepDate under it, so a full ISO stamp and a bare date count the same." }
+  ],
+
+  "banned": [
+    { "pattern": "fetch(DB + '/dinner",
+      "why": "reading /dinner alone is the Dashboard's first-day bug; the merge lives in fetchStays + formDinnerCell" },
+    { "pattern": "fetch(DB + '/opened",
+      "why": "opened marks belong to fetchStays' one read" },
+    { "pattern": ".checkedInAt",
+      "why": "arrived is isArrived's reading, not a field to re-open" },
+    { "pattern": "pre.dining ===",
+      "why": "the dinner answer is formDinnerCell's merge, not the raw field" },
+    { "pattern": ".slice(0, 10)",
+      "why": "a stamp is UTC and a day is local; dkey(parseISO()) or parseDepDate, never a slice" },
+    { "pattern": ".substring(0, 10)",
+      "why": "same slice, other spelling" }
+  ]
+}

@@ -180,6 +180,9 @@ PUBLISH_QS = ("?b=Tomato%20focaccia%20-%20whipped%20ricotta"
 
 PAGES = [
     ("dashboard.html",    ""),
+    ("calendar.html",     ""),
+    #  The profile needs a booking in the address, like the guest pages.
+    ("guest.html",        "?b=" + BOOKING),
     ("cleaners.html",     ""),
     ("front-desk.html",   ""),
     ("keys.html",         ""),

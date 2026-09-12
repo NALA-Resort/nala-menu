@@ -83,6 +83,8 @@ SUITES = [
     ("tally",      ["python3", "tests/tally_suite.py"],   600),
     ("cleans",     ["python3", "tests/cl_suite.py"],      900),
     ("frontdesk",  ["python3", "tests/fd_suite.py"],      600),
+    ("calendar",   ["python3", "tests/calendar_suite.py"], 400),
+    ("guest",      ["python3", "tests/guest_suite.py"],   400),
     ("invites",    ["python3", "tests/inv_suite.py"],     600),
     ("index",      ["python3", "tests/index_suite.py"],   400),
     ("prearrival", ["python3", "tests/pre_suite.py"],     400),
@@ -113,7 +115,7 @@ SUITES = [
 # page load and still reloads the page for each of the three widths when it
 # could resize the viewport. Fixing those is the next job and worth more than
 # this was.
-SWEEP_PAGES = ["dashboard", "keys", "cleaners", "front-desk", "invitations", "arrivals-sms", "spa", "past-menus", "templates", "tally", "tag", "flags", "publish", "staff",
+SWEEP_PAGES = ["dashboard", "calendar", "guest", "keys", "cleaners", "front-desk", "invitations", "arrivals-sms", "spa", "past-menus", "templates", "tally", "tag", "flags", "publish", "staff",
                "stats", "registration", "debug", "pages", "index",
                "prearrival", "welcome"]
 SUITES += [("sweep:" + p, ["python3", "tests/sweep_suite.py", p], 600)
@@ -128,6 +130,8 @@ ON_REQUEST = {"demos"}
 # be wrong in the direction of not running something.
 COVERS = {
     "dashboard.html":    ["dash", "sweep:dashboard"],
+    "calendar.html":     ["calendar", "sweep:calendar"],
+    "guest.html":        ["guest", "sweep:guest"],
     "tally.html":        ["tally", "sweep:tally"],
     "cleaners.html":     ["cleans", "sweep:cleaners"],
     "front-desk.html":   ["frontdesk", "sweep:front-desk", "keys"],
