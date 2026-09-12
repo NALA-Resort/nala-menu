@@ -131,6 +131,29 @@ with sync_playwright() as p:
        "the board to swipe to", "Sacco, Carlo" in bl)
     ck("and the board opens on the viewed day, not on the month behind",
        pg.eval_on_selector("#wrap", "e=>e.scrollLeft") == 29 * 64)
+    #  The label names the month under the LEFT EDGE and follows the
+    #  swipe. Computed once from the window's first day it said August
+    #  into mid-September - the owner's live find, 12 Sep.
+    MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    def month_of(days):
+        d = now + datetime.timedelta(days=days)
+        return "%s %d" % (MONTHS[d.month - 1], d.year)
+    ck("the month label names the day under the left edge on open",
+       pg.eval_on_selector("#monthLbl", "e=>e.textContent") == month_of(-1))
+    pg.eval_on_selector("#wrap", "e=>{e.scrollLeft=0;}")
+    pg.wait_for_timeout(150)
+    ck("swiped to the window's start, it names the month behind",
+       pg.eval_on_selector("#monthLbl", "e=>e.textContent") == month_of(-30))
+    pg.eval_on_selector("#wrap", "e=>{e.scrollLeft=e.scrollWidth;}")
+    pg.wait_for_timeout(150)
+    #  The leftmost visible day at full scroll depends on viewport width,
+    #  so the expected month comes from the landed scroll position, not
+    #  from a guessed day count - a guess false-fails near month ends.
+    end_i = pg.eval_on_selector("#wrap", "e=>Math.floor(e.scrollLeft/64)")
+    ck("swiped to the window's end, it names the month ahead",
+       end_i > 40 and
+       pg.eval_on_selector("#monthLbl", "e=>e.textContent") == month_of(end_i - 30))
     ck("a completed form's bar is the dining green, by computed colour",
        bl["Christison, Adam"]["fill"] == "rgba(122, 160, 130, 0.26)")
     ck("a part-answered form's bar is amber",

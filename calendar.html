@@ -35,7 +35,10 @@
   .chart { position:relative; }
   .monthrow { font-family:var(--ui-font); font-size:9px; /* off-scale: micro-caption, the shared sheet's stat-l size */ letter-spacing:.16em;
     text-transform:uppercase; color:var(--mid); padding:8px 0 0; }
-  /* the month rides the scroll; the window is one month, so one label */
+  /* the month rides the scroll AND follows it: the window spans three
+     months since it grew to 61 days, so the label names the month under
+     the board's left edge, rewritten as you swipe. A label computed once
+     from the window's first day said August into mid-September. */
   .month { position:sticky; left:40px; display:inline-block; white-space:nowrap; }
   .dayhead { position:relative; height:26px; border-bottom:1.2px solid var(--rule); }
   .dh { position:absolute; top:0; height:100%; display:flex; align-items:center;
@@ -237,7 +240,7 @@ function render(bookings, spa, failedDays){
   var W = VCOL + DAYS * DAY;
   var d0 = new Date(VIEW.getFullYear(), VIEW.getMonth(), VIEW.getDate() + FROM, 12);
   var h = '<div class="monthrow" style="width:' + W + 'px;height:22px">' +
-          '<span class="month">' + MO[d0.getMonth()] + ' ' + d0.getFullYear() + '</span>' +
+          '<span class="month" id="monthLbl"></span>' +
           '</div><div class="dayhead" style="width:' + W + 'px">';
   var todayOff = dayOff(new Date());
   for (var i = 0; i < DAYS; i++){
@@ -304,8 +307,21 @@ function render(bookings, spa, failedDays){
     : '';
   /* open on the viewed day with yesterday against the villa column -
      the month behind is there to swipe to, not to land on */
-  document.getElementById('wrap').scrollLeft = (0 - FROM - 1) * DAY;
+  var wrap = document.getElementById('wrap');
+  wrap.onscroll = paintMonth;
+  wrap.scrollLeft = (0 - FROM - 1) * DAY;
+  paintMonth();
   fitRows();
+}
+
+/* the month under the board's left edge, kept true while swiping */
+function paintMonth(){
+  var lbl = document.getElementById('monthLbl');
+  var wrap = document.getElementById('wrap');
+  if (!lbl || !wrap) return;
+  var i = Math.min(DAYS - 1, Math.max(0, Math.floor(wrap.scrollLeft / DAY)));
+  var dt = new Date(VIEW.getFullYear(), VIEW.getMonth(), VIEW.getDate() + FROM + i, 12);
+  lbl.textContent = MO[dt.getMonth()] + ' ' + dt.getFullYear();
 }
 
 /* All 17 villas on one screen, from what the screen actually has: the
