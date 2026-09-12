@@ -87,7 +87,10 @@
      measures where the grid starts and what sits below it, and divides
      what the screen actually has by 17, re-measuring on rotate and
      resize; the calc is only the pre-measurement fallback. */
-  .vrow { height:var(--rowh, calc((100vh - 204px)/17)); min-height:22px; }
+  /* declared here so the token has a defined life before fitRows()
+     measures: the initial value IS the pre-measurement fallback */
+  :root { --rowh: calc((100vh - 204px)/17); }
+  .vrow { height:var(--rowh); min-height:22px; }
   .bar { top:3px; height:calc(100% - 7px); padding:0 7px; border-radius:6px; }
   .bar .n { font-size:11px; } /* off-scale: fits the fitted board's 15px bars */
   .vnum { font-size:13px; } /* off-scale: a step above the bar text */
