@@ -40,6 +40,9 @@
   /* One arrival. The whole row is the control surface, the same idea as the
      villa tile grid, which is the documented exception to "a bordered
      rectangle is a button". */
+  /* the row the Guest Profile's door came for: the Selected role's ink
+     border, worn until the person taps anything */
+  .arr.linked { outline:2px solid var(--ink); outline-offset:2px; }
   .arr { display:flex; align-items:center; gap:12px; width:100%;
          background:none; border:1px solid var(--rule); border-radius:8px;
          padding:11px 13px; margin-bottom:7px; text-align:left;
@@ -669,6 +672,11 @@ var TABS = [
   { k: 'expired', label: 'Expired' }
 ];
 
+var VILLAQ = (function(){
+  var q = new URLSearchParams(location.search).get('villa');
+  return (q && /^\d{1,2}$/.test(q)) ? q : '';
+})();
+
 function render(){
   var now = Date.now();
   /* a row on screen IS a row in the table: render is a walk over
@@ -748,6 +756,19 @@ function render(){
   if (!g) g = '<div class="arr todo-form" style="opacity:.62;border-style:dashed">' +
     '<div class="arr-mid"><div class="arr-s">Nothing here</div></div></div>';
   document.getElementById('list').innerHTML = g;
+  /* the Guest Profile's door: ?villa= scrolls to that villa's first
+     card and marks it - the Spa board's ?open pattern, worn as a mark
+     because this register has no per-villa sheet to open. One shot. */
+  if (VILLAQ){
+    var el = document.querySelector('.arr[data-villa="' + VILLAQ + '"]');
+    if (el){
+      VILLAQ = '';
+      el.classList.add('linked');
+      el.scrollIntoView({ block: 'center' });
+      document.addEventListener('click', function(){ el.classList.remove('linked'); },
+                                { once: true });
+    }
+  }
 }
 
 function sheetHTML(c, kind, now){

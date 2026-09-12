@@ -595,6 +595,15 @@ var DIETARIES = ['Gluten','Dairy','Vegetarian','Vegan','Pescatarian',
 
 // date state + header wiring from nala-shared.js
 var nav = initDateNav();
+
+/* The Guest Profile's door: ?open=<villa> opens that villa's sheet once
+   the board has drawn - the Spa board's ?open pattern (its comment holds
+   the reasoning). One shot: closing the sheet must not have it spring
+   back on a redraw. */
+var OPENQ = (function(){
+  var q = new URLSearchParams(location.search).get('open');
+  return (q && /^\d{1,2}$/.test(q) && +q >= 1 && +q <= ROOMS) ? q : '';
+})();
 var VIEW = nav.VIEW, todayKey = nav.todayKey, isToday = nav.isToday;
 
 // print sheets open on whatever date the tally is showing
@@ -2604,7 +2613,9 @@ function busy(){
                  getComputedStyle(bd).display !== 'none')) || selectMode;
 }
 
-load(true).catch(function(e){
+load(true).then(function(){
+  if (OPENQ){ var n = OPENQ; OPENQ = ''; openRoom(n, roomState(n)); }
+}).catch(function(e){
   /* A load that dies must say so where reception can read it. Silent was how
      a half-rendered board sat unexplained on 20 Aug. */
   console.error('board load failed:', e);

@@ -233,9 +233,12 @@ function getJ(path){
 /* the doors, each gated by the permission the page BEHIND it answers to -
    the Dashboard's own rule, through NAV_NEEDS so a guessed key cannot
    creep in */
-function door(href, label, small){
-  if (!can(ROLE, NAV_NEEDS[href])) return '';
-  return '<a class="door" href="' + href + '">' + esc(label) +
+/* Every door CARRIES THE GUEST - the owner, 12 Sep: a door that lands
+   on a page's default view is the hamburger wearing a label. The params
+   ride separately so the permission lookup still sees the page. */
+function door(page, params, label, small){
+  if (!can(ROLE, NAV_NEEDS[page])) return '';
+  return '<a class="door" href="' + page + params + '">' + esc(label) +
          (small ? '<small>' + esc(small) + '</small>' : '') +
          '<span class="ch">&#8250;</span></a>';
 }
@@ -397,11 +400,14 @@ function render(bk, night, spa, cardsTree, bookflags, guestRec, anchorKey, cid){
     s += '<div class="row"><div class="q">Key cards</div><div class="a">' + held.length +
          ' held' + expLabel + '</div></div>';
   }
+  var arrD = parseDepDate(pms.arrive);
+  var fdQ = (arrD ? '?date=' + dkey(arrD) + '&' : '?') + 'open=' + encodeURIComponent(B);
   s += '<div class="grp">Open in</div>' +
-       door('front-desk.html', 'Front Desk', st === 'completed' ? 'edit answers' : 'add what you hear') +
-       (st !== 'completed' ? door('arrivals-sms.html', 'Pre-arrival',
-          st === 'notstarted' ? 'send the link' : 'chase the form') : '') +
-       door('keys.html', 'Keys', 'this villa’s cards');
+       door('front-desk.html', fdQ, 'Front Desk',
+            st === 'completed' ? 'edit answers' : 'add what you hear') +
+       (st !== 'completed' ? door('arrivals-sms.html', '?open=' + encodeURIComponent(B),
+          'Pre-arrival', st === 'notstarted' ? 'send the link' : 'chase the form') : '') +
+       (villa ? door('keys.html', '?villa=' + villa, 'Keys', 'this villa’s cards') : '');
   document.getElementById('pStay').innerHTML = s;
 
   /* ── DINING: dietaries once, here only; the night's answer; the nights eaten ── */
@@ -430,8 +436,8 @@ function render(bk, night, spa, cardsTree, bookflags, guestRec, anchorKey, cid){
          esc(APPROACH_LABEL[pre.approach] || pre.approach) + '</div></div>';
   d += '<div id="histBody"></div>';
   d += '<div class="grp">Open in</div>' +
-       door('tally.html', 'Reservations', 'the night’s board') +
-       door('invitations.html', 'Invitations', 'the night’s SMS');
+       (villa ? door('tally.html', '?date=' + anchorKey + '&open=' + villa,
+                     'Reservations', 'this villa\u2019s night') : '');
   document.getElementById('pDine').innerHTML = d;
 
   /* the dining history, the shared reader - only once a stay has nights */
@@ -478,7 +484,8 @@ function render(bk, night, spa, cardsTree, bookflags, guestRec, anchorKey, cid){
         ? '<div class="row"><div class="q">Massage</div><div class="a">No thank you</div></div>'
         : openRow('Massage', 'Not asked yet');
   }
-  sp += '<div class="grp">Open in</div>' + door('spa.html', 'Spa', 'this booking');
+  sp += '<div class="grp">Open in</div>' +
+        door('spa.html', '?open=' + encodeURIComponent(B), 'Spa', 'this booking');
   document.getElementById('pSpa').innerHTML = sp;
 
   paintTabs(st, mst, diets, null);

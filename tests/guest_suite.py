@@ -187,6 +187,22 @@ with sync_playwright() as p:
     # an admin holds every key, so every door shows
     ck("the admin sees the Front Desk door",
        "Front Desk" in text(pg, "#pStay"))
+    # ── every door carries the guest - the owner, 12 Sep: a door that
+    #    lands on a page's default view is the hamburger wearing a label ──
+    doors = pg.eval_on_selector_all(".door",
+        "els=>els.map(e=>e.getAttribute('href'))")
+    ck("no door lands on a bare page", doors and
+       all("?" in h for h in doors))
+    ck("Front Desk opens the booking on its arrival day",
+       any("front-desk.html?date=" in h and "open=b8" in h for h in doors))
+    ck("Reservations opens the villa's sheet for the night",
+       any("tally.html?date=" in h and "open=8" in h for h in doors))
+    ck("Keys marks the villa's cards",
+       "keys.html?villa=8" in doors)
+    ck("Spa opens the booking's card, the board's own ?open",
+       "spa.html?open=b8" in doors)
+    ck("and the Invitations door is gone - that page has no per-guest "
+       "landing", not any("invitations.html" in h for h in doors))
     pg.close()
 
     # ── doors are gated by the page behind them ─────────────────

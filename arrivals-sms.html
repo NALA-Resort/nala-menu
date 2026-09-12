@@ -38,6 +38,9 @@
                  border:none; color:var(--mid); cursor:pointer; }
   .knob button.on { background:var(--ink); color:var(--cream); }
 
+  /* the row the Guest Profile's door came for: the Selected role's ink
+     border, worn until the person taps anything */
+  .vrow.linked { outline:2px solid var(--ink); outline-offset:2px; }
   .vrow { display:flex; align-items:center; gap:12px; width:100%;
           background:none; border:1px solid var(--rule); border-radius:8px;
           padding:11px 13px; margin-bottom:7px; text-align:left;
@@ -350,6 +353,14 @@ var BANDS = [
 ];
 var BAND_CLASS = { open:' b-open', sent:' b-sent', done:' b-done', nophone:' b-grey' };
 
+/* The Guest Profile's door: ?open=<booking> scrolls to that guest's row
+   and marks it - the Spa board's ?open pattern, worn as a mark because
+   the row's own tap is the send control. One shot. */
+var OPENQ = (function(){
+  var q = new URLSearchParams(location.search).get('open');
+  return (q && /^[A-Za-z0-9-]{1,64}$/.test(q)) ? q : '';
+})();
+
 function render(list){
   var board = document.getElementById('board');
   board.innerHTML = '';
@@ -421,6 +432,16 @@ function render(list){
     e.className = 'empty';
     e.textContent = 'No arrivals in the next ' + DAYS + ' days.';
     board.appendChild(e);
+  }
+  if (OPENQ){
+    var el = document.querySelector('.vrow[data-booking="' + OPENQ + '"]');
+    if (el){
+      OPENQ = '';
+      el.classList.add('linked');
+      el.scrollIntoView({ block: 'center' });
+      document.addEventListener('click', function(){ el.classList.remove('linked'); },
+                                { once: true });
+    }
   }
   recount();
 }

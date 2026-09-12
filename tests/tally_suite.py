@@ -2098,6 +2098,19 @@ with sync_playwright() as p:
     HIST["staysFail"] = False
     q.close()
 
+
+    # ── the Guest Profile's door: ?open=<villa> opens that villa's sheet ──
+    pg = b.new_page(viewport={"width": 390, "height": 900})
+    pg.add_init_script(SDK)
+    pg.add_init_script("window.__EMAIL='staff@x';")
+    pg.route("**firebasedatabase.app/**", fb)
+    pg.route("**/menu.json*", file_menu)
+    pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    pg.goto("http://localhost:8953/tally.html?open=1"); pg.wait_for_timeout(1700)
+    ck("the profile's door lands on the villa's own sheet, not the board",
+       "Villa 1" in pg.locator("#sheet").inner_text())
+    pg.close()
+
     b.close()
     open("/home/claude/nala/_p1_tally.png","wb").write(shot1)
 print("RESULT: %d passed, %d failed" % (P,F))

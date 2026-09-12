@@ -2350,6 +2350,28 @@ with sync_playwright() as p:
     pg.close()
     CUTRUN.clear()
 
+
+    # ── the Guest Profile's door: ?open=<booking> lands on that guest ──
+    pg = b.new_page(viewport={"width": 390, "height": 900})
+    pg.add_init_script(SDK)
+    pg.add_init_script("window.__EMAIL='staff@x';")
+    pg.route("**firebasedatabase.app/**", fb)
+    pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    pg.goto("http://localhost:8964/front-desk.html?open=b8")
+    pg.wait_for_timeout(2000)
+    #  the row's own tap dispatch decides which face opens - the form for
+    #  an unfinished row, the expanded summary for a completed one - so
+    #  the door proves itself by landing on the GUEST either way
+    landed = pg.evaluate("""()=>{
+      const sh = document.getElementById('sheet');
+      if (sh && /Lind/.test(sh.textContent) &&
+          document.querySelector('.backdrop.show')) return 'form';
+      const open = document.querySelector('.arr.open');
+      return open && /Lind/.test(open.textContent) ? 'summary' : '';
+    }""")
+    ck("the profile's door lands on the guest, not the day board", landed != "")
+    pg.close()
+
     b.close()
 
 print("RESULT: %d passed, %d failed" % (P, F))

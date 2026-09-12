@@ -848,6 +848,21 @@ with sync_playwright() as p:
        "()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
     q.close()
 
+
+    # ── the Guest Profile's door: ?open=<booking> marks that guest's row ──
+    pg = b.new_page(viewport={"width": 390, "height": 900})
+    pg.add_init_script(SDK)
+    pg.add_init_script("window.__EMAIL='staff@x';")
+    pg.route("**firebasedatabase.app/**", fb)
+    pg.route("**nala-invites.ben-681.workers.dev/**", wk)
+    pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    pg.goto("http://localhost:8977/arrivals-sms.html?open=pa-sent")
+    pg.wait_for_timeout(1600)
+    ck("the profile's door marks the guest's row on the SMS board",
+       pg.evaluate("()=>{const e=document.querySelector('.vrow.linked');"
+                   "return !!e && e.dataset.booking === 'pa-sent';}"))
+    pg.close()
+
     b.close()
 
 # ── the trim rule ────────────────────────────────────────────────────

@@ -491,6 +491,23 @@ with sync_playwright() as p:
     ck("the width law holds at 320",
        pg4.evaluate("()=>document.documentElement.scrollWidth - document.documentElement.clientWidth") == 0)
     pg4.close()
+
+    # ── the Guest Profile's door: ?villa= marks that villa's card ──
+    pg = b.new_page(viewport={"width": 390, "height": 900})
+    pg.add_init_script(SDK)
+    pg.add_init_script("window.__EMAIL='staff@x';")
+    pg.route("**firebasedatabase.app/**", fb)
+    pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    pg.goto("http://localhost:8992/keys.html?villa=4")
+    pg.wait_for_timeout(1200)
+    ck("the profile's door marks the villa's card in the register",
+       pg.evaluate("()=>{const e=document.querySelector('.arr.linked');"
+                   "return !!e && e.dataset.villa === '4';}"))
+    ck("and the first tap anywhere takes the mark off",
+       pg.evaluate("()=>{document.body.click();"
+                   "return !document.querySelector('.arr.linked');}"))
+    pg.close()
+
     b.close()
 
 print("RESULT: %d passed, %d failed" % (P, F))

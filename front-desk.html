@@ -501,6 +501,13 @@
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();     /* wires Today, the arrows and the title itself */
+
+/* The Guest Profile's door: ?open=<booking> lands on that guest once the
+   rows are in - the Spa board's ?open pattern. One shot. */
+var OPENQ = (function(){
+  var q = new URLSearchParams(location.search).get('open');
+  return (q && /^[A-Za-z0-9-]{1,64}$/.test(q)) ? q : '';
+})();
 var ROWS = [];               /* [{ villa, stay, pre }] for the viewed date */
 
 (function(){
@@ -1312,6 +1319,18 @@ function load(){
         .then(function(){
           ROWS = sortRows(oneRowPerBooking(ROWS));
           render();
+          if (OPENQ){
+            var id = OPENQ; OPENQ = '';
+            var r = null;
+            ROWS.forEach(function(x){ if (x.stay && x.stay.id === id) r = x; });
+            /* the row's own tap dispatch, reused: an unfinished row opens
+               the form, a completed one expands its sheet - the 1 Sep
+               ruling this page already follows */
+            if (r){
+              if (formState(r.pre, r.stay, r.spa) !== 'completed') openGuest(r);
+              else { OPEN = r.villa; render(); }
+            }
+          }
         });
     })
     .catch(function(){
