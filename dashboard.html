@@ -212,8 +212,8 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=67"></script>
+<script src="auth.js?v=13"></script>
+<script src="nala-shared.js?v=68"></script>
 <script>
 /* The day's flow on one screen: what has happened, what is ready, and what
    is still owed. Every fact here is read from the screen that owns it. The
@@ -324,7 +324,25 @@ function load(){
              cards:cardRows(res[7]), cutrun:res[8] || null };
     LOADED = true;
     render();
+    /* Keep the night for the next visit. The board shows counts, never a
+       dietary, so a stale paint is a stale number for the width of one load,
+       corrected the moment this same load runs again on the next open. */
+    NALA_CACHE.set('dash:' + day, { DATA: DATA, stays: staysSnapshot() });
   });
+}
+
+/* Paint the last visit's board at once, before the network answers. Returns
+   true if it drew anything. The live load() runs regardless and overwrites,
+   so the cache is a head start, never the source of truth. */
+function paintCache(){
+  var day = nav.todayKey();
+  var snap = NALA_CACHE.get('dash:' + day, 5 * 60 * 1000);
+  if (!snap || !snap.DATA) return false;
+  DATA = snap.DATA;
+  staysRestore(snap.stays);
+  LOADED = true;
+  render();
+  return true;
 }
 
 /* ── the day, as facts ───────────────────────────────────────── */
@@ -869,6 +887,13 @@ window.NALA_ROLE = null;
   if (!A || !A.onAuthStateChanged) return setTimeout(gate, 40);
   A.onAuthStateChanged(function(u){
     if (!u) return;                 /* auth.js owns the signed-out state */
+    /* Whose tab this is, so the cache read below is keyed to them and never
+       serves the last login's board. auth.js also tells the cache this, on the
+       token change; calling it here too is idempotent and removes the race. */
+    if (window.NALA_CACHE) NALA_CACHE.onUser(u.uid);
+    /* Paint the last visit at once (behind the still-hidden board), then start
+       the live fetch. The paint is a head start; the fetch overwrites it. */
+    paintCache();
     /* Start the day's data fetch the moment there is a user, rather than
        waiting for the role check to come back first. auth.js queues these
        reads until the token settles, so they go out ALONGSIDE loadStaff's

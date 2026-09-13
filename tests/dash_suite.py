@@ -28,9 +28,9 @@ threading.Thread(target=httpd.serve_forever, daemon=True).start(); time.sleep(0.
 
 SDK = """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
 auth:function(){ if(!window.firebase.__i) throw new Error("no app"); return window.__A;}};
-window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:window.__EMAIL||'staff@x',
+window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:window.__EMAIL||'staff@x',uid:'uid-'+(window.__EMAIL||'staff@x'),
 getIdToken:function(){return Promise.resolve('T');}});},20);},
-onAuthStateChanged:function(cb){setTimeout(function(){cb({email:window.__EMAIL||'staff@x'});},25);},
+onAuthStateChanged:function(cb){setTimeout(function(){cb({email:window.__EMAIL||'staff@x',uid:'uid-'+(window.__EMAIL||'staff@x')});},25);},
 signOut:function(){}};"""
 
 now = datetime.datetime.now().astimezone()
@@ -243,6 +243,52 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.querySelectorAll('.node').length") == 10)
     ck("the date row shows the day, so the board says which day it is",
        pg.evaluate("()=>document.getElementById('title').textContent.trim()") != "")
+
+    # ── the board's snapshot round-trips (Fix 5) ─────────────────
+    #  The live load writes the night to the cache; paintCache reads it back
+    #  and redraws from it. Same tab, so the sessionStorage the load wrote is
+    #  the one paintCache reads. This is the head start a repeat navigation
+    #  gets before the network answers.
+    rt = pg.evaluate("""()=>{
+      const day = nav.todayKey();
+      return { wrote: !!NALA_CACHE.get('dash:'+day, 99999), paints: paintCache() };
+    }""")
+    ck("the load writes the night to the cache", rt["wrote"] is True)
+    ck("and paintCache restores and redraws it", rt["paints"] is True)
+
+    # ── the per-session cache primitive (Fix 5) ──────────────────
+    #  It holds guest data between navigations, so it is fenced: keyed by the
+    #  signed-in uid, purged on a change of user and on sign-out, expired by
+    #  age, and serving nothing until it knows whose tab it is. Break any one
+    #  fence and this names it. (See NALA_CACHE in nala-shared.js.)
+    cache = pg.evaluate("""()=>{
+      const C = window.NALA_CACHE, out = {};
+      C.signedOut();                        // start from clean
+      out.noUidGet = C.get('t', 99999);     // null: nobody signed in yet
+      C.set('t', {a:1});                    // a no-op without a uid
+      out.noUidSet = C.get('t', 99999);
+      C.onUser('user-A');
+      C.set('t', {a:1});
+      out.hit = C.get('t', 99999);          // {a:1}
+      // age the stored entry to exercise the freshness cap (reads the slot
+      // format on purpose - this is the fence's own test)
+      try { sessionStorage.setItem('nala1:user-A:t',
+              JSON.stringify({at: Date.now()-60000, v:{a:1}})); } catch(e){}
+      out.expired  = C.get('t', 5000);      // 60s old, 5s cap  -> null
+      out.stillOk  = C.get('t', 120000);    // 60s old, 120s cap -> {a:1}
+      C.onUser('user-B');                   // a different login on a shared PC
+      out.crossUser = C.get('t', 99999);    // null: A's slot was purged
+      C.onUser('user-B'); C.set('t', {b:2}); C.signedOut();
+      out.afterSignout = C.get('t', 99999); // null: sign-out purged it
+      return out;
+    }""")
+    ck("the cache serves nothing before it knows the user",
+       cache["noUidGet"] is None and cache["noUidSet"] is None)
+    ck("a value set under a uid reads back", cache["hit"] == {"a": 1})
+    ck("a value older than its cap is ignored", cache["expired"] is None)
+    ck("and the same value inside a wider cap is served", cache["stillOk"] == {"a": 1})
+    ck("a change of user empties the cache", cache["crossUser"] is None)
+    ck("sign-out takes the cache with it", cache["afterSignout"] is None)
 
     # The menu is filled by buildNav in nala-shared.js, but opened by three
     # lines every page carries its own copy of. This page shipped without

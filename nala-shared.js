@@ -6,6 +6,74 @@ var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var ROOMS = 17;
 var ALLERGENS = ['Nut allergy','Shellfish allergy','Egg allergy'];
 
+/* ── per-session cache ─────────────────────────────────────────────────
+   A board opened from the menu waits on a round trip to Singapore before it
+   can draw. This holds the last answer in the tab so the next navigation
+   paints from it at once and refreshes behind the paint (stale-while-
+   revalidate). It caches guest data - names, dietaries - so it is fenced by
+   six rules, and the fence is the whole point:
+
+     1. Keyed by the signed-in uid. get/set do nothing until onUser has been
+        told who is here, so one login never reads another's cache.
+     2. Purged on sign-out and whenever the uid changes (onUser below, called
+        from auth.js). A shared desk PC hands nobody the last user's board.
+     3. sessionStorage only - it dies with the tab and takes no cross-tab
+        lock. Never localStorage, which would outlive the session on disk.
+     4. A short freshness cap: a read older than its maxAge is ignored, and
+        every serve fires a network revalidation, so a stale paint is only
+        ever the width of one round trip before it is corrected. The cap
+        matches the roomguests policy already in the app.
+     5. The auth token is NEVER cached - only board data the token fetched.
+     6. Every read and write is wrapped: a private window, a full quota or
+        disabled site data throws, and the app must fall back to the network
+        exactly as if no cache existed, never break.
+
+   This is the one owner of that fence. Callers ask it for a named slot and
+   never touch sessionStorage themselves. Tier-1: tests/cache_cases and the
+   suites drive the uid/purge/expiry paths; break any rule and they name it. */
+var NALA_CACHE = (function(){
+  var UID = null, PREFIX = 'nala1:';
+  function slot(name){ return PREFIX + UID + ':' + name; }
+  function purge(){
+    try {
+      for (var i = sessionStorage.length - 1; i >= 0; i--){
+        var k = sessionStorage.key(i);
+        if (k && k.indexOf(PREFIX) === 0) sessionStorage.removeItem(k);
+      }
+    } catch (e){}
+  }
+  return {
+    /* Told who is signed in. A change of user empties the cache before the
+       new uid can read anything under it. */
+    onUser: function(uid){
+      uid = uid || null;
+      if (UID && uid !== UID) purge();
+      UID = uid;
+    },
+    signedOut: function(){ purge(); UID = null; },
+    /* The cached value if it exists, belongs to this user and is younger than
+       maxAge (ms); null otherwise. Never throws. */
+    get: function(name, maxAge){
+      if (!UID) return null;
+      try {
+        var raw = sessionStorage.getItem(slot(name));
+        if (!raw) return null;
+        var o = JSON.parse(raw);
+        if (!o || typeof o.at !== 'number') return null;
+        if (maxAge && (Date.now() - o.at) > maxAge) return null;
+        return o.v;
+      } catch (e){ return null; }
+    },
+    set: function(name, v){
+      if (!UID) return;
+      try { sessionStorage.setItem(slot(name), JSON.stringify({ at: Date.now(), v: v })); }
+      catch (e){}
+    },
+    purge: purge
+  };
+})();
+if (typeof window !== 'undefined') window.NALA_CACHE = NALA_CACHE;
+
 /* ── dates ─────────────────────────────────────────────────── */
 function dkey(d){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -528,6 +596,22 @@ function fetchStays(dateKey){
       return res[0];
     });
   });
+}
+
+/* fetchStays sets three module globals as a side-effect, and every board's
+   render reads them through the shared cell functions. These lift and put
+   back exactly those three, so a page can hold a snapshot of the night in
+   the per-session cache and restore it for an instant paint, then let a live
+   fetchStays overwrite them. The one place that names this set, so a fourth
+   global added to fetchStays is added here in the same breath. */
+function staysSnapshot(){
+  return { d: DINNER_CELLS, o: OPENED_MARKS, p: PREARRIVAL_BY_VILLA };
+}
+function staysRestore(s){
+  if (!s || typeof s !== 'object') return;
+  DINNER_CELLS        = s.d || {};
+  OPENED_MARKS        = s.o || {};
+  PREARRIVAL_BY_VILLA = s.p || {};
 }
 
 /* The reservation's dietaries, laid over a built record. The reservation wins

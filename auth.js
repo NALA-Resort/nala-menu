@@ -383,11 +383,17 @@
     try {
       firebase.auth().onIdTokenChanged(function(user){
         if (user){
+          /* Tell the per-session cache whose tab this is, before any board
+             reads it. A change of user empties it (a shared desk PC), so one
+             login never sees the last one's board. */
+          if (window.NALA_CACHE) window.NALA_CACHE.onUser(user.uid);
           user.getIdToken().then(function(t){
             window.__idToken = t;
             if (!settled){ settled = true; removeOverlay(); flush(); }
           });
         } else {
+          /* Signed out: the cached board goes with the session. */
+          if (window.NALA_CACHE) window.NALA_CACHE.signedOut();
           window.__idToken = null;
           if (settled){            // signed out mid-session
             settled = false;
