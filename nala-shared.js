@@ -2287,13 +2287,81 @@ var NAV = [
       { action:'navNotify', label:'Notifications' } ] }
 ];
 
-/* Which permission opens each link, derived from NAV so the two cannot
-   disagree. Kept under its old name because the filter and the suites ask
-   this question by it. */
+/* The staff pages with no hamburger entry, reached from inside another page,
+   each named with the door that opens it. They were the audit's finding,
+   12 Sep: four gated pages the Settings grid could never speak about,
+   because the grid's page list is NAV and these are not in NAV. Listed here
+   so NAV_NEEDS and the grid see every gated page, without putting a link in
+   the menu. A new page reached from a board rather than the menu goes here,
+   or the pageaccess suite names it by file.                             */
+var NAV_UNLISTED = [
+  { href:'guest.html',     label:'Guest Profile', need:'resBoard'     }, /* a calendar bar */
+  { href:'stats.html',     label:'Statistics',    need:'resBoard'     }, /* Reservations' Stats door */
+  { href:'templates.html', label:'SMS Templates', need:'editBookings' }, /* the two SMS pages */
+  { href:'debug.html',     label:'Diagnostics',   need:'manageStaff'  }  /* Front Desk's foot */
+];
+
+/* Which permission opens each page, derived from NAV plus NAV_UNLISTED so
+   the three cannot disagree. Kept under its old name because the filter and
+   the suites ask this question by it. */
 var NAV_NEEDS = (function(){
   var out = {};
-  NAV.forEach(function(e){
+  NAV.concat(NAV_UNLISTED).forEach(function(e){
     (e.items || [e]).forEach(function(i){ if (i.href) out[i.href] = i.need; });
+  });
+  return out;
+})();
+
+/* ── per-page access ───────────────────────────────────────────
+   Which pages a role may open, as its own question, asked by page name.
+   Until 12 Sep the only knob was the capability grid: Keys borrowed
+   editBookings, Statistics borrowed resBoard, and taking one page off a
+   role meant taking every page that borrowed the same word. The owner asked
+   for the pages themselves as switches.
+
+   The model is the permission matrix's, one layer up. A page's DEFAULT is
+   its capability in NAV_NEEDS - a new page needs no ceremony beyond its NAV
+   entry, and arrives open to whoever holds its capability, exactly as
+   before. /permissions/pages/<key>/<role> is the manager changing their
+   mind about ONE page, and only an explicit true or false is an opinion.
+
+   Two doors that stay shut, both in the rules as well as here, because the
+   grid is not the only way to write there: an admin page (need manageStaff)
+   never reads the override - handing out a Settings page is handing out
+   manageStaff under another name - and admin itself is answered before the
+   override is consulted, so a stray row cannot lock the owner out.      */
+function pageKey(href){
+  return String(href || '').split('?')[0].replace(/\.html$/, '');
+}
+
+function canOpen(role, href){
+  var need = NAV_NEEDS[href];
+  /* A page nobody has listed is merely ungated, not shut: the same answer
+     the menu filter gives, for the same reason - the failure must not look
+     like a broken link. The pageaccess suite is what catches the listing. */
+  if (need === undefined) return true;
+  if (need === 'manageStaff') return can(role, need);
+  var r = normaliseRole(role);
+  if (r === 'admin') return true;
+  var pages = PERMISSIONS && PERMISSIONS.pages;
+  var row = pages && pages[pageKey(href)];
+  if (row && typeof row[r] === 'boolean') return row[r];
+  return can(role, need);
+}
+
+/* The rows the Settings grid offers, derived from the same two lists as
+   NAV_NEEDS so a page added to the menu is a switch the same day - which is
+   the complaint that built all this. Admin pages are not offered, and the
+   Notifications action is a switch, not a page. Grouped entries carry their
+   group, because "Menu" alone in a flat list reads as Publish Menu.      */
+var PAGE_GRID = (function(){
+  var out = [];
+  NAV.concat(NAV_UNLISTED).forEach(function(e){
+    (e.items || [e]).forEach(function(i){
+      if (!i.href || NAV_NEEDS[i.href] === 'manageStaff') return;
+      var label = (e.group ? e.group + ' · ' : '') + i.label;
+      out.push([pageKey(i.href), 'Open ' + label, i.href]);
+    });
   });
   return out;
 })();
@@ -2380,7 +2448,7 @@ function navFilterShared(role){
        would make every new menu entry invisible until somebody remembered
        to add it here, and the failure would look like the link was broken. */
     if (!(href in NAV_NEEDS)) continue;
-    links[i].style.display = can(role, NAV_NEEDS[href]) ? '' : 'none';
+    links[i].style.display = canOpen(role, href) ? '' : 'none';
   }
   hideEmptyGroups(drop);
   navActionBadges(role);

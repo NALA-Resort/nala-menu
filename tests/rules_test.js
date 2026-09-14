@@ -674,6 +674,30 @@ ck('anyone signed in may read it, because every gate in the app needs it',
    as(HK).read('/permissions').allowed === true);
 cannot('a signed out browser cannot read it', GUEST, '/permissions', null);
 
+/* The page switches, one layer up: /permissions/pages/<page>/<role>. The
+   same two invariants hold and one more joins them - an admin page cannot
+   be handed out as a page row, because that would be manageStaff under
+   another name, and canOpen would ignore the row anyway; the rules keep
+   the garbage out of the database too. */
+can('the manager closes one page for one role', ADMIN,
+    '/permissions/pages/calendar/waiter', false);
+can('or opens one the role never shipped with', ADMIN,
+    '/permissions/pages/stats/housekeeping', true);
+cannot('a waiter cannot move their own page switch', WAITER,
+       '/permissions/pages/calendar/waiter', true);
+cannot('a page switch has to be a yes or a no', ADMIN,
+       '/permissions/pages/calendar/waiter', 'sometimes');
+cannot('no page switch exists for the manager role', ADMIN,
+       '/permissions/pages/calendar/manager', false);
+cannot('nor for the masseuse, whose reach is a rules decision', ADMIN,
+       '/permissions/pages/tally/spa', true);
+cannot('nor against admin', ADMIN, '/permissions/pages/tally/admin', false);
+cannot('Settings cannot be handed out as a page row', ADMIN,
+       '/permissions/pages/staff/waiter', true);
+cannot('nor Flags', ADMIN, '/permissions/pages/flags/waiter', true);
+cannot('nor the site map', ADMIN, '/permissions/pages/pages/waiter', true);
+cannot('nor Diagnostics', ADMIN, '/permissions/pages/debug/waiter', true);
+
 console.log('--- the customer id ---');
 
 canPatch('the sync writes the customer id onto the booking', SYNC,

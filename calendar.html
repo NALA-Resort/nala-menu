@@ -139,7 +139,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=66"></script>
+<script src="nala-shared.js?v=67"></script>
 <script>
 /* The whole house across a month: villas down the side, days across, each
    stay a bar. A reader in the rule-7 sense - every value here is owned
@@ -381,13 +381,14 @@ window.NALA_ROLE = null;
       window.NALA_ROLE = role; window.NALA_USER = u;
       ROLE = role;
       /* The board opens to cleansBoard - the grounds and housekeeping
-         logins are who it is for. A bar is a door to the Guest Profile,
-         which answers to resBoard, so the door only exists for a login
-         holding that key - the Dashboard's own doors rule. */
-      CAN_OPEN = can(role, 'resBoard');
+         logins are who it is for. A bar is a door to the Guest Profile, so
+         the door exists exactly when that page's own gate would let this
+         login in - the Dashboard's own doors rule, asked of the page
+         rather than of the capability it happens to borrow. */
+      CAN_OPEN = canOpen(role, 'guest.html');
       document.getElementById('navWrap').style.display = 'block';
       navFilter(role);
-      showAccess(can(role, 'cleansBoard'), e);
+      showAccess(canOpen(role, 'calendar.html'), e);
     });
   });
 })();

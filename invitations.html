@@ -152,7 +152,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=66"></script>
+<script src="nala-shared.js?v=67"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -606,7 +606,7 @@ window.NALA_ROLE = null;
       navFilter(role);
       /* Reception's job and the manager's: the same permission that opens the
          front desk, checked rather than assumed. */
-      showAccess(can(role, 'editBookings'), e);
+      showAccess(canOpen(role, 'invitations.html'), e);
     });
   });
 })();

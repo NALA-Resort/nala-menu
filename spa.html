@@ -152,7 +152,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=66"></script>
+<script src="nala-shared.js?v=67"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -1298,7 +1298,7 @@ window.NALA_ROLE = null;
       window.NALA_USER = u;
       document.getElementById('navWrap').style.display = 'block';
       navFilter(role);
-      showAccess(can(role, 'spaBoard'), e);
+      showAccess(canOpen(role, 'spa.html'), e);
     });
   });
 })();

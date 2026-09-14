@@ -533,7 +533,7 @@ button
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=66"></script>
+<script src="nala-shared.js?v=67"></script>
 <script src="nala-cards.js?v=11"></script>
 <script>
 /* Keys: the card register, built from the approved mock
@@ -973,7 +973,7 @@ function showAccess(allowed, e){
       window.NALA_ME   = staffKeyOf(u);
       document.getElementById('navWrap').style.display = 'block';
       navFilter(role);
-      showAccess(can(role, 'editBookings'), e);
+      showAccess(canOpen(role, 'keys.html'), e);
     });
   });
 })();

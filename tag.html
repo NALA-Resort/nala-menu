@@ -131,7 +131,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=66"></script>
+<script src="nala-shared.js?v=67"></script>
 <script>
 /* Tagging a menu is the chef's job and the manager's. Until 18 Aug there was
    no gate at all, so a cleaner could archive the dietary list. Sent to their
@@ -148,7 +148,7 @@
     loadStaff(function(recs, e){
       var role = roleOf(u);
       window.NALA_ROLE = role;
-      if (can(role, 'publishMenu') || e) return;
+      if (canOpen(role, 'tag.html') || e) return;
       document.querySelector('.wrap').style.display = 'none';
       document.getElementById('savebar').style.display = 'none';
       var home = homeFor(role);

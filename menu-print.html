@@ -373,7 +373,7 @@ fetchMenuAnywhere()
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=66"></script>
+<script src="nala-shared.js?v=67"></script>
 <script>
 /* This page had no gate at all: anyone with the address could open it, signed
    in or not. It leaks nothing, because the menu it prints comes from
@@ -394,7 +394,7 @@ fetchMenuAnywhere()
     loadStaff(function(recs, err){
       var role = roleOf(u);
       window.NALA_ROLE = role;
-      if (can(role, 'resSheet')) return;
+      if (canOpen(role, 'menu-print.html')) return;
       /* A role with a board of its own is sent there rather than shown a
          refusal. Only a login with no role at all gets the message, because
          it has nowhere to be sent. */

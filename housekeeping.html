@@ -133,7 +133,7 @@
         /* A failed staff read is not a refusal. Locking the sheet because the
            list would not load would keep housekeepers off their own work over
            a bad minute of signal. */
-        if (can(role, 'cleansBoard') || e){
+        if (canOpen(role, 'housekeeping.html') || e){
           window.NALA_NAVFILTER(role);
           return;
         }
@@ -195,7 +195,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=66"></script>
+<script src="nala-shared.js?v=67"></script>
 <script>
 // date state + header wiring, dates, look-back: nala-shared.js
 var nav = initDateNav();

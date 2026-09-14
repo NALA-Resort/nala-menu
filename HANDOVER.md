@@ -477,7 +477,14 @@ fix. `tests/run.py` reports how many have drifted.
 
 None of these can move without him.
 
-1. **The key-card rules paste.** `rules.json` moved again on 11 Sep: the
+1. **The page-switch rules paste.** `rules.json` moved again on 12 Sep:
+   `/permissions` grew a `pages` branch, the rows the new page switches on
+   Settings -> Roles write. Until the file is pasted into Firebase console ->
+   Realtime Database -> Rules -> Publish, the switches LOOK saved and are
+   refused: the grid shows "That change was not saved. Only an admin may
+   change these." on every page row. The capability rows above them are
+   unaffected. Same paste as item 2 below - one paste clears both.
+2. **The key-card rules paste.** `rules.json` moved again on 11 Sep: the
    card table (`/cards`) and the cut run (`/cutrun`) replaced `/cardjobs`.
    Until the file is pasted into Firebase console -> Realtime Database ->
    Rules -> Publish, the new nodes sit under the catch-all rule - the
@@ -487,35 +494,35 @@ None of these can move without him.
    The desk PC also needs the rebuilt helper: re-download
    `tools/nala-encoder.ps1` into the kit's `dll\64` folder (its settings
    live in `nala-config.ps1` beside it, so nothing needs re-typing).
-2. **Work through `SECURITY.md`.** Four jobs, about forty five minutes, all in a
+3. **Work through `SECURITY.md`.** Four jobs, about forty five minutes, all in a
    browser. Rotate the credentials (including two GitHub tokens that have been
    pasted into chat), delete the leftover Firebase logins, lock the Firebase key
    to the site, make the repository private.
-3. **Decide the guest page's dietaries: gone for good, or back, and how.** The
+4. **Decide the guest page's dietaries: gone for good, or back, and how.** The
    whole of it, including how to do either, is the first entry under Parked
    decisions below. It is listed here only so the question is visible when he
    asks what is outstanding.
-4. **Set `/settings/managerMobile`** in the Firebase console, as a plain string
+5. **Set `/settings/managerMobile`** in the Firebase console, as a plain string
    like `+61400000000`. The publish page reads the Notify management link from
    there. Until it is set the line reads as it did before, with no error.
-5. **Delete `menu.json` from the repo.** It holds the menu of 22 Aug and nothing
+6. **Delete `menu.json` from the repo.** It holds the menu of 22 Aug and nothing
    rewrites it now that publishing is in the database. Harmless since 23 Aug,
    because the reader refuses a file that is not for the day being asked about,
    but it is dead weight that only ever misleads.
-6. **Cancellations have never been seen to fire.** The Zap does not trigger.
+7. **Cancellations have never been seen to fire.** The Zap does not trigger.
    Until it does, a cancelled booking stays on the board. The Worker handles it
    and is tested; the feed is the only problem.
-7. **GuestTouch links** need `?b={{bookingId}}&r={{roomnumber}}`. This failed
+8. **GuestTouch links** need `?b={{bookingId}}&r={{roomnumber}}`. This failed
    for real on 22 Aug: the invitations went out with `{{bookingId}}` unmerged,
    so every confirmation was refused while the guest was thanked. The guest page
    now says when an answer did not save, and `r` is the villa fallback. Bare
    digits: `Room 12` is treated as absent rather than cleaned into a guess.
-8. **The pre-arrival dining description is placeholder copy.** Standing in and
+9. **The pre-arrival dining description is placeholder copy.** Standing in and
    live. Only the 6:00 to 6:30 seating is a real fact; the rest is invented and
    should be his. `prearrival.html`, id `dineHelp`.
-9. **Confirm the Mews companion field** against a live Zap run.
-10. **`TESTING.md`** is the checks only a human can run. **All of it unrun.**
-10. **Map the Mews rate name into the Zap, and paste the 26 Aug rules.** The
+10. **Confirm the Mews companion field** against a live Zap run.
+11. **`TESTING.md`** is the checks only a human can run. **All of it unrun.**
+12. **Map the Mews rate name into the Zap, and paste the 26 Aug rules.** The
     booking flags (defined on Settings, Flags; ticked per booking at the
     desk, admin only; printed under the guest's name on the FOH Sheet) work
     today, but until the paste they sit under the catch-all rule, which lets
@@ -529,7 +536,7 @@ None of these can move without him.
     in `RATE_FLAG` (`nala-shared.js`) takes any rate STARTING with "Luxury
     Escapes", a guess pending a real payload - the companion field's
     standing caution.
-11. **Two pastes to make the spa notifications buzz, 27 Aug.** The site now
+13. **Two pastes to make the spa notifications buzz, 27 Aug.** The site now
     fires five spa events and the sync Worker sweeps for the guest-form asks,
     but both halves end at Workers only the dashboard holds:
     - **Paste `worker/mews-sync.js` into its Worker again.** It gained the
@@ -554,7 +561,7 @@ None of these can move without him.
       events; nothing breaks, nothing buzzes. The masseuse's phone also has
       to subscribe once: his own hamburger menu, Settings, Notifications -
       the toggle every login carries.
-12. **Fill the Guest form tab, and paste the 31 Aug rules.** The
+14. **Fill the Guest form tab, and paste the 31 Aug rules.** The
     tab owns everything the pre-arrival form says in his words, at
     `/prearrivalinfo`: a welcome image for the landing (an image only -
     his ruling, after a day of owner text there), a dining image and text

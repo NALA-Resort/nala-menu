@@ -1072,7 +1072,128 @@ with sync_playwright() as p:
     ck("the defaults are still readable on their own",
        pg.evaluate("""()=>grantedByDefault('housekeeping','cleansMarks')===true
                         && grantedByDefault('housekeeping','setJob')===false"""))
+
+    # ---- the page switches above the matrix ----
+    # canOpen is the layer the Settings page rows write: /permissions/pages
+    # holds the manager's opinion about ONE page, and with no opinion stored
+    # a page answers exactly as the capability its gate used to borrow. The
+    # canon is tests/page_access_canon.json - the phone_cases pattern - and
+    # the pages themselves are scanned for their gates below, so a page
+    # built and listed nowhere fails by name rather than shipping ungated
+    # and unswitchable (the audit of 12 Sep, made permanent).
+    _pa = json.load(open("tests/page_access_canon.json"))["pages"]
+    _got = pg.evaluate("()=>NAV_NEEDS")
+    _want = dict((k + ".html", v) for k, v in _pa.items())
+    ck("NAV plus NAV_UNLISTED name exactly the canon's pages and needs, drift: "
+       + str(sorted(set(_got.items()) ^ set(_want.items()))), _got == _want)
+
+    _mism = pg.evaluate("""(pa)=>{ setPermissions(null); const bad=[];
+      for (const k in pa)
+        for (const r of ['admin','manager','chef','waiter','housekeeping','spa'])
+          if (canOpen(r, k+'.html') !== can(r, pa[k])) bad.push(r+'/'+k);
+      return bad; }""", _pa)
+    ck("with nothing stored, every page answers as the capability it borrows, "
+       + "wrong: " + str(_mism), _mism == [])
+
+    ck("a page switch closes one page for one role and nothing else",
+       pg.evaluate("""()=>{ setPermissions({pages:{tally:{waiter:false}}});
+          const a=!canOpen('waiter','tally.html') && canOpen('waiter','list.html')
+               && canOpen('chef','tally.html');
+          setPermissions(null); return a; }"""))
+    ck("or opens one the role never shipped with",
+       pg.evaluate("""()=>{ setPermissions({pages:{stats:{housekeeping:true}}});
+          const a=canOpen('housekeeping','stats.html')
+               && !canOpen('housekeeping','tally.html');
+          setPermissions(null); return a; }"""))
+    ck("a page switch outranks the capability row above it",
+       pg.evaluate("""()=>{ setPermissions({resBoard:{waiter:false},
+                                            pages:{tally:{waiter:true}}});
+          const a=canOpen('waiter','tally.html') && !canOpen('waiter','dashboard.html');
+          setPermissions(null); return a; }"""))
+    ck("a page value that is not a yes or a no is not an opinion",
+       pg.evaluate("""()=>{ setPermissions({pages:{tally:{waiter:'maybe'}}});
+          const a=canOpen('waiter','tally.html');
+          setPermissions(null); return a===true; }"""))
+    ck("an admin page never reads the switch: Settings cannot be handed out as a page",
+       pg.evaluate("""()=>{ setPermissions({pages:{staff:{waiter:true},
+                                                   debug:{chef:true}}});
+          const a=!canOpen('waiter','staff.html') && !canOpen('chef','debug.html');
+          setPermissions(null); return a; }"""))
+    ck("the manager cannot be locked out by a stray page row",
+       pg.evaluate("""()=>{ setPermissions({pages:{tally:{admin:false}}});
+          const a=canOpen('admin','tally.html');
+          setPermissions(null); return a===true; }"""))
+    ck("a page nobody has listed is merely ungated, not shut",
+       pg.evaluate("()=>canOpen('housekeeping','brand-new.html')===true"))
+
+    # The grid rows Settings draws: every canon page except the admin-only
+    # ones, each keyed by page, labelled as a door, carrying its href.
+    _grid = pg.evaluate("()=>PAGE_GRID")
+    _offer = sorted(k for k, n in _pa.items() if n != "manageStaff")
+    ck("the Settings grid offers exactly the non-admin pages, drift: "
+       + str(sorted(set(g[0] for g in _grid) ^ set(_offer))),
+       sorted(g[0] for g in _grid) == _offer)
+    ck("every grid row is a door: Open <name>, keyed by page, carrying its href",
+       all(g[1].startswith("Open ") and g[2] == g[0] + ".html" for g in _grid))
+
+    # The scan. Every gate asks canOpen by the page's own name, and every
+    # name asked with is in the canon.
+    import glob as _glob
+    _gated = set()
+    for _f in sorted(_glob.glob("*.html")):
+        if _f.startswith(("demo-", "mock-")): continue
+        _gated.update(re.findall(r"canOpen\(role,\s*'([a-z-]+)\.html'\)",
+                                 open(_f, encoding="utf-8").read()))
+    ck("no page still gates on a borrowed capability",
+       not [_f for _f in sorted(_glob.glob("*.html"))
+            if not _f.startswith(("demo-", "mock-"))
+            and re.search(r"showAccess\(can\(role", open(_f, encoding="utf-8").read())])
+    _miss = sorted(_gated - set(_pa)); _extra = sorted(set(_pa) - _gated)
+    ck("every canOpen gate in the repo is in the canon, unlisted: " + str(_miss),
+       not _miss)
+    ck("and every canon page still has a gate asking by its name, gone: "
+       + str(_extra), not _extra)
     pg.close()
+
+    # ---- the switch reaching the door itself ----
+    # Not only the function: a stored row must hide the menu entry and turn
+    # the page away at its own gate, because those two are what the manager
+    # believes the switch does.
+    def pageP(email, perms):
+        resetDb()
+        q = b.new_page(viewport={"width": 390, "height": 844})
+        q.route("**/firebase-app-compat.js", lambda r, _: r.fulfill(status=200,
+            content_type="application/javascript", body=sdk(email)))
+        q.route("**/firebase-auth-compat.js", lambda r, _: r.fulfill(status=200,
+            content_type="application/javascript", body="/*n*/"))
+        def fbp(route, request):
+            if "/permissions" in request.url:
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps(perms)); return
+            fb(route, request)
+        q.route("**firebasedatabase.app/**", fbp)
+        return q
+
+    q = pageP("waiter@nalaresort.com.au", {"pages": {"calendar": {"waiter": False}}})
+    q.goto("http://localhost:8957/calendar.html"); q.wait_for_timeout(1800)
+    ck("a page switched off refuses at the door and sends them home",
+       q.url.endswith("tally.html"))
+    q.close()
+    q = pageP("waiter@nalaresort.com.au", {"pages": {"calendar": {"waiter": False}}})
+    q.goto("http://localhost:8957/cleaners.html"); q.wait_for_timeout(1800)
+    vis = q.evaluate("""()=>{const a=document.querySelector('#navDrop a[href="calendar.html"]'),
+        t=document.querySelector('#navDrop a[href="tally.html"]');
+        return {cal:!!a&&getComputedStyle(a).display!=='none',
+                tal:!!t&&getComputedStyle(t).display!=='none'};}""")
+    ck("and its menu entry goes with it, alone",
+       vis["cal"] is False and vis["tal"] is True)
+    q.close()
+    q = pageP("housekeeping@nalaresort.com.au", {"pages": {"stats": {"housekeeping": True}}})
+    q.goto("http://localhost:8957/stats.html"); q.wait_for_timeout(1800)
+    ck("a page switched on opens for a role that never shipped with it",
+       q.url.endswith("stats.html") and q.evaluate(
+         "()=>getComputedStyle(document.querySelector('.wrap')).display!=='none'"))
+    q.close()
 
     # ---- the gate on the page ----
     # a chef has a board of their own, so they are sent to it rather than

@@ -256,7 +256,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=66"></script>
+<script src="nala-shared.js?v=67"></script>
 <script>
 /* Publishing is the chef's job and the manager's, gated on the same permission
    the tagging page uses. Sent to their own board rather than refused, since a
@@ -272,7 +272,7 @@
     loadStaff(function(recs, e){
       var role = roleOf(u);
       window.NALA_ROLE = role;
-      if (can(role, 'publishMenu') || e) return;
+      if (canOpen(role, 'publish.html') || e) return;
       document.getElementById('wrap').style.display = 'none';
       document.getElementById('bar').style.display = 'none';
       var home = homeFor(role);

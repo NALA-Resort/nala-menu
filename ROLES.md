@@ -60,22 +60,64 @@ in the villa before anybody else knows the guest has gone. So they get
 villa looks available and may mark or unmark a departure, and the buttons for
 finishing work or pushing a villa to tomorrow are hidden rather than disabled.
 
-### Pages with no permission of their own
+### Page access - the audit of 12 Sep, and the layer it built
 
-Three pages are gated on a permission borrowed from elsewhere, because
-inventing one for each would be four names for four pages:
+Every page's gate borrows a capability, and until 12 Sep the borrowing was
+the whole story: Keys borrowed `editBookings`, so taking Keys off the
+waiter meant taking Front Desk, Invitations and the rest of what that word
+opens. New pages arrived gated but invisible to Settings - the owner's
+complaint, verbatim: "every time I get a page built, it's not being added
+here." The audit found every gated page and what governed it:
 
-| Page | Needs | Why |
-|---|---|---|
-| Diagnostics | `manageStaff` | It deletes live data. Admin only - the manager role deliberately lacks it. |
-| Menu Dietaries | `publishMenu` | The chef's page, and the manager's. |
-| Statistics | `resBoard` | Reading, no writes, same audience as the board. |
-| Site map | `manageStaff` | A map of the whole app is an admin tool. |
+| Page | Gate (default) | In the menu? | Settings could touch it? |
+|---|---|---|---|
+| Dashboard | `resBoard` | yes | only via the capability |
+| Calendar | `cleansBoard` | yes | only via the capability |
+| Guest Profile | `resBoard` | no - a calendar bar | not at all: not in NAV, so no list knew it |
+| Reservations | `resBoard` | yes | only via the capability |
+| Front Desk | `editBookings` | yes | only via the capability |
+| Keys | `editBookings` | yes | only with Front Desk and the SMS pages |
+| Cleans | `cleansBoard` | yes | only via the capability |
+| Spa | `spaBoard` | yes | only via the capability |
+| Publish Menu | `publishMenu` | yes | only with Dietary |
+| FOH / Clean / Arrivals / Menu sheets | `resSheet` ×2, `cleansBoard`, `editBookings` | yes | only via the capability |
+| Past Menus | `resBoard` | yes | only via the capability |
+| Invitations, Pre-arrival SMS | `editBookings` | yes | only via the capability |
+| SMS Templates | `editBookings` | no - the SMS pages | not at all: not in NAV |
+| Statistics | `resBoard` | no - Reservations' Stats door | not at all: not in NAV |
+| Dietary Settings | `publishMenu` | yes | only with Publish Menu |
+| Settings, Flags, Site map, Diagnostics | `manageStaff` | 3 of 4 | admin only, correctly |
 
-Until 18 Aug the first two had no gate at all, which meant any login that
-could sign in could open Diagnostics and run Clean Slate. The rules cannot
-catch that: the deletes it makes are the same writes those roles legitimately
-make elsewhere, so the page has to be the gate.
+So: every page a role holds arrived as a side effect of a capability word,
+four gated pages were in no list at all, and nothing per-page could be
+switched. What closed it:
+
+- **`NAV_UNLISTED`** (nala-shared.js) lists the four gated pages the menu
+  does not carry, beside `NAV`. `NAV_NEEDS` reads both, so every gated
+  page is in exactly one list.
+- **`canOpen(role, href)`** is the one reading of "may this role open this
+  page". Default: the capability in `NAV_NEEDS`, exactly as before.
+  Override: `/permissions/pages/<page>/<role>`, written by the page rows
+  on the Settings Roles tab. Only an explicit true or false is an opinion.
+- **Every page's gate asks `canOpen` by its own name** instead of
+  restating its capability - two copies of one fact until then. The menu
+  filter asks the same function, so the entry and the door always agree.
+- **The Settings grid's page rows are drawn from `PAGE_GRID`**, derived
+  from the same two lists. A new page added to `NAV` is a switch in
+  Settings the same day, with no edit to staff.html - and
+  `tests/page_access_canon.json` is the canon the suites hold all of it
+  to, including a scan of every page's gate, so a page listed nowhere
+  fails by name.
+
+Two doors stay shut, in canOpen and in the rules both: an admin page (need
+`manageStaff`) never reads the override - a Settings page handed out as a
+page row would be manageStaff under another name - and admin is answered
+before the override, so a stray row cannot lock the owner out.
+
+Until 18 Aug Diagnostics and Dietary had no gate at all, which meant any
+login that could sign in could open Diagnostics and run Clean Slate. The
+rules cannot catch that: the deletes it makes are the same writes those
+roles legitimately make elsewhere, so the page has to be the gate.
 
 **No record means no access.** Someone who signs in without a staff record
 gets no boards and a message to see the manager. Deliberately not the lowest
@@ -123,7 +165,14 @@ changing their mind, and it is edited from the grid in Settings.
 
 ```
 /permissions/<action>/<role> = true | false
+/permissions/pages/<page>/<role> = true | false     (page rows, 12 Sep)
 ```
+
+`<page>` is the file name without `.html` - `front-desk`, `menu-print`. The
+rules refuse a row for the admin-only pages (`staff`, `flags`, `pages`,
+`debug`) and for any role but the three grid columns; new pages need no
+rules change, which is deliberate - a whitelist there would re-create the
+audit's finding, a page built and not switchable until a console paste.
 
 Only the boxes moved away from the shipped default are stored. A missing
 action, a missing role, or a value that is not a boolean all mean no opinion,
@@ -151,7 +200,10 @@ override list did not answer would turn a small outage into a locked door.
 as well, because it is the only one of the seven that is a write the rules can
 see. The other six hide a button. That is enough for an honest mistake and it
 is not a lock, and the note under the grid says so rather than implying more
-than it does.
+than it does. A page switch is the same kind of thing one level up: it hides
+the menu entry and the page's own gate turns the login away to its home
+board, but the data the page reads is governed by the rules, not by the
+switch - closing the Spa board's page does not close `/spa`.
 
 ## Rules
 

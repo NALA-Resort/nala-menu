@@ -265,7 +265,10 @@
       app came. An admin always has everything, and a manager everything but this
       page, so neither is offered here. Only "Change what a villa needs" is
       enforced by the database as well as by the app: the others hide the button,
-      which is enough for an honest mistake and is not a lock.</div>
+      which is enough for an honest mistake and is not a lock. A page switch
+      left alone follows the abilities above it; moved, it opens or closes that
+      one page for that role &mdash; the menu entry goes with it, and the page
+      itself refuses and sends them to their own board.</div>
       <div class="err" id="permErr"></div>
     </div>
 
@@ -374,7 +377,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=66"></script>
+<script src="nala-shared.js?v=67"></script>
 <script>
 var ROLES = ['admin','manager','chef','waiter','housekeeping'];
 /* The human roles, and the ones the notification matrix targets. manager is
@@ -424,7 +427,7 @@ var STAFF = {}, CFG = null;
       var role = roleOf(u);
       window.NALA_ROLE = role;
       navFilter(role);
-      if (!can(role,'manageStaff')){
+      if (!canOpen(role,'staff.html')){
         if (!err){
           var home = homeFor(role);
           if (home){ location.replace(home); return; }
@@ -676,13 +679,18 @@ function pickList(cfg){
   function draw(){
     var sel = cfg.roles[pick];
     cfg.chips.innerHTML = cfg.roles.map(function(r,j){
-      var n = cfg.items.filter(function(it){ return cfg.isOn(it, r); }).length;
+      var n = cfg.items.filter(function(it){ return !it.sec && cfg.isOn(it, r); }).length;
       return '<button class="chip' + (r === sel ? ' on' : '') + '" data-r="' + j +
              '" aria-pressed="' + (r === sel) + '">' + r +
              '<span class="count">' + n + '</span></button>';
     }).join('');
     cfg.head.textContent = 'What ' + sel + ' ' + cfg.verb;
     cfg.list.innerHTML = cfg.items.map(function(it,i){
+      /* A heading between two runs of rows, not a setting: it draws as a
+         label, takes no switch and no click, and the chip count above
+         skips it. Only the Roles list has one; Notifications has no
+         second run to divide. */
+      if (it.sec) return '<div class="seclabel">' + it.sec + '</div>';
       var on = cfg.isOn(it, sel);
       /* Each switch carries its own id, and it is not decoration. The sweep
          names a control by tag, id and label; a switch has no label, so
@@ -720,20 +728,51 @@ function pickList(cfg){
    direction: a permission switched off is as much a change as one switched
    on, and the old grid said "changed" under only the cell it belonged to,
    floating free of anything the eye could attach it to.                */
+/* The page rows ride the same list, below their own heading: a third
+   pickList would be a second "Who is being set up" on one tab, and the
+   suites hold this file to two callers. An action row is a pair and a page
+   row a triple carrying its href - that third slot is how the callbacks
+   below tell them apart. The page list itself is PAGE_GRID in
+   nala-shared.js, derived from NAV, so a page added to the menu is a
+   switch here the same day, with no edit to this file - which is the
+   complaint (the owner, 12 Sep) the rows exist to close.
+
+   A page row without an opinion stored shows canOpen's real answer - the
+   capability its page borrows, ticks in the row above included - and its
+   dot marks an opinion that differs from that answer.                  */
 var drawPerms = pickList({
   chips: document.getElementById('permPick'),
   head:  document.getElementById('permHead'),
   list:  document.getElementById('permList'),
-  roles: PERM_ROLES, items: PERM_ACTIONS, verb: 'may do', pfx: 'may-',
+  roles: PERM_ROLES, items: PERM_ACTIONS.concat(
+    [{sec:'And which pages they may open'}], PAGE_GRID),
+  verb: 'may do', pfx: 'may-',
   isOn: function(ac, r){
+    if (ac[2]) {
+      var prow = (PERMS.pages || {})[ac[0]] || {};
+      return (typeof prow[r] === 'boolean') ? prow[r] : can(r, NAV_NEEDS[ac[2]]);
+    }
     var row = PERMS[ac[0]] || {};
     return (typeof row[r] === 'boolean') ? row[r] : grantedByDefault(r, ac[0]);
   },
   moved: function(ac, r){
+    if (ac[2]) {
+      var prow = (PERMS.pages || {})[ac[0]] || {};
+      return typeof prow[r] === 'boolean' && prow[r] !== can(r, NAV_NEEDS[ac[2]]);
+    }
     var row = PERMS[ac[0]] || {};
     return typeof row[r] === 'boolean' && row[r] !== grantedByDefault(r, ac[0]);
   },
   toggle: function(ac, r){
+    if (ac[2]) {
+      var prow = (PERMS.pages || {})[ac[0]] || {};
+      var pnow = (typeof prow[r] === 'boolean') ? prow[r] : can(r, NAV_NEEDS[ac[2]]);
+      if (!PERMS.pages) PERMS.pages = {};
+      if (!PERMS.pages[ac[0]]) PERMS.pages[ac[0]] = {};
+      PERMS.pages[ac[0]][r] = !pnow;
+      setPermissions(PERMS); savePerms();
+      return;
+    }
     var row = PERMS[ac[0]] || {};
     var now = (typeof row[r] === 'boolean') ? row[r] : grantedByDefault(r, ac[0]);
     if (!PERMS[ac[0]]) PERMS[ac[0]] = {};

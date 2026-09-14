@@ -1,0 +1,39 @@
+{
+  "_comment": [
+    "Every gated staff page and the capability its gate falls back to -",
+    "NAV_NEEDS in nala-shared.js, as the suites assert it. The",
+    "phone_cases.json pattern: NAV and NAV_UNLISTED are what the app",
+    "reads, this is what the tests expect, and whichever side a new page",
+    "misses fails by name. The suite also scans the pages themselves for",
+    "canOpen gates, so a page built with a gate and listed nowhere is",
+    "named here too - which is the audit of 12 Sep made permanent.",
+    "A page whose need is manageStaff is admin-only: it gets no row in the",
+    "Settings grid, its gate never reads /permissions/pages, and the rules",
+    "refuse it a row outright."
+  ],
+  "pages": {
+    "dashboard": "resBoard",
+    "calendar": "cleansBoard",
+    "guest": "resBoard",
+    "front-desk": "editBookings",
+    "keys": "editBookings",
+    "tally": "resBoard",
+    "stats": "resBoard",
+    "cleaners": "cleansBoard",
+    "spa": "spaBoard",
+    "publish": "publishMenu",
+    "list": "resSheet",
+    "housekeeping": "cleansBoard",
+    "registration": "editBookings",
+    "menu-print": "resSheet",
+    "past-menus": "resBoard",
+    "invitations": "editBookings",
+    "arrivals-sms": "editBookings",
+    "templates": "editBookings",
+    "staff": "manageStaff",
+    "tag": "publishMenu",
+    "flags": "manageStaff",
+    "pages": "manageStaff",
+    "debug": "manageStaff"
+  }
+}

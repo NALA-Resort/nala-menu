@@ -181,7 +181,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=66"></script>
+<script src="nala-shared.js?v=67"></script>
 <script>
 /* The guest profile: everything the app knows about one booking, on one
    screen, reached from a calendar bar. URL: guest.html?b=<bookingId> - the
@@ -567,7 +567,7 @@ window.NALA_ROLE = null;
       /* The profile answers to resBoard, the same audience as the boards
          it gathers from. The Calendar's bars only link here for logins
          holding that key, so a refused landing is the rare hand-typed URL. */
-      showAccess(can(role, 'resBoard'), e);
+      showAccess(canOpen(role, 'guest.html'), e);
     });
   });
 })();

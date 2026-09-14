@@ -255,6 +255,14 @@
     "permissions": {
       ".read": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').exists()",
       ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff')",
+      "pages": {
+        "$page": {
+          ".validate": "$page.matches(/^[a-z][a-z-]{1,30}$/) && $page != 'staff' && $page != 'flags' && $page != 'pages' && $page != 'debug'",
+          "$role": {
+            ".validate": "newData.isBoolean() && ($role == 'chef' || $role == 'waiter' || $role == 'housekeeping')"
+          }
+        }
+      },
       "$action": {
         ".validate": "$action == 'resBoard' || $action == 'editBookings' || $action == 'resSheet' || $action == 'publishMenu' || $action == 'cleansBoard' || $action == 'cleansMarks' || $action == 'setJob' || $action == 'spaBoard'",
         "$role": {
