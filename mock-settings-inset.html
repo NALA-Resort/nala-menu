@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Nala &middot; Mock &middot; Settings, inset cards</title>
+<style>
+  /* IDEA A - INSET CARDS. The iOS grouped-settings dialect (Mobbin: Fi's
+     Pack Settings, Structured's Privacy & Permissions): white rounded cards
+     inset on the house cream, one job per card, every switch row carrying a
+     one-line reason. People keep their role INLINE as a pill dropdown, so
+     changing a role never leaves the list. Colour law respected: green is
+     a positive state, amber is a moved setting, red appears nowhere.
+     A mock: local state only, nothing saved, nobody real. */
+  :root {
+    --cream:#F9F7F4; --card:#FFFFFF; --ink:#1B1B19; --mid:#5F5F58;
+    --rule:#E6E6E1; --green:#5E7D67; --green-t:#E4EDE2; --green-b:#7E937A;
+    --amber:#C29A55; --amber-ink:#8A6A2F; --amber-t:#F6EAD5;
+    --terra:#9E6455; --r:16px;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--cream); color:var(--ink);
+         font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         padding:calc(20px + env(safe-area-inset-top)) 16px 48px;
+         max-width:430px; margin-inline:auto; }
+  .crumb { font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+           color:var(--mid); }
+  h1 { font-size:28px; font-weight:700; margin:6px 0 14px; letter-spacing:-.02em; }
+
+  .seg { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px;
+         scrollbar-width:none; margin-bottom:18px; }
+  .seg::-webkit-scrollbar { display:none; }
+  .seg button { flex:0 0 auto; border:1px solid var(--rule); background:var(--card);
+    color:var(--mid); font:inherit; font-size:13px; padding:8px 14px;
+    border-radius:999px; min-height:36px; }
+  .seg button.on { background:var(--ink); border-color:var(--ink); color:#fff; }
+
+  .sec { font-size:12px; letter-spacing:.12em; text-transform:uppercase;
+         color:var(--mid); margin:22px 4px 8px; }
+  .card { background:var(--card); border:1px solid var(--rule);
+          border-radius:var(--r); overflow:hidden;
+          box-shadow:0 1px 2px rgba(27,27,25,.04); }
+  .row { display:flex; align-items:center; gap:12px; padding:13px 14px;
+         min-height:56px; border-bottom:1px solid var(--rule); }
+  .row:last-child { border-bottom:none; }
+
+  .av { width:38px; height:38px; border-radius:50%; flex:0 0 38px;
+        display:grid; place-items:center; font-size:14px; font-weight:600;
+        color:#fff; background:var(--green); }
+  .av.b2 { background:var(--terra); } .av.b3 { background:var(--amber); }
+  .av.b4 { background:#6E7B8B; } .av.b5 { background:#8B7B6E; }
+  .who { flex:1; min-width:0; }
+  .nm { font-size:15px; font-weight:600; }
+  .sub { font-size:12.5px; color:var(--mid); margin-top:1px; }
+  .rolepill { border:1px solid var(--rule); background:var(--cream); font:inherit;
+    font-size:12.5px; color:var(--ink); padding:6px 10px; border-radius:999px;
+    display:flex; align-items:center; gap:5px; min-height:32px; }
+  .rolepill svg { opacity:.55; }
+  .addrow { color:var(--green); font-weight:600; font-size:14.5px; }
+  .plus { width:38px; height:38px; border-radius:50%; border:1.5px dashed var(--green-b);
+          display:grid; place-items:center; color:var(--green); flex:0 0 38px;
+          font-size:20px; font-weight:400; }
+
+  .ic { width:34px; height:34px; border-radius:10px; flex:0 0 34px;
+        display:grid; place-items:center; background:var(--cream);
+        border:1px solid var(--rule); font-size:15px; }
+  .why { font-size:12.5px; color:var(--mid); margin-top:2px; line-height:1.35; }
+  .moved { display:inline-block; width:7px; height:7px; border-radius:50%;
+           background:var(--amber); margin-left:6px; vertical-align:1px; }
+
+  .sw { width:50px; height:30px; border-radius:999px; border:1px solid var(--rule);
+        background:var(--rule); position:relative; flex:0 0 50px; transition:background .18s; }
+  .sw::after { content:""; position:absolute; top:2px; left:2px; width:24px;
+        height:24px; border-radius:50%; background:#fff; transition:left .18s;
+        box-shadow:0 1px 3px rgba(27,27,25,.25); }
+  .sw.on { background:var(--green); border-color:var(--green); }
+  .sw.on::after { left:22px; }
+
+  .chips { display:flex; gap:6px; overflow-x:auto; margin:10px 4px 8px;
+           scrollbar-width:none; }
+  .chips::-webkit-scrollbar { display:none; }
+  .chips button { flex:0 0 auto; font:inherit; font-size:13px; padding:7px 13px;
+    min-height:34px; border-radius:999px; border:1px solid var(--rule);
+    background:var(--card); color:var(--mid); }
+  .chips button.on { background:var(--green-t); border-color:var(--green-b);
+    color:var(--green); font-weight:600; }
+  .foot { font-size:12.5px; color:var(--mid); line-height:1.45; margin:10px 6px 0; }
+  .foot .dot { display:inline-block; width:7px; height:7px; border-radius:50%;
+               background:var(--amber); vertical-align:1px; }
+</style>
+</head>
+<body>
+<div class="crumb">Nala &middot; mock A of 3 &middot; nothing live</div>
+<h1>Settings</h1>
+
+<div class="seg">
+  <button class="on">People</button><button>Access</button><button>Alerts</button>
+  <button>Spa</button><button>Guest form</button>
+</div>
+
+<div class="sec">Staff</div>
+<div class="card">
+  <div class="row"><div class="av">B</div>
+    <div class="who"><div class="nm">Ben</div><div class="sub">Signs in with email</div></div>
+    <button class="rolepill">admin
+      <svg width="10" height="10" viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
+  <div class="row"><div class="av b2">M</div>
+    <div class="who"><div class="nm">Marco</div><div class="sub">Passcode &middot; last in yesterday</div></div>
+    <button class="rolepill">chef
+      <svg width="10" height="10" viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
+  <div class="row"><div class="av b3">L</div>
+    <div class="who"><div class="nm">Livia</div><div class="sub">Passcode &middot; in today</div></div>
+    <button class="rolepill">waiter
+      <svg width="10" height="10" viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
+  <div class="row"><div class="av b4">M</div>
+    <div class="who"><div class="nm">Maria</div><div class="sub">Passcode &middot; in today</div></div>
+    <button class="rolepill">housekeeping
+      <svg width="10" height="10" viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
+  <div class="row"><div class="av b5">T</div>
+    <div class="who"><div class="nm">Tom</div><div class="sub">Outside contractor &middot; Spa board only</div></div>
+    <button class="rolepill">spa
+      <svg width="10" height="10" viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
+  <div class="row"><div class="plus">+</div><div class="who addrow">Add someone</div></div>
+</div>
+
+<div class="sec">Access &middot; who is being set up</div>
+<div class="chips">
+  <button class="on">chef</button><button>waiter</button><button>housekeeping</button>
+</div>
+
+<div class="card">
+  <div class="row"><div class="ic">&#127869;</div>
+    <div class="who"><div class="nm">See Reservations</div>
+      <div class="why">Tonight&rsquo;s numbers, the board the kitchen reads.</div></div>
+    <button class="sw on" aria-label="See Reservations"></button></div>
+  <div class="row"><div class="ic">&#128221;</div>
+    <div class="who"><div class="nm">Edit a booking</div>
+      <div class="why">Change dinner answers, phones and notes.</div></div>
+    <button class="sw" aria-label="Edit a booking"></button></div>
+  <div class="row"><div class="ic">&#128424;</div>
+    <div class="who"><div class="nm">Publish and tag the menu</div>
+      <div class="why">Put tonight&rsquo;s four courses live, dietaries included.</div></div>
+    <button class="sw on" aria-label="Publish menu"></button></div>
+  <div class="row"><div class="ic">&#129532;</div>
+    <div class="who"><div class="nm">Mark a clean done<span class="moved"></span></div>
+      <div class="why">Housekeeping&rsquo;s own marks on the Cleans board.</div></div>
+    <button class="sw" aria-label="Mark a clean done"></button></div>
+</div>
+
+<div class="sec">And which pages chef may open</div>
+<div class="card">
+  <div class="row"><div class="ic">&#128506;</div>
+    <div class="who"><div class="nm">Dashboard</div>
+      <div class="why">Follows &ldquo;See Reservations&rdquo; unless moved.</div></div>
+    <button class="sw on" aria-label="Open Dashboard"></button></div>
+  <div class="row"><div class="ic">&#128197;</div>
+    <div class="who"><div class="nm">Calendar<span class="moved"></span></div>
+      <div class="why">Moved: the house view opened for the kitchen.</div></div>
+    <button class="sw on" aria-label="Open Calendar"></button></div>
+  <div class="row"><div class="ic">&#128179;</div>
+    <div class="who"><div class="nm">Keys</div>
+      <div class="why">The card register. The desk&rsquo;s, not the kitchen&rsquo;s.</div></div>
+    <button class="sw" aria-label="Open Keys"></button></div>
+  <div class="row"><div class="ic">&#128737;</div>
+    <div class="who"><div class="nm">Spa</div>
+      <div class="why">Treatment requests and what became of each.</div></div>
+    <button class="sw" aria-label="Open Spa"></button></div>
+</div>
+
+<div class="foot"><span class="dot"></span>&nbsp;marks a switch moved from what the
+role&rsquo;s abilities give. An admin always has everything and is not offered
+here. A page switched off loses its menu entry, and the page itself turns the
+login away.</div>
+
+<script>
+  /* Local feel only: switches flip, chips select, nothing is written. */
+  document.querySelectorAll('.sw').forEach(function(s){
+    s.onclick = function(){ s.classList.toggle('on'); };
+  });
+  document.querySelectorAll('.chips button, .seg button').forEach(function(c){
+    c.onclick = function(){
+      c.parentElement.querySelectorAll('button').forEach(function(x){ x.classList.remove('on'); });
+      c.classList.add('on');
+    };
+  });
+</script>
+</body>
+</html>
