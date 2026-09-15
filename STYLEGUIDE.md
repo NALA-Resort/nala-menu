@@ -568,27 +568,6 @@ columns a busy guest stacked three deep and left the row half empty.
   operations; every `/manual` write preserves a room's reservation details
   (name, phone, diets, notes, and a dining pax) via `withExtras`.
 
-## The third dress (ui3), 15 Sep
-
-The finish pass the owner ruled off the mock set on the site map: keep
-every layout, keep the modest font, keep every colour meaning, sleek the
-finish. It lives entirely in `nala-ui3.css` - hairline borders, 12px
-corners via the shared `--r` token, open chrome buttons, tabular numbers -
-and a page wears it by linking that sheet and adding `ui3` to its body
-class. Every current ui2 staff page wears it.
-
-Two rules the file itself repeats: FINISH ONLY (no fill or ink that
-carries a meaning moves - the colour law is untouched, ruled again 15 Sep:
-red the declined invitation and the awaiting count, waiting a white dashed
-tile) and ONE FILE (a page never restyles the dress locally; body.ui3
-selectors outrank page styles on purpose). The way back is removing the
-class and the link - per page or all pages - plus the `?v=` bump; no
-behaviour is touched in either direction.
-
-The five pages still on the first dress (publish, tag, flags, stats,
-debug) join ui3 when they join ui2, which remains a page-by-page
-conversion, not a class flip.
-
 ## Rules of change
 
 - **Shared files are versioned at their references.** Any edit to nala-ui.css

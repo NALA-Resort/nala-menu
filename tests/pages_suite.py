@@ -187,7 +187,7 @@ with sync_playwright() as p:
         if f.startswith("demo-"):
             continue
         for m in _r.finditer(
-                r'(nala-shared\.js|auth\.js|nala-ui\.css|nala-ui2\.css|nala-ui3\.css)\?v=(\d+)',
+                r'(nala-shared\.js|auth\.js|nala-ui\.css|nala-ui2\.css)\?v=(\d+)',
                 open(f, encoding='utf-8').read()):
             vers.setdefault(m.group(1), set()).add(m.group(2))
     print("   shared file versions:", {k: sorted(v) for k, v in vers.items()})

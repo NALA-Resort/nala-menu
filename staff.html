@@ -11,7 +11,6 @@
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Staff</title>
 <link rel="stylesheet" href="nala-ui2.css?v=6">
-<link rel="stylesheet" href="nala-ui3.css?v=2">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
   body { padding:calc(24px + env(safe-area-inset-top)) 18px 40px; }
@@ -178,11 +177,6 @@
                 overflow:hidden; text-overflow:ellipsis; }
   .person .sub { font-size:var(--t2); color:var(--mid); margin-top:2px;
                  display:block; overflow-wrap:anywhere; }
-  .person .av { flex:0 0 auto; width:36px; height:36px; border-radius:50%;
-                display:grid; place-items:center; font-size:var(--t2);
-                font-weight:600; color:#5E7D67;
-                background:rgba(122,160,130,.22);
-                border:1px solid rgba(122,160,130,.45); }
   .person .rl { flex:0 0 auto; font-size:var(--t2); color:var(--mid);
                 background:var(--card); border-radius:var(--pill);
                 padding:3px var(--s2); }
@@ -235,7 +229,7 @@
   .dim { opacity:.45; }
 </style>
 </head>
-<body class="tier-app ui2 ui3">
+<body class="tier-app ui2">
 <div class="wrap">
 
   <div class="daterow">
@@ -507,13 +501,8 @@ function drawPeople(){
     var row = document.createElement('button');
     row.className = 'person';
     row.type = 'button';
-    row.innerHTML = '<span class="av"></span>'+
-                    '<span class="mid"><span class="nm"></span>'+
+    row.innerHTML = '<span class="mid"><span class="nm"></span>'+
                     '<span class="sub"></span></span><span class="rl"></span>';
-    /* The initial circle from the approved mock, 15 Sep. One letter of the
-       name, in the quiet green of the dress - identity, not a status, so
-       it deliberately wears no law colour that means anything. */
-    row.querySelector('.av').textContent  = (r.name || '?').trim().charAt(0).toUpperCase();
     row.querySelector('.nm').textContent  = r.name || '(no name)';
     row.querySelector('.sub').textContent = codeOf(k);
     row.querySelector('.rl').textContent  = normaliseRole(r.role) || '';
