@@ -84,3 +84,45 @@ body.ui3 #board .chip { border-radius:8px; }
 /* ── Settings (staff) ──────────────────────────────────────────── */
 body.ui3 .person { border-radius:12px; }
 body.ui3 .chips .chip { border-radius:999px; }
+
+/* ── the second fitting, 15 Sep ────────────────────────────────
+   The owner, off the live app beside the approved mock: the first cut
+   of this dress was fainter than what was signed off. This section
+   builds the sheet UP to the mock - card depth, pill tags, full
+   toggles - still finish-only, still this one file. */
+
+/* Settings: the lists sit on white cards, rows divided inside them. */
+body.ui3 #people, body.ui3 #permList, body.ui3 #notifList {
+  background:#fff; border:1px solid var(--u3-hair); border-radius:14px;
+  padding:0 14px; }
+body.ui3 #people .person:last-child { border-bottom:0; }
+body.ui3 #permList .evrow:last-child,
+body.ui3 #notifList .evrow:last-child { border-bottom:0; }
+
+/* The role tag reads as a pill, as the mock draws it. */
+body.ui3 .person .rl { border:1px solid var(--u3-hair); border-radius:999px;
+  padding:5px 11px; font-size:var(--t1); }
+
+/* Tabs: quiet text with an inked underline on the open one. */
+body.ui3 .tabs { border-bottom:1px solid var(--rule); gap:4px; }
+body.ui3 .tab { background:none; border:0;
+  border-bottom:2px solid transparent; color:var(--mid); }
+body.ui3 .tab.on { background:none; color:var(--ink); font-weight:600;
+  border-bottom-color:var(--ink); }
+
+/* The role chips: white pills, the chosen one in the law's green tint.
+   Scoped by picker id - the Dashboard has its own .chips that mean
+   something else and must not catch this. */
+body.ui3 #permPick .chip, body.ui3 #notifPick .chip {
+  background:#fff; border:1px solid var(--u3-hair); border-radius:999px;
+  color:var(--mid); }
+body.ui3 #permPick .chip.on, body.ui3 #notifPick .chip.on {
+  background:var(--law-save-bg, #E4EDE2);
+  border-color:var(--law-save-bdr, #7E937A);
+  color:var(--law-save-ink, #5E7D67); font-weight:600; }
+
+/* The toggles grow into the mock's switch, and the on-state wears the
+   law's green - a positive state - where it had drifted to the working
+   blue. Off stays a quiet grey. */
+body.ui3 .sw { background:var(--rule); }
+body.ui3 .sw.on { background:var(--law-green, #5E7D67); }
