@@ -3,205 +3,254 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Nala &middot; Mock &middot; Reservations, floor grid</title>
+<title>Nala &middot; Mock &middot; Reservations, refined</title>
 <style>
-  /* IDEA B - FLOOR GRID. The map stays - it is how reception thinks -
-     and modernises: bigger soft tiles, seat-together drawn as one joined
-     capsule rather than an outline, and Luma/Partiful-style filter chips
-     with counts that DIM everything else instead of hiding it, so the
-     house never loses its shape. Tapping a villa opens a bottom sheet
-     (shown open here) carrying the whole record: pax, the dining answer
-     as three law-coloured choices, dietaries, the note. The colour law
-     is the legend: green dining, terracotta declined, dashed awaiting,
-     sunk vacant, red only on the allergy. A mock: invented guests, local
-     state, nothing saved. */
+  /* IDEA B, SECOND PASS - the owner, 15 Sep: keep the layout, make it
+     sleek and modern, not game-like; the first pass kept the layout and
+     destroyed the modest font. So this is the CURRENT page, element for
+     element and in its order - date row, the three numbers, published
+     pill beside Select multiple, the villa grid with seat-together
+     outlines, the legend, the party line, Add reservation, the list,
+     Refresh and Stats - wearing the house type at the house scale
+     (12/14/16/20/27, nothing heavier than 600) with a sleeker finish:
+     hairline borders, soft 12px corners, a breath more air, tabular
+     numbers. The colour law is untouched: green dining, terracotta a
+     guest's no, dashed awaiting (amber ink for chase-this - the one
+     departure, the current page paints that number red, which the law
+     reserves for failure), vacant sunk, red on the allergy alone.
+     A mock: invented guests, local state, nothing saved. */
   :root {
     --cream:#F9F7F4; --card:#FFFFFF; --ink:#1B1B19; --mid:#5F5F58;
-    --rule:#E6E6E1; --green:#5E7D67; --green-t:rgba(122,160,130,.26);
-    --green-b:rgba(122,160,130,.65); --terra:#9E6455;
-    --terra-t:rgba(184,106,90,.16); --terra-b:rgba(184,106,90,.45);
+    --rule:#E6E6E1; --hair:rgba(28,28,26,.12);
+    --green:#5E7D67; --green-t:rgba(122,160,130,.26); --green-b:rgba(122,160,130,.65);
+    --terra:#9E6455; --terra-t:rgba(184,106,90,.16); --terra-b:rgba(184,106,90,.45);
     --amber-t:#F6EAD5; --amber-b:#C29A55; --amber-ink:#8A6A2F;
     --red:#A8321E; --gold:#B07D2B;
+    --t1:12px; --t2:14px; --t3:16px; --t4:20px; --t5:27px;
   }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { margin:0; background:var(--cream); color:var(--ink);
-         font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-         padding:calc(18px + env(safe-area-inset-top)) 16px 300px;
-         max-width:430px; margin-inline:auto; }
-  .crumb { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--mid); }
-  .datebar { display:flex; align-items:center; gap:8px; margin:8px 0 12px; }
-  .datebar h1 { font-size:22px; font-weight:700; margin:0; letter-spacing:-.02em; flex:1; }
-  .dn { width:36px; height:36px; border-radius:12px; border:1px solid var(--rule);
-        background:var(--card); font:inherit; font-size:16px; color:var(--ink); }
-  .today { width:auto; padding:0 12px; font-size:13px; color:var(--mid); }
+         font-family:-apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
+         font-size:var(--t2); padding:calc(16px + env(safe-area-inset-top)) 18px 40px;
+         max-width:430px; margin-inline:auto;
+         font-variant-numeric:tabular-nums; }
+  .crumb { font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+           color:var(--mid); margin-bottom:10px; }
 
-  .toprow { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
-  .pub { display:inline-flex; align-items:center; gap:7px; font-size:12.5px;
-         color:var(--green); background:var(--green-t); border:1px solid var(--green-b);
-         border-radius:999px; padding:6px 12px; }
-  .pub::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--green); }
-  .covers { margin-left:auto; font-size:13px; color:var(--mid); }
-  .covers b { font-size:18px; color:var(--ink); }
+  .daterow { display:flex; align-items:center; gap:8px; }
+  .today { font-size:var(--t2); color:var(--mid); background:none;
+           border:1px solid var(--hair); border-radius:10px; padding:7px 12px;
+           font-family:inherit; min-height:36px; }
+  .dn { width:36px; height:36px; border-radius:10px; border:1px solid var(--hair);
+        background:none; font:inherit; font-size:15px; color:var(--ink);
+        display:grid; place-items:center; }
+  .date { font-size:var(--t4); font-weight:600; letter-spacing:-.01em;
+          flex:1; text-align:center; }
+  .nav { width:36px; height:36px; border-radius:10px; border:1px solid var(--hair);
+         background:none; display:grid; place-items:center; gap:0; }
+  .nav span { display:block; width:15px; height:1.5px; background:var(--ink);
+              margin:1.75px 0; border-radius:2px; }
 
-  .chips { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px;
-           scrollbar-width:none; margin-bottom:12px; }
-  .chips::-webkit-scrollbar { display:none; }
-  .chips button { flex:0 0 auto; font:inherit; font-size:12.5px; padding:7px 12px;
-    min-height:34px; border-radius:999px; border:1px solid var(--rule);
-    background:var(--card); color:var(--mid); display:flex; gap:5px; align-items:center; }
-  .chips button b { font-weight:700; color:var(--ink); }
-  .chips button.on { background:var(--ink); border-color:var(--ink); color:#fff; }
-  .chips button.on b { color:#fff; }
+  .stats { display:flex; justify-content:space-evenly; text-align:center;
+           margin:22px 0 20px; }
+  .st .n { font-size:var(--t5); font-weight:600; letter-spacing:-.02em; }
+  .st .k { font-size:var(--t2); color:var(--mid); margin-top:2px; }
+  .st.chase .n { color:var(--amber-ink); }
 
-  .floor { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-  .villa { border-radius:16px; min-height:64px; padding:8px 6px; text-align:center;
-           border:1.5px solid var(--rule); background:var(--card); position:relative; }
-  .vn { font-size:17px; font-weight:700; }
-  .vp { font-size:11.5px; color:var(--mid); margin-top:1px; }
+  .pillrow { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+  .pub { display:inline-flex; align-items:center; gap:7px; font-size:var(--t1);
+         color:var(--green); background:var(--green-t);
+         border:1px solid var(--green-b); border-radius:10px; padding:8px 12px; }
+  .pub::before { content:""; width:6px; height:6px; border-radius:50%;
+                 background:var(--green); }
+  .selm { margin-left:auto; font-family:inherit; font-size:var(--t1);
+          color:var(--ink); background:var(--card); border:1px solid var(--hair);
+          border-radius:10px; padding:8px 12px; min-height:34px; }
+
+  .floor { display:grid; grid-template-columns:repeat(6,1fr); gap:7px; }
+  .villa { position:relative; border-radius:12px; min-height:54px;
+           padding:7px 2px 6px; text-align:center;
+           border:1px solid var(--hair); background:var(--card); }
+  .vn { font-size:var(--t3); font-weight:600; line-height:1.1; }
+  .vp { font-size:11px; color:var(--mid); margin-top:1px; }
   .villa.din { background:var(--green-t); border-color:var(--green-b); }
   .villa.din .vn { color:var(--green); }
   .villa.no { background:var(--terra-t); border-color:var(--terra-b); }
-  .villa.no .vn { color:var(--terra); text-decoration:line-through; }
-  .villa.wait { border-style:dashed; border-color:var(--amber-b); background:var(--cream); }
-  .villa.wait .vn { color:var(--amber-ink); }
-  .villa.vac { opacity:.55; border-style:dashed; background:none; }
-  .villa .al { position:absolute; top:-5px; right:-5px; width:16px; height:16px;
-    border-radius:50%; background:var(--red); border:2px solid var(--cream); }
-  .villa .noteflag { position:absolute; top:2px; left:6px; color:var(--gold); font-size:11px; }
-  .join { grid-column:span 2; display:grid; grid-template-columns:1fr 1fr; gap:0;
-          border:1.5px solid var(--green-b); border-radius:16px; overflow:hidden;
-          background:var(--green-t); }
-  .join .villa { border:none; border-radius:0; background:none; }
-  .join .villa + .villa { border-left:1px dashed var(--green-b); }
-  .join::after { display:none; }
-  .legend { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:11.5px;
-            color:var(--mid); margin:12px 2px 0; }
-  .sw { display:inline-block; width:11px; height:11px; border-radius:4px;
-        vertical-align:-1px; margin-right:4px; border:1px solid var(--rule); }
-  .sw.g { background:var(--green-t); border-color:var(--green-b); }
-  .sw.t { background:var(--terra-t); border-color:var(--terra-b); }
-  .sw.w { border-style:dashed; border-color:var(--amber-b); background:var(--cream); }
-  .sw.r { background:var(--red); border-color:var(--red); border-radius:50%; }
+  .villa.no .vn { color:var(--terra); text-decoration:line-through;
+                  text-decoration-thickness:1px; }
+  .villa.wait { border-style:dashed; border-color:var(--amber-b);
+                background:none; }
+  .villa.wait .vn { color:var(--amber-ink); font-weight:500; }
+  .villa.vac { opacity:.62; border-style:dashed; background:none; }
+  .villa.vac .vn { color:var(--mid); font-weight:400; }
+  .who { position:absolute; top:3px; right:5px; font-size:8.5px; color:var(--mid);
+         opacity:.85; }
+  .aldot { position:absolute; top:-4px; right:-4px; width:12px; height:12px;
+           border-radius:50%; background:var(--red);
+           border:2px solid var(--cream); }
+  .join2 { grid-column:span 2; display:grid; grid-template-columns:1fr 1fr;
+           gap:0; border:1px solid var(--ink); border-radius:14px; padding:2px; }
+  .join2 .villa { border-color:transparent; }
+  .join2 .villa + .villa { border-left:1px dashed var(--hair); border-radius:12px; }
 
-  .sheet { position:fixed; left:0; right:0; bottom:0; z-index:10;
-           max-width:430px; margin-inline:auto;
-           background:var(--card); border-radius:22px 22px 0 0;
-           border:1px solid var(--rule); border-bottom:none;
-           box-shadow:0 -8px 30px rgba(27,27,25,.18);
-           padding:10px 18px calc(16px + env(safe-area-inset-bottom)); }
-  .grab { width:38px; height:4px; border-radius:999px; background:var(--rule);
-          margin:0 auto 12px; }
-  .shead { display:flex; align-items:center; gap:10px; }
-  .shead .vnum { width:44px; height:44px; border-radius:14px; background:var(--green-t);
-    border:1.5px solid var(--green-b); color:var(--green); font-size:18px; font-weight:700;
-    display:grid; place-items:center; }
-  .shead .nm { font-size:16.5px; font-weight:700; }
-  .shead .sub { font-size:12.5px; color:var(--mid); }
-  .steppers { margin-left:auto; display:flex; align-items:center; gap:10px; }
-  .steppers button { width:34px; height:34px; border-radius:50%; border:1px solid var(--rule);
-    background:var(--cream); font:inherit; font-size:16px; color:var(--ink); }
-  .steppers b { font-size:17px; min-width:20px; text-align:center; }
-  .answer { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:14px 0 10px; }
-  .answer button { font:inherit; font-size:13px; font-weight:600; padding:11px 4px;
-    min-height:44px; border-radius:12px; border:1.5px solid var(--rule);
-    background:var(--card); color:var(--mid); }
-  .answer .yes.on { background:var(--green-t); border-color:var(--green-b); color:var(--green); }
-  .answer .no.on { background:var(--terra-t); border-color:var(--terra-b); color:var(--terra); }
-  .answer .wait.on { border-style:dashed; border-color:var(--amber-b);
-    background:var(--cream); color:var(--amber-ink); }
-  .diets { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
-  .diets span { font-size:12px; font-weight:600; border-radius:999px; padding:5px 11px;
-    background:var(--terra-t); color:var(--terra); }
-  .diets .al { background:var(--red); color:#fff; }
-  .snote { font-size:13px; color:var(--mid); background:var(--cream);
-           border:1px solid var(--rule); border-radius:12px; padding:10px 12px; }
-  .snote b { color:var(--gold); }
+  .legend svg { vertical-align:-1px; margin-right:4px; }
+  .legend { display:flex; flex-wrap:wrap; gap:5px 14px; font-size:var(--t1);
+            color:var(--mid); margin:12px 2px 0; line-height:1.6; }
+  .swx { display:inline-block; width:10px; height:10px; border-radius:3.5px;
+         vertical-align:-1px; margin-right:5px; border:1px solid var(--hair); }
+  .swx.g { background:var(--green-t); border-color:var(--green-b); }
+  .swx.t { background:var(--terra-t); border-color:var(--terra-b); }
+  .swx.w { border-style:dashed; border-color:var(--amber-b); background:none; }
+  .swx.v { border-style:dashed; opacity:.62; background:none; }
+
+  .party { font-size:var(--t2); color:var(--mid); margin:18px 2px 12px; }
+  .party b { color:var(--ink); font-weight:600; }
+  .add { font-family:inherit; font-size:var(--t2); color:var(--ink);
+         background:var(--card); border:1px solid var(--hair); border-radius:10px;
+         padding:10px 14px; min-height:40px; }
+
+  .list { margin-top:18px; border-top:1px solid var(--rule); }
+  .lr { display:flex; align-items:baseline; gap:8px; padding:13px 2px;
+        border-bottom:1px solid var(--rule); }
+  .lv { font-size:var(--t3); font-weight:600; min-width:24px; }
+  .ln { font-size:var(--t3); flex:1; min-width:0; }
+  .ln .ext { font-size:var(--t1); color:var(--mid); border:1px solid var(--hair);
+             border-radius:8px; padding:1.5px 7px; margin-left:6px;
+             vertical-align:1px; }
+  .lnote { color:var(--gold); font-size:var(--t2); }
+  .lp { font-size:var(--t2); color:var(--ink); }
+  .lp small { color:var(--mid); font-size:var(--t1); }
+  .diets { flex-basis:100%; display:flex; gap:6px; flex-wrap:wrap;
+           margin:-4px 0 0 32px; padding-bottom:2px; }
+  .dp { font-size:var(--t1); border-radius:8px; padding:3px 9px;
+        background:var(--terra-t); color:var(--terra); }
+  .dp.al { background:var(--red); color:#fff; }
+  .lr.wrap2 { flex-wrap:wrap; }
+
+  .foot { display:flex; gap:8px; margin-top:20px; }
+  .foot button { flex:1; font-family:inherit; font-size:var(--t2);
+    color:var(--ink); background:var(--card); border:1px solid var(--hair);
+    border-radius:10px; padding:12px; min-height:44px; }
 </style>
 </head>
 <body>
-<div class="crumb">Nala &middot; mock B of 3 &middot; nothing live</div>
-<div class="datebar">
-  <h1>Tue 15th Sep</h1>
-  <button class="dn today">Today</button>
-  <button class="dn">&#8249;</button><button class="dn">&#8250;</button>
+<div class="crumb">Nala &middot; mock B, second pass &middot; nothing live</div>
+
+<div class="daterow">
+  <button class="today">Today</button>
+  <button class="dn">&#8249;</button>
+  <div class="date">Tue 15th Sep</div>
+  <button class="dn">&#8250;</button>
+  <button class="nav" aria-label="Menu"><span></span><span></span><span></span></button>
 </div>
 
-<div class="toprow">
-  <span class="pub">Menu live 11:46</span>
-  <span class="covers"><b>35</b> covers &middot; 14 tables</span>
+<div class="stats">
+  <div class="st"><div class="n">35</div><div class="k">Covers</div></div>
+  <div class="st"><div class="n">2</div><div class="k">Villas out</div></div>
+  <div class="st chase"><div class="n">2</div><div class="k">Villas awaiting</div></div>
 </div>
 
-<div class="chips">
-  <button class="on">All <b>17</b></button>
-  <button>Dining <b>12</b></button>
-  <button>Awaiting <b>2</b></button>
-  <button>Not dining <b>2</b></button>
-  <button>Vacant <b>1</b></button>
-  <button>+ Add</button>
+<div class="pillrow">
+  <span class="pub">Menu published 11:46 am</span>
+  <button class="selm">Select multiple</button>
 </div>
 
 <div class="floor">
-  <div class="villa din"><span class="noteflag">&#9873;</span><div class="vn">1</div><div class="vp">2p</div></div>
-  <div class="villa din"><div class="vn">2</div><div class="vp">2p</div></div>
-  <div class="join">
-    <div class="villa din"><div class="vn">3</div><div class="vp">3p</div><span class="al"></span></div>
-    <div class="villa din"><div class="vn">4</div><div class="vp">2p</div></div>
+  <div class="villa din"><span class="who"><svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="3.6" r="2.3"/><path d="M1.5 10.6c.4-2.4 2.3-3.6 4.5-3.6s4.1 1.2 4.5 3.6z"/></svg></span><div class="vn">1</div><div class="vp">2p</div></div>
+  <div class="villa din"><span class="who"><svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="3.6" r="2.3"/><path d="M1.5 10.6c.4-2.4 2.3-3.6 4.5-3.6s4.1 1.2 4.5 3.6z"/></svg></span><div class="vn">2</div><div class="vp">2p</div></div>
+  <div class="join2">
+    <div class="villa din"><span class="aldot"></span><div class="vn">3</div><div class="vp">3p</div></div>
+    <div class="villa din"><span class="who"><svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor"><path d="M1.6 8.9 8 2.5l1.5 1.5-6.4 6.4-2 .5z"/></svg></span><div class="vn">4</div><div class="vp">2p</div></div>
   </div>
-  <div class="villa din"><div class="vn">5</div><div class="vp">2p</div></div>
-  <div class="villa no"><div class="vn">6</div><div class="vp">&mdash;</div></div>
-  <div class="join">
-    <div class="villa din"><div class="vn">7</div><div class="vp">2p</div></div>
-    <div class="villa din"><div class="vn">8</div><div class="vp">2p</div></div>
+  <div class="villa din"><span class="who"><svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="3.6" r="2.3"/><path d="M1.5 10.6c.4-2.4 2.3-3.6 4.5-3.6s4.1 1.2 4.5 3.6z"/></svg></span><div class="vn">5</div><div class="vp">2p</div></div>
+  <div class="villa no"><div class="vn">6</div><div class="vp">&nbsp;</div></div>
+  <div class="join2">
+    <div class="villa din"><span class="who"><svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="3.6" r="2.3"/><path d="M1.5 10.6c.4-2.4 2.3-3.6 4.5-3.6s4.1 1.2 4.5 3.6z"/></svg></span><div class="vn">7</div><div class="vp">2p</div></div>
+    <div class="villa din"><span class="who"><svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="3.6" r="2.3"/><path d="M1.5 10.6c.4-2.4 2.3-3.6 4.5-3.6s4.1 1.2 4.5 3.6z"/></svg></span><div class="vn">8</div><div class="vp">2p</div></div>
   </div>
-  <div class="villa wait"><div class="vn">9</div><div class="vp">?</div></div>
-  <div class="villa din"><div class="vn">10</div><div class="vp">2p</div></div>
-  <div class="villa din"><div class="vn">11</div><div class="vp">2p</div></div>
-  <div class="villa din"><span class="noteflag">&#9873;</span><div class="vn">12</div><div class="vp">3p</div></div>
-  <div class="villa no"><div class="vn">13</div><div class="vp">&mdash;</div></div>
-  <div class="villa din"><div class="vn">14</div><div class="vp">2p</div></div>
-  <div class="villa din"><div class="vn">15</div><div class="vp">3p</div></div>
-  <div class="villa vac"><div class="vn">16</div><div class="vp"></div></div>
-  <div class="villa din"><div class="vn">17</div><div class="vp">2p</div></div>
+  <div class="villa wait"><div class="vn">9</div><div class="vp">&nbsp;</div></div>
+  <div class="villa din"><span class="who"><svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 7 7 5M3.8 6 2.5 7.3a1.8 1.8 0 0 0 2.5 2.5L6.3 8.5M8.2 6 9.5 4.7a1.8 1.8 0 0 0-2.5-2.5L5.7 3.5"/></svg></span><div class="vn">10</div><div class="vp">2p</div></div>
+  <div class="villa din"><span class="who"><svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="3.6" r="2.3"/><path d="M1.5 10.6c.4-2.4 2.3-3.6 4.5-3.6s4.1 1.2 4.5 3.6z"/></svg></span><div class="vn">11</div><div class="vp">2p</div></div>
+  <div class="villa din"><span class="who"><svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="3.6" r="2.3"/><path d="M1.5 10.6c.4-2.4 2.3-3.6 4.5-3.6s4.1 1.2 4.5 3.6z"/></svg></span><div class="vn">12</div><div class="vp">3p</div></div>
+  <div class="villa no"><div class="vn">13</div><div class="vp">&nbsp;</div></div>
+  <div class="villa din"><span class="who"><svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor"><path d="M1.6 8.9 8 2.5l1.5 1.5-6.4 6.4-2 .5z"/></svg></span><div class="vn">14</div><div class="vp">2p</div></div>
+  <div class="villa din"><span class="who"><svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="3.6" r="2.3"/><path d="M1.5 10.6c.4-2.4 2.3-3.6 4.5-3.6s4.1 1.2 4.5 3.6z"/></svg></span><div class="vn">15</div><div class="vp">3p</div></div>
+  <div class="villa vac"><div class="vn">16</div><div class="vp">&nbsp;</div></div>
+  <div class="villa din"><span class="who"><svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="3.6" r="2.3"/><path d="M1.5 10.6c.4-2.4 2.3-3.6 4.5-3.6s4.1 1.2 4.5 3.6z"/></svg></span><div class="vn">17</div><div class="vp">2p</div></div>
 </div>
 
 <div class="legend">
-  <span><i class="sw g"></i>Dining</span>
-  <span><i class="sw t"></i>Not dining</span>
-  <span><i class="sw w"></i>Awaiting</span>
-  <span><i class="sw r"></i>Allergy</span>
-  <span>&#9873;&nbsp;Note</span>
+  <span><i class="swx g"></i>Dining</span>
+  <span><i class="swx t"></i>Not dining</span>
+  <span><i class="swx w"></i>Awaiting</span>
+  <span><i class="swx v"></i>Vacant</span>
+</div>
+<div class="legend">
+  <span><svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="3.6" r="2.3"/><path d="M1.5 10.6c.4-2.4 2.3-3.6 4.5-3.6s4.1 1.2 4.5 3.6z"/></svg>&nbsp;Guest replied</span>
+  <span><svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor"><path d="M1.6 8.9 8 2.5l1.5 1.5-6.4 6.4-2 .5z"/></svg>&nbsp;Added by staff</span>
+  <span><svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 7 7 5M3.8 6 2.5 7.3a1.8 1.8 0 0 0 2.5 2.5L6.3 8.5M8.2 6 9.5 4.7a1.8 1.8 0 0 0-2.5-2.5L5.7 3.5"/></svg>&nbsp;Link opened</span>
 </div>
 
-<div class="sheet">
-  <div class="grab"></div>
-  <div class="shead">
-    <div class="vnum">3</div>
-    <div><div class="nm">Mark Whitfield</div>
-      <div class="sub">Seated with villa 4 &middot; table of 5</div></div>
-    <div class="steppers"><button>&minus;</button><b>3</b><button>+</button></div>
-  </div>
-  <div class="answer">
-    <button class="yes on">Dining</button>
-    <button class="no">Not dining</button>
-    <button class="wait">No answer</button>
-  </div>
-  <div class="diets"><span class="al">Nut allergy</span><span>Shellfish-free</span></div>
-  <div class="snote"><b>&#9873;</b> Anniversary &mdash; sparkling on arrival, cake
-    after mains.</div>
+<div class="party"><b>10</b> twos &middot; <b>2</b> threes &middot; <b>1</b> four
+  &middot; <b>1</b> five &middot; <b>14</b> tables</div>
+<button class="add">+ Add reservation</button>
+
+<div class="list">
+  <div class="lr"><span class="lv">1</span>
+    <span class="ln">James Harrington <span class="lnote">&#9873;</span></span>
+    <span class="lp">2 <small>pax</small></span></div>
+  <div class="lr"><span class="lv">2</span>
+    <span class="ln">Elena Petrova</span>
+    <span class="lp">2 <small>pax</small></span></div>
+  <div class="lr wrap2"><span class="lv">3</span>
+    <span class="ln">Mark Whitfield</span>
+    <span class="lp">3 <small>pax</small></span>
+    <div class="diets"><span class="dp al">Nut</span></div></div>
+  <div class="lr"><span class="lv">4</span>
+    <span class="ln">Lucy Whitfield</span>
+    <span class="lp">2 <small>pax</small></span></div>
+  <div class="lr"><span class="lv">5</span>
+    <span class="ln">David Chen</span>
+    <span class="lp">2 <small>pax</small></span></div>
+  <div class="lr wrap2"><span class="lv">11</span>
+    <span class="ln">Sofia Marino</span>
+    <span class="lp">2 <small>pax</small></span>
+    <div class="diets"><span class="dp">Coeliac</span></div></div>
+  <div class="lr"><span class="lv">12</span>
+    <span class="ln">Owen Reilly <span class="lnote">&#9873;</span></span>
+    <span class="lp">3 <small>pax</small></span></div>
+  <div class="lr"><span class="lv">14</span>
+    <span class="ln">Marco Bianchi</span>
+    <span class="lp">2 <small>pax</small></span></div>
+  <div class="lr wrap2"><span class="lv">15</span>
+    <span class="ln">Freya Lindqvist</span>
+    <span class="lp">3 <small>pax</small></span>
+    <div class="diets"><span class="dp">Vegetarian</span></div></div>
+  <div class="lr"><span class="lv">17</span>
+    <span class="ln">Iris Kovac</span>
+    <span class="lp">2 <small>pax</small></span></div>
+  <div class="lr wrap2"><span class="lv"></span>
+    <span class="ln">Cane <span class="ext">External</span></span>
+    <span class="lp">2 <small>pax</small></span>
+    <div class="diets"><span class="dp">Dairy</span></div></div>
+  <div class="lr"><span class="lv"></span>
+    <span class="ln">Jill <span class="ext">External</span></span>
+    <span class="lp">2 <small>pax</small></span></div>
+  <div class="lr"><span class="lv"></span>
+    <span class="ln">Larry <span class="ext">External</span> <span class="lnote">&#9873;</span></span>
+    <span class="lp">2 <small>pax</small></span></div>
 </div>
+
+<div class="foot"><button>Refresh</button><button>Stats</button></div>
 
 <script>
-  document.querySelectorAll('.chips button').forEach(function(c){
-    c.onclick = function(){
-      c.parentElement.querySelectorAll('button').forEach(function(x){ x.classList.remove('on'); });
-      c.classList.add('on');
-    };
-  });
-  document.querySelectorAll('.answer button').forEach(function(a){
-    a.onclick = function(){
-      a.parentElement.querySelectorAll('button').forEach(function(x){ x.classList.remove('on'); });
-      a.classList.add('on');
-    };
+  /* Feel only: pressables acknowledge the tap, nothing is written. */
+  document.querySelectorAll('.villa, .join2').forEach(function(v){
+    v.addEventListener('click', function(e){
+      e.stopPropagation();
+      v.style.transform = 'scale(.97)';
+      setTimeout(function(){ v.style.transform = ''; }, 120);
+    });
   });
 </script>
 </body>
