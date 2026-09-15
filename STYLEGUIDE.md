@@ -322,6 +322,49 @@ menu-print.html carry the brand and set their own font (Raleway today). They
 deliberately do NOT use these tokens, so the staff font can change without
 touching anything a guest sees.
 
+## Icons are sourced, never drawn
+
+Ruled by the owner, 15 Sep, after four icons cost six hours and ten
+rounds of a session drawing them freehand. The app itself was built in
+two days; its icons do not get to take longer than its features.
+
+Every icon comes from **Lucide** (lucide.dev), copied verbatim. Chosen
+because it is ISC licensed - free for commercial use, no attribution,
+safe in a public repo - and because its dress is already this app's:
+24x24 viewBox, stroked not filled, round caps, which is what the link
+icon and the mock chevrons already wear.
+
+The workflow, and the whole of it:
+
+1. **Name the icon before touching code.** Find it on lucide.dev and
+   say which - "lucide `utensils-crossed`" - so the choice can be
+   vetoed by name, cheaply, before anything is built. Naming three
+   candidates costs one line; a wrong icon built costs a round trip.
+2. **Copy the SVG verbatim.** The official path data, the 24x24
+   viewBox, the stroke width as shipped. Size with width/height,
+   colour with `currentColor` or the colour law's tokens - both live
+   outside the paths.
+3. **Stamp the source beside it**: a comment naming set and icon,
+   `/* lucide: utensils-crossed */`. An icon without a stamp is
+   presumed drawn, and gets replaced.
+4. **Never edit path data**, and never fill the gap by hand. If the
+   set has nothing that fits, say so and offer the nearest three by
+   name - the owner picks, or the icon is not built.
+
+Drawing means writing or adjusting path coordinates yourself, from
+imagination or "based on" a real icon. It is banned outright, not
+discouraged: a freehand icon costs many rounds of "not quite" against
+a sourced one's zero, and it still looks drawn at the end. The same
+goes for every visual asset - a logo, an illustration, a photo is
+sourced or it is absent, never invented.
+
+The icons that predate this rule (ICON_GUEST, ICON_STAFF, ICON_FORK,
+ICON_LOTUS and the rest, page-local in tally, front-desk and
+cleaners, with ICON_LINK living twice) stay as they are - they
+shipped and they work. Replace one with its Lucide equivalent when
+you next touch it, and move it into nala-shared.js in the same
+stroke; never as a standalone sweep of a live system.
+
 ## Tokens (defined once in nala-ui.css)
 
 Cream #F9F7F4 · Ink #1C1C1A · Mid #999990 · Rule #E0E0DA · Red #A8321E

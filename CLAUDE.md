@@ -225,6 +225,10 @@ Buttons have a law of their own — **the button law, STYLEGUIDE.md** (ruled
 26 Aug): one solid primary per surface, destructive actions wear terracotta
 outline and always confirm before writing. Read it before adding any button.
 
+Icons too — **sourced, never drawn, STYLEGUIDE.md** (ruled 15 Sep): every
+icon is copied verbatim from Lucide and stamped with its name, and freehand
+path data is banned outright. Read it before adding any icon.
+
 ---
 
 ### 6. Match the ceremony to the change
@@ -328,6 +332,10 @@ can find the reasoning for.
   obeys it; every other page's cancels and deletes are still solid or quiet
   ink with no confirmation. Dress and confirm them when you next touch the
   page.
+- **Hand-drawn page-local icons predating the icon rule** (STYLEGUIDE.md).
+  `ICON_LINK` exists twice (tally, front-desk); the rest are page-local
+  freehand SVG. Swap one for its stamped Lucide equivalent and move it into
+  `nala-shared.js` when you next touch it.
 
 ---
 
