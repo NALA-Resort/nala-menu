@@ -178,6 +178,11 @@
                 overflow:hidden; text-overflow:ellipsis; }
   .person .sub { font-size:var(--t2); color:var(--mid); margin-top:2px;
                  display:block; overflow-wrap:anywhere; }
+  .person .av { flex:0 0 auto; width:36px; height:36px; border-radius:50%;
+                display:grid; place-items:center; font-size:var(--t2);
+                font-weight:600; color:#5E7D67;
+                background:rgba(122,160,130,.22);
+                border:1px solid rgba(122,160,130,.45); }
   .person .rl { flex:0 0 auto; font-size:var(--t2); color:var(--mid);
                 background:var(--card); border-radius:var(--pill);
                 padding:3px var(--s2); }
@@ -502,8 +507,13 @@ function drawPeople(){
     var row = document.createElement('button');
     row.className = 'person';
     row.type = 'button';
-    row.innerHTML = '<span class="mid"><span class="nm"></span>'+
+    row.innerHTML = '<span class="av"></span>'+
+                    '<span class="mid"><span class="nm"></span>'+
                     '<span class="sub"></span></span><span class="rl"></span>';
+    /* The initial circle from the approved mock, 15 Sep. One letter of the
+       name, in the quiet green of the dress - identity, not a status, so
+       it deliberately wears no law colour that means anything. */
+    row.querySelector('.av').textContent  = (r.name || '?').trim().charAt(0).toUpperCase();
     row.querySelector('.nm').textContent  = r.name || '(no name)';
     row.querySelector('.sub').textContent = codeOf(k);
     row.querySelector('.rl').textContent  = normaliseRole(r.role) || '';
