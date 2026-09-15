@@ -51,6 +51,8 @@ body.ui3 .btn.terra { background:transparent; border-color:var(--terra-b); }
    own rule, re-stated here because the dress's .btn radius would otherwise
    outrank it. */
 body.ui3 .foot .btn { border-radius:0; }
+body.ui3 .foot .btn:first-child { border-bottom-left-radius:8px; }
+body.ui3 .foot .btn:last-child  { border-bottom-right-radius:8px; }
 
 /* Bottom sheets share one soft opening across the app. */
 body.ui3 .sheet { border-top-left-radius:18px; border-top-right-radius:18px; }
