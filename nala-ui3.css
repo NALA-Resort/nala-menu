@@ -46,6 +46,12 @@ body.ui3 .btn { background:#fff; border:1px solid var(--u3-hair);
 body.ui3 .btn.solid { background:var(--ctl-soft); border-color:var(--ctl-soft); }
 body.ui3 .btn.terra { background:transparent; border-color:var(--terra-b); }
 
+/* The footer keeps its corner law: flush to the screen's bottom edge, it
+   squares off, and only the outer lower corners round - the shared sheet's
+   own rule, re-stated here because the dress's .btn radius would otherwise
+   outrank it. */
+body.ui3 .foot .btn { border-radius:0; }
+
 /* Bottom sheets share one soft opening across the app. */
 body.ui3 .sheet { border-top-left-radius:18px; border-top-right-radius:18px; }
 
