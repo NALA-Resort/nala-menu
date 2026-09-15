@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Nala &middot; Mock &middot; Settings, refined</title>
+<style>
+  /* THE DRESS ACROSS THE APP - Settings. The live page's own shape - the
+     five tabs, the People list, the Roles grid with its chips and the
+     page switches of 12 Sep - in the refined finish: house scale,
+     hairlines, soft corners. Every existing colour meaning kept; the
+     amber dot still marks a setting moved from how the app came.
+     A mock: invented people, local state, nothing saved. */
+  :root {
+    --cream:#F9F7F4; --card:#FFFFFF; --ink:#1B1B19; --mid:#5F5F58;
+    --rule:#E6E6E1; --hair:rgba(28,28,26,.12);
+    --green:#5E7D67; --green-t:#DCE7DD; --green-b:rgba(122,160,130,.65);
+    --amber:#C29A55;
+    --t1:12px; --t2:14px; --t3:16px; --t4:20px; --t5:27px;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--cream); color:var(--ink);
+         font-family:-apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
+         font-size:var(--t2); padding:calc(16px + env(safe-area-inset-top)) 18px 40px;
+         max-width:430px; margin-inline:auto; }
+  .crumb { font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+           color:var(--mid); margin-bottom:10px; }
+  .daterow { display:flex; align-items:center; gap:8px; }
+  .date { font-size:var(--t4); font-weight:600; flex:1; }
+  .nav { width:36px; height:36px; border-radius:10px; border:1px solid var(--hair);
+         background:none; display:grid; place-items:center; }
+  .nav span { display:block; width:15px; height:1.5px; background:var(--ink);
+              margin:1.75px 0; border-radius:2px; }
+
+  .tabs { display:flex; gap:4px; margin:18px 0 16px; overflow-x:auto;
+          scrollbar-width:none; border-bottom:1px solid var(--rule);
+          padding-bottom:0; }
+  .tabs::-webkit-scrollbar { display:none; }
+  .tab { flex:0 0 auto; font-family:inherit; font-size:var(--t2); color:var(--mid);
+    background:none; border:none; border-bottom:2px solid transparent;
+    padding:9px 12px; min-height:40px; }
+  .tab.on { color:var(--ink); font-weight:600; border-bottom-color:var(--ink); }
+
+  .card { background:var(--card); border:1px solid var(--hair); border-radius:14px;
+          overflow:hidden; margin-bottom:16px; }
+  .prow { display:flex; align-items:center; gap:11px; padding:12px 14px;
+          min-height:56px; border-bottom:1px solid var(--rule); }
+  .card .prow:last-child { border-bottom:none; }
+  .av { width:34px; height:34px; border-radius:50%; flex:0 0 34px; display:grid;
+        place-items:center; font-size:13px; font-weight:600; color:#fff;
+        background:var(--green); }
+  .av.b2 { background:#8B7B6E; } .av.b3 { background:#6E7B8B; }
+  .pn { flex:1; font-size:var(--t3); }
+  .role { font-size:var(--t1); color:var(--mid); border:1px solid var(--hair);
+          border-radius:999px; padding:5px 10px; }
+  .add { font-family:inherit; font-size:var(--t2); color:var(--ink);
+    background:var(--card); border:1px solid var(--hair); border-radius:10px;
+    padding:10px 14px; min-height:40px; margin-bottom:20px; }
+
+  .seclabel { font-size:var(--t1); letter-spacing:.12em; text-transform:uppercase;
+              color:var(--mid); margin:0 2px 8px; }
+  .chips { display:flex; gap:6px; margin-bottom:12px; overflow-x:auto;
+           scrollbar-width:none; }
+  .chips::-webkit-scrollbar { display:none; }
+  .chip { font-family:inherit; font-size:var(--t2); padding:7px 13px; min-height:36px;
+    border-radius:999px; border:1px solid var(--hair); background:var(--card);
+    color:var(--mid); }
+  .chip.on { background:var(--green-t); border-color:var(--green-b);
+             color:var(--green); font-weight:600; }
+  .chip .ct { font-size:var(--t1); opacity:.8; margin-left:4px; }
+  .evrow { display:flex; align-items:center; gap:10px; padding:11px 14px;
+           min-height:52px; border-bottom:1px solid var(--rule); }
+  .card .evrow:last-child { border-bottom:none; }
+  .et { flex:1; font-size:var(--t2); }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--amber);
+         flex:0 0 7px; }
+  .sw { width:46px; height:28px; border-radius:999px; border:1px solid var(--hair);
+        background:var(--rule); position:relative; flex:0 0 46px; transition:background .18s; }
+  .sw::after { content:""; position:absolute; top:2px; left:2px; width:22px; height:22px;
+        border-radius:50%; background:#fff; transition:left .18s;
+        box-shadow:0 1px 3px rgba(27,27,25,.25); }
+  .sw.on { background:var(--green); border-color:var(--green); }
+  .sw.on::after { left:20px; }
+  .note { font-size:var(--t1); color:var(--mid); line-height:1.5; margin:0 2px; }
+</style>
+</head>
+<body>
+<div class="crumb">Nala &middot; the dress across the app &middot; nothing live</div>
+<div class="daterow"><div class="date">Settings</div>
+  <button class="nav" aria-label="Menu"><span></span><span></span><span></span></button></div>
+
+<div class="tabs">
+  <button class="tab on">Staff</button><button class="tab">Roles</button>
+  <button class="tab">Notifications</button><button class="tab">Prices</button>
+  <button class="tab">Guest form</button>
+</div>
+
+<div class="card">
+  <div class="prow"><div class="av">B</div><div class="pn">Ben</div>
+    <span class="role">admin</span></div>
+  <div class="prow"><div class="av b2">M</div><div class="pn">Marco</div>
+    <span class="role">chef</span></div>
+  <div class="prow"><div class="av b3">L</div><div class="pn">Livia</div>
+    <span class="role">waiter</span></div>
+  <div class="prow"><div class="av b3">M</div><div class="pn">Maria</div>
+    <span class="role">housekeeping</span></div>
+</div>
+<button class="add">Add someone</button>
+
+<div class="seclabel">Who is being set up</div>
+<div class="chips">
+  <button class="chip on">chef<span class="ct">10</span></button>
+  <button class="chip">waiter<span class="ct">19</span></button>
+  <button class="chip">housekeeping<span class="ct">5</span></button>
+</div>
+
+<div class="card">
+  <div class="evrow"><span class="et">See Reservations</span>
+    <button class="sw on" aria-label="See Reservations"></button></div>
+  <div class="evrow"><span class="et">Publish and tag the menu</span>
+    <button class="sw on" aria-label="Publish menu"></button></div>
+  <div class="evrow"><span class="et">Edit a booking</span>
+    <button class="sw" aria-label="Edit a booking"></button></div>
+</div>
+
+<div class="seclabel">And which pages they may open</div>
+<div class="card">
+  <div class="evrow"><span class="et">Open Dashboard</span>
+    <button class="sw on" aria-label="Open Dashboard"></button></div>
+  <div class="evrow"><span class="et">Open Calendar</span><span class="dot"
+      title="changed from how the app came"></span>
+    <button class="sw on" aria-label="Open Calendar"></button></div>
+  <div class="evrow"><span class="et">Open Keys</span>
+    <button class="sw" aria-label="Open Keys"></button></div>
+</div>
+
+<p class="note">An amber dot marks a setting moved from how the app came. An
+admin always has everything, and a manager everything but this page, so
+neither is offered here.</p>
+
+<script>
+  document.querySelectorAll('.sw').forEach(function(s){
+    s.onclick = function(){ s.classList.toggle('on'); };
+  });
+  document.querySelectorAll('.chips .chip, .tabs .tab').forEach(function(c){
+    c.onclick = function(){
+      c.parentElement.querySelectorAll('button').forEach(function(x){ x.classList.remove('on'); });
+      c.classList.add('on');
+    };
+  });
+</script>
+</body>
+</html>

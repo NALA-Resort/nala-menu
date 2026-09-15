@@ -14,10 +14,10 @@
      Refresh and Stats - wearing the house type at the house scale
      (12/14/16/20/27, nothing heavier than 600) with a sleeker finish:
      hairline borders, soft 12px corners, a breath more air, tabular
-     numbers. The colour law is untouched: green dining, terracotta a
-     guest's no, dashed awaiting (amber ink for chase-this - the one
-     departure, the current page paints that number red, which the law
-     reserves for failure), vacant sunk, red on the allergy alone.
+     numbers. The colours are exactly the live page's, ruled by the owner
+     15 Sep when an amber awaiting count was proposed and declined:
+     existing colours stay - red the declined invitation and the awaiting
+     count, waiting a white dashed tile, green dining, vacant sunk.
      A mock: invented guests, local state, nothing saved. */
   :root {
     --cream:#F9F7F4; --card:#FFFFFF; --ink:#1B1B19; --mid:#5F5F58;
@@ -55,7 +55,7 @@
            margin:22px 0 20px; }
   .st .n { font-size:var(--t5); font-weight:600; letter-spacing:-.02em; }
   .st .k { font-size:var(--t2); color:var(--mid); margin-top:2px; }
-  .st.chase .n { color:var(--amber-ink); }
+  .st.chase .n { color:var(--red); }
 
   .pillrow { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
   .pub { display:inline-flex; align-items:center; gap:7px; font-size:var(--t1);
@@ -78,9 +78,9 @@
   .villa.no { background:var(--terra-t); border-color:var(--terra-b); }
   .villa.no .vn { color:var(--terra); text-decoration:line-through;
                   text-decoration-thickness:1px; }
-  .villa.wait { border-style:dashed; border-color:var(--amber-b);
-                background:none; }
-  .villa.wait .vn { color:var(--amber-ink); font-weight:500; }
+  .villa.wait { border-style:dashed; border-color:var(--mid);
+                background:var(--card); }
+  .villa.wait .vn { color:var(--ink); font-weight:500; }
   .villa.vac { opacity:.62; border-style:dashed; background:none; }
   .villa.vac .vn { color:var(--mid); font-weight:400; }
   .who { position:absolute; top:3px; right:5px; font-size:8.5px; color:var(--mid);
@@ -100,7 +100,7 @@
          vertical-align:-1px; margin-right:5px; border:1px solid var(--hair); }
   .swx.g { background:var(--green-t); border-color:var(--green-b); }
   .swx.t { background:var(--terra-t); border-color:var(--terra-b); }
-  .swx.w { border-style:dashed; border-color:var(--amber-b); background:none; }
+  .swx.w { border-style:dashed; border-color:var(--mid); background:var(--card); }
   .swx.v { border-style:dashed; opacity:.62; background:none; }
 
   .party { font-size:var(--t2); color:var(--mid); margin:18px 2px 12px; }
