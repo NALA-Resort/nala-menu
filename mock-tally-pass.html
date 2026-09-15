@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Nala &middot; Mock &middot; Reservations, the pass</title>
+<style>
+  /* IDEA C - THE PASS. A dark kitchen mode (Mobbin: Apple Invites' dark
+     guest list, Jira's summary tiles): this is the board the chef reads
+     at the pass, so it reads like the pass - a big covers number, a
+     segmented bar showing the night's shape, then one TICKET per table
+     in villa order, dietaries printed large because they are the fact
+     that matters at speed. Anything still owed an answer rides on top in
+     amber. The colour law survives the dark: greens stay the yes, terra
+     the no, amber the chase, and red belongs to the allergy alone -
+     nothing else on the screen competes with it. A mock: invented
+     guests, local state, nothing saved. */
+  :root {
+    --bg:#141412; --card:#1D1D1A; --card2:#252522; --ink:#F2F0EA;
+    --mid:#9B998F; --rule:#33332E;
+    --green:#8FAF9A; --green-deep:#5E7D67; --green-t:rgba(122,160,130,.22);
+    --terra:#C08A7B; --terra-t:rgba(184,106,90,.20);
+    --amber:#D8B075; --amber-t:rgba(194,154,85,.16); --red:#C24631;
+    --gold:#D8B075;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         padding:calc(18px + env(safe-area-inset-top)) 16px 48px;
+         max-width:430px; margin-inline:auto; }
+  .crumb { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--mid); }
+  .datebar { display:flex; align-items:center; gap:8px; margin:8px 0 4px; }
+  .datebar h1 { font-size:20px; font-weight:700; margin:0; letter-spacing:-.02em; flex:1; }
+  .dn { width:36px; height:36px; border-radius:12px; border:1px solid var(--rule);
+        background:var(--card); font:inherit; font-size:16px; color:var(--ink); }
+
+  .hero { display:flex; align-items:baseline; gap:10px; margin:8px 0 6px; }
+  .hero .n { font-size:56px; font-weight:800; letter-spacing:-.04em; line-height:1; }
+  .hero .k { font-size:13px; color:var(--mid); line-height:1.4; }
+  .hero .k b { color:var(--ink); }
+  .shape { display:flex; height:10px; border-radius:999px; overflow:hidden;
+           border:1px solid var(--rule); margin:8px 0 4px; }
+  .shape i { display:block; }
+  .shape .d { background:var(--green-deep); flex:12; }
+  .shape .w { background:var(--amber); flex:2; }
+  .shape .x { background:var(--terra); flex:2; }
+  .shape .v { background:var(--card2); flex:1; }
+  .shapek { display:flex; gap:12px; font-size:11.5px; color:var(--mid);
+            margin-bottom:12px; flex-wrap:wrap; }
+  .shapek b { color:var(--ink); }
+  .pub { display:inline-flex; align-items:center; gap:7px; font-size:12.5px;
+         color:var(--green); background:var(--green-t); border:1px solid var(--green-deep);
+         border-radius:999px; padding:6px 12px; margin-bottom:14px; }
+  .pub::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--green); }
+
+  .chase { background:var(--amber-t); border:1px dashed var(--amber);
+           border-radius:14px; padding:11px 14px; display:flex; align-items:center;
+           gap:10px; margin-bottom:14px; }
+  .chase .t { flex:1; font-size:13.5px; color:var(--amber); }
+  .chase .t b { font-weight:700; }
+  .chase button { font:inherit; font-size:12.5px; font-weight:600; color:var(--bg);
+    background:var(--amber); border:none; border-radius:999px; padding:8px 13px;
+    min-height:36px; }
+
+  .rail { display:grid; gap:10px; }
+  .ticket { background:var(--card); border:1px solid var(--rule); border-radius:16px;
+            padding:12px 14px; border-left:4px solid var(--green-deep); }
+  .ticket.no { border-left-color:var(--terra); opacity:.75; }
+  .trow { display:flex; align-items:baseline; gap:10px; }
+  .tv { font-size:22px; font-weight:800; letter-spacing:-.02em; min-width:34px; }
+  .tn { flex:1; font-size:14.5px; font-weight:600; }
+  .tn small { display:block; font-weight:400; font-size:12px; color:var(--mid); margin-top:1px; }
+  .tp { font-size:18px; font-weight:800; }
+  .tp small { font-size:11px; font-weight:400; color:var(--mid); }
+  .tdiet { display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+  .tdiet span { font-size:12px; font-weight:700; border-radius:8px; padding:5px 10px;
+    background:var(--terra-t); color:var(--terra); }
+  .tdiet .al { background:var(--red); color:#fff; letter-spacing:.02em; }
+  .tnote { margin-top:8px; font-size:12.5px; color:var(--gold); }
+  .tjoin { font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+           color:var(--green); margin-bottom:6px; }
+  .ticket .sub { border-top:1px dashed var(--rule); margin-top:10px; padding-top:10px; }
+  .exthead { font-size:11.5px; letter-spacing:.12em; text-transform:uppercase;
+             color:var(--mid); margin:16px 2px 8px; }
+  .declines { margin-top:16px; }
+  .foot { font-size:12.5px; color:var(--mid); line-height:1.5; margin:16px 4px 0; }
+</style>
+</head>
+<body>
+<div class="crumb">Nala &middot; mock C of 3 &middot; nothing live</div>
+<div class="datebar">
+  <h1>Tue 15th Sep</h1>
+  <button class="dn">&#8249;</button><button class="dn">&#8250;</button>
+</div>
+
+<div class="hero">
+  <span class="n">35</span>
+  <span class="k">covers tonight<br><b>14 tables</b> &middot; 10 twos &middot; 2 threes &middot; 1 four &middot; 1 five</span>
+</div>
+<div class="shape"><i class="d"></i><i class="w"></i><i class="x"></i><i class="v"></i></div>
+<div class="shapek">
+  <span><b>12</b> dining</span><span><b>2</b> awaiting</span>
+  <span><b>2</b> not dining</span><span><b>1</b> vacant</span>
+</div>
+<span class="pub">Menu live since 11:46</span>
+
+<div class="chase">
+  <span class="t"><b>Villas 9 and 16</b> still owe an answer &mdash; chase before
+    the kitchen closes the count.</span>
+  <button>Chase</button>
+</div>
+
+<div class="rail">
+  <div class="ticket">
+    <div class="tjoin">Table of 5 &middot; villas 3 + 4</div>
+    <div class="trow"><span class="tv">3</span>
+      <span class="tn">Mark Whitfield</span><span class="tp">3<small> pax</small></span></div>
+    <div class="tdiet"><span class="al">NUT ALLERGY</span><span>Shellfish-free</span></div>
+    <div class="sub">
+      <div class="trow"><span class="tv">4</span>
+        <span class="tn">Lucy Whitfield</span><span class="tp">2<small> pax</small></span></div>
+    </div>
+  </div>
+
+  <div class="ticket">
+    <div class="trow"><span class="tv">1</span>
+      <span class="tn">James Harrington</span><span class="tp">2<small> pax</small></span></div>
+    <div class="tnote">&#9873; Anniversary &mdash; sparkling on arrival.</div>
+  </div>
+
+  <div class="ticket">
+    <div class="trow"><span class="tv">11</span>
+      <span class="tn">Sofia Marino</span><span class="tp">2<small> pax</small></span></div>
+    <div class="tdiet"><span>Coeliac</span></div>
+  </div>
+
+  <div class="ticket">
+    <div class="trow"><span class="tv">15</span>
+      <span class="tn">Freya Lindqvist</span><span class="tp">3<small> pax</small></span></div>
+    <div class="tdiet"><span>Vegetarian</span></div>
+  </div>
+
+  <div class="ticket">
+    <div class="tjoin">Table of 4 &middot; villas 7 + 8</div>
+    <div class="trow"><span class="tv">7</span>
+      <span class="tn">Priya Raman</span><span class="tp">2<small> pax</small></span></div>
+    <div class="sub">
+      <div class="trow"><span class="tv">8</span>
+        <span class="tn">Owen Marsh</span><span class="tp">2<small> pax</small></span></div>
+    </div>
+  </div>
+
+  <div class="ticket">
+    <div class="trow"><span class="tv">2</span>
+      <span class="tn">Elena Petrova</span><span class="tp">2<small> pax</small></span></div>
+  </div>
+  <div class="ticket">
+    <div class="trow"><span class="tv">5</span>
+      <span class="tn">David Chen</span><span class="tp">2<small> pax</small></span></div>
+  </div>
+  <div class="ticket">
+    <div class="trow"><span class="tv">12</span>
+      <span class="tn">Owen Reilly</span><span class="tp">3<small> pax</small></span></div>
+    <div class="tnote">&#9873; Window table if free.</div>
+  </div>
+</div>
+
+<div class="exthead">External diners</div>
+<div class="rail">
+  <div class="ticket">
+    <div class="trow"><span class="tv">E</span>
+      <span class="tn">Cane<small>walk-in, confirmed</small></span><span class="tp">2<small> pax</small></span></div>
+    <div class="tdiet"><span>Dairy-free</span></div>
+  </div>
+</div>
+
+<div class="declines rail">
+  <div class="ticket no">
+    <div class="trow"><span class="tv">6</span>
+      <span class="tn">Ana &amp; Piotr Nowak<small>not dining &mdash; their answer, not a fault</small></span></div>
+  </div>
+  <div class="ticket no">
+    <div class="trow"><span class="tv">13</span>
+      <span class="tn">Sam Okafor<small>not dining</small></span></div>
+  </div>
+</div>
+
+<div class="foot">Dark on purpose: the pass at 7pm is not a bright room. Red
+belongs to the allergy alone; a declined villa wears terracotta and sinks,
+because a guest&rsquo;s no is an answer, never a failure.</div>
+</body>
+</html>

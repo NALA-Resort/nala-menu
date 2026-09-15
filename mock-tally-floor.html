@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Nala &middot; Mock &middot; Reservations, floor grid</title>
+<style>
+  /* IDEA B - FLOOR GRID. The map stays - it is how reception thinks -
+     and modernises: bigger soft tiles, seat-together drawn as one joined
+     capsule rather than an outline, and Luma/Partiful-style filter chips
+     with counts that DIM everything else instead of hiding it, so the
+     house never loses its shape. Tapping a villa opens a bottom sheet
+     (shown open here) carrying the whole record: pax, the dining answer
+     as three law-coloured choices, dietaries, the note. The colour law
+     is the legend: green dining, terracotta declined, dashed awaiting,
+     sunk vacant, red only on the allergy. A mock: invented guests, local
+     state, nothing saved. */
+  :root {
+    --cream:#F9F7F4; --card:#FFFFFF; --ink:#1B1B19; --mid:#5F5F58;
+    --rule:#E6E6E1; --green:#5E7D67; --green-t:rgba(122,160,130,.26);
+    --green-b:rgba(122,160,130,.65); --terra:#9E6455;
+    --terra-t:rgba(184,106,90,.16); --terra-b:rgba(184,106,90,.45);
+    --amber-t:#F6EAD5; --amber-b:#C29A55; --amber-ink:#8A6A2F;
+    --red:#A8321E; --gold:#B07D2B;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--cream); color:var(--ink);
+         font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         padding:calc(18px + env(safe-area-inset-top)) 16px 300px;
+         max-width:430px; margin-inline:auto; }
+  .crumb { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--mid); }
+  .datebar { display:flex; align-items:center; gap:8px; margin:8px 0 12px; }
+  .datebar h1 { font-size:22px; font-weight:700; margin:0; letter-spacing:-.02em; flex:1; }
+  .dn { width:36px; height:36px; border-radius:12px; border:1px solid var(--rule);
+        background:var(--card); font:inherit; font-size:16px; color:var(--ink); }
+  .today { width:auto; padding:0 12px; font-size:13px; color:var(--mid); }
+
+  .toprow { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .pub { display:inline-flex; align-items:center; gap:7px; font-size:12.5px;
+         color:var(--green); background:var(--green-t); border:1px solid var(--green-b);
+         border-radius:999px; padding:6px 12px; }
+  .pub::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--green); }
+  .covers { margin-left:auto; font-size:13px; color:var(--mid); }
+  .covers b { font-size:18px; color:var(--ink); }
+
+  .chips { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px;
+           scrollbar-width:none; margin-bottom:12px; }
+  .chips::-webkit-scrollbar { display:none; }
+  .chips button { flex:0 0 auto; font:inherit; font-size:12.5px; padding:7px 12px;
+    min-height:34px; border-radius:999px; border:1px solid var(--rule);
+    background:var(--card); color:var(--mid); display:flex; gap:5px; align-items:center; }
+  .chips button b { font-weight:700; color:var(--ink); }
+  .chips button.on { background:var(--ink); border-color:var(--ink); color:#fff; }
+  .chips button.on b { color:#fff; }
+
+  .floor { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .villa { border-radius:16px; min-height:64px; padding:8px 6px; text-align:center;
+           border:1.5px solid var(--rule); background:var(--card); position:relative; }
+  .vn { font-size:17px; font-weight:700; }
+  .vp { font-size:11.5px; color:var(--mid); margin-top:1px; }
+  .villa.din { background:var(--green-t); border-color:var(--green-b); }
+  .villa.din .vn { color:var(--green); }
+  .villa.no { background:var(--terra-t); border-color:var(--terra-b); }
+  .villa.no .vn { color:var(--terra); text-decoration:line-through; }
+  .villa.wait { border-style:dashed; border-color:var(--amber-b); background:var(--cream); }
+  .villa.wait .vn { color:var(--amber-ink); }
+  .villa.vac { opacity:.55; border-style:dashed; background:none; }
+  .villa .al { position:absolute; top:-5px; right:-5px; width:16px; height:16px;
+    border-radius:50%; background:var(--red); border:2px solid var(--cream); }
+  .villa .noteflag { position:absolute; top:2px; left:6px; color:var(--gold); font-size:11px; }
+  .join { grid-column:span 2; display:grid; grid-template-columns:1fr 1fr; gap:0;
+          border:1.5px solid var(--green-b); border-radius:16px; overflow:hidden;
+          background:var(--green-t); }
+  .join .villa { border:none; border-radius:0; background:none; }
+  .join .villa + .villa { border-left:1px dashed var(--green-b); }
+  .join::after { display:none; }
+  .legend { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:11.5px;
+            color:var(--mid); margin:12px 2px 0; }
+  .sw { display:inline-block; width:11px; height:11px; border-radius:4px;
+        vertical-align:-1px; margin-right:4px; border:1px solid var(--rule); }
+  .sw.g { background:var(--green-t); border-color:var(--green-b); }
+  .sw.t { background:var(--terra-t); border-color:var(--terra-b); }
+  .sw.w { border-style:dashed; border-color:var(--amber-b); background:var(--cream); }
+  .sw.r { background:var(--red); border-color:var(--red); border-radius:50%; }
+
+  .sheet { position:fixed; left:0; right:0; bottom:0; z-index:10;
+           max-width:430px; margin-inline:auto;
+           background:var(--card); border-radius:22px 22px 0 0;
+           border:1px solid var(--rule); border-bottom:none;
+           box-shadow:0 -8px 30px rgba(27,27,25,.18);
+           padding:10px 18px calc(16px + env(safe-area-inset-bottom)); }
+  .grab { width:38px; height:4px; border-radius:999px; background:var(--rule);
+          margin:0 auto 12px; }
+  .shead { display:flex; align-items:center; gap:10px; }
+  .shead .vnum { width:44px; height:44px; border-radius:14px; background:var(--green-t);
+    border:1.5px solid var(--green-b); color:var(--green); font-size:18px; font-weight:700;
+    display:grid; place-items:center; }
+  .shead .nm { font-size:16.5px; font-weight:700; }
+  .shead .sub { font-size:12.5px; color:var(--mid); }
+  .steppers { margin-left:auto; display:flex; align-items:center; gap:10px; }
+  .steppers button { width:34px; height:34px; border-radius:50%; border:1px solid var(--rule);
+    background:var(--cream); font:inherit; font-size:16px; color:var(--ink); }
+  .steppers b { font-size:17px; min-width:20px; text-align:center; }
+  .answer { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:14px 0 10px; }
+  .answer button { font:inherit; font-size:13px; font-weight:600; padding:11px 4px;
+    min-height:44px; border-radius:12px; border:1.5px solid var(--rule);
+    background:var(--card); color:var(--mid); }
+  .answer .yes.on { background:var(--green-t); border-color:var(--green-b); color:var(--green); }
+  .answer .no.on { background:var(--terra-t); border-color:var(--terra-b); color:var(--terra); }
+  .answer .wait.on { border-style:dashed; border-color:var(--amber-b);
+    background:var(--cream); color:var(--amber-ink); }
+  .diets { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .diets span { font-size:12px; font-weight:600; border-radius:999px; padding:5px 11px;
+    background:var(--terra-t); color:var(--terra); }
+  .diets .al { background:var(--red); color:#fff; }
+  .snote { font-size:13px; color:var(--mid); background:var(--cream);
+           border:1px solid var(--rule); border-radius:12px; padding:10px 12px; }
+  .snote b { color:var(--gold); }
+</style>
+</head>
+<body>
+<div class="crumb">Nala &middot; mock B of 3 &middot; nothing live</div>
+<div class="datebar">
+  <h1>Tue 15th Sep</h1>
+  <button class="dn today">Today</button>
+  <button class="dn">&#8249;</button><button class="dn">&#8250;</button>
+</div>
+
+<div class="toprow">
+  <span class="pub">Menu live 11:46</span>
+  <span class="covers"><b>35</b> covers &middot; 14 tables</span>
+</div>
+
+<div class="chips">
+  <button class="on">All <b>17</b></button>
+  <button>Dining <b>12</b></button>
+  <button>Awaiting <b>2</b></button>
+  <button>Not dining <b>2</b></button>
+  <button>Vacant <b>1</b></button>
+  <button>+ Add</button>
+</div>
+
+<div class="floor">
+  <div class="villa din"><span class="noteflag">&#9873;</span><div class="vn">1</div><div class="vp">2p</div></div>
+  <div class="villa din"><div class="vn">2</div><div class="vp">2p</div></div>
+  <div class="join">
+    <div class="villa din"><div class="vn">3</div><div class="vp">3p</div><span class="al"></span></div>
+    <div class="villa din"><div class="vn">4</div><div class="vp">2p</div></div>
+  </div>
+  <div class="villa din"><div class="vn">5</div><div class="vp">2p</div></div>
+  <div class="villa no"><div class="vn">6</div><div class="vp">&mdash;</div></div>
+  <div class="join">
+    <div class="villa din"><div class="vn">7</div><div class="vp">2p</div></div>
+    <div class="villa din"><div class="vn">8</div><div class="vp">2p</div></div>
+  </div>
+  <div class="villa wait"><div class="vn">9</div><div class="vp">?</div></div>
+  <div class="villa din"><div class="vn">10</div><div class="vp">2p</div></div>
+  <div class="villa din"><div class="vn">11</div><div class="vp">2p</div></div>
+  <div class="villa din"><span class="noteflag">&#9873;</span><div class="vn">12</div><div class="vp">3p</div></div>
+  <div class="villa no"><div class="vn">13</div><div class="vp">&mdash;</div></div>
+  <div class="villa din"><div class="vn">14</div><div class="vp">2p</div></div>
+  <div class="villa din"><div class="vn">15</div><div class="vp">3p</div></div>
+  <div class="villa vac"><div class="vn">16</div><div class="vp"></div></div>
+  <div class="villa din"><div class="vn">17</div><div class="vp">2p</div></div>
+</div>
+
+<div class="legend">
+  <span><i class="sw g"></i>Dining</span>
+  <span><i class="sw t"></i>Not dining</span>
+  <span><i class="sw w"></i>Awaiting</span>
+  <span><i class="sw r"></i>Allergy</span>
+  <span>&#9873;&nbsp;Note</span>
+</div>
+
+<div class="sheet">
+  <div class="grab"></div>
+  <div class="shead">
+    <div class="vnum">3</div>
+    <div><div class="nm">Mark Whitfield</div>
+      <div class="sub">Seated with villa 4 &middot; table of 5</div></div>
+    <div class="steppers"><button>&minus;</button><b>3</b><button>+</button></div>
+  </div>
+  <div class="answer">
+    <button class="yes on">Dining</button>
+    <button class="no">Not dining</button>
+    <button class="wait">No answer</button>
+  </div>
+  <div class="diets"><span class="al">Nut allergy</span><span>Shellfish-free</span></div>
+  <div class="snote"><b>&#9873;</b> Anniversary &mdash; sparkling on arrival, cake
+    after mains.</div>
+</div>
+
+<script>
+  document.querySelectorAll('.chips button').forEach(function(c){
+    c.onclick = function(){
+      c.parentElement.querySelectorAll('button').forEach(function(x){ x.classList.remove('on'); });
+      c.classList.add('on');
+    };
+  });
+  document.querySelectorAll('.answer button').forEach(function(a){
+    a.onclick = function(){
+      a.parentElement.querySelectorAll('button').forEach(function(x){ x.classList.remove('on'); });
+      a.classList.add('on');
+    };
+  });
+</script>
+</body>
+</html>
