@@ -1104,6 +1104,26 @@ function dinnerRecord(cell){
   return cell;
 }
 
+/* Does this dinner cell belong to the booking now in the villa? A cell stamps
+   the booking it was written for; when the villa is later held by a DIFFERENT
+   booking - Mews moved or renamed one, the room changed hands - the cell is
+   somebody else's answer and is not tonight's for whoever is here now.
+
+   The one owner of that fact. It was decided three ways before: the
+   Reservations board through dinnerElsewhere, the dining history inline in
+   histNight, and the Invitations board and Dashboard not at all - they read
+   /dinner/<date>/<villa> raw, so a cell orphaned by a villa change sat an
+   unasked new arrival under "answered · set by reception" on the SMS page
+   and counted them as a cover on the Dashboard, while Reservations - correctly
+   - showed the villa awaiting and the guest was never asked (villa 4, 19 Sep).
+
+   A cell with no booking id is a walk-in or an old staff entry Mews has no
+   opinion about, so it stays; a villa with no known booking id likewise cannot
+   contradict the cell. Only two known ids that disagree make it stale. */
+function cellIsForBooking(cell, bookingId){
+  return !(cell && cell.bookingId && bookingId && cell.bookingId !== bookingId);
+}
+
 /* A guest who answered dinner and was then moved leaves the answer behind in
    the villa they left, so the board shows a booking in an empty villa and
    counts the covers twice. Same bug as the one that produced three Ben
@@ -1137,7 +1157,7 @@ function dinnerElsewhere(cells, villa, roomguests){
   var cell = cells && cells[String(villa)];
   if (!cell || !cell.bookingId) return false;
   var here = (roomguests || {})[String(villa)];
-  if (here && here.bookingId && here.bookingId !== cell.bookingId) return true;
+  if (here && here.bookingId && !cellIsForBooking(cell, here.bookingId)) return true;
   var elsewhere = false;
   for (var v in (roomguests || {})){
     var r = roomguests[v];
@@ -1210,11 +1230,23 @@ function externalDiners(responses, manual, skip){
    person who has said yes, so it counts as one, not as nought. */
 function dinerPax(g){ return (g && +g.pax) || 1; }
 
-function formDinnerCell(villa, pre, rec, dateKey){
-  if (!pre || (pre.dining !== true && pre.dining !== false)) return null;
+/* The night a booking ARRIVES, matched against the night being rendered. The
+   one definition of "arriving tonight", so the pre-arrival form (which asks
+   about the first night alone) and the Invitations board (which sets arriving
+   guests aside from the send) cannot disagree about which night that is. rec
+   is whatever night record the caller holds: roomguests entries spell it
+   `arrives`, raw /stays entries spell it `arrive`, and both are honoured.
+   parseDepDate, never a string slice: a stay's date is local, and a slice
+   would read the wrong day for the resort's pre-10am-UTC working morning. */
+function isArrivalNight(rec, dateKey){
   var arr = rec && (rec.arrives || rec.arrive);
   var d = arr ? parseDepDate(arr) : null;
-  if (!d || dkey(d) !== dateKey) return null;
+  return !!(d && dkey(d) === dateKey);
+}
+
+function formDinnerCell(villa, pre, rec, dateKey){
+  if (!pre || (pre.dining !== true && pre.dining !== false)) return null;
+  if (!isArrivalNight(rec, dateKey)) return null;
   return {
     status: pre.dining ? 'in' : 'out',
     pax:    pre.dining ? (pre.pax || rec.adults || 2) : 0,
@@ -1638,7 +1670,7 @@ function histNight(date, id){
     if (!villa) return row;   /* stays holds no villa for this booking that night */
     var cell = (r[1].data || {})[villa];
     /* Somebody else's answer must not become this guest's history. */
-    if (cell && cell.bookingId && cell.bookingId !== id) cell = null;
+    if (!cellIsForBooking(cell, id)) cell = null;
     if (!cell || cell.status !== 'in') return row;
     row.dined = true;
     var m = (r[2].ok && r[2].data) || null;
@@ -2984,6 +3016,13 @@ function stateOf(villa, stay, cell, invite, fix, dateKey){
   if (!normalisePhone(raw))
     return { kind:'nophone', line:'Not a mobile number \u00B7 ' + raw + ' \u00B7 tap to fix',
              tickable:false, fixable:true, ticked:false };
+  /* The cell is tonight's answer only if it belongs to the booking now in the
+     villa - the same guard the Reservations board applies through
+     dinnerElsewhere. Reading it raw put a moved booking's "set by reception"
+     onto whoever took the villa next, so an unasked arrival sat in Answered and
+     was never sent an invitation (villa 4, 19 Sep). stay is this villa's
+     current booking; stay.id is its booking id, which is what a cell stamps. */
+  if (!cellIsForBooking(cell, stay && stay.id)) cell = null;
   if (cell && cell.status){
     var what = cell.status === 'in'
       ? 'Dining' + (cell.pax ? ' \u00B7 ' + cell.pax : '') : 'Not dining';
