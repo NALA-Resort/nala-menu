@@ -358,24 +358,29 @@ with sync_playwright() as p:
         and json.loads(w["b"]).get("state") == "off"]
        and pg.evaluate("()=>document.getElementById('cancelOv').hidden"))
 
-    #  Issue keys: the shared nala-cards runtime, fed everyone in house
-    #  with arrivals leading, held counts from the table, All arrivals
-    #  at the foot behind the seam.
+    #  Issue keys: the shared nala-cards runtime. All arrivals LEADS as a
+    #  tinted button; then the villas in two groups - the fresh arrivals,
+    #  a divider, then everyone holding cards (a held count outranks the
+    #  arriving label, so villa 14 groups with the held); the pad last
+    #  (the owner, 19 Sep).
     pg.evaluate("()=>document.getElementById('issueBtn').click()")
     pg.wait_for_timeout(300)
+    ck("All arrivals leads as a button, its count in a badge",
+       pg.evaluate("""()=>{var b=[...document.querySelectorAll('#issueDrop button')];
+         return b[0].getAttribute('data-key')==='all'
+             && b[0].classList.contains('kd-all')
+             && b[0].querySelector('.navbadge').textContent==='2';}"""))
     drop = pg.evaluate("""()=>[...document.querySelectorAll('#issueDrop button')]
         .map(b=>b.textContent)""")
-    ck("the drop: arrivals, then departing today, then in house, then the pad",
-       len(drop) == 6 and "Villa 2" in drop[0] and "Villa 12" in drop[1]
-       and "Villa 14" in drop[2] and "Ann Brown" in drop[2]
-       and "Villa 4" in drop[3] and "Villa by number" in drop[4])
-    ck("a villa's held count reads from the table",
-       "2 held" in drop[3] and "arriving" in drop[0] and "1 held" in drop[2])
-    ck("All arrivals stands last, its count in a badge",
-       pg.evaluate("""()=>{var b=[...document.querySelectorAll('#issueDrop button')];
-         var a=b[b.length-1];
-         return a.getAttribute('data-key')==='all'
-             && a.querySelector('.navbadge').textContent==='2';}"""))
+    ck("arrivals lead, then the held, then the pad - held counts from the table",
+       len(drop) == 6
+       and "Villa 2" in drop[1] and "arriving" in drop[1]
+       and "Villa 12" in drop[2] and "arriving" in drop[2]
+       and "Villa 4" in drop[3] and "2 held" in drop[3]
+       and "Villa 14" in drop[4] and "1 held" in drop[4] and "Ann Brown" in drop[4]
+       and "Villa by number" in drop[5])
+    ck("one divider seams the arriving group from the held",
+       pg.evaluate("()=>document.querySelectorAll('#issueDrop .kd-div').length") == 1)
 
     #  the pad: a room with no guest, reached by number. Its expiry is
     #  not a settled fact, so the sheet asks till when - a date and a

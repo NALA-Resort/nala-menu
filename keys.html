@@ -367,11 +367,19 @@
                   font-family:var(--ui-font); font-size:var(--t2); line-height:1.3;
                   color:var(--ink); cursor:pointer; }
 .keydrop button:active { background:var(--accent-soft); }
-/* The batch action stands last, behind the seam the signout row already
-   owns, its count in a navbadge - ruled by the owner, 9 Sep, when a bold
-   first row read as the menu's title rather than a thing to press. */
-.keydrop .kd-all { border-top:1px solid var(--rule); margin-top:var(--s1);
-                   align-items:center; }
+/* The batch action LEADS, dressed as a tinted button so it reads as a
+   thing to press, not the list's title - the owner, 19 Sep, moving it up
+   from the foot where it sat from 9 Sep (a plain last row read as an
+   afterthought once the list ran long). Secondary to the page's Issue
+   keys primary, so a tint, not a fill (the button law). */
+.keydrop .kd-all { margin:0 var(--s3) var(--s1); width:auto;
+                   background:var(--accent-soft); border-radius:var(--r);
+                   align-items:center; font-weight:600; }
+/* the seam under the button and over the pad; the divider between the two
+   villa groups (arriving, then held) - the owner's 19 Sep divider */
+.keydrop .kd-seam, .keydrop .kd-div { border-top:1px solid var(--rule); }
+.keydrop .kd-seam { margin:var(--s1) 0; }
+.keydrop .kd-div { margin:var(--s2) var(--s4); }
 .keydrop .kd-state { flex:0 0 auto; font-size:var(--t1); color:var(--mid);
                      white-space:nowrap; }
 .keydrop .kd-state.card-done { color:var(--law-green); }
@@ -534,7 +542,7 @@ button
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
 <script src="nala-shared.js?v=67"></script>
-<script src="nala-cards.js?v=12"></script>
+<script src="nala-cards.js?v=13"></script>
 <script>
 /* Keys: the card register, built from the approved mock
    (mock-keys-store.html) and holding its shape - the suite compares

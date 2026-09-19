@@ -362,25 +362,53 @@ function bulk(){
 }
 
 /* ── the drop ── */
+/* One row per villa: the state the row SHOWS is the held count first, then
+   departing, then arriving, then nothing - held outranks arriving, which is
+   why an arrival already holding a card reads "1 held" and groups with the
+   held (the owner, 19 Sep). */
+function dropRowHTML(r){
+  var n = heldFor(r.villa);
+  var state = n ? '<span class="kd-state card-done">' + n + ' held</span>'
+    : r.leaving ? '<span class="kd-state">departs 1pm</span>'
+    : r.arriving ? '<span class="kd-state">arriving</span>'
+    : '<span class="kd-state">no cards</span>';
+  return '<button data-key="' + esc(r.villa) + '">Villa ' + esc(r.villa) +
+         ' · ' + esc(r.name) + state + '</button>';
+}
 function cardsDrawDrop(){
   var d = cfg.drop;
   if (!d) return;
-  var h = '';
-  if (!cfg.rows().length)
-    h += '<button disabled style="color:var(--mid)">' + cfg.emptyLabel + '</button>';
-  cfg.rows().forEach(function(r){
-    var n = heldFor(r.villa);
-    var state = n ? '<span class="kd-state card-done">' + n + ' held</span>'
-      : r.leaving ? '<span class="kd-state">departs 1pm</span>'
-      : r.arriving ? '<span class="kd-state">arriving</span>'
-      : '<span class="kd-state">no cards</span>';
-    h += '<button data-key="' + esc(r.villa) + '">Villa ' + esc(r.villa) +
-         ' · ' + esc(r.name) + state + '</button>';
-  });
+  /* All arrivals LEADS, dressed as a button. It sat at the foot from
+     9 Sep, when a bold first row read as the list's title; a tinted button
+     is a thing to press, not a heading, so the owner moved it up on
+     19 Sep. Secondary to the page's Issue keys primary - a tint, not a
+     fill (button law, STYLEGUIDE.md). */
+  var h = '<button class="kd-all" data-key="all">' + esc(cfg.bulkLabel) +
+          '<span class="navbadge">' + cfg.bulkRows().length + '</span></button>';
+  var rows = cfg.rows();
+  if (!rows.length){
+    h += '<div class="kd-seam"></div>' +
+         '<button disabled style="color:var(--mid)">' + esc(cfg.emptyLabel) + '</button>';
+  } else {
+    /* Two groups, split by the state the row shows: the fresh arrivals
+       still needing keys, then everyone already holding cards (or
+       departing, or empty). A divider seams them, each group by villa
+       number (the owner, 19 Sep - held counts had been landing among the
+       arrivings and reading as strays). */
+    var byVilla = function(a, b){ return (+a.villa) - (+b.villa); };
+    var arriving = [], held = [];
+    rows.forEach(function(r){
+      (r.arriving && !heldFor(r.villa) ? arriving : held).push(r);
+    });
+    arriving.sort(byVilla); held.sort(byVilla);
+    h += '<div class="kd-seam"></div>';
+    arriving.forEach(function(r){ h += dropRowHTML(r); });
+    if (arriving.length && held.length) h += '<div class="kd-div"></div>';
+    held.forEach(function(r){ h += dropRowHTML(r); });
+  }
   /* the door to a room no guest map lists - a number, not a list */
-  h += '<button data-key="pad">Villa by number</button>';
-  h += '<button class="kd-all" data-key="all">' + esc(cfg.bulkLabel) + '' +
-       '<span class="navbadge">' + cfg.bulkRows().length + '</span></button>';
+  h += '<div class="kd-seam"></div>' +
+       '<button data-key="pad">Villa by number</button>';
   d.innerHTML = h;
 }
 function cardsPaint(){
