@@ -1,6 +1,6 @@
 # NALA key-card helper. Runs on the front-desk PC, next to CardEncoder.dll.
 #
-# VERSION: 2026-09-19.2   (also $HELPER_VERSION below, printed on the first
+# VERSION: 2026-09-19.3   (also $HELPER_VERSION below, printed on the first
 # log line at startup). If the desk is ever unsure which helper is running,
 # read the top line of its window - "NALA encoder helper <version> ..." -
 # and compare it to the version here on MAIN. A mismatch means the running
@@ -56,7 +56,7 @@ if (Test-Path (Join-Path $PSScriptRoot "nala-config.ps1")) {
 # names THIS file, downloaded from main, and is logged on startup so the
 # desk can check which helper is running. Keep it in step with the VERSION
 # note at the top of this file.
-$HELPER_VERSION = "2026-09-19.2"
+$HELPER_VERSION = "2026-09-19.3"
 
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
@@ -333,6 +333,32 @@ while ($true) {
               }
             }
             if ($stopped) { break }
+            # A card is on the pad now, and THIS is the write that must
+            # agree with the screen. The card wait above only watches for a
+            # Skip while the pad is EMPTY, so a Skip pressed once a card is
+            # already sitting there - or a card placed for the next villa in
+            # the instant before this write - was never seen, and the card
+            # was burned onto the villa the desk had already moved off. The
+            # screen's Skip and this write are not two clocks running side
+            # by side: they share ONE state, /cutrun, and the fix is simply
+            # to read it at the last moment. Confirm this villa still wants
+            # this card before writing it (the owner, 19 Sep).
+            $chk = $null
+            try { $chk = Fb-Get "/cutrun" } catch {}
+            # Fail OPEN if the read itself failed: a network blip must not
+            # abort a legitimate write (the card is in hand, the desk is
+            # holding it). Abort only on a read that CONFIRMS the desk moved
+            # off this card - Stop, the villa gone, or its qty shrunk below
+            # this card by a Skip.
+            if ($chk) {
+              $cq = $null
+              if ($chk.queue) { $cq = $chk.queue.PSObject.Properties[$villa] }
+              if ($chk.state -ne "on" -or -not $cq -or [int]$cq.Value.qty -lt $i) {
+                $stopped = $true
+                Log "  villa ${villa}: skipped just now - the card on the pad was NOT cut for it"
+                break
+              }
+            }
             $failed = Write-One $villa $lock.Value ([uint32]$q.expiry)
             if ($failed) { break }
             $no = Get-CardNo
