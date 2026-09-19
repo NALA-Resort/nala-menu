@@ -166,7 +166,16 @@ var CARD_ASK_SVG = '<div class="cardask"><svg viewBox="0 0 140 96" fill="none" '
 
 function queuePairs(){
   var q = (CR && CR.queue) || {};
-  return Object.keys(q).sort(function(a, b){ return (+a) - (+b); })
+  /* Firebase renders a numbered node as an ARRAY once its keys fill more
+     than half of 0..max - villas 2,8,9..16 (a full arrivals run) come
+     back as an array with null in every empty seat, villa "2" alone as a
+     map. The empty seats are real nulls, so Object.keys keeps them; drop
+     them or runRender dereferences q.guest on a null and the overlay
+     hangs on "Waking up…" (found live 19 Sep, all-arrivals only - single
+     villas never coerce). The helper reads this same node through its own
+     Node-Pairs for the same reason (nala-encoder.ps1). */
+  return Object.keys(q).filter(function(v){ return q[v] != null; })
+    .sort(function(a, b){ return (+a) - (+b); })
     .map(function(v){ return { villa: v, q: q[v] }; });
 }
 

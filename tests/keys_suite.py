@@ -162,6 +162,24 @@ CANCELRUN = {}
 CUTRUN = {}
 WRITES = []
 
+#  Firebase renders a numbered node as a JSON ARRAY once its keys fill
+#  more than half of 0..max - so a full arrivals run (/cutrun/queue keyed
+#  2,3,4,5...) comes back with null in every empty seat, while a single
+#  villa comes back as a map. json.dumps of the python dict would always
+#  hand back a map, which is the blind spot that let the run screen ship
+#  hanging on "Waking up..." for All arrivals (19 Sep): the reader met an
+#  array with null seats for the first time live. Serve it the way the
+#  database really does, so the suite meets it too.
+def fb_shape(node):
+    if not isinstance(node, dict):
+        return node
+    ks = list(node.keys())
+    if ks and all(k.isdigit() for k in ks):
+        mx = max(int(k) for k in ks)
+        if len(ks) > (mx + 1) / 2:
+            return [fb_shape(node.get(str(i))) for i in range(mx + 1)]
+    return {k: fb_shape(v) for k, v in node.items()}
+
 def fb(route, request):
     u, m = request.url, request.method
     if m in ("PUT", "PATCH", "DELETE"):
@@ -187,7 +205,7 @@ def fb(route, request):
                       body=request.post_data or "null"); return
     body = "null"
     if "/cancelrun" in u: body = json.dumps(CANCELRUN) if CANCELRUN else "null"
-    elif "/cutrun" in u: body = json.dumps(CUTRUN) if CUTRUN else "null"
+    elif "/cutrun" in u: body = json.dumps(fb_shape(CUTRUN)) if CUTRUN else "null"
     elif "/cards" in u: body = json.dumps(CARDS)
     elif "/stays/" in u:
         d = u.split("/stays/")[1].split(".json")[0]
@@ -464,6 +482,23 @@ with sync_playwright() as p:
        puts and sorted(puts[0]["queue"].keys()) == ["12", "2"]
        and puts[0]["queue"]["12"]["qty"] == 3
        and puts[0]["queue"]["2"]["qty"] == 2)
+    #  The run is on; now the database serves the queue the way it really
+    #  does for a dense low set - an ARRAY with null in the empty seats.
+    #  The run screen must read the villas out of it, not throw on a null
+    #  seat and hang on the first "Waking up..." (19 Sep: All arrivals hung
+    #  here while single villas, which never coerce, worked). This case is
+    #  an object before the fix and an array after, and only the fix reads
+    #  both - restore queuePairs' old Object.keys(q).map and it goes red.
+    now_ms = int(time.time() * 1000)
+    CUTRUN.clear()
+    CUTRUN.update({"state": "on", "by": "x", "at": now_ms, "seen": now_ms + 60000,
+                   "queue": {str(v): {"guest": "Guest %d" % v, "qty": 2, "cut": 0,
+                                      "expiry": at13(2)} for v in (2, 3, 4, 5)}})
+    pg.wait_for_timeout(1600)
+    body = pg.inner_text("#cardBody")
+    ck("All arrivals reads a Firebase-array queue, never stuck on Waking up",
+       "Villa 2" in body and "Hold a card to the reader" in body
+       and "Waking up" not in body)
     pg.evaluate("()=>document.getElementById('cardX').click()")
     pg.close()
 
