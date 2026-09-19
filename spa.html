@@ -278,6 +278,18 @@ function villaOf(id, day){
   if (!bk) return '';
   return bk.villaByDate[day] || bk.villa || '';
 }
+/* A ghost: a /spa record whose booking has left BOOKINGS - departed,
+   cancelled, or aged out of the window this board loads. items() walks the
+   whole /spa node, so the record still draws, but with no villa and the name
+   fallen back to rec.name or "Guest". Nothing above can move it and, being
+   declined with no day, it clears no queue and outlives every filter. The
+   badge is worse off than the board: spaOwedCounts (nala-shared.js) reads
+   /spa on its own, so a ghost still owed - declined and the guest not marked
+   told - counts against the front desk for good. The one honest exit is to
+   remove the record itself, which both readers see at once because both read
+   the live node. Admin and manager only (the owner, 19 Sep); the delete is a
+   null write, already inside /spa's write rule, so no rules change. */
+function isGhost(id){ return !BOOKINGS[id]; }
 /* Chip days: the guest's own stay, from today forward - the one guard the
    whole feature was asked to carry: a treatment cannot land outside the
    stay, because the day control never offers such a day. */
@@ -761,6 +773,32 @@ function card(it){
     rrow.appendChild(rb);
     el.appendChild(rrow);
   }
+  /* The ghost's one door out. Only a real record can be a ghost - a virtual
+     ask is drawn FROM a booking, so it always has one - and only admin and
+     manager may remove it. Terracotta and confirmed, the button law, and its
+     own row so a cleanup never sits beside an answer. */
+  if (!isNew && !rec.virtual && isGhost(id) &&
+      (role === 'admin' || role === 'manager')){
+    var grow = document.createElement('div');
+    grow.className = 'btns'; grow.style.marginTop = '8px';
+    var gb = document.createElement('button');
+    gb.type = 'button'; gb.className = 'cbtn danger';
+    gb.textContent = 'Remove leftover record';
+    gb.onclick = function(){
+      if (!window.confirm('Remove this leftover massage record for ' +
+          nameOf(id, rec) + '? Its booking has left the system, so nothing ' +
+          'here can be acted on. This cannot be undone.')) return;
+      saveFeedback(pressedButton(),
+        function(){ return deleteRec(id, it.tid); },
+        { done:'Removed ✓', hold:400,
+          then:function(){ OPEN = null; SEL = null; load(); },
+          fail:function(msg){ document.getElementById('errBar').textContent = msg; } });
+    };
+    grow.appendChild(gb);
+    el.appendChild(grow);
+    hint = hint || 'This booking is no longer in the system, so nothing above ' +
+           'can be acted on. Remove clears the leftover record for good.';
+  }
   if (hint){
     var h = document.createElement('div');
     h.className = 'hint'; h.textContent = hint;
@@ -925,6 +963,18 @@ function save(it, status, opts){
     then:function(){ OPEN = null; SEL = null; load(); },
     fail:function(msg){ err.textContent = msg; }
   });
+}
+
+/* Removing a ghost record: a null write to its node, which is what a Firebase
+   DELETE is, governed by the same $tid .write rule as every save (.validate
+   never runs on null). No status change, no push - a ghost's booking is gone,
+   so there is no queue on the other side and nobody to tell. The card's Remove
+   sends one; the board's sweep sends a batch. */
+function deleteRec(id, tid){
+  return fetch(DB + '/spa/' + id + '/' + tid + '.json', { method: 'DELETE' })
+    .then(function(r){
+      if (!r.ok) throw new Error('spa delete failed ' + r.status);
+    });
 }
 
 function paint(){
@@ -1141,6 +1191,38 @@ function paint(){
       e0.className = 'empty';
       e0.textContent = 'Nothing in this queue. Tap All for everything.';
       board.appendChild(e0);
+    }
+  }
+  /* The sweep, admin and manager only: every ghost the board is holding,
+     cleared in one confirmed act. The per-card Remove is the ones-and-twos
+     door; this is for when a run of departed bookings has left a drift of
+     them. Counted from the whole list, not the viewed band, so it names how
+     many exist wherever they sit, and its own footer under everything. */
+  var role0 = normaliseRole(window.NALA_ROLE);
+  if (role0 === 'admin' || role0 === 'manager'){
+    var ghosts = list.filter(function(it){
+      return !it.rec.virtual && isGhost(it.id); });
+    if (ghosts.length){
+      var sweep = document.createElement('div');
+      sweep.className = 'btns'; sweep.style.marginTop = '16px';
+      var swb = document.createElement('button');
+      swb.type = 'button'; swb.className = 'cbtn danger';
+      swb.textContent = 'Remove ' + ghosts.length + ' ghost booking' +
+                        (ghosts.length === 1 ? '' : 's');
+      swb.onclick = function(){
+        if (!window.confirm('Remove ' + ghosts.length + ' leftover massage ' +
+            'record' + (ghosts.length === 1 ? '' : 's') + '? Each one’s ' +
+            'booking has left the system, so none can be acted on. This ' +
+            'cannot be undone.')) return;
+        saveFeedback(pressedButton(), function(){
+          return Promise.all(ghosts.map(function(it){
+            return deleteRec(it.id, it.tid); }));
+        }, { done:'Removed ✓', hold:400,
+             then:function(){ OPEN = null; SEL = null; load(); },
+             fail:function(msg){ document.getElementById('errBar').textContent = msg; } });
+      };
+      sweep.appendChild(swb);
+      board.appendChild(sweep);
     }
   }
 }

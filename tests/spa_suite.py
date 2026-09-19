@@ -164,10 +164,17 @@ def fb(route, request):
                 and '"copyV"' in (request.post_data or "")):
             route.fulfill(status=400, content_type="application/json",
                           body='{"error":"validation"}'); return
-        # the page reloads after a save; fold the write in so it shows
+        # the page reloads after a save; fold the write in so it shows. A
+        # DELETE carries no body and drops the node - a ghost being removed -
+        # so the reload's /spa.json read no longer holds it.
         mm = re.search(r"/spa/([^/]+)/([^/.]+)\.json", u)
         if mm:
-            SPA.setdefault(mm.group(1), {})[mm.group(2)] = json.loads(request.post_data)
+            if m == "DELETE":
+                SPA.get(mm.group(1), {}).pop(mm.group(2), None)
+                if mm.group(1) in SPA and not SPA[mm.group(1)]:
+                    del SPA[mm.group(1)]
+            else:
+                SPA.setdefault(mm.group(1), {})[mm.group(2)] = json.loads(request.post_data)
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
     body = "null"
@@ -1590,6 +1597,82 @@ with sync_playwright() as p:
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
     ck("and the masseuse's menu offers no other page", links == [])
     q.close()
+
+    # ── ghost bookings: a /spa record whose booking has left ────
+    # Departed, cancelled, or aged out of the window this board reads.
+    # items() walks the whole /spa node, so the record still draws - no
+    # villa, the name fallen back to what the record stored - and, being
+    # declined and never told, spaOwedCounts charges it to the desk for
+    # good. Two here to prove they are not only the declined kind and that
+    # the sweep counts across bands: one declined with no day, one booked on
+    # a day. Admin and manager get a door out; nobody else does.
+    SPA["bGHOST"] = {"t1": {"status": "declined", "note": "nothing free",
+                            "name": "Wanda Gone", "source": "prearrival",
+                            "by": "masseuse@x", "at": "2026-08-20T10:00:00Z"}}
+    SPA["bGONE2"] = {"t1": {"status": "booked", "day": plus(1), "time": "10:00",
+                            "name": "Vic Departed", "source": "desk",
+                            "by": "staff@x", "at": "2026-08-20T10:00:00Z"}}
+
+    def ghost_tile(page, bid):
+        return page.evaluate("""(id)=>{
+            var e=document.querySelector('#board [data-booking="'+id+'"]');
+            return e ? {villa:e.querySelector('.v').textContent,
+                        name:e.querySelector('.nm').textContent} : null;}""", bid)
+
+    g = board("staff@x")
+    tg = ghost_tile(g, "bGHOST")
+    ck("a ghost draws with no villa and the record's stored name",
+       tg and tg["villa"] == "" and tg["name"] == "Wanda Gone")
+    ck("the board's sweep names how many ghosts it holds, across bands",
+       "Remove 2 ghost bookings" in g.evaluate("()=>board.textContent"))
+    g.locator('#board [data-booking="bGHOST"]').click(); g.wait_for_timeout(300)
+    ck("the ghost's card offers Remove leftover record to admin",
+       "Remove leftover record" in g.evaluate(
+         "()=>document.querySelector('.card').textContent"))
+    g.close()
+
+    # Neither the sweep nor the per-card Remove reaches the masseuse or a
+    # waiter working the board: cleanup is management's, the owner ruled.
+    for who in ("masseuse@x", "waiter@x"):
+        q = board(who)
+        if not q.url.endswith("spa.html"): q.close(); continue
+        ck("%s is shown no ghost sweep" % who,
+           "ghost booking" not in q.evaluate("()=>board.textContent"))
+        q.locator('#board [data-booking="bGHOST"]').click(); q.wait_for_timeout(300)
+        ck("%s has no Remove on the ghost card" % who,
+           "Remove leftover record" not in q.evaluate(
+             "()=>document.querySelector('.card').textContent"))
+        q.close()
+
+    # Removing from the card: confirm, one DELETE to the record's own node,
+    # and the ghost is gone from the reloaded board.
+    g = board("staff@x")
+    g.on("dialog", lambda d: d.accept())
+    del WRITES[:]
+    g.locator('#board [data-booking="bGHOST"]').click(); g.wait_for_timeout(300)
+    g.locator('.card .cbtn.danger', has_text="Remove leftover record").click()
+    g.wait_for_timeout(900)
+    ck("Remove sends one DELETE to the ghost's node and nothing else",
+       [x["m"] for x in WRITES] == ["DELETE"] and "/spa/bGHOST/t1." in WRITES[0]["u"])
+    ck("and the removed ghost is gone from the reloaded board",
+       g.query_selector('#board [data-booking="bGHOST"]') is None and
+       g.query_selector('#board [data-booking="bGONE2"]') is not None)
+    ck("the sweep now counts the one that is left",
+       "Remove 1 ghost booking" in g.evaluate("()=>board.textContent"))
+    g.close()
+
+    # The sweep clears the rest in one confirmed act.
+    g = board("staff@x")
+    g.on("dialog", lambda d: d.accept())
+    del WRITES[:]
+    g.locator('#board .cbtn.danger', has_text="ghost booking").click()
+    g.wait_for_timeout(900)
+    ck("the sweep DELETEs every ghost's node",
+       [x["m"] for x in WRITES] == ["DELETE"] and "/spa/bGONE2/t1." in WRITES[0]["u"])
+    ck("and the board holds no ghost afterwards",
+       g.query_selector('#board [data-booking="bGONE2"]') is None and
+       "ghost booking" not in g.evaluate("()=>board.textContent"))
+    g.close()
 
     # ── widths ──────────────────────────────────────────────────
     for w2 in (390, 360, 320):
