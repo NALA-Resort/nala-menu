@@ -1,6 +1,6 @@
 # NALA key-card helper. Runs on the front-desk PC, next to CardEncoder.dll.
 #
-# VERSION: 2026-09-19.3   (also $HELPER_VERSION below, printed on the first
+# VERSION: 2026-09-19.4   (also $HELPER_VERSION below, printed on the first
 # log line at startup). If the desk is ever unsure which helper is running,
 # read the top line of its window - "NALA encoder helper <version> ..." -
 # and compare it to the version here on MAIN. A mismatch means the running
@@ -56,7 +56,7 @@ if (Test-Path (Join-Path $PSScriptRoot "nala-config.ps1")) {
 # names THIS file, downloaded from main, and is logged on startup so the
 # desk can check which helper is running. Keep it in step with the VERSION
 # note at the top of this file.
-$HELPER_VERSION = "2026-09-19.3"
+$HELPER_VERSION = "2026-09-19.4"
 
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
@@ -225,6 +225,27 @@ function Node-Pairs($node){
   ,$out
 }
 
+# One villa's queue entry, array-safe. /cutrun/queue is a map for sparse
+# villas and an ARRAY (villa N at index N, null in the gaps) once the keys
+# pack densely - the same coercion Node-Pairs exists for. The inline
+# .PSObject.Properties[$villa] lookups in the skip-checks missed this: on
+# an array they returned nothing, so every villa read as "gone" and every
+# write was aborted - the desk stuck on "hold a card" (19 Sep). Every
+# by-villa read of the queue goes through here now, as the note above
+# always intended.
+function Queue-Entry($run, $villa){
+  if (-not $run -or $null -eq $run.queue) { return $null }
+  $q = $run.queue
+  if ($q -is [System.Array]) {
+    $i = [int]$villa
+    if ($i -ge 0 -and $i -lt $q.Length) { return $q[$i] }
+    return $null
+  }
+  $p = $q.PSObject.Properties[[string]$villa]
+  if ($p) { return $p.Value }
+  return $null
+}
+
 Log "NALA encoder helper $HELPER_VERSION - watching the card table. Ctrl+C stops it."
 while ($true) {
   try {
@@ -320,9 +341,8 @@ while ($true) {
               if ($beat % 4 -eq 0) {
                 $r2 = $null
                 try { $r2 = Fb-Get "/cutrun" } catch {}
-                $q2 = $null
-                if ($r2 -and $r2.queue) { $q2 = $r2.queue.PSObject.Properties[$villa] }
-                if (-not $r2 -or $r2.state -ne "on" -or -not $q2 -or [int]$q2.Value.qty -lt $i) {
+                $q2 = Queue-Entry $r2 $villa
+                if (-not $r2 -or $r2.state -ne "on" -or -not $q2 -or [int]$q2.qty -lt $i) {
                   $stopped = $true
                   Log "  villa ${villa}: the desk skipped or stopped at card $($i-1)"
                   break
@@ -351,9 +371,8 @@ while ($true) {
             # off this card - Stop, the villa gone, or its qty shrunk below
             # this card by a Skip.
             if ($chk) {
-              $cq = $null
-              if ($chk.queue) { $cq = $chk.queue.PSObject.Properties[$villa] }
-              if ($chk.state -ne "on" -or -not $cq -or [int]$cq.Value.qty -lt $i) {
+              $cq = Queue-Entry $chk $villa
+              if ($chk.state -ne "on" -or -not $cq -or [int]$cq.qty -lt $i) {
                 $stopped = $true
                 Log "  villa ${villa}: skipped just now - the card on the pad was NOT cut for it"
                 break

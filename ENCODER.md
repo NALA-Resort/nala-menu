@@ -63,7 +63,7 @@ downloaded file is the right one if its first logged line says
 wherever it came from.
 
 That first line also carries the helper's **version**, e.g.
-`NALA encoder helper 2026-09-19.3 - watching the card table`. It is the
+`NALA encoder helper 2026-09-19.4 - watching the card table`. It is the
 one reliable way to tell which helper a desk PC is actually running: a
 re-download changes the file on disk, not an already-open window, so after
 downloading you MUST close the running window and relaunch (or reboot).
