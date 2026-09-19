@@ -365,10 +365,11 @@ with sync_playwright() as p:
     #  (the owner, 19 Sep).
     pg.evaluate("()=>document.getElementById('issueBtn').click()")
     pg.wait_for_timeout(300)
-    ck("All arrivals leads as a button, its count in a badge",
+    ck("Issue all arrivals leads as a command button, its count in a badge",
        pg.evaluate("""()=>{var b=[...document.querySelectorAll('#issueDrop button')];
          return b[0].getAttribute('data-key')==='all'
              && b[0].classList.contains('kd-all')
+             && /Issue all arrivals/.test(b[0].textContent)
              && b[0].querySelector('.navbadge').textContent==='2';}"""))
     drop = pg.evaluate("""()=>[...document.querySelectorAll('#issueDrop button')]
         .map(b=>b.textContent)""")

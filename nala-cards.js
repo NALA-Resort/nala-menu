@@ -378,12 +378,15 @@ function dropRowHTML(r){
 function cardsDrawDrop(){
   var d = cfg.drop;
   if (!d) return;
-  /* All arrivals LEADS, dressed as a button. It sat at the foot from
-     9 Sep, when a bold first row read as the list's title; a tinted button
-     is a thing to press, not a heading, so the owner moved it up on
-     19 Sep. Secondary to the page's Issue keys primary - a tint, not a
-     fill (button law, STYLEGUIDE.md). */
-  var h = '<button class="kd-all" data-key="all">' + esc(cfg.bulkLabel) +
+  /* The batch action LEADS, and its label is a command - "Issue all
+     arrivals", not the bare noun - so it reads as a thing to press, not a
+     heading (the owner, 19 Sep; it sat at the foot from 9 Sep for want of
+     exactly that). The verb is the drop's, the noun is bulkLabel, so the
+     run title ("Key cards · all arrivals") stays the one source. Dressed
+     as a secondary button in keys.html (grey fill, the button law), since
+     Issue keys is this surface's one primary. */
+  var h = '<button class="kd-all" data-key="all">Issue ' +
+          esc(cfg.bulkLabel.toLowerCase()) +
           '<span class="navbadge">' + cfg.bulkRows().length + '</span></button>';
   var rows = cfg.rows();
   if (!rows.length){
