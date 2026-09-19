@@ -413,14 +413,19 @@ with sync_playwright() as p:
     pg = board()
     seq = pg.evaluate("""()=>[...document.getElementById('board').children]
         .map(el=>el.classList.contains('grp') ? 'H:'+el.textContent
-                                              : el.dataset.villa)""")
-    ck("the four bands render in order, headers counting, work first done sunk",
-       seq == ["H:To send · 2", "4", "14",
+              : el.classList.contains('grouptitle') ? 'IH'
+              : el.classList.contains('arrivals') ? 'ARR'
+              : el.dataset.villa)""")
+    #  Everyone here is in house (no arrival dates on the fixture), so the
+    #  In-house title leads and there is no Arrivals dropdown.
+    ck("the four bands render in order, under the In-house title, done sunk",
+       seq == ["IH",
+               "H:To send · 2", "4", "14",
                "H:Waiting on a reply · 1", "9",
                "H:Answered · 2", "7", "11",
                "H:Cannot send · 2", "2", "3"], seq)
     ck("a failed send sits in To send, its reason on the row",
-       seq[1:3] == ["4", "14"]
+       seq[2:4] == ["4", "14"]
        and "Send failed" in row("14").inner_text())
     tint = lambda v: pg.evaluate(
         "s=>getComputedStyle(document.querySelector(s))",
@@ -462,9 +467,12 @@ with sync_playwright() as p:
     #  band counts above are left alone.
     STAYS_BAK, DINNER_BAK = dict(STAYS), dict(DINNER)
     STAYS.clear(); STAYS.update({
+      #  All in house (arrived before tonight) so they sit in the main list,
+      #  not the Arrivals dropdown - this block is about the stale cell, not
+      #  the arrivals split.
       "6": stay("b6-now", "Lynette", "Burns", "+61 458 792 134", -1, 2),
-      "7": stay("b7-now", "Sadie",   "Cole",  "+61 466 000 007",  0, 2),
-      "8": stay("b8-now", "Otto",    "Frei",  "+61 466 000 008",  0, 2),
+      "7": stay("b7-now", "Sadie",   "Cole",  "+61 466 000 007", -1, 2),
+      "8": stay("b8-now", "Otto",    "Frei",  "+61 466 000 008", -1, 2),
     })
     DINNER.clear(); DINNER.update({
       #  Stale: stamped with the booking that has since left villa 6.
@@ -832,30 +840,45 @@ with sync_playwright() as p:
     pg.goto("http://localhost:8977/invitations.html")
     pg.wait_for_timeout(1600)
     frow = lambda v: pg.locator('.vrow[data-villa="%s"]' % v)
+    #  A form answer only ever speaks for the ARRIVAL night (formDinnerCell),
+    #  so any guest reading "answered on the pre-arrival form" is arriving
+    #  tonight and belongs in the Arrivals dropdown, set aside from the send.
+    ck("form-answered guests are arriving guests, in the Arrivals dropdown",
+       pg.locator('.arrivals .vrow[data-villa="6"]').count() == 1
+       and pg.locator('.arrivals .vrow[data-villa="4"]').count() == 1
+       and pg.locator('.arrivals .vrow[data-villa="11"]').count() == 1)
+    ck("the dropdown counts them and a mid-stay guest is NOT among them",
+       "3 guests" in pg.inner_text(".arrivals > summary")
+       and pg.locator('.arrivals .vrow[data-villa="9"]').count() == 0)
+    #  Their state is decided before they are folded away: data-state is
+    #  readable while collapsed, then open the dropdown to read the rows.
     ck("a guest who answered their pre-arrival form is Answered, not To send",
-       frow("6").get_attribute("data-state") == "answered"
-       and "Dining · 2 · answered on the pre-arrival form"
-           in frow("6").inner_text())
+       frow("6").get_attribute("data-state") == "answered")
     ck("and is not pre-ticked: re-asking is a deliberate tap, never the default",
        "on" not in (frow("6").get_attribute("class") or ""))
-    ck("a form decline reads Not dining, so nobody chases them",
-       frow("4").get_attribute("data-state") == "answered"
-       and "Not dining · answered on the pre-arrival form"
-           in frow("4").inner_text())
+    ck("a form decline is Answered too, so nobody chases them",
+       frow("4").get_attribute("data-state") == "answered")
+    pg.click(".arrivals > summary"); pg.wait_for_timeout(150)   # open to read the rows
+    ck("the dining answer reads off the form",
+       "Dining · 2 · answered on the pre-arrival form" in frow("6").inner_text())
+    ck("the decline reads Not dining",
+       "Not dining · answered on the pre-arrival form" in frow("4").inner_text())
     #  By computed colour: the tints are the contract with the Reservations
-    #  board, and a form answer must wear them exactly as a cell does.
+    #  board, and a confirmed arrival wears the same green tile as an in-house
+    #  diner, exactly as a cell does.
     tintf = lambda v: pg.evaluate(
         "s=>getComputedStyle(document.querySelector(s))",
         '.vrow[data-villa="%s"]' % v)
-    ck("the form answers wear the Reservations tiles",
+    ck("a confirmed arrival wears the Reservations green tile, a decline terracotta",
        tintf("6")["backgroundColor"] == "rgba(122, 160, 130, 0.26)"
        and tintf("4")["backgroundColor"] == "rgba(184, 106, 90, 0.16)")
-    ck("but only on the night they arrive: mid-stay is still To send, ticked",
+    ck("but only on the night they arrive: mid-stay is in house, To send, ticked",
        frow("9").get_attribute("data-state") == "ready"
-       and "on" in (frow("9").get_attribute("class") or ""))
+       and "on" in (frow("9").get_attribute("class") or "")
+       and pg.locator('.arrivals .vrow[data-villa="9"]').count() == 0)
     ck("a dinner cell outranks the form absolutely",
        "Not dining · set by reception" in frow("11").inner_text())
-    ck("the counts say the same thing",
+    ck("the strip totals both groups: three answered, mid-stay the one to send",
        pg.inner_text("#nAns") == "3" and pg.inner_text("#nSend") == "1")
 
     #  The one reader, against the one shared table - the phone_cases.json
@@ -880,6 +903,57 @@ with sync_playwright() as p:
     wrongf = [fcases[i]["name"] for i in range(len(fcases))
               if got[i] != fcases[i]["expect"]]
     ck("the page answers every shared form-dinner case", wrongf == [], wrongf)
+    pg.close()
+
+    # ── the Arrivals split: set aside, unticked, confirm a confirmed diner ──
+    #  Approved 19 Sep: arriving guests are rarely invited, so they fold into a
+    #  dropdown, unticked; a confirmed diner among them wears the green tile and
+    #  asks before it joins a send.
+    STAYS_BAK, DINNER_BAK = dict(STAYS), dict(DINNER)
+    STAYS.clear(); STAYS.update({
+      "4":  stay("i4",  "In",  "House",    "+61 400 000 004", -1, 2),  # in house, no answer
+      "15": stay("a15", "Arri", "Ving",    "+61 400 000 015",  0, 2),  # arriving, no answer
+      "16": stay("a16", "Con",  "Firmed",  "+61 400 000 016",  0, 2),  # arriving, dining
+    })
+    DINNER.clear(); DINNER.update({
+      "16": {"status": "in", "pax": 2, "by": "guest", "bookingId": "a16",
+             "at": now.replace(hour=9, minute=30).isoformat()},
+    })
+    pg = board()
+    ck("an in-house guest with no answer is pre-ticked in the To send band, not the dropdown",
+       "on" in (row("4").get_attribute("class") or "")
+       and pg.locator('.arrivals .vrow[data-villa="4"]').count() == 0)
+    ck("an arriving guest with no answer is in the dropdown and NOT pre-ticked",
+       pg.locator('.arrivals .vrow[data-villa="15"]').count() == 1
+       and "on" not in (row("15").get_attribute("class") or ""))
+    ck("a confirmed-dining arrival is answered, in the dropdown, and not ticked",
+       row("16").get_attribute("data-state") == "answered"
+       and pg.locator('.arrivals .vrow[data-villa="16"]').count() == 1
+       and "on" not in (row("16").get_attribute("class") or ""))
+    ck("the In-house title carries the in-house total",
+       "1 guest" in pg.inner_text(".grouptitle"))
+    pg.click(".arrivals > summary"); pg.wait_for_timeout(150)
+    ck("a confirmed arrival wears the green tile inside the dropdown",
+       pg.evaluate("s=>getComputedStyle(document.querySelector(s)).backgroundColor",
+                   '.arrivals .vrow[data-villa="16"]') == "rgba(122, 160, 130, 0.26)")
+    #  Inviting a confirmed diner asks first. Dismissed -> stays unticked.
+    pg.once("dialog", lambda d: d.dismiss())
+    row("16").click(); pg.wait_for_timeout(150)
+    ck("inviting a confirmed-dining arrival asks first; dismissed, it stays unticked",
+       "on" not in (row("16").get_attribute("class") or ""))
+    #  Accepted -> it joins the send.
+    pg.once("dialog", lambda d: d.accept())
+    row("16").click(); pg.wait_for_timeout(150)
+    ck("confirmed at the prompt, it joins the send",
+       "on" in (row("16").get_attribute("class") or ""))
+    #  A not-yet-answered arrival ticks with no prompt at all.
+    seen = []
+    pg.on("dialog", lambda d: (seen.append(1), d.accept()))
+    row("15").click(); pg.wait_for_timeout(150)
+    ck("a not-yet-answered arrival ticks straight through, no prompt",
+       "on" in (row("15").get_attribute("class") or "") and seen == [])
+    STAYS.clear(); STAYS.update(STAYS_BAK)
+    DINNER.clear(); DINNER.update(DINNER_BAK)
     pg.close()
 
     # ── widths ─────────────────────────────────────────────────

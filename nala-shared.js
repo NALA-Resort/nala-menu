@@ -1230,11 +1230,23 @@ function externalDiners(responses, manual, skip){
    person who has said yes, so it counts as one, not as nought. */
 function dinerPax(g){ return (g && +g.pax) || 1; }
 
-function formDinnerCell(villa, pre, rec, dateKey){
-  if (!pre || (pre.dining !== true && pre.dining !== false)) return null;
+/* The night a booking ARRIVES, matched against the night being rendered. The
+   one definition of "arriving tonight", so the pre-arrival form (which asks
+   about the first night alone) and the Invitations board (which sets arriving
+   guests aside from the send) cannot disagree about which night that is. rec
+   is whatever night record the caller holds: roomguests entries spell it
+   `arrives`, raw /stays entries spell it `arrive`, and both are honoured.
+   parseDepDate, never a string slice: a stay's date is local, and a slice
+   would read the wrong day for the resort's pre-10am-UTC working morning. */
+function isArrivalNight(rec, dateKey){
   var arr = rec && (rec.arrives || rec.arrive);
   var d = arr ? parseDepDate(arr) : null;
-  if (!d || dkey(d) !== dateKey) return null;
+  return !!(d && dkey(d) === dateKey);
+}
+
+function formDinnerCell(villa, pre, rec, dateKey){
+  if (!pre || (pre.dining !== true && pre.dining !== false)) return null;
+  if (!isArrivalNight(rec, dateKey)) return null;
   return {
     status: pre.dining ? 'in' : 'out',
     pax:    pre.dining ? (pre.pax || rec.adults || 2) : 0,

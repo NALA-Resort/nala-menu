@@ -82,6 +82,39 @@
   .vrow.on { border-color:var(--greenb); }
   .vrow.on .tick { background:var(--green); border-color:var(--greenb); color:var(--ink); }
 
+  /* ── the two groups ────────────────────────────────────────────
+     An invitation is a thing you send to the guests already in house;
+     arriving guests are rarely sent one, so they set aside into a native
+     <details> dropdown at the top - collapsed, unticked - and the working
+     list below carries an In-house title with its own total. A confirmed
+     diner among the arrivals keeps the Reservations green tile, so the colour
+     law reads the same on both boards. */
+  .grouptitle { display:flex; align-items:baseline; gap:8px; margin:18px 2px 2px; }
+  .grouptitle .gt { font-size:var(--t3); font-weight:600; }
+  .grouptitle .gc { font-size:var(--t2); color:var(--mid); }
+
+  details.arrivals { border:1px solid var(--rule); border-radius:10px;
+                     background:var(--cream); overflow:hidden; margin:8px 0 2px; }
+  details.arrivals > summary { list-style:none; cursor:pointer; display:flex;
+                     align-items:center; gap:11px; padding:12px 13px; }
+  details.arrivals > summary::-webkit-details-marker { display:none; }
+  details.arrivals .chev { flex:0 0 auto; width:15px; text-align:center;
+                     color:var(--mid); font-size:var(--t3); transition:transform .15s ease; }
+  details.arrivals[open] .chev { transform:rotate(90deg); }
+  details.arrivals .albl { flex:1; min-width:0; font-size:var(--t3); font-weight:600; }
+  details.arrivals .asub { font-size:var(--t2); color:var(--mid); font-weight:400; margin-top:2px; }
+  details.arrivals .abadge { flex:0 0 auto; font-size:var(--t2); color:var(--amberink);
+                     background:var(--amber); border:1px solid var(--amberb);
+                     border-radius:var(--pill); padding:2px 10px; }
+  details.arrivals .abody { padding:0 11px 9px; }
+  details.arrivals .anote { font-size:var(--t1); color:var(--mid); margin:2px 2px 9px; }
+  /* Ready arrivals sit white on the cream; answered ones keep their band tint. */
+  details.arrivals .vrow { background:var(--ground); }
+  details.arrivals .vrow.b-din { background:var(--resgreen-t); }
+  details.arrivals .vrow.b-out { background:var(--resterra-t); }
+  details.arrivals .vrow.b-sent { background:rgba(28,28,26,.045); }
+  details.arrivals .vrow.b-grey { background:transparent; }
+
   /* The message. The box holds the words; the link is never in the box. */
   select, textarea { width:100%; font-family:var(--ui-font); font-size:var(--t3);
                      color:var(--ink); background:#fff; border:1px solid var(--rule);
@@ -210,9 +243,10 @@ var BUILTIN_TEMPLATES = [
 ];
 var TEMPLATES = BUILTIN_TEMPLATES;
 
-var ROWS = {};          /* villa -> { stay, state, ticked } */
+var ROWS = {};          /* villa -> { stay, state, ticked, arriving } */
 var MENU_STATE = null;  /* 'live' | 'none' | 'failed' */
 var ARMED = false;      /* the second press for a resend */
+var ARR_OPEN = false;   /* whether the Arrivals dropdown is expanded */
 
 /* ── the message box ─────────────────────────────────────────── */
 var tmplSel = document.getElementById('tmpl'), msgBox = document.getElementById('msgBox');
@@ -304,21 +338,27 @@ function render(stays, invites, fixes){
   var board = document.getElementById('board');
   board.innerHTML = '';
   ROWS = {};
-  var rows = { ready:[], sent:[], answered:[], nophone:[] };
+  var inhouse = { ready:[], sent:[], answered:[], nophone:[] };
+  var arriving = [];   /* flat, villa order: the point is they are set aside */
   Object.keys(stays || {}).sort(function(a, b){ return (+a) - (+b); }).forEach(function(v){
     var stay = stays[v];
     if (!stay || typeof stay !== 'object' || !stay.id) return;  /* the older bare id shape */
     var fix = (fixes || {})[stay.id];
     var st = stateOf(v, stay, DINNER_CELLS[v], (invites || {})[v], fix, TODAY);
-    ROWS[v] = { stay: stay, state: st, ticked: st.ticked };
+    /* Arriving tonight, by the one shared reader (isArrivalNight, nala-shared.js),
+       so this page and the pre-arrival form cannot disagree about which night a
+       booking arrives. Arrivals begin unticked - we rarely invite them. */
+    var isArr = isArrivalNight(stay, TODAY);
+    var start = isArr ? false : st.ticked;
+    ROWS[v] = { stay: stay, state: st, ticked: start, arriving: isArr };
     var b = document.createElement('button');
     b.type = 'button';
-    b.className = 'vrow' + (st.ticked ? ' on' : '') + bandClass(st);
+    b.className = 'vrow' + (start ? ' on' : '') + bandClass(st);
     b.dataset.villa = v;
     b.dataset.state = st.kind;
     /* An unsendable row is not dead: tapping it fixes the number. */
     b.disabled = !st.tickable && !st.fixable;
-    b.setAttribute('aria-pressed', st.ticked ? 'true' : 'false');
+    b.setAttribute('aria-pressed', start ? 'true' : 'false');
     b.innerHTML = '<div class="v">' + v + '</div>' +
       '<div class="mid"><div class="nm trimrow">'+
         '<span class="trim"></span></div><div class="st"></div></div>' +
@@ -355,20 +395,69 @@ function render(stays, invites, fixes){
     else line.textContent = st.line;
     b.onclick = function(){
       if (st.fixable){ fixNumber(stay, fix); return; }
-      ROWS[v].ticked = !ROWS[v].ticked;
+      var turningOn = !ROWS[v].ticked;
+      /* Inviting an arriving guest who has ALREADY confirmed dining asks first:
+         they do not need a menu invitation, so a tap on their green row is more
+         likely a slip than an intent. Unticking never asks, and an in-house
+         answered guest stays a deliberate one-tap resend as before. */
+      if (turningOn && isArr && st.kind === 'answered' && st.in &&
+          !window.confirm(nm.textContent + ' has already confirmed dining on ' +
+            'their pre-arrival form, so they do not need a menu invitation. ' +
+            'Send one anyway?'))
+        return;
+      ROWS[v].ticked = turningOn;
       b.classList.toggle('on', ROWS[v].ticked);
       b.setAttribute('aria-pressed', ROWS[v].ticked ? 'true' : 'false');
       recount();
     };
-    (rows[st.kind] || rows.ready).push(b);
+    if (isArr) arriving.push(b);
+    else (inhouse[st.kind] || inhouse.ready).push(b);
   });
+
+  /* Arrivals first, but folded away in a native <details> so the dropdown
+     works with no script and stays open across a reload while the desk is in
+     it. Unticked, so nothing here joins a send unless it is deliberately tapped. */
+  if (arriving.length){
+    var det = document.createElement('details');
+    det.className = 'arrivals';
+    det.open = ARR_OPEN;
+    det.addEventListener('toggle', function(){ ARR_OPEN = det.open; });
+    var sum = document.createElement('summary');
+    sum.innerHTML = '<span class="chev">\u25b6</span>' +
+      '<span class="albl">Arrivals<div class="asub">Arriving today \u00b7 rarely invited</div></span>' +
+      '<span class="abadge"></span>';
+    sum.querySelector('.abadge').textContent =
+      arriving.length + ' guest' + (arriving.length === 1 ? '' : 's');
+    det.appendChild(sum);
+    var abody = document.createElement('div');
+    abody.className = 'abody';
+    var anote = document.createElement('div');
+    anote.className = 'anote';
+    anote.textContent = 'Arriving guests are set aside and left unticked. Tap one to invite it anyway.';
+    abody.appendChild(anote);
+    arriving.forEach(function(b){ abody.appendChild(b); });
+    det.appendChild(abody);
+    board.appendChild(det);
+  }
+
+  /* The working list: in-house guests, under a title with their own total, in
+     the four status bands. */
+  var inhouseTotal = BANDS.reduce(function(n, band){ return n + inhouse[band.kind].length; }, 0);
+  if (inhouseTotal){
+    var gt = document.createElement('div');
+    gt.className = 'grouptitle';
+    gt.innerHTML = '<span class="gt">In house</span><span class="gc"></span>';
+    gt.querySelector('.gc').textContent =
+      inhouseTotal + ' guest' + (inhouseTotal === 1 ? '' : 's');
+    board.appendChild(gt);
+  }
   BANDS.forEach(function(band){
-    if (!rows[band.kind].length) return;
+    if (!inhouse[band.kind].length) return;
     var h = document.createElement('div');
     h.className = 'grp';
-    h.textContent = band.title + ' \u00b7 ' + rows[band.kind].length;
+    h.textContent = band.title + ' \u00b7 ' + inhouse[band.kind].length;
     board.appendChild(h);
-    rows[band.kind].forEach(function(b){ board.appendChild(b); });
+    inhouse[band.kind].forEach(function(b){ board.appendChild(b); });
   });
   recount();
 }
@@ -420,6 +509,9 @@ function disarm(){
 
 function recount(){
   var vs = Object.keys(ROWS), sel = selected();
+  /* The strip is the day's totals across both groups; the per-group counts
+     live on the Arrivals dropdown and the In-house title. To send is the live
+     selection, so a deliberately ticked arrival shows there and in the button. */
   var n = function(k){ return vs.filter(function(v){ return ROWS[v].state.kind === k; }).length; };
   document.getElementById('nSend').textContent = sel.length;
   document.getElementById('nAns').textContent  = n('answered');
