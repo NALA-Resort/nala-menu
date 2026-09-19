@@ -62,6 +62,16 @@ downloaded file is the right one if its first logged line says
 `watching the card table`; `watching /cardjobs` is the old helper,
 wherever it came from.
 
+That first line also carries the helper's **version**, e.g.
+`NALA encoder helper 2026-09-19.4 - watching the card table`. It is the
+one reliable way to tell which helper a desk PC is actually running: a
+re-download changes the file on disk, not an already-open window, so after
+downloading you MUST close the running window and relaunch (or reboot).
+If the version in the window does not match `$HELPER_VERSION` at the top
+of `nala-encoder.ps1` on main, the window is stale — and a stale window
+mis-cuts exactly as before. Bump `$HELPER_VERSION` (and the VERSION note
+beside it) on every change to the helper.
+
 The settings — Worker URL, `HELPER_KEY`, the encoder account, the COM
 port — live in `nala-config.ps1` beside it, so a fresh download of the
 helper needs no editing (since 9 Sep; before that a CONFIG block at the

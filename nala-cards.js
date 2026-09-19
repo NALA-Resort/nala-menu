@@ -32,6 +32,14 @@
 (function(){
 var cfg = null;
 
+/* The standard keys a villa gets: two. The single-issue sheet opens on
+   this number and All arrivals cuts exactly this many per villa (the
+   owner, 20 Sep, ruling the batch to a flat two - superseding the 11 Sep
+   "a card per guest", which sent a four-guest villa four keys). A third
+   is only ever the desk's own doing, replacing a lost one through the
+   per-villa sheet, which asks "how many more". One number, both flows. */
+var CARDS_PER_VILLA = 2;
+
 function esc(s){
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 }
@@ -166,7 +174,16 @@ var CARD_ASK_SVG = '<div class="cardask"><svg viewBox="0 0 140 96" fill="none" '
 
 function queuePairs(){
   var q = (CR && CR.queue) || {};
-  return Object.keys(q).sort(function(a, b){ return (+a) - (+b); })
+  /* Firebase renders a numbered node as an ARRAY once its keys fill more
+     than half of 0..max - villas 2,8,9..16 (a full arrivals run) come
+     back as an array with null in every empty seat, villa "2" alone as a
+     map. The empty seats are real nulls, so Object.keys keeps them; drop
+     them or runRender dereferences q.guest on a null and the overlay
+     hangs on "Waking up…" (found live 19 Sep, all-arrivals only - single
+     villas never coerce). The helper reads this same node through its own
+     Node-Pairs for the same reason (nala-encoder.ps1). */
+  return Object.keys(q).filter(function(v){ return q[v] != null; })
+    .sort(function(a, b){ return (+a) - (+b); })
     .map(function(v){ return { villa: v, q: q[v] }; });
 }
 
@@ -280,7 +297,7 @@ function askOpen(villa){
   }
   document.getElementById('cardTitle').textContent =
     ASK ? 'Key cards · villa ' + ASK.villa : 'Key cards';
-  document.getElementById('cardBody').setAttribute('data-qty', 2);
+  document.getElementById('cardBody').setAttribute('data-qty', CARDS_PER_VILLA);
   document.getElementById('cardOv').hidden = false;
   askRender();
 }
@@ -315,7 +332,7 @@ function askRender(){
     body.innerHTML = h + '</div></div></div>';
     return;
   }
-  var q = +(body.getAttribute('data-qty') || 2);
+  var q = +(body.getAttribute('data-qty') || CARDS_PER_VILLA);
   var held = heldFor(ASK.villa);
   var when = askNeedsWhen(), def = next1pm();
   body.innerHTML = '<div class="cardov-in"><div class="crun">' +
@@ -341,37 +358,69 @@ function askRender(){
     '</button></div></div></div>';
 }
 
-/* the bulk action: no quantity asked - a card per guest on the booking
-   (the owner, 11 Sep), the odd villa out corrected by its own ask */
+/* the bulk action: no quantity asked - a flat two per villa (the owner,
+   20 Sep, "we never cut more than two"), the odd villa needing a third
+   for a lost card corrected by its own ask. This replaced a card per
+   guest (11 Sep), which handed a large party more than the two the desk
+   ever cuts. */
 function bulk(){
   var entries = cfg.bulkRows().map(function(r){
     return { villa: r.villa, name: r.name, stay: r.stay,
-             qty: Math.max(1, Math.min(99, (r.stay && +r.stay.adults) || 2)) };
+             qty: CARDS_PER_VILLA };
   });
   if (!entries.length){ cfg.err(cfg.emptyLabel); return; }
   runStart(entries, 'Key cards · ' + cfg.bulkLabel.toLowerCase());
 }
 
 /* ── the drop ── */
+/* One row per villa: the state the row SHOWS is the held count first, then
+   departing, then arriving, then nothing - held outranks arriving, which is
+   why an arrival already holding a card reads "1 held" and groups with the
+   held (the owner, 19 Sep). */
+function dropRowHTML(r){
+  var n = heldFor(r.villa);
+  var state = n ? '<span class="kd-state card-done">' + n + ' held</span>'
+    : r.leaving ? '<span class="kd-state">departs 1pm</span>'
+    : r.arriving ? '<span class="kd-state">arriving</span>'
+    : '<span class="kd-state">no cards</span>';
+  return '<button data-key="' + esc(r.villa) + '">Villa ' + esc(r.villa) +
+         ' · ' + esc(r.name) + state + '</button>';
+}
 function cardsDrawDrop(){
   var d = cfg.drop;
   if (!d) return;
-  var h = '';
-  if (!cfg.rows().length)
-    h += '<button disabled style="color:var(--mid)">' + cfg.emptyLabel + '</button>';
-  cfg.rows().forEach(function(r){
-    var n = heldFor(r.villa);
-    var state = n ? '<span class="kd-state card-done">' + n + ' held</span>'
-      : r.leaving ? '<span class="kd-state">departs 1pm</span>'
-      : r.arriving ? '<span class="kd-state">arriving</span>'
-      : '<span class="kd-state">no cards</span>';
-    h += '<button data-key="' + esc(r.villa) + '">Villa ' + esc(r.villa) +
-         ' · ' + esc(r.name) + state + '</button>';
-  });
+  /* The batch action LEADS, and its label is a command - "Issue all
+     arrivals", not the bare noun - so it reads as a thing to press, not a
+     heading (the owner, 19 Sep; it sat at the foot from 9 Sep for want of
+     exactly that). The verb is the drop's, the noun is bulkLabel, so the
+     run title ("Key cards · all arrivals") stays the one source. Dressed
+     as a secondary button in keys.html (grey fill, the button law), since
+     Issue keys is this surface's one primary. */
+  var h = '<button class="kd-all" data-key="all">Issue ' +
+          esc(cfg.bulkLabel.toLowerCase()) +
+          '<span class="navbadge">' + cfg.bulkRows().length + '</span></button>';
+  var rows = cfg.rows();
+  if (!rows.length){
+    h += '<button disabled style="color:var(--mid)">' + esc(cfg.emptyLabel) + '</button>';
+  } else {
+    /* Two groups, split by the state the row shows: the fresh arrivals
+       still needing keys, then everyone already holding cards (or
+       departing, or empty). A divider seams them, each group by villa
+       number (the owner, 19 Sep - held counts had been landing among the
+       arrivings and reading as strays). */
+    var byVilla = function(a, b){ return (+a.villa) - (+b.villa); };
+    var arriving = [], held = [];
+    rows.forEach(function(r){
+      (r.arriving && !heldFor(r.villa) ? arriving : held).push(r);
+    });
+    arriving.sort(byVilla); held.sort(byVilla);
+    arriving.forEach(function(r){ h += dropRowHTML(r); });
+    if (arriving.length && held.length) h += '<div class="kd-div"></div>';
+    held.forEach(function(r){ h += dropRowHTML(r); });
+  }
   /* the door to a room no guest map lists - a number, not a list */
-  h += '<button data-key="pad">Villa by number</button>';
-  h += '<button class="kd-all" data-key="all">' + esc(cfg.bulkLabel) + '' +
-       '<span class="navbadge">' + cfg.bulkRows().length + '</span></button>';
+  h += '<div class="kd-seam"></div>' +
+       '<button data-key="pad">Villa by number</button>';
   d.innerHTML = h;
 }
 function cardsPaint(){
@@ -406,7 +455,7 @@ function wire(){
     var q = e.target.closest('[data-cardq]');
     if (q){
       var body = document.getElementById('cardBody');
-      var now = +(body.getAttribute('data-qty') || 2) + (+q.getAttribute('data-cardq'));
+      var now = +(body.getAttribute('data-qty') || CARDS_PER_VILLA) + (+q.getAttribute('data-cardq'));
       /* 99, the rules' own sanity bound and nothing tighter (11 Sep) */
       /* the till-when inputs survive the redraw: read before, restore after */
       var dEl = document.getElementById('askDate'), tEl = document.getElementById('askTime');
@@ -419,7 +468,7 @@ function wire(){
     }
     var iss = e.target.closest('[data-cardissue]');
     if (iss && ASK){
-      var n2 = +(document.getElementById('cardBody').getAttribute('data-qty') || 2);
+      var n2 = +(document.getElementById('cardBody').getAttribute('data-qty') || CARDS_PER_VILLA);
       var exp = askExpiry();
       var why = document.getElementById('askWhy');
       if (askNeedsWhen()){

@@ -367,11 +367,22 @@
                   font-family:var(--ui-font); font-size:var(--t2); line-height:1.3;
                   color:var(--ink); cursor:pointer; }
 .keydrop button:active { background:var(--accent-soft); }
-/* The batch action stands last, behind the seam the signout row already
-   owns, its count in a navbadge - ruled by the owner, 9 Sep, when a bold
-   first row read as the menu's title rather than a thing to press. */
-.keydrop .kd-all { border-top:1px solid var(--rule); margin-top:var(--s1);
-                   align-items:center; }
+/* The batch action LEADS, dressed as a proper secondary button - the
+   quiet grey fill, ink text and full tap height the button law gives a
+   secondary (nala-ui2.css .btn), NOT a tinted pill, which read as a
+   status rather than a thing to press (the owner, 19 Sep; it had sat at
+   the foot since 9 Sep). Secondary because Issue keys is this surface's
+   one primary. */
+.keydrop .kd-all { margin:0 var(--s3) var(--s2); width:auto;
+                   background:var(--card); color:var(--ink);
+                   border-radius:var(--r); min-height:var(--tap);
+                   justify-content:center; gap:var(--s3);
+                   font-weight:600; }
+/* the seam over the pad; the divider between the two villa groups
+   (arriving, then held) - the owner's 19 Sep divider */
+.keydrop .kd-seam, .keydrop .kd-div { border-top:1px solid var(--rule); }
+.keydrop .kd-seam { margin:var(--s1) 0; }
+.keydrop .kd-div { margin:var(--s2) var(--s4); }
 .keydrop .kd-state { flex:0 0 auto; font-size:var(--t1); color:var(--mid);
                      white-space:nowrap; }
 .keydrop .kd-state.card-done { color:var(--law-green); }
@@ -534,7 +545,7 @@ button
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
 <script src="nala-shared.js?v=69"></script>
-<script src="nala-cards.js?v=11"></script>
+<script src="nala-cards.js?v=15"></script>
 <script>
 /* Keys: the card register, built from the approved mock
    (mock-keys-store.html) and holding its shape - the suite compares

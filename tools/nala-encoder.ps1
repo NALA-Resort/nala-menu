@@ -1,5 +1,12 @@
 # NALA key-card helper. Runs on the front-desk PC, next to CardEncoder.dll.
 #
+# VERSION: 2026-09-19.4   (also $HELPER_VERSION below, printed on the first
+# log line at startup). If the desk is ever unsure which helper is running,
+# read the top line of its window - "NALA encoder helper <version> ..." -
+# and compare it to the version here on MAIN. A mismatch means the running
+# window is stale: close it and relaunch the freshly downloaded file. Bump
+# this on every change to this file, in both places.
+#
 # What it is: the machine half of the card table. /cards holds ONE ROW PER
 # CARD in the world, keyed by the number the encoder reports (the serial
 # belongs to the plastic - TTHotel's own behaviour; the owner, 11 Sep).
@@ -44,6 +51,12 @@ $ALLOW_LOCKOUT = $false   # a guest card does not open a double-locked door
 if (Test-Path (Join-Path $PSScriptRoot "nala-config.ps1")) {
   . (Join-Path $PSScriptRoot "nala-config.ps1")
 }
+
+# Set AFTER the config load so a stale nala-config.ps1 cannot fake it: this
+# names THIS file, downloaded from main, and is logged on startup so the
+# desk can check which helper is running. Keep it in step with the VERSION
+# note at the top of this file.
+$HELPER_VERSION = "2026-09-19.4"
 
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
@@ -212,7 +225,28 @@ function Node-Pairs($node){
   ,$out
 }
 
-Log "NALA encoder helper - watching the card table. Ctrl+C stops it."
+# One villa's queue entry, array-safe. /cutrun/queue is a map for sparse
+# villas and an ARRAY (villa N at index N, null in the gaps) once the keys
+# pack densely - the same coercion Node-Pairs exists for. The inline
+# .PSObject.Properties[$villa] lookups in the skip-checks missed this: on
+# an array they returned nothing, so every villa read as "gone" and every
+# write was aborted - the desk stuck on "hold a card" (19 Sep). Every
+# by-villa read of the queue goes through here now, as the note above
+# always intended.
+function Queue-Entry($run, $villa){
+  if (-not $run -or $null -eq $run.queue) { return $null }
+  $q = $run.queue
+  if ($q -is [System.Array]) {
+    $i = [int]$villa
+    if ($i -ge 0 -and $i -lt $q.Length) { return $q[$i] }
+    return $null
+  }
+  $p = $q.PSObject.Properties[[string]$villa]
+  if ($p) { return $p.Value }
+  return $null
+}
+
+Log "NALA encoder helper $HELPER_VERSION - watching the card table. Ctrl+C stops it."
 while ($true) {
   try {
     $busy = $false
@@ -244,6 +278,19 @@ while ($true) {
         # the run screen's ten-second verdict owns this ending
       } else {
         $stopped = $false
+        # $lastNo is the last card WRITTEN, and it persists ACROSS villas,
+        # not just within one. The last card of a villa is still on the pad
+        # when the next villa begins - the desk is enveloping it - so that
+        # next villa's FIRST card must wait for the pad to clear exactly as
+        # a within-villa card does. Resetting $lastNo per villa (as this
+        # did until 20 Sep) skipped the lift-off wait at every villa
+        # boundary: Get-CardNo still read the previous card, so it was
+        # written AGAIN as the next villa's first card and its /cards row
+        # re-keyed to the villa behind, cascading down the run. It stayed
+        # hidden until the run screen learned the array queue and full
+        # arrivals runs actually completed; then eight cards in, every card
+        # landed a villa behind and rooms ended with more than their two.
+        $lastNo = $null
         foreach ($t in $todo) {
           $villa = $t.villa; $q = $t.q
           $lock = (Locks).PSObject.Properties[$villa]
@@ -252,7 +299,7 @@ while ($true) {
             continue
           }
           Log "villa ${villa}: cards $([int]$q.cut + 1) to $($q.qty), expiry $([DateTimeOffset]::FromUnixTimeSeconds($q.expiry).LocalDateTime)"
-          $failed = $null; $lastNo = $null
+          $failed = $null      # a failure is per villa; $lastNo is not (above)
           for ($i = [int]$q.cut + 1; $i -le [int]$q.qty; $i++) {
             # TTHotel's own dialog waits for the last card to LEAVE before
             # it asks for the next, and it is right: 800ms after a beep the
@@ -261,7 +308,24 @@ while ($true) {
             if ($i -gt 1 -or $lastNo) {
               if ($lastNo) {
                 Log "  lift card off the reader"
-                while ((Get-CardNo) -eq $lastNo) { Start-Sleep -Milliseconds 700 }
+                # Across villas this spans the desk enveloping the last
+                # villa's cards, so it heartbeats and heeds a Stop rather
+                # than spinning silently, the same way the card wait below
+                # does (added 20 Sep with the cross-villa persistence).
+                $beat = 0
+                while ((Get-CardNo) -eq $lastNo) {
+                  Start-Sleep -Milliseconds 700
+                  $beat++
+                  if ($beat % 4 -eq 0) {
+                    $r3 = $null
+                    try { $r3 = Fb-Get "/cutrun" } catch {}
+                    if (-not $r3 -or $r3.state -ne "on") { $stopped = $true; break }
+                  }
+                  if ($beat % 4 -eq 2) {
+                    try { Fb-Patch "/cutrun" @{ seen=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() } } catch {}
+                  }
+                }
+                if ($stopped) { break }
               } elseif ($i -gt 1) { Start-Sleep -Milliseconds 2500 }
             }
             Log "  hold card $i of $($q.qty) to the reader"
@@ -277,9 +341,8 @@ while ($true) {
               if ($beat % 4 -eq 0) {
                 $r2 = $null
                 try { $r2 = Fb-Get "/cutrun" } catch {}
-                $q2 = $null
-                if ($r2 -and $r2.queue) { $q2 = $r2.queue.PSObject.Properties[$villa] }
-                if (-not $r2 -or $r2.state -ne "on" -or -not $q2 -or [int]$q2.Value.qty -lt $i) {
+                $q2 = Queue-Entry $r2 $villa
+                if (-not $r2 -or $r2.state -ne "on" -or -not $q2 -or [int]$q2.qty -lt $i) {
                   $stopped = $true
                   Log "  villa ${villa}: the desk skipped or stopped at card $($i-1)"
                   break
@@ -290,6 +353,31 @@ while ($true) {
               }
             }
             if ($stopped) { break }
+            # A card is on the pad now, and THIS is the write that must
+            # agree with the screen. The card wait above only watches for a
+            # Skip while the pad is EMPTY, so a Skip pressed once a card is
+            # already sitting there - or a card placed for the next villa in
+            # the instant before this write - was never seen, and the card
+            # was burned onto the villa the desk had already moved off. The
+            # screen's Skip and this write are not two clocks running side
+            # by side: they share ONE state, /cutrun, and the fix is simply
+            # to read it at the last moment. Confirm this villa still wants
+            # this card before writing it (the owner, 19 Sep).
+            $chk = $null
+            try { $chk = Fb-Get "/cutrun" } catch {}
+            # Fail OPEN if the read itself failed: a network blip must not
+            # abort a legitimate write (the card is in hand, the desk is
+            # holding it). Abort only on a read that CONFIRMS the desk moved
+            # off this card - Stop, the villa gone, or its qty shrunk below
+            # this card by a Skip.
+            if ($chk) {
+              $cq = Queue-Entry $chk $villa
+              if ($chk.state -ne "on" -or -not $cq -or [int]$cq.qty -lt $i) {
+                $stopped = $true
+                Log "  villa ${villa}: skipped just now - the card on the pad was NOT cut for it"
+                break
+              }
+            }
             $failed = Write-One $villa $lock.Value ([uint32]$q.expiry)
             if ($failed) { break }
             $no = Get-CardNo

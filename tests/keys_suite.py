@@ -162,6 +162,24 @@ CANCELRUN = {}
 CUTRUN = {}
 WRITES = []
 
+#  Firebase renders a numbered node as a JSON ARRAY once its keys fill
+#  more than half of 0..max - so a full arrivals run (/cutrun/queue keyed
+#  2,3,4,5...) comes back with null in every empty seat, while a single
+#  villa comes back as a map. json.dumps of the python dict would always
+#  hand back a map, which is the blind spot that let the run screen ship
+#  hanging on "Waking up..." for All arrivals (19 Sep): the reader met an
+#  array with null seats for the first time live. Serve it the way the
+#  database really does, so the suite meets it too.
+def fb_shape(node):
+    if not isinstance(node, dict):
+        return node
+    ks = list(node.keys())
+    if ks and all(k.isdigit() for k in ks):
+        mx = max(int(k) for k in ks)
+        if len(ks) > (mx + 1) / 2:
+            return [fb_shape(node.get(str(i))) for i in range(mx + 1)]
+    return {k: fb_shape(v) for k, v in node.items()}
+
 def fb(route, request):
     u, m = request.url, request.method
     if m in ("PUT", "PATCH", "DELETE"):
@@ -187,7 +205,7 @@ def fb(route, request):
                       body=request.post_data or "null"); return
     body = "null"
     if "/cancelrun" in u: body = json.dumps(CANCELRUN) if CANCELRUN else "null"
-    elif "/cutrun" in u: body = json.dumps(CUTRUN) if CUTRUN else "null"
+    elif "/cutrun" in u: body = json.dumps(fb_shape(CUTRUN)) if CUTRUN else "null"
     elif "/cards" in u: body = json.dumps(CARDS)
     elif "/stays/" in u:
         d = u.split("/stays/")[1].split(".json")[0]
@@ -340,24 +358,30 @@ with sync_playwright() as p:
         and json.loads(w["b"]).get("state") == "off"]
        and pg.evaluate("()=>document.getElementById('cancelOv').hidden"))
 
-    #  Issue keys: the shared nala-cards runtime, fed everyone in house
-    #  with arrivals leading, held counts from the table, All arrivals
-    #  at the foot behind the seam.
+    #  Issue keys: the shared nala-cards runtime. All arrivals LEADS as a
+    #  tinted button; then the villas in two groups - the fresh arrivals,
+    #  a divider, then everyone holding cards (a held count outranks the
+    #  arriving label, so villa 14 groups with the held); the pad last
+    #  (the owner, 19 Sep).
     pg.evaluate("()=>document.getElementById('issueBtn').click()")
     pg.wait_for_timeout(300)
+    ck("Issue all arrivals leads as a command button, its count in a badge",
+       pg.evaluate("""()=>{var b=[...document.querySelectorAll('#issueDrop button')];
+         return b[0].getAttribute('data-key')==='all'
+             && b[0].classList.contains('kd-all')
+             && /Issue all arrivals/.test(b[0].textContent)
+             && b[0].querySelector('.navbadge').textContent==='2';}"""))
     drop = pg.evaluate("""()=>[...document.querySelectorAll('#issueDrop button')]
         .map(b=>b.textContent)""")
-    ck("the drop: arrivals, then departing today, then in house, then the pad",
-       len(drop) == 6 and "Villa 2" in drop[0] and "Villa 12" in drop[1]
-       and "Villa 14" in drop[2] and "Ann Brown" in drop[2]
-       and "Villa 4" in drop[3] and "Villa by number" in drop[4])
-    ck("a villa's held count reads from the table",
-       "2 held" in drop[3] and "arriving" in drop[0] and "1 held" in drop[2])
-    ck("All arrivals stands last, its count in a badge",
-       pg.evaluate("""()=>{var b=[...document.querySelectorAll('#issueDrop button')];
-         var a=b[b.length-1];
-         return a.getAttribute('data-key')==='all'
-             && a.querySelector('.navbadge').textContent==='2';}"""))
+    ck("arrivals lead, then the held, then the pad - held counts from the table",
+       len(drop) == 6
+       and "Villa 2" in drop[1] and "arriving" in drop[1]
+       and "Villa 12" in drop[2] and "arriving" in drop[2]
+       and "Villa 4" in drop[3] and "2 held" in drop[3]
+       and "Villa 14" in drop[4] and "1 held" in drop[4] and "Ann Brown" in drop[4]
+       and "Villa by number" in drop[5])
+    ck("one divider seams the arriving group from the held",
+       pg.evaluate("()=>document.querySelectorAll('#issueDrop .kd-div').length") == 1)
 
     #  the pad: a room with no guest, reached by number. Its expiry is
     #  not a settled fact, so the sheet asks till when - a date and a
@@ -460,10 +484,27 @@ with sync_playwright() as p:
     pg.wait_for_timeout(500)
     puts = [json.loads(w["b"]) for w in WRITES
             if w["m"] == "PUT" and "/cutrun" in w["u"]]
-    ck("All arrivals queues the arrivals and nobody else, a card per guest",
+    ck("All arrivals queues the arrivals and nobody else, two per villa",
        puts and sorted(puts[0]["queue"].keys()) == ["12", "2"]
-       and puts[0]["queue"]["12"]["qty"] == 3
+       and puts[0]["queue"]["12"]["qty"] == 2
        and puts[0]["queue"]["2"]["qty"] == 2)
+    #  The run is on; now the database serves the queue the way it really
+    #  does for a dense low set - an ARRAY with null in the empty seats.
+    #  The run screen must read the villas out of it, not throw on a null
+    #  seat and hang on the first "Waking up..." (19 Sep: All arrivals hung
+    #  here while single villas, which never coerce, worked). This case is
+    #  an object before the fix and an array after, and only the fix reads
+    #  both - restore queuePairs' old Object.keys(q).map and it goes red.
+    now_ms = int(time.time() * 1000)
+    CUTRUN.clear()
+    CUTRUN.update({"state": "on", "by": "x", "at": now_ms, "seen": now_ms + 60000,
+                   "queue": {str(v): {"guest": "Guest %d" % v, "qty": 2, "cut": 0,
+                                      "expiry": at13(2)} for v in (2, 3, 4, 5)}})
+    pg.wait_for_timeout(1600)
+    body = pg.inner_text("#cardBody")
+    ck("All arrivals reads a Firebase-array queue, never stuck on Waking up",
+       "Villa 2" in body and "Hold a card to the reader" in body
+       and "Waking up" not in body)
     pg.evaluate("()=>document.getElementById('cardX').click()")
     pg.close()
 

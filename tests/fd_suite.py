@@ -2328,10 +2328,10 @@ with sync_playwright() as p:
     ck("pressing it switches the cut run on for every arrival",
        bool(runs) and runs[0]["state"] == "on"
        and sorted(runs[0]["queue"].keys()) == sorted(arrivals))
-    ck("a card per guest on each booking, no quantity asked",
-       bool(runs) and runs[0]["queue"]["9"]["qty"] == 4
-       and runs[0]["queue"]["14"]["qty"] == 1
-       and runs[0]["queue"]["11"]["qty"] == 3)
+    ck("two per villa, whatever the party size, no quantity asked",
+       bool(runs) and runs[0]["queue"]["9"]["qty"] == 2
+       and runs[0]["queue"]["14"]["qty"] == 2
+       and runs[0]["queue"]["11"]["qty"] == 2)
     ck("and the run screen opens on it, waking the helper",
        not pg.evaluate("()=>document.getElementById('cardOv').hidden")
        and "Waking up" in pg.inner_text("#cardBody"))
