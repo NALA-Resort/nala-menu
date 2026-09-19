@@ -363,8 +363,9 @@ rather than by a hand Remove.
 
 ### Wording, all ruled by the owner
 
-`Skip this card`, `Mark lost`, `Found`, `Remove`, `Waking up...`; `All
-arrivals` asks no quantity and cuts a card per guest on the booking; `till Sat
+`Skip this card`, `Mark lost`, `Found`, `Remove`, `Waking up...`; the drop's
+batch button reads `Issue all arrivals` and cuts a flat two per villa, no
+quantity asked (the owner, 20 Sep, replacing 11 Sep's card-per-guest); `till Sat
 13th` with no month and no time; `expires`, never `dies`; 12-hour clock on the
 last day; no serial numbers on screen. And from 11 Sep: the screen word is
 `Expired`, never `Tally` - expired is what they are; no `% returned` there -

@@ -32,6 +32,14 @@
 (function(){
 var cfg = null;
 
+/* The standard keys a villa gets: two. The single-issue sheet opens on
+   this number and All arrivals cuts exactly this many per villa (the
+   owner, 20 Sep, ruling the batch to a flat two - superseding the 11 Sep
+   "a card per guest", which sent a four-guest villa four keys). A third
+   is only ever the desk's own doing, replacing a lost one through the
+   per-villa sheet, which asks "how many more". One number, both flows. */
+var CARDS_PER_VILLA = 2;
+
 function esc(s){
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 }
@@ -289,7 +297,7 @@ function askOpen(villa){
   }
   document.getElementById('cardTitle').textContent =
     ASK ? 'Key cards · villa ' + ASK.villa : 'Key cards';
-  document.getElementById('cardBody').setAttribute('data-qty', 2);
+  document.getElementById('cardBody').setAttribute('data-qty', CARDS_PER_VILLA);
   document.getElementById('cardOv').hidden = false;
   askRender();
 }
@@ -324,7 +332,7 @@ function askRender(){
     body.innerHTML = h + '</div></div></div>';
     return;
   }
-  var q = +(body.getAttribute('data-qty') || 2);
+  var q = +(body.getAttribute('data-qty') || CARDS_PER_VILLA);
   var held = heldFor(ASK.villa);
   var when = askNeedsWhen(), def = next1pm();
   body.innerHTML = '<div class="cardov-in"><div class="crun">' +
@@ -350,12 +358,15 @@ function askRender(){
     '</button></div></div></div>';
 }
 
-/* the bulk action: no quantity asked - a card per guest on the booking
-   (the owner, 11 Sep), the odd villa out corrected by its own ask */
+/* the bulk action: no quantity asked - a flat two per villa (the owner,
+   20 Sep, "we never cut more than two"), the odd villa needing a third
+   for a lost card corrected by its own ask. This replaced a card per
+   guest (11 Sep), which handed a large party more than the two the desk
+   ever cuts. */
 function bulk(){
   var entries = cfg.bulkRows().map(function(r){
     return { villa: r.villa, name: r.name, stay: r.stay,
-             qty: Math.max(1, Math.min(99, (r.stay && +r.stay.adults) || 2)) };
+             qty: CARDS_PER_VILLA };
   });
   if (!entries.length){ cfg.err(cfg.emptyLabel); return; }
   runStart(entries, 'Key cards · ' + cfg.bulkLabel.toLowerCase());
@@ -444,7 +455,7 @@ function wire(){
     var q = e.target.closest('[data-cardq]');
     if (q){
       var body = document.getElementById('cardBody');
-      var now = +(body.getAttribute('data-qty') || 2) + (+q.getAttribute('data-cardq'));
+      var now = +(body.getAttribute('data-qty') || CARDS_PER_VILLA) + (+q.getAttribute('data-cardq'));
       /* 99, the rules' own sanity bound and nothing tighter (11 Sep) */
       /* the till-when inputs survive the redraw: read before, restore after */
       var dEl = document.getElementById('askDate'), tEl = document.getElementById('askTime');
@@ -457,7 +468,7 @@ function wire(){
     }
     var iss = e.target.closest('[data-cardissue]');
     if (iss && ASK){
-      var n2 = +(document.getElementById('cardBody').getAttribute('data-qty') || 2);
+      var n2 = +(document.getElementById('cardBody').getAttribute('data-qty') || CARDS_PER_VILLA);
       var exp = askExpiry();
       var why = document.getElementById('askWhy');
       if (askNeedsWhen()){

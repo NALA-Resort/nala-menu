@@ -484,9 +484,9 @@ with sync_playwright() as p:
     pg.wait_for_timeout(500)
     puts = [json.loads(w["b"]) for w in WRITES
             if w["m"] == "PUT" and "/cutrun" in w["u"]]
-    ck("All arrivals queues the arrivals and nobody else, a card per guest",
+    ck("All arrivals queues the arrivals and nobody else, two per villa",
        puts and sorted(puts[0]["queue"].keys()) == ["12", "2"]
-       and puts[0]["queue"]["12"]["qty"] == 3
+       and puts[0]["queue"]["12"]["qty"] == 2
        and puts[0]["queue"]["2"]["qty"] == 2)
     #  The run is on; now the database serves the queue the way it really
     #  does for a dense low set - an ARRAY with null in the empty seats.
