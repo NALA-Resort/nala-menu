@@ -29,7 +29,7 @@
      it and could not be read or pressed, which on this page means an allergy
      the chef could not tick. */
   
-  .wrap { max-width:520px; margin:0 auto; }
+  .wrap { max-width:var(--appw); margin:0 auto; }
   /* The bar sits above the wordmark and pushes nothing: the hamburger is the
      only thing in it and it hangs to the right, as it does everywhere else. */
   
@@ -128,7 +128,7 @@
 
   .bar { position:fixed; bottom:0; left:0; right:0; background:var(--cream);
          border-top:1px solid var(--rule); padding:12px 24px; }
-  .bar .in { max-width:520px; margin:0 auto; display:flex; gap:10px; align-items:center; }
+  .bar .in { max-width:var(--appw); margin:0 auto; display:flex; gap:10px; align-items:center; }
   .pubbtn { flex:1; padding:14px; min-height:46px; border:none; background:var(--ink);
             color:var(--cream); border-radius:8px; font-family:var(--ui-font);
             font-size:var(--t2);

@@ -24,7 +24,7 @@
           --green:#5E7D67;
           --slate:#57575E;  --slate-t:rgba(87,87,94,.10);     --slate-b:rgba(87,87,94,.28)}
   body { padding:28px 24px 0 }
-  .wrap { max-width:520px; margin:0 auto; }
+  .wrap { max-width:var(--appw); margin:0 auto; }
 
   .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
             background:#A8321E; color:#fff; padding:12px 18px;
@@ -115,7 +115,7 @@
             padding:14px 20px calc(14px + env(safe-area-inset-bottom));
             transform:translateY(110%); transition:transform .22s; }
   .selbar.show { transform:translateY(0); }
-  .selbar-inner { max-width:520px; margin:0 auto; }
+  .selbar-inner { max-width:var(--appw); margin:0 auto; }
   .selcount { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
               text-align:center; margin-bottom:10px; }
   .selactions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
@@ -223,7 +223,7 @@
   .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35);
               display:none; align-items:flex-end; justify-content:center; z-index:10; }
   .backdrop.show { display:flex; }
-  .sheet { width:100%; max-width:520px; background:var(--cream);
+  .sheet { width:100%; max-width:var(--appw); background:var(--cream);
            min-height:560px;
            padding:26px 24px 120px; border-top:1px solid var(--rule);
            max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }

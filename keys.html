@@ -220,7 +220,7 @@
   .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35);
               display:none; align-items:flex-end; justify-content:center; z-index:10; }
   .backdrop.show { display:flex; }
-  .sheet { width:100%; max-width:520px; background:var(--cream);
+  .sheet { width:100%; max-width:var(--appw); background:var(--cream);
            padding:26px 24px 34px; border-top:1px solid var(--rule);
            max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .sheet h3 { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); font-weight:normal;
@@ -394,12 +394,12 @@
    and a menu button floating over it read as part of the run. */
 .cardov { position:fixed; inset:0; background:var(--ground); z-index:600;
           overflow-y:auto; padding:calc(14px + env(safe-area-inset-top)) 18px 40px; }
-.cardov-head { max-width:520px; margin:0 auto; display:flex;
+.cardov-head { max-width:var(--appw); margin:0 auto; display:flex;
                align-items:baseline; justify-content:space-between; }
 .cardov-title { font-family:var(--ui-font); font-size:var(--t3); font-weight:600; }
 .cardov-x { background:none; border:none; font-size:var(--t5); line-height:1;
             color:var(--mid); padding:4px 8px; cursor:pointer; }
-.cardov-in { max-width:520px; margin:0 auto; }
+.cardov-in { max-width:var(--appw); margin:0 auto; }
 .crun { border:1px solid var(--rule); border-radius:var(--r);
         padding:14px; margin-top:12px; font-family:var(--ui-font); }
 .crun.now { border-color:var(--amberb); }
@@ -476,7 +476,7 @@
 .crun.now .crun-v small { display:block; margin-left:0; margin-top:6px; }
 .crun.now .cslot { width:40px; height:58px; border-radius:7px; font-size:22px; } /* off-scale: same ruling */
 .crun.now .cslot::after { font-size:24px; } /* off-scale: same ruling */
-.cprog { max-width:520px; margin:0 auto 4px; height:5px; border-radius:3px;
+.cprog { max-width:var(--appw); margin:0 auto 4px; height:5px; border-radius:3px;
          background:var(--rule); overflow:hidden; }
 .cprog i { display:block; height:100%; background:var(--law-green);
            border-radius:3px; transition:width .3s ease; }
@@ -518,7 +518,7 @@ button
 
 <div class="noaccess" id="noAccess"></div>
 
-<div id="body" style="max-width:520px;margin:0 auto">
+<div id="body" style="max-width:var(--appw);margin:0 auto">
   <div class="seg" id="tabs" style="margin-top:6px"></div>
   <div class="secnote" id="tallyLine" style="margin-top:12px" hidden></div>
   <div id="list" style="margin-top:10px"></div>

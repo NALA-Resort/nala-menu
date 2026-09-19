@@ -25,7 +25,7 @@
      the copy has nothing left to do. tag.html carried the same block byte
      for byte and flags.html had already drifted from it, which is what a
      "keep this in step by hand" comment is worth.                        */
-  .wrap { max-width:520px; margin:0 auto; }
+  .wrap { max-width:var(--appw); margin:0 auto; }
   .navrow { display:flex; margin-bottom:var(--s2); }
 
   /* Failure is red, and it is the only thing that is. */
@@ -80,7 +80,7 @@
              padding:var(--s3) var(--s4) calc(var(--s3) + env(safe-area-inset-bottom));
              transform:translateY(110%); transition:transform .25s; }
   .savebar.show { transform:translateY(0); }
-  .savebar .in { max-width:520px; margin:0 auto; display:flex; gap:var(--s3);
+  .savebar .in { max-width:var(--appw); margin:0 auto; display:flex; gap:var(--s3);
                  align-items:center; }
   .savebtn { flex:1; }
   .saved { font-size:var(--t2); color:var(--mid); flex:0 0 auto; }

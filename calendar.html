@@ -22,7 +22,7 @@
      safe-area aware. */
   body { padding:calc(24px + env(safe-area-inset-top)) 18px
                  calc(10px + env(safe-area-inset-bottom)); }
-  .wrap { max-width:520px; margin:0 auto; }
+  .wrap { max-width:var(--appw); margin:0 auto; }
 
   /* ── the chart ──────────────────────────────────────────────────────
      One scroll container. The villa column is sticky inside it, so the

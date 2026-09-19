@@ -15,7 +15,7 @@
 <style>
   body { padding:calc(24px + env(safe-area-inset-top)) 18px 40px; }
   
-  .wrap { max-width:520px; margin:0 auto; }
+  .wrap { max-width:var(--appw); margin:0 auto; }
   .daterow { display:flex; align-items:center; gap:8px; margin-bottom:16px; }
   .date { font-size:var(--t3); font-weight:bold; flex:1; }
 
@@ -124,7 +124,7 @@
   .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35); display:none;
               align-items:flex-end; z-index:50; }
   .backdrop.show { display:flex; }
-  .sheet { background:var(--cream); width:100%; max-width:520px; margin:0 auto;
+  .sheet { background:var(--cream); width:100%; max-width:var(--appw); margin:0 auto;
            border-radius:14px 14px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom));
            max-height:88vh; overflow-y:auto; }
   .sheet .st { font-size:var(--t3); margin-bottom:4px; }

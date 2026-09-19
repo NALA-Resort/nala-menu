@@ -24,7 +24,7 @@
      had not been: publish.html and this page were identical, flags.html had
      drifted from both. nala-ui2.css needs no tier class, which was the only
      reason the copy existed.                                             */
-  .wrap { max-width:520px; margin:0 auto; }
+  .wrap { max-width:var(--appw); margin:0 auto; }
   .navrow { display:flex; margin-bottom:var(--s2); }
 
   .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
@@ -88,7 +88,7 @@
              padding:var(--s3) var(--s4) calc(var(--s3) + env(safe-area-inset-bottom));
              transform:translateY(110%); transition:transform .25s; }
   .savebar.show { transform:translateY(0); }
-  .savebar .in { max-width:520px; margin:0 auto; display:flex; gap:var(--s3);
+  .savebar .in { max-width:var(--appw); margin:0 auto; display:flex; gap:var(--s3);
                  align-items:center; }
   .savebtn { flex:1; }
   .saved { font-size:var(--t2); color:var(--mid); flex:0 0 auto; }

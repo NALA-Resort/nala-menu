@@ -86,6 +86,21 @@ body.ui2{
   --r:8px;            /* every control and card */
   --pill:999px;       /* chips and status pills only */
   --tap:44px;         /* Apple HIG minimum; Material says 48 */
+  /* The one page width, owned here (rule 1, CLAUDE.md). The app is phone-
+     first and does not grow to fill a desktop screen: every ui2 page sits
+     in a single centred column of this width, so a PC shows the same column
+     a phone does instead of a different width per page. It was fanned out as
+     `max-width:520px` in ten pages and drifted - 430 on the guest profile,
+     absent (full-bleed) on spa, invitations, the SMS pages and the boards -
+     which is the inconsistency this closes. Change it here, once.
+     --appw is the CONTENT width, matching the old `.wrap { max-width:520 }`
+     which carried no padding. --appgut is the side gutter the pages put on
+     body; the frame cap below adds it back so the padding sits OUTSIDE the
+     column and the content stays 520, not 520-minus-two-gutters. Getting
+     that wrong shrank every page by a gutter and cost the Cleans board a
+     pixel on its landscape badge. */
+  --appw:520px;
+  --appgut:18px;
 
   --ui-font:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,
             Helvetica,Arial,sans-serif;
@@ -156,6 +171,19 @@ body.ui2 .dnav.today, body.ui2 h1, body.ui2 .date{
    inside a media query: the Cleans board's landscape rule asks for 6px at
    the top so seventeen tiles fit a 320px-tall screen, and a sheet-level
    shorthand quietly held it at 24 and pushed the grid off the screen.  */
+/* The width IS set here, and only here (--appw above). The column is centred
+   so a wide screen gets margins, not a stretched page. The cap is the content
+   width PLUS the two side gutters, because box-sizing is border-box and the
+   pages' side padding lives on body: cap the content width alone and that
+   padding eats into it, leaving 520-minus-two-gutters of content and a page a
+   gutter narrower than the old `.wrap`. Adding the gutters back keeps the
+   content at --appw exactly, gutters outside it, matching the wrap pages.
+   Full-bleed chrome is exempt on purpose: .bar/.selbar/.savebar and the
+   .backdrop/.cardov overlays are position:fixed to the viewport, so this cap
+   never reaches them - only their inner column follows --appw. A page that
+   wants its own frame (guest, the boards) reads --appw too; none restates the
+   number. */
+body.ui2{ max-width:calc(var(--appw) + 2*var(--appgut)); margin-inline:auto; }
 body.ui2 h1{ font-size:var(--t4); font-weight:600; margin-bottom:var(--s1); }
 body.ui2 .lede{ font-size:var(--t2); color:var(--mid); line-height:1.55;
                 margin-bottom:var(--s2); max-width:58ch; }

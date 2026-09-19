@@ -51,7 +51,7 @@
      it and silently does nothing. flex:1 1, not the shared 1 0, because a
      wrap that refuses to shrink pushes the page past the screen however
      small the tiles are told to be.                                     */
-  body > .wrap { max-width:520px; margin:0 auto; flex:1 1 auto; min-height:0; }
+  body > .wrap { max-width:var(--appw); margin:0 auto; flex:1 1 auto; min-height:0; }
 
   h1 { font-size:19px; font-weight:bold; text-align:center; margin:8px 0 4px;  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
        font-family:var(--ui-font); }
@@ -352,7 +352,7 @@
   .ov { position:fixed; inset:0; background:rgba(28,28,26,.45); display:none;
         align-items:flex-end; justify-content:center; z-index:40; }
   .ov.show { display:flex; }
-  .sheet { background:var(--cream); width:100%; max-width:520px; border-radius:14px 14px 0 0;
+  .sheet { background:var(--cream); width:100%; max-width:var(--appw); border-radius:14px 14px 0 0;
            padding:22px 20px 30px; font-family:var(--ui-font); }
   .sheet h2 { font-size:15px; margin-bottom:2px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
   .sheet .st { font-size:10.5px; color:var(--mid);  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */

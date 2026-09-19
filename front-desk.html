@@ -207,7 +207,7 @@
   .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35);
               display:none; align-items:flex-end; justify-content:center; z-index:10; }
   .backdrop.show { display:flex; }
-  .sheet { width:100%; max-width:520px; background:var(--cream);
+  .sheet { width:100%; max-width:var(--appw); background:var(--cream);
            padding:26px 24px 34px; border-top:1px solid var(--rule);
            max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .sheet h3 { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); font-weight:normal;
@@ -351,12 +351,12 @@
    and a menu button floating over it read as part of the run. */
 .cardov { position:fixed; inset:0; background:var(--ground); z-index:600;
           overflow-y:auto; padding:calc(14px + env(safe-area-inset-top)) 18px 40px; }
-.cardov-head { max-width:520px; margin:0 auto; display:flex;
+.cardov-head { max-width:var(--appw); margin:0 auto; display:flex;
                align-items:baseline; justify-content:space-between; }
 .cardov-title { font-family:var(--ui-font); font-size:var(--t3); font-weight:600; }
 .cardov-x { background:none; border:none; font-size:var(--t5); line-height:1;
             color:var(--mid); padding:4px 8px; cursor:pointer; }
-.cardov-in { max-width:520px; margin:0 auto; }
+.cardov-in { max-width:var(--appw); margin:0 auto; }
 .crun { border:1px solid var(--rule); border-radius:var(--r);
         padding:14px; margin-top:12px; font-family:var(--ui-font); }
 .crun.now { border-color:var(--amberb); }
@@ -434,7 +434,7 @@
 .crun.now .cslot::after { font-size:24px; } /* off-scale: same ruling */
 /* the batch's one bar: green is the run already behind you, the spine's
    own reading of that colour */
-.cprog { max-width:520px; margin:0 auto 4px; height:5px; border-radius:3px;
+.cprog { max-width:var(--appw); margin:0 auto 4px; height:5px; border-radius:3px;
          background:var(--rule); overflow:hidden; }
 .cprog i { display:block; height:100%; background:var(--law-green);
            border-radius:3px; transition:width .3s ease; }
