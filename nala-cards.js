@@ -387,8 +387,7 @@ function cardsDrawDrop(){
           '<span class="navbadge">' + cfg.bulkRows().length + '</span></button>';
   var rows = cfg.rows();
   if (!rows.length){
-    h += '<div class="kd-seam"></div>' +
-         '<button disabled style="color:var(--mid)">' + esc(cfg.emptyLabel) + '</button>';
+    h += '<button disabled style="color:var(--mid)">' + esc(cfg.emptyLabel) + '</button>';
   } else {
     /* Two groups, split by the state the row shows: the fresh arrivals
        still needing keys, then everyone already holding cards (or
@@ -401,7 +400,6 @@ function cardsDrawDrop(){
       (r.arriving && !heldFor(r.villa) ? arriving : held).push(r);
     });
     arriving.sort(byVilla); held.sort(byVilla);
-    h += '<div class="kd-seam"></div>';
     arriving.forEach(function(r){ h += dropRowHTML(r); });
     if (arriving.length && held.length) h += '<div class="kd-div"></div>';
     held.forEach(function(r){ h += dropRowHTML(r); });

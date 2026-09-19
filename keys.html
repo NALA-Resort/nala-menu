@@ -367,16 +367,19 @@
                   font-family:var(--ui-font); font-size:var(--t2); line-height:1.3;
                   color:var(--ink); cursor:pointer; }
 .keydrop button:active { background:var(--accent-soft); }
-/* The batch action LEADS, dressed as a tinted button so it reads as a
-   thing to press, not the list's title - the owner, 19 Sep, moving it up
-   from the foot where it sat from 9 Sep (a plain last row read as an
-   afterthought once the list ran long). Secondary to the page's Issue
-   keys primary, so a tint, not a fill (the button law). */
-.keydrop .kd-all { margin:0 var(--s3) var(--s1); width:auto;
-                   background:var(--accent-soft); border-radius:var(--r);
-                   align-items:center; font-weight:600; }
-/* the seam under the button and over the pad; the divider between the two
-   villa groups (arriving, then held) - the owner's 19 Sep divider */
+/* The batch action LEADS, dressed as a proper secondary button - the
+   quiet grey fill, ink text and full tap height the button law gives a
+   secondary (nala-ui2.css .btn), NOT a tinted pill, which read as a
+   status rather than a thing to press (the owner, 19 Sep; it had sat at
+   the foot since 9 Sep). Secondary because Issue keys is this surface's
+   one primary. */
+.keydrop .kd-all { margin:0 var(--s3) var(--s2); width:auto;
+                   background:var(--card); color:var(--ink);
+                   border-radius:var(--r); min-height:var(--tap);
+                   justify-content:center; gap:var(--s3);
+                   font-weight:600; }
+/* the seam over the pad; the divider between the two villa groups
+   (arriving, then held) - the owner's 19 Sep divider */
 .keydrop .kd-seam, .keydrop .kd-div { border-top:1px solid var(--rule); }
 .keydrop .kd-seam { margin:var(--s1) 0; }
 .keydrop .kd-div { margin:var(--s2) var(--s4); }
