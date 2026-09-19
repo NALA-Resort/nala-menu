@@ -378,6 +378,31 @@ with sync_playwright() as p:
     ck("and the header agrees with the card, not its own arithmetic",
        pg.evaluate("()=>document.getElementById('nInv').textContent") == "1")
 
+    # ── a dinner cell whose booking has left the villa (villa 4, 19 Sep) ──
+    #  The Reservations board drops a cell stamped with a booking that is no
+    #  longer in the villa (dinnerElsewhere); this page read /dinner raw, so it
+    #  counted the departed booking's "yes" as a cover AND left the new guest
+    #  off the to-ask list - the same disagreement Invitations had, one node
+    #  over. cellFor reads through cellIsForBooking now, so a stale cell falls
+    #  through to the guest's own form answer exactly as Reservations does.
+    STAYS_BAK, DINNER_BAK = dict(STAYS), dict(DINNER)
+    STAYS["9"] = {"id": "b9-now", "first": "New", "last": "Guest",
+                  "phone": "+61400000019", "arrive": today, "depart": plus(2),
+                  "adults": 2}
+    DINNER["9"] = {"status": "in", "pax": 2, "by": "reception",
+                   "bookingId": "b9-was", "at": at(9, 43)}
+    sp = board()
+    ck("a stale dinner cell is not counted as a cover: the count holds at 13",
+       card(sp, "reps")["note"].startswith("13 dining so far")
+       and card(sp, "reps")["note"].endswith("2 still to answer"))
+    ck("the departed booking's yes does not paint the new guest green",
+       "9:green" not in card(sp, "reps")["chips"])
+    ck("the new, unasked guest is named among those still to send to",
+       "9:grey" in card(sp, "inv")["chips"])
+    sp.close()
+    STAYS.clear(); STAYS.update(STAYS_BAK)
+    DINNER.clear(); DINNER.update(DINNER_BAK)
+
     # ── the menu count ──────────────────────────────────────────
     # 16 to print for. A menu is shared between two diners, two menus print
     # to a sheet, and reception keeps a menu of its own at the desk (owner,

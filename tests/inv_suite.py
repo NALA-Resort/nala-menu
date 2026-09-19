@@ -451,6 +451,55 @@ with sync_playwright() as p:
     INVITES.update(INVITES_BAK)
     pg.close()
 
+    # ── a dinner cell whose booking has left the villa ─────────
+    #  Villa 4, 19 Sep. Reception set a dining answer; Mews then moved the
+    #  booking and a new guest took the villa. The Reservations board dropped
+    #  the stale cell (dinnerElsewhere) and showed the villa AWAITING, but this
+    #  page read /dinner raw and sat the new, unasked guest under "Dining · 5 ·
+    #  set by reception" in Answered - so nobody sent them an invitation, the
+    #  one thing the board exists to stop. Both boards read the cell through
+    #  cellIsForBooking now, so both drop the same one. Isolated fixture so the
+    #  band counts above are left alone.
+    STAYS_BAK, DINNER_BAK = dict(STAYS), dict(DINNER)
+    STAYS.clear(); STAYS.update({
+      "6": stay("b6-now", "Lynette", "Burns", "+61 458 792 134", -1, 2),
+      "7": stay("b7-now", "Sadie",   "Cole",  "+61 466 000 007",  0, 2),
+      "8": stay("b8-now", "Otto",    "Frei",  "+61 466 000 008",  0, 2),
+    })
+    DINNER.clear(); DINNER.update({
+      #  Stale: stamped with the booking that has since left villa 6.
+      "6": {"status": "in", "pax": 5, "by": "reception@x", "bookingId": "b6-was",
+            "at": now.replace(hour=9, minute=43).isoformat()},
+      #  Live: the cell's booking is the one in villa 7 now.
+      "7": {"status": "in", "pax": 2, "by": "reception@x", "bookingId": "b7-now",
+            "at": now.replace(hour=9, minute=41).isoformat()},
+      #  A walk-in / pre-cell staff entry Mews has no opinion about: no booking
+      #  id, so nothing can call it stale. It stays answered.
+      "8": {"status": "in", "pax": 2, "by": "reception@x",
+            "at": now.replace(hour=9, minute=40).isoformat()},
+    })
+    pg = board()
+    ck("a cell whose booking has left the villa is not tonight's answer: the "
+       "new guest lands in To send, ticked, not under Answered",
+       row("6").get_attribute("data-state") == "ready"
+       and "Not asked" in row("6").inner_text()
+       and "set by reception" not in row("6").inner_text()
+       and "on" in (row("6").get_attribute("class") or ""))
+    ck("a cell whose booking is still in the villa stays answered",
+       row("7").get_attribute("data-state") == "answered"
+       and "set by reception" in row("7").inner_text())
+    ck("a cell with no booking id is a walk-in nothing can orphan: still answered",
+       row("8").get_attribute("data-state") == "answered")
+    ck("the SMS board and the Reservations board drop the same stale cell",
+       pg.evaluate("()=>dinnerElsewhere({'6':{status:'in',bookingId:'b6-was'}},"
+                   "'6',{'6':{bookingId:'b6-now'}})") is True
+       and pg.evaluate("()=>cellIsForBooking({bookingId:'b6-was'},'b6-now')") is False
+       and pg.evaluate("()=>cellIsForBooking({bookingId:'b7-now'},'b7-now')") is True
+       and pg.evaluate("()=>cellIsForBooking({},'b7-now')") is True)
+    STAYS.clear(); STAYS.update(STAYS_BAK)
+    DINNER.clear(); DINNER.update(DINNER_BAK)
+    pg.close()
+
     # ── templates.html, where the messages are edited ──────────
     def tpage(email="staff@x", w=390):
         pg = b.new_page(viewport={"width": w, "height": 900})
