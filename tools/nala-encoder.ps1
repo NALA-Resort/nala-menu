@@ -1,5 +1,12 @@
 # NALA key-card helper. Runs on the front-desk PC, next to CardEncoder.dll.
 #
+# VERSION: 2026-09-19.2   (also $HELPER_VERSION below, printed on the first
+# log line at startup). If the desk is ever unsure which helper is running,
+# read the top line of its window - "NALA encoder helper <version> ..." -
+# and compare it to the version here on MAIN. A mismatch means the running
+# window is stale: close it and relaunch the freshly downloaded file. Bump
+# this on every change to this file, in both places.
+#
 # What it is: the machine half of the card table. /cards holds ONE ROW PER
 # CARD in the world, keyed by the number the encoder reports (the serial
 # belongs to the plastic - TTHotel's own behaviour; the owner, 11 Sep).
@@ -44,6 +51,12 @@ $ALLOW_LOCKOUT = $false   # a guest card does not open a double-locked door
 if (Test-Path (Join-Path $PSScriptRoot "nala-config.ps1")) {
   . (Join-Path $PSScriptRoot "nala-config.ps1")
 }
+
+# Set AFTER the config load so a stale nala-config.ps1 cannot fake it: this
+# names THIS file, downloaded from main, and is logged on startup so the
+# desk can check which helper is running. Keep it in step with the VERSION
+# note at the top of this file.
+$HELPER_VERSION = "2026-09-19.2"
 
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
@@ -212,7 +225,7 @@ function Node-Pairs($node){
   ,$out
 }
 
-Log "NALA encoder helper - watching the card table. Ctrl+C stops it."
+Log "NALA encoder helper $HELPER_VERSION - watching the card table. Ctrl+C stops it."
 while ($true) {
   try {
     $busy = $false
