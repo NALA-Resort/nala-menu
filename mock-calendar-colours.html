@@ -1,0 +1,203 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mock &middot; Calendar colour states</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+ --cream:#F9F7F4;--ink:#1C1C1A;--mid:#999990;--rule:#E0E0DA;
+ /* the colour law's tokens (CLAUDE.md / nala-ui2), used verbatim so the
+    board reads the same as every other board */
+ --green-t:rgba(122,160,130,.26);--green-b:rgba(122,160,130,.65);--green-i:#5E7D67;
+ --amber:#F6EAD5;--amber-b:#C29A55;--amber-i:#8A6A2F;
+ --terra-t:rgba(184,106,90,.16);--terra-b:rgba(184,106,90,.45);--terra-i:#9E6455;
+ --wait:rgba(28,28,26,.045);
+ /* housekeeping's own saturated palette (cleaners.html is the sanctioned
+    off-law exception) - blue is unique to cleaning, so it never collides */
+ --hk-blue:#2E74C0;--hk-blue-t:rgba(46,116,192,.14);
+ --hk-svc:#4E8F4A;--hk-svc-t:rgba(78,143,74,.16);
+ --hk-pre:#E8891A;--hk-pre-t:#F6EAD5;
+}
+body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--ink);
+ padding:14px 12px 24px}
+.wrap{max-width:390px;margin:0 auto}
+
+/* the four mode radios live at the very top so every sibling below can be
+   switched off :checked. They are visually hidden. */
+.mradio{position:absolute;opacity:0;pointer-events:none}
+
+/* header: the standard daterow, Today ‹ date › menu - inert in this mock */
+.daterow{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.dnav{height:36px;border:1px solid var(--rule);border-radius:8px;background:none;
+ color:var(--ink);font-family:inherit;font-size:15px;padding:0 12px}
+.dnav.today{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid)}
+.date{font-size:15px;font-weight:600}
+.navbtn{margin-left:auto;width:36px;height:36px;border:1px solid var(--rule);border-radius:8px;
+ background:none;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px}
+.navbtn span{display:block;width:14px;height:1.6px;background:var(--ink)}
+
+/* ── THE COLOUR-STATE SELECTOR ─────────────────────────────────────────
+   A segmented control: one dimension lit at a time. The lit segment wears
+   the Selected dress (grey fill, ink border) - the same treatment the
+   Expand toggle already carries, so it is not a new idiom. */
+.selrow{display:flex;align-items:baseline;gap:8px;margin:0 0 8px}
+.selcap{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);
+ white-space:nowrap;padding-top:2px}
+.modes{display:flex;gap:6px;flex:1;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.mode{flex:0 0 auto;height:30px;display:flex;align-items:center;padding:0 11px;
+ border:1px solid var(--rule);border-radius:8px;background:none;color:var(--mid);
+ font-size:12px;cursor:pointer;user-select:none;white-space:nowrap}
+#m-form:checked  ~ .selrow .mode[for=m-form],
+#m-clean:checked ~ .selrow .mode[for=m-clean],
+#m-dining:checked~ .selrow .mode[for=m-dining],
+#m-spa:checked   ~ .selrow .mode[for=m-spa]{
+ background:var(--wait);border-color:var(--ink);color:var(--ink);font-weight:600}
+
+/* the legend swaps with the mode - only the lit dimension's key shows */
+.legend{display:none;flex-wrap:wrap;gap:4px 12px;margin:0 2px 12px;
+ font-size:11px;color:var(--mid)}
+#m-form:checked  ~ .leg-form,
+#m-clean:checked ~ .leg-clean,
+#m-dining:checked~ .leg-dining,
+#m-spa:checked   ~ .leg-spa{display:flex}
+.lg{display:inline-flex;align-items:center;gap:5px}
+.sw{width:13px;height:13px;border-radius:4px;border:1.2px solid var(--rule);flex:0 0 auto}
+.sw.green{background:var(--green-t);border-color:var(--green-b)}
+.sw.amber{background:var(--amber);border-color:var(--amber-b)}
+.sw.terra{background:var(--terra-t);border-color:var(--terra-b)}
+.sw.wait{background:var(--wait);border-color:#C9C9C1}
+.sw.sunk{background:transparent;border-style:dashed;border-color:var(--mid);opacity:.7}
+.sw.blue{background:var(--hk-blue-t);border-color:var(--hk-blue)}
+.sw.hsvc{background:var(--hk-svc-t);border-color:var(--hk-svc)}
+.sw.hpre{background:var(--hk-pre-t);border-color:var(--hk-pre)}
+
+.stats{display:flex;gap:8px;margin:0 0 10px}
+.stat{flex:1;text-align:center;padding:6px 0}
+.stat b{display:block;font-size:20px;font-weight:600}
+.stat span{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mid)}
+
+/* ── the chart (unchanged from the live calendar) ───────────────────── */
+.chartwrap{border:1.2px solid var(--rule);border-radius:10px;background:#fff;
+ overflow-x:auto;-webkit-overflow-scrolling:touch}
+.chart{position:relative}
+.monthrow{font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+ color:var(--mid);padding:8px 0 0}
+.month{position:sticky;left:40px;display:inline-block;white-space:nowrap}
+.dayhead{position:relative;height:26px;border-bottom:1.2px solid var(--rule)}
+.dh{position:absolute;top:0;height:100%;display:flex;align-items:center;justify-content:center;
+ font-size:11px;color:var(--mid);white-space:nowrap}
+.dh b{font-weight:600;color:var(--ink);margin-left:4px}
+.dh.today{color:var(--ink);font-weight:600}
+.grid{position:relative}
+.col{position:absolute;top:0;bottom:0;border-left:1px solid rgba(28,28,26,.05)}
+.col.wkend{background:rgba(28,28,26,.02)}
+.nowline{position:absolute;top:0;bottom:0;width:1.6px;background:rgba(28,28,26,.45);z-index:3}
+.vrow{position:relative;border-bottom:1px solid rgba(28,28,26,.06);height:42px}
+.vrow:last-child{border-bottom:0}
+.vnum{position:sticky;left:0;z-index:4;width:34px;height:100%;display:flex;
+ align-items:center;justify-content:center;font-size:15px;color:var(--ink);
+ background:rgba(255,255,255,.92);border-right:1.2px solid var(--rule)}
+/* every bar starts white; the lit mode paints it. It carries a class for
+   ALL FOUR dimensions at once (f-* d-* s-* c-*), and CSS shows one. */
+.bar{position:absolute;top:6px;height:30px;display:flex;align-items:center;
+ background:#fff;border:1.2px solid #C9C9C1;border-radius:8px;padding:0 9px;z-index:2}
+.bar .n{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ position:sticky;left:40px}
+.bar.cutL{border-top-left-radius:0;border-bottom-left-radius:0;border-left-style:dashed}
+.bar.cutR{border-top-right-radius:0;border-bottom-right-radius:0;border-right-style:dashed}
+
+/* ── mode 1 · PRE-ARRIVAL FORM (the current, default colouring) ──────── */
+#m-form:checked ~ .chartwrap .bar.f-done{background:var(--green-t);border-color:var(--green-b)}
+#m-form:checked ~ .chartwrap .bar.f-part{background:var(--amber);border-color:var(--amber-b)}
+#m-form:checked ~ .chartwrap .bar.f-todo{background:var(--wait);border-color:#C9C9C1}
+
+/* ── mode 2 · DINING (the Reservations dining contract) ──────────────── */
+#m-dining:checked ~ .chartwrap .bar.d-in  {background:var(--green-t);border-color:var(--green-b)}
+#m-dining:checked ~ .chartwrap .bar.d-out {background:var(--terra-t);border-color:var(--terra-b)}
+#m-dining:checked ~ .chartwrap .bar.d-none{background:var(--wait);border-color:#C9C9C1}
+
+/* ── mode 3 · SPA / MASSAGE (massageState) ───────────────────────────── */
+#m-spa:checked ~ .chartwrap .bar.s-booked{background:var(--green-t);border-color:var(--green-b)}
+#m-spa:checked ~ .chartwrap .bar.s-sugg  {background:var(--amber);border-color:var(--amber-b)}
+#m-spa:checked ~ .chartwrap .bar.s-req   {background:var(--wait);border-color:#C9C9C1}
+#m-spa:checked ~ .chartwrap .bar.s-decl  {background:var(--terra-t);border-color:var(--terra-b)}
+#m-spa:checked ~ .chartwrap .bar.s-none  {background:transparent;border-style:dashed;
+ border-color:var(--mid);opacity:.62}
+
+/* ── mode 4 · CLEAN (housekeeping's saturated palette, tinted for a full
+   bar). Blue = turnaround, green = service, amber = prepare, dashed = verify.
+   NOTE: clean is a per-DAY job state; this mock colours the whole stay by
+   one representative state - see the write-up's open question. ─────────── */
+#m-clean:checked ~ .chartwrap .bar.c-clean{background:var(--hk-blue-t);border-color:var(--hk-blue)}
+#m-clean:checked ~ .chartwrap .bar.c-svc  {background:var(--hk-svc-t);border-color:var(--hk-svc)}
+#m-clean:checked ~ .chartwrap .bar.c-pre  {background:var(--hk-pre-t);border-color:var(--hk-pre)}
+#m-clean:checked ~ .chartwrap .bar.c-ver  {background:transparent;border-style:dashed;
+ border-color:var(--mid);opacity:.7}
+</style></head><body>
+
+<!-- the four mode radios (visually hidden), Pre-arrival lit by default -->
+<input type="radio" name="mode" id="m-form"   class="mradio" checked>
+<input type="radio" name="mode" id="m-clean"  class="mradio">
+<input type="radio" name="mode" id="m-dining" class="mradio">
+<input type="radio" name="mode" id="m-spa"    class="mradio">
+
+<div class="daterow">
+  <button class="dnav today">Today</button>
+  <button class="dnav">&#8249;</button>
+  <div class="date">Sat 12th Sep</div>
+  <button class="dnav">&#8250;</button>
+  <button class="navbtn"><span></span><span></span><span></span></button>
+</div>
+
+<!-- THE NEW BIT: colour-state selector -->
+<div class="selrow">
+  <div class="selcap">Colour&nbsp;by</div>
+  <div class="modes">
+    <label class="mode" for="m-form">Pre-arrival</label>
+    <label class="mode" for="m-clean">Clean</label>
+    <label class="mode" for="m-dining">Dining</label>
+    <label class="mode" for="m-spa">Spa</label>
+  </div>
+</div>
+
+<div class="legend leg-form">
+  <span class="lg"><span class="sw green"></span>Completed</span>
+  <span class="lg"><span class="sw amber"></span>Incomplete</span>
+  <span class="lg"><span class="sw wait"></span>Not started</span>
+</div>
+<div class="legend leg-clean">
+  <span class="lg"><span class="sw blue"></span>Turnaround</span>
+  <span class="lg"><span class="sw hsvc"></span>Service</span>
+  <span class="lg"><span class="sw hpre"></span>Prepare</span>
+  <span class="lg"><span class="sw sunk"></span>Verify</span>
+</div>
+<div class="legend leg-dining">
+  <span class="lg"><span class="sw green"></span>Dining</span>
+  <span class="lg"><span class="sw terra"></span>Not dining</span>
+  <span class="lg"><span class="sw wait"></span>No answer</span>
+</div>
+<div class="legend leg-spa">
+  <span class="lg"><span class="sw green"></span>Booked</span>
+  <span class="lg"><span class="sw amber"></span>Offered</span>
+  <span class="lg"><span class="sw wait"></span>To answer</span>
+  <span class="lg"><span class="sw terra"></span>Declined</span>
+  <span class="lg"><span class="sw sunk"></span>None</span>
+</div>
+
+<div class="stats">
+  <div class="stat"><b>8</b><span>In house</span></div>
+  <div class="stat"><b>4</b><span>Arriving</span></div>
+  <div class="stat"><b>1</b><span>Departing</span></div>
+</div>
+
+<!-- The board: villas 1-17, the same baked 17-day window as mock-calendar.html
+     (Fri 11 Sep, today Sat 12). Each bar now carries all four dimensions'
+     classes; the lit mode above decides which one paints it. -->
+<div class="chartwrap"><div class="chart"><div class="monthrow" style="width:1122px;height:22px"><span class="month">Sep 2026</span></div><div class="dayhead" style="width:1122px"><div class="dh" style="left:34px;width:64px">Fri<b>11</b></div><div class="dh today" style="left:98px;width:64px">Sat<b>12</b></div><div class="dh" style="left:162px;width:64px">Sun<b>13</b></div><div class="dh" style="left:226px;width:64px">Mon<b>14</b></div><div class="dh" style="left:290px;width:64px">Tue<b>15</b></div><div class="dh" style="left:354px;width:64px">Wed<b>16</b></div><div class="dh" style="left:418px;width:64px">Thu<b>17</b></div><div class="dh" style="left:482px;width:64px">Fri<b>18</b></div><div class="dh" style="left:546px;width:64px">Sat<b>19</b></div><div class="dh" style="left:610px;width:64px">Sun<b>20</b></div><div class="dh" style="left:674px;width:64px">Mon<b>21</b></div><div class="dh" style="left:738px;width:64px">Tue<b>22</b></div><div class="dh" style="left:802px;width:64px">Wed<b>23</b></div><div class="dh" style="left:866px;width:64px">Thu<b>24</b></div><div class="dh" style="left:930px;width:64px">Fri<b>25</b></div><div class="dh" style="left:994px;width:64px">Sat<b>26</b></div><div class="dh" style="left:1058px;width:64px">Sun<b>27</b></div></div><div class="grid" style="width:1122px"><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="bar cutL f-done d-in s-booked c-svc" style="left:34px;width:218.66666666666666px"><span class="n">Whitfield, Mark</span></div><div class="vnum">1</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="bar f-part d-in s-req c-svc" style="left:135.33333333333334px;width:245.33333333333334px"><span class="n">Sadewasser, Laura</span></div><div class="vnum">2</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="bar cutL f-done d-out s-none c-svc" style="left:34px;width:154.66666666666666px"><span class="n">Sacco, Carlo</span></div><div class="vnum">3</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="bar f-part d-in s-sugg c-clean" style="left:199.33333333333334px;width:117.33333333333334px"><span class="n">Mueller, Melissa</span></div><div class="bar f-todo d-none s-none c-pre" style="left:455.3333333333333px;width:181.33333333333331px"><span class="n">Boulter, Emily</span></div><div class="vnum">4</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="bar f-done d-in s-booked c-svc" style="left:71.33333333333334px;width:437.33333333333337px"><span class="n">Van Der Westhuizen, Annaliese</span></div><div class="vnum">5</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="vnum">6</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="bar f-done d-out s-decl c-svc" style="left:135.33333333333334px;width:117.33333333333331px"><span class="n">Pollock, Krystal</span></div><div class="vnum">7</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="bar cutL f-done d-in s-booked c-clean" style="left:34px;width:90.66666666666667px"><span class="n">Christison, Adam</span></div><div class="bar f-done d-out s-none c-svc" style="left:135.33333333333334px;width:181.33333333333334px"><span class="n">Bunker, Lynette</span></div><div class="vnum">8</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="vnum">9</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="bar f-todo d-none s-req c-svc" style="left:263.33333333333337px;width:309.33333333333326px"><span class="n">Mckinnon, Cameron</span></div><div class="vnum">10</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="vnum">11</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="bar cutL cutR f-done d-in s-sugg c-svc" style="left:34px;width:1088px"><span class="n">Tree, Katelyn</span></div><div class="vnum">12</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="vnum">13</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="bar f-part d-in s-req c-svc" style="left:199.33333333333334px;width:181.33333333333334px"><span class="n">Walker, Kelly</span></div><div class="vnum">14</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="bar f-todo d-none s-none c-pre" style="left:391.3333333333333px;width:117.33333333333337px"><span class="n">Beatts, Glen</span></div><div class="vnum">15</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="bar f-done d-out s-booked c-svc" style="left:135.33333333333334px;width:309.33333333333337px"><span class="n">Gibson, Chris</span></div><div class="vnum">16</div></div><div class="vrow"><div class="col" style="left:34px;width:64px"></div><div class="col wkend" style="left:98px;width:64px"></div><div class="col wkend" style="left:162px;width:64px"></div><div class="col" style="left:226px;width:64px"></div><div class="col" style="left:290px;width:64px"></div><div class="col" style="left:354px;width:64px"></div><div class="col" style="left:418px;width:64px"></div><div class="col" style="left:482px;width:64px"></div><div class="col wkend" style="left:546px;width:64px"></div><div class="col wkend" style="left:610px;width:64px"></div><div class="col" style="left:674px;width:64px"></div><div class="col" style="left:738px;width:64px"></div><div class="col" style="left:802px;width:64px"></div><div class="col" style="left:866px;width:64px"></div><div class="col" style="left:930px;width:64px"></div><div class="col wkend" style="left:994px;width:64px"></div><div class="col wkend" style="left:1058px;width:64px"></div><div class="nowline" style="left:130px"></div><div class="bar f-todo d-none s-none c-ver" style="left:327.3333333333333px;width:245.33333333333331px"><span class="n">Vlahov, Kim</span></div><div class="vnum">17</div></div></div></div></div>
+
+<p style="max-width:390px;margin:14px auto 0;font-size:12px;line-height:1.5;color:#5F5F58">
+  <b>Tap a chip</b> under &ldquo;Colour by&rdquo; to repaint every pill by that
+  dimension. Pre-arrival is the current, default colouring; Clean, Dining and
+  Spa are the new states. The legend under the chips changes with the mode.
+</p>
+
+</body></html>
