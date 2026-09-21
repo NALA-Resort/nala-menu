@@ -162,10 +162,12 @@ with sync_playwright() as p:
       setMode('clean');
       o.cleanpill=fill(1);
       function vnumbg(v){ return getComputedStyle(document.querySelectorAll('.vrow')[v-1].querySelector('.vnum')).backgroundColor; }
-      o.rows={v1:rowcls(1), v5:rowcls(5), v6:rowcls(6)};
-      o.v1vnum=vnumbg(1);   // cleaned  -> pastel green
-      o.v5vnum=vnumbg(5);   // flagged  -> amber
-      o.v6vnum=vnumbg(6);   // requires cleaning, not soon -> plain
+      o.rows={v1:rowcls(1), v9:rowcls(9), v5:rowcls(5), v6:rowcls(6)};
+      o.v1vnum=vnumbg(1);   // occupied stayover -> in house grey
+      o.v9vnum=vnumbg(9);   // vacant           -> cleaned green
+      o.v5vnum=vnumbg(5);   // flagged          -> amber
+      o.v6vnum=vnumbg(6);   // requires cleaning, not soon -> plain white
+      o.mutedname=getComputedStyle(document.querySelectorAll('.vrow')[0].querySelector('.bar .n')).color;
       return o;
     }""")
     GREEN="rgba(122, 160, 130, 0.26)"; AMBER="rgb(246, 234, 213)"
@@ -177,17 +179,19 @@ with sync_playwright() as p:
        paint["din"][0]==GREEN and paint["din"][1]==TERRA and grey(paint["din"][2]))
     ck("Spa paints booked green, none the sunk transparent, to-answer grey",
        paint["spa"][0]==GREEN and paint["spa"][1]=="rgba(0, 0, 0, 0)" and grey(paint["spa"][2]))
-    ck("Clean greys every pill - the room's status is not the booking's",
-       grey(paint["cleanpill"]))
-    ck("a cleaned room's number sits in the pastel green, no crowding dot",
-       "rm-clean" in paint["rows"]["v1"] and "flag" not in paint["rows"]["v1"]
-       and paint["v1vnum"]==GREEN)
+    ck("Clean greys every pill and mutes its name - the room is the point",
+       grey(paint["cleanpill"]) and paint["mutedname"]=="rgba(28, 28, 26, 0.32)")
+    ck("an occupied stayover reads in house, a neutral grey, never flagged",
+       "rm-inhouse" in paint["rows"]["v1"] and "flag" not in paint["rows"]["v1"]
+       and paint["v1vnum"]=="rgb(234, 234, 230)")
+    ck("a vacant, ready room's number sits in the pastel green",
+       "rm-clean" in paint["rows"]["v9"] and paint["v9vnum"]=="rgb(228, 237, 226)")
     ck("requires cleaning + arrival within 2 days turns the number amber",
        "rm-dirty" in paint["rows"]["v5"] and "flag" in paint["rows"]["v5"]
        and paint["v5vnum"]==AMBER)
-    ck("requires cleaning but arrival further off leaves the number plain",
+    ck("requires cleaning but arrival further off leaves the number plain white",
        "rm-dirty" in paint["rows"]["v6"] and "flag" not in paint["rows"]["v6"]
-       and paint["v6vnum"]!=GREEN and paint["v6vnum"]!=AMBER)
+       and paint["v6vnum"]=="rgb(255, 255, 255)")
     pgc.close()
 
     def board(email="staff@x", w=390, h=844):

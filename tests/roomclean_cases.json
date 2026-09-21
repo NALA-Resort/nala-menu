@@ -4,7 +4,8 @@
   "clean": [
     { "why": "a done stamp wins over any job",        "rec": { "dep": 0 },            "hk": { "done": true },                    "left": false, "want": "cleaned" },
     { "why": "departure today, not done",             "rec": { "dep": 0 },            "hk": {},                                  "left": false, "want": "dirty" },
-    { "why": "stayover, not done",                     "rec": { "arr": -2, "dep": 3 }, "hk": {},                                  "left": false, "want": "dirty" },
+    { "why": "an occupied stayover is in house",      "rec": { "arr": -2, "dep": 3 }, "hk": {},                                  "left": false, "want": "inhouse" },
+    { "why": "a serviced stayover is still in house", "rec": { "arr": -2, "dep": 3 }, "hk": { "done": true },                    "left": false, "want": "inhouse" },
     { "why": "arrival today, empty last night",        "rec": { "arr": 0, "dep": 3 },  "hk": {},                                  "left": false, "want": "dirty" },
     { "why": "vacant / no record",                     "rec": null,                    "hk": {},                                  "left": false, "want": "cleaned" },
     { "why": "same-day turnover via left",             "rec": { "arr": 0, "dep": 3 },  "hk": {},                                  "left": true,  "want": "dirty" },

@@ -91,18 +91,21 @@
   #wrap.m-spa    .bar.snone   { background:transparent; border-style:dashed;
     border-color:var(--mid); opacity:.62; }
   /* Clean is the ROOM's status, not the booking's, so its screen greys every
-     pill and the meaning moves to a dot by the villa number and an amber row
-     (below). Nothing is double-encoded: pill colour never fights row colour. */
+     pill and the meaning moves to the villa number's colour (below). Nothing
+     is double-encoded: pill colour never fights the room's colour. */
   #wrap.m-clean  .bar        { background:rgba(28,28,26,.045); border-color:#C9C9C1;
     color:var(--mid); }
 
-  /* Clean screen: the villa NUMBER carries the state, so nothing crowds it in
-     the narrow cell. A cleaned room's number sits in the pastel green tile
-     (done - the colour law's green, the same the pills use); a requires-
-     cleaning room stays plain; the flag turns it amber (below). Binary: no
-     third state, urgency is the row and the amber cell, never a mark on the
-     number. */
-  #wrap.m-clean .vrow.rm-clean .vnum { background:rgba(122,160,130,.26); }
+  /* Clean screen: the villa NUMBER carries the state, so nothing crowds the
+     narrow cell. The cell fills are OPAQUE so a bar's name cannot show through
+     from behind it. Cleaned (vacant, ready) sits in the pastel green; in house
+     (occupied) is a neutral grey; requires cleaning stays plain white; the
+     flag turns it amber (below). And the grey pills' names are muted here -
+     the booking is not the point on this screen, the room is. */
+  #wrap.m-clean .vrow .vnum        { background:#fff; }
+  #wrap.m-clean .vrow.rm-clean   .vnum { background:#E4EDE2; }
+  #wrap.m-clean .vrow.rm-inhouse .vnum { background:#EAEAE6; }
+  #wrap.m-clean .bar .n            { color:rgba(28,28,26,.32); }
   /* the flag: a room that requires cleaning AND has an arrival within
      CLEAN_FLAG_DAYS. Amber - attention, chase this - the colour law. Rides
      the sticky cell so it stays put while the days scroll. Clean screen only. */
@@ -132,7 +135,8 @@
   .sw-terra { background:rgba(184,106,90,.16); border-color:rgba(184,106,90,.45); }
   .sw-grey  { background:rgba(28,28,26,.045); border-color:#C9C9C1; }
   .sw-sunk  { background:transparent; border-style:dashed; border-color:var(--mid); opacity:.7; }
-  .sw-clean { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
+  .sw-clean { background:#E4EDE2; border-color:#7E937A; }
+  .sw-inhouse { background:#EAEAE6; border-color:#C9C9C1; }
   .sw-plain { background:#fff; border-color:#C9C9C1; }
   .blk-amber { display:inline-block; width:12px; height:12px; border-radius:3px;
     background:#F6EAD5; box-shadow:inset 3px 0 0 #C29A55; }
@@ -194,6 +198,7 @@
     </div>
     <div class="clegend" data-leg="clean">
       <span class="lg"><span class="sw sw-clean"></span>Cleaned</span>
+      <span class="lg"><span class="sw sw-inhouse"></span>In house</span>
       <span class="lg"><span class="sw sw-plain"></span>Requires cleaning</span>
       <span class="lg"><span class="blk-amber"></span>arrival within 2 days</span>
     </div>
@@ -254,7 +259,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=70"></script>
+<script src="nala-shared.js?v=71"></script>
 <script>
 /* The whole house across a month: villas down the side, days across, each
    stay a bar. A reader in the rule-7 sense - every value here is owned
@@ -430,11 +435,12 @@ function render(bookings, spa, failedDays, hk, nightBy){
 
   for (var v = 1; v <= ROOMS_N; v++){
     var clean = cleanOf(v);
+    var rmcls = clean === 'inhouse' ? 'rm-inhouse'
+              : clean === 'dirty'   ? 'rm-dirty' : 'rm-clean';
     var flag = clean === 'dirty' && (byVilla[String(v)] || []).some(function(b){
       return arrivalFlagsClean(b.stay.arrive, realToday);
     });
-    h += '<div class="vrow rm-' + (clean === 'dirty' ? 'dirty' : 'clean') +
-         (flag ? ' flag' : '') + '">' + cols + nowline;
+    h += '<div class="vrow ' + rmcls + (flag ? ' flag' : '') + '">' + cols + nowline;
     (byVilla[String(v)] || []).forEach(function(b){
       var a = parseDepDate(b.stay.arrive), dep = parseDepDate(b.stay.depart);
       if (!a || !dep) return;

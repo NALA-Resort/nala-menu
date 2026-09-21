@@ -1416,21 +1416,25 @@ function hkClassify(rec, todayK, hk, leftThisMorning){
   return 'ver';         // no data at all
 }
 
-/* Whether a room is cleaned or still requires cleaning on a day - the binary
-   the Calendar's clean dot draws. It is hkClassify plus the day's done flag,
-   so the two boards cannot come to disagree about what "done" means:
-   cleaners.html reads the same kind and the same h.done to letter its chip
-   (Cleaned / Clean / Serviced / Pre-arrived) and should call this the day it
-   wants the boolean rather than a fifth spelling of it. A real job - clean,
-   svc or pre - not yet done requires cleaning; so does a departure carried
-   across midnight and not done. Everything else - done, vacant, or nothing
-   the dates can confirm - reads cleaned, because none of them is a job left
-   standing open. */
+/* Which clean band a room is in on a day - the Calendar colours the villa
+   number by it. Three bands, all off hkClassify plus the day's done flag, so
+   the Calendar and the cleaning boards cannot come to disagree about what a
+   room is: cleaners.html reads the same kind and the same h.done to letter
+   its chips (Cleaned / Clean / Serviced / Pre-arrived).
+
+     inhouse   occupied and staying on - neither a turnaround nor a room
+               standing ready, so its own neutral band. Checked first,
+               because a serviced stay-over is still occupied.
+     dirty     a turnaround or a prep not yet done, or a departure carried
+               across midnight and not done - a job standing open.
+     cleaned   done, vacant, or nothing the dates can confirm - a room
+               ready, or with nothing owed on it. */
 function roomCleanState(rec, dateK, hk, left){
   var h = hk || {};
-  if (h.done) return 'cleaned';
   var kind = hkClassify(rec, dateK, hk, left);
-  if (kind === 'clean' || kind === 'svc' || kind === 'pre') return 'dirty';
+  if (kind === 'svc') return 'inhouse';
+  if (h.done) return 'cleaned';
+  if (kind === 'clean' || kind === 'pre') return 'dirty';
   if (h.carried && h.departed) return 'dirty';   // a departure clean rolled over
   return 'cleaned';
 }
