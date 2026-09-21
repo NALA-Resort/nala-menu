@@ -161,9 +161,11 @@ with sync_playwright() as p:
       setMode('spa');    o.spa=[fill(1),fill(3),fill(4)];
       setMode('clean');
       o.cleanpill=fill(1);
-      o.dotshown=getComputedStyle(document.querySelector('.rmdot')).display;
+      function vnumbg(v){ return getComputedStyle(document.querySelectorAll('.vrow')[v-1].querySelector('.vnum')).backgroundColor; }
       o.rows={v1:rowcls(1), v5:rowcls(5), v6:rowcls(6)};
-      o.v5vnum=getComputedStyle(document.querySelectorAll('.vrow')[4].querySelector('.vnum')).backgroundColor;
+      o.v1vnum=vnumbg(1);   // cleaned  -> pastel green
+      o.v5vnum=vnumbg(5);   // flagged  -> amber
+      o.v6vnum=vnumbg(6);   // requires cleaning, not soon -> plain
       return o;
     }""")
     GREEN="rgba(122, 160, 130, 0.26)"; AMBER="rgb(246, 234, 213)"
@@ -177,14 +179,15 @@ with sync_playwright() as p:
        paint["spa"][0]==GREEN and paint["spa"][1]=="rgba(0, 0, 0, 0)" and grey(paint["spa"][2]))
     ck("Clean greys every pill - the room's status is not the booking's",
        grey(paint["cleanpill"]))
-    ck("the clean dot shows only on the Clean screen", paint["dotshown"]=="block")
-    ck("a serviced occupied room reads cleaned, no flag",
-       "rm-clean" in paint["rows"]["v1"] and "flag" not in paint["rows"]["v1"])
-    ck("requires cleaning + arrival within 2 days flags the row amber",
+    ck("a cleaned room's number sits in the pastel green, no crowding dot",
+       "rm-clean" in paint["rows"]["v1"] and "flag" not in paint["rows"]["v1"]
+       and paint["v1vnum"]==GREEN)
+    ck("requires cleaning + arrival within 2 days turns the number amber",
        "rm-dirty" in paint["rows"]["v5"] and "flag" in paint["rows"]["v5"]
        and paint["v5vnum"]==AMBER)
-    ck("requires cleaning but arrival further off is the dot alone, no flag",
-       "rm-dirty" in paint["rows"]["v6"] and "flag" not in paint["rows"]["v6"])
+    ck("requires cleaning but arrival further off leaves the number plain",
+       "rm-dirty" in paint["rows"]["v6"] and "flag" not in paint["rows"]["v6"]
+       and paint["v6vnum"]!=GREEN and paint["v6vnum"]!=AMBER)
     pgc.close()
 
     def board(email="staff@x", w=390, h=844):

@@ -96,14 +96,13 @@
   #wrap.m-clean  .bar        { background:rgba(28,28,26,.045); border-color:#C9C9C1;
     color:var(--mid); }
 
-  /* the clean dot rides the sticky villa cell; drawn only on the Clean
-     screen. Binary: cleaned (green) or requires cleaning (hollow). There is
-     no third state - urgency is the row, not the dot. */
-  .rmdot { display:none; position:absolute; top:4px; left:4px; width:8px; height:8px;
-    border-radius:50%; box-sizing:border-box; }
-  #wrap.m-clean .rmdot { display:block; }
-  .vrow.rm-clean .rmdot { background:#6F9578; }
-  .vrow.rm-dirty .rmdot { background:#fff; border:1.5px solid var(--mid); }
+  /* Clean screen: the villa NUMBER carries the state, so nothing crowds it in
+     the narrow cell. A cleaned room's number sits in the pastel green tile
+     (done - the colour law's green, the same the pills use); a requires-
+     cleaning room stays plain; the flag turns it amber (below). Binary: no
+     third state, urgency is the row and the amber cell, never a mark on the
+     number. */
+  #wrap.m-clean .vrow.rm-clean .vnum { background:rgba(122,160,130,.26); }
   /* the flag: a room that requires cleaning AND has an arrival within
      CLEAN_FLAG_DAYS. Amber - attention, chase this - the colour law. Rides
      the sticky cell so it stays put while the days scroll. Clean screen only. */
@@ -128,14 +127,13 @@
   .clegend .lg { display:inline-flex; align-items:center; gap:5px; }
   .clegend .sw { width:12px; height:12px; border-radius:4px; border:1.2px solid var(--rule);
     box-sizing:border-box; }
-  .clegend .dt { width:11px; height:11px; border-radius:50%; box-sizing:border-box; }
   .sw-green { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
   .sw-amber { background:#F6EAD5; border-color:#C29A55; }
   .sw-terra { background:rgba(184,106,90,.16); border-color:rgba(184,106,90,.45); }
   .sw-grey  { background:rgba(28,28,26,.045); border-color:#C9C9C1; }
   .sw-sunk  { background:transparent; border-style:dashed; border-color:var(--mid); opacity:.7; }
-  .dt-clean { background:#6F9578; }
-  .dt-dirty { background:#fff; border:1.5px solid var(--mid); }
+  .sw-clean { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
+  .sw-plain { background:#fff; border-color:#C9C9C1; }
   .blk-amber { display:inline-block; width:12px; height:12px; border-radius:3px;
     background:#F6EAD5; box-shadow:inset 3px 0 0 #C29A55; }
   /* a stay running off either edge of the loaded window squares that end
@@ -195,8 +193,8 @@
       <span class="lg"><span class="sw sw-grey"></span>Not started</span>
     </div>
     <div class="clegend" data-leg="clean">
-      <span class="lg"><span class="dt dt-clean"></span>Cleaned</span>
-      <span class="lg"><span class="dt dt-dirty"></span>Requires cleaning</span>
+      <span class="lg"><span class="sw sw-clean"></span>Cleaned</span>
+      <span class="lg"><span class="sw sw-plain"></span>Requires cleaning</span>
       <span class="lg"><span class="blk-amber"></span>arrival within 2 days</span>
     </div>
     <div class="clegend" data-leg="dining">
@@ -468,7 +466,7 @@ function render(bookings, spa, failedDays, hk, nightBy){
       h += open + ' style="left:' + (VCOL + x1) + 'px;width:' + (x2 - x1) + 'px">' +
            '<span class="n">' + esc(name) + '</span>' + (CAN_OPEN ? '</a>' : '</div>');
     });
-    h += '<div class="vnum"><span class="rmdot"></span>' + v + '</div></div>';
+    h += '<div class="vnum">' + v + '</div></div>';
   }
   h += '</div>';
   document.getElementById('chart').innerHTML = h;

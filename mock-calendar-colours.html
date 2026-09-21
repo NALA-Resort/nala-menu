@@ -59,9 +59,7 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
 .vrow{position:relative;border-bottom:1px solid rgba(28,28,26,.06);height:42px}
 .vrow:last-child{border-bottom:0}
 .vnum{position:sticky;left:0;z-index:4;width:34px;height:100%;display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--ink);background:rgba(255,255,255,.92);border-right:1.2px solid var(--rule)}
-.rmdot{display:none;position:absolute;top:5px;left:5px;width:8px;height:8px;border-radius:50%;box-sizing:border-box}
-.rm-clean .rmdot{background:var(--dot-green)}
-.rm-dirty .rmdot{background:#fff;border:1.5px solid var(--mid)}
+.rmdot{display:none}
 .bar{position:absolute;top:6px;height:30px;display:flex;align-items:center;background:#fff;border:1.2px solid #C9C9C1;border-radius:8px;padding:0 9px;z-index:2}
 .bar .n{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:sticky;left:40px}
 .bar.cutL{border-top-left-radius:0;border-bottom-left-radius:0;border-left-style:dashed}
@@ -84,7 +82,7 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
    room requires cleaning AND its next arrival is within 2 days; that is the
    only urgency signal, so the dot itself never changes for it. ─────────── */
 #m-clean:checked ~ .chartwrap .bar{background:var(--wait);border-color:#C9C9C1;color:var(--mid)}
-#m-clean:checked ~ .chartwrap .rmdot{display:block}
+#m-clean:checked ~ .chartwrap .vrow.rm-clean .vnum{background:var(--green-t)}
 #m-clean:checked ~ .chartwrap .vrow.flag{background:rgba(246,234,213,.5)}
 #m-clean:checked ~ .chartwrap .vrow.flag .vnum{background:var(--amber);box-shadow:inset 3px 0 0 var(--amber-b)}
 </style></head><body>
@@ -114,9 +112,9 @@ body{background:var(--cream);font-family:Helvetica,Arial,sans-serif;color:var(--
   <span class="lg"><span class="sw wait"></span>Not started</span>
 </div>
 <div class="legend leg-clean">
-  <span class="lg"><span class="dot d-ready"></span>Cleaned</span>
-  <span class="lg"><span class="dot d-dirty"></span>Requires cleaning</span>
-  <span class="lg"><span class="amblk"></span>row amber &mdash; requires cleaning, arrival within 2 days</span>
+  <span class="lg"><span class="sw green"></span>Cleaned</span>
+  <span class="lg"><span class="sw"></span>Requires cleaning</span>
+  <span class="lg"><span class="amblk"></span>requires cleaning, arrival within 2 days</span>
 </div>
 <div class="legend leg-dining">
   <span class="lg"><span class="sw green"></span>Dining</span>
