@@ -1,0 +1,25 @@
+{
+  "_note": "The shared table for the Calendar's Clean layer, read by roomclean_suite (roomCleanState, diningState, arrivalFlagsClean) and by calendar_suite. hkClassify owns the job kind; roomCleanState turns kind + the day's done flag into the binary the dot draws. Dates are offsets from a fixed local `today` so every case holds in any zone (the date law).",
+  "today": "2026-09-15",
+  "clean": [
+    { "why": "a done stamp wins over any job",        "rec": { "dep": 0 },            "hk": { "done": true },                    "left": false, "want": "cleaned" },
+    { "why": "departure today, not done",             "rec": { "dep": 0 },            "hk": {},                                  "left": false, "want": "dirty" },
+    { "why": "stayover, not done",                     "rec": { "arr": -2, "dep": 3 }, "hk": {},                                  "left": false, "want": "dirty" },
+    { "why": "arrival today, empty last night",        "rec": { "arr": 0, "dep": 3 },  "hk": {},                                  "left": false, "want": "dirty" },
+    { "why": "vacant / no record",                     "rec": null,                    "hk": {},                                  "left": false, "want": "cleaned" },
+    { "why": "same-day turnover via left",             "rec": { "arr": 0, "dep": 3 },  "hk": {},                                  "left": true,  "want": "dirty" },
+    { "why": "a departure clean carried across midnight", "rec": null,                 "hk": { "carried": true, "departed": true }, "left": false, "want": "dirty" }
+  ],
+  "dining": [
+    { "pre": { "dining": true },  "want": "in" },
+    { "pre": { "dining": false }, "want": "out" },
+    { "pre": {},                  "want": "none" },
+    { "pre": null,                "want": "none" }
+  ],
+  "flag": [
+    { "why": "arrival today flags",     "arr": 0,  "want": true },
+    { "why": "arrival at the 2-day edge","arr": 2,  "want": true },
+    { "why": "arrival 3 days off does not","arr": 3, "want": false },
+    { "why": "an arrival in the past does not","arr": -1, "want": false }
+  ]
+}

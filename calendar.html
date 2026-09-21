@@ -72,9 +72,72 @@
     text-decoration:none; }
   .bar .n { font-family:var(--ui-font); white-space:nowrap; overflow:hidden;
     text-overflow:ellipsis; position:sticky; left:40px; }
-  .bar.fdone { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
-  .bar.fpart { background:#F6EAD5; border-color:#C29A55; }
-  .bar.ftodo { background:rgba(28,28,26,.045); border-color:#C9C9C1; }
+  /* A bar's fill is the selected dimension. Every bar carries a class for
+     each dimension at once (f* pre-arrival, d* dining, s* spa); the mode
+     class on #wrap lights exactly one, so switching modes repaints nothing
+     but the CSS match. Pre-arrival (m-form) is the default and the look the
+     board shipped with. The colours are the colour law's, verbatim, so the
+     board reads the same as Reservations, the Front Desk and Spa. */
+  #wrap.m-form   .bar.fdone { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
+  #wrap.m-form   .bar.fpart { background:#F6EAD5; border-color:#C29A55; }
+  #wrap.m-form   .bar.ftodo { background:rgba(28,28,26,.045); border-color:#C9C9C1; }
+  #wrap.m-dining .bar.din   { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
+  #wrap.m-dining .bar.dout  { background:rgba(184,106,90,.16); border-color:rgba(184,106,90,.45); }
+  #wrap.m-dining .bar.dnone { background:rgba(28,28,26,.045); border-color:#C9C9C1; }
+  #wrap.m-spa    .bar.sbooked { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
+  #wrap.m-spa    .bar.ssugg   { background:#F6EAD5; border-color:#C29A55; }
+  #wrap.m-spa    .bar.swait   { background:rgba(28,28,26,.045); border-color:#C9C9C1; }
+  #wrap.m-spa    .bar.sdecl   { background:rgba(184,106,90,.16); border-color:rgba(184,106,90,.45); }
+  #wrap.m-spa    .bar.snone   { background:transparent; border-style:dashed;
+    border-color:var(--mid); opacity:.62; }
+  /* Clean is the ROOM's status, not the booking's, so its screen greys every
+     pill and the meaning moves to a dot by the villa number and an amber row
+     (below). Nothing is double-encoded: pill colour never fights row colour. */
+  #wrap.m-clean  .bar        { background:rgba(28,28,26,.045); border-color:#C9C9C1;
+    color:var(--mid); }
+
+  /* the clean dot rides the sticky villa cell; drawn only on the Clean
+     screen. Binary: cleaned (green) or requires cleaning (hollow). There is
+     no third state - urgency is the row, not the dot. */
+  .rmdot { display:none; position:absolute; top:4px; left:4px; width:8px; height:8px;
+    border-radius:50%; box-sizing:border-box; }
+  #wrap.m-clean .rmdot { display:block; }
+  .vrow.rm-clean .rmdot { background:#6F9578; }
+  .vrow.rm-dirty .rmdot { background:#fff; border:1.5px solid var(--mid); }
+  /* the flag: a room that requires cleaning AND has an arrival within
+     CLEAN_FLAG_DAYS. Amber - attention, chase this - the colour law. Rides
+     the sticky cell so it stays put while the days scroll. Clean screen only. */
+  #wrap.m-clean .vrow.flag { background:rgba(246,234,213,.5); }
+  #wrap.m-clean .vrow.flag .vnum { background:#F6EAD5; box-shadow:inset 3px 0 0 #C29A55; }
+
+  /* ── the colour-state selector ──────────────────────────────────────
+     A segmented control; the lit segment wears the Selected dress (grey
+     fill, ink border), the same treatment Expand carries elsewhere. */
+  .selrow { display:flex; align-items:center; gap:8px; margin:2px 0 7px; }
+  .selcap { font-family:var(--ui-font); font-size:9px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--mid); white-space:nowrap; }
+  .modes { display:flex; gap:6px; flex:1; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .mbtn { flex:0 0 auto; height:30px; padding:0 11px; border:1px solid var(--rule);
+    border-radius:8px; background:none; color:var(--mid); font-family:var(--ui-font);
+    font-size:12px; white-space:nowrap; }
+  .mbtn.on { background:rgba(28,28,26,.045); border-color:var(--ink);
+    color:var(--ink); font-weight:600; }
+  .clegend { display:none; flex-wrap:wrap; gap:4px 12px; margin:0 2px 8px;
+    font-family:var(--ui-font); font-size:11px; color:var(--mid); }
+  .clegend.show { display:flex; }
+  .clegend .lg { display:inline-flex; align-items:center; gap:5px; }
+  .clegend .sw { width:12px; height:12px; border-radius:4px; border:1.2px solid var(--rule);
+    box-sizing:border-box; }
+  .clegend .dt { width:11px; height:11px; border-radius:50%; box-sizing:border-box; }
+  .sw-green { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); }
+  .sw-amber { background:#F6EAD5; border-color:#C29A55; }
+  .sw-terra { background:rgba(184,106,90,.16); border-color:rgba(184,106,90,.45); }
+  .sw-grey  { background:rgba(28,28,26,.045); border-color:#C9C9C1; }
+  .sw-sunk  { background:transparent; border-style:dashed; border-color:var(--mid); opacity:.7; }
+  .dt-clean { background:#6F9578; }
+  .dt-dirty { background:#fff; border:1.5px solid var(--mid); }
+  .blk-amber { display:inline-block; width:12px; height:12px; border-radius:3px;
+    background:#F6EAD5; box-shadow:inset 3px 0 0 #C29A55; }
   /* a stay running off either edge of the loaded window squares that end
      off: the booking continues, the board just stops */
   .bar.cutL { border-top-left-radius:0 !important; border-bottom-left-radius:0 !important;
@@ -116,6 +179,40 @@
     </div>
   </div>
 
+  <div class="colorbar" id="colorBar">
+    <div class="selrow">
+      <div class="selcap">Colour by</div>
+      <div class="modes" id="modes">
+        <button class="mbtn on" data-m="form">Pre-arrival</button>
+        <button class="mbtn" data-m="clean">Clean</button>
+        <button class="mbtn" data-m="dining">Dining</button>
+        <button class="mbtn" data-m="spa">Spa</button>
+      </div>
+    </div>
+    <div class="clegend show" data-leg="form">
+      <span class="lg"><span class="sw sw-green"></span>Completed</span>
+      <span class="lg"><span class="sw sw-amber"></span>Incomplete</span>
+      <span class="lg"><span class="sw sw-grey"></span>Not started</span>
+    </div>
+    <div class="clegend" data-leg="clean">
+      <span class="lg"><span class="dt dt-clean"></span>Cleaned</span>
+      <span class="lg"><span class="dt dt-dirty"></span>Requires cleaning</span>
+      <span class="lg"><span class="blk-amber"></span>arrival within 2 days</span>
+    </div>
+    <div class="clegend" data-leg="dining">
+      <span class="lg"><span class="sw sw-green"></span>Dining</span>
+      <span class="lg"><span class="sw sw-terra"></span>Not dining</span>
+      <span class="lg"><span class="sw sw-grey"></span>No answer</span>
+    </div>
+    <div class="clegend" data-leg="spa">
+      <span class="lg"><span class="sw sw-green"></span>Booked</span>
+      <span class="lg"><span class="sw sw-amber"></span>Offered</span>
+      <span class="lg"><span class="sw sw-grey"></span>To answer</span>
+      <span class="lg"><span class="sw sw-terra"></span>Declined</span>
+      <span class="lg"><span class="sw sw-sunk"></span>None</span>
+    </div>
+  </div>
+
   <div class="noaccess" id="noAccess"></div>
 
   <div class="stats" id="statsRow">
@@ -124,7 +221,7 @@
     <div class="stat"><div class="stat-n" id="nDep">&ndash;</div><div class="stat-l">Departing</div></div>
   </div>
 
-  <div class="chartwrap" id="wrap"><div class="chart" id="chart"></div></div>
+  <div class="chartwrap m-form" id="wrap"><div class="chart" id="chart"></div></div>
   <div class="boardnote" id="boardNote"></div>
 </div><!-- /wrap -->
 
@@ -134,12 +231,32 @@
   b.onclick = function(e){ e.stopPropagation(); d.classList.toggle('open'); };
   document.addEventListener('click', function(){ d.classList.remove('open'); });
 })();
+
+/* The colour-state selector. It swaps a single class on #wrap; the fills are
+   pure CSS off that class, so a mode change repaints without re-reading a
+   thing. Every bar already carries all four dimensions' classes and every
+   row its clean state, drawn once at render. */
+(function(){
+  var modes = document.getElementById('modes'), wrap = document.getElementById('wrap');
+  if (!modes || !wrap) return;
+  modes.addEventListener('click', function(e){
+    var b = e.target.closest ? e.target.closest('.mbtn') : null;
+    if (!b) return;
+    var m = b.getAttribute('data-m');
+    wrap.className = wrap.className.replace(/\bm-[a-z]+\b/g, '').replace(/\s+/g, ' ').trim()
+                    + ' m-' + m;
+    Array.prototype.forEach.call(modes.querySelectorAll('.mbtn'), function(x){
+      x.classList.toggle('on', x === b); });
+    Array.prototype.forEach.call(document.querySelectorAll('.clegend'), function(l){
+      l.classList.toggle('show', l.getAttribute('data-leg') === m); });
+  });
+})();
 </script>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=69"></script>
+<script src="nala-shared.js?v=70"></script>
 <script>
 /* The whole house across a month: villas down the side, days across, each
    stay a bar. A reader in the rule-7 sense - every value here is owned
@@ -147,8 +264,17 @@
 
      the stays and their dates    /stays/<date>, parseDepDate
      a bar's fill                 formState()          Front Desk's three states
+       or, by the selector        diningState()        the dinner intent
+       or                         massageState()       the spa loop
      the massage half of that     /spa/<booking>, via formState's spa argument
+     the room's clean state       roomCleanState()     hkClassify + the done flag
+     the clean flag window        arrivalFlagsClean()  CLEAN_FLAG_DAYS, owner 20 Sep
      the viewed day               initDateNav()        the standard daterow
+
+   The colour-state selector swaps which of those paints the pills. Pre-arrival,
+   Dining and Spa are the booking's status and colour the bar; Clean is the
+   ROOM's status and instead greys the pills, draws a dot by the villa number,
+   and turns a row amber when a requires-cleaning room has an arrival due.
 
    WHY THE BOARD HOLDS A MONTH EACH WAY AND NO MORE. Three reasons:
    1. Reads. One /stays/<date> read per day column - two months is ~61
@@ -207,18 +333,27 @@ function load(){
     var dt = new Date(d0); dt.setDate(d0.getDate() + i);
     dks.push(dkey(dt));
   }
+  /* /hk/<today> is the day's housekeeping record, read whole like /spa; the
+     Clean dot reads cleaned-vs-requires-cleaning from it through
+     roomCleanState, the same node and the same done flag cleaners.html letters
+     its chips from. Always today's - the dot is a room's state now, not the
+     viewed day's - so it is one read whatever the board is scrolled to. */
   return Promise.all(
     dks.map(readDay).concat([
       fetch(DB + '/spa.json?v=' + Date.now())
         .then(function(r){ return r.ok ? r.json() : null; })
+        .catch(function(){ return null; }),
+      fetch(DB + '/hk/' + nav.todayKey() + '.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
         .catch(function(){ return null; })
     ])
   ).then(function(res){
-    var spa = res[DAYS] || {};
-    var failedDays = 0, bookings = {};
+    var spa = res[DAYS] || {}, hk = res[DAYS + 1] || {};
+    var failedDays = 0, bookings = {}, nightBy = {};
     for (var i = 0; i < DAYS; i++){
       if (res[i].failed){ failedDays++; continue; }
       var night = res[i].data || {};
+      nightBy[dks[i]] = night;
       for (var v in night){
         var s = night[v];
         if (!s || typeof s !== 'object' || !s.id) continue;
@@ -233,13 +368,13 @@ function load(){
         .then(function(p){ bookings[id].pre = p; });
     })).then(function(){
       LOADED = true;
-      render(bookings, spa, failedDays);
+      render(bookings, spa, failedDays, hk, nightBy);
     });
   });
 }
 
 /* ── the drawing - the mock's generator, verbatim in shape ───── */
-function render(bookings, spa, failedDays){
+function render(bookings, spa, failedDays, hk, nightBy){
   var W = VCOL + DAYS * DAY;
   var d0 = new Date(VIEW.getFullYear(), VIEW.getMonth(), VIEW.getDate() + FROM, 12);
   var h = '<div class="monthrow" style="width:' + W + 'px;height:22px">' +
@@ -273,8 +408,35 @@ function render(bookings, spa, failedDays){
     (byVilla[b.villa] = byVilla[b.villa] || []).push(b);
   });
 
+  /* the Clean layer: a room's cleaned-vs-requires-cleaning TODAY, drawn as a
+     dot by the villa number, and the amber row when a requires-cleaning room
+     has an arrival within CLEAN_FLAG_DAYS. Read through roomCleanState and
+     arrivalFlagsClean (hkClassify plus the day's done flag) so the Calendar
+     and the cleaning boards cannot come to disagree - the calendar is a
+     reader, it does not work the clean state out for itself (rule 7). */
+  var todayK = nav.todayKey(), realToday = new Date();
+  var yObj = new Date(); yObj.setDate(yObj.getDate() - 1);
+  var todayNight = (nightBy && nightBy[todayK]) || {};
+  var yestNight  = (nightBy && nightBy[dkey(yObj)]) || {};
+  function cleanOf(v){
+    var tn = todayNight[String(v)];
+    var rec = tn ? { arrives:tn.arrive, departs:tn.depart, status:tn.status } : null;
+    var yn = yestNight[String(v)];
+    /* same-day turnover: the guest left this morning, so tonight's record is
+       already the new arrival and only yesterday's shows the departure -
+       cleaners.html's `left`, the one thing that tells a turnover from a
+       plain arrival. */
+    var left = !!(yn && yn.depart && dkey(parseDepDate(yn.depart)) === todayK);
+    return roomCleanState(rec, todayK, (hk || {})[String(v)] || {}, left);
+  }
+
   for (var v = 1; v <= ROOMS_N; v++){
-    h += '<div class="vrow">' + cols + nowline;
+    var clean = cleanOf(v);
+    var flag = clean === 'dirty' && (byVilla[String(v)] || []).some(function(b){
+      return arrivalFlagsClean(b.stay.arrive, realToday);
+    });
+    h += '<div class="vrow rm-' + (clean === 'dirty' ? 'dirty' : 'clean') +
+         (flag ? ' flag' : '') + '">' + cols + nowline;
     (byVilla[String(v)] || []).forEach(function(b){
       var a = parseDepDate(b.stay.arrive), dep = parseDepDate(b.stay.depart);
       if (!a || !dep) return;
@@ -287,17 +449,26 @@ function render(bookings, spa, failedDays){
       x1 = Math.max(x1, 0); x2 = Math.min(x2, DAYS * DAY);
       if (x2 <= 0 || x1 >= DAYS * DAY) return;
       var name = [b.stay.last, b.stay.first].filter(Boolean).join(', ');
+      /* every bar carries a class for all four dimensions at once; the mode
+         class on #wrap lights one. Each state comes from the fact's owner:
+         formState (pre-arrival), diningState (the dinner intent),
+         massageState (the spa loop). */
       var st = formState(b.pre, { arrive:b.stay.arrive, depart:b.stay.depart },
                          (spa || {})[b.id]);
-      var cls = st === 'completed' ? 'fdone' : st === 'incomplete' ? 'fpart' : 'ftodo';
+      var fcls = st === 'completed' ? 'fdone' : st === 'incomplete' ? 'fpart' : 'ftodo';
+      var dcls = 'd' + diningState(b.pre);          /* din / dout / dnone */
+      var ms = massageState((spa || {})[b.id], b.pre);
+      var scls = ms === 'done' ? 'sbooked' : ms === 'sugg' ? 'ssugg'
+               : ms === 'wait' ? 'swait'   : ms === 'decl' ? 'sdecl' : 'snone';
+      var cls = fcls + ' ' + dcls + ' ' + scls +
+                (cutL ? ' cutL' : '') + (cutR ? ' cutR' : '');
       var open = CAN_OPEN
-        ? '<a class="bar ' + cls + (cutL ? ' cutL' : '') + (cutR ? ' cutR' : '') +
-          '" href="guest.html?b=' + encodeURIComponent(b.id) + '"'
-        : '<div class="bar ' + cls + (cutL ? ' cutL' : '') + (cutR ? ' cutR' : '') + '"';
+        ? '<a class="bar ' + cls + '" href="guest.html?b=' + encodeURIComponent(b.id) + '"'
+        : '<div class="bar ' + cls + '"';
       h += open + ' style="left:' + (VCOL + x1) + 'px;width:' + (x2 - x1) + 'px">' +
            '<span class="n">' + esc(name) + '</span>' + (CAN_OPEN ? '</a>' : '</div>');
     });
-    h += '<div class="vnum">' + v + '</div></div>';
+    h += '<div class="vnum"><span class="rmdot"></span>' + v + '</div></div>';
   }
   h += '</div>';
   document.getElementById('chart').innerHTML = h;
@@ -363,7 +534,8 @@ function showAccess(allowed, e){
     }
   }
   box.className = 'noaccess' + (on ? ' show' : '');
-  var els = [document.getElementById('statsRow'), document.getElementById('wrap')];
+  var els = [document.getElementById('colorBar'),
+             document.getElementById('statsRow'), document.getElementById('wrap')];
   els.forEach(function(el){ if (el) el.style.display = on ? 'none' : ''; });
   if (!on) load().catch(function(){});
 }

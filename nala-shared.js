@@ -1244,11 +1244,23 @@ function isArrivalNight(rec, dateKey){
   return !!(d && dkey(d) === dateKey);
 }
 
+/* The guest's dinner intent as one reading. pre.dining is the pre-arrival
+   answer; the Calendar colours a whole booking by it and formDinnerCell
+   states the same in/out for a night, so both read it here rather than each
+   testing pre.dining its own way. 'none' is the unanswered case - the
+   Calendar's grey - and is never reached through formDinnerCell, which
+   returns null before it asks. */
+function diningState(pre){
+  if (pre && pre.dining === true)  return 'in';
+  if (pre && pre.dining === false) return 'out';
+  return 'none';
+}
+
 function formDinnerCell(villa, pre, rec, dateKey){
   if (!pre || (pre.dining !== true && pre.dining !== false)) return null;
   if (!isArrivalNight(rec, dateKey)) return null;
   return {
-    status: pre.dining ? 'in' : 'out',
+    status: diningState(pre),
     pax:    pre.dining ? (pre.pax || rec.adults || 2) : 0,
     room:   String(villa),
     diets:  pre.diets || [],
@@ -1402,6 +1414,43 @@ function hkClassify(rec, todayK, hk, leftThisMorning){
     return 'ver';       // stale or missing departure
   }
   return 'ver';         // no data at all
+}
+
+/* Whether a room is cleaned or still requires cleaning on a day - the binary
+   the Calendar's clean dot draws. It is hkClassify plus the day's done flag,
+   so the two boards cannot come to disagree about what "done" means:
+   cleaners.html reads the same kind and the same h.done to letter its chip
+   (Cleaned / Clean / Serviced / Pre-arrived) and should call this the day it
+   wants the boolean rather than a fifth spelling of it. A real job - clean,
+   svc or pre - not yet done requires cleaning; so does a departure carried
+   across midnight and not done. Everything else - done, vacant, or nothing
+   the dates can confirm - reads cleaned, because none of them is a job left
+   standing open. */
+function roomCleanState(rec, dateK, hk, left){
+  var h = hk || {};
+  if (h.done) return 'cleaned';
+  var kind = hkClassify(rec, dateK, hk, left);
+  if (kind === 'clean' || kind === 'svc' || kind === 'pre') return 'dirty';
+  if (h.carried && h.departed) return 'dirty';   // a departure clean rolled over
+  return 'cleaned';
+}
+
+/* How soon an arrival turns a requires-cleaning room into a flagged one on
+   the Calendar - ruled two days by the owner, 20 Sep. One number, owned
+   here so a change is a change in one place. */
+var CLEAN_FLAG_DAYS = 2;
+
+/* Does this arrival fall within the flag window, counting from `from` where
+   today is 0 (inclusive both ends)? Midday-anchored through parseDepDate so a
+   bare date and a full ISO stamp land the same day and no zone west of UTC
+   shifts the count - the date law (CLAUDE.md rule 7). */
+function arrivalFlagsClean(arrive, from, days){
+  var a = parseDepDate(arrive); if (!a || !from) return false;
+  var n = (days == null ? CLEAN_FLAG_DAYS : days);
+  var a0 = new Date(a.getFullYear(), a.getMonth(), a.getDate(), 12);
+  var f0 = new Date(from.getFullYear(), from.getMonth(), from.getDate(), 12);
+  var diff = Math.round((a0 - f0) / 864e5);
+  return diff >= 0 && diff <= n;
 }
 
 /* ── roles and access ──────────────────────────────────────────

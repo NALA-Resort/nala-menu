@@ -65,6 +65,7 @@ put(5, "b5", "Carlo", "Sacco", plus(-21), plus(-18))
 PRE = {"b1": {"at": now.isoformat(), "dining": True, "noDiets": True, "wellness": False},
        "b3": {"dining": True}}
 SPA = {}
+HK = {}                      # the day's housekeeping record; the Clean dot reads it
 STATE = {"failDays": set()}
 
 def fb(route, request):
@@ -73,6 +74,7 @@ def fb(route, request):
     if "/staff" in u: body = json.dumps(STAFF)
     elif "/permissions" in u: body = "null"
     elif "/spa.json" in u: body = json.dumps(SPA) if SPA else "null"
+    elif "/hk/" in u: body = json.dumps(HK) if HK else "null"
     elif "/stays/" in u:
         k = u.split("/stays/")[1].split(".json")[0]
         if k in STATE["failDays"]:
@@ -101,10 +103,89 @@ ck("the day anchor is initDateNav's, the standard daterow",
    "initDateNav(" in PAGE)
 ck("bars carry the booking to guest.html by its id",
    "guest.html?b=" in PAGE)
+# ── the selector reads owners, it does not re-derive (rule 7) ───────
+ck("dining colour reads diningState, the dinner-intent owner",
+   "diningState(" in PAGE)
+ck("spa colour reads massageState, the spa-loop owner",
+   "massageState(" in PAGE)
+ck("the clean state reads roomCleanState, not the dates re-worked",
+   "roomCleanState(" in PAGE)
+ck("the clean flag window is arrivalFlagsClean, owned in one place",
+   "arrivalFlagsClean(" in PAGE)
+ck("the colour-state selector is on the page, Clean among its modes",
+   'id="modes"' in PAGE and 'data-m="clean"' in PAGE and 'data-m="spa"' in PAGE)
 
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b = p.chromium.launch()
+
+    # ── the colour-state selector, by computed colour ──────────────────
+    #  render() is driven directly with a fixed fixture, so this asserts the
+    #  paint - the tile contract between boards - without the board's network
+    #  reads, and it pins the CSS/JS class contract every mode depends on.
+    #  Green/amber/terracotta/grey are the colour law's, shared with
+    #  Reservations, the Front Desk and Spa; a rename there fails here.
+    pgc = b.new_page(viewport={"width": 390, "height": 844})
+    pgc.add_init_script(SDK)
+    pgc.goto("http://localhost:8985/calendar.html")
+    pgc.wait_for_timeout(700)
+    paint = pgc.evaluate("""()=>{
+      function dk(o){ var d=new Date(); d.setDate(d.getDate()+o);
+        return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+
+               '-'+String(d.getDate()).padStart(2,'0'); }
+      function bk(v,id,a,dp,pre){ return {id:id,villa:String(v),
+        stay:{id:id,first:'F',last:'L'+v,arrive:a,depart:dp},pre:pre}; }
+      var bookings={
+        b1:bk(1,'b1',dk(-1),dk(3),{at:new Date().toISOString(),dining:true,noDiets:true,wellness:false}),
+        b2:bk(2,'b2',dk(-1),dk(3),{dining:false}),
+        b3:bk(3,'b3',dk(-1),dk(3),null),
+        b4:bk(4,'b4',dk(-1),dk(3),{wellness:true}),
+        b5:bk(5,'b5',dk(0),dk(3),null),
+        b6:bk(6,'b6',dk(3),dk(6),null)
+      };
+      var spa={ b1:{t:{status:'booked'}}, b4:{} };
+      var nightBy={}; nightBy[dk(0)]={
+        '1':{arrive:dk(-1),depart:dk(3)}, '2':{arrive:dk(-1),depart:dk(3)},
+        '3':{arrive:dk(-1),depart:dk(3)}, '4':{arrive:dk(-1),depart:dk(3)},
+        '5':{arrive:dk(-3),depart:dk(0)}, '6':{arrive:dk(-3),depart:dk(0)} };
+      var hk={ '1':{done:true} };   // v1 serviced -> cleaned; v5/v6 depart today -> dirty
+      render(bookings, spa, 0, hk, nightBy);
+      var W=document.getElementById('wrap');
+      function setMode(m){ W.className='chartwrap m-'+m; }
+      function bar(v){ return document.querySelectorAll('.vrow')[v-1].querySelector('.bar'); }
+      function fill(v){ return getComputedStyle(bar(v)).backgroundColor; }
+      function rowcls(v){ return document.querySelectorAll('.vrow')[v-1].className; }
+      var o={};
+      setMode('form');   o.form=[fill(1),fill(2),fill(3)];
+      setMode('dining'); o.din=[fill(1),fill(2),fill(3)];
+      setMode('spa');    o.spa=[fill(1),fill(3),fill(4)];
+      setMode('clean');
+      o.cleanpill=fill(1);
+      o.dotshown=getComputedStyle(document.querySelector('.rmdot')).display;
+      o.rows={v1:rowcls(1), v5:rowcls(5), v6:rowcls(6)};
+      o.v5vnum=getComputedStyle(document.querySelectorAll('.vrow')[4].querySelector('.vnum')).backgroundColor;
+      return o;
+    }""")
+    GREEN="rgba(122, 160, 130, 0.26)"; AMBER="rgb(246, 234, 213)"
+    TERRA="rgba(184, 106, 90, 0.16)"
+    def grey(c): return c.startswith("rgba(28, 28, 26, 0.04")
+    ck("Pre-arrival paints completed green, incomplete amber, not-started grey",
+       paint["form"][0]==GREEN and paint["form"][1]==AMBER and grey(paint["form"][2]))
+    ck("Dining paints in green, out terracotta, no-answer grey",
+       paint["din"][0]==GREEN and paint["din"][1]==TERRA and grey(paint["din"][2]))
+    ck("Spa paints booked green, none the sunk transparent, to-answer grey",
+       paint["spa"][0]==GREEN and paint["spa"][1]=="rgba(0, 0, 0, 0)" and grey(paint["spa"][2]))
+    ck("Clean greys every pill - the room's status is not the booking's",
+       grey(paint["cleanpill"]))
+    ck("the clean dot shows only on the Clean screen", paint["dotshown"]=="block")
+    ck("a serviced occupied room reads cleaned, no flag",
+       "rm-clean" in paint["rows"]["v1"] and "flag" not in paint["rows"]["v1"])
+    ck("requires cleaning + arrival within 2 days flags the row amber",
+       "rm-dirty" in paint["rows"]["v5"] and "flag" in paint["rows"]["v5"]
+       and paint["v5vnum"]==AMBER)
+    ck("requires cleaning but arrival further off is the dot alone, no flag",
+       "rm-dirty" in paint["rows"]["v6"] and "flag" not in paint["rows"]["v6"])
+    pgc.close()
 
     def board(email="staff@x", w=390, h=844):
         pg = b.new_page(viewport={"width": w, "height": h})

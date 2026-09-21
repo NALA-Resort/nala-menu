@@ -84,6 +84,7 @@ SUITES = [
     ("cleans",     ["python3", "tests/cl_suite.py"],      900),
     ("frontdesk",  ["python3", "tests/fd_suite.py"],      600),
     ("calendar",   ["python3", "tests/calendar_suite.py"], 400),
+    ("roomclean",  ["python3", "tests/roomclean_suite.py"], 120),
     ("guest",      ["python3", "tests/guest_suite.py"],   400),
     ("invites",    ["python3", "tests/inv_suite.py"],     600),
     ("index",      ["python3", "tests/index_suite.py"],   400),
@@ -130,7 +131,7 @@ ON_REQUEST = {"demos"}
 # be wrong in the direction of not running something.
 COVERS = {
     "dashboard.html":    ["dash", "sweep:dashboard"],
-    "calendar.html":     ["calendar", "sweep:calendar"],
+    "calendar.html":     ["calendar", "roomclean", "sweep:calendar"],
     "guest.html":        ["guest", "sweep:guest"],
     "tally.html":        ["tally", "sweep:tally"],
     "cleaners.html":     ["cleans", "sweep:cleaners"],
