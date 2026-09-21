@@ -411,12 +411,16 @@ function render(bookings, spa, failedDays, hk, nightBy){
     (byVilla[b.villa] = byVilla[b.villa] || []).push(b);
   });
 
-  /* the Clean layer: a room's cleaned-vs-requires-cleaning TODAY, drawn as a
-     dot by the villa number, and the amber row when a requires-cleaning room
-     has an arrival within CLEAN_FLAG_DAYS. Read through roomCleanState and
-     arrivalFlagsClean (hkClassify plus the day's done flag) so the Calendar
-     and the cleaning boards cannot come to disagree - the calendar is a
-     reader, it does not work the clean state out for itself (rule 7). */
+  /* the Clean layer, drawn as the villa number's colour. Two facts decide it:
+       has a guest in it tonight   the booking, which the calendar owns from
+                                   the bars it draws (arrive <= today < depart)
+       requires cleaning           roomCleanState (hkClassify + the done flag),
+                                   the housekeeping fact the cleaning boards own
+     A room with a guest in it reads grey (in house); a vacant room reads green
+     when ready or plain when a clean is owed; and either way, a room that needs
+     cleaning with an arrival within CLEAN_FLAG_DAYS is flagged amber - the one
+     thing to act on. The calendar reads both facts, it does not work the clean
+     state out for itself (rule 7). */
   var todayK = nav.todayKey(), realToday = new Date();
   var yObj = new Date(); yObj.setDate(yObj.getDate() - 1);
   var todayNight = (nightBy && nightBy[todayK]) || {};
@@ -434,12 +438,20 @@ function render(bookings, spa, failedDays, hk, nightBy){
   }
 
   for (var v = 1; v <= ROOMS_N; v++){
-    var clean = cleanOf(v);
-    var rmcls = clean === 'inhouse' ? 'rm-inhouse'
-              : clean === 'dirty'   ? 'rm-dirty' : 'rm-clean';
-    var flag = clean === 'dirty' && (byVilla[String(v)] || []).some(function(b){
+    var mine = byVilla[String(v)] || [];
+    var dirty = cleanOf(v) === 'dirty';
+    /* a guest sleeping here tonight = the room has a booking = grey */
+    var occupied = mine.some(function(b){
+      var a = parseDepDate(b.stay.arrive), d = parseDepDate(b.stay.depart);
+      return a && d && dkey(a) <= todayK && dkey(d) > todayK;
+    });
+    var flag = dirty && mine.some(function(b){
       return arrivalFlagsClean(b.stay.arrive, realToday);
     });
+    /* flag first (act on it), then a booking greys the room, then a clean owed
+       on a vacant room, else vacant and ready */
+    var rmcls = flag ? 'rm-dirty' : occupied ? 'rm-inhouse'
+              : dirty ? 'rm-dirty' : 'rm-clean';
     h += '<div class="vrow ' + rmcls + (flag ? ' flag' : '') + '">' + cols + nowline;
     (byVilla[String(v)] || []).forEach(function(b){
       var a = parseDepDate(b.stay.arrive), dep = parseDepDate(b.stay.depart);
