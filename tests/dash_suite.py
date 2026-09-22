@@ -760,8 +760,8 @@ with sync_playwright() as p:
        sms["note"] == "2 to send · arriving in the next 14 days")
     ck("it wears the amber to-do edge while anything is to send",
        sms["pos"] == "open")
-    ck("and it is a door to the sending page, where recipients are chosen",
-       sms["door"] and pg.evaluate("()=>HREF.sms") == "arrivals-sms.html")
+    ck("and it is a door to the Front Desk, where reception works arrivals",
+       sms["door"] and pg.evaluate("()=>HREF.sms") == "front-desk.html")
     ck("it carries no send control of its own - nothing is sent from here",
        not pg.evaluate("()=>!!document.querySelector("
                        "'[data-print=\"sms\"],[data-mark=\"sms\"]')"))
