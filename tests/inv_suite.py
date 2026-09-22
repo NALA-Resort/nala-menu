@@ -606,6 +606,19 @@ with sync_playwright() as p:
        seq.count("pa-sent") == 1)
     ck("an arrival past the window is not offered",
        "pa-far" not in seq)
+
+    #  The shared table both this page and the Dashboard answer to
+    #  (tests/presms_cases.json): the send-state itself, preSmsState in
+    #  nala-shared.js. Proven here on the SMS page's copy and again in
+    #  dash_suite on the board's, so the one reader cannot drift between them
+    #  - the phone_cases.json pattern (CLAUDE.md rule 1).
+    CASES = json.load(open("/home/claude/nala/tests/presms_cases.json"))["cases"]
+    bad = [c["name"] for c in CASES
+           if pg.evaluate("c=>preSmsState(c.stay,c.pre,c.invite,c.fix,c.spa)", c)
+              != c["state"]]
+    ck("preSmsState agrees with the shared table on every case (%d)" % len(CASES),
+       not bad)
+
     arow = lambda id: pg.locator('.vrow[data-booking="%s"]' % id)
     #  The 25 Aug safety pass: nothing is pre-ticked, every send is a
     #  deliberate tick, and Select all scopes itself to To send.

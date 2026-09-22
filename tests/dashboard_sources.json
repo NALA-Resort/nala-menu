@@ -81,6 +81,16 @@
       "kind": "path",
       "note": "Keyed by VILLA, written and read by invitations.html. /previnvites is the pre-arrival SMS log, keyed by booking id, and is a different thing entirely." },
 
+    { "value": "which villas are still owed a PRE-ARRIVAL SMS, over the 14-day window",
+      "owner": "preSmsState",
+      "kind": "function",
+      "note": "arrivals-sms.html's own reader, shared so the send page and this board cannot disagree about who is to send. 'ready' is unsent, sendable and not yet engaged; sent, opened and completed drop off. Held to tests/presms_cases.json, read by both suites." },
+
+    { "value": "a booking's pre-arrival SMS send record",
+      "owner": "/previnvites/",
+      "kind": "path",
+      "note": "Keyed by BOOKING id, written by the Worker and read by arrivals-sms.html. /invites is the dinner invitation, keyed by villa - a different thing entirely, one node over." },
+
     { "value": "a booking's arrival date",
       "owner": "parseDepDate",
       "kind": "function",

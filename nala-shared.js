@@ -798,6 +798,38 @@ function formState(p, stay, spa){
   return guestAnswered(p) ? 'incomplete' : 'notstarted';
 }
 
+/* Where a booking stands on its PRE-ARRIVAL SMS - the one reader for it, so
+   the sending page and the Dashboard cannot disagree about who is still to
+   send (CLAUDE.md rule 7). Five kinds, off the same records the desk reads:
+   pre is /bookings/<id>/prearrival (the form), invite is /previnvites/<id>
+   (the send), fix is /phonefix/<id> (a corrected number that outranks Mews),
+   spa is /spa/<id> (the massage outcome, since 10 Sep).
+
+     done     the completed form, whatever route the answers came by - it
+              outranks everything, so a guest who finished is never "to send"
+     open     opened or part answered: follow-up work, not a send, so it
+              outranks a missing number too (a guest mid-form is not nophone)
+     nophone  no usable mobile - cannot be sent from here, only fixed
+     sent     a delivery not known to have failed; waiting on the form
+     ready    STILL TO SEND: never asked, a failed send, or a delivery the
+              handset never got (the carrier accepted it but it bounced, so
+              it is the sender's problem again)
+
+   arrivals-sms.html builds its band lines from this kind; the Dashboard
+   counts the 'ready' ones. Held to tests/presms_cases.json, read by both
+   suites - the phone_cases.json pattern, so whichever side drifts fails by
+   name. */
+function preSmsState(stay, pre, invite, fix, spa){
+  if (formState(pre, stay, spa) === 'completed') return 'done';
+  var raw = String((fix && fix.phone) || (stay && stay.phone) || '').trim();
+  var phone = raw ? normalisePhone(raw) : null;
+  if (pre && (pre.openedAt || countGuestAnswers(pre))) return 'open';
+  if (!raw || !phone) return 'nophone';
+  if (invite && invite.status === 'sent' && invite.delivery !== 'failed')
+    return 'sent';
+  return 'ready';
+}
+
 /* ── key cards ───────────────────────────────────────────────────────
    One table, /cards/<no>, one row per card that exists in the world,
    keyed by the number the encoder reports - the serial belongs to the
