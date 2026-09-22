@@ -252,7 +252,7 @@ var PENDING = null, PTIMER = null;                 /* tick waiting to confirm */
 /* Where each card hands off, and the permission behind that door. The keys
    are the app's own: resSheet and cleansBoard, not the resBoard/cleanBoard
    you would guess - CLAUDE.md rule 2. */
-var HREF = { sms:'front-desk.html', forms:'arrivals-sms.html', menu:'publish.html',
+var HREF = { sms:'arrivals-sms.html', forms:'front-desk.html', menu:'publish.html',
              inv:'invitations.html',
              reps:'tally.html', sheets:'registration.html', foh:'list.html',
              menus:'menu-print.html', arr:'front-desk.html',
@@ -526,13 +526,13 @@ function items(t){
 
   /* Pre-arrival SMS, first on the board: the rolling 14-day send-out is the
      day's first desk job, and it sits above the flow because it is about
-     guests two weeks out, not tonight. A DOOR to the Front Desk (owner,
-     22 Sep) - reception works the arrivals there and reaches the send from
-     it; nothing is sent from this card, so it carries no control of its own.
-     The villas are those preSmsState calls 'ready' (unsent, sendable, not yet
-     engaged); sent, opened and completed ones drop off, because this is the
-     still-to-send list and not a log. The count is the glance that decides
-     whether it is worth going in today or leaving a thin batch to build up. */
+     guests two weeks out, not tonight. A DOOR to arrivals-sms.html, the
+     sending page, where reception picks who to message - nothing is sent from
+     this card, so it carries no control of its own. The villas are those
+     preSmsState calls 'ready' (unsent, sendable, not yet engaged); sent,
+     opened and completed ones drop off, because this is the still-to-send
+     list and not a log. The count is the glance that decides whether it is
+     worth going in today or leaving a thin batch to build up. */
   var toSend = (DATA.presms || []).filter(function(x){
     return preSmsState(x.stay, x.pre, x.invite, x.fix,
                        DATA.spa[String(x.id)] || null) === 'ready';
