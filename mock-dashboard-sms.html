@@ -156,18 +156,18 @@ function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
    reader (see the head comment); here they are hand-set. */
 function smsNode(scn){
   if (scn === 'none')
-    return { pos:'past', note:'none waiting · nothing to send today',
+    return { pos:'past', note:'none arriving in the next 14 days',
       units:[] };
 
   if (scn === 'busy')
-    return { pos:'open', note:'8 waiting to send',
+    return { pos:'open', note:'8 to send · arriving in the next 14 days',
       units:[{id:'2',tone:'grey'},{id:'4',tone:'grey'},{id:'5',tone:'grey'},
              {id:'7',tone:'grey'},{id:'10',tone:'grey'},{id:'11',tone:'grey'},
              {id:'14',tone:'grey'},{id:'16',tone:'grey'}] };
 
   /* thin - the day the request describes: only one in the window, so
      reception may glance at this and leave it till tomorrow. */
-  return { pos:'open', note:'1 waiting to send',
+  return { pos:'open', note:'1 to send · arriving in the next 14 days',
     units:[{id:'6',tone:'grey'}] };
 }
 
