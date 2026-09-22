@@ -15,29 +15,20 @@
    dashboard.html's spine, with ONE new node proposed at the very start:
    Pre-arrival SMS. Everything else is fixture data for a morning at 09:05.
 
-   THE REAL QUESTION THIS NODE ANSWERS (the request, 22 Sep):
-   The pre-arrival SMS goes out on a rolling ~14-day-ahead basis. Sending a
-   handful every single day is fiddly, so the daily call is a BATCHING one:
-   "is it worth doing the send today, or holding a day so it consolidates?"
-   Some days the 14-day window holds one arrival; the next day it holds ten.
-
-   So the node is not just a to-send list - it is a small forecast:
-     due now        arrivals already at/inside 14 days, not yet sent
-     if you send…   the batch size today vs. holding to Wed / Thu, as more
-                    arrivals cross the 14-day line (today+15, +16 unsent)
-     nearest        the closest unsent arrival - the guard on how long you
-                    can safely hold before a guest loses their lead time
-   The verdict (hold / send today) falls out of those: a thin day with a
-   growing tomorrow says hold (quiet, grey); an accumulated day, or one with
-   an arrival getting close, says send (amber - the law's "chase this").
+   WHAT THE NODE IS (the request, 22 Sep):
+   Just a DOOR to the sending page (arrivals-sms.html), sitting at the start
+   of the timeline, that says how many pre-arrivals are waiting to be sent
+   and to which villas. It is deliberately NOT smart: reception glances at
+   the count to decide whether it is worth going in today or leaving it a
+   day for more to build up, and always picks who actually gets the message
+   on the sending page itself - nothing is ever blind-sent from here.
 
    WHERE THE FACT WOULD COME FROM (CLAUDE.md rule 7 - a summary page reads,
    it does not work things out):
-     the villas / counts   arrivals-sms.html stateOf() kind 'ready', over
-                           /stays/<today .. today+16> + /previnvites/<id>
-   Today the SMS page reads a 3/7/14-day horizon; this forecast is the same
-   reader over a couple of days past 14. The Dashboard would call it, NOT
-   re-derive "who still needs the SMS". Nothing here is wired; hand-set
+     the count / villas   arrivals-sms.html stateOf() kind 'ready', over
+                          /stays/<today .. today+14> + /previnvites/<id>
+   That is the SMS page's own "To send" band. The Dashboard would call it,
+   NOT re-derive "who still needs the SMS". Nothing here is wired; hand-set
    fixtures show the shape.
 
    The page style below is dashboard.html's own <style>, verbatim, so the
@@ -105,27 +96,6 @@ body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
 .sw { width:10px; height:10px; border-radius:3px; display:inline-block;
       border:1px solid var(--rule); }
 
-/* ── the send-or-hold verdict, and the tiny forecast under it ──────────
-   NEW to this node. The verdict is one line; amber only when the answer is
-   "act today" (the colour law's chase-this), quiet grey when it is "hold".
-   The forecast is three plain cells - batch size if you send today, or hold
-   to Wed / Thu - so a growing number makes the case for waiting at a glance.
-   Plain type and a hairline box, never a chart: the whole board is plain
-   type, and one chart here would shout louder than the day's real jobs. */
-.verd { font-size:var(--t2); font-weight:600; margin-top:2px; }
-.verd.hold { color:var(--mid); }
-.verd.send { color:var(--amberink); }
-.fc { display:flex; gap:var(--s2); margin-top:var(--s2); }
-.fc-cell { flex:1; text-align:center; border:1px solid var(--rule);
-           border-radius:6px; padding:6px 4px 5px; background:rgba(28,28,26,.02); }
-.fc-cell.rec { border-color:var(--ink); }
-.fc-cell.rec.now { border-color:var(--amberb); background:var(--amber); }
-.fc-d { font-size:var(--t1); color:var(--mid); }
-.fc-n { font-size:var(--t4); line-height:1.1; color:var(--ink);
-        font-variant-numeric:tabular-nums; }
-.fc-cell.rec.now .fc-n, .fc-cell.rec.now .fc-d { color:var(--amberink); }
-.fc-x { font-size:var(--t1); color:var(--mid); }
-
 /* ── mock bar, not part of the page ── */
 .mockbar{position:sticky;top:0;z-index:300;background:var(--ground);
   border-bottom:1px solid var(--rule);
@@ -143,9 +113,9 @@ body.ui2 .mockbar select{width:auto;min-height:30px;padding:4px 10px;font-size:1
   <b>Mock &middot; Dashboard + pre-arrival SMS</b>
   <label style="margin-left:auto">day&nbsp;
     <select id="scn">
-      <option value="hold">thin day &mdash; hold</option>
-      <option value="send">busy day &mdash; send</option>
-      <option value="sent">after sending</option>
+      <option value="thin">1 waiting</option>
+      <option value="busy">8 waiting</option>
+      <option value="none">none waiting</option>
     </select>
   </label>
 </div>
@@ -180,34 +150,24 @@ var NOW = 545, T0 = 480, T1 = 1080;
 
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
 
-/* The proposed node, in three scenarios. `fc` is [today, hold-to-Wed,
-   hold-to-Thu] batch sizes; `rec` is which of those the card leans to. The
-   real page gets all of this from the SMS page's own reader (see the head
-   comment); here it is hand-set to show the shape. */
+/* The proposed node: a door to the sending page with the count waiting and
+   the villas. Amber to-do edge while any wait; sinks green when clear. The
+   real page gets the count and villas from the SMS page's own "To send"
+   reader (see the head comment); here they are hand-set. */
 function smsNode(scn){
-  if (scn === 'sent')
-    return { pos:'past',
-      verd:{ t:'Sent · next look tomorrow', cls:'hold' },
-      note:'8 sent 09:12 · batch that had built up',
-      units:[{id:'2',tone:'green'},{id:'4',tone:'green'},{id:'5',tone:'green'},
-             {id:'7',tone:'green'},{id:'10',tone:'green'},{id:'11',tone:'green'},
-             {id:'14',tone:'green'},{id:'16',tone:'green'}] };
+  if (scn === 'none')
+    return { pos:'past', note:'none waiting · nothing to send today',
+      units:[] };
 
-  if (scn === 'send')
-    return { pos:'open',
-      verd:{ t:'8 due — send today', cls:'send' },
-      note:'villa 4 arrives Wed 1 Oct · 9 days out, don’t hold longer',
-      fc:{ cells:[{d:'Today',n:8},{d:'Wed',n:9,x:'+1'},{d:'Thu',n:9,x:'+0'}], rec:0 },
+  if (scn === 'busy')
+    return { pos:'open', note:'8 waiting to send',
       units:[{id:'2',tone:'grey'},{id:'4',tone:'grey'},{id:'5',tone:'grey'},
              {id:'7',tone:'grey'},{id:'10',tone:'grey'},{id:'11',tone:'grey'},
              {id:'14',tone:'grey'},{id:'16',tone:'grey'}] };
 
-  /* hold - the thin day the request describes: one in the window today, but
-     the batch nearly doubles if you wait a day. */
-  return { pos:'shut',
-    verd:{ t:'Only 1 due — likely worth holding', cls:'hold' },
-    note:'nearest arrival Tue 6 Oct · still 14 days out',
-    fc:{ cells:[{d:'Today',n:1},{d:'Wed',n:5,x:'+4'},{d:'Thu',n:7,x:'+2'}], rec:1 },
+  /* thin - the day the request describes: only one in the window, so
+     reception may glance at this and leave it till tomorrow. */
+  return { pos:'open', note:'1 waiting to send',
     units:[{id:'6',tone:'grey'}] };
 }
 
@@ -253,19 +213,6 @@ function chips(d){
   }).join('') + '</div>';
 }
 
-/* The three-cell forecast, drawn only on the SMS node. */
-function forecast(d){
-  if (!d.fc) return '';
-  return '<div class="fc">' + d.fc.cells.map(function(c, i){
-    var rec = i === d.fc.rec ? ' rec' + (i === 0 ? ' now' : '') : '';
-    return '<div class="fc-cell' + rec + '"><div class="fc-d">' + esc(c.d) +
-           '</div><div class="fc-n">' + c.n + '</div>' +
-           '<div class="fc-x">' +
-           (c.x ? esc(c.x) : (i === 0 && d.fc.rec === 0 ? 'send now' : '')) +
-           '</div></div>';
-  }).join('') + '</div>';
-}
-
 function render(){
   var scn = document.getElementById('scn').value;
   var L = board(scn);
@@ -285,9 +232,8 @@ function render(){
     h += '<div class="node ' + d.pos + (d.offSpine ? ' off' : '') + '">' +
          (d.offSpine ? '' : '<i class="bead"></i>') +
          '<div class="card"><div class="top">' + head + '</div>' +
-         (d.verd ? '<div class="verd ' + d.verd.cls + '">' + esc(d.verd.t) + '</div>' : '') +
          (d.note ? '<div class="cs">' + esc(d.note) + '</div>' : '') +
-         forecast(d) + chips(d) + '</div></div>';
+         chips(d) + '</div></div>';
   });
   if (!closed) h += '</div>';
 
