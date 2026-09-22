@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mock &middot; Dashboard + pre-arrival SMS</title>
+<!-- The two shared sheets, LINKED not inlined: this mock lives beside them in
+     the repo root, so it draws in the live dress and cannot drift from it.
+     (mock-dashboard-cards.html inlines them to travel alone; this one is only
+     ever opened in place, so linking keeps it honest.) -->
+<link rel="stylesheet" href="nala-ui2.css?v=7">
+<link rel="stylesheet" href="nala-ui.css?v=17">
+<style>
+/* ─────────────────────────────────────────────────────────────────────
+   MOCK ONLY. Not linked from NAV, not published, no database behind it.
+
+   dashboard.html's spine, with ONE new node proposed at the very start:
+   Pre-arrival SMS. The rest of the board is fixture data for a morning at
+   09:05; the SMS card carries fixture villas too. Flip "batch sent" in the
+   bar to see the to-send and the done states.
+
+   WHAT THIS IS FOR (the request, 22 Sep):
+   "Each day we do a 14-day-ahead send-out. The timeline has no instruction
+    to send the pre-arrival SMS. List it at the START with the room numbers."
+
+   WHERE THE FACT WOULD COME FROM (CLAUDE.md rule 7 - a summary page reads,
+   it does not work things out):
+     the villas to send   arrivals-sms.html stateOf() kind 'ready'
+                          over /stays/<today+14> + /previnvites/<id>
+     "all sent" / "last"  the same send records the SMS page already reads
+   The Dashboard would call that reader, NOT re-derive "who still needs the
+   SMS" - the same trap that had it read /dinner instead of formDinnerCell.
+   Nothing here is wired; these are hand-set fixtures to show the shape.
+
+   The page style below is dashboard.html's own <style>, verbatim, so the
+   node draws identically to every other node on the real board. */
+
+/* v9. This page sets LAYOUT only. Not one button is dressed here. */
+
+/* ── the spine ── */
+#board { padding-bottom:var(--s4); }
+.spine { position:relative; padding-left:30px; margin:var(--s4) 0; }
+.spine .track { position:absolute; left:9px; top:8px; bottom:8px; width:3px;
+                background:var(--rule); border-radius:2px; }
+.spine .fill  { position:absolute; left:0; top:0; width:3px;
+                background:var(--law-green); border-radius:2px; }
+.pip { position:absolute; left:4px; width:13px; height:12px; z-index:3;
+       line-height:0; }
+.pip svg { display:block; overflow:visible; }
+.pip polygon { fill:var(--law-green); stroke:var(--law-green);
+               stroke-width:2.5; stroke-linejoin:round; }
+
+.node { position:relative; margin-bottom:var(--s5); }
+.node .bead { position:absolute; left:-25px; top:14px; width:11px; height:11px;
+              border-radius:50%; background:var(--ground); z-index:2;
+              box-shadow:0 0 0 3px var(--ground), inset 0 0 0 3px var(--rule); }
+.node.past .bead { box-shadow:0 0 0 3px var(--ground), inset 0 0 0 6px var(--law-green-b); }
+.node.do   .bead { box-shadow:0 0 0 3px var(--ground), inset 0 0 0 6px var(--amberb); }
+.node.open .bead { box-shadow:0 0 0 3px var(--ground), inset 0 0 0 3px var(--amberb); }
+
+.card { background:var(--ground); border:1px solid var(--rule);
+        border-radius:var(--r); padding:calc(var(--s3) - 1px); }
+.node.past .card { opacity:.55; }
+.node.do   .card { border-color:var(--amberb); }
+.node.open .card { border-left:3px solid var(--amberb); padding-left:var(--s3); }
+.node.off  { padding-left:0; margin-top:var(--s6); }
+
+.top { display:flex; align-items:baseline; justify-content:space-between; gap:var(--s3); }
+.cn { font-family:var(--ui-font); font-size:var(--t3); font-weight:600;
+      color:var(--ink); background:none; border:0; padding:0; cursor:pointer;
+      display:inline-flex; align-items:baseline; gap:6px; }
+.cn .chev { color:var(--mid); font-size:var(--t2); }
+.lab { font-size:var(--t3); font-weight:600; }
+.cs  { font-size:var(--t2); color:var(--mid); margin-top:2px; }
+
+/* ── chips ── */
+.chips { display:flex; flex-wrap:wrap; gap:var(--s1); margin-top:var(--s2); }
+.chip { font-size:var(--t2); min-width:34px; text-align:center;
+        padding:2px var(--s2); border-radius:6px; border:1px solid transparent; }
+.chip.green { background:var(--law-green-t); color:var(--law-green); border-color:var(--law-green-b); }
+.chip.amber { background:var(--amber);       color:var(--amberink); border-color:var(--amberb); }
+.chip.terra { background:var(--law-terra-t); color:var(--law-terra); border-color:var(--law-terra-b); }
+.chip.grey  { background:rgba(28,28,26,.045); color:var(--mid); border-color:var(--rule); }
+
+.tablesline { text-align:center; margin-top:8px; font-family:var(--ui-font);
+              font-size:var(--t2); color:var(--ink);
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body.ui2 .tablesline .btn { width:auto; padding:var(--s2) var(--s5);
+                            min-height:36px; font-size:var(--t2); }
+
+body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
+.wrap { max-width:520px; margin:0 auto; }
+
+.key { display:flex; flex-wrap:wrap; gap:var(--s3); justify-content:center;
+       margin:var(--s5) 0 var(--s4); font-size:var(--t1); color:var(--mid); }
+.key span { display:flex; align-items:center; gap:5px; }
+.sw { width:10px; height:10px; border-radius:3px; display:inline-block;
+      border:1px solid var(--rule); }
+
+/* ── mock bar, not part of the page ── */
+.mockbar{position:sticky;top:0;z-index:300;background:var(--ground);
+  border-bottom:1px solid var(--rule);
+  margin:calc(-24px - env(safe-area-inset-top)) -18px 18px;
+  padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  font-family:var(--ui-font)}
+.mockbar b{font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.mockbar label{font-size:12px;color:var(--mid);display:flex;align-items:center;gap:6px}
+body.ui2 .mockbar input[type=checkbox]{width:16px;height:16px;min-height:0;margin:0;accent-color:var(--ink)}
+</style>
+</head>
+<body class="tier-app ui2">
+
+<div class="mockbar">
+  <b>Mock &middot; Dashboard + pre-arrival SMS</b>
+  <label style="margin-left:auto"><input type="checkbox" id="sentTog"> today&rsquo;s batch sent</label>
+</div>
+
+<div class="wrap">
+  <div class="daterow">
+    <button class="dnav today">Today</button>
+    <button class="dnav">&#8249;</button>
+    <div class="date">Tue 22 Sep</div>
+    <button class="dnav">&#8250;</button>
+    <div class="navwrap">
+      <button class="navbtn" aria-label="Menu (not mocked)" style="opacity:.4">
+        <span></span><span></span><span></span></button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-n">1</div><div class="stat-l">Forms</div></div>
+    <div class="stat"><div class="stat-n">2</div><div class="stat-l">Invitations</div></div>
+    <div class="stat"><div class="stat-n">2</div><div class="stat-l">Responses</div></div>
+  </div>
+  <div class="tablesline">
+    <button class="btn ghost">Refresh</button>
+  </div>
+
+  <div id="board"></div>
+</div><!-- /wrap -->
+
+<script>
+/* 09:05, so the clock pip sits near the top of the spine. */
+var NOW = 545, T0 = 480, T1 = 1080;
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+/* The proposed node. To-send when the batch has not gone out this morning;
+   done (green, sunk) once it has. In the real page the two states come from
+   the SMS page's own reader, exactly as the Dinner-invitations node already
+   works: villas still 'ready' vs "all sent, last <time>". */
+function smsNode(sent){
+  return sent
+    ? { k:'sms', lab:'Pre-arrival SMS', pos:'past',
+        note:'all sent 09:12 · arriving Tue 6 Oct',
+        units:[{id:'6',tone:'green'},{id:'11',tone:'green'},{id:'14',tone:'green'}] }
+    : { k:'sms', lab:'Pre-arrival SMS', pos:'open',
+        note:'3 to send · the 14-day batch, arriving Tue 6 Oct',
+        units:[{id:'6',tone:'grey'},{id:'11',tone:'grey'},{id:'14',tone:'grey'}] };
+}
+
+/* The rest is a plausible morning, so the new node reads in context rather
+   than on an empty board. Two arrivals today (villas 3 & 9). */
+function board(sent){
+  return [
+    smsNode(sent),
+    { k:'spa', lab:'Spa booking', pos:'shut', note:'',
+      units:[{id:'9 · 2:00pm', tone:'grey'}] },
+    { k:'forms', lab:'Pre-arrival forms', pos:'shut',
+      note:'1 complete, 1 part',
+      units:[{id:'3',tone:'green'},{id:'9',tone:'amber'}] },
+    { k:'menu', lab:'Tonight’s menu', pos:'past',
+      note:'published 08:52', units:[] },
+    { k:'inv', lab:'Dinner invitations', pos:'shut',
+      note:'2 to send',
+      units:[{id:'5',tone:'grey'},{id:'12',tone:'grey'}] },
+    { k:'reps', lab:'Dinner replies', pos:'shut',
+      note:'6 dining so far, 2 still to answer',
+      units:[{id:'2',tone:'green'},{id:'7',tone:'green'},{id:'8',tone:'terra'},
+             {id:'5',tone:'grey'},{id:'12',tone:'grey'}] },
+    { k:'sheets', lab:'Arrival sheets', pos:'shut',
+      note:'1 of 2 forms complete',
+      units:[{id:'3',tone:'green'},{id:'9',tone:'amber'}] },
+    { k:'cards', lab:'Key cards', pos:'shut',
+      note:'none cut yet – Issue keys on the Keys page',
+      units:[{id:'3',tone:'grey'},{id:'9',tone:'grey'}] },
+    { k:'foh', lab:'FOH sheet', pos:'shut',
+      note:'best after the count firms', units:[] },
+    { k:'menus', lab:'Menus', pos:'shut',
+      note:'3 pages for 10 diners, 2 not answered yet', units:[] },
+    { k:'arr', lab:'Arrivals', pos:'off', offSpine:true,
+      note:'0 in, 2 to come',
+      units:[{id:'3',tone:'grey'},{id:'9',tone:'grey'}] }
+  ];
+}
+
+function chips(d){
+  if (!d.units || !d.units.length) return '';
+  return '<div class="chips">' + d.units.map(function(u){
+    return '<span class="chip ' + u.tone + '">' + esc(u.id) + '</span>';
+  }).join('') + '</div>';
+}
+
+function render(){
+  var sent = document.getElementById('sentTog').checked;
+  var L = board(sent);
+  var frac = Math.max(0, Math.min(100, (NOW - T0) / (T1 - T0) * 100));
+
+  var h = '<div class="spine"><div class="track">' +
+          '<div class="fill" style="height:' + frac.toFixed(1) + '%"></div></div>' +
+          '<div class="pip" style="top:calc(8px + ' + frac.toFixed(1) + '% - 12px)">' +
+          '<svg viewBox="0 0 13 12" width="13" height="12">' +
+          '<polygon points="2.2,2.2 10.8,2.2 6.5,9.6"/></svg></div>';
+
+  var closed = false;
+  L.forEach(function(d){
+    if (d.offSpine && !closed){ h += '</div>'; closed = true; }
+    var head = '<button class="cn" type="button">' + esc(d.lab) +
+               '<i class="chev">&rsaquo;</i></button>';
+    h += '<div class="node ' + d.pos + (d.offSpine ? ' off' : '') + '">' +
+         (d.offSpine ? '' : '<i class="bead"></i>') +
+         '<div class="card"><div class="top">' + head + '</div>' +
+         (d.note ? '<div class="cs">' + esc(d.note) + '</div>' : '') +
+         chips(d) + '</div></div>';
+  });
+  if (!closed) h += '</div>';
+
+  h += '<div class="key">' +
+       '<span><i class="sw" style="background:var(--law-green-t);border-color:var(--law-green-b)"></i>done</span>' +
+       '<span><i class="sw" style="background:var(--amber);border-color:var(--amberb)"></i>part, or ready</span>' +
+       '<span><i class="sw" style="background:var(--law-terra-t);border-color:var(--law-terra-b)"></i>said no</span>' +
+       '<span><i class="sw" style="background:rgba(28,28,26,.045)"></i>nothing yet</span></div>';
+
+  document.getElementById('board').innerHTML = h;
+}
+
+document.getElementById('sentTog').onchange = render;
+render();
+</script>
+</body>
+</html>
