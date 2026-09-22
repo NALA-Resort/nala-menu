@@ -159,10 +159,14 @@ WINDOW = {
             "8":  wstay("pa-inhouse8", "+61411000038", -1, 6)},
   plus(8): {"15": wstay("pa-ready15",  "+61411000315", 8, 10)},
 }
-# pa-done4 finished a one-night form; pa-sent2 was messaged and delivered. The
-# rest have no form and no send, so preSmsState calls them to-send.
+# pa-done4 finished a one-night form; pa-sent2 was messaged and delivered;
+# pa-ready6's send FAILED on the country code, so it is still to send AND a
+# failure - the red-ring pill. pa-ready15 has no form and no send, so it is a
+# plain grey to-send.
 WPRE = {"pa-done4": {"at": at(9), "dining": True, "noDiets": True}}
-WPREINV = {"pa-sent2": {"status": "sent", "sentAt": at(9), "delivery": "delivered"}}
+WPREINV = {"pa-sent2":  {"status": "sent", "sentAt": at(9), "delivery": "delivered"},
+           "pa-ready6": {"status": "failed", "sentAt": at(9),
+                         "error": "COUNTRY_NOT_ENABLED"}}
 
 STATE = {"fail": False}
 DAYBOARD = {}
@@ -752,12 +756,14 @@ with sync_playwright() as p:
     ck("the pre-arrival SMS card is first on the board",
        [c["k"] for c in cards(pg)][0] == "sms")
     sms = card(pg, "sms")
-    ck("only the villas still to send show, in villa order, all grey",
-       sms["chips"] == ["6:grey", "15:grey"])
-    ck("a sent one, a completed one and an in-house arrival do not",
+    ck("only the villas still to send show, in villa order",
+       [c.split(":")[0] for c in sms["chips"]] == ["6", "15"])
+    ck("a failed send wears the red ring, a never-asked one stays grey",
+       sms["chips"] == ["6:fail", "15:grey"])
+    ck("a sent one, a completed one and an in-house arrival do not show",
        not any(c.split(":")[0] in ("2", "4", "8") for c in sms["chips"]))
-    ck("the note counts them and names the 14-day window",
-       sms["note"] == "2 to send · arriving in the next 14 days")
+    ck("the note counts them, flags the failure, and names the 14-day window",
+       sms["note"] == "2 to send, 1 failed · arriving in the next 14 days")
     ck("it wears the amber to-do edge while anything is to send",
        sms["pos"] == "open")
     ck("and it is a door to the sending page, where recipients are chosen",
@@ -795,6 +801,10 @@ with sync_playwright() as p:
               != c["state"]]
     ck("preSmsState agrees with the shared table on every case (%d)" % len(CASES),
        not bad)
+    badf = [c["name"] for c in CASES
+            if pg.evaluate("c=>preSmsFailed(c.invite)", c) != c["failed"]]
+    ck("preSmsFailed agrees with the shared table on every case",
+       not badf)
     pg.close()
 
     # ── width ───────────────────────────────────────────────────
