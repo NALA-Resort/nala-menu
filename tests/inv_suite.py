@@ -618,6 +618,9 @@ with sync_playwright() as p:
               != c["state"]]
     ck("preSmsState agrees with the shared table on every case (%d)" % len(CASES),
        not bad)
+    badf = [c["name"] for c in CASES
+            if pg.evaluate("c=>preSmsFailed(c.invite)", c) != c["failed"]]
+    ck("preSmsFailed agrees with the shared table on every case", not badf)
 
     arow = lambda id: pg.locator('.vrow[data-booking="%s"]' % id)
     #  The 25 Aug safety pass: nothing is pre-ticked, every send is a

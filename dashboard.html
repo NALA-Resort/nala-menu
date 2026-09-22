@@ -93,6 +93,11 @@
   .chip.amber { background:var(--amber);       color:var(--amberink); border-color:var(--amberb); }
   .chip.terra { background:var(--law-terra-t); color:var(--law-terra); border-color:var(--law-terra-b); }
   .chip.grey  { background:rgba(28,28,26,.045); color:var(--mid); border-color:var(--rule); }
+  /* A send that FAILED, still to send: red is the colour law's failure, but
+     only as a RING here - grey fill, red border and ink, never a red tile
+     (the law's "red only as a ring"). It marks the pill reception must chase
+     without opening the sending page to find out the last attempt bounced. */
+  .chip.fail  { background:rgba(28,28,26,.045); color:var(--red); border-color:var(--red); }
 
   /* ── the action row ─────────────────────────────────────────────
      Layout only. width:auto undoes body.ui2's full-width default for a row
@@ -210,7 +215,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=72"></script>
+<script src="nala-shared.js?v=73"></script>
 <script>
 /* The day's flow on one screen: what has happened, what is ready, and what
    is still owed. Every fact here is read from the screen that owns it. The
@@ -537,11 +542,18 @@ function items(t){
     return preSmsState(x.stay, x.pre, x.invite, x.fix,
                        DATA.spa[String(x.id)] || null) === 'ready';
   }).sort(function(a, b){ return (+a.villa) - (+b.villa); });
+  /* A to-send whose last attempt FAILED wears the red ring; a never-asked one
+     stays grey. preSmsFailed is the shared reader, so the pill agrees with the
+     red words on the sending page's row. */
+  var smsFailed = toSend.filter(function(x){ return preSmsFailed(x.invite); }).length;
   L.push({ k:'sms', lab:'Pre-arrival SMS', owner:'desk',
-    units: toSend.map(function(x){ return { id:x.villa, tone:'grey' }; }),
+    units: toSend.map(function(x){
+      return { id:x.villa, tone: preSmsFailed(x.invite) ? 'fail' : 'grey' }; }),
     state: toSend.length ? 'ready' : 'done',
     note: toSend.length
-            ? toSend.length + ' to send · arriving in the next 14 days'
+            ? toSend.length + ' to send' +
+              (smsFailed ? ', ' + smsFailed + ' failed' : '') +
+              ' · arriving in the next 14 days'
             : 'nothing to send · all within 14 days done' });
 
   /* Spa. Near the top, above the flow: it is a reminder rather than a

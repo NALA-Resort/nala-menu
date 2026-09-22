@@ -830,6 +830,19 @@ function preSmsState(stay, pre, invite, fix, spa){
   return 'ready';
 }
 
+/* Whether a booking's LAST pre-arrival SMS attempt failed - a send the carrier
+   rejected, or one it accepted that the handset never got. It is still 'ready'
+   (to send) either way, so preSmsState folds both into that band; this is the
+   finer reading the screens use to COLOUR it: a failed attempt is a failure,
+   which wears red (the colour law), where a never-asked one is only pending.
+   The sending page reddens the row's words; the Dashboard rings the villa's
+   pill. One reader so the two cannot disagree about which is which. Held to
+   tests/presms_cases.json alongside preSmsState. */
+function preSmsFailed(invite){
+  if (!invite || !invite.status) return false;
+  return invite.status !== 'sent' || invite.delivery === 'failed';
+}
+
 /* ── key cards ───────────────────────────────────────────────────────
    One table, /cards/<no>, one row per card that exists in the world,
    keyed by the number the encoder reports - the serial belongs to the

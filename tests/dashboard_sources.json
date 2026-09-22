@@ -91,6 +91,11 @@
       "kind": "path",
       "note": "Keyed by BOOKING id, written by the Worker and read by arrivals-sms.html. /invites is the dinner invitation, keyed by villa - a different thing entirely, one node over." },
 
+    { "value": "whether a still-to-send booking's last SMS attempt FAILED (the red pill)",
+      "owner": "preSmsFailed",
+      "kind": "function",
+      "note": "The finer reading over the send record, shared so the Dashboard's red-ring pill agrees with the red words on the sending page's row. A failure is red (colour law); a never-asked one is grey. Held to tests/presms_cases.json." },
+
     { "value": "a booking's arrival date",
       "owner": "parseDepDate",
       "kind": "function",
