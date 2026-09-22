@@ -23,13 +23,18 @@
    day for more to build up, and always picks who actually gets the message
    on the sending page itself - nothing is ever blind-sent from here.
 
+   ONLY THE UNSENT ONES. The card is the "still to send" list, never a log:
+   the count and chips are the SMS page's "To send" band and nothing else -
+   a villa drops off the moment it is messaged. Sent / opened / completed
+   villas do not appear here; the sending page holds their history.
+
    WHERE THE FACT WOULD COME FROM (CLAUDE.md rule 7 - a summary page reads,
    it does not work things out):
      the count / villas   arrivals-sms.html stateOf() kind 'ready', over
                           /stays/<today .. today+14> + /previnvites/<id>
-   That is the SMS page's own "To send" band. The Dashboard would call it,
-   NOT re-derive "who still needs the SMS". Nothing here is wired; hand-set
-   fixtures show the shape.
+   That is the SMS page's own "To send" band (unsent, sendable number). The
+   Dashboard would call it, NOT re-derive "who still needs the SMS". Nothing
+   here is wired; hand-set fixtures show the shape.
 
    The page style below is dashboard.html's own <style>, verbatim, so the
    node draws identically to every other node on the real board. */
@@ -155,8 +160,10 @@ function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
    real page gets the count and villas from the SMS page's own "To send"
    reader (see the head comment); here they are hand-set. */
 function smsNode(scn){
+  /* clear - there may well be arrivals inside 14 days, they are just all
+     sent already, so there is nothing left to send. NOT "none arriving". */
   if (scn === 'none')
-    return { pos:'past', note:'none arriving in the next 14 days',
+    return { pos:'past', note:'nothing to send · all within 14 days done',
       units:[] };
 
   if (scn === 'busy')
