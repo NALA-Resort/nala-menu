@@ -159,7 +159,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=71"></script>
+<script src="nala-shared.js?v=72"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -286,54 +286,51 @@ function answersIn(p){ return countGuestAnswers(p); }
    done however the message got to them. */
 function stateOf(stay, pre, invite, fix, spa){
   var when = 'arrives ' + shortDay(akey(stay.arrive));
-  /* Completed means what the Front Desk means by it, because it is literally
-     the same function: formState in nala-shared.js, which wants the stamp, an
-     answer behind it, and the mandatory answers still standing. Two readings
-     of one state is how this page came to say Form completed about villa 17
-     while the desk showed it amber, holding nothing, with the link unsendable
-     from here. Reading it this way also puts the records already written back
-     where they belong, with nothing to run.
-
-     spa is the booking's /spa node, because since 10 Sep the massage
-     answer can live there as an outcome (massageAnswered) - the desk
-     passes it, so this page must too or the two boards drift again. */
-  if (formState(pre, stay, spa) === 'completed')
-    return { kind:'done', tickable:false, ticked:false,
-             line:'Completed ' + timeOf(pre.at) + ' · ' + when };
-  /* A number fixed at the desk outranks the Mews copy: Mews cannot be
-     corrected from here and its next sync would revert any edit made to the
-     stay. The Worker reads the same /phonefix record before sending. */
+  /* The BAND is preSmsState's, in nala-shared.js, shared with the Dashboard
+     so the two screens cannot disagree about who is still to send (CLAUDE.md
+     rule 7). It reads formState (the Front Desk's completed), normalisePhone
+     and the send record exactly as this page used to inline - two readings of
+     one state is how this page came to say Form completed about villa 17
+     while the desk showed it amber. This function now only DRESSES that kind
+     into the row's words; raw/phone/started below feed the words, not the
+     decision. A number fixed at the desk still outranks the Mews copy (the
+     Worker reads the same /phonefix before sending), and spa is the booking's
+     /spa node, where the massage answer can live as an outcome since 10 Sep. */
+  var kind = preSmsState(stay, pre, invite, fix, spa);
   var raw = String((fix && fix.phone) || (stay && stay.phone) || '').trim();
   var phone = raw ? normalisePhone(raw) : null;
   var started = answersIn(pre);
-  if (pre && (pre.openedAt || started))
+
+  if (kind === 'done')
+    return { kind:'done', tickable:false, ticked:false,
+             line:'Completed ' + timeOf(pre.at) + ' · ' + when };
+  if (kind === 'open')
     return { kind:'open', tickable:!!phone, ticked:false,
              line:'Opened' + (pre.openedAt ? ' ' + timeOf(pre.openedAt) : '') +
                   ' · ' + (started ? 'started, ' + started +
                   (started === 1 ? ' answer' : ' answers') : 'nothing yet') +
                   ' · ' + when };
-  if (!raw)
+  if (kind === 'nophone')
     return { kind:'nophone', tickable:false, fixable:true, ticked:false,
-             line:'No phone number on the booking · ' + when };
-  if (!phone)
-    return { kind:'nophone', tickable:false, fixable:true, ticked:false,
-             line:'Not a mobile number · ' + when };
-  if (invite && invite.status === 'sent'){
-    /* "Sent" is only ClickSend accepting the message; the handset receipt
-       is the real answer. A failed delivery is the sender's problem again,
-       so it climbs back into To send with the carrier's words. */
-    if (invite.delivery === 'failed')
-      return { kind:'ready', bad:true, tickable:true, ticked:false,
-               line:'Not delivered' +
-                    (invite.deliveryText ? ' \u00b7 ' + invite.deliveryText : '') +
-                    ' \u00b7 ' + when };
+             line:(!raw ? 'No phone number on the booking'
+                        : 'Not a mobile number') + ' · ' + when };
+  if (kind === 'sent')
+    /* "Sent" is only ClickSend accepting the message; the handset receipt is
+       the real answer, so an unconfirmed one says so. */
     return { kind:'sent', tickable:true, ticked:false,
              line:'Sent ' + shortDay(akey(invite.sentAt)) + ' ' +
                   timeOf(invite.sentAt) +
                   (invite.delivery === 'delivered' ? ' \u00b7 delivered'
                    : invite.providerId ? ' \u00b7 delivery unconfirmed' : '') +
                   ' \u00b7 ' + when };
-  }
+  /* ready - still to send, in three voices: a delivery the handset never got
+     (it climbs back out of Sent with the carrier's words), a send that
+     failed, or one never made. */
+  if (invite && invite.status === 'sent' && invite.delivery === 'failed')
+    return { kind:'ready', bad:true, tickable:true, ticked:false,
+             line:'Not delivered' +
+                  (invite.deliveryText ? ' \u00b7 ' + invite.deliveryText : '') +
+                  ' \u00b7 ' + when };
   if (invite && invite.status)
     return { kind:'ready', tickable:true, ticked:false, bad:true,
              line:'Send failed ' + timeOf(invite.sentAt) +

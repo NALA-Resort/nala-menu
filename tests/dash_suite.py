@@ -141,6 +141,29 @@ SPA = {"b3": {"t1": {"status": "booked", "day": today, "time": "11:00",
        "b11": {"t4": {"status": "booked", "day": plus(1), "time": "09:00",
                       "dur": 60, "qty": 1}}}
 
+# The pre-arrival SMS window: the next 14 days of ARRIVALS, read through
+# preSmsState exactly as arrivals-sms.html reads it, so the two screens cannot
+# disagree about who is still to send. Two villas are still to send (6 and 15),
+# one was already sent (2), one has completed its form (4), and villa 8 arrived
+# yesterday - in house, not an arrival - so it must be filtered even though it
+# sits on a window night. Villa 6 spans two nights to exercise the dedup: it is
+# counted once, on the night it arrives, never twice.
+def wstay(bid, phone, a, d):
+    return {"id": bid, "first": "W", "last": bid, "phone": phone,
+            "arrive": plus(a), "depart": plus(d)}
+WINDOW = {
+  plus(2): {"2":  wstay("pa-sent2",    "+61411000032", 2, 4)},
+  plus(4): {"4":  wstay("pa-done4",    "+61411000034", 4, 5)},
+  plus(5): {"6":  wstay("pa-ready6",   "+61411000036", 5, 7)},
+  plus(6): {"6":  wstay("pa-ready6",   "+61411000036", 5, 7),
+            "8":  wstay("pa-inhouse8", "+61411000038", -1, 6)},
+  plus(8): {"15": wstay("pa-ready15",  "+61411000315", 8, 10)},
+}
+# pa-done4 finished a one-night form; pa-sent2 was messaged and delivered. The
+# rest have no form and no send, so preSmsState calls them to-send.
+WPRE = {"pa-done4": {"at": at(9), "dining": True, "noDiets": True}}
+WPREINV = {"pa-sent2": {"status": "sent", "sentAt": at(9), "delivery": "delivered"}}
+
 STATE = {"fail": False}
 DAYBOARD = {}
 CARDS = {}    # the card table: serial -> row
@@ -171,7 +194,9 @@ def fb(route, request):
     elif "/cards.json" in u: body = json.dumps(CARDS) if CARDS else "null"
     elif "/cutrun" in u: body = json.dumps(CUTRUN) if CUTRUN else "null"
     elif "/stays/" + today in u: body = json.dumps(STAYS)
-    elif "/stays/" in u: body = "null"
+    elif "/stays/" in u:
+        d = u.split("/stays/")[1].split(".json")[0]
+        body = json.dumps(WINDOW[d]) if d in WINDOW else "null"
     elif "/dinner/" + today in u: body = json.dumps(DINNER)
     elif "/dinner/" in u: body = "null"
     elif "/manual/" + today in u: body = json.dumps(MANUAL)
@@ -180,10 +205,15 @@ def fb(route, request):
     elif "/manual/" in u: body = "null"
     elif "/invites/" + today in u: body = json.dumps(INVITES)
     elif "/invites/" in u: body = "null"
+    elif "/previnvites/" in u:
+        bid = u.split("/previnvites/")[1].split(".json")[0]
+        body = json.dumps(WPREINV[bid]) if bid in WPREINV else "null"
+    elif "/phonefix/" in u: body = "null"
     elif "/menu" in u: body = json.dumps(MENU_NOW["m"])
     elif "/bookings/" in u and "/prearrival" in u:
         k = u.split("/bookings/")[1].split("/")[0]
-        body = json.dumps(PRE[k]) if k in PRE else "null"
+        body = (json.dumps(PRE[k]) if k in PRE
+                else json.dumps(WPRE[k]) if k in WPRE else "null")
     route.fulfill(status=200, content_type="application/json", body=body)
 
 P = F = 0
@@ -238,9 +268,10 @@ with sync_playwright() as p:
 
     # ── the page draws at all ───────────────────────────────────
     pg = board()
-    #  Nine since 8 Sep: Key cards joined the spine beside Arrival sheets.
+    #  Eleven since 22 Sep: Pre-arrival SMS joined at the top of the spine.
+    #  (Ten before that, when Key cards joined beside Arrival sheets, 8 Sep.)
     ck("the board renders its cards",
-       pg.evaluate("()=>document.querySelectorAll('.node').length") == 10)
+       pg.evaluate("()=>document.querySelectorAll('.node').length") == 11)
     ck("the date row shows the day, so the board says which day it is",
        pg.evaluate("()=>document.getElementById('title').textContent.trim()") != "")
 
@@ -572,8 +603,8 @@ with sync_playwright() as p:
 
     # ── the spa reminder ────────────────────────────────────────
     pg = board()
-    ck("the spa reminder is first on the board, above the flow",
-       [c["k"] for c in cards(pg)][0] == "spa")
+    ck("the spa reminder sits just under the SMS card, above the flow",
+       [c["k"] for c in cards(pg)][:2] == ["sms", "spa"])
     sp = card(pg, "spa")
     # b3 is villa 3's stay tonight and b7 villa 7's: the chip leads with the
     # room, joined from the stay row that carries the booking id.
@@ -707,6 +738,59 @@ with sync_playwright() as p:
        "1 lost, floating - see Keys" in kc["note"])
     pg.close()
     CARDS.clear()
+
+    # ── the pre-arrival SMS send-out, first on the board ────────
+    #  The rolling 14-day queue, read through preSmsState (nala-shared.js) so
+    #  this board and arrivals-sms.html cannot disagree about who is to send -
+    #  rule 7, and dashboard_sources.json names preSmsState as the owner. The
+    #  WINDOW fixture puts two villas in To send (6 and 15), one already sent
+    #  (2), one with a completed form (4), and villa 8 who arrived yesterday
+    #  and is only in house. Only the two unsent, sendable, un-engaged ones
+    #  show, in villa order. Today's own arrivals (3, 7, 11, 14) are all done
+    #  or opened, so none of them is to-send either.
+    pg = board()
+    ck("the pre-arrival SMS card is first on the board",
+       [c["k"] for c in cards(pg)][0] == "sms")
+    sms = card(pg, "sms")
+    ck("only the villas still to send show, in villa order, all grey",
+       sms["chips"] == ["6:grey", "15:grey"])
+    ck("a sent one, a completed one and an in-house arrival do not",
+       not any(c.split(":")[0] in ("2", "4", "8") for c in sms["chips"]))
+    ck("the note counts them and names the 14-day window",
+       sms["note"] == "2 to send · arriving in the next 14 days")
+    ck("it wears the amber to-do edge while anything is to send",
+       sms["pos"] == "open")
+    ck("and it is a door to the sending page, where recipients are chosen",
+       sms["door"] and pg.evaluate("()=>HREF.sms") == "arrivals-sms.html")
+    ck("it carries no send control of its own - nothing is sent from here",
+       not pg.evaluate("()=>!!document.querySelector("
+                       "'[data-print=\"sms\"],[data-mark=\"sms\"]')"))
+    pg.close()
+
+    #  Nothing left to send: the card sinks green and says so, without
+    #  implying there are no arrivals - there may be, all already sent.
+    SAVED_WIN = dict(WINDOW)
+    WINDOW.clear()
+    pg = board()
+    sms = card(pg, "sms")
+    ck("with nothing to send the card recedes, green, not amber",
+       sms["pos"] == "past")
+    ck("and says so without claiming there are no arrivals",
+       sms["note"] == "nothing to send · all within 14 days done")
+    pg.close()
+    WINDOW.clear(); WINDOW.update(SAVED_WIN)
+
+    #  The shared table both screens answer to (tests/presms_cases.json): the
+    #  send-state itself, proven on THIS page's copy of preSmsState so the two
+    #  readers cannot drift. The same table is asserted in inv_suite.
+    CASES = json.load(open("/home/claude/nala/tests/presms_cases.json"))["cases"]
+    pg = board()
+    bad = [c["name"] for c in CASES
+           if pg.evaluate("c=>preSmsState(c.stay,c.pre,c.invite,c.fix,c.spa)", c)
+              != c["state"]]
+    ck("preSmsState agrees with the shared table on every case (%d)" % len(CASES),
+       not bad)
+    pg.close()
 
     # ── width ───────────────────────────────────────────────────
     for w in (390, 360, 320):

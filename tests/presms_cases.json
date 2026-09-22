@@ -1,0 +1,102 @@
+{
+  "_comment": [
+    "The pre-arrival SMS send-state, as preSmsState (nala-shared.js) reads it.",
+    "The phone_cases.json / form_dinner_cases.json pattern: one reader owns",
+    "the fact, this table owns the cases, and BOTH suites answer to it -",
+    "inv_suite drives arrivals-sms.html, dash_suite drives dashboard.html -",
+    "so whichever screen drifts fails by name. The Dashboard's 'to send' count",
+    "is exactly the 'ready' rows here, so a case added here that the board",
+    "gets wrong fails there.",
+    "",
+    "Five kinds. 'ready' is still to send (never asked, a failed send, or a",
+    "delivery the handset never got). 'sent' is a delivery not known to have",
+    "failed. 'open' is opened/part-answered and outranks a missing number.",
+    "'nophone' has no usable mobile. 'done' is the completed form and outranks",
+    "everything. Each case is preSmsState(stay, pre, invite, fix, spa)."
+  ],
+
+  "cases": [
+    { "name": "never asked, sendable number, is to send",
+      "stay": { "phone": "+61411000001", "arrive": "2026-10-06", "depart": "2026-10-09" },
+      "pre": null, "invite": null, "fix": null, "spa": null,
+      "state": "ready" },
+
+    { "name": "a send the carrier rejected climbs back to to-send",
+      "stay": { "phone": "+61411000001", "arrive": "2026-10-06", "depart": "2026-10-09" },
+      "pre": null, "fix": null, "spa": null,
+      "invite": { "status": "failed", "sentAt": "2026-09-22T09:00:00+10:00", "error": "INVALID_RECIPIENT" },
+      "state": "ready" },
+
+    { "name": "a delivery the handset never got is to send again, not sent",
+      "stay": { "phone": "+61411000001", "arrive": "2026-10-06", "depart": "2026-10-09" },
+      "pre": null, "fix": null, "spa": null,
+      "invite": { "status": "sent", "sentAt": "2026-09-22T09:00:00+10:00", "delivery": "failed", "deliveryText": "Unreachable" },
+      "state": "ready" },
+
+    { "name": "a fixed number outranks the Mews landline and becomes to-send",
+      "stay": { "phone": "07 3358 1122", "arrive": "2026-10-06", "depart": "2026-10-09" },
+      "pre": null, "invite": null, "spa": null,
+      "fix": { "phone": "+61411000009" },
+      "state": "ready" },
+
+    { "name": "sent and delivered is waiting on the form, not to send",
+      "stay": { "phone": "+61411000001", "arrive": "2026-10-06", "depart": "2026-10-09" },
+      "pre": null, "fix": null, "spa": null,
+      "invite": { "status": "sent", "sentAt": "2026-09-22T09:00:00+10:00", "delivery": "delivered" },
+      "state": "sent" },
+
+    { "name": "sent with delivery still unconfirmed is also not to send",
+      "stay": { "phone": "+61411000001", "arrive": "2026-10-06", "depart": "2026-10-09" },
+      "pre": null, "fix": null, "spa": null,
+      "invite": { "status": "sent", "sentAt": "2026-09-22T09:00:00+10:00", "providerId": "mid-s" },
+      "state": "sent" },
+
+    { "name": "opened but not finished is follow-up work, not a send",
+      "stay": { "phone": "+61411000001", "arrive": "2026-10-06", "depart": "2026-10-09" },
+      "fix": null, "invite": null, "spa": null,
+      "pre": { "openedAt": "2026-09-22T09:00:00+10:00" },
+      "state": "open" },
+
+    { "name": "a part answer outranks a landline: still opened, not nophone",
+      "stay": { "phone": "07 3358 1122", "arrive": "2026-10-06", "depart": "2026-10-09" },
+      "fix": null, "invite": null, "spa": null,
+      "pre": { "dining": true },
+      "state": "open" },
+
+    { "name": "a landline cannot be sent from here",
+      "stay": { "phone": "07 3358 1122", "arrive": "2026-10-06", "depart": "2026-10-09" },
+      "pre": null, "invite": null, "fix": null, "spa": null,
+      "state": "nophone" },
+
+    { "name": "no number at all cannot be sent from here",
+      "stay": { "arrive": "2026-10-06", "depart": "2026-10-09" },
+      "pre": null, "invite": null, "fix": null, "spa": null,
+      "state": "nophone" },
+
+    { "name": "a completed one-night form is done, never to send",
+      "stay": { "phone": "+61411000001", "arrive": "2026-10-06", "depart": "2026-10-07" },
+      "fix": null, "invite": null, "spa": null,
+      "pre": { "at": "2026-09-22T09:00:00+10:00", "dining": true, "noDiets": true },
+      "state": "done" },
+
+    { "name": "completed outranks a still-open flag",
+      "stay": { "phone": "+61411000001", "arrive": "2026-10-06", "depart": "2026-10-07" },
+      "fix": null, "invite": null, "spa": null,
+      "pre": { "at": "2026-09-22T09:00:00+10:00", "openedAt": "2026-09-22T08:00:00+10:00", "dining": true, "noDiets": true },
+      "state": "done" },
+
+    { "name": "completed outranks a delivered send",
+      "stay": { "phone": "+61411000001", "arrive": "2026-10-06", "depart": "2026-10-07" },
+      "fix": null, "spa": null,
+      "pre": { "at": "2026-09-22T09:00:00+10:00", "dining": true, "noDiets": true },
+      "invite": { "status": "sent", "sentAt": "2026-09-21T09:00:00+10:00", "delivery": "delivered" },
+      "state": "done" },
+
+    { "name": "the massage booked on the Spa board completes a multi-night form",
+      "stay": { "phone": "+61411000001", "arrive": "2026-10-06", "depart": "2026-10-09" },
+      "fix": null, "invite": null,
+      "pre": { "at": "2026-09-22T09:00:00+10:00", "dining": true, "noDiets": true },
+      "spa": { "t1": { "status": "booked", "day": "2026-10-07", "time": "11:00" } },
+      "state": "done" }
+  ]
+}
