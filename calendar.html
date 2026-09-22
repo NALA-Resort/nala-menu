@@ -280,8 +280,11 @@
    and turns a row amber when a requires-cleaning room has an arrival due.
 
    WHY THE BOARD HOLDS A MONTH EACH WAY AND NO MORE. Three reasons:
-   1. Reads. One /stays/<date> read per day column - two months is ~61
-      reads on open, fine for a glance page; a season is hundreds.
+   1. Reads. The window is ONE ranged /stays read (orderBy="$key" across
+      it, the Worker's own pattern), so a wider window costs the same one
+      request it does now - the read is no longer the reason for the cap.
+      What is: a season of bars is more than a glance page should draw and
+      the fingers and the need below still hold.
    2. Fingers. At 64px a day, a month each way is ~2,000px of swipe in
       either direction - about the limit where swiping beats the date
       picker. The picker and the arrows exist for the long jump only,
@@ -319,13 +322,23 @@ function dayOff(d){
 var ROLE = null, CAN_OPEN = false, LOADED = false;
 
 /* ── the read ──────────────────────────────────────────────────
-   One /stays night per day column, /spa whole (the node Dashboard and
-   Pre-arrival SMS already read whole), then one prearrival per unique
-   booking - not per night, a stay's answers are one record. */
-function readDay(dk){
-  return fetch(DB + '/stays/' + dk + '.json?v=' + Date.now())
+   ONE ranged read over /stays for the whole window - orderBy="$key" from
+   the window's first day to its last - in place of a fetch per day column.
+   The Worker's own pattern (worker/mews-sync.js): ordering by key needs no
+   index, and the 61 round trips this page opened with become one, which is
+   what made the board slow to load. An un-indexed query may hand back keys
+   outside the asked range, so load() keys the result back into the days it
+   asked for and drops the rest (the Worker's note). /spa whole (the node
+   Dashboard and Pre-arrival SMS already read whole), then one prearrival
+   per unique booking - not per night, a stay's answers are one record. */
+function readStays(loK, hiK){
+  var url = DB + '/stays.json?orderBy=' + encodeURIComponent('"$key"') +
+            '&startAt=' + encodeURIComponent('"' + loK + '"') +
+            '&endAt='   + encodeURIComponent('"' + hiK + '"') +
+            '&v=' + Date.now();
+  return fetch(url)
     .then(function(r){ if (!r.ok) return { failed:true };
-                       return r.json().then(function(d){ return { data:d }; }); })
+                       return r.json().then(function(d){ return { data:d || {} }; }); })
     .catch(function(){ return { failed:true }; });
 }
 
@@ -340,22 +353,28 @@ function load(){
      Clean dot reads cleaned-vs-requires-cleaning from it through
      roomCleanState, the same node and the same done flag cleaners.html letters
      its chips from. Always today's - the dot is a room's state now, not the
-     viewed day's - so it is one read whatever the board is scrolled to. */
-  return Promise.all(
-    dks.map(readDay).concat([
-      fetch(DB + '/spa.json?v=' + Date.now())
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .catch(function(){ return null; }),
-      fetch(DB + '/hk/' + nav.todayKey() + '.json?v=' + Date.now())
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .catch(function(){ return null; })
-    ])
-  ).then(function(res){
-    var spa = res[DAYS] || {}, hk = res[DAYS + 1] || {};
-    var failedDays = 0, bookings = {}, nightBy = {};
+     viewed day's - so it is one read whatever the board is scrolled to.
+     Three reads on open now - the stays window, /spa, /hk - not sixty-odd. */
+  return Promise.all([
+    readStays(dks[0], dks[DAYS - 1]),
+    fetch(DB + '/spa.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
+    fetch(DB + '/hk/' + nav.todayKey() + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; })
+  ]).then(function(res){
+    var staysRes = res[0], spa = res[1] || {}, hk = res[2] || {};
+    var allNights = staysRes.failed ? {} : (staysRes.data || {});
+    /* one read either brings the window or it does not: a failure is the
+       whole window at once now, not a per-day count */
+    var readFailed = !!staysRes.failed;
+    var bookings = {}, nightBy = {};
     for (var i = 0; i < DAYS; i++){
-      if (res[i].failed){ failedDays++; continue; }
-      var night = res[i].data || {};
+      /* key the ranged result back to the window: a key handed back beyond
+         the asked range is dropped, a day it did not return is an empty
+         night - not a failed read (readFailed above owns that). */
+      var night = allNights[dks[i]] || {};
       nightBy[dks[i]] = night;
       for (var v in night){
         var s = night[v];
@@ -371,13 +390,13 @@ function load(){
         .then(function(p){ bookings[id].pre = p; });
     })).then(function(){
       LOADED = true;
-      render(bookings, spa, failedDays, hk, nightBy);
+      render(bookings, spa, readFailed, hk, nightBy);
     });
   });
 }
 
 /* ── the drawing - the mock's generator, verbatim in shape ───── */
-function render(bookings, spa, failedDays, hk, nightBy){
+function render(bookings, spa, readFailed, hk, nightBy){
   var W = VCOL + DAYS * DAY;
   var d0 = new Date(VIEW.getFullYear(), VIEW.getMonth(), VIEW.getDate() + FROM, 12);
   var h = '<div class="monthrow" style="width:' + W + 'px;height:22px">' +
@@ -491,9 +510,12 @@ function render(bookings, spa, failedDays, hk, nightBy){
   document.getElementById('nIn').textContent = stats.inh;
   document.getElementById('nArr').textContent = stats.arr;
   document.getElementById('nDep').textContent = stats.dep;
-  /* a failed read is not an empty day, and must never look like one */
-  document.getElementById('boardNote').textContent = failedDays
-    ? failedDays + (failedDays === 1 ? ' day' : ' days') + ' could not be read'
+  /* a failed read is not an empty day, and must never look like one. One
+     ranged read now, so it is the whole window that failed, not a count of
+     days - the note says the board could not be read rather than naming a
+     number it can no longer know. */
+  document.getElementById('boardNote').textContent = readFailed
+    ? 'The board could not be read. This is usually the connection, not the data.'
     : '';
   /* open on the viewed day with yesterday against the villa column -
      the month behind is there to swipe to, not to land on */

@@ -10,9 +10,9 @@ worth pinning:
      resBoard; housekeeping gets the same board with no doors in it.
   3. The page is gated on cleansBoard - housekeeping stays, the chef is
      routed home - because the grounds crew is who the board is for.
-  4. The window is a month of /stays reads and nothing else per day; a
-     day that could not be read is named under the board, never shown
-     as an empty day.
+  4. The window is ONE ranged /stays read across the month (orderBy="$key",
+     the Worker's pattern), not a read per day; a read that failed is named
+     under the board, never shown as an empty day.
   5. Dates go through parseDepDate/dkey. A stay drawn off a string slice
      shifts a day in any zone west of UTC; run this suite in a second
      zone (TZ=Australia/Brisbane) like the other date suites.
@@ -75,6 +75,20 @@ def fb(route, request):
     elif "/permissions" in u: body = "null"
     elif "/spa.json" in u: body = json.dumps(SPA) if SPA else "null"
     elif "/hk/" in u: body = json.dumps(HK) if HK else "null"
+    elif "/stays.json" in u or "/stays?" in u:
+        # the board's one ranged read over the window, orderBy="$key".
+        # It is one request now, so a failed window fails the whole query
+        # (there is no per-day granularity left to fail), and the response
+        # is the nights whose keys fall inside [startAt, endAt].
+        if STATE["failDays"]:
+            route.fulfill(status=500, content_type="application/json",
+                          body='{"error":"boom"}'); return
+        from urllib.parse import urlparse, parse_qs, unquote
+        q = parse_qs(urlparse(u).query)
+        lo = unquote(q.get("startAt", ['""'])[0]).strip('"')
+        hi = unquote(q.get("endAt", ['"￿"'])[0]).strip('"')
+        win = {k: v for k, v in NIGHTS.items() if lo <= k <= hi}
+        body = json.dumps(win) if win else "null"
     elif "/stays/" in u:
         k = u.split("/stays/")[1].split(".json")[0]
         if k in STATE["failDays"]:
@@ -298,11 +312,15 @@ with sync_playwright() as p:
     pg.close()
 
     # ── a failed read is not an empty day ───────────────────────
+    #  The window is one ranged read now, so a failure is the whole window
+    #  at once, not a per-day count. The rule it protects is unchanged: a
+    #  read that failed is named under the board, never shown as an empty
+    #  board.
     STATE["failDays"] = {plus(2)}
     pg = board()
-    ck("a day that could not be read is named under the board",
-       "1 day could not be read" in
-       pg.eval_on_selector("#boardNote", "e=>e.textContent"))
+    note = pg.eval_on_selector("#boardNote", "e=>e.textContent")
+    ck("a read that failed is named under the board, never shown as empty",
+       "could not be read" in note and note.strip() != "")
     pg.close()
     STATE["failDays"] = set()
 
