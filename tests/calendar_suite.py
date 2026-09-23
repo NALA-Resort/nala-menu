@@ -95,7 +95,14 @@ def fb(route, request):
             route.fulfill(status=500, content_type="application/json",
                           body='{"error":"boom"}'); return
         if k in NIGHTS: body = json.dumps(NIGHTS[k])
+    elif "/bookings.json" in u:
+        # the board's one whole /bookings read; it plucks each booking's
+        # prearrival from here, in place of a fetch per booking. A booking
+        # with no answers simply has no prearrival child.
+        node = {k: {"prearrival": v} for k, v in PRE.items()}
+        body = json.dumps(node) if node else "null"
     elif "/bookings/" in u and "/prearrival" in u:
+        # legacy per-id path, no longer used by the calendar
         k = u.split("/bookings/")[1].split("/")[0]
         body = json.dumps(PRE[k]) if k in PRE else "null"
     route.fulfill(status=200, content_type="application/json", body=body)
