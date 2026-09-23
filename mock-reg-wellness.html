@@ -1,0 +1,86 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mock · Arrivals card wellness</title>
+<!-- Mock, 23 Sep: the Arrivals print card's Wellness row reading the live
+     /spa state instead of the form's opening ask. The words are the Front
+     Desk summary's (spaStateLines), because both describe one guest's
+     massages. Card styles copied from registration.html. -->
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#eee;font-family:Helvetica,Arial,sans-serif;color:#111;padding:16px}
+h1{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#777;margin:0 0 12px}
+.card{border:1px solid #111;padding:16px 18px 18px;margin-bottom:24px;width:186mm;
+ background:#fff;font-family:Georgia,'Times New Roman',serif}
+.c-head{display:flex;align-items:baseline;gap:16px;border-bottom:1.5px solid #111;
+ padding-bottom:12px;margin-bottom:10px}
+.c-villa{font-size:52px;line-height:1;font-weight:bold}
+.c-name{font-size:32px;line-height:1.2}
+.c-stay{font-size:16px;letter-spacing:.015em;text-transform:uppercase;color:#444;margin-top:6px}
+.c-stay b{font-size:27px;color:#111}
+.row{display:flex;gap:14px;padding:7px 0;border-bottom:1px solid #ddd}
+.lbl{flex:0 0 22%;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:#555;padding-top:5px}
+.val{flex:1;font-size:21px;line-height:1.35;min-height:28px}
+.row.hl{background:#FFF8E6;outline:2px dashed #C29A55;outline-offset:3px}
+.faded{opacity:.35}
+table{border-collapse:collapse;width:186mm;background:#fff;font-family:Georgia,serif;margin-bottom:24px}
+th{font:11px Helvetica,Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;
+ color:#777;text-align:left;padding:10px 12px;border-bottom:1.5px solid #111}
+td{padding:10px 12px;border-bottom:1px solid #ddd;font-size:17px;line-height:1.35;vertical-align:top}
+td.st{font:12px Helvetica,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#555;width:22%}
+td.now{color:#999;width:30%}
+b{font-weight:bold}
+</style></head><body>
+
+<h1>Arrivals card · proposed Wellness row</h1>
+
+<div class="card">
+  <div class="c-head"><div class="c-villa">9</div><div>
+    <div class="c-name">Harper Quinn</div>
+    <div class="c-stay">Mews 48213 · Fri 25 Sep to Mon 28 Sep · <b>3 nights · 2 adults</b></div>
+  </div></div>
+  <div class="row faded"><div class="lbl">Arriving</div><div class="val">3pm to 5pm</div></div>
+  <div class="row faded"><div class="lbl">Dinner tonight</div><div class="val">Dining · 2 guests</div></div>
+  <div class="row faded"><div class="lbl">Dietary</div><div class="val">None to declare</div></div>
+  <div class="row faded"><div class="lbl">Occasion</div><div class="val">Anniversary</div></div>
+  <div class="row hl"><div class="lbl">Wellness</div>
+    <div class="val"><b>Booked</b> · Sat 26 · 2:00 pm</div></div>
+  <div class="row faded"><div class="lbl">Booking notes</div><div class="val">&nbsp;</div></div>
+</div>
+
+<table>
+  <tr><th>State on the Spa board</th><th>Card prints today</th><th>Card will print</th></tr>
+  <tr><td class="st">Form said yes, not yet on the board</td>
+      <td class="now">Interested · Sat 26 · 2pm</td>
+      <td><b>Interested</b> · Sat 26 · 2pm · waiting on the masseuse</td></tr>
+  <tr><td class="st">Asked (requested)</td>
+      <td class="now">Interested · Sat 26 · 2pm</td>
+      <td><b>Asked</b> · Sat 26 · 2pm · waiting on the masseuse</td></tr>
+  <tr><td class="st">Suggested another time</td>
+      <td class="now">Interested · Sat 26 · 2pm</td>
+      <td><b>Suggested</b> Sun 27 · 10:00 am · waiting on the guest</td></tr>
+  <tr><td class="st">Booked</td>
+      <td class="now">Interested · Sat 26 · 2pm</td>
+      <td><b>Booked</b> · Sat 26 · 2:00 pm</td></tr>
+  <tr><td class="st">Booked at the desk</td>
+      <td class="now">Interested · Sat 26 · 2pm</td>
+      <td><b>Booked</b> · Sat 26 · 2:00 pm · approved at the desk</td></tr>
+  <tr><td class="st">Two massages, booked</td>
+      <td class="now">Interested · Sat 26 · 2pm</td>
+      <td>Two massages · <b>Booked</b> · Sat 26 · 2:00 pm</td></tr>
+  <tr><td class="st">Declined, guest not told</td>
+      <td class="now">Interested · Sat 26 · 2pm</td>
+      <td><b>Declined</b> · fully booked Saturday · let the guest know</td></tr>
+  <tr><td class="st">Declined, guest told</td>
+      <td class="now">Interested · Sat 26 · 2pm</td>
+      <td><b>Declined</b> · fully booked Saturday · guest told</td></tr>
+  <tr><td class="st">Booked + a second declined</td>
+      <td class="now">Interested · Sat 26 · 2pm</td>
+      <td><b>Booked</b> · Sat 26 · 2:00 pm<br><b>Declined</b> · no 2nd therapist · guest told</td></tr>
+  <tr><td class="st">Form said no</td>
+      <td class="now">Not interested</td>
+      <td>Not interested</td></tr>
+  <tr><td class="st">Nothing answered</td>
+      <td class="now">☐ Interested ☐ Not interested</td>
+      <td>☐ Interested ☐ Not interested</td></tr>
+</table>
+</body></html>
