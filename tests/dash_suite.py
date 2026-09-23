@@ -197,10 +197,32 @@ def fb(route, request):
     elif "/dayboard/" in u: body = "null"
     elif "/cards.json" in u: body = json.dumps(CARDS) if CARDS else "null"
     elif "/cutrun" in u: body = json.dumps(CUTRUN) if CUTRUN else "null"
+    elif u.split("?")[0].endswith("/stays.json"):
+        # loadPreSms' one ranged read over the window, orderBy="$key". The
+        # window is today's arrivals plus the WINDOW days; return the nights
+        # whose keys fall inside [startAt, endAt].
+        from urllib.parse import urlparse, parse_qs, unquote
+        q = parse_qs(urlparse(u).query)
+        lo = unquote(q.get("startAt", ['""'])[0]).strip('"')
+        hi = unquote(q.get("endAt", ['"￿"'])[0]).strip('"')
+        allstays = dict(WINDOW); allstays[today] = STAYS
+        win = {k: v for k, v in allstays.items() if lo <= k <= hi}
+        body = json.dumps(win) if win else "null"
     elif "/stays/" + today in u: body = json.dumps(STAYS)
     elif "/stays/" in u:
         d = u.split("/stays/")[1].split(".json")[0]
         body = json.dumps(WINDOW[d]) if d in WINDOW else "null"
+    elif u.split("?")[0].endswith("/bookings.json"):
+        # loadPreSms reads prearrival from the whole node now, not per booking.
+        # Same records the per-id /prearrival branch below serves (PRE + WPRE).
+        node = {}
+        for bid, p in list(PRE.items()) + list(WPRE.items()):
+            node[bid] = {"prearrival": p}
+        body = json.dumps(node)
+    elif u.split("?")[0].endswith("/previnvites.json"):
+        body = json.dumps(WPREINV)
+    elif u.split("?")[0].endswith("/phonefix.json"):
+        body = "null"
     elif "/dinner/" + today in u: body = json.dumps(DINNER)
     elif "/dinner/" in u: body = "null"
     elif "/manual/" + today in u: body = json.dumps(MANUAL)

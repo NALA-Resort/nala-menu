@@ -87,9 +87,9 @@
       "note": "arrivals-sms.html's own reader, shared so the send page and this board cannot disagree about who is to send. 'ready' is unsent, sendable and not yet engaged; sent, opened and completed drop off. Held to tests/presms_cases.json, read by both suites." },
 
     { "value": "a booking's pre-arrival SMS send record",
-      "owner": "/previnvites/",
+      "owner": "/previnvites",
       "kind": "path",
-      "note": "Keyed by BOOKING id, written by the Worker and read by arrivals-sms.html. /invites is the dinner invitation, keyed by villa - a different thing entirely, one node over." },
+      "note": "Keyed by BOOKING id, written by the Worker and read by arrivals-sms.html. Read whole and plucked by id now (one read, not a fetch per booking - the HTTP/1.1 fan-out fix), the same node however it is read. /invites is the dinner invitation, keyed by villa - a different thing entirely, one node over." },
 
     { "value": "whether a still-to-send booking's last SMS attempt FAILED (the red pill)",
       "owner": "preSmsFailed",

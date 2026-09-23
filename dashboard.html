@@ -298,14 +298,35 @@ function loadPreSms(){
   for (i = 0; i < PRE_DAYS; i++){
     d = new Date(); d.setDate(d.getDate() + i); days.push(dkey(d));
   }
-  return Promise.all(days.map(function(dk){
-    return fetch(DB + '/stays/' + dk + '.json?v=' + Date.now())
+  /* One ranged /stays read across the window (orderBy="$key", no index - the
+     calendar's fix, 22 Sep), then the three per-booking records read WHOLE,
+     not a fetch per arriving booking: on the RTDB's HTTP/1.1 endpoint that
+     trio was a six-at-a-time staircase. Each is a node other screens already
+     read whole - /bookings (Spa, the badge), /phonefix (Invitations) - and
+     /previnvites is keyed by booking id just like phonefix. */
+  var loK = days[0], hiK = days[0];
+  days.forEach(function(k){ if (k < loK) loK = k; if (k > hiK) hiK = k; });
+  var staysURL = DB + '/stays.json?orderBy=' + encodeURIComponent('"$key"') +
+    '&startAt=' + encodeURIComponent('"' + loK + '"') +
+    '&endAt='   + encodeURIComponent('"' + hiK + '"') + '&v=' + Date.now();
+  function whole(path){
+    return fetch(DB + path + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; });
+  }
+  return Promise.all([
+    fetch(staysURL).then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; })
-      .then(function(day){ return { dk:dk, day:day || {} }; });
-  })).then(function(res){
+      .then(function(all){
+        all = all || {};
+        return days.map(function(dk){ return { dk:dk, day:all[dk] || {} }; });
+      }),
+    whole('/bookings'), whole('/previnvites'), whole('/phonefix')
+  ]).then(function(res){
+    var byDay = res[0], bookings = res[1] || {},
+        prevAll = res[2] || {}, fixAll = res[3] || {};
     var found = [], seen = {};
-    res.forEach(function(x){
+    byDay.forEach(function(x){
       Object.keys(x.day).forEach(function(v){
         var s = x.day[v];
         if (!s || typeof s !== 'object' || !s.id) return;
@@ -316,16 +337,17 @@ function loadPreSms(){
         found.push({ villa:v, id:s.id, stay:s });
       });
     });
-    return Promise.all(found.map(function(it){
-      return Promise.all([
-        fetch(DB + '/bookings/' + it.id + '/prearrival.json?v=' + Date.now())
-          .then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }),
-        fetch(DB + '/previnvites/' + it.id + '.json?v=' + Date.now())
-          .then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }),
-        fetch(DB + '/phonefix/' + it.id + '.json?v=' + Date.now())
-          .then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; })
-      ]).then(function(rec){ it.pre = rec[0]; it.invite = rec[1]; it.fix = rec[2]; return it; });
-    }));
+    /* pluck each booking's three records out of the whole reads, in place of a
+       fetch per booking. A missing record is null, the same as a per-booking
+       404 or empty. prearrival lives under the booking; previnvites and
+       phonefix are keyed by booking id. */
+    found.forEach(function(it){
+      var b = bookings[it.id];
+      it.pre = (b && b.prearrival) ? b.prearrival : null;
+      it.invite = prevAll[it.id] || null;
+      it.fix = fixAll[it.id] || null;
+    });
+    return found;
   });
 }
 
