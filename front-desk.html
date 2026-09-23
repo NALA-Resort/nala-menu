@@ -496,7 +496,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=73"></script>
+<script src="nala-shared.js?v=74"></script>
 <script src="nala-cards.js?v=15"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -961,41 +961,9 @@ function sumRow(label, value, empty){
          (value || empty || 'Not answered') + '</div></div>';
 }
 
-/* The live spa state, in sentences. Until 27 Aug the summary read only the
-   prearrival answers, so nothing that happened on the Spa board - a booking,
-   a suggestion, a decline - ever reached the sheet, and reception told a
-   guest their booked massage was "Interested". The records at /spa/<booking>
-   are the current truth; the form's answer stands in only while no record
-   has been born from it, which is the spa board's own rule for the same ask.
-   One builder since 11 Sep, because the edit sheet's Wellness section now
-   stands down to these same lines - two renderings of one guest's massages
-   is how the summary and the sheet would come to disagree. */
-function spaStateLines(spa){
-  var lines = [], answered = false;
-  Object.keys(spa || {}).sort().forEach(function(tid){
-    var t = (spa || {})[tid];
-    if (!t || typeof t !== 'object' || !t.status) return;
-    if (t.source === 'prearrival') answered = true;
-    var two = t.qty === 2 ? 'Two massages · ' : '';
-    var when = (t.day ? dayLabel(t.day) : '') +
-               (t.time ? ' · ' + spaSlotLabel(t.time) : '');
-    if (t.status === 'booked')
-      lines.push(two + 'Booked · ' + when +
-                 (t.manual ? ' · approved at the desk' : ''));
-    else if (t.status === 'suggested')
-      lines.push(two + 'Suggested ' + when + ' · waiting on the guest');
-    else if (t.status === 'requested')
-      lines.push(two + 'Asked' +
-                 (t.reqDay ? ' · ' + dayLabel(t.reqDay) : '') +
-                 (t.reqTime ? ' · ' + esc(t.reqTime) : '') +
-                 ' · waiting on the masseuse');
-    else if (t.status === 'declined')
-      lines.push('Declined' + (t.note ? ' · ' + esc(t.note) : '') +
-                 (t.told ? ' · guest told' : ' · let the guest know'));
-  });
-  return { lines: lines, answered: answered };
-}
-
+/* spaStateLines and wellnessLines live in nala-shared.js since 23 Sep: the
+   printed Arrivals card reads the same sentences, so paper and this summary
+   cannot describe one guest's massages differently. */
 function summaryHTML(r){
   var a = answersOf(r), h = '';
 
@@ -1035,19 +1003,12 @@ function summaryHTML(r){
   if (a.approach)  h += sumRow('Dining', esc(APPROACH_LABEL[a.approach] || a.approach));
   if (a.occasion)  h += sumRow('Occasion', esc(a.occasion));
 
-  /* The live spa state, not the form's opening ask - spaStateLines below,
-     one builder for this summary and the edit sheet's stood-down section:
-     two surfaces describing one guest's massages must be one reading. */
-  var spaState = spaStateLines(r.spa);
-  var spaLines = spaState.lines.slice(), spaAnswered = spaState.answered;
-  if (a.wellness === true && !spaAnswered){
-    var w = 'Interested';
-    if (a.wellDay)  w += ' \u00b7 ' + dayLabel(a.wellDay);
-    if (a.wellTime) w += ' \u00b7 ' + esc(a.wellTime);
-    spaLines.push(w + ' \u00b7 waiting on the masseuse');
-  }
-  if (spaLines.length) h += sumRow('Wellness', spaLines.join('<br>'));
-  else if (a.wellness === false) h += sumRow('Wellness', 'Not interested');
+  /* The live spa state, not the form's opening ask - wellnessLines in
+     nala-shared.js, one builder for this summary, the edit sheet's
+     stood-down section and the printed Arrivals card: surfaces describing
+     one guest's massages must be one reading. */
+  var well = wellnessLines(r.spa, a);
+  if (well.length) h += sumRow('Wellness', well.join('<br>'));
   if (a.note) h += sumRow('Booking notes', esc(a.note));
 
   /* Only when one is on: an empty flags row is not a blank reception needs

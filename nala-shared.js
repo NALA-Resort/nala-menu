@@ -973,6 +973,75 @@ function massageState(spa, pre){
   return '';
 }
 
+/* The live spa state, in sentences. Until 27 Aug the Front Desk summary
+   read only the prearrival answers, so nothing that happened on the Spa
+   board - a booking, a suggestion, a decline - ever reached it, and
+   reception told a guest their booked massage was "Interested". The
+   records at /spa/<booking> are the current truth; the form's answer
+   stands in only while no record has been born from it, which is the spa
+   board's own rule for the same ask.
+
+   Lifted out of front-desk.html on 23 Sep, when the printed Arrivals card
+   (registration.html) made the same mistake the desk had: it read only
+   the form, and printed "Interested" under a massage the masseuse had
+   already booked. Two renderings of one guest's massages is how paper and
+   screen come to disagree, so both pages read this one.
+
+   strong wraps the status word in <b>: the card is read across a desk,
+   and on paper there is no colour to carry it. */
+function spaDayLabel(key){
+  if (isAnyDay(key)) return SPA_ANY_DAY_LABEL;
+  var d = parseDepDate(key); if (!d) return String(key == null ? '' : key);
+  var D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  return D[d.getDay()] + ' ' + d.getDate();
+}
+function spaEsc(t){
+  return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){
+    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c];
+  });
+}
+function spaStateLines(spa, strong){
+  var lines = [], answered = false;
+  function st(w){ return strong ? '<b>' + w + '</b>' : w; }
+  Object.keys(spa || {}).sort().forEach(function(tid){
+    var t = (spa || {})[tid];
+    if (!t || typeof t !== 'object' || !t.status) return;
+    if (t.source === 'prearrival') answered = true;
+    var two = t.qty === 2 ? 'Two massages \u00b7 ' : '';
+    var when = (t.day ? spaDayLabel(t.day) : '') +
+               (t.time ? ' \u00b7 ' + spaSlotLabel(t.time) : '');
+    if (t.status === 'booked')
+      lines.push(two + st('Booked') + ' \u00b7 ' + when +
+                 (t.manual ? ' \u00b7 approved at the desk' : ''));
+    else if (t.status === 'suggested')
+      lines.push(two + st('Suggested') + ' ' + when + ' \u00b7 waiting on the guest');
+    else if (t.status === 'requested')
+      lines.push(two + st('Asked') +
+                 (t.reqDay ? ' \u00b7 ' + spaDayLabel(t.reqDay) : '') +
+                 (t.reqTime ? ' \u00b7 ' + spaEsc(t.reqTime) : '') +
+                 ' \u00b7 waiting on the masseuse');
+    else if (t.status === 'declined')
+      lines.push(st('Declined') + (t.note ? ' \u00b7 ' + spaEsc(t.note) : '') +
+                 (t.told ? ' \u00b7 guest told' : ' \u00b7 let the guest know'));
+  });
+  return { lines: lines, answered: answered };
+}
+/* The whole Wellness answer: the live records, the form's ask while no
+   record has been born from it, or the form's no. [] means unanswered.
+   pre needs only wellness, wellDay and wellTime. */
+function wellnessLines(spa, pre, strong){
+  var s = spaStateLines(spa, strong), lines = s.lines.slice();
+  pre = pre || {};
+  if (pre.wellness === true && !s.answered){
+    var w = strong ? '<b>Interested</b>' : 'Interested';
+    if (pre.wellDay)  w += ' \u00b7 ' + spaDayLabel(pre.wellDay);
+    if (pre.wellTime) w += ' \u00b7 ' + spaEsc(pre.wellTime);
+    lines.push(w + ' \u00b7 waiting on the masseuse');
+  }
+  if (!lines.length && pre.wellness === false) lines.push('Not interested');
+  return lines;
+}
+
 /* Two records describe the same person if the PMS and a guest written entry
    agree on a phone or a name. Phones are compared on their last nine digits
    because Mews stores +61400000000 and a GuestTouch link carries 0400000000,

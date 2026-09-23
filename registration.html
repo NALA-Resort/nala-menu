@@ -140,7 +140,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=73"></script>
+<script src="nala-shared.js?v=74"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 var nav = initDateNav();
@@ -241,11 +241,6 @@ function stayRange(s){
   var M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return D[a.getDay()]+' '+a.getDate()+' '+M[a.getMonth()]+' to '+
          D[b.getDay()]+' '+b.getDate()+' '+M[b.getMonth()];
-}
-function dayLabel(key){
-  var d = parseDepDate(key); if (!d) return key;
-  var D = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  return D[d.getDay()] + ' ' + d.getDate();
 }
 
 /* Which of a guest's dietaries the night's menu contains. Same comparison as
@@ -367,11 +362,12 @@ function cardHTML(r){
   h += row('Dining plans', p.approach ? esc(APPROACH[p.approach] || p.approach) : '',
         { ticks:APPROACH_TICKS });
   h += row('Occasion', p.occasion ? esc(p.occasion) : '');
-  h += row('Wellness', p.wellness === undefined ? ''
-        : (p.wellness
-            ? 'Interested' + (p.wellDay ? ' \u00b7 ' + dayLabel(p.wellDay) : '') +
-              (p.wellTime ? ' \u00b7 ' + esc(p.wellTime) : '')
-            : 'Not interested'), { ticks:WELL_TICKS });
+  /* The live spa state, not only the form's opening ask. Until 23 Sep the
+     card read the form alone and printed "Interested" under a massage the
+     masseuse had already booked, suggested or declined. wellnessLines is
+     the Front Desk summary's own reading, so paper and screen agree. */
+  h += row('Wellness', wellnessLines(r.spa, p, true).join('<br>'),
+        { ticks:WELL_TICKS });
   h += row('Booking notes', p.note ? esc(p.note) : '', { lines:4 });
 
   h += '<div class="sig"><div><span></span>Guest signature</div>' +
@@ -400,8 +396,9 @@ function load(){
       return Promise.all(rows.map(function(r){
         return Promise.all([
           api('/bookings/'+r.stay.id+'/prearrival').catch(function(){ return null; }),
-          api('/bookings/'+r.stay.id+'/pms').catch(function(){ return null; })
-        ]).then(function(res){ r.pre = res[0]; r.pms = res[1]; });
+          api('/bookings/'+r.stay.id+'/pms').catch(function(){ return null; }),
+          api('/spa/'+r.stay.id).catch(function(){ return null; })
+        ]).then(function(res){ r.pre = res[0]; r.pms = res[1]; r.spa = res[2]; });
       })).then(function(){ render(oneRowPerBooking(rows)); });
     })
     .catch(function(e){

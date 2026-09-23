@@ -65,6 +65,9 @@ TAGS = {"main": ["Nut allergy"]}
 # The booking as Mews states it. Its villa settles a disagreement with /stays.
 PMS = {}
 
+# The Spa board's records, /spa/<booking>. Empty until the wellness block.
+SPADB = {}
+
 def fb(route, request):
     u = request.url
     if "/staff" in u: body = json.dumps(STAFF)
@@ -77,6 +80,9 @@ def fb(route, request):
     elif "/bookings/" in u and "/pms" in u:
         k = u.split("/bookings/")[1].split("/")[0]
         body = json.dumps(PMS[k]) if k in PMS else "null"
+    elif "/spa/" in u:
+        k = u.split("/spa/")[1].split(".json")[0].split("/")[0]
+        body = json.dumps(SPADB[k]) if k in SPADB else "null"
     else: body = "null"
     route.fulfill(status=200, content_type="application/json", body=body)
 
@@ -200,6 +206,66 @@ with sync_playwright() as p:
                 || getComputedStyle(c).pageBreakAfter==='always')"""))
     pg.close()
 
+
+    # ── the Wellness row is the Spa board's truth, not the form's ─
+    # Found 23 Sep: the card read the form alone, so a massage the masseuse
+    # had booked, suggested or declined still printed "Interested". The
+    # words are the Front Desk summary's (wellnessLines, nala-shared.js).
+    def well(v):
+        return pg.evaluate("""()=>{const c=[...document.querySelectorAll('.card')]
+          .find(c=>c.querySelector('.c-villa').textContent==='%s');
+          const r=[...c.querySelectorAll('.row')]
+          .find(r=>r.querySelector('.lbl').textContent==='Wellness');
+          return r.querySelector('.val').innerText;}""" % v)
+    pg = sheet()
+    w = well("4")
+    ck("the form's ask with no record reads Interested, waiting on the masseuse",
+       "Interested" in w and "late morning" in w and "waiting on the masseuse" in w)
+    ck("and a guest who said no still reads Not interested", well("9") == "Not interested")
+    pg.close()
+    CASES = [
+      ("booked", {"t1": {"status":"booked","day":plus(1),"time":"14:00",
+                         "source":"prearrival","at":"x"}},
+       ["Booked", "2:00 pm"], ["Interested"]),
+      ("booked at the desk", {"t1": {"status":"booked","day":plus(1),"time":"14:00",
+                         "manual":True,"source":"prearrival","at":"x"}},
+       ["Booked", "approved at the desk"], ["Interested"]),
+      ("suggested", {"t1": {"status":"suggested","day":plus(2),"time":"16:30",
+                            "source":"prearrival","at":"x"}},
+       ["Suggested", "4:30 pm", "waiting on the guest"], ["Interested"]),
+      ("asked", {"t1": {"status":"requested","reqDay":plus(1),"reqTime":"late morning",
+                        "source":"prearrival","at":"x"}},
+       ["Asked", "waiting on the masseuse"], ["Interested"]),
+      ("declined", {"t1": {"status":"declined","note":"nothing free",
+                           "source":"prearrival","at":"x"}},
+       ["Declined", "nothing free", "let the guest know"], ["Interested"]),
+      ("declined, told", {"t1": {"status":"declined","note":"nothing free","told":True,
+                           "source":"prearrival","at":"x"}},
+       ["Declined", "guest told"], ["let the guest know"]),
+    ]
+    for name, rec, has, hasnt in CASES:
+        SPADB["b4"] = rec
+        pg = sheet()
+        w = well("4")
+        ck("a %s massage prints as %s" % (name, has[0]),
+           all(x in w for x in has) and not any(x in w for x in hasnt))
+        pg.close()
+    SPADB["b4"] = {"t1": {"status":"booked","day":plus(1),"time":"14:00",
+                          "source":"prearrival","at":"x"}}
+    pg = sheet()
+    ck("the status word is bold, because paper has no colour to carry it",
+       pg.evaluate("""()=>[...document.querySelectorAll('.card .val b')]
+         .some(b=>b.textContent==='Booked')"""))
+    pg.close()
+    # A record keyed straight onto the board, with no form answer at all:
+    # the card has an answer, so it prints it rather than tick boxes.
+    SPADB["b2"] = {"t1": {"status":"booked","day":plus(1),"time":"10:00","at":"x"}}
+    pg = sheet()
+    w = well("2")
+    ck("a board booking with no form answer prints, not as boxes",
+       "Booked" in w and "10:00 am" in w and "Not interested" not in w)
+    pg.close()
+    SPADB.clear()
 
     # Three cards for one guest is three registration forms at the desk. A move
     # leaves entries behind in /stays and the Worker only clears them on that
