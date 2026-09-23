@@ -872,6 +872,62 @@ with sync_playwright() as p:
        pg.evaluate("()=>getComputedStyle(warnKey).display") == "none")
     pg.close()
 
+    #  The guest's own pre-arrival answer. Found 24 Sep from two screenshots
+    #  of one morning: villa 5 sat on Reservations as a green Dining tile with
+    #  the guest-replied mark, and every dietary it had declared wore the
+    #  AMBER ring here - the ring for a guest who has NOT confirmed. The board
+    #  has counted a dinner answer given on the pre-arrival form, on the
+    #  arrival night, since 28 Aug, and formDinnerCell has been its one reader
+    #  since 4 Sep. This page called roomRecord without naming the night, so
+    #  that answer never reached it and a confirmed diner rang as unconfirmed.
+    #
+    #  So every case in the shared table, rendered here: the table's in is a
+    #  red ring, its out rings nothing, and where the form must stay silent
+    #  the guest is staying and has not confirmed - amber. Each case's
+    #  dietaries are swapped for one on this suite's list, because the ring
+    #  asks who answered, not what they declared.
+    fcases = json.load(open("tests/form_dinner_cases.json"))["cases"]
+    WANT = {"in": ("warnin", RED), "out": (None, None), None: ("warnstay", AMBER)}
+
+    def form_case(c, cell=None):
+        rec = c["rec"]
+        stay = {"id": "b5", "first": "Form", "last": "Case", "depart": depart}
+        if rec.get("arriveOffset") is not None:
+            stay["arrive"] = (now + datetime.timedelta(
+                days=rec["arriveOffset"])).strftime("%Y-%m-%d")
+        if rec.get("adults"):
+            stay["adults"] = rec["adults"]
+        STATE["stays"] = {"5": stay}
+        STATE["dinner"] = {"5": cell} if cell else {}
+        STATE["pre"] = {"b5": dict(c["pre"] or {}, diets=["Nut allergy"])}
+        pg = open_pub(LINK)
+        got = (rings(pg, "Nut allergy", "warnin"),
+               rings(pg, "Nut allergy", "warnstay"),
+               ring_colour(pg, "Nut allergy"))
+        pg.close()
+        return got
+
+    wrong = []
+    for c in fcases:
+        cls, colour = WANT[(c["expect"] or {}).get("status")]
+        n_in, n_stay, got_colour = form_case(c)
+        if not (n_in == (4 if cls == "warnin" else 0) and
+                n_stay == (4 if cls == "warnstay" else 0) and
+                (got_colour == colour if colour
+                 else got_colour not in (RED, AMBER))):
+            wrong.append(c["name"])
+    if wrong:
+        print("   rang wrong:", wrong)
+    ck("a dinner answer on the pre-arrival form rings as Reservations "
+       "reads it, every shared case", wrong == [])
+    #  The table leaves precedence to each page: the night's own cell
+    #  outranks the form, here as on the board, so a guest reception has
+    #  since marked not dining rings nothing whatever the form said.
+    yes = next(c for c in fcases if (c["expect"] or {}).get("status") == "in")
+    ck("and the night's own cell still outranks the form",
+       form_case(yes, {"status": "out", "by": "staff"})[:2] == (0, 0))
+    STATE["stays"] = {}; STATE["dinner"] = {}; STATE["pre"] = {}
+
     #  Advisory only. The rings read the room; they are not allowed to close
     #  it: a failed read paints none rather than wrong ones, says nothing,
     #  and publishing stands exactly as it did.

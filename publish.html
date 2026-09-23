@@ -256,7 +256,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=74"></script>
+<script src="nala-shared.js?v=75"></script>
 <script>
 /* Publishing is the chef's job and the manager's, gated on the same permission
    the tagging page uses. Sent to their own board rather than refused, since a
@@ -510,8 +510,12 @@
      rings nothing: not dining is a fact, not a conflict.
 
      Built from the same reads and the same merge as the boards - roomRecord
-     over responses, manual, roomguests and stays - because a second opinion
-     about who is dining is how two screens disagree in front of the owner.
+     over responses, manual, roomguests and stays, and tonight named so a
+     guest's own pre-arrival answer counts on their arrival night - because a
+     second opinion about who is dining is how two screens disagree in front
+     of the owner. It did, 24 Sep: villa 5 was a green Dining tile on
+     Reservations, answered on its form, and amber on every pill here,
+     because this call did not name the night and the form was never read.
      Read from the LIVE nodes even in a rehearsal, like the dietary list: the
      house is real whatever the menu is. Advisory only: a failed read paints
      no rings rather than wrong ones, and never blocks publishing - the lock
@@ -539,7 +543,9 @@
           });
         }
         for (var n = 1; n <= ROOMS; n++){
-          var r = roomRecord(n, responses, manual, roomguests);
+          /* K as the night: fetchStays(K) above filled the pre-arrival
+             answers for tonight, and tonight is all this page renders. */
+          var r = roomRecord(n, responses, manual, roomguests, null, K);
           if (!r || r.status === 'out' || r.status === 'vacant') continue;
           if (r.status === 'in'){ markDiets(r.diets, 'in'); markDiets(r.prevDiets, 'stay'); }
           else { markDiets(r.diets, 'stay'); markDiets(r.prevDiets, 'stay'); }

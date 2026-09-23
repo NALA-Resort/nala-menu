@@ -1413,15 +1413,18 @@ function withDineProvenance(out, tonight, known){
   return out;
 }
 
-/* dateKey is OPT-IN, and only the printed sheets pass it. With it, a record
-   that nothing else answers falls back to the guest's own pre-arrival form
-   answer for that night (formDinnerCell), so the paper the chef holds agrees
-   with the Reservations board about an arriving guest who answered days ago.
-   Without it nothing changes, which is deliberate: the other callers (Cleans,
-   Housekeeping, Publish, Debug) render nights other than the one
-   PREARRIVAL_BY_VILLA was last fetched for, and a fallback they did not ask
-   for is how a Monday answer would leak into a Tuesday board. A caller that
-   wants the form must say which night it is rendering. */
+/* dateKey is OPT-IN. With it, a record that nothing else answers falls back
+   to the guest's own pre-arrival form answer for that night (formDinnerCell),
+   so the caller agrees with the Reservations board about an arriving guest
+   who answered days ago. The printed sheets pass it, so the paper the chef
+   holds agrees with the board; so does Publish, whose dietary rings ask who
+   is dining tonight - without it a guest the board showed dining rang there
+   as unconfirmed (villa 5, 24 Sep). Without it nothing changes, which is
+   deliberate: the other callers (Cleans, Housekeeping, Debug) render nights
+   other than the one PREARRIVAL_BY_VILLA was last fetched for, and a
+   fallback they did not ask for is how a Monday answer would leak into a
+   Tuesday board. A caller that wants the form must say which night it is
+   rendering, and have called fetchStays for that night. */
 function roomRecord(n, responses, manual, roomguests, dinner, dateKey){
   return overlayReservationDiets(
     roomRecordCore(n, responses, manual, roomguests, dinner, dateKey), n);
