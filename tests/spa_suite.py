@@ -207,6 +207,16 @@ def fb(route, request):
         # the sanity read before every save: one guest's records, fresh
         k = re.search(r"/spa/([^/.]+)\.json", u).group(1)
         body = json.dumps(SPA[k]) if k in SPA else "null"
+    elif "/stays.json" in u:
+        # the board's one ranged read over the window, orderBy="$key"; it
+        # maps the result back over the days it asked for, so returning the
+        # nights whose keys fall inside [startAt, endAt] is enough.
+        from urllib.parse import urlparse, parse_qs, unquote
+        q = parse_qs(urlparse(u).query)
+        lo = unquote(q.get("startAt", ['""'])[0]).strip('"')
+        hi = unquote(q.get("endAt", ['"￿"'])[0]).strip('"')
+        win = {k: v for k, v in STAYS_BY_DATE.items() if lo <= k <= hi}
+        body = json.dumps(win) if win else "null"
     elif "/stays/" in u:
         d = u.split("/stays/")[1].split(".json")[0]
         body = json.dumps(STAYS_BY_DATE.get(d)) if d in STAYS_BY_DATE else "null"
@@ -214,7 +224,19 @@ def fb(route, request):
         if STATE.get("bookfail"):
             route.fulfill(status=401, content_type="application/json",
                           body='{"error":"denied"}'); return
-        body = json.dumps({} if STATE.get("nobook") else BOOKINGS_NODE)
+        if STATE.get("nobook"):
+            body = json.dumps({})
+        else:
+            # The board now reads prearrival from THIS whole node, not a fetch
+            # per booking, so the node must reflect the live PRE dict - a test
+            # that reassigns PRE[bid] at runtime relied on the old per-id read
+            # seeing it. Off-window ids (bFAR etc.) keep their own baked
+            # prearrival; ids in PRE take the current value.
+            node = {bid: dict(rec) for bid, rec in BOOKINGS_NODE.items()}
+            for bid in node:
+                if bid in PRE:
+                    node[bid]["prearrival"] = PRE[bid]
+            body = json.dumps(node)
     elif "/bookings/" in u and "/prearrival" in u:
         k = u.split("/bookings/")[1].split("/")[0]
         body = json.dumps(PRE[k]) if k in PRE else "null"

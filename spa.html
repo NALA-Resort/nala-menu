@@ -1235,11 +1235,12 @@ document.getElementById('statsRow').onclick = function(e){
 };
 
 /* ── loading ─────────────────────────────────────────────────── */
-/* /stays day by day, the same read every board makes, then the two records
-   this page lives on: the whole /spa node in one ask - a small resort's
-   treatments fit in one response - and each booking's own prearrival for
-   the wellness answer. Everything else about a guest stays unread here,
-   and the rules hold the masseuse's login to that. */
+/* /stays across the window in ONE ranged read (the calendar's fix, 22 Sep),
+   then the records this page lives on: the whole /spa node in one ask - a
+   small resort's treatments fit in one response - and the whole /bookings
+   node, which carries every booking's prearrival for the wellness answer
+   (and the badge's off-window asks). Everything else about a guest stays
+   unread here, and the rules hold the masseuse's login to that. */
 function load(){
   var real = dkey(new Date());
   var days = [], seen = {};
@@ -1248,13 +1249,23 @@ function load(){
     days.push(dkey(d));
   }
   if (days.indexOf(todayKey()) < 0) days.push(todayKey());
+  /* One ranged /stays read across the window (orderBy="$key" needs no index,
+     the Worker's pattern), in place of a fetch per day - HORIZON was 45 of
+     them. An un-indexed query may hand back keys outside the window, so we
+     map the result back over the days we asked for. */
+  var loK = days[0], hiK = days[0];
+  days.forEach(function(k){ if (k < loK) loK = k; if (k > hiK) hiK = k; });
+  var staysURL = DB + '/stays.json?orderBy=' + encodeURIComponent('"$key"') +
+    '&startAt=' + encodeURIComponent('"' + loK + '"') +
+    '&endAt='   + encodeURIComponent('"' + hiK + '"') + '&v=' + Date.now();
   return Promise.all([
-    Promise.all(days.map(function(dk2){
-      return fetch(DB + '/stays/' + dk2 + '.json?v=' + Date.now())
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .catch(function(){ return null; })
-        .then(function(day){ return { d: dk2, day: day || {} }; });
-    })),
+    fetch(staysURL)
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; })
+      .then(function(all){
+        all = all || {};
+        return days.map(function(dk2){ return { d: dk2, day: all[dk2] || {} }; });
+      }),
     fetch(DB + '/spa.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; }),
@@ -1320,15 +1331,17 @@ function load(){
                        pre:p, offWindow:true };
     });
 
-    /* Those carry their pre already, from the node they came out of. */
-    return Promise.all(Object.keys(BOOKINGS).filter(function(id){
-      return !BOOKINGS[id].offWindow;
-    }).map(function(id){
-      return fetch(DB + '/bookings/' + id + '/prearrival.json?v=' + Date.now())
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .catch(function(){ return null; })
-        .then(function(p){ BOOKINGS[id].pre = p; });
-    }));
+    /* The off-window cards already carry their pre, from the whole /bookings
+       read they came out of. The in-window ones take theirs from the SAME
+       read now, plucked by id, instead of a fetch per booking: on the RTDB's
+       HTTP/1.1 endpoint that per-booking loop was a six-at-a-time staircase
+       (the calendar's find, 22 Sep). A booking with no record, or a failed
+       whole read, leaves pre null - the same as a missing per-booking read. */
+    Object.keys(BOOKINGS).forEach(function(id){
+      if (BOOKINGS[id].offWindow) return;
+      var b = all[id];
+      BOOKINGS[id].pre = (b && b.prearrival) ? b.prearrival : null;
+    });
   }).then(function(){
     if (OPENQ){
       /* The waiting ask first - the SMS link's target - else whatever the
