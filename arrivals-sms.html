@@ -568,24 +568,35 @@ function load(){
     var d = new Date(); d.setDate(d.getDate() + i);
     days.push(dkey(d));
   }
-  return Promise.all([
-    Promise.all(days.map(function(d){
-      return fetch(DB + '/stays/' + d + '.json?v=' + Date.now())
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .catch(function(){ return null; })
-        .then(function(day){ return { d: d, day: day || {} }; });
-    })),
-    loadTemplates(),
-    /* The treatments, whole, the read the Dashboard already makes: since
-       10 Sep the massage answer can live at /spa as an outcome
-       (massageAnswered, nala-shared.js), and formState wants it. Read
-       once rather than per booking - seventeen villas' records fit in
-       one response, spa.html's own reasoning for the same node. */
-    fetch(DB + '/spa.json?v=' + Date.now())
+  /* One ranged /stays read across the window (orderBy="$key", no index - the
+     calendar's fix, 22 Sep), and the per-booking records read WHOLE, plucked
+     by id, in place of a fetch per arriving booking: on the RTDB's HTTP/1.1
+     endpoint that trio was a six-at-a-time staircase. /spa was already read
+     whole here (massageAnswered wants it); /bookings, /previnvites and
+     /phonefix join it - each a node another screen already reads whole. */
+  var loK = days[0], hiK = days[0];
+  days.forEach(function(k){ if (k < loK) loK = k; if (k > hiK) hiK = k; });
+  var staysURL = DB + '/stays.json?orderBy=' + encodeURIComponent('"$key"') +
+    '&startAt=' + encodeURIComponent('"' + loK + '"') +
+    '&endAt='   + encodeURIComponent('"' + hiK + '"') + '&v=' + Date.now();
+  function whole(path){
+    return fetch(DB + path + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; });
+  }
+  return Promise.all([
+    fetch(staysURL).then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; })
+      .then(function(all){
+        all = all || {};
+        return days.map(function(d){ return { d: d, day: all[d] || {} }; });
+      }),
+    loadTemplates(),
+    whole('/spa'),
+    whole('/bookings'), whole('/previnvites'), whole('/phonefix')
   ]).then(function(res){
-    var spaAll = res[2] || {};
+    var spaAll = res[2] || {},
+        bookings = res[3] || {}, prevAll = res[4] || {}, fixAll = res[5] || {};
     var found = [];
     var seen = {};
     res[0].forEach(function(x){
@@ -598,23 +609,18 @@ function load(){
         found.push({ id: stay.id, villa: v, stay: stay });
       });
     });
-    return Promise.all(found.map(function(it){
-      return Promise.all([
-        fetch(DB + '/bookings/' + it.id + '/prearrival.json?v=' + Date.now())
-          .then(function(r){ return r.ok ? r.json() : null; })
-          .catch(function(){ return null; }),
-        fetch(DB + '/previnvites/' + it.id + '.json?v=' + Date.now())
-          .then(function(r){ return r.ok ? r.json() : null; })
-          .catch(function(){ return null; }),
-        fetch(DB + '/phonefix/' + it.id + '.json?v=' + Date.now())
-          .then(function(r){ return r.ok ? r.json() : null; })
-          .catch(function(){ return null; })
-      ]).then(function(rec){
-        it.pre = rec[0]; it.invite = rec[1]; it.fix = rec[2];
-        it.spa = spaAll[it.id] || null;
-        return it;
-      });
-    }));
+    /* pluck each booking's records out of the whole reads, in place of a
+       fetch per booking. A missing record is null, the same as a per-booking
+       404 or empty. prearrival lives under the booking; previnvites, phonefix
+       and the spa outcome are keyed by booking id. */
+    found.forEach(function(it){
+      var b = bookings[it.id];
+      it.pre = (b && b.prearrival) ? b.prearrival : null;
+      it.invite = prevAll[it.id] || null;
+      it.fix = fixAll[it.id] || null;
+      it.spa = spaAll[it.id] || null;
+    });
+    return found;
   }).then(function(list){
     /* Soonest arrival first, villa order within a day: the top of the list
        is the guest reception will meet first. */

@@ -127,6 +127,17 @@ def fb(route, request):
     body = "null"
     if "/staff" in u: body = json.dumps(STAFF)
     elif "/permissions" in u: body = "null"
+    elif u.split("?")[0].endswith("/stays.json"):
+        #  arrivals-sms.html's one ranged read over the window, orderBy="$key".
+        #  The window is today's stays plus the NIGHTS days; return the nights
+        #  whose keys fall inside [startAt, endAt].
+        from urllib.parse import urlparse, parse_qs, unquote
+        q = parse_qs(urlparse(u).query)
+        lo = unquote(q.get("startAt", ['""'])[0]).strip('"')
+        hi = unquote(q.get("endAt", ['"￿"'])[0]).strip('"')
+        allstays = dict(NIGHTS); allstays[today] = STAYS
+        win = {k: v for k, v in allstays.items() if lo <= k <= hi}
+        body = json.dumps(win) if win else "null"
     elif "/stays/" + today in u: body = json.dumps(STAYS)
     elif "/stays/" in u:
         d = u.split("/stays/")[1].split(".json")[0]
@@ -134,6 +145,9 @@ def fb(route, request):
     elif "/dinner/" + today in u: body = json.dumps(DINNER)
     elif "/opened/" in u: body = "null"
     elif "/invites/" + today in u: body = json.dumps(INVITES)
+    elif u.split("?")[0].endswith("/previnvites.json"):
+        #  arrivals-sms reads the send log whole now, plucked by id.
+        body = json.dumps(PREINV) if PREINV else "null"
     elif "/previnvites/" in u:
         bid = u.split("/previnvites/")[1].split(".json")[0]
         body = json.dumps(PREINV[bid]) if bid in PREINV else "null"
@@ -146,6 +160,10 @@ def fb(route, request):
     elif "/presmstemplates" in u: body = "null"
     elif "/smstemplates" in u:
         body = json.dumps(STATE["templates"]) if STATE.get("templates") else "null"
+    elif u.split("?")[0].endswith("/bookings.json"):
+        #  arrivals-sms reads prearrival from the whole node now, plucked by
+        #  id - the same records the per-id /prearrival branch below serves.
+        body = json.dumps({bid: {"prearrival": p} for bid, p in PRE_RECS.items()})
     elif "/bookings/" in u and "/prearrival" in u:
         bid = u.split("/bookings/")[1].split("/")[0]
         body = json.dumps(PRE_RECS[bid]) if bid in PRE_RECS else "null"
