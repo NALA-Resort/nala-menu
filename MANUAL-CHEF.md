@@ -70,6 +70,12 @@ headings, and the difference is the point:
 A red bar down the side of a booking means their dietary clashes with a dish
 you tagged. That is the tagging in step 2 doing its work.
 
+**All**, beside the bookings, adds every guest in house who has not answered
+dinner yet, in grey, with their dietaries. Use it when writing the menu: a
+guest who confirmed last night and has not said about tonight still shows
+what they cannot have. Grey means possible, not booked - they are not in the
+covers. The phone remembers whether you left it on.
+
 ---
 
 ## 4. Print the sheet

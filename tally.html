@@ -36,8 +36,8 @@
 /* The pill sits in the Villas section row where the "Villas" label was
      (owner, 9 Sep: a whole centred row above the numbers was vertical
      space spent on one word of status). It wears the section-row button's
-     clothes - the same size, padding and --r radius as Select multiple
-     and +Add reservation - but keeps its status colours: fill and ink
+     clothes - the same size, padding and --r radius as Select multiple,
+     All and Add + - but keeps its status colours: fill and ink
      stay the pill's own, and the border is the matching state border.
      Both states must match one selector: the published pill has rendered
      as an <a> before, and selecting only span left it unstyled.        */
@@ -194,6 +194,29 @@
      "No dietaries", the FOH sheet's words for the same fact, because the
      full sentence outgrew the row. */
   .dpill-ok { background:var(--green-t); color:var(--green); }
+
+  /* ── All: everyone who could still be dining tonight ──────────────────
+     The chef's ask, through the owner, 24 Sep: a guest in house who has not
+     answered dinner tonight was on no list, so their dietaries showed on the
+     night they confirmed and on no night after, and the menu was written as
+     though nobody had any. All adds those villas to the Bookings list.
+
+     A possible is grey, the owner's word, and the colour law's grey for
+     waiting on the other side: the name, "Awaiting" where the covers go,
+     and the pills, in the same shapes as the red ones - solid for an
+     allergy, a tint for a preference. So a possible's allergy is NOT red.
+     Red is a confirmed diner's, the line the Publish page's rings already
+     draw (red for a confirmed guest, never for one who is only staying),
+     and the grey is what lets confirmed and possible read apart at arm's
+     length. Mocked in mock-possibles.html. */
+  .row.maybe .row-name, .row.maybe .row-name .rm, .row.maybe .row-pax { color:var(--mid); }
+  .row.maybe .dpill, .row.maybe .dpill-ok { background:rgba(28,28,26,.07); color:var(--mid); }
+  .row.maybe .dpill-al { background:#77776F; color:#fff; }
+  /* All and Add + ride together at the right of the Bookings row, in the
+     row's own button dress. All lit wears the ui2 Selected dress, as
+     Select multiple does. margin-left:auto keeps the pair right-aligned
+     when a long make-up pushes it onto a line of its own. */
+  .secbtns { display:flex; gap:8px; margin-left:auto; }
   .row.conflict { border-left:3px solid var(--red); padding-left:10px;
                   background:rgba(168,50,30,.05); }
   /* Icon only, no box, in a fixed 20px slot that exists whether or not this
@@ -534,7 +557,12 @@ body.readonly .comb-undo { display:none; }
 
   <div class="sec" id="listSec">
     <span id="tablesLine">Bookings</span>
-    <a href="#" id="addExt">+ Add reservation</a>
+    <!-- "Add +" was "+ Add reservation" until 24 Sep: the owner shortened
+         it when All took the seat beside it, to keep the row one line. -->
+    <span class="secbtns">
+      <a href="#" id="allToggle" role="switch" aria-checked="false">All</a>
+      <a href="#" id="addExt">Add +</a>
+    </span>
   </div>
   <div id="listBookings"></div>
 
@@ -865,6 +893,20 @@ function roomStateRaw(n){
 }
 
 
+/* A possible's record, for the All list: what a confirmed row of the same
+   guest would draw, with nothing for tonight. roomState's own two steps run
+   on an empty night - the carried-forward record's provenance, then the
+   reservation's dietaries over it, because the dietaries are the person's
+   and not the night's - plus the booking's "none to declare", which the
+   awaiting stub reads the same way. */
+function possibleOf(n){
+  var known = roomguests[String(n)] || {};
+  var g = overlayReservationDiets(withDineProvenance({}, null, known), n);
+  var pre = PREARRIVAL_BY_VILLA[String(n)];
+  if (!(g.diets && g.diets.length) && pre && pre.noDiets) g.nodiet = true;
+  return g;
+}
+
 /* The bubble's colour is decided here and nowhere else. Worst wins.
    red: act before cooking tonight. amber: kitchen content to read. grey:
    context for the house, nothing the chef acts on. A bubble that is only
@@ -1045,20 +1087,32 @@ function render(){
                 room:null, src:e.src, key:e.key });
   });
 
-  var covers=0, notDining=0, awaiting=0;
+  var covers=0, notDining=0, awaiting=0, maybes=[];
   rows.forEach(function(r){ covers += dinerPax(r.g); });
   for (var n2=1; n2<=ROOMS; n2++){
     var s = roomState(n2);
     /* Only a villa with somebody in it is awaiting an answer. An empty villa
        is not an outstanding question, and counting it as one meant the figure
        read seventeen on a quiet night and nobody could act on it. */
-    if (!s){ if (hasGuestProfile(roomguests[String(n2)])) awaiting++; }
+    if (!s){
+      if (hasGuestProfile(roomguests[String(n2)])){
+        awaiting++;
+        /* With All lit, the villas this count names join the list: the
+           same test, taken once, so "Villas awaiting" and the grey rows
+           cannot disagree. Declined and vacant villas have a state, so
+           they never reach here. Kept out of `rows`, which is what the
+           covers and the table make-up count - a possible has booked no
+           table. */
+        if (SHOW_ALL) maybes.push({ g:possibleOf(n2), room:n2, maybe:true });
+      }
+    }
     else if (s.g.status==='out') notDining++;    // declined rooms
   }
 
   var el = document.getElementById('listBookings');
+  var shown = rows.concat(maybes);
   el.innerHTML='';
-  if(!rows.length) el.innerHTML='<div class="empty">No bookings yet</div>';
+  if(!shown.length) el.innerHTML='<div class="empty">No bookings yet</div>';
 
   // combined rooms sit together, boxed, under the lowest room number;
   // members without an answer yet show as quiet stubs so the pairing reads
@@ -1088,7 +1142,7 @@ function render(){
     return keys.map(function(k){ return { gid:(combined[k]?k:null), members:units[k] }; });
   }
 
-  unitSort(rows).forEach(function(unit){
+  unitSort(shown).forEach(function(unit){
     var host = el;
     if (unit.gid && unit.members.length > 1){
       host = document.createElement('div');
@@ -1176,13 +1230,17 @@ function render(){
     }
 
 
-    var hits = menuConflicts(MENU, personDiets);
+    /* A possible is not checked against tonight's dishes: the red conflict
+       edge is "act before cooking tonight", which is a confirmed diner's.
+       The pill still says what the guest cannot have, and the edge arrives
+       the moment they confirm. */
+    var hits = r.maybe ? [] : menuConflicts(MENU, personDiets);
     var pre = r.room ? (PREARRIVAL_BY_VILLA[String(r.room)] || null) : null;
     var bookNote = (pre && pre.note) ? String(pre.note) : '';
     var bubState = bubbleState(personDiets, g, hits, bookNote);
 
     var row = document.createElement('div');
-    row.className = 'row' + (hits.length ? ' conflict' : '');
+    row.className = 'row' + (r.maybe ? ' maybe' : '') + (hits.length ? ' conflict' : '');
     row.innerHTML =
       '<div class="row-main"><div class="row-name"><span class="nm">'+title+'</span></div>'+
       (sub.length ? '<div class="row-sub">'+sub.join(' · ')+'</div>' : '')+
@@ -1193,9 +1251,12 @@ function render(){
                               : bubState==='amber' ? ' kitchen' : ' info')+'">'+
           ICON_BUBBLE+'</button>'
         : '<span class="bub-slot"></span>')+
-      '<span class="row-pax">'+
+      /* A possible has no covers to state - Mews's head count is how many
+         are staying, not how many are eating - so the slot says why, in
+         the legend's word for the dashed tile it belongs to. */
+      '<span class="row-pax">'+ (r.maybe ? 'Awaiting' :
         (dinnerTimeLabel(g.time) ? dinnerTimeLabel(g.time)+' · ' : '')+
-        (g.pax||1)+' pax</span></div>'+ dietLine;
+        (g.pax||1)+' pax') +'</span></div>'+ dietLine;
     var bub = row.querySelector('.bub');
     if (bub) bub.onclick = (function(tt, gg, hh, bn){
       return function(ev){ ev.stopPropagation(); openNotes(tt, gg, hh, bn); };
@@ -1317,6 +1378,27 @@ document.getElementById('selToggle').onclick = function(e){
   selCountUpdate();
   render();
 };
+
+/* All: the list shows confirmed diners, or, lit, every guest who could still
+   be dining tonight - see .row.maybe for why and how they look. Remembered
+   per phone, because it is a way of reading the board and each reader has
+   theirs: the chef wants it lit, the desk mostly does not. A phone that
+   cannot store it simply starts unlit. */
+var SHOW_ALL = false;
+try { SHOW_ALL = localStorage.getItem('nala-res-all') === '1'; } catch (e){}
+function paintAll(){
+  var a = document.getElementById('allToggle');
+  a.classList.toggle('active', SHOW_ALL);
+  a.setAttribute('aria-checked', SHOW_ALL ? 'true' : 'false');
+}
+document.getElementById('allToggle').onclick = function(e){
+  e.preventDefault();
+  SHOW_ALL = !SHOW_ALL;
+  try { localStorage.setItem('nala-res-all', SHOW_ALL ? '1' : '0'); } catch (e2){}
+  paintAll();
+  render();
+};
+paintAll();
 
 function applyToSelected(status){
   var keys = Object.keys(selected);

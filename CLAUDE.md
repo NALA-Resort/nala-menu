@@ -153,7 +153,7 @@ state, not a rejected form, not a colour picked because a thing is
 important. If you are about to reach for red and the thing is not a failure
 or an allergy, it is the wrong colour.
 
-Two things this exception does NOT extend to, both settled already:
+Three things this exception does NOT extend to, all settled already:
 
 - **Selection never wears red.** Publish's dietary pills filled solid red
   until 27 Aug, when a page with a few on it became a wall of red and the
@@ -164,6 +164,14 @@ Two things this exception does NOT extend to, both settled already:
   held orphaned red `.tick` rules under a comment calling this an open
   question, months after it was answered on the page that actually draws
   them. Removed 29 Aug. Delete the rule and the story with it.
+- **A guest who has not confirmed dinner wears grey, allergy included.**
+  Reservations' All list (24 Sep, the chef's ask through the owner) adds
+  every in-house guest with no answer for tonight, and draws them grey -
+  an allergy as a solid grey pill, a preference as a grey tint - so
+  confirmed and possible read apart at arm's length. Red stays a confirmed
+  diner's, the line Publish's rings already draw (red confirmed, amber only
+  staying). The pill still says what they cannot have; the red arrives the
+  moment they confirm.
 
 ### The pre-arrival form has three states, and the colour IS the state
 
