@@ -858,6 +858,9 @@ with sync_playwright() as p:
     ck("chef cannot edit bookings", st["edit"] is False)
     ck("chef gets no select-multiple and no add reservation",
        st["sel"]=="none" and st["add"]=="none")
+    # All writes nothing, and the chef is who asked for it.
+    ck("but the chef keeps All",
+       q.evaluate("()=>getComputedStyle(allToggle).display") != "none")
     # the chef opens the sheet to READ it: the phone, the dietaries and the
     # comment are the reason they open the app at all
     q.evaluate("()=>openRoom(1, roomState(1))"); q.wait_for_timeout(400)
@@ -1982,6 +1985,149 @@ with sync_playwright() as p:
     # argue with.
     ck("and the dietary they gave rides along to the kitchen",
        "Nut" in q.evaluate("()=>listBookings.textContent"))
+    q.close()
+
+    # ── All: everyone who could still be dining tonight ─────────────────
+    # The chef's ask, through the owner, 24 Sep: a guest in house who had
+    # not answered dinner tonight was on no list, so their allergy showed
+    # on the night they confirmed and never after. All adds those villas,
+    # grey - pills included, an allergy too - in villa order among the
+    # confirmed; a declined or vacant villa never appears; the counts stay
+    # the confirmed diners'. Colours asserted as computed pixels, not class
+    # names (HANDOVER, standing cautions).
+    ALL_STAYS = {
+      # confirmed at the desk tonight, a shellfish allergy on the booking
+      "3":  {"id":"al-3","first":"Mia","last":"Laurent","arrive":plus(-1),"depart":plus(2),"adults":2},
+      # the chef's case: confirmed on arrival last night, nothing tonight
+      "4":  {"id":"al-4","first":"Lucy","last":"Tran","arrive":plus(-1),"depart":plus(2),"adults":2},
+      # in house, declared none to declare, no answer tonight
+      "7":  {"id":"al-7","first":"Priya","last":"Nair","arrive":plus(-2),"depart":plus(1),"adults":2},
+      # declined tonight, and has a dietary: must not come back as a possible
+      "8":  {"id":"al-8","first":"Chloe","last":"Rove","arrive":plus(-1),"depart":plus(2),"adults":2},
+      # in house, nothing on the booking at all
+      "9":  {"id":"al-9","first":"Kenji","last":"Wata","arrive":plus(-1),"depart":plus(3),"adults":1},
+      # booked, but staff marked the villa vacant against this very version
+      "10": {"id":"al-10","first":"Vic","last":"Ant","arrive":plus(-1),"depart":plus(2),"adults":2,
+             "updated":"U1"}
+    }
+    ALL_PRE = {
+      "al-3": {"diets": ["Shellfish allergy"]},
+      "al-4": {"dining": True, "pax": 2, "diets": ["Vegetarian", "Nut allergy"]},
+      "al-7": {"noDiets": True},
+      "al-8": {"diets": ["Gluten"]}
+    }
+    ALL_CELLS = {
+      "3":  {"status":"in","pax":2,"room":"3","by":"staff","at":"x","bookingId":"al-3"},
+      "8":  {"status":"out","pax":0,"room":"8","by":"guest","at":"x","bookingId":"al-8"},
+      "10": {"status":"vacant","pax":0,"room":"10","by":"staff","at":"x","pmsUpdated":"U1"}
+    }
+    def all_fb(route, request):
+        u = request.url
+        if request.method != "GET":
+            fb(route, request); return
+        if "/stays/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(ALL_STAYS)); return
+        if "/dinner/" + today in u:
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(ALL_CELLS)); return
+        if "/bookings/" in u and "/prearrival" in u:
+            k = u.split("/bookings/")[1].split("/")[0]
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(ALL_PRE.get(k)) if k in ALL_PRE else "null"); return
+        if ("/responses/" in u or "/manual/" in u or "/combined/" in u
+                or "/roomguests/" in u or "/opened/" in u):
+            route.fulfill(status=200, content_type="application/json",
+                          body="{}"); return
+        fb(route, request)
+    q = b.new_page(viewport={"width": 390, "height": 930})
+    q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(
+        status=200, content_type="application/javascript", body=SDK))
+    q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+        content_type="application/javascript", body="/*n*/"))
+    q.route("**firebasedatabase.app/**", all_fb)
+    # Published, with the main tagged for nuts: a confirmed nut allergy
+    # would get the red conflict edge, and villa 4's must not.
+    q.route("**/menu.json*", lambda r,_: r.fulfill(status=200,
+        content_type="application/json", body=json.dumps(menu)))
+    q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1800)
+    ALL_READ = """()=>{
+      const red='rgb(168, 50, 30)';
+      const rows=[...document.querySelectorAll('#listBookings .row')];
+      const rm=r=>{const e=r.querySelector('.rm');return e?e.textContent.trim():'';};
+      const cs=e=>e?getComputedStyle(e):null;
+      const pill=(r,t)=>[...r.querySelectorAll('.dpill')].find(p=>p.textContent.trim()===t);
+      const one=v=>rows.find(r=>rm(r)===v);
+      const px=e=>{const s=cs(e);return s?{bg:s.backgroundColor,fg:s.color}:null;};
+      const a=document.getElementById('allToggle'), x=document.getElementById('addExt');
+      /* any red, text or fill, anywhere inside a possible */
+      const redIn=[...document.querySelectorAll('.row.maybe, .row.maybe *')].some(e=>{
+        const s=getComputedStyle(e);
+        return s.color===red || s.backgroundColor===red ||
+               s.backgroundColor.indexOf('168, 50, 30')>-1;});
+      return {
+        order: rows.map(rm),
+        maybe: [...document.querySelectorAll('#listBookings .row.maybe')].map(rm),
+        all: a ? {txt:a.textContent.trim(), sec:!!a.closest('#listSec'),
+                  on:a.getAttribute('aria-checked'), bg:cs(a).backgroundColor} : null,
+        add: x ? x.textContent.trim() : null,
+        covers:+nCovers.textContent, await:+nAwait.textContent,
+        makeup: tablesLine.textContent,
+        v4: one('4') ? {txt:one('4').querySelector('.row-pax').textContent,
+                        name:cs(one('4').querySelector('.row-name')).color,
+                        conflict:one('4').classList.contains('conflict'),
+                        nut:px(pill(one('4'),'Nut')), veg:px(pill(one('4'),'Vegetarian'))} : null,
+        v7: one('7') ? px(pill(one('7'),'No dietaries')) : null,
+        v3: one('3') ? px(pill(one('3'),'Shellfish')) : null,
+        v3name: one('3') ? cs(one('3').querySelector('.row-name')).color : null,
+        redIn: redIn };}"""
+    s0 = q.evaluate(ALL_READ)
+    ck("All sits in the Bookings row, beside Add +",
+       s0["all"] and s0["all"]["txt"] == "All" and s0["all"]["sec"])
+    ck("+ Add reservation is now Add +", s0["add"] == "Add +")
+    ck("All starts unlit, and the list is the confirmed one as before",
+       s0["all"]["on"] == "false" and s0["order"] == ["3"] and not s0["maybe"])
+    q.locator("#allToggle").click(); q.wait_for_timeout(300)
+    s1 = q.evaluate(ALL_READ)
+    ck("All lit wears the Selected dress", s1["all"]["on"] == "true"
+       and s1["all"]["bg"] != s0["all"]["bg"])
+    ck("All adds every in-house villa with no answer tonight, in villa order",
+       s1["order"] == ["3", "4", "7", "9"] and s1["maybe"] == ["4", "7", "9"])
+    ck("a declined villa never comes back as a possible", "8" not in s1["order"])
+    ck("nor a villa staff marked vacant, nor an empty one",
+       "10" not in s1["order"] and "12" not in s1["order"])
+    ck("a possible says Awaiting where a confirmed row says its covers",
+       s1["v4"] and s1["v4"]["txt"].strip() == "Awaiting")
+    ck("the chef's case: last night's allergy shows tonight, from the booking",
+       s1["v4"]["nut"] is not None and s1["v4"]["veg"] is not None)
+    ck("a possible's allergy is solid grey, not red",
+       s1["v4"]["nut"] == {"bg": "rgb(119, 119, 111)", "fg": "rgb(255, 255, 255)"})
+    ck("a possible's preference is a grey tint",
+       s1["v4"]["veg"]["bg"] == "rgba(28, 28, 26, 0.07)"
+       and s1["v4"]["veg"]["fg"] == s1["v4"]["name"])
+    ck("a possible's none to declare is grey too, not the confirmed green",
+       s1["v7"] and s1["v7"]["bg"] == "rgba(28, 28, 26, 0.07)")
+    ck("and the possible's name is grey where a confirmed one is ink",
+       s1["v4"]["name"] != s1["v3name"])
+    ck("a confirmed allergy stays red beside them",
+       s1["v3"] and s1["v3"]["bg"] == "rgb(168, 50, 30)")
+    ck("nothing on a possible is red, not even against tonight's nut dish",
+       not s1["redIn"] and not s1["v4"]["conflict"])
+    ck("covers, awaiting and the table make-up still count confirmed only",
+       s1["covers"] == s0["covers"] == 2 and s1["await"] == 3
+       and s1["makeup"] == s0["makeup"])
+    q.locator("#listBookings .row.maybe").first.click(); q.wait_for_timeout(300)
+    ck("a possible's row opens its villa, as its tile does",
+       "Villa 4" in q.locator("#sheet h3").first.inner_text())
+    closeIfOpen(q)
+    q.reload(); q.wait_for_timeout(1800)
+    s2 = q.evaluate(ALL_READ)
+    ck("the phone remembers All was left lit",
+       s2["all"]["on"] == "true" and s2["maybe"] == ["4", "7", "9"])
+    q.locator("#allToggle").click(); q.wait_for_timeout(300)
+    q.reload(); q.wait_for_timeout(1800)
+    s3 = q.evaluate(ALL_READ)
+    ck("and unlit, once put back", s3["all"]["on"] == "false" and not s3["maybe"])
     q.close()
 
     # ── dining history: the stay's past nights on the villa sheet ───────

@@ -3,14 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mock &middot; Reservations, Confirmed | Possibles</title>
+<title>Mock &middot; Reservations, All</title>
 <!-- Mock, 24 Sep. The chef, via the owner: a guest who has not confirmed
      dinner tonight is not on the Reservations list, so their dietaries
      vanish from every night after the one they confirmed. The ask: a
-     switch under the tiles between Confirmed and Possibles, where
-     Possibles adds every in-house villa that has not declined, dietaries
-     shown as a confirmed row shows them, in grey. Open with
-     ?view=possibles to start on the proposal. -->
+     way to see every guest who could still be dining, not only the
+     confirmed, their dietaries shown as a confirmed row shows them, in
+     grey. Revised the same day at the owner's word: not a two-way switch
+     on a row of its own - it took too much height - but one button the
+     size of the Add button, called All, in the Bookings row; and
+     "+ Add reservation" becomes "Add +". Open with ?view=all to start
+     with All on. -->
 <link rel="stylesheet" href="nala-ui2.css?v=7">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
@@ -416,18 +419,17 @@ body.readonly .comb-undo { display:none; }
    own page CSS, copied verbatim on 24 Sep so the board draws exactly as it
    does live. ─────────────────────────────────────────────────────────── */
 
-/* The list's view switch. tally.html's own .seg - the Add reservation
-   sheet's External | In-house room - so the lit half wears the ui2
-   Selected dress (grey fill, ink border) with nothing new to learn. It
-   sits between the Bookings row and the rows it switches. */
-.viewseg { margin:0 0 4px; }
+/* All and Add + ride together at the right of the Bookings row, in the
+   row's own button dress (.sec a). All lit wears the ui2 Selected dress,
+   as Select multiple does. margin-left:auto keeps the pair on the right
+   when a long make-up pushes it onto a line of its own. */
+.secbtns { display:flex; gap:8px; margin-left:auto; }
 
 /* A possible: in house tonight, has not said yes or no to dinner. Grey,
    the owner's word, and the colour law's own grey for "waiting on the
    other side". Same row, same pills, same order - only the colour moves,
    so a confirmed booking and a possible read apart at arm's length. */
 .row.maybe .row-name, .row.maybe .row-name .rm { color:var(--mid); }
-.row.maybe .row-name .rm { font-weight:600; }
 .row.maybe .row-pax { color:var(--mid); }
 /* Same shapes as the red ones, in grey: a preference is a tint at full
    label, an allergy is solid with "allergy" dropped. Red stays for a
@@ -484,12 +486,11 @@ body.ui2 { max-width:none; }
 
   <div class="sec" id="listSec">
     <span class="makeup">4 twos &middot; 1 four &middot; 5 tables</span>
-    <a href="#">+ Add reservation</a>
-  </div>
-  <!-- PROPOSED: the switch -->
-  <div class="seg viewseg" id="viewSeg">
-    <button data-v="confirmed">Confirmed</button>
-    <button data-v="possibles">Possibles</button>
+    <!-- PROPOSED: All, and Add + renamed from "+ Add reservation" -->
+    <span class="secbtns">
+      <a href="#" id="allToggle" role="switch" aria-checked="false">All</a>
+      <a href="#">Add +</a>
+    </span>
   </div>
   <div id="listBookings"></div>
 
@@ -500,11 +501,11 @@ body.ui2 { max-width:none; }
 </div>
 
 <div class="mocknote">
-  <b>Mock, 24 Sep &middot; Reservations, Confirmed | Possibles.</b>
+  <b>Mock, 24 Sep &middot; Reservations, All.</b>
   No database behind it. The board above is tally.html's own CSS.
   <ul>
-    <li><b>Confirmed</b> is the list exactly as it is today.</li>
-    <li><b>Possibles</b> adds every villa that is in house tonight and has
+    <li><b>All</b> off is the list exactly as it is today.</li>
+    <li><b>All</b> on adds every villa that is in house tonight and has
       not answered dinner, in villa order among the confirmed ones.
       Declined and vacant villas never appear.</li>
     <li>A possible is grey: the name, <i>Awaiting</i> where the covers go,
@@ -515,7 +516,8 @@ body.ui2 { max-width:none; }
       they confirmed shows on every night after.</li>
     <li>Tiles, Covers and the table make-up do not change: they count
       confirmed diners only.</li>
-    <li>The phone remembers which view it was last left on.</li>
+    <li>The phone remembers whether All was last left on.</li>
+    <li>+ Add reservation is renamed Add +.</li>
   </ul>
 </div>
 
@@ -601,27 +603,26 @@ function row(title, v, maybe){
     pills(v) + '</div>';
 }
 
-function list(view){
+function list(all){
   var h = '';
   for (var n = 1; n <= 17; n++){
     var v = V[n];
     if (v.st === 'in') h += row('<span class="rm">' + n + '</span>  ' + v.name, v, false);
-    else if (v.st === 'await' && view === 'possibles')
+    else if (v.st === 'await' && all)
       h += row('<span class="rm">' + n + '</span>  ' + v.name, v, true);
   }
   EXT.forEach(function(e){ h += row(e.name + '<span class="tag">External</span>', e, false); });
   document.getElementById('listBookings').innerHTML = h;
-  [].forEach.call(document.querySelectorAll('#viewSeg button'), function(b){
-    b.classList.toggle('on', b.getAttribute('data-v') === view);
-  });
+  var a = document.getElementById('allToggle');
+  a.classList.toggle('active', all);
+  a.setAttribute('aria-checked', all ? 'true' : 'false');
 }
 
-var start = new URLSearchParams(location.search).get('view') === 'possibles'
-  ? 'possibles' : 'confirmed';
-document.getElementById('viewSeg').onclick = function(e){
-  var b = e.target.closest('button'); if (b) list(b.getAttribute('data-v'));
+var ALL = new URLSearchParams(location.search).get('view') === 'all';
+document.getElementById('allToggle').onclick = function(e){
+  e.preventDefault(); ALL = !ALL; list(ALL);
 };
-tiles(); list(start);
+tiles(); list(ALL);
 </script>
 </body>
 </html>
