@@ -499,28 +499,33 @@ function fetchStays(dateKey){
        marks rather than wrong ones. */
     fetch(DB + '/opened/' + dateKey + '.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
+    /* The reservation's own answers, for every occupied villa: one dietary
+       list per person, living on the reservation not the night, so the boards
+       see it even when the viewed night holds no dinner cell. Read WHOLE now
+       and plucked per villa, in place of a fetch per villa: the RTDB REST
+       endpoint is HTTP/1.1, so those per-villa reads ran six at a time, and
+       this reader is shared by the Dashboard, Reservations, the Front Desk's
+       neighbours, the Guest profile and more - so one read here speeds all of
+       them. /bookings is the node the Spa badge and spa.html already read
+       whole. A failed read leaves the villas unset and the merge falls back to
+       the night, exactly as a failed per-villa read did - not a blank board. */
+    fetch(DB + '/bookings.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; })
   ]).then(function(res){
     DINNER_CELLS = res[1] || {};
     OPENED_MARKS = res[2] || {};
-    /* One more read per occupied villa: the reservation's own answers. There
-       is one dietary list per person and it lives on the reservation, not on
-       a night, so the boards have to be able to see it even when the viewed
-       night holds no dinner cell at all. A failed read leaves that villa's
-       entry empty and the merge falls back to the night, which is exactly
-       yesterday's behaviour rather than a blank board. */
-    var stays = res[0] || {}, map = {};
-    return Promise.all(Object.keys(stays).map(function(v){
+    var stays = res[0] || {}, all = res[3] || {}, map = {};
+    Object.keys(stays).forEach(function(v){
       var id = stays[v] && stays[v].id;
-      if (!id) return null;
-      return fetch(DB + '/bookings/' + id + '/prearrival.json?v=' + Date.now())
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .catch(function(){ return null; })
-        .then(function(p){ if (p) map[String(v)] = p; });
-    })).then(function(){
-      PREARRIVAL_BY_VILLA = map;
-      return res[0];
+      if (!id) return;
+      var b = all[id];
+      var p = (b && b.prearrival) ? b.prearrival : null;
+      if (p) map[String(v)] = p;   /* unset villa falls back to the night */
     });
+    PREARRIVAL_BY_VILLA = map;
+    return res[0];
   });
 }
 

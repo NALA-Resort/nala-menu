@@ -72,6 +72,9 @@ def fb(route,request):
     elif "/internal/" in u:
         k=u.split("/internal/")[1].split(".json")[0]
         body=json.dumps(internal[k]) if k in internal else "null"
+    elif u.split("?")[0].endswith("/bookings.json"):
+        # fetchStays reads prearrival from the whole node now, plucked by id.
+        body=json.dumps({bid:{"prearrival":rec} for bid,rec in prearrival.items()})
     elif "/bookings/" in u and "/pms" in u:
         k=u.split("/bookings/")[1].split("/")[0]
         body=json.dumps(PMSREC[k]) if k in PMSREC else "null"
@@ -521,6 +524,9 @@ with sync_playwright() as p:
         if "/stays/" in u:
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps(stays7)); return
+        if u.split("?")[0].endswith("/bookings.json"):
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps({BID7: {"prearrival": pre7}})); return
         if "/bookings/" + BID7 + "/prearrival" in u:
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps(pre7)); return
@@ -892,6 +898,10 @@ with sync_playwright() as p:
         if "/stays/" + today in u:
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps(FORM_STAYS)); return
+        if u.split("?")[0].endswith("/bookings.json"):
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps({k: {"prearrival": v}
+                                           for k, v in FORM_PRE.items()})); return
         if "/bookings/" in u and "/prearrival" in u:
             k = u.split("/bookings/")[1].split("/")[0]
             if k in FORM_PRE:

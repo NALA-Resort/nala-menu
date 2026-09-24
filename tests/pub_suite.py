@@ -102,7 +102,7 @@ def fb(route, request):
         route.fulfill(status=200, content_type="application/json",
                       body=json.dumps(STATE["tags"])); return
     if "/stays/" in u or "/dinner/" in u or "/responses/" in u \
-       or "/prearrival.json" in u:
+       or "/prearrival.json" in u or u.split("?")[0].endswith("/bookings.json"):
         if STATE["failHouse"]:
             route.fulfill(status=401, content_type="application/json",
                           body='{"error":"Permission denied"}'); return
@@ -112,6 +112,11 @@ def fb(route, request):
             body = STATE["dinner"]
         elif "/responses/" in u:
             body = STATE["responses"]
+        elif u.split("?")[0].endswith("/bookings.json"):
+            # fetchStays reads prearrival from the whole node now, plucked by
+            # id - the same records the per-id branch below serves.
+            body = {bid: {"prearrival": rec}
+                    for bid, rec in (STATE["pre"] or {}).items()}
         else:
             bid = u.split("/bookings/")[1].split("/")[0]
             body = STATE["pre"].get(bid)

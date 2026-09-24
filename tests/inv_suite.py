@@ -859,6 +859,10 @@ with sync_playwright() as p:
         if "/invites/" in u:
             route.fulfill(status=200, content_type="application/json",
                           body="{}"); return
+        if u.split("?")[0].endswith("/bookings.json"):
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps({k: {"prearrival": v}
+                                           for k, v in F_FORMS.items()})); return
         if "/bookings/" in u and "/prearrival" in u:
             k = u.split("/bookings/")[1].split("/")[0]
             route.fulfill(status=200, content_type="application/json",

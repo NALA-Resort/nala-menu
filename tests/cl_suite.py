@@ -2130,6 +2130,10 @@ with sync_playwright() as p:
         if "/stays/" + today in u:
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps(eta_tonight)); return
+        if u.split("?")[0].endswith("/bookings.json"):
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps({k: {"prearrival": v}
+                                           for k, v in eta_pre.items()})); return
         if "/prearrival" in u:
             bid = u.split("/bookings/")[1].split("/")[0]
             route.fulfill(status=200, content_type="application/json",

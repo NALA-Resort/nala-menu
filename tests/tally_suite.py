@@ -1939,6 +1939,10 @@ with sync_playwright() as p:
         if "/dinner/" + today in u:
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps(PRE_CELLS)); return
+        if u.split("?")[0].endswith("/bookings.json"):
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps({k: {"prearrival": v}
+                                           for k, v in PRE_FORM.items()})); return
         if "/bookings/" in u and "/prearrival" in u:
             k = u.split("/bookings/")[1].split("/")[0]
             route.fulfill(status=200, content_type="application/json",
@@ -2031,6 +2035,10 @@ with sync_playwright() as p:
         if "/dinner/" + today in u:
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps(ALL_CELLS)); return
+        if u.split("?")[0].endswith("/bookings.json"):
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps({k: {"prearrival": v}
+                                           for k, v in ALL_PRE.items()})); return
         if "/bookings/" in u and "/prearrival" in u:
             k = u.split("/bookings/")[1].split("/")[0]
             route.fulfill(status=200, content_type="application/json",

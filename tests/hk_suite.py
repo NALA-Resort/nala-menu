@@ -187,6 +187,8 @@ with sync_playwright() as p:
         if "/stays/"+today in u: give(two_tonight); return
         if "/hk/"+today in u: give(two_hk); return
         if "/hk/" in u: give(two_prev); return
+        if u.split("?")[0].endswith("/bookings.json"):
+            give({k: {"prearrival": v} for k, v in two_pre.items()}); return
         if "/prearrival" in u:
             bid = u.split("/bookings/")[1].split("/")[0]
             give(two_pre.get(bid)); return
