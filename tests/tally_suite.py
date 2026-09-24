@@ -2127,7 +2127,38 @@ with sync_playwright() as p:
     q.locator("#listBookings .row.maybe").first.click(); q.wait_for_timeout(300)
     ck("a possible's row opens its villa, as its tile does",
        "Villa 4" in q.locator("#sheet h3").first.inner_text())
+    # The owner's 24 Sep screenshot: villa 5's sheet showed a name alone, so
+    # the allergy the list had just shown vanished again one tap later.
+    sh = q.evaluate("""()=>{const s=document.querySelector('#sheet .gd-sub');
+      const a=s&&s.querySelector('.alrg-maybe');
+      return {txt:s?s.textContent:'', al:a?a.textContent:'',
+              fg:a?getComputedStyle(a).color:'', sub:s?getComputedStyle(s).color:'',
+              red:!!(s&&s.querySelector('.alrg'))};}""")
+    ck("an unanswered villa's sheet shows the guest's dietaries",
+       "Vegetarian" in sh["txt"] and sh["al"] == "Nut allergy")
+    ck("in grey, allergy included, as the All list draws them",
+       sh["fg"] != "" and sh["fg"] == sh["sub"] and not sh["red"])
     closeIfOpen(q)
+    q.evaluate("()=>openRoom(3, roomState(3))"); q.wait_for_timeout(300)
+    ck("a confirmed guest's sheet keeps the red allergy",
+       q.evaluate("()=>{const a=document.querySelector('#sheet .gd-sub .alrg');"
+                  "return a?getComputedStyle(a).color:''}") == "rgb(168, 50, 30)")
+    closeIfOpen(q)
+    # Edge to edge, as every other board. Without it the owner's iPhone ended
+    # the pinned area about a hundred points above the screen's bottom, and
+    # the list showed beneath the footer and beneath an open sheet (24 Sep).
+    # Only a real phone shows that gap; this holds the page to the setting
+    # that closes it, and to the padding that keeps the header clear of the
+    # status bar once it is on.
+    vp = q.evaluate("""()=>{const m=document.querySelector('meta[name=viewport]');
+      let pad='';
+      for (const ss of document.styleSheets){ let rs; try{rs=ss.cssRules}catch(e){continue}
+        /* cssText, not style.paddingTop: a shorthand carrying env() leaves
+           its longhands empty in the CSSOM until the value is computed */
+        for (const r of rs) if (r.selectorText==='body' && /padding/.test(r.cssText)) pad=r.cssText; }
+      return {m:m?m.content:'', pad:pad};}""")
+    ck("Reservations is edge to edge like every other board, clear of the status bar",
+       "viewport-fit=cover" in vp["m"] and "safe-area-inset-top" in vp["pad"])
     q.reload(); q.wait_for_timeout(1800)
     s2 = q.evaluate(ALL_READ)
     ck("the phone remembers All was left lit",

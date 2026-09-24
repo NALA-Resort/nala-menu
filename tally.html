@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <title>Nala · Tonight's Numbers</title>
 <link rel="stylesheet" href="nala-ui2.css?v=7">
@@ -23,11 +23,20 @@
           /* state palette: dining green, declined terracotta, vacant slate */
           --green:#5E7D67;
           --slate:#57575E;  --slate-t:rgba(87,87,94,.10);     --slate-b:rgba(87,87,94,.28)}
-  body { padding:28px 24px 0 }
+  /* Edge to edge, as every other board is (viewport-fit=cover above, the
+     safe-area padding here and on the error bar). This was the last live
+     board without it, and on the owner's iPhone that left the screen's
+     pinned area - the sticky footer, the sheet's backdrop, the select bar -
+     ending about a hundred points above the bottom, with the list showing
+     through beneath: 24 Sep, the first time All made the list outgrow the
+     screen. The side and top gaps stay this board's own. */
+  body { padding:calc(28px + env(safe-area-inset-top)) 24px 0 }
   .wrap { max-width:var(--appw); margin:0 auto; }
 
   .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
-            background:#A8321E; color:#fff; padding:12px 18px;
+            background:#A8321E; color:#fff;
+            /* edge to edge now: clear of the phone's status bar */
+            padding:calc(12px + env(safe-area-inset-top)) 18px 12px;
             font-family:var(--ui-font); font-size:var(--t2); line-height:1.5;
             transform:translateY(-100%); transition:transform .25s; }
   .errbar.show { transform:translateY(0); }
@@ -180,6 +189,9 @@
                margin-left:auto; justify-content:flex-end; }
   .bub-slot { width:20px; flex:0 0 20px; }
   .alrg { color:var(--red); font-style:normal; }
+  /* The same allergy on a guest who has not answered tonight: grey, as the
+     All list draws them, and bold where the list's pill is solid. */
+  .alrg-maybe { font-style:normal; font-weight:600; }
   /* An allergy is a solid red pill with the word "allergy" dropped, since the
      fill already says it. A preference is a tinted pill at full label. The
      pills take the whole row width, not just the half beside the pax count. */
@@ -1506,7 +1518,9 @@ function paxPicker(max, get, set){
   paint();
 }
 
-function guestDataHTML(g, knownName, known){
+/* unanswered: the guest has not answered tonight, so an allergy is not red -
+   the All list's rule (.row.maybe) - but still set apart from a preference. */
+function guestDataHTML(g, knownName, known, unanswered){
   g = g || {};
   known = known || {};
   var name = g.name || knownName || '';
@@ -1526,7 +1540,7 @@ function guestDataHTML(g, knownName, known){
   /* The head count used to sit here as well. It is a row in the snapshot now,
      and printing it twice on one sheet was what pushed a long name onto a
      second line and into the menu button. */
-  var d = dietHTML(g.diets, ' \u00b7 ', 'alrg');
+  var d = dietHTML(g.diets, ' \u00b7 ', unanswered ? 'alrg-maybe' : 'alrg');
   var h = '';
   /* The name is the control. An eye beside it was one more thing in a row
      already tight against the menu button, and the name is the obvious thing
@@ -1666,9 +1680,15 @@ function wireGuestPanel(g, known){
          the one bug reported twice on 20 Aug. The screen is the same fact
          for every login, so the panel's room is too, and anything longer
          scrolls inside the panel. */
-      var eyR = eye.getBoundingClientRect();
+      /* From where the panel really starts: the foot of the whole name
+         block (top:100% plus its 8px margin), not the foot of the name.
+         The block also carries the dietary and note lines, and measuring
+         from the name overshot the screen by their height - a confirmed
+         diet had that all along, and every unanswered guest got it on
+         24 Sep, when their sheets began showing dietaries. */
+      var startY = panel.parentNode.getBoundingClientRect().bottom + 8;
       var room = Math.max(140,
-        Math.floor((window.innerHeight || 800) - eyR.bottom - 28));
+        Math.floor((window.innerHeight || 800) - startY - 20));
       panel.style.maxHeight = room + 'px';
     }
   }
@@ -2096,8 +2116,15 @@ function openRoom(n, st){
         '<button class="comb-undo" id="oUncomb">Seat separately</button></div>'
       : '';
     SNAP_VILLA = n;
+    /* A guest who has not answered tonight still has their dietaries: the
+       booking's, the record the All list draws (possibleOf), in its grey.
+       The sheet was handed nothing for them, so it showed a name alone, and
+       an allergy vanished from its villa on every night the guest had not
+       answered - the owner's 24 Sep screenshot, villa 5. */
+    var gShown = (st && st.g) ||
+      (hasGuestProfile(roomguests[String(n)]) ? possibleOf(n) : null);
     sheet.innerHTML = '<h3>Villa '+n+'</h3>' + combHtml +
-      guestDataHTML(st && st.g, knownName, roomguests[String(n)]) + inner;
+      guestDataHTML(gShown, knownName, roomguests[String(n)], !st) + inner;
     SNAP_VILLA = n;
     wireGuestPanel(st && st.g, roomguests[String(n)]);
     /* Dining history reads and never writes, so the readonly dress leaves it
