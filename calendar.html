@@ -116,16 +116,16 @@
      A segmented control; the lit segment wears the Selected dress (grey
      fill, ink border), the same treatment Expand carries elsewhere. */
   .selrow { display:flex; align-items:center; gap:8px; margin:2px 0 7px; }
-  .selcap { font-family:var(--ui-font); font-size:9px; letter-spacing:.14em;
+  .selcap { font-family:var(--ui-font); font-size:9px; /* off-scale: micro-caption below --t1, the shared sheet's stat-l size - the "Colour by" label, matching the monthrow's 9px */ letter-spacing:.14em;
     text-transform:uppercase; color:var(--mid); white-space:nowrap; }
   .modes { display:flex; gap:6px; flex:1; overflow-x:auto; -webkit-overflow-scrolling:touch; }
   .mbtn { flex:0 0 auto; height:30px; padding:0 11px; border:1px solid var(--rule);
     border-radius:8px; background:none; color:var(--mid); font-family:var(--ui-font);
-    font-size:12px; white-space:nowrap; }
+    font-size:var(--t1); white-space:nowrap; }
   .mbtn.on { background:rgba(28,28,26,.045); border-color:var(--ink);
     color:var(--ink); font-weight:600; }
   .clegend { display:none; flex-wrap:wrap; gap:4px 12px; margin:0 2px 8px;
-    font-family:var(--ui-font); font-size:11px; color:var(--mid); }
+    font-family:var(--ui-font); font-size:11px; /* off-scale: the legend rides the compressed selector row, a step below --t1 */ color:var(--mid); }
   .clegend.show { display:flex; }
   .clegend .lg { display:inline-flex; align-items:center; gap:5px; }
   .clegend .sw { width:12px; height:12px; border-radius:4px; border:1.2px solid var(--rule);
