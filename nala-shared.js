@@ -547,7 +547,15 @@ var PREARRIVAL_BY_VILLA = {};
    Sheet both render it, and two copies of when the guest lands is how screen
    and paper drift apart. The Worker holds the server side mirror. */
 function effectiveEta(villa){
-  var pre = PREARRIVAL_BY_VILLA[String(villa)] || {};
+  return effectiveEtaOf(PREARRIVAL_BY_VILLA[String(villa)]);
+}
+/* The same reading, handed the record rather than a villa. The Front Desk
+   reads each arrival's prearrival itself and never fills the map above, so
+   until 25 Sep its rows read the guest's slot on their own: villa 8 asked
+   for before 2pm, reception approved 1pm, and the desk still said Before
+   2pm while the cleaners worked to 1pm. */
+function effectiveEtaOf(pre){
+  pre = pre || {};
   var ap = Number(pre.arriveApproved);
   if (pre.arriveApproved != null && ap >= 11 && ap <= 23)
     return { h: ap, disp: hour12(ap), early: ap < 14 };

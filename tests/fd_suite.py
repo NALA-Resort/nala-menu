@@ -229,14 +229,16 @@ with sync_playwright() as p:
     # villa WITHIN each section rather than globally.
     todo = pg.evaluate("()=>[...document.querySelectorAll('.arr')].filter(e=>!e.className.includes('is-done')).map(e=>e.dataset.villa)")
     doneV = pg.evaluate("()=>[...document.querySelectorAll('.arr.is-done')].map(e=>e.dataset.villa)")
-    # Slots are stored as keys, so the order is exact rather than parsed:
-    # b9 before 2pm, then 3pm from b6 and b12, then b4 at 4pm, then the guests
-    # who gave no time. Villa 6's answer counts even though it was left on a
-    # form the guest never finished: a stated time is a stated time.
-    ck("arrivals are ordered by the slot they chose",
-       todo[:4] == ["9", "6", "12", "4"])
+    # By the hour each row shows, the Cleans board's own reading: b9 before
+    # 2pm, then the 3pm arrivals by villa, then the guests who gave no time.
+    # Two of those 3pm are reception's: b4 asked for 4pm and was approved
+    # for 3pm, and b8 never touched the form. Villa 6's answer counts even
+    # though it was left on a form the guest never finished: a stated time
+    # is a stated time.
+    ck("arrivals are ordered by the time the row shows",
+       todo[:5] == ["9", "4", "6", "8", "12"])
     ck("and guests who gave no time sort last, by villa",
-       todo[4:] == sorted(todo[4:], key=int))
+       todo[5:] == ["2", "14"])
     ck("and the ones still to do come first, because that is the job",
        villas == todo + doneV)
     # Arrived is a fraction: the number alone says nothing without the total.
@@ -268,9 +270,17 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.querySelectorAll('.arr .pill').length") == 0)
     ck("and no paper icon either, since an amber row already says no form",
        pg.evaluate("()=>document.querySelectorAll('.arr .paper').length") == 0)
-    # Before a guest arrives, the ETA is the fact reception plans around.
-    ck("the arrival slot shows on the list, without opening anything",
-       "4pm" in pg.evaluate("()=>document.querySelector('.arr[data-villa=\"4\"] .arr-s').textContent"))
+    # Before a guest arrives, the ETA is the fact reception plans around -
+    # the hour agreed, not the hour asked. b4 asked for 4pm and reception
+    # approved 3pm, the hour the Cleans board has the villa ready for.
+    def stay_line(v):
+        return pg.evaluate("()=>document.querySelector('.arr[data-villa=\"%s\"] .arr-s').textContent" % v)
+    ck("the arrival time shows on the list, without opening anything",
+       "Before 2pm" in stay_line("9"))
+    ck("and where reception approved an hour, the row shows that hour",
+       "3pm" in stay_line("4") and "4pm" not in stay_line("4"))
+    ck("even for a guest who never touched the form",
+       "3pm" in stay_line("8"))
     ck("and carries more weight than the rest of the line",
        pg.evaluate("()=>!!document.querySelector('.arr[data-villa=\"4\"] .arr-s .eta')"))
     # Everyone here arrives today, so the range's first half is the same on
@@ -428,11 +438,38 @@ with sync_playwright() as p:
     ck("the nine slots run earliest to latest",
        pg.evaluate("()=>ETA_SLOTS.map(s=>s[0]).join()")
        == "before2,14,1430,15,1530,16,1630,17,after5")
+    #  Asked of rowEta, the function the row calls, not of a table beside
+    #  it: until 25 Sep this pinned a column of short forms while the row
+    #  ignored the hour reception had approved.
     ck("the row uses the short form so it does not truncate",
-       pg.evaluate("()=>ETA_SLOTS.map(s=>s[2]).join()")
+       pg.evaluate("()=>ETA_SLOTS.map(s=>rowEta({arriveSlot:s[0]})).join()")
        == "Before 2pm,2pm,2:30pm,3pm,3:30pm,4pm,4:30pm,5pm,After 5pm")
+    ck("and reception's hour wins over any slot, open ends included",
+       pg.evaluate("()=>[rowEta({arriveSlot:'before2',arriveApproved:13}),"
+                   "rowEta({arriveSlot:'after5',arriveApproved:19.5}),"
+                   "rowEta({arriveSlot:'16',arriveApproved:15}),"
+                   "rowEta({arriveApproved:11})].join()")
+       == "1pm,7:30pm,3pm,11am")
+    ck("and a booking that said nothing shows nothing",
+       pg.evaluate("()=>[rowEta(null),rowEta({}),rowEta({arriveNote:'x'})]"
+                   ".join('|')") == "||")
+    #  The whole ladder through the page's own sort: reception's hours among
+    #  the slots, the open ends either side of their hour, silence last.
+    ck("reception's hours sort among the slots by the hour they show",
+       pg.evaluate("""()=>sortRows([
+         {villa:'1',  pre:{arriveSlot:'after5'}},
+         {villa:'2',  pre:{arriveSlot:'17'}},
+         {villa:'3',  pre:{arriveSlot:'before2'}},
+         {villa:'4',  pre:{arriveSlot:'14'}},
+         {villa:'5',  pre:{arriveSlot:'before2', arriveApproved:13}},
+         {villa:'6',  pre:null},
+         {villa:'7',  pre:{arriveSlot:'before2', arriveApproved:11}},
+         {villa:'8',  pre:{arriveSlot:'after5', arriveApproved:19}},
+         {villa:'9',  pre:{arriveSlot:'16', arriveApproved:15}},
+         {villa:'10', pre:{arriveSlot:'15'}}
+       ]).map(r=>r.villa).join()""") == "7,5,3,4,9,10,2,1,8,6")
     ck("and only the two open ended ones demand a note",
-       pg.evaluate("()=>ETA_SLOTS.filter(s=>s[3]).map(s=>s[0]).join()")
+       pg.evaluate("()=>ETA_SLOTS.filter(s=>s[2]).map(s=>s[0]).join()")
        == "before2,after5")
 
     # ── tapping a completed row reads the answers back ──────────
@@ -446,7 +483,14 @@ with sync_playwright() as p:
     sumtxt = pg.locator(".sum").inner_text()
     ck("the dinner answer reads as a sentence", "Dining" in sumtxt and "2 guests" in sumtxt)
     ck("the dietary and whose it is", "Nut allergy" in sumtxt and "the daughter" in sumtxt)
-    ck("the arrival time they gave", "4pm" in sumtxt)
+    #  The hour the row shows, and beneath it what the guest asked for, since
+    #  that hour is reception's: the row cannot say who decided.
+    def arriving():
+        return pg.evaluate("""()=>{const r=[...document.querySelectorAll('.sum-r')]
+          .find(e=>e.querySelector('.sum-l').textContent==='Arriving');
+          return r?r.querySelector('.sum-v').innerText:null;}""")
+    ck("the arrival time: reception's hour, over the one they asked for",
+       arriving() == "3pm\nAsked for around 4pm")
     ck("the occasion", "anniversary" in sumtxt)
     ck("purpose, in words rather than a stored code", "A celebration" in sumtxt)
     # A wellness interest with no day or time is a note to nobody. When they
@@ -510,6 +554,8 @@ with sync_playwright() as p:
     pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
     ck("a companion only Mews knows reads back at the desk",
        "Eleni Papadopoulou" in pg.locator(".sum").inner_text())
+    ck("and a time that is only the guest's reads back in their words",
+       arriving() == "Before 2pm \u00b7 flight lands 11am")
     pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(300)
     pg.close()
 
@@ -991,6 +1037,15 @@ with sync_playwright() as p:
     if w:
         ck("and the guest's slot goes with it, untouched",
            json.loads(w[0]["b"])["arriveSlot"] == "before2")
+    # The owner's report, 25 Sep: villa 8 asked for before 2pm, reception
+    # approved 1pm, and the card still said Before 2pm. The row repaints
+    # from the saved record, so the hour just approved is the one it shows.
+    ck("the card shows the approved hour the moment it is saved",
+       "12pm" in stay_line("9") and "Before 2pm" not in stay_line("9"))
+    pg.wait_for_function("()=>backdrop.className.indexOf('show')<0", timeout=4000)
+    pg.locator('.arr[data-villa="9"]').click(); pg.wait_for_timeout(400)
+    ck("and opened, it says the hour is reception's over what they asked",
+       arriving() == "12pm\nAsked for before 2pm \u00b7 flight lands 11am")
     pg.close()
 
     # After 5pm is the other open end: the hour is pinned, not approved.

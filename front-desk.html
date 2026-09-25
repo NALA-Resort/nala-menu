@@ -496,7 +496,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=76"></script>
+<script src="nala-shared.js?v=77"></script>
 <script src="nala-cards.js?v=15"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -550,14 +550,26 @@ function arrivingOn(dayStays, key){
 
 /* Earliest expected arrival first, so the list reads in the order reception
    works through it. Guests who gave no time sort last rather than first:
-   assuming an unknown is early would push a known 2pm arrival below it. */
+   assuming an unknown is early would push a known 2pm arrival below it.
+
+   By the hour the row shows, from the same reader as rowEta: a row saying
+   1pm must sit where 1pm sits, and a time reception approved for a guest
+   who never touched the form is a time, not silence. The two open ends
+   share an hour with a stated time and go either side of it, Before 2pm
+   above 2pm and After 5pm below 5pm, which keeps every slot-only booking
+   in exactly the order the slots alone gave it. */
 function sortRows(rows){
+  function when(r){
+    var ev = effectiveEtaOf(r.pre);
+    if (!ev.disp) return null;
+    return [ev.h, ev.disp === '<2pm' ? -1 : ev.disp === '>5pm' ? 1 : 0];
+  }
   return rows.sort(function(a, b){
-    var ta = etaIndex(a.pre && a.pre.arriveSlot);
-    var tb = etaIndex(b.pre && b.pre.arriveSlot);
-    if (ta >= 0 && tb >= 0 && ta !== tb) return ta - tb;
-    if (ta >= 0 && tb <  0) return -1;
-    if (ta <  0 && tb >= 0) return 1;
+    var ta = when(a), tb = when(b);
+    if (ta && tb && (ta[0] !== tb[0] || ta[1] !== tb[1]))
+      return (ta[0] - tb[0]) || (ta[1] - tb[1]);
+    if (ta && !tb) return -1;
+    if (!ta && tb) return 1;
     return (+a.villa) - (+b.villa);
   });
 }
@@ -782,7 +794,7 @@ function rowHTML(r){
      than both fighting for the width and the ETA losing: it is one tap away in
      the summary, and an ETA truncated to "after..." helps nobody.
 
-     The slot only, never the note. Why they are early or late belongs in the
+     The time only, never the note. Why they are early or late belongs in the
      summary, not squeezed into a row that already truncates. */
   /* One party holding more than one villa. Reception needs to know before
      they start, because the answers and the table are shared. */
@@ -791,8 +803,8 @@ function rowHTML(r){
      both is the only way the two boards can agree about a party. */
   var withVillas = groupMatesText(r, ROWS);
   var bits = [nightsLabel(r.stay)];
-  var i = etaIndex(r.pre && r.pre.arriveSlot);
-  if (i >= 0) bits.push('<span class="eta">' + ETA_SLOTS[i][2] + '</span>');
+  var eta = rowEta(r.pre);
+  if (eta) bits.push('<span class="eta">' + esc(eta) + '</span>');
   else if (r.stay.adults)
     bits.push(r.stay.adults + (Number(r.stay.adults)===1 ? ' adult' : ' adults'));
   var open = OPEN === r.villa;
@@ -857,29 +869,42 @@ var ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-
    somebody's phrasing. Free text was tried and it parses "late morning" and
    "after 5pm" correctly often enough to be trusted and wrongly often enough
    to matter, which is the worst combination. */
-/* Key, the guest's own wording, the short form for the row, and whether the
-   slot wants a note. The middle column matches prearrival.html word for word,
-   for the same reason as the purposes above. */
+/* Key, the guest's own wording, and whether the slot wants a note. The
+   middle column matches prearrival.html word for word, for the same reason
+   as the purposes above. The row's short form is rowEta, below. */
 var ETA_SLOTS = [
-  ['before2', 'Before 2pm',    'Before 2pm', true],
-  ['14',      'Around 2pm',    '2pm',        false],
-  ['1430',    'Around 2:30pm', '2:30pm',     false],
-  ['15',      'Around 3pm',    '3pm',        false],
-  ['1530',    'Around 3:30pm', '3:30pm',     false],
-  ['16',      'Around 4pm',    '4pm',        false],
-  ['1630',    'Around 4:30pm', '4:30pm',     false],
-  ['17',      'Around 5pm',    '5pm',        false],
-  ['after5',  'After 5pm',     'After 5pm',  true]
+  ['before2', 'Before 2pm',    true],
+  ['14',      'Around 2pm',    false],
+  ['1430',    'Around 2:30pm', false],
+  ['15',      'Around 3pm',    false],
+  ['1530',    'Around 3:30pm', false],
+  ['16',      'Around 4pm',    false],
+  ['1630',    'Around 4:30pm', false],
+  ['17',      'Around 5pm',    false],
+  ['after5',  'After 5pm',     true]
 ];
 function etaIndex(slot){
   for (var i = 0; i < ETA_SLOTS.length; i++)
     if (ETA_SLOTS[i][0] === slot) return i;
   return -1;
 }
+/* What the guest said, in their own words: the slot and its note. */
 function etaLabel(p){
   var i = etaIndex(p && p.arriveSlot);
   if (i < 0) return '';
   return p.arriveNote ? ETA_SLOTS[i][1] + ' \u00b7 ' + p.arriveNote : ETA_SLOTS[i][1];
+}
+/* When they land, as the row says it. effectiveEtaOf in nala-shared.js
+   decides, the Cleans board's own reading: reception's approved hour wins
+   outright, the guest's slot stands next, and a booking that said nothing
+   shows nothing. Until 25 Sep the row read the slot alone, so an approved
+   1pm still read Before 2pm here. The time itself, or the two open ends in
+   words: Before 2pm, After 5pm. */
+function rowEta(p){
+  var d = effectiveEtaOf(p).disp;
+  if (!d) return '';
+  var w = etaWord(d);
+  return w.charAt(0).toUpperCase() + w.slice(1);
 }
 
 /* The glyph is tall and narrow - 18.5 units of 24 high but only 11.3 wide -
@@ -998,7 +1023,17 @@ function summaryHTML(r){
   }
   h += sumRow('Dietary', diet);
 
-  if (etaLabel(r.pre)) h += sumRow('Arriving', esc(etaLabel(r.pre)));
+  /* The hour the row above shows. Where that is reception's rather than the
+     slot's, what the guest asked for goes underneath: the row cannot say
+     who decided, and this is where reception looks to find out. Compared
+     through rowEta rather than by reading arriveApproved here, so which
+     field wins stays the shared reader's call. */
+  var when = rowEta(r.pre), asked = etaLabel(r.pre);
+  if (when && when !== rowEta({ arriveSlot: r.pre && r.pre.arriveSlot }))
+    h += sumRow('Arriving', esc(when) + (asked ?
+      '<br><span style="color:var(--mid);font-style:italic">Asked for ' +
+      esc(asked.charAt(0).toLowerCase() + asked.slice(1)) + '</span>' : ''));
+  else if (asked) h += sumRow('Arriving', esc(asked));
   if (a.purpose.length) h += sumRow('Purpose', esc(a.purpose.join(' \u00b7 ')));
   if (a.approach)  h += sumRow('Dining', esc(APPROACH_LABEL[a.approach] || a.approach));
   if (a.occasion)  h += sumRow('Occasion', esc(a.occasion));
@@ -1825,7 +1860,7 @@ function openGuest(r){
           paintEta();
         };
         box.appendChild(b);
-        if (a.arriveSlot === sl[0] && sl[3]) wantsNote = true;
+        if (a.arriveSlot === sl[0] && sl[2]) wantsNote = true;
       });
     });
     /* The note only appears for the two open ended slots, which is where the
