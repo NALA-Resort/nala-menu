@@ -88,56 +88,60 @@
      emptied, the shared sheets inlined once so this file carries no ?v=.
      Nothing works on it. -->
 <style>
+  /* One look, on purpose, in either theme: a neutral grey surround, the
+     way a colour-proofing booth has one. A dark surround would make the
+     paper read lighter than it is, which is the one thing this page must
+     not do. So there are no dark tokens, and every colour is set here. */
+  :root{ --surround:#E4E4E0; --ink:#1B1B19; --mid:#5F5F58; --pill:rgba(28,28,26,.06);
+         --pill-on:rgba(28,28,26,.10); --field:#FFFFFF; --edge:rgba(28,28,26,.2);
+         color-scheme:light; }
   *{ box-sizing:border-box; }
   html, body{ margin:0; height:100%; }
-  body{ background:#E4E4E0; color:#1B1B19; display:flex; flex-direction:column;
-        height:100vh; height:100dvh;
+  body{ background:var(--surround); color:var(--ink); display:flex; flex-direction:column;
         font:14px/1.4 -apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
 
   .bar{ flex:0 0 auto; display:flex; flex-wrap:wrap; align-items:center;
-        gap:8px 16px; padding:calc(10px + env(safe-area-inset-top)) 16px 10px; }
+        gap:8px 16px; padding:10px 16px; }
   .bar h1{ font-size:16px; font-weight:600; margin:0; }
   /* Whole buttons wrap to a second line; a label never splits inside one. */
   .seg{ display:inline-flex; flex-wrap:wrap; gap:4px; }
-  .seg button{ font:inherit; font-size:14px; color:#1B1B19; background:rgba(28,28,26,.06);
+  .seg button{ font:inherit; font-size:14px; color:var(--ink); background:var(--pill);
                border:1px solid transparent; border-radius:999px; padding:6px 11px;
                white-space:nowrap; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   /* the house Selected dress: grey fill, ink border */
-  .seg button[aria-pressed="true"]{ background:rgba(28,28,26,.10); border-color:#1B1B19; font-weight:500; }
-  .seg button small{ color:#5F5F58; font-size:12px; }
-  select.pages{ font:inherit; font-size:14px; color:#1B1B19; background:#fff;
-                 border:1px solid rgba(28,28,26,.2); border-radius:999px; padding:6px 12px; }
-  details{ width:100%; font-size:13px; color:#5F5F58; }
+  .seg button[aria-pressed="true"]{ background:var(--pill-on); border-color:var(--ink); font-weight:500; }
+  .seg button small{ color:var(--mid); font-size:12px; }
+  select.pages{ font:inherit; font-size:14px; color:var(--ink); background:var(--field);
+                border:1px solid var(--edge); border-radius:999px; padding:6px 12px; }
+  :focus-visible{ outline:2px solid #1A66C2; outline-offset:2px; }
+  details{ width:100%; font-size:13px; color:var(--mid); }
   details summary{ cursor:pointer; }
+  .tbl{ overflow-x:auto; }
   table{ border-collapse:collapse; margin:6px 0 2px; font-variant-numeric:tabular-nums; }
-  td, th{ text-align:left; padding:3px 14px 3px 0; font-weight:normal; }
-  th{ color:#1B1B19; }
+  td, th{ text-align:left; padding:3px 14px 3px 0; font-weight:normal; white-space:nowrap; }
+  th{ color:var(--ink); }
   .chip{ display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px;
          margin-right:5px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.12); }
 
+  /* Each screen is a real 390pt page. Where there is room it shows at that
+     size; on a phone it is scaled down to sit inside the 16pt margin, so the
+     page inside still lays out at 390 rather than reflowing narrower. */
   .stage{ flex:1 1 auto; min-height:0; display:flex; justify-content:center; gap:24px;
           padding:0 16px 16px; }
-  .ph{ flex:0 0 auto; width:390px; display:none; flex-direction:column; min-height:0; }
+  .ph{ flex:0 0 auto; display:none; flex-direction:column; }
   .ph.on{ display:flex; }
-  .ph .cap{ font-size:13px; color:#5F5F58; margin:0 0 6px 2px; display:none; }
-  .ph iframe{ flex:1 1 auto; width:100%; border:0; border-radius:14px; background:#fff;
-              box-shadow:0 0 0 1px rgba(0,0,0,.08), 0 6px 18px rgba(0,0,0,.08); }
-  /* Wide enough for two phones side by side: show every page, in a grid
-     that scrolls, each at its real 390 by 844. */
+  .ph .cap{ font-size:13px; color:var(--mid); margin:0 0 6px 2px; display:none; }
+  .ph .scr{ overflow:hidden; border-radius:14px; background:#FFFFFF;
+            box-shadow:0 0 0 1px rgba(0,0,0,.08), 0 6px 18px rgba(0,0,0,.08); }
+  .ph iframe{ display:block; border:0; width:390px; transform-origin:0 0; }
+  /* Wide enough for two screens side by side: show all ten, in a grid that
+     scrolls, each at its real 390 by 844. */
   @media (min-width:900px){
     .stage{ flex-wrap:wrap; align-content:flex-start; overflow-y:auto; padding-top:4px; }
-    .ph{ display:flex; height:870px; } .ph .cap{ display:block; } .pages{ display:none; }
+    .ph{ display:flex; } .ph .cap{ display:block; } .pages{ display:none; }
   }
-  /* On a phone the frame IS the phone: full width, no border, 390 real. */
-  @media (max-width:430px){
-    .bar h1{ display:none; }
-    .stage{ padding:0; } .ph{ width:100%; }
-    .ph iframe{ border-radius:0; box-shadow:0 -1px 0 rgba(0,0,0,.08); }
-  }
+  @media (max-width:430px){ .bar h1{ display:none; } }
 </style>
-</head>
-<body>
-
 <div class="bar">
   <h1>Paper ground</h1>
   <div class="seg" id="ground" role="group" aria-label="Ground">
@@ -147,7 +151,7 @@
   <select class="pages" id="pages" aria-label="Page"></select>
   <details>
     <summary>What moves, measured</summary>
-    <table>
+    <div class="tbl"><table>
       <tr><th></th><th>Today</th><th>Paper</th></tr>
       <tr><td>Ground</td><td><span class="chip" style="background:#FFFFFF"></span>#FFFFFF</td>
           <td><span class="chip" style="background:#F9F9F7"></span>#F9F9F7</td></tr>
@@ -163,7 +167,7 @@
       <tr><td>Amber ink</td><td>5.0:1</td><td>4.8:1</td></tr>
       <tr><td>Law green as text</td><td>4.56:1</td><td>4.33:1, under AA</td></tr>
       <tr><td>Amber fill vs ground</td><td>dE 10.1</td><td>dE 8.9</td></tr>
-    </table>
+    </table></div>
     The ground is the Claude app's, sampled from a screenshot of it. Every
     colour-law tint sits on a white base, so the tiles and rows are the
     same colours as today; only the page between them changes.
@@ -211,11 +215,12 @@ FRAMES.forEach(function(f){
   var ph = document.createElement('div');
   ph.className = 'ph' + (f.key === page ? ' on' : ''); ph.id = 'ph-' + f.key;
   var cap = document.createElement('div'); cap.className = 'cap'; cap.textContent = f.title;
+  var scr = document.createElement('div'); scr.className = 'scr';
   var ifr = document.createElement('iframe'); ifr.title = f.title;
   /* Loaded when first shown, not all ten at once: a phone shows one. */
   ifr.dataset.key = f.key;
   if (f.key === page || WIDE) ifr.srcdoc = doc(f);
-  ph.appendChild(cap); ph.appendChild(ifr); stage.appendChild(ph);
+  scr.appendChild(ifr); ph.appendChild(cap); ph.appendChild(scr); stage.appendChild(ph);
 
   var o = document.createElement('option');
   o.value = f.key; o.textContent = f.title; if (f.key === page) o.selected = true;
@@ -225,6 +230,27 @@ pages.onchange = function(){
   page = pages.value; load(page);
   [].forEach.call(stage.children, function(el){ el.classList.toggle('on', el.id === 'ph-' + page); });
 };
+
+/* Size every screen: 390 by 844 where there is room, otherwise scaled to
+   the stage's width and given the stage's height, the page inside still
+   laid out at 390. */
+function fit(){
+  var wide = window.matchMedia('(min-width:900px)').matches;
+  if (wide) FRAMES.forEach(function(f){ load(f.key); });
+  var cs = getComputedStyle(stage);
+  var w = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  var h = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  var k = wide ? 1 : Math.min(1, w / 390);
+  var tall = wide ? 844 : Math.max(320, h);
+  [].forEach.call(stage.querySelectorAll('.ph'), function(ph){
+    var scr = ph.querySelector('.scr'), i = ph.querySelector('iframe');
+    scr.style.width = Math.floor(390 * k) + 'px'; scr.style.height = Math.floor(tall) + 'px';
+    i.style.height = Math.ceil(tall / k) + 'px';
+    i.style.transform = k < 1 ? 'scale(' + k + ')' : '';
+  });
+}
+window.addEventListener('resize', fit);
+fit();
 
 [].forEach.call(document.querySelectorAll('#ground button'), function(b){
   b.setAttribute('aria-pressed', b.getAttribute('data-g') === ground ? 'true' : 'false');
