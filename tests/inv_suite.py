@@ -1009,6 +1009,51 @@ with sync_playwright() as p:
        "()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
     q.close()
 
+    # ── the Send footer stays at the foot of the screen ──────────
+    #  The owner's report, 26 Sep: once Arrivals was opened, the sticky
+    #  footer on his iPhone stopped short and rode up with the scroll, rows
+    #  showing beneath it. Chromium never shows that fault, so the first
+    #  check holds the page to the fixed footer that cannot have it, and the
+    #  rest check the fixed one is done right. A day shaped like his: five
+    #  arrivals and four in house, long enough to scroll once Arrivals opens.
+    STAYS_BAK, DINNER_BAK = dict(STAYS), dict(DINNER)
+    STAYS.clear(); STAYS.update({
+      v: stay("f" + v, "Guest", "V" + v, "+61 400 000 0%02d" % int(v), a, 2)
+      for v, a in (("2", 0), ("6", 0), ("8", 0), ("12", 0), ("16", 0),
+                   ("5", -2), ("15", -1), ("9", -1), ("13", -3))})
+    DINNER.clear()
+    FOOT = """()=>{const f=document.querySelector('.foot').getBoundingClientRect(),
+      b=document.getElementById('sendBtn').getBoundingClientRect(),
+      r=document.querySelector('.vrow[data-villa="5"]').getBoundingClientRect(),
+      l=document.querySelector('.linknote').getBoundingClientRect();
+      return {pos:getComputedStyle(document.querySelector('.foot')).position,
+              top:f.top, bottom:f.bottom, h:innerHeight, link:l.bottom,
+              bl:b.left, br:b.right, rl:r.left, rr:r.right};}"""
+    pg = board()
+    pg.click(".arrivals > summary"); pg.wait_for_timeout(200)
+    at = {}
+    for where, y in (("top", "0"), ("middle", "document.documentElement.scrollHeight/3"),
+                     ("end", "document.documentElement.scrollHeight")):
+        pg.evaluate("()=>scrollTo(0,%s)" % y); pg.wait_for_timeout(150)
+        at[where] = pg.evaluate(FOOT)
+    ck("the Send footer is fixed to the screen, not sticky in the page",
+       at["top"]["pos"] == "fixed", at["top"]["pos"])
+    ck("with Arrivals opened it stays at the foot of the screen, however far scrolled",
+       all(abs(g["bottom"] - g["h"]) <= 1 for g in at.values()), at)
+    ck("and at the end of the list nothing is left hidden under it",
+       at["end"]["link"] <= at["end"]["top"], at["end"])
+    ck("the button keeps to the list's own column on a phone",
+       abs(at["top"]["bl"] - at["top"]["rl"]) <= 1 and
+       abs(at["top"]["br"] - at["top"]["rr"]) <= 1, at["top"])
+    pg.close()
+    pg = board(w=1280)
+    g = pg.evaluate(FOOT)
+    ck("and on a desktop, rather than stretching across the window",
+       abs(g["bl"] - g["rl"]) <= 1 and abs(g["br"] - g["rr"]) <= 1, g)
+    pg.close()
+    STAYS.clear(); STAYS.update(STAYS_BAK)
+    DINNER.clear(); DINNER.update(DINNER_BAK)
+
 
     # ── the Guest Profile's door: ?open=<booking> marks that guest's row ──
     pg = b.new_page(viewport={"width": 390, "height": 900})

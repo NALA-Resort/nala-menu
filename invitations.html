@@ -21,8 +21,23 @@
      five pages and a dark ink on two - so it lives here.               */
   :root { --green:#E4EDE2 }
 
-  body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
-  
+  /* The bottom padding is the fixed footer's room below, two lines of Send
+     label included, so the last line scrolls clear of it. */
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px
+                 calc(100px + env(safe-area-inset-bottom)); }
+  /* Fixed, not the shared sticky, and a deliberate exception to nala-ui.css.
+     The owner's report of 26 Sep: once Arrivals was opened, the sticky
+     footer on his iPhone stopped short and rode up the screen with the
+     scroll, rows showing beneath it - the list had grown after the page
+     first drew, as All grew Reservations' list on 24 Sep. Chromium never
+     shows it, so no suite can. Fixed is what the app's other bottom bars
+     use (Publish, Menu Dietaries, the Reservations select bar), and it
+     does not depend on how tall the page is. Centred on the page's own
+     column, so the button spans the list's width on a desktop too. */
+  body > .foot { position:fixed; left:0; right:0; bottom:0; margin:0 auto;
+                 max-width:calc(var(--appw) + 2*var(--appgut));
+                 padding-left:var(--appgut); padding-right:var(--appgut); }
+
 
   .seclabel { font-size:var(--t2);
               color:var(--mid); margin:22px 0 8px; }
