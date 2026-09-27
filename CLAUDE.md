@@ -59,6 +59,10 @@ Already done this way — follow these:
   after the Reservations board, the SMS page and the front desk each read
   their own subset of that one fact and told reception three different
   things about the same villa.
+- `tests/night_answer_cases.json` - a past night's dinner answer as every
+  page that looks back must read it (`nightAnswer`, nala-shared.js): the
+  cell, else the arrival night's form. Added 27 Sep, after Statistics and
+  the Dining history read the cell alone and lost every arrival night.
 - `rules.json` — the database's permissions.
 - `tests/dashboard_sources.json` — every value on the Dashboard and the
   thing that owns it. Added 8 Sep with rule 7, after that page worked four

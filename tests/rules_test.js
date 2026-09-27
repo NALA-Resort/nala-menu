@@ -492,11 +492,15 @@ can('the chef saves the dietary list', CHEF, '/dietaries', {
 can("and tonight's tags", CHEF, `/menutags/${TODAY}`,
     { main: ['Nut allergy'], entree: ['Gluten free', 'Dairy free'] });
 
-/* tally.html menu history */
+/* nala-shared.js announceMenu: the menu history, every course described */
 can('the menu is archived for statistics', CHEF, `/menuhistory/${TODAY}`, {
   bread: 'Sourdough', entree: 'Kingfish crudo', main: 'Lamb rump',
-  dessert: 'Pavlova', mainDesc: 'pomegranate, mint', published: NOW, at: NOW
+  dessert: 'Pavlova', breadDesc: 'cultured butter', entreeDesc: 'finger lime',
+  mainDesc: 'pomegranate, mint', dessertDesc: 'passionfruit curd',
+  published: NOW, at: NOW
 });
+cannot('an archived description longer than the menu itself allows', CHEF,
+       `/menuhistory/${TODAY}`, { main: 'Lamb rump', entreeDesc: 'x'.repeat(501) });
 
 /* staff.html */
 can('an admin adds a staff member', ADMIN, '/staff/new@nalaresort,com,au',

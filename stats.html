@@ -147,7 +147,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=77"></script>
+<script src="nala-shared.js?v=78"></script>
 <script>
 /* Reading only, no writes, but it is the resort's numbers and there was no
    gate on it at all until 18 Aug. Same audience as the Reservations board. */
@@ -240,6 +240,22 @@ function failure(node, res){
   return (res && res.__failed !== undefined) ? (node + ' (HTTP ' + res.__failed + ')') : null;
 }
 
+/* The window's nights in ONE ranged read - orderBy="$key", the Calendar's
+   and the Worker's pattern, no index needed - with /bookings read whole
+   beside it, as the boards read it. Together they answer a villa's arrival
+   night the way the Reservations board answered it that evening: from the
+   guest's own form, when no cell was ever written (nightAnswer). An
+   un-indexed query may return dates outside the range; the window below
+   filters by date anyway. */
+function readStaysRange(loK, hiK){
+  return fetch(DB + '/stays.json?orderBy=' + encodeURIComponent('"$key"') +
+               '&startAt=' + encodeURIComponent('"' + loK + '"') +
+               '&endAt='   + encodeURIComponent('"' + hiK + '"') +
+               '&v=' + Date.now())
+    .then(function(r){ return r.ok ? r.json() : { __failed: r.status }; })
+    .catch(function(){ return { __failed: 0 }; });
+}
+
 /* ── already eaten by tonight's guests ───────────────────────────────
    The chef's menu-planning question, dish-first: for each dish served in
    the last 3/5/7 nights, which of tonight's villas already sat for it.
@@ -262,7 +278,15 @@ function escText(v){
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function initEaten(dinnerAll, respAll, menus){
+/* The booking's pre-arrival answers, for the night a /stays entry names.
+   Null, never undefined: /bookings was read whole before anything here
+   runs, so a booking with no form HAS no form - nightAnswer's contract. */
+function preOf(bookings, stay){
+  var b = stay && stay.id ? bookings[stay.id] : null;
+  return (b && b.prearrival) || null;
+}
+
+function initEaten(dinnerAll, respAll, menus, bookings){
   var WIN_MAX = 7;
   var todayK = daysAgo(0);
   var dates = [];                       /* yesterday first, newest to oldest */
@@ -292,14 +316,16 @@ function initEaten(dinnerAll, respAll, menus){
       else staysBy[d] = r || {};
     });
 
-    /* Tonight's audience. One answer a villa: the cell outranks the
-       retired node, the same reading the aggregates below use. */
+    /* Tonight's audience. One answer a villa, read as the board reads it
+       (nightAnswer: the cell, else an arriving guest's own form), and the
+       retired node beneath it - the same reading the aggregates below use. */
     var seen = {};
     var day = dinnerAll[todayK] || {};
-    for (var v in day){
-      var c = day[v];
-      if (c && typeof c === 'object') seen[String(v)] = { st:c.status, cell:true, at:c.at };
-    }
+    Object.keys(day).concat(Object.keys(staysToday)).forEach(function(v){
+      var a = nightAnswer(v, todayK, staysToday[v], day[v],
+                          preOf(bookings, staysToday[v]));
+      if (a) seen[String(v)] = { st:a.status, cell:!a.fromForm, at:a.at };
+    });
     var rday = respAll[todayK] || {};
     for (var k in rday){
       var g = rday[k];
@@ -316,7 +342,7 @@ function initEaten(dinnerAll, respAll, menus){
       if (!s || typeof s !== 'object' || !s.id) continue;
       var st = seen[String(tv)];
       if (st && (st.st === 'out' || st.st === 'vacant')) continue;
-      audience.push({ villa: String(tv), id: s.id });
+      audience.push({ villa: String(tv), id: s.id, pre: preOf(bookings, s) });
     }
     lede.textContent = audience.length +
       (audience.length === 1 ? ' villa' : ' villas') +
@@ -338,10 +364,12 @@ function initEaten(dinnerAll, respAll, menus){
             if (stays[sv] && stays[sv].id === a.id){ villa = sv; break; }
           }
           if (!villa) return;
-          var cell = (dinnerAll[d] || {})[villa];
-          if (!cell || typeof cell !== 'object') return;
-          if (cell.bookingId && cell.bookingId !== a.id) return;
-          if (cell.status === 'in') who.push(a.villa);
+          /* Their answer that night as the board gave it: a cell stamped
+             with another booking is not theirs, and their arrival night is
+             their own form's answer when nobody wrote a cell over it. */
+          var ans = nightAnswer(villa, d, stays[villa],
+                                (dinnerAll[d] || {})[villa], a.pre);
+          if (ans && ans.status === 'in') who.push(a.villa);
         });
       }
       var p = d.split('-');
@@ -401,10 +429,13 @@ function initEaten(dinnerAll, respAll, menus){
   });
 }
 
-Promise.all([readNode('/dinner'), readNode('/responses'), readNode('/menuhistory')])
+Promise.all([readNode('/dinner'), readNode('/responses'), readNode('/menuhistory'),
+             readNode('/bookings'),
+             readStaysRange(daysAgo(LOOKBACK - 1), daysAgo(0))])
 .then(function(res){
   var failed = [failure('dinner', res[0]), failure('responses', res[1]),
-                failure('menuhistory', res[2])].filter(Boolean);
+                failure('menuhistory', res[2]), failure('bookings', res[3]),
+                failure('stays', res[4])].filter(Boolean);
   if (failed.length){
     document.getElementById('range').textContent = 'Could not read the history';
     document.getElementById('byProtein').innerHTML =
@@ -420,15 +451,19 @@ Promise.all([readNode('/dinner'), readNode('/responses'), readNode('/menuhistory
     return;
   }
 
-  var dinnerAll = res[0] || {}, respAll = res[1] || {}, menus = res[2] || {};
-  initEaten(dinnerAll, respAll, menus);
-  var from = daysAgo(LOOKBACK - 1);
+  var dinnerAll = res[0] || {}, respAll = res[1] || {}, menus = res[2] || {},
+      bookings = res[3] || {}, staysAll = res[4] || {};
+  initEaten(dinnerAll, respAll, menus, bookings);
+  var from = daysAgo(LOOKBACK - 1), to = daysAgo(0);
 
-  /* Every date either node knows about, inside the window. The dates are
-     sortable strings, so the window is a comparison rather than a calendar. */
+  /* Every date any node knows about, inside the window. The dates are
+     sortable strings, so the window is a comparison rather than a calendar.
+     /stays is here because an arrival night answered on the form has no
+     cell and no response to put its date on the list. */
   var dates = {};
   for (var k in dinnerAll) if (k >= from) dates[k] = true;
   for (var k in respAll)   if (k >= from) dates[k] = true;
+  for (var k in staysAll)  if (k >= from && k <= to) dates[k] = true;
 
   var nights = [];        // { date, group, covers, dining, replied, diets[] }
 
@@ -436,13 +471,15 @@ Promise.all([readNode('/dinner'), readNode('/responses'), readNode('/menuhistory
     /* One answer a villa. The dinner cell holds the whole answer and outranks
        anything left in the retired node, exactly as roomRecord treats it: the
        two are not merged, because a villa answered twice is one guest, and
-       adding them together inflates every cover on this page. */
+       adding them together inflates every cover on this page. With no cell,
+       an arrival night is the guest's own form (nightAnswer), which ranks
+       below the retired node as it does on the board. */
     var seen = {};
-    var day = dinnerAll[date] || {};
-    for (var v in day){
-      var c = day[v];
-      if (c && typeof c === 'object') seen[String(v)] = { rec: c, cell: true };
-    }
+    var day = dinnerAll[date] || {}, sday = staysAll[date] || {};
+    Object.keys(day).concat(Object.keys(sday)).forEach(function(v){
+      var a = nightAnswer(v, date, sday[v], day[v], preOf(bookings, sday[v]));
+      if (a) seen[String(v)] = { rec: a, cell: !a.fromForm };
+    });
     var rday = respAll[date] || {};
     for (var key in rday){
       var g = rday[key];

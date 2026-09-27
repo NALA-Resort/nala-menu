@@ -1,0 +1,95 @@
+{
+  "comment": [
+    "A villa's dinner answer for a night gone by, as every lookback must read",
+    "it: nightAnswer in nala-shared.js, the one reader behind the Dining",
+    "history (Reservations, Guest Profile) and both Statistics tabs. Added",
+    "27 Sep, after the lookbacks read the cell alone and every arrival night",
+    "answered on the pre-arrival form read as not dined - Statistics listed",
+    "a full house as having eaten nothing all week.",
+    "",
+    "The Reservations board's own order for the night: the cell when it is",
+    "this booking's, else - on the arrival night only - the guest's form",
+    "(formDinnerCell, whose own cases are form_dinner_cases.json). The suites",
+    "evaluate the function inside their own loaded page against every case",
+    "here - the phone_cases.json pattern. Add cases HERE, not to a suite.",
+    "",
+    "The night's /stays entry is always booking bk-1; stay.arriveOffset is",
+    "days from the night to the arrival (0 is the arrival night, negative is",
+    "mid-stay), spelt `arrive` as raw /stays spells it. pre is",
+    "the booking's prearrival record, null for none, or \"unread\" for a form",
+    "that was not or could not be read. expect is the answer's status and",
+    "whether it came from the form, null for no answer, or \"unknown\" when",
+    "only the unread form could have said."
+  ],
+  "cases": [
+    { "name": "the cell answers, whoever gave it",
+      "cell": { "status": "in", "pax": 2, "bookingId": "bk-1", "by": "guest" },
+      "stay": { "arriveOffset": -2 }, "pre": { "dining": false },
+      "expect": { "status": "in", "fromForm": false } },
+
+    { "name": "a cell outranks the form, even on the arrival night",
+      "cell": { "status": "out", "pax": 0, "bookingId": "bk-1", "by": "staff" },
+      "stay": { "arriveOffset": 0 }, "pre": { "dining": true, "pax": 2 },
+      "expect": { "status": "out", "fromForm": false } },
+
+    { "name": "an arrival night with no cell is the guest's own form",
+      "cell": null,
+      "stay": { "arriveOffset": 0 }, "pre": { "dining": true, "pax": 3 },
+      "expect": { "status": "in", "fromForm": true } },
+
+    { "name": "a no on the form is a no",
+      "cell": null,
+      "stay": { "arriveOffset": 0 }, "pre": { "dining": false },
+      "expect": { "status": "out", "fromForm": true } },
+
+    { "name": "a form that never reached dinner answers nothing",
+      "cell": null,
+      "stay": { "arriveOffset": 0 }, "pre": { "wellness": "no" },
+      "expect": null },
+
+    { "name": "a booking with no form answers nothing",
+      "cell": null,
+      "stay": { "arriveOffset": 0 }, "pre": null,
+      "expect": null },
+
+    { "name": "mid-stay with no cell: the form spoke for the first night only",
+      "cell": null,
+      "stay": { "arriveOffset": -1 }, "pre": { "dining": true },
+      "expect": null },
+
+    { "name": "another booking's cell is not theirs - their form stands on the arrival night",
+      "cell": { "status": "out", "pax": 0, "bookingId": "bk-other", "by": "staff" },
+      "stay": { "arriveOffset": 0 }, "pre": { "dining": true, "pax": 2 },
+      "expect": { "status": "in", "fromForm": true } },
+
+    { "name": "another booking's cell mid-stay leaves no answer at all",
+      "cell": { "status": "in", "pax": 4, "bookingId": "bk-other", "by": "guest" },
+      "stay": { "arriveOffset": -1 }, "pre": { "dining": true },
+      "expect": null },
+
+    { "name": "a cell with no booking id stands - a walk-in, an old staff entry",
+      "cell": { "status": "in", "pax": 2, "by": "staff" },
+      "stay": { "arriveOffset": -1 }, "pre": null,
+      "expect": { "status": "in", "fromForm": false } },
+
+    { "name": "a vacant mark is the night's answer, and not a diner",
+      "cell": { "status": "vacant", "bookingId": "bk-1", "by": "staff" },
+      "stay": { "arriveOffset": 0 }, "pre": { "dining": true },
+      "expect": { "status": "vacant", "fromForm": false } },
+
+    { "name": "the form unread on the one night it could answer: unknown, never a no",
+      "cell": null,
+      "stay": { "arriveOffset": 0 }, "pre": "unread",
+      "expect": "unknown" },
+
+    { "name": "the form unread on a night it could not answer anyway: no answer",
+      "cell": null,
+      "stay": { "arriveOffset": -3 }, "pre": "unread",
+      "expect": null },
+
+    { "name": "the form unread but a cell answers: the cell",
+      "cell": { "status": "in", "pax": 2, "bookingId": "bk-1", "by": "guest" },
+      "stay": { "arriveOffset": 0 }, "pre": "unread",
+      "expect": { "status": "in", "fromForm": false } }
+  ]
+}

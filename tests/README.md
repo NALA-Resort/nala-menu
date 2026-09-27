@@ -35,6 +35,7 @@ Run from the repo root with a local copy of the site:
     python3 tests/reg_suite.py       # 25  - registration cards
     python3 tests/pages_suite.py     # 10  - the site map, and every link on it
     python3 tests/stats_suite.py     # 38  - Statistics, incl. where the numbers come from
+    python3 tests/pastmenus_suite.py # 7   - Past Menus, every course's archived description
     python3 tests/tag_suite.py       # 45  - Menu Dietaries, incl. the destructive save
     python3 tests/debug_suite.py     # 44  - Diagnostics, incl. Clean Slate and the deletes
     python3 tests/print_suite.py     # 34  - Printable Menu, asserted on the PDF not the DOM

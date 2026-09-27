@@ -127,6 +127,18 @@ def file_menu(route, request):
 
 FILE_MENU = {"v": None}
 
+# One case of tests/night_answer_cases.json, evaluated in the loaded page
+# against the shared nightAnswer. The same two lines sit in stats_suite.
+NIGHT_CASE = """c=>{const n=new Date(); n.setHours(12,0,0,0);
+  const a=new Date(n); a.setDate(a.getDate()+c.stay.arriveOffset);
+  const r=nightAnswer('7', dkey(n), {id:'bk-1', arrive:dkey(a)}, c.cell,
+                      c.pre==='unread' ? undefined : c.pre);
+  return r===undefined ? 'unknown' : r===null ? null
+       : {status:r.status, fromForm:!!r.fromForm};}"""
+def NIGHT_EXPECT(e):
+    return e if not isinstance(e, dict) else \
+        {"status": e["status"], "fromForm": bool(e.get("fromForm"))}
+
 from playwright.sync_api import sync_playwright
 def tile(pg,n):
     return pg.locator("#rooms .room").filter(has=pg.locator(".room-n",has_text=re.compile(r"^%d$"%n)))
@@ -972,6 +984,63 @@ with sync_playwright() as p:
     q.evaluate("()=>load(true)"); q.wait_for_timeout(1200)
     ck("and does not notify again on the next poll", len(pushes) == before)
     q.close()
+
+    # ── the archive keeps every course's description, 27 Sep ─────
+    # Past Menus showed Sunday's barramundi described and its salmon, mousse
+    # and bread bare: the archive row kept mainDesc alone. It keeps each
+    # course's now, and a row announced before that is brought up to date
+    # once and silently - the manager was told about this menu already.
+    DMENU = {"published": now.isoformat(),
+             "bread":   {"name": "Warm sourdough",   "desc": "cultured butter"},
+             "entree":  {"name": "Cured salmon",     "desc": "beetroot, horseradish"},
+             "main":    {"name": "Barramundi",       "desc": "asparagus, macadamia"},
+             "dessert": {"name": "Chocolate mousse", "desc": "hazelnut praline"}}
+    FULL = {"published": DMENU["published"]}
+    for k in ("bread", "entree", "main", "dessert"):
+        FULL[k] = DMENU[k]["name"]; FULL[k + "Desc"] = DMENU[k]["desc"]
+    def archive_run(existing):
+        """Load a board over `existing` as tonight's archive row; return the
+        row it wrote (None if none) and the menu buzzes it sent."""
+        resetDb(); del WRITES[:]
+        buzz = []
+        q = b.new_page(viewport={"width": 390, "height": 900})
+        q.route("**/firebase-app-compat.js", lambda r,_: r.fulfill(
+            status=200, content_type="application/javascript", body=SDK))
+        q.route("**/firebase-auth-compat.js", lambda r,_: r.fulfill(status=200,
+            content_type="application/javascript", body="/*n*/"))
+        def afb(route, request):
+            if ("/menuhistory/" + today in request.url
+                    and request.method == "GET"):
+                route.fulfill(status=200, content_type="application/json",
+                              body=json.dumps(existing)); return
+            fb(route, request)
+        q.route("**firebasedatabase.app/**", afb)
+        q.route("**/menu.json*", lambda r,_: r.fulfill(status=200,
+            content_type="application/json", body=json.dumps(DMENU)))
+        for pat in ("**nala-push*", "**/nala-push*/**"):
+            q.route(pat, lambda r, req: (buzz.append(req.post_data or ""),
+                r.fulfill(status=200, content_type="application/json", body="{}")))
+        q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1800)
+        q.close()
+        put = [w for w in WRITES if "/menuhistory/" + today in w["u"]
+               and w["m"] == "PUT"]
+        return (json.loads(put[-1]["b"]) if put else None,
+                [x for x in buzz if '"event":"menu"' in x])
+
+    row, buzz = archive_run(None)
+    ck("the archive keeps every course's description",
+       bool(row) and all(row.get(k) == FULL[k] for k in FULL))
+    ck("and a new menu is announced", len(buzz) == 1)
+    OLD = {k: FULL[k] for k in ("bread", "entree", "main", "dessert",
+                                "mainDesc", "published")}
+    row, buzz = archive_run(OLD)
+    ck("a row archived before descriptions were kept is brought up to date",
+       bool(row) and row.get("entreeDesc") == "beetroot, horseradish"
+       and row.get("dessertDesc") == "hazelnut praline")
+    ck("without telling the manager a second time", not buzz)
+    row, buzz = archive_run(dict(FULL, at="x"))
+    ck("an up-to-date row is left alone", row is None and not buzz)
+    resetDb(); del WRITES[:]
 
     #  ── a menu the file still remembers ────────────────────────
     #  Reported 23 Aug: the board showed an old menu. Publishing moved into the
@@ -2184,6 +2253,7 @@ with sync_playwright() as p:
                    "main": "Char-grilled steak, red wine jus",
                    "dessert": "Pavlova"},
         "staysFail": False,
+        "pre": None, "preFail": False, "preReads": 0,
     }
     def hist_fb(route, request):
         u = request.url
@@ -2199,6 +2269,13 @@ with sync_playwright() as p:
         if "/menuhistory/" + yday in u:
             route.fulfill(status=200, content_type="application/json",
                           body=json.dumps(HIST["menu"])); return
+        if "/bookings/res-9/prearrival" in u:
+            HIST["preReads"] += 1
+            if HIST["preFail"]:
+                route.fulfill(status=401, content_type="application/json",
+                              body='{"error":"denied"}'); return
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps(HIST["pre"])); return
         fb(route, request)
     def hist_page():
         q = b.new_page(viewport={"width": 390, "height": 900})
@@ -2281,6 +2358,64 @@ with sync_playwright() as p:
     ck("a refused read owns up rather than counting as not-dined",
        "could not be read" in hist)
     HIST["staysFail"] = False
+    q.close()
+
+    # ── the arrival night the form answered, 27 Sep ──────────────
+    # Villa 9 arrived yesterday and said on the pre-arrival form they would
+    # dine. Nothing writes that as a cell - the board reads the form itself,
+    # the owner's ruling of 28 Aug - so the history read "Dined 0 of 1" for a
+    # guest the kitchen cooked for. It reads the night as the board did now
+    # (nightAnswer), and reads the form only for the night it can answer.
+    HIST["dinner"] = {}
+    HIST["menu"] = {"entree": "Seared prawns, lime", "bread": "Sourdough",
+                    "main": "Char-grilled steak, red wine jus",
+                    "dessert": "Pavlova"}
+    HIST["pre"] = {"dining": True, "pax": 2}
+    q = hist_page()
+    open_villa(q, 9)
+    q.locator("#oHist").click(); q.wait_for_timeout(900)
+    hist = q.evaluate("()=>histBody.textContent")
+    ck("an arrival night answered on the form is a night dined",
+       "Dined 1 of 1 night so far" in hist and "Char-grilled steak" in hist)
+    q.close()
+    # Somebody else's cell on that night is still not theirs - and not a no
+    # to their own form either.
+    HIST["dinner"] = {"9": {"status": "out", "pax": 0, "room": "9",
+                            "bookingId": "res-other"}}
+    q = hist_page()
+    open_villa(q, 9)
+    q.locator("#oHist").click(); q.wait_for_timeout(900)
+    ck("another booking's no does not overrule this guest's form",
+       "Dined 1 of 1 night so far" in q.evaluate("()=>histBody.textContent"))
+    q.close()
+    # Their own cell outranks their form, as on the board.
+    HIST["dinner"] = {"9": {"status": "out", "pax": 0, "room": "9",
+                            "bookingId": "res-9", "by": "staff"}}
+    HIST["preReads"] = 0
+    q = hist_page()
+    open_villa(q, 9)
+    q.locator("#oHist").click(); q.wait_for_timeout(900)
+    ck("their own cell outranks their form",
+       "Dined 0 of 1 night so far" in q.evaluate("()=>histBody.textContent"))
+    ck("and the form is not read when a cell already answers",
+       HIST["preReads"] == 0)
+    q.close()
+    # A form that cannot be read is not a no.
+    HIST["dinner"] = {}
+    HIST["preFail"] = True
+    q = hist_page()
+    open_villa(q, 9)
+    q.locator("#oHist").click(); q.wait_for_timeout(900)
+    hist = q.evaluate("()=>histBody.textContent")
+    ck("an unreadable form owns up rather than counting as not-dined",
+       "could not be read" in hist and "Dined 0 of 1" in hist)
+    HIST["preFail"] = False
+    HIST["pre"] = None
+
+    # The shared table: every lookback answers the same cases.
+    for c in json.load(open("tests/night_answer_cases.json"))["cases"]:
+        ck("night answer: " + c["name"], q.evaluate(NIGHT_CASE, c) ==
+           NIGHT_EXPECT(c["expect"]))
     q.close()
 
 

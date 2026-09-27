@@ -1399,6 +1399,36 @@ function formDinnerCell(villa, pre, rec, dateKey){
   };
 }
 
+/* ── a night gone by: what the villa answered ─────────────────────
+   The Reservations board's own order for one villa on one night, for the
+   pages that look BACK - the Dining history (Reservations, Guest Profile)
+   and both Statistics tabs: the cell, when it is this booking's
+   (cellIsForBooking); else, on the night the booking arrived and only
+   then, the guest's own form answer (formDinnerCell), which the board
+   showed, the kitchen cooked for, and nothing ever writes as a cell - the
+   owner's ruling of 28 Aug.
+
+   Until 27 Sep every lookback read the cell alone, so an arrival night
+   answered on the form read as not dined: Statistics listed tonight's
+   guests as having eaten nothing all week, and a guest on their second
+   night had "Dined 0 of 1". The Dashboard's first fault again (CLAUDE.md,
+   rule 7), in the pages that remember.
+
+   stay is the raw /stays entry for the villa that night (it spells the
+   arrival `arrive`), cell the /dinner cell, pre the booking's prearrival:
+   null when it has none, UNDEFINED when it was not read. Then the answer
+   is undefined too - but only on the one night the form alone could
+   settle, so a lookback reads /bookings/<id>/prearrival for that night
+   and no other, and a read that failed stays unknown, never a no. Returns
+   the answer in the dinner-cell shape, or null when there was none. */
+function nightAnswer(villa, date, stay, cell, pre){
+  if (cell && typeof cell === 'object' && cellIsForBooking(cell, stay && stay.id))
+    return cell;
+  if (!isArrivalNight(stay, date)) return null;
+  if (pre === undefined) return undefined;
+  return formDinnerCell(villa, pre, stay, date);
+}
+
 /* A note, a dietary and a dietary note are answers to one night's dinner
    invitation. Every node that holds them is partitioned by date except
    roomguests, which is deliberately carried forward for up to a fortnight so a
@@ -1851,17 +1881,27 @@ function histNight(date, id){
       if (stays[v] && stays[v].id === id){ villa = v; break; }
     }
     if (!villa) return row;   /* stays holds no villa for this booking that night */
-    var cell = (r[1].data || {})[villa];
-    /* Somebody else's answer must not become this guest's history. */
-    if (!cellIsForBooking(cell, id)) cell = null;
-    if (!cell || cell.status !== 'in') return row;
-    row.dined = true;
-    var m = (r[2].ok && r[2].data) || null;
-    if (m && ['entree','main','dessert'].some(function(k){ return dishShort(m[k]); }))
-      row.menu = { entree: dishShort(m.entree), main: dishShort(m.main),
-                   dessert: dishShort(m.dessert) };
-    else if (!r[2].ok) row.menuFailed = true;
-    return row;
+    /* The night's answer as the board read it: the cell - somebody else's
+       never becomes this guest's history - else, on the arrival night, the
+       guest's own form, read only when that is the night being asked. */
+    var cell = (r[1].data || {})[villa], stay = stays[villa];
+    var ans = nightAnswer(villa, date, stay, cell);
+    return (ans !== undefined ? Promise.resolve(ans)
+      : histGet('/bookings/' + id + '/prearrival').then(function(p){
+          return p.ok ? nightAnswer(villa, date, stay, cell, p.data || null)
+                      : undefined;
+        })
+    ).then(function(ans){
+      if (ans === undefined){ row.failed = true; return row; }
+      if (!ans || ans.status !== 'in') return row;
+      row.dined = true;
+      var m = (r[2].ok && r[2].data) || null;
+      if (m && ['entree','main','dessert'].some(function(k){ return dishShort(m[k]); }))
+        row.menu = { entree: dishShort(m.entree), main: dishShort(m.main),
+                     dessert: dishShort(m.dessert) };
+      else if (!r[2].ok) row.menuFailed = true;
+      return row;
+    });
   });
 }
 
@@ -2312,28 +2352,36 @@ function announceMenu(){
       var today = dkey(new Date());
       if (!filled || !pub || dkey(pub) !== today) return;
       var main = (m.main && m.main.name) || '';
+      /* Every course's name AND description, the menu as the guest read it.
+         Until 27 Sep only the main's description was kept, so Past Menus
+         showed three bare dish names under one described main, and what
+         was never archived cannot be shown for those nights. */
+      var row = { published: m.published || '' };
+      ['bread','entree','main','dessert'].forEach(function(k){
+        row[k]          = (m[k] && m[k].name) || '';
+        row[k + 'Desc'] = (m[k] && m[k].desc) || '';
+      });
       return fetch(DB + '/menuhistory/' + today + '.json?v=' + Date.now())
         .then(function(r){ return r.ok ? r.json() : null; })
         .then(function(existing){
-          if (existing && existing.main === main &&
-              existing.published === m.published) return;
+          var announced = !!(existing && existing.main === main &&
+                             existing.published === m.published);
+          /* An announced row still missing a description - tonight's, archived
+             before descriptions were kept - is rewritten, silently: the
+             manager was told about this menu once already. */
+          if (announced && Object.keys(row).every(function(k){
+                return (existing[k] || '') === row[k]; })) return;
+          row.at = new Date().toISOString();
           return fetch(DB + '/menuhistory/' + today + '.json', {
             method:'PUT', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({
-              bread:   (m.bread   && m.bread.name)   || '',
-              entree:  (m.entree  && m.entree.name)  || '',
-              main:    main,
-              dessert: (m.dessert && m.dessert.name) || '',
-              mainDesc: (m.main   && m.main.desc)    || '',
-              published: m.published || '',
-              at: new Date().toISOString()
-            })
+            body: JSON.stringify(row)
           }).then(function(r){
             /* Only after the row is written. A refused write means the row is
                not there, so the next page to load will try again, and firing
                the notification first would have used up the one announcement
                on a menu that was never recorded. */
             if (!r.ok) return;
+            if (announced) return;   /* a refresh is not a new menu */
             /* No actor. Everywhere else the actor is the person who caused the
                event, so the Worker can avoid telling them about their own tap.
                Here the person who caused it is the chef, and the person whose

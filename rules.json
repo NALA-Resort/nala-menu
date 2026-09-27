@@ -205,7 +205,16 @@
         "dessert": {
           ".validate": "newData.isString() && newData.val().length <= 200"
         },
+        "breadDesc": {
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
+        "entreeDesc": {
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
         "mainDesc": {
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
+        "dessertDesc": {
           ".validate": "newData.isString() && newData.val().length <= 500"
         },
         "published": {

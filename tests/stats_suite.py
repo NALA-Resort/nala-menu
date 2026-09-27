@@ -48,10 +48,22 @@ SDK = sdk()
 STAFF = {"staff@x": {"name": "Admin", "role": "admin"},
          "housekeeping@x": {"name": "HK", "role": "housekeeping"}}
 
-STATE = {"dinner": {}, "responses": {}, "menuhistory": {}, "fail": None}
+STATE = {"dinner": {}, "responses": {}, "menuhistory": {}, "bookings": {},
+         "fail": None}
 
 def fb(route, request):
     u = request.url
+    # The window's nights in one ranged read, and /bookings whole: what an
+    # arrival night answered on the pre-arrival form is read from (27 Sep).
+    if "/stays.json" in u or "/bookings.json" in u:
+        node = "stays" if "/stays.json" in u else "bookings"
+        if STATE["fail"] == node:
+            route.fulfill(status=401, content_type="application/json",
+                          body='{"error":"Permission denied"}')
+            return
+        route.fulfill(status=200, content_type="application/json",
+                      body=json.dumps(STATE.get(node) or {}))
+        return
     # /stays/<date>, read by the already-eaten section, one small node a
     # night. Dated, unlike the three whole-node reads below.
     m = re.search(r"/stays/(\d{4}-\d{2}-\d{2})", u)
@@ -91,6 +103,18 @@ def cell(status="in", pax=2, by="guest", diets=None, **kw):
     if diets: r["diets"] = diets
     r.update(kw)
     return r
+
+# One case of tests/night_answer_cases.json, evaluated in the loaded page
+# against the shared nightAnswer. The same two lines sit in tally_suite.
+NIGHT_CASE = """c=>{const n=new Date(); n.setHours(12,0,0,0);
+  const a=new Date(n); a.setDate(a.getDate()+c.stay.arriveOffset);
+  const r=nightAnswer('7', dkey(n), {id:'bk-1', arrive:dkey(a)}, c.cell,
+                      c.pre==='unread' ? undefined : c.pre);
+  return r===undefined ? 'unknown' : r===null ? null
+       : {status:r.status, fromForm:!!r.fromForm};}"""
+def NIGHT_EXPECT(e):
+    return e if not isinstance(e, dict) else \
+        {"status": e["status"], "fromForm": bool(e.get("fromForm"))}
 
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
@@ -381,6 +405,87 @@ with sync_playwright() as p:
        and "could not be read" in pg.inner_text("#eatList"))
     STATE["failstays"] = None
     pg.close()
+
+    # ── the arrival night the form answered, 27 Sep ───────────
+    # The owner's screenshot: seven villas in, every dish of the week at 0.
+    # An arrival night answered on the pre-arrival form never becomes a
+    # cell - the boards read the form itself, the owner's ruling of 28 Aug -
+    # and both tabs read the cell alone, so a guest's first dinner vanished
+    # from the page. They read each night as the board did now, through
+    # nightAnswer, the one reader every lookback shares.
+    def st(i, arrived):
+        return {"id": i, "arrive": dkey(arrived), "depart": dkey(-2)}
+    STATE["responses"] = {}
+    STATE["dinner"] = {
+        dkey(1): {"5": cell(pax=2, bookingId="b5")},        # the SMS yes, night two
+        dkey(2): {"8": cell("out", 0, by="staff", bookingId="b8")},  # the desk's no
+    }
+    STATE["menuhistory"] = {
+        dkey(1): {"entree": "Cured salmon", "main": "Pork loin, apple",
+                  "dessert": "Tart"},
+        dkey(2): {"entree": "Crudo", "main": "Lamb rump, eggplant",
+                  "dessert": "Mousse"},
+    }
+    STATE["stays"] = {
+        dkey(0): {"3": st("b3", 1), "5": st("b5", 2), "8": st("b8", 2),
+                  "9": st("b9", 0)},
+        dkey(1): {"3": st("b3", 1), "5": st("b5", 2), "8": st("b8", 2)},
+        dkey(2): {"5": st("b5", 2), "8": st("b8", 2)},
+    }
+    STATE["bookings"] = {
+        "b3": {"prearrival": {"dining": True, "pax": 2}},  # came yesterday, no cell
+        "b5": {"prearrival": {"dining": True, "pax": 2}},
+        "b8": {"prearrival": {"dining": True, "pax": 4}},  # the desk said no over it
+        "b9": {"prearrival": {"dining": False}},           # arrives tonight, a no
+    }
+    pg = open_stats(tab="eaten")
+    ck("an arriving guest who said no on the form is not tonight's audience",
+       "3 villas in tonight" in pg.inner_text("#eatLede"))
+    pork = eatrow(pg, "Pork loin")
+    ck("an arrival night answered on the form is a night eaten",
+       bool(pork) and pork["w"] == "3 · 5")
+    lamb = eatrow(pg, "Lamb rump")
+    ck("the first night of a longer stay counts from its form too",
+       bool(lamb) and "5" in lamb["w"])
+    ck("and a cell outranks the form it contradicts",
+       bool(lamb) and lamb["w"] == "5")
+    pg.close()
+
+    pg = open_stats()
+    ck("the aggregates count the nights the form answered",
+       "3 nights recorded" in pg.inner_text("#range"))
+    byp = {r["name"]: r for r in rows(pg, "byProtein")}
+    ck("an arrival night's covers come from the form",
+       "Pork" in byp and "4.0 covers" in byp["Pork"]["sub"]
+       and byp["Pork"]["val"] == "100%")
+    ck("and the desk's no still counts as a no",
+       "Lamb" in byp and byp["Lamb"]["val"] == "50%")
+    pg.close()
+
+    # The form is read from /bookings and the nights from a ranged /stays
+    # read. Either refused is said, never taken for guests who ate nothing.
+    for node in ("bookings", "stays"):
+        STATE["fail"] = node
+        pg = open_stats(tab="eaten")
+        ck("an unreadable /%s is said on the landing tab, not counted" % node,
+           "could not be read" in pg.inner_text("#eatList")
+           and not pg.query_selector("#eatList .vrow"))
+        pg.evaluate("()=>[...viewSeg.querySelectorAll('button')]"
+                    ".find(b=>b.getAttribute('data-v')==='stats').click()")
+        pg.wait_for_timeout(120)
+        ck("and named on the Statistics tab: " + node,
+           node + " (HTTP 401)" in pg.inner_text("#byProtein"))
+        pg.close()
+    STATE["fail"] = None
+
+    # The shared table: every lookback answers the same cases.
+    CASES = json.load(open("tests/night_answer_cases.json"))["cases"]
+    pg = open_stats(tab="eaten")
+    for c in CASES:
+        ck("night answer: " + c["name"], pg.evaluate(NIGHT_CASE, c) ==
+           NIGHT_EXPECT(c["expect"]))
+    pg.close()
+    STATE["bookings"] = {}
 
     # ── the tabs, 7 Sep: one job a screen ─────────────────────
     # The already-eaten list made the page one long scroll, so it paginates:

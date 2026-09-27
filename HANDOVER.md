@@ -214,6 +214,12 @@ and the form speaks for the first night alone. Any dining answer counts, not
 only a submitted form: the guest page saves each question as it is left, and an
 answer given is an answer.
 
+The pages that look BACK read a past night the same way, through `nightAnswer`
+in `nala-shared.js`: Statistics (both tabs) and the Dining history. Until
+27 Sep they read the cell alone, so every arrival night answered on the form
+counted as not dined, and Statistics showed a full house as having eaten
+nothing all week.
+
 **The menu has one reader**, `fetchMenuAnywhere` in `nala-shared.js`. It reads
 the database first and falls back to the committed `menu.json`, refuses a file
 that is not for the day being asked about, and reports an unreadable menu

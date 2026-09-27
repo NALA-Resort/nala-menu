@@ -67,7 +67,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=77"></script>
+<script src="nala-shared.js?v=78"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -120,18 +120,19 @@ function render(rec){
 
   COURSES.forEach(function(c){
     var name = rec[c[0]] ? String(rec[c[0]]).trim() : '';
+    /* Each course's description as the guest read it, `<course>Desc`. Only
+       the main's was archived until 27 Sep, so older nights show the one;
+       a course with none shows no empty slot pretending otherwise. */
+    var desc = rec[c[0] + 'Desc'] ? String(rec[c[0] + 'Desc']).trim() : '';
     var html = '<div class="course"><div class="clabel">' + c[1] + '</div>' +
                '<div class="cname' + (name ? '' : ' none') + '"></div>';
-    /* Only the main carries a description in the archive, so only the main
-       shows one rather than four empty slots pretending otherwise. */
-    if (c[0] === 'main' && rec.mainDesc && String(rec.mainDesc).trim())
-      html += '<div class="cdesc"></div>';
+    if (desc) html += '<div class="cdesc"></div>';
     html += '</div>';
     board.insertAdjacentHTML('beforeend', html);
     var el = board.lastChild;
     el.querySelector('.cname').textContent = name || 'Not served';
     var d = el.querySelector('.cdesc');
-    if (d) d.textContent = String(rec.mainDesc).trim();
+    if (d) d.textContent = desc;
   });
 
   /* When the chef actually published it. Useful for the question this page
