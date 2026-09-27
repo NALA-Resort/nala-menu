@@ -399,9 +399,14 @@ with sync_playwright() as p:
     # By computed colour, because the class alone cannot say what the
     # stylesheet paints it: not-started is grey now, and must not come back
     # amber, which would make an untouched row read as one half done.
+    #  On paper (27 Sep) the tint is a gradient layer over a white base, so
+    #  the colour a row shows is read from the whole background, not the
+    #  fill alone - two rows with the same white fill and different tints
+    #  are different colours.
+    shown = ("s=>{const c=getComputedStyle(document.querySelector(s));"
+             "return c.backgroundColor+' '+c.backgroundImage;}")
     ck("and not-started wears grey, not the part-done amber",
-       pg.evaluate("()=>getComputedStyle(document.querySelector('.arr[data-villa=\"2\"]')).backgroundColor")
-       != pg.evaluate("()=>getComputedStyle(document.querySelector('.arr[data-villa=\"6\"]')).backgroundColor"))
+       pg.evaluate(shown, '.arr[data-villa="2"]') != pg.evaluate(shown, '.arr[data-villa="6"]'))
 
     # ── started and not finished ────────────────────────────────
     #  A third state, and only since the guest page began saving each page as

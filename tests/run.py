@@ -95,6 +95,7 @@ SUITES = [
     ("auth",       ["python3", "tests/auth_suite.py"],    300),
     ("registr",    ["python3", "tests/reg_suite.py"],     300),
     ("pages",      ["python3", "tests/pages_suite.py"],   300),
+    ("paper",      ["python3", "tests/paper_suite.py"],   300),
     ("stats",      ["python3", "tests/stats_suite.py"],   400),
     ("tag",        ["python3", "tests/tag_suite.py"],     400),
     ("flags",      ["python3", "tests/flags_suite.py"],   400),
@@ -130,22 +131,22 @@ ON_REQUEST = {"demos"}
 # change to it can surface anywhere. Better to run the lot than to guess and
 # be wrong in the direction of not running something.
 COVERS = {
-    "dashboard.html":    ["dash", "sweep:dashboard"],
-    "calendar.html":     ["calendar", "roomclean", "sweep:calendar"],
+    "dashboard.html":    ["dash", "sweep:dashboard", "paper"],
+    "calendar.html":     ["calendar", "roomclean", "sweep:calendar", "paper"],
     "guest.html":        ["guest", "sweep:guest"],
-    "tally.html":        ["tally", "sweep:tally"],
-    "cleaners.html":     ["cleans", "sweep:cleaners"],
-    "front-desk.html":   ["frontdesk", "sweep:front-desk", "keys"],
-    "keys.html":         ["keys", "sweep:keys", "pages"],
-    "invitations.html":  ["invites", "sweep:invitations"],
+    "tally.html":        ["tally", "sweep:tally", "paper"],
+    "cleaners.html":     ["cleans", "sweep:cleaners", "paper"],
+    "front-desk.html":   ["frontdesk", "sweep:front-desk", "keys", "paper"],
+    "keys.html":         ["keys", "sweep:keys", "pages", "paper"],
+    "invitations.html":  ["invites", "sweep:invitations", "paper"],
     "past-menus.html":   ["sweep:past-menus"],
-    "arrivals-sms.html": ["invites", "sweep:arrivals-sms"],
+    "arrivals-sms.html": ["invites", "sweep:arrivals-sms", "paper"],
     "templates.html":    ["invites", "sweep:templates"],
     "worker/send-invites.js": ["invworker"],
     "worker/mews-sync.js": ["worker"],
     "index.html":        ["index", "sweep:index"],
     "prearrival.html":   ["prearrival", "sweep:prearrival"],
-    "spa.html":          ["spa", "sweep:spa"],
+    "spa.html":          ["spa", "sweep:spa", "paper"],
     "list.html":         ["list"],
     "housekeeping.html": ["housekeep"],
     # cleans and spa are not obvious neighbours of the settings page and were
@@ -173,7 +174,10 @@ COVERS = {
     # pins the store it writes.
     "nala-cards.js":     ["keys", "sweep:keys", "frontdesk", "cards"],
 }
-EVERYTHING = ["nala-shared.js", "auth.js"]
+# nala-ui.css and nala-ui2.css dress every page, so, like nala-shared.js, a
+# change to either has no single owner. Until 27 Sep neither was listed, and
+# --changed after a stylesheet edit ran nothing at all.
+EVERYTHING = ["nala-shared.js", "auth.js", "nala-ui.css", "nala-ui2.css"]
 
 
 def changed_suites():

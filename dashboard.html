@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Dashboard</title>
-<link rel="stylesheet" href="nala-ui2.css?v=7">
+<link rel="stylesheet" href="nala-ui2.css?v=8">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
   /* v9. The v8 design, redrawn on the app's own stylesheets rather than a
@@ -169,9 +169,15 @@
   body.ui2 .harness .btn { width:auto; padding:var(--s1) var(--s3);
                            font-size:var(--t1); min-height:32px; }
   .harness .row { display:flex; flex-wrap:wrap; gap:var(--s1); margin-top:var(--s2); }
+
+  /* ── paper ─────────────────────────────────────────────────────────
+     The ground and its tokens live in nala-ui2.css. On paper the cards,
+     which were painted in the ground colour itself, are solid white and
+     lifted, so they stand off the page. Ruled by the owner 27 Sep. */
+  body.paper .card { background:var(--surface); box-shadow:var(--lift); }
 </style>
 </head>
-<body class="tier-app ui2">
+<body class="tier-app ui2 paper">
 
 <div class="errbar" id="errBar"></div>
 <div class="wrap">

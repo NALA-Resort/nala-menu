@@ -173,6 +173,27 @@ Three things this exception does NOT extend to, all settled already:
   staying). The pill still says what they cannot have; the red arrives the
   moment they confirm.
 
+### Paper: a ground, not a colour
+
+Ruled by the owner, 27 Sep, off `mock-paper.html`: nine boards wear the
+Claude app's own ground, #F9F9F7, switched on by the class `paper` beside
+`ui2` (the tokens live in `nala-ui2.css`). It changes no meaning in the
+table above. Every tint is drawn over an opaque white surface, so each
+state is the colour it always was; only the page between the cards is
+paper.
+
+Two readings move with it. The cream row, work to do, is on a paper page
+a plain white card: still the plainest row there is. And white there is
+the surface every card sits on, so an input is told from a card by its
+border and its place, not by its fill.
+
+The rule he set it with, after the first mock: "Cards and box
+backgrounds are transparent so there is no contrast." A box whose own
+fill is see-through shows the paper and stops being a card.
+`paper_suite` finds any such box on a paper page and fails that page by
+name, and it measures the Reservations tiles with the paper on and off:
+a card here grows outward into the margin, never inward into its tiles.
+
 ### The pre-arrival form has three states, and the colour IS the state
 
 Ruled by the owner, 28 Aug, superseding his own ruling of 26 Aug that the

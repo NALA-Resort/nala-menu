@@ -152,6 +152,33 @@ body.ui2{
   touch-action:manipulation;
 }
 
+/* ── paper ───────────────────────────────────────────────────────────
+   Ruled by the owner, 27 Sep, off mock-paper.html: "Use the same as this
+   app", holding up the Claude app. Its ground, sampled from his
+   screenshot, is #F9F9F7; its quiet pills #F0EFEC; its hairline
+   #E1E1DF. A page joins with one class, `paper`, beside `ui2`, and
+   leaves by dropping it: nine boards wear it, the rest stay white.
+
+   His first objection is the rule that matters: "Cards and box
+   backgrounds are transparent so there is no contrast." On paper every
+   card, row and tile is an opaque --surface, lifted by --lift, and a
+   colour-law tint is drawn OVER that white as a gradient layer:
+     background: linear-gradient(<tint>, <tint>), var(--surface);
+   so each state is the same colour it always was and the law's own
+   rgba values stay the ones in the stylesheet. A box that keeps a
+   transparent fill shows the paper through it; paper_suite fails the
+   page by name when one does, in its sheets and menus as well.        */
+body.ui2.paper{
+  --ground:#F9F9F7;
+  --card:#F0EFEC;
+  --rule:#E1E1DF;
+  --surface:#FFFFFF;
+  --lift:0 1px 2px rgba(28,28,26,.06), 0 2px 10px rgba(28,28,26,.035);
+}
+/* Outlined buttons sit on the paper as white, like the app's own, and so
+   does the menu, which floats over the page. */
+body.ui2.paper .btn.ghost, body.ui2.paper .navdrop{ background:var(--surface); }
+
 /* ── sentence case, everywhere ───────────────────────────────────────
    The loudest single difference between this dress and the last. Not
    one label in Drive, Earth or Zoom is uppercase or letterspaced; the

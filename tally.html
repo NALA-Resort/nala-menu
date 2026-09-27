@@ -12,7 +12,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <title>Nala · Tonight's Numbers</title>
-<link rel="stylesheet" href="nala-ui2.css?v=7">
+<link rel="stylesheet" href="nala-ui2.css?v=8">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
     /* This page's OWN colours. the board's own dining greens and slates, which mean different things from the shared ones */
@@ -446,9 +446,68 @@ body.readonly #oRevert, body.readonly #oRestore, body.readonly #oDel,
 body.readonly #oIn, body.readonly #oOut, body.readonly #oVac,
 body.readonly #oClear, body.readonly #oUncomb, body.readonly #cYes,
 body.readonly .comb-undo { display:none; }
+
+/* ── paper ───────────────────────────────────────────────────────────
+   The ground and its tokens live in nala-ui2.css; these are this page's
+   surfaces, made solid so the paper never shows through them. Mocked in
+   mock-paper.html, ruled by the owner 27 Sep.
+
+   The owner on the first try: "a bit lazy on the reservation screen",
+   then "the card is now adding additional padding. Don't use so much.
+   Look at your own app as example." So every card here grows OUTWARD,
+   the Claude app's own rule measured off his screenshot: its message box
+   sits 8pt outside the text column and its buttons 8pt inside the box,
+   back on the column. Each card takes 8 into the page margin (1 border,
+   7 padding) and nothing inside it moves: the tiles keep today's size,
+   the names keep their line.
+
+   The villa board is ONE card, its menu pill, tiles and legend, so the
+   tiles need nothing of their own: their tints sit on white as they
+   always did, and the suite that reads them by computed colour still
+   reads the law's own rgba. Each booking is its own card, as each
+   arrival is on Front Desk. A table seated together is one card, and the
+   ink ring that says so is its edge. */
+body.paper .villacard { background:var(--surface); border:1px solid var(--rule);
+                        border-radius:var(--r); margin:18px -8px 0; padding:7px;
+                        box-shadow:var(--lift); }
+body.paper .villacard > #roomsSec { margin-top:0; }
+/* a legend that runs out of line wraps whole items, never half a label */
+body.paper .villacard .legend { flex-wrap:wrap; gap:4px 12px; }
+body.paper .villacard .legend span { white-space:nowrap; }
+body.paper .sec a:not(.active) { background:var(--surface); }
+/* the select bar's two quiet buttons, when select mode slides it up */
+body.paper .selbtn.quiet { background:var(--surface); }
+/* the seated-together note select mode draws above the board */
+body.paper .comb-note { background:var(--surface); }
+/* The sheets (a villa, Add reservation) are paper like the page; the
+   covers, the chips, the External / In-house pair and the night field on
+   them are white, the picked one's grey drawn over the white. */
+body.paper .pax, body.paper .chip, body.paper .seg button,
+body.paper .nightfield { background:var(--surface); }
+body.paper .pax.on, body.paper .chip.on, body.paper .seg button.on {
+  background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface); }
+body.paper #listBookings > .row { background:var(--surface); border:1px solid var(--rule);
+                                  border-radius:var(--r); margin:0 -8px 7px; padding:9px 7px;
+                                  box-shadow:var(--lift); }
+/* the clash keeps its red edge and tint, drawn over the white; the edge
+   marks it now, where it was indented 13pt as well */
+body.paper #listBookings > .row.conflict {
+  background:linear-gradient(rgba(168,50,30,.05), rgba(168,50,30,.05)), var(--surface);
+  border-left:3px solid var(--red); padding-left:5px; }
+/* A group's rows take the card's 8 as padding of their own, so a grouped
+   row is exactly as wide as a lone booking's card (grouping must never
+   narrow a row, tally_suite) and its rule runs edge to edge of the card. */
+body.paper #listBookings > .grpbox { background:var(--surface); border-radius:var(--r);
+                                     margin:0 -8px 7px; padding:0; box-shadow:var(--lift); }
+body.paper #listBookings > .grpbox::after { inset:0; }
+body.paper #listBookings > .grpbox > .row { padding-left:8px; padding-right:8px; }
+body.paper #listBookings > .grpbox > .row.conflict { padding-left:5px; }
+/* the sticky footer covers the cards' full width as they scroll under it,
+   its buttons still on the column */
+body.paper #footActions { margin-inline:-8px; padding-inline:8px; }
 </style>
 </head>
-<body class="tier-app ui2">
+<body class="tier-app ui2 paper">
 
 <div class="errbar" id="errBar"></div>
 <div class="wrap">
@@ -524,7 +583,7 @@ body.readonly .comb-undo { display:none; }
       }
     }
     box.className = 'noaccess' + (on ? ' show' : '');
-    ['menuState','statsRow','roomsSec','rooms','listSec',
+    ['menuState','statsRow','villaCard','roomsSec','rooms','listSec',
      'listBookings','footActions'].forEach(function(id){
       var el = document.getElementById(id);
       if (el) el.style.display = on ? 'none' : '';
@@ -550,6 +609,9 @@ body.readonly .comb-undo { display:none; }
     <div class="stat" id="tileAwait"><div class="stat-n" id="nAwait">–</div><div class="stat-l">Villas awaiting</div></div>
   </div>
 
+  <!-- The villa board as one card on the paper: its menu pill, the tiles and
+       the legend. Inert without body.paper. -->
+  <div class="villacard" id="villaCard">
   <div class="sec" id="roomsSec">
     <div class="menustate" id="menuState"></div>
     <a href="#" id="selToggle">Select multiple</a>
@@ -566,6 +628,7 @@ body.readonly .comb-undo { display:none; }
     <span><i class="ico" id="legStaff"></i>Added by staff</span>
     <span><i class="ico" id="legSeen"></i>Link opened</span>
   </div>
+  </div><!-- /villacard -->
 
   <div class="sec" id="listSec">
     <span id="tablesLine">Bookings</span>

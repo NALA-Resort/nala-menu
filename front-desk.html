@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Front Desk Arrival</title>
-<link rel="stylesheet" href="nala-ui2.css?v=7">
+<link rel="stylesheet" href="nala-ui2.css?v=8">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
   /* This page's OWN colours, restored 29 Aug. The first conversion
@@ -443,9 +443,29 @@
                          background:transparent; }
 /* .cardlab went with the sheet's Key cards line, 11 Sep - the dead-CSS
    law: a rule describing a removed thing is not inert. */
+
+/* ── paper ───────────────────────────────────────────────────────────
+   The ground and its tokens live in nala-ui2.css; these are this page's
+   surfaces, made solid so the paper never shows through them. Mocked in
+   mock-paper.html, ruled by the owner 27 Sep. Each arrival is a white card
+   with its state's tint drawn over the white, the same colour it always
+   was. The guest's form sheet is paper, and everything on it that was
+   see-through - the chips and the yes/no pairs - is white, the selected
+   grey drawn over the white. */
+body.paper .arr { background:var(--surface); box-shadow:var(--lift); }
+body.paper .arr.done-form { background:linear-gradient(rgba(122,160,130,.11), rgba(122,160,130,.11)), var(--surface); }
+body.paper .arr.todo-form { background:linear-gradient(rgba(28,28,26,.045), rgba(28,28,26,.045)), var(--surface); }
+body.paper .arr.part-form { background:linear-gradient(rgba(194,154,85,.11), rgba(194,154,85,.11)), var(--surface); }
+body.paper .chip, body.paper .seg button { background:var(--surface); }
+body.paper .chip.on, body.paper .seg button.on {
+  background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface); }
+/* a completed arrival's summary wears its row's green, over white; the key
+   card run's villas are white cards */
+body.paper .sum { background:linear-gradient(rgba(122,160,130,.11), rgba(122,160,130,.11)), var(--surface); }
+body.paper .crun { background:var(--surface); }
 </style>
 </head>
-<body class="tier-app ui2">
+<body class="tier-app ui2 paper">
 
 <div class="daterow">
   <button class="dnav today" id="dToday">Today</button>

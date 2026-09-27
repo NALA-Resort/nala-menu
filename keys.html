@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Keys</title>
-<link rel="stylesheet" href="nala-ui2.css?v=7">
+<link rel="stylesheet" href="nala-ui2.css?v=8">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
 /* Keys - the card register. Built 9 Sep from the approved mock, rebuilt
@@ -498,9 +498,33 @@ button
    front-desk's right:0 was that page's right-side key icon talking */
 #issueWrap .keydrop { left:0; right:auto; max-width:calc(100vw - 24px); }
 
+
+/* Cancel keys, the destructive dress (the button law): terracotta outline.
+   It was an inline style until 27 Sep, which the paper rule below could
+   not reach without !important. */
+#cancelBtn { width:auto; min-height:36px; padding:7px 14px; margin-right:auto;
+             background:transparent; color:var(--terra); border:1px solid var(--terra-b); }
+
+/* ── paper ───────────────────────────────────────────────────────────
+   The ground and its tokens live in nala-ui2.css; these are this page's
+   surfaces, made solid so the paper never shows through them. Mocked in
+   mock-paper.html; the owner, 27 Sep: "Same transparency issue. Don't
+   forget!!" Every card, row and tile is solid white and lifted, with its
+   state's tint drawn over the white, the same colour it always was.
+   Controls are solid white without the lift. Nothing changes size or
+   place. */
+body.paper .arr { background:var(--surface); box-shadow:var(--lift); }
+body.paper .arr.done-form { background:linear-gradient(rgba(122,160,130,.11), rgba(122,160,130,.11)), var(--surface); }
+body.paper .arr.todo-form { background:linear-gradient(rgba(28,28,26,.045), rgba(28,28,26,.045)), var(--surface); }
+body.paper .arr.part-form { background:linear-gradient(rgba(194,154,85,.11), rgba(194,154,85,.11)), var(--surface); }
+body.paper #tabs button { background:var(--surface); }
+body.paper #tabs button.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface); }
+body.paper #cancelBtn { background:var(--surface); }
+/* the Issue keys menu floats over the page, white like the app's own */
+body.paper .keydrop { background:var(--surface); }
 </style>
 </head>
-<body class="tier-app ui2">
+<body class="tier-app ui2 paper">
 
 <div class="daterow">
   <div class="keywrap" id="issueWrap">
@@ -508,8 +532,7 @@ button
       style="width:auto;min-height:36px;padding:7px 14px;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)">Issue keys</button>
     <div class="keydrop" id="issueDrop"></div>
   </div>
-  <button class="btn" id="cancelBtn"
-    style="width:auto;min-height:36px;padding:7px 14px;margin-right:auto;background:transparent;color:var(--terra);border:1px solid var(--terra-b)">Cancel keys</button>
+  <button class="btn" id="cancelBtn">Cancel keys</button>
   <div class="navwrap" id="navWrap">
     <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
     <div class="navdrop" id="navDrop"></div>
