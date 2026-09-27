@@ -194,13 +194,16 @@
   .seen svg { width:100%; height:100%; display:block; fill:none; stroke:var(--mid); }
 
   /* A card's state, not a form's. Until 27 Sep these rows borrowed the
-     Front Desk's form tints, so every card in use was a green row, and a
-     lost card one too. The owner, 27 Sep, one colour per meaning on every
-     board: a card in use is the normal state with nothing to chase, so its
-     row is plain and "valid" says so in green. Expiring today is chase-this,
-     the colour law's amber with the desk's left edge. A lost card's row is
-     plain as well; its word says lost, in terracotta. A card gone for good,
-     on its own tab, is the law's grey dashed and sunk: nothing to do here. */
+     Front Desk's form tints at their pale .11, so a lost card was as green
+     as a valid one. Now each state has its own row, in the colour law's own
+     tokens. A card in use is the done green, full strength, as a completed
+     form is at the desk: the owner, 27 Sep, "If it's not green it looks
+     like there is work to do. That is the case everywhere." (Built plain for
+     an hour first; he overruled it.) Its last day is chase-this, the law's
+     amber with the desk's left edge. A lost card is plain - it is not done,
+     it is floating - and its word says lost, in terracotta. A card gone for
+     good, on its own tab, is the law's grey dashed and sunk. */
+  .arr.card-ok    { background:var(--law-green-t); border-color:var(--law-green-b); }
   .arr.card-today { background:var(--law-amber); border-color:var(--law-amber-b);
                     border-left:3px solid var(--law-amber-b); }
   .arr.card-gone  { background:rgba(28,28,26,.045); border-color:var(--rule);
@@ -513,6 +516,7 @@ button
    place. */
 body.paper .arr { background:var(--surface); box-shadow:var(--lift); }
 body.paper .arr.card-gone { background:linear-gradient(rgba(28,28,26,.045), rgba(28,28,26,.045)), var(--surface); }
+body.paper .arr.card-ok { background:linear-gradient(var(--law-green-t), var(--law-green-t)), var(--surface); }
 body.paper .arr.card-today { background:var(--law-amber); }
 body.paper .sum { background:var(--surface); }
 body.paper #tabs button { background:var(--surface); }
