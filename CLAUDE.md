@@ -145,12 +145,18 @@ colours "all over the place", and they were: each board had copied a law
 colour and then adjusted its copy. Front Desk drew a completed form at less
 than half the law's green and an incomplete one at a pale amber of its own,
 "menu published" was a different green on Reservations and Invitations, a
-count of villas still to answer was red, and Keys wore the desk's form tints
-on key cards, so every card in use was green. All of it now reads the law's
+count of villas still to answer was red, and Keys borrowed the desk's pale
+form tints for key cards, so a lost card was as green as a valid one. All of it now reads the law's
 tokens (`--law-*`, nala-ui2.css) and nothing else, and `colour_suite` fails
 any board that paints a green, amber or red outside `tests/colour_law.json`.
 A new status colour is a line in that table with the owner's ruling beside
 it, or it is the wrong colour.
+
+**Not green reads as work to do** (the owner, 27 Sep, overruling a plain
+row for a valid key card): "If it's not green it looks like there is work
+to do. That is the case everywhere." A state with nothing left to do wears
+the done green; a plain white or cream row is work waiting. Before drawing
+a settled state plain because it is "only normal", read this line.
 
 ### Cleans keeps its own key
 
