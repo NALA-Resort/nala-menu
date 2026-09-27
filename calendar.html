@@ -9,8 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Calendar</title>
-<link rel="stylesheet" href="nala-ui2.css?v=8">
-<link rel="stylesheet" href="nala-ui.css?v=17">
+<link rel="stylesheet" href="nala-ui2.css?v=9">
+<link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
   /* Built from mock-calendar.html, approved 12 Sep. This page sets LAYOUT
      only; controls take their dress from the shared sheets. */
@@ -103,14 +103,18 @@
      flag turns it amber (below). And the grey pills' names are muted here -
      the booking is not the point on this screen, the room is. */
   #wrap.m-clean .vrow .vnum        { background:#fff; }
-  #wrap.m-clean .vrow.rm-clean   .vnum { background:#E4EDE2; }
+  /* cleaned and empty: done, the colour law's green tile over the white
+     (the pill green until 27 Sep, one colour per meaning) */
+  #wrap.m-clean .vrow.rm-clean   .vnum { background:linear-gradient(var(--law-green-t), var(--law-green-t)), #fff; }
   #wrap.m-clean .vrow.rm-inhouse .vnum { background:#EAEAE6; }
   #wrap.m-clean .bar .n            { color:rgba(28,28,26,.32); }
   /* the flag: a room that requires cleaning AND has an arrival within
      CLEAN_FLAG_DAYS. Amber - attention, chase this - the colour law. Rides
-     the sticky cell so it stays put while the days scroll. Clean screen only. */
-  #wrap.m-clean .vrow.flag { background:rgba(246,234,213,.5); }
-  #wrap.m-clean .vrow.flag .vnum { background:#F6EAD5; box-shadow:inset 3px 0 0 #C29A55; }
+     the sticky cell so it stays put while the days scroll. Clean screen only.
+     The whole row at the law's full amber since 27 Sep; it was half strength,
+     one of the ambers the owner found "all over the place". */
+  #wrap.m-clean .vrow.flag { background:var(--law-amber); }
+  #wrap.m-clean .vrow.flag .vnum { background:var(--law-amber); box-shadow:inset 3px 0 0 var(--law-amber-b); }
 
   /* ── the colour-state selector ──────────────────────────────────────
      A segmented control; the lit segment wears the Selected dress (grey
@@ -135,7 +139,7 @@
   .sw-terra { background:rgba(184,106,90,.16); border-color:rgba(184,106,90,.45); }
   .sw-grey  { background:rgba(28,28,26,.045); border-color:#C9C9C1; }
   .sw-sunk  { background:transparent; border-style:dashed; border-color:var(--mid); opacity:.7; }
-  .sw-clean { background:#E4EDE2; border-color:#7E937A; }
+  .sw-clean { background:linear-gradient(var(--law-green-t), var(--law-green-t)), #fff; border-color:var(--law-green-b); }
   .sw-inhouse { background:#EAEAE6; border-color:#C9C9C1; }
   .sw-plain { background:#fff; border-color:#C9C9C1; }
   .blk-amber { display:inline-block; width:12px; height:12px; border-radius:3px;

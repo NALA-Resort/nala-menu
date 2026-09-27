@@ -1,5 +1,5 @@
 {
- "_note": "One fixture Saturday for tests/paper_suite.py: 26 Sep 2026, the clock held at 15:20 in Brisbane. Every state the paper pages draw is on it somewhere - arrivals at all three form states, cleans ready and done, a spa suggestion, a guest still to invite, a failed pre-arrival send - because a ground is judged by what sits on it. Names are the repo demo names (tools/make-demo.py).",
+ "_note": "One fixture Saturday for tests/paper_suite.py and tests/colour_suite.py (read through tests/night_harness.py): 26 Sep 2026, the clock held at 15:20 in Brisbane. Every state the paper pages draw is on it somewhere - arrivals at all three form states, cleans ready and done, a spa suggestion and a declined one, a key card on its last day, a guest still to invite, a failed pre-arrival send - because a ground is judged by what sits on it. Names are the repo demo names (tools/make-demo.py).",
  "tree": {
   "staff": {
    "staff@x": {
@@ -868,6 +868,16 @@
      "reqDay": "2026-09-27",
      "reqTime": "morning"
     }
+   },
+   "b14": {
+    "t6": {
+     "status": "declined",
+     "reqDay": "2026-09-26",
+     "reqTime": "evening",
+     "dur": 60,
+     "qty": 1,
+     "name": "Owen Reilly"
+    }
    }
   },
   "invites": {
@@ -933,6 +943,13 @@
     "guest": "Sam Okafor",
     "cut": 1790392020,
     "expiry": 1790478000,
+    "by": "Ana"
+   },
+   "8812005": {
+    "villa": "13",
+    "guest": "Nina Brandt",
+    "cut": 1790392020,
+    "expiry": 1790427600,
     "by": "Ana"
    }
   },

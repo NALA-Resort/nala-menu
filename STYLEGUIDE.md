@@ -425,15 +425,28 @@ as preventing the write, and both are needed.
 ## Colour on the Cleans board
 
 Colour means one thing: **this villa is ready to work on now**, and which
-colour says which job.
+colour says which job. It is Cleans' own key, not the colour law's: green
+here is a service, not "done", and orange a pre-arrival, not "chase this".
+The owner kept it so on 27 Sep, shown that every other board reads those
+colours the other way; CLAUDE.md's colour law records the exception and
+`tests/colour_law.json` allows these colours on this board alone.
 
 - **White** - a job is set but the villa is not ready yet
 - **Blue** - ready to clean, the guest has departed
 - **Green** - ready to service, someone has noticed the villa is free
-- **Light grey with a green tick** - finished. It loses its colour entirely:
-  it is no longer work and must stop competing for attention
+- **Light grey** - finished. It loses its colour entirely: it is no longer
+  work and must stop competing for attention
 - **Very pale** - empty, not a job at all
-- **Orange** - deliberately unused, held for a warning state
+- **The job bar** under the number says the job in the same key: blue a
+  clean, green a service, orange a pre-arrival, blue and orange split for a
+  clean with a guest arriving
+- **The clocks**: an available villa's timer is green for its first ten
+  minutes, amber from fifteen, red from twenty; an arrival time is orange
+  when early and red when due - the guest is coming back
+
+(Until 27 Sep this list said orange was held unused and a finished villa
+wore a green tick. Orange had been the pre-arrival bar since the job bars
+came in, and the tick was never drawn.)
 
 Order down the board, top left is highest priority: services, then cleans,
 then finished work, then unknown, then empty. Finished work sinks below
@@ -466,10 +479,11 @@ before the guest walks in.
 Only an **unknown** or **empty** villa can be set to it. Never a service -
 that guest is staying on, so nobody is arriving.
 
-It takes no colour. Colour means "something changed, go now", and a
-pre-arrival is ready from the start because nobody has to leave first. The
-pill reads PRE-ARRIVAL with "Arriving today" beneath, and PRE-ARRIVED with
-the green tick once done, on the same grey as other finished work.
+Its tile takes no colour. Colour means "something changed, go now", and a
+pre-arrival is ready from the start because nobody has to leave first; its
+job bar is orange, the key's pre-arrival. The pill reads PRE-ARRIVAL with
+"Arriving today" beneath, and PRE-ARRIVED once done, on the same grey as
+other finished work.
 
 It is not a clean and not a service, so it carries its own count, shown only
 when there are any - folding it into Cleans would misreport the morning's

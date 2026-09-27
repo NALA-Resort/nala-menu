@@ -270,6 +270,14 @@ card solid white on it, by one class, `paper`, beside `ui2`. Not the printed she
 white. The ruling is in CLAUDE.md under the colour law, the design in
 `mock-paper.html`, and `paper_suite` holds the rule.
 
+**One colour per meaning** (27 Sep): every green, amber and red a board
+paints is a colour law token, listed with its meaning in
+`tests/colour_law.json`, and `colour_suite` fails any board painting
+anything else - by page, element and colour. Cleans keeps its own job key
+(blue clean, green service, orange pre-arrival), allowed on that board
+alone; the owner ruled it so. The ruling and the list of what changed are
+in CLAUDE.md under the colour law.
+
 **The menu on every staff page is generated** — `buildNav` in
 `nala-shared.js` draws it from the one `NAV` array, minus the page you are
 on: the boards as plain links, then the Print, SMS and Settings submenus,

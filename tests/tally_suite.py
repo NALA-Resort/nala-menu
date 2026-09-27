@@ -209,14 +209,20 @@ with sync_playwright() as p:
 
     # 2 stats
     s2=pg.evaluate("""()=>({c:+nCovers.textContent,o:+nOut.textContent,a:+nAwait.textContent,
-        warn:tileAwait.className})""")
+        ink:getComputedStyle(nAwait).color, coversInk:getComputedStyle(nCovers).color})""")
     ck("covers 9", s2["c"]==9)
     ck("rooms out 1", s2["o"]==1)
     # Awaiting means somebody is in the villa and has not answered. An empty
     # villa is not an outstanding question, so it is not counted as one: villa
     # 4 has a guest and no reply, villa 9 has a Mews booking and no reply.
-    ck("awaiting counts only villas with a guest in them",
-       s2["a"]==2 and "warn" in s2["warn"])
+    ck("awaiting counts only villas with a guest in them", s2["a"]==2)
+    #  And wears ink like the counts beside it. It turned red above nought
+    #  until 27 Sep; a villa that has not answered yet is the "nothing yet"
+    #  the colour law keeps red off, and the owner found it among the reds
+    #  "all over the place".
+    print("   awaiting ink:", s2["ink"], " covers ink:", s2["coversInk"])
+    ck("the awaiting count wears the same ink as covers, never red",
+       s2["ink"]==s2["coversInk"] and s2["ink"]!="rgb(168, 50, 30)")
     # The default, which is the whole point of the change.
     ck("a villa nobody is booked into reads as vacant, not awaiting",
        "room vacant" in t["r"]["11"]["cls"])

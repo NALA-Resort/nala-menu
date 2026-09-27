@@ -12,14 +12,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <title>Nala · Tonight's Numbers</title>
-<link rel="stylesheet" href="nala-ui2.css?v=8">
-<link rel="stylesheet" href="nala-ui.css?v=17">
+<link rel="stylesheet" href="nala-ui2.css?v=9">
+<link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
     /* This page's OWN colours. the board's own dining greens and slates, which mean different things from the shared ones */
   :root {
-         /* the kitchen bubble's gold. Not --amber: that name is the colour
-            law's attention FILL (#F6EAD5) and this is an ink.            */
-         --gold:#B07D2B;
           /* state palette: dining green, declined terracotta, vacant slate */
           --green:#5E7D67;
           --slate:#57575E;  --slate-t:rgba(87,87,94,.10);     --slate-b:rgba(87,87,94,.28)}
@@ -56,11 +53,18 @@
                    /* Symmetric on purpose: the suite asserts the text
                       sits centred in the pill.                          */
                    padding:6px 12px; }
-  .menustate .yes { background:rgba(122,160,130,.22); color:#3F6B4C;
-                    border-color:var(--green-b); text-decoration:none; }
+  /* One colour per meaning (the owner, 27 Sep): published is the colour
+     law's green pill, the one Invitations wears for the same fact; not
+     published is amber, chase this - it was terracotta, which is a guest's
+     no, and Invitations had it red, which is a failure. A read that failed
+     IS a failure, so it says so in red rather than claiming no menu. */
+  .menustate .yes { background:var(--law-save-bg); color:var(--law-green);
+                    border-color:var(--law-save-bdr); text-decoration:none; }
   .menustate .yes b { font-weight:normal; opacity:.75; }
-  .menustate .no  { background:rgba(184,106,90,.18);  color:#8E4433;
-                    border-color:var(--terra-b); }
+  .menustate .no  { background:var(--law-amber); color:var(--law-amber-ink);
+                    border-color:var(--law-amber-b); }
+  .menustate .fail { background:rgba(28,28,26,.045); color:var(--law-red);
+                     border-color:var(--law-red); }
 
 
 .sec { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); margin:26px 0 12px;
@@ -95,7 +99,7 @@
                border:1px solid var(--ink); border-radius:var(--r);
                padding:9px 12px; margin:0 44px 12px;
                font-family:var(--ui-font); font-size:var(--t2); }
-  .comb-undo { border:none; background:transparent; color:var(--red); cursor:pointer;
+  .comb-undo { border:none; background:transparent; color:var(--law-terra); cursor:pointer;
                font-family:var(--ui-font); font-size:var(--t2); font-weight:bold; padding:4px 0;
                -webkit-tap-highlight-color:transparent; }
   .room.in     { background:var(--green-t); border-color:var(--green-b); }
@@ -239,7 +243,7 @@
          position:relative; }
   .bub::after { content:''; position:absolute; inset:-11px; }  /* 42px tap target */
   .bub svg { width:15px; height:15px; display:block; fill:var(--mid); }
-  .bub.kitchen svg { fill:var(--gold); }
+  .bub.kitchen svg { fill:var(--law-amber-ink); }  /* notes to read: chase this, the law's amber ink (was a gold of its own until 27 Sep) */
   .bub.flag svg { fill:var(--red); }
   .pop-who { font-size:var(--t3); margin-bottom:14px; padding-bottom:12px;
              border-bottom:1px solid var(--rule); }
@@ -1388,7 +1392,10 @@ function render(){
   document.getElementById('nCovers').textContent = covers;
   document.getElementById('nOut').textContent    = notDining;
   document.getElementById('nAwait').textContent  = awaiting;
-  document.getElementById('tileAwait').className = 'stat' + (awaiting>0 ? ' warn':'');
+  /* Awaiting wears ink like the counts beside it. It turned red above
+     nought until 27 Sep, and red is failure's and an allergy's alone:
+     a villa that has not answered yet is exactly the "nothing yet" the
+     colour law keeps red off. */
 }
 
 // ── combined tables ────────────────────────────────────────
@@ -2747,6 +2754,10 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
            (tried on a real phone, 23 Aug). Seeing the live menu is its own
            home-screen icon now - index.html saved as an app of its own. */
         el.innerHTML = '<span class="yes">Menu published ' + t + '</span>';
+      } else if (m.failed) {
+        /* the menu could not be read at all: a failure, said as one, not a
+           claim that nothing is published (Invitations' own words) */
+        el.innerHTML = '<span class="fail">Menu could not be checked</span>';
       } else {
         el.innerHTML = '<span class="no">Menu not published' + when + '</span>';
       }
@@ -2757,7 +2768,7 @@ document.getElementById('legSeen').innerHTML  = ICON_LINK;
          and on a quiet afternoon that is nobody. */
     })
     .catch(function(){
-      el.innerHTML = '<span class="no">Menu not published</span>';
+      el.innerHTML = '<span class="fail">Menu could not be checked</span>';
     });
 })();
 

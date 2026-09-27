@@ -238,15 +238,28 @@ with sync_playwright() as p:
        "In use · 7" in tabs and "Lost · 1" in tabs
        and "Expired · 3" in tabs and "All" not in tabs
        and pg.evaluate("()=>document.querySelectorAll('#tabs button').length") == 3)
-    ck("a last-day card wears amber and the 12h clock",
+    #  A card's state, not a form's (the owner, 27 Sep, one colour per
+    #  meaning): its last day is chase-this, the colour law's amber; a card
+    #  in use is the normal state, a plain row with "valid" in green. The
+    #  rows wore the Front Desk's form tints until then, every card green.
+    ck("a last-day card wears the law's amber and the 12h clock",
        pg.evaluate("""()=>{var r=document.querySelector('.arr[data-villa="14"]');
-         return r && r.className.indexOf('part-form')>=0
+         var probe=document.createElement('span'); probe.style.color='var(--law-amber)';
+         document.body.appendChild(probe); var amber=getComputedStyle(probe).color; probe.remove();
+         return r && r.className.indexOf('card-today')>=0
+             && getComputedStyle(r).backgroundColor===amber
              && r.innerText.indexOf('till 11pm')>=0
              && r.innerText.indexOf('expires 11pm')>=0;}"""))
     mon = (now + datetime.timedelta(days=4)).strftime("%b")
-    ck("a living card wears green, till day-only - no month, no spill",
+    ck("a living card is a plain row, valid in green, till day-only - no month, no spill",
        pg.evaluate("""(mon)=>{var r=document.querySelector('.arr[data-villa="4"]');
-         return r && r.className.indexOf('done-form')>=0
+         var bg=r&&getComputedStyle(r).backgroundColor;
+         var g=r&&r.querySelector('.kst .g');
+         var probe=document.createElement('span'); probe.style.color='var(--law-green)';
+         document.body.appendChild(probe); var green=getComputedStyle(probe).color; probe.remove();
+         return r && r.className.indexOf('card-ok')>=0
+             && (bg==='rgb(255, 255, 255)' || bg==='rgba(0, 0, 0, 0)')
+             && g && getComputedStyle(g).color===green
              && r.innerText.indexOf('till ')>=0
              && r.innerText.indexOf(mon)<0;}""", mon))
     #  A ROW PER CARD: villa 9 holds two rows in hand here; its lost one
