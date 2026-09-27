@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Pre-arrival SMS</title>
-<link rel="stylesheet" href="nala-ui2.css?v=7">
+<link rel="stylesheet" href="nala-ui2.css?v=8">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
   /* This page's OWN colours, restored 29 Aug. The first conversion
@@ -105,9 +105,26 @@
   #errBar { font-size:var(--t2); color:var(--red); margin:10px 0; line-height:1.45; }
   .empty { font-size:var(--t2); color:var(--mid); margin:14px 2px; line-height:1.5; }
   .spacer { height:12px; }
+
+/* ── paper ───────────────────────────────────────────────────────────
+   The ground and its tokens live in nala-ui2.css; these are this page's
+   surfaces, made solid so the paper never shows through them. Mocked in
+   mock-paper.html; the owner, 27 Sep: "Same transparency issue. Don't
+   forget!!" Every card, row and tile is solid white and lifted, with its
+   state's tint drawn over the white, the same colour it always was.
+   Controls are solid white without the lift. The sunk rows (dashed,
+   faded: nothing to do here) are white but not lifted, so they still
+   recede. Nothing changes size or place. */
+body.paper .knob { background:var(--surface); }
+body.paper .vrow { background:var(--surface); box-shadow:var(--lift); }
+body.paper .vrow.b-open { background:var(--amber); }
+body.paper .vrow.b-sent { background:linear-gradient(rgba(28,28,26,.045), rgba(28,28,26,.045)), var(--surface); }
+body.paper .vrow.b-done { background:linear-gradient(var(--resgreen-t), var(--resgreen-t)), var(--surface); }
+body.paper .vrow.b-grey { background:var(--surface); box-shadow:none; }
+body.paper .vrow.selall { background:var(--surface); box-shadow:none; }
 </style>
 </head>
-<body class="tier-app ui2">
+<body class="tier-app ui2 paper">
 
 <div class="daterow">
   <div class="date" id="title">Pre-arrival SMS</div>

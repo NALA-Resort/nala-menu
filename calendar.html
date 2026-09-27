@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Calendar</title>
-<link rel="stylesheet" href="nala-ui2.css?v=7">
+<link rel="stylesheet" href="nala-ui2.css?v=8">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
   /* Built from mock-calendar.html, approved 12 Sep. This page sets LAYOUT
@@ -163,9 +163,22 @@
   /* a board that could not be read says so; it never shows as empty */
   .boardnote { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
     margin:8px 2px; }
+
+/* ── paper ───────────────────────────────────────────────────────────
+   The ground and its tokens live in nala-ui2.css; these are this page's
+   surfaces, made solid so the paper never shows through them. Mocked in
+   mock-paper.html; the owner, 27 Sep: "Same transparency issue. Don't
+   forget!!" Every card, row and tile is solid white and lifted, with its
+   state's tint drawn over the white, the same colour it always was.
+   Controls are solid white without the lift. Nothing changes size or
+   place. */
+/* the chart was white already, only never lifted */
+body.paper .chartwrap { box-shadow:var(--lift); }
+body.paper .mbtn { background:var(--surface); }
+body.paper .mbtn.on { background:linear-gradient(rgba(28,28,26,.045), rgba(28,28,26,.045)), var(--surface); }
 </style>
 </head>
-<body class="tier-app ui2">
+<body class="tier-app ui2 paper">
 
 <div class="errbar" id="errBar"></div>
 

@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala · Cleaners</title>
-<link rel="stylesheet" href="nala-ui2.css?v=7">
+<link rel="stylesheet" href="nala-ui2.css?v=8">
 <link rel="stylesheet" href="nala-ui.css?v=17">
 <style>
     /* This page's OWN colours. the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
@@ -381,9 +381,21 @@
   .pbtn.warn  { border-color:var(--red); color:var(--red); }
   .timerow { display:flex; gap:8px; margin-top:9px; }
   .timerow .pbtn { margin-top:0; padding:13px 0; }
-  .perr { color:var(--red); font-size:11px; margin-top:12px; min-height:14px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */</style>
+  .perr { color:var(--red); font-size:11px; margin-top:12px; min-height:14px; }  /* off-scale: the saturated bar colours a housekeeper reads at arm's length, and a fixed-density tile grid the owner ruled stays as it is, 28 Aug */
+/* ── paper ───────────────────────────────────────────────────────────
+   The ground and its tokens live in nala-ui2.css; these are this page's
+   surfaces, made solid so the paper never shows through them. Mocked in
+   mock-paper.html; the owner, 27 Sep: "Same transparency issue. Don't
+   forget!!" Every card, row and tile is solid white and lifted, with its
+   state's tint drawn over the white, the same colour it always was.
+   Nothing changes size or place. */
+/* the tiles were white already, only never lifted; the legend cell was
+   see-through */
+body.paper .tile { box-shadow:var(--lift); }
+body.paper #legend { background:var(--surface); box-shadow:var(--lift); }
+</style>
 </head>
-<body class="tier-app ui2">
+<body class="tier-app ui2 paper">
 
 <div class="wrap">
     <div class="daterow">

@@ -263,6 +263,13 @@ welcome (`welcome.html`). All take `?b=<booking id>`.
 
 **Tools:** Diagnostics (`debug.html`), site map (`pages.html`).
 
+**The paper ground** (27 Sep): nine boards - Reservations, Front Desk,
+Dashboard, Cleans, Spa, Invitations, Pre-arrival SMS, Calendar, Keys -
+wear the Claude app's #F9F9F7 with every card solid white on it, by one
+class, `paper`, beside `ui2`. Not the printed sheets above, which stay
+white. The ruling is in CLAUDE.md under the colour law, the design in
+`mock-paper.html`, and `paper_suite` holds the rule.
+
 **The menu on every staff page is generated** — `buildNav` in
 `nala-shared.js` draws it from the one `NAV` array, minus the page you are
 on: the boards as plain links, then the Print, SMS and Settings submenus,

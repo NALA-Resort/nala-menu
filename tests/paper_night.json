@@ -1,0 +1,1004 @@
+{
+ "_note": "One fixture Saturday for tests/paper_suite.py: 26 Sep 2026, the clock held at 15:20 in Brisbane. Every state the paper pages draw is on it somewhere - arrivals at all three form states, cleans ready and done, a spa suggestion, a guest still to invite, a failed pre-arrival send - because a ground is judged by what sits on it. Names are the repo demo names (tools/make-demo.py).",
+ "tree": {
+  "staff": {
+   "staff@x": {
+    "name": "Ana",
+    "role": "admin"
+   }
+  },
+  "permissions": null,
+  "stays": {
+   "2026-09-25": {
+    "1": {
+     "id": "b1",
+     "first": "James",
+     "last": "Harrington",
+     "arrive": "2026-09-24",
+     "depart": "2026-09-28",
+     "adults": 2,
+     "number": 2401,
+     "phone": "+61410007919",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "2": {
+     "id": "b90",
+     "first": "Nora",
+     "last": "Quinn",
+     "arrive": "2026-09-22",
+     "depart": "2026-09-26",
+     "adults": 2,
+     "number": 2490,
+     "phone": "+61410712710",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "3": {
+     "id": "b3",
+     "first": "Mark",
+     "last": "Whitfield",
+     "arrive": "2026-09-25",
+     "depart": "2026-09-28",
+     "adults": 2,
+     "number": 2403,
+     "phone": "+61410023757",
+     "updated": "2026-09-20T10:00:00Z",
+     "groupId": "g-whit"
+    },
+    "4": {
+     "id": "b4",
+     "first": "Lucy",
+     "last": "Whitfield",
+     "arrive": "2026-09-25",
+     "depart": "2026-09-28",
+     "adults": 2,
+     "number": 2404,
+     "phone": "+61410031676",
+     "updated": "2026-09-20T10:00:00Z",
+     "groupId": "g-whit"
+    },
+    "5": {
+     "id": "b91",
+     "first": "Felix",
+     "last": "Moreau",
+     "arrive": "2026-09-23",
+     "depart": "2026-09-26",
+     "adults": 2,
+     "number": 2491,
+     "phone": "+61410720629",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "6": {
+     "id": "b6",
+     "first": "David",
+     "last": "Chen",
+     "arrive": "2026-09-23",
+     "depart": "2026-09-27",
+     "adults": 2,
+     "number": 2406,
+     "phone": "+61410047514",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "7": {
+     "id": "b92",
+     "first": "Ines",
+     "last": "Duarte",
+     "arrive": "2026-09-21",
+     "depart": "2026-09-26",
+     "adults": 2,
+     "number": 2492,
+     "phone": "+61410728548",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "8": {
+     "id": "b8",
+     "first": "Tom",
+     "last": "Ashby",
+     "arrive": "2026-09-25",
+     "depart": "2026-09-29",
+     "adults": 2,
+     "number": 2408,
+     "phone": "+61410063352",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "10": {
+     "id": "b93",
+     "first": "Karl",
+     "last": "Weber",
+     "arrive": "2026-09-24",
+     "depart": "2026-09-26",
+     "adults": 1,
+     "number": 2493,
+     "phone": "+61410736467",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "11": {
+     "id": "b11",
+     "first": "Claire",
+     "last": "Donnelly",
+     "arrive": "2026-09-22",
+     "depart": "2026-09-27",
+     "adults": 3,
+     "number": 2411,
+     "phone": "+61410087109",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "12": {
+     "id": "b94",
+     "first": "Lena",
+     "last": "Novak",
+     "arrive": "2026-09-23",
+     "depart": "2026-09-26",
+     "adults": 2,
+     "number": 2494,
+     "phone": "+61410744386",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "13": {
+     "id": "b13",
+     "first": "Nina",
+     "last": "Brandt",
+     "arrive": "2026-09-24",
+     "depart": "2026-09-29",
+     "adults": 2,
+     "number": 2413,
+     "phone": "+61410102947",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "15": {
+     "id": "b15",
+     "first": "Hana",
+     "last": "Sato",
+     "arrive": "2026-09-25",
+     "depart": "2026-09-28",
+     "adults": 1,
+     "number": 2415,
+     "phone": "+61410118785",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "16": {
+     "id": "b16",
+     "first": "Marco",
+     "last": "Bianchi",
+     "arrive": "2026-09-23",
+     "depart": "2026-09-28",
+     "adults": 2,
+     "number": 2416,
+     "phone": "+61410126704",
+     "updated": "2026-09-20T10:00:00Z"
+    }
+   },
+   "2026-09-26": {
+    "1": {
+     "id": "b1",
+     "first": "James",
+     "last": "Harrington",
+     "arrive": "2026-09-24",
+     "depart": "2026-09-28",
+     "adults": 2,
+     "number": 2401,
+     "phone": "+61410007919",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "2": {
+     "id": "b2",
+     "first": "Elena",
+     "last": "Petrova",
+     "arrive": "2026-09-26",
+     "depart": "2026-09-29",
+     "adults": 2,
+     "number": 2402,
+     "phone": "+61410015838",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "3": {
+     "id": "b3",
+     "first": "Mark",
+     "last": "Whitfield",
+     "arrive": "2026-09-25",
+     "depart": "2026-09-28",
+     "adults": 2,
+     "number": 2403,
+     "phone": "+61410023757",
+     "updated": "2026-09-20T10:00:00Z",
+     "groupId": "g-whit"
+    },
+    "4": {
+     "id": "b4",
+     "first": "Lucy",
+     "last": "Whitfield",
+     "arrive": "2026-09-25",
+     "depart": "2026-09-28",
+     "adults": 2,
+     "number": 2404,
+     "phone": "+61410031676",
+     "updated": "2026-09-20T10:00:00Z",
+     "groupId": "g-whit"
+    },
+    "6": {
+     "id": "b6",
+     "first": "David",
+     "last": "Chen",
+     "arrive": "2026-09-23",
+     "depart": "2026-09-27",
+     "adults": 2,
+     "number": 2406,
+     "phone": "+61410047514",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "7": {
+     "id": "b7",
+     "first": "Priya",
+     "last": "Sharma",
+     "arrive": "2026-09-26",
+     "depart": "2026-09-30",
+     "adults": 3,
+     "number": 2407,
+     "phone": "+61410055433",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "8": {
+     "id": "b8",
+     "first": "Tom",
+     "last": "Ashby",
+     "arrive": "2026-09-25",
+     "depart": "2026-09-29",
+     "adults": 2,
+     "number": 2408,
+     "phone": "+61410063352",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "9": {
+     "id": "b9",
+     "first": "Ruby",
+     "last": "Vance",
+     "arrive": "2026-09-26",
+     "depart": "2026-09-28",
+     "adults": 2,
+     "number": 2409,
+     "phone": "+61410071271",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "11": {
+     "id": "b11",
+     "first": "Claire",
+     "last": "Donnelly",
+     "arrive": "2026-09-22",
+     "depart": "2026-09-27",
+     "adults": 3,
+     "number": 2411,
+     "phone": "+61410087109",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "12": {
+     "id": "b12",
+     "first": "Sam",
+     "last": "Okafor",
+     "arrive": "2026-09-26",
+     "depart": "2026-09-27",
+     "adults": 2,
+     "number": 2412,
+     "phone": "+61410095028",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "13": {
+     "id": "b13",
+     "first": "Nina",
+     "last": "Brandt",
+     "arrive": "2026-09-24",
+     "depart": "2026-09-29",
+     "adults": 2,
+     "number": 2413,
+     "phone": "+61410102947",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "14": {
+     "id": "b14",
+     "first": "Owen",
+     "last": "Reilly",
+     "arrive": "2026-09-26",
+     "depart": "2026-09-29",
+     "adults": 2,
+     "number": 2414,
+     "phone": "+61410110866",
+     "updated": "2026-09-20T10:00:00Z",
+     "companion": "Aoife Reilly"
+    },
+    "15": {
+     "id": "b15",
+     "first": "Hana",
+     "last": "Sato",
+     "arrive": "2026-09-25",
+     "depart": "2026-09-28",
+     "adults": 1,
+     "number": 2415,
+     "phone": "+61410118785",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "16": {
+     "id": "b16",
+     "first": "Marco",
+     "last": "Bianchi",
+     "arrive": "2026-09-23",
+     "depart": "2026-09-28",
+     "adults": 2,
+     "number": 2416,
+     "phone": "+61410126704",
+     "updated": "2026-09-20T10:00:00Z"
+    },
+    "17": {
+     "id": "b17",
+     "first": "Freya",
+     "last": "Lindqvist",
+     "arrive": "2026-09-26",
+     "depart": "2026-10-01",
+     "adults": 2,
+     "number": 2417,
+     "phone": "+61410134623",
+     "updated": "2026-09-20T10:00:00Z"
+    }
+   },
+   "2026-09-28": {
+    "5": {
+     "id": "pa-5",
+     "first": "Iris",
+     "last": "Kovac",
+     "arrive": "2026-09-28",
+     "depart": "2026-10-01",
+     "phone": "+61411000035",
+     "adults": 2
+    }
+   },
+   "2026-09-29": {
+    "5": {
+     "id": "pa-5",
+     "first": "Iris",
+     "last": "Kovac",
+     "arrive": "2026-09-28",
+     "depart": "2026-10-01",
+     "phone": "+61411000035",
+     "adults": 2
+    },
+    "10": {
+     "id": "pa-10",
+     "first": "Owen",
+     "last": "Hart",
+     "arrive": "2026-09-29",
+     "depart": "2026-10-02",
+     "phone": "+61411000310",
+     "adults": 2
+    }
+   },
+   "2026-09-30": {
+    "6": {
+     "id": "pa-6",
+     "first": "Grace",
+     "last": "Mbeki",
+     "arrive": "2026-09-30",
+     "depart": "2026-10-03",
+     "phone": "+44 7700 900123",
+     "adults": 2
+    }
+   },
+   "2026-10-02": {
+    "13": {
+     "id": "pa-13",
+     "first": "Leo",
+     "last": "Fischer",
+     "arrive": "2026-10-02",
+     "depart": "2026-10-05",
+     "phone": "+61411000313",
+     "adults": 2
+    }
+   },
+   "2026-10-05": {
+    "1": {
+     "id": "pa-1",
+     "first": "Mei",
+     "last": "Tanaka",
+     "arrive": "2026-10-05",
+     "depart": "2026-10-08",
+     "phone": "+61411000301",
+     "adults": 2
+    }
+   }
+  },
+  "bookings": {
+   "b1": {
+    "prearrival": {
+     "at": "2026-09-26T09:00:00+10:00",
+     "dining": true,
+     "pax": 2,
+     "diets": [
+      "Nut allergy"
+     ],
+     "wellness": false
+    },
+    "pms": {
+     "villa": "1"
+    }
+   },
+   "b2": {
+    "prearrival": {
+     "at": "2026-09-22T08:10:00+10:00",
+     "dining": true,
+     "pax": 2,
+     "noDiets": true,
+     "wellness": true,
+     "wellDay": "2026-09-27",
+     "arriveSlot": "14",
+     "checkedInAt": "2026-09-26T14:10:00+10:00",
+     "purpose": [
+      "A celebration"
+     ],
+     "occasion": "anniversary"
+    },
+    "pms": {
+     "villa": "2"
+    }
+   },
+   "b3": {
+    "prearrival": {
+     "at": "2026-09-26T09:00:00+10:00",
+     "dining": true,
+     "pax": 2,
+     "diets": [
+      "Vegetarian"
+     ],
+     "wellness": false
+    },
+    "pms": {
+     "villa": "3"
+    }
+   },
+   "b4": {
+    "prearrival": {
+     "at": "2026-09-26T09:00:00+10:00",
+     "dining": true,
+     "pax": 2,
+     "noDiets": true,
+     "wellness": false
+    },
+    "pms": {
+     "villa": "4"
+    }
+   },
+   "b6": {
+    "prearrival": {
+     "at": "2026-09-26T09:00:00+10:00",
+     "dining": false,
+     "noDiets": true,
+     "wellness": false
+    },
+    "pms": {
+     "villa": "6"
+    }
+   },
+   "b7": {
+    "prearrival": {
+     "openedAt": "2026-09-23T19:02:00+10:00",
+     "diets": [
+      "Coeliac"
+     ],
+     "arriveSlot": "16"
+    },
+    "pms": {
+     "villa": "7"
+    }
+   },
+   "b8": {
+    "prearrival": {
+     "at": "2026-09-26T09:00:00+10:00",
+     "dining": true,
+     "pax": 2,
+     "diets": [
+      "Dairy free"
+     ],
+     "wellness": false
+    },
+    "pms": {
+     "villa": "8"
+    }
+   },
+   "b11": {
+    "prearrival": {
+     "at": "2026-09-26T09:00:00+10:00",
+     "dining": true,
+     "pax": 3,
+     "diets": [
+      "Gluten free"
+     ],
+     "wellness": false
+    },
+    "pms": {
+     "villa": "11"
+    }
+   },
+   "b12": {
+    "prearrival": {
+     "at": "2026-09-24T12:00:00+10:00",
+     "dining": false,
+     "noDiets": true,
+     "arriveSlot": "before2",
+     "arriveNote": "Flight lands 11am",
+     "checkedInAt": "2026-09-26T13:05:00+10:00"
+    },
+    "pms": {
+     "villa": "12"
+    }
+   },
+   "b13": {
+    "prearrival": {
+     "at": "2026-09-26T09:00:00+10:00",
+     "dining": false,
+     "noDiets": true,
+     "wellness": false
+    },
+    "pms": {
+     "villa": "13"
+    }
+   },
+   "b14": {
+    "prearrival": {
+     "at": "2026-09-25T17:40:00+10:00",
+     "dining": true,
+     "pax": 2,
+     "diets": [
+      "Shellfish allergy"
+     ],
+     "dnote": "Severe, carries an EpiPen",
+     "wellness": false,
+     "arriveSlot": "17",
+     "arriveApproved": 17
+    },
+    "pms": {
+     "villa": "14"
+    }
+   },
+   "b15": {
+    "prearrival": {
+     "at": "2026-09-26T09:00:00+10:00",
+     "dining": true,
+     "pax": 1,
+     "noDiets": true,
+     "wellness": false
+    },
+    "pms": {
+     "villa": "15"
+    }
+   },
+   "b16": {
+    "prearrival": {
+     "at": "2026-09-26T09:00:00+10:00",
+     "dining": true,
+     "pax": 2,
+     "noDiets": true,
+     "wellness": false
+    },
+    "pms": {
+     "villa": "16"
+    }
+   },
+   "b17": {
+    "prearrival": {
+     "openedAt": "2026-09-25T09:30:00+10:00",
+     "dining": true,
+     "pax": 2,
+     "arriveSlot": "15"
+    },
+    "pms": {
+     "villa": "17"
+    }
+   },
+   "pa-10": {
+    "prearrival": {
+     "at": "2026-09-26T08:00:00+10:00",
+     "dining": true,
+     "pax": 2,
+     "noDiets": true,
+     "wellness": false
+    }
+   },
+   "b9": {
+    "pms": {
+     "villa": "9"
+    }
+   },
+   "b90": {
+    "pms": {
+     "villa": "2"
+    }
+   },
+   "b91": {
+    "pms": {
+     "villa": "5"
+    }
+   },
+   "b92": {
+    "pms": {
+     "villa": "7"
+    }
+   },
+   "b93": {
+    "pms": {
+     "villa": "10"
+    }
+   },
+   "b94": {
+    "pms": {
+     "villa": "12"
+    }
+   }
+  },
+  "dinner": {
+   "2026-09-26": {
+    "1": {
+     "status": "in",
+     "pax": 2,
+     "by": "guest",
+     "at": "2026-09-26T10:05:00+10:00",
+     "bookingId": "b1",
+     "diets": [
+      "Nut allergy"
+     ],
+     "note": "Window table please"
+    },
+    "3": {
+     "status": "in",
+     "pax": 2,
+     "by": "guest",
+     "at": "2026-09-26T10:05:00+10:00",
+     "bookingId": "b3",
+     "diets": [
+      "Vegetarian"
+     ]
+    },
+    "4": {
+     "status": "in",
+     "pax": 2,
+     "by": "guest",
+     "at": "2026-09-26T10:05:00+10:00",
+     "bookingId": "b4",
+     "nodiet": true
+    },
+    "5": {
+     "status": "vacant",
+     "by": "staff",
+     "at": "2026-09-26T08:00:00+10:00"
+    },
+    "6": {
+     "status": "out",
+     "pax": 0,
+     "by": "guest",
+     "at": "2026-09-26T10:05:00+10:00",
+     "bookingId": "b6"
+    },
+    "11": {
+     "status": "in",
+     "pax": 3,
+     "by": "guest",
+     "at": "2026-09-26T10:05:00+10:00",
+     "bookingId": "b11",
+     "diets": [
+      "Gluten free"
+     ],
+     "note": "Birthday - candle on dessert"
+    },
+    "13": {
+     "status": "out",
+     "pax": 0,
+     "by": "guest",
+     "at": "2026-09-26T10:05:00+10:00",
+     "bookingId": "b13"
+    },
+    "16": {
+     "status": "in",
+     "pax": 2,
+     "by": "staff",
+     "at": "2026-09-26T10:05:00+10:00",
+     "bookingId": "b16",
+     "nodiet": true
+    }
+   }
+  },
+  "manual": {
+   "2026-09-26": {
+    "ext-1": {
+     "status": "in",
+     "pax": 2,
+     "name": "Cane",
+     "source": "manual",
+     "external": true,
+     "diets": [
+      "Dairy free"
+     ]
+    },
+    "ext-2": {
+     "status": "in",
+     "pax": 4,
+     "name": "Larry",
+     "source": "manual",
+     "external": true,
+     "note": "Birthday"
+    }
+   }
+  },
+  "responses": {
+   "2026-09-26": {
+    "+61400000099": {
+     "status": "in",
+     "pax": 2,
+     "name": "Jonah Adeyemi",
+     "phone": "0400 000 099",
+     "at": "2026-09-26T11:00:00+10:00"
+    }
+   }
+  },
+  "combined": {
+   "2026-09-26": {
+    "g1": {
+     "rooms": [
+      "3",
+      "4"
+     ]
+    }
+   }
+  },
+  "opened": {
+   "2026-09-26": {
+    "8": {
+     "at": "2026-09-26T12:40:00+10:00",
+     "bookingId": "b8"
+    }
+   }
+  },
+  "menu": {
+   "published": "2026-09-26T10:06:00+10:00",
+   "bread": {
+    "name": "Sourdough, cultured butter"
+   },
+   "entree": {
+    "name": "Kingfish crudo"
+   },
+   "main": {
+    "name": "Snapper, beurre blanc"
+   },
+   "dessert": {
+    "name": "Pavlova, passionfruit"
+   }
+  },
+  "menutags": {
+   "2026-09-26": {
+    "entree": [
+     "Shellfish allergy"
+    ],
+    "main": [
+     "Dairy free"
+    ]
+   }
+  },
+  "dietaries": {
+   "gf": {
+    "name": "Gluten free",
+    "active": true,
+    "group": "common"
+   },
+   "nut": {
+    "name": "Nut allergy",
+    "active": true,
+    "group": "common"
+   },
+   "sh": {
+    "name": "Shellfish allergy",
+    "active": true,
+    "group": "common"
+   },
+   "cc": {
+    "name": "Coeliac",
+    "active": true,
+    "group": "common"
+   },
+   "df": {
+    "name": "Dairy free",
+    "active": true,
+    "group": "common"
+   },
+   "veg": {
+    "name": "Vegetarian",
+    "active": true,
+    "group": "common"
+   }
+  },
+  "flags": {
+   "VIP": {
+    "name": "VIP",
+    "active": true
+   },
+   "Travel agent": {
+    "name": "Travel agent",
+    "active": true
+   },
+   "Breakfast included": {
+    "name": "Breakfast included",
+    "active": true
+   }
+  },
+  "bookflags": {
+   "b14": {
+    "VIP": true
+   }
+  },
+  "spa": {
+   "b2": {
+    "t1": {
+     "status": "booked",
+     "day": "2026-09-27",
+     "time": "10:00",
+     "dur": 60,
+     "qty": 2,
+     "name": "Elena Petrova"
+    }
+   },
+   "b1": {
+    "t2": {
+     "status": "booked",
+     "day": "2026-09-26",
+     "time": "11:00",
+     "dur": 60,
+     "qty": 1,
+     "name": "James Harrington"
+    }
+   },
+   "b16": {
+    "t3": {
+     "status": "booked",
+     "day": "2026-09-26",
+     "time": "16:30",
+     "dur": 90,
+     "qty": 1,
+     "name": "Marco Bianchi"
+    }
+   },
+   "b8": {
+    "t5": {
+     "status": "suggested",
+     "day": "2026-09-27",
+     "time": "15:00",
+     "dur": 60,
+     "qty": 1,
+     "reqDay": "2026-09-27",
+     "reqTime": "morning"
+    }
+   }
+  },
+  "invites": {
+   "2026-09-26": {
+    "1": {
+     "status": "sent",
+     "sentAt": "2026-09-26T09:30:00+10:00"
+    },
+    "3": {
+     "status": "sent",
+     "sentAt": "2026-09-26T09:30:00+10:00"
+    },
+    "4": {
+     "status": "sent",
+     "sentAt": "2026-09-26T09:30:00+10:00"
+    },
+    "6": {
+     "status": "sent",
+     "sentAt": "2026-09-26T09:30:00+10:00"
+    },
+    "8": {
+     "status": "sent",
+     "sentAt": "2026-09-26T09:30:00+10:00"
+    },
+    "11": {
+     "status": "sent",
+     "sentAt": "2026-09-26T09:30:00+10:00"
+    },
+    "13": {
+     "status": "sent",
+     "sentAt": "2026-09-26T09:30:00+10:00"
+    },
+    "16": {
+     "status": "sent",
+     "sentAt": "2026-09-26T09:30:00+10:00"
+    }
+   }
+  },
+  "cards": {
+   "8812001": {
+    "villa": "2",
+    "guest": "Elena Petrova",
+    "cut": 1790395920,
+    "expiry": 1790650800,
+    "by": "Ana"
+   },
+   "8812002": {
+    "villa": "2",
+    "guest": "Elena Petrova",
+    "cut": 1790395920,
+    "expiry": 1790650800,
+    "by": "Ana"
+   },
+   "8812003": {
+    "villa": "12",
+    "guest": "Sam Okafor",
+    "cut": 1790392020,
+    "expiry": 1790478000,
+    "by": "Ana"
+   },
+   "8812004": {
+    "villa": "12",
+    "guest": "Sam Okafor",
+    "cut": 1790392020,
+    "expiry": 1790478000,
+    "by": "Ana"
+   }
+  },
+  "cutrun": null,
+  "previnvites": {
+   "pa-5": {
+    "status": "sent",
+    "sentAt": "2026-09-26T09:00:00+10:00",
+    "delivery": "delivered"
+   },
+   "pa-6": {
+    "status": "failed",
+    "sentAt": "2026-09-26T09:00:00+10:00",
+    "error": "COUNTRY_NOT_ENABLED"
+   }
+  },
+  "phonefix": null,
+  "dayboard": {
+   "2026-09-26": {
+    "sheets": {
+     "t": 580,
+     "who": "Ana"
+    }
+   }
+  },
+  "roomguests": null,
+  "menuhistory": null,
+  "hk": {
+   "2026-09-26": {
+    "1": {
+     "done": "2026-09-26T10:15:00+10:00"
+    },
+    "2": {
+     "departed": true,
+     "done": "2026-09-26T11:40:00+10:00"
+    },
+    "3": {
+     "done": "2026-09-26T10:50:00+10:00"
+    },
+    "4": {
+     "done": "2026-09-26T11:20:00+10:00"
+    },
+    "5": {
+     "departed": true
+    },
+    "7": {
+     "departed": true
+    },
+    "8": {
+     "bfast": "2026-09-26T14:55:00+10:00"
+    },
+    "9": {
+     "done": "2026-09-26T13:30:00+10:00"
+    },
+    "10": {
+     "departed": true,
+     "done": "2026-09-26T11:05:00+10:00"
+    },
+    "12": {
+     "departed": true,
+     "done": "2026-09-26T12:20:00+10:00"
+    },
+    "16": {
+     "bfast": "2026-09-26T15:05:00+10:00"
+    }
+   }
+  }
+ }
+}

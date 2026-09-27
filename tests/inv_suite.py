@@ -13,7 +13,7 @@ stubbed here, exactly as Firebase is. The things most worth pinning down:
      bad number, and it must be visible which two did not.
 """
 import errortrap   # fails the run if any page throws
-import threading, http.server, socketserver, json, time, datetime, os
+import threading, http.server, socketserver, json, time, datetime, os, re
 
 os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
@@ -185,6 +185,14 @@ def wk(route, request):
                   body=json.dumps({"results": results}))
 
 P = F = 0
+def shown(style):
+    """The colour a row's surface shows. On a paper page (nala-ui2.css, ruled
+    27 Sep) a colour-law tint is drawn as a gradient layer over an opaque
+    white base, so the law's own rgba lives in that layer; anywhere else it
+    is the fill. Either way the contract numbers below stay the law's."""
+    m = re.search(r"linear-gradient\((rgba?\([^)]*\))", style.get("backgroundImage") or "")
+    return m.group(1) if m else style["backgroundColor"]
+
 def ck(name, cond, detail=""):
     global P, F
     print(("PASS " if cond else "FAIL ") + name + ((" | " + str(detail)) if not cond and detail else ""))
@@ -450,14 +458,19 @@ with sync_playwright() as p:
         '.vrow[data-villa="%s"]' % v)
     din, out, wait = tint("7"), tint("11"), tint("9")
     ck("an answered dining villa wears the Reservations green tile",
-       din["backgroundColor"] == "rgba(122, 160, 130, 0.26)"
+       shown(din) == "rgba(122, 160, 130, 0.26)"
        and din["borderTopColor"] == "rgba(122, 160, 130, 0.65)")
     ck("a not-dining villa the terracotta",
-       out["backgroundColor"] == "rgba(184, 106, 90, 0.16)"
+       shown(out) == "rgba(184, 106, 90, 0.16)"
        and out["borderTopColor"] == "rgba(184, 106, 90, 0.45)")
+    #  On paper the tint must sit on solid white, or the paper shows through
+    #  the row and it stops reading as a card (the owner, 27 Sep).
+    ck("and each tint sits on a solid white base, never the paper",
+       all(x["backgroundColor"] == "rgb(255, 255, 255)" for x in (din, out, wait)),
+       [x["backgroundColor"] for x in (din, out, wait)])
     #  Chrome stores the .045 alpha as 8-bit and reads it back as 0.043.
     ck("waiting is grey, not a promise of green, solid and full strength",
-       wait["backgroundColor"].startswith("rgba(28, 28, 26, 0.04")
+       shown(wait).startswith("rgba(28, 28, 26, 0.04")
        and wait["borderTopStyle"] == "solid" and wait["opacity"] == "1")
     grey = tint("2")
     ck("cannot-send is dashed, sunk, its tick hidden",
@@ -908,8 +921,8 @@ with sync_playwright() as p:
         "s=>getComputedStyle(document.querySelector(s))",
         '.vrow[data-villa="%s"]' % v)
     ck("a confirmed arrival wears the Reservations green tile, a decline terracotta",
-       tintf("6")["backgroundColor"] == "rgba(122, 160, 130, 0.26)"
-       and tintf("4")["backgroundColor"] == "rgba(184, 106, 90, 0.16)")
+       shown(tintf("6")) == "rgba(122, 160, 130, 0.26)"
+       and shown(tintf("4")) == "rgba(184, 106, 90, 0.16)")
     ck("but only on the night they arrive: mid-stay is in house, To send, ticked",
        frow("9").get_attribute("data-state") == "ready"
        and "on" in (frow("9").get_attribute("class") or "")
@@ -972,8 +985,8 @@ with sync_playwright() as p:
        "1 guest" in pg.inner_text(".grouptitle"))
     pg.click(".arrivals > summary"); pg.wait_for_timeout(150)
     ck("a confirmed arrival wears the green tile inside the dropdown",
-       pg.evaluate("s=>getComputedStyle(document.querySelector(s)).backgroundColor",
-                   '.arrivals .vrow[data-villa="16"]') == "rgba(122, 160, 130, 0.26)")
+       shown(pg.evaluate("s=>getComputedStyle(document.querySelector(s))",
+                         '.arrivals .vrow[data-villa="16"]')) == "rgba(122, 160, 130, 0.26)")
     #  Inviting a confirmed diner asks first. Dismissed -> stays unticked.
     pg.once("dialog", lambda d: d.dismiss())
     row("16").click(); pg.wait_for_timeout(150)

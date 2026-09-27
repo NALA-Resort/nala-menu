@@ -244,6 +244,12 @@ are next touched.
 - Constructive buttons never confirm. If tapping one feels like it needs a
   warning, the label is wrong, not the dialog missing.
 
+**On a paper page** (27 Sep, nine boards, class `paper`) an outline
+button - the quiet one and the destructive terracotta one alike - is
+filled with the white surface rather than left see-through. "No fill"
+meant the ground when the ground was white; on paper it would show the
+paper through the button, which is the one thing a paper page may not do.
+
 Applied on spa.html. Every other page's destructive buttons predate the law:
 dress and confirm them when that page is next touched, not as a standalone
 sweep of a live system.
@@ -325,6 +331,12 @@ touching anything a guest sees.
 ## Tokens (defined once in nala-ui.css)
 
 Cream #F9F7F4 · Ink #1C1C1A · Mid #999990 · Rule #E0E0DA · Red #A8321E
+
+**Paper pages** (`body.ui2.paper`, nala-ui2.css, ruled 27 Sep): ground
+#F9F9F7, quiet fill #F0EFEC, hairline #E1E1DF - the Claude app's own,
+sampled from the owner's screenshot - and every card, row and tile on
+`--surface` #FFFFFF with `--lift`. A tint goes over the white as a
+gradient layer: `background: linear-gradient(T, T), var(--surface)`.
 UI font: Helvetica/Arial. Content serif (app tier only): Georgia.
 Labels: 10-11px, uppercase, letterspaced .12-.15em.
 
