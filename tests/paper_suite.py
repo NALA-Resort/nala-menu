@@ -122,9 +122,11 @@ WEARS = sorted(f for f in glob.glob("*.html")
 print("   pages on paper:", WEARS)
 ck("nala-ui2.css gives the paper a ground, and it is not the cards' white",
    PAPER is not None and PAPER != "rgb(255, 255, 255)", GROUND)
-ck("nine pages wear the paper, as the owner ruled",
+# Nine boards on 27 Sep, then Publish Menu and Dietary the same day.
+ck("the pages the owner put on paper wear it, and no others",
    WEARS == sorted(["tally.html", "front-desk.html", "dashboard.html", "cleaners.html", "spa.html",
-                    "invitations.html", "arrivals-sms.html", "calendar.html", "keys.html"]), WEARS)
+                    "invitations.html", "arrivals-sms.html", "calendar.html", "keys.html",
+                    "publish.html", "tag.html"]), WEARS)
 
 def click_row(pg, sel, text):
     for r in pg.query_selector_all(sel):
@@ -147,6 +149,10 @@ STATES = {
   "arrivals-sms.html": [("the next 14 days", lambda pg: pg.click("#knob button >> nth=2"))],
   "invitations.html": [("the Arrivals list", lambda pg: pg.click(".arrivals > summary"))],
   "dashboard.html": [("the menu", lambda pg: pg.click("#navBtn"))],
+  "publish.html": [("Remove armed", lambda pg: pg.click("#rmBtn")),
+                   ("the published screen", lambda pg: pg.click("#pubBtn"))],
+  "tag.html": [("a hidden dietary", lambda pg: pg.click("#mng .mtog >> nth=0")),
+               ("This menu only picked", lambda pg: pg.click("#gMenu"))],
 }
 
 from playwright.sync_api import sync_playwright
@@ -168,7 +174,7 @@ with sync_playwright() as p:
         ctx, pg = page(name)
         ground = pg.evaluate("()=>getComputedStyle(document.body).backgroundColor")
         ck(name + ": the ground is the paper, %s" % GROUND, ground == PAPER, ground)
-        rows = pg.evaluate("()=>document.querySelectorAll('.vrow,.arr,.tile,.card,.row').length")
+        rows = pg.evaluate("()=>document.querySelectorAll('.vrow,.arr,.tile,.card,.row,.tick,.mrow').length")
         ck(name + ": the fixture night puts rows on it, so the check below has something to see", rows > 0)
         hit = pg.evaluate(FIND)
         ck(name + ": no box lets the paper through", not hit, hit)

@@ -92,9 +92,25 @@
                  align-items:center; }
   .savebtn { flex:1; }
   .saved { font-size:var(--t2); color:var(--mid); flex:0 0 auto; }
+
+/* ── paper ───────────────────────────────────────────────────────────
+   The ground and its tokens live in nala-ui2.css. The owner put this page
+   on paper 27 Sep with Publish, after the nine boards. The list of
+   dietaries is one white card, grown outward 8pt into the margin as every
+   card on the paper is, so the names keep their line, and its Hide and
+   Delete show the card's white. The two list choices above it are white,
+   the picked one's grey drawn over the white. */
+body.paper .grp button { background:var(--surface); }
+body.paper .grp button.on {
+  background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface); }
+body.paper .mng { background:var(--surface); border:1px solid var(--rule);
+                  border-radius:var(--r); margin-inline:-8px; padding:0 7px;
+                  box-shadow:var(--lift); }
+body.paper .mng:empty { display:none; }
+body.paper .mng .mrow:last-child { border-bottom:none; }
 </style>
 </head>
-<body class="ui2">
+<body class="ui2 paper">
 <div class="errbar" id="err"></div>
 <div class="wrap">
   <div class="navrow">  <!-- Every other staff page has this and these two did not, so a chef who

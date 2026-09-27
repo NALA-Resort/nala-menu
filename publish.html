@@ -172,9 +172,24 @@
              font-size:var(--t2);
              color:var(--mid); text-decoration:none;
              -webkit-tap-highlight-color:transparent; }
+
+/* ── paper ───────────────────────────────────────────────────────────
+   The ground and its tokens live in nala-ui2.css. The owner put this page
+   on paper 27 Sep with the Dietary page, after the nine boards. It is a
+   form, like the Front Desk sheet he approved, so the fields stay white on
+   the paper and nothing becomes a card; what changes is that every pill
+   and outlined button is white too, where it had no fill of its own and
+   would show the paper. A picked pill's grey is drawn over the white, and
+   the rings keep their colours. */
+body.paper .sfbtn, body.paper .tick, body.paper .rmbtn, body.paper .rmbtn.arm,
+body.paper .notifylink, body.paper .doneact { background:var(--surface); }
+body.paper .sfbtn.on, body.paper .tick.on {
+  background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface); }
+/* the publish bar is the page's own paper, not the cream it wore on white */
+body.paper .bar { background:var(--ground); }
 </style>
 </head>
-<body class="ui2">
+<body class="ui2 paper">
 <div class="errbar" id="err"></div>
 <div class="wrap" id="wrap">
   <!-- Loud on purpose. A rehearsal that looks like the real thing is worse
