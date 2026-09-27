@@ -333,8 +333,9 @@ touching anything a guest sees.
 Cream #F9F7F4 · Ink #1C1C1A · Mid #999990 · Rule #E0E0DA · Red #A8321E
 
 **Paper pages** (`body.ui2.paper`, nala-ui2.css, ruled 27 Sep): ground
-#F9F9F7, quiet fill #F0EFEC, hairline #E1E1DF - the Claude app's own,
-sampled from the owner's screenshot - and every card, row and tile on
+#FBFBF9, a touch lighter than the Claude app's own #F9F9F7 at the owner's
+word; quiet fill #F0EFEC and hairline #E1E1DF, the app's own, sampled
+from the owner's screenshot; and every card, row and tile on
 `--surface` #FFFFFF with `--lift`. A tint goes over the white as a
 gradient layer: `background: linear-gradient(T, T), var(--surface)`.
 UI font: Helvetica/Arial. Content serif (app tier only): Georgia.

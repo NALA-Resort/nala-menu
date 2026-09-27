@@ -265,8 +265,8 @@ welcome (`welcome.html`). All take `?b=<booking id>`.
 
 **The paper ground** (27 Sep): nine boards - Reservations, Front Desk,
 Dashboard, Cleans, Spa, Invitations, Pre-arrival SMS, Calendar, Keys -
-wear the Claude app's #F9F9F7 with every card solid white on it, by one
-class, `paper`, beside `ui2`. Not the printed sheets above, which stay
+wear a paper ground a touch lighter than the Claude app's own, with every
+card solid white on it, by one class, `paper`, beside `ui2`. Not the printed sheets above, which stay
 white. The ruling is in CLAUDE.md under the colour law, the design in
 `mock-paper.html`, and `paper_suite` holds the rule.
 
