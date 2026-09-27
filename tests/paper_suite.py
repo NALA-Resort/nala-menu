@@ -1,12 +1,16 @@
 """The paper ground: every page wearing `paper` beside `ui2`.
 
-Ruled by the owner, 27 Sep, off mock-paper.html. The ground is the Claude
-app's own, #F9F9F7, and his first objection to the first mock is the rule
-this suite exists for: "Cards and box backgrounds are transparent so there
-is no contrast." On a white page a box with no fill of its own looks white;
-on paper it shows the paper through it and stops being a card. So:
+Ruled by the owner, 27 Sep, off mock-paper.html. The ground began as the
+Claude app's own and moved a touch lighter the same day; its value is
+--ground in nala-ui2.css and this suite reads it from there, because a
+suite with its own copy of a colour passes while the page is wrong. His
+first objection to the first mock is the rule this suite exists for:
+"Cards and box backgrounds are transparent so there is no contrast." On a
+white page a box with no fill of its own looks white; on paper it shows
+the paper through it and stops being a card. So:
 
-  1. The ground is the app's paper, on every page that wears it.
+  1. The ground is the paper, on every page that wears it, and the paper
+     is not the white its cards are made of.
   2. No box on a paper page lets the paper through: nothing with a border,
      or a tint and rounded corners, whose own fill is transparent,
      translucent, or the ground colour, unless something solid sits between
@@ -46,7 +50,10 @@ onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'staff@x'});},25
 signOut:function(){}};"""
 
 TREE = json.load(open("tests/paper_night.json"))["tree"]
-PAPER = "rgb(249, 249, 247)"
+_g = re.search(r"body\.ui2\.paper\s*\{[^}]*--ground:\s*#([0-9A-Fa-f]{6})",
+               open("nala-ui2.css", encoding="utf-8").read())
+GROUND = "#" + _g.group(1).upper() if _g else None
+PAPER = "rgb(%d, %d, %d)" % tuple(int(_g.group(1)[i:i + 2], 16) for i in (0, 2, 4)) if _g else None
 
 def resolve(url):
     """Read the fixture the way the database answers: the node at the path,
@@ -113,6 +120,8 @@ WEARS = sorted(f for f in glob.glob("*.html")
                if not f.startswith(("demo-", "mock-"))
                and re.search(r'<body[^>]*class="[^"]*\bui2\b[^"]*\bpaper\b', open(f, encoding="utf-8").read()))
 print("   pages on paper:", WEARS)
+ck("nala-ui2.css gives the paper a ground, and it is not the cards' white",
+   PAPER is not None and PAPER != "rgb(255, 255, 255)", GROUND)
 ck("nine pages wear the paper, as the owner ruled",
    WEARS == sorted(["tally.html", "front-desk.html", "dashboard.html", "cleaners.html", "spa.html",
                     "invitations.html", "arrivals-sms.html", "calendar.html", "keys.html"]), WEARS)
@@ -157,8 +166,8 @@ with sync_playwright() as p:
 
     for name in WEARS:
         ctx, pg = page(name)
-        ck(name + ": the ground is the Claude app's paper, #F9F9F7",
-           pg.evaluate("()=>getComputedStyle(document.body).backgroundColor") == PAPER)
+        ground = pg.evaluate("()=>getComputedStyle(document.body).backgroundColor")
+        ck(name + ": the ground is the paper, %s" % GROUND, ground == PAPER, ground)
         rows = pg.evaluate("()=>document.querySelectorAll('.vrow,.arr,.tile,.card,.row').length")
         ck(name + ": the fixture night puts rows on it, so the check below has something to see", rows > 0)
         hit = pg.evaluate(FIND)

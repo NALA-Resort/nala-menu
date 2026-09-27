@@ -175,9 +175,12 @@ Three things this exception does NOT extend to, all settled already:
 
 ### Paper: a ground, not a colour
 
-Ruled by the owner, 27 Sep, off `mock-paper.html`: nine boards wear the
-Claude app's own ground, #F9F9F7, switched on by the class `paper` beside
-`ui2` (the tokens live in `nala-ui2.css`). It changes no meaning in the
+Ruled by the owner, 27 Sep, off `mock-paper.html`: nine boards wear a
+paper ground, switched on by the class `paper` beside `ui2`. Its value is
+`--ground` in `nala-ui2.css`, which `paper_suite` reads rather than
+copies: it began as the Claude app's own #F9F9F7, which the mock still
+shows, and he had it lightened a touch the same day on seeing it built.
+It changes no meaning in the
 table above. Every tint is drawn over an opaque white surface, so each
 state is the colour it always was; only the page between the cards is
 paper.
