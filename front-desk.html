@@ -9,8 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Front Desk Arrival</title>
-<link rel="stylesheet" href="nala-ui2.css?v=8">
-<link rel="stylesheet" href="nala-ui.css?v=17">
+<link rel="stylesheet" href="nala-ui2.css?v=9">
+<link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
   /* This page's OWN colours, restored 29 Aug. The first conversion
      dropped each page's :root wholesale to remove the tokens the shared
@@ -102,8 +102,8 @@
   /* Green, always, and that is not a lost scope: a summary only opens on a
      completed row (see the tap handler), so the only row it can hang off is
      already green. Grey and amber open the form instead. */
-  .sum { border:1px solid rgba(122,160,130,.34); border-top:none;
-         border-radius:0 0 8px 8px; background:rgba(122,160,130,.11);
+  .sum { border:1px solid var(--law-green-b); border-top:none;
+         border-radius:0 0 8px 8px; background:var(--law-green-t);
          margin:-8px 0 7px; padding:12px 13px 13px; }
   .sum-r { display:flex; gap:10px; font-size:var(--t2); line-height:1.5;
            padding:3px 0; align-items:baseline; }
@@ -186,14 +186,18 @@
      colour law's light grey fill - unknown promises nothing - because an
      untouched guest is not work in progress, they are not started. It used
      to be amber, which made a row nobody had touched read the same as one
-     half done. Kept very light so the villa number and the name still carry
-     the row. */
-  .arr.done-form { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
+     half done.
+     Green and amber are the colour law's own, the green of a booked
+     massage on Spa and a dining tile on Reservations. Until 27 Sep this
+     board wore them at less than half strength, "kept very light", and the
+     owner found the greens and ambers "all over the place": one meaning,
+     one colour, on every board. */
+  .arr.done-form { background:var(--law-green-t); border-color:var(--law-green-b); }
   .arr.todo-form { background:rgba(28,28,26,.045); border-color:var(--rule); }
   /* Started and not finished: amber, the colour law's in-progress, with a
      solid left edge to say somebody has met it halfway. */
-  .arr.part-form { background:rgba(194,154,85,.11); border-color:rgba(194,154,85,.36);
-                   border-left:3px solid rgba(194,154,85,.85); }
+  .arr.part-form { background:var(--law-amber); border-color:var(--law-amber-b);
+                   border-left:3px solid var(--law-amber-b); }
 
   .empty { font-size:var(--t3); color:var(--mid); font-style:italic; padding:4px 0 2px; }
   .spacer { height:40px; }
@@ -453,15 +457,15 @@
    see-through - the chips and the yes/no pairs - is white, the selected
    grey drawn over the white. */
 body.paper .arr { background:var(--surface); box-shadow:var(--lift); }
-body.paper .arr.done-form { background:linear-gradient(rgba(122,160,130,.11), rgba(122,160,130,.11)), var(--surface); }
+body.paper .arr.done-form { background:linear-gradient(var(--law-green-t), var(--law-green-t)), var(--surface); }
 body.paper .arr.todo-form { background:linear-gradient(rgba(28,28,26,.045), rgba(28,28,26,.045)), var(--surface); }
-body.paper .arr.part-form { background:linear-gradient(rgba(194,154,85,.11), rgba(194,154,85,.11)), var(--surface); }
+body.paper .arr.part-form { background:var(--law-amber); }
 body.paper .chip, body.paper .seg button { background:var(--surface); }
 body.paper .chip.on, body.paper .seg button.on {
   background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface); }
 /* a completed arrival's summary wears its row's green, over white; the key
    card run's villas are white cards */
-body.paper .sum { background:linear-gradient(rgba(122,160,130,.11), rgba(122,160,130,.11)), var(--surface); }
+body.paper .sum { background:linear-gradient(var(--law-green-t), var(--law-green-t)), var(--surface); }
 body.paper .crun { background:var(--surface); }
 </style>
 </head>

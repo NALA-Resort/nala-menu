@@ -9,8 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Invitations</title>
-<link rel="stylesheet" href="nala-ui2.css?v=8">
-<link rel="stylesheet" href="nala-ui.css?v=17">
+<link rel="stylesheet" href="nala-ui2.css?v=9">
+<link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
   /* This page's OWN colours, restored 29 Aug. The first conversion
      dropped each page's :root wholesale to remove the tokens the shared
@@ -44,10 +44,20 @@
   .seclink  { float:right; font-size:var(--t2);
               text-transform:none; color:var(--mid); text-decoration:underline; }
 
-  /* Why this page refuses to send. A tinted pill is status, never tappable. */
+  /* Why this page refuses to send. A tinted pill is status, never tappable.
+     One colour per meaning, the Reservations pill's own (the owner, 27 Sep):
+     published is the colour law's green pill, not published is amber - chase
+     this, the chef has not published yet - and only a read that failed is
+     red. Not published was red until 27 Sep, and published wore its border
+     colour as its ink. */
   .menupill { display:inline-block; padding:6px 12px; border-radius:var(--r);
-              background:#EFE3E0; color:var(--red); font-size:var(--t2); }
-  .menupill.ok { background:var(--green); color:var(--greenb); }
+              font-size:var(--t2); border:1px solid transparent; }
+  .menupill.none { background:var(--law-amber); color:var(--law-amber-ink);
+                   border-color:var(--law-amber-b); }
+  .menupill.ok   { background:var(--law-save-bg); color:var(--law-green);
+                   border-color:var(--law-save-bdr); }
+  .menupill.fail { background:rgba(28,28,26,.045); color:var(--law-red);
+                   border-color:var(--law-red); }
   .menuwhy { font-size:var(--t2); color:var(--mid); margin-top:6px; line-height:1.45; }
   #menuGate { display:none; margin:14px 0 2px; }
   #menuGate.show { display:block; }
@@ -191,7 +201,7 @@ body.paper details.arrivals { background:var(--surface); box-shadow:var(--lift);
 </div>
 
 <div id="menuGate">
-  <span class="menupill" id="menuPill">Menu not published</span>
+  <span class="menupill none" id="menuPill">Menu not published</span>
   <div class="menuwhy" id="menuWhy"></div>
 </div>
 
@@ -570,7 +580,7 @@ function menuGate(){
         pill = document.getElementById('menuPill');
     if (m && m.failed){
       MENU_STATE = 'failed';
-      pill.className = 'menupill';
+      pill.className = 'menupill fail';
       pill.textContent = 'Menu could not be checked';
       why.textContent = 'Tonight\u2019s menu could not be read. This is usually ' +
         'the connection, not the menu. Nothing sends until it can be checked.';
@@ -584,7 +594,7 @@ function menuGate(){
       }
       MENU_STATE = live ? 'live' : 'none';
       if (live){
-        /* The opposite state of the red pill, said out loud: silence read as
+        /* The opposite state of the amber pill, said out loud: silence read as
            this page not having checked. Just the fact, no timestamp. */
         pill.textContent = 'Menu published';
         pill.className = 'menupill ok';
@@ -592,7 +602,7 @@ function menuGate(){
         gate.className = 'show';
       }
       else {
-        pill.className = 'menupill';
+        pill.className = 'menupill none';
         pill.textContent = 'Menu not published';
         why.textContent = 'No menu is published for tonight, so the link would ' +
           'land on a placeholder. Sending opens once the chef publishes.';

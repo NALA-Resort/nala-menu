@@ -1,0 +1,50 @@
+{
+  "_note": "The colour law (CLAUDE.md) as values, read by tests/colour_suite.py. Every green, amber and red a staff board paints must be one of these. Ruled by the owner 25 Aug; made one colour per meaning 27 Sep, after he found the greens, reds and oranges 'all over the place': Front Desk's form rows at less than half the law's strength, three greens for 'menu published', red on a count of villas still to answer. Add a value here only with the owner's ruling beside it. A value a page needs that is not the law goes under page_keys for that page alone, with its reason.",
+
+  "tokens": {
+    "_note": "nala-ui2.css defines these at :root and every ui2 page reads them. colour_suite fails when a value here and the stylesheet disagree.",
+    "--law-green":     { "value": "#5E7D67",              "means": "done, confirmed: ink" },
+    "--law-green-t":   { "value": "rgba(122,160,130,.26)", "means": "done, confirmed: tile fill" },
+    "--law-green-b":   { "value": "rgba(122,160,130,.65)", "means": "done, confirmed: tile border" },
+    "--law-save-bg":   { "value": "#E4EDE2",              "means": "a positive state or a selection mark: pill fill" },
+    "--law-save-bdr":  { "value": "#7E937A",              "means": "a positive state or a selection mark: pill border" },
+    "--law-save-ink":  { "value": "#5E7D67",              "means": "a positive state: pill ink" },
+    "--law-amber":     { "value": "#F6EAD5",              "means": "attention, in progress, chase this: fill" },
+    "--law-amber-b":   { "value": "#C29A55",              "means": "attention: border" },
+    "--law-amber-ink": { "value": "#8A6A2F",              "means": "attention: ink" },
+    "--law-terra":     { "value": "#9E6455",              "means": "a guest's negative answer; the destructive button: ink" },
+    "--law-terra-t":   { "value": "rgba(184,106,90,.16)",  "means": "a negative answer: tile fill" },
+    "--law-terra-b":   { "value": "rgba(184,106,90,.45)",  "means": "a negative answer; the destructive button: border" },
+    "--law-red":       { "value": "#A8321E",              "means": "failure, and an allergy: text and pills, never a whole tile" }
+  },
+
+  "print_tokens": {
+    "_note": "The printed sheets load nala-ui.css, not nala-ui2.css, and it keeps its own copy of these under older names (rule 3: a forced copy is tested against the table).",
+    "--red":      "--law-red",
+    "--terra":    "--law-terra",
+    "--terra-t":  "--law-terra-t",
+    "--terra-b":  "--law-terra-b",
+    "--save-bg":  "--law-save-bg",
+    "--save-bdr": "--law-save-bdr",
+    "--save-ink": "--law-save-ink"
+  },
+
+  "allergy": {
+    "_note": "Red's one exception, a hazard about a person (ruled 29 Aug), wears two tints of the law's red besides the solid pill.",
+    "values": [
+      { "value": "rgba(168,50,30,.12)", "means": "a confirmed diner's declared dietary, the tinted pill (Reservations, Guest)" },
+      { "value": "rgba(168,50,30,.05)", "means": "a booking whose dietary clashes with tonight's menu: the row's tint beside its red edge (Reservations)" }
+    ]
+  },
+
+  "page_keys": {
+    "cleaners.html": {
+      "why": "Cleans' colours say WHICH JOB, not how it stands: blue a clean, green a service, orange a pre-arrival, and a clock that goes green, amber, red as the guest's return nears. The owner, 27 Sep, shown that its green and orange mean something else on every other board: keep its job colours. Written into the colour law as Cleans' own key.",
+      "values": [
+        { "value": "#4E8F4A", "means": "service: the job bar and its key" },
+        { "value": "#E8891A", "means": "pre-arrival: the job bar, the arrival half of a clean-and-arrival bar, a guest arriving early" },
+        { "value": "#4E6B4B", "means": "the availability clock's first ten minutes: 5 to 1 against the service tile" }
+      ]
+    }
+  }
+}

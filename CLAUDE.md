@@ -65,6 +65,12 @@ Already done this way — follow these:
   facts out for itself and disagreed with Reservations and Invitations
   about all four. `dash_suite` asserts the page calls each reader named
   there, and that the patterns under `banned` appear nowhere in it.
+- `tests/colour_law.json` — the colour law below as values: every green,
+  amber and red a board may paint, and Cleans' own key. `colour_suite`
+  checks `nala-ui2.css` (and the printed sheets' `nala-ui.css`) define
+  exactly these, and reads every board, its sheets and modes included,
+  failing any colour outside the table by page and element. Added 27 Sep,
+  after the owner found the greens, reds and oranges "all over the place".
 
 **Never** restate the menu in a suite. Four suites held their own copy of
 the menu order until 26 Aug, which is why adding a page meant editing them
@@ -133,6 +139,29 @@ reads the same:
 The Reservations green and terracotta tiles are a contract between boards:
 suites assert them by computed colour, not class name. Change them in one
 place and the suites will name every other.
+
+**One colour per meaning, held by a table** (27 Sep). The owner found the
+colours "all over the place", and they were: each board had copied a law
+colour and then adjusted its copy. Front Desk drew a completed form at less
+than half the law's green and an incomplete one at a pale amber of its own,
+"menu published" was a different green on Reservations and Invitations, a
+count of villas still to answer was red, and Keys wore the desk's form tints
+on key cards, so every card in use was green. All of it now reads the law's
+tokens (`--law-*`, nala-ui2.css) and nothing else, and `colour_suite` fails
+any board that paints a green, amber or red outside `tests/colour_law.json`.
+A new status colour is a line in that table with the owner's ruling beside
+it, or it is the wrong colour.
+
+### Cleans keeps its own key
+
+Ruled by the owner, 27 Sep. On the Cleans board colour says **which job**:
+blue a clean, green a service, orange a pre-arrival, in the tiles and the
+job bars alike, and its clocks run green, amber, red as a guest's return
+nears. So green there is not "done" and orange is not "chase this". Shown
+that every other board reads them the other way, he kept the key: the
+housekeepers read it at arm's length and it works. It is Cleans' alone.
+`tests/colour_law.json` allows its three non-law colours on that board and
+no other, and STYLEGUIDE.md's Cleans section spells the key out.
 
 ### Red's one exception: an allergy
 
