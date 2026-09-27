@@ -6,8 +6,8 @@ Your evening, in order. Four steps, and the reason for each.
 
 ## 1. Publish the menu
 
-You do this in the menu chat, not in the app: send the photo, confirm the four
-courses, and it goes live.
+You do this in the menu chat, not in the app: send the menu, photographed or
+typed, confirm the four courses, and it goes live.
 
 Publishing writes the menu into the app's database, signed in as you. That is
 why it appears on the guest's phone instantly, and why the manager is only told
@@ -90,5 +90,5 @@ cut down the middle.
 ## What the app will never do
 
 It will not reword a dish, invent one, or change your menu. If something on a
-menu photo reads as an allergen risk, the chat raises it once and then defers
-to you.
+menu reads as an allergen risk, the chat raises it once and then defers to
+you.

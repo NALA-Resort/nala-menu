@@ -90,10 +90,10 @@ The flow it delivers: a guest fills in pre-arrival, reception confirms it at the
 desk against the real menu, and the answer lands on the chef's board typed
 rather than handwritten.
 
-The chef's own flow: he photographs the handwritten menu, a chat reads it and
-hands him a link, he checks the reading against his handwriting on
-`publish.html`, ticks the dietaries and publishes. `CHEF-BRIEF.md` is what that
-chat is given.
+The chef's own flow: he photographs the handwritten menu or sends a typed one,
+a chat reads it and hands him a link, he checks the reading against what he
+wrote on `publish.html`, ticks the dietaries and publishes. `CHEF-BRIEF.md` is
+what that chat is given.
 
 ---
 
@@ -724,8 +724,8 @@ Anything else failing is yours.
   wins and the document gets corrected.
 - `TESTING.md` the checks only a human can run.
 - `PLAN.md` the ordered build queue.
-- `CHEF-BRIEF.md` what the menu chat is given: read the photo, show the four
-  courses back, hand over a link.
+- `CHEF-BRIEF.md` what the menu chat is given: read the menu, photographed or
+  typed, show the four courses back, hand over a link.
 - `CHEF-BRIEF-CONSOLE.md` the fallback for a chat with no network, which pastes
   JSON into the Firebase console. Kept because the scripted path failed at
   service time once and there was nothing behind it.
