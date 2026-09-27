@@ -175,8 +175,8 @@ Three things this exception does NOT extend to, all settled already:
 
 ### Paper: a ground, not a colour
 
-Ruled by the owner, 27 Sep, off `mock-paper.html`: nine boards wear a
-paper ground, switched on by the class `paper` beside `ui2`. Its value is
+Ruled by the owner, 27 Sep, off `mock-paper.html`: nine boards, then
+Publish Menu and Dietary the same day, wear a paper ground, switched on by the class `paper` beside `ui2`. Its value is
 `--ground` in `nala-ui2.css`, which `paper_suite` reads rather than
 copies: it began as the Claude app's own #F9F9F7, which the mock still
 shows, and he had it lightened a touch the same day on seeing it built.

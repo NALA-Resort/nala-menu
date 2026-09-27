@@ -819,6 +819,8 @@ with sync_playwright() as p:
                    x.getAttribute('data-n')==='Nut allergy');
           return t.className.split(' ').indexOf('on')>-1 &&
                  t.className.split(' ').indexOf('warnin')>-1; }"""))
+    #  (On paper, 27 Sep, the grey is a layer drawn over the white surface,
+    #  so shown() reads the layer, and backgroundColor where there is none.)
     #  And keeps it LOUD. The owner's second ruling of 27 Aug, off his own
     #  screenshot: pressed pills filled solid red, so a page with a few ticks
     #  was a wall of red and the one ring that meant a confirmed allergy
@@ -831,7 +833,8 @@ with sync_playwright() as p:
                    x.getAttribute('data-n')==='Nut allergy');
           var s = getComputedStyle(t);
           const probe=v=>{const e=document.createElement('span');e.style.color='var('+v+')';document.body.appendChild(e);const c=getComputedStyle(e).color;e.remove();return c;};
-          return s.backgroundColor === probe('--sel-bg') &&
+          const shown=s=>{const m=(s.backgroundImage||'').match(/linear-gradient\\((rgba?\\([^)]*\\))/);return m?m[1]:s.backgroundColor;};
+          return shown(s) === probe('--sel-bg') &&
                  s.color === probe('--ink'); }"""))
     ck("and pressing left the red ring exactly as it was",
        pg.evaluate("""()=>{ var t=[...document.querySelectorAll('#tagblock .tick')]
@@ -848,9 +851,10 @@ with sync_playwright() as p:
           if (!t) return false; t.click();
           var s = getComputedStyle(t);
           const probe=v=>{const e=document.createElement('span');e.style.color='var('+v+')';document.body.appendChild(e);const c=getComputedStyle(e).color;e.remove();return c;};
-          return s.backgroundColor === probe('--sel-bg') &&
+          const shown=s=>{const m=(s.backgroundImage||'').match(/linear-gradient\\((rgba?\\([^)]*\\))/);return m?m[1]:s.backgroundColor;};
+          return shown(s) === probe('--sel-bg') &&
                  s.borderTopColor !== probe('--red') &&
-                 s.borderTopColor !== s.backgroundColor; }"""))
+                 s.borderTopColor !== shown(s); }"""))
     pg.close()
 
     #  One dietary, two declarers: the confirmed guest outranks the pending

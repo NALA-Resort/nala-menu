@@ -244,7 +244,7 @@ are next touched.
 - Constructive buttons never confirm. If tapping one feels like it needs a
   warning, the label is wrong, not the dialog missing.
 
-**On a paper page** (27 Sep, nine boards, class `paper`) an outline
+**On a paper page** (27 Sep, eleven pages, class `paper`) an outline
 button - the quiet one and the destructive terracotta one alike - is
 filled with the white surface rather than left see-through. "No fill"
 meant the ground when the ground was white; on paper it would show the
