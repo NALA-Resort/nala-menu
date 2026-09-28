@@ -96,11 +96,13 @@ WEARS = sorted(f for f in glob.glob("*.html")
 print("   pages on paper:", WEARS)
 ck("nala-ui2.css gives the paper a ground, and it is not the cards' white",
    PAPER is not None and PAPER != "rgb(255, 255, 255)", GROUND)
-# Nine boards on 27 Sep, then Publish Menu and Dietary the same day.
+# Nine boards on 27 Sep, then Publish Menu and Dietary the same day, then
+# Spa reminders on 28 Sep: drawn on paper in mock-spa-reminders.html, beside
+# Pre-arrival SMS whose dress it copies, and approved that way.
 ck("the pages the owner put on paper wear it, and no others",
    WEARS == sorted(["tally.html", "front-desk.html", "dashboard.html", "cleaners.html", "spa.html",
                     "invitations.html", "arrivals-sms.html", "calendar.html", "keys.html",
-                    "publish.html", "tag.html"]), WEARS)
+                    "publish.html", "tag.html", "spa-reminders.html"]), WEARS)
 
 def click_row(pg, sel, text):
     for r in pg.query_selector_all(sel):

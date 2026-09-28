@@ -63,6 +63,10 @@ Already done this way — follow these:
   stands (`extInviteState`, nala-shared.js), as Invitations, Reservations
   and the Dashboard all read it. Added 28 Sep with the External guests
   drop-down, so the three screens cannot tell reception three things.
+- `tests/dinnertime_cases.json` — how a stored dinner time reads
+  (`dinnerTimeLabel`), for the shared copy and the guest page's forced
+  copy in index.html, which since 28 Sep tells an external guest their
+  seating. The `phone_cases.json` pattern, rule 3 below.
 - `tests/night_answer_cases.json` - a past night's dinner answer as every
   page that looks back must read it (`nightAnswer`, nala-shared.js): the
   cell, else the arrival night's form. Added 27 Sep, after Statistics and
@@ -73,6 +77,11 @@ Already done this way — follow these:
   facts out for itself and disagreed with Reservations and Invitations
   about all four. `dash_suite` asserts the page calls each reader named
   there, and that the patterns under `banned` appear nowhere in it.
+- `tests/spareminder_cases.json` — the morning spa reminder's words and
+  where each treatment's text stands. `spaBookingText`/`spaReminderText`
+  and `spaReminderState` in nala-shared.js answer to it, and so does the
+  Worker's twin of the builder, because the preview the desk reads must be
+  the text the guest gets. Added 28 Sep with the feature.
 - `tests/colour_law.json` — the colour law below as values: every green,
   amber and red a board may paint, and Cleans' own key. `colour_suite`
   checks `nala-ui2.css` (and the printed sheets' `nala-ui.css`) define
@@ -425,10 +434,13 @@ python3 tests/run.py <suite>       # the one suite you touched
 python3 tests/run.py               # once, before publishing only
 ```
 
-Known failures, pre-existing, not yours: `cleans` ×2, and `rules` ×2 where
-`rules` can run. `tally` ×1 was on this list and has not failed for some
-time; taken off 29 Aug, because a stale list of expected failures is how a
-real one gets waved through.
+Known failures, pre-existing, not yours: `cleans` ×2, and `rules` ×12 where
+`rules` can run - the two "a waiter may not", and ten that still test
+`/cardjobs`, the node the 11 Sep key-card rebuild retired (counted 28 Sep,
+when the suite first ran here with targaryen installed; identical on main).
+`tally` ×1 was on this list and has not failed for some time; taken off
+29 Aug, because a stale list of expected failures is how a real one gets
+waved through.
 
 Three suites report NO RESULT rather than failing in a container that lacks
 their tools, and that is not a break either: `rules` and `coercion` need

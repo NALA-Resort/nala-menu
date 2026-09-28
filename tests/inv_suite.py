@@ -1244,6 +1244,12 @@ with sync_playwright() as p:
       }).filter(Boolean)""", CASES)
     ck("every case in tests/extinvite_cases.json reads as the table says (%d)" % len(CASES),
        miss == [], miss)
+    #  How a stored time reads: the shared copy, held to the table the guest
+    #  page's copy answers to as well (rule 3).
+    TCASES = json.load(open("tests/dinnertime_cases.json", encoding="utf-8"))["cases"]
+    tmiss = pg.evaluate("(cs)=>cs.filter(c=>dinnerTimeLabel(c[0])!==c[1])", TCASES)
+    ck("the shared dinnerTimeLabel reads every case in tests/dinnertime_cases.json",
+       tmiss == [], tmiss)
 
     # ── Invite + ──────────────────────────────────────────────────
     del SENT[:]
@@ -1259,13 +1265,26 @@ with sync_playwright() as p:
        pg.inner_text("#xPax .pax.on") == "2")
     pg.fill("#xName", "Sarah Jones"); pg.wait_for_timeout(80)
     pg.click("#xPax .pax >> text=4"); pg.wait_for_timeout(80)
+    #  The seating (the owner, 28 Sep: "It's just missing a time slot"): the
+    #  Reservations wheel's own slots, No time or 5pm to 8pm by the quarter.
+    opts = pg.evaluate("()=>[...document.querySelectorAll('#xTime option')].map(o=>o.value)")
+    ck("a Time field with the Reservations seatings: No time, then 5pm to 8pm by the quarter",
+       opts == [""] + ["%02d:%02d" % divmod(m, 60) for m in range(17 * 60, 20 * 60 + 1, 15)]
+       and pg.input_value("#xTime") == "", opts)
+    ck("and no time is written into the words until one is chosen",
+       " at " not in pg.input_value("#xMsg").split("table for")[1])
+    pg.select_option("#xTime", "19:00"); pg.wait_for_timeout(80)
+    ck("a chosen time goes into the words, the SMS way",
+       "your table for 4 at 7:00pm. Nala Resort" in pg.input_value("#xMsg"))
+    ck("and into what the sheet says sending does",
+       "table for 4 at 7:00 pm, on tonight" in pg.inner_text("#xBecomes"))
     msg = pg.input_value("#xMsg")
     ck("the message follows the first name and the table size",
        msg.startswith("Hi Sarah, thanks for your call.") and "table for 4" in msg and
        msg.endswith("Nala Resort\n<menu>"), msg)
     ck("and counts itself, link included", "1 segment" in pg.inner_text("#xCount"))
     ck("the sheet says what sending does",
-       "Sarah Jones, table for 4, on tonight’s Reservations as Awaiting"
+       "Sarah Jones, table for 4 at 7:00 pm, on tonight’s Reservations as Awaiting"
        in pg.inner_text("#xBecomes"))
     pg.fill("#xPhone", "07 3358 1122"); pg.click("#xSend"); pg.wait_for_timeout(150)
     ck("a landline is refused at the sheet, in the page's own words",
@@ -1293,7 +1312,7 @@ with sync_playwright() as p:
        len(xs) == 1 and xs[0]["name"] == "Sarah Jones" and
        xs[0]["phone"] == "0412 345 678" and xs[0]["pax"] == 4 and
        xs[0]["date"] == today and "<menu>" in xs[0]["body"] and
-       "lovely to hear from you" in xs[0]["body"] and
+       "lovely to hear from you" in xs[0]["body"] and xs[0].get("time") == "19:00" and
        "http" not in xs[0]["body"] and "key" not in xs[0], xs)
     ck("then the sheet closes and the drop-down stays open on the evening's guests",
        pg.locator("#xBackdrop.show").count() == 0 and

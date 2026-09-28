@@ -891,7 +891,11 @@ function preSmsState(stay, pre, invite, fix, spa){
    which wears red (the colour law), where a never-asked one is only pending.
    The sending page reddens the row's words; the Dashboard rings the villa's
    pill. One reader so the two cannot disagree about which is which. Held to
-   tests/presms_cases.json alongside preSmsState. */
+   tests/presms_cases.json alongside preSmsState.
+
+   The spa reminder log (/spareminders, 28 Sep) is written by the same
+   Worker in the same shape, status and delivery alike, so it is read here
+   too rather than through a copy of these two lines. */
 function preSmsFailed(invite){
   if (!invite || !invite.status) return false;
   return invite.status !== 'sent' || invite.delivery === 'failed';
@@ -1429,14 +1433,18 @@ function extInvites(manual){
 function extInviteState(g, send){
   g = g || {};
   var pax = dinerPax(g);
+  /* The seating reception agreed on the phone, when it agreed one (28 Sep,
+     the owner: "It's just missing a time slot"). dinnerTimeLabel is the one
+     reading of a stored time; the pm is the caller's, as on the sheets. */
+  var seat = dinnerTimeLabel(g.time) ? ' at ' + dinnerTimeLabel(g.time) + ' pm' : '';
   var who = g.by === 'staff' ? 'set by reception'
           : g.at ? 'answered ' + timeOf(g.at) : 'answered';
   if (g.status === 'in')
     return { kind:'answered', in:true, bad:'',
-             line:'Accepted · table for ' + pax + ' · ' + who };
+             line:'Accepted · table for ' + pax + seat + ' · ' + who };
   if (g.status === 'out')
     return { kind:'answered', in:false, bad:'', line:'Declined · ' + who };
-  var table = 'Table for ' + pax;
+  var table = 'Table for ' + pax + seat;
   if (send && send.status === 'failed')
     return { kind:'ready', line:table, bad:'send failed ' + timeOf(send.sentAt) +
              (send.error ? ' · ' + send.error : '') };
@@ -2631,7 +2639,10 @@ var NAV = [
       { href:'invitations.html',  label:'Invitations', need:'editBookings' },
       /* "SMS" is the heading, so the row does not repeat it - the Print
          group's "Menu" pattern. */
-      { href:'arrivals-sms.html', label:'Pre-arrival', need:'editBookings' } ] },
+      { href:'arrivals-sms.html', label:'Pre-arrival', need:'editBookings' },
+      /* The morning text to a guest with a treatment booked that day (the
+         owner, 28 Sep). editBookings, the Worker's own gate for sending. */
+      { href:'spa-reminders.html', label:'Spa reminders', need:'editBookings' } ] },
   { group:'Settings', items:[
       { href:'staff.html', label:'General', need:'manageStaff' },
       { href:'tag.html',   label:'Dietary', need:'publishMenu' },
@@ -2991,6 +3002,170 @@ function spaSlotFromText(s){
     if (SPA_SLOTS.indexOf(t) > -1) return t;
   }
   return null;
+}
+
+/* ── spa reminders ───────────────────────────────────────────
+   A text to each guest on the morning of a booked treatment, saying what is
+   booked and when. The owner's rulings, 28 Sep, off mock-spa-reminders.html:
+   the morning of, not the day before; the desk presses Send on
+   spa-reminders.html, nothing goes out on its own; the Gentle reminder
+   wording; nothing in the text but the treatment, its length, the day and
+   the time.
+
+   ONE builder writes the words and ONE reader says where a treatment's
+   reminder stands, and every screen reads them: the sending page, the
+   Dashboard's spa card, the Spa board, the Guest Profile. The invitations
+   Worker cannot import from the site, so it carries a twin of the builder,
+   and both answer to tests/spareminder_cases.json - the phone_cases.json
+   pattern: add a case there, not to a suite.
+
+   What went out lives at /spareminders/<booking>/<tid>, written by the
+   Worker: { sentAt, by, status, to, body, error, template, providerId,
+   delivery?, deliveryText?, day, time, qty, dur, dur2? }. The last five are
+   the booking as THAT text quoted it, which is how a treatment moved after
+   its text is caught. Not on the /spa record itself: spa.html writes that
+   whole, by PUT, and would wipe it on the next save.                    */
+var SPA_WEEKDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+var SPA_MONTHS = ['January','February','March','April','May','June','July',
+                  'August','September','October','November','December'];
+
+/* "Sunday 27 September at 10:30 am", or the time alone. The day is spelt
+   out, never "today": a text is right whenever it lands, and the Worker
+   that writes it runs on UTC. Built from the date's own digits, never
+   through a Date in the device's zone. */
+function spaWhenText(day, time, withDay){
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(day || ''));
+  var t = spaSlotLabel(time);
+  if (!withDay || !m) return t;
+  var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  return SPA_WEEKDAYS[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' +
+         SPA_MONTHS[d.getUTCMonth()] + ' at ' + t;
+}
+
+/* The booking as a text quotes it, one comparable string. A pair's second
+   length counts; one massage's leftover dur2 does not, because the record
+   of a single massage simply never states one. */
+function spaQuote(r){
+  var q = r && r.qty === 2 ? 2 : 1;
+  return [(r && r.day) || '', (r && r.time) || '', q, +(r && r.dur) || 0,
+          q === 2 ? (+r.dur2 || 0) : 0].join('|');
+}
+
+/* A text that reached the guest, as far as anybody knows: accepted by the
+   carrier and not since reported undelivered. The same reading as
+   preSmsFailed, from the other side. */
+function spaReminderGood(rem){
+  return !!(rem && rem.status === 'sent' && rem.delivery !== 'failed');
+}
+
+/* What <booking> becomes: the treatment and its lengths on one line, the
+   day and time on the next. When the guest already holds a text quoting
+   something else (prev is that text's record), a third line says what it
+   changed from, so one template serves a first reminder and a corrected
+   one alike. Plain GSM characters only: one middot or curly quote turns a
+   text into UCS-2 and triples its cost. */
+function spaBookingText(rec, prev){
+  var d1 = spaDur(rec.dur), d2 = spaDur(rec.dur2), what;
+  if (rec.qty === 2){
+    what = 'Two massages';
+    if (d1 && d2) what += ', ' + (d1.m === d2.m ? d1.label + ' each'
+                                                : d1.label + ' and ' + d2.label);
+  } else what = 'Massage' + (d1 ? ', ' + d1.label : '');
+  var out = what + '\n' + spaWhenText(rec.day, rec.time, true);
+  if (spaReminderGood(prev) && spaQuote(prev) !== spaQuote(rec)){
+    if (prev.day !== rec.day)
+      out += '\n(changed from ' + spaWhenText(prev.day, prev.time, true) + ')';
+    else if (prev.time !== rec.time)
+      out += '\n(changed from ' + spaWhenText(prev.day, prev.time, false) + ')';
+    else out += '\n(changed since our last message)';
+  }
+  return out;
+}
+
+/* The template filled for one guest. <first> is the booking's first name,
+   left out cleanly - the space before it too - when Mews has none;
+   <booking> is spaBookingText. Nothing else is touched. The Worker's twin
+   does exactly this, character for character. */
+function spaReminderText(tpl, first, rec, prev){
+  first = String(first == null ? '' : first).trim();
+  var s = String(tpl == null ? '' : tpl);
+  s = first ? s.split('<first>').join(first) : s.replace(/ ?<first>/g, '');
+  return s.split('<booking>').join(spaBookingText(rec, prev));
+}
+
+/* Whether a treatment has begun, by the device's clock: staff devices live
+   at the resort, the assumption every board makes when it says "today". A
+   record with no day or time is never late. */
+function spaTreatmentStarted(rec, nowMs){
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String((rec && rec.day) || ''));
+  var t = /^(\d{2}):(\d{2})$/.exec(String((rec && rec.time) || ''));
+  if (!m || !t) return false;
+  return new Date(+m[1], +m[2] - 1, +m[3], +t[1], +t[2]).getTime() <= nowMs;
+}
+
+/* Where one treatment's reminder stands, the only judge, all screens:
+
+     sent      a text reached the guest quoting the booking as it stands
+     late      the treatment has begun without one: nothing is left to do,
+               so it sinks rather than nags - the work clears it, the same
+               self-clearing as every other queue here
+     nophone   no number a text can go to; the desk can fix it
+     changed   a text reached the guest, but the booking has moved since:
+               they hold the wrong time, so it is owed again
+     ready     still to send - never sent, a send that failed, or one the
+               handset never got
+
+   rec is the /spa record, rem its /spareminders record or null, raw the
+   number the Worker will read (the desk's fix, then Mews), nowMs the clock.
+   Held to tests/spareminder_cases.json. */
+function spaReminderState(rec, rem, raw, nowMs){
+  var good = spaReminderGood(rem);
+  if (good && spaQuote(rem) === spaQuote(rec)) return 'sent';
+  if (spaTreatmentStarted(rec, nowMs)) return 'late';
+  if (!normalisePhone(raw)) return 'nophone';
+  return good ? 'changed' : 'ready';
+}
+
+/* Every treatment booked on `day`, with what its reminder needs, in time
+   order: the one list the sending page and the Dashboard's card both walk,
+   so the two cannot disagree about who is owed a text. spa is /spa whole,
+   rems /spareminders whole, stays /stays/<day>, bookings /bookings whole,
+   fixes /phonefix whole - every one a node other screens already read.
+
+   The number is the Worker's own reading - the desk's fix, then Mews'
+   record - so a row that looks sendable here is one the Worker will send.
+   The villa is the night's row holding the booking, a join of two owned
+   facts, falling back to Mews' own villa for a booking with no row. */
+function spaReminderRows(day, spa, rems, stays, bookings, fixes, nowMs){
+  var stayOf = {}, villaOf = {}, out = [];
+  Object.keys(stays || {}).forEach(function(v){
+    var s = stays[v];
+    if (s && typeof s === 'object' && s.id){ stayOf[s.id] = s; villaOf[s.id] = v; }
+  });
+  Object.keys(spa || {}).forEach(function(id){
+    var t = spa[id];
+    if (!t || typeof t !== 'object') return;
+    Object.keys(t).forEach(function(tid){
+      var r = t[tid];
+      if (!r || typeof r !== 'object' || r.status !== 'booked' || r.day !== day) return;
+      var pms = ((bookings || {})[id] || {}).pms || {}, st = stayOf[id] || {};
+      var fix = (fixes || {})[id];
+      var raw = String((fix && fix.phone) || pms.phone || '').trim();
+      var rem = ((rems || {})[id] || {})[tid] || null;
+      if (rem && typeof rem !== 'object') rem = null;
+      out.push({ id: id, tid: tid, rec: r, rem: rem, raw: raw,
+                 villa: villaOf[id] || (pms.villa != null ? String(pms.villa) : ''),
+                 first: pms.first || '',
+                 name: ((pms.first || st.first || '') + ' ' +
+                        (pms.last || st.last || '')).trim() || r.name || 'Guest',
+                 state: spaReminderState(r, rem, raw, nowMs) });
+    });
+  });
+  out.sort(function(a, b){
+    return String(a.rec.time || '').localeCompare(String(b.rec.time || '')) ||
+           (+a.villa || 99) - (+b.villa || 99);
+  });
+  return out;
 }
 
 /* ── the action icon ─────────────────────────────────────────

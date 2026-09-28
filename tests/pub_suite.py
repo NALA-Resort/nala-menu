@@ -998,20 +998,13 @@ with sync_playwright() as p:
     ck("which the admin still keeps",
        "staff.html" in seen["admin"] and "pages.html" in seen["admin"])
     #  Every link left standing has to open. A link that bounces you back is a
-    #  door to nowhere, which is worse than no link.
-    NEEDS = {"dashboard.html":"resBoard",
-             "keys.html":"editBookings",
-             "tally.html":"resBoard", "front-desk.html":"editBookings",
-             "invitations.html":"editBookings",
-             "arrivals-sms.html":"editBookings",
-             "list.html":"resSheet", "publish.html":"publishMenu",
-             "tag.html":"publishMenu", "cleaners.html":"cleansBoard",
-             "calendar.html":"cleansBoard",
-             "spa.html":"spaBoard",
-             "housekeeping.html":"cleansBoard", "registration.html":"editBookings",
-             "menu-print.html":"resSheet", "past-menus.html":"resBoard",
-             "staff.html":"manageStaff", "flags.html":"manageStaff",
-             "pages.html":"manageStaff"}
+    #  door to nowhere, which is worse than no link. The pages and what opens
+    #  each are tests/page_access_canon.json, the table cl_suite holds to
+    #  NAV_NEEDS. This suite kept its own copy of it until 28 Sep, and the
+    #  copy failed the day Spa reminders reached the menu and the canon but
+    #  not the copy: rule 1's story again.
+    NEEDS = dict((k + ".html", v) for k, v in
+                 json.load(open("tests/page_access_canon.json"))["pages"].items())
     ck("every link in the menu has a permission behind it",
        all(h in NEEDS for r in seen for h in seen[r]))
     #  A heading with nothing under it promises something that is not there.

@@ -39,6 +39,10 @@
          text-decoration:underline; background:none; border:none; cursor:pointer;
          padding:4px 0; }
   .del.arm { color:var(--red); font-weight:600; }
+  /* A spa reminder runs to five lines, blank ones included, and a shorter
+     box hides <booking> below the fold. body.ui2 textarea sets its own
+     min-height at higher specificity, so this rule has to match it. */
+  body.ui2 #spacards textarea { min-height:196px; }
   .card textarea { width:100%; min-height:84px; font-family:var(--ui-font);
                    font-size:var(--t3); line-height:1.45; color:var(--ink);
                    border:1px solid var(--rule); border-radius:8px; padding:10px;
@@ -95,6 +99,10 @@ here change what every sender sees, tonight.</p>
 <div id="precards"></div>
 <button class="add" id="preAddBtn">+ New template</button>
 
+<div class="seclabel" id="secSpa">Spa reminder templates</div>
+<div id="spacards"></div>
+<button class="add" id="spaAddBtn">+ New template</button>
+
 <div class="seclabel" id="secLegend">Placeholders</div>
 <div class="legend" id="legend">
   <table>
@@ -112,22 +120,31 @@ here change what every sender sees, tonight.</p>
         last on save.</td>
     </tr>
     <tr>
-      <td class="soon"><code>&lt;first&gt;</code></td>
-      <td class="soon">The guest's first name, off the booking.
-        <i>Coming later</i> &mdash; new placeholders appear in this legend as
-        they are built.</td>
+      <td><code>&lt;first&gt;</code></td>
+      <td class="d">The guest's first name, off the booking, in spa reminder
+        templates. Left out cleanly, its space with it, when the booking has
+        none.</td>
+    </tr>
+    <tr>
+      <td><code>&lt;booking&gt;</code></td>
+      <td class="d">What is booked and when, on two lines, in spa reminder
+        templates: <i>Two massages, 1 hour each</i> then <i>Monday 5 October
+        at 10:30 am</i>. Filled from the Spa board as each text goes out, so a
+        booking moved since an earlier text adds a line saying what it changed
+        from. A spa reminder cannot be saved without it.</td>
     </tr>
   </table>
 </div>
 
 <div class="note" id="note">Every message should name the resort: senders are
 required to identify themselves. Web addresses cannot be typed into a
-template; the only links that go out are the ones the placeholders build.</div>
+template; the only links that go out are the ones the placeholders build.
+Spa reminders carry no link at all.</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=81"></script>
+<script src="nala-shared.js?v=83"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
@@ -140,8 +157,10 @@ function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
   document.addEventListener('click',function(){ d.classList.remove('open'); });
 })();
 
-/* Two template sets, one page: the invitation messages at /smstemplates and
-   the pre-arrival messages at /presmstemplates. Each set's built-ins match
+/* Three template sets, one page: the invitation messages at /smstemplates,
+   the pre-arrival messages at /presmstemplates, and since 28 Sep the spa
+   reminders at /spasmstemplates, which carry no link (marker null) and
+   must carry <booking>. Each set's built-ins match
    its sending page's fallback and exist here only to seed the node the first
    time this page is opened; after that, the database is the single copy and
    the sending pages read it. */
@@ -161,6 +180,15 @@ var SETS = [
         body:'Good afternoon. Ahead of your stay with us, a few questions so everything is ready when you arrive. Nala Resort\n<form>' },
       nudge:  { label:'A gentle reminder', order:2,
         body:'A reminder, when you have a moment: a few questions ahead of your stay, so everything is ready when you arrive. Nala Resort\n<form>' }
+    } },
+  /* spa-reminders.html's fallback, the same two: Gentle reminder, the
+     owner's pick of 28 Sep, and Short, the 1-segment choice. */
+  { node:'/spasmstemplates', host:'spacards', add:'spaAddBtn', marker:null,
+    builtins: {
+      remind: { label:'Gentle reminder', order:1,
+        body:'Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort' },
+      short:  { label:'Short', order:2,
+        body:'Hello <first>, a reminder of your booking:\n\n<booking>\n\nTo change it, just reply. Nala Resort' }
     } }
 ];
 
@@ -169,7 +197,24 @@ var SETS = [
    to send. The menu link is 37 characters, the form link 52. */
 var SAMPLES = { '<menu>': new Array(38).join('x'), '<form>': new Array(53).join('x') };
 function bodyHasUrl(s){ return /(https?:\/\/|www\.)/i.test(s || ''); }
+/* A spa reminder has no link to budget for; what varies is the booking.
+   Counted twice through the shared builder the Worker's copy answers to -
+   an ordinary booking, and the longest a guest can hold (a long name, a
+   pair of different lengths, a weekday that is spelt out long, and a
+   "changed from" line) - so the count says what the guest's text will be. */
+function countedSpa(s){
+  function seg(n){ return n <= 160 ? 1 : Math.ceil(n / 153); }
+  var typ = spaReminderText(s, 'Priya',
+    { qty:1, dur:60, day:'2026-10-05', time:'16:00' }, null).length;
+  var worst = spaReminderText(s, 'Maximiliano',
+    { qty:2, dur:90, dur2:120, day:'2026-09-30', time:'10:30' },
+    { status:'sent', qty:2, dur:90, dur2:120, day:'2026-09-29', time:'16:30' }).length;
+  return 'Typically ' + typ + ' characters \u00b7 ' +
+         (seg(typ) === 1 ? '1 segment' : seg(typ) + ' segments') +
+         (seg(worst) !== seg(typ) ? ', up to ' + seg(worst) : '');
+}
 function counted(s, marker){
+  if (marker === null) return countedSpa(s);
   var sample = SAMPLES[marker];
   var len = s.replace(marker, sample).replace('<link>', sample).length;
   if (s.indexOf(marker) < 0 && s.indexOf('<link>') < 0)
@@ -186,6 +231,8 @@ function counted(s, marker){
    into the box - the other set's included - is read as "the link" and
    normalised to this set's own. */
 function normaliseBody(s, marker){
+  /* A spa reminder has no link marker to move: only trailing space goes. */
+  if (marker === null) return String(s || '').replace(/\s+$/, '');
   s = String(s || '').replace(/<link>|<menu>|<form>/g, marker);
   var re = new RegExp(marker, 'g');
   if (!(s.match(re) || []).length) return s.replace(/\s+$/, '');
@@ -227,10 +274,16 @@ function section(cfg){
     function changed(){
       armed = false; delBtn.className = 'del'; delBtn.textContent = 'Delete';
       cnt.textContent = counted(box.value, cfg.marker);
-      var bad = bodyHasUrl(box.value) ? 'Links cannot be typed here. The ' +
-                'link is added automatically, at the end.'
+      var mk = cfg.marker === null && box.value.match(/<(menu|form|link)>/);
+      var bad = bodyHasUrl(box.value) ? (cfg.marker === null
+                  ? 'Links cannot be typed here. A spa reminder carries no link.'
+                  : 'Links cannot be typed here. The link is added automatically, at the end.')
               : !lbl.value.trim() ? 'The template needs a name.'
-              : !box.value.trim() ? 'The template needs a message.' : '';
+              : !box.value.trim() ? 'The template needs a message.'
+              : mk ? 'A spa reminder carries no link: take ' + mk[0] + ' out.'
+              : (cfg.marker === null && box.value.indexOf('<booking>') < 0)
+                ? 'A spa reminder needs <booking>, or the guest is not told what or when.'
+              : '';
       warn.textContent = bad;
       save.disabled = !!bad;
       save.textContent = 'Save';
@@ -336,7 +389,7 @@ function showAccess(allowed, e){
   }
   box.className = 'noaccess' + (on ? ' show' : '');
   ['intro','secTmpl','cards','addBtn','secPre','precards','preAddBtn',
-   'secLegend','legend','note']
+   'secSpa','spacards','spaAddBtn','secLegend','legend','note']
     .forEach(function(id){
       var el = document.getElementById(id);
       if (el) el.style.display = on ? 'none' : '';

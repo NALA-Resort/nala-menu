@@ -156,6 +156,8 @@ BOARDS = {
                        ("the invite sheet", lambda pg: (pg.click(".extguests > summary"),
                            pg.click("#extInvite")))],
   "arrivals-sms.html": [("the next 14 days", lambda pg: pg.click("#knob button >> nth=2"))],
+  "spa-reminders.html": [("the preview of a changed booking",
+                          lambda pg: pg.select_option("#pvSel", "b17/t9"))],
   "calendar.html": [("the Clean colouring", lambda pg: pg.click(".mbtn >> nth=1")),
                     ("the Dining colouring", lambda pg: pg.click(".mbtn >> nth=2")),
                     ("the Spa colouring", lambda pg: pg.click(".mbtn >> nth=3"))],

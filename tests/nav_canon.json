@@ -77,6 +77,10 @@
         [
           "arrivals-sms.html",
           "Pre-arrival"
+        ],
+        [
+          "spa-reminders.html",
+          "Spa reminders"
         ]
       ]
     ],

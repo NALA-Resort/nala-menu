@@ -276,6 +276,8 @@ cannotPatch('and one past any massage ever sold', ADMIN, '/spasettings', { price
     ['the menus already sent out', '/menuhistory'],
     ['the SMS wording', '/smstemplates'],
     ['the pre-arrival SMS wording', '/presmstemplates'],
+    ['the spa reminder wording', '/spasmstemplates'],
+    ['the spa reminder log', '/spareminders'],
     ['the dinner book', '/dinner']
   ].forEach(function(t){
     ck('a removed login cannot read ' + t[0],
@@ -542,6 +544,30 @@ can('a manager fixes a phone number', MANAGER, '/phonefix/b-100',
       by: 'manager@nalaresort.com.au', at: NOW });
 can('a manager records a send', MANAGER, '/previnvites/b-100',
     { sentAt: NOW, status: 'sent' });
+
+/* The morning spa reminder (28 Sep). The Worker writes each record with the
+   caller's own token, so every shape it writes is checked here, copied from
+   worker/send-invites.js: a send, a send that failed before it knew the
+   booking, and the receipt the delivery check writes back over it. */
+const SPAREM = { sentAt: NOW, template: 'remind', by: 'manager@nalaresort.com.au',
+                 status: 'sent', to: '+61411000007', error: '', providerId: 'mid-1',
+                 body: 'Hello Freya, a gentle reminder of your booking with us:\n\nMassage, 1 hour\n' +
+                       'Monday 5 October at 2:00 pm\n\nIf you need to change anything, just reply ' +
+                       'to this message. Nala Resort',
+                 day: '2026-10-05', time: '14:00', qty: 1, dur: 60 };
+can('a manager records a spa reminder, as the Worker writes it', MANAGER,
+    '/spareminders/b-100/t1712345678901', SPAREM);
+can('the desk records one for a pair, both lengths quoted', DESK,
+    '/spareminders/b-100/t1', Object.assign({}, SPAREM, { qty: 2, dur: 90, dur2: 60 }));
+can('a failed send is recorded too, before it knew the booking', DESK,
+    '/spareminders/b-100/t1', { sentAt: NOW, template: 'remind', by: 'x@y', status: 'failed',
+                                to: '', body: '', error: 'not a booked treatment' });
+can('and the handset receipt lands on it', DESK, '/spareminders/b-100/t1',
+    Object.assign({}, SPAREM, { delivery: 'delivered', deliveryAt: NOW,
+                                deliveryText: 'Success: Message received on handset.' }));
+can('a manager saves a spa reminder wording', MANAGER, '/spasmstemplates/remind',
+    { label: 'Gentle reminder', order: 1, at: NOW,
+      body: 'Hello <first>, a gentle reminder of your booking with us:\n\n<booking>' });
 can('a manager publishes the menu', MANAGER, '/menu', { published: NOW });
 can('a manager clears an arriving-soon marker', MANAGER,
     '/alerts/2026-09-10/5', null);
@@ -553,6 +579,20 @@ cannotPatch('nor change the notification settings', MANAGER,
             '/notify', { on: false });
 
 console.log('--- and the shapes that should never reach the database ---');
+
+cannot('a spa reminder quoting a day that is not a date', DESK, '/spareminders/b-100/t1',
+       Object.assign({}, SPAREM, { day: 'Monday' }));
+cannot('or three massages', DESK, '/spareminders/b-100/t1', Object.assign({}, SPAREM, { qty: 3 }));
+cannot('or a field the Worker never writes', DESK, '/spareminders/b-100/t1',
+       Object.assign({}, SPAREM, { price: 180 }));
+cannot('a treatment key longer than the /spa rule would ever mint', DESK,
+       '/spareminders/b-100/t' + '1'.repeat(39), SPAREM);
+cannot('a spa reminder with no send stamp', DESK, '/spareminders/b-100/t1',
+       { status: 'sent', to: '+61411000007' });
+cannot('a chef records no spa reminder: sending answers to editBookings', CHEF,
+       '/spareminders/b-100/t1', SPAREM);
+cannot('nor saves its wording', CHEF, '/spasmstemplates/remind',
+       { label: 'X', body: 'Y <booking>' });
 
 cannot('a dinner status nobody uses', DESK, `/dinner/${TODAY}/11`,
        { status: 'maybe', pax: 2, room: '11' });
@@ -901,6 +941,7 @@ cannotPatch('but not something the length of a paragraph', SYNC,
   ck('nor an internal note',          !as2('ms@x').read('/internal/b4').allowed);
   ck('nor a corrected phone number',  !as2('ms@x').read('/phonefix').allowed);
   ck('nor the SMS send records',      !as2('ms@x').read('/previnvites').allowed);
+  ck('nor the spa reminder log - the desk\'s texts, not the masseuse\'s', !as2('ms@x').read('/spareminders').allowed);
   ck('nor anybody\'s push endpoints', !as2('ms@x').read('/pushsubs').allowed);
   ck('nor the retired guest nodes',   !as2('ms@x').read('/roomguests').allowed &&
                                       !as2('ms@x').read('/responses').allowed);

@@ -1,0 +1,724 @@
+{
+ "_comment": [
+  "The spa reminder's words and its state, as every reader must give them.",
+  "The phone_cases.json pattern: spaBookingText and spaReminderText in",
+  "nala-shared.js and their twins in worker/send-invites.js answer to `text`;",
+  "spaReminderState answers to `state`. tests/spar_suite.py runs the page's",
+  "copies, worker/invites-test.mjs the Worker's. Add a case here, not to a",
+  "suite: a case added here fails whichever copy has not learned it.",
+  "",
+  "`now` is a LOCAL time, built in the zone the suite runs in, because a",
+  "treatment starts at the resort's clock and staff devices live there."
+ ],
+ "text": [
+  {
+   "name": "a pair of equal lengths, the Gentle reminder",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "Elena",
+   "rec": {
+    "status": "booked",
+    "qty": 2,
+    "day": "2026-09-27",
+    "time": "10:30",
+    "dur": 60,
+    "dur2": 60
+   },
+   "prev": null,
+   "want": "Hello Elena, a gentle reminder of your booking with us:\n\nTwo massages, 1 hour each\nSunday 27 September at 10:30 am\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "one massage, and a morning time drops its leading zero",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "Nina",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "09:00",
+    "dur": 90
+   },
+   "prev": null,
+   "want": "Hello Nina, a gentle reminder of your booking with us:\n\nMassage, 1.5 hours\nSunday 27 September at 9:00 am\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "no first name: the name and its space go, the comma stays",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "09:00",
+    "dur": 60
+   },
+   "prev": null,
+   "want": "Hello, a gentle reminder of your booking with us:\n\nMassage, 1 hour\nSunday 27 September at 9:00 am\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "a first name is trimmed",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "  Freya ",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "prev": null,
+   "want": "Hello Freya, a gentle reminder of your booking with us:\n\nMassage, 1 hour\nSunday 27 September at 2:00 pm\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "a pair of different lengths, in their order",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "Omar",
+   "rec": {
+    "status": "booked",
+    "qty": 2,
+    "day": "2026-09-30",
+    "time": "10:30",
+    "dur": 90,
+    "dur2": 120
+   },
+   "prev": null,
+   "want": "Hello Omar, a gentle reminder of your booking with us:\n\nTwo massages, 1.5 hours and 2 hours\nWednesday 30 September at 10:30 am\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "a pair missing its second length names no lengths",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "Omar",
+   "rec": {
+    "status": "booked",
+    "qty": 2,
+    "day": "2026-09-30",
+    "time": "10:30",
+    "dur": 90
+   },
+   "prev": null,
+   "want": "Hello Omar, a gentle reminder of your booking with us:\n\nTwo massages\nWednesday 30 September at 10:30 am\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "one massage with no length says only massage",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "Ana",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-10-01",
+    "time": "12:00"
+   },
+   "prev": null,
+   "want": "Hello Ana, a gentle reminder of your booking with us:\n\nMassage\nThursday 1 October at 12:00 pm\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "noon and five o'clock, and a month's first day",
+   "tpl": "Hello <first>, a reminder of your booking:\n\n<booking>\n\nTo change it, just reply. Nala Resort",
+   "first": "Priya",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-10-01",
+    "time": "17:00",
+    "dur": 120
+   },
+   "prev": null,
+   "want": "Hello Priya, a reminder of your booking:\n\nMassage, 2 hours\nThursday 1 October at 5:00 pm\n\nTo change it, just reply. Nala Resort"
+  },
+  {
+   "name": "the Short wording",
+   "tpl": "Hello <first>, a reminder of your booking:\n\n<booking>\n\nTo change it, just reply. Nala Resort",
+   "first": "Priya",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "16:00",
+    "dur": 60
+   },
+   "prev": null,
+   "want": "Hello Priya, a reminder of your booking:\n\nMassage, 1 hour\nSunday 27 September at 4:00 pm\n\nTo change it, just reply. Nala Resort"
+  },
+  {
+   "name": "the year's last day",
+   "tpl": "Hello <first>, a reminder of your booking:\n\n<booking>\n\nTo change it, just reply. Nala Resort",
+   "first": "Lee",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-12-31",
+    "time": "09:30",
+    "dur": 60
+   },
+   "prev": null,
+   "want": "Hello Lee, a reminder of your booking:\n\nMassage, 1 hour\nThursday 31 December at 9:30 am\n\nTo change it, just reply. Nala Resort"
+  },
+  {
+   "name": "moved in the day: the old time alone",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "Freya",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "prev": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "11:30",
+    "qty": 1,
+    "dur": 60
+   },
+   "want": "Hello Freya, a gentle reminder of your booking with us:\n\nMassage, 1 hour\nSunday 27 September at 2:00 pm\n(changed from 11:30 am)\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "moved to another day: the old day and time",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "Marco",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 90
+   },
+   "prev": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-26",
+    "time": "16:30",
+    "qty": 1,
+    "dur": 90
+   },
+   "want": "Hello Marco, a gentle reminder of your booking with us:\n\nMassage, 1.5 hours\nSunday 27 September at 2:00 pm\n(changed from Saturday 26 September at 4:30 pm)\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "same day and time, a new length: changed, no from",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "Nina",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "09:00",
+    "dur": 90
+   },
+   "prev": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "09:00",
+    "qty": 1,
+    "dur": 60
+   },
+   "want": "Hello Nina, a gentle reminder of your booking with us:\n\nMassage, 1.5 hours\nSunday 27 September at 9:00 am\n(changed since our last message)\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "one massage became two: changed, no from",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "Nina",
+   "rec": {
+    "status": "booked",
+    "qty": 2,
+    "day": "2026-09-27",
+    "time": "09:00",
+    "dur": 60,
+    "dur2": 60
+   },
+   "prev": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "09:00",
+    "qty": 1,
+    "dur": 60
+   },
+   "want": "Hello Nina, a gentle reminder of your booking with us:\n\nTwo massages, 1 hour each\nSunday 27 September at 9:00 am\n(changed since our last message)\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "nothing changed: no extra line",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "Nina",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "09:00",
+    "dur": 90
+   },
+   "prev": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "09:00",
+    "qty": 1,
+    "dur": 90
+   },
+   "want": "Hello Nina, a gentle reminder of your booking with us:\n\nMassage, 1.5 hours\nSunday 27 September at 9:00 am\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "a leftover second length on one massage is not a change",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "Nina",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "09:00",
+    "dur": 90,
+    "dur2": 60
+   },
+   "prev": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "09:00",
+    "qty": 1,
+    "dur": 90
+   },
+   "want": "Hello Nina, a gentle reminder of your booking with us:\n\nMassage, 1.5 hours\nSunday 27 September at 9:00 am\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "the last text failed to send: the guest holds nothing to correct",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "Freya",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "prev": {
+    "status": "failed",
+    "day": "2026-09-27",
+    "time": "11:30",
+    "qty": 1,
+    "dur": 60,
+    "error": "INVALID_RECIPIENT"
+   },
+   "want": "Hello Freya, a gentle reminder of your booking with us:\n\nMassage, 1 hour\nSunday 27 September at 2:00 pm\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "the last text never reached the handset: nothing to correct",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "Freya",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "prev": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "11:30",
+    "qty": 1,
+    "dur": 60,
+    "delivery": "failed"
+   },
+   "want": "Hello Freya, a gentle reminder of your booking with us:\n\nMassage, 1 hour\nSunday 27 September at 2:00 pm\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "a delivered text counts as held",
+   "tpl": "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort",
+   "first": "Freya",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "prev": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "11:30",
+    "qty": 1,
+    "dur": 60,
+    "delivery": "delivered"
+   },
+   "want": "Hello Freya, a gentle reminder of your booking with us:\n\nMassage, 1 hour\nSunday 27 September at 2:00 pm\n(changed from 11:30 am)\n\nIf you need to change anything, just reply to this message. Nala Resort"
+  },
+  {
+   "name": "a template with no placeholder for the name",
+   "tpl": "A reminder from Nala Resort:\n<booking>",
+   "first": "Elena",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "10:30",
+    "dur": 60
+   },
+   "prev": null,
+   "want": "A reminder from Nala Resort:\nMassage, 1 hour\nSunday 27 September at 10:30 am"
+  }
+ ],
+ "state": [
+  {
+   "name": "never sent, a mobile, before it starts",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "rem": null,
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T08:00",
+   "want": "ready"
+  },
+  {
+   "name": "an overseas mobile is sendable",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "rem": null,
+   "raw": "(+64) 274875277",
+   "now": "2026-09-27T08:00",
+   "want": "ready"
+  },
+  {
+   "name": "a landline cannot be sent to",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "rem": null,
+   "raw": "07 3358 1122",
+   "now": "2026-09-27T08:00",
+   "want": "nophone"
+  },
+  {
+   "name": "no number at all",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "rem": null,
+   "raw": "",
+   "now": "2026-09-27T08:00",
+   "want": "nophone"
+  },
+  {
+   "name": "started without a text: late, nothing to do",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "09:00",
+    "dur": 60
+   },
+   "rem": null,
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T09:30",
+   "want": "late"
+  },
+  {
+   "name": "the minute it starts counts as started",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "09:00",
+    "dur": 60
+   },
+   "rem": null,
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T09:00",
+   "want": "late"
+  },
+  {
+   "name": "a minute before it starts is still owed",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "09:00",
+    "dur": 60
+   },
+   "rem": null,
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T08:59",
+   "want": "ready"
+  },
+  {
+   "name": "a text that went, quoting it as it stands",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "rem": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "14:00",
+    "qty": 1,
+    "dur": 60
+   },
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T08:30",
+   "want": "sent"
+  },
+  {
+   "name": "sent stays sent once it has started",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "09:00",
+    "dur": 60
+   },
+   "rem": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "09:00",
+    "qty": 1,
+    "dur": 60
+   },
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T11:00",
+   "want": "sent"
+  },
+  {
+   "name": "sent stays sent whatever the number now says",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "rem": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "14:00",
+    "qty": 1,
+    "dur": 60
+   },
+   "raw": "",
+   "now": "2026-09-27T08:30",
+   "want": "sent"
+  },
+  {
+   "name": "delivered is sent",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "rem": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "14:00",
+    "qty": 1,
+    "dur": 60,
+    "delivery": "delivered"
+   },
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T08:30",
+   "want": "sent"
+  },
+  {
+   "name": "moved since its text: owed again",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "rem": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "11:30",
+    "qty": 1,
+    "dur": 60
+   },
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T09:00",
+   "want": "changed"
+  },
+  {
+   "name": "a new length since its text: owed again",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 90
+   },
+   "rem": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "14:00",
+    "qty": 1,
+    "dur": 60
+   },
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T09:00",
+   "want": "changed"
+  },
+  {
+   "name": "moved, and it has started: late",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "09:00",
+    "dur": 60
+   },
+   "rem": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "11:30",
+    "qty": 1,
+    "dur": 60
+   },
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T09:10",
+   "want": "late"
+  },
+  {
+   "name": "moved, and the number is gone: cannot send",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "rem": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "11:30",
+    "qty": 1,
+    "dur": 60
+   },
+   "raw": "07 3358 1122",
+   "now": "2026-09-27T09:00",
+   "want": "nophone"
+  },
+  {
+   "name": "a send that failed is still to send",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "rem": {
+    "status": "failed",
+    "day": "2026-09-27",
+    "time": "14:00",
+    "qty": 1,
+    "dur": 60,
+    "error": "INVALID_RECIPIENT"
+   },
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T08:30",
+   "want": "ready"
+  },
+  {
+   "name": "a text the handset never got is still to send",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60
+   },
+   "rem": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "14:00",
+    "qty": 1,
+    "dur": 60,
+    "delivery": "failed"
+   },
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T08:30",
+   "want": "ready"
+  },
+  {
+   "name": "a leftover second length on one massage is not a change",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "time": "14:00",
+    "dur": 60,
+    "dur2": 90
+   },
+   "rem": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-09-27",
+    "time": "14:00",
+    "qty": 1,
+    "dur": 60
+   },
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T08:30",
+   "want": "sent"
+  },
+  {
+   "name": "a record with no time is never late",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-27",
+    "dur": 60
+   },
+   "rem": null,
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T23:00",
+   "want": "ready"
+  },
+  {
+   "name": "tomorrow's treatment is not late today",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-09-28",
+    "time": "09:00",
+    "dur": 60
+   },
+   "rem": null,
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T20:00",
+   "want": "ready"
+  }
+ ]
+}

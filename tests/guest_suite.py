@@ -70,6 +70,11 @@ NIGHT = {"8": {"id": "b8", "first": "Lynette", "last": "Bunker",
 DINNER = {"8": {"status": "out", "pax": 0, "by": "guest", "bookingId": "b8"}}
 SPA = {"b8": {"t1": {"status": "booked", "day": today, "time": "14:00", "dur": 60, "qty": 2},
               "t2": {"status": "suggested", "day": plus(1), "time": "10:00"}}}
+# The morning text for the booked pair (28 Sep): sent at 8:05 quoting 14:00,
+# and the handset said it arrived.
+SPAREM = {"b8": {"t1": {"status": "sent", "providerId": "mid-8", "delivery": "delivered",
+                        "sentAt": now.replace(hour=8, minute=5, second=0, microsecond=0).isoformat(),
+                        "day": today, "time": "14:00", "qty": 2, "dur": 60, "dur2": 0}}}
 CARDS = {"101": {"villa": "8", "guest": "Lynette", "cut": 1,
                  "expiry": int((now + datetime.timedelta(days=1)).replace(hour=13, minute=0).timestamp())},
          "102": {"villa": "8", "guest": "Peter", "cut": 2,
@@ -96,6 +101,9 @@ def fb(route, request):
     elif "/bookings/" in u:
         k = u.split("/bookings/")[1].split(".json")[0]
         body = json.dumps(BK[k]) if k in BK else "null"
+    elif "/spareminders/" in u:
+        k = u.split("/spareminders/")[1].split(".json")[0]
+        body = json.dumps(SPAREM[k]) if k in SPAREM else "null"
     elif "/spa/" in u:
         k = u.split("/spa/")[1].split(".json")[0]
         body = json.dumps(SPA[k]) if k in SPA else "null"
@@ -172,6 +180,14 @@ with sync_playwright() as p:
     ck("the Stay fill is the boards' dining green, by computed colour",
        fill == "rgba(122, 160, 130, 0.26)")
 
+    pg.click("#tSpa")
+    spa_rows = pg.eval_on_selector_all("#pSpa .row", "els=>els.map(e=>e.textContent)")
+    ck("a booked treatment says when its morning text went, and that it arrived",
+       any("Booked" in r and ("Reminder sent " + ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]
+           [(now.weekday() + 1) % 7] + " " + str(now.day) + ", 8:05am \u00b7 delivered") in r
+           for r in spa_rows))
+    ck("and a suggestion carries no reminder line: nothing is booked to remind",
+       not any("Suggested" in r and "Reminder" in r for r in spa_rows))
     pg.click("#tDine")
     ck("the cell wins over the form: tonight reads Not dining",
        "Not dining" in text(pg, "#pDine"))

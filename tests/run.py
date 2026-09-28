@@ -87,6 +87,7 @@ SUITES = [
     ("roomclean",  ["python3", "tests/roomclean_suite.py"], 120),
     ("guest",      ["python3", "tests/guest_suite.py"],   400),
     ("invites",    ["python3", "tests/inv_suite.py"],     600),
+    ("spar",       ["python3", "tests/spar_suite.py"],    400),
     ("index",      ["python3", "tests/index_suite.py"],   400),
     ("prearrival", ["python3", "tests/pre_suite.py"],     400),
     ("spa",        ["python3", "tests/spa_suite.py"],     400),
@@ -119,7 +120,7 @@ SUITES = [
 # page load and still reloads the page for each of the three widths when it
 # could resize the viewport. Fixing those is the next job and worth more than
 # this was.
-SWEEP_PAGES = ["dashboard", "calendar", "guest", "keys", "cleaners", "front-desk", "invitations", "arrivals-sms", "spa", "past-menus", "templates", "tally", "tag", "flags", "publish", "staff",
+SWEEP_PAGES = ["dashboard", "calendar", "guest", "keys", "cleaners", "front-desk", "invitations", "arrivals-sms", "spa-reminders", "spa", "past-menus", "templates", "tally", "tag", "flags", "publish", "staff",
                "stats", "registration", "debug", "pages", "index",
                "prearrival", "welcome"]
 SUITES += [("sweep:" + p, ["python3", "tests/sweep_suite.py", p], 600)
@@ -143,8 +144,10 @@ COVERS = {
     "invitations.html":  ["invites", "sweep:invitations", "paper", "colour"],
     "past-menus.html":   ["pastmenus", "sweep:past-menus"],
     "arrivals-sms.html": ["invites", "sweep:arrivals-sms", "paper", "colour"],
-    "templates.html":    ["invites", "sweep:templates"],
-    "worker/send-invites.js": ["invworker"],
+    "spa-reminders.html": ["spar", "sweep:spa-reminders", "paper", "colour"],
+    "tests/spareminder_cases.json": ["spar", "invworker"],
+    "templates.html":    ["invites", "sweep:templates", "spar"],
+    "worker/send-invites.js": ["invworker", "spar"],
     "worker/mews-sync.js": ["worker"],
     "index.html":        ["index", "sweep:index"],
     "prearrival.html":   ["prearrival", "sweep:prearrival"],
