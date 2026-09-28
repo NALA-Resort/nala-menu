@@ -520,7 +520,7 @@ body.paper .crun { background:var(--surface); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=77"></script>
+<script src="nala-shared.js?v=78"></script>
 <script src="nala-cards.js?v=15"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -1077,6 +1077,14 @@ function summaryHTML(r){
      summary is otherwise built by concatenation - the staff-note lesson. */
   if (fl.length) h += sumRow('Booking flags', esc(fl.join(' \u00b7 ')));
 
+  /* When the guest opened their link and when the form was completed, each
+     with its day - the owner, 28 Sep. Last, under the answers: it says where
+     they came from, and reception reads the answers out, not this.
+     formStamps (nala-shared.js) is the one reading, so Completed can never
+     be said of a form formState does not call completed. */
+  var stamps = formStamps(r.pre, r.stay, r.spa);
+  if (stamps.length) h += sumRow('Pre-arrival', stamps.map(esc).join('<br>'));
+
   /* No key-card line and no Key cards button here, ruled 11 Sep: there
      is no reason for keys information on Front Desk's forms. Cards are
      the Keys page's; this page's whole card surface is the key in the
@@ -1566,7 +1574,13 @@ function openGuest(r){
       '<span class="gd-sub">' + stayLabel(r.stay) +
         (r.stay.adults ? ' \u00b7 ' + r.stay.adults +
           (Number(r.stay.adults)===1?' adult':' adults') : '') +
-      '</span></div>' +
+      '</span>' +
+      /* The form's two moments, at the top of the form - the summary's
+         reading, one line each so a stamp never breaks across two. */
+      formStamps(p, r.stay, r.spa).map(function(t){
+        return '<span class="gd-sub">' + esc(t) + '</span>';
+      }).join('') +
+    '</div>' +
     (etaLabel(p) ? '<div class="note-box">Told us they would arrive ' +
        esc(etaLabel(p).toLowerCase()) + '.</div>' : '') +
     (hasForm(p) ? '' : startedForm(p) ?

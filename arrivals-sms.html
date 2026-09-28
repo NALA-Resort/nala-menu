@@ -176,7 +176,7 @@ body.paper .vrow.selall { background:var(--surface); box-shadow:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=77"></script>
+<script src="nala-shared.js?v=78"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -318,12 +318,15 @@ function stateOf(stay, pre, invite, fix, spa){
   var phone = raw ? normalisePhone(raw) : null;
   var started = answersIn(pre);
 
+  /* Each stamp with its day, through stampOf (nala-shared.js) - the owner,
+     28 Sep. A time alone could not say which day a form was done: they are
+     finished days before the arrival the line ends on. */
   if (kind === 'done')
     return { kind:'done', tickable:false, ticked:false,
-             line:'Completed ' + timeOf(pre.at) + ' · ' + when };
+             line:'Completed ' + stampOf(pre.at) + ' · ' + when };
   if (kind === 'open')
     return { kind:'open', tickable:!!phone, ticked:false,
-             line:'Opened' + (pre.openedAt ? ' ' + timeOf(pre.openedAt) : '') +
+             line:'Opened' + (stampOf(pre.openedAt) ? ' ' + stampOf(pre.openedAt) : '') +
                   ' · ' + (started ? 'started, ' + started +
                   (started === 1 ? ' answer' : ' answers') : 'nothing yet') +
                   ' · ' + when };
@@ -334,9 +337,10 @@ function stateOf(stay, pre, invite, fix, spa){
   if (kind === 'sent')
     /* "Sent" is only ClickSend accepting the message; the handset receipt is
        the real answer, so an unconfirmed one says so. */
+    /* stampOf, not the day sliced off the stamp: sentAt is UTC, so the
+       slice named the day before for every send made before 10am. */
     return { kind:'sent', tickable:true, ticked:false,
-             line:'Sent ' + shortDay(akey(invite.sentAt)) + ' ' +
-                  timeOf(invite.sentAt) +
+             line:'Sent ' + stampOf(invite.sentAt) +
                   (invite.delivery === 'delivered' ? ' \u00b7 delivered'
                    : invite.providerId ? ' \u00b7 delivery unconfirmed' : '') +
                   ' \u00b7 ' + when };

@@ -1619,6 +1619,78 @@ with sync_playwright() as p:
     pg.close()
     del PRE["b17"]
 
+    # ── the form's two moments, each with its day ───────────────
+    # The owner, 28 Sep: a date and a time on the pre-arrival form's
+    # completion, and on its opening. The summary says them under the
+    # answers and the form says them at its top, both through formStamps
+    # (nala-shared.js), so Completed is never said of a form formState does
+    # not call completed. Villa 17 is the block above's one nighter, so the
+    # treatment question is not owed and three answers complete it.
+    OPENED, DONE = "2026-09-26T21:05:00Z", "2026-09-27T22:30:00Z"
+    def pre_row(pg):
+        return pg.evaluate("""()=>{const r=[...document.querySelectorAll('.sum-r')]
+          .find(e=>e.querySelector('.sum-l').textContent==='Pre-arrival');
+          return r?r.querySelector('.sum-v').innerText:null;}""")
+    def form_top(pg):
+        return pg.evaluate("()=>[...document.querySelectorAll('#sheet .gd .gd-sub')]"
+                           ".map(e=>e.textContent)")
+    PRE["b17"] = {"openedAt": OPENED, "at": DONE, "arriveSlot": "15",
+                  "dining": True, "pax": 2, "noDiets": True}
+    pg = board()
+    st = lambda s: pg.evaluate("s=>stampOf(s)", s)
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    print("   the summary's Pre-arrival row:", repr(pre_row(pg)))
+    ck("the summary says when the form was opened and completed, each with its day",
+       pre_row(pg) == "Opened " + st(OPENED) + "\nCompleted " + st(DONE))
+    ck("under the answers, as their last row",
+       pg.evaluate("()=>[...document.querySelectorAll('.sum .sum-l')]"
+                   ".map(e=>e.textContent).pop()") == "Pre-arrival")
+    pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
+    print("   the form's top:", form_top(pg))
+    ck("and the form says both at its top, a line each",
+       form_top(pg)[-2:] == ["Opened " + st(OPENED), "Completed " + st(DONE)])
+    pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
+    pg.close()
+    #  The same record in the resort's zone, where both stamps are the next
+    #  morning: a day sliced off the ISO string would name the day before.
+    zc = b.new_context(viewport={"width": 390, "height": 900},
+                       timezone_id="Australia/Brisbane")
+    pg = zc.new_page()
+    pg.add_init_script(SDK)
+    pg.add_init_script("window.__EMAIL='staff@x';")
+    pg.route("**firebasedatabase.app/**", fb)
+    pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    pg.goto("http://localhost:8964/front-desk.html?date=" + today)
+    pg.wait_for_timeout(1600)
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    ck("in Brisbane the summary reads that zone's days",
+       pre_row(pg) == "Opened Sun 27 Sep 7:05am\nCompleted Mon 28 Sep 8:30am")
+    zc.close()
+    #  A stamp beside a form still missing its dinner answer is no
+    #  completion: the row is amber, and the form must not say otherwise.
+    PRE["b17"] = {"openedAt": OPENED, "at": DONE, "arriveSlot": "15",
+                  "noDiets": True}
+    pg = board()
+    st = lambda s: pg.evaluate("s=>stampOf(s)", s)
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    top = form_top(pg)
+    ck("an incomplete form holding a stamp says when it was opened",
+       "Opened " + st(OPENED) in top)
+    ck("and never that it was completed",
+       not [t for t in top if t.startswith("Completed")])
+    pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
+    pg.close()
+    #  A booking the guest never opened says nothing about opening.
+    PRE["b17"] = {"arriveSlot": "15"}
+    pg = board()
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    ck("a form never opened carries no stamp line at all",
+       not [t for t in form_top(pg)
+            if t.startswith("Opened") or t.startswith("Completed")])
+    pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
+    pg.close()
+    del PRE["b17"]
+
     # ── the state is its own control ────────────────────────────
     # The owner's model of 28 Aug: three states, and editing and saving move
     # between none of them. One button marks a form completed, the same

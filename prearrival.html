@@ -1644,8 +1644,8 @@ function boot(){
     return;
   }
 
-  db('/bookings/' + G.id + '/prearrival', 'PATCH',
-     { openedAt: new Date().toISOString() }).catch(function(){});
+  /* The opened stamp is written below, once the record has been read: it
+     marks the FIRST landing, so it needs to know whether there was one. */
 
   /* Mews is fresher than a link sent days ago, so its name and dates win for
      display. It may not exist yet, which is the normal case at seven days
@@ -1696,6 +1696,18 @@ function boot(){
      they are left, so their answers are loaded and they are put back on the
      first page they had not answered instead of being shown the thank you. */
   db('/bookings/' + G.id + '/prearrival').then(function(p){
+    /* The opened stamp: the guest's FIRST landing, written once and never
+       moved. It is what tells a message that never arrived from one that
+       arrived and was ignored, and since 28 Sep the staff screens print it
+       with a date beside the completion stamp. Until then every visit
+       re-stamped it, so a guest who looked again at a form they had
+       finished read as opening it after completing it. A PATCH, so it
+       cannot wipe the record; and only after a read that SUCCEEDED - a
+       failed read is not an empty record (the Clean Slate lesson), and
+       writing on one would move the first landing it was meant to keep. */
+    if (!(p && p.openedAt))
+      db('/bookings/' + G.id + '/prearrival', 'PATCH',
+         { openedAt: new Date().toISOString() }).catch(function(){});
     if (!p) return;
     var started = p.arriveSlot || p.dining !== undefined || (p.diets && p.diets.length) ||
                   p.noDiets || p.purpose || p.approach || p.wellness !== undefined ||
