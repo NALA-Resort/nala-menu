@@ -35,7 +35,8 @@ PMS = {"villa": "4", "first": "Robyn", "last": "Williams",
        "phone": "+61400000001", "arrive": "2026-08-17", "depart": "2026-08-21"}
 
 STATE = {"pms": PMS, "pre": None, "dinner": None, "menu": None,
-         "dietaries": None, "menutags": None, "fail": False, "dbmenu": None}
+         "dietaries": None, "menutags": None, "fail": False, "dbmenu": None,
+         "links": {}, "manual": None}
 WRITES = []
 
 def fb(route, request):
@@ -58,6 +59,12 @@ def fb(route, request):
         body = json.dumps(STATE["pre"]) if STATE["pre"] else "null"
     elif "/dinner/" in u:
         body = json.dumps(STATE["dinner"]) if STATE["dinner"] else "null"
+    elif "/links/" in u:
+        tok = u.split("/links/")[1].split(".json")[0]
+        body = json.dumps(STATE["links"].get(tok)) if STATE["links"].get(tok) else "null"
+    elif "/manual/" in u:
+        #  An external guest's booking (28 Sep), which the link reads alone.
+        body = json.dumps(STATE["manual"]) if STATE["manual"] else "null"
     elif u.split("?")[0].endswith("/menu.json"):
         #  The DATABASE menu, which is a different thing from the committed
         #  file the page falls back to. One route used to answer both and the
@@ -563,6 +570,113 @@ with sync_playwright() as p:
        "Database lamb" in pg.inner_text("body"))
     pg.close()
     STATE["dbmenu"] = None
+
+
+    # ── an external guest, invited by SMS (28 Sep) ──────────────
+    #  Somebody rang for dinner and reception sent this menu from Invitations.
+    #  The token opens their booking, not a villa's: /links/<t> says {x, d}.
+    #  The page asks the question with the name and table size reception took,
+    #  and writes the answer and nothing else.
+    YESTERDAY = (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    INV = {"status": "awaiting", "name": "Sarah Jones", "phone": "+61412345678",
+           "pax": 2, "source": "invite", "token": "k7m2qp", "invitedAt": now.isoformat()}
+    STATE.update({"menu": MENU, "dinner": None, "fail": False,
+                  "links": {"k7m2qp": {"x": "ext-k7m2qp", "d": today, "at": now.isoformat()},
+                            "old234": {"x": "ext-old234", "d": YESTERDAY, "at": now.isoformat()},
+                            "vil444": {"b": "res-guid-1", "r": "4", "d": today}},
+                  "manual": dict(INV)})
+    del WRITES[:]
+    pg = guest("?t=k7m2qp")
+    txt = pg.locator("#rsvp").inner_text()
+    ck("an external guest's link asks with their name and their table",
+       "Sarah, shall we hold your table for 2 tonight?" in txt)
+    ck("accept or decline, the two answers reception offered on the phone",
+       pg.locator("#bIn").inner_text().strip().lower() == "accept" and
+       pg.locator("#bOut").inner_text().strip().lower() == "decline")
+    ck("opening it writes nothing: there is no villa to mark as looked at",
+       WRITES == [])
+    ck("the menu is on the page with it, which is what the text promised",
+       MENU["main"]["name"] in pg.inner_text("body"))
+    pg.locator("#bIn").click(); pg.wait_for_timeout(200)
+    ck("accepting asks once more, as the villa link does",
+       "Confirm your table for 2 guests tonight?" in pg.locator("#rsvp").inner_text() and
+       WRITES == [])
+    pg.locator("#bBack").click(); pg.wait_for_timeout(150)
+    ck("and back returns to the question", pg.locator("#bIn").count() == 1)
+    pg.locator("#bIn").click(); pg.wait_for_timeout(150)
+    pg.locator("#bYes").click(); pg.wait_for_timeout(400)
+    ck("confirming writes one thing, to the booking reception made",
+       len(WRITES) == 1 and WRITES[0]["m"] == "PATCH" and
+       ("/manual/%s/ext-k7m2qp.json" % today) in WRITES[0]["u"])
+    body = json.loads(WRITES[0]["b"]) if WRITES else {}
+    ck("the answer and nothing else: status, by the guest, and when",
+       sorted(body) == ["at", "by", "status"] and body.get("status") == "in" and
+       body.get("by") == "guest")
+    ck("and it says so", "Confirmed for 2 guests" in pg.locator("#rsvp").inner_text())
+    pg.close()
+
+    del WRITES[:]
+    pg = guest("?t=k7m2qp")
+    pg.locator("#bOut").click(); pg.wait_for_timeout(150)
+    ck("declining asks first too", WRITES == [] and
+       "won’t be dining" in pg.locator("#rsvp").inner_text())
+    pg.locator("#bYes").click(); pg.wait_for_timeout(400)
+    ck("and writes out, by the guest",
+       len(WRITES) == 1 and json.loads(WRITES[0]["b"]).get("status") == "out" and
+       "not dining tonight" in pg.locator("#rsvp").inner_text())
+    pg.close()
+
+    STATE["fail"] = True
+    del WRITES[:]
+    pg = guest("?t=k7m2qp")
+    pg.locator("#bIn").click(); pg.wait_for_timeout(150)
+    pg.locator("#bYes").click(); pg.wait_for_timeout(400)
+    ck("an answer the database refused is never thanked for",
+       "Not saved" in pg.locator("#rsvp").inner_text() and
+       "Confirmed" not in pg.locator("#rsvp").inner_text())
+    pg.close()
+    STATE["fail"] = False
+
+    STATE["manual"] = dict(INV, status="in", by="guest", at=now.isoformat())
+    pg = guest("?t=k7m2qp")
+    ck("a guest who has answered is told where they stand, not asked again",
+       "Confirmed for 2 guests" in pg.locator("#rsvp").inner_text() and
+       pg.locator("#bIn").count() == 0)
+    pg.close()
+
+    STATE["manual"] = dict(INV, status="in", pax=3, by="staff", at=now.isoformat())
+    del WRITES[:]
+    pg = guest("?t=k7m2qp")
+    ck("a booking the desk has answered is reported, and cannot be changed from the link",
+       "Confirmed for 3 guests" in pg.locator("#rsvp").inner_text() and
+       pg.locator("#bEdit").count() == 0 and WRITES == [])
+    pg.close()
+
+    STATE["manual"] = None
+    pg = guest("?t=k7m2qp")
+    ck("a cancelled invitation says so rather than offering a table",
+       "no longer open" in pg.locator("#rsvp").inner_text() and pg.locator("#bIn").count() == 0)
+    pg.close()
+
+    STATE["manual"] = dict(INV, token="old234")
+    pg = guest("?t=old234")
+    ck("last night's invitation says which night it was for, and asks nothing",
+       "This invitation was for" in pg.locator("#rsvp").inner_text() and
+       pg.locator("#bIn").count() == 0)
+    pg.close()
+
+    STATE["manual"] = dict(INV, source="manual")
+    pg = guest("?t=k7m2qp")
+    ck("a booking reception typed in by hand is not an invitation to answer",
+       pg.locator("#bIn").count() == 0)
+    pg.close()
+
+    STATE.update({"manual": None, "pre": None, "dinner": None})
+    pg = guest("?t=vil444")
+    ck("and a villa's token still opens the villa's question",
+       "dining with us" in pg.locator("#rsvp").inner_text())
+    pg.close()
+    STATE["links"] = {}
 
     # ── the page at Android widths ──────────────────────────────
     for w in (390, 360, 320):

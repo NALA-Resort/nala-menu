@@ -66,6 +66,16 @@
       "kind": "function",
       "note": "Digital replies under /responses with no room, and staff-added ext- keys under /manual. Reading /manual alone lost every externally booked table that came in through a link." },
 
+    { "value": "external guests invited by SMS, and which of them are still to answer, for the menus to print",
+      "owner": "extInvites",
+      "kind": "function",
+      "note": "The bookings Invitations' External guests drop-down made (/manual ext- keys, source invite). Which have answered is extInviteState's, the reading both boards use; an accepted one is already an external diner." },
+
+    { "value": "where an external guest's invitation stands",
+      "owner": "extInviteState",
+      "kind": "function",
+      "note": "Invitations and Reservations draw it; here only 'answered or not' is asked of it." },
+
     { "value": "how many people a dining row is",
       "owner": "dinerPax",
       "kind": "function",

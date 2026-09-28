@@ -413,3 +413,65 @@ Reasoning goes in the commit message.
 
 If something here contradicts the code, the code wins and this file is wrong:
 fix the file in the same commit.
+
+---
+
+## External guests (28 Sep)
+
+The owner: "We receive a phone call from somebody outside the resort that
+wants to make a dinner reservation." Built the same day from
+`mock-external-invite.html`, which he approved with one change - the card is
+a drop-down just like Arrivals.
+
+**The flow.** Invitations, External guests (folded above Arrivals), Invite +:
+name, mobile, guests. The message fills in the first name and the table size
+and is editable; the link is added as on every invitation. Two presses, as
+Send. The Worker then creates the booking, mints the link and sends; the
+booking is on Reservations at once, grey, Awaiting, nobody's cover. The guest
+gets tonight's menu with "shall we hold your table for 2 tonight?" and Accept
+or Decline, each asking once more. Accepted, it is an ordinary External
+booking - counted, printed, editable. Declined, it leaves Reservations and
+stays on Invitations in terracotta.
+
+**Not the mobile number in the link**, which is what the owner first
+suggested: the guest page was keyed on phone numbers once and moved off them
+because they are guessable in order. The `?t=` token needs no booking id:
+`/links/<token>` says `{x, d}` - the booking and its night - where a villa's
+says `{b, r}`. One link shape, one resolver in index.html.
+
+**The data.** One booking, where Reservations already kept external ones:
+
+    /manual/<date>/ext-<token>   status awaiting | in | out, name, phone
+                                 (E.164), pax, source 'invite', token,
+                                 invitedAt; by and at once answered
+    /links/<token>               { x: 'ext-<token>', d: <date>, at }
+    /extinvites/<date>/<key>     the send record, as /invites has for a villa
+
+The send record is NOT under `/invites`: that is the villas' evening, and
+the Dashboard reads it as "all sent, last 4:12pm" about them.
+
+**Where one stands** is `extInviteState` in nala-shared.js, held to
+`tests/extinvite_cases.json`, and read by Invitations, Reservations and the
+Dashboard's menu count (an unanswered one is owed a menu, like a villa).
+
+**The rules.** The link may read its one booking - never the night's list,
+never one reception typed in - and write its answer: `status` in or out,
+`by` 'guest', `at`, nothing else, and not once reception has set it. Staff
+outrank a guest, as on `/dinner`: Mark as dining on Reservations answers for
+them and locks the link. Save changes there PATCHes what the sheet edits and
+never the answer, so an acceptance that lands while the sheet is open stands.
+
+**A send that fails creates nothing.** The Worker makes the link, then the
+booking, then sends; if the SMS does not go, it takes both back out and the
+sheet says why while reception is still on the call. Send again (a guest's
+own sheet) re-sends the same link to the number on the booking now, and
+leaves the booking as it stands.
+
+**Before the chef publishes**, Invite + waits for the menu, as Send does:
+the text promises tonight's menu. The alternative - save the Awaiting booking
+now, send once the menu is out - was offered and not taken up.
+
+**Needs two pastes**, both the owner's: `rules.json` into the Firebase
+console, and `worker/send-invites.js` into the `nala-invites` Worker. Without
+the rules the first write is refused and nothing sends; without the Worker
+the page's Send answers "the sender did not answer".

@@ -113,32 +113,35 @@
      <details> dropdown at the top - collapsed, unticked - and the working
      list below carries an In-house title with its own total. A confirmed
      diner among the arrivals keeps the Reservations green tile, so the colour
-     law reads the same on both boards. */
+     law reads the same on both boards.
+     The dress is the class `fold`, not the name: External guests (28 Sep) is
+     the same drop-down, the owner's word - "just like the arrivals card" -
+     and each keeps a name of its own for the suites to find it by. */
   .grouptitle { display:flex; align-items:baseline; gap:8px; margin:18px 2px 2px; }
   .grouptitle .gt { font-size:var(--t3); font-weight:600; }
   .grouptitle .gc { font-size:var(--t2); color:var(--mid); }
 
-  details.arrivals { border:1px solid var(--rule); border-radius:10px;
+  details.fold { border:1px solid var(--rule); border-radius:10px;
                      background:var(--cream); overflow:hidden; margin:8px 0 2px; }
-  details.arrivals > summary { list-style:none; cursor:pointer; display:flex;
+  details.fold > summary { list-style:none; cursor:pointer; display:flex;
                      align-items:center; gap:11px; padding:12px 13px; }
-  details.arrivals > summary::-webkit-details-marker { display:none; }
-  details.arrivals .chev { flex:0 0 auto; width:15px; text-align:center;
+  details.fold > summary::-webkit-details-marker { display:none; }
+  details.fold .chev { flex:0 0 auto; width:15px; text-align:center;
                      color:var(--mid); font-size:var(--t3); transition:transform .15s ease; }
-  details.arrivals[open] .chev { transform:rotate(90deg); }
-  details.arrivals .albl { flex:1; min-width:0; font-size:var(--t3); font-weight:600; }
-  details.arrivals .asub { font-size:var(--t2); color:var(--mid); font-weight:400; margin-top:2px; }
-  details.arrivals .abadge { flex:0 0 auto; font-size:var(--t2); color:var(--amberink);
+  details.fold[open] .chev { transform:rotate(90deg); }
+  details.fold .albl { flex:1; min-width:0; font-size:var(--t3); font-weight:600; }
+  details.fold .asub { font-size:var(--t2); color:var(--mid); font-weight:400; margin-top:2px; }
+  details.fold .abadge { flex:0 0 auto; font-size:var(--t2); color:var(--amberink);
                      background:var(--amber); border:1px solid var(--amberb);
                      border-radius:var(--pill); padding:2px 10px; }
-  details.arrivals .abody { padding:0 11px 9px; }
-  details.arrivals .anote { font-size:var(--t1); color:var(--mid); margin:2px 2px 9px; }
+  details.fold .abody { padding:0 11px 9px; }
+  details.fold .anote { font-size:var(--t1); color:var(--mid); margin:2px 2px 9px; }
   /* Ready arrivals sit white on the cream; answered ones keep their band tint. */
-  details.arrivals .vrow { background:var(--ground); }
-  details.arrivals .vrow.b-din { background:var(--resgreen-t); }
-  details.arrivals .vrow.b-out { background:var(--resterra-t); }
-  details.arrivals .vrow.b-sent { background:rgba(28,28,26,.045); }
-  details.arrivals .vrow.b-grey { background:transparent; }
+  details.fold .vrow { background:var(--ground); }
+  details.fold .vrow.b-din { background:var(--resgreen-t); }
+  details.fold .vrow.b-out { background:var(--resterra-t); }
+  details.fold .vrow.b-sent { background:rgba(28,28,26,.045); }
+  details.fold .vrow.b-grey { background:transparent; }
 
   /* The message. The box holds the words; the link is never in the box. */
   select, textarea { width:100%; font-family:var(--ui-font); font-size:var(--t3);
@@ -160,6 +163,53 @@
      action is a stride from the ordinary one. */
   .btn.arm { background:var(--red); border-color:var(--red); color:#fff; }
 
+  /* ── external guests (28 Sep) ─────────────────────────────────────
+     Somebody from outside the resort rings for dinner. Their drop-down is
+     the Arrivals one; what it adds is a line inside carrying Invite +, and
+     on the folded line a text that did not arrive, in red words - a
+     failure is never hidden behind a closed drop-down. Its rows are the
+     page's .vrow in the page's band tints; the tick gives way to a forward
+     mark (.fwd, not .chev: .chev is the drop-down's own arrow, and an open
+     drop-down turns every .chev inside it a quarter turn), because an
+     external row is not part of the batch Send - it opens its own sheet.
+     Mocked in mock-external-invite.html. */
+  details.fold .asub .bad { color:var(--red); }
+  .extline { display:flex; align-items:center; gap:10px; margin:2px 2px 10px; }
+  details.fold .extline .anote { flex:1; min-width:0; margin:0; }
+  /* body.ui2 .btn is full width; a button beside a line is its label's width */
+  body.ui2 .extline .btn { flex:0 0 auto; width:auto; min-height:36px; padding:0 14px;
+                           font-size:var(--t2); }
+  .vrow .fwd { flex:0 0 auto; width:24px; text-align:center; color:var(--mid);
+               font-size:var(--t4); line-height:1; }
+
+  /* The sheet, Reservations' own (tally.html), over everything: above the
+     page's fixed Send (the footer is 40, the menu 500), or a sheet opened
+     under the page's primary leaves two Sends on screen. */
+  .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35); display:none;
+              align-items:flex-end; justify-content:center; z-index:600; }
+  .backdrop.show { display:flex; }
+  .sheet { width:100%; max-width:var(--appw); background:var(--cream);
+           padding:20px 24px calc(14px + env(safe-area-inset-bottom));
+           border-top:1px solid var(--rule); max-height:92vh; overflow-y:auto;
+           -webkit-overflow-scrolling:touch; }
+  .sheet h3 { font-size:var(--t2); color:var(--mid); font-weight:normal;
+              text-align:center; margin:0 44px 12px; }
+  .sheet-label { font-size:var(--t1); color:var(--mid); text-align:center; margin-bottom:8px; }
+  .sheet input { margin-bottom:8px; }
+  .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 16px; }
+  .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
+         border-radius:50%; font-family:var(--ui-font); font-size:var(--t2);
+         color:var(--ink); cursor:pointer; padding:0; }
+  @supports (aspect-ratio:1){ .pax { height:auto; aspect-ratio:1; } }
+  .sheet textarea { margin-top:0; min-height:0; resize:none; overflow:hidden; }
+  .sheet .msgmeta { margin-bottom:12px; }
+  .sheet .becomes { font-size:var(--t2); color:var(--mid); line-height:1.45; margin:10px 0 14px; }
+  .sheet .facts { font-size:var(--t2); color:var(--mid); text-align:center;
+                  line-height:1.5; margin:-4px 0 14px; }
+  .sheet .facts .bad { color:var(--red); }
+  .sheet .btn { margin-bottom:8px; }
+  .sheet .savefail { margin:-2px 0 10px; }
+
   #errBar { font-size:var(--t2); color:var(--red); margin:10px 0; line-height:1.45; }
   .spacer { height:12px; }
 
@@ -176,7 +226,13 @@ body.paper .vrow.b-sent { background:linear-gradient(rgba(28,28,26,.045), rgba(2
 body.paper .vrow.b-din { background:linear-gradient(var(--resgreen-t), var(--resgreen-t)), var(--surface); }
 body.paper .vrow.b-out { background:linear-gradient(var(--resterra-t), var(--resterra-t)), var(--surface); }
 body.paper .vrow.b-grey { background:var(--surface); box-shadow:none; }
-body.paper details.arrivals { background:var(--surface); box-shadow:var(--lift); }
+body.paper details.fold { background:var(--surface); box-shadow:var(--lift); }
+/* the sheet is paper like the page; its covers are white, the picked one's
+   grey drawn over the white, as on Reservations' sheets, and its outline
+   button is white rather than see-through, as Keys' Cancel is */
+body.paper .pax { background:var(--surface); }
+body.paper .pax.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface); }
+body.paper .sheet .btn.terra { background:var(--surface); }
 </style>
 </head>
 <body class="tier-app ui2 paper">
@@ -222,10 +278,12 @@ body.paper details.arrivals { background:var(--surface); box-shadow:var(--lift);
   <button class="btn solid" id="sendBtn" disabled>Send</button>
 </div>
 
+<div class="backdrop" id="xBackdrop"><div class="sheet" id="xSheet"></div></div>
+
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=78"></script>
+<script src="nala-shared.js?v=81"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -284,6 +342,8 @@ var BUILTIN_TEMPLATES = [
 var TEMPLATES = BUILTIN_TEMPLATES;
 
 var ROWS = {};          /* villa -> { stay, state, ticked, arriving } */
+var EXT = { manual:{}, sends:{} };   /* tonight's /manual and /extinvites */
+var EXT_OPEN = false;  /* like ARR_OPEN: an open drop-down stays open across a reload */
 var MENU_STATE = null;  /* 'live' | 'none' | 'failed' */
 var ARMED = false;      /* the second press for a resend */
 var ARR_OPEN = false;   /* whether the Arrivals dropdown is expanded */
@@ -335,14 +395,16 @@ function msgChanged(){
   warn.textContent = bodyHasUrl(s)
     ? 'Links cannot be typed here. The menu link is added automatically.' : '';
   warn.className = bodyHasUrl(s) ? 'warn' : '';
-  /* An SMS is 160 characters and the link costs 37 of them, so a template
-     plus the link usually still fits one segment. Shown so the writer knows
-     what they are doing. */
+  document.getElementById('msgCount').textContent = smsCount(s);
+  disarm();
+}
+/* An SMS is 160 characters and the link costs 37 of them, so a template
+   plus the link usually still fits one segment. Shown so the writer knows
+   what they are doing. One count for both boxes on the page. */
+function smsCount(s){
   var len = s.replace('<menu>', LINK_SAMPLE).replace('<link>', LINK_SAMPLE).length;
   var segs = len <= 160 ? 1 : Math.ceil(len / 153);
-  document.getElementById('msgCount').textContent =
-    len + ' characters \u00B7 ' + (segs === 1 ? '1 segment' : 'about ' + segs + ' segments');
-  disarm();
+  return len + ' characters \u00B7 ' + (segs === 1 ? '1 segment' : 'about ' + segs + ' segments');
 }
 msgBox.oninput = msgChanged;
 setTemplate('ready');
@@ -378,6 +440,7 @@ function render(stays, invites, fixes){
   var board = document.getElementById('board');
   board.innerHTML = '';
   ROWS = {};
+  renderExt(board);
   var inhouse = { ready:[], sent:[], answered:[], nophone:[] };
   var arriving = [];   /* flat, villa order: the point is they are set aside */
   Object.keys(stays || {}).sort(function(a, b){ return (+a) - (+b); }).forEach(function(v){
@@ -459,7 +522,7 @@ function render(stays, invites, fixes){
      it. Unticked, so nothing here joins a send unless it is deliberately tapped. */
   if (arriving.length){
     var det = document.createElement('details');
-    det.className = 'arrivals';
+    det.className = 'fold arrivals';
     det.open = ARR_OPEN;
     det.addEventListener('toggle', function(){ ARR_OPEN = det.open; });
     var sum = document.createElement('summary');
@@ -500,6 +563,290 @@ function render(stays, invites, fixes){
     inhouse[band.kind].forEach(function(b){ board.appendChild(b); });
   });
   recount();
+}
+
+/* ── external guests (28 Sep) ─────────────────────────────────
+   Somebody from outside the resort rings for dinner. This drop-down sends
+   them tonight's menu and holds the evening's invitations. The Worker makes
+   the booking - Reservations' External reservation, Awaiting until the guest
+   answers from the link - so, as for the villas, this page proposes and the
+   Worker decides: a name, a number, a table size and the words. Where each
+   guest stands is extInviteState's (nala-shared.js), which Reservations and
+   the Dashboard read too; this page only draws it. */
+function renderExt(board){
+  var list = extInvites(EXT.manual).map(function(e){
+    return { key:e.key, g:e.g, st:extInviteState(e.g, EXT.sends[e.key]) };
+  });
+  /* Work first, done sinks, as the villas' bands: a text to chase, then
+     waiting, then answered; within each, in the order they were invited. */
+  var ORDER = { ready:0, sent:1, answered:2 };
+  list.sort(function(a, b){
+    return (ORDER[a.st.kind] - ORDER[b.st.kind]) ||
+           String(a.g.invitedAt || '').localeCompare(String(b.g.invitedAt || ''));
+  });
+  var bad = list.filter(function(x){ return x.st.bad; }).length;
+  var det = document.createElement('details');
+  det.className = 'fold extguests';
+  det.open = EXT_OPEN;
+  det.addEventListener('toggle', function(){ EXT_OPEN = det.open; });
+  var sum = document.createElement('summary');
+  sum.innerHTML = '<span class="chev">▶</span>' +
+    '<span class="albl">External guests<div class="asub"></div></span>';
+  var sub = sum.querySelector('.asub');
+  sub.appendChild(document.createTextNode('Not staying · '));
+  if (bad){
+    var s = document.createElement('span'); s.className = 'bad';
+    s.textContent = bad + ' not delivered'; sub.appendChild(s);
+  } else sub.appendChild(document.createTextNode('invited by SMS'));
+  if (list.length){
+    var badge = document.createElement('span'); badge.className = 'abadge';
+    badge.textContent = list.length + ' guest' + (list.length === 1 ? '' : 's');
+    sum.appendChild(badge);
+  }
+  det.appendChild(sum);
+  var body = document.createElement('div');
+  body.className = 'abody';
+  var line = document.createElement('div');
+  line.className = 'extline';
+  line.innerHTML = '<div class="anote"></div>' +
+    '<button class="btn" type="button" id="extInvite">Invite +</button>';
+  line.querySelector('.anote').textContent = list.length
+    ? 'Tap a guest to send again or cancel.'
+    : 'Guests from outside the resort, invited by SMS.';
+  line.querySelector('#extInvite').onclick = openInvite;
+  body.appendChild(line);
+  list.forEach(function(x){ body.appendChild(extRow(x)); });
+  det.appendChild(body);
+  board.appendChild(det);
+}
+
+function extRow(x){
+  var b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'vrow' + (x.st.kind === 'sent' ? ' b-sent'
+                : x.st.kind === 'answered' ? (x.st.in ? ' b-din' : ' b-out') : '');
+  b.dataset.ext = x.key;
+  b.innerHTML = '<div class="mid"><div class="nm trimrow"><span class="trim"></span>' +
+    '<span class="ph"></span></div><div class="st"></div></div>' +
+    '<div class="fwd">›</div>';
+  b.querySelector('.trim').textContent = x.g.name || 'Guest';
+  b.querySelector('.ph').textContent = x.g.phone || 'no number';
+  paintState(b.querySelector('.st'), x.st);
+  b.onclick = function(){ openExtRow(x); };
+  return b;
+}
+/* The plain words, then the failure's in red. */
+function paintState(el, st){
+  el.textContent = st.line + (st.bad ? ' · ' : '');
+  if (st.bad){
+    var s = document.createElement('span'); s.className = 'bad';
+    s.textContent = st.bad; el.appendChild(s);
+  }
+}
+
+/* The words, with the first name and the table size in them. The link is
+   the Worker's, on its own last line where <menu> stands, as on every
+   invitation; the box cannot carry one. */
+function extWords(name, pax){
+  var first = String(name || '').trim().split(/\s+/)[0] || '';
+  return 'Hi' + (first ? ' ' + first : '') + ', thanks for your call. Tonight’s ' +
+    'menu is below - tap to accept or decline your table for ' + pax +
+    '. Nala Resort\n<menu>';
+}
+
+/* Why a send cannot go yet, or '' when it can. The menu rule is the page's
+   own: the text promises tonight's menu, so nothing sends before the chef
+   publishes - the same gate as Send, not a second opinion. */
+function extWhyNot(body, name, phone){
+  if (name !== undefined && !String(name).trim()) return 'Add the guest’s name.';
+  if (phone !== undefined && !normalisePhone(phone))
+    return 'That is not a sendable mobile number. Australian numbers can be typed ' +
+           'as 04...; anything overseas needs its + country code.';
+  if (bodyHasUrl(body))
+    return 'The message contains a link. Take it out: the menu link is added automatically.';
+  if (MENU_STATE === 'failed')
+    return 'Tonight’s menu could not be checked, so nothing sends until it can.';
+  if (MENU_STATE !== 'live')
+    return 'No menu is published for tonight, so the link would land on a ' +
+           'placeholder. Sending opens once the chef publishes.';
+  if (!window.__idToken) return 'Still signing in. Try again in a moment.';
+  return '';
+}
+
+/* One call to the Worker for an external guest. Resolves with its answer
+   when the text went; rejects with the reason, worded for the sheet. */
+function postExt(fields){
+  return fetch(INVITES_URL, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign({ idToken: window.__idToken, kind: 'ext',
+                                         date: TODAY, template: 'ext' }, fields))
+  })
+  .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
+  .then(function(res){
+    if (!res.ok || !res.j || !res.j.result)
+      throw new Error('Nothing was sent: ' + ((res.j && res.j.error) || 'the sender did not answer') + '.');
+    var s = res.j.result.status;
+    if (s !== 'sent' && s !== 'sent-unrecorded')
+      throw new Error('Nothing was sent: ' + (res.j.result.error || 'unknown fault') + '.');
+    return res.j;
+  }, function(e){
+    if (e && /^Nothing was sent/.test(e.message)) throw e;
+    throw new Error('Nothing was sent: the sender could not be reached.');
+  });
+}
+
+var xBack = document.getElementById('xBackdrop'), xSheet = document.getElementById('xSheet');
+function showSheet(html){ xSheet.innerHTML = html; xBack.className = 'backdrop show'; }
+function closeSheet(){ xBack.className = 'backdrop'; xSheet.innerHTML = ''; }
+function $x(id){ return document.getElementById(id); }
+
+/* A box that shows the whole message at any width, the mock's rule. */
+function fitBox(el){ el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; }
+
+/* The send button's two presses, the page's own rule since 25 Aug: the
+   first arms, the second sends, and any edit between them disarms. */
+function armer(btn, rest, confirmLabel){
+  var armed = false;
+  return {
+    armed: function(){ return armed; },
+    arm: function(){ armed = true; btn.className = 'btn solid arm';
+                     btn.textContent = confirmLabel(); },
+    disarm: function(){ armed = false; btn.className = 'btn solid';
+                        btn.textContent = rest; btn.disabled = false; }
+  };
+}
+
+function openInvite(){
+  var pax = 2, touched = false;
+  showSheet(
+    '<h3>Invite an external guest</h3>' +
+    '<input id="xName" type="text" placeholder="Name" autocomplete="off" aria-label="Name">' +
+    '<input id="xPhone" type="tel" placeholder="Mobile" autocomplete="off" aria-label="Mobile">' +
+    '<div class="sheet-label" style="margin-top:14px">Guests</div>' +
+    '<div class="pax-row" id="xPax"></div>' +
+    '<div class="sheet-label">Message</div>' +
+    '<textarea id="xMsg" aria-label="Message to the guest"></textarea>' +
+    '<div class="msgmeta"><span id="xWarn"></span><span id="xCount"></span></div>' +
+    '<div class="becomes" id="xBecomes"></div>' +
+    '<button class="btn solid" id="xSend" type="button">Send invitation</button>' +
+    '<div class="savefail" id="xFail"></div>' +
+    '<button class="btn" id="xCancel" type="button">Cancel</button>');
+  var nameEl = $x('xName'), phEl = $x('xPhone'), msgEl = $x('xMsg'),
+      sendB = $x('xSend'), fail = $x('xFail');
+  var arm = armer(sendB, 'Send invitation', function(){
+    return 'Please confirm · send to ' + nameEl.value.trim(); });
+  function quiet(){ arm.disarm(); fail.className = 'savefail'; }
+  function paintPax(){
+    var row = $x('xPax'); row.innerHTML = '';
+    for (var i = 1; i <= 8; i++) (function(n){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'pax' + (n === pax ? ' on' : '');
+      b.textContent = n; b.setAttribute('aria-label', n + ' guests');
+      b.onclick = function(){ pax = n; paintPax(); refresh(); };
+      row.appendChild(b);
+    })(i);
+  }
+  /* Until reception types into the message, it follows the name and the
+     table size; after that it is theirs. */
+  function refresh(){
+    if (!touched) msgEl.value = extWords(nameEl.value, pax);
+    fitBox(msgEl);
+    $x('xCount').textContent = smsCount(msgEl.value);
+    var url = bodyHasUrl(msgEl.value);
+    $x('xWarn').textContent = url ? 'Links cannot be typed here.' : '';
+    $x('xWarn').className = url ? 'warn' : '';
+    $x('xBecomes').textContent = 'The menu link is added automatically. Sending puts ' +
+      (nameEl.value.trim() || 'the guest') + ', table for ' + pax +
+      ', on tonight’s Reservations as Awaiting.';
+    quiet();
+  }
+  nameEl.oninput = refresh;
+  phEl.oninput = quiet;
+  msgEl.oninput = function(){ touched = true; refresh(); };
+  sendB.onclick = function(){
+    var why = extWhyNot(msgEl.value, nameEl.value, phEl.value);
+    if (why){ fail.textContent = why; fail.className = 'savefail show'; return; }
+    if (!arm.armed()){ arm.arm(); return; }
+    sendB.disabled = true; sendB.textContent = 'Sending…';
+    postExt({ name: nameEl.value.trim(), phone: phEl.value.trim(), pax: pax,
+              body: msgEl.value })
+      .then(function(){ closeSheet(); EXT_OPEN = true; return load(); })
+      .catch(function(e){
+        arm.disarm();
+        fail.textContent = (e && e.message) || 'Nothing was sent.';
+        fail.className = 'savefail show';
+      });
+  };
+  $x('xCancel').onclick = closeSheet;
+  paintPax(); refresh();
+  nameEl.focus();
+}
+
+/* One guest already invited tonight: their facts, send again, or cancel. */
+function openExtRow(x){
+  var g = x.g, pax = dinerPax(g);
+  showSheet(
+    '<h3 id="xTitle"></h3>' +
+    '<div class="facts" id="xFacts"></div>' +
+    '<div class="sheet-label">Message</div>' +
+    '<textarea id="xMsg" aria-label="Message to the guest"></textarea>' +
+    '<div class="msgmeta"><span id="xWarn"></span><span id="xCount"></span></div>' +
+    '<button class="btn solid" id="xSend" type="button">Send again</button>' +
+    '<div class="savefail" id="xFail"></div>' +
+    '<button class="btn terra" id="xDrop" type="button">Cancel invitation</button>' +
+    '<button class="btn" id="xClose" type="button">Close</button>');
+  $x('xTitle').textContent = g.name || 'Guest';
+  var facts = $x('xFacts');
+  facts.textContent = (g.phone || 'no number') + ' · ';
+  var st = document.createElement('span'); paintState(st, x.st); facts.appendChild(st);
+  var msgEl = $x('xMsg'), sendB = $x('xSend'), fail = $x('xFail');
+  msgEl.value = extWords(g.name, pax);
+  var arm = armer(sendB, 'Send again', function(){
+    return 'Please confirm · send again to ' + (g.name || 'the guest'); });
+  function refresh(){
+    fitBox(msgEl);
+    $x('xCount').textContent = smsCount(msgEl.value);
+    var url = bodyHasUrl(msgEl.value);
+    $x('xWarn').textContent = url ? 'Links cannot be typed here.' : '';
+    $x('xWarn').className = url ? 'warn' : '';
+    arm.disarm(); fail.className = 'savefail';
+  }
+  msgEl.oninput = refresh;
+  sendB.onclick = function(){
+    var why = extWhyNot(msgEl.value);
+    if (why){ fail.textContent = why; fail.className = 'savefail show'; return; }
+    if (!arm.armed()){ arm.arm(); return; }
+    sendB.disabled = true; sendB.textContent = 'Sending…';
+    postExt({ key: x.key, body: msgEl.value })
+      .then(function(){ closeSheet(); EXT_OPEN = true; return load(); })
+      .catch(function(e){
+        arm.disarm();
+        fail.textContent = (e && e.message) || 'Nothing was sent.';
+        fail.className = 'savefail show';
+        /* the send record changed either way: redraw behind the sheet */
+        load();
+      });
+  };
+  /* The button law: a walk-back of something a guest holds wears
+     terracotta and asks first, naming the guest and the thing. */
+  $x('xDrop').onclick = function(){
+    if (!window.confirm('Cancel ' + (g.name || 'this guest') + '’s table for ' +
+                        pax + ' tonight? Their link will stop working.')) return;
+    var btn = this;
+    btn.disabled = true;
+    fetch(DB + '/manual/' + TODAY + '/' + x.key + '.json', { method: 'DELETE' })
+      .then(function(r){
+        if (!r.ok) throw new Error();
+        closeSheet(); return load();
+      })
+      .catch(function(){
+        btn.disabled = false;
+        fail.textContent = 'The invitation was not cancelled. Try again.';
+        fail.className = 'savefail show';
+      });
+  };
+  $x('xClose').onclick = closeSheet;
+  refresh();
 }
 
 /* The number editor, the same one the pre-arrival page carries. A browser
@@ -672,10 +1019,19 @@ function load(){
     loadTemplates(),
     fetch(DB + '/phonefix.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
+    /* The external guests: their bookings, where Reservations keeps them,
+       and their send records, apart from the villas'. */
+    fetch(DB + '/manual/' + TODAY + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; }),
+    fetch(DB + '/extinvites/' + TODAY + '.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; })
   ]).then(function(res){
+    EXT = { manual: res[5] || {}, sends: res[6] || {} };
     render(res[0] || {}, res[1] || {}, res[4] || {});
-    checkDelivery(res[1] || {});
+    checkDelivery(res[1] || {}, EXT.sends);
   });
 }
 
@@ -683,18 +1039,20 @@ function load(){
    sent but unconfirmed; if a verdict landed, reload so the rows say so.
    The flag stops the reload asking again forever. */
 var CHECKED_DELIVERY = false;
-function checkDelivery(invites){
+function checkDelivery(invites, extsends){
   if (CHECKED_DELIVERY || !window.__idToken) return;
-  var pending = Object.keys(invites || {}).filter(function(v){
-    var r = invites[v];
+  function unsettled(r){
     return r && r.status === 'sent' && r.providerId &&
            r.delivery !== 'delivered' && r.delivery !== 'failed';
-  });
-  if (!pending.length) return;
+  }
+  var pending = Object.keys(invites || {}).filter(function(v){ return unsettled(invites[v]); });
+  var extPending = Object.keys(extsends || {}).filter(function(k){ return unsettled(extsends[k]); });
+  if (!pending.length && !extPending.length) return;
   CHECKED_DELIVERY = true;
   fetch(INVITES_URL, { method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ idToken: window.__idToken, kind:'delivery',
-      invites: pending.map(function(v){ return { date: TODAY, villa: v }; }) }) })
+      invites: pending.map(function(v){ return { date: TODAY, villa: v }; }),
+      exts: extPending.map(function(k){ return { date: TODAY, key: k }; }) }) })
   .then(function(r){ return r.json(); })
   .then(function(j){ if (j && j.changed) return load(); })
   .catch(function(){});

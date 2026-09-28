@@ -749,6 +749,109 @@
   }
 
   // ── steps ────────────────────────────────────────────────
+  /* ── a guest from outside the resort (28 Sep) ──────────────
+     Somebody rang for dinner; reception sent this menu from Invitations. The
+     link's token opens their booking rather than a villa's: /links/<t> says
+     {x, d} - the key of the External reservation at /manual/<d>/<x> and the
+     night it is for - where a villa's says {b, r}. The booking was made
+     Awaiting, with the name and the table size reception took on the phone,
+     and the guest answers it here: accept or decline, and nothing else. The
+     rules let this link read that one booking and write only its status,
+     stamped by 'guest' - never the name, the number or the table size, and
+     not once reception has set it, which is the villas' rule: staff outrank
+     a guest. */
+  var EXTG = null;       // { key, date, rec } when the link is an external guest's
+
+  /* Back to whichever question this link asks. */
+  function ask(){ if (EXTG) stepExtChoose(); else stepChoose(); }
+
+  function extPax(){ return (EXTG && +EXTG.rec.pax) || 1; }
+
+  function stepExtChoose(){
+    var fn = firstName(EXTG.rec.name), n = extPax();
+    panel.innerHTML =
+      '<div class="r-q"></div>'+
+      '<div class="r-btns">'+
+        '<button class="r-btn" id="bOut">Decline</button>'+
+        '<button class="r-btn primary" id="bIn">Accept</button>'+
+      '</div>';
+    panel.querySelector('.r-q').textContent = (fn ? fn + ', shall' : 'Shall') +
+      ' we hold your table for ' + n + ' tonight?';
+    document.getElementById('bIn').onclick  = function(){ stepExtConfirm('in'); };
+    document.getElementById('bOut').onclick = function(){ stepExtConfirm('out'); };
+    panel.setAttribute('data-step','choose'); scheduleFit();
+  }
+
+  /* Each answer asks once more, as the villa link does. */
+  function stepExtConfirm(status){
+    var n = extPax();
+    panel.innerHTML =
+      '<div class="r-q">' + (status === 'in'
+        ? 'Confirm your table for ' + n + (n === 1 ? ' guest' : ' guests') + ' tonight?'
+        : 'Confirm you won’t be dining tonight?') + '</div>'+
+      '<div class="r-btns">'+
+        '<button class="r-btn quiet" id="bBack">Back</button>'+
+        '<button class="r-btn ' + (status === 'in' ? 'primary' : 'danger') +
+          '" id="bYes">Confirm</button>'+
+      '</div>';
+    document.getElementById('bYes').onclick  = function(){ saveExt(status); };
+    document.getElementById('bBack').onclick = stepExtChoose;
+    panel.setAttribute('data-step','confirm'); scheduleFit();
+    toBottom();
+  }
+
+  /* The answer and nothing else: the three fields the rules let this link
+     write. Awaited, as the villa answer is - a table that did not save must
+     not look like one that did. */
+  function saveExt(status){
+    if (LOCKED) return;
+    var patch = { status: status, by: 'guest', at: new Date().toISOString() };
+    db('/manual/' + EXTG.date + '/' + EXTG.key, 'PATCH', patch)
+      .then(function(){
+        if (window.__nalaWriteFailed) throw new Error('refused');
+        EXTG.rec.status = status;
+        stepDone({ status: status, pax: extPax() });
+      })
+      .catch(function(){ stepFailed('save'); });
+  }
+
+  /* The link resolved to an external guest's booking: read it and ask, or
+     say where it stands. */
+  function initExt(){
+    panel.className = 'show';
+    document.querySelector('.page').classList.add('has-rsvp');
+    function say(t, s){
+      panel.innerHTML = '<div class="r-done"><div class="r-done-t"></div>' +
+                        '<div class="r-done-s"></div></div>';
+      panel.querySelector('.r-done-t').textContent = t;
+      panel.querySelector('.r-done-s').textContent = s;
+      panel.setAttribute('data-step','done'); scheduleFit();
+    }
+    db('/manual/' + EXTG.date + '/' + EXTG.key)
+      .then(function(rec){
+        /* Cancelled by reception, or never made: nothing to answer. */
+        if (!rec || typeof rec !== 'object' || rec.source !== 'invite')
+          return say('This invitation is no longer open',
+                     'Please call us if you would like to join us for dinner.');
+        EXTG.rec = rec;
+        if (EXTG.date !== todayKey())
+          /* Local noon: a bare date read as midnight UTC is the day before
+             for the whole resort's morning. Display only; nothing compares it. */
+          return say('This invitation was for ' + dateLabel(EXTG.date + 'T12:00:00'),
+                     'Please call us if you would like to join us another evening.');
+        if (rec.status === 'in' || rec.status === 'out'){
+          LOCKED = rec.by === 'staff';
+          stepDone({ status: rec.status, pax: extPax() });
+        } else {
+          stepExtChoose();
+        }
+      })
+      .catch(function(){
+        say('This invitation could not be opened',
+            'This is usually the connection. Please try again, or call us.');
+      });
+  }
+
   function stepChoose(){
     var fn = firstName(G.name);
     panel.innerHTML =
@@ -808,7 +911,7 @@
          did for a staff one. Same markup, one more reason to omit it. */
       ((pastCutoff() || LOCKED) ? '' : '<a class="r-link" id="bEdit">Change</a>')+'</div>';
     var e = document.getElementById('bEdit');
-    if (e) e.onclick = stepChoose;
+    if (e) e.onclick = ask;
     panel.setAttribute('data-step','done'); scheduleFit();
   }
 
@@ -975,7 +1078,7 @@
       ' Please let reception know and we will take care of it.</div>' +
       '<a class="r-link" id="bEdit">Try again</a></div>';
     var e = document.getElementById('bEdit');
-    if (e) e.onclick = function(){ window.__nalaWriteFailed = false; stepChoose(); };
+    if (e) e.onclick = function(){ window.__nalaWriteFailed = false; ask(); };
     panel.setAttribute('data-step','done'); scheduleFit();
   }
 
@@ -1010,6 +1113,12 @@
       var t = (qs.get('t') || '').trim().toLowerCase();
       if (!/^[a-z0-9]{4,16}$/.test(t)) return;
       db('/links/' + t).then(function(rec){
+        if (rec && rec.x && !rec.b && /^ext-[a-z0-9]{4,16}$/.test(String(rec.x)) &&
+            /^\d{4}-\d{2}-\d{2}$/.test(String(rec.d || ''))){
+          EXTG = { key: String(rec.x), date: String(rec.d), rec: {} };
+          initExt();
+          return;
+        }
         if (!rec || !rec.b) return;
         G.id = String(rec.b);
         var r = String(rec.r || '');

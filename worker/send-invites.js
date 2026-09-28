@@ -2,9 +2,14 @@
  *
  * invitations.html posts here to send tonight's menu link by SMS. This is the
  * only place the ClickSend credential exists: never in the browser and never
- * in this repo, which is public until SECURITY.md job 4. Three pages share
- * it: invitations.html (the default kind), arrivals-sms.html (kind "pre"),
- * and spa-reminders.html (kind "spa", the morning spa reminder, 28 Sep).
+ * in this repo, which is public until SECURITY.md job 4.
+ *
+ * Kinds: the default, tonight's menu to villas in house; "pre", the
+ * pre-arrival form to a booking arriving soon; "ext" (28 Sep), tonight's menu
+ * to a guest from outside the resort who rang for dinner, which also creates
+ * their booking - see the kind itself; "spa" (28 Sep), the morning reminder
+ * of a booked treatment, from spa-reminders.html; and "delivery", the
+ * handset receipts.
  *
  * The page proposes; this Worker decides. A browser can be edited, and a
  * browser that can name any phone number and any message body is a browser
@@ -134,6 +139,12 @@ async function dbGet(path, idToken) {
    when the database refuses to hold it - the caller fails that guest with
    nothing sent, rather than texting a link to nowhere. */
 async function mintToken(idToken, b, r, d, at) {
+  return mintLink(idToken, () => ({ b: String(b), r: String(r), d: String(d), at: at }));
+}
+/* The same, for any shape of link: a villa's {b, r} above, or an external
+   guest's {x, d}, whose booking is keyed by the token itself - so the body
+   is built once the token is known. */
+async function mintLink(idToken, bodyFor) {
   for (let tries = 0; tries < 5; tries++) {
     const token = newToken();
     const taken = await dbGet("/links/" + token, idToken).catch(() => null);
@@ -141,12 +152,31 @@ async function mintToken(idToken, b, r, d, at) {
     const w = await fetch(
       DB + "/links/" + token + ".json?auth=" + encodeURIComponent(idToken),
       { method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ b: String(b), r: String(r), d: String(d),
-                               at: at }) });
+        body: JSON.stringify(bodyFor(token)) });
     if (w.ok) return token;
     if (w.status !== 409) return null;
   }
   return null;
+}
+
+/* A write or a delete as the caller, true when the database took it. */
+async function dbPut(path, idToken, value) {
+  const w = await fetch(DB + path + ".json?auth=" + encodeURIComponent(idToken),
+    { method: value === null ? "DELETE" : "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: value === null ? undefined : JSON.stringify(value) }).catch(() => null);
+  return !!(w && w.ok);
+}
+
+/* Tonight only. The Worker's clock is UTC and the resort's is not, so
+   "today" is anywhere within a day of UTC today: wide enough for every
+   Australian offset, narrow enough that a written-out past date is
+   refused rather than sent for. */
+function notTonight(date) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) return "bad date";
+  const asked = Date.parse(date + "T00:00:00Z");
+  if (Math.abs(asked - Date.now()) > 36 * 60 * 60 * 1000) return "not tonight";
+  return "";
 }
 
 /* Any marker means "the link this message carries": <form> on the
@@ -249,6 +279,9 @@ export default {
 
     const { idToken, date, villas, template, kind, bookings, treatments } = body || {};
     const text = body && body.body;
+    /* kind "ext" only: the guest reception is on the phone to - or, with
+       key, one already invited tonight, to send to again. */
+    const { name: xName, phone: xPhone, pax: xPax, key: xKey } = body || {};
 
     if (!idToken) return reply(401, { error: "no idToken" });
     /* Two kinds of send share this Worker: tonight's menu invitation
@@ -270,16 +303,24 @@ export default {
         return reply(400, { error: "bad treatment list" });
     } else if (kind === "delivery") {
       /* Addressed by record references, validated at the point of use. */
+    } else if (kind === "ext") {
+      const bad = notTonight(date);
+      if (bad) return reply(400, { error: bad });
+      if (xKey != null) {
+        if (!/^ext-[a-z0-9]{4,16}$/.test(String(xKey)))
+          return reply(400, { error: "bad invitation" });
+      } else {
+        if (typeof xName !== "string" || !xName.trim() || xName.length > 120)
+          return reply(400, { error: "the guest needs a name" });
+        if (!Number.isInteger(xPax) || xPax < 1 || xPax > 40)
+          return reply(400, { error: "bad table size" });
+        if (!normalisePhone(xPhone))
+          return reply(400, { error: "number cannot be normalised for sending: " +
+                                     String(xPhone || "").slice(0, 40) });
+      }
     } else {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date || ""))
-        return reply(400, { error: "bad date" });
-      /* Tonight only. The Worker's clock is UTC and the resort's is not, so
-         "today" is anywhere within a day of UTC today: wide enough for every
-         Australian offset, narrow enough that a written-out past date is
-         refused rather than sent for. */
-      const asked = Date.parse(date + "T00:00:00Z");
-      if (Math.abs(asked - Date.now()) > 36 * 60 * 60 * 1000)
-        return reply(400, { error: "not tonight" });
+      const bad = notTonight(date);
+      if (bad) return reply(400, { error: bad });
       if (!Array.isArray(villas) || !villas.length || villas.length > 17 ||
           !villas.every((v) => /^\d{1,2}$/.test(String(v))))
         return reply(400, { error: "bad villa list" });
@@ -337,6 +378,7 @@ export default {
       const pres = Array.isArray(body.pres) ? body.pres.slice(0, 40) : [];
       /* the spa reminder log, one record per treatment: { b, t } */
       const spas = Array.isArray(body.spas) ? body.spas.slice(0, 40) : [];
+      const exts = Array.isArray(body.exts) ? body.exts.slice(0, 40) : [];
       const results = {}; let changed = 0;
       const check = async (path, key) => {
         let rec;
@@ -381,6 +423,12 @@ export default {
         if (!s || !/^[A-Za-z0-9-]{4,64}$/.test(String(s.b)) ||
             !/^[A-Za-z0-9_-]{1,32}$/.test(String(s.t))) continue;
         await check("/spareminders/" + s.b + "/" + s.t, s.b + "/" + s.t);
+      }
+      for (const it of exts) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(it && it.date)) ||
+            !/^ext-[a-z0-9]{4,16}$/.test(String(it && it.key))) continue;
+        await check("/extinvites/" + it.date + "/" + it.key,
+                    it.date + "/" + it.key);
       }
       return reply(200, { results, changed });
     }
@@ -530,6 +578,90 @@ export default {
     if (!(menu && menu.main && menu.main.name) || isNaN(pub) ||
         Date.now() - pub > 24 * 60 * 60 * 1000)
       return reply(409, { error: "no menu is published for tonight" });
+
+    /* ── kind "ext": a guest from outside the resort ─────────────
+       Somebody rang and wants dinner. There is no booking id and no villa,
+       so this creates the booking: /manual/<date>/ext-<token>, the same
+       External reservation Reservations' Add + makes, with the status
+       'awaiting' until the guest answers from the link. The token is the
+       key, so the link that opens it is unguessable exactly as a villa's
+       is; /links/<token> says {x, d} where a villa's says {b, r}.
+
+       In order, so a failure leaves nothing behind: the link (which
+       reserves the token), the booking, the SMS. If the SMS does not go,
+       the booking and the link are taken back out - the sheet says why
+       while reception is still on the phone, and nothing sits on
+       Reservations as Awaiting for a message that never left.
+
+       With a key it is "send again" to one invited tonight: the same link,
+       to the number on the booking now (reception may have corrected it
+       there), and the booking is left exactly as it stands.
+
+       The send record goes to /extinvites/<date>/<key>, not /invites:
+       that node is the villas' evening, and the Dashboard reads it as
+       "all sent, last 4:12pm" about the villas. */
+    if (kind === "ext") {
+      const rec = { sentAt: new Date().toISOString(), template: template || "",
+                    by: email, status: "failed", to: "", body: "", error: "" };
+      let key = xKey != null ? String(xKey) : "";
+      let created = false;
+      try {
+        let phone, token;
+        if (key) {
+          const b = await dbGet("/manual/" + date + "/" + key, idToken).catch(() => null);
+          if (!b || b.source !== "invite") throw new Error("no such invitation tonight");
+          phone = normalisePhone(b.phone);
+          if (!phone) throw new Error("number cannot be normalised for sending: " + b.phone);
+          token = String(b.token || key.slice(4));
+          /* A link lost somewhere is put back rather than sending a dead one. */
+          const l = await dbGet("/links/" + token, idToken).catch(() => null);
+          if (!l && !(await dbPut("/links/" + token, idToken,
+                                  { x: key, d: date, at: rec.sentAt })))
+            throw new Error("the link did not store, nothing sent");
+        } else {
+          phone = normalisePhone(xPhone);
+          token = await mintLink(idToken, (t) => ({ x: "ext-" + t, d: date, at: rec.sentAt }));
+          if (!token) throw new Error("the link token did not store, nothing sent");
+          key = "ext-" + token;
+          if (!(await dbPut("/manual/" + date + "/" + key, idToken, {
+                status: "awaiting", name: xName.trim(), phone: phone, pax: xPax,
+                source: "invite", token: token, invitedAt: rec.sentAt }))) {
+            await dbPut("/links/" + token, idToken, null);
+            throw new Error("the booking did not store, nothing sent");
+          }
+          created = true;
+        }
+        rec.to = phone;
+        rec.token = token;
+        rec.body = fillMarkers(text, "https://menu.nalaresort.com/?t=" + token);
+        const cs = await clickSend(env, phone, rec.body);
+        if (cs.ok) {
+          rec.status = "sent";
+          rec.providerId = (cs.msg && cs.msg.message_id) || "";
+        } else {
+          throw new Error((cs.msg && cs.msg.status) ||
+                          (cs.out && cs.out.response_msg) || "ClickSend refused");
+        }
+      } catch (e) {
+        rec.error = String((e && e.message) || e);
+        /* Nothing went, so nothing is booked: the first send takes back the
+           booking and the link it made. A send again leaves both alone. */
+        if (created) {
+          await dbPut("/manual/" + date + "/" + key, idToken, null);
+          await dbPut("/links/" + rec.token, idToken, null);
+        }
+      }
+      if (key) {
+        if (!(await dbPut("/extinvites/" + date + "/" + key, idToken, rec))) {
+          rec.error = (rec.error ? rec.error + "; " : "") + "the record did not save";
+          if (rec.status === "sent") rec.status = "sent-unrecorded";
+        }
+      }
+      /* key is the booking this send left standing: none, when a first send
+         failed and took its booking back out. */
+      return reply(200, { key: created && rec.status === "failed" ? "" : key,
+                          result: { status: rec.status, error: rec.error || undefined } });
+    }
 
     /* 3 to 6. Per villa: re-read, rebuild, send, record, report. The record
        is written whether the send succeeded or not, because "what did we

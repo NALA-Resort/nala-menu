@@ -59,6 +59,10 @@ Already done this way — follow these:
   after the Reservations board, the SMS page and the front desk each read
   their own subset of that one fact and told reception three different
   things about the same villa.
+- `tests/extinvite_cases.json` — where an external guest invited by SMS
+  stands (`extInviteState`, nala-shared.js), as Invitations, Reservations
+  and the Dashboard all read it. Added 28 Sep with the External guests
+  drop-down, so the three screens cannot tell reception three things.
 - `rules.json` — the database's permissions.
 - `tests/dashboard_sources.json` — every value on the Dashboard and the
   thing that owns it. Added 8 Sep with rule 7, after that page worked four
@@ -292,6 +296,14 @@ came to disagree. `prearrival.html` cannot read it — it is a guest page and
 loads no staff code — so its half of the contract is
 `tests/form_questions.json` and `tests/onenight_cases.json`, which both
 suites answer to.
+
+Its two moments carry a date and a time on the open cards, in grey - the
+Front Desk summary and form, the Guest Profile - and on no closed card, the
+Front Desk and Pre-arrival SMS rows included (the owner, 28 Sep: "a secondary
+type of information"). `openedAt` is the guest's FIRST landing, written once
+and never moved; `at` is said as Completed only when `formState` agrees.
+`formStamps` is the one reading, `stampOf` the one way a stamp is dated: the
+parsed local day, never a slice.
 
 Buttons have a law of their own — **the button law, STYLEGUIDE.md** (ruled
 26 Aug): one solid primary per surface, destructive actions wear terracotta

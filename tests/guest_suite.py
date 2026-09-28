@@ -237,10 +237,38 @@ with sync_playwright() as p:
        pg.eval_on_selector_all("#pSpa .door", "els=>els.map(e=>e.textContent).join()"))
     pg.close()
 
+    # ── the form's two moments ──────────────────────────────────
+    #  When the guest opened their link and when the form was completed,
+    #  each with its day - the owner, 28 Sep - formStamps' reading, under the
+    #  Stay tab's pill. b8's form is complete; the opening is set here and
+    #  left on, so the width checks below measure the longest line.
+    OPENED = "2026-09-26T21:05:00Z"
+    BK["b8"]["prearrival"]["openedAt"] = OPENED
+    pg = profile()
+    st = lambda s: pg.evaluate("s=>stampOf(s)", s)
+    lines = pg.eval_on_selector_all("#pStay .fstamps > div",
+                                    "els=>els.map(e=>e.textContent)")
+    print("   the Stay tab's stamps:", lines)
+    ck("the Stay tab says when the form was opened and completed, each with its day",
+       lines == ["Opened " + st(OPENED),
+                 "Completed " + st(BK["b8"]["prearrival"]["at"])])
+    ck("directly under the form's state pill",
+       pg.evaluate("()=>document.querySelector('#pStay .statepill')"
+                   ".nextElementSibling.className") == "fstamps")
+    #  Grey, the owner's ruling of 28 Sep - secondary information - by
+    #  computed colour: a question label's grey, not an answer's ink.
+    ck("in grey, a question label's colour and not an answer's ink",
+       pg.eval_on_selector("#pStay .fstamps", "e=>getComputedStyle(e).color")
+       == pg.eval_on_selector("#pStay .row .q", "e=>getComputedStyle(e).color")
+       != pg.eval_on_selector("#pStay .row .a", "e=>getComputedStyle(e).color"))
+    pg.close()
+
     # ── the fresh booking ───────────────────────────────────────
     pg = profile(bid="b17")
     ck("a fresh booking's Stay pill reads not started",
        "Form not started" in text(pg, "#pStay"))
+    ck("and says nothing of an opening or a completion it never had",
+       pg.locator("#pStay .fstamps").count() == 0)
     cls = tabcls(pg)
     ck("its Stay tab holds no fill and its Dining and Spa tabs stay pale",
        "fdone" not in cls[1] and "fpart" not in cls[1]

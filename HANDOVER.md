@@ -632,18 +632,30 @@ None of these can move without him.
     display change and not a revoke; if somebody has left and the paste
     has not happened, delete their Firebase login too, which is
     Authentication in the Firebase console.
-15. **Two pastes for the spa reminders, 28 Sep.** Both from `main`.
+15. **Two pastes for external guests, 28 Sep.** Invitations' External
+    guests drop-down (INVITATIONS.md, last section) sends tonight's menu to
+    somebody who rang, and books them on Reservations as Awaiting.
+    - **Paste `rules.json`** into the console, as items 1, 2, 12 and 14
+      ask - it is one file, so one paste clears all six. For this item it
+      teaches `/manual` the Awaiting status and lets the guest's link answer
+      its own booking and nothing else. Without it the first write is
+      refused and NOTHING sends: the feature fails, it does not limp.
+    - **Paste `worker/send-invites.js`** into the `nala-invites` Worker. It
+      gained the `ext` kind. Until then the sheet's Send says the sender did
+      not answer; the in-house and pre-arrival sends are unchanged either way.
+16. **Two pastes for the spa reminders, 28 Sep.** Both from `main`,
+    and the same two files as item 15: one paste of each clears both.
     - **Paste `worker/send-invites.js` into the `nala-invites` Worker.**
       It gained kind "spa". Until the paste, Send on Spa reminders FAILS
       cleanly: the deployed Worker reads the request as tonight's
       invitations and answers "bad date", the page says "Nothing was
-      sent", and no guest is texted. The other two SMS pages are
+      sent", and no guest is texted. The other SMS sends are
       unaffected either way.
     - **Paste `rules.json`.** It gained `/spareminders` and
       `/spasmstemplates`. Until the paste they sit under the catch-all
       rule: the feature WORKS, but any staff login except the masseuse's
       can write them and nothing is validated. Same paste as items 1, 2,
-      12 and 14 - one paste clears them all.
+      12, 14 and 15 - one paste clears them all.
 
 ---
 

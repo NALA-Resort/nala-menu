@@ -111,6 +111,9 @@
            color:var(--mid); padding-top:3px; }
   .sum-v { flex:1; min-width:0; }
   .sum-v.none { color:var(--mid); font-style:italic; }
+  /* Secondary information, in grey (the owner, 28 Sep): the form's stamps.
+     Not the italic above, which says an answer is missing. */
+  .sum-v.sec { color:var(--mid); }
   .sum-btns { display:flex; gap:7px; margin-top:12px; }
   .sum-btns + .sum-btns { margin-top:7px; }
   .sum-btns button.wide { flex:1 1 100%; }
@@ -520,7 +523,7 @@ body.paper .crun { background:var(--surface); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=78"></script>
+<script src="nala-shared.js?v=81"></script>
 <script src="nala-cards.js?v=15"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -1003,10 +1006,11 @@ function dayLabel(key){
 
 /* The guest's answers, read back as sentences so reception can say them out
    loud and the guest can agree or not. Empty answers are shown as unanswered
-   rather than hidden: a blank line is the thing reception needs to fill. */
-function sumRow(label, value, empty){
+   rather than hidden: a blank line is the thing reception needs to fill.
+   `cls` dresses a value that is there: 'sec' for secondary information. */
+function sumRow(label, value, empty, cls){
   return '<div class="sum-r"><div class="sum-l">' + label + '</div>' +
-         '<div class="sum-v' + (value ? '' : ' none') + '">' +
+         '<div class="sum-v' + (value ? (cls ? ' ' + cls : '') : ' none') + '">' +
          (value || empty || 'Not answered') + '</div></div>';
 }
 
@@ -1076,6 +1080,17 @@ function summaryHTML(r){
   /* Escaped: the names are typed by an admin on Flag Settings, and this
      summary is otherwise built by concatenation - the staff-note lesson. */
   if (fl.length) h += sumRow('Booking flags', esc(fl.join(' \u00b7 ')));
+
+  /* When the guest opened their link and when the form was completed, each
+     with its day - the owner, 28 Sep. Last, under the answers, and in grey:
+     "a secondary type of information", in his words - it says where the
+     answers came from, and reception reads the answers out, not this. This
+     open card carries it and the closed row never does. formStamps
+     (nala-shared.js) is the one reading, so Completed can never be said of
+     a form formState does not call completed. */
+  var stamps = formStamps(r.pre, r.stay, r.spa);
+  if (stamps.length)
+    h += sumRow('Pre-arrival', stamps.map(esc).join('<br>'), '', 'sec');
 
   /* No key-card line and no Key cards button here, ruled 11 Sep: there
      is no reason for keys information on Front Desk's forms. Cards are
@@ -1566,7 +1581,13 @@ function openGuest(r){
       '<span class="gd-sub">' + stayLabel(r.stay) +
         (r.stay.adults ? ' \u00b7 ' + r.stay.adults +
           (Number(r.stay.adults)===1?' adult':' adults') : '') +
-      '</span></div>' +
+      '</span>' +
+      /* The form's two moments, at the top of the form - the summary's
+         reading, one line each so a stamp never breaks across two. */
+      formStamps(p, r.stay, r.spa).map(function(t){
+        return '<span class="gd-sub">' + esc(t) + '</span>';
+      }).join('') +
+    '</div>' +
     (etaLabel(p) ? '<div class="note-box">Told us they would arrive ' +
        esc(etaLabel(p).toLowerCase()) + '.</div>' : '') +
     (hasForm(p) ? '' : startedForm(p) ?

@@ -11,7 +11,9 @@ down are the ones that are easy to get wrong and invisible when they are:
      send ALONE: answers with no `at` are a form in progress, answers with one
      are a form finished, and that is what the desk reads.
   3. The opened stamp IS written on landing, because without it a message that
-     never arrived looks the same as one that arrived and was ignored.
+     never arrived looks the same as one that arrived and was ignored - on the
+     FIRST landing only, since 28 Sep, when the staff screens began printing
+     it with a date beside the completion stamp.
   4. The link's name and dates are shown and NEVER written back. They are Mews'
      facts, and a copy taken here would be stale the moment Mews changed them.
   5. Send is a PATCH. Reception may already have confirmed this booking, and a
@@ -48,6 +50,11 @@ def fb(route, request):
                           body='{"error":"denied"}'); return
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
+    #  A refused read of the record itself, for the opened stamp's check that
+    #  a failed read is not an empty one.
+    if STATE.get("readfail") and u.split("?")[0].endswith("/prearrival.json"):
+        route.fulfill(status=503, content_type="application/json",
+                      body='{"error":"unavailable"}'); return
     body = "null"
     if "/spasettings" in u:
         body = json.dumps({"price60": 180, "price90": 250, "price120": 310})
@@ -648,6 +655,52 @@ with sync_playwright() as p:
         ck("and the note beside it says what the allergy is",
            w2[0]["b"].get("dnote") == "Sesame")
     pg.close()
+    STATE["pre"] = None
+
+    # ── the opening, stamped once ───────────────────────────────
+    #  The owner asked on 28 Sep for a date and a time on the form's opening
+    #  as well as its completion, and the staff screens print openedAt beside
+    #  `at`. It is the FIRST landing: until then every visit re-stamped it,
+    #  so a guest who looked again at a form they had finished read as
+    #  opening it after completing it.
+    def stamped():
+        return [w for w in wrote("/prearrival")
+                if isinstance(w["b"], dict) and "openedAt" in w["b"]]
+    FIRST = "2026-09-20T01:00:00Z"
+    for why, rec in (
+            ("a link opened and left", {"openedAt": FIRST}),
+            ("a form in progress", {"openedAt": FIRST, "arriveSlot": "15"}),
+            ("a finished form", {"openedAt": FIRST, "at": "2026-09-21T02:00:00Z",
+                                 "arriveSlot": "15", "dining": True, "pax": 2,
+                                 "noDiets": True})):
+        STATE["pre"] = rec
+        del WRITES[:]
+        pg = guest(begin=False)
+        pg.wait_for_timeout(300)
+        ck("landing again on %s leaves the first opening where it is" % why,
+           not stamped())
+        pg.close()
+    #  A record the desk began before the guest ever looked: their first
+    #  visit is still their first, and is stamped.
+    STATE["pre"] = {"arriveSlot": "15", "dining": True, "pax": 2}
+    del WRITES[:]
+    pg = guest(begin=False)
+    pg.wait_for_timeout(300)
+    s = stamped()
+    ck("a record with answers and no opening is stamped on the first landing",
+       len(s) == 1 and list(s[0]["b"].keys()) == ["openedAt"]
+       and s[0]["m"] == "PATCH" and "/bookings/res-guid-1/prearrival" in s[0]["u"])
+    pg.close()
+    #  A read that fails is not an empty record: stamping on one would move a
+    #  first landing the page could not see.
+    STATE["pre"] = {"openedAt": FIRST}
+    STATE["readfail"] = True
+    del WRITES[:]
+    pg = guest(begin=False)
+    pg.wait_for_timeout(300)
+    ck("a read that fails stamps nothing", not stamped())
+    pg.close()
+    STATE["readfail"] = False
     STATE["pre"] = None
 
     # ── Mews is fresher than the link ───────────────────────────

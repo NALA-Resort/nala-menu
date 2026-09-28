@@ -1,5 +1,5 @@
 {
- "_note": "One fixture Saturday for tests/paper_suite.py and tests/colour_suite.py (read through tests/night_harness.py): 26 Sep 2026, the clock held at 15:20 in Brisbane. Every state the paper pages draw is on it somewhere - arrivals at all three form states, cleans ready and done, a spa suggestion and a declined one, a key card on its last day, a guest still to invite, a failed pre-arrival send - because a ground is judged by what sits on it. Names are the repo demo names (tools/make-demo.py). Spa reminders (28 Sep): villa 1's 11:00 was texted and delivered, villa 16's 4:30 is still to send, villa 17's text quoted 3:30 and the treatment moved to 4:00, and villa 7's text never reached the handset - every state the morning text has.",
+ "_note": "One fixture Saturday for tests/paper_suite.py and tests/colour_suite.py (read through tests/night_harness.py): 26 Sep 2026, the clock held at 15:20 in Brisbane. Every state the paper pages draw is on it somewhere - arrivals at all three form states, cleans ready and done, a spa suggestion and a declined one, a key card on its last day, a guest still to invite, a failed pre-arrival send - because a ground is judged by what sits on it. Names are the repo demo names (tools/make-demo.py). Spa reminders (28 Sep): villa 1's 11:00 was texted and delivered, villa 16's 4:30 is still to send, villa 17's text quoted 3:30 and the treatment moved to 4:00, and villa 7's text never reached the handset - every state the morning text has. Four external guests invited by SMS (28 Sep) - one not delivered, one waiting, one accepted, one declined - so Invitations' External guests drop-down and Reservations' Awaiting rows are judged too.",
  "tree": {
   "staff": {
    "staff@x": {
@@ -723,6 +723,46 @@
      "source": "manual",
      "external": true,
      "note": "Birthday"
+    },
+    "ext-megan2": {
+     "status": "awaiting",
+     "name": "Megan Doyle",
+     "phone": "+61421555019",
+     "pax": 2,
+     "source": "invite",
+     "token": "megan2",
+     "invitedAt": "2026-09-26T14:40:00+10:00"
+    },
+    "ext-sarah2": {
+     "status": "awaiting",
+     "name": "Sarah Jones",
+     "phone": "+61412345678",
+     "pax": 2,
+     "source": "invite",
+     "token": "sarah2",
+     "invitedAt": "2026-09-26T15:12:00+10:00"
+    },
+    "ext-tomb44": {
+     "status": "in",
+     "name": "Tom Becker",
+     "phone": "+61438220761",
+     "pax": 4,
+     "source": "invite",
+     "token": "tomb44",
+     "invitedAt": "2026-09-26T13:50:00+10:00",
+     "by": "guest",
+     "at": "2026-09-26T14:05:00+10:00"
+    },
+    "ext-leam22": {
+     "status": "out",
+     "name": "Léa Martin",
+     "phone": "+33612345678",
+     "pax": 2,
+     "source": "invite",
+     "token": "leam22",
+     "invitedAt": "2026-09-26T13:10:00+10:00",
+     "by": "guest",
+     "at": "2026-09-26T13:40:00+10:00"
     }
    }
   },
@@ -1076,6 +1116,34 @@
      "time": "15:30",
      "qty": 1,
      "dur": 60
+    }
+   }
+  },
+  "extinvites": {
+   "2026-09-26": {
+    "ext-megan2": {
+     "status": "sent",
+     "sentAt": "2026-09-26T14:40:00+10:00",
+     "providerId": "m2",
+     "delivery": "failed",
+     "deliveryText": "Number not in service"
+    },
+    "ext-sarah2": {
+     "status": "sent",
+     "sentAt": "2026-09-26T15:12:00+10:00",
+     "providerId": "m1",
+     "delivery": "delivered"
+    },
+    "ext-tomb44": {
+     "status": "sent",
+     "sentAt": "2026-09-26T13:50:00+10:00",
+     "providerId": "m3",
+     "delivery": "delivered"
+    },
+    "ext-leam22": {
+     "status": "sent",
+     "sentAt": "2026-09-26T13:10:00+10:00",
+     "providerId": "m4"
     }
    }
   }

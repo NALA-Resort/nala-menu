@@ -38,6 +38,21 @@ function ord(n){
   return n + (s[(v-20)%10] || s[v] || s[0]);
 }
 
+/* A moment as staff read it: "Sun 27 Sep 3:10pm" - the short day the
+   Pre-arrival SMS rows print, then timeOf's clock. The day is the PARSED
+   stamp's, in the device's zone, never the ISO string's first ten
+   characters: those are the UTC day, and in Brisbane anything before 10am
+   is still the day before in UTC, so a slice dates every morning's stamp a
+   day early (CLAUDE.md rule 7). Empty for a stamp that does not parse, so
+   a caller leaves the words out rather than printing "Invalid Date". */
+function stampOf(iso){
+  var d = parseISO(iso); if (!d) return '';
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' +
+         d.getDate() + ' ' +
+         ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov',
+          'Dec'][d.getMonth()] + ' ' + timeOf(iso);
+}
+
 /* the one date format: Wd Dth Mon (see STYLEGUIDE.md) */
 function dateLabel(d){
   var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -811,6 +826,32 @@ function formState(p, stay, spa){
   return guestAnswered(p) ? 'incomplete' : 'notstarted';
 }
 
+/* The form's two moments, a date and a time on each - the owner's ask of
+   28 Sep - as the open cards say them: "Opened Sat 26 Sep 8:14pm",
+   "Completed Sun 27 Sep 3:10pm". Lines in that order, each only when its
+   stamp is there to read. Open cards only, and in grey, his ruling the
+   same day: "a secondary type of information", so the Front Desk summary
+   and form and the Guest Profile carry it, and a closed card - a Front
+   Desk row, a Pre-arrival SMS row - never does.
+
+   Opened is openedAt, which prearrival.html writes on the guest's FIRST
+   landing and never moves. Until 28 Sep it re-stamped every visit, so a
+   guest who looked again at a form they had finished read as opening it
+   after completing it.
+
+   Completed is `at` - the guest's Send and the desk's Mark as completed
+   both write it - and it is said ONLY when formState says completed. A
+   record can hold the stamp while the state reads incomplete (the villa 17
+   record, or one stamped before 28 Aug's three states), and quoting it
+   there would be a second reading of one state. */
+function formStamps(p, stay, spa){
+  var out = [], opened = p ? stampOf(p.openedAt) : '';
+  if (opened) out.push('Opened ' + opened);
+  if (formState(p, stay, spa) === 'completed' && stampOf(p.at))
+    out.push('Completed ' + stampOf(p.at));
+  return out;
+}
+
 /* Where a booking stands on its PRE-ARRIVAL SMS - the one reader for it, so
    the sending page and the Dashboard cannot disagree about who is still to
    send (CLAUDE.md rule 7). Five kinds, off the same records the desk reads:
@@ -1360,6 +1401,60 @@ function externalDiners(responses, manual, skip){
 /* One head unless the record says otherwise. A dining row with no pax is a
    person who has said yes, so it counts as one, not as nought. */
 function dinerPax(g){ return (g && +g.pax) || 1; }
+
+/* ── external guests invited by SMS (28 Sep) ──────────────────────
+   Somebody from outside the resort rings for dinner. Invitations' External
+   guests drop-down sends them tonight's menu, and the Worker creates their
+   booking: the External reservation Reservations' Add + makes, at
+   /manual/<date>/ext-<token>, with source 'invite' and status 'awaiting'
+   until they accept ('in') or decline ('out') from the link. Once 'in' it is
+   an ordinary external diner and externalDiners above counts it like any
+   other; until then it is nobody's cover. The send itself is recorded at
+   /extinvites/<date>/<key>, apart from the villas' /invites.
+
+   Two boards draw these and the Dashboard counts them, so the reading is
+   here, once (rule 1): which bookings are invitations, and where one stands.
+   tests/extinvite_cases.json holds the states; the Invitations suite runs
+   every case through this function. */
+function extInvites(manual){
+  var out = [];
+  for (var k in (manual || {})){
+    var g = manual[k];
+    if (k.indexOf('ext-') !== 0 || !g || g.source !== 'invite') continue;
+    out.push({ key:k, g:g });
+  }
+  return out;
+}
+
+/* Where one invited guest stands. kind is the Invitations band - 'ready' is
+   work to do (a text that failed or never arrived), 'sent' is waiting on the
+   guest, 'answered' is in or out. `line` is the plain words and `bad` the
+   failure's, drawn red; Reservations quotes `bad` under its grey row. */
+function extInviteState(g, send){
+  g = g || {};
+  var pax = dinerPax(g);
+  var who = g.by === 'staff' ? 'set by reception'
+          : g.at ? 'answered ' + timeOf(g.at) : 'answered';
+  if (g.status === 'in')
+    return { kind:'answered', in:true, bad:'',
+             line:'Accepted · table for ' + pax + ' · ' + who };
+  if (g.status === 'out')
+    return { kind:'answered', in:false, bad:'', line:'Declined · ' + who };
+  var table = 'Table for ' + pax;
+  if (send && send.status === 'failed')
+    return { kind:'ready', line:table, bad:'send failed ' + timeOf(send.sentAt) +
+             (send.error ? ' · ' + send.error : '') };
+  if (send && send.delivery === 'failed')
+    return { kind:'ready', line:table, bad:'not delivered' +
+             (send.deliveryText ? ' · ' + send.deliveryText : '') };
+  if (send && send.sentAt)
+    return { kind:'sent', bad:'', line:table + ' · sent ' + timeOf(send.sentAt) +
+             (send.delivery === 'delivered' ? ' · delivered'
+              : send.providerId ? ' · delivery unconfirmed' : '') };
+  /* The booking stands but its send record does not: the text went and the
+     record failed to save (the Worker says sent-unrecorded). Waiting. */
+  return { kind:'sent', bad:'', line:table + ' · invited ' + timeOf(g.invitedAt) };
+}
 
 /* The night a booking ARRIVES, matched against the night being rendered. The
    one definition of "arriving tonight", so the pre-arrival form (which asks
