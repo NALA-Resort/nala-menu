@@ -265,9 +265,11 @@ each guest's reminder state and its Mark done went, because the send log
 now says it. One reader for all of it, `spaReminderState` and
 `spaReminderRows`, held with the text to `tests/spareminder_cases.json`.
 Then, the same day: "the same filter options as the pre arrival SMS (3, 7,
-14 days)". The page wears Pre-arrival's knob, 7 to start, and a text can
-go up to `SPA_REMIND_DAYS` (14) ahead - the Worker fences at the same
-number, both held to the table's `horizon`. Only today's owed rows come
+14 days)", corrected once it was live to "today, 3 days and 7 days, with
+today as default". The page wears Pre-arrival's knob on those steps,
+opening on today, and a text can go up to `SPA_REMIND_DAYS` (7) ahead -
+the Worker fences at the same number, both held to the table's
+`horizon`. Only today's owed rows come
 ticked, so one press of Send is still the morning text; a later day's
 goes only when somebody ticks it, and the Spa board's card for a later
 treatment carries the door and says where its text stands.
@@ -670,10 +672,10 @@ None of these can move without him.
       cleanly: the deployed Worker reads the request as tonight's
       invitations and answers "bad date", the page says "Nothing was
       sent", and no guest is texted. The other SMS sends are
-      unaffected either way. The knob's 14 days, added the same day, are
-      in the same file: a Worker pasted before that publish sends today's
-      texts and refuses a later day's, in red on its row, "not a treatment
-      today". Paste it once more and they go.
+      unaffected either way. The knob's days, added the same day (7 ahead
+      since the owner's correction), are in the same file: a Worker pasted
+      before them sends today's texts and refuses a later day's, in red on
+      its row, "not a treatment today". Paste it once more and they go.
     - **Paste `rules.json`.** It gained `/spareminders` and
       `/spasmstemplates`. Until the paste they sit under the catch-all
       rule: the feature WORKS, but any staff login except the masseuse's

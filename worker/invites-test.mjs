@@ -373,7 +373,7 @@ ck("the delivery check obeys the same permission as sending", r.status === 403);
      T.text.length + ")", T.text.length > 10 && !wrong.length);
   if (wrong.length) console.log("   differs:", wrong.map((c) => c.name));
   ck("and it fences sends at the table's horizon, as far as the page looks (" +
-     T.horizon + " days)", T.horizon === 14 && SPA_AHEAD_DAYS === T.horizon);
+     T.horizon + " days)", T.horizon === 7 && SPA_AHEAD_DAYS === T.horizon);
 }
 
 const REMIND = "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\n" +
@@ -386,8 +386,8 @@ function spaWorld() {
   STORE["/spa/bk-spa/t1"] = { status: "booked", day: today, time: "14:00", dur: 60, qty: 1,
                               name: "Freya Lindqvist" };
   STORE["/spa/bk-spa/t2"] = { status: "suggested", day: today, time: "15:00", dur: 60, qty: 1 };
-  STORE["/spa/bk-spa/t3"] = { status: "booked", day: spaDay(10), time: "10:00", dur: 60, qty: 1 };
-  STORE["/spa/bk-spa/t4"] = { status: "booked", day: spaDay(20), time: "10:00", dur: 60, qty: 1 };
+  STORE["/spa/bk-spa/t3"] = { status: "booked", day: spaDay(5), time: "10:00", dur: 60, qty: 1 };
+  STORE["/spa/bk-spa/t4"] = { status: "booked", day: spaDay(10), time: "10:00", dur: 60, qty: 1 };
   STORE["/spa/bk-spa/t5"] = { status: "booked", day: spaDay(-2), time: "10:00", dur: 60, qty: 1 };
   STORE["/bookings/bk-spa/pms"] = { first: "Freya", last: "Lindqvist", phone: "0411 222 333",
                                     villa: 17, arrive: spaDay(-1), depart: spaDay(3) };
@@ -444,24 +444,24 @@ r = await spa({ treatments: [{ b: "bk-spa", t: "t2" }, { b: "bk-spa", t: "t4" },
 j = await r.json();
 ck("a suggestion is not a booking: refused by the Worker",
    j.results["bk-spa/t2"].status === "failed" && /booked/.test(j.results["bk-spa/t2"].error));
-ck("a treatment beyond the 14 days is refused: the page cannot look that far",
-   j.results["bk-spa/t4"].status === "failed" && /next 14 days/.test(j.results["bk-spa/t4"].error));
+ck("a treatment ten days out is refused: the page looks 7 days at most",
+   j.results["bk-spa/t4"].status === "failed" && /next 7 days/.test(j.results["bk-spa/t4"].error));
 ck("and so is one already past",
-   j.results["bk-spa/t5"].status === "failed" && /next 14 days/.test(j.results["bk-spa/t5"].error));
+   j.results["bk-spa/t5"].status === "failed" && /next 7 days/.test(j.results["bk-spa/t5"].error));
 ck("a treatment that does not exist fails alone",
    j.results["bk-spa/t9"].status === "failed");
 ck("and the good one still went, alone", j.results["bk-spa/t1"].status === "sent" &&
    SENDS.length === 1);
 
-/* The owner, 28 Sep: Pre-arrival SMS's 3, 7 and 14 day looks, so a text can
-   go early. One ten days out sends, saying its day in full. */
+/* The owner, 28 Sep: a knob of today, 3 and 7 days, so a text can go
+   early. One five days out sends, saying its day in full. */
 spaWorld();
 r = await spa({ treatments: [{ b: "bk-spa", t: "t3" }] });
 j = await r.json();
-ck("a treatment ten days out sends: a reminder can go early",
+ck("a treatment five days out sends: a reminder can go early",
    j.results["bk-spa/t3"].status === "sent" && SENDS.length === 1 &&
    SENDS[0].messages[0].body.includes(workerSpaText("<booking>", "", STORE["/spa/bk-spa/t3"], null)) &&
-   STORE["/spareminders/bk-spa/t3"].day === spaDay(10));
+   STORE["/spareminders/bk-spa/t3"].day === spaDay(5));
 
 spaWorld();
 r = await spa({ treatments: [{ b: "bk-land", t: "t1" }] });

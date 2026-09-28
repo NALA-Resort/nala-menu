@@ -11,10 +11,10 @@
   "treatment starts at the resort's clock and staff devices live there.",
   "",
   "`horizon` is how many days ahead a reminder can go, today counted: the",
-  "owner's 28 Sep ask for Pre-arrival SMS's 3, 7 and 14 day looks. The",
+  "owner's 28 Sep knob of today, 3 and 7 days, today to start. The",
   "page's SPA_REMIND_DAYS and the Worker's SPA_AHEAD_DAYS both answer to it."
  ],
- "horizon": 14,
+ "horizon": 7,
  "text": [
   {
    "name": "a pair of equal lengths, the Gentle reminder",

@@ -2641,7 +2641,7 @@ var NAV = [
          group's "Menu" pattern. */
       { href:'arrivals-sms.html', label:'Pre-arrival', need:'editBookings' },
       /* The text to a guest with a booked treatment, the morning of or up
-         to 14 days ahead (the owner, 28 Sep). editBookings, the Worker's
+         to 7 days ahead (the owner, 28 Sep). editBookings, the Worker's
          own gate for sending. */
       { href:'spa-reminders.html', label:'Spa reminders', need:'editBookings' } ] },
   { group:'Settings', items:[
@@ -3012,9 +3012,11 @@ function spaSlotFromText(s){
    spa-reminders.html, nothing goes out on its own; the Gentle reminder
    wording; nothing in the text but the treatment, its length, the day and
    the time. Then, the same day, once it was live: "the same filter options
-   as the pre arrival SMS (3, 7, 14 days)". So the page looks up to
-   SPA_REMIND_DAYS ahead and a text can go early, but only today's rows come
-   ticked: the morning text is still what one press of Send does.
+   as the pre arrival SMS (3, 7, 14 days)", and once that was live, "the
+   tabs should be today, 3 days and 7 days, with today as default". So the
+   page opens on today's treatments, looks up to SPA_REMIND_DAYS ahead, and
+   a text can go early; but only today's rows come ticked, so the morning
+   text is still what one press of Send does.
 
    ONE builder writes the words and ONE reader says where a treatment's
    reminder stands, and every screen reads them: the sending page, the
@@ -3037,7 +3039,7 @@ var SPA_MONTHS = ['January','February','March','April','May','June','July',
    Spa board's test for whether a treatment's text can be sent yet. The
    Worker cannot import it and fences sends with its own copy; both answer
    to `horizon` in tests/spareminder_cases.json. */
-var SPA_REMIND_DAYS = 14;
+var SPA_REMIND_DAYS = 7;
 
 /* The local day keys from today, n of them (all SPA_REMIND_DAYS if n is
    left out): Pre-arrival SMS's own reading of "the next n days", today

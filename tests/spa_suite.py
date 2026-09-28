@@ -1766,9 +1766,9 @@ with sync_playwright() as p:
        r is not None and not r["has"] and not r["lines"], r)
     r = remlines("waiter@x")
     ck("a waiter, who holds editBookings, sees it", r and r["has"], r)
-    # The owner, 28 Sep: Spa reminders looks 3, 7 or 14 days ahead, so a
-    # later treatment's text can go early - its card reads where the text
-    # stands and carries the door, and only beyond the 14 days waits.
+    # The owner, 28 Sep: Spa reminders looks today, 3 or 7 days ahead, so
+    # a later treatment's text can go early - its card reads where the text
+    # stands and carries the door, and only beyond the 7 days waits.
     def nice(key):
         d = datetime.date.fromisoformat(key); n = d.day
         suf = "th" if 11 <= n % 100 <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
@@ -1787,8 +1787,8 @@ with sync_playwright() as p:
     REM.clear()
     SPA["b3"]["t1"]["day"] = plus(20)
     r = remlines()
-    ck("beyond the 14 days it says when it can go, with no door yet",
-       r and r["lines"] == ["Not sent yet. It can go from Spa reminders once it is within 14 days."] and
+    ck("beyond the 7 days it says when it can go, with no door yet",
+       r and r["lines"] == ["Not sent yet. It can go from Spa reminders once it is within 7 days."] and
        not r["door"], r)
     SPA["b3"]["t1"]["day"] = today
     BOOKINGS_NODE["b3"]["pms"].pop("phone", None)

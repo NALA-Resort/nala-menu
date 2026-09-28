@@ -28,8 +28,9 @@
               text-transform:none; color:var(--mid); text-decoration:underline; }
   .dayline  { font-size:var(--t2); color:var(--mid); margin:2px 2px 4px; line-height:1.5; }
 
-  /* How far ahead the list looks: Pre-arrival SMS's knob, the owner's ask
-     of 28 Sep ("the same filter options"), and dressed as there. */
+  /* How far ahead the list looks: Pre-arrival SMS's knob, dressed as
+     there, on the owner's own steps (28 Sep): today, 3 days and 7 days,
+     today to start. */
   .knob { display:flex; border:1px solid var(--rule); border-radius:8px;
           overflow:hidden; margin-bottom:12px; }
   .knob button { flex:1; padding:9px 0; font-family:var(--ui-font); font-size:var(--t2); background:none;
@@ -145,9 +146,9 @@ body.paper .knob { background:var(--surface); }
 <div class="noaccess" id="noAccess"></div>
 
 <div class="knob" id="knob">
+  <button data-days="1" class="on">Today</button>
   <button data-days="3">Next 3 days</button>
-  <button data-days="7" class="on">Next 7 days</button>
-  <button data-days="14">Next 14 days</button>
+  <button data-days="7">Next 7 days</button>
 </div>
 
 <div class="stats" id="statsRow">
@@ -189,7 +190,7 @@ body.paper .knob { background:var(--surface); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=84"></script>
+<script src="nala-shared.js?v=85"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -207,7 +208,7 @@ var ROWS = {};          /* 'booking/tid' -> { row, st, ticked, el }, rows shown 
 var ARMED = false;
 var PV = '';            /* the row the preview shows */
 var TODAY = dkey(new Date());
-var DAYS = 7;           /* the knob: Pre-arrival SMS's default look */
+var DAYS = 1;           /* the knob: Today, the owner's default */
 var ALL = [];           /* every booked treatment SPA_REMIND_DAYS ahead */
 var TICKS = {};         /* 'booking/tid' -> ticked, kept across the knob */
 
@@ -433,9 +434,11 @@ function shownRows(){
 function render(){
   var list = shownRows();
   var keys = spaRemindDays(DAYS);
-  document.getElementById('dayLine').textContent =
-    'From today, ' + niceDay(TODAY) + ', to ' + niceDay(keys[keys.length - 1]) +
-    '. Today’s come ticked; tick a later one to send it early.';
+  document.getElementById('dayLine').textContent = DAYS === 1
+    ? 'Today’s treatments, ' + niceDay(TODAY) +
+      '. Send in the morning, before the first one begins.'
+    : 'From today, ' + niceDay(TODAY) + ', to ' + niceDay(keys[keys.length - 1]) +
+      '. Today’s come ticked; tick a later one to send it early.';
   var board = document.getElementById('board');
   board.innerHTML = '';
   ROWS = {};
@@ -498,7 +501,8 @@ function render(){
   if (!list.length && !READFAIL){
     var e = document.createElement('div');
     e.className = 'empty';
-    e.textContent = 'No treatments booked in the next ' + DAYS + ' days.';
+    e.textContent = DAYS === 1 ? 'No treatments booked today.'
+                               : 'No treatments booked in the next ' + DAYS + ' days.';
     board.appendChild(e);
   }
   if (OPENQ){
