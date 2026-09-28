@@ -339,6 +339,16 @@ The tier is set by **what the change can break**, not by how many lines it is.
 | Layout, copy, an icon, a tint | Build it. One screenshot at 390. Tests for the behaviour, not for the pixels. One mutation proof for the batch, not one each. |
 | A typo, a comment, a `?v=` bump | Change it. |
 
+**Light is the default** (the owner, 28 Sep, after a three-button filter
+correction went through six mutation proofs, screenshots at three widths
+and a full run somebody waited on: "It's just a simple filter adjustment").
+Before starting, say in one line which tier the change is. A filter, a
+label, a default, a layout or a tint is the light tier: build it, run the
+one suite that covers it, one screenshot, push. The heavy tier needs its
+reason named in that same line - the data model, permissions, a shared
+reader, the Worker - or it is the light tier. The pre-publish full run
+starts in the background and is reported when it lands; nobody waits on it.
+
 Three habits that make the difference, all learned the hard way:
 
 - **Tests run in the background.** Never make somebody watch a suite. Start
@@ -433,6 +443,14 @@ python3 tests/run.py --changed     # while working
 python3 tests/run.py <suite>       # the one suite you touched
 python3 tests/run.py               # once, before publishing only
 ```
+
+Run them just like that, from the repo root: not wrapped in `timeout` or a
+`cd ... &&` chain. run.py times every suite out itself, and the plain form
+is what `.claude/settings.json` pre-approves, so it never waits on a
+permission check. A cloud session starts test-ready:
+`.claude/hooks/session-start.sh` installs Playwright 1.56.0 (the version
+whose Chromium the image ships), links `/home/claude/nala`, where the
+suites expect the repo, and installs targaryen for `rules`.
 
 Known failures, pre-existing, not yours: `cleans` ×2, and `rules` ×12 where
 `rules` can run - the two "a waiter may not", and ten that still test
