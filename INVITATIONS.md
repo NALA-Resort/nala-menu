@@ -424,8 +424,10 @@ wants to make a dinner reservation." Built the same day from
 a drop-down just like Arrivals.
 
 **The flow.** Invitations, External guests (folded above Arrivals), Invite +:
-name, mobile, guests. The message fills in the first name and the table size
-and is editable; the link is added as on every invitation. Two presses, as
+name, mobile, guests, and a time - added the same day, the owner's "It's
+just missing a time slot": the Reservations wheel's seatings, or no time.
+The message fills in the first name, the table size and the time
+("your table for 2 at 7:00pm") and is editable; the link is added as on every invitation. Two presses, as
 Send. The Worker then creates the booking, mints the link and sends; the
 booking is on Reservations at once, grey, Awaiting, nobody's cover. The guest
 gets tonight's menu with "shall we hold your table for 2 tonight?" and Accept
@@ -442,8 +444,9 @@ says `{b, r}`. One link shape, one resolver in index.html.
 **The data.** One booking, where Reservations already kept external ones:
 
     /manual/<date>/ext-<token>   status awaiting | in | out, name, phone
-                                 (E.164), pax, source 'invite', token,
-                                 invitedAt; by and at once answered
+                                 (E.164), pax, time (24h, when agreed),
+                                 source 'invite', token, invitedAt; by and
+                                 at once answered
     /links/<token>               { x: 'ext-<token>', d: <date>, at }
     /extinvites/<date>/<key>     the send record, as /invites has for a villa
 

@@ -281,7 +281,7 @@ export default {
     const text = body && body.body;
     /* kind "ext" only: the guest reception is on the phone to - or, with
        key, one already invited tonight, to send to again. */
-    const { name: xName, phone: xPhone, pax: xPax, key: xKey } = body || {};
+    const { name: xName, phone: xPhone, pax: xPax, key: xKey, time: xTime } = body || {};
 
     if (!idToken) return reply(401, { error: "no idToken" });
     /* Two kinds of send share this Worker: tonight's menu invitation
@@ -317,6 +317,11 @@ export default {
         if (!normalisePhone(xPhone))
           return reply(400, { error: "number cannot be normalised for sending: " +
                                      String(xPhone || "").slice(0, 40) });
+        /* The seating agreed on the phone, when one was (28 Sep): stored as
+           every booking's time is, 24h "19:30", or not at all. */
+        if (xTime != null && xTime !== "" &&
+            !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(xTime)))
+          return reply(400, { error: "bad time" });
       }
     } else {
       const bad = notTonight(date);
@@ -625,6 +630,7 @@ export default {
           key = "ext-" + token;
           if (!(await dbPut("/manual/" + date + "/" + key, idToken, {
                 status: "awaiting", name: xName.trim(), phone: phone, pax: xPax,
+                ...(xTime ? { time: String(xTime) } : {}),
                 source: "invite", token: token, invitedAt: rec.sentAt }))) {
             await dbPut("/links/" + token, idToken, null);
             throw new Error("the booking did not store, nothing sent");

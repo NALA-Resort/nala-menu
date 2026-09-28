@@ -203,6 +203,7 @@
   @supports (aspect-ratio:1){ .pax { height:auto; aspect-ratio:1; } }
   .sheet textarea { margin-top:0; min-height:0; resize:none; overflow:hidden; }
   .sheet .msgmeta { margin-bottom:12px; }
+  .sheet select { margin-bottom:16px; }
   .sheet .becomes { font-size:var(--t2); color:var(--mid); line-height:1.45; margin:10px 0 14px; }
   .sheet .facts { font-size:var(--t2); color:var(--mid); text-align:center;
                   line-height:1.5; margin:-4px 0 14px; }
@@ -283,7 +284,7 @@ body.paper .sheet .btn.terra { background:var(--surface); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=81"></script>
+<script src="nala-shared.js?v=82"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -644,14 +645,23 @@ function paintState(el, st){
   }
 }
 
-/* The words, with the first name and the table size in them. The link is
-   the Worker's, on its own last line where <menu> stands, as on every
-   invitation; the box cannot carry one. */
-function extWords(name, pax){
+/* The words, with the first name, the table size and the seating in them.
+   The link is the Worker's, on its own last line where <menu> stands, as on
+   every invitation; the box cannot carry one. The time is written the SMS
+   way, "7:30pm", from the one reading of a stored time. */
+function extWords(name, pax, time){
   var first = String(name || '').trim().split(/\s+/)[0] || '';
+  var t = dinnerTimeLabel(time);
   return 'Hi' + (first ? ' ' + first : '') + ', thanks for your call. Tonight’s ' +
     'menu is below - tap to accept or decline your table for ' + pax +
-    '. Nala Resort\n<menu>';
+    (t ? ' at ' + t + 'pm' : '') + '. Nala Resort\n<menu>';
+}
+/* The seatings, the Reservations wheel's own: DINNER_TIMES (nala-shared.js),
+   5pm to 8pm by the quarter hour, or no time at all. */
+function seatOptions(){
+  return '<option value="">No time</option>' + DINNER_TIMES.map(function(t){
+    return '<option value="' + t + '">' + dinnerTimeLabel(t) + ' pm</option>';
+  }).join('');
 }
 
 /* Why a send cannot go yet, or '' when it can. The menu rule is the page's
@@ -724,6 +734,8 @@ function openInvite(){
     '<input id="xPhone" type="tel" placeholder="Mobile" autocomplete="off" aria-label="Mobile">' +
     '<div class="sheet-label" style="margin-top:14px">Guests</div>' +
     '<div class="pax-row" id="xPax"></div>' +
+    '<div class="sheet-label">Time</div>' +
+    '<select id="xTime" aria-label="Time of the table">' + seatOptions() + '</select>' +
     '<div class="sheet-label">Message</div>' +
     '<textarea id="xMsg" aria-label="Message to the guest"></textarea>' +
     '<div class="msgmeta"><span id="xWarn"></span><span id="xCount"></span></div>' +
@@ -732,7 +744,7 @@ function openInvite(){
     '<div class="savefail" id="xFail"></div>' +
     '<button class="btn" id="xCancel" type="button">Cancel</button>');
   var nameEl = $x('xName'), phEl = $x('xPhone'), msgEl = $x('xMsg'),
-      sendB = $x('xSend'), fail = $x('xFail');
+      timeEl = $x('xTime'), sendB = $x('xSend'), fail = $x('xFail');
   var arm = armer(sendB, 'Send invitation', function(){
     return 'Please confirm · send to ' + nameEl.value.trim(); });
   function quiet(){ arm.disarm(); fail.className = 'savefail'; }
@@ -746,21 +758,23 @@ function openInvite(){
       row.appendChild(b);
     })(i);
   }
-  /* Until reception types into the message, it follows the name and the
-     table size; after that it is theirs. */
+  /* Until reception types into the message, it follows the name, the table
+     size and the time; after that it is theirs. */
   function refresh(){
-    if (!touched) msgEl.value = extWords(nameEl.value, pax);
+    if (!touched) msgEl.value = extWords(nameEl.value, pax, timeEl.value);
     fitBox(msgEl);
     $x('xCount').textContent = smsCount(msgEl.value);
     var url = bodyHasUrl(msgEl.value);
     $x('xWarn').textContent = url ? 'Links cannot be typed here.' : '';
     $x('xWarn').className = url ? 'warn' : '';
+    var t = dinnerTimeLabel(timeEl.value);
     $x('xBecomes').textContent = 'The menu link is added automatically. Sending puts ' +
       (nameEl.value.trim() || 'the guest') + ', table for ' + pax +
-      ', on tonight’s Reservations as Awaiting.';
+      (t ? ' at ' + t + ' pm' : '') + ', on tonight’s Reservations as Awaiting.';
     quiet();
   }
   nameEl.oninput = refresh;
+  timeEl.onchange = refresh;
   phEl.oninput = quiet;
   msgEl.oninput = function(){ touched = true; refresh(); };
   sendB.onclick = function(){
@@ -769,7 +783,7 @@ function openInvite(){
     if (!arm.armed()){ arm.arm(); return; }
     sendB.disabled = true; sendB.textContent = 'Sending…';
     postExt({ name: nameEl.value.trim(), phone: phEl.value.trim(), pax: pax,
-              body: msgEl.value })
+              time: timeEl.value || undefined, body: msgEl.value })
       .then(function(){ closeSheet(); EXT_OPEN = true; return load(); })
       .catch(function(e){
         arm.disarm();
@@ -800,7 +814,7 @@ function openExtRow(x){
   facts.textContent = (g.phone || 'no number') + ' · ';
   var st = document.createElement('span'); paintState(st, x.st); facts.appendChild(st);
   var msgEl = $x('xMsg'), sendB = $x('xSend'), fail = $x('xFail');
-  msgEl.value = extWords(g.name, pax);
+  msgEl.value = extWords(g.name, pax, g.time);
   var arm = armer(sendB, 'Send again', function(){
     return 'Please confirm · send again to ' + (g.name || 'the guest'); });
   function refresh(){

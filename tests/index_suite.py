@@ -637,6 +637,25 @@ with sync_playwright() as p:
     pg.close()
     STATE["fail"] = False
 
+    #  The seating reception agreed on the phone (28 Sep).
+    STATE["manual"] = dict(INV, time="19:00")
+    del WRITES[:]
+    pg = guest("?t=k7m2qp")
+    ck("the question names the seating agreed on the phone",
+       "Sarah, shall we hold your table for 2 at 7:00 pm tonight?" in
+       pg.locator("#rsvp").inner_text())
+    pg.locator("#bIn").click(); pg.wait_for_timeout(150)
+    ck("and so does the confirmation",
+       "Confirm your table for 2 guests at 7:00 pm tonight?" in pg.locator("#rsvp").inner_text())
+    pg.locator("#bYes").click(); pg.wait_for_timeout(400)
+    ck("and the answer, which still writes status, by and at alone",
+       "Confirmed for 2 guests at 7:00 pm" in pg.locator("#rsvp").inner_text() and
+       len(WRITES) == 1 and sorted(json.loads(WRITES[0]["b"])) == ["at", "by", "status"])
+    TCASES = json.load(open("tests/dinnertime_cases.json", encoding="utf-8"))["cases"]
+    ck("the guest page's copy of dinnerTimeLabel reads tests/dinnertime_cases.json",
+       pg.evaluate("(cs)=>cs.filter(c=>dinnerTimeLabel(c[0])!==c[1])", TCASES) == [])
+    pg.close()
+
     STATE["manual"] = dict(INV, status="in", by="guest", at=now.isoformat())
     pg = guest("?t=k7m2qp")
     ck("a guest who has answered is told where they stand, not asked again",

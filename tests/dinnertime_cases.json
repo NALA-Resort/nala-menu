@@ -1,0 +1,26 @@
+{
+  "_comment": [
+    "How a stored dinner time reads: dinnerTimeLabel in nala-shared.js, and its",
+    "forced copy in index.html - the guest page loads no staff code, and since",
+    "28 Sep it tells an external guest the seating reception agreed on the",
+    "phone. CLAUDE.md rule 3: two copies of one rule are held to one table.",
+    "inv_suite runs every case through the shared copy, index_suite through",
+    "the guest page's. Each case: [stored, reads as]. A time that is not one",
+    "reads as nothing, never as text on a guest's screen or a kitchen sheet."
+  ],
+  "cases": [
+    ["17:00", "5:00"],
+    ["17:15", "5:15"],
+    ["18:30", "6:30"],
+    ["19:45", "7:45"],
+    ["20:00", "8:00"],
+    ["12:00", "12:00"],
+    ["00:30", "12:30"],
+    ["", ""],
+    [null, ""],
+    ["7pm", ""],
+    ["19:5", ""],
+    ["24:00", ""],
+    ["19:60", ""]
+  ]
+}

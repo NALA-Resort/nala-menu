@@ -684,7 +684,7 @@ body.paper #footActions { margin-inline:-8px; padding-inline:8px; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=81"></script>
+<script src="nala-shared.js?v=82"></script>
 <script>
 /* Not every allergy is on the list and the list cannot grow to hold them all,
    so Other means read the note. The same entry the front desk writes, because
@@ -1382,7 +1382,10 @@ function render(){
       /* A possible has no covers to state - Mews's head count is how many
          are staying, not how many are eating - so the slot says why, in
          the legend's word for the dashed tile it belongs to. */
-      '<span class="row-pax">'+ (r.maybe ? 'Awaiting' :
+      /* An invited guest's seating rides beside the word, as a confirmed
+         row's rides beside its covers: the time is booked, the table not. */
+      '<span class="row-pax">'+ (r.maybe
+        ? ((r.invite && dinnerTimeLabel(g.time)) ? dinnerTimeLabel(g.time)+' · ' : '')+'Awaiting' :
         (dinnerTimeLabel(g.time) ? dinnerTimeLabel(g.time)+' · ' : '')+
         (g.pax||1)+' pax') +'</span></div>'+ dietLine;
     var bub = row.querySelector('.bub');

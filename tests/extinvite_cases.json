@@ -27,8 +27,7 @@
 
     ["the text never arrived: work to do, in the carrier's words",
      {"status": "awaiting", "pax": 2, "invitedAt": "2026-09-28T05:40:00Z"},
-     {"status": "sent", "sentAt": "2026-09-28T05:40:00Z", "providerId": "m2",
-      "delivery": "failed", "deliveryText": "Number not in service"},
+     {"status": "sent", "sentAt": "2026-09-28T05:40:00Z", "providerId": "m2", "delivery": "failed", "deliveryText": "Number not in service"},
      {"kind": "ready", "line": "Table for 2", "bad": "not delivered · Number not in service"}],
 
     ["a send again that did not go: work to do, in ClickSend's words",
@@ -64,6 +63,21 @@
     ["a table with no size is one, never nought",
      {"status": "awaiting", "invitedAt": "2026-09-28T06:12:00Z"},
      {"status": "sent", "sentAt": "2026-09-28T06:12:00Z"},
-     {"kind": "sent", "line": "Table for 1 · sent {sent}", "bad": ""}]
+     {"kind": "sent", "line": "Table for 1 · sent {sent}", "bad": ""}],
+
+    ["waiting, with the seating agreed on the phone",
+     {"status": "awaiting", "pax": 2, "time": "19:00", "invitedAt": "2026-09-28T06:12:00Z"},
+     {"status": "sent", "sentAt": "2026-09-28T06:12:00Z", "providerId": "m6", "delivery": "delivered"},
+     {"kind": "sent", "line": "Table for 2 at 7:00 pm · sent {sent} · delivered", "bad": ""}],
+
+    ["accepted, with its seating",
+     {"status": "in", "pax": 4, "time": "18:30", "by": "guest", "at": "2026-09-28T06:20:00Z", "invitedAt": "2026-09-28T06:00:00Z"},
+     null,
+     {"kind": "answered", "in": true, "line": "Accepted · table for 4 at 6:30 pm · answered {at}", "bad": ""}],
+
+    ["a time that is not one reads as none",
+     {"status": "awaiting", "pax": 2, "time": "7pm", "invitedAt": "2026-09-28T06:12:00Z"},
+     {"status": "sent", "sentAt": "2026-09-28T06:12:00Z"},
+     {"kind": "sent", "line": "Table for 2 · sent {sent}", "bad": ""}]
   ]
 }

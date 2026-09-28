@@ -63,6 +63,10 @@ Already done this way — follow these:
   stands (`extInviteState`, nala-shared.js), as Invitations, Reservations
   and the Dashboard all read it. Added 28 Sep with the External guests
   drop-down, so the three screens cannot tell reception three things.
+- `tests/dinnertime_cases.json` — how a stored dinner time reads
+  (`dinnerTimeLabel`), for the shared copy and the guest page's forced
+  copy in index.html, which since 28 Sep tells an external guest their
+  seating. The `phone_cases.json` pattern, rule 3 below.
 - `rules.json` — the database's permissions.
 - `tests/dashboard_sources.json` — every value on the Dashboard and the
   thing that owns it. Added 8 Sep with rule 7, after that page worked four

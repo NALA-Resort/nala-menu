@@ -767,6 +767,21 @@
 
   function extPax(){ return (EXTG && +EXTG.rec.pax) || 1; }
 
+  /* The seating reception agreed on the phone, " at 7:30 pm", or nothing
+     (28 Sep, the owner: "It's just missing a time slot"). A copy of
+     dinnerTimeLabel in nala-shared.js, forced: this is a guest page and staff
+     code never reaches it. tests/dinnertime_cases.json is the table both
+     copies are checked against - add cases there, never to one copy. */
+  function dinnerTimeLabel(t){
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t || '')) return '';
+    var h = +t.slice(0,2);
+    return (((h + 11) % 12) + 1) + ':' + t.slice(3);
+  }
+  function extSeat(){
+    var t = dinnerTimeLabel(EXTG && EXTG.rec.time);
+    return t ? ' at ' + t + ' pm' : '';
+  }
+
   function stepExtChoose(){
     var fn = firstName(EXTG.rec.name), n = extPax();
     panel.innerHTML =
@@ -776,7 +791,7 @@
         '<button class="r-btn primary" id="bIn">Accept</button>'+
       '</div>';
     panel.querySelector('.r-q').textContent = (fn ? fn + ', shall' : 'Shall') +
-      ' we hold your table for ' + n + ' tonight?';
+      ' we hold your table for ' + n + extSeat() + ' tonight?';
     document.getElementById('bIn').onclick  = function(){ stepExtConfirm('in'); };
     document.getElementById('bOut').onclick = function(){ stepExtConfirm('out'); };
     panel.setAttribute('data-step','choose'); scheduleFit();
@@ -787,7 +802,7 @@
     var n = extPax();
     panel.innerHTML =
       '<div class="r-q">' + (status === 'in'
-        ? 'Confirm your table for ' + n + (n === 1 ? ' guest' : ' guests') + ' tonight?'
+        ? 'Confirm your table for ' + n + (n === 1 ? ' guest' : ' guests') + extSeat() + ' tonight?'
         : 'Confirm you won’t be dining tonight?') + '</div>'+
       '<div class="r-btns">'+
         '<button class="r-btn quiet" id="bBack">Back</button>'+
@@ -810,7 +825,7 @@
       .then(function(){
         if (window.__nalaWriteFailed) throw new Error('refused');
         EXTG.rec.status = status;
-        stepDone({ status: status, pax: extPax() });
+        stepDone({ status: status, pax: extPax(), seat: extSeat() });
       })
       .catch(function(){ stepFailed('save'); });
   }
@@ -841,7 +856,7 @@
                      'Please call us if you would like to join us another evening.');
         if (rec.status === 'in' || rec.status === 'out'){
           LOCKED = rec.by === 'staff';
-          stepDone({ status: rec.status, pax: extPax() });
+          stepDone({ status: rec.status, pax: extPax(), seat: extSeat() });
         } else {
           stepExtChoose();
         }
@@ -901,7 +916,9 @@
 
   function stepDone(r){
     var body = r.status==='in'
-      ? '<div class="r-done-t">Confirmed for '+r.pax+(r.pax===1?' guest':' guests')+'</div>'+
+      ? '<div class="r-done-t">Confirmed for '+r.pax+(r.pax===1?' guest':' guests')+
+        /* an external guest's seating; a villa's answer carries none here */
+        (r.seat || '')+'</div>'+
         '<div class="r-done-s">We look forward to seeing you.</div>'
       : '<div class="r-done-t">Noted - not dining tonight</div>'+
         '<div class="r-done-s">We hope to see you another evening.</div>';

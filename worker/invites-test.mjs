@@ -558,6 +558,20 @@ ck("a link the database refuses sends nothing and books nothing",
    keysUnder("/manual/").length === 0);
 
 install();
+r = await ext({ time: "19:00" });
+j = await r.json();
+ck("the seating agreed on the phone is stored as every booking's time is",
+   j.result.status === "sent" && STORE["/manual/" + today + "/" + j.key].time === "19:00");
+install();
+r = await ext({ time: "7pm" });
+ck("a time that is not one is refused before anything is written",
+   r.status === 400 && SENDS.length === 0 && keysUnder("/manual/").length === 0);
+install();
+r = await ext();
+j = await r.json();
+ck("and no time chosen stores no time", !("time" in STORE["/manual/" + today + "/" + j.key]));
+
+install();
 r = await ext({ phone: "07 3358 1122" });
 ck("a landline is refused before anything is written",
    r.status === 400 && SENDS.length === 0 && Object.keys(STORE).every((k) => !k.startsWith("/links/")));

@@ -2321,7 +2321,8 @@ with sync_playwright() as p:
     resetDb()
     manual.update({
       "ext-sarah2": {"status": "awaiting", "name": "Sarah Jones", "phone": "+61412345678",
-                     "pax": 2, "source": "invite", "token": "sarah2", "invitedAt": at(16, 12)},
+                     "pax": 2, "source": "invite", "token": "sarah2", "invitedAt": at(16, 12),
+                     "time": "19:00"},
       "ext-megan2": {"status": "awaiting", "name": "Megan Doyle", "phone": "+61421555019",
                      "pax": 2, "source": "invite", "token": "megan2", "invitedAt": at(15, 40)},
       "ext-tomb44": {"status": "in", "name": "Tom Becker", "phone": "+61438220761", "pax": 4,
@@ -2337,7 +2338,7 @@ with sync_playwright() as p:
     def xr(name): return q.locator("#listBookings .row", has_text=name)
     ck("an invited guest waits on the list at once, grey, Awaiting, whether or not All is lit",
        xr("Sarah Jones").count() == 1 and "maybe" in (xr("Sarah Jones").get_attribute("class") or "") and
-       xr("Sarah Jones").locator(".row-pax").inner_text() == "Awaiting" and
+       xr("Sarah Jones").locator(".row-pax").inner_text() == "7:00 \u00b7 Awaiting" and
        not q.evaluate("()=>SHOW_ALL"))
     ck("tagged External, and saying when it was sent",
        "External" in xr("Sarah Jones").inner_text() and
@@ -2382,9 +2383,9 @@ with sync_playwright() as p:
        len(ws) == 1 and ws[0]["m"] == "PATCH" and wb.get("status") == "in" and
        wb.get("by") == "staff" and sorted(wb) == ["at", "by", "status"])
     q.wait_for_timeout(300)
-    ck("and the table is counted",
+    ck("and the table is counted, at its seating",
        "maybe" not in (xr("Sarah Jones").get_attribute("class") or "") and
-       "2 pax" in xr("Sarah Jones").inner_text() and
+       "7:00 \u00b7 2 pax" in xr("Sarah Jones").inner_text() and
        q.evaluate("()=>+nCovers.textContent") == base + 6)
     q.close()
     resetDb()
