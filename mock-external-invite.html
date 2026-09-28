@@ -24,6 +24,10 @@
      External booking - counted, printed, editable, movable - with nothing
      new to read it. A decline is 'out'.
 
+     THE PAGE. External guests is a drop-down beside Arrivals, the same
+     component (the owner, 28 Sep: "should be a drop-down just like the
+     arrivals card"), holding Invite + and the evening's external guests.
+
      THE LINK. Not the mobile number. The guest page was keyed on phone
      numbers once and was moved off them because a phone number is
      guessable in order (index.html says so where it reads the link); a
@@ -119,18 +123,29 @@
 
 <main class="stage">
   <figure>
-    <figcaption><b>1</b>Invitations &middot; a new External guests card</figcaption>
+    <figcaption><b>1</b>Invitations &middot; External guests, folded like Arrivals</figcaption>
     <div class="scr"><iframe title="Invitations" data-doc="f-inv" data-h="auto"></iframe></div>
     <ul class="notes">
-      <li>The card is new; the rest is today's page.</li>
-      <li>Work first, done sinks: not delivered (red words), waiting (grey),
-        then accepted and declined. All four at once here; most nights, one.</li>
-      <li>Tap a row: send again, or cancel the invitation (terracotta, asks first).</li>
+      <li>The drop-down is new; the rest is today's page.</li>
+      <li>Folded until tapped, like Arrivals, and still open after a reload
+        once opened.</li>
+      <li>A text that did not arrive shows on the folded line in red, so it
+        is never hidden.</li>
     </ul>
   </figure>
 
   <figure>
-    <figcaption><b>2</b>Invite + &middot; name, mobile, guests</figcaption>
+    <figcaption><b>2</b>Opened &middot; Invite + and tonight's external guests</figcaption>
+    <div class="scr"><iframe title="External guests opened" data-doc="f-inv-open" data-h="844"></iframe></div>
+    <ul class="notes">
+      <li>Work first, done sinks: not delivered (red words), waiting (grey),
+        then accepted and declined. All four at once here; most nights, one.</li>
+      <li>Tap a guest: send again, or cancel the invitation (terracotta, asks first).</li>
+    </ul>
+  </figure>
+
+  <figure>
+    <figcaption><b>3</b>Invite + &middot; name, mobile, guests</figcaption>
     <div class="scr"><iframe title="Invite sheet" data-doc="f-sheet" data-h="844"></iframe></div>
     <ul class="notes">
       <li>The message fills in the first name and table size; edit it freely.
@@ -142,7 +157,7 @@
   </figure>
 
   <figure>
-    <figcaption><b>3</b>The guest &middot; the SMS, then tonight's menu</figcaption>
+    <figcaption><b>4</b>The guest &middot; the SMS, then tonight's menu</figcaption>
     <div class="scr"><iframe title="The SMS" data-doc="f-sms" data-h="auto"></iframe></div>
     <div class="scr"><iframe title="The guest page" data-doc="f-guest" data-h="844"></iframe></div>
     <ul class="notes">
@@ -153,7 +168,7 @@
   </figure>
 
   <figure>
-    <figcaption><b>4</b>Reservations &middot; Awaiting, then accepted</figcaption>
+    <figcaption><b>5</b>Reservations &middot; Awaiting, then accepted</figcaption>
     <p class="sub">Sent: the booking is on the list at once, grey, not in the covers.</p>
     <div class="scr"><iframe title="Reservations, awaiting" data-doc="f-res-a" data-h="auto"></iframe></div>
     <p class="sub">She accepts: an ordinary External booking, counted.</p>
@@ -346,20 +361,26 @@ body.paper details.arrivals { background:var(--surface); box-shadow:var(--lift);
 </style>
 <style>
 /* ── NEW · External guests ──────────────────────────────────────────
-   One card on the paper, like Arrivals, holding the external guests
-   invited tonight. Its rows are the page's own .vrow in the page's own
-   band tints; only the tick gives way to a chevron, because an external
-   row is not part of the batch Send - it opens its own sheet. */
-.outcard { background:var(--surface); border:1px solid var(--rule); border-radius:10px;
-           box-shadow:var(--lift); margin:14px 0 2px; padding:12px 11px 2px; }
-.outhead { display:flex; align-items:center; gap:10px; margin:0 2px 11px; }
-.outhead .oh-l { flex:1; min-width:0; }
-.outhead .oh-t { font-size:var(--t3); font-weight:600; }
-.outhead .oh-s { font-size:var(--t2); color:var(--mid); margin-top:2px; }
-/* body.ui2 .btn is full width; a button in a header row is its label's width */
-body.ui2 .outhead .btn { flex:0 0 auto; width:auto; min-height:36px; padding:0 14px; font-size:var(--t2); }
-.vrow .chev { flex:0 0 auto; width:24px; text-align:center; color:var(--mid);
-              font-size:var(--t4); line-height:1; }
+   A drop-down, and the Arrivals one (the owner, 28 Sep: "should be a
+   drop-down just like the arrivals card"): the same <details>, the same
+   class and so the same dress, folded until tapped and kept open across a
+   reload while the desk is in it, as ARR_OPEN keeps Arrivals. A build
+   gives the class a name that fits both. Its rows are the page's own .vrow
+   in the page's own band tints; only the tick gives way to a forward mark,
+   because an external row is not part of the batch Send - it opens its own
+   sheet. Named .fwd, not .chev: .chev is the drop-down's own arrow, and
+   details[open] turns every .chev inside it a quarter turn.
+   Two things it adds to the Arrivals shape:
+   - the folded line names a text that did not arrive, in red words, so a
+     failure is never hidden behind a closed drop-down;
+   - a line inside, above the guests, carrying Invite +.                */
+details.arrivals .asub .bad { color:var(--red); }
+.extline { display:flex; align-items:center; gap:10px; margin:2px 2px 10px; }
+details.arrivals .extline .anote { flex:1; min-width:0; margin:0; }
+/* body.ui2 .btn is full width; a button beside a line is its label's width */
+body.ui2 .extline .btn { flex:0 0 auto; width:auto; min-height:36px; padding:0 14px; font-size:var(--t2); }
+.vrow .fwd { flex:0 0 auto; width:24px; text-align:center; color:var(--mid);
+             font-size:var(--t4); line-height:1; }
 </style>
 </head>
 <body class="tier-app ui2 paper">
@@ -380,33 +401,32 @@ body.ui2 .outhead .btn { flex:0 0 auto; width:auto; min-height:36px; padding:0 1
 
 <div id="menuGate" class="show"><span class="menupill ok">Menu published</span></div>
 
-<section class="outcard">
-  <div class="outhead">
-    <div class="oh-l"><div class="oh-t">External guests</div>
-      <div class="oh-s">4 invited tonight &middot; not staying</div></div>
-    <button class="btn" type="button">Invite +</button>
+<details class="arrivals ext">
+  <summary><span class="chev">&#9654;</span><span class="albl">External guests<div class="asub">Not staying &middot; <span class="bad">1 not delivered</span></div></span><span class="abadge">4 guests</span></summary>
+  <div class="abody">
+    <div class="extline"><div class="anote">Tap a guest to send again or cancel.</div><button class="btn" type="button">Invite +</button></div>
+    <button class="vrow" type="button">
+      <div class="mid"><div class="nm trimrow"><span class="trim">Megan Doyle</span><span class="ph">0421 555 019</span></div>
+        <div class="st">Table for 2 &middot; <span class="bad">not delivered &middot; number not in service</span></div></div>
+      <div class="fwd">&rsaquo;</div>
+    </button>
+    <button class="vrow b-sent" type="button">
+      <div class="mid"><div class="nm trimrow"><span class="trim">Sarah Jones</span><span class="ph">0412 345 678</span></div>
+        <div class="st">Table for 2 &middot; sent 4:12pm &middot; delivered</div></div>
+      <div class="fwd">&rsaquo;</div>
+    </button>
+    <button class="vrow b-din" type="button">
+      <div class="mid"><div class="nm trimrow"><span class="trim">Tom Becker</span><span class="ph">0438 220 761</span></div>
+        <div class="st">Accepted &middot; table for 4 &middot; 3:05pm</div></div>
+      <div class="fwd">&rsaquo;</div>
+    </button>
+    <button class="vrow b-out" type="button">
+      <div class="mid"><div class="nm trimrow"><span class="trim">L&eacute;a Martin</span><span class="ph">+33 6 12 34 56 78</span></div>
+        <div class="st">Declined &middot; 2:40pm</div></div>
+      <div class="fwd">&rsaquo;</div>
+    </button>
   </div>
-  <button class="vrow" type="button">
-    <div class="mid"><div class="nm trimrow"><span class="trim">Megan Doyle</span><span class="ph">0421 555 019</span></div>
-      <div class="st">Table for 2 &middot; <span class="bad">not delivered &middot; number not in service</span></div></div>
-    <div class="chev">&rsaquo;</div>
-  </button>
-  <button class="vrow b-sent" type="button">
-    <div class="mid"><div class="nm trimrow"><span class="trim">Sarah Jones</span><span class="ph">0412 345 678</span></div>
-      <div class="st">Table for 2 &middot; sent 4:12pm &middot; delivered</div></div>
-    <div class="chev">&rsaquo;</div>
-  </button>
-  <button class="vrow b-din" type="button">
-    <div class="mid"><div class="nm trimrow"><span class="trim">Tom Becker</span><span class="ph">0438 220 761</span></div>
-      <div class="st">Accepted &middot; table for 4 &middot; 3:05pm</div></div>
-    <div class="chev">&rsaquo;</div>
-  </button>
-  <button class="vrow b-out" type="button">
-    <div class="mid"><div class="nm trimrow"><span class="trim">L&eacute;a Martin</span><span class="ph">+33 6 12 34 56 78</span></div>
-      <div class="st">Declined &middot; 2:40pm</div></div>
-    <div class="chev">&rsaquo;</div>
-  </button>
-</section>
+</details>
 
 <div id="board">
   <details class="arrivals">
@@ -1465,9 +1485,17 @@ body { padding-bottom:14px; }
     return src('f-res-a').replace('@@SARAH@@', sarah).replace('@@COVERS@@', covers)
                          .replace('@@MAKEUP@@', makeup);
   }
+  /* A replace that finds nothing is silent; this one says so. */
+  function must(s, a, b){
+    if (s.indexOf(a) < 0) throw new Error('mock: not found: ' + a);
+    return s.replace(a, b);
+  }
+  var INV = src('f-inv');
+  var INV_OPEN = must(INV, '<details class="arrivals ext">', '<details class="arrivals ext" open>');
   var DOCS = {
-    'f-inv':   src('f-inv'),
-    'f-sheet': src('f-inv').replace('</body>', src('f-sheet-over') + '</body>'),
+    'f-inv':      INV,
+    'f-inv-open': INV_OPEN,
+    'f-sheet':    must(INV_OPEN, '</body>', src('f-sheet-over') + '</body>'),
     'f-sms':   src('f-sms'),
     'f-guest': src('f-guest'),
     'f-res-a': res(SARAH_WAIT, '10', '3 twos · 1 four · 4 tables'),
