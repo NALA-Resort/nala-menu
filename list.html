@@ -12,7 +12,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
 <title>Nala · Service Sheet</title>
-<link rel="stylesheet" href="nala-ui.css?v=17">
+<link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
   /* Zero, deliberately, and the margin is put on the body instead.
 
@@ -87,8 +87,11 @@
   .c-dt   { width:5%;  text-align:center; }
   .c-bt   { width:5%;  text-align:center; }
 
-  .yes { color:#3F7A52; font-weight:bold; }
-  .no  { color:#A8321E; }
+  /* Dining in the colour law's green ink, not dining in its terracotta: a
+     guest's no is an answer, not a failure. Until 27 Sep the no was red
+     and the yes a green of this sheet's own. */
+  .yes { color:var(--save-ink); font-weight:bold; }
+  .no  { color:var(--terra); }
   .unk { color:#bbb; }
   /* The make-up IS the instruction for whoever sets the room, so it is the
      stat; the count is its checksum and lives in the label. Anchored left and
@@ -473,7 +476,7 @@ function stripTags(h){
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=78"></script>
+<script src="nala-shared.js?v=81"></script>
 <script>
 // date state + header wiring from nala-shared.js
 var nav = initDateNav();

@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Dashboard</title>
 <link rel="stylesheet" href="nala-ui2.css?v=9">
-<link rel="stylesheet" href="nala-ui.css?v=17">
+<link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
   /* v9. The v8 design, redrawn on the app's own stylesheets rather than a
      standalone one. v8 was approved against CSS that did not exist in the
@@ -221,7 +221,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=78"></script>
+<script src="nala-shared.js?v=81"></script>
 <script>
 /* The day's flow on one screen: what has happened, what is ready, and what
    is still owed. Every fact here is read from the screen that owns it. The
@@ -521,6 +521,14 @@ function items(t){
   var ext = 0;
   externalDiners(DATA.responses, DATA.manual).forEach(function(e){
     ext += dinerPax(e.g);
+  });
+
+  /* External guests invited by SMS who have not answered yet (28 Sep):
+     Invitations' reading, extInviteState, of the bookings extInvites finds.
+     An accepted one is already among the diners above; a decline is off
+     the pile; one still to answer is owed a menu like a villa that is. */
+  extInvites(DATA.manual).forEach(function(e){
+    if (extInviteState(e.g).kind !== 'answered') unknownPax += dinerPax(e.g);
   });
 
   var covers = dining + ext;

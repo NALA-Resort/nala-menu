@@ -286,7 +286,7 @@ body.ui2 .navdrop a.navaction,
 body.ui2 .navdrop a.hasact{ display:flex; align-items:center;
                             justify-content:space-between; gap:var(--s4); }
 body.ui2 .navmark{ display:inline-flex; flex:0 0 auto; }
-body.ui2 .navmark.on{ color:#3F7A52; }
+body.ui2 .navmark.on{ color:var(--law-green); }  /* the law's green ink (was a green of its own until 27 Sep) */
 body.ui2 .navmark.off{ color:#9A9A92; }
 body.ui2 .navnote{ flex:0 0 auto; font-size:var(--t1); color:var(--mid); }
 body.ui2 .navdrop a.signout{ border-top:1px solid var(--rule);
@@ -441,7 +441,6 @@ body.ui2 .stat-n{ display:block; font-size:var(--t5); line-height:1;
                   color:var(--ink); font-variant-numeric:tabular-nums; }
 body.ui2 .stat-l{ display:block; font-size:var(--t2); color:var(--mid);
                   margin-top:var(--s1); }
-body.ui2 .stat.warn .stat-n{ color:var(--law-red); }
 
 /* ── inputs ──────────────────────────────────────────────────────────
    16px minimum, always: anything smaller and iOS zooms the page on

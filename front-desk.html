@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Front Desk Arrival</title>
 <link rel="stylesheet" href="nala-ui2.css?v=9">
-<link rel="stylesheet" href="nala-ui.css?v=17">
+<link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
   /* This page's OWN colours, restored 29 Aug. The first conversion
      dropped each page's :root wholesale to remove the tokens the shared
@@ -102,8 +102,8 @@
   /* Green, always, and that is not a lost scope: a summary only opens on a
      completed row (see the tap handler), so the only row it can hang off is
      already green. Grey and amber open the form instead. */
-  .sum { border:1px solid rgba(122,160,130,.34); border-top:none;
-         border-radius:0 0 8px 8px; background:rgba(122,160,130,.11);
+  .sum { border:1px solid var(--law-green-b); border-top:none;
+         border-radius:0 0 8px 8px; background:var(--law-green-t);
          margin:-8px 0 7px; padding:12px 13px 13px; }
   .sum-r { display:flex; gap:10px; font-size:var(--t2); line-height:1.5;
            padding:3px 0; align-items:baseline; }
@@ -111,6 +111,9 @@
            color:var(--mid); padding-top:3px; }
   .sum-v { flex:1; min-width:0; }
   .sum-v.none { color:var(--mid); font-style:italic; }
+  /* Secondary information, in grey (the owner, 28 Sep): the form's stamps.
+     Not the italic above, which says an answer is missing. */
+  .sum-v.sec { color:var(--mid); }
   .sum-btns { display:flex; gap:7px; margin-top:12px; }
   .sum-btns + .sum-btns { margin-top:7px; }
   .sum-btns button.wide { flex:1 1 100%; }
@@ -186,14 +189,18 @@
      colour law's light grey fill - unknown promises nothing - because an
      untouched guest is not work in progress, they are not started. It used
      to be amber, which made a row nobody had touched read the same as one
-     half done. Kept very light so the villa number and the name still carry
-     the row. */
-  .arr.done-form { background:rgba(122,160,130,.11); border-color:rgba(122,160,130,.34); }
+     half done.
+     Green and amber are the colour law's own, the green of a booked
+     massage on Spa and a dining tile on Reservations. Until 27 Sep this
+     board wore them at less than half strength, "kept very light", and the
+     owner found the greens and ambers "all over the place": one meaning,
+     one colour, on every board. */
+  .arr.done-form { background:var(--law-green-t); border-color:var(--law-green-b); }
   .arr.todo-form { background:rgba(28,28,26,.045); border-color:var(--rule); }
   /* Started and not finished: amber, the colour law's in-progress, with a
      solid left edge to say somebody has met it halfway. */
-  .arr.part-form { background:rgba(194,154,85,.11); border-color:rgba(194,154,85,.36);
-                   border-left:3px solid rgba(194,154,85,.85); }
+  .arr.part-form { background:var(--law-amber); border-color:var(--law-amber-b);
+                   border-left:3px solid var(--law-amber-b); }
 
   .empty { font-size:var(--t3); color:var(--mid); font-style:italic; padding:4px 0 2px; }
   .spacer { height:40px; }
@@ -453,15 +460,15 @@
    see-through - the chips and the yes/no pairs - is white, the selected
    grey drawn over the white. */
 body.paper .arr { background:var(--surface); box-shadow:var(--lift); }
-body.paper .arr.done-form { background:linear-gradient(rgba(122,160,130,.11), rgba(122,160,130,.11)), var(--surface); }
+body.paper .arr.done-form { background:linear-gradient(var(--law-green-t), var(--law-green-t)), var(--surface); }
 body.paper .arr.todo-form { background:linear-gradient(rgba(28,28,26,.045), rgba(28,28,26,.045)), var(--surface); }
-body.paper .arr.part-form { background:linear-gradient(rgba(194,154,85,.11), rgba(194,154,85,.11)), var(--surface); }
+body.paper .arr.part-form { background:var(--law-amber); }
 body.paper .chip, body.paper .seg button { background:var(--surface); }
 body.paper .chip.on, body.paper .seg button.on {
   background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface); }
 /* a completed arrival's summary wears its row's green, over white; the key
    card run's villas are white cards */
-body.paper .sum { background:linear-gradient(rgba(122,160,130,.11), rgba(122,160,130,.11)), var(--surface); }
+body.paper .sum { background:linear-gradient(var(--law-green-t), var(--law-green-t)), var(--surface); }
 body.paper .crun { background:var(--surface); }
 </style>
 </head>
@@ -516,7 +523,7 @@ body.paper .crun { background:var(--surface); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=78"></script>
+<script src="nala-shared.js?v=81"></script>
 <script src="nala-cards.js?v=15"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -999,10 +1006,11 @@ function dayLabel(key){
 
 /* The guest's answers, read back as sentences so reception can say them out
    loud and the guest can agree or not. Empty answers are shown as unanswered
-   rather than hidden: a blank line is the thing reception needs to fill. */
-function sumRow(label, value, empty){
+   rather than hidden: a blank line is the thing reception needs to fill.
+   `cls` dresses a value that is there: 'sec' for secondary information. */
+function sumRow(label, value, empty, cls){
   return '<div class="sum-r"><div class="sum-l">' + label + '</div>' +
-         '<div class="sum-v' + (value ? '' : ' none') + '">' +
+         '<div class="sum-v' + (value ? (cls ? ' ' + cls : '') : ' none') + '">' +
          (value || empty || 'Not answered') + '</div></div>';
 }
 
@@ -1072,6 +1080,17 @@ function summaryHTML(r){
   /* Escaped: the names are typed by an admin on Flag Settings, and this
      summary is otherwise built by concatenation - the staff-note lesson. */
   if (fl.length) h += sumRow('Booking flags', esc(fl.join(' \u00b7 ')));
+
+  /* When the guest opened their link and when the form was completed, each
+     with its day - the owner, 28 Sep. Last, under the answers, and in grey:
+     "a secondary type of information", in his words - it says where the
+     answers came from, and reception reads the answers out, not this. This
+     open card carries it and the closed row never does. formStamps
+     (nala-shared.js) is the one reading, so Completed can never be said of
+     a form formState does not call completed. */
+  var stamps = formStamps(r.pre, r.stay, r.spa);
+  if (stamps.length)
+    h += sumRow('Pre-arrival', stamps.map(esc).join('<br>'), '', 'sec');
 
   /* No key-card line and no Key cards button here, ruled 11 Sep: there
      is no reason for keys information on Front Desk's forms. Cards are
@@ -1562,7 +1581,13 @@ function openGuest(r){
       '<span class="gd-sub">' + stayLabel(r.stay) +
         (r.stay.adults ? ' \u00b7 ' + r.stay.adults +
           (Number(r.stay.adults)===1?' adult':' adults') : '') +
-      '</span></div>' +
+      '</span>' +
+      /* The form's two moments, at the top of the form - the summary's
+         reading, one line each so a stamp never breaks across two. */
+      formStamps(p, r.stay, r.spa).map(function(t){
+        return '<span class="gd-sub">' + esc(t) + '</span>';
+      }).join('') +
+    '</div>' +
     (etaLabel(p) ? '<div class="note-box">Told us they would arrive ' +
        esc(etaLabel(p).toLowerCase()) + '.</div>' : '') +
     (hasForm(p) ? '' : startedForm(p) ?

@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Spa</title>
 <link rel="stylesheet" href="nala-ui2.css?v=9">
-<link rel="stylesheet" href="nala-ui.css?v=17">
+<link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
   body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
   
@@ -45,6 +45,11 @@
      screen: the masseuse answers with the list still in view. */
   .card { border:1.2px solid var(--ink); border-radius:10px; background:#fff;
           padding:11px 13px; margin-bottom:7px; }
+  /* An opened tile keeps its state's colour, booked included: until 27 Sep
+     a booked card dropped its green on opening while suggested and declined
+     kept theirs. */
+  .card.b-done { background:var(--resgreen-t); border-color:var(--resgreen-b); }
+  .card.b-done .st { color:var(--resgreen); }
   .card.b-sugg { background:var(--amber); border-color:var(--amberb); }
   .card.b-sugg .st { color:var(--ambert); }
   .card.b-decl { background:var(--terra-t); border-color:var(--terra-b); }
@@ -105,11 +110,12 @@
 
   /* The stats are buttons here and only here, so the dress is this page's to
      set: no border and no fill, exactly as the shared .stat draws, and the
-     pressed one carries an amber rule under its number. */
+     pressed one carries an ink rule under its number. It was amber until
+     27 Sep; a filter you picked is a selection, and amber is chase-this. */
   button.stat { background:none; border:0; font-family:var(--ui-font); color:inherit;
                 cursor:pointer; -webkit-tap-highlight-color:transparent; }
   button.stat .stat-n { border-bottom:2px solid transparent; }
-  button.stat.on .stat-n { border-bottom-color:var(--amberb); }
+  button.stat.on .stat-n { border-bottom-color:var(--ink); }
 
   #errBar { font-size:var(--t2); color:var(--red); margin:10px 0; line-height:1.45; }
   .empty { font-size:var(--t2); color:var(--mid); margin:14px 2px; line-height:1.5; }
@@ -127,6 +133,9 @@
 body.paper .vrow { box-shadow:var(--lift); }
 body.paper .vrow.b-done { background:linear-gradient(var(--resgreen-t), var(--resgreen-t)), var(--surface); }
 body.paper .vrow.b-decl { background:linear-gradient(var(--terra-t), var(--terra-t)), var(--surface); }
+/* an opened card keeps its tint over the white too */
+body.paper .card.b-done { background:linear-gradient(var(--resgreen-t), var(--resgreen-t)), var(--surface); }
+body.paper .card.b-decl { background:linear-gradient(var(--terra-t), var(--terra-t)), var(--surface); }
 body.paper .vrow.b-grey { background:var(--surface); box-shadow:none; }
 </style>
 </head>
@@ -166,7 +175,7 @@ body.paper .vrow.b-grey { background:var(--surface); box-shadow:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=78"></script>
+<script src="nala-shared.js?v=81"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 

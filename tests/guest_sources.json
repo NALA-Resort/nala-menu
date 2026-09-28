@@ -18,6 +18,11 @@
       "kind": "function",
       "note": "Front Desk's three states. Never recompute from `at` or the answers." },
 
+    { "value": "when the form was opened and when it was completed",
+      "owner": "formStamps",
+      "kind": "function",
+      "note": "Each with its day, the owner's ask of 28 Sep. Completed only when formState says so; opened is the guest's first landing." },
+
     { "value": "the night's dinner answer when no /dinner cell was written",
       "owner": "formDinnerCell",
       "kind": "function",
@@ -86,6 +91,10 @@
       "why": "opened marks belong to fetchStays' one read" },
     { "pattern": ".checkedInAt",
       "why": "arrived is isArrived's reading, not a field to re-open" },
+    { "pattern": ".openedAt",
+      "why": "the opened stamp is formStamps' reading, not a field to re-open" },
+    { "pattern": "pre.at",
+      "why": "the completed stamp is formStamps' reading: a stamp beside an incomplete form is not a completion" },
     { "pattern": "pre.dining ===",
       "why": "the dinner answer is formDinnerCell's merge, not the raw field" },
     { "pattern": ".slice(0, 10)",

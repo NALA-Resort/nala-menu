@@ -276,6 +276,14 @@ card solid white on it, by one class, `paper`, beside `ui2`. Not the printed she
 white. The ruling is in CLAUDE.md under the colour law, the design in
 `mock-paper.html`, and `paper_suite` holds the rule.
 
+**One colour per meaning** (27 Sep): every green, amber and red a board
+paints is a colour law token, listed with its meaning in
+`tests/colour_law.json`, and `colour_suite` fails any board painting
+anything else - by page, element and colour. Cleans keeps its own job key
+(blue clean, green service, orange pre-arrival), allowed on that board
+alone; the owner ruled it so. The ruling and the list of what changed are
+in CLAUDE.md under the colour law.
+
 **The menu on every staff page is generated** — `buildNav` in
 `nala-shared.js` draws it from the one `NAV` array, minus the page you are
 on: the boards as plain links, then the Print, SMS and Settings submenus,
@@ -616,6 +624,17 @@ None of these can move without him.
     display change and not a revoke; if somebody has left and the paste
     has not happened, delete their Firebase login too, which is
     Authentication in the Firebase console.
+15. **Two pastes for external guests, 28 Sep.** Invitations' External
+    guests drop-down (INVITATIONS.md, last section) sends tonight's menu to
+    somebody who rang, and books them on Reservations as Awaiting.
+    - **Paste `rules.json`** into the console, as items 1, 2, 12 and 14
+      ask - it is one file, so one paste clears all five. For this item it
+      teaches `/manual` the Awaiting status and lets the guest's link answer
+      its own booking and nothing else. Without it the first write is
+      refused and NOTHING sends: the feature fails, it does not limp.
+    - **Paste `worker/send-invites.js`** into the `nala-invites` Worker. It
+      gained the `ext` kind. Until then the sheet's Send says the sender did
+      not answer; the in-house and pre-arrival sends are unchanged either way.
 
 ---
 

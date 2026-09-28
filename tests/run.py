@@ -96,6 +96,7 @@ SUITES = [
     ("registr",    ["python3", "tests/reg_suite.py"],     300),
     ("pages",      ["python3", "tests/pages_suite.py"],   300),
     ("paper",      ["python3", "tests/paper_suite.py"],   300),
+    ("colour",     ["python3", "tests/colour_suite.py"],  400),
     ("stats",      ["python3", "tests/stats_suite.py"],   400),
     ("pastmenus",  ["python3", "tests/pastmenus_suite.py"], 120),
     ("tag",        ["python3", "tests/tag_suite.py"],     400),
@@ -132,22 +133,22 @@ ON_REQUEST = {"demos"}
 # change to it can surface anywhere. Better to run the lot than to guess and
 # be wrong in the direction of not running something.
 COVERS = {
-    "dashboard.html":    ["dash", "sweep:dashboard", "paper"],
-    "calendar.html":     ["calendar", "roomclean", "sweep:calendar", "paper"],
-    "guest.html":        ["guest", "sweep:guest"],
-    "tally.html":        ["tally", "sweep:tally", "paper"],
-    "cleaners.html":     ["cleans", "sweep:cleaners", "paper"],
-    "front-desk.html":   ["frontdesk", "sweep:front-desk", "keys", "paper"],
-    "keys.html":         ["keys", "sweep:keys", "pages", "paper"],
-    "invitations.html":  ["invites", "sweep:invitations", "paper"],
+    "dashboard.html":    ["dash", "sweep:dashboard", "paper", "colour"],
+    "calendar.html":     ["calendar", "roomclean", "sweep:calendar", "paper", "colour"],
+    "guest.html":        ["guest", "sweep:guest", "colour"],
+    "tally.html":        ["tally", "sweep:tally", "paper", "colour"],
+    "cleaners.html":     ["cleans", "sweep:cleaners", "paper", "colour"],
+    "front-desk.html":   ["frontdesk", "sweep:front-desk", "keys", "paper", "colour"],
+    "keys.html":         ["keys", "sweep:keys", "pages", "paper", "colour"],
+    "invitations.html":  ["invites", "sweep:invitations", "paper", "colour"],
     "past-menus.html":   ["pastmenus", "sweep:past-menus"],
-    "arrivals-sms.html": ["invites", "sweep:arrivals-sms", "paper"],
+    "arrivals-sms.html": ["invites", "sweep:arrivals-sms", "paper", "colour"],
     "templates.html":    ["invites", "sweep:templates"],
     "worker/send-invites.js": ["invworker"],
     "worker/mews-sync.js": ["worker"],
     "index.html":        ["index", "sweep:index"],
     "prearrival.html":   ["prearrival", "sweep:prearrival"],
-    "spa.html":          ["spa", "sweep:spa", "paper"],
+    "spa.html":          ["spa", "sweep:spa", "paper", "colour"],
     "list.html":         ["list"],
     "housekeeping.html": ["housekeep"],
     # cleans and spa are not obvious neighbours of the settings page and were
@@ -158,10 +159,10 @@ COVERS = {
     "staff.html":        ["auth", "sweep:staff", "cleans", "spa"],
     "registration.html": ["registr", "sweep:registration"],
     "pages.html":        ["pages", "sweep:pages"],
-    "stats.html":        ["stats", "sweep:stats"],
-    "tag.html":          ["tag", "sweep:tag", "paper"],
+    "stats.html":        ["stats", "sweep:stats", "colour"],
+    "tag.html":          ["tag", "sweep:tag", "paper", "colour"],
     "flags.html":        ["flags", "sweep:flags"],
-    "publish.html":      ["pub", "sweep:publish", "paper"],
+    "publish.html":      ["pub", "sweep:publish", "paper", "colour"],
     "debug.html":        ["debug", "sweep:debug"],
     "menu-print.html":   ["print"],
     "welcome.html":      ["welcome", "sweep:welcome"],
@@ -174,6 +175,11 @@ COVERS = {
     # The shared card runtime: both its pages, and the reader suite that
     # pins the store it writes.
     "nala-cards.js":     ["keys", "sweep:keys", "frontdesk", "cards"],
+    # The page-dress suites' shared table and night: a change to either can
+    # move what both of them read.
+    "tests/colour_law.json":  ["colour"],
+    "tests/paper_night.json": ["paper", "colour"],
+    "tests/night_harness.py": ["paper", "colour"],
 }
 # nala-ui.css and nala-ui2.css dress every page, so, like nala-shared.js, a
 # change to either has no single owner. Until 27 Sep neither was listed, and

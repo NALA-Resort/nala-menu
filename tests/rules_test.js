@@ -987,5 +987,85 @@ cannotPatch('but not something the length of a paragraph', SYNC,
   ck('a guest reads none',      !as(GUEST).read('/cancelrun').allowed);
 })();
 
+/* ── an external guest, invited by SMS (28 Sep) ──────────────────────
+   A phone call from outside the resort becomes a booking at
+   /manual/<date>/ext-<token>, status awaiting, and a link at
+   /links/<token> that opens it. The guest has no login: the link holder
+   may read that ONE booking - never the night's list, never a booking
+   reception typed in - and answer it, in or out, stamped by 'guest', and
+   nothing else: not the name, the number or the table size, and not once
+   reception has set it. Bodies copied from worker/send-invites.js (the
+   create), index.html (the answer) and tally.html (the desk's edits). */
+console.log('--- an external guest, invited by SMS ---');
+(function () {
+  var INV = { status: 'awaiting', name: 'Sarah Jones', phone: '+61412345678',
+              pax: 2, source: 'invite', token: 'k7m2qp', invitedAt: NOW };
+  var dx = targaryen.database(RULES, Object.assign({}, SEED, { manual: { [TODAY]: {
+    'ext-k7m2qp': INV,
+    'ext-lock22': Object.assign({}, INV, { token: 'lock22', status: 'in', by: 'staff', at: NOW }),
+    'ext-1727000000000': { status: 'in', pax: 2, name: 'Cane', phone: '0400000000',
+                           source: 'manual' }
+  } } }));
+  function asx(u) { return u ? dx.as(u) : dx; }
+  var P0 = `/manual/${TODAY}/ext-k7m2qp`;
+  var ANSWER_IN  = { status: 'in',  by: 'guest', at: NOW };
+  var ANSWER_OUT = { status: 'out', by: 'guest', at: NOW };
+
+  ck('the desk creates the awaiting booking the Worker writes',
+     asx(WAITER).write(`/manual/${TODAY}/ext-newtok`,
+       Object.assign({}, INV, { token: 'newtok' })).allowed);
+  ck('and its link, which opens the booking rather than a villa',
+     asx(MANAGER).write('/links/newtok', { x: 'ext-newtok', d: TODAY, at: NOW }).allowed);
+  ck('a link opening something that is not an external booking is refused',
+     !asx(MANAGER).write('/links/badtok', { x: 'room-5', d: TODAY, at: NOW }).allowed);
+  ck('a link with no night is refused',
+     !asx(MANAGER).write('/links/badtok', { x: 'ext-badtok', at: NOW }).allowed);
+  ck('the villa links still store as they always did',
+     asx(MANAGER).write('/links/vtok22', { b: 'b-1', r: '4', d: TODAY, at: NOW }).allowed);
+  ck('housekeeping cannot invite anybody',
+     !asx(HK).write('/links/newtok', { x: 'ext-newtok', d: TODAY, at: NOW }).allowed);
+  ck('awaiting is a status the desk may write, and only there',
+     !asx(DESK).write(`/dinner/${TODAY}/5`, { status: 'awaiting', pax: 2 }).allowed);
+
+  ck('the link reads its own booking, signed in to nothing',
+     asx(GUEST).read(P0).allowed);
+  ck('but not the night\'s list', !asx(GUEST).read(`/manual/${TODAY}`).allowed);
+  ck('nor a booking reception typed in',
+     !asx(GUEST).read(`/manual/${TODAY}/ext-1727000000000`).allowed);
+
+  ck('the guest accepts', asx(GUEST).update(P0, ANSWER_IN).allowed);
+  ck('or declines', asx(GUEST).update(P0, ANSWER_OUT).allowed);
+  ck('an answer not stamped by the guest is refused',
+     !asx(GUEST).update(P0, { status: 'in', at: NOW }).allowed);
+  ck('a guest cannot claim to be staff',
+     !asx(GUEST).update(P0, { status: 'in', by: 'staff', at: NOW }).allowed);
+  ck('a guest cannot put it back to awaiting, or anything else',
+     !asx(GUEST).update(P0, { status: 'awaiting', by: 'guest', at: NOW }).allowed &&
+     !asx(GUEST).update(P0, { status: 'vacant', by: 'guest', at: NOW }).allowed);
+  ck('nor change the table size',
+     !asx(GUEST).update(P0, { status: 'in', by: 'guest', at: NOW, pax: 8 }).allowed);
+  ck('nor the name or the number',
+     !asx(GUEST).update(P0, { name: 'Somebody Else' }).allowed &&
+     !asx(GUEST).update(P0, { phone: '+61400000001' }).allowed);
+  ck('nor turn it into something that is not an invitation',
+     !asx(GUEST).update(P0, { source: 'manual' }).allowed);
+  ck('nor write the booking whole',
+     !asx(GUEST).write(P0, Object.assign({}, INV, ANSWER_IN)).allowed);
+  ck('nor answer once reception has set it',
+     !asx(GUEST).update(`/manual/${TODAY}/ext-lock22`, ANSWER_OUT).allowed);
+  ck('nor answer a booking reception typed in',
+     !asx(GUEST).update(`/manual/${TODAY}/ext-1727000000000`, ANSWER_OUT).allowed);
+  ck('nor make up a booking of their own',
+     !asx(GUEST).update(`/manual/${TODAY}/ext-nobody`, ANSWER_IN).allowed);
+
+  ck('the desk answers for them, which locks the link',
+     asx(DESK).update(P0, { status: 'in', by: 'staff', at: NOW }).allowed);
+  ck('and edits the booking without touching the answer',
+     asx(WAITER).update(P0, { name: 'Sarah Jones', phone: '0412 345 678', pax: 3,
+       note: 'window', diets: ['Vegan'], dnote: null, time: '18:30' }).allowed);
+  ck('a token in the wrong shape is refused',
+     !asx(DESK).update(P0, { token: 'NOT A TOKEN' }).allowed);
+})();
+
 console.log('RESULT: %d passed, %d failed', P, F);
 process.exit(F ? 1 : 0);

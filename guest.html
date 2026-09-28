@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Guest</title>
 <link rel="stylesheet" href="nala-ui2.css?v=9">
-<link rel="stylesheet" href="nala-ui.css?v=17">
+<link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
   /* Built from mock-guest.html, approved 12 Sep. This page sets LAYOUT
      only; controls take their dress from the shared sheets. */
@@ -43,6 +43,8 @@
                          alone is data, so ink
        green             a spa treatment booked
        amber             a spa suggestion awaiting the desk
+       terracotta        a spa treatment declined (since 27 Sep; it had
+                         no colour here while every other board had it)
 
      The STAY tab's FILL is the pre-arrival form's state, the same tints
      the calendar bars and Front Desk rows wear (the owner, 12 Sep):
@@ -59,6 +61,7 @@
   .tab.red   { border-color:var(--red); }
   .tab.green { border-color:#7E937A; }
   .tab.amber { border-color:#C29A55; }
+  .tab.terra { border-color:var(--law-terra-b); }
   .tab.fdone { background:rgba(122,160,130,.26); border-color:rgba(122,160,130,.65); color:#5E7D67; }
   .tab.fpart { background:#F6EAD5; border-color:#C29A55; color:#8A6A2F; }
   .tab.sel        { background:rgba(28,28,26,.045); color:var(--ink); }
@@ -86,14 +89,18 @@
   .row.booked .a { color:#5E7D67; }
   .row.sugg    { background:#F6EAD5; border-color:#C29A55; }
   .row.sugg .a { color:#8A6A2F; }
+  .row.decl    { background:var(--law-terra-t); border-color:var(--law-terra-b); }
+  .row.decl .a { color:var(--law-terra); }
 
-  /* dietaries: an allergy is the solid red pill - the law's one exception */
+  /* dietaries: an allergy is the solid red pill - the law's one exception.
+     The rest wear Reservations' own pills (27 Sep, one dress per fact): a
+     preference its red tint with no border, none declared its green. */
   .dpills { display:flex; flex-wrap:wrap; gap:6px; margin-top:5px; }
   .dp { font-family:var(--ui-font); font-size:var(--t1); border-radius:14px; padding:5px 10px; }
   .dp.al   { background:var(--red); color:#fff; }
-  .dp.pref { background:rgba(168,50,30,.08); border:1px solid rgba(168,50,30,.4); color:var(--red); }
+  .dp.pref { background:rgba(168,50,30,.12); color:var(--law-red); }
   .dp.flag { background:rgba(28,28,26,.045); border:1px solid var(--rule); color:var(--ink); }
-  .dp.ok   { background:#E4EDE2; border:1px solid #7E937A; color:#5E7D67; }
+  .dp.ok   { background:var(--law-green-t); color:var(--law-green); }
 
   .statepill { display:inline-block; font-family:var(--ui-font); font-size:var(--t1);
     letter-spacing:.12em; text-transform:uppercase; border-radius:16px;
@@ -103,6 +110,10 @@
   .statepill.todo { background:transparent; border:1px dashed var(--rule);
     color:var(--mid); opacity:.8; }
   .statepill.quiet { background:transparent; border:1px solid var(--rule); color:var(--mid); }
+  /* the form's stamps under its pill, a line each - the Front Desk's
+     shape, and a stamp never breaks across two lines */
+  .fstamps { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
+    line-height:1.6; margin:-2px 2px 10px; }
 
   /* the dining history table, the shared reader's own dress (tally's) */
   .hist-sum { text-align:center; font-family:var(--ui-font); font-size:var(--t1);
@@ -181,7 +192,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=78"></script>
+<script src="nala-shared.js?v=81"></script>
 <script>
 /* The guest profile: everything the app knows about one booking, on one
    screen, reached from a calendar bar. URL: guest.html?b=<bookingId> - the
@@ -194,6 +205,7 @@
    as tests/guest_sources.json also names them:
 
      form state, the Stay tab's fill     formState()
+     when the form was opened, completed formStamps()
      the dinner answer with no cell      formDinnerCell()
      tonight's stays, cells, prearrival  fetchStays()
      arrival hour                        effectiveEta()
@@ -371,6 +383,13 @@ function render(bk, night, spa, cardsTree, bookflags, guestRec, anchorKey, cid){
           (st === 'completed' ? 'done">Form completed' :
            st === 'incomplete' ? 'part">Form incomplete' :
            'todo">Form not started') + '</span>';
+  /* when the guest opened their link and when the form was completed, each
+     with its day (the owner, 28 Sep) - formStamps' reading, the Front
+     Desk's words */
+  var stamps = formStamps(pre, { arrive: pms.arrive, depart: pms.depart }, spa);
+  if (stamps.length)
+    s += '<div class="fstamps">' + stamps.map(function(t){
+           return '<div>' + esc(t) + '</div>'; }).join('') + '</div>';
   s += (pre && pre.purpose)
     ? '<div class="row"><div class="q">Kind of stay</div><div class="a">' +
       esc(purposeText(pre.purpose)) + '</div></div>'
@@ -466,6 +485,7 @@ function render(bk, night, spa, cardsTree, bookflags, guestRec, anchorKey, cid){
     var bits = [], cls = '', label = t.status.charAt(0).toUpperCase() + t.status.slice(1);
     if (t.status === 'booked'){ cls = 'booked'; }
     if (t.status === 'suggested'){ cls = 'sugg'; }
+    if (t.status === 'declined'){ cls = 'decl'; }
     if (t.day) bits.push(shortDay(t.day));
     if (t.time) bits.push(clock12(t.time));
     if (!t.day && t.reqDay) bits.push(shortDay(t.reqDay));
@@ -508,9 +528,10 @@ function paintTabs(st, mst, diets, hrows){
   tD.classList.remove('red', 'has');
   if (hasAllergy(diets)) tD.classList.add('red');
   else if ((diets && diets.length) || dined) tD.classList.add('has');
-  tSp.classList.remove('green', 'amber', 'has');
+  tSp.classList.remove('green', 'amber', 'terra', 'has');
   if (mst === 'done') tSp.classList.add('green');
   else if (mst === 'sugg') tSp.classList.add('amber');
+  else if (mst === 'decl') tSp.classList.add('terra');
   else if (mst) tSp.classList.add('has');
 }
 

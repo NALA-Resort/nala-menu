@@ -56,7 +56,7 @@ let STORE, SENDS, STATE;
 function install() {
   STORE = {}; SENDS = [];
   STATE = { tokenOk: true, email: "waiter@nala.x", clicksendOk: true,
-            recordOk: true, linksOk: true };
+            recordOk: true, linksOk: true, manualOk: true };
   STORE["/staff/waiter@nala,x"] = { role: "waiter" };
   STORE["/staff/hk@nala,x"] = { role: "housekeeping" };
   STORE["/staff/old@nala,x"] = { role: "staff" };   /* the pre-rename records */
@@ -97,7 +97,12 @@ function install() {
       return new Response(JSON.stringify({ data: { messages: [{ status: "SUCCESS", message_id: "mid-1" }] } }), { status: 200 });
     }
     const path = u.split("firebasedatabase.app")[1].split(".json")[0];
+    if (opt.method === "DELETE") { delete STORE[path]; return new Response("null", { status: 200 }); }
     if ((opt.method || "GET") === "PUT") {
+      /* manualOk gates an external guest's booking: the rules paste not
+         made, so the database refuses the status 'awaiting'. */
+      if (!STATE.manualOk && path.startsWith("/manual/"))
+        return new Response("no", { status: 401 });
       /* recordOk gates the /invites record alone: the send-worked-but-the-
          record-did-not case. linksOk gates the token store, which fails a
          villa BEFORE anything is sent. */
@@ -355,6 +360,154 @@ ck("no receipt yet is unknown, and the record is left alone",
 install(); STATE.email = "hk@nala.x";
 r = await dlv({ pres: ["bk-future"] });
 ck("the delivery check obeys the same permission as sending", r.status === 403);
+
+
+/* ── kind "ext": a guest from outside the resort ────────────────
+   No booking id and no villa: the Worker creates the booking, the link that
+   opens it, and sends - or, if the text does not go, takes both back out. */
+const EXT_BODY = "Hi Sarah, thanks for your call. Tonight’s menu is below - tap to accept or decline your table for 2. Nala Resort\n<menu>";
+const ext = (over = {}) => worker.fetch(new Request("https://w.dev/", {
+  method: "POST", headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ idToken: "T", kind: "ext", date: today, template: "ext",
+                         name: "Sarah Jones", phone: "0412 345 678", pax: 2,
+                         body: EXT_BODY, ...over }) }), env);
+const keysUnder = (p) => Object.keys(STORE).filter((k) => k.startsWith(p));
+
+install();
+r = await ext();
+j = await r.json();
+const xk = j.key, xt = xk.slice(4);
+ck("an external invitation sends and names the booking it made",
+   r.status === 200 && j.result.status === "sent" && /^ext-[a-z2-9]{6}$/.test(xk));
+ck("to the number reception typed, normalised to E.164",
+   SENDS.length === 1 && SENDS[0].messages[0].to === "+61412345678" &&
+   SENDS[0].messages[0].from === "+61400000000");
+const xBody = SENDS[0].messages[0].body;
+ck("carrying the short link, in place of the marker, once",
+   xBody.endsWith("\nhttps://menu.nalaresort.com/?t=" + xt) && !xBody.includes("<menu>") &&
+   (xBody.match(/menu\.nalaresort\.com/g) || []).length === 1);
+ck("the link opens the booking, not a villa: {x, d}, no booking id",
+   STORE["/links/" + xt] && STORE["/links/" + xt].x === xk &&
+   STORE["/links/" + xt].d === today && STORE["/links/" + xt].b === undefined);
+const xb = STORE["/manual/" + today + "/" + xk];
+ck("the booking is the External reservation, Awaiting, keyed by the token",
+   !!xb && xb.status === "awaiting" && xb.source === "invite" && xb.token === xt &&
+   xb.name === "Sarah Jones" && xb.pax === 2 && xb.phone === "+61412345678" &&
+   typeof xb.invitedAt === "string");
+ck("and it carries no by: nobody has answered yet, so the link may",
+   xb.by === undefined);
+const xr = STORE["/extinvites/" + today + "/" + xk];
+ck("the send is recorded in its own node, with what went and who sent it",
+   !!xr && xr.status === "sent" && xr.body === xBody && xr.to === "+61412345678" &&
+   xr.by === "waiter@nala.x" && xr.providerId === "mid-1" && xr.token === xt);
+ck("and nothing lands among the villas' invitations",
+   keysUnder("/invites/").length === 0);
+
+install(); STATE.clicksendOk = false;
+r = await ext();
+j = await r.json();
+ck("a text that does not go fails, in ClickSend's words",
+   j.result.status === "failed" && /INVALID_RECIPIENT/.test(j.result.error));
+ck("and takes back the booking and the link it made: nothing is Awaiting",
+   j.key === "" && keysUnder("/manual/").length === 0 && keysUnder("/links/").length === 0);
+ck("the attempt is still on record, for the question what did we try",
+   keysUnder("/extinvites/").length === 1 &&
+   STORE[keysUnder("/extinvites/")[0]].status === "failed");
+
+install(); STATE.manualOk = false;
+r = await ext();
+j = await r.json();
+ck("a booking the database refuses sends nothing (the rules not pasted)",
+   j.result.status === "failed" && /booking did not store/.test(j.result.error) &&
+   SENDS.length === 0);
+ck("and its link is taken back out", keysUnder("/links/").length === 0);
+
+install(); STATE.linksOk = false;
+r = await ext();
+j = await r.json();
+ck("a link the database refuses sends nothing and books nothing",
+   j.result.status === "failed" && SENDS.length === 0 &&
+   keysUnder("/manual/").length === 0);
+
+install();
+r = await ext({ phone: "07 3358 1122" });
+ck("a landline is refused before anything is written",
+   r.status === 400 && SENDS.length === 0 && Object.keys(STORE).every((k) => !k.startsWith("/links/")));
+r = await ext({ name: "  " });
+ck("a guest with no name is refused", r.status === 400);
+r = await ext({ pax: 0 });
+ck("so is a table for nobody", r.status === 400);
+r = await ext({ body: "Book at www.elsewhere.example" });
+ck("and a message carrying a URL", r.status === 400);
+r = await ext({ date: "2020-01-01" });
+ck("and a night that is not tonight", r.status === 400);
+ck("none of which reached ClickSend", SENDS.length === 0);
+
+install(); STORE["/menu"] = null;
+r = await ext();
+ck("no menu, no invitation: the text promises tonight's menu", r.status === 409);
+
+install(); STATE.email = "hk@nala.x";
+r = await ext();
+ck("the same permission as every invitation", r.status === 403 && SENDS.length === 0);
+
+/* send again, to one invited tonight */
+install();
+STORE["/manual/" + today + "/ext-abc234"] = { status: "in", by: "guest", at: "x",
+  name: "Tom Becker", phone: "0400 111 222", pax: 4, source: "invite",
+  token: "abc234", invitedAt: "x" };
+STORE["/links/abc234"] = { x: "ext-abc234", d: today, at: "x" };
+r = await ext({ key: "ext-abc234", name: undefined, phone: undefined, pax: undefined });
+j = await r.json();
+ck("send again goes to the number on the booking now, by the same link",
+   j.result.status === "sent" && SENDS[0].messages[0].to === "+61400111222" &&
+   SENDS[0].messages[0].body.endsWith("?t=abc234"));
+ck("and leaves the booking exactly as it stands, answer included",
+   STORE["/manual/" + today + "/ext-abc234"].status === "in" &&
+   STORE["/manual/" + today + "/ext-abc234"].by === "guest");
+ck("the record is the latest send", STORE["/extinvites/" + today + "/ext-abc234"].status === "sent");
+
+install(); STATE.clicksendOk = false;
+STORE["/manual/" + today + "/ext-abc234"] = { status: "awaiting", name: "Tom Becker",
+  phone: "0400 111 222", pax: 4, source: "invite", token: "abc234", invitedAt: "x" };
+STORE["/links/abc234"] = { x: "ext-abc234", d: today, at: "x" };
+r = await ext({ key: "ext-abc234" });
+j = await r.json();
+ck("a failed send again leaves the booking standing, and says so on the record",
+   j.result.status === "failed" && j.key === "ext-abc234" &&
+   !!STORE["/manual/" + today + "/ext-abc234"] &&
+   STORE["/extinvites/" + today + "/ext-abc234"].status === "failed");
+
+install();
+STORE["/manual/" + today + "/ext-1727000000000"] = { status: "in", name: "Cane",
+  phone: "0400 000 000", pax: 2, source: "manual" };
+r = await ext({ key: "ext-1727000000000" });
+j = await r.json();
+ck("a booking reception typed in is not an invitation to send again",
+   j.result.status === "failed" && /no such invitation/.test(j.result.error) &&
+   SENDS.length === 0);
+install();
+STORE["/manual/" + today + "/ext-zzz999"] = { status: "in", name: "Cane",
+  phone: "0400 000 000", pax: 2, source: "manual" };
+r = await ext({ key: "ext-zzz999" });
+j = await r.json();
+ck("nor one keyed like an invitation but made by hand",
+   j.result.status === "failed" && /no such invitation/.test(j.result.error) &&
+   SENDS.length === 0);
+
+/* the handset receipt reaches an external guest's record too */
+install();
+STORE["/extinvites/" + today + "/ext-abc234"] =
+  { status: "sent", providerId: "mid-x", sentAt: new Date().toISOString(), to: "+61400111222" };
+STATE.receipt = { status_code: "302", status_text: "Number not in service" };
+r = await dlv({ exts: [{ date: today, key: "ext-abc234" }, { date: today, key: "../evil" }] });
+j = await r.json();
+ck("a failed receipt lands on the external record, in the carrier's words",
+   j.results[today + "/ext-abc234"] === "failed" &&
+   STORE["/extinvites/" + today + "/ext-abc234"].delivery === "failed" &&
+   /not in service/.test(STORE["/extinvites/" + today + "/ext-abc234"].deliveryText));
+ck("and a key in the wrong shape is never looked up",
+   Object.keys(j.results).length === 1);
 
 console.log("RESULT: " + P + " passed, " + F + " failed");
 process.exit(F ? 1 : 0);

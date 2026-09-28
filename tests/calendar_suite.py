@@ -182,7 +182,10 @@ with sync_playwright() as p:
       setMode('spa');    o.spa=[fill(1),fill(3),fill(4)];
       setMode('clean');
       o.cleanpill=fill(1);
-      function vnumbg(v){ return getComputedStyle(document.querySelectorAll('.vrow')[v-1].querySelector('.vnum')).backgroundColor; }
+      /* the tint a cell shows: a layer drawn over its white where it has one
+         (the cleaned green, since 27 Sep), else its own fill */
+      function vnumbg(v){ const cs=getComputedStyle(document.querySelectorAll('.vrow')[v-1].querySelector('.vnum'));
+        const m=(cs.backgroundImage||'').match(/linear-gradient\\((rgba?\\([^)]*\\))/); return m?m[1]:cs.backgroundColor; }
       o.rows={v1:rowcls(1), v9:rowcls(9), v5:rowcls(5), v6:rowcls(6)};
       o.v1vnum=vnumbg(1);   // occupied stayover -> in house grey
       o.v9vnum=vnumbg(9);   // vacant           -> cleaned green
@@ -205,8 +208,10 @@ with sync_playwright() as p:
     ck("an occupied stayover reads in house, a neutral grey, never flagged",
        "rm-inhouse" in paint["rows"]["v1"] and "flag" not in paint["rows"]["v1"]
        and paint["v1vnum"]=="rgb(234, 234, 230)")
-    ck("a vacant, ready room's number sits in the pastel green",
-       "rm-clean" in paint["rows"]["v9"] and paint["v9vnum"]=="rgb(228, 237, 226)")
+    #  Done green, the colour law's own tile green, since 27 Sep: it was the
+    #  pill green here, one of the greens the owner found all over the place.
+    ck("a vacant, ready room's number sits in the done green",
+       "rm-clean" in paint["rows"]["v9"] and paint["v9vnum"]==GREEN)
     ck("requires cleaning + arrival within 2 days turns the number amber",
        "rm-dirty" in paint["rows"]["v5"] and "flag" in paint["rows"]["v5"]
        and paint["v5vnum"]==AMBER)

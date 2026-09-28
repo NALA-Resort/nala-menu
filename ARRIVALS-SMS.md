@@ -16,10 +16,16 @@ the SAME cells, deliberately: `/bookings/<id>/prearrival` is the form's own
 record, written by prearrival.html as the guest moves through it. Nothing on
 this page invents state:
 
-- `openedAt` - the guest opened their link
+- `openedAt` - the guest opened their link: the FIRST opening, written once
+  and never moved (28 Sep; until then every visit re-stamped it, so a guest
+  who looked again at a finished form read as opening it after completing it)
 - any answer field present - they started (front-desk's GUEST_ANSWERS list,
   copied here, and "no" is an answer)
 - `at` - they submitted: **form completed**
+
+The rows say which of these a form has reached, not when: the owner ruled on
+28 Sep that a closed card does not need the time and date. The two stamps
+are on the open cards, the Front Desk and the Guest Profile, in grey.
 - what this page adds is only `/previnvites/<bookingId>` - the send record,
   the same shape as `/invites/<date>/<villa>` but keyed on the booking,
   because "has THIS guest been asked" outlives any one villa-night.

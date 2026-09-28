@@ -1,0 +1,69 @@
+{
+  "_comment": [
+    "Where an external guest invited by SMS stands, as every screen must read it:",
+    "extInviteState(booking, send) in nala-shared.js. The booking is the one at",
+    "/manual/<date>/ext-<token> that Invitations' External guests drop-down made",
+    "(28 Sep); the send is its record at /extinvites/<date>/<key>. Invitations",
+    "draws the band and the words, Reservations quotes `bad` under its grey",
+    "Awaiting row, and the Dashboard asks only whether it is answered. The",
+    "form_dinner_cases.json pattern: one table, and inv_suite runs every case",
+    "through the page's own copy of the reader.",
+    "",
+    "Each case: [what it is, booking, send, expected]. In `line` and `bad`,",
+    "{sent}, {at} and {invited} stand for timeOf() of the send's sentAt, the",
+    "booking's at and its invitedAt, filled in by the suite, so the table says",
+    "the same thing in every time zone."
+  ],
+  "cases": [
+    ["waiting, the handset has it",
+     {"status": "awaiting", "pax": 2, "invitedAt": "2026-09-28T06:12:00Z"},
+     {"status": "sent", "sentAt": "2026-09-28T06:12:00Z", "providerId": "m1", "delivery": "delivered"},
+     {"kind": "sent", "line": "Table for 2 · sent {sent} · delivered", "bad": ""}],
+
+    ["waiting, no receipt back yet",
+     {"status": "awaiting", "pax": 2, "invitedAt": "2026-09-28T06:12:00Z"},
+     {"status": "sent", "sentAt": "2026-09-28T06:12:00Z", "providerId": "m1"},
+     {"kind": "sent", "line": "Table for 2 · sent {sent} · delivery unconfirmed", "bad": ""}],
+
+    ["the text never arrived: work to do, in the carrier's words",
+     {"status": "awaiting", "pax": 2, "invitedAt": "2026-09-28T05:40:00Z"},
+     {"status": "sent", "sentAt": "2026-09-28T05:40:00Z", "providerId": "m2",
+      "delivery": "failed", "deliveryText": "Number not in service"},
+     {"kind": "ready", "line": "Table for 2", "bad": "not delivered · Number not in service"}],
+
+    ["a send again that did not go: work to do, in ClickSend's words",
+     {"status": "awaiting", "pax": 3, "invitedAt": "2026-09-28T05:00:00Z"},
+     {"status": "failed", "sentAt": "2026-09-28T06:30:00Z", "error": "INVALID_RECIPIENT"},
+     {"kind": "ready", "line": "Table for 3", "bad": "send failed {sent} · INVALID_RECIPIENT"}],
+
+    ["the text went and its record did not save: still waiting",
+     {"status": "awaiting", "pax": 2, "invitedAt": "2026-09-28T06:12:00Z"},
+     null,
+     {"kind": "sent", "line": "Table for 2 · invited {invited}", "bad": ""}],
+
+    ["accepted from the link",
+     {"status": "in", "pax": 4, "by": "guest", "at": "2026-09-28T05:05:00Z", "invitedAt": "2026-09-28T04:50:00Z"},
+     {"status": "sent", "sentAt": "2026-09-28T04:50:00Z", "providerId": "m3", "delivery": "delivered"},
+     {"kind": "answered", "in": true, "line": "Accepted · table for 4 · answered {at}", "bad": ""}],
+
+    ["accepted by the desk, which locks the link",
+     {"status": "in", "pax": 2, "by": "staff", "at": "2026-09-28T05:05:00Z", "invitedAt": "2026-09-28T04:50:00Z"},
+     null,
+     {"kind": "answered", "in": true, "line": "Accepted · table for 2 · set by reception", "bad": ""}],
+
+    ["declined from the link",
+     {"status": "out", "pax": 2, "by": "guest", "at": "2026-09-28T04:40:00Z", "invitedAt": "2026-09-28T04:10:00Z"},
+     {"status": "sent", "sentAt": "2026-09-28T04:10:00Z", "providerId": "m4"},
+     {"kind": "answered", "in": false, "line": "Declined · answered {at}", "bad": ""}],
+
+    ["an answer outranks a text that failed: they got it somehow",
+     {"status": "in", "pax": 2, "by": "guest", "at": "2026-09-28T06:00:00Z", "invitedAt": "2026-09-28T05:40:00Z"},
+     {"status": "sent", "sentAt": "2026-09-28T05:40:00Z", "providerId": "m5", "delivery": "failed"},
+     {"kind": "answered", "in": true, "line": "Accepted · table for 2 · answered {at}", "bad": ""}],
+
+    ["a table with no size is one, never nought",
+     {"status": "awaiting", "invitedAt": "2026-09-28T06:12:00Z"},
+     {"status": "sent", "sentAt": "2026-09-28T06:12:00Z"},
+     {"kind": "sent", "line": "Table for 1 · sent {sent}", "bad": ""}]
+  ]
+}

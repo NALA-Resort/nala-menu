@@ -59,6 +59,10 @@ Already done this way — follow these:
   after the Reservations board, the SMS page and the front desk each read
   their own subset of that one fact and told reception three different
   things about the same villa.
+- `tests/extinvite_cases.json` — where an external guest invited by SMS
+  stands (`extInviteState`, nala-shared.js), as Invitations, Reservations
+  and the Dashboard all read it. Added 28 Sep with the External guests
+  drop-down, so the three screens cannot tell reception three things.
 - `tests/night_answer_cases.json` - a past night's dinner answer as every
   page that looks back must read it (`nightAnswer`, nala-shared.js): the
   cell, else the arrival night's form. Added 27 Sep, after Statistics and
@@ -69,6 +73,12 @@ Already done this way — follow these:
   facts out for itself and disagreed with Reservations and Invitations
   about all four. `dash_suite` asserts the page calls each reader named
   there, and that the patterns under `banned` appear nowhere in it.
+- `tests/colour_law.json` — the colour law below as values: every green,
+  amber and red a board may paint, and Cleans' own key. `colour_suite`
+  checks `nala-ui2.css` (and the printed sheets' `nala-ui.css`) define
+  exactly these, and reads every board, its sheets and modes included,
+  failing any colour outside the table by page and element. Added 27 Sep,
+  after the owner found the greens, reds and oranges "all over the place".
 
 **Never** restate the menu in a suite. Four suites held their own copy of
 the menu order until 26 Aug, which is why adding a page meant editing them
@@ -137,6 +147,35 @@ reads the same:
 The Reservations green and terracotta tiles are a contract between boards:
 suites assert them by computed colour, not class name. Change them in one
 place and the suites will name every other.
+
+**One colour per meaning, held by a table** (27 Sep). The owner found the
+colours "all over the place", and they were: each board had copied a law
+colour and then adjusted its copy. Front Desk drew a completed form at less
+than half the law's green and an incomplete one at a pale amber of its own,
+"menu published" was a different green on Reservations and Invitations, a
+count of villas still to answer was red, and Keys borrowed the desk's pale
+form tints for key cards, so a lost card was as green as a valid one. All of it now reads the law's
+tokens (`--law-*`, nala-ui2.css) and nothing else, and `colour_suite` fails
+any board that paints a green, amber or red outside `tests/colour_law.json`.
+A new status colour is a line in that table with the owner's ruling beside
+it, or it is the wrong colour.
+
+**Not green reads as work to do** (the owner, 27 Sep, overruling a plain
+row for a valid key card): "If it's not green it looks like there is work
+to do. That is the case everywhere." A state with nothing left to do wears
+the done green; a plain white or cream row is work waiting. Before drawing
+a settled state plain because it is "only normal", read this line.
+
+### Cleans keeps its own key
+
+Ruled by the owner, 27 Sep. On the Cleans board colour says **which job**:
+blue a clean, green a service, orange a pre-arrival, in the tiles and the
+job bars alike, and its clocks run green, amber, red as a guest's return
+nears. So green there is not "done" and orange is not "chase this". Shown
+that every other board reads them the other way, he kept the key: the
+housekeepers read it at arm's length and it works. It is Cleans' alone.
+`tests/colour_law.json` allows its three non-law colours on that board and
+no other, and STYLEGUIDE.md's Cleans section spells the key out.
 
 ### Red's one exception: an allergy
 
@@ -256,6 +295,14 @@ came to disagree. `prearrival.html` cannot read it — it is a guest page and
 loads no staff code — so its half of the contract is
 `tests/form_questions.json` and `tests/onenight_cases.json`, which both
 suites answer to.
+
+Its two moments carry a date and a time on the open cards, in grey - the
+Front Desk summary and form, the Guest Profile - and on no closed card, the
+Front Desk and Pre-arrival SMS rows included (the owner, 28 Sep: "a secondary
+type of information"). `openedAt` is the guest's FIRST landing, written once
+and never moved; `at` is said as Completed only when `formState` agrees.
+`formStamps` is the one reading, `stampOf` the one way a stamp is dated: the
+parsed local day, never a slice.
 
 Buttons have a law of their own — **the button law, STYLEGUIDE.md** (ruled
 26 Aug): one solid primary per surface, destructive actions wear terracotta

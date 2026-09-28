@@ -31,6 +31,8 @@ manual={
 # made. A count asserted after a save then read whatever the run's wall clock
 # happened to allow. Kept here, written by remember() below.
 dinner={}
+# The external guests' send records (28 Sep), /extinvites/<date>/<key>.
+extsends={}
 
 def resetDb():
     """Hand the next scenario a clean database.
@@ -43,6 +45,7 @@ def resetDb():
     leftover from whatever the multi-select wrote forty assertions ago."""
     manual.clear(); manual.update(json.loads(MANUAL0))
     dinner.clear()
+    extsends.clear()
 
 MANUAL0=json.dumps(manual)          # the starting board, for resetDb
 roomguests={today:{"9":{"name":"Priya","departs":plus(3)},"4":{"name":"Lucy","departs":plus(2)}}}
@@ -87,6 +90,18 @@ def remember(m,u,raw):
     store = dinner if hit.group(1)=="dinner" else manual
     key = hit.group(3)
     if m=="DELETE" or raw in (None,"","null"): store.pop(key,None)
+    elif m=="PATCH":
+        #  A PATCH merges, and a null in it deletes that field: what the
+        #  database does, and what an external guest's booking relies on
+        #  (28 Sep) - the desk's edit must not put Awaiting back over an
+        #  acceptance the guest made in the meantime.
+        try:
+            rec=dict(store.get(key) or {})
+            for k2,v2 in json.loads(raw).items():
+                if v2 is None: rec.pop(k2,None)
+                else: rec[k2]=v2
+            store[key]=rec
+        except Exception: pass
     else:
         try: store[key]=json.loads(raw)
         except Exception: pass
@@ -105,6 +120,7 @@ def fb(route,request):
     elif "/manual/" in u and today not in u: body="{}"
     elif "/manual/" in u: body=json.dumps(manual)
     elif "/dinner/"+today in u: body=json.dumps(dinner)
+    elif "/extinvites/"+today in u: body=json.dumps(extsends) if extsends else "null"
     elif "/dinner/" in u: body="null"
     elif "/stays/"+today in u: body=json.dumps(stays[today])
     elif "/stays/" in u: body="null"
@@ -221,14 +237,20 @@ with sync_playwright() as p:
 
     # 2 stats
     s2=pg.evaluate("""()=>({c:+nCovers.textContent,o:+nOut.textContent,a:+nAwait.textContent,
-        warn:tileAwait.className})""")
+        ink:getComputedStyle(nAwait).color, coversInk:getComputedStyle(nCovers).color})""")
     ck("covers 9", s2["c"]==9)
     ck("rooms out 1", s2["o"]==1)
     # Awaiting means somebody is in the villa and has not answered. An empty
     # villa is not an outstanding question, so it is not counted as one: villa
     # 4 has a guest and no reply, villa 9 has a Mews booking and no reply.
-    ck("awaiting counts only villas with a guest in them",
-       s2["a"]==2 and "warn" in s2["warn"])
+    ck("awaiting counts only villas with a guest in them", s2["a"]==2)
+    #  And wears ink like the counts beside it. It turned red above nought
+    #  until 27 Sep; a villa that has not answered yet is the "nothing yet"
+    #  the colour law keeps red off, and the owner found it among the reds
+    #  "all over the place".
+    print("   awaiting ink:", s2["ink"], " covers ink:", s2["coversInk"])
+    ck("the awaiting count wears the same ink as covers, never red",
+       s2["ink"]==s2["coversInk"] and s2["ink"]!="rgb(168, 50, 30)")
     # The default, which is the whole point of the change.
     ck("a villa nobody is booked into reads as vacant, not awaiting",
        "room vacant" in t["r"]["11"]["cls"])
@@ -2418,6 +2440,89 @@ with sync_playwright() as p:
            NIGHT_EXPECT(c["expect"]))
     q.close()
 
+
+
+    # ── external guests invited by SMS (28 Sep) ─────────────────
+    #  Invitations sends tonight's menu to somebody who rang, and the Worker
+    #  books them here, Awaiting, until they answer from the link. Grey like
+    #  a possible, "Awaiting" where the covers go, and nobody's cover until
+    #  they accept - then an ordinary External booking.
+    def at(h, m): return now.replace(hour=h, minute=m, second=0, microsecond=0).isoformat()
+    resetDb()
+    q = board()
+    q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1600)
+    base = q.evaluate("()=>+nCovers.textContent")
+    q.close()
+    resetDb()
+    manual.update({
+      "ext-sarah2": {"status": "awaiting", "name": "Sarah Jones", "phone": "+61412345678",
+                     "pax": 2, "source": "invite", "token": "sarah2", "invitedAt": at(16, 12)},
+      "ext-megan2": {"status": "awaiting", "name": "Megan Doyle", "phone": "+61421555019",
+                     "pax": 2, "source": "invite", "token": "megan2", "invitedAt": at(15, 40)},
+      "ext-tomb44": {"status": "in", "name": "Tom Becker", "phone": "+61438220761", "pax": 4,
+                     "source": "invite", "token": "tomb44", "invitedAt": at(14, 50),
+                     "by": "guest", "at": at(15, 5)},
+      "ext-leam22": {"status": "out", "name": "Lea Martin", "phone": "+33612345678", "pax": 2,
+                     "source": "invite", "token": "leam22", "invitedAt": at(14, 10),
+                     "by": "guest", "at": at(14, 40)}})
+    extsends.update({"ext-megan2": {"status": "sent", "sentAt": at(15, 40), "providerId": "m2",
+                                    "delivery": "failed", "deliveryText": "Number not in service"}})
+    q = board()
+    q.goto("http://localhost:8953/tally.html"); q.wait_for_timeout(1600)
+    def xr(name): return q.locator("#listBookings .row", has_text=name)
+    ck("an invited guest waits on the list at once, grey, Awaiting, whether or not All is lit",
+       xr("Sarah Jones").count() == 1 and "maybe" in (xr("Sarah Jones").get_attribute("class") or "") and
+       xr("Sarah Jones").locator(".row-pax").inner_text() == "Awaiting" and
+       not q.evaluate("()=>SHOW_ALL"))
+    ck("tagged External, and saying when it was sent",
+       "External" in xr("Sarah Jones").inner_text() and
+       "Invited by SMS 4:12pm" in xr("Sarah Jones").inner_text())
+    ck("a text that never arrived is named in the failure red, the row still grey",
+       "not delivered · Number not in service" in xr("Megan Doyle").inner_text() and
+       xr("Megan Doyle").locator(".row-sub .bad").evaluate("e=>getComputedStyle(e).color")
+       == "rgb(168, 50, 30)" and "maybe" in (xr("Megan Doyle").get_attribute("class") or ""))
+    ck("an accepted one is an ordinary booking, counted",
+       xr("Tom Becker").count() == 1 and "maybe" not in (xr("Tom Becker").get_attribute("class") or "") and
+       "4 pax" in xr("Tom Becker").inner_text())
+    ck("a declined one is off the list", xr("Lea Martin").count() == 0)
+    ck("and the covers count the accepted table only (+4 on %d)" % base,
+       q.evaluate("()=>+nCovers.textContent") == base + 4)
+
+    xr("Sarah Jones").click(); q.wait_for_timeout(250)
+    sh = q.locator("#sheet").inner_text()
+    ck("its sheet says it was invited and is awaiting the answer",
+       "Invited by SMS 4:12pm" in sh and "awaiting their answer" in sh)
+    ck("with no Night field: the link is for tonight",
+       q.locator("#xNight").count() == 0 and q.locator("#xTime").count() == 1)
+    ck("and a Mark as dining, in the law's dining green",
+       q.locator("#oDine").count() == 1 and
+       q.locator("#oDine").evaluate("e=>getComputedStyle(e).backgroundColor") == "rgb(94, 125, 103)")
+    q.fill("#xNote", "window table")
+    del WRITES[:]
+    saveAndSettle(q, "#oSave")
+    ws = [x for x in WRITES if "/manual/" + today + "/ext-sarah2" in x["u"]]
+    wb = json.loads(ws[-1]["b"]) if ws else {}
+    ck("Save changes patches what the sheet edits, never the answer",
+       len(ws) == 1 and ws[0]["m"] == "PATCH" and wb.get("note") == "window table" and
+       not ({"status", "by", "at"} & set(wb)))
+    ck("so an answer that landed meanwhile stands",
+       manual["ext-sarah2"].get("status") == "awaiting" and
+       manual["ext-sarah2"].get("note") == "window table")
+    xr("Sarah Jones").click(); q.wait_for_timeout(250)
+    del WRITES[:]
+    saveAndSettle(q, "#oDine")
+    ws = [x for x in WRITES if "/manual/" + today + "/ext-sarah2" in x["u"]]
+    wb = json.loads(ws[-1]["b"]) if ws else {}
+    ck("Mark as dining is the desk answering for them, which locks their link",
+       len(ws) == 1 and ws[0]["m"] == "PATCH" and wb.get("status") == "in" and
+       wb.get("by") == "staff" and sorted(wb) == ["at", "by", "status"])
+    q.wait_for_timeout(300)
+    ck("and the table is counted",
+       "maybe" not in (xr("Sarah Jones").get_attribute("class") or "") and
+       "2 pax" in xr("Sarah Jones").inner_text() and
+       q.evaluate("()=>+nCovers.textContent") == base + 6)
+    q.close()
+    resetDb()
 
     # ── the Guest Profile's door: ?open=<villa> opens that villa's sheet ──
     pg = b.new_page(viewport={"width": 390, "height": 900})

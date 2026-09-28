@@ -33,7 +33,6 @@ held at 15:20 in Brisbane, so the boards draw every state they have.
 """
 import errortrap   # fails the run if any page throws
 import threading, http.server, socketserver, json, time, os, re, glob
-from urllib.parse import urlparse, parse_qs, unquote
 
 os.chdir('/home/claude/nala')
 class Q(http.server.SimpleHTTPRequestHandler):
@@ -42,37 +41,12 @@ socketserver.TCPServer.allow_reuse_address = True
 httpd = http.server.ThreadingHTTPServer(("", 8959), Q)
 threading.Thread(target=httpd.serve_forever, daemon=True).start(); time.sleep(0.3)
 
-SDK = """window.firebase={__i:false,initializeApp:function(){window.firebase.__i=true;},
-auth:function(){ if(!window.firebase.__i) throw new Error("no app"); return window.__A;}};
-window.__A={onIdTokenChanged:function(cb){setTimeout(function(){cb({email:'staff@x',
-getIdToken:function(){return Promise.resolve('T');}});},20);},
-onAuthStateChanged:function(cb){setTimeout(function(){cb({email:'staff@x'});},25);},
-signOut:function(){}};"""
+from night_harness import TREE, open_page   # the fixture night, shared with colour_suite
 
-TREE = json.load(open("tests/paper_night.json"))["tree"]
 _g = re.search(r"body\.ui2\.paper\s*\{[^}]*--ground:\s*#([0-9A-Fa-f]{6})",
                open("nala-ui2.css", encoding="utf-8").read())
 GROUND = "#" + _g.group(1).upper() if _g else None
 PAPER = "rgb(%d, %d, %d)" % tuple(int(_g.group(1)[i:i + 2], 16) for i in (0, 2, 4)) if _g else None
-
-def resolve(url):
-    """Read the fixture the way the database answers: the node at the path,
-    and a ranged read ordered by key cut to its startAt..endAt."""
-    u = urlparse(url)
-    node = TREE
-    for seg in [unquote(s) for s in u.path.replace(".json", "").split("/") if s]:
-        node = node.get(seg) if isinstance(node, dict) else None
-    q = parse_qs(u.query)
-    if q.get("orderBy", [""])[0] == '"$key"' and isinstance(node, dict):
-        lo = json.loads(q.get("startAt", ['""'])[0]); hi = json.loads(q.get("endAt", ['""'])[0])
-        node = {k: v for k, v in node.items() if lo <= k <= hi} or None
-    return json.dumps(node)
-
-def fb(route, request):
-    if request.method != "GET":
-        route.fulfill(status=200, content_type="application/json",
-                      body=request.post_data or "null"); return
-    route.fulfill(status=200, content_type="application/json", body=resolve(request.url))
 
 # The boxes a paper page must not have. Outermost only: a see-through chip
 # inside a solid card shows the card, not the paper.
@@ -138,6 +112,7 @@ def click_row(pg, sel, text):
 STATES = {
   "tally.html": [("a villa's sheet", lambda pg: pg.click("#rooms .room >> nth=0")),
                  ("Add reservation", lambda pg: pg.click("#addExt")),
+                 ("an invited guest's sheet", lambda pg: click_row(pg, "#listBookings .row", "Sarah Jones")),
                  ("select mode", lambda pg: (pg.click("#selToggle"), pg.wait_for_timeout(200),
                                              pg.click("#rooms .room >> nth=6")))],
   "front-desk.html": [("a completed arrival's summary", lambda pg: click_row(pg, "#board button.arr", "Reilly")),
@@ -147,7 +122,12 @@ STATES = {
   "keys.html": [("the Issue keys menu", lambda pg: pg.click("#issueBtn"))],
   "calendar.html": [("the Clean colouring", lambda pg: pg.click(".mbtn >> nth=1"))],
   "arrivals-sms.html": [("the next 14 days", lambda pg: pg.click("#knob button >> nth=2"))],
-  "invitations.html": [("the Arrivals list", lambda pg: pg.click(".arrivals > summary"))],
+  "invitations.html": [("the Arrivals list", lambda pg: pg.click(".arrivals > summary")),
+                       ("the External guests list", lambda pg: pg.click(".extguests > summary")),
+                       ("an external guest's sheet", lambda pg: (pg.click(".extguests > summary"),
+                           pg.click(".extguests .vrow >> nth=0"))),
+                       ("the invite sheet", lambda pg: (pg.click(".extguests > summary"),
+                           pg.click("#extInvite")))],
   "dashboard.html": [("the menu", lambda pg: pg.click("#navBtn"))],
   "publish.html": [("Remove armed", lambda pg: pg.click("#rmBtn")),
                    ("the published screen", lambda pg: pg.click("#pubBtn"))],
@@ -160,15 +140,7 @@ with sync_playwright() as p:
     b = p.chromium.launch()
 
     def page(name):
-        ctx = b.new_context(viewport={"width": 390, "height": 844}, timezone_id="Australia/Brisbane")
-        pg = ctx.new_page()
-        pg.clock.set_fixed_time("2026-09-26T15:20:00+10:00")
-        pg.add_init_script(SDK)
-        pg.route("**firebasedatabase.app/**", fb)
-        pg.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
-        pg.goto("http://localhost:8959/" + name)
-        pg.wait_for_timeout(2000)
-        return ctx, pg
+        return open_page(b, 8959, name)
 
     for name in WEARS:
         ctx, pg = page(name)

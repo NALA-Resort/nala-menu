@@ -481,6 +481,21 @@ with sync_playwright() as p:
     rp.close()
     MANUAL["ext-a"]["pax"] = 4
 
+    # An external guest invited by SMS (28 Sep) who has not answered is owed
+    # a menu like an unanswered villa; one who declined is not; one who
+    # accepted is already a diner. Read through extInvites and extInviteState,
+    # the readers dashboard_sources.json names - never worked out here.
+    MANUAL["ext-inv1"] = {"status": "awaiting", "pax": 2, "source": "invite",
+                          "name": "Sarah Jones", "invitedAt": utc_at(6, 12)}
+    MANUAL["ext-inv2"] = {"status": "out", "pax": 3, "source": "invite",
+                          "name": "Lea Martin", "by": "guest", "at": utc_at(6, 40)}
+    xp = board()
+    xm = card(xp, "menus")["note"]
+    ck("an invited guest still to answer joins the pile; a decline does not",
+       xm.startswith("5 pages for 18 diners") and xm.endswith("5 not answered yet"))
+    xp.close()
+    del MANUAL["ext-inv1"]; del MANUAL["ext-inv2"]
+
     # ── the menu, and only tonight's ────────────────────────────
     MENU_NOW["m"] = STALE_MENU
     st = board()

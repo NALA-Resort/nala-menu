@@ -136,9 +136,25 @@
         ".read": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').exists() && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() != 'spa'",
         ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
         "$key": {
+          ".read": "$key.matches(/^ext-[a-z0-9]{4,16}$/) && data.child('source').val() == 'invite'",
           ".write": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').exists() && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() != 'spa'",
           "status": {
-            ".validate": "newData.isString() && (newData.val() == 'in' || newData.val() == 'out' || newData.val() == 'vacant')"
+            ".write": "$key.matches(/^ext-[a-z0-9]{4,16}$/) && data.parent().child('source').val() == 'invite' && data.parent().child('by').val() != 'staff' && (newData.val() == 'in' || newData.val() == 'out') && newData.parent().child('by').val() == 'guest'",
+            ".validate": "newData.isString() && (newData.val() == 'in' || newData.val() == 'out' || newData.val() == 'vacant' || newData.val() == 'awaiting')"
+          },
+          "by": {
+            ".write": "$key.matches(/^ext-[a-z0-9]{4,16}$/) && data.parent().child('source').val() == 'invite' && data.parent().child('by').val() != 'staff' && newData.val() == 'guest'",
+            ".validate": "newData.isString() && (newData.val() == 'staff' || newData.val() == 'guest')"
+          },
+          "at": {
+            ".write": "$key.matches(/^ext-[a-z0-9]{4,16}$/) && data.parent().child('source').val() == 'invite' && data.parent().child('by').val() != 'staff'",
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "token": {
+            ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9]{4,16}$/)"
+          },
+          "invitedAt": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
           },
           "pax": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 40"
@@ -814,7 +830,10 @@
       "$token": {
         ".read": true,
         ".write": "auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager' || root.child('permissions').child('editBookings').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)",
-        ".validate": "$token.matches(/^[a-z0-9]{4,16}$/) && newData.hasChildren(['b','r'])",
+        ".validate": "$token.matches(/^[a-z0-9]{4,16}$/) && (newData.hasChildren(['b','r']) || newData.hasChildren(['x','d']))",
+        "x": {
+          ".validate": "newData.isString() && newData.val().matches(/^ext-[a-z0-9]{4,16}$/)"
+        },
         "b": {
           ".validate": "newData.isString() && newData.val().length <= 64"
         },

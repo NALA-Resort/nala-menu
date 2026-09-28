@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mock &middot; External guest invitations</title>
+<!-- Mock, 28 Sep. APPROVED the same day - "Build it publish it" - after one
+     change, the card made a drop-down like Arrivals, and built from it:
+     INVITATIONS.md's last section is the brief. The owner: "We receive a phone
+     call from somebody outside the resort that wants to make a dinner
+     reservation. I would like an area in the SMS invitations page where we
+     can invite an external guest. The guest would receive tonight's menu
+     with an accept or decline. Because we don't have a booking ID, the URL
+     would have to contain some other unique data, perhaps the mobile
+     number. When sending an invitation, we would need to add their mobile
+     number and their name and their pax. This would create a booking on
+     the reservations table with the status = Awaiting."
+
+     WHAT IT BUILDS ON. Reservations already has the booking this is:
+     Add + -> External writes /manual/<date>/ext-<id> {status:'in', name,
+     phone, pax, source:'manual'}, and every reader of an external diner goes
+     through externalDiners (nala-shared.js) - Reservations, the Dashboard -
+     or reads the same shape (the Reservations Sheet). An invitation is that
+     booking made one step earlier, with one new status: 'awaiting'. When
+     the guest accepts it becomes 'in' and is from then on an ordinary
+     External booking - counted, printed, editable, movable - with nothing
+     new to read it. A decline is 'out'.
+
+     THE PAGE. External guests is a drop-down beside Arrivals, the same
+     component (the owner, 28 Sep: "should be a drop-down just like the
+     arrivals card"), holding Invite + and the evening's external guests.
+
+     THE LINK. Not the mobile number. The guest page was keyed on phone
+     numbers once and was moved off them because a phone number is
+     guessable in order (index.html says so where it reads the link); a
+     number in a URL is also a person's number sitting in the message, the
+     browser history and anything they forward. The short link the
+     invitations have sent since 24 Aug already needs no booking id: the
+     Worker mints six random characters per send (~890 million) and stores
+     what they open at /links/<token>. For a villa that is {b, r}; for an
+     external guest it is the reservation, {x:'ext-<token>', d:<date>}. Same
+     link, same one resolver in index.html, unguessable.
+
+     THE WRITES, all in the Worker (worker/send-invites.js, new kind 'ext'),
+     after the same token, role and menu checks as tonight's send:
+       /manual/<date>/ext-<token>  {status:'awaiting', name, phone (E.164),
+                                    pax, source:'invite', token, invitedBy,
+                                    invitedAt}
+       /links/<token>              {x:'ext-<token>', d:<date>, at}
+       /invites/<date>/ext-<token> the send record, as for a villa
+     A send that fails creates nothing: the sheet stays open with the
+     reason, while reception is still on the phone to fix the number.
+
+     THE ANSWER. index.html, given an x link, reads that one reservation
+     and asks "Sarah, shall we hold your table for 2 tonight?" - Accept,
+     Decline, each asking once more exactly as the villa link does. It
+     writes status in/out, by:'guest', at, and nothing else. Staff outrank
+     a guest, as on /dinner: once reception edits the booking (by:'staff')
+     the link reports and no longer asks. Party size is what reception
+     agreed on the phone; a change is a phone call.
+
+     RULES: a paste. /manual learns 'awaiting'; an invited record (source
+     'invite', key carrying the token) becomes readable by the one link
+     that names it and writable by it for those three fields only, never
+     the name or number, never once staff have set it; /links learns the
+     second shape. Without the paste the first write is refused and
+     nothing sends - it fails, it does not limp.
+
+     STATES, all colour-law tokens, no new colour:
+       Invitations  not delivered  white row, red words      work to do
+                    waiting        law's waiting grey        sent, unknown
+                    accepted       Reservations green tile   done
+                    declined       Reservations terracotta   a guest's no
+       Reservations awaiting       the All list's grey, "Awaiting" where
+                                   the covers go; not in the covers
+     One reader for those states in nala-shared.js, called by both boards
+     (rule 1): the Invitations row and the Reservations row must not work
+     out "not delivered" twice.
+
+     OPEN, the owner's: a call before the chef publishes. Drawn here as the
+     page's own rule - Invite + waits for the menu, as Send does - because
+     the message promises tonight's menu. The alternative is to save the
+     Awaiting booking at once and send from its row once the menu is out.
+
+     The frames are drawn from the live pages' own styles (invitations.html,
+     tally.html and index.html at 08252e9, spliced in, not retyped) on the
+     shared sheets. The sheets are linked WITHOUT ?v= on purpose: no phone
+     is served a mock mid-service, and a ?v= here would join the fan-out
+     pages_suite holds every page to. Nothing works on it. ?w=360 or ?w=320
+     draws every frame at that width. -->
+<style>
+  /* The mock's own chrome: a neutral grey surround, one look in either
+     theme, as mock-paper.html has, so the paper reads as it really is. */
+  :root{ --surround:#E4E4E0; --ink:#1B1B19; --mid:#5F5F58; color-scheme:light; }
+  *{ box-sizing:border-box; }
+  html, body{ margin:0; }
+  body{ background:var(--surround); color:var(--ink);
+        font:14px/1.45 -apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
+  .bar{ padding:14px 16px 4px; max-width:1740px; margin:0 auto; }
+  .bar h1{ font-size:17px; font-weight:600; margin:0 0 2px; }
+  .bar p{ margin:0; color:var(--mid); max-width:70ch; }
+  .stage{ display:flex; flex-wrap:wrap; justify-content:center; align-items:flex-start;
+          gap:28px; padding:14px 16px 40px; max-width:1740px; margin:0 auto; }
+  figure{ margin:0; flex:0 1 auto; width:var(--fw, 390px); max-width:100%; }
+  figcaption{ font-size:14px; font-weight:600; margin:0 0 8px 2px; }
+  figcaption b{ display:inline-flex; align-items:center; justify-content:center;
+                width:22px; height:22px; border-radius:999px; background:var(--ink);
+                color:#fff; font-size:12px; margin-right:6px; vertical-align:1px; }
+  .scr{ overflow:hidden; border-radius:14px; background:#fff; margin-bottom:10px;
+        box-shadow:0 0 0 1px rgba(0,0,0,.08), 0 6px 18px rgba(0,0,0,.08); }
+  .scr iframe{ display:block; border:0; width:100%; height:844px; }
+  .sub{ font-size:13px; color:var(--mid); margin:4px 0 6px 2px; }
+  ul.notes{ margin:0; padding:0 0 0 18px; color:var(--mid); font-size:13px; }
+  ul.notes li{ margin:0 0 4px; }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <h1>External guest invitations</h1>
+  <p>Approved and built, 28 Sep. A phone call from outside the
+    resort becomes an SMS with tonight's menu and a booking on Reservations,
+    Awaiting until the guest accepts or declines. Nothing works on it.</p>
+</header>
+
+<main class="stage">
+  <figure>
+    <figcaption><b>1</b>Invitations &middot; External guests, folded like Arrivals</figcaption>
+    <div class="scr"><iframe title="Invitations" data-doc="f-inv" data-h="auto"></iframe></div>
+    <ul class="notes">
+      <li>The drop-down is new; the rest is today's page.</li>
+      <li>Folded until tapped, like Arrivals, and still open after a reload
+        once opened.</li>
+      <li>A text that did not arrive shows on the folded line in red, so it
+        is never hidden.</li>
+    </ul>
+  </figure>
+
+  <figure>
+    <figcaption><b>2</b>Opened &middot; Invite + and tonight's external guests</figcaption>
+    <div class="scr"><iframe title="External guests opened" data-doc="f-inv-open" data-h="844"></iframe></div>
+    <ul class="notes">
+      <li>Work first, done sinks: not delivered (red words), waiting (grey),
+        then accepted and declined. All four at once here; most nights, one.</li>
+      <li>Tap a guest: send again, or cancel the invitation (terracotta, asks first).</li>
+    </ul>
+  </figure>
+
+  <figure>
+    <figcaption><b>3</b>Invite + &middot; name, mobile, guests</figcaption>
+    <div class="scr"><iframe title="Invite sheet" data-doc="f-sheet" data-h="844"></iframe></div>
+    <ul class="notes">
+      <li>The message fills in the first name and table size; edit it freely.
+        The link is added on its own last line, as on every invitation.</li>
+      <li>Send takes a second press, like the page's Send.</li>
+      <li>If the SMS fails nothing is created, and the reason shows here while
+        you are still on the call.</li>
+    </ul>
+  </figure>
+
+  <figure>
+    <figcaption><b>4</b>The guest &middot; the SMS, then tonight's menu</figcaption>
+    <div class="scr"><iframe title="The SMS" data-doc="f-sms" data-h="auto"></iframe></div>
+    <div class="scr"><iframe title="The guest page" data-doc="f-guest" data-h="844"></iframe></div>
+    <ul class="notes">
+      <li>The link carries six random letters, not their number.</li>
+      <li>The villa guests' own page; only the question changes. Accept or
+        Decline asks once more, then "Confirmed for 2 guests".</li>
+    </ul>
+  </figure>
+
+  <figure>
+    <figcaption><b>5</b>Reservations &middot; Awaiting, then accepted</figcaption>
+    <p class="sub">Sent: the booking is on the list at once, grey, not in the covers.</p>
+    <div class="scr"><iframe title="Reservations, awaiting" data-doc="f-res-a" data-h="auto"></iframe></div>
+    <p class="sub">She accepts: an ordinary External booking, counted.</p>
+    <div class="scr"><iframe title="Reservations, accepted" data-doc="f-res-b" data-h="auto"></iframe></div>
+    <ul class="notes">
+      <li>Shown whether or not All is lit: reception made this booking.</li>
+      <li>A decline leaves the list; Invitations keeps it, in terracotta.</li>
+      <li>Once reception edits it here, her link reports and no longer asks.</li>
+    </ul>
+  </figure>
+</main>
+
+<!-- ══ the frames ════════════════════════════════════════════════════
+     Each is a whole page, built into an iframe below so that each has a
+     body of its own: the shared sheets hang every token off body.ui2. -->
+
+<script type="text/html" id="f-inv">
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="nala-ui2.css">
+<link rel="stylesheet" href="nala-ui.css">
+<style>
+/* invitations.html's own style block, spliced in unchanged (08252e9) */
+  /* This page's OWN colours, restored 29 Aug. The first conversion
+     dropped each page's :root wholesale to remove the tokens the shared
+     sheet owns, and took these with them. An undefined custom property
+     does not fall back, it computes to nothing: fill:var(--dine) became
+     a black fork and color:var(--dine) a black stat, silently.
+     --green is not in the shared sheet on purpose - it is a pale fill on
+     five pages and a dark ink on two - so it lives here.               */
+  :root { --green:#E4EDE2 }
+
+  /* The bottom padding is the fixed footer's room below, two lines of Send
+     label included, so the last line scrolls clear of it. */
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px
+                 calc(100px + env(safe-area-inset-bottom)); }
+  /* Fixed, not the shared sticky, and a deliberate exception to nala-ui.css.
+     The owner's report of 26 Sep: once Arrivals was opened, the sticky
+     footer on his iPhone stopped short and rode up the screen with the
+     scroll, rows showing beneath it - the list had grown after the page
+     first drew, as All grew Reservations' list on 24 Sep. Chromium never
+     shows it, so no suite can. Fixed is what the app's other bottom bars
+     use (Publish, Menu Dietaries, the Reservations select bar), and it
+     does not depend on how tall the page is. Centred on the page's own
+     column, so the button spans the list's width on a desktop too. */
+  body > .foot { position:fixed; left:0; right:0; bottom:0; margin:0 auto;
+                 max-width:calc(var(--appw) + 2*var(--appgut));
+                 padding-left:var(--appgut); padding-right:var(--appgut); }
+
+
+  .seclabel { font-size:var(--t2);
+              color:var(--mid); margin:22px 0 8px; }
+  .seclink  { float:right; font-size:var(--t2);
+              text-transform:none; color:var(--mid); text-decoration:underline; }
+
+  /* Why this page refuses to send. A tinted pill is status, never tappable.
+     One colour per meaning, the Reservations pill's own (the owner, 27 Sep):
+     published is the colour law's green pill, not published is amber - chase
+     this, the chef has not published yet - and only a read that failed is
+     red. Not published was red until 27 Sep, and published wore its border
+     colour as its ink. */
+  .menupill { display:inline-block; padding:6px 12px; border-radius:var(--r);
+              font-size:var(--t2); border:1px solid transparent; }
+  .menupill.none { background:var(--law-amber); color:var(--law-amber-ink);
+                   border-color:var(--law-amber-b); }
+  .menupill.ok   { background:var(--law-save-bg); color:var(--law-green);
+                   border-color:var(--law-save-bdr); }
+  .menupill.fail { background:rgba(28,28,26,.045); color:var(--law-red);
+                   border-color:var(--law-red); }
+  .menuwhy { font-size:var(--t2); color:var(--mid); margin-top:6px; line-height:1.45; }
+  #menuGate { display:none; margin:14px 0 2px; }
+  #menuGate.show { display:block; }
+
+  /* One villa. The whole row is the control surface, the same documented
+     exception as the villa tile grid: the row itself is the toggle. */
+  .vrow { display:flex; align-items:center; gap:12px; width:100%;
+          background:none; border:1px solid var(--rule); border-radius:8px;
+          padding:11px 13px; margin-bottom:7px; text-align:left;
+          font-family:var(--ui-font); color:inherit; cursor:pointer; }
+  .vrow:disabled { opacity:.45; cursor:default; }
+  /* The four bands, INVITATIONS-STATUS.md. Work first, done sinks: white to
+     send, grey waiting (unknown promises nothing, so it is not green), the
+     Reservations tints once answered, and cannot-send sunk in the vacant
+     voice. Band classes only tint; the row itself is untouched. */
+  .grp { font-size:var(--t1);
+         color:var(--mid); margin:14px 2px 6px; }
+  .vrow.b-sent { background:rgba(28,28,26,.045); border-color:var(--rule); }
+  .vrow.b-sent .st { color:var(--mid); }
+  .vrow.b-din { background:var(--resgreen-t); border-color:var(--resgreen-b); }
+  .vrow.b-din .st { color:var(--resgreen); }
+  .vrow.b-out { background:var(--resterra-t); border-color:var(--resterra-b); }
+  .vrow.b-out .st { color:var(--resterra); }
+  .vrow.b-grey { background:transparent; border-style:dashed; opacity:.62; }
+  .vrow.b-grey .tick { visibility:hidden; }
+  .vrow .v { font-size:var(--t4); min-width:30px; text-align:center; }
+  .vrow .mid { flex:1; min-width:0; }
+  .vrow .nm { font-size:var(--t3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vrow .ph { font-size:var(--t2); color:var(--mid); font-weight:normal; margin-left:7px; }
+  /* The confidence mark: a tick where the country's mobile ranges are
+     published and this number sits in one, a question mark where nobody can
+     tell a mobile from a landline (all of +1, for a start). */
+  .vrow .conf { font-size:var(--t2); margin-left:4px; }
+  .vrow .conf.ok { color:var(--resgreen); }
+  .vrow .conf.un { color:var(--mid); }
+  /* The edit pencil. Inside the row button, so its click must not fall
+     through to the tick: the handler stops the event. */
+  .vrow .pen { font-size:var(--t2); color:var(--mid); margin-left:5px;
+               padding:2px 4px; cursor:pointer; }
+  .vrow .st { font-size:var(--t2); color:var(--mid); margin-top:2px; }
+  .vrow .st .bad { color:var(--red); }
+  /* The tick says what pressing Send will do to this villa. Adjacent steps of
+     the type scale, so the mark reads with the row rather than over it. */
+  .tick { flex:0 0 auto; width:24px; height:24px; border:1px solid var(--rule);
+          border-radius:var(--pill); display:flex; align-items:center; justify-content:center;
+          font-size:var(--t3); color:transparent; }
+  .vrow.on { border-color:var(--greenb); }
+  .vrow.on .tick { background:var(--green); border-color:var(--greenb); color:var(--ink); }
+
+  /* ── the two groups ────────────────────────────────────────────
+     An invitation is a thing you send to the guests already in house;
+     arriving guests are rarely sent one, so they set aside into a native
+     <details> dropdown at the top - collapsed, unticked - and the working
+     list below carries an In-house title with its own total. A confirmed
+     diner among the arrivals keeps the Reservations green tile, so the colour
+     law reads the same on both boards. */
+  .grouptitle { display:flex; align-items:baseline; gap:8px; margin:18px 2px 2px; }
+  .grouptitle .gt { font-size:var(--t3); font-weight:600; }
+  .grouptitle .gc { font-size:var(--t2); color:var(--mid); }
+
+  details.arrivals { border:1px solid var(--rule); border-radius:10px;
+                     background:var(--cream); overflow:hidden; margin:8px 0 2px; }
+  details.arrivals > summary { list-style:none; cursor:pointer; display:flex;
+                     align-items:center; gap:11px; padding:12px 13px; }
+  details.arrivals > summary::-webkit-details-marker { display:none; }
+  details.arrivals .chev { flex:0 0 auto; width:15px; text-align:center;
+                     color:var(--mid); font-size:var(--t3); transition:transform .15s ease; }
+  details.arrivals[open] .chev { transform:rotate(90deg); }
+  details.arrivals .albl { flex:1; min-width:0; font-size:var(--t3); font-weight:600; }
+  details.arrivals .asub { font-size:var(--t2); color:var(--mid); font-weight:400; margin-top:2px; }
+  details.arrivals .abadge { flex:0 0 auto; font-size:var(--t2); color:var(--amberink);
+                     background:var(--amber); border:1px solid var(--amberb);
+                     border-radius:var(--pill); padding:2px 10px; }
+  details.arrivals .abody { padding:0 11px 9px; }
+  details.arrivals .anote { font-size:var(--t1); color:var(--mid); margin:2px 2px 9px; }
+  /* Ready arrivals sit white on the cream; answered ones keep their band tint. */
+  details.arrivals .vrow { background:var(--ground); }
+  details.arrivals .vrow.b-din { background:var(--resgreen-t); }
+  details.arrivals .vrow.b-out { background:var(--resterra-t); }
+  details.arrivals .vrow.b-sent { background:rgba(28,28,26,.045); }
+  details.arrivals .vrow.b-grey { background:transparent; }
+
+  /* The message. The box holds the words; the link is never in the box. */
+  select, textarea { width:100%; font-family:var(--ui-font); font-size:var(--t3);
+                     color:var(--ink); background:#fff; border:1px solid var(--rule);
+                     border-radius:var(--r); padding:11px 13px; }
+  select { -webkit-appearance:none; appearance:none; }
+  textarea { margin-top:8px; min-height:96px; resize:vertical; line-height:1.45; }
+  .msgmeta { display:flex; justify-content:space-between; gap:12px;
+             font-size:var(--t2); color:var(--mid); margin-top:6px; }
+  .msgmeta .warn { color:var(--red); }
+  .linknote { font-size:var(--t2); color:var(--mid); margin-top:4px; line-height:1.5; }
+
+  /* .btn wears nala-ui.css's shared dress; only this page's variants live here. */
+  /* The one button whose label counts guests. "Send to 17 guests, 3 of them
+     again" is longer than a phone, and a label that wraps beats a page that
+     scrolls sideways: measured 26px of overflow at 390 before this. */
+  #sendBtn { white-space:normal; line-height:1.4; }
+  /* The second press. Same shape as Remove on the publish page: the annoying
+     action is a stride from the ordinary one. */
+  .btn.arm { background:var(--red); border-color:var(--red); color:#fff; }
+
+  #errBar { font-size:var(--t2); color:var(--red); margin:10px 0; line-height:1.45; }
+  .spacer { height:12px; }
+
+/* ── paper ───────────────────────────────────────────────────────────
+   The ground and its tokens live in nala-ui2.css; these are this page's
+   surfaces, made solid so the paper never shows through them. Mocked in
+   mock-paper.html; the owner, 27 Sep: "Same transparency issue. Don't
+   forget!!" Every card, row and tile is solid white and lifted, with its
+   state's tint drawn over the white, the same colour it always was.
+   The sunk rows (dashed, faded: nothing to do here) are white but not
+   lifted, so they still recede. Nothing changes size or place. */
+body.paper .vrow { background:var(--surface); box-shadow:var(--lift); }
+body.paper .vrow.b-sent { background:linear-gradient(rgba(28,28,26,.045), rgba(28,28,26,.045)), var(--surface); }
+body.paper .vrow.b-din { background:linear-gradient(var(--resgreen-t), var(--resgreen-t)), var(--surface); }
+body.paper .vrow.b-out { background:linear-gradient(var(--resterra-t), var(--resterra-t)), var(--surface); }
+body.paper .vrow.b-grey { background:var(--surface); box-shadow:none; }
+body.paper details.arrivals { background:var(--surface); box-shadow:var(--lift); }
+</style>
+<style>
+/* ── NEW · External guests ──────────────────────────────────────────
+   A drop-down, and the Arrivals one (the owner, 28 Sep: "should be a
+   drop-down just like the arrivals card"): the same <details>, the same
+   class and so the same dress, folded until tapped and kept open across a
+   reload while the desk is in it, as ARR_OPEN keeps Arrivals. A build
+   gives the class a name that fits both. Its rows are the page's own .vrow
+   in the page's own band tints; only the tick gives way to a forward mark,
+   because an external row is not part of the batch Send - it opens its own
+   sheet. Named .fwd, not .chev: .chev is the drop-down's own arrow, and
+   details[open] turns every .chev inside it a quarter turn.
+   Two things it adds to the Arrivals shape:
+   - the folded line names a text that did not arrive, in red words, so a
+     failure is never hidden behind a closed drop-down;
+   - a line inside, above the guests, carrying Invite +.                */
+details.arrivals .asub .bad { color:var(--red); }
+.extline { display:flex; align-items:center; gap:10px; margin:2px 2px 10px; }
+details.arrivals .extline .anote { flex:1; min-width:0; margin:0; }
+/* body.ui2 .btn is full width; a button beside a line is its label's width */
+body.ui2 .extline .btn { flex:0 0 auto; width:auto; min-height:36px; padding:0 14px; font-size:var(--t2); }
+.vrow .fwd { flex:0 0 auto; width:24px; text-align:center; color:var(--mid);
+             font-size:var(--t4); line-height:1; }
+</style>
+</head>
+<body class="tier-app ui2 paper">
+
+<div class="daterow">
+  <div class="date">Mon 28th Sep</div>
+  <div class="navwrap" style="display:block">
+    <button class="navbtn" aria-label="Menu"><span></span><span></span><span></span></button>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-n">3</div><div class="stat-l">To send</div></div>
+  <div class="stat"><div class="stat-n">3</div><div class="stat-l">Answered</div></div>
+  <div class="stat"><div class="stat-n">2</div><div class="stat-l">Sent</div></div>
+  <div class="stat"><div class="stat-n">1</div><div class="stat-l">Unsendable</div></div>
+</div>
+
+<div id="menuGate" class="show"><span class="menupill ok">Menu published</span></div>
+
+<details class="arrivals ext">
+  <summary><span class="chev">&#9654;</span><span class="albl">External guests<div class="asub">Not staying &middot; <span class="bad">1 not delivered</span></div></span><span class="abadge">4 guests</span></summary>
+  <div class="abody">
+    <div class="extline"><div class="anote">Tap a guest to send again or cancel.</div><button class="btn" type="button">Invite +</button></div>
+    <button class="vrow" type="button">
+      <div class="mid"><div class="nm trimrow"><span class="trim">Megan Doyle</span><span class="ph">0421 555 019</span></div>
+        <div class="st">Table for 2 &middot; <span class="bad">not delivered &middot; number not in service</span></div></div>
+      <div class="fwd">&rsaquo;</div>
+    </button>
+    <button class="vrow b-sent" type="button">
+      <div class="mid"><div class="nm trimrow"><span class="trim">Sarah Jones</span><span class="ph">0412 345 678</span></div>
+        <div class="st">Table for 2 &middot; sent 4:12pm &middot; delivered</div></div>
+      <div class="fwd">&rsaquo;</div>
+    </button>
+    <button class="vrow b-din" type="button">
+      <div class="mid"><div class="nm trimrow"><span class="trim">Tom Becker</span><span class="ph">0438 220 761</span></div>
+        <div class="st">Accepted &middot; table for 4 &middot; 3:05pm</div></div>
+      <div class="fwd">&rsaquo;</div>
+    </button>
+    <button class="vrow b-out" type="button">
+      <div class="mid"><div class="nm trimrow"><span class="trim">L&eacute;a Martin</span><span class="ph">+33 6 12 34 56 78</span></div>
+        <div class="st">Declined &middot; 2:40pm</div></div>
+      <div class="fwd">&rsaquo;</div>
+    </button>
+  </div>
+</details>
+
+<div id="board">
+  <details class="arrivals">
+    <summary><span class="chev">&#9654;</span><span class="albl">Arrivals<div class="asub">Arriving today &middot; rarely invited</div></span><span class="abadge">2 guests</span></summary>
+  </details>
+
+  <div class="grouptitle"><span class="gt">In house</span><span class="gc">9 guests</span></div>
+
+  <div class="grp">To send &middot; 3</div>
+  <button class="vrow on" type="button"><div class="v">2</div>
+    <div class="mid"><div class="nm trimrow"><span class="trim">Elena Petrova</span><span class="ph">+61412888102</span><span class="conf ok">&#10003;</span><span class="pen">&#9998;</span></div>
+      <div class="st">Not asked, not answered</div></div><div class="tick">&#10003;</div></button>
+  <button class="vrow on" type="button"><div class="v">9</div>
+    <div class="mid"><div class="nm trimrow"><span class="trim">Claire Donnelly</span><span class="ph">0400 000 009</span><span class="conf ok">&#10003;</span><span class="pen">&#9998;</span></div>
+      <div class="st">Not asked, not answered</div></div><div class="tick">&#10003;</div></button>
+  <button class="vrow on" type="button"><div class="v">16</div>
+    <div class="mid"><div class="nm trimrow"><span class="trim">Jonah Adeyemi</span><span class="ph">+61400000016</span><span class="conf ok">&#10003;</span><span class="pen">&#9998;</span></div>
+      <div class="st">Not asked, not answered</div></div><div class="tick">&#10003;</div></button>
+
+  <div class="grp">Waiting on a reply &middot; 2</div>
+  <button class="vrow b-sent" type="button"><div class="v">4</div>
+    <div class="mid"><div class="nm trimrow"><span class="trim">Lucy Whitfield</span><span class="ph">+61400000004</span><span class="conf ok">&#10003;</span><span class="pen">&#9998;</span></div>
+      <div class="st">Sent 3:58pm &middot; delivered</div></div><div class="tick">&#10003;</div></button>
+  <button class="vrow b-sent" type="button"><div class="v">12</div>
+    <div class="mid"><div class="nm trimrow"><span class="trim">Owen Reilly</span><span class="ph">+61400000012</span><span class="conf ok">&#10003;</span><span class="pen">&#9998;</span></div>
+      <div class="st">Sent 3:58pm &middot; delivered</div></div><div class="tick">&#10003;</div></button>
+
+  <div class="grp">Answered &middot; 3</div>
+  <button class="vrow b-din" type="button"><div class="v">1</div>
+    <div class="mid"><div class="nm trimrow"><span class="trim">James Harrington</span><span class="ph">+61400000001</span><span class="conf ok">&#10003;</span><span class="pen">&#9998;</span></div>
+      <div class="st">Dining &middot; 2 &middot; answered 3:20pm</div></div><div class="tick">&#10003;</div></button>
+  <button class="vrow b-out" type="button"><div class="v">6</div>
+    <div class="mid"><div class="nm trimrow"><span class="trim">Priya Sharma</span><span class="ph">+61400000006</span><span class="conf ok">&#10003;</span><span class="pen">&#9998;</span></div>
+      <div class="st">Not dining &middot; answered 9:00am</div></div><div class="tick">&#10003;</div></button>
+  <button class="vrow b-din" type="button"><div class="v">10</div>
+    <div class="mid"><div class="nm trimrow"><span class="trim">Sam Okafor</span><span class="ph">+61400000010</span><span class="conf ok">&#10003;</span><span class="pen">&#9998;</span></div>
+      <div class="st">Dining &middot; 2 &middot; set by reception</div></div><div class="tick">&#10003;</div></button>
+
+  <div class="grp">Cannot send &middot; 1</div>
+  <button class="vrow b-grey" type="button"><div class="v">13</div>
+    <div class="mid"><div class="nm trimrow"><span class="trim">Hana Sato</span><span class="ph">no number</span></div>
+      <div class="st">No phone number on the booking &middot; tap to add one</div></div><div class="tick">&#10003;</div></button>
+</div>
+
+<div class="seclabel">Template <a class="seclink" href="#">Edit templates</a></div>
+<select aria-label="Template"><option>Menu is ready</option></select>
+<div class="seclabel">Message</div>
+<textarea aria-label="Message text">Tonight&rsquo;s menu is ready. Nala Resort
+&lt;menu&gt;</textarea>
+<div class="msgmeta"><span></span><span>74 characters &middot; 1 segment</span></div>
+<div class="linknote">The menu link is added for each guest automatically, from
+  tonight's booking, and cannot be typed into the message.</div>
+<div class="spacer"></div>
+
+<div class="foot">
+  <button class="btn solid" type="button">Send to 3 guests</button>
+</div>
+</body></html>
+</script>
+
+<!-- The sheet: laid over the page above, which the builder takes as its
+     base. Its dress is Reservations' Add reservation sheet (tally.html),
+     copied rule for rule, paper whites included. -->
+<script type="text/html" id="f-sheet-over">
+<style>
+/* Above the page's fixed Send (the footer is 40, the menu 500): a sheet
+   that opens under the page's own primary leaves two Sends on screen. */
+.backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35);
+            display:flex; align-items:flex-end; justify-content:center; z-index:600; }
+.sheet { width:100%; max-width:var(--appw); background:var(--cream);
+         padding:20px 24px 14px; border-top:1px solid var(--rule);
+         max-height:92vh; overflow-y:auto; }
+.sheet h3 { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); font-weight:normal;
+            text-align:center; margin:0 44px 12px; }
+.sheet-label { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); text-align:center; margin-bottom:8px; }
+.txt { width:100%; padding:12px; margin-bottom:8px; border:1px solid var(--rule);
+       background:transparent; font-family:var(--ui-font); font-size:var(--t3); color:var(--ink); }
+.pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 16px; }
+.pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
+       border-radius:50%; font-family:var(--ui-font); font-size:var(--t2);
+       color:var(--ink); cursor:pointer; padding:0; }
+@supports (aspect-ratio:1){ .pax { height:auto; aspect-ratio:1; } }
+body.paper .pax { background:var(--surface); }
+body.paper .pax.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface); }
+.opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid transparent;
+       border-radius:var(--r); min-height:var(--tap);
+       font-family:var(--ui-font); font-size:var(--t2); color:#fff; cursor:pointer; }
+.sheet textarea { margin-top:0; min-height:0; resize:none; overflow:hidden; }
+.sheet .msgmeta { margin-top:4px; }
+.sheet .becomes { font-size:var(--t2); color:var(--mid); line-height:1.45;
+                  margin:10px 0 14px; }
+</style>
+<div class="backdrop"><div class="sheet">
+  <h3>Invite an external guest</h3>
+  <input class="txt" type="text" placeholder="Name" value="Sarah Jones" aria-label="Name">
+  <input class="txt" type="tel" placeholder="Mobile" value="0412 345 678" aria-label="Mobile">
+  <div class="sheet-label" style="margin-top:14px">Guests</div>
+  <div class="pax-row">
+    <button class="pax">1</button><button class="pax on">2</button><button class="pax">3</button><button class="pax">4</button>
+    <button class="pax">5</button><button class="pax">6</button><button class="pax">7</button><button class="pax">8</button>
+  </div>
+  <div class="sheet-label">Message</div>
+  <textarea aria-label="Message text">Hi Sarah, thanks for your call. Tonight&rsquo;s menu is below - tap to accept or decline your table for 2. Nala Resort
+&lt;menu&gt;</textarea>
+  <div class="msgmeta"><span></span><span>150 characters &middot; 1 segment</span></div>
+  <div class="becomes">The menu link is added automatically. Sending puts
+    Sarah Jones, table for 2, on tonight's Reservations as Awaiting.</div>
+  <button class="opt solid" type="button">Send invitation</button>
+  <button class="opt quiet" type="button">Cancel</button>
+</div></div>
+</script>
+
+<script type="text/html" id="f-sms">
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{ background:#fff; color:#000; padding:0 0 18px;
+        font:17px/1.3 -apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
+  .top{ text-align:center; padding:14px 16px 12px; border-bottom:1px solid #E5E5EA; background:#F9F9F9; }
+  .av{ width:44px; height:44px; border-radius:50%; background:#A9ABB3; margin:0 auto 5px;
+       color:#fff; font-size:18px; display:flex; align-items:center; justify-content:center; }
+  .who{ font-size:12px; color:#000; }
+  .when{ text-align:center; font-size:12px; color:#8E8E93; margin:14px 0 8px; }
+  .msgs{ padding:0 12px; }
+  .bub{ max-width:78%; background:#E9E9EB; border-radius:18px; padding:8px 12px;
+        margin-bottom:4px; }
+  .card{ max-width:78%; background:#E9E9EB; border-radius:18px; overflow:hidden; }
+  .card img{ display:block; width:100%; height:auto; }
+  .card .ct{ padding:8px 12px 9px; }
+  .card .t1{ font-size:15px; font-weight:600; line-height:1.25; }
+  .card .t2{ font-size:13px; color:#6C6C70; margin-top:1px; }
+</style></head>
+<body>
+  <div class="top"><div class="av">N</div><div class="who">+61 400 000 000 &rsaquo;</div></div>
+  <div class="when">Text Message<br>Today 4:12 pm</div>
+  <div class="msgs">
+    <div class="bub">Hi Sarah, thanks for your call. Tonight&rsquo;s menu is below - tap to accept or decline your table for 2. Nala Resort</div>
+    <div class="card"><img src="preview.png" alt="">
+      <div class="ct"><div class="t1">Tonight's menu at NALA</div>
+        <div class="t2">menu.nalaresort.com/?t=k7m2qp</div></div></div>
+  </div>
+</body></html>
+</script>
+
+<script type="text/html" id="f-guest">
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+/* index.html's own style block, spliced in unchanged (08252e9) */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root { --cream: #EDEBE6; --paper: #FEFEFC; --ink: #44382A; --mid: #876B53; --rule: #D6D0C7; }
+
+  /* One fluid step drives every size on the page.
+     Keyed to viewport HEIGHT, because vertical fit is the constraint.
+     667px tall (SE)      -> 14.5px  floor
+     844px tall (13/14/15)-> 16px    unchanged from before
+     932px tall (Pro Max) -> 17.5px  ceiling                        */
+  html { font-size: clamp(14.5px, 1.89vh, 17.5px); }
+
+  html, body {
+    width: 100%;
+    min-height: 100dvh;
+    background: var(--cream);
+    font-family: 'Raleway', Helvetica, Arial, sans-serif;
+  }
+
+  body { display: flex; justify-content: center; }
+
+  /* Everything the guest sees lives in ONE container that is at least
+     one screen tall: header, menu, pricing, RSVP. The menu row is the
+     only flexible one, so it absorbs whatever slack is left over.
+
+     min-height, not height: if the content genuinely needs more room
+     (the details form, a short phone) the container grows and the page
+     scrolls. It can never clip, and it can never leave dead space. */
+  .page {
+    width: 100%;
+    max-width: 440px;
+    /* bottom pad so the pricing never sits hard against the screen edge */
+    padding: 0 clamp(20px, 7vw, 32px) clamp(14px, 3.2vh, 30px);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: grid;
+    grid-template-rows: auto 1fr auto auto;   /* header | menu | pricing | rsvp */
+  }
+
+  header {
+    text-align: center;
+    padding: 3.7vh 0 1.6vh;
+  }
+
+  /* Sized in rem so the shrink-to-fit loop scales it with everything else. */
+  .logo {
+    width: 5rem;
+    height: auto;
+    display: block;
+    margin: 0 auto 1.15rem;
+  }
+
+  #stateDefault {
+    border-top: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .soon { font-size: 1.25rem; color: var(--ink); line-height: 1.5; }
+  .note { font-style: italic; font-weight: 400; font-size: 0.875rem; color: var(--mid); line-height: 1.6; }
+
+  #stateMenu {
+    display: none;
+    flex-direction: column;
+  }
+
+  .menu-date {
+    font-family: 'Raleway', Helvetica, Arial, sans-serif;
+    font-size: 0.84rem;
+    font-weight: 400;
+    letter-spacing: 0.22em;
+    color: var(--mid);
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  /* The four courses sit in their own block, centred in whatever height
+     is left after the date and the pricing. Gaps between courses are
+     capped, so surplus height becomes even margin around the group
+     instead of inflating the gaps. That is the difference between a
+     composed menu and a stretched one. */
+  /* The courses are a page of paper laid on the cream: bordered all
+     round, square corners, inset from the screen edges. */
+  .courses {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1.05rem 1rem;
+    margin: 0;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+  }
+  .spacer-mid { flex: 1; min-height: 1.5rem; max-height: 2.9rem; }
+
+  .course { text-align: center; }
+
+  .course-label {
+    font-family: 'Raleway', Helvetica, Arial, sans-serif;
+    font-size: 0.531rem;
+    font-weight: 500;
+    letter-spacing: 0.38em;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin-bottom: 5px;
+    opacity: .85;
+  }
+
+  .course-rule {
+    width: 1.625rem;
+    height: 1px;
+    background: var(--rule);
+    margin: 4px auto 12px;
+  }
+
+  .dish-name {
+    font-size: 1.125rem;
+    font-weight: 400;
+    color: var(--ink);
+    line-height: 1.25;
+    margin-bottom: 5px;
+  }
+
+  .aus-tag {
+    font-family: 'Raleway', Helvetica, Arial, sans-serif;
+    font-size: 0.5rem;
+    color: var(--mid);
+    vertical-align: super;
+    margin-left: 3px;
+  }
+
+  .dish-desc {
+    font-style: italic;
+    font-weight: 400;
+    font-size: 0.781rem;
+    color: var(--mid);
+    line-height: 1.55;
+  }
+
+  footer {
+    text-align: center;
+    padding: 2.4vh 0 0;
+  }
+
+  .pricing {
+    font-family: 'Raleway', Helvetica, Arial, sans-serif;
+    font-size: 0.781rem;
+    letter-spacing: 0.06em;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+
+  .pricing-note {
+    font-style: italic;
+    font-weight: 400;
+    font-size: 0.75rem;
+    color: var(--mid);
+  }
+
+  /* ── RSVP ─────────────────────────────────────── */
+  #rsvp {
+    display:none;
+    border-top:1px solid var(--rule);
+    margin-top:5vh;
+    padding:4.5vh 0 7vh;
+  }
+  #rsvp.show { display:block; }
+
+  .r-q {
+    text-align:center; font-size:1.125rem; color:var(--ink);
+    margin-bottom:22px; line-height:1.4;
+  }
+
+  .r-btns { display:flex; gap:10px; }
+
+  .r-btn {
+    flex:1; padding:16px 8px; border-radius:10px;
+    font-family:'Raleway',Helvetica,Arial,sans-serif; font-size:0.781rem; font-weight:500;
+    letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    border:1px solid #B8B8B0; background:transparent; color:var(--ink);
+  }
+  .r-btn.primary { background:#8A5646; border-color:#8A5646; color:#FFF6F1; }
+  .r-btn.danger  { background:#9E6455; border-color:#9E6455; color:#fff; }
+  .r-btn.quiet   { color:var(--mid); }
+
+  .field { margin-bottom:18px; }
+  .field-label {
+    font-family:'Raleway',Helvetica,Arial,sans-serif; font-size:0.5625rem; letter-spacing:.25em;
+    text-transform:uppercase; color:var(--mid); margin-bottom:9px; text-align:center;
+  }
+
+  .pax-row { display:flex; gap:6px; justify-content:center; }
+  .pax {
+    width:2.5rem; height:2.5rem; border:1px solid var(--rule); background:var(--paper);
+    border-radius:50%; font-family:'Raleway',Helvetica,Arial,sans-serif; font-size:0.8125rem;
+    color:var(--ink); cursor:pointer; -webkit-tap-highlight-color:transparent;
+  }
+  .pax.on { border-color:var(--mid); box-shadow:inset 0 0 0 1px var(--mid); }
+
+  .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; }
+  .chip {
+    padding:8px 13px; border:1px solid var(--rule); background:var(--paper);
+    border-radius:20px; font-family:'Raleway',Helvetica,Arial,sans-serif; font-size:0.75rem;
+    color:var(--ink); cursor:pointer; -webkit-tap-highlight-color:transparent;
+  }
+  .chip.on { border-color:var(--mid); box-shadow:inset 0 0 0 1px var(--mid); }
+  .premenu-note {
+    flex-basis:100%; text-align:center; font-style:italic; color:var(--mid);
+    font-size:0.8rem; line-height:1.5; margin-bottom:6px;
+  }
+  .ack {
+    flex-basis:100%; display:flex; align-items:flex-start; gap:11px; text-align:left;
+    border:1px solid var(--rule); border-radius:10px; padding:13px 14px; margin-top:6px;
+    cursor:pointer; -webkit-tap-highlight-color:transparent;
+  }
+  .ack-box {
+    flex:0 0 auto; width:19px; height:19px; border:1.5px solid var(--mid);
+    border-radius:4px; margin-top:1px; position:relative;
+  }
+  .ack.on .ack-box { background:var(--ink); border-color:var(--ink); }
+  .ack.on .ack-box::after {
+    content:''; position:absolute; left:5px; top:1px; width:5px; height:10px;
+    border:solid var(--cream); border-width:0 2px 2px 0; transform:rotate(42deg);
+  }
+  .ack-t {
+    font-family:'Raleway',Helvetica,Arial,sans-serif; font-size:0.8rem;
+    color:var(--ink); line-height:1.45;
+  }
+  .ack.miss { border-color:#9E6455; }
+  .ack.miss .ack-box { border-color:#9E6455; }
+  .chip-div {
+    flex-basis:100%; display:flex; align-items:center; gap:10px;
+    margin:4px 0 2px; color:var(--mid);
+  }
+  .chip-div::before, .chip-div::after { content:''; flex:1; border-top:1px solid var(--rule); }
+  .chip-div span {
+    font-family:'Raleway',Helvetica,Arial,sans-serif; font-size:0.62rem;
+    letter-spacing:0.14em; text-transform:uppercase; white-space:nowrap;
+  }
+
+  .note-input {
+    width:100%; padding:11px; border:1px solid var(--rule); background:var(--paper);
+    border-radius:10px; font-family:'Raleway',Helvetica,Arial,sans-serif; font-style:italic;
+    font-size:16px; color:var(--ink); resize:none; /* keep 16px literal: iOS zooms the page on focus below this */
+  }
+  .note-input::placeholder { color:var(--mid); }
+  .cf { display:none; }
+  .cf.show { display:block; }
+  /* hide-diet, see the body tag */
+  body.hide-diet #rsvp .field { display:none; }
+  .cf-msg { font-family:'Raleway',Helvetica,Arial,sans-serif; font-size:0.8rem; line-height:1.55;
+    color:#9E6455; border:1px solid #D8C0B8; border-radius:10px; padding:10px 12px;
+    margin-bottom:8px; text-align:left; }
+  .cf-msg b { font-weight:600; }
+  .cf-input.miss { border-color:#9E6455; }
+
+  .r-done { text-align:center; }
+  .r-done-t { font-size:1.125rem; color:var(--ink); margin-bottom:8px; }
+  .r-done-s { font-style:italic; font-weight:400; font-size:0.875rem; color:var(--mid); }
+  /* Short screens: two-line dish descriptions were pushing past the fold
+     on an SE. Tighten the spacer floors rather than the type. */
+  /* Short screens (SE and similar): the same content has to fit a much
+     smaller box, so the vertical budget is tightened. Type is untouched -
+     only spacing gives way. */
+  @media (max-height: 700px) {
+    .courses      { padding: 0.5rem 0; }
+    .spacer-mid   { min-height: 0.5rem; max-height: 1.4rem; }
+    header        { padding: 2vh 0 0.9vh; }
+    .logo         { width: 5.4rem; }
+    .menu-date    { padding-bottom: 1.2vh; }
+    .course-label { margin-bottom: 3px; }
+    .course-rule  { margin: 3px auto 7px; }
+    .dish-name    { margin-bottom: 3px; }
+    footer        { padding-top: 1.8vh; }
+    #rsvp         { margin-top: 3vh; padding: 2.8vh 0 4vh; }
+    .r-q          { margin-bottom: 14px; }
+    .r-btn        { padding: 11px 8px; }
+  }
+
+  /* Landscape phone: one screen is not achievable or desirable, so stop
+     stretching to it and use settled spacing instead. */
+  @media (orientation: landscape) and (max-height: 560px) {
+    html { font-size: 15px; }
+    .page { min-height: 0; display: block; }
+    header { padding: 26px 0 14px; }
+    .menu-date { padding-bottom: 14px; }
+    .courses { padding: 18px 0; }
+    .spacer-mid { flex: none; min-height: 22px; max-height: none; }
+    footer { padding-top: 18px; }
+  }
+
+  .r-link {
+    display:inline-block; margin-top:12px; font-family:'Raleway',Helvetica,Arial,sans-serif;
+    font-size:0.625rem; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--mid); border-bottom:1px solid var(--rule);
+    text-decoration:none; padding-bottom:2px; cursor:pointer;
+  }
+</style>
+</head>
+<body class="hide-diet">
+<div class="page has-rsvp">
+  <header><div class="menu-date" id="menuDate">Monday evening</div></header>
+  <div id="stateDefault" style="display:none"></div>
+  <div id="stateMenu" style="display:flex">
+    <div class="courses">
+      <img class="logo" src="nala-logo.png" alt="Nala Resort">
+      <div class="course"><div class="course-label">Bread</div><div class="course-rule"></div>
+        <div class="dish-name">Sourdough</div><div class="dish-desc">cultured butter, sea salt</div></div>
+      <div class="spacer-mid"></div>
+      <div class="course"><div class="course-label">Entr&eacute;e</div><div class="course-rule"></div>
+        <div class="dish-name">Prawn cocktail</div><div class="dish-desc">cos, avocado, Marie Rose</div></div>
+      <div class="spacer-mid"></div>
+      <div class="course"><div class="course-label">Main</div><div class="course-rule"></div>
+        <div class="dish-name">Satay chicken</div><div class="dish-desc">peanut sauce, jasmine rice, pickled cucumber</div></div>
+      <div class="spacer-mid"></div>
+      <div class="course"><div class="course-label">Dessert</div><div class="course-rule"></div>
+        <div class="dish-name">Pavlova</div><div class="dish-desc">passionfruit, cream, mint</div></div>
+    </div>
+  </div>
+  <footer id="pricingFoot">
+    <div class="pricing">2 courses $105 &nbsp;&nbsp; 3 courses $125</div>
+    <div class="pricing-note">Bread course included with both options</div>
+  </footer>
+  <div id="rsvp" class="show">
+    <div class="r-q">Sarah, shall we hold your table for 2 tonight?</div>
+    <div class="r-btns">
+      <button class="r-btn">Decline</button>
+      <button class="r-btn primary">Accept</button>
+    </div>
+  </div>
+</div>
+</body></html>
+</script>
+
+<script type="text/html" id="f-res-a">
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="nala-ui2.css">
+<link rel="stylesheet" href="nala-ui.css">
+<style>
+/* tally.html's own style block, spliced in unchanged (08252e9) */
+    /* This page's OWN colours. the board's own dining greens and slates, which mean different things from the shared ones */
+  :root {
+          /* state palette: dining green, declined terracotta, vacant slate */
+          --green:#5E7D67;
+          --slate:#57575E;  --slate-t:rgba(87,87,94,.10);     --slate-b:rgba(87,87,94,.28)}
+  /* Edge to edge, as every other board is (viewport-fit=cover above, the
+     safe-area padding here and on the error bar). This was the last live
+     board without it, and on the owner's iPhone that left the screen's
+     pinned area - the sticky footer, the sheet's backdrop, the select bar -
+     ending about a hundred points above the bottom, with the list showing
+     through beneath: 24 Sep, the first time All made the list outgrow the
+     screen. The side and top gaps stay this board's own. */
+  body { padding:calc(28px + env(safe-area-inset-top)) 24px 0 }
+  .wrap { max-width:var(--appw); margin:0 auto; }
+
+  .errbar { position:fixed; top:0; left:0; right:0; z-index:50;
+            background:#A8321E; color:#fff;
+            /* edge to edge now: clear of the phone's status bar */
+            padding:calc(12px + env(safe-area-inset-top)) 18px 12px;
+            font-family:var(--ui-font); font-size:var(--t2); line-height:1.5;
+            transform:translateY(-100%); transition:transform .25s; }
+  .errbar.show { transform:translateY(0); }
+
+
+/* The pill sits in the Villas section row where the "Villas" label was
+     (owner, 9 Sep: a whole centred row above the numbers was vertical
+     space spent on one word of status). It wears the section-row button's
+     clothes - the same size, padding and --r radius as Select multiple,
+     All and Add + - but keeps its status colours: fill and ink
+     stay the pill's own, and the border is the matching state border.
+     Both states must match one selector: the published pill has rendered
+     as an <a> before, and selecting only span left it unstyled.        */
+  .menustate > * { display:inline-block; border-radius:var(--r);
+                   font-family:var(--ui-font); font-size:var(--t1);
+                   border:1px solid transparent;
+                   /* Symmetric on purpose: the suite asserts the text
+                      sits centred in the pill.                          */
+                   padding:6px 12px; }
+  /* One colour per meaning (the owner, 27 Sep): published is the colour
+     law's green pill, the one Invitations wears for the same fact; not
+     published is amber, chase this - it was terracotta, which is a guest's
+     no, and Invitations had it red, which is a failure. A read that failed
+     IS a failure, so it says so in red rather than claiming no menu. */
+  .menustate .yes { background:var(--law-save-bg); color:var(--law-green);
+                    border-color:var(--law-save-bdr); text-decoration:none; }
+  .menustate .yes b { font-weight:normal; opacity:.75; }
+  .menustate .no  { background:var(--law-amber); color:var(--law-amber-ink);
+                    border-color:var(--law-amber-b); }
+  .menustate .fail { background:rgba(28,28,26,.045); color:var(--law-red);
+                     border-color:var(--law-red); }
+
+
+.sec { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); margin:26px 0 12px;
+         display:flex; justify-content:space-between; align-items:center;
+         /* the not-published-for-this-date pill and Select multiple do not
+            both fit one row below 390; wrap beats a sideways bleed */
+         gap:8px; flex-wrap:wrap; }
+  .sec a { color:var(--ink); text-decoration:none; border:1px solid var(--rule);
+           font-size:var(--t1); padding:6px 12px; border-radius:var(--r);
+           background:transparent; }
+  .sec a.active { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  /* the make-up is a statement, not a label: it reads in ink while the
+     seat it borrowed stays --mid when it falls back to "Bookings" */
+  .sec .makeup { color:var(--ink); }
+
+  /* room grid */
+  .rooms { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; }
+  .room {
+    aspect-ratio:1; border:1px solid var(--rule); border-radius:var(--r);
+    background:transparent;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-family:var(--ui-font); cursor:pointer; padding:0; position:relative;
+  }
+  .room-n { font-size:var(--t2); color:var(--ink); }
+  .room-p { font-size:var(--t1); color:var(--mid); margin-top:2px; min-height:10px; }
+  /* Kept clear of the menu button on the right, which was cutting "Seat
+     separately" in half on a real handset. Wraps rather than shrinks: the
+     label and the action both have to stay readable, and a squeezed control
+     next to a squeezed label is how a wrong button gets pressed. */
+  .comb-note { display:flex; align-items:center; justify-content:space-between;
+               gap:8px; flex-wrap:wrap;
+               border:1px solid var(--ink); border-radius:var(--r);
+               padding:9px 12px; margin:0 44px 12px;
+               font-family:var(--ui-font); font-size:var(--t2); }
+  .comb-undo { border:none; background:transparent; color:var(--law-terra); cursor:pointer;
+               font-family:var(--ui-font); font-size:var(--t2); font-weight:bold; padding:4px 0;
+               -webkit-tap-highlight-color:transparent; }
+  .room.in     { background:var(--green-t); border-color:var(--green-b); }
+  .room.in .room-n { color:var(--ink); }
+  .room.in .room-p { color:var(--green); }
+  .room.out    { background:var(--terra-t); border-color:var(--terra-b); }
+  .room.out .room-n { color:var(--ink); opacity:.6; text-decoration:line-through; }
+  .room.vacant { border-style:solid; border-color:var(--slate-b);
+                 background:var(--slate-t); }
+  .room.vacant .room-n { color:var(--mid); }
+  .room.await  { border-style:dashed; border-color:var(--mid); }
+
+  /* source icon */
+  .mark { position:absolute; top:4px; right:4px; width:10px; height:10px; opacity:.75; }
+  .mark svg { width:100%; height:100%; display:block; }
+  .mark.seen { opacity:.55; }
+  .mark.seen svg { fill:none; stroke:var(--mid); }
+  .room.in  .mark svg { fill:var(--green); stroke:var(--green); }
+  .room.out .mark svg { fill:var(--terra); stroke:var(--terra); }
+
+  .room.sel { outline:2px solid var(--ink); outline-offset:-2px; }
+  .room.sel .room-n { font-weight:bold; }
+
+  .selbar { position:fixed; left:0; right:0; bottom:0; z-index:40;
+            background:var(--cream); border-top:1px solid var(--rule);
+            padding:14px 20px calc(14px + env(safe-area-inset-bottom));
+            transform:translateY(110%); transition:transform .22s; }
+  .selbar.show { transform:translateY(0); }
+  .selbar-inner { max-width:var(--appw); margin:0 auto; }
+  .selcount { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid);
+              text-align:center; margin-bottom:10px; }
+  .selactions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .selbtn.comb { border:1px solid var(--ink); color:var(--ink); background:transparent; }
+  .selbtn.comb:disabled { opacity:.35; }
+  /* The ring is drawn as an overlay, the same way the room-tile group does it,
+     so grouping a booking no longer narrows its rows by 24px and compresses
+     everything inside. Layout width is identical grouped or not.          */
+  .grpbox { position:relative; border:0; padding:0; margin:14px 0; }
+  .grpbox::after { content:''; position:absolute; inset:-6px -9px;
+                   border:1.2px solid var(--ink); border-radius:var(--r); pointer-events:none; }
+  .tilegrp { display:grid; gap:6px; position:relative; }
+  .tilegrp::after { content:''; position:absolute; inset:-3.5px;
+                    border:1.2px solid var(--ink); border-radius:var(--r); pointer-events:none; }
+  .grpbox .row:last-child { border-bottom:none; }
+  .row.stubrow .row-name, .row.stubrow .row-sub { color:var(--mid); }
+  .row.stubrow .row-sub { font-style:italic; }
+  .selbtn { padding:13px 6px; border:1px solid transparent; color:#fff;
+            border-radius:var(--r); min-height:var(--tap);
+            font-family:var(--ui-font); font-size:var(--t2); cursor:pointer; }
+  .selbtn.vac  { background:var(--slate); }
+  .selbtn.din  { background:var(--green); }
+  .selbtn.out  { background:var(--terra); }
+  .selbtn.quiet{ background:transparent; border-color:var(--rule); color:var(--mid); }
+
+  .legend { display:flex; gap:14px; justify-content:center; margin-top:12px;
+            font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); }
+  .legend span { display:flex; align-items:center; gap:5px; }
+  .sw { width:9px; height:9px; border:1px solid var(--rule); display:inline-block; }
+  .sw.in { background:var(--green-t); border-color:var(--green-b); }
+  .sw.out { background:var(--terra-t); border-color:var(--terra-b); }
+  .sw.await { border-style:dashed; border-color:var(--mid); }
+  .sw.vacant { border-color:var(--slate-b); background:var(--slate-t); }
+  .legend2 { margin-top:7px; }
+  .ico { width:11px; height:11px; display:inline-block; }
+  .ico svg { width:100%; height:100%; display:block; fill:var(--mid); stroke:var(--mid); }
+  #legSeen svg { fill:none; stroke-width:2.4; }
+
+  /* rows */
+  /* One line per booking: room, name, then pax and its controls hard right.
+     The phone is not here - it is on the edit sheet, where it is used - so
+     nothing competes for the width and no row can wrap. Dietary pills wrap
+     onto a second line of their own beneath.                              */
+  .row { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center;
+         column-gap:10px; row-gap:0; padding:9px 0; border-bottom:1px solid var(--rule); }
+  .row-main { flex:1 1 auto; min-width:0; }
+  .row-name { font-size:var(--t3); }
+  /* The villa number is the thing staff scan for, so it leads the line at a
+     larger size in ink, then a dash, then the guest name. The word "villa"
+     is dropped - every row is a villa, so repeating it says nothing.     */
+  .row-name .rm { font-family:var(--ui-font); font-size:var(--t3);
+                  font-weight:bold; color:var(--ink); }
+  .row-name .rm::after { content:' - '; font-weight:normal; color:var(--mid); }
+  .row-name .tag { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
+                   border:1px solid var(--rule); padding:2px 6px; margin-left:8px;
+                   border-radius:var(--r); vertical-align:middle; }
+  .row-sub { font-style:italic; font-size:var(--t2); color:var(--mid); margin-top:8px; }
+  .row-pax { font-family:var(--ui-font); font-size:var(--t2); white-space:nowrap; }
+  /* The bubble sits BEFORE the pax count so the pax figures line up down the
+     list whether or not a booking carries a note.                         */
+  .row-right { display:flex; align-items:center; gap:6px; white-space:nowrap;
+               margin-left:auto; justify-content:flex-end; }
+  .bub-slot { width:20px; flex:0 0 20px; }
+  .alrg { color:var(--red); font-style:normal; }
+  /* The same allergy on a guest who has not answered tonight: grey, as the
+     All list draws them, and bold where the list's pill is solid. */
+  .alrg-maybe { font-style:normal; font-weight:600; }
+  /* An allergy is a solid red pill with the word "allergy" dropped, since the
+     fill already says it. A preference is a tinted pill at full label. The
+     pills take the whole row width, not just the half beside the pax count. */
+  .nm { white-space:nowrap; }
+  .dietline { flex:0 0 100%; margin:8px 0 0; display:flex; flex-wrap:wrap; gap:5px; }
+  .dpill { font-family:var(--ui-font); font-size:var(--t2); font-weight:bold; padding:3px 8px;
+           border-radius:var(--pill); background:rgba(168,50,30,.12); color:var(--red); }
+  .dpill-al { background:var(--red); color:#fff; }
+  /* The declared "none" wears the same pill as any dietary, in the green
+     the colour law gives a positive state - never the red tints above,
+     which read as something for the kitchen to act on. It says
+     "No dietaries", the FOH sheet's words for the same fact, because the
+     full sentence outgrew the row. */
+  .dpill-ok { background:var(--green-t); color:var(--green); }
+
+  /* ── All: everyone who could still be dining tonight ──────────────────
+     The chef's ask, through the owner, 24 Sep: a guest in house who has not
+     answered dinner tonight was on no list, so their dietaries showed on the
+     night they confirmed and on no night after, and the menu was written as
+     though nobody had any. All adds those villas to the Bookings list.
+
+     A possible is grey, the owner's word, and the colour law's grey for
+     waiting on the other side: the name, "Awaiting" where the covers go,
+     and the pills, in the same shapes as the red ones - solid for an
+     allergy, a tint for a preference. So a possible's allergy is NOT red.
+     Red is a confirmed diner's, the line the Publish page's rings already
+     draw (red for a confirmed guest, never for one who is only staying),
+     and the grey is what lets confirmed and possible read apart at arm's
+     length. Mocked in mock-possibles.html. */
+  .row.maybe .row-name, .row.maybe .row-name .rm, .row.maybe .row-pax { color:var(--mid); }
+  .row.maybe .dpill, .row.maybe .dpill-ok { background:rgba(28,28,26,.07); color:var(--mid); }
+  .row.maybe .dpill-al { background:#77776F; color:#fff; }
+  /* All and Add + ride together at the right of the Bookings row, in the
+     row's own button dress. All lit wears the ui2 Selected dress, as
+     Select multiple does. margin-left:auto keeps the pair right-aligned
+     when a long make-up pushes it onto a line of its own. */
+  .secbtns { display:flex; gap:8px; margin-left:auto; }
+  .row.conflict { border-left:3px solid var(--red); padding-left:10px;
+                  background:rgba(168,50,30,.05); }
+  /* Icon only, no box, in a fixed 20px slot that exists whether or not this
+     booking has a note - otherwise the bubble's width shifts the pax count
+     and the line height of every row that happens to carry a comment.    */
+  .bub { width:20px; height:20px; border:0; background:transparent; padding:0;
+         cursor:pointer; display:flex; align-items:center; justify-content:center;
+         position:relative; }
+  .bub::after { content:''; position:absolute; inset:-11px; }  /* 42px tap target */
+  .bub svg { width:15px; height:15px; display:block; fill:var(--mid); }
+  .bub.kitchen svg { fill:var(--law-amber-ink); }  /* notes to read: chase this, the law's amber ink (was a gold of its own until 27 Sep) */
+  .bub.flag svg { fill:var(--red); }
+  .pop-who { font-size:var(--t3); margin-bottom:14px; padding-bottom:12px;
+             border-bottom:1px solid var(--rule); }
+  .pop-h { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); margin-bottom:6px; }
+  .pop-h.dh { color:var(--red); }
+  .pop-t { font-size:var(--t3); line-height:1.45; margin-bottom:16px; }
+  .empty { font-style:italic; color:var(--mid); font-size:var(--t2); padding:8px 0; }
+
+  .actions.hidden { visibility:hidden; }
+  .actions { margin-top:34px; gap:10px;
+             padding:12px 0 calc(12px + env(safe-area-inset-bottom)); }
+  /* .btn wears nala-ui.css's shared dress; the rows here only lay it out. */
+  .actions .btn { flex:1 1 40%; }
+
+  /* sheet */
+  .backdrop { position:fixed; inset:0; background:rgba(28,28,26,.35);
+              display:none; align-items:flex-end; justify-content:center; z-index:10; }
+  .backdrop.show { display:flex; }
+  .sheet { width:100%; max-width:var(--appw); background:var(--cream);
+           min-height:560px;
+           padding:26px 24px 120px; border-top:1px solid var(--rule);
+           max-height:92vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .sheet h3 { font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); font-weight:normal;
+              text-align:center; margin:0 44px 12px; }
+  .opt { width:100%; padding:15px; margin-bottom:8px; border:1px solid transparent;
+         border-radius:var(--r); min-height:var(--tap);
+         font-family:var(--ui-font); font-size:var(--t2); color:#fff; cursor:pointer; }
+  /* matches the room tile palette */
+  /* The dining state, in the colour law's green, same as the tile. */
+  .opt.din   { background:var(--green); border-color:var(--green); }
+  .opt.out   { background:var(--terra); border-color:var(--terra); }   /* not dining - red */
+  .opt.vac   { background:var(--slate); border-color:var(--slate); }   /* vacant - slate */
+  .opt.quiet { background:transparent; border-color:var(--rule); color:var(--mid); }
+  .pax-row { display:flex; gap:6px; justify-content:center; margin:4px 0 16px; }
+  .pax-fact { font:600 20px/1 var(--ui-font); color:var(--ink); }
+  .pax { width:42px; height:42px; border:1px solid var(--rule); background:transparent;
+         border-radius:50%; font-family:var(--ui-font); font-size:var(--t2);
+         color:var(--ink); cursor:pointer; padding:0; }
+  /* Eight of these plus gaps outgrow a phone narrower than ~430, and flex
+     shrinks WIDTH alone, so a circle became an egg on any narrower phone.
+     Height follows the shrunken width instead. The owner, 8 Sep: round. */
+  @supports (aspect-ratio:1){ .pax { height:auto; aspect-ratio:1; } }
+  .pax.on { background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:4px; }
+  .chip { padding:7px 12px; border:1px solid var(--rule); background:transparent;
+          border-radius:var(--pill); font-family:var(--ui-font); font-size:var(--t2);
+          color:var(--mid); cursor:pointer; }
+  .chip.on { background:var(--accent); color:var(--accent-ink);
+           border-color:var(--accent); }
+
+  .seg { display:flex; gap:6px; margin:2px 0 12px; }
+  .seg button { flex:1; padding:11px 0; border:1px solid var(--rule); background:transparent;
+                font-family:var(--ui-font); font-size:var(--t2); color:var(--mid); cursor:pointer; border-radius:var(--r); }
+  .seg button.on { background:var(--accent); color:var(--accent-ink);
+                 border-color:var(--accent); }
+  .rm-row { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:2px 0 14px; }
+  .rmp { height:40px; border:1px solid var(--rule); background:transparent;
+         font-family:var(--ui-font); font-size:var(--t2); color:var(--ink);
+         cursor:pointer; border-radius:var(--r); }
+  .rmp.on { background:var(--accent); color:var(--accent-ink);
+          border-color:var(--accent); }
+  /* Reported 18 Aug from a real handset: the villa heading and the name were
+     being squeezed against the menu button, because the sheet header did not
+     know the button was there. The name line is given room to breathe and the
+     panel below it is set a little tighter, so a full snapshot and the three
+     service buttons still fit one screen without scrolling. */
+  .gd { position:relative; text-align:center; margin:-4px 44px 12px;
+        font-size:var(--t2); line-height:1.5; }
+  .gd .gd-sub { display:block; font-family:var(--ui-font); font-size:var(--t2);
+                color:var(--mid); }
+  .gd .gd-note { display:block; font-style:italic; font-size:var(--t2); color:var(--mid); }
+
+  /* ── the guest snapshot ───────────────────────────────────────────────
+     Everything the app holds about whoever is in the villa, behind one tap.
+     The sheet showed a name and a phone number and nothing else, so the
+     dates, the head count from Mews and the guest's own pre-arrival answers
+     were all being collected and shown nowhere.
+
+     Shut by default. Reception opens this sheet twenty times a service to
+     press one of three buttons, and a panel of detail sitting open in front
+     of those buttons would be in the way every time for the once it is
+     wanted. */
+  /* The name IS the control, so it must look pressable without shouting: a
+     dotted underline reads as "there is more here" where a solid one reads as
+     a phone link, which is a different promise. */
+  .gd-name { font:inherit; color:var(--ink); background:none; border:0;
+             padding:0 1px; margin:0; cursor:pointer; text-align:center;
+             border-bottom:1px dotted var(--mid); line-height:1.3; }
+  .gd-name.on { border-bottom-style:solid; border-bottom-color:var(--ink); }
+  .gd-name:active { opacity:.6; }
+  /* Grid rather than a list: the labels line up down the left so the eye can
+     run down the values, which is how a sheet like this is read. */
+  /* Lies OVER the card rather than pushing it down. Two tries got this wrong.
+     Folding open in place moved the service buttons every time the panel was
+     opened, and then reveals-downward still displaced them, so the guest
+     count and Dining collided with the panel as it grew. Reception presses
+     those three buttons from memory, and a control that moves under the thumb
+     is worse than one that is hard to find.
+
+     So the card stays exactly where it is and the snapshot floats above it,
+     anchored under the name it belongs to. Nothing below moves at all.
+
+     Pulled out to the full width of the sheet: the name line is inset to keep
+     clear of the menu button, and the panel has no such problem. */
+  .gd-panel { position:absolute; top:100%; left:-44px; right:-44px; z-index:6;
+              margin-top:8px; padding:12px 16px 4px; text-align:left;
+              overflow-y:auto;
+              background:var(--cream); border:1px solid var(--rule);
+              border-radius:var(--r);
+              box-shadow:0 10px 28px rgba(28,28,26,.14);
+              opacity:0; visibility:hidden; transform:translateY(-6px);
+              transition:opacity .18s ease, transform .18s ease,
+                         visibility 0s linear .18s; }
+  .gd-panel.open { opacity:1; visibility:visible; transform:translateY(0);
+                   transition:opacity .18s ease, transform .18s ease,
+                              visibility 0s; }
+  @media (prefers-reduced-motion: reduce) {
+    .gd-panel { transition:none; }
+    .gd-panel.open { transition:none; }
+  }
+  .gd-int { margin:10px 0 2px; }
+  .gd-int label { display:block; font-family:var(--ui-font); font-size:var(--t1);
+                  color:var(--mid); margin:0 0 4px; }
+  .gd-int textarea { width:100%; min-height:56px; padding:8px 10px;
+                     border:1px solid var(--rule); border-radius:var(--r);
+                     background:var(--cream); color:var(--ink);
+                     /* 16px is the floor for every input on a phone: iOS
+                        zooms the whole page into any field set smaller. */
+                     font-family:var(--ui-font); font-size:var(--t3); resize:vertical; }
+  .gd-int .gd-int-save { display:block; width:100%; margin:6px 0 0;
+                     padding:8px 0; border:1px solid var(--rule);
+                     border-radius:var(--r); background:none; cursor:pointer;
+                     color:var(--mid); font-family:var(--ui-font);
+                     font-size:var(--t1);
+                     -webkit-tap-highlight-color:transparent; }
+  .gd-int .gd-int-save:disabled { opacity:.45; cursor:default; }
+  .gd-int-link { display:inline-block; margin:6px 0 2px; padding:2px 0;
+                 border:0; background:none; cursor:pointer;
+                 color:var(--mid); font-family:var(--ui-font); font-size:var(--t3);
+                 text-decoration:underline; text-underline-offset:3px;
+                 -webkit-tap-highlight-color:transparent; }
+  .gd-int-link:active { color:var(--ink); }
+  .gd-close { display:block; width:100%; margin:8px 0 0; padding:9px 0;
+              border:0; border-top:1px solid var(--rule);
+              background:none; cursor:pointer; color:var(--mid);
+              font-family:var(--ui-font); font-size:var(--t1);
+              -webkit-tap-highlight-color:transparent; }
+  .gd-close:active { color:var(--ink); }
+  .gd-row { display:flex; gap:9px; padding:2px 0; font-size:var(--t2);
+            line-height:1.45; }
+  .gd-k { flex:0 0 74px; font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
+          padding-top:2px; }
+  .gd-v { flex:1 1 auto; min-width:0; color:var(--ink); }
+  .gd-v.quiet { color:var(--mid); font-style:italic; }
+  .gd-tel { color:var(--ink); text-decoration:none;
+            border-bottom:1px solid var(--rule); }
+
+  /* ── dining history ──────────────────────────────────────────────────
+     Only the nights the stay actually sat, one a row, one course a column:
+     read down a column for everything they have eaten of that course. The
+     owner's rulings, 7 Sep: a missed night is noise - the summary line
+     carries the count - and no colour says anything here, because nothing
+     here is a state. Mocked in mock-dining-history.html. */
+  .hist-body { margin-bottom:14px; }
+  .hist-sum { text-align:center; font-family:var(--ui-font); font-size:var(--t2);
+              color:var(--mid); margin:0 0 10px; }
+  .htab { width:100%; border-collapse:collapse; text-align:left; }
+  .htab th { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid);
+             font-weight:normal; padding:0 4px 6px 0;
+             border-bottom:1px solid var(--rule); }
+  .htab td { font-family:var(--ui-font); font-size:var(--t1); line-height:1.35;
+             vertical-align:top; padding:9px 4px 9px 0;
+             border-bottom:1px solid var(--rule); }
+  .htab tr:last-child td { border-bottom:0; }
+  .htab .hd { white-space:nowrap; color:var(--ink); }
+  .htab td.none { color:var(--mid); font-style:italic; }
+  .hist-note { text-align:center; font-family:var(--ui-font); font-size:var(--t1);
+               color:var(--mid); margin:10px 0 4px; }
+
+  .note-box { font-style:italic; font-size:var(--t2); color:var(--mid); text-align:center;
+              line-height:1.6; padding:0 4px 16px; }
+  .sheet-label { font-family:var(--ui-font); font-size:var(--t1); color:var(--mid); text-align:center; margin-bottom:8px; }
+  .txt { width:100%; padding:12px; margin-bottom:8px; border:1px solid var(--rule);
+         background:transparent; font-family:var(--ui-font); font-size:var(--t3); color:var(--ink); }
+  .txt::placeholder { color:var(--mid); font-style:italic; }
+  .txt:focus { outline:none; border-color:var(--ink); }
+  /* The Night and Time fields on a booking's sheet: dressed as the other
+     fields, with an invisible native picker on top - the same pattern as
+     the header's date (initDateNav, nala-shared.js). They share a line,
+     because two when-facts cost one field's height that way. */
+  .nightfield { position:relative; cursor:pointer; }
+  .nightfield .unset { color:var(--mid); font-style:italic; }
+  .whenrow { display:flex; gap:8px; }
+  .whenrow #xNight { flex:1.4 1 0; }
+  .whenrow #xTime  { flex:1 1 0; }
+
+/* A read-only role opens the sheet to READ it - the phone, the dietaries and
+   the comment all live in there and the chef needs them. What goes is every
+   control that WRITES. Close and Back stay, so no sheet is a dead end.
+   Keyed on ids because the sheet is rebuilt on every open, so a rule that
+   ran once per render would let the buttons back in.                    */
+body.readonly #oSave, body.readonly #oDetails, body.readonly #oCancel,
+body.readonly #oRevert, body.readonly #oRestore, body.readonly #oDel,
+body.readonly #oIn, body.readonly #oOut, body.readonly #oVac,
+body.readonly #oClear, body.readonly #oUncomb, body.readonly #cYes,
+body.readonly .comb-undo { display:none; }
+
+/* ── paper ───────────────────────────────────────────────────────────
+   The ground and its tokens live in nala-ui2.css; these are this page's
+   surfaces, made solid so the paper never shows through them. Mocked in
+   mock-paper.html, ruled by the owner 27 Sep.
+
+   The owner on the first try: "a bit lazy on the reservation screen",
+   then "the card is now adding additional padding. Don't use so much.
+   Look at your own app as example." So every card here grows OUTWARD,
+   the Claude app's own rule measured off his screenshot: its message box
+   sits 8pt outside the text column and its buttons 8pt inside the box,
+   back on the column. Each card takes 8 into the page margin (1 border,
+   7 padding) and nothing inside it moves: the tiles keep today's size,
+   the names keep their line.
+
+   The villa board is ONE card, its menu pill, tiles and legend, so the
+   tiles need nothing of their own: their tints sit on white as they
+   always did, and the suite that reads them by computed colour still
+   reads the law's own rgba. Each booking is its own card, as each
+   arrival is on Front Desk. A table seated together is one card, edged
+   like any other: sharing the card is what says they sit together, so
+   the ink ring the white page needs is not drawn here. The owner, 27 Sep:
+   a group "doesn't need the black box around any more if it's going to
+   sit on the same white card". The villa board keeps its ring: each
+   villa there is a tile of its own, and the ring is all that joins them. */
+body.paper .villacard { background:var(--surface); border:1px solid var(--rule);
+                        border-radius:var(--r); margin:18px -8px 0; padding:7px;
+                        box-shadow:var(--lift); }
+body.paper .villacard > #roomsSec { margin-top:0; }
+/* a legend that runs out of line wraps whole items, never half a label */
+body.paper .villacard .legend { flex-wrap:wrap; gap:4px 12px; }
+body.paper .villacard .legend span { white-space:nowrap; }
+body.paper .sec a:not(.active) { background:var(--surface); }
+/* the select bar's two quiet buttons, when select mode slides it up */
+body.paper .selbtn.quiet { background:var(--surface); }
+/* the seated-together note select mode draws above the board */
+body.paper .comb-note { background:var(--surface); }
+/* The sheets (a villa, Add reservation) are paper like the page; the
+   covers, the chips, the External / In-house pair and the night field on
+   them are white, the picked one's grey drawn over the white. */
+body.paper .pax, body.paper .chip, body.paper .seg button,
+body.paper .nightfield { background:var(--surface); }
+body.paper .pax.on, body.paper .chip.on, body.paper .seg button.on {
+  background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface); }
+body.paper #listBookings > .row { background:var(--surface); border:1px solid var(--rule);
+                                  border-radius:var(--r); margin:0 -8px 7px; padding:9px 7px;
+                                  box-shadow:var(--lift); }
+/* the clash keeps its red edge and tint, drawn over the white; the edge
+   marks it now, where it was indented 13pt as well */
+body.paper #listBookings > .row.conflict {
+  background:linear-gradient(rgba(168,50,30,.05), rgba(168,50,30,.05)), var(--surface);
+  border-left:3px solid var(--red); padding-left:5px; }
+/* A group's rows take the card's 8 as padding of their own, so a grouped
+   row is exactly as wide as a lone booking's card (grouping must never
+   narrow a row, tally_suite) and its rule runs edge to edge of the card.
+   The card's hairline is an inset shadow for the same reason: a border
+   would take 1 from every row, and a clash's red edge paints over it. */
+body.paper #listBookings > .grpbox { background:var(--surface); border-radius:var(--r);
+                                     margin:0 -8px 7px; padding:0;
+                                     box-shadow:inset 0 0 0 1px var(--rule), var(--lift); }
+body.paper #listBookings > .grpbox::after { display:none; }
+body.paper #listBookings > .grpbox > .row { padding-left:8px; padding-right:8px; }
+body.paper #listBookings > .grpbox > .row.conflict { padding-left:5px; }
+/* the sticky footer covers the cards' full width as they scroll under it,
+   its buttons still on the column */
+body.paper #footActions { margin-inline:-8px; padding-inline:8px; }
+</style>
+<style>
+/* NEW: the not-delivered words on an awaiting external booking, in the
+   failure red, words only - the row itself stays the possible's grey. */
+.row-sub .bad { color:var(--red); font-style:normal; }
+body { padding-bottom:14px; }
+</style>
+</head>
+<body class="tier-app ui2 paper">
+<div class="wrap">
+  <div class="daterow">
+    <button class="dnav today" disabled>Today</button>
+    <button class="dnav">&#8249;</button>
+    <div class="date">Mon 28th Sep</div>
+    <button class="dnav">&#8250;</button>
+    <div class="navwrap"><button class="navbtn" aria-label="Menu"><span></span><span></span><span></span></button></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-n">@@COVERS@@</div><div class="stat-l">Covers</div></div>
+    <div class="stat"><div class="stat-n">1</div><div class="stat-l">Villas out</div></div>
+    <div class="stat"><div class="stat-n">8</div><div class="stat-l">Villas awaiting</div></div>
+  </div>
+  <div class="sec" id="listSec">
+    <span id="tablesLine" class="makeup">@@MAKEUP@@</span>
+    <span class="secbtns"><a href="#" id="allToggle">All</a><a href="#" id="addExt">Add +</a></span>
+  </div>
+  <div id="listBookings">
+    <div class="row"><div class="row-main"><div class="row-name"><span class="nm"><span class="rm">1</span>  James Harrington</span></div></div>
+      <div class="row-right"><span class="bub-slot"></span><span class="row-pax">2 pax</span></div></div>
+    <div class="row"><div class="row-main"><div class="row-name"><span class="nm"><span class="rm">10</span>  Sam Okafor</span></div></div>
+      <div class="row-right"><span class="bub-slot"></span><span class="row-pax">2 pax</span></div></div>
+    <div class="row"><div class="row-main"><div class="row-name"><span class="nm"><span class="rm">15</span>  Freya Lindqvist</span></div></div>
+      <div class="row-right"><span class="bub-slot"></span><span class="row-pax">2 pax</span></div></div>
+    <div class="row"><div class="row-main"><div class="row-name"><span class="nm">Tom Becker<span class="tag">External</span></span></div></div>
+      <div class="row-right"><span class="bub-slot"></span><span class="row-pax">4 pax</span></div></div>
+    <div class="row maybe"><div class="row-main"><div class="row-name"><span class="nm">Megan Doyle<span class="tag">External</span></span></div>
+      <div class="row-sub">Invited by SMS 3:40pm &middot; <span class="bad">not delivered</span></div></div>
+      <div class="row-right"><span class="bub-slot"></span><span class="row-pax">Awaiting</span></div></div>
+    @@SARAH@@
+  </div>
+</div>
+</body></html>
+</script>
+
+<script>
+/* Builds each frame into its iframe. The sheet frame is the Invitations
+   page with the sheet laid over it; the accepted Reservations frame is the
+   awaiting one with Sarah's row, the covers and the make-up moved on. */
+(function(){
+  function src(id){ return document.getElementById(id).textContent.replace(/^\s+/, ''); }
+  var SARAH_WAIT = '<div class="row maybe"><div class="row-main"><div class="row-name"><span class="nm">Sarah Jones<span class="tag">External</span></span></div>' +
+    '<div class="row-sub">Invited by SMS 4:12pm</div></div>' +
+    '<div class="row-right"><span class="bub-slot"></span><span class="row-pax">Awaiting</span></div></div>';
+  var SARAH_IN = '<div class="row"><div class="row-main"><div class="row-name"><span class="nm">Sarah Jones<span class="tag">External</span></span></div></div>' +
+    '<div class="row-right"><span class="bub-slot"></span><span class="row-pax">2 pax</span></div></div>';
+  function res(sarah, covers, makeup){
+    return src('f-res-a').replace('@@SARAH@@', sarah).replace('@@COVERS@@', covers)
+                         .replace('@@MAKEUP@@', makeup);
+  }
+  /* A replace that finds nothing is silent; this one says so. */
+  function must(s, a, b){
+    if (s.indexOf(a) < 0) throw new Error('mock: not found: ' + a);
+    return s.replace(a, b);
+  }
+  var INV = src('f-inv');
+  var INV_OPEN = must(INV, '<details class="arrivals ext">', '<details class="arrivals ext" open>');
+  var DOCS = {
+    'f-inv':      INV,
+    'f-inv-open': INV_OPEN,
+    'f-sheet':    must(INV_OPEN, '</body>', src('f-sheet-over') + '</body>'),
+    'f-sms':   src('f-sms'),
+    'f-guest': src('f-guest'),
+    'f-res-a': res(SARAH_WAIT, '10', '3 twos · 1 four · 4 tables'),
+    'f-res-b': res(SARAH_IN,   '12', '4 twos · 1 four · 5 tables')
+  };
+  /* ?w=360 or ?w=320: every frame at that width, for the width checks. */
+  var w = +(new URLSearchParams(location.search).get('w')) || 390;
+  document.documentElement.style.setProperty('--fw', w + 'px');
+  [].forEach.call(document.querySelectorAll('iframe[data-doc]'), function(f){
+    var h = f.getAttribute('data-h');
+    f.addEventListener('load', function(){
+      var d = f.contentDocument;
+      /* the sheet's message box shows the whole message, at any width */
+      [].forEach.call(d.querySelectorAll('.sheet textarea'), function(t){
+        t.style.height = (t.scrollHeight + 2) + 'px';
+      });
+      if (h !== 'auto') return;
+      var fit = function(){
+        if (d && d.documentElement) f.style.height = d.documentElement.scrollHeight + 'px';
+      };
+      fit(); setTimeout(fit, 300); setTimeout(fit, 1200);
+    });
+    if (h !== 'auto') f.style.height = h + 'px';
+    else f.style.height = '200px';
+    f.srcdoc = DOCS[f.getAttribute('data-doc')];
+  });
+})();
+</script>
+</body>
+</html>
