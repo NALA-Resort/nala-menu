@@ -228,6 +228,11 @@
   .row.maybe .row-name, .row.maybe .row-name .rm, .row.maybe .row-pax { color:var(--mid); }
   .row.maybe .dpill, .row.maybe .dpill-ok { background:rgba(28,28,26,.07); color:var(--mid); }
   .row.maybe .dpill-al { background:#77776F; color:#fff; }
+  /* An external guest invited by SMS (28 Sep) waits here as a possible does,
+     grey, "Awaiting" where the covers go, until they answer from the link.
+     A text that never arrived is named under the name in the failure red,
+     words only: the row stays the possible's grey. */
+  .row-sub .bad { color:var(--red); font-style:normal; }
   /* All and Add + ride together at the right of the Bookings row, in the
      row's own button dress. All lit wears the ui2 Selected dress, as
      Select multiple does. margin-left:auto keeps the pair right-aligned
@@ -679,7 +684,7 @@ body.paper #footActions { margin-inline:-8px; padding-inline:8px; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=77"></script>
+<script src="nala-shared.js?v=78"></script>
 <script>
 /* Not every allergy is on the list and the list cannot grow to hold them all,
    so Other means read the note. The same entry the front desk writes, because
@@ -755,6 +760,7 @@ var cancelledExt = {};
 var roomguests = {};
 var manual = {};      // keyed by 'room-N' or 'ext-<id>'
 var dinner = {};      // the one cell, keyed by villa: /dinner/<date>/<villa>
+var extsends = {};    // /extinvites/<date>: the external guests' send records
 
 function api(path, method, body){
   var o = { method: method||'GET' };
@@ -900,6 +906,27 @@ function saveManual(key, rec){
   req.catch(function(){
     if (had) manual[key] = prev; else delete manual[key];
     if (villa){ if (prev) dinner[villa] = prev; else delete dinner[villa]; }
+    render();
+  });
+  return req;
+}
+
+/* A change to some fields of a /manual record, never the whole of it. For an
+   external guest invited by SMS (28 Sep): their answer - status, by, at -
+   arrives from their link while this board holds an older copy, and a PUT
+   of that copy would put Awaiting back over an acceptance. Optimistic and
+   rolled back like saveManual. A null in the patch deletes that field. */
+function patchManual(key, patch){
+  var had  = Object.prototype.hasOwnProperty.call(manual, key);
+  var prev = manual[key];
+  var next = Object.assign({}, prev || {});
+  Object.keys(patch).forEach(function(k){
+    if (patch[k] === null) delete next[k]; else next[k] = patch[k];
+  });
+  manual[key] = next;
+  var req = api('/manual/'+todayKey()+'/'+key, 'PATCH', patch);
+  req.catch(function(){
+    if (had) manual[key] = prev; else delete manual[key];
     render();
   });
   return req;
@@ -1195,8 +1222,21 @@ function render(){
     else if (s.g.status==='out') notDining++;    // declined rooms
   }
 
+  /* External guests invited by SMS who have not answered. Shown whether or
+     not All is lit: reception made this booking, on the phone, so it is on
+     the list from the moment the text goes. Kept out of `rows`, as a
+     possible is: an Awaiting table is nobody's cover until they accept, and
+     then it is an ordinary external diner, above. Where each stands is
+     extInviteState's (nala-shared.js), Invitations' reading too. */
+  var extWait = extInvites(manual).filter(function(e){
+    return e.g.status === 'awaiting';
+  }).map(function(e){
+    return { g:e.g, room:null, src:'manual', key:e.key, maybe:true, invite:true,
+             st:extInviteState(e.g, extsends[e.key]) };
+  });
+
   var el = document.getElementById('listBookings');
-  var shown = rows.concat(maybes);
+  var shown = rows.concat(maybes, extWait);
   el.innerHTML='';
   if(!shown.length) el.innerHTML='<div class="empty">No bookings yet</div>';
 
@@ -1290,6 +1330,8 @@ function render(){
     var second = r.room
       ? companionOf(PREARRIVAL_BY_VILLA[String(r.room)], known) : '';
     if (second) sub.push('With ' + esc(second));
+    if (r.invite) sub.push('Invited by SMS ' + esc(timeOf(g.invitedAt)) +
+      (r.st && r.st.bad ? ' \u00b7 <span class="bad">' + esc(r.st.bad) + '</span>' : ''));
     var dietLine = '';
     /* The person's dietaries, wherever they were typed. This block used to
        show tonight's answer only, on the old rule that a carried-over dietary
@@ -2548,6 +2590,13 @@ function editExt(key, g){
   var pax = g.pax || 2;
   var isManual = key.indexOf('ext-') === 0;
   var diets = fixDietList(g.diets);
+  /* Invited by SMS from Invitations (28 Sep). Its link is for tonight, so
+     it has no Night field - a move would strand the link on this date. And
+     its answer is the guest's: Save changes patches what this sheet edits
+     and never the status, and Mark as dining is the desk answering for them,
+     which, as on a villa, locks their link. */
+  var isInvite = isManual && g.source === 'invite';
+  var awaiting = isInvite && g.status === 'awaiting';
 
   if (isManual){
     /* The night this reservation is FOR, editable. A manual reservation
@@ -2557,10 +2606,15 @@ function editExt(key, g){
     var night = todayKey();
     sheet.innerHTML =
       '<h3>'+(g.name || 'Reservation')+'</h3>'+
+      /* window.timeOf: this function's own `var timeOf` below is the Time
+         field's getter, and a var is hoisted over the whole function. */
+      (isInvite ? '<div class="note-box">Invited by SMS ' + esc(window.timeOf(g.invitedAt)) +
+        (awaiting ? ' \u00b7 awaiting their answer' : '') + '</div>' : '')+
       '<input class="txt" id="xName" type="text" placeholder="Name" autocomplete="off">'+
       '<input class="txt" id="xPhone" type="tel" placeholder="Phone" autocomplete="off">'+
       '<div class="whenrow">'+
-        '<div class="txt nightfield" id="xNight"><span id="xNightLabel"></span></div>'+
+        (isInvite ? '' :
+        '<div class="txt nightfield" id="xNight"><span id="xNightLabel"></span></div>')+
         TIME_FIELD_HTML+
       '</div>'+
       '<div class="sheet-label" style="margin-top:14px">Guests</div>'+
@@ -2572,6 +2626,7 @@ function editExt(key, g){
       '<div class="sheet-label">Dinner notes</div>'+
       '<input class="txt" id="xNote" type="text" placeholder="Dinner notes" autocomplete="off" style="margin-top:14px">'+
       '<button class="opt solid" id="oSave" style="margin-top:8px">Save changes</button>'+
+      (awaiting ? '<button class="opt din" id="oDine">Mark as dining</button>' : '')+
       '<button class="opt out" id="oDel">Cancel booking</button>'+
       '<button class="opt quiet" id="oClose">Close</button>';
     showSheet();
@@ -2585,6 +2640,7 @@ function editExt(key, g){
        press will do is never a surprise. dkey in, dkey out - the input's
        value IS the database key, no Date parsing on the compare (rule 7). */
     function paintNight(){
+      if (isInvite) return;                 /* no Night field to paint */
       document.getElementById('xNightLabel').textContent =
         dateLabel(parseDepDate(night));
       var b = document.getElementById('oSave');
@@ -2594,6 +2650,7 @@ function editExt(key, g){
     }
     (function wireNight(){
       var box  = document.getElementById('xNight');
+      if (!box) return;                     /* an invitation: tonight only */
       var pick = document.createElement('input');
       pick.type = 'date';
       pick.value = night;
@@ -2647,6 +2704,16 @@ function editExt(key, g){
       if (dn) rec.dnote = dn; else delete rec.dnote;
       rec.pax   = pax;
       if (timeOf()) rec.time = timeOf(); else delete rec.time;
+      /* An invitation saves what this sheet edits and nothing else: the
+         answer - status, by, at - is the guest's until the desk gives one. */
+      if (isInvite){
+        saveFeedback(pressedButton(), function(){
+          return patchManual(key, { name: rec.name, phone: rec.phone, note: rec.note,
+            diets: rec.diets, dnote: rec.dnote || null, pax: rec.pax,
+            time: rec.time || null });
+        }, { done:'Saved \u2713', hold:400, then:function(){ close(); render(); } });
+        return;
+      }
       if (night === todayKey()){
         saveFeedback(pressedButton(), function(){
           return saveManual(key, rec);
@@ -2679,6 +2746,12 @@ function editExt(key, g){
     revealAction();
   }
 
+  var dine = document.getElementById('oDine');
+  if (dine) dine.onclick = function(){
+    saveFeedback(pressedButton(), function(){
+      return patchManual(key, { status:'in', by:'staff', at:new Date().toISOString() });
+    }, { done:'Dining \u2713', hold:400, then:function(){ close(); render(); } });
+  };
   document.getElementById('oDel').onclick = function(){
     confirmSheet(g.name || 'External guest',
       'Cancel this booking?',
@@ -2782,7 +2855,10 @@ function load(full){
     fetchRoomGuests(todayKey(), 14, !!full),
     api('/combined/'+todayKey()),
     fetchStays(todayKey()),
-    api('/dinner/'+todayKey())
+    api('/dinner/'+todayKey()),
+    /* Only for an external guest's invitation, to say when a text did not
+       arrive; a failed read leaves the rows saying less, never nothing. */
+    api('/extinvites/'+todayKey()).catch(function(){ return null; })
   ]).then(function(r){
     responses  = r[0] || {};
     manual     = r[1] || {};
@@ -2791,6 +2867,7 @@ function load(full){
     /* One more request on a poll that already makes five, and it retires two
        of the others once every page writes here instead. */
     dinner     = r[5] || {};
+    extsends   = r[6] || {};
     render();
   });
 }

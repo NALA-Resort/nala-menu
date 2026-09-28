@@ -59,6 +59,10 @@ Already done this way — follow these:
   after the Reservations board, the SMS page and the front desk each read
   their own subset of that one fact and told reception three different
   things about the same villa.
+- `tests/extinvite_cases.json` — where an external guest invited by SMS
+  stands (`extInviteState`, nala-shared.js), as Invitations, Reservations
+  and the Dashboard all read it. Added 28 Sep with the External guests
+  drop-down, so the three screens cannot tell reception three things.
 - `rules.json` — the database's permissions.
 - `tests/dashboard_sources.json` — every value on the Dashboard and the
   thing that owns it. Added 8 Sep with rule 7, after that page worked four

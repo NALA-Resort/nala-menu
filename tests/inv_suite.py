@@ -143,6 +143,12 @@ def fb(route, request):
         d = u.split("/stays/")[1].split(".json")[0]
         body = json.dumps(NIGHTS[d]) if d in NIGHTS else "null"
     elif "/dinner/" + today in u: body = json.dumps(DINNER)
+    #  The external guests (28 Sep): their bookings where Reservations keeps
+    #  them, and their send records, apart from the villas' /invites.
+    elif "/manual/" + today in u:
+        body = json.dumps(STATE["manual"]) if STATE.get("manual") else "null"
+    elif "/extinvites/" + today in u:
+        body = json.dumps(STATE["extsends"]) if STATE.get("extsends") else "null"
     elif "/opened/" in u: body = "null"
     elif "/invites/" + today in u: body = json.dumps(INVITES)
     elif u.split("?")[0].endswith("/previnvites.json"):
@@ -179,6 +185,11 @@ def fb(route, request):
 
 def wk(route, request):
     SENT.append(json.loads(request.post_data))
+    if SENT[-1].get("kind") == "ext":
+        rep = WORKER.get("ext") or {"key": SENT[-1].get("key") or "ext-new234",
+                                    "result": {"status": "sent"}}
+        route.fulfill(status=200, content_type="application/json", body=json.dumps(rep))
+        return
     who = SENT[-1].get("villas") or SENT[-1].get("bookings") or []
     results = WORKER["reply"] or {v: {"status": "sent"} for v in who}
     route.fulfill(status=200, content_type="application/json",
@@ -441,17 +452,19 @@ with sync_playwright() as p:
         .map(el=>el.classList.contains('grp') ? 'H:'+el.textContent
               : el.classList.contains('grouptitle') ? 'IH'
               : el.classList.contains('arrivals') ? 'ARR'
+              : el.classList.contains('extguests') ? 'EXT'
               : el.dataset.villa)""")
-    #  Everyone here is in house (no arrival dates on the fixture), so the
-    #  In-house title leads and there is no Arrivals dropdown.
+    #  Everyone here is in house (no arrival dates on the fixture), so there is
+    #  no Arrivals dropdown. External guests always leads, folded: it holds
+    #  Invite +, so it is there even on a night nobody has rung (28 Sep).
     ck("the four bands render in order, under the In-house title, done sunk",
-       seq == ["IH",
+       seq == ["EXT", "IH",
                "H:To send · 2", "4", "14",
                "H:Waiting on a reply · 1", "9",
                "H:Answered · 2", "7", "11",
                "H:Cannot send · 2", "2", "3"], seq)
     ck("a failed send sits in To send, its reason on the row",
-       seq[2:4] == ["4", "14"]
+       seq[3:5] == ["4", "14"]
        and "Send failed" in row("14").inner_text())
     tint = lambda v: pg.evaluate(
         "s=>getComputedStyle(document.querySelector(s))",
@@ -909,6 +922,8 @@ with sync_playwright() as p:
        "on" not in (frow("6").get_attribute("class") or ""))
     ck("a form decline is Answered too, so nobody chases them",
        frow("4").get_attribute("data-state") == "answered")
+    ck("Arrivals wears the shared drop-down class, fold, as External guests does",
+       "fold" in (pg.locator("details.arrivals").get_attribute("class") or ""))
     pg.click(".arrivals > summary"); pg.wait_for_timeout(150)   # open to read the rows
     ck("the dining answer reads off the form",
        "Dining · 2 · answered on the pre-arrival form" in frow("6").inner_text())
@@ -1081,6 +1096,227 @@ with sync_playwright() as p:
        pg.evaluate("()=>{const e=document.querySelector('.vrow.linked');"
                    "return !!e && e.dataset.booking === 'pa-sent';}"))
     pg.close()
+
+    # ── external guests (28 Sep) ────────────────────────────────
+    #  Somebody from outside the resort rings for dinner. A drop-down like
+    #  Arrivals sends them tonight's menu; the Worker (stubbed) creates the
+    #  booking at /manual/<date>/ext-<token>. Four bookings in four states,
+    #  the mock's, and one typed in by hand on Reservations, which is not an
+    #  invitation and must not appear here.
+    def T(h, m): return now.replace(hour=h, minute=m, second=0, microsecond=0).isoformat()
+    STATE["manual"] = {
+      "ext-megan2": {"status": "awaiting", "name": "Megan Doyle", "phone": "+61421555019",
+                     "pax": 2, "source": "invite", "token": "megan2", "invitedAt": T(15, 40)},
+      "ext-sarah2": {"status": "awaiting", "name": "Sarah Jones", "phone": "+61412345678",
+                     "pax": 2, "source": "invite", "token": "sarah2", "invitedAt": T(16, 12)},
+      "ext-tomb44": {"status": "in", "name": "Tom Becker", "phone": "+61438220761", "pax": 4,
+                     "source": "invite", "token": "tomb44", "invitedAt": T(14, 50),
+                     "by": "guest", "at": T(15, 5)},
+      "ext-leam22": {"status": "out", "name": "Léa Martin", "phone": "+33612345678",
+                     "pax": 2, "source": "invite", "token": "leam22", "invitedAt": T(14, 10),
+                     "by": "guest", "at": T(14, 40)},
+      "ext-1727000000000": {"status": "in", "name": "Cane", "phone": "0400 000 000",
+                            "pax": 2, "source": "manual"},
+    }
+    STATE["extsends"] = {
+      "ext-megan2": {"status": "sent", "sentAt": T(15, 40), "providerId": "m2",
+                     "delivery": "failed", "deliveryText": "Number not in service"},
+      "ext-sarah2": {"status": "sent", "sentAt": T(16, 12), "providerId": "m1",
+                     "delivery": "delivered"},
+      "ext-tomb44": {"status": "sent", "sentAt": T(14, 50), "providerId": "m3",
+                     "delivery": "delivered"},
+      "ext-leam22": {"status": "sent", "sentAt": T(14, 10), "providerId": "m4"},
+    }
+    pg = board()
+    ext = pg.locator("details.extguests")
+    ck("External guests is a drop-down, first on the board, folded",
+       ext.count() == 1 and not ext.evaluate("e=>e.open") and
+       pg.evaluate("()=>document.querySelector('#board').firstElementChild."
+                   "classList.contains('extguests')") and
+       "fold" in (ext.get_attribute("class") or ""))
+    #  Arrivals' dress is the class `fold` (this fixture has no arrivals; the
+    #  Arrivals checks below have them, and assert the same class there): a
+    #  white card lifted off the paper, rounded 10, the amber count badge.
+    dress = pg.evaluate("""()=>{const e=getComputedStyle(document.querySelector('details.extguests')),
+         b=getComputedStyle(document.querySelector('details.extguests .abadge'));
+         return [e.backgroundColor, e.borderRadius, e.boxShadow !== 'none', b.backgroundColor];}""")
+    ck("wearing the Arrivals dress: the lifted white card and the amber badge",
+       dress == ["rgb(255, 255, 255)", "10px", True, "rgb(246, 234, 213)"], dress)
+    summ = pg.inner_text("details.extguests > summary")
+    ck("folded, it counts its guests and says what is not delivered",
+       "External guests" in summ and "4 guests" in summ and "1 not delivered" in summ, summ)
+    ck("and the not delivered is in the failure red, so it is never hidden",
+       pg.evaluate("()=>{const e=document.querySelector('details.extguests .asub .bad');"
+                   "return e ? getComputedStyle(e).color : null;}") == "rgb(168, 50, 30)")
+    ck("a booking typed in by hand on Reservations is not an invitation",
+       "Cane" not in pg.inner_text("details.extguests"))
+    ck("its rows are not villas: no tick, not counted, not in the Send",
+       pg.locator("details.extguests .vrow .tick").count() == 0 and
+       [pg.evaluate("()=>%s.textContent" % i) for i in ("nSend","nAns","nSent","nNoPh")]
+       == ["2", "2", "1", "2"] and
+       pg.evaluate("()=>sendBtn.textContent") == "Send to 2 guests")
+    ext.locator("summary").click(); pg.wait_for_timeout(150)
+    order = pg.evaluate("()=>[...document.querySelectorAll('details.extguests .vrow')]"
+                        ".map(e=>e.dataset.ext)")
+    ck("work first, done sinks: not delivered, waiting, then answered in the order invited",
+       order == ["ext-megan2", "ext-sarah2", "ext-leam22", "ext-tomb44"], order)
+    def xrow(k): return pg.locator('details.extguests .vrow[data-ext="%s"]' % k)
+    def xtint(k): return shown(xrow(k).evaluate("e=>{const s=getComputedStyle(e);"
+        "return {backgroundImage:s.backgroundImage, backgroundColor:s.backgroundColor};}"))
+    #  Chrome stores the .045 alpha as 8-bit and reads it back as 0.043, as
+    #  the villas' waiting check above allows.
+    ck("waiting wears the law's waiting grey",
+       xtint("ext-sarah2").startswith("rgba(28, 28, 26, 0.04"), xtint("ext-sarah2"))
+    ck("accepted the Reservations green tile, declined its terracotta",
+       xtint("ext-tomb44") == "rgba(122, 160, 130, 0.26)" and
+       xtint("ext-leam22") == "rgba(184, 106, 90, 0.16)",
+       (xtint("ext-tomb44"), xtint("ext-leam22")))
+    ck("and not delivered is work to do: a plain white row, its reason in red",
+       xtint("ext-megan2") == "rgb(255, 255, 255)" and
+       "not delivered · Number not in service" in xrow("ext-megan2").inner_text() and
+       xrow("ext-megan2").locator(".bad").count() == 1 and
+       xrow("ext-megan2").locator(".bad").evaluate("e=>getComputedStyle(e).color")
+       == "rgb(168, 50, 30)")
+    ck("each row names the guest, the number, and where it stands",
+       "Sarah Jones" in xrow("ext-sarah2").inner_text() and
+       "+61412345678" in xrow("ext-sarah2").inner_text() and
+       "Table for 2 · sent 4:12pm · delivered" in xrow("ext-sarah2").inner_text() and
+       "Accepted · table for 4 · answered 3:05pm" in xrow("ext-tomb44").inner_text())
+    ck("the row's forward mark stays forward in an open drop-down",
+       xrow("ext-sarah2").locator(".fwd").evaluate("e=>getComputedStyle(e).transform")
+       in ("none", "matrix(1, 0, 0, 1, 0, 0)"))
+
+    #  The one reading, held to its table (rule 1): every case through the
+    #  page's own copy of extInviteState.
+    CASES = json.load(open("tests/extinvite_cases.json", encoding="utf-8"))["cases"]
+    miss = pg.evaluate("""(cases)=>cases.map(c=>{
+        const name=c[0], g=c[1], send=c[2], want=c[3], st=extInviteState(g, send);
+        const fill=s=>s.replace('{sent}', send ? timeOf(send.sentAt) : '')
+                       .replace('{at}', timeOf(g.at)).replace('{invited}', timeOf(g.invitedAt));
+        const ok = st.kind===want.kind && (want.in===undefined || !!st.in===want.in) &&
+                   st.line===fill(want.line) && st.bad===fill(want.bad);
+        return ok ? null : {name:name, got:st, want:{kind:want.kind, line:fill(want.line),
+                                                     bad:fill(want.bad)}};
+      }).filter(Boolean)""", CASES)
+    ck("every case in tests/extinvite_cases.json reads as the table says (%d)" % len(CASES),
+       miss == [], miss)
+
+    # ── Invite + ──────────────────────────────────────────────────
+    del SENT[:]
+    pg.click("#extInvite"); pg.wait_for_timeout(150)
+    ck("Invite + opens the sheet over the page",
+       pg.locator("#xBackdrop.show").count() == 1 and
+       "Invite an external guest" in pg.inner_text("#xSheet"))
+    ck("above the page's own Send, so there are never two on screen",
+       pg.evaluate("""()=>{const r=sendBtn.getBoundingClientRect();
+         const at=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2);
+         return !!at && !!at.closest('#xBackdrop');}"""))
+    ck("two guests to start, the usual table",
+       pg.inner_text("#xPax .pax.on") == "2")
+    pg.fill("#xName", "Sarah Jones"); pg.wait_for_timeout(80)
+    pg.click("#xPax .pax >> text=4"); pg.wait_for_timeout(80)
+    msg = pg.input_value("#xMsg")
+    ck("the message follows the first name and the table size",
+       msg.startswith("Hi Sarah, thanks for your call.") and "table for 4" in msg and
+       msg.endswith("Nala Resort\n<menu>"), msg)
+    ck("and counts itself, link included", "1 segment" in pg.inner_text("#xCount"))
+    ck("the sheet says what sending does",
+       "Sarah Jones, table for 4, on tonight’s Reservations as Awaiting"
+       in pg.inner_text("#xBecomes"))
+    pg.fill("#xPhone", "07 3358 1122"); pg.click("#xSend"); pg.wait_for_timeout(150)
+    ck("a landline is refused at the sheet, in the page's own words",
+       "not a sendable mobile number" in pg.inner_text("#xFail") and
+       not [s for s in SENT if s.get("kind") == "ext"])
+    pg.fill("#xPhone", "0412 345 678"); pg.fill("#xName", "")
+    pg.click("#xSend"); pg.wait_for_timeout(150)
+    ck("so is a guest with no name",
+       "name" in pg.inner_text("#xFail") and not [s for s in SENT if s.get("kind") == "ext"])
+    pg.fill("#xName", "Sarah Jones"); pg.wait_for_timeout(80)
+    ck("the words follow the name as it is typed",
+       pg.input_value("#xMsg").startswith("Hi Sarah,"))
+    pg.fill("#xMsg", pg.input_value("#xMsg").replace("thanks for your call",
+                                                     "lovely to hear from you"))
+    pg.fill("#xName", "Sarah J"); pg.fill("#xName", "Sarah Jones"); pg.wait_for_timeout(80)
+    ck("once reception edits the words they are theirs: the name no longer rewrites them",
+       "lovely to hear from you" in pg.input_value("#xMsg"))
+    pg.click("#xSend"); pg.wait_for_timeout(200)
+    ck("the first press arms and never sends",
+       not [s for s in SENT if s.get("kind") == "ext"] and
+       "Please confirm · send to Sarah Jones" in pg.inner_text("#xSend"))
+    pg.click("#xSend"); pg.wait_for_timeout(600)
+    xs = [s for s in SENT if s.get("kind") == "ext"]
+    ck("the second sends: a name, a number, a table size and the words, never a link",
+       len(xs) == 1 and xs[0]["name"] == "Sarah Jones" and
+       xs[0]["phone"] == "0412 345 678" and xs[0]["pax"] == 4 and
+       xs[0]["date"] == today and "<menu>" in xs[0]["body"] and
+       "lovely to hear from you" in xs[0]["body"] and
+       "http" not in xs[0]["body"] and "key" not in xs[0], xs)
+    ck("then the sheet closes and the drop-down stays open on the evening's guests",
+       pg.locator("#xBackdrop.show").count() == 0 and
+       pg.locator("details.extguests").evaluate("e=>e.open"))
+    pg.close()
+
+    #  A text that did not go: the Worker took its booking back out, and the
+    #  sheet says why while reception is still on the phone.
+    WORKER["ext"] = {"key": "", "result": {"status": "failed", "error": "INVALID_RECIPIENT"}}
+    pg = board()
+    pg.click("details.extguests > summary"); pg.click("#extInvite")
+    pg.fill("#xName", "Sam Hill"); pg.fill("#xPhone", "0412 345 678")
+    pg.click("#xSend"); pg.click("#xSend"); pg.wait_for_timeout(600)
+    ck("a failed send keeps the sheet open, with ClickSend's words",
+       pg.locator("#xBackdrop.show").count() == 1 and
+       "Nothing was sent: INVALID_RECIPIENT." in pg.inner_text("#xFail") and
+       pg.inner_text("#xSend") == "Send invitation", pg.inner_text("#xFail"))
+    WORKER["ext"] = None
+    pg.close()
+
+    #  The page's own menu rule: the text promises tonight's menu.
+    STATE["menu"] = None
+    pg = board()
+    del SENT[:]
+    pg.click("details.extguests > summary"); pg.click("#extInvite")
+    pg.fill("#xName", "Sam Hill"); pg.fill("#xPhone", "0412 345 678")
+    pg.click("#xSend"); pg.click("#xSend"); pg.wait_for_timeout(300)
+    ck("before the chef publishes, nothing sends, and the sheet says why",
+       "Sending opens once the chef publishes" in pg.inner_text("#xFail") and
+       not [s for s in SENT if s.get("kind") == "ext"])
+    STATE["menu"] = MENU
+    pg.close()
+
+    # ── one guest's sheet: send again, or cancel ───────────────────
+    pg = board()
+    del SENT[:]
+    pg.click("details.extguests > summary")
+    xrow("ext-megan2").click(); pg.wait_for_timeout(150)
+    ck("tapping a guest opens their sheet, with where they stand",
+       "Megan Doyle" in pg.inner_text("#xSheet") and
+       "not delivered" in pg.inner_text("#xFacts"))
+    pg.click("#xSend"); pg.wait_for_timeout(150)
+    ck("send again arms first", not [s for s in SENT if s.get("kind") == "ext"])
+    pg.click("#xSend"); pg.wait_for_timeout(500)
+    xs = [s for s in SENT if s.get("kind") == "ext"]
+    ck("and sends to the booking by its key: the number is the Worker's to read",
+       len(xs) == 1 and xs[0].get("key") == "ext-megan2" and "phone" not in xs[0], xs)
+    xrow("ext-sarah2").click(); pg.wait_for_timeout(150)
+    del WRITES[:]
+    pg.once("dialog", lambda d: d.dismiss())
+    pg.click("#xDrop"); pg.wait_for_timeout(300)
+    ck("cancel invitation asks first, and a no writes nothing",
+       not [w for w in WRITES if w["m"] == "DELETE"])
+    ck("it wears the button law's terracotta outline",
+       pg.evaluate("()=>{const s=getComputedStyle(document.getElementById('xDrop'));"
+                   "return s.color==='rgb(158, 100, 85)' && s.borderTopStyle==='solid';}"))
+    msgs = []
+    def yes(d):
+        msgs.append(d.message); d.accept()
+    pg.once("dialog", yes)
+    pg.click("#xDrop"); pg.wait_for_timeout(400)
+    dels = [w for w in WRITES if w["m"] == "DELETE"]
+    ck("a yes, naming the guest and the table, takes the booking away",
+       len(dels) == 1 and ("/manual/" + today + "/ext-sarah2.json") in dels[0]["u"] and
+       msgs and "Sarah Jones" in msgs[0] and "table for 2" in msgs[0], (dels, msgs))
+    pg.close()
+    STATE["manual"] = None; STATE["extsends"] = None
 
     b.close()
 

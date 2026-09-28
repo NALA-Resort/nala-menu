@@ -1357,6 +1357,60 @@ function externalDiners(responses, manual, skip){
    person who has said yes, so it counts as one, not as nought. */
 function dinerPax(g){ return (g && +g.pax) || 1; }
 
+/* ── external guests invited by SMS (28 Sep) ──────────────────────
+   Somebody from outside the resort rings for dinner. Invitations' External
+   guests drop-down sends them tonight's menu, and the Worker creates their
+   booking: the External reservation Reservations' Add + makes, at
+   /manual/<date>/ext-<token>, with source 'invite' and status 'awaiting'
+   until they accept ('in') or decline ('out') from the link. Once 'in' it is
+   an ordinary external diner and externalDiners above counts it like any
+   other; until then it is nobody's cover. The send itself is recorded at
+   /extinvites/<date>/<key>, apart from the villas' /invites.
+
+   Two boards draw these and the Dashboard counts them, so the reading is
+   here, once (rule 1): which bookings are invitations, and where one stands.
+   tests/extinvite_cases.json holds the states; the Invitations suite runs
+   every case through this function. */
+function extInvites(manual){
+  var out = [];
+  for (var k in (manual || {})){
+    var g = manual[k];
+    if (k.indexOf('ext-') !== 0 || !g || g.source !== 'invite') continue;
+    out.push({ key:k, g:g });
+  }
+  return out;
+}
+
+/* Where one invited guest stands. kind is the Invitations band - 'ready' is
+   work to do (a text that failed or never arrived), 'sent' is waiting on the
+   guest, 'answered' is in or out. `line` is the plain words and `bad` the
+   failure's, drawn red; Reservations quotes `bad` under its grey row. */
+function extInviteState(g, send){
+  g = g || {};
+  var pax = dinerPax(g);
+  var who = g.by === 'staff' ? 'set by reception'
+          : g.at ? 'answered ' + timeOf(g.at) : 'answered';
+  if (g.status === 'in')
+    return { kind:'answered', in:true, bad:'',
+             line:'Accepted · table for ' + pax + ' · ' + who };
+  if (g.status === 'out')
+    return { kind:'answered', in:false, bad:'', line:'Declined · ' + who };
+  var table = 'Table for ' + pax;
+  if (send && send.status === 'failed')
+    return { kind:'ready', line:table, bad:'send failed ' + timeOf(send.sentAt) +
+             (send.error ? ' · ' + send.error : '') };
+  if (send && send.delivery === 'failed')
+    return { kind:'ready', line:table, bad:'not delivered' +
+             (send.deliveryText ? ' · ' + send.deliveryText : '') };
+  if (send && send.sentAt)
+    return { kind:'sent', bad:'', line:table + ' · sent ' + timeOf(send.sentAt) +
+             (send.delivery === 'delivered' ? ' · delivered'
+              : send.providerId ? ' · delivery unconfirmed' : '') };
+  /* The booking stands but its send record does not: the text went and the
+     record failed to save (the Worker says sent-unrecorded). Waiting. */
+  return { kind:'sent', bad:'', line:table + ' · invited ' + timeOf(g.invitedAt) };
+}
+
 /* The night a booking ARRIVES, matched against the night being rendered. The
    one definition of "arriving tonight", so the pre-arrival form (which asks
    about the first night alone) and the Invitations board (which sets arriving
