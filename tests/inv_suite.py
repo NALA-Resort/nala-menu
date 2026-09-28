@@ -711,6 +711,50 @@ with sync_playwright() as p:
        [pg.evaluate("()=>%s.textContent" % i)
         for i in ("nSend","nWait","nOpen","nDone")] == ["1","1","1","1"])
 
+    #  No stamp on a closed card - the owner, 28 Sep: "It doesn't need the
+    #  time date on the closed card." When a form was opened and completed
+    #  is secondary information and lives on the open cards (the Front Desk,
+    #  the Guest Profile), in grey. These rows carried a time with no day
+    #  until then; the band already says which state the form is in.
+    stamp = lambda s: pg.evaluate("s=>stampOf(s)", s)
+    clock = lambda s: pg.evaluate("s=>timeOf(s)", s)
+    dt, ot = arow("pa-done").inner_text(), arow("pa-open").inner_text()
+    ck("a completed row says Completed and when they arrive, with no stamp",
+       "Completed · arrives" in dt
+       and clock(PRE_RECS["pa-done"]["at"]) not in dt)
+    ck("an opened row says Opened and how far they got, with no stamp",
+       "Opened · started, 1 answer" in ot
+       and clock(PRE_RECS["pa-open"]["openedAt"]) not in ot)
+    ck("while a sent row keeps the day and the time it went",
+       "Sent " + stamp(PREINV["pa-sent"]["sentAt"]) + " · "
+       in arow("pa-sent").inner_text())
+    #  The Sent stamp in the resort's zone. sentAt is UTC, and until 28 Sep
+    #  its day was sliced off the ISO string, naming the day before for every
+    #  send made before 10am Brisbane (CLAUDE.md rule 7). This one is a UTC
+    #  evening, the next morning in Brisbane; beside UTC, so a page that only
+    #  works in one zone fails in the other.
+    for tz, want in (("Australia/Brisbane", "Mon 28 Sep 8:30am"),
+                     ("UTC", "Sun 27 Sep 10:30pm")):
+        zc = b.new_context(viewport={"width": 390, "height": 900}, timezone_id=tz)
+        zp = zc.new_page()
+        zp.add_init_script(SDK)
+        zp.route("**firebasedatabase.app/**", fb)
+        zp.route("**nala-invites.ben-681.workers.dev/**", wk)
+        zp.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+        zp.goto("http://localhost:8977/arrivals-sms.html")
+        zp.wait_for_timeout(1200)
+        line = zp.evaluate("""a=>stateOf(a.stay, null, {status: 'sent',
+            sentAt: a.sentAt, delivery: 'delivered'}, null, null).line""",
+            {"stay": {"id": "z1", "first": "Zoe", "last": "Quay",
+                      "phone": "+61 411 000 009",
+                      "arrive": "2026-09-29", "depart": "2026-09-30"},
+             "sentAt": "2026-09-27T22:30:00Z"})
+        print("   %s:" % tz, line)
+        ck("%s: a send is dated in that zone: %s" % (tz, want),
+           line.startswith("Sent " + want + " · "))
+        zc.close()
+    del SENT[:]
+
     #  A stamp WITH answers behind it but missing a mandatory one. The old
     #  check in demanded dinner and dietary and never the massage, so it
     #  could stamp a multi night booking complete with the treatment

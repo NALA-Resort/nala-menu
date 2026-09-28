@@ -292,6 +292,14 @@ loads no staff code — so its half of the contract is
 `tests/form_questions.json` and `tests/onenight_cases.json`, which both
 suites answer to.
 
+Its two moments carry a date and a time on the open cards, in grey - the
+Front Desk summary and form, the Guest Profile - and on no closed card, the
+Front Desk and Pre-arrival SMS rows included (the owner, 28 Sep: "a secondary
+type of information"). `openedAt` is the guest's FIRST landing, written once
+and never moved; `at` is said as Completed only when `formState` agrees.
+`formStamps` is the one reading, `stampOf` the one way a stamp is dated: the
+parsed local day, never a slice.
+
 Buttons have a law of their own — **the button law, STYLEGUIDE.md** (ruled
 26 Aug): one solid primary per surface, destructive actions wear terracotta
 outline and always confirm before writing. Read it before adding any button.

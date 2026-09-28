@@ -38,6 +38,21 @@ function ord(n){
   return n + (s[(v-20)%10] || s[v] || s[0]);
 }
 
+/* A moment as staff read it: "Sun 27 Sep 3:10pm" - the short day the
+   Pre-arrival SMS rows print, then timeOf's clock. The day is the PARSED
+   stamp's, in the device's zone, never the ISO string's first ten
+   characters: those are the UTC day, and in Brisbane anything before 10am
+   is still the day before in UTC, so a slice dates every morning's stamp a
+   day early (CLAUDE.md rule 7). Empty for a stamp that does not parse, so
+   a caller leaves the words out rather than printing "Invalid Date". */
+function stampOf(iso){
+  var d = parseISO(iso); if (!d) return '';
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' +
+         d.getDate() + ' ' +
+         ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov',
+          'Dec'][d.getMonth()] + ' ' + timeOf(iso);
+}
+
 /* the one date format: Wd Dth Mon (see STYLEGUIDE.md) */
 function dateLabel(d){
   var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -809,6 +824,32 @@ function formState(p, stay, spa){
   if (p && p.at && guestAnswered(p) && mandatoryAnswered(p, stay, spa))
     return 'completed';
   return guestAnswered(p) ? 'incomplete' : 'notstarted';
+}
+
+/* The form's two moments, a date and a time on each - the owner's ask of
+   28 Sep - as the open cards say them: "Opened Sat 26 Sep 8:14pm",
+   "Completed Sun 27 Sep 3:10pm". Lines in that order, each only when its
+   stamp is there to read. Open cards only, and in grey, his ruling the
+   same day: "a secondary type of information", so the Front Desk summary
+   and form and the Guest Profile carry it, and a closed card - a Front
+   Desk row, a Pre-arrival SMS row - never does.
+
+   Opened is openedAt, which prearrival.html writes on the guest's FIRST
+   landing and never moves. Until 28 Sep it re-stamped every visit, so a
+   guest who looked again at a form they had finished read as opening it
+   after completing it.
+
+   Completed is `at` - the guest's Send and the desk's Mark as completed
+   both write it - and it is said ONLY when formState says completed. A
+   record can hold the stamp while the state reads incomplete (the villa 17
+   record, or one stamped before 28 Aug's three states), and quoting it
+   there would be a second reading of one state. */
+function formStamps(p, stay, spa){
+  var out = [], opened = p ? stampOf(p.openedAt) : '';
+  if (opened) out.push('Opened ' + opened);
+  if (formState(p, stay, spa) === 'completed' && stampOf(p.at))
+    out.push('Completed ' + stampOf(p.at));
+  return out;
 }
 
 /* Where a booking stands on its PRE-ARRIVAL SMS - the one reader for it, so
