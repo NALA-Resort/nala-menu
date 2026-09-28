@@ -242,16 +242,18 @@ with sync_playwright() as p:
     #  each with its day - the owner, 28 Sep - formStamps' reading, under the
     #  Stay tab's pill. b8's form is complete; the opening is set here and
     #  left on, so the width checks below measure the longest line.
-    OPENED = "2026-09-26T21:05:00Z"
-    BK["b8"]["prearrival"]["openedAt"] = OPENED
+    OPENED, LATEST = "2026-09-26T21:05:00Z", "2026-09-27T02:40:00Z"
+    BK["b8"]["prearrival"].update({"firstOpenedAt": OPENED, "openedAt": LATEST,
+                                   "completedBy": "guest"})
     pg = profile()
     st = lambda s: pg.evaluate("s=>stampOf(s)", s)
     lines = pg.eval_on_selector_all("#pStay .fstamps > div",
                                     "els=>els.map(e=>e.textContent)")
     print("   the Stay tab's stamps:", lines)
-    ck("the Stay tab says when the form was opened and completed, each with its day",
-       lines == ["Opened " + st(OPENED),
-                 "Completed " + st(BK["b8"]["prearrival"]["at"])])
+    ck("the Stay tab says the first opening, the last and who completed it, "
+       "each with its day and in the order they happened",
+       lines == ["Opened " + st(OPENED), "Last opened " + st(LATEST),
+                 "Completed by guest " + st(BK["b8"]["prearrival"]["at"])])
     ck("directly under the form's state pill",
        pg.evaluate("()=>document.querySelector('#pStay .statepill')"
                    ".nextElementSibling.className") == "fstamps")
@@ -262,6 +264,26 @@ with sync_playwright() as p:
        == pg.eval_on_selector("#pStay .row .q", "e=>getComputedStyle(e).color")
        != pg.eval_on_selector("#pStay .row .a", "e=>getComputedStyle(e).color"))
     pg.close()
+    #  The shared table the Front Desk answers to as well, read in the
+    #  resort's zone: its lines are Brisbane's days, and a page that dated a
+    #  stamp by slicing the string would fail most of them.
+    SC = json.load(open("/home/claude/nala/tests/form_stamps_cases.json"))
+    zc = b.new_context(viewport={"width": 390, "height": 900},
+                       timezone_id=SC["zone"])
+    zp = zc.new_page()
+    zp.add_init_script(SDK)
+    zp.route("**firebasedatabase.app/**", fb)
+    zp.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    zp.goto("http://localhost:8987/guest.html?b=b8")
+    zp.wait_for_timeout(1500)
+    bad = [c["name"] for c in SC["cases"]
+           if [l.replace("\u00a0", " ") for l in
+               zp.evaluate("c=>formStamps(c.pre, c.stay, c.spa || null)", c)]
+              != c["lines"]]
+    print("   form_stamps_cases disagreeing:", bad)
+    ck("formStamps agrees with the shared table on every case (%d)"
+       % len(SC["cases"]), not bad)
+    zc.close()
 
     # ── the fresh booking ───────────────────────────────────────
     pg = profile(bid="b17")

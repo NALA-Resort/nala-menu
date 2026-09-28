@@ -523,7 +523,7 @@ body.paper .crun { background:var(--surface); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=85"></script>
+<script src="nala-shared.js?v=86"></script>
 <script src="nala-cards.js?v=15"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -2419,6 +2419,16 @@ function save(r, a, arrived, mark){
   if (mark === 'completed') payload.at = new Date().toISOString();
   else if (mark === 'incomplete') payload.at = null;
 
+  /* Who completed it - the owner, 28 Sep: the guest's Send writes 'guest',
+     this control writes 'desk', and whatever takes the stamp away takes
+     this with it. Its own write, sent once the answers have landed (below),
+     never inside the payload: the field is new to rules.json, and until the
+     rules paste a payload carrying it is refused WHOLE, which would fail
+     Mark as completed itself. Refused alone, the form reads a plain
+     Completed until the paste. undefined: this save says nothing about it. */
+  var who = mark === 'completed' ? 'desk'
+          : (payload.at === null ? null : undefined);
+
   /* Arrived, and nothing else. The owner's ruling of 28 Aug: checking a guest
      in is a visual move of the tile so reception can see who is here. It does
      not decide anything about the form, and it asks for nothing before it
@@ -2443,6 +2453,7 @@ function save(r, a, arrived, mark){
 
   var before = r.pre, beforeCell = r.cell;
   r.pre  = Object.assign({}, r.pre || {}, payload);  /* optimistic */
+  if (who !== undefined) r.pre.completedBy = who;
   /* Only when there is a dining answer to show. Building the cell first and
      putting it back after would paint the guest as not dining for the frame
      between the two. Un-answering takes an existing cell WITH it: the cell
@@ -2548,6 +2559,14 @@ function save(r, a, arrived, mark){
          connection" and sent reception to the wrong remedy entirely. */
       var bad = res.filter(function(x){ return !x.ok; })[0];
       if (bad) throw new Error('save failed ' + bad.status);
+      /* Who completed it, quietly and only now the answers are in: see
+         where `who` is set. A refusal here costs the "at the desk" words,
+         never the save. */
+      if (who !== undefined)
+        fetch(DB + '/bookings/' + r.stay.id + '/prearrival.json', {
+          method: 'PATCH', headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify({ completedBy: who })
+        }).catch(function(){});
     });
   }, {
     done:'Saved ✓', hold:400, then:closeSheet,

@@ -11,9 +11,9 @@ down are the ones that are easy to get wrong and invisible when they are:
      send ALONE: answers with no `at` are a form in progress, answers with one
      are a form finished, and that is what the desk reads.
   3. The opened stamp IS written on landing, because without it a message that
-     never arrived looks the same as one that arrived and was ignored - on the
-     FIRST landing only, since 28 Sep, when the staff screens began printing
-     it with a date beside the completion stamp.
+     never arrived looks the same as one that arrived and was ignored. Two
+     since 28 Sep, the owner's answer: openedAt, the latest, on every landing,
+     and firstOpenedAt once, on a record never opened before.
   4. The link's name and dates are shown and NEVER written back. They are Mews'
      facts, and a copy taken here would be stale the moment Mews changed them.
   5. Send is a PATCH. Reception may already have confirmed this booking, and a
@@ -149,13 +149,20 @@ with sync_playwright() as p:
        pg.evaluate("()=>!document.querySelector('header').offsetParent") and
        pg.evaluate("()=>form.className") == "")
 
+    #  Two stamps on a first landing, the owner's answer of 28 Sep: the latest
+    #  opening and the first. Each its own PATCH - firstOpenedAt is new to
+    #  the rules, and until the paste it is refused alone, never taking the
+    #  latest stamp down with it.
     opened = wrote("/bookings/res-guid-1/prearrival")
-    ck("landing stamps that the link was opened", len(opened) == 1)
-    if opened:
-        ck("and stamps nothing else, because nothing has been answered",
-           list(opened[0]["b"].keys()) == ["openedAt"])
-        ck("as a PATCH, so it cannot wipe an existing record",
-           opened[0]["m"] == "PATCH")
+    ck("landing stamps that the link was opened, first and latest",
+       sorted(list(w["b"].keys())[0] for w in opened
+              if isinstance(w["b"], dict)) == ["firstOpenedAt", "openedAt"])
+    ck("each in a write of its own, and nothing else, because nothing has "
+       "been answered", all(len(w["b"]) == 1 for w in opened))
+    ck("both the same moment",
+       len(set(list(w["b"].values())[0] for w in opened)) == 1)
+    ck("as PATCHes, so they cannot wipe an existing record",
+       opened and all(w["m"] == "PATCH" for w in opened))
     ck("and it is the form, not a thank you",
        pg.evaluate("()=>done.className.indexOf('hide')>-1"))
     #  The demo's Back to Settings link must exist nowhere a real guest can
@@ -570,6 +577,17 @@ with sync_playwright() as p:
         ck("how many and how long, as numbers the rules can bound",
            body["wellQty"] == 2 and body["wellDur"] == 90 and body["wellDur2"] == 60)
         ck("and a timestamp for when the answers first existed", bool(body["at"]))
+        #  Who completed it, the owner's answer of 28 Sep: its own quiet write
+        #  after the answers land, never inside them - until the rules paste
+        #  the database refuses the field, and a send carrying it would be
+        #  refused whole.
+        ck("the send itself carries no field the rules paste has yet to allow",
+           "completedBy" not in body and "firstOpenedAt" not in body)
+        whos = [x for x in wrote("/bookings/res-guid-1/prearrival")
+                if isinstance(x["b"], dict) and "completedBy" in x["b"]]
+        ck("and says who completed it in a write of its own, after: the guest",
+           len(whos) == 1 and whos[0]["b"] == {"completedBy": "guest"}
+           and WRITES.index(whos[0]) > WRITES.index(w[0]))
         #  The send writes the whole record again, not just the last page, so
         #  a page save lost to a bad connection costs the guest nothing.
         ck("the send carries the whole form, not only the last page",
@@ -657,48 +675,64 @@ with sync_playwright() as p:
     pg.close()
     STATE["pre"] = None
 
-    # ── the opening, stamped once ───────────────────────────────
-    #  The owner asked on 28 Sep for a date and a time on the form's opening
-    #  as well as its completion, and the staff screens print openedAt beside
-    #  `at`. It is the FIRST landing: until then every visit re-stamped it,
-    #  so a guest who looked again at a form they had finished read as
-    #  opening it after completing it.
-    def stamped():
+    # ── the openings, first and latest ──────────────────────────
+    #  The owner, 28 Sep, one question at a time: keep both. openedAt is the
+    #  LATEST and moves on every landing; firstOpenedAt is the FIRST, written
+    #  once - and only on a record never opened before, since a record
+    #  already holding an openedAt was first opened at a time nobody kept.
+    #  Each is its own PATCH: firstOpenedAt is new to the rules, and until
+    #  the paste it is refused alone.
+    def stamps(key):
         return [w for w in wrote("/prearrival")
-                if isinstance(w["b"], dict) and "openedAt" in w["b"]]
-    FIRST = "2026-09-20T01:00:00Z"
+                if isinstance(w["b"], dict) and key in w["b"]]
+    FIRST, LATER = "2026-09-20T01:00:00Z", "2026-09-21T05:00:00Z"
     for why, rec in (
-            ("a link opened and left", {"openedAt": FIRST}),
-            ("a form in progress", {"openedAt": FIRST, "arriveSlot": "15"}),
-            ("a finished form", {"openedAt": FIRST, "at": "2026-09-21T02:00:00Z",
-                                 "arriveSlot": "15", "dining": True, "pax": 2,
-                                 "noDiets": True})):
+            ("a link opened and left", {"firstOpenedAt": FIRST, "openedAt": LATER}),
+            ("a form in progress", {"firstOpenedAt": FIRST, "openedAt": LATER,
+                                    "arriveSlot": "15"}),
+            ("a finished form", {"firstOpenedAt": FIRST, "openedAt": LATER,
+                                 "at": "2026-09-21T02:00:00Z", "arriveSlot": "15",
+                                 "dining": True, "pax": 2, "noDiets": True})):
         STATE["pre"] = rec
         del WRITES[:]
         pg = guest(begin=False)
         pg.wait_for_timeout(300)
-        ck("landing again on %s leaves the first opening where it is" % why,
-           not stamped())
+        ck("landing again on %s moves the latest opening" % why,
+           len(stamps("openedAt")) == 1)
+        ck("and leaves the first where it is", not stamps("firstOpenedAt"))
         pg.close()
+    #  Opened before the first was kept - any record from before 28 Sep. Its
+    #  first opening is unknown, and the next visit is not it.
+    STATE["pre"] = {"openedAt": FIRST, "arriveSlot": "15"}
+    del WRITES[:]
+    pg = guest(begin=False)
+    pg.wait_for_timeout(300)
+    ck("a record opened before the first was kept is never given a first",
+       not stamps("firstOpenedAt") and len(stamps("openedAt")) == 1)
+    pg.close()
     #  A record the desk began before the guest ever looked: their first
-    #  visit is still their first, and is stamped.
+    #  visit is still their first, and gets both stamps.
     STATE["pre"] = {"arriveSlot": "15", "dining": True, "pax": 2}
     del WRITES[:]
     pg = guest(begin=False)
     pg.wait_for_timeout(300)
-    s = stamped()
-    ck("a record with answers and no opening is stamped on the first landing",
-       len(s) == 1 and list(s[0]["b"].keys()) == ["openedAt"]
-       and s[0]["m"] == "PATCH" and "/bookings/res-guid-1/prearrival" in s[0]["u"])
+    f, l = stamps("firstOpenedAt"), stamps("openedAt")
+    ck("a record with answers and no opening gets both on the first landing",
+       len(f) == 1 and len(l) == 1
+       and f[0]["b"]["firstOpenedAt"] == l[0]["b"]["openedAt"])
+    ck("each alone, as a PATCH to the guest's own record",
+       all(len(w["b"]) == 1 and w["m"] == "PATCH"
+           and "/bookings/res-guid-1/prearrival" in w["u"] for w in f + l))
     pg.close()
-    #  A read that fails is not an empty record: stamping on one would move a
-    #  first landing the page could not see.
-    STATE["pre"] = {"openedAt": FIRST}
+    #  A read that fails is not an empty record: stamping on one could leave
+    #  an opening whose first is lost for good.
+    STATE["pre"] = None
     STATE["readfail"] = True
     del WRITES[:]
     pg = guest(begin=False)
     pg.wait_for_timeout(300)
-    ck("a read that fails stamps nothing", not stamped())
+    ck("a read that fails stamps nothing",
+       not stamps("openedAt") and not stamps("firstOpenedAt"))
     pg.close()
     STATE["readfail"] = False
     STATE["pre"] = None
@@ -737,6 +771,9 @@ with sync_playwright() as p:
        "did not send" in pg.locator("#err").inner_text())
     ck("and lets them try again",
        pg.evaluate("()=>send.disabled === false"))
+    ck("and claims nobody completed a form that never arrived",
+       not [x for x in WRITES if isinstance(x["b"], dict)
+            and "completedBy" in x["b"]])
     STATE["fail"] = False
     pg.close()
 

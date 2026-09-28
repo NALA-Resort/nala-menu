@@ -492,6 +492,12 @@
           "openedAt": {
             ".validate": "newData.isString() && newData.val().length <= 40"
           },
+          "firstOpenedAt": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "completedBy": {
+            ".validate": "newData.isString() && (newData.val() == 'guest' || newData.val() == 'desk')"
+          },
           "confirmedAt": {
             ".validate": "newData.isString() && newData.val().length <= 40"
           },

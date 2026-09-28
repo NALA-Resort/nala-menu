@@ -138,6 +138,22 @@ canPatch('the guest pre-arrival form saves', GUEST, '/bookings/b-1/prearrival', 
 });
 canPatch('and stamps that the link was opened', GUEST, '/bookings/b-1/prearrival',
          { openedAt: NOW });
+/* The form's other two stamps, the owner's answers of 28 Sep: the FIRST
+   opening beside the latest (openedAt), and who completed it. Each is its
+   own quiet write from prearrival.html and front-desk.html, so until this
+   file is pasted they are refused alone and the answers never wait on them. */
+canPatch('and stamps the first opening, once', GUEST, '/bookings/b-1/prearrival',
+         { firstOpenedAt: NOW });
+canPatch('the guest\'s Send says who completed it', GUEST,
+         '/bookings/b-1/prearrival', { completedBy: 'guest' });
+canPatch('and so does the desk\'s Mark as completed', DESK,
+         '/bookings/b-1/prearrival', { completedBy: 'desk' });
+canPatch('and a walk-back clears it', DESK, '/bookings/b-1/prearrival',
+         { completedBy: null });
+cannot('but nobody else completes a form', GUEST, '/bookings/b-1/prearrival',
+       { completedBy: 'chef' });
+cannot('and a first opening is a stamp, not a novel', GUEST,
+       '/bookings/b-1/prearrival', { firstOpenedAt: new Array(50).join('x') });
 /* Whose answers these are. The booking carries two people and they may
    differ - pms.customerId is Mews's current customer, this is the person
    the answers were given for. Written by the mirrors and the sync alike,

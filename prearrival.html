@@ -1553,6 +1553,14 @@ function submitForm(){
 
   db('/bookings/' + G.id + '/prearrival', 'PATCH', payload)
     .then(function(){
+      /* Who completed it, the owner's answer of 28 Sep: the guest, here;
+         the desk's Mark as completed writes 'desk'. Its own quiet write,
+         after the answers have landed and never inside them: the field is
+         new to rules.json, and until the rules paste a payload carrying it
+         would be refused WHOLE - the guest's Send would fail. Refused
+         alone, the form reads a plain Completed until the paste. */
+      db('/bookings/' + G.id + '/prearrival', 'PATCH',
+         { completedBy: 'guest' }).catch(function(){});
       el('form').className = 'hide';
       el('foot').style.display = 'none';
       el('done').className = 'done';
@@ -1644,8 +1652,8 @@ function boot(){
     return;
   }
 
-  /* The opened stamp is written below, once the record has been read: it
-     marks the FIRST landing, so it needs to know whether there was one. */
+  /* The opened stamps are written below, once the record has been read:
+     the first opening needs to know whether there was one. */
 
   /* Mews is fresher than a link sent days ago, so its name and dates win for
      display. It may not exist yet, which is the normal case at seven days
@@ -1696,18 +1704,33 @@ function boot(){
      they are left, so their answers are loaded and they are put back on the
      first page they had not answered instead of being shown the thank you. */
   db('/bookings/' + G.id + '/prearrival').then(function(p){
-    /* The opened stamp: the guest's FIRST landing, written once and never
-       moved. It is what tells a message that never arrived from one that
-       arrived and was ignored, and since 28 Sep the staff screens print it
-       with a date beside the completion stamp. Until then every visit
-       re-stamped it, so a guest who looked again at a form they had
-       finished read as opening it after completing it. A PATCH, so it
-       cannot wipe the record; and only after a read that SUCCEEDED - a
-       failed read is not an empty record (the Clean Slate lesson), and
-       writing on one would move the first landing it was meant to keep. */
-    if (!(p && p.openedAt))
+    /* The opened stamps, both kept - the owner, 28 Sep: the first opening
+       and the latest. They tell a message that never arrived from one that
+       arrived and was ignored, and the staff screens print them, dated,
+       beside the completion.
+
+       openedAt is the LATEST: every landing moves it, as it always has
+       (bar a few hours on 28 Sep, when it briefly kept the first).
+       firstOpenedAt is the FIRST, written once - and only on a record never
+       opened before. A record already holding an openedAt was first opened
+       at a time nobody kept, and stamping its next visit as the first
+       would be a guess dressed as a fact; that record shows its latest
+       opening alone.
+
+       Two writes, not one: firstOpenedAt is new to rules.json, and until
+       the rules paste the database refuses it - alone, so the latest
+       stamp, which Pre-arrival SMS and the desk's link icon read, never
+       waits on the paste. The forCustomerId pattern: it limps, it does not
+       fail. Both only after a read that SUCCEEDED: a failed read is not an
+       empty record (the Clean Slate lesson), and stamping on one could
+       leave an opening with its first lost for good. */
+    var landed = new Date().toISOString();
+    var never = !(p && (p.openedAt || p.firstOpenedAt));
+    db('/bookings/' + G.id + '/prearrival', 'PATCH',
+       { openedAt: landed }).catch(function(){});
+    if (never)
       db('/bookings/' + G.id + '/prearrival', 'PATCH',
-         { openedAt: new Date().toISOString() }).catch(function(){});
+         { firstOpenedAt: landed }).catch(function(){});
     if (!p) return;
     var started = p.arriveSlot || p.dining !== undefined || (p.diets && p.diets.length) ||
                   p.noDiets || p.purpose || p.approach || p.wellness !== undefined ||

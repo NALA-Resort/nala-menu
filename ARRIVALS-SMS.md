@@ -16,12 +16,13 @@ the SAME cells, deliberately: `/bookings/<id>/prearrival` is the form's own
 record, written by prearrival.html as the guest moves through it. Nothing on
 this page invents state:
 
-- `openedAt` - the guest opened their link: the FIRST opening, written once
-  and never moved (28 Sep; until then every visit re-stamped it, so a guest
-  who looked again at a finished form read as opening it after completing it)
+- `openedAt` - the guest opened their link: the LATEST opening, moved by
+  every visit. Beside it since 28 Sep, `firstOpenedAt`, the first, written
+  once and only on a record never opened before (the owner kept both)
 - any answer field present - they started (front-desk's GUEST_ANSWERS list,
   copied here, and "no" is an answer)
-- `at` - they submitted: **form completed**
+- `at` - they submitted: **form completed** (or the desk marked it so;
+  `completedBy` says which, guest or desk, since 28 Sep)
 
 The rows say which of these a form has reached, not when: the owner ruled on
 28 Sep that a closed card does not need the time and date. The two stamps

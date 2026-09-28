@@ -1619,29 +1619,40 @@ with sync_playwright() as p:
     pg.close()
     del PRE["b17"]
 
-    # ── the form's two moments, each with its day ───────────────
-    # The owner, 28 Sep: a date and a time on the pre-arrival form's
-    # completion, and on its opening. The summary says them under the
-    # answers and the form says them at its top, both through formStamps
-    # (nala-shared.js), so Completed is never said of a form formState does
-    # not call completed. Villa 17 is the block above's one nighter, so the
-    # treatment question is not owed and three answers complete it.
-    OPENED, DONE = "2026-09-26T21:05:00Z", "2026-09-27T22:30:00Z"
+    # ── the form's moments, each with its day ───────────────────
+    # The owner, 28 Sep, one question at a time: the first opening and the
+    # latest, who completed it, and all of it in time order. The summary
+    # says them under the answers, in grey, and the form at its top, both
+    # through formStamps (nala-shared.js) - which answers to the shared
+    # table tests/form_stamps_cases.json, read in the resort's zone below
+    # and again by guest_suite. Villa 17 is the block above's one nighter,
+    # so the treatment question is not owed and three answers complete it.
+    OPENED, DONE, LATEST = ("2026-09-26T21:05:00Z", "2026-09-27T22:30:00Z",
+                            "2026-09-28T01:15:00Z")
     def pre_row(pg):
         return pg.evaluate("""()=>{const r=[...document.querySelectorAll('.sum-r')]
           .find(e=>e.querySelector('.sum-l').textContent==='Pre-arrival');
-          return r?r.querySelector('.sum-v').innerText:null;}""")
+          return r?r.querySelector('.sum-v').innerText.replace(/\\u00a0/g,' '):null;}""")
     def form_top(pg):
         return pg.evaluate("()=>[...document.querySelectorAll('#sheet .gd .gd-sub')]"
-                           ".map(e=>e.textContent)")
-    PRE["b17"] = {"openedAt": OPENED, "at": DONE, "arriveSlot": "15",
+                           ".map(e=>e.textContent.replace(/\\u00a0/g,' '))")
+    #  Sent by the guest, then looked at again.
+    PRE["b17"] = {"firstOpenedAt": OPENED, "at": DONE, "completedBy": "guest",
+                  "openedAt": LATEST, "arriveSlot": "15",
                   "dining": True, "pax": 2, "noDiets": True}
     pg = board()
-    st = lambda s: pg.evaluate("s=>stampOf(s)", s)
+    st = lambda s: pg.evaluate("s=>stampOf(s)", s).replace("\u00a0", " ")
+    #  A stamp holds together: its spaces are non-breaking, so a narrow card
+    #  breaks a line before a date and time, never inside one.
+    raw = pg.evaluate("s=>stampOf(s)", OPENED)
+    ck("a stamp never breaks across two lines: its spaces do not break",
+       " " not in raw and raw.count("\u00a0") == 3)
     pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    want = ["Opened " + st(OPENED), "Completed by guest " + st(DONE),
+            "Last opened " + st(LATEST)]
     print("   the summary's Pre-arrival row:", repr(pre_row(pg)))
-    ck("the summary says when the form was opened and completed, each with its day",
-       pre_row(pg) == "Opened " + st(OPENED) + "\nCompleted " + st(DONE))
+    ck("the summary says the first opening, the completion and the last, "
+       "in the order they happened", pre_row(pg) == "\n".join(want))
     ck("under the answers, as their last row",
        pg.evaluate("()=>[...document.querySelectorAll('.sum .sum-l')]"
                    ".map(e=>e.textContent).pop()") == "Pre-arrival")
@@ -1657,21 +1668,23 @@ with sync_playwright() as p:
     ck("in grey, the labels' own colour and not the answers' ink",
        col[0] == col[1] and col[0] != col[2])
     ck("and the closed row carries no stamp at all - only the open card does",
-       not [s for s in (st(OPENED), st(DONE), "Opened", "Completed")
+       not [s for s in (st(OPENED), st(DONE), st(LATEST), "Opened", "Completed")
             if s in pg.locator('.arr[data-villa="17"]').inner_text()])
     pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
     print("   the form's top:", form_top(pg))
-    ck("and the form says both at its top, a line each",
-       form_top(pg)[-2:] == ["Opened " + st(OPENED), "Completed " + st(DONE)])
+    ck("and the form says the same at its top, a line each",
+       form_top(pg)[-3:] == want)
     ck("in the same grey",
        pg.evaluate("()=>getComputedStyle([...document.querySelectorAll("
                    "'#sheet .gd .gd-sub')].pop()).color") == col[1])
     pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
     pg.close()
-    #  The same record in the resort's zone, where both stamps are the next
-    #  morning: a day sliced off the ISO string would name the day before.
+    #  In the resort's zone, where these stamps fall on the next morning: a
+    #  day sliced off the ISO string would name the day before. And the
+    #  shared table, whose lines are that zone's.
+    SC = json.load(open("tests/form_stamps_cases.json"))
     zc = b.new_context(viewport={"width": 390, "height": 900},
-                       timezone_id="Australia/Brisbane")
+                       timezone_id=SC["zone"])
     pg = zc.new_page()
     pg.add_init_script(SDK)
     pg.add_init_script("window.__EMAIL='staff@x';")
@@ -1681,14 +1694,34 @@ with sync_playwright() as p:
     pg.wait_for_timeout(1600)
     pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
     ck("in Brisbane the summary reads that zone's days",
-       pre_row(pg) == "Opened Sun 27 Sep 7:05am\nCompleted Mon 28 Sep 8:30am")
+       pre_row(pg) == "Opened Sun 27 Sep 7:05am\n"
+                      "Completed by guest Mon 28 Sep 8:30am\n"
+                      "Last opened Mon 28 Sep 11:15am")
+    bad = [c["name"] for c in SC["cases"]
+           if [l.replace("\u00a0", " ") for l in
+               pg.evaluate("c=>formStamps(c.pre, c.stay, c.spa || null)", c)]
+              != c["lines"]]
+    print("   form_stamps_cases disagreeing:", bad)
+    ck("formStamps agrees with the shared table on every case (%d)"
+       % len(SC["cases"]), not bad)
     zc.close()
+    #  Completed at the desk before the guest ever looked reads in that
+    #  order, not reversed - Kavi Jarrott's card, 28 Sep.
+    PRE["b17"] = {"at": DONE, "completedBy": "desk", "firstOpenedAt": LATEST,
+                  "openedAt": LATEST, "arriveSlot": "15",
+                  "dining": True, "pax": 2, "noDiets": True}
+    pg = board()
+    st = lambda s: pg.evaluate("s=>stampOf(s)", s).replace("\u00a0", " ")
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    ck("a form the desk completed before the guest looked reads in that order",
+       pre_row(pg) == "Completed at the desk " + st(DONE) + "\nOpened " + st(LATEST))
+    pg.close()
     #  A stamp beside a form still missing its dinner answer is no
     #  completion: the row is amber, and the form must not say otherwise.
-    PRE["b17"] = {"openedAt": OPENED, "at": DONE, "arriveSlot": "15",
-                  "noDiets": True}
+    PRE["b17"] = {"firstOpenedAt": OPENED, "openedAt": OPENED, "at": DONE,
+                  "completedBy": "guest", "arriveSlot": "15", "noDiets": True}
     pg = board()
-    st = lambda s: pg.evaluate("s=>stampOf(s)", s)
+    st = lambda s: pg.evaluate("s=>stampOf(s)", s).replace("\u00a0", " ")
     pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
     top = form_top(pg)
     ck("an incomplete form holding a stamp says when it was opened",
@@ -1703,7 +1736,7 @@ with sync_playwright() as p:
     pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
     ck("a form never opened carries no stamp line at all",
        not [t for t in form_top(pg)
-            if t.startswith("Opened") or t.startswith("Completed")])
+            if t.startswith(("Opened", "Last opened", "Completed"))])
     pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
     pg.close()
     del PRE["b17"]
@@ -1748,10 +1781,23 @@ with sync_playwright() as p:
     pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
     del WRITES[:]
     pg.locator("#sMark").click(); pg.wait_for_timeout(700)
-    w = [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]]
+    #  Two writes since 28 Sep: the answers with the state, then who
+    #  completed it on its own - the field is new to the rules, and inside
+    #  the answers an unpasted rule would refuse Mark as completed whole.
+    w = [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]
+         and "completedBy" not in x["b"]]
+    who = [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]
+           and "completedBy" in x["b"]]
     ck("marking it completed is what writes the state",
        len(w) == 1 and bool(json.loads(w[0]["b"]).get("at")))
+    ck("and says the desk completed it, in a write of its own, after",
+       len(who) == 1 and json.loads(who[0]["b"]) == {"completedBy": "desk"}
+       and WRITES.index(who[0]) > WRITES.index(w[0]))
     ck("and the row goes green", "done-form" in cls("17"))
+    pg.wait_for_function("()=>backdrop.className.indexOf('show')<0", timeout=4000)
+    pg.locator('.arr[data-villa="17"]').click(); pg.wait_for_timeout(400)
+    ck("and the open card says so at once",
+       "Completed at the desk " in pg.locator(".sum").inner_text())
     pg.close()
 
     # ── and the way back ────────────────────────────────────────
@@ -1778,10 +1824,15 @@ with sync_playwright() as p:
     pg.once("dialog", lambda d: d.accept())
     del WRITES[:]
     pg.locator("#sMark").click(); pg.wait_for_timeout(700)
-    w = [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]]
+    w = [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]
+         and "completedBy" not in x["b"]]
+    who = [x for x in WRITES if "/bookings/b17/prearrival" in x["u"]
+           and "completedBy" in x["b"]]
     ck("accepting it clears the state, and only the state",
        len(w) == 1 and "at" in json.loads(w[0]["b"])
        and json.loads(w[0]["b"])["at"] is None)
+    ck("and who completed it goes with it, in its own write",
+       len(who) == 1 and json.loads(who[0]["b"]) == {"completedBy": None})
     ck("the answers are left exactly where they were",
        len(w) == 1 and json.loads(w[0]["b"]).get("dining") is False)
     ck("and the row drops to amber, not to grey: the answers are still there",

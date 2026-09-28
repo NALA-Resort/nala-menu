@@ -88,6 +88,11 @@ Already done this way — follow these:
   exactly these, and reads every board, its sheets and modes included,
   failing any colour outside the table by page and element. Added 27 Sep,
   after the owner found the greens, reds and oranges "all over the place".
+- `tests/form_stamps_cases.json` — the pre-arrival form's stamps as every
+  open card says them (`formStamps`): the first opening, who completed it,
+  the latest opening, in time order, read in Brisbane's zone. `fd_suite` and
+  `guest_suite` both answer to it. Added 28 Sep, after an opening that read
+  later than its completion was taken for the two labels swapped.
 
 **Never** restate the menu in a suite. Four suites held their own copy of
 the menu order until 26 Aug, which is why adding a page meant editing them
@@ -305,13 +310,20 @@ loads no staff code — so its half of the contract is
 `tests/form_questions.json` and `tests/onenight_cases.json`, which both
 suites answer to.
 
-Its two moments carry a date and a time on the open cards, in grey - the
-Front Desk summary and form, the Guest Profile - and on no closed card, the
-Front Desk and Pre-arrival SMS rows included (the owner, 28 Sep: "a secondary
-type of information"). `openedAt` is the guest's FIRST landing, written once
-and never moved; `at` is said as Completed only when `formState` agrees.
-`formStamps` is the one reading, `stampOf` the one way a stamp is dated: the
-parsed local day, never a slice.
+Its moments carry a date and a time on the open cards, in grey - the Front
+Desk summary and form, the Guest Profile - and on no closed card, the Front
+Desk and Pre-arrival SMS rows included (the owner, 28 Sep: "a secondary type
+of information"). He ruled the rest the same day, one question at a time:
+`firstOpenedAt` is the first opening, written once and only on a record never
+opened before; `openedAt` is the latest, moved by every landing; `completedBy`
+says whether the guest's Send or the desk's Mark as completed wrote `at`; and
+the lines run in time order, so a form the desk completed before the guest
+looked does not read as reversed. `at` is said as Completed only when
+`formState` agrees. `formStamps` is the one reading, held to
+`tests/form_stamps_cases.json`; `stampOf` the one way a stamp is dated: the
+parsed local day, never a slice. `firstOpenedAt` and `completedBy` are each
+written alone, never inside the answers: a field the console's rules do not
+know yet refuses the whole write it rides in.
 
 Buttons have a law of their own — **the button law, STYLEGUIDE.md** (ruled
 26 Aug): one solid primary per surface, destructive actions wear terracotta

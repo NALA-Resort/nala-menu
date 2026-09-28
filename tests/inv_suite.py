@@ -749,6 +749,7 @@ with sync_playwright() as p:
                       "phone": "+61 411 000 009",
                       "arrive": "2026-09-29", "depart": "2026-09-30"},
              "sentAt": "2026-09-27T22:30:00Z"})
+        line = line.replace("\u00a0", " ")
         print("   %s:" % tz, line)
         ck("%s: a send is dated in that zone: %s" % (tz, want),
            line.startswith("Sent " + want + " · "))

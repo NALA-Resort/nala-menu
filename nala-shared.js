@@ -44,13 +44,18 @@ function ord(n){
    characters: those are the UTC day, and in Brisbane anything before 10am
    is still the day before in UTC, so a slice dates every morning's stamp a
    day early (CLAUDE.md rule 7). Empty for a stamp that does not parse, so
-   a caller leaves the words out rather than printing "Invalid Date". */
+   a caller leaves the words out rather than printing "Invalid Date".
+
+   Held together by non-breaking spaces: a narrow card breaks the line
+   BEFORE a stamp, never inside it - "Completed by guest Tue 22 Sep" over
+   "8:10am" was the first build at 390. A time or a date is right or it is
+   useless (STYLEGUIDE.md, the trim rule), and half of one on each line is
+   neither. */
 function stampOf(iso){
   var d = parseISO(iso); if (!d) return '';
-  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' +
-         d.getDate() + ' ' +
-         ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov',
-          'Dec'][d.getMonth()] + ' ' + timeOf(iso);
+  return [['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()], d.getDate(),
+          ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov',
+           'Dec'][d.getMonth()], timeOf(iso)].join('\u00a0');
 }
 
 /* the one date format: Wd Dth Mon (see STYLEGUIDE.md) */
@@ -826,30 +831,46 @@ function formState(p, stay, spa){
   return guestAnswered(p) ? 'incomplete' : 'notstarted';
 }
 
-/* The form's two moments, a date and a time on each - the owner's ask of
-   28 Sep - as the open cards say them: "Opened Sat 26 Sep 8:14pm",
-   "Completed Sun 27 Sep 3:10pm". Lines in that order, each only when its
-   stamp is there to read. Open cards only, and in grey, his ruling the
-   same day: "a secondary type of information", so the Front Desk summary
-   and form and the Guest Profile carry it, and a closed card - a Front
-   Desk row, a Pre-arrival SMS row - never does.
+/* The form's moments, a date and a time on each, as the open cards say
+   them - the owner's rulings of 28 Sep, taken one question at a time:
 
-   Opened is openedAt, which prearrival.html writes on the guest's FIRST
-   landing and never moves. Until 28 Sep it re-stamped every visit, so a
-   guest who looked again at a form they had finished read as opening it
-   after completing it.
+     Opened Fri 25 Sep 7:10pm              the FIRST opening, firstOpenedAt
+     Completed by guest Sat 26 Sep 2:08pm  `at`, and who: completedBy
+     Last opened Sat 26 Sep 3:49pm         the LATEST opening, openedAt
 
-   Completed is `at` - the guest's Send and the desk's Mark as completed
-   both write it - and it is said ONLY when formState says completed. A
-   record can hold the stamp while the state reads incomplete (the villa 17
-   record, or one stamped before 28 Aug's three states), and quoting it
-   there would be a second reading of one state. */
+   IN TIME ORDER, so the card reads as what happened: a form the desk
+   completed before the guest ever looked reads Completed, then Opened, and
+   is not reversed. Open cards only, in grey ("a secondary type of
+   information"): the Front Desk summary and form and the Guest Profile
+   carry it, and a closed card - a Front Desk row, a Pre-arrival SMS row -
+   never does.
+
+   Last opened is said only when it is a different minute from the first:
+   a guest who came once has one opening. A record with no first opening
+   says its one stamp as Last opened, because that is all it is - every
+   visit moved openedAt until 28 Sep, and a record opened before the first
+   was kept, or before the rules paste, has no first to say.
+
+   Completed is said ONLY when formState says completed: a record can hold
+   `at` while the state reads incomplete (the villa 17 record, or one
+   stamped before 28 Aug's three states), and quoting it there would be a
+   second reading of one state. Who is the guest's Send or the desk's Mark
+   as completed; a form completed before completedBy existed, or before the
+   rules paste, is a plain Completed rather than a guess. */
+var FORM_WHO = { guest: 'Completed by guest', desk: 'Completed at the desk' };
 function formStamps(p, stay, spa){
-  var out = [], opened = p ? stampOf(p.openedAt) : '';
-  if (opened) out.push('Opened ' + opened);
+  if (!p) return [];
+  var lines = [], first = stampOf(p.firstOpenedAt), last = stampOf(p.openedAt);
+  if (first) lines.push({ t: parseISO(p.firstOpenedAt), s: 'Opened ' + first });
   if (formState(p, stay, spa) === 'completed' && stampOf(p.at))
-    out.push('Completed ' + stampOf(p.at));
-  return out;
+    lines.push({ t: parseISO(p.at),
+                 s: (FORM_WHO[p.completedBy] || 'Completed') + ' ' + stampOf(p.at) });
+  if (last && last !== first)
+    lines.push({ t: parseISO(p.openedAt), s: 'Last opened ' + last });
+  /* Stable on a tie: the order pushed, which is the order things happen. */
+  return lines.map(function(l, i){ l.i = i; return l; })
+    .sort(function(a, b){ return (a.t - b.t) || (a.i - b.i); })
+    .map(function(l){ return l.s; });
 }
 
 /* Where a booking stands on its PRE-ARRIVAL SMS - the one reader for it, so

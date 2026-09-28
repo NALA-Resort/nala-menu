@@ -651,7 +651,7 @@ None of these can move without him.
     guests drop-down (INVITATIONS.md, last section) sends tonight's menu to
     somebody who rang, and books them on Reservations as Awaiting.
     - **Paste `rules.json`** into the console, as items 1, 2, 12 and 14
-      ask - it is one file, so one paste clears all five. For this item it
+      ask - it is one file, so one paste clears all six. For this item it
       teaches `/manual` the Awaiting status and lets the guest's link answer
       its own booking and nothing else. Without it the first write is
       refused and NOTHING sends: the feature fails, it does not limp.
@@ -680,6 +680,17 @@ None of these can move without him.
       `/spasmstemplates`. Until the paste they sit under the catch-all
       rule: the feature WORKS, but any staff login except the masseuse's
       can write them and nothing is validated.
+17. **The form stamps rules paste, 28 Sep.** `rules.json` gained
+    `firstOpenedAt` and `completedBy` under `/bookings/<id>/prearrival`:
+    the pre-arrival form's first opening, and whether the guest or the
+    desk completed it. Until the file is pasted into Firebase console ->
+    Realtime Database -> Rules -> Publish, the database refuses both. Each
+    is written on its own, so nothing else fails - the feature limps: the
+    open cards show the latest opening as "Last opened" and a plain
+    "Completed", with no first opening and no who, for every form opened
+    or completed before the paste. Those cannot be filled in afterwards.
+    The same paste as item 16's `rules.json` - one paste of the current
+    file clears both, and any earlier item still waiting on one.
 
 ---
 
