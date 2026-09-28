@@ -142,8 +142,19 @@ MENUTAGS = {"bread": [], "entree": ["gluten"], "main": [], "dessert": []}
 
 WRITES = {"n": 0}
 
+# Spa reminders sweeps a morning with a treatment on it - a sweep of an
+# empty page proves nothing - and ONLY that page is served it, so no other
+# board's sweep moves under this fixture (28 Sep). James Reed's massage at
+# five, the day's last slot, with a mobile on the guest's Mews record.
+SPAR_SPA = {BOOKING: {"t1": {"status": "booked", "day": today, "time": "17:00",
+                             "dur": 60, "qty": 1, "name": "James Reed"}}}
+SPAR_BOOKINGS = {BOOKING: dict(BOOKINGS[BOOKING],
+                               pms=dict(BOOKINGS[BOOKING]["pms"], phone="+61 400 000 001"))}
+
 def fb(route, request):
     u = request.url
+    try: spar = "spa-reminders.html" in request.frame.url
+    except Exception: spar = False
     if request.method in ("PATCH", "PUT", "POST", "DELETE"):
         WRITES["n"] += 1
         route.fulfill(status=200, content_type="application/json",
@@ -152,6 +163,8 @@ def fb(route, request):
     body = "null"
     if "/staff" in u: body = json.dumps(STAFF)
     elif "/permissions" in u: body = "null"
+    elif spar and u.split("?")[0].endswith("/spa.json"): body = json.dumps(SPAR_SPA)
+    elif spar and u.split("?")[0].endswith("/bookings.json"): body = json.dumps(SPAR_BOOKINGS)
     elif "/roomguests/" + today in u: body = json.dumps(ROOMGUESTS)
     elif "/hk/" + today in u: body = json.dumps(HK)
     elif "/bookings/" + BOOKING + "/pms" in u: body = json.dumps(BOOKINGS[BOOKING]["pms"])
@@ -190,6 +203,7 @@ PAGES = [
     ("past-menus.html",   ""),
     ("templates.html",    ""),
     ("arrivals-sms.html", ""),
+    ("spa-reminders.html", ""),
     ("tally.html",        ""),
     ("spa.html",          ""),
     ("tag.html",          ""),

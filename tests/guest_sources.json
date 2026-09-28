@@ -43,6 +43,11 @@
       "kind": "function",
       "note": "A suggestion outranks a booking - it is the one the desk must act on." },
 
+    { "value": "a booked treatment's morning text: sent, changed since, or failed",
+      "owner": "spaReminderGood",
+      "kind": "function",
+      "note": "The spa reminder log at /spareminders/<booking>, read through the shared helpers (28 Sep): spaReminderGood for a text that reached the guest, spaQuote for what it said, preSmsFailed for a failure. The same readings the Spa board and Spa reminders give." },
+
     { "value": "the second guest's name",
       "owner": "companionOf",
       "kind": "function",

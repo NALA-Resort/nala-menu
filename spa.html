@@ -99,6 +99,15 @@
      never solid ink and never red, and always confirms before writing. */
   .cbtn.danger { border-color:var(--terra-b); color:var(--terra); flex:0 0 auto; padding:12px 14px; }
   .hint { font-size:var(--t2); color:var(--mid); margin-top:8px; line-height:1.45; }
+  /* The guest's morning text on an opened booking (28 Sep). Words, with an
+     amber pill only for a booking changed since its text - the law's chase
+     this - and red words only for a failure. */
+  .rpill { display:inline-block; font-size:var(--t1); border-radius:12px; padding:3px 9px;
+           background:var(--amber); border:1px solid var(--amberb); color:var(--amberink);
+           margin:0 0 6px; }
+  .remline { font-size:var(--t2); color:var(--ink); line-height:1.45; }
+  .remline.quiet { color:var(--mid); margin-top:2px; }
+  .remline.bad { color:var(--red); }
 
   /* The desk's find-the-guest box. True white: an editable surface, the
      colour law's one meaning for it. */
@@ -175,7 +184,7 @@ body.paper .vrow.b-grey { background:var(--surface); box-shadow:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=77"></script>
+<script src="nala-shared.js?v=78"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -263,6 +272,11 @@ var ADDQ = '';      /* the desk's find-the-guest text, kept across repaints */
 var SPACONTACT = null; /* /spacontact once loaded - the masseuse's mobile,
                           set in Settings, Prices; read only by the logins
                           that hold the Remind masseuse button */
+/* The spa reminder log and the desk's number fixes, whole, and Mews' own
+   record per booking (28 Sep): what an opened booking needs to say where
+   its guest's morning text stands. Read only for logins that may open
+   Spa reminders - the masseuse's view does not change. */
+var REMS = {}, FIXES = {}, PMS = {};
 function masseusePhone(){
   /* Judged again on the way out, not just on the way in: a number typed
      straight into the console must still be sendable or the sms: link
@@ -796,6 +810,15 @@ function card(it){
     rrow.appendChild(rb);
     el.appendChild(rrow);
   }
+  /* The guest's morning text (28 Sep), on a booked treatment, for a login
+     that may open Spa reminders. spaReminderState is the one judge - the
+     sending page's and the Dashboard's reading - so this card cannot tell
+     the desk something different about the same guest. Its own row, under
+     the answers, like Remind masseuse: it moves nothing on the record. */
+  if (!isNew && !rec.virtual && rec.status === 'booked' &&
+      canOpen(window.NALA_ROLE, 'spa-reminders.html')){
+    reminderSection(el, id, it.tid, rec);
+  }
   /* The ghost's one door out. Only a real record can be a ghost - a virtual
      ask is drawn FROM a booking, so it always has one - and only admin and
      manager may remove it. Terracotta and confirmed, the button law, and its
@@ -828,6 +851,65 @@ function card(it){
     el.appendChild(h);
   }
   return el;
+}
+
+/* The Guest reminder lines on an opened booked treatment. Only a treatment
+   for today can still be sent from Spa reminders, so only today's carries
+   the door; a later one says when its text will go, and one already begun
+   says what happened and asks nothing. */
+function reminderSection(el, id, tid, rec){
+  var rem = (REMS[id] || {})[tid] || null;
+  if (rem && typeof rem !== 'object') rem = null;
+  var raw = String((FIXES[id] && FIXES[id].phone) || (PMS[id] && PMS[id].phone) || '').trim();
+  var real = dkey(new Date());
+  var sub = document.createElement('div'); sub.className = 'sub';
+  sub.textContent = 'Guest reminder'; el.appendChild(sub);
+  function line(text, cls){
+    var d = document.createElement('div');
+    d.className = 'remline' + (cls ? ' ' + cls : '');
+    d.textContent = text; el.appendChild(d);
+  }
+  function sent(r){
+    var d = parseISO(r.sentAt); if (!d) return 'Sent';
+    var h = d.getHours(), m = String(d.getMinutes()).padStart(2, '0');
+    return 'Sent ' + niceDay(dkey(d)) + ', ' + (h % 12 || 12) + ':' + m + ' ' + (h < 12 ? 'am' : 'pm');
+  }
+  if (rec.day > real){
+    line('Goes out on the morning of ' + niceDay(rec.day) + ', from Spa reminders.', 'quiet');
+    return;
+  }
+  var st = spaReminderState(rec, rem, raw, Date.now());
+  if (st === 'sent')
+    line(sent(rem) + (rem.delivery === 'delivered' ? ' · delivered' : ''));
+  else if (st === 'changed'){
+    var pill = document.createElement('div'); pill.className = 'rpill';
+    pill.textContent = 'Changed since it went out'; el.appendChild(pill);
+    line('The text said ' + (rem.day !== rec.day ? niceDay(rem.day) + ' ' : '') +
+         slotLabel(rem.time) + '. A fresh one is waiting on Spa reminders.');
+    line(sent(rem), 'quiet');
+  } else if (st === 'nophone')
+    line('No mobile on the booking to text. Spa reminders can fix the number.');
+  else if (st === 'late')
+    line('Began at ' + slotLabel(rec.time) + (spaReminderGood(rem)
+           ? '; the text said ' + slotLabel(rem.time)
+           : rem && rem.status ? '; the last text did not arrive' : '; no reminder went') + '.',
+         'quiet');
+  else if (preSmsFailed(rem)){
+    line(rem.status === 'sent'
+           ? 'Not delivered' + (rem.deliveryText ? ' · ' + rem.deliveryText : '')
+           : 'Send failed' + (rem.error ? ' · ' + rem.error : ''), 'bad');
+    line('Still owed, on Spa reminders.', 'quiet');
+  } else
+    line('Not sent yet. It goes from Spa reminders, before ' + slotLabel(rec.time) + '.');
+  if (rec.day !== real || st === 'late') return;
+  var row = document.createElement('div');
+  row.className = 'btns'; row.style.marginTop = '10px';
+  var a = document.createElement('a');
+  a.className = 'cbtn quiet';
+  a.href = 'spa-reminders.html?open=' + encodeURIComponent(id);
+  a.textContent = 'Open Spa reminders';
+  row.appendChild(a);
+  el.appendChild(row);
 }
 
 /* ── the sanity read ─────────────────────────────────────────
@@ -1309,9 +1391,25 @@ function load(){
        is not an answer to a question they asked weeks ago. */
     fetch(DB + '/bookings.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
-      .catch(function(){ return null; })
+      .catch(function(){ return null; }),
+    /* The reminder log and the number fixes, for the logins that may open
+       Spa reminders; nobody else draws the Guest reminder lines. */
+    (function(){
+      if (!canOpen(window.NALA_ROLE, 'spa-reminders.html')) return Promise.resolve([null, null]);
+      return Promise.all(['/spareminders', '/phonefix'].map(function(p){
+        return fetch(DB + p + '.json?v=' + Date.now())
+          .then(function(r){ return r.ok ? r.json() : null; })
+          .catch(function(){ return null; });
+      }));
+    })()
   ]).then(function(res){
     SPACONTACT = res[2];
+    REMS = res[4][0] || {}; FIXES = res[4][1] || {};
+    PMS = {};
+    Object.keys(res[3] || {}).forEach(function(id){
+      var b = res[3][id];
+      if (b && b.pms) PMS[id] = b.pms;
+    });
     BOOKINGS = {};
     res[0].forEach(function(x){
       Object.keys(x.day).forEach(function(v){

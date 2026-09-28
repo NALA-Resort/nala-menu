@@ -245,6 +245,20 @@ reservation number staff read out).
 Cleans (`cleaners.html`), Publish Menu (`publish.html`), Settings
 (`staff.html`), Dietary Settings (`tag.html`), Statistics (`stats.html`).
 
+**Spa reminders** (`spa-reminders.html`, SMS menu, 28 Sep): a text to each
+guest on the morning of a booked treatment - "Hello Elena, a gentle
+reminder of your booking with us:", the treatment and its lengths, the day
+and time, then "If you need to change anything, just reply to this
+message. Nala Resort". The owner's rulings off `mock-spa-reminders.html`:
+the morning of (overruling the day before), the desk presses Send,
+nothing but the booking in the text. The Worker builds the details itself
+from the /spa record, and a booking moved since its text says "(changed
+from 11:30 am)". Records at `/spareminders/<booking>/<tid>`, wording at
+`/spasmstemplates`. The Dashboard's spa card took the job: its chips wear
+each guest's reminder state and its Mark done went, because the send log
+now says it. One reader for all of it, `spaReminderState` and
+`spaReminderRows`, held with the text to `tests/spareminder_cases.json`.
+
 **Settings is five tabs**: Staff, Roles, Notifications, Prices, and Guest
 form (added 30 Aug, item 12 below). It
 was one scroll doing four unrelated jobs, with a five-column grid that only
@@ -618,6 +632,18 @@ None of these can move without him.
     display change and not a revoke; if somebody has left and the paste
     has not happened, delete their Firebase login too, which is
     Authentication in the Firebase console.
+15. **Two pastes for the spa reminders, 28 Sep.** Both from `main`.
+    - **Paste `worker/send-invites.js` into the `nala-invites` Worker.**
+      It gained kind "spa". Until the paste, Send on Spa reminders FAILS
+      cleanly: the deployed Worker reads the request as tonight's
+      invitations and answers "bad date", the page says "Nothing was
+      sent", and no guest is texted. The other two SMS pages are
+      unaffected either way.
+    - **Paste `rules.json`.** It gained `/spareminders` and
+      `/spasmstemplates`. Until the paste they sit under the catch-all
+      rule: the feature WORKS, but any staff login except the masseuse's
+      can write them and nothing is validated. Same paste as items 1, 2,
+      12 and 14 - one paste clears them all.
 
 ---
 
@@ -705,7 +731,12 @@ and neither is designed.
   pushed-in villa is not offered a departure mark".
 - `tally_suite`: "the admin: no input under 16px".
 - `rules_test`: two "a waiter may not" about internal notes, from the other
-  session widening `/internal` to any staff role.
+  session widening `/internal` to any staff role. And ten more, counted
+  28 Sep when the suite first ran with targaryen installed (identical on
+  main): "the chef holds no card jobs" and nine like it, all still testing
+  `/cardjobs`, which the 11 Sep key-card rebuild retired for `/cards`.
+  The suite needs rewriting against `/cards` and `/cutrun`; the rules are
+  not what is wrong.
 
 Anything else failing is yours.
 

@@ -143,6 +143,10 @@ def spa_seed():
     }
 SPA = spa_seed()
 
+# The spa reminder log and the desk's number fixes (28 Sep), empty at rest.
+REM = {}
+FIXES = {}
+
 WRITES = []
 PUSHES = []   # what the page told the push Worker, one dict per event
 STATE = {"fail": False}
@@ -202,6 +206,8 @@ def fb(route, request):
                                "descs": {"dine": "Old dine description"},
                                "more": {"dine": "Old dine more"}})
     elif "/staff" in u: body = json.dumps(STAFF)
+    elif "/spareminders.json" in u: body = json.dumps(REM) if REM else "null"
+    elif "/phonefix.json" in u: body = json.dumps(FIXES) if FIXES else "null"
     elif "/spa.json" in u: body = json.dumps(SPA)
     elif re.search(r"/spa/[^/]+\.json", u):
         # the sanity read before every save: one guest's records, fresh
@@ -243,17 +249,20 @@ def fb(route, request):
     route.fulfill(status=200, content_type="application/json", body=body)
 
 P = F = 0
-def ck(name, cond):
+def ck(name, cond, detail=""):
     global P, F
-    print(("PASS " if cond else "FAIL ") + name)
+    print(("PASS " if cond else "FAIL ") + name + ((" | " + str(detail)) if not cond and detail else ""))
     P, F = (P + 1, F) if cond else (P, F + 1)
 
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b = p.chromium.launch()
 
-    def board(email="masseuse@x", w=390, qs=""):
+    def board(email="masseuse@x", w=390, qs="", clock=None):
         pg = b.new_page(viewport={"width": w, "height": 900})
+        #  Held only where the hour decides the answer: a guest's morning
+        #  text is owed until the treatment begins, and not after.
+        if clock: pg.clock.set_fixed_time(clock)
         pg.add_init_script(SDK)
         pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
         pg.route("**firebasedatabase.app/**", fb)
@@ -1695,6 +1704,75 @@ with sync_playwright() as p:
        g.query_selector('#board [data-booking="bGONE2"]') is None and
        "ghost booking" not in g.evaluate("()=>board.textContent"))
     g.close()
+
+    # ── the guest's morning text, on an opened booking (28 Sep) ────
+    #  A login that may open Spa reminders sees where the guest's text
+    #  stands, read through spaReminderState - the Dashboard's and the
+    #  sending page's reading. The masseuse sees nothing new. The clock is
+    #  held at 8:30, before Robyn's 11:00 begins, except where the hour is
+    #  the point.
+    def at(h, m=0):
+        return now.replace(hour=h, minute=m, second=0, microsecond=0).isoformat()
+    BOOKINGS_NODE["b3"]["pms"]["phone"] = "+61 411 000 003"
+    def remlines(email="staff@x", clock=None):
+        q = board(email, clock=clock or at(8, 30))
+        q.locator('#board [data-booking="b3"]').first.click(); q.wait_for_timeout(300)
+        out = q.evaluate("""()=>{const c=document.querySelector('.card[data-booking="b3"]');
+          if (!c) return null;
+          const subs=[...c.querySelectorAll('.sub')].map(e=>e.textContent);
+          const a=c.querySelector('a[href^="spa-reminders.html"]');
+          const pill=c.querySelector('.rpill');
+          const bad=c.querySelector('.remline.bad');
+          return {has:subs.includes('Guest reminder'),
+                  lines:[...c.querySelectorAll('.remline')].map(e=>e.textContent),
+                  door:a?a.getAttribute('href'):'',
+                  pill:pill?pill.textContent:'',
+                  pillbg:pill?getComputedStyle(pill).backgroundColor:'',
+                  badc:bad?getComputedStyle(bad).color:''};}""")
+        q.close(); return out
+    r = remlines()
+    ck("a booked treatment's card says its guest's text has not gone, and where it goes from",
+       r and r["has"] and r["lines"] == ["Not sent yet. It goes from Spa reminders, before 11:00 am."], r)
+    ck("with one door, to that guest's row on Spa reminders",
+       r and r["door"] == "spa-reminders.html?open=b3", r)
+    REM["b3"] = {"t1": {"status": "sent", "sentAt": at(8, 5), "providerId": "mid-3",
+                        "delivery": "delivered", "day": today, "time": "11:00", "qty": 1}}
+    r = remlines()
+    ck("a text that went says when, and that it arrived",
+       r and len(r["lines"]) == 1 and r["lines"][0].startswith("Sent ") and
+       r["lines"][0].endswith("8:05 am \u00b7 delivered") and not r["pill"], r)
+    REM["b3"]["t1"]["time"] = "10:00"
+    r = remlines()
+    ck("a booking moved since its text wears the law's amber pill and says what the text said",
+       r and r["pill"] == "Changed since it went out" and r["pillbg"] == "rgb(246, 234, 213)" and
+       r["lines"][0] == "The text said 10:00 am. A fresh one is waiting on Spa reminders.", r)
+    REM["b3"] = {"t1": {"status": "failed", "sentAt": at(8, 5), "error": "INVALID_RECIPIENT",
+                        "day": today, "time": "11:00", "qty": 1}}
+    r = remlines()
+    ck("a send that failed says so in red words, and that it is still owed",
+       r and r["lines"][0] == "Send failed \u00b7 INVALID_RECIPIENT" and
+       r["badc"] == "rgb(168, 50, 30)" and r["lines"][1] == "Still owed, on Spa reminders.", r)
+    REM.clear()
+    BOOKINGS_NODE["b3"]["pms"]["phone"] = "07 3358 1122"
+    r = remlines()
+    ck("a landline says there is no mobile to text",
+       r and r["lines"] == ["No mobile on the booking to text. Spa reminders can fix the number."], r)
+    BOOKINGS_NODE["b3"]["pms"]["phone"] = "+61 411 000 003"
+    r = remlines(clock=at(12, 0))
+    ck("once the treatment has begun it says what happened and asks nothing",
+       r and r["lines"] == ["Began at 11:00 am; no reminder went."] and not r["door"], r)
+    r = remlines("masseuse@x")
+    ck("the masseuse's card is unchanged: no Guest reminder",
+       r is not None and not r["has"] and not r["lines"], r)
+    r = remlines("waiter@x")
+    ck("a waiter, who holds editBookings, sees it", r and r["has"], r)
+    SPA["b3"]["t1"]["day"] = plus(2)
+    r = remlines()
+    ck("a treatment on a later day says when its text will go, with no door yet",
+       r and len(r["lines"]) == 1 and r["lines"][0].startswith("Goes out on the morning of ") and
+       not r["door"], r)
+    SPA["b3"]["t1"]["day"] = today
+    BOOKINGS_NODE["b3"]["pms"].pop("phone", None)
 
     # ── widths ──────────────────────────────────────────────────
     for w2 in (390, 360, 320):

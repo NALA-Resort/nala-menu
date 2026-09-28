@@ -98,6 +98,11 @@
      (the law's "red only as a ring"). It marks the pill reception must chase
      without opening the sending page to find out the last attempt bounced. */
   .chip.fail  { background:rgba(28,28,26,.045); color:var(--red); border-color:var(--red); }
+  /* Nothing to do here: the law's grey dashed and sunk, as a vacant villa
+     wears it. A spa reminder that cannot go - no mobile, or the treatment
+     already begun (28 Sep) - so the chip stays on the card and stops asking. */
+  .chip.sunk  { background:var(--surface, #fff); color:var(--mid);
+                border:1px dashed var(--rule); opacity:.62; }
 
   /* ── the action row ─────────────────────────────────────────────
      Layout only. width:auto undoes body.ui2's full-width default for a row
@@ -221,7 +226,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=77"></script>
+<script src="nala-shared.js?v=78"></script>
 <script>
 /* The day's flow on one screen: what has happened, what is ready, and what
    is still owed. Every fact here is read from the screen that owns it. The
@@ -234,6 +239,7 @@
      replies, covers          fetchStays()         Reservations
      external diners          /manual ext- keys    Reservations
      arrived                  isArrived()          Front Desk
+     spa reminders            spaReminderRows()    Spa reminders
      print ticks              /dayboard            here, and only here
 
    The window is 08:00 to 18:00, the working day the flow sits inside. The
@@ -263,16 +269,18 @@ var PENDING = null, PTIMER = null;                 /* tick waiting to confirm */
 /* Where each card hands off, and the permission behind that door. The keys
    are the app's own: resSheet and cleansBoard, not the resBoard/cleanBoard
    you would guess - CLAUDE.md rule 2. */
+/* The spa card opens the page that sends its reminders (28 Sep), and asks
+   the permission that page and its Worker ask. */
 var HREF = { sms:'arrivals-sms.html', forms:'front-desk.html', menu:'publish.html',
              inv:'invitations.html',
              reps:'tally.html', sheets:'registration.html', foh:'list.html',
              menus:'menu-print.html', arr:'front-desk.html',
-             cards:'keys.html', spa:'spa.html' };
+             cards:'keys.html', spa:'spa-reminders.html' };
 var NEED = { sms:'editBookings', forms:'editBookings', menu:'publishMenu',
              inv:'editBookings',
              reps:'resBoard', sheets:'editBookings', foh:'resSheet',
              menus:'resSheet', arr:'editBookings', cards:'editBookings',
-             spa:'spaBoard' };
+             spa:'editBookings' };
 
 function mins(d){ return d.getHours()*60 + d.getMinutes(); }
 function hhmm(m){ var h=Math.floor(m/60), x=m%60;
@@ -353,7 +361,10 @@ function loadPreSms(){
       it.invite = prevAll[it.id] || null;
       it.fix = fixAll[it.id] || null;
     });
-    return found;
+    /* The two whole reads go back with the list: the spa card reads the
+       same /bookings and /phonefix for the number its reminders go to, and
+       a second copy of each read is two more requests for nothing. */
+    return { found: found, bookings: bookings, fixes: fixAll };
   });
 }
 
@@ -397,13 +408,19 @@ function load(){
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; }),
     /* the pre-arrival SMS window, gathered raw and read through preSmsState */
-    loadPreSms()
+    loadPreSms(),
+    /* the spa reminder log, whole, read through spaReminderRows */
+    fetch(DB + '/spareminders.json?v=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; })
   ]).then(function(res){
+    var pre = res[9] || {};
     DATA = { stays:res[0] || {}, menu:res[1], invites:res[2] || {},
              manual:res[3] || {}, responses:res[4] || {}, spa:res[5] || {},
              done:res[6] || {},
              cards:cardRows(res[7]), cutrun:res[8] || null,
-             presms:res[9] || [] };
+             presms:pre.found || [], bookings:pre.bookings || {},
+             phonefix:pre.fixes || {}, spareminders:res[10] || {} };
     LOADED = true;
     render();
   });
@@ -550,9 +567,7 @@ function items(t){
     /* fullNameFor, not shortTagFor: the tag form is upper case for a compact
        chip and shouts inside a sentence. */
     var d = tickOf(k), who = d.who ? fullNameFor(d.who) : '';
-    /* The spa card is a reminder, not paper: it was done, not printed. */
-    return (k === 'spa' ? 'done ' : 'printed ') + hhmm(d.t) +
-           (who ? ' by ' + who : '');
+    return 'printed ' + hhmm(d.t) + (who ? ' by ' + who : '');
   }
 
   var L = [];
@@ -584,54 +599,52 @@ function items(t){
               ' · arriving in the next 14 days'
             : 'nothing to send · all within 14 days done' });
 
-  /* Spa. Near the top, above the flow: it is a reminder rather than a
-     step, and it is the one thing here with a fixed hour the desk has to work
-     around. Nothing else on this page is time-bound, so it goes where the eye
-     lands first rather than buried under the print cards.
+  /* Spa reminders. Near the top, above the flow: the one thing here with a
+     fixed hour, so it goes where the eye lands first (9 Sep).
 
-     A reminder and nothing else: the desk cannot do anything to a
-     treatment from here, so the card has no action beyond its door and a
-     tick. It is booked treatments only - a request or a suggestion is not
-     something anybody is expecting a guest to turn up for. dayOf is spa.html's
-     own reading of which day a record sits on. */
-  var spa = [];
-  /* The chip's room number. A spa record keys by BOOKING id and carries no
-     villa; tonight's stay row (fetchStays, above) carries that id, so the
-     villa is the row holding it - a join of two owned facts, not a new one.
-     A booked guest with no row tonight keeps a bare time chip. */
-  var spaVilla = {};
-  Object.keys(stays).forEach(function(v){
-    var s = stays[v];
-    if (s && typeof s === 'object' && s.id) spaVilla[String(s.id)] = v;
-  });
-  Object.keys(DATA.spa).forEach(function(id){
-    var t = DATA.spa[id];
-    if (!t || typeof t !== 'object') return;
-    Object.keys(t).forEach(function(tid){
-      var r = t[tid];
-      if (!r || r.status !== 'booked') return;
-      if (dayOf(r) !== day) return;
-      spa.push({ r: r, villa: spaVilla[String(id)] || '' });
-    });
-  });
-  spa.sort(function(a,b){
-    return String(a.r.time||'').localeCompare(String(b.r.time||''));
-  });
+     Until 28 Sep this card listed today's booked treatments for the desk to
+     work around, with a Mark done. The owner then asked for a text to each
+     guest on the MORNING OF their treatment, sent by the desk - the same
+     treatments, so the card took the job rather than a second card drawing
+     the same chips: each chip now wears where its guest's text stands, and
+     the heading opens spa-reminders.html, which sends them. The Mark done
+     went with it - it recorded that the desk had dealt with the day's spa,
+     and the send log now says that itself.
 
-  if (spa.length){
-    /* The chips carry who and when, and that is the whole card: villa and
-       time, nothing else (owner, 9 Sep). What each booking IS - lengths,
-       pairs - lives on the Spa board behind the door, so the note is empty
-       until the tick fills it with done-when-and-by-whom. */
-    L.push({ k:'spa', lab: spa.length === 1 ? 'Spa booking' : 'Spa bookings',
-      owner:'spa',
-      units: spa.map(function(x){
-        return { id: (x.villa ? x.villa + ' · ' : '') + spaSlotLabel(x.r.time),
-                 tone: DATA.done.spa ? 'green' : 'grey' };
+     spaReminderRows gathers the rows and spaReminderState judges each
+     (nala-shared.js): the sending page's own reading, so the two cannot
+     disagree about who is owed a text (rule 7). preSmsFailed is the red
+     ring's reader, as on the Pre-arrival SMS card. The chip's room number is
+     the viewed night's row holding the booking, a join of two owned facts. A
+     guest nothing can be sent to - no mobile, or the treatment already
+     begun - sinks rather than nags, and the card sinks once nobody is owed
+     a text. Booked treatments only: a request or a suggestion is not
+     something anybody is expecting a guest to turn up for. */
+  var spaRows = spaReminderRows(day, DATA.spa, DATA.spareminders, stays,
+                                DATA.bookings, DATA.phonefix, Date.now());
+  if (spaRows.length){
+    var spaOwed = spaRows.filter(function(x){
+      return x.state === 'ready' || x.state === 'changed'; });
+    var spaFail = spaOwed.filter(function(x){ return preSmsFailed(x.rem); }).length;
+    var spaMoved = spaOwed.filter(function(x){ return x.state === 'changed'; }).length;
+    var spaNoPh = spaRows.filter(function(x){ return x.state === 'nophone'; }).length;
+    var spaLate = spaRows.filter(function(x){ return x.state === 'late'; }).length;
+    var spaSent = spaRows.filter(function(x){ return x.state === 'sent'; }).length;
+    var spaWhy = [spaFail ? spaFail + ' failed' : '', spaMoved ? spaMoved + ' changed' : '']
+                   .filter(Boolean).join(', ');
+    L.push({ k:'spa', lab:'Spa reminders', owner:'spa',
+      units: spaRows.map(function(x){
+        return { id: (x.villa ? x.villa + ' · ' : '') + spaSlotLabel(x.rec.time),
+                 tone: x.state === 'sent' ? 'green'
+                     : x.state === 'changed' ? 'amber'
+                     : (x.state === 'nophone' || x.state === 'late') ? 'sunk'
+                     : preSmsFailed(x.rem) ? 'fail' : 'grey' };
       }),
-      state: DATA.done.spa ? 'done' : 'shut',
-      note: DATA.done.spa ? printedNote('spa') : '',
-      tick:true });
+      state: spaOwed.length ? 'ready' : 'done',
+      note: (spaOwed.length ? spaOwed.length + ' to send' + (spaWhy ? ' (' + spaWhy + ')' : '')
+             : spaSent ? 'all ' + spaSent + ' reminded' : 'nothing to send') +
+            (spaNoPh ? ' · ' + spaNoPh + (spaNoPh === 1 ? ' has' : ' have') + ' no mobile' : '') +
+            (spaLate ? ' · ' + spaLate + ' began without one' : '') });
   }
 
   L.push({ k:'forms', lab:'Pre-arrival forms', owner:'desk', units:fUnits,
@@ -777,11 +790,12 @@ function items(t){
     var live = d.acts.filter(function(a){ return !a.quiet; }).length;
     d.pos = d.offSpine ? 'off'
           : d.state === 'done' ? 'past'
-          /* The SMS card is a door with no on-board control, so it would sit
-             flat as 'shut'; while anything is still to send it wears the
-             amber 'open' edge - a job to chase - and sinks to 'past' (green)
-             above once nothing is left. */
-          : d.k === 'sms' ? 'open'
+          /* The two SMS cards are doors with no on-board control, so they
+             would sit flat as 'shut'; while anything is still to send they
+             wear the amber 'open' edge - a job to chase - and sink to 'past'
+             (green) above once nothing is left. Pre-arrival SMS, and since
+             28 Sep the spa reminders. */
+          : (d.k === 'sms' || d.k === 'spa') ? 'open'
           : live ? 'do'
           : d.acts.length ? 'open' : 'shut';
   });

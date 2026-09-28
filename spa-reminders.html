@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nala Villas">
+<link rel="apple-touch-icon" href="nala-icon.png?v=1">
+<title>Nala &middot; Spa reminders</title>
+<link rel="stylesheet" href="nala-ui2.css?v=9">
+<link rel="stylesheet" href="nala-ui.css?v=18">
+<style>
+  /* Built 28 Sep from mock-spa-reminders.html, approved the same day with one
+     change: the text goes the MORNING OF the treatment, not the day before.
+     Pre-arrival SMS's page with a different question - arrivals-sms.html's
+     dress, copied rather than approximated, so the two sending pages read the
+     same. --green is this page's own tick fill, as on that page: the shared
+     sheet deliberately owns no --green. */
+  :root { --green:#E4EDE2 }
+
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
+
+  .seclabel { font-size:var(--t2);
+              color:var(--mid); margin:22px 0 8px; }
+  .seclink  { float:right; font-size:var(--t2);
+              text-transform:none; color:var(--mid); text-decoration:underline; }
+  .dayline  { font-size:var(--t2); color:var(--mid); margin:2px 2px 4px; line-height:1.5; }
+
+  /* the row the Spa board's door came for: the Selected role's ink border,
+     worn until the person taps anything */
+  .vrow.linked { outline:2px solid var(--ink); outline-offset:2px; }
+  .vrow { display:flex; align-items:center; gap:12px; width:100%;
+          background:none; border:1px solid var(--rule); border-radius:8px;
+          padding:11px 13px; margin-bottom:7px; text-align:left;
+          font-family:var(--ui-font); color:inherit; cursor:pointer; }
+  .vrow:disabled { opacity:.45; cursor:default; }
+  /* The bands, in the colour law (CLAUDE.md): cream to send, AMBER a booking
+     changed since its text - the guest holds the wrong time, chase this -
+     green reminded, nothing left to do, and the vacant voice, dashed and
+     sunk, for a row nothing can be sent for: no mobile, or already begun.
+     Red is words only, and only a failure's. */
+  .grp { font-size:var(--t1);
+         color:var(--mid); margin:14px 2px 6px; }
+  .vrow.b-changed { background:var(--amber); border-color:var(--amberb); }
+  .vrow.b-changed .st { color:var(--amberink); }
+  .vrow.b-done { background:var(--resgreen-t); border-color:var(--resgreen-b); }
+  .vrow.b-done .st { color:var(--resgreen); }
+  .vrow.b-grey { background:transparent; border-style:dashed; opacity:.62; }
+  .vrow.b-grey .tick { visibility:hidden; }
+  .vrow .v { font-size:var(--t4); min-width:30px; text-align:center; }
+  .vrow .mid { flex:1; min-width:0; }
+  .vrow .nm { font-size:var(--t3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vrow .ph { font-size:var(--t2); color:var(--mid); font-weight:normal; margin-left:7px; }
+  .vrow .conf { font-size:var(--t2); margin-left:4px; }
+  .vrow .conf.ok { color:var(--resgreen); }
+  .vrow .conf.un { color:var(--mid); }
+  .vrow .pen { font-size:var(--t2); color:var(--mid); margin-left:5px;
+               padding:2px 4px; cursor:pointer; }
+  /* Two facts, one per line, the Spa board's tile rule: the booking in ink,
+     then what became of its text, in the band's voice. */
+  .vrow .bk { font-size:var(--t2); color:var(--ink); margin-top:2px; }
+  .vrow .st { font-size:var(--t2); color:var(--mid); margin-top:2px; }
+  .vrow .st .bad { color:var(--red); }
+  .tick { flex:0 0 auto; width:24px; height:24px; border:1px solid var(--rule);
+          border-radius:var(--pill); display:flex; align-items:center; justify-content:center;
+          font-size:var(--t3); color:transparent; }
+  .vrow.on { border-color:var(--greenb); }
+  .vrow.on .tick { background:var(--green); border-color:var(--greenb); color:var(--ink); }
+
+  select, textarea { width:100%; font-family:var(--ui-font); font-size:var(--t3);
+                     color:var(--ink); background:#fff; border:1px solid var(--rule);
+                     border-radius:var(--r); padding:11px 13px; }
+  select { -webkit-appearance:none; appearance:none; }
+  /* body.ui2 textarea sets min-height:var(--tap) at higher specificity than
+     a bare textarea rule, so the box's own height has to match it: the whole
+     template shows, blank lines and <booking> included, without scrolling. */
+  body.ui2 textarea { margin-top:8px; min-height:196px; resize:vertical; line-height:1.45; }
+
+  /* Fixed, not the shared sticky: Invitations' exception (26 Sep), for the
+     same reason. The list here is drawn after the page first loads and the
+     preview grows and shrinks with the ticks, which is the shape that made
+     the sticky footer on the owner's iPhone ride up with the scroll. */
+  body > .foot { position:fixed; left:0; right:0; bottom:0; margin:0 auto;
+                 max-width:calc(var(--appw) + 2*var(--appgut));
+                 padding-left:var(--appgut); padding-right:var(--appgut); }
+  .msgmeta { display:flex; justify-content:space-between; gap:12px;
+             font-size:var(--t2); color:var(--mid); margin-top:6px; }
+  .msgmeta .warn { color:var(--red); }
+  .linknote { font-size:var(--t2); color:var(--mid); margin-top:4px; line-height:1.5; }
+
+  /* The preview: one ticked guest's text exactly as it will arrive, built by
+     the reader the Worker's copy answers to (tests/spareminder_cases.json).
+     A picture of a message, not a status, so it wears the phone's own grey
+     bubble inside a white card. */
+  .pcard { background:#fff; border:1px solid var(--rule); border-radius:12px;
+           padding:14px 12px 16px; margin-top:8px; }
+  .pmeta { font-size:var(--t1); color:var(--mid); text-align:center; margin:0 0 10px; }
+  .bubble { display:inline-block; max-width:92%; background:#E9E9EB; color:#000;
+            border-radius:18px; padding:9px 13px; font-size:var(--t3); line-height:1.38;
+            white-space:pre-wrap; font-family:var(--ui-font); }
+
+  /* .btn wears nala-ui.css's shared dress; only this page's variants live here. */
+  #sendBtn { white-space:normal; line-height:1.4; }
+  .btn.arm { background:var(--red); border-color:var(--red); color:#fff; }
+
+  #errBar { font-size:var(--t2); color:var(--red); margin:10px 0; line-height:1.45; }
+  .empty { font-size:var(--t2); color:var(--mid); margin:14px 2px; line-height:1.5; }
+  /* Room under the last thing on the page for the fixed footer, which sits
+     over the page rather than in it: without this the preview's last lines
+     scroll under the Send button and cannot be read. */
+  .spacer { height:calc(84px + env(safe-area-inset-bottom)); }
+
+/* ── paper ───────────────────────────────────────────────────────────
+   Pre-arrival SMS's surfaces, the same rules: every row solid white and
+   lifted with its state's tint drawn over the white; controls solid white
+   without the lift; the sunk rows white but not lifted, so they recede. */
+body.paper .vrow { background:var(--surface); box-shadow:var(--lift); }
+body.paper .vrow.b-changed { background:var(--amber); }
+body.paper .vrow.b-done { background:linear-gradient(var(--resgreen-t), var(--resgreen-t)), var(--surface); }
+body.paper .vrow.b-grey { background:var(--surface); box-shadow:none; }
+body.paper .pcard { background:var(--surface); box-shadow:var(--lift); }
+</style>
+</head>
+<body class="tier-app ui2 paper">
+
+<div class="daterow">
+  <div class="date" id="title">Spa reminders</div>
+  <div class="navwrap" id="navWrap" style="display:none">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"></div>
+  </div>
+</div>
+
+<div class="noaccess" id="noAccess"></div>
+
+<div class="stats" id="statsRow">
+  <div class="stat"><div class="stat-n" id="nSend">&ndash;</div><div class="stat-l">To send</div></div>
+  <div class="stat"><div class="stat-n" id="nSent">&ndash;</div><div class="stat-l">Sent</div></div>
+  <div class="stat"><div class="stat-n" id="nAll">&ndash;</div><div class="stat-l">Booked today</div></div>
+</div>
+<div class="dayline" id="dayLine"></div>
+
+<div id="board"></div>
+
+<div id="msgArea">
+<div class="seclabel">Template <a class="seclink" href="templates.html">Edit templates</a></div>
+<select id="tmpl" aria-label="Template"></select>
+<div class="seclabel">Message</div>
+<textarea id="msgBox" aria-label="Message text"></textarea>
+<div class="msgmeta"><span id="msgWarn"></span><span id="msgCount"></span></div>
+<div class="linknote">Each guest&#39;s own first name and booking go in place of
+  &lt;first&gt; and &lt;booking&gt; as it sends, read from the Spa board at that
+  moment. A booking changed since its last text says so. No link is added.</div>
+
+<div id="pvArea">
+  <div class="seclabel">Preview</div>
+  <select id="pvSel" aria-label="Preview for"></select>
+  <div class="pcard">
+    <div class="pmeta" id="pvMeta"></div>
+    <div class="bubble" id="pvText"></div>
+  </div>
+</div>
+</div>
+
+<div id="errBar"></div>
+<div class="spacer"></div>
+
+<div class="foot">
+  <button class="btn solid" id="sendBtn" disabled>Send</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="auth.js?v=12"></script>
+<script src="nala-shared.js?v=78"></script>
+<script>
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+/* The sender: the same Worker as the other two SMS pages, asked with kind
+   "spa". The page proposes treatments and the words around <first> and
+   <booking>; the Worker re-reads each /spa record, refuses anything not
+   booked for today, takes the name and number off the booking, writes the
+   details itself and records what went. worker/send-invites.js. */
+var INVITES_URL = 'https://nala-invites.ben-681.workers.dev';
+
+/* The page's state, declared before anything that reads it: the template
+   box fills, and counts, the moment the script runs. */
+var ROWS = {};          /* 'booking/tid' -> { row, st, ticked, el } */
+var ARMED = false;
+var PV = '';            /* the row the preview shows */
+var TODAY = dkey(new Date());
+
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+})();
+function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
+
+/* ── the page in one paragraph ────────────────────────────────
+   The owner, 28 Sep: "a text message gently reminding the guests that they
+   have a booking", with its details, sent on the MORNING OF the treatment by
+   the desk pressing Send. This page lists today's booked treatments, each
+   with where its reminder stands - spaReminderRows and spaReminderState in
+   nala-shared.js, the same reading the Dashboard's spa card gives, so the
+   two cannot disagree - and sends the ticked ones. Nothing here decides a
+   state; it only dresses the one it is given. */
+
+/* ── the message box ─────────────────────────────────────────── */
+/* The fallback set. The real one lives at /spasmstemplates, edited on
+   templates.html beside the other two sets; these serve until that node
+   exists or when it cannot be read. Gentle reminder is the owner's pick
+   (28 Sep): about 190 characters, 2 segments. Short is the 1-segment
+   choice. Plain characters only - see the count below. */
+var BUILTIN_TEMPLATES = [
+  { id:'remind', label:'Gentle reminder', order:1,
+    body:'Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\nIf you need to change anything, just reply to this message. Nala Resort' },
+  { id:'short',  label:'Short', order:2,
+    body:'Hello <first>, a reminder of your booking:\n\n<booking>\n\nTo change it, just reply. Nala Resort' }
+];
+var TEMPLATES = BUILTIN_TEMPLATES;
+
+var tmplSel = document.getElementById('tmpl'), msgBox = document.getElementById('msgBox');
+function initTemplates(list){
+  TEMPLATES = list;
+  tmplSel.innerHTML = '';
+  TEMPLATES.forEach(function(t){
+    var o = document.createElement('option'); o.value = t.id; o.textContent = t.label;
+    tmplSel.appendChild(o);
+  });
+  setTemplate(TEMPLATES[0] && TEMPLATES[0].id);
+}
+function setTemplate(id){
+  var t = TEMPLATES.filter(function(t){ return t.id === id; })[0] || TEMPLATES[0];
+  msgBox.value = t ? t.body : '';
+  msgChanged();
+}
+tmplSel.onchange = function(){ setTemplate(tmplSel.value); };
+initTemplates(BUILTIN_TEMPLATES);
+function loadTemplates(){
+  return fetch(DB + '/spasmstemplates.json?v=' + Date.now())
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(db){
+      var list = Object.keys(db || {}).map(function(k){
+        var t = db[k] || {};
+        return { id:k, label:String(t.label||k), body:String(t.body||''),
+                 order:+t.order || 999 };
+      }).filter(function(t){ return t.body; })
+        .sort(function(a,b){ return a.order - b.order; });
+      if (list.length) initTemplates(list);
+    })
+    .catch(function(){});
+}
+
+function bodyHasUrl(s){ return /(https?:\/\/|www\.)/i.test(s || ''); }
+/* The Worker's own refusals, said here first, so the desk hears them before
+   pressing Send rather than as a failed send after it. */
+function msgProblem(s){
+  if (!String(s || '').trim()) return 'The message is empty.';
+  if (bodyHasUrl(s)) return 'Links cannot be typed here: a spa reminder carries no link.';
+  var mk = String(s).match(/<(menu|form|link)>/);
+  if (mk) return 'A spa reminder carries no link: take ' + mk[0] + ' out.';
+  if (s.indexOf('<booking>') < 0)
+    return 'Put <booking> back: without it the guest is not told what or when.';
+  return '';
+}
+
+/* What a text costs, told honestly. The GSM alphabet fits 160 characters in
+   one segment and 153 in each of a longer text's; ONE character outside it -
+   an iPhone's curly apostrophe, a middot - sends the whole text as unicode
+   at 70 and 67, tripling the cost. The other two pages count as if every
+   text were GSM; this one says which character broke it. The extension
+   characters count twice, as the carrier bills them. */
+var GSM7 = '@£$¥èéùìòÇ\nØø\rÅåΔ_' +
+  'ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&\'()*+,-./' +
+  '0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿' +
+  'abcdefghijklmnopqrstuvwxyzäöñüà';
+var GSM7X = '^{}\\[~]|€';
+function smsSize(s){
+  var n = 0, odd = [];
+  for (var i = 0; i < s.length; i++){
+    var c = s.charAt(i);
+    if (GSM7.indexOf(c) > -1) n++;
+    else if (GSM7X.indexOf(c) > -1) n += 2;
+    else if (odd.indexOf(c) < 0) odd.push(c);
+  }
+  if (odd.length)
+    return { chars: s.length, segs: s.length <= 70 ? 1 : Math.ceil(s.length / 67), odd: odd };
+  return { chars: n, segs: n <= 160 ? 1 : Math.ceil(n / 153), odd: [] };
+}
+
+function textFor(k){
+  var x = ROWS[k].row;
+  return spaReminderText(msgBox.value, x.first, x.rec, x.rem);
+}
+function msgChanged(){
+  var s = msgBox.value, problem = msgProblem(s);
+  var warn = document.getElementById('msgWarn'), count = document.getElementById('msgCount');
+  var sel = selected(), big = null, bigSize = null;
+  sel.forEach(function(k){
+    var z = smsSize(textFor(k));
+    if (!bigSize || z.segs > bigSize.segs || (z.segs === bigSize.segs && z.chars > bigSize.chars)){
+      big = k; bigSize = z;
+    }
+  });
+  if (!problem && bigSize && bigSize.odd.length)
+    problem = 'Sends as unicode because of ' + bigSize.odd.map(function(c){
+      return c === '\n' ? 'a line break' : '“' + c + '”'; }).join(' ') +
+      ': ' + bigSize.segs + ' segments. Type it with plain characters.';
+  warn.textContent = problem;
+  warn.className = problem ? 'warn' : '';
+  count.textContent = !bigSize ? '' :
+    (sel.length > 1 ? 'Longest of the ' + sel.length + ': ' : '') + bigSize.chars +
+    ' characters · ' + (bigSize.segs === 1 ? '1 segment' : bigSize.segs + ' segments');
+  preview();
+  disarm();
+}
+msgBox.oninput = msgChanged;
+
+/* ── the rows ────────────────────────────────────────────────── */
+function clock(iso){
+  var d = parseISO(iso); if (!d) return '';
+  var h = d.getHours(), m = String(d.getMinutes()).padStart(2, '0');
+  return (h % 12 || 12) + ':' + m + (h < 12 ? 'am' : 'pm');
+}
+/* The styleguide's date, Wd Dth Mon, built from the key's own digits. */
+function niceDay(key){
+  var d = parseISO(key + 'T00:00:00'); if (!d) return key;
+  var n = d.getDate(), t = n % 10, h = n % 100;
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' + n +
+         (h >= 11 && h <= 13 ? 'th' : t === 1 ? 'st' : t === 2 ? 'nd' : t === 3 ? 'rd' : 'th') +
+         ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+}
+/* A time or a length never splits across a line: half of "1.5 hr" is not a
+   length, the trim rule's reasoning for a number. */
+function keep(s){ return String(s).replace(/(\d) (hr|am|pm)/g, '$1 $2').replace(/ \+ /g, ' + '); }
+
+/* The row's words for the state spaReminderState gave it. Nothing here
+   decides a state. */
+function dress(x){
+  var rem = x.rem;
+  if (x.state === 'sent')
+    return { band:'sent', tickable:true, ticked:false,
+             line:'Sent ' + clock(rem.sentAt) +
+                  (rem.delivery === 'delivered' ? ' · delivered'
+                   : rem.providerId ? ' · delivery unconfirmed' : '') };
+  if (x.state === 'changed')
+    return { band:'changed', tickable:true, ticked:true,
+             line:'The text said ' + (rem.day !== x.rec.day ? niceDay(rem.day) + ' ' : '') +
+                  spaSlotLabel(rem.time) + ' · sent ' + clock(rem.sentAt) };
+  if (x.state === 'nophone')
+    return { band:'nophone', tickable:false, fixable:true, ticked:false,
+             line:x.raw ? 'Not a mobile number · tap to fix it'
+                        : 'No phone number on the booking · tap to add one' };
+  if (x.state === 'late')
+    return { band:'late', tickable:false, ticked:false,
+             line:'Started ' + spaSlotLabel(x.rec.time) + ' · ' +
+                  (spaReminderGood(rem) ? 'the text said ' + spaSlotLabel(rem.time)
+                   : rem && rem.status ? 'the last text did not arrive' : 'no reminder went') };
+  /* ready - in three voices, as on Pre-arrival SMS: a text the handset never
+     got, a send that failed, or one never made. The first two are failures,
+     and a failure's words are red; preSmsFailed is the one reader of that. */
+  if (preSmsFailed(rem))
+    return { band:'ready', tickable:true, ticked:true, bad:true,
+             line: rem.status === 'sent'
+               ? 'Not delivered' + (rem.deliveryText ? ' · ' + rem.deliveryText : '') +
+                 ' · sent ' + clock(rem.sentAt)
+               : 'Send failed ' + clock(rem.sentAt) + (rem.error ? ' · ' + rem.error : '') };
+  return { band:'ready', tickable:true, ticked:true, line:'Not reminded yet' };
+}
+
+var BANDS = [
+  { band:'ready',   title:'To send' },
+  { band:'changed', title:'Changed since the reminder' },
+  { band:'sent',    title:'Reminded' },
+  { band:'nophone', title:'Cannot send' },
+  { band:'late',    title:'Already started' }
+];
+var BAND_CLASS = { changed:' b-changed', sent:' b-done', nophone:' b-grey', late:' b-grey' };
+
+/* The Spa board's door: ?open=<booking> marks that guest's rows - Pre-arrival
+   SMS's own pattern, worn as a mark because the row's tap is the tick. */
+var OPENQ = (function(){
+  var q = new URLSearchParams(location.search).get('open');
+  return (q && /^[A-Za-z0-9-]{1,64}$/.test(q)) ? q : '';
+})();
+
+function render(list){
+  var board = document.getElementById('board');
+  board.innerHTML = '';
+  ROWS = {};
+  var byBand = {};
+  list.forEach(function(x){
+    var st = dress(x), k = x.id + '/' + x.tid;
+    ROWS[k] = { row: x, st: st, ticked: st.ticked };
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'vrow' + (st.ticked ? ' on' : '') + (BAND_CLASS[st.band] || '');
+    b.dataset.booking = x.id;
+    b.dataset.tid = x.tid;
+    b.dataset.state = x.state;
+    b.disabled = !st.tickable && !st.fixable;
+    b.setAttribute('aria-pressed', st.ticked ? 'true' : 'false');
+    b.innerHTML = '<div class="v"></div><div class="mid"><div class="nm trimrow">' +
+      '<span class="trim"></span></div><div class="bk"></div><div class="st"></div></div>' +
+      '<div class="tick">✓</div>';
+    b.querySelector('.v').textContent = x.villa;
+    b.querySelector('.trim').textContent = x.name;   /* guest-typed: text only */
+    /* The number the Worker will send to, with the pencil that fixes it -
+       the shared badge both SMS pages wear. No pencil on a row nothing can
+       be sent for any more. */
+    b.querySelector('.nm').insertAdjacentHTML('beforeend',
+      phoneBadgeHTML(x.raw, x.state !== 'late'));
+    var pen = b.querySelector('.pen');
+    if (pen) pen.onclick = function(e){ e.stopPropagation(); fixNumber(x); };
+    b.querySelector('.bk').textContent = keep(spaSlotLabel(x.rec.time) + ' · ' + spaOffering(x.rec));
+    var line = b.querySelector('.st');
+    if (st.bad){ var s = document.createElement('span'); s.className = 'bad';
+                 s.textContent = st.line; line.appendChild(s); }
+    else line.textContent = st.line;
+    b.onclick = function(){
+      if (st.fixable){ fixNumber(x); return; }
+      ROWS[k].ticked = !ROWS[k].ticked;
+      b.classList.toggle('on', ROWS[k].ticked);
+      b.setAttribute('aria-pressed', ROWS[k].ticked ? 'true' : 'false');
+      msgChanged(); recount();
+    };
+    ROWS[k].el = b;
+    (byBand[st.band] = byBand[st.band] || []).push(b);
+  });
+  BANDS.forEach(function(band){
+    var els = byBand[band.band] || [];
+    if (!els.length) return;
+    var h = document.createElement('div');
+    h.className = 'grp';
+    h.textContent = band.title + ' · ' + els.length;
+    board.appendChild(h);
+    els.forEach(function(el){ board.appendChild(el); });
+  });
+  if (!list.length){
+    var e = document.createElement('div');
+    e.className = 'empty';
+    e.textContent = 'No treatments booked today. Bookings made on the Spa board appear here on their day.';
+    board.appendChild(e);
+  }
+  if (OPENQ){
+    var mine = document.querySelectorAll('.vrow[data-booking="' + OPENQ + '"]');
+    if (mine.length){
+      OPENQ = '';
+      [].forEach.call(mine, function(el){ el.classList.add('linked'); });
+      mine[0].scrollIntoView({ block: 'center' });
+      document.addEventListener('click', function(){
+        [].forEach.call(mine, function(el){ el.classList.remove('linked'); });
+      }, { once: true });
+    }
+  }
+  document.getElementById('msgArea').style.display = list.length ? '' : 'none';
+  msgChanged();
+  recount();
+}
+
+/* The number editor is the shared one (editPhoneNumber, nala-shared.js):
+   a fix outranks Mews for the Worker too. */
+function fixNumber(x){
+  var err = document.getElementById('errBar');
+  var pms = (x.pms || {});
+  editPhoneNumber({ id: x.id, name: x.name, current: x.raw, was: pms.phone || '' },
+    function(msg){ err.textContent = msg || ''; if (!msg) load(); });
+}
+
+function selected(){
+  return Object.keys(ROWS).filter(function(k){ return ROWS[k].ticked; });
+}
+
+/* The preview: one ticked guest's whole text, as the Worker will write it. */
+function preview(){
+  var area = document.getElementById('pvArea'), sel = selected();
+  var pv = document.getElementById('pvSel');
+  area.style.display = sel.length ? '' : 'none';
+  if (!sel.length) return;
+  if (sel.indexOf(PV) < 0) PV = sel[0];
+  pv.innerHTML = '';
+  sel.forEach(function(k){
+    var o = document.createElement('option'); o.value = k;
+    o.textContent = ROWS[k].row.villa + ' · ' + ROWS[k].row.name;
+    if (k === PV) o.selected = true;
+    pv.appendChild(o);
+  });
+  document.getElementById('pvMeta').textContent = 'Text message to ' + ROWS[PV].row.name;
+  document.getElementById('pvText').textContent = textFor(PV);
+}
+document.getElementById('pvSel').onchange = function(){ PV = this.value; preview(); };
+
+function disarm(){
+  if (!ARMED) return;
+  ARMED = false;
+  recount();
+}
+function recount(){
+  var ks = Object.keys(ROWS), sel = selected();
+  document.getElementById('nSend').textContent = sel.length;
+  document.getElementById('nSent').textContent =
+    ks.filter(function(k){ return ROWS[k].row.state === 'sent'; }).length;
+  document.getElementById('nAll').textContent = ks.length;
+  /* "again" is a guest who already holds a text for this treatment */
+  var again = sel.filter(function(k){
+    var s = ROWS[k].row.state; return s === 'sent' || s === 'changed'; }).length;
+  var btn = document.getElementById('sendBtn');
+  var label = 'Send to ' + sel.length + ' guest' + (sel.length === 1 ? '' : 's') +
+              (again ? ', ' + again + ' of them again' : '');
+  if (ARMED) label = 'Please confirm · ' + label.charAt(0).toLowerCase() + label.slice(1);
+  btn.textContent = sel.length ? label : 'Send';
+  btn.className = 'btn solid' + (ARMED ? ' arm' : '');
+  btn.disabled = !sel.length || !window.__idToken;
+}
+
+/* ── sending ─────────────────────────────────────────────────── */
+document.getElementById('sendBtn').onclick = function(){
+  var sel = selected();
+  if (!sel.length) return;
+  var body = msgBox.value;
+  var err = document.getElementById('errBar');
+  var problem = msgProblem(body);
+  if (problem){ err.textContent = problem; return; }
+  err.textContent = '';
+  /* Every send takes a second press, as on the other two SMS pages: the red
+     Please confirm is what stands between a stray tap and a morning's texts. */
+  if (!ARMED){ ARMED = true; recount(); return; }
+  ARMED = false;
+
+  var btn = this;
+  btn.disabled = true; btn.textContent = 'Sending…';
+  fetch(INVITES_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken: window.__idToken, kind: 'spa',
+                           treatments: sel.map(function(k){
+                             return { b: ROWS[k].row.id, t: ROWS[k].row.tid }; }),
+                           template: tmplSel.value, body: body })
+  })
+  .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
+  .then(function(res){
+    if (!res.ok || !res.j || !res.j.results)
+      throw new Error((res.j && res.j.error) || 'the sender did not answer');
+    var failed = Object.keys(res.j.results).filter(function(k){
+      return res.j.results[k].status !== 'sent';
+    }).map(function(k){ return ROWS[k] ? ROWS[k].row.name : 'a guest'; });
+    if (failed.length)
+      err.textContent = 'Did not send to ' + failed.join(', ') + '. The reason is on each row.';
+    return load();
+  })
+  .catch(function(e){
+    err.textContent = 'Nothing was sent: ' + (e && e.message ? e.message : 'unknown fault') + '.';
+  })
+  .then(function(){ recount(); });
+};
+
+/* ── loading ─────────────────────────────────────────────────── */
+/* Today's night, and the four nodes the reminder is read from, each whole -
+   each one another screen already reads whole. A failed read is not an
+   empty one (the standing caution): without the send log this page cannot
+   tell who has been texted, and a list drawn anyway could text a guest
+   twice. So any failed read draws nothing and says why. */
+function load(){
+  TODAY = dkey(new Date());
+  document.getElementById('dayLine').textContent =
+    'Today’s treatments, ' + niceDay(TODAY) +
+    '. Send in the morning, before the first one begins.';
+  function whole(path){
+    return fetch(DB + path + '.json?v=' + Date.now()).then(function(r){
+      if (!r.ok) throw new Error(path + ' HTTP ' + r.status);
+      return r.json();
+    });
+  }
+  var err = document.getElementById('errBar');
+  return Promise.all([
+    whole('/stays/' + TODAY), whole('/spa'), whole('/spareminders'),
+    whole('/bookings'), whole('/phonefix'), loadTemplates()
+  ]).then(function(res){
+    var bookings = res[3] || {};
+    var list = spaReminderRows(TODAY, res[1] || {}, res[2] || {}, res[0] || {},
+                               bookings, res[4] || {}, Date.now());
+    list.forEach(function(x){ x.pms = (bookings[x.id] || {}).pms || null; });
+    /* Clears only its own complaint: a send's "Did not send to ..." must
+       survive the reload that follows it, or the desk never reads it. */
+    if (READFAIL){ err.textContent = ''; READFAIL = false; }
+    render(list);
+    checkDelivery(list);
+  }).catch(function(){
+    render([]);
+    document.getElementById('board').innerHTML = '';
+    READFAIL = true;
+    err.textContent = 'Could not read the Spa board and the send log, so nothing is shown ' +
+      'rather than a list that might text somebody twice. This is usually the connection. ' +
+      'Try again in a moment.';
+  });
+}
+var READFAIL = false;
+
+/* Once per visit, ask the Worker for handset receipts on anything sent but
+   unconfirmed; if a verdict landed, reload so the rows say so. */
+var CHECKED_DELIVERY = false;
+function checkDelivery(list){
+  if (CHECKED_DELIVERY || !window.__idToken) return;
+  var pending = list.filter(function(x){
+    var r = x.rem;
+    return r && r.status === 'sent' && r.providerId &&
+           r.delivery !== 'delivered' && r.delivery !== 'failed';
+  }).map(function(x){ return { b: x.id, t: x.tid }; });
+  if (!pending.length) return;
+  CHECKED_DELIVERY = true;
+  fetch(INVITES_URL, { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ idToken: window.__idToken, kind:'delivery', spas: pending }) })
+  .then(function(r){ return r.json(); })
+  .then(function(j){ if (j && j.changed) return load(); })
+  .catch(function(){});
+}
+
+function showAccess(allowed, e){
+  var box = document.getElementById('noAccess');
+  var on = !allowed;
+  box.innerHTML = !on ? '' :
+    (e ? '<div>Could not check access. This is usually the connection, '
+       + 'not your login.</div>'
+       + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+       : 'This login has no access to Spa reminders. See the manager.');
+  if (on && !e){
+    var home = homeFor(window.NALA_ROLE);
+    if (home && home !== location.pathname.split('/').pop()){
+      location.replace(home); return;
+    }
+  }
+  box.className = 'noaccess' + (on ? ' show' : '');
+  ['statsRow','dayLine','board','msgArea','sendBtn'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.style.display = on ? 'none' : '';
+  });
+  if (!on) load();
+}
+
+window.NALA_ROLE = null;
+(function gate(){
+  if (!window.firebase || !firebase.auth || typeof loadStaff !== 'function')
+    return setTimeout(gate, 40);
+  var A; try { A = firebase.auth(); } catch(e){ return setTimeout(gate, 40); }
+  if (!A || !A.onAuthStateChanged) return setTimeout(gate, 40);
+  A.onAuthStateChanged(function(u){
+    if (!u) return;                 /* auth.js owns the signed-out state */
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      window.NALA_USER = u;
+      document.getElementById('navWrap').style.display = 'block';
+      navFilter(role);
+      /* The same permission as the other two SMS pages and the Worker. */
+      showAccess(canOpen(role, 'spa-reminders.html'), e);
+    });
+  });
+})();
+</script>
+</body>
+</html>

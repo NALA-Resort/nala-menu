@@ -140,6 +140,13 @@ SPA = {"b3": {"t1": {"status": "booked", "day": today, "time": "11:00",
                      "dur": 90, "dur2": 60, "qty": 2, "name": "Mark Whitfield"}},
        "b11": {"t4": {"status": "booked", "day": plus(1), "time": "09:00",
                       "dur": 60, "qty": 1}}}
+# The spa reminder log (/spareminders, 28 Sep): villa 3's 11:00 was texted
+# this morning quoting 11:00; villa 7's pair has had nothing yet. And Mews'
+# own record for each, which is where the Worker reads the number from.
+SPAREM = {"b3": {"t1": {"status": "sent", "sentAt": at(8, 5), "providerId": "mid-3",
+                        "day": today, "time": "11:00", "qty": 1, "dur": 60}}}
+PMS = {"b3": {"first": "Ada", "last": "Lovelace", "phone": "+61 411 000 003", "villa": "3"},
+       "b7": {"first": "Mark", "last": "Whitfield", "phone": "+61 411 000 007", "villa": "7"}}
 
 # The pre-arrival SMS window: the next 14 days of ARRIVALS, read through
 # preSmsState exactly as arrivals-sms.html reads it, so the two screens cannot
@@ -191,6 +198,7 @@ def fb(route, request):
                       body=request.post_data or "null"); return
     body = "null"
     if "/staff" in u: body = json.dumps(STAFF)
+    elif "/spareminders" in u: body = json.dumps(SPAREM) if SPAREM else "null"
     elif "/spa.json" in u or u.rstrip("/").endswith("/spa"): body = json.dumps(SPA)
     elif "/permissions" in u: body = json.dumps(PERMS)
     elif "/dayboard/" + today in u: body = json.dumps(DAYBOARD)
@@ -218,6 +226,8 @@ def fb(route, request):
         node = {}
         for bid, p in list(PRE.items()) + list(WPRE.items()):
             node[bid] = {"prearrival": p}
+        for bid, pm in PMS.items():
+            node.setdefault(bid, {})["pms"] = pm
         body = json.dumps(node)
     elif u.split("?")[0].endswith("/previnvites.json"):
         body = json.dumps(WPREINV)
@@ -243,9 +253,9 @@ def fb(route, request):
     route.fulfill(status=200, content_type="application/json", body=body)
 
 P = F = 0
-def ck(name, cond):
+def ck(name, cond, detail=""):
     global P, F
-    print(("PASS " if cond else "FAIL ") + name)
+    print(("PASS " if cond else "FAIL ") + name + ((" | " + str(detail)) if not cond and detail else ""))
     P, F = (P + 1, F) if cond else (P, F + 1)
 
 # ── rule 7: the page gathers, it does not work things out ──────────
@@ -273,8 +283,11 @@ from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b = p.chromium.launch()
 
-    def board(email="staff@x", w=390, date=None):
+    def board(email="staff@x", w=390, date=None, clock=None):
         pg = b.new_page(viewport={"width": w, "height": 900})
+        #  Held only where the hour decides the answer: a spa reminder is
+        #  owed until its treatment begins, and not after.
+        if clock: pg.clock.set_fixed_time(clock)
         pg.add_init_script(SDK)
         pg.add_init_script("window.__EMAIL=%s;" % json.dumps(email))
         pg.route("**firebasedatabase.app/**", fb)
@@ -627,50 +640,73 @@ with sync_playwright() as p:
     ck("the arrival sheets card offers Mark done, same as the other print cards",
        pg.evaluate("()=>!!document.querySelector(\'[data-mark=\"sheets\"]\')"))
 
-    # ── the spa reminder ────────────────────────────────────────
-    pg = board()
-    ck("the spa reminder sits just under the SMS card, above the flow",
+    # ── the spa reminders, the morning text (28 Sep) ────────────
+    #  The owner's rulings: a text to each guest on the morning of a booked
+    #  treatment, sent by the desk from spa-reminders.html. This card listed
+    #  today's treatments with a Mark done until then; it now says who is
+    #  still owed a text, read through spaReminderRows - the sending page's
+    #  own reader - and opens that page. The clock is held at 8:30, before
+    #  any treatment begins, except where the hour is the point.
+    pg = board(clock=at(8, 30))
+    ck("the spa card sits just under the SMS card, above the flow",
        [c["k"] for c in cards(pg)][:2] == ["sms", "spa"])
     sp = card(pg, "spa")
-    # b3 is villa 3's stay tonight and b7 villa 7's: the chip leads with the
-    # room, joined from the stay row that carries the booking id.
-    ck("today's booked treatments are on the board, in time order, each "
-       "with its villa",
-       sp["chips"] == ["3 \u00b7 11:00 am:grey", "7 \u00b7 2:30 pm:grey"])
-    ck("a treatment booked for another day is not",
-       "9:00 am" not in str(sp["chips"]))
+    ck("today's booked treatments, in time order, each with its villa and "
+       "wearing its reminder's state: 3 texted, 7 still to send",
+       sp["chips"] == ["3 \u00b7 11:00 am:green", "7 \u00b7 2:30 pm:grey"])
+    ck("a treatment booked for another day is not", "9:00 am" not in str(sp["chips"]))
     ck("nor is one only requested, which nobody is expecting a guest for",
        len(sp["chips"]) == 2)
-    # Villa and time is the whole card (owner, 9 Sep): what a booking IS -
-    # lengths, pairs - lives on the Spa board behind its door, so nothing
-    # is said twice and nothing describes a massage here.
-    ck("the note is empty until the tick fills it - no offerings, no times",
-       sp["note"] == "")
-    # body.ui2 .btn is width:100%, and a page rule at lower specificity loses
-    # silently. It has caught this page twice.
-    ck("and the tick does not stretch the width of the card",
-       pg.evaluate("()=>{var b=document.querySelector('.chips [data-mark]');"
-                   "return b && b.getBoundingClientRect().width < 200;}"))
-    ck("and the tick shares the chip row rather than opening its own",
-       pg.evaluate("()=>!!document.querySelector('.chips.withtick "
-                   "[data-mark=\"spa\"]')"))
-
-    ck("it carries no action beyond its door, because the desk cannot do "
-       "anything to a treatment from here",
+    ck("the note says who is still owed a text", sp["note"] == "1 to send", sp["note"])
+    ck("the card is named for its job and opens the page that sends",
+       pg.evaluate("()=>HREF.spa") == "spa-reminders.html" and
+       pg.evaluate("()=>NEED.spa") == "editBookings" and
+       "Spa reminders" in pg.inner_text("[data-nav='spa']"))
+    ck("while a text is owed it wears the amber edge of a job to chase",
+       sp["pos"] == "open")
+    ck("no Mark done any more: the send log says it, not a person",
+       not pg.evaluate("()=>!!document.querySelector('[data-mark=\"spa\"]')") and
        not pg.evaluate("()=>!!document.querySelector('[data-print=\"spa\"]')"))
-    ck("and it opens the Spa board",
-       pg.evaluate("()=>HREF.spa") == "spa.html")
-    pg.click("[data-mark='spa']"); pg.wait_for_timeout(150)
-    pg.click("[data-mark='spa']"); pg.wait_for_timeout(500)
-    ck("it can be marked done, and says done rather than printed",
-       "spa" in DAYBOARD)
+    ck("every chip's tone is spaReminderState's, not this page's",
+       pg.evaluate("""()=>spaReminderRows(nav.todayKey(), DATA.spa, DATA.spareminders,
+           DATA.stays, DATA.bookings, DATA.phonefix, Date.now()).map(x=>x.state).join()""")
+       == "sent,ready")
     pg.close()
-    pg = board()
-    ck("a done reminder recedes and says when",
-       card(pg, "spa")["pos"] == "past"
-       and card(pg, "spa")["note"].startswith("done "))
-    pg.close()
-    DAYBOARD.pop("spa", None)
+
+    def spa_card(clock=None):
+        q = board(clock=clock or at(8, 30)); c = card(q, "spa"); q.close(); return c
+    SAVED_REM, SAVED_PMS = json.loads(json.dumps(SPAREM)), json.loads(json.dumps(PMS))
+    SPAREM["b7"] = {"t3": {"status": "failed", "sentAt": at(8, 5), "error": "INVALID_RECIPIENT",
+                           "day": today, "time": "14:30", "qty": 2, "dur": 90, "dur2": 60}}
+    c = spa_card()
+    ck("a send that failed wears the red ring and is counted as failed",
+       c["chips"][1] == "7 \u00b7 2:30 pm:fail" and c["note"] == "1 to send (1 failed)", c)
+    SPAREM["b7"] = {"t3": {"status": "sent", "sentAt": at(8, 5), "providerId": "mid-7",
+                           "day": today, "time": "13:00", "qty": 2, "dur": 90, "dur2": 60}}
+    c = spa_card()
+    ck("a booking moved since its text is amber, owed again",
+       c["chips"][1] == "7 \u00b7 2:30 pm:amber" and c["note"] == "1 to send (1 changed)", c)
+    SPAREM["b7"]["t3"]["time"] = "14:30"
+    c = spa_card()
+    ck("once everyone is texted the card sinks, done",
+       c["chips"] == ["3 \u00b7 11:00 am:green", "7 \u00b7 2:30 pm:green"] and
+       c["note"] == "all 2 reminded" and c["pos"] == "past", c)
+    SPAREM.pop("b7"); PMS["b7"]["phone"] = "07 3358 1122"
+    c = spa_card()
+    ck("a guest with no mobile sinks rather than nags, and the card is done",
+       c["chips"][1] == "7 \u00b7 2:30 pm:sunk" and c["pos"] == "past" and
+       c["note"] == "all 1 reminded \u00b7 1 has no mobile", c)
+    PMS["b7"]["phone"] = "+61 411 000 007"; SPAREM.pop("b3")
+    c = spa_card(at(12, 0))
+    ck("a treatment that began without a text sinks too, and says so",
+       c["chips"] == ["3 \u00b7 11:00 am:sunk", "7 \u00b7 2:30 pm:grey"] and
+       c["note"] == "1 to send \u00b7 1 began without one", c)
+    SPAREM.clear(); SPAREM.update(SAVED_REM); PMS.clear(); PMS.update(SAVED_PMS)
+
+    ch = board("chef@x", clock=at(8, 30))
+    ck("a chef reads the card but has no door: sending answers to editBookings",
+       not card(ch, "spa")["door"])
+    ch.close()
 
     SAVED_SPA = dict(SPA)
     SPA.clear()

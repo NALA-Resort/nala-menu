@@ -188,7 +188,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=77"></script>
+<script src="nala-shared.js?v=78"></script>
 <script>
 /* The guest profile: everything the app knows about one booking, on one
    screen, reached from a calendar bar. URL: guest.html?b=<bookingId> - the
@@ -206,6 +206,7 @@
      arrival hour                        effectiveEta()
      checked in                          isArrived()
      the massage mark                    massageState()
+     a booked treatment's morning text   spaReminderGood(), spaQuote(), preSmsFailed()
      the second guest                    companionOf()
      the party's other villas            groupMatesText()
      key cards held and their state      cardRows(), cardsHeld(), cardState()
@@ -302,12 +303,36 @@ function load(){
       getJ('/spa/' + B),
       getJ('/cards'),
       getJ('/bookflags/' + B),
-      cid ? getJ('/guests/' + cid) : Promise.resolve(null)
+      cid ? getJ('/guests/' + cid) : Promise.resolve(null),
+      getJ('/spareminders/' + B)      /* the morning texts, one per treatment */
     ]).then(function(res){
+      SPAREM = res[5] || {};
       render(bk, res[0] || {}, res[1] || {}, res[2], res[3] || {}, res[4],
              anchorKey, cid);
     });
   });
+}
+
+/* The spa reminder log for this booking, /spareminders/<booking>, keyed by
+   treatment (28 Sep). */
+var SPAREM = {};
+
+/* A booked treatment's morning text, in the profile's few words: what the
+   send log says, read through the shared helpers - spaReminderGood for a
+   text that reached the guest, spaQuote for what it said, preSmsFailed for
+   a failure - so this line and the boards cannot disagree. Nothing at all
+   for a treatment no text has been tried for. */
+function remNote(tid, t){
+  var r = SPAREM[tid];
+  if (!r || typeof r !== 'object' || !r.status) return '';
+  var d = parseISO(r.sentAt), pad = function(n){ return (n < 10 ? '0' : '') + n; };
+  var when = d ? shortDay(dkey(d)) + ', ' + clock12(pad(d.getHours()) + ':' + pad(d.getMinutes())) : '';
+  if (preSmsFailed(r))
+    return (r.status === 'sent' ? 'Reminder not delivered' : 'Reminder failed to send') +
+           (when ? ', ' + when : '');
+  if (spaReminderGood(r) && spaQuote(r) !== spaQuote(t))
+    return 'Reminder sent ' + when + ', for ' + clock12(r.time) + ' \u00b7 changed since';
+  return 'Reminder sent ' + when + (r.delivery === 'delivered' ? ' \u00b7 delivered' : '');
 }
 
 /* ── the drawing ──────────────────────────────────────────────── */
@@ -480,10 +505,12 @@ function render(bk, night, spa, cardsTree, bookflags, guestRec, anchorKey, cid){
     if (!t.time && t.reqTime) bits.push(esc(t.reqTime));
     if (t.dur) bits.push(t.dur + ' min');
     if (t.qty > 1) bits.push(t.qty + ' guests');
+    var rn = t.status === 'booked' ? remNote(tid, t) : '';
     sp += '<div class="row ' + cls + '"><div class="q">Massage</div><div class="a">' +
           label + (bits.length ? ' &middot; ' + bits.join(' &middot; ') : '') + '</div>' +
           (t.status === 'suggested'
             ? '<div class="n">The masseuse has offered a time; the guest has not been asked yet.</div>' : '') +
+          (rn ? '<div class="n">' + esc(rn) + '</div>' : '') +
           '</div>';
   });
   if (!anySpa){

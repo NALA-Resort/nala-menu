@@ -5,7 +5,8 @@
  * sandbox reaches neither ClickSend nor Cloudflare. HANDOVER.md's warning
  * applies in full.
  */
-import worker, { normalisePhone as workerNorm } from "./send-invites.js";
+import worker, { normalisePhone as workerNorm,
+                 spaReminderText as workerSpaText } from "./send-invites.js";
 import { readFileSync } from "node:fs";
 
 let P = 0, F = 0;
@@ -101,7 +102,7 @@ function install() {
       /* recordOk gates the /invites record alone: the send-worked-but-the-
          record-did-not case. linksOk gates the token store, which fails a
          villa BEFORE anything is sent. */
-      if (!STATE.recordOk && path.startsWith("/invites/"))
+      if (!STATE.recordOk && (path.startsWith("/invites/") || path.startsWith("/spareminders/")))
         return new Response("no", { status: 401 });
       if (!STATE.linksOk && path.startsWith("/links/"))
         return new Response("no", { status: 401 });
@@ -355,6 +356,134 @@ ck("no receipt yet is unknown, and the record is left alone",
 install(); STATE.email = "hk@nala.x";
 r = await dlv({ pres: ["bk-future"] });
 ck("the delivery check obeys the same permission as sending", r.status === 403);
+
+/* ── kind "spa": the morning spa reminder, per treatment ─────────
+   The words first, against the one table the page's copy answers to as
+   well (tests/spar_suite.py): the preview the desk reads must be the text
+   the guest gets. */
+{
+  const T = JSON.parse(readFileSync(new URL("../tests/spareminder_cases.json", import.meta.url), "utf8"));
+  const wrong = T.text.filter((c) => workerSpaText(c.tpl, c.first, c.rec, c.prev) !== c.want);
+  ck("the Worker's reminder text says what the shared table says, every case (" +
+     T.text.length + ")", T.text.length > 10 && !wrong.length);
+  if (wrong.length) console.log("   differs:", wrong.map((c) => c.name));
+}
+
+const REMIND = "Hello <first>, a gentle reminder of your booking with us:\n\n<booking>\n\n" +
+               "If you need to change anything, just reply to this message. Nala Resort";
+const spaDay = (days) => { const d = new Date(Date.now() + days * 86400000);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") +
+         "-" + String(d.getDate()).padStart(2, "0"); };
+function spaWorld() {
+  install();
+  STORE["/spa/bk-spa/t1"] = { status: "booked", day: today, time: "14:00", dur: 60, qty: 1,
+                              name: "Freya Lindqvist" };
+  STORE["/spa/bk-spa/t2"] = { status: "suggested", day: today, time: "15:00", dur: 60, qty: 1 };
+  STORE["/spa/bk-spa/t3"] = { status: "booked", day: spaDay(10), time: "10:00", dur: 60, qty: 1 };
+  STORE["/bookings/bk-spa/pms"] = { first: "Freya", last: "Lindqvist", phone: "0411 222 333",
+                                    villa: 17, arrive: spaDay(-1), depart: spaDay(3) };
+  STORE["/spa/bk-land/t1"] = { status: "booked", day: today, time: "12:30", dur: 60, qty: 1 };
+  STORE["/bookings/bk-land/pms"] = { first: "Ruby", phone: "07 3358 1122" };
+}
+const spa = (over = {}) => worker.fetch(new Request("https://w.dev/", {
+  method: "POST", headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ idToken: "T", kind: "spa", treatments: [{ b: "bk-spa", t: "t1" }],
+                         template: "remind", body: REMIND, ...over }) }), env);
+
+spaWorld(); STORE["/menu"] = null;
+r = await spa();
+j = await r.json();
+ck("a spa reminder needs no menu, and sends", r.status === 200 &&
+   j.results["bk-spa/t1"].status === "sent" && SENDS.length === 1);
+const spaBody = SENDS[0].messages[0].body;
+ck("its words are built here, from the /spa record and Mews' first name",
+   spaBody === workerSpaText(REMIND, "Freya", STORE["/spa/bk-spa/t1"], null) &&
+   spaBody.includes("Hello Freya,") && spaBody.includes("Massage, 1 hour\n") &&
+   /at 2:00 pm/.test(spaBody));
+ck("and it carries no link, and mints no token",
+   !/https?:|menu\.nalaresort/.test(spaBody) &&
+   !Object.keys(STORE).some((k) => k.startsWith("/links/")));
+ck("the number came off Mews' record, normalised", SENDS[0].messages[0].to === "+61411222333");
+let srec = STORE["/spareminders/bk-spa/t1"];
+ck("the send is recorded against the treatment, with who pressed send",
+   !!srec && srec.status === "sent" && srec.by === "waiter@nala.x" &&
+   srec.providerId === "mid-1" && srec.body === spaBody && srec.to === "+61411222333");
+ck("and the record keeps what the text quoted, to catch a move",
+   srec.day === today && srec.time === "14:00" && srec.qty === 1 && srec.dur === 60 &&
+   srec.dur2 === undefined);
+
+spaWorld();
+STORE["/spareminders/bk-spa/t1"] = { status: "sent", day: today, time: "11:30", qty: 1, dur: 60,
+                                     sentAt: new Date().toISOString(), providerId: "mid-0" };
+r = await spa();
+ck("a booking moved since its text says what it changed from",
+   /\nMassage, 1 hour\n.* at 2:00 pm\n\(changed from 11:30 am\)\n/.test(SENDS[0].messages[0].body));
+ck("and the new record quotes the booking as it now stands",
+   STORE["/spareminders/bk-spa/t1"].time === "14:00");
+
+spaWorld();
+STORE["/spareminders/bk-spa/t1"] = { status: "sent", day: today, time: "11:30", qty: 1, dur: 60,
+                                     delivery: "failed", deliveryText: "Handset unreachable" };
+r = await spa();
+ck("a text the guest never got is not corrected, only sent",
+   !SENDS[0].messages[0].body.includes("changed"));
+
+spaWorld();
+r = await spa({ treatments: [{ b: "bk-spa", t: "t2" }, { b: "bk-spa", t: "t3" },
+                             { b: "bk-spa", t: "t9" }, { b: "bk-spa", t: "t1" }] });
+j = await r.json();
+ck("a suggestion is not a booking: refused by the Worker",
+   j.results["bk-spa/t2"].status === "failed" && /booked/.test(j.results["bk-spa/t2"].error));
+ck("a treatment days away is refused: reminders go the morning of",
+   j.results["bk-spa/t3"].status === "failed" && /today/.test(j.results["bk-spa/t3"].error));
+ck("a treatment that does not exist fails alone",
+   j.results["bk-spa/t9"].status === "failed");
+ck("and the good one still went, alone", j.results["bk-spa/t1"].status === "sent" &&
+   SENDS.length === 1);
+
+spaWorld();
+r = await spa({ treatments: [{ b: "bk-land", t: "t1" }] });
+j = await r.json();
+ck("a landline is refused, with the number in the reason",
+   j.results["bk-land/t1"].status === "failed" && /07 3358 1122/.test(j.results["bk-land/t1"].error) &&
+   SENDS.length === 0);
+spaWorld();
+STORE["/phonefix/bk-land"] = { phone: "+64274875277" };
+r = await spa({ treatments: [{ b: "bk-land", t: "t1" }] });
+ck("and the desk's fixed number outranks it", SENDS.length === 1 &&
+   SENDS[0].messages[0].to === "+64274875277");
+
+spaWorld();
+r = await spa({ body: "A reminder. Nala Resort\n<menu>" });
+ck("a link marker in a spa reminder is refused whole", r.status === 400 && SENDS.length === 0);
+spaWorld();
+r = await spa({ body: "Hello <first>, see you soon. Nala Resort" });
+ck("a spa reminder without <booking> is refused: it would say nothing", r.status === 400 &&
+   SENDS.length === 0);
+spaWorld();
+r = await spa({ body: "Hello <first>, <booking> www.evil.example" });
+ck("a URL is refused here as everywhere", r.status === 400 && SENDS.length === 0);
+spaWorld();
+r = await spa({ treatments: [{ b: "../x", t: "t1" }] });
+ck("a malformed treatment list is refused", r.status === 400);
+spaWorld(); STATE.email = "hk@nala.x";
+r = await spa();
+ck("a spa reminder obeys the same permission as every send", r.status === 403 &&
+   SENDS.length === 0);
+spaWorld(); STATE.recordOk = false;
+r = await spa();
+j = await r.json();
+ck("a reminder whose record failed says so", j.results["bk-spa/t1"].status === "sent-unrecorded");
+
+spaWorld();
+STORE["/spareminders/bk-spa/t1"] = { status: "sent", providerId: "mid-s", day: today,
+                                     time: "14:00", qty: 1, dur: 60 };
+STATE.receipt = { status_code: "201", status_text: "Success: Message received on handset." };
+r = await dlv({ spas: [{ b: "bk-spa", t: "t1" }, { b: "../x", t: "t1" }] });
+j = await r.json();
+ck("the handset receipt lands on the spa reminder's record too",
+   j.results["bk-spa/t1"] === "delivered" &&
+   STORE["/spareminders/bk-spa/t1"].delivery === "delivered" && j.changed === 1);
 
 console.log("RESULT: " + P + " passed, " + F + " failed");
 process.exit(F ? 1 : 0);

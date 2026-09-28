@@ -29,6 +29,7 @@
     "past-menus": "resBoard",
     "invitations": "editBookings",
     "arrivals-sms": "editBookings",
+    "spa-reminders": "editBookings",
     "templates": "editBookings",
     "staff": "manageStaff",
     "tag": "publishMenu",

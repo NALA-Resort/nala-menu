@@ -2,7 +2,9 @@
  *
  * invitations.html posts here to send tonight's menu link by SMS. This is the
  * only place the ClickSend credential exists: never in the browser and never
- * in this repo, which is public until SECURITY.md job 4.
+ * in this repo, which is public until SECURITY.md job 4. Three pages share
+ * it: invitations.html (the default kind), arrivals-sms.html (kind "pre"),
+ * and spa-reminders.html (kind "spa", the morning spa reminder, 28 Sep).
  *
  * The page proposes; this Worker decides. A browser can be edited, and a
  * browser that can name any phone number and any message body is a browser
@@ -158,6 +160,60 @@ function fillMarkers(text, link) {
   return text.replace(/\s*$/, "") + "\n" + link;
 }
 
+/* ── the spa reminder's words ────────────────────────────────────
+   The twin of spaBookingText and spaReminderText in nala-shared.js, carried
+   here for the reason normalisePhone is: a Worker cannot import from the
+   site. Both copies answer to tests/spareminder_cases.json - the
+   phone_cases.json pattern - so the preview the desk reads is the text the
+   guest gets, character for character. Built HERE from the /spa record, not
+   taken from the browser: an edited page can choose the greeting, but not
+   say the wrong time. Plain GSM characters only; one middot or curly quote
+   turns a text into UCS-2 and triples its cost. Exported for the test. */
+const SPA_LEN = { 60: "1 hour", 90: "1.5 hours", 120: "2 hours" };
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July",
+                "August", "September", "October", "November", "December"];
+function slotLabel(t) {
+  if (!t) return "";
+  const p = String(t).split(":"), h = +p[0];
+  return (h % 12 || 12) + ":" + p[1] + " " + (h < 12 ? "am" : "pm");
+}
+function whenText(day, time, withDay) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(day || ""));
+  const t = slotLabel(time);
+  if (!withDay || !m) return t;
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  return WEEKDAYS[d.getUTCDay()] + " " + d.getUTCDate() + " " +
+         MONTHS[d.getUTCMonth()] + " at " + t;
+}
+function spaQuote(r) {
+  const q = r && r.qty === 2 ? 2 : 1;
+  return [(r && r.day) || "", (r && r.time) || "", q, +(r && r.dur) || 0,
+          q === 2 ? (+r.dur2 || 0) : 0].join("|");
+}
+const spaGood = (rem) => !!(rem && rem.status === "sent" && rem.delivery !== "failed");
+export function spaBookingText(rec, prev) {
+  const d1 = SPA_LEN[+rec.dur], d2 = SPA_LEN[+rec.dur2];
+  let what;
+  if (rec.qty === 2) {
+    what = "Two massages";
+    if (d1 && d2) what += ", " + (+rec.dur === +rec.dur2 ? d1 + " each" : d1 + " and " + d2);
+  } else what = "Massage" + (d1 ? ", " + d1 : "");
+  let out = what + "\n" + whenText(rec.day, rec.time, true);
+  if (spaGood(prev) && spaQuote(prev) !== spaQuote(rec)) {
+    if (prev.day !== rec.day) out += "\n(changed from " + whenText(prev.day, prev.time, true) + ")";
+    else if (prev.time !== rec.time) out += "\n(changed from " + whenText(prev.day, prev.time, false) + ")";
+    else out += "\n(changed since our last message)";
+  }
+  return out;
+}
+export function spaReminderText(tpl, first, rec, prev) {
+  first = String(first == null ? "" : first).trim();
+  let s = String(tpl == null ? "" : tpl);
+  s = first ? s.split("<first>").join(first) : s.replace(/ ?<first>/g, "");
+  return s.split("<booking>").join(spaBookingText(rec, prev));
+}
+
 async function clickSend(env, phone, bodyText) {
   const send = await fetch(CLICKSEND, {
     method: "POST",
@@ -191,7 +247,7 @@ export default {
     try { body = await request.json(); }
     catch { return reply(400, { error: "not JSON" }); }
 
-    const { idToken, date, villas, template, kind, bookings } = body || {};
+    const { idToken, date, villas, template, kind, bookings, treatments } = body || {};
     const text = body && body.body;
 
     if (!idToken) return reply(401, { error: "no idToken" });
@@ -205,6 +261,13 @@ export default {
       if (!Array.isArray(bookings) || !bookings.length || bookings.length > 40 ||
           !bookings.every((b) => /^[A-Za-z0-9-]{4,64}$/.test(String(b))))
         return reply(400, { error: "bad booking list" });
+    } else if (kind === "spa") {
+      /* The morning spa reminder (28 Sep), addressed by treatment: the
+         booking id and the /spa record's own key. */
+      if (!Array.isArray(treatments) || !treatments.length || treatments.length > 40 ||
+          !treatments.every((t) => t && /^[A-Za-z0-9-]{4,64}$/.test(String(t.b)) &&
+                                   /^[A-Za-z0-9_-]{1,32}$/.test(String(t.t))))
+        return reply(400, { error: "bad treatment list" });
     } else if (kind === "delivery") {
       /* Addressed by record references, validated at the point of use. */
     } else {
@@ -226,6 +289,15 @@ export default {
         return reply(400, { error: "bad message" });
       if (bodyHasUrl(text))
         return reply(400, { error: "the message contains a URL; the link is added here, not typed" });
+    }
+    /* A spa reminder carries no link, so a link marker in one would reach the
+       guest as the literal word, and one without <booking> would tell them
+       nothing of what or when - the whole of what the owner asked it to say. */
+    if (kind === "spa") {
+      if (/<(menu|form|link)>/.test(text))
+        return reply(400, { error: "spa reminders carry no link; take the link marker out" });
+      if (!text.includes("<booking>"))
+        return reply(400, { error: "the message needs <booking>, or the guest is not told what or when" });
     }
 
     /* 1. Verify the token. accounts:lookup checks the signature, the expiry
@@ -263,6 +335,8 @@ export default {
     if (kind === "pre-delivery" || kind === "delivery") {
       const invites = Array.isArray(body.invites) ? body.invites.slice(0, 40) : [];
       const pres = Array.isArray(body.pres) ? body.pres.slice(0, 40) : [];
+      /* the spa reminder log, one record per treatment: { b, t } */
+      const spas = Array.isArray(body.spas) ? body.spas.slice(0, 40) : [];
       const results = {}; let changed = 0;
       const check = async (path, key) => {
         let rec;
@@ -303,7 +377,79 @@ export default {
         if (!/^[A-Za-z0-9-]{4,64}$/.test(String(id))) continue;
         await check("/previnvites/" + id, id);
       }
+      for (const s of spas) {
+        if (!s || !/^[A-Za-z0-9-]{4,64}$/.test(String(s.b)) ||
+            !/^[A-Za-z0-9_-]{1,32}$/.test(String(s.t))) continue;
+        await check("/spareminders/" + s.b + "/" + s.t, s.b + "/" + s.t);
+      }
       return reply(200, { results, changed });
+    }
+
+    /* ── kind "spa": the morning spa reminder, per treatment ────
+       The owner, 28 Sep: a text on the morning of a booked treatment, the
+       desk pressing Send on spa-reminders.html. No link and no menu
+       backstop. Everything the text says is read here: the /spa record
+       (only a booked treatment for today, whatever the browser claimed -
+       the same day-of-UTC window as tonight's invitations), the guest's
+       first name off Mews' record, the number the desk fixed or else
+       Mews', and the last text this treatment was sent, so a booking moved
+       since says what it changed from. The browser supplies only the
+       template's words around <first> and <booking>. */
+    if (kind === "spa") {
+      const results = {};
+      for (const tr of treatments) {
+        const b = String(tr.b), t = String(tr.t), key = b + "/" + t;
+        const rec = { sentAt: new Date().toISOString(), template: template || "",
+                      by: email, status: "failed", to: "", body: "", error: "" };
+        try {
+          const spa = await dbGet("/spa/" + b + "/" + t, idToken);
+          if (!spa || typeof spa !== "object" || spa.status !== "booked")
+            throw new Error("not a booked treatment");
+          const when = Date.parse(String(spa.day || "") + "T00:00:00Z");
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(String(spa.day || "")) || isNaN(when) ||
+              Math.abs(when - Date.now()) > 36 * 60 * 60 * 1000)
+            throw new Error("not a treatment today: " + (spa.day || "no day"));
+          /* What this text quotes, kept on its record: the next text, and
+             every screen, compare it with the booking to catch a move. */
+          rec.day = spa.day; rec.time = spa.time || "";
+          rec.qty = spa.qty === 2 ? 2 : 1; rec.dur = +spa.dur || 0;
+          if (rec.qty === 2) rec.dur2 = +spa.dur2 || 0;
+          const prev = await dbGet("/spareminders/" + b + "/" + t, idToken).catch(() => null);
+          const pms = (await dbGet("/bookings/" + b + "/pms", idToken).catch(() => null)) || {};
+          const fix = await dbGet("/phonefix/" + b, idToken).catch(() => null);
+          const raw = String((fix && fix.phone) || pms.phone || "").trim();
+          if (!raw) throw new Error("no phone number on the booking");
+          const phone = normalisePhone(raw);
+          if (!phone)
+            throw new Error("number cannot be normalised for sending: " + raw);
+          rec.to = phone;
+          rec.body = spaReminderText(text, pms.first, spa, prev);
+          const cs = await clickSend(env, phone, rec.body);
+          if (cs.ok) {
+            rec.status = "sent";
+            rec.providerId = (cs.msg && cs.msg.message_id) || "";
+          } else {
+            throw new Error((cs.msg && cs.msg.status) ||
+                            (cs.out && cs.out.response_msg) || "ClickSend refused");
+          }
+        } catch (e) {
+          rec.error = String((e && e.message) || e);
+        }
+        /* One record per treatment, the latest attempt, written with the
+           caller's own token so the rules apply exactly as from the page. */
+        try {
+          const w = await fetch(
+            DB + "/spareminders/" + b + "/" + t + ".json?auth=" + encodeURIComponent(idToken),
+            { method: "PUT", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(rec) });
+          if (!w.ok) throw new Error("record refused");
+        } catch {
+          rec.error = (rec.error ? rec.error + "; " : "") + "the record did not save";
+          if (rec.status === "sent") rec.status = "sent-unrecorded";
+        }
+        results[key] = { status: rec.status, error: rec.error || undefined };
+      }
+      return reply(200, { results });
     }
 
     /* ── kind "pre": the pre-arrival form, per booking ──────────

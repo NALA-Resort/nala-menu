@@ -31,15 +31,15 @@
       "kind": "function",
       "note": "One reader, so this board and the two it summarises cannot disagree." },
 
-    { "value": "which day a spa record belongs to on the board",
-      "owner": "dayOf",
+    { "value": "today's booked treatments and where each one's morning text stands",
+      "owner": "spaReminderRows",
       "kind": "function",
-      "note": "spa.html's own reading, moved to nala-shared 8 Sep so this reminder and that board cannot disagree about a day." },
+      "note": "Spa reminders' own gatherer (28 Sep): the treatments booked on the day, each judged by spaReminderState, both in nala-shared.js and held to tests/spareminder_cases.json. The card and the sending page read the same rows, so they cannot disagree about who is owed a text. It replaced this page's own walk of /spa through dayOf." },
 
     { "value": "the room number on a spa chip",
       "owner": "fetchStays",
       "kind": "function",
-      "note": "A spa record keys by BOOKING id and carries no villa; tonight's stay row carries that id, so the villa is the row holding it. A join of two owned facts, not a new one." },
+      "note": "A spa record keys by BOOKING id and carries no villa; the viewed night's stay row carries that id, so the villa is the row holding it - spaReminderRows makes the join from the rows fetchStays read. A join of two owned facts, not a new one." },
 
     { "value": "which cards each arriving villa holds",
       "owner": "cardsHeld",
@@ -91,10 +91,15 @@
       "kind": "path",
       "note": "Keyed by BOOKING id, written by the Worker and read by arrivals-sms.html. Read whole and plucked by id now (one read, not a fetch per booking - the HTTP/1.1 fan-out fix), the same node however it is read. /invites is the dinner invitation, keyed by villa - a different thing entirely, one node over." },
 
-    { "value": "whether a still-to-send booking's last SMS attempt FAILED (the red pill)",
+    { "value": "which spa treatments have been texted, and what each text quoted",
+      "owner": "/spareminders",
+      "kind": "path",
+      "note": "Keyed by BOOKING id then treatment id, written by the Worker and read by spa-reminders.html, read whole here. Not on the /spa record, which spa.html writes whole and would wipe." },
+
+    { "value": "whether a still-to-send booking's last SMS attempt FAILED (the red pill), pre-arrival and spa reminder alike",
       "owner": "preSmsFailed",
       "kind": "function",
-      "note": "The finer reading over the send record, shared so the Dashboard's red-ring pill agrees with the red words on the sending page's row. A failure is red (colour law); a never-asked one is grey. Held to tests/presms_cases.json." },
+      "note": "The finer reading over the send record, shared so the Dashboard's red-ring pill agrees with the red words on the sending page's row. A failure is red (colour law); a never-asked one is grey. Held to tests/presms_cases.json. The spa reminder log is written by the same Worker in the same shape, so the spa card's red ring reads it too." },
 
     { "value": "a booking's arrival date",
       "owner": "parseDepDate",
