@@ -1429,14 +1429,18 @@ function extInvites(manual){
 function extInviteState(g, send){
   g = g || {};
   var pax = dinerPax(g);
+  /* The seating reception agreed on the phone, when it agreed one (28 Sep,
+     the owner: "It's just missing a time slot"). dinnerTimeLabel is the one
+     reading of a stored time; the pm is the caller's, as on the sheets. */
+  var seat = dinnerTimeLabel(g.time) ? ' at ' + dinnerTimeLabel(g.time) + ' pm' : '';
   var who = g.by === 'staff' ? 'set by reception'
           : g.at ? 'answered ' + timeOf(g.at) : 'answered';
   if (g.status === 'in')
     return { kind:'answered', in:true, bad:'',
-             line:'Accepted · table for ' + pax + ' · ' + who };
+             line:'Accepted · table for ' + pax + seat + ' · ' + who };
   if (g.status === 'out')
     return { kind:'answered', in:false, bad:'', line:'Declined · ' + who };
-  var table = 'Table for ' + pax;
+  var table = 'Table for ' + pax + seat;
   if (send && send.status === 'failed')
     return { kind:'ready', line:table, bad:'send failed ' + timeOf(send.sentAt) +
              (send.error ? ' · ' + send.error : '') };

@@ -627,8 +627,13 @@ None of these can move without him.
       its own booking and nothing else. Without it the first write is
       refused and NOTHING sends: the feature fails, it does not limp.
     - **Paste `worker/send-invites.js`** into the `nala-invites` Worker. It
-      gained the `ext` kind. Until then the sheet's Send says the sender did
-      not answer; the in-house and pre-arrival sends are unchanged either way.
+      gained the `ext` kind. Until then the sheet's Send says "bad villa
+      list" - the old Worker's refusal of anything that is not a villas'
+      send; the in-house and pre-arrival sends are unchanged either way.
+      Both pasted 28 Sep and a send worked. Then the Time field was added
+      the same day: paste the Worker ONCE MORE for the booking to store the
+      time. Until then the text says the time, but the booking holds none,
+      so the guest page and Reservations do not show it.
 
 ---
 
