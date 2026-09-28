@@ -1766,10 +1766,29 @@ with sync_playwright() as p:
        r is not None and not r["has"] and not r["lines"], r)
     r = remlines("waiter@x")
     ck("a waiter, who holds editBookings, sees it", r and r["has"], r)
+    # The owner, 28 Sep: Spa reminders looks 3, 7 or 14 days ahead, so a
+    # later treatment's text can go early - its card reads where the text
+    # stands and carries the door, and only beyond the 14 days waits.
+    def nice(key):
+        d = datetime.date.fromisoformat(key); n = d.day
+        suf = "th" if 11 <= n % 100 <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+        return d.strftime("%a") + " " + str(n) + suf + " " + d.strftime("%b")
     SPA["b3"]["t1"]["day"] = plus(2)
     r = remlines()
-    ck("a treatment on a later day says when its text will go, with no door yet",
-       r and len(r["lines"]) == 1 and r["lines"][0].startswith("Goes out on the morning of ") and
+    ck("a treatment two days out can be reminded now: its day and time, and the door",
+       r and r["lines"] == ["Not sent yet. It goes from Spa reminders, before %s, 11:00 am."
+                            % nice(plus(2))] and
+       r["door"] == "spa-reminders.html?open=b3", r)
+    REM["b3"] = {"t1": {"status": "sent", "sentAt": at(8, 5), "providerId": "mid-3",
+                        "day": plus(2), "time": "11:00", "qty": 1}}
+    r = remlines()
+    ck("one reminded early says so, where the old card said it had not gone",
+       r and len(r["lines"]) == 1 and r["lines"][0].startswith("Sent ") and r["door"], r)
+    REM.clear()
+    SPA["b3"]["t1"]["day"] = plus(20)
+    r = remlines()
+    ck("beyond the 14 days it says when it can go, with no door yet",
+       r and r["lines"] == ["Not sent yet. It can go from Spa reminders once it is within 14 days."] and
        not r["door"], r)
     SPA["b3"]["t1"]["day"] = today
     BOOKINGS_NODE["b3"]["pms"].pop("phone", None)

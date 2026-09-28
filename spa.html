@@ -184,7 +184,7 @@ body.paper .vrow.b-grey { background:var(--surface); box-shadow:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=83"></script>
+<script src="nala-shared.js?v=84"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -853,15 +853,17 @@ function card(it){
   return el;
 }
 
-/* The Guest reminder lines on an opened booked treatment. Only a treatment
-   for today can still be sent from Spa reminders, so only today's carries
-   the door; a later one says when its text will go, and one already begun
-   says what happened and asks nothing. */
+/* The Guest reminder lines on an opened booked treatment. Anything from
+   today to SPA_REMIND_DAYS ahead can be sent from Spa reminders, early or
+   on its morning, so it reads where its text stands and carries the door;
+   one further out says when it can go, and one already begun says what
+   happened and asks nothing. */
 function reminderSection(el, id, tid, rec){
   var rem = (REMS[id] || {})[tid] || null;
   if (rem && typeof rem !== 'object') rem = null;
   var raw = String((FIXES[id] && FIXES[id].phone) || (PMS[id] && PMS[id].phone) || '').trim();
   var real = dkey(new Date());
+  var reach = spaRemindDays(), last = reach[reach.length - 1];
   var sub = document.createElement('div'); sub.className = 'sub';
   sub.textContent = 'Guest reminder'; el.appendChild(sub);
   function line(text, cls){
@@ -874,8 +876,9 @@ function reminderSection(el, id, tid, rec){
     var h = d.getHours(), m = String(d.getMinutes()).padStart(2, '0');
     return 'Sent ' + niceDay(dkey(d)) + ', ' + (h % 12 || 12) + ':' + m + ' ' + (h < 12 ? 'am' : 'pm');
   }
-  if (rec.day > real){
-    line('Goes out on the morning of ' + niceDay(rec.day) + ', from Spa reminders.', 'quiet');
+  if (rec.day > last){
+    line('Not sent yet. It can go from Spa reminders once it is within ' +
+         SPA_REMIND_DAYS + ' days.', 'quiet');
     return;
   }
   var st = spaReminderState(rec, rem, raw, Date.now());
@@ -900,8 +903,9 @@ function reminderSection(el, id, tid, rec){
            : 'Send failed' + (rem.error ? ' · ' + rem.error : ''), 'bad');
     line('Still owed, on Spa reminders.', 'quiet');
   } else
-    line('Not sent yet. It goes from Spa reminders, before ' + slotLabel(rec.time) + '.');
-  if (rec.day !== real || st === 'late') return;
+    line('Not sent yet. It goes from Spa reminders, before ' +
+         (rec.day === real ? '' : niceDay(rec.day) + ', ') + slotLabel(rec.time) + '.');
+  if (rec.day < real || st === 'late') return;
   var row = document.createElement('div');
   row.className = 'btns'; row.style.marginTop = '10px';
   var a = document.createElement('a');

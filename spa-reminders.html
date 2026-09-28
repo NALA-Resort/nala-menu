@@ -28,6 +28,14 @@
               text-transform:none; color:var(--mid); text-decoration:underline; }
   .dayline  { font-size:var(--t2); color:var(--mid); margin:2px 2px 4px; line-height:1.5; }
 
+  /* How far ahead the list looks: Pre-arrival SMS's knob, the owner's ask
+     of 28 Sep ("the same filter options"), and dressed as there. */
+  .knob { display:flex; border:1px solid var(--rule); border-radius:8px;
+          overflow:hidden; margin-bottom:12px; }
+  .knob button { flex:1; padding:9px 0; font-family:var(--ui-font); font-size:var(--t2); background:none;
+                 border:none; color:var(--mid); cursor:pointer; }
+  .knob button.on { background:var(--ink); color:var(--cream); }
+
   /* the row the Spa board's door came for: the Selected role's ink border,
      worn until the person taps anything */
   .vrow.linked { outline:2px solid var(--ink); outline-offset:2px; }
@@ -121,6 +129,7 @@ body.paper .vrow.b-changed { background:var(--amber); }
 body.paper .vrow.b-done { background:linear-gradient(var(--resgreen-t), var(--resgreen-t)), var(--surface); }
 body.paper .vrow.b-grey { background:var(--surface); box-shadow:none; }
 body.paper .pcard { background:var(--surface); box-shadow:var(--lift); }
+body.paper .knob { background:var(--surface); }
 </style>
 </head>
 <body class="tier-app ui2 paper">
@@ -135,10 +144,16 @@ body.paper .pcard { background:var(--surface); box-shadow:var(--lift); }
 
 <div class="noaccess" id="noAccess"></div>
 
+<div class="knob" id="knob">
+  <button data-days="3">Next 3 days</button>
+  <button data-days="7" class="on">Next 7 days</button>
+  <button data-days="14">Next 14 days</button>
+</div>
+
 <div class="stats" id="statsRow">
   <div class="stat"><div class="stat-n" id="nSend">&ndash;</div><div class="stat-l">To send</div></div>
   <div class="stat"><div class="stat-n" id="nSent">&ndash;</div><div class="stat-l">Sent</div></div>
-  <div class="stat"><div class="stat-n" id="nAll">&ndash;</div><div class="stat-l">Booked today</div></div>
+  <div class="stat"><div class="stat-n" id="nAll">&ndash;</div><div class="stat-l">Booked</div></div>
 </div>
 <div class="dayline" id="dayLine"></div>
 
@@ -174,23 +189,44 @@ body.paper .pcard { background:var(--surface); box-shadow:var(--lift); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=83"></script>
+<script src="nala-shared.js?v=84"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
 /* The sender: the same Worker as the other two SMS pages, asked with kind
    "spa". The page proposes treatments and the words around <first> and
    <booking>; the Worker re-reads each /spa record, refuses anything not
-   booked for today, takes the name and number off the booking, writes the
-   details itself and records what went. worker/send-invites.js. */
+   booked within SPA_REMIND_DAYS of today, takes the name and number off the
+   booking, writes the details itself and records what went.
+   worker/send-invites.js. */
 var INVITES_URL = 'https://nala-invites.ben-681.workers.dev';
 
 /* The page's state, declared before anything that reads it: the template
    box fills, and counts, the moment the script runs. */
-var ROWS = {};          /* 'booking/tid' -> { row, st, ticked, el } */
+var ROWS = {};          /* 'booking/tid' -> { row, st, ticked, el }, rows shown */
 var ARMED = false;
 var PV = '';            /* the row the preview shows */
 var TODAY = dkey(new Date());
+var DAYS = 7;           /* the knob: Pre-arrival SMS's default look */
+var ALL = [];           /* every booked treatment SPA_REMIND_DAYS ahead */
+var TICKS = {};         /* 'booking/tid' -> ticked, kept across the knob */
+
+/* How far ahead. The rows for the longest look are read once; the knob only
+   chooses how many of those days to show, so a guest ticked under one look
+   stays ticked under another. Only the rows on screen are ever sent: a
+   guest the knob hides is not texted, ticked or not. */
+function setDays(n){
+  DAYS = n;
+  [].forEach.call(document.querySelectorAll('#knob button'), function(x){
+    x.className = +x.dataset.days === n ? 'on' : '';
+  });
+}
+document.getElementById('knob').onclick = function(e){
+  var b = e.target.closest('button'); if (!b) return;
+  setDays(+b.dataset.days);
+  ARMED = false;
+  render();
+};
 
 (function(){
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
@@ -387,22 +423,36 @@ var OPENQ = (function(){
   return (q && /^[A-Za-z0-9-]{1,64}$/.test(q)) ? q : '';
 })();
 
-function render(list){
+/* The rows the knob shows: every treatment from today to the look's last
+   day, in day and then time order - spaReminderRows' own, a day at a time. */
+function shownRows(){
+  var last = spaRemindDays(DAYS)[DAYS - 1];
+  return ALL.filter(function(x){ return x.rec.day <= last; });
+}
+
+function render(){
+  var list = shownRows();
+  var keys = spaRemindDays(DAYS);
+  document.getElementById('dayLine').textContent =
+    'From today, ' + niceDay(TODAY) + ', to ' + niceDay(keys[keys.length - 1]) +
+    '. Today’s come ticked; tick a later one to send it early.';
   var board = document.getElementById('board');
   board.innerHTML = '';
   ROWS = {};
   var byBand = {};
   list.forEach(function(x){
     var st = dress(x), k = x.id + '/' + x.tid;
-    ROWS[k] = { row: x, st: st, ticked: st.ticked };
+    var on = !!TICKS[k];
+    ROWS[k] = { row: x, st: st, ticked: on };
     var b = document.createElement('button');
     b.type = 'button';
-    b.className = 'vrow' + (st.ticked ? ' on' : '') + (BAND_CLASS[st.band] || '');
+    b.className = 'vrow' + (on ? ' on' : '') + (BAND_CLASS[st.band] || '');
     b.dataset.booking = x.id;
     b.dataset.tid = x.tid;
     b.dataset.state = x.state;
+    b.dataset.day = x.rec.day;
     b.disabled = !st.tickable && !st.fixable;
-    b.setAttribute('aria-pressed', st.ticked ? 'true' : 'false');
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
     b.innerHTML = '<div class="v"></div><div class="mid"><div class="nm trimrow">' +
       '<span class="trim"></span></div><div class="bk"></div><div class="st"></div></div>' +
       '<div class="tick">✓</div>';
@@ -415,14 +465,18 @@ function render(list){
       phoneBadgeHTML(x.raw, x.state !== 'late'));
     var pen = b.querySelector('.pen');
     if (pen) pen.onclick = function(e){ e.stopPropagation(); fixNumber(x); };
-    b.querySelector('.bk').textContent = keep(spaSlotLabel(x.rec.time) + ' · ' + spaOffering(x.rec));
+    /* A later day's row names its day; today's need not, the day line
+       above says which is today. */
+    b.querySelector('.bk').textContent = keep(
+      (x.rec.day === TODAY ? '' : niceDay(x.rec.day) + ' · ') +
+      spaSlotLabel(x.rec.time) + ' · ' + spaOffering(x.rec));
     var line = b.querySelector('.st');
     if (st.bad){ var s = document.createElement('span'); s.className = 'bad';
                  s.textContent = st.line; line.appendChild(s); }
     else line.textContent = st.line;
     b.onclick = function(){
       if (st.fixable){ fixNumber(x); return; }
-      ROWS[k].ticked = !ROWS[k].ticked;
+      ROWS[k].ticked = TICKS[k] = !ROWS[k].ticked;
       b.classList.toggle('on', ROWS[k].ticked);
       b.setAttribute('aria-pressed', ROWS[k].ticked ? 'true' : 'false');
       msgChanged(); recount();
@@ -439,10 +493,12 @@ function render(list){
     board.appendChild(h);
     els.forEach(function(el){ board.appendChild(el); });
   });
-  if (!list.length){
+  /* Empty is a fact only after a read that worked: pressing the knob after
+     a failed one must not say nobody is booked. */
+  if (!list.length && !READFAIL){
     var e = document.createElement('div');
     e.className = 'empty';
-    e.textContent = 'No treatments booked today. Bookings made on the Spa board appear here on their day.';
+    e.textContent = 'No treatments booked in the next ' + DAYS + ' days.';
     board.appendChild(e);
   }
   if (OPENQ){
@@ -558,38 +614,60 @@ document.getElementById('sendBtn').onclick = function(){
 };
 
 /* ── loading ─────────────────────────────────────────────────── */
-/* Today's night, and the four nodes the reminder is read from, each whole -
-   each one another screen already reads whole. A failed read is not an
+/* The nights SPA_REMIND_DAYS ahead in one ranged read (Pre-arrival SMS's,
+   orderBy="$key"), and the four nodes the reminder is read from, each whole
+   - each one another screen already reads whole. A failed read is not an
    empty one (the standing caution): without the send log this page cannot
    tell who has been texted, and a list drawn anyway could text a guest
    twice. So any failed read draws nothing and says why. */
 function load(){
   TODAY = dkey(new Date());
-  document.getElementById('dayLine').textContent =
-    'Today’s treatments, ' + niceDay(TODAY) +
-    '. Send in the morning, before the first one begins.';
-  function whole(path){
-    return fetch(DB + path + '.json?v=' + Date.now()).then(function(r){
+  var keys = spaRemindDays();
+  function whole(path, q){
+    return fetch(DB + path + '.json?' + (q ? q + '&' : '') + 'v=' + Date.now()).then(function(r){
       if (!r.ok) throw new Error(path + ' HTTP ' + r.status);
       return r.json();
     });
   }
   var err = document.getElementById('errBar');
   return Promise.all([
-    whole('/stays/' + TODAY), whole('/spa'), whole('/spareminders'),
+    whole('/stays', 'orderBy=' + encodeURIComponent('"$key"') +
+          '&startAt=' + encodeURIComponent('"' + keys[0] + '"') +
+          '&endAt=' + encodeURIComponent('"' + keys[keys.length - 1] + '"')),
+    whole('/spa'), whole('/spareminders'),
     whole('/bookings'), whole('/phonefix'), loadTemplates()
   ]).then(function(res){
-    var bookings = res[3] || {};
-    var list = spaReminderRows(TODAY, res[1] || {}, res[2] || {}, res[0] || {},
-                               bookings, res[4] || {}, Date.now());
-    list.forEach(function(x){ x.pms = (bookings[x.id] || {}).pms || null; });
+    var nights = res[0] || {}, bookings = res[3] || {}, now = Date.now();
+    ALL = [];
+    keys.forEach(function(d){
+      ALL = ALL.concat(spaReminderRows(d, res[1] || {}, res[2] || {}, nights[d] || {},
+                                       bookings, res[4] || {}, now));
+    });
+    ALL.forEach(function(x){ x.pms = (bookings[x.id] || {}).pms || null; });
+    /* What is owed TODAY comes ticked, the morning text the owner ruled; a
+       later day waits for somebody to tick it. */
+    TICKS = {};
+    ALL.forEach(function(x){
+      if (x.rec.day === TODAY && dress(x).ticked) TICKS[x.id + '/' + x.tid] = true;
+    });
+    /* The Spa board's door can name a guest the knob is not showing all
+       of: look as far as their last treatment, on the knob's own steps,
+       so the card the desk came from is on screen whichever it was. */
+    var far = ALL.filter(function(x){ return x.id === OPENQ; }).pop();
+    if (OPENQ && far && !shownRows().some(function(x){ return x === far; })){
+      var step = [].map.call(document.querySelectorAll('#knob button'),
+          function(b){ return +b.dataset.days; })
+        .filter(function(n){ return spaRemindDays(n)[n - 1] >= far.rec.day; })[0];
+      if (step) setDays(step);
+    }
     /* Clears only its own complaint: a send's "Did not send to ..." must
        survive the reload that follows it, or the desk never reads it. */
     if (READFAIL){ err.textContent = ''; READFAIL = false; }
-    render(list);
-    checkDelivery(list);
+    render();
+    checkDelivery(ALL);
   }).catch(function(){
-    render([]);
+    ALL = []; TICKS = {};
+    render();
     document.getElementById('board').innerHTML = '';
     READFAIL = true;
     err.textContent = 'Could not read the Spa board and the send log, so nothing is shown ' +
@@ -633,7 +711,7 @@ function showAccess(allowed, e){
     }
   }
   box.className = 'noaccess' + (on ? ' show' : '');
-  ['statsRow','dayLine','board','msgArea','sendBtn'].forEach(function(id){
+  ['knob','statsRow','dayLine','board','msgArea','sendBtn'].forEach(function(id){
     var el = document.getElementById(id);
     if (el) el.style.display = on ? 'none' : '';
   });

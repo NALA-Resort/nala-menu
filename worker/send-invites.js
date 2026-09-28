@@ -7,9 +7,9 @@
  * Kinds: the default, tonight's menu to villas in house; "pre", the
  * pre-arrival form to a booking arriving soon; "ext" (28 Sep), tonight's menu
  * to a guest from outside the resort who rang for dinner, which also creates
- * their booking - see the kind itself; "spa" (28 Sep), the morning reminder
- * of a booked treatment, from spa-reminders.html; and "delivery", the
- * handset receipts.
+ * their booking - see the kind itself; "spa" (28 Sep), the reminder of a
+ * booked treatment, the morning of or up to 14 days ahead, from
+ * spa-reminders.html; and "delivery", the handset receipts.
  *
  * The page proposes; this Worker decides. A browser can be edited, and a
  * browser that can name any phone number and any message body is a browser
@@ -199,6 +199,9 @@ function fillMarkers(text, link) {
    taken from the browser: an edited page can choose the greeting, but not
    say the wrong time. Plain GSM characters only; one middot or curly quote
    turns a text into UCS-2 and triples its cost. Exported for the test. */
+/* How far ahead a reminder may go: the twin of SPA_REMIND_DAYS, Spa
+   reminders' longest look. Both answer to `horizon` in the same table. */
+export const SPA_AHEAD_DAYS = 14;
 const SPA_LEN = { 60: "1 hour", 90: "1.5 hours", 120: "2 hours" };
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July",
@@ -438,16 +441,18 @@ export default {
       return reply(200, { results, changed });
     }
 
-    /* ── kind "spa": the morning spa reminder, per treatment ────
+    /* ── kind "spa": the spa reminder, per treatment ─────────────
        The owner, 28 Sep: a text on the morning of a booked treatment, the
-       desk pressing Send on spa-reminders.html. No link and no menu
-       backstop. Everything the text says is read here: the /spa record
-       (only a booked treatment for today, whatever the browser claimed -
-       the same day-of-UTC window as tonight's invitations), the guest's
-       first name off Mews' record, the number the desk fixed or else
-       Mews', and the last text this treatment was sent, so a booking moved
-       since says what it changed from. The browser supplies only the
-       template's words around <first> and <booking>. */
+       desk pressing Send on spa-reminders.html, and then the same day Pre-
+       arrival SMS's 3, 7 and 14 day looks, so a text can go early. No link
+       and no menu backstop. Everything the text says is read here: the
+       /spa record (only a booked treatment from today to SPA_AHEAD_DAYS
+       ahead, whatever the browser claimed, with tonight's day and a half
+       of grace for the resort's zone), the guest's first name off Mews'
+       record, the number the desk fixed or else Mews', and the last text
+       this treatment was sent, so a booking moved since says what it
+       changed from. The browser supplies only the template's words around
+       <first> and <booking>. */
     if (kind === "spa") {
       const results = {};
       for (const tr of treatments) {
@@ -460,8 +465,10 @@ export default {
             throw new Error("not a booked treatment");
           const when = Date.parse(String(spa.day || "") + "T00:00:00Z");
           if (!/^\d{4}-\d{2}-\d{2}$/.test(String(spa.day || "")) || isNaN(when) ||
-              Math.abs(when - Date.now()) > 36 * 60 * 60 * 1000)
-            throw new Error("not a treatment today: " + (spa.day || "no day"));
+              when < Date.now() - 36 * 60 * 60 * 1000 ||
+              when > Date.now() + (SPA_AHEAD_DAYS * 24 + 36) * 60 * 60 * 1000)
+            throw new Error("not a treatment in the next " + SPA_AHEAD_DAYS + " days: " +
+                            (spa.day || "no day"));
           /* What this text quotes, kept on its record: the next text, and
              every screen, compare it with the booking to catch a move. */
           rec.day = spa.day; rec.time = spa.time || "";

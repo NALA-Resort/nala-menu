@@ -1,4 +1,4 @@
-"""spa-reminders.html, the morning text to a guest with a treatment booked.
+"""spa-reminders.html, the text to a guest with a treatment booked.
 
 The owner, 28 Sep: "a text message gently reminding the guests that they
 have a booking", with its details, sent on the MORNING OF the treatment by
@@ -14,6 +14,9 @@ things most worth pinning down:
      ticked treatments.
   4. A failed read draws nothing: without the send log the page cannot tell
      who has been texted, and a list drawn anyway could text somebody twice.
+  5. The knob, the owner's second ask that day: Pre-arrival SMS's 3, 7 and
+     14 day looks. Only today's owed rows come ticked, so one press of Send
+     is still the morning text; a later day's goes only if somebody ticks it.
 
 The clock is held at 10:15 on Monday 5 Oct and every check that turns on the
 day runs in two zones, UTC and Brisbane - CLAUDE.md: a date test that only
@@ -37,6 +40,7 @@ onAuthStateChanged:function(cb){setTimeout(function(){cb({email:window.__EMAIL||
 signOut:function(){}};"""
 
 DAY, TOMORROW = "2026-10-05", "2026-10-06"
+def plus(n): return "2026-10-%02d" % (5 + n)
 ZONES = {"UTC": "2026-10-05T10:15:00+00:00",
          "Australia/Brisbane": "2026-10-05T10:15:00+10:00"}
 
@@ -57,7 +61,12 @@ def bk(first, last, phone, villa):
 #   13 Nina    12:00  sent quoting 12:00, delivered            sent
 #    9 Ruby    12:30  a landline in Mews                       nophone
 #    3 Mark    09:30  started, never sent                      late
-#  and two that are not this page's: a suggestion today, a booking tomorrow.
+#  and a suggestion today, which is not this page's; then the knob's days -
+#    8 Tom     tomorrow 10:00                                 in every look
+#              and +10 days 16:00                             in 14 only
+#   10 Zoe     +5 days  11:00                                 in 7 and 14
+#   11 Ivy     +10 days 14:00                                 in 14 only
+#   12 Kai     +15 days 09:00                                 beyond every look
 BOOKINGS = {
   "b-elena": bk("Elena", "Petrova", "+61 411 000 002", "2"),
   "b-omar":  bk("Omar", "Haddad", "0411 000 004", "4"),
@@ -67,6 +76,9 @@ BOOKINGS = {
   "b-ruby":  bk("Ruby", "Vance", "07 3358 1122", "9"),
   "b-mark":  bk("Mark", "Whitfield", "+61 411 000 003", "3"),
   "b-tom":   bk("Tom", "Ashby", "+61 411 000 008", "8"),
+  "b-zoe":   bk("Zoe", "Hart", "+61 411 000 010", "10"),
+  "b-ivy":   bk("Ivy", "Chen", "+61 411 000 011", "11"),
+  "b-kai":   bk("Kai", "Moss", "+61 411 000 012", "12"),
 }
 STAYS = {v: {"id": b, "first": BOOKINGS[b]["pms"]["first"], "last": BOOKINGS[b]["pms"]["last"],
              "arrive": "2026-10-03", "depart": "2026-10-08"}
@@ -83,7 +95,11 @@ SPA = {
   "b-ruby":  {"t6": booked("12:30")},
   "b-mark":  {"t7": booked("09:30")},
   "b-tom":   {"t8": {"status": "suggested", "day": DAY, "time": "15:00", "dur": 60, "qty": 1},
-              "t9": dict(booked("10:00"), day=TOMORROW)},
+              "t9": dict(booked("10:00"), day=TOMORROW),
+              "t13": dict(booked("16:00"), day=plus(10))},
+  "b-zoe":   {"t10": dict(booked("11:00"), day=plus(5))},
+  "b-ivy":   {"t11": dict(booked("14:00"), day=plus(10))},
+  "b-kai":   {"t12": dict(booked("09:00"), day=plus(15))},
 }
 REMS = {
   "b-priya": {"t3": {"status": "sent", "sentAt": DAY + "T08:05:00+10:00", "providerId": "mid-p",
@@ -98,7 +114,10 @@ TPL_REMIND = ("Hello <first>, a gentle reminder of your booking with us:\n\n<boo
               "If you need to change anything, just reply to this message. Nala Resort")
 
 STATE = {"remfail": False, "empty": False}
-WRITES, SENT = [], []
+WRITES, SENT, STAYSREQ = [], [], []
+#  The nights the ranged read can reach; Zoe, Ivy and Kai have none, so
+#  their villa is Mews' own - the reader's fallback.
+NIGHTS = {DAY: STAYS, TOMORROW: STAYS}
 WORKER = {"reply": None}
 FIXES = {}
 
@@ -112,9 +131,17 @@ def fb(route, request):
                       body=request.post_data or "null"); return
     path = u.split("firebasedatabase.app")[1].split("?")[0]
     body = "null"
-    if path.startswith("/staff"): body = json.dumps(STAFF)
+    if path.startswith("/staff"):
+        if STATE.get("stafffail"):
+            route.fulfill(status=500, content_type="application/json", body='{"error":"x"}'); return
+        body = json.dumps(STAFF)
     elif path.startswith("/permissions"): body = "null"
-    elif path == "/stays/" + DAY + ".json": body = json.dumps(STAYS)
+    elif path == "/stays.json":
+        from urllib.parse import urlparse, parse_qs
+        STAYSREQ.append(u)
+        q = parse_qs(urlparse(u).query)
+        lo, hi = json.loads(q["startAt"][0]), json.loads(q["endAt"][0])
+        body = json.dumps({d: v for d, v in NIGHTS.items() if lo <= d <= hi} or None)
     elif path == "/spa.json": body = "null" if STATE["empty"] else json.dumps(SPA)
     elif path == "/spareminders.json":
         if STATE["remfail"]:
@@ -169,23 +196,29 @@ with sync_playwright() as p:
     def done(pg): pg.ctx.close()
     def row(pg, bid): return pg.locator('.vrow[data-booking="%s"]' % bid)
     ROWS_JS = """()=>[...document.querySelectorAll('.vrow')].map(e=>({b:e.dataset.booking,
-        t:e.dataset.tid, s:e.dataset.state, on:e.classList.contains('on'),
+        t:e.dataset.tid, s:e.dataset.state, d:e.dataset.day, on:e.classList.contains('on'),
         dis:e.disabled, bk:e.querySelector('.bk').textContent,
         st:e.querySelector('.st').textContent}))"""
 
     # ── the morning's rows, in both zones ────────────────────────
     for tz in ZONES:
         pg = page(tz=tz)
-        rows = {r["b"]: r for r in pg.evaluate(ROWS_JS)}
+        rowlist = pg.evaluate(ROWS_JS)
+        rows = {r["b"]: r for r in rowlist}
         want = {"b-elena": "ready", "b-omar": "ready", "b-priya": "ready",
                 "b-freya": "changed", "b-nina": "sent", "b-ruby": "nophone", "b-mark": "late"}
+        today = {k: v["s"] for k, v in rows.items() if v["d"] == DAY}
         ck("[%s] every treatment booked today is listed, in the state the shared reader gives" % tz,
-           {k: v["s"] for k, v in rows.items()} == want, {k: v["s"] for k, v in rows.items()})
-        ck("[%s] a suggestion and tomorrow's booking are not this morning's texts" % tz,
-           "b-tom" not in rows)
+           today == want, today)
+        later = {k: v["d"] for k, v in rows.items() if v["d"] != DAY}
+        ck("[%s] then the rest of the next 7 days, Pre-arrival SMS's look, none of them ticked" % tz,
+           later == {"b-tom": TOMORROW, "b-zoe": plus(5)} and
+           not any(rows[k]["on"] for k in later), later)
+        ck("[%s] a suggestion is not a treatment to remind" % tz,
+           not any(r["t"] == "t8" for r in rowlist))
         grps = pg.evaluate("()=>[...document.querySelectorAll('.grp')].map(e=>e.textContent)")
         ck("[%s] the bands, work first: to send, changed, reminded, cannot, started" % tz,
-           grps == ["To send · 3", "Changed since the reminder · 1", "Reminded · 1",
+           grps == ["To send · 5", "Changed since the reminder · 1", "Reminded · 1",
                     "Cannot send · 1", "Already started · 1"], grps)
         ck("[%s] the page's states are spaReminderState's, not its own" % tz,
            pg.evaluate("""()=>[...document.querySelectorAll('.vrow')].every(e=>{
@@ -225,7 +258,7 @@ with sync_playwright() as p:
        all(sty(k)["borderStyle"] == "dashed" and float(sty(k)["opacity"]) < 0.7
            for k in ("b-ruby", "b-mark")))
     st = pg.evaluate("()=>['nSend','nSent','nAll'].map(i=>document.getElementById(i).textContent)")
-    ck("the counts: four ticked, one reminded, seven booked today", st == ["4", "1", "7"], st)
+    ck("the counts: four ticked, one reminded, nine booked in the look", st == ["4", "1", "9"], st)
 
     # ── the words, against the one table the Worker answers to ───
     T = json.load(open("tests/spareminder_cases.json"))
@@ -338,18 +371,100 @@ with sync_playwright() as p:
        pg.evaluate("()=>document.querySelector('.vrow[data-booking=\"b-freya\"]').classList.contains('linked')"))
     done(pg)
 
+    # ── the knob: Pre-arrival SMS's 3, 7 and 14 days (the owner, 28 Sep) ──
+    from urllib.parse import urlparse, parse_qs
+    n0 = len(STAYSREQ)
+    pg = page()
+    kn = pg.evaluate("""()=>[...document.querySelectorAll('#knob button')].map(b=>
+        ({t:b.textContent, d:+b.dataset.days, on:b.classList.contains('on')}))""")
+    ck("the knob is Pre-arrival SMS's: next 3, 7 or 14 days, 7 to start",
+       [(k["t"], k["on"]) for k in kn] == [("Next 3 days", False), ("Next 7 days", True),
+                                          ("Next 14 days", False)], kn)
+    ck("its longest look is the table's horizon, as far as the Worker lets a text go",
+       pg.evaluate("SPA_REMIND_DAYS") == T["horizon"] == max(k["d"] for k in kn),
+       (pg.evaluate("SPA_REMIND_DAYS"), T["horizon"]))
+    sq = parse_qs(urlparse(STAYSREQ[-1]).query) if len(STAYSREQ) > n0 else {}
+    ck("the nights are one ranged read, today to the horizon's last day",
+       len(STAYSREQ) - n0 == 1 and sq.get("orderBy") == ['"$key"'] and
+       sq.get("startAt") == ['"%s"' % DAY] and sq.get("endAt") == ['"%s"' % plus(13)],
+       STAYSREQ[n0:])
+    rows = {r["b"]: r for r in pg.evaluate(ROWS_JS)}
+    ck("a later day's row names its day before the time, and today's does not",
+       rows["b-tom"]["bk"].startswith("Tue 6th Oct · 10:00") and
+       rows["b-omar"]["bk"].startswith("2:00"), (rows["b-tom"]["bk"], rows["b-omar"]["bk"]))
+    ck("the day line says the look's first and last day, and what comes ticked",
+       pg.inner_text("#dayLine") == "From today, Mon 5th Oct, to Sun 11th Oct. "
+       "Today’s come ticked; tick a later one to send it early.", pg.inner_text("#dayLine"))
+    def knob(n):
+        pg.click('#knob button[data-days="%d"]' % n); pg.wait_for_timeout(150)
+    def shown_b(): return [r["b"] for r in pg.evaluate(ROWS_JS)]
+    knob(3)
+    ck("3 days: today, tomorrow and the day after - Tom yes, Zoe not yet",
+       "b-tom" in shown_b() and "b-zoe" not in shown_b() and
+       pg.inner_text("#dayLine").startswith("From today, Mon 5th Oct, to Wed 7th Oct."),
+       (shown_b(), pg.inner_text("#dayLine")))
+    knob(14)
+    ck("14 days: Ivy ten days out is there, Kai at fifteen is not, and the count follows",
+       "b-ivy" in shown_b() and "b-kai" not in shown_b() and pg.inner_text("#nAll") == "11",
+       (shown_b(), pg.inner_text("#nAll")))
+    knob(7)
+    row(pg, "b-zoe").click(); pg.wait_for_timeout(80)
+    knob(14)
+    ck("a later guest ticked by hand stays ticked when the look widens",
+       row(pg, "b-zoe").evaluate("e=>e.classList.contains('on')"))
+    knob(3)
+    ck("a look that hides them takes them out of the count",
+       row(pg, "b-zoe").count() == 0 and pg.inner_text("#nSend") == "4", pg.inner_text("#nSend"))
+    knob(7)
+    ck("and coming back, they are still ticked",
+       row(pg, "b-zoe").evaluate("e=>e.classList.contains('on')"))
+    knob(3)
+    n0 = len(SENT)
+    pg.click("#sendBtn"); pg.click("#sendBtn"); pg.wait_for_timeout(700)
+    last = SENT[-1] if len(SENT) > n0 else {}
+    ck("a guest the knob hides is not texted, ticked or not",
+       sorted(t["b"] for t in last.get("treatments", [])) ==
+       ["b-elena", "b-freya", "b-omar", "b-priya"], last)
+    done(pg)
+
+    pg = page()
+    row(pg, "b-tom").click(); pg.wait_for_timeout(80)
+    n0 = len(SENT)
+    pg.click("#sendBtn"); pg.click("#sendBtn"); pg.wait_for_timeout(700)
+    last = SENT[-1] if len(SENT) > n0 else {}
+    ck("a later treatment ticked by hand goes early, with today's",
+       ("b-tom", "t9") in [(t["b"], t["t"]) for t in last.get("treatments", [])] and
+       len(last.get("treatments", [])) == 5, last)
+    done(pg)
+
+    pg = page(q="?open=b-ivy")
+    ck("the Spa board's door for a guest ten days out widens the look to reach them",
+       pg.evaluate("()=>document.querySelector('#knob .on').dataset.days") == "14" and
+       row(pg, "b-ivy").evaluate("e=>e.classList.contains('linked')"))
+    done(pg)
+    pg = page(q="?open=b-tom")
+    ck("a guest booked tomorrow and again in ten days: the door reaches the later one too",
+       pg.evaluate("()=>document.querySelector('#knob .on').dataset.days") == "14" and
+       pg.locator('.vrow.linked[data-booking="b-tom"]').count() == 2,
+       pg.locator('.vrow[data-booking="b-tom"]').count())
+    done(pg)
+
     # ── a failed read draws nothing ──────────────────────────────
     STATE["remfail"] = True
     pg = page()
     ck("without the send log nothing is drawn, so nobody can be texted twice",
        pg.locator(".vrow").count() == 0 and pg.is_disabled("#sendBtn") and
        "twice" in pg.inner_text("#errBar"), pg.inner_text("#errBar"))
+    pg.click('#knob button[data-days="14"]'); pg.wait_for_timeout(150)
+    ck("and the knob pressed after a failed read does not say nobody is booked",
+       "No treatments" not in pg.inner_text("#board") and "twice" in pg.inner_text("#errBar"),
+       pg.inner_text("#board"))
     STATE["remfail"] = False
     done(pg)
     STATE["empty"] = True
     pg = page()
     ck("a morning with no treatments says so, and offers no message to write",
-       "No treatments booked today" in pg.inner_text("#board") and
+       "No treatments booked in the next 7 days." in pg.inner_text("#board") and
        not pg.is_visible("#msgBox"))
     STATE["empty"] = False
     done(pg)
@@ -360,9 +475,16 @@ with sync_playwright() as p:
         ck("a %s is sent to their own board rather than shown the page" % STAFF[who]["role"],
            not q.url.endswith("spa-reminders.html"))
         done(q)
+    STATE["stafffail"] = True
+    q = page()
+    ck("a login the page cannot vouch for sees no knob, no rows and no Send",
+       "Could not check access" in q.inner_text("#noAccess") and not q.is_visible("#knob") and
+       q.locator(".vrow").count() == 0 and not q.is_visible("#sendBtn"), q.inner_text("#noAccess"))
+    STATE["stafffail"] = False
+    done(q)
     q = page("waiter@x")
     ck("a waiter holds editBookings and gets the page",
-       q.url.endswith("spa-reminders.html") and q.locator(".vrow").count() == 7)
+       q.url.endswith("spa-reminders.html") and q.locator(".vrow").count() == 9)
     done(q)
 
     # ── the words' own home: SMS Templates' third set ────────────

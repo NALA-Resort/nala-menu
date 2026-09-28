@@ -8,8 +8,13 @@
   "suite: a case added here fails whichever copy has not learned it.",
   "",
   "`now` is a LOCAL time, built in the zone the suite runs in, because a",
-  "treatment starts at the resort's clock and staff devices live there."
+  "treatment starts at the resort's clock and staff devices live there.",
+  "",
+  "`horizon` is how many days ahead a reminder can go, today counted: the",
+  "owner's 28 Sep ask for Pre-arrival SMS's 3, 7 and 14 day looks. The",
+  "page's SPA_REMIND_DAYS and the Worker's SPA_AHEAD_DAYS both answer to it."
  ],
+ "horizon": 14,
  "text": [
   {
    "name": "a pair of equal lengths, the Gentle reminder",
@@ -719,6 +724,48 @@
    "raw": "+61 411 222 333",
    "now": "2026-09-27T20:00",
    "want": "ready"
+  },
+  {
+   "name": "a text sent days early, quoting it as it stands",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-10-03",
+    "time": "14:00",
+    "dur": 60
+   },
+   "rem": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-10-03",
+    "time": "14:00",
+    "qty": 1,
+    "dur": 60
+   },
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T08:30",
+   "want": "sent"
+  },
+  {
+   "name": "moved after a text sent early: owed again",
+   "rec": {
+    "status": "booked",
+    "qty": 1,
+    "day": "2026-10-03",
+    "time": "15:00",
+    "dur": 60
+   },
+   "rem": {
+    "status": "sent",
+    "sentAt": "2026-09-27T08:02:00+10:00",
+    "day": "2026-10-03",
+    "time": "14:00",
+    "qty": 1,
+    "dur": 60
+   },
+   "raw": "+61 411 222 333",
+   "now": "2026-09-27T08:30",
+   "want": "changed"
   }
  ]
 }

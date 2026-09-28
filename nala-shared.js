@@ -2640,8 +2640,9 @@ var NAV = [
       /* "SMS" is the heading, so the row does not repeat it - the Print
          group's "Menu" pattern. */
       { href:'arrivals-sms.html', label:'Pre-arrival', need:'editBookings' },
-      /* The morning text to a guest with a treatment booked that day (the
-         owner, 28 Sep). editBookings, the Worker's own gate for sending. */
+      /* The text to a guest with a booked treatment, the morning of or up
+         to 14 days ahead (the owner, 28 Sep). editBookings, the Worker's
+         own gate for sending. */
       { href:'spa-reminders.html', label:'Spa reminders', need:'editBookings' } ] },
   { group:'Settings', items:[
       { href:'staff.html', label:'General', need:'manageStaff' },
@@ -3005,12 +3006,15 @@ function spaSlotFromText(s){
 }
 
 /* ── spa reminders ───────────────────────────────────────────
-   A text to each guest on the morning of a booked treatment, saying what is
-   booked and when. The owner's rulings, 28 Sep, off mock-spa-reminders.html:
-   the morning of, not the day before; the desk presses Send on
+   A text to each guest with a booked treatment, saying what is booked and
+   when. The owner's rulings, 28 Sep, off mock-spa-reminders.html: the
+   morning of, not the day before; the desk presses Send on
    spa-reminders.html, nothing goes out on its own; the Gentle reminder
    wording; nothing in the text but the treatment, its length, the day and
-   the time.
+   the time. Then, the same day, once it was live: "the same filter options
+   as the pre arrival SMS (3, 7, 14 days)". So the page looks up to
+   SPA_REMIND_DAYS ahead and a text can go early, but only today's rows come
+   ticked: the morning text is still what one press of Send does.
 
    ONE builder writes the words and ONE reader says where a treatment's
    reminder stands, and every screen reads them: the sending page, the
@@ -3028,6 +3032,24 @@ function spaSlotFromText(s){
 var SPA_WEEKDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 var SPA_MONTHS = ['January','February','March','April','May','June','July',
                   'August','September','October','November','December'];
+
+/* How far ahead a reminder can go: Spa reminders' longest look, and so the
+   Spa board's test for whether a treatment's text can be sent yet. The
+   Worker cannot import it and fences sends with its own copy; both answer
+   to `horizon` in tests/spareminder_cases.json. */
+var SPA_REMIND_DAYS = 14;
+
+/* The local day keys from today, n of them (all SPA_REMIND_DAYS if n is
+   left out): Pre-arrival SMS's own reading of "the next n days", today
+   counted as the first. */
+function spaRemindDays(n){
+  var out = [];
+  for (var i = 0; i < (n || SPA_REMIND_DAYS); i++){
+    var d = new Date(); d.setDate(d.getDate() + i);
+    out.push(dkey(d));
+  }
+  return out;
+}
 
 /* "Sunday 27 September at 10:30 am", or the time alone. The day is spelt
    out, never "today": a text is right whenever it lands, and the Worker
