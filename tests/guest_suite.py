@@ -239,6 +239,12 @@ with sync_playwright() as p:
     ck("directly under the form's state pill",
        pg.evaluate("()=>document.querySelector('#pStay .statepill')"
                    ".nextElementSibling.className") == "fstamps")
+    #  Grey, the owner's ruling of 28 Sep - secondary information - by
+    #  computed colour: a question label's grey, not an answer's ink.
+    ck("in grey, a question label's colour and not an answer's ink",
+       pg.eval_on_selector("#pStay .fstamps", "e=>getComputedStyle(e).color")
+       == pg.eval_on_selector("#pStay .row .q", "e=>getComputedStyle(e).color")
+       != pg.eval_on_selector("#pStay .row .a", "e=>getComputedStyle(e).color"))
     pg.close()
 
     # ── the fresh booking ───────────────────────────────────────

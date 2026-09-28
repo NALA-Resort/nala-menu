@@ -22,6 +22,10 @@ this page invents state:
 - any answer field present - they started (front-desk's GUEST_ANSWERS list,
   copied here, and "no" is an answer)
 - `at` - they submitted: **form completed**
+
+The rows say which of these a form has reached, not when: the owner ruled on
+28 Sep that a closed card does not need the time and date. The two stamps
+are on the open cards, the Front Desk and the Guest Profile, in grey.
 - what this page adds is only `/previnvites/<bookingId>` - the send record,
   the same shape as `/invites/<date>/<villa>` but keyed on the booking,
   because "has THIS guest been asked" outlives any one villa-night.

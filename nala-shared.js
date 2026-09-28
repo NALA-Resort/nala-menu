@@ -827,9 +827,12 @@ function formState(p, stay, spa){
 }
 
 /* The form's two moments, a date and a time on each - the owner's ask of
-   28 Sep - as every staff screen says them: "Opened Sat 26 Sep 8:14pm",
+   28 Sep - as the open cards say them: "Opened Sat 26 Sep 8:14pm",
    "Completed Sun 27 Sep 3:10pm". Lines in that order, each only when its
-   stamp is there to read.
+   stamp is there to read. Open cards only, and in grey, his ruling the
+   same day: "a secondary type of information", so the Front Desk summary
+   and form and the Guest Profile carry it, and a closed card - a Front
+   Desk row, a Pre-arrival SMS row - never does.
 
    Opened is openedAt, which prearrival.html writes on the guest's FIRST
    landing and never moves. Until 28 Sep it re-stamped every visit, so a

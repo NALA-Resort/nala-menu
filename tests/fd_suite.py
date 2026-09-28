@@ -1645,10 +1645,27 @@ with sync_playwright() as p:
     ck("under the answers, as their last row",
        pg.evaluate("()=>[...document.querySelectorAll('.sum .sum-l')]"
                    ".map(e=>e.textContent).pop()") == "Pre-arrival")
+    #  In grey - the owner, 28 Sep: "a secondary type of information". By
+    #  computed colour: the labels' grey, never the answers' ink.
+    col = pg.evaluate("""()=>{const r=[...document.querySelectorAll('.sum-r')]
+          .find(e=>e.querySelector('.sum-l').textContent==='Pre-arrival');
+          const ans=[...document.querySelectorAll('.sum .sum-v')]
+            .find(e=>e.textContent.indexOf('Dining')===0);
+          return [r.querySelector('.sum-v'), r.querySelector('.sum-l'), ans]
+            .map(e=>getComputedStyle(e).color);}""")
+    print("   stamps, label, answer colours:", col)
+    ck("in grey, the labels' own colour and not the answers' ink",
+       col[0] == col[1] and col[0] != col[2])
+    ck("and the closed row carries no stamp at all - only the open card does",
+       not [s for s in (st(OPENED), st(DONE), "Opened", "Completed")
+            if s in pg.locator('.arr[data-villa="17"]').inner_text()])
     pg.locator('.sum-btns button[data-act="edit"]').click(); pg.wait_for_timeout(400)
     print("   the form's top:", form_top(pg))
     ck("and the form says both at its top, a line each",
        form_top(pg)[-2:] == ["Opened " + st(OPENED), "Completed " + st(DONE)])
+    ck("in the same grey",
+       pg.evaluate("()=>getComputedStyle([...document.querySelectorAll("
+                   "'#sheet .gd .gd-sub')].pop()).color") == col[1])
     pg.evaluate("()=>sClose.click()"); pg.wait_for_timeout(250)
     pg.close()
     #  The same record in the resort's zone, where both stamps are the next

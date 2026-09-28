@@ -698,26 +698,30 @@ with sync_playwright() as p:
        [pg.evaluate("()=>%s.textContent" % i)
         for i in ("nSend","nWait","nOpen","nDone")] == ["1","1","1","1"])
 
-    #  Each stamp with its day - the owner, 28 Sep. Forms are finished days
-    #  before the arrival the line ends on, and "Completed 3:10pm" could not
-    #  say which day. stampOf (nala-shared.js) is the one reading.
+    #  No stamp on a closed card - the owner, 28 Sep: "It doesn't need the
+    #  time date on the closed card." When a form was opened and completed
+    #  is secondary information and lives on the open cards (the Front Desk,
+    #  the Guest Profile), in grey. These rows carried a time with no day
+    #  until then; the band already says which state the form is in.
     stamp = lambda s: pg.evaluate("s=>stampOf(s)", s)
-    ck("a completed row says the day and the time it was completed",
-       "Completed " + stamp(PRE_RECS["pa-done"]["at"]) + " · "
-       in arow("pa-done").inner_text())
-    ck("an opened row says the day and the time it was opened",
-       "Opened " + stamp(PRE_RECS["pa-open"]["openedAt"]) + " · "
-       in arow("pa-open").inner_text())
-    ck("and a sent row the day and the time it went",
+    clock = lambda s: pg.evaluate("s=>timeOf(s)", s)
+    dt, ot = arow("pa-done").inner_text(), arow("pa-open").inner_text()
+    ck("a completed row says Completed and when they arrive, with no stamp",
+       "Completed · arrives" in dt
+       and clock(PRE_RECS["pa-done"]["at"]) not in dt)
+    ck("an opened row says Opened and how far they got, with no stamp",
+       "Opened · started, 1 answer" in ot
+       and clock(PRE_RECS["pa-open"]["openedAt"]) not in ot)
+    ck("while a sent row keeps the day and the time it went",
        "Sent " + stamp(PREINV["pa-sent"]["sentAt"]) + " · "
        in arow("pa-sent").inner_text())
-    #  In the resort's zone a morning stamp is that morning. These are UTC
-    #  evenings, the next morning in Brisbane, so a day sliced off the ISO
-    #  string names the day before (CLAUDE.md rule 7) - the Sent line did
-    #  exactly that until 28 Sep. Beside UTC, so a page that only works in
-    #  one zone fails in the other.
-    for tz, want in (("Australia/Brisbane", ("Mon 28 Sep 8:30am", "Sun 27 Sep 7:05am")),
-                     ("UTC", ("Sun 27 Sep 10:30pm", "Sat 26 Sep 9:05pm"))):
+    #  The Sent stamp in the resort's zone. sentAt is UTC, and until 28 Sep
+    #  its day was sliced off the ISO string, naming the day before for every
+    #  send made before 10am Brisbane (CLAUDE.md rule 7). This one is a UTC
+    #  evening, the next morning in Brisbane; beside UTC, so a page that only
+    #  works in one zone fails in the other.
+    for tz, want in (("Australia/Brisbane", "Mon 28 Sep 8:30am"),
+                     ("UTC", "Sun 27 Sep 10:30pm")):
         zc = b.new_context(viewport={"width": 390, "height": 900}, timezone_id=tz)
         zp = zc.new_page()
         zp.add_init_script(SDK)
@@ -726,25 +730,15 @@ with sync_playwright() as p:
         zp.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
         zp.goto("http://localhost:8977/arrivals-sms.html")
         zp.wait_for_timeout(1200)
-        lines = zp.evaluate("""a=>[
-            stateOf(a.stay, a.pre, null, null, null).line,
-            stateOf(a.stay, {openedAt: a.pre.openedAt, purpose: 'Rest'},
-                    null, null, null).line,
-            stateOf(a.stay, null, {status: 'sent', sentAt: a.pre.at,
-                    delivery: 'delivered'}, null, null).line]""",
+        line = zp.evaluate("""a=>stateOf(a.stay, null, {status: 'sent',
+            sentAt: a.sentAt, delivery: 'delivered'}, null, null).line""",
             {"stay": {"id": "z1", "first": "Zoe", "last": "Quay",
                       "phone": "+61 411 000 009",
                       "arrive": "2026-09-29", "depart": "2026-09-30"},
-             "pre": {"openedAt": "2026-09-26T21:05:00Z",
-                     "at": "2026-09-27T22:30:00Z",
-                     "dining": True, "noDiets": True}})
-        print("   %s:" % tz, lines)
-        ck("%s: a completed form reads %s" % (tz, want[0]),
-           lines[0].startswith("Completed " + want[0] + " · "))
-        ck("%s: an opened one reads %s" % (tz, want[1]),
-           lines[1].startswith("Opened " + want[1] + " · "))
-        ck("%s: and a send is dated in the same zone" % tz,
-           lines[2].startswith("Sent " + want[0] + " · "))
+             "sentAt": "2026-09-27T22:30:00Z"})
+        print("   %s:" % tz, line)
+        ck("%s: a send is dated in that zone: %s" % (tz, want),
+           line.startswith("Sent " + want + " · "))
         zc.close()
     del SENT[:]
 

@@ -176,7 +176,7 @@ body.paper .vrow.selall { background:var(--surface); box-shadow:none; }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=78"></script>
+<script src="nala-shared.js?v=79"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -318,16 +318,18 @@ function stateOf(stay, pre, invite, fix, spa){
   var phone = raw ? normalisePhone(raw) : null;
   var started = answersIn(pre);
 
-  /* Each stamp with its day, through stampOf (nala-shared.js) - the owner,
-     28 Sep. A time alone could not say which day a form was done: they are
-     finished days before the arrival the line ends on. */
+  /* No stamp on these two rows, the owner, 28 Sep: "It doesn't need the
+     time date on the closed card." When the form was opened and completed
+     is secondary information, so it lives on the open cards - the Front
+     Desk summary and form, the Guest Profile - in grey, through formStamps
+     (nala-shared.js). The rows had a time with no day until then; the band
+     already says which state the form is in. */
   if (kind === 'done')
     return { kind:'done', tickable:false, ticked:false,
-             line:'Completed ' + stampOf(pre.at) + ' · ' + when };
+             line:'Completed · ' + when };
   if (kind === 'open')
     return { kind:'open', tickable:!!phone, ticked:false,
-             line:'Opened' + (stampOf(pre.openedAt) ? ' ' + stampOf(pre.openedAt) : '') +
-                  ' · ' + (started ? 'started, ' + started +
+             line:'Opened · ' + (started ? 'started, ' + started +
                   (started === 1 ? ' answer' : ' answers') : 'nothing yet') +
                   ' · ' + when };
   if (kind === 'nophone')
