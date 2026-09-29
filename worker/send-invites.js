@@ -32,6 +32,15 @@
  *                       so replies land on that handset.
  *   FB_API_KEY          AIzaSyA0zAzL-zfPivrIRhY_ip8BABjuYVMlzqI
  *
+ * And, for the move to Twilio (GUEST-CONTACT.md, the switch-over's last
+ * step), these beside them. Until SMS_VIA is set, nothing here reads them:
+ *   SMS_VIA             twilio, and every text goes through Twilio. Unset
+ *                       (or anything else), ClickSend, as before. Deleting
+ *                       it moves the texts straight back.
+ *   TWILIO_ACCOUNT_SID  the same three nala-contact holds: the account,
+ *   TWILIO_AUTH_TOKEN   its Auth Token, and the number, +614XXXXXXXX,
+ *   TWILIO_FROM         which Guest Contact answers on
+ *
  * And one step that is not a secret: menu.nalaresort.com has to be registered
  * at dashboard.clicksend.com/sms/website-registration before any message
  * carrying the link will send at all. ClickSend confirmed it on 23 Aug. An
@@ -271,6 +280,48 @@ async function clickSend(env, phone, bodyText) {
   return { ok: send.ok && msg && msg.status === "SUCCESS", msg: msg, out: out };
 }
 
+/* ── the sender: ClickSend, or Twilio once switched ───────────────
+   The owner's plan, 29 Sep: ClickSend carries the everyday texts while
+   Guest Contact is built and tested on Twilio, then sends from Twilio's
+   number, then the texts move to Twilio. SMS_VIA=twilio is that move: every
+   kind sends through Twilio's Messages API from TWILIO_FROM, the number
+   Guest Contact answers on. Unset, it is ClickSend exactly as before. Every
+   kind sends through here and reads the same answer, { ok, id, error,
+   shortened }, whichever service it came from.
+
+   The Twilio call is written again here, not shared: a Worker cannot
+   import from another. It is plumbing - the address, the form, the answer
+   - not a rule two copies must agree on, so it needs no table. */
+const TWILIO = "https://api.twilio.com/2010-04-01/Accounts/";
+const viaTwilio = (env) => String(env.SMS_VIA || "").trim().toLowerCase() === "twilio";
+const twilioAuth = (env) => "Basic " + btoa((env.TWILIO_ACCOUNT_SID || "").trim() + ":" +
+                                              (env.TWILIO_AUTH_TOKEN || "").trim());
+/* A Twilio message id: SM or MM, then 32 hex. A ClickSend one never is, so
+   a record says by its own id which service to ask for its receipt, and
+   texts sent before the switch keep resolving after it. */
+const isTwilioSid = (id) => /^(SM|MM)[0-9a-f]{32}$/.test(String(id || ""));
+
+async function smsSend(env, phone, bodyText) {
+  if (!viaTwilio(env)) {
+    const cs = await clickSend(env, phone, bodyText);
+    return { ok: !!cs.ok, id: (cs.msg && cs.msg.message_id) || "",
+             error: cs.ok ? "" : ((cs.msg && cs.msg.status) ||
+                                  (cs.out && cs.out.response_msg) || "ClickSend refused"),
+             shortened: cs.msg && (cs.msg.short_urls || cs.msg.shortened_urls || cs.msg.url) };
+  }
+  const r = await fetch(TWILIO + (env.TWILIO_ACCOUNT_SID || "").trim() + "/Messages.json", {
+    method: "POST",
+    headers: { "Authorization": twilioAuth(env),
+               "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ From: (env.TWILIO_FROM || "").trim(), To: phone,
+                                Body: bodyText }).toString() }).catch(() => null);
+  const j = r ? await r.json().catch(() => null) : null;
+  if (r && r.ok && j && j.sid) return { ok: true, id: String(j.sid), error: "" };
+  return { ok: false, id: "",
+           error: (j && (j.message || (j.code && "Twilio error " + j.code))) ||
+                  (r ? "Twilio answered " + r.status : "Twilio did not answer") };
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
@@ -395,6 +446,30 @@ export default {
         if (rec.delivery === "delivered" || rec.delivery === "failed") {
           results[key] = rec.delivery; return;
         }
+        /* A Twilio text is asked of Twilio, by its own id, whichever way
+           SMS_VIA stands now: delivered (or read) is the handset's yes,
+           undelivered or failed the carrier's no, in Twilio's words; any
+           other status is not known yet. */
+        if (isTwilioSid(rec.providerId)) {
+          const t = await fetch(TWILIO + (env.TWILIO_ACCOUNT_SID || "").trim() + "/Messages/" +
+                                rec.providerId + ".json",
+                                { headers: { "Authorization": twilioAuth(env) } }).catch(() => null);
+          const m = t && t.ok ? await t.json().catch(() => null) : null;
+          const st = String((m && m.status) || "");
+          if (!["delivered", "read", "undelivered", "failed"].includes(st)) {
+            results[key] = "unknown"; return;
+          }
+          rec.delivery = st === "delivered" || st === "read" ? "delivered" : "failed";
+          rec.deliveryText = rec.delivery === "failed"
+            ? String(m.error_message || (m.error_code ? "Error " + m.error_code : st)).slice(0, 200) : "";
+          rec.deliveryAt = new Date().toISOString();
+          const tw = await fetch(DB + path + ".json?auth=" + encodeURIComponent(idToken),
+            { method: "PUT", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(rec) });
+          if (tw.ok) { changed++; results[key] = rec.delivery; }
+          else results[key] = "unknown";
+          return;
+        }
         const r = await fetch(
           "https://rest.clicksend.com/v3/sms/receipts/" +
             encodeURIComponent(rec.providerId),
@@ -484,13 +559,12 @@ export default {
             throw new Error("number cannot be normalised for sending: " + raw);
           rec.to = phone;
           rec.body = spaReminderText(text, pms.first, spa, prev);
-          const cs = await clickSend(env, phone, rec.body);
+          const cs = await smsSend(env, phone, rec.body);
           if (cs.ok) {
             rec.status = "sent";
-            rec.providerId = (cs.msg && cs.msg.message_id) || "";
+            rec.providerId = cs.id;
           } else {
-            throw new Error((cs.msg && cs.msg.status) ||
-                            (cs.out && cs.out.response_msg) || "ClickSend refused");
+            throw new Error(cs.error);
           }
         } catch (e) {
           rec.error = String((e && e.message) || e);
@@ -553,13 +627,12 @@ export default {
           rec.token = token;
           rec.body = fillMarkers(text,
             "https://menu.nalaresort.com/prearrival.html?t=" + token);
-          const cs = await clickSend(env, phone, rec.body);
+          const cs = await smsSend(env, phone, rec.body);
           if (cs.ok) {
             rec.status = "sent";
-            rec.providerId = (cs.msg && cs.msg.message_id) || "";
+            rec.providerId = cs.id;
           } else {
-            throw new Error((cs.msg && cs.msg.status) ||
-                            (cs.out && cs.out.response_msg) || "ClickSend refused");
+            throw new Error(cs.error);
           }
         } catch (e) {
           rec.error = String((e && e.message) || e);
@@ -647,13 +720,12 @@ export default {
         rec.to = phone;
         rec.token = token;
         rec.body = fillMarkers(text, "https://menu.nalaresort.com/?t=" + token);
-        const cs = await clickSend(env, phone, rec.body);
+        const cs = await smsSend(env, phone, rec.body);
         if (cs.ok) {
           rec.status = "sent";
-          rec.providerId = (cs.msg && cs.msg.message_id) || "";
+          rec.providerId = cs.id;
         } else {
-          throw new Error((cs.msg && cs.msg.status) ||
-                          (cs.out && cs.out.response_msg) || "ClickSend refused");
+          throw new Error(cs.error);
         }
       } catch (e) {
         rec.error = String((e && e.message) || e);
@@ -702,19 +774,17 @@ export default {
         if (!token) throw new Error("the link token did not store, nothing sent");
         rec.token = token;
         rec.body = fillMarkers(text, "https://menu.nalaresort.com/?t=" + token);
-        const cs = await clickSend(env, phone, rec.body);
+        const cs = await smsSend(env, phone, rec.body);
         if (cs.ok) {
           rec.status = "sent";
-          rec.providerId = (cs.msg && cs.msg.message_id) || "";
+          rec.providerId = cs.id;
           /* Kept verbatim, under one key, rather than picked apart: version
              one shows none of it, and guessing today which field the click
              statistics will hang off is how it turns out to be the one field
              that was dropped. */
-          if (cs.msg.short_urls || cs.msg.shortened_urls || cs.msg.url)
-            rec.shortened = cs.msg.short_urls || cs.msg.shortened_urls || cs.msg.url;
+          if (cs.shortened) rec.shortened = cs.shortened;
         } else {
-          throw new Error((cs.msg && cs.msg.status) ||
-                          (cs.out && cs.out.response_msg) || "ClickSend refused");
+          throw new Error(cs.error);
         }
       } catch (e) {
         rec.error = String((e && e.message) || e);

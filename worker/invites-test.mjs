@@ -52,10 +52,10 @@ const today = (() => { const d = new Date();
 
 /* One in-memory world per test. SENDS logs what reached ClickSend, STORE what
    reached the database, LOOKUPS which tokens Google was asked about. */
-let STORE, SENDS, STATE;
+let STORE, SENDS, STATE, TSENDS;
 
 function install() {
-  STORE = {}; SENDS = [];
+  STORE = {}; SENDS = []; TSENDS = [];
   STATE = { tokenOk: true, email: "waiter@nala.x", clicksendOk: true,
             recordOk: true, linksOk: true, manualOk: true };
   STORE["/staff/waiter@nala,x"] = { role: "waiter" };
@@ -90,6 +90,22 @@ function install() {
       const rc = STATE.receipt;
       if (!rc) return new Response(JSON.stringify({ data: null }), { status: 200 });
       return new Response(JSON.stringify({ data: rc }), { status: 200 });
+    }
+    /* Twilio, for SMS_VIA=twilio: a send, and a message looked up by id
+       for its receipt. twilioOk false is Twilio refusing the number. */
+    if (u.startsWith("https://api.twilio.com/") && u.endsWith("/Messages.json")) {
+      const form = Object.fromEntries(new URLSearchParams(opt.body));
+      TSENDS.push({ form, auth: opt.headers && opt.headers.Authorization });
+      if (STATE.twilioOk === false)
+        return new Response(JSON.stringify({ code: 21211,
+          message: "The 'To' number is not a valid phone number." }), { status: 400 });
+      const sid = "SM" + String(TSENDS.length).padStart(32, "0");
+      return new Response(JSON.stringify({ sid, status: "queued" }), { status: 201 });
+    }
+    if (u.startsWith("https://api.twilio.com/")) {
+      const t = STATE.twilioMsg;
+      return t ? new Response(JSON.stringify(t), { status: 200 })
+               : new Response(JSON.stringify({ code: 20404 }), { status: 404 });
     }
     if (u.includes("clicksend.com")) {
       SENDS.push(JSON.parse(opt.body));
@@ -165,7 +181,10 @@ install();
 r = await post();
 let j = await r.json();
 ck("a good send answers per villa", j.results["4"].status === "sent");
-const sentBody = SENDS[0].messages[0].body;
+/* SMS_VIA unset: ClickSend, as it always was (the Twilio move is below). */
+ck("and without SMS_VIA it went through ClickSend, not Twilio",
+   SENDS.length === 1 && TSENDS.length === 0);
+const sentBody = (SENDS[0] || { messages: [{ body: "" }] }).messages[0].body;
 const sentToken = (sentBody.match(/\?t=([a-z0-9]+)/) || [])[1] || "";
 ck("the SMS carries our short link: the domain and a 6 character token",
    /https:\/\/menu\.nalaresort\.com\/\?t=[a-z2-9]{6}/.test(sentBody));
@@ -667,6 +686,79 @@ ck("a failed receipt lands on the external record, in the carrier's words",
    /not in service/.test(STORE["/extinvites/" + today + "/ext-abc234"].deliveryText));
 ck("and a key in the wrong shape is never looked up",
    Object.keys(j.results).length === 1);
+
+/* ── SMS_VIA=twilio: the everyday texts move to Twilio ─────────────
+   The switch-over's last step (GUEST-CONTACT.md). Every kind sends through
+   Twilio from the number Guest Contact answers on; nothing reaches
+   ClickSend; a receipt is asked of whichever service sent the text, so the
+   ones sent before the switch keep resolving. */
+const TW = { SMS_VIA: " Twilio ", TWILIO_ACCOUNT_SID: "AC123", TWILIO_AUTH_TOKEN: "tok",
+             TWILIO_FROM: "+61480000000" };
+Object.assign(env, TW);
+install();
+r = await post(); j = await r.json();
+ck("switched, tonight's menu goes through Twilio, from Guest Contact's number",
+   j.results["4"].status === "sent" && SENDS.length === 0 && TSENDS.length === 1 &&
+   TSENDS[0].form.From === "+61480000000" && TSENDS[0].form.To === "+61411222333" &&
+   TSENDS[0].auth === "Basic " + btoa("AC123:tok"));
+ck("with the words and the link the Worker built, and Twilio's id on the record",
+   /menu\.nalaresort\.com\/\?t=[a-z2-9]{6}$/.test(TSENDS[0].form.Body) &&
+   /^SM0{31}1$/.test(STORE["/invites/" + today + "/4"].providerId));
+install(); r = await pre(); j = await r.json();
+ck("and so does the pre-arrival form",
+   j.results["bk-future"].status === "sent" && SENDS.length === 0 && TSENDS.length === 1 &&
+   TSENDS[0].form.Body.includes("prearrival.html?t="));
+spaWorld(); r = await spa(); j = await r.json();
+ck("and a spa reminder", j.results["bk-spa/t1"].status === "sent" &&
+   SENDS.length === 0 && TSENDS.length === 1 && TSENDS[0].form.Body.includes("Hello Freya,"));
+install(); r = await ext(); j = await r.json();
+ck("and an external guest's invitation, whose booking stands",
+   j.result.status === "sent" && SENDS.length === 0 && TSENDS.length === 1 &&
+   TSENDS[0].form.To === "+61412345678" && keysUnder("/manual/").length === 1);
+install(); STATE.twilioOk = false;
+r = await post(); j = await r.json();
+ck("Twilio refusing is a failed send, in Twilio's words",
+   j.results["4"].status === "failed" && /not a valid phone number/.test(j.results["4"].error) &&
+   STORE["/invites/" + today + "/4"].status === "failed");
+install(); STATE.twilioOk = false; r = await ext(); j = await r.json();
+ck("and an external guest's first send that fails takes its booking back out, as before",
+   j.result.status === "failed" && j.key === "" && keysUnder("/manual/").length === 0);
+
+/* receipts, per record, by the id's own shape */
+const TSID = "SM" + "a".repeat(32);
+function sentRec(id) { return { status: "sent", providerId: id,
+                                 sentAt: new Date().toISOString(), to: "+61411222333" }; }
+install();
+STORE["/previnvites/bk-a"] = sentRec(TSID);
+STATE.twilioMsg = { sid: TSID, status: "delivered" };
+r = await dlv({ pres: ["bk-a"] }); j = await r.json();
+ck("a Twilio text's receipt is asked of Twilio, and delivered lands",
+   j.results["bk-a"] === "delivered" && STORE["/previnvites/bk-a"].delivery === "delivered");
+install();
+STORE["/previnvites/bk-a"] = sentRec(TSID);
+STATE.twilioMsg = { sid: TSID, status: "undelivered", error_code: 30005,
+                    error_message: "Unknown destination handset" };
+r = await dlv({ pres: ["bk-a"] }); j = await r.json();
+ck("an undelivered one lands as failed, in the carrier's words",
+   j.results["bk-a"] === "failed" &&
+   STORE["/previnvites/bk-a"].deliveryText === "Unknown destination handset");
+install();
+STORE["/previnvites/bk-a"] = sentRec(TSID);
+STATE.twilioMsg = { sid: TSID, status: "sent" };
+r = await dlv({ pres: ["bk-a"] }); j = await r.json();
+ck("and one only handed to the carrier is not known yet, and nothing is written",
+   j.results["bk-a"] === "unknown" && !STORE["/previnvites/bk-a"].delivery);
+install();
+STORE["/previnvites/bk-c"] = sentRec("mid-1");
+STATE.receipt = { status_code: "201", status_text: "Delivered" };
+r = await dlv({ pres: ["bk-c"] }); j = await r.json();
+ck("a text ClickSend sent before the switch is still asked of ClickSend",
+   j.results["bk-c"] === "delivered" && STORE["/previnvites/bk-c"].delivery === "delivered");
+
+for (const k of Object.keys(TW)) delete env[k];
+install(); r = await post();
+ck("and with SMS_VIA gone, the texts are ClickSend's again",
+   SENDS.length === 1 && TSENDS.length === 0);
 
 console.log("RESULT: " + P + " passed, " + F + " failed");
 process.exit(F ? 1 : 0);

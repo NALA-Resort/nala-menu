@@ -113,6 +113,10 @@ green with who did.
 tasks of its teams, in the guest's own words, and presses Done. The desk
 sees every team. The menu entry counts what is open.
 
+**The Dashboard** has a Guest messages card beside Arrivals, today only: how
+many guests have a message to sort and how many tasks are open, and a door
+to Guest Contact. It reads both counts from the readers the two pages use.
+
 **If a guest has no WhatsApp**, WhatsApp says so a few seconds after a send
 (Twilio error 63024 or 63003). The Worker sends the same words by SMS and
 remembers the number as SMS only, until the guest writes on WhatsApp.
@@ -245,16 +249,22 @@ Only the test phones can be messaged. From them:
    guest who texts STOP in that window shows as Opted out in Guest Contact.
 4. **Guest Touch** can go once guests texted from its number have checked
    out: their replies still go there until then.
-5. **The everyday texts move to Twilio.** The one-function change in
-   `worker/send-invites.js`, about half a day, and the point where the
-   pre-arrival form, menu and spa texts can go on WhatsApp as approved
-   templates of their own.
+5. **The everyday texts move to Twilio.** Built, behind a switch (29 Sep).
+   Paste `worker/send-invites.js` into `nala-invites` - safe at any time:
+   until the switch is set it sends through ClickSend exactly as now. Add
+   `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and `TWILIO_FROM` beside its
+   ClickSend secrets, the same three `nala-contact` holds. Then set
+   `SMS_VIA` to `twilio`: every text - tonight's menu, the pre-arrival form,
+   spa reminders, external guests' invitations - goes from the Twilio
+   number, and delivery is checked at Twilio. Texts already sent through
+   ClickSend are still checked at ClickSend. Deleting `SMS_VIA` moves the
+   texts straight back. After this, the pre-arrival form, menu and spa
+   texts can go on WhatsApp too, each as an approved template of its own.
 
 ---
 
 ## Not built yet
 
-- A Guest Contact card on the Dashboard.
 - Staff sending photos.
 
 ## Tests

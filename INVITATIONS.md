@@ -331,6 +331,13 @@ Do not build a NALA alphanumeric sender as a fallback without checking the
 rules again: ClickSend flags upcoming ACMA changes to alpha tag regulation in
 Australia.
 
+**29 Sep: Guest Contact changes the reason.** Replies no longer need to reach
+Guest Touch's handset: they land in the app, on Guest Contact's Twilio
+number. So the plan (GUEST-CONTACT.md, the switch-over) ends with these texts
+on Twilio, and the Worker is ready for it: with `SMS_VIA` set to `twilio`
+every kind sends from that number, and a receipt is asked of whichever
+service sent the text. Unset, it is ClickSend, exactly as above.
+
 ---
 
 ## Testing

@@ -710,7 +710,10 @@ None of these can move without him.
     its secrets, Twilio's webhook, each person's teams. The rules paste
     comes first: until it, the Worker's login cannot be given its role and
     the pages' queries have no index, so the pages fail rather than limp.
-    Alerts wait on the push Worker's code coming into this repo.
+    Alerts wait on the push Worker's code coming into this repo. The last
+    step, the everyday texts moving from ClickSend to Twilio, is built
+    behind `SMS_VIA` on `nala-invites`: its new code can be pasted at any
+    time and changes nothing until that is set (GUEST-CONTACT.md).
 
 ---
 
