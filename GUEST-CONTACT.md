@@ -197,14 +197,18 @@ In this order. Steps 1 to 3 wait on Twilio and Meta, so start them first.
 8. **Teams.** Settings, General, Teams: rename, add or remove teams until
    they are the resort's. Then each person, on the Staff tab: switch on the
    teams whose tasks they do.
-9. **Publish** the pages, when asked in as many words. Guest Contact and
-   Tasks then appear in the menu of every login that holds their
-   permission. To keep them to yourself while you test, switch both off for
-   chef, waiter and housekeeping in Settings, Roles, *And which pages they
-   may open*, straight after publishing. The manager's menu and the
-   masseuse's cannot be switched there: the manager sees both, and the
-   masseuse sees Tasks, empty until they have a team. Nothing can reach a
-   guest in the meantime - that is `TEST_NUMBERS`' job, not the menu's.
+9. **Publish** the pages, when asked in as many words. It can come before
+   Twilio, straight after the rules (step 5): Guest Contact and Tasks
+   arrive as the admin's alone - their menu entries, the pages and the
+   Dashboard card - for every other login, manager and masseuse included.
+   Try them with the real bookings: every guest on the three tabs, the
+   Teams tab, Tasks. Until the Worker and Twilio exist no message comes
+   in and none can go, and the page says so at the top.
+10. **Open to the staff** when you are ready: Settings, General, Teams, the
+    *Open to the staff* switch. From then on each login sees them as its
+    permissions say; off takes them back to you alone. No publish needed.
+    Nothing can reach a guest while `TEST_NUMBERS` is set, whoever sees the
+    pages - that is the Worker's job, not the menu's.
 
 ## Testing on the live app
 

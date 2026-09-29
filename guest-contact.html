@@ -196,7 +196,7 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=89"></script>
+<script src="nala-shared.js?v=90"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -878,21 +878,28 @@ function hello(){
   fetch(CONTACT_URL, { method:'POST', headers:{ 'Content-Type':'application/json' },
                        body: JSON.stringify({ idToken: window.__idToken, kind:'hello' }) })
     .then(function(r){ return r.ok ? r.json() : null; })
+    .catch(function(){ return null; })
     .then(function(j){
       HELLO = j;
       var bar = document.getElementById('testBar');
-      if (j && j.test){
+      /* No answer at all: the Worker is not there yet - published before
+         Twilio, the owner's plan, 29 Sep - or the connection is down. Said
+         at the top, rather than left for Send to discover. */
+      if (!j){
+        bar.textContent = 'The messenger is not answering, so nothing can be sent just now. ' +
+                          'Until the Worker and Twilio are set up, that is expected.';
+        bar.className = 'testbar show';
+      } else if (j.test){
         bar.textContent = 'Test mode: messages only go to the test phones. Guests receive nothing ' +
                           'until TEST_NUMBERS is removed in Cloudflare.';
         bar.className = 'testbar show';
-      } else if (j && !j.ready){
+      } else if (!j.ready){
         bar.textContent = 'Twilio is not set up yet, so nothing can be sent. Messages already ' +
                           'received still show.';
         bar.className = 'testbar show';
       }
       if (CK && TH.t !== undefined) drawCompose();
-    })
-    .catch(function(){});
+    });
 }
 
 /* New messages arrive by themselves: the list every 15 seconds, an open

@@ -288,6 +288,11 @@
           }
         }
       },
+      "open": {
+        "$page": {
+          ".validate": "newData.isBoolean() && $page.matches(/^[a-z][a-z-]{1,30}$/)"
+        }
+      },
       "$action": {
         ".validate": "$action == 'resBoard' || $action == 'editBookings' || $action == 'resSheet' || $action == 'publishMenu' || $action == 'cleansBoard' || $action == 'cleansMarks' || $action == 'setJob' || $action == 'spaBoard' || $action == 'tasks'",
         "$role": {

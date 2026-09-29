@@ -212,7 +212,10 @@ def fb(route, request):
             route.fulfill(status=200, content_type="application/json", body=json.dumps(g))
             return
     if "/staff" in u: body = json.dumps(STAFF)
-    elif "/permissions" in u: body = "null"
+    # Guest Contact and Tasks are swept opened to the staff, the way they
+    # will be used; shut, they are the admin's alone (contact_suite).
+    elif "/permissions" in u:
+        body = json.dumps({"open": {"guest-contact": True, "tasks": True}}) if gc else "null"
     elif spar and u.split("?")[0].endswith("/spa.json"): body = json.dumps(SPAR_SPA)
     elif spar and u.split("?")[0].endswith("/bookings.json"): body = json.dumps(SPAR_BOOKINGS)
     elif "/roomguests/" + today in u: body = json.dumps(ROOMGUESTS)

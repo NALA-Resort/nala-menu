@@ -922,6 +922,18 @@ with sync_playwright() as p:
     ck("and on another day's board it is not there: the counts are now's",
        not [c for c in cards(pg) if c["k"] == "contact"])
     pg.close()
+    #  Shut (PREVIEW_PAGES, 29 Sep), the card is the admin's alone, like
+    #  the page it counts; opened in Settings, the desk's too.
+    pg = board(email="waiter@x")
+    ck("while Guest Contact is the admin's alone, the waiter's board has no card",
+       not [c for c in cards(pg) if c["k"] == "contact"])
+    pg.close()
+    PERMS["open"] = {"guest-contact": True, "tasks": True}
+    pg = board(email="waiter@x")
+    ck("opened to the staff, the waiter's has it, and its door",
+       [c["door"] for c in cards(pg) if c["k"] == "contact"] == [True])
+    pg.close()
+    del PERMS["open"]
     STATE["contactfail"] = True
     pg = board()
     ck("a login the rules keep from the guests' messages gets no card, and no error",

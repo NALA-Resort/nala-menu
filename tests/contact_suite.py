@@ -53,6 +53,9 @@ STAFF = {"staff@x": {"name": "Admin", "role": "admin"},
          "housekeeping@x": {"name": "HK", "role": "housekeeping"},
          "grounds@x": {"name": "Ray Grounds", "role": "housekeeping"},
          "masseuse@x": {"name": "Masseuse", "role": "spa"}}
+# Opened to the staff, as they will be used; the preview's shut side is
+# section 8, which empties this.
+PERMS = {"open": {"guest-contact": True, "tasks": True}}
 SETTINGS = {"teams": {"kitchen": {"members": {"chef@x": True}},
                       "maintenance": {"members": {"grounds@x": True}},
                       "housekeeping": {"members": {"housekeeping@x": True}},
@@ -194,6 +197,7 @@ def fb(route, request):
     elif path == "/contactnew.json":
         body = {k: True for k in FRESH} if "shallow" in q else FRESH
     elif path == "/contactsettings.json": body = SETTINGS
+    elif path == "/permissions.json": body = PERMS or None
     elif path.startswith("/contact/"): body = THREADS.get(path[9:-5])
     elif path.startswith("/contactnew/"): body = FRESH.get(path[12:-5])
     elif path.startswith("/contactmsgs/"): body = MSGS.get(path[13:-5])
@@ -732,6 +736,67 @@ with sync_playwright() as p:
            not pg.evaluate("()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
         done(pg)
     SETTINGS.clear(); SETTINGS.update(SETTINGS_BAK)
+
+    # ── 8. tried by the admin before the staff see it (29 Sep) ─────────
+    # PREVIEW_PAGES: published before Twilio is set up, Guest Contact and
+    # Tasks are the admin's alone until Settings opens them to the staff.
+    PERMS_BAK = json.loads(json.dumps(PERMS)); PERMS.clear()
+    menu = lambda p: p.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
+        .filter(a=>getComputedStyle(a).display!=='none').map(a=>a.getAttribute('href'))""")
+    for email, file in (("waiter@x", "guest-contact.html"), ("waiter@x", "tasks.html"),
+                        ("grounds@x", "tasks.html"), ("masseuse@x", "tasks.html")):
+        pg = page(email=email, file=file)
+        at = pg.url.split("/")[-1].split("?")[0]
+        ck("shut, %s is sent away from %s" % (email.split("@")[0], file), at != file, at)
+        done(pg)
+    pg = page(email="waiter@x", file="tally.html")
+    m = menu(pg)
+    ck("and the waiter's menu offers neither",
+       "guest-contact.html" not in m and "tasks.html" not in m and len(m) > 3, m)
+    done(pg)
+    pg = page(email="staff@x")
+    ck("while the admin opens Guest Contact", pg.url.split("/")[-1].split("?")[0] == "guest-contact.html")
+    m = menu(pg)
+    ck("and finds Tasks in the menu", "tasks.html" in m, m)
+    done(pg)
+    pg = page(email="staff@x", file="staff.html")
+    pg.click('[data-t="tTeams"]'); pg.wait_for_timeout(150)
+    ck("Settings says the two are the admin's alone, the switch off",
+       pg.get_attribute("#gcOpen", "aria-checked") == "false" and
+       "Only you see Guest Contact and Tasks" in pg.text_content("#gcOpenNote"))
+    del WRITES[:]
+    pg.click("#gcOpen"); pg.wait_for_timeout(400)
+    w = [x for x in WRITES if x["p"].startswith("/permissions")]
+    ck("On opens both to the staff in one write",
+       len(w) == 1 and w[0]["m"] == "PATCH" and w[0]["p"] == "/permissions/open.json" and
+       w[0]["b"] == {"guest-contact": True, "tasks": True} and
+       pg.get_attribute("#gcOpen", "aria-checked") == "true", w)
+    ck("and the Roles tab's copy knows, so its next save cannot shut them again",
+       pg.evaluate("()=>PERMS.open['guest-contact']===true && PERMS.open.tasks===true"))
+    del WRITES[:]
+    pg.click("#gcOpen"); pg.wait_for_timeout(400)
+    w = [x for x in WRITES if x["p"].startswith("/permissions")]
+    ck("and Off takes both back",
+       len(w) == 1 and w[0]["b"] == {"guest-contact": None, "tasks": None} and
+       pg.get_attribute("#gcOpen", "aria-checked") == "false", w)
+    done(pg)
+    PERMS.update(PERMS_BAK)
+    # Published before the Worker exists: its address answers nothing.
+    ctx = br.new_context(viewport={"width": 390, "height": 900}, timezone_id="Australia/Brisbane")
+    q = ctx.new_page(); q.clock.set_fixed_time(ZONES["Australia/Brisbane"])
+    q.add_init_script(SDK); q.add_init_script("window.__EMAIL='staff@x';")
+    q.route("**firebasedatabase.app/**", fb)
+    q.route("**nala-contact.ben-681.workers.dev/**", lambda r: r.abort())
+    q.route("**gstatic.com/**", lambda r: r.fulfill(status=200, body=""))
+    q.goto("http://localhost:%d/guest-contact.html" % PORT); q.wait_for_timeout(1300)
+    ck("with no Worker to answer, the page says so at the top rather than at Send",
+       q.is_visible("#testBar") and "The messenger is not answering" in q.text_content("#testBar"),
+       q.text_content("#testBar"))
+    ctx.close()
+    pg = page(email="waiter@x", file="tally.html")
+    m = menu(pg)
+    ck("opened, the waiter's menu has both", "guest-contact.html" in m and "tasks.html" in m, m)
+    done(pg)
 
     br.close()
 

@@ -117,6 +117,11 @@ Two things the generator gets right that you would get wrong pasting: each
 page omits its own link, and the permission keys are `resSheet` and
 `cleansBoard` — not the `resBoard`/`cleanBoard` you would guess.
 
+A page can go live to the admin alone first (29 Sep, Guest Contact before
+Twilio): list it in `PREVIEW_PAGES`, nala-shared.js, and it opens to the
+admin only until `/permissions/open/<page>` is true. `canOpen` answers it,
+so the menu, its count and any Dashboard card follow.
+
 ### 3. Duplication that cannot be avoided gets a shared table
 
 Some duplication is forced. `normalisePhone` exists in `nala-shared.js` *and*

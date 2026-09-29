@@ -1089,11 +1089,27 @@ with sync_playwright() as p:
 
     _mism = pg.evaluate("""(pa)=>{ setPermissions(null); const bad=[];
       for (const k in pa)
-        for (const r of ['admin','manager','chef','waiter','housekeeping','spa'])
-          if (canOpen(r, k+'.html') !== can(r, pa[k])) bad.push(r+'/'+k);
+        if (!PREVIEW_PAGES[k])
+          for (const r of ['admin','manager','chef','waiter','housekeeping','spa'])
+            if (canOpen(r, k+'.html') !== can(r, pa[k])) bad.push(r+'/'+k);
       return bad; }""", _pa)
     ck("with nothing stored, every page answers as the capability it borrows, "
        + "wrong: " + str(_mism), _mism == [])
+    # Guest Contact's preview (29 Sep): a page still being tried opens to the
+    # admin alone until /permissions/open says otherwise, then exactly as the
+    # capability it borrows, for every role, the manager and masseuse too.
+    _prev = pg.evaluate("""(pa)=>{ const bad=[];
+      for (const k in PREVIEW_PAGES)
+        for (const r of ['admin','manager','chef','waiter','housekeeping','spa']){
+          setPermissions(null);
+          if (canOpen(r, k+'.html') !== (r === 'admin')) bad.push('shut ' + r + '/' + k);
+          setPermissions({open: {[k]: true}});
+          if (canOpen(r, k+'.html') !== can(r, pa[k])) bad.push('open ' + r + '/' + k);
+        }
+      setPermissions(null); return bad; }""", _pa)
+    ck("a page still being tried is the admin's alone until it is opened, then its "
+       + "capability's, wrong: " + str(_prev),
+       _prev == [] and pg.evaluate("()=>Object.keys(PREVIEW_PAGES).sort()") == ["guest-contact", "tasks"])
 
     ck("a page switch closes one page for one role and nothing else",
        pg.evaluate("""()=>{ setPermissions({pages:{tally:{waiter:false}}});

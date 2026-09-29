@@ -710,6 +710,9 @@ None of these can move without him.
     its secrets, Twilio's webhook, each person's teams. The rules paste
     comes first: until it, the Worker's login cannot be given its role and
     the pages' queries have no index, so the pages fail rather than limp.
+    Published, the two pages are the admin's alone until the owner opens
+    them in Settings, General, Teams (PREVIEW_PAGES in nala-shared.js), so
+    they can go live before Twilio does.
     Alerts wait on the push Worker's code coming into this repo. The last
     step, the everyday texts moving from ClickSend to Twilio, is built
     behind `SMS_VIA` on `nala-invites`: its new code can be pasted at any

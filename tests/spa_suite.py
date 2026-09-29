@@ -1626,9 +1626,11 @@ with sync_playwright() as p:
     links = q.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
         .filter(a=>getComputedStyle(a).display!=='none')
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
-    # One other page since Guest Contact (29 Sep): a guest's request tagged
-    # Spa lands on Tasks, and each team presses Done on its own login.
-    ck("and the masseuse's menu offers only Tasks", links == ["tasks.html"])
+    # Nothing stored here, so Tasks is still the admin's alone (PREVIEW_PAGES,
+    # 29 Sep). Once Guest Contact is opened to the staff the masseuse's menu
+    # gains Tasks, where a guest's request tagged Spa lands: cl_suite and
+    # contact_suite hold that side.
+    ck("and the masseuse's menu offers no other page", links == [])
     q.close()
 
     # ── ghost bookings: a /spa record whose booking has left ────

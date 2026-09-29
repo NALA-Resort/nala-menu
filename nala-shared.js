@@ -2959,6 +2959,23 @@ function pageKey(href){
   return String(href || '').split('?')[0].replace(/\.html$/, '');
 }
 
+/* ── a page the admin tries before the staff see it ─────────────
+   The owner, 29 Sep: Guest Contact published before Twilio is set up, so
+   its screens can be tried on the live app, and the admin's alone until
+   the owner opens it. A page listed here opens to the admin only until
+   /permissions/open/<page> is true - the switch is in Settings, General,
+   Teams - and from then on as its NAV entry says, to whoever holds its
+   capability. Absent is shut, so a publish that lands before anybody
+   decides shows the staff nothing. Its menu entry, its menu count and its
+   Dashboard card all ask canOpen, so they follow. */
+var PREVIEW_PAGES = { 'guest-contact': true, 'tasks': true };
+function previewShut(role, href){
+  var k = pageKey(href);
+  if (!PREVIEW_PAGES[k] || normaliseRole(role) === 'admin') return false;
+  var open = PERMISSIONS && PERMISSIONS.open;
+  return !(open && open[k] === true);
+}
+
 function canOpen(role, href){
   var need = NAV_NEEDS[href];
   /* A page nobody has listed is merely ungated, not shut: the same answer
@@ -2968,6 +2985,7 @@ function canOpen(role, href){
   if (need === 'manageStaff') return can(role, need);
   var r = normaliseRole(role);
   if (r === 'admin') return true;
+  if (previewShut(r, href)) return false;
   var pages = PERMISSIONS && PERMISSIONS.pages;
   var row = pages && pages[pageKey(href)];
   if (row && typeof row[r] === 'boolean') return row[r];
@@ -3533,7 +3551,7 @@ function navActionBadges(role){
   var drop = document.getElementById('navDrop');
   if (!drop) return;
   NAV_ACTIONS.forEach(function(a){
-    if (NAV_BADGED[a.href] || !can(role, a.need)) return;
+    if (NAV_BADGED[a.href] || !can(role, a.need) || !canOpen(role, a.href)) return;
     var links = drop.getElementsByTagName('a'), link = null;
     for (var i = 0; i < links.length; i++){
       if ((links[i].getAttribute('href') || '').split('?')[0] === a.href){

@@ -259,6 +259,12 @@
     </div>
 
     <div class="panel" id="tTeams" role="tabpanel">
+      <div class="evrow"><span>Open to the staff</span>
+        <button class="sw" id="gcOpen" role="switch" aria-checked="false"
+                aria-label="Open Guest Contact and Tasks to the staff"></button></div>
+      <div class="note" id="gcOpenNote"></div>
+      <div class="err" id="gcOpenErr"></div>
+      <div class="seclabel">Teams</div>
       <div id="teamList"></div>
       <button class="btn solid" id="addTeamBtn" style="margin-top:var(--s4)">Add a team</button>
       <div id="teamGone"></div>
@@ -390,7 +396,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=89"></script>
+<script src="nala-shared.js?v=90"></script>
 <script>
 var ROLES = ['admin','manager','chef','waiter','housekeeping'];
 /* The human roles, and the ones the notification matrix targets. manager is
@@ -626,6 +632,44 @@ function teamMembers(key){
   return Object.keys(m).filter(function(k){ return m[k] === true && STAFF[k]; })
     .map(function(k){ return STAFF[k].name || codeOf(k); }).sort();
 }
+/* Guest Contact's preview (PREVIEW_PAGES, nala-shared.js): off, it and
+   Tasks are the admin's alone; on, they open to the staff as their
+   permissions say. One switch for both pages, because they are one module.
+   /permissions/open/<page>, written into PERMS as well as the database:
+   the Roles tab saves that whole node in one write, and a copy without
+   these keys would shut the pages again on its next save. */
+function gcIsOpen(){
+  var o = PERMS && PERMS.open;
+  return !!(o && o['guest-contact'] === true && o.tasks === true);
+}
+function drawOpen(){
+  var on = gcIsOpen(), sw = document.getElementById('gcOpen');
+  sw.className = 'sw' + (on ? ' on' : '');
+  sw.setAttribute('aria-checked', on);
+  document.getElementById('gcOpenNote').textContent = on
+    ? 'Guest Contact and Tasks are open: the staff see them as their permissions say.'
+    : 'Only you see Guest Contact and Tasks, in the menu and on the Dashboard, ' +
+      'while they are tried. On opens them to the staff as their permissions say.';
+}
+document.getElementById('gcOpen').onclick = function(){
+  var sw = this, on = !gcIsOpen(), err = document.getElementById('gcOpenErr');
+  if (sw.disabled) return;
+  sw.disabled = true;
+  var v = on ? true : null;
+  fetch(DB + '/permissions/open.json', { method:'PATCH',
+        body: JSON.stringify({ 'guest-contact': v, tasks: v }) })
+    .then(function(r){
+      if (!r.ok) throw new Error('rejected');
+      if (on) PERMS.open = Object.assign({}, PERMS.open, { 'guest-contact': true, tasks: true });
+      else if (PERMS.open){ delete PERMS.open['guest-contact']; delete PERMS.open.tasks; }
+      setPermissions(PERMS);
+      err.textContent = '';
+      drawOpen();
+    })
+    .catch(function(){ err.textContent = 'That did not save. Only an admin may change it.'; })
+    .then(function(){ sw.disabled = false; });
+};
+
 function drawTeams(){
   var list = document.getElementById('teamList'), gone = document.getElementById('teamGone');
   var add = document.getElementById('addTeamBtn');
@@ -898,7 +942,7 @@ var PERMS = {};
 
 function loadPerms(){
   fetch(DB + '/permissions.json').then(function(r){ return r.ok ? r.json() : null; })
-    .then(function(j){ PERMS = j || {}; setPermissions(PERMS); drawPerms(); })
+    .then(function(j){ PERMS = j || {}; setPermissions(PERMS); drawPerms(); drawOpen(); })
     .catch(function(){ document.getElementById('permErr').textContent =
       'Could not load who may do what. The app is running on its defaults.'; });
 }

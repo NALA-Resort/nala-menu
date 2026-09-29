@@ -1288,6 +1288,14 @@ console.log('--- Guest Contact: messages and tasks ---');
   ck('nobody else edits the list',
      !asx(WAITER).update('/contactsettings/teams/poolbar', { label: 'Pool bar', added: NOW }).allowed &&
      !asx(MANAGER).update('/contactsettings/teams/spa', { off: true }).allowed);
+  /* Guest Contact's preview (29 Sep): the admin opens it to the staff. */
+  ck('the admin opens Guest Contact and Tasks to the staff, and shuts them again',
+     asx(ADMIN).update('/permissions/open', { 'guest-contact': true, tasks: true }).allowed &&
+     asx(ADMIN).update('/permissions/open', { 'guest-contact': null, tasks: null }).allowed);
+  ck('nobody else may, and open is yes or no',
+     !asx(WAITER).update('/permissions/open', { 'guest-contact': true }).allowed &&
+     !asx(MANAGER).update('/permissions/open', { tasks: true }).allowed &&
+     !asx(ADMIN).update('/permissions/open', { tasks: 'yes' }).allowed);
   ck('and a team added there takes tasks like the six',
      asx(WAITER).write('/tasks/poolbar/t4abcdef', Object.assign({}, TASK, { state: 'open' })).allowed);
   ck('and nobody signed out reads anything',
