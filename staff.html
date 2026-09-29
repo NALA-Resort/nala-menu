@@ -262,8 +262,9 @@
       <div class="sec-h" id="permHead"></div>
       <div id="permList"></div>
       <div class="note"><i class="dot"></i> marks a setting changed from how the
-      app came. An admin always has everything, and a manager everything but this
-      page, so neither is offered here. Only "Change what a villa needs" is
+      app came. An admin always has everything, so is not offered here. A
+      manager starts with everything but this page, which no switch can hand
+      out. Only "Change what a villa needs" is
       enforced by the database as well as by the app: the others hide the button,
       which is enough for an honest mistake and is not a lock. A page switch
       left alone follows the abilities above it; moved, it opens or closes that
@@ -377,7 +378,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=86"></script>
+<script src="nala-shared.js?v=87"></script>
 <script>
 var ROLES = ['admin','manager','chef','waiter','housekeeping'];
 /* The human roles, and the ones the notification matrix targets. manager is
@@ -746,6 +747,10 @@ var drawPerms = pickList({
   list:  document.getElementById('permList'),
   roles: PERM_ROLES, items: PERM_ACTIONS.concat(
     [{sec:'And which pages they may open'}], PAGE_GRID),
+  /* Opens on the chef, as it did before the manager joined as the first
+     chip: a role with every switch on is the least informative screen this
+     tab can open on, Notifications' reason for opening on housekeeping. */
+  pick: PERM_ROLES.indexOf('chef'),
   verb: 'may do', pfx: 'may-',
   isOn: function(ac, r){
     if (ac[2]) {

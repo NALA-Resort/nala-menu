@@ -1762,7 +1762,7 @@ var ROLE_GRANTS = {
   /* Everything the admin holds except manageStaff, asked for 25 Aug: a
      management login that runs the whole day without the keys to Settings
      General, Pages or Diagnostics, which are the three manageStaff gates.
-     Deliberately a role and not a permission column: handing manageStaff
+     Deliberately a role and not a manageStaff tick: handing manageStaff
      out is a second admin, and this is the role for everybody who is
      nearly one. spaBoard rides along because the definition is the admin's
      list, whatever joins it, minus that one key. */
@@ -2176,7 +2176,7 @@ function roleOf(user){
 }
 
 /* ── the permission matrix ─────────────────────────────────────
-   ROLE_GRANTS above is what the app ships with. /permissions is the manager
+   ROLE_GRANTS above is what the app ships with. /permissions is the admin
    changing their mind, and it wins where it has an opinion.
 
    Only an explicit true or false counts as an opinion. A missing action, a
@@ -2185,7 +2185,7 @@ function roleOf(user){
    ROLE_GRANTS must not silently switch it off for everybody because the
    matrix written last March has never heard of it.
 
-   The manager is never overridable. A stray false against admin, typed in the
+   The admin is never overridable. A stray false against admin, typed in the
    Firebase console at midnight, would lock the only person who can undo it
    out of the page where it is undone. So admin is answered before the matrix
    is consulted at all.
@@ -2193,11 +2193,11 @@ function roleOf(user){
    Matrix and rationale in ROLES.md.                                     */
 var PERMISSIONS = null;      /* the /permissions map once loaded, null until then */
 
-/* The actions a manager may hand out, in the order the grid shows them, in
+/* The actions an admin may hand out, in the order the grid shows them, in
    the words staff use rather than the words the code uses.
 
    manageStaff is deliberately not here. Handing it out hands out the ability
-   to hand things out, which is not a permission, it is a second manager. Do
+   to hand things out, which is not a permission, it is a second admin. Do
    that by changing somebody's role, where it is visible in the People list,
    rather than by a tick nobody will ever look at again.                  */
 var PERM_ACTIONS = [
@@ -2215,15 +2215,21 @@ var PERM_ACTIONS = [
   ['spaBoard',     'See the Spa board']
 ];
 
-/* The columns. admin is absent because it always has everything, and a column
-/* The columns. admin is absent because it always has everything, and a column
-   of ticks nobody may untick teaches people the ticks do nothing. manager is
-   absent for the same reason: the role IS "everything but manageStaff", and
-   the rules refuse the matrix an opinion about it. sync is absent because it
-   is a machine with no screen. spa is absent because it is an outside
+/* The columns, in the Notifications tab's order. admin is absent because it
+   always has everything, and a column of ticks nobody may untick teaches
+   people the ticks do nothing. sync and encoder are absent because they are
+   machines with no screen. spa is absent because it is an outside
    contractor: widening what that login can open is a decision for the rules,
-   made deliberately, not a tick in a grid.                              */
-var PERM_ROLES = ['chef','waiter','housekeeping'];
+   made deliberately, not a tick in a grid.
+
+   manager was absent too until 29 Sep, on the argument that the role IS
+   "everything but manageStaff" and so had nothing to set. The owner, finding
+   a manager's role missing from the tab: "the manager is a role with
+   different abilities, no reason they shouldn't be visible." It is a column
+   like the others now, every box on by default because ROLE_GRANTS gives it
+   all eight, and the rules accept its cells. What keeps Settings the admin's
+   is manageStaff's absence from PERM_ACTIONS, not manager's from here.   */
+var PERM_ROLES = ['manager','chef','waiter','housekeeping'];
 
 /* What the app shipped with, asked directly. The grid shows it beside the
    current answer so a manager can see what they have changed.           */

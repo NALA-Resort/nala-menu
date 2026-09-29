@@ -26,9 +26,15 @@ the address.
 one exclusion is what keeps the three manageStaff gates - Settings General,
 Pages and Diagnostics - the admin's alone. It is a role rather than a row on
 the permissions grid because handing out `manageStaff` is a second admin
-(see below), and this is the role for somebody who is nearly one. For the
-same reason it is not a grid column: the role IS its definition, and the
-rules refuse the matrix an opinion about it.
+(see below), and this is the role for somebody who is nearly one.
+
+It was kept off the grid as a column too, until 29 Sep, on the argument that
+the role IS its definition and so had nothing to set. The owner, having
+moved somebody to manager and found nothing on the Roles tab to say what
+that meant: "the manager is a role with different abilities, no reason they
+shouldn't be visible." It is the first column now, every box on by default,
+and the rules accept its cells. What keeps Settings the admin's is that
+`manageStaff` is not a row, which is where that line was always really held.
 
 `spa` is the masseuse, an outside contractor, added 25 Aug. Like the chef, a
 real login for a real person with one job on one screen - but where the
@@ -170,7 +176,7 @@ changing their mind, and it is edited from the grid in Settings.
 
 `<page>` is the file name without `.html` - `front-desk`, `menu-print`. The
 rules refuse a row for the admin-only pages (`staff`, `flags`, `pages`,
-`debug`) and for any role but the three grid columns; new pages need no
+`debug`) and for any role but the four grid columns; new pages need no
 rules change, which is deliberate - a whitelist there would re-create the
 audit's finding, a page built and not switchable until a console paste.
 
@@ -197,13 +203,16 @@ may do, and the defaults are a working app. Refusing everyone because an
 override list did not answer would turn a small outage into a locked door.
 
 **What the grid actually enforces.** Only `setJob` is enforced by the database
-as well, because it is the only one of the seven that is a write the rules can
-see. The other six hide a button. That is enough for an honest mistake and it
-is not a lock, and the note under the grid says so rather than implying more
-than it does. A page switch is the same kind of thing one level up: it hides
-the menu entry and the page's own gate turns the login away to its home
-board, but the data the page reads is governed by the rules, not by the
-switch - closing the Spa board's page does not close `/spa`.
+as well, because it is the only one of the eight that is a write the rules can
+see. The manager's rule names the role outright, so it reads the manager's own
+cell as well: without that, unticking a manager would hide the control and
+leave the write open. The other seven hide a button. That is enough for an
+honest mistake and it is not a lock, and the note under the grid says so
+rather than implying more than it does. A page switch is the same kind of
+thing one level up: it hides the menu entry and the page's own gate turns
+the login away to its home board, but the data the page reads is governed
+by the rules, not by the switch - closing the Spa board's page does not
+close `/spa`.
 
 ## Rules
 

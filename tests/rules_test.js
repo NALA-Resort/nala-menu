@@ -685,7 +685,7 @@ cannot('housekeeping cannot write a reservation', HK, '/stays/2026-09-10/3',
 
 console.log('--- the permission matrix ---');
 
-/* The matrix is the manager changing the shipped defaults from Settings. Most
+/* The matrix is the admin changing the shipped defaults from Settings. Most
    of what it changes is a button appearing or not appearing, which the rules
    cannot see. Setting the job a villa needs is the exception: it is a write,
    so it can be enforced here as well, and it is the one worth enforcing
@@ -695,9 +695,10 @@ function withPerms(perms) {
 }
 const KIND = `/hk/${TODAY}/4/kind`;
 
-ck('with no matrix at all, only the manager sets the job',
+ck('with no matrix at all, only management sets the job',
    as(HK).write(KIND, 'clean').allowed === false &&
-   as(ADMIN).write(KIND, 'clean').allowed === true);
+   as(ADMIN).write(KIND, 'clean').allowed === true &&
+   as(MANAGER).write(KIND, 'clean').allowed === true);
 
 const ticked = withPerms({ setJob: { housekeeping: true, waiter: false } });
 ck('ticking the box in Settings lets housekeeping set it',
@@ -708,10 +709,27 @@ ck('and leaves the role in the next column alone',
 const untickedM = withPerms({ setJob: { housekeeping: false } });
 ck('unticking it takes the job back off them',
    untickedM.as(HK).write(KIND, 'clean').allowed === false);
-ck('and the manager is unaffected either way',
+ck('and the admin is unaffected either way',
    untickedM.as(ADMIN).write(KIND, 'clean').allowed === true);
 
-can('the manager ticks a box', ADMIN, '/permissions/setJob/housekeeping', true);
+/* The manager has been a column since 29 Sep, the one that starts with the
+   box ticked. Its rule names the role, so the false has to be read there:
+   without it, unticking a manager would hide the control and leave the write
+   open, and this is the one box the note under the grid calls a lock. */
+const mgrOff = withPerms({ setJob: { manager: false } });
+ck('unticking the manager takes the job off the manager',
+   mgrOff.as(MANAGER).write(KIND, 'clean').allowed === false);
+ck('and off nobody else',
+   mgrOff.as(ADMIN).write(KIND, 'clean').allowed === true);
+ck('a manager ticked back on sets it again',
+   withPerms({ setJob: { manager: true } }).as(MANAGER).write(KIND, 'clean').allowed === true);
+ck('a value that is not a yes or a no leaves the manager as shipped',
+   withPerms({ setJob: { manager: 'maybe' } }).as(MANAGER).write(KIND, 'clean').allowed === true);
+
+can('the admin ticks a box', ADMIN, '/permissions/setJob/housekeeping', true);
+can('including a manager\'s', ADMIN, '/permissions/editBookings/manager', false);
+cannot('a manager cannot move their own box', MANAGER,
+       '/permissions/setJob/manager', true);
 cannot('housekeeping cannot tick their own box', HK,
        '/permissions/setJob/housekeeping', true);
 cannot('the chef cannot tick anybody\'s', CHEF,
@@ -726,7 +744,7 @@ cannot('and a box has to be a yes or a no', ADMIN,
    undo it out of the page where it is undone. */
 cannot('manageStaff cannot be handed out at all', ADMIN,
        '/permissions/manageStaff/waiter', true);
-cannot('the manager cannot be switched off, even by hand', ADMIN,
+cannot('the admin cannot be switched off, even by hand', ADMIN,
        '/permissions/setJob/admin', false);
 cannot('nor can a capability that does not exist be invented', ADMIN,
        '/permissions/deleteEverything/waiter', true);
@@ -739,7 +757,7 @@ cannot('a signed out browser cannot read it', GUEST, '/permissions', null);
    be handed out as a page row, because that would be manageStaff under
    another name, and canOpen would ignore the row anyway; the rules keep
    the garbage out of the database too. */
-can('the manager closes one page for one role', ADMIN,
+can('the admin closes one page for one role', ADMIN,
     '/permissions/pages/calendar/waiter', false);
 can('or opens one the role never shipped with', ADMIN,
     '/permissions/pages/stats/housekeeping', true);
@@ -747,8 +765,10 @@ cannot('a waiter cannot move their own page switch', WAITER,
        '/permissions/pages/calendar/waiter', true);
 cannot('a page switch has to be a yes or a no', ADMIN,
        '/permissions/pages/calendar/waiter', 'sometimes');
-cannot('no page switch exists for the manager role', ADMIN,
-       '/permissions/pages/calendar/manager', false);
+can('the manager\'s pages switch like anyone\'s', ADMIN,
+    '/permissions/pages/calendar/manager', false);
+cannot('but not by the manager', MANAGER,
+       '/permissions/pages/calendar/manager', true);
 cannot('nor for the masseuse, whose reach is a rules decision', ADMIN,
        '/permissions/pages/tally/spa', true);
 cannot('nor against admin', ADMIN, '/permissions/pages/tally/admin', false);

@@ -1048,7 +1048,7 @@ with sync_playwright() as p:
                           setPermissions(null); return a===true;}"""))
     # A stray false against admin, typed into the console at midnight, would
     # lock the only person who can undo it out of the page where it is undone.
-    ck("the manager cannot be switched off by the matrix",
+    ck("the admin cannot be switched off by the matrix",
        pg.evaluate("""()=>{setPermissions({manageStaff:{admin:false},setJob:{admin:false}});
                           const a=can('admin','manageStaff')&&can('admin','setJob');
                           setPermissions(null); return a===true;}"""))
@@ -1064,6 +1064,17 @@ with sync_playwright() as p:
        pg.evaluate("()=>PERM_ACTIONS.every(a=>a[0]!=='manageStaff')"))
     ck("nor is admin a column, nor sync",
        pg.evaluate("()=>PERM_ROLES.indexOf('admin')<0&&PERM_ROLES.indexOf('sync')<0"))
+    # The manager joined the columns 29 Sep (the owner: "the manager is a
+    # role with different abilities, no reason they shouldn't be visible").
+    # The masseuse stays out: that login's reach is the rules' to widen.
+    ck("the manager is a column, the masseuse and the encoder are not",
+       pg.evaluate("""()=>PERM_ROLES.indexOf('manager')>-1
+                        && PERM_ROLES.indexOf('spa')<0 && PERM_ROLES.indexOf('encoder')<0"""))
+    ck("an untick takes a thing off the manager, and off nobody else",
+       pg.evaluate("""()=>{setPermissions({setJob:{manager:false}});
+                          const a=!can('manager','setJob') && can('manager','cleansMarks')
+                                  && can('admin','setJob');
+                          setPermissions(null); return a===true;}"""))
     ck("every other capability is offered",
        pg.evaluate("""()=>ROLE_GRANTS.admin.filter(x=>x!=='manageStaff')
                         .every(x=>PERM_ACTIONS.some(a=>a[0]===x))"""))
@@ -1119,10 +1130,19 @@ with sync_playwright() as p:
                                                    debug:{chef:true}}});
           const a=!canOpen('waiter','staff.html') && !canOpen('chef','debug.html');
           setPermissions(null); return a; }"""))
-    ck("the manager cannot be locked out by a stray page row",
+    ck("the admin cannot be locked out by a stray page row",
        pg.evaluate("""()=>{ setPermissions({pages:{tally:{admin:false}}});
           const a=canOpen('admin','tally.html');
           setPermissions(null); return a===true; }"""))
+    ck("a page switch closes a page for the manager too",
+       pg.evaluate("""()=>{ setPermissions({pages:{calendar:{manager:false}}});
+          const a=!canOpen('manager','calendar.html') && canOpen('manager','tally.html')
+               && canOpen('admin','calendar.html');
+          setPermissions(null); return a; }"""))
+    ck("but no page row opens Settings to a manager",
+       pg.evaluate("""()=>{ setPermissions({pages:{staff:{manager:true}}});
+          const a=!canOpen('manager','staff.html');
+          setPermissions(null); return a; }"""))
     ck("a page nobody has listed is merely ungated, not shut",
        pg.evaluate("()=>canOpen('housekeeping','brand-new.html')===true"))
 
@@ -1193,6 +1213,36 @@ with sync_playwright() as p:
     ck("a page switched on opens for a role that never shipped with it",
        q.url.endswith("stats.html") and q.evaluate(
          "()=>getComputedStyle(document.querySelector('.wrap')).display!=='none'"))
+    q.close()
+
+    # ---- the manager on the Roles tab ----
+    # Absent until 29 Sep, when the owner moved somebody to manager and found
+    # no way to see what that meant. A chip like the others, every switch on
+    # because the role ships with everything but Settings, and a tap writes
+    # the manager's own cell and nobody else's.
+    q = pageP("staff@nalaresort.com.au", {})
+    _puts = []
+    def _perm_put(route, request):
+        if request.method != "PUT": route.fallback(); return
+        _puts.append(json.loads(request.post_data or "null"))
+        route.fulfill(status=200, content_type="application/json", body=request.post_data)
+    q.route(lambda u: "/permissions.json" in u, _perm_put)
+    q.goto("http://localhost:8957/staff.html"); q.wait_for_timeout(1600)
+    q.click('.tab[data-t="tRoles"]'); q.wait_for_timeout(200)
+    _chips = q.evaluate("()=>[...document.querySelectorAll('#permPick .chip')].map(c=>c.firstChild.textContent)")
+    ck("the Roles tab offers the manager with chef, waiter and housekeeping, got "
+       + str(_chips), _chips == ["manager", "chef", "waiter", "housekeeping"])
+    ck("and still opens on the chef",
+       q.evaluate("()=>permHead.textContent") == "What chef may do")
+    q.click('#permPick .chip[data-r="0"]'); q.wait_for_timeout(150)
+    _sw = q.evaluate("()=>[...document.querySelectorAll('#permList .sw')].map(s=>s.classList.contains('on'))")
+    ck("a manager starts with every switch on, %d of %d" % (sum(_sw), len(_sw)),
+       len(_sw) > 8 and all(_sw))
+    q.click("#may-setJob"); q.wait_for_timeout(500)
+    ck("a tap switches one off for the manager alone, wrote " + str(_puts[-1:]),
+       _puts[-1:] == [{"setJob": {"manager": False}}])
+    ck("and the row says it has moved from how the app came",
+       q.evaluate("()=>!!document.querySelector('#may-setJob').parentNode.querySelector('.dot')"))
     q.close()
 
     # ---- the gate on the page ----

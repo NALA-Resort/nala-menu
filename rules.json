@@ -284,14 +284,14 @@
         "$page": {
           ".validate": "$page.matches(/^[a-z][a-z-]{1,30}$/) && $page != 'staff' && $page != 'flags' && $page != 'pages' && $page != 'debug'",
           "$role": {
-            ".validate": "newData.isBoolean() && ($role == 'chef' || $role == 'waiter' || $role == 'housekeeping')"
+            ".validate": "newData.isBoolean() && ($role == 'manager' || $role == 'chef' || $role == 'waiter' || $role == 'housekeeping')"
           }
         }
       },
       "$action": {
         ".validate": "$action == 'resBoard' || $action == 'editBookings' || $action == 'resSheet' || $action == 'publishMenu' || $action == 'cleansBoard' || $action == 'cleansMarks' || $action == 'setJob' || $action == 'spaBoard'",
         "$role": {
-          ".validate": "newData.isBoolean() && ($role == 'chef' || $role == 'waiter' || $role == 'housekeeping')"
+          ".validate": "newData.isBoolean() && ($role == 'manager' || $role == 'chef' || $role == 'waiter' || $role == 'housekeeping')"
         }
       }
     },
@@ -347,7 +347,7 @@
           ".write": "auth != null && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').exists() && root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() != 'spa'",
           ".validate": "$villa.matches(/^[0-9]{1,3}$/)",
           "kind": {
-            ".validate": "newData.isString() && (newData.val() == 'clean' || newData.val() == 'svc' || newData.val() == 'pre' || newData.val() == 'vac') && auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager' || root.child('permissions').child('setJob').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)"
+            ".validate": "newData.isString() && (newData.val() == 'clean' || newData.val() == 'svc' || newData.val() == 'pre' || newData.val() == 'vac') && auth != null && (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'admin' || root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'staff' || (root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val() == 'manager' && root.child('permissions').child('setJob').child('manager').val() != false) || root.child('permissions').child('setJob').child(root.child('staff').child(auth.token.email.toLowerCase().replace('.',',')).child('role').val()).val() == true)"
           },
           "done": {
             ".validate": "newData.isString() && newData.val().length <= 40"

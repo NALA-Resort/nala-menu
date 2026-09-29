@@ -98,19 +98,22 @@ being in the Firebase console. Until they are pasted, removing someone only
 takes the screens away and their phone can still reach the data behind them,
 so delete the Firebase login as well.
 
-**What each role may do.** A grid of jobs against the three roles below you.
-Every box starts where the app shipped it, and a box you change is marked
-*changed* so you can see at a glance what you have fiddled with. You are not a
-column, because you always have everything, and a column of ticks nobody may
-untick teaches people the ticks do nothing.
+**What each role may do.** A grid of jobs against the four roles below you:
+manager, chef, waiter and housekeeping. Every box starts where the app shipped
+it, and a box you change is marked *changed* so you can see at a glance what
+you have fiddled with. A manager starts with every box on, because the role
+comes with everything except Settings. You are not a column, because you
+always have everything, and a column of ticks nobody may untick teaches people
+the ticks do nothing. Nor is the masseuse: what that login can reach is set in
+the database rules, not here.
 
 There is no box for Settings itself. Giving somebody the power to hand
-permissions out is not a permission, it is a second manager, and that is done
+permissions out is not a permission, it is a second admin, and that is done
 by changing their role in the list above, where you can see it.
 
-**One of the seven is real, the other six are polite.** "Change what a villa
+**One of the eight is real, the other seven are polite.** "Change what a villa
 needs" is enforced by the database: untick it and that person cannot set a job
-even if they find another way in. The other six hide the button. That stops an
+even if they find another way in. The other seven hide the button. That stops an
 honest mistake, which is what it is for, and it is not a lock. If somebody
 must genuinely be unable to do a thing, change their role.
 
