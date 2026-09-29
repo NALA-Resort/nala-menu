@@ -275,9 +275,13 @@ Only the test phones can be messaged. From them:
   the test list; a first message only to a number on a booking; receipts in
   and out of order; the SMS fallback, once; photos only from Twilio.
 - `tests/contact_suite.py` (`contact`): both pages at the fixture's 3:20pm,
-  in two zones, against the same table.
+  in two zones, against the same table; and the team list as all three
+  pages offer it, Settings' Teams tab included.
 - `tests/rules_test.js`: every write the Worker, the desk and a team make,
   and what each may not.
+- `tests/dash_suite.py` (`dash`): the Dashboard's Guest messages card.
+- `worker/invites-test.mjs` (`invworker`): the everyday texts through Twilio
+  once `SMS_VIA` is set, and through ClickSend until then.
 - The sweep, paper and colour suites read both pages.
 
 Nothing here has touched Twilio, Meta or Cloudflare: the sandbox reaches
