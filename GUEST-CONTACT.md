@@ -210,6 +210,26 @@ In this order. Steps 1 to 3 wait on Twilio and Meta, so start them first.
     Nothing can reach a guest while `TEST_NUMBERS` is set, whoever sees the
     pages - that is the Worker's job, not the menu's.
 
+## The demo, before Twilio
+
+`guest-contact.html?demo` (29 Sep): the same two pages with made-up guests,
+and no sign-in. A bar at the top offers:
+
+- **A guest writes** - pick a guest, WhatsApp or SMS, and what they say; it
+  arrives New, as a real one would.
+- **Look as** - Reception sees everything; Ray, Marco and Freya are team
+  logins (Maintenance, Kitchen, Spa) and land on Tasks.
+- **Start again** puts the made-up guests back; **Leave demo** ends it.
+
+Everything else is the real page: sorting, tasks, Done, replies and their
+receipts, WhatsApp's 24 hours (James, arriving in four days, is past them).
+Nothing reaches the live app or a guest: the database is a copy held in the
+browser tab, and the messenger is played there too (`contact-demo.js`,
+held to `tests/contact_demo_suite.py`, which watches the network).
+
+The demo needs the pages published to be opened on a phone; without
+`?demo` the pages are the real ones, the admin's alone until opened.
+
 ## Testing on the live app
 
 Only the test phones can be messaged. From them:

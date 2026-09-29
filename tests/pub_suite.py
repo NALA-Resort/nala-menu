@@ -992,9 +992,14 @@ with sync_playwright() as p:
     ck("and the admin is", "tag.html" in seen["admin"])
     #  The manager role, 25 Aug: an admin without manageStaff, so the menu
     #  offers everything the admin's does except Settings General and Pages.
+    #  And, since 29 Sep, but a page the admin is still trying before the
+    #  staff see it (PREVIEW_PAGES, nala-shared.js): nothing stored here, so
+    #  those are the admin's alone. cl_suite holds them shut and opened.
+    trying = pg.evaluate("()=>Object.keys(PREVIEW_PAGES).map(k=>k+'.html')")
     ck("a manager is offered everything but General and Pages",
        seen["manager"] == [h for h in seen["admin"]
-                           if h not in ("staff.html", "flags.html", "pages.html")])
+                           if h not in ("staff.html", "flags.html", "pages.html")
+                           and h not in trying])
     ck("which the admin still keeps",
        "staff.html" in seen["admin"] and "pages.html" in seen["admin"])
     #  Every link left standing has to open. A link that bounces you back is a
