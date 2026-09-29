@@ -98,6 +98,13 @@
      Send stays the one primary on this screen (the button law). */
   .tri { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:6px 0 0 2px; }
   .tri .lbl { font-size:var(--t2); color:var(--mid); margin-right:2px; }
+  /* A task's note: typed in the picker or on the open task, an editable
+     surface (white) the width of the row, and read back under the pills. */
+  .tri .tnote { flex:1 1 100%; min-height:40px; padding:8px 10px; border:1px solid var(--rule);
+                border-radius:8px; background:#fff; font-family:var(--ui-font);
+                font-size:var(--t2); color:var(--ink); }
+  .tri .tnoterow { flex:1 1 100%; display:flex; flex-wrap:wrap; gap:6px; }
+  .tri .tnoteline { flex:1 1 100%; font-size:var(--t2); line-height:1.4; color:var(--ink); }
   .tp { display:inline-flex; align-items:center; min-height:28px; padding:0 10px;
         border-radius:var(--pill); border:1px solid; font-size:var(--t2); }
   .tp.open { background:var(--law-amber); border-color:var(--law-amber-b); color:var(--law-amber-ink); }
@@ -196,9 +203,9 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <!-- ?demo: made-up guests, nothing leaves the phone (contact-demo.js). Inert otherwise. -->
-<script src="contact-demo.js?v=1"></script>
+<script src="contact-demo.js?v=3"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=90"></script>
+<script src="nala-shared.js?v=91"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -206,7 +213,6 @@ var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
    pages' Worker and the texts they send are not touched while this is
    built and tested (the owner, 29 Sep). The page proposes; the Worker
    decides the channel, the 24 hours, the approved words and the test list. */
-var CONTACT_URL = 'https://nala-contact.ben-681.workers.dev';
 
 (function(){
   var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
@@ -230,6 +236,7 @@ var WINDOW_DAYS = 30;       /* how far Upcoming looks ahead and Past looks back 
 var HELLO = null;           /* the Worker's hello: set up? WhatsApp? test mode? */
 var DATA = null;            /* the list's reads */
 var PICK = null;            /* the message whose Task picker is open */
+var NOTEED = null;          /* 'team/task' whose note is being written */
 var VIA = '';               /* 'sms' once the desk chose SMS over an approved message */
 var TPL = 'question';       /* the approved message chosen */
 var READFAIL = false;
@@ -610,7 +617,11 @@ function triHTML(id, m){
   if (PICK === id){
     /* A team this message already has a task with is not offered twice. */
     var had = m.tasks || {};
-    h = '<span class="lbl">Task for</span>' + contactTeams(SETTINGS).filter(function(t){
+    /* What the team should know that the guest's words do not say (the
+       owner, 29 Sep): optional, and editable on the task afterwards. */
+    h = '<input class="tnote" id="tn-' + id + '" maxlength="300" ' +
+        'placeholder="Note for the team (optional)" aria-label="Note for the team">' +
+        '<span class="lbl">Task for</span>' + contactTeams(SETTINGS).filter(function(t){
       return !had[t.key]; }).map(function(t){
       return '<button class="sbtn" id="tm-' + id + '-' + t.key + '" data-act="team" data-m="' + id +
              '" data-team="' + t.key + '">' + esc(t.label) + '</button>';
@@ -622,23 +633,35 @@ function triHTML(id, m){
            '">No task</button><button class="sbtn" id="tk-' + id + '" data-act="pick" data-m="' + id +
            '">Task</button><div class="trifail" id="tf-' + id + '"></div></div>';
   }
-  var ts = m.tasks || {};
+  var ts = m.tasks || {}, notes = '';
   Object.keys(ts).forEach(function(team){
-    var rec = TH.tasks[team + '/' + ts[team]];
+    var key = team + '/' + ts[team], rec = TH.tasks[key];
     if (rec && rec.state === 'done')
       h += '<span class="tp done">' + esc(teamLabel(team, SETTINGS)) + ' · done' +
            (rec.doneBy ? ' by ' + esc(whoOf(rec.doneBy)) : '') + '</span>';
     else if (rec)
       h += '<span class="tp open">' + esc(teamLabel(team, SETTINGS)) + ' · open</span>' +
            '<button class="sbtn" id="dn-' + id + '-' + team + '" data-act="done" data-m="' + id +
-           '" data-team="' + team + '">Done</button>';
+           '" data-team="' + team + '">Done</button>' +
+           '<button class="sbtn" id="nb-' + id + '-' + team + '" data-act="note" data-m="' + id +
+           '" data-team="' + team + '">' + (rec.note ? 'Edit note' : 'Note') + '</button>';
+    if (!rec) return;
+    if (NOTEED === key)
+      notes += '<div class="tnoterow"><input class="tnote" id="te-' + id + '-' + team + '" maxlength="300" ' +
+        'aria-label="Note for ' + esc(teamLabel(team, SETTINGS)) + '" value="' + esc(rec.note || '') + '">' +
+        '<button class="sbtn" id="ns-' + id + '-' + team + '" data-act="notesave" data-m="' + id +
+        '" data-team="' + team + '">Save note</button>' +
+        '<button class="sbtn" data-act="notecancel" data-m="' + id + '">Cancel</button></div>';
+    else if (rec.note)
+      notes += '<div class="tnoteline"><span class="lbl">Note for ' + esc(teamLabel(team, SETTINGS)) +
+        '</span> ' + esc(rec.note) + '</div>';
   });
   if (!Object.keys(ts).length && m.sorted)
     h += '<span class="tp done">No task · ' + esc(whoOf(m.sorted.by)) + '</span>';
   if (m.sorted)
     h += '<button class="sbtn" id="tk-' + id + '" data-act="pick" data-m="' + id + '">' +
          (Object.keys(ts).length ? 'Another task' : 'Task') + '</button>';
-  return h ? '<div class="tri">' + h + '<div class="trifail" id="tf-' + id + '"></div></div>' : '';
+  return h ? '<div class="tri">' + h + notes + '<div class="trifail" id="tf-' + id + '"></div></div>' : '';
 }
 
 function msgHTML(id, m){
@@ -786,15 +809,26 @@ document.getElementById('msgs').onclick = function(e){
   var now = new Date().toISOString(), sorted = { by: me(), at: now };
   if (act === 'pick'){ PICK = id; drawThread(); return; }
   if (act === 'cancel'){ PICK = null; drawThread(); return; }
+  if (act === 'note'){
+    NOTEED = btn.getAttribute('data-team') + '/' + (m.tasks || {})[btn.getAttribute('data-team')];
+    drawThread();
+    var ed = document.getElementById('te-' + id + '-' + btn.getAttribute('data-team'));
+    if (ed) ed.focus();
+    return;
+  }
+  if (act === 'notecancel'){ NOTEED = null; drawThread(); return; }
   var patch = {}, after = null;
   if (act === 'notask'){
     patch['contactmsgs/' + CK + '/' + id + '/sorted'] = sorted;
     patch['contactnew/' + CK + '/' + id] = null;
   } else if (act === 'team'){
     var team = btn.getAttribute('data-team'), tid = contactId(), b = TH.b;
+    var noteIn = document.getElementById('tn-' + id);
+    var note = noteIn ? noteIn.value.trim().slice(0, 300) : '';
     patch['tasks/' + team + '/' + tid] = { ck: CK, msg: id, villa: b ? b.villa : '',
       name: b ? b.name : ((TH.t && TH.t.profile) || prettyPhone('+' + CK)),
       text: String(m.body || (m.media ? 'Photo' : '')).slice(0, 500), state:'open', at: now, by: me() };
+    if (note) Object.assign(patch['tasks/' + team + '/' + tid], { note: note, noteBy: me(), noteAt: now });
     patch['contactmsgs/' + CK + '/' + id + '/tasks/' + team] = tid;
     patch['contactmsgs/' + CK + '/' + id + '/sorted'] = sorted;
     patch['contactnew/' + CK + '/' + id] = null;
@@ -804,6 +838,16 @@ document.getElementById('msgs').onclick = function(e){
     if (HELLO && HELLO.buzz)
       after = function(){ notifyPush('guestTask', b ? b.villa : '', window.NALA_USER,
                                      { team: team, url: '/tasks.html' }); };
+  } else if (act === 'notesave'){
+    /* An empty note takes the note off: the rules keep a note from being
+       empty, so saying nothing is saying there is no note. */
+    var nt = btn.getAttribute('data-team'), nk = (m.tasks || {})[nt];
+    var nv = (document.getElementById('te-' + id + '-' + nt) || {}).value;
+    nv = String(nv || '').trim().slice(0, 300);
+    patch['tasks/' + nt + '/' + nk + '/note'] = nv || null;
+    patch['tasks/' + nt + '/' + nk + '/noteBy'] = nv ? me() : null;
+    patch['tasks/' + nt + '/' + nk + '/noteAt'] = nv ? now : null;
+    after = function(){ NOTEED = null; };
   } else if (act === 'done'){
     var tm = btn.getAttribute('data-team'), key = (m.tasks || {})[tm];
     patch['tasks/' + tm + '/' + key + '/state'] = 'done';
@@ -909,7 +953,7 @@ function hello(){
    while the desk is typing into the box or choosing a team. */
 function busy(){
   var box = document.getElementById('msgBox');
-  return document.hidden || PICK || (document.activeElement === box && box.value);
+  return document.hidden || PICK || NOTEED || (document.activeElement === box && box.value);
 }
 setInterval(function(){ if (window.__idToken && !busy()) refresh(); }, CK ? 8000 : 15000);
 document.addEventListener('visibilitychange', function(){

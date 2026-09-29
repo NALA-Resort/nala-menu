@@ -26,7 +26,8 @@
     { email:'desk@demo',  name:'Reception', role:'admin',        label:'Reception (sees everything)' },
     { email:'ray@demo',   name:'Ray',       role:'housekeeping', label:'Ray, Maintenance' },
     { email:'marco@demo', name:'Marco',     role:'chef',         label:'Marco, Kitchen' },
-    { email:'freya@demo', name:'Freya',     role:'spa',          label:'Freya, Spa' }
+    { email:'freya@demo', name:'Freya',     role:'spa',          label:'Freya, Spa' },
+    { email:'anna@demo',  name:'Anna',      role:'housekeeping', label:'Anna, Bar' }
   ];
   var WHO = PEOPLE[0];
   try {
@@ -44,7 +45,7 @@
   function seed(){
     var t = { staff:{}, permissions:{ open:{ 'guest-contact':true, tasks:true } },
               contactsettings:{ teams:{
-                bar:{ members:{} }, kitchen:{ members:{ 'marco@demo':true } },
+                bar:{ members:{ 'anna@demo':true } }, kitchen:{ members:{ 'marco@demo':true } },
                 housekeeping:{ members:{} }, maintenance:{ members:{ 'ray@demo':true } },
                 spa:{ members:{ 'freya@demo':true } } } },
               stays:{}, contact:{}, contactmsgs:{}, contactnew:{}, tasks:{}, previnvites:{} };
@@ -86,6 +87,8 @@
       body:'The umbrella on our deck won’t close. Could someone take a look?',
       media:{ 0:{ url:'https://api.twilio.com/demo/umbrella', type:'image/svg+xml' } },
       tasks:{ maintenance:'t1umbrella' }, sorted:{ by:'desk@demo', at:ago(7) } });
+    msg(S, 'odemo5', { dir:'out', ch:'wa', at:ago(7), by:'desk@demo', kind:'staff', status:'read',
+      body:'So sorry about that! Ray from maintenance will be with you in ten minutes.' });
     msg(S, 'in-SMcandle', { dir:'in', ch:'wa', at:ago(6),
       body:'Also, it’s Tom’s 40th tonight! Any chance of a candle on his dessert?' });
     fresh(S, 'in-SMcandle');
@@ -121,10 +124,16 @@
     msg(P, 'in-SMgin', { dir:'in', ch:'wa', at:ago(15),
       body:'Could we get two gin and tonics at the pool?', tasks:{ bar:'t2gandt' },
       sorted:{ by:'desk@demo', at:ago(14) } });
-    thread(P, { lastAt:ago(15), lastIn:ago(15), lastInCh:'wa', lastInWa:ago(15), dir:'in',
-      preview:'Could we get two gin and tonics at the pool?' });
+    msg(P, 'odemo4', { dir:'out', ch:'wa', at:ago(13), by:'desk@demo', kind:'staff', status:'read',
+      body:'Of course! Any gin you prefer, and where are you sitting?' });
+    msg(P, 'in-SMgin2', { dir:'in', ch:'wa', at:ago(11),
+      body:'Tanqueray with lime please. We\u2019re on the loungers by the pool steps.',
+      sorted:{ by:'desk@demo', at:ago(10) } });
+    thread(P, { lastAt:ago(11), lastIn:ago(11), lastInCh:'wa', lastInWa:ago(11), dir:'in',
+      preview:'Tanqueray with lime please. We\u2019re on the loungers by the pool steps.' });
     task('bar', 't2gandt', { ck:P, msg:'in-SMgin', villa:'9', name:'Priya Sharma',
-      text:'Could we get two gin and tonics at the pool?', state:'open', at:ago(14), by:'desk@demo' });
+      text:'Could we get two gin and tonics at the pool?', state:'open', at:ago(14), by:'desk@demo',
+      note:'Charge to villa 9', noteBy:'desk@demo', noteAt:ago(10) });
     var N = '61400000088';
     msg(N, 'in-SMcake', { dir:'in', ch:'sms', at:ago(5),
       body:'Could the kitchen do a gluten free birthday cake for tomorrow?',
@@ -164,13 +173,15 @@
       lastInWa:ago(6 * 1440), lastOut:ago(6 * 1440 - 12), dir:'out',
       preview:'Yes, two spaces beside villa 5. See you soon!',
       wa:{ on:true, by:'desk@demo', at:ago(6 * 1440) } });
+    t.demoSeed = SEED;
     return t;
   }
 
   /* ── the tab's copy of the database ─────────────────────────── */
+  var SEED = 2;   /* moved when the made-up guests change: a tab holding older ones starts again */
   var TREE = null;
   try { TREE = JSON.parse(sessionStorage.getItem(DBK) || 'null'); } catch (e){}
-  if (!TREE){ TREE = seed(); save(); }
+  if (!TREE || TREE.demoSeed !== SEED){ TREE = seed(); save(); }
   function save(){ try { sessionStorage.setItem(DBK, JSON.stringify(TREE)); } catch (e){} }
   function parts(p){ return String(p).split('/').filter(Boolean); }
   function get(p){
@@ -270,6 +281,42 @@
     if (b.kind === 'media')
       return Promise.resolve(new Response(new Blob([UMBRELLA], { type:'image/svg+xml' }),
         { status:200, headers:{ 'Content-Type':'image/svg+xml' } }));
+    if (b.kind === 'tasklog' || b.kind === 'taskmedia'){
+      /* As the Worker's door: a team's task, from its request until Done,
+         for the desk or a login on that team. */
+      var excerpt = function(team, id){
+        var set = ((TREE.contactsettings || {}).teams || {})[team] || {};
+        var member = !!(set.members && set.members[WHO.email] === true);
+        if (!can(WHO.role, 'editBookings') && !member) return null;
+        var task = get('/tasks/' + team + '/' + id); if (!task) return null;
+        var msgs = get('/contactmsgs/' + task.ck) || {}, src = msgs[task.msg];
+        var from = Date.parse((src && src.at) || task.at) || 0;
+        var until = task.state === 'done' && task.doneAt ? Date.parse(task.doneAt) : Infinity;
+        var ids = Object.keys(msgs).filter(function(k){
+          var a = Date.parse(msgs[k].at), m = msgs[k];
+          var theirs = m.dir === 'in' && m.tasks && Object.keys(m.tasks).length && !m.tasks[team];
+          return a >= from && a <= until && !theirs;
+        }).sort(function(x, y){ return Date.parse(msgs[x].at) - Date.parse(msgs[y].at); });
+        return { msgs:msgs, ids:ids };
+      };
+      if (b.kind === 'tasklog'){
+        var logs = {};
+        (b.tasks || []).forEach(function(it){
+          var x = excerpt(String(it.team), String(it.t)); if (!x) return;
+          logs[it.team + '/' + it.t] = x.ids.map(function(k){
+            var m = x.msgs[k];
+            return { id:k, dir:m.dir, ch:m.ch, body:m.body || '', at:m.at,
+                     by:m.dir === 'out' ? (m.by || '') : '', photos:m.media ? Object.keys(m.media).length : 0 };
+          });
+        });
+        return answer(200, { logs:logs });
+      }
+      var tx = excerpt(String(b.team), String(b.t));
+      if (!tx) return answer(403, { error:'not one of this login\u2019s tasks' });
+      if (tx.ids.indexOf(String(b.m)) < 0 || !tx.msgs[b.m].media) return answer(404, { error:'no such photo' });
+      return Promise.resolve(new Response(new Blob([UMBRELLA], { type:'image/svg+xml' }),
+        { status:200, headers:{ 'Content-Type':'image/svg+xml' } }));
+    }
     if (b.kind !== 'send') return answer(400, { error:'unknown kind' });
     var ck = String(b.ck || ''), t = get('/contact/' + ck) || {};
     if (t.optout) return answer(409, { error:'This guest texted STOP. Nothing can be sent until they text START.' });

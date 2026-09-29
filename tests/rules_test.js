@@ -1288,6 +1288,20 @@ console.log('--- Guest Contact: messages and tasks ---');
   ck('nobody else edits the list',
      !asx(WAITER).update('/contactsettings/teams/poolbar', { label: 'Pool bar', added: NOW }).allowed &&
      !asx(MANAGER).update('/contactsettings/teams/spa', { off: true }).allowed);
+  /* A task's note (29 Sep): what the team should know that the guest's
+     words do not say. The desk writes it, in its own name; the team's
+     Done leaves it as it found it. */
+  ck('the desk adds a note to a task, in its own name',
+     asx(WAITER).update('/tasks/maintenance/t1abcdef', { note: 'Lounger 4, charge to the room',
+       noteBy: 'waiter@nalaresort.com.au', noteAt: NOW }).allowed);
+  ck('never in somebody else\'s, and never empty',
+     !asx(WAITER).update('/tasks/maintenance/t1abcdef', { note: 'x',
+       noteBy: 'reception@nalaresort.com.au', noteAt: NOW }).allowed &&
+     !asx(WAITER).update('/tasks/maintenance/t1abcdef', { note: '',
+       noteBy: 'waiter@nalaresort.com.au', noteAt: NOW }).allowed);
+  ck('a team closing its task cannot write the note',
+     !asx(GROUNDS).update('/tasks/maintenance/t1abcdef', { state: 'done', doneAt: NOW,
+       doneBy: 'grounds@nalaresort.com.au', doneDay: TODAY, note: 'done it my way' }).allowed);
   /* Guest Contact's preview (29 Sep): the admin opens it to the staff. */
   ck('the admin opens Guest Contact and Tasks to the staff, and shuts them again',
      asx(ADMIN).update('/permissions/open', { 'guest-contact': true, tasks: true }).allowed &&

@@ -163,6 +163,18 @@ MSGS = {SARAH: {
                  "body": "All done, thanks. Is there parking for two cars?",
                  "sorted": {"by": "ben@x", "at": T("10:00", "2026-09-23")}},
 }}
+# Priya, villa 9: the owner's own example (29 Sep) - drinks by the pool,
+# then which ones, after the task was made - and the desk's note on it.
+MSGS["61411000009"] = {
+  "in-SMgin": {"dir": "in", "ch": "wa", "at": T("15:05"), "body": "Could we get two gin and tonics at the pool?",
+               "sorted": {"by": "ben@x", "at": T("15:06")}, "tasks": {"bar": "t2gandt"}},
+  "obar1": {"dir": "out", "ch": "wa", "at": T("15:07"), "by": "ben@x", "kind": "staff", "status": "read",
+            "body": "Of course! Which gin, and where are you sitting?"},
+  "in-SMgin2": {"dir": "in", "ch": "wa", "at": T("15:09"),
+                "body": "Tanqueray with lime, on the loungers by the steps.",
+                "sorted": {"by": "ben@x", "at": T("15:10")}}}
+TASKS["bar"]["t2gandt"].update({"note": "Charge to villa 9", "noteBy": "ben@x", "noteAt": T("15:10")})
+
 PREVINVITES = {"b-sarah": {"sentAt": "2026-09-22T10:02:00+10:00", "status": "sent", "to": "+61412345678",
                            "body": "Good morning. Ahead of your stay with us, a few questions. Nala Resort\nhttps://menu.nalaresort.com/prearrival.html?t=k7m2qx",
                            "by": "waiter@x", "delivery": "delivered"}}
@@ -217,8 +229,28 @@ def wk(route, request):
     SENT.append(b)
     if b.get("kind") == "hello":
         route.fulfill(status=200, content_type="application/json", body=js(STATE["hello"])); return
-    if b.get("kind") == "media":
+    if b.get("kind") in ("media", "taskmedia"):
         route.fulfill(status=200, content_type="image/png", body=PNG); return
+    if b.get("kind") == "tasklog":
+        # the Worker's reading, played here: the request and all after it,
+        # until Done. worker/contact-test.mjs holds the real one to it.
+        import datetime
+        ms = lambda x: datetime.datetime.fromisoformat(x.replace("Z", "+00:00")).timestamp()
+        logs = {}
+        for it in b.get("tasks", []):
+            task = TASKS.get(it["team"], {}).get(it["t"])
+            if not task: continue
+            msgs = MSGS.get(task["ck"], {})
+            frm = ms(msgs[task["msg"]]["at"]) if task["msg"] in msgs else ms(task["at"])
+            until = ms(task["doneAt"]) if task.get("state") == "done" and task.get("doneAt") else float("inf")
+            theirs = lambda m: m["dir"] == "in" and m.get("tasks") and it["team"] not in m["tasks"]
+            ids = sorted([k for k, m in msgs.items() if frm <= ms(m["at"]) <= until and not theirs(m)],
+                         key=lambda k: ms(msgs[k]["at"]))
+            logs[it["team"] + "/" + it["t"]] = [{"id": k, "dir": msgs[k]["dir"], "ch": msgs[k]["ch"],
+                "body": msgs[k].get("body", ""), "at": msgs[k]["at"],
+                "by": msgs[k].get("by", "") if msgs[k]["dir"] == "out" else "",
+                "photos": len(msgs[k].get("media", {}))} for k in ids]
+        route.fulfill(status=200, content_type="application/json", body=js({"logs": logs})); return
     st, rep = STATE["send"] or (200, {"id": "onew", "ch": "wa", "status": "queued"})
     route.fulfill(status=st, content_type="application/json", body=js(rep))
 
@@ -423,6 +455,7 @@ with sync_playwright() as p:
     ck("Task offers the teams, and a way back", teams == ["Bar", "Kitchen", "Housekeeping", "Maintenance",
                                                           "Spa", "Front desk", "Cancel"], teams)
     shot(pg, "gc-pick")
+    pg.fill("#tn-in-SMcandle", "Candle on the dessert, table by the window")
     pg.click("#tm-in-SMcandle-kitchen"); pg.wait_for_timeout(500)
     w = WRITES[-1] if WRITES else {"b": {}}
     tk = [k for k in w["b"] if k.startswith("tasks/kitchen/")]
@@ -434,7 +467,18 @@ with sync_playwright() as p:
        w["b"].get("contactmsgs/%s/in-SMcandle/tasks/kitchen" % SARAH) == tk[0].split("/")[2] and
        "contactmsgs/%s/in-SMcandle/sorted" % SARAH in w["b"] and
        w["b"].get("contactnew/%s/in-SMcandle" % SARAH, "x") is None, w)
+    ck("with the desk's note for the team, in the desk's name",
+       rec.get("note") == "Candle on the dessert, table by the window" and rec.get("noteBy") == "ben@x" and
+       bool(rec.get("noteAt")), rec)
     ck("and no buzz goes to a push Worker that does not know the event yet", BUZZ == [])
+    del WRITES[:]
+    pg.click("#nb-in-SMumbrella-maintenance"); pg.wait_for_timeout(150)
+    pg.fill("#te-in-SMumbrella-maintenance", "Bring the long ladder")
+    pg.click("#ns-in-SMumbrella-maintenance"); pg.wait_for_timeout(500)
+    w = WRITES[-1] if WRITES else {"b": {}}
+    ck("an open task's note is written afterwards, in one write, in the desk's name",
+       w["b"].get("tasks/maintenance/t1umbrella/note") == "Bring the long ladder" and
+       w["b"].get("tasks/maintenance/t1umbrella/noteBy") == "ben@x", w)
     done(pg)
 
     STATE["hello"]["buzz"] = True
@@ -588,6 +632,16 @@ with sync_playwright() as p:
            pg.get_attribute('.task[data-t="t2gandt"] a.words', "href") == "guest-contact.html?c=61411000009")
         ck("in the guest's own words", cs[0]["words"] == "Could we get two gin and tonics at the pool?" and
            cs[0]["nm"] == "Priya Sharma", cs)
+        pg.wait_for_timeout(400)
+        ck("the bar's card carries the desk's note",
+           "Charge to villa 9" in (pg.text_content('.task[data-t="t2gandt"] .tnote') or ""))
+        lg = pg.evaluate("()=>[...document.querySelectorAll('.task[data-t=\"t2gandt\"] .lg')].map(e=>e.textContent)")
+        ck("and its conversation since the request: the desk's reply, then the guest's answer",
+           len(lg) == 2 and lg[0].startswith("Ben 3:07pm") and "Which gin" in lg[0] and
+           lg[1].startswith("Guest 3:09pm") and "Tanqueray" in lg[1], lg)
+        ck("asked of the Worker for every open card in one call",
+           any(b.get("kind") == "tasklog" and len(b.get("tasks", [])) == 3 for b in SENT),
+           [b for b in SENT if b.get("kind") == "tasklog"][:1])
         ck("an open task is the law's amber", pg.evaluate(
            "()=>getComputedStyle(document.querySelector('.task')).backgroundColor") == "rgb(246, 234, 213)")
         shot(pg, "tasks-desk")
@@ -595,6 +649,10 @@ with sync_playwright() as p:
         pg = page(email="grounds@x", file="tasks.html")
         cs = cards(pg)
         ck("the grounds login sees Maintenance's alone", [c["id"] for c in cs] == ["t1umbrella"], cs)
+        pg.wait_for_timeout(500)
+        ck("with the guest's photo on it, through the Worker's task door",
+           pg.evaluate("()=>{const i=document.querySelector('.task[data-t=\"t1umbrella\"] img.tphoto');"
+                       "return !!(i && i.src.startsWith('blob:'))}"))
         del WRITES[:]
         pg.click('.task[data-t="t1umbrella"] .sbtn'); pg.wait_for_timeout(500)
         w = WRITES[-1] if WRITES else {"b": {}}

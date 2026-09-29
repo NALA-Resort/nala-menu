@@ -2650,6 +2650,11 @@ function ensureNotifySettings(role){
    <ck> is the guest's number in E.164 without its plus, which a Firebase
    key can hold. */
 
+/* The Guest Contact Worker (worker/guest-contact.js), which Guest Contact
+   asks to send and Tasks asks for a task's conversation. One address for
+   both pages. */
+var CONTACT_URL = 'https://nala-contact.ben-681.workers.dev';
+
 /* The six teams the owner started with (29 Sep). The key is what the
    database stores; the label is what staff read. The list itself is
    contactTeams below: these six, as Settings names them, and any added. */

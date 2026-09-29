@@ -101,6 +101,14 @@ with sync_playwright() as p:
     words = pg.evaluate("()=>[...document.querySelectorAll('#board .task')].map(e=>e.querySelector('.words').textContent)")
     ck("where the shower is, beside the umbrella, and nobody else's",
        "Could someone fix the outdoor shower?" in words and len(words) == 2, words)
+    pg.wait_for_timeout(600)
+    shower = pg.evaluate("""()=>{const c=[...document.querySelectorAll('#board .task')].filter(e=>
+        e.querySelector('.words').textContent.indexOf('shower')>-1)[0];
+        return [...c.querySelectorAll('.lg')].map(e=>e.textContent)}""")
+    ck("the card carries the conversation since the request: Reception's reply",
+       any(x.startswith("Reception") and "On our way to have a look." in x for x in shower), shower)
+    ck("and the umbrella card shows the guest's photo",
+       pg.evaluate("()=>[...document.querySelectorAll('#board img.tphoto')].some(i=>i.src.startsWith('blob:'))"))
     tid = pg.evaluate("""()=>[...document.querySelectorAll('#board .task')].filter(e=>
         e.querySelector('.words').textContent.indexOf('shower')>-1)[0].dataset.t""")
     pg.click('.task[data-t="%s"] .sbtn' % tid); pg.wait_for_timeout(1500)
@@ -110,6 +118,15 @@ with sync_playwright() as p:
        pg.url.split("?")[0].endswith("tasks.html") and pg.is_visible("#demoBar"), pg.url)
     pg.select_option("#demoWho", "desk@demo"); pg.wait_for_timeout(1800)
     ck("back as Reception, Guest Contact again", pg.url.split("?")[0].endswith("guest-contact.html"))
+    # the owner's own example: drinks by the pool, then which ones
+    pg.select_option("#demoWho", "anna@demo"); pg.wait_for_timeout(2000)
+    gin = pg.evaluate("""()=>{const c=document.querySelector('.task[data-t="t2gandt"]');
+        return c ? {note:(c.querySelector('.tnote')||{}).textContent||'',
+                    lg:[...c.querySelectorAll('.lg')].map(e=>e.textContent)} : null}""")
+    ck("as Anna, Bar: the drinks arrive with the desk's note, and which drinks",
+       bool(gin) and "Charge to villa 9" in gin["note"] and any("Tanqueray" in x for x in gin["lg"]) and
+       any(x.startswith("Reception") for x in gin["lg"]), gin)
+    pg.select_option("#demoWho", "desk@demo"); pg.wait_for_timeout(1800)
 
     # ── 4. it stays the demo ───────────────────────────────────────
     menu = pg.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]

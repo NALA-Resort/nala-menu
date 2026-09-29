@@ -38,6 +38,16 @@
   .task a.words { text-decoration:underline; text-decoration-color:var(--law-amber-b); }
   /* Done sits under the words, so the name never gives way to it. */
   .task .tact { display:flex; justify-content:flex-end; margin-top:8px; }
+  /* What the team needs beyond the request (the owner, 29 Sep): the desk's
+     note, then the conversation since the request - the desk's replies and
+     the guest's answers - so "drinks by the pool" arrives with which ones. */
+  .task .tnote { font-size:var(--t2); line-height:1.4; margin-top:6px; color:var(--ink); }
+  .task .tnote .lbl, .task .lg .who { color:var(--law-amber-ink); font-weight:600; }
+  .task .log { margin-top:8px; padding-top:6px; border-top:1px solid var(--law-amber-b); }
+  .task .lg { font-size:var(--t2); line-height:1.4; margin-top:4px; color:var(--ink);
+              overflow-wrap:anywhere; }
+  .task .tphoto { display:block; width:160px; max-width:100%; min-height:40px; margin-top:6px;
+                  border-radius:8px; background:#C9C3B7; }
   .sbtn { display:inline-flex; align-items:center; justify-content:center; min-height:36px;
           padding:0 14px; border:1px solid var(--law-amber-b); border-radius:var(--r);
           background:var(--surface, #fff); font-family:var(--ui-font); font-size:var(--t2);
@@ -75,9 +85,9 @@ body.paper .task { box-shadow:var(--lift); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <!-- ?demo: made-up guests, nothing leaves the phone (contact-demo.js). Inert otherwise. -->
-<script src="contact-demo.js?v=1"></script>
+<script src="contact-demo.js?v=3"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=90"></script>
+<script src="nala-shared.js?v=91"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -91,6 +101,8 @@ function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
 var TEAMS = [];          /* the teams this login sees */
 var CFG = null;          /* /contactsettings: the team list and who does which */
 var OPEN = {}, DONE = {};
+var LOGS = {};           /* 'team/task': its conversation since the request, from the Worker */
+var PHOTOS = {};         /* a photo's key: its object URL, fetched once */
 var READFAIL = false;
 
 function esc(t){
@@ -142,6 +154,7 @@ function load(){
     TEAMS.forEach(function(k, i){ DONE[k] = res[1][i]; });
     if (READFAIL){ document.getElementById('errBar').textContent = ''; READFAIL = false; }
     draw();
+    loadLogs();
   }).catch(function(){
     READFAIL = true;
     document.getElementById('errBar').textContent = 'Could not read the tasks. This is usually ' +
@@ -149,10 +162,63 @@ function load(){
   });
 }
 
+/* Each open task's conversation since the request, from the Worker: a
+   team's login reads no conversation itself (the rules), so the Worker
+   hands it just its task's stretch. One call for every card. Nothing
+   drawn from it is lost if it fails: the task stands as it was. */
+function loadLogs(){
+  var list = [];
+  Object.keys(OPEN).forEach(function(k){
+    Object.keys(OPEN[k] || {}).forEach(function(id){ list.push({ team: k, t: id }); });
+  });
+  if (!list.length || !window.__idToken) return;
+  fetch(CONTACT_URL, { method:'POST', headers:{ 'Content-Type':'application/json' },
+                       body: JSON.stringify({ idToken: window.__idToken, kind:'tasklog', tasks: list }) })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      if (!j || !j.logs) return;
+      var was = JSON.stringify(LOGS);
+      LOGS = j.logs;
+      if (JSON.stringify(LOGS) !== was) draw();
+    })
+    .catch(function(){});
+}
+/* A guest's photo on a task, through the Worker's taskmedia door, once. */
+function loadPhotos(){
+  [].forEach.call(document.querySelectorAll('img.tphoto:not([src])'), function(img){
+    var key = [img.dataset.team, img.dataset.t, img.dataset.m, img.dataset.i].join('/');
+    if (PHOTOS[key]){ img.src = PHOTOS[key]; return; }
+    fetch(CONTACT_URL, { method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ idToken: window.__idToken, kind:'taskmedia', team: img.dataset.team,
+                             t: img.dataset.t, m: img.dataset.m, i: img.dataset.i }) })
+      .then(function(r){ return r.ok ? r.blob() : null; })
+      .then(function(b){ if (b){ PHOTOS[key] = URL.createObjectURL(b); img.src = PHOTOS[key]; } })
+      .catch(function(){});
+  });
+}
+
 function atMs(t){ var d = parseISO(t.at); return d ? d.getTime() : 0; }
 function cardHTML(team, id, t, done){
   var talk = canOpen(window.NALA_ROLE, 'guest-contact.html') && t.ck;
   var words = esc(t.text || '');
+  /* The conversation since the request, the request itself left to the
+     words above; its photos, and any later ones, drawn where they came. */
+  var log = done ? [] : (LOGS[team + '/' + id] || []);
+  function photos(x){
+    var h = '';
+    for (var i = 0; i < (x.photos || 0) && i < 4; i++)
+      h += '<img class="tphoto" alt="Photo from the guest" data-team="' + team + '" data-t="' +
+           esc(id) + '" data-m="' + esc(x.id) + '" data-i="' + i + '">';
+    return h;
+  }
+  var srcPhotos = log.filter(function(x){ return x.id === t.msg; }).map(photos).join('');
+  var rest = log.filter(function(x){ return x.id !== t.msg; });
+  var said = rest.length ? '<div class="log">' + rest.map(function(x){
+    var who = x.dir === 'in' ? 'Guest' : (whoOf(x.by) || 'Desk');
+    return '<div class="lg ' + (x.dir === 'in' ? 'in' : 'out') + '"><span class="who">' + esc(who) +
+           ' ' + esc(timeOf(x.at)) + '</span> ' + esc(x.body) + photos(x) + '</div>';
+  }).join('') + '</div>' : '';
+  var note = t.note ? '<div class="tnote"><span class="lbl">Note</span> ' + esc(t.note) + '</div>' : '';
   return '<div class="task' + (done ? ' done' : '') + '" data-t="' + esc(id) + '" data-team="' + team + '">' +
     '<div class="v">' + esc(t.villa || '?') + '</div><div class="mid">' +
     '<div class="l1 trimrow"><span class="nm trim">' + esc(t.name || 'Guest') + '</span>' +
@@ -161,7 +227,7 @@ function cardHTML(team, id, t, done){
     /* The guest's words open their conversation, for a login that may read
        it; for a team's own login they are only the words. */
     (talk ? '<a class="words" href="guest-contact.html?c=' + esc(t.ck) + '">' + words + '</a>'
-          : '<div class="words">' + words + '</div>') +
+          : '<div class="words">' + words + '</div>') + srcPhotos + note + said +
     (done ? '' : '<div class="tact"><button class="sbtn" id="done-' + esc(id) + '" data-act="done" data-team="' +
                  team + '" data-t="' + esc(id) + '">Done</button></div><div class="tfail" id="tf-' +
                  esc(id) + '"></div>') +
@@ -205,6 +271,7 @@ function draw(){
   document.getElementById('doneSum').textContent = 'Done today · ' + done.length;
   document.getElementById('doneList').innerHTML = done.map(function(x){
     return cardHTML(x[0], x[1], x[2], true); }).join('');
+  loadPhotos();
 }
 
 /* Done: closes the task in this login's name, today. The rules let a team

@@ -114,6 +114,20 @@ green with who did.
 tasks of its teams, in the guest's own words, and presses Done. The desk
 sees every team. The menu entry counts what is open.
 
+A task carries what the team needs to do it (the owner, 29 Sep: "can we
+get some drinks by the pool? This becomes a task with no other
+information attached"):
+
+- **The conversation since the request**: every message after it until
+  Done - the desk's "what would you like?" and the guest's "two G&Ts and a
+  lemonade" - and the guest's photos. Only that stretch: a team's login
+  reads no other part of a guest's conversation.
+- **The desk's note**: typed under *Task* when the task is made, or with
+  *Note* on the open task afterwards, for what the conversation does not
+  say - *charge to villa 9*, *bring the ladder*.
+
+Replies to the guest stay with the desk.
+
 **The Dashboard** has a Guest messages card beside Arrivals, today only: how
 many guests have a message to sort and how many tasks are open, and a door
 to Guest Contact. It reads both counts from the readers the two pages use.
@@ -133,7 +147,7 @@ One fact to a place (CLAUDE.md, rule 1):
 | `/contact/<number>` | one guest's thread: last message, which way they wrote, WhatsApp consent, opted out | the Worker; the consent switch by the desk |
 | `/contactmsgs/<number>/<id>` | each message in and out, with its Twilio status | the Worker; how it was sorted by the desk |
 | `/contactnew/<number>/<id>` | a guest message nobody has sorted | the Worker adds, the desk removes by sorting |
-| `/tasks/<team>/<id>` | a task, open then done | the desk makes it; the team or the desk closes it |
+| `/tasks/<team>/<id>` | a task, open then done, and the desk's note (`note`, `noteBy`, `noteAt`) | the desk makes it and writes its note; the team or the desk closes it |
 | `/contactsettings/teams/<team>` | a team's name, whether it is retired, and who does its tasks (`members/<login>`) | the admin, in Settings |
 
 `<number>` is the guest's number without its plus, e.g. `61412345678`.

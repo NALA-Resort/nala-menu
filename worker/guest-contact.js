@@ -10,6 +10,9 @@
  *                         hello  is it set up, and is it in test mode?
  *                         send   one message from the desk to one guest
  *                         media  a guest's photo, fetched from Twilio
+ *   tasks.html            tasklog    each task's conversation, from the
+ *                                    request until Done, for its team
+ *                         taskmedia  a photo inside that stretch
  *   Twilio              POST /twilio/in      a guest's message arriving
  *   Twilio              POST /twilio/status  a receipt for one we sent
  *
@@ -427,7 +430,8 @@ async function desk(request, env) {
   catch { return reply(400, { error: "not JSON" }); }
   const { idToken, kind } = body || {};
   if (!idToken) return reply(401, { error: "no idToken" });
-  if (["hello", "send", "media"].indexOf(kind) < 0) return reply(400, { error: "unknown kind" });
+  if (["hello", "send", "media", "tasklog", "taskmedia"].indexOf(kind) < 0)
+    return reply(400, { error: "unknown kind" });
 
   /* 1. Who is asking, from the token: accounts:lookup checks the signature,
      the expiry and the project, and names the account. */
@@ -447,8 +451,74 @@ async function desk(request, env) {
   } catch {
     return reply(403, { error: "could not read the staff record" });
   }
-  if (!maySend(staffRec && staffRec.role, permissions))
-    return reply(403, { error: "this login may not use Guest Contact" });
+  const deskOk = maySend(staffRec && staffRec.role, permissions);
+
+  /* ── a team's view of its own tasks (29 Sep) ─────────────────────
+     The owner, on the first build: the login doing a task "can only see
+     what the guest has requested ... can't see any of the responses". A
+     team's login reads no conversation - the rules keep it so, and the
+     masseuse is an outside contractor - so this door hands it the part of
+     one that belongs to its task: every message from the request until
+     the task is done, nothing before it. The desk may ask for any team's
+     tasks; any other login only for a team Settings puts it on. */
+  if (kind === "tasklog" || kind === "taskmedia") {
+    const settings = await dbAs(idToken, "/contactsettings").catch(() => null);
+    const onTeam = (team) => deskOk || !!(settings && settings.teams && settings.teams[team] &&
+      settings.teams[team].members && settings.teams[team].members[emailKey(email)] === true);
+    const excerpt = async (team, t) => {
+      if (!/^[a-z]{2,20}$/.test(team) || !/^[A-Za-z0-9_-]{1,64}$/.test(t) || !onTeam(team)) return null;
+      const task = await dbAs(idToken, "/tasks/" + team + "/" + t).catch(() => null);
+      const ck = String((task && task.ck) || "");
+      if (!/^[1-9]\d{7,14}$/.test(ck)) return null;
+      const msgs = (await db(env, "/contactmsgs/" + ck, "GET").catch(() => null)) || {};
+      const src = msgs[task.msg];
+      const from = stampMs(src && src.at) != null ? stampMs(src.at) : (stampMs(task.at) || 0);
+      const until = task.state === "done" && stampMs(task.doneAt) != null ? stampMs(task.doneAt) : Infinity;
+      /* A later request the desk made into another team's task is that
+         team's to read, not this one's: the candle is the kitchen's, even
+         when it came after the umbrella. */
+      const theirs = (m) => m.dir === "in" && m.tasks && typeof m.tasks === "object" &&
+                            Object.keys(m.tasks).length > 0 && !m.tasks[team];
+      const ids = Object.keys(msgs).filter((id) => {
+        const at = stampMs(msgs[id] && msgs[id].at);
+        return at != null && at >= from && at <= until && !theirs(msgs[id]);
+      }).sort((a, b) => (stampMs(msgs[a].at) - stampMs(msgs[b].at)) || (a < b ? -1 : 1));
+      return { msgs, ids };
+    };
+    if (kind === "tasklog") {
+      const logs = {};
+      for (const it of (Array.isArray(body.tasks) ? body.tasks.slice(0, 40) : [])) {
+        const team = String((it && it.team) || ""), t = String((it && it.t) || "");
+        const x = await excerpt(team, t);
+        if (!x) continue;
+        /* The words and who said them; never a photo's address, which
+           only this Worker may fetch. */
+        logs[team + "/" + t] = x.ids.slice(-40).map((id) => {
+          const m = x.msgs[id];
+          return { id, dir: m.dir === "out" ? "out" : "in", ch: m.ch === "wa" ? "wa" : "sms",
+                   body: String(m.body || "").slice(0, 1600), at: m.at,
+                   by: m.dir === "out" ? String(m.by || "") : "",
+                   photos: m.media ? Object.keys(m.media).length : 0 };
+        });
+      }
+      return reply(200, { logs });
+    }
+    /* taskmedia: a photo inside the task's stretch of the conversation. */
+    const m = String(body.m || ""), i = String(body.i || "0");
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(m) || !/^[0-9]$/.test(i)) return reply(400, { error: "bad photo" });
+    const x = await excerpt(String(body.team || ""), String(body.t || ""));
+    if (!x) return reply(403, { error: "not one of this login's tasks" });
+    const tm = x.ids.indexOf(m) > -1 && x.msgs[m].media && x.msgs[m].media[i];
+    if (!tm || !String(tm.url || "").startsWith("https://api.twilio.com/"))
+      return reply(404, { error: "no such photo" });
+    const tr = await twilioMedia(env, tm.url);
+    if (!tr) return reply(502, { error: "Twilio would not give the photo" });
+    return new Response(tr.body, { status: 200, headers: {
+      "Content-Type": tr.headers.get("Content-Type") || tm.type || "application/octet-stream",
+      "Cache-Control": "private, max-age=3600", ...CORS } });
+  }
+
+  if (!deskOk) return reply(403, { error: "this login may not use Guest Contact" });
 
   const test = !!testList(env);
   if (kind === "hello")

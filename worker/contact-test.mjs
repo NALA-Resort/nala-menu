@@ -471,5 +471,74 @@ install(); STATE.email = "chef@nala.x";
 ck("and a login without editBookings sees no photo",
    (await desk({ kind: "media", ck: SARAH, m: "in-MM1", i: "0" })).status === 403);
 
+/* ── a team's view of its own task (29 Sep) ──────────────────────
+   The owner: the login doing a task "can only see what the guest has
+   requested ... can't see any of the responses". The door hands a team
+   its task's stretch of the conversation - the request and everything
+   after it until Done - and nothing else. */
+function teamWorld() {
+  install();
+  STORE["/staff/ray@nala,x"] = { role: "housekeeping" };
+  STORE["/contactsettings"] = { teams: { bar: { members: { "ray@nala,x": true } } } };
+  const T0 = Date.now() - 30 * 60000, at = (min) => new Date(T0 + min * 60000).toISOString();
+  STORE["/contactmsgs/" + SARAH] = {
+    "in-SMold":    { dir: "in", ch: "wa", body: "Is breakfast included?", at: at(-90) },
+    "in-SMdrinks": { dir: "in", ch: "wa", body: "Can we get some drinks by the pool?", at: at(0) },
+    "odesk1":      { dir: "out", ch: "wa", body: "Of course! What would you like?", at: at(1),
+                     by: "waiter@nala.x", status: "read" },
+    "in-SMwhat":   { dir: "in", ch: "wa", body: "Two G&Ts and a lemonade please", at: at(3),
+                     media: { 0: { url: "https://api.twilio.com/2010-04-01/Accounts/AC123/Messages/MM9/Media/ME9",
+                                   type: "image/jpeg" } } }
+  };
+  STORE["/tasks/bar/t1"] = { ck: SARAH, msg: "in-SMdrinks", villa: "7", name: "Sarah Whitfield",
+                             text: "Can we get some drinks by the pool?", state: "open", at: at(0), by: "waiter@nala.x" };
+  STORE["/tasks/maintenance/t2"] = { ck: SARAH, msg: "in-SMold", villa: "7", name: "Sarah Whitfield",
+                                     text: "Is breakfast included?", state: "open", at: at(-90), by: "waiter@nala.x" };
+  return at;
+}
+let at = teamWorld(); STATE.email = "ray@nala.x";
+r = await desk({ kind: "tasklog", tasks: [{ team: "bar", t: "t1" }, { team: "maintenance", t: "t2" }] });
+j = await r.json();
+const bar1 = (j.logs || {})["bar/t1"] || [];
+ck("a team's login gets its task's conversation: the request, the desk's reply, the guest's answer",
+   r.status === 200 && bar1.map((x) => x.id).join() === "in-SMdrinks,odesk1,in-SMwhat" &&
+   bar1[1].dir === "out" && bar1[1].by === "waiter@nala.x" && bar1[2].body === "Two G&Ts and a lemonade please");
+ck("nothing from before the request, and never another team's task",
+   !bar1.some((x) => x.id === "in-SMold") && !("maintenance/t2" in (j.logs || {})));
+STORE["/contactmsgs/" + SARAH]["in-SMcandle"] = { dir: "in", ch: "wa", at: at(4),
+  body: "Any chance of a candle on the dessert?", tasks: { kitchen: "t9" } };
+STORE["/contactmsgs/" + SARAH]["in-SMsoon"] = { dir: "in", ch: "wa", at: at(5), body: "See you soon!" };
+r = await desk({ kind: "tasklog", tasks: [{ team: "bar", t: "t1" }] });
+j = await r.json();
+ck("a later request made into another team's task is theirs, not this card's; the rest stays",
+   !(j.logs["bar/t1"] || []).some((x) => x.id === "in-SMcandle") &&
+   (j.logs["bar/t1"] || []).some((x) => x.id === "in-SMsoon"));
+delete STORE["/contactmsgs/" + SARAH]["in-SMcandle"]; delete STORE["/contactmsgs/" + SARAH]["in-SMsoon"];
+ck("a photo is counted, its address never handed over",
+   bar1[2].photos === 1 && !JSON.stringify(j).includes("api.twilio.com"));
+STORE["/tasks/bar/t1"].state = "done"; STORE["/tasks/bar/t1"].doneAt = at(2);
+r = await desk({ kind: "tasklog", tasks: [{ team: "bar", t: "t1" }] });
+j = await r.json();
+ck("a task done keeps the conversation up to its Done, and no further",
+   (j.logs["bar/t1"] || []).map((x) => x.id).join() === "in-SMdrinks,odesk1");
+at = teamWorld();
+r = await desk({ kind: "tasklog", tasks: [{ team: "maintenance", t: "t2" }] });
+j = await r.json();
+ck("the desk may read any team's task", (j.logs["maintenance/t2"] || []).length === 4);
+at = teamWorld(); STATE.email = "chef@nala.x";
+r = await desk({ kind: "tasklog", tasks: [{ team: "bar", t: "t1" }] });
+j = await r.json();
+ck("a login on no team gets nothing", r.status === 200 && !Object.keys(j.logs || {}).length);
+ck("and is still refused a send", (await desk({ kind: "send", ck: SARAH, text: "hi" })).status === 403);
+at = teamWorld(); STATE.email = "ray@nala.x";
+r = await desk({ kind: "taskmedia", team: "bar", t: "t1", m: "in-SMwhat", i: "0" });
+ck("the team sees a photo in its task's conversation",
+   r.status === 200 && (await r.text()) === "JPEGBYTES");
+STORE["/contactmsgs/" + SARAH]["in-SMold"].media = { 0: { url: "https://api.twilio.com/x/Media/ME1", type: "image/jpeg" } };
+ck("but not one from before the request",
+   (await desk({ kind: "taskmedia", team: "bar", t: "t1", m: "in-SMold", i: "0" })).status === 404);
+ck("nor any photo of a team it is not on",
+   (await desk({ kind: "taskmedia", team: "maintenance", t: "t2", m: "in-SMold", i: "0" })).status === 403);
+
 console.log("RESULT: %d passed, %d failed", P, F);
 process.exit(F ? 1 : 0);
