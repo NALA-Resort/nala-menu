@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mock &middot; Guest Contact</title>
+<!-- Mock, 29 Sep. NOT APPROVED, NOT BUILT. The owner's brief, the same day:
+     "This would be a completely new module, let's call it Guest Contact. It
+     would be able to operate just like Guest Touch, whereby guests are
+     filtered by upcoming, in-house and past, based on their booking dates.
+     This makes it easy for us to send the guest a message and for them to
+     reply to us. Currently we send pre-arrival forms via our web application
+     and the reply is caught by Guest Touch. The reply should be caught by our
+     application. This would save us from having an additional application."
+     Then: "WhatsApp is a major upgrade that I'd be willing to invest time to
+     accomplish."
+
+     THE SUPPLIER: Twilio, because ClickSend has no WhatsApp. One Australian
+     mobile number carries both SMS and WhatsApp. Twilio's plain Messaging API,
+     not its Conversations API and not a fork of twilio-conversations-demo-react:
+     the thread lives in Firebase beside the booking, where every board already
+     reads, rather than a second copy at Twilio behind a second login. Every
+     text the app already sends (pre-arrival, tonight's menu, external
+     invitation, spa reminder) moves to the new number, so every reply lands
+     here and Guest Touch can go.
+
+     WHAT WHATSAPP DECIDES, drawn in the frames:
+       - 24 hours. Free text only within 24 hours of the guest's last message.
+         After that, only wording Meta has approved (a template), or SMS.
+       - Templates. Every text the app starts is a template, approved once:
+         pre-arrival form, tonight's menu, external invitation, spa reminder,
+         a quick question, your arrival. Links become buttons.
+       - Consent. Meta requires the guest's agreement to be messaged by Nala
+         Resort before the first WhatsApp message. Any channel, but it must
+         name the business; a number on a booking is not consent. The owner's:
+         a line in the Mews booking form, and a tick on the pre-arrival form.
+       - No WhatsApp. A WhatsApp send to a number without it fails a few
+         seconds later (Twilio 63024/63003, on the status callback); the Worker
+         then sends the same words by SMS and remembers the number is SMS only.
+       - Read. WhatsApp reports Read unless the guest turned receipts off;
+         SMS says Delivered at best.
+
+     DECIDED HERE, overrule any:
+       - One conversation per guest mobile, across stays and both channels.
+       - Replies go back the way the guest last wrote; messages we start go
+         on WhatsApp to a guest who agreed and has it, else SMS.
+       - States, all colour-law tokens, no new colour:
+           needs a reply   the guest wrote last, not answered   white (work to do)
+           sent, no reply  only we have written                 law's waiting grey
+           answered        replied to, or marked done            done green
+           no messages     nothing sent, or no mobile            sunk, dashed
+       - Mark done, for "Thanks!": no reply needed, the row goes green.
+       - editBookings, like the SMS pages. A top-level menu entry after Front
+         Desk, with the count of guests waiting on a reply (NAV_ACTIONS).
+
+     THE DATA, a sketch for the build:
+       /contact/<E.164 digits>/meta     lastIn, lastOut, preview, waiting,
+                                        doneAt, doneBy, wa (true|false|unknown)
+       /contact/<E.164 digits>/msgs/<id> dir in|out, ch wa|sms, body, media,
+                                        at, by, kind, sid, status, statusAt, err
+     Joined to bookings by normalisePhone (tests/phone_cases.json). The row
+     state is one shared reader with a case table (rule 1): the list, the
+     menu badge, the Dashboard and the Guest Profile all read it. The 24-hour
+     window is computed by the page AND the Worker, which refuses free text
+     outside it: a shared table (rule 3).
+
+     The frames use the live sheets (nala-ui2.css, nala-ui.css) linked
+     WITHOUT ?v= on purpose, as the other mocks do. Frame 4 draws WhatsApp's
+     own screen, so its colours are WhatsApp's, not the law's. Nothing works
+     on it. ?w=360 or ?w=320 draws every frame at that width. -->
+<style>
+  /* The mock's own chrome, as mock-external-invite.html has it. */
+  :root{ --surround:#E4E4E0; --ink:#1B1B19; --mid:#5F5F58; color-scheme:light; }
+  *{ box-sizing:border-box; }
+  html, body{ margin:0; }
+  body{ background:var(--surround); color:var(--ink);
+        font:14px/1.45 -apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
+  .bar{ padding:14px 16px 4px; max-width:1740px; margin:0 auto; }
+  .bar h1{ font-size:17px; font-weight:600; margin:0 0 2px; }
+  .bar p{ margin:0; color:var(--mid); max-width:74ch; }
+  .stage{ display:flex; flex-wrap:wrap; justify-content:center; align-items:flex-start;
+          gap:28px; padding:14px 16px 40px; max-width:1740px; margin:0 auto; }
+  figure{ margin:0; flex:0 1 auto; width:var(--fw, 390px); max-width:100%; }
+  figcaption{ font-size:14px; font-weight:600; margin:0 0 8px 2px; }
+  figcaption b{ display:inline-flex; align-items:center; justify-content:center;
+                width:22px; height:22px; border-radius:999px; background:var(--ink);
+                color:#fff; font-size:12px; margin-right:6px; vertical-align:1px; }
+  .scr{ overflow:hidden; border-radius:14px; background:#fff; margin-bottom:10px;
+        box-shadow:0 0 0 1px rgba(0,0,0,.08), 0 6px 18px rgba(0,0,0,.08); }
+  .scr iframe{ display:block; border:0; width:100%; height:844px; }
+  ul.notes{ margin:0; padding:0 0 0 18px; color:var(--mid); font-size:13px; }
+  ul.notes li{ margin:0 0 4px; }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <h1>Guest Contact</h1>
+  <p>Mock, 29 Sep, not built. Every guest by booking (Upcoming, In-house,
+    Past) with one conversation each. WhatsApp when the guest has it and has
+    agreed, SMS when not, from one resort number. Every reply lands here,
+    including replies to the pre-arrival, menu and spa texts. Nothing works
+    on it.</p>
+</header>
+
+<main class="stage">
+  <figure>
+    <figcaption><b>1</b>Guest Contact &middot; In-house</figcaption>
+    <div class="scr"><iframe title="Guest Contact, In-house" data-doc="f-list" data-h="auto"></iframe></div>
+    <ul class="notes">
+      <li>Work first: needs a reply (white, with a count), sent with no reply
+        yet (grey), answered or marked done (green), nothing sent (sunk).</li>
+      <li>Upcoming and Past are the same list, by arrival and by departure.
+        Search reaches all three.</li>
+      <li>A number that is on no booking still lands here, its number in
+        place of a name.</li>
+      <li>The menu entry carries the count waiting on a reply.</li>
+    </ul>
+  </figure>
+
+  <figure>
+    <figcaption><b>2</b>Sarah &middot; WhatsApp, inside 24 hours</figcaption>
+    <div class="scr"><iframe title="Conversation, WhatsApp open" data-doc="f-thread" data-h="auto"></iframe></div>
+    <ul class="notes">
+      <li>The whole stay in one place: the pre-arrival form, the spa reminder
+        and tonight's menu sit in the conversation with who sent them.</li>
+      <li>She wrote 3:14pm, so free text is open until 3:14pm tomorrow. The
+        line above the box says so.</li>
+      <li>Photos come through. Read comes from WhatsApp.</li>
+      <li>Mark done is for "Thanks!": no reply needed, the row goes green.</li>
+    </ul>
+  </figure>
+
+  <figure>
+    <figcaption><b>3</b>James &middot; past 24 hours</figcaption>
+    <div class="scr"><iframe title="Conversation, WhatsApp closed" data-doc="f-closed" data-h="auto"></iframe></div>
+    <ul class="notes">
+      <li>WhatsApp's rule, not ours: more than 24 hours after the guest last
+        wrote, only wording Meta has approved can go.</li>
+      <li>Pick one and his reply opens free text again. Or write freely now
+        by SMS, to the same number.</li>
+      <li>The approved set is written once and submitted to Meta: the
+        six messages the app starts.</li>
+    </ul>
+  </figure>
+
+  <figure>
+    <figcaption><b>4</b>Sarah's phone &middot; WhatsApp</figcaption>
+    <div class="scr"><iframe title="The guest's WhatsApp" data-doc="f-wa" data-h="auto"></iframe></div>
+    <ul class="notes">
+      <li>The link arrives as a button, not a pasted address.</li>
+      <li>Ben's reply from frame 2, arriving. The chat carries the resort's
+        name and logo, which Meta approves.</li>
+      <li>A guest without WhatsApp gets the same words by SMS, automatically.</li>
+    </ul>
+  </figure>
+</main>
+
+<!-- ══ Guest Contact's own styles, one copy, set into each staff frame ══ -->
+<script type="text/html" id="gc-css">
+<style>
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
+
+  /* Upcoming, In-house, Past: the Pre-arrival page's knob, one more job. */
+  .knob { display:flex; border:1px solid var(--rule); border-radius:8px;
+          overflow:hidden; margin-bottom:12px; }
+  .knob button { flex:1; display:inline-flex; align-items:center; justify-content:center;
+                 gap:6px; padding:9px 0; font-family:var(--ui-font); font-size:var(--t2);
+                 background:none; border:none; color:var(--mid); cursor:pointer; }
+  /* The count waiting on a reply: the menu's action icon, the same dress. */
+  .cnt { flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
+         border-radius:var(--pill); background:var(--accent); color:var(--accent-ink);
+         font-size:var(--t1); display:inline-flex; align-items:center;
+         justify-content:center; font-variant-numeric:tabular-nums; }
+  .find { margin-bottom:2px; }
+  .grp { font-size:var(--t1); color:var(--mid); margin:14px 2px 6px; }
+
+  .vrow { display:flex; align-items:center; gap:12px; width:100%;
+          border:1px solid var(--rule); border-radius:8px; padding:11px 13px;
+          margin-bottom:7px; text-align:left; font-family:var(--ui-font);
+          color:inherit; cursor:pointer; }
+  .vrow .v { flex:0 0 auto; font-size:var(--t4); min-width:30px; text-align:center; }
+  .vrow .mid { flex:1; min-width:0; }
+  .vrow .l1 { gap:8px; }
+  .vrow .nm { font-size:var(--t3); }
+  .vrow .tm { font-size:var(--t2); color:var(--mid); margin-left:auto; }
+  .vrow .l2 { display:flex; align-items:center; gap:8px; margin-top:3px; }
+  /* A preview is a message cut short, like a name: it may trim. */
+  .vrow .pv { flex:1 1 auto; min-width:0; font-size:var(--t2); color:var(--mid);
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vrow .l3 { font-size:var(--t1); color:var(--mid); margin-top:3px; }
+  .vrow.b-done { border-color:var(--law-green-b); }
+  .vrow.b-grey { border-style:dashed; opacity:.62; }
+  .vrow:disabled { cursor:default; }
+
+  /* ── one conversation ── */
+  .ctx { font-size:var(--t2); color:var(--mid); line-height:1.5; margin:-6px 2px 0; }
+  .ctx a { color:var(--mid); }
+  .day { text-align:center; font-size:var(--t1); color:var(--mid); margin:22px 0 10px; }
+  .msg { display:flex; flex-direction:column; max-width:84%; margin:0 0 12px; }
+  .msg.in  { align-items:flex-start; margin-right:auto; }
+  .msg.out { align-items:flex-end; margin-left:auto; }
+  .bub { padding:10px 12px; border-radius:16px; font-size:15px; line-height:1.42;
+         overflow-wrap:anywhere; }
+  /* Theirs on white, ours on the quiet fill: sides, not states. Neither is a
+     colour the law spends. */
+  .msg.in .bub  { border:1px solid var(--rule); border-bottom-left-radius:5px; }
+  .msg.out .bub { background:var(--card); border-bottom-right-radius:5px; }
+  .bub .kind { display:block; font-size:var(--t1); font-weight:600; color:var(--mid);
+               margin-bottom:3px; }
+  /* A template's link button, drawn as a record of what the guest got. */
+  .bub .wabtn { display:flex; align-items:center; justify-content:center; gap:6px;
+                margin:10px -12px -10px; padding:9px 12px; font-size:var(--t2);
+                color:var(--mid); border-top:1px solid rgba(28,28,26,.10); }
+  .meta { font-size:var(--t1); color:var(--mid); margin-top:4px; padding:0 4px; }
+  .photo { display:block; width:100%; max-width:210px; height:auto;
+           border-radius:10px; margin:0 0 8px; }
+
+  .compose { margin-top:18px; }
+  .win { font-size:var(--t2); color:var(--mid); margin:0 2px 8px; line-height:1.45; }
+  .win b { font-weight:600; color:var(--ink); }
+  .compose textarea { min-height:96px; line-height:1.45; resize:none; display:block; }
+  .tpls { display:flex; flex-wrap:wrap; gap:8px; margin:2px 0 12px; }
+  .chip { display:inline-flex; align-items:center; min-height:36px; padding:0 14px;
+          border:1px solid var(--rule); border-radius:var(--pill);
+          font-family:var(--ui-font); font-size:var(--t2); color:var(--ink);
+          cursor:pointer; }
+  .prev { margin:0 0 4px auto; }
+
+  /* ── paper: every surface solid, tints drawn over the white ── */
+  body.paper .knob { background:var(--surface); }
+  body.paper .vrow { background:var(--surface); box-shadow:var(--lift); }
+  body.paper .vrow.b-sent { background:linear-gradient(var(--law-wait), var(--law-wait)), var(--surface); }
+  body.paper .vrow.b-done { background:linear-gradient(var(--law-green-t), var(--law-green-t)), var(--surface); }
+  body.paper .vrow.b-grey { background:var(--surface); box-shadow:none; }
+  body.paper .msg.in .bub { background:var(--surface); box-shadow:var(--lift); }
+  body.paper .chip { background:var(--surface); }
+  body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface); }
+</style>
+</script>
+
+<!-- the photo Sarah sent, drawn in the mock's neutral greys -->
+<script type="text/html" id="photo">
+<svg class="photo" viewBox="0 0 210 158" role="img" aria-label="Photo: the deck umbrella, stuck half closed">
+  <rect width="210" height="158" fill="#DEDBD4"/>
+  <rect y="106" width="210" height="52" fill="#C9C3B7"/>
+  <g stroke="#B6AFA1" stroke-width="2"><line x1="0" y1="120" x2="210" y2="120"/><line x1="0" y1="134" x2="210" y2="134"/><line x1="0" y1="148" x2="210" y2="148"/></g>
+  <line x1="110" y1="36" x2="104" y2="126" stroke="#6F6A60" stroke-width="3"/>
+  <path d="M58 60 Q110 16 166 50 L152 63 Q110 42 72 72 Z" fill="#8C877C"/>
+  <path d="M110 36 L84 86 M110 36 L136 84" stroke="#8C877C" stroke-width="7" stroke-linecap="round"/>
+</svg>
+</script>
+
+<!-- ══ 1 · the list ══════════════════════════════════════════════════ -->
+<script type="text/html" id="f-list">
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="nala-ui2.css">
+<link rel="stylesheet" href="nala-ui.css">
+@@CSS@@
+</head>
+<body class="tier-app ui2 paper">
+<div class="daterow">
+  <div class="date">Guest Contact</div>
+  <div class="navwrap"><button class="navbtn" aria-label="Menu"><span></span><span></span><span></span></button></div>
+</div>
+
+<div class="knob">
+  <button>Upcoming <span class="cnt">1</span></button>
+  <button class="on">In-house <span class="cnt">3</span></button>
+  <button>Past</button>
+</div>
+<input class="find" type="search" placeholder="Search name, villa or number" aria-label="Search">
+
+<div class="grp">Needs a reply &middot; 3</div>
+<button class="vrow"><div class="v">7</div><div class="mid">
+  <div class="l1 trimrow"><span class="nm trim">Sarah Whitfield</span><span class="tm">3:14pm</span></div>
+  <div class="l2"><span class="pv">Also, it's Tom's 40th tonight! Any chance of a candle on his dessert?</span><span class="cnt">2</span></div>
+  <div class="l3">WhatsApp &middot; leaves Thu 2 Oct</div></div></button>
+<button class="vrow"><div class="v">12</div><div class="mid">
+  <div class="l1 trimrow"><span class="nm trim">L&eacute;a Martin</span><span class="tm">2:47pm</span></div>
+  <div class="l2"><span class="pv">Bonjour! Is the pool heated? And could we borrow two bikes tomorrow?</span><span class="cnt">1</span></div>
+  <div class="l3">WhatsApp &middot; leaves Wed 1 Oct</div></div></button>
+<button class="vrow"><div class="v">?</div><div class="mid">
+  <div class="l1 trimrow"><span class="nm">+61 423 555 019</span><span class="tm">1:05pm</span></div>
+  <div class="l2"><span class="pv">Hi, is there a table for 4 at dinner tonight? We're friends of the Harpers in villa 3</span><span class="cnt">1</span></div>
+  <div class="l3">SMS &middot; not on any booking</div></div></button>
+
+<div class="grp">Sent, no reply &middot; 3</div>
+<button class="vrow b-sent"><div class="v">4</div><div class="mid">
+  <div class="l1 trimrow"><span class="nm trim">Lucy Whitfield</span><span class="tm">3:02pm</span></div>
+  <div class="l2"><span class="pv">You: Good afternoon Lucy. Tonight's menu, and a place to tell us if you will join us</span></div>
+  <div class="l3">SMS &middot; leaves Thu 2 Oct</div></div></button>
+<button class="vrow b-sent"><div class="v">9</div><div class="mid">
+  <div class="l1 trimrow"><span class="nm trim">Priya Sharma</span><span class="tm">3:02pm</span></div>
+  <div class="l2"><span class="pv">You: Good afternoon Priya. Tonight's menu, and a place to tell us if you will join us</span></div>
+  <div class="l3">WhatsApp &middot; leaves Fri 3 Oct</div></div></button>
+<button class="vrow b-sent"><div class="v">15</div><div class="mid">
+  <div class="l1 trimrow"><span class="nm trim">Owen Reilly</span><span class="tm">11:20am</span></div>
+  <div class="l2"><span class="pv">You: Your late checkout is confirmed for 1pm tomorrow.</span></div>
+  <div class="l3">SMS &middot; leaves Wed 30 Sep</div></div></button>
+
+<div class="grp">Answered &middot; 2</div>
+<button class="vrow b-done"><div class="v">2</div><div class="mid">
+  <div class="l1 trimrow"><span class="nm trim">Claire Donnelly</span><span class="tm">Mon</span></div>
+  <div class="l2"><span class="pv">Perfect, thank you so much!</span></div>
+  <div class="l3">WhatsApp &middot; leaves Thu 2 Oct</div></div></button>
+<button class="vrow b-done"><div class="v">11</div><div class="mid">
+  <div class="l1 trimrow"><span class="nm trim">Sam Okafor</span><span class="tm">Sun</span></div>
+  <div class="l2"><span class="pv">You: Of course, fresh towels are on their way.</span></div>
+  <div class="l3">SMS &middot; leaves Fri 3 Oct</div></div></button>
+
+<div class="grp">No messages &middot; 2</div>
+<button class="vrow b-grey"><div class="v">16</div><div class="mid">
+  <div class="l1 trimrow"><span class="nm trim">Jonah Adeyemi</span></div>
+  <div class="l2"><span class="pv">Nothing sent yet</span></div>
+  <div class="l3">leaves Sat 4 Oct</div></div></button>
+<button class="vrow b-grey" disabled><div class="v">14</div><div class="mid">
+  <div class="l1 trimrow"><span class="nm trim">Hana Sato</span></div>
+  <div class="l2"><span class="pv">No mobile number on the booking</span></div>
+  <div class="l3">leaves Wed 30 Sep</div></div></button>
+<div style="height:24px"></div>
+</body></html>
+</script>
+
+<!-- ══ 2 · Sarah, WhatsApp open ═════════════════════════════════════ -->
+<script type="text/html" id="f-thread">
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="nala-ui2.css">
+<link rel="stylesheet" href="nala-ui.css">
+@@CSS@@
+</head>
+<body class="tier-app ui2 paper">
+<div class="daterow">
+  <button class="dnav" aria-label="Back to Guest Contact">&lsaquo;</button>
+  <div class="date">Sarah Whitfield</div>
+  <div class="navwrap"><button class="navbtn" aria-label="Menu"><span></span><span></span><span></span></button></div>
+</div>
+<div class="ctx">Villa 7 &middot; in house, leaves Thu 2 Oct &middot; 2 guests<br>
+  +61 412 345 678 &middot; <a href="#">Guest profile</a></div>
+
+<div class="day">Mon 22 Sep</div>
+<div class="msg out"><div class="bub"><span class="kind">Pre-arrival form</span>Good morning Sarah. Ahead of your stay with us, a few questions so everything is ready when you arrive. Nala Resort<div class="wabtn">&#8599; Open the form</div></div>
+  <div class="meta">Anna &middot; WhatsApp &middot; 10:02am &middot; Read 10:15am</div></div>
+<div class="msg in"><div class="bub">Done! We arrive Saturday around 4pm. Could we book a couples massage for Sunday afternoon?</div>
+  <div class="meta">WhatsApp &middot; 10:31am</div></div>
+<div class="msg out"><div class="bub">Lovely, thank you Sarah. Sunday at 2pm is yours, a 60 minute couples massage. See you Saturday! Ben</div>
+  <div class="meta">Ben &middot; WhatsApp &middot; 11:05am &middot; Read 11:07am</div></div>
+
+<div class="day">Sun 28 Sep</div>
+<div class="msg out"><div class="bub"><span class="kind">Spa reminder</span>Good morning Sarah. A reminder of your couples massage today at 2:00pm. If you need to change anything, just reply to this message. Nala Resort</div>
+  <div class="meta">Anna &middot; WhatsApp &middot; 8:00am &middot; Read 8:21am</div></div>
+
+<div class="day">Today</div>
+<div class="msg out"><div class="bub"><span class="kind">Tonight's menu</span>Good afternoon Sarah. Tonight's menu, and a place to tell us if you will join us. Nala Resort<div class="wabtn">&#8599; See tonight's menu</div></div>
+  <div class="meta">Anna &middot; WhatsApp &middot; 3:02pm &middot; Read 3:10pm</div></div>
+<div class="msg in"><div class="bub">@@PHOTO@@The umbrella on our deck won't close. Could someone take a look?</div>
+  <div class="meta">WhatsApp &middot; 3:12pm</div></div>
+<div class="msg in"><div class="bub">Also, it's Tom's 40th tonight! Any chance of a candle on his dessert?</div>
+  <div class="meta">WhatsApp &middot; 3:14pm</div></div>
+
+<div class="compose">
+  <div class="win">Sends on <b>WhatsApp</b> &middot; free text until 3:14pm tomorrow</div>
+  <textarea aria-label="Message Sarah">Happy birthday to Tom! A candle is coming with his dessert, and Ray will be at your deck in ten minutes to fix the umbrella. Ben</textarea>
+</div>
+<div class="foot">
+  <button class="btn">Mark done</button>
+  <button class="btn solid">Send</button>
+</div>
+</body></html>
+</script>
+
+<!-- ══ 3 · James, WhatsApp closed ═══════════════════════════════════ -->
+<script type="text/html" id="f-closed">
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="nala-ui2.css">
+<link rel="stylesheet" href="nala-ui.css">
+@@CSS@@
+</head>
+<body class="tier-app ui2 paper">
+<div class="daterow">
+  <button class="dnav" aria-label="Back to Guest Contact">&lsaquo;</button>
+  <div class="date">James Harrington</div>
+  <div class="navwrap"><button class="navbtn" aria-label="Menu"><span></span><span></span><span></span></button></div>
+</div>
+<div class="ctx">Villa 5 &middot; arrives Fri 3 Oct &middot; 3 nights &middot; 2 guests<br>
+  +61 438 220 761 &middot; <a href="#">Guest profile</a></div>
+
+<div class="day">Tue 23 Sep</div>
+<div class="msg out"><div class="bub"><span class="kind">Pre-arrival form</span>Good morning James. Ahead of your stay with us, a few questions so everything is ready when you arrive. Nala Resort<div class="wabtn">&#8599; Open the form</div></div>
+  <div class="meta">Anna &middot; WhatsApp &middot; 9:14am &middot; Read 9:40am</div></div>
+<div class="msg in"><div class="bub">All done, thanks. Is there parking for two cars?</div>
+  <div class="meta">WhatsApp &middot; 9:52am</div></div>
+<div class="msg out"><div class="bub">Hi James, yes, there's room for two cars beside the villa. See you on the 3rd. Ben</div>
+  <div class="meta">Ben &middot; WhatsApp &middot; 10:20am &middot; Read 10:31am</div></div>
+
+<div class="compose">
+  <div class="win">James last wrote <b>Tue 23 Sep</b>. After 24 hours WhatsApp
+    only carries wording Meta has approved. His reply opens free text again.</div>
+  <div class="tpls">
+    <button class="chip on">A quick question</button>
+    <button class="chip">Your arrival</button>
+    <button class="chip">Pre-arrival form</button>
+  </div>
+  <div class="msg out prev"><div class="bub">Hi James, it's Nala Resort with a quick question about your stay. Could you reply to this message when you have a moment?</div></div>
+</div>
+<div class="foot">
+  <button class="btn">SMS instead</button>
+  <button class="btn solid">Send</button>
+</div>
+</body></html>
+</script>
+
+<!-- ══ 4 · Sarah's phone: WhatsApp's screen, WhatsApp's colours ═════ -->
+<script type="text/html" id="f-wa">
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{ font:15px/1.38 -apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+        background:#EFEAE2; color:#111B21; }
+  .top{ display:flex; align-items:center; gap:10px; padding:14px 12px 10px;
+        background:#F6F5F3; border-bottom:1px solid #DAD9D6; }
+  .bk{ font-size:30px; line-height:1; color:#0A7CFF; width:16px; }
+  .av{ width:38px; height:38px; border-radius:50%; background:#1B1B19; color:#fff;
+       display:flex; align-items:center; justify-content:center; font-weight:600; }
+  .tt b{ display:block; font-size:16px; font-weight:600; }
+  .tt span{ font-size:12px; color:#667781; }
+  .chat{ padding:10px 10px 16px; }
+  .note{ margin:4px auto 12px; max-width:88%; background:#FFF3C7; color:#54656F;
+         font-size:12px; text-align:center; padding:6px 10px; border-radius:8px; }
+  .pill{ margin:8px auto 12px; width:max-content; background:#fff; color:#54656F;
+         font-size:12px; padding:4px 10px; border-radius:8px;
+         box-shadow:0 1px .5px rgba(11,20,26,.13); }
+  .b{ max-width:82%; padding:7px 9px 8px; border-radius:9px; margin:0 0 4px;
+      box-shadow:0 1px .5px rgba(11,20,26,.13); overflow-wrap:anywhere; }
+  .b::after{ content:""; display:table; clear:both; }
+  .b.in{ background:#fff; margin-right:auto; border-top-left-radius:2px; }
+  .b.out{ background:#D9FDD3; margin-left:auto; border-top-right-radius:2px; }
+  .t{ float:right; font-size:11px; color:#667781; margin:9px 0 -5px 10px; }
+  .tk{ color:#53BDEB; letter-spacing:-3px; margin-left:3px; }
+  .cta{ max-width:82%; background:#fff; border-radius:9px; margin:0 0 12px;
+        text-align:center; padding:10px; color:#0A7CFF;
+        box-shadow:0 1px .5px rgba(11,20,26,.13); }
+  .sp{ height:8px; }
+  .photo{ display:block; width:100%; height:auto; border-radius:6px; margin:0 0 6px; }
+  .in-bar{ display:flex; align-items:center; gap:10px; padding:8px 12px 22px;
+           background:#F6F5F3; border-top:1px solid #DAD9D6; }
+  .in-bar .pl{ font-size:26px; color:#0A7CFF; line-height:1; }
+  .in-bar .fld{ flex:1; background:#fff; border:1px solid #DAD9D6; border-radius:18px;
+                padding:7px 12px; color:#8696A0; }
+</style>
+</head>
+<body>
+<div class="top"><span class="bk">&lsaquo;</span><div class="av">N</div>
+  <div class="tt"><b>Nala Resort</b><span>Business account</span></div></div>
+<div class="chat">
+  <div class="note">This business uses a secure service from Meta to manage this chat.</div>
+  <div class="pill">Today</div>
+  <div class="b in">Good afternoon Sarah. Tonight's menu, and a place to tell us if you will join us. Nala Resort<span class="t">3:02 pm</span></div>
+  <div class="cta">&#8599; See tonight's menu</div>
+  <div class="b out">@@PHOTO@@The umbrella on our deck won't close. Could someone take a look?<span class="t">3:12 pm<span class="tk">&#10003;&#10003;</span></span></div>
+  <div class="b out">Also, it's Tom's 40th tonight! Any chance of a candle on his dessert?<span class="t">3:14 pm<span class="tk">&#10003;&#10003;</span></span></div>
+  <div class="sp"></div>
+  <div class="b in">Happy birthday to Tom! A candle is coming with his dessert, and Ray will be at your deck in ten minutes to fix the umbrella. Ben<span class="t">3:20 pm</span></div>
+</div>
+<div class="in-bar"><span class="pl">+</span><span class="fld">Message</span></div>
+</body></html>
+</script>
+
+<script>
+/* Builds each frame into its iframe, as mock-external-invite.html does. */
+(function(){
+  function src(id){ return document.getElementById(id).textContent.replace(/^\s+/, ''); }
+  /* A replace that finds nothing is silent; this one says so. */
+  function must(s, a, b){
+    if (s.indexOf(a) < 0) throw new Error('mock: not found: ' + a);
+    return s.split(a).join(b);
+  }
+  var CSS = src('gc-css'), PHOTO = src('photo');
+  function staff(id){ return must(src(id), '@@CSS@@', CSS); }
+  var DOCS = {
+    'f-list':   staff('f-list'),
+    'f-thread': must(staff('f-thread'), '@@PHOTO@@', PHOTO),
+    'f-closed': staff('f-closed'),
+    'f-wa':     must(src('f-wa'), '@@PHOTO@@', PHOTO)
+  };
+  /* ?w=360 or ?w=320: every frame at that width, for the width checks. */
+  var w = +(new URLSearchParams(location.search).get('w')) || 390;
+  document.documentElement.style.setProperty('--fw', w + 'px');
+  [].forEach.call(document.querySelectorAll('iframe[data-doc]'), function(f){
+    var h = f.getAttribute('data-h');
+    f.addEventListener('load', function(){
+      var d = f.contentDocument;
+      [].forEach.call(d.querySelectorAll('.compose textarea'), function(t){
+        t.style.height = (t.scrollHeight + 2) + 'px';
+      });
+      if (h !== 'auto') return;
+      var fit = function(){
+        if (d && d.documentElement) f.style.height = d.documentElement.scrollHeight + 'px';
+      };
+      fit(); setTimeout(fit, 300); setTimeout(fit, 1200);
+    });
+    f.style.height = h === 'auto' ? '200px' : h + 'px';
+    f.srcdoc = DOCS[f.getAttribute('data-doc')];
+  });
+})();
+</script>
+</body>
+</html>
