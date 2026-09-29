@@ -129,7 +129,22 @@
     { "value": "which cards a role may open",
       "owner": "can",
       "kind": "function",
-      "note": "The app's own keys: resSheet and cleansBoard, not the resBoard/cleanBoard you would guess." }
+      "note": "The app's own keys: resSheet and cleansBoard, not the resBoard/cleanBoard you would guess." },
+
+    { "value": "guests with a message nobody has sorted",
+      "owner": "/contactnew",
+      "kind": "path",
+      "note": "Guest Contact's queue (29 Sep): a guest is there exactly while a message of theirs waits to be sorted, so the count is its keys, read shallow - the menu badge's own reading. Never recounted from /contactmsgs." },
+
+    { "value": "Guest Contact's tasks still open, every team's",
+      "owner": "contactOpenTasks",
+      "kind": "function",
+      "note": "The one reading of an open task (29 Sep), which Guest Contact, Tasks and the menu's Tasks count call too, so the four cannot disagree about what is open." },
+
+    { "value": "which teams there are",
+      "owner": "contactTeams",
+      "kind": "function",
+      "note": "The team list as Settings names it, the retired included: a team only retires with nothing open, and a count that could miss a task says less than it knows." }
   ],
 
   "owns": [

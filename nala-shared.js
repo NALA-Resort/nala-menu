@@ -2705,6 +2705,36 @@ function teamsOf(settings, email){
   }).map(function(t){ return t.key; });
 }
 
+/* Every open task of the teams named, as { team: { id: task } }: the one
+   reading of "open" (29 Sep), which Guest Contact, Tasks, the menu's Tasks
+   count and the Dashboard all call, so no two of them can disagree about
+   what is still to do. Asked of the database by its index on state, then
+   checked here, so a record that is not open never passes for one. A team
+   that cannot be read fails the whole read: a count missing a team says
+   less than it knows. */
+function contactOpenTasks(teams){
+  teams = teams || [];
+  return Promise.all(teams.map(function(k){
+    return fetch(DB + '/tasks/' + k + '.json?orderBy=' + encodeURIComponent('"state"') +
+                 '&equalTo=' + encodeURIComponent('"open"') + '&v=' + Date.now())
+      .then(function(r){
+        if (!r.ok) throw new Error('/tasks/' + k + ' HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function(j){
+        var out = {};
+        Object.keys(j || {}).forEach(function(id){
+          if (j[id] && j[id].state === 'open') out[id] = j[id];
+        });
+        return out;
+      });
+  })).then(function(all){
+    var map = {};
+    teams.forEach(function(k, i){ map[k] = all[i]; });
+    return map;
+  });
+}
+
 /* A guest's thread key: normalisePhone's E.164, less the plus. Null when
    the number is not sendable, and no thread can exist for it. */
 function contactKey(raw){
@@ -3488,21 +3518,13 @@ var NAV_ACTIONS = [
           var teams = can(role, 'editBookings')
             ? contactTeams(cfg, true).map(function(t){ return t.key; })
             : teamsOf(cfg, u && u.email);
-          return Promise.all(teams.map(function(k){
-            return fetch(DB + '/tasks/' + k + '.json?orderBy=' +
-                         encodeURIComponent('"state"') + '&equalTo=' +
-                         encodeURIComponent('"open"') + '&v=' + Date.now())
-              .then(function(r){
-                if (!r.ok) throw new Error('/tasks HTTP ' + r.status);
-                return r.json();
-              })
-              .then(function(j){
-                return Object.keys(j || {}).filter(function(id){
-                  return j[id] && j[id].state === 'open'; }).length;
-              });
-          }));
+          return contactOpenTasks(teams);
         })
-        .then(function(ns){ cb(ns.reduce(function(a, n){ return a + n; }, 0)); })
+        .then(function(open){
+          var n = 0;
+          Object.keys(open).forEach(function(k){ n += Object.keys(open[k] || {}).length; });
+          cb(n);
+        })
         .catch(function(){});
   } }
 ];

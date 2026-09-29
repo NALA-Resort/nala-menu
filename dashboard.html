@@ -275,12 +275,13 @@ var HREF = { sms:'arrivals-sms.html', forms:'front-desk.html', menu:'publish.htm
              inv:'invitations.html',
              reps:'tally.html', sheets:'registration.html', foh:'list.html',
              menus:'menu-print.html', arr:'front-desk.html',
-             cards:'keys.html', spa:'spa-reminders.html' };
+             cards:'keys.html', spa:'spa-reminders.html',
+             contact:'guest-contact.html' };
 var NEED = { sms:'editBookings', forms:'editBookings', menu:'publishMenu',
              inv:'editBookings',
              reps:'resBoard', sheets:'editBookings', foh:'resSheet',
              menus:'resSheet', arr:'editBookings', cards:'editBookings',
-             spa:'editBookings' };
+             spa:'editBookings', contact:'editBookings' };
 
 function mins(d){ return d.getHours()*60 + d.getMinutes(); }
 function hhmm(m){ var h=Math.floor(m/60), x=m%60;
@@ -412,7 +413,8 @@ function load(){
     /* the spa reminder log, whole, read through spaReminderRows */
     fetch(DB + '/spareminders.json?v=' + Date.now())
       .then(function(r){ return r.ok ? r.json() : null; })
-      .catch(function(){ return null; })
+      .catch(function(){ return null; }),
+    loadContact()
   ]).then(function(res){
     var pre = res[9] || {};
     DATA = { stays:res[0] || {}, menu:res[1], invites:res[2] || {},
@@ -420,10 +422,35 @@ function load(){
              done:res[6] || {},
              cards:cardRows(res[7]), cutrun:res[8] || null,
              presms:pre.found || [], bookings:pre.bookings || {},
-             phonefix:pre.fixes || {}, spareminders:res[10] || {} };
+             phonefix:pre.fixes || {}, spareminders:res[10] || {},
+             contact:res[11] };
     LOADED = true;
     render();
   });
+}
+
+/* Guest Contact's two counts (29 Sep), read from their owners: the guests
+   with a message nobody has sorted are /contactnew's keys, one per guest -
+   the menu badge's own reading - and the tasks still open are
+   contactOpenTasks over contactTeams, every team's, as Guest Contact and
+   Tasks read them. Null when either cannot be read: a login the rules keep
+   from the guests' messages has no card, and neither does anybody before
+   the rules are pasted. */
+function loadContact(){
+  function get(p){
+    return fetch(DB + p + (p.indexOf('?') > -1 ? '&' : '?') + 'v=' + Date.now())
+      .then(function(r){ if (!r.ok) throw new Error(p + ' HTTP ' + r.status); return r.json(); });
+  }
+  return Promise.all([get('/contactnew.json?shallow=true'), get('/contactsettings.json')])
+    .then(function(res){
+      var teams = contactTeams(res[1] || {}, true).map(function(t){ return t.key; });
+      return contactOpenTasks(teams).then(function(open){
+        var n = 0;
+        Object.keys(open).forEach(function(k){ n += Object.keys(open[k] || {}).length; });
+        return { fresh: Object.keys(res[0] || {}).length, open: n };
+      });
+    })
+    .catch(function(){ return null; });
 }
 
 /* ── the day, as facts ───────────────────────────────────────── */
@@ -782,6 +809,18 @@ function items(t){
     state:'shut',
     note: !N ? 'none today'
         : ad === N ? 'all ' + N + ' in' : ad + ' in, ' + (N - ad) + ' to come' });
+
+  /* Guest messages, 29 Sep: off the spine like Arrivals, because a guest
+     writes at any hour and it is no step in the day's flow. Today only: the
+     counts are the queue as it stands now, and on another day's board they
+     would read as that day's. The door is Guest Contact's own gate. */
+  var gc = DATA.contact;
+  if (gc && nav.isToday())
+    L.push({ k:'contact', lab:'Guest messages', owner:'guests', offSpine:true, units:[],
+      state:'shut',
+      note: (gc.fresh ? gc.fresh + (gc.fresh === 1 ? ' guest has a message' : ' guests have messages') +
+                        ' to sort' : 'nothing new to sort') + ' · ' +
+            (gc.open ? gc.open + (gc.open === 1 ? ' task' : ' tasks') + ' open' : 'no task open') });
 
   /* A card is loud only if there is a job on it AND now is a sensible moment
      to do it. Being where the day has reached is not a job: guests replying

@@ -175,7 +175,18 @@ WPREINV = {"pa-sent2":  {"status": "sent", "sentAt": at(9), "delivery": "deliver
            "pa-ready6": {"status": "failed", "sentAt": at(9),
                          "error": "COUNTRY_NOT_ENABLED"}}
 
-STATE = {"fail": False}
+STATE = {"fail": False, "contactfail": False}
+
+# Guest Contact (29 Sep): two guests with a message nobody has sorted, and
+# the teams' tasks - one open for Maintenance, one done for Bar, and one
+# still open for Pool bar, a team since retired, which must still count.
+CONTACT_NEW = {"61400000011": {"in-SM1": True, "in-SM2": True},
+               "61499000001": {"in-SM3": True}}
+CONTACT_SETTINGS = {"teams": {"poolbar": {"label": "Pool bar", "off": True,
+                                          "added": "2026-09-01T00:00:00.000Z"}}}
+CONTACT_TASKS = {"maintenance": {"t1": {"state": "open"}},
+                 "bar":         {"t2": {"state": "done"}},
+                 "poolbar":     {"t3": {"state": "open"}}}
 DAYBOARD = {}
 CARDS = {}    # the card table: serial -> row
 CUTRUN = {}   # the cut run, when one is on
@@ -197,6 +208,20 @@ def fb(route, request):
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "null"); return
     body = "null"
+    path = u.split("firebasedatabase.app")[1].split("?")[0]
+    if path.startswith(("/contact", "/tasks/")):
+        if STATE["contactfail"]:
+            route.fulfill(status=401, content_type="application/json",
+                          body='{"error":"denied"}'); return
+        if path == "/contactnew.json":
+            body = json.dumps({k: True for k in CONTACT_NEW} if "shallow=true" in u else CONTACT_NEW)
+        elif path == "/contactsettings.json": body = json.dumps(CONTACT_SETTINGS)
+        elif path.startswith("/tasks/"):
+            team = CONTACT_TASKS.get(path[7:-5], {})
+            want = "open" if "equalTo" in u else None
+            body = json.dumps({k: v for k, v in team.items()
+                               if want is None or v.get("state") == want} or None)
+        route.fulfill(status=200, content_type="application/json", body=body); return
     if "/staff" in u: body = json.dumps(STAFF)
     elif "/spareminders" in u: body = json.dumps(SPAREM) if SPAREM else "null"
     elif "/spa.json" in u or u.rstrip("/").endswith("/spa"): body = json.dumps(SPA)
@@ -307,10 +332,11 @@ with sync_playwright() as p:
 
     # ── the page draws at all ───────────────────────────────────
     pg = board()
-    #  Eleven since 22 Sep: Pre-arrival SMS joined at the top of the spine.
-    #  (Ten before that, when Key cards joined beside Arrival sheets, 8 Sep.)
+    #  Twelve since 29 Sep: Guest messages joined Arrivals off the spine.
+    #  (Eleven when Pre-arrival SMS joined the top of it, 22 Sep; ten when
+    #  Key cards joined beside Arrival sheets, 8 Sep.)
     ck("the board renders its cards",
-       pg.evaluate("()=>document.querySelectorAll('.node').length") == 11)
+       pg.evaluate("()=>document.querySelectorAll('.node').length") == 12)
     ck("the date row shows the day, so the board says which day it is",
        pg.evaluate("()=>document.getElementById('title').textContent.trim()") != "")
 
@@ -879,6 +905,37 @@ with sync_playwright() as p:
     ck("preSmsFailed agrees with the shared table on every case",
        not badf)
     pg.close()
+
+    # ── Guest messages (29 Sep) ─────────────────────────────────
+    #  Two counts, each from its owner: /contactnew's keys, and
+    #  contactOpenTasks over contactTeams - a retired team's open task
+    #  counted, a done one not.
+    pg = board()
+    gm = card(pg, "contact")
+    ck("Guest messages counts the guests with a message to sort, and the open tasks",
+       gm["note"] == "2 guests have messages to sort · 2 tasks open", gm)
+    ck("off the spine, like Arrivals, a door to Guest Contact for the desk",
+       gm["pos"] == "off" and gm["door"] and
+       pg.evaluate("()=>HREF.contact") == "guest-contact.html", gm)
+    pg.close()
+    pg = board(date=plus(-1))
+    ck("and on another day's board it is not there: the counts are now's",
+       not [c for c in cards(pg) if c["k"] == "contact"])
+    pg.close()
+    STATE["contactfail"] = True
+    pg = board()
+    ck("a login the rules keep from the guests' messages gets no card, and no error",
+       not [c for c in cards(pg) if c["k"] == "contact"] and
+       pg.evaluate("()=>document.querySelectorAll('.node').length") == 11)
+    pg.close()
+    STATE["contactfail"] = False
+    SAVED_NEW = dict(CONTACT_NEW); CONTACT_NEW.clear()
+    SAVED_TASKS = json.loads(json.dumps(CONTACT_TASKS)); CONTACT_TASKS.clear()
+    pg = board()
+    ck("and with nothing waiting it says so",
+       card(pg, "contact")["note"] == "nothing new to sort · no task open")
+    pg.close()
+    CONTACT_NEW.update(SAVED_NEW); CONTACT_TASKS.update(SAVED_TASKS)
 
     # ── width ───────────────────────────────────────────────────
     for w in (390, 360, 320):

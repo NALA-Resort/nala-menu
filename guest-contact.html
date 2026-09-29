@@ -272,21 +272,7 @@ function whole(path, q){
    nothing open, and a list that could hide a task is worse than one more
    read. */
 function openTasks(){
-  var teams = contactTeams(SETTINGS, true);
-  return Promise.all(teams.map(function(t){
-    return whole('/tasks/' + t.key, 'orderBy=' + encodeURIComponent('"state"') +
-                 '&equalTo=' + encodeURIComponent('"open"')).then(function(j){
-      var out = {};
-      Object.keys(j || {}).forEach(function(id){
-        if (j[id] && j[id].state === 'open') out[id] = j[id];
-      });
-      return out;
-    });
-  })).then(function(all){
-    var map = {};
-    teams.forEach(function(t, i){ map[t.key] = all[i]; });
-    return map;
-  });
+  return contactOpenTasks(contactTeams(SETTINGS, true).map(function(t){ return t.key; }));
 }
 
 /* The bookings in the window, off the nights (/stays), with the number the
