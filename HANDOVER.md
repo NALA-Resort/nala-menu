@@ -251,6 +251,15 @@ reservation number staff read out).
 Cleans (`cleaners.html`), Publish Menu (`publish.html`), Settings
 (`staff.html`), Dietary Settings (`tag.html`), Statistics (`stats.html`).
 
+**Guest Contact** (`guest-contact.html` and `tasks.html`, 29 Sep): the
+guests' messages, SMS and WhatsApp through Twilio, to replace Guest Touch.
+Every guest by booking on Upcoming, In-house and Past; one conversation
+each; every message a guest sends sorted into no task or a team's task,
+which the team closes on its own login. Its own Worker
+(`worker/guest-contact.js`), so the SMS pages' ClickSend Worker is
+untouched until the switch-over. `GUEST-CONTACT.md` is the brief, the
+decisions and the setup; open item 18 is what waits on the owner.
+
 **Spa reminders** (`spa-reminders.html`, SMS menu, 28 Sep): a text to each
 guest on the morning of a booked treatment - "Hello Elena, a gentle
 reminder of your booking with us:", the treatment and its lengths, the day
@@ -691,6 +700,17 @@ None of these can move without him.
     or completed before the paste. Those cannot be filled in afterwards.
     The same paste as item 16's `rules.json` - one paste of the current
     file clears both, and any earlier item still waiting on one.
+
+18. **Guest Contact setup, 29 Sep.** Built and tested against stubs, not
+    published, and made to run in test mode on the live app: nothing can
+    reach a guest while `TEST_NUMBERS` is set on its Worker.
+    `GUEST-CONTACT.md` is the whole of it, setup in order: the Twilio
+    number and WhatsApp sender, the two approved messages, a `contact`
+    login for the Worker, the rules paste, the `nala-contact` Worker and
+    its secrets, Twilio's webhook, each person's teams. The rules paste
+    comes first: until it, the Worker's login cannot be given its role and
+    the pages' queries have no index, so the pages fail rather than limp.
+    Alerts wait on the push Worker's code coming into this repo.
 
 ---
 

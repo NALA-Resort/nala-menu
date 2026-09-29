@@ -22,6 +22,13 @@ account is `staff@nalaresort.com.au`, so it maps to this role by name, which
 is convenient but coincidental - the role comes from the record, never from
 the address.
 
+Two more on 29 Sep, with Guest Contact (GUEST-CONTACT.md): the capability
+`tasks`, held by every human role, which opens the Tasks page - what a login
+SEES there is its teams, set per person in Settings, General, and the rules
+hold the same line - and the machine role `contact`, the Guest Contact
+Worker's login, which writes the guests' messages and nothing else, sync's
+pattern.
+
 `manager` is the admin's grants minus `manageStaff`, and nothing else. That
 one exclusion is what keeps the three manageStaff gates - Settings General,
 Pages and Diagnostics - the admin's alone. It is a role rather than a row on

@@ -1758,7 +1758,7 @@ function emailKey(email){
 }
 
 var ROLE_GRANTS = {
-  admin:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff','spaBoard'],
+  admin:        ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','manageStaff','spaBoard','tasks'],
   /* Everything the admin holds except manageStaff, asked for 25 Aug: a
      management login that runs the whole day without the keys to Settings
      General, Pages or Diagnostics, which are the three manageStaff gates.
@@ -1766,15 +1766,19 @@ var ROLE_GRANTS = {
      out is a second admin, and this is the role for everybody who is
      nearly one. spaBoard rides along because the definition is the admin's
      list, whatever joins it, minus that one key. */
-  manager:      ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','spaBoard'],
-  chef:         ['resBoard','resSheet','publishMenu'],
-  waiter:       ['cleansBoard','resBoard','editBookings','resSheet','spaBoard'],
-  housekeeping: ['cleansBoard','cleansMarks'],
+  manager:      ['cleansBoard','cleansMarks','setJob','resBoard','editBookings','resSheet','publishMenu','spaBoard','tasks'],
+  /* tasks, 29 Sep: the Tasks page, where each team closes what a guest's
+     message became. Every human role holds it; which tasks a login SEES is
+     its teams, set per login in Settings > General, and the rules hold the
+     same line - a login reads only its own teams' tasks. */
+  chef:         ['resBoard','resSheet','publishMenu','tasks'],
+  waiter:       ['cleansBoard','resBoard','editBookings','resSheet','spaBoard','tasks'],
+  housekeeping: ['cleansBoard','cleansMarks','tasks'],
   /* The masseuse, an external contractor with one screen: the Spa board and
      nothing else. Like the chef, a real login for a real person, but the
      rules also narrow what the account can READ - see /spa in rules.json -
      because hiding a link is not the same as refusing the data.          */
-  spa:          ['spaBoard'],
+  spa:          ['spaBoard','tasks'],
   /* A machine account, held by the Mews sync Worker. Deliberately empty: it
      grants nothing in the UI and lands on no page, so a human signing in as
      it gets the "see the manager" message rather than a half working board.
@@ -1782,7 +1786,11 @@ var ROLE_GRANTS = {
      and let it write only bookings/<id>/pms and stays. Listed here because a
      role that exists in the database and not in the code is what the next
      session trips over.                                                  */
-  sync:         []
+  sync:         [],
+  /* The Guest Contact Worker's machine account, 29 Sep: sync's pattern. It
+     writes the guests' messages as they arrive and as they go, which the
+     rules let it do and nothing else. No screen, so no grants.          */
+  contact:      []
 };
 
 function isRole(r){ return Object.prototype.hasOwnProperty.call(ROLE_GRANTS, r); }
@@ -2212,7 +2220,8 @@ var PERM_ACTIONS = [
   ['cleansBoard',  'See the Cleans board'],
   ['cleansMarks',  'Mark a clean done'],
   ['setJob',       'Change what a villa needs'],
-  ['spaBoard',     'See the Spa board']
+  ['spaBoard',     'See the Spa board'],
+  ['tasks',        'See their team\u2019s tasks']
 ];
 
 /* The columns. admin is absent because it always has everything, and a column
@@ -2425,14 +2434,18 @@ function pushOff(user, cb){
 /* Tell the worker something happened. Deliberately not awaited by whatever
    called it: a notification that fails must never cost someone their mark,
    which is already saved by the time this runs.                          */
-function notifyPush(event, villa, user){
+function notifyPush(event, villa, user, extra){
   if (!PUSH_URL || !window.__idToken) return;
+  var msg = { idToken: window.__idToken, event: event,
+              villa: villa, actor: emailKey(user && user.email) };
+  /* A guest task names its team (29 Sep): the push Worker buzzes that
+     team's members rather than a role. */
+  if (extra) Object.keys(extra).forEach(function(k){ msg[k] = extra[k]; });
   try {
     fetch(PUSH_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken: window.__idToken, event: event,
-                             villa: villa, actor: emailKey(user && user.email) })
+      body: JSON.stringify(msg)
     }).catch(function(){});
   } catch (e){}
 }
@@ -2573,7 +2586,10 @@ var NOTIFY_DEFAULTS = {
     spaSuggested: { spa:false, admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
     spaBooked:    { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
     spaCancelled: { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
-    spaStay:      { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false }
+    spaStay:      { spa:true,  admin:true, manager:true, housekeeping:false, waiter:false, chef:false },
+    /* A guest wrote to Guest Contact (29 Sep): the desk, who answer and
+       sort it. Fired by the Worker as the message lands. */
+    guestMessage: { spa:false, admin:true, manager:true, housekeeping:false, waiter:true, chef:false }
   }
 };
 
@@ -2608,6 +2624,158 @@ function ensureNotifySettings(role){
     .catch(function(){});
 }
 
+
+/* ── Guest Contact ─────────────────────────────────────────────
+   The staff inbox for guests' messages, SMS and WhatsApp through Twilio.
+   Asked for by the owner, 29 Sep, to replace Guest Touch: every guest by
+   booking - Upcoming, In-house, Past - and every reply caught here. Built
+   from mock-guest-contact.html; GUEST-CONTACT.md is the whole brief and
+   the setup. The Worker (worker/guest-contact.js) carries twins of the
+   readers it needs, held to the same table, tests/contact_cases.json.
+
+   The data, one fact to a place:
+     /contact/<ck>            one guest mobile's thread: phone, lastAt,
+                              lastIn, lastInCh, lastInWa, preview, dir,
+                              profile, wa (the guest's WhatsApp consent),
+                              waBad, optout. Written by the Worker; wa by
+                              the desk.
+     /contactmsgs/<ck>/<id>   each message, in and out. The Worker writes
+                              it; the desk writes only how it was sorted.
+     /contactnew/<ck>/<id>    a guest message nobody has sorted yet. Being
+                              here IS being new; nothing else says so.
+     /tasks/<team>/<id>       what a message became: open, then done.
+     /contactsettings/teams/<team>/members/<emailkey>
+                              who does that team's tasks.
+   <ck> is the guest's number in E.164 without its plus, which a Firebase
+   key can hold. */
+
+/* The six teams the owner started with (29 Sep). The key is what the
+   database stores; the label is what staff read. */
+var CONTACT_TEAMS = [
+  { key:'bar',          label:'Bar' },
+  { key:'kitchen',      label:'Kitchen' },
+  { key:'housekeeping', label:'Housekeeping' },
+  { key:'maintenance',  label:'Maintenance' },
+  { key:'spa',          label:'Spa' },
+  { key:'frontdesk',    label:'Front desk' }
+];
+function teamLabel(key){
+  for (var i = 0; i < CONTACT_TEAMS.length; i++)
+    if (CONTACT_TEAMS[i].key === key) return CONTACT_TEAMS[i].label;
+  return String(key || '');
+}
+
+/* The teams one login does tasks for, off /contactsettings. Set per login
+   in Settings > General (the owner, 29 Sep): the grounds login can hold
+   Maintenance alone while the housekeepers hold Housekeeping. */
+function teamsOf(settings, email){
+  var key = emailKey(email), teams = (settings && settings.teams) || {};
+  return CONTACT_TEAMS.filter(function(t){
+    var m = teams[t.key] && teams[t.key].members;
+    return !!(m && m[key] === true);
+  }).map(function(t){ return t.key; });
+}
+
+/* A guest's thread key: normalisePhone's E.164, less the plus. Null when
+   the number is not sendable, and no thread can exist for it. */
+function contactKey(raw){
+  var e = normalisePhone(raw);
+  return e ? e.slice(1) : null;
+}
+
+/* WhatsApp's 24 hours, Meta's rule: free text only within a day of the
+   guest's last WhatsApp message; after that only approved wording. The
+   Worker has a twin and refuses free text outside it. */
+var WA_WINDOW_MS = 24 * 60 * 60 * 1000;
+function waWindow(lastInWa, nowMs){
+  var d = parseISO(lastInWa);
+  if (!d) return { open:false, until:null };
+  var until = d.getTime() + WA_WINDOW_MS;
+  return { open: nowMs < until, until: until };
+}
+
+/* Has this guest agreed to WhatsApp? Only if they asked for it - staff
+   switch it on in the conversation, and the switch records who and when,
+   because the request IS the consent Meta wants - or wrote to us there
+   themselves. The owner, 29 Sep: WhatsApp is for an international guest
+   who asks; SMS for everyone else. A number WhatsApp said it does not
+   know (waBad) is SMS until the guest writes on WhatsApp again. */
+function waAgreed(t){
+  if (!t || t.waBad) return false;
+  return !!((t.wa && t.wa.on === true) || t.lastInWa);
+}
+
+/* Which way a message from us goes, and whether it may be free text:
+     none   the guest texted STOP; nothing goes until they text START
+     wa     WhatsApp, free text: they wrote on WhatsApp within 24 hours
+     watpl  WhatsApp, approved wording only: they agreed, but have not
+            written in the last 24 hours
+     sms    SMS, free text
+   A guest who wrote in the last 24 hours is answered the way they wrote.
+   until is when the WhatsApp window closes, for the line above the box. */
+function contactChannel(t, nowMs){
+  t = t || {};
+  if (t.optout) return { ch:'none', until:null };
+  var inAt = parseISO(t.lastIn);
+  if (inAt && nowMs - inAt.getTime() < WA_WINDOW_MS)
+    return t.lastInCh === 'wa'
+      ? { ch:'wa', until: inAt.getTime() + WA_WINDOW_MS }
+      : { ch:'sms', until:null };
+  if (waAgreed(t)) return { ch:'watpl', until:null };
+  return { ch:'sms', until:null };
+}
+
+/* Where one guest stands on the list, which is the colour the row wears
+   (the colour law, CLAUDE.md):
+     nophone  no sendable mobile, no thread       sunk, not pressable
+     none     nothing sent or received            sunk
+     fresh    a message nobody has sorted         white: work to do
+     task     sorted, a task still open           amber: chase this
+     sent     only we have written                the law's waiting grey
+     done     all sorted, nothing open            done green
+   fresh counts their unsorted messages, open their open tasks. */
+function contactRowState(t, fresh, open, hasPhone){
+  if (fresh > 0) return 'fresh';
+  if (open > 0) return 'task';
+  if (!t || !t.lastAt) return hasPhone ? 'none' : 'nophone';
+  if (!t.lastIn) return 'sent';
+  return 'done';
+}
+
+/* The approved WhatsApp wording, for when a guest's 24 hours have run out.
+   Three copies must say the same thing: these words (the preview), the
+   Worker's (what the record says went) and Twilio's template, which Meta
+   approved under its Content SID. The first two answer to
+   tests/contact_cases.json; GUEST-CONTACT.md holds the text to submit.
+   Plain characters only: a curly quote makes an SMS fallback cost triple.
+   {first} is the booking's first name, else "there"; {arrive} its day. */
+var CONTACT_TEMPLATES = [
+  { id:'question', label:'A quick question',
+    text:'Hi {first}, it\'s Nala Resort with a quick question about your stay. ' +
+         'Could you reply to this message when you have a moment?' },
+  { id:'arrival', label:'Your arrival', arriving:true,
+    text:'Hi {first}, we look forward to welcoming you to Nala Resort on ' +
+         '{arrive}. If there is anything we can prepare before you arrive, ' +
+         'just reply to this message.' }
+];
+function contactTemplateText(id, first, arrive){
+  var t = CONTACT_TEMPLATES.filter(function(x){ return x.id === id; })[0];
+  if (!t) return '';
+  first = String(first == null ? '' : first).trim() || 'there';
+  var d = parseDepDate(arrive), day = '';
+  if (d) day = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday',
+                'Saturday'][d.getDay()] + ' ' + d.getDate() + ' ' +
+               ['January','February','March','April','May','June','July',
+                'August','September','October','November','December'][d.getMonth()];
+  return t.text.split('{first}').join(first).split('{arrive}').join(day || 'your arrival day');
+}
+
+/* A new key for a task, sortable by when it was made. */
+function contactId(){
+  var r = '', abc = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  for (var i = 0; i < 6; i++) r += abc.charAt(Math.floor(Math.random() * abc.length));
+  return 't' + Date.now().toString(36) + r;
+}
 
 /* ── the staff menu ──────────────────────────────────────────────────────
    ONE list. Every page carries an empty <div id="navDrop"> and buildNav
@@ -2644,6 +2812,13 @@ var NAV = [
      detail behind it is not. */
   { href:'calendar.html',     label:'Calendar',     need:'cleansBoard'  },
   { href:'front-desk.html',   label:'Front Desk',   need:'editBookings' },
+  /* Guest Contact, 29 Sep: the guests' messages, SMS and WhatsApp, and what
+     each one became. editBookings, the SMS pages' own gate - the owner's
+     answer to who may read and answer them. Tasks beside it: what the
+     messages became, for the team that does them. Every human role may open
+     it; each login sees its own teams' tasks, reception every team's. */
+  { href:'guest-contact.html', label:'Guest Contact', need:'editBookings' },
+  { href:'tasks.html',        label:'Tasks',        need:'tasks'        },
   /* The desk's other duty, so the desk's own gate. */
   { href:'keys.html',         label:'Keys',         need:'editBookings' },
   { href:'tally.html',        label:'Reservations', need:'resBoard'     },
@@ -3256,6 +3431,48 @@ var NAV_ACTIONS = [
         var c = spaOwedCounts(res[0], res[1], dkey(new Date()));
         cb(role === 'spa' ? c.spa : c.desk);
       }).catch(function(){});
+  } },
+  /* Guest Contact, 29 Sep: the guests with a message nobody has sorted.
+     /contactnew holds exactly those, one child per guest, so the count is
+     its keys - asked shallow, because the badge needs no message text. */
+  { href: 'guest-contact.html', need: 'editBookings', count: function(role, cb){
+      if (typeof DB === 'undefined') return;
+      fetch(DB + '/contactnew.json?shallow=true&v=' + Date.now())
+        .then(function(r){
+          if (!r.ok) throw new Error('/contactnew HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function(j){ cb(j ? Object.keys(j).length : 0); })
+        .catch(function(){});
+  } },
+  /* Tasks: the open tasks this login does. A team's own login counts its
+     teams; the desk, who sort every message, counts every team's. All the
+     teams or no badge: a count missing a team says less than it knows. */
+  { href: 'tasks.html', need: 'tasks', count: function(role, cb){
+      if (typeof DB === 'undefined') return;
+      var u = window.NALA_USER;
+      fetch(DB + '/contactsettings.json?v=' + Date.now())
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(cfg){
+          var teams = can(role, 'editBookings')
+            ? CONTACT_TEAMS.map(function(t){ return t.key; })
+            : teamsOf(cfg, u && u.email);
+          return Promise.all(teams.map(function(k){
+            return fetch(DB + '/tasks/' + k + '.json?orderBy=' +
+                         encodeURIComponent('"state"') + '&equalTo=' +
+                         encodeURIComponent('"open"') + '&v=' + Date.now())
+              .then(function(r){
+                if (!r.ok) throw new Error('/tasks HTTP ' + r.status);
+                return r.json();
+              })
+              .then(function(j){
+                return Object.keys(j || {}).filter(function(id){
+                  return j[id] && j[id].state === 'open'; }).length;
+              });
+          }));
+        })
+        .then(function(ns){ cb(ns.reduce(function(a, n){ return a + n; }, 0)); })
+        .catch(function(){});
   } }
 ];
 var NAV_BADGED = {};       /* one count per entry per page load */

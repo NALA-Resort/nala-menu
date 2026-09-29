@@ -1,0 +1,62 @@
+{
+  "_why": "Guest Contact's rules as cases, one table for two readers (CLAUDE.md rules 1 and 3). waWindow, contactChannel and contactTemplateText live in nala-shared.js for the page and again in worker/guest-contact.js, because a Worker cannot import from the site: the page previews what the Worker sends and says when the 24 hours close, and the Worker refuses free text outside them. contact_suite.py runs the page's copies through this table and worker/contact-test.mjs the Worker's; a case added here fails whichever copy has not learned it. contactRowState is the page's alone, pinned here all the same because it is the colour a row wears.",
+
+  "window": {
+    "_note": "[guest's last WhatsApp message, now, open?, closes at]. Meta's rule: free text only within 24 hours of the guest's last WhatsApp message. Stamps are compared as instants, whatever zone they were written in.",
+    "cases": [
+      ["2026-09-29T15:14:00+10:00", "2026-09-29T15:20:00+10:00", true,  "2026-09-30T15:14:00+10:00"],
+      ["2026-09-29T15:14:00+10:00", "2026-09-30T15:13:59+10:00", true,  "2026-09-30T15:14:00+10:00"],
+      ["2026-09-29T15:14:00+10:00", "2026-09-30T15:14:00+10:00", false, "2026-09-30T15:14:00+10:00"],
+      ["2026-09-29T05:14:00Z",      "2026-09-30T15:13:00+10:00", true,  "2026-09-30T15:14:00+10:00"],
+      ["2026-09-29T05:14:00.123456Z", "2026-09-29T06:00:00Z",    true,  "2026-09-30T05:14:00.123Z"],
+      ["",                          "2026-09-29T15:20:00+10:00", false, null],
+      [null,                        "2026-09-29T15:20:00+10:00", false, null],
+      ["not a date",                "2026-09-29T15:20:00+10:00", false, null]
+    ]
+  },
+
+  "channel": {
+    "_note": "[thread, now, which way a message from us goes]. none: texted STOP. wa: WhatsApp free text. watpl: WhatsApp, approved wording only. sms: SMS free text. A guest who wrote in the last 24 hours is answered the way they wrote; otherwise WhatsApp only for a guest who agreed (the desk's switch, or they once wrote there) and whose number WhatsApp knows.",
+    "cases": [
+      [{}, "2026-09-29T15:20:00+10:00", "sms"],
+      [{"lastIn": "2026-09-29T15:14:00+10:00", "lastInCh": "wa", "lastInWa": "2026-09-29T15:14:00+10:00"}, "2026-09-29T15:20:00+10:00", "wa"],
+      [{"lastIn": "2026-09-29T15:14:00+10:00", "lastInCh": "sms"}, "2026-09-29T15:20:00+10:00", "sms"],
+      [{"lastIn": "2026-09-29T15:14:00+10:00", "lastInCh": "sms", "lastInWa": "2026-09-28T09:00:00+10:00"}, "2026-09-29T15:20:00+10:00", "sms"],
+      [{"lastIn": "2026-09-23T09:52:00+10:00", "lastInCh": "wa", "lastInWa": "2026-09-23T09:52:00+10:00"}, "2026-09-29T15:20:00+10:00", "watpl"],
+      [{"wa": {"on": true, "by": "ben@x", "at": "2026-09-28T10:00:00+10:00"}}, "2026-09-29T15:20:00+10:00", "watpl"],
+      [{"wa": {"on": false, "by": "ben@x", "at": "2026-09-28T10:00:00+10:00"}}, "2026-09-29T15:20:00+10:00", "sms"],
+      [{"wa": {"on": true}, "waBad": true}, "2026-09-29T15:20:00+10:00", "sms"],
+      [{"lastIn": "2026-09-29T15:14:00+10:00", "lastInCh": "wa", "lastInWa": "2026-09-29T15:14:00+10:00", "waBad": true}, "2026-09-29T15:20:00+10:00", "wa"],
+      [{"optout": {"at": "2026-09-29T10:00:00+10:00", "word": "STOP"}, "lastIn": "2026-09-29T10:00:00+10:00", "lastInCh": "sms"}, "2026-09-29T15:20:00+10:00", "none"],
+      [{"optout": {"at": "2026-09-29T10:00:00+10:00", "word": "STOP"}, "wa": {"on": true}}, "2026-09-29T15:20:00+10:00", "none"]
+    ]
+  },
+
+  "row": {
+    "_note": "[thread, unsorted messages, open tasks, has a sendable mobile, the row's state]. fresh is white (work to do), task amber, sent the waiting grey, done green, none and nophone sunk.",
+    "cases": [
+      [null, 0, 0, false, "nophone"],
+      [null, 0, 0, true,  "none"],
+      [{}, 0, 0, true, "none"],
+      [{"lastAt": "2026-09-29T15:02:00+10:00", "lastOut": "2026-09-29T15:02:00+10:00"}, 0, 0, true, "sent"],
+      [{"lastAt": "2026-09-29T15:14:00+10:00", "lastIn": "2026-09-29T15:14:00+10:00"}, 1, 0, true, "fresh"],
+      [{"lastAt": "2026-09-29T15:14:00+10:00", "lastIn": "2026-09-29T15:14:00+10:00"}, 1, 1, true, "fresh"],
+      [{"lastAt": "2026-09-29T15:14:00+10:00", "lastIn": "2026-09-29T15:14:00+10:00"}, 0, 1, true, "task"],
+      [{"lastAt": "2026-09-29T15:14:00+10:00", "lastIn": "2026-09-29T15:14:00+10:00"}, 0, 0, true, "done"],
+      [{"lastAt": "2026-09-29T15:14:00+10:00", "lastIn": "2026-09-29T15:14:00+10:00"}, 0, 0, false, "done"]
+    ]
+  },
+
+  "templates": {
+    "_note": "[template, first name, arrival day, the words]. The approved WhatsApp wording, as the preview shows it and the Worker records it. GUEST-CONTACT.md holds the same text with {{1}} and {{2}} for Meta.",
+    "cases": [
+      ["question", "James", "", "Hi James, it's Nala Resort with a quick question about your stay. Could you reply to this message when you have a moment?"],
+      ["question", "", "", "Hi there, it's Nala Resort with a quick question about your stay. Could you reply to this message when you have a moment?"],
+      ["question", "  Léa ", "", "Hi Léa, it's Nala Resort with a quick question about your stay. Could you reply to this message when you have a moment?"],
+      ["arrival", "James", "2026-10-03", "Hi James, we look forward to welcoming you to Nala Resort on Saturday 3 October. If there is anything we can prepare before you arrive, just reply to this message."],
+      ["arrival", "James", "2026-10-03T14:00:00", "Hi James, we look forward to welcoming you to Nala Resort on Saturday 3 October. If there is anything we can prepare before you arrive, just reply to this message."],
+      ["arrival", "", "", "Hi there, we look forward to welcoming you to Nala Resort on your arrival day. If there is anything we can prepare before you arrive, just reply to this message."],
+      ["nosuch", "James", "", ""]
+    ]
+  }
+}

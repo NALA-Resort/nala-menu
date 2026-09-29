@@ -1626,7 +1626,9 @@ with sync_playwright() as p:
     links = q.evaluate("""()=>[...document.querySelectorAll('#navDrop a')]
         .filter(a=>getComputedStyle(a).display!=='none')
         .map(a=>a.getAttribute('href')).filter(h=>h!=='#')""")
-    ck("and the masseuse's menu offers no other page", links == [])
+    # One other page since Guest Contact (29 Sep): a guest's request tagged
+    # Spa lands on Tasks, and each team presses Done on its own login.
+    ck("and the masseuse's menu offers only Tasks", links == ["tasks.html"])
     q.close()
 
     # ── ghost bookings: a /spa record whose booking has left ────

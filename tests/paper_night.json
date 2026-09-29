@@ -1146,6 +1146,173 @@
      "providerId": "m4"
     }
    }
+  },
+  "contact": {
+   "61410007919": {
+    "phone": "+61410007919",
+    "lastAt": "2026-09-26T15:14:00+10:00",
+    "lastIn": "2026-09-26T15:14:00+10:00",
+    "lastInCh": "wa",
+    "lastInWa": "2026-09-26T15:14:00+10:00",
+    "dir": "in",
+    "preview": "Could we have a candle on the dessert?"
+   },
+   "61410015838": {
+    "phone": "+61410015838",
+    "lastAt": "2026-09-26T15:05:00+10:00",
+    "lastIn": "2026-09-26T15:05:00+10:00",
+    "lastInCh": "sms",
+    "dir": "in",
+    "preview": "Two gin and tonics at the pool?"
+   },
+   "61410023757": {
+    "phone": "+61410023757",
+    "lastAt": "2026-09-26T11:20:00+10:00",
+    "lastOut": "2026-09-26T11:20:00+10:00",
+    "dir": "out",
+    "preview": "Your late checkout is confirmed."
+   },
+   "61410031676": {
+    "phone": "+61410031676",
+    "lastAt": "2026-09-26T09:00:00+10:00",
+    "lastIn": "2026-09-26T09:00:00+10:00",
+    "lastInCh": "sms",
+    "dir": "in",
+    "preview": "Thanks!"
+   },
+   "61410055433": {
+    "phone": "+61410055433",
+    "lastAt": "2026-09-26T08:00:00+10:00",
+    "lastIn": "2026-09-26T08:00:00+10:00",
+    "lastInCh": "sms",
+    "dir": "in",
+    "preview": "STOP",
+    "optout": {
+     "at": "2026-09-26T08:00:00+10:00",
+     "word": "STOP"
+    }
+   }
+  },
+  "contactmsgs": {
+   "61410007919": {
+    "in-SMa": {
+     "dir": "in",
+     "ch": "wa",
+     "at": "2026-09-26T15:12:00+10:00",
+     "body": "The umbrella on our deck will not close.",
+     "sorted": {
+      "by": "staff@x",
+      "at": "2026-09-26T15:13:00+10:00"
+     },
+     "tasks": {
+      "maintenance": "t1night"
+     }
+    },
+    "in-SMb": {
+     "dir": "in",
+     "ch": "wa",
+     "at": "2026-09-26T15:14:00+10:00",
+     "body": "Could we have a candle on the dessert?"
+    },
+    "in-SMc": {
+     "dir": "in",
+     "ch": "wa",
+     "at": "2026-09-26T10:00:00+10:00",
+     "body": "Thank you!",
+     "sorted": {
+      "by": "staff@x",
+      "at": "2026-09-26T10:05:00+10:00"
+     }
+    },
+    "in-SMd": {
+     "dir": "in",
+     "ch": "wa",
+     "at": "2026-09-26T09:00:00+10:00",
+     "body": "A massage on Sunday?",
+     "sorted": {
+      "by": "staff@x",
+      "at": "2026-09-26T09:05:00+10:00"
+     },
+     "tasks": {
+      "spa": "t0night"
+     }
+    },
+    "o1": {
+     "dir": "out",
+     "ch": "wa",
+     "at": "2026-09-26T10:10:00+10:00",
+     "by": "staff@x",
+     "kind": "staff",
+     "body": "Sunday at 2pm is yours.",
+     "status": "read"
+    },
+    "o2": {
+     "dir": "out",
+     "ch": "sms",
+     "at": "2026-09-26T10:20:00+10:00",
+     "by": "staff@x",
+     "kind": "staff",
+     "body": "Your towels are on the way.",
+     "status": "failed",
+     "err": "Error 30003: Unreachable destination handset"
+    }
+   }
+  },
+  "contactnew": {
+   "61410007919": {
+    "in-SMb": true
+   }
+  },
+  "tasks": {
+   "maintenance": {
+    "t1night": {
+     "ck": "61410007919",
+     "msg": "in-SMa",
+     "villa": "1",
+     "name": "James Harrington",
+     "text": "The umbrella on our deck will not close.",
+     "state": "open",
+     "at": "2026-09-26T15:13:00+10:00",
+     "by": "staff@x"
+    }
+   },
+   "bar": {
+    "t2night": {
+     "ck": "61410015838",
+     "msg": "in-SMf",
+     "villa": "2",
+     "name": "Elena Petrova",
+     "text": "Two gin and tonics at the pool?",
+     "state": "open",
+     "at": "2026-09-26T15:06:00+10:00",
+     "by": "staff@x"
+    }
+   },
+   "spa": {
+    "t0night": {
+     "ck": "61410007919",
+     "msg": "in-SMd",
+     "villa": "1",
+     "name": "James Harrington",
+     "text": "A massage on Sunday?",
+     "state": "done",
+     "at": "2026-09-26T09:05:00+10:00",
+     "by": "staff@x",
+     "doneAt": "2026-09-26T09:30:00+10:00",
+     "doneBy": "staff@x",
+     "doneDay": "2026-09-26"
+    }
+   }
+  },
+  "contactsettings": {
+   "teams": {
+    "kitchen": {
+     "members": {}
+    },
+    "maintenance": {
+     "members": {}
+    }
+   }
   }
  }
 }

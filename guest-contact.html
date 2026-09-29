@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nala Villas">
+<link rel="apple-touch-icon" href="nala-icon.png?v=1">
+<title>Nala &middot; Guest Contact</title>
+<link rel="stylesheet" href="nala-ui2.css?v=9">
+<link rel="stylesheet" href="nala-ui.css?v=18">
+<style>
+  /* Built 29 Sep from mock-guest-contact.html, the owner's brief of that
+     day: every guest by booking - Upcoming, In-house, Past - with one
+     conversation each, SMS or WhatsApp, and every message they send sorted
+     into no task or a task for a team. GUEST-CONTACT.md is the brief. The
+     list's dress is the Pre-arrival SMS page's, copied rather than
+     approximated, so the desk's boards read alike. */
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
+
+  /* Upcoming, In-house, Past: the Pre-arrival page's knob, one more job. */
+  .knob { display:flex; border:1px solid var(--rule); border-radius:8px;
+          overflow:hidden; margin-bottom:12px; }
+  .knob button { flex:1; display:inline-flex; align-items:center; justify-content:center;
+                 gap:6px; padding:9px 0; font-family:var(--ui-font); font-size:var(--t2);
+                 background:none; border:none; color:var(--mid); cursor:pointer; }
+  /* How many wait on the desk: the menu's action icon, the same dress. */
+  .cnt { flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
+         border-radius:var(--pill); background:var(--accent); color:var(--accent-ink);
+         font-size:var(--t1); display:inline-flex; align-items:center;
+         justify-content:center; font-variant-numeric:tabular-nums; }
+  .cnt:empty { display:none; }
+  .find { margin-bottom:2px; }
+  .grp { font-size:var(--t1); color:var(--mid); margin:14px 2px 6px; }
+  .empty { font-size:var(--t2); color:var(--mid); margin:14px 2px; line-height:1.5; }
+
+  .vrow { display:flex; align-items:center; gap:12px; width:100%;
+          border:1px solid var(--rule); border-radius:8px; padding:11px 13px;
+          margin-bottom:7px; text-align:left; font-family:var(--ui-font);
+          color:inherit; cursor:pointer; }
+  .vrow .v { flex:0 0 auto; font-size:var(--t4); min-width:30px; text-align:center; }
+  .vrow .mid { flex:1; min-width:0; }
+  .vrow .l1 { gap:8px; }
+  .vrow .nm { font-size:var(--t3); }
+  .vrow .tm { font-size:var(--t2); color:var(--mid); margin-left:auto; }
+  .vrow .l2 { display:flex; align-items:center; gap:8px; margin-top:3px; }
+  /* A preview is a message cut short, like a name: it may trim. The time
+     and the count beside it never do (the trim rule, STYLEGUIDE.md). */
+  .vrow .pv { flex:1 1 auto; min-width:0; font-size:var(--t2); color:var(--mid);
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vrow .l3 { font-size:var(--t1); color:var(--mid); margin-top:3px; }
+  .vrow .l3 .open { color:var(--law-amber-ink); }
+  /* The states, colour-law tokens and nothing else (CLAUDE.md): a message
+     nobody has sorted is work to do, white; a task still open is amber,
+     chase this; only we have written is the waiting grey; all sorted is
+     the done green; nothing sent, or no number, is sunk. */
+  .vrow.b-task { background:var(--law-amber); border-color:var(--law-amber-b); }
+  .vrow.b-done { border-color:var(--law-green-b); }
+  .vrow.b-none, .vrow.b-nophone { border-style:dashed; opacity:.62; }
+  .vrow:disabled { cursor:default; }
+
+  /* ── one conversation ── */
+  .ctx { font-size:var(--t2); color:var(--mid); line-height:1.5; margin:-6px 2px 0; }
+  .ctx a { color:var(--mid); }
+  .evrow { display:flex; align-items:center; justify-content:space-between; gap:12px;
+           margin:12px 2px 0; font-size:var(--t2); color:var(--mid); }
+  /* The switch, blue when on: STYLEGUIDE.md's fifth thing that is not a
+     button. It is the guest's consent, saved on press. */
+  .sw { flex:0 0 auto; width:44px; height:26px; border:0; border-radius:var(--pill);
+        background:var(--card); position:relative; cursor:pointer; }
+  .sw::after { content:''; position:absolute; top:3px; left:3px; width:20px; height:20px;
+               border-radius:50%; background:var(--surface, #fff);
+               box-shadow:0 1px 2px rgba(28,28,26,.25); transition:left .15s ease; }
+  .sw.on { background:var(--accent); }
+  .sw.on::after { left:21px; }
+  .day { text-align:center; font-size:var(--t1); color:var(--mid); margin:22px 0 10px; }
+  .msg { display:flex; flex-direction:column; max-width:84%; margin:0 0 12px; }
+  .msg.in  { align-items:flex-start; margin-right:auto; }
+  .msg.out { align-items:flex-end; margin-left:auto; }
+  .bub { padding:10px 12px; border-radius:16px; font-size:var(--t3); line-height:1.42;
+         overflow-wrap:anywhere; }
+  /* Theirs on white, ours on the quiet fill: sides, not states. Neither is
+     a colour the law spends. */
+  .msg.in .bub  { border:1px solid var(--rule); border-bottom-left-radius:5px; }
+  .msg.out .bub { background:var(--card); border-bottom-right-radius:5px; }
+  .bub .kind { display:block; font-size:var(--t1); font-weight:600; color:var(--mid);
+               margin-bottom:3px; }
+  .meta { font-size:var(--t1); color:var(--mid); margin-top:4px; padding:0 4px; }
+  .meta .bad { color:var(--law-red); }
+  .photo { display:block; max-width:210px; width:100%; min-height:40px; border-radius:10px;
+           margin:0 0 8px; }
+  .photo.wait { font-size:var(--t1); color:var(--mid); }
+
+  /* What a guest's message became, under it. A tinted pill is a status and
+     is never tapped; the buttons beside it are quiet rectangles, because
+     Send stays the one primary on this screen (the button law). */
+  .tri { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:6px 0 0 2px; }
+  .tri .lbl { font-size:var(--t2); color:var(--mid); margin-right:2px; }
+  .tp { display:inline-flex; align-items:center; min-height:28px; padding:0 10px;
+        border-radius:var(--pill); border:1px solid; font-size:var(--t2); }
+  .tp.open { background:var(--law-amber); border-color:var(--law-amber-b); color:var(--law-amber-ink); }
+  .tp.done { background:var(--law-save-bg); border-color:var(--law-save-bdr); color:var(--law-save-ink); }
+  .sbtn { display:inline-flex; align-items:center; justify-content:center; min-height:36px;
+          padding:0 14px; border:0; border-radius:var(--r); background:var(--card);
+          font-family:var(--ui-font); font-size:var(--t2); color:var(--ink); cursor:pointer; }
+  .sbtn.saving { background:var(--law-wait); color:var(--mid); }
+  .trifail { flex-basis:100%; font-size:var(--t2); color:var(--law-red); }
+
+  .compose { margin-top:18px; }
+  .win { font-size:var(--t2); color:var(--mid); margin:0 2px 8px; line-height:1.45; }
+  .win b { font-weight:600; color:var(--ink); }
+  .compose textarea { min-height:96px; line-height:1.45; resize:vertical; display:block; }
+  .tpls { display:flex; flex-wrap:wrap; gap:8px; margin:2px 0 12px; }
+  .chip { display:inline-flex; align-items:center; min-height:36px; padding:0 14px;
+          border:1px solid var(--rule); border-radius:var(--pill);
+          font-family:var(--ui-font); font-size:var(--t2); color:var(--ink); cursor:pointer; }
+  .prev { margin:0 0 4px auto; }
+  /* Test mode is the attention colour: the page works, and nothing leaves
+     for a guest. The Worker says so; this only repeats it. */
+  .testbar { display:none; margin:0 0 12px; padding:10px 12px; border-radius:8px;
+             background:var(--law-amber); border:1px solid var(--law-amber-b);
+             color:var(--law-amber-ink); font-size:var(--t2); line-height:1.45; }
+  .testbar.show { display:block; }
+  #errBar { font-size:var(--t2); color:var(--law-red); margin:10px 2px; line-height:1.45; }
+  /* A conversation's box and its Send sit at the END of the conversation,
+     where the newest message is, not pinned to the screen: a pinned Send
+     floated over the messages while the box it sends stayed out of sight.
+     The page opens scrolled to the bottom instead. */
+  #threadView .foot { position:static; margin-bottom:calc(12px + env(safe-area-inset-bottom)); }
+  #sendErr { margin:8px 2px 0; }
+
+/* ── paper ───────────────────────────────────────────────────────────
+   The ground and its tokens live in nala-ui2.css. Every card and row is a
+   solid white surface lifted off the paper, its state's tint drawn over the
+   white, the same colour it always was; the sunk rows are white and not
+   lifted, so they still recede (the owner, 27 Sep). */
+body.paper .knob { background:var(--surface); }
+body.paper .vrow { background:var(--surface); box-shadow:var(--lift); }
+body.paper .vrow.b-task { background:var(--law-amber); }
+body.paper .vrow.b-sent { background:linear-gradient(var(--law-wait), var(--law-wait)), var(--surface); }
+body.paper .vrow.b-done { background:linear-gradient(var(--law-green-t), var(--law-green-t)), var(--surface); }
+body.paper .vrow.b-none, body.paper .vrow.b-nophone { background:var(--surface); box-shadow:none; }
+body.paper .msg.in .bub { background:var(--surface); box-shadow:var(--lift); }
+body.paper .chip { background:var(--surface); }
+body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface); }
+</style>
+</head>
+<body class="tier-app ui2 paper">
+
+<div class="daterow">
+  <button class="dnav" id="backBtn" aria-label="Back to Guest Contact" style="display:none">&lsaquo;</button>
+  <div class="date" id="title">Guest Contact</div>
+  <div class="navwrap" id="navWrap" style="display:none">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"></div>
+  </div>
+</div>
+
+<div class="noaccess" id="noAccess"></div>
+<div class="testbar" id="testBar"></div>
+
+<div id="listView" style="display:none">
+  <div class="knob" id="knob">
+    <button data-tab="up" id="tabUp">Upcoming <span class="cnt" id="cUp"></span></button>
+    <button data-tab="in" id="tabIn">In-house <span class="cnt" id="cIn"></span></button>
+    <button data-tab="past" id="tabPast">Past <span class="cnt" id="cPast"></span></button>
+  </div>
+  <input class="find" id="find" type="search" placeholder="Search name, villa or number"
+         aria-label="Search name, villa or number" autocomplete="off">
+  <div id="board"></div>
+</div>
+
+<div id="threadView" style="display:none">
+  <div class="ctx" id="ctx"></div>
+  <div class="evrow" id="waRow"><span id="waWords">WhatsApp: the guest asked for it</span>
+    <button class="sw" id="waSw" role="switch" aria-checked="false"
+            aria-label="WhatsApp: the guest asked for it"></button></div>
+  <div id="msgs"></div>
+  <div class="compose" id="compose">
+    <div class="win" id="win"></div>
+    <div class="tpls" id="tpls"></div>
+    <div id="tplPrev"></div>
+    <textarea id="msgBox" aria-label="Message"></textarea>
+  </div>
+  <div class="savefail" id="sendErr"></div>
+  <div class="foot" id="foot">
+    <button class="btn" id="viaBtn" style="display:none">SMS instead</button>
+    <button class="btn solid" id="sendBtn">Send</button>
+  </div>
+</div>
+
+<div id="errBar"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="auth.js?v=12"></script>
+<script src="nala-shared.js?v=87"></script>
+<script>
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+/* The messenger: worker/guest-contact.js, a Worker of its own so the SMS
+   pages' Worker and the texts they send are not touched while this is
+   built and tested (the owner, 29 Sep). The page proposes; the Worker
+   decides the channel, the 24 hours, the approved words and the test list. */
+var CONTACT_URL = 'https://nala-contact.ben-681.workers.dev';
+
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+})();
+function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
+
+/* ── the page in one paragraph ────────────────────────────────
+   Two views on one page. The list: every guest by booking, the tab their
+   dates put them in, the colour contactRowState gives their conversation.
+   A conversation (?c=<number>): everything said to and by that guest, and
+   under each of their messages what it became - no task, or a task for a
+   team - with the box to answer below. Nothing here decides a state; the
+   shared readers in nala-shared.js do, and the Worker decides what may go. */
+var Q = new URLSearchParams(location.search);
+var CK = /^[1-9][0-9]{7,14}$/.test(Q.get('c') || '') ? Q.get('c') : null;
+var BK = /^[A-Za-z0-9-]{4,64}$/.test(Q.get('b') || '') ? Q.get('b') : null;
+var TAB = { up:1, 'in':1, past:1 }[Q.get('t')] ? Q.get('t') : 'in';
+var WINDOW_DAYS = 30;       /* how far Upcoming looks ahead and Past looks back */
+var HELLO = null;           /* the Worker's hello: set up? WhatsApp? test mode? */
+var DATA = null;            /* the list's reads */
+var PICK = null;            /* the message whose Task picker is open */
+var VIA = '';               /* 'sms' once the desk chose SMS over an approved message */
+var TPL = 'question';       /* the approved message chosen */
+var READFAIL = false;
+
+function esc(t){
+  return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; });
+}
+function plusDays(n){ var d = new Date(); d.setDate(d.getDate() + n); return dkey(d); }
+function keyOf(s){ var d = parseDepDate(s); return d ? dkey(d) : ''; }
+var WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function dayWords(key){
+  var d = parseDepDate(key); if (!d) return '';
+  return WD[d.getDay()] + ' ' + d.getDate() + ' ' + MO[d.getMonth()];
+}
+/* When a message was: the time today, the weekday this week, else the day. */
+function whenShort(iso){
+  var d = parseISO(iso); if (!d) return '';
+  var k = dkey(d);
+  if (k === dkey(new Date())) return timeOf(iso);
+  if (k > plusDays(-6)) return WD[d.getDay()];
+  return d.getDate() + ' ' + MO[d.getMonth()];
+}
+function whoOf(email){
+  var n = displayNameOf(email);
+  return n ? n.split(/\s+/)[0] : '';
+}
+function prettyPhone(e){
+  var m = /^\+614(\d{2})(\d{3})(\d{3})$/.exec(e || '');
+  return m ? '04' + m[1] + ' ' + m[2] + ' ' + m[3] : String(e || '');
+}
+
+/* ── reading ─────────────────────────────────────────────────── */
+function whole(path, q){
+  return fetch(DB + path + '.json?' + (q ? q + '&' : '') + 'v=' + Date.now()).then(function(r){
+    if (!r.ok) throw new Error(path + ' HTTP ' + r.status);
+    return r.json();
+  });
+}
+function openTasks(){
+  return Promise.all(CONTACT_TEAMS.map(function(t){
+    return whole('/tasks/' + t.key, 'orderBy=' + encodeURIComponent('"state"') +
+                 '&equalTo=' + encodeURIComponent('"open"')).then(function(j){
+      var out = {};
+      Object.keys(j || {}).forEach(function(id){
+        if (j[id] && j[id].state === 'open') out[id] = j[id];
+      });
+      return out;
+    });
+  })).then(function(all){
+    var map = {};
+    CONTACT_TEAMS.forEach(function(t, i){ map[t.key] = all[i]; });
+    return map;
+  });
+}
+
+/* The bookings in the window, off the nights (/stays), with the number the
+   desk corrected (/phonefix) outranking Mews' copy - the SMS pages' rule.
+   A booking's tab is its dates against today: arriving after today is
+   Upcoming, leaving before today is Past, anything between is In-house,
+   the morning of a departure included. */
+function bookingsFrom(nights, fixes){
+  var today = dkey(new Date()), out = {};
+  Object.keys(nights || {}).sort().forEach(function(d){
+    var villas = nights[d] || {};
+    Object.keys(villas).forEach(function(v){
+      var s = villas[v];
+      if (!s || typeof s !== 'object' || !s.id) return;
+      var b = out[s.id];
+      if (!b) b = out[s.id] = { id: s.id, first: s.first || '', last: s.last || '',
+                                raw: s.phone || '', arrive: keyOf(s.arrive) || d,
+                                depart: keyOf(s.depart), villa: String(v), first_night: d,
+                                last_night: d, adults: s.adults };
+      b.last_night = d;
+      if (d <= today) b.villa = String(v);   /* the villa they are in now */
+    });
+  });
+  Object.keys(out).forEach(function(id){
+    var b = out[id], fix = fixes && fixes[id];
+    if (!b.depart) b.depart = dkey(new Date(parseDepDate(b.last_night).getTime() + 86400000));
+    b.phoneRaw = String((fix && fix.phone) || b.raw || '').trim();
+    b.ck = contactKey(b.phoneRaw);
+    b.name = (b.first + ' ' + b.last).trim() || 'Guest';
+    b.tab = b.arrive > today ? 'up' : b.depart < today ? 'past' : 'in';
+  });
+  return out;
+}
+
+/* Each read at its own pace: a guest's message can land any second, a
+   booking moves only when the Mews sync runs, every five minutes. So two
+   months of nights are read every five minutes, not with every poll, and
+   the list reads only the threads that moved in its window - an open page
+   must not pull the whole resort through the database every few seconds. */
+var STAYS_MS = 5 * 60 * 1000;
+var STAYS = null, STAYS_AT = 0;
+function loadStays(){
+  if (STAYS && Date.now() - STAYS_AT < STAYS_MS) return Promise.resolve(STAYS);
+  var from = plusDays(-WINDOW_DAYS), to = plusDays(WINDOW_DAYS);
+  return Promise.all([
+    whole('/stays', 'orderBy=' + encodeURIComponent('"$key"') +
+          '&startAt=' + encodeURIComponent('"' + from + '"') +
+          '&endAt=' + encodeURIComponent('"' + to + '"')),
+    whole('/phonefix')
+  ]).then(function(res){
+    var nights = {};
+    Object.keys(res[0] || {}).forEach(function(d){
+      if (d >= from && d <= to) nights[d] = res[0][d];
+    });
+    STAYS = bookingsFrom(nights, res[1] || {});
+    STAYS_AT = Date.now();
+    return STAYS;
+  });
+}
+/* The threads that moved in the window. An older one, a guest from last
+   season, is not the list's business: opening it reads it whole. */
+function recentThreads(){
+  var since = plusDays(-WINDOW_DAYS);
+  return whole('/contact', 'orderBy=' + encodeURIComponent('"lastAt"') +
+               '&startAt=' + encodeURIComponent('"' + parseDepDate(since).toISOString() + '"'))
+    .then(function(j){
+      var out = {};
+      Object.keys(j || {}).forEach(function(ck){
+        var d = j[ck] && parseISO(j[ck].lastAt);
+        if (d && dkey(d) >= since) out[ck] = j[ck];
+      });
+      return out;
+    });
+}
+function loadAll(){
+  return Promise.all([loadStays(), recentThreads(), whole('/contactnew'), openTasks()])
+    .then(function(res){
+      DATA = { bookings: res[0], threads: res[1], fresh: res[2] || {}, tasks: res[3] };
+      return DATA;
+    });
+}
+
+/* The open tasks of one guest, from whichever teams hold them. */
+function tasksOf(ck){
+  var out = [];
+  CONTACT_TEAMS.forEach(function(t){
+    var m = (DATA.tasks || {})[t.key] || {};
+    Object.keys(m).forEach(function(id){
+      if (m[id].ck === ck) out.push({ team: t.key, id: id, rec: m[id] });
+    });
+  });
+  return out;
+}
+function freshOf(ck){ return Object.keys((DATA.fresh || {})[ck] || {}).length; }
+
+/* ── the list ────────────────────────────────────────────────── */
+var ORDER = ['fresh','task','sent','done','none','nophone'];
+var BAND = { fresh:'New', task:'Task open', sent:'Sent, no reply', done:'All done',
+             none:'No messages', nophone:'No messages' };
+
+function rowsOf(){
+  var rows = [], seen = {};
+  var today = dkey(new Date()), since = plusDays(-WINDOW_DAYS);
+  Object.keys(DATA.bookings).forEach(function(id){
+    var b = DATA.bookings[id];
+    var t = b.ck ? DATA.threads[b.ck] : null;
+    if (b.ck) seen[b.ck] = true;
+    rows.push({ b: b, ck: b.ck, t: t, tab: b.tab,
+                state: contactRowState(t, b.ck ? freshOf(b.ck) : 0,
+                                       b.ck ? tasksOf(b.ck).length : 0, !!b.ck) });
+  });
+  /* A number on no booking in the window - a caller about dinner, a guest
+     from months ago - still lands here, on In-house, its number for a name. */
+  Object.keys(DATA.threads).forEach(function(ck){
+    var t = DATA.threads[ck];
+    if (seen[ck] || !t || !t.lastAt) return;
+    var d = parseISO(t.lastAt);
+    if (!d || dkey(d) < since) return;
+    rows.push({ b: null, ck: ck, t: t, tab: 'in',
+                state: contactRowState(t, freshOf(ck), tasksOf(ck).length, true) });
+  });
+  return rows;
+}
+function lastMs(r){ var d = r.t && parseISO(r.t.lastAt); return d ? d.getTime() : 0; }
+function rowName(r){
+  if (r.b) return r.b.name;
+  return (r.t && r.t.profile) ? r.t.profile : prettyPhone(r.t && r.t.phone || '+' + r.ck);
+}
+function stayWords(r){
+  var b = r.b;
+  if (!b) return 'not on any booking';
+  if (b.tab === 'up'){
+    var n = Math.round((parseDepDate(b.depart) - parseDepDate(b.arrive)) / 86400000);
+    return 'arrives ' + dayWords(b.arrive) + (n > 0 ? ' · ' + n + (n === 1 ? ' night' : ' nights') : '');
+  }
+  if (b.tab === 'past') return 'left ' + dayWords(b.depart);
+  return 'leaves ' + dayWords(b.depart);
+}
+function chWord(t){
+  if (!t) return '';
+  if (t.optout) return 'Opted out';
+  return (t.lastInCh === 'wa' || waAgreed(t)) ? 'WhatsApp' : 'SMS';
+}
+function rowHTML(r, showTab){
+  var n = r.ck ? freshOf(r.ck) : 0, open = r.ck ? tasksOf(r.ck) : [];
+  var pv = r.state === 'nophone' ? 'No mobile number on the booking'
+         : !r.t || !r.t.lastAt ? 'Nothing sent yet'
+         : (r.t.dir === 'out' ? 'You: ' : '') + (r.t.preview || '');
+  var l3 = [];
+  if (showTab) l3.push({ up:'Upcoming', 'in':'In-house', past:'Past' }[r.tab]);
+  if (chWord(r.t)) l3.push(chWord(r.t));
+  l3.push(stayWords(r));
+  var teams = {};
+  open.forEach(function(x){ teams[teamLabel(x.team)] = true; });
+  var openWords = Object.keys(teams).length
+    ? ' · <span class="open">' + esc(Object.keys(teams).join(', ')) + ' open</span>' : '';
+  return '<button class="vrow b-' + r.state + '" data-ck="' + esc(r.ck || '') +
+         '" data-b="' + esc(r.b ? r.b.id : '') + '" data-state="' + r.state + '"' +
+         (r.state === 'nophone' ? ' disabled' : '') + '>' +
+    '<div class="v">' + esc(r.b ? r.b.villa : '?') + '</div><div class="mid">' +
+    /* A name may trim; a number standing in for one never does. */
+    '<div class="l1 trimrow"><span class="nm' + (r.b || (r.t && r.t.profile) ? ' trim' : '') + '">' +
+    esc(rowName(r)) + '</span>' +
+    '<span class="tm">' + esc(r.t ? whenShort(r.t.lastAt) : '') + '</span></div>' +
+    '<div class="l2"><span class="pv">' + esc(pv) + '</span>' +
+    (n ? '<span class="cnt">' + n + '</span>' : '') + '</div>' +
+    '<div class="l3">' + esc(l3.join(' · ')) + openWords + '</div></div></button>';
+}
+
+function drawList(){
+  var rows = rowsOf(), board = document.getElementById('board');
+  var q = document.getElementById('find').value.trim().toLowerCase();
+  var counts = { up:0, 'in':0, past:0 };
+  rows.forEach(function(r){ if (r.state === 'fresh') counts[r.tab]++; });
+  document.getElementById('cUp').textContent = counts.up || '';
+  document.getElementById('cIn').textContent = counts['in'] || '';
+  document.getElementById('cPast').textContent = counts.past || '';
+  [].forEach.call(document.querySelectorAll('#knob button'), function(b){
+    b.className = b.getAttribute('data-tab') === TAB && !q ? 'on' : '';
+    b.setAttribute('aria-pressed', b.getAttribute('data-tab') === TAB && !q);
+  });
+  /* A search reaches all three tabs: a guest is found by name, villa or
+     number wherever their dates put them. */
+  var shown = rows.filter(function(r){
+    if (!q) return r.tab === TAB;
+    var hay = [rowName(r), r.b ? r.b.villa : '', r.ck || '',
+               r.b ? r.b.phoneRaw : '', r.t && r.t.profile || ''].join(' ').toLowerCase();
+    if (/^\d{1,2}$/.test(q)) return !!r.b && r.b.villa === q;
+    return hay.indexOf(q) > -1 || (q.replace(/\D/g, '').length > 3 &&
+           (r.ck || '').indexOf(q.replace(/\D/g, '').replace(/^0/, '')) > -1);
+  });
+  shown.sort(function(a, b){
+    return ORDER.indexOf(a.state) - ORDER.indexOf(b.state) || lastMs(b) - lastMs(a) ||
+           (+(a.b && a.b.villa) || 99) - (+(b.b && b.b.villa) || 99);
+  });
+  if (!shown.length){
+    board.innerHTML = '<div class="empty">' + (q ? 'Nobody matches that.'
+      : { up:'Nobody arriving in the next ' + WINDOW_DAYS + ' days.',
+          'in':'Nobody in house.', past:'Nobody has left in the last ' + WINDOW_DAYS + ' days.' }[TAB]) + '</div>';
+    return;
+  }
+  var h = '', band = null;
+  shown.forEach(function(r){
+    var name = BAND[r.state];
+    if (name !== band){
+      band = name;
+      var n = shown.filter(function(x){ return BAND[x.state] === name; }).length;
+      h += '<div class="grp">' + esc(name) + ' · ' + n + '</div>';
+    }
+    h += rowHTML(r, !!q);
+  });
+  board.innerHTML = h;
+}
+document.getElementById('knob').onclick = function(e){
+  var b = e.target.closest('button'); if (!b) return;
+  TAB = b.getAttribute('data-tab');
+  document.getElementById('find').value = '';
+  history.replaceState(null, '', 'guest-contact.html?t=' + TAB);
+  drawList();
+};
+document.getElementById('find').oninput = function(){ if (DATA) drawList(); };
+document.getElementById('board').onclick = function(e){
+  var r = e.target.closest('.vrow'); if (!r || r.disabled) return;
+  var q = 'c=' + r.getAttribute('data-ck') + (r.getAttribute('data-b') ? '&b=' + r.getAttribute('data-b') : '') +
+          '&t=' + TAB;
+  location.href = 'guest-contact.html?' + q;
+};
+
+/* ── one conversation ────────────────────────────────────────── */
+var TH = { t: null, msgs: {}, fresh: {}, tasks: {}, b: null, sent: [] };
+
+/* The booking this number belongs to: the one named in the address when it
+   is this guest's, else the best the window holds - in house first, then
+   the next arrival, then the latest departure. */
+function bookingFor(ck){
+  var all = STAYS || {}, pick = null;
+  if (BK && all[BK] && all[BK].ck === ck) return all[BK];
+  var rank = { 'in':0, up:1, past:2 };
+  Object.keys(all).forEach(function(id){
+    var b = all[id];
+    if (b.ck !== ck) return;
+    if (!pick || rank[b.tab] < rank[pick.tab] ||
+        (b.tab === pick.tab && (b.tab === 'up' ? b.arrive < pick.arrive : b.depart > pick.depart))) pick = b;
+  });
+  return pick;
+}
+
+/* What the SMS pages sent this guest - the pre-arrival form, spa reminders,
+   tonight's menu - so the whole stay reads in one place. Read, never
+   written: those pages own their records. */
+function smsPageSends(b, phone){
+  if (!b) return Promise.resolve([]);
+  var reads = [whole('/previnvites/' + b.id).catch(function(){ return null; }),
+               whole('/spareminders/' + b.id).catch(function(){ return null; })];
+  var nights = [], d = parseDepDate(b.arrive), end = b.depart < dkey(new Date()) ? b.depart : dkey(new Date());
+  for (var i = 0; d && dkey(d) <= end && i < 14; i++){
+    nights.push(dkey(d)); d = new Date(d.getTime() + 86400000);
+  }
+  nights.forEach(function(k){ reads.push(whole('/invites/' + k).catch(function(){ return null; })); });
+  return Promise.all(reads).then(function(res){
+    var out = [];
+    function add(rec, kind){
+      if (!rec || typeof rec !== 'object' || !rec.sentAt) return;
+      if (rec.to && normalisePhone(rec.to) !== phone) return;
+      out.push({ dir:'out', ch:'sms', body: rec.body || '', at: rec.sentAt, by: rec.by || '',
+                 kind: kind, page: true,
+                 status: rec.status === 'failed' ? 'failed'
+                       : rec.delivery === 'failed' ? 'undelivered'
+                       : rec.delivery === 'delivered' ? 'delivered' : 'sent',
+                 err: rec.error || rec.deliveryText || '' });
+    }
+    add(res[0], 'Pre-arrival form');
+    Object.keys(res[1] || {}).forEach(function(tid){ add(res[1][tid], 'Spa reminder'); });
+    res.slice(2).forEach(function(night){
+      Object.keys(night || {}).forEach(function(v){ add(night[v], 'Tonight’s menu'); });
+    });
+    return out;
+  });
+}
+
+var SENT_AT = 0;             /* when the SMS pages' records were last read */
+function loadThread(){
+  return Promise.all([loadStays(), whole('/contact/' + CK), whole('/contactmsgs/' + CK),
+                      whole('/contactnew/' + CK)]).then(function(res){
+    TH.t = res[1] || null;
+    TH.msgs = res[2] || {};
+    TH.fresh = res[3] || {};
+    TH.b = bookingFor(CK);
+    /* Each task this guest's messages became, open or done, read by id. */
+    var refs = [];
+    Object.keys(TH.msgs).forEach(function(m){
+      var ts = TH.msgs[m].tasks || {};
+      Object.keys(ts).forEach(function(team){ refs.push([team, ts[team]]); });
+    });
+    return Promise.all(refs.map(function(r){
+      return whole('/tasks/' + r[0] + '/' + r[1]).catch(function(){ return null; });
+    })).then(function(recs){
+      TH.tasks = {};
+      refs.forEach(function(r, i){ TH.tasks[r[0] + '/' + r[1]] = recs[i]; });
+      /* The SMS pages' records move only when those pages send: read at
+         the bookings' pace. */
+      if (TH.sent && Date.now() - SENT_AT < STAYS_MS) return TH.sent;
+      return smsPageSends(TH.b, '+' + CK).then(function(sent){ SENT_AT = Date.now(); return sent; });
+    }).then(function(sent){ TH.sent = sent; });
+  });
+}
+
+function statusWords(m){
+  var s = m.status || '';
+  if (s === 'failed' || s === 'undelivered')
+    return '<span class="bad">Not delivered' + (m.err ? ' · ' + esc(m.err) : '') + '</span>';
+  if (s === 'read') return 'Read';
+  if (s === 'delivered') return 'Delivered';
+  if (s === 'sending') return 'Sending';
+  return s ? 'Sent' : '';
+}
+function dayLabel(iso){
+  var d = parseISO(iso); if (!d) return '';
+  var k = dkey(d);
+  if (k === dkey(new Date())) return 'Today';
+  if (k === plusDays(-1)) return 'Yesterday';
+  return dayWords(k);
+}
+
+function triHTML(id, m){
+  if (m.dir !== 'in') return '';
+  var h = '';
+  if (PICK === id){
+    /* A team this message already has a task with is not offered twice. */
+    var had = m.tasks || {};
+    h = '<span class="lbl">Task for</span>' + CONTACT_TEAMS.filter(function(t){
+      return !had[t.key]; }).map(function(t){
+      return '<button class="sbtn" id="tm-' + id + '-' + t.key + '" data-act="team" data-m="' + id +
+             '" data-team="' + t.key + '">' + esc(t.label) + '</button>';
+    }).join('') + '<button class="sbtn" id="cx-' + id + '" data-act="cancel" data-m="' + id + '">Cancel</button>';
+    return '<div class="tri">' + h + '<div class="trifail" id="tf-' + id + '"></div></div>';
+  }
+  if (TH.fresh[id]){
+    return '<div class="tri"><button class="sbtn" id="nt-' + id + '" data-act="notask" data-m="' + id +
+           '">No task</button><button class="sbtn" id="tk-' + id + '" data-act="pick" data-m="' + id +
+           '">Task</button><div class="trifail" id="tf-' + id + '"></div></div>';
+  }
+  var ts = m.tasks || {};
+  Object.keys(ts).forEach(function(team){
+    var rec = TH.tasks[team + '/' + ts[team]];
+    if (rec && rec.state === 'done')
+      h += '<span class="tp done">' + esc(teamLabel(team)) + ' · done' +
+           (rec.doneBy ? ' by ' + esc(whoOf(rec.doneBy)) : '') + '</span>';
+    else if (rec)
+      h += '<span class="tp open">' + esc(teamLabel(team)) + ' · open</span>' +
+           '<button class="sbtn" id="dn-' + id + '-' + team + '" data-act="done" data-m="' + id +
+           '" data-team="' + team + '">Done</button>';
+  });
+  if (!Object.keys(ts).length && m.sorted)
+    h += '<span class="tp done">No task · ' + esc(whoOf(m.sorted.by)) + '</span>';
+  if (m.sorted)
+    h += '<button class="sbtn" id="tk-' + id + '" data-act="pick" data-m="' + id + '">' +
+         (Object.keys(ts).length ? 'Another task' : 'Task') + '</button>';
+  return h ? '<div class="tri">' + h + '<div class="trifail" id="tf-' + id + '"></div></div>' : '';
+}
+
+function msgHTML(id, m){
+  var kind = m.page ? m.kind
+           : m.kind === 'template' ? (CONTACT_TEMPLATES.filter(function(x){ return x.id === m.tpl; })[0] || {}).label || 'Approved message'
+           : m.kind === 'fallback' ? 'Sent again by SMS: not on WhatsApp' : '';
+  var photos = '';
+  Object.keys(m.media || {}).forEach(function(i){
+    photos += '<img class="photo wait" alt="Photo from the guest" data-m="' + esc(id) + '" data-i="' + esc(i) + '">';
+  });
+  var meta = [];
+  if (m.dir === 'out' && m.by) meta.push(esc(whoOf(m.by)));
+  meta.push(m.ch === 'wa' ? 'WhatsApp' : 'SMS');
+  if (m.page) meta.push('SMS page');
+  meta.push(esc(timeOf(m.at)));
+  if (m.dir === 'out' && statusWords(m)) meta.push(statusWords(m));
+  return '<div class="msg ' + (m.dir === 'in' ? 'in' : 'out') + '" data-m="' + esc(id) + '">' +
+    '<div class="bub">' + (kind ? '<span class="kind">' + esc(kind) + '</span>' : '') + photos +
+    esc(m.body).replace(/\n/g, '<br>') + '</div>' +
+    '<div class="meta">' + meta.join(' · ') + '</div>' + triHTML(id, m) + '</div>';
+}
+
+var DRAWN = false;
+function drawThread(){
+  /* Stay at the newest message if that is where the desk was reading. */
+  var el = document.scrollingElement || document.documentElement;
+  var atEnd = !DRAWN || el.scrollTop + window.innerHeight >= el.scrollHeight - 80;
+  var t = TH.t || {}, b = TH.b, phone = '+' + CK;
+  document.getElementById('title').textContent = b ? b.name : (t.profile || prettyPhone(phone));
+  var ctx = b ? 'Villa ' + esc(b.villa) + ' · ' + esc(stayWords({ b: b })) +
+                (b.adults ? ' · ' + b.adults + (b.adults === 1 ? ' guest' : ' guests') : '')
+              : 'Not on any booking in the last or next ' + WINDOW_DAYS + ' days';
+  ctx += '<br>' + esc(prettyPhone(phone)) + (b && canOpen(window.NALA_ROLE, 'guest.html')
+         ? ' · <a href="guest.html?b=' + esc(b.id) + '">Guest profile</a>' : '');
+  document.getElementById('ctx').innerHTML = ctx;
+  var on = !!(t.wa && t.wa.on === true);
+  var sw = document.getElementById('waSw');
+  sw.className = 'sw' + (on ? ' on' : '');
+  sw.setAttribute('aria-checked', on);
+  /* Writing to us on WhatsApp is consent too (waAgreed), so a guest who
+     did is said to have, whether or not anybody pressed the switch. */
+  document.getElementById('waWords').textContent = on
+    ? 'WhatsApp: asked for, ' + (t.wa.by ? whoOf(t.wa.by) + ' ' : '') + stampOf(t.wa.at)
+    : t.lastInWa ? 'WhatsApp: they have written to us there'
+    : 'WhatsApp: the guest asked for it';
+
+  var all = Object.keys(TH.msgs).map(function(k){ return { id: k, m: TH.msgs[k] }; })
+    .concat(TH.sent.map(function(m, i){ return { id: 'page' + i, m: m }; }));
+  all.sort(function(a, b){
+    var x = parseISO(a.m.at), y = parseISO(b.m.at);
+    return ((x ? x.getTime() : 0) - (y ? y.getTime() : 0)) || (a.id < b.id ? -1 : 1);
+  });
+  var h = '', day = null;
+  all.forEach(function(x){
+    var dl = dayLabel(x.m.at);
+    if (dl !== day){ day = dl; h += '<div class="day">' + esc(dl) + '</div>'; }
+    h += msgHTML(x.id, x.m);
+  });
+  document.getElementById('msgs').innerHTML = h ||
+    '<div class="empty">Nothing yet. Anything you send starts the conversation.</div>';
+  loadPhotos();
+  drawCompose();
+  DRAWN = true;
+  if (atEnd) window.scrollTo(0, el.scrollHeight);
+}
+
+/* The box, which says which way the words will go before they go. */
+function channelNow(){
+  var c = contactChannel(TH.t || {}, Date.now());
+  if (HELLO && !HELLO.wa && (c.ch === 'wa' || c.ch === 'watpl')) c = { ch:'sms', until:null };
+  if (c.ch === 'watpl' && VIA === 'sms') c = { ch:'sms', until:null, chosen:true };
+  return c;
+}
+function untilWords(ms){
+  var d = new Date(ms);
+  return timeOf(d.toISOString()) + (dkey(d) === dkey(new Date()) ? ' today' : ' tomorrow');
+}
+function drawCompose(){
+  var c = channelNow(), t = TH.t || {};
+  var win = document.getElementById('win'), box = document.getElementById('msgBox');
+  var tpls = document.getElementById('tpls'), prev = document.getElementById('tplPrev');
+  var via = document.getElementById('viaBtn'), send = document.getElementById('sendBtn');
+  var foot = document.getElementById('foot');
+  tpls.innerHTML = ''; prev.innerHTML = '';
+  box.style.display = ''; foot.style.display = ''; via.style.display = 'none';
+  var name = TH.b ? TH.b.first : '';
+  if (c.ch === 'none'){
+    win.innerHTML = 'This guest texted <b>' + esc(t.optout.word || 'STOP') + '</b> ' +
+      esc(stampOf(t.optout.at)) + '. Nothing can be sent until they text START.';
+    box.style.display = 'none'; foot.style.display = 'none';
+    return;
+  }
+  if (c.ch === 'watpl'){
+    var last = parseISO(t.lastIn || t.lastInWa);
+    win.innerHTML = (last ? esc(name || 'This guest') + ' last wrote <b>' + esc(dayWords(dkey(last))) + '</b>. ' : '') +
+      'After 24 hours WhatsApp only carries wording Meta has approved. A reply opens free text again.';
+    var offer = CONTACT_TEMPLATES.filter(function(x){ return !x.arriving || (TH.b && TH.b.tab === 'up'); });
+    if (!offer.some(function(x){ return x.id === TPL; })) TPL = offer[0].id;
+    tpls.innerHTML = offer.map(function(x){
+      return '<button class="chip' + (x.id === TPL ? ' on' : '') + '" id="tpl-' + x.id + '" data-tpl="' +
+             x.id + '" aria-pressed="' + (x.id === TPL) + '">' + esc(x.label) + '</button>';
+    }).join('');
+    prev.innerHTML = '<div class="msg out prev"><div class="bub">' +
+      esc(contactTemplateText(TPL, name, TH.b && TH.b.arrive)) + '</div></div>';
+    box.style.display = 'none';
+    via.style.display = ''; via.textContent = 'SMS instead';
+    return;
+  }
+  if (c.ch === 'wa')
+    win.innerHTML = 'Sends on <b>WhatsApp</b> · free text until ' + esc(untilWords(c.until));
+  else
+    win.innerHTML = 'Sends by <b>SMS</b>' + (c.chosen ? ' · free text, as you chose' : '') +
+      (HELLO && !HELLO.wa && waAgreed(t) ? ' · WhatsApp is not set up yet' : '');
+  if (c.chosen){ via.style.display = ''; via.textContent = 'Approved message'; }
+  box.placeholder = 'Message ' + (name || 'the guest');
+  send.disabled = !window.__idToken;
+}
+
+/* Photos come through the Worker, which fetches them from Twilio with the
+   account's credentials; the page never holds those. */
+function loadPhotos(){
+  [].forEach.call(document.querySelectorAll('img.photo.wait'), function(img){
+    img.classList.remove('wait');
+    fetch(CONTACT_URL, { method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ idToken: window.__idToken, kind:'media', ck: CK,
+                             m: img.getAttribute('data-m'), i: img.getAttribute('data-i') }) })
+      .then(function(r){ if (!r.ok) throw new Error(); return r.blob(); })
+      .then(function(b){ img.src = URL.createObjectURL(b); })
+      .catch(function(){ img.alt = 'A photo that could not be loaded'; });
+  });
+}
+
+/* ── sorting a guest's message ───────────────────────────────── */
+function me(){ return (window.NALA_USER && NALA_USER.email) || ''; }
+function sortWrite(patch){
+  return fetch(DB + '/.json', { method:'PATCH', headers:{ 'Content-Type':'application/json' },
+                                body: JSON.stringify(patch) })
+    .then(function(r){ if (!r.ok) throw new Error('rejected ' + r.status); });
+}
+document.getElementById('msgs').onclick = function(e){
+  var btn = e.target.closest('button[data-act]'); if (!btn) return;
+  var act = btn.getAttribute('data-act'), id = btn.getAttribute('data-m');
+  var m = TH.msgs[id]; if (!m) return;
+  var fail = document.getElementById('tf-' + id);
+  var now = new Date().toISOString(), sorted = { by: me(), at: now };
+  if (act === 'pick'){ PICK = id; drawThread(); return; }
+  if (act === 'cancel'){ PICK = null; drawThread(); return; }
+  var patch = {}, after = null;
+  if (act === 'notask'){
+    patch['contactmsgs/' + CK + '/' + id + '/sorted'] = sorted;
+    patch['contactnew/' + CK + '/' + id] = null;
+  } else if (act === 'team'){
+    var team = btn.getAttribute('data-team'), tid = contactId(), b = TH.b;
+    patch['tasks/' + team + '/' + tid] = { ck: CK, msg: id, villa: b ? b.villa : '',
+      name: b ? b.name : ((TH.t && TH.t.profile) || prettyPhone('+' + CK)),
+      text: String(m.body || (m.media ? 'Photo' : '')).slice(0, 500), state:'open', at: now, by: me() };
+    patch['contactmsgs/' + CK + '/' + id + '/tasks/' + team] = tid;
+    patch['contactmsgs/' + CK + '/' + id + '/sorted'] = sorted;
+    patch['contactnew/' + CK + '/' + id] = null;
+    /* The team's phones buzz once the push Worker knows guestTask: the
+       Worker's hello says so (BUZZ in Cloudflare), and until then nothing
+       is sent to a Worker that would not know what to do with it. */
+    if (HELLO && HELLO.buzz)
+      after = function(){ notifyPush('guestTask', b ? b.villa : '', window.NALA_USER,
+                                     { team: team, url: '/tasks.html' }); };
+  } else if (act === 'done'){
+    var tm = btn.getAttribute('data-team'), key = (m.tasks || {})[tm];
+    patch['tasks/' + tm + '/' + key + '/state'] = 'done';
+    patch['tasks/' + tm + '/' + key + '/doneAt'] = now;
+    patch['tasks/' + tm + '/' + key + '/doneBy'] = me();
+    patch['tasks/' + tm + '/' + key + '/doneDay'] = dkey(new Date());
+  } else return;
+  saveFeedback(btn, function(){ return sortWrite(patch); }, {
+    busy: 'Saving', done: 'Saved', hold: 300, fail: fail,
+    then: function(){ PICK = null; if (after) after(); refresh(); }
+  });
+};
+
+document.getElementById('waSw').onclick = function(){
+  var t = TH.t || {}, on = !(t.wa && t.wa.on === true), sw = this;
+  var rec = { on: on, by: me(), at: new Date().toISOString() };
+  sw.disabled = true;
+  fetch(DB + '/contact/' + CK + '/wa.json', { method:'PUT', headers:{ 'Content-Type':'application/json' },
+                                             body: JSON.stringify(rec) })
+    .then(function(r){ if (!r.ok) throw new Error(); TH.t = Object.assign({}, t, { wa: rec }); })
+    .catch(function(){ document.getElementById('sendErr').textContent =
+      'The WhatsApp switch did not save. Try again.';
+      document.getElementById('sendErr').classList.add('show'); })
+    .then(function(){ sw.disabled = false; drawThread(); });
+};
+document.getElementById('tpls').onclick = function(e){
+  var c = e.target.closest('[data-tpl]'); if (!c) return;
+  TPL = c.getAttribute('data-tpl'); drawCompose();
+};
+document.getElementById('viaBtn').onclick = function(){
+  VIA = VIA === 'sms' ? '' : 'sms'; drawCompose();
+};
+
+/* ── sending ─────────────────────────────────────────────────── */
+document.getElementById('sendBtn').onclick = function(){
+  var c = channelNow(), box = document.getElementById('msgBox');
+  var err = document.getElementById('sendErr');
+  var req = { idToken: window.__idToken, kind:'send', ck: CK, booking: TH.b ? TH.b.id : '' };
+  if (c.ch === 'watpl') req.template = TPL;
+  else {
+    req.text = box.value.trim();
+    if (!req.text){ err.textContent = 'Write the message first.'; err.classList.add('show'); return; }
+    if (c.chosen) req.via = 'sms';
+  }
+  saveFeedback(this, function(){
+    return fetch(CONTACT_URL, { method:'POST', headers:{ 'Content-Type':'application/json' },
+                                body: JSON.stringify(req) })
+      .then(function(r){ return r.json().catch(function(){ return {}; })
+        .then(function(j){ return { ok: r.ok, j: j }; }); })
+      .then(function(res){
+        if (!res.ok){
+          var e = new Error(res.j && res.j.error ? res.j.error : 'the messenger did not answer');
+          e.said = true; throw e;
+        }
+      });
+  }, { busy:'Sending', done:'Sent', hold:400, fail: err,
+       then: function(){ box.value = ''; VIA = ''; var s = document.getElementById('sendBtn');
+                         armSave(s); s.textContent = 'Send'; refresh(); } });
+};
+
+/* ── the whole page ──────────────────────────────────────────── */
+function refresh(){
+  var err = document.getElementById('errBar');
+  var p = CK ? loadThread().then(drawThread) : loadAll().then(drawList);
+  return p.then(function(){
+    if (READFAIL){ err.textContent = ''; READFAIL = false; }
+  }).catch(function(){
+    READFAIL = true;
+    err.textContent = 'Could not read the guests’ messages. This is usually the connection. ' +
+                      'The page tries again by itself.';
+  });
+}
+function hello(){
+  fetch(CONTACT_URL, { method:'POST', headers:{ 'Content-Type':'application/json' },
+                       body: JSON.stringify({ idToken: window.__idToken, kind:'hello' }) })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      HELLO = j;
+      var bar = document.getElementById('testBar');
+      if (j && j.test){
+        bar.textContent = 'Test mode: messages only go to the test phones. Guests receive nothing ' +
+                          'until TEST_NUMBERS is removed in Cloudflare.';
+        bar.className = 'testbar show';
+      } else if (j && !j.ready){
+        bar.textContent = 'Twilio is not set up yet, so nothing can be sent. Messages already ' +
+                          'received still show.';
+        bar.className = 'testbar show';
+      }
+      if (CK && TH.t !== undefined) drawCompose();
+    })
+    .catch(function(){});
+}
+
+/* New messages arrive by themselves: the list every 15 seconds, an open
+   conversation every 8, and at once when the phone wakes the page. Never
+   while the desk is typing into the box or choosing a team. */
+function busy(){
+  var box = document.getElementById('msgBox');
+  return document.hidden || PICK || (document.activeElement === box && box.value);
+}
+setInterval(function(){ if (window.__idToken && !busy()) refresh(); }, CK ? 8000 : 15000);
+document.addEventListener('visibilitychange', function(){
+  if (!document.hidden && window.__idToken) refresh();
+});
+
+function showAccess(allowed, e){
+  var box = document.getElementById('noAccess');
+  var on = !allowed;
+  box.innerHTML = !on ? '' :
+    (e ? '<div>Could not check access. This is usually the connection, '
+       + 'not your login.</div>'
+       + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+       : 'This login has no access to Guest Contact. See the manager.');
+  if (on && !e){
+    var home = homeFor(window.NALA_ROLE);
+    if (home && home !== location.pathname.split('/').pop()){
+      location.replace(home); return;
+    }
+  }
+  box.className = 'noaccess' + (on ? ' show' : '');
+  document.getElementById('listView').style.display = on || CK ? 'none' : '';
+  document.getElementById('threadView').style.display = on || !CK ? 'none' : '';
+  if (on) return;
+  if (CK){
+    var back = document.getElementById('backBtn');
+    back.style.display = '';
+    back.onclick = function(){ location.href = 'guest-contact.html?t=' + TAB; };
+  }
+  hello();
+  refresh();
+}
+
+window.NALA_ROLE = null;
+(function gate(){
+  if (!window.firebase || !firebase.auth || typeof loadStaff !== 'function')
+    return setTimeout(gate, 40);
+  var A; try { A = firebase.auth(); } catch(e){ return setTimeout(gate, 40); }
+  if (!A || !A.onAuthStateChanged) return setTimeout(gate, 40);
+  A.onAuthStateChanged(function(u){
+    if (!u) return;                 /* auth.js owns the signed-out state */
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      window.NALA_USER = u;
+      document.getElementById('navWrap').style.display = 'block';
+      navFilter(role);
+      /* editBookings, the SMS pages' gate and the Worker's. */
+      showAccess(canOpen(role, 'guest-contact.html'), e);
+    });
+  });
+})();
+</script>
+</body>
+</html>

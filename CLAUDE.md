@@ -94,6 +94,12 @@ Already done this way — follow these:
   `guest_suite` both answer to it. Added 28 Sep, after an opening that read
   later than its completion was taken for the two labels swapped.
 
+- `tests/contact_cases.json` - Guest Contact's rules: WhatsApp's 24 hours
+  (`waWindow`), which way a message goes (`contactChannel`), the approved
+  WhatsApp words (`contactTemplateText`), each a twin in nala-shared.js and
+  worker/guest-contact.js, and the colour a guest's row wears
+  (`contactRowState`). Added 29 Sep with the module; GUEST-CONTACT.md.
+
 **Never** restate the menu in a suite. Four suites held their own copy of
 the menu order until 26 Aug, which is why adding a page meant editing them
 all; they read `nav_canon.json` now. A suite with its own copy can pass

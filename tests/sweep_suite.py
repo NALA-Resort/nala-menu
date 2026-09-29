@@ -151,16 +151,66 @@ SPAR_SPA = {BOOKING: {"t1": {"status": "booked", "day": today, "time": "17:00",
 SPAR_BOOKINGS = {BOOKING: dict(BOOKINGS[BOOKING],
                                pms=dict(BOOKINGS[BOOKING]["pms"], phone="+61 400 000 001"))}
 
+# Guest Contact and Tasks (29 Sep) sweep a conversation with something in
+# it - a message still to sort, one sorted into a Bar task, one of ours -
+# and a task open for every team a sweep role holds, so each login's Done
+# is on screen to press. Served ONLY to those two pages, the spar pattern.
+GC_CK = "61400000001"
+GC_STAYS = {"1": dict(STAYS["1"], phone="+61 400 000 001"),
+            "2": dict(STAYS["2"], phone="+61 400 000 002")}
+GC_THREAD = {"phone": "+61400000001", "lastAt": now.isoformat(), "lastIn": now.isoformat(),
+             "lastInCh": "wa", "lastInWa": now.isoformat(), "dir": "in",
+             "preview": "Could we have more towels?"}
+GC_MSGS = {"in-SM1": {"dir": "in", "ch": "wa", "body": "Could we have more towels?", "at": now.isoformat()},
+           "in-SM2": {"dir": "in", "ch": "wa", "body": "Two gin and tonics at the pool?",
+                      "at": now.isoformat(), "sorted": {"by": "staff@x", "at": now.isoformat()},
+                      "tasks": {"bar": "t1sweep"}},
+           "o1": {"dir": "out", "ch": "wa", "body": "On their way.", "at": now.isoformat(),
+                  "by": "staff@x", "kind": "staff", "status": "read"}}
+GC_TASK = {"ck": GC_CK, "msg": "in-SM2", "villa": "1", "name": "James Reed",
+           "text": "Two gin and tonics at the pool?", "state": "open",
+           "at": now.isoformat(), "by": "staff@x"}
+GC_TASKS = {"bar": {"t1sweep": GC_TASK},
+            "kitchen": {"t2sweep": dict(GC_TASK, text="A candle on dessert")},
+            "housekeeping": {"t3sweep": dict(GC_TASK, text="More towels")},
+            "spa": {"t4sweep": dict(GC_TASK, text="Move the massage to 3pm")}}
+GC_SETTINGS = {"teams": {"kitchen": {"members": {"chef@x": True}},
+                         "housekeeping": {"members": {"hk@x": True}},
+                         "spa": {"members": {"masseuse@x": True}}}}
+
+def gc_body(u):
+    path = u.split("firebasedatabase.app")[1].split("?")[0]
+    if path == "/stays.json": return {today: GC_STAYS}
+    if path == "/contact.json": return {GC_CK: GC_THREAD}
+    if path == "/contact/%s.json" % GC_CK: return GC_THREAD
+    if path == "/contactnew.json": return {GC_CK: {"in-SM1": True}}
+    if path == "/contactnew/%s.json" % GC_CK: return {"in-SM1": True}
+    if path == "/contactmsgs/%s.json" % GC_CK: return GC_MSGS
+    if path == "/contactsettings.json": return GC_SETTINGS
+    if path.startswith("/tasks/"):
+        parts = path[7:-5].split("/")
+        team = GC_TASKS.get(parts[0], {})
+        if len(parts) == 2: return team.get(parts[1])
+        return team if "state" in u else None
+    return "none"
+
 def fb(route, request):
     u = request.url
     try: spar = "spa-reminders.html" in request.frame.url
     except Exception: spar = False
+    try: gc = any(x in request.frame.url for x in ("guest-contact.html", "tasks.html"))
+    except Exception: gc = False
     if request.method in ("PATCH", "PUT", "POST", "DELETE"):
         WRITES["n"] += 1
         route.fulfill(status=200, content_type="application/json",
                       body=request.post_data or "{}")
         return
     body = "null"
+    if gc and request.method == "GET":
+        g = gc_body(u)
+        if g != "none":
+            route.fulfill(status=200, content_type="application/json", body=json.dumps(g))
+            return
     if "/staff" in u: body = json.dumps(STAFF)
     elif "/permissions" in u: body = "null"
     elif spar and u.split("?")[0].endswith("/spa.json"): body = json.dumps(SPAR_SPA)
@@ -204,6 +254,11 @@ PAGES = [
     ("templates.html",    ""),
     ("arrivals-sms.html", ""),
     ("spa-reminders.html", ""),
+    #  Guest Contact twice: the list, and one conversation with a message
+    #  to sort, a task open and one of ours.
+    ("guest-contact.html", ""),
+    ("guest-contact.html", "?c=" + GC_CK + "&b=" + BOOKING),
+    ("tasks.html",        ""),
     ("tally.html",        ""),
     ("spa.html",          ""),
     ("tag.html",          ""),
@@ -370,7 +425,13 @@ want_roles = [a.split(":", 1)[1] for a in args if a.startswith("role:")
 args = [a for a in args if not a.startswith("role:")]
 want_roles += [a for a in args if a in ROLE_NAMES and a not in PAGE_STEMS]
 want = [a for a in args if a in PAGE_STEMS or a not in ROLE_NAMES]
-pages = [p for p in PAGES if not want or any(w in p[0] for w in want)]
+# A name that IS a page's stem means that page alone: "guest" is the Guest
+# Profile, not every page with guest in its name (guest-contact, 29 Sep).
+# A word that is no page's stem still matches as a fragment.
+def _hit(w, f):
+    stem = f.replace(".html", "")
+    return w == stem if w in PAGE_STEMS else w in f
+pages = [p for p in PAGES if not want or any(_hit(w, p[0]) for w in want)]
 
 from playwright.sync_api import sync_playwright
 
@@ -404,6 +465,18 @@ with sync_playwright() as p:
         pg.route("**/fonts.googleapis.com/**",
                  lambda r: r.fulfill(status=200, body=""))
         pg.route("**/cdnjs.cloudflare.com/**", lambda r: r.fulfill(status=200, body=""))
+        # Guest Contact's Worker, in test mode: hello answers, a send is
+        # refused the way the live one refuses a guest's number.
+        def _contact(r):
+            k = json.loads(r.request.post_data or "{}").get("kind")
+            if k == "hello":
+                r.fulfill(status=200, content_type="application/json",
+                          body=json.dumps({"ready": True, "wa": True, "test": True, "buzz": False}))
+            else:
+                r.fulfill(status=403, content_type="application/json",
+                          body=json.dumps({"test": True, "error": "Test mode: only the test phones."}))
+        pg.route("**nala-contact.ben-681.workers.dev/**", _contact)
+        pg.route("**nala-push.ben-681.workers.dev/**", lambda r: r.fulfill(status=200, body="{}"))
         failed = []
         pg.on("requestfailed", lambda r: failed.append(r.url.split("/")[-1][:50]))
         # A link that navigates to a missing page still changes the URL, and

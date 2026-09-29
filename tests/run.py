@@ -76,6 +76,8 @@ SUITES = [
     ("sw",         ["node", "tests/sw_test.js"],          120),
     ("worker",     ["node", "worker/test.mjs"],           300),
     ("invworker",  ["node", "worker/invites-test.mjs"],   120),
+    # Guest Contact's Worker, 29 Sep: Twilio, the 24 hours, the test list.
+    ("contactworker", ["node", "worker/contact-test.mjs"], 120),
     ("cardworker", ["node", "worker/cards-test.mjs"],     120),
     ("cards",      ["python3", "tests/cards_suite.py"],   300),
     ("keys",       ["python3", "tests/keys_suite.py"],    400),
@@ -88,6 +90,7 @@ SUITES = [
     ("guest",      ["python3", "tests/guest_suite.py"],   400),
     ("invites",    ["python3", "tests/inv_suite.py"],     600),
     ("spar",       ["python3", "tests/spar_suite.py"],    400),
+    ("contact",    ["python3", "tests/contact_suite.py"], 400),
     ("index",      ["python3", "tests/index_suite.py"],   400),
     ("prearrival", ["python3", "tests/pre_suite.py"],     400),
     ("spa",        ["python3", "tests/spa_suite.py"],     400),
@@ -120,7 +123,7 @@ SUITES = [
 # page load and still reloads the page for each of the three widths when it
 # could resize the viewport. Fixing those is the next job and worth more than
 # this was.
-SWEEP_PAGES = ["dashboard", "calendar", "guest", "keys", "cleaners", "front-desk", "invitations", "arrivals-sms", "spa-reminders", "spa", "past-menus", "templates", "tally", "tag", "flags", "publish", "staff",
+SWEEP_PAGES = ["dashboard", "calendar", "guest", "keys", "cleaners", "front-desk", "invitations", "arrivals-sms", "spa-reminders", "guest-contact", "tasks", "spa", "past-menus", "templates", "tally", "tag", "flags", "publish", "staff",
                "stats", "registration", "debug", "pages", "index",
                "prearrival", "welcome"]
 SUITES += [("sweep:" + p, ["python3", "tests/sweep_suite.py", p], 600)
@@ -146,6 +149,11 @@ COVERS = {
     "arrivals-sms.html": ["invites", "sweep:arrivals-sms", "paper", "colour"],
     "spa-reminders.html": ["spar", "sweep:spa-reminders", "paper", "colour"],
     "tests/spareminder_cases.json": ["spar", "invworker"],
+    "guest-contact.html": ["contact", "sweep:guest-contact", "paper", "colour"],
+    "tasks.html":        ["contact", "sweep:tasks", "paper", "colour"],
+    "tests/contact_cases.json": ["contact", "contactworker"],
+    "worker/guest-contact.js": ["contactworker"],
+    "worker/contact-test.mjs": ["contactworker"],
     "templates.html":    ["invites", "sweep:templates", "spar"],
     "worker/send-invites.js": ["invworker", "spar"],
     "worker/mews-sync.js": ["worker"],
@@ -202,6 +210,8 @@ def changed_suites():
         if f in EVERYTHING or f.startswith("worker/"):
             if f.startswith("worker/"):
                 picked.add("worker"); picked.add("coercion"); picked.add("cardworker")
+                # and the Worker's own suite, where COVERS names one
+                picked.update(COVERS.get(f, []))
                 why.append("%s -> worker" % f)
             else:
                 why.append("%s is shared, so everything runs" % f)

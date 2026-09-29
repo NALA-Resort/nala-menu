@@ -168,6 +168,14 @@ BOARDS = {
   "guest.html?b=b8": [],
   "guest.html?b=b14": [],
   "stats.html": [],
+  # Guest Contact and Tasks, 29 Sep: the list with every state a guest's row
+  # can wear, a conversation with every state a message can be in (a task
+  # open and done, no task, new, read, a send that failed) and its team
+  # picker, and the Tasks page.
+  "guest-contact.html": [("Upcoming", lambda pg: pg.click("#tabUp"))],
+  "guest-contact.html?c=61410007919&b=b1": [("a message's team picker",
+                                             lambda pg: pg.click("#tk-in-SMb"))],
+  "tasks.html": [],
 }
 
 # COLOUR_ONLY=front-desk.html,keys.html narrows the boards, for a quick look

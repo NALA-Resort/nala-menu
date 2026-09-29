@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nala Villas">
+<link rel="apple-touch-icon" href="nala-icon.png?v=1">
+<title>Nala &middot; Tasks</title>
+<link rel="stylesheet" href="nala-ui2.css?v=9">
+<link rel="stylesheet" href="nala-ui.css?v=18">
+<style>
+  /* Built 29 Sep with Guest Contact, from mock-guest-contact.html frame 4.
+     The owner, that day: guests' messages are mostly requests - drinks by
+     the pool, an umbrella to the room - and each team closes its own, on
+     its own login. This page is that: the open tasks of the teams this
+     login does, in the guest's own words, and Done. The desk, who sort
+     every message, see every team. */
+  body { padding:calc(24px + env(safe-area-inset-top)) 18px 0; }
+  .grp { font-size:var(--t1); color:var(--mid); margin:14px 2px 6px; }
+  .empty { font-size:var(--t2); color:var(--mid); margin:14px 2px; line-height:1.5; }
+
+  /* An open task is the colour law's amber: in progress, chase this. It
+     stays amber however long it waits - a slow task is not a failure, and
+     red is failure's alone. */
+  .task { display:flex; align-items:flex-start; gap:12px; border:1px solid var(--law-amber-b);
+          background:var(--law-amber); border-radius:8px; padding:11px 13px; margin-bottom:7px; }
+  .task .v { flex:0 0 auto; font-size:var(--t4); min-width:30px; text-align:center; }
+  .task .mid { flex:1; min-width:0; }
+  .task .l1 { gap:8px; }
+  .task .nm { font-size:var(--t3); }
+  .task .tm { font-size:var(--t2); color:var(--law-amber-ink); margin-left:auto; }
+  .task .words { font-size:var(--t2); line-height:1.4; margin-top:3px; color:var(--ink);
+                 display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
+                 overflow:hidden; text-decoration:none; }
+  .task a.words { text-decoration:underline; text-decoration-color:var(--law-amber-b); }
+  /* Done sits under the words, so the name never gives way to it. */
+  .task .tact { display:flex; justify-content:flex-end; margin-top:8px; }
+  .sbtn { display:inline-flex; align-items:center; justify-content:center; min-height:36px;
+          padding:0 14px; border:1px solid var(--law-amber-b); border-radius:var(--r);
+          background:var(--surface, #fff); font-family:var(--ui-font); font-size:var(--t2);
+          color:var(--ink); cursor:pointer; }
+  .sbtn.saving { background:var(--law-wait); color:var(--mid); }
+  .tfail { font-size:var(--t2); color:var(--law-red); margin-top:6px; }
+  /* What was done today: the done green, folded away, no buttons. */
+  details.dgrp summary { font-size:var(--t1); color:var(--mid); margin:18px 2px 6px; cursor:pointer; }
+  .task.done { background:linear-gradient(var(--law-green-t), var(--law-green-t)), var(--surface, #fff);
+               border-color:var(--law-green-b); }
+  .task.done .tm { color:var(--law-green); }
+  #errBar { font-size:var(--t2); color:var(--law-red); margin:10px 2px; line-height:1.45; }
+
+/* ── paper: every card solid and lifted, its tint over the white ── */
+body.paper .task { box-shadow:var(--lift); }
+</style>
+</head>
+<body class="tier-app ui2 paper">
+
+<div class="daterow">
+  <div class="date" id="title">Tasks</div>
+  <div class="navwrap" id="navWrap" style="display:none">
+    <button class="navbtn" id="navBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <div class="navdrop" id="navDrop"></div>
+  </div>
+</div>
+
+<div class="noaccess" id="noAccess"></div>
+<div id="board"></div>
+<details class="dgrp" id="doneGrp" style="display:none"><summary id="doneSum"></summary>
+  <div id="doneList"></div></details>
+<div id="errBar"></div>
+<div style="height:24px"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="auth.js?v=12"></script>
+<script src="nala-shared.js?v=87"></script>
+<script>
+var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+(function(){
+  var b=document.getElementById('navBtn'), d=document.getElementById('navDrop');
+  b.onclick=function(e){ e.stopPropagation(); d.classList.toggle('open'); };
+  document.addEventListener('click',function(){ d.classList.remove('open'); });
+})();
+function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
+
+var TEAMS = [];          /* the teams this login sees */
+var OPEN = {}, DONE = {};
+var READFAIL = false;
+
+function esc(t){
+  return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; });
+}
+function ago(iso){
+  var d = parseISO(iso); if (!d) return '';
+  var m = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
+  if (m < 60) return m + ' min';
+  if (m < 60 * 24) return Math.round(m / 60) + ' hr';
+  var n = Math.round(m / 1440); return n + (n === 1 ? ' day' : ' days');
+}
+function whoOf(email){ var n = displayNameOf(email); return n ? n.split(/\s+/)[0] : ''; }
+function whole(path, q){
+  return fetch(DB + path + '.json?' + (q ? q + '&' : '') + 'v=' + Date.now()).then(function(r){
+    if (!r.ok) throw new Error(path + ' HTTP ' + r.status);
+    return r.json();
+  });
+}
+function query(team, key, val){
+  return whole('/tasks/' + team, 'orderBy=' + encodeURIComponent('"' + key + '"') +
+               '&equalTo=' + encodeURIComponent('"' + val + '"')).then(function(j){
+    var out = {};
+    Object.keys(j || {}).forEach(function(id){ if (j[id] && j[id][key] === val) out[id] = j[id]; });
+    return out;
+  });
+}
+
+/* Which teams: a login that sorts the guests' messages (editBookings) sees
+   every team's; any other sees the teams set on it in Settings, General. */
+function load(){
+  return whole('/contactsettings').then(function(cfg){
+    var u = window.NALA_USER;
+    TEAMS = can(window.NALA_ROLE, 'editBookings')
+      ? CONTACT_TEAMS.map(function(t){ return t.key; })
+      : teamsOf(cfg, u && u.email);
+    var today = dkey(new Date());
+    return Promise.all(TEAMS.map(function(k){
+      return Promise.all([query(k, 'state', 'open'), query(k, 'doneDay', today)]);
+    }));
+  }).then(function(res){
+    OPEN = {}; DONE = {};
+    TEAMS.forEach(function(k, i){ OPEN[k] = res[i][0]; DONE[k] = res[i][1]; });
+    if (READFAIL){ document.getElementById('errBar').textContent = ''; READFAIL = false; }
+    draw();
+  }).catch(function(){
+    READFAIL = true;
+    document.getElementById('errBar').textContent = 'Could not read the tasks. This is usually ' +
+      'the connection. The page tries again by itself.';
+  });
+}
+
+function atMs(t){ var d = parseISO(t.at); return d ? d.getTime() : 0; }
+function cardHTML(team, id, t, done){
+  var talk = canOpen(window.NALA_ROLE, 'guest-contact.html') && t.ck;
+  var words = esc(t.text || '');
+  return '<div class="task' + (done ? ' done' : '') + '" data-t="' + esc(id) + '" data-team="' + team + '">' +
+    '<div class="v">' + esc(t.villa || '?') + '</div><div class="mid">' +
+    '<div class="l1 trimrow"><span class="nm trim">' + esc(t.name || 'Guest') + '</span>' +
+    '<span class="tm">' + (done ? 'done ' + esc(timeOf(t.doneAt)) + (t.doneBy ? ' · ' + esc(whoOf(t.doneBy)) : '')
+                                : esc(timeOf(t.at)) + ' · ' + esc(ago(t.at))) + '</span></div>' +
+    /* The guest's words open their conversation, for a login that may read
+       it; for a team's own login they are only the words. */
+    (talk ? '<a class="words" href="guest-contact.html?c=' + esc(t.ck) + '">' + words + '</a>'
+          : '<div class="words">' + words + '</div>') +
+    (done ? '' : '<div class="tact"><button class="sbtn" id="done-' + esc(id) + '" data-act="done" data-team="' +
+                 team + '" data-t="' + esc(id) + '">Done</button></div><div class="tfail" id="tf-' +
+                 esc(id) + '"></div>') +
+    '</div></div>';
+}
+
+function draw(){
+  var board = document.getElementById('board');
+  if (!TEAMS.length){
+    board.innerHTML = '<div class="empty">No team is set for this login, so there are no tasks ' +
+      'to show. The manager sets each person’s teams in Settings, General.</div>';
+    document.getElementById('doneGrp').style.display = 'none';
+    return;
+  }
+  /* Teams in the order of their oldest open task; each team's oldest first. */
+  var groups = TEAMS.map(function(k){
+    var ids = Object.keys(OPEN[k] || {}).sort(function(a, b){ return atMs(OPEN[k][a]) - atMs(OPEN[k][b]); });
+    return { k: k, ids: ids, first: ids.length ? atMs(OPEN[k][ids[0]]) : Infinity };
+  }).filter(function(g){ return g.ids.length; })
+    .sort(function(a, b){ return a.first - b.first; });
+  if (!groups.length){
+    board.innerHTML = '<div class="empty">Nothing open for ' +
+      esc(TEAMS.map(teamLabel).join(', ')) + '.</div>';
+  } else {
+    board.innerHTML = groups.map(function(g){
+      return '<div class="grp">' + esc(teamLabel(g.k)) + ' · ' + g.ids.length + '</div>' +
+        g.ids.map(function(id){ return cardHTML(g.k, id, OPEN[g.k][id], false); }).join('');
+    }).join('');
+  }
+  var done = [];
+  TEAMS.forEach(function(k){
+    Object.keys(DONE[k] || {}).forEach(function(id){ done.push([k, id, DONE[k][id]]); });
+  });
+  done.sort(function(a, b){
+    var x = parseISO(a[2].doneAt), y = parseISO(b[2].doneAt);
+    return (y ? y.getTime() : 0) - (x ? x.getTime() : 0);
+  });
+  var grp = document.getElementById('doneGrp');
+  grp.style.display = done.length ? '' : 'none';
+  document.getElementById('doneSum').textContent = 'Done today · ' + done.length;
+  document.getElementById('doneList').innerHTML = done.map(function(x){
+    return cardHTML(x[0], x[1], x[2], true); }).join('');
+}
+
+/* Done: closes the task in this login's name, today. The rules let a team
+   member do exactly that and nothing else. */
+document.getElementById('board').onclick = function(e){
+  var btn = e.target.closest('button[data-act="done"]'); if (!btn) return;
+  var team = btn.getAttribute('data-team'), id = btn.getAttribute('data-t');
+  var u = window.NALA_USER;
+  saveFeedback(btn, function(){
+    return fetch(DB + '/tasks/' + team + '/' + id + '.json', {
+      method:'PATCH', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ state:'done', doneAt: new Date().toISOString(),
+                             doneBy: (u && u.email) || '', doneDay: dkey(new Date()) })
+    }).then(function(r){ if (!r.ok) throw new Error('rejected ' + r.status); });
+  }, { busy:'Saving', done:'Done', hold:400, fail: document.getElementById('tf-' + id),
+       then: function(){ load(); } });
+};
+
+setInterval(function(){ if (window.__idToken && !document.hidden) load(); }, 15000);
+document.addEventListener('visibilitychange', function(){
+  if (!document.hidden && window.__idToken) load();
+});
+
+function showAccess(allowed, e){
+  var box = document.getElementById('noAccess');
+  var on = !allowed;
+  box.innerHTML = !on ? '' :
+    (e ? '<div>Could not check access. This is usually the connection, '
+       + 'not your login.</div>'
+       + '<button class="btn na-retry" onclick="location.reload()">Try again</button>'
+       : 'This login has no access to Tasks. See the manager.');
+  if (on && !e){
+    var home = homeFor(window.NALA_ROLE);
+    if (home && home !== location.pathname.split('/').pop()){
+      location.replace(home); return;
+    }
+  }
+  box.className = 'noaccess' + (on ? ' show' : '');
+  document.getElementById('board').style.display = on ? 'none' : '';
+  if (!on) load();
+}
+
+window.NALA_ROLE = null;
+(function gate(){
+  if (!window.firebase || !firebase.auth || typeof loadStaff !== 'function')
+    return setTimeout(gate, 40);
+  var A; try { A = firebase.auth(); } catch(e){ return setTimeout(gate, 40); }
+  if (!A || !A.onAuthStateChanged) return setTimeout(gate, 40);
+  A.onAuthStateChanged(function(u){
+    if (!u) return;
+    loadStaff(function(recs, e){
+      var role = roleOf(u);
+      window.NALA_ROLE = role;
+      window.NALA_USER = u;
+      document.getElementById('navWrap').style.display = 'block';
+      navFilter(role);
+      showAccess(canOpen(role, 'tasks.html'), e);
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -377,7 +377,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=86"></script>
+<script src="nala-shared.js?v=87"></script>
 <script>
 var ROLES = ['admin','manager','chef','waiter','housekeeping'];
 /* The human roles, and the ones the notification matrix targets. manager is
@@ -393,7 +393,8 @@ var ROLES = ['admin','manager','chef','waiter','housekeeping'];
 /* encoder is the desk PC's card helper, 8 Sep: sync's pattern exactly - a
    machine account with no phone, assignable here, absent from the matrix,
    and confined by the rules to /cardjobs. */
-var ROLES_ASSIGN = ROLES.concat(['spa','sync','encoder']);
+/* contact is the Guest Contact Worker's login, 29 Sep: sync's pattern. */
+var ROLES_ASSIGN = ROLES.concat(['spa','sync','encoder','contact']);
 var EVENTS = [['departed','Departed'],['available','Possibly available'],
               ['cleaned','Cleaned'],['serviced','Serviced'],
               ['menu','Menu published'],
@@ -403,7 +404,9 @@ var EVENTS = [['departed','Departed'],['available','Possibly available'],
               ['spaSuggested','Massage suggested'],
               ['spaBooked','Massage booked'],
               ['spaCancelled','Massage cancelled'],
-              ['spaStay','Stay changed under a massage']];
+              ['spaStay','Stay changed under a massage'],
+              /* Guest Contact, 29 Sep: a guest's message has arrived. */
+              ['guestMessage','Guest message']];
 var STAFF = {}, CFG = null;
 
 (function(){
@@ -444,6 +447,7 @@ var STAFF = {}, CFG = null;
       drawPeople();
       loadPerms();
       loadNotify();
+      loadTeams();
     });
   });
 })();
@@ -530,6 +534,7 @@ function personSheet(key){
     '<div class="sub">'+codeOf(key)+'</div>'+
     '<label>Name</label><input id="pName" value="'+(r.name||'').replace(/"/g,'&quot;')+'">'+
     '<label>Role</label><select id="pRole">'+opts+'</select>'+
+    teamRows(key)+
     '<button class="btn solid" onclick="savePerson(\''+key+'\')">Save</button>'+
     (protectedReason(key)
        ? '<div class="note">' + protectedReason(key) + ' They cannot be removed.</div>'
@@ -537,6 +542,57 @@ function personSheet(key){
     '<button class="btn ghost" onclick="closeSheet()">Close</button>'+
     '<div class="err" id="sErr"></div>');
 }
+
+/* ── which teams' tasks a person does ──────────────────────────
+   The owner, 29 Sep: each team closes the tasks guests' messages become,
+   on its own login, and which teams a login does is set per person here -
+   the grounds login can hold Maintenance alone. Stored against the team,
+   /contactsettings/teams/<team>/members/<key>, where the rules read it to
+   let that login see and close the team's tasks. Switches, so each saves
+   on press (STYLEGUIDE.md); the sheet's Save is still the name and role.
+   The machine accounts do no tasks and get no switches. */
+var TEAMSET = null;
+function loadTeams(){
+  fetch(DB + '/contactsettings.json').then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){ TEAMSET = j || {}; })
+    .catch(function(){ TEAMSET = null; });
+}
+function teamOn(key, team){
+  var t = ((TEAMSET && TEAMSET.teams) || {})[team] || {};
+  return !!(t.members && t.members[key] === true);
+}
+function teamRows(key){
+  var role = normaliseRole((STAFF[key] || {}).role);
+  if (['sync','encoder','contact'].indexOf(role) > -1) return '';
+  if (!TEAMSET) return '<div class="note">Could not read the teams, so they cannot be set ' +
+                       'here just now. Close and open this person again.</div>';
+  return '<label>Tasks for</label><div id="teamRows">' + CONTACT_TEAMS.map(function(t){
+    var on = teamOn(key, t.key);
+    return '<div class="evrow"><span>' + t.label + '</span><button class="sw' + (on ? ' on' : '') +
+      '" id="team-' + t.key + '" data-team="' + t.key + '" data-key="' + key +
+      '" role="switch" aria-checked="' + on + '" aria-label="' + t.label + ' tasks"></button></div>';
+  }).join('') + '</div>';
+}
+document.getElementById('sheet').addEventListener('click', function(e){
+  var sw = e.target.closest('[data-team]'); if (!sw || sw.disabled) return;
+  var team = sw.getAttribute('data-team'), key = sw.getAttribute('data-key');
+  var on = !teamOn(key, team), err = document.getElementById('sErr');
+  sw.disabled = true;
+  fetch(DB + '/contactsettings/teams/' + team + '/members/' + key + '.json',
+        on ? { method:'PUT', body:'true' } : { method:'DELETE' })
+    .then(function(r){
+      if (!r.ok) throw new Error();
+      TEAMSET.teams = TEAMSET.teams || {};
+      var t = TEAMSET.teams[team] = TEAMSET.teams[team] || {};
+      t.members = t.members || {};
+      if (on) t.members[key] = true; else delete t.members[key];
+      sw.className = 'sw' + (on ? ' on' : '');
+      sw.setAttribute('aria-checked', on);
+      if (err) err.textContent = '';
+    })
+    .catch(function(){ if (err) err.textContent = 'That team did not save. Only an admin may change it.'; })
+    .then(function(){ sw.disabled = false; });
+});
 
 function savePerson(key){
   var name = document.getElementById('pName').value.trim();

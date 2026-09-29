@@ -1124,5 +1124,161 @@ console.log('--- an external guest, invited by SMS ---');
      !asx(DESK).update(P0, { token: 'NOT A TOKEN' }).allowed);
 })();
 
+/* ── Guest Contact, 29 Sep ───────────────────────────────────────
+   The guests' messages and the tasks they become. Three writers, three
+   different reaches: the Worker's machine account (role contact) writes
+   the messages as they arrive and go; the desk (editBookings, the waiter's
+   default included) sorts them, makes tasks and records a guest's
+   WhatsApp consent; a team's own login may only close its own team's open
+   tasks, in its own name. Each body below is the one the Worker or the
+   page sends. */
+console.log('--- Guest Contact: messages and tasks ---');
+(function(){
+  const CK = '61412345678', M = 'in-SM0123456789abcdef', OUT = '-Nout0001';
+  const KEY = (e) => e.toLowerCase().replace(/\./g, ',');
+  const data = JSON.parse(JSON.stringify(SEED));
+  Object.assign(data.staff, {
+    '559210@staff,nala':          { name: 'Guest Contact Worker', role: 'contact' },
+    'grounds@nalaresort,com,au':  { name: 'Grounds', role: 'housekeeping' },
+    'masseuse@nalaresort,com,au': { name: 'Masseuse', role: 'spa' }
+  });
+  data.contactsettings = { teams: {
+    kitchen:      { members: { [KEY('chef@nalaresort.com.au')]: true } },
+    housekeeping: { members: { [KEY('housekeeping@nalaresort.com.au')]: true } },
+    maintenance:  { members: { [KEY('grounds@nalaresort.com.au')]: true } },
+    spa:          { members: { [KEY('masseuse@nalaresort.com.au')]: true } }
+  } };
+  data.contact = { [CK]: { phone: '+61412345678', lastAt: NOW, lastIn: NOW,
+                           lastInCh: 'wa', lastInWa: NOW, preview: 'Umbrella', dir: 'in' } };
+  data.contactmsgs = { [CK]: {
+    [M]:   { dir: 'in', ch: 'wa', body: 'The umbrella on our deck will not close.', at: NOW,
+             sid: 'SM0123456789abcdef' },
+    [OUT]: { dir: 'out', ch: 'wa', body: 'On our way.', at: NOW, by: 'waiter@nalaresort.com.au',
+             kind: 'staff', sid: 'SMfeed', status: 'queued' } } };
+  data.contactnew = { [CK]: { [M]: true } };
+  const TASK = { ck: CK, msg: M, villa: '7', name: 'Sarah Whitfield',
+                 text: 'The umbrella on our deck will not close.', state: 'open',
+                 at: NOW, by: 'waiter@nalaresort.com.au' };
+  data.tasks = { maintenance: { t1abcdef: TASK }, kitchen: { t2abcdef: Object.assign({}, TASK) } };
+  const gdb = targaryen.database(RULES, data);
+  const asx = (u) => u ? gdb.as(u) : gdb;
+  const WORKER = signedIn('559210@staff.nala');
+  const GROUNDS = signedIn('grounds@nalaresort.com.au');
+  const MASSEUSE = signedIn('masseuse@nalaresort.com.au');
+  const SORTED = { by: 'waiter@nalaresort.com.au', at: NOW };
+
+  /* the Worker's writes */
+  ck('the Worker files a thread as a WhatsApp message lands',
+     asx(WORKER).update(`/contact/${CK}`, { phone: '+61412345678', lastAt: NOW, lastIn: NOW,
+       lastInCh: 'wa', lastInWa: NOW, preview: 'Also a candle?', dir: 'in',
+       profile: 'Sarah' }).allowed);
+  ck('and the message itself, a photo with it',
+     asx(WORKER).write(`/contactmsgs/${CK}/in-SMaaaa`, { dir: 'in', ch: 'wa',
+       body: 'Also a candle?', at: NOW, sid: 'SMaaaa', profile: 'Sarah',
+       media: { 0: { url: 'https://api.twilio.com/2010-04-01/Accounts/AC1/Messages/MM1/Media/ME1',
+                     type: 'image/jpeg' } } }).allowed);
+  ck('and marks it new', asx(WORKER).write(`/contactnew/${CK}/in-SMaaaa`, true).allowed);
+  ck('it records what the desk sent',
+     asx(WORKER).write(`/contactmsgs/${CK}/-Nout0002`, { dir: 'out', ch: 'sms',
+       body: 'Happy birthday to Tom!', at: NOW, by: 'waiter@nalaresort.com.au',
+       kind: 'staff', sid: 'SMbbbb', status: 'queued' }).allowed);
+  ck('and a template, by its id', asx(WORKER).write(`/contactmsgs/${CK}/-Nout0003`,
+       { dir: 'out', ch: 'wa', body: 'Hi James', at: NOW, by: 'x@y', kind: 'template',
+         tpl: 'question', sid: 'SMcccc', status: 'queued' }).allowed);
+  ck('and the carrier\'s receipts as they come',
+     asx(WORKER).update(`/contactmsgs/${CK}/${OUT}`, { status: 'read', statusAt: NOW }).allowed);
+  ck('a STOP, and the number WhatsApp does not know',
+     asx(WORKER).update(`/contact/${CK}`, { optout: { at: NOW, word: 'STOP' }, waBad: true }).allowed);
+
+  /* the desk's */
+  ck('the desk sorts a message as no task',
+     asx(WAITER).update('/', { [`contactmsgs/${CK}/${M}/sorted`]: SORTED,
+                               [`contactnew/${CK}/${M}`]: null }).allowed);
+  ck('or makes it a task for a team, in one write',
+     asx(WAITER).update('/', {
+       [`tasks/kitchen/t3abcdef`]: Object.assign({}, TASK, { state: 'open' }),
+       [`contactmsgs/${CK}/${M}/tasks/kitchen`]: 't3abcdef',
+       [`contactmsgs/${CK}/${M}/sorted`]: SORTED,
+       [`contactnew/${CK}/${M}`]: null }).allowed);
+  ck('the manager too', asx(MANAGER).update(`/contactmsgs/${CK}/${M}/sorted`, SORTED).allowed);
+  ck('the desk records that the guest asked for WhatsApp',
+     asx(DESK).write(`/contact/${CK}/wa`, { on: true, by: 'reception@nalaresort.com.au', at: NOW }).allowed);
+  ck('the desk may close any team\'s task',
+     asx(WAITER).update(`/tasks/kitchen/t2abcdef`, { state: 'done', doneAt: NOW,
+       doneBy: 'waiter@nalaresort.com.au', doneDay: TODAY }).allowed);
+  ck('the desk reads the threads, the messages and the new list',
+     asx(WAITER).read(`/contact`).allowed && asx(WAITER).read(`/contactmsgs/${CK}`).allowed &&
+     asx(WAITER).read(`/contactnew`).allowed);
+
+  /* a team's own login */
+  ck('the grounds login closes a Maintenance task in its own name',
+     asx(GROUNDS).update(`/tasks/maintenance/t1abcdef`, { state: 'done', doneAt: NOW,
+       doneBy: 'grounds@nalaresort.com.au', doneDay: TODAY }).allowed);
+  ck('a team reads its own tasks', asx(GROUNDS).read('/tasks/maintenance').allowed &&
+     asx(CHEF).read('/tasks/kitchen').allowed && asx(MASSEUSE).read('/tasks/spa').allowed);
+  ck('everybody reads which teams there are', asx(HK).read('/contactsettings').allowed);
+  ck('the admin sets who does a team\'s tasks',
+     asx(ADMIN).write(`/contactsettings/teams/bar/members/${KEY('waiter@nalaresort.com.au')}`, true).allowed);
+
+  console.log('--- Guest Contact: and what each may not ---');
+  ck('a team login reads no conversation',
+     !asx(CHEF).read('/contact').allowed && !asx(CHEF).read(`/contactmsgs/${CK}`).allowed &&
+     !asx(HK).read('/contactnew').allowed && !asx(MASSEUSE).read('/contact').allowed);
+  ck('nor another team\'s tasks',
+     !asx(HK).read('/tasks/maintenance').allowed && !asx(MASSEUSE).read('/tasks/kitchen').allowed &&
+     !asx(GROUNDS).read('/tasks/housekeeping').allowed);
+  ck('nor closes one', !asx(CHEF).update(`/tasks/maintenance/t1abcdef`, { state: 'done',
+     doneAt: NOW, doneBy: 'chef@nalaresort.com.au', doneDay: TODAY }).allowed);
+  ck('a member cannot close a task in somebody else\'s name',
+     !asx(GROUNDS).update(`/tasks/maintenance/t1abcdef`, { state: 'done', doneAt: NOW,
+       doneBy: 'waiter@nalaresort.com.au', doneDay: TODAY }).allowed);
+  ck('nor change what it says while closing it',
+     !asx(GROUNDS).update(`/tasks/maintenance/t1abcdef`, { state: 'done', doneAt: NOW,
+       doneBy: 'grounds@nalaresort.com.au', doneDay: TODAY, text: 'nothing to see' }).allowed);
+  ck('nor make a task of their own',
+     !asx(GROUNDS).write(`/tasks/maintenance/t9abcdef`, TASK).allowed);
+  ck('nor delete one', !asx(GROUNDS).write(`/tasks/maintenance/t1abcdef`, null).allowed);
+  ck('the desk cannot write a message, so a browser cannot claim one went',
+     !asx(WAITER).write(`/contactmsgs/${CK}/-Nforged`, { dir: 'out', ch: 'sms',
+       body: 'We refunded you', at: NOW, by: 'waiter@nalaresort.com.au', kind: 'staff',
+       status: 'delivered' }).allowed);
+  ck('nor edit what a guest said',
+     !asx(WAITER).update(`/contactmsgs/${CK}/${M}`, { body: 'nothing' }).allowed);
+  ck('nor sort a message we sent', !asx(WAITER).update(`/contactmsgs/${CK}/${OUT}/sorted`, SORTED).allowed);
+  ck('nor write a thread beyond the consent switch',
+     !asx(WAITER).update(`/contact/${CK}`, { preview: 'x' }).allowed &&
+     !asx(WAITER).update(`/contact/${CK}`, { optout: null }).allowed);
+  ck('nor put a message on the new list, only take it off',
+     !asx(WAITER).write(`/contactnew/${CK}/-Nout0001`, true).allowed);
+  ck('a waiter the matrix has switched off may not sort at all',
+     !targaryen.database(RULES, Object.assign({}, data,
+        { permissions: { editBookings: { waiter: false } } }))
+      .as(WAITER).update(`/contactmsgs/${CK}/${M}/sorted`, SORTED).allowed);
+  ck('the sync account is not the Worker',
+     !asx(SYNC).write(`/contactmsgs/${CK}/in-SMdddd`, { dir: 'in', ch: 'sms', body: 'x', at: NOW }).allowed);
+  ck('nor is the Worker the desk: it cannot make tasks',
+     !asx(WORKER).write(`/tasks/kitchen/t8abcdef`, TASK).allowed);
+  ck('a photo only from Twilio',
+     !asx(WORKER).write(`/contactmsgs/${CK}/in-SMeeee`, { dir: 'in', ch: 'wa', body: '', at: NOW,
+       media: { 0: { url: 'https://evil.example/x.jpg', type: 'image/jpeg' } } }).allowed);
+  ck('a thread is keyed by a number, not anything',
+     !asx(WORKER).update(`/contact/not-a-number`, { lastAt: NOW }).allowed);
+  ck('the consent switch says who and when',
+     !asx(DESK).write(`/contact/${CK}/wa`, { on: true }).allowed);
+  /* The guest's request is the consent Meta asks for: its record names the
+     login that took it, never another. */
+  ck('and in the name of the login that pressed it, nobody else\'s',
+     !asx(DESK).write(`/contact/${CK}/wa`, { on: true, by: 'waiter@nalaresort.com.au', at: NOW }).allowed);
+  ck('only the admin sets who does a team\'s tasks',
+     !asx(WAITER).write(`/contactsettings/teams/bar/members/${KEY('waiter@nalaresort.com.au')}`, true).allowed &&
+     !asx(CHEF).write(`/contactsettings/teams/kitchen/members/${KEY('chef@nalaresort.com.au')}`, false).allowed);
+  ck('and nobody signed out reads anything',
+     !asx(GUEST).read('/contact').allowed && !asx(GUEST).read('/tasks/kitchen').allowed);
+  ck('the tasks capability may be switched off per role',
+     asx(ADMIN).write('/permissions/tasks/housekeeping', false).allowed);
+  ck('the Worker\'s machine role can be assigned',
+     asx(ADMIN).write('/staff/559211@staff,nala', { name: 'Guest Contact Worker', role: 'contact' }).allowed);
+})();
+
 console.log('RESULT: %d passed, %d failed', P, F);
 process.exit(F ? 1 : 0);

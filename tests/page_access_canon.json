@@ -16,6 +16,8 @@
     "calendar": "cleansBoard",
     "guest": "resBoard",
     "front-desk": "editBookings",
+    "guest-contact": "editBookings",
+    "tasks": "tasks",
     "keys": "editBookings",
     "tally": "resBoard",
     "stats": "resBoard",
