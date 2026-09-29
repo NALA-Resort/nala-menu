@@ -1272,6 +1272,24 @@ console.log('--- Guest Contact: messages and tasks ---');
   ck('only the admin sets who does a team\'s tasks',
      !asx(WAITER).write(`/contactsettings/teams/bar/members/${KEY('waiter@nalaresort.com.au')}`, true).allowed &&
      !asx(CHEF).write(`/contactsettings/teams/kitchen/members/${KEY('chef@nalaresort.com.au')}`, false).allowed);
+  /* The team list, editable in Settings > General (29 Sep): the admin
+     names, adds and retires teams, and a team added there takes tasks like
+     the six. Never deleted, never nameless, never a key a path cannot hold. */
+  ck('the admin adds a team, named and dated, and renames one',
+     asx(ADMIN).update('/contactsettings/teams/poolbar', { label: 'Pool bar', added: NOW }).allowed &&
+     asx(ADMIN).update('/contactsettings/teams/maintenance', { label: 'Grounds' }).allowed);
+  ck('and retires one, and brings it back',
+     asx(ADMIN).update('/contactsettings/teams/spa', { off: true }).allowed &&
+     asx(ADMIN).update('/contactsettings/teams/spa', { off: null }).allowed);
+  ck('a team has a name, a key of letters, and a retirement that is yes or no',
+     !asx(ADMIN).update('/contactsettings/teams/poolbar', { label: '' }).allowed &&
+     !asx(ADMIN).update('/contactsettings/teams/pool-bar', { label: 'Pool bar' }).allowed &&
+     !asx(ADMIN).update('/contactsettings/teams/spa', { off: 'yes' }).allowed);
+  ck('nobody else edits the list',
+     !asx(WAITER).update('/contactsettings/teams/poolbar', { label: 'Pool bar', added: NOW }).allowed &&
+     !asx(MANAGER).update('/contactsettings/teams/spa', { off: true }).allowed);
+  ck('and a team added there takes tasks like the six',
+     asx(WAITER).write('/tasks/poolbar/t4abcdef', Object.assign({}, TASK, { state: 'open' })).allowed);
   ck('and nobody signed out reads anything',
      !asx(GUEST).read('/contact').allowed && !asx(GUEST).read('/tasks/kitchen').allowed);
   ck('the tasks capability may be switched off per role',

@@ -75,7 +75,7 @@ body.paper .task { box-shadow:var(--lift); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=87"></script>
+<script src="nala-shared.js?v=88"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -87,6 +87,7 @@ var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 function navFilter(role){ if (window.NALA_NAVFILTER) NALA_NAVFILTER(role); }
 
 var TEAMS = [];          /* the teams this login sees */
+var CFG = null;          /* /contactsettings: the team list and who does which */
 var OPEN = {}, DONE = {};
 var READFAIL = false;
 
@@ -122,9 +123,12 @@ function query(team, key, val){
 function load(){
   return whole('/contactsettings').then(function(cfg){
     var u = window.NALA_USER;
+    CFG = cfg || {};
+    /* The desk reads the retired teams too: a team only retires with
+       nothing open, and a board that could hide a task is worse. */
     TEAMS = can(window.NALA_ROLE, 'editBookings')
-      ? CONTACT_TEAMS.map(function(t){ return t.key; })
-      : teamsOf(cfg, u && u.email);
+      ? contactTeams(CFG, true).map(function(t){ return t.key; })
+      : teamsOf(CFG, u && u.email);
     var today = dkey(new Date());
     return Promise.all(TEAMS.map(function(k){
       return Promise.all([query(k, 'state', 'open'), query(k, 'doneDay', today)]);
@@ -176,10 +180,11 @@ function draw(){
     .sort(function(a, b){ return a.first - b.first; });
   if (!groups.length){
     board.innerHTML = '<div class="empty">Nothing open for ' +
-      esc(TEAMS.map(teamLabel).join(', ')) + '.</div>';
+      esc(contactTeams(CFG).filter(function(t){ return TEAMS.indexOf(t.key) > -1; })
+            .map(function(t){ return t.label; }).join(', ')) + '.</div>';
   } else {
     board.innerHTML = groups.map(function(g){
-      return '<div class="grp">' + esc(teamLabel(g.k)) + ' · ' + g.ids.length + '</div>' +
+      return '<div class="grp">' + esc(teamLabel(g.k, CFG)) + ' · ' + g.ids.length + '</div>' +
         g.ids.map(function(id){ return cardHTML(g.k, id, OPEN[g.k][id], false); }).join('');
     }).join('');
   }

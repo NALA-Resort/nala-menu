@@ -2644,13 +2644,15 @@ function ensureNotifySettings(role){
      /contactnew/<ck>/<id>    a guest message nobody has sorted yet. Being
                               here IS being new; nothing else says so.
      /tasks/<team>/<id>       what a message became: open, then done.
-     /contactsettings/teams/<team>/members/<emailkey>
-                              who does that team's tasks.
+     /contactsettings/teams/<team>
+                              a team: label, off (retired), added, and
+                              members/<emailkey>, who does its tasks.
    <ck> is the guest's number in E.164 without its plus, which a Firebase
    key can hold. */
 
 /* The six teams the owner started with (29 Sep). The key is what the
-   database stores; the label is what staff read. */
+   database stores; the label is what staff read. The list itself is
+   contactTeams below: these six, as Settings names them, and any added. */
 var CONTACT_TEAMS = [
   { key:'bar',          label:'Bar' },
   { key:'kitchen',      label:'Kitchen' },
@@ -2659,18 +2661,45 @@ var CONTACT_TEAMS = [
   { key:'spa',          label:'Spa' },
   { key:'frontdesk',    label:'Front desk' }
 ];
-function teamLabel(key){
-  for (var i = 0; i < CONTACT_TEAMS.length; i++)
-    if (CONTACT_TEAMS[i].key === key) return CONTACT_TEAMS[i].label;
-  return String(key || '');
+
+/* The team list, the one reading of it (29 Sep, editable in Settings >
+   General, Teams): the six above under whatever name Settings gave them,
+   then each team added there, oldest first, from
+   /contactsettings/teams/<key>. A team removed there is not deleted but
+   retired (off): it takes no new tasks and is offered nowhere, and its
+   name stays, so a conversation still says whose a task was. all includes
+   the retired, for reading back; without it, only the teams in use.
+   Held to tests/contact_cases.json, teams. */
+function contactTeams(settings, all){
+  var teams = (settings && settings.teams) || {}, out = [];
+  CONTACT_TEAMS.forEach(function(t){
+    var s = teams[t.key] || {};
+    out.push({ key: t.key, label: String(s.label || t.label), off: s.off === true });
+  });
+  Object.keys(teams).filter(function(k){
+    var s = teams[k];
+    return /^[a-z]{2,20}$/.test(k) && s && typeof s === 'object' && s.label &&
+           !CONTACT_TEAMS.some(function(t){ return t.key === k; });
+  }).sort(function(a, b){
+    var x = String(teams[a].added || ''), y = String(teams[b].added || '');
+    return x < y ? -1 : x > y ? 1 : (a < b ? -1 : 1);
+  }).forEach(function(k){
+    out.push({ key: k, label: String(teams[k].label), off: teams[k].off === true });
+  });
+  return all ? out : out.filter(function(t){ return !t.off; });
+}
+function teamLabel(key, settings){
+  var t = contactTeams(settings, true).filter(function(x){ return x.key === key; })[0];
+  return t ? t.label : String(key || '');
 }
 
 /* The teams one login does tasks for, off /contactsettings. Set per login
    in Settings > General (the owner, 29 Sep): the grounds login can hold
-   Maintenance alone while the housekeepers hold Housekeeping. */
+   Maintenance alone while the housekeepers hold Housekeeping. A retired
+   team is nobody's. */
 function teamsOf(settings, email){
   var key = emailKey(email), teams = (settings && settings.teams) || {};
-  return CONTACT_TEAMS.filter(function(t){
+  return contactTeams(settings).filter(function(t){
     var m = teams[t.key] && teams[t.key].members;
     return !!(m && m[key] === true);
   }).map(function(t){ return t.key; });
@@ -3454,8 +3483,10 @@ var NAV_ACTIONS = [
       fetch(DB + '/contactsettings.json?v=' + Date.now())
         .then(function(r){ return r.ok ? r.json() : null; })
         .then(function(cfg){
+          /* The desk counts retired teams too: one only retires with
+             nothing open, and a count that could miss a task is worse. */
           var teams = can(role, 'editBookings')
-            ? CONTACT_TEAMS.map(function(t){ return t.key; })
+            ? contactTeams(cfg, true).map(function(t){ return t.key; })
             : teamsOf(cfg, u && u.email);
           return Promise.all(teams.map(function(k){
             return fetch(DB + '/tasks/' + k + '.json?orderBy=' +

@@ -1141,6 +1141,12 @@
         "$team": {
           ".validate": "$team.matches(/^[a-z]{2,20}$/)",
           "label": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40"
+          },
+          "off": {
+            ".validate": "newData.isBoolean()"
+          },
+          "added": {
             ".validate": "newData.isString() && newData.val().length <= 40"
           },
           "members": {

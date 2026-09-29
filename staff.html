@@ -26,7 +26,6 @@
      underlined, which reads as neither. */
   a.btn { text-decoration:none; }
   /* .btn.solid comes from nala-ui.css's shared dress. */
-  .btn.warn  { border-color:var(--red); color:var(--red); }
   .btn.ghost { border-color:var(--rule); color:var(--mid); }
 
   .hours { display:flex; gap:8px; align-items:center; font-size:var(--t3);
@@ -197,6 +196,8 @@
   .evrow { display:flex; align-items:center; gap:var(--s3); padding:var(--s3) 0;
            border-bottom:1px solid var(--rule); min-height:var(--tap); }
   .evrow > span { flex:1; font-size:var(--t3); }
+  /* A removed team's way back sits at the end of its row, its own width. */
+  .evrow .btn.back { width:auto; flex:0 0 auto; padding:var(--s2) var(--s3); }
   /* Changed from how the app came. It was the word "changed" floating under
      a neighbouring column, belonging to nothing the eye could attach it to. */
   .dot { width:7px; height:7px; border-radius:50%; background:var(--amberb);
@@ -245,6 +246,7 @@
   <div id="main">
     <div class="tabs" role="tablist">
       <button class="tab on" role="tab" aria-selected="true"  data-t="tStaff">Staff</button>
+      <button class="tab"    role="tab" aria-selected="false" data-t="tTeams">Teams</button>
       <button class="tab"    role="tab" aria-selected="false" data-t="tRoles">Roles</button>
       <button class="tab"    role="tab" aria-selected="false" data-t="tNotify">Notifications</button>
       <button class="tab"    role="tab" aria-selected="false" data-t="tPrices">Prices</button>
@@ -254,6 +256,17 @@
     <div class="panel on" id="tStaff" role="tabpanel">
       <div id="people"></div>
       <button class="btn solid" id="addBtn" style="margin-top:var(--s4)">Add someone</button>
+    </div>
+
+    <div class="panel" id="tTeams" role="tabpanel">
+      <div id="teamList"></div>
+      <button class="btn solid" id="addTeamBtn" style="margin-top:var(--s4)">Add a team</button>
+      <div id="teamGone"></div>
+      <div class="err" id="teamErr"></div>
+      <div class="note">Each message a guest sends can become a task for one of
+      these teams, closed on the team's own logins. Who does which team's tasks
+      is set per person, on the Staff tab. A removed team keeps its name on the
+      tasks it had, and can be brought back.</div>
     </div>
 
     <div class="panel" id="tRoles" role="tabpanel">
@@ -377,7 +390,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=87"></script>
+<script src="nala-shared.js?v=88"></script>
 <script>
 var ROLES = ['admin','manager','chef','waiter','housekeeping'];
 /* The human roles, and the ones the notification matrix targets. manager is
@@ -538,7 +551,7 @@ function personSheet(key){
     '<button class="btn solid" onclick="savePerson(\''+key+'\')">Save</button>'+
     (protectedReason(key)
        ? '<div class="note">' + protectedReason(key) + ' They cannot be removed.</div>'
-       : '<button class="btn warn" onclick="removeSheet(\''+key+'\')">Remove from staff</button>')+
+       : '<button class="btn terra" onclick="removeSheet(\''+key+'\')">Remove from staff</button>')+
     '<button class="btn ghost" onclick="closeSheet()">Close</button>'+
     '<div class="err" id="sErr"></div>');
 }
@@ -555,7 +568,8 @@ var TEAMSET = null;
 function loadTeams(){
   fetch(DB + '/contactsettings.json').then(function(r){ return r.ok ? r.json() : null; })
     .then(function(j){ TEAMSET = j || {}; })
-    .catch(function(){ TEAMSET = null; });
+    .catch(function(){ TEAMSET = null; })
+    .then(drawTeams);
 }
 function teamOn(key, team){
   var t = ((TEAMSET && TEAMSET.teams) || {})[team] || {};
@@ -566,11 +580,11 @@ function teamRows(key){
   if (['sync','encoder','contact'].indexOf(role) > -1) return '';
   if (!TEAMSET) return '<div class="note">Could not read the teams, so they cannot be set ' +
                        'here just now. Close and open this person again.</div>';
-  return '<label>Tasks for</label><div id="teamRows">' + CONTACT_TEAMS.map(function(t){
+  return '<label>Tasks for</label><div id="teamRows">' + contactTeams(TEAMSET).map(function(t){
     var on = teamOn(key, t.key);
-    return '<div class="evrow"><span>' + t.label + '</span><button class="sw' + (on ? ' on' : '') +
+    return '<div class="evrow"><span>' + escT(t.label) + '</span><button class="sw' + (on ? ' on' : '') +
       '" id="team-' + t.key + '" data-team="' + t.key + '" data-key="' + key +
-      '" role="switch" aria-checked="' + on + '" aria-label="' + t.label + ' tasks"></button></div>';
+      '" role="switch" aria-checked="' + on + '" aria-label="' + escT(t.label) + ' tasks"></button></div>';
   }).join('') + '</div>';
 }
 document.getElementById('sheet').addEventListener('click', function(e){
@@ -589,10 +603,179 @@ document.getElementById('sheet').addEventListener('click', function(e){
       sw.className = 'sw' + (on ? ' on' : '');
       sw.setAttribute('aria-checked', on);
       if (err) err.textContent = '';
+      drawTeams();
     })
     .catch(function(){ if (err) err.textContent = 'That team did not save. Only an admin may change it.'; })
     .then(function(){ sw.disabled = false; });
 });
+
+/* ── the teams themselves ──────────────────────────────────────
+   The owner started with six (CONTACT_TEAMS); this tab names, adds and
+   removes them, 29 Sep. contactTeams in nala-shared.js is the one reading
+   of the list, so every page that offers a team offers these. A team is
+   never deleted: removed, it is retired (off) and keeps its name on the
+   tasks it had, and it can only be retired with nothing open, so no task
+   is left where no board shows it. Its key, made once from its first name,
+   is what the database stores; renaming changes only the label. */
+function escT(t){
+  return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; });
+}
+function teamMembers(key){
+  var m = ((((TEAMSET || {}).teams || {})[key]) || {}).members || {};
+  return Object.keys(m).filter(function(k){ return m[k] === true && STAFF[k]; })
+    .map(function(k){ return STAFF[k].name || codeOf(k); }).sort();
+}
+function drawTeams(){
+  var list = document.getElementById('teamList'), gone = document.getElementById('teamGone');
+  var add = document.getElementById('addTeamBtn');
+  if (!TEAMSET){
+    list.innerHTML = '<div class="note">Could not read the teams. Close this page and ' +
+                     'open it again.</div>';
+    gone.innerHTML = ''; add.style.display = 'none';
+    return;
+  }
+  add.style.display = '';
+  list.innerHTML = contactTeams(TEAMSET).map(function(t){
+    var who = teamMembers(t.key);
+    return '<button class="person" type="button" data-tk="' + t.key + '">' +
+      '<span class="mid"><span class="nm">' + escT(t.label) + '</span><span class="sub">' +
+      escT(who.length ? who.join(', ') : 'Nobody yet') + '</span></span></button>';
+  }).join('');
+  var off = contactTeams(TEAMSET, true).filter(function(t){ return t.off; });
+  gone.innerHTML = off.length ? '<div class="seclabel">Removed</div>' + off.map(function(t){
+    return '<div class="evrow"><span>' + escT(t.label) + '</span><button class="btn ghost back" ' +
+      'type="button" data-back="' + t.key + '">Bring back</button></div>';
+  }).join('') : '';
+}
+document.getElementById('teamList').onclick = function(e){
+  var row = e.target.closest('[data-tk]'); if (row) teamSheet(row.getAttribute('data-tk'));
+};
+document.getElementById('teamGone').onclick = function(e){
+  var b = e.target.closest('[data-back]'); if (!b) return;
+  var key = b.getAttribute('data-back');
+  saveFeedback(b, function(){ return teamWrite(key, { off: null }); },
+    { hold:400, then: drawTeams, fail: document.getElementById('teamErr') });
+};
+
+/* One team's node, patched, and the page's copy with it. */
+function teamWrite(key, patch){
+  return fetch(DB + '/contactsettings/teams/' + key + '.json',
+               { method:'PATCH', body: JSON.stringify(patch) }).then(function(r){
+    if (!r.ok) throw new Error('rejected');
+    TEAMSET.teams = TEAMSET.teams || {};
+    var t = TEAMSET.teams[key] = TEAMSET.teams[key] || {};
+    Object.keys(patch).forEach(function(k){
+      if (patch[k] === null) delete t[k]; else t[k] = patch[k];
+    });
+  });
+}
+/* A name another team in use already has, in any case: two teams one name
+   and nobody can tell whose a task is. */
+function nameTaken(label, except){
+  var l = label.toLowerCase();
+  return contactTeams(TEAMSET, true).filter(function(t){
+    return t.key !== except && t.label.toLowerCase() === l;
+  })[0] || null;
+}
+/* The key a new team is stored under: its first name's letters, which the
+   rules and every path accept. */
+function teamKeyFor(label){
+  var k = String(label || '').toLowerCase();
+  if (k.normalize) k = k.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return k.replace(/[^a-z]/g, '').slice(0, 20);
+}
+
+function teamSheet(key){
+  var t = contactTeams(TEAMSET, true).filter(function(x){ return x.key === key; })[0];
+  if (!t) return;
+  var who = teamMembers(key);
+  openSheet(
+    '<div class="st">' + escT(t.label) + '</div>' +
+    '<div class="sub">' + escT(who.length ? 'Tasks go to ' + who.join(', ') + '.'
+                                         : 'Nobody does this team\u2019s tasks yet.') +
+    ' Who does them is set per person, on the Staff tab.</div>' +
+    '<label>Name</label><input id="tName" maxlength="30" value="' + escT(t.label) + '">' +
+    '<button class="btn solid" onclick="saveTeam(\'' + key + '\')">Save</button>' +
+    '<button class="btn terra" onclick="removeTeamSheet(\'' + key + '\')">Remove team</button>' +
+    '<button class="btn ghost" onclick="closeSheet()">Close</button>' +
+    '<div class="err" id="sErr"></div>');
+}
+function saveTeam(key){
+  var label = document.getElementById('tName').value.trim().replace(/\s+/g, ' ');
+  var e = document.getElementById('sErr');
+  if (!label){ e.textContent = 'A name is needed.'; return; }
+  var same = nameTaken(label, key);
+  if (same){ e.textContent = 'There is already a team called ' + same.label + '.'; return; }
+  return saveFeedback(pressedButton(), function(){ return teamWrite(key, { label: label }); }, {
+    done:'Saved ✓', hold:400,
+    then: function(){ drawTeams(); closeSheet(); },
+    fail: function(msg){ e.textContent = msg; }
+  });
+}
+/* Removing asks first (the button law), and refuses while the team holds
+   an open task: retired, it would sit on no board to be closed from. */
+function removeTeamSheet(key){
+  var t = contactTeams(TEAMSET, true).filter(function(x){ return x.key === key; })[0];
+  if (!t) return;
+  openSheet(
+    '<div class="st">Remove ' + escT(t.label) + '?</div>' +
+    '<div class="sub">It is offered for no new task and leaves every list. The tasks it ' +
+    'had keep its name, and it can be brought back.</div>' +
+    '<button class="btn terra" onclick="removeTeam(\'' + key + '\')">Yes, remove</button>' +
+    '<button class="btn ghost" onclick="teamSheet(\'' + key + '\')">Back</button>' +
+    '<div class="err" id="sErr"></div>');
+}
+function removeTeam(key){
+  var e = document.getElementById('sErr'), btn = pressedButton();
+  var label = teamLabel(key, TEAMSET);
+  return saveFeedback(btn, function(){
+    return fetch(DB + '/tasks/' + key + '.json?orderBy=' + encodeURIComponent('"state"') +
+                 '&equalTo=' + encodeURIComponent('"open"')).then(function(r){
+      if (!r.ok) throw new Error('rejected');
+      return r.json();
+    }).then(function(j){
+      var n = Object.keys(j || {}).filter(function(id){ return j[id] && j[id].state === 'open'; }).length;
+      if (n){
+        var x = new Error(label + ' has ' + n + ' open task' + (n === 1 ? '' : 's') +
+                          '. Close ' + (n === 1 ? 'it' : 'them') + ' on Tasks first.');
+        x.said = true; throw x;
+      }
+      return teamWrite(key, { off: true });
+    });
+  }, { busy:'Removing', done:'Removed', hold:400,
+       then: function(){ drawTeams(); closeSheet(); },
+       fail: function(msg){ e.textContent = msg; } });
+}
+
+document.getElementById('addTeamBtn').onclick = function(){
+  openSheet(
+    '<div class="st">Add a team</div>' +
+    '<div class="sub">A team whose logins close the tasks guests\u2019 messages become. ' +
+    'Who is on it is set per person, on the Staff tab.</div>' +
+    '<label>Name</label><input id="tNew" maxlength="30" placeholder="Pool bar">' +
+    '<button class="btn solid" onclick="addTeam()">Create</button>' +
+    '<button class="btn ghost" onclick="closeSheet()">Close</button>' +
+    '<div class="err" id="sErr"></div>');
+};
+function addTeam(){
+  var label = document.getElementById('tNew').value.trim().replace(/\s+/g, ' ');
+  var e = document.getElementById('sErr');
+  var key = teamKeyFor(label);
+  if (key.length < 2){ e.textContent = 'The name needs at least two letters.'; return; }
+  var same = nameTaken(label, null) ||
+             contactTeams(TEAMSET, true).filter(function(t){ return t.key === key; })[0];
+  if (same){
+    e.textContent = same.off ? same.label + ' was removed: bring it back below the list.'
+                             : 'There is already a team called ' + same.label + '.';
+    return;
+  }
+  return saveFeedback(pressedButton(), function(){
+    return teamWrite(key, { label: label, added: new Date().toISOString() });
+  }, { busy:'Creating', done:'Created', hold:400,
+       then: function(){ drawTeams(); closeSheet(); },
+       fail: function(msg){ e.textContent = msg; } });
+}
 
 function savePerson(key){
   var name = document.getElementById('pName').value.trim();
@@ -623,7 +806,7 @@ function removeSheet(key){
     '<div class="sub">They lose access straight away, on any phone already '+
     'signed in. Their login still exists and can be tidied up in the Firebase '+
     'console later.</div>'+
-    '<button class="btn warn" onclick="removePerson(\''+key+'\')">Yes, remove</button>'+
+    '<button class="btn terra" onclick="removePerson(\''+key+'\')">Yes, remove</button>'+
     '<button class="btn ghost" onclick="personSheet(\''+key+'\')">Back</button>'+
     '<div class="err" id="sErr"></div>');
 }

@@ -268,7 +268,10 @@ with sync_playwright() as p:
           const ch = T.channel.cases.every(([t,n,c])=>contactChannel(t,Date.parse(n)).ch===c);
           const row = T.row.cases.every(([t,f,o,h,s])=>contactRowState(t,f,o,h)===s);
           const tpl = T.templates.cases.every(([i,f,a,w])=>contactTemplateText(i,f,a)===w);
-          return {win, ch, row, tpl};}""", CASES)
+          const teams = T.teams.cases.every(([s,a,w])=>JSON.stringify(contactTeams(s,a)
+            .map(t=>[t.key,t.label,t.off]))===JSON.stringify(w));
+          const tof = T.teamsof.cases.every(([s,e,w])=>JSON.stringify(teamsOf(s,e))===JSON.stringify(w));
+          return {win, ch, row, tpl, teams, tof};}""", CASES)
         ck("[%s] the page's readers say what contact_cases.json says: %s" % (tz, res),
            all(res.values()), res)
         done(pg)
@@ -617,6 +620,118 @@ with sync_playwright() as p:
             ck("Tasks has no sideways scroll at %d" % w,
                not pg.evaluate("()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
             done(pg)
+
+    # ── 7. the teams, as Settings names them (29 Sep) ──────────────────
+    # contactTeams is the one reading of the list: a renamed team, an added
+    # one, a retired one, as Guest Contact, Tasks and Settings each offer it.
+    SETTINGS_BAK = json.loads(json.dumps(SETTINGS))
+    SETTINGS["teams"]["kitchen"]["label"] = "Kitchen pass"
+    SETTINGS["teams"]["frontdesk"] = {"label": "Reception"}
+    SETTINGS["teams"]["bar"] = {"off": True}            # retired, Priya's gin still open
+    SETTINGS["teams"]["poolbar"] = {"label": "Pool bar", "added": "2026-09-29T01:00:00.000Z",
+                                    "members": {"housekeeping@x": True}}
+    pg = page("?c=%s&b=b-sarah" % SARAH)
+    pg.click("#tk-in-SMcandle"); pg.wait_for_timeout(150)
+    teams = pg.evaluate("()=>[...document.querySelectorAll('.msg[data-m=\"in-SMcandle\"] .tri .sbtn')].map(e=>e.textContent)")
+    ck("Task offers the teams by their names in Settings, an added one last, a removed one not at all",
+       teams == ["Kitchen pass", "Housekeeping", "Maintenance", "Spa", "Reception", "Pool bar", "Cancel"], teams)
+    done(pg)
+    pg = page()
+    by = {r["ck"]: r for r in rows(pg) if r["ck"]}
+    ck("a removed team's task still open still shows, under its name",
+       by["61411000009"]["s"] == "task" and by["61411000009"]["l3"].endswith("Bar open"), by["61411000009"])
+    done(pg)
+    pg = page(email="ben@x", file="tasks.html")
+    grps = pg.evaluate("()=>[...document.querySelectorAll('#board .grp')].map(e=>e.textContent)")
+    ck("Tasks heads each team with its name in Settings, and keeps a removed team's open task",
+       grps == ["Bar · 1", "Maintenance · 1", "Kitchen pass · 1"], grps)
+    done(pg)
+    pg = page(email="housekeeping@x", file="tasks.html")
+    ck("a login on an added team sees it", "Nothing open for Housekeeping, Pool bar." in
+       pg.text_content("#board"), pg.text_content("#board"))
+    done(pg)
+
+    def staffpg(w=390):
+        p = page(email="staff@x", file="staff.html", w=w)
+        p.click('[data-t="tTeams"]'); p.wait_for_timeout(150)
+        return p
+    def sheet_err(p): return (p.text_content("#sErr") or "").strip()
+    def team_writes(): return [x for x in WRITES if x["p"].startswith("/contactsettings/")]
+    pg = staffpg()
+    names = pg.evaluate("()=>[...document.querySelectorAll('#teamList .person')].map(e=>"
+                        "[e.querySelector('.nm').textContent,e.querySelector('.sub').textContent])")
+    ck("Settings lists the teams in use, each with who does its tasks",
+       names == [["Kitchen pass", "Chef"], ["Housekeeping", "HK"], ["Maintenance", "Ray Grounds"],
+                 ["Spa", "Masseuse"], ["Reception", "Nobody yet"], ["Pool bar", "HK"]], names)
+    ck("and a removed team below them, with a way back",
+       pg.evaluate("()=>[...document.querySelectorAll('#teamGone .evrow')].map(e=>e.innerText.replace(/\\s+/g,' ').trim())")
+       == ["Bar Bring back"])
+    del WRITES[:]
+    for name, want in (("Pool Bar", "There is already a team called Pool bar."),
+                       ("bar", "Bar was removed: bring it back below the list."),
+                       ("12", "The name needs at least two letters.")):
+        pg.click("#addTeamBtn"); pg.fill("#tNew", name)
+        pg.click("#sheet .btn.solid"); pg.wait_for_timeout(150)
+        ck("adding %r is refused: %s" % (name, want), sheet_err(pg) == want and team_writes() == [], sheet_err(pg))
+        pg.click("#sheet .btn.ghost"); pg.wait_for_timeout(100)
+    pg.click("#addTeamBtn"); pg.fill("#tNew", "Gardens & Grounds")
+    pg.click("#sheet .btn.solid"); pg.wait_for_timeout(700)
+    w = team_writes()
+    ck("a new team is stored under its name's letters, named and dated",
+       len(w) == 1 and w[0]["m"] == "PATCH" and w[0]["p"] == "/contactsettings/teams/gardensgrounds.json" and
+       w[0]["b"]["label"] == "Gardens & Grounds" and str(w[0]["b"].get("added", "")).startswith("2026-09-29T"), w)
+    ck("and joins the list at the end", pg.evaluate(
+       "()=>[...document.querySelectorAll('#teamList .person .nm')].map(e=>e.textContent)")[-1] == "Gardens & Grounds")
+    del WRITES[:]
+    pg.click('#teamList [data-tk="maintenance"]'); pg.wait_for_timeout(100)
+    pg.fill("#tName", "spa"); pg.click("#sheet .btn.solid"); pg.wait_for_timeout(150)
+    ck("renaming to another team's name is refused",
+       sheet_err(pg) == "There is already a team called Spa." and team_writes() == [], sheet_err(pg))
+    pg.fill("#tName", "Grounds"); pg.click("#sheet .btn.solid"); pg.wait_for_timeout(700)
+    w = team_writes()
+    ck("a rename changes the name alone, never the key its tasks are under",
+       len(w) == 1 and w[0]["p"] == "/contactsettings/teams/maintenance.json" and w[0]["b"] == {"label": "Grounds"}, w)
+    del WRITES[:]
+    pg.click('#teamList [data-tk="kitchen"]'); pg.wait_for_timeout(100)
+    rm = pg.evaluate("()=>{const b=document.querySelector('#sheet .btn.terra');const s=getComputedStyle(b);"
+                     "return [b.textContent,s.color]}")
+    ck("Remove team wears the button law's terracotta, never red", rm[0] == "Remove team" and
+       rm[1] != "rgb(168, 50, 30)", rm)
+    pg.click("#sheet .btn.terra"); pg.wait_for_timeout(100)
+    ck("and asks first", "Remove Kitchen pass?" in pg.text_content("#sheet") and team_writes() == [])
+    pg.click("#sheet .btn.terra"); pg.wait_for_timeout(400)
+    ck("a team with a task still open is not removed, and says what to do",
+       sheet_err(pg) == "Kitchen pass has 1 open task. Close it on Tasks first." and team_writes() == [],
+       sheet_err(pg))
+    pg.click("#sheet .btn.ghost"); pg.wait_for_timeout(100)
+    pg.click("#sheet .btn.ghost"); pg.wait_for_timeout(100)
+    pg.click('#teamList [data-tk="housekeeping"]'); pg.wait_for_timeout(100)
+    pg.click("#sheet .btn.terra"); pg.wait_for_timeout(100)
+    pg.click("#sheet .btn.terra"); pg.wait_for_timeout(800)
+    w = team_writes()
+    ck("one with nothing open is retired, not deleted: its name stays on its tasks",
+       len(w) == 1 and w[0]["p"] == "/contactsettings/teams/housekeeping.json" and w[0]["b"] == {"off": True}, w)
+    ck("and moves to Removed", "Housekeeping" in pg.text_content("#teamGone") and
+       "Housekeeping" not in pg.text_content("#teamList"))
+    del WRITES[:]
+    pg.click('#teamGone [data-back="bar"]'); pg.wait_for_timeout(700)
+    w = team_writes()
+    ck("Bring back undoes the retiring and nothing else",
+       len(w) == 1 and w[0]["p"] == "/contactsettings/teams/bar.json" and w[0]["b"] == {"off": None}, w)
+    shot(pg, "staff-teams")
+    done(pg)
+    pg = page(email="staff@x", file="staff.html")
+    pg.click('#people .person:has-text("Ray Grounds")'); pg.wait_for_timeout(150)
+    sw = pg.evaluate("()=>[...document.querySelectorAll('#teamRows .evrow span')].map(e=>e.textContent)")
+    ck("a person's switches offer the teams in use, by their names", sw ==
+       ["Kitchen pass", "Housekeeping", "Maintenance", "Spa", "Reception", "Pool bar"], sw)
+    done(pg)
+    for w in (390, 320):
+        pg = staffpg(w)
+        ck("the Teams tab has no sideways scroll at %d" % w,
+           not pg.evaluate("()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1"))
+        done(pg)
+    SETTINGS.clear(); SETTINGS.update(SETTINGS_BAK)
 
     br.close()
 

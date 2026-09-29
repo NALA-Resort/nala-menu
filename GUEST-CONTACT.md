@@ -54,7 +54,10 @@ message are a task each. A reply closes nothing.
 
 **Each team closes its own tasks, on its own login** (the owner's answer).
 Which teams a login does is set per person in Settings, General. The six
-teams to start: Bar, Kitchen, Housekeeping, Maintenance, Spa, Front desk.
+teams to start: Bar, Kitchen, Housekeeping, Maintenance, Spa, Front desk -
+renamed, added to or removed on that page's Teams tab. A removed team is
+retired rather than deleted, so its tasks keep its name, and it can only
+go once nothing of it is open.
 
 **WhatsApp only for a guest who asks for it** (the owner: "The reason we
 would choose to use WhatsApp is if it's an international number and they
@@ -126,7 +129,7 @@ One fact to a place (CLAUDE.md, rule 1):
 | `/contactmsgs/<number>/<id>` | each message in and out, with its Twilio status | the Worker; how it was sorted by the desk |
 | `/contactnew/<number>/<id>` | a guest message nobody has sorted | the Worker adds, the desk removes by sorting |
 | `/tasks/<team>/<id>` | a task, open then done | the desk makes it; the team or the desk closes it |
-| `/contactsettings/teams/<team>/members/<login>` | who does that team's tasks | the admin, in Settings |
+| `/contactsettings/teams/<team>` | a team's name, whether it is retired, and who does its tasks (`members/<login>`) | the admin, in Settings |
 
 `<number>` is the guest's number without its plus, e.g. `61412345678`.
 
@@ -187,8 +190,9 @@ In this order. Steps 1 to 3 wait on Twilio and Meta, so start them first.
    on the WhatsApp sender), set *A message comes in* to Webhook, HTTP POST,
    `https://nala-contact.ben-681.workers.dev/twilio/in`. Receipts need no
    setting: each message carries its own.
-8. **Teams.** Settings, General, each person: switch on the teams whose
-   tasks they do.
+8. **Teams.** Settings, General, Teams: rename, add or remove teams until
+   they are the resort's. Then each person, on the Staff tab: switch on the
+   teams whose tasks they do.
 9. **Publish** the pages, when asked in as many words. Guest Contact and
    Tasks then appear in the menu of every login that holds their
    permission. To keep them to yourself while you test, switch both off for
@@ -250,7 +254,6 @@ Only the test phones can be messaged. From them:
 
 ## Not built yet
 
-- Editing the team list in Settings: the six are fixed in `CONTACT_TEAMS`.
 - A Guest Contact card on the Dashboard.
 - Staff sending photos.
 

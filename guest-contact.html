@@ -196,7 +196,7 @@ body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=87"></script>
+<script src="nala-shared.js?v=88"></script>
 <script>
 var DB = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -268,8 +268,12 @@ function whole(path, q){
     return r.json();
   });
 }
+/* Every team's open tasks, the retired included: a team only retires with
+   nothing open, and a list that could hide a task is worse than one more
+   read. */
 function openTasks(){
-  return Promise.all(CONTACT_TEAMS.map(function(t){
+  var teams = contactTeams(SETTINGS, true);
+  return Promise.all(teams.map(function(t){
     return whole('/tasks/' + t.key, 'orderBy=' + encodeURIComponent('"state"') +
                  '&equalTo=' + encodeURIComponent('"open"')).then(function(j){
       var out = {};
@@ -280,7 +284,7 @@ function openTasks(){
     });
   })).then(function(all){
     var map = {};
-    CONTACT_TEAMS.forEach(function(t, i){ map[t.key] = all[i]; });
+    teams.forEach(function(t, i){ map[t.key] = all[i]; });
     return map;
   });
 }
@@ -324,6 +328,7 @@ function bookingsFrom(nights, fixes){
    must not pull the whole resort through the database every few seconds. */
 var STAYS_MS = 5 * 60 * 1000;
 var STAYS = null, STAYS_AT = 0;
+var SETTINGS = null;        /* /contactsettings: the teams, read at the bookings' pace */
 function loadStays(){
   if (STAYS && Date.now() - STAYS_AT < STAYS_MS) return Promise.resolve(STAYS);
   var from = plusDays(-WINDOW_DAYS), to = plusDays(WINDOW_DAYS);
@@ -331,13 +336,14 @@ function loadStays(){
     whole('/stays', 'orderBy=' + encodeURIComponent('"$key"') +
           '&startAt=' + encodeURIComponent('"' + from + '"') +
           '&endAt=' + encodeURIComponent('"' + to + '"')),
-    whole('/phonefix')
+    whole('/phonefix'), whole('/contactsettings')
   ]).then(function(res){
     var nights = {};
     Object.keys(res[0] || {}).forEach(function(d){
       if (d >= from && d <= to) nights[d] = res[0][d];
     });
     STAYS = bookingsFrom(nights, res[1] || {});
+    SETTINGS = res[2] || {};
     STAYS_AT = Date.now();
     return STAYS;
   });
@@ -357,18 +363,21 @@ function recentThreads(){
       return out;
     });
 }
+/* The bookings first, for the teams they bring: which teams' tasks to read
+   is theirs to say. After the first load they come from memory. */
 function loadAll(){
-  return Promise.all([loadStays(), recentThreads(), whole('/contactnew'), openTasks()])
-    .then(function(res){
-      DATA = { bookings: res[0], threads: res[1], fresh: res[2] || {}, tasks: res[3] };
+  return loadStays().then(function(bookings){
+    return Promise.all([recentThreads(), whole('/contactnew'), openTasks()]).then(function(res){
+      DATA = { bookings: bookings, threads: res[0], fresh: res[1] || {}, tasks: res[2] };
       return DATA;
     });
+  });
 }
 
 /* The open tasks of one guest, from whichever teams hold them. */
 function tasksOf(ck){
   var out = [];
-  CONTACT_TEAMS.forEach(function(t){
+  contactTeams(SETTINGS, true).forEach(function(t){
     var m = (DATA.tasks || {})[t.key] || {};
     Object.keys(m).forEach(function(id){
       if (m[id].ck === ck) out.push({ team: t.key, id: id, rec: m[id] });
@@ -436,7 +445,7 @@ function rowHTML(r, showTab){
   if (chWord(r.t)) l3.push(chWord(r.t));
   l3.push(stayWords(r));
   var teams = {};
-  open.forEach(function(x){ teams[teamLabel(x.team)] = true; });
+  open.forEach(function(x){ teams[teamLabel(x.team, SETTINGS)] = true; });
   var openWords = Object.keys(teams).length
     ? ' · <span class="open">' + esc(Object.keys(teams).join(', ')) + ' open</span>' : '';
   return '<button class="vrow b-' + r.state + '" data-ck="' + esc(r.ck || '') +
@@ -613,7 +622,7 @@ function triHTML(id, m){
   if (PICK === id){
     /* A team this message already has a task with is not offered twice. */
     var had = m.tasks || {};
-    h = '<span class="lbl">Task for</span>' + CONTACT_TEAMS.filter(function(t){
+    h = '<span class="lbl">Task for</span>' + contactTeams(SETTINGS).filter(function(t){
       return !had[t.key]; }).map(function(t){
       return '<button class="sbtn" id="tm-' + id + '-' + t.key + '" data-act="team" data-m="' + id +
              '" data-team="' + t.key + '">' + esc(t.label) + '</button>';
@@ -629,10 +638,10 @@ function triHTML(id, m){
   Object.keys(ts).forEach(function(team){
     var rec = TH.tasks[team + '/' + ts[team]];
     if (rec && rec.state === 'done')
-      h += '<span class="tp done">' + esc(teamLabel(team)) + ' · done' +
+      h += '<span class="tp done">' + esc(teamLabel(team, SETTINGS)) + ' · done' +
            (rec.doneBy ? ' by ' + esc(whoOf(rec.doneBy)) : '') + '</span>';
     else if (rec)
-      h += '<span class="tp open">' + esc(teamLabel(team)) + ' · open</span>' +
+      h += '<span class="tp open">' + esc(teamLabel(team, SETTINGS)) + ' · open</span>' +
            '<button class="sbtn" id="dn-' + id + '-' + team + '" data-act="done" data-m="' + id +
            '" data-team="' + team + '">Done</button>';
   });

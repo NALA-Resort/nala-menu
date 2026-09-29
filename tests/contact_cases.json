@@ -1,5 +1,5 @@
 {
-  "_why": "Guest Contact's rules as cases, one table for two readers (CLAUDE.md rules 1 and 3). waWindow, contactChannel and contactTemplateText live in nala-shared.js for the page and again in worker/guest-contact.js, because a Worker cannot import from the site: the page previews what the Worker sends and says when the 24 hours close, and the Worker refuses free text outside them. contact_suite.py runs the page's copies through this table and worker/contact-test.mjs the Worker's; a case added here fails whichever copy has not learned it. contactRowState is the page's alone, pinned here all the same because it is the colour a row wears.",
+  "_why": "Guest Contact's rules as cases, one table for two readers (CLAUDE.md rules 1 and 3). waWindow, contactChannel and contactTemplateText live in nala-shared.js for the page and again in worker/guest-contact.js, because a Worker cannot import from the site: the page previews what the Worker sends and says when the 24 hours close, and the Worker refuses free text outside them. contact_suite.py runs the page's copies through this table and worker/contact-test.mjs the Worker's; a case added here fails whichever copy has not learned it. contactRowState is the page's alone, pinned here all the same because it is the colour a row wears, and so are contactTeams and teamsOf, the team list every page offers (29 Sep).",
 
   "window": {
     "_note": "[guest's last WhatsApp message, now, open?, closes at]. Meta's rule: free text only within 24 hours of the guest's last WhatsApp message. Stamps are compared as instants, whatever zone they were written in.",
@@ -57,6 +57,33 @@
       ["arrival", "James", "2026-10-03T14:00:00", "Hi James, we look forward to welcoming you to Nala Resort on Saturday 3 October. If there is anything we can prepare before you arrive, just reply to this message."],
       ["arrival", "", "", "Hi there, we look forward to welcoming you to Nala Resort on your arrival day. If there is anything we can prepare before you arrive, just reply to this message."],
       ["nosuch", "James", "", ""]
+    ]
+  },
+
+  "teams": {
+    "_note": "[/contactsettings, all?, the list as [key, label, retired?]]. contactTeams, the one reading of the team list (29 Sep, editable in Settings > General, Teams): the six the owner started with, under whatever name Settings gave them, then each team added there, oldest first. A removed team is retired, never deleted: without all it is gone from the list, with all it is there, marked, so its tasks keep its name. A node that is not a team - a bad key, no name and not one of the six, not an object - is no team.",
+    "cases": [
+      [null, false, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Front desk", false]]],
+      [{}, true, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Front desk", false]]],
+      [{"teams": {"frontdesk": {"label": "Reception"}}}, false, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Reception", false]]],
+      [{"teams": {"kitchen": {"members": {"chef@x": true}}}}, false, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Front desk", false]]],
+      [{"teams": {"spa": {"off": true, "members": {"masseuse@x": true}}}}, false, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["frontdesk", "Front desk", false]]],
+      [{"teams": {"spa": {"off": true, "members": {"masseuse@x": true}}}}, true, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", true], ["frontdesk", "Front desk", false]]],
+      [{"teams": {"poolbar": {"label": "Pool bar", "added": "2026-09-30T01:00:00.000Z"}, "gardens": {"label": "Gardens", "added": "2026-09-29T23:00:00.000Z"}}}, false, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Front desk", false], ["gardens", "Gardens", false], ["poolbar", "Pool bar", false]]],
+      [{"teams": {"poolbar": {"label": "Pool bar", "added": "2026-09-30T01:00:00.000Z", "off": true}}}, false, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Front desk", false]]],
+      [{"teams": {"poolbar": {"label": "Pool bar", "added": "2026-09-30T01:00:00.000Z", "off": true}}}, true, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Front desk", false], ["poolbar", "Pool bar", true]]],
+      [{"teams": {"Bad-Key": {"label": "Bad"}, "nolabel": {"members": {"a@x": true}}, "odd": "text"}}, true, [["bar", "Bar", false], ["kitchen", "Kitchen", false], ["housekeeping", "Housekeeping", false], ["maintenance", "Maintenance", false], ["spa", "Spa", false], ["frontdesk", "Front desk", false]]]
+    ]
+  },
+
+  "teamsof": {
+    "_note": "[/contactsettings, a login's email, the teams whose tasks it sees]. teamsOf: the teams a login is switched on for in Settings, in the list's order; a retired team is nobody's. The email is keyed as emailKey keys it.",
+    "cases": [
+      [{"teams": {"maintenance": {"members": {"grounds@x": true}}, "housekeeping": {"members": {"grounds@x": true}}}}, "grounds@x", ["housekeeping", "maintenance"]],
+      [{"teams": {"maintenance": {"members": {"grounds@x": false}}}}, "grounds@x", []],
+      [{"teams": {"spa": {"off": true, "members": {"masseuse@x": true}}}}, "masseuse@x", []],
+      [{"teams": {"poolbar": {"label": "Pool bar", "added": "2026-09-30T01:00:00.000Z", "members": {"bar,one@x": true}}}}, "Bar.One@x", ["poolbar"]],
+      [null, "grounds@x", []]
     ]
   }
 }
