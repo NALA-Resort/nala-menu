@@ -114,6 +114,10 @@ function install() {
       STORE[path] = JSON.parse(opt.body);
       return new Response(opt.body, { status: 200 });
     }
+    /* contactOk false: Guest Contact's opt-out cannot be read - the rules
+       not pasted, or the database not answering. */
+    if (STATE.contactOk === false && path.startsWith("/contact/"))
+      return new Response("no", { status: 401 });
     return new Response(JSON.stringify(STORE[path] ?? null), { status: 200 });
   };
 }
@@ -667,6 +671,46 @@ ck("a failed receipt lands on the external record, in the carrier's words",
    /not in service/.test(STORE["/extinvites/" + today + "/ext-abc234"].deliveryText));
 ck("and a key in the wrong shape is never looked up",
    Object.keys(j.results).length === 1);
+
+/* ── a guest who texted STOP (Guest Contact, 29 Sep) ───────────────
+   Once ClickSend sends from the Twilio number, a guest's STOP reaches
+   Twilio, lands at /contact/<number>/optout, and never reaches ClickSend.
+   Every kind asks there before it sends, and sends nothing to a guest who
+   is there, or when it cannot find out. */
+const OPT = { at: new Date().toISOString(), word: "STOP" };
+install(); STORE["/contact/61411222333/optout"] = OPT;
+r = await post(); j = await r.json();
+ck("tonight's menu goes to nobody who texted STOP, and the record says why",
+   SENDS.length === 0 && j.results["4"].status === "failed" &&
+   /texted STOP/.test(j.results["4"].error) &&
+   STORE["/invites/" + today + "/4"].status === "failed");
+install(); STORE["/contact/61411222333/optout"] = OPT;
+r = await pre(); j = await r.json();
+ck("nor does the pre-arrival form",
+   SENDS.length === 0 && j.results["bk-future"].status === "failed" &&
+   /texted STOP/.test(j.results["bk-future"].error));
+spaWorld(); STORE["/contact/61411222333/optout"] = OPT;
+r = await spa(); j = await r.json();
+ck("nor a spa reminder",
+   SENDS.length === 0 && j.results["bk-spa/t1"].status === "failed" &&
+   /texted STOP/.test(j.results["bk-spa/t1"].error));
+install(); STORE["/contact/61412345678/optout"] = { at: OPT.at, word: "UNSUBSCRIBE" };
+r = await ext(); j = await r.json();
+ck("nor an external invitation, whose booking and link are taken back out",
+   SENDS.length === 0 && j.result.status === "failed" &&
+   /texted UNSUBSCRIBE/.test(j.result.error) && j.key === "" &&
+   keysUnder("/manual/").length === 0 && keysUnder("/links/").length === 0);
+install();
+STORE["/contact/61411222333/optout"] = null;            /* texted START */
+STORE["/contact/61400000077/optout"] = OPT;             /* somebody else */
+r = await post(); j = await r.json();
+ck("a guest who texted START, or never STOP, is sent to as ever",
+   SENDS.length === 1 && j.results["4"].status === "sent");
+install(); STATE.contactOk = false;
+r = await post(); j = await r.json();
+ck("and when the check cannot be made, nothing is sent",
+   SENDS.length === 0 && j.results["4"].status === "failed" &&
+   /could not check/.test(j.results["4"].error));
 
 console.log("RESULT: " + P + " passed, " + F + " failed");
 process.exit(F ? 1 : 0);

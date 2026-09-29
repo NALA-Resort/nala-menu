@@ -710,7 +710,10 @@ None of these can move without him.
     its secrets, Twilio's webhook, each person's teams. The rules paste
     comes first: until it, the Worker's login cannot be given its role and
     the pages' queries have no index, so the pages fail rather than limp.
-    Alerts wait on the push Worker's code coming into this repo.
+    Alerts wait on the push Worker's code coming into this repo. And
+    `worker/send-invites.js` now asks Guest Contact whether a guest texted
+    STOP before every text: paste it into `nala-invites` before ClickSend
+    sends from the Twilio number, and after the rules, never before.
 
 ---
 
