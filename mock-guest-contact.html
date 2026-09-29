@@ -14,6 +14,10 @@
      application. This would save us from having an additional application."
      Then: "WhatsApp is a major upgrade that I'd be willing to invest time to
      accomplish."
+     Then, revising the first mock: "This chat service is predominantly a task
+     request. [Guests] ask for some drinks by the pool or an umbrella to their
+     room. So I would like that message to be able to be tagged or marked as
+     done or marked as no task required."
 
      THE SUPPLIER: Twilio, because ClickSend has no WhatsApp. One Australian
      mobile number carries both SMS and WhatsApp. Twilio's plain Messaging API,
@@ -24,6 +28,26 @@
      invitation, spa reminder) moves to the new number, so every reply lands
      here and Guest Touch can go.
 
+     THE UNIT OF WORK IS THE GUEST'S MESSAGE, not the conversation. Every
+     message a guest sends lands New and waits for one answer: is there a
+     task? No task (thanks, see you at four), or Task and the team that does
+     it. A task is open until somebody presses Done. Two requests in one
+     message ("drinks at the pool and more towels") are a task each, because
+     two people finish them at two different times. A reply closes nothing:
+     "Coming right up" is not the drinks arriving.
+
+     STATES, all colour-law tokens, no new colour:
+       a message    New             two buttons, No task and Task (work to do)
+                    Task open       amber pill, the team: in progress, chase this
+                    Done, No task   green pill: nothing left to do
+       a guest row  New             white, with the count (work to do)
+                    Task open       amber
+                    Sent, no reply  law's waiting grey: only we have written
+                    All done        done green
+                    No messages     sunk, dashed
+     A slow task stays amber and never turns red: red is failure's alone.
+     Team names are labels, drawn as text, never as colours.
+
      WHAT WHATSAPP DECIDES, drawn in the frames:
        - 24 hours. Free text only within 24 hours of the guest's last message.
          After that, only wording Meta has approved (a template), or SMS.
@@ -32,8 +56,7 @@
          a quick question, your arrival. Links become buttons.
        - Consent. Meta requires the guest's agreement to be messaged by Nala
          Resort before the first WhatsApp message. Any channel, but it must
-         name the business; a number on a booking is not consent. The owner's:
-         a line in the Mews booking form, and a tick on the pre-arrival form.
+         name the business; a number on a booking is not consent.
        - No WhatsApp. A WhatsApp send to a number without it fails a few
          seconds later (Twilio 63024/63003, on the status callback); the Worker
          then sends the same words by SMS and remembers the number is SMS only.
@@ -44,28 +67,32 @@
        - One conversation per guest mobile, across stays and both channels.
        - Replies go back the way the guest last wrote; messages we start go
          on WhatsApp to a guest who agreed and has it, else SMS.
-       - States, all colour-law tokens, no new colour:
-           needs a reply   the guest wrote last, not answered   white (work to do)
-           sent, no reply  only we have written                 law's waiting grey
-           answered        replied to, or marked done            done green
-           no messages     nothing sent, or no mobile            sunk, dashed
-       - Mark done, for "Thanks!": no reply needed, the row goes green.
-       - editBookings, like the SMS pages. A top-level menu entry after Front
-         Desk, with the count of guests waiting on a reply (NAV_ACTIONS).
+       - Teams to start: Bar, Kitchen, Housekeeping, Maintenance, Spa, Front
+         desk. A list edited in Settings, like Flags.
+       - Guest Contact (editBookings) and Tasks are two menu entries, each
+         with its count: new messages, open tasks (NAV_ACTIONS).
+     OPEN, the owner's: who presses Done - reception for everyone, or each
+     team on its own login (Kitchen the chef's, Housekeeping and Maintenance
+     the housekeeping login, Spa the masseuse's, Bar a waiter's), which then
+     sees only its own tasks and is buzzed when one arrives.
 
      THE DATA, a sketch for the build:
-       /contact/<E.164 digits>/meta     lastIn, lastOut, preview, waiting,
-                                        doneAt, doneBy, wa (true|false|unknown)
+       /contact/<E.164 digits>/meta      lastIn, lastOut, preview, wa
        /contact/<E.164 digits>/msgs/<id> dir in|out, ch wa|sms, body, media,
-                                        at, by, kind, sid, status, statusAt, err
-     Joined to bookings by normalisePhone (tests/phone_cases.json). The row
-     state is one shared reader with a case table (rule 1): the list, the
-     menu badge, the Dashboard and the Guest Profile all read it. The 24-hour
+                                         at, by, kind, sid, status, err,
+                                         triage: none | {<team>: <task id>}
+       /tasks/<team>/<id>                phone, booking, villa, msg, text,
+                                         state open|done, at, by, doneAt, doneBy
+     Tasks under their team so the rules can give each team its own node
+     (a read is all or nothing in RTDB rules). Joined to bookings by
+     normalisePhone (tests/phone_cases.json). The row state and the task
+     state are shared readers with case tables (rule 1): the list, the menu
+     counts, the Dashboard and the Guest Profile all read them. The 24-hour
      window is computed by the page AND the Worker, which refuses free text
      outside it: a shared table (rule 3).
 
      The frames use the live sheets (nala-ui2.css, nala-ui.css) linked
-     WITHOUT ?v= on purpose, as the other mocks do. Frame 4 draws WhatsApp's
+     WITHOUT ?v= on purpose, as the other mocks do. Frame 6 draws WhatsApp's
      own screen, so its colours are WhatsApp's, not the law's. Nothing works
      on it. ?w=360 or ?w=320 draws every frame at that width. -->
 <style>
@@ -96,11 +123,11 @@
 
 <header class="bar">
   <h1>Guest Contact</h1>
-  <p>Mock, 29 Sep, not built. Every guest by booking (Upcoming, In-house,
-    Past) with one conversation each. WhatsApp when the guest has it and has
-    agreed, SMS when not, from one resort number. Every reply lands here,
-    including replies to the pre-arrival, menu and spa texts. Nothing works
-    on it.</p>
+  <p>Mock, 29 Sep, revised, not built. Every guest by booking (Upcoming,
+    In-house, Past) with one conversation each, on WhatsApp or SMS from one
+    resort number. Guests mostly ask for things, so every message they send
+    is sorted: no task, or a task for a team, open until someone presses
+    Done. Nothing works on it.</p>
 </header>
 
 <main class="stage">
@@ -108,31 +135,57 @@
     <figcaption><b>1</b>Guest Contact &middot; In-house</figcaption>
     <div class="scr"><iframe title="Guest Contact, In-house" data-doc="f-list" data-h="auto"></iframe></div>
     <ul class="notes">
-      <li>Work first: needs a reply (white, with a count), sent with no reply
-        yet (grey), answered or marked done (green), nothing sent (sunk).</li>
+      <li>New first: a message nobody has sorted yet (white, with a count).
+        Then a task open (amber), sent with no reply (grey), all done
+        (green), nothing sent (sunk).</li>
+      <li>Sarah's row is New for the candle, and names the umbrella still
+        open.</li>
       <li>Upcoming and Past are the same list, by arrival and by departure.
         Search reaches all three.</li>
-      <li>A number that is on no booking still lands here, its number in
-        place of a name.</li>
-      <li>The menu entry carries the count waiting on a reply.</li>
     </ul>
   </figure>
 
   <figure>
-    <figcaption><b>2</b>Sarah &middot; WhatsApp, inside 24 hours</figcaption>
-    <div class="scr"><iframe title="Conversation, WhatsApp open" data-doc="f-thread" data-h="auto"></iframe></div>
+    <figcaption><b>2</b>Sarah &middot; every message sorted</figcaption>
+    <div class="scr"><iframe title="Conversation, messages sorted" data-doc="f-thread" data-h="auto"></iframe></div>
     <ul class="notes">
-      <li>The whole stay in one place: the pre-arrival form, the spa reminder
-        and tonight's menu sit in the conversation with who sent them.</li>
-      <li>She wrote 3:14pm, so free text is open until 3:14pm tomorrow. The
-        line above the box says so.</li>
-      <li>Photos come through. Read comes from WhatsApp.</li>
-      <li>Mark done is for "Thanks!": no reply needed, the row goes green.</li>
+      <li>Each guest message answers one question: is there a task?</li>
+      <li>Sunday's massage was Spa's, done by Ben. The umbrella is
+        Maintenance's, amber until someone presses Done. The candle is
+        still New.</li>
+      <li>A reply closes nothing: "coming right up" is not the drinks
+        arriving.</li>
+      <li>WhatsApp's 24 hours as before: free text until 3:14pm
+        tomorrow.</li>
     </ul>
   </figure>
 
   <figure>
-    <figcaption><b>3</b>James &middot; past 24 hours</figcaption>
+    <figcaption><b>3</b>Task pressed &middot; which team</figcaption>
+    <div class="scr"><iframe title="Choosing the team" data-doc="f-pick" data-h="auto"></iframe></div>
+    <ul class="notes">
+      <li>One more tap: the team. The candle becomes Kitchen's, open.</li>
+      <li>Two requests in one message get a task each, one per team, done
+        separately.</li>
+      <li>The teams are a list edited in Settings, like Flags.</li>
+    </ul>
+  </figure>
+
+  <figure>
+    <figcaption><b>4</b>Tasks &middot; everything open</figcaption>
+    <div class="scr"><iframe title="Tasks" data-doc="f-tasks" data-h="auto"></iframe></div>
+    <ul class="notes">
+      <li>Every open task by team, oldest first, with the guest's own words.
+        Tap one for the conversation.</li>
+      <li>Amber until Done, then under Done today. Never red: a slow task is
+        not a failure.</li>
+      <li>Open: reception presses Done for everyone, or each team on its own
+        login, seeing only its own tasks.</li>
+    </ul>
+  </figure>
+
+  <figure>
+    <figcaption><b>5</b>James &middot; past 24 hours</figcaption>
     <div class="scr"><iframe title="Conversation, WhatsApp closed" data-doc="f-closed" data-h="auto"></iframe></div>
     <ul class="notes">
       <li>WhatsApp's rule, not ours: more than 24 hours after the guest last
@@ -145,7 +198,7 @@
   </figure>
 
   <figure>
-    <figcaption><b>4</b>Sarah's phone &middot; WhatsApp</figcaption>
+    <figcaption><b>6</b>Sarah's phone &middot; WhatsApp</figcaption>
     <div class="scr"><iframe title="The guest's WhatsApp" data-doc="f-wa" data-h="auto"></iframe></div>
     <ul class="notes">
       <li>The link arrives as a button, not a pasted address.</li>
@@ -167,7 +220,7 @@
   .knob button { flex:1; display:inline-flex; align-items:center; justify-content:center;
                  gap:6px; padding:9px 0; font-family:var(--ui-font); font-size:var(--t2);
                  background:none; border:none; color:var(--mid); cursor:pointer; }
-  /* The count waiting on a reply: the menu's action icon, the same dress. */
+  /* The count waiting on somebody: the menu's action icon, the same dress. */
   .cnt { flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
          border-radius:var(--pill); background:var(--accent); color:var(--accent-ink);
          font-size:var(--t1); display:inline-flex; align-items:center;
@@ -179,16 +232,19 @@
           border:1px solid var(--rule); border-radius:8px; padding:11px 13px;
           margin-bottom:7px; text-align:left; font-family:var(--ui-font);
           color:inherit; cursor:pointer; }
-  .vrow .v { flex:0 0 auto; font-size:var(--t4); min-width:30px; text-align:center; }
-  .vrow .mid { flex:1; min-width:0; }
-  .vrow .l1 { gap:8px; }
-  .vrow .nm { font-size:var(--t3); }
-  .vrow .tm { font-size:var(--t2); color:var(--mid); margin-left:auto; }
+  .vrow .v, .task .v { flex:0 0 auto; font-size:var(--t4); min-width:30px; text-align:center; }
+  .vrow .mid, .task .mid { flex:1; min-width:0; }
+  .vrow .l1, .task .l1 { gap:8px; }
+  .vrow .nm, .task .nm { font-size:var(--t3); }
+  .vrow .tm, .task .tm { font-size:var(--t2); color:var(--mid); margin-left:auto; }
   .vrow .l2 { display:flex; align-items:center; gap:8px; margin-top:3px; }
   /* A preview is a message cut short, like a name: it may trim. */
   .vrow .pv { flex:1 1 auto; min-width:0; font-size:var(--t2); color:var(--mid);
               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .vrow .l3 { font-size:var(--t1); color:var(--mid); margin-top:3px; }
+  .vrow .l3 .open, .task .tm { color:var(--law-amber-ink); }
+  /* Amber: a task open, in progress, chase this. */
+  .vrow.b-task { background:var(--law-amber); border-color:var(--law-amber-b); }
   .vrow.b-done { border-color:var(--law-green-b); }
   .vrow.b-grey { border-style:dashed; opacity:.62; }
   .vrow:disabled { cursor:default; }
@@ -216,6 +272,31 @@
   .photo { display:block; width:100%; max-width:210px; height:auto;
            border-radius:10px; margin:0 0 8px; }
 
+  /* ── what a guest message became: the task line under it ──
+     A tinted pill is a status and is never tapped; the buttons beside it
+     are rectangles, quiet, because Send stays the one primary here. */
+  .tri { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:6px 0 0 2px; }
+  .tri .lbl { font-size:var(--t2); color:var(--mid); margin-right:2px; }
+  .tp { display:inline-flex; align-items:center; min-height:28px; padding:0 10px;
+        border-radius:var(--pill); border:1px solid; font-size:var(--t2); }
+  .tp.open { background:var(--law-amber); border-color:var(--law-amber-b); color:var(--law-amber-ink); }
+  .tp.done { background:var(--law-save-bg); border-color:var(--law-save-bdr); color:var(--law-save-ink); }
+  .sbtn { display:inline-flex; align-items:center; justify-content:center; min-height:36px;
+          padding:0 14px; border:0; border-radius:var(--r); background:var(--card);
+          font-family:var(--ui-font); font-size:var(--t2); color:var(--ink); cursor:pointer; }
+
+  /* ── the Tasks page ── */
+  .task { display:flex; align-items:flex-start; gap:12px; border:1px solid var(--law-amber-b);
+          background:var(--law-amber); border-radius:8px; padding:11px 13px; margin-bottom:7px; }
+  .task .words { font-size:var(--t2); line-height:1.4; margin-top:3px;
+                 display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+                 overflow:hidden; }
+  /* Done sits under the words, so the name never gives way to it. */
+  .task .tact { display:flex; justify-content:flex-end; margin-top:8px; }
+  .task .sbtn { background:var(--surface, #fff); border:1px solid var(--law-amber-b); }
+  details.dgrp summary { font-size:var(--t1); color:var(--mid); margin:18px 2px 6px;
+                         cursor:pointer; }
+
   .compose { margin-top:18px; }
   .win { font-size:var(--t2); color:var(--mid); margin:0 2px 8px; line-height:1.45; }
   .win b { font-weight:600; color:var(--ink); }
@@ -230,9 +311,11 @@
   /* ── paper: every surface solid, tints drawn over the white ── */
   body.paper .knob { background:var(--surface); }
   body.paper .vrow { background:var(--surface); box-shadow:var(--lift); }
+  body.paper .vrow.b-task { background:var(--law-amber); }
   body.paper .vrow.b-sent { background:linear-gradient(var(--law-wait), var(--law-wait)), var(--surface); }
   body.paper .vrow.b-done { background:linear-gradient(var(--law-green-t), var(--law-green-t)), var(--surface); }
   body.paper .vrow.b-grey { background:var(--surface); box-shadow:none; }
+  body.paper .task { box-shadow:var(--lift); }
   body.paper .msg.in .bub { background:var(--surface); box-shadow:var(--lift); }
   body.paper .chip { background:var(--surface); }
   body.paper .chip.on { background:linear-gradient(var(--sel-bg), var(--sel-bg)), var(--surface); }
@@ -249,6 +332,24 @@
   <path d="M58 60 Q110 16 166 50 L152 63 Q110 42 72 72 Z" fill="#8C877C"/>
   <path d="M110 36 L84 86 M110 36 L136 84" stroke="#8C877C" stroke-width="7" stroke-linecap="round"/>
 </svg>
+</script>
+
+<!-- the staff header every conversation frame opens with -->
+<script type="text/html" id="sarah-head">
+<div class="daterow">
+  <button class="dnav" aria-label="Back to Guest Contact">&lsaquo;</button>
+  <div class="date">Sarah Whitfield</div>
+  <div class="navwrap"><button class="navbtn" aria-label="Menu"><span></span><span></span><span></span></button></div>
+</div>
+<div class="ctx">Villa 7 &middot; in house, leaves Thu 2 Oct &middot; 2 guests<br>
+  +61 412 345 678 &middot; <a href="#">Guest profile</a></div>
+</script>
+
+<!-- Sarah's two messages this afternoon, as the umbrella stands -->
+<script type="text/html" id="sarah-umbrella">
+<div class="msg in"><div class="bub">@@PHOTO@@The umbrella on our deck won't close. Could someone take a look?</div>
+  <div class="meta">WhatsApp &middot; 3:12pm</div>
+  <div class="tri"><span class="tp open">Maintenance &middot; open</span><button class="sbtn">Done</button></div></div>
 </script>
 
 <!-- ══ 1 · the list ══════════════════════════════════════════════════ -->
@@ -273,11 +374,11 @@
 </div>
 <input class="find" type="search" placeholder="Search name, villa or number" aria-label="Search">
 
-<div class="grp">Needs a reply &middot; 3</div>
+<div class="grp">New &middot; 3</div>
 <button class="vrow"><div class="v">7</div><div class="mid">
   <div class="l1 trimrow"><span class="nm trim">Sarah Whitfield</span><span class="tm">3:14pm</span></div>
-  <div class="l2"><span class="pv">Also, it's Tom's 40th tonight! Any chance of a candle on his dessert?</span><span class="cnt">2</span></div>
-  <div class="l3">WhatsApp &middot; leaves Thu 2 Oct</div></div></button>
+  <div class="l2"><span class="pv">Also, it's Tom's 40th tonight! Any chance of a candle on his dessert?</span><span class="cnt">1</span></div>
+  <div class="l3">WhatsApp &middot; <span class="open">Maintenance open</span></div></div></button>
 <button class="vrow"><div class="v">12</div><div class="mid">
   <div class="l1 trimrow"><span class="nm trim">L&eacute;a Martin</span><span class="tm">2:47pm</span></div>
   <div class="l2"><span class="pv">Bonjour! Is the pool heated? And could we borrow two bikes tomorrow?</span><span class="cnt">1</span></div>
@@ -287,29 +388,31 @@
   <div class="l2"><span class="pv">Hi, is there a table for 4 at dinner tonight? We're friends of the Harpers in villa 3</span><span class="cnt">1</span></div>
   <div class="l3">SMS &middot; not on any booking</div></div></button>
 
-<div class="grp">Sent, no reply &middot; 3</div>
+<div class="grp">Task open &middot; 1</div>
+<button class="vrow b-task"><div class="v">9</div><div class="mid">
+  <div class="l1 trimrow"><span class="nm trim">Priya Sharma</span><span class="tm">3:05pm</span></div>
+  <div class="l2"><span class="pv">Could we get two gin and tonics at the pool, please?</span></div>
+  <div class="l3">WhatsApp &middot; <span class="open">Bar open</span></div></div></button>
+
+<div class="grp">Sent, no reply &middot; 2</div>
 <button class="vrow b-sent"><div class="v">4</div><div class="mid">
   <div class="l1 trimrow"><span class="nm trim">Lucy Whitfield</span><span class="tm">3:02pm</span></div>
   <div class="l2"><span class="pv">You: Good afternoon Lucy. Tonight's menu, and a place to tell us if you will join us</span></div>
   <div class="l3">SMS &middot; leaves Thu 2 Oct</div></div></button>
-<button class="vrow b-sent"><div class="v">9</div><div class="mid">
-  <div class="l1 trimrow"><span class="nm trim">Priya Sharma</span><span class="tm">3:02pm</span></div>
-  <div class="l2"><span class="pv">You: Good afternoon Priya. Tonight's menu, and a place to tell us if you will join us</span></div>
-  <div class="l3">WhatsApp &middot; leaves Fri 3 Oct</div></div></button>
 <button class="vrow b-sent"><div class="v">15</div><div class="mid">
   <div class="l1 trimrow"><span class="nm trim">Owen Reilly</span><span class="tm">11:20am</span></div>
   <div class="l2"><span class="pv">You: Your late checkout is confirmed for 1pm tomorrow.</span></div>
   <div class="l3">SMS &middot; leaves Wed 30 Sep</div></div></button>
 
-<div class="grp">Answered &middot; 2</div>
+<div class="grp">All done &middot; 2</div>
 <button class="vrow b-done"><div class="v">2</div><div class="mid">
   <div class="l1 trimrow"><span class="nm trim">Claire Donnelly</span><span class="tm">Mon</span></div>
   <div class="l2"><span class="pv">Perfect, thank you so much!</span></div>
-  <div class="l3">WhatsApp &middot; leaves Thu 2 Oct</div></div></button>
+  <div class="l3">WhatsApp &middot; no task</div></div></button>
 <button class="vrow b-done"><div class="v">11</div><div class="mid">
   <div class="l1 trimrow"><span class="nm trim">Sam Okafor</span><span class="tm">Sun</span></div>
   <div class="l2"><span class="pv">You: Of course, fresh towels are on their way.</span></div>
-  <div class="l3">SMS &middot; leaves Fri 3 Oct</div></div></button>
+  <div class="l3">SMS &middot; Housekeeping done</div></div></button>
 
 <div class="grp">No messages &middot; 2</div>
 <button class="vrow b-grey"><div class="v">16</div><div class="mid">
@@ -324,7 +427,7 @@
 </body></html>
 </script>
 
-<!-- ══ 2 · Sarah, WhatsApp open ═════════════════════════════════════ -->
+<!-- ══ 2 · Sarah, every message sorted ══════════════════════════════ -->
 <script type="text/html" id="f-thread">
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
@@ -334,19 +437,14 @@
 @@CSS@@
 </head>
 <body class="tier-app ui2 paper">
-<div class="daterow">
-  <button class="dnav" aria-label="Back to Guest Contact">&lsaquo;</button>
-  <div class="date">Sarah Whitfield</div>
-  <div class="navwrap"><button class="navbtn" aria-label="Menu"><span></span><span></span><span></span></button></div>
-</div>
-<div class="ctx">Villa 7 &middot; in house, leaves Thu 2 Oct &middot; 2 guests<br>
-  +61 412 345 678 &middot; <a href="#">Guest profile</a></div>
+@@HEAD@@
 
 <div class="day">Mon 22 Sep</div>
 <div class="msg out"><div class="bub"><span class="kind">Pre-arrival form</span>Good morning Sarah. Ahead of your stay with us, a few questions so everything is ready when you arrive. Nala Resort<div class="wabtn">&#8599; Open the form</div></div>
   <div class="meta">Anna &middot; WhatsApp &middot; 10:02am &middot; Read 10:15am</div></div>
 <div class="msg in"><div class="bub">Done! We arrive Saturday around 4pm. Could we book a couples massage for Sunday afternoon?</div>
-  <div class="meta">WhatsApp &middot; 10:31am</div></div>
+  <div class="meta">WhatsApp &middot; 10:31am</div>
+  <div class="tri"><span class="tp done">Spa &middot; done by Ben</span></div></div>
 <div class="msg out"><div class="bub">Lovely, thank you Sarah. Sunday at 2pm is yours, a 60 minute couples massage. See you Saturday! Ben</div>
   <div class="meta">Ben &middot; WhatsApp &middot; 11:05am &middot; Read 11:07am</div></div>
 
@@ -357,23 +455,84 @@
 <div class="day">Today</div>
 <div class="msg out"><div class="bub"><span class="kind">Tonight's menu</span>Good afternoon Sarah. Tonight's menu, and a place to tell us if you will join us. Nala Resort<div class="wabtn">&#8599; See tonight's menu</div></div>
   <div class="meta">Anna &middot; WhatsApp &middot; 3:02pm &middot; Read 3:10pm</div></div>
-<div class="msg in"><div class="bub">@@PHOTO@@The umbrella on our deck won't close. Could someone take a look?</div>
-  <div class="meta">WhatsApp &middot; 3:12pm</div></div>
+@@UMBRELLA@@
 <div class="msg in"><div class="bub">Also, it's Tom's 40th tonight! Any chance of a candle on his dessert?</div>
-  <div class="meta">WhatsApp &middot; 3:14pm</div></div>
+  <div class="meta">WhatsApp &middot; 3:14pm</div>
+  <div class="tri"><button class="sbtn">No task</button><button class="sbtn">Task</button></div></div>
 
 <div class="compose">
   <div class="win">Sends on <b>WhatsApp</b> &middot; free text until 3:14pm tomorrow</div>
   <textarea aria-label="Message Sarah">Happy birthday to Tom! A candle is coming with his dessert, and Ray will be at your deck in ten minutes to fix the umbrella. Ben</textarea>
 </div>
 <div class="foot">
-  <button class="btn">Mark done</button>
   <button class="btn solid">Send</button>
 </div>
 </body></html>
 </script>
 
-<!-- ══ 3 · James, WhatsApp closed ═══════════════════════════════════ -->
+<!-- ══ 3 · Task pressed: which team ═════════════════════════════════ -->
+<script type="text/html" id="f-pick">
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="nala-ui2.css">
+<link rel="stylesheet" href="nala-ui.css">
+@@CSS@@
+</head>
+<body class="tier-app ui2 paper">
+@@HEAD@@
+
+<div class="day">Today</div>
+@@UMBRELLA@@
+<div class="msg in"><div class="bub">Also, it's Tom's 40th tonight! Any chance of a candle on his dessert?</div>
+  <div class="meta">WhatsApp &middot; 3:14pm</div></div>
+<div class="tri"><span class="lbl">Task for</span>
+  <button class="sbtn">Bar</button><button class="sbtn">Kitchen</button><button class="sbtn">Housekeeping</button>
+  <button class="sbtn">Maintenance</button><button class="sbtn">Spa</button><button class="sbtn">Front desk</button>
+  <button class="sbtn">Cancel</button></div>
+<div style="height:24px"></div>
+</body></html>
+</script>
+
+<!-- ══ 4 · Tasks, everything open ═══════════════════════════════════ -->
+<script type="text/html" id="f-tasks">
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="nala-ui2.css">
+<link rel="stylesheet" href="nala-ui.css">
+@@CSS@@
+</head>
+<body class="tier-app ui2 paper">
+<div class="daterow">
+  <div class="date">Tasks</div>
+  <div class="navwrap"><button class="navbtn" aria-label="Menu"><span></span><span></span><span></span></button></div>
+</div>
+
+<div class="grp">Bar &middot; 1</div>
+<div class="task"><div class="v">9</div><div class="mid">
+  <div class="l1 trimrow"><span class="nm trim">Priya Sharma</span><span class="tm">3:05pm &middot; 15 min</span></div>
+  <div class="words">Could we get two gin and tonics at the pool, please?</div>
+  <div class="tact"><button class="sbtn">Done</button></div></div></div>
+
+<div class="grp">Maintenance &middot; 1</div>
+<div class="task"><div class="v">7</div><div class="mid">
+  <div class="l1 trimrow"><span class="nm trim">Sarah Whitfield</span><span class="tm">3:12pm &middot; 8 min</span></div>
+  <div class="words">The umbrella on our deck won't close. Could someone take a look?</div>
+  <div class="tact"><button class="sbtn">Done</button></div></div></div>
+
+<div class="grp">Kitchen &middot; 1</div>
+<div class="task"><div class="v">7</div><div class="mid">
+  <div class="l1 trimrow"><span class="nm trim">Sarah Whitfield</span><span class="tm">3:14pm &middot; 6 min</span></div>
+  <div class="words">Also, it's Tom's 40th tonight! Any chance of a candle on his dessert?</div>
+  <div class="tact"><button class="sbtn">Done</button></div></div></div>
+
+<details class="dgrp"><summary>Done today &middot; 4</summary></details>
+<div style="height:24px"></div>
+</body></html>
+</script>
+
+<!-- ══ 5 · James, WhatsApp closed ═══════════════════════════════════ -->
 <script type="text/html" id="f-closed">
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
@@ -416,7 +575,7 @@
 </body></html>
 </script>
 
-<!-- ══ 4 · Sarah's phone: WhatsApp's screen, WhatsApp's colours ═════ -->
+<!-- ══ 6 · Sarah's phone: WhatsApp's screen, WhatsApp's colours ═════ -->
 <script type="text/html" id="f-wa">
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
@@ -483,11 +642,18 @@
     if (s.indexOf(a) < 0) throw new Error('mock: not found: ' + a);
     return s.split(a).join(b);
   }
-  var CSS = src('gc-css'), PHOTO = src('photo');
+  var CSS = src('gc-css'), PHOTO = src('photo'), HEAD = src('sarah-head'),
+      UMBRELLA = src('sarah-umbrella');
   function staff(id){ return must(src(id), '@@CSS@@', CSS); }
+  function sarah(id){
+    return must(must(must(staff(id), '@@HEAD@@', HEAD), '@@UMBRELLA@@', UMBRELLA),
+                '@@PHOTO@@', PHOTO);
+  }
   var DOCS = {
     'f-list':   staff('f-list'),
-    'f-thread': must(staff('f-thread'), '@@PHOTO@@', PHOTO),
+    'f-thread': sarah('f-thread'),
+    'f-pick':   sarah('f-pick'),
+    'f-tasks':  staff('f-tasks'),
     'f-closed': staff('f-closed'),
     'f-wa':     must(src('f-wa'), '@@PHOTO@@', PHOTO)
   };
