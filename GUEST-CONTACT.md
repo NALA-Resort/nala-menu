@@ -218,7 +218,11 @@ Only the test phones can be messaged. From them:
 - WhatsApp the number from a phone that has WhatsApp: the box offers
   WhatsApp free text for 24 hours. From a phone without WhatsApp, switch
   WhatsApp on and send *A quick question*: it should arrive by SMS instead.
-- Send a photo; text STOP, then START.
+- Send a photo on WhatsApp: it shows in the conversation. Try one by
+  picture message (MMS) too, but it may not arrive: Twilio's Australian
+  MMS launch (June 2025) was for sending, with receiving still to come.
+  That is Twilio's limit, not a fault here; WhatsApp photos are the sure way.
+- Text STOP, then START.
 
 ## Going live, and the switch-over
 
