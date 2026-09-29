@@ -236,13 +236,9 @@ Only the test phones can be messaged. From them:
    no thread to put it in, so read it in the Twilio console under Monitor,
    Logs, Messaging), then set `CLICKSEND_FROM` on `nala-invites` to it. The
    everyday texts still go through ClickSend, but replies land in Guest
-   Contact. Before this step, paste `worker/send-invites.js` into
-   `nala-invites` again: since 29 Sep it asks `/contact/<number>/optout`
-   before every text, because a STOP now reaches Twilio, not ClickSend, and
-   it sends nothing to a guest who texted STOP. Paste it after the rules
-   (setup step 5), never before: until the rules are in, it cannot make
-   that check, and a check it cannot make sends nothing - every everyday
-   text would fail with *could not check whether this guest texted STOP*.
+   Contact. The SMS pages do not check Guest Contact's STOP list meanwhile:
+   the owner, 29 Sep, "not required, it will be a short transition". A
+   guest who texts STOP in that window shows as Opted out in Guest Contact.
 4. **Guest Touch** can go once guests texted from its number have checked
    out: their replies still go there until then.
 5. **The everyday texts move to Twilio.** The one-function change in

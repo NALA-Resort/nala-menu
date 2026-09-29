@@ -271,25 +271,6 @@ async function clickSend(env, phone, bodyText) {
   return { ok: send.ok && msg && msg.status === "SUCCESS", msg: msg, out: out };
 }
 
-/* ── a guest who texted STOP ─────────────────────────────────────
-   Once ClickSend sends from the Twilio number (GUEST-CONTACT.md, the
-   switch-over), a guest's reply goes to Twilio and lands in Guest Contact,
-   STOP included: it is recorded at /contact/<number>/optout, and ClickSend
-   never hears it. So every text this Worker sends asks there first, and
-   every kind sends through here, never through clickSend directly. Read as
-   the caller, like every other read here, and like every other read a
-   refusal sends nothing: a check that cannot be made is not a check that
-   passed. The key is the number without its plus, Guest Contact's. */
-async function smsTo(env, idToken, phone, bodyText) {
-  let out;
-  try { out = await dbGet("/contact/" + phone.slice(1) + "/optout", idToken); }
-  catch { throw new Error("could not check whether this guest texted STOP, so nothing was sent"); }
-  if (out && typeof out === "object")
-    throw new Error("this guest texted " + (out.word || "STOP") + " to the resort's number: " +
-                    "nothing can be sent until they text START");
-  return clickSend(env, phone, bodyText);
-}
-
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
@@ -503,7 +484,7 @@ export default {
             throw new Error("number cannot be normalised for sending: " + raw);
           rec.to = phone;
           rec.body = spaReminderText(text, pms.first, spa, prev);
-          const cs = await smsTo(env, idToken, phone, rec.body);
+          const cs = await clickSend(env, phone, rec.body);
           if (cs.ok) {
             rec.status = "sent";
             rec.providerId = (cs.msg && cs.msg.message_id) || "";
@@ -572,7 +553,7 @@ export default {
           rec.token = token;
           rec.body = fillMarkers(text,
             "https://menu.nalaresort.com/prearrival.html?t=" + token);
-          const cs = await smsTo(env, idToken, phone, rec.body);
+          const cs = await clickSend(env, phone, rec.body);
           if (cs.ok) {
             rec.status = "sent";
             rec.providerId = (cs.msg && cs.msg.message_id) || "";
@@ -666,7 +647,7 @@ export default {
         rec.to = phone;
         rec.token = token;
         rec.body = fillMarkers(text, "https://menu.nalaresort.com/?t=" + token);
-        const cs = await smsTo(env, idToken, phone, rec.body);
+        const cs = await clickSend(env, phone, rec.body);
         if (cs.ok) {
           rec.status = "sent";
           rec.providerId = (cs.msg && cs.msg.message_id) || "";
@@ -721,7 +702,7 @@ export default {
         if (!token) throw new Error("the link token did not store, nothing sent");
         rec.token = token;
         rec.body = fillMarkers(text, "https://menu.nalaresort.com/?t=" + token);
-        const cs = await smsTo(env, idToken, phone, rec.body);
+        const cs = await clickSend(env, phone, rec.body);
         if (cs.ok) {
           rec.status = "sent";
           rec.providerId = (cs.msg && cs.msg.message_id) || "";
