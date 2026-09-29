@@ -3,8 +3,9 @@
 Agreed with the owner in chat on 29 Sep 2026. This file is the brief, the
 record of what was decided, and the setup, which is his.
 
-**Built 29 Sep, not yet published, and built to run in test mode.** Nothing
-here reaches a guest until the steps under *Going live* are done, in order.
+**Published 29 Sep as the admin's alone, with a demo at
+`guest-contact.html?demo`** (made-up guests, no sign-in). Nothing here
+reaches a guest until the steps under *Going live* are done, in order.
 
 ---
 

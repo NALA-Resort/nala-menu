@@ -701,9 +701,10 @@ None of these can move without him.
     The same paste as item 16's `rules.json` - one paste of the current
     file clears both, and any earlier item still waiting on one.
 
-18. **Guest Contact setup, 29 Sep.** Built and tested against stubs, not
-    published, and made to run in test mode on the live app: nothing can
-    reach a guest while `TEST_NUMBERS` is set on its Worker.
+18. **Guest Contact setup, 29 Sep.** Built and tested against stubs, and
+    published the same day as the admin's alone, with its demo at
+    `guest-contact.html?demo`; made to run in test mode on the live app:
+    nothing can reach a guest while `TEST_NUMBERS` is set on its Worker.
     `GUEST-CONTACT.md` is the whole of it, setup in order: the Twilio
     number and WhatsApp sender, the two approved messages, a `contact`
     login for the Worker, the rules paste, the `nala-contact` Worker and
