@@ -309,8 +309,8 @@ size". Apple's numbers, each held by `tabs_suite`:
 | Space below | 21pt to the foot of the screen, where the home indicator lives | the same; the page keeps 83pt, `--tabroom` |
 | Space beside | 21pt from each side, more from a notch | the same, capped at the page's width |
 | Inside | 2pt from the capsule to the tabs | the same |
-| Icons | SF Symbols, fill variant, in a 28pt box; a square glyph 23pt, a circle 25, a wide one 31, a tall one 28 | solid drawings in a 28pt box, a square one 23pt |
-| Line weight | the symbol's weight matched to its label's | a line 2pt, only where the thing is a line |
+| Icons | SF Symbols, fill variant, in a 28pt box; a square glyph 23pt, a circle 25, a wide one 31, a tall one 28 | Lucide's line icons (below), in a 28pt box; the Dashboard's checklist 23pt |
+| Line weight | the symbol's weight matched to its label's | Lucide's own, 2 on its 24 grid |
 | Labels | 10pt semibold, 1pt under the icon | the same |
 | Selected | a grey capsule as tall as the bar, the tint colour | the grey capsule, ink |
 | Two or three tabs | a narrow bar, 98pt a tab | the same, centred |
@@ -323,11 +323,16 @@ Sources: Apple's HIG, [Tab bars](https://developer.apple.com/design/human-interf
 system bar's measurements as taken for
 [FabBar](https://github.com/ryanashcraft/FabBar) (`Constants.swift`).
 
-Three places it parts from the phone, each for a rule of this app:
-selection is grey and ink, never the phone's blue (above); the bar is
-solid white, not glass, as nothing on paper lets the page through; and a
-count is the menu's own badge, never the phone's red, which here means
-failure.
+Four places it parts from the phone. The icons are line icons where the
+phone fills its own: the owner chose [Lucide](https://lucide.dev)'s on 30
+Sep, from four sets in `mock-tab-icons.html` ("Let's use lucid"), with
+its checklist for the Dashboard, which "is actually a daily checklist",
+and a hand carrying a platter for Tasks, the guests' requests. Each is
+copied unchanged from Lucide's own file, named beside it in `TAB_ICONS`
+with Lucide's licence. And three for rules of this app: selection is grey
+and ink, never the phone's blue (above); the bar is solid white, not
+glass, as nothing on paper lets the page through; and a count is the
+menu's own badge, never the phone's red, which here means failure.
 
 What scrolls under the bar fades into the ground, as content does under
 the phone's bars, so a row is never cut by the capsule. Under a page's
@@ -364,8 +369,8 @@ Publish - standing on the bar.
   footer holds the page's primary action; Refresh is never one (below).
 - **Tab bar** (`#tabBar`, since 30 Sep): drawn by `buildTabs` in
   nala-shared.js from `TABBAR`, never written into a page. The icons are
-  solid drawings on a 24 grid in `TAB_ICONS`, a line (class `ln`) only
-  where the thing is one, the label under each is the page's menu name,
+  Lucide's, copied unchanged into `TAB_ICONS` and named there, the label
+  under each is the page's menu name,
   and a count from `NAV_ACTIONS` rides on its icon. Its dress, to Apple's
   numbers, is under Header above.
 - **Pull to refresh** (since 30 Sep, in place of every Refresh button): a

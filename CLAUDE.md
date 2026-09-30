@@ -127,9 +127,10 @@ page omits its own link, and the permission keys are `resSheet` and
 A board on the tab bar (30 Sep) is its place in `TABBAR`, a drawing in
 `TAB_ICONS` and the same line in the canon's "tabs"; no page changes, as
 the bar draws itself into every ui2 page with a menu and `nala-ui2.css`
-stands each page's `.foot` on it. The drawing is solid, a line only where
-the thing is one (class `ln`): the bar is the iPhone's own, to Apple's
-numbers (STYLEGUIDE.md, the owner's ask of 30 Sep). A page's own fixed
+stands each page's `.foot` on it. The drawing is Lucide's, copied
+unchanged from its file and named beside it (the owner's choice, 30 Sep);
+the bar is otherwise the iPhone's own, to Apple's numbers (STYLEGUIDE.md).
+A page's own fixed
 bar at the foot stands on `var(--tabroom)` and wears `onbar`, so the
 strip under it is solid, as Publish's does, or rises over the bar with a
 z-index above 5, as Dietary's save bar does - never under it. A board

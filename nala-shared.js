@@ -3149,11 +3149,7 @@ var TABBAR_MAX = 5;
 
 /* The massage mark: one centre petal and a mirrored pair, on the fork's own
    24 grid, stroked so it carries its state in the stroke colour. Drawn for
-   Front Desk's rows on 31 Aug and moved here 30 Sep for the tab bar's
-   Spa, which draws its fill variant, LOTUS_FILL: the same three petals,
-   solid, with the gaps between them kept open so it stays a lotus and
-   not a blot. Two variants of one mark, as a phone symbol has, kept side
-   by side so a change to one is made to both.                         */
+   Front Desk's rows on 31 Aug; here since 30 Sep, for any page to draw. */
 var LOTUS_PATHS =
   '<path d="M12 3.4c2.5 2.9 3.7 5.5 3.7 7.8 0 2.4-1.2 4.5-3.7 6.2' +
   '-2.5-1.7-3.7-3.8-3.7-6.2 0-2.3 1.2-4.9 3.7-7.8z"/>' +
@@ -3162,67 +3158,56 @@ var LOTUS_PATHS =
   '<path d="M12.6 17.5c2.8.5 5.2-.2 7-2 1.9-1.9 2.5-4.3 2.2-6.9' +
   'c-2.6-.3-5 .3-6.8 2.1"/>';
 var ICON_LOTUS = '<svg viewBox="0 0 24 24">' + LOTUS_PATHS + '</svg>';
-var LOTUS_FILL =
-  '<path d="M12 3c2.7 3.1 4 5.9 4 8.4 0 2.6-1.3 4.8-4 6.6-2.7-1.8-4-4-4-6.6' +
-  ' 0-2.5 1.3-5.3 4-8.4z"/>' +
-  '<path d="M10.2 18.6c-3 .3-5.5-.6-7.2-2.5C1.3 14.2.9 11.6 1.3 9' +
-  'c2.2-.1 4.3.6 5.9 2.1.1 3 1.2 5.5 3 7.5z"/>' +
-  '<path d="M13.8 18.6c3 .3 5.5-.6 7.2-2.5 1.7-1.9 2.1-4.5 1.7-7.1' +
-  '-2.2-.1-4.3.6-5.9 2.1-.1 3-1.2 5.5-3 7.5z"/>';
 
-/* The bar's drawings, one per page on TABBAR (the suite fails a page on
-   the bar that has none), on the same 24 grid. Solid, as the phone's own
-   tab bars draw theirs: Apple's tab bars take a symbol's fill variant
-   where a toolbar takes its outline (HIG, SF Symbols). A part that is a
-   line in the thing itself - a fork's tines, a broom's handle, a list's
-   rules - stays a line, class "ln", stroked at the weight nala-ui2.css
-   gives it. A hole is a hole (evenodd), so a key keeps its ring and a
-   calendar its days.                                                   */
+/* The bar's icons, one per page on TABBAR (the suite fails a page on the
+   bar that has none): Lucide's (lucide.dev), the set the owner chose on
+   30 Sep off mock-tab-icons.html - "Let's use lucid" - with its checklist
+   for the Dashboard, which "is actually a daily checklist", and another
+   idea for Tasks. Line icons on Lucide's 24 grid, stroked 2 as Lucide
+   draws them (nala-ui2.css); each is copied unchanged from its own file
+   in lucide-static 1.49.0, named beside it, so a swap is a name looked up
+   at lucide.dev and its paths pasted here.
+
+   Lucide's licence, which asks to travel with its icons:
+
+   ISC License
+
+   Copyright (c) 2026 Lucide Icons and Contributors
+
+   Permission to use, copy, modify, and/or distribute this software for any
+   purpose with or without fee is hereby granted, provided that the above
+   copyright notice and this permission notice appear in all copies.
+
+   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.   */
 var TAB_ICONS = {
-  /* panels: the page that lays the day out on one screen */
-  'dashboard.html': '<rect x="3" y="3" width="8" height="9.5" rx="2.2"/>' +
-    '<rect x="13" y="3" width="8" height="5.5" rx="2.2"/>' +
-    '<rect x="13" y="10.5" width="8" height="10.5" rx="2.2"/>' +
-    '<rect x="3" y="14.5" width="8" height="6.5" rx="2.2"/>',
-  /* the fork, as the dining forks draw it, and a knife */
-  'tally.html': '<path class="ln" d="M4.8 3v4.6c0 1.9 1.2 3.1 2.7 3.1s2.7-1.2 2.7-3.1V3"/>' +
-    '<path class="ln" d="M7.5 3v4.8"/><path class="ln" d="M7.5 10.7V21"/>' +
-    '<path d="M16.1 3.1c2.5 1 3.8 3.5 3.8 6.3 0 2.4-1 4-2.8 4.6v6.2a1.1 1.1 0 0 1-2.2 0' +
-    'V4c0-.6.6-1.1 1.2-.9z"/>',
-  /* a broom */
-  'cleaners.html': '<path class="ln" d="M12 2.4v6.2"/>' +
-    '<rect x="7.4" y="8.4" width="9.2" height="3.9" rx="1.5"/>' +
-    '<path fill-rule="evenodd" d="M7.2 13.4h9.6l2.1 7.3a.9.9 0 0 1-.9 1.1H6a.9.9 0 0 1-.9-1.1z' +
-    'M9.7 16.1h1.3v5.7H9.7zm3.3 0h1.3v5.7H13z"/>',
-  /* a speech bubble */
-  'guest-contact.html': '<path d="M12 3.5c4.7 0 8.5 3.3 8.5 7.5s-3.8 7.5-8.5 7.5' +
-    'c-1.1 0-2.1-.2-3.1-.5l-4.8 2.3 1.4-4C4.3 15 3.5 13.1 3.5 11c0-4.2 3.8-7.5 8.5-7.5z"/>',
-  /* a list, two of it ticked: lines, as the phone's own checklist is */
-  'tasks.html': '<path class="ln" d="M3.8 6.7l1.9 1.9 3.4-3.4"/><path class="ln" d="M12.7 7h7.8"/>' +
-    '<path class="ln" d="M3.8 13.7l1.9 1.9 3.4-3.4"/><path class="ln" d="M12.7 14h7.8"/>' +
-    '<path class="ln" d="M4.6 20h3.6"/><path class="ln" d="M12.7 20h7.8"/>',
-  /* the bell on the desk */
-  'front-desk.html': '<path d="M4.3 17.2a7.7 7.7 0 0 1 15.4 0z"/>' +
-    '<rect x="2.6" y="18.1" width="18.8" height="2.6" rx="1.3"/>' +
-    '<rect x="11.15" y="7.3" width="1.7" height="2.8" rx=".6"/><circle cx="12" cy="6.2" r="1.7"/>',
-  'spa.html': LOTUS_FILL,
-  'calendar.html': '<path fill-rule="evenodd" d="M5.8 4.6h12.4a2.3 2.3 0 0 1 2.3 2.3v11.8' +
-    'a2.3 2.3 0 0 1-2.3 2.3H5.8a2.3 2.3 0 0 1-2.3-2.3V6.9a2.3 2.3 0 0 1 2.3-2.3z' +
-    'M6.6 11h2.6v2.4H6.6zm4.1 0h2.6v2.4h-2.6zm4.1 0h2.6v2.4h-2.6z' +
-    'M6.6 15.3h2.6v2.4H6.6zm4.1 0h2.6v2.4h-2.6zm4.1 0h2.6v2.4h-2.6z"/>' +
-    '<path class="ln" d="M8 2.6v3.2M16 2.6v3.2"/>',
-  'keys.html': '<path fill-rule="evenodd" d="M8 10.2a5.3 5.3 0 1 1 0 10.6 5.3 5.3 0 0 1 0-10.6z' +
-    'm0 3.4a1.9 1.9 0 1 0 0 3.8 1.9 1.9 0 0 0 0-3.8z"/>' +
-    '<path class="ln" d="M11.6 12 19.8 3.8"/><path class="ln" d="M17.4 6.3l2.2 2.2M15 8.7l1.7 1.7"/>',
-  /* a menu card: a title over the courses */
-  'publish.html': '<path fill-rule="evenodd" d="M7.1 2.8h9.8a2.2 2.2 0 0 1 2.2 2.2v14' +
-    'a2.2 2.2 0 0 1-2.2 2.2H7.1A2.2 2.2 0 0 1 4.9 19V5a2.2 2.2 0 0 1 2.2-2.2z' +
-    'M9.7 6.6h4.6v1.6H9.7zM8.4 10.6h7.2v1.6H8.4zm0 3.1h7.2v1.6H8.4zm1.3 3.1h4.6v1.6H9.7z"/>',
-  /* three bars on a baseline */
-  'stats.html': '<rect x="4.3" y="11" width="4.2" height="7.8" rx="1.3"/>' +
-    '<rect x="9.9" y="4.8" width="4.2" height="14" rx="1.3"/>' +
-    '<rect x="15.5" y="8.4" width="4.2" height="10.4" rx="1.3"/>' +
-    '<path class="ln" d="M3.3 21.1h17.4"/>'
+  'dashboard.html':     /* list-checks, the day's checklist, which the Dashboard is */
+    '<path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/>',
+  'tally.html':         /* utensils */
+    '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+  'cleaners.html':      /* brush-cleaning */
+    '<path d="m16 22-1-4"/><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"/><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"/><path d="m8 22 1-4"/>',
+  'guest-contact.html': /* message-circle */
+    '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/>',
+  'tasks.html':         /* hand-platter, service: a guest's request, carried out by a team */
+    '<path d="M12 3V2"/><path d="m15.4 17.4 3.2-2.8a2 2 0 1 1 2.8 2.9l-3.6 3.3c-.7.8-1.7 1.2-2.8 1.2h-4c-1.1 0-2.1-.4-2.8-1.2l-1.302-1.464A1 1 0 0 0 6.151 19H5"/><path d="M2 14h12a2 2 0 0 1 0 4h-2"/><path d="M4 10h16"/><path d="M5 10a7 7 0 0 1 14 0"/><path d="M5 14v6a1 1 0 0 1-1 1H2"/>',
+  'front-desk.html':    /* concierge-bell */
+    '<path d="M3 20a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1Z"/><path d="M20 16a8 8 0 1 0-16 0"/><path d="M12 4v4"/><path d="M10 4h4"/>',
+  'spa.html':           /* flower */
+    '<circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/><path d="M12 7.5V9"/><path d="M7.5 12H9"/><path d="M16.5 12H15"/><path d="M12 16.5V15"/><path d="m8 8 1.88 1.88"/><path d="M14.12 9.88 16 8"/><path d="m8 16 1.88-1.88"/><path d="M14.12 14.12 16 16"/>',
+  'calendar.html':      /* calendar-days */
+    '<path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/>',
+  'keys.html':          /* key-round */
+    '<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>',
+  'publish.html':       /* book-open-text */
+    '<path d="M12 5v16"/><path d="M16 13h2"/><path d="M16 9h2"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/><path d="M6 13h2"/><path d="M6 9h2"/>',
+  'stats.html':         /* chart-column */
+    '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>'
 };
 
 /* The menu's top-level entries by page, taken as this file loads - as
@@ -3284,9 +3269,9 @@ function buildTabs(role){
        and a reload throws away whatever was being typed there. */
     if (href === here) a.setAttribute('aria-current', 'page');
     else a.href = href;
-    /* The 24 grid's central 22 fill the icon's 28pt box: a square glyph,
-       18 of the grid, then stands 23pt, Apple's size for one on a tab. */
-    a.innerHTML = '<span class="tabic"><svg viewBox="1 1 22 22" aria-hidden="true">' +
+    /* Lucide's 24 grid fills the icon's 28pt box, so its largest glyph,
+       20 of the grid, stands 23pt: Apple's size for a square one. */
+    a.innerHTML = '<span class="tabic"><svg viewBox="0 0 24 24" aria-hidden="true">' +
                   TAB_ICONS[href] + '</svg></span>' +
                   '<span class="tablbl">' + navEntry(href).label + '</span>';
     row.appendChild(a);

@@ -18,8 +18,10 @@ answer to each other, and whichever side a change misses fails by name.
      served, and no bar for a login with one page or no staff record. And
      drawn as the iPhone's own (iOS 26), the owner's ask the same day: a
      capsule 62pt tall floating 21pt above the foot and in from the sides,
-     solid icons in a 28pt box, labels 10pt semibold, the page you are on
-     in a grey capsule, and two tabs on a narrow bar.
+     icons in a 28pt box, labels 10pt semibold, the page you are on in a
+     grey capsule, and two or three tabs on a narrow bar. The icons are
+     Lucide's line icons, the owner's choice the same day, whole and at
+     Lucide's own weight.
   4. Nothing sits under it: the page's footer stands on it - sticky, fixed,
      and Publish's bar - with no row showing between them, a sheet and the
      select and save bars cover it, the foot of a long page scrolls clear
@@ -209,25 +211,32 @@ with sync_playwright() as p:
       return a.map(t=>{const s=t.querySelector('svg'), i=t.querySelector('.tabic').getBoundingClientRect(),
           l=t.querySelector('.tablbl'), lr=l.getBoundingClientRect(), cs=getComputedStyle(l),
           parts=[...s.children].map(e=>{const c=getComputedStyle(e);
-            return {ln:e.classList.contains('ln'), fill:c.fill, stroke:c.stroke, w:px(c.strokeWidth)};}),
-          k=s.getBoundingClientRect(), g=s.getBBox(), m=s.getScreenCTM();
-        return {id:t.id, box:[Math.round(k.width), Math.round(k.height)],
-          glyph:[+(g.width*m.a).toFixed(1), +(g.height*m.d).toFixed(1)], parts,
+            return {dot:e.getAttribute('fill')==='currentColor', fill:c.fill, stroke:c.stroke,
+                    w:px(c.strokeWidth)};}),
+          k=s.getBoundingClientRect(), g=s.getBBox(), m=s.getScreenCTM(), v=s.viewBox.baseVal;
+        /* the drawing and half its line either side, inside the grid it is
+           drawn on: nothing cut off at the box's edge */
+        const whole=g.x-1>=v.x-0.01 && g.y-1>=v.y-0.01 &&
+                    g.x+g.width+1<=v.x+v.width+0.01 && g.y+g.height+1<=v.y+v.height+0.01;
+        return {id:t.id, box:[Math.round(k.width), Math.round(k.height)], whole,
+          grid:[v.x, v.y, v.width, v.height],
+          glyph:[+((g.width+2)*m.a).toFixed(1), +((g.height+2)*m.d).toFixed(1)], parts,
           size:cs.fontSize, weight:cs.fontWeight, gap:+(lr.top-i.bottom).toFixed(1),
           pill:{bg:getComputedStyle(t).backgroundColor, h:Math.round(t.getBoundingClientRect().height),
                 r:px(getComputedStyle(t).borderTopLeftRadius)}};});}""")
     ck("its icons stand in a 28pt box, the phone's", all(t["box"] == [28, 28] for t in look),
        [(t["id"], t["box"]) for t in look])
-    ck("solid, as the phone's tab bars take their symbols: every part filled but a line",
-       all(p["fill"] != "none" for t in look for p in t["parts"] if not p["ln"]) and
-       all(p["fill"] == "none" and p["stroke"] != "none" for t in look for p in t["parts"] if p["ln"]),
-       [(t["id"], [(p["ln"], p["fill"], p["stroke"]) for p in t["parts"]]) for t in look])
-    lines = sorted({round(p["w"] * 28 / 22, 2) for t in look for p in t["parts"] if p["ln"]})
-    ck("a line is drawn about 2pt, the weight of the label beside it", lines and all(1.9 <= w <= 2.4 for w in lines),
-       lines)
+    ck("Lucide's line icons, the owner's choice: every part a line, nothing filled but Lucide's own dots",
+       all(p["stroke"] != "none" and (p["fill"] == "none" or p["dot"]) for t in look for p in t["parts"]),
+       [(t["id"], [(p["fill"], p["stroke"]) for p in t["parts"]]) for t in look])
+    ck("drawn at Lucide's weight, 2 on its 24 grid, and the grid fills the box",
+       all(p["w"] == 2 for t in look for p in t["parts"]) and all(t["grid"] == [0, 0, 24, 24] for t in look),
+       [(t["id"], t["grid"], sorted({p["w"] for p in t["parts"]})) for t in look])
+    ck("every icon whole: nothing cut off at the edge of its box",
+       all(t["whole"] for t in look), [t["id"] for t in look if not t["whole"]])
     dash = [t for t in look if t["id"] == "tab-dashboard"]
-    ck("a square glyph, the Dashboard's panels, stands 23pt: Apple's size for one on a tab",
-       dash and all(22 <= v <= 24 for v in dash[0]["glyph"]), dash and dash[0]["glyph"])
+    ck("the Dashboard's checklist stands 23pt wide: Apple's size for a square glyph on a tab",
+       dash and 22.5 <= dash[0]["glyph"][0] <= 24, dash and dash[0]["glyph"])
     ck("the names are 10pt semibold, 1pt under the icon",
        all(t["size"] == "10px" and t["weight"] == "600" and 0.5 <= t["gap"] <= 1.5 for t in look),
        [(t["id"], t["size"], t["weight"], t["gap"]) for t in look])

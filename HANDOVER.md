@@ -350,12 +350,15 @@ sheets, which wear the older dress. `tests/nav_canon.json` ("tabs") and
 Its dress is the iPhone's own bar, iOS 26, the owner's ask the same day
 ("Study apple iPhone best practice including space below and icon line
 size"): a capsule 62pt tall floating 21pt above the foot of the screen
-and in from its sides, solid icons in a 28pt box with 2pt lines, labels
-10pt semibold, the page you are on in a grey capsule, a narrow bar for
-two or three tabs and the compact one held sideways. It parts from the
-phone three times, each for a rule of this app: grey selection not blue,
-solid white not glass, the menu's badge not red. STYLEGUIDE.md has the
-table of Apple's numbers and the sources.
+and in from its sides, icons in a 28pt box, labels 10pt semibold, the
+page you are on in a grey capsule, a narrow bar for two or three tabs
+and the compact one held sideways. The icons are Lucide's line icons,
+the owner's pick of four sets the same day (`mock-tab-icons.html`), with
+Lucide's checklist for the Dashboard and a hand carrying a platter for
+Tasks. It parts from the phone four times: those line icons where the
+phone fills, grey selection not blue, solid white not glass, the menu's
+badge not red. STYLEGUIDE.md has the table of Apple's numbers and the
+sources.
 
 The same day the owner cleared the footers it would have sat under:
 Refresh on Reservations, Cleans and the Dashboard became a pull from the

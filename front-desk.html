@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Nala Villas">
 <link rel="apple-touch-icon" href="nala-icon.png?v=1">
 <title>Nala &middot; Front Desk Arrival</title>
-<link rel="stylesheet" href="nala-ui2.css?v=12">
+<link rel="stylesheet" href="nala-ui2.css?v=13">
 <link rel="stylesheet" href="nala-ui.css?v=18">
 <style>
   /* This page's OWN colours, restored 29 Aug. The first conversion
@@ -523,7 +523,7 @@ body.paper .crun { background:var(--surface); }
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="auth.js?v=12"></script>
-<script src="nala-shared.js?v=97"></script>
+<script src="nala-shared.js?v=98"></script>
 <script src="nala-cards.js?v=15"></script>
 <script>
 var DB  = "https://nala-menu-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -934,9 +934,7 @@ function rowEta(p){
   return w.charAt(0).toUpperCase() + w.slice(1);
 }
 
-/* The lotus, ICON_LOTUS, lives in nala-shared.js since 30 Sep, beside
-   LOTUS_FILL, its solid variant that the tab bar draws Spa with: the two
-   kept together so a change to one is made to both. */
+/* The lotus, ICON_LOTUS, lives in nala-shared.js since 30 Sep. */
 
 /* The glyph is tall and narrow - 18.5 units of 24 high but only 11.3 wide -
    so it sat almost against the top and bottom of its box while floating in

@@ -345,7 +345,8 @@ San Francisco. On an iPhone added to the Home Screen, signed in as the admin:
    "Reservations" is the long one, and the headless browser measures it
    in Helvetica's widths, not San Francisco's. Set it beside the Clock or
    the App Store: **expect** the same height, the same space below and
-   icons of the same size and weight.
+   icons of the same size - line icons where theirs are filled, which is
+   the set you chose.
 2. **Pull Reservations down from its top** and let go. **Expect** a grey
    arrow that turns ink as you pull, then the board reloading; a short pull
    does nothing. Same on Cleans and the Dashboard. The headless browser
