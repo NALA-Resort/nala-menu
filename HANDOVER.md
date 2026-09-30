@@ -341,8 +341,8 @@ admin's five lead it, as ruled: Dashboard, Reservations, Cleans, Chat,
 Tasks, then the menu ("5 pages plus the menu", `mock-menu-rise.html`).
 The waiter and the manager get the same five once Chat and Tasks are
 opened (until then Front Desk and Spa stand in); the chef, housekeeping
-and the masseuse get what they can open, and a login with one page gets
-no bar and keeps the hamburger. The menu icon raises the menu from the
+and the masseuse get what they can open, on the same bar ("They should
+all be the same", 1 Oct), the masseuse's Spa and the menu included. The menu icon raises the menu from the
 foot beside itself, the size it always was, every row with its page's
 icon (`PAGE_ICONS`), and the hamburger at the top stands down where the
 bar is. The page you are on is its icon in blue, and the counts are
@@ -360,9 +360,9 @@ Not on the printed sheets, which wear the older dress.
 Its dress is the iPhone's own bar, iOS 26, the owner's ask the same day
 ("Study apple iPhone best practice including space below and icon line
 size"): a capsule 62pt tall floating 21pt above the foot of the screen
-and in from its sides, icons in a 28pt box, the page you are on in a
-grey capsule, a narrow bar for two or three tabs and the compact one
-held sideways. The icons are Lucide's line icons, the owner's pick of
+and in from its sides, icons in a 28pt box, the page you are on in
+blue, the same capsule for every login however few its icons, and the
+compact one held sideways. The icons are Lucide's line icons, the owner's pick of
 four sets the same day (`mock-tab-icons.html`), with `list-todo` for the
 Dashboard and `clock-alert` for Tasks, the "do it now" jobs, drawn
 thinner than Lucide's own and with no name under them, his asks too

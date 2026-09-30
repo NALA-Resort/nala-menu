@@ -3269,9 +3269,10 @@ buildNav();
    Publish Menu and Statistics. The Print, SMS and Settings pages stay in
    their submenus.
 
-   A login with one page to go to draws no bar: an icon that can only say
-   "you are here" is chrome. The page you are on stays on the bar, marked
-   and not a link, so the icons never move under the thumb.
+   Every login with a page to go to draws the same bar, one page and the
+   menu included: the owner, 1 Oct, "They should all be the same". The
+   page you are on stays on the bar, marked and not a link, so the icons
+   never move under the thumb.
 
    tests/nav_canon.json holds the order and what each role is offered, the
    menu's own pattern: change the bar there too, or the suites name it.   */
@@ -3298,7 +3299,7 @@ function navEntry(href){
 }
 
 /* What the bar offers this login: the first TABBAR_MAX pages of TABBAR it may
-   open, in TABBAR's order - or none, when that is one page or none. A page
+   open, in TABBAR's order - or none, when it may open none. A page
    missing from NAV is never offered: canOpen calls an unlisted page ungated,
    which is right for a menu link and wrong for this. */
 function tabsFor(role){
@@ -3306,7 +3307,7 @@ function tabsFor(role){
   for (var i = 0; i < TABBAR.length && out.length < TABBAR_MAX; i++){
     if (navEntry(TABBAR[i]) && canOpen(role, TABBAR[i])) out.push(TABBAR[i]);
   }
-  return out.length > 1 ? out : [];
+  return out;
 }
 
 /* Draws the bar, from the menu filter below: it runs once the role and the
@@ -3340,10 +3341,8 @@ function drawTabs(tabs){
   var here = location.pathname.split('/').pop() || 'index.html';
   bar = document.createElement('nav');
   bar.id = 'tabBar';
-  /* Two or three icons, the menu's among them, keep the phone's own
-     narrow bar (nala-ui2.css), centred, as iOS 26 draws a bar of fewer
-     than four. */
-  bar.className = 'tabbar' + (tabs.length + 1 < 4 ? ' few' : '');
+  /* One bar for every login, however few its icons (nala-ui2.css). */
+  bar.className = 'tabbar';
   bar.setAttribute('aria-label', 'Pages');
   bar.setAttribute('data-tabs', key);
   var row = document.createElement('div');
@@ -3427,7 +3426,7 @@ function drawTabs(tabs){
   var tabs = kept.split(' ').filter(function(h){
     return navEntry(h) && Object.prototype.hasOwnProperty.call(PAGE_ICONS, h);
   });
-  if (tabs.length > 1) drawTabs(tabs);
+  if (tabs.length) drawTabs(tabs);
 })();
 
 /* ── pull to refresh ─────────────────────────────────────────────────────

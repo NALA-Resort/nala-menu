@@ -17,12 +17,14 @@ answer to each other, and whichever side a change misses fails by name.
      role in Settings leaves its bar.
   3. As drawn: the icons in order under their menu names, the page you are
      on marked and not a link, every other one a link to a page that is
-     served, and no bar for a login with one page or no staff record. And
+     served, one page and the menu for a login with one, and no bar for a
+     login with no staff record. And
      drawn as the iPhone's own (iOS 26), the owner's ask the same day: a
      capsule 62pt tall floating 21pt above the foot and in from the sides,
      icons in a 28pt box, the page you are on in the phone's blue with no
-     pill ("just change icon colour to blue"), the menu last, and two or
-     three icons on a narrow bar. The icons are Lucide's line icons, the
+     pill ("just change icon colour to blue"), the menu last, and every
+     login's bar the same capsule, however few its icons (the owner, 1 Oct:
+     "They should all be the same"). The icons are Lucide's line icons, the
      owner's choice the same day, whole, drawn thinner than Lucide's own
      and with no name under them, both his asks - the name kept out of
      sight for a screen reader.
@@ -34,7 +36,7 @@ answer to each other, and whichever side a change misses fails by name.
      ("Don't mute the counters when the icon is selected"); the menu's icon
      carries what the bar does not show; and a count is blue ("Counter is
      blue", after a red try).
-  6. It fits: no sideways scroll at 320, and held sideways it is the
+  6. It fits, as Safari sizes it too, for every role: no sideways scroll at 320, and held sideways it is the
      phone's compact bar, while the Cleans board keeps its villas on a
      screen.
   7. It is on every ui2 page with a menu, and on no printed sheet, on
@@ -302,11 +304,12 @@ with sync_playwright() as p:
     ck("housekeeping on Cleans: Cleans and Calendar, Cleans marked",
        bool(bar) and [(t["label"], bool(t["cur"])) for t in bar["tabs"]] == [("Cleans", True), ("Calendar", False)],
        bar and [(t["label"], t["cur"]) for t in bar["tabs"]])
-    # Two pages and the menu keep the phone's narrow bar, not three long pills.
-    w = pg.evaluate("()=>[...document.querySelectorAll('#tabBar .tabrow > *')].map(a=>a.getBoundingClientRect().width)")
+    # Two pages and the menu make the same bar as five: the owner, 1 Oct,
+    # "They should all be the same", after the narrow bar they kept until
+    # then came out on his iPhone as one icon in a pill (section 6).
     c = bar and bar["cap"]
-    ck("and two pages and the menu keep a narrow bar, 98pt an icon, centred",
-       w == [98, 98, 98] and bool(c) and abs(c["left"] - (390 - c["right"])) <= 1, (w, c))
+    ck("and two pages and the menu make the same capsule as five",
+       bool(c) and c["left"] == 21 and c["right"] == 390 - 21, c)
     ctx.close()
 
     ctx, pg = open_as(b, EMAIL["housekeeping"], "cleaners.html", perms=PREVIEW_OPEN)
@@ -322,8 +325,10 @@ with sync_playwright() as p:
     ctx.close()
 
     ctx, pg = open_as(b, EMAIL["spa"], "spa.html")
-    ck("the masseuse, with the Spa board alone, gets no bar and no room for one",
-       pg.evaluate(BAR) is None and not pg.evaluate("()=>document.body.classList.contains('hastabs')"))
+    bar = pg.evaluate(BAR)
+    ck("the masseuse, with the Spa board alone, gets it and the menu, on the same bar",
+       bool(bar) and [(t["label"], bool(t["cur"])) for t in bar["tabs"]] == [("Spa", True)]
+       and bar["hastabs"] and bar["cap"]["left"] == 21 and bar["cap"]["right"] == 390 - 21, bar)
     ctx.close()
 
     ctx, pg = open_as(b, "nobody@x", "tally.html")
@@ -470,6 +475,37 @@ with sync_playwright() as p:
        m["h"] == 44 and m["under"] == 8 and m["icons"] == [22], m)
     ctx.close()
 
+    # Every role's bar, as Safari sizes it. Safari sizes a box from what it
+    # holds by its items' own widths, where Chromium, which runs these
+    # suites, honours a flex basis: the narrow bar for two pages passed
+    # here at 298pt and was 88pt on the owner's iPhone, 1 Oct - one icon in
+    # a pill, the next beside it, the menu off the screen. So each bar is
+    # sized again with every icon's basis cleared, Safari's reading, laid
+    # out as written in that width, and must be the capsule it was, every
+    # icon inside it and on the screen. The waiter with two pages is his.
+    SAFARI = """()=>{const row=document.querySelector('#tabBar .tabrow'); if(!row) return null;
+      const kids=[...row.children], r0=row.getBoundingClientRect();
+      kids.forEach(k=>k.style.flexBasis='auto'); const w=row.getBoundingClientRect().width;
+      kids.forEach(k=>k.style.flexBasis=''); row.style.width=w+'px';
+      const r=row.getBoundingClientRect();
+      const out=kids.filter(k=>{const b=k.getBoundingClientRect();
+        return b.left<r.left-0.5 || b.right>r.right+0.5 || b.right>innerWidth;}).map(k=>k.id);
+      row.style.width='';
+      return {drawn:[Math.round(r0.left), Math.round(r0.right)],
+              safari:[Math.round(r.left), Math.round(r.right)], icons:kids.length, out:out};}"""
+    TWO = {"pages": {k: {"waiter": False} for k in
+           ["dashboard", "front-desk", "spa", "calendar", "keys", "stats", "publish"]}}
+    for role, page, perms in [("admin", "tally.html", None), ("manager", "tally.html", None),
+                              ("chef", "tally.html", None), ("waiter", "tally.html", None),
+                              ("waiter", "tally.html", TWO), ("housekeeping", "cleaners.html", None),
+                              ("spa", "spa.html", None)]:
+        ctx, pg = open_as(b, EMAIL[role], page, perms=perms)
+        m = pg.evaluate(SAFARI)
+        ck("%s%s: the same capsule as everyone's, whole as Safari sizes it" %
+           (role, " with two pages" if perms else ""),
+           bool(m) and m["drawn"] == [21, 369] and m["safari"] == [21, 369] and not m["out"], m)
+        ctx.close()
+
     # ── 7. where it is drawn ──────────────────────────────────────────
     # Read off the pages themselves: a page with a menu wears the bar if it
     # wears the second dress, whose sheet holds the bar's own.
@@ -605,13 +641,13 @@ with sync_playwright() as p:
        m["here"] and m["colour"] == "rgb(26, 102, 194)" and m["current"] == 0, m)
     ctx.close()
 
-    ctx, pg = open_as(b, EMAIL["spa"], "spa.html")
+    ctx, pg = open_as(b, EMAIL["admin"], "list.html")
     miss = press(pg, "#navBtn"); pg.wait_for_timeout(300)
     m = pg.evaluate("""()=>{const b=document.getElementById('navBtn').getBoundingClientRect(),
         d=document.getElementById('navDrop');
         return {bar:!!document.getElementById('tabBar'), open:d.classList.contains('open'),
                 below:d.getBoundingClientRect().top>=b.bottom-1};}""")
-    ck("a page without the bar keeps the hamburger, and its menu drops from it",
+    ck("a printed sheet, without the bar, keeps the hamburger, and its menu drops from it",
        not miss and not m["bar"] and m["open"] and m["below"], miss or m)
     ctx.close()
 

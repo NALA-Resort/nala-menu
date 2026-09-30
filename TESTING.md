@@ -362,8 +362,9 @@ San Francisco. On an iPhone added to the Home Screen, signed in as the admin:
 5. **Turn the phone sideways** on Cleans. **Expect** the shorter bar and
    all seventeen villas still on one screen.
 6. **A second login**, a waiter's or a housekeeper's. **Expect** only pages
-   that login may open, and the icons in the same places on every page.
-   The chef's includes Statistics.
+   that login may open, on the same full-width bar as yours with the menu
+   last, and the icons in the same places on every page. The chef's
+   includes Statistics; the masseuse's is Spa and the menu.
 7. **Tap from icon to icon.** **Expect** the bar to stay where it is: the
    new page's icon turns blue at once and the page fills in above the bar,
    which never goes away. The counts come a moment later, counted afresh.

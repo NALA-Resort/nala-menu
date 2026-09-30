@@ -180,7 +180,9 @@
         "cleaners.html",
         "calendar.html"
       ],
-      "spa": []
+      "spa": [
+        "spa.html"
+      ]
     },
     "roles_open": {
       "admin": [

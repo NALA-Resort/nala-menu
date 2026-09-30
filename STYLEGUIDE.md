@@ -318,7 +318,7 @@ size". Apple's numbers, each held by `tabs_suite`:
 | Selected | a grey capsule as tall as the bar, the tint colour | the tint alone: the icon blue, no capsule (below) |
 | Counts | a red badge on the icon | a blue one, the accent's (below) |
 | More pages than fit | the More tab, last, opening the rest | the menu, fifth, rising from the foot (below) |
-| Two or three tabs | a narrow bar, 98pt a tab | the same, centred |
+| Two or three tabs | a narrow bar, 98pt a tab | the full bar: every login's is the same (the owner, 1 Oct, "They should all be the same"), and Safari drew the narrow one as one icon in a pill |
 | Sideways | the compact bar, icon beside its name, compact icon sizes | 44pt, 22pt icons, over the home indicator or 8pt off the foot without one |
 
 Sources: Apple's HIG, [Tab bars](https://developer.apple.com/design/human-interface-guidelines/tab-bars)

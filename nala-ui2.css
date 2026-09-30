@@ -328,8 +328,13 @@ body.ui2 .navbadge{ flex:0 0 auto; min-width:20px; height:20px; padding:0 6px;
      other meaning ("you can act here, or this is selected").
    - five pages and the menu after them, the iPhone's More tab, which
      raises the menu from the foot beside itself.
-   - two or three tabs keep a narrow bar, 98pt a tab, centred; iOS 26
-     fills the width from four.
+   - every login's bar the same capsule, however few its icons: the
+     owner, 1 Oct, "This bar is not consistent across employees". It
+     parts from iOS 26 here, which narrows a bar of under four, and that
+     narrow bar is why: sized from its contents, Safari drew the waiter's
+     two pages and the menu as one icon in a pill, the next beside it and
+     the menu off the screen, where Chromium, the suites', drew it whole.
+     Its width comes from its sides, as the admin's always has.
    - held sideways, the compact bar: 44pt, smaller icons, and nearer the
      foot, so the Cleans board keeps its villas on a screen.
    Apple's numbers: the HIG (tab bars, SF Symbols) and the system bar as
@@ -384,8 +389,6 @@ body.ui2 .tabbar a, body.ui2 .tabbar .tabmenu{ flex:1 1 0; min-width:0; display:
                     padding:0; border:0; background:none; font:inherit; cursor:pointer;
                     border-radius:var(--pill); color:var(--mid); text-decoration:none;
                     -webkit-tap-highlight-color:transparent; }
-body.ui2 .tabbar.few .tabrow{ width:fit-content; }
-body.ui2 .tabbar.few a, body.ui2 .tabbar.few .tabmenu{ flex:0 0 98px; }
 body.ui2 .tabbar .tabic{ position:relative; display:flex; width:28px; height:28px; }
 /* Lucide's line drawn thinner than its own 2, at the owner's ask: 1.5 on
    its 24 grid, 1.75pt on the bar. Round ends, as Lucide's. */
